@@ -72,13 +72,7 @@ Implementation notes:
 
 ## Expression Language
 
-Options:
-
-* `expr` (Go expr evaluator) — good for Go-first, fast integration.
-* `text/template` style — easier but less expressive.
-* Custom small expression AST — portable across backends.
-
-Recommendation: begin with a Go-friendly expression engine (expr or a small AST you control) and compile expressions to an intermediate representation that backends can translate.
+Where expression logic is required, Google's CEL can be used. CEL has access to the protobuf types defined for the data on the component.
 
 ## Pluggable Compiler
 
@@ -162,3 +156,360 @@ app
 * Decide on expression language portability tradeoffs.
 * Choose whether backends will emit native source or an op-sequence.
 
+---
+
+*End of initial design doc — iterate!*
+
+---
+
+## 📐 SNGL KDL Schema (Proposed)
+
+This section defines the **structural and semantic schema** for SNGL templates written in KDL. It is intentionally minimal, extensible, and platform-agnostic.
+
+### 🧱 Top-Level Nodes
+
+A SNGL document may contain the following top-level nodes:
+
+* `app` — root of the UI tree (exactly one)
+* `bind` — declare reactive state
+* `computed` — declare derived state
+* `component` — declare reusable composite components
+* `import` — import component libraries or protobuf descriptors (future)
+
+---
+
+### `app`
+
+Root UI container.
+
+```kdl
+app {
+  // exactly one root visual node inside
+}
+```
+
+---
+
+### `bind`
+
+Declares reactive, mutable state.
+
+```kdl
+bind <name>: <Type> = <cel-expression>
+```
+
+Examples:
+
+```kdl
+bind count: int = 0
+bind user: User = initialUser
+```
+
+Rules:
+
+* `Type` may be a primitive or protobuf message type
+* Initial value must type-check via CEL
+* Bound values become CEL identifiers
+
+---
+
+### `computed`
+
+Declares derived, read-only state.
+
+```kdl
+computed <name>: <Type> = <cel-expression>
+```
+
+Example:
+
+```kdl
+computed isAdult: bool = user.age >= 18
+```
+
+Rules:
+
+* Cannot be mutated directly
+* Recomputed automatically when dependencies change
+
+---
+
+### 🧩 Visual Nodes (Components)
+
+Any non-reserved node name is treated as a **component instance**.
+
+```kdl
+<component-name> [id="..."] <props...> {
+  <children...>
+}
+```
+
+Example:
+
+```kdl
+button id="save" text="Save" on:click="submit()"
+```
+
+#### Common Attributes
+
+| Attribute | Meaning                |
+| --------- | ---------------------- |
+| `id`      | stable node identifier |
+| `key`     | list diffing identity  |
+| `class`   | semantic styling hook  |
+
+---
+
+### 🎛 Properties
+
+Properties are key/value pairs.
+
+```kdl
+text value="Hello"
+text value="{user.name}" // CEL binding
+```
+
+Rules:
+
+* String literals are static
+* `{...}` denotes CEL expressions
+* Types are validated against component schema
+
+---
+
+### ⚡ Event Handlers
+
+Event handlers are attributes prefixed with `on:`.
+
+```kdl
+button on:click="inc(count)"
+input on:input="set(name, $event)"
+```
+
+Rules:
+
+* Expressions must evaluate to Mutation IR
+* `$event` is implicitly typed per event
+
+---
+
+### 📦 `component` (Composite Components)
+
+Defines reusable components in SNGL itself.
+
+```kdl
+component MyCard(title: string) {
+  vbox {
+    text value="{title}"/>
+    slot
+  }
+}
+```
+
+Usage:
+
+```kdl
+MyCard title="Welcome" {
+  text value="Content"/>
+}
+```
+
+Rules:
+
+* Parameters are typed
+* Components expand at compile time
+* Slots allow child projection
+
+---
+
+### 🪟 `slot`
+
+Placeholder for children in composite components.
+
+```kdl
+slot
+```
+
+---
+
+### 📐 Layout & Style
+
+Layout and style are expressed via namespaced properties.
+
+```kdl
+vbox {
+  style.padding = 8
+  style.gap = 4
+}
+```
+
+Rules:
+
+* `style.*` maps to Yoga
+* Platforms may ignore unsupported styles
+
+---
+
+### 📚 Built-in Primitive Components (Universal)
+
+These form the **standard SNGL component library**.
+
+* `vbox`
+* `hbox`
+* `stack`
+* `text`
+* `button`
+* `input`
+* `image`
+* `scroll`
+* `spacer`
+
+Each component has a **platform-independent semantic contract**.
+Platform plugins decide how to realize them.
+
+---
+
+### 🧪 Lists & Conditionals (Minimal)
+
+Handled via attributes rather than statements.
+
+```kdl
+text if="user.loggedIn" value="Welcome"/>
+
+item for="item in items" key="item.id" {
+  text value="{item.name}"/>
+}
+```
+
+Compiler expands these into static dependency-aware structures.
+
+---
+
+### 🔐 Reserved Keywords
+
+* `app`
+* `bind`
+* `computed`
+* `component`
+* `slot`
+* `import`
+
+---
+
+### ✅ Design Guarantees
+
+* Fully static structure
+* Strong typing via protobuf + CEL
+* No runtime AST walking
+* Dependency graph known at compile time
+* Portable across GUI, Web, Mobile, and TUI
+
+---
+
+This schema defines **what SNGL is allowed to express**.
+Platform plugins define **how it is rendered**.
+
+---
+
+## 📜 SNGL KDL Schema — Formal Specification
+
+This section defines a **formal, implementation-oriented schema** for SNGL KDL documents. It is intended for compiler authors and tooling.
+
+### 1. Document Structure
+
+```
+Document := { Import | Bind | Computed | Component } App
+```
+
+Constraints:
+
+* Exactly one `app` node MUST exist
+* Order of declarations before `app` is insignificant
+
+---
+
+### 2. Imports
+
+```
+import <string>
+```
+
+Semantics:
+
+* Imports component libraries or protobuf descriptors
+* Resolution is compiler-defined
+
+---
+
+### 3. State Declarations
+
+#### 3.1 bind
+
+```
+bind <ident> : <type> = <cel-expr>
+```
+
+Rules:
+
+* Declares mutable reactive state
+* `<type>` may be primitive or protobuf message
+* Initial value must CEL-typecheck
+
+#### 3.2 computed
+
+```
+computed <ident> : <type> = <cel-expr>
+```
+
+Rules:
+
+* Declares derived read-only state
+* Dependencies inferred from CEL AST
+* Cannot be mutation targets
+
+---
+
+### 4. Components (Composite)
+
+```
+component <Name>(<param>: <type>, ...) {
+  <VisualNode>*
+}
+```
+
+Rules:
+
+* Parameters are immutable and typed
+* Component bodies are expanded at compile time
+* Recursive components are forbidden
+
+---
+
+### 5. Visual Nodes
+
+```
+<node-name> [Attributes] [Properties] [Block]
+```
+
+Where:
+
+* `<node-name>` is either a primitive component or composite component
+* `Block` contains zero or more VisualNodes
+
+---
+
+### 6. Attributes
+
+#### 6.1 Identity
+
+```
+id = <string>
+key = <cel-expr>
+class = <string>
+```
+
+#### 6.2 Events
+
+```
+on:<event
+```
