@@ -34,17 +34,17 @@ Use attributes and special nodes for bindings and expressions.
 Example:
 
 ```
-button id="loginBtn" text="{user.canLogin ? 'Login' : 'Locked'}" onclick="{actions.login()}"
+button id="loginBtn" text=(cel)"user.canLogin ? 'Login' : 'Locked'" on:click=(cel)"actions.login()"
   style.padding=8
 />
 
-text id="greeting" text="{`Hello ${user.name}`}"/>
+text id="greeting" text=(cel)"'Hello ' + user.name"/>
 
-bind user.age: int = {parseInt(initialInput)}
-computed user.isAdult: bool = {user.age >= 18}
+bind user.age: int = (cel)"parseInt(initialInput)"
+computed user.isAdult: bool = (cel)"user.age >= 18"
 ```
 
-* Curly braces `{...}` denote expressions evaluated by the expression engine.
+* The `(cel)` type annotation uses KDL's native type annotation syntax to mark CEL expressions.
 * `bind` and `computed` are top-level KDL nodes (or could be attributes on a `script` node).
 
 ## Type System
@@ -141,10 +141,10 @@ The compiler emits code that drives this runtime. For Go, the emitted artifact c
 
 ```
 app
-  window title="{app.title}"
+  window title=(cel)"app.title"
     vbox
-      text id="name" text="{`Name: ${user.name}`}"/>
-      button text="{user.loggedIn ? 'Logout' : 'Login'}" onclick="{actions.toggleLogin()}"/>
+      text id="name" text=(cel)"'Name: ' + user.name"/>
+      button text=(cel)"user.loggedIn ? 'Logout' : 'Login'" on:click=(cel)"actions.toggleLogin()"/>
     /
   /
 /
@@ -247,7 +247,7 @@ Any non-reserved node name is treated as a **component instance**.
 Example:
 
 ```kdl
-button id="save" text="Save" on:click="submit()"
+button id="save" text="Save" on:click=(cel)"submit()"
 ```
 
 #### Common Attributes
@@ -266,13 +266,13 @@ Properties are key/value pairs.
 
 ```kdl
 text value="Hello"
-text value="{user.name}" // CEL binding
+text value=(cel)"user.name" // CEL binding
 ```
 
 Rules:
 
 * String literals are static
-* `{...}` denotes CEL expressions
+* `(cel)` type annotation marks CEL expressions
 * Types are validated against component schema
 
 ---
@@ -282,8 +282,8 @@ Rules:
 Event handlers are attributes prefixed with `on:`.
 
 ```kdl
-button on:click="inc(count)"
-input on:input="set(name, $event)"
+button on:click=(cel)"inc(count)"
+input on:input=(cel)"set(name, $event)"
 ```
 
 Rules:
@@ -300,7 +300,7 @@ Defines reusable components in SNGL itself.
 ```kdl
 component MyCard(title: string) {
   vbox {
-    text value="{title}"/>
+    text value=(cel)"title"/>
     slot
   }
 }
@@ -310,7 +310,7 @@ Usage:
 
 ```kdl
 MyCard title="Welcome" {
-  text value="Content"/>
+  text value="Content"
 }
 ```
 
@@ -334,18 +334,36 @@ slot
 
 ### 📐 Layout & Style
 
-Layout and style are expressed via namespaced properties.
+Layout and style properties can be set in two ways: as `style.*` attributes on the node, or inside a `@style` child block. Both forms use the same property names; the block form omits the `style.` prefix.
 
 ```kdl
+// Attribute form — convenient for a few properties
+vbox style.padding=8 style.gap=4
+
+// Block form — cleaner for many properties
 vbox {
-  style.padding = 8
-  style.gap = 4
+  @style {
+    padding 8
+    gap 4
+    background "#f0f0f0"
+    border-radius 8
+  }
+}
+
+// Both forms can coexist; @style block wins on conflict
+vbox style.margin=4 {
+  @style {
+    padding 8
+    gap 4
+  }
 }
 ```
 
+The `@style` block is one instance of the general **attribute node** convention: any child node whose name starts with `@` is structured metadata, not a visual child. See [schema.md](DESIGN/schema.md) for details.
+
 Rules:
 
-* `style.*` maps to Yoga
+* Style properties map to Yoga layout and visual properties
 * Platforms may ignore unsupported styles
 
 ---
@@ -374,10 +392,10 @@ Platform plugins decide how to realize them.
 Handled via attributes rather than statements.
 
 ```kdl
-text if="user.loggedIn" value="Welcome"/>
+text if=(cel)"user.loggedIn" value="Welcome"
 
-item for="item in items" key="item.id" {
-  text value="{item.name}"/>
+item for="item in items" key=(cel)"item.id" {
+  text value=(cel)"item.name"
 }
 ```
 
@@ -446,19 +464,19 @@ Semantics:
 #### 3.1 bind
 
 ```
-bind <ident> : <type> = <cel-expr>
+bind <ident> : <type> = <literal | (cel)"expr">
 ```
 
 Rules:
 
 * Declares mutable reactive state
 * `<type>` may be primitive or protobuf message
-* Initial value must CEL-typecheck
+* Initial value must CEL-typecheck if `(cel)` annotated
 
 #### 3.2 computed
 
 ```
-computed <ident> : <type> = <cel-expr>
+computed <ident> : <type> = (cel)"<expr>"
 ```
 
 Rules:
@@ -504,7 +522,7 @@ Where:
 
 ```
 id = <string>
-key = <cel-expr>
+key = <string | (cel)"expr">
 class = <string>
 ```
 
