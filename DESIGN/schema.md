@@ -56,43 +56,92 @@ import "<path-or-module>"
 
 ### Bind
 
+Declares mutable reactive state. Available in individual or block form.
+
+#### Individual form
+
 ```kdl
-bind <name> <initial-value>
-bind <name>: <type> = <cel-expr>
+bind "count" (int)0
+bind "user" (cel)"User{ name: 'World' }"
 ```
 
-| Part            | Required | Description                                           |
-| --------------- | -------- | ----------------------------------------------------- |
-| name            | yes      | Identifier; becomes a CEL variable                    |
-| type annotation | no       | Explicit type; inferred from initial value if omitted |
-| initial value   | yes      | Literal or CEL expression                             |
+The first argument is the variable name (string). The second argument is the initial value — a literal with an optional KDL type annotation for type hints, or a `(cel)` expression. Types are inferred from the value's type annotation.
+
+#### Block form
+
+```kdl
+bind {
+    count (int)0
+    user (cel)"User{ name: 'World' }"
+}
+```
+
+Each child node's name is the variable name; its first argument is the initial value. Both forms can coexist in a document.
+
+| Part          | Required | Description                                                            |
+| ------------- | -------- | ---------------------------------------------------------------------- |
+| name          | yes      | Identifier; becomes a CEL variable                                     |
+| type hint     | no       | KDL type annotation on the value (e.g., `(int)`, `(User)`); inferred if omitted |
+| initial value | yes      | Literal or `(cel)` expression                                          |
 
 ### Computed
 
+Declares derived, read-only state. Available in individual or block form.
+
+#### Individual form
+
 ```kdl
-computed <name>: <type> = <cel-expr>
+computed "greeting" (cel)"'Hello, ' + user.name + '!'"
+computed "isAdult" (cel)"user.age >= 18"
 ```
 
-| Part            | Required | Description                                        |
-| --------------- | -------- | -------------------------------------------------- |
-| name            | yes      | Identifier; becomes a read-only CEL variable       |
-| type annotation | no       | Explicit type; inferred from expression if omitted |
-| expression      | yes      | CEL expression; dependencies auto-tracked          |
+#### Block form
+
+```kdl
+computed {
+    greeting (cel)"'Hello, ' + user.name + '!'"
+    isAdult (cel)"user.age >= 18"
+}
+```
+
+| Part       | Required | Description                                        |
+| ---------- | -------- | -------------------------------------------------- |
+| name       | yes      | Identifier; becomes a read-only CEL variable       |
+| expression | yes      | `(cel)` expression; dependencies auto-tracked      |
 
 ### Component (user-defined)
 
 ```kdl
-component <Name> {
-    param <name>: <type> [default=<value>]
-    // ... body nodes
+component "Counter" {
+    @param "label" (string)""
+    @param "start" (int)0
+    hbox {
+        text value=(cel)"label + ': ' + string(count)"
+        button text="+" on:click=(cel)"set(count, count + 1)"
+    }
 }
 ```
 
+The first argument is the component name (PascalCase string). Children named `@param` define typed parameters; all other children form the component body.
+
 | Part        | Required | Description                                       |
 | ----------- | -------- | ------------------------------------------------- |
-| Name        | yes      | PascalCase identifier                             |
-| param nodes | no       | Typed parameters (immutable within the component) |
+| Name        | yes      | PascalCase identifier (first argument, string)    |
+| @param nodes | no       | Typed parameters (immutable within the component) |
 | body        | yes      | One or more visual nodes; may contain `slot`      |
+
+#### `@param` nodes
+
+```kdl
+@param "name" (type)default-value
+@param "name" (type)default-value "required"
+```
+
+| Part          | Required | Description                                                              |
+| ------------- | -------- | ------------------------------------------------------------------------ |
+| name          | yes      | Parameter name (first positional argument, string)                       |
+| default value | yes      | Default value (second positional argument) with KDL type annotation      |
+| "required"    | no       | If a third positional argument `"required"` is present, param is required |
 
 ### Style (named style blocks)
 
@@ -134,7 +183,7 @@ Event attributes are prefixed with `on:` and take a `(cel)` type-annotated value
 on:<event-name> = (cel)"<expression>"
 ```
 
-The CEL expression may use `$event` to access the event payload. The type of `$event` depends on the event.
+The CEL expression may use `event` to access the event payload. The type of `event` depends on the event.
 
 ### Attribute Nodes
 
@@ -468,7 +517,7 @@ Flexible empty space. Expands to fill available space along the parent's main ax
 
 ## Event Payload Types
 
-These are the typed payloads available via `$event` in event handler CEL expressions.
+These are the typed payloads available via `event` in event handler CEL expressions.
 
 ### `ClickEvent`
 
@@ -537,8 +586,8 @@ These are the typed payloads available via `$event` in event handler CEL express
 Properties marked as "two-way bindable" support automatic synchronization between the UI and the reactive state. When a CEL expression references a `bind` variable, the binding is two-way:
 
 ```kdl
-bind name: string = ""
-input value=(cel)"name" on:input=(cel)"set(name, $event.value)"
+bind "name" (string)""
+input value=(cel)"name" on:input=(cel)"set(name, event.value)"
 ```
 
 The `set()` built-in function is the canonical way to mutate bound state from event handlers.
@@ -560,13 +609,18 @@ The `set()` built-in function is the canonical way to mutate bound state from ev
 ```kdl
 import "app.proto"
 
-bind user: User = (cel)"User{ name: 'World', age: 25, loggedIn: false }"
-bind count: int = 0
+bind {
+    user (cel)"User{ name: 'World', age: 25, loggedIn: false }"
+    count (int)0
+}
 
-computed greeting: string = (cel)"'Hello, ' + user.name + '!'"
-computed isAdult: bool = (cel)"user.age >= 18"
+computed {
+    greeting (cel)"'Hello, ' + user.name + '!'"
+    isAdult (cel)"user.age >= 18"
+}
 
-component Counter(label: string) {
+component "Counter" {
+    @param "label" (string)""
     hbox {
         text value=(cel)"label + ': ' + string(count)"
         button text="+" on:click=(cel)"set(count, count + 1)"
@@ -586,7 +640,7 @@ app {
         text if=(cel)"isAdult" value="(Adult)" style.color="#007700"
         text if=(cel)"!isAdult" value="(Minor)" style.color="#CC0000"
 
-        input value=(cel)"user.name" placeholder="Enter name" on:input=(cel)"set(user.name, $event.value)"
+        input value=(cel)"user.name" placeholder="Enter name" on:input=(cel)"set(user.name, event.value)"
 
         Counter label="Clicks"
 

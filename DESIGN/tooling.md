@@ -14,28 +14,28 @@ sngl <subcommand> [flags] [args]
 
 ### Subcommands
 
-| Subcommand | Description | Details |
-|------------|-------------|---------|
-| `compile`  | Compile KDL to target artifacts | See [compiler.md](compiler.md) |
+| Subcommand | Description                         | Details                                      |
+| ---------- | ----------------------------------- | -------------------------------------------- |
+| `compile`  | Compile KDL to target artifacts     | See [compiler.md](compiler.md)               |
 | `check`    | Type-check and validate (no output) | See [static-analysis.md](static-analysis.md) |
-| `lint`     | Run lint rules | See [static-analysis.md](static-analysis.md) |
-| `test`     | Run test suites | See [testing.md](testing.md) |
-| `lsp`      | Start the language server | See below |
-| `fmt`      | Format KDL source files | See below |
-| `preview`  | Launch the WYSIWYG preview | See [wysiwyg.md](wysiwyg.md) |
-| `init`     | Initialize a new SNGL project | See below |
-| `version`  | Print version info | |
+| `lint`     | Run lint rules                      | See [static-analysis.md](static-analysis.md) |
+| `test`     | Run test suites                     | See [testing.md](testing.md)                 |
+| `lsp`      | Start the language server           | See below                                    |
+| `fmt`      | Format KDL source files             | See below                                    |
+| `preview`  | Launch the WYSIWYG preview          | See [wysiwyg.md](wysiwyg.md)                 |
+| `init`     | Initialize a new SNGL project       | See below                                    |
+| `version`  | Print version info                  |                                              |
 
 ### Common Flags
 
 These apply across subcommands where relevant:
 
-| Flag | Description |
-|------|-------------|
+| Flag               | Description                                              |
+| ------------------ | -------------------------------------------------------- |
 | `--project=<path>` | Project root (default: cwd, walks up to find `sngl.kdl`) |
-| `--format=<fmt>` | Output format: `text`, `json`, `sarif` |
-| `--quiet` | Suppress non-error output |
-| `--verbose` | Verbose/debug output |
+| `--format=<fmt>`   | Output format: `text`, `json`, `sarif`                   |
+| `--quiet`          | Suppress non-error output                                |
+| `--verbose`        | Verbose/debug output                                     |
 
 ### Project Configuration
 
@@ -108,7 +108,7 @@ The LSP builds on the compiler's parse and analyze pipeline, keeping the AST war
 - Property names for the current component (filtered by schema)
 - `style.*` property names
 - `on:` event names for the current component
-- Inside `(cel)` expressions: identifiers from `bind`, `computed`, component params, `$event` fields, and built-in CEL functions
+- Inside `(cel)` expressions: identifiers from `bind`, `computed`, component params, `event` fields, and built-in CEL functions
 
 #### Rename
 
@@ -293,11 +293,11 @@ Creates:
 
 With flags:
 
-| Flag | Description |
-|------|-------------|
-| `--lang=<lang>` | Pre-configure a language target |
-| `--platform=<plat>` | Pre-configure a platform target |
-| `--bare` | Only create `sngl.kdl`, no starter files |
+| Flag                | Description                              |
+| ------------------- | ---------------------------------------- |
+| `--lang=<lang>`     | Pre-configure a language target          |
+| `--platform=<plat>` | Pre-configure a platform target          |
+| `--bare`            | Only create `sngl.kdl`, no starter files |
 
 ---
 
