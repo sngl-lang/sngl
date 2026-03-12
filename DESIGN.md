@@ -33,19 +33,18 @@ Use attributes and special nodes for bindings and expressions.
 
 Example:
 
-```
-button id="loginBtn" text=(cel)"user.canLogin ? 'Login' : 'Locked'" on:click=(cel)"actions.login()"
-  style.padding=8
-/>
+```kdl
+button id="loginBtn" text=(cel)"user.canLogin ? 'Login' : 'Locked'" on:click=(cel)"actions.login()" style.padding=8
 
-text id="greeting" text=(cel)"'Hello ' + user.name"/>
+text id="greeting" text=(cel)"'Hello ' + user.name"
 
-bind user.age: int = (cel)"parseInt(initialInput)"
-computed user.isAdult: bool = (cel)"user.age >= 18"
+bind "age" (int)0
+bind "user" (cel)"User{ name: 'World' }"
+computed "isAdult" (cel)"user.age >= 18"
 ```
 
 * The `(cel)` type annotation uses KDL's native type annotation syntax to mark CEL expressions.
-* `bind` and `computed` are top-level KDL nodes (or could be attributes on a `script` node).
+* `bind` and `computed` are top-level KDL nodes with the variable name as the first argument and the value as the second.
 
 ## Type System
 
@@ -139,15 +138,13 @@ The compiler emits code that drives this runtime. For Go, the emitted artifact c
 
 ## Example KDL (minimal)
 
-```
-app
-  window title=(cel)"app.title"
-    vbox
-      text id="name" text=(cel)"'Name: ' + user.name"/>
-      button text=(cel)"user.loggedIn ? 'Logout' : 'Login'" on:click=(cel)"actions.toggleLogin()"/>
-    /
-  /
-/
+```kdl
+app {
+  vbox {
+    text id="name" value=(cel)"'Name: ' + user.name"
+    button text=(cel)"user.loggedIn ? 'Logout' : 'Login'" on:click=(cel)"actions.toggleLogin()"
+  }
+}
 ```
 
 ## Next steps
@@ -192,39 +189,38 @@ app {
 
 ### `bind`
 
-Declares reactive, mutable state.
+Declares reactive, mutable state. Available in individual or block form.
 
 ```kdl
-bind <name>: <Type> = <cel-expression>
-```
+bind "count" (int)0
+bind "user" (cel)"User{ name: 'World' }"
 
-Examples:
-
-```kdl
-bind count: int = 0
-bind user: User = initialUser
+bind {
+    count (int)0
+    user (cel)"User{ name: 'World' }"
+}
 ```
 
 Rules:
 
-* `Type` may be a primitive or protobuf message type
-* Initial value must type-check via CEL
+* First argument is the variable name (string)
+* Second argument is the initial value with optional KDL type annotation
+* Type is inferred from the value's type annotation
 * Bound values become CEL identifiers
 
 ---
 
 ### `computed`
 
-Declares derived, read-only state.
+Declares derived, read-only state. Available in individual or block form.
 
 ```kdl
-computed <name>: <Type> = <cel-expression>
-```
+computed "greeting" (cel)"'Hello, ' + user.name"
 
-Example:
-
-```kdl
-computed isAdult: bool = user.age >= 18
+computed {
+    greeting (cel)"'Hello, ' + user.name"
+    isAdult (cel)"user.age >= 18"
+}
 ```
 
 Rules:
@@ -283,13 +279,13 @@ Event handlers are attributes prefixed with `on:`.
 
 ```kdl
 button on:click=(cel)"inc(count)"
-input on:input=(cel)"set(name, $event)"
+input on:input=(cel)"set(name, event)"
 ```
 
 Rules:
 
 * Expressions must evaluate to Mutation IR
-* `$event` is implicitly typed per event
+* `event` is implicitly typed per event
 
 ---
 
@@ -298,9 +294,10 @@ Rules:
 Defines reusable components in SNGL itself.
 
 ```kdl
-component MyCard(title: string) {
+component "MyCard" {
+  @param "title" (string)""
   vbox {
-    text value=(cel)"title"/>
+    text value=(cel)"title"
     slot
   }
 }
@@ -316,7 +313,7 @@ MyCard title="Welcome" {
 
 Rules:
 
-* Parameters are typed
+* Parameters use `@param` nodes with type-annotated default values
 * Components expand at compile time
 * Slots allow child projection
 
@@ -463,20 +460,28 @@ Semantics:
 
 #### 3.1 bind
 
-```
-bind <ident> : <type> = <literal | (cel)"expr">
+```kdl
+bind "<name>" (<type>)<value>
+// or block form:
+bind {
+    <name> (<type>)<value>
+}
 ```
 
 Rules:
 
 * Declares mutable reactive state
-* `<type>` may be primitive or protobuf message
+* Type is inferred from KDL type annotation on the value
 * Initial value must CEL-typecheck if `(cel)` annotated
 
 #### 3.2 computed
 
-```
-computed <ident> : <type> = (cel)"<expr>"
+```kdl
+computed "<name>" (cel)"<expr>"
+// or block form:
+computed {
+    <name> (cel)"<expr>"
+}
 ```
 
 Rules:
@@ -489,15 +494,16 @@ Rules:
 
 ### 4. Components (Composite)
 
-```
-component <Name>(<param>: <type>, ...) {
+```kdl
+component "<Name>" {
+  @param "<name>" (<type>)<default>
   <VisualNode>*
 }
 ```
 
 Rules:
 
-* Parameters are immutable and typed
+* Parameters use `@param` nodes with type-annotated default values
 * Component bodies are expanded at compile time
 * Recursive components are forbidden
 

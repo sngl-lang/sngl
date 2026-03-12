@@ -1,0 +1,40 @@
+import "app.proto"
+
+bind {
+    user (cel)"User{ name: 'World', age: 25, loggedIn: false }"
+    count (int)0
+}
+
+computed {
+    greeting (cel)"'Hello, ' + user.name + '!'"
+    isAdult (cel)"user.age >= 18"
+}
+
+component "Counter" {
+    @param "label" (string)""
+    hbox {
+        text value=(cel)"label + ': ' + string(count)"
+        button text="+" on:click=(cel)"set(count, count + 1)"
+        button text="-" on:click=(cel)"set(count, count - 1)" disabled=(cel)"count <= 0"
+    }
+}
+
+app {
+    vbox style.padding=16 style.gap=12 {
+        text value=(cel)"greeting" {
+            @style {
+                font-size 24
+                font-weight "bold"
+            }
+        }
+
+        text if=(cel)"isAdult" value="(Adult)" style.color="#007700"
+        text if=(cel)"!isAdult" value="(Minor)" style.color="#CC0000"
+
+        input value=(cel)"user.name" placeholder="Enter name" on:input=(cel)"set(user.name, event.value)"
+
+        Counter label="Clicks"
+
+        button text=(cel)"user.loggedIn ? 'Logout' : 'Login'" on:click=(cel)"toggle(user.loggedIn)"
+    }
+}

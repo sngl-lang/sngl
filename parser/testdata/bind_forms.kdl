@@ -1,0 +1,17 @@
+bind "count" (int)0
+bind "name" (string)"World"
+
+bind {
+    x (float)1.0
+    active (bool)true
+}
+
+computed "greeting" (cel)"'Hello, ' + name"
+
+computed {
+    doubled (cel)"count * 2"
+    isActive (cel)"active"
+}
+
+app {
+}

@@ -1,0 +1,9 @@
+component "Counter" label=(string)"" start=(int)0 {
+    hbox {
+        text value=(cel)"label + ': ' + string(count)"
+    }
+}
+
+app {
+    Counter label="Clicks"
+}

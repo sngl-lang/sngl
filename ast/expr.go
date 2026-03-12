@@ -1,0 +1,17 @@
+package ast
+
+import "github.com/google/cel-go/cel"
+
+// Expr is either a literal value or a CEL expression.
+type Expr struct {
+	Literal  any      // non-nil for static values
+	CEL      string   // non-empty for (cel)"..." expressions
+	AST      *cel.Ast // parsed CEL AST (nil for literals)
+	TypeHint string   // from KDL type annotation: "int", "bool", "User", etc.
+}
+
+// ForClause is the parsed form of for="item in items".
+type ForClause struct {
+	Variable string
+	Iterable Expr
+}
