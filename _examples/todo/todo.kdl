@@ -1,0 +1,33 @@
+bind {
+    newTodo (string)""
+    filter (string)"all"
+}
+
+computed {
+    status (cel)"'Todo List'"
+}
+
+component "TodoItem" {
+    @param "text" (string)""
+    @param "done" (bool)false
+    hbox style.gap=8 {
+        button text=(cel)"done ? '[x]' : '[ ]'" on:click=(cel)"toggle(done)"
+        text value=(cel)"text"
+    }
+}
+
+app {
+    vbox style.padding=16 style.gap=12 {
+        text value=(cel)"status" { @style { font-weight "bold"; font-size 24 } }
+
+        hbox style.gap=8 {
+            input placeholder="What needs to be done?" on:input=(cel)"set(newTodo, event.value)"
+            button text="Add" on:click=(cel)"set(newTodo, '')"
+        }
+
+        vbox style.gap=4 {
+            TodoItem text="Buy groceries" done=false
+            TodoItem text="Write docs" done=true
+        }
+    }
+}

@@ -1,0 +1,11 @@
+bind "count" (int)0
+bind "name" (string)"World"
+bind "active" (bool)true
+
+computed "greeting" (cel)"'Hello, ' + name"
+computed "doubled" (cel)"count * 2"
+computed "isActive" (cel)"active"
+
+app {
+    text value=(cel)"greeting"
+}

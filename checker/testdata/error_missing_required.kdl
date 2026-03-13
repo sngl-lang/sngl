@@ -1,0 +1,8 @@
+component "Greeting" {
+    @param "name" (string)"" "required"
+    text value=(cel)"name"
+}
+
+app {
+    Greeting
+}
