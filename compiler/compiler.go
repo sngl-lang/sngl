@@ -78,15 +78,17 @@ type analysisResult struct {
 	forCursors     []forLoopCursor
 	components     []*ast.Component
 	structs        []*ast.StructDef
-	modelFields    map[string]bool // all bind/computed names (fields)
-	computedFields map[string]bool // computed names (methods, not struct fields)
-	needsTime      bool            // emit "time" import
+	modelFields    map[string]bool   // all bind/computed names (fields)
+	computedFields map[string]bool   // computed names (methods, not struct fields)
+	triggers       map[string]string // data field name → trigger func name
+	needsTime      bool              // emit "time" import
 }
 
 func analyze(doc *ast.Document) *analysisResult {
 	info := &analysisResult{
 		modelFields:    make(map[string]bool),
 		computedFields: make(map[string]bool),
+		triggers:       make(map[string]string),
 	}
 
 	// Data fields (non-extern, non-func only)
@@ -105,6 +107,9 @@ func analyze(doc *ast.Document) *analysisResult {
 			initVal: initVal,
 		})
 		info.modelFields[d.Name] = true
+		if d.Trigger != "" {
+			info.triggers[d.Name] = d.Trigger
+		}
 	}
 
 	// Computeds
@@ -157,7 +162,7 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 					if call.FunctionName() == "set" && len(call.Args()) >= 1 {
 						firstArg := call.Args()[0]
 						if firstArg.Kind() == celast.IdentKind {
-							bindTarget = exportName(firstArg.AsIdent())
+							bindTarget = firstArg.AsIdent()
 						}
 					}
 				}
@@ -196,7 +201,7 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 				if vn.For.Iterable.AST != nil {
 					native := vn.For.Iterable.AST.NativeRep()
 					if native.Expr().Kind() == celast.IdentKind {
-						listField = exportName(native.Expr().AsIdent())
+						listField = native.Expr().AsIdent()
 					}
 				}
 				info.forCursors = append(info.forCursors, forLoopCursor{
@@ -305,7 +310,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
 	b.WriteString("type Model struct {\n")
 	for _, bind := range info.binds {
-		fmt.Fprintf(&b, "\t%s %s\n", exportName(bind.name), bind.goType)
+		fmt.Fprintf(&b, "\t%s %s\n", bind.name, bind.goType)
+	}
+	// Trigger callback fields
+	for _, bind := range info.binds {
+		if trigger, ok := info.triggers[bind.name]; ok {
+			cbField := unexportName(trigger)
+			fmt.Fprintf(&b, "\t%s func(%s)\n", cbField, bind.goType)
+		}
 	}
 	if len(info.binds) > 0 {
 		b.WriteString("\n")
@@ -331,7 +343,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("func New() Model {\n")
 	b.WriteString("\tm := Model{\n")
 	for _, bind := range info.binds {
-		fmt.Fprintf(&b, "\t\t%s: %s,\n", exportName(bind.name), bind.initVal)
+		fmt.Fprintf(&b, "\t\t%s: %s,\n", bind.name, bind.initVal)
 	}
 	b.WriteString("\t}\n")
 	// Initialize inputs
@@ -371,6 +383,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
+	// Getters, setters, Msg/Cmd types, trigger registration
+	emitGettersSetters(&b, info)
+
 	// Init()
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
 	if len(info.inputs) > 0 {
@@ -405,10 +420,67 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	return []byte(b.String())
 }
 
+func emitGettersSetters(b *strings.Builder, info *analysisResult) {
+	for _, bind := range info.binds {
+		getter := exportName(bind.name)
+		// Getter
+		fmt.Fprintf(b, "func (m Model) %s() %s {\n", getter, bind.goType)
+		fmt.Fprintf(b, "\treturn m.%s\n", bind.name)
+		b.WriteString("}\n\n")
+
+		// Setter
+		fmt.Fprintf(b, "func (m Model) Set%s(v %s) Model {\n", getter, bind.goType)
+		fmt.Fprintf(b, "\tm.%s = v\n", bind.name)
+		// Sync bound inputs
+		for _, inp := range info.inputs {
+			if inp.bindTarget == bind.name && bind.goType == "string" {
+				fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", inp.fieldName, bind.name)
+			}
+		}
+		// Fire trigger callback
+		if trigger, ok := info.triggers[bind.name]; ok {
+			cbField := unexportName(trigger)
+			fmt.Fprintf(b, "\tif m.%s != nil {\n", cbField)
+			fmt.Fprintf(b, "\t\tm.%s(v)\n", cbField)
+			b.WriteString("\t}\n")
+		}
+		b.WriteString("\treturn m\n")
+		b.WriteString("}\n\n")
+
+		// Msg type
+		fmt.Fprintf(b, "type set%sMsg struct{ value %s }\n\n", getter, bind.goType)
+
+		// Cmd function
+		fmt.Fprintf(b, "func Set%sCmd(v %s) tea.Cmd {\n", getter, bind.goType)
+		fmt.Fprintf(b, "\treturn func() tea.Msg { return set%sMsg{value: v} }\n", getter)
+		b.WriteString("}\n\n")
+	}
+
+	// Trigger registration methods
+	for _, bind := range info.binds {
+		trigger, ok := info.triggers[bind.name]
+		if !ok {
+			continue
+		}
+		cbField := unexportName(trigger)
+		fmt.Fprintf(b, "func (m Model) %s(fn func(%s)) Model {\n", trigger, bind.goType)
+		fmt.Fprintf(b, "\tm.%s = fn\n", cbField)
+		b.WriteString("\treturn m\n")
+		b.WriteString("}\n\n")
+	}
+}
+
 func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *exprContext, cfg Config) {
 	b.WriteString("func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {\n")
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\tswitch msg := msg.(type) {\n")
+
+	// Set messages from Cmd functions
+	for _, bind := range info.binds {
+		getter := exportName(bind.name)
+		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
+		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
+	}
 
 	// WindowSizeMsg
 	b.WriteString("\tcase tea.WindowSizeMsg:\n")
@@ -563,7 +635,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 	}
 }
 
-// extractMutatedFields returns the set of exported field names mutated by a CEL mutation expression.
+// extractMutatedFields returns the set of field names mutated by a CEL mutation expression.
 func extractMutatedFields(e celast.Expr) map[string]bool {
 	fields := make(map[string]bool)
 	if e.Kind() == celast.ListKind {
@@ -578,7 +650,7 @@ func extractMutatedFields(e celast.Expr) map[string]bool {
 		call := e.AsCall()
 		args := call.Args()
 		if len(args) >= 1 && args[0].Kind() == celast.IdentKind {
-			fields[exportName(args[0].AsIdent())] = true
+			fields[args[0].AsIdent()] = true
 		}
 	}
 	return fields
@@ -689,6 +761,15 @@ func exportName(s string) string {
 	}
 	runes := []rune(s)
 	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+func unexportName(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToLower(runes[0])
 	return string(runes)
 }
 

@@ -26,12 +26,12 @@ type Todo struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	NewTodo string
-	Todos   []Todo
+	newTodo string
+	todos   []Todo
 
 	input0 textinput.Model
 
-	TodosCursor int
+	todosCursor int
 
 	focus         int
 	width, height int
@@ -40,18 +40,49 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{
-		NewTodo: "",
-		Todos:   nil,
+		newTodo: "",
+		todos:   nil,
 	}
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "What needs to be done?"
-	m.input0.SetValue(m.NewTodo)
+	m.input0.SetValue(m.newTodo)
 	m.input0.Focus()
 	return m
 }
 
 func (m Model) status() string {
-	return (("Todo List (" + fmt.Sprint(len(m.Todos))) + " items)")
+	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
+}
+
+func (m Model) NewTodo() string {
+	return m.newTodo
+}
+
+func (m Model) SetNewTodo(v string) Model {
+	m.newTodo = v
+	m.input0.SetValue(m.newTodo)
+	return m
+}
+
+type setNewTodoMsg struct{ value string }
+
+func SetNewTodoCmd(v string) tea.Cmd {
+	return func() tea.Msg { return setNewTodoMsg{value: v} }
+}
+
+func (m Model) Todos() []Todo {
+	return m.todos
+}
+
+func (m Model) SetTodos(v []Todo) Model {
+	m.todos = v
+	return m
+}
+
+type setTodosMsg struct{ value []Todo }
+
+func SetTodosCmd(v []Todo) tea.Cmd {
+	return func() tea.Msg { return setTodosMsg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -61,6 +92,10 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case setNewTodoMsg:
+		m = m.SetNewTodo(msg.value)
+	case setTodosMsg:
+		m = m.SetTodos(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -83,29 +118,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 1:
-			m.Todos = append(m.Todos, Todo{Text: m.NewTodo, Done: false})
-			m.NewTodo = ""
-			m.input0.SetValue(m.NewTodo)
+			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
+			m.newTodo = ""
+			m.input0.SetValue(m.newTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
-			if m.TodosCursor < len(m.Todos) {
-				index := m.TodosCursor
-				m.Todos[index].Done = !m.Todos[index].Done
+			if m.todosCursor < len(m.todos) {
+				index := m.todosCursor
+				m.todos[index].Done = !m.todos[index].Done
 			}
 		case msg.Code == tea.KeyUp && m.focus == 2:
-			if m.TodosCursor > 0 {
-				m.TodosCursor--
+			if m.todosCursor > 0 {
+				m.todosCursor--
 			}
 		case msg.Code == tea.KeyDown && m.focus == 2:
-			if m.TodosCursor < len(m.Todos)-1 {
-				m.TodosCursor++
+			if m.todosCursor < len(m.todos)-1 {
+				m.todosCursor++
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 3:
-			m.Todos = append(m.Todos[:(len(m.Todos)-1)], m.Todos[(len(m.Todos)-1)+1:]...)
+			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
 		}
 	}
 	if m.focus == 0 {
 		m.input0, cmd = m.input0.Update(msg)
-		m.NewTodo = m.input0.Value()
+		m.newTodo = m.input0.Value()
 	}
 	return m, cmd
 }
@@ -138,10 +173,10 @@ func (m Model) View() tea.View {
 	var content2Children []string
 	var content20 string
 	var content20Items []string
-	for index, item := range m.Todos {
+	for index, item := range m.todos {
 		_ = index
 		var content20Item string
-		content20ItemFocused := m.focus == 2 && m.TodosCursor == index
+		content20ItemFocused := m.focus == 2 && m.todosCursor == index
 		content20ItemPrefix := " "
 		if content20ItemFocused {
 			content20ItemPrefix = ">"

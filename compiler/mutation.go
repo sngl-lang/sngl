@@ -60,7 +60,7 @@ func (ec *exprContext) translateMutationTarget(e celast.Expr) string {
 	if e.Kind() == celast.IdentKind {
 		name := e.AsIdent()
 		if ec.modelFields[name] {
-			return "m." + exportName(name)
+			return "m." + name
 		}
 		return name
 	}

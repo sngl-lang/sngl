@@ -108,6 +108,22 @@ func TestFullExample(t *testing.T) {
 	}
 }
 
+func TestJSGettersSetters(t *testing.T) {
+	html := generateHTML(t, "../../../_examples/todo/todo.sngl.kdl")
+
+	checks := []string{
+		"$set_todos",
+		"$get_todos",
+		"$set_newTodo",
+		"$get_newTodo",
+	}
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("missing expected content: %q\n\ngenerated:\n%s", check, html)
+		}
+	}
+}
+
 func TestFullFixture(t *testing.T) {
 	html := generateHTML(t, "../../../testdata/full.sngl.kdl")
 

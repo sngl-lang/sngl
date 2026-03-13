@@ -3,6 +3,7 @@ package compiler
 import (
 	"go/parser"
 	"go/token"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -39,6 +40,34 @@ func TestFixtures(t *testing.T) {
 		}
 		compileAndVerify(t, doc)
 	})
+}
+
+func TestGettersSetters(t *testing.T) {
+	doc, err := testutil.ParseFile("../testdata/data_extern_trigger.sngl.kdl")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := checker.Check(doc, "../testdata"); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	src := compileAndVerify(t, doc)
+	code := string(src)
+
+	checks := map[string]string{
+		"getter":       "func (m Model) Todos() []Todo",
+		"setter":       "func (m Model) SetTodos(v []Todo) Model",
+		"trigger reg":  "func (m Model) OnTodosChanged(fn func([]Todo)) Model",
+		"msg type":     "type setTodosMsg struct",
+		"cmd func":     "func SetTodosCmd(",
+		"update case":  "case setTodosMsg:",
+		"count getter": "func (m Model) Count() int",
+		"count setter": "func (m Model) SetCount(v int) Model",
+	}
+	for name, check := range checks {
+		if !strings.Contains(code, check) {
+			t.Errorf("missing %s: %q\n\ngenerated:\n%s", name, check, code)
+		}
+	}
 }
 
 func TestCompileTodo(t *testing.T) {

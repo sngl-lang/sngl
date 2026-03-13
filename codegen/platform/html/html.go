@@ -558,6 +558,50 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Getters
+	for _, d := range g.doc.Data {
+		if d.Extern || d.IsFunc {
+			continue
+		}
+		fmt.Fprintf(b, "function $get_%s() { return state.%s; }\n", d.Name, d.Name)
+	}
+	if len(stateFields) > 0 {
+		b.WriteString("\n")
+	}
+
+	// Setters
+	for _, d := range g.doc.Data {
+		if d.Extern || d.IsFunc {
+			continue
+		}
+		fmt.Fprintf(b, "function $set_%s(v) {\n", d.Name)
+		fmt.Fprintf(b, "  state.%s = v;\n", d.Name)
+		// Call affected updaters
+		mutated := map[string]bool{d.Name: true}
+		for _, u := range g.findAffectedUpdaters(mutated) {
+			fmt.Fprintf(b, "  %s();\n", u.funcName)
+		}
+		// Fire trigger callback
+		if d.Trigger != "" {
+			cbField := "$on_" + d.Name + "_changed"
+			fmt.Fprintf(b, "  if (state.%s) state.%s(v);\n", cbField, cbField)
+		}
+		b.WriteString("}\n")
+	}
+	if len(stateFields) > 0 {
+		b.WriteString("\n")
+	}
+
+	// Trigger registration
+	for _, d := range g.doc.Data {
+		if d.Extern || d.IsFunc || d.Trigger == "" {
+			continue
+		}
+		cbField := "$on_" + d.Name + "_changed"
+		fmt.Fprintf(b, "function %s(fn) { state.%s = fn; }\n", d.Trigger, cbField)
+	}
+	b.WriteString("\n")
+
 	// Helper functions
 	b.WriteString("function String(v) { return \"\" + v; }\n\n")
 

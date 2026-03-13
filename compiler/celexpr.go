@@ -68,7 +68,7 @@ func (ec *exprContext) translateIdent(e celast.Expr) string {
 		return "m." + name + "()"
 	}
 	if ec.modelFields[name] {
-		return "m." + exportName(name)
+		return "m." + name
 	}
 	return name
 }

@@ -14,13 +14,14 @@ import (
 func main() {
 	m := New()
 	path := savePath()
-	m.Todos = loadTodos(path)
+	m = m.SetTodos(loadTodos(path))
 	p := tea.NewProgram(m)
-	if _, err := p.Run(); err != nil {
+	final, err := p.Run()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	saveTodos(path, m.Todos)
+	saveTodos(path, final.(Model).Todos())
 }
 
 func savePath() string {
