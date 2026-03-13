@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/checker"
 	"github.com/google/cel-go/cel"
 	celast "github.com/google/cel-go/common/ast"
 )
@@ -79,6 +80,7 @@ type analysisResult struct {
 	structs        []*ast.StructDef
 	modelFields    map[string]bool // all bind/computed names (fields)
 	computedFields map[string]bool // computed names (methods, not struct fields)
+	needsTime      bool            // emit "time" import
 }
 
 func analyze(doc *ast.Document) *analysisResult {
@@ -91,6 +93,9 @@ func analyze(doc *ast.Document) *analysisResult {
 	for _, b := range doc.Binds {
 		goType := inferGoType(b.Init)
 		initVal := literalToGo(b.Init)
+		if needsTimeType(b.Init.TypeHint) {
+			info.needsTime = true
+		}
 		info.binds = append(info.binds, bindInfo{
 			name:    b.Name,
 			goType:  goType,
@@ -239,6 +244,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("\t\"os\"\n")
 	}
 	b.WriteString("\t\"strings\"\n")
+	if info.needsTime {
+		b.WriteString("\t\"time\"\n")
+	}
 	b.WriteString("\n")
 	b.WriteString("\ttea \"charm.land/bubbletea/v2\"\n")
 	b.WriteString("\t\"charm.land/lipgloss/v2\"\n")
@@ -254,6 +262,32 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// Ternary helper
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
 	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
+
+	// Time helper functions
+	if info.needsTime {
+		b.WriteString("func mustParseDuration(s string) time.Duration {\n")
+		b.WriteString("\td, err := time.ParseDuration(s)\n")
+		b.WriteString("\tif err != nil { panic(err) }\n")
+		b.WriteString("\treturn d\n}\n\n")
+
+		b.WriteString("func mustParseDate(s string) time.Time {\n")
+		b.WriteString("\tt, err := time.Parse(\"2006-01-02\", s)\n")
+		b.WriteString("\tif err != nil { panic(err) }\n")
+		b.WriteString("\treturn t\n}\n\n")
+
+		b.WriteString("func mustParseTime(s string) time.Time {\n")
+		b.WriteString("\tt, err := time.Parse(\"15:04:05\", s)\n")
+		b.WriteString("\tif err != nil {\n")
+		b.WriteString("\t\tt, err = time.Parse(\"15:04\", s)\n")
+		b.WriteString("\t\tif err != nil { panic(err) }\n")
+		b.WriteString("\t}\n")
+		b.WriteString("\treturn t\n}\n\n")
+
+		b.WriteString("func mustParseDateTime(s string) time.Time {\n")
+		b.WriteString("\tt, err := time.Parse(time.RFC3339, s)\n")
+		b.WriteString("\tif err != nil { panic(err) }\n")
+		b.WriteString("\treturn t\n}\n\n")
+	}
 
 	// Struct types
 	for _, sd := range info.structs {
@@ -681,6 +715,9 @@ func typeHintToGo(hint string) string {
 	if strings.HasPrefix(hint, "list:") {
 		return "[]" + exportName(hint[5:])
 	}
+	if strings.HasPrefix(hint, "enum:") {
+		return "string"
+	}
 	switch hint {
 	case "int":
 		return "int"
@@ -688,8 +725,12 @@ func typeHintToGo(hint string) string {
 		return "float64"
 	case "bool":
 		return "bool"
-	case "string":
+	case "string", "color":
 		return "string"
+	case "date", "time", "datetime":
+		return "time.Time"
+	case "duration":
+		return "time.Duration"
 	default:
 		return "any"
 	}
@@ -705,16 +746,43 @@ func celOutputTypeToGo(t *cel.Type) string {
 		return "bool"
 	case t.IsEquivalentType(cel.StringType):
 		return "string"
+	case t.IsEquivalentType(checker.ColorType):
+		return "string"
+	case t.IsEquivalentType(checker.DateType),
+		t.IsEquivalentType(checker.TimeType),
+		t.IsEquivalentType(checker.DateTimeType):
+		return "time.Time"
+	case t.IsEquivalentType(checker.DurationType):
+		return "time.Duration"
 	default:
 		return "any"
 	}
+}
+
+func needsTimeType(hint string) bool {
+	switch hint {
+	case "date", "time", "datetime", "duration":
+		return true
+	}
+	return false
 }
 
 func literalToGo(expr ast.Expr) string {
 	if expr.Literal != nil {
 		switch v := expr.Literal.(type) {
 		case string:
-			return fmt.Sprintf("%q", v)
+			switch expr.TypeHint {
+			case "duration":
+				return fmt.Sprintf("mustParseDuration(%q)", v)
+			case "date":
+				return fmt.Sprintf("mustParseDate(%q)", v)
+			case "time":
+				return fmt.Sprintf("mustParseTime(%q)", v)
+			case "datetime":
+				return fmt.Sprintf("mustParseDateTime(%q)", v)
+			default:
+				return fmt.Sprintf("%q", v)
+			}
 		case int:
 			return fmt.Sprintf("%d", v)
 		case float64:

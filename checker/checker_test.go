@@ -17,7 +17,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		err = Check(doc)
+		err = Check(doc, "../testdata")
 		testutil.AssertErrors(t, err, checkErrs)
 	})
 }

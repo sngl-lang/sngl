@@ -1,2 +1,2 @@
-// ERROR(parse) "missing app"
+// ERROR(check) "missing app"
 bind "count" (int)0

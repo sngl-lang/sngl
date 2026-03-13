@@ -1,13 +1,28 @@
 package checker
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/cel-go/cel"
 )
 
 // MutationType is the opaque type returned by mutation functions (set, toggle, etc.).
 var MutationType = cel.OpaqueType("sngl.Mutation")
+
+// Opaque special types for domain values.
+var (
+	ColorType    = cel.OpaqueType("sngl.Color")
+	DateType     = cel.OpaqueType("sngl.Date")
+	TimeType     = cel.OpaqueType("sngl.Time")
+	DateTimeType = cel.OpaqueType("sngl.DateTime")
+	DurationType = cel.OpaqueType("sngl.Duration")
+)
+
+// specialTypes is the set of opaque types that strings are assignable to.
+var specialTypes = []*cel.Type{ColorType, DateType, TimeType, DateTimeType, DurationType}
 
 // TypeHintToCelType maps SNGL type hint strings to CEL types.
 func TypeHintToCelType(hint string) *cel.Type {
@@ -24,7 +39,15 @@ func TypeHintToCelType(hint string) *cel.Type {
 	case "string":
 		return cel.StringType
 	case "color":
-		return cel.StringType
+		return ColorType
+	case "date":
+		return DateType
+	case "time":
+		return TimeType
+	case "datetime":
+		return DateTimeType
+	case "duration":
+		return DurationType
 	case "length":
 		return cel.DynType
 	default:
@@ -48,77 +71,57 @@ func InferLiteralType(v any) *cel.Type {
 	}
 }
 
-// StylePropertyTypes maps style property names (without "style." prefix) to their expected CEL types.
-var StylePropertyTypes = map[string]*cel.Type{
-	// Sizing
-	"width":        cel.DynType,
-	"height":       cel.DynType,
-	"min-width":    cel.DynType,
-	"min-height":   cel.DynType,
-	"max-width":    cel.DynType,
-	"max-height":   cel.DynType,
-	"aspect-ratio": cel.DoubleType,
+// isAssignable reports whether a value of type got can be assigned where expected is required.
+func isAssignable(got, expected *cel.Type) bool {
+	if got.IsEquivalentType(expected) {
+		return true
+	}
+	if got == cel.DynType || expected == cel.DynType {
+		return true
+	}
+	// Strings are assignable to special domain types and vice versa.
+	for _, t := range specialTypes {
+		if got.IsEquivalentType(cel.StringType) && expected.IsEquivalentType(t) {
+			return true
+		}
+		if got.IsEquivalentType(t) && expected.IsEquivalentType(cel.StringType) {
+			return true
+		}
+	}
+	return false
+}
 
-	// Padding
-	"padding":        cel.DynType,
-	"padding-top":    cel.DynType,
-	"padding-right":  cel.DynType,
-	"padding-bottom": cel.DynType,
-	"padding-left":   cel.DynType,
-	"padding-x":      cel.DynType,
-	"padding-y":      cel.DynType,
+var colorRE = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
 
-	// Margin
-	"margin":        cel.DynType,
-	"margin-top":    cel.DynType,
-	"margin-right":  cel.DynType,
-	"margin-bottom": cel.DynType,
-	"margin-left":   cel.DynType,
-	"margin-x":      cel.DynType,
-	"margin-y":      cel.DynType,
-
-	// Flex
-	"flex":        cel.DoubleType,
-	"flex-grow":   cel.DoubleType,
-	"flex-shrink": cel.DoubleType,
-	"flex-basis":  cel.DynType,
-	"align-self":  cel.StringType,
-
-	// Positioning
-	"position": cel.StringType,
-	"top":      cel.DynType,
-	"right":    cel.DynType,
-	"bottom":   cel.DynType,
-	"left":     cel.DynType,
-	"z-index":  cel.IntType,
-
-	// Container Layout
-	"gap":             cel.DynType,
-	"row-gap":         cel.DynType,
-	"column-gap":      cel.DynType,
-	"align-items":     cel.StringType,
-	"justify-content": cel.StringType,
-	"flex-wrap":       cel.StringType,
-
-	// Visual Properties
-	"background":    cel.StringType,
-	"border-color":  cel.StringType,
-	"border-width":  cel.DynType,
-	"border-radius": cel.DynType,
-	"opacity":       cel.DoubleType,
-	"overflow":      cel.StringType,
-
-	// Text-specific style properties
-	"color":         cel.StringType,
-	"font-size":     cel.DoubleType,
-	"font-weight":   cel.StringType,
-	"font-style":    cel.StringType,
-	"font-family":   cel.StringType,
-	"text-align":    cel.StringType,
-	"line-height":   cel.DoubleType,
-	"text-overflow": cel.StringType,
-	"max-lines":     cel.IntType,
-
-	// Input-specific style properties
-	"placeholder-color": cel.StringType,
+// validateSpecialLiteral checks that a literal value is valid for a special type hint.
+func validateSpecialLiteral(hint string, value any) error {
+	s, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("expected string literal for %s type", hint)
+	}
+	switch hint {
+	case "color":
+		if !colorRE.MatchString(s) {
+			return fmt.Errorf("invalid color literal %q: expected #RGB, #RRGGBB, or #RRGGBBAA", s)
+		}
+	case "date":
+		if _, err := time.Parse("2006-01-02", s); err != nil {
+			return fmt.Errorf("invalid date literal %q: expected YYYY-MM-DD", s)
+		}
+	case "time":
+		if _, err := time.Parse("15:04", s); err != nil {
+			if _, err2 := time.Parse("15:04:05", s); err2 != nil {
+				return fmt.Errorf("invalid time literal %q: expected HH:MM or HH:MM:SS", s)
+			}
+		}
+	case "datetime":
+		if _, err := time.Parse(time.RFC3339, s); err != nil {
+			return fmt.Errorf("invalid datetime literal %q: expected RFC 3339 format", s)
+		}
+	case "duration":
+		if _, err := time.ParseDuration(s); err != nil {
+			return fmt.Errorf("invalid duration literal %q: %w", s, err)
+		}
+	}
+	return nil
 }

@@ -8,10 +8,21 @@ import (
 )
 
 // BuildCelEnv creates a CEL environment from scope variables and SNGL built-in functions.
-func BuildCelEnv(scope *Scope, structs ...*ast.StructDef) (*cel.Env, error) {
+func BuildCelEnv(scope *Scope, structs []*ast.StructDef, protoDescs []any) (*cel.Env, error) {
 	opts := scope.EnvOpts()
 
-	// Struct constructor functions
+	// Built-in constants (values injected at compile time)
+	opts = append(opts,
+		cel.Variable("LANGUAGE", cel.StringType),
+		cel.Variable("PLATFORM", cel.StringType),
+	)
+
+	// Proto type descriptors (for struct literal syntax like User{ name: 'val' })
+	if len(protoDescs) > 0 {
+		opts = append(opts, cel.TypeDescs(protoDescs...))
+	}
+
+	// Struct constructor functions (for function call syntax like User("val", 25))
 	for _, sd := range structs {
 		var paramTypes []*cel.Type
 		for _, f := range sd.Fields {
@@ -25,6 +36,27 @@ func BuildCelEnv(scope *Scope, structs ...*ast.StructDef) (*cel.Env, error) {
 			cel.Overload(overloadID, paramTypes, cel.DynType),
 		))
 	}
+
+	// Special type constructor functions
+	opts = append(opts,
+		cel.Function("Color",
+			cel.Overload("Color_string", []*cel.Type{cel.StringType}, ColorType),
+		),
+		cel.Function("Date",
+			cel.Overload("Date_string", []*cel.Type{cel.StringType}, DateType),
+			cel.Overload("Date_int_int_int", []*cel.Type{cel.IntType, cel.IntType, cel.IntType}, DateType),
+		),
+		cel.Function("Time",
+			cel.Overload("Time_string", []*cel.Type{cel.StringType}, TimeType),
+			cel.Overload("Time_int_int_int", []*cel.Type{cel.IntType, cel.IntType, cel.IntType}, TimeType),
+		),
+		cel.Function("DateTime",
+			cel.Overload("DateTime_string", []*cel.Type{cel.StringType}, DateTimeType),
+		),
+		cel.Function("Duration",
+			cel.Overload("Duration_string", []*cel.Type{cel.StringType}, DurationType),
+		),
+	)
 
 	// Built-in mutation functions
 	opts = append(opts,
@@ -50,11 +82,11 @@ func BuildCelEnv(scope *Scope, structs ...*ast.StructDef) (*cel.Env, error) {
 
 // checkExpr re-parses and type-checks a CEL expression within the given scope.
 // On success it replaces expr.AST with the checked AST and returns the output type.
-func checkExpr(scope *Scope, expr *ast.Expr, structs ...*ast.StructDef) (*cel.Type, error) {
+func checkExpr(scope *Scope, expr *ast.Expr, structs []*ast.StructDef, protoDescs []any) (*cel.Type, error) {
 	if expr.CEL == "" {
 		return nil, fmt.Errorf("not a CEL expression")
 	}
-	env, err := BuildCelEnv(scope, structs...)
+	env, err := BuildCelEnv(scope, structs, protoDescs)
 	if err != nil {
 		return nil, fmt.Errorf("building CEL env: %w", err)
 	}

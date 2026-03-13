@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -10,12 +11,26 @@ import (
 
 // Check type-checks an SNGL document AST. It resolves types for all declarations,
 // validates CEL expressions against typed scopes, and checks visual nodes against
-// component schemas.
-func Check(doc *ast.Document) error {
-	c := &checker{
-		registry: NewStandardRegistry(),
-		scope:    NewScope(nil),
+// component schemas. dir is the directory of the .sngl file, used to resolve
+// relative import paths.
+func Check(doc *ast.Document, dir string) error {
+	registry, styleProps, err := LoadStdlib()
+	if err != nil {
+		return fmt.Errorf("loading stdlib: %w", err)
 	}
+
+	c := &checker{
+		registry:   registry,
+		styleProps: styleProps,
+		scope:      NewScope(nil),
+		dir:        dir,
+	}
+
+	if doc.App == nil {
+		c.errorAt(ast.Pos{}, "missing app node")
+		return c.joinErrors()
+	}
+
 	c.pass1(doc)
 	c.pass2(doc)
 	return c.joinErrors()
@@ -23,9 +38,13 @@ func Check(doc *ast.Document) error {
 
 type checker struct {
 	registry   SchemaRegistry
+	styleProps map[string]*cel.Type
 	scope      *Scope
 	components []*ast.Component
 	structs    []*ast.StructDef
+	enums      []*ast.EnumDef
+	protoDescs []any // *descriptorpb.FileDescriptorProto for cel.TypeDescs
+	dir        string
 	errs       []error
 }
 
@@ -49,13 +68,32 @@ func (c *checker) joinErrors() error {
 	return fmt.Errorf("%s", strings.Join(msgs, "\n"))
 }
 
-// pass1 resolves declarations: structs, binds, computeds, components, styles.
+// pass1 resolves declarations: proto imports, enums, structs, binds, computeds, components, styles.
 func (c *checker) pass1(doc *ast.Document) {
+	// Proto imports
+	for _, imp := range doc.Imports {
+		if strings.HasSuffix(imp.Path, ".proto") {
+			result, err := ParseProtoFile(filepath.Join(c.dir, imp.Path))
+			if err != nil {
+				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
+				continue
+			}
+			c.structs = append(c.structs, result.Structs...)
+			c.enums = append(c.enums, result.Enums...)
+			c.protoDescs = append(c.protoDescs, result.FileDesc)
+		}
+	}
+
+	// Enums from document
+	c.enums = append(c.enums, doc.Enums...)
+
 	// Structs
-	c.structs = doc.Structs
+	c.structs = append(c.structs, doc.Structs...)
 
 	// Binds
 	for _, b := range doc.Binds {
+		c.validateEnumLiteral(b.Pos, &b.Init)
+		c.validateSpecialLiteral(b.Pos, &b.Init)
 		t := c.resolveExprType(b.Pos, &b.Init)
 		c.scope.Declare(b.Name, t)
 	}
@@ -77,7 +115,7 @@ func (c *checker) pass1(doc *ast.Document) {
 		for _, p := range comp.Params {
 			var t *cel.Type
 			if p.Default.TypeHint != "" {
-				t = TypeHintToCelType(p.Default.TypeHint)
+				t = c.resolveTypeHint(p.Default.TypeHint)
 			} else if p.Default.Literal != nil {
 				t = InferLiteralType(p.Default.Literal)
 			} else {
@@ -91,7 +129,7 @@ func (c *checker) pass1(doc *ast.Document) {
 	// Styles
 	for _, s := range doc.Styles {
 		for prop, expr := range s.Props {
-			if _, ok := StylePropertyTypes[prop]; !ok {
+			if _, ok := c.styleProps[prop]; !ok {
 				c.errorAt(s.Pos, "style %q: unknown style property %q", s.Name, prop)
 				continue
 			}
@@ -101,10 +139,26 @@ func (c *checker) pass1(doc *ast.Document) {
 	}
 }
 
+// resolveTypeHint maps a type hint string to a CEL type, checking named enums
+// and inline enum syntax before falling back to TypeHintToCelType.
+func (c *checker) resolveTypeHint(hint string) *cel.Type {
+	// Named enum
+	for _, e := range c.enums {
+		if e.Name == hint {
+			return cel.StringType
+		}
+	}
+	// Inline enum: enum:val1|val2|val3
+	if strings.HasPrefix(hint, "enum:") {
+		return cel.StringType
+	}
+	return TypeHintToCelType(hint)
+}
+
 // resolveExprType determines the type of an expression, type-checking CEL if needed.
 func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) *cel.Type {
 	if expr.CEL != "" {
-		t, err := checkExpr(c.scope, expr, c.structs...)
+		t, err := checkExpr(c.scope, expr, c.structs, c.protoDescs)
 		if err != nil {
 			c.errorAt(pos, "%v", err)
 			return cel.DynType
@@ -112,12 +166,62 @@ func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) *cel.Type {
 		return t
 	}
 	if expr.TypeHint != "" {
-		return TypeHintToCelType(expr.TypeHint)
+		return c.resolveTypeHint(expr.TypeHint)
 	}
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)
 	}
 	return cel.DynType
+}
+
+// validateEnumLiteral checks that a literal value is valid for an enum type hint.
+func (c *checker) validateEnumLiteral(pos ast.Pos, expr *ast.Expr) {
+	if expr.TypeHint == "" || expr.Literal == nil {
+		return
+	}
+	s, ok := expr.Literal.(string)
+	if !ok {
+		return
+	}
+
+	var allowed []string
+
+	// Named enum
+	for _, e := range c.enums {
+		if e.Name == expr.TypeHint {
+			allowed = e.Values
+			break
+		}
+	}
+
+	// Inline enum: enum:val1|val2|val3
+	if allowed == nil && strings.HasPrefix(expr.TypeHint, "enum:") {
+		allowed = strings.Split(strings.TrimPrefix(expr.TypeHint, "enum:"), "|")
+	}
+
+	if allowed == nil {
+		return
+	}
+
+	for _, v := range allowed {
+		if v == s {
+			return
+		}
+	}
+	c.errorAt(pos, "invalid enum value %q: expected one of %v", s, allowed)
+}
+
+// validateSpecialLiteral checks that a literal value is valid for a special type hint.
+func (c *checker) validateSpecialLiteral(pos ast.Pos, expr *ast.Expr) {
+	if expr.TypeHint == "" || expr.Literal == nil {
+		return
+	}
+	switch expr.TypeHint {
+	case "color", "date", "time", "datetime", "duration":
+		if err := validateSpecialLiteral(expr.TypeHint, expr.Literal); err != nil {
+			c.errorAt(pos, "%v", err)
+		}
+	}
 }
 
 // pass2 validates the visual tree.
@@ -133,7 +237,7 @@ func (c *checker) pass2(doc *ast.Document) {
 		for _, p := range comp.Params {
 			var t *cel.Type
 			if p.Default.TypeHint != "" {
-				t = TypeHintToCelType(p.Default.TypeHint)
+				t = c.resolveTypeHint(p.Default.TypeHint)
 			} else if p.Default.Literal != nil {
 				t = InferLiteralType(p.Default.Literal)
 			} else {
@@ -214,7 +318,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		}
 		eventScope := NewScope(childScope)
 		eventScope.Declare("event", cel.DynType)
-		t, err := checkExpr(eventScope, &expr, c.structs...)
+		t, err := checkExpr(eventScope, &expr, c.structs, c.protoDescs)
 		if err != nil {
 			c.errorAt(vn.Pos, "%s on:%s: %v", vn.Component, name, err)
 		} else if !isMutationType(t) {
@@ -225,7 +329,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Style attrs
 	for name, expr := range vn.StyleAttrs {
-		if _, ok := StylePropertyTypes[name]; !ok {
+		if _, ok := c.styleProps[name]; !ok {
 			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
 			continue
 		}
@@ -235,7 +339,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Style block
 	for name, expr := range vn.StyleBlock {
-		if _, ok := StylePropertyTypes[name]; !ok {
+		if _, ok := c.styleProps[name]; !ok {
 			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
 			continue
 		}
@@ -264,7 +368,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 // checkExprType resolves an expression's type and checks it matches the expected type.
 func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected *cel.Type, scope *Scope, context string) {
 	got := c.resolveExprInScope(pos, expr, scope)
-	if expected != cel.DynType && got != cel.DynType && !got.IsEquivalentType(expected) {
+	if !isAssignable(got, expected) {
 		c.errorAt(pos, "%s: expected %s, got %s", context, expected, got)
 	}
 }
@@ -272,7 +376,7 @@ func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected *cel.Type,
 // resolveExprInScope type-checks a CEL expression or infers a literal's type within a given scope.
 func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) *cel.Type {
 	if expr.CEL != "" {
-		t, err := checkExpr(scope, expr, c.structs...)
+		t, err := checkExpr(scope, expr, c.structs, c.protoDescs)
 		if err != nil {
 			c.errorAt(pos, "%v", err)
 			return cel.DynType
@@ -280,7 +384,7 @@ func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) 
 		return t
 	}
 	if expr.TypeHint != "" {
-		return TypeHintToCelType(expr.TypeHint)
+		return c.resolveTypeHint(expr.TypeHint)
 	}
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)

@@ -34,7 +34,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc); err != nil {
+		if err := checker.Check(doc, "../testdata"); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)
@@ -46,7 +46,7 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc); err != nil {
+	if err := checker.Check(doc, "../_examples/todo"); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	compileAndVerify(t, doc)

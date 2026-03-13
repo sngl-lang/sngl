@@ -1,0 +1,11 @@
+bind {
+    bg (color)"#ff0000"
+    timeout (duration)"5s"
+    birthday (date)"2026-03-12"
+    noon (time)"12:00"
+    event_time (datetime)"2026-03-12T10:00:00Z"
+}
+
+app {
+    text value=(cel)"bg"
+}

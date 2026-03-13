@@ -1,0 +1,7 @@
+enum "Status" { "active"; "inactive"; "pending" }
+
+bind "status" (Status)"active"
+
+app {
+    text value=(cel)"status"
+}

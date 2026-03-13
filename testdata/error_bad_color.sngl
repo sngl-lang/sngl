@@ -1,0 +1,5 @@
+bind "bg" (color)"not-a-color" // ERROR(check) "invalid color literal"
+
+app {
+    text value=(cel)"bg"
+}

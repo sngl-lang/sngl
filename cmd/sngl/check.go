@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/parser"
@@ -42,7 +43,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := checker.Check(doc); err != nil {
+		if err := checker.Check(doc, filepath.Dir(filename)); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			failed = true
 			continue

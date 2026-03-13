@@ -80,6 +80,10 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 			if sd := p.parseStructNode(node); sd != nil {
 				doc.Structs = append(doc.Structs, sd)
 			}
+		case "enum":
+			if e := p.parseEnumNode(node); e != nil {
+				doc.Enums = append(doc.Enums, e)
+			}
 		case "import":
 			if imp := p.parseImport(node); imp != nil {
 				doc.Imports = append(doc.Imports, imp)
@@ -96,6 +100,8 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 			if s := p.parseStyleDecl(node); s != nil {
 				doc.Styles = append(doc.Styles, s)
 			}
+		case "styles":
+			doc.StyleDefs = append(doc.StyleDefs, p.parseStylesNode(node)...)
 		case "app":
 			if doc.App != nil {
 				p.errorAt(p.pos(node), "duplicate app node")
@@ -105,10 +111,6 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 		default:
 			p.errorAt(p.pos(node), "unknown top-level node: %q", node.Name())
 		}
-	}
-
-	if doc.App == nil {
-		p.errorf("missing app node")
 	}
 
 	return doc
@@ -221,6 +223,24 @@ func (p *parser) parseImport(node *kdl.Node) *ast.Import {
 	return &ast.Import{Pos: p.pos(node), Path: args[0].String()}
 }
 
+func (p *parser) parseEnumNode(node *kdl.Node) *ast.EnumDef {
+	args := node.Arguments()
+	if len(args) < 1 {
+		p.errorf("enum: missing name argument")
+		return nil
+	}
+	e := &ast.EnumDef{Pos: p.pos(node), Name: args[0].String()}
+	children := node.Children()
+	if children == nil {
+		p.errorf("enum %q: expected value definitions", e.Name)
+		return e
+	}
+	for _, child := range children.Nodes {
+		e.Values = append(e.Values, child.Name())
+	}
+	return e
+}
+
 func (p *parser) parseBindNode(node *kdl.Node) []*ast.Bind {
 	args := node.Arguments()
 	// Individual form: bind "name" (type)value
@@ -304,11 +324,19 @@ func (p *parser) parseComponent(node *kdl.Node) *ast.Component {
 		return comp
 	}
 
-	// Child form: @param "name" (type)default
 	for _, child := range children.Nodes {
-		if child.Name() == "@param" {
+		switch child.Name() {
+		case "@param":
 			comp.Params = append(comp.Params, p.parseParam(child))
-		} else {
+		case "@prop":
+			comp.PropDecls = append(comp.PropDecls, p.parsePropDecl(child))
+		case "@event":
+			comp.EventDecls = append(comp.EventDecls, p.parseEventDecl(child))
+		case "@children":
+			if args := child.Arguments(); len(args) >= 1 {
+				comp.ChildPolicy = args[0].String()
+			}
+		default:
 			comp.Body = append(comp.Body, p.parseVisualNode(child))
 		}
 	}
@@ -330,6 +358,66 @@ func (p *parser) parseParam(node *kdl.Node) *ast.Param {
 		param.Required = true
 	}
 	return param
+}
+
+func (p *parser) parsePropDecl(node *kdl.Node) *ast.PropDecl {
+	args := node.Arguments()
+	if len(args) < 2 {
+		p.errorf("@prop: expected name and type arguments")
+		return &ast.PropDecl{Pos: p.pos(node)}
+	}
+	typeAnnotation, _ := args[1].TypeAnnotation()
+	decl := &ast.PropDecl{
+		Pos:      p.pos(node),
+		Name:     args[0].String(),
+		TypeHint: typeAnnotation,
+	}
+	children := node.Children()
+	if children != nil {
+		for _, child := range children.Nodes {
+			if child.Name() == "@enum" {
+				for _, arg := range child.Arguments() {
+					decl.Enum = append(decl.Enum, arg.String())
+				}
+			}
+		}
+	}
+	return decl
+}
+
+func (p *parser) parseEventDecl(node *kdl.Node) *ast.EventDecl {
+	args := node.Arguments()
+	if len(args) < 2 {
+		p.errorf("@event: expected name and payload type arguments")
+		return &ast.EventDecl{Pos: p.pos(node)}
+	}
+	return &ast.EventDecl{
+		Pos:         p.pos(node),
+		Name:        args[0].String(),
+		PayloadType: args[1].String(),
+	}
+}
+
+func (p *parser) parseStylesNode(node *kdl.Node) []*ast.StylePropDef {
+	children := node.Children()
+	if children == nil {
+		return nil
+	}
+	var defs []*ast.StylePropDef
+	for _, child := range children.Nodes {
+		args := child.Arguments()
+		if len(args) < 1 {
+			p.errorf("styles: property %q missing type annotation", child.Name())
+			continue
+		}
+		typeAnnotation, _ := args[0].TypeAnnotation()
+		defs = append(defs, &ast.StylePropDef{
+			Pos:      p.pos(child),
+			Name:     child.Name(),
+			TypeHint: typeAnnotation,
+		})
+	}
+	return defs
 }
 
 func (p *parser) parseStyleDecl(node *kdl.Node) *ast.StyleDecl {

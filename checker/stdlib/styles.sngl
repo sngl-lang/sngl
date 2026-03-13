@@ -1,0 +1,73 @@
+styles {
+    // Sizing
+    width (dyn)null
+    height (dyn)null
+    min-width (dyn)null
+    min-height (dyn)null
+    max-width (dyn)null
+    max-height (dyn)null
+    aspect-ratio (float)null
+
+    // Padding
+    padding (dyn)null
+    padding-top (dyn)null
+    padding-right (dyn)null
+    padding-bottom (dyn)null
+    padding-left (dyn)null
+    padding-x (dyn)null
+    padding-y (dyn)null
+
+    // Margin
+    margin (dyn)null
+    margin-top (dyn)null
+    margin-right (dyn)null
+    margin-bottom (dyn)null
+    margin-left (dyn)null
+    margin-x (dyn)null
+    margin-y (dyn)null
+
+    // Flex
+    flex (float)null
+    flex-grow (float)null
+    flex-shrink (float)null
+    flex-basis (dyn)null
+    align-self (string)null
+
+    // Positioning
+    position (string)null
+    top (dyn)null
+    right (dyn)null
+    bottom (dyn)null
+    left (dyn)null
+    z-index (int)null
+
+    // Container Layout
+    gap (dyn)null
+    row-gap (dyn)null
+    column-gap (dyn)null
+    align-items (string)null
+    justify-content (string)null
+    flex-wrap (string)null
+
+    // Visual Properties
+    background (color)null
+    border-color (color)null
+    border-width (dyn)null
+    border-radius (dyn)null
+    opacity (float)null
+    overflow (string)null
+
+    // Text-specific style properties
+    color (color)null
+    font-size (float)null
+    font-weight (string)null
+    font-style (string)null
+    font-family (string)null
+    text-align (string)null
+    line-height (float)null
+    text-overflow (string)null
+    max-lines (int)null
+
+    // Input-specific style properties
+    placeholder-color (color)null
+}

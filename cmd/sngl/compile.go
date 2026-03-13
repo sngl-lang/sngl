@@ -69,7 +69,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 
-		if err := checker.Check(doc); err != nil {
+		if err := checker.Check(doc, filepath.Dir(filename)); err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 

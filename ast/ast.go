@@ -28,12 +28,20 @@ type Output struct {
 type Document struct {
 	Outputs    []*Output
 	Structs    []*StructDef
+	Enums      []*EnumDef
 	Imports    []*Import
 	Binds      []*Bind
 	Computeds  []*Computed
 	Components []*Component
 	Styles     []*StyleDecl
+	StyleDefs  []*StylePropDef // from "styles" top-level node
 	App        *App
+}
+
+type EnumDef struct {
+	Pos    Pos
+	Name   string
+	Values []string
 }
 
 type StructDef struct {
@@ -72,11 +80,33 @@ type StyleDecl struct {
 	Props map[string]Expr
 }
 
+type PropDecl struct {
+	Pos      Pos
+	Name     string
+	TypeHint string   // "string", "bool", "int", "float", "dyn"
+	Enum     []string // optional enum constraints
+}
+
+type EventDecl struct {
+	Pos         Pos
+	Name        string
+	PayloadType string // "ClickEvent", "InputEvent", etc.
+}
+
+type StylePropDef struct {
+	Pos      Pos
+	Name     string
+	TypeHint string
+}
+
 type Component struct {
-	Pos    Pos
-	Name   string
-	Params []*Param
-	Body   []*VisualNode
+	Pos         Pos
+	Name        string
+	Params      []*Param     // @param (user-defined components)
+	PropDecls   []*PropDecl  // @prop (stdlib schemas)
+	EventDecls  []*EventDecl // @event (stdlib schemas)
+	ChildPolicy string       // @children value: "none"/"one"/"many"/""
+	Body        []*VisualNode
 }
 
 type Param struct {
