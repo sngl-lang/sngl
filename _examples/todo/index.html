@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<div style="gap:12px;padding:16px;display:flex;flex-direction:column">
+  <span id="$0" style="font-size:24px;font-weight:bold">
+</span>
+  <div style="gap:8px;display:flex;flex-direction:row">
+    <input id="$1" placeholder="What needs to be done?" value="" />
+    <button id="$2">Add</button>
+  </div>
+  <div style="gap:4px;display:flex;flex-direction:column">
+    <div id="$3">
+    </div>
+  </div>
+  <button id="$4">Remove Last</button>
+</div>
+
+<script>
+// State
+let state = {newTodo: "", todos: []};
+
+function Todo(text, done) { return {text, done}; }
+
+function $status() { return (("Todo List (" + String(state.todos.length)) + " items)"); }
+
+function String(v) { return "" + v; }
+
+const $0 = document.getElementById("$0");
+const $1 = document.getElementById("$1");
+const $2 = document.getElementById("$2");
+const $3 = document.getElementById("$3");
+const $4 = document.getElementById("$4");
+
+function $u_0_text() { $0.textContent = $status(); }
+function $u_1_val() { $1.value = state.newTodo; }
+function $u_3_list() { $3.innerHTML = "";
+  for (let index = 0; index < state.todos.length; index++) {
+    const item = state.todos[index];
+    const row = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = item.done;
+    cb.addEventListener("change", function() {
+      state.todos[index].done = !state.todos[index].done;
+      $u_3_list();
+      $u_0_text();
+    });
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(" " + item.text));
+    $3.appendChild(row);
+  } }
+
+$1.addEventListener("input", function(e) {
+  state.newTodo = e.target.value;
+  $u_1_val();
+});
+$2.addEventListener("click", function() {
+  state.todos.push({text: state.newTodo, done: false});
+  state.newTodo = "";
+  $u_0_text();
+  $u_1_val();
+  $u_3_list();
+});
+$4.addEventListener("click", function() {
+  state.todos.splice((state.todos.length - 1), 1);
+  $u_0_text();
+  $u_3_list();
+});
+
+// Initial sync
+$u_0_text();
+$u_1_val();
+$u_3_list();
+</script>
+</body></html>

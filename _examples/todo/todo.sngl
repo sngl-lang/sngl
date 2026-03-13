@@ -3,6 +3,7 @@ output {
         bubbletea package="main"
     }
 }
+output "js" "html"
 
 struct "Todo" {
     text (string)""
