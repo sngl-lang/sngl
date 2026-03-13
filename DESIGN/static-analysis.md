@@ -56,14 +56,14 @@ No IR lowering or emission occurs. The analyzer produces a fully typed, dependen
 
 Beyond correctness checks, the tool provides configurable lint rules:
 
-| Rule | Default | Description |
-|------|---------|-------------|
-| `no-unused-bind` | warn | Declared state is never read |
-| `no-missing-key` | error | `for` loops without `key` attribute |
-| `no-complex-cel` | warn | `(cel)` expressions exceeding a complexity threshold (suggest moving to handler) |
-| `no-inline-style` | off | Prefer `class` over inline `style.*` |
-| `require-id` | off | All interactive components must have an `id` |
-| `max-depth` | warn(8) | Nesting depth limit |
+| Rule              | Default | Description                                                                      |
+| ----------------- | ------- | -------------------------------------------------------------------------------- |
+| `no-unused-bind`  | warn    | Declared state is never read                                                     |
+| `no-missing-key`  | error   | `for` loops without `key` attribute                                              |
+| `no-complex-cel`  | warn    | `(cel)` expressions exceeding a complexity threshold (suggest moving to handler) |
+| `no-inline-style` | off     | Prefer `class` over inline `style.*`                                             |
+| `require-id`      | off     | All interactive components must have an `id`                                     |
+| `max-depth`       | warn(8) | Nesting depth limit                                                              |
 
 Rules are configured in a project-level `.sngl-lint.kdl` file or via CLI flags.
 

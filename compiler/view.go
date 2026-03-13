@@ -17,6 +17,7 @@ type viewContext struct {
 	indent      int
 	components  []*ast.Component // user-defined components for param lookup
 	inComponent bool             // true when rendering inside a component method
+	vertical    bool             // true when inside a vertical container (vbox)
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -48,12 +49,17 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 		defer func() { delete(vc.ec.localVars, iterVar) }()
 
 		innerVar := resultVar + "Item"
+		vc.line("var %s string", innerVar)
 		vc.renderNodeInner(vn, innerVar)
 		vc.line("%s = append(%s, %s)", loopVar, loopVar, innerVar)
 
 		vc.indent--
 		vc.line("}")
-		vc.line(`%s := strings.Join(%s, "")`, resultVar, loopVar)
+		sep := `""`
+		if vc.vertical {
+			sep = `"\n"`
+		}
+		vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
 	} else {
 		vc.renderNodeInner(vn, resultVar)
 	}
@@ -106,6 +112,8 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 	// Determine gap
 	gap := vc.getGap(vn)
 
+	prevVertical := vc.vertical
+	vc.vertical = vertical
 	for i, child := range vn.Children {
 		childVar := fmt.Sprintf("%s%d", resultVar, i)
 		// Declare childVar before the if/for so it's in scope after
@@ -113,6 +121,7 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 		vc.renderNode(child, childVar)
 		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 	}
+	vc.vertical = prevVertical
 
 	if vertical {
 		if gap > 0 {

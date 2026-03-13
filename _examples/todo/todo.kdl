@@ -1,17 +1,22 @@
+struct "Todo" {
+    text (string)""
+    done (bool)false
+}
+
 bind {
     newTodo (string)""
-    filter (string)"all"
+    todos (list:Todo)null
 }
 
 computed {
-    status (cel)"'Todo List'"
+    status (cel)"'Todo List (' + string(size(todos)) + ' items)'"
 }
 
 component "TodoItem" {
     @param "text" (string)""
     @param "done" (bool)false
     hbox style.gap=8 {
-        button text=(cel)"done ? '[x]' : '[ ]'" on:click=(cel)"toggle(done)"
+        text value=(cel)"done ? '[x]' : '[ ]'"
         text value=(cel)"text"
     }
 }
@@ -22,12 +27,13 @@ app {
 
         hbox style.gap=8 {
             input placeholder="What needs to be done?" on:input=(cel)"set(newTodo, event.value)"
-            button text="Add" on:click=(cel)"set(newTodo, '')"
+            button text="Add" on:click=(cel)"[push(todos, Todo(newTodo, false)), set(newTodo, '')]"
         }
 
         vbox style.gap=4 {
-            TodoItem text="Buy groceries" done=false
-            TodoItem text="Write docs" done=true
+            TodoItem for="item in todos" text=(cel)"item.text" done=(cel)"item.done"
         }
+
+        button text="Remove Last" on:click=(cel)"remove(todos, size(todos) - 1)"
     }
 }

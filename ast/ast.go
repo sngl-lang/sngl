@@ -1,12 +1,24 @@
 package ast
 
 type Document struct {
+	Structs    []*StructDef
 	Imports    []*Import
 	Binds      []*Bind
 	Computeds  []*Computed
 	Components []*Component
 	Styles     []*StyleDecl
 	App        *App
+}
+
+type StructDef struct {
+	Name   string
+	Fields []*StructField
+}
+
+type StructField struct {
+	Name    string
+	Type    string // type hint: "string", "bool", "int", etc.
+	Default Expr
 }
 
 type Import struct {

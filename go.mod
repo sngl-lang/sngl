@@ -5,6 +5,7 @@ go 1.26.1
 require (
 	github.com/calico32/kdl-go v0.10.0
 	github.com/google/cel-go v0.27.0
+	github.com/spf13/cobra v1.10.2
 )
 
 require (
@@ -37,7 +38,6 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
@@ -48,3 +48,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240826202546-f6391c0de4c7 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+tool git.duckfam.us/jonathan/sngl/cmd/sngl

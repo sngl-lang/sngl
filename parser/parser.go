@@ -58,6 +58,10 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 
 	for _, node := range kdlDoc.Nodes {
 		switch node.Name() {
+		case "struct":
+			if sd := p.parseStructNode(node); sd != nil {
+				doc.Structs = append(doc.Structs, sd)
+			}
 		case "import":
 			if imp := p.parseImport(node); imp != nil {
 				doc.Imports = append(doc.Imports, imp)
@@ -90,6 +94,34 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 	}
 
 	return doc
+}
+
+func (p *parser) parseStructNode(node *kdl.Node) *ast.StructDef {
+	args := node.Arguments()
+	if len(args) < 1 {
+		p.errorf("struct: missing name argument")
+		return nil
+	}
+	sd := &ast.StructDef{Name: args[0].String()}
+	children := node.Children()
+	if children == nil {
+		p.errorf("struct %q: expected field definitions", sd.Name)
+		return sd
+	}
+	for _, child := range children.Nodes {
+		childArgs := child.Arguments()
+		if len(childArgs) < 1 {
+			p.errorf("struct %q: field %q missing type and default", sd.Name, child.Name())
+			continue
+		}
+		expr := p.toExpr(childArgs[0])
+		sd.Fields = append(sd.Fields, &ast.StructField{
+			Name:    child.Name(),
+			Type:    expr.TypeHint,
+			Default: expr,
+		})
+	}
+	return sd
 }
 
 func (p *parser) parseImport(node *kdl.Node) *ast.Import {

@@ -1,12 +1,19 @@
 package checker
 
-import "github.com/google/cel-go/cel"
+import (
+	"strings"
+
+	"github.com/google/cel-go/cel"
+)
 
 // MutationType is the opaque type returned by mutation functions (set, toggle, etc.).
 var MutationType = cel.OpaqueType("sngl.Mutation")
 
 // TypeHintToCelType maps SNGL type hint strings to CEL types.
 func TypeHintToCelType(hint string) *cel.Type {
+	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "list:") {
+		return cel.ListType(cel.DynType)
+	}
 	switch hint {
 	case "bool":
 		return cel.BoolType

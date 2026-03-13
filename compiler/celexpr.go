@@ -11,11 +11,12 @@ import (
 
 // exprContext holds state needed to translate CEL AST nodes into Go expressions.
 type exprContext struct {
-	modelFields    map[string]bool // bind/computed names → prefix with "m."
-	computedFields map[string]bool // computed names → call as methods m.name()
-	localVars      map[string]bool // for-loop vars, component params → no prefix
-	nativeAST      *celast.AST     // for GetType(id)
-	eventVar       string          // what "event" maps to
+	modelFields    map[string]bool     // bind/computed names → prefix with "m."
+	computedFields map[string]bool     // computed names → call as methods m.name()
+	localVars      map[string]bool     // for-loop vars, component params → no prefix
+	structNames    map[string][]string // struct name → ordered field names
+	nativeAST      *celast.AST         // for GetType(id)
+	eventVar       string              // what "event" maps to
 }
 
 // translateExpr converts a CEL AST expression into a Go expression string.
@@ -75,7 +76,7 @@ func (ec *exprContext) translateIdent(e celast.Expr) string {
 func (ec *exprContext) translateSelect(e celast.Expr) string {
 	sel := e.AsSelect()
 	operand := ec.translateExpr(sel.Operand())
-	field := sel.FieldName()
+	field := exportName(sel.FieldName())
 	return operand + "." + field
 }
 
@@ -136,6 +137,19 @@ func (ec *exprContext) translateCall(e celast.Expr) string {
 	if isMutationFunc(fn) {
 		stmts := ec.translateMutation(e)
 		return strings.Join(stmts, "\n")
+	}
+
+	// Struct constructor call
+	if fields, ok := ec.structNames[fn]; ok {
+		var parts []string
+		for i, f := range fields {
+			val := "nil"
+			if i < len(args) {
+				val = ec.translateExpr(args[i])
+			}
+			parts = append(parts, exportName(f)+": "+val)
+		}
+		return exportName(fn) + "{" + strings.Join(parts, ", ") + "}"
 	}
 
 	// Member function call

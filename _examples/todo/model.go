@@ -19,10 +19,15 @@ func ternary[T any](cond bool, a, b T) T {
 	return b
 }
 
+type Todo struct {
+	Text string
+	Done bool
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	NewTodo string
-	Filter  string
+	Todos   []Todo
 
 	input0 textinput.Model
 
@@ -34,7 +39,7 @@ type Model struct {
 func New() Model {
 	m := Model{
 		NewTodo: "",
-		Filter:  "all",
+		Todos:   nil,
 	}
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "What needs to be done?"
@@ -44,7 +49,7 @@ func New() Model {
 }
 
 func (m Model) status() string {
-	return "Todo List"
+	return (("Todo List (" + fmt.Sprint(len(m.Todos))) + " items)")
 }
 
 func (m Model) Init() tea.Cmd {
@@ -62,22 +67,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.focus = (m.focus + 1) % 2
+			m.focus = (m.focus + 1) % 3
 			if m.focus == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.focus = (m.focus - 1 + 2) % 2
+			m.focus = (m.focus - 1 + 3) % 3
 			if m.focus == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 1:
+			m.Todos = append(m.Todos, Todo{Text: m.NewTodo, Done: false})
 			m.NewTodo = ""
 			m.input0.SetValue(m.NewTodo)
+		case msg.Code == tea.KeyEnter && m.focus == 2:
+			m.Todos = append(m.Todos[:(len(m.Todos)-1)], m.Todos[(len(m.Todos)-1)+1:]...)
 		}
 	}
 	if m.focus == 0 {
@@ -114,15 +122,26 @@ func (m Model) View() tea.View {
 	var content2 string
 	var content2Children []string
 	var content20 string
-	content20 = m.renderTodoItem("Buy groceries", false)
+	var content20Items []string
+	for _, item := range m.Todos {
+		var content20Item string
+		content20Item = m.renderTodoItem(item.Text, item.Done)
+		content20Items = append(content20Items, content20Item)
+	}
+	content20 = strings.Join(content20Items, "\n")
 	content2Children = append(content2Children, content20)
-	var content21 string
-	content21 = m.renderTodoItem("Write docs", true)
-	content2Children = append(content2Children, content21)
 	content2Gap := strings.Repeat("\n", 1)
 	content2Joined := strings.Join(content2Children, content2Gap)
 	content2 = content2Joined
 	contentChildren = append(contentChildren, content2)
+	var content3 string
+	content3Focused := m.focus == 2
+	content3Prefix := " "
+	if content3Focused {
+		content3Prefix = ">"
+	}
+	content3 = lipgloss.NewStyle().Render(content3Prefix + " " + "Remove Last")
+	contentChildren = append(contentChildren, content3)
 	contentGap := strings.Repeat("\n", 1)
 	contentJoined := strings.Join(contentChildren, contentGap)
 	content = lipgloss.NewStyle().

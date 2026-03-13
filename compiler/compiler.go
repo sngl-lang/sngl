@@ -66,6 +66,7 @@ type analysisResult struct {
 	inputs         []inputInfo
 	focusables     []string // ordered: "input0", "button0", etc.
 	components     []*ast.Component
+	structs        []*ast.StructDef
 	modelFields    map[string]bool // all bind/computed names (fields)
 	computedFields map[string]bool // computed names (methods, not struct fields)
 }
@@ -102,8 +103,9 @@ func analyze(doc *ast.Document) *analysisResult {
 		info.computedFields[c.Name] = true
 	}
 
-	// Components
+	// Components and structs
 	info.components = doc.Components
+	info.structs = doc.Structs
 
 	// Walk visual tree to find inputs and buttons
 	if doc.App != nil {
@@ -170,10 +172,20 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var b strings.Builder
 
+	structFields := make(map[string][]string)
+	for _, sd := range info.structs {
+		var fields []string
+		for _, f := range sd.Fields {
+			fields = append(fields, f.Name)
+		}
+		structFields[sd.Name] = fields
+	}
+
 	ec := &exprContext{
 		modelFields:    info.modelFields,
 		computedFields: info.computedFields,
 		localVars:      make(map[string]bool),
+		structNames:    structFields,
 	}
 
 	// Package
@@ -201,6 +213,15 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// Ternary helper
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
 	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
+
+	// Struct types
+	for _, sd := range info.structs {
+		fmt.Fprintf(&b, "type %s struct {\n", exportName(sd.Name))
+		for _, f := range sd.Fields {
+			fmt.Fprintf(&b, "\t%s %s\n", exportName(f.Name), typeHintToGo(f.Type))
+		}
+		b.WriteString("}\n\n")
+	}
 
 	// Model struct
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
@@ -545,6 +566,12 @@ func inferGoType(expr ast.Expr) string {
 }
 
 func typeHintToGo(hint string) string {
+	if strings.HasPrefix(hint, "[]") {
+		return "[]" + exportName(hint[2:])
+	}
+	if strings.HasPrefix(hint, "list:") {
+		return "[]" + exportName(hint[5:])
+	}
 	switch hint {
 	case "int":
 		return "int"
@@ -589,6 +616,9 @@ func literalToGo(expr ast.Expr) string {
 			}
 			return "false"
 		}
+	}
+	if expr.TypeHint != "" {
+		return "nil"
 	}
 	return `""`
 }

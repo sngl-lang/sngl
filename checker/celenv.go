@@ -8,8 +8,23 @@ import (
 )
 
 // BuildCelEnv creates a CEL environment from scope variables and SNGL built-in functions.
-func BuildCelEnv(scope *Scope) (*cel.Env, error) {
+func BuildCelEnv(scope *Scope, structs ...*ast.StructDef) (*cel.Env, error) {
 	opts := scope.EnvOpts()
+
+	// Struct constructor functions
+	for _, sd := range structs {
+		var paramTypes []*cel.Type
+		for _, f := range sd.Fields {
+			paramTypes = append(paramTypes, TypeHintToCelType(f.Type))
+		}
+		overloadID := sd.Name
+		for _, f := range sd.Fields {
+			overloadID += "_" + f.Type
+		}
+		opts = append(opts, cel.Function(sd.Name,
+			cel.Overload(overloadID, paramTypes, cel.DynType),
+		))
+	}
 
 	// Built-in mutation functions
 	opts = append(opts,
@@ -35,11 +50,11 @@ func BuildCelEnv(scope *Scope) (*cel.Env, error) {
 
 // checkExpr re-parses and type-checks a CEL expression within the given scope.
 // On success it replaces expr.AST with the checked AST and returns the output type.
-func checkExpr(scope *Scope, expr *ast.Expr) (*cel.Type, error) {
+func checkExpr(scope *Scope, expr *ast.Expr, structs ...*ast.StructDef) (*cel.Type, error) {
 	if expr.CEL == "" {
 		return nil, fmt.Errorf("not a CEL expression")
 	}
-	env, err := BuildCelEnv(scope)
+	env, err := BuildCelEnv(scope, structs...)
 	if err != nil {
 		return nil, fmt.Errorf("building CEL env: %w", err)
 	}

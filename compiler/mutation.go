@@ -67,7 +67,7 @@ func (ec *exprContext) translateMutationTarget(e celast.Expr) string {
 	if e.Kind() == celast.SelectKind {
 		sel := e.AsSelect()
 		operand := ec.translateMutationTarget(sel.Operand())
-		return operand + "." + sel.FieldName()
+		return operand + "." + exportName(sel.FieldName())
 	}
 	return ec.translateExpr(e)
 }

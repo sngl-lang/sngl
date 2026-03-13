@@ -25,6 +25,7 @@ type checker struct {
 	registry   SchemaRegistry
 	scope      *Scope
 	components []*ast.Component
+	structs    []*ast.StructDef
 	errs       []error
 }
 
@@ -43,8 +44,11 @@ func (c *checker) joinErrors() error {
 	return fmt.Errorf("%s", strings.Join(msgs, "\n"))
 }
 
-// pass1 resolves declarations: binds, computeds, components, styles.
+// pass1 resolves declarations: structs, binds, computeds, components, styles.
 func (c *checker) pass1(doc *ast.Document) {
+	// Structs
+	c.structs = doc.Structs
+
 	// Binds
 	for _, b := range doc.Binds {
 		t := c.resolveExprType(&b.Init)
@@ -95,7 +99,7 @@ func (c *checker) pass1(doc *ast.Document) {
 // resolveExprType determines the type of an expression, type-checking CEL if needed.
 func (c *checker) resolveExprType(expr *ast.Expr) *cel.Type {
 	if expr.CEL != "" {
-		t, err := checkExpr(c.scope, expr)
+		t, err := checkExpr(c.scope, expr, c.structs...)
 		if err != nil {
 			c.errorf("%v", err)
 			return cel.DynType
@@ -170,14 +174,14 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		childScope.Declare(vn.For.Variable, cel.DynType)
 	}
 
-	// Props
+	// Props (use childScope so for-loop variables are visible)
 	for name, expr := range vn.Props {
 		ps, ok := schema.Props[name]
 		if !ok {
 			c.errorf("%s: unknown property %q", vn.Component, name)
 			continue
 		}
-		c.checkExprType(&expr, ps.Type, scope, vn.Component+"."+name)
+		c.checkExprType(&expr, ps.Type, childScope, vn.Component+"."+name)
 		vn.Props[name] = expr
 	}
 
@@ -198,9 +202,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 			c.errorf("%s: unknown event %q", vn.Component, name)
 			continue
 		}
-		eventScope := NewScope(scope)
+		eventScope := NewScope(childScope)
 		eventScope.Declare("event", cel.DynType)
-		t, err := checkExpr(eventScope, &expr)
+		t, err := checkExpr(eventScope, &expr, c.structs...)
 		if err != nil {
 			c.errorf("%s on:%s: %v", vn.Component, name, err)
 		} else if !isMutationType(t) {
@@ -258,7 +262,7 @@ func (c *checker) checkExprType(expr *ast.Expr, expected *cel.Type, scope *Scope
 // resolveExprInScope type-checks a CEL expression or infers a literal's type within a given scope.
 func (c *checker) resolveExprInScope(expr *ast.Expr, scope *Scope) *cel.Type {
 	if expr.CEL != "" {
-		t, err := checkExpr(scope, expr)
+		t, err := checkExpr(scope, expr, c.structs...)
 		if err != nil {
 			c.errorf("%v", err)
 			return cel.DynType
