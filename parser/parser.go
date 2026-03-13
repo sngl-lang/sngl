@@ -58,6 +58,10 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 
 	for _, node := range kdlDoc.Nodes {
 		switch node.Name() {
+		case "output":
+			if o := p.parseOutput(node); o != nil {
+				doc.Outputs = append(doc.Outputs, o)
+			}
 		case "struct":
 			if sd := p.parseStructNode(node); sd != nil {
 				doc.Structs = append(doc.Structs, sd)
@@ -94,6 +98,71 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 	}
 
 	return doc
+}
+
+func (p *parser) parseOutput(node *kdl.Node) *ast.Output {
+	o := &ast.Output{Options: make(map[string]string)}
+
+	collectProps := func(n *kdl.Node) {
+		for _, key := range n.PropertyOrder() {
+			o.Options[key] = n.Properties()[key].String()
+		}
+	}
+
+	args := node.Arguments()
+	children := node.Children()
+	collectProps(node)
+
+	// Short form: output go bubbletea [key=value...]
+	if len(args) >= 2 {
+		o.Lang = args[0].String()
+		o.Platform = args[1].String()
+		return o
+	}
+
+	// Children form: output { <lang> ... }
+	if len(args) == 0 && children != nil && len(children.Nodes) == 1 {
+		langNode := children.Nodes[0]
+		o.Lang = langNode.Name()
+		collectProps(langNode)
+
+		langArgs := langNode.Arguments()
+		langChildren := langNode.Children()
+
+		// output { go bubbletea [key=value...] [{...}] }
+		if len(langArgs) >= 1 {
+			o.Platform = langArgs[0].String()
+			if langChildren != nil {
+				for _, optNode := range langChildren.Nodes {
+					optArgs := optNode.Arguments()
+					if len(optArgs) >= 1 {
+						o.Options[optNode.Name()] = optArgs[0].String()
+					}
+				}
+			}
+			return o
+		}
+
+		// output { go { bubbletea [key=value...] [{...}] } }
+		if langChildren != nil && len(langChildren.Nodes) == 1 {
+			platNode := langChildren.Nodes[0]
+			o.Platform = platNode.Name()
+			collectProps(platNode)
+			platChildren := platNode.Children()
+			if platChildren != nil {
+				for _, optNode := range platChildren.Nodes {
+					optArgs := optNode.Arguments()
+					if len(optArgs) >= 1 {
+						o.Options[optNode.Name()] = optArgs[0].String()
+					}
+				}
+			}
+			return o
+		}
+	}
+
+	p.errorf("output: expected 'output <lang> <platform>' or nested form")
+	return nil
 }
 
 func (p *parser) parseStructNode(node *kdl.Node) *ast.StructDef {
@@ -347,10 +416,15 @@ func (p *parser) parseForClause(val kdl.Value) *ast.ForClause {
 		return nil
 	}
 	iterable := p.parseCEL(strings.TrimSpace(parts[1]))
-	return &ast.ForClause{
-		Variable: strings.TrimSpace(parts[0]),
-		Iterable: iterable,
+	varPart := strings.TrimSpace(parts[0])
+	fc := &ast.ForClause{Iterable: iterable}
+	if i := strings.Index(varPart, ","); i >= 0 {
+		fc.Variable = strings.TrimSpace(varPart[:i])
+		fc.IndexVar = strings.TrimSpace(varPart[i+1:])
+	} else {
+		fc.Variable = varPart
 	}
+	return fc
 }
 
 func (p *parser) parseStyleBlock(node *kdl.Node, block map[string]ast.Expr) {

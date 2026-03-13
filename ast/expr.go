@@ -10,8 +10,9 @@ type Expr struct {
 	TypeHint string   // from KDL type annotation: "int", "bool", "User", etc.
 }
 
-// ForClause is the parsed form of for="item in items".
+// ForClause is the parsed form of for="item in items" or for="item, index in items".
 type ForClause struct {
-	Variable string
+	Variable string // element variable, e.g. "item"
+	IndexVar string // optional index variable, e.g. "index"
 	Iterable Expr
 }

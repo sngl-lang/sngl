@@ -31,6 +31,8 @@ type Model struct {
 
 	input0 textinput.Model
 
+	TodosCursor int
+
 	focus         int
 	width, height int
 }
@@ -67,14 +69,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.focus = (m.focus + 1) % 3
+			m.focus = (m.focus + 1) % 4
 			if m.focus == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.focus = (m.focus - 1 + 3) % 3
+			m.focus = (m.focus - 1 + 4) % 4
 			if m.focus == 0 {
 				m.input0.Focus()
 			} else {
@@ -85,6 +87,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.NewTodo = ""
 			m.input0.SetValue(m.NewTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
+			if m.TodosCursor < len(m.Todos) {
+				index := m.TodosCursor
+				m.Todos[index].Done = !m.Todos[index].Done
+			}
+		case msg.Code == tea.KeyUp && m.focus == 2:
+			if m.TodosCursor > 0 {
+				m.TodosCursor--
+			}
+		case msg.Code == tea.KeyDown && m.focus == 2:
+			if m.TodosCursor < len(m.Todos)-1 {
+				m.TodosCursor++
+			}
+		case msg.Code == tea.KeyEnter && m.focus == 3:
 			m.Todos = append(m.Todos[:(len(m.Todos)-1)], m.Todos[(len(m.Todos)-1)+1:]...)
 		}
 	}
@@ -123,9 +138,15 @@ func (m Model) View() tea.View {
 	var content2Children []string
 	var content20 string
 	var content20Items []string
-	for _, item := range m.Todos {
+	for index, item := range m.Todos {
+		_ = index
 		var content20Item string
-		content20Item = m.renderTodoItem(item.Text, item.Done)
+		content20ItemFocused := m.focus == 2 && m.TodosCursor == index
+		content20ItemPrefix := " "
+		if content20ItemFocused {
+			content20ItemPrefix = ">"
+		}
+		content20Item = lipgloss.NewStyle().Render(content20ItemPrefix + " " + ternary(item.Done, "[x] ", "[ ] ") + item.Text)
 		content20Items = append(content20Items, content20Item)
 	}
 	content20 = strings.Join(content20Items, "\n")
@@ -135,7 +156,7 @@ func (m Model) View() tea.View {
 	content2 = content2Joined
 	contentChildren = append(contentChildren, content2)
 	var content3 string
-	content3Focused := m.focus == 2
+	content3Focused := m.focus == 3
 	content3Prefix := " "
 	if content3Focused {
 		content3Prefix = ">"
@@ -149,19 +170,4 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
-}
-
-func (m Model) renderTodoItem(text string, done bool) string {
-	var result string
-	var resultChildren []string
-	var result0 string
-	result0 = lipgloss.NewStyle().Render(ternary(done, "[x]", "[ ]"))
-	resultChildren = append(resultChildren, result0)
-	var result1 string
-	result1 = lipgloss.NewStyle().Render(text)
-	resultChildren = append(resultChildren, result1)
-	resultGap := strings.Repeat(" ", 1)
-	resultJoined := strings.Join(resultChildren, resultGap)
-	result = resultJoined
-	return result
 }

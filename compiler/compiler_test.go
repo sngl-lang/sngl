@@ -64,6 +64,6 @@ func TestCompileValidFull(t *testing.T) {
 }
 
 func TestCompileTodo(t *testing.T) {
-	doc := parseAndCheck(t, "../_examples/todo/todo.kdl")
+	doc := parseAndCheck(t, "../_examples/todo/todo.sngl")
 	compileAndVerify(t, doc)
 }

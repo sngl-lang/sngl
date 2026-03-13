@@ -60,11 +60,21 @@ type inputInfo struct {
 	placeholder string
 }
 
+type forLoopCursor struct {
+	cursorField string // model field name, e.g. "todosCursor"
+	listField   string // model list field, e.g. "Todos"
+	focusIdx    int    // focus index of this group
+	indexVar    string // for-loop index variable, e.g. "index"
+	iterVar     string // for-loop element variable, e.g. "item"
+	changeExpr  *ast.Expr
+}
+
 type analysisResult struct {
 	binds          []bindInfo
 	computeds      []computedInfo
 	inputs         []inputInfo
 	focusables     []string // ordered: "input0", "button0", etc.
+	forCursors     []forLoopCursor
 	components     []*ast.Component
 	structs        []*ast.StructDef
 	modelFields    map[string]bool // all bind/computed names (fields)
@@ -161,6 +171,37 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 		}
 		info.focusables = append(info.focusables, fmt.Sprintf("button%d", btnCount))
 		idx++
+	case "checkbox":
+		chkCount := 0
+		for _, f := range info.focusables {
+			if strings.HasPrefix(f, "checkbox") {
+				chkCount++
+			}
+		}
+		focusName := fmt.Sprintf("checkbox%d", chkCount)
+		focusIdx := len(info.focusables)
+		info.focusables = append(info.focusables, focusName)
+		// For-looped checkboxes with on:change need a cursor
+		if vn.For != nil && vn.For.IndexVar != "" {
+			if changeEvt, ok := vn.Events["change"]; ok {
+				listField := ""
+				if vn.For.Iterable.AST != nil {
+					native := vn.For.Iterable.AST.NativeRep()
+					if native.Expr().Kind() == celast.IdentKind {
+						listField = exportName(native.Expr().AsIdent())
+					}
+				}
+				info.forCursors = append(info.forCursors, forLoopCursor{
+					cursorField: listField + "Cursor",
+					listField:   listField,
+					focusIdx:    focusIdx,
+					indexVar:     vn.For.IndexVar,
+					iterVar:      vn.For.Variable,
+					changeExpr:   &changeEvt,
+				})
+			}
+		}
+		idx++
 	}
 
 	for _, child := range vn.Children {
@@ -236,6 +277,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		fmt.Fprintf(&b, "\t%s textinput.Model\n", inp.fieldName)
 	}
 	if len(info.inputs) > 0 {
+		b.WriteString("\n")
+	}
+	for _, fc := range info.forCursors {
+		fmt.Fprintf(&b, "\t%s int\n", fc.cursorField)
+	}
+	if len(info.forCursors) > 0 {
 		b.WriteString("\n")
 	}
 	b.WriteString("\tfocus int\n")
@@ -350,7 +397,8 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	// Enter key for buttons
 	if doc.App != nil {
 		buttonIdx := 0
-		emitButtonHandlers(b, doc.App.Children, info, ec, &buttonIdx)
+		checkboxIdx := 0
+		emitButtonHandlers(b, doc.App.Children, info, ec, &buttonIdx, &checkboxIdx)
 	}
 
 	b.WriteString("\t\t}\n") // end switch
@@ -381,8 +429,68 @@ func emitFocusSync(b *strings.Builder, info *analysisResult) {
 	}
 }
 
-func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analysisResult, ec *exprContext, buttonIdx *int) {
+func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analysisResult, ec *exprContext, buttonIdx *int, checkboxIdx *int) {
 	for _, vn := range nodes {
+		if vn.Component == "checkbox" {
+			if changeEvt, ok := vn.Events["change"]; ok {
+				if changeEvt.AST != nil {
+					focusIdx := -1
+					for i, f := range info.focusables {
+						if f == fmt.Sprintf("checkbox%d", *checkboxIdx) {
+							focusIdx = i
+							break
+						}
+					}
+					if focusIdx >= 0 {
+						// Check if this checkbox is inside a for loop with a cursor
+						var fc *forLoopCursor
+						for i := range info.forCursors {
+							if info.forCursors[i].focusIdx == focusIdx {
+								fc = &info.forCursors[i]
+								break
+							}
+						}
+						if fc != nil {
+							// For-looped checkbox: use cursor for navigation and mutation
+							native := changeEvt.AST.NativeRep()
+							ec.nativeAST = native
+							// Declare the index var as a local so it translates correctly
+							ec.localVars[fc.indexVar] = true
+							stmts := ec.translateMutation(native.Expr())
+							delete(ec.localVars, fc.indexVar)
+							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s) {\n", fc.cursorField, fc.listField)
+							fmt.Fprintf(b, "\t\t\t\t%s := m.%s\n", fc.indexVar, fc.cursorField)
+							for _, stmt := range stmts {
+								fmt.Fprintf(b, "\t\t\t\t%s\n", stmt)
+							}
+							fmt.Fprintf(b, "\t\t\t}\n")
+							// Cursor navigation
+							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyUp && m.focus == %d:\n", focusIdx)
+							fmt.Fprintf(b, "\t\t\tif m.%s > 0 { m.%s-- }\n", fc.cursorField, fc.cursorField)
+							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyDown && m.focus == %d:\n", focusIdx)
+							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s)-1 { m.%s++ }\n", fc.cursorField, fc.listField, fc.cursorField)
+						} else {
+							// Non-looped checkbox
+							native := changeEvt.AST.NativeRep()
+							ec.nativeAST = native
+							stmts := ec.translateMutation(native.Expr())
+							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+							for _, stmt := range stmts {
+								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
+							}
+							mutatedFields := extractMutatedFields(native.Expr())
+							for _, inp := range info.inputs {
+								if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
+									fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
+								}
+							}
+						}
+					}
+				}
+			}
+			*checkboxIdx++
+		}
 		if vn.Component == "button" {
 			if clickEvt, ok := vn.Events["click"]; ok {
 				if clickEvt.AST != nil {
@@ -414,7 +522,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 			}
 			*buttonIdx++
 		}
-		emitButtonHandlers(b, vn.Children, info, ec, buttonIdx)
+		emitButtonHandlers(b, vn.Children, info, ec, buttonIdx, checkboxIdx)
 	}
 }
 
@@ -451,6 +559,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	vc := &viewContext{
 		ec:          ec,
 		scaleFactor: cfg.ScaleFactor,
+		forCursors:  info.forCursors,
 		buf:         &strings.Builder{},
 		indent:      1,
 		focusIndex:  0,

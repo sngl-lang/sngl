@@ -10,15 +10,23 @@ import (
 )
 
 var checkCmd = &cobra.Command{
-	Use:   "check <file...>",
+	Use:   "check [file|dir...]",
 	Short: "Parse and type-check SNGL files",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.ArbitraryArgs,
 	RunE:  runCheck,
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
+	files, err := discoverFiles(args)
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		return fmt.Errorf("no .sngl or .kdl files found")
+	}
+
 	var failed bool
-	for _, filename := range args {
+	for _, filename := range files {
 		f, err := os.Open(filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)

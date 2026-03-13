@@ -59,6 +59,7 @@ Beyond correctness checks, the tool provides configurable lint rules:
 | Rule              | Default | Description                                                                      |
 | ----------------- | ------- | -------------------------------------------------------------------------------- |
 | `no-unused-bind`  | warn    | Declared state is never read                                                     |
+| `no-unused-var`   | warn    | `for` loop index/element variable is declared but never referenced               |
 | `no-missing-key`  | error   | `for` loops without `key` attribute                                              |
 | `no-complex-cel`  | warn    | `(cel)` expressions exceeding a complexity threshold (suggest moving to handler) |
 | `no-inline-style` | off     | Prefer `class` over inline `style.*`                                             |

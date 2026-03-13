@@ -1,3 +1,9 @@
+output {
+    go {
+        bubbletea package="main"
+    }
+}
+
 struct "Todo" {
     text (string)""
     done (bool)false
@@ -12,15 +18,6 @@ computed {
     status (cel)"'Todo List (' + string(size(todos)) + ' items)'"
 }
 
-component "TodoItem" {
-    @param "text" (string)""
-    @param "done" (bool)false
-    hbox style.gap=8 {
-        text value=(cel)"done ? '[x]' : '[ ]'"
-        text value=(cel)"text"
-    }
-}
-
 app {
     vbox style.padding=16 style.gap=12 {
         text value=(cel)"status" { @style { font-weight "bold"; font-size 24 } }
@@ -31,7 +28,7 @@ app {
         }
 
         vbox style.gap=4 {
-            TodoItem for="item in todos" text=(cel)"item.text" done=(cel)"item.done"
+            checkbox for="item, index in todos" key=(cel)"index" checked=(cel)"item.done" label=(cel)"item.text" on:change=(cel)"toggle(todos[index].done)"
         }
 
         button text="Remove Last" on:click=(cel)"remove(todos, size(todos) - 1)"

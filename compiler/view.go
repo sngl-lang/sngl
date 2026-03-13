@@ -13,11 +13,13 @@ type viewContext struct {
 	scaleFactor int
 	inputIndex  map[string]int // input node key → index in focusable list
 	focusIndex  int            // next focusable index
+	forCursors  []forLoopCursor
 	buf         *strings.Builder
 	indent      int
 	components  []*ast.Component // user-defined components for param lookup
 	inComponent bool             // true when rendering inside a component method
 	vertical    bool             // true when inside a vertical container (vbox)
+	forIndexVar string           // current for-loop index variable (for cursor-aware rendering)
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -41,16 +43,32 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 		iterVar := vn.For.Variable
 		iterExpr := exprToGoValue(vn.For.Iterable, vc.ec)
 		loopVar := resultVar + "Items"
+		indexVar := "_"
+		if vn.For.IndexVar != "" {
+			indexVar = vn.For.IndexVar
+			vc.ec.localVars[indexVar] = true
+			defer func() { delete(vc.ec.localVars, indexVar) }()
+		}
 		vc.line("var %s []string", loopVar)
-		vc.line("for _, %s := range %s {", iterVar, iterExpr)
+		vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
 		vc.indent++
+		if indexVar != "_" {
+			vc.line("_ = %s", indexVar)
+		}
 		// Push local var
 		vc.ec.localVars[iterVar] = true
 		defer func() { delete(vc.ec.localVars, iterVar) }()
 
+		// Track for-loop index var for cursor-aware rendering
+		prevForIndexVar := vc.forIndexVar
+		if indexVar != "_" {
+			vc.forIndexVar = indexVar
+		}
+
 		innerVar := resultVar + "Item"
 		vc.line("var %s string", innerVar)
 		vc.renderNodeInner(vn, innerVar)
+		vc.forIndexVar = prevForIndexVar
 		vc.line("%s = append(%s, %s)", loopVar, loopVar, innerVar)
 
 		vc.indent--
@@ -80,6 +98,8 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 		vc.renderText(vn, resultVar)
 	case "button":
 		vc.renderButton(vn, resultVar)
+	case "checkbox":
+		vc.renderCheckbox(vn, resultVar)
 	case "input":
 		vc.renderInput(vn, resultVar)
 	case "spacer":
@@ -191,6 +211,49 @@ func (vc *viewContext) renderButton(vn *ast.VisualNode, resultVar string) {
 	vc.line(`%sPrefix := " "`, resultVar)
 	vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 	vc.line(`%s = %s.Render(%sPrefix + " " + %s)`, resultVar, style, resultVar, text)
+}
+
+func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
+	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	checked := "false"
+	if v, ok := vn.Props["checked"]; ok {
+		checked = exprToGoValue(v, vc.ec)
+	}
+	label := `""`
+	if v, ok := vn.Props["label"]; ok {
+		label = exprToGoValue(v, vc.ec)
+	}
+
+	if vc.inComponent {
+		vc.line(`%s = %s.Render(ternary(%s, "[x] ", "[ ] ") + %s)`, resultVar, style, checked, label)
+		return
+	}
+
+	focusIdx := vc.focusIndex
+	vc.focusIndex++
+
+	// For-looped checkboxes use cursor for per-item focus
+	if vc.forIndexVar != "" {
+		var fc *forLoopCursor
+		for i := range vc.forCursors {
+			if vc.forCursors[i].focusIdx == focusIdx {
+				fc = &vc.forCursors[i]
+				break
+			}
+		}
+		if fc != nil {
+			vc.line(`%sFocused := m.focus == %d && m.%s == %s`, resultVar, focusIdx, fc.cursorField, vc.forIndexVar)
+			vc.line(`%sPrefix := " "`, resultVar)
+			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
+			vc.line(`%s = %s.Render(%sPrefix + " " + ternary(%s, "[x] ", "[ ] ") + %s)`, resultVar, style, resultVar, checked, label)
+			return
+		}
+	}
+
+	vc.line(`%sFocused := m.focus == %d`, resultVar, focusIdx)
+	vc.line(`%sPrefix := " "`, resultVar)
+	vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
+	vc.line(`%s = %s.Render(%sPrefix + " " + ternary(%s, "[x] ", "[ ] ") + %s)`, resultVar, style, resultVar, checked, label)
 }
 
 func (vc *viewContext) renderInput(vn *ast.VisualNode, resultVar string) {

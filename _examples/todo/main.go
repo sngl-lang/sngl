@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-//go:generate go tool sngl compile --lang go --platform bubbletea --opt package=main todo.kdl
+//go:generate go tool sngl compile todo.sngl
 
 func main() {
 	m := New()

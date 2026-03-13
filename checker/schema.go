@@ -112,6 +112,15 @@ func NewStandardRegistry() SchemaRegistry {
 			Events:   map[string]string{},
 			Children: ChildrenNone,
 		},
+		"checkbox": {
+			Props: map[string]PropSchema{
+				"checked":  {Type: cel.BoolType},
+				"label":    {Type: cel.StringType},
+				"disabled": {Type: cel.BoolType},
+			},
+			Events:   map[string]string{"change": "ChangeEvent"},
+			Children: ChildrenNone,
+		},
 		"slot": {
 			Props:    map[string]PropSchema{},
 			Events:   map[string]string{},

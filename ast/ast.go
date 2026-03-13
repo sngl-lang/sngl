@@ -1,6 +1,13 @@
 package ast
 
+type Output struct {
+	Lang     string            // "go"
+	Platform string            // "bubbletea"
+	Options  map[string]string // {"package": "main"}
+}
+
 type Document struct {
+	Outputs    []*Output
 	Structs    []*StructDef
 	Imports    []*Import
 	Binds      []*Bind

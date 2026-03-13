@@ -153,9 +153,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	if vn.ID != nil {
 		c.checkExprType(vn.ID, cel.StringType, scope, "id")
 	}
-	if vn.Key != nil {
-		c.checkExprType(vn.Key, cel.StringType, scope, "key")
-	}
 	if vn.Class != nil {
 		c.checkExprType(vn.Class, cel.StringType, scope, "class")
 	}
@@ -172,6 +169,14 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		c.resolveExprInScope(&vn.For.Iterable, scope)
 		childScope = NewScope(scope)
 		childScope.Declare(vn.For.Variable, cel.DynType)
+		if vn.For.IndexVar != "" {
+			childScope.Declare(vn.For.IndexVar, cel.IntType)
+		}
+	}
+
+	// Key is checked in childScope so it can reference for-loop variables
+	if vn.Key != nil {
+		c.checkExprType(vn.Key, cel.DynType, childScope, "key")
 	}
 
 	// Props (use childScope so for-loop variables are visible)
