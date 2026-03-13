@@ -68,7 +68,7 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestTodoApp(t *testing.T) {
-	html := generateHTML(t, "../../../_examples/todo/todo.sngl")
+	html := generateHTML(t, "../../../_examples/todo/todo.sngl.kdl")
 
 	checks := []string{
 		"<!DOCTYPE html>",
@@ -90,7 +90,7 @@ func TestTodoApp(t *testing.T) {
 }
 
 func TestFullExample(t *testing.T) {
-	html := generateHTML(t, "../../../testdata/full_example.sngl")
+	html := generateHTML(t, "../../../testdata/full_example.sngl.kdl")
 
 	checks := []string{
 		"<!DOCTYPE html>",
@@ -109,7 +109,7 @@ func TestFullExample(t *testing.T) {
 }
 
 func TestFullFixture(t *testing.T) {
-	html := generateHTML(t, "../../../testdata/full.sngl")
+	html := generateHTML(t, "../../../testdata/full.sngl.kdl")
 
 	checks := []string{
 		"<!DOCTYPE html>",

@@ -39,6 +39,6 @@ func discoverFiles(args []string) ([]string, error) {
 }
 
 func isSNGLFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	return ext == ".sngl" || ext == ".kdl"
+	lower := strings.ToLower(path)
+	return strings.HasSuffix(lower, ".sngl.kdl")
 }

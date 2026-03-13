@@ -15,7 +15,7 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestDataForms(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
+	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestDataForms(t *testing.T) {
 }
 
 func TestStyleForms(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/style_forms.sngl")
+	doc, err := testutil.ParseFile("../testdata/style_forms.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestStyleForms(t *testing.T) {
 }
 
 func TestComponent(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/component.sngl")
+	doc, err := testutil.ParseFile("../testdata/component.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestComponent(t *testing.T) {
 }
 
 func TestFullExample(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/full_example.sngl")
+	doc, err := testutil.ParseFile("../testdata/full_example.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestFullExample(t *testing.T) {
 }
 
 func TestComponentPropertyParams(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/component_prop_params.sngl")
+	doc, err := testutil.ParseFile("../testdata/component_prop_params.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestComponentPropertyParams(t *testing.T) {
 }
 
 func TestDataExternTrigger(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/data_extern_trigger.sngl")
+	doc, err := testutil.ParseFile("../testdata/data_extern_trigger.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestDataExternTrigger(t *testing.T) {
 }
 
 func TestCELParsing(t *testing.T) {
-	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
+	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl.kdl")
 	if err != nil {
 		t.Fatal(err)
 	}

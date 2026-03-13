@@ -23,7 +23,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("no .sngl or .kdl files found")
+		return fmt.Errorf("no .sngl.kdl files found")
 	}
 
 	var failed bool

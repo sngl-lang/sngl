@@ -42,7 +42,7 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestCompileTodo(t *testing.T) {
-	doc, err := testutil.ParseFile("../_examples/todo/todo.sngl")
+	doc, err := testutil.ParseFile("../_examples/todo/todo.sngl.kdl")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

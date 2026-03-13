@@ -9,10 +9,10 @@ import (
 	"github.com/google/cel-go/cel"
 )
 
-//go:embed stdlib/*.sngl
+//go:embed stdlib/*.sngl.kdl
 var stdlibFS embed.FS
 
-// LoadStdlib parses the embedded stdlib .sngl files and returns the component
+// LoadStdlib parses the embedded stdlib .sngl.kdl files and returns the component
 // schema registry and style property type map.
 func LoadStdlib() (SchemaRegistry, map[string]*cel.Type, error) {
 	registry := SchemaRegistry{}

@@ -1,7 +1,7 @@
 # SNGL Todo Example
 
 A todo app with JSON persistence. Today this is hand-written Go/Bubbletea;
-the goal is to compile it from `todo.sngl` as the SNGL compiler matures.
+the goal is to compile it from `todo.sngl.kdl` as the SNGL compiler matures.
 
 ## Run
 
@@ -9,4 +9,4 @@ the goal is to compile it from `todo.sngl` as the SNGL compiler matures.
 
 ## SNGL check (validates the source)
 
-    sngl check _examples/todo/todo.sngl
+    sngl check _examples/todo/todo.sngl.kdl
