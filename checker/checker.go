@@ -29,8 +29,13 @@ type checker struct {
 	errs       []error
 }
 
-func (c *checker) errorf(format string, args ...any) {
-	c.errs = append(c.errs, fmt.Errorf(format, args...))
+func (c *checker) errorAt(pos ast.Pos, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if pos.IsValid() {
+		c.errs = append(c.errs, fmt.Errorf("%s: %s", pos, msg))
+	} else {
+		c.errs = append(c.errs, fmt.Errorf("%s", msg))
+	}
 }
 
 func (c *checker) joinErrors() error {
@@ -51,13 +56,13 @@ func (c *checker) pass1(doc *ast.Document) {
 
 	// Binds
 	for _, b := range doc.Binds {
-		t := c.resolveExprType(&b.Init)
+		t := c.resolveExprType(b.Pos, &b.Init)
 		c.scope.Declare(b.Name, t)
 	}
 
 	// Computeds
 	for _, comp := range doc.Computeds {
-		t := c.resolveExprType(&comp.Expr)
+		t := c.resolveExprType(comp.Pos, &comp.Expr)
 		c.scope.Declare(comp.Name, t)
 	}
 
@@ -87,21 +92,21 @@ func (c *checker) pass1(doc *ast.Document) {
 	for _, s := range doc.Styles {
 		for prop, expr := range s.Props {
 			if _, ok := StylePropertyTypes[prop]; !ok {
-				c.errorf("style %q: unknown style property %q", s.Name, prop)
+				c.errorAt(s.Pos, "style %q: unknown style property %q", s.Name, prop)
 				continue
 			}
-			c.resolveExprType(&expr)
+			c.resolveExprType(s.Pos, &expr)
 			s.Props[prop] = expr
 		}
 	}
 }
 
 // resolveExprType determines the type of an expression, type-checking CEL if needed.
-func (c *checker) resolveExprType(expr *ast.Expr) *cel.Type {
+func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) *cel.Type {
 	if expr.CEL != "" {
 		t, err := checkExpr(c.scope, expr, c.structs...)
 		if err != nil {
-			c.errorf("%v", err)
+			c.errorAt(pos, "%v", err)
 			return cel.DynType
 		}
 		return t
@@ -145,28 +150,28 @@ func (c *checker) pass2(doc *ast.Document) {
 func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	schema, ok := c.registry[vn.Component]
 	if !ok {
-		c.errorf("unknown component %q", vn.Component)
+		c.errorAt(vn.Pos, "unknown component %q", vn.Component)
 		return
 	}
 
 	// Universal attributes
 	if vn.ID != nil {
-		c.checkExprType(vn.ID, cel.StringType, scope, "id")
+		c.checkExprType(vn.Pos, vn.ID, cel.StringType, scope, "id")
 	}
 	if vn.Class != nil {
-		c.checkExprType(vn.Class, cel.StringType, scope, "class")
+		c.checkExprType(vn.Pos, vn.Class, cel.StringType, scope, "class")
 	}
 	if vn.Ref != nil {
-		c.checkExprType(vn.Ref, cel.StringType, scope, "ref")
+		c.checkExprType(vn.Pos, vn.Ref, cel.StringType, scope, "ref")
 	}
 	if vn.If != nil {
-		c.checkExprType(vn.If, cel.BoolType, scope, "if")
+		c.checkExprType(vn.Pos, vn.If, cel.BoolType, scope, "if")
 	}
 
 	// For clause
 	childScope := scope
 	if vn.For != nil {
-		c.resolveExprInScope(&vn.For.Iterable, scope)
+		c.resolveExprInScope(vn.Pos, &vn.For.Iterable, scope)
 		childScope = NewScope(scope)
 		childScope.Declare(vn.For.Variable, cel.DynType)
 		if vn.For.IndexVar != "" {
@@ -176,17 +181,17 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Key is checked in childScope so it can reference for-loop variables
 	if vn.Key != nil {
-		c.checkExprType(vn.Key, cel.DynType, childScope, "key")
+		c.checkExprType(vn.Pos, vn.Key, cel.DynType, childScope, "key")
 	}
 
 	// Props (use childScope so for-loop variables are visible)
 	for name, expr := range vn.Props {
 		ps, ok := schema.Props[name]
 		if !ok {
-			c.errorf("%s: unknown property %q", vn.Component, name)
+			c.errorAt(vn.Pos, "%s: unknown property %q", vn.Component, name)
 			continue
 		}
-		c.checkExprType(&expr, ps.Type, childScope, vn.Component+"."+name)
+		c.checkExprType(vn.Pos, &expr, ps.Type, childScope, vn.Component+"."+name)
 		vn.Props[name] = expr
 	}
 
@@ -195,7 +200,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		for _, p := range comp.Params {
 			if p.Required {
 				if _, ok := vn.Props[p.Name]; !ok {
-					c.errorf("%s: required property %q not provided", vn.Component, p.Name)
+					c.errorAt(vn.Pos, "%s: required property %q not provided", vn.Component, p.Name)
 				}
 			}
 		}
@@ -204,16 +209,16 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	// Events
 	for name, expr := range vn.Events {
 		if _, ok := schema.Events[name]; !ok {
-			c.errorf("%s: unknown event %q", vn.Component, name)
+			c.errorAt(vn.Pos, "%s: unknown event %q", vn.Component, name)
 			continue
 		}
 		eventScope := NewScope(childScope)
 		eventScope.Declare("event", cel.DynType)
 		t, err := checkExpr(eventScope, &expr, c.structs...)
 		if err != nil {
-			c.errorf("%s on:%s: %v", vn.Component, name, err)
+			c.errorAt(vn.Pos, "%s on:%s: %v", vn.Component, name, err)
 		} else if !isMutationType(t) {
-			c.errorf("%s on:%s: handler must return Mutation or list(Mutation), got %s", vn.Component, name, t)
+			c.errorAt(vn.Pos, "%s on:%s: handler must return Mutation or list(Mutation), got %s", vn.Component, name, t)
 		}
 		vn.Events[name] = expr
 	}
@@ -221,20 +226,20 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	// Style attrs
 	for name, expr := range vn.StyleAttrs {
 		if _, ok := StylePropertyTypes[name]; !ok {
-			c.errorf("%s: unknown style property %q", vn.Component, name)
+			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
 			continue
 		}
-		c.resolveExprInScope(&expr, scope)
+		c.resolveExprInScope(vn.Pos, &expr, scope)
 		vn.StyleAttrs[name] = expr
 	}
 
 	// Style block
 	for name, expr := range vn.StyleBlock {
 		if _, ok := StylePropertyTypes[name]; !ok {
-			c.errorf("%s: unknown style property %q", vn.Component, name)
+			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
 			continue
 		}
-		c.resolveExprInScope(&expr, scope)
+		c.resolveExprInScope(vn.Pos, &expr, scope)
 		vn.StyleBlock[name] = expr
 	}
 
@@ -242,11 +247,11 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	switch schema.Children {
 	case ChildrenNone:
 		if len(vn.Children) > 0 {
-			c.errorf("%s: does not accept children", vn.Component)
+			c.errorAt(vn.Pos, "%s: does not accept children", vn.Component)
 		}
 	case ChildrenOne:
 		if len(vn.Children) != 1 {
-			c.errorf("%s: expects exactly one child, got %d", vn.Component, len(vn.Children))
+			c.errorAt(vn.Pos, "%s: expects exactly one child, got %d", vn.Component, len(vn.Children))
 		}
 	}
 
@@ -257,19 +262,19 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 }
 
 // checkExprType resolves an expression's type and checks it matches the expected type.
-func (c *checker) checkExprType(expr *ast.Expr, expected *cel.Type, scope *Scope, context string) {
-	got := c.resolveExprInScope(expr, scope)
+func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected *cel.Type, scope *Scope, context string) {
+	got := c.resolveExprInScope(pos, expr, scope)
 	if expected != cel.DynType && got != cel.DynType && !got.IsEquivalentType(expected) {
-		c.errorf("%s: expected %s, got %s", context, expected, got)
+		c.errorAt(pos, "%s: expected %s, got %s", context, expected, got)
 	}
 }
 
 // resolveExprInScope type-checks a CEL expression or infers a literal's type within a given scope.
-func (c *checker) resolveExprInScope(expr *ast.Expr, scope *Scope) *cel.Type {
+func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) *cel.Type {
 	if expr.CEL != "" {
 		t, err := checkExpr(scope, expr, c.structs...)
 		if err != nil {
-			c.errorf("%v", err)
+			c.errorAt(pos, "%v", err)
 			return cel.DynType
 		}
 		return t

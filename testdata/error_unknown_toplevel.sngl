@@ -1,0 +1,3 @@
+foobar "something" // ERROR(parse) "unknown top-level node"
+app {
+}

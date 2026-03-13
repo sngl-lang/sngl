@@ -3,30 +3,12 @@ package compiler
 import (
 	"go/parser"
 	"go/token"
-	"os"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/checker"
-	snglparser "git.duckfam.us/jonathan/sngl/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
-
-func parseAndCheck(t *testing.T, path string) *ast.Document {
-	t.Helper()
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatalf("open %s: %v", path, err)
-	}
-	defer f.Close()
-	doc, err := snglparser.Parse(path, f)
-	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
-	}
-	if err := checker.Check(doc); err != nil {
-		t.Fatalf("check %s: %v", path, err)
-	}
-	return doc
-}
 
 func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 	t.Helper()
@@ -43,27 +25,29 @@ func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 	return src
 }
 
-func TestCompileValidMinimal(t *testing.T) {
-	doc := parseAndCheck(t, "../checker/testdata/valid_minimal.kdl")
-	compileAndVerify(t, doc)
-}
-
-func TestCompileValidBinds(t *testing.T) {
-	doc := parseAndCheck(t, "../checker/testdata/valid_binds.kdl")
-	compileAndVerify(t, doc)
-}
-
-func TestCompileValidComponent(t *testing.T) {
-	doc := parseAndCheck(t, "../checker/testdata/valid_component.kdl")
-	compileAndVerify(t, doc)
-}
-
-func TestCompileValidFull(t *testing.T) {
-	doc := parseAndCheck(t, "../checker/testdata/valid_full.kdl")
-	compileAndVerify(t, doc)
+func TestFixtures(t *testing.T) {
+	testutil.RunFixtures(t, "../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
+		if len(dirs) > 0 {
+			return // skip all error fixtures
+		}
+		doc, err := testutil.ParseFile(path)
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		if err := checker.Check(doc); err != nil {
+			t.Fatalf("check: %v", err)
+		}
+		compileAndVerify(t, doc)
+	})
 }
 
 func TestCompileTodo(t *testing.T) {
-	doc := parseAndCheck(t, "../_examples/todo/todo.sngl")
+	doc, err := testutil.ParseFile("../_examples/todo/todo.sngl")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := checker.Check(doc); err != nil {
+		t.Fatalf("check: %v", err)
+	}
 	compileAndVerify(t, doc)
 }

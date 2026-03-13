@@ -1,5 +1,0 @@
-bind "x" (int)0
-app {
-    vbox on:click=(cel)"set(x, 1)" {
-    }
-}

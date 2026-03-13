@@ -4,5 +4,5 @@ component "Greeting" {
 }
 
 app {
-    Greeting
+    Greeting // ERROR(check) "required"
 }

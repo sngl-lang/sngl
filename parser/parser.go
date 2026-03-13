@@ -38,8 +38,22 @@ type parser struct {
 	errs     []error
 }
 
+func (p *parser) pos(node *kdl.Node) ast.Pos {
+	loc := node.Location()
+	return ast.Pos{Line: loc.Line, Column: loc.Column}
+}
+
 func (p *parser) errorf(format string, args ...any) {
 	p.errs = append(p.errs, fmt.Errorf(format, args...))
+}
+
+func (p *parser) errorAt(pos ast.Pos, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if pos.IsValid() {
+		p.errs = append(p.errs, fmt.Errorf("%s: %s", pos, msg))
+	} else {
+		p.errs = append(p.errs, fmt.Errorf("%s", msg))
+	}
 }
 
 func (p *parser) joinErrors() error {
@@ -84,12 +98,12 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 			}
 		case "app":
 			if doc.App != nil {
-				p.errorf("duplicate app node")
+				p.errorAt(p.pos(node), "duplicate app node")
 				continue
 			}
 			doc.App = p.parseApp(node)
 		default:
-			p.errorf("unknown top-level node: %q", node.Name())
+			p.errorAt(p.pos(node), "unknown top-level node: %q", node.Name())
 		}
 	}
 
@@ -101,7 +115,7 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 }
 
 func (p *parser) parseOutput(node *kdl.Node) *ast.Output {
-	o := &ast.Output{Options: make(map[string]string)}
+	o := &ast.Output{Pos: p.pos(node), Options: make(map[string]string)}
 
 	collectProps := func(n *kdl.Node) {
 		for _, key := range n.PropertyOrder() {
@@ -171,7 +185,7 @@ func (p *parser) parseStructNode(node *kdl.Node) *ast.StructDef {
 		p.errorf("struct: missing name argument")
 		return nil
 	}
-	sd := &ast.StructDef{Name: args[0].String()}
+	sd := &ast.StructDef{Pos: p.pos(node), Name: args[0].String()}
 	children := node.Children()
 	if children == nil {
 		p.errorf("struct %q: expected field definitions", sd.Name)
@@ -185,6 +199,7 @@ func (p *parser) parseStructNode(node *kdl.Node) *ast.StructDef {
 		}
 		expr := p.toExpr(childArgs[0])
 		sd.Fields = append(sd.Fields, &ast.StructField{
+			Pos:     p.pos(child),
 			Name:    child.Name(),
 			Type:    expr.TypeHint,
 			Default: expr,
@@ -203,7 +218,7 @@ func (p *parser) parseImport(node *kdl.Node) *ast.Import {
 		p.errorf("import: path must be a string")
 		return nil
 	}
-	return &ast.Import{Path: args[0].String()}
+	return &ast.Import{Pos: p.pos(node), Path: args[0].String()}
 }
 
 func (p *parser) parseBindNode(node *kdl.Node) []*ast.Bind {
@@ -212,7 +227,7 @@ func (p *parser) parseBindNode(node *kdl.Node) []*ast.Bind {
 	if len(args) >= 2 {
 		name := args[0].String()
 		expr := p.toExpr(args[1])
-		return []*ast.Bind{{Name: name, Init: expr}}
+		return []*ast.Bind{{Pos: p.pos(node), Name: name, Init: expr}}
 	}
 	// Block form: bind { name (type)value; ... }
 	children := node.Children()
@@ -228,6 +243,7 @@ func (p *parser) parseBindNode(node *kdl.Node) []*ast.Bind {
 			continue
 		}
 		binds = append(binds, &ast.Bind{
+			Pos:  p.pos(child),
 			Name: child.Name(),
 			Init: p.toExpr(childArgs[0]),
 		})
@@ -241,7 +257,7 @@ func (p *parser) parseComputedNode(node *kdl.Node) []*ast.Computed {
 	if len(args) >= 2 {
 		name := args[0].String()
 		expr := p.toExpr(args[1])
-		return []*ast.Computed{{Name: name, Expr: expr}}
+		return []*ast.Computed{{Pos: p.pos(node), Name: name, Expr: expr}}
 	}
 	// Block form
 	children := node.Children()
@@ -257,6 +273,7 @@ func (p *parser) parseComputedNode(node *kdl.Node) []*ast.Computed {
 			continue
 		}
 		computeds = append(computeds, &ast.Computed{
+			Pos:  p.pos(child),
 			Name: child.Name(),
 			Expr: p.toExpr(childArgs[0]),
 		})
@@ -270,12 +287,13 @@ func (p *parser) parseComponent(node *kdl.Node) *ast.Component {
 		p.errorf("component: missing name argument")
 		return nil
 	}
-	comp := &ast.Component{Name: args[0].String()}
+	comp := &ast.Component{Pos: p.pos(node), Name: args[0].String()}
 
 	// Property form: component "Counter" label=(string)"" start=(int)0
 	for _, key := range node.PropertyOrder() {
 		val := node.Properties()[key]
 		comp.Params = append(comp.Params, &ast.Param{
+			Pos:     p.pos(node),
 			Name:    key,
 			Default: p.toExpr(val),
 		})
@@ -304,6 +322,7 @@ func (p *parser) parseParam(node *kdl.Node) *ast.Param {
 		return &ast.Param{}
 	}
 	param := &ast.Param{
+		Pos:     p.pos(node),
 		Name:    args[0].String(),
 		Default: p.toExpr(args[1]),
 	}
@@ -320,6 +339,7 @@ func (p *parser) parseStyleDecl(node *kdl.Node) *ast.StyleDecl {
 		return nil
 	}
 	s := &ast.StyleDecl{
+		Pos:   p.pos(node),
 		Name:  args[0].String(),
 		Props: make(map[string]ast.Expr),
 	}
@@ -336,7 +356,7 @@ func (p *parser) parseStyleDecl(node *kdl.Node) *ast.StyleDecl {
 }
 
 func (p *parser) parseApp(node *kdl.Node) *ast.App {
-	app := &ast.App{}
+	app := &ast.App{Pos: p.pos(node)}
 	children := node.Children()
 	if children == nil {
 		return app
@@ -349,6 +369,7 @@ func (p *parser) parseApp(node *kdl.Node) *ast.App {
 
 func (p *parser) parseVisualNode(node *kdl.Node) *ast.VisualNode {
 	vn := &ast.VisualNode{
+		Pos:        p.pos(node),
 		Component:  node.Name(),
 		Props:      make(map[string]ast.Expr),
 		Events:     make(map[string]ast.Expr),
@@ -442,6 +463,7 @@ func (p *parser) parseStyleBlock(node *kdl.Node, block map[string]ast.Expr) {
 
 func (p *parser) parseAttrNode(node *kdl.Node) *ast.AttrNode {
 	an := &ast.AttrNode{
+		Pos:   p.pos(node),
 		Name:  strings.TrimPrefix(node.Name(), "@"),
 		Props: make(map[string]ast.Expr),
 	}

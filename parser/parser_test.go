@@ -1,49 +1,24 @@
-package parser
+package parser_test
 
 import (
-	"os"
-	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
-func parseFixture(t *testing.T, name string) *ast.Document {
-	t.Helper()
-	f, err := os.Open("testdata/" + name)
-	if err != nil {
-		t.Fatalf("open fixture %s: %v", name, err)
-	}
-	defer f.Close()
-	doc, err := Parse(name, f)
-	if err != nil {
-		t.Fatalf("parse %s: %v", name, err)
-	}
-	return doc
-}
-
-func parseFixtureExpectError(t *testing.T, name string) (*ast.Document, error) {
-	t.Helper()
-	f, err := os.Open("testdata/" + name)
-	if err != nil {
-		t.Fatalf("open fixture %s: %v", name, err)
-	}
-	defer f.Close()
-	return Parse(name, f)
-}
-
-func TestMinimal(t *testing.T) {
-	doc := parseFixture(t, "minimal.kdl")
-	if doc.App == nil {
-		t.Fatal("expected app node")
-	}
-	if len(doc.App.Children) != 0 {
-		t.Errorf("expected 0 children, got %d", len(doc.App.Children))
-	}
+func TestFixtures(t *testing.T) {
+	testutil.RunFixtures(t, "../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
+		expected := testutil.Filter(dirs, "parse")
+		_, err := testutil.ParseFile(path)
+		testutil.AssertErrors(t, err, expected)
+	})
 }
 
 func TestBindForms(t *testing.T) {
-	doc := parseFixture(t, "bind_forms.kdl")
+	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// 2 individual + 2 block = 4 binds
 	if got := len(doc.Binds); got != 4 {
@@ -114,7 +89,10 @@ func TestBindForms(t *testing.T) {
 }
 
 func TestStyleForms(t *testing.T) {
-	doc := parseFixture(t, "style_forms.kdl")
+	doc, err := testutil.ParseFile("../testdata/style_forms.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	vbox := doc.App.Children[0]
 	if vbox.Component != "vbox" {
@@ -155,7 +133,10 @@ func TestStyleForms(t *testing.T) {
 }
 
 func TestComponent(t *testing.T) {
-	doc := parseFixture(t, "component.kdl")
+	doc, err := testutil.ParseFile("../testdata/component.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if got := len(doc.Components); got != 1 {
 		t.Fatalf("expected 1 component, got %d", got)
@@ -210,7 +191,10 @@ func TestComponent(t *testing.T) {
 }
 
 func TestFullExample(t *testing.T) {
-	doc := parseFixture(t, "full_example.kdl")
+	doc, err := testutil.ParseFile("../testdata/full_example.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Imports
 	if got := len(doc.Imports); got != 1 {
@@ -296,7 +280,10 @@ func TestFullExample(t *testing.T) {
 }
 
 func TestComponentPropertyParams(t *testing.T) {
-	doc := parseFixture(t, "component_prop_params.kdl")
+	doc, err := testutil.ParseFile("../testdata/component_prop_params.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if got := len(doc.Components); got != 1 {
 		t.Fatalf("expected 1 component, got %d", got)
@@ -334,7 +321,10 @@ func TestComponentPropertyParams(t *testing.T) {
 }
 
 func TestCELParsing(t *testing.T) {
-	doc := parseFixture(t, "bind_forms.kdl")
+	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// computed "greeting" (cel)"'Hello, ' + name" should have a parsed AST
 	c := doc.Computeds[0]
@@ -349,35 +339,5 @@ func TestCELParsing(t *testing.T) {
 	b := doc.Binds[0] // count (int)0
 	if b.Init.AST != nil {
 		t.Error("literal bind should not have CEL AST")
-	}
-}
-
-func TestErrorMissingApp(t *testing.T) {
-	_, err := parseFixtureExpectError(t, "error_missing_app.kdl")
-	if err == nil {
-		t.Fatal("expected error for missing app")
-	}
-	if !strings.Contains(err.Error(), "missing app") {
-		t.Errorf("error = %q, want mention of missing app", err.Error())
-	}
-}
-
-func TestErrorDuplicateApp(t *testing.T) {
-	_, err := parseFixtureExpectError(t, "error_duplicate_app.kdl")
-	if err == nil {
-		t.Fatal("expected error for duplicate app")
-	}
-	if !strings.Contains(err.Error(), "duplicate app") {
-		t.Errorf("error = %q, want mention of duplicate app", err.Error())
-	}
-}
-
-func TestErrorUnknownTopLevel(t *testing.T) {
-	_, err := parseFixtureExpectError(t, "error_unknown_toplevel.kdl")
-	if err == nil {
-		t.Fatal("expected error for unknown top-level node")
-	}
-	if !strings.Contains(err.Error(), "unknown top-level node") {
-		t.Errorf("error = %q, want mention of unknown top-level node", err.Error())
 	}
 }

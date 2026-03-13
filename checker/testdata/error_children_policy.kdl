@@ -1,6 +1,0 @@
-app {
-    text value="hello" {
-        vbox {
-        }
-    }
-}

@@ -195,9 +195,9 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 					cursorField: listField + "Cursor",
 					listField:   listField,
 					focusIdx:    focusIdx,
-					indexVar:     vn.For.IndexVar,
-					iterVar:      vn.For.Variable,
-					changeExpr:   &changeEvt,
+					indexVar:    vn.For.IndexVar,
+					iterVar:     vn.For.Variable,
+					changeExpr:  &changeEvt,
 				})
 			}
 		}

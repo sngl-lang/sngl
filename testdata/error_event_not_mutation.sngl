@@ -1,0 +1,4 @@
+bind "count" (int)0
+app {
+    button text="click" on:click=(cel)"count + 1" // ERROR(check) "must return Mutation"
+}

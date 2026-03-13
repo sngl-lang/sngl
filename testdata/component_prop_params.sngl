@@ -1,6 +1,6 @@
 component "Counter" label=(string)"" start=(int)0 {
     hbox {
-        text value=(cel)"label + ': ' + string(count)"
+        text value=(cel)"label + ': ' + string(count)" // ERROR(check) "undeclared reference"
     }
 }
 

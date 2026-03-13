@@ -1,3 +1,0 @@
-app {
-    text value="hello" style.nonexistent=5
-}

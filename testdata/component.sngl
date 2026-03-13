@@ -1,0 +1,13 @@
+component "Counter" {
+    @param "label" (string)""
+    @param "start" (int)0
+    @param "name" (string)"" "required"
+    hbox {
+        text value=(cel)"label + ': ' + string(count)" // ERROR(check) "undeclared reference"
+        button text="+" on:click=(cel)"set(count, count + 1)" // ERROR(check) "undeclared reference"
+    }
+}
+
+app {
+    Counter label="Clicks" // ERROR(check) "required"
+}

@@ -1,7 +1,7 @@
 import "app.proto"
 
 bind {
-    user (cel)"User{ name: 'World', age: 25, loggedIn: false }"
+    user (cel)"User{ name: 'World', age: 25, loggedIn: false }" // ERROR(check) "undeclared reference"
     count (int)0
 }
 
