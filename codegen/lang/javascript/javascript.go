@@ -134,6 +134,18 @@ func translateCall(e celast.Expr, scope *codegen.ExprScope) string {
 	fn := call.FunctionName()
 	args := call.Args()
 
+	if fn == operators.Divide && len(args) == 2 {
+		left := translateExpr(args[0], scope)
+		right := translateExpr(args[1], scope)
+		if scope.NativeAST != nil {
+			t := scope.NativeAST.GetType(e.ID())
+			if t != nil && t == types.IntType {
+				return "Math.trunc(" + left + " / " + right + ")"
+			}
+		}
+		return "(" + left + " / " + right + ")"
+	}
+
 	if jsOp, ok := binaryOpMap[fn]; ok && len(args) == 2 {
 		left := translateExpr(args[0], scope)
 		right := translateExpr(args[1], scope)
@@ -233,7 +245,6 @@ var binaryOpMap = map[string]string{
 	operators.Add:           "+",
 	operators.Subtract:      "-",
 	operators.Multiply:      "*",
-	operators.Divide:        "/",
 	operators.Modulo:        "%",
 	operators.Equals:        "===",
 	operators.NotEquals:     "!==",
