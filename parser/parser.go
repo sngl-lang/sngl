@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"github.com/google/cel-go/cel"
@@ -73,9 +74,7 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 	for _, node := range kdlDoc.Nodes {
 		switch node.Name() {
 		case "output":
-			if o := p.parseOutput(node); o != nil {
-				doc.Outputs = append(doc.Outputs, o)
-			}
+			doc.Outputs = append(doc.Outputs, p.parseOutputs(node)...)
 		case "struct":
 			if sd := p.parseStructNode(node); sd != nil {
 				doc.Structs = append(doc.Structs, sd)
@@ -88,8 +87,8 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 			if imp := p.parseImport(node); imp != nil {
 				doc.Imports = append(doc.Imports, imp)
 			}
-		case "bind":
-			doc.Binds = append(doc.Binds, p.parseBindNode(node)...)
+		case "data":
+			doc.Data = append(doc.Data, p.parseDataNode(node)...)
 		case "computed":
 			doc.Computeds = append(doc.Computeds, p.parseComputedNode(node)...)
 		case "component":
@@ -116,69 +115,85 @@ func (p *parser) parseDocument(kdlDoc *kdl.Document) *ast.Document {
 	return doc
 }
 
-func (p *parser) parseOutput(node *kdl.Node) *ast.Output {
-	o := &ast.Output{Pos: p.pos(node), Options: make(map[string]string)}
-
-	collectProps := func(n *kdl.Node) {
-		for _, key := range n.PropertyOrder() {
-			o.Options[key] = n.Properties()[key].String()
-		}
-	}
-
+func (p *parser) parseOutputs(node *kdl.Node) []*ast.Output {
 	args := node.Arguments()
 	children := node.Children()
-	collectProps(node)
 
 	// Short form: output go bubbletea [key=value...]
 	if len(args) >= 2 {
+		o := &ast.Output{Pos: p.pos(node), Options: make(map[string]string)}
+		p.collectProps(node, o.Options)
 		o.Lang = args[0].String()
 		o.Platform = args[1].String()
-		return o
+		return []*ast.Output{o}
 	}
 
 	// Children form: output { <lang> ... }
-	if len(args) == 0 && children != nil && len(children.Nodes) == 1 {
-		langNode := children.Nodes[0]
-		o.Lang = langNode.Name()
-		collectProps(langNode)
-
-		langArgs := langNode.Arguments()
-		langChildren := langNode.Children()
-
-		// output { go bubbletea [key=value...] [{...}] }
-		if len(langArgs) >= 1 {
-			o.Platform = langArgs[0].String()
-			if langChildren != nil {
-				for _, optNode := range langChildren.Nodes {
-					optArgs := optNode.Arguments()
-					if len(optArgs) >= 1 {
-						o.Options[optNode.Name()] = optArgs[0].String()
-					}
-				}
+	if len(args) == 0 && children != nil && len(children.Nodes) > 0 {
+		var outputs []*ast.Output
+		for _, langNode := range children.Nodes {
+			if o := p.parseLangOutput(node, langNode); o != nil {
+				outputs = append(outputs, o)
 			}
-			return o
 		}
-
-		// output { go { bubbletea [key=value...] [{...}] } }
-		if langChildren != nil && len(langChildren.Nodes) == 1 {
-			platNode := langChildren.Nodes[0]
-			o.Platform = platNode.Name()
-			collectProps(platNode)
-			platChildren := platNode.Children()
-			if platChildren != nil {
-				for _, optNode := range platChildren.Nodes {
-					optArgs := optNode.Arguments()
-					if len(optArgs) >= 1 {
-						o.Options[optNode.Name()] = optArgs[0].String()
-					}
-				}
-			}
-			return o
+		if len(outputs) > 0 {
+			return outputs
 		}
 	}
 
 	p.errorf("output: expected 'output <lang> <platform>' or nested form")
 	return nil
+}
+
+// parseLangOutput parses a single language child within an output block.
+func (p *parser) parseLangOutput(parent *kdl.Node, langNode *kdl.Node) *ast.Output {
+	o := &ast.Output{Pos: p.pos(parent), Options: make(map[string]string)}
+	p.collectProps(parent, o.Options)
+	o.Lang = langNode.Name()
+	p.collectProps(langNode, o.Options)
+
+	langArgs := langNode.Arguments()
+	langChildren := langNode.Children()
+
+	// output { go bubbletea [key=value...] [{...}] }
+	if len(langArgs) >= 1 {
+		o.Platform = langArgs[0].String()
+		if langChildren != nil {
+			for _, optNode := range langChildren.Nodes {
+				optArgs := optNode.Arguments()
+				if len(optArgs) >= 1 {
+					o.Options[optNode.Name()] = optArgs[0].String()
+				}
+			}
+		}
+		return o
+	}
+
+	// output { go { bubbletea [key=value...] [{...}] } }
+	if langChildren != nil && len(langChildren.Nodes) == 1 {
+		platNode := langChildren.Nodes[0]
+		o.Platform = platNode.Name()
+		p.collectProps(platNode, o.Options)
+		platChildren := platNode.Children()
+		if platChildren != nil {
+			for _, optNode := range platChildren.Nodes {
+				optArgs := optNode.Arguments()
+				if len(optArgs) >= 1 {
+					o.Options[optNode.Name()] = optArgs[0].String()
+				}
+			}
+		}
+		return o
+	}
+
+	p.errorf("output: could not parse language %q", o.Lang)
+	return nil
+}
+
+func (p *parser) collectProps(n *kdl.Node, opts map[string]string) {
+	for _, key := range n.PropertyOrder() {
+		opts[key] = n.Properties()[key].String()
+	}
 }
 
 func (p *parser) parseStructNode(node *kdl.Node) *ast.StructDef {
@@ -241,34 +256,97 @@ func (p *parser) parseEnumNode(node *kdl.Node) *ast.EnumDef {
 	return e
 }
 
-func (p *parser) parseBindNode(node *kdl.Node) []*ast.Bind {
+func (p *parser) parseDataNode(node *kdl.Node) []*ast.Data {
 	args := node.Arguments()
-	// Individual form: bind "name" (type)value
+	// Individual form: data "name" (type)value ["extern"] ["trigger"] [trigger="fn"]
 	if len(args) >= 2 {
 		name := args[0].String()
 		expr := p.toExpr(args[1])
-		return []*ast.Bind{{Pos: p.pos(node), Name: name, Init: expr}}
+		d := &ast.Data{Pos: p.pos(node), Name: name, Init: expr}
+		p.parseDataModifiers(d, args[2:], node)
+		p.parseDataFuncSignature(d)
+		return []*ast.Data{d}
 	}
-	// Block form: bind { name (type)value; ... }
+	// Block form: data { name (type)value ["extern"] ["trigger"]; ... }
 	children := node.Children()
 	if children == nil {
-		p.errorf("bind: expected arguments or children")
+		p.errorf("data: expected arguments or children")
 		return nil
 	}
-	var binds []*ast.Bind
+	var data []*ast.Data
 	for _, child := range children.Nodes {
 		childArgs := child.Arguments()
 		if len(childArgs) < 1 {
-			p.errorf("bind block: child %q missing value", child.Name())
+			p.errorf("data block: child %q missing value", child.Name())
 			continue
 		}
-		binds = append(binds, &ast.Bind{
+		d := &ast.Data{
 			Pos:  p.pos(child),
 			Name: child.Name(),
 			Init: p.toExpr(childArgs[0]),
-		})
+		}
+		p.parseDataModifiers(d, childArgs[1:], child)
+		p.parseDataFuncSignature(d)
+		data = append(data, d)
 	}
-	return binds
+	return data
+}
+
+// parseDataModifiers processes remaining positional args and properties for extern/trigger.
+func (p *parser) parseDataModifiers(d *ast.Data, extraArgs []kdl.Value, node *kdl.Node) {
+	for _, arg := range extraArgs {
+		if arg.Kind() == kdl.String {
+			switch arg.String() {
+			case "extern":
+				d.Extern = true
+			case "trigger":
+				d.Trigger = "On" + exportName(d.Name) + "Changed"
+			}
+		}
+	}
+	// Check named property trigger="handlerName"
+	for _, key := range node.PropertyOrder() {
+		if key == "trigger" {
+			d.Trigger = exportName(node.Properties()[key].String())
+		}
+	}
+}
+
+// parseDataFuncSignature parses func type hints like "func", "func:string", "func:string~bool".
+// The "~" separates param types from the return type (since "->" is not valid in KDL type annotations).
+func (p *parser) parseDataFuncSignature(d *ast.Data) {
+	hint := d.Init.TypeHint
+	if hint == "" || !strings.HasPrefix(hint, "func") {
+		return
+	}
+	d.IsFunc = true
+	rest := strings.TrimPrefix(hint, "func")
+	if rest == "" {
+		return
+	}
+	// Strip leading ":"
+	if rest[0] == ':' {
+		rest = rest[1:]
+	}
+	// Split on "~" for return type
+	if before, after, ok := strings.Cut(rest, "~"); ok {
+		d.ReturnType = after
+		rest = before
+	}
+	// Split params on ":"
+	if rest != "" {
+		d.ParamTypes = strings.Split(rest, ":")
+	}
+}
+
+// exportName capitalizes the first rune.
+func exportName(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }
 
 func (p *parser) parseComputedNode(node *kdl.Node) []*ast.Computed {

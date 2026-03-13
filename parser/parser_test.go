@@ -14,54 +14,54 @@ func TestFixtures(t *testing.T) {
 	})
 }
 
-func TestBindForms(t *testing.T) {
+func TestDataForms(t *testing.T) {
 	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// 2 individual + 2 block = 4 binds
-	if got := len(doc.Binds); got != 4 {
-		t.Fatalf("expected 4 binds, got %d", got)
+	// 2 individual + 2 block = 4 data fields
+	if got := len(doc.Data); got != 4 {
+		t.Fatalf("expected 4 data fields, got %d", got)
 	}
 
-	// Individual: bind "count" (int)0
-	b := doc.Binds[0]
+	// Individual: data "count" (int)0
+	b := doc.Data[0]
 	if b.Name != "count" {
-		t.Errorf("bind[0] name = %q, want %q", b.Name, "count")
+		t.Errorf("data[0] name = %q, want %q", b.Name, "count")
 	}
 	if b.Init.Literal != 0 {
-		t.Errorf("bind[0] literal = %v, want 0", b.Init.Literal)
+		t.Errorf("data[0] literal = %v, want 0", b.Init.Literal)
 	}
 	if b.Init.TypeHint != "int" {
-		t.Errorf("bind[0] type hint = %q, want %q", b.Init.TypeHint, "int")
+		t.Errorf("data[0] type hint = %q, want %q", b.Init.TypeHint, "int")
 	}
 
-	// Individual: bind "name" (string)"World"
-	b = doc.Binds[1]
+	// Individual: data "name" (string)"World"
+	b = doc.Data[1]
 	if b.Name != "name" {
-		t.Errorf("bind[1] name = %q, want %q", b.Name, "name")
+		t.Errorf("data[1] name = %q, want %q", b.Name, "name")
 	}
 	if b.Init.Literal != "World" {
-		t.Errorf("bind[1] literal = %v, want %q", b.Init.Literal, "World")
+		t.Errorf("data[1] literal = %v, want %q", b.Init.Literal, "World")
 	}
 
 	// Block: x (float)1.0
-	b = doc.Binds[2]
+	b = doc.Data[2]
 	if b.Name != "x" {
-		t.Errorf("bind[2] name = %q, want %q", b.Name, "x")
+		t.Errorf("data[2] name = %q, want %q", b.Name, "x")
 	}
 	if b.Init.TypeHint != "float" {
-		t.Errorf("bind[2] type hint = %q, want %q", b.Init.TypeHint, "float")
+		t.Errorf("data[2] type hint = %q, want %q", b.Init.TypeHint, "float")
 	}
 
 	// Block: active (bool)true
-	b = doc.Binds[3]
+	b = doc.Data[3]
 	if b.Name != "active" {
-		t.Errorf("bind[3] name = %q, want %q", b.Name, "active")
+		t.Errorf("data[3] name = %q, want %q", b.Name, "active")
 	}
 	if b.Init.Literal != true {
-		t.Errorf("bind[3] literal = %v, want true", b.Init.Literal)
+		t.Errorf("data[3] literal = %v, want true", b.Init.Literal)
 	}
 
 	// 1 individual + 2 block = 3 computeds
@@ -204,18 +204,18 @@ func TestFullExample(t *testing.T) {
 		t.Errorf("import path = %q, want %q", doc.Imports[0].Path, "app.proto")
 	}
 
-	// Binds
-	if got := len(doc.Binds); got != 2 {
-		t.Fatalf("expected 2 binds, got %d", got)
+	// Data
+	if got := len(doc.Data); got != 2 {
+		t.Fatalf("expected 2 data fields, got %d", got)
 	}
-	if doc.Binds[0].Name != "user" {
-		t.Errorf("bind[0] = %q, want %q", doc.Binds[0].Name, "user")
+	if doc.Data[0].Name != "user" {
+		t.Errorf("data[0] = %q, want %q", doc.Data[0].Name, "user")
 	}
-	if doc.Binds[0].Init.CEL == "" {
-		t.Error("bind[0] should be a CEL expression")
+	if doc.Data[0].Init.CEL == "" {
+		t.Error("data[0] should be a CEL expression")
 	}
-	if doc.Binds[1].Name != "count" {
-		t.Errorf("bind[1] = %q, want %q", doc.Binds[1].Name, "count")
+	if doc.Data[1].Name != "count" {
+		t.Errorf("data[1] = %q, want %q", doc.Data[1].Name, "count")
 	}
 
 	// Computeds
@@ -320,6 +320,95 @@ func TestComponentPropertyParams(t *testing.T) {
 	}
 }
 
+func TestDataExternTrigger(t *testing.T) {
+	doc, err := testutil.ParseFile("../testdata/data_extern_trigger.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := len(doc.Data); got != 6 {
+		t.Fatalf("expected 6 data fields, got %d", got)
+	}
+
+	// count (int)0 — plain internal field
+	d := doc.Data[0]
+	if d.Name != "count" {
+		t.Errorf("data[0] name = %q, want %q", d.Name, "count")
+	}
+	if d.Extern {
+		t.Error("data[0] should not be extern")
+	}
+	if d.Trigger != "" {
+		t.Errorf("data[0] trigger = %q, want empty", d.Trigger)
+	}
+
+	// todos (list:Todo)null "trigger" → auto-named OnTodosChanged
+	d = doc.Data[1]
+	if d.Name != "todos" {
+		t.Errorf("data[1] name = %q, want %q", d.Name, "todos")
+	}
+	if d.Trigger != "OnTodosChanged" {
+		t.Errorf("data[1] trigger = %q, want %q", d.Trigger, "OnTodosChanged")
+	}
+	if d.Extern {
+		t.Error("data[1] should not be extern")
+	}
+
+	// items (list:Item)null trigger="saveItems" → explicit SaveItems
+	d = doc.Data[2]
+	if d.Name != "items" {
+		t.Errorf("data[2] name = %q, want %q", d.Name, "items")
+	}
+	if d.Trigger != "SaveItems" {
+		t.Errorf("data[2] trigger = %q, want %q", d.Trigger, "SaveItems")
+	}
+
+	// apiClient (dyn)null "extern"
+	d = doc.Data[3]
+	if d.Name != "apiClient" {
+		t.Errorf("data[3] name = %q, want %q", d.Name, "apiClient")
+	}
+	if !d.Extern {
+		t.Error("data[3] should be extern")
+	}
+	if d.IsFunc {
+		t.Error("data[3] should not be a func")
+	}
+
+	// saveTodo (func:string)null "extern"
+	d = doc.Data[4]
+	if d.Name != "saveTodo" {
+		t.Errorf("data[4] name = %q, want %q", d.Name, "saveTodo")
+	}
+	if !d.Extern {
+		t.Error("data[4] should be extern")
+	}
+	if !d.IsFunc {
+		t.Error("data[4] should be a func")
+	}
+	if len(d.ParamTypes) != 1 || d.ParamTypes[0] != "string" {
+		t.Errorf("data[4] param types = %v, want [string]", d.ParamTypes)
+	}
+	if d.ReturnType != "" {
+		t.Errorf("data[4] return type = %q, want empty (void)", d.ReturnType)
+	}
+
+	// formatDate (func:string~string)null "extern"
+	d = doc.Data[5]
+	if d.Name != "formatDate" {
+		t.Errorf("data[5] name = %q, want %q", d.Name, "formatDate")
+	}
+	if !d.IsFunc {
+		t.Error("data[5] should be a func")
+	}
+	if len(d.ParamTypes) != 1 || d.ParamTypes[0] != "string" {
+		t.Errorf("data[5] param types = %v, want [string]", d.ParamTypes)
+	}
+	if d.ReturnType != "string" {
+		t.Errorf("data[5] return type = %q, want %q", d.ReturnType, "string")
+	}
+}
+
 func TestCELParsing(t *testing.T) {
 	doc, err := testutil.ParseFile("../testdata/bind_forms.sngl")
 	if err != nil {
@@ -335,9 +424,9 @@ func TestCELParsing(t *testing.T) {
 		t.Fatal("expected parsed CEL AST")
 	}
 
-	// Literal binds should not have AST
-	b := doc.Binds[0] // count (int)0
+	// Literal data fields should not have AST
+	b := doc.Data[0] // count (int)0
 	if b.Init.AST != nil {
-		t.Error("literal bind should not have CEL AST")
+		t.Error("literal data field should not have CEL AST")
 	}
 }

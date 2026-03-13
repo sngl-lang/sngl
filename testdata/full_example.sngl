@@ -1,6 +1,6 @@
 import "app.proto"
 
-bind {
+data {
     user (cel)"User{ name: 'World', age: 25, loggedIn: false }"
     count (int)0
 }

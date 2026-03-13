@@ -1,4 +1,4 @@
-bind "count" (int)0
+data "count" (int)0
 
 component "Counter" {
     @param "label" (string)""

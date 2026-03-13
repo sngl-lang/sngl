@@ -2,15 +2,15 @@ output {
     go {
         bubbletea package="main"
     }
+    js "html"
 }
-output "js" "html"
 
 struct "Todo" {
     text (string)""
     done (bool)false
 }
 
-bind {
+data {
     newTodo (string)""
     todos (list:Todo)null
 }

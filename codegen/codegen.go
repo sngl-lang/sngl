@@ -8,7 +8,7 @@ import (
 // ExprScope provides context for expression translation (which names are model
 // fields vs local vars vs computeds).
 type ExprScope struct {
-	ModelFields    map[string]bool // bind fields → prefix with model accessor
+	ModelFields    map[string]bool // data fields → prefix with model accessor
 	ComputedFields map[string]bool // computed names → call as methods
 	LocalVars      map[string]bool // for-loop vars, params → no prefix
 	NativeAST      *celast.AST     // for type info

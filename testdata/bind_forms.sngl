@@ -1,7 +1,7 @@
-bind "count" (int)0
-bind "name" (string)"World"
+data "count" (int)0
+data "name" (string)"World"
 
-bind {
+data {
     x (float)1.0
     active (bool)true
 }

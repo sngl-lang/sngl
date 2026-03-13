@@ -1,2 +1,2 @@
 // ERROR(check) "missing app"
-bind "count" (int)0
+data "count" (int)0

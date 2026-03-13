@@ -1,6 +1,6 @@
 enum "Status" { "active"; "inactive"; "pending" }
 
-bind "status" (Status)"active"
+data "status" (Status)"active"
 
 app {
     text value=(cel)"status"

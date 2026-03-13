@@ -90,12 +90,21 @@ func (c *checker) pass1(doc *ast.Document) {
 	// Structs
 	c.structs = append(c.structs, doc.Structs...)
 
-	// Binds
-	for _, b := range doc.Binds {
-		c.validateEnumLiteral(b.Pos, &b.Init)
-		c.validateSpecialLiteral(b.Pos, &b.Init)
-		t := c.resolveExprType(b.Pos, &b.Init)
-		c.scope.Declare(b.Name, t)
+	// Data fields
+	for _, d := range doc.Data {
+		if d.Extern && d.Trigger != "" {
+			c.errorAt(d.Pos, "data %q: trigger on extern field is not allowed", d.Name)
+		}
+		if d.Extern || d.IsFunc {
+			// Extern fields/funcs: declare in scope with resolved type
+			t := c.resolveTypeHint(d.Init.TypeHint)
+			c.scope.Declare(d.Name, t)
+			continue
+		}
+		c.validateEnumLiteral(d.Pos, &d.Init)
+		c.validateSpecialLiteral(d.Pos, &d.Init)
+		t := c.resolveExprType(d.Pos, &d.Init)
+		c.scope.Declare(d.Name, t)
 	}
 
 	// Computeds

@@ -1,6 +1,6 @@
 enum "Status" { "active"; "inactive"; "pending" }
 
-bind "status" (Status)"unknown" // ERROR(check) "invalid enum value"
+data "status" (Status)"unknown" // ERROR(check) "invalid enum value"
 
 app {
     text value=(cel)"status"

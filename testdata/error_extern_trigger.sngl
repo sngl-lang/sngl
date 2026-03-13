@@ -1,0 +1,4 @@
+data "apiClient" (dyn)null "extern" "trigger" // ERROR(check) "trigger on extern field is not allowed"
+
+app {
+}

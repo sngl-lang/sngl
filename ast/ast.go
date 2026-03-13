@@ -30,7 +30,7 @@ type Document struct {
 	Structs    []*StructDef
 	Enums      []*EnumDef
 	Imports    []*Import
-	Binds      []*Bind
+	Data       []*Data
 	Computeds  []*Computed
 	Components []*Component
 	Styles     []*StyleDecl
@@ -62,10 +62,15 @@ type Import struct {
 	Path string
 }
 
-type Bind struct {
-	Pos  Pos
-	Name string
-	Init Expr
+type Data struct {
+	Pos        Pos
+	Name       string
+	Init       Expr
+	Extern     bool     // "extern" positional arg present
+	IsFunc     bool     // TypeHint starts with "func"
+	ParamTypes []string // parsed func params (e.g., ["string", "int"])
+	ReturnType string   // parsed func return type, "" for void
+	Trigger    string   // resolved trigger function name, "" for none
 }
 
 type Computed struct {

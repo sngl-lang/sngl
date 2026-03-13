@@ -1,4 +1,4 @@
-bind {
+data {
     count (int)0
     name (string)"World"
     active (bool)true

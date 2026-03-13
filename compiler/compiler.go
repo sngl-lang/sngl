@@ -89,19 +89,22 @@ func analyze(doc *ast.Document) *analysisResult {
 		computedFields: make(map[string]bool),
 	}
 
-	// Binds
-	for _, b := range doc.Binds {
-		goType := inferGoType(b.Init)
-		initVal := literalToGo(b.Init)
-		if needsTimeType(b.Init.TypeHint) {
+	// Data fields (non-extern, non-func only)
+	for _, d := range doc.Data {
+		if d.Extern || d.IsFunc {
+			continue
+		}
+		goType := inferGoType(d.Init)
+		initVal := literalToGo(d.Init)
+		if needsTimeType(d.Init.TypeHint) {
 			info.needsTime = true
 		}
 		info.binds = append(info.binds, bindInfo{
-			name:    b.Name,
+			name:    d.Name,
 			goType:  goType,
 			initVal: initVal,
 		})
-		info.modelFields[b.Name] = true
+		info.modelFields[d.Name] = true
 	}
 
 	// Computeds

@@ -94,8 +94,8 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator) *htmlGen {
 		computedDeps:   make(map[string]map[string]bool),
 	}
 
-	for _, b := range doc.Binds {
-		g.modelFields[b.Name] = true
+	for _, d := range doc.Data {
+		g.modelFields[d.Name] = true
 	}
 	for _, c := range doc.Computeds {
 		g.modelFields[c.Name] = true
@@ -524,9 +524,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// State initialization
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
-	for _, bind := range g.doc.Binds {
-		val := g.literalToJS(bind.Init)
-		stateFields = append(stateFields, bind.Name+": "+val)
+	for _, d := range g.doc.Data {
+		if d.Extern || d.IsFunc {
+			continue
+		}
+		val := g.literalToJS(d.Init)
+		stateFields = append(stateFields, d.Name+": "+val)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n\n")
@@ -770,9 +773,8 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		style := g.buildCSSStyle(vn)
 
 		fmt.Fprintf(b, "    const row = document.createElement(\"label\");\n")
-		if style != "" {
-			fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
-		}
+		style = appendCSS(style, "display", "block")
+		fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
 		fmt.Fprintf(b, "    const cb = document.createElement(\"input\");\n")
 		fmt.Fprintf(b, "    cb.type = \"checkbox\";\n")
 		fmt.Fprintf(b, "    cb.checked = %s;\n", checked)

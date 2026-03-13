@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/optimize"
 	"git.duckfam.us/jonathan/sngl/parser"
 	"github.com/spf13/cobra"
 )
@@ -79,7 +80,15 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, target := range targets {
-			if err := generateTarget(filename, doc, target, outDir, quiet(cmd)); err != nil {
+			targetDoc := doc
+			if len(targets) > 1 {
+				targetDoc = doc.Clone()
+			}
+			optimize.Optimize(targetDoc, optimize.Config{
+				Platform: target.Platform,
+				Language: target.Lang,
+			})
+			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
 				return err
 			}
 		}

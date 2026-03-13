@@ -1,4 +1,4 @@
-bind "mode" (enum:light|dark)"light"
+data "mode" (enum:light|dark)"light"
 
 app {
     text value=(cel)"mode"

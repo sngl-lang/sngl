@@ -1,6 +1,6 @@
-bind "count" (int)0
-bind "name" (string)"World"
-bind "active" (bool)true
+data "count" (int)0
+data "name" (string)"World"
+data "active" (bool)true
 
 computed "greeting" (cel)"'Hello, ' + name"
 computed "doubled" (cel)"count * 2"
