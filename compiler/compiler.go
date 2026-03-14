@@ -809,9 +809,12 @@ func typeHintToGo(hint string) string {
 		return "float64"
 	case "bool":
 		return "bool"
-	case "string", "color":
+	case "string", "color",
+		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
+		"idn-email", "idn-hostname", "irl", "irl-reference", "url-reference",
+		"url-template", "currency", "country-2", "country-3", "country-subdivision", "decimal":
 		return "string"
-	case "date", "time", "datetime":
+	case "date", "time", "date-time":
 		return "time.Time"
 	case "duration":
 		return "time.Duration"
@@ -830,7 +833,26 @@ func celOutputTypeToGo(t *cel.Type) string {
 		return "bool"
 	case t.IsEquivalentType(cel.StringType):
 		return "string"
-	case t.IsEquivalentType(checker.ColorType):
+	case t.IsEquivalentType(checker.ColorType),
+		t.IsEquivalentType(checker.URLType),
+		t.IsEquivalentType(checker.EmailType),
+		t.IsEquivalentType(checker.UUIDType),
+		t.IsEquivalentType(checker.RegexType),
+		t.IsEquivalentType(checker.Base64Type),
+		t.IsEquivalentType(checker.IPV4Type),
+		t.IsEquivalentType(checker.IPV6Type),
+		t.IsEquivalentType(checker.HostnameType),
+		t.IsEquivalentType(checker.IDNEmailType),
+		t.IsEquivalentType(checker.IDNHostnameType),
+		t.IsEquivalentType(checker.IRLType),
+		t.IsEquivalentType(checker.IRLReferenceType),
+		t.IsEquivalentType(checker.URLReferenceType),
+		t.IsEquivalentType(checker.URLTemplateType),
+		t.IsEquivalentType(checker.CurrencyType),
+		t.IsEquivalentType(checker.Country2Type),
+		t.IsEquivalentType(checker.Country3Type),
+		t.IsEquivalentType(checker.CountrySubdivisionType),
+		t.IsEquivalentType(checker.DecimalType):
 		return "string"
 	case t.IsEquivalentType(checker.DateType),
 		t.IsEquivalentType(checker.TimeType),
@@ -845,7 +867,7 @@ func celOutputTypeToGo(t *cel.Type) string {
 
 func needsTimeType(hint string) bool {
 	switch hint {
-	case "date", "time", "datetime", "duration":
+	case "date", "time", "date-time", "duration":
 		return true
 	}
 	return false
@@ -862,7 +884,7 @@ func literalToGo(expr ast.Expr) string {
 				return fmt.Sprintf("mustParseDate(%q)", v)
 			case "time":
 				return fmt.Sprintf("mustParseTime(%q)", v)
-			case "datetime":
+			case "date-time":
 				return fmt.Sprintf("mustParseDateTime(%q)", v)
 			default:
 				return fmt.Sprintf("%q", v)

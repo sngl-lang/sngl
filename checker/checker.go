@@ -226,7 +226,10 @@ func (c *checker) validateSpecialLiteral(pos ast.Pos, expr *ast.Expr) {
 		return
 	}
 	switch expr.TypeHint {
-	case "color", "date", "time", "datetime", "duration":
+	case "color", "date", "time", "date-time", "duration",
+		"url", "url-reference", "irl", "irl-reference", "url-template",
+		"email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
+		"country-2", "country-3", "currency":
 		if err := validateSpecialLiteral(expr.TypeHint, expr.Literal); err != nil {
 			c.errorAt(pos, "%v", err)
 		}

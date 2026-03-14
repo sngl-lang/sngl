@@ -535,7 +535,6 @@ func celTypeToString(t *cel.Type) string {
 		return "dyn"
 	}
 	s := t.String()
-	// Simplify common cel type names
 	switch s {
 	case "string":
 		return "string"
@@ -547,6 +546,54 @@ func celTypeToString(t *cel.Type) string {
 		return "bool"
 	case "dyn":
 		return "dyn"
+	case "sngl.Color":
+		return "color"
+	case "sngl.Date":
+		return "date"
+	case "sngl.Time":
+		return "time"
+	case "sngl.DateTime":
+		return "date-time"
+	case "sngl.Duration":
+		return "duration"
+	case "sngl.URL":
+		return "url"
+	case "sngl.Email":
+		return "email"
+	case "sngl.UUID":
+		return "uuid"
+	case "sngl.Regex":
+		return "regex"
+	case "sngl.Base64":
+		return "base64"
+	case "sngl.IPV4":
+		return "ipv4"
+	case "sngl.IPV6":
+		return "ipv6"
+	case "sngl.Hostname":
+		return "hostname"
+	case "sngl.IDNEmail":
+		return "idn-email"
+	case "sngl.IDNHostname":
+		return "idn-hostname"
+	case "sngl.IRL":
+		return "irl"
+	case "sngl.IRLReference":
+		return "irl-reference"
+	case "sngl.URLReference":
+		return "url-reference"
+	case "sngl.URLTemplate":
+		return "url-template"
+	case "sngl.Currency":
+		return "currency"
+	case "sngl.Country2":
+		return "country-2"
+	case "sngl.Country3":
+		return "country-3"
+	case "sngl.CountrySubdivision":
+		return "country-subdivision"
+	case "sngl.Decimal":
+		return "decimal"
 	default:
 		return s
 	}
