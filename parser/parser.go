@@ -489,11 +489,21 @@ func (p *parser) parseStylesNode(node *kdl.Node) []*ast.StylePropDef {
 			continue
 		}
 		typeAnnotation, _ := args[0].TypeAnnotation()
-		defs = append(defs, &ast.StylePropDef{
+		def := &ast.StylePropDef{
 			Pos:      p.pos(child),
 			Name:     child.Name(),
 			TypeHint: typeAnnotation,
-		})
+		}
+		if ch := child.Children(); ch != nil {
+			for _, enumNode := range ch.Nodes {
+				if enumNode.Name() == "@enum" {
+					for _, arg := range enumNode.Arguments() {
+						def.Enum = append(def.Enum, arg.String())
+					}
+				}
+			}
+		}
+		defs = append(defs, def)
 	}
 	return defs
 }

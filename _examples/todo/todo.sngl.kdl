@@ -1,37 +1,35 @@
 output {
     go {
-        bubbletea package="main"
+        bubbletea package=main
     }
-    js "html"
+    js html
 }
-
-struct "Todo" {
+struct Todo {
     text (string)""
-    done (bool)false
+    done (bool)#false
 }
-
 data {
     newTodo (string)""
-    todos (list:Todo)null
+    todos (list:Todo)#null
 }
-
 computed {
     status (cel)"'Todo List (' + string(size(todos)) + ' items)'"
 }
-
 app {
-    vbox style.padding=16 style.gap=12 {
-        text value=(cel)"status" { @style { font-weight "bold"; font-size 24 } }
-
-        hbox style.gap=8 {
-            input placeholder="What needs to be done?" on:input=(cel)"set(newTodo, event.value)"
-            button text="Add" on:click=(cel)"[push(todos, Todo(newTodo, false)), set(newTodo, '')]"
+    vbox style.gap=12 style.padding=16 {
+        text value=(cel)status {
+            @style {
+                font-weight bold
+                font-size 24
+            }
         }
-
+        hbox style.align-items=center style.align-self=center style.flex="" style.gap=8 style.text-align=center {
+            input on:input=(cel)"set(newTodo, event.value)" placeholder="Buy eggs" style.flex-grow=1
+            button on:click=(cel)"[push(todos, Todo(newTodo, false)), set(newTodo, '')]" text=Add
+        }
         vbox style.gap=4 {
-            checkbox for="item, index in todos" key=(cel)"index" checked=(cel)"item.done" label=(cel)"item.text" on:change=(cel)"toggle(todos[index].done)"
+            checkbox checked=(cel)item.done for="item, index in todos" key=(cel)index label=(cel)item.text on:change=(cel)"toggle(todos[index].done)"
         }
-
-        button text="Remove Last" on:click=(cel)"remove(todos, size(todos) - 1)"
+        button on:click=(cel)"remove(todos, size(todos) - 1)" style.align-items=center text=Remove
     }
 }

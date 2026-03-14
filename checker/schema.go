@@ -24,5 +24,11 @@ type ComponentSchema struct {
 	Children ChildPolicy
 }
 
+// StylePropSchema describes a style property's type and valid enum values.
+type StylePropSchema struct {
+	Type *cel.Type
+	Enum []string
+}
+
 // SchemaRegistry maps component names to their schemas.
 type SchemaRegistry map[string]*ComponentSchema

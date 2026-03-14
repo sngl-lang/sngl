@@ -32,6 +32,12 @@ type PlatformGenerator interface {
 	Generate(req *Request) (*Response, error)
 }
 
+// PreviewStyler is optionally implemented by PlatformGenerators that want
+// to provide CSS to style the HTML preview to resemble their target.
+type PreviewStyler interface {
+	PreviewCSS() string
+}
+
 // OutputFile represents a single generated file.
 type OutputFile struct {
 	Name    string // relative path, e.g. "model.go"

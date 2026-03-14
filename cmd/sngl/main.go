@@ -30,7 +30,7 @@ func init() {
 	rootCmd.AddCommand(stubCmd("test", "Run SNGL tests"))
 	rootCmd.AddCommand(stubCmd("lsp", "Start the SNGL language server"))
 	rootCmd.AddCommand(stubCmd("fmt", "Format SNGL files"))
-	rootCmd.AddCommand(stubCmd("preview", "Live-preview an SNGL app"))
+	rootCmd.AddCommand(previewCmd)
 	rootCmd.AddCommand(stubCmd("init", "Initialize a new SNGL project"))
 }
 

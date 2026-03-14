@@ -38,7 +38,7 @@ func Check(doc *ast.Document, dir string) error {
 
 type checker struct {
 	registry   SchemaRegistry
-	styleProps map[string]*cel.Type
+	styleProps map[string]StylePropSchema
 	scope      *Scope
 	components []*ast.Component
 	structs    []*ast.StructDef

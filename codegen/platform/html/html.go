@@ -27,7 +27,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	gen := newHTMLGen(req.Doc, req.Lang)
+	gen := newHTMLGen(req.Doc, req.Lang, req.Options)
 	src := gen.generate()
 
 	return &codegen.Response{
@@ -64,6 +64,9 @@ type htmlGen struct {
 
 	// For building the scope
 	scope *codegen.ExprScope
+
+	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
+	preview bool
 }
 
 type componentParam struct {
@@ -84,10 +87,11 @@ type eventHandler struct {
 	mutated map[string]bool
 }
 
-func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator) *htmlGen {
+func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
 	g := &htmlGen{
 		doc:            doc,
 		lang:           lang,
+		preview:        opts["preview"] == "true",
 		modelFields:    make(map[string]bool),
 		computedFields: make(map[string]bool),
 		structFields:   make(map[string][]string),
@@ -178,7 +182,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			style = appendCSS(style, "display", "flex")
 			style = appendCSS(style, "flex-direction", "row")
 		}
-		g.writeOpenTag(b, "div", id, style, depth)
+		g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
 		fmt.Fprintf(b, "%s</div>\n", indent)
 		g.addForUpdater(id, vn)
 		return
@@ -200,7 +204,12 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	case "image":
 		g.renderStaticImage(b, vn, depth)
 	case "spacer":
-		fmt.Fprintf(b, "%s<div style=\"flex:1\"></div>\n", indent)
+		if g.preview {
+			id := g.allocID()
+			fmt.Fprintf(b, "%s<div id=\"%s\" style=\"flex:1\"%s></div>\n", indent, id, g.previewAttrs(vn.Pos))
+		} else {
+			fmt.Fprintf(b, "%s<div style=\"flex:1\"></div>\n", indent)
+		}
 	case "scroll":
 		id := ""
 		style := g.buildCSSStyle(vn)
@@ -208,7 +217,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		if g.nodeIsReactive(vn) {
 			id = g.allocID()
 		}
-		g.writeOpenTag(b, "div", id, style, depth)
+		g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
 		for _, child := range vn.Children {
 			g.renderStaticNode(b, child, depth+1)
 		}
@@ -216,7 +225,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	case "stack":
 		style := g.buildCSSStyle(vn)
 		style = appendCSS(style, "position", "relative")
-		g.writeOpenTag(b, "div", "", style, depth)
+		g.writeOpenTag(b, "div", "", style, depth, vn.Pos)
 		for _, child := range vn.Children {
 			g.renderStaticNode(b, child, depth+1)
 		}
@@ -259,7 +268,7 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 		style = appendCSS(style, "display", "none")
 	}
 
-	g.writeOpenTag(b, "div", id, style, depth)
+	g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
 	for _, child := range vn.Children {
 		g.renderStaticNode(b, child, depth+1)
 	}
@@ -289,7 +298,7 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 		style = appendCSS(style, "display", "none")
 	}
 
-	g.writeOpenTag(b, "span", id, style, depth)
+	g.writeOpenTag(b, "span", id, style, depth, vn.Pos)
 	b.WriteString(escapeHTML(val))
 	b.WriteString("</span>\n")
 
@@ -328,6 +337,9 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 		}
 	}
 
+	if g.preview && id == "" {
+		id = g.allocID()
+	}
 	indent := strings.Repeat("  ", depth)
 	if id != "" {
 		fmt.Fprintf(b, "%s<button id=\"%s\"", indent, id)
@@ -337,6 +349,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, escapeHTML(text))
 
 	if g.propIsReactive(vn.Props, "text") {
@@ -386,6 +399,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 		fmt.Fprintf(b, " placeholder=\"%s\"", escapeHTML(placeholder))
 	}
 	fmt.Fprintf(b, " value=\"%s\"", escapeHTML(value))
+	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(" />\n")
 
 	// Add value sync updater if the input is bound to state via set()
@@ -430,6 +444,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(">")
 	if checked {
 		b.WriteString("<input type=\"checkbox\" checked />")
@@ -465,6 +480,21 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 		}
 	}
 
+	if g.preview {
+		id := g.allocID()
+		indent := strings.Repeat("  ", depth)
+		fmt.Fprintf(b, "%s<img id=\"%s\"", indent, id)
+		if src != "" {
+			fmt.Fprintf(b, " src=\"%s\"", escapeHTML(src))
+		}
+		fmt.Fprintf(b, " alt=\"%s\"", escapeHTML(alt))
+		if style != "" {
+			fmt.Fprintf(b, " style=\"%s\"", style)
+		}
+		b.WriteString(g.previewAttrs(vn.Pos))
+		b.WriteString(" />\n")
+		return
+	}
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<img", indent)
 	if src != "" {
@@ -653,6 +683,18 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, u := range g.updates {
 			fmt.Fprintf(b, "%s();\n", u.funcName)
 		}
+	}
+
+	// Preview mode: export update function names for state-preserving hot reload
+	if g.preview && len(g.updates) > 0 {
+		b.WriteString("\nconst __sngl_updates = [")
+		for i, u := range g.updates {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(u.funcName)
+		}
+		b.WriteString("];\n")
 	}
 }
 
@@ -1275,7 +1317,10 @@ func findMutationRoot(e celast.Expr) string {
 	return ""
 }
 
-func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, depth int) {
+func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, depth int, pos ...ast.Pos) {
+	if g.preview && id == "" {
+		id = g.allocID()
+	}
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
@@ -1284,7 +1329,17 @@ func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, depth 
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	if g.preview && len(pos) > 0 && pos[0].IsValid() {
+		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos[0].Line, pos[0].Column)
+	}
 	b.WriteString(">\n")
+}
+
+func (g *htmlGen) previewAttrs(pos ast.Pos) string {
+	if !g.preview || !pos.IsValid() {
+		return ""
+	}
+	return fmt.Sprintf(" data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
 }
 
 func escapeHTML(s string) string {

@@ -102,6 +102,7 @@ type StylePropDef struct {
 	Pos      Pos
 	Name     string
 	TypeHint string
+	Enum     []string // optional enum constraints
 }
 
 type Component struct {

@@ -31,10 +31,14 @@ styles {
     flex-grow (float)null
     flex-shrink (float)null
     flex-basis (dyn)null
-    align-self (string)null
+    align-self (string)null {
+        @enum "auto" "flex-start" "flex-end" "center" "baseline" "stretch"
+    }
 
     // Positioning
-    position (string)null
+    position (string)null {
+        @enum "static" "relative" "absolute" "fixed" "sticky"
+    }
     top (dyn)null
     right (dyn)null
     bottom (dyn)null
@@ -45,9 +49,15 @@ styles {
     gap (dyn)null
     row-gap (dyn)null
     column-gap (dyn)null
-    align-items (string)null
-    justify-content (string)null
-    flex-wrap (string)null
+    align-items (string)null {
+        @enum "flex-start" "flex-end" "center" "baseline" "stretch"
+    }
+    justify-content (string)null {
+        @enum "flex-start" "flex-end" "center" "space-between" "space-around" "space-evenly"
+    }
+    flex-wrap (string)null {
+        @enum "nowrap" "wrap" "wrap-reverse"
+    }
 
     // Visual Properties
     background (color)null
@@ -55,17 +65,27 @@ styles {
     border-width (dyn)null
     border-radius (dyn)null
     opacity (float)null
-    overflow (string)null
+    overflow (string)null {
+        @enum "visible" "hidden" "scroll" "auto"
+    }
 
     // Text-specific style properties
     color (color)null
     font-size (float)null
-    font-weight (string)null
-    font-style (string)null
+    font-weight (string)null {
+        @enum "normal" "bold" "100" "200" "300" "400" "500" "600" "700" "800" "900"
+    }
+    font-style (string)null {
+        @enum "normal" "italic" "oblique"
+    }
     font-family (string)null
-    text-align (string)null
+    text-align (string)null {
+        @enum "left" "center" "right" "justify"
+    }
     line-height (float)null
-    text-overflow (string)null
+    text-overflow (string)null {
+        @enum "clip" "ellipsis"
+    }
     max-lines (int)null
 
     // Input-specific style properties

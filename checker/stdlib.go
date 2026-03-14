@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/parser"
-	"github.com/google/cel-go/cel"
 )
 
 //go:embed stdlib/*.sngl.kdl
@@ -14,9 +13,9 @@ var stdlibFS embed.FS
 
 // LoadStdlib parses the embedded stdlib .sngl.kdl files and returns the component
 // schema registry and style property type map.
-func LoadStdlib() (SchemaRegistry, map[string]*cel.Type, error) {
+func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 	registry := SchemaRegistry{}
-	styleProps := map[string]*cel.Type{}
+	styleProps := map[string]StylePropSchema{}
 
 	entries, err := stdlibFS.ReadDir("stdlib")
 	if err != nil {
@@ -38,7 +37,10 @@ func LoadStdlib() (SchemaRegistry, map[string]*cel.Type, error) {
 			registry[comp.Name] = componentToSchema(comp)
 		}
 		for _, sd := range doc.StyleDefs {
-			styleProps[sd.Name] = TypeHintToCelType(sd.TypeHint)
+			styleProps[sd.Name] = StylePropSchema{
+				Type: TypeHintToCelType(sd.TypeHint),
+				Enum: sd.Enum,
+			}
 		}
 	}
 	return registry, styleProps, nil
