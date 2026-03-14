@@ -335,9 +335,8 @@ func exprToGoCond(expr ast.Expr, ec *exprContext) string {
 			return "false"
 		}
 	}
-	if expr.AST != nil && ec != nil {
-		native := expr.AST.NativeRep()
-		return ec.translateExpr(native.Expr())
+	if expr.SNGL != nil && ec != nil {
+		return ec.translateExpr(expr.SNGL)
 	}
 	return "true"
 }

@@ -6,9 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	celast "github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/types"
 )
 
 func init() {
@@ -20,11 +17,11 @@ type Translator struct{}
 
 func (t *Translator) Lang() string { return "js" }
 
-func (t *Translator) TranslateExpr(e celast.Expr, scope *codegen.ExprScope) string {
+func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)
 }
 
-func (t *Translator) TranslateMutation(e celast.Expr, scope *codegen.ExprScope) []string {
+func (t *Translator) TranslateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 	return translateMutation(e, scope)
 }
 
@@ -67,50 +64,117 @@ func (t *Translator) ExportName(name string) string {
 	return name
 }
 
-// StructFields maps struct names to their ordered field names.
-// Set this before translating expressions that contain struct constructors.
-var StructFields map[string][]string
-
-func translateExpr(e celast.Expr, scope *codegen.ExprScope) string {
-	switch e.Kind() {
-	case celast.LiteralKind:
-		return translateLiteral(e)
-	case celast.IdentKind:
-		return translateIdent(e, scope)
-	case celast.SelectKind:
-		return translateSelect(e, scope)
-	case celast.CallKind:
-		return translateCall(e, scope)
-	case celast.ListKind:
-		return translateList(e, scope)
-	case celast.StructKind:
-		return translateStruct(e, scope)
+func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
+	if e == nil {
+		return "null"
+	}
+	switch n := e.(type) {
+	case *ast.LiteralExpr:
+		return translateLiteral(n)
+	case *ast.IdentExpr:
+		return translateIdent(n, scope)
+	case *ast.BinaryExpr:
+		left := translateExpr(n.Left, scope)
+		right := translateExpr(n.Right, scope)
+		// Integer division in JS needs Math.trunc
+		if n.Op == ast.BinDiv && isIntNode(n.Left) && isIntNode(n.Right) {
+			return "Math.trunc(" + left + " / " + right + ")"
+		}
+		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+	case *ast.UnaryExpr:
+		operand := translateExpr(n.Operand, scope)
+		if n.Op == ast.UnaryNot {
+			return "!" + operand
+		}
+		return "-" + operand
+	case *ast.TernaryExpr:
+		cond := translateExpr(n.Cond, scope)
+		a := translateExpr(n.Then, scope)
+		b := translateExpr(n.Else, scope)
+		return "(" + cond + " ? " + a + " : " + b + ")"
+	case *ast.SelectExpr:
+		operand := translateExpr(n.Operand, scope)
+		return operand + "." + n.Field
+	case *ast.IndexExpr:
+		operand := translateExpr(n.Operand, scope)
+		index := translateExpr(n.Index, scope)
+		return operand + "[" + index + "]"
+	case *ast.CallExpr:
+		return translateCall(n, scope)
+	case *ast.MethodExpr:
+		target := translateExpr(n.Receiver, scope)
+		argStrs := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			argStrs[i] = translateExpr(a, scope)
+		}
+		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
+	case *ast.StructExpr:
+		var parts []string
+		for _, f := range n.Fields {
+			parts = append(parts, f.Name+": "+translateExpr(f.Value, scope))
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
+	case *ast.ListExpr:
+		parts := make([]string, len(n.Elements))
+		for i, el := range n.Elements {
+			parts[i] = translateExpr(el, scope)
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	case *ast.InterpolationExpr:
+		// Use template literals
+		var sb strings.Builder
+		sb.WriteByte('`')
+		for _, p := range n.Parts {
+			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
+				sb.WriteString(fmt.Sprintf("%v", lit.Value))
+			} else {
+				sb.WriteString("${")
+				sb.WriteString(translateExpr(p, scope))
+				sb.WriteByte('}')
+			}
+		}
+		sb.WriteByte('`')
+		return sb.String()
+	case *ast.StmtBlock:
+		stmts := translateMutation(n, scope)
+		return strings.Join(stmts, "\n")
+	case *ast.AssignStmt:
+		stmts := translateMutation(n, scope)
+		return strings.Join(stmts, "\n")
+	case *ast.ToggleStmt:
+		stmts := translateMutation(n, scope)
+		return strings.Join(stmts, "\n")
 	default:
-		return fmt.Sprintf("/* unsupported CEL kind %d */null", e.Kind())
+		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
 }
 
-func translateLiteral(e celast.Expr) string {
-	v := e.AsLiteral()
-	switch v.Type() {
-	case types.StringType:
-		return fmt.Sprintf("%q", v.Value())
-	case types.IntType:
-		return fmt.Sprintf("%d", v.Value())
-	case types.DoubleType:
-		return fmt.Sprintf("%v", v.Value())
-	case types.BoolType:
-		if v.Value().(bool) {
+func translateLiteral(n *ast.LiteralExpr) string {
+	switch n.Kind {
+	case ast.LiteralString:
+		return fmt.Sprintf("%q", n.Value)
+	case ast.LiteralInt:
+		return fmt.Sprintf("%d", n.Value)
+	case ast.LiteralFloat:
+		return fmt.Sprintf("%v", n.Value)
+	case ast.LiteralBool:
+		if n.Value.(bool) {
 			return "true"
 		}
 		return "false"
+	case ast.LiteralNull:
+		return "null"
+	case ast.LiteralColor:
+		return fmt.Sprintf("%q", n.Value)
+	case ast.LiteralDuration:
+		return fmt.Sprintf("%q", n.Value)
 	default:
-		return fmt.Sprintf("%v", v.Value())
+		return fmt.Sprintf("%v", n.Value)
 	}
 }
 
-func translateIdent(e celast.Expr, scope *codegen.ExprScope) string {
-	name := e.AsIdent()
+func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
+	name := n.Name
 	if name == "event" && scope.EventVar != "" {
 		return scope.EventVar
 	}
@@ -126,95 +190,18 @@ func translateIdent(e celast.Expr, scope *codegen.ExprScope) string {
 	return name
 }
 
-func translateSelect(e celast.Expr, scope *codegen.ExprScope) string {
-	sel := e.AsSelect()
-	operand := translateExpr(sel.Operand(), scope)
-	return operand + "." + sel.FieldName()
-}
-
-func translateCall(e celast.Expr, scope *codegen.ExprScope) string {
-	call := e.AsCall()
-	fn := call.FunctionName()
-	args := call.Args()
-
-	if fn == operators.Divide && len(args) == 2 {
-		left := translateExpr(args[0], scope)
-		right := translateExpr(args[1], scope)
-		if scope.NativeAST != nil {
-			t := scope.NativeAST.GetType(e.ID())
-			if t != nil && t == types.IntType {
-				return "Math.trunc(" + left + " / " + right + ")"
-			}
-		}
-		return "(" + left + " / " + right + ")"
-	}
-
-	if jsOp, ok := binaryOpMap[fn]; ok && len(args) == 2 {
-		left := translateExpr(args[0], scope)
-		right := translateExpr(args[1], scope)
-		return "(" + left + " " + jsOp + " " + right + ")"
-	}
-
-	if fn == operators.Conditional && len(args) == 3 {
-		cond := translateExpr(args[0], scope)
-		a := translateExpr(args[1], scope)
-		b := translateExpr(args[2], scope)
-		return "(" + cond + " ? " + a + " : " + b + ")"
-	}
-
-	if fn == operators.LogicalNot && len(args) == 1 {
-		return "!" + translateExpr(args[0], scope)
-	}
-
-	if fn == operators.Negate && len(args) == 1 {
-		return "-" + translateExpr(args[0], scope)
-	}
-
-	if fn == operators.Index && len(args) == 2 {
-		operand := translateExpr(args[0], scope)
-		index := translateExpr(args[1], scope)
-		return operand + "[" + index + "]"
-	}
+func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
+	fn := n.Func
+	args := n.Args
 
 	if fn == "string" && len(args) == 1 {
 		return "String(" + translateExpr(args[0], scope) + ")"
 	}
-
 	if fn == "size" && len(args) == 1 {
 		return translateExpr(args[0], scope) + ".length"
 	}
-
 	if fn == "int" && len(args) == 1 {
 		return "Math.trunc(" + translateExpr(args[0], scope) + ")"
-	}
-
-	if isMutationFunc(fn) {
-		stmts := translateMutation(e, scope)
-		return strings.Join(stmts, "\n")
-	}
-
-	// Struct constructor call
-	if StructFields != nil {
-		if fields, ok := StructFields[fn]; ok {
-			var parts []string
-			for i, f := range fields {
-				val := "null"
-				if i < len(args) {
-					val = translateExpr(args[i], scope)
-				}
-				parts = append(parts, f+": "+val)
-			}
-			return "{" + strings.Join(parts, ", ") + "}"
-		}
-	}
-
-	if call.IsMemberFunction() {
-		target := translateExpr(call.Target(), scope)
-		argStrs := make([]string, len(args))
-		for i, a := range args {
-			argStrs[i] = translateExpr(a, scope)
-		}
-		return target + "." + fn + "(" + strings.Join(argStrs, ", ") + ")"
 	}
 
 	argStrs := make([]string, len(args))
@@ -224,108 +211,139 @@ func translateCall(e celast.Expr, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateList(e celast.Expr, scope *codegen.ExprScope) string {
-	list := e.AsList()
-	elems := list.Elements()
-	parts := make([]string, len(elems))
-	for i, el := range elems {
-		parts[i] = translateExpr(el, scope)
-	}
-	return "[" + strings.Join(parts, ", ") + "]"
-}
-
-func translateStruct(e celast.Expr, scope *codegen.ExprScope) string {
-	s := e.AsStruct()
-	var parts []string
-	for _, field := range s.Fields() {
-		sf := field.AsStructField()
-		parts = append(parts, sf.Name()+": "+translateExpr(sf.Value(), scope))
-	}
-	return "{" + strings.Join(parts, ", ") + "}"
-}
-
-var binaryOpMap = map[string]string{
-	operators.Add:           "+",
-	operators.Subtract:      "-",
-	operators.Multiply:      "*",
-	operators.Modulo:        "%",
-	operators.Equals:        "===",
-	operators.NotEquals:     "!==",
-	operators.Less:          "<",
-	operators.LessEquals:    "<=",
-	operators.Greater:       ">",
-	operators.GreaterEquals: ">=",
-	operators.LogicalAnd:    "&&",
-	operators.LogicalOr:     "||",
-}
-
-func translateMutation(e celast.Expr, scope *codegen.ExprScope) []string {
-	if e.Kind() == celast.ListKind {
-		list := e.AsList()
+func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
+	switch n := e.(type) {
+	case *ast.StmtBlock:
 		var stmts []string
-		for _, el := range list.Elements() {
-			stmts = append(stmts, translateMutation(el, scope)...)
+		for _, s := range n.Stmts {
+			stmts = append(stmts, translateMutation(s, scope)...)
 		}
 		return stmts
+	case *ast.AssignStmt:
+		target := translateMutationTarget(n.Target, scope)
+		value := translateExpr(n.Value, scope)
+		op := assignOpStr(n.Op)
+		return []string{target + " " + op + " " + value}
+	case *ast.ToggleStmt:
+		target := translateMutationTarget(n.Target, scope)
+		return []string{target + " = !" + target}
+	case *ast.MethodExpr:
+		target := translateMutationTarget(n.Receiver, scope)
+		switch n.Method {
+		case "push":
+			if len(n.Args) == 1 {
+				value := translateExpr(n.Args[0], scope)
+				return []string{target + ".push(" + value + ")"}
+			}
+		case "remove":
+			if len(n.Args) == 1 {
+				idx := translateExpr(n.Args[0], scope)
+				return []string{target + ".splice(" + idx + ", 1)"}
+			}
+		}
+		argStrs := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			argStrs[i] = translateExpr(a, scope)
+		}
+		return []string{target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"}
+	case *ast.EmitStmt:
+		argStrs := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			argStrs[i] = translateExpr(a, scope)
+		}
+		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
+	default:
+		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}
-
-	if e.Kind() != celast.CallKind {
-		return []string{"// unsupported mutation expression"}
-	}
-
-	call := e.AsCall()
-	fn := call.FunctionName()
-	args := call.Args()
-
-	switch fn {
-	case "set":
-		if len(args) == 2 {
-			target := translateMutationTarget(args[0], scope)
-			value := translateExpr(args[1], scope)
-			return []string{target + " = " + value}
-		}
-	case "toggle":
-		if len(args) == 1 {
-			target := translateMutationTarget(args[0], scope)
-			return []string{target + " = !" + target}
-		}
-	case "push":
-		if len(args) == 2 {
-			target := translateMutationTarget(args[0], scope)
-			value := translateExpr(args[1], scope)
-			return []string{target + ".push(" + value + ")"}
-		}
-	case "remove":
-		if len(args) == 2 {
-			target := translateMutationTarget(args[0], scope)
-			idx := translateExpr(args[1], scope)
-			return []string{target + ".splice(" + idx + ", 1)"}
-		}
-	}
-
-	return []string{"// unsupported mutation: " + fn}
 }
 
-func translateMutationTarget(e celast.Expr, scope *codegen.ExprScope) string {
-	if e.Kind() == celast.IdentKind {
-		name := e.AsIdent()
-		if scope.ModelFields[name] {
-			return "state." + name
+func translateMutationTarget(e ast.Node, scope *codegen.ExprScope) string {
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if scope.ModelFields[n.Name] {
+			return "state." + n.Name
 		}
-		return name
+		return n.Name
+	case *ast.SelectExpr:
+		operand := translateMutationTarget(n.Operand, scope)
+		return operand + "." + n.Field
+	case *ast.IndexExpr:
+		operand := translateMutationTarget(n.Operand, scope)
+		index := translateExpr(n.Index, scope)
+		return operand + "[" + index + "]"
+	default:
+		return translateExpr(e, scope)
 	}
-	if e.Kind() == celast.SelectKind {
-		sel := e.AsSelect()
-		operand := translateMutationTarget(sel.Operand(), scope)
-		return operand + "." + sel.FieldName()
-	}
-	return translateExpr(e, scope)
 }
 
-func isMutationFunc(name string) bool {
-	switch name {
-	case "set", "toggle", "push", "remove":
-		return true
+func binaryOpStr(op ast.BinaryOp) string {
+	switch op {
+	case ast.BinAdd:
+		return "+"
+	case ast.BinSub:
+		return "-"
+	case ast.BinMul:
+		return "*"
+	case ast.BinDiv:
+		return "/"
+	case ast.BinMod:
+		return "%"
+	case ast.BinEq:
+		return "==="
+	case ast.BinNeq:
+		return "!=="
+	case ast.BinLt:
+		return "<"
+	case ast.BinLte:
+		return "<="
+	case ast.BinGt:
+		return ">"
+	case ast.BinGte:
+		return ">="
+	case ast.BinAnd:
+		return "&&"
+	case ast.BinOr:
+		return "||"
+	default:
+		return "?"
+	}
+}
+
+// isIntNode reports whether a SNGL node is known to produce an integer value.
+func isIntNode(e ast.Node) bool {
+	switch n := e.(type) {
+	case *ast.LiteralExpr:
+		return n.Kind == ast.LiteralInt
+	case *ast.CallExpr:
+		return n.Func == "int" || n.Func == "size"
+	case *ast.BinaryExpr:
+		switch n.Op {
+		case ast.BinAdd, ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
+			return isIntNode(n.Left) && isIntNode(n.Right)
+		}
+	case *ast.UnaryExpr:
+		if n.Op == ast.UnaryNeg {
+			return isIntNode(n.Operand)
+		}
 	}
 	return false
+}
+
+func assignOpStr(op ast.AssignOp) string {
+	switch op {
+	case ast.AssignSet:
+		return "="
+	case ast.AssignAdd:
+		return "+="
+	case ast.AssignSub:
+		return "-="
+	case ast.AssignMul:
+		return "*="
+	case ast.AssignDiv:
+		return "/="
+	case ast.AssignMod:
+		return "%="
+	default:
+		return "="
+	}
 }

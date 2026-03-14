@@ -10,7 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/optimize"
-	"git.duckfam.us/jonathan/sngl/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +54,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("no .sngl.kdl files found")
+		return fmt.Errorf("no .sngl files found")
 	}
 
 	for _, filename := range files {
@@ -64,7 +63,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 
-		doc, err := parser.Parse(filename, f)
+		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)

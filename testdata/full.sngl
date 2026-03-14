@@ -1,0 +1,37 @@
+component Counter {
+    param label = ""
+
+    hbox {
+        text(value=label)
+        button(text="+", @click={ count = count + 1 })
+        button(text="-", @click={ count = count - 1 })
+    }
+}
+
+component main {
+    var (
+        count = 0
+        name = "World"
+        active = true
+    )
+
+    computed (
+        greeting = "Hello, " + name
+        doubled = count * 2
+    )
+
+    vbox(style={padding=16, gap=12}) {
+        text(value=greeting) {
+            style {
+                font-size = 24
+                font-weight = "bold"
+            }
+        }
+        if active {
+            text(value="Active", style={color=#007700})
+        }
+        input(value=name, placeholder="Enter name", @input={ name = event.value })
+        Counter(label="Clicks")
+        button(text=active ? "Deactivate" : "Activate", @click={ active!! })
+    }
+}

@@ -1,0 +1,162 @@
+package snglparser
+
+import "fmt"
+
+// TokenType identifies a lexical token.
+type TokenType int
+
+const (
+	// Specials
+	ILLEGAL TokenType = iota
+	EOF
+	SEMICOLON // ; (explicit or inserted)
+
+	// Literals
+	IDENT    // identifier
+	INT      // integer literal
+	FLOAT    // float literal
+	STRING   // "string literal"
+	COLOR    // #rrggbb
+	DURATION // 5s, 100ms, etc.
+
+	// Punctuation
+	LPAREN    // (
+	RPAREN    // )
+	LBRACE    // {
+	RBRACE    // }
+	LBRACKET  // [
+	RBRACKET  // ]
+	COMMA     // ,
+	DOT       // .
+	COLON     // :
+	ASSIGN    // =
+	AT        // @
+	PIPE      // |
+	ARROW     // ->
+
+	// Operators
+	PLUS      // +
+	MINUS     // -
+	STAR      // *
+	SLASH     // /
+	PERCENT   // %
+	BANG      // !
+	BANGBANG  // !!
+	QUESTION  // ?
+	EQ        // ==
+	NEQ       // !=
+	LT        // <
+	GT        // >
+	LTE       // <=
+	GTE       // >=
+	AND       // &&
+	OR        // ||
+
+	// Compound assignment
+	PLUS_ASSIGN    // +=
+	MINUS_ASSIGN   // -=
+	STAR_ASSIGN    // *=
+	SLASH_ASSIGN   // /=
+	PERCENT_ASSIGN // %=
+
+	// Keywords
+	KW_IMPORT
+	KW_OUTPUT
+	KW_STRUCT
+	KW_ENUM
+	KW_CONST
+	KW_VAR
+	KW_COMPUTED
+	KW_STYLE
+	KW_STYLES
+	KW_COMPONENT
+	KW_PARAM
+	KW_PROP
+	KW_EVENT
+	KW_CHILDREN
+	KW_IF
+	KW_FOR
+	KW_IN
+	KW_EXTERN
+	KW_TRIGGER
+	KW_FUNC
+	KW_TRUE
+	KW_FALSE
+	KW_NULL
+)
+
+var keywords = map[string]TokenType{
+	"import":    KW_IMPORT,
+	"output":    KW_OUTPUT,
+	"struct":    KW_STRUCT,
+	"enum":      KW_ENUM,
+	"const":     KW_CONST,
+	"var":       KW_VAR,
+	"computed":  KW_COMPUTED,
+	"style":     KW_STYLE,
+	"styles":    KW_STYLES,
+	"component": KW_COMPONENT,
+	"param":     KW_PARAM,
+	"prop":      KW_PROP,
+	"event":     KW_EVENT,
+	"children":  KW_CHILDREN,
+	"if":        KW_IF,
+	"for":       KW_FOR,
+	"in":        KW_IN,
+	"extern":    KW_EXTERN,
+	"trigger":   KW_TRIGGER,
+	"func":      KW_FUNC,
+	"true":      KW_TRUE,
+	"false":     KW_FALSE,
+	"null":      KW_NULL,
+}
+
+// LookupIdent returns the keyword token type for ident if it's a keyword,
+// or IDENT otherwise.
+func LookupIdent(ident string) TokenType {
+	if tok, ok := keywords[ident]; ok {
+		return tok
+	}
+	return IDENT
+}
+
+// Token is a lexical token with position information.
+type Token struct {
+	Type    TokenType
+	Literal string
+	Line    int
+	Column  int
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("%d:%d %s %q", t.Line, t.Column, tokenNames[t.Type], t.Literal)
+}
+
+// insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.
+func insertsSemicolon(t TokenType) bool {
+	switch t {
+	case IDENT, INT, FLOAT, STRING, COLOR, DURATION,
+		KW_TRUE, KW_FALSE, KW_NULL,
+		KW_EXTERN,
+		RPAREN, RBRACKET, RBRACE:
+		return true
+	}
+	return false
+}
+
+var tokenNames = map[TokenType]string{
+	ILLEGAL: "ILLEGAL", EOF: "EOF", SEMICOLON: "SEMICOLON",
+	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING",
+	COLOR: "COLOR", DURATION: "DURATION",
+	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
+	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
+	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",
+	AT: "AT", PIPE: "PIPE", ARROW: "ARROW",
+	PLUS: "PLUS", MINUS: "MINUS", STAR: "STAR", SLASH: "SLASH", PERCENT: "PERCENT",
+	BANG: "BANG", BANGBANG: "BANGBANG", QUESTION: "QUESTION",
+	EQ: "EQ", NEQ: "NEQ", LT: "LT", GT: "GT", LTE: "LTE", GTE: "GTE",
+	AND: "AND", OR: "OR",
+	PLUS_ASSIGN: "PLUS_ASSIGN", MINUS_ASSIGN: "MINUS_ASSIGN",
+	STAR_ASSIGN: "STAR_ASSIGN", SLASH_ASSIGN: "SLASH_ASSIGN",
+	PERCENT_ASSIGN: "PERCENT_ASSIGN",
+}

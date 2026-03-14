@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"git.duckfam.us/jonathan/sngl/checker"
-	"git.duckfam.us/jonathan/sngl/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +22,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("no .sngl.kdl files found")
+		return fmt.Errorf("no .sngl files found")
 	}
 
 	var failed bool
@@ -35,7 +34,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		doc, err := parser.Parse(filename, f)
+		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)

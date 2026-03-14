@@ -664,7 +664,11 @@ func (p *parser) parseCEL(src string) ast.Expr {
 		p.errorf("CEL parse error in %q: %v", src, iss.Err())
 		return ast.Expr{CEL: src}
 	}
-	return ast.Expr{CEL: src, AST: celAst}
+	expr := ast.Expr{CEL: src, AST: celAst}
+	if celAst != nil {
+		expr.SNGL = ast.CELToSNGL(celAst.NativeRep().Expr())
+	}
+	return expr
 }
 
 func (p *parser) toExpr(val kdl.Value) ast.Expr {

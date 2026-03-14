@@ -1,0 +1,12 @@
+component Counter {
+    param label = ""
+    param start = 0
+
+    hbox {
+        text(value=label + ": " + string(count))
+    }
+}
+
+component main {
+    Counter(label="Clicks")
+}

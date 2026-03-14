@@ -19,7 +19,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/optimize"
-	"git.duckfam.us/jonathan/sngl/parser"
 	"github.com/calico32/kdl-go"
 	"github.com/google/cel-go/cel"
 	"github.com/fsnotify/fsnotify"
@@ -116,7 +115,7 @@ func (s *previewServer) recompile() error {
 	if err != nil {
 		return err
 	}
-	doc, err := parser.Parse(s.sourceFile, f)
+	doc, err := parseSNGL(s.sourceFile, f)
 	f.Close()
 	if err != nil {
 		return err

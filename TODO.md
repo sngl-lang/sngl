@@ -1,5 +1,8 @@
-Create a live-reload for the HTML target as a build option. Preserve internal state and re-render. (This will require generating JS that can replace the initial HTML when live-reload is enabled.) Use this to build a WYSIWYG interface in the browser. Provide drop downs for platforms.
+Design a special purpose language for SNGL. Generates the same AST, but allows syntatic imposibilities compared to KDL. Include expressions that can be represented as a CEL AST.
 
-Match built-in types to KDL standard https://kdl.dev/spec/#name-reserved-type-annotations-for
+- Create a length type like CSS's units
 
-Create parser for special purpose language. Generates the same AST, but allows syntatic imposibilities compared to KDL.
+```
+unit duration(s = 1000, ms = 1, m = s * 60, h = m * 60)
+unit length()
+```

@@ -1,0 +1,15 @@
+component Counter {
+    param label = ""
+    param start = 0
+
+    hbox {
+        text(value=label)
+        button(text="+", @click={ count = count + 1 })
+    }
+}
+
+component main {
+    var count = 0
+
+    Counter(label="Clicks", start=5)
+}

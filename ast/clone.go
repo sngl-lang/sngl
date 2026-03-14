@@ -15,6 +15,7 @@ func (d *Document) Clone() *Document {
 	c.Structs = cloneStructDefs(d.Structs)
 	c.Enums = cloneSlice(d.Enums)
 	c.Imports = cloneSlice(d.Imports)
+	c.Consts = cloneSlice(d.Consts)
 	c.Data = cloneData(d.Data)
 	c.Computeds = cloneComputeds(d.Computeds)
 	c.Components = cloneComponents(d.Components)
@@ -164,6 +165,9 @@ func cloneComponents(s []*Component) []*Component {
 	for i, v := range s {
 		c := *v
 		c.Params = cloneSlice(v.Params)
+		c.Consts = cloneSlice(v.Consts)
+		c.Data = cloneData(v.Data)
+		c.Computeds = cloneComputeds(v.Computeds)
 		c.PropDecls = cloneSlice(v.PropDecls)
 		c.EventDecls = cloneSlice(v.EventDecls)
 		c.Body = cloneVisualNodes(v.Body)

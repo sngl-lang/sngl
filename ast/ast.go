@@ -30,12 +30,20 @@ type Document struct {
 	Structs    []*StructDef
 	Enums      []*EnumDef
 	Imports    []*Import
+	Consts     []*Const
 	Data       []*Data
 	Computeds  []*Computed
 	Components []*Component
 	Styles     []*StyleDecl
 	StyleDefs  []*StylePropDef // from "styles" top-level node
 	App        *App
+}
+
+// Const is an immutable named value.
+type Const struct {
+	Pos  Pos
+	Name string
+	Init Expr
 }
 
 type EnumDef struct {
@@ -109,6 +117,9 @@ type Component struct {
 	Pos         Pos
 	Name        string
 	Params      []*Param     // @param (user-defined components)
+	Consts      []*Const     // const declarations
+	Data        []*Data      // var declarations (component-scoped state)
+	Computeds   []*Computed  // computed declarations
 	PropDecls   []*PropDecl  // @prop (stdlib schemas)
 	EventDecls  []*EventDecl // @event (stdlib schemas)
 	ChildPolicy string       // @children value: "none"/"one"/"many"/""

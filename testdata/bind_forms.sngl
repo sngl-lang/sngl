@@ -1,0 +1,14 @@
+component main {
+    var (
+        count = 0
+        name = "World"
+        x = 1
+        active = true
+    )
+
+    computed (
+        greeting = "Hello, " + name
+        doubled = count * 2
+        isActive = active
+    )
+}

@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
-	celast "github.com/google/cel-go/common/ast"
 )
 
 // ExprScope provides context for expression translation (which names are model
@@ -11,15 +10,14 @@ type ExprScope struct {
 	ModelFields    map[string]bool // data fields → prefix with model accessor
 	ComputedFields map[string]bool // computed names → call as methods
 	LocalVars      map[string]bool // for-loop vars, params → no prefix
-	NativeAST      *celast.AST     // for type info
 	EventVar       string          // what "event" maps to in this context
 }
 
-// LangTranslator translates CEL expressions into a target language's syntax.
+// LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
 	Lang() string
-	TranslateExpr(e celast.Expr, scope *ExprScope) string
-	TranslateMutation(e celast.Expr, scope *ExprScope) []string
+	TranslateExpr(e ast.Node, scope *ExprScope) string
+	TranslateMutation(e ast.Node, scope *ExprScope) []string
 	TranslateLiteral(expr ast.Expr) string
 	TypeToNative(hint string) string // "int" → "int", "float" → "float64", etc.
 	ExportName(name string) string   // capitalize for Go, camelCase for TS, etc.

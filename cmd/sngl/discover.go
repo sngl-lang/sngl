@@ -2,10 +2,15 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/parser"
+	"git.duckfam.us/jonathan/sngl/snglparser"
 )
 
 func discoverFiles(args []string) ([]string, error) {
@@ -38,7 +43,15 @@ func discoverFiles(args []string) ([]string, error) {
 	return files, nil
 }
 
+// parseSNGL dispatches to the correct parser based on file extension.
+func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
+	if strings.HasSuffix(strings.ToLower(filename), ".sngl.kdl") {
+		return parser.Parse(filename, r)
+	}
+	return snglparser.Parse(filename, r)
+}
+
 func isSNGLFile(path string) bool {
 	lower := strings.ToLower(path)
-	return strings.HasSuffix(lower, ".sngl.kdl")
+	return strings.HasSuffix(lower, ".sngl.kdl") || strings.HasSuffix(lower, ".sngl")
 }

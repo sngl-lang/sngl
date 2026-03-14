@@ -9,7 +9,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/checker"
 	"github.com/google/cel-go/cel"
-	celast "github.com/google/cel-go/common/ast"
 )
 
 // Config controls code generation.
@@ -117,6 +116,8 @@ func analyze(doc *ast.Document) *analysisResult {
 		goType := inferGoType(c.Expr)
 		if goType == "any" && c.Expr.AST != nil {
 			goType = celOutputTypeToGo(c.Expr.AST.OutputType())
+		} else if goType == "any" && c.Expr.SNGL != nil {
+			goType = snglNodeGoType(c.Expr.SNGL)
 		}
 		info.computeds = append(info.computeds, computedInfo{
 			name:   c.Name,
@@ -152,21 +153,9 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 			}
 		}
 		bindTarget := ""
-		// Extract bind target from on:input event: set(field, event.value)
+		// Extract bind target from on:input event: set(field, event.value) / field = event.value
 		if inputEvt, ok := vn.Events["input"]; ok {
-			if inputEvt.AST != nil {
-				native := inputEvt.AST.NativeRep()
-				expr := native.Expr()
-				if expr.Kind() == celast.CallKind {
-					call := expr.AsCall()
-					if call.FunctionName() == "set" && len(call.Args()) >= 1 {
-						firstArg := call.Args()[0]
-						if firstArg.Kind() == celast.IdentKind {
-							bindTarget = firstArg.AsIdent()
-						}
-					}
-				}
-			}
+			bindTarget = extractAssignTarget(inputEvt.SNGL)
 		}
 		info.inputs = append(info.inputs, inputInfo{
 			fieldName:   fieldName,
@@ -198,11 +187,8 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 		if vn.For != nil && vn.For.IndexVar != "" {
 			if changeEvt, ok := vn.Events["change"]; ok {
 				listField := ""
-				if vn.For.Iterable.AST != nil {
-					native := vn.For.Iterable.AST.NativeRep()
-					if native.Expr().Kind() == celast.IdentKind {
-						listField = native.Expr().AsIdent()
-					}
+				if ident, ok := vn.For.Iterable.SNGL.(*ast.IdentExpr); ok {
+					listField = ident.Name
 				}
 				info.forCursors = append(info.forCursors, forLoopCursor{
 					cursorField: listField + "Cursor",
@@ -368,10 +354,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		body := ""
 		for _, c := range doc.Computeds {
 			if c.Name == comp.name {
-				if c.Expr.AST != nil {
-					native := c.Expr.AST.NativeRep()
-					ec.nativeAST = native
-					body = ec.translateExpr(native.Expr())
+				if c.Expr.SNGL != nil {
+					body = ec.translateExpr(c.Expr.SNGL)
 				} else if c.Expr.Literal != nil {
 					body = literalToGo(c.Expr)
 				}
@@ -542,7 +526,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 	for _, vn := range nodes {
 		if vn.Component == "checkbox" {
 			if changeEvt, ok := vn.Events["change"]; ok {
-				if changeEvt.AST != nil {
+				if changeEvt.SNGL != nil {
 					focusIdx := -1
 					for i, f := range info.focusables {
 						if f == fmt.Sprintf("checkbox%d", *checkboxIdx) {
@@ -551,7 +535,6 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						}
 					}
 					if focusIdx >= 0 {
-						// Check if this checkbox is inside a for loop with a cursor
 						var fc *forLoopCursor
 						for i := range info.forCursors {
 							if info.forCursors[i].focusIdx == focusIdx {
@@ -560,12 +543,8 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 							}
 						}
 						if fc != nil {
-							// For-looped checkbox: use cursor for navigation and mutation
-							native := changeEvt.AST.NativeRep()
-							ec.nativeAST = native
-							// Declare the index var as a local so it translates correctly
 							ec.localVars[fc.indexVar] = true
-							stmts := ec.translateMutation(native.Expr())
+							stmts := ec.translateMutation(changeEvt.SNGL)
 							delete(ec.localVars, fc.indexVar)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s) {\n", fc.cursorField, fc.listField)
@@ -574,21 +553,17 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 								fmt.Fprintf(b, "\t\t\t\t%s\n", stmt)
 							}
 							fmt.Fprintf(b, "\t\t\t}\n")
-							// Cursor navigation
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyUp && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s > 0 { m.%s-- }\n", fc.cursorField, fc.cursorField)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyDown && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s)-1 { m.%s++ }\n", fc.cursorField, fc.listField, fc.cursorField)
 						} else {
-							// Non-looped checkbox
-							native := changeEvt.AST.NativeRep()
-							ec.nativeAST = native
-							stmts := ec.translateMutation(native.Expr())
+							stmts := ec.translateMutation(changeEvt.SNGL)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							for _, stmt := range stmts {
 								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 							}
-							mutatedFields := extractMutatedFields(native.Expr())
+							mutatedFields := extractMutatedFields(changeEvt.SNGL)
 							for _, inp := range info.inputs {
 								if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 									fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -602,8 +577,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 		}
 		if vn.Component == "button" {
 			if clickEvt, ok := vn.Events["click"]; ok {
-				if clickEvt.AST != nil {
-					// Find the focusable index for this button
+				if clickEvt.SNGL != nil {
 					focusIdx := -1
 					for i, f := range info.focusables {
 						if f == fmt.Sprintf("button%d", *buttonIdx) {
@@ -612,15 +586,12 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						}
 					}
 					if focusIdx >= 0 {
-						native := clickEvt.AST.NativeRep()
-						ec.nativeAST = native
-						stmts := ec.translateMutation(native.Expr())
+						stmts := ec.translateMutation(clickEvt.SNGL)
 						fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 						for _, stmt := range stmts {
 							fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 						}
-						// Sync inputs whose bind targets were mutated
-						mutatedFields := extractMutatedFields(native.Expr())
+						mutatedFields := extractMutatedFields(clickEvt.SNGL)
 						for _, inp := range info.inputs {
 							if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 								fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -633,27 +604,6 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 		}
 		emitButtonHandlers(b, vn.Children, info, ec, buttonIdx, checkboxIdx)
 	}
-}
-
-// extractMutatedFields returns the set of field names mutated by a CEL mutation expression.
-func extractMutatedFields(e celast.Expr) map[string]bool {
-	fields := make(map[string]bool)
-	if e.Kind() == celast.ListKind {
-		for _, el := range e.AsList().Elements() {
-			for k, v := range extractMutatedFields(el) {
-				fields[k] = v
-			}
-		}
-		return fields
-	}
-	if e.Kind() == celast.CallKind {
-		call := e.AsCall()
-		args := call.Args()
-		if len(args) >= 1 && args[0].Kind() == celast.IdentKind {
-			fields[args[0].AsIdent()] = true
-		}
-	}
-	return fields
 }
 
 func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *exprContext, cfg Config) {
@@ -751,6 +701,64 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 
 	// Restore local vars
 	ec.localVars = savedLocals
+}
+
+// extractAssignTarget extracts the target field name from an assignment SNGL node.
+func extractAssignTarget(e ast.Node) string {
+	switch n := e.(type) {
+	case *ast.AssignStmt:
+		if ident, ok := n.Target.(*ast.IdentExpr); ok {
+			return ident.Name
+		}
+	case *ast.StmtBlock:
+		if len(n.Stmts) > 0 {
+			return extractAssignTarget(n.Stmts[0])
+		}
+	}
+	return ""
+}
+
+// snglNodeGoType infers a Go type from a SNGL expression node.
+func snglNodeGoType(e ast.Node) string {
+	switch n := e.(type) {
+	case *ast.LiteralExpr:
+		switch n.Kind {
+		case ast.LiteralInt:
+			return "int"
+		case ast.LiteralFloat:
+			return "float64"
+		case ast.LiteralBool:
+			return "bool"
+		case ast.LiteralString:
+			return "string"
+		}
+	case *ast.BinaryExpr:
+		switch n.Op {
+		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
+			return "bool"
+		default:
+			return snglNodeGoType(n.Left)
+		}
+	case *ast.UnaryExpr:
+		if n.Op == ast.UnaryNot {
+			return "bool"
+		}
+		return snglNodeGoType(n.Operand)
+	case *ast.TernaryExpr:
+		return snglNodeGoType(n.Then)
+	case *ast.CallExpr:
+		switch n.Func {
+		case "string":
+			return "string"
+		case "int":
+			return "int"
+		case "float":
+			return "float64"
+		case "size":
+			return "int"
+		}
+	}
+	return "any"
 }
 
 // Helper functions

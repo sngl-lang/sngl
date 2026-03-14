@@ -8,8 +8,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	celast "github.com/google/cel-go/common/ast"
 )
 
 func init() {
@@ -113,9 +111,6 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		g.structFields[sd.Name] = fields
 	}
 
-	// Set struct fields on the JS translator for struct constructor calls
-	javascript.StructFields = g.structFields
-
 	g.scope = &codegen.ExprScope{
 		ModelFields:    g.modelFields,
 		ComputedFields: g.computedFields,
@@ -124,9 +119,8 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 
 	// Compute dependency info for computeds
 	for _, c := range doc.Computeds {
-		if c.Expr.AST != nil {
-			native := c.Expr.AST.NativeRep()
-			g.computedDeps[c.Name] = extractDeps(native.Expr(), g.modelFields)
+		if c.Expr.SNGL != nil {
+			g.computedDeps[c.Name] = extractDeps(c.Expr.SNGL, g.modelFields)
 		}
 	}
 
@@ -361,7 +355,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 
 	// Event handlers
 	if clickEvt, ok := vn.Events["click"]; ok {
-		if clickEvt.AST != nil {
+		if clickEvt.SNGL != nil {
 			g.addClickHandler(id, clickEvt)
 		}
 	}
@@ -404,11 +398,9 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 
 	// Add value sync updater if the input is bound to state via set()
 	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.AST != nil {
-			native := inputEvt.AST.NativeRep()
-			expr := native.Expr()
+		if inputEvt.SNGL != nil {
 			// Extract the set() target to determine the JS expression for the bound value
-			if target, ok := extractSetTarget(expr); ok {
+			if target, ok := extractSetTarget(inputEvt.SNGL); ok {
 				jsExpr := g.lang.TranslateExpr(target, g.scope)
 				root := findMutationRoot(target)
 				name := fmt.Sprintf("$u_%s_val", id[1:])
@@ -423,7 +415,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 
 	// Input event handler
 	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.AST != nil {
+		if inputEvt.SNGL != nil {
 			g.addInputHandler(id, inputEvt)
 		}
 	}
@@ -454,7 +446,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	fmt.Fprintf(b, " %s</label>\n", escapeHTML(label))
 
 	if changeEvt, ok := vn.Events["change"]; ok {
-		if changeEvt.AST != nil {
+		if changeEvt.SNGL != nil {
 			g.addChangeHandler(id, changeEvt)
 		}
 	}
@@ -756,7 +748,7 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 	return result
 }
 
-// addTextUpdater adds an updater that sets el.textContent from a CEL expression.
+// addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
 	deps := g.exprDeps(expr)
@@ -867,10 +859,9 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 
 		// Change handler
 		if changeEvt, ok := vn.Events["change"]; ok {
-			if changeEvt.AST != nil {
-				native := changeEvt.AST.NativeRep()
-				stmts := g.lang.TranslateMutation(native.Expr(), g.scope)
-				mutated := extractMutatedFields(native.Expr())
+			if changeEvt.SNGL != nil {
+				stmts := g.lang.TranslateMutation(changeEvt.SNGL, g.scope)
+				mutated := extractMutatedFields(changeEvt.SNGL)
 				var handlerLines []string
 				for _, s := range stmts {
 					handlerLines = append(handlerLines, s+";")
@@ -903,12 +894,11 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 }
 
 func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
-	if expr.AST == nil {
+	if expr.SNGL == nil {
 		return
 	}
-	native := expr.AST.NativeRep()
-	stmts := g.lang.TranslateMutation(native.Expr(), g.scope)
-	mutated := extractMutatedFields(native.Expr())
+	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
+	mutated := extractMutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -922,16 +912,15 @@ func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
 }
 
 func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
-	if expr.AST == nil {
+	if expr.SNGL == nil {
 		return
 	}
-	native := expr.AST.NativeRep()
 	// Set event var for input handlers
 	savedEvent := g.scope.EventVar
 	g.scope.EventVar = "e.target"
-	stmts := g.lang.TranslateMutation(native.Expr(), g.scope)
+	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
 	g.scope.EventVar = savedEvent
-	mutated := extractMutatedFields(native.Expr())
+	mutated := extractMutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -945,12 +934,11 @@ func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
 }
 
 func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
-	if expr.AST == nil {
+	if expr.SNGL == nil {
 		return
 	}
-	native := expr.AST.NativeRep()
-	stmts := g.lang.TranslateMutation(native.Expr(), g.scope)
-	mutated := extractMutatedFields(native.Expr())
+	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
+	mutated := extractMutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -1079,9 +1067,8 @@ func appendCSS(existing, prop, value string) string {
 // Expression evaluation helpers
 
 func (g *htmlGen) exprToJS(expr ast.Expr) string {
-	if expr.AST != nil {
-		native := expr.AST.NativeRep()
-		return g.lang.TranslateExpr(native.Expr(), g.scope)
+	if expr.SNGL != nil {
+		return g.lang.TranslateExpr(expr.SNGL, g.scope)
 	}
 	if expr.Literal != nil {
 		return g.lang.TranslateLiteral(expr)
@@ -1105,8 +1092,8 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 			return "false"
 		}
 	}
-	// CEL init expression (e.g., bind with (cel)"User{...}")
-	if expr.AST != nil {
+	// SNGL init expression (e.g., struct literal)
+	if expr.SNGL != nil {
 		return g.exprToJS(expr)
 	}
 	if strings.HasPrefix(expr.TypeHint, "list:") || strings.HasPrefix(expr.TypeHint, "[]") {
@@ -1129,15 +1116,15 @@ func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string
 		}
 		return fmt.Sprintf("%v", v.Literal)
 	}
-	// For CEL expressions, evaluate with initial state
-	if v.AST != nil {
+	// For SNGL expressions, evaluate with initial state
+	if v.SNGL != nil {
 		return g.evalInitialString(v)
 	}
 	return ""
 }
 
 func (g *htmlGen) evalInitialString(_ ast.Expr) string {
-	// For the initial render, CEL expressions can't be statically evaluated.
+	// For the initial render, expressions can't be statically evaluated.
 	// Return empty and let JS update on load.
 	return ""
 }
@@ -1151,7 +1138,7 @@ func (g *htmlGen) evalStaticBool(expr *ast.Expr) bool {
 			return v
 		}
 	}
-	// CEL expression: assume true for initial render
+	// Expression: assume true for initial render
 	return true
 }
 
@@ -1163,7 +1150,7 @@ func (g *htmlGen) propIsReactive(props map[string]ast.Expr, key string) bool {
 	if !ok {
 		return false
 	}
-	return v.AST != nil
+	return v.SNGL != nil
 }
 
 func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
@@ -1177,7 +1164,7 @@ func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
 		return true
 	}
 	for _, v := range vn.Props {
-		if v.AST != nil {
+		if v.SNGL != nil {
 			return true
 		}
 	}
@@ -1187,9 +1174,8 @@ func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
 // Dependency extraction
 
 func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
-	if expr.AST != nil {
-		native := expr.AST.NativeRep()
-		deps := extractDeps(native.Expr(), g.modelFields)
+	if expr.SNGL != nil {
+		deps := extractDeps(expr.SNGL, g.modelFields)
 		// Expand through computeds
 		return g.expandDeps(deps)
 	}
@@ -1212,107 +1198,156 @@ func (g *htmlGen) expandDeps(deps map[string]bool) map[string]bool {
 	return result
 }
 
-func extractDeps(e celast.Expr, modelFields map[string]bool) map[string]bool {
+func extractDeps(e ast.Node, modelFields map[string]bool) map[string]bool {
 	deps := make(map[string]bool)
 	walkDeps(e, modelFields, deps)
 	return deps
 }
 
-func walkDeps(e celast.Expr, modelFields map[string]bool, deps map[string]bool) {
-	switch e.Kind() {
-	case celast.IdentKind:
-		name := e.AsIdent()
-		if modelFields[name] {
-			deps[name] = true
+func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if modelFields[n.Name] {
+			deps[n.Name] = true
 		}
-	case celast.SelectKind:
-		sel := e.AsSelect()
-		// Walk to root to find the model field
-		root := findRootIdent(sel.Operand())
+	case *ast.SelectExpr:
+		root := findRootIdent(n.Operand)
 		if root != "" && modelFields[root] {
 			deps[root] = true
 		}
-	case celast.CallKind:
-		call := e.AsCall()
-		for _, arg := range call.Args() {
+	case *ast.CallExpr:
+		for _, arg := range n.Args {
 			walkDeps(arg, modelFields, deps)
 		}
-		if call.IsMemberFunction() {
-			walkDeps(call.Target(), modelFields, deps)
+	case *ast.MethodExpr:
+		walkDeps(n.Receiver, modelFields, deps)
+		for _, arg := range n.Args {
+			walkDeps(arg, modelFields, deps)
 		}
-	case celast.ListKind:
-		for _, el := range e.AsList().Elements() {
+	case *ast.BinaryExpr:
+		walkDeps(n.Left, modelFields, deps)
+		walkDeps(n.Right, modelFields, deps)
+	case *ast.UnaryExpr:
+		walkDeps(n.Operand, modelFields, deps)
+	case *ast.TernaryExpr:
+		walkDeps(n.Cond, modelFields, deps)
+		walkDeps(n.Then, modelFields, deps)
+		walkDeps(n.Else, modelFields, deps)
+	case *ast.IndexExpr:
+		walkDeps(n.Operand, modelFields, deps)
+		walkDeps(n.Index, modelFields, deps)
+	case *ast.ListExpr:
+		for _, el := range n.Elements {
 			walkDeps(el, modelFields, deps)
 		}
-	case celast.StructKind:
-		for _, field := range e.AsStruct().Fields() {
-			walkDeps(field.AsStructField().Value(), modelFields, deps)
+	case *ast.StructExpr:
+		for _, field := range n.Fields {
+			walkDeps(field.Value, modelFields, deps)
+		}
+	case *ast.InterpolationExpr:
+		for _, part := range n.Parts {
+			walkDeps(part, modelFields, deps)
+		}
+	case *ast.AssignStmt:
+		walkDeps(n.Target, modelFields, deps)
+		walkDeps(n.Value, modelFields, deps)
+	case *ast.ToggleStmt:
+		walkDeps(n.Target, modelFields, deps)
+	case *ast.EmitStmt:
+		for _, arg := range n.Args {
+			walkDeps(arg, modelFields, deps)
+		}
+	case *ast.StmtBlock:
+		for _, stmt := range n.Stmts {
+			walkDeps(stmt, modelFields, deps)
 		}
 	}
 }
 
-func findRootIdent(e celast.Expr) string {
-	switch e.Kind() {
-	case celast.IdentKind:
-		return e.AsIdent()
-	case celast.SelectKind:
-		return findRootIdent(e.AsSelect().Operand())
-	case celast.CallKind:
-		call := e.AsCall()
-		if call.FunctionName() == "_[_]" && len(call.Args()) >= 1 {
-			return findRootIdent(call.Args()[0])
-		}
-		if call.IsMemberFunction() {
-			return findRootIdent(call.Target())
-		}
+func findRootIdent(e ast.Node) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findRootIdent(n.Operand)
+	case *ast.IndexExpr:
+		return findRootIdent(n.Operand)
+	case *ast.MethodExpr:
+		return findRootIdent(n.Receiver)
 	}
 	return ""
 }
 
-// extractMutatedFields returns the set of root field names mutated by a CEL mutation expression.
-// extractSetTarget finds the first argument of a set() call, which is the target being assigned.
-func extractSetTarget(e celast.Expr) (celast.Expr, bool) {
-	if e.Kind() == celast.CallKind {
-		call := e.AsCall()
-		if call.FunctionName() == "set" && len(call.Args()) >= 1 {
-			return call.Args()[0], true
+// extractSetTarget finds the first argument of an AssignStmt, which is the target being assigned.
+func extractSetTarget(e ast.Node) (ast.Node, bool) {
+	if e == nil {
+		return nil, false
+	}
+	switch n := e.(type) {
+	case *ast.AssignStmt:
+		return n.Target, true
+	case *ast.StmtBlock:
+		if len(n.Stmts) > 0 {
+			return extractSetTarget(n.Stmts[0])
 		}
 	}
 	return nil, false
 }
 
-func extractMutatedFields(e celast.Expr) map[string]bool {
+func extractMutatedFields(e ast.Node) map[string]bool {
 	fields := make(map[string]bool)
-	if e.Kind() == celast.ListKind {
-		for _, el := range e.AsList().Elements() {
-			maps.Copy(fields, extractMutatedFields(el))
-		}
+	if e == nil {
 		return fields
 	}
-	if e.Kind() == celast.CallKind {
-		call := e.AsCall()
-		args := call.Args()
-		if len(args) >= 1 {
-			root := findMutationRoot(args[0])
+	switch n := e.(type) {
+	case *ast.StmtBlock:
+		for _, stmt := range n.Stmts {
+			maps.Copy(fields, extractMutatedFields(stmt))
+		}
+	case *ast.AssignStmt:
+		root := findMutationRoot(n.Target)
+		if root != "" {
+			fields[root] = true
+		}
+	case *ast.ToggleStmt:
+		root := findMutationRoot(n.Target)
+		if root != "" {
+			fields[root] = true
+		}
+	case *ast.CallExpr:
+		// Function calls like append() etc — check first arg
+		if len(n.Args) >= 1 {
+			root := findMutationRoot(n.Args[0])
 			if root != "" {
 				fields[root] = true
 			}
+		}
+	case *ast.MethodExpr:
+		root := findMutationRoot(n.Receiver)
+		if root != "" {
+			fields[root] = true
 		}
 	}
 	return fields
 }
 
-func findMutationRoot(e celast.Expr) string {
-	switch e.Kind() {
-	case celast.IdentKind:
-		return e.AsIdent()
-	case celast.SelectKind:
-		return findMutationRoot(e.AsSelect().Operand())
-	case celast.CallKind:
-		call := e.AsCall()
-		if call.FunctionName() == "_[_]" && len(call.Args()) >= 1 {
-			return findMutationRoot(call.Args()[0])
-		}
+func findMutationRoot(e ast.Node) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findMutationRoot(n.Operand)
+	case *ast.IndexExpr:
+		return findMutationRoot(n.Operand)
 	}
 	return ""
 }

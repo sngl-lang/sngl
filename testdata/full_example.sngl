@@ -1,0 +1,41 @@
+import "app.proto"
+
+component Counter {
+    param label = ""
+
+    hbox {
+        text(value=label + ": " + string(count))
+        button(text="+", @click={ count = count + 1 })
+        button(text="-", disabled=count <= 0, @click={ count = count - 1 })
+    }
+}
+
+component main {
+    var (
+        user = User{name: "World", age: 25, loggedIn: false}
+        count = 0
+    )
+
+    computed (
+        greeting = "Hello, " + user.name + "!"
+        isAdult = user.age >= 18
+    )
+
+    vbox(style={padding=16, gap=12}) {
+        text(value=greeting) {
+            style {
+                font-size = 24
+                font-weight = "bold"
+            }
+        }
+        if isAdult {
+            text(value="(Adult)", style={color=#007700})
+        }
+        if !isAdult {
+            text(value="(Minor)", style={color=#CC0000})
+        }
+        input(value=user.name, placeholder="Enter name", @input={ user.name = event.value })
+        Counter(label="Clicks")
+        button(text=user.loggedIn ? "Logout" : "Login", @click={ user.loggedIn!! })
+    }
+}

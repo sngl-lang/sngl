@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"github.com/google/cel-go/cel"
-	celast "github.com/google/cel-go/common/ast"
 )
 
 type exprGroup struct {
@@ -107,7 +107,10 @@ func TestExprTranslation(t *testing.T) {
 				t.Fatalf("eval %q: %v", expr, err)
 			}
 			truth := formatCelValue(val.Value())
-			allExprs = append(allExprs, checkedExpr{cel: expr, truth: truth, ast: celAst, group: g})
+
+			// Convert CEL AST to SNGL Node
+			snglNode := ast.CELToSNGL(celAst.NativeRep().Expr())
+			allExprs = append(allExprs, checkedExpr{cel: expr, truth: truth, sngl: snglNode, group: g})
 		}
 	}
 
@@ -139,16 +142,15 @@ func formatCelValue(v any) string {
 type checkedExpr struct {
 	cel   string
 	truth string
-	ast   *cel.Ast
+	sngl  ast.Node
 	group *exprGroup
 }
 
-func buildExprScope(group *exprGroup, nativeAST *celast.AST) *codegen.ExprScope {
+func buildExprScope(group *exprGroup) *codegen.ExprScope {
 	return &codegen.ExprScope{
 		ModelFields:    group.modelFields,
 		ComputedFields: map[string]bool{},
 		LocalVars:      map[string]bool{},
-		NativeAST:      nativeAST,
 	}
 }
 
@@ -183,9 +185,8 @@ func runGoTest(t *testing.T, translator codegen.LangTranslator, exprs []checkedE
 	lines = append(lines, `	_ = m`)
 
 	for _, e := range exprs {
-		nativeAST := e.ast.NativeRep()
-		scope := buildExprScope(e.group, nativeAST)
-		translated := translator.TranslateExpr(nativeAST.Expr(), scope)
+		scope := buildExprScope(e.group)
+		translated := translator.TranslateExpr(e.sngl, scope)
 		lines = append(lines, fmt.Sprintf("\tfmt.Println(%s)", translated))
 	}
 
@@ -224,9 +225,8 @@ func runJSTest(t *testing.T, translator codegen.LangTranslator, exprs []checkedE
 	lines = append(lines, `const state = {count: 5, name: "World", active: true, items: ["a", "b", "c"]};`)
 
 	for _, e := range exprs {
-		nativeAST := e.ast.NativeRep()
-		scope := buildExprScope(e.group, nativeAST)
-		translated := translator.TranslateExpr(nativeAST.Expr(), scope)
+		scope := buildExprScope(e.group)
+		translated := translator.TranslateExpr(e.sngl, scope)
 		lines = append(lines, fmt.Sprintf("console.log(%s);", translated))
 	}
 

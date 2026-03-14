@@ -11,6 +11,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/parser"
+	"git.duckfam.us/jonathan/sngl/snglparser"
 )
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+"([^"]+)"`)
@@ -98,14 +99,18 @@ func AssertErrors(t *testing.T, err error, expected []ErrorDirective) {
 	}
 }
 
-// ParseFile opens and parses a .sngl.kdl file using parser.Parse.
+// ParseFile opens and parses a .sngl.kdl or .sngl file using the appropriate parser.
 func ParseFile(path string) (*ast.Document, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	return parser.Parse(filepath.Base(path), f)
+	name := filepath.Base(path)
+	if strings.HasSuffix(strings.ToLower(path), ".sngl.kdl") {
+		return parser.Parse(name, f)
+	}
+	return snglparser.Parse(name, f)
 }
 
 // RunFixtures globs dir for *.sngl.kdl files, creates a subtest per file,

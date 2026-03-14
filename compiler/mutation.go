@@ -1,73 +1,90 @@
 package compiler
 
 import (
-	celast "github.com/google/cel-go/common/ast"
+	"fmt"
+
+	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// translateMutation converts a CEL mutation call into Go assignment statements.
-// For list expressions [set(a,1), toggle(b)], each element is translated separately.
-func (ec *exprContext) translateMutation(e celast.Expr) []string {
-	if e.Kind() == celast.ListKind {
-		list := e.AsList()
+// translateMutation converts a SNGL statement node into Go assignment statements.
+func (ec *exprContext) translateMutation(e ast.Node) []string {
+	switch n := e.(type) {
+	case *ast.StmtBlock:
 		var stmts []string
-		for _, el := range list.Elements() {
-			stmts = append(stmts, ec.translateMutation(el)...)
+		for _, s := range n.Stmts {
+			stmts = append(stmts, ec.translateMutation(s)...)
 		}
 		return stmts
+	case *ast.AssignStmt:
+		target := ec.translateMutationTarget(n.Target)
+		value := ec.translateExpr(n.Value)
+		return []string{target + " = " + value}
+	case *ast.ToggleStmt:
+		target := ec.translateMutationTarget(n.Target)
+		return []string{target + " = !" + target}
+	case *ast.MethodExpr:
+		target := ec.translateMutationTarget(n.Receiver)
+		switch n.Method {
+		case "push":
+			if len(n.Args) == 1 {
+				value := ec.translateExpr(n.Args[0])
+				return []string{target + " = append(" + target + ", " + value + ")"}
+			}
+		case "remove":
+			if len(n.Args) == 1 {
+				idx := ec.translateExpr(n.Args[0])
+				return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
+			}
+		}
+		return []string{"// unsupported method mutation: " + n.Method}
+	default:
+		return []string{fmt.Sprintf("// unsupported mutation: %T", e)}
 	}
-
-	if e.Kind() != celast.CallKind {
-		return []string{"// unsupported mutation expression"}
-	}
-
-	call := e.AsCall()
-	fn := call.FunctionName()
-	args := call.Args()
-
-	switch fn {
-	case "set":
-		if len(args) == 2 {
-			target := ec.translateMutationTarget(args[0])
-			value := ec.translateExpr(args[1])
-			return []string{target + " = " + value}
-		}
-	case "toggle":
-		if len(args) == 1 {
-			target := ec.translateMutationTarget(args[0])
-			return []string{target + " = !" + target}
-		}
-	case "push":
-		if len(args) == 2 {
-			target := ec.translateMutationTarget(args[0])
-			value := ec.translateExpr(args[1])
-			return []string{target + " = append(" + target + ", " + value + ")"}
-		}
-	case "remove":
-		if len(args) == 2 {
-			target := ec.translateMutationTarget(args[0])
-			idx := ec.translateExpr(args[1])
-			return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
-		}
-	}
-
-	return []string{"// unsupported mutation: " + fn}
 }
 
-// translateMutationTarget translates a CEL expression used as the first argument
-// to a mutation function (the "target" being assigned to). Identifiers that are
-// model fields get prefixed with "m." and exported.
-func (ec *exprContext) translateMutationTarget(e celast.Expr) string {
-	if e.Kind() == celast.IdentKind {
-		name := e.AsIdent()
-		if ec.modelFields[name] {
-			return "m." + name
+// translateMutationTarget translates a SNGL expression used as a mutation target.
+// Identifiers that are model fields get prefixed with "m.".
+func (ec *exprContext) translateMutationTarget(e ast.Node) string {
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if ec.modelFields[n.Name] {
+			return "m." + n.Name
 		}
-		return name
+		return n.Name
+	case *ast.SelectExpr:
+		operand := ec.translateMutationTarget(n.Operand)
+		return operand + "." + exportName(n.Field)
+	case *ast.IndexExpr:
+		operand := ec.translateMutationTarget(n.Operand)
+		index := ec.translateExpr(n.Index)
+		return operand + "[" + index + "]"
+	default:
+		return ec.translateExpr(e)
 	}
-	if e.Kind() == celast.SelectKind {
-		sel := e.AsSelect()
-		operand := ec.translateMutationTarget(sel.Operand())
-		return operand + "." + exportName(sel.FieldName())
+}
+
+// extractMutatedFields returns the set of field names mutated by a SNGL statement.
+func extractMutatedFields(e ast.Node) map[string]bool {
+	fields := make(map[string]bool)
+	switch n := e.(type) {
+	case *ast.StmtBlock:
+		for _, s := range n.Stmts {
+			for k, v := range extractMutatedFields(s) {
+				fields[k] = v
+			}
+		}
+	case *ast.AssignStmt:
+		if ident, ok := n.Target.(*ast.IdentExpr); ok {
+			fields[ident.Name] = true
+		}
+	case *ast.ToggleStmt:
+		if ident, ok := n.Target.(*ast.IdentExpr); ok {
+			fields[ident.Name] = true
+		}
+	case *ast.MethodExpr:
+		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
+			fields[ident.Name] = true
+		}
 	}
-	return ec.translateExpr(e)
+	return fields
 }

@@ -1,0 +1,12 @@
+component main {
+    var (
+        count = 0
+        todos list<Todo> trigger
+        items list<Item> trigger("SaveItems")
+        apiClient dyn extern
+        saveTodo func(string) extern
+        formatDate func(string) -> string extern
+    )
+
+    computed doubled = count * 2
+}

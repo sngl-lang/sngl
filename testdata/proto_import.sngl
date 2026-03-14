@@ -1,0 +1,7 @@
+import "test.proto"
+
+component main {
+    var person = Person{name: "Alice", age: 30, active: true}
+
+    text(value=person.name)
+}

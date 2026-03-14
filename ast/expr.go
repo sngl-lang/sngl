@@ -7,6 +7,7 @@ type Expr struct {
 	Literal  any      // non-nil for static values
 	CEL      string   // non-empty for (cel)"..." expressions
 	AST      *cel.Ast // parsed CEL AST (nil for literals)
+	SNGL     Node     // native SNGL expression tree (populated by both parsers)
 	TypeHint string   // from KDL type annotation: "int", "bool", "User", etc.
 }
 

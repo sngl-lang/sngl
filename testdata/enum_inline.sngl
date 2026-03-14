@@ -1,0 +1,5 @@
+component main {
+    var mode enum<light | dark> = "light"
+
+    text(value=mode)
+}
