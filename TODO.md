@@ -1,23 +1,38 @@
-Design a special purpose language for SNGL. Generates the same AST, but allows syntatic imposibilities compared to KDL. Include expressions that can be represented as a CEL AST.
+Want to build a documentation site for SNGL:
 
-- Create a length type like CSS's units
+1. Create platform snapshot generators. These generate PNG images of how a UI looks
 
-Duration is currently a special case in parsing. Let's make units their own concept in SNGL. A unit is defined with a set of suffixes and their factors as constant expressions. Other suffixes may be used as a constant value in the expressions.
+- ./internal/testutil/webtest (copy from ../../jj-software/cog/internal/testing/webtest)
+- I think charmbracelet has something for the terminal
+- Chrome Debugging Protocol can take pics of web pages
+- Will need a test that asserts the fake CSS looks like real platform; don't need to commit PNGs``
+- Will need a Dockerfile with the deps to create all snapshots and assets
 
-```
-unit duration(s = 1000, ms = 1, m = s * 60, h = m * 60)
-```
+2. docs/ directory with markdown per page.
 
-The parser will take an numeric value with an alphabetic suffix as a unit literal. A ternary with constant values can be used as a constant expression so you can define per-platform unit conversions for units associated with size.
+- Home: what it is, why it is, inspiration sources
+- Getting Started
+  - Architecture
+  - Installation
+  - First App: Web
+  - Build Targets
+  - Binding Data to the parent language
+  - ...
+- Language Reference
+- Language Specification
 
-A unit may have multiple independent base suffixes. In generated code, these are tracked separately. That allows units that don't convert/combine. For example: time spans need to track months, days, and seconds separate, since months and days can differ in length. For CSS units, em and px are different bases.
+3. Playground
 
-In expressions expecting a unit type value, the suffixes may be used as a constant for a multiplier. Unit literals may only be used in a context where a unit type is expected. All types can be used like a function to cast/convert, so `var x = duration(5ms)` is acceptable. You can also add various units together `var x duration = 1h + 30m`
+- Compile compiler/preview logic to webassembly for static assets
+- UI has editor in main area
+  - Syntax highlight and LSP (maybe VSCode-based editor)
+- Tabs on the right
+  - Preview
+  - AST
 
-Update styles to use a measurement unit for many of the dyn values. Include common CSS units.
+4. Static site generator
 
-Unit declarations shouldn't have multiple (...) groups. The independent suffixes will be determined by the absence of a relational constant expression.
-
-eg `unit measurement(in = 96px, px, pct)` Inches and pixels are related, but pct is independent.
-
-Convert
+- Runs as gitlab pages job with Dockerfile deps image
+- Generate assets for each supported platform
+- Convert docs to HTML, ensure Syntax highlighting works; inject "View in Playground"
+- Template complex pages with go templates

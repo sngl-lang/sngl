@@ -1,0 +1,52 @@
+{
+  "name": "sngl",
+  "displayName": "SNGL",
+  "description": "Language support for SNGL UI component files",
+  "version": "0.1.0",
+  "publisher": "sngl",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:sngl"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "sngl",
+        "aliases": [
+          "SNGL",
+          "sngl"
+        ],
+        "extensions": [
+          ".sngl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sngl",
+        "scopeName": "source.sngl",
+        "path": "./syntaxes/sngl.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver-protocol": "^3.17.5"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

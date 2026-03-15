@@ -1,0 +1,279 @@
+================
+Simple component with param
+================
+
+component Button {
+  param label = "Click"
+  text(value=label)
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (param_declaration
+      name: (identifier)
+      default: (string_literal))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (identifier))))))
+
+================
+Component with var and computed
+================
+
+component Counter {
+  var count = 0
+  computed doubled = count * 2
+  text(value=doubled)
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (identifier)
+          right: (integer_literal))))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (identifier))))))
+
+================
+Grouped var declarations
+================
+
+component App {
+  var (
+    name = "World"
+    count = 0
+  )
+  text(value=name)
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (string_literal))
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (identifier))))))
+
+================
+Component with event handler
+================
+
+component App {
+  var count = 0
+  button(text="+", @click={ count += 1 })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (string_literal))
+        (event_handler
+          name: (identifier)
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (integer_literal)))))))
+
+================
+If node
+================
+
+component App {
+  var show = true
+  if show {
+    text(value="visible")
+  }
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (true)))
+    (if_node
+      condition: (identifier)
+      (visual_node
+        component: (identifier)
+        (prop_list
+          (prop_assignment
+            name: (identifier)
+            value: (string_literal)))))))
+
+================
+For node
+================
+
+component App {
+  var items = ["a", "b"]
+  for item, idx in items {
+    text(value=item)
+  }
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (list_literal
+          (string_literal)
+          (string_literal))))
+    (for_node
+      variable: (identifier)
+      index: (identifier)
+      iterable: (identifier)
+      (visual_node
+        component: (identifier)
+        (prop_list
+          (prop_assignment
+            name: (identifier)
+            value: (identifier)))))))
+
+================
+Nested visual nodes
+================
+
+component App {
+  vbox {
+    text(value="hello")
+    hbox {
+      button(text="ok")
+    }
+  }
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (visual_node
+      component: (identifier)
+      (node_body
+        (visual_node
+          component: (identifier)
+          (prop_list
+            (prop_assignment
+              name: (identifier)
+              value: (string_literal))))
+        (visual_node
+          component: (identifier)
+          (node_body
+            (visual_node
+              component: (identifier)
+              (prop_list
+                (prop_assignment
+                  name: (identifier)
+                  value: (string_literal))))))))))
+
+================
+Prop and event declarations
+================
+
+component MyBtn {
+  prop size string enum(small, medium, large)
+  event click MouseEvent
+  children one
+  button(text="btn")
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (prop_declaration
+      name: (identifier)
+      type: (type_identifier)
+      (enum_constraint
+        (identifier)
+        (identifier)
+        (identifier)))
+    (event_declaration
+      name: (identifier)
+      payload_type: (identifier))
+    (children_declaration
+      policy: (identifier))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (string_literal))))))
+
+================
+Var with extern and trigger
+================
+
+component App {
+  var theme string extern trigger
+  text(value=theme)
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        type: (type_identifier)
+        (var_modifiers
+          (extern_modifier)
+          (trigger_modifier))))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (prop_assignment
+          name: (identifier)
+          value: (identifier))))))

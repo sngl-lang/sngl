@@ -1,0 +1,40 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "sngl",
+      "camelcase": "sngl",
+      "title": "SNGL",
+      "scope": "source.sngl",
+      "file-types": [
+        "sngl"
+      ],
+      "injection-regex": "^sngl$",
+      "class-name": "TreeSitterSngl"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Snuggly New Graphics Language",
+    "authors": [
+      {
+        "name": "Jonathan Duck",
+        "email": "duckbrain30@gmail.com",
+        "url": "https://jonathan.duckfam.us/"
+      }
+    ],
+    "links": {
+      "repository": "https://sngl.duckfam.us/"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}

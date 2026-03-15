@@ -1,0 +1,152 @@
+================
+Import declaration
+================
+
+import "app.proto"
+
+---
+
+(source_file
+  (import_declaration
+    (string_literal)))
+
+================
+Output declaration - single
+================
+
+output swift ios(min_version="16")
+
+---
+
+(source_file
+  (output_declaration
+    (identifier)
+    (identifier)
+    (kv_list
+      (kv_pair
+        (identifier)
+        (string_literal)))))
+
+================
+Output declaration - grouped
+================
+
+output {
+  swift ios
+  kotlin android
+}
+
+---
+
+(source_file
+  (output_declaration
+    (output_group
+      (output_group_entry
+        (identifier)
+        (identifier))
+      (output_group_entry
+        (identifier)
+        (identifier)))))
+
+================
+Struct declaration
+================
+
+struct User {
+  name string = ""
+  age int = 0
+}
+
+---
+
+(source_file
+  (struct_declaration
+    name: (identifier)
+    (struct_field
+      name: (identifier)
+      type: (type_identifier)
+      default: (string_literal))
+    (struct_field
+      name: (identifier)
+      type: (type_identifier)
+      default: (integer_literal))))
+
+================
+Enum declaration
+================
+
+enum Color { Red, Green, Blue }
+
+---
+
+(source_file
+  (enum_declaration
+    name: (identifier)
+    (identifier)
+    (identifier)
+    (identifier)))
+
+================
+Unit declaration
+================
+
+unit duration(ms, s = 1000, m = 60000)
+
+---
+
+(source_file
+  (unit_declaration
+    name: (identifier)
+    (unit_suffix
+      name: (identifier))
+    (unit_suffix
+      name: (identifier)
+      factor: (integer_literal))
+    (unit_suffix
+      name: (identifier)
+      factor: (integer_literal))))
+
+================
+Style declaration
+================
+
+style danger {
+  color = #FF0000
+  font-weight = "bold"
+}
+
+---
+
+(source_file
+  (style_declaration
+    name: (identifier)
+    (style_property
+      name: (identifier)
+      value: (color_literal))
+    (style_property
+      name: (identifier)
+      value: (string_literal))))
+
+================
+Styles (property definitions)
+================
+
+styles {
+  color color
+  font-size int enum(12, 14, 16)
+}
+
+---
+
+(source_file
+  (styles_declaration
+    (style_prop_def
+      name: (identifier)
+      type: (type_identifier))
+    (style_prop_def
+      name: (identifier)
+      type: (type_identifier)
+      (enum_constraint
+        (integer_literal)
+        (integer_literal)
+        (integer_literal)))))

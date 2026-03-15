@@ -1,0 +1,184 @@
+================
+Simple assignment
+================
+
+component App {
+  var x = 0
+  button(@click={ x = 1 })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (integer_literal)))))))
+
+================
+Compound assignment operators
+================
+
+component App {
+  var x = 0
+  button(@click={ x += 1 })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (integer_literal)))))))
+
+================
+Toggle statement
+================
+
+component App {
+  var active = false
+  button(@click={ active!! })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (false)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (toggle_statement
+            target: (identifier)))))))
+
+================
+Emit statement
+================
+
+component App {
+  event submit FormData
+  button(@click={ @submit(data) })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (event_declaration
+      name: (identifier)
+      payload_type: (identifier))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (emit_statement
+            name: (identifier)
+            (identifier)))))))
+
+================
+Field assignment
+================
+
+component App {
+  var user = User{name: ""}
+  input(@input={ user.name = event.value })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (struct_literal
+          name: (identifier)
+          (struct_field_value
+            name: (identifier)
+            value: (string_literal)))))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (assignment_statement
+            target: (field_expression
+              operand: (identifier)
+              field: (identifier))
+            operator: (assignment_operator)
+            value: (field_expression
+              operand: (identifier)
+              field: (identifier))))))))
+
+================
+Multiple statements in handler
+================
+
+component App {
+  var (
+    x = 0
+    y = 0
+  )
+  button(@click={
+    x = 1
+    y = 2
+  })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal))
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))
+    (visual_node
+      component: (identifier)
+      (prop_list
+        (event_handler
+          name: (identifier)
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (integer_literal))
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (integer_literal)))))))

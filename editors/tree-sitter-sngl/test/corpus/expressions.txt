@@ -1,0 +1,396 @@
+================
+Integer literal
+================
+
+component App {
+  var x = 42
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (integer_literal)))))
+
+================
+Float literal
+================
+
+component App {
+  var x = 3.14
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (float_literal)))))
+
+================
+String literal
+================
+
+component App {
+  var x = "hello world"
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (string_literal)))))
+
+================
+Boolean literals
+================
+
+component App {
+  var (
+    a = true
+    b = false
+  )
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (true))
+      (single_var
+        name: (identifier)
+        init: (false)))))
+
+================
+Null literal
+================
+
+component App {
+  var x = null
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (null)))))
+
+================
+Color literal
+================
+
+component App {
+  var c = #FF0000
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (color_literal)))))
+
+================
+Unit literal
+================
+
+component App {
+  var d = 100ms
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (unit_literal)))))
+
+================
+Binary arithmetic
+================
+
+component App {
+  computed x = 1 + 2 * 3
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (integer_literal)
+          right: (binary_expression
+            left: (integer_literal)
+            right: (integer_literal)))))))
+
+================
+Comparison operators
+================
+
+component App {
+  computed ok = x >= 10 && x < 100
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (binary_expression
+            left: (identifier)
+            right: (integer_literal))
+          right: (binary_expression
+            left: (identifier)
+            right: (integer_literal)))))))
+
+================
+Ternary expression
+================
+
+component App {
+  computed label = active ? "on" : "off"
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (ternary_expression
+          condition: (identifier)
+          consequence: (string_literal)
+          alternative: (string_literal))))))
+
+================
+Unary expressions
+================
+
+component App {
+  computed neg = -x
+  computed inv = !valid
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (unary_expression
+          operand: (identifier))))
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (unary_expression
+          operand: (identifier))))))
+
+================
+Field access
+================
+
+component App {
+  computed n = user.name
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (field_expression
+          operand: (identifier)
+          field: (identifier))))))
+
+================
+Index expression
+================
+
+component App {
+  computed first = items[0]
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (index_expression
+          operand: (identifier)
+          index: (integer_literal))))))
+
+================
+Function call
+================
+
+component App {
+  computed s = string(42)
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (call_expression
+          function: (identifier)
+          (integer_literal))))))
+
+================
+Method call
+================
+
+component App {
+  computed upper = name.toUpper()
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (method_expression
+          receiver: (identifier)
+          method: (identifier))))))
+
+================
+Struct literal
+================
+
+component App {
+  var user = User{name: "Alice", age: 30}
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (struct_literal
+          name: (identifier)
+          (struct_field_value
+            name: (identifier)
+            value: (string_literal))
+          (struct_field_value
+            name: (identifier)
+            value: (integer_literal)))))))
+
+================
+List literal
+================
+
+component App {
+  var items = [1, 2, 3]
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (var_declaration
+      (single_var
+        name: (identifier)
+        init: (list_literal
+          (integer_literal)
+          (integer_literal)
+          (integer_literal))))))
+
+================
+Or expression
+================
+
+component App {
+  computed ok = a || b
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (identifier)
+          right: (identifier))))))
+
+================
+Equality operators
+================
+
+component App {
+  computed same = a == b
+  computed diff = a != b
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (identifier)
+          right: (identifier))))
+    (computed_declaration
+      (single_computed
+        name: (identifier)
+        value: (binary_expression
+          left: (identifier)
+          right: (identifier))))))

@@ -113,6 +113,15 @@ var keywords = map[string]TokenType{
 	"null":      KW_NULL,
 }
 
+// Keywords returns a copy of the keyword map.
+func Keywords() map[string]TokenType {
+	m := make(map[string]TokenType, len(keywords))
+	for k, v := range keywords {
+		m[k] = v
+	}
+	return m
+}
+
 // LookupIdent returns the keyword token type for ident if it's a keyword,
 // or IDENT otherwise.
 func LookupIdent(ident string) TokenType {
