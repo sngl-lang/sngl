@@ -1,0 +1,16 @@
+<ul class="nav-list">
+{{range .Nav}}
+  {{if .Children}}
+  <li class="nav-section{{if hasActiveChild .Children $.Current}} open{{end}}">
+    {{if .Href}}<a href="/{{.Href}}"{{if isActive .Href $.Current}} class="active"{{end}}>{{.Title}}</a>{{else}}<span class="nav-heading">{{.Title}}</span>{{end}}
+    <ul>
+      {{range .Children}}
+      <li><a href="/{{.Href}}"{{if isActive .Href $.Current}} class="active"{{end}}>{{.Title}}</a></li>
+      {{end}}
+    </ul>
+  </li>
+  {{else}}
+  <li><a href="/{{.Href}}"{{if isActive .Href $.Current}} class="active"{{end}}>{{.Title}}</a></li>
+  {{end}}
+{{end}}
+</ul>
