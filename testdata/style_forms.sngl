@@ -1,17 +1,6 @@
 component main {
-    vbox(style={gap=4, padding=8}) {
-        text(value="styled") {
-            style {
-                font-size = 24
-                font-weight = "bold"
-                color = #007700
-            }
-        }
-        button(text="click", style={margin=4}) {
-            style {
-                padding = 8
-                background = #ff0000
-            }
-        }
+    vbox(style={padding=8, gap=4}) {
+        text(value="styled", style={font-weight="bold", color=#007700, font-size=24})
+        button(text="click", style={margin=4, background=#ff0000, padding=8})
     }
 }

@@ -18,7 +18,7 @@ const (
 	LiteralBool
 	LiteralNull
 	LiteralColor
-	LiteralDuration
+	LiteralUnit
 )
 
 // BinaryOp identifies a binary operator.
@@ -62,10 +62,16 @@ const (
 
 // --- Expressions ---
 
-// LiteralExpr is a literal value: int, float, string, bool, nil, color, duration.
+// LiteralExpr is a literal value: int, float, string, bool, nil, color, unit.
 type LiteralExpr struct {
 	Value any
 	Kind  LiteralKind
+}
+
+// UnitLiteral is the value stored in a LiteralExpr with Kind == LiteralUnit.
+type UnitLiteral struct {
+	Number string // "5", "1.5", "-3"
+	Suffix string // "px", "ms", "em"
 }
 
 // IdentExpr is an identifier reference.

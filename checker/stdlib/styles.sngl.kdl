@@ -1,36 +1,36 @@
 styles {
     // Sizing
-    width (dyn)null
-    height (dyn)null
-    min-width (dyn)null
-    min-height (dyn)null
-    max-width (dyn)null
-    max-height (dyn)null
+    width (measurement)null
+    height (measurement)null
+    min-width (measurement)null
+    min-height (measurement)null
+    max-width (measurement)null
+    max-height (measurement)null
     aspect-ratio (float)null
 
     // Padding
-    padding (dyn)null
-    padding-top (dyn)null
-    padding-right (dyn)null
-    padding-bottom (dyn)null
-    padding-left (dyn)null
-    padding-x (dyn)null
-    padding-y (dyn)null
+    padding (measurement)null
+    padding-top (measurement)null
+    padding-right (measurement)null
+    padding-bottom (measurement)null
+    padding-left (measurement)null
+    padding-x (measurement)null
+    padding-y (measurement)null
 
     // Margin
-    margin (dyn)null
-    margin-top (dyn)null
-    margin-right (dyn)null
-    margin-bottom (dyn)null
-    margin-left (dyn)null
-    margin-x (dyn)null
-    margin-y (dyn)null
+    margin (measurement)null
+    margin-top (measurement)null
+    margin-right (measurement)null
+    margin-bottom (measurement)null
+    margin-left (measurement)null
+    margin-x (measurement)null
+    margin-y (measurement)null
 
     // Flex
     flex (float)null
     flex-grow (float)null
     flex-shrink (float)null
-    flex-basis (dyn)null
+    flex-basis (measurement)null
     align-self (string)null {
         @enum "auto" "flex-start" "flex-end" "center" "baseline" "stretch"
     }
@@ -39,16 +39,16 @@ styles {
     position (string)null {
         @enum "static" "relative" "absolute" "fixed" "sticky"
     }
-    top (dyn)null
-    right (dyn)null
-    bottom (dyn)null
-    left (dyn)null
+    top (measurement)null
+    right (measurement)null
+    bottom (measurement)null
+    left (measurement)null
     z-index (int)null
 
     // Container Layout
-    gap (dyn)null
-    row-gap (dyn)null
-    column-gap (dyn)null
+    gap (measurement)null
+    row-gap (measurement)null
+    column-gap (measurement)null
     align-items (string)null {
         @enum "flex-start" "flex-end" "center" "baseline" "stretch"
     }
@@ -62,8 +62,8 @@ styles {
     // Visual Properties
     background (color)null
     border-color (color)null
-    border-width (dyn)null
-    border-radius (dyn)null
+    border-width (measurement)null
+    border-radius (measurement)null
     opacity (float)null
     overflow (string)null {
         @enum "visible" "hidden" "scroll" "auto"
@@ -71,7 +71,7 @@ styles {
 
     // Text-specific style properties
     color (color)null
-    font-size (float)null
+    font-size (measurement)null
     font-weight (string)null {
         @enum "normal" "bold" "100" "200" "300" "400" "500" "600" "700" "800" "900"
     }

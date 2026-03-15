@@ -20,8 +20,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/optimize"
 	"github.com/calico32/kdl-go"
-	"github.com/google/cel-go/cel"
 	"github.com/fsnotify/fsnotify"
+	"github.com/google/cel-go/cel"
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +63,7 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	schemas, styleProps, err := checker.LoadStdlib()
+	schemas, styleProps, _, err := checker.LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}

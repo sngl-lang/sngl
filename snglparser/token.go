@@ -12,45 +12,45 @@ const (
 	SEMICOLON // ; (explicit or inserted)
 
 	// Literals
-	IDENT    // identifier
-	INT      // integer literal
-	FLOAT    // float literal
-	STRING   // "string literal"
-	COLOR    // #rrggbb
-	DURATION // 5s, 100ms, etc.
+	IDENT        // identifier
+	INT          // integer literal
+	FLOAT        // float literal
+	STRING       // "string literal"
+	COLOR        // #rrggbb
+	UNIT_LITERAL // 5s, 100ms, 12px, 1.5em, etc.
 
 	// Punctuation
-	LPAREN    // (
-	RPAREN    // )
-	LBRACE    // {
-	RBRACE    // }
-	LBRACKET  // [
-	RBRACKET  // ]
-	COMMA     // ,
-	DOT       // .
-	COLON     // :
-	ASSIGN    // =
-	AT        // @
-	PIPE      // |
-	ARROW     // ->
+	LPAREN   // (
+	RPAREN   // )
+	LBRACE   // {
+	RBRACE   // }
+	LBRACKET // [
+	RBRACKET // ]
+	COMMA    // ,
+	DOT      // .
+	COLON    // :
+	ASSIGN   // =
+	AT       // @
+	PIPE     // |
+	ARROW    // ->
 
 	// Operators
-	PLUS      // +
-	MINUS     // -
-	STAR      // *
-	SLASH     // /
-	PERCENT   // %
-	BANG      // !
-	BANGBANG  // !!
-	QUESTION  // ?
-	EQ        // ==
-	NEQ       // !=
-	LT        // <
-	GT        // >
-	LTE       // <=
-	GTE       // >=
-	AND       // &&
-	OR        // ||
+	PLUS     // +
+	MINUS    // -
+	STAR     // *
+	SLASH    // /
+	PERCENT  // %
+	BANG     // !
+	BANGBANG // !!
+	QUESTION // ?
+	EQ       // ==
+	NEQ      // !=
+	LT       // <
+	GT       // >
+	LTE      // <=
+	GTE      // >=
+	AND      // &&
+	OR       // ||
 
 	// Compound assignment
 	PLUS_ASSIGN    // +=
@@ -80,6 +80,7 @@ const (
 	KW_EXTERN
 	KW_TRIGGER
 	KW_FUNC
+	KW_UNIT
 	KW_TRUE
 	KW_FALSE
 	KW_NULL
@@ -106,6 +107,7 @@ var keywords = map[string]TokenType{
 	"extern":    KW_EXTERN,
 	"trigger":   KW_TRIGGER,
 	"func":      KW_FUNC,
+	"unit":      KW_UNIT,
 	"true":      KW_TRUE,
 	"false":     KW_FALSE,
 	"null":      KW_NULL,
@@ -135,7 +137,7 @@ func (t Token) String() string {
 // insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STRING, COLOR, DURATION,
+	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL,
 		KW_TRUE, KW_FALSE, KW_NULL,
 		KW_EXTERN,
 		RPAREN, RBRACKET, RBRACE:
@@ -147,7 +149,7 @@ func insertsSemicolon(t TokenType) bool {
 var tokenNames = map[TokenType]string{
 	ILLEGAL: "ILLEGAL", EOF: "EOF", SEMICOLON: "SEMICOLON",
 	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING",
-	COLOR: "COLOR", DURATION: "DURATION",
+	COLOR: "COLOR", UNIT_LITERAL: "UNIT_LITERAL",
 	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
 	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
 	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",

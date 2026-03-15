@@ -116,7 +116,7 @@ func TypeHintToCelType(hint string) *cel.Type {
 		return CountrySubdivisionType
 	case "decimal":
 		return DecimalType
-	case "length":
+	case "measurement", "length":
 		return cel.DynType
 	default:
 		return cel.DynType

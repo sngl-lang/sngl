@@ -14,7 +14,7 @@ import (
 // component schemas. dir is the directory of the .sngl file, used to resolve
 // relative import paths.
 func Check(doc *ast.Document, dir string) error {
-	registry, styleProps, err := LoadStdlib()
+	registry, styleProps, _, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}

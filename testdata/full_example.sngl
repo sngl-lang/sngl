@@ -21,20 +21,15 @@ component main {
         isAdult = user.age >= 18
     )
 
-    vbox(style={padding=16, gap=12}) {
-        text(value=greeting) {
-            style {
-                font-size = 24
-                font-weight = "bold"
-            }
-        }
+    vbox(style={gap=12, padding=16}) {
+        text(value=greeting, style={font-size=24, font-weight="bold"})
         if isAdult {
             text(value="(Adult)", style={color=#007700})
         }
         if !isAdult {
             text(value="(Minor)", style={color=#CC0000})
         }
-        input(value=user.name, placeholder="Enter name", @input={ user.name = event.value })
+        input(placeholder="Enter name", value=user.name, @input={ user.name = event.value })
         Counter(label="Clicks")
         button(text=user.loggedIn ? "Logout" : "Login", @click={ user.loggedIn!! })
     }

@@ -166,7 +166,7 @@ func translateLiteral(n *ast.LiteralExpr) string {
 		return "null"
 	case ast.LiteralColor:
 		return fmt.Sprintf("%q", n.Value)
-	case ast.LiteralDuration:
+	case ast.LiteralUnit:
 		return fmt.Sprintf("%q", n.Value)
 	default:
 		return fmt.Sprintf("%v", n.Value)

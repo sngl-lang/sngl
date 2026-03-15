@@ -94,6 +94,8 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Structs = append(doc.Structs, p.parseStruct())
 		case KW_ENUM:
 			doc.Enums = append(doc.Enums, p.parseEnum())
+		case KW_UNIT:
+			doc.Units = append(doc.Units, p.parseUnitDecl())
 		case KW_STYLE:
 			doc.Styles = append(doc.Styles, p.parseStyleDecl())
 		case KW_STYLES:
@@ -289,7 +291,17 @@ func (p *parser) parseStyles() []*ast.StylePropDef {
 			p.advance()
 			p.expect(LPAREN)
 			for !p.at(RPAREN) && !p.at(EOF) {
-				enumValues = append(enumValues, p.expect(IDENT).Literal)
+				switch {
+				case p.at(IDENT):
+					enumValues = append(enumValues, p.advance().Literal)
+				case p.at(INT):
+					enumValues = append(enumValues, p.advance().Literal)
+				case p.at(STRING):
+					enumValues = append(enumValues, p.advance().Literal)
+				default:
+					p.errorf("expected enum value, got %v", tokenNames[p.cur.Type])
+					p.advance()
+				}
 				if p.at(COMMA) {
 					p.advance()
 				}
@@ -713,19 +725,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 			if p.at(RBRACE) {
 				break
 			}
-			if p.at(KW_STYLE) {
-				// style block
-				p.advance()
-				p.expect(LBRACE)
-				if vn.StyleBlock == nil {
-					vn.StyleBlock = map[string]ast.Expr{}
-				}
-				props := p.parseStyleProps()
-				for k, v := range props {
-					vn.StyleBlock[k] = v
-				}
-				p.expect(RBRACE)
-			} else if p.at(AT) {
+			if p.at(AT) {
 				// Attribute node
 				p.advance()
 				attrName := p.expect(IDENT).Literal
@@ -1073,9 +1073,10 @@ func (p *parser) parsePrimary() ast.Node {
 	case COLOR:
 		tok := p.advance()
 		return &ast.LiteralExpr{Value: tok.Literal, Kind: ast.LiteralColor}
-	case DURATION:
+	case UNIT_LITERAL:
 		tok := p.advance()
-		return &ast.LiteralExpr{Value: tok.Literal, Kind: ast.LiteralDuration}
+		num, suffix := splitUnitLiteral(tok.Literal)
+		return &ast.LiteralExpr{Value: ast.UnitLiteral{Number: num, Suffix: suffix}, Kind: ast.LiteralUnit}
 	case KW_TRUE:
 		p.advance()
 		return &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}
@@ -1223,9 +1224,42 @@ func (p *parser) parseExprAsExpr() ast.Expr {
 			return ast.Expr{Literal: nil, SNGL: node}
 		case ast.LiteralColor:
 			return ast.Expr{Literal: lit.Value, SNGL: node, TypeHint: "color"}
-		case ast.LiteralDuration:
-			return ast.Expr{Literal: lit.Value, SNGL: node, TypeHint: "duration"}
+		case ast.LiteralUnit:
+			ul := lit.Value.(ast.UnitLiteral)
+			return ast.Expr{Literal: lit.Value, SNGL: node, TypeHint: "unit:" + ul.Suffix}
 		}
 	}
 	return ast.Expr{SNGL: node}
+}
+
+// splitUnitLiteral splits "12px" into ("12", "px"), "-3.5em" into ("-3.5", "em").
+func splitUnitLiteral(s string) (number, suffix string) {
+	i := len(s) - 1
+	for i >= 0 && isLetter(rune(s[i])) {
+		i--
+	}
+	return s[:i+1], s[i+1:]
+}
+
+func (p *parser) parseUnitDecl() *ast.UnitDef {
+	pos := p.pos()
+	p.expect(KW_UNIT)
+	name := p.expect(IDENT).Literal
+	def := &ast.UnitDef{Pos: pos, Name: name}
+	p.expect(LPAREN)
+	for !p.at(RPAREN) && !p.at(EOF) {
+		spos := p.pos()
+		sname := p.expect(IDENT).Literal
+		suffix := &ast.UnitSuffix{Pos: spos, Name: sname}
+		if p.at(ASSIGN) {
+			p.advance()
+			suffix.Factor = p.parseExpression()
+		}
+		def.Suffixes = append(def.Suffixes, suffix)
+		if p.at(COMMA) {
+			p.advance()
+		}
+	}
+	p.expect(RPAREN)
+	return def
 }

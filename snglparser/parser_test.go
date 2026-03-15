@@ -297,11 +297,20 @@ func compareVisualNode(t *testing.T, want, got *ast.VisualNode, ctx string) {
 	// Events
 	compareExprMap(t, want.Events, got.Events, ctx+".Events")
 
-	// Style attrs
-	compareExprMap(t, want.StyleAttrs, got.StyleAttrs, ctx+".StyleAttrs")
+	// Style attrs — SNGL merges StyleBlock into StyleAttrs
+	wantStyle := map[string]ast.Expr{}
+	for k, v := range want.StyleAttrs {
+		wantStyle[k] = v
+	}
+	for k, v := range want.StyleBlock {
+		wantStyle[k] = v
+	}
+	compareExprMap(t, wantStyle, got.StyleAttrs, ctx+".StyleAttrs")
 
-	// Style block
-	compareExprMap(t, want.StyleBlock, got.StyleBlock, ctx+".StyleBlock")
+	// SNGL parser never populates StyleBlock
+	if len(got.StyleBlock) > 0 {
+		t.Errorf("%s.StyleBlock: expected empty, got %d entries", ctx, len(got.StyleBlock))
+	}
 
 	// Children
 	compareVisualNodes(t, want.Children, got.Children, ctx)
@@ -399,7 +408,9 @@ func literalToNode(v any, typeHint string) ast.Node {
 			return &ast.LiteralExpr{Value: val, Kind: ast.LiteralColor}
 		}
 		if typeHint == "duration" {
-			return &ast.LiteralExpr{Value: val, Kind: ast.LiteralDuration}
+			// KDL stores duration as string "5s"; convert to UnitLiteral
+			num, suffix := splitDurationString(val)
+			return &ast.LiteralExpr{Value: ast.UnitLiteral{Number: num, Suffix: suffix}, Kind: ast.LiteralUnit}
 		}
 		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralString}
 	case int:
@@ -429,6 +440,15 @@ func literalEqual(a, b any) bool {
 		return ai == bi
 	}
 	return a == b
+}
+
+// splitDurationString splits a KDL duration string like "5s" into number and suffix.
+func splitDurationString(s string) (string, string) {
+	i := len(s) - 1
+	for i >= 0 && (s[i] < '0' || s[i] > '9') && s[i] != '.' {
+		i--
+	}
+	return s[:i+1], s[i+1:]
 }
 
 func toInt64(v any) (int64, bool) {

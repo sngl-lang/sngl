@@ -290,60 +290,19 @@ func (l *lexer) scanNumber(startLine, startCol int) Token {
 		}
 	}
 
-	// Check for duration suffix
-	if !isFloat {
-		suffix := l.scanDurationSuffix()
-		if suffix != "" {
-			return l.token(DURATION, sb.String()+suffix, startLine, startCol)
+	// Check for unit suffix (letter immediately after number, e.g. 5s, 12px, 1.5em)
+	if l.pos < len(l.input) && isLetter(l.input[l.pos]) {
+		var suffix strings.Builder
+		for l.pos < len(l.input) && isLetter(l.input[l.pos]) {
+			suffix.WriteRune(l.advance())
 		}
+		return l.token(UNIT_LITERAL, sb.String()+suffix.String(), startLine, startCol)
 	}
 
 	if isFloat {
 		return l.token(FLOAT, sb.String(), startLine, startCol)
 	}
 	return l.token(INT, sb.String(), startLine, startCol)
-}
-
-func (l *lexer) scanDurationSuffix() string {
-	if l.pos >= len(l.input) {
-		return ""
-	}
-	ch := l.input[l.pos]
-	switch ch {
-	case 'h':
-		l.advance()
-		// Check for compound: 2h30m
-		rest := l.scanCompoundDuration()
-		return "h" + rest
-	case 'm':
-		if l.peekAt(1) == 's' {
-			l.advance()
-			l.advance()
-			return "ms"
-		}
-		l.advance()
-		rest := l.scanCompoundDuration()
-		return "m" + rest
-	case 's':
-		l.advance()
-		return "s"
-	}
-	return ""
-}
-
-func (l *lexer) scanCompoundDuration() string {
-	if l.pos >= len(l.input) || !isDigit(l.input[l.pos]) {
-		return ""
-	}
-	var sb strings.Builder
-	for l.pos < len(l.input) && isDigit(l.input[l.pos]) {
-		sb.WriteRune(l.advance())
-	}
-	suffix := l.scanDurationSuffix()
-	if suffix == "" {
-		return ""
-	}
-	return sb.String() + suffix
 }
 
 func (l *lexer) scanString(startLine, startCol int) Token {
@@ -397,8 +356,10 @@ func (l *lexer) scanColor(startLine, startCol int) Token {
 	return l.token(COLOR, sb.String(), startLine, startCol)
 }
 
-func isDigit(ch rune) bool     { return ch >= '0' && ch <= '9' }
-func isHexDigit(ch rune) bool  { return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') }
-func isLetter(ch rune) bool    { return unicode.IsLetter(ch) }
-func isIdentStart(ch rune) bool { return unicode.IsLetter(ch) || ch == '_' }
+func isDigit(ch rune) bool { return ch >= '0' && ch <= '9' }
+func isHexDigit(ch rune) bool {
+	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
+}
+func isLetter(ch rune) bool        { return unicode.IsLetter(ch) }
+func isIdentStart(ch rune) bool    { return unicode.IsLetter(ch) || ch == '_' }
 func isIdentContinue(ch rune) bool { return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' }

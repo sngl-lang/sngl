@@ -92,6 +92,15 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		needBlank = true
 	}
 
+	// Units
+	for _, u := range doc.Units {
+		if needBlank {
+			f.newline()
+		}
+		f.formatUnitDecl(u)
+		needBlank = true
+	}
+
 	// Named styles
 	for _, s := range doc.Styles {
 		if needBlank {
@@ -179,6 +188,25 @@ func (f *formatter) formatStruct(s *ast.StructDef) {
 	}
 	f.indent--
 	f.writeLine("}")
+}
+
+func (f *formatter) formatUnitDecl(u *ast.UnitDef) {
+	var sb strings.Builder
+	sb.WriteString("unit ")
+	sb.WriteString(u.Name)
+	sb.WriteString("(")
+	for i, s := range u.Suffixes {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(s.Name)
+		if s.Factor != nil {
+			sb.WriteString(" = ")
+			sb.WriteString(FormatNode(s.Factor))
+		}
+	}
+	sb.WriteString(")")
+	f.writeLine(sb.String())
 }
 
 func (f *formatter) formatStyleDecl(s *ast.StyleDecl) {
@@ -300,26 +328,15 @@ func canInferType(expr ast.Expr, typeStr string) bool {
 		if s, ok := expr.Literal.(string); ok {
 			return strings.HasPrefix(s, "#")
 		}
-	case "duration":
-		if s, ok := expr.Literal.(string); ok {
-			return isDurationString(s)
-		}
+	}
+	// Unit types (duration, measurement, etc.) can be inferred from unit literals
+	if strings.HasPrefix(typeStr, "unit:") {
+		_, ok := expr.Literal.(ast.UnitLiteral)
+		return ok
 	}
 
 	// CEL expressions with complex types (list, struct, enum, func) need explicit type
 	return false
-}
-
-func isDurationString(s string) bool {
-	if len(s) < 2 {
-		return false
-	}
-	// Must start with a digit and end with a time suffix
-	if s[0] < '0' || s[0] > '9' {
-		return false
-	}
-	last := s[len(s)-1]
-	return last == 's' || last == 'm' || last == 'h'
 }
 
 func (f *formatter) formatComputeds(computeds []*ast.Computed) {
@@ -479,10 +496,13 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		props = append(props, "@"+name+"="+f.formatEventValue(expr))
 	}
 
-	// Inline style attrs
-	if len(vn.StyleAttrs) > 0 {
+	// Inline style attrs (merged from StyleAttrs + StyleBlock)
+	if len(vn.StyleAttrs) > 0 || len(vn.StyleBlock) > 0 {
 		var styleParts []string
 		for k, v := range vn.StyleAttrs {
+			styleParts = append(styleParts, k+"="+f.formatExprValue(v))
+		}
+		for k, v := range vn.StyleBlock {
 			styleParts = append(styleParts, k+"="+f.formatExprValue(v))
 		}
 		props = append(props, "style={"+strings.Join(styleParts, ", ")+"}")
@@ -494,22 +514,11 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		line += "(" + strings.Join(props, ", ") + ")"
 	}
 
-	hasBody := len(vn.Children) > 0 || len(vn.StyleBlock) > 0 || len(vn.AttrNodes) > 0
+	hasBody := len(vn.Children) > 0 || len(vn.AttrNodes) > 0
 	if hasBody {
 		line += " {"
 		f.writeLine(line)
 		f.indent++
-
-		// Style block
-		if len(vn.StyleBlock) > 0 {
-			f.writeLine("style {")
-			f.indent++
-			for k, v := range vn.StyleBlock {
-				f.writeLine(k + " = " + f.formatExprValue(v))
-			}
-			f.indent--
-			f.writeLine("}")
-		}
 
 		// Attr nodes
 		for _, an := range vn.AttrNodes {
@@ -658,8 +667,9 @@ func formatLiteralExpr(e *ast.LiteralExpr) string {
 		return "null"
 	case ast.LiteralColor:
 		return fmt.Sprintf("%v", e.Value)
-	case ast.LiteralDuration:
-		return fmt.Sprintf("%v", e.Value)
+	case ast.LiteralUnit:
+		ul := e.Value.(ast.UnitLiteral)
+		return ul.Number + ul.Suffix
 	default:
 		return fmt.Sprintf("%v", e.Value)
 	}
@@ -667,13 +677,11 @@ func formatLiteralExpr(e *ast.LiteralExpr) string {
 
 func formatLiteral(v any, typeHint string) string {
 	switch val := v.(type) {
+	case ast.UnitLiteral:
+		return val.Number + val.Suffix
 	case string:
 		// Color literals
 		if strings.HasPrefix(val, "#") && (typeHint == "color" || typeHint == "") {
-			return val
-		}
-		// Duration literals
-		if isDurationString(val) && (typeHint == "duration" || typeHint == "") {
 			return val
 		}
 		return fmt.Sprintf("%q", val)

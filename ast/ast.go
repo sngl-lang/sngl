@@ -30,6 +30,7 @@ type Document struct {
 	Structs    []*StructDef
 	Enums      []*EnumDef
 	Imports    []*Import
+	Units      []*UnitDef
 	Consts     []*Const
 	Data       []*Data
 	Computeds  []*Computed
@@ -37,6 +38,22 @@ type Document struct {
 	Styles     []*StyleDecl
 	StyleDefs  []*StylePropDef // from "styles" top-level node
 	App        *App
+}
+
+// UnitDef declares a unit type with named suffixes.
+type UnitDef struct {
+	Pos      Pos
+	Name     string        // "duration", "measurement"
+	Suffixes []*UnitSuffix // all suffixes in a single group
+}
+
+// UnitSuffix defines a single suffix within a unit declaration.
+// A bare suffix (Factor == nil) is an independent base.
+// A suffix with a factor (e.g., rem = 16em) is related to another suffix.
+type UnitSuffix struct {
+	Pos    Pos
+	Name   string // "ms", "px"
+	Factor Node   // nil for bare suffixes, expression for related suffixes
 }
 
 // Const is an immutable named value.

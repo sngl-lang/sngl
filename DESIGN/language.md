@@ -42,9 +42,9 @@ Hyphenated identifiers (`font-size`, `align-items`) are allowed in style propert
 | bool     | `true`, `false`                |
 | null     | `null`                         |
 | color    | `#ff0000`, `#fff`, `#ff000080` |
-| duration | `5s`, `100ms`, `2h30m`         |
+| unit     | `5s`, `100ms`, `12px`, `1.5em` |
 
-Number literals are untyped constants (like Go): `0` defaults to `int`, `1.0` defaults to `float`. All literals carry an intrinsic type — strings are `string`, booleans are `bool`, colors are `color`, durations are `duration`, etc. This enables type inference: when a `var` has a default value, the type can be omitted and will be inferred from the expression.
+Number literals are untyped constants (like Go): `0` defaults to `int`, `1.0` defaults to `float`. All literals carry an intrinsic type — strings are `string`, booleans are `bool`, colors are `color`, etc. Unit literals (a number immediately followed by a suffix) carry a `unit:<suffix>` type hint that is resolved against `unit` declarations. This enables type inference: when a `var` has a default value, the type can be omitted and will be inferred from the expression.
 
 ### String Interpolation
 
@@ -63,7 +63,7 @@ Escape literal braces with `\{`. Interpolated expressions follow the same syntax
 A semicolon is automatically inserted after a line's final token if that token is:
 
 - An identifier
-- A literal (int, float, string, bool, null, color, duration)
+- A literal (int, float, string, bool, null, color, unit)
 - One of: `)`, `]`, `}`
 
 This means `{` does NOT trigger insertion, enabling multi-line constructs:
@@ -86,7 +86,7 @@ Opening `{` must appear on the same line as its construct (same convention as Go
 
 ### Keywords
 
-Reserved words: `import`, `output`, `struct`, `enum`, `const`, `var`, `computed`, `style`, `styles`, `component`, `param`, `prop`, `event`, `children`, `if`, `for`, `in`, `extern`, `trigger`, `func`, `true`, `false`, `null`.
+Reserved words: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `computed`, `style`, `styles`, `component`, `param`, `prop`, `event`, `children`, `if`, `for`, `in`, `extern`, `trigger`, `func`, `true`, `false`, `null`.
 
 ## Expressions
 
@@ -196,7 +196,9 @@ Type = IDENT                              // int, string, bool, User, etc.
 
 ### Special Types
 
-`color`, `date`, `time`, `date-time`, `duration`, `url`, `email`, `uuid`, `regex`, `base64`, `ipv4`, `ipv6`, `hostname`, `currency`, `country-2`, `country-3`, `country-subdivision`, `decimal`, `idn-email`, `idn-hostname`, `irl`, `irl-reference`, `url-reference`, `url-template`
+`color`, `date`, `time`, `date-time`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex`, `base64`, `ipv4`, `ipv6`, `hostname`, `currency`, `country-2`, `country-3`, `country-subdivision`, `decimal`, `idn-email`, `idn-hostname`, `irl`, `irl-reference`, `url-reference`, `url-template`
+
+`duration` and `measurement` are unit types defined in the stdlib (see `unit` declarations). They have their own literal syntax (`5s`, `12px`) rather than string-wrapped values.
 
 ### Collection Types
 
@@ -267,6 +269,26 @@ enum Status { active, inactive, pending }
 
 Values are comma-separated identifiers.
 
+### unit
+
+Declares a unit type with named suffixes and optional conversion factors. A bare suffix (no `= expr`) is an independent base. A suffix with a unit literal factor like `rem = 16em` expresses a relationship to another suffix.
+
+```
+unit duration(ms, s = 1000ms, m = 60s, h = 60m)
+unit measurement(px, em, rem = 16em, vw, vh, pct)
+```
+
+→ `ast.UnitDef{Name, Suffixes: []*UnitSuffix}`. Each suffix has an optional `Factor` expression (nil for bare suffixes).
+
+Unit literals (e.g., `5s`, `12px`, `1.5em`) are number-suffix tokens recognized by the lexer. The suffix is resolved against unit declarations to determine the unit type. Compound literals like `2h30m` are not supported — use `2h + 30m` instead.
+
+Unit types can be used in type positions just like any other type name:
+
+```
+var timeout duration = 5s
+var spacing measurement = 12px
+```
+
 ### style (named)
 
 ```
@@ -309,7 +331,8 @@ var count = 0                    // inferred int
 var name = "World"               // inferred string
 var active = true                // inferred bool
 var bg = #ff0000                 // inferred color
-var timeout = 5s                 // inferred duration
+var timeout = 5s                 // inferred duration (unit type)
+var spacing = 12px               // inferred measurement (unit type)
 var user = User{name: "World"}   // inferred User (from struct literal)
 var todos list<Todo> = []        // type required — [] doesn't determine element type
 var mode enum<light | dark> = "light"  // type required — string doesn't determine enum
@@ -587,23 +610,6 @@ button(text="Go", style={margin=4, font-weight="bold"})
 
 → `VisualNode.StyleAttrs`. The `{...}` is NOT an expression — it is a style literal parsed as key-value pairs.
 
-### Style Block (In Body)
-
-Inside a visual node's children block, `style { ... }` defines style properties:
-
-```
-text(value=greeting) {
-    style {
-        font-size = 24
-        font-weight = "bold"
-    }
-}
-```
-
-→ `VisualNode.StyleBlock`. Properties are `name = value` per line.
-
-Both style forms can coexist on the same node. When they conflict, the style block takes precedence (matching KDL behavior).
-
 ### Attribute Nodes
 
 Inside a children block, `@name(props)` defines attribute metadata:
@@ -696,9 +702,12 @@ Declaration    = "import" STRING
                | "output" "{" OutputSpec* "}"
                | "struct" IDENT "{" StructField* "}"
                | "enum" IDENT "{" IDENT ("," IDENT)* "}"
+               | "unit" IDENT "(" UnitSuffixDef ("," UnitSuffixDef)* ")"
                | "style" IDENT "{" StyleProp* "}"
                | "styles" "{" StyleDef* "}"
                | "component" IDENT "{" ComponentMember* "}"
+
+UnitSuffixDef  = IDENT ("=" Expr)?
 
 OutputSpec     = IDENT IDENT ("(" KVList ")")?
                | IDENT "{" PlatformList "}"
@@ -747,8 +756,7 @@ NodeOrControl  = "if" Expr "{" VisualNode "}"
 
 VisualNode     = IDENT ("(" PropList ")")? ("{" NodeBody* "}")?
 
-NodeBody       = "style" "{" StyleProp* "}"
-               | "@" IDENT "(" KVList ")"
+NodeBody       = "@" IDENT "(" KVList ")"
                | NodeOrControl
 
 PropList       = Prop ("," Prop)*
@@ -821,7 +829,7 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | Top-level            | keyword                                | Which declaration to parse          |
 | After `output`       | IDENT vs `{`                           | Single output vs grouped block      |
 | After `var`          | IDENT vs `(`                           | Single var vs grouped declaration   |
-| Inside `{}` children | `if`/`for`/`style`/`@`/IDENT           | Control, style block, attr, or node |
+| Inside `{}` children | `if`/`for`/`@`/IDENT                   | Control, attr, or node              |
 | Inside component     | `const`/`var`/`computed`/`param`/IDENT | Const, state, param, or visual node |
 | After `var` IDENT    | `=` vs Type token                      | Inferred type vs explicit type      |
 | Inside `()` props    | `@`/`style`/IDENT                      | Event, style literal, or prop       |
@@ -851,12 +859,7 @@ component main {
     computed status = "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
-        text(value=status) {
-            style {
-                font-weight = "bold"
-                font-size = 24
-            }
-        }
+        text(value=status, style={font-weight="bold", font-size=24})
         hbox(style={gap=8, align-items="center"}) {
             input(@input={ newTodo = event.value }, placeholder="Buy eggs",
                   style={flex-grow=1})
@@ -902,12 +905,7 @@ component main {
     )
 
     vbox(style={padding=16, gap=12}) {
-        text(value=greeting) {
-            style {
-                font-size = 24
-                font-weight = "bold"
-            }
-        }
+        text(value=greeting, style={font-size=24, font-weight="bold"})
 
         if isAdult {
             text(value="(Adult)", style={color=#007700})
@@ -981,9 +979,9 @@ component main {
 | Inline enums         | `(enum:light\|dark)`                    | `enum<light \| dark>`                 |
 | Control flow         | `if=(cel)"expr"`, `for="item in items"` | `if expr { }`, `for item in expr { }` |
 | Style (inline)       | `style.gap=12 style.padding=16`         | `style={gap=12, padding=16}`          |
-| Style (block)        | `@style { gap 12; padding 16 }`         | `style { gap = 12; padding = 16 }`    |
+| Style (block)        | `@style { gap 12; padding 16 }`         | N/A (merged into inline style)         |
 | Color literals       | `"#ff0000"` (string)                    | `#ff0000` (token)                     |
-| Duration literals    | `"5s"` (string)                         | `5s` (token)                          |
+| Unit literals        | `"5s"` (string)                         | `5s`, `12px` (token)                  |
 | Bool/null            | `#true`, `#false`, `#null` (KDL syntax) | `true`, `false`, `null`               |
 | Statement separator  | KDL semicolons/newlines                 | Go-style semicolon insertion          |
 | List methods         | `push(list, value)` function call       | `list.push(value)` method call        |
