@@ -1,26 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{.Title}} — SNGL</title>
-  <link rel="stylesheet" href="/assets/style.css">
-</head>
-<body>
-  <input type="checkbox" id="nav-toggle" hidden>
-  <label for="nav-toggle" class="nav-toggle-btn" aria-label="Toggle navigation">&#9776;</label>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <a href="/index.html" class="logo"><img src="/assets/sngl.png" alt="" width="32" height="32"> SNGL</a>
-    </div>
-    <nav>
-      {{template "nav.html" .}}
-    </nav>
-  </aside>
-  <main class="content">
-    <article>
-      {{.Content}}
-    </article>
-  </main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Title}} — SNGL</title>
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" href="/assets/sngl.png" />
+  </head>
+  <body>
+    <input type="checkbox" id="nav-toggle" hidden />
+    <label
+      for="nav-toggle"
+      class="nav-toggle-btn"
+      aria-label="Toggle navigation"
+      >&#9776;</label
+    >
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="logo"
+          ><img src="/assets/sngl.png" alt="" width="32" height="32" /> SNGL</a
+        >
+      </div>
+      <nav>{{template "nav.html" .}}</nav>
+    </aside>
+    <main class="content">
+      <article>{{.Content}}</article>
+    </main>
+  </body>
 </html>
