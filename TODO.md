@@ -1,1 +1,4 @@
-There's a lot of syntactic complexity around allowing hyphens in identifiers. Let's remove that feature. Use camelCase for multi-word properties.
+- There's a lot of syntactic complexity around allowing hyphens in identifiers. Let's remove that feature. Use camelCase for multi-word properties.
+- Drop support for .sngl.kdl files.
+- Update how imports for .sngl work to function more like Go packages. If a directory is given, all sngl files are automatically included. Component libraries are imported as a relative directory.
+- Move parsing/compiler logic to internal. Keep ast. Expose a top-level sngl package that can parse and format.
