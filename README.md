@@ -1,93 +1,108 @@
-# SNGL
+<p align="center">
+  <img src="docs/sngl.png" alt="SNGL" width="200">
+</p>
 
+<h1 align="center">SNGL</h1>
 
+<p align="center">A purpose-built language for reactive, cross-platform UIs.</p>
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Write your UI once. SNGL compiles it to Web, TUI, Desktop, and Mobile targets.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+```sngl
+struct Todo {
+    text string = ""
+    done bool = false
+}
 
-## Add your files
+component main {
+    var (newTodo = "", todos list<Todo> = [])
+    computed status = "Todo List ({todos.length()} items)"
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+    vbox(style={gap=12, padding=16}) {
+        text(value=status, style={font-weight="bold", font-size=24})
+        hbox(style={gap=8, align-items="center"}) {
+            input(@input={ newTodo = event.value }, placeholder="Buy eggs",
+                  style={flex-grow=1})
+            button(@click={
+                todos.push(Todo{text: newTodo, done: false})
+                newTodo = ""
+            }, text="Add")
+        }
+        vbox(style={gap=4}) {
+            for item, index in todos {
+                checkbox(checked=item.done, key=index, label=item.text,
+                         @change={ todos[index].done!! })
+            }
+        }
+    }
+}
 ```
-cd existing_repo
-git remote add origin https://git.duckfam.us/jonathan/sngl.git
-git branch -M main
-git push -uf origin main
+
+## Features
+
+- **Declarative** — describe what your interface looks like, not how to build it
+- **Reactive** — state changes automatically propagate to the UI
+- **Cross-platform** — one source targets HTML/JS, BubbleTea, Gio, and native mobile
+- **Type-safe** — types, bindings, and dependencies are verified at compile time
+- **Minimal runtime** — subscription-based updates, no virtual DOM
+
+## Platforms
+
+| Target | Language | Platform | Status |
+| --- | --- | --- | --- |
+| Web | JavaScript | HTML | In progress |
+| TUI | Go | BubbleTea | In progress |
+| Desktop | Go | Gio | Planned |
+| Mobile | Swift/Kotlin | Native | Planned |
+
+## Install
+
+Requires Go 1.26+.
+
+```bash
+go install git.duckfam.us/jonathan/sngl/cmd/sngl@latest
 ```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://git.duckfam.us/jonathan/sngl/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+# Compile a .sngl file to all declared targets
+sngl compile todo.sngl
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# Start the LSP server (for editor integration)
+sngl lsp
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Architecture
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```
+.sngl source
+    │
+    ├─ Parser ──▶ AST
+    ├─ Checker ──▶ type validation
+    ├─ Optimizer ──▶ platform-specific transforms
+    └─ Code Generator ──▶ target code (HTML/JS, Go, ...)
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Code generation is pluggable: platform backends and language translators register themselves via `codegen.RegisterPlatform` and `codegen.RegisterLang`.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Documentation
+
+Full docs are at the [SNGL documentation site](https://jonathan.git.duckfam.us/sngl), including a browser-based [Playground](https://jonathan.git.duckfam.us/sngl/playground.html) that compiles SNGL to HTML+JS via WebAssembly.
+
+To build the docs locally:
+
+```bash
+go tool docsgen
+# Open _site/index.html
+```
+
+## Examples
+
+See [`_examples/`](_examples/) for complete apps. The [todo app](_examples/todo/) demonstrates structs, reactive state, computed values, event handling, and iteration.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+See [LICENSE](LICENSE).

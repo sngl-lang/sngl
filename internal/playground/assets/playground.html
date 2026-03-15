@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNGL Playground</title>
+    <link rel="stylesheet" href="assets/playground/playground.css">
+</head>
+<body>
+    <div class="toolbar">
+        <h1>SNGL Playground</h1>
+        <select id="examples">
+            <option value="">Examples...</option>
+            <option value="default">Todo App</option>
+        </select>
+        <a class="nav-link" href="index.html">&larr; Docs</a>
+        <span class="status" id="status">Loading WASM...</span>
+    </div>
+    <div class="error-banner" id="error"></div>
+    <div class="split-pane">
+        <div class="editor-pane" id="editor-pane"></div>
+        <div class="output-pane">
+            <div class="tab-bar">
+                <button class="active" data-tab="preview">Preview</button>
+                <button data-tab="ast">AST</button>
+            </div>
+            <div class="tab-content">
+                <div class="tab-panel active" id="tab-preview">
+                    <iframe id="preview"></iframe>
+                </div>
+                <div class="tab-panel" id="tab-ast">
+                    <pre id="ast-output"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/sngl" id="default-source">
+app {
+    vbox style.padding=16 {
+        text value="Hello, SNGL!"
+    }
+}
+</script>
+    <script src="assets/playground/wasm_exec.js"></script>
+    <script type="module" src="assets/playground/playground.js"></script>
+</body>
+</html>

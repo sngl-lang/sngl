@@ -5,3 +5,4 @@ _site/
 /_examples/todo/todo
 snapshots/
 internal/snapshot/testdata/snapshots/
+*.wasm

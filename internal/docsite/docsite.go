@@ -59,6 +59,9 @@ func Build(docsDir, outDir string) error {
 		return err
 	}
 
+	// Copy static assets (images, etc.)
+	copyStaticAssets(docsDir, outDir)
+
 	// Render each page
 	for _, page := range pages {
 		htmlContent, err := RenderMarkdown(page.Body)
@@ -233,6 +236,30 @@ func generateChromaCSS() (string, error) {
 		buf.WriteString("}\n")
 	}
 	return buf.String(), nil
+}
+
+func copyStaticAssets(docsDir, outDir string) {
+	exts := map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".svg": true, ".ico": true}
+	filepath.WalkDir(docsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			if d != nil && strings.HasPrefix(d.Name(), "_") {
+				return filepath.SkipDir
+			}
+			return err
+		}
+		if !exts[filepath.Ext(path)] {
+			return nil
+		}
+		rel, _ := filepath.Rel(docsDir, path)
+		dest := filepath.Join(outDir, "assets", rel)
+		os.MkdirAll(filepath.Dir(dest), 0o755)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		os.WriteFile(dest, data, 0o644)
+		return nil
+	})
 }
 
 func pageTitleFromPath(rel string) string {

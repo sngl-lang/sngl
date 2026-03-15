@@ -77,6 +77,12 @@ func BuildNav(pages []Page) []*NavItem {
 		})
 	}
 
+	topLevel = append(topLevel, &NavItem{
+		Title: "Playground",
+		Href:  "playground.html",
+		Order: 9999,
+	})
+
 	sort.Slice(topLevel, func(i, j int) bool {
 		if topLevel[i].Order != topLevel[j].Order {
 			return topLevel[i].Order < topLevel[j].Order

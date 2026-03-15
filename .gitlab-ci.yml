@@ -36,10 +36,7 @@ test:
   needs:
     - job: build-image
       optional: true
-  script:
-    - cp -r . /src
-    - cd /src
-    - go test ./...
+  script: go test ./...
 
 pages:
   stage: pages
@@ -49,10 +46,7 @@ pages:
   needs:
     - job: build-image
       optional: true
-  script:
-    - cp -r . /src
-    - cd /src
-    - go tool docsgen -out $CI_PROJECT_DIR/public
+  script: go tool docsgen -out public
   artifacts:
     paths:
       - public

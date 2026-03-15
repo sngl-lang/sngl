@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+a { color: #7c8aff; }
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+}
+
+.toolbar h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.toolbar select {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.toolbar .status {
+    font-size: 12px;
+    color: #888;
+    margin-left: auto;
+}
+
+.toolbar .nav-link {
+    font-size: 13px;
+}
+
+.error-banner {
+    background: #5c1a1a;
+    color: #ff8a8a;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    display: none;
+    flex-shrink: 0;
+}
+
+.error-banner.visible { display: block; }
+
+.split-pane {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex: 1;
+    min-height: 0;
+}
+
+.editor-pane {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #0f3460;
+    min-height: 0;
+}
+
+.editor-pane .cm-editor {
+    height: 100%;
+    font-size: 14px;
+}
+
+.editor-pane .cm-scroller {
+    overflow: auto;
+}
+
+.output-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tab-bar {
+    display: flex;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+}
+
+.tab-bar button {
+    background: none;
+    border: none;
+    color: #888;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-bar button.active {
+    color: #e0e0e0;
+    border-bottom-color: #7c8aff;
+}
+
+.tab-content {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
+.tab-panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+}
+
+.tab-panel.active { display: block; }
+
+.tab-panel iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+}
+
+.tab-panel pre {
+    padding: 16px;
+    font-size: 13px;
+    overflow: auto;
+    height: 100%;
+    color: #c0c0c0;
+}
