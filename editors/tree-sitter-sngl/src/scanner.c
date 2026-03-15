@@ -13,6 +13,7 @@ enum TokenType {
 
 typedef struct {
   bool in_string;
+  uint8_t interp_depth;
 } Scanner;
 
 void *tree_sitter_sngl_external_scanner_create(void) {
@@ -27,7 +28,8 @@ unsigned tree_sitter_sngl_external_scanner_serialize(void *payload,
                                                       char *buffer) {
   Scanner *s = (Scanner *)payload;
   buffer[0] = s->in_string ? 1 : 0;
-  return 1;
+  buffer[1] = s->interp_depth;
+  return 2;
 }
 
 void tree_sitter_sngl_external_scanner_deserialize(void *payload,
@@ -35,16 +37,28 @@ void tree_sitter_sngl_external_scanner_deserialize(void *payload,
                                                     unsigned length) {
   Scanner *s = (Scanner *)payload;
   s->in_string = length > 0 && buffer[0] != 0;
+  s->interp_depth = length > 1 ? (uint8_t)buffer[1] : 0;
 }
 
 bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
                                              const bool *valid_symbols) {
   Scanner *s = (Scanner *)payload;
 
+  // --- String interpolation end: } closing interpolation ---
+  // Check this first, before ASI can claim the }.
+  if (valid_symbols[STRING_INTERPOLATION_END] && s->interp_depth > 0 &&
+      lexer->lookahead == '}') {
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = STRING_INTERPOLATION_END;
+    s->interp_depth--;
+    s->in_string = true;
+    return true;
+  }
+
   // --- String content ---
-  // Only when we are NOT also expecting AUTOMATIC_SEMICOLON (which means
-  // the parser is genuinely inside a string_literal after the opening quote).
-  if (valid_symbols[STRING_CONTENT] && !valid_symbols[AUTOMATIC_SEMICOLON]) {
+  // When STRING_CONTENT is valid, we're inside a string_literal.
+  if (valid_symbols[STRING_CONTENT]) {
     s->in_string = true;
     bool has_content = false;
     lexer->result_symbol = STRING_CONTENT;
@@ -64,27 +78,29 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
       lexer->mark_end(lexer);
       return true;
     }
-    // No content before " or { — let grammar handle it
+
+    // No content — check if this is a { for interpolation start.
+    if (lexer->lookahead == '{' && valid_symbols[STRING_INTERPOLATION_START]) {
+      lexer->advance(lexer, false);
+      lexer->mark_end(lexer);
+      lexer->result_symbol = STRING_INTERPOLATION_START;
+      s->in_string = false;
+      s->interp_depth++;
+      return true;
+    }
+
+    // Must be closing " — let grammar handle it.
     return false;
   }
 
-  // --- String interpolation start: { inside string ---
+  // --- String interpolation start (fallback, not inside STRING_CONTENT) ---
   if (valid_symbols[STRING_INTERPOLATION_START] && s->in_string &&
       lexer->lookahead == '{') {
     lexer->advance(lexer, false);
     lexer->mark_end(lexer);
     lexer->result_symbol = STRING_INTERPOLATION_START;
     s->in_string = false;
-    return true;
-  }
-
-  // --- String interpolation end: } closing interpolation ---
-  if (valid_symbols[STRING_INTERPOLATION_END] && !s->in_string &&
-      lexer->lookahead == '}') {
-    lexer->advance(lexer, false);
-    lexer->mark_end(lexer);
-    lexer->result_symbol = STRING_INTERPOLATION_END;
-    s->in_string = true;
+    s->interp_depth++;
     return true;
   }
 
@@ -106,7 +122,8 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
 
     if (found_newline) return true;
     if (lexer->eof(lexer)) return true;
-    if (lexer->lookahead == '}') return true;
+    // Only insert ASI before } when NOT inside string interpolation.
+    if (lexer->lookahead == '}' && s->interp_depth == 0) return true;
   }
 
   return false;

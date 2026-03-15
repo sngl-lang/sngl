@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("component main {\n    var (\n        count = 0\n       (todos list<Todo> trigger\n        items list<Item> trigger(\"SaveItems\")\n        apiClient dyn extern\n        saveTodo func(string) extern\n        formatDate func(string) -> string extern\n    )\n\n    computed doubled = count * 2\n}\n")

@@ -124,19 +124,15 @@
     "named": true,
     "subtypes": [
       {
+        "type": "_expression",
+        "named": true
+      },
+      {
         "type": "assignment_statement",
         "named": true
       },
       {
-        "type": "call_expression",
-        "named": true
-      },
-      {
         "type": "emit_statement",
-        "named": true
-      },
-      {
-        "type": "method_expression",
         "named": true
       },
       {

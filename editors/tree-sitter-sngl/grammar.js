@@ -327,7 +327,7 @@ module.exports = grammar({
       ),
 
     hyphenated_identifier: (_$) =>
-      /[a-zA-Z_][a-zA-Z0-9_]*-[a-zA-Z][a-zA-Z0-9_]*(-[a-zA-Z][a-zA-Z0-9_]*)*/,
+      /[a-zA-Z_][a-zA-Z0-9_]*-[a-zA-Z0-9][a-zA-Z0-9_]*(-[a-zA-Z0-9][a-zA-Z0-9_]*)*/,
 
     generic_type: ($) =>
       seq(
@@ -453,8 +453,7 @@ module.exports = grammar({
         $.assignment_statement,
         $.toggle_statement,
         $.emit_statement,
-        $.call_expression,
-        $.method_expression,
+        $._expression,
       ),
 
     assignment_statement: ($) =>
