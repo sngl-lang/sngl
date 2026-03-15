@@ -1,0 +1,58 @@
+stages:
+  - dependencies
+  - test
+  - pages
+
+variables:
+  IMAGE: $CI_REGISTRY_IMAGE/ci
+
+build-image:
+  stage: dependencies
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  rules:
+    - changes:
+        - Dockerfile
+        - go.mod
+        - go.sum
+      when: always
+    - when: never
+  script:
+    - mkdir -p /kaniko/.docker
+    - >-
+      echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}"
+      > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile $CI_PROJECT_DIR/Dockerfile
+      --destination $IMAGE:latest
+      --cache=true
+
+test:
+  stage: test
+  image: $IMAGE:latest
+  needs:
+    - job: build-image
+      optional: true
+  script:
+    - cp -r . /src
+    - cd /src
+    - go test ./...
+
+pages:
+  stage: pages
+  image: $IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - job: build-image
+      optional: true
+  script:
+    - cp -r . /src
+    - cd /src
+    - go tool docsgen -out $CI_PROJECT_DIR/public
+  artifacts:
+    paths:
+      - public

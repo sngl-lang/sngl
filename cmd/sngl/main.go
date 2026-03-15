@@ -33,6 +33,7 @@ func init() {
 	rootCmd.AddCommand(previewCmd)
 	rootCmd.AddCommand(stubCmd("init", "Initialize a new SNGL project"))
 	rootCmd.AddCommand(docCmd)
+	rootCmd.AddCommand(snapshotCmd)
 }
 
 func main() {

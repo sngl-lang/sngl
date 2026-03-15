@@ -73,4 +73,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-tool git.duckfam.us/jonathan/sngl/cmd/sngl
+tool (
+	git.duckfam.us/jonathan/sngl/cmd/sngl
+	git.duckfam.us/jonathan/sngl/internal/docsgen
+)

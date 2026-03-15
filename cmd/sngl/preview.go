@@ -18,7 +18,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 	"github.com/calico32/kdl-go"
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/cel-go/cel"
@@ -143,42 +143,9 @@ func (s *previewServer) recompile() error {
 	s.doc = doc
 	s.mu.Unlock()
 
-	// Clone for optimization (mutates in-place)
-	previewDoc := doc.Clone()
-	optimize.Optimize(previewDoc, optimize.Config{
-		Platform: activePlat,
-		Language: activeLang,
-	})
-
-	// Always generate HTML for preview
-	jsLang := codegen.LookupLang("js")
-	htmlPlat := codegen.LookupPlatform("html")
-	if jsLang == nil || htmlPlat == nil {
-		return fmt.Errorf("html/js codegen not registered")
-	}
-
-	resp, err := htmlPlat.Generate(&codegen.Request{
-		Doc:     previewDoc,
-		Lang:    jsLang,
-		Options: map[string]string{"preview": "true"},
-	})
+	html, err := snapshot.CompilePreviewHTML(s.sourceFile, activePlat, activeLang)
 	if err != nil {
 		return err
-	}
-	if resp.Error != "" {
-		return fmt.Errorf("%s", resp.Error)
-	}
-
-	html := resp.Files[0].Content
-
-	// Inject preview CSS from active platform if it implements PreviewStyler
-	if activePlat != "html" {
-		plat := codegen.LookupPlatform(activePlat)
-		if styler, ok := plat.(codegen.PreviewStyler); ok {
-			css := styler.PreviewCSS()
-			injection := fmt.Sprintf("<style>%s</style>\n</head>", css)
-			html = []byte(strings.Replace(string(html), "</head>", injection, 1))
-		}
 	}
 
 	s.mu.Lock()
