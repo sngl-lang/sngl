@@ -6,6 +6,8 @@ description: "A purpose-built language for reactive, cross-platform UIs"
 
 ## What is SNGL?
 
+![SNGL Logo](./assets/sngl.png)
+
 SNGL is a purpose-built language for describing reactive user interfaces that compile to multiple platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets.
 
 ## Design Philosophy
@@ -58,12 +60,12 @@ component main {
 
 ## Platforms
 
-| Target | Language | Platform | Status |
-| --- | --- | --- | --- |
-| Web | JavaScript | HTML | In progress |
-| TUI | Go | BubbleTea | In progress |
-| Desktop | Go | Gio | Planned |
-| Mobile | Swift/Kotlin | Native | Planned |
+| Target  | Language     | Platform  | Status      |
+| ------- | ------------ | --------- | ----------- |
+| Web     | JavaScript   | HTML      | In progress |
+| TUI     | Go           | BubbleTea | In progress |
+| Desktop | Go           | Gio       | Planned     |
+| Mobile  | Swift/Kotlin | Native    | Planned     |
 
 ## Next Steps
 
