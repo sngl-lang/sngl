@@ -5,6 +5,8 @@
 (style_declaration "{" @fold.start "}" @fold.end)
 (styles_declaration "{" @fold.start "}" @fold.end)
 (component_declaration "{" @fold.start "}" @fold.end)
+(test_declaration "{" @fold.start "}" @fold.end)
+(subtest_declaration "{" @fold.start "}" @fold.end)
 (output_group "{" @fold.start "}" @fold.end)
 
 ; Visual node bodies

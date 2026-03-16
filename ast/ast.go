@@ -38,6 +38,17 @@ type Document struct {
 	Styles     []*StyleDecl
 	StyleDefs  []*StylePropDef // from "styles" top-level node
 	App        *App
+	Tests      []*TestDef
+}
+
+// TestDef declares a test block targeting a component.
+// Top-level tests specify a Component name; nested subtests inherit it.
+type TestDef struct {
+	Pos       Pos
+	Component string     // component under test (top-level only)
+	Desc      string     // test description
+	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
+	Subtests  []*TestDef // nested test blocks
 }
 
 // UnitDef declares a unit type with named suffixes.

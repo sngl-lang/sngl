@@ -53,6 +53,7 @@ module.exports = grammar({
         $.style_declaration,
         $.styles_declaration,
         $.component_declaration,
+        $.test_declaration,
       ),
 
     import_declaration: ($) => seq("import", $.string_literal),
@@ -204,6 +205,33 @@ module.exports = grammar({
         "{",
         repeat(seq($._component_member, $._terminator)),
         "}",
+      ),
+
+    // ─── Test declarations ─────────────────────────────────
+
+    test_declaration: ($) =>
+      seq(
+        "test",
+        field("component", $.identifier),
+        field("description", $.string_literal),
+        "{",
+        repeat(seq($._test_body_member, $._terminator)),
+        "}",
+      ),
+
+    subtest_declaration: ($) =>
+      seq(
+        "test",
+        field("description", $.string_literal),
+        "{",
+        repeat(seq($._test_body_member, $._terminator)),
+        "}",
+      ),
+
+    _test_body_member: ($) =>
+      choice(
+        $.subtest_declaration,
+        $._statement,
       ),
 
     _component_member: ($) =>

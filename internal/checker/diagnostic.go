@@ -29,7 +29,7 @@ func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver) (*a
 		visited:    map[string]bool{},
 	}
 
-	if doc.App == nil {
+	if doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
 		return doc, toDiagnostics(c.errs)
 	}

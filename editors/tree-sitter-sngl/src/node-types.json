@@ -32,6 +32,10 @@
         "named": true
       },
       {
+        "type": "test_declaration",
+        "named": true
+      },
+      {
         "type": "unit_declaration",
         "named": true
       }
@@ -1508,6 +1512,36 @@
     }
   },
   {
+    "type": "subtest_declaration",
+    "named": true,
+    "fields": {
+      "description": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string_literal",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "_statement",
+          "named": true
+        },
+        {
+          "type": "subtest_declaration",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "ternary_expression",
     "named": true,
     "fields": {
@@ -1541,6 +1575,46 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "test_declaration",
+    "named": true,
+    "fields": {
+      "component": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "description": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string_literal",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "_statement",
+          "named": true
+        },
+        {
+          "type": "subtest_declaration",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1983,6 +2057,10 @@
   },
   {
     "type": "styles",
+    "named": false
+  },
+  {
+    "type": "test",
     "named": false
   },
   {

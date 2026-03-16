@@ -5,6 +5,8 @@
   (style_declaration)
   (styles_declaration)
   (component_declaration)
+  (test_declaration)
+  (subtest_declaration)
   (output_group)
   (node_body)
   (if_node)

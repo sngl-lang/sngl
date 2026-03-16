@@ -129,6 +129,15 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		needBlank = true
 	}
 
+	// Tests
+	for _, td := range doc.Tests {
+		if needBlank {
+			f.newline()
+		}
+		f.formatTestDef(td, true)
+		needBlank = true
+	}
+
 	// component main (combines data, computed, consts, app)
 	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0
 	if hasMain {
@@ -438,6 +447,27 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 		}
 	}
 
+	f.indent--
+	f.writeLine("}")
+}
+
+func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
+	line := "test "
+	if topLevel && td.Component != "" {
+		line += td.Component + " "
+	}
+	line += "\"" + escapeStringContent(td.Desc) + "\" {"
+	f.writeLine(line)
+	f.indent++
+	for _, stmt := range td.Body {
+		f.writeLine(FormatStmt(stmt))
+	}
+	for _, sub := range td.Subtests {
+		if len(td.Body) > 0 || sub != td.Subtests[0] {
+			f.newline()
+		}
+		f.formatTestDef(sub, false)
+	}
 	f.indent--
 	f.writeLine("}")
 }

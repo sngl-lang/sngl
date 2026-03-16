@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"github.com/spf13/cobra"
 )

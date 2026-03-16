@@ -8,8 +8,8 @@ import (
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/internal/codegen/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "git.duckfam.us/jonathan/sngl/internal/codegen/bubbletea"
 )
 
 var rootCmd = &cobra.Command{
@@ -27,7 +27,7 @@ func init() {
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(stubCmd("lint", "Lint SNGL files"))
-	rootCmd.AddCommand(stubCmd("test", "Run SNGL tests"))
+	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(lspCmd)
 	rootCmd.AddCommand(stubCmd("fmt", "Format SNGL files"))
 	rootCmd.AddCommand(previewCmd)

@@ -128,6 +128,67 @@ style danger {
       value: (string_literal))))
 
 ================
+Test declaration
+================
+
+test counter "increments" {
+    assert(count == 0)
+    count += 1
+    assert(count == 1)
+}
+
+---
+
+(source_file
+  (test_declaration
+    component: (identifier)
+    description: (string_literal)
+    (call_expression
+      function: (identifier)
+      (binary_expression
+        left: (identifier)
+        right: (integer_literal)))
+    (assignment_statement
+      target: (identifier)
+      operator: (assignment_operator)
+      value: (integer_literal))
+    (call_expression
+      function: (identifier)
+      (binary_expression
+        left: (identifier)
+        right: (integer_literal)))))
+
+================
+Test declaration with subtests
+================
+
+test counter "increments" {
+    count += 1
+
+    test "nested" {
+        assert(count == 1)
+    }
+}
+
+---
+
+(source_file
+  (test_declaration
+    component: (identifier)
+    description: (string_literal)
+    (assignment_statement
+      target: (identifier)
+      operator: (assignment_operator)
+      value: (integer_literal))
+    (subtest_declaration
+      description: (string_literal)
+      (call_expression
+        function: (identifier)
+        (binary_expression
+          left: (identifier)
+          right: (integer_literal))))))
+
+================
 Styles (property definitions)
 ================
 

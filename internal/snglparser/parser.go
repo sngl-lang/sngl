@@ -102,6 +102,8 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Styles = append(doc.Styles, p.parseStyleDecl())
 		case KW_STYLES:
 			doc.StyleDefs = append(doc.StyleDefs, p.parseStyles()...)
+		case KW_TEST:
+			doc.Tests = append(doc.Tests, p.parseTestDef(true))
 		case KW_COMPONENT:
 			comp := p.parseComponent()
 			if comp.Name == "main" {
@@ -369,9 +371,29 @@ func (p *parser) parseComponent() *ast.Component {
 	return comp
 }
 
-// Add Data and Computeds to Component for component-scoped state
-func init() {
-	// Component already has these fields via the ast package
+func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
+	pos := p.pos()
+	p.expect(KW_TEST)
+	td := &ast.TestDef{Pos: pos}
+	if topLevel {
+		td.Component = p.expect(IDENT).Literal
+	}
+	td.Desc = p.expect(STRING).Literal
+	p.expect(LBRACE)
+	for !p.at(RBRACE) && !p.at(EOF) {
+		p.skipSemicolons()
+		if p.at(RBRACE) {
+			break
+		}
+		if p.at(KW_TEST) {
+			td.Subtests = append(td.Subtests, p.parseTestDef(false))
+		} else {
+			td.Body = append(td.Body, p.parseStmt())
+		}
+		p.skipSemicolons()
+	}
+	p.expect(RBRACE)
+	return td
 }
 
 func (p *parser) parseParam() *ast.Param {

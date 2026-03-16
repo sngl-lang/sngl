@@ -81,6 +81,7 @@ const (
 	KW_TRIGGER
 	KW_FUNC
 	KW_UNIT
+	KW_TEST
 	KW_TRUE
 	KW_FALSE
 	KW_NULL
@@ -108,6 +109,7 @@ var keywords = map[string]TokenType{
 	"trigger":   KW_TRIGGER,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
+	"test":      KW_TEST,
 	"true":      KW_TRUE,
 	"false":     KW_FALSE,
 	"null":      KW_NULL,
@@ -170,4 +172,5 @@ var tokenNames = map[TokenType]string{
 	PLUS_ASSIGN: "PLUS_ASSIGN", MINUS_ASSIGN: "MINUS_ASSIGN",
 	STAR_ASSIGN: "STAR_ASSIGN", SLASH_ASSIGN: "SLASH_ASSIGN",
 	PERCENT_ASSIGN: "PERCENT_ASSIGN",
+	KW_TEST:        "KW_TEST",
 }

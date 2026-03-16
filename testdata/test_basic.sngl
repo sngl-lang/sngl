@@ -1,0 +1,27 @@
+component counter {
+    var count = 0
+    var name = "hello"
+
+    button(text="+", @click={ count += 1 })
+    text(value="Count: {count}")
+}
+
+test counter "starts at zero" {
+    assert(count == 0)
+}
+
+test counter "increments" {
+    assert(count == 0)
+    count += 1
+    assert(count == 1)
+
+    test "multiple increments" {
+        count += 5
+        assert(count == 6)
+    }
+}
+
+test counter "starts fresh each test" {
+    assert(count == 0)
+    assert(name == "hello")
+}

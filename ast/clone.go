@@ -22,6 +22,7 @@ func (d *Document) Clone() *Document {
 	c.Styles = cloneStyleDecls(d.Styles)
 	c.StyleDefs = cloneSlice(d.StyleDefs)
 	c.App = d.App.clone()
+	c.Tests = cloneTests(d.Tests)
 	return &c
 }
 
@@ -171,6 +172,23 @@ func cloneComponents(s []*Component) []*Component {
 		c.PropDecls = cloneSlice(v.PropDecls)
 		c.EventDecls = cloneSlice(v.EventDecls)
 		c.Body = cloneVisualNodes(v.Body)
+		out[i] = &c
+	}
+	return out
+}
+
+func cloneTests(s []*TestDef) []*TestDef {
+	if s == nil {
+		return nil
+	}
+	out := make([]*TestDef, len(s))
+	for i, v := range s {
+		c := *v
+		if v.Body != nil {
+			c.Body = make([]Node, len(v.Body))
+			copy(c.Body, v.Body)
+		}
+		c.Subtests = cloneTests(v.Subtests)
 		out[i] = &c
 	}
 	return out

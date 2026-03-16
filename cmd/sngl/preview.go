@@ -16,8 +16,8 @@ import (
 	"sort"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"github.com/fsnotify/fsnotify"

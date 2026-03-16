@@ -64,7 +64,7 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
 		visited:    map[string]bool{},
 	}
 
-	if doc.App == nil {
+	if doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
 		return c.joinErrors()
 	}
@@ -72,6 +72,82 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
 	c.pass1(doc)
 	c.pass2(doc)
 	return c.joinErrors()
+}
+
+// CheckTests validates test blocks in a document. It resolves each test's
+// target component and checks that the test body references valid variables.
+func CheckTests(doc *ast.Document) []Diagnostic {
+	var diags []Diagnostic
+	for _, td := range doc.Tests {
+		comp := findTestComponent(doc, td.Component)
+		if comp == nil {
+			diags = append(diags, Diagnostic{Pos: td.Pos, Msg: fmt.Sprintf("test targets unknown component %q", td.Component)})
+			continue
+		}
+		diags = append(diags, checkTestBody(td, comp)...)
+	}
+	return diags
+}
+
+// findTestComponent locates the component definition for a test, handling "main".
+func findTestComponent(doc *ast.Document, name string) *ast.Component {
+	if name == "main" {
+		return &ast.Component{
+			Name:      "main",
+			Data:      doc.Data,
+			Computeds: doc.Computeds,
+			Consts:    doc.Consts,
+		}
+	}
+	for _, c := range doc.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+func checkTestBody(td *ast.TestDef, comp *ast.Component) []Diagnostic {
+	known := map[string]bool{}
+	for _, d := range comp.Data {
+		known[d.Name] = true
+	}
+	for _, c := range comp.Computeds {
+		known[c.Name] = true
+	}
+	for _, c := range comp.Consts {
+		known[c.Name] = true
+	}
+	for _, p := range comp.Params {
+		known[p.Name] = true
+	}
+	known["assert"] = true
+
+	var diags []Diagnostic
+	for _, stmt := range td.Body {
+		diags = append(diags, checkStmtRefs(stmt, known)...)
+	}
+	for _, sub := range td.Subtests {
+		diags = append(diags, checkTestBody(sub, comp)...)
+	}
+	return diags
+}
+
+func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {
+	// Shallow check: verify top-level identifiers in assignments and calls
+	switch s := n.(type) {
+	case *ast.AssignStmt:
+		if ident, ok := s.Target.(*ast.IdentExpr); ok {
+			if !known[ident.Name] {
+				return []Diagnostic{{Msg: fmt.Sprintf("unknown variable %q", ident.Name)}}
+			}
+		}
+	case *ast.CallExpr:
+		if !known[s.Func] {
+			return []Diagnostic{{Msg: fmt.Sprintf("unknown function %q", s.Func)}}
+		}
+	}
+	return nil
 }
 
 type checker struct {
