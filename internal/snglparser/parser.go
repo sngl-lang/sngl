@@ -378,7 +378,9 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	if topLevel {
 		td.Component = p.expect(IDENT).Literal
 	}
-	td.Desc = p.expect(STRING).Literal
+	if p.at(STRING) {
+		td.Desc = p.expect(STRING).Literal
+	}
 	p.expect(LBRACE)
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
@@ -1208,6 +1210,10 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 			expr := innerParser.parseExpression()
 			// If the inner parse had errors or didn't consume all input,
 			// treat {…} as literal text rather than broken interpolation.
+			// Allow trailing semicolons from automatic semicolon insertion at EOF.
+			if innerParser.at(SEMICOLON) {
+				innerParser.advance()
+			}
 			if len(innerParser.errs) > 0 || !innerParser.at(EOF) {
 				buf.WriteRune('{')
 				i = start + 1

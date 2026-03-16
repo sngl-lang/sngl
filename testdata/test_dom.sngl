@@ -1,0 +1,71 @@
+component counter {
+    var count = 0
+
+    button(text="+", key="inc", @click={ count += 1 })
+    button(text="-", key="dec", @click={ count -= 1 })
+    text(value="Count: {count}", key="display")
+}
+
+component wrapper {
+    var visible = true
+
+    vbox(key="container") {
+        text(value="header", key="hdr")
+        if visible {
+            text(value="shown", key="conditional")
+        }
+    }
+}
+
+component listcomp {
+    var items = ["a", "b", "c"]
+
+    vbox(key="list") {
+        for item in items {
+            text(key=item, value=item)
+        }
+    }
+}
+
+test counter "root has children" {
+    assert(len(root._children) == 3)
+}
+
+test counter "find by key" {
+    assert(root._find("inc").text == "+")
+    assert(root._find("dec").text == "-")
+    assert(root._find("display").value == "Count: 0")
+}
+
+test counter "dom updates after mutation" {
+    count += 1
+    assert(root._find("display").value == "Count: 1")
+    count += 4
+    assert(root._find("display").value == "Count: 5")
+}
+
+test counter "root exposes vars" {
+    assert(root.count == 0)
+    count += 1
+    assert(root.count == 1)
+}
+
+test counter {
+    assert(count == 0)
+}
+
+test wrapper "conditional rendering" {
+    assert(root._find("conditional") != null)
+    visible = false
+    assert(root._find("conditional") == null)
+}
+
+test wrapper "nested find" {
+    assert(root._find("hdr").value == "header")
+}
+
+test listcomp "for loop rendering" {
+    assert(len(root._find("list")._children) == 3)
+    assert(root._find("a").value == "a")
+    assert(root._find("c").value == "c")
+}

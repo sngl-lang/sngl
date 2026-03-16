@@ -213,7 +213,7 @@ module.exports = grammar({
       seq(
         "test",
         field("component", $.identifier),
-        field("description", $.string_literal),
+        optional(field("description", $.string_literal)),
         "{",
         repeat(seq($._test_body_member, $._terminator)),
         "}",
@@ -222,7 +222,7 @@ module.exports = grammar({
     subtest_declaration: ($) =>
       seq(
         "test",
-        field("description", $.string_literal),
+        optional(field("description", $.string_literal)),
         "{",
         repeat(seq($._test_body_member, $._terminator)),
         "}",

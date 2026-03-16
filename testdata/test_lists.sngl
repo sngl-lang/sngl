@@ -1,0 +1,37 @@
+component items {
+    var list = [1, 2, 3]
+
+    text(value="{list}")
+}
+
+test items "creation and len" {
+    assert(len(list) == 3)
+}
+
+test items "indexing" {
+    assert(list[0] == 1)
+    assert(list[1] == 2)
+    assert(list[2] == 3)
+}
+
+test items "push" {
+    list.push(4)
+    assert(len(list) == 4)
+    assert(list[3] == 4)
+}
+
+test items "remove" {
+    list.remove(1)
+    assert(len(list) == 2)
+    assert(list[0] == 1)
+    assert(list[1] == 3)
+}
+
+test items "index assign" {
+    list[0] = 99
+    assert(list[0] == 99)
+}
+
+test items "out of bounds" { // ERROR(test) "out of range"
+    assert(list[10] == 0)
+}

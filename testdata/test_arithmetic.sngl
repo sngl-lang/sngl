@@ -1,0 +1,68 @@
+component math {
+    var a = 10
+    var b = 3
+    var x = 0
+
+    text(value="{a}")
+}
+
+test math "addition" {
+    assert(a + b == 13)
+}
+
+test math "subtraction" {
+    assert(a - b == 7)
+}
+
+test math "multiplication" {
+    assert(a * b == 30)
+}
+
+test math "division" {
+    assert(12 / 4 == 3)
+    assert(a / 2 == 5)
+}
+
+test math "modulo" {
+    assert(a % b == 1)
+    assert(10 % 4 == 2)
+}
+
+test math "float arithmetic" {
+    assert(1.5 + 2.5 == 4.0)
+    assert(3.0 / 2.0 == 1.5)
+}
+
+test math "compound assignment add" {
+    x = 5
+    x += 3
+    assert(x == 8)
+}
+
+test math "compound assignment sub" {
+    x = 10
+    x -= 4
+    assert(x == 6)
+}
+
+test math "compound assignment mul" {
+    x = 3
+    x *= 4
+    assert(x == 12)
+}
+
+test math "compound assignment div" {
+    x = 20
+    x /= 5
+    assert(x == 4)
+}
+
+test math "compound assignment mod" {
+    x = 10
+    x %= 3
+    assert(x == 1)
+}
+
+test math "division by zero" { // ERROR(test) "division by zero"
+    x = 1 / 0
+}

@@ -1,0 +1,55 @@
+component flags {
+    var active = true
+    var hidden = false
+    var count = 0
+    var label = ""
+
+    text(value="{active}")
+}
+
+test flags "literals" {
+    assert(active == true)
+    assert(hidden == false)
+}
+
+test flags "negation" {
+    assert(!hidden == true)
+    assert(!active == false)
+}
+
+test flags "and" {
+    assert(true && true)
+    assert(!(true && false))
+    assert(!(false && false))
+}
+
+test flags "or" {
+    assert(true || false)
+    assert(!(false || false))
+    assert(false || true)
+}
+
+test flags "toggle" {
+    assert(active == true)
+    active!!
+    assert(active == false)
+    active!!
+    assert(active == true)
+}
+
+test flags "ternary" {
+    assert((active ? "yes" : "no") == "yes")
+    assert((hidden ? "yes" : "no") == "no")
+}
+
+test flags "truthiness" {
+    assert(!count)
+    assert(!label)
+    assert(!hidden)
+    assert(!null)
+
+    count = 1
+    assert(count)
+    label = "x"
+    assert(label)
+}

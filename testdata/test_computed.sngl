@@ -1,0 +1,18 @@
+component pricing {
+    var price = 100
+    var quantity = 2
+    computed total = price * quantity
+
+    text(value="{total}")
+}
+
+test pricing "computed value" {
+    assert(total == 200)
+}
+
+test pricing "computed updates with var" {
+    price = 50
+    assert(total == 100)
+    quantity = 5
+    assert(total == 250)
+}

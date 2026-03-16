@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"fmt"
+	"math"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
@@ -122,7 +123,7 @@ func applyOp(op ast.AssignOp, cur, val any) any {
 	case ast.AssignDiv:
 		return numericResult(toFloat(cur) / toFloat(val))
 	case ast.AssignMod:
-		return numericResult(toFloat(cur) / toFloat(val))
+		return numericResult(math.Mod(toFloat(cur), toFloat(val)))
 	}
 	return val
 }

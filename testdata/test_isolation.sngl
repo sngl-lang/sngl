@@ -1,0 +1,33 @@
+component state {
+    var count = 0
+    var name = "init"
+
+    text(value="{count}")
+}
+
+test state "first test mutates" {
+    count = 42
+    name = "changed"
+    assert(count == 42)
+    assert(name == "changed")
+}
+
+test state "second test sees fresh state" {
+    assert(count == 0)
+    assert(name == "init")
+}
+
+test state "subtests get snapshots" {
+    count = 10
+    assert(count == 10)
+
+    test "subtest sees parent state" {
+        assert(count == 10)
+        count = 99
+        assert(count == 99)
+    }
+
+    test "another subtest also sees parent state" {
+        assert(count == 10)
+    }
+}

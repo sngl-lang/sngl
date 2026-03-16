@@ -13,6 +13,8 @@ type Env struct {
 	vars      map[string]any
 	computeds map[string]ast.Expr
 	consts    map[string]any
+	doc       *ast.Document
+	body      []*ast.VisualNode
 }
 
 func NewEnv() *Env {
@@ -29,6 +31,8 @@ func (env *Env) Snapshot() *Env {
 		vars:      make(map[string]any, len(env.vars)),
 		computeds: env.computeds,
 		consts:    env.consts,
+		doc:       env.doc,
+		body:      env.body,
 	}
 	for k, v := range env.vars {
 		cp.vars[k] = v
@@ -130,6 +134,9 @@ func (env *Env) lookup(name string) (any, error) {
 	}
 	if v, ok := env.consts[name]; ok {
 		return v, nil
+	}
+	if name == "root" && env.body != nil {
+		return env.renderTree(), nil
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }
@@ -302,8 +309,33 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			}
 			return nil, nil
 		}
+	case "_find":
+		if m, ok := recv.(map[string]any); ok && m["_type"] != nil && len(e.Args) == 1 {
+			arg, err := env.Eval(e.Args[0])
+			if err != nil {
+				return nil, err
+			}
+			key := fmt.Sprintf("%v", arg)
+			return findByKey(m, key), nil
+		}
 	}
 	return nil, fmt.Errorf("unknown method %q on %T", e.Method, recv)
+}
+
+func findByKey(node map[string]any, key string) any {
+	if k, ok := node["key"]; ok && fmt.Sprintf("%v", k) == key {
+		return node
+	}
+	if children, ok := node["_children"].([]any); ok {
+		for _, c := range children {
+			if child, ok := c.(map[string]any); ok {
+				if found := findByKey(child, key); found != nil {
+					return found
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // --- helpers ---

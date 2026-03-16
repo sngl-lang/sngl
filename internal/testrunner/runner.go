@@ -94,11 +94,15 @@ func buildEnv(doc *ast.Document, compName string) (*Env, error) {
 	var computeds []*ast.Computed
 	var consts []*ast.Const
 	var params []*ast.Param
+	var body []*ast.VisualNode
 
 	if compName == "main" {
 		data = doc.Data
 		computeds = doc.Computeds
 		consts = doc.Consts
+		if doc.App != nil {
+			body = doc.App.Children
+		}
 	} else {
 		comp := findComponent(doc, compName)
 		if comp == nil {
@@ -108,20 +112,24 @@ func buildEnv(doc *ast.Document, compName string) (*Env, error) {
 		computeds = comp.Computeds
 		consts = comp.Consts
 		params = comp.Params
+		body = comp.Body
 	}
 
 	for _, d := range data {
-		env.vars[d.Name] = evalInit(d.Init)
+		env.vars[d.Name] = evalInit(env, d.Init)
 	}
 	for _, c := range computeds {
 		env.computeds[c.Name] = c.Expr
 	}
 	for _, c := range consts {
-		env.consts[c.Name] = evalInit(c.Init)
+		env.consts[c.Name] = evalInit(env, c.Init)
 	}
 	for _, p := range params {
-		env.vars[p.Name] = evalInit(p.Default)
+		env.vars[p.Name] = evalInit(env, p.Default)
 	}
+
+	env.doc = doc
+	env.body = body
 
 	return env, nil
 }
@@ -136,13 +144,19 @@ func findComponent(doc *ast.Document, name string) *ast.Component {
 }
 
 // evalInit extracts the initial value from an Expr.
-func evalInit(expr ast.Expr) any {
+// For SNGL expressions beyond simple literals (lists, structs, etc.),
+// it falls back to Env.Eval().
+func evalInit(env *Env, expr ast.Expr) any {
 	if expr.Literal != nil {
 		return expr.Literal
 	}
 	if expr.SNGL != nil {
 		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
 			return lit.Value
+		}
+		v, err := env.Eval(expr.SNGL)
+		if err == nil {
+			return v
 		}
 	}
 	return nil
