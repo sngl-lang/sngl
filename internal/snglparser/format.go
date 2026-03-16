@@ -835,11 +835,39 @@ func typeHintStr(hint string, d *ast.Data) string {
 	if d != nil && d.IsFunc {
 		var sb strings.Builder
 		sb.WriteString("func(")
-		sb.WriteString(strings.Join(d.ParamTypes, ", "))
+		for i, p := range d.ParamTypes {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(typeHintStr(p, nil))
+		}
 		sb.WriteString(")")
 		if d.ReturnType != "" {
 			sb.WriteString(" -> ")
-			sb.WriteString(d.ReturnType)
+			sb.WriteString(typeHintStr(d.ReturnType, nil))
+		}
+		return sb.String()
+	}
+
+	// Bare func type (e.g. nested "func:" or "func:string~int")
+	if strings.HasPrefix(hint, "func:") {
+		body := strings.TrimPrefix(hint, "func:")
+		sig, ret, _ := strings.Cut(body, "~")
+		var sb strings.Builder
+		sb.WriteString("func(")
+		if sig != "" {
+			params := strings.Split(sig, ":")
+			for i, p := range params {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(typeHintStr(p, nil))
+			}
+		}
+		sb.WriteString(")")
+		if ret != "" {
+			sb.WriteString(" -> ")
+			sb.WriteString(typeHintStr(ret, nil))
 		}
 		return sb.String()
 	}
