@@ -1,7 +1,0 @@
-enum "Status" { "active"; "inactive"; "pending" }
-
-data "status" (Status)"unknown" // ERROR(check) "invalid enum value"
-
-app {
-    text value=(cel)"status"
-}

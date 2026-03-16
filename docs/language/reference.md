@@ -40,7 +40,7 @@ component main { ... }
 IDENT = [a-zA-Z_][a-zA-Z0-9_]*
 ```
 
-Hyphenated identifiers (`font-size`, `align-items`) are allowed in style property and prop name positions.
+Identifiers use camelCase (`fontSize`, `alignItems`).
 
 ### Literals
 
@@ -82,7 +82,7 @@ A semicolon is automatically inserted after a line's final token if that token i
 
 ### Special Types
 
-`color`, `date`, `time`, `date-time`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex`
+`color`, `date`, `time`, `dateTime`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex`
 
 `duration` and `measurement` are unit types with literal syntax (`5s`, `12px`).
 
@@ -165,8 +165,8 @@ var spacing measurement = 12px
 
 ```sngl
 style heading {
-    font-size = 24
-    font-weight = "bold"
+    fontSize = 24
+    fontWeight = "bold"
     color = #007700
 }
 ```
@@ -231,7 +231,7 @@ Counter(label="Score", start=10)
 ### Syntax
 
 ```sngl
-component-name(key=expr, key=expr) {
+componentName(key=expr, key=expr) {
     children...
 }
 ```
@@ -261,7 +261,7 @@ button(@click={
 
 ```sngl
 vbox(style={gap=12, padding=16})
-text(value="hello", style={color=#007700, font-size=24})
+text(value="hello", style={color=#007700, fontSize=24})
 ```
 
 ### Attribute Nodes

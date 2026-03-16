@@ -1,0 +1,4 @@
+component main {
+    nonexistent { // ERROR(check) "unknown component"
+    }
+}

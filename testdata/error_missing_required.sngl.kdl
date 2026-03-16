@@ -1,8 +1,0 @@
-component "Greeting" {
-    @param "name" (string)"" "required"
-    text value=(cel)"name"
-}
-
-app {
-    Greeting // ERROR(check) "required"
-}

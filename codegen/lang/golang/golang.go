@@ -55,8 +55,8 @@ func (t *Translator) TypeToNative(hint string) string {
 		return "bool"
 	case "string", "color",
 		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idn-email", "idn-hostname", "irl", "irl-reference", "url-reference",
-		"url-template", "currency", "country-2", "country-3", "country-subdivision", "decimal":
+		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
+		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
 		return "string"
 	default:
 		return "any"

@@ -1,7 +1,0 @@
-enum "Status" { "active"; "inactive"; "pending" }
-
-data "status" (Status)"active"
-
-app {
-    text value=(cel)"status"
-}

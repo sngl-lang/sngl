@@ -668,10 +668,6 @@
         "required": true,
         "types": [
           {
-            "type": "hyphenated_identifier",
-            "named": true
-          },
-          {
             "type": "identifier",
             "named": true
           }
@@ -1595,10 +1591,6 @@
           "named": true
         },
         {
-          "type": "hyphenated_identifier",
-          "named": true
-        },
-        {
           "type": "identifier",
           "named": true
         },
@@ -1937,10 +1929,6 @@
     "named": false
   },
   {
-    "type": "hyphenated_identifier",
-    "named": true
-  },
-  {
     "type": "identifier",
     "named": true
   },
@@ -1979,6 +1967,10 @@
   },
   {
     "type": "prop",
+    "named": false
+  },
+  {
+    "type": "required",
     "named": false
   },
   {

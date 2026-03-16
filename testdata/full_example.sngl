@@ -22,7 +22,7 @@ component main {
     )
 
     vbox(style={gap=12, padding=16}) {
-        text(value=greeting, style={font-size=24, font-weight="bold"})
+        text(value=greeting, style={fontSize=24, fontWeight="bold"})
         if isAdult {
             text(value="(Adult)", style={color=#007700})
         }

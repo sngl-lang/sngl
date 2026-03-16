@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"

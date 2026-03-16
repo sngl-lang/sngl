@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +69,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 
-		if err := checker.Check(doc, filepath.Dir(filename)); err != nil {
+		if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver()); err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 

@@ -1,4 +1,0 @@
-app {
-    nonexistent { // ERROR(check) "unknown component"
-    }
-}

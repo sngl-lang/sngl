@@ -1,5 +1,0 @@
-data "x" (int)0
-app {
-    vbox on:click=(cel)"set(x, 1)" { // ERROR(check) "unknown event"
-    }
-}

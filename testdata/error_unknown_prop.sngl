@@ -1,0 +1,3 @@
+component main {
+    text(foo="bar") // ERROR(check) "unknown property"
+}

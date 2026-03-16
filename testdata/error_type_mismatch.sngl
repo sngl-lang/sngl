@@ -1,0 +1,3 @@
+component main {
+    text(selectable="yes") // ERROR(check) "expected bool"
+}

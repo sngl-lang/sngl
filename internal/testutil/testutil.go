@@ -10,8 +10,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/parser"
-	"git.duckfam.us/jonathan/sngl/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+"([^"]+)"`)
@@ -99,7 +98,7 @@ func AssertErrors(t *testing.T, err error, expected []ErrorDirective) {
 	}
 }
 
-// ParseFile opens and parses a .sngl.kdl or .sngl file using the appropriate parser.
+// ParseFile opens and parses a .sngl file.
 func ParseFile(path string) (*ast.Document, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -107,25 +106,22 @@ func ParseFile(path string) (*ast.Document, error) {
 	}
 	defer f.Close()
 	name := filepath.Base(path)
-	if strings.HasSuffix(strings.ToLower(path), ".sngl.kdl") {
-		return parser.Parse(name, f)
-	}
 	return snglparser.Parse(name, f)
 }
 
-// RunFixtures globs dir for *.sngl.kdl files, creates a subtest per file,
+// RunFixtures globs dir for *.sngl files, creates a subtest per file,
 // parses directives, and calls fn.
 func RunFixtures(t *testing.T, dir string, fn func(t *testing.T, path string, dirs []ErrorDirective)) {
 	t.Helper()
-	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl.kdl"))
+	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
 	if len(matches) == 0 {
-		t.Fatalf("no *.sngl.kdl files found in %s", dir)
+		t.Fatalf("no *.sngl files found in %s", dir)
 	}
 	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".sngl.kdl")
+		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
 		t.Run(name, func(t *testing.T) {
 			dirs, err := ParseDirectives(path)
 			if err != nil {

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"syscall/js"
 
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/optimize"
-	"git.duckfam.us/jonathan/sngl/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
@@ -36,7 +36,7 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, ""); err != nil {
+	if err := checker.Check(doc, "", nil); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}

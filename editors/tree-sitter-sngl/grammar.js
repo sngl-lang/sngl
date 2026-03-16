@@ -224,6 +224,7 @@ module.exports = grammar({
         field("name", $.identifier),
         optional(field("type", $.type_identifier)),
         optional(seq("=", field("default", $._expression))),
+        optional("required"),
       ),
 
     prop_declaration: ($) =>
@@ -320,14 +321,7 @@ module.exports = grammar({
         $.inline_enum_type,
       ),
 
-    _simple_type: ($) =>
-      choice(
-        $.identifier,
-        $.hyphenated_identifier,
-      ),
-
-    hyphenated_identifier: (_$) =>
-      /[a-zA-Z_][a-zA-Z0-9_]*-[a-zA-Z0-9][a-zA-Z0-9_]*(-[a-zA-Z0-9][a-zA-Z0-9_]*)*/,
+    _simple_type: ($) => $.identifier,
 
     generic_type: ($) =>
       seq(
@@ -621,7 +615,7 @@ module.exports = grammar({
 
     // ─── Literals ────────────────────────────────────────────
 
-    identifier: (_$) => /[a-zA-Z_][a-zA-Z0-9_]*(-[a-zA-Z][a-zA-Z0-9_]*)*/,
+    identifier: (_$) => /[a-zA-Z_][a-zA-Z0-9_]*/,
 
     integer_literal: (_$) => /[0-9]+/,
 

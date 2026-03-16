@@ -21,7 +21,7 @@ component main {
     )
 
     vbox(style={padding=16, gap=12}) {
-        text(value=greeting, style={font-size=24, font-weight="bold"})
+        text(value=greeting, style={fontSize=24, fontWeight="bold"})
         if active {
             text(value="Active", style={color=#007700})
         }

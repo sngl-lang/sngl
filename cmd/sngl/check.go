@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +42,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := checker.Check(doc, filepath.Dir(filename)); err != nil {
+		if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver()); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			failed = true
 			continue

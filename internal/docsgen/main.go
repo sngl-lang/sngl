@@ -19,7 +19,7 @@ import (
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
+	_ "git.duckfam.us/jonathan/sngl/internal/codegen/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
@@ -104,7 +104,7 @@ func buildPlayground(docsDir, outDir string) error {
 
 	// Embed default example source.
 	examplesDir := filepath.Join(filepath.Dir(docsDir), "_examples")
-	for _, name := range []string{"todo.sngl", "todo.sngl.kdl"} {
+	for _, name := range []string{"todo.sngl"} {
 		examplePath := filepath.Join(examplesDir, "todo", name)
 		exampleData, err := os.ReadFile(examplePath)
 		if err != nil {

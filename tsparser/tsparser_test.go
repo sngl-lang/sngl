@@ -10,7 +10,7 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"git.duckfam.us/jonathan/sngl/tsparser"
 )
 

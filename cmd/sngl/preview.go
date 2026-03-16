@@ -16,17 +16,17 @@ import (
 	"sort"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
-	"github.com/calico32/kdl-go"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/cel-go/cel"
 	"github.com/spf13/cobra"
 )
 
 var previewCmd = &cobra.Command{
-	Use:   "preview [file.sngl.kdl]",
+	Use:   "preview [file.sngl]",
 	Short: "Live-preview an SNGL app",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runPreview,
@@ -121,7 +121,7 @@ func (s *previewServer) recompile() error {
 		return err
 	}
 
-	if err := checker.Check(doc, s.sourceDir); err != nil {
+	if err := checker.Check(doc, s.sourceDir, checker.DefaultResolver()); err != nil {
 		return err
 	}
 
@@ -519,7 +519,7 @@ func celTypeToString(t *cel.Type) string {
 	case "sngl.Time":
 		return "time"
 	case "sngl.DateTime":
-		return "date-time"
+		return "dateTime"
 	case "sngl.Duration":
 		return "duration"
 	case "sngl.URL":
@@ -539,25 +539,25 @@ func celTypeToString(t *cel.Type) string {
 	case "sngl.Hostname":
 		return "hostname"
 	case "sngl.IDNEmail":
-		return "idn-email"
+		return "idnEmail"
 	case "sngl.IDNHostname":
-		return "idn-hostname"
+		return "idnHostname"
 	case "sngl.IRL":
 		return "irl"
 	case "sngl.IRLReference":
-		return "irl-reference"
+		return "irlReference"
 	case "sngl.URLReference":
-		return "url-reference"
+		return "urlReference"
 	case "sngl.URLTemplate":
-		return "url-template"
+		return "urlTemplate"
 	case "sngl.Currency":
 		return "currency"
 	case "sngl.Country2":
-		return "country-2"
+		return "country2"
 	case "sngl.Country3":
-		return "country-3"
+		return "country3"
 	case "sngl.CountrySubdivision":
-		return "country-subdivision"
+		return "countrySubdivision"
 	case "sngl.Decimal":
 		return "decimal"
 	default:
@@ -594,48 +594,45 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse KDL source
+	// Parse SNGL source
 	f, err := os.Open(s.sourceFile)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	kdlDoc, err := kdl.Parse(f)
+	doc, err := snglparser.Parse(s.sourceFile, f)
 	f.Close()
 	if err != nil {
-		http.Error(w, "KDL parse: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "parse: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Find the KDL node at the given position
-	kdlNode := findKDLNode(kdlDoc.Nodes, line, col)
-	if kdlNode == nil {
-		http.Error(w, "KDL node not found at position", http.StatusNotFound)
+	// Find the visual node at the given position
+	vn := findNode(doc.App.Children, line, col)
+	if vn == nil {
+		http.Error(w, "node not found at position", http.StatusNotFound)
 		return
 	}
 
 	// Update properties
-	for k, v := range body.Props {
-		kdlNode.RemoveProperty(k)
-		kdlNode.AddProperty(k, parseKDLValue(v))
+	if vn.Props == nil {
+		vn.Props = map[string]ast.Expr{}
 	}
-	// Update style properties (style.X=Y form)
+	for k, v := range body.Props {
+		vn.Props[k] = parseSNGLValue(v)
+	}
+	// Update style properties
+	if vn.StyleAttrs == nil {
+		vn.StyleAttrs = map[string]ast.Expr{}
+	}
 	for k, v := range body.Styles {
-		propKey := "style." + k
-		kdlNode.RemoveProperty(propKey)
-		kdlNode.AddProperty(propKey, parseKDLValue(v))
+		vn.StyleAttrs[k] = parseSNGLValue(v)
 	}
 
-	// Emit back to file
-	out, err := os.Create(s.sourceFile)
-	if err != nil {
+	// Write back formatted source
+	formatted := snglparser.Format(doc)
+	if err := os.WriteFile(s.sourceFile, []byte(formatted), 0o644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = kdl.Emit(kdlDoc, out)
-	out.Close()
-	if err != nil {
-		http.Error(w, "KDL emit: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -643,40 +640,29 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func findKDLNode(nodes []*kdl.Node, line, col int) *kdl.Node {
-	for _, n := range nodes {
-		loc := n.Location()
-		if loc.Line == line && loc.Column == col {
-			return n
-		}
-		if ch := n.Children(); ch != nil {
-			if found := findKDLNode(ch.Nodes, line, col); found != nil {
-				return found
-			}
-		}
-	}
-	return nil
-}
-
-func parseKDLValue(s string) kdl.Value {
+func parseSNGLValue(s string) ast.Expr {
 	// Try integer
 	var i int
 	if _, err := fmt.Sscanf(s, "%d", &i); err == nil && fmt.Sprintf("%d", i) == s {
-		return kdl.NewInt(i)
+		return ast.Expr{SNGL: &ast.LiteralExpr{Value: i, Kind: ast.LiteralInt}}
 	}
 	// Try float
 	var f float64
 	if _, err := fmt.Sscanf(s, "%g", &f); err == nil {
-		return kdl.NewFloat(f)
+		return ast.Expr{SNGL: &ast.LiteralExpr{Value: f, Kind: ast.LiteralFloat}}
 	}
 	// Try bool
 	if s == "true" {
-		return kdl.NewBool(true)
+		return ast.Expr{SNGL: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}}
 	}
 	if s == "false" {
-		return kdl.NewBool(false)
+		return ast.Expr{SNGL: &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}}
 	}
-	return kdl.NewString(s)
+	// Color
+	if strings.HasPrefix(s, "#") {
+		return ast.Expr{SNGL: &ast.LiteralExpr{Value: s, Kind: ast.LiteralColor}}
+	}
+	return ast.Expr{SNGL: &ast.LiteralExpr{Value: s, Kind: ast.LiteralString}}
 }
 
 func queryInt(r *http.Request, key string) int {

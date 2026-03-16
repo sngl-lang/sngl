@@ -7,11 +7,10 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/optimize"
-	"git.duckfam.us/jonathan/sngl/parser"
-	"git.duckfam.us/jonathan/sngl/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -22,7 +21,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	if err := checker.Check(doc, filepath.Dir(sourceFile)); err != nil {
+	if err := checker.Check(doc, filepath.Dir(sourceFile), checker.DefaultResolver()); err != nil {
 		return nil, fmt.Errorf("check: %w", err)
 	}
 
@@ -80,8 +79,5 @@ func parseSNGL(filename string) (*ast.Document, error) {
 	}
 	defer f.Close()
 
-	if strings.HasSuffix(strings.ToLower(filename), ".sngl.kdl") {
-		return parser.Parse(filename, f)
-	}
 	return snglparser.Parse(filename, f)
 }

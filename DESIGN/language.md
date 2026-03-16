@@ -196,7 +196,7 @@ Type = IDENT                              // int, string, bool, User, etc.
 
 ### Special Types
 
-`color`, `date`, `time`, `date-time`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex`, `base64`, `ipv4`, `ipv6`, `hostname`, `currency`, `country-2`, `country-3`, `country-subdivision`, `decimal`, `idn-email`, `idn-hostname`, `irl`, `irl-reference`, `url-reference`, `url-template`
+`color`, `date`, `time`, `dateTime`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex`, `base64`, `ipv4`, `ipv6`, `hostname`, `currency`, `country2`, `country3`, `countrySubdivision`, `decimal`, `idnEmail`, `idnHostname`, `irl`, `irlReference`, `urlReference`, `urlTemplate`
 
 `duration` and `measurement` are unit types defined in the stdlib (see `unit` declarations). They have their own literal syntax (`5s`, `12px`) rather than string-wrapped values.
 
@@ -934,7 +934,7 @@ component main {
         timeout = 5s
         birthday date = "2026-03-12"
         noon time = "12:00"
-        event_time date-time = "2026-03-12T10:00:00Z"
+        event_time dateTime = "2026-03-12T10:00:00Z"
         site url = "https://example.com"
         contact email = "test@example.com"
         id uuid = "550e8400-e29b-41d4-a716-446655440000"
@@ -943,8 +943,8 @@ component main {
         addr6 ipv6 = "::1"
         host hostname = "example.com"
         money currency = "USD"
-        cc2 country-2 = "US"
-        cc3 country-3 = "USA"
+        cc2 country2 = "US"
+        cc3 country3 = "USA"
     )
 
     text(value=bg)

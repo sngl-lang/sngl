@@ -1,0 +1,78 @@
+component vbox {
+    children many
+}
+
+component hbox {
+    children many
+}
+
+component stack {
+    children many
+}
+
+component text {
+    prop value string
+    prop selectable bool
+    event click ClickEvent
+    children none
+}
+
+component button {
+    prop text string
+    prop disabled bool
+    event click ClickEvent
+    event longPress LongPressEvent
+    children many
+}
+
+component input {
+    prop value string
+    prop placeholder string
+    prop disabled bool
+    prop readonly bool
+    prop type string enum(text, password, number, email, url, tel, search)
+    prop maxLength int
+    event input InputEvent
+    event change ChangeEvent
+    event focus FocusEvent
+    event blur FocusEvent
+    event submit SubmitEvent
+    children none
+}
+
+component image {
+    prop src string
+    prop alt string
+    prop fit string enum(contain, cover, fill, none, scaleDown)
+    event click ClickEvent
+    event load LoadEvent
+    event error ErrorEvent
+    children none
+}
+
+component scroll {
+    prop direction string enum(vertical, horizontal, both)
+    prop scrollX float
+    prop scrollY float
+    prop showScrollbar string enum(auto, always, never)
+    event scroll ScrollEvent
+    event scrollEnd ScrollEvent
+    children one
+}
+
+component spacer {
+    prop size dyn
+    children none
+}
+
+component checkbox {
+    prop checked bool
+    prop label string
+    prop disabled bool
+    event change ChangeEvent
+    children none
+}
+
+component slot {
+    children none
+}

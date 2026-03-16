@@ -1,0 +1,32 @@
+output {
+    go bubbletea(package="main")
+    js html
+}
+
+struct Todo {
+    text string = ""
+    done bool = false
+}
+
+component main {
+    var (
+        newTodo = ""
+        todos list<Todo> = null
+    )
+
+    computed status = "Todo List (" + string(size(todos)) + " items)"
+
+    vbox(style={gap=12, padding=16}) {
+        text(value=status, style={fontWeight="bold", fontSize=24})
+        hbox(style={alignItems="center", alignSelf="center", gap=8, textAlign="center"}) {
+            input(placeholder="Buy eggs", @input={ newTodo = event.value }, style={flexGrow=1})
+            button(text="Add", @click={ todos = push(todos, Todo(newTodo, false)); newTodo = "" })
+        }
+        vbox(style={gap=4}) {
+            for item, index in todos {
+                checkbox(checked=item.done, label=item.text, key=index, @change={ todos[index].done!! })
+            }
+        }
+        button(text="Remove", @click={ todos = remove(todos, size(todos) - 1) }, style={alignItems="center"})
+    }
+}

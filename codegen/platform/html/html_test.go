@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/checker"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
@@ -18,7 +18,7 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := path[:strings.LastIndex(path, "/")]
-	if err := checker.Check(doc, dir); err != nil {
+	if err := checker.Check(doc, dir, checker.DefaultResolver()); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestTodoApp(t *testing.T) {
-	html := generateHTML(t, "../../../_examples/todo/todo.sngl.kdl")
+	html := generateHTML(t, "../../../_examples/todo/todo.sngl")
 
 	checks := []string{
 		"<!DOCTYPE html>",
@@ -80,7 +80,7 @@ func TestTodoApp(t *testing.T) {
 		"function String(v)",
 		"document.getElementById",
 		"addEventListener",
-		".push(",
+		"push(",
 	}
 	for _, check := range checks {
 		if !strings.Contains(html, check) {
@@ -90,7 +90,7 @@ func TestTodoApp(t *testing.T) {
 }
 
 func TestFullExample(t *testing.T) {
-	html := generateHTML(t, "../../../testdata/full_example.sngl.kdl")
+	html := generateHTML(t, "../../../testdata/full_example.sngl")
 
 	checks := []string{
 		"<!DOCTYPE html>",
@@ -109,7 +109,7 @@ func TestFullExample(t *testing.T) {
 }
 
 func TestJSGettersSetters(t *testing.T) {
-	html := generateHTML(t, "../../../_examples/todo/todo.sngl.kdl")
+	html := generateHTML(t, "../../../_examples/todo/todo.sngl")
 
 	checks := []string{
 		"$set_todos",
@@ -125,7 +125,7 @@ func TestJSGettersSetters(t *testing.T) {
 }
 
 func TestFullFixture(t *testing.T) {
-	html := generateHTML(t, "../../../testdata/full.sngl.kdl")
+	html := generateHTML(t, "../../../testdata/full.sngl")
 
 	checks := []string{
 		"<!DOCTYPE html>",

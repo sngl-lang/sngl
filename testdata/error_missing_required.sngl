@@ -1,0 +1,9 @@
+component Greeting {
+    param name string required
+
+    text(value=name)
+}
+
+component main {
+    Greeting // ERROR(check) "required"
+}

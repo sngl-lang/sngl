@@ -1,0 +1,73 @@
+styles {
+    // Sizing
+    width measurement
+    height measurement
+    minWidth measurement
+    minHeight measurement
+    maxWidth measurement
+    maxHeight measurement
+    aspectRatio float
+
+    // Padding
+    padding measurement
+    paddingTop measurement
+    paddingRight measurement
+    paddingBottom measurement
+    paddingLeft measurement
+    paddingX measurement
+    paddingY measurement
+
+    // Margin
+    margin measurement
+    marginTop measurement
+    marginRight measurement
+    marginBottom measurement
+    marginLeft measurement
+    marginX measurement
+    marginY measurement
+
+    // Flex
+    flex float
+    flexGrow float
+    flexShrink float
+    flexBasis measurement
+    alignSelf string enum(auto, flexStart, flexEnd, center, baseline, stretch)
+
+    // Positioning
+    position string enum(static, relative, absolute, fixed, sticky)
+    top measurement
+    right measurement
+    bottom measurement
+    left measurement
+    zIndex int
+
+    // Container Layout
+    gap measurement
+    rowGap measurement
+    columnGap measurement
+    alignItems string enum(flexStart, flexEnd, center, baseline, stretch)
+    justifyContent string enum(flexStart, flexEnd, center, spaceBetween, spaceAround, spaceEvenly)
+    flexWrap string enum(nowrap, wrap, wrapReverse)
+
+    // Visual Properties
+    background color
+    borderColor color
+    borderWidth measurement
+    borderRadius measurement
+    opacity float
+    overflow string enum(visible, hidden, scroll, auto)
+
+    // Text-specific style properties
+    color color
+    fontSize measurement
+    fontWeight string enum(normal, bold, 100, 200, 300, 400, 500, 600, 700, 800, 900)
+    fontStyle string enum(normal, italic, oblique)
+    fontFamily string
+    textAlign string enum(left, center, right, justify)
+    lineHeight float
+    textOverflow string enum(clip, ellipsis)
+    maxLines int
+
+    // Input-specific style properties
+    placeholderColor color
+}

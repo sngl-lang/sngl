@@ -1,0 +1,5 @@
+component main {
+    var count = 0
+
+    button(text="click", @click={ count + 1 }) // ERROR(check) "must return Mutation"
+}

@@ -1,0 +1,5 @@
+component main {
+    if "hello" {
+        text(value="x") // ERROR(check) "expected bool"
+    }
+}

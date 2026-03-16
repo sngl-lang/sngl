@@ -975,39 +975,39 @@ func stylePropToCSS(prop string, expr ast.Expr) string {
 	switch prop {
 	case "padding":
 		return fmt.Sprintf("padding:%spx", val)
-	case "padding-top":
+	case "paddingTop":
 		return fmt.Sprintf("padding-top:%spx", val)
-	case "padding-right":
+	case "paddingRight":
 		return fmt.Sprintf("padding-right:%spx", val)
-	case "padding-bottom":
+	case "paddingBottom":
 		return fmt.Sprintf("padding-bottom:%spx", val)
-	case "padding-left":
+	case "paddingLeft":
 		return fmt.Sprintf("padding-left:%spx", val)
-	case "padding-x":
+	case "paddingX":
 		return fmt.Sprintf("padding-left:%spx;padding-right:%spx", val, val)
-	case "padding-y":
+	case "paddingY":
 		return fmt.Sprintf("padding-top:%spx;padding-bottom:%spx", val, val)
 	case "margin":
 		return fmt.Sprintf("margin:%spx", val)
-	case "margin-top":
+	case "marginTop":
 		return fmt.Sprintf("margin-top:%spx", val)
-	case "margin-right":
+	case "marginRight":
 		return fmt.Sprintf("margin-right:%spx", val)
-	case "margin-bottom":
+	case "marginBottom":
 		return fmt.Sprintf("margin-bottom:%spx", val)
-	case "margin-left":
+	case "marginLeft":
 		return fmt.Sprintf("margin-left:%spx", val)
-	case "margin-x":
+	case "marginX":
 		return fmt.Sprintf("margin-left:%spx;margin-right:%spx", val, val)
-	case "margin-y":
+	case "marginY":
 		return fmt.Sprintf("margin-top:%spx;margin-bottom:%spx", val, val)
 	case "width":
 		return fmt.Sprintf("width:%spx", val)
 	case "height":
 		return fmt.Sprintf("height:%spx", val)
-	case "max-width":
+	case "maxWidth":
 		return fmt.Sprintf("max-width:%spx", val)
-	case "max-height":
+	case "maxHeight":
 		return fmt.Sprintf("max-height:%spx", val)
 	case "gap":
 		return fmt.Sprintf("gap:%spx", val)
@@ -1015,23 +1015,23 @@ func stylePropToCSS(prop string, expr ast.Expr) string {
 		return fmt.Sprintf("color:%s", val)
 	case "background":
 		return fmt.Sprintf("background-color:%s", val)
-	case "font-size":
+	case "fontSize":
 		return fmt.Sprintf("font-size:%spx", val)
-	case "font-weight":
+	case "fontWeight":
 		return fmt.Sprintf("font-weight:%s", val)
-	case "font-style":
+	case "fontStyle":
 		return fmt.Sprintf("font-style:%s", val)
-	case "text-align":
+	case "textAlign":
 		return fmt.Sprintf("text-align:%s", val)
-	case "border-width":
+	case "borderWidth":
 		return fmt.Sprintf("border-width:%spx;border-style:solid", val)
-	case "border-radius":
+	case "borderRadius":
 		return fmt.Sprintf("border-radius:%spx", val)
-	case "border-color":
+	case "borderColor":
 		return fmt.Sprintf("border-color:%s", val)
 	case "opacity":
 		return fmt.Sprintf("opacity:%s", val)
-	case "max-lines":
+	case "maxLines":
 		return fmt.Sprintf("-webkit-line-clamp:%s;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical", val)
 	}
 	return ""

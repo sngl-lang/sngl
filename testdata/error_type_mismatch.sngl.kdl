@@ -1,3 +1,0 @@
-app {
-    text selectable="yes" // ERROR(check) "expected bool"
-}

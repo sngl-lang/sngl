@@ -1,4 +1,0 @@
-app {
-}
-app { // ERROR(parse) "duplicate app"
-}
