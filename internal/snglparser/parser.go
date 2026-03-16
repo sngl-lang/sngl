@@ -1033,7 +1033,13 @@ func (p *parser) parsePostfix() ast.Node {
 	for {
 		if p.at(DOT) {
 			p.advance()
-			field := p.expect(IDENT).Literal
+			var field string
+			if p.at(AT) {
+				p.advance()
+				field = "@" + p.expect(IDENT).Literal
+			} else {
+				field = p.expect(IDENT).Literal
+			}
 			// Method call: .field(args)
 			if p.at(LPAREN) {
 				p.advance()

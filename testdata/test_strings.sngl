@@ -13,9 +13,9 @@ test greeting "interpolation" {
     assert("hello {name}" == "hello world")
 }
 
-test greeting "len" {
-    assert(len("hello") == 5)
-    assert(len("") == 0)
+test greeting "length" {
+    assert("hello".length() == 5)
+    assert("".length() == 0)
 }
 
 test greeting "contains" {

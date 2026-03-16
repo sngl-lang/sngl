@@ -28,7 +28,7 @@ component listcomp {
 }
 
 test counter "root has children" {
-    assert(len(root._children) == 3)
+    assert(root._children.length() == 3)
 }
 
 test counter "find by key" {
@@ -42,6 +42,18 @@ test counter "dom updates after mutation" {
     assert(root._find("display").value == "Count: 1")
     count += 4
     assert(root._find("display").value == "Count: 5")
+}
+
+test counter "event triggering" {
+    assert(count == 0)
+    root._find("inc").@click()
+    assert(count == 1)
+    root._find("inc").@click()
+    root._find("inc").@click()
+    assert(count == 3)
+    root._find("dec").@click()
+    assert(count == 2)
+    assert(root._find("display").value == "Count: 2")
 }
 
 test counter "root exposes vars" {
@@ -65,7 +77,7 @@ test wrapper "nested find" {
 }
 
 test listcomp "for loop rendering" {
-    assert(len(root._find("list")._children) == 3)
+    assert(root._find("list")._children.length() == 3)
     assert(root._find("a").value == "a")
     assert(root._find("c").value == "c")
 }

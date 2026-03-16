@@ -5,7 +5,7 @@ component items {
 }
 
 test items "creation and len" {
-    assert(len(list) == 3)
+    assert(list.length() == 3)
 }
 
 test items "indexing" {
@@ -16,13 +16,13 @@ test items "indexing" {
 
 test items "push" {
     list.push(4)
-    assert(len(list) == 4)
+    assert(list.length() == 4)
     assert(list[3] == 4)
 }
 
 test items "remove" {
     list.remove(1)
-    assert(len(list) == 2)
+    assert(list.length() == 2)
     assert(list[0] == 1)
     assert(list[1] == 3)
 }

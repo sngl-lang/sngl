@@ -107,6 +107,13 @@ func (env *Env) renderNode(node *ast.VisualNode) any {
 		}
 	}
 
+	// Expose event handlers for test triggering
+	for name, expr := range node.Events {
+		if expr.SNGL != nil {
+			m["@"+name] = expr.SNGL
+		}
+	}
+
 	return m
 }
 

@@ -205,24 +205,6 @@ func (env *Env) evalUnary(e *ast.UnaryExpr) (any, error) {
 
 func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 	switch e.Func {
-	case "len":
-		if len(e.Args) != 1 {
-			return nil, fmt.Errorf("len() requires 1 argument")
-		}
-		v, err := env.Eval(e.Args[0])
-		if err != nil {
-			return nil, err
-		}
-		switch val := v.(type) {
-		case []any:
-			return len(val), nil
-		case string:
-			return len(val), nil
-		case map[string]any:
-			return len(val), nil
-		default:
-			return nil, fmt.Errorf("len() not supported for %T", v)
-		}
 	case "string":
 		if len(e.Args) != 1 {
 			return nil, fmt.Errorf("string() requires 1 argument")
@@ -317,6 +299,37 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			}
 			key := fmt.Sprintf("%v", arg)
 			return findByKey(m, key), nil
+		}
+	case "length":
+		if len(e.Args) != 0 {
+			return nil, fmt.Errorf("length() takes no arguments")
+		}
+		switch val := recv.(type) {
+		case []any:
+			return len(val), nil
+		case string:
+			return len(val), nil
+		case map[string]any:
+			return len(val), nil
+		default:
+			return nil, fmt.Errorf("length() not supported for %T", recv)
+		}
+	default:
+		if strings.HasPrefix(e.Method, "@") {
+			if len(e.Args) != 0 {
+				return nil, fmt.Errorf("%s() takes no arguments", e.Method)
+			}
+			if m, ok := recv.(map[string]any); ok {
+				handler, ok := m[e.Method]
+				if !ok {
+					return nil, fmt.Errorf("no event %s on element", e.Method)
+				}
+				if node, ok := handler.(ast.Node); ok {
+					return nil, env.Exec(node)
+				}
+				return nil, fmt.Errorf("%s handler is not executable", e.Method)
+			}
+			return nil, fmt.Errorf("%s() not supported on %T", e.Method, recv)
 		}
 	}
 	return nil, fmt.Errorf("unknown method %q on %T", e.Method, recv)

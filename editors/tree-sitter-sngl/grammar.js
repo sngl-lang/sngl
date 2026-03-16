@@ -592,12 +592,14 @@ module.exports = grammar({
         seq(
           field("receiver", $._expression),
           ".",
-          field("method", $.identifier),
+          field("method", choice($.identifier, $.event_method)),
           "(",
           commaSep($._expression),
           ")",
         ),
       ),
+
+    event_method: (_$) => token(seq("@", /[a-zA-Z_]\w*/)),
 
     field_expression: ($) =>
       prec(

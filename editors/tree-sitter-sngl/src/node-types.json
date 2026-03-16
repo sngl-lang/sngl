@@ -844,6 +844,10 @@
         "required": true,
         "types": [
           {
+            "type": "event_method",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           }
@@ -1981,6 +1985,10 @@
   {
     "type": "event",
     "named": false
+  },
+  {
+    "type": "event_method",
+    "named": true
   },
   {
     "type": "extern_modifier",
