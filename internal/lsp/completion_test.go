@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 )
 
 func TestCompletionContext(t *testing.T) {
@@ -12,51 +13,51 @@ func TestCompletionContext(t *testing.T) {
 		content string
 		line    int
 		col     int
-		want    completionCtx
+		want    lspcore.CompletionCtx
 	}{
 		{
 			"top level",
 			"import \"foo\"\n\n",
 			3, 1,
-			ctxTopLevel,
+			lspcore.CtxTopLevel,
 		},
 		{
 			"inside component",
 			"component main {\n    \n}",
 			2, 5,
-			ctxComponent,
+			lspcore.CtxComponent,
 		},
 		{
 			"inside visual node",
 			"component main {\n    vbox {\n        \n    }\n}",
 			3, 9,
-			ctxVisualNode,
+			lspcore.CtxVisualNode,
 		},
 		{
 			"event handler",
 			"component main {\n    vbox {\n        @click\n    }\n}",
 			3, 9,
-			ctxEventHandler,
+			lspcore.CtxEventHandler,
 		},
 		{
 			"style context",
 			"component main {\n    vbox {\n        style={gap\n    }\n}",
 			3, 9,
-			ctxStyleProp,
+			lspcore.CtxStyleProp,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := completionContext(tt.content, tt.line, tt.col)
+			got := lspcore.CompletionContext(tt.content, tt.line, tt.col)
 			if got != tt.want {
-				t.Errorf("completionContext() = %d, want %d", got, tt.want)
+				t.Errorf("CompletionContext() = %d, want %d", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestTopLevelKeywords(t *testing.T) {
-	items := topLevelKeywords()
+	items := lspcore.TopLevelKeywords()
 	if len(items) == 0 {
 		t.Fatal("expected top level keywords")
 	}
@@ -73,7 +74,7 @@ func TestTopLevelKeywords(t *testing.T) {
 }
 
 func TestComponentKeywords(t *testing.T) {
-	items := componentKeywords()
+	items := lspcore.ComponentKeywords()
 	labels := map[string]bool{}
 	for _, item := range items {
 		labels[item.Label] = true
@@ -86,16 +87,14 @@ func TestComponentKeywords(t *testing.T) {
 }
 
 func TestExpressionCompletions(t *testing.T) {
-	fs := &fileState{
-		Doc: &ast.Document{
-			Data:      []*ast.Data{{Name: "count", Init: ast.Expr{TypeHint: "int"}}},
-			Computeds: []*ast.Computed{{Name: "greeting"}},
-			Consts:    []*ast.Const{{Name: "MAX"}},
-			Structs:   []*ast.StructDef{{Name: "User"}},
-			Enums:     []*ast.EnumDef{{Name: "Status"}},
-		},
+	doc := &ast.Document{
+		Data:      []*ast.Data{{Name: "count", Init: ast.Expr{TypeHint: "int"}}},
+		Computeds: []*ast.Computed{{Name: "greeting"}},
+		Consts:    []*ast.Const{{Name: "MAX"}},
+		Structs:   []*ast.StructDef{{Name: "User"}},
+		Enums:     []*ast.EnumDef{{Name: "Status"}},
 	}
-	items := expressionCompletions(fs)
+	items := lspcore.ExpressionCompletions(doc)
 	labels := map[string]bool{}
 	for _, item := range items {
 		labels[item.Label] = true
@@ -108,7 +107,7 @@ func TestExpressionCompletions(t *testing.T) {
 }
 
 func TestStdlibComponentItems(t *testing.T) {
-	items := stdlibComponentItems()
+	items := lspcore.StdlibComponentItems()
 	if len(items) == 0 {
 		t.Fatal("expected stdlib component completions")
 	}
@@ -124,7 +123,7 @@ func TestStdlibComponentItems(t *testing.T) {
 }
 
 func TestStylePropCompletions(t *testing.T) {
-	items := stylePropCompletions()
+	items := lspcore.StylePropCompletions()
 	if len(items) == 0 {
 		t.Fatal("expected style property completions")
 	}

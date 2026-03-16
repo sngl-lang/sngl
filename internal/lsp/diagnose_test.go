@@ -3,6 +3,8 @@ package lsp
 import (
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 )
 
 func TestAnalyze_ValidFile(t *testing.T) {
@@ -82,16 +84,16 @@ func TestParseOneDiagnostic(t *testing.T) {
 		{"test.sngl", "some random error", 0, 0, "some random error"},
 	}
 	for _, tt := range tests {
-		d := parseOneDiagnostic(tt.filename, tt.input)
+		d := lspcore.ParseOneDiagnostic(tt.filename, tt.input)
 		if tt.wantLine > 0 {
 			gotLine := d.Range.Start.Line + 1
 			gotCol := d.Range.Start.Character + 1
 			if gotLine != tt.wantLine || gotCol != tt.wantCol {
-				t.Errorf("parseOneDiagnostic(%q) pos = %d:%d, want %d:%d", tt.input, gotLine, gotCol, tt.wantLine, tt.wantCol)
+				t.Errorf("ParseOneDiagnostic(%q) pos = %d:%d, want %d:%d", tt.input, gotLine, gotCol, tt.wantLine, tt.wantCol)
 			}
 		}
 		if d.Message != tt.wantMsg {
-			t.Errorf("parseOneDiagnostic(%q) msg = %q, want %q", tt.input, d.Message, tt.wantMsg)
+			t.Errorf("ParseOneDiagnostic(%q) msg = %q, want %q", tt.input, d.Message, tt.wantMsg)
 		}
 	}
 }

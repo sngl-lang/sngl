@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNGL Playground</title>
     <link rel="stylesheet" href="assets/playground/playground.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css">
 </head>
 <body>
     <div class="toolbar">
@@ -22,14 +23,19 @@
         <div class="output-pane">
             <div class="tab-bar">
                 <button class="active" data-tab="preview">Preview</button>
+                <button data-tab="code">Code</button>
                 <button data-tab="ast">AST</button>
             </div>
             <div class="tab-content">
                 <div class="tab-panel active" id="tab-preview">
                     <iframe id="preview"></iframe>
                 </div>
+                <div class="tab-panel" id="tab-code">
+                    <div id="code-header"><select id="target-select"></select></div>
+                    <pre id="code-output"><code></code></pre>
+                </div>
                 <div class="tab-panel" id="tab-ast">
-                    <pre id="ast-output"></pre>
+                    <div id="ast-output"></div>
                 </div>
             </div>
         </div>
@@ -42,6 +48,10 @@ app {
 }
 </script>
     <script src="assets/playground/wasm_exec.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js"></script>
     <script type="module" src="assets/playground/playground.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 )
 
 func TestWordAtPosition(t *testing.T) {
@@ -25,9 +26,9 @@ func TestWordAtPosition(t *testing.T) {
 		{99, 1, ""},
 	}
 	for _, tt := range tests {
-		got := wordAtPosition(content, tt.line, tt.col)
+		got := lspcore.WordAtPosition(content, tt.line, tt.col)
 		if got != tt.want {
-			t.Errorf("wordAtPosition(%d,%d) = %q, want %q", tt.line, tt.col, got, tt.want)
+			t.Errorf("WordAtPosition(%d,%d) = %q, want %q", tt.line, tt.col, got, tt.want)
 		}
 	}
 }
@@ -40,12 +41,12 @@ func TestHoverInfo_Var(t *testing.T) {
 		},
 	}
 
-	info := hoverInfo(doc, "count")
+	info := lspcore.HoverInfo(doc, "count")
 	if !strings.Contains(info, "var count int") {
 		t.Errorf("expected var hover, got %q", info)
 	}
 
-	info = hoverInfo(doc, "user")
+	info = lspcore.HoverInfo(doc, "user")
 	if !strings.Contains(info, "extern") {
 		t.Errorf("expected extern hover, got %q", info)
 	}
@@ -57,7 +58,7 @@ func TestHoverInfo_Computed(t *testing.T) {
 			{Name: "greeting"},
 		},
 	}
-	info := hoverInfo(doc, "greeting")
+	info := lspcore.HoverInfo(doc, "greeting")
 	if !strings.Contains(info, "computed greeting") {
 		t.Errorf("expected computed hover, got %q", info)
 	}
@@ -75,7 +76,7 @@ func TestHoverInfo_Component(t *testing.T) {
 			},
 		},
 	}
-	info := hoverInfo(doc, "Counter")
+	info := lspcore.HoverInfo(doc, "Counter")
 	if !strings.Contains(info, "component Counter") {
 		t.Errorf("expected component hover, got %q", info)
 	}
@@ -89,7 +90,7 @@ func TestHoverInfo_Component(t *testing.T) {
 
 func TestHoverInfo_StdlibComponent(t *testing.T) {
 	doc := &ast.Document{}
-	info := hoverInfo(doc, "text")
+	info := lspcore.HoverInfo(doc, "text")
 	if info == "" {
 		t.Error("expected hover info for stdlib component 'text'")
 	}
@@ -110,7 +111,7 @@ func TestHoverInfo_Struct(t *testing.T) {
 			},
 		},
 	}
-	info := hoverInfo(doc, "User")
+	info := lspcore.HoverInfo(doc, "User")
 	if !strings.Contains(info, "struct User") {
 		t.Errorf("expected struct hover, got %q", info)
 	}
@@ -125,7 +126,7 @@ func TestHoverInfo_Enum(t *testing.T) {
 			{Name: "Status", Values: []string{"active", "inactive"}},
 		},
 	}
-	info := hoverInfo(doc, "Status")
+	info := lspcore.HoverInfo(doc, "Status")
 	if !strings.Contains(info, "enum Status") {
 		t.Errorf("expected enum hover, got %q", info)
 	}
@@ -136,7 +137,7 @@ func TestHoverInfo_Enum(t *testing.T) {
 
 func TestHoverInfo_Unknown(t *testing.T) {
 	doc := &ast.Document{}
-	info := hoverInfo(doc, "nonexistent_xyz_12345")
+	info := lspcore.HoverInfo(doc, "nonexistent_xyz_12345")
 	if info != "" {
 		t.Errorf("expected empty hover for unknown word, got %q", info)
 	}
