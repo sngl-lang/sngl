@@ -29,7 +29,7 @@ func init() {
 	rootCmd.AddCommand(stubCmd("lint", "Lint SNGL files"))
 	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(lspCmd)
-	rootCmd.AddCommand(stubCmd("fmt", "Format SNGL files"))
+	rootCmd.AddCommand(fmtCmd)
 	rootCmd.AddCommand(previewCmd)
 	rootCmd.AddCommand(stubCmd("init", "Initialize a new SNGL project"))
 	rootCmd.AddCommand(docCmd)

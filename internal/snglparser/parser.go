@@ -516,11 +516,8 @@ func (p *parser) parseSingleVar() *ast.Data {
 		// Parse func type components into Data fields
 		if strings.HasPrefix(typeHint, "func:") {
 			d.IsFunc = true
-			body := strings.TrimPrefix(typeHint, "func:")
-			sig, ret, _ := strings.Cut(body, "~")
-			if sig != "" {
-				d.ParamTypes = strings.Split(sig, ":")
-			}
+			params, ret := splitFuncBody(typeHint[5:])
+			d.ParamTypes = params
 			d.ReturnType = ret
 		}
 		if p.at(ASSIGN) {

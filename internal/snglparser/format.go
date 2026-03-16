@@ -557,9 +557,11 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		f.indent++
 
 		// Attr nodes
-		for _, an := range vn.AttrNodes {
+		for _, name := range sortedKeys(vn.AttrNodes) {
+			an := vn.AttrNodes[name]
 			var anProps []string
-			for k, v := range an.Props {
+			for _, k := range sortedKeys(an.Props) {
+				v := an.Props[k]
 				anProps = append(anProps, k+"="+f.formatExprValue(v))
 			}
 			f.writeLine("@" + an.Name + "(" + strings.Join(anProps, ", ") + ")")
@@ -851,18 +853,14 @@ func typeHintStr(hint string, d *ast.Data) string {
 
 	// Bare func type (e.g. nested "func:" or "func:string~int")
 	if strings.HasPrefix(hint, "func:") {
-		body := strings.TrimPrefix(hint, "func:")
-		sig, ret, _ := strings.Cut(body, "~")
+		params, ret := splitFuncBody(hint[5:])
 		var sb strings.Builder
 		sb.WriteString("func(")
-		if sig != "" {
-			params := strings.Split(sig, ":")
-			for i, p := range params {
-				if i > 0 {
-					sb.WriteString(", ")
-				}
-				sb.WriteString(typeHintStr(p, nil))
+		for i, p := range params {
+			if i > 0 {
+				sb.WriteString(", ")
 			}
+			sb.WriteString(typeHintStr(p, nil))
 		}
 		sb.WriteString(")")
 		if ret != "" {
@@ -886,10 +884,60 @@ func typeHintStr(hint string, d *ast.Data) string {
 	// Generic types: "list:Todo" → "list<Todo>"
 	if strings.Contains(hint, ":") {
 		parts := strings.SplitN(hint, ":", 2)
-		return parts[0] + "<" + parts[1] + ">"
+		return parts[0] + "<" + typeHintStr(parts[1], nil) + ">"
 	}
 
 	return hint
+}
+
+// consumeEncodedType consumes one type from the encoded type string and
+// returns the consumed type and the remaining string.
+func consumeEncodedType(s string) (typ, rest string) {
+	if strings.HasPrefix(s, "func:") {
+		inner := s[5:]
+		var params []string
+		for inner != "" && inner[0] != '~' {
+			var param string
+			param, inner = consumeEncodedType(inner)
+			params = append(params, param)
+			if inner != "" && inner[0] == ':' {
+				inner = inner[1:]
+			}
+		}
+		result := "func:" + strings.Join(params, ":")
+		if inner != "" && inner[0] == '~' {
+			inner = inner[1:]
+			var ret string
+			ret, inner = consumeEncodedType(inner)
+			result += "~" + ret
+		}
+		return result, inner
+	}
+	for i := range len(s) {
+		if s[i] == ':' || s[i] == '~' {
+			return s[:i], s[i:]
+		}
+	}
+	return s, ""
+}
+
+// splitFuncBody splits an encoded func body into param types and return type,
+// correctly handling nested func types.
+func splitFuncBody(body string) (params []string, ret string) {
+	for body != "" && body[0] != '~' {
+		var param string
+		param, body = consumeEncodedType(body)
+		if param != "" {
+			params = append(params, param)
+		}
+		if body != "" && body[0] == ':' {
+			body = body[1:]
+		}
+	}
+	if body != "" && body[0] == '~' {
+		ret = body[1:]
+	}
+	return
 }
 
 func sortedKeys[V any](m map[string]V) []string {
