@@ -1,6 +1,8 @@
 // Package tsparser provides a Go wrapper around the tree-sitter SNGL parser.
 package tsparser
 
+//go:generate sh -c "cd ../editors/tree-sitter-sngl && tree-sitter generate"
+
 // #cgo CFLAGS: -std=c11 -fPIC -I../editors/tree-sitter-sngl/src
 // #include "../editors/tree-sitter-sngl/src/parser.c"
 // #include "../editors/tree-sitter-sngl/src/scanner.c"

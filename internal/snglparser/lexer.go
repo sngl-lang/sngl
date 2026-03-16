@@ -2,7 +2,6 @@ package snglparser
 
 import (
 	"strings"
-	"unicode"
 )
 
 // lexer scans SNGL source text into tokens.
@@ -105,13 +104,18 @@ func (l *lexer) NextToken() Token {
 		if ch == '/' && l.peekAt(1) == '*' {
 			l.advance()
 			l.advance()
+			closed := false
 			for l.pos < len(l.input) {
 				if l.input[l.pos] == '*' && l.peekAt(1) == '/' {
 					l.advance()
 					l.advance()
+					closed = true
 					break
 				}
 				l.advance()
+			}
+			if !closed {
+				return l.token(ILLEGAL, "unterminated block comment", startLine, startCol)
 			}
 			continue
 		}
@@ -344,13 +348,18 @@ func (l *lexer) scanColor(startLine, startCol int) Token {
 	for l.pos < len(l.input) && isHexDigit(l.input[l.pos]) {
 		sb.WriteRune(l.advance())
 	}
-	return l.token(COLOR, sb.String(), startLine, startCol)
+	s := sb.String()
+	hexLen := len(s) - 1 // minus the #
+	if hexLen == 6 || hexLen == 8 {
+		return l.token(COLOR, s, startLine, startCol)
+	}
+	return l.token(ILLEGAL, s, startLine, startCol)
 }
 
 func isDigit(ch rune) bool { return ch >= '0' && ch <= '9' }
 func isHexDigit(ch rune) bool {
 	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
-func isLetter(ch rune) bool        { return unicode.IsLetter(ch) }
-func isIdentStart(ch rune) bool    { return unicode.IsLetter(ch) || ch == '_' }
-func isIdentContinue(ch rune) bool { return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' }
+func isLetter(ch rune) bool        { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') }
+func isIdentStart(ch rune) bool    { return isLetter(ch) || ch == '_' }
+func isIdentContinue(ch rune) bool { return isLetter(ch) || isDigit(ch) || ch == '_' }

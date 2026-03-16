@@ -52,7 +52,9 @@ func (p *parser) at(t TokenType) bool {
 func (p *parser) expect(t TokenType) Token {
 	if p.cur.Type != t {
 		p.errorf("expected %v, got %v (%q)", tokenNames[t], tokenNames[p.cur.Type], p.cur.Literal)
-		return p.cur
+		tok := p.cur
+		p.advance() // skip past bad token so the parser doesn't spin
+		return tok
 	}
 	return p.advance()
 }
@@ -527,7 +529,11 @@ func (p *parser) parseVarModifiers(d *ast.Data) {
 				d.Trigger = triggerName
 			} else {
 				// Auto-generate trigger name
-				d.Trigger = "On" + strings.ToUpper(d.Name[:1]) + d.Name[1:] + "Changed"
+				if len(d.Name) > 0 {
+					d.Trigger = "On" + strings.ToUpper(d.Name[:1]) + d.Name[1:] + "Changed"
+				} else {
+					d.Trigger = "OnChanged"
+				}
 			}
 		}
 	}
@@ -1150,12 +1156,8 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 
 	for i < len(runes) {
 		if runes[i] == '{' {
-			// Flush text
-			if buf.Len() > 0 {
-				parts = append(parts, &ast.LiteralExpr{Value: buf.String(), Kind: ast.LiteralString})
-				buf.Reset()
-			}
 			// Find matching }
+			start := i
 			i++
 			depth := 1
 			var exprBuf strings.Builder
@@ -1171,16 +1173,33 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 				exprBuf.WriteRune(runes[i])
 				i++
 			}
-			if i < len(runes) {
-				i++ // consume closing }
+			if depth > 0 || strings.TrimSpace(exprBuf.String()) == "" {
+				// No closing } or empty content — treat { as literal text.
+				buf.WriteRune('{')
+				i = start + 1
+				continue
 			}
-			// Parse the inner expression
+			i++ // consume closing }
+			// Parse the inner expression.
 			innerParser := &parser{
 				filename: p.filename,
 				lex:      newLexer(exprBuf.String()),
 			}
 			innerParser.advance()
-			parts = append(parts, innerParser.parseExpression())
+			expr := innerParser.parseExpression()
+			// If the inner parse had errors or didn't consume all input,
+			// treat {…} as literal text rather than broken interpolation.
+			if len(innerParser.errs) > 0 || !innerParser.at(EOF) {
+				buf.WriteRune('{')
+				i = start + 1
+				continue
+			}
+			// Flush text before the interpolation.
+			if buf.Len() > 0 {
+				parts = append(parts, &ast.LiteralExpr{Value: buf.String(), Kind: ast.LiteralString})
+				buf.Reset()
+			}
+			parts = append(parts, expr)
 		} else {
 			buf.WriteRune(runes[i])
 			i++

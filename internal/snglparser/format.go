@@ -42,7 +42,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 	// Imports
 	if len(doc.Imports) > 0 {
 		for _, imp := range doc.Imports {
-			f.writeLine(fmt.Sprintf("import %q", imp.Path))
+			f.writeLine(fmt.Sprintf("import \"%s\"", escapeStringContent(imp.Path)))
 		}
 		needBlank = true
 	}
@@ -292,7 +292,7 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 		if d.Trigger == autoName {
 			sb.WriteString(" trigger")
 		} else {
-			sb.WriteString(fmt.Sprintf(" trigger(%q)", d.Trigger))
+			sb.WriteString(fmt.Sprintf(" trigger(\"%s\")", escapeStringContent(d.Trigger)))
 		}
 	}
 
@@ -663,7 +663,9 @@ func formatLiteralExpr(e *ast.LiteralExpr) string {
 	case ast.LiteralFloat:
 		return fmt.Sprintf("%v", e.Value)
 	case ast.LiteralString:
-		return fmt.Sprintf("%q", e.Value)
+		s := fmt.Sprintf("%v", e.Value)
+		// Use escapeStringContent to also escape { for interpolation safety.
+		return "\"" + escapeStringContent(s) + "\""
 	case ast.LiteralBool:
 		if e.Value.(bool) {
 			return "true"
@@ -690,7 +692,7 @@ func formatLiteral(v any, typeHint string) string {
 		if strings.HasPrefix(val, "#") && (typeHint == "color" || typeHint == "") {
 			return val
 		}
-		return fmt.Sprintf("%q", val)
+		return "\"" + escapeStringContent(val) + "\""
 	case int:
 		return fmt.Sprintf("%d", val)
 	case float64:
@@ -768,12 +770,29 @@ func assignOpString(op ast.AssignOp) string {
 }
 
 func escapeStringContent(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	s = strings.ReplaceAll(s, "\n", `\n`)
-	s = strings.ReplaceAll(s, "\t", `\t`)
-	s = strings.ReplaceAll(s, "{", `\{`)
-	return s
+	var sb strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			sb.WriteString(`\\`)
+		case '"':
+			sb.WriteString(`\"`)
+		case '\n':
+			sb.WriteString(`\n`)
+		case '\t':
+			sb.WriteString(`\t`)
+		case '\r':
+			sb.WriteString(`\r`)
+		case '{':
+			sb.WriteString(`\{`)
+		default:
+			// Drop control characters that SNGL can't represent.
+			if r >= 0x20 && r != 0x7f {
+				sb.WriteRune(r)
+			}
+		}
+	}
+	return sb.String()
 }
 
 // typeHintStr formats a type hint for display in SNGL source.
@@ -827,7 +846,7 @@ func sortedKeys[V any](m map[string]V) []string {
 func formatKV(opts map[string]string) string {
 	var parts []string
 	for k, v := range opts {
-		parts = append(parts, fmt.Sprintf("%s=%q", k, v))
+		parts = append(parts, fmt.Sprintf("%s=\"%s\"", k, escapeStringContent(v)))
 	}
 	return strings.Join(parts, ", ")
 }

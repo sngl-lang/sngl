@@ -381,7 +381,7 @@ module.exports = grammar({
     prop_list: ($) =>
       seq(
         "(",
-        commaSep($._prop_entry),
+        optCommaSep($._prop_entry),
         ")",
       ),
 
@@ -663,6 +663,14 @@ module.exports = grammar({
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));
+}
+
+/**
+ * List with optional comma separators (zero or more).
+ * @param {RuleOrLiteral} rule
+ */
+function optCommaSep(rule) {
+  return repeat(seq(rule, optional(",")));
 }
 
 /**

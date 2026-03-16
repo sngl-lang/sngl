@@ -80,12 +80,52 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
     }
 
     // No content — check if this is a { for interpolation start.
+    // Only treat { as interpolation if we can find a matching } before the
+    // closing ".  Otherwise the { is literal string content.
     if (lexer->lookahead == '{' && valid_symbols[STRING_INTERPOLATION_START]) {
-      lexer->advance(lexer, false);
+      lexer->advance(lexer, false);   // consume {
+      lexer->mark_end(lexer);         // mark end right after {
+      int32_t after = lexer->lookahead;
+      if (after != '"' && after != '}' && after != 0) {
+        // Scan ahead destructively to check for closing } with content that
+        // contains at least one identifier char (letter or _).
+        // mark_end stays after {, so tree-sitter will rewind here.
+        bool found_close = false;
+        bool has_ident = false;
+        int depth = 1;
+        while (lexer->lookahead != 0 && lexer->lookahead != '"') {
+          if (lexer->lookahead == '{') depth++;
+          else if (lexer->lookahead == '}') {
+            depth--;
+            if (depth == 0) { found_close = true; break; }
+          } else if ((lexer->lookahead >= 'a' && lexer->lookahead <= 'z') ||
+                     (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') ||
+                     lexer->lookahead == '_') {
+            has_ident = true;
+          }
+          lexer->advance(lexer, false);
+        }
+
+        if (found_close && has_ident) {
+          lexer->result_symbol = STRING_INTERPOLATION_START;
+          s->in_string = false;
+          s->interp_depth++;
+          return true;
+        }
+      }
+      // No valid interpolation — treat { (and rest) as string content.
+      // mark_end is after {; advance to cover remaining content.
+      while (lexer->lookahead != 0 && lexer->lookahead != '"' &&
+             lexer->lookahead != '{') {
+        if (lexer->lookahead == '\\') {
+          lexer->advance(lexer, false);
+          if (lexer->lookahead != 0) lexer->advance(lexer, false);
+          continue;
+        }
+        lexer->advance(lexer, false);
+      }
       lexer->mark_end(lexer);
-      lexer->result_symbol = STRING_INTERPOLATION_START;
-      s->in_string = false;
-      s->interp_depth++;
+      lexer->result_symbol = STRING_CONTENT;
       return true;
     }
 
