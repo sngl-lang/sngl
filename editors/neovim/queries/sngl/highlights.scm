@@ -19,6 +19,7 @@
   "for"
   "in"
   "func"
+  "test"
 ] @keyword
 
 (extern_modifier) @keyword
@@ -42,6 +43,9 @@
 (unit_declaration name: (identifier) @type.definition)
 (style_declaration name: (identifier) @type.definition)
 (component_declaration name: (identifier) @type.definition)
+(test_declaration component: (identifier) @type)
+(test_declaration description: (string_literal) @string)
+(subtest_declaration description: (string_literal) @string)
 
 ; Component members
 (param_declaration name: (identifier) @variable.parameter)

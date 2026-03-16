@@ -13,7 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
-	"git.duckfam.us/jonathan/sngl/tsparser"
+	"git.duckfam.us/jonathan/sngl/internal/tsparser"
 )
 
 func TestCanLoadGrammar(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCanLoadGrammar(t *testing.T) {
 // TestFixtureAgreement parses every testdata/*.sngl file with both parsers
 // and checks that they agree: both succeed, and their structural outputs match.
 func TestFixtureAgreement(t *testing.T) {
-	dir := filepath.Join("..", "testdata")
+	dir := filepath.Join("..", "..", "testdata")
 	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
 	if err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestFixtureAgreement(t *testing.T) {
 
 // TestRoundTrip formats Go AST back to source, then re-parses with tree-sitter.
 func TestRoundTrip(t *testing.T) {
-	dir := filepath.Join("..", "testdata")
+	dir := filepath.Join("..", "..", "testdata")
 	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +351,7 @@ func reportErrors(t *testing.T, root *ts.Node, src []byte) {
 // input (no error), the tree-sitter parser must produce an error-free tree.
 func FuzzParse(f *testing.F) {
 	// Seed with testdata fixtures.
-	dir := filepath.Join("..", "testdata")
+	dir := filepath.Join("..", "..", "testdata")
 	matches, _ := filepath.Glob(filepath.Join(dir, "*.sngl"))
 	for _, path := range matches {
 		data, err := os.ReadFile(path)

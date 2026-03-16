@@ -124,10 +124,10 @@ highlight: ## Syntax-highlight testdata/full_example.sngl
 	$(TS) highlight ../../testdata/full_example.sngl
 
 gotest: ## Run Go comparison tests
-	cd ../.. && go test ./tsparser/ -v -count=1
+	cd ../.. && go test ./internal/tsparser/ -v -count=1
 
 fuzz: ## Run Go fuzz tests (30s)
-	cd ../.. && go test ./tsparser/ -fuzz=FuzzParse -fuzztime=30s
+	cd ../.. && go test ./internal/tsparser/ -fuzz=FuzzParse -fuzztime=30s
 
 dev: generate sngl.so nvim sync-queries ## Full dev rebuild: generate, compile, install, sync
 
