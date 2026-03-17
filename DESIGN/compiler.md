@@ -2,20 +2,20 @@
 
 ## Purpose
 
-The SNGL compiler transforms KDL template documents into target-specific artifacts. A single KDL source file describes a language- and platform-agnostic GUI layout; the compiler pairs a **language backend** with a **platform backend** to produce runnable output for any supported combination.
+The SNGL compiler transforms `.sngl` source documents into target-specific artifacts. A single SNGL source file describes a language- and platform-agnostic GUI layout; the compiler pairs a **language backend** with a **platform backend** to produce runnable output for any supported combination.
 
 ## Compilation Model
 
 ```
-KDL Source
+SNGL Source
     │
     ▼
 ┌──────────┐
-│  Parser  │  KDL → SNGL AST (layout tree + bindings + expressions)
+│  Parser  │  SNGL → AST (layout tree + state + expressions)
 └────┬─────┘
      ▼
 ┌──────────────┐
-│   Analyzer   │  Type-check, dependency graph, CEL validation
+│   Analyzer   │  Type-check, dependency graph, expression validation
 └────┬─────────┘
      ▼
 ┌──────────────┐
@@ -30,8 +30,8 @@ KDL Source
 
 ### Phases
 
-1. **Parse** — Read KDL, produce an untyped SNGL AST. Nodes, attributes, bindings, and `(cel)` type-annotated values are all captured verbatim. Child nodes whose names start with `@` are separated from visual children and stored as attribute nodes on the parent (e.g., `@style` properties are merged into the parent's style map).
-2. **Analyze** — Resolve component references (builtins + user-defined), type-check properties and bindings against component schemas, parse and type-check CEL expressions, build the reactive dependency graph.
+1. **Parse** — Read SNGL source, produce an untyped AST. Nodes, props, state declarations, and expressions are all captured. Event handlers (`@event={ stmts }`) are parsed as statement blocks.
+2. **Analyze** — Resolve component references (builtins + user-defined), type-check properties and state against component schemas, validate expressions, build the reactive dependency graph.
 3. **Lower to IR** — Produce a normalized intermediate representation that captures the full semantic intent: node creation order, binding subscriptions, event handler wiring, layout constraints. The IR is independent of any target.
 4. **Emit** — A language backend and platform backend collaborate to produce final artifacts.
 
@@ -55,23 +55,21 @@ The `none/none` target performs all phases except emission and is used by the st
 
 A language backend is responsible for:
 
-- **CEL translation** — Convert CEL expression ASTs into equivalent expressions in the target language. Each language backend implements a CEL-to-native transpiler.
-- **Binding codegen** — Emit reactive subscription/update code using the target language's idioms (closures, lambdas, observer patterns).
-- **Handler stubs** — Generate typed interfaces or function signatures for handlers that the application author implements in the target language. These are the escape hatch from pure-KDL logic into full imperative code.
-- **Type mapping** — Map SNGL/protobuf types to native types.
+- **Expression translation** — Convert SNGL expression ASTs into equivalent expressions in the target language.
+- **State codegen** — Emit reactive subscription/update code using the target language's idioms (closures, lambdas, observer patterns).
+- **Handler stubs** — Generate typed interfaces or function signatures for `extern` handlers that the application author implements in the target language.
+- **Type mapping** — Map SNGL types to native types.
 
-### CEL Translation
+### Expression Translation
 
-CEL is the expression language embedded in KDL templates. It handles simple logic: conditional text, computed properties, validation predicates. The language backend translates each CEL expression into a native expression at compile time.
-
-For expressions that cannot be statically translated (rare), the backend may emit a small CEL runtime evaluation call, but this is discouraged.
+SNGL expressions are Go-like and handle simple logic: conditional text, computed properties, validation predicates. The language backend translates each expression into a native expression at compile time.
 
 ### Handler Delegation
 
-Complex logic (network calls, state machines, business rules) is not written in CEL. Instead, the KDL template references named handlers:
+Complex logic (network calls, state machines, business rules) lives in `extern` functions. The SNGL source references named handlers:
 
-```kdl
-button on:click=(cel)"handlers.submitForm(formData)"
+```sngl
+button(text="Submit", @click={ save(formData) })
 ```
 
 The compiler generates a typed handler interface in the target language:
@@ -91,7 +89,7 @@ A platform backend is responsible for:
 
 - **Component mapping** — Map SNGL standard library components (`vbox`, `button`, `text`, etc.) to platform-native widgets or drawing calls.
 - **Layout engine integration** — Wire up Yoga layout nodes to the platform's rendering pipeline.
-- **Event system** — Map SNGL event names (`on:click`, `on:input`) to platform event mechanisms.
+- **Event system** — Map SNGL event names (`@click`, `@input`) to platform event mechanisms.
 - **Lifecycle** — Handle mount, update, and teardown in a platform-idiomatic way.
 
 ## Standard Library
@@ -120,29 +118,29 @@ This IR is what language/platform backends consume.
 ## Compiler CLI
 
 ```
-sngl compile --lang=go --platform=gio --out=./gen/ app.kdl
-sngl compile --lang=ts --platform=web --out=./gen/ app.kdl
-sngl check app.kdl                          # analyze only (none/none)
+sngl compile --lang=go --platform=gio --out=./gen/ app.sngl
+sngl compile --lang=ts --platform=web --out=./gen/ app.sngl
+sngl check app.sngl                          # analyze only (none/none)
 ```
 
 ## Multi-Target Compilation
 
-A single KDL source can be compiled to multiple targets. The parse and analyze phases run once; only IR lowering and emission are repeated per target. A project configuration file can declare multiple targets:
+A single SNGL source can be compiled to multiple targets. The parse and analyze phases run once; only IR lowering and emission are repeated per target. Targets are declared in `output` blocks:
 
-```kdl
-targets {
-    go-gio lang="go" platform="gio" out="gen/gio"
-    web lang="ts" platform="web" out="gen/web"
+```sngl
+output {
+    go gio(out="gen/gio")
+    ts web(out="gen/web")
 }
 ```
 
 ## Error Reporting
 
-Errors reference KDL source locations (file, line, column). Categories:
+Errors reference SNGL source locations (file, line, column). Categories:
 
-- **Parse errors** — malformed KDL
+- **Parse errors** — malformed SNGL syntax
 - **Resolution errors** — unknown component or property names
-- **Type errors** — CEL expression type mismatches, incompatible bindings
+- **Type errors** — expression type mismatches, incompatible state bindings
 - **Dependency errors** — circular computed values, missing handler definitions
 - **Platform errors** — use of unsupported component/property for a given platform
 

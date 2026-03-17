@@ -2,9 +2,9 @@
 
 ## Overview
 
-SNGL is a purpose-built language for describing reactive UIs. It produces the same AST as the KDL-based `.sngl.kdl` format but makes expressions, types, and control flow first-class syntactic constructs rather than encoded strings.
+SNGL is a purpose-built language for describing reactive UIs. Expressions, types, and control flow are first-class syntactic constructs.
 
-File extension: `.sngl` (vs `.sngl.kdl` for the KDL format). Both parsers produce identical `ast.Document` structures.
+File extension: `.sngl`.
 
 ## Design Goals
 
@@ -967,22 +967,3 @@ component main {
 }
 ```
 
-## Comparison with KDL Format
-
-| Feature              | KDL (`.sngl.kdl`)                       | SNGL (`.sngl`)                        |
-| -------------------- | --------------------------------------- | ------------------------------------- |
-| Expressions          | `(cel)"expr"` string-wrapped            | `expr` Go-like, first-class           |
-| Events               | `on:click=(cel)"..."`                   | `@click={ stmts }`                    |
-| Statements           | N/A (mutations are expressions)         | `count += 1`, `todos.push(item)`      |
-| String interpolation | N/A                                     | `"Hello, {name}!"`                    |
-| Types                | `(list:Todo)`, `(func:string~bool)`     | `list<Todo>`, `func(string) -> bool`  |
-| Inline enums         | `(enum:light\|dark)`                    | `enum<light \| dark>`                 |
-| Control flow         | `if=(cel)"expr"`, `for="item in items"` | `if expr { }`, `for item in expr { }` |
-| Style (inline)       | `style.gap=12 style.padding=16`         | `style={gap=12, padding=16}`          |
-| Style (block)        | `@style { gap 12; padding 16 }`         | N/A (merged into inline style)         |
-| Color literals       | `"#ff0000"` (string)                    | `#ff0000` (token)                     |
-| Unit literals        | `"5s"` (string)                         | `5s`, `12px` (token)                  |
-| Bool/null            | `#true`, `#false`, `#null` (KDL syntax) | `true`, `false`, `null`               |
-| Statement separator  | KDL semicolons/newlines                 | Go-style semicolon insertion          |
-| List methods         | `push(list, value)` function call       | `list.push(value)` method call        |
-| Mutation model       | `set()`, `toggle()` → `Mutation` type   | Direct assignment, `=`, `+=`, `!!`    |

@@ -9,8 +9,8 @@ Tests are written in `.sngl` files using the `test` keyword as a top-level decla
 ```sngl
 component counter {
     var count = 0
-    button(text="+", @click={ count += 1 })
-    text(value="Count: {count}")
+    button(text="+", key="inc", @click={ count += 1 })
+    text(value="Count: {count}", key="display")
 }
 
 test counter "increments" {
@@ -36,6 +36,85 @@ test counter "starts fresh" {
 - **Body**: SNGL statements (assign, toggle, emit) + `assert(expr)` calls
 - Each top-level test gets fresh component state initialized from `var` defaults
 - Tests targeting `main` use document-level `var`/`computed`/`const` declarations
+
+## DOM Access
+
+Tests can inspect the rendered virtual DOM via the `root` variable. The DOM is re-rendered after every state mutation, so assertions always see the current state.
+
+```sngl
+test counter "dom inspection" {
+    // root is the virtual DOM root node
+    assert(root._children.length() == 2)
+
+    // find elements by key
+    assert(root._find("display").value == "Count: 0")
+    assert(root._find("inc").text == "+")
+
+    // trigger events on elements
+    root._find("inc").@click()
+    assert(count == 1)
+    assert(root._find("display").value == "Count: 1")
+
+    // access component vars via root
+    assert(root.count == 1)
+}
+```
+
+### DOM API
+
+| Expression | Description |
+|---|---|
+| `root` | Virtual DOM root node for the component under test |
+| `root._children` | List of child elements |
+| `root._find("key")` | Recursively find element by `key` attribute |
+| `elem.propName` | Access any prop on a rendered element (`value`, `text`, `disabled`, etc.) |
+| `elem.@event()` | Trigger an event handler on the element |
+
+## Built-in Functions
+
+| Function | Description |
+|---|---|
+| `assert(expr)` | Fail the test if `expr` is falsy |
+| `string(value)` | Convert to string |
+| `int(value)` | Convert to int |
+| `float(value)` | Convert to float |
+
+## Built-in Methods
+
+| Method | Applies to | Description |
+|---|---|---|
+| `.length()` | list, string, map | Length / size |
+| `.push(value)` | list | Append to list |
+| `.remove(index)` | list | Remove by index |
+| `.contains(substr)` | string | Substring check |
+| `._find(key)` | DOM element | Find child by key |
+| `.@event()` | DOM element | Trigger event handler |
+
+## Expressions
+
+Test bodies support the full SNGL expression set:
+
+- **Arithmetic:** `+`, `-`, `*`, `/`, `%`
+- **Comparison:** `==`, `!=`, `<`, `>`, `<=`, `>=`
+- **Logical:** `&&`, `||`, `!`
+- **Ternary:** `x ? a : b`
+- **Interpolation:** `"Count: {count}"`
+- **List literals:** `[1, 2, 3]`
+- **Struct literals:** `User{name: "World"}`
+- **Field access:** `user.name`
+- **Indexing:** `list[0]`
+
+## Expected Errors
+
+Tests can assert that a runtime error occurs by adding a `// ERROR(test)` comment:
+
+```sngl
+test items "out of bounds" { // ERROR(test) "out of range"
+    assert(list[10] == 0)
+}
+```
+
+The test passes if execution produces an error containing the quoted substring.
 
 ## CLI
 
@@ -73,4 +152,3 @@ On failure:
 
 - Platform-specific codegen for tests (compile tests to target language test frameworks)
 - `--format json` output for CI integration
-- Event simulation (`@click`, `@input`) beyond simple state manipulation

@@ -1,153 +1,138 @@
-# SNGL KDL Schema — Full Specification
+# SNGL Schema — Full Specification
 
 ## Purpose
 
-This document defines the complete schema for SNGL KDL layout documents: the document structure, node types, attribute types, expression syntax, and the typed definitions for every standard library component. This is the canonical reference for compiler and tooling implementors.
+This document defines the complete schema for SNGL layout documents: the document structure, node types, attribute types, expression syntax, and the typed definitions for every standard library component. This is the canonical reference for compiler and tooling implementors.
 
 ## Type System
 
 ### Primitive Types
 
-| Type        | Description                            | Examples                                  |
-| ----------- | -------------------------------------- | ----------------------------------------- |
-| `bool`      | Boolean                                | `true`, `false`                           |
-| `int`       | Signed integer (platform-native width) | `0`, `-1`, `42`                           |
-| `float`     | Floating-point number                  | `1.0`, `-3.14`                            |
-| `string`    | UTF-8 text                             | `"hello"`                                 |
-| `color`     | RGBA color (hex, named, or function)   | `"#FF0000"`, `"red"`, `"rgba(255,0,0,1)"` |
-| `length`    | Dimensional value                      | `8`, `"50%"`, `"auto"`                    |
-| `enum(...)` | One of a fixed set of string values    | Defined per property                      |
+| Type        | Description                            | Examples                    |
+| ----------- | -------------------------------------- | --------------------------- |
+| `bool`      | Boolean                                | `true`, `false`             |
+| `int`       | Signed integer (platform-native width) | `0`, `-1`, `42`             |
+| `float`     | Floating-point number                  | `1.0`, `-3.14`              |
+| `string`    | UTF-8 text                             | `"hello"`                   |
+| `color`     | RGBA color (hex literal)               | `#FF0000`, `#fff`, `#ff000080` |
+| `enum(...)` | One of a fixed set of string values    | Defined per property        |
 
 ### Composite Types
 
-| Type           | Syntax                   | Description                        |
-| -------------- | ------------------------ | ---------------------------------- |
-| `list<T>`      | `list<string>`           | Ordered collection                 |
-| `map<K,V>`     | `map<string, int>`       | Key-value mapping                  |
-| `message`      | protobuf message name    | Structured data (protobuf-defined) |
-| `optional<T>`  | `optional<string>`       | Value or absent                    |
-| `handler(...)` | `handler(Event) -> void` | Callable handler signature         |
+| Type           | Syntax             | Description                        |
+| -------------- | ------------------ | ---------------------------------- |
+| `list<T>`      | `list<string>`     | Ordered collection                 |
+| `map<K,V>`     | `map<string, int>` | Key-value mapping                  |
+| `optional<T>`  | `optional<string>` | Value or absent                    |
 
 ### Expression Types
 
-Values in KDL attributes are one of:
+All values in SNGL are either:
 
-- **Literal** — A static value: `text value="Hello"`
-- **CEL expression** — A KDL type-annotated value: `text value=(cel)"user.name"`
+- **Literal** — A static value: `text(value="Hello")`
+- **Expression** — A Go-like expression: `text(value="Hello, {name}!")`
+- **Interpolation** — Inline expression in strings: `"Count: {count}"`
 
-The `(cel)` type annotation uses KDL's native type annotation syntax. The parser distinguishes CEL expressions from plain strings at the KDL parse level — no string scanning or escape conventions are needed. All CEL expressions are full CEL; string concatenation is expressed as `(cel)"'Hello ' + user.name"` rather than interpolation.
+Expressions are first-class syntactic constructs, not string-wrapped.
 
 ## Document Structure
 
 ```
-Document := Declaration* App
-Declaration := Import | Bind | Computed | Component | Style
+Document := Declaration*
+Declaration := Import | Output | Struct | Enum | Unit | Style | Styles | Component | Test
 ```
 
 ### Import
 
-```kdl
-import "<path-or-module>"
+```sngl
+import "app.proto"
 ```
 
 | Argument     | Type     | Description                                                     |
 | ------------ | -------- | --------------------------------------------------------------- |
 | (positional) | `string` | Module path or protobuf descriptor relative to the current file |
 
-### Bind
+### var
 
-Declares mutable reactive state. Available in individual or block form.
+Declares mutable reactive state inside a component.
 
-#### Individual form
-
-```kdl
-bind "count" (int)0
-bind "user" (cel)"User{ name: 'World' }"
+```sngl
+var count = 0
+var name = "World"
+var todos list<Todo> = []
 ```
 
-The first argument is the variable name (string). The second argument is the initial value — a literal with an optional KDL type annotation for type hints, or a `(cel)` expression. Types are inferred from the value's type annotation.
+Grouped form:
 
-#### Block form
-
-```kdl
-bind {
-    count (int)0
-    user (cel)"User{ name: 'World' }"
-}
+```sngl
+var (
+    count = 0
+    name = "World"
+    active = true
+)
 ```
 
-Each child node's name is the variable name; its first argument is the initial value. Both forms can coexist in a document.
+Types are inferred from default values when possible.
 
-| Part          | Required | Description                                                            |
-| ------------- | -------- | ---------------------------------------------------------------------- |
-| name          | yes      | Identifier; becomes a CEL variable                                     |
-| type hint     | no       | KDL type annotation on the value (e.g., `(int)`, `(User)`); inferred if omitted |
-| initial value | yes      | Literal or `(cel)` expression                                          |
+### computed
 
-### Computed
+Declares derived, read-only state inside a component.
 
-Declares derived, read-only state. Available in individual or block form.
-
-#### Individual form
-
-```kdl
-computed "greeting" (cel)"'Hello, ' + user.name + '!'"
-computed "isAdult" (cel)"user.age >= 18"
+```sngl
+computed greeting = "Hello, {name}!"
+computed isAdult = user.age >= 18
 ```
 
-#### Block form
+Grouped form:
 
-```kdl
-computed {
-    greeting (cel)"'Hello, ' + user.name + '!'"
-    isAdult (cel)"user.age >= 18"
-}
+```sngl
+computed (
+    greeting = "Hello, {name}!"
+    isAdult = user.age >= 18
+)
 ```
 
-| Part       | Required | Description                                        |
-| ---------- | -------- | -------------------------------------------------- |
-| name       | yes      | Identifier; becomes a read-only CEL variable       |
-| expression | yes      | `(cel)` expression; dependencies auto-tracked      |
+### const
+
+Declares immutable values inside a component.
+
+```sngl
+const maxItems = 100
+const label string = "Hello"
+```
 
 ### Component (user-defined)
 
-```kdl
-component "Counter" {
-    @param "label" (string)""
-    @param "start" (int)0
+```sngl
+component Counter {
+    param label = ""
+    param start = 0
+    var count = start
+
     hbox {
-        text value=(cel)"label + ': ' + string(count)"
-        button text="+" on:click=(cel)"set(count, count + 1)"
+        text(value="{label}: {count}")
+        button(text="+", @click={ count += 1 })
     }
 }
 ```
 
-The first argument is the component name (PascalCase string). Children named `@param` define typed parameters; all other children form the component body.
+Components own their reactive state. `var` and `computed` declarations inside a component are scoped to that component instance.
 
-| Part        | Required | Description                                       |
-| ----------- | -------- | ------------------------------------------------- |
-| Name        | yes      | PascalCase identifier (first argument, string)    |
-| @param nodes | no       | Typed parameters (immutable within the component) |
-| body        | yes      | One or more visual nodes; may contain `slot`      |
+#### `param`
 
-#### `@param` nodes
-
-```kdl
-@param "name" (type)default-value
-@param "name" (type)default-value "required"
+```sngl
+param name type = default   // explicit type
+param name = default        // type inferred from default
+param name type             // no default — zero value of type
 ```
-
-| Part          | Required | Description                                                              |
-| ------------- | -------- | ------------------------------------------------------------------------ |
-| name          | yes      | Parameter name (first positional argument, string)                       |
-| default value | yes      | Default value (second positional argument) with KDL type annotation      |
-| "required"    | no       | If a third positional argument `"required"` is present, param is required |
 
 ### Style (named style blocks)
 
-```kdl
-style "<name>" {
-    // style properties
+```sngl
+style heading {
+    font-size = 24
+    font-weight = "bold"
+    color = #007700
 }
 ```
 
@@ -156,171 +141,155 @@ Named style blocks can be referenced via `class` attributes on visual nodes.
 ## Visual Node Grammar
 
 ```
-VisualNode := <component-name> [Attributes] [Children]
-Attributes := (key=value)*
-Children := { AttributeNode* VisualNode* }
-AttributeNode := @<name> [Attributes] [Block]
+VisualNode := <component-name> ("(" PropList ")")? ("{" Children "}")?
+PropList := Prop ("," Prop)*
+Prop := "@" IDENT "=" "{" StmtList "}" | "style" "=" StyleLiteral | IDENT "=" Expr
+Children := (NodeOrControl | "@" IDENT "(" KVList ")")*
 ```
 
 ### Universal Attributes
 
 Every visual node accepts these attributes:
 
-| Attribute | Type                      | Default | Description                                 |
-| --------- | ------------------------- | ------- | ------------------------------------------- |
-| `id`      | `string`                  | none    | Unique identifier for selection and testing |
-| `key`     | `string \| (cel)`         | none    | Identity key for list diffing               |
-| `class`   | `string`                  | none    | References a named style block              |
-| `if`      | `(cel) -> bool`           | none    | Conditional rendering                       |
-| `for`     | `"<ident> in <cel-expr>"` | none    | List rendering                              |
-| `ref`     | `string`                  | none    | Named reference for programmatic access     |
+| Attribute | Type         | Default | Description                                 |
+| --------- | ------------ | ------- | ------------------------------------------- |
+| `id`      | `string`     | none    | Unique identifier for selection and testing |
+| `key`     | `string`     | none    | Identity key for list diffing               |
+| `class`   | `string`     | none    | References a named style block              |
+| `ref`     | `string`     | none    | Named reference for programmatic access     |
+
+### Control Flow
+
+Conditional and iterative rendering use block syntax:
+
+```sngl
+if isAdult {
+    text(value="(Adult)")
+}
+
+for item in todos {
+    text(key=item.id, value=item.text)
+}
+```
 
 ### Event Attributes
 
-Event attributes are prefixed with `on:` and take a `(cel)` type-annotated value:
+Event attributes use the `@` prefix and contain statement blocks:
 
-```
-on:<event-name> = (cel)"<expression>"
+```sngl
+button(@click={ count += 1 })
+input(@input={ name = event.value })
+button(@click={
+    todos.push(Todo{text: newTodo, done: false})
+    newTodo = ""
+})
 ```
 
-The CEL expression may use `event` to access the event payload. The type of `event` depends on the event.
+### Style Prop (Inline)
+
+The `style` prop accepts a style literal — `{key=value, ...}` pairs:
+
+```sngl
+vbox(style={gap=12, padding=16})
+text(value="hello", style={color=#007700, font-size=24})
+```
 
 ### Attribute Nodes
 
-Any child node whose name starts with `@` is an **attribute node** — structured metadata that applies to the parent, not a visual child. The `@` prefix is a general convention: the compiler strips attribute nodes from the visual child list before layout, so no reserved keyword list is needed.
+Inside a children block, `@name(props)` defines attribute metadata:
 
-- Attribute nodes carry key/value data that modifies their parent
-- Convention is to place attribute nodes before visual children, but order is not enforced
-- Currently defined: `@style`
-- The pattern is extensible to future attribute nodes (e.g., `@accessibility`, `@animation`)
-
-### `@style` Block
-
-The `@style` block provides a structured alternative to `style.*` attributes for setting style properties. Property names inside the block are the same as `style.*` attributes but without the `style.` prefix.
-
-Both forms can coexist on the same node. When they conflict, the `@style` block takes precedence.
-
-```kdl
-// Attribute form — convenient for 1-2 properties
-button style.padding=8 style.background="#ff0000"
-
-// Block form — cleaner for many properties
-button {
-    @style {
-        padding 8
-        background "#ff0000"
-        font-size 16
-        border-radius 4
-    }
-    text value="child"
-}
-
-// Both forms — block wins on conflict
-button style.margin=4 {
-    @style {
-        padding 8
-        background "#ff0000"
-    }
+```sngl
+text(value="hello") {
+    @tooltip(text="A helpful tip")
 }
 ```
 
-### Style Properties
-
-Style properties map to Yoga layout properties or visual properties. They can be set in two ways:
-
-1. **Attribute form** — `style.<property>=<value>` as an attribute on the node
-2. **Block form** — `<property> <value>` inside a `@style` child block
-
-The property names are identical; the block form simply omits the `style.` prefix.
-
-See the Layout Properties and Visual Properties sections below.
-
-## Layout Properties (style.\*)
+## Layout Properties (style)
 
 All layout properties map to Yoga. Values of type `length` accept integers (pixels), `"X%"` (percentage), or `"auto"`.
 
 ### Sizing
 
-| Property             | Type     | Default  | Description        |
-| -------------------- | -------- | -------- | ------------------ |
-| `style.width`        | `length` | `"auto"` | Width              |
-| `style.height`       | `length` | `"auto"` | Height             |
-| `style.min-width`    | `length` | `0`      | Minimum width      |
-| `style.min-height`   | `length` | `0`      | Minimum height     |
-| `style.max-width`    | `length` | `"none"` | Maximum width      |
-| `style.max-height`   | `length` | `"none"` | Maximum height     |
-| `style.aspect-ratio` | `float`  | none     | Width/height ratio |
+| Property       | Type     | Default  | Description        |
+| -------------- | -------- | -------- | ------------------ |
+| `width`        | `length` | `"auto"` | Width              |
+| `height`       | `length` | `"auto"` | Height             |
+| `min-width`    | `length` | `0`      | Minimum width      |
+| `min-height`   | `length` | `0`      | Minimum height     |
+| `max-width`    | `length` | `"none"` | Maximum width      |
+| `max-height`   | `length` | `"none"` | Maximum height     |
+| `aspect-ratio` | `float`  | none     | Width/height ratio |
 
 ### Padding
 
-| Property               | Type     | Default |
-| ---------------------- | -------- | ------- |
-| `style.padding`        | `length` | `0`     |
-| `style.padding-top`    | `length` | `0`     |
-| `style.padding-right`  | `length` | `0`     |
-| `style.padding-bottom` | `length` | `0`     |
-| `style.padding-left`   | `length` | `0`     |
-| `style.padding-x`      | `length` | `0`     |
-| `style.padding-y`      | `length` | `0`     |
+| Property         | Type     | Default |
+| ---------------- | -------- | ------- |
+| `padding`        | `length` | `0`     |
+| `padding-top`    | `length` | `0`     |
+| `padding-right`  | `length` | `0`     |
+| `padding-bottom` | `length` | `0`     |
+| `padding-left`   | `length` | `0`     |
+| `padding-x`      | `length` | `0`     |
+| `padding-y`      | `length` | `0`     |
 
 ### Margin
 
-| Property              | Type     | Default |
-| --------------------- | -------- | ------- |
-| `style.margin`        | `length` | `0`     |
-| `style.margin-top`    | `length` | `0`     |
-| `style.margin-right`  | `length` | `0`     |
-| `style.margin-bottom` | `length` | `0`     |
-| `style.margin-left`   | `length` | `0`     |
-| `style.margin-x`      | `length` | `0`     |
-| `style.margin-y`      | `length` | `0`     |
+| Property        | Type     | Default |
+| --------------- | -------- | ------- |
+| `margin`        | `length` | `0`     |
+| `margin-top`    | `length` | `0`     |
+| `margin-right`  | `length` | `0`     |
+| `margin-bottom` | `length` | `0`     |
+| `margin-left`   | `length` | `0`     |
+| `margin-x`      | `length` | `0`     |
+| `margin-y`      | `length` | `0`     |
 
 ### Flex
 
-| Property            | Type                                                | Default  | Description               |
-| ------------------- | --------------------------------------------------- | -------- | ------------------------- |
-| `style.flex`        | `float`                                             | `0`      | Shorthand for flex-grow   |
-| `style.flex-grow`   | `float`                                             | `0`      | Grow factor               |
-| `style.flex-shrink` | `float`                                             | `1`      | Shrink factor             |
-| `style.flex-basis`  | `length`                                            | `"auto"` | Initial main axis size    |
-| `style.align-self`  | `enum(auto, start, center, end, stretch, baseline)` | `"auto"` | Cross-axis self alignment |
+| Property      | Type                                                | Default  | Description               |
+| ------------- | --------------------------------------------------- | -------- | ------------------------- |
+| `flex`        | `float`                                             | `0`      | Shorthand for flex-grow   |
+| `flex-grow`   | `float`                                             | `0`      | Grow factor               |
+| `flex-shrink` | `float`                                             | `1`      | Shrink factor             |
+| `flex-basis`  | `length`                                            | `"auto"` | Initial main axis size    |
+| `align-self`  | `enum(auto, start, center, end, stretch, baseline)` | `"auto"` | Cross-axis self alignment |
 
 ### Positioning
 
-| Property         | Type                       | Default      | Description                     |
-| ---------------- | -------------------------- | ------------ | ------------------------------- |
-| `style.position` | `enum(relative, absolute)` | `"relative"` | Positioning mode                |
-| `style.top`      | `length`                   | none         | Offset from top (absolute only) |
-| `style.right`    | `length`                   | none         | Offset from right               |
-| `style.bottom`   | `length`                   | none         | Offset from bottom              |
-| `style.left`     | `length`                   | none         | Offset from left                |
-| `style.z-index`  | `int`                      | `0`          | Stacking order                  |
+| Property   | Type                       | Default      | Description                     |
+| ---------- | -------------------------- | ------------ | ------------------------------- |
+| `position` | `enum(relative, absolute)` | `"relative"` | Positioning mode                |
+| `top`      | `length`                   | none         | Offset from top (absolute only) |
+| `right`    | `length`                   | none         | Offset from right               |
+| `bottom`   | `length`                   | none         | Offset from bottom              |
+| `left`     | `length`                   | none         | Offset from left                |
+| `z-index`  | `int`                      | `0`          | Stacking order                  |
 
 ### Container Layout
 
 These apply to container components (`vbox`, `hbox`, `stack`, etc.):
 
-| Property                | Type                                                                  | Default     | Description                |
-| ----------------------- | --------------------------------------------------------------------- | ----------- | -------------------------- |
-| `style.gap`             | `length`                                                              | `0`         | Space between children     |
-| `style.row-gap`         | `length`                                                              | `0`         | Vertical gap               |
-| `style.column-gap`      | `length`                                                              | `0`         | Horizontal gap             |
-| `style.align-items`     | `enum(start, center, end, stretch, baseline)`                         | `"stretch"` | Cross-axis child alignment |
-| `style.justify-content` | `enum(start, center, end, space-between, space-around, space-evenly)` | `"start"`   | Main-axis distribution     |
-| `style.flex-wrap`       | `enum(nowrap, wrap, wrap-reverse)`                                    | `"nowrap"`  | Wrapping behavior          |
+| Property          | Type                                                                  | Default     | Description                |
+| ----------------- | --------------------------------------------------------------------- | ----------- | -------------------------- |
+| `gap`             | `length`                                                              | `0`         | Space between children     |
+| `row-gap`         | `length`                                                              | `0`         | Vertical gap               |
+| `column-gap`      | `length`                                                              | `0`         | Horizontal gap             |
+| `align-items`     | `enum(start, center, end, stretch, baseline)`                         | `"stretch"` | Cross-axis child alignment |
+| `justify-content` | `enum(start, center, end, space-between, space-around, space-evenly)` | `"start"`   | Main-axis distribution     |
+| `flex-wrap`       | `enum(nowrap, wrap, wrap-reverse)`                                    | `"nowrap"`  | Wrapping behavior          |
 
-## Visual Properties (style.\*)
+## Visual Properties (style)
 
 These control appearance and are interpreted by platform backends. Backends that cannot support a property ignore it gracefully.
 
-| Property              | Type                            | Default         | Description       |
-| --------------------- | ------------------------------- | --------------- | ----------------- |
-| `style.background`    | `color`                         | `"transparent"` | Background color  |
-| `style.border-color`  | `color`                         | `"transparent"` | Border color      |
-| `style.border-width`  | `length`                        | `0`             | Border thickness  |
-| `style.border-radius` | `length`                        | `0`             | Corner radius     |
-| `style.opacity`       | `float`                         | `1.0`           | Opacity (0.0–1.0) |
-| `style.overflow`      | `enum(visible, hidden, scroll)` | `"visible"`     | Overflow behavior |
+| Property        | Type                            | Default         | Description       |
+| --------------- | ------------------------------- | --------------- | ----------------- |
+| `background`    | `color`                         | `"transparent"` | Background color  |
+| `border-color`  | `color`                         | `"transparent"` | Border color      |
+| `border-width`  | `length`                        | `0`             | Border thickness  |
+| `border-radius` | `length`                        | `0`             | Corner radius     |
+| `opacity`       | `float`                         | `1.0`           | Opacity (0.0-1.0) |
+| `overflow`      | `enum(visible, hidden, scroll)` | `"visible"`     | Overflow behavior |
 
 ---
 
@@ -368,7 +337,7 @@ Horizontal flex container. Children are laid out left to right.
 
 ### `stack`
 
-Overlay container. Children are stacked on top of each other (z-order determined by document order or `style.z-index`).
+Overlay container. Children are stacked on top of each other (z-order determined by document order or `z-index`).
 
 **Inherent layout:** All children are positioned absolutely within the stack's bounds.
 
@@ -388,23 +357,23 @@ Overlay container. Children are stacked on top of each other (z-order determined
 
 Displays text content. Leaf node (no children).
 
-| Property              | Type                                 | Default          | Description                      |
-| --------------------- | ------------------------------------ | ---------------- | -------------------------------- |
-| `value`               | `string \| (cel) -> string`          | `""`             | Text content to display          |
-| `style.color`         | `color`                              | platform default | Text color                       |
-| `style.font-size`     | `float`                              | platform default | Font size in scaled points       |
-| `style.font-weight`   | `enum(normal, bold, 100..900)`       | `"normal"`       | Font weight                      |
-| `style.font-style`    | `enum(normal, italic)`               | `"normal"`       | Font style                       |
-| `style.font-family`   | `string`                             | platform default | Font family name                 |
-| `style.text-align`    | `enum(left, center, right, justify)` | `"left"`         | Horizontal text alignment        |
-| `style.line-height`   | `float`                              | `1.2`            | Line height multiplier           |
-| `style.text-overflow` | `enum(clip, ellipsis)`               | `"clip"`         | Overflow behavior                |
-| `style.max-lines`     | `int`                                | none             | Maximum number of visible lines  |
-| `selectable`          | `bool`                               | `false`          | Whether the text can be selected |
+| Property        | Type                                 | Default          | Description                      |
+| --------------- | ------------------------------------ | ---------------- | -------------------------------- |
+| `value`         | `string`                             | `""`             | Text content to display          |
+| `color`         | `color`                              | platform default | Text color                       |
+| `font-size`     | `float`                              | platform default | Font size in scaled points       |
+| `font-weight`   | `enum(normal, bold, 100..900)`       | `"normal"`       | Font weight                      |
+| `font-style`    | `enum(normal, italic)`               | `"normal"`       | Font style                       |
+| `font-family`   | `string`                             | platform default | Font family name                 |
+| `text-align`    | `enum(left, center, right, justify)` | `"left"`         | Horizontal text alignment        |
+| `line-height`   | `float`                              | `1.2`            | Line height multiplier           |
+| `text-overflow` | `enum(clip, ellipsis)`               | `"clip"`         | Overflow behavior                |
+| `max-lines`     | `int`                                | none             | Maximum number of visible lines  |
+| `selectable`    | `bool`                               | `false`          | Whether the text can be selected |
 
-| Event      | Payload Type | Description             |
-| ---------- | ------------ | ----------------------- |
-| `on:click` | `ClickEvent` | Text was clicked/tapped |
+| Event    | Payload Type | Description             |
+| -------- | ------------ | ----------------------- |
+| `@click` | `ClickEvent` | Text was clicked/tapped |
 
 **Children:** none.
 
@@ -414,17 +383,17 @@ Displays text content. Leaf node (no children).
 
 Interactive push button.
 
-| Property           | Type                        | Default          | Description                    |
-| ------------------ | --------------------------- | ---------------- | ------------------------------ |
-| `text`             | `string \| (cel) -> string` | `""`             | Button label                   |
-| `disabled`         | `bool \| (cel) -> bool`     | `false`          | Whether the button is disabled |
-| `style.color`      | `color`                     | platform default | Label text color               |
-| `style.background` | `color`                     | platform default | Button background              |
+| Property     | Type     | Default          | Description                    |
+| ------------ | -------- | ---------------- | ------------------------------ |
+| `text`       | `string` | `""`             | Button label                   |
+| `disabled`   | `bool`   | `false`          | Whether the button is disabled |
+| `color`      | `color`  | platform default | Label text color               |
+| `background` | `color`  | platform default | Button background              |
 
-| Event           | Payload Type     | Description             |
-| --------------- | ---------------- | ----------------------- |
-| `on:click`      | `ClickEvent`     | Button was pressed      |
-| `on:long-press` | `LongPressEvent` | Button was long-pressed |
+| Event         | Payload Type     | Description             |
+| ------------- | ---------------- | ----------------------- |
+| `@click`      | `ClickEvent`     | Button was pressed      |
+| `@long-press` | `LongPressEvent` | Button was long-pressed |
 
 **Children:** optional. If children are provided, they replace the `text` label as the button's content.
 
@@ -434,24 +403,24 @@ Interactive push button.
 
 Text input field.
 
-| Property                  | Type                                                    | Default          | Description                           |
-| ------------------------- | ------------------------------------------------------- | ---------------- | ------------------------------------- |
-| `value`                   | `string \| (cel) -> string`                             | `""`             | Current text value (two-way bindable) |
-| `placeholder`             | `string`                                                | `""`             | Placeholder text when empty           |
-| `disabled`                | `bool \| (cel) -> bool`                                 | `false`          | Whether input is disabled             |
-| `readonly`                | `bool`                                                  | `false`          | Whether input is read-only            |
-| `type`                    | `enum(text, password, number, email, url, tel, search)` | `"text"`         | Input type hint                       |
-| `max-length`              | `int`                                                   | none             | Maximum character count               |
-| `style.color`             | `color`                                                 | platform default | Text color                            |
-| `style.placeholder-color` | `color`                                                 | platform default | Placeholder text color                |
+| Property            | Type                                                    | Default          | Description                           |
+| ------------------- | ------------------------------------------------------- | ---------------- | ------------------------------------- |
+| `value`             | `string`                                                | `""`             | Current text value (two-way bindable) |
+| `placeholder`       | `string`                                                | `""`             | Placeholder text when empty           |
+| `disabled`          | `bool`                                                  | `false`          | Whether input is disabled             |
+| `readonly`          | `bool`                                                  | `false`          | Whether input is read-only            |
+| `type`              | `enum(text, password, number, email, url, tel, search)` | `"text"`         | Input type hint                       |
+| `max-length`        | `int`                                                   | none             | Maximum character count               |
+| `color`             | `color`                                                 | platform default | Text color                            |
+| `placeholder-color` | `color`                                                 | platform default | Placeholder text color                |
 
-| Event       | Payload Type                    | Description                             |
-| ----------- | ------------------------------- | --------------------------------------- |
-| `on:input`  | `InputEvent { value: string }`  | Value changed (fires on each keystroke) |
-| `on:change` | `ChangeEvent { value: string }` | Value committed (blur or enter)         |
-| `on:focus`  | `FocusEvent`                    | Input gained focus                      |
-| `on:blur`   | `FocusEvent`                    | Input lost focus                        |
-| `on:submit` | `SubmitEvent { value: string }` | Enter/return pressed                    |
+| Event     | Payload Type                    | Description                             |
+| --------- | ------------------------------- | --------------------------------------- |
+| `@input`  | `InputEvent { value: string }`  | Value changed (fires on each keystroke) |
+| `@change` | `ChangeEvent { value: string }` | Value committed (blur or enter)         |
+| `@focus`  | `FocusEvent`                    | Input gained focus                      |
+| `@blur`   | `FocusEvent`                    | Input lost focus                        |
+| `@submit` | `SubmitEvent { value: string }` | Enter/return pressed                    |
 
 **Children:** none.
 
@@ -463,15 +432,15 @@ Displays an image. Leaf node.
 
 | Property | Type                                           | Default     | Description                      |
 | -------- | ---------------------------------------------- | ----------- | -------------------------------- |
-| `src`    | `string \| (cel) -> string`                    | required    | Image source (URL or asset path) |
+| `src`    | `string`                                       | required    | Image source (URL or asset path) |
 | `alt`    | `string`                                       | `""`        | Accessibility description        |
 | `fit`    | `enum(contain, cover, fill, none, scale-down)` | `"contain"` | How the image fits its bounds    |
 
-| Event      | Payload Type                     | Description              |
-| ---------- | -------------------------------- | ------------------------ |
-| `on:click` | `ClickEvent`                     | Image was clicked/tapped |
-| `on:load`  | `LoadEvent`                      | Image finished loading   |
-| `on:error` | `ErrorEvent { message: string }` | Image failed to load     |
+| Event    | Payload Type                     | Description              |
+| -------- | -------------------------------- | ------------------------ |
+| `@click` | `ClickEvent`                     | Image was clicked/tapped |
+| `@load`  | `LoadEvent`                      | Image finished loading   |
+| `@error` | `ErrorEvent { message: string }` | Image failed to load     |
 
 **Children:** none.
 
@@ -484,14 +453,14 @@ Scrollable container. Wraps content that may exceed the container's bounds.
 | Property         | Type                               | Default      | Description                                   |
 | ---------------- | ---------------------------------- | ------------ | --------------------------------------------- |
 | `direction`      | `enum(vertical, horizontal, both)` | `"vertical"` | Scroll axes                                   |
-| `scroll-x`       | `float \| (cel) -> float`          | `0`          | Horizontal scroll position (two-way bindable) |
-| `scroll-y`       | `float \| (cel) -> float`          | `0`          | Vertical scroll position (two-way bindable)   |
+| `scroll-x`       | `float`                            | `0`          | Horizontal scroll position (two-way bindable) |
+| `scroll-y`       | `float`                            | `0`          | Vertical scroll position (two-way bindable)   |
 | `show-scrollbar` | `enum(auto, always, never)`        | `"auto"`     | Scrollbar visibility                          |
 
-| Event           | Payload Type                         | Description             |
-| --------------- | ------------------------------------ | ----------------------- |
-| `on:scroll`     | `ScrollEvent { x: float, y: float }` | Scroll position changed |
-| `on:scroll-end` | `ScrollEvent { x: float, y: float }` | Scroll momentum ended   |
+| Event         | Payload Type                          | Description             |
+| ------------- | ------------------------------------- | ----------------------- |
+| `@scroll`     | `ScrollEvent { x: float, y: float }` | Scroll position changed |
+| `@scroll-end` | `ScrollEvent { x: float, y: float }` | Scroll momentum ended   |
 
 **Children:** exactly one child (the scrollable content, typically a `vbox` or `hbox`).
 
@@ -517,7 +486,7 @@ Flexible empty space. Expands to fill available space along the parent's main ax
 
 ## Event Payload Types
 
-These are the typed payloads available via `event` in event handler CEL expressions.
+These are the typed payloads available via `event` in event handler statement blocks.
 
 ### `ClickEvent`
 
@@ -581,70 +550,55 @@ These are the typed payloads available via `event` in event handler CEL expressi
 
 ---
 
-## Two-Way Binding
-
-Properties marked as "two-way bindable" support automatic synchronization between the UI and the reactive state. When a CEL expression references a `bind` variable, the binding is two-way:
-
-```kdl
-bind "name" (string)""
-input value=(cel)"name" on:input=(cel)"set(name, event.value)"
-```
-
-The `set()` built-in function is the canonical way to mutate bound state from event handlers.
-
-### Built-in CEL Functions
-
-| Function | Signature                             | Description                                       |
-| -------- | ------------------------------------- | ------------------------------------------------- |
-| `set`    | `set(binding, value) -> void`         | Mutate a bound variable                           |
-| `toggle` | `toggle(binding) -> void`             | Flip a boolean binding                            |
-| `push`   | `push(list-binding, value) -> void`   | Append to a list binding                          |
-| `remove` | `remove(list-binding, index) -> void` | Remove from a list by index                       |
-| `emit`   | `emit(event-name, payload) -> void`   | Emit a custom event (for component communication) |
-
----
-
 ## Complete Example
 
-```kdl
+```sngl
 import "app.proto"
 
-bind {
-    user (cel)"User{ name: 'World', age: 25, loggedIn: false }"
-    count (int)0
+struct Todo {
+    text string = ""
+    done bool = false
 }
 
-computed {
-    greeting (cel)"'Hello, ' + user.name + '!'"
-    isAdult (cel)"user.age >= 18"
-}
+component Counter {
+    param label = ""
+    var count = 0
 
-component "Counter" {
-    @param "label" (string)""
     hbox {
-        text value=(cel)"label + ': ' + string(count)"
-        button text="+" on:click=(cel)"set(count, count + 1)"
-        button text="-" on:click=(cel)"set(count, count - 1)" disabled=(cel)"count <= 0"
+        text(value="{label}: {count}")
+        button(text="+", @click={ count += 1 })
+        button(text="-", @click={ count -= 1 }, disabled=count <= 0)
     }
 }
 
-app {
-    vbox style.padding=16 style.gap=12 {
-        text value=(cel)"greeting" {
-            @style {
-                font-size 24
-                font-weight "bold"
-            }
+component main {
+    var (
+        user = User{name: "World", age: 25, loggedIn: false}
+        count = 0
+    )
+
+    computed (
+        greeting = "Hello, {user.name}!"
+        isAdult = user.age >= 18
+    )
+
+    vbox(style={padding=16, gap=12}) {
+        text(value=greeting, style={font-size=24, font-weight="bold"})
+
+        if isAdult {
+            text(value="(Adult)", style={color=#007700})
+        }
+        if !isAdult {
+            text(value="(Minor)", style={color=#CC0000})
         }
 
-        text if=(cel)"isAdult" value="(Adult)" style.color="#007700"
-        text if=(cel)"!isAdult" value="(Minor)" style.color="#CC0000"
+        input(value=user.name, placeholder="Enter name",
+              @input={ user.name = event.value })
 
-        input value=(cel)"user.name" placeholder="Enter name" on:input=(cel)"set(user.name, event.value)"
+        Counter(label="Clicks")
 
-        Counter label="Clicks"
-
-        button text=(cel)"user.loggedIn ? 'Logout' : 'Login'" on:click=(cel)"toggle(user.loggedIn)"
+        button(text=user.loggedIn ? "Logout" : "Login",
+               @click={ user.loggedIn!! })
     }
 }
 ```

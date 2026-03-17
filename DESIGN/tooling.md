@@ -16,12 +16,12 @@ sngl <subcommand> [flags] [args]
 
 | Subcommand | Description                         | Details                                      |
 | ---------- | ----------------------------------- | -------------------------------------------- |
-| `compile`  | Compile KDL to target artifacts     | See [compiler.md](compiler.md)               |
+| `compile`  | Compile SNGL to target artifacts    | See [compiler.md](compiler.md)               |
 | `check`    | Type-check and validate (no output) | See [static-analysis.md](static-analysis.md) |
 | `lint`     | Run lint rules                      | See [static-analysis.md](static-analysis.md) |
 | `test`     | Run test suites                     | See [testing.md](testing.md)                 |
 | `lsp`      | Start the language server           | See below                                    |
-| `fmt`      | Format KDL source files             | See below                                    |
+| `fmt`      | Format SNGL source files            | See below                                    |
 | `preview`  | Launch the WYSIWYG preview          | See [wysiwyg.md](wysiwyg.md)                 |
 | `init`     | Initialize a new SNGL project       | See below                                    |
 | `version`  | Print version info                  |                                              |
@@ -32,29 +32,14 @@ These apply across subcommands where relevant:
 
 | Flag               | Description                                              |
 | ------------------ | -------------------------------------------------------- |
-| `--project=<path>` | Project root (default: cwd, walks up to find `sngl.kdl`) |
+| `--project=<path>` | Project root (default: cwd, walks up to find `sngl.conf`) |
 | `--format=<fmt>`   | Output format: `text`, `json`, `sarif`                   |
 | `--quiet`          | Suppress non-error output                                |
 | `--verbose`        | Verbose/debug output                                     |
 
 ### Project Configuration
 
-A project root is identified by a `sngl.kdl` configuration file:
-
-```kdl
-project "myapp"
-
-targets {
-    go-gio lang="go" platform="gio" out="gen/gio"
-    web lang="ts" platform="web" out="gen/web"
-}
-
-lint {
-    no-unused-bind "warn"
-    no-missing-key "error"
-    max-depth 10
-}
-```
+A project root is identified by a `sngl.conf` configuration file. Format TBD.
 
 `sngl init` creates this file along with a minimal directory structure.
 
@@ -77,28 +62,27 @@ The LSP builds on the compiler's parse and analyze pipeline, keeping the AST war
 #### Diagnostics
 
 - Real-time errors and warnings as the user types
-- Source-mapped to KDL line/column
+- Source-mapped to SNGL line/column
 - Includes parse errors, type errors, resolution errors, and lint violations
-- CEL expression errors reported at the `(cel)` annotation site
 
 #### Hover
 
-- Over a `bind`/`computed` identifier: show its type and current expression
+- Over a `var`/`computed` identifier: show its type and current expression
 - Over a component name: show its schema (properties, events, children policy)
-- Over a `(cel)` expression: show the inferred return type
-- Over a `style.*` property: show accepted values and Yoga mapping
-- Over an `on:` event: show the event payload type
+- Over an expression: show the inferred return type
+- Over a `style` property: show accepted values and Yoga mapping
+- Over an `@event`: show the event payload type
 
 #### Go-to-Definition
 
 - Component name → component declaration (user-defined) or standard library schema
-- `bind`/`computed` reference in a `(cel)` expression → declaration site
+- `var`/`computed` reference in an expression → declaration site
 - Handler reference → handler interface definition (if compiled output exists)
 - `import` path → imported file
 
 #### Find References
 
-- Find all uses of a `bind`/`computed` variable across `(cel)` expressions
+- Find all uses of a `var`/`computed` variable across expressions
 - Find all instantiations of a user-defined component
 - Find all references to a handler
 
@@ -106,19 +90,19 @@ The LSP builds on the compiler's parse and analyze pipeline, keeping the AST war
 
 - Component names (builtins + user-defined + imported)
 - Property names for the current component (filtered by schema)
-- `style.*` property names
-- `on:` event names for the current component
-- Inside `(cel)` expressions: identifiers from `bind`, `computed`, component params, `event` fields, and built-in CEL functions
+- `style` property names
+- `@event` names for the current component
+- Inside expressions: identifiers from `var`, `computed`, component params, `event` fields, and built-in functions
 
 #### Rename
 
-- Rename a `bind`/`computed` variable across all `(cel)` references
+- Rename a `var`/`computed` variable across all references
 - Rename a user-defined component across all instantiations
 - Rename component parameters
 
 #### Code Actions
 
-- Extract inline `(cel)` expression to a `computed` declaration
+- Extract inline expression to a `computed` declaration
 - Add missing `key` attribute on `for` nodes
 - Add missing required properties
 - Wrap node in a container (`vbox`/`hbox`)
@@ -130,95 +114,68 @@ Delegates to the same engine as `sngl fmt` (see below).
 #### Workspace
 
 - Watches for file changes and re-analyzes affected files incrementally
-- Respects `sngl.kdl` project configuration for lint rules and target settings
+- Respects `sngl.conf` project configuration for lint rules and target settings
 - Multi-root workspace support
 
 ---
 
 ## Tree-Sitter Grammar
 
-A tree-sitter grammar for SNGL KDL provides syntax highlighting, code folding, and structural queries for editors that support tree-sitter (Neovim, Helix, Zed, Emacs, VS Code via extensions).
+A tree-sitter grammar for SNGL provides syntax highlighting, code folding, and structural queries for editors that support tree-sitter (Neovim, Helix, Zed, Emacs, VS Code via extensions).
 
 ### Scope
 
-The grammar extends standard KDL parsing with SNGL-specific awareness:
+The grammar covers the full SNGL language:
 
-- **KDL structure** — nodes, attributes, values, comments, type annotations
-- **SNGL keywords** — `app`, `bind`, `computed`, `component`, `slot`, `import`, `style`
-- **Attribute nodes** — `@`-prefixed child nodes (`@style`, `@accessibility`, etc.) recognized as structured metadata
-- **Type annotations** — `(cel)` recognized as a distinct annotation type
-- **Namespaced attributes** — `style.*` and `on:*` parsed as structured attribute names
-- **CEL inner highlighting** — The string content of `(cel)"..."` values is injected with a CEL sub-grammar for expression-level highlighting
+- **Document structure** — top-level declarations, components, visual nodes
+- **SNGL keywords** — `component`, `var`, `computed`, `const`, `import`, `style`, `if`, `for`, `test`
+- **Expressions** — arithmetic, comparison, logical, ternary, field access, method calls, literals
+- **Statement blocks** — event handlers (`@click={ stmts }`), assignment, toggle, emit
+- **Attribute nodes** — `@name(props)` inside children blocks
+- **String interpolation** — `{expr}` inside string literals
 
 ### Node Types
 
 Key tree-sitter node types the grammar produces:
 
 ```
-(document
-  (declaration
-    (bind_decl name: (identifier) type: (type_annotation)? value: (value))
-    (computed_decl name: (identifier) type: (type_annotation)? expr: (cel_expr))
-    (component_decl name: (identifier) params: (param_list)? body: (node_block))
-    (import_decl path: (string))
-    (style_decl name: (string) body: (node_block)))
-  (app_node body: (node_block)))
+(source_file
+  (import_declaration path: (string_literal))
+  (component_declaration name: (identifier)
+    (var_declaration name: (identifier) value: (expression))
+    (computed_declaration name: (identifier) value: (expression))
+    (visual_node name: (identifier)
+      (prop name: (identifier) value: (expression))
+      (event_handler name: (identifier) body: (statement_block))
+      (visual_node ...)))
+  (test_declaration component: (identifier) description: (string_literal)
+    (statement)*))
 
-(visual_node
-  name: (identifier)
-  (attribute name: (identifier) value: (value))
-  (style_attribute name: (style_prop_name) value: (value))
-  (event_attribute name: (event_name) handler: (cel_expr))
-  (node_block ...))
-
-(attribute_node
-  name: (identifier)  // starts with @
-  (attribute name: (identifier) value: (value))*
-  (node_block ...)?)
-
-(style_block  // inside @style attribute_node
-  (style_property name: (identifier) value: (value))*)
-
-(cel_expr (string))  // injected with CEL sub-grammar
-(type_annotation)    // e.g., (cel), : int, : string
+(expression
+  (binary_expression) (unary_expression) (ternary_expression)
+  (method_expression) (field_expression) (index_expression)
+  (call_expression) (identifier) (string_literal) (integer_literal) ...)
 ```
-
-### CEL Injection
-
-The `(cel)"..."` pattern is handled via tree-sitter's language injection mechanism. The outer grammar captures the string content; editors inject a CEL grammar for syntax highlighting within it:
-
-```scheme
-;; injections.scm
-((cel_expr (string_content) @injection.content)
- (#set! injection.language "cel"))
-```
-
-This gives users full CEL highlighting (operators, string literals, function calls, field access) inside `(cel)` values.
 
 ### Highlight Queries
 
 ```scheme
 ;; highlights.scm
-(bind_decl "bind" @keyword)
-(computed_decl "computed" @keyword)
-(component_decl "component" @keyword)
-(import_decl "import" @keyword.import)
-(app_node "app" @keyword)
-"slot" @keyword
+"component" @keyword
+"var" @keyword
+"computed" @keyword
+"const" @keyword
+"import" @keyword.import
+"if" @keyword
+"for" @keyword
+"in" @keyword
+"test" @keyword
 
-(bind_decl name: (identifier) @variable)
-(computed_decl name: (identifier) @variable)
-(component_decl name: (identifier) @type)
+(component_declaration name: (identifier) @type)
+(var_declaration name: (identifier) @variable)
+(computed_declaration name: (identifier) @variable)
 (visual_node name: (identifier) @tag)
-
-(style_attribute name: (style_prop_name) @property)
-(event_attribute name: (event_name) @attribute)
-
-(attribute_node name: (identifier) @attribute)
-(style_block (style_property name: (identifier) @property))
-
-(type_annotation) @type
-(cel_expr) @embedded
+(event_handler name: (identifier) @attribute)
 ```
 
 ### Folds and Indents
@@ -256,22 +213,12 @@ sngl fmt --stdin                    # read from stdin, write to stdout
 - Consistent indentation (spaces, configurable width, default 4)
 - One attribute per line when a node exceeds a line width threshold
 - Aligned `=` signs within attribute groups (optional, off by default)
-- Sorted attributes: `id`, `key`, `class`, then alphabetical, with `style.*` grouped and `on:*` last
-- Normalized whitespace in `(cel)` string contents is not touched (CEL formatting is the author's responsibility)
+- Sorted props: `id`, `key`, `class`, then alphabetical, with `style` grouped and `@events` last
 - Preserves comments
 
 ### Configuration
 
-Formatting preferences are set in `sngl.kdl`:
-
-```kdl
-fmt {
-    indent 4
-    max-line-width 100
-    sort-attributes true
-    align-equals false
-}
-```
+Formatting preferences are set in `sngl.conf`. Format TBD.
 
 ---
 
@@ -285,10 +232,9 @@ Creates:
 
 ```
 <directory>/
-    sngl.kdl            # project configuration
-    app.kdl             # minimal starter template
-    app.sample.kdl      # sample data for WYSIWYG preview
-    app.test.kdl        # starter test file
+    sngl.conf           # project configuration
+    app.sngl            # minimal starter template
+    app_test.sngl       # starter test file
 ```
 
 With flags:
@@ -297,7 +243,7 @@ With flags:
 | ------------------- | ---------------------------------------- |
 | `--lang=<lang>`     | Pre-configure a language target          |
 | `--platform=<plat>` | Pre-configure a platform target          |
-| `--bare`            | Only create `sngl.kdl`, no starter files |
+| `--bare`            | Only create `sngl.conf`, no starter files |
 
 ---
 
@@ -328,9 +274,9 @@ Any editor with LSP support can use `sngl lsp`. The minimum configuration is:
 ```json
 {
   "command": ["sngl", "lsp"],
-  "filetypes": ["kdl"],
-  "root_markers": ["sngl.kdl"]
+  "filetypes": ["sngl"],
+  "root_markers": ["sngl.conf"]
 }
 ```
 
-The LSP activates only for KDL files within a project that has a `sngl.kdl` root marker.
+The LSP activates only for `.sngl` files within a project that has a `sngl.conf` root marker.
