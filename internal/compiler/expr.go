@@ -81,6 +81,21 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 			parts[i] = ec.translateExpr(el)
 		}
 		return "[]any{" + strings.Join(parts, ", ") + "}"
+	case *ast.InterpolationExpr:
+		var fmtParts []string
+		var args []string
+		for _, part := range n.Parts {
+			if lit, ok := part.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
+				fmtParts = append(fmtParts, strings.ReplaceAll(fmt.Sprintf("%v", lit.Value), "%", "%%"))
+			} else {
+				fmtParts = append(fmtParts, "%v")
+				args = append(args, ec.translateExpr(part))
+			}
+		}
+		if len(args) == 0 {
+			return fmt.Sprintf("%q", strings.Join(fmtParts, ""))
+		}
+		return "fmt.Sprintf(" + fmt.Sprintf("%q", strings.Join(fmtParts, "")) + ", " + strings.Join(args, ", ") + ")"
 	case *ast.StmtBlock:
 		stmts := ec.translateMutation(n)
 		return strings.Join(stmts, "\n")
@@ -102,7 +117,11 @@ func (ec *exprContext) translateLiteral(n *ast.LiteralExpr) string {
 	case ast.LiteralInt:
 		return fmt.Sprintf("%d", n.Value)
 	case ast.LiteralFloat:
-		return fmt.Sprintf("%v", n.Value)
+		s := fmt.Sprintf("%v", n.Value)
+		if !strings.Contains(s, ".") {
+			s += ".0"
+		}
+		return s
 	case ast.LiteralBool:
 		if n.Value.(bool) {
 			return "true"

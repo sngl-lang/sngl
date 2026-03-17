@@ -18,7 +18,20 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 	case *ast.AssignStmt:
 		target := ec.translateMutationTarget(n.Target)
 		value := ec.translateExpr(n.Value)
-		return []string{target + " = " + value}
+		switch n.Op {
+		case ast.AssignAdd:
+			return []string{target + " = " + target + " + " + value}
+		case ast.AssignSub:
+			return []string{target + " = " + target + " - " + value}
+		case ast.AssignMul:
+			return []string{target + " = " + target + " * " + value}
+		case ast.AssignDiv:
+			return []string{target + " = " + target + " / " + value}
+		case ast.AssignMod:
+			return []string{target + " = " + target + " % " + value}
+		default:
+			return []string{target + " = " + value}
+		}
 	case *ast.ToggleStmt:
 		target := ec.translateMutationTarget(n.Target)
 		return []string{target + " = !" + target}

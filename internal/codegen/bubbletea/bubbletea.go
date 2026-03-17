@@ -39,9 +39,22 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
 
-	return &codegen.Response{
+	resp := &codegen.Response{
 		Files: []*codegen.OutputFile{
 			{Name: "model.go", Content: src},
 		},
-	}, nil
+	}
+
+	// Generate test file if tests exist and not disabled
+	if len(req.Doc.Tests) > 0 && req.Options["tests"] != "false" {
+		testSrc, err := compiler.CompileTests(req.Doc, cfg)
+		if err == nil && testSrc != nil {
+			resp.Files = append(resp.Files, &codegen.OutputFile{
+				Name:    "model_test.go",
+				Content: testSrc,
+			})
+		}
+	}
+
+	return resp, nil
 }

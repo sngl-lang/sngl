@@ -1,1 +1,0 @@
-- Implement `--format json` test output for CI integration
