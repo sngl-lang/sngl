@@ -61,5 +61,6 @@ require (
 
 tool (
 	git.duckfam.us/jonathan/sngl/cmd/sngl
+	git.duckfam.us/jonathan/sngl/internal/cmd/cogtest
 	git.duckfam.us/jonathan/sngl/internal/docsgen
 )

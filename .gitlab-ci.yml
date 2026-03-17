@@ -36,7 +36,8 @@ test:
   needs:
     - job: build-image
       optional: true
-  script: go test ./...
+  script: go tool cogtest
+  coverage: '/total coverage: (\d+\.\d+)% of statements/'
 
 pages:
   stage: pages
