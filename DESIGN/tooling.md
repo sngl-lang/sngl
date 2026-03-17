@@ -23,25 +23,17 @@ sngl <subcommand> [flags] [args]
 | `lsp`      | Start the language server           | See below                                    |
 | `fmt`      | Format SNGL source files            | See below                                    |
 | `preview`  | Launch the WYSIWYG preview          | See [wysiwyg.md](wysiwyg.md)                 |
-| `init`     | Initialize a new SNGL project       | See below                                    |
 | `version`  | Print version info                  |                                              |
 
 ### Common Flags
 
 These apply across subcommands where relevant:
 
-| Flag               | Description                                              |
-| ------------------ | -------------------------------------------------------- |
-| `--project=<path>` | Project root (default: cwd, walks up to find `sngl.conf`) |
-| `--format=<fmt>`   | Output format: `text`, `json`, `sarif`                   |
-| `--quiet`          | Suppress non-error output                                |
-| `--verbose`        | Verbose/debug output                                     |
-
-### Project Configuration
-
-A project root is identified by a `sngl.conf` configuration file. Format TBD.
-
-`sngl init` creates this file along with a minimal directory structure.
+| Flag             | Description                            |
+| ---------------- | -------------------------------------- |
+| `--format=<fmt>` | Output format: `text`, `json`, `sarif` |
+| `--quiet`        | Suppress non-error output              |
+| `--verbose`      | Verbose/debug output                   |
 
 ---
 
@@ -114,7 +106,6 @@ Delegates to the same engine as `sngl fmt` (see below).
 #### Workspace
 
 - Watches for file changes and re-analyzes affected files incrementally
-- Respects `sngl.conf` project configuration for lint rules and target settings
 - Multi-root workspace support
 
 ---
@@ -196,7 +187,7 @@ The tree-sitter grammar ships as:
 - Pre-built WASM binaries for web-based editors
 - Bundled queries (highlights, folds, indents, injections) in the package
 
-The `sngl` binary does not need to include the tree-sitter grammar — it is consumed by editors directly. However, `sngl init` can scaffold editor configuration files that reference it.
+The `sngl` binary does not need to include the tree-sitter grammar — it is consumed by editors directly.
 
 ---
 
@@ -216,35 +207,6 @@ sngl fmt --stdin                    # read from stdin, write to stdout
 - Sorted props: `id`, `key`, `class`, then alphabetical, with `style` grouped and `@events` last
 - Preserves comments
 
-### Configuration
-
-Formatting preferences are set in `sngl.conf`. Format TBD.
-
----
-
-## `sngl init`
-
-```
-sngl init [directory]
-```
-
-Creates:
-
-```
-<directory>/
-    sngl.conf           # project configuration
-    app.sngl            # minimal starter template
-    app_test.sngl       # starter test file
-```
-
-With flags:
-
-| Flag                | Description                              |
-| ------------------- | ---------------------------------------- |
-| `--lang=<lang>`     | Pre-configure a language target          |
-| `--platform=<plat>` | Pre-configure a platform target          |
-| `--bare`            | Only create `sngl.conf`, no starter files |
-
 ---
 
 ## Editor Integration
@@ -256,8 +218,6 @@ These editors consume tree-sitter grammars natively. Integration requires:
 1. Install `tree-sitter-sngl` grammar
 2. Configure the LSP client to run `sngl lsp`
 3. Highlighting, folding, and indentation work via tree-sitter queries
-
-`sngl init --editor=neovim` can generate a `.nvim.lua` snippet for the project.
 
 ### VS Code
 
@@ -274,9 +234,6 @@ Any editor with LSP support can use `sngl lsp`. The minimum configuration is:
 ```json
 {
   "command": ["sngl", "lsp"],
-  "filetypes": ["sngl"],
-  "root_markers": ["sngl.conf"]
+  "filetypes": ["sngl"]
 }
 ```
-
-The LSP activates only for `.sngl` files within a project that has a `sngl.conf` root marker.

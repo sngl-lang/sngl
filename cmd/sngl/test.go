@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ var testCmd = &cobra.Command{
 func init() {
 	testCmd.Flags().String("run", "", "filter tests by description pattern")
 	testCmd.Flags().Bool("verbose", false, "verbose output")
+	testCmd.Flags().String("format", "text", "output format: text or json")
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
@@ -35,8 +37,10 @@ func runTest(cmd *cobra.Command, args []string) error {
 
 	runFilter, _ := cmd.Flags().GetString("run")
 	verbose, _ := cmd.Flags().GetBool("verbose")
+	format, _ := cmd.Flags().GetString("format")
 
 	var totalTests, totalFail int
+	var allResults []*testrunner.Result
 
 	for _, filename := range files {
 		doc, err := parseTestFile(filename)
@@ -88,11 +92,20 @@ func runTest(cmd *cobra.Command, args []string) error {
 			if runFilter != "" && !strings.Contains(r.Desc, runFilter) {
 				continue
 			}
-			totalTests += printResult(r, r.Component, verbose)
+			allResults = append(allResults, r)
+			totalTests += countTests(r)
 			if !r.Passed {
 				totalFail++
 			}
 		}
+	}
+
+	if format == "json" {
+		return printJSON(allResults, totalTests, totalFail)
+	}
+
+	for _, r := range allResults {
+		printResult(r, r.Component, verbose)
 	}
 
 	fmt.Println()
@@ -106,9 +119,8 @@ func runTest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func printResult(r *testrunner.Result, prefix string, verbose bool) int {
+func printResult(r *testrunner.Result, prefix string, verbose bool) {
 	name := prefix + "/" + r.Desc
-	count := 1
 
 	if verbose {
 		fmt.Printf("=== RUN   %s\n", name)
@@ -124,10 +136,65 @@ func printResult(r *testrunner.Result, prefix string, verbose bool) int {
 	}
 
 	for _, child := range r.Children {
-		count += printResult(child, name, verbose)
+		printResult(child, name, verbose)
 	}
+}
 
-	return count
+func countTests(r *testrunner.Result) int {
+	n := 1
+	for _, child := range r.Children {
+		n += countTests(child)
+	}
+	return n
+}
+
+type jsonOutput struct {
+	Passed   bool         `json:"passed"`
+	Tests    int          `json:"tests"`
+	Failures int          `json:"failures"`
+	Results  []jsonResult `json:"results"`
+}
+
+type jsonResult struct {
+	Name     string       `json:"name"`
+	Passed   bool         `json:"passed"`
+	Error    string       `json:"error,omitempty"`
+	Duration float64      `json:"duration_s"`
+	Children []jsonResult `json:"children,omitempty"`
+}
+
+func printJSON(results []*testrunner.Result, totalTests, totalFail int) error {
+	out := jsonOutput{
+		Passed:   totalFail == 0,
+		Tests:    totalTests,
+		Failures: totalFail,
+	}
+	for _, r := range results {
+		out.Results = append(out.Results, toJSON(r, r.Component))
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return err
+	}
+	if totalFail > 0 {
+		return fmt.Errorf("test failed")
+	}
+	return nil
+}
+
+func toJSON(r *testrunner.Result, prefix string) jsonResult {
+	name := prefix + "/" + r.Desc
+	jr := jsonResult{
+		Name:     name,
+		Passed:   r.Passed,
+		Error:    r.Error,
+		Duration: r.Duration.Seconds(),
+	}
+	for _, child := range r.Children {
+		jr.Children = append(jr.Children, toJSON(child, name))
+	}
+	return jr
 }
 
 func parseTestFile(filename string) (*ast.Document, error) {

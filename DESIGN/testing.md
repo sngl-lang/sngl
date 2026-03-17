@@ -123,6 +123,7 @@ sngl test                          # run all tests
 sngl test app.sngl                 # run tests in specific file
 sngl test --run "increments"       # filter by description
 sngl test --verbose                # show === RUN lines
+sngl test --format json            # JSON output for CI
 ```
 
 ## Output
@@ -148,7 +149,34 @@ On failure:
 - **Interpreter** (`internal/testrunner`): Tree-walking evaluator (`Env.Eval`, `Env.Exec`) executes test bodies headlessly
 - **CLI** (`cmd/sngl/test.go`): Discovers files, merges sibling component definitions, runs tests
 
+## JSON Output
+
+`--format json` outputs a structured JSON object for CI integration:
+
+```json
+{
+  "passed": true,
+  "tests": 4,
+  "failures": 0,
+  "results": [
+    {
+      "name": "counter/increments",
+      "passed": true,
+      "duration_s": 0.001,
+      "children": [
+        {
+          "name": "counter/increments/multiple increments",
+          "passed": true,
+          "duration_s": 0.0005
+        }
+      ]
+    }
+  ]
+}
+```
+
+Failed tests include an `"error"` field with the assertion message. The exit code is nonzero on any failure.
+
 ## Future Work
 
 - Platform-specific codegen for tests (compile tests to target language test frameworks)
-- `--format json` output for CI integration
