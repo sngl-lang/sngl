@@ -1,0 +1,22 @@
+component multi {
+    var a = 0
+    var b = 0
+    var c = 0
+
+    button(key="inc", text="go", @click={ a += 1; b += 2; c += 3 })
+    text(value="{a}")
+}
+
+test multi "compound mutations" {
+    a = 1
+    b = 2
+    a += b
+    assert(a == 3)
+}
+
+test multi "multiple assignments" {
+    a = 10
+    b = 20
+    c = a + b
+    assert(c == 30)
+}

@@ -1,0 +1,44 @@
+component conv {
+    var count = 42
+    var rate = 3.14
+    var label = "hello"
+    var active = true
+    text(value="{count}")
+}
+
+test conv "string conversion" {
+    assert(string(count) == "42")
+    assert(string(rate) == "3.14")
+    assert(string(active) == "true")
+}
+
+test conv "int conversion" {
+    assert(int(rate) == 3)
+    assert(int(count) == 42)
+}
+
+test conv "float conversion" {
+    assert(float(count) == 42.0)
+    assert(float(rate) == 3.14)
+}
+
+test conv "comparisons" {
+    assert(count > 10)
+    assert(count >= 42)
+    assert(count < 100)
+    assert(count <= 42)
+    assert(10 < count)
+    assert(rate > 3.0)
+    assert(rate < 4.0)
+}
+
+test conv "unary negation" {
+    assert(-count == -42)
+    assert(-rate == -3.14)
+}
+
+test conv "bool in arithmetic" {
+    assert(root != null)
+    assert(active + 0 == 1)
+    assert(active * 2 == 2)
+}

@@ -1,0 +1,37 @@
+component choice {
+    var x = 10
+    var y = 5
+    var label = ""
+    computed bigger = x > y ? "x" : "y"
+    computed desc = x > 0 ? string(x) : "none"
+
+    button(key="swap", text="swap", @click={ x = y; y = x })
+    button(key="bump", text="bump", @click={ x += 1; y += 1 })
+    text(key="out", value=bigger)
+}
+
+test choice "ternary computed" {
+    assert(bigger == "x")
+    x = 1
+    assert(bigger == "y")
+    x = 100
+    assert(bigger == "x")
+}
+
+test choice "ternary with conversion" {
+    assert(desc == "10")
+    x = -1
+    assert(desc == "none")
+}
+
+test choice "multi-statement event" {
+    root._find("bump").@click()
+    assert(x == 11)
+    assert(y == 6)
+}
+
+test choice "string append" {
+    label = "hello"
+    label += " world"
+    assert(label == "hello world")
+}

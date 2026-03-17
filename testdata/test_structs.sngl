@@ -1,0 +1,21 @@
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+component shapes {
+    var p = Point{x: 10, y: 20}
+    var name = "origin"
+    text(value="{p.x}")
+}
+
+test shapes "struct field access" {
+    assert(p.x == 10)
+    assert(p.y == 20)
+}
+
+test shapes "struct field mutation" {
+    p.x = 99
+    assert(p.x == 99)
+    assert(p.y == 20)
+}

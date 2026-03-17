@@ -1,0 +1,31 @@
+component errs {
+    var count = 0
+    var name = "hello"
+    var flag = true
+    text(value="{count}")
+}
+
+test errs "toggle non-bool" { // ERROR(test) "cannot toggle"
+    assert(root != null)
+    count!!
+}
+
+test errs "toggle undefined" { // ERROR(test) "undefined"
+    assert(root != null)
+    unknown!!
+}
+
+test errs "unknown function" { // ERROR(test) "unknown function"
+    assert(root != null)
+    assert(unknownFunc(1) == 0)
+}
+
+test errs "select on non-map" { // ERROR(test) "cannot select"
+    assert(root != null)
+    assert(count.field == 0)
+}
+
+test errs "index on non-list" { // ERROR(test) "cannot index"
+    assert(root != null)
+    assert(count[0] == 0)
+}

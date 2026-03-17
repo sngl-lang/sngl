@@ -1,0 +1,17 @@
+component errs {
+    var count = 0
+    var items = [1, 2, 3]
+    text(value="{count}")
+}
+
+test errs "undefined variable" { // ERROR(test) "undefined"
+    assert(unknown == 0)
+}
+
+test errs "index out of bounds" { // ERROR(test) "out of range"
+    assert(items[10] == 0)
+}
+
+test errs "cannot assign undefined" { // ERROR(test) "undefined"
+    nope = 42
+}

@@ -1,0 +1,38 @@
+component badge {
+    param label = "default"
+    param count = 0
+    computed display = label
+
+    text(value=display, key="lbl")
+}
+
+component dashboard {
+    var name = "test"
+    var total = 5
+
+    vbox(key="container") {
+        badge(label=name, count=total, key="b1")
+        badge(key="b2")
+        text(value="footer", key="foot")
+    }
+}
+
+test badge "param defaults" {
+    assert(label == "default")
+    assert(count == 0)
+}
+
+test badge "computed from params" {
+    assert(display == "default")
+    label = "custom"
+    assert(display == "custom")
+}
+
+test dashboard "renders child component" {
+    assert(root._find("foot").value == "footer")
+    assert(root._find("lbl") != null)
+}
+
+test dashboard "component receives props" {
+    assert(root._find("lbl").value == "test")
+}

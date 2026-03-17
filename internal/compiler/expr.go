@@ -164,6 +164,9 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 	if fn == "int" && len(args) == 1 {
 		return "int(" + ec.translateExpr(args[0]) + ")"
 	}
+	if fn == "float" && len(args) == 1 {
+		return "float64(" + ec.translateExpr(args[0]) + ")"
+	}
 
 	// Struct constructor call
 	if fields, ok := ec.structNames[fn]; ok {

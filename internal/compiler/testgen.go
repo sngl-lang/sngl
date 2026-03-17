@@ -53,11 +53,16 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	}
 
 	var b strings.Builder
-	// Detect if fmt is needed (string interpolation)
+	// Detect if fmt is needed (string interpolation or string() in computeds)
 	needsFmt := false
 	for _, g := range groups {
 		for _, td := range g.tests {
 			if testNeedsFmt(td) {
+				needsFmt = true
+			}
+		}
+		for _, c := range g.comp.Computeds {
+			if c.Expr.SNGL != nil && nodeNeedsFmt(c.Expr.SNGL) {
 				needsFmt = true
 			}
 		}
@@ -117,6 +122,8 @@ func nodeNeedsFmt(n ast.Node) bool {
 		return nodeNeedsFmt(e.Left) || nodeNeedsFmt(e.Right)
 	case *ast.UnaryExpr:
 		return nodeNeedsFmt(e.Operand)
+	case *ast.TernaryExpr:
+		return nodeNeedsFmt(e.Cond) || nodeNeedsFmt(e.Then) || nodeNeedsFmt(e.Else)
 	case *ast.AssignStmt:
 		return nodeNeedsFmt(e.Value)
 	}

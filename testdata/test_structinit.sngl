@@ -1,0 +1,23 @@
+struct Vec {
+    x int = 0
+    y int = 0
+}
+
+component geo {
+    var pos = Vec{x: 5, y: 10}
+    computed sum = pos.x + pos.y
+
+    text(value="{sum}")
+}
+
+test geo "struct reassignment" {
+    pos = Vec{x: 100, y: 200}
+    assert(pos.x == 100)
+    assert(pos.y == 200)
+}
+
+test geo "computed from struct" {
+    assert(sum == 15)
+    pos.x = 20
+    assert(sum == 30)
+}

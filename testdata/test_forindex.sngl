@@ -1,0 +1,29 @@
+component indexed {
+    var items = ["a", "b", "c"]
+    var rate = 0.0
+    var empty = []
+
+    vbox(key="list") {
+        for item, idx in items {
+            text(key=item, value="{idx}:{item}")
+        }
+    }
+}
+
+test indexed "for with index variable" {
+    assert(root._find("a").value == "0:a")
+    assert(root._find("b").value == "1:b")
+    assert(root._find("c").value == "2:c")
+}
+
+test indexed "truthy on float" {
+    assert(!rate)
+    rate = 1.5
+    assert(rate)
+}
+
+test indexed "truthy on list" {
+    assert(items)
+    empty = []
+    assert(!empty)
+}
