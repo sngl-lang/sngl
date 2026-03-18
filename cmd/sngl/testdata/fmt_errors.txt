@@ -1,0 +1,32 @@
+# Format a directory.
+sngl fmt dir
+stdout 'dir/messy.sngl'
+cmp dir/messy.sngl dir/expected.sngl
+
+# No .sngl files in empty dir.
+! sngl fmt empty/
+
+# Quiet mode.
+cp messy.sngl copy.sngl
+sngl fmt -q copy.sngl
+! stdout .
+cmp copy.sngl expected.sngl
+
+-- dir/messy.sngl --
+component  widget  {
+    var   x  =  0
+    text(value="{x}")
+}
+-- dir/expected.sngl --
+component widget {
+    var x = 0
+
+    text(value="{x}")
+}
+-- messy.sngl --
+component  main  {
+}
+-- expected.sngl --
+component main {
+}
+-- empty/.gitkeep --

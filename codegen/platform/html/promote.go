@@ -1,4 +1,4 @@
-package compiler
+package html
 
 import "git.duckfam.us/jonathan/sngl/ast"
 

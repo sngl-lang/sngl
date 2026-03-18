@@ -1,0 +1,24 @@
+# Multiple files, some valid, some not — reports all errors.
+! sngl check good.sngl bad.sngl
+stdout 'good.sngl: ok'
+stderr 'bad.sngl'
+
+# Quiet mode suppresses ok lines.
+sngl check -q good.sngl
+! stdout .
+
+# Directory discovery.
+sngl check dir
+stdout 'dir/a.sngl: ok'
+
+# Nonexistent file.
+! sngl check nosuch.sngl
+
+-- good.sngl --
+component main {
+}
+-- bad.sngl --
+not valid sngl
+-- dir/a.sngl --
+component main {
+}

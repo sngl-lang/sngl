@@ -10,8 +10,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/compiler"
-	"git.duckfam.us/jonathan/sngl/internal/testutil/webtest"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/html/webtest"
 )
 
 func init() {
@@ -48,7 +47,7 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tes
 
 	var results []*codegen.TestResult
 	for compName, tests := range compTests {
-		compDoc := compiler.PromoteComponent(doc, compName)
+		compDoc := PromoteComponent(doc, compName)
 		if compDoc == nil {
 			continue
 		}

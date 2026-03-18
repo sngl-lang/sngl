@@ -3,7 +3,7 @@ package none
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
 )
 
 func init() { codegen.RegisterPlatform(&Generator{}) }

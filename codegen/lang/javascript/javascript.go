@@ -126,7 +126,7 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		sb.WriteByte('`')
 		for _, p := range n.Parts {
 			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				sb.WriteString(fmt.Sprintf("%v", lit.Value))
+				fmt.Fprintf(&sb, "%v", lit.Value)
 			} else {
 				sb.WriteString("${")
 				sb.WriteString(translateExpr(p, scope))

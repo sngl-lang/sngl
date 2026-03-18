@@ -1,0 +1,70 @@
+# Passing tests.
+sngl test passing.sngl
+stdout 'PASS'
+stdout '3 tests, 0 failures'
+
+# Failing test.
+! sngl test failing.sngl
+stdout 'FAIL'
+
+# --run filter.
+sngl test --run=add passing.sngl
+stdout 'PASS'
+stdout '1 tests, 0 failures'
+
+# --format=json output.
+sngl test --format=json passing.sngl
+stdout '"passed": true'
+
+# Verbose output shows RUN lines.
+sngl test --verbose passing.sngl
+stdout '=== RUN'
+
+# No test files.
+! sngl test empty/
+
+# File with no tests produces no output.
+sngl test notests.sngl
+stdout 'PASS'
+
+# Parse error.
+! sngl test bad.sngl
+
+# Unknown platform.
+! sngl test --platform=dos passing.sngl
+
+-- passing.sngl --
+component math {
+    var x = 0
+    text(value="{x}")
+}
+
+test math "add" {
+    x = 2 + 3
+    assert(x == 5)
+}
+
+test math "sub" {
+    x = 10 - 4
+    assert(x == 6)
+}
+
+test math "mul" {
+    x = 3 * 7
+    assert(x == 21)
+}
+-- failing.sngl --
+component counter {
+    var n = 0
+    text(value="{n}")
+}
+
+test counter "should fail" {
+    assert(n == 999)
+}
+-- notests.sngl --
+component main {
+}
+-- bad.sngl --
+not valid sngl
+-- empty/.gitkeep --

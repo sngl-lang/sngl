@@ -11,7 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
 )
 
 func TestGeneratedTests(t *testing.T) {

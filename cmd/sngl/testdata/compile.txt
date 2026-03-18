@@ -1,0 +1,36 @@
+# Compile to HTML/JS produces output file.
+sngl compile --lang=js --platform=html --out=out app.sngl
+stdout 'out/index.html'
+exists out/index.html
+
+# --lang without --platform is an error.
+! sngl compile --lang=js app.sngl
+
+# --platform without --lang is an error.
+! sngl compile --platform=html app.sngl
+
+# Unknown language.
+! sngl compile --lang=cobol --platform=html app.sngl
+
+# Unknown platform.
+! sngl compile --lang=js --platform=dos app.sngl
+
+# No files found.
+! sngl compile --lang=js --platform=html empty/
+
+# Parse error.
+! sngl compile --lang=js --platform=html bad.sngl
+
+# Quiet mode suppresses filename output.
+sngl compile --lang=js --platform=html --out=out2 -q app.sngl
+! stdout .
+
+-- app.sngl --
+component main {
+    var count = 0
+    button(text="+", @click={ count += 1 })
+    text(value="Count: {count}")
+}
+-- bad.sngl --
+not valid sngl
+-- empty/.gitkeep --

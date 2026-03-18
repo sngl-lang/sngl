@@ -1,0 +1,2 @@
+# Lint is not yet implemented.
+! sngl lint

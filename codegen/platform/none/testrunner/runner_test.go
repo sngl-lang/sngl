@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func TestRunFixtures(t *testing.T) {
-	matches, err := filepath.Glob("../../testdata/test_*.sngl")
+	matches, err := filepath.Glob("../../../../testdata/test_*.sngl")
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}

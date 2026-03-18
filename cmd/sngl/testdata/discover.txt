@@ -1,0 +1,14 @@
+# Explicit file argument works.
+sngl check single/app.sngl
+stdout 'single/app.sngl: ok'
+
+# Current directory discovery.
+sngl check
+stdout 'app.sngl: ok'
+
+-- app.sngl --
+component main {
+}
+-- single/app.sngl --
+component main {
+}
