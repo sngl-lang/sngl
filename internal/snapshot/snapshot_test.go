@@ -124,13 +124,16 @@ func TestSnapshotFidelity(t *testing.T) {
 				t.Skipf("simulated snapshot failed: %v", err)
 			}
 
+			// Write snapshots to testdata for inspection (gitignored).
+			snapshotDir := filepath.Join("testdata", "snapshots")
+			os.MkdirAll(snapshotDir, 0o755)
+			os.WriteFile(filepath.Join(snapshotDir, name+"_native.png"), native, 0o644)
+			os.WriteFile(filepath.Join(snapshotDir, name+"_simulated.png"), simulated, 0o644)
+
 			// 3. Compare with wide tolerance (10% pixel diff)
-			diffPath := filepath.Join(t.TempDir(), name+"_fidelity.diff.png")
+			diffPath := filepath.Join(snapshotDir, name+"_diff.png")
 			if err := imgdiff.Compare(native, simulated, diffPath, 20, 0.10); err != nil {
-				t.Logf("fidelity diff for %s: %v", name, err)
-				// Write both for debugging
-				os.WriteFile(filepath.Join(t.TempDir(), name+"_native.png"), native, 0o644)
-				os.WriteFile(filepath.Join(t.TempDir(), name+"_simulated.png"), simulated, 0o644)
+				t.Errorf("fidelity diff for %s: %v", name, err)
 			}
 		})
 	}

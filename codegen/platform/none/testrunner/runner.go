@@ -25,7 +25,7 @@ func runTest(doc *ast.Document, td *ast.TestDef) *codegen.TestResult {
 		Desc:      td.Desc,
 	}
 
-	env, err := buildEnv(doc, td.Component)
+	env, err := BuildEnv(doc, td.Component)
 	if err != nil {
 		r.Error = err.Error()
 		r.Duration = time.Since(start)
@@ -78,7 +78,8 @@ func runSubtest(parent *Env, td *ast.TestDef) *codegen.TestResult {
 	return r
 }
 
-func buildEnv(doc *ast.Document, compName string) (*Env, error) {
+// BuildEnv creates an Env for a component with initial state from data, computeds, and params.
+func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 	env := NewEnv()
 
 	var data []*ast.Data

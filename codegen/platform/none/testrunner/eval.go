@@ -25,6 +25,11 @@ func NewEnv() *Env {
 	}
 }
 
+// SetVar sets a variable in the environment.
+func (env *Env) SetVar(name string, val any) {
+	env.vars[name] = val
+}
+
 // Snapshot returns a shallow copy of the env for subtest isolation.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
@@ -250,6 +255,26 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 			return nil, err
 		}
 		return toFloat(v), nil
+	case "size":
+		if len(e.Args) != 1 {
+			return nil, fmt.Errorf("size() requires 1 argument")
+		}
+		v, err := env.Eval(e.Args[0])
+		if err != nil {
+			return nil, err
+		}
+		switch val := v.(type) {
+		case []any:
+			return len(val), nil
+		case string:
+			return len(val), nil
+		case map[string]any:
+			return len(val), nil
+		case nil:
+			return 0, nil
+		default:
+			return nil, fmt.Errorf("size() not supported for %T", v)
+		}
 	case "assert":
 		// Handled by exec, but if called as expression just evaluate
 		if len(e.Args) != 1 {

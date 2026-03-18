@@ -1187,6 +1187,12 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 	}
 	// SNGL init expression (e.g., struct literal)
 	if expr.SNGL != nil {
+		// null literal on a list type → empty array (avoids null.length errors)
+		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
+			if strings.HasPrefix(expr.TypeHint, "list:") || strings.HasPrefix(expr.TypeHint, "[]") {
+				return "[]"
+			}
+		}
 		return g.exprToJS(expr)
 	}
 	if strings.HasPrefix(expr.TypeHint, "list:") || strings.HasPrefix(expr.TypeHint, "[]") {
