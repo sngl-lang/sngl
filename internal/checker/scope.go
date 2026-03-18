@@ -18,16 +18,6 @@ func (s *Scope) Declare(name string, t *cel.Type) {
 	s.vars[name] = t
 }
 
-// Lookup walks the parent chain to find a variable's type.
-func (s *Scope) Lookup(name string) (*cel.Type, bool) {
-	for cur := s; cur != nil; cur = cur.parent {
-		if t, ok := cur.vars[name]; ok {
-			return t, true
-		}
-	}
-	return nil, false
-}
-
 // EnvOpts returns cel.Variable options for all variables in the chain.
 func (s *Scope) EnvOpts() []cel.EnvOption {
 	// Collect all vars, child overrides parent.

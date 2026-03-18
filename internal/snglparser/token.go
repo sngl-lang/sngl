@@ -1,7 +1,5 @@
 package snglparser
 
-import "fmt"
-
 // TokenType identifies a lexical token.
 type TokenType int
 
@@ -139,10 +137,6 @@ type Token struct {
 	Literal string
 	Line    int
 	Column  int
-}
-
-func (t Token) String() string {
-	return fmt.Sprintf("%d:%d %s %q", t.Line, t.Column, tokenNames[t.Type], t.Literal)
 }
 
 // insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.

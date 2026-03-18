@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
-	"testing"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -31,7 +30,9 @@ func New(handler http.Handler) *Engine {
 	return &Engine{handler: handler}
 }
 
-func (e *Engine) start(width, height int) (*Browser, error) {
+// StartHeadless launches a browser tab without test hooks, returning an error
+// instead of skipping. Caller is responsible for closing the returned Browser.
+func (e *Engine) StartHeadless(width, height int) (*Browser, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -55,39 +56,6 @@ func (e *Engine) start(width, height int) (*Browser, error) {
 		page:    page,
 		baseURL: e.server.URL,
 	}, nil
-}
-
-// Start launches a browser tab and returns a Browser. The Chrome process
-// and HTTP server are created lazily on the first call and reused.
-// It skips if Chrome is unavailable and registers cleanup that screenshots
-// on failure.
-func (e *Engine) Start(t testing.TB) *Browser {
-	return e.StartWithViewport(t, 1280, 720)
-}
-
-// StartWithViewport launches a browser tab with the given viewport size.
-func (e *Engine) StartWithViewport(t testing.TB, width, height int) *Browser {
-	t.Helper()
-
-	b, err := e.start(width, height)
-	if err != nil {
-		t.Skipf("webtest: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if t.Failed() {
-			b.screenshotOnFailure(t)
-		}
-		b.page.Close()
-	})
-
-	return b
-}
-
-// StartHeadless launches a browser tab without test hooks, returning an error
-// instead of skipping. Caller is responsible for closing the returned Browser.
-func (e *Engine) StartHeadless(width, height int) (*Browser, error) {
-	return e.start(width, height)
 }
 
 // BaseURL returns the test server's base URL, or empty if not started.

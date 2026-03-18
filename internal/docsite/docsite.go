@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alecthomas/chroma/v2"
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/styles"
 )
@@ -275,20 +274,3 @@ func pageTitleFromPath(rel string) string {
 	return strings.Title(name) //nolint:staticcheck
 }
 
-// ChromaCSS returns the syntax highlighting CSS for embedding.
-// This is exported for use by the Chroma style in templates.
-func ChromaCSS() string {
-	style := styles.Get("github")
-	if style == nil {
-		style = styles.Fallback
-	}
-	formatter := chromahtml.New(chromahtml.WithClasses(true), chromahtml.ClassPrefix("hl-"))
-	var buf bytes.Buffer
-	_ = formatter.WriteCSS(&buf, style)
-	return buf.String()
-}
-
-// SNGLLexer returns the registered SNGL Chroma lexer.
-func SNGLLexer() chroma.Lexer {
-	return snglLexer
-}
