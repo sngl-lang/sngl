@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
@@ -16,7 +16,7 @@ import (
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
 // The HTML includes preview CSS if the target platform implements PreviewStyler.
 func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
-	doc, err := parseSNGL(sourceFile)
+	doc, err := ParseSNGL(sourceFile)
 	if err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
@@ -65,14 +65,14 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 
 // ParseOutputs parses a .sngl file and returns its output targets.
 func ParseOutputs(sourceFile string) ([]*ast.Output, error) {
-	doc, err := parseSNGL(sourceFile)
+	doc, err := ParseSNGL(sourceFile)
 	if err != nil {
 		return nil, err
 	}
 	return doc.Outputs, nil
 }
 
-func parseSNGL(filename string) (*ast.Document, error) {
+func ParseSNGL(filename string) (*ast.Document, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err

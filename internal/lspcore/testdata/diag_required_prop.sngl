@@ -1,0 +1,8 @@
+component greeter {
+    param name string required
+    text(value=name)
+}
+
+component main {
+    greeter() //@ diag("required property")
+}

@@ -1,0 +1,8 @@
+component greeter {
+    param name string required
+    text(value=name) //@ hover("text", "stdlib")
+}
+
+component main {
+    greeter(name="world") //@ hover("greeter", "component greeter")
+}

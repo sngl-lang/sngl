@@ -1,4 +1,4 @@
-package compiler
+package bubbletea
 
 import (
 	"go/parser"
@@ -27,7 +27,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 }
 
 func TestFixtures(t *testing.T) {
-	testutil.RunFixtures(t, "../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
+	testutil.RunFixtures(t, "../../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
 		if len(dirs) > 0 {
 			return // skip all error fixtures
 		}
@@ -35,7 +35,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc, "../../testdata", checker.DefaultResolver()); err != nil {
+		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver()); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)
@@ -43,11 +43,11 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestGettersSetters(t *testing.T) {
-	doc, err := testutil.ParseFile("../../testdata/data_extern_trigger.sngl")
+	doc, err := testutil.ParseFile("../../../testdata/data_extern_trigger.sngl")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, "../../testdata", nil); err != nil {
+	if err := checker.Check(doc, "../../../testdata", nil); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	src := compileAndVerify(t, doc)
@@ -71,11 +71,11 @@ func TestGettersSetters(t *testing.T) {
 }
 
 func TestCompileTodo(t *testing.T) {
-	doc, err := testutil.ParseFile("../../_examples/todo/todo.sngl")
+	doc, err := testutil.ParseFile("../../../_examples/todo/todo.sngl")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, "../../_examples/todo", nil); err != nil {
+	if err := checker.Check(doc, "../../../_examples/todo", nil); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	compileAndVerify(t, doc)

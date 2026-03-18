@@ -5,21 +5,12 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-// Result holds the outcome of a single test.
-type Result struct {
-	Component string
-	Desc      string
-	Passed    bool
-	Error     string
-	Children  []*Result
-	Duration  time.Duration
-}
-
 // Run executes all tests in a document and returns results.
-func Run(doc *ast.Document) ([]*Result, error) {
-	var results []*Result
+func Run(doc *ast.Document) ([]*codegen.TestResult, error) {
+	var results []*codegen.TestResult
 	for _, td := range doc.Tests {
 		r := runTest(doc, td)
 		results = append(results, r)
@@ -27,9 +18,9 @@ func Run(doc *ast.Document) ([]*Result, error) {
 	return results, nil
 }
 
-func runTest(doc *ast.Document, td *ast.TestDef) *Result {
+func runTest(doc *ast.Document, td *ast.TestDef) *codegen.TestResult {
 	start := time.Now()
-	r := &Result{
+	r := &codegen.TestResult{
 		Component: td.Component,
 		Desc:      td.Desc,
 	}
@@ -61,9 +52,9 @@ func runTest(doc *ast.Document, td *ast.TestDef) *Result {
 	return r
 }
 
-func runSubtest(parent *Env, td *ast.TestDef) *Result {
+func runSubtest(parent *Env, td *ast.TestDef) *codegen.TestResult {
 	start := time.Now()
-	r := &Result{
+	r := &codegen.TestResult{
 		Desc: td.Desc,
 	}
 
@@ -162,7 +153,7 @@ func evalInit(env *Env, expr ast.Expr) any {
 	return nil
 }
 
-func allPassed(results []*Result) bool {
+func allPassed(results []*codegen.TestResult) bool {
 	for _, r := range results {
 		if !r.Passed {
 			return false

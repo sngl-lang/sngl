@@ -1,0 +1,20 @@
+# Already-formatted file passes --check.
+sngl fmt --check formatted.sngl
+
+# Unformatted file fails --check.
+! sngl fmt --check unformatted.sngl
+
+# Format in place and compare result.
+cp unformatted.sngl input.sngl
+sngl fmt input.sngl
+cmp input.sngl expected.sngl
+
+-- formatted.sngl --
+component main {
+}
+-- unformatted.sngl --
+component   main {
+}
+-- expected.sngl --
+component main {
+}

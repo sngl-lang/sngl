@@ -1,0 +1,4 @@
+component main {
+    var count int = 0
+    text(value="hello")
+}

@@ -1,0 +1,3 @@
+component main {
+    //@ complete("", "var", "param", "computed", "text", "button")
+}

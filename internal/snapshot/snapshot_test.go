@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/imgdiff"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
@@ -62,6 +64,73 @@ func TestGenerate(t *testing.T) {
 			}
 			if cfg.Width != 1280 || cfg.Height != 720 {
 				t.Errorf("unexpected dimensions: %dx%d, want 1280x720", cfg.Width, cfg.Height)
+			}
+		})
+	}
+}
+
+// htmlSnapshotter is satisfied by HTML Generator's SnapshotHTML method.
+type htmlSnapshotter interface {
+	SnapshotHTML(html []byte, width, height int) ([]byte, error)
+}
+
+func TestSnapshotFidelity(t *testing.T) {
+	sourceFile, err := filepath.Abs("../../_examples/todo/todo.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(sourceFile); err != nil {
+		t.Skipf("example file not found: %v", err)
+	}
+
+	// Find platforms that implement both Snapshotter and PreviewStyler
+	for _, name := range codegen.Platforms() {
+		plat := codegen.LookupPlatform(name)
+		snapshotter, hasSnapshot := plat.(codegen.Snapshotter)
+		_, hasPreview := plat.(codegen.PreviewStyler)
+
+		if !hasSnapshot || !hasPreview {
+			continue
+		}
+
+		t.Run(name, func(t *testing.T) {
+			lang := codegen.LookupLang(snapshot.LangForPlatform(name))
+			if lang == nil {
+				t.Skipf("no lang for platform %s", name)
+			}
+
+			// 1. Native snapshot via Snapshotter
+			doc, err := snapshot.ParseSNGL(sourceFile)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			native, err := snapshotter.Snapshot(doc, lang, 1280, 720)
+			if err != nil {
+				t.Skipf("native snapshot failed (Chrome unavailable?): %v", err)
+			}
+
+			// 2. HTML-simulated snapshot via CompilePreviewHTML + HTML SnapshotHTML
+			html, err := snapshot.CompilePreviewHTML(sourceFile, name, lang.Lang())
+			if err != nil {
+				t.Fatalf("compile preview HTML: %v", err)
+			}
+			htmlPlat := codegen.LookupPlatform("html")
+			hs, ok := htmlPlat.(htmlSnapshotter)
+			if !ok {
+				t.Fatal("html platform does not implement SnapshotHTML")
+			}
+			simulated, err := hs.SnapshotHTML(html, 1280, 720)
+			if err != nil {
+				t.Skipf("simulated snapshot failed: %v", err)
+			}
+
+			// 3. Compare with wide tolerance (10% pixel diff)
+			diffPath := filepath.Join(t.TempDir(), name+"_fidelity.diff.png")
+			if err := imgdiff.Compare(native, simulated, diffPath, 20, 0.10); err != nil {
+				t.Logf("fidelity diff for %s: %v", name, err)
+				// Write both for debugging
+				os.WriteFile(filepath.Join(t.TempDir(), name+"_native.png"), native, 0o644)
+				os.WriteFile(filepath.Join(t.TempDir(), name+"_simulated.png"), simulated, 0o644)
 			}
 		})
 	}

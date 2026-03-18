@@ -92,7 +92,7 @@ func TestWebTests(t *testing.T) {
 	}
 }
 
-func compareChildren(t *testing.T, children []*testrunner.Result, interpMap map[string]*testrunner.Result, parentKey string) {
+func compareChildren(t *testing.T, children []*codegen.TestResult, interpMap map[string]*codegen.TestResult, parentKey string) {
 	for _, child := range children {
 		childKey := parentKey + "/" + child.Desc
 		t.Run(child.Desc, func(t *testing.T) {
@@ -107,8 +107,8 @@ func compareChildren(t *testing.T, children []*testrunner.Result, interpMap map[
 	}
 }
 
-func buildInterpMap(results []*testrunner.Result) map[string]*testrunner.Result {
-	m := make(map[string]*testrunner.Result)
+func buildInterpMap(results []*codegen.TestResult) map[string]*codegen.TestResult {
+	m := make(map[string]*codegen.TestResult)
 	for _, r := range results {
 		key := r.Component + "/" + r.Desc
 		m[key] = r
@@ -121,7 +121,7 @@ func buildInterpMap(results []*testrunner.Result) map[string]*testrunner.Result 
 	return m
 }
 
-func addChildResults(m map[string]*testrunner.Result, parentKey string, children []*testrunner.Result) {
+func addChildResults(m map[string]*codegen.TestResult, parentKey string, children []*codegen.TestResult) {
 	for _, child := range children {
 		key := parentKey + "/" + child.Desc
 		m[key] = child

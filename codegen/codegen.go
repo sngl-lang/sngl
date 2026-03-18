@@ -1,8 +1,9 @@
 package codegen
 
 import (
+	"time"
+
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 )
 
 // ExprScope provides context for expression translation (which names are model
@@ -35,13 +36,30 @@ type PlatformGenerator interface {
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
 type TestRunner interface {
-	RunTests(doc *ast.Document, lang LangTranslator, tests []*ast.TestDef) ([]*testrunner.Result, error)
+	RunTests(doc *ast.Document, lang LangTranslator, tests []*ast.TestDef) ([]*TestResult, error)
+}
+
+// TestResult holds the outcome of a single test.
+type TestResult struct {
+	Component string
+	Desc      string
+	Passed    bool
+	Error     string
+	Children  []*TestResult
+	Duration  time.Duration
 }
 
 // PreviewStyler is optionally implemented by PlatformGenerators that want
 // to provide CSS to style the HTML preview to resemble their target.
 type PreviewStyler interface {
 	PreviewCSS() string
+}
+
+// Snapshotter is optionally implemented by PlatformGenerators that capture
+// their own screenshots (e.g., browser screenshots for HTML, terminal
+// screenshots for bubbletea).
+type Snapshotter interface {
+	Snapshot(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
 }
 
 // OutputFile represents a single generated file.

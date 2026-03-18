@@ -11,7 +11,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/compiler"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/testutil/webtest"
 )
 
@@ -40,14 +39,14 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	}, nil
 }
 
-func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tests []*ast.TestDef) ([]*testrunner.Result, error) {
+func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tests []*ast.TestDef) ([]*codegen.TestResult, error) {
 	// Group tests by component
 	compTests := make(map[string][]*ast.TestDef)
 	for _, td := range tests {
 		compTests[td.Component] = append(compTests[td.Component], td)
 	}
 
-	var results []*testrunner.Result
+	var results []*codegen.TestResult
 	for compName, tests := range compTests {
 		compDoc := compiler.PromoteComponent(doc, compName)
 		if compDoc == nil {
@@ -84,14 +83,14 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tes
 	return results, nil
 }
 
-func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, td *ast.TestDef) *testrunner.Result {
+func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, td *ast.TestDef) *codegen.TestResult {
 	start := time.Now()
 	desc := td.Desc
 	if desc == "" {
 		desc = "unnamed"
 	}
 
-	result := &testrunner.Result{
+	result := &codegen.TestResult{
 		Component: compName,
 		Desc:      desc,
 		Passed:    true,
@@ -113,7 +112,7 @@ func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lan
 		return result
 	}
 
-	runner := compiler.NewCDPRunner(browser.Page(), doc, lang)
+	runner := NewCDPRunner(browser.Page(), doc, lang)
 	if err := runner.InjectHelpers(); err != nil {
 		result.Passed = false
 		result.Error = fmt.Sprintf("inject helpers: %v", err)
@@ -140,14 +139,14 @@ func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lan
 	return result
 }
 
-func (g *Generator) runSubtest(runner *compiler.CDPRunner, compName string, td *ast.TestDef) *testrunner.Result {
+func (g *Generator) runSubtest(runner *CDPRunner, compName string, td *ast.TestDef) *codegen.TestResult {
 	start := time.Now()
 	desc := td.Desc
 	if desc == "" {
 		desc = "unnamed"
 	}
 
-	result := &testrunner.Result{
+	result := &codegen.TestResult{
 		Component: compName,
 		Desc:      desc,
 		Passed:    true,
@@ -178,6 +177,47 @@ func (g *Generator) runSubtest(runner *compiler.CDPRunner, compName string, td *
 
 	result.Duration = time.Since(start)
 	return result
+}
+
+// Snapshot captures a browser screenshot of the generated HTML for the given document.
+func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+	resp, err := g.Generate(&codegen.Request{
+		Doc:     doc,
+		Lang:    lang,
+		Options: map[string]string{"preview": "true"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, fmt.Errorf("%s", resp.Error)
+	}
+	return g.SnapshotHTML(resp.Files[0].Content, width, height)
+}
+
+// SnapshotHTML captures a browser screenshot of pre-compiled HTML bytes.
+func (g *Generator) SnapshotHTML(html []byte, width, height int) ([]byte, error) {
+	mux := http.NewServeMux()
+	content := html
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(content)
+	})
+	engine := webtest.New(mux)
+	defer engine.Close()
+
+	browser, err := engine.StartHeadless(width, height)
+	if err != nil {
+		return nil, err
+	}
+	defer browser.Close()
+
+	if err := browser.NavigateRaw(engine.BaseURL() + "/"); err != nil {
+		return nil, err
+	}
+	_ = browser.WaitStable(300 * time.Millisecond)
+
+	return browser.ScreenshotRaw()
 }
 
 // htmlGen holds all state for generating a single HTML file.

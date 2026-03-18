@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
@@ -45,7 +46,7 @@ func TestRunFixtures(t *testing.T) {
 	}
 }
 
-func checkResult(t *testing.T, r *testrunner.Result, dirs []testutil.ErrorDirective) {
+func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective) {
 	t.Helper()
 
 	// Check if this result matches an expected-failure directive.

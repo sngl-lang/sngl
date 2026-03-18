@@ -1,11 +1,7 @@
 package webtest
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/internal/imgdiff"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 )
@@ -243,11 +240,13 @@ func (b *Browser) Snapshot(t testing.TB, opts ...SnapshotOption) {
 		t.Fatalf("webtest: snapshot read golden: %v", err)
 	}
 
-	if err := compareSnapshots(t, golden, buf, goldenPath); err != nil {
+	diffPath := strings.TrimSuffix(goldenPath, ".png") + ".diff.png"
+	if err := imgdiff.Compare(golden, buf, diffPath, SnapshotColorTolerance, SnapshotPixelTolerance); err != nil {
 		actualPath := strings.TrimSuffix(goldenPath, ".png") + ".actual.png"
 		if writeErr := os.WriteFile(actualPath, buf, 0o644); writeErr != nil {
 			t.Logf("webtest: failed to write actual: %v", writeErr)
 		}
+		t.Logf("webtest: diff image saved to %s", diffPath)
 		t.Errorf("webtest: snapshot mismatch for %s: %v\n  actual: %s", filepath.Base(goldenPath), err, actualPath)
 	}
 }
@@ -255,71 +254,6 @@ func (b *Browser) Snapshot(t testing.TB, opts ...SnapshotOption) {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func compareSnapshots(t testing.TB, goldenBytes, actualBytes []byte, goldenPath string) error {
-	t.Helper()
-
-	goldenImg, err := png.Decode(bytes.NewReader(goldenBytes))
-	if err != nil {
-		return fmt.Errorf("decode golden: %w", err)
-	}
-	actualImg, err := png.Decode(bytes.NewReader(actualBytes))
-	if err != nil {
-		return fmt.Errorf("decode actual: %w", err)
-	}
-
-	gb := goldenImg.Bounds()
-	ab := actualImg.Bounds()
-	if gb.Dx() != ab.Dx() || gb.Dy() != ab.Dy() {
-		return fmt.Errorf("dimensions differ: golden %dx%d, actual %dx%d", gb.Dx(), gb.Dy(), ab.Dx(), ab.Dy())
-	}
-
-	totalPixels := gb.Dx() * gb.Dy()
-	diffCount := 0
-	diffImg := image.NewRGBA(gb)
-
-	for y := gb.Min.Y; y < gb.Max.Y; y++ {
-		for x := gb.Min.X; x < gb.Max.X; x++ {
-			gr, gg, gbl, ga := goldenImg.At(x, y).RGBA()
-			ar, ag, abl, aa := actualImg.At(x, y).RGBA()
-
-			if channelDiff(gr, ar) > SnapshotColorTolerance ||
-				channelDiff(gg, ag) > SnapshotColorTolerance ||
-				channelDiff(gbl, abl) > SnapshotColorTolerance ||
-				channelDiff(ga, aa) > SnapshotColorTolerance {
-				diffCount++
-				diffImg.Set(x, y, color.RGBA{R: 255, A: 255})
-			} else {
-				diffImg.Set(x, y, color.RGBA{
-					R: uint8(gr >> 8 * 77 / 255),
-					G: uint8(gg >> 8 * 77 / 255),
-					B: uint8(gbl >> 8 * 77 / 255),
-					A: 255,
-				})
-			}
-		}
-	}
-
-	ratio := float64(diffCount) / float64(totalPixels)
-	if ratio > SnapshotPixelTolerance {
-		diffPath := strings.TrimSuffix(goldenPath, ".png") + ".diff.png"
-		var diffBuf bytes.Buffer
-		if err := png.Encode(&diffBuf, diffImg); err == nil {
-			_ = os.WriteFile(diffPath, diffBuf.Bytes(), 0o644)
-			t.Logf("webtest: diff image saved to %s", diffPath)
-		}
-		return fmt.Errorf("%.2f%% pixels differ (threshold %.2f%%)", ratio*100, SnapshotPixelTolerance*100)
-	}
-	return nil
-}
-
-func channelDiff(a, b uint32) uint8 {
-	a8, b8 := uint8(a>>8), uint8(b>>8)
-	if a8 > b8 {
-		return a8 - b8
-	}
-	return b8 - a8
 }
 
 func (b *Browser) screenshotOnFailure(t testing.TB) {

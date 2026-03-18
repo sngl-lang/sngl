@@ -1,0 +1,6 @@
+component main {
+    var count int = 0 //@ hover("count", "var count int")
+    computed doubled = count * 2 //@ hover("doubled", "computed doubled")
+    const label = "hi" //@ hover("label", "const label")
+    text(value="hello")
+}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/compiler"
 )
 
 func init() {
@@ -29,12 +28,12 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("bubbletea: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	cfg := compiler.Config{
+	cfg := Config{
 		Package:      req.Options["package"],
 		GenerateMain: req.Options["main"] == "true",
 	}
 
-	src, err := compiler.Compile(req.Doc, cfg)
+	src, err := Compile(req.Doc, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
@@ -47,7 +46,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	// Generate test file if tests exist and not disabled
 	if len(req.Doc.Tests) > 0 && req.Options["tests"] != "false" {
-		testSrc, err := compiler.CompileTests(req.Doc, cfg)
+		testSrc, err := CompileTests(req.Doc, cfg)
 		if err == nil && testSrc != nil {
 			resp.Files = append(resp.Files, &codegen.OutputFile{
 				Name:    "model_test.go",

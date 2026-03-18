@@ -1,0 +1,3 @@
+# Test version command output.
+sngl version
+stdout 'sngl dev'

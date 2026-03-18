@@ -2,12 +2,10 @@ package snapshot
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil/webtest"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // Config controls snapshot generation.
@@ -24,6 +22,11 @@ type Result struct {
 	Platform string
 	Lang     string
 	Path     string // output PNG path
+}
+
+// htmlSnapshotter is satisfied by HTML Generator's SnapshotHTML method.
+type htmlSnapshotter interface {
+	SnapshotHTML(html []byte, width, height int) ([]byte, error)
 }
 
 // Generate produces screenshots for each platform target.
@@ -48,7 +51,7 @@ func Generate(cfg Config) ([]Result, error) {
 	var targets []target
 	if len(cfg.Platforms) > 0 {
 		for _, p := range cfg.Platforms {
-			targets = append(targets, target{platform: p, lang: langForPlatform(p)})
+			targets = append(targets, target{platform: p, lang: LangForPlatform(p)})
 		}
 	} else {
 		outputs, err := ParseOutputs(sourceFile)
@@ -63,45 +66,15 @@ func Generate(cfg Config) ([]Result, error) {
 		}
 	}
 
-	// Compile HTML for each platform and build handler.
-	mux := http.NewServeMux()
-	for _, t := range targets {
-		html, err := CompilePreviewHTML(sourceFile, t.platform, t.lang)
-		if err != nil {
-			return nil, fmt.Errorf("compiling %s: %w", t.platform, err)
-		}
-		content := html
-		path := "/" + t.platform
-		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(content)
-		})
-	}
-
-	engine := webtest.New(mux)
-	defer engine.Close()
-
-	browser, err := engine.StartHeadless(cfg.Width, cfg.Height)
-	if err != nil {
-		return nil, fmt.Errorf("starting browser: %w", err)
-	}
-	defer browser.Close()
-
 	if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
 		return nil, err
 	}
 
 	var results []Result
 	for _, t := range targets {
-		url := engine.BaseURL() + "/" + t.platform
-		if err := browser.NavigateRaw(url); err != nil {
-			return nil, fmt.Errorf("navigating to %s: %w", t.platform, err)
-		}
-		_ = browser.WaitStable(300 * time.Millisecond)
-
-		pngBytes, err := browser.ScreenshotRaw()
+		pngBytes, err := snapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height)
 		if err != nil {
-			return nil, fmt.Errorf("screenshot %s: %w", t.platform, err)
+			return nil, fmt.Errorf("snapshot %s: %w", t.platform, err)
 		}
 
 		outPath := filepath.Join(cfg.OutDir, t.platform+".png")
@@ -119,7 +92,45 @@ func Generate(cfg Config) ([]Result, error) {
 	return results, nil
 }
 
-func langForPlatform(platform string) string {
+// snapshotTarget captures a screenshot for a single platform target.
+func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+	plat := codegen.LookupPlatform(platform)
+
+	// If the platform implements Snapshotter, let it handle capture natively.
+	if snapshotter, ok := plat.(codegen.Snapshotter); ok {
+		doc, err := ParseSNGL(sourceFile)
+		if err != nil {
+			return nil, err
+		}
+		langT := codegen.LookupLang(lang)
+		if langT == nil {
+			return nil, fmt.Errorf("lang %q not registered", lang)
+		}
+		return snapshotter.Snapshot(doc, langT, width, height)
+	}
+
+	// Fallback: compile to HTML preview, then use HTML platform's SnapshotHTML.
+	return snapshotViaHTML(sourceFile, platform, lang, width, height)
+}
+
+// snapshotViaHTML compiles a preview HTML and uses the HTML platform to screenshot it.
+func snapshotViaHTML(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+	html, err := CompilePreviewHTML(sourceFile, platform, lang)
+	if err != nil {
+		return nil, fmt.Errorf("compiling %s: %w", platform, err)
+	}
+
+	htmlPlat := codegen.LookupPlatform("html")
+	hs, ok := htmlPlat.(htmlSnapshotter)
+	if !ok {
+		return nil, fmt.Errorf("html platform does not implement SnapshotHTML")
+	}
+
+	return hs.SnapshotHTML(html, width, height)
+}
+
+// LangForPlatform returns the default language for a platform.
+func LangForPlatform(platform string) string {
 	switch platform {
 	case "bubbletea":
 		return "go"

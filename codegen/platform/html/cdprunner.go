@@ -1,4 +1,4 @@
-package compiler
+package html
 
 import (
 	"fmt"

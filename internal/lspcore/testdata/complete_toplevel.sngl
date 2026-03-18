@@ -1,0 +1,5 @@
+//@ complete("", "component", "struct", "enum", "import", "!var", "!param")
+
+component main {
+    text(value="hello")
+}

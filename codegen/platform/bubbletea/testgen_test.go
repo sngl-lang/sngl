@@ -1,4 +1,4 @@
-package compiler_test
+package bubbletea_test
 
 import (
 	"os"
@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/compiler"
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 )
 
 func TestGeneratedTests(t *testing.T) {
-	matches, err := filepath.Glob("../../testdata/test_*.sngl")
+	matches, err := filepath.Glob("../../../testdata/test_*.sngl")
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
@@ -35,10 +36,10 @@ func TestGeneratedTests(t *testing.T) {
 				t.Fatalf("parse: %v", err)
 			}
 
-			cfg := compiler.Config{Package: "generated"}
+			cfg := bubbletea.Config{Package: "generated"}
 
 			// Generate test file
-			testSrc, err := compiler.CompileTests(doc, cfg)
+			testSrc, err := bubbletea.CompileTests(doc, cfg)
 			if err != nil {
 				t.Fatalf("CompileTests: %v", err)
 			}
@@ -103,17 +104,17 @@ func TestGeneratedTests(t *testing.T) {
 	}
 }
 
-func shouldSkipTest(r *testrunner.Result, doc *ast.Document) bool {
+func shouldSkipTest(r *codegen.TestResult, doc *ast.Document) bool {
 	// Find the corresponding TestDef
 	for _, td := range doc.Tests {
 		if td.Component == r.Component && td.Desc == r.Desc {
-			return compiler.ShouldSkipTest(td)
+			return bubbletea.ShouldSkipTest(td)
 		}
 	}
 	return false
 }
 
-func countResults(r *testrunner.Result, passed, failed *int) {
+func countResults(r *codegen.TestResult, passed, failed *int) {
 	if r.Passed {
 		*passed++
 	} else {

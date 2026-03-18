@@ -11,7 +11,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 	"github.com/spf13/cobra"
 )
 
@@ -68,7 +67,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	format, _ := cmd.Flags().GetString("format")
 
 	var totalTests, totalFail int
-	var allResults []*testrunner.Result
+	var allResults []*codegen.TestResult
 
 	for _, filename := range files {
 		doc, err := parseTestFile(filename)
@@ -153,7 +152,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func printResult(r *testrunner.Result, prefix string, verbose bool) {
+func printResult(r *codegen.TestResult, prefix string, verbose bool) {
 	name := prefix + "/" + r.Desc
 
 	if verbose {
@@ -174,7 +173,7 @@ func printResult(r *testrunner.Result, prefix string, verbose bool) {
 	}
 }
 
-func countTests(r *testrunner.Result) int {
+func countTests(r *codegen.TestResult) int {
 	n := 1
 	for _, child := range r.Children {
 		n += countTests(child)
@@ -197,7 +196,7 @@ type jsonResult struct {
 	Children []jsonResult `json:"children,omitempty"`
 }
 
-func printJSON(results []*testrunner.Result, totalTests, totalFail int) error {
+func printJSON(results []*codegen.TestResult, totalTests, totalFail int) error {
 	out := jsonOutput{
 		Passed:   totalFail == 0,
 		Tests:    totalTests,
@@ -217,7 +216,7 @@ func printJSON(results []*testrunner.Result, totalTests, totalFail int) error {
 	return nil
 }
 
-func toJSON(r *testrunner.Result, prefix string) jsonResult {
+func toJSON(r *codegen.TestResult, prefix string) jsonResult {
 	name := prefix + "/" + r.Desc
 	jr := jsonResult{
 		Name:     name,

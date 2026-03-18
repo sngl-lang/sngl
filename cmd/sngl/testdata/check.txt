@@ -1,0 +1,12 @@
+# Test check on a valid file.
+sngl check minimal.sngl
+stdout 'minimal.sngl: ok'
+
+# Test check on an invalid file.
+! sngl check bad.sngl
+
+-- minimal.sngl --
+component main {
+}
+-- bad.sngl --
+not valid sngl
