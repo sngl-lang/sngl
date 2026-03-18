@@ -179,6 +179,11 @@ func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
 		return scope.EventVar
 	}
 	if scope.LocalVars[name] {
+		if scope.Renames != nil {
+			if renamed, ok := scope.Renames[name]; ok {
+				return renamed
+			}
+		}
 		return name
 	}
 	if scope.ComputedFields[name] {

@@ -184,6 +184,11 @@ func (b *Browser) ScreenshotRaw() ([]byte, error) {
 	return b.page.Screenshot(true, nil)
 }
 
+// Page returns the underlying rod page for direct CDP access.
+func (b *Browser) Page() *rod.Page {
+	return b.page
+}
+
 // Close closes the browser tab.
 func (b *Browser) Close() {
 	b.page.Close()

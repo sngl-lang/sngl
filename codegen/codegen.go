@@ -7,10 +7,11 @@ import (
 // ExprScope provides context for expression translation (which names are model
 // fields vs local vars vs computeds).
 type ExprScope struct {
-	ModelFields    map[string]bool // data fields → prefix with model accessor
-	ComputedFields map[string]bool // computed names → call as methods
-	LocalVars      map[string]bool // for-loop vars, params → no prefix
-	EventVar       string          // what "event" maps to in this context
+	ModelFields    map[string]bool   // data fields → prefix with model accessor
+	ComputedFields map[string]bool   // computed names → call as methods
+	LocalVars      map[string]bool   // for-loop vars, params → no prefix
+	Renames        map[string]string // local var renames (original → unique name)
+	EventVar       string            // what "event" maps to in this context
 }
 
 // LangTranslator translates SNGL expressions into a target language's syntax.

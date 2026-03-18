@@ -65,6 +65,12 @@ type htmlGen struct {
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
+
+	// Test mode: emit data-key, id, class attributes for test element lookup
+	testMode bool
+
+	// Component invocation counter for unique param names
+	componentInvocations int
 }
 
 type componentParam struct {
@@ -90,6 +96,7 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		doc:            doc,
 		lang:           lang,
 		preview:        opts["preview"] == "true",
+		testMode:       opts["test"] == "true",
 		modelFields:    make(map[string]bool),
 		computedFields: make(map[string]bool),
 		structFields:   make(map[string][]string),
@@ -111,10 +118,14 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		g.structFields[sd.Name] = fields
 	}
 
+	localVars := make(map[string]bool)
+	for _, c := range doc.Consts {
+		localVars[c.Name] = true
+	}
 	g.scope = &codegen.ExprScope{
 		ModelFields:    g.modelFields,
 		ComputedFields: g.computedFields,
-		LocalVars:      make(map[string]bool),
+		LocalVars:      localVars,
 	}
 
 	// Compute dependency info for computeds
@@ -176,7 +187,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			style = appendCSS(style, "display", "flex")
 			style = appendCSS(style, "flex-direction", "row")
 		}
-		g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 		fmt.Fprintf(b, "%s</div>\n", indent)
 		g.addForUpdater(id, vn)
 		return
@@ -211,7 +222,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		if g.nodeIsReactive(vn) {
 			id = g.allocID()
 		}
-		g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 		for _, child := range vn.Children {
 			g.renderStaticNode(b, child, depth+1)
 		}
@@ -219,7 +230,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	case "stack":
 		style := g.buildCSSStyle(vn)
 		style = appendCSS(style, "position", "relative")
-		g.writeOpenTag(b, "div", "", style, depth, vn.Pos)
+		g.writeOpenTag(b, "div", "", style, vn, depth, vn.Pos)
 		for _, child := range vn.Children {
 			g.renderStaticNode(b, child, depth+1)
 		}
@@ -262,7 +273,7 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 		style = appendCSS(style, "display", "none")
 	}
 
-	g.writeOpenTag(b, "div", id, style, depth, vn.Pos)
+	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 	for _, child := range vn.Children {
 		g.renderStaticNode(b, child, depth+1)
 	}
@@ -275,6 +286,11 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 	reactive := g.propIsReactive(vn.Props, "value") || vn.If != nil
 	id := ""
 	if reactive {
+		id = g.allocID()
+	}
+
+	// In test mode, id/class need an element ID for updaters
+	if g.testMode && id == "" && g.vnHasUserAttrs(vn) {
 		id = g.allocID()
 	}
 
@@ -292,12 +308,15 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 		style = appendCSS(style, "display", "none")
 	}
 
-	g.writeOpenTag(b, "span", id, style, depth, vn.Pos)
+	g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
 	b.WriteString(escapeHTML(val))
 	b.WriteString("</span>\n")
 
 	if g.propIsReactive(vn.Props, "value") {
 		g.addTextUpdater(id, vn.Props["value"])
+	}
+	if g.testMode && id != "" {
+		g.addUserAttrUpdaters(id, vn)
 	}
 }
 
@@ -343,6 +362,8 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	g.writeDataKey(b, vn.Key)
+	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, escapeHTML(text))
 
@@ -393,6 +414,8 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 		fmt.Fprintf(b, " placeholder=\"%s\"", escapeHTML(placeholder))
 	}
 	fmt.Fprintf(b, " value=\"%s\"", escapeHTML(value))
+	g.writeDataKey(b, vn.Key)
+	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(" />\n")
 
@@ -436,6 +459,8 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	g.writeDataKey(b, vn.Key)
+	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(">")
 	if checked {
@@ -483,6 +508,8 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 		if style != "" {
 			fmt.Fprintf(b, " style=\"%s\"", style)
 		}
+		g.writeDataKey(b, vn.Key)
+		g.writeUserAttrs(b, id, vn)
 		b.WriteString(g.previewAttrs(vn.Pos))
 		b.WriteString(" />\n")
 		return
@@ -496,6 +523,8 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	g.writeDataKey(b, vn.Key)
+	g.writeUserAttrs(b, "", vn)
 	b.WriteString(" />\n")
 }
 
@@ -512,13 +541,25 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 		return
 	}
 
+	g.componentInvocations++
+	suffix := fmt.Sprintf("_%d", g.componentInvocations)
+
 	// Save and set local vars for parameters
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, g.scope.LocalVars)
+	savedRenames := g.scope.Renames
 
-	// Record component param values for JS constants
+	renames := make(map[string]string)
+	if savedRenames != nil {
+		maps.Copy(renames, savedRenames)
+	}
+
+	// Record component param values for JS constants with unique names
 	for _, p := range comp.Params {
+		uniqueName := p.Name + suffix
 		g.scope.LocalVars[p.Name] = true
+		renames[p.Name] = uniqueName
+
 		// Resolve param value from call-site props or default
 		var jsVal string
 		if expr, ok := vn.Props[p.Name]; ok {
@@ -527,8 +568,25 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 			jsVal = g.literalToJS(p.Default)
 		}
 		g.componentParams = append(g.componentParams, componentParam{
-			name:  p.Name,
+			name:  uniqueName,
 			value: jsVal,
+		})
+	}
+	// Handle component computeds: rename and register as local
+	for _, c := range comp.Computeds {
+		uniqueName := c.Name + suffix
+		g.scope.LocalVars[c.Name] = true
+		renames[c.Name] = uniqueName
+	}
+	g.scope.Renames = renames
+
+	// Emit computed functions with renamed references
+	for _, c := range comp.Computeds {
+		uniqueName := c.Name + suffix
+		body := g.exprToJS(c.Expr)
+		g.componentParams = append(g.componentParams, componentParam{
+			name:  uniqueName,
+			value: body,
 		})
 	}
 
@@ -539,6 +597,7 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 
 	// Restore locals
 	g.scope.LocalVars = savedLocals
+	g.scope.Renames = savedRenames
 }
 
 // emitScript writes the <script> block content.
@@ -623,6 +682,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		fmt.Fprintf(b, "function %s(fn) { state.%s = fn; }\n", d.Trigger, cbField)
 	}
 	b.WriteString("\n")
+
+	// Constants
+	for _, c := range g.doc.Consts {
+		val := g.literalToJS(c.Init)
+		fmt.Fprintf(b, "const %s = %s;\n", c.Name, val)
+	}
+	if len(g.doc.Consts) > 0 {
+		b.WriteString("\n")
+	}
 
 	// Helper functions
 	b.WriteString("function String(v) { return \"\" + v; }\n\n")
@@ -851,6 +919,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		style := g.buildCSSStyle(vn)
 
 		fmt.Fprintf(b, "    const row = document.createElement(\"label\");\n")
+		g.emitForLoopDataKey(b, "row", vn)
 		style = appendCSS(style, "display", "block")
 		fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
 		fmt.Fprintf(b, "    const cb = document.createElement(\"input\");\n")
@@ -885,12 +954,36 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		fmt.Fprintf(b, "    row.appendChild(document.createTextNode(\" \" + %s));\n", label)
 		fmt.Fprintf(b, "    %s.appendChild(row);\n", containerID)
 
+	case "text":
+		tag := "span"
+		fmt.Fprintf(b, "    const el = document.createElement(%q);\n", tag)
+		g.emitForLoopDataKey(b, "el", vn)
+		val := `""`
+		if v, ok := vn.Props["value"]; ok {
+			val = g.exprToJS(v)
+		}
+		fmt.Fprintf(b, "    el.textContent = %s;\n", val)
+		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
+
 	default:
 		// Generic: create a div for each item
 		fmt.Fprintf(b, "    const el = document.createElement(\"div\");\n")
+		g.emitForLoopDataKey(b, "el", vn)
 		fmt.Fprintf(b, "    el.textContent = String(%s);\n", iterVar)
 		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
 	}
+}
+
+// emitForLoopDataKey emits a data-key attribute for elements inside for loops.
+func (g *htmlGen) emitForLoopDataKey(b *strings.Builder, elVar string, vn *ast.VisualNode) {
+	if !g.testMode && !g.preview {
+		return
+	}
+	if vn.Key == nil {
+		return
+	}
+	keyJS := g.exprToJS(*vn.Key)
+	fmt.Fprintf(b, "    %s.setAttribute('data-key', %s);\n", elVar, keyJS)
 }
 
 func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
@@ -1352,7 +1445,7 @@ func findMutationRoot(e ast.Node) string {
 	return ""
 }
 
-func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, depth int, pos ...ast.Pos) {
+func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *ast.VisualNode, depth int, pos ...ast.Pos) {
 	if g.preview && id == "" {
 		id = g.allocID()
 	}
@@ -1364,10 +1457,80 @@ func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, depth 
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
+	if vn != nil {
+		g.writeDataKey(b, vn.Key)
+		g.writeUserAttrs(b, id, vn)
+	}
 	if g.preview && len(pos) > 0 && pos[0].IsValid() {
 		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos[0].Line, pos[0].Column)
 	}
 	b.WriteString(">\n")
+}
+
+// writeDataKey emits a data-key="..." attribute for literal key values.
+// Only emitted in test or preview mode.
+func (g *htmlGen) writeDataKey(b *strings.Builder, key *ast.Expr) {
+	if !g.testMode && !g.preview {
+		return
+	}
+	if key == nil {
+		return
+	}
+	if key.Literal != nil {
+		if s, ok := key.Literal.(string); ok {
+			fmt.Fprintf(b, " data-key=%q", s)
+		}
+	}
+}
+
+// vnHasUserAttrs returns true if the visual node has user-specified id or class.
+func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
+	return vn.ID != nil || vn.Class != nil
+}
+
+// addUserAttrUpdaters adds DOM updaters for user-specified id and class attributes.
+func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
+	if vn.ID != nil {
+		jsExpr := g.exprToJS(*vn.ID)
+		deps := g.exprDeps(*vn.ID)
+		name := fmt.Sprintf("$u_%s_uid", elemID[1:])
+		g.updates = append(g.updates, updateFunc{
+			funcName: name,
+			body:     fmt.Sprintf("%s.id = %s;", elemID, jsExpr),
+			deps:     deps,
+		})
+	}
+	if vn.Class != nil {
+		jsExpr := g.exprToJS(*vn.Class)
+		deps := g.exprDeps(*vn.Class)
+		name := fmt.Sprintf("$u_%s_cls", elemID[1:])
+		g.updates = append(g.updates, updateFunc{
+			funcName: name,
+			body:     fmt.Sprintf("%s.className = %s;", elemID, jsExpr),
+			deps:     deps,
+		})
+	}
+}
+
+// writeUserAttrs emits user-specified id and class attributes in test mode.
+// When there's an internal id, user id/class are set via updaters instead.
+func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, vn *ast.VisualNode) {
+	if !g.testMode {
+		return
+	}
+	// Static class can always be emitted directly (no conflict with internal attrs)
+	if vn.Class != nil && vn.Class.Literal != nil {
+		if s, ok := vn.Class.Literal.(string); ok {
+			fmt.Fprintf(b, " class=%q", s)
+		}
+	}
+	// Static id: only emit directly when there's no internal id
+	// (when there IS an internal id, the updater sets it after element refs are captured)
+	if vn.ID != nil && vn.ID.Literal != nil && internalID == "" {
+		if s, ok := vn.ID.Literal.(string); ok {
+			fmt.Fprintf(b, " id=%q", s)
+		}
+	}
 }
 
 func (g *htmlGen) previewAttrs(pos ast.Pos) string {
