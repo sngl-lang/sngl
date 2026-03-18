@@ -6,10 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
 var rootCmd = &cobra.Command{
