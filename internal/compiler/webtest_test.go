@@ -1,7 +1,6 @@
 package compiler_test
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,11 +10,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
-	"git.duckfam.us/jonathan/sngl/internal/compiler"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/internal/testutil/webtest"
 )
 
 func TestWebTests(t *testing.T) {
@@ -34,6 +31,10 @@ func TestWebTests(t *testing.T) {
 	htmlPlat := codegen.LookupPlatform("html")
 	if htmlPlat == nil {
 		t.Fatal("html platform not registered")
+	}
+	runner, ok := htmlPlat.(codegen.TestRunner)
+	if !ok {
+		t.Fatal("html platform does not implement TestRunner")
 	}
 
 	for _, path := range matches {
@@ -65,115 +66,45 @@ func TestWebTests(t *testing.T) {
 			}
 			interpMap := buildInterpMap(interpResults)
 
-			// Group tests by component
-			compTests := groupByComponent(doc.Tests)
+			// Run browser tests via platform interface
+			browserResults, err := runner.RunTests(doc, lang, doc.Tests)
+			if err != nil {
+				t.Fatalf("browser: %v", err)
+			}
 
-			for compName, tests := range compTests {
-				// Promote component to top-level document for HTML codegen
-				compDoc := compiler.PromoteComponent(doc, compName)
-				if compDoc == nil {
-					t.Logf("skipping component %q: not found or no body", compName)
-					continue
-				}
-
-				// Generate HTML
-				resp, err := htmlPlat.Generate(&codegen.Request{
-					Doc:     compDoc,
-					Lang:    lang,
-					Options: map[string]string{"test": "true"},
-				})
-				if err != nil {
-					t.Logf("skipping component %q: generate error: %v", compName, err)
-					continue
-				}
-				if resp.Error != "" {
-					t.Logf("skipping component %q: %s", compName, resp.Error)
-					continue
-				}
-				html := string(resp.Files[0].Content)
-
-				// Serve the HTML
-				mux := http.NewServeMux()
-				mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "text/html")
-					w.Write([]byte(html))
-				})
-				engine := webtest.New(mux)
-				defer engine.Close()
-
-				for _, td := range tests {
-					desc := td.Desc
-					if desc == "" {
-						desc = "unnamed"
+			// Compare browser results against interpreter
+			for _, br := range browserResults {
+				testKey := br.Component + "/" + br.Desc
+				t.Run(br.Component+"/"+br.Desc, func(t *testing.T) {
+					if hasTestErrorByKey(dirs, doc, testKey) {
+						t.Skip("ERROR(test) directive")
 					}
-					testKey := compName + "/" + td.Desc
-
-					t.Run(compName+"/"+desc, func(t *testing.T) {
-						// Skip tests with ERROR(test) directives
-						if hasTestError(dirs, td) {
-							t.Skip("ERROR(test) directive")
+					if !br.Passed {
+						if ir, ok := interpMap[testKey]; ok && !ir.Passed {
+							t.Skipf("both interpreter and browser failed: %s", br.Error)
 						}
-
-						browser := engine.Start(t)
-						browser.Navigate(t, "/")
-
-						runner := compiler.NewCDPRunner(browser.Page(), compDoc, lang)
-						if err := runner.InjectHelpers(); err != nil {
-							t.Fatalf("inject helpers: %v", err)
-						}
-
-						// Execute test body
-						if err := runner.ExecTest(td.Body); err != nil {
-							// Check if interpreter also failed
-							if ir, ok := interpMap[testKey]; ok && !ir.Passed {
-								t.Skipf("both interpreter and browser failed: %v", err)
-							}
-							t.Fatalf("browser test failed: %v", err)
-						}
-
-						// Run subtests
-						runWebSubtests(t, runner, td.Subtests, interpMap, testKey)
-					})
-				}
+						t.Fatalf("browser test failed: %s", br.Error)
+					}
+					compareChildren(t, br.Children, interpMap, testKey)
+				})
 			}
 		})
 	}
 }
 
-func runWebSubtests(t *testing.T, runner *compiler.CDPRunner, subtests []*ast.TestDef, interpMap map[string]*testrunner.Result, parentKey string) {
-	for _, sub := range subtests {
-		desc := sub.Desc
-		if desc == "" {
-			desc = "unnamed"
-		}
-		subKey := parentKey + "/" + sub.Desc
-
-		t.Run(desc, func(t *testing.T) {
-			if err := runner.SaveState(); err != nil {
-				t.Fatalf("save state: %v", err)
-			}
-			t.Cleanup(func() {
-				runner.RestoreState()
-			})
-
-			if err := runner.ExecTest(sub.Body); err != nil {
-				if ir, ok := interpMap[subKey]; ok && !ir.Passed {
-					t.Skipf("both interpreter and browser failed: %v", err)
+func compareChildren(t *testing.T, children []*testrunner.Result, interpMap map[string]*testrunner.Result, parentKey string) {
+	for _, child := range children {
+		childKey := parentKey + "/" + child.Desc
+		t.Run(child.Desc, func(t *testing.T) {
+			if !child.Passed {
+				if ir, ok := interpMap[childKey]; ok && !ir.Passed {
+					t.Skipf("both interpreter and browser failed: %s", child.Error)
 				}
-				t.Fatalf("browser subtest failed: %v", err)
+				t.Fatalf("browser subtest failed: %s", child.Error)
 			}
-
-			runWebSubtests(t, runner, sub.Subtests, interpMap, subKey)
+			compareChildren(t, child.Children, interpMap, childKey)
 		})
 	}
-}
-
-func groupByComponent(tests []*ast.TestDef) map[string][]*ast.TestDef {
-	groups := make(map[string][]*ast.TestDef)
-	for _, td := range tests {
-		groups[td.Component] = append(groups[td.Component], td)
-	}
-	return groups
 }
 
 func buildInterpMap(results []*testrunner.Result) map[string]*testrunner.Result {
@@ -207,13 +138,15 @@ func hasPhase(dirs []testutil.ErrorDirective, phase string) bool {
 	return false
 }
 
-func hasTestError(dirs []testutil.ErrorDirective, td *ast.TestDef) bool {
-	if !td.Pos.IsValid() {
-		return false
-	}
-	for _, d := range dirs {
-		if d.Phase == "test" && d.Line == td.Pos.Line {
-			return true
+func hasTestErrorByKey(dirs []testutil.ErrorDirective, doc *ast.Document, testKey string) bool {
+	for _, td := range doc.Tests {
+		key := td.Component + "/" + td.Desc
+		if key == testKey && td.Pos.IsValid() {
+			for _, d := range dirs {
+				if d.Phase == "test" && d.Line == td.Pos.Line {
+					return true
+				}
+			}
 		}
 	}
 	return false

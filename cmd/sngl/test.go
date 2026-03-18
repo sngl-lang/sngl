@@ -3,20 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/compiler"
 	"git.duckfam.us/jonathan/sngl/internal/testrunner"
-	"git.duckfam.us/jonathan/sngl/internal/testutil/webtest"
 	"github.com/spf13/cobra"
 )
 
@@ -39,16 +34,27 @@ func runTest(cmd *cobra.Command, args []string) error {
 	platform, _ := cmd.Flags().GetString("platform")
 	language, _ := cmd.Flags().GetString("language")
 
-	if platform != "" && language != "" {
-		return runBrowserTests(cmd, args, platform, language)
+	if platform == "" {
+		platform = "none"
 	}
-	if platform != "" || language != "" {
-		return fmt.Errorf("both --platform and --language must be specified together")
-	}
-	return runInterpreterTests(cmd, args)
-}
 
-func runInterpreterTests(cmd *cobra.Command, args []string) error {
+	plat := codegen.LookupPlatform(platform)
+	if plat == nil {
+		return fmt.Errorf("unknown platform: %s", platform)
+	}
+	runner, ok := plat.(codegen.TestRunner)
+	if !ok {
+		return fmt.Errorf("platform %q does not support testing", platform)
+	}
+
+	var lang codegen.LangTranslator
+	if language != "" {
+		lang = codegen.LookupLang(language)
+		if lang == nil {
+			return fmt.Errorf("unknown language: %s", language)
+		}
+	}
+
 	files, err := discoverFiles(args)
 	if err != nil {
 		return err
@@ -76,7 +82,6 @@ func runInterpreterTests(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Merge sibling .sngl files for component definitions
 		doc, err = mergeDir(doc, filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
@@ -84,7 +89,6 @@ func runInterpreterTests(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Check
 		if doc.App != nil || len(doc.Tests) > 0 {
 			if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver()); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
@@ -102,8 +106,19 @@ func runInterpreterTests(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Run
-		results, err := testrunner.Run(doc)
+		// Filter tests by --run pattern
+		tests := doc.Tests
+		if runFilter != "" {
+			var filtered []*ast.TestDef
+			for _, td := range tests {
+				if strings.Contains(td.Desc, runFilter) {
+					filtered = append(filtered, td)
+				}
+			}
+			tests = filtered
+		}
+
+		results, err := runner.RunTests(doc, lang, tests)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
@@ -111,9 +126,6 @@ func runInterpreterTests(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, r := range results {
-			if runFilter != "" && !strings.Contains(r.Desc, runFilter) {
-				continue
-			}
 			allResults = append(allResults, r)
 			totalTests += countTests(r)
 			if !r.Passed {
@@ -139,228 +151,6 @@ func runInterpreterTests(cmd *cobra.Command, args []string) error {
 	fmt.Printf("PASS\n")
 	fmt.Printf("ok   %d tests, 0 failures\n", totalTests)
 	return nil
-}
-
-func runBrowserTests(cmd *cobra.Command, args []string, platform, language string) error {
-	lang := codegen.LookupLang(language)
-	if lang == nil {
-		return fmt.Errorf("unsupported language: %s", language)
-	}
-	plat := codegen.LookupPlatform(platform)
-	if plat == nil {
-		return fmt.Errorf("unsupported platform: %s", platform)
-	}
-
-	files, err := discoverFiles(args)
-	if err != nil {
-		return err
-	}
-	if len(files) == 0 {
-		return fmt.Errorf("no .sngl files found")
-	}
-
-	runFilter, _ := cmd.Flags().GetString("run")
-	verbose, _ := cmd.Flags().GetBool("verbose")
-	format, _ := cmd.Flags().GetString("format")
-
-	var totalTests, totalFail int
-	var allResults []*testrunner.Result
-
-	for _, filename := range files {
-		doc, err := parseTestFile(filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-			totalFail++
-			continue
-		}
-
-		if len(doc.Tests) == 0 {
-			continue
-		}
-
-		doc, err = mergeDir(doc, filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-			totalFail++
-			continue
-		}
-
-		if doc.App != nil || len(doc.Tests) > 0 {
-			if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver()); err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-				totalFail++
-				continue
-			}
-		}
-
-		// Group tests by component
-		compTests := make(map[string][]*ast.TestDef)
-		for _, td := range doc.Tests {
-			compTests[td.Component] = append(compTests[td.Component], td)
-		}
-
-		for compName, tests := range compTests {
-			compDoc := compiler.PromoteComponent(doc, compName)
-			if compDoc == nil {
-				fmt.Fprintf(os.Stderr, "%s: component %q not found or empty\n", filename, compName)
-				continue
-			}
-
-			resp, err := plat.Generate(&codegen.Request{
-				Doc:     compDoc,
-				Lang:    lang,
-				Options: map[string]string{"test": "true"},
-			})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: generate error for %q: %v\n", filename, compName, err)
-				totalFail++
-				continue
-			}
-			if resp.Error != "" {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, resp.Error)
-				totalFail++
-				continue
-			}
-			html := string(resp.Files[0].Content)
-
-			mux := http.NewServeMux()
-			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/html")
-				w.Write([]byte(html))
-			})
-			engine := webtest.New(mux)
-
-			for _, td := range tests {
-				if runFilter != "" && !strings.Contains(td.Desc, runFilter) {
-					continue
-				}
-
-				result := runBrowserTest(engine, compDoc, lang, compName, td)
-				allResults = append(allResults, result)
-				totalTests += countTests(result)
-				if !result.Passed {
-					totalFail++
-				}
-			}
-
-			engine.Close()
-		}
-	}
-
-	if format == "json" {
-		return printJSON(allResults, totalTests, totalFail)
-	}
-
-	for _, r := range allResults {
-		printResult(r, r.Component, verbose)
-	}
-
-	fmt.Println()
-	if totalFail > 0 {
-		fmt.Printf("FAIL\n")
-		fmt.Printf("not ok   %d tests, %d failures\n", totalTests, totalFail)
-		return fmt.Errorf("test failed")
-	}
-	fmt.Printf("PASS\n")
-	fmt.Printf("ok   %d tests, 0 failures\n", totalTests)
-	return nil
-}
-
-func runBrowserTest(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, td *ast.TestDef) *testrunner.Result {
-	start := time.Now()
-	desc := td.Desc
-	if desc == "" {
-		desc = "unnamed"
-	}
-
-	result := &testrunner.Result{
-		Component: compName,
-		Desc:      desc,
-		Passed:    true,
-	}
-
-	browser, err := engine.StartHeadless(1280, 720)
-	if err != nil {
-		result.Passed = false
-		result.Error = fmt.Sprintf("browser start: %v", err)
-		result.Duration = time.Since(start)
-		return result
-	}
-	defer browser.Close()
-
-	if err := browser.NavigateRaw(engine.BaseURL() + "/"); err != nil {
-		result.Passed = false
-		result.Error = fmt.Sprintf("navigate: %v", err)
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	runner := compiler.NewCDPRunner(browser.Page(), doc, lang)
-	if err := runner.InjectHelpers(); err != nil {
-		result.Passed = false
-		result.Error = fmt.Sprintf("inject helpers: %v", err)
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	if err := runner.ExecTest(td.Body); err != nil {
-		result.Passed = false
-		result.Error = err.Error()
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	// Run subtests
-	for _, sub := range td.Subtests {
-		child := runBrowserSubtest(runner, compName, sub)
-		result.Children = append(result.Children, child)
-		if !child.Passed {
-			result.Passed = false
-		}
-	}
-
-	result.Duration = time.Since(start)
-	return result
-}
-
-func runBrowserSubtest(runner *compiler.CDPRunner, compName string, td *ast.TestDef) *testrunner.Result {
-	start := time.Now()
-	desc := td.Desc
-	if desc == "" {
-		desc = "unnamed"
-	}
-
-	result := &testrunner.Result{
-		Component: compName,
-		Desc:      desc,
-		Passed:    true,
-	}
-
-	if err := runner.SaveState(); err != nil {
-		result.Passed = false
-		result.Error = fmt.Sprintf("save state: %v", err)
-		result.Duration = time.Since(start)
-		return result
-	}
-	defer runner.RestoreState()
-
-	if err := runner.ExecTest(td.Body); err != nil {
-		result.Passed = false
-		result.Error = err.Error()
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	for _, sub := range td.Subtests {
-		child := runBrowserSubtest(runner, compName, sub)
-		result.Children = append(result.Children, child)
-		if !child.Passed {
-			result.Passed = false
-		}
-	}
-
-	result.Duration = time.Since(start)
-	return result
 }
 
 func printResult(r *testrunner.Result, prefix string, verbose bool) {
@@ -473,8 +263,6 @@ func mergeDir(doc *ast.Document, filename string) (*ast.Document, error) {
 		doc.Components = append(doc.Components, sibling.Components...)
 		doc.Structs = append(doc.Structs, sibling.Structs...)
 		doc.Enums = append(doc.Enums, sibling.Enums...)
-		// If the test doc has no Data/Computeds/Consts but the sibling has main,
-		// pull those in too.
 		if sibling.App != nil && doc.App == nil {
 			doc.App = sibling.App
 			doc.Data = append(doc.Data, sibling.Data...)

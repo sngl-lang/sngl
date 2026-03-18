@@ -426,4 +426,3 @@ func jsBinaryOp(op ast.BinaryOp) string {
 	}
 	return "?"
 }
-

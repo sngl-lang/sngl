@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/testrunner"
 )
 
 // ExprScope provides context for expression translation (which names are model
@@ -29,6 +30,12 @@ type PlatformGenerator interface {
 	Platform() string
 	SupportedLangs() []string
 	Generate(req *Request) (*Response, error)
+}
+
+// TestRunner is optionally implemented by PlatformGenerators that provide
+// their own test execution (e.g., browser-based testing for HTML).
+type TestRunner interface {
+	RunTests(doc *ast.Document, lang LangTranslator, tests []*ast.TestDef) ([]*testrunner.Result, error)
 }
 
 // PreviewStyler is optionally implemented by PlatformGenerators that want
