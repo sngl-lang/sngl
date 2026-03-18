@@ -86,14 +86,6 @@ func (r *CDPRunner) RestoreState() error {
 // InjectHelpers adds test helper functions to the page after load.
 func (r *CDPRunner) InjectHelpers() error {
 	return r.evalVoid(`
-		window.__sngl_truthy = function(v) {
-			if (v === null || v === undefined) return false;
-			if (typeof v === 'boolean') return v;
-			if (typeof v === 'number') return v !== 0;
-			if (typeof v === 'string') return v !== '';
-			if (Array.isArray(v)) return v.length > 0;
-			return true;
-		};
 		window.__sngl_children = function(el) {
 			var result = [];
 			for (var i = 0; i < el.children.length; i++) {
@@ -177,7 +169,7 @@ func (r *CDPRunner) execAssert(expr ast.Node) error {
 	if err != nil {
 		return fmt.Errorf("assert eval error: %w", err)
 	}
-	if !jsTruthy(result) {
+	if result != true {
 		return fmt.Errorf("assert(%s) failed — got %v", js, result)
 	}
 	return nil
@@ -312,19 +304,13 @@ func (r *CDPRunner) exprToJS(n ast.Node) string {
 	case *ast.BinaryExpr:
 		left := r.exprToJS(e.Left)
 		right := r.exprToJS(e.Right)
-		if e.Op == ast.BinAnd {
-			return "(__sngl_truthy(" + left + ") && __sngl_truthy(" + right + "))"
-		}
-		if e.Op == ast.BinOr {
-			return "(__sngl_truthy(" + left + ") || __sngl_truthy(" + right + "))"
-		}
 		op := jsBinaryOp(e.Op)
 		return "(" + left + " " + op + " " + right + ")"
 
 	case *ast.UnaryExpr:
 		operand := r.exprToJS(e.Operand)
 		if e.Op == ast.UnaryNot {
-			return "!__sngl_truthy(" + operand + ")"
+			return "!" + operand
 		}
 		return "-" + operand
 
@@ -441,19 +427,3 @@ func jsBinaryOp(op ast.BinaryOp) string {
 	return "?"
 }
 
-func jsTruthy(v any) bool {
-	if v == nil {
-		return false
-	}
-	switch val := v.(type) {
-	case bool:
-		return val
-	case float64:
-		return val != 0
-	case int:
-		return val != 0
-	case string:
-		return val != ""
-	}
-	return true
-}

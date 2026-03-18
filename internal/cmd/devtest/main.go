@@ -34,7 +34,7 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("cogtest: ")
 
-	args := []string{"test", "-cover", "-coverpkg=./...", "-count=1"}
+	args := []string{"test", "-cover", "-coverpkg=./..."}
 	if *verbose {
 		args = append(args, "-v")
 	}

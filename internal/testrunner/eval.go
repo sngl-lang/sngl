@@ -56,7 +56,11 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if truthy(cond) {
+		b, ok := cond.(bool)
+		if !ok {
+			return nil, fmt.Errorf("ternary condition must be bool, got %T", cond)
+		}
+		if b {
 			return env.Eval(e.Then)
 		}
 		return env.Eval(e.Else)
@@ -157,9 +161,19 @@ func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
 	case ast.BinNeq:
 		return !equals(left, right), nil
 	case ast.BinAnd:
-		return truthy(left) && truthy(right), nil
+		lb, ok1 := left.(bool)
+		rb, ok2 := right.(bool)
+		if !ok1 || !ok2 {
+			return nil, fmt.Errorf("&& requires bool operands, got %T and %T", left, right)
+		}
+		return lb && rb, nil
 	case ast.BinOr:
-		return truthy(left) || truthy(right), nil
+		lb, ok1 := left.(bool)
+		rb, ok2 := right.(bool)
+		if !ok1 || !ok2 {
+			return nil, fmt.Errorf("|| requires bool operands, got %T and %T", left, right)
+		}
+		return lb || rb, nil
 	case ast.BinLt:
 		return compareNum(left, right) < 0, nil
 	case ast.BinLte:
@@ -196,7 +210,11 @@ func (env *Env) evalUnary(e *ast.UnaryExpr) (any, error) {
 	}
 	switch e.Op {
 	case ast.UnaryNot:
-		return !truthy(v), nil
+		b, ok := v.(bool)
+		if !ok {
+			return nil, fmt.Errorf("! requires bool operand, got %T", v)
+		}
+		return !b, nil
 	case ast.UnaryNeg:
 		return -toFloat(v), nil
 	}
@@ -241,7 +259,11 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !truthy(v) {
+		b, ok := v.(bool)
+		if !ok {
+			return nil, fmt.Errorf("assert() requires bool argument, got %T (%v)", v, v)
+		}
+		if !b {
 			return nil, &AssertError{Expr: e.Args[0], Got: v}
 		}
 		return nil, nil
@@ -352,25 +374,6 @@ func findByKey(node map[string]any, key string) any {
 }
 
 // --- helpers ---
-
-func truthy(v any) bool {
-	if v == nil {
-		return false
-	}
-	switch val := v.(type) {
-	case bool:
-		return val
-	case int:
-		return val != 0
-	case float64:
-		return val != 0
-	case string:
-		return val != ""
-	case []any:
-		return len(val) > 0
-	}
-	return true
-}
 
 func equals(a, b any) bool {
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)

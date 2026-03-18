@@ -44,7 +44,8 @@ func (env *Env) renderNode(node *ast.VisualNode) any {
 	// Handle if= conditional
 	if node.If != nil && node.If.SNGL != nil {
 		v, err := env.Eval(node.If.SNGL)
-		if err != nil || !truthy(v) {
+		b, _ := v.(bool)
+		if err != nil || !b {
 			return nil
 		}
 	}

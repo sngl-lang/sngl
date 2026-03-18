@@ -42,14 +42,14 @@ test flags "ternary" {
     assert((hidden ? "yes" : "no") == "no")
 }
 
-test flags "truthiness" {
-    assert(!count)
-    assert(!label)
+test flags "zero and empty checks" {
+    assert(count == 0)
+    assert(label == "")
     assert(!hidden)
-    assert(!null)
+    assert(null == null)
 
     count = 1
-    assert(count)
+    assert(count != 0)
     label = "x"
-    assert(label)
+    assert(label != "")
 }

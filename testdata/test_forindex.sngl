@@ -16,14 +16,13 @@ test indexed "for with index variable" {
     assert(root._find("c").value == "2:c")
 }
 
-test indexed "truthy on float" {
-    assert(!rate)
+test indexed "float comparisons" {
+    assert(rate == 0.0)
     rate = 1.5
-    assert(rate)
+    assert(rate != 0.0)
 }
 
-test indexed "truthy on list" {
-    assert(items)
-    empty = []
-    assert(!empty)
+test indexed "list comparisons" {
+    assert(items.length() > 0)
+    assert(empty.length() == 0)
 }
