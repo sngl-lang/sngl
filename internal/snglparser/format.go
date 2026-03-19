@@ -627,7 +627,7 @@ func FormatNode(n ast.Node) string {
 	case *ast.TernaryExpr:
 		return FormatNode(e.Cond) + " ? " + FormatNode(e.Then) + " : " + FormatNode(e.Else)
 	case *ast.SelectExpr:
-		return FormatNode(e.Operand) + "." + e.Field
+		return formatPostfixOperand(e.Operand) + "." + e.Field
 	case *ast.IndexExpr:
 		return FormatNode(e.Operand) + "[" + FormatNode(e.Index) + "]"
 	case *ast.CallExpr:
@@ -635,7 +635,7 @@ func FormatNode(n ast.Node) string {
 		return e.Func + "(" + args + ")"
 	case *ast.MethodExpr:
 		args := formatArgs(e.Args)
-		return FormatNode(e.Receiver) + "." + e.Method + "(" + args + ")"
+		return formatPostfixOperand(e.Receiver) + "." + e.Method + "(" + args + ")"
 	case *ast.StructExpr:
 		var fields []string
 		for _, field := range e.Fields {
@@ -741,6 +741,17 @@ func formatLiteral(v any, typeHint string) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// formatPostfixOperand wraps numeric literals in parens to prevent
+// ambiguity with dot access (e.g. 0.field would parse as float 0.).
+func formatPostfixOperand(n ast.Node) string {
+	if lit, ok := n.(*ast.LiteralExpr); ok {
+		if lit.Kind == ast.LiteralInt || lit.Kind == ast.LiteralFloat {
+			return "(" + FormatNode(n) + ")"
+		}
+	}
+	return FormatNode(n)
 }
 
 func formatArgs(args []ast.Node) string {

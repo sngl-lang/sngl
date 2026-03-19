@@ -609,7 +609,7 @@ module.exports = grammar({
         seq(
           field("operand", $._expression),
           ".",
-          field("field", $.identifier),
+          field("field", choice($.identifier, $.event_method)),
         ),
       ),
 

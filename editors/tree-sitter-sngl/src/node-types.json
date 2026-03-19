@@ -570,6 +570,10 @@
         "required": true,
         "types": [
           {
+            "type": "event_method",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           }
