@@ -16,6 +16,7 @@ const (
 	STRING       // "string literal"
 	COLOR        // #rrggbb
 	UNIT_LITERAL // 5s, 100ms, 12px, 1.5em, etc.
+	ELEMENT_REF  // #identifier
 
 	// Punctuation
 	LPAREN   // (
@@ -142,7 +143,7 @@ type Token struct {
 // insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL,
+	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
 		KW_TRUE, KW_FALSE, KW_NULL,
 		KW_EXTERN,
 		RPAREN, RBRACKET, RBRACE:
@@ -154,7 +155,7 @@ func insertsSemicolon(t TokenType) bool {
 var tokenNames = map[TokenType]string{
 	ILLEGAL: "ILLEGAL", EOF: "EOF", SEMICOLON: "SEMICOLON",
 	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING",
-	COLOR: "COLOR", UNIT_LITERAL: "UNIT_LITERAL",
+	COLOR: "COLOR", UNIT_LITERAL: "UNIT_LITERAL", ELEMENT_REF: "ELEMENT_REF",
 	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
 	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
 	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",

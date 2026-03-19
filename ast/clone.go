@@ -51,7 +51,6 @@ func (vn *VisualNode) clone() *VisualNode {
 		return nil
 	}
 	c := *vn
-	c.ID = cloneExprPtr(vn.ID)
 	c.Key = cloneExprPtr(vn.Key)
 	c.Class = cloneExprPtr(vn.Class)
 	c.If = cloneExprPtr(vn.If)

@@ -120,9 +120,12 @@ func (l *lexer) NextToken() Token {
 			continue
 		}
 
-		// Color literal: #hex
-		if ch == '#' && l.pos+1 < len(l.input) && isHexDigit(l.peekAt(1)) {
-			return l.scanColor(startLine, startCol)
+		// Color literal (#hex) or element reference (#id)
+		if ch == '#' && l.pos+1 < len(l.input) {
+			next := l.peekAt(1)
+			if isHexDigit(next) || isIdentStart(next) {
+				return l.scanHashToken(startLine, startCol)
+			}
 		}
 
 		// Number literal (may be duration)
@@ -341,19 +344,37 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 	return l.token(STRING, sb.String(), startLine, startCol)
 }
 
-func (l *lexer) scanColor(startLine, startCol int) Token {
+// scanHashToken handles # followed by hex digits or identifier chars.
+// Produces COLOR for #rrggbb/#rrggbbaa, ELEMENT_REF for #identifier.
+func (l *lexer) scanHashToken(startLine, startCol int) Token {
 	l.advance() // consume #
-	var sb strings.Builder
-	sb.WriteRune('#')
-	for l.pos < len(l.input) && isHexDigit(l.input[l.pos]) {
-		sb.WriteRune(l.advance())
+	start := l.pos
+	// Scan all ident-continue characters (letters, digits, _)
+	for l.pos < len(l.input) && isIdentContinue(l.input[l.pos]) {
+		l.pos++
+		l.col++
 	}
-	s := sb.String()
-	hexLen := len(s) - 1 // minus the #
-	if hexLen == 6 || hexLen == 8 {
-		return l.token(COLOR, s, startLine, startCol)
+	name := string(l.input[start:l.pos])
+
+	// Check if it's a valid color: exactly 6 or 8 hex-only chars
+	if (len(name) == 6 || len(name) == 8) && isAllHex(name) {
+		return l.token(COLOR, "#"+name, startLine, startCol)
 	}
-	return l.token(ILLEGAL, s, startLine, startCol)
+
+	// Otherwise it's an element reference — name must be a valid identifier
+	if len(name) == 0 || !isIdentStart(rune(name[0])) {
+		return l.token(ILLEGAL, "#"+name, startLine, startCol)
+	}
+	return l.token(ELEMENT_REF, name, startLine, startCol)
+}
+
+func isAllHex(s string) bool {
+	for _, ch := range s {
+		if !isHexDigit(ch) {
+			return false
+		}
+	}
+	return true
 }
 
 func isDigit(ch rune) bool { return ch >= '0' && ch <= '9' }

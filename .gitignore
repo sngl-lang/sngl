@@ -1,6 +1,7 @@
 tmp/
 _site/
 /model.go
+/sngl
 /todo
 /_examples/todo/todo
 snapshots/

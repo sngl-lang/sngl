@@ -4,17 +4,17 @@ component config {
     var count = 0
     computed remaining = max - count
 
-    text(value="{remaining}", key="out")
+    text #out (value="{remaining} remaining")
 }
 
 test config "const values" {
     assert(max == 100)
     assert(label == "limit")
-    assert(root._find("out").value == "100")
+    assert(#out.value == "100")
 }
 
 test config "computed from const" {
     count = 30
     assert(remaining == 70)
-    assert(root._find("out").value == "70")
+    assert(#out.value == "70 remaining")
 }

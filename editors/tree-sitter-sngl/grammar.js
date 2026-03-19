@@ -401,6 +401,7 @@ module.exports = grammar({
       prec.right(
         seq(
           field("component", $.identifier),
+          optional(field("element_id", $.element_ref)),
           optional($.prop_list),
           optional($.node_body),
         ),
@@ -518,6 +519,7 @@ module.exports = grammar({
         $.integer_literal,
         $.float_literal,
         $.string_literal,
+        $.element_ref,
         $.color_literal,
         $.unit_literal,
         $.true,
@@ -669,6 +671,8 @@ module.exports = grammar({
         $._expression,
         $._string_interpolation_end,
       ),
+
+    element_ref: (_$) => token(seq("#", /[a-zA-Z_][a-zA-Z0-9_]*/)),
 
     color_literal: (_$) => /#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?/,
 

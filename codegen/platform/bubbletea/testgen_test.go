@@ -10,8 +10,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func TestGeneratedTests(t *testing.T) {
@@ -26,6 +27,14 @@ func TestGeneratedTests(t *testing.T) {
 	for _, path := range matches {
 		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
 		t.Run(name, func(t *testing.T) {
+			// Skip files with ERROR(test) directives — those are runtime error tests
+			dirs, _ := testutil.ParseDirectives(path)
+			for _, d := range dirs {
+				if d.Phase == "test" {
+					t.Skip("file has ERROR(test) directives")
+				}
+			}
+
 			f, err := os.Open(path)
 			if err != nil {
 				t.Fatalf("open: %v", err)

@@ -1491,21 +1491,11 @@ func (g *htmlGen) writeDataKey(b *strings.Builder, key *ast.Expr) {
 
 // vnHasUserAttrs returns true if the visual node has user-specified id or class.
 func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
-	return vn.ID != nil || vn.Class != nil
+	return vn.ID != "" || vn.Class != nil
 }
 
 // addUserAttrUpdaters adds DOM updaters for user-specified id and class attributes.
 func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
-	if vn.ID != nil {
-		jsExpr := g.exprToJS(*vn.ID)
-		deps := g.exprDeps(*vn.ID)
-		name := fmt.Sprintf("$u_%s_uid", elemID[1:])
-		g.updates = append(g.updates, updateFunc{
-			funcName: name,
-			body:     fmt.Sprintf("%s.id = %s;", elemID, jsExpr),
-			deps:     deps,
-		})
-	}
 	if vn.Class != nil {
 		jsExpr := g.exprToJS(*vn.Class)
 		deps := g.exprDeps(*vn.Class)
@@ -1530,12 +1520,9 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, vn *ast.
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}
-	// Static id: only emit directly when there's no internal id
-	// (when there IS an internal id, the updater sets it after element refs are captured)
-	if vn.ID != nil && vn.ID.Literal != nil && internalID == "" {
-		if s, ok := vn.ID.Literal.(string); ok {
-			fmt.Fprintf(b, " id=%q", s)
-		}
+	// Emit data-sngl-id from the #id field for test element lookup
+	if vn.ID != "" {
+		fmt.Fprintf(b, " data-sngl-id=%q", vn.ID)
 	}
 }
 

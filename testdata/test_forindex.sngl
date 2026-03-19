@@ -3,17 +3,17 @@ component indexed {
     var rate = 0.0
     var empty = []
 
-    vbox(key="list") {
+    vbox {
         for item, idx in items {
-            text(key=item, value="{idx}:{item}")
+            text #item (value="{idx}:{item}")
         }
     }
 }
 
 test indexed "for with index variable" {
-    assert(root._find("a").value == "0:a")
-    assert(root._find("b").value == "1:b")
-    assert(root._find("c").value == "2:c")
+    assert(#item[0].value == "0:a")
+    assert(#item[1].value == "1:b")
+    assert(#item[2].value == "2:c")
 }
 
 test indexed "float comparisons" {

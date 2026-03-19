@@ -305,7 +305,7 @@ func ShouldSkipTest(td *ast.TestDef) bool {
 
 func usesUnsupportedFeature(td *ast.TestDef) bool {
 	for _, stmt := range td.Body {
-		if nodeUsesDOMAccess(stmt) || nodeUsesUnsupported(stmt) {
+		if nodeUsesElementRef(stmt) || nodeUsesUnsupported(stmt) {
 			return true
 		}
 	}
@@ -321,6 +321,7 @@ func usesUnsupportedFeature(td *ast.TestDef) bool {
 // - truthiness on non-bool (e.g., !count, !label, !null)
 // - .length() / .contains() methods (SNGL builtins, not Go)
 // - constant division by zero (compile-time error in Go)
+// - implicit bool-to-number conversion (e.g., active + 0)
 func nodeUsesUnsupported(n ast.Node) bool {
 	switch e := n.(type) {
 	case *ast.MethodExpr:
@@ -392,38 +393,35 @@ func isDefinitelyBool(n ast.Node) bool {
 	return false
 }
 
-func nodeUsesDOMAccess(n ast.Node) bool {
+func nodeUsesElementRef(n ast.Node) bool {
 	switch e := n.(type) {
-	case *ast.IdentExpr:
-		return e.Name == "root"
+	case *ast.ElementRefExpr:
+		return true
 	case *ast.SelectExpr:
-		return nodeUsesDOMAccess(e.Operand)
+		return nodeUsesElementRef(e.Operand)
 	case *ast.MethodExpr:
-		if strings.HasPrefix(e.Method, "@") || e.Method == "_find" {
-			return true
-		}
-		return nodeUsesDOMAccess(e.Receiver)
+		return nodeUsesElementRef(e.Receiver)
 	case *ast.CallExpr:
 		for _, arg := range e.Args {
-			if nodeUsesDOMAccess(arg) {
+			if nodeUsesElementRef(arg) {
 				return true
 			}
 		}
 	case *ast.BinaryExpr:
-		return nodeUsesDOMAccess(e.Left) || nodeUsesDOMAccess(e.Right)
+		return nodeUsesElementRef(e.Left) || nodeUsesElementRef(e.Right)
 	case *ast.UnaryExpr:
-		return nodeUsesDOMAccess(e.Operand)
+		return nodeUsesElementRef(e.Operand)
 	case *ast.TernaryExpr:
-		return nodeUsesDOMAccess(e.Cond) || nodeUsesDOMAccess(e.Then) || nodeUsesDOMAccess(e.Else)
+		return nodeUsesElementRef(e.Cond) || nodeUsesElementRef(e.Then) || nodeUsesElementRef(e.Else)
 	case *ast.AssignStmt:
-		return nodeUsesDOMAccess(e.Target) || nodeUsesDOMAccess(e.Value)
+		return nodeUsesElementRef(e.Target) || nodeUsesElementRef(e.Value)
 	case *ast.ToggleStmt:
-		return nodeUsesDOMAccess(e.Target)
+		return nodeUsesElementRef(e.Target)
 	case *ast.IndexExpr:
-		return nodeUsesDOMAccess(e.Operand) || nodeUsesDOMAccess(e.Index)
+		return nodeUsesElementRef(e.Operand) || nodeUsesElementRef(e.Index)
 	case *ast.StmtBlock:
 		for _, s := range e.Stmts {
-			if nodeUsesDOMAccess(s) {
+			if nodeUsesElementRef(s) {
 				return true
 			}
 		}

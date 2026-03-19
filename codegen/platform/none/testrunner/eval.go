@@ -95,6 +95,8 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 			return list[i], nil
 		}
 		return nil, fmt.Errorf("cannot index %T", obj)
+	case *ast.ElementRefExpr:
+		return env.resolveElementRef(e.Name)
 	case *ast.CallExpr:
 		return env.evalCall(e)
 	case *ast.MethodExpr:
@@ -143,9 +145,6 @@ func (env *Env) lookup(name string) (any, error) {
 	}
 	if v, ok := env.consts[name]; ok {
 		return v, nil
-	}
-	if name == "root" && env.body != nil {
-		return env.renderTree(), nil
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }
@@ -338,15 +337,6 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			}
 			return nil, nil
 		}
-	case "_find":
-		if m, ok := recv.(map[string]any); ok && m["_type"] != nil && len(e.Args) == 1 {
-			arg, err := env.Eval(e.Args[0])
-			if err != nil {
-				return nil, err
-			}
-			key := fmt.Sprintf("%v", arg)
-			return findByKey(m, key), nil
-		}
 	case "length":
 		if len(e.Args) != 0 {
 			return nil, fmt.Errorf("length() takes no arguments")
@@ -380,22 +370,6 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 		}
 	}
 	return nil, fmt.Errorf("unknown method %q on %T", e.Method, recv)
-}
-
-func findByKey(node map[string]any, key string) any {
-	if k, ok := node["key"]; ok && fmt.Sprintf("%v", k) == key {
-		return node
-	}
-	if children, ok := node["_children"].([]any); ok {
-		for _, c := range children {
-			if child, ok := c.(map[string]any); ok {
-				if found := findByKey(child, key); found != nil {
-					return found
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // --- helpers ---

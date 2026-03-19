@@ -3,17 +3,17 @@ component badge {
     param count = 0
     computed display = label
 
-    text(value=display, key="lbl")
+    text #lbl (value=display)
 }
 
 component dashboard {
     var name = "test"
     var total = 5
 
-    vbox(key="container") {
-        badge(label=name, count=total, key="b1")
-        badge(key="b2")
-        text(value="footer", key="foot")
+    vbox {
+        badge(label=name, count=total)
+        badge()
+        text #foot (value="footer")
     }
 }
 
@@ -29,10 +29,10 @@ test badge "computed from params" {
 }
 
 test dashboard "renders child component" {
-    assert(root._find("foot").value == "footer")
-    assert(root._find("lbl") != null)
+    assert(#foot.value == "footer")
+    assert(#lbl[0] != null)
 }
 
 test dashboard "component receives props" {
-    assert(root._find("lbl").value == "test")
+    assert(#lbl[0].value == "test")
 }

@@ -507,9 +507,6 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 	var props []string
 
 	// Special props
-	if vn.ID != nil {
-		props = append(props, "id="+f.formatExprValue(*vn.ID))
-	}
 	if vn.Key != nil {
 		props = append(props, "key="+f.formatExprValue(*vn.Key))
 	}
@@ -546,6 +543,9 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 
 	// Build the line
 	line := vn.Component
+	if vn.ID != "" {
+		line += " #" + vn.ID
+	}
 	if len(props) > 0 {
 		line += "(" + strings.Join(props, ", ") + ")"
 	}
@@ -612,6 +612,8 @@ func FormatNode(n ast.Node) string {
 		return formatLiteralExpr(e)
 	case *ast.IdentExpr:
 		return e.Name
+	case *ast.ElementRefExpr:
+		return "#" + e.Name
 	case *ast.BinaryExpr:
 		left := FormatNode(e.Left)
 		right := FormatNode(e.Right)

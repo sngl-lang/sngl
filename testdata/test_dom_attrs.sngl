@@ -2,18 +2,16 @@ component styled {
     var tag = "main"
     var mode = "active"
 
-    text(id="title", class="header", key="t", value="hello")
-    text(id=tag, class=mode, key="d", value="dynamic")
+    text #t (class="header", key="t", value="hello")
+    text #d (class=mode, key="d", value="dynamic")
 }
 
-test styled "static id and class" {
-    assert(root._find("t").id == "title")
-    assert(root._find("t").class == "header")
+test styled "static class" {
+    assert(#t.class == "header")
 }
 
-test styled "dynamic id and class" {
-    assert(root._find("d").id == "main")
-    assert(root._find("d").class == "active")
+test styled "dynamic class" {
+    assert(#d.class == "active")
     mode = "inactive"
-    assert(root._find("d").class == "inactive")
+    assert(#d.class == "inactive")
 }

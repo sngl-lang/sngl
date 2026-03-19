@@ -1,159 +1,101 @@
 package testrunner
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// renderTree builds the virtual root node for the current component state.
-func (env *Env) renderTree() map[string]any {
-	root := map[string]any{
-		"_type":     "root",
-		"_children": env.renderChildren(env.body),
+// resolveElementRef finds visual nodes with the given #id, rendering the current
+// component state. Returns a single element map, a list of maps (for-loop),
+// or nil (not visible / if=false).
+func (env *Env) resolveElementRef(id string) (any, error) {
+	if env.body == nil {
+		return nil, fmt.Errorf("no visual body for element ref #%s", id)
 	}
-	// Expose vars and computeds as top-level fields on root.
-	for k, v := range env.vars {
-		root[k] = v
+	var matches []map[string]any
+	env.collectByID(env.body, id, &matches)
+	if len(matches) == 0 {
+		return nil, nil // element hidden or not found
 	}
-	for k, expr := range env.computeds {
-		if v, err := env.Eval(expr.SNGL); err == nil {
-			root[k] = v
-		}
+	if len(matches) == 1 {
+		return matches[0], nil
 	}
-	return root
+	// Multiple matches (for-loop): return as []any
+	out := make([]any, len(matches))
+	for i, m := range matches {
+		out[i] = m
+	}
+	return out, nil
 }
 
-// renderChildren renders a slice of visual nodes, handling if/for.
-func (env *Env) renderChildren(nodes []*ast.VisualNode) []any {
-	var out []any
+// collectByID walks the visual tree, collecting rendered nodes with matching _id.
+func (env *Env) collectByID(nodes []*ast.VisualNode, id string, out *[]map[string]any) {
 	for _, n := range nodes {
-		rendered := env.renderNode(n)
-		if rendered != nil {
-			if items, ok := rendered.([]any); ok {
-				out = append(out, items...)
-			} else {
-				out = append(out, rendered)
-			}
-		}
+		env.collectNodeByID(n, id, out)
 	}
-	return out
 }
 
-// renderNode renders a single visual node. Returns nil if the node should be
-// skipped (e.g. if= is falsy). Returns []any for for= expansions.
-func (env *Env) renderNode(node *ast.VisualNode) any {
+func (env *Env) collectNodeByID(node *ast.VisualNode, id string, out *[]map[string]any) {
 	// Handle if= conditional
 	if node.If != nil && node.If.SNGL != nil {
 		v, err := env.Eval(node.If.SNGL)
 		b, _ := v.(bool)
 		if err != nil || !b {
-			return nil
+			return
 		}
 	}
 
 	// Handle for= loop
 	if node.For != nil {
-		return env.renderFor(node)
+		env.collectForByID(node, id, out)
+		return
 	}
 
 	// Check if this is a user-defined component — expand inline
 	if env.doc != nil {
 		if comp := findComponent(env.doc, node.Component); comp != nil {
-			return env.renderComponent(comp, node)
+			childEnv := env.componentEnv(comp, node)
+			childEnv.collectByID(comp.Body, id, out)
+			return
 		}
 	}
 
-	// Primitive element
-	m := map[string]any{
-		"_type":     node.Component,
-		"_children": env.renderChildren(node.Children),
+	// Check this node
+	if node.ID == id {
+		m := env.renderNodeProps(node)
+		*out = append(*out, m)
 	}
 
-	// Evaluate props
-	for k, expr := range node.Props {
-		if expr.SNGL != nil {
-			if v, err := env.Eval(expr.SNGL); err == nil {
-				m[k] = v
-			}
-		} else if expr.Literal != nil {
-			m[k] = expr.Literal
-		}
-	}
-
-	// Expose special attributes
-	if node.Key != nil {
-		if node.Key.SNGL != nil {
-			if v, err := env.Eval(node.Key.SNGL); err == nil {
-				m["key"] = v
-			}
-		} else if node.Key.Literal != nil {
-			m["key"] = node.Key.Literal
-		}
-	}
-	if node.ID != nil {
-		if node.ID.SNGL != nil {
-			if v, err := env.Eval(node.ID.SNGL); err == nil {
-				m["id"] = v
-			}
-		} else if node.ID.Literal != nil {
-			m["id"] = node.ID.Literal
-		}
-	}
-	if node.Class != nil {
-		if node.Class.SNGL != nil {
-			if v, err := env.Eval(node.Class.SNGL); err == nil {
-				m["class"] = v
-			}
-		} else if node.Class.Literal != nil {
-			m["class"] = node.Class.Literal
-		}
-	}
-
-	// Expose event handlers for test triggering
-	for name, expr := range node.Events {
-		if expr.SNGL != nil {
-			m["@"+name] = expr.SNGL
-		}
-	}
-
-	return m
+	// Recurse into children
+	env.collectByID(node.Children, id, out)
 }
 
-// renderFor expands a for= loop, rendering the node once per iteration.
-func (env *Env) renderFor(node *ast.VisualNode) []any {
+func (env *Env) collectForByID(node *ast.VisualNode, id string, out *[]map[string]any) {
 	iterVal, err := env.Eval(node.For.Iterable.SNGL)
 	if err != nil {
-		return nil
+		return
 	}
 	list, ok := iterVal.([]any)
 	if !ok {
-		return nil
+		return
 	}
-
-	var out []any
 	for i, item := range list {
-		// Create a child env with loop variable bound
 		child := env.Snapshot()
 		child.vars[node.For.Variable] = item
 		if node.For.IndexVar != "" {
 			child.vars[node.For.IndexVar] = i
 		}
-
-		// Render the node without the for clause
 		noFor := *node
 		noFor.For = nil
-		if rendered := child.renderNode(&noFor); rendered != nil {
-			out = append(out, rendered)
-		}
+		child.collectNodeByID(&noFor, id, out)
 	}
-	return out
 }
 
-// renderComponent expands a user-defined component inline.
-func (env *Env) renderComponent(comp *ast.Component, node *ast.VisualNode) any {
+// componentEnv creates a child env for expanding a user-defined component.
+func (env *Env) componentEnv(comp *ast.Component, node *ast.VisualNode) *Env {
 	childEnv := NewEnv()
 	childEnv.doc = env.doc
-
-	// Initialize params from defaults, then override with passed props
 	for _, p := range comp.Params {
 		childEnv.vars[p.Name] = evalInit(childEnv, p.Default)
 	}
@@ -166,8 +108,6 @@ func (env *Env) renderComponent(comp *ast.Component, node *ast.VisualNode) any {
 			childEnv.vars[k] = expr.Literal
 		}
 	}
-
-	// Initialize data and computeds
 	for _, d := range comp.Data {
 		childEnv.vars[d.Name] = evalInit(childEnv, d.Init)
 	}
@@ -177,13 +117,38 @@ func (env *Env) renderComponent(comp *ast.Component, node *ast.VisualNode) any {
 	for _, c := range comp.Consts {
 		childEnv.consts[c.Name] = evalInit(childEnv, c.Init)
 	}
-
 	childEnv.body = comp.Body
-
-	// Inline the component's children (component element itself does not appear)
-	children := childEnv.renderChildren(comp.Body)
-	if len(children) == 1 {
-		return children[0]
-	}
-	return any(children)
+	return childEnv
 }
+
+// renderNodeProps renders a visual node's props and events into a map for test access.
+func (env *Env) renderNodeProps(node *ast.VisualNode) map[string]any {
+	m := map[string]any{
+		"_type": node.Component,
+	}
+	for k, expr := range node.Props {
+		if expr.SNGL != nil {
+			if v, err := env.Eval(expr.SNGL); err == nil {
+				m[k] = v
+			}
+		} else if expr.Literal != nil {
+			m[k] = expr.Literal
+		}
+	}
+	if node.Class != nil {
+		if node.Class.SNGL != nil {
+			if v, err := env.Eval(node.Class.SNGL); err == nil {
+				m["class"] = v
+			}
+		} else if node.Class.Literal != nil {
+			m["class"] = node.Class.Literal
+		}
+	}
+	for name, expr := range node.Events {
+		if expr.SNGL != nil {
+			m["@"+name] = expr.SNGL
+		}
+	}
+	return m
+}
+

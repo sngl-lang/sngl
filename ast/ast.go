@@ -169,7 +169,7 @@ type App struct {
 type VisualNode struct {
 	Pos        Pos
 	Component  string
-	ID         *Expr
+	ID         string // element ID from #id syntax (empty = no ID)
 	Key        *Expr
 	Class      *Expr
 	If         *Expr

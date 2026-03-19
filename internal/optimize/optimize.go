@@ -115,7 +115,6 @@ func optimizeNodes(env *cel.Env, nodes []*ast.VisualNode, vars map[string]any) [
 		}
 
 		// Fold expressions in the node's properties.
-		foldExprPtr(env, vn.ID, vars)
 		foldExprPtr(env, vn.Key, vars)
 		foldExprPtr(env, vn.Class, vars)
 		foldExprPtr(env, vn.Ref, vars)

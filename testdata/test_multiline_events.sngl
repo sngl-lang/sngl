@@ -3,7 +3,7 @@ component multi {
     var b = 0
     var c = 0
 
-    button(key="inc", text="go", @click={ a += 1; b += 2; c += 3 })
+    button #inc (text="go", @click={ a += 1; b += 2; c += 3 })
     text(value="{a}")
 }
 

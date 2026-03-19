@@ -732,6 +732,11 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 		Component: name,
 	}
 
+	// Optional element ID: #id
+	if p.at(ELEMENT_REF) {
+		vn.ID = p.advance().Literal
+	}
+
 	// Optional props list
 	if p.at(LPAREN) {
 		p.parsePropList(vn)
@@ -813,8 +818,6 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 			p.expect(ASSIGN)
 			expr := p.parseExprAsExpr()
 			switch propName {
-			case "id":
-				vn.ID = &expr
 			case "key":
 				vn.Key = &expr
 			case "class":
@@ -1119,6 +1122,9 @@ func (p *parser) parsePrimary() ast.Node {
 		return expr
 	case LBRACKET:
 		return p.parseListLiteral()
+	case ELEMENT_REF:
+		tok := p.advance()
+		return &ast.ElementRefExpr{Name: tok.Literal}
 	case IDENT, KW_EVENT:
 		// KW_EVENT is allowed as an identifier in expression context
 		// (it refers to the event payload variable in event handlers).

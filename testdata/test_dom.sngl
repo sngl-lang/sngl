@@ -1,18 +1,18 @@
 component counter {
     var count = 0
 
-    button(text="+", key="inc", @click={ count += 1 })
-    button(text="-", key="dec", @click={ count -= 1 })
-    text(value="Count: {count}", key="display")
+    button #inc (text="+", @click={ count += 1 })
+    button #dec (text="-", @click={ count -= 1 })
+    text #display (value="Count: {count}")
 }
 
 component wrapper {
     var visible = true
 
-    vbox(key="container") {
-        text(value="header", key="hdr")
+    vbox {
+        text #hdr (value="header")
         if visible {
-            text(value="shown", key="conditional")
+            text #conditional (value="shown")
         }
     }
 }
@@ -20,46 +20,30 @@ component wrapper {
 component listcomp {
     var items = ["a", "b", "c"]
 
-    vbox(key="list") {
+    vbox {
         for item in items {
-            text(key=item, value=item)
+            text #item (value=item)
         }
     }
 }
 
-test counter "root has children" {
-    assert(root._children.length() == 3)
-}
-
-test counter "find by key" {
-    assert(root._find("inc").text == "+")
-    assert(root._find("dec").text == "-")
-    assert(root._find("display").value == "Count: 0")
+test counter "event triggering" {
+    assert(count == 0)
+    #inc.@click()
+    assert(count == 1)
+    #inc.@click()
+    #inc.@click()
+    assert(count == 3)
+    #dec.@click()
+    assert(count == 2)
+    assert(#display.value == "Count: 2")
 }
 
 test counter "dom updates after mutation" {
     count += 1
-    assert(root._find("display").value == "Count: 1")
+    assert(#display.value == "Count: 1")
     count += 4
-    assert(root._find("display").value == "Count: 5")
-}
-
-test counter "event triggering" {
-    assert(count == 0)
-    root._find("inc").@click()
-    assert(count == 1)
-    root._find("inc").@click()
-    root._find("inc").@click()
-    assert(count == 3)
-    root._find("dec").@click()
-    assert(count == 2)
-    assert(root._find("display").value == "Count: 2")
-}
-
-test counter "root exposes vars" {
-    assert(root.count == 0)
-    count += 1
-    assert(root.count == 1)
+    assert(#display.value == "Count: 5")
 }
 
 test counter {
@@ -67,17 +51,16 @@ test counter {
 }
 
 test wrapper "conditional rendering" {
-    assert(root._find("conditional") != null)
+    assert(#conditional != null)
     visible = false
-    assert(root._find("conditional") == null)
+    assert(#conditional == null)
 }
 
 test wrapper "nested find" {
-    assert(root._find("hdr").value == "header")
+    assert(#hdr.value == "header")
 }
 
 test listcomp "for loop rendering" {
-    assert(root._find("list")._children.length() == 3)
-    assert(root._find("a").value == "a")
-    assert(root._find("c").value == "c")
+    assert(#item[0].value == "a")
+    assert(#item[2].value == "c")
 }

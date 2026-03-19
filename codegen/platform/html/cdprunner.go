@@ -222,12 +222,13 @@ func (r *CDPRunner) triggerEvent(m *ast.MethodExpr) error {
 }
 
 func (r *CDPRunner) domSelector(n ast.Node) string {
-	if me, ok := n.(*ast.MethodExpr); ok && me.Method == "_find" {
-		if len(me.Args) == 1 {
-			if lit, ok := me.Args[0].(*ast.LiteralExpr); ok {
-				key := fmt.Sprintf("%v", lit.Value)
-				return fmt.Sprintf("[data-key=%q]", key)
-			}
+	switch e := n.(type) {
+	case *ast.ElementRefExpr:
+		return fmt.Sprintf("[data-sngl-id=%q]", e.Name)
+	case *ast.IndexExpr:
+		// #id[0] — element ref with index
+		if ref, ok := e.Operand.(*ast.ElementRefExpr); ok {
+			return fmt.Sprintf("[data-sngl-id=%q]", ref.Name)
 		}
 	}
 	return ""
@@ -238,24 +239,18 @@ func (r *CDPRunner) exprToJS(n ast.Node) string {
 		return "null"
 	}
 	switch e := n.(type) {
+	case *ast.ElementRefExpr:
+		// Return null for elements hidden by if= (display:none)
+		return fmt.Sprintf(`(function(){var el=document.querySelector('[data-sngl-id=%q]'); return el && el.style.display!=="none" ? el : null})()`, e.Name)
+
 	case *ast.IdentExpr:
-		if e.Name == "root" {
-			return "document.body"
-		}
 		return r.lang.TranslateExpr(e, r.scope)
 
 	case *ast.MethodExpr:
 		switch e.Method {
-		case "_find":
-			if len(e.Args) == 1 {
-				key := r.exprToJS(e.Args[0])
-				// Return null for elements hidden by if= (display:none), matching
-				// the interpreter which omits conditionally-hidden nodes entirely.
-				return fmt.Sprintf(`(function(){var el=document.querySelector('[data-key="'+%s+'"]'); return el && el.style.display!=="none" ? el : null})()`, key)
-			}
 		case "length":
 			recv := r.exprToJS(e.Receiver)
-			if isDOMExpr(e.Receiver) {
+			if isElementExpr(e.Receiver) {
 				return fmt.Sprintf("Array.from(%s).length", recv)
 			}
 			return recv + ".length"
@@ -272,27 +267,13 @@ func (r *CDPRunner) exprToJS(n ast.Node) string {
 		return r.lang.TranslateExpr(e, r.scope)
 
 	case *ast.SelectExpr:
-		if isDOMExpr(e.Operand) {
+		if isElementExpr(e.Operand) {
 			recv := r.exprToJS(e.Operand)
 			switch e.Field {
 			case "value", "text":
 				return recv + ".textContent"
-			case "id":
-				return recv + ".id"
 			case "class":
 				return recv + ".className"
-			case "_children":
-				// Filter out script tags when getting body children
-				if isRootIdent(e.Operand) {
-					return "Array.from(" + recv + ".children).filter(function(e){return e.tagName!=='SCRIPT'})"
-				}
-				return "__sngl_children(" + recv + ")"
-			}
-			if isRootIdent(e.Operand) {
-				if r.scope.ComputedFields[e.Field] {
-					return "$" + e.Field + "()"
-				}
-				return "state." + e.Field
 			}
 			return recv + "." + e.Field
 		}
@@ -373,26 +354,14 @@ func (r *CDPRunner) evalVoid(js string) error {
 	return err
 }
 
-func isDOMExpr(n ast.Node) bool {
+func isElementExpr(n ast.Node) bool {
 	switch e := n.(type) {
-	case *ast.IdentExpr:
-		return e.Name == "root"
-	case *ast.MethodExpr:
-		if e.Method == "_find" {
-			return true
-		}
-		return isDOMExpr(e.Receiver)
+	case *ast.ElementRefExpr:
+		return true
 	case *ast.SelectExpr:
-		return isDOMExpr(e.Operand)
+		return isElementExpr(e.Operand)
 	case *ast.IndexExpr:
-		return isDOMExpr(e.Operand)
-	}
-	return false
-}
-
-func isRootIdent(n ast.Node) bool {
-	if e, ok := n.(*ast.IdentExpr); ok {
-		return e.Name == "root"
+		return isElementExpr(e.Operand)
 	}
 	return false
 }

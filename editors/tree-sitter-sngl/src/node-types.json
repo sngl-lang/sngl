@@ -58,6 +58,10 @@
         "named": true
       },
       {
+        "type": "element_ref",
+        "named": true
+      },
+      {
         "type": "false",
         "named": true
       },
@@ -1808,6 +1812,16 @@
             "named": true
           }
         ]
+      },
+      "element_id": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "element_ref",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
@@ -1977,6 +1991,10 @@
   {
     "type": "const",
     "named": false
+  },
+  {
+    "type": "element_ref",
+    "named": true
   },
   {
     "type": "enum",

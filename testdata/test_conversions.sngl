@@ -3,7 +3,7 @@ component conv {
     var rate = 3.14
     var label = "hello"
     var active = true
-    text(value="{count}")
+    text #out (value="{count}")
 }
 
 test conv "string conversion" {
@@ -38,7 +38,7 @@ test conv "unary negation" {
 }
 
 test conv "bool in arithmetic" {
-    assert(root != null)
+    assert(#out.value == "42")
     assert(active + 0 == 1)
     assert(active * 2 == 2)
 }

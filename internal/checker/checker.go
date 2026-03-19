@@ -429,9 +429,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	}
 
 	// Universal attributes
-	if vn.ID != nil {
-		c.checkExprType(vn.Pos, vn.ID, cel.StringType, scope, "id")
-	}
 	if vn.Class != nil {
 		c.checkExprType(vn.Pos, vn.Class, cel.StringType, scope, "class")
 	}

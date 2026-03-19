@@ -147,6 +147,11 @@ type InterpolationExpr struct {
 	Parts []Node
 }
 
+// ElementRefExpr references a visual element by its #id.
+type ElementRefExpr struct {
+	Name string
+}
+
 // --- Statements ---
 
 // AssignStmt is an assignment: target op= value.
@@ -186,6 +191,7 @@ func (*MethodExpr) snglNode()        {}
 func (*StructExpr) snglNode()        {}
 func (*ListExpr) snglNode()          {}
 func (*InterpolationExpr) snglNode() {}
+func (*ElementRefExpr) snglNode()    {}
 func (*AssignStmt) snglNode()        {}
 func (*ToggleStmt) snglNode()        {}
 func (*EmitStmt) snglNode()          {}

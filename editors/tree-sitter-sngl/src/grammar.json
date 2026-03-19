@@ -1839,6 +1839,22 @@
             "type": "CHOICE",
             "members": [
               {
+                "type": "FIELD",
+                "name": "element_id",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "element_ref"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
                 "type": "SYMBOL",
                 "name": "prop_list"
               },
@@ -2352,6 +2368,10 @@
         {
           "type": "SYMBOL",
           "name": "string_literal"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "element_ref"
         },
         {
           "type": "SYMBOL",
@@ -3322,6 +3342,22 @@
           "name": "_string_interpolation_end"
         }
       ]
+    },
+    "element_ref": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "#"
+          },
+          {
+            "type": "PATTERN",
+            "value": "[a-zA-Z_][a-zA-Z0-9_]*"
+          }
+        ]
+      }
     },
     "color_literal": {
       "type": "PATTERN",
