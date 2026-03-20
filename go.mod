@@ -7,7 +7,6 @@ require (
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/cellbuf v0.0.15
-	github.com/emicklei/proto v1.14.3
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-rod/rod v0.116.2
 	github.com/muesli/termenv v0.16.0

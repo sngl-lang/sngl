@@ -9,7 +9,7 @@ description: "Complete SNGL language reference"
 A `.sngl` file contains top-level declarations in any order. Every file must have exactly one `component main`.
 
 ```sngl
-import "app.proto"
+import "shared"
 
 output {
     go bubbletea(package="main")
@@ -115,8 +115,10 @@ var todos list<Todo> = []        // type required
 
 ### import
 
+Imports load all `.sngl` files from a directory, making their component, struct, and enum definitions available.
+
 ```sngl
-import "app.proto"
+import "shared"
 ```
 
 ### output

@@ -219,10 +219,12 @@ Examples: `func(string)`, `func(string, int) -> bool`
 ### import
 
 ```
-import "app.proto"
+import "components"
 ```
 
-→ `ast.Import{Path: "app.proto"}`
+→ `ast.Import{Path: "components"}`
+
+Imports load all `.sngl` files from the specified directory, making their component, struct, and enum definitions available.
 
 ### output
 
@@ -882,7 +884,11 @@ component main {
 ### Reactive Bindings with Components
 
 ```
-import "app.proto"
+struct User {
+    name string = ""
+    age int = 0
+    loggedIn bool = false
+}
 
 component Counter {
     param label = ""

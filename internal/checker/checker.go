@@ -183,51 +183,40 @@ func (c *checker) joinErrors() error {
 	return fmt.Errorf("%s", strings.Join(msgs, "\n"))
 }
 
-// pass1 resolves declarations: proto imports, enums, structs, binds, computeds, components, styles.
+// pass1 resolves declarations: imports, enums, structs, binds, computeds, components, styles.
 func (c *checker) pass1(doc *ast.Document) {
-	// Imports
+	// Imports (directory imports load .sngl files)
 	for _, imp := range doc.Imports {
-		if strings.HasSuffix(imp.Path, ".proto") {
-			result, err := ParseProtoFile(filepath.Join(c.dir, imp.Path))
-			if err != nil {
-				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
-				continue
-			}
-			c.structs = append(c.structs, result.Structs...)
-			c.enums = append(c.enums, result.Enums...)
-		} else {
-			// Directory import: load all .sngl files from the directory
-			if c.resolve == nil {
-				c.errorAt(imp.Pos, "import %q: directory imports not supported in this context", imp.Path)
-				continue
-			}
-			resolved := filepath.Join(c.dir, imp.Path)
-			if c.visited[resolved] {
-				c.errorAt(imp.Pos, "import %q: cycle detected", imp.Path)
-				continue
-			}
-			c.visited[resolved] = true
-			docs, err := c.resolve(resolved)
-			if err != nil {
-				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
-				continue
-			}
-			for _, d := range docs {
-				c.structs = append(c.structs, d.Structs...)
-				c.enums = append(c.enums, d.Enums...)
-				for _, comp := range d.Components {
-					c.components = append(c.components, comp)
-					schema := &ComponentSchema{
-						Props:    make(map[string]PropSchema),
-						Events:   map[string]string{},
-						Children: ChildrenMany,
-					}
-					for _, p := range comp.Params {
-						t := c.resolveParamType(p)
-						schema.Props[p.Name] = PropSchema{Type: t}
-					}
-					c.registry[comp.Name] = schema
+		if c.resolve == nil {
+			c.errorAt(imp.Pos, "import %q: directory imports not supported in this context", imp.Path)
+			continue
+		}
+		resolved := filepath.Join(c.dir, imp.Path)
+		if c.visited[resolved] {
+			c.errorAt(imp.Pos, "import %q: cycle detected", imp.Path)
+			continue
+		}
+		c.visited[resolved] = true
+		docs, err := c.resolve(resolved)
+		if err != nil {
+			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
+			continue
+		}
+		for _, d := range docs {
+			c.structs = append(c.structs, d.Structs...)
+			c.enums = append(c.enums, d.Enums...)
+			for _, comp := range d.Components {
+				c.components = append(c.components, comp)
+				schema := &ComponentSchema{
+					Props:    make(map[string]PropSchema),
+					Events:   map[string]string{},
+					Children: ChildrenMany,
 				}
+				for _, p := range comp.Params {
+					t := c.resolveParamType(p)
+					schema.Props[p.Name] = PropSchema{Type: t}
+				}
+				c.registry[comp.Name] = schema
 			}
 		}
 	}

@@ -45,12 +45,12 @@ Declaration := Import | Output | Struct | Enum | Unit | Style | Styles | Compone
 ### Import
 
 ```sngl
-import "app.proto"
+import "components"
 ```
 
-| Argument     | Type     | Description                                                     |
-| ------------ | -------- | --------------------------------------------------------------- |
-| (positional) | `string` | Module path or protobuf descriptor relative to the current file |
+| Argument     | Type     | Description                                                      |
+| ------------ | -------- | ---------------------------------------------------------------- |
+| (positional) | `string` | Directory path relative to the current file (loads all .sngl files) |
 
 ### var
 
@@ -553,7 +553,11 @@ These are the typed payloads available via `event` in event handler statement bl
 ## Complete Example
 
 ```sngl
-import "app.proto"
+struct User {
+    name string = ""
+    age int = 0
+    loggedIn bool = false
+}
 
 struct Todo {
     text string = ""

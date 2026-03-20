@@ -71,7 +71,7 @@ Implementation notes:
 
 ## Expression Language
 
-Where expression logic is required, Google's CEL can be used. CEL has access to the protobuf types defined for the data on the component.
+SNGL has its own Go-like expression syntax parsed by a recursive-descent parser. Expressions are stored as native SNGL AST nodes and type-checked by walking the AST with a custom type system — no external expression engine is used.
 
 ## Pluggable Compiler
 
@@ -171,7 +171,7 @@ A SNGL document may contain the following top-level nodes:
 * `bind` — declare reactive state
 * `computed` — declare derived state
 * `component` — declare reusable composite components
-* `import` — import component libraries or protobuf descriptors (future)
+* `import` — import component libraries from directories
 
 ---
 
@@ -414,7 +414,7 @@ Compiler expands these into static dependency-aware structures.
 ### ✅ Design Guarantees
 
 * Fully static structure
-* Strong typing via protobuf + CEL
+* Strong typing via native SNGL type system
 * No runtime AST walking
 * Dependency graph known at compile time
 * Portable across GUI, Web, Mobile, and TUI
@@ -451,7 +451,7 @@ import <string>
 
 Semantics:
 
-* Imports component libraries or protobuf descriptors
+* Imports component libraries from directories
 * Resolution is compiler-defined
 
 ---

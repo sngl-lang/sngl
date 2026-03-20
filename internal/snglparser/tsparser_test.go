@@ -368,7 +368,7 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte(`component main { computed y = x + 1 }`))
 	f.Add([]byte(`struct Foo { name string = "" }`))
 	f.Add([]byte(`enum Status { active, inactive }`))
-	f.Add([]byte(`import "foo.proto"` + "\n" + `component main {}`))
+	f.Add([]byte(`import "components"` + "\n" + `component main {}`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Tree-sitter uses C strings internally, so null bytes are unsupported.
