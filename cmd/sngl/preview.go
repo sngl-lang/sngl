@@ -21,7 +21,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/cel-go/cel"
 	"github.com/spf13/cobra"
 )
 
@@ -364,7 +363,7 @@ type nodePos struct {
 
 type propJSON struct {
 	Literal any      `json:"literal,omitempty"`
-	CEL     string   `json:"cel,omitempty"`
+	Expr    string   `json:"expr,omitempty"`
 	Set     bool     `json:"set"`
 	Type    string   `json:"type,omitempty"`
 	Enum    []string `json:"enum,omitempty"`
@@ -377,8 +376,8 @@ type eventJSON struct {
 
 func exprToPropJSON(e ast.Expr, typeName string, enum []string) propJSON {
 	p := propJSON{Set: true, Type: typeName, Enum: enum}
-	if e.CEL != "" {
-		p.CEL = e.CEL
+	if e.SNGL != nil {
+		p.Expr = snglparser.FormatNode(e.SNGL)
 	} else {
 		p.Literal = e.Literal
 	}
@@ -431,7 +430,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 	if schema != nil {
 		for name, ps := range schema.Props {
 			resp.Props[name] = propJSON{
-				Type: celTypeToString(ps.Type),
+				Type: typeToString(ps.Type),
 				Enum: ps.Enum,
 			}
 		}
@@ -442,7 +441,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		var enum []string
 		if schema != nil {
 			if ps, ok := schema.Props[k]; ok {
-				typeName = celTypeToString(ps.Type)
+				typeName = typeToString(ps.Type)
 				enum = ps.Enum
 			}
 		}
@@ -453,17 +452,17 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 	for _, name := range s.styleNames {
 		sp := s.styleSchema[name]
 		resp.Styles[name] = propJSON{
-			Type: celTypeToString(sp.Type),
+			Type: typeToString(sp.Type),
 			Enum: sp.Enum,
 		}
 	}
 	for k, v := range vn.StyleAttrs {
 		sp := s.styleSchema[k]
-		resp.Styles[k] = exprToPropJSON(v, celTypeToString(sp.Type), sp.Enum)
+		resp.Styles[k] = exprToPropJSON(v, typeToString(sp.Type), sp.Enum)
 	}
 	for k, v := range vn.StyleBlock {
 		sp := s.styleSchema[k]
-		resp.Styles[k] = exprToPropJSON(v, celTypeToString(sp.Type), sp.Enum)
+		resp.Styles[k] = exprToPropJSON(v, typeToString(sp.Type), sp.Enum)
 	}
 
 	// Add all schema events (unset first, then mark set ones)
@@ -496,73 +495,8 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func celTypeToString(t *cel.Type) string {
-	if t == nil {
-		return "dyn"
-	}
-	s := t.String()
-	switch s {
-	case "string":
-		return "string"
-	case "int":
-		return "int"
-	case "double":
-		return "float"
-	case "bool":
-		return "bool"
-	case "dyn":
-		return "dyn"
-	case "sngl.Color":
-		return "color"
-	case "sngl.Date":
-		return "date"
-	case "sngl.Time":
-		return "time"
-	case "sngl.DateTime":
-		return "dateTime"
-	case "sngl.Duration":
-		return "duration"
-	case "sngl.URL":
-		return "url"
-	case "sngl.Email":
-		return "email"
-	case "sngl.UUID":
-		return "uuid"
-	case "sngl.Regex":
-		return "regex"
-	case "sngl.Base64":
-		return "base64"
-	case "sngl.IPV4":
-		return "ipv4"
-	case "sngl.IPV6":
-		return "ipv6"
-	case "sngl.Hostname":
-		return "hostname"
-	case "sngl.IDNEmail":
-		return "idnEmail"
-	case "sngl.IDNHostname":
-		return "idnHostname"
-	case "sngl.IRL":
-		return "irl"
-	case "sngl.IRLReference":
-		return "irlReference"
-	case "sngl.URLReference":
-		return "urlReference"
-	case "sngl.URLTemplate":
-		return "urlTemplate"
-	case "sngl.Currency":
-		return "currency"
-	case "sngl.Country2":
-		return "country2"
-	case "sngl.Country3":
-		return "country3"
-	case "sngl.CountrySubdivision":
-		return "countrySubdivision"
-	case "sngl.Decimal":
-		return "decimal"
-	default:
-		return s
-	}
+func typeToString(t checker.Type) string {
+	return t.String()
 }
 
 func findNode(nodes []*ast.VisualNode, line, col int) *ast.VisualNode {

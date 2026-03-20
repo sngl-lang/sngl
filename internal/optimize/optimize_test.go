@@ -4,55 +4,41 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"github.com/google/cel-go/cel"
 )
 
-// celExpr creates a checked CEL Expr using a minimal env with PLATFORM and LANGUAGE.
-func celExpr(t *testing.T, src string) ast.Expr {
+func must(t *testing.T, err error) {
 	t.Helper()
-	env, err := cel.NewEnv(
-		cel.Variable("PLATFORM", cel.StringType),
-		cel.Variable("LANGUAGE", cel.StringType),
-	)
 	if err != nil {
-		t.Fatalf("cel env: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	parsed, iss := env.Parse(src)
-	if iss != nil && iss.Err() != nil {
-		t.Fatalf("cel parse %q: %v", src, iss.Err())
-	}
-	checked, iss := env.Check(parsed)
-	if iss != nil && iss.Err() != nil {
-		t.Fatalf("cel check %q: %v", src, iss.Err())
-	}
-	return ast.Expr{CEL: src, AST: checked}
 }
 
-// celExprWithVars creates a checked CEL Expr using an env with extra variables.
-func celExprWithVars(t *testing.T, src string, extras ...cel.EnvOption) ast.Expr {
-	t.Helper()
-	opts := []cel.EnvOption{
-		cel.Variable("PLATFORM", cel.StringType),
-		cel.Variable("LANGUAGE", cel.StringType),
-	}
-	opts = append(opts, extras...)
-	env, err := cel.NewEnv(opts...)
-	if err != nil {
-		t.Fatalf("cel env: %v", err)
-	}
-	parsed, iss := env.Parse(src)
-	if iss != nil && iss.Err() != nil {
-		t.Fatalf("cel parse %q: %v", src, iss.Err())
-	}
-	checked, iss := env.Check(parsed)
-	if iss != nil && iss.Err() != nil {
-		t.Fatalf("cel check %q: %v", src, iss.Err())
-	}
-	return ast.Expr{CEL: src, AST: checked}
+// snglExpr creates an Expr with a SNGL AST node.
+func snglExpr(node ast.Node) ast.Expr {
+	return ast.Expr{SNGL: node}
+}
+
+// platformEq returns PLATFORM == val as a SNGL AST.
+func platformEq(val string) ast.Expr {
+	return snglExpr(&ast.BinaryExpr{
+		Op:    ast.BinEq,
+		Left:  &ast.IdentExpr{Name: "PLATFORM"},
+		Right: &ast.LiteralExpr{Value: val, Kind: ast.LiteralString},
+	})
+}
+
+// langExpr returns an IdentExpr for LANGUAGE.
+func langExpr() ast.Expr {
+	return snglExpr(&ast.IdentExpr{Name: "LANGUAGE"})
+}
+
+// platformExpr returns an IdentExpr for PLATFORM.
+func platformExpr() ast.Expr {
+	return snglExpr(&ast.IdentExpr{Name: "PLATFORM"})
 }
 
 func TestIfTrue_Kept(t *testing.T) {
-	ifExpr := celExpr(t, "PLATFORM == 'html'")
+	ifExpr := platformEq("html")
 	doc := &ast.Document{
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
@@ -61,7 +47,7 @@ func TestIfTrue_Kept(t *testing.T) {
 			}},
 		},
 	}
-	Optimize(doc, Config{Platform: "html", Language: "js"})
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	if len(doc.App.Children) != 1 {
 		t.Fatalf("expected 1 child, got %d", len(doc.App.Children))
 	}
@@ -71,7 +57,7 @@ func TestIfTrue_Kept(t *testing.T) {
 }
 
 func TestIfFalse_Removed(t *testing.T) {
-	ifExpr := celExpr(t, "PLATFORM == 'html'")
+	ifExpr := platformEq("html")
 	doc := &ast.Document{
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
@@ -80,17 +66,19 @@ func TestIfFalse_Removed(t *testing.T) {
 			}},
 		},
 	}
-	Optimize(doc, Config{Platform: "bubbletea", Language: "go"})
+	must(t, Optimize(doc, Config{Platform: "bubbletea", Language: "go"}))
 	if len(doc.App.Children) != 0 {
 		t.Fatalf("expected 0 children (dead branch), got %d", len(doc.App.Children))
 	}
 }
 
 func TestNonConstIf_Unchanged(t *testing.T) {
-	ifExpr := celExprWithVars(t, "PLATFORM == 'html' && count > 0",
-		cel.Variable("count", cel.IntType))
-	origCEL := ifExpr.CEL
-	origAST := ifExpr.AST
+	// Uses a non-constant variable reference
+	ifExpr := snglExpr(&ast.BinaryExpr{
+		Op:    ast.BinAnd,
+		Left:  &ast.IdentExpr{Name: "PLATFORM"},
+		Right: &ast.IdentExpr{Name: "count"}, // non-constant
+	})
 	doc := &ast.Document{
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
@@ -99,7 +87,7 @@ func TestNonConstIf_Unchanged(t *testing.T) {
 			}},
 		},
 	}
-	Optimize(doc, Config{Platform: "html", Language: "js"})
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	if len(doc.App.Children) != 1 {
 		t.Fatalf("expected 1 child, got %d", len(doc.App.Children))
 	}
@@ -107,11 +95,8 @@ func TestNonConstIf_Unchanged(t *testing.T) {
 	if node.If == nil {
 		t.Fatal("expected If to remain, got nil")
 	}
-	if node.If.CEL != origCEL {
-		t.Errorf("expected CEL %q, got %q", origCEL, node.If.CEL)
-	}
-	if node.If.AST != origAST {
-		t.Error("expected AST pointer unchanged")
+	if node.If.SNGL == nil {
+		t.Error("expected SNGL to remain")
 	}
 }
 
@@ -121,15 +106,15 @@ func TestPropFolded(t *testing.T) {
 			Children: []*ast.VisualNode{{
 				Component: "div",
 				Props: map[string]ast.Expr{
-					"platform": celExpr(t, "PLATFORM"),
+					"platform": platformExpr(),
 				},
 			}},
 		},
 	}
-	Optimize(doc, Config{Platform: "html", Language: "js"})
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	e := doc.App.Children[0].Props["platform"]
-	if e.CEL != "" {
-		t.Errorf("expected CEL cleared, got %q", e.CEL)
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
 	}
 	if e.Literal != "html" {
 		t.Errorf("expected literal 'html', got %v", e.Literal)
@@ -137,17 +122,26 @@ func TestPropFolded(t *testing.T) {
 }
 
 func TestComputedFolded(t *testing.T) {
-	expr := celExpr(t, "PLATFORM + '/' + LANGUAGE")
+	// PLATFORM + "/" + LANGUAGE
+	expr := snglExpr(&ast.BinaryExpr{
+		Op: ast.BinAdd,
+		Left: &ast.BinaryExpr{
+			Op:    ast.BinAdd,
+			Left:  &ast.IdentExpr{Name: "PLATFORM"},
+			Right: &ast.LiteralExpr{Value: "/", Kind: ast.LiteralString},
+		},
+		Right: &ast.IdentExpr{Name: "LANGUAGE"},
+	})
 	doc := &ast.Document{
 		Computeds: []*ast.Computed{{
 			Name: "target",
 			Expr: expr,
 		}},
 	}
-	Optimize(doc, Config{Platform: "html", Language: "js"})
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	e := doc.Computeds[0].Expr
-	if e.CEL != "" {
-		t.Errorf("expected CEL cleared, got %q", e.CEL)
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
 	}
 	if e.Literal != "html/js" {
 		t.Errorf("expected literal 'html/js', got %v", e.Literal)
@@ -155,7 +149,7 @@ func TestComputedFolded(t *testing.T) {
 }
 
 func TestNestedChildrenRemoved(t *testing.T) {
-	ifExpr := celExpr(t, "PLATFORM == 'html'")
+	ifExpr := platformEq("html")
 	doc := &ast.Document{
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
@@ -168,14 +162,14 @@ func TestNestedChildrenRemoved(t *testing.T) {
 			}},
 		},
 	}
-	Optimize(doc, Config{Platform: "bubbletea", Language: "go"})
+	must(t, Optimize(doc, Config{Platform: "bubbletea", Language: "go"}))
 	if len(doc.App.Children) != 0 {
 		t.Fatalf("expected 0 children, got %d", len(doc.App.Children))
 	}
 }
 
 func TestCloneIsolation(t *testing.T) {
-	ifExpr := celExpr(t, "PLATFORM == 'html'")
+	ifExpr := platformEq("html")
 	doc := &ast.Document{
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
@@ -185,7 +179,7 @@ func TestCloneIsolation(t *testing.T) {
 		},
 	}
 	cloned := doc.Clone()
-	Optimize(cloned, Config{Platform: "bubbletea", Language: "go"})
+	must(t, Optimize(cloned, Config{Platform: "bubbletea", Language: "go"}))
 
 	// Original should be untouched.
 	if len(doc.App.Children) != 1 {
@@ -194,12 +188,192 @@ func TestCloneIsolation(t *testing.T) {
 	if doc.App.Children[0].If == nil {
 		t.Error("original If was cleared")
 	}
-	if doc.App.Children[0].If.CEL == "" {
-		t.Error("original CEL was cleared")
-	}
 
 	// Clone should have the branch eliminated.
 	if len(cloned.App.Children) != 0 {
 		t.Fatalf("clone: expected 0 children, got %d", len(cloned.App.Children))
+	}
+}
+
+func TestDataFieldFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "lang",
+			Init: langExpr(),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.Data[0].Init
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
+	}
+	if e.Literal != "js" {
+		t.Errorf("expected literal 'js', got %v", e.Literal)
+	}
+}
+
+func TestStylePropFolded(t *testing.T) {
+	// PLATFORM == "html" ? "red" : "blue"
+	doc := &ast.Document{
+		Styles: []*ast.StyleDecl{{
+			Name: "main",
+			Props: map[string]ast.Expr{
+				"color": snglExpr(&ast.TernaryExpr{
+					Cond: &ast.BinaryExpr{Op: ast.BinEq, Left: &ast.IdentExpr{Name: "PLATFORM"}, Right: &ast.LiteralExpr{Value: "html", Kind: ast.LiteralString}},
+					Then: &ast.LiteralExpr{Value: "red", Kind: ast.LiteralString},
+					Else: &ast.LiteralExpr{Value: "blue", Kind: ast.LiteralString},
+				}),
+			},
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.Styles[0].Props["color"]
+	if e.Literal != "red" {
+		t.Errorf("expected literal 'red', got %v", e.Literal)
+	}
+}
+
+func TestComponentParamDefaultFolded(t *testing.T) {
+	doc := &ast.Document{
+		Components: []*ast.Component{{
+			Name: "Foo",
+			Params: []*ast.Param{{
+				Name:    "target",
+				Default: platformExpr(),
+			}},
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.Components[0].Params[0].Default
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
+	}
+	if e.Literal != "html" {
+		t.Errorf("expected literal 'html', got %v", e.Literal)
+	}
+}
+
+func TestStructFieldDefaultFolded(t *testing.T) {
+	// LANGUAGE == "go"
+	doc := &ast.Document{
+		Structs: []*ast.StructDef{{
+			Name: "Config",
+			Fields: []*ast.StructField{{
+				Name: "isGo",
+				Default: snglExpr(&ast.BinaryExpr{
+					Op:    ast.BinEq,
+					Left:  &ast.IdentExpr{Name: "LANGUAGE"},
+					Right: &ast.LiteralExpr{Value: "go", Kind: ast.LiteralString},
+				}),
+			}},
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "go"}))
+	e := doc.Structs[0].Fields[0].Default
+	if e.Literal != true {
+		t.Errorf("expected literal true, got %v", e.Literal)
+	}
+}
+
+func TestOptimizeReturnsNil(t *testing.T) {
+	doc := &ast.Document{}
+	if err := Optimize(doc, Config{}); err != nil {
+		t.Errorf("expected no error for empty doc, got %v", err)
+	}
+}
+
+func TestForIterableFolded(t *testing.T) {
+	doc := &ast.Document{
+		App: &ast.App{
+			Children: []*ast.VisualNode{{
+				Component: "div",
+				For: &ast.ForClause{
+					Variable: "item",
+					Iterable: platformExpr(),
+				},
+			}},
+		},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.App.Children[0].For.Iterable
+	if e.Literal != "html" {
+		t.Errorf("expected literal 'html', got %v", e.Literal)
+	}
+}
+
+func TestEventFolded(t *testing.T) {
+	doc := &ast.Document{
+		App: &ast.App{
+			Children: []*ast.VisualNode{{
+				Component: "button",
+				Events: map[string]ast.Expr{
+					"click": langExpr(),
+				},
+			}},
+		},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.App.Children[0].Events["click"]
+	if e.Literal != "js" {
+		t.Errorf("expected literal 'js', got %v", e.Literal)
+	}
+}
+
+func TestForEmptyList_Removed(t *testing.T) {
+	doc := &ast.Document{
+		App: &ast.App{
+			Children: []*ast.VisualNode{{
+				Component: "div",
+				For: &ast.ForClause{
+					Variable: "item",
+					Iterable: snglExpr(&ast.ListExpr{Elements: nil}),
+				},
+				Children: []*ast.VisualNode{{Component: "span"}},
+			}},
+		},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if len(doc.App.Children) != 0 {
+		t.Fatalf("expected 0 children (for over empty list), got %d", len(doc.App.Children))
+	}
+}
+
+func TestTernaryFolded(t *testing.T) {
+	// true ? "a" : "b" → "a"
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.TernaryExpr{
+				Cond: &ast.BinaryExpr{
+					Op:    ast.BinEq,
+					Left:  &ast.IdentExpr{Name: "PLATFORM"},
+					Right: &ast.LiteralExpr{Value: "html", Kind: ast.LiteralString},
+				},
+				Then: &ast.LiteralExpr{Value: "a", Kind: ast.LiteralString},
+				Else: &ast.LiteralExpr{Value: "b", Kind: ast.LiteralString},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != "a" {
+		t.Errorf("expected 'a', got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestInterpolationFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "msg",
+			Init: snglExpr(&ast.InterpolationExpr{
+				Parts: []ast.Node{
+					&ast.LiteralExpr{Value: "platform: ", Kind: ast.LiteralString},
+					&ast.IdentExpr{Name: "PLATFORM"},
+				},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != "platform: html" {
+		t.Errorf("expected 'platform: html', got %v", doc.Data[0].Init.Literal)
 	}
 }

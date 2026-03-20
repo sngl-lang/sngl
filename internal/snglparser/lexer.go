@@ -341,7 +341,7 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 		l.advance()
 	}
 	// Unterminated string
-	return l.token(STRING, sb.String(), startLine, startCol)
+	return l.token(ILLEGAL, "unterminated string", startLine, startCol)
 }
 
 // scanHashToken handles # followed by hex digits or identifier chars.

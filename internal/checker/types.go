@@ -10,149 +10,177 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/google/cel-go/cel"
 )
 
-// MutationType is the opaque type returned by mutation functions (set, toggle, etc.).
-var MutationType = cel.OpaqueType("sngl.Mutation")
+// Type represents a SNGL type.
+type Type int
 
-// Opaque special types for domain values.
-var (
-	ColorType              = cel.OpaqueType("sngl.Color")
-	DateType               = cel.OpaqueType("sngl.Date")
-	TimeType               = cel.OpaqueType("sngl.Time")
-	DateTimeType           = cel.OpaqueType("sngl.DateTime")
-	DurationType           = cel.OpaqueType("sngl.Duration")
-	URLType                = cel.OpaqueType("sngl.URL")
-	EmailType              = cel.OpaqueType("sngl.Email")
-	UUIDType               = cel.OpaqueType("sngl.UUID")
-	RegexType              = cel.OpaqueType("sngl.Regex")
-	Base64Type             = cel.OpaqueType("sngl.Base64")
-	IPV4Type               = cel.OpaqueType("sngl.IPV4")
-	IPV6Type               = cel.OpaqueType("sngl.IPV6")
-	HostnameType           = cel.OpaqueType("sngl.Hostname")
-	IDNEmailType           = cel.OpaqueType("sngl.IDNEmail")
-	IDNHostnameType        = cel.OpaqueType("sngl.IDNHostname")
-	IRLType                = cel.OpaqueType("sngl.IRL")
-	IRLReferenceType       = cel.OpaqueType("sngl.IRLReference")
-	URLReferenceType       = cel.OpaqueType("sngl.URLReference")
-	URLTemplateType        = cel.OpaqueType("sngl.URLTemplate")
-	CurrencyType           = cel.OpaqueType("sngl.Currency")
-	Country2Type           = cel.OpaqueType("sngl.Country2")
-	Country3Type           = cel.OpaqueType("sngl.Country3")
-	CountrySubdivisionType = cel.OpaqueType("sngl.CountrySubdivision")
-	DecimalType            = cel.OpaqueType("sngl.Decimal")
+const (
+	Dyn    Type = iota // dynamic/unknown type
+	Bool               // bool
+	Int                // int
+	Float              // float
+	String             // string
+	List   // list ([]T)
+	Struct // user-defined struct
+
+	// Special domain types (all stored as strings)
+	Color
+	Date
+	Time
+	DateTime
+	Duration
+	URL
+	Email
+	UUID
+	Regex
+	Base64
+	IPV4
+	IPV6
+	Hostname
+	IDNEmail
+	IDNHostname
+	IRL
+	IRLReference
+	URLReference
+	URLTemplate
+	Currency
+	Country2
+	Country3
+	CountrySubdivision
+	Decimal
 )
 
-// specialTypes is the set of opaque types that strings are assignable to.
-var specialTypes = []*cel.Type{
-	ColorType, DateType, TimeType, DateTimeType, DurationType,
-	URLType, EmailType, UUIDType, RegexType, Base64Type,
-	IPV4Type, IPV6Type, HostnameType, IDNEmailType, IDNHostnameType,
-	IRLType, IRLReferenceType, URLReferenceType, URLTemplateType,
-	CurrencyType, Country2Type, Country3Type, CountrySubdivisionType, DecimalType,
+// typeNames maps Type to display string.
+var typeNames = map[Type]string{
+	Dyn: "dyn", Bool: "bool", Int: "int", Float: "float", String: "string",
+	List: "list", Struct: "struct",
+	Color: "color", Date: "date", Time: "time", DateTime: "dateTime",
+	Duration: "duration", URL: "url", Email: "email", UUID: "uuid",
+	Regex: "regex", Base64: "base64", IPV4: "ipv4", IPV6: "ipv6",
+	Hostname: "hostname", IDNEmail: "idnEmail", IDNHostname: "idnHostname",
+	IRL: "irl", IRLReference: "irlReference", URLReference: "urlReference",
+	URLTemplate: "urlTemplate", Currency: "currency",
+	Country2: "country2", Country3: "country3",
+	CountrySubdivision: "countrySubdivision", Decimal: "decimal",
 }
 
-// TypeHintToCelType maps SNGL type hint strings to CEL types.
-func TypeHintToCelType(hint string) *cel.Type {
+func (t Type) GoString() string { return t.String() }
+func (t Type) String() string {
+	if s, ok := typeNames[t]; ok {
+		return s
+	}
+	return "unknown"
+}
+
+// specialTypes are domain types assignable to/from string.
+var specialTypes = []Type{
+	Color, Date, Time, DateTime, Duration,
+	URL, Email, UUID, Regex, Base64,
+	IPV4, IPV6, Hostname, IDNEmail, IDNHostname,
+	IRL, IRLReference, URLReference, URLTemplate,
+	Currency, Country2, Country3, CountrySubdivision, Decimal,
+}
+
+// TypeFromHint maps a type hint string to a Type.
+func TypeFromHint(hint string) Type {
 	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "list:") {
-		return cel.ListType(cel.DynType)
+		return List
 	}
 	switch hint {
 	case "bool":
-		return cel.BoolType
+		return Bool
 	case "int":
-		return cel.IntType
+		return Int
 	case "float":
-		return cel.DoubleType
+		return Float
 	case "string":
-		return cel.StringType
+		return String
 	case "color":
-		return ColorType
+		return Color
 	case "date":
-		return DateType
+		return Date
 	case "time":
-		return TimeType
+		return Time
 	case "dateTime":
-		return DateTimeType
+		return DateTime
 	case "duration":
-		return DurationType
+		return Duration
 	case "url":
-		return URLType
+		return URL
 	case "email":
-		return EmailType
+		return Email
 	case "uuid":
-		return UUIDType
+		return UUID
 	case "regex":
-		return RegexType
+		return Regex
 	case "base64":
-		return Base64Type
+		return Base64
 	case "ipv4":
-		return IPV4Type
+		return IPV4
 	case "ipv6":
-		return IPV6Type
+		return IPV6
 	case "hostname":
-		return HostnameType
+		return Hostname
 	case "idnEmail":
-		return IDNEmailType
+		return IDNEmail
 	case "idnHostname":
-		return IDNHostnameType
+		return IDNHostname
 	case "irl":
-		return IRLType
+		return IRL
 	case "irlReference":
-		return IRLReferenceType
+		return IRLReference
 	case "urlReference":
-		return URLReferenceType
+		return URLReference
 	case "urlTemplate":
-		return URLTemplateType
+		return URLTemplate
 	case "currency":
-		return CurrencyType
+		return Currency
 	case "country2":
-		return Country2Type
+		return Country2
 	case "country3":
-		return Country3Type
+		return Country3
 	case "countrySubdivision":
-		return CountrySubdivisionType
+		return CountrySubdivision
 	case "decimal":
-		return DecimalType
+		return Decimal
 	case "measurement", "length":
-		return cel.DynType
+		return Dyn
 	default:
-		return cel.DynType
+		return Dyn
 	}
 }
 
-// InferLiteralType returns the CEL type for a Go literal value.
-func InferLiteralType(v any) *cel.Type {
+// InferLiteralType returns the type for a Go literal value.
+func InferLiteralType(v any) Type {
 	switch v.(type) {
 	case bool:
-		return cel.BoolType
+		return Bool
 	case int:
-		return cel.IntType
+		return Int
 	case float64:
-		return cel.DoubleType
+		return Float
 	case string:
-		return cel.StringType
+		return String
 	default:
-		return cel.DynType
+		return Dyn
 	}
 }
 
 // isAssignable reports whether a value of type got can be assigned where expected is required.
-func isAssignable(got, expected *cel.Type) bool {
-	if got.IsEquivalentType(expected) {
+func isAssignable(got, expected Type) bool {
+	if got == expected {
 		return true
 	}
-	if got == cel.DynType || expected == cel.DynType {
+	if got == Dyn || expected == Dyn {
 		return true
 	}
 	// Strings are assignable to special domain types and vice versa.
 	for _, t := range specialTypes {
-		if got.IsEquivalentType(cel.StringType) && expected.IsEquivalentType(t) {
+		if got == String && expected == t {
 			return true
 		}
-		if got.IsEquivalentType(t) && expected.IsEquivalentType(cel.StringType) {
+		if got == t && expected == String {
 			return true
 		}
 	}

@@ -34,15 +34,15 @@ Hyphenated identifiers (`font-size`, `align-items`) are allowed in style propert
 
 ### Literals
 
-| Literal  | Examples                       |
-| -------- | ------------------------------ |
-| int      | `0`, `42`, `-1`                |
-| float    | `1.0`, `-3.14`                 |
-| string   | `"hello"`, `"it's a \"test\""` |
-| bool     | `true`, `false`                |
-| null     | `null`                         |
-| color    | `#ff0000`, `#fff`, `#ff000080` |
-| unit     | `5s`, `100ms`, `12px`, `1.5em` |
+| Literal | Examples                       |
+| ------- | ------------------------------ |
+| int     | `0`, `42`, `-1`                |
+| float   | `1.0`, `-3.14`                 |
+| string  | `"hello"`, `"it's a \"test\""` |
+| bool    | `true`, `false`                |
+| null    | `null`                         |
+| color   | `#ff0000`, `#fff`, `#ff000080` |
+| unit    | `5s`, `100ms`, `12px`, `1.5em` |
 
 Number literals are untyped constants (like Go): `0` defaults to `int`, `1.0` defaults to `float`. All literals carry an intrinsic type — strings are `string`, booleans are `bool`, colors are `color`, etc. Unit literals (a number immediately followed by a suffix) carry a `unit:<suffix>` type hint that is resolved against `unit` declarations. This enables type inference: when a `var` has a default value, the type can be omitted and will be inferred from the expression.
 
@@ -56,7 +56,7 @@ Inside double-quoted strings, `{expr}` evaluates the expression and converts to 
 "{user.name} is {user.age} years old"
 ```
 
-Escape literal braces with `\{`. Interpolated expressions follow the same syntax as regular expressions.
+Escape literal braces with `\{`. Interpolated expressions follow the same syntax as ordinary SNGL expressions.
 
 ### Semicolon Insertion
 
@@ -90,7 +90,7 @@ Reserved words: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `c
 
 ## Expressions
 
-Expressions use Go-like syntax parsed by the SNGL parser (not CEL). The SNGL parser implements a full precedence-climbing expression parser.
+Expressions use Go-like syntax parsed by the SNGL parser. The parser implements a full precedence-climbing expression parser. Expressions are stored as native SNGL AST nodes and type-checked by walking the AST — no external expression engine is used.
 
 ### Operators (by precedence, lowest to highest)
 
@@ -966,4 +966,3 @@ component main {
     computed doubled = count * 2
 }
 ```
-

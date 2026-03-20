@@ -135,6 +135,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		}
 		sb.WriteByte('`')
 		return sb.String()
+	case *ast.ElementRefExpr:
+		return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", n.Name)
 	case *ast.StmtBlock:
 		stmts := translateMutation(n, scope)
 		return strings.Join(stmts, "\n")
@@ -207,6 +209,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	}
 	if fn == "int" && len(args) == 1 {
 		return "Math.trunc(" + translateExpr(args[0], scope) + ")"
+	}
+	if fn == "float" && len(args) == 1 {
+		return "parseFloat(" + translateExpr(args[0], scope) + ")"
 	}
 
 	argStrs := make([]string, len(args))

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The WYSIWYG editor provides a visual, interactive design surface for SNGL documents. Authors can see a live preview of their layout, manipulate components visually, and have the SNGL source updated in real time. It targets the `none/none` compiler backend — no language-specific code generation is involved.
+The WYSIWYG editor provides a visual, interactive design surface for SNGL documents. Authors can see a live preview of their layout, manipulate components visually, and have the SNGL source updated in real time. It uses the compiler's parse and check phases without code generation — the `sngl preview` command renders to HTML for a live browser preview.
 
 ## Architecture
 
@@ -32,8 +32,8 @@ The WYSIWYG editor provides a visual, interactive design surface for SNGL docume
 
 1. **SNGL Editor** — A text editor pane showing the raw SNGL source. Edits here trigger reparse and re-render on the canvas.
 2. **Visual Canvas** — Renders the layout using Yoga for positioning and a platform-native 2D drawing surface. Components are drawn as styled rectangles, text, and controls.
-3. **Compiler Frontend** — The same parse + analyze pipeline used by the compiler and static analysis tool, running in `none/none` mode.
-4. **Preview Renderer** — Takes the analyzed AST, computes Yoga layout, and paints the result to the canvas.
+3. **Compiler Frontend** — The same parse + check pipeline used by the compiler and static analysis tool.
+4. **Preview Renderer** — Takes the checked AST, generates HTML output via the html platform, and renders in a browser.
 
 ## Bidirectional Editing
 

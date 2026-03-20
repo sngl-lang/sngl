@@ -6,18 +6,15 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	emproto "github.com/emicklei/proto"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 // ProtoResult holds the parsed results from a .proto file.
 type ProtoResult struct {
-	Structs  []*ast.StructDef
-	Enums    []*ast.EnumDef
-	FileDesc *descriptorpb.FileDescriptorProto
+	Structs []*ast.StructDef
+	Enums   []*ast.EnumDef
 }
 
-// ParseProtoFile parses a .proto file and returns struct/enum definitions
-// and a FileDescriptorProto for CEL type registration.
+// ParseProtoFile parses a .proto file and returns struct/enum definitions.
 func ParseProtoFile(path string) (*ProtoResult, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -31,50 +28,29 @@ func ParseProtoFile(path string) (*ProtoResult, error) {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 
-	result := &ProtoResult{
-		FileDesc: &descriptorpb.FileDescriptorProto{
-			Name:   new(path),
-			Syntax: new("proto3"),
-		},
-	}
+	result := &ProtoResult{}
 
 	emproto.Walk(def,
 		emproto.WithMessage(func(m *emproto.Message) {
 			sd := &ast.StructDef{Name: m.Name}
-			descMsg := &descriptorpb.DescriptorProto{Name: new(m.Name)}
-			fieldNum := int32(1)
 			for _, el := range m.Elements {
 				if field, ok := el.(*emproto.NormalField); ok {
 					sd.Fields = append(sd.Fields, &ast.StructField{
 						Name: field.Name,
 						Type: protoTypeToHint(field.Type, field.Repeated),
 					})
-					descMsg.Field = append(descMsg.Field, &descriptorpb.FieldDescriptorProto{
-						Name:   new(field.Name),
-						Number: new(fieldNum),
-						Type:   protoTypeToDescType(field.Type),
-						Label:  protoLabel(field.Repeated),
-					})
-					fieldNum++
 				}
 			}
 			result.Structs = append(result.Structs, sd)
-			result.FileDesc.MessageType = append(result.FileDesc.MessageType, descMsg)
 		}),
 		emproto.WithEnum(func(e *emproto.Enum) {
 			ed := &ast.EnumDef{Name: e.Name}
-			descEnum := &descriptorpb.EnumDescriptorProto{Name: new(e.Name)}
 			for _, el := range e.Elements {
 				if val, ok := el.(*emproto.EnumField); ok {
 					ed.Values = append(ed.Values, val.Name)
-					descEnum.Value = append(descEnum.Value, &descriptorpb.EnumValueDescriptorProto{
-						Name:   new(val.Name),
-						Number: new(int32(val.Integer)),
-					})
 				}
 			}
 			result.Enums = append(result.Enums, ed)
-			result.FileDesc.EnumType = append(result.FileDesc.EnumType, descEnum)
 		}),
 	)
 
@@ -105,44 +81,4 @@ func protoScalarToHint(typ string) string {
 	default:
 		return typ
 	}
-}
-
-func protoTypeToDescType(typ string) *descriptorpb.FieldDescriptorProto_Type {
-	var t descriptorpb.FieldDescriptorProto_Type
-	switch typ {
-	case "string":
-		t = descriptorpb.FieldDescriptorProto_TYPE_STRING
-	case "bool":
-		t = descriptorpb.FieldDescriptorProto_TYPE_BOOL
-	case "int32":
-		t = descriptorpb.FieldDescriptorProto_TYPE_INT32
-	case "int64":
-		t = descriptorpb.FieldDescriptorProto_TYPE_INT64
-	case "uint32":
-		t = descriptorpb.FieldDescriptorProto_TYPE_UINT32
-	case "uint64":
-		t = descriptorpb.FieldDescriptorProto_TYPE_UINT64
-	case "sint32":
-		t = descriptorpb.FieldDescriptorProto_TYPE_SINT32
-	case "sint64":
-		t = descriptorpb.FieldDescriptorProto_TYPE_SINT64
-	case "float":
-		t = descriptorpb.FieldDescriptorProto_TYPE_FLOAT
-	case "double":
-		t = descriptorpb.FieldDescriptorProto_TYPE_DOUBLE
-	case "bytes":
-		t = descriptorpb.FieldDescriptorProto_TYPE_BYTES
-	default:
-		t = descriptorpb.FieldDescriptorProto_TYPE_MESSAGE
-	}
-	return &t
-}
-
-func protoLabel(repeated bool) *descriptorpb.FieldDescriptorProto_Label {
-	if repeated {
-		l := descriptorpb.FieldDescriptorProto_LABEL_REPEATED
-		return &l
-	}
-	l := descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL
-	return &l
 }

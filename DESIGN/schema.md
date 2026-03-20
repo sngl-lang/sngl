@@ -33,7 +33,7 @@ All values in SNGL are either:
 - **Expression** — A Go-like expression: `text(value="Hello, {name}!")`
 - **Interpolation** — Inline expression in strings: `"Count: {count}"`
 
-Expressions are first-class syntactic constructs, not string-wrapped.
+Expressions are first-class syntactic constructs stored as native SNGL AST nodes. The type checker infers types by walking the AST — literals carry intrinsic types, identifiers are resolved via scoped variable tracking, and operators produce types based on their operands.
 
 ## Document Structure
 

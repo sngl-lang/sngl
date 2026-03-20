@@ -42,7 +42,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, e
 		}
 		for _, sd := range doc.StyleDefs {
 			styleProps[sd.Name] = StylePropSchema{
-				Type: TypeHintToCelType(sd.TypeHint),
+				Type: TypeFromHint(sd.TypeHint),
 				Enum: sd.Enum,
 			}
 		}
@@ -59,7 +59,7 @@ func componentToSchema(comp *ast.Component) *ComponentSchema {
 	}
 	for _, p := range comp.PropDecls {
 		schema.Props[p.Name] = PropSchema{
-			Type: TypeHintToCelType(p.TypeHint),
+			Type: TypeFromHint(p.TypeHint),
 			Enum: p.Enum,
 		}
 	}

@@ -9,7 +9,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"github.com/google/cel-go/cel"
 )
 
 // Config controls code generation.
@@ -115,9 +114,7 @@ func analyze(doc *ast.Document) *analysisResult {
 	// Computeds
 	for _, c := range doc.Computeds {
 		goType := inferGoType(c.Expr)
-		if goType == "any" && c.Expr.AST != nil {
-			goType = celOutputTypeToGo(c.Expr.AST.OutputType())
-		} else if goType == "any" && c.Expr.SNGL != nil {
+		if goType == "any" && c.Expr.SNGL != nil {
 			goType = snglNodeGoType(c.Expr.SNGL)
 		}
 		info.computeds = append(info.computeds, computedInfo{
@@ -830,42 +827,26 @@ func typeHintToGo(hint string) string {
 	}
 }
 
-func celOutputTypeToGo(t *cel.Type) string {
-	switch {
-	case t.IsEquivalentType(cel.IntType):
+func checkerTypeToGo(t checker.Type) string {
+	switch t {
+	case checker.Int:
 		return "int"
-	case t.IsEquivalentType(cel.DoubleType):
+	case checker.Float:
 		return "float64"
-	case t.IsEquivalentType(cel.BoolType):
+	case checker.Bool:
 		return "bool"
-	case t.IsEquivalentType(cel.StringType):
+	case checker.String, checker.Color,
+		checker.URL, checker.Email, checker.UUID,
+		checker.Regex, checker.Base64, checker.IPV4,
+		checker.IPV6, checker.Hostname, checker.IDNEmail,
+		checker.IDNHostname, checker.IRL, checker.IRLReference,
+		checker.URLReference, checker.URLTemplate,
+		checker.Currency, checker.Country2, checker.Country3,
+		checker.CountrySubdivision, checker.Decimal:
 		return "string"
-	case t.IsEquivalentType(checker.ColorType),
-		t.IsEquivalentType(checker.URLType),
-		t.IsEquivalentType(checker.EmailType),
-		t.IsEquivalentType(checker.UUIDType),
-		t.IsEquivalentType(checker.RegexType),
-		t.IsEquivalentType(checker.Base64Type),
-		t.IsEquivalentType(checker.IPV4Type),
-		t.IsEquivalentType(checker.IPV6Type),
-		t.IsEquivalentType(checker.HostnameType),
-		t.IsEquivalentType(checker.IDNEmailType),
-		t.IsEquivalentType(checker.IDNHostnameType),
-		t.IsEquivalentType(checker.IRLType),
-		t.IsEquivalentType(checker.IRLReferenceType),
-		t.IsEquivalentType(checker.URLReferenceType),
-		t.IsEquivalentType(checker.URLTemplateType),
-		t.IsEquivalentType(checker.CurrencyType),
-		t.IsEquivalentType(checker.Country2Type),
-		t.IsEquivalentType(checker.Country3Type),
-		t.IsEquivalentType(checker.CountrySubdivisionType),
-		t.IsEquivalentType(checker.DecimalType):
-		return "string"
-	case t.IsEquivalentType(checker.DateType),
-		t.IsEquivalentType(checker.TimeType),
-		t.IsEquivalentType(checker.DateTimeType):
+	case checker.Date, checker.Time, checker.DateTime:
 		return "time.Time"
-	case t.IsEquivalentType(checker.DurationType):
+	case checker.Duration:
 		return "time.Duration"
 	default:
 		return "any"

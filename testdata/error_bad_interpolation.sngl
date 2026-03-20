@@ -1,0 +1,1 @@
+var x string = "hello {!!invalid} world" // ERROR(parse) "invalid expression in interpolation"

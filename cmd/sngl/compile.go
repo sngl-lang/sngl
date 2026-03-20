@@ -85,10 +85,12 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			if len(targets) > 1 {
 				targetDoc = doc.Clone()
 			}
-			optimize.Optimize(targetDoc, optimize.Config{
+			if err := optimize.Optimize(targetDoc, optimize.Config{
 				Platform: target.Platform,
 				Language: target.Lang,
-			})
+			}); err != nil {
+				return fmt.Errorf("%s: %w", filename, err)
+			}
 			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
 				return err
 			}

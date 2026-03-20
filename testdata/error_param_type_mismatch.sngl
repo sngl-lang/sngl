@@ -1,0 +1,8 @@
+component Greeting { // ERROR(check) "does not match"
+    param name string = 123
+    text(value=name)
+}
+
+component main {
+    Greeting
+}

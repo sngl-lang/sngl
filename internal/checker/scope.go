@@ -2,37 +2,41 @@ package checker
 
 import "maps"
 
-import "github.com/google/cel-go/cel"
-
 // Scope tracks variable declarations with parent chain for nested contexts.
 type Scope struct {
 	parent *Scope
-	vars   map[string]*cel.Type
+	vars   map[string]Type
 }
 
 // NewScope creates a new scope with an optional parent.
 func NewScope(parent *Scope) *Scope {
-	return &Scope{parent: parent, vars: make(map[string]*cel.Type)}
+	return &Scope{parent: parent, vars: make(map[string]Type)}
 }
 
 // Declare adds a variable to this scope.
-func (s *Scope) Declare(name string, t *cel.Type) {
+func (s *Scope) Declare(name string, t Type) {
 	s.vars[name] = t
 }
 
-// EnvOpts returns cel.Variable options for all variables in the chain.
-func (s *Scope) EnvOpts() []cel.EnvOption {
-	// Collect all vars, child overrides parent.
-	all := make(map[string]*cel.Type)
-	s.collect(all)
-	opts := make([]cel.EnvOption, 0, len(all))
-	for name, t := range all {
-		opts = append(opts, cel.Variable(name, t))
+// Lookup returns the type of a variable, walking the parent chain.
+func (s *Scope) Lookup(name string) (Type, bool) {
+	if t, ok := s.vars[name]; ok {
+		return t, true
 	}
-	return opts
+	if s.parent != nil {
+		return s.parent.Lookup(name)
+	}
+	return Dyn, false
 }
 
-func (s *Scope) collect(all map[string]*cel.Type) {
+// All returns all variables in the chain (child overrides parent).
+func (s *Scope) All() map[string]Type {
+	all := make(map[string]Type)
+	s.collect(all)
+	return all
+}
+
+func (s *Scope) collect(all map[string]Type) {
 	if s.parent != nil {
 		s.parent.collect(all)
 	}

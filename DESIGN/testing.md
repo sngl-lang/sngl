@@ -145,8 +145,9 @@ On failure:
 ## Architecture
 
 - **Parser** (`internal/snglparser`): `test` is a keyword; `parseTestDef()` produces `ast.TestDef` nodes
-- **Checker** (`internal/checker`): `CheckTests()` validates test references against component declarations
-- **Interpreter** (`internal/testrunner`): Tree-walking evaluator (`Env.Eval`, `Env.Exec`) executes test bodies headlessly
+- **Checker** (`internal/checker`): `CheckTests()` validates test references against component declarations. Type checking walks SNGL expression AST nodes directly.
+- **Interpreter** (`codegen/platform/none/testrunner`): Tree-walking evaluator executes test bodies headlessly against component state
+- **Platform test runners**: HTML platform runs tests via CDP (go-rod) in a browser; bubbletea platform runs tests via Go `testing` codegen
 - **CLI** (`cmd/sngl/test.go`): Discovers files, merges sibling component definitions, runs tests
 
 ## JSON Output

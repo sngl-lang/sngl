@@ -37,6 +37,6 @@ func Check(doc *ast.Document, dir string) error {
 type OptimizeConfig = optimize.Config
 
 // Optimize applies platform-specific transformations to a parsed and checked document.
-func Optimize(doc *ast.Document, cfg OptimizeConfig) {
-	optimize.Optimize(doc, cfg)
+func Optimize(doc *ast.Document, cfg OptimizeConfig) error {
+	return optimize.Optimize(doc, cfg)
 }

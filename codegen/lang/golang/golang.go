@@ -140,6 +140,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 			return fmt.Sprintf("%q", fmtStr.String())
 		}
 		return "fmt.Sprintf(" + fmt.Sprintf("%q", fmtStr.String()) + ", " + strings.Join(fmtArgs, ", ") + ")"
+	case *ast.ElementRefExpr:
+		return fmt.Sprintf("elementRef(%q)", n.Name)
 	case *ast.StmtBlock:
 		stmts := translateMutation(n, scope)
 		return strings.Join(stmts, "\n")
@@ -184,6 +186,11 @@ func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
 		return scope.EventVar
 	}
 	if scope.LocalVars[name] {
+		if scope.Renames != nil {
+			if renamed, ok := scope.Renames[name]; ok {
+				return renamed
+			}
+		}
 		return name
 	}
 	if scope.ComputedFields[name] {
@@ -207,6 +214,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	}
 	if fn == "int" && len(args) == 1 {
 		return "int(" + translateExpr(args[0], scope) + ")"
+	}
+	if fn == "float" && len(args) == 1 {
+		return "float64(" + translateExpr(args[0], scope) + ")"
 	}
 
 	argStrs := make([]string, len(args))

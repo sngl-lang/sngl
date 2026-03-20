@@ -78,10 +78,13 @@ func compile(this js.Value, args []js.Value) any {
 	}
 
 	clone := doc.Clone()
-	optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(clone, optimize.Config{
 		Platform: "html",
 		Language: "js",
-	})
+	}); err != nil {
+		result["error"] = err.Error()
+		return toJSObject(result)
+	}
 
 	gen := codegen.LookupPlatform("html")
 	if gen == nil {
@@ -182,10 +185,13 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	clone := doc.Clone()
-	optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(clone, optimize.Config{
 		Platform: platName,
 		Language: langName,
-	})
+	}); err != nil {
+		result["error"] = err.Error()
+		return toJSObject(result)
+	}
 
 	gen := codegen.LookupPlatform(platName)
 	if gen == nil {

@@ -1,0 +1,1 @@
+var x string = "hello // ERROR(parse) "expected"

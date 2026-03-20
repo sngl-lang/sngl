@@ -1,79 +1,265 @@
 package optimize
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
-	"github.com/google/cel-go/cel"
-	celast "github.com/google/cel-go/common/ast"
 )
 
-// constantIdents is the set of identifiers that are compile-time constants.
-var constantIdents = map[string]bool{
-	"PLATFORM": true,
-	"LANGUAGE": true,
-}
-
-// isConstExpr reports whether the CEL expression references only compile-time
-// constant identifiers (PLATFORM, LANGUAGE) and literal values. Comprehensions
-// and unknown identifiers cause it to return false.
-func isConstExpr(expr celast.Expr) bool {
-	switch expr.Kind() {
-	case celast.LiteralKind:
+// isConstExpr reports whether the SNGL expression references only compile-time
+// constant identifiers (PLATFORM, LANGUAGE) and literal values.
+func isConstExpr(n ast.Node, vars map[string]any) bool {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
 		return true
-	case celast.IdentKind:
-		return constantIdents[expr.AsIdent()]
-	case celast.CallKind:
-		call := expr.AsCall()
-		if call.IsMemberFunction() {
-			if !isConstExpr(call.Target()) {
-				return false
-			}
-		}
-		for _, arg := range call.Args() {
-			if !isConstExpr(arg) {
+	case *ast.IdentExpr:
+		_, ok := vars[e.Name]
+		return ok
+	case *ast.BinaryExpr:
+		return isConstExpr(e.Left, vars) && isConstExpr(e.Right, vars)
+	case *ast.UnaryExpr:
+		return isConstExpr(e.Operand, vars)
+	case *ast.TernaryExpr:
+		return isConstExpr(e.Cond, vars) && isConstExpr(e.Then, vars) && isConstExpr(e.Else, vars)
+	case *ast.CallExpr:
+		for _, arg := range e.Args {
+			if !isConstExpr(arg, vars) {
 				return false
 			}
 		}
 		return true
-	case celast.SelectKind:
-		return isConstExpr(expr.AsSelect().Operand())
-	case celast.ListKind:
-		for _, elem := range expr.AsList().Elements() {
-			if !isConstExpr(elem) {
+	case *ast.InterpolationExpr:
+		for _, p := range e.Parts {
+			if !isConstExpr(p, vars) {
 				return false
 			}
 		}
 		return true
-	case celast.MapKind:
-		for _, entry := range expr.AsMap().Entries() {
-			if !isConstExpr(entry.AsMapEntry().Key()) {
-				return false
-			}
-			if !isConstExpr(entry.AsMapEntry().Value()) {
+	case *ast.ListExpr:
+		for _, el := range e.Elements {
+			if !isConstExpr(el, vars) {
 				return false
 			}
 		}
 		return true
-	case celast.ComprehensionKind:
-		return false
 	default:
 		return false
 	}
 }
 
-// evalConst evaluates a constant CEL expression and returns the result.
+// evalConst evaluates a constant SNGL expression and returns the result.
 // It returns (nil, false) if the expression cannot be evaluated.
-func evalConst(env *cel.Env, expr *ast.Expr, vars map[string]any) (any, bool) {
-	celAst := expr.AST
-	if celAst == nil {
+func evalConst(n ast.Node, vars map[string]any) (any, bool) {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		return e.Value, true
+	case *ast.IdentExpr:
+		v, ok := vars[e.Name]
+		return v, ok
+	case *ast.BinaryExpr:
+		left, lok := evalConst(e.Left, vars)
+		right, rok := evalConst(e.Right, vars)
+		if !lok || !rok {
+			return nil, false
+		}
+		return evalBinaryOp(e.Op, left, right)
+	case *ast.UnaryExpr:
+		operand, ok := evalConst(e.Operand, vars)
+		if !ok {
+			return nil, false
+		}
+		return evalUnaryOp(e.Op, operand)
+	case *ast.TernaryExpr:
+		cond, ok := evalConst(e.Cond, vars)
+		if !ok {
+			return nil, false
+		}
+		if b, ok := cond.(bool); ok {
+			if b {
+				return evalConst(e.Then, vars)
+			}
+			return evalConst(e.Else, vars)
+		}
+		return nil, false
+	case *ast.InterpolationExpr:
+		var result string
+		for _, p := range e.Parts {
+			v, ok := evalConst(p, vars)
+			if !ok {
+				return nil, false
+			}
+			result += toStr(v)
+		}
+		return result, true
+	default:
 		return nil, false
 	}
-	prg, err := env.Program(celAst)
-	if err != nil {
-		return nil, false
+}
+
+func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
+	switch op {
+	case ast.BinEq:
+		return left == right, true
+	case ast.BinNeq:
+		return left != right, true
+	case ast.BinAnd:
+		lb, lok := left.(bool)
+		rb, rok := right.(bool)
+		if lok && rok {
+			return lb && rb, true
+		}
+	case ast.BinOr:
+		lb, lok := left.(bool)
+		rb, rok := right.(bool)
+		if lok && rok {
+			return lb || rb, true
+		}
+	case ast.BinAdd:
+		if ls, ok := left.(string); ok {
+			if rs, ok := right.(string); ok {
+				return ls + rs, true
+			}
+		}
+		return numericOp(op, left, right)
+	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
+		return numericOp(op, left, right)
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		return compareOp(op, left, right)
 	}
-	out, _, err := prg.Eval(vars)
-	if err != nil {
-		return nil, false
+	return nil, false
+}
+
+func numericOp(op ast.BinaryOp, left, right any) (any, bool) {
+	li, lok := toInt(left)
+	ri, rok := toInt(right)
+	if lok && rok {
+		switch op {
+		case ast.BinAdd:
+			return li + ri, true
+		case ast.BinSub:
+			return li - ri, true
+		case ast.BinMul:
+			return li * ri, true
+		case ast.BinDiv:
+			if ri == 0 {
+				return nil, false
+			}
+			return li / ri, true
+		case ast.BinMod:
+			if ri == 0 {
+				return nil, false
+			}
+			return li % ri, true
+		}
 	}
-	return out.Value(), true
+	lf, lok := toFloat(left)
+	rf, rok := toFloat(right)
+	if lok && rok {
+		switch op {
+		case ast.BinAdd:
+			return lf + rf, true
+		case ast.BinSub:
+			return lf - rf, true
+		case ast.BinMul:
+			return lf * rf, true
+		case ast.BinDiv:
+			if rf == 0 {
+				return nil, false
+			}
+			return lf / rf, true
+		}
+	}
+	return nil, false
+}
+
+func compareOp(op ast.BinaryOp, left, right any) (any, bool) {
+	li, lok := toInt(left)
+	ri, rok := toInt(right)
+	if lok && rok {
+		switch op {
+		case ast.BinLt:
+			return li < ri, true
+		case ast.BinLte:
+			return li <= ri, true
+		case ast.BinGt:
+			return li > ri, true
+		case ast.BinGte:
+			return li >= ri, true
+		}
+	}
+	lf, lok := toFloat(left)
+	rf, rok := toFloat(right)
+	if lok && rok {
+		switch op {
+		case ast.BinLt:
+			return lf < rf, true
+		case ast.BinLte:
+			return lf <= rf, true
+		case ast.BinGt:
+			return lf > rf, true
+		case ast.BinGte:
+			return lf >= rf, true
+		}
+	}
+	if ls, ok := left.(string); ok {
+		if rs, ok := right.(string); ok {
+			switch op {
+			case ast.BinLt:
+				return ls < rs, true
+			case ast.BinLte:
+				return ls <= rs, true
+			case ast.BinGt:
+				return ls > rs, true
+			case ast.BinGte:
+				return ls >= rs, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func evalUnaryOp(op ast.UnaryOp, operand any) (any, bool) {
+	switch op {
+	case ast.UnaryNot:
+		if b, ok := operand.(bool); ok {
+			return !b, true
+		}
+	case ast.UnaryNeg:
+		if i, ok := operand.(int); ok {
+			return -i, true
+		}
+		if f, ok := operand.(float64); ok {
+			return -f, true
+		}
+	}
+	return nil, false
+}
+
+func toInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case int:
+		return n, true
+	default:
+		return 0, false
+	}
+}
+
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	default:
+		return 0, false
+	}
+}
+
+func toStr(v any) string {
+	switch s := v.(type) {
+	case string:
+		return s
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

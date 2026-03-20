@@ -9,7 +9,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
-	"github.com/google/cel-go/cel"
 )
 
 // ImportResolver loads all .sngl documents from a directory import path.
@@ -46,7 +45,7 @@ func DefaultResolver() ImportResolver {
 }
 
 // Check type-checks an SNGL document AST. It resolves types for all declarations,
-// validates CEL expressions against typed scopes, and checks visual nodes against
+// validates expressions against typed scopes, and checks visual nodes against
 // component schemas. dir is the directory of the .sngl file, used to resolve
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
@@ -158,7 +157,6 @@ type checker struct {
 	components []*ast.Component
 	structs    []*ast.StructDef
 	enums      []*ast.EnumDef
-	protoDescs []any // *descriptorpb.FileDescriptorProto for cel.TypeDescs
 	dir        string
 	resolve    ImportResolver
 	visited    map[string]bool // tracks visited import paths to detect cycles
@@ -197,7 +195,6 @@ func (c *checker) pass1(doc *ast.Document) {
 			}
 			c.structs = append(c.structs, result.Structs...)
 			c.enums = append(c.enums, result.Enums...)
-			c.protoDescs = append(c.protoDescs, result.FileDesc)
 		} else {
 			// Directory import: load all .sngl files from the directory
 			if c.resolve == nil {
@@ -220,21 +217,13 @@ func (c *checker) pass1(doc *ast.Document) {
 				c.enums = append(c.enums, d.Enums...)
 				for _, comp := range d.Components {
 					c.components = append(c.components, comp)
-					// Register imported component schema
 					schema := &ComponentSchema{
 						Props:    make(map[string]PropSchema),
 						Events:   map[string]string{},
 						Children: ChildrenMany,
 					}
 					for _, p := range comp.Params {
-						var t *cel.Type
-						if p.Default.TypeHint != "" {
-							t = c.resolveTypeHint(p.Default.TypeHint)
-						} else if p.Default.Literal != nil {
-							t = InferLiteralType(p.Default.Literal)
-						} else {
-							t = cel.DynType
-						}
+						t := c.resolveParamType(p)
 						schema.Props[p.Name] = PropSchema{Type: t}
 					}
 					c.registry[comp.Name] = schema
@@ -255,7 +244,6 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.errorAt(d.Pos, "data %q: trigger on extern field is not allowed", d.Name)
 		}
 		if d.Extern || d.IsFunc {
-			// Extern fields/funcs: declare in scope with resolved type
 			t := c.resolveTypeHint(d.Init.TypeHint)
 			c.scope.Declare(d.Name, t)
 			continue
@@ -281,14 +269,15 @@ func (c *checker) pass1(doc *ast.Document) {
 			Children: ChildrenMany,
 		}
 		for _, p := range comp.Params {
-			var t *cel.Type
-			if p.Default.TypeHint != "" {
-				t = c.resolveTypeHint(p.Default.TypeHint)
-			} else if p.Default.Literal != nil {
-				t = InferLiteralType(p.Default.Literal)
-			} else {
-				t = cel.DynType
+			t := c.resolveParamType(p)
+			if p.Default.TypeHint != "" && p.Default.Literal != nil {
+				litType := InferLiteralType(p.Default.Literal)
+				if !isAssignable(litType, t) {
+					c.errorAt(comp.Pos, "param %q: default value type %v does not match declared type %q", p.Name, litType, p.Default.TypeHint)
+				}
 			}
+			c.validateEnumLiteral(comp.Pos, &p.Default)
+			c.validateSpecialLiteral(comp.Pos, &p.Default)
 			schema.Props[p.Name] = PropSchema{Type: t}
 		}
 		c.registry[comp.Name] = schema
@@ -307,31 +296,37 @@ func (c *checker) pass1(doc *ast.Document) {
 	}
 }
 
-// resolveTypeHint maps a type hint string to a CEL type, checking named enums
-// and inline enum syntax before falling back to TypeHintToCelType.
-func (c *checker) resolveTypeHint(hint string) *cel.Type {
+// resolveParamType returns the type for a component param.
+func (c *checker) resolveParamType(p *ast.Param) Type {
+	if p.Default.TypeHint != "" {
+		return c.resolveTypeHint(p.Default.TypeHint)
+	}
+	if p.Default.Literal != nil {
+		return InferLiteralType(p.Default.Literal)
+	}
+	return Dyn
+}
+
+// resolveTypeHint maps a type hint string to a Type, checking named enums
+// and inline enum syntax before falling back to TypeFromHint.
+func (c *checker) resolveTypeHint(hint string) Type {
 	// Named enum
 	for _, e := range c.enums {
 		if e.Name == hint {
-			return cel.StringType
+			return String
 		}
 	}
 	// Inline enum: enum:val1|val2|val3
 	if strings.HasPrefix(hint, "enum:") {
-		return cel.StringType
+		return String
 	}
-	return TypeHintToCelType(hint)
+	return TypeFromHint(hint)
 }
 
-// resolveExprType determines the type of an expression, type-checking CEL if needed.
-func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) *cel.Type {
-	if expr.CEL != "" {
-		t, err := checkExpr(c.scope, expr, c.structs, c.protoDescs)
-		if err != nil {
-			c.errorAt(pos, "%v", err)
-			return cel.DynType
-		}
-		return t
+// resolveExprType determines the type of an expression.
+func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) Type {
+	if expr.SNGL != nil {
+		return c.inferNodeType(expr.SNGL)
 	}
 	if expr.TypeHint != "" {
 		return c.resolveTypeHint(expr.TypeHint)
@@ -339,7 +334,102 @@ func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) *cel.Type {
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)
 	}
-	return cel.DynType
+	return Dyn
+}
+
+// inferNodeType walks a SNGL AST node and returns its inferred type.
+func (c *checker) inferNodeType(n ast.Node) Type {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		switch e.Kind {
+		case ast.LiteralBool:
+			return Bool
+		case ast.LiteralInt:
+			return Int
+		case ast.LiteralFloat:
+			return Float
+		case ast.LiteralString:
+			return String
+		case ast.LiteralNull:
+			return Dyn
+		case ast.LiteralColor:
+			return Color
+		case ast.LiteralUnit:
+			return String // units are string-like
+		default:
+			return Dyn
+		}
+	case *ast.IdentExpr:
+		if t, ok := c.scope.Lookup(e.Name); ok {
+			return t
+		}
+		// Built-in compile-time constants
+		if e.Name == "PLATFORM" || e.Name == "LANGUAGE" {
+			return String
+		}
+		return Dyn
+	case *ast.BinaryExpr:
+		switch e.Op {
+		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte,
+			ast.BinAnd, ast.BinOr:
+			return Bool
+		default:
+			left := c.inferNodeType(e.Left)
+			right := c.inferNodeType(e.Right)
+			if left == Float || right == Float {
+				return Float
+			}
+			if left == Int && right == Int {
+				return Int
+			}
+			if left == String && right == String && e.Op == ast.BinAdd {
+				return String
+			}
+			return Dyn
+		}
+	case *ast.UnaryExpr:
+		if e.Op == ast.UnaryNot {
+			return Bool
+		}
+		return c.inferNodeType(e.Operand)
+	case *ast.TernaryExpr:
+		return c.inferNodeType(e.Then)
+	case *ast.CallExpr:
+		switch e.Func {
+		case "string":
+			return String
+		case "int":
+			return Int
+		case "float":
+			return Float
+		case "size":
+			return Int
+		default:
+			return Dyn
+		}
+	case *ast.MethodExpr:
+		switch e.Method {
+		case "contains", "startsWith", "endsWith":
+			return Bool
+		case "size":
+			return Int
+		}
+		return Dyn
+	case *ast.SelectExpr:
+		return Dyn
+	case *ast.IndexExpr:
+		return Dyn
+	case *ast.ListExpr:
+		return List
+	case *ast.StructExpr:
+		return Struct
+	case *ast.InterpolationExpr:
+		return String
+	case *ast.ElementRefExpr:
+		return Dyn
+	default:
+		return Dyn
+	}
 }
 
 // validateEnumLiteral checks that a literal value is valid for an enum type hint.
@@ -401,18 +491,9 @@ func (c *checker) pass2(doc *ast.Document) {
 		}
 	}
 	for _, comp := range doc.Components {
-		// Create scope with component params declared
 		compScope := NewScope(c.scope)
 		for _, p := range comp.Params {
-			var t *cel.Type
-			if p.Default.TypeHint != "" {
-				t = c.resolveTypeHint(p.Default.TypeHint)
-			} else if p.Default.Literal != nil {
-				t = InferLiteralType(p.Default.Literal)
-			} else {
-				t = cel.DynType
-			}
-			compScope.Declare(p.Name, t)
+			compScope.Declare(p.Name, c.resolveParamType(p))
 		}
 		for _, child := range comp.Body {
 			c.checkVisualNode(child, compScope)
@@ -429,13 +510,13 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Universal attributes
 	if vn.Class != nil {
-		c.checkExprType(vn.Pos, vn.Class, cel.StringType, scope, "class")
+		c.checkExprType(vn.Pos, vn.Class, String, scope, "class")
 	}
 	if vn.Ref != nil {
-		c.checkExprType(vn.Pos, vn.Ref, cel.StringType, scope, "ref")
+		c.checkExprType(vn.Pos, vn.Ref, String, scope, "ref")
 	}
 	if vn.If != nil {
-		c.checkExprType(vn.Pos, vn.If, cel.BoolType, scope, "if")
+		c.checkExprType(vn.Pos, vn.If, Bool, scope, "if")
 	}
 
 	// For clause
@@ -443,18 +524,18 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	if vn.For != nil {
 		c.resolveExprInScope(vn.Pos, &vn.For.Iterable, scope)
 		childScope = NewScope(scope)
-		childScope.Declare(vn.For.Variable, cel.DynType)
+		childScope.Declare(vn.For.Variable, Dyn)
 		if vn.For.IndexVar != "" {
-			childScope.Declare(vn.For.IndexVar, cel.IntType)
+			childScope.Declare(vn.For.IndexVar, Int)
 		}
 	}
 
-	// Key is checked in childScope so it can reference for-loop variables
+	// Key
 	if vn.Key != nil {
-		c.checkExprType(vn.Pos, vn.Key, cel.DynType, childScope, "key")
+		c.checkExprType(vn.Pos, vn.Key, Dyn, childScope, "key")
 	}
 
-	// Props (use childScope so for-loop variables are visible)
+	// Props
 	for name, expr := range vn.Props {
 		ps, ok := schema.Props[name]
 		if !ok {
@@ -465,7 +546,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		vn.Props[name] = expr
 	}
 
-	// Required params (user-defined components)
+	// Required params
 	if comp := c.findComponent(vn.Component); comp != nil {
 		for _, p := range comp.Params {
 			if p.Required {
@@ -482,18 +563,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 			c.errorAt(vn.Pos, "%s: unknown event %q", vn.Component, name)
 			continue
 		}
-		eventScope := NewScope(childScope)
-		eventScope.Declare("event", cel.DynType)
-		if expr.CEL != "" {
-			t, err := checkExpr(eventScope, &expr, c.structs, c.protoDescs)
-			if err != nil {
-				c.errorAt(vn.Pos, "%s on:%s: %v", vn.Component, name, err)
-			} else if !isMutationType(t) {
-				c.errorAt(vn.Pos, "%s on:%s: handler must return Mutation or list(Mutation), got %s", vn.Component, name, t)
-			}
-		} else if expr.SNGL != nil {
-			if !isMutationNode(expr.SNGL) {
-				c.errorAt(vn.Pos, "%s on:%s: handler must return Mutation or list(Mutation)", vn.Component, name)
+		if expr.SNGL != nil {
+			if !isStatement(expr.SNGL) {
+				c.errorAt(vn.Pos, "%s on:%s: handler must be a statement (assignment, toggle, or emit)", vn.Component, name)
 			}
 		}
 		vn.Events[name] = expr
@@ -538,22 +610,17 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 }
 
 // checkExprType resolves an expression's type and checks it matches the expected type.
-func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected *cel.Type, scope *Scope, context string) {
+func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected Type, scope *Scope, context string) {
 	got := c.resolveExprInScope(pos, expr, scope)
 	if !isAssignable(got, expected) {
 		c.errorAt(pos, "%s: expected %s, got %s", context, expected, got)
 	}
 }
 
-// resolveExprInScope type-checks a CEL expression or infers a literal's type within a given scope.
-func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) *cel.Type {
-	if expr.CEL != "" {
-		t, err := checkExpr(scope, expr, c.structs, c.protoDescs)
-		if err != nil {
-			c.errorAt(pos, "%v", err)
-			return cel.DynType
-		}
-		return t
+// resolveExprInScope infers a SNGL expression's type within a given scope.
+func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) Type {
+	if expr.SNGL != nil {
+		return c.inferNodeTypeInScope(expr.SNGL, scope)
 	}
 	if expr.TypeHint != "" {
 		return c.resolveTypeHint(expr.TypeHint)
@@ -561,7 +628,102 @@ func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) 
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)
 	}
-	return cel.DynType
+	return Dyn
+}
+
+// inferNodeTypeInScope walks a SNGL AST node and returns its inferred type,
+// using the given scope for variable lookups.
+func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		switch e.Kind {
+		case ast.LiteralBool:
+			return Bool
+		case ast.LiteralInt:
+			return Int
+		case ast.LiteralFloat:
+			return Float
+		case ast.LiteralString:
+			return String
+		case ast.LiteralNull:
+			return Dyn
+		case ast.LiteralColor:
+			return Color
+		case ast.LiteralUnit:
+			return String
+		default:
+			return Dyn
+		}
+	case *ast.IdentExpr:
+		if t, ok := scope.Lookup(e.Name); ok {
+			return t
+		}
+		if e.Name == "PLATFORM" || e.Name == "LANGUAGE" {
+			return String
+		}
+		return Dyn
+	case *ast.BinaryExpr:
+		switch e.Op {
+		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte,
+			ast.BinAnd, ast.BinOr:
+			return Bool
+		default:
+			left := c.inferNodeTypeInScope(e.Left, scope)
+			right := c.inferNodeTypeInScope(e.Right, scope)
+			if left == Float || right == Float {
+				return Float
+			}
+			if left == Int && right == Int {
+				return Int
+			}
+			if left == String && right == String && e.Op == ast.BinAdd {
+				return String
+			}
+			return Dyn
+		}
+	case *ast.UnaryExpr:
+		if e.Op == ast.UnaryNot {
+			return Bool
+		}
+		return c.inferNodeTypeInScope(e.Operand, scope)
+	case *ast.TernaryExpr:
+		return c.inferNodeTypeInScope(e.Then, scope)
+	case *ast.CallExpr:
+		switch e.Func {
+		case "string":
+			return String
+		case "int":
+			return Int
+		case "float":
+			return Float
+		case "size":
+			return Int
+		default:
+			return Dyn
+		}
+	case *ast.MethodExpr:
+		switch e.Method {
+		case "contains", "startsWith", "endsWith":
+			return Bool
+		case "size":
+			return Int
+		}
+		return Dyn
+	case *ast.SelectExpr:
+		return Dyn
+	case *ast.IndexExpr:
+		return Dyn
+	case *ast.ListExpr:
+		return List
+	case *ast.StructExpr:
+		return Struct
+	case *ast.InterpolationExpr:
+		return String
+	case *ast.ElementRefExpr:
+		return Dyn
+	default:
+		return Dyn
+	}
 }
 
 // findComponent returns the AST component definition for a user-defined component, or nil.
@@ -574,8 +736,8 @@ func (c *checker) findComponent(name string) *ast.Component {
 	return nil
 }
 
-// isMutationNode checks if an SNGL AST node represents a mutation statement.
-func isMutationNode(n ast.Node) bool {
+// isStatement checks if an SNGL AST node represents a mutation statement.
+func isStatement(n ast.Node) bool {
 	switch e := n.(type) {
 	case *ast.AssignStmt:
 		return true
@@ -585,7 +747,7 @@ func isMutationNode(n ast.Node) bool {
 		return true
 	case *ast.StmtBlock:
 		for _, s := range e.Stmts {
-			if !isMutationNode(s) {
+			if !isStatement(s) {
 				return false
 			}
 		}
@@ -593,15 +755,4 @@ func isMutationNode(n ast.Node) bool {
 	default:
 		return false
 	}
-}
-
-// isMutationType checks if a type is Mutation or list(Mutation).
-func isMutationType(t *cel.Type) bool {
-	if t.IsEquivalentType(MutationType) {
-		return true
-	}
-	if t.IsEquivalentType(cel.ListType(MutationType)) {
-		return true
-	}
-	return false
 }

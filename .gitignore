@@ -2,6 +2,7 @@ tmp/
 _site/
 /model.go
 /sngl
+/playground
 /todo
 /_examples/todo/todo
 snapshots/

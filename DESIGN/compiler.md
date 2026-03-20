@@ -15,25 +15,25 @@ SNGL Source
 └────┬─────┘
      ▼
 ┌──────────────┐
-│   Analyzer   │  Type-check, dependency graph, expression validation
+│   Checker    │  Type-check expressions, validate component schemas
 └────┬─────────┘
      ▼
 ┌──────────────┐
-│ IR Lowering  │  SNGL AST → Compiler IR (platform/language agnostic)
+│  Optimizer   │  Constant folding, dead code elimination (PLATFORM/LANGUAGE)
 └────┬─────────┘
      ▼
 ┌────────────────────────────────┐
-│  Language Backend + Platform   │  IR → target artifacts
-│  Backend (selected by target)  │
+│  Language Translator +         │  AST → target artifacts
+│  Platform Generator            │
 └────────────────────────────────┘
 ```
 
 ### Phases
 
-1. **Parse** — Read SNGL source, produce an untyped AST. Nodes, props, state declarations, and expressions are all captured. Event handlers (`@event={ stmts }`) are parsed as statement blocks.
-2. **Analyze** — Resolve component references (builtins + user-defined), type-check properties and state against component schemas, validate expressions, build the reactive dependency graph.
-3. **Lower to IR** — Produce a normalized intermediate representation that captures the full semantic intent: node creation order, binding subscriptions, event handler wiring, layout constraints. The IR is independent of any target.
-4. **Emit** — A language backend and platform backend collaborate to produce final artifacts.
+1. **Parse** — Read SNGL source, produce a typed AST via recursive-descent parser. Nodes, props, state declarations, and expressions (including string interpolation) are all captured as SNGL AST nodes. Event handlers (`@event={ stmts }`) are parsed as statement blocks. Numeric overflows and unterminated strings are rejected at parse time.
+2. **Check** — Resolve component references (builtins + user-defined + imported), type-check properties and state against component schemas, validate SNGL expressions against a custom type system with scoped variable tracking. Broken string interpolation is rejected.
+3. **Optimize** — Evaluate compile-time constants (`PLATFORM`, `LANGUAGE`), fold constant expressions (binary, ternary, interpolation), eliminate dead `if` branches and empty `for` loops. The optimizer walks the SNGL AST directly — no external expression engine.
+4. **Generate** — A language translator and platform generator collaborate to produce final artifacts. Language translators convert SNGL expressions to target syntax; platform generators produce complete output files.
 
 ## Targets
 
@@ -51,18 +51,21 @@ A **target** is a (language, platform) pair. Examples:
 
 The `none/none` target performs all phases except emission and is used by the static analysis and WYSIWYG tools.
 
-## Language Backends
+## Language Translators
 
-A language backend is responsible for:
+A language translator (`codegen.LangTranslator`) is responsible for:
 
-- **Expression translation** — Convert SNGL expression ASTs into equivalent expressions in the target language.
-- **State codegen** — Emit reactive subscription/update code using the target language's idioms (closures, lambdas, observer patterns).
-- **Handler stubs** — Generate typed interfaces or function signatures for `extern` handlers that the application author implements in the target language.
-- **Type mapping** — Map SNGL types to native types.
+- **Expression translation** — Convert SNGL expression AST nodes into equivalent expressions in the target language (e.g., `int()` → `Math.trunc()` in JS, `int()` in Go; `float()` → `parseFloat()` in JS, `float64()` in Go).
+- **Mutation translation** — Convert assignment, toggle, push/remove, and emit statements to target syntax.
+- **Literal translation** — Format SNGL literal values in target syntax.
+- **Type mapping** — Map SNGL type hints to native types (`TypeToNative`).
+- **Name export** — Convert SNGL identifiers to target conventions (`ExportName` — capitalize for Go, identity for JS).
+
+Translators register via `init()` and are looked up by name at runtime. Current implementations: `js` (JavaScript) and `go` (Go).
 
 ### Expression Translation
 
-SNGL expressions are Go-like and handle simple logic: conditional text, computed properties, validation predicates. The language backend translates each expression into a native expression at compile time.
+SNGL expressions are Go-like and handle simple logic: conditional text, computed properties, validation predicates. The language translator walks SNGL AST nodes (`*ast.BinaryExpr`, `*ast.CallExpr`, `*ast.InterpolationExpr`, etc.) and produces target-language source strings. Scope context (`codegen.ExprScope`) tracks which identifiers are model fields, computed fields, local variables, or renames.
 
 ### Handler Delegation
 

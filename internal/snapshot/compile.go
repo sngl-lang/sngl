@@ -26,10 +26,12 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 
 	previewDoc := doc.Clone()
-	optimize.Optimize(previewDoc, optimize.Config{
+	if err := optimize.Optimize(previewDoc, optimize.Config{
 		Platform: platform,
 		Language: lang,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("optimize: %w", err)
+	}
 
 	jsLang := codegen.LookupLang("js")
 	htmlPlat := codegen.LookupPlatform("html")

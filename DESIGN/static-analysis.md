@@ -9,20 +9,21 @@ The static analysis tool validates SNGL documents without producing any compiled
 The static analysis tool reuses the compiler's frontend:
 
 ```
-SNGL Source → Parser → Analyzer → Diagnostics
+SNGL Source → Parser → Checker → Diagnostics
 ```
 
-No IR lowering or emission occurs. The analyzer produces a fully typed, dependency-resolved AST and a list of diagnostics. The static analysis tool adds additional lint-style checks on top of the compiler's type checking.
+No optimization or code generation occurs. The checker produces a fully typed AST and a list of diagnostics. The checker walks SNGL expression AST nodes directly using a custom type system (no external expression engine). The static analysis tool adds additional lint-style checks on top of the checker's type validation.
 
 ## Capabilities
 
 ### Type Checking
 
-- Validate all expressions against their expected types
-- Verify property types match component schemas
+- Validate all SNGL expressions against their expected types by walking the AST
+- Verify property types match component schemas (including string interpolation)
 - Check that `var` initial values and `computed` expressions type-check
+- Validate `param` default values match their declared types
 - Ensure event handler expressions produce valid mutation targets
-- Validate protobuf message field references
+- Validate enum literals and special type literals (color, date, url, etc.)
 
 ### Dependency Analysis
 

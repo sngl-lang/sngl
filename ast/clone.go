@@ -4,8 +4,7 @@ import "maps"
 
 // Clone returns a deep copy of the Document. All slices, maps, and pointer
 // fields are duplicated so that mutations to the clone do not affect the
-// original. *cel.Ast pointers are shared because they are immutable after
-// checking.
+// original.
 func (d *Document) Clone() *Document {
 	if d == nil {
 		return nil

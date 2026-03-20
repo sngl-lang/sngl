@@ -2,7 +2,6 @@ package optimize
 
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
-	"github.com/google/cel-go/cel"
 )
 
 // Config holds compile-time constants for the optimization pass.
@@ -11,14 +10,10 @@ type Config struct {
 	Language string // "js", "go"
 }
 
-// Optimize mutates doc in place: evaluates constant CEL expressions referencing
+// Optimize mutates doc in place: evaluates constant SNGL expressions referencing
 // PLATFORM/LANGUAGE and eliminates dead branches. Callers targeting multiple
 // outputs should Clone the document first.
-func Optimize(doc *ast.Document, cfg Config) {
-	env, err := buildEnv()
-	if err != nil {
-		return // silently skip optimization if env creation fails
-	}
+func Optimize(doc *ast.Document, cfg Config) error {
 	vars := map[string]any{
 		"PLATFORM": cfg.Platform,
 		"LANGUAGE": cfg.Language,
@@ -26,86 +21,74 @@ func Optimize(doc *ast.Document, cfg Config) {
 
 	// Fold constant expressions in data fields and computeds.
 	for _, d := range doc.Data {
-		foldExpr(env, &d.Init, vars)
+		foldExpr(&d.Init, vars)
 	}
 	for _, c := range doc.Computeds {
-		foldExpr(env, &c.Expr, vars)
+		foldExpr(&c.Expr, vars)
 	}
 
 	// Fold constant expressions in struct field defaults.
 	for _, s := range doc.Structs {
 		for _, f := range s.Fields {
-			foldExpr(env, &f.Default, vars)
+			foldExpr(&f.Default, vars)
 		}
 	}
 
 	// Fold constant expressions in style declarations.
 	for _, s := range doc.Styles {
-		foldExprMap(env, s.Props, vars)
+		foldExprMap(s.Props, vars)
 	}
 
 	// Fold constant expressions in component params and bodies.
 	for _, comp := range doc.Components {
 		for _, p := range comp.Params {
-			foldExpr(env, &p.Default, vars)
+			foldExpr(&p.Default, vars)
 		}
-		comp.Body = optimizeNodes(env, comp.Body, vars)
+		comp.Body = optimizeNodes(comp.Body, vars)
 	}
 
 	// Fold and prune the app tree.
 	if doc.App != nil {
-		doc.App.Children = optimizeNodes(env, doc.App.Children, vars)
+		doc.App.Children = optimizeNodes(doc.App.Children, vars)
 	}
+	return nil
 }
 
-// buildEnv creates a minimal CEL environment with only PLATFORM and LANGUAGE.
-func buildEnv() (*cel.Env, error) {
-	return cel.NewEnv(
-		cel.Variable("PLATFORM", cel.StringType),
-		cel.Variable("LANGUAGE", cel.StringType),
-	)
-}
-
-// foldExpr attempts to evaluate expr as a constant and replace it with a literal.
-func foldExpr(env *cel.Env, expr *ast.Expr, vars map[string]any) {
-	if expr.CEL == "" || expr.AST == nil {
+// foldExpr attempts to evaluate a SNGL expression as a constant and replace it with a literal.
+func foldExpr(expr *ast.Expr, vars map[string]any) {
+	if expr.SNGL == nil {
 		return
 	}
-	nativeAST := expr.AST.NativeRep()
-	if nativeAST == nil {
+	if !isConstExpr(expr.SNGL, vars) {
 		return
 	}
-	if !isConstExpr(nativeAST.Expr()) {
-		return
-	}
-	val, ok := evalConst(env, expr, vars)
+	val, ok := evalConst(expr.SNGL, vars)
 	if !ok {
 		return
 	}
 	expr.Literal = val
-	expr.CEL = ""
-	expr.AST = nil
+	expr.SNGL = nil
 }
 
 // foldExprMap folds all constant expressions in a map.
-func foldExprMap(env *cel.Env, m map[string]ast.Expr, vars map[string]any) {
+func foldExprMap(m map[string]ast.Expr, vars map[string]any) {
 	for k, e := range m {
-		foldExpr(env, &e, vars)
+		foldExpr(&e, vars)
 		m[k] = e
 	}
 }
 
 // optimizeNodes folds expressions in visual nodes and eliminates dead branches.
-func optimizeNodes(env *cel.Env, nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNode {
+func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNode {
 	var out []*ast.VisualNode
 	for _, vn := range nodes {
 		// Fold the If expression first.
 		if vn.If != nil {
-			foldExpr(env, vn.If, vars)
+			foldExpr(vn.If, vars)
 		}
 
 		// Check if the If was folded to a literal.
-		if vn.If != nil && vn.If.CEL == "" && vn.If.AST == nil {
+		if vn.If != nil && vn.If.SNGL == nil {
 			if b, ok := vn.If.Literal.(bool); ok {
 				if !b {
 					continue // dead branch — remove node
@@ -114,31 +97,42 @@ func optimizeNodes(env *cel.Env, nodes []*ast.VisualNode, vars map[string]any) [
 			}
 		}
 
-		// Fold expressions in the node's properties.
-		foldExprPtr(env, vn.Key, vars)
-		foldExprPtr(env, vn.Class, vars)
-		foldExprPtr(env, vn.Ref, vars)
+		// Eliminate for-loops over empty literal lists.
 		if vn.For != nil {
-			foldExpr(env, &vn.For.Iterable, vars)
+			foldExpr(&vn.For.Iterable, vars)
+			if vn.For.Iterable.SNGL == nil && vn.For.Iterable.Literal == nil {
+				// Already nil — check if it was a SNGL ListExpr with no elements
+			}
+			if list, ok := vn.For.Iterable.SNGL.(*ast.ListExpr); ok && len(list.Elements) == 0 {
+				continue // for over empty list — dead code
+			}
 		}
-		foldExprMap(env, vn.Props, vars)
-		foldExprMap(env, vn.Events, vars)
-		foldExprMap(env, vn.StyleAttrs, vars)
-		foldExprMap(env, vn.StyleBlock, vars)
+
+		// Fold expressions in the node's properties.
+		foldExprPtr(vn.Key, vars)
+		foldExprPtr(vn.Class, vars)
+		foldExprPtr(vn.Ref, vars)
+		if vn.For != nil {
+			foldExpr(&vn.For.Iterable, vars)
+		}
+		foldExprMap(vn.Props, vars)
+		foldExprMap(vn.Events, vars)
+		foldExprMap(vn.StyleAttrs, vars)
+		foldExprMap(vn.StyleBlock, vars)
 		for _, an := range vn.AttrNodes {
-			foldExprMap(env, an.Props, vars)
+			foldExprMap(an.Props, vars)
 		}
 
 		// Recurse into children.
-		vn.Children = optimizeNodes(env, vn.Children, vars)
+		vn.Children = optimizeNodes(vn.Children, vars)
 
 		out = append(out, vn)
 	}
 	return out
 }
 
-func foldExprPtr(env *cel.Env, e *ast.Expr, vars map[string]any) {
+func foldExprPtr(e *ast.Expr, vars map[string]any) {
 	if e != nil {
-		foldExpr(env, e, vars)
+		foldExpr(e, vars)
 	}
 }

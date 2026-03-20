@@ -1091,11 +1091,17 @@ func (p *parser) parsePrimary() ast.Node {
 	switch p.cur.Type {
 	case INT:
 		tok := p.advance()
-		val, _ := strconv.Atoi(tok.Literal)
+		val, err := strconv.Atoi(tok.Literal)
+		if err != nil {
+			p.errorf("invalid integer literal %q: %v", tok.Literal, err)
+		}
 		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralInt}
 	case FLOAT:
 		tok := p.advance()
-		val, _ := strconv.ParseFloat(tok.Literal, 64)
+		val, err := strconv.ParseFloat(tok.Literal, 64)
+		if err != nil {
+			p.errorf("invalid float literal %q: %v", tok.Literal, err)
+		}
 		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralFloat}
 	case STRING:
 		tok := p.advance()
@@ -1207,8 +1213,14 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 				exprBuf.WriteRune(runes[i])
 				i++
 			}
-			if depth > 0 || strings.TrimSpace(exprBuf.String()) == "" {
-				// No closing } or empty content — treat { as literal text.
+			if depth > 0 {
+				p.errorf("unterminated interpolation in string")
+				buf.WriteRune('{')
+				i = start + 1
+				continue
+			}
+			if strings.TrimSpace(exprBuf.String()) == "" {
+				p.errorf("empty interpolation in string")
 				buf.WriteRune('{')
 				i = start + 1
 				continue
@@ -1221,13 +1233,12 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 			}
 			innerParser.advance()
 			expr := innerParser.parseExpression()
-			// If the inner parse had errors or didn't consume all input,
-			// treat {…} as literal text rather than broken interpolation.
 			// Allow trailing semicolons from automatic semicolon insertion at EOF.
 			if innerParser.at(SEMICOLON) {
 				innerParser.advance()
 			}
 			if len(innerParser.errs) > 0 || !innerParser.at(EOF) {
+				p.errorf("invalid expression in interpolation: {%s}", exprBuf.String())
 				buf.WriteRune('{')
 				i = start + 1
 				continue

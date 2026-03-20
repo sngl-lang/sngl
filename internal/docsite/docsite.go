@@ -273,4 +273,3 @@ func pageTitleFromPath(rel string) string {
 	name = strings.ReplaceAll(name, "-", " ")
 	return strings.Title(name) //nolint:staticcheck
 }
-

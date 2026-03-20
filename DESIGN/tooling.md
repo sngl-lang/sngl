@@ -49,7 +49,7 @@ The LSP communicates over stdio (default) or TCP (`--tcp=:port`). Editors launch
 
 ### Capabilities
 
-The LSP builds on the compiler's parse and analyze pipeline, keeping the AST warm in memory for incremental updates.
+The LSP builds on the compiler's parse and check pipeline, keeping the AST warm in memory for incremental updates.
 
 #### Diagnostics
 

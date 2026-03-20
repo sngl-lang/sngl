@@ -1,7 +1,5 @@
 package checker
 
-import "github.com/google/cel-go/cel"
-
 // ChildPolicy specifies how many children a component allows.
 type ChildPolicy int
 
@@ -13,7 +11,7 @@ const (
 
 // PropSchema describes a component property's type and valid enum values.
 type PropSchema struct {
-	Type *cel.Type
+	Type Type
 	Enum []string
 }
 
@@ -26,7 +24,7 @@ type ComponentSchema struct {
 
 // StylePropSchema describes a style property's type and valid enum values.
 type StylePropSchema struct {
-	Type *cel.Type
+	Type Type
 	Enum []string
 }
 

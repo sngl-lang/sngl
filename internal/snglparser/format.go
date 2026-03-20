@@ -277,7 +277,7 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 	sb.WriteString(d.Name)
 
 	typeStr := typeHintStr(d.Init.TypeHint, d)
-	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil || d.Init.CEL != ""
+	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
 
 	if typeStr != "" {
 		// Omit type when it can be inferred from the default value
@@ -316,7 +316,7 @@ func canInferType(expr ast.Expr, typeStr string) bool {
 			return false
 		}
 	}
-	if expr.Literal == nil && expr.CEL == "" && expr.SNGL == nil {
+	if expr.Literal == nil && expr.SNGL == nil {
 		return false
 	}
 
@@ -373,7 +373,7 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 	// Params
 	for _, p := range comp.Params {
 		line := "param " + p.Name
-		hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil || p.Default.CEL != ""
+		hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
 		typeStr := typeHintStr(p.Default.TypeHint, nil)
 		if typeStr != "" && !canInferType(p.Default, typeStr) {
 			line += " " + typeStr
@@ -583,8 +583,7 @@ func (f *formatter) formatEventValue(expr ast.Expr) string {
 	if expr.SNGL != nil {
 		return "{ " + FormatStmt(expr.SNGL) + " }"
 	}
-	// Fallback: format CEL as-is
-	return "{ " + expr.CEL + " }"
+	return "{ null }"
 }
 
 // formatExprValue formats an Expr as SNGL source.
@@ -594,10 +593,6 @@ func (f *formatter) formatExprValue(expr ast.Expr) string {
 	}
 	if expr.Literal != nil {
 		return formatLiteral(expr.Literal, expr.TypeHint)
-	}
-	if expr.CEL != "" {
-		// Shouldn't happen after CEL→SNGL, but fallback
-		return expr.CEL
 	}
 	return "null"
 }

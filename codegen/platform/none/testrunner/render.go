@@ -151,4 +151,3 @@ func (env *Env) renderNodeProps(node *ast.VisualNode) map[string]any {
 	}
 	return m
 }
-
