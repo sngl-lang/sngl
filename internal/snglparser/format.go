@@ -884,8 +884,8 @@ func typeHintStr(hint string, d *ast.Data) string {
 	}
 
 	// Inline enum: "enum:light|dark" → "enum<light | dark>"
-	if strings.HasPrefix(hint, "enum:") {
-		values := strings.Split(strings.TrimPrefix(hint, "enum:"), "|")
+	if after, ok := strings.CutPrefix(hint, "enum:"); ok {
+		values := strings.Split(after, "|")
 		return "enum<" + strings.Join(values, " | ") + ">"
 	}
 

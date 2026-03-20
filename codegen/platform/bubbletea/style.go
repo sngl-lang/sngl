@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -15,12 +16,8 @@ func buildStyleExpr(styleAttrs, styleBlock map[string]ast.Expr, ec *exprContext,
 
 	// Merge styleBlock first, then styleAttrs (attrs override block)
 	merged := make(map[string]ast.Expr)
-	for k, v := range styleBlock {
-		merged[k] = v
-	}
-	for k, v := range styleAttrs {
-		merged[k] = v
-	}
+	maps.Copy(merged, styleBlock)
+	maps.Copy(merged, styleAttrs)
 
 	for prop, expr := range merged {
 		if call := styleCall(prop, expr, ec, scaleFactor); call != "" {
@@ -145,10 +142,7 @@ func scaleVal(val string, scaleFactor int) string {
 		if n == 0 {
 			return "0"
 		}
-		scaled := n / scaleFactor
-		if scaled < 1 {
-			scaled = 1
-		}
+		scaled := max(n/scaleFactor, 1)
 		return fmt.Sprintf("%d", scaled)
 	}
 	// Dynamic expression — scale at runtime

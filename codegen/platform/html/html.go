@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"html"
 	"maps"
 	"sort"
 	"strings"
@@ -309,7 +310,7 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 
 	g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
-	b.WriteString(escapeHTML(val))
+	b.WriteString(html.EscapeString(val))
 	b.WriteString("</span>\n")
 
 	if g.propIsReactive(vn.Props, "value") {
@@ -365,7 +366,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 	g.writeDataKey(b, vn.Key)
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
-	fmt.Fprintf(b, "%s>%s</button>\n", disabled, escapeHTML(text))
+	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
 	if g.propIsReactive(vn.Props, "text") {
 		g.addTextContentUpdater(id, vn.Props["text"])
@@ -411,9 +412,9 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 		fmt.Fprintf(b, " type=\"%s\"", inputType)
 	}
 	if placeholder != "" {
-		fmt.Fprintf(b, " placeholder=\"%s\"", escapeHTML(placeholder))
+		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
-	fmt.Fprintf(b, " value=\"%s\"", escapeHTML(value))
+	fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
 	g.writeDataKey(b, vn.Key)
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
@@ -468,7 +469,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	} else {
 		b.WriteString("<input type=\"checkbox\" />")
 	}
-	fmt.Fprintf(b, " %s</label>\n", escapeHTML(label))
+	fmt.Fprintf(b, " %s</label>\n", html.EscapeString(label))
 
 	if changeEvt, ok := vn.Events["change"]; ok {
 		if changeEvt.SNGL != nil {
@@ -502,9 +503,9 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 		indent := strings.Repeat("  ", depth)
 		fmt.Fprintf(b, "%s<img id=\"%s\"", indent, id)
 		if src != "" {
-			fmt.Fprintf(b, " src=\"%s\"", escapeHTML(src))
+			fmt.Fprintf(b, " src=\"%s\"", html.EscapeString(src))
 		}
-		fmt.Fprintf(b, " alt=\"%s\"", escapeHTML(alt))
+		fmt.Fprintf(b, " alt=\"%s\"", html.EscapeString(alt))
 		if style != "" {
 			fmt.Fprintf(b, " style=\"%s\"", style)
 		}
@@ -517,9 +518,9 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<img", indent)
 	if src != "" {
-		fmt.Fprintf(b, " src=\"%s\"", escapeHTML(src))
+		fmt.Fprintf(b, " src=\"%s\"", html.EscapeString(src))
 	}
-	fmt.Fprintf(b, " alt=\"%s\"", escapeHTML(alt))
+	fmt.Fprintf(b, " alt=\"%s\"", html.EscapeString(alt))
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1531,12 +1532,4 @@ func (g *htmlGen) previewAttrs(pos ast.Pos) string {
 		return ""
 	}
 	return fmt.Sprintf(" data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
-}
-
-func escapeHTML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	return s
 }

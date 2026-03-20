@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"strings"
 
@@ -39,9 +40,7 @@ func (env *Env) Snapshot() *Env {
 		doc:       env.doc,
 		body:      env.body,
 	}
-	for k, v := range env.vars {
-		cp.vars[k] = v
-	}
+	maps.Copy(cp.vars, env.vars)
 	return cp
 }
 

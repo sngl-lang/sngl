@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	emproto "github.com/emicklei/proto"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -34,15 +33,15 @@ func ParseProtoFile(path string) (*ProtoResult, error) {
 
 	result := &ProtoResult{
 		FileDesc: &descriptorpb.FileDescriptorProto{
-			Name:   proto.String(path),
-			Syntax: proto.String("proto3"),
+			Name:   new(path),
+			Syntax: new("proto3"),
 		},
 	}
 
 	emproto.Walk(def,
 		emproto.WithMessage(func(m *emproto.Message) {
 			sd := &ast.StructDef{Name: m.Name}
-			descMsg := &descriptorpb.DescriptorProto{Name: proto.String(m.Name)}
+			descMsg := &descriptorpb.DescriptorProto{Name: new(m.Name)}
 			fieldNum := int32(1)
 			for _, el := range m.Elements {
 				if field, ok := el.(*emproto.NormalField); ok {
@@ -51,8 +50,8 @@ func ParseProtoFile(path string) (*ProtoResult, error) {
 						Type: protoTypeToHint(field.Type, field.Repeated),
 					})
 					descMsg.Field = append(descMsg.Field, &descriptorpb.FieldDescriptorProto{
-						Name:   proto.String(field.Name),
-						Number: proto.Int32(fieldNum),
+						Name:   new(field.Name),
+						Number: new(fieldNum),
 						Type:   protoTypeToDescType(field.Type),
 						Label:  protoLabel(field.Repeated),
 					})
@@ -64,13 +63,13 @@ func ParseProtoFile(path string) (*ProtoResult, error) {
 		}),
 		emproto.WithEnum(func(e *emproto.Enum) {
 			ed := &ast.EnumDef{Name: e.Name}
-			descEnum := &descriptorpb.EnumDescriptorProto{Name: proto.String(e.Name)}
+			descEnum := &descriptorpb.EnumDescriptorProto{Name: new(e.Name)}
 			for _, el := range e.Elements {
 				if val, ok := el.(*emproto.EnumField); ok {
 					ed.Values = append(ed.Values, val.Name)
 					descEnum.Value = append(descEnum.Value, &descriptorpb.EnumValueDescriptorProto{
-						Name:   proto.String(val.Name),
-						Number: proto.Int32(int32(val.Integer)),
+						Name:   new(val.Name),
+						Number: new(int32(val.Integer)),
 					})
 				}
 			}

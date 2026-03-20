@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -102,9 +104,7 @@ func resolveTargets(doc *ast.Document, cliLang, cliPlat string, cliOpts map[stri
 	var targets []outputTarget
 	for _, o := range doc.Outputs {
 		opts := make(map[string]string)
-		for k, v := range o.Options {
-			opts[k] = v
-		}
+		maps.Copy(opts, o.Options)
 		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: opts})
 	}
 	return targets
@@ -121,13 +121,7 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 		return fmt.Errorf("%s: unknown platform %q (available: %v)", filename, target.Platform, codegen.Platforms())
 	}
 
-	supported := false
-	for _, l := range plat.SupportedLangs() {
-		if l == target.Lang {
-			supported = true
-			break
-		}
-	}
+	supported := slices.Contains(plat.SupportedLangs(), target.Lang)
 	if !supported {
 		return fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", filename, target.Platform, target.Lang, plat.SupportedLangs())
 	}

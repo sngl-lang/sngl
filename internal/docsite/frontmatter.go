@@ -24,17 +24,17 @@ func ParseFrontMatter(data []byte) (FrontMatter, []byte, error) {
 	}
 
 	rest := data[len(separator):]
-	end := bytes.Index(rest, separator)
-	if end < 0 {
+	before, after, ok := bytes.Cut(rest, separator)
+	if !ok {
 		return FrontMatter{}, data, nil
 	}
 
 	var fm FrontMatter
-	if err := yaml.Unmarshal(rest[:end], &fm); err != nil {
+	if err := yaml.Unmarshal(before, &fm); err != nil {
 		return FrontMatter{}, nil, err
 	}
 
-	body := rest[end+len(separator):]
+	body := after
 	body = bytes.TrimLeft(body, "\n\r")
 	return fm, body, nil
 }

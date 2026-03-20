@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -82,9 +83,7 @@ func extractMutatedFields(e ast.Node) map[string]bool {
 	switch n := e.(type) {
 	case *ast.StmtBlock:
 		for _, s := range n.Stmts {
-			for k, v := range extractMutatedFields(s) {
-				fields[k] = v
-			}
+			maps.Copy(fields, extractMutatedFields(s))
 		}
 	case *ast.AssignStmt:
 		if ident, ok := n.Target.(*ast.IdentExpr); ok {

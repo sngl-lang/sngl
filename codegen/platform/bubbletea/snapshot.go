@@ -5,6 +5,7 @@ package bubbletea
 import (
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -28,7 +29,7 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 	// Force true color for consistent rendering.
 	r := lipgloss.NewRenderer(io.Discard, termenv.WithProfile(termenv.TrueColor))
 
-	cols := width / 10 // approximate: 10px per character
+	cols := width / 10  // approximate: 10px per character
 	rows := height / 20 // approximate: 20px per line
 
 	ctx := &snapContext{
@@ -263,12 +264,8 @@ func (sc *snapContext) buildStyle(vn *ast.VisualNode) lipgloss.Style {
 
 	// Merge style block and attrs (attrs override)
 	merged := make(map[string]ast.Expr)
-	for k, v := range vn.StyleBlock {
-		merged[k] = v
-	}
-	for k, v := range vn.StyleAttrs {
-		merged[k] = v
-	}
+	maps.Copy(merged, vn.StyleBlock)
+	maps.Copy(merged, vn.StyleAttrs)
 
 	for prop, expr := range merged {
 		val := sc.evalExpr(expr)
@@ -358,10 +355,7 @@ func scaleInt(val any, scaleFactor int) int {
 	if n == 0 {
 		return 0
 	}
-	scaled := n / scaleFactor
-	if scaled < 1 {
-		scaled = 1
-	}
+	scaled := max(n/scaleFactor, 1)
 	return scaled
 }
 

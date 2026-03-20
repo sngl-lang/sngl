@@ -42,7 +42,7 @@ func Analyze(content, filename, dir string, resolve checker.ImportResolver) (*as
 // ParseErrorsToDiagnostics converts parse error strings into diagnostics.
 func ParseErrorsToDiagnostics(filename string, err error) []Diagnostic {
 	var diags []Diagnostic
-	for _, line := range strings.Split(err.Error(), "\n") {
+	for line := range strings.SplitSeq(err.Error(), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

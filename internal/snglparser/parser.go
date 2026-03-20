@@ -624,17 +624,18 @@ func (p *parser) parseTypeString() string {
 	name := p.expect(IDENT).Literal
 	if p.at(LT) {
 		p.advance()
-		inner := p.parseTypeString()
+		var inner strings.Builder
+		inner.WriteString(p.parseTypeString())
 		for p.at(COMMA) {
 			p.advance()
-			inner += "," + p.parseTypeString()
+			inner.WriteString("," + p.parseTypeString())
 		}
 		p.expect(GT)
 		// Convert list<Todo> → list:Todo for compatibility
 		if name == "list" {
-			return "list:" + inner
+			return "list:" + inner.String()
 		}
-		return name + "<" + inner + ">"
+		return name + "<" + inner.String() + ">"
 	}
 	return name
 }

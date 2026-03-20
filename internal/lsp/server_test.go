@@ -44,8 +44,8 @@ func readLSP(r *bufio.Reader) (json.RawMessage, error) {
 		if line == "" {
 			break
 		}
-		if strings.HasPrefix(line, "Content-Length:") {
-			fmt.Sscanf(strings.TrimPrefix(line, "Content-Length:"), " %d", &contentLength)
+		if after, ok := strings.CutPrefix(line, "Content-Length:"); ok {
+			fmt.Sscanf(after, " %d", &contentLength)
 		}
 	}
 	if contentLength <= 0 {

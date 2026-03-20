@@ -128,8 +128,8 @@ func (s *Server) readMessage() ([]byte, error) {
 		if line == "" {
 			break
 		}
-		if strings.HasPrefix(line, "Content-Length:") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, "Content-Length:"))
+		if after, ok := strings.CutPrefix(line, "Content-Length:"); ok {
+			val := strings.TrimSpace(after)
 			contentLength, _ = strconv.Atoi(val)
 		}
 	}

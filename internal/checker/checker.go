@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -370,10 +371,8 @@ func (c *checker) validateEnumLiteral(pos ast.Pos, expr *ast.Expr) {
 		return
 	}
 
-	for _, v := range allowed {
-		if v == s {
-			return
-		}
+	if slices.Contains(allowed, s) {
+		return
 	}
 	c.errorAt(pos, "invalid enum value %q: expected one of %v", s, allowed)
 }

@@ -137,7 +137,7 @@ func countResults(r *codegen.TestResult, passed, failed *int) {
 // parseGoTestOutput extracts pass/fail status from go test -v output.
 func parseGoTestOutput(output string) map[string]bool {
 	status := map[string]bool{}
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "--- PASS:") {
 			name := extractTestName(line)

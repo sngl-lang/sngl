@@ -3,6 +3,7 @@ package bubbletea
 import (
 	"fmt"
 	"go/format"
+	"maps"
 	"strings"
 	"unicode"
 
@@ -662,9 +663,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 
 	// Add params as local vars
 	savedLocals := make(map[string]bool)
-	for k, v := range ec.localVars {
-		savedLocals[k] = v
-	}
+	maps.Copy(savedLocals, ec.localVars)
 	for _, p := range comp.Params {
 		ec.localVars[p.Name] = true
 	}

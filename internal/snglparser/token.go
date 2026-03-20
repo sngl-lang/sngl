@@ -1,5 +1,7 @@
 package snglparser
 
+import "maps"
+
 // TokenType identifies a lexical token.
 type TokenType int
 
@@ -117,9 +119,7 @@ var keywords = map[string]TokenType{
 // Keywords returns a copy of the keyword map.
 func Keywords() map[string]TokenType {
 	m := make(map[string]TokenType, len(keywords))
-	for k, v := range keywords {
-		m[k] = v
-	}
+	maps.Copy(m, keywords)
 	return m
 }
 

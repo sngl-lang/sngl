@@ -6,29 +6,29 @@ package lsp
 // --- JSON-RPC 2.0 ---
 
 type Request struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	ID      any    `json:"id,omitempty"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 type Response struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   *RespError  `json:"error,omitempty"`
+	JSONRPC string     `json:"jsonrpc"`
+	ID      any        `json:"id"`
+	Result  any        `json:"result,omitempty"`
+	Error   *RespError `json:"error,omitempty"`
 }
 
 type RespError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 type Notification struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 // --- LSP Base ---
@@ -76,11 +76,11 @@ type TextDocumentContentChangeEvent struct {
 // --- Initialize ---
 
 type InitializeParams struct {
-	ProcessID int         `json:"processId"`
-	RootURI   string      `json:"rootUri"`
-	RootPath  string      `json:"rootPath"`
-	Trace     string      `json:"trace"`
-	Params    interface{} `json:"initializationOptions"`
+	ProcessID int    `json:"processId"`
+	RootURI   string `json:"rootUri"`
+	RootPath  string `json:"rootPath"`
+	Trace     string `json:"trace"`
+	Params    any    `json:"initializationOptions"`
 }
 
 type InitializeResult struct {

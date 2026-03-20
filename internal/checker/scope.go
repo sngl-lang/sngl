@@ -1,5 +1,7 @@
 package checker
 
+import "maps"
+
 import "github.com/google/cel-go/cel"
 
 // Scope tracks variable declarations with parent chain for nested contexts.
@@ -34,7 +36,5 @@ func (s *Scope) collect(all map[string]*cel.Type) {
 	if s.parent != nil {
 		s.parent.collect(all)
 	}
-	for name, t := range s.vars {
-		all[name] = t
-	}
+	maps.Copy(all, s.vars)
 }

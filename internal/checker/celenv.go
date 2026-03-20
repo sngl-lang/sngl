@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"github.com/google/cel-go/cel"
@@ -28,12 +29,13 @@ func BuildCelEnv(scope *Scope, structs []*ast.StructDef, protoDescs []any) (*cel
 		for _, f := range sd.Fields {
 			paramTypes = append(paramTypes, TypeHintToCelType(f.Type))
 		}
-		overloadID := sd.Name
+		var overloadID strings.Builder
+		overloadID.WriteString(sd.Name)
 		for _, f := range sd.Fields {
-			overloadID += "_" + f.Type
+			overloadID.WriteString("_" + f.Type)
 		}
 		opts = append(opts, cel.Function(sd.Name,
-			cel.Overload(overloadID, paramTypes, cel.DynType),
+			cel.Overload(overloadID.String(), paramTypes, cel.DynType),
 		))
 	}
 

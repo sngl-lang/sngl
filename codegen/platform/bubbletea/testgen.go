@@ -3,6 +3,7 @@ package bubbletea
 import (
 	"fmt"
 	"go/format"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -92,17 +93,10 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 }
 
 func testNeedsFmt(td *ast.TestDef) bool {
-	for _, stmt := range td.Body {
-		if nodeNeedsFmt(stmt) {
-			return true
-		}
+	if slices.ContainsFunc(td.Body, nodeNeedsFmt) {
+		return true
 	}
-	for _, sub := range td.Subtests {
-		if testNeedsFmt(sub) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(td.Subtests, testNeedsFmt)
 }
 
 func nodeNeedsFmt(n ast.Node) bool {
@@ -110,10 +104,8 @@ func nodeNeedsFmt(n ast.Node) bool {
 	case *ast.InterpolationExpr:
 		return true
 	case *ast.CallExpr:
-		for _, arg := range e.Args {
-			if nodeNeedsFmt(arg) {
-				return true
-			}
+		if slices.ContainsFunc(e.Args, nodeNeedsFmt) {
+			return true
 		}
 		if e.Func == "string" {
 			return true
@@ -309,12 +301,7 @@ func usesUnsupportedFeature(td *ast.TestDef) bool {
 			return true
 		}
 	}
-	for _, sub := range td.Subtests {
-		if usesUnsupportedFeature(sub) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(td.Subtests, usesUnsupportedFeature)
 }
 
 // nodeUsesUnsupported detects SNGL features that don't compile to Go:
@@ -363,10 +350,8 @@ func nodeUsesUnsupported(n ast.Node) bool {
 	case *ast.AssignStmt:
 		return nodeUsesUnsupported(e.Value)
 	case *ast.StmtBlock:
-		for _, s := range e.Stmts {
-			if nodeUsesUnsupported(s) {
-				return true
-			}
+		if slices.ContainsFunc(e.Stmts, nodeUsesUnsupported) {
+			return true
 		}
 	}
 	return false
@@ -402,10 +387,8 @@ func nodeUsesElementRef(n ast.Node) bool {
 	case *ast.MethodExpr:
 		return nodeUsesElementRef(e.Receiver)
 	case *ast.CallExpr:
-		for _, arg := range e.Args {
-			if nodeUsesElementRef(arg) {
-				return true
-			}
+		if slices.ContainsFunc(e.Args, nodeUsesElementRef) {
+			return true
 		}
 	case *ast.BinaryExpr:
 		return nodeUsesElementRef(e.Left) || nodeUsesElementRef(e.Right)
@@ -420,10 +403,8 @@ func nodeUsesElementRef(n ast.Node) bool {
 	case *ast.IndexExpr:
 		return nodeUsesElementRef(e.Operand) || nodeUsesElementRef(e.Index)
 	case *ast.StmtBlock:
-		for _, s := range e.Stmts {
-			if nodeUsesElementRef(s) {
-				return true
-			}
+		if slices.ContainsFunc(e.Stmts, nodeUsesElementRef) {
+			return true
 		}
 	}
 	return false
