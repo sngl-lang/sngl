@@ -1,4 +1,4 @@
-package tsparser_test
+package snglparser_test
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
-	"git.duckfam.us/jonathan/sngl/internal/tsparser"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser/internal/tsparser"
 )
 
 func TestCanLoadGrammar(t *testing.T) {
