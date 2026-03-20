@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 )
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+"([^"]+)"`)
+var foldRE = regexp.MustCompile(`//\s*FOLD\s+(.+)`)
 var posLineRE = regexp.MustCompile(`^\d+:\d+:`)
 
 // ErrorDirective represents a // ERROR(phase) "substring" comment in a test fixture.
@@ -21,6 +23,113 @@ type ErrorDirective struct {
 	Phase     string // "parse", "check", "compile"
 	Substring string
 	Line      int // 1-based line number where the directive appears
+}
+
+// FoldDirective represents a // FOLD value comment on a data or computed line.
+// The value is written in SNGL literal syntax: "string", 42, 3.14, true, false.
+type FoldDirective struct {
+	Expected any    // typed value parsed from SNGL literal syntax
+	Raw      string // original text for error messages
+	Line     int    // 1-based line number
+}
+
+// ParseFoldDirectives scans a file for // FOLD value comments.
+func ParseFoldDirectives(path string) ([]FoldDirective, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var dirs []FoldDirective
+	s := bufio.NewScanner(f)
+	lineNum := 0
+	for s.Scan() {
+		lineNum++
+		if m := foldRE.FindStringSubmatch(s.Text()); m != nil {
+			raw := strings.TrimSpace(m[1])
+			val, err := parseSNGLLiteral(raw)
+			if err != nil {
+				return nil, fmt.Errorf("%s:%d: FOLD directive: %w", path, lineNum, err)
+			}
+			dirs = append(dirs, FoldDirective{Expected: val, Raw: raw, Line: lineNum})
+		}
+	}
+	return dirs, s.Err()
+}
+
+// parseSNGLLiteral parses a SNGL literal value: "string", 42, 3.14, true, false.
+func parseSNGLLiteral(s string) (any, error) {
+	if s == "true" {
+		return true, nil
+	}
+	if s == "false" {
+		return false, nil
+	}
+	if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) {
+		return strconv.Unquote(s)
+	}
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, nil
+	}
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f, nil
+	}
+	return nil, fmt.Errorf("unrecognized SNGL literal: %s", s)
+}
+
+// AssertFolds checks that data and computed fields on directive lines were folded
+// to the expected literal values after optimization. Both value and type must match.
+func AssertFolds(t *testing.T, doc *ast.Document, folds []FoldDirective) {
+	t.Helper()
+	for _, fd := range folds {
+		expr, name := findExprAtLine(doc, fd.Line)
+		if expr == nil {
+			t.Errorf("line %d: no data or computed field found for FOLD directive", fd.Line)
+			continue
+		}
+		if expr.SNGL != nil {
+			t.Errorf("line %d (%s): expression was not folded (SNGL still set)", fd.Line, name)
+			continue
+		}
+		if expr.Literal != fd.Expected {
+			t.Errorf("line %d (%s): expected %v (%T), got %v (%T)",
+				fd.Line, name, fd.Expected, fd.Expected, expr.Literal, expr.Literal)
+		}
+	}
+}
+
+// findExprAtLine returns the Expr pointer and name for the data/computed/const
+// declaration at the given line, searching both top-level and inside components.
+func findExprAtLine(doc *ast.Document, line int) (*ast.Expr, string) {
+	if e, name := searchScope(doc.Data, doc.Computeds, doc.Consts, line); e != nil {
+		return e, name
+	}
+	for _, comp := range doc.Components {
+		if e, name := searchScope(comp.Data, comp.Computeds, comp.Consts, line); e != nil {
+			return e, name
+		}
+	}
+	return nil, ""
+}
+
+func searchScope(data []*ast.Data, computeds []*ast.Computed, consts []*ast.Const, line int) (*ast.Expr, string) {
+	for _, d := range data {
+		if d.Pos.Line == line {
+			return &d.Init, d.Name
+		}
+	}
+	for _, c := range computeds {
+		if c.Pos.Line == line {
+			return &c.Expr, c.Name
+		}
+	}
+	for _, c := range consts {
+		if c.Pos.Line == line {
+			return &c.Init, c.Name
+		}
+	}
+	return nil, ""
 }
 
 // ParseDirectives scans a file for // ERROR(phase) "substring" comments.

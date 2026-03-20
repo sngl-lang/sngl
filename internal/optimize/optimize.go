@@ -39,10 +39,16 @@ func Optimize(doc *ast.Document, cfg Config) error {
 		foldExprMap(s.Props, vars)
 	}
 
-	// Fold constant expressions in component params and bodies.
+	// Fold constant expressions in component params, data, computeds, and bodies.
 	for _, comp := range doc.Components {
 		for _, p := range comp.Params {
 			foldExpr(&p.Default, vars)
+		}
+		for _, d := range comp.Data {
+			foldExpr(&d.Init, vars)
+		}
+		for _, c := range comp.Computeds {
+			foldExpr(&c.Expr, vars)
 		}
 		comp.Body = optimizeNodes(comp.Body, vars)
 	}

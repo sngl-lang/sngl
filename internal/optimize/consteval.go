@@ -2,6 +2,8 @@ package optimize
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -22,6 +24,16 @@ func isConstExpr(n ast.Node, vars map[string]any) bool {
 	case *ast.TernaryExpr:
 		return isConstExpr(e.Cond, vars) && isConstExpr(e.Then, vars) && isConstExpr(e.Else, vars)
 	case *ast.CallExpr:
+		for _, arg := range e.Args {
+			if !isConstExpr(arg, vars) {
+				return false
+			}
+		}
+		return true
+	case *ast.MethodExpr:
+		if !isConstExpr(e.Receiver, vars) {
+			return false
+		}
 		for _, arg := range e.Args {
 			if !isConstExpr(arg, vars) {
 				return false
@@ -81,6 +93,30 @@ func evalConst(n ast.Node, vars map[string]any) (any, bool) {
 			return evalConst(e.Else, vars)
 		}
 		return nil, false
+	case *ast.CallExpr:
+		args := make([]any, len(e.Args))
+		for i, a := range e.Args {
+			v, ok := evalConst(a, vars)
+			if !ok {
+				return nil, false
+			}
+			args[i] = v
+		}
+		return evalCallFunc(e.Func, args)
+	case *ast.MethodExpr:
+		recv, ok := evalConst(e.Receiver, vars)
+		if !ok {
+			return nil, false
+		}
+		args := make([]any, len(e.Args))
+		for i, a := range e.Args {
+			v, ok := evalConst(a, vars)
+			if !ok {
+				return nil, false
+			}
+			args[i] = v
+		}
+		return evalMethod(e.Method, recv, args)
 	case *ast.InterpolationExpr:
 		var result string
 		for _, p := range e.Parts {
@@ -262,4 +298,104 @@ func toStr(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func evalCallFunc(name string, args []any) (any, bool) {
+	if len(args) != 1 {
+		return nil, false
+	}
+	arg := args[0]
+	switch name {
+	case "string":
+		return fmt.Sprintf("%v", arg), true
+	case "int":
+		switch v := arg.(type) {
+		case int:
+			return v, true
+		case float64:
+			return int(v), true
+		case string:
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, false
+			}
+			return i, true
+		}
+	case "float":
+		switch v := arg.(type) {
+		case float64:
+			return v, true
+		case int:
+			return float64(v), true
+		case string:
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return nil, false
+			}
+			return f, true
+		}
+	case "size":
+		switch v := arg.(type) {
+		case string:
+			return len(v), true
+		case []any:
+			return len(v), true
+		}
+	}
+	return nil, false
+}
+
+func evalMethod(method string, recv any, args []any) (any, bool) {
+	switch method {
+	case "length":
+		if len(args) != 0 {
+			return nil, false
+		}
+		switch v := recv.(type) {
+		case string:
+			return len(v), true
+		case []any:
+			return len(v), true
+		}
+	case "contains":
+		if len(args) != 1 {
+			return nil, false
+		}
+		s, ok := recv.(string)
+		if !ok {
+			return nil, false
+		}
+		sub, ok := args[0].(string)
+		if !ok {
+			return nil, false
+		}
+		return strings.Contains(s, sub), true
+	case "startsWith":
+		if len(args) != 1 {
+			return nil, false
+		}
+		s, ok := recv.(string)
+		if !ok {
+			return nil, false
+		}
+		prefix, ok := args[0].(string)
+		if !ok {
+			return nil, false
+		}
+		return strings.HasPrefix(s, prefix), true
+	case "endsWith":
+		if len(args) != 1 {
+			return nil, false
+		}
+		s, ok := recv.(string)
+		if !ok {
+			return nil, false
+		}
+		suffix, ok := args[0].(string)
+		if !ok {
+			return nil, false
+		}
+		return strings.HasSuffix(s, suffix), true
+	}
+	return nil, false
 }

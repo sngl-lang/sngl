@@ -1,9 +1,11 @@
 package optimize
 
 import (
+	"path/filepath"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func must(t *testing.T, err error) {
@@ -360,6 +362,103 @@ func TestTernaryFolded(t *testing.T) {
 	}
 }
 
+func TestCallStringFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "string",
+				Args: []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != "42" {
+		t.Errorf("expected literal '42', got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestCallIntFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "int",
+				Args: []ast.Node{&ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 3 {
+		t.Errorf("expected literal 3, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestCallFloatFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "float",
+				Args: []ast.Node{&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 1.0 {
+		t.Errorf("expected literal 1.0, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestCallSizeFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "size",
+				Args: []ast.Node{&ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 5 {
+		t.Errorf("expected literal 5, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestMethodLengthFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.MethodExpr{
+				Receiver: &ast.LiteralExpr{Value: "abc", Kind: ast.LiteralString},
+				Method:   "length",
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 3 {
+		t.Errorf("expected literal 3, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestMethodContainsFolded(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.MethodExpr{
+				Receiver: &ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString},
+				Method:   "contains",
+				Args:     []ast.Node{&ast.LiteralExpr{Value: "ell", Kind: ast.LiteralString}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != true {
+		t.Errorf("expected literal true, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
 func TestInterpolationFolded(t *testing.T) {
 	doc := &ast.Document{
 		Data: []*ast.Data{{
@@ -375,5 +474,33 @@ func TestInterpolationFolded(t *testing.T) {
 	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	if doc.Data[0].Init.Literal != "platform: html" {
 		t.Errorf("expected 'platform: html', got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestFoldFixtures(t *testing.T) {
+	matches, err := filepath.Glob(filepath.Join("..", "..", "testdata", "optimize_*.sngl"))
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("no optimize_*.sngl fixtures found")
+	}
+	for _, path := range matches {
+		name := filepath.Base(path)
+		t.Run(name, func(t *testing.T) {
+			folds, err := testutil.ParseFoldDirectives(path)
+			if err != nil {
+				t.Fatalf("parse fold directives: %v", err)
+			}
+			if len(folds) == 0 {
+				t.Skip("no FOLD directives")
+			}
+			doc, err := testutil.ParseFile(path)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+			testutil.AssertFolds(t, doc, folds)
+		})
 	}
 }
