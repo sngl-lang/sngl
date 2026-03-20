@@ -76,47 +76,35 @@ button(text="Submit", @click={ save(formData) })
 ```
 
 The compiler generates a typed handler interface in the target language:
+## Platform Generators
 
-```go
-// Generated
-type Handlers interface {
-    SubmitForm(formData *FormData) error
-}
-```
-
-The application author provides the implementation.
-
-## Platform Backends
-
-A platform backend is responsible for:
+A platform generator (`codegen.PlatformGenerator`) is responsible for:
 
 - **Component mapping** — Map SNGL standard library components (`vbox`, `button`, `text`, etc.) to platform-native widgets or drawing calls.
-- **Layout engine integration** — Wire up Yoga layout nodes to the platform's rendering pipeline.
+- **Layout engine integration** — Wire up layout (CSS flexbox for HTML, lipgloss for bubbletea).
 - **Event system** — Map SNGL event names (`@click`, `@input`) to platform event mechanisms.
 - **Lifecycle** — Handle mount, update, and teardown in a platform-idiomatic way.
 
+Generators optionally implement `TestRunner` (for platform-specific test execution), `PreviewStyler` (CSS for HTML preview), or `Snapshotter` (visual screenshots). These are checked via type assertion.
+
 ## Standard Library
 
-The standard library defines a set of components that every platform backend must implement:
+The standard library defines a set of components that every platform generator must implement:
 
 - Layout: `vbox`, `hbox`, `stack`, `scroll`, `spacer`
 - Content: `text`, `image`
-- Input: `button`, `input`
+- Input: `button`, `input`, `checkbox`
 
-Each component has a schema: typed properties, supported events, and layout behavior. Platform backends map these to native equivalents. Additional platform-specific components can be registered but are not portable.
+Each component has a schema: typed properties, supported events, and layout behavior. Schemas are defined as `.sngl` files embedded in the checker package (`internal/checker/stdlib/*.sngl`). Platform generators map these to native equivalents.
 
-## Compiler IR
+## Plugin Registration
 
-The IR is a flat list of operations that fully describe the UI construction and reactive wiring:
+Languages and platforms register via `init()` in their packages and are looked up by name at runtime:
 
-- `CreateNode(id, type, props)` — instantiate a component
-- `SetProp(id, prop, value | expr)` — set a static or bound property
-- `AppendChild(parent, child)` — build the tree
-- `Subscribe(signal, handler)` — wire a reactive update
-- `BindEvent(id, event, handler)` — attach an event handler
-- `SetLayout(id, yogaProps)` — configure layout constraints
-
-This IR is what language/platform backends consume.
+- `codegen/registry.go` — thread-safe `RegisterLang`, `RegisterPlatform`
+- `codegen/lang/languages.go` — blank-imports all language translator packages
+- `codegen/platform/platforms.go` — blank-imports all platform generator packages
+- `cmd/sngl/main.go` imports these to trigger registration
 
 ## Compiler CLI
 
@@ -128,7 +116,7 @@ sngl check app.sngl                          # analyze only (none/none)
 
 ## Multi-Target Compilation
 
-A single SNGL source can be compiled to multiple targets. The parse and analyze phases run once; only IR lowering and emission are repeated per target. Targets are declared in `output` blocks:
+A single SNGL source can be compiled to multiple targets. The parse and check phases run once; the document is cloned per target, then optimized and generated independently. Targets are declared in `output` blocks:
 
 ```sngl
 output {
@@ -141,15 +129,13 @@ output {
 
 Errors reference SNGL source locations (file, line, column). Categories:
 
-- **Parse errors** — malformed SNGL syntax
+- **Parse errors** — malformed SNGL syntax, integer overflow, unterminated strings, invalid interpolation
 - **Resolution errors** — unknown component or property names
-- **Type errors** — expression type mismatches, incompatible state bindings
-- **Dependency errors** — circular computed values, missing handler definitions
+- **Type errors** — expression type mismatches, param default type mismatches, incompatible state bindings
 - **Platform errors** — use of unsupported component/property for a given platform
 
 ## Extension Points
 
-- **Custom components** — Users register component schemas; platform backends provide implementations.
-- **Custom language backends** — Implement the language backend interface to add a new target language.
-- **Custom platform backends** — Implement the platform backend interface to add a new target platform.
-- **Compiler plugins** — Transform the IR before emission (optimization, instrumentation, accessibility annotations).
+- **Custom components** — Users define component schemas in `.sngl`; platform generators provide implementations.
+- **Custom language translators** — Implement the `codegen.LangTranslator` interface to add a new target language.
+- **Custom platform generators** — Implement the `codegen.PlatformGenerator` interface to add a new target platform.
