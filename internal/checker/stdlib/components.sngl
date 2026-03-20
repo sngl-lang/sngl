@@ -61,7 +61,7 @@ component scroll {
 }
 
 component spacer {
-    prop size dyn
+    prop size string
     children none
 }
 

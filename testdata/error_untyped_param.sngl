@@ -1,0 +1,9 @@
+component Foo {
+    param value // ERROR(check) "must have a type hint or a default value"
+
+    text(value="test")
+}
+
+component main {
+    Foo(value="hello")
+}

@@ -232,9 +232,14 @@ func (c *checker) pass1(doc *ast.Document) {
 		if d.Extern && d.Trigger != "" {
 			c.errorAt(d.Pos, "data %q: trigger on extern field is not allowed", d.Name)
 		}
+		// Validate type hint early so misspelled types are caught
+		// even when SNGL is also set (e.g., var x stirng = "hello").
+		var hintType Type
+		if d.Init.TypeHint != "" {
+			hintType = c.resolveTypeHint(d.Pos, d.Init.TypeHint)
+		}
 		if d.Extern || d.IsFunc {
-			t := c.resolveTypeHint(d.Init.TypeHint)
-			c.scope.Declare(d.Name, t)
+			c.scope.Declare(d.Name, hintType)
 			continue
 		}
 		c.validateEnumLiteral(d.Pos, &d.Init)
@@ -288,17 +293,21 @@ func (c *checker) pass1(doc *ast.Document) {
 // resolveParamType returns the type for a component param.
 func (c *checker) resolveParamType(p *ast.Param) Type {
 	if p.Default.TypeHint != "" {
-		return c.resolveTypeHint(p.Default.TypeHint)
+		return c.resolveTypeHint(p.Pos, p.Default.TypeHint)
 	}
 	if p.Default.Literal != nil {
 		return InferLiteralType(p.Default.Literal)
 	}
+	if p.Default.SNGL != nil {
+		return c.inferNodeType(p.Default.SNGL)
+	}
+	c.errorAt(p.Pos, "param %q: must have a type hint or a default value", p.Name)
 	return Dyn
 }
 
 // resolveTypeHint maps a type hint string to a Type, checking named enums
 // and inline enum syntax before falling back to TypeFromHint.
-func (c *checker) resolveTypeHint(hint string) Type {
+func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
 	// Named enum
 	for _, e := range c.enums {
 		if e.Name == hint {
@@ -309,7 +318,17 @@ func (c *checker) resolveTypeHint(hint string) Type {
 	if strings.HasPrefix(hint, "enum:") {
 		return String
 	}
-	return TypeFromHint(hint)
+	// Named struct
+	for _, s := range c.structs {
+		if s.Name == hint {
+			return Struct
+		}
+	}
+	t := TypeFromHint(hint)
+	if t == Dyn && !isKnownDynHint(hint) {
+		c.errorAt(pos, "unknown type %q", hint)
+	}
+	return t
 }
 
 // resolveExprType determines the type of an expression.
@@ -318,7 +337,7 @@ func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) Type {
 		return c.inferNodeType(expr.SNGL)
 	}
 	if expr.TypeHint != "" {
-		return c.resolveTypeHint(expr.TypeHint)
+		return c.resolveTypeHint(pos, expr.TypeHint)
 	}
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)
@@ -374,7 +393,7 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 			if left == String && right == String && e.Op == ast.BinAdd {
 				return String
 			}
-			return Dyn
+			return narrowNumeric(left, right)
 		}
 	case *ast.UnaryExpr:
 		if e.Op == ast.UnaryNot {
@@ -612,7 +631,7 @@ func (c *checker) resolveExprInScope(pos ast.Pos, expr *ast.Expr, scope *Scope) 
 		return c.inferNodeTypeInScope(expr.SNGL, scope)
 	}
 	if expr.TypeHint != "" {
-		return c.resolveTypeHint(expr.TypeHint)
+		return c.resolveTypeHint(pos, expr.TypeHint)
 	}
 	if expr.Literal != nil {
 		return InferLiteralType(expr.Literal)
@@ -668,7 +687,7 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 			if left == String && right == String && e.Op == ast.BinAdd {
 				return String
 			}
-			return Dyn
+			return narrowNumeric(left, right)
 		}
 	case *ast.UnaryExpr:
 		if e.Op == ast.UnaryNot {

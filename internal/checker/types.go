@@ -21,8 +21,8 @@ const (
 	Int                // int
 	Float              // float
 	String             // string
-	List   // list ([]T)
-	Struct // user-defined struct
+	List               // list ([]T)
+	Struct             // user-defined struct
 
 	// Special domain types (all stored as strings)
 	Color
@@ -162,9 +162,36 @@ func InferLiteralType(v any) Type {
 		return Float
 	case string:
 		return String
+	case []any:
+		return List
 	default:
 		return Dyn
 	}
+}
+
+// isKnownDynHint reports whether a type hint string legitimately resolves to Dyn.
+// This includes the explicit "dyn" keyword, func signatures, and unit type names
+// that don't yet have a dedicated checker Type.
+func isKnownDynHint(hint string) bool {
+	if hint == "dyn" || hint == "measurement" || hint == "length" {
+		return true
+	}
+	if strings.HasPrefix(hint, "func") || strings.HasPrefix(hint, "unit:") {
+		return true
+	}
+	return false
+}
+
+// narrowNumeric returns the known numeric type when one side is numeric and
+// the other is Dyn. Returns Dyn only when both sides are Dyn.
+func narrowNumeric(left, right Type) Type {
+	if left == Int || left == Float {
+		return left
+	}
+	if right == Int || right == Float {
+		return right
+	}
+	return Dyn
 }
 
 // isAssignable reports whether a value of type got can be assigned where expected is required.

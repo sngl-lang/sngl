@@ -1,0 +1,3 @@
+component main {
+    var x stirng = "hello" // ERROR(check) "unknown type"
+}
