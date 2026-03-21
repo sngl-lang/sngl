@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -14,6 +15,7 @@ type Env struct {
 	vars      map[string]any
 	computeds map[string]ast.Expr
 	consts    map[string]any
+	units     map[string]*ast.UnitTable // suffix → unit table
 	doc       *ast.Document
 	body      []*ast.VisualNode
 }
@@ -37,6 +39,7 @@ func (env *Env) Snapshot() *Env {
 		vars:      make(map[string]any, len(env.vars)),
 		computeds: env.computeds,
 		consts:    env.consts,
+		units:     env.units,
 		doc:       env.doc,
 		body:      env.body,
 	}
@@ -48,6 +51,9 @@ func (env *Env) Snapshot() *Env {
 func (env *Env) Eval(n ast.Node) (any, error) {
 	switch e := n.(type) {
 	case *ast.LiteralExpr:
+		if e.Kind == ast.LiteralUnit {
+			return env.evalUnitLiteral(e.Value.(ast.UnitLiteral))
+		}
 		return e.Value, nil
 	case *ast.IdentExpr:
 		return env.lookup(e.Name)
@@ -156,6 +162,56 @@ func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
 	right, err := env.Eval(e.Right)
 	if err != nil {
 		return nil, err
+	}
+
+	// Unit-aware arithmetic
+	lu, leftIsUnit := left.(ast.UnitValue)
+	ru, rightIsUnit := right.(ast.UnitValue)
+
+	if leftIsUnit || rightIsUnit {
+		switch e.Op {
+		case ast.BinEq:
+			if leftIsUnit && rightIsUnit {
+				return lu.Equal(ru), nil
+			}
+			return false, nil
+		case ast.BinNeq:
+			if leftIsUnit && rightIsUnit {
+				return !lu.Equal(ru), nil
+			}
+			return true, nil
+		case ast.BinAdd:
+			if leftIsUnit && rightIsUnit {
+				if lu.Unit != ru.Unit {
+					return nil, fmt.Errorf("cannot add %s and %s units", lu.Unit, ru.Unit)
+				}
+				return lu.Add(ru), nil
+			}
+		case ast.BinSub:
+			if leftIsUnit && rightIsUnit {
+				if lu.Unit != ru.Unit {
+					return nil, fmt.Errorf("cannot subtract %s and %s units", lu.Unit, ru.Unit)
+				}
+				return lu.Sub(ru), nil
+			}
+		case ast.BinMul:
+			if leftIsUnit && !rightIsUnit {
+				return lu.Scale(toFloat(right)), nil
+			}
+			if !leftIsUnit && rightIsUnit {
+				return ru.Scale(toFloat(left)), nil
+			}
+			return nil, fmt.Errorf("cannot multiply two unit values")
+		case ast.BinDiv:
+			if leftIsUnit && !rightIsUnit {
+				r := toFloat(right)
+				if r == 0 {
+					return nil, fmt.Errorf("division by zero")
+				}
+				return lu.Scale(1 / r), nil
+			}
+			return nil, fmt.Errorf("cannot divide by a unit value")
+		}
 	}
 
 	switch e.Op {
@@ -371,9 +427,28 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 	return nil, fmt.Errorf("unknown method %q on %T", e.Method, recv)
 }
 
+// evalUnitLiteral converts a parsed unit literal to a UnitValue using the env's unit tables.
+func (env *Env) evalUnitLiteral(ul ast.UnitLiteral) (ast.UnitValue, error) {
+	table, ok := env.units[ul.Suffix]
+	if !ok {
+		return ast.UnitValue{}, fmt.Errorf("unknown unit suffix %q", ul.Suffix)
+	}
+	num, err := strconv.ParseFloat(ul.Number, 64)
+	if err != nil {
+		return ast.UnitValue{}, fmt.Errorf("invalid unit number %q: %w", ul.Number, err)
+	}
+	return table.NewUnitValue(ul.Suffix, num), nil
+}
+
 // --- helpers ---
 
 func equals(a, b any) bool {
+	if au, ok := a.(ast.UnitValue); ok {
+		if bu, ok := b.(ast.UnitValue); ok {
+			return au.Equal(bu)
+		}
+		return false
+	}
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
@@ -386,6 +461,11 @@ func toFloat(v any) float64 {
 	case bool:
 		if val {
 			return 1
+		}
+		return 0
+	case ast.UnitValue:
+		if _, amount, ok := val.IsSingleComponent(); ok {
+			return amount
 		}
 		return 0
 	}

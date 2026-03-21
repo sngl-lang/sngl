@@ -50,14 +50,24 @@ func DefaultResolver() ImportResolver {
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
 func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
-	registry, styleProps, _, err := LoadStdlib()
+	registry, styleProps, stdlibUnits, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
+	}
+
+	unitTables := map[string]*ast.UnitTable{}
+	for _, u := range stdlibUnits {
+		unitTables[u.Name] = ast.BuildUnitTable(u)
+	}
+	// Include document-level unit definitions.
+	for _, u := range doc.Units {
+		unitTables[u.Name] = ast.BuildUnitTable(u)
 	}
 
 	c := &checker{
 		registry:   registry,
 		styleProps: styleProps,
+		unitTables: unitTables,
 		scope:      NewScope(nil),
 		dir:        dir,
 		resolve:    resolve,
@@ -153,6 +163,7 @@ func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {
 type checker struct {
 	registry   SchemaRegistry
 	styleProps map[string]StylePropSchema
+	unitTables map[string]*ast.UnitTable
 	scope      *Scope
 	components []*ast.Component
 	structs    []*ast.StructDef

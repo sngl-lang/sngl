@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Run executes all tests in a document and returns results.
@@ -107,6 +108,9 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 		body = comp.Body
 	}
 
+	// Build unit tables from document-level unit definitions and stdlib.
+	env.units = buildUnitTables(doc)
+
 	for _, d := range data {
 		env.vars[d.Name] = evalInit(env, d.Init)
 	}
@@ -152,6 +156,31 @@ func evalInit(env *Env, expr ast.Expr) any {
 		}
 	}
 	return nil
+}
+
+// buildUnitTables creates a suffix→UnitTable lookup from document and stdlib units.
+func buildUnitTables(doc *ast.Document) map[string]*ast.UnitTable {
+	tables := map[string]*ast.UnitTable{}
+
+	// Load stdlib unit definitions.
+	_, _, stdlibUnits, err := checker.LoadStdlib()
+	if err == nil {
+		for _, u := range stdlibUnits {
+			t := ast.BuildUnitTable(u)
+			for suffix := range t.Conversions {
+				tables[suffix] = t
+			}
+		}
+	}
+
+	// Document-level unit definitions (override stdlib if same name).
+	for _, u := range doc.Units {
+		t := ast.BuildUnitTable(u)
+		for suffix := range t.Conversions {
+			tables[suffix] = t
+		}
+	}
+	return tables
 }
 
 func allPassed(results []*codegen.TestResult) bool {
