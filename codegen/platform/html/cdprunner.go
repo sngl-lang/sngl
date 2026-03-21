@@ -122,6 +122,12 @@ func (r *CDPRunner) execStmt(stmt ast.Node) error {
 		return r.execAssign(s)
 	case *ast.ToggleStmt:
 		return r.execToggle(s)
+	case *ast.CallStmt:
+		if s.Call.Func == "assert" && len(s.Call.Args) == 1 {
+			return r.execAssert(s.Call.Args[0])
+		}
+		js := r.exprToJS(s.Call)
+		return r.evalVoid(js + ";")
 	case *ast.CallExpr:
 		if s.Func == "assert" && len(s.Args) == 1 {
 			return r.execAssert(s.Args[0])

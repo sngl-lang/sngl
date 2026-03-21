@@ -107,6 +107,7 @@ func findTestComponent(doc *ast.Document, name string) *ast.Component {
 			Data:      doc.Data,
 			Computeds: doc.Computeds,
 			Consts:    doc.Consts,
+			Functions: doc.Functions,
 		}
 	}
 	for _, c := range doc.Components {
@@ -130,6 +131,9 @@ func checkTestBody(td *ast.TestDef, comp *ast.Component) []Diagnostic {
 	}
 	for _, p := range comp.Params {
 		known[p.Name] = true
+	}
+	for _, fn := range comp.Functions {
+		known[fn.Name] = true
 	}
 	known["assert"] = true
 
@@ -155,6 +159,10 @@ func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {
 	case *ast.CallExpr:
 		if !known[s.Func] {
 			return []Diagnostic{{Msg: fmt.Sprintf("unknown function %q", s.Func)}}
+		}
+	case *ast.CallStmt:
+		if !known[s.Call.Func] {
+			return []Diagnostic{{Msg: fmt.Sprintf("unknown function %q", s.Call.Func)}}
 		}
 	}
 	return nil
@@ -263,6 +271,15 @@ func (c *checker) pass1(doc *ast.Document) {
 	for _, comp := range doc.Computeds {
 		t := c.resolveExprType(comp.Pos, &comp.Expr)
 		c.scope.Declare(comp.Name, t)
+	}
+
+	// Functions
+	for _, fn := range doc.Functions {
+		t := Dyn
+		if fn.ReturnType != "" {
+			t = c.resolveTypeHint(fn.Pos, fn.ReturnType)
+		}
+		c.scope.Declare(fn.Name, t)
 	}
 
 	// User-defined components
@@ -424,6 +441,9 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		case "size":
 			return Int
 		default:
+			if t, ok := c.scope.Lookup(e.Func); ok {
+				return t
+			}
 			return Dyn
 		}
 	case *ast.MethodExpr:
@@ -718,6 +738,9 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		case "size":
 			return Int
 		default:
+			if t, ok := c.scope.Lookup(e.Func); ok {
+				return t
+			}
 			return Dyn
 		}
 	case *ast.MethodExpr:

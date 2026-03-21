@@ -86,6 +86,7 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 	var data []*ast.Data
 	var computeds []*ast.Computed
 	var consts []*ast.Const
+	var funcs []*ast.FuncDef
 	var params []*ast.Param
 	var body []*ast.VisualNode
 
@@ -93,6 +94,7 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 		data = doc.Data
 		computeds = doc.Computeds
 		consts = doc.Consts
+		funcs = doc.Functions
 		if doc.App != nil {
 			body = doc.App.Children
 		}
@@ -104,6 +106,7 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 		data = comp.Data
 		computeds = comp.Computeds
 		consts = comp.Consts
+		funcs = comp.Functions
 		params = comp.Params
 		body = comp.Body
 	}
@@ -122,6 +125,9 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 	}
 	for _, p := range params {
 		env.vars[p.Name] = evalInit(env, p.Default)
+	}
+	for _, fn := range funcs {
+		env.SetFunc(fn)
 	}
 
 	env.doc = doc

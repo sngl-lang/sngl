@@ -52,6 +52,7 @@ module.exports = grammar({
         $.unit_declaration,
         $.style_declaration,
         $.styles_declaration,
+        $.func_declaration,
         $.component_declaration,
         $.test_declaration,
       ),
@@ -243,6 +244,7 @@ module.exports = grammar({
         $.const_declaration,
         $.var_declaration,
         $.computed_declaration,
+        $.func_declaration,
         $._node_or_control,
       ),
 
@@ -338,6 +340,59 @@ module.exports = grammar({
         "=",
         field("value", $._expression),
       ),
+
+    // ─── Functions ────────────────────────────────────────────
+
+    func_declaration: ($) =>
+      seq(
+        "func",
+        field("name", $.identifier),
+        $.func_params,
+        optional(field("return_type", $.type_identifier)),
+        choice(
+          seq("=", field("body", $._expression)),
+          $.func_block,
+        ),
+      ),
+
+    func_params: ($) =>
+      seq(
+        "(",
+        commaSep($.func_param),
+        ")",
+      ),
+
+    func_param: ($) =>
+      seq(
+        field("name", $.identifier),
+        field("type", $.type_identifier),
+      ),
+
+    func_block: ($) =>
+      seq(
+        "{",
+        repeat(seq($._func_body_stmt, $._terminator)),
+        "}",
+      ),
+
+    _func_body_stmt: ($) =>
+      choice(
+        $.local_var,
+        $.return_statement,
+        $._statement,
+      ),
+
+    local_var: ($) =>
+      seq(
+        "var",
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        "=",
+        field("init", $._expression),
+      ),
+
+    return_statement: ($) =>
+      seq("return", optional(field("value", $._expression))),
 
     // ─── Types ───────────────────────────────────────────────
 

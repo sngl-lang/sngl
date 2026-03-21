@@ -365,6 +365,11 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
+	// User-defined functions
+	for _, fn := range doc.Functions {
+		emitGoFunc(&b, fn, ec)
+	}
+
 	// Getters, setters, Msg/Cmd types, trigger registration
 	emitGettersSetters(&b, info)
 
@@ -400,6 +405,94 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	return []byte(b.String())
+}
+
+func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
+	// Build param list
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		goType := "any"
+		switch p.Type {
+		case "int":
+			goType = "int"
+		case "float":
+			goType = "float64"
+		case "bool":
+			goType = "bool"
+		case "string":
+			goType = "string"
+		}
+		params[i] = p.Name + " " + goType
+	}
+	paramStr := strings.Join(params, ", ")
+
+	retType := ""
+	if fn.ReturnType != "" {
+		switch fn.ReturnType {
+		case "int":
+			retType = "int"
+		case "float":
+			retType = "float64"
+		case "bool":
+			retType = "bool"
+		case "string":
+			retType = "string"
+		default:
+			retType = "any"
+		}
+	}
+
+	// Void functions use pointer receiver (mutation)
+	receiver := "m Model"
+	if fn.ReturnType == "" {
+		receiver = "m *Model"
+	}
+
+	if fn.Body.SNGL != nil {
+		// Add params as local vars for translation
+		for _, p := range fn.Params {
+			ec.localVars[p.Name] = true
+		}
+		body := ec.translateExpr(fn.Body.SNGL)
+		for _, p := range fn.Params {
+			delete(ec.localVars, p.Name)
+		}
+		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, exportName(fn.Name), paramStr, retType)
+		fmt.Fprintf(b, "\treturn %s\n", body)
+		b.WriteString("}\n\n")
+	} else if fn.Block != nil {
+		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, exportName(fn.Name), paramStr, retType)
+		for _, p := range fn.Params {
+			ec.localVars[p.Name] = true
+		}
+		for _, stmt := range fn.Block.Stmts {
+			switch s := stmt.(type) {
+			case *ast.VarStmt:
+				ec.localVars[s.Name] = true
+				val := ec.translateExpr(s.Init)
+				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
+			default:
+				stmts := ec.translateMutation(stmt)
+				for _, line := range stmts {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+		}
+		if fn.Block.Return != nil {
+			ret := ec.translateExpr(fn.Block.Return)
+			fmt.Fprintf(b, "\treturn %s\n", ret)
+		}
+		// Clean up local vars
+		for _, p := range fn.Params {
+			delete(ec.localVars, p.Name)
+		}
+		for _, stmt := range fn.Block.Stmts {
+			if s, ok := stmt.(*ast.VarStmt); ok {
+				delete(ec.localVars, s.Name)
+			}
+		}
+		b.WriteString("}\n\n")
+	}
 }
 
 func emitGettersSetters(b *strings.Builder, info *analysisResult) {

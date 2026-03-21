@@ -31,6 +31,16 @@ func (env *Env) Exec(n ast.Node) error {
 	case *ast.CallExpr:
 		_, err := env.evalCall(s)
 		return err
+	case *ast.CallStmt:
+		_, err := env.evalCall(s.Call)
+		return err
+	case *ast.VarStmt:
+		v, err := env.Eval(s.Init)
+		if err != nil {
+			return err
+		}
+		env.vars[s.Name] = v
+		return nil
 	case *ast.StmtBlock:
 		for _, stmt := range s.Stmts {
 			if err := env.Exec(stmt); err != nil {

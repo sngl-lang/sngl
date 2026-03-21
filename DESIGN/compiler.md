@@ -39,17 +39,13 @@ SNGL Source
 
 A **target** is a (language, platform) pair. Examples:
 
-| Language   | Platform  | Output                                           |
-| ---------- | --------- | ------------------------------------------------ |
-| Go         | Gio       | Go package using Gio widgets + Yoga layout       |
-| Go         | GTK       | Go package using gotk4 bindings                  |
-| Go         | bubbletea | Go package using charmbracelet bubbletea         |
-| TypeScript | Web       | ES module with DOM operations                    |
-| Kotlin     | Android   | Kotlin source using Jetpack Compose              |
-| Swift      | iOS       | Swift source using SwiftUI                       |
-| none       | none      | Analysis-only (static analysis, WYSIWYG preview) |
+| Language | Platform  | Output                                           | Status      |
+| -------- | --------- | ------------------------------------------------ | ----------- |
+| JS       | html      | Single `index.html` with inline JS               | Implemented |
+| Go       | bubbletea | Go TUI package using charmbracelet bubbletea     | Implemented |
+| —        | none      | Interpreter-based headless test runner            | Implemented |
 
-The `none/none` target performs all phases except emission and is used by the static analysis and WYSIWYG tools.
+Future targets may include native desktop (Gio, GTK), mobile (SwiftUI, Compose), and additional web frameworks.
 
 ## Language Translators
 
@@ -67,15 +63,16 @@ Translators register via `init()` and are looked up by name at runtime. Current 
 
 SNGL expressions are Go-like and handle simple logic: conditional text, computed properties, validation predicates. The language translator walks SNGL AST nodes (`*ast.BinaryExpr`, `*ast.CallExpr`, `*ast.InterpolationExpr`, etc.) and produces target-language source strings. Scope context (`codegen.ExprScope`) tracks which identifiers are model fields, computed fields, local variables, or renames.
 
+### User-Defined Functions
+
+User-defined functions (`fn` declarations) are registered during checker pass 1 alongside `var`, `computed`, and component declarations. Each function's name, parameter types, and return type are recorded in the component scope (or document scope for global functions). During pass 2, the checker validates function bodies: parameter types are pushed into a nested scope, the body is type-checked, and the return type is verified against the declaration. Pure functions (the default) are subject to purity enforcement — the checker rejects mutations to non-local variables and `emit` statements inside pure function bodies.
+
+During codegen, the language translator is responsible for emitting function definitions. The JS translator emits standalone functions at the module level. The Go translator emits functions as methods on the component's `Model` struct, giving them access to model fields via the receiver.
+
 ### Handler Delegation
 
-Complex logic (network calls, state machines, business rules) lives in `extern` functions. The SNGL source references named handlers:
+Complex logic (network calls, state machines, business rules) lives in `extern` functions declared in SNGL and implemented by the application author in the target language.
 
-```sngl
-button(text="Submit", @click={ save(formData) })
-```
-
-The compiler generates a typed handler interface in the target language:
 ## Platform Generators
 
 A platform generator (`codegen.PlatformGenerator`) is responsible for:

@@ -51,6 +51,10 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 			}
 		}
 		return []string{"// unsupported method mutation: " + n.Method}
+	case *ast.CallStmt:
+		return []string{ec.translateExpr(n.Call)}
+	case *ast.CallExpr:
+		return []string{ec.translateExpr(n)}
 	default:
 		return []string{fmt.Sprintf("// unsupported mutation: %T", e)}
 	}
@@ -97,6 +101,8 @@ func extractMutatedFields(e ast.Node) map[string]bool {
 		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
 			fields[ident.Name] = true
 		}
+	case *ast.CallStmt:
+		maps.Copy(fields, extractMutatedFields(n.Call))
 	}
 	return fields
 }

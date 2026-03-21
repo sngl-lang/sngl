@@ -52,6 +52,33 @@ computed isAdult = user.age >= 18
 computed status = "Todo List ({todos.length()} items)"
 ```
 
+## Functions
+
+Use `func` to declare reusable logic alongside your state. Functions can read component state and be called in expressions or event handlers:
+
+```sngl
+component main {
+    var count = 0
+    var todos list<Todo> = []
+    computed remaining = todos.length() - doneCount()
+
+    func doneCount() int = todos.filter(t => t.done).length()
+
+    func addTodo(text string) {
+        todos.push(Todo{text: text, done: false})
+    }
+
+    func reset() {
+        count = 0
+    }
+
+    text(value="Done: {doneCount()} / {todos.length()}")
+    button(text="Reset", @click={ reset() })
+}
+```
+
+Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
+
 ## Modifiers
 
 ### extern

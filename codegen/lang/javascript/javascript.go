@@ -146,6 +146,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.ToggleStmt:
 		stmts := translateMutation(n, scope)
 		return strings.Join(stmts, "\n")
+	case *ast.CallStmt:
+		return translateCall(n.Call, scope)
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
@@ -262,6 +264,10 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 			argStrs[i] = translateExpr(a, scope)
 		}
 		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
+	case *ast.CallStmt:
+		return []string{translateCall(n.Call, scope)}
+	case *ast.CallExpr:
+		return []string{translateCall(n, scope)}
 	default:
 		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}

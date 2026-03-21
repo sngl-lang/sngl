@@ -268,6 +268,10 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 			argStrs[i] = translateExpr(a, scope)
 		}
 		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
+	case *ast.CallStmt:
+		return []string{translateCall(n.Call, scope)}
+	case *ast.CallExpr:
+		return []string{translateCall(n, scope)}
 	default:
 		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}

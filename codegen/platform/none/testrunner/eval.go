@@ -15,6 +15,7 @@ type Env struct {
 	vars      map[string]any
 	computeds map[string]ast.Expr
 	consts    map[string]any
+	funcs     map[string]*ast.FuncDef
 	units     map[string]*ast.UnitTable // suffix → unit table
 	doc       *ast.Document
 	body      []*ast.VisualNode
@@ -25,7 +26,13 @@ func NewEnv() *Env {
 		vars:      map[string]any{},
 		computeds: map[string]ast.Expr{},
 		consts:    map[string]any{},
+		funcs:     map[string]*ast.FuncDef{},
 	}
+}
+
+// SetFunc registers a user-defined function in the environment.
+func (env *Env) SetFunc(fn *ast.FuncDef) {
+	env.funcs[fn.Name] = fn
 }
 
 // SetVar sets a variable in the environment.
@@ -39,6 +46,7 @@ func (env *Env) Snapshot() *Env {
 		vars:      make(map[string]any, len(env.vars)),
 		computeds: env.computeds,
 		consts:    env.consts,
+		funcs:     env.funcs,
 		units:     env.units,
 		doc:       env.doc,
 		body:      env.body,
@@ -347,8 +355,100 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 		}
 		return nil, nil
 	default:
+		if fn, ok := env.funcs[e.Func]; ok {
+			return env.evalUserFunc(fn, e.Args)
+		}
 		return nil, fmt.Errorf("unknown function %q", e.Func)
 	}
+}
+
+// evalUserFunc evaluates a user-defined function call.
+func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) {
+	// Evaluate arguments
+	args := make([]any, len(argNodes))
+	for i, a := range argNodes {
+		v, err := env.Eval(a)
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+
+	// Void/action functions execute in the caller's env (they mutate state).
+	// Pure functions (have ReturnType) execute in a snapshot.
+	var execEnv *Env
+	if fn.ReturnType == "" {
+		execEnv = env
+	} else {
+		execEnv = env.Snapshot()
+	}
+
+	// Bind params (save originals for cleanup in void case)
+	savedVars := make(map[string]any)
+	paramNames := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		paramNames[i] = p.Name
+		if v, ok := execEnv.vars[p.Name]; ok {
+			savedVars[p.Name] = v
+		}
+		if i < len(args) {
+			execEnv.vars[p.Name] = args[i]
+		}
+	}
+
+	// Cleanup params after void functions so they don't leak into env
+	defer func() {
+		if fn.ReturnType == "" {
+			for _, name := range paramNames {
+				if orig, ok := savedVars[name]; ok {
+					execEnv.vars[name] = orig
+				} else {
+					delete(execEnv.vars, name)
+				}
+			}
+		}
+	}()
+
+	// Single-expression form
+	if fn.Body.SNGL != nil {
+		return execEnv.Eval(fn.Body.SNGL)
+	}
+
+	// Block form
+	if fn.Block != nil {
+		// Track local vars for cleanup
+		var localVars []string
+		for _, stmt := range fn.Block.Stmts {
+			switch s := stmt.(type) {
+			case *ast.VarStmt:
+				v, err := execEnv.Eval(s.Init)
+				if err != nil {
+					return nil, err
+				}
+				execEnv.vars[s.Name] = v
+				localVars = append(localVars, s.Name)
+			default:
+				if err := execEnv.Exec(stmt); err != nil {
+					return nil, err
+				}
+			}
+		}
+		var result any
+		if fn.Block.Return != nil {
+			var err error
+			result, err = execEnv.Eval(fn.Block.Return)
+			if err != nil {
+				return nil, err
+			}
+		}
+		// Clean up local vars
+		for _, name := range localVars {
+			delete(execEnv.vars, name)
+		}
+		return result, nil
+	}
+
+	return nil, nil
 }
 
 func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {

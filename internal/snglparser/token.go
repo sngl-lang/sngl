@@ -83,6 +83,7 @@ const (
 	KW_FUNC
 	KW_UNIT
 	KW_TEST
+	KW_RETURN
 	KW_TRUE
 	KW_FALSE
 	KW_NULL
@@ -111,6 +112,7 @@ var keywords = map[string]TokenType{
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
 	"test":      KW_TEST,
+	"return":    KW_RETURN,
 	"true":      KW_TRUE,
 	"false":     KW_FALSE,
 	"null":      KW_NULL,
@@ -145,7 +147,7 @@ func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
 		KW_TRUE, KW_FALSE, KW_NULL,
-		KW_EXTERN,
+		KW_EXTERN, KW_RETURN,
 		RPAREN, RBRACKET, RBRACE:
 		return true
 	}
@@ -168,4 +170,5 @@ var tokenNames = map[TokenType]string{
 	STAR_ASSIGN: "STAR_ASSIGN", SLASH_ASSIGN: "SLASH_ASSIGN",
 	PERCENT_ASSIGN: "PERCENT_ASSIGN",
 	KW_TEST:        "KW_TEST",
+	KW_RETURN:      "KW_RETURN",
 }

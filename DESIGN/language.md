@@ -153,7 +153,7 @@ In all contexts, `()`, `[]`, and string literals are tracked for nesting. In `if
 
 ## Statements
 
-Statements appear only in event handler blocks (`@event={ ... }`). They are imperative — they mutate state directly. Functions and methods that return a value are pure (no side effects) and cannot appear as statements. Only mutating operations are valid statements: assignment, toggle, method calls on state, and emit.
+Statements appear in event handler blocks (`@event={ ... }`) and in void/action function bodies. They are imperative — they mutate state directly. Only mutating operations are valid statements: assignment, toggle, method calls on state, function calls, and emit.
 
 ### Statement Forms
 
@@ -163,6 +163,8 @@ Statements appear only in event handler blocks (`@event={ ... }`). They are impe
 | Compound assign | `target op= value`    | `count += 1`        |
 | Toggle          | `target!!`            | `active!!`          |
 | Method call     | `lvalue.method(args)` | `todos.push(item)`  |
+| Function call   | `name(args)`          | `reset()`           |
+| Return          | `return expr?`        | `return total`      |
 | Emit            | `@name(payload?)`     | `@save(data)`       |
 
 Compound assignment operators: `+=`, `-=`, `*=`, `/=`, `%=`.
@@ -448,6 +450,35 @@ computed (
 )
 ```
 
+### func
+
+Declares a user-defined function. Functions may be declared at the top level or inside a `component` block.
+
+**Pure functions** return a value and have no side effects. They can appear at the top level (global scope) or inside a component. Component-scoped functions implicitly access component state (like `computed`).
+
+**Void/action functions** have no return type and may mutate component state. They can only appear inside a `component` block.
+
+Two body forms are supported:
+
+- **Expression form:** `= expr` — a single expression (pure only)
+- **Block form:** `{ ... }` — may contain `var` (local variables), statements, and `return`
+
+```
+func add(a int, b int) int = a + b
+func greet(name string) string = "Hello, {name}!"
+
+func clamp(val int, lo int, hi int) int {
+    var result = val < lo ? lo : val
+    return result > hi ? hi : result
+}
+
+func reset() {
+    count = 0
+}
+```
+
+→ `ast.FuncDef{Name, Params, ReturnType, Body/Block}`
+
 ## Component Declaration
 
 ### User-Defined Components
@@ -708,6 +739,7 @@ Declaration    = "import" STRING
                | "style" IDENT "{" StyleProp* "}"
                | "styles" "{" StyleDef* "}"
                | "component" IDENT "{" ComponentMember* "}"
+               | FuncDecl
 
 UnitSuffixDef  = IDENT ("=" Expr)?
 
@@ -733,6 +765,11 @@ VarField       = IDENT Type? "=" Expr VarMod*
 
 ComputedField  = IDENT "=" Expr
 
+FuncDecl       = "func" IDENT "(" FuncParamList ")" Type? ("=" Expr | "{" FuncBody "}")
+FuncParamList  = (IDENT Type ("," IDENT Type)*)?
+FuncBody       = (LocalVar | Stmt)* ("return" Expr)?
+LocalVar       = "var" IDENT Type? "=" Expr
+
 StructField    = IDENT Type "=" Expr
 
 VarMod         = "extern"
@@ -750,6 +787,7 @@ ComponentMember = "param" IDENT Type? "=" Expr
                | ConstDecl
                | VarDecl
                | ComputedDecl
+               | FuncDecl
                | NodeOrControl
 
 NodeOrControl  = "if" Expr "{" VisualNode "}"
@@ -783,7 +821,7 @@ TypeList       = Type ("," Type)*
 ```
 StmtList       = Stmt (";" Stmt)* ";"?
 
-Stmt           = AssignStmt | ToggleStmt | MethodCallStmt | EmitStmt
+Stmt           = AssignStmt | ToggleStmt | MethodCallStmt | EmitStmt | CallStmt | ReturnStmt
 
 AssignStmt     = LValue "=" Expr
                | LValue "+=" Expr
@@ -799,6 +837,10 @@ LValue         = IDENT ("." IDENT | "[" Expr "]")*
 MethodCallStmt = LValue "." IDENT "(" ArgList? ")"
 
 EmitStmt       = "@" IDENT "(" ArgList? ")"
+
+CallStmt       = IDENT "(" ArgList? ")"
+
+ReturnStmt     = "return" Expr?
 
 ArgList        = Expr ("," Expr)*
 ```
@@ -826,20 +868,24 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 
 ### LL(1) Decision Points
 
-| Position             | Lookahead token                        | Decision                            |
-| -------------------- | -------------------------------------- | ----------------------------------- |
-| Top-level            | keyword                                | Which declaration to parse          |
-| After `output`       | IDENT vs `{`                           | Single output vs grouped block      |
-| After `var`          | IDENT vs `(`                           | Single var vs grouped declaration   |
-| Inside `{}` children | `if`/`for`/`@`/IDENT                   | Control, attr, or node              |
-| Inside component     | `const`/`var`/`computed`/`param`/IDENT | Const, state, param, or visual node |
-| After `var` IDENT    | `=` vs Type token                      | Inferred type vs explicit type      |
-| Inside `()` props    | `@`/`style`/IDENT                      | Event, style literal, or prop       |
-| After `@` in props   | `=` then `{`                           | Event → expect statement block      |
-| After IDENT in type  | `<` or not                             | Generic type or plain type          |
-| After `for` IDENT    | `,` or `in`                            | Index variable or iterable          |
-| In statement         | IDENT then `!!`/`=`/`.`                | Toggle, assign, or method call      |
-| In statement         | `@`                                    | Emit statement                      |
+| Position             | Lookahead token                                | Decision                                  |
+| -------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Top-level            | keyword                                        | Which declaration to parse                |
+| After `output`       | IDENT vs `{`                                   | Single output vs grouped block            |
+| After `var`          | IDENT vs `(`                                   | Single var vs grouped declaration         |
+| Inside `{}` children | `if`/`for`/`@`/IDENT                           | Control, attr, or node                    |
+| Inside component     | `const`/`var`/`computed`/`param`/`func`/IDENT  | Const, state, param, func, or visual node |
+| After `var` IDENT    | `=` vs Type token                              | Inferred type vs explicit type            |
+| Inside `()` props    | `@`/`style`/IDENT                              | Event, style literal, or prop             |
+| After `@` in props   | `=` then `{`                                   | Event → expect statement block            |
+| After IDENT in type  | `<` or not                                     | Generic type or plain type                |
+| After `for` IDENT    | `,` or `in`                                    | Index variable or iterable                |
+| In statement         | IDENT then `!!`/`=`/`.`                        | Toggle, assign, or method call            |
+| In statement         | IDENT then `(`                                 | Call statement                             |
+| In statement         | `@`                                            | Emit statement                            |
+| Top-level/component  | `func`                                         | Function declaration                      |
+| In func body         | `return`                                       | Return statement                          |
+| In func body         | `var`                                           | Local variable declaration                |
 
 ## Complete Examples
 
@@ -970,5 +1016,42 @@ component main {
         formatDate func(string) -> string = null extern
     )
     computed doubled = count * 2
+}
+```
+
+### Helper Functions
+
+```
+func clamp(val int, lo int, hi int) int {
+    var result = val < lo ? lo : val
+    return result > hi ? hi : result
+}
+
+func formatAmount(n int) string = n == 1 ? "1 item" : "{n} items"
+
+component main {
+    var (
+        count = 0
+        minCount = 0
+        maxCount = 10
+    )
+
+    func increment() {
+        count = clamp(count + 1, minCount, maxCount)
+    }
+
+    func reset() {
+        count = 0
+    }
+
+    computed label = formatAmount(count)
+
+    vbox(style={padding=16, gap=12}) {
+        text(value=label, style={font-size=24})
+        hbox(style={gap=8}) {
+            button(text="+", @click={ increment() })
+            button(text="Reset", @click={ reset() })
+        }
+    }
 }
 ```

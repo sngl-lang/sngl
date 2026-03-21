@@ -40,11 +40,12 @@ No optimization or code generation occurs. The checker produces a fully typed AS
 - Validate `slot` usage in composite components (present when children are passed, absent when not)
 - Check `for`/`if` attribute usage is well-formed
 
-### Handler References
+### Function Validation
 
-- Collect all handler references (`handlers.foo(...)`)
-- Produce a manifest of required handler signatures
-- If handler source is available (for a given language target), verify signatures match
+- **Purity enforcement** — Pure functions (the default) cannot mutate non-local variables or emit events. Any assignment to a variable outside the function's parameter/local scope, or any `emit` statement, is an error.
+- **Void function scoping** — Functions with no return type (void) must be declared inside a component. A global void function is an error because it would have no component state to act on.
+- **Dead function detection** — Functions that are declared but never called produce a warning, analogous to unused `var` and `computed` declarations.
+- **Parameter type validation** — Each function parameter's declared type is checked for validity (known type, no recursive struct references). Call sites are checked to ensure argument count and types match the function signature.
 
 ### Structural Checks
 
@@ -62,6 +63,7 @@ Beyond correctness checks, the tool provides configurable lint rules:
 | `no-unused-bind`  | warn    | Declared state is never read                                                     |
 | `no-unused-var`   | warn    | `for` loop index/element variable is declared but never referenced               |
 | `no-missing-key`  | error   | `for` loops without `key` attribute                                              |
+| `no-unused-fn`    | warn    | Declared function is never called                                                |
 | `no-complex-expr` | warn    | Expressions exceeding a complexity threshold (suggest moving to handler)         |
 | `no-inline-style` | off     | Prefer `class` over inline `style.*`                                             |
 | `require-id`      | off     | All interactive components must have an `id`                                     |

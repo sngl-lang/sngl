@@ -105,6 +105,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 	case *ast.ToggleStmt:
 		stmts := ec.translateMutation(n)
 		return strings.Join(stmts, "\n")
+	case *ast.CallStmt:
+		return ec.translateExpr(n.Call)
 	default:
 		return fmt.Sprintf("/* unsupported node %T */nil", e)
 	}

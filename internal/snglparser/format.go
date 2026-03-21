@@ -138,8 +138,8 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		needBlank = true
 	}
 
-	// component main (combines data, computed, consts, app)
-	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0
+	// component main (combines data, computed, consts, functions, app)
+	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0 || len(doc.Functions) > 0
 	if hasMain {
 		if needBlank {
 			f.newline()
@@ -170,6 +170,15 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.newline()
 			}
 			f.formatComputeds(doc.Computeds)
+			memberBlank = true
+		}
+
+		// Functions
+		if len(doc.Functions) > 0 {
+			if memberBlank {
+				f.newline()
+			}
+			f.formatFuncDefs(doc.Functions)
 			memberBlank = true
 		}
 
@@ -364,6 +373,50 @@ func (f *formatter) formatComputeds(computeds []*ast.Computed) {
 	f.writeLine(")")
 }
 
+func (f *formatter) formatFuncDefs(funcs []*ast.FuncDef) {
+	for _, fn := range funcs {
+		f.formatFuncDef(fn)
+	}
+}
+
+func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
+	var sb strings.Builder
+	sb.WriteString("func ")
+	sb.WriteString(fn.Name)
+	sb.WriteString("(")
+	for i, p := range fn.Params {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(p.Name)
+		sb.WriteString(" ")
+		sb.WriteString(typeHintStr(p.Type, nil))
+	}
+	sb.WriteString(")")
+	if fn.ReturnType != "" {
+		sb.WriteString(" ")
+		sb.WriteString(typeHintStr(fn.ReturnType, nil))
+	}
+
+	if fn.Block != nil {
+		sb.WriteString(" {")
+		f.writeLine(sb.String())
+		f.indent++
+		for _, stmt := range fn.Block.Stmts {
+			f.writeLine(FormatNode(stmt))
+		}
+		if fn.Block.Return != nil {
+			f.writeLine("return " + FormatNode(fn.Block.Return))
+		}
+		f.indent--
+		f.writeLine("}")
+	} else {
+		sb.WriteString(" = ")
+		sb.WriteString(f.formatExprValue(fn.Body))
+		f.writeLine(sb.String())
+	}
+}
+
 func (f *formatter) formatComponent(comp *ast.Component) {
 	f.writeLine("component " + comp.Name + " {")
 	f.indent++
@@ -434,6 +487,15 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 			f.newline()
 		}
 		f.formatComputeds(comp.Computeds)
+		memberBlank = true
+	}
+
+	// Functions
+	if len(comp.Functions) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		f.formatFuncDefs(comp.Functions)
 		memberBlank = true
 	}
 
@@ -666,6 +728,18 @@ func FormatNode(n ast.Node) string {
 		return "@" + e.Name + "(" + args + ")"
 	case *ast.StmtBlock:
 		return FormatStmt(e)
+	case *ast.VarStmt:
+		if e.Type != "" {
+			return "var " + e.Name + " " + typeHintStr(e.Type, nil) + " = " + FormatNode(e.Init)
+		}
+		return "var " + e.Name + " = " + FormatNode(e.Init)
+	case *ast.ReturnStmt:
+		if e.Value == nil {
+			return "return"
+		}
+		return "return " + FormatNode(e.Value)
+	case *ast.CallStmt:
+		return FormatNode(e.Call)
 	default:
 		return fmt.Sprintf("/* unknown %T */", n)
 	}

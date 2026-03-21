@@ -21,6 +21,7 @@ Declaration    = "import" STRING
                | "unit" IDENT "(" UnitSuffixDef ("," UnitSuffixDef)* ")"
                | "style" IDENT "{" StyleProp* "}"
                | "styles" "{" StyleDef* "}"
+               | FuncDecl
                | "component" IDENT "{" ComponentMember* "}"
 ```
 
@@ -67,6 +68,30 @@ Type           = IDENT ("<" Type ("," Type)* ">")?
 TypeList       = Type ("," Type)*
 ```
 
+### Function Declarations
+
+```
+FuncDecl       = "func" IDENT "(" FuncParamList? ")" Type? FuncBody
+
+FuncParamList  = FuncParam ("," FuncParam)*
+
+FuncParam      = IDENT Type
+
+FuncBody       = "=" Expr
+               | "{" FuncStmt* ReturnStmt? "}"
+
+FuncStmt       = LocalVar | AssignStmt | ToggleStmt | MethodCallStmt
+               | CallStmt | EmitStmt
+
+LocalVar       = "var" IDENT Type? "=" Expr
+
+ReturnStmt     = "return" Expr?
+
+CallStmt       = IDENT "(" ArgList? ")"
+```
+
+Expression form (`= Expr`) is for pure single-expression functions. Block form allows local variables, statements, and an optional `return`. Functions with a return type must end with a `return` in block form. Void functions omit the return type and may mutate component state.
+
 ### Component Members
 
 ```
@@ -78,6 +103,7 @@ ComponentMember = "param" IDENT Type? "=" Expr
                | ConstDecl
                | VarDecl
                | ComputedDecl
+               | FuncDecl
                | NodeOrControl
 ```
 
@@ -109,7 +135,7 @@ KVList         = IDENT "=" Expr ("," IDENT "=" Expr)*
 ```
 StmtList       = Stmt (";" Stmt)* ";"?
 
-Stmt           = AssignStmt | ToggleStmt | MethodCallStmt | EmitStmt
+Stmt           = AssignStmt | ToggleStmt | MethodCallStmt | CallStmt | EmitStmt
 
 AssignStmt     = LValue "=" Expr
                | LValue "+=" Expr
@@ -172,7 +198,7 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | After `output` | IDENT vs `{` | Single output vs grouped block |
 | After `var` | IDENT vs `(` | Single var vs grouped declaration |
 | Inside `{}` children | `if`/`for`/`@`/IDENT | Control, attr, or node |
-| Inside component | `const`/`var`/`computed`/`param`/IDENT | State, param, or visual node |
+| Inside component | `const`/`var`/`computed`/`func`/`param`/IDENT | State, func, param, or visual node |
 | After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
 | Inside `()` props | `@`/`style`/IDENT | Event, style literal, or prop |
 | After IDENT in type | `<` or not | Generic type or plain type |

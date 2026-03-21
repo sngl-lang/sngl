@@ -39,7 +39,7 @@ Expressions are first-class syntactic constructs stored as native SNGL AST nodes
 
 ```
 Document := Declaration*
-Declaration := Import | Output | Struct | Enum | Unit | Style | Styles | Component | Test
+Declaration := Import | Output | Struct | Enum | Unit | Style | Styles | FuncDef | Component | Test
 ```
 
 ### Import
@@ -101,6 +101,43 @@ const maxItems = 100
 const label string = "Hello"
 ```
 
+### FuncDef
+
+Declares a named function. Functions may appear at the document level (global) or inside a component.
+
+```sngl
+fn add(a int, b int) int {
+    return a + b
+}
+
+fn clamp(val int, lo int, hi int) int {
+    if val < lo { return lo }
+    if val > hi { return hi }
+    return val
+}
+```
+
+Functions are pure by default: they cannot mutate non-local variables or emit events. Impure functions that modify component state use the `mut` modifier:
+
+```sngl
+component Counter {
+    var count = 0
+
+    fn mut increment(amount int) {
+        count += amount
+    }
+}
+```
+
+| Element      | Description                                                          |
+| ------------ | -------------------------------------------------------------------- |
+| `fn`         | Keyword introducing the function                                     |
+| `mut`        | Optional modifier allowing mutation of component state               |
+| name         | Function identifier                                                  |
+| parameters   | Zero or more typed parameters: `name type`                           |
+| return type  | Optional; omit for void functions (void functions must be component-scoped) |
+| body         | Statement block with `return` for non-void functions                 |
+
 ### Component (user-defined)
 
 ```sngl
@@ -109,14 +146,19 @@ component Counter {
     param start = 0
     var count = start
 
+    fn mut reset() {
+        count = start
+    }
+
     hbox {
         text(value="{label}: {count}")
         button(text="+", @click={ count += 1 })
+        button(text="Reset", @click={ reset() })
     }
 }
 ```
 
-Components own their reactive state. `var` and `computed` declarations inside a component are scoped to that component instance.
+Components own their reactive state. `var`, `computed`, and `fn` declarations inside a component are scoped to that component instance.
 
 #### `param`
 

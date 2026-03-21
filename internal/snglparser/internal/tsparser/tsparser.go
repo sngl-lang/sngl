@@ -4,7 +4,7 @@ package tsparser
 //go:generate sh -c "cd ../../../../editors/tree-sitter-sngl && tree-sitter generate"
 //go:generate sh -c "cd ../../../../editors/tree-sitter-sngl && cc -o sngl.so -shared -fPIC -Isrc src/parser.c src/scanner.c -Os"
 //go:generate sh -c "mkdir -p $HOME/.local/share/nvim/lazy/nvim-treesitter/parser && cp ../../../../editors/tree-sitter-sngl/sngl.so $HOME/.local/share/nvim/lazy/nvim-treesitter/parser/sngl.so"
-//go:generate sh -c "mkdir -p ../../editors/neovim/queries/sngl && cp ../../editors/tree-sitter-sngl/queries/*.scm ../../../../editors/neovim/queries/sngl/"
+//go:generate sh -c "mkdir -p ../../../../editors/neovim/queries/sngl && cp ../../../../editors/tree-sitter-sngl/queries/*.scm ../../../../editors/neovim/queries/sngl/"
 
 // #cgo CFLAGS: -std=c11 -fPIC -I../../../../editors/tree-sitter-sngl/src
 // #include "../../../../editors/tree-sitter-sngl/src/parser.c"

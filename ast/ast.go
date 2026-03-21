@@ -34,6 +34,7 @@ type Document struct {
 	Consts     []*Const
 	Data       []*Data
 	Computeds  []*Computed
+	Functions  []*FuncDef
 	Components []*Component
 	Styles     []*StyleDecl
 	StyleDefs  []*StylePropDef // from "styles" top-level node
@@ -141,6 +142,30 @@ type StylePropDef struct {
 	Enum     []string // optional enum constraints
 }
 
+// FuncParam is a parameter in a function definition.
+type FuncParam struct {
+	Pos  Pos
+	Name string
+	Type string // type hint: "int", "string", "User", etc.
+}
+
+// FuncDef declares a named function.
+// Exactly one of Body or Block is set.
+type FuncDef struct {
+	Pos        Pos
+	Name       string
+	Params     []*FuncParam
+	ReturnType string     // "" for void/action functions
+	Body       Expr       // single-expression form (= expr)
+	Block      *FuncBlock // block form ({ ... }), nil for expression form
+}
+
+// FuncBlock is the body of a block-form function.
+type FuncBlock struct {
+	Stmts  []Node // VarStmt, AssignStmt, ToggleStmt, EmitStmt, CallStmt, etc.
+	Return Node   // return expression (nil for void functions)
+}
+
 type Component struct {
 	Pos         Pos
 	Name        string
@@ -148,6 +173,7 @@ type Component struct {
 	Consts      []*Const     // const declarations
 	Data        []*Data      // var declarations (component-scoped state)
 	Computeds   []*Computed  // computed declarations
+	Functions   []*FuncDef   // func declarations
 	PropDecls   []*PropDecl  // @prop (stdlib schemas)
 	EventDecls  []*EventDecl // @event (stdlib schemas)
 	ChildPolicy string       // @children value: "none"/"one"/"many"/""

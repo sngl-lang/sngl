@@ -104,15 +104,18 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.StyleDefs = append(doc.StyleDefs, p.parseStyles()...)
 		case KW_TEST:
 			doc.Tests = append(doc.Tests, p.parseTestDef(true))
+		case KW_FUNC:
+			doc.Functions = append(doc.Functions, p.parseFuncDef())
 		case KW_COMPONENT:
 			comp := p.parseComponent()
 			if comp.Name == "main" {
 				// The main component becomes the app root.
-				// Hoist data/computeds/consts to document level.
+				// Hoist data/computeds/consts/functions to document level.
 				doc.App = &ast.App{Pos: comp.Pos, Children: comp.Body}
 				doc.Data = append(doc.Data, comp.Data...)
 				doc.Computeds = append(doc.Computeds, comp.Computeds...)
 				doc.Consts = append(doc.Consts, comp.Consts...)
+				doc.Functions = append(doc.Functions, comp.Functions...)
 			} else {
 				doc.Components = append(doc.Components, comp)
 			}
@@ -357,6 +360,8 @@ func (p *parser) parseComponent() *ast.Component {
 			cs.Data = append(cs.Data, p.parseVarDecl()...)
 		case KW_COMPUTED:
 			cs.Computeds = append(cs.Computeds, p.parseComputedDecl()...)
+		case KW_FUNC:
+			comp.Functions = append(comp.Functions, p.parseFuncDef())
 		default:
 			// Visual nodes or control flow
 			comp.Body = append(comp.Body, p.parseNodeOrControl())
@@ -610,6 +615,86 @@ func (p *parser) parseGroupedComputeds() []*ast.Computed {
 	}
 	p.expect(RPAREN)
 	return computeds
+}
+
+// --- Function definitions ---
+
+func (p *parser) parseFuncDef() *ast.FuncDef {
+	pos := p.pos()
+	p.expect(KW_FUNC)
+	name := p.expect(IDENT).Literal
+
+	// Parse parameter list
+	p.expect(LPAREN)
+	var params []*ast.FuncParam
+	for !p.at(RPAREN) && !p.at(EOF) {
+		ppos := p.pos()
+		pname := p.expect(IDENT).Literal
+		ptype := p.parseTypeString()
+		params = append(params, &ast.FuncParam{Pos: ppos, Name: pname, Type: ptype})
+		if p.at(COMMA) {
+			p.advance()
+		}
+	}
+	p.expect(RPAREN)
+
+	// Optional return type: present if next token is not = or {
+	retType := ""
+	if !p.at(ASSIGN) && !p.at(LBRACE) {
+		retType = p.parseTypeString()
+	}
+
+	fd := &ast.FuncDef{Pos: pos, Name: name, Params: params, ReturnType: retType}
+
+	if p.at(ASSIGN) {
+		// Single-expression form: func name(params) type = expr
+		p.advance()
+		fd.Body = p.parseExprAsExpr()
+	} else if p.at(LBRACE) {
+		// Block form: func name(params) type { stmts; return expr }
+		p.advance()
+		fd.Block = p.parseFuncBlock()
+		p.expect(RBRACE)
+	} else {
+		p.errorf("expected = or { after function signature")
+	}
+
+	return fd
+}
+
+func (p *parser) parseFuncBlock() *ast.FuncBlock {
+	fb := &ast.FuncBlock{}
+	for !p.at(RBRACE) && !p.at(EOF) {
+		p.skipSemicolons()
+		if p.at(RBRACE) {
+			break
+		}
+		if p.at(KW_RETURN) {
+			p.advance()
+			if p.at(SEMICOLON) || p.at(RBRACE) {
+				fb.Return = nil // bare return
+			} else {
+				fb.Return = p.parseExpression()
+			}
+			p.skipSemicolons()
+			break
+		}
+		if p.at(KW_VAR) {
+			p.advance()
+			vname := p.expect(IDENT).Literal
+			vtype := ""
+			if !p.at(ASSIGN) {
+				vtype = p.parseTypeString()
+			}
+			p.expect(ASSIGN)
+			init := p.parseExpression()
+			fb.Stmts = append(fb.Stmts, &ast.VarStmt{Name: vname, Type: vtype, Init: init})
+		} else {
+			fb.Stmts = append(fb.Stmts, p.parseStmt())
+		}
+		p.skipSemicolons()
+	}
+	return fb
 }
 
 // --- Type parsing ---
@@ -908,7 +993,10 @@ func (p *parser) parseStmt() ast.Node {
 		return &ast.ToggleStmt{Target: target}
 	}
 
-	// If we got a method call expression, that's valid as a statement
+	// Method calls and function calls are valid as statements
+	if call, ok := target.(*ast.CallExpr); ok {
+		return &ast.CallStmt{Call: call}
+	}
 	return target
 }
 

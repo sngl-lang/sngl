@@ -11,6 +11,7 @@ import (
 type ExprScope struct {
 	ModelFields    map[string]bool   // data fields → prefix with model accessor
 	ComputedFields map[string]bool   // computed names → call as methods
+	FuncNames      map[string]bool   // user-defined function names
 	LocalVars      map[string]bool   // for-loop vars, params → no prefix
 	Renames        map[string]string // local var renames (original → unique name)
 	EventVar       string            // what "event" maps to in this context

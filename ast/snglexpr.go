@@ -177,6 +177,23 @@ type StmtBlock struct {
 	Stmts []Node
 }
 
+// VarStmt is a local variable declaration inside a function body.
+type VarStmt struct {
+	Name string
+	Type string // optional type hint
+	Init Node   // initializer expression
+}
+
+// ReturnStmt is a return statement in a block function.
+type ReturnStmt struct {
+	Value Node // nil for bare return
+}
+
+// CallStmt wraps a CallExpr used as a statement (for void function calls).
+type CallStmt struct {
+	Call *CallExpr
+}
+
 // --- Node interface implementations ---
 
 func (*LiteralExpr) snglNode()       {}
@@ -196,3 +213,6 @@ func (*AssignStmt) snglNode()        {}
 func (*ToggleStmt) snglNode()        {}
 func (*EmitStmt) snglNode()          {}
 func (*StmtBlock) snglNode()         {}
+func (*VarStmt) snglNode()           {}
+func (*ReturnStmt) snglNode()        {}
+func (*CallStmt) snglNode()          {}

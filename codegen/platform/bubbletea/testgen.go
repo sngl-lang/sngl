@@ -103,6 +103,8 @@ func nodeNeedsFmt(n ast.Node) bool {
 	switch e := n.(type) {
 	case *ast.InterpolationExpr:
 		return true
+	case *ast.CallStmt:
+		return nodeNeedsFmt(e.Call)
 	case *ast.CallExpr:
 		if slices.ContainsFunc(e.Args, nodeNeedsFmt) {
 			return true
@@ -257,6 +259,20 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 	indent := strings.Repeat("\t", depth)
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
+		case *ast.CallStmt:
+			if s.Call.Func == "assert" && len(s.Call.Args) == 1 {
+				expr := ec.translateExpr(s.Call.Args[0])
+				original := snglparser.FormatNode(s.Call.Args[0])
+				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
+				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
+				fmt.Fprintf(b, "%s}\n", indent)
+				continue
+			}
+			stmts := ec.translateMutation(s)
+			for _, line := range stmts {
+				fmt.Fprintf(b, "%s%s\n", indent, line)
+			}
+			continue
 		case *ast.CallExpr:
 			if s.Func == "assert" && len(s.Args) == 1 {
 				expr := ec.translateExpr(s.Args[0])
@@ -316,6 +332,8 @@ func nodeUsesUnsupported(n ast.Node) bool {
 		case "length", "contains", "push", "remove":
 			return true
 		}
+	case *ast.CallStmt:
+		return nodeUsesUnsupported(e.Call)
 	case *ast.CallExpr:
 		if e.Func == "assert" && len(e.Args) == 1 {
 			return nodeUsesUnsupported(e.Args[0])
@@ -386,6 +404,8 @@ func nodeUsesElementRef(n ast.Node) bool {
 		return nodeUsesElementRef(e.Operand)
 	case *ast.MethodExpr:
 		return nodeUsesElementRef(e.Receiver)
+	case *ast.CallStmt:
+		return nodeUsesElementRef(e.Call)
 	case *ast.CallExpr:
 		if slices.ContainsFunc(e.Args, nodeUsesElementRef) {
 			return true

@@ -123,9 +123,14 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 	for _, c := range doc.Consts {
 		localVars[c.Name] = true
 	}
+	funcNames := make(map[string]bool)
+	for _, fn := range doc.Functions {
+		funcNames[fn.Name] = true
+	}
 	g.scope = &codegen.ExprScope{
 		ModelFields:    g.modelFields,
 		ComputedFields: g.computedFields,
+		FuncNames:      funcNames,
 		LocalVars:      localVars,
 	}
 
@@ -637,6 +642,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		fmt.Fprintf(b, "function $%s() { return %s; }\n", c.Name, body)
 	}
 	if len(g.doc.Computeds) > 0 {
+		b.WriteString("\n")
+	}
+
+	// User-defined functions
+	for _, fn := range g.doc.Functions {
+		g.emitJSFunc(b, fn)
+	}
+	if len(g.doc.Functions) > 0 {
 		b.WriteString("\n")
 	}
 
@@ -1160,6 +1173,55 @@ func appendCSS(existing, prop, value string) string {
 
 // Expression evaluation helpers
 
+func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
+	// Build param list
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		params[i] = p.Name
+	}
+	paramStr := strings.Join(params, ", ")
+
+	// Create a scope with function params as local vars
+	funcScope := &codegen.ExprScope{
+		ModelFields:    g.scope.ModelFields,
+		ComputedFields: g.scope.ComputedFields,
+		FuncNames:      g.scope.FuncNames,
+		LocalVars:      make(map[string]bool),
+	}
+	for k := range g.scope.LocalVars {
+		funcScope.LocalVars[k] = true
+	}
+	for _, p := range fn.Params {
+		funcScope.LocalVars[p.Name] = true
+	}
+
+	if fn.Body.SNGL != nil {
+		// Single-expression function
+		body := g.lang.TranslateExpr(fn.Body.SNGL, funcScope)
+		fmt.Fprintf(b, "function %s(%s) { return %s; }\n", fn.Name, paramStr, body)
+	} else if fn.Block != nil {
+		fmt.Fprintf(b, "function %s(%s) {\n", fn.Name, paramStr)
+		for _, stmt := range fn.Block.Stmts {
+			switch s := stmt.(type) {
+			case *ast.VarStmt:
+				funcScope.LocalVars[s.Name] = true
+				val := g.lang.TranslateExpr(s.Init, funcScope)
+				fmt.Fprintf(b, "  let %s = %s;\n", s.Name, val)
+			default:
+				stmts := g.lang.TranslateMutation(stmt, funcScope)
+				for _, line := range stmts {
+					fmt.Fprintf(b, "  %s;\n", line)
+				}
+			}
+		}
+		if fn.Block.Return != nil {
+			ret := g.lang.TranslateExpr(fn.Block.Return, funcScope)
+			fmt.Fprintf(b, "  return %s;\n", ret)
+		}
+		b.WriteString("}\n")
+	}
+}
+
 func (g *htmlGen) exprToJS(expr ast.Expr) string {
 	if expr.SNGL != nil {
 		return g.lang.TranslateExpr(expr.SNGL, g.scope)
@@ -1420,6 +1482,8 @@ func extractMutatedFields(e ast.Node) map[string]bool {
 		if root != "" {
 			fields[root] = true
 		}
+	case *ast.CallStmt:
+		maps.Copy(fields, extractMutatedFields(n.Call))
 	case *ast.CallExpr:
 		// Function calls like append() etc — check first arg
 		if len(n.Args) >= 1 {

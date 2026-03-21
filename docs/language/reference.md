@@ -373,6 +373,81 @@ for item, index in todos {
 }
 ```
 
+## Functions
+
+The `func` keyword declares a user-defined function. Functions may appear at the top level (global scope) or inside a `component` block.
+
+### Pure Functions
+
+Pure functions return a value and have no side effects. They can be declared at the top level or inside a component.
+
+**Expression form** — a single expression after `=`:
+
+```sngl
+func add(a int, b int) int = a + b
+func greet(name string) string = "Hello, {name}!"
+```
+
+**Block form** — a body with local variables and `return`:
+
+```sngl
+func clamp(val int, lo int, hi int) int {
+    var clamped = val < lo ? lo : val
+    var result = clamped > hi ? hi : clamped
+    return result
+}
+```
+
+### Component Methods
+
+Functions inside a component can read component state, just like `computed`:
+
+```sngl
+component Counter {
+    var count = 10
+
+    func square(n int) int = n * n
+    func label() string = "Count: {count}"
+
+    text(value=label())
+}
+```
+
+### Void/Action Functions
+
+Functions with no return type are void. They may mutate component state and can only appear inside a `component` block:
+
+```sngl
+component Counter {
+    var count = 0
+
+    func reset() {
+        count = 0
+    }
+
+    func increment(n int) {
+        count += n
+    }
+
+    button(text="Reset", @click={ reset() })
+    button(text="+5", @click={ increment(5) })
+}
+```
+
+### Function Body Statements
+
+Inside a block-form function body, the following are allowed:
+
+| Statement | Example |
+| --- | --- |
+| Local variable | `var x = expr` |
+| Assignment | `x = expr`, `x += expr` |
+| Toggle | `active!!` |
+| Method call | `todos.push(item)` |
+| Function call | `reset()` |
+| Emit | `@save(data)` |
+| Return | `return expr` |
+
 ## Built-in Functions
 
 | Function | Signature | Description |
