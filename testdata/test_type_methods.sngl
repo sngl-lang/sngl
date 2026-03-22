@@ -1,0 +1,25 @@
+test main "type-qualified calls" {
+    assert(int.double(5) == 10)
+    assert(int.abs(-3) == 3)
+    assert(int.abs(7) == 7)
+    assert(string.exclaim("hi") == "hi!")
+}
+
+test main "method syntax calls" {
+    assert(n.double() == 10)
+    assert((-3).abs() == 3)
+    assert(name.exclaim() == "hello!")
+}
+
+component main {
+    var (
+        n = 5
+        name = "hello"
+    )
+
+    func int.double(x int) int = x * 2
+    func int.abs(x int) int = x < 0 ? -x : x
+    func string.exclaim(s string) string = "{s}!"
+
+    text(value="test")
+}

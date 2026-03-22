@@ -1,6 +1,2 @@
-- Add stdlib of functions; namespaced by type
-  - (int|float)\.(min|max)
-  - CSS color constructor functions
-  - Color modifiers as methods on the color type
-  - trig functions
+- Add for/while loops in function block bodies (enables expressing list stdlib functions in pure SNGL)
 - Restore the extern concept for code/data that belongs to the native language.

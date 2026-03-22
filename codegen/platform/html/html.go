@@ -645,11 +645,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// User-defined functions
+	// User-defined functions (skip stdlib — codegens use native calls)
+	emittedFuncs := false
 	for _, fn := range g.doc.Functions {
+		if fn.IsStdlib {
+			continue
+		}
 		g.emitJSFunc(b, fn)
+		emittedFuncs = true
 	}
-	if len(g.doc.Functions) > 0 {
+	if emittedFuncs {
 		b.WriteString("\n")
 	}
 
@@ -1195,12 +1200,15 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 		funcScope.LocalVars[p.Name] = true
 	}
 
+	// Mangle dotted names for JS: int.sqrt → int_sqrt
+	jsName := strings.ReplaceAll(fn.Name, ".", "_")
+
 	if fn.Body.SNGL != nil {
 		// Single-expression function
 		body := g.lang.TranslateExpr(fn.Body.SNGL, funcScope)
-		fmt.Fprintf(b, "function %s(%s) { return %s; }\n", fn.Name, paramStr, body)
+		fmt.Fprintf(b, "function %s(%s) { return %s; }\n", jsName, paramStr, body)
 	} else if fn.Block != nil {
-		fmt.Fprintf(b, "function %s(%s) {\n", fn.Name, paramStr)
+		fmt.Fprintf(b, "function %s(%s) {\n", jsName, paramStr)
 		for _, stmt := range fn.Block.Stmts {
 			switch s := stmt.(type) {
 			case *ast.VarStmt:

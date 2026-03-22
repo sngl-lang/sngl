@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -104,6 +105,21 @@ func evalConst(n ast.Node, vars map[string]any) (any, bool) {
 		}
 		return evalCallFunc(e.Func, args)
 	case *ast.MethodExpr:
+		// Type-namespace call: int.min(3, 7) — receiver is IdentExpr("int")
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			qualName := ident.Name + "." + e.Method
+			args := make([]any, len(e.Args))
+			for i, a := range e.Args {
+				v, ok := evalConst(a, vars)
+				if !ok {
+					return nil, false
+				}
+				args[i] = v
+			}
+			if v, ok := evalQualifiedMethod(qualName, args); ok {
+				return v, true
+			}
+		}
 		recv, ok := evalConst(e.Receiver, vars)
 		if !ok {
 			return nil, false
@@ -346,6 +362,24 @@ func evalCallFunc(name string, args []any) (any, bool) {
 }
 
 func evalMethod(method string, recv any, args []any) (any, bool) {
+	// Try as instance method with runtime type
+	typeName := "dyn"
+	switch recv.(type) {
+	case int:
+		typeName = "int"
+	case float64:
+		typeName = "float"
+	case string:
+		typeName = "string"
+	case bool:
+		typeName = "bool"
+	}
+	allArgs := append([]any{recv}, args...)
+	if v, ok := evalQualifiedMethod(typeName+"."+method, allArgs); ok {
+		return v, true
+	}
+
+	// Legacy built-in methods
 	switch method {
 	case "length":
 		if len(args) != 0 {
@@ -358,44 +392,178 @@ func evalMethod(method string, recv any, args []any) (any, bool) {
 			return len(v), true
 		}
 	case "contains":
-		if len(args) != 1 {
-			return nil, false
+		if s, ok := recv.(string); ok && len(args) == 1 {
+			if sub, ok := args[0].(string); ok {
+				return strings.Contains(s, sub), true
+			}
 		}
-		s, ok := recv.(string)
-		if !ok {
-			return nil, false
-		}
-		sub, ok := args[0].(string)
-		if !ok {
-			return nil, false
-		}
-		return strings.Contains(s, sub), true
 	case "startsWith":
-		if len(args) != 1 {
-			return nil, false
+		if s, ok := recv.(string); ok && len(args) == 1 {
+			if prefix, ok := args[0].(string); ok {
+				return strings.HasPrefix(s, prefix), true
+			}
 		}
-		s, ok := recv.(string)
-		if !ok {
-			return nil, false
-		}
-		prefix, ok := args[0].(string)
-		if !ok {
-			return nil, false
-		}
-		return strings.HasPrefix(s, prefix), true
 	case "endsWith":
-		if len(args) != 1 {
-			return nil, false
+		if s, ok := recv.(string); ok && len(args) == 1 {
+			if suffix, ok := args[0].(string); ok {
+				return strings.HasSuffix(s, suffix), true
+			}
 		}
-		s, ok := recv.(string)
-		if !ok {
-			return nil, false
+	}
+	return nil, false
+}
+
+func evalQualifiedMethod(qualName string, args []any) (any, bool) {
+	switch qualName {
+	// int
+	case "int.min":
+		a, aok := toInt(args[0])
+		b, bok := toInt(args[1])
+		if aok && bok {
+			if a < b {
+				return a, true
+			}
+			return b, true
 		}
-		suffix, ok := args[0].(string)
-		if !ok {
-			return nil, false
+	case "int.max":
+		a, aok := toInt(args[0])
+		b, bok := toInt(args[1])
+		if aok && bok {
+			if a > b {
+				return a, true
+			}
+			return b, true
 		}
-		return strings.HasSuffix(s, suffix), true
+	case "int.abs":
+		x, ok := toInt(args[0])
+		if ok {
+			if x < 0 {
+				return -x, true
+			}
+			return x, true
+		}
+	// float
+	case "float.min":
+		a, aok := toFloat(args[0])
+		b, bok := toFloat(args[1])
+		if aok && bok {
+			return math.Min(a, b), true
+		}
+	case "float.max":
+		a, aok := toFloat(args[0])
+		b, bok := toFloat(args[1])
+		if aok && bok {
+			return math.Max(a, b), true
+		}
+	case "float.abs":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Abs(x), true
+		}
+	case "float.floor":
+		x, ok := toFloat(args[0])
+		if ok {
+			return int(math.Floor(x)), true
+		}
+	case "float.ceil":
+		x, ok := toFloat(args[0])
+		if ok {
+			return int(math.Ceil(x)), true
+		}
+	case "float.round":
+		x, ok := toFloat(args[0])
+		if ok {
+			return int(math.Round(x)), true
+		}
+	case "float.sqrt":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Sqrt(x), true
+		}
+	case "float.pow":
+		x, xok := toFloat(args[0])
+		y, yok := toFloat(args[1])
+		if xok && yok {
+			return math.Pow(x, y), true
+		}
+	case "float.sin":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Sin(x), true
+		}
+	case "float.cos":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Cos(x), true
+		}
+	case "float.tan":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Tan(x), true
+		}
+	case "float.asin":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Asin(x), true
+		}
+	case "float.acos":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Acos(x), true
+		}
+	case "float.atan":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Atan(x), true
+		}
+	case "float.atan2":
+		y, yok := toFloat(args[0])
+		x, xok := toFloat(args[1])
+		if yok && xok {
+			return math.Atan2(y, x), true
+		}
+	// string
+	case "string.upper":
+		if s, ok := args[0].(string); ok {
+			return strings.ToUpper(s), true
+		}
+	case "string.lower":
+		if s, ok := args[0].(string); ok {
+			return strings.ToLower(s), true
+		}
+	case "string.trim":
+		if s, ok := args[0].(string); ok {
+			return strings.TrimSpace(s), true
+		}
+	case "string.replace":
+		s, sok := args[0].(string)
+		old, ook := args[1].(string)
+		new_, nok := args[2].(string)
+		if sok && ook && nok {
+			return strings.ReplaceAll(s, old, new_), true
+		}
+	case "string.indexOf":
+		s, sok := args[0].(string)
+		sub, subok := args[1].(string)
+		if sok && subok {
+			return strings.Index(s, sub), true
+		}
+	case "string.substring":
+		s, sok := args[0].(string)
+		start, staok := toInt(args[1])
+		end, endok := toInt(args[2])
+		if sok && staok && endok {
+			if start < 0 {
+				start = 0
+			}
+			if end > len(s) {
+				end = len(s)
+			}
+			if start > end {
+				return "", true
+			}
+			return s[start:end], true
+		}
 	}
 	return nil, false
 }

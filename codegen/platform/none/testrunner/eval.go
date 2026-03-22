@@ -452,10 +452,39 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) 
 }
 
 func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
+	// Type-namespace call: int.sqrt(x) where receiver is IdentExpr("int")
+	// Only if the identifier is NOT a variable (avoids conflict with e.g. var list)
+	if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+		if _, err := env.lookup(ident.Name); err != nil {
+			// Not a variable — treat as type namespace
+			qualName := ident.Name + "." + e.Method
+			if args, err := env.evalArgs(e.Args); err == nil {
+				if result, handled, err := nativeMethod(qualName, args); handled {
+					return result, err
+				}
+			}
+			if fn, ok := env.funcs[qualName]; ok {
+				return env.evalUserFunc(fn, e.Args)
+			}
+		}
+	}
+
 	recv, err := env.Eval(e.Receiver)
 	if err != nil {
 		return nil, err
 	}
+
+	// Instance method call: try native overrides first (for accurate math/string)
+	typeName := runtimeTypeName(recv)
+	qualName := typeName + "." + e.Method
+	if args, err := env.evalArgs(e.Args); err == nil {
+		allArgs := append([]any{recv}, args...)
+		if result, handled, err := nativeMethod(qualName, allArgs); handled {
+			return result, err
+		}
+	}
+
+	// Built-in mutating methods (push, remove) and legacy methods
 	switch e.Method {
 	case "contains":
 		if s, ok := recv.(string); ok && len(e.Args) == 1 {
@@ -524,6 +553,13 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			return nil, fmt.Errorf("%s() not supported on %T", e.Method, recv)
 		}
 	}
+	// Fallback: try user-defined type-attached function
+	if fn, ok := env.funcs[qualName]; ok {
+		allArgs := make([]ast.Node, 0, 1+len(e.Args))
+		allArgs = append(allArgs, e.Receiver)
+		allArgs = append(allArgs, e.Args...)
+		return env.evalUserFunc(fn, allArgs)
+	}
 	return nil, fmt.Errorf("unknown method %q on %T", e.Method, recv)
 }
 
@@ -591,6 +627,39 @@ func compareNum(a, b any) int {
 		return 1
 	}
 	return 0
+}
+
+// evalArgs evaluates a list of AST nodes into values.
+func (env *Env) evalArgs(nodes []ast.Node) ([]any, error) {
+	args := make([]any, len(nodes))
+	for i, n := range nodes {
+		v, err := env.Eval(n)
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+	return args, nil
+}
+
+// runtimeTypeName returns the SNGL type name for a Go runtime value.
+func runtimeTypeName(v any) string {
+	switch v.(type) {
+	case int:
+		return "int"
+	case float64:
+		return "float"
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case []any:
+		return "list"
+	case map[string]any:
+		return "struct"
+	default:
+		return "dyn"
+	}
 }
 
 // numericResult normalizes arithmetic results to int when possible.

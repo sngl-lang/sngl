@@ -1,6 +1,9 @@
 package ast
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Pos records the source position of an AST node.
 type Pos struct {
@@ -158,12 +161,22 @@ type FuncDef struct {
 	ReturnType string     // "" for void/action functions
 	Body       Expr       // single-expression form (= expr)
 	Block      *FuncBlock // block form ({ ... }), nil for expression form
+	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
 }
 
 // FuncBlock is the body of a block-form function.
 type FuncBlock struct {
 	Stmts  []Node // VarStmt, AssignStmt, ToggleStmt, EmitStmt, CallStmt, etc.
 	Return Node   // return expression (nil for void functions)
+}
+
+// SplitMethodName splits a dotted function name into type and method parts.
+// Returns ("int", "sqrt", true) for "int.sqrt", or ("", "add", false) for plain names.
+func SplitMethodName(name string) (typeName, method string, ok bool) {
+	if i := strings.IndexByte(name, '.'); i >= 0 {
+		return name[:i], name[i+1:], true
+	}
+	return "", name, false
 }
 
 type Component struct {

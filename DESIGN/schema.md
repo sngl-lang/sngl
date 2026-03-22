@@ -133,10 +133,12 @@ component Counter {
 | ------------ | -------------------------------------------------------------------- |
 | `fn`         | Keyword introducing the function                                     |
 | `mut`        | Optional modifier allowing mutation of component state               |
-| name         | Function identifier                                                  |
+| name         | Function identifier; may contain a dot for type-attached methods (e.g., `int.double`) |
 | parameters   | Zero or more typed parameters: `name type`                           |
 | return type  | Optional; omit for void functions (void functions must be component-scoped) |
 | body         | Statement block with `return` for non-void functions                 |
+
+When `FuncDef.Name` contains a dot (e.g., `int.double`), the function is a type-attached method. The part before the dot is the receiver type, and the first parameter is the receiver. These methods can be called with type-qualified syntax (`int.double(5)`) or method syntax (`x.double()`).
 
 ### Component (user-defined)
 

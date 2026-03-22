@@ -448,6 +448,29 @@ Inside a block-form function body, the following are allowed:
 | Emit | `@save(data)` |
 | Return | `return expr` |
 
+### Type Methods
+
+Functions can be attached to a type using a dotted name. The first parameter is the receiver. This works for primitives (`int`, `string`, `float`, `bool`, `color`, `list`) and user-defined structs.
+
+```sngl
+func int.double(x int) int = x * 2
+func string.shout(s string) string = s + "!"
+func Todo.label(t Todo) string = t.done ? "[x] {t.text}" : "[ ] {t.text}"
+```
+
+Type methods support two call styles:
+
+```sngl
+// Type-qualified — explicit receiver as first argument
+int.double(5)            // 10
+string.shout("hello")    // "hello!"
+
+// Method syntax — receiver is implicit
+var n = 5
+n.double()               // 10
+"hello".shout()          // "hello!"
+```
+
 ## Built-in Functions
 
 | Function | Signature | Description |

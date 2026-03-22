@@ -479,6 +479,23 @@ func reset() {
 
 → `ast.FuncDef{Name, Params, ReturnType, Body/Block}`
 
+#### Type-Attached Functions
+
+Functions can be attached to a type by using a dotted name `Type.method`. The first parameter acts as the receiver. Type-attached functions work for primitives (`int`, `string`, `float`, `bool`, `color`, `list`) and user-defined structs.
+
+```
+func int.double(x int) int = x * 2
+func string.shout(s string) string = s + "!"
+func Todo.summary(t Todo) string = t.done ? "[x] {t.text}" : "[ ] {t.text}"
+```
+
+Type-attached functions can be called in two ways:
+
+- **Type-qualified call:** `int.double(5)` — call directly with the receiver as the first argument.
+- **Method syntax:** `x.double()` — when `x` is of type `int`, the receiver is implicit.
+
+Both forms are equivalent. Method syntax is syntactic sugar — `x.double()` desugars to `int.double(x)`.
+
 ## Component Declaration
 
 ### User-Defined Components
@@ -765,7 +782,8 @@ VarField       = IDENT Type? "=" Expr VarMod*
 
 ComputedField  = IDENT "=" Expr
 
-FuncDecl       = "func" IDENT "(" FuncParamList ")" Type? ("=" Expr | "{" FuncBody "}")
+FuncDecl       = "func" FuncName "(" FuncParamList ")" Type? ("=" Expr | "{" FuncBody "}")
+FuncName       = IDENT ("." IDENT)?
 FuncParamList  = (IDENT Type ("," IDENT Type)*)?
 FuncBody       = (LocalVar | Stmt)* ("return" Expr)?
 LocalVar       = "var" IDENT Type? "=" Expr

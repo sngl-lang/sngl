@@ -365,8 +365,11 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
-	// User-defined functions
+	// User-defined functions (skip stdlib — codegens use native calls)
 	for _, fn := range doc.Functions {
+		if fn.IsStdlib {
+			continue
+		}
 		emitGoFunc(&b, fn, ec)
 	}
 
@@ -442,6 +445,13 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 		}
 	}
 
+	// Type-attached functions are standalone (no receiver)
+	isTypeMethod := strings.Contains(fn.Name, ".")
+	goName := exportName(fn.Name)
+	if typeName, methodName, ok := ast.SplitMethodName(fn.Name); ok {
+		goName = exportName(typeName) + exportName(methodName)
+	}
+
 	// Void functions use pointer receiver (mutation)
 	receiver := "m Model"
 	if fn.ReturnType == "" {
@@ -457,11 +467,19 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 		for _, p := range fn.Params {
 			delete(ec.localVars, p.Name)
 		}
-		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, exportName(fn.Name), paramStr, retType)
+		if isTypeMethod {
+			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
+		} else {
+			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
+		}
 		fmt.Fprintf(b, "\treturn %s\n", body)
 		b.WriteString("}\n\n")
 	} else if fn.Block != nil {
-		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, exportName(fn.Name), paramStr, retType)
+		if isTypeMethod {
+			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
+		} else {
+			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
+		}
 		for _, p := range fn.Params {
 			ec.localVars[p.Name] = true
 		}

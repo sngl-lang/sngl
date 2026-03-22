@@ -695,7 +695,7 @@
         "required": true,
         "types": [
           {
-            "type": "identifier",
+            "type": "func_name",
             "named": true
           }
         ]
@@ -721,6 +721,21 @@
         },
         {
           "type": "func_params",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "func_name",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
           "named": true
         }
       ]

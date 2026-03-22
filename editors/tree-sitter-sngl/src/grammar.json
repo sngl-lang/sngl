@@ -1525,7 +1525,7 @@
           "name": "name",
           "content": {
             "type": "SYMBOL",
-            "name": "identifier"
+            "name": "func_name"
           }
         },
         {
@@ -1571,6 +1571,36 @@
             {
               "type": "SYMBOL",
               "name": "func_block"
+            }
+          ]
+        }
+      ]
+    },
+    "func_name": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "."
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "identifier"
+                }
+              ]
+            },
+            {
+              "type": "BLANK"
             }
           ]
         }

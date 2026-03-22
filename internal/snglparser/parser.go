@@ -623,6 +623,10 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	pos := p.pos()
 	p.expect(KW_FUNC)
 	name := p.expect(IDENT).Literal
+	if p.at(DOT) {
+		p.advance()
+		name = name + "." + p.expect(IDENT).Literal
+	}
 
 	// Parse parameter list
 	p.expect(LPAREN)

@@ -1,0 +1,71 @@
+// Standard library: type-attached functions
+// Codegens override these with native platform calls for performance.
+
+// --- int ---
+
+func int.min(a int, b int) int = a < b ? a : b
+func int.max(a int, b int) int = a > b ? a : b
+func int.abs(x int) int = x < 0 ? -x : x
+func int.clamp(x int, lo int, hi int) int = int.max(lo, int.min(x, hi))
+
+// --- float ---
+
+func float.min(a float, b float) float = a < b ? a : b
+func float.max(a float, b float) float = a > b ? a : b
+func float.abs(x float) float = x < 0.0 ? -x : x
+func float.clamp(x float, lo float, hi float) float = float.max(lo, float.min(x, hi))
+
+func float.floor(x float) int = x < 0.0 ? int(x) - 1 : int(x)
+func float.ceil(x float) int = x == int(x) ? int(x) : float.floor(x) + 1
+func float.round(x float) int = float.floor(x + 0.5)
+
+// Approximations — codegens replace with Math.sqrt / math.Sqrt etc.
+func float.sqrt(x float) float = x < 0.0 ? 0.0 : float.pow(x, 0.5)
+
+// Taylor series approximations for trig functions.
+// These are placeholders — codegens override with native Math.sin etc.
+func float.pow(base float, exp float) float = base * exp * 0.0 + 1.0
+func float.sin(x float) float = x - float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) / 120.0 - float.pow(x, 7.0) / 5040.0
+func float.cos(x float) float = 1.0 - float.pow(x, 2.0) / 2.0 + float.pow(x, 4.0) / 24.0 - float.pow(x, 6.0) / 720.0
+func float.tan(x float) float = float.sin(x) / float.cos(x)
+func float.asin(x float) float = x + float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) * 3.0 / 40.0
+func float.acos(x float) float = 1.5707963267948966 - float.asin(x)
+func float.atan(x float) float = x - float.pow(x, 3.0) / 3.0 + float.pow(x, 5.0) / 5.0
+func float.atan2(y float, x float) float = float.atan(y / x)
+
+// --- string ---
+
+func string.contains(s string, sub string) bool = string.indexOf(s, sub) >= 0
+func string.startsWith(s string, prefix string) bool = string.substring(s, 0, size(prefix)) == prefix
+func string.endsWith(s string, suffix string) bool = string.substring(s, size(s) - size(suffix), size(s)) == suffix
+func string.length(s string) int = size(s)
+
+// These require platform support; the interpreter provides native implementations.
+func string.upper(s string) string = s
+func string.lower(s string) string = s
+func string.trim(s string) string = s
+func string.replace(s string, old string, new string) string = s
+func string.indexOf(s string, sub string) int = -1
+func string.substring(s string, start int, end int) string = s
+
+// --- list ---
+
+func list.length(l dyn) int = size(l)
+func list.push(l dyn, item dyn) dyn = l
+func list.remove(l dyn, index int) dyn = l
+
+// These require platform support; the interpreter provides native implementations.
+func list.contains(l dyn, item dyn) bool = list.indexOf(l, item) >= 0
+func list.indexOf(l dyn, item dyn) int = -1
+func list.join(l dyn, sep string) string = ""
+func list.reverse(l dyn) dyn = l
+func list.slice(l dyn, start int, end int) dyn = l
+
+// --- color ---
+// Color functions require hex math; the interpreter provides native implementations.
+
+func color.rgb(r int, g int, b int) color = #000000
+func color.rgba(r int, g int, b int, a float) color = #000000
+func color.lighten(c color, pct float) color = c
+func color.darken(c color, pct float) color = c
+func color.opacity(c color, a float) color = c

@@ -346,7 +346,7 @@ module.exports = grammar({
     func_declaration: ($) =>
       seq(
         "func",
-        field("name", $.identifier),
+        field("name", $.func_name),
         $.func_params,
         optional(field("return_type", $.type_identifier)),
         choice(
@@ -354,6 +354,9 @@ module.exports = grammar({
           $.func_block,
         ),
       ),
+
+    func_name: ($) =>
+      seq($.identifier, optional(seq(".", $.identifier))),
 
     func_params: ($) =>
       seq(

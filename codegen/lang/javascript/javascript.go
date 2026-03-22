@@ -102,6 +102,35 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.CallExpr:
 		return translateCall(n, scope)
 	case *ast.MethodExpr:
+		// Stdlib native override: emit native JS instead of user-func call
+		if js := jsBuiltinMethod(n, scope); js != "" {
+			return js
+		}
+		// Type-qualified call: int.double(5) → int_double(5)
+		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
+			qualName := ident.Name + "." + n.Method
+			if scope.FuncNames[qualName] {
+				jsName := strings.ReplaceAll(qualName, ".", "_")
+				argStrs := make([]string, len(n.Args))
+				for i, a := range n.Args {
+					argStrs[i] = translateExpr(a, scope)
+				}
+				return jsName + "(" + strings.Join(argStrs, ", ") + ")"
+			}
+		}
+		// Instance method: x.double() → look for type_method(x, ...)
+		if scope.FuncNames != nil {
+			for qualName := range scope.FuncNames {
+				if _, method, ok := ast.SplitMethodName(qualName); ok && method == n.Method {
+					jsName := strings.ReplaceAll(qualName, ".", "_")
+					argStrs := []string{translateExpr(n.Receiver, scope)}
+					for _, a := range n.Args {
+						argStrs = append(argStrs, translateExpr(a, scope))
+					}
+					return jsName + "(" + strings.Join(argStrs, ", ") + ")"
+				}
+			}
+		}
 		target := translateExpr(n.Receiver, scope)
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
@@ -362,4 +391,106 @@ func assignOpStr(op ast.AssignOp) string {
 	default:
 		return "="
 	}
+}
+
+// jsBuiltinMethod returns a native JS expression for stdlib methods, or "" if not a stdlib method.
+func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
+	// Determine the qualified name and argument expressions
+	var qualName string
+	var argExprs []string
+
+	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
+		qualName = ident.Name + "." + n.Method
+		for _, a := range n.Args {
+			argExprs = append(argExprs, translateExpr(a, scope))
+		}
+	} else {
+		// Instance method: receiver becomes first arg
+		argExprs = append(argExprs, translateExpr(n.Receiver, scope))
+		for _, a := range n.Args {
+			argExprs = append(argExprs, translateExpr(a, scope))
+		}
+		// We don't know the type statically, but check by method name
+		qualName = "*." + n.Method
+	}
+
+	a := func(i int) string {
+		if i < len(argExprs) {
+			return argExprs[i]
+		}
+		return "undefined"
+	}
+
+	switch qualName {
+	// int
+	case "int.min", "*.min":
+		return "Math.min(" + a(0) + ", " + a(1) + ")"
+	case "int.max", "*.max":
+		return "Math.max(" + a(0) + ", " + a(1) + ")"
+	case "int.abs", "*.abs":
+		return "Math.abs(" + a(0) + ")"
+	case "int.clamp", "*.clamp":
+		return "Math.min(Math.max(" + a(0) + ", " + a(1) + "), " + a(2) + ")"
+	// float
+	case "float.min":
+		return "Math.min(" + a(0) + ", " + a(1) + ")"
+	case "float.max":
+		return "Math.max(" + a(0) + ", " + a(1) + ")"
+	case "float.abs":
+		return "Math.abs(" + a(0) + ")"
+	case "float.clamp":
+		return "Math.min(Math.max(" + a(0) + ", " + a(1) + "), " + a(2) + ")"
+	case "float.floor", "*.floor":
+		return "Math.floor(" + a(0) + ")"
+	case "float.ceil", "*.ceil":
+		return "Math.ceil(" + a(0) + ")"
+	case "float.round", "*.round":
+		return "Math.round(" + a(0) + ")"
+	case "float.sqrt", "*.sqrt":
+		return "Math.sqrt(" + a(0) + ")"
+	case "float.pow", "*.pow":
+		return "Math.pow(" + a(0) + ", " + a(1) + ")"
+	case "float.sin", "*.sin":
+		return "Math.sin(" + a(0) + ")"
+	case "float.cos", "*.cos":
+		return "Math.cos(" + a(0) + ")"
+	case "float.tan", "*.tan":
+		return "Math.tan(" + a(0) + ")"
+	case "float.asin", "*.asin":
+		return "Math.asin(" + a(0) + ")"
+	case "float.acos", "*.acos":
+		return "Math.acos(" + a(0) + ")"
+	case "float.atan", "*.atan":
+		return "Math.atan(" + a(0) + ")"
+	case "float.atan2", "*.atan2":
+		return "Math.atan2(" + a(0) + ", " + a(1) + ")"
+	// string
+	case "string.upper", "*.upper":
+		return a(0) + ".toUpperCase()"
+	case "string.lower", "*.lower":
+		return a(0) + ".toLowerCase()"
+	case "string.trim", "*.trim":
+		return a(0) + ".trim()"
+	case "string.replace", "*.replace":
+		return a(0) + ".replaceAll(" + a(1) + ", " + a(2) + ")"
+	case "string.indexOf", "*.indexOf":
+		return a(0) + ".indexOf(" + a(1) + ")"
+	case "string.substring", "*.substring":
+		return a(0) + ".substring(" + a(1) + ", " + a(2) + ")"
+	// color
+	case "color.rgb":
+		return `"#" + (` + a(0) + `).toString(16).padStart(2, "0") + (` + a(1) + `).toString(16).padStart(2, "0") + (` + a(2) + `).toString(16).padStart(2, "0")`
+	case "color.rgba":
+		return `"#" + (` + a(0) + `).toString(16).padStart(2, "0") + (` + a(1) + `).toString(16).padStart(2, "0") + (` + a(2) + `).toString(16).padStart(2, "0") + Math.round(` + a(3) + ` * 255).toString(16).padStart(2, "0")`
+	// list
+	case "list.indexOf":
+		return a(0) + ".indexOf(" + a(1) + ")"
+	case "list.join", "*.join":
+		return a(0) + ".join(" + a(1) + ")"
+	case "list.reverse", "*.reverse":
+		return "[..." + a(0) + "].reverse()"
+	case "list.slice", "*.slice":
+		return a(0) + ".slice(" + a(1) + ", " + a(2) + ")"
+	}
+	return ""
 }

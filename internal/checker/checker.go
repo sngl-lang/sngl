@@ -50,7 +50,7 @@ func DefaultResolver() ImportResolver {
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
 func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
-	registry, styleProps, stdlibUnits, err := LoadStdlib()
+	registry, styleProps, stdlibUnits, stdlibFuncs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}
@@ -69,10 +69,14 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
 		styleProps: styleProps,
 		unitTables: unitTables,
 		scope:      NewScope(nil),
-		dir:        dir,
-		resolve:    resolve,
-		visited:    map[string]bool{},
+		methods: map[string]map[string]*methodInfo{},
+		dir:     dir,
+		resolve: resolve,
+		visited: map[string]bool{},
 	}
+
+	// Inject stdlib functions into the document (prepend so user funcs can override)
+	doc.Functions = append(stdlibFuncs, doc.Functions...)
 
 	if doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
@@ -168,11 +172,18 @@ func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {
 	return nil
 }
 
+// methodInfo describes a type-attached method (built-in or user-defined).
+type methodInfo struct {
+	ReturnType string
+	IsBuiltin  bool
+}
+
 type checker struct {
 	registry   SchemaRegistry
 	styleProps map[string]StylePropSchema
 	unitTables map[string]*ast.UnitTable
 	scope      *Scope
+	methods    map[string]map[string]*methodInfo // typeName -> methodName -> info
 	components []*ast.Component
 	structs    []*ast.StructDef
 	enums      []*ast.EnumDef
@@ -180,6 +191,19 @@ type checker struct {
 	resolve    ImportResolver
 	visited    map[string]bool // tracks visited import paths to detect cycles
 	errs       []error
+}
+
+// lookupMethod checks the method registry for a type-attached method and returns its return type.
+func (c *checker) lookupMethod(typeName, method string) (Type, bool) {
+	if methods, ok := c.methods[typeName]; ok {
+		if entry, ok := methods[method]; ok {
+			if entry.ReturnType != "" {
+				return TypeFromHint(entry.ReturnType), true
+			}
+			return Dyn, true
+		}
+	}
+	return Dyn, false
 }
 
 func (c *checker) errorAt(pos ast.Pos, format string, args ...any) {
@@ -280,6 +304,13 @@ func (c *checker) pass1(doc *ast.Document) {
 			t = c.resolveTypeHint(fn.Pos, fn.ReturnType)
 		}
 		c.scope.Declare(fn.Name, t)
+		// Register type-attached methods
+		if typeName, methodName, ok := ast.SplitMethodName(fn.Name); ok {
+			if c.methods[typeName] == nil {
+				c.methods[typeName] = map[string]*methodInfo{}
+			}
+			c.methods[typeName][methodName] = &methodInfo{ReturnType: fn.ReturnType}
+		}
 	}
 
 	// User-defined components
@@ -447,11 +478,16 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 			return Dyn
 		}
 	case *ast.MethodExpr:
-		switch e.Method {
-		case "contains", "startsWith", "endsWith":
-			return Bool
-		case "size":
-			return Int
+		// Check if receiver is a type name (e.g., int.sqrt(x))
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
+				return t
+			}
+		}
+		// Check by inferred receiver type (e.g., x.sqrt())
+		recvType := c.inferNodeType(e.Receiver)
+		if t, ok := c.lookupMethod(recvType.String(), e.Method); ok {
+			return t
 		}
 		return Dyn
 	case *ast.SelectExpr:
@@ -744,11 +780,16 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 			return Dyn
 		}
 	case *ast.MethodExpr:
-		switch e.Method {
-		case "contains", "startsWith", "endsWith":
-			return Bool
-		case "size":
-			return Int
+		// Check if receiver is a type name (e.g., int.sqrt(x))
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
+				return t
+			}
+		}
+		// Check by inferred receiver type (e.g., x.sqrt())
+		recvType := c.inferNodeTypeInScope(e.Receiver, scope)
+		if t, ok := c.lookupMethod(recvType.String(), e.Method); ok {
+			return t
 		}
 		return Dyn
 	case *ast.SelectExpr:

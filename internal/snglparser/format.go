@@ -139,7 +139,14 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 	}
 
 	// component main (combines data, computed, consts, functions, app)
-	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0 || len(doc.Functions) > 0
+	hasUserFuncs := false
+	for _, fn := range doc.Functions {
+		if !fn.IsStdlib {
+			hasUserFuncs = true
+			break
+		}
+	}
+	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0 || hasUserFuncs
 	if hasMain {
 		if needBlank {
 			f.newline()
@@ -375,6 +382,9 @@ func (f *formatter) formatComputeds(computeds []*ast.Computed) {
 
 func (f *formatter) formatFuncDefs(funcs []*ast.FuncDef) {
 	for _, fn := range funcs {
+		if fn.IsStdlib {
+			continue
+		}
 		f.formatFuncDef(fn)
 	}
 }
