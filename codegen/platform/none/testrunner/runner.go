@@ -130,7 +130,7 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 		env.SetFunc(fn)
 	}
 	// Load stdlib functions (if not already in document)
-	if _, _, _, stdlibFuncs, err := checker.LoadStdlib(); err == nil {
+	if _, _, _, stdlibFuncs, _, err := checker.LoadStdlib(); err == nil {
 		for _, fn := range stdlibFuncs {
 			if _, exists := env.funcs[fn.Name]; !exists {
 				env.SetFunc(fn)
@@ -177,7 +177,7 @@ func buildUnitTables(doc *ast.Document) map[string]*ast.UnitTable {
 	tables := map[string]*ast.UnitTable{}
 
 	// Load stdlib unit definitions.
-	_, _, stdlibUnits, _, err := checker.LoadStdlib()
+	_, _, stdlibUnits, _, _, err := checker.LoadStdlib()
 	if err == nil {
 		for _, u := range stdlibUnits {
 			t := ast.BuildUnitTable(u)

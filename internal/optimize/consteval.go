@@ -32,7 +32,15 @@ func isConstExpr(n ast.Node, vars map[string]any) bool {
 		}
 		return true
 	case *ast.MethodExpr:
-		if !isConstExpr(e.Receiver, vars) {
+		// Type-namespace calls like string.length("hi") — receiver is a type name, not a variable
+		isTypeNS := false
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			switch ident.Name {
+			case "int", "float", "string", "bool", "list", "color":
+				isTypeNS = true
+			}
+		}
+		if !isTypeNS && !isConstExpr(e.Receiver, vars) {
 			return false
 		}
 		for _, arg := range e.Args {
@@ -350,13 +358,6 @@ func evalCallFunc(name string, args []any) (any, bool) {
 			}
 			return f, true
 		}
-	case "size":
-		switch v := arg.(type) {
-		case string:
-			return len(v), true
-		case []any:
-			return len(v), true
-		}
 	}
 	return nil, false
 }
@@ -523,6 +524,14 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 			return math.Atan2(y, x), true
 		}
 	// string
+	case "string.length":
+		if s, ok := args[0].(string); ok {
+			return len(s), true
+		}
+	case "list.length":
+		if l, ok := args[0].([]any); ok {
+			return len(l), true
+		}
 	case "string.upper":
 		if s, ok := args[0].(string); ok {
 			return strings.ToUpper(s), true

@@ -13,29 +13,30 @@ var stdlibFS embed.FS
 
 // LoadStdlib parses the embedded stdlib files and returns the component
 // schema registry, style property type map, unit definitions, and stdlib functions.
-func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, []*ast.FuncDef, error) {
+func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, []*ast.FuncDef, []*ast.StructDef, error) {
 	registry := SchemaRegistry{}
 	styleProps := map[string]StylePropSchema{}
 	var units []*ast.UnitDef
 	var funcs []*ast.FuncDef
+	var structs []*ast.StructDef
 
 	entries, err := stdlibFS.ReadDir("stdlib")
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("reading stdlib dir: %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("reading stdlib dir: %w", err)
 	}
 
 	for _, entry := range entries {
 		name := entry.Name()
 		f, err := stdlibFS.Open("stdlib/" + name)
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("opening %s: %w", name, err)
+			return nil, nil, nil, nil, nil, fmt.Errorf("opening %s: %w", name, err)
 		}
 
 		var doc *ast.Document
 		doc, err = snglparser.Parse(name, f)
 		f.Close()
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("parsing %s: %w", name, err)
+			return nil, nil, nil, nil, nil, fmt.Errorf("parsing %s: %w", name, err)
 		}
 
 		for _, comp := range doc.Components {
@@ -48,12 +49,13 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 			}
 		}
 		units = append(units, doc.Units...)
+		structs = append(structs, doc.Structs...)
 		for _, fn := range doc.Functions {
 			fn.IsStdlib = true
 			funcs = append(funcs, fn)
 		}
 	}
-	return registry, styleProps, units, funcs, nil
+	return registry, styleProps, units, funcs, structs, nil
 }
 
 func componentToSchema(comp *ast.Component) *ComponentSchema {

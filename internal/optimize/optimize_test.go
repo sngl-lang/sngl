@@ -410,13 +410,14 @@ func TestCallFloatFolded(t *testing.T) {
 	}
 }
 
-func TestCallSizeFolded(t *testing.T) {
+func TestStringLengthFolded(t *testing.T) {
 	doc := &ast.Document{
 		Data: []*ast.Data{{
 			Name: "val",
-			Init: snglExpr(&ast.CallExpr{
-				Func: "size",
-				Args: []ast.Node{&ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}},
+			Init: snglExpr(&ast.MethodExpr{
+				Receiver: &ast.IdentExpr{Name: "string"},
+				Method:   "length",
+				Args:     []ast.Node{&ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}},
 			}),
 		}},
 	}

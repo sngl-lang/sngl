@@ -23,7 +23,6 @@ func float.round(x float) int = float.floor(x + 0.5)
 func float.sqrt(x float) float = x < 0.0 ? 0.0 : float.pow(x, 0.5)
 
 // Taylor series approximations for trig functions.
-// These are placeholders — codegens override with native Math.sin etc.
 func float.pow(base float, exp float) float = base * exp * 0.0 + 1.0
 func float.sin(x float) float = x - float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) / 120.0 - float.pow(x, 7.0) / 5040.0
 func float.cos(x float) float = 1.0 - float.pow(x, 2.0) / 2.0 + float.pow(x, 4.0) / 24.0 - float.pow(x, 6.0) / 720.0
@@ -35,37 +34,58 @@ func float.atan2(y float, x float) float = float.atan(y / x)
 
 // --- string ---
 
-func string.contains(s string, sub string) bool = string.indexOf(s, sub) >= 0
-func string.startsWith(s string, prefix string) bool = string.substring(s, 0, size(prefix)) == prefix
-func string.endsWith(s string, suffix string) bool = string.substring(s, size(s) - size(suffix), size(s)) == suffix
-func string.length(s string) int = size(s)
-
-// These require platform support; the interpreter provides native implementations.
+// Native implementations (interpreter + codegens override these)
+func string.length(s string) int = 0
+func string.indexOf(s string, sub string) int = -1
+func string.substring(s string, start int, end int) string = s
 func string.upper(s string) string = s
 func string.lower(s string) string = s
 func string.trim(s string) string = s
 func string.replace(s string, old string, new string) string = s
-func string.indexOf(s string, sub string) int = -1
-func string.substring(s string, start int, end int) string = s
+
+// Defined in SNGL using the native primitives above
+func string.contains(s string, sub string) bool = string.indexOf(s, sub) >= 0
+func string.startsWith(s string, prefix string) bool = string.substring(s, 0, string.length(prefix)) == prefix
+func string.endsWith(s string, suffix string) bool = string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix
 
 // --- list ---
 
-func list.length(l dyn) int = size(l)
+// Native implementations (interpreter + codegens override these)
+func list.length(l dyn) int = 0
 func list.push(l dyn, item dyn) dyn = l
 func list.remove(l dyn, index int) dyn = l
-
-// These require platform support; the interpreter provides native implementations.
-func list.contains(l dyn, item dyn) bool = list.indexOf(l, item) >= 0
 func list.indexOf(l dyn, item dyn) int = -1
 func list.join(l dyn, sep string) string = ""
 func list.reverse(l dyn) dyn = l
 func list.slice(l dyn, start int, end int) dyn = l
 
-// --- color ---
-// Color functions require hex math; the interpreter provides native implementations.
+// Defined in SNGL using the native primitives above
+func list.contains(l dyn, item dyn) bool = list.indexOf(l, item) >= 0
 
-func color.rgb(r int, g int, b int) color = #000000
-func color.rgba(r int, g int, b int, a float) color = #000000
-func color.lighten(c color, pct float) color = c
-func color.darken(c color, pct float) color = c
-func color.opacity(c color, a float) color = c
+// --- color ---
+
+// Color is a struct with {r, g, b, a} int fields (0-255).
+// Color literals (#ff0000) are syntax sugar for creating Color structs.
+
+func color.rgb(r int, g int, b int) Color = Color{r: r, g: g, b: b, a: 255}
+func color.rgba(r int, g int, b int, a int) Color = Color{r: r, g: g, b: b, a: a}
+
+func color.lighten(c Color, pct float) Color {
+    var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
+    ret.r = int.min(255, c.r + int(float(255 - c.r) * pct))
+    ret.g = int.min(255, c.g + int(float(255 - c.g) * pct))
+    ret.b = int.min(255, c.b + int(float(255 - c.b) * pct))
+    return ret
+}
+
+func color.darken(c Color, pct float) Color {
+    var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
+    ret.r = int(float(c.r) * (1.0 - pct))
+    ret.g = int(float(c.g) * (1.0 - pct))
+    ret.b = int(float(c.b) * (1.0 - pct))
+    return ret
+}
+
+func color.opacity(c Color, a int) Color = Color{r: c.r, g: c.g, b: c.b, a: a}
+
+func color.hex(c Color) string = "#000000"

@@ -63,6 +63,12 @@ test main "float inverse trig" {
     assert(float.atan(0.0) == 0.0)
 }
 
+test main "string.length" {
+    assert(string.length("hello") == 5)
+    assert(string.length("") == 0)
+    assert("hello".length() == 5)
+}
+
 test main "string methods" {
     assert(string.upper("hello") == "HELLO")
     assert(string.lower("HELLO") == "hello")
@@ -73,20 +79,54 @@ test main "string methods" {
     assert(string.substring("hello", 1, 4) == "ell")
 }
 
+test main "string.contains/startsWith/endsWith" {
+    assert(string.contains("hello world", "world"))
+    assert(!string.contains("hello", "xyz"))
+    assert(string.startsWith("hello", "hel"))
+    assert(!string.startsWith("hello", "xyz"))
+    assert(string.endsWith("hello", "llo"))
+    assert(!string.endsWith("hello", "xyz"))
+}
+
 test main "string method syntax" {
     assert("hello".upper() == "HELLO")
     assert("HELLO".lower() == "hello")
     assert("  hi  ".trim() == "hi")
 }
 
+test main "color as struct" {
+    assert(#ff0000.r == 255)
+    assert(#ff0000.g == 0)
+    assert(#ff0000.b == 0)
+    assert(#ff0000.a == 255)
+}
+
 test main "color.rgb" {
-    assert(color.rgb(255, 0, 0) == #ff0000)
-    assert(color.rgb(0, 255, 0) == #00ff00)
-    assert(color.rgb(0, 0, 255) == #0000ff)
+    assert(color.rgb(255, 0, 0).r == 255)
+    assert(color.rgb(255, 0, 0).g == 0)
+    assert(color.rgb(0, 128, 255).g == 128)
+    assert(color.rgb(0, 0, 0).a == 255)
+}
+
+test main "color.rgba" {
+    assert(color.rgba(255, 0, 0, 128).r == 255)
+    assert(color.rgba(255, 0, 0, 128).a == 128)
+}
+
+test main "color.opacity" {
+    assert(color.opacity(#ff0000, 128).r == 255)
+    assert(color.opacity(#ff0000, 128).a == 128)
+}
+
+test main "color.hex" {
+    assert(color.hex(#ff0000) == "#ff0000")
+    assert(color.hex(color.rgb(0, 255, 0)) == "#00ff00")
 }
 
 test main "list methods" {
     assert(list.indexOf([1, 2, 3], 2) == 1)
     assert(list.indexOf([1, 2, 3], 5) == -1)
     assert(list.join(["a", "b", "c"], ", ") == "a, b, c")
+    assert(list.contains([1, 2, 3], 2))
+    assert(!list.contains([1, 2, 3], 5))
 }

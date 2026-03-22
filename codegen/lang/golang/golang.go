@@ -238,9 +238,6 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	if fn == "string" && len(args) == 1 {
 		return "fmt.Sprint(" + translateExpr(args[0], scope) + ")"
 	}
-	if fn == "size" && len(args) == 1 {
-		return "len(" + translateExpr(args[0], scope) + ")"
-	}
 	if fn == "int" && len(args) == 1 {
 		return "int(" + translateExpr(args[0], scope) + ")"
 	}
@@ -452,6 +449,8 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "math.Atan(" + a(0) + ")"
 	case "float.atan2", "*.atan2":
 		return "math.Atan2(" + a(0) + ", " + a(1) + ")"
+	case "string.length", "*.length":
+		return "len(" + a(0) + ")"
 	case "string.upper", "*.upper":
 		return "strings.ToUpper(" + a(0) + ")"
 	case "string.lower", "*.lower":
@@ -464,6 +463,8 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "strings.Index(" + a(0) + ", " + a(1) + ")"
 	case "string.substring", "*.substring":
 		return a(0) + "[" + a(1) + ":" + a(2) + "]"
+	case "list.length":
+		return "len(" + a(0) + ")"
 	case "list.join", "*.join":
 		return "strings.Join(" + a(0) + ", " + a(1) + ")"
 	}

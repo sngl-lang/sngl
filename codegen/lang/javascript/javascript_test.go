@@ -99,7 +99,6 @@ func TestTranslateCall(t *testing.T) {
 		want string
 	}{
 		{"string()", "string", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "String(42)"},
-		{"size()", "size", []ast.Node{&ast.IdentExpr{Name: "count"}}, "state.count.length"},
 		{"int()", "int", []ast.Node{&ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}}, "Math.trunc(3.14)"},
 		{"float()", "float", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "parseFloat(42)"},
 		{"custom()", "myFunc", []ast.Node{

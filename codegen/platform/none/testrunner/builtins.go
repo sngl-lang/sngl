@@ -95,39 +95,30 @@ var nativeMethods = map[string]nativeFunc{
 		return s[start:end], nil
 	},
 
-	// --- color ---
-	"color.rgb": func(args []any) (any, error) {
-		r := clampByte(toInt(args[0]))
-		g := clampByte(toInt(args[1]))
-		b := clampByte(toInt(args[2]))
-		return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
+	// --- string/list length (native, replaces size()) ---
+	"string.length": func(args []any) (any, error) {
+		return len(fmt.Sprintf("%v", args[0])), nil
 	},
-	"color.rgba": func(args []any) (any, error) {
-		r := clampByte(toInt(args[0]))
-		g := clampByte(toInt(args[1]))
-		b := clampByte(toInt(args[2]))
-		a := clampByte(int(toFloat(args[3]) * 255))
-		return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, a), nil
-	},
-	"color.lighten": func(args []any) (any, error) {
-		c := fmt.Sprintf("%v", args[0])
-		pct := toFloat(args[1])
-		return colorLightenDarken(c, pct, true), nil
-	},
-	"color.darken": func(args []any) (any, error) {
-		c := fmt.Sprintf("%v", args[0])
-		pct := toFloat(args[1])
-		return colorLightenDarken(c, pct, false), nil
-	},
-	"color.opacity": func(args []any) (any, error) {
-		c := fmt.Sprintf("%v", args[0])
-		a := clampByte(int(toFloat(args[1]) * 255))
-		// Strip existing alpha if present, add new
-		hex := c
-		if len(hex) == 9 { // #rrggbbaa
-			hex = hex[:7]
+	"list.length": func(args []any) (any, error) {
+		if list, ok := args[0].([]any); ok {
+			return len(list), nil
 		}
-		return fmt.Sprintf("%s%02x", hex, a), nil
+		return 0, nil
+	},
+
+	// --- color ---
+	"color.hex": func(args []any) (any, error) {
+		if m, ok := args[0].(map[string]any); ok {
+			r := clampByte(toInt(m["r"]))
+			g := clampByte(toInt(m["g"]))
+			b := clampByte(toInt(m["b"]))
+			a := toInt(m["a"])
+			if a == 255 {
+				return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
+			}
+			return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, clampByte(a)), nil
+		}
+		return "#000000", nil
 	},
 
 	// --- list ---
@@ -187,6 +178,20 @@ var nativeMethods = map[string]nativeFunc{
 		copy(result, list[start:end])
 		return result, nil
 	},
+}
+
+// colorHexToStruct converts a hex color string like "#ff0000" to a Color struct map.
+func colorHexToStruct(hex string) map[string]any {
+	r, g, b, a := 0, 0, 0, 255
+	if len(hex) >= 7 && hex[0] == '#' {
+		r = hexToByte(hex[1:3])
+		g = hexToByte(hex[3:5])
+		b = hexToByte(hex[5:7])
+	}
+	if len(hex) >= 9 {
+		a = hexToByte(hex[7:9])
+	}
+	return map[string]any{"r": r, "g": g, "b": b, "a": a}
 }
 
 func clampByte(v int) int {

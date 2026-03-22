@@ -62,6 +62,9 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 		if e.Kind == ast.LiteralUnit {
 			return env.evalUnitLiteral(e.Value.(ast.UnitLiteral))
 		}
+		if e.Kind == ast.LiteralColor {
+			return colorHexToStruct(fmt.Sprintf("%v", e.Value)), nil
+		}
 		return e.Value, nil
 	case *ast.IdentExpr:
 		return env.lookup(e.Name)
@@ -317,26 +320,6 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 			return nil, err
 		}
 		return toFloat(v), nil
-	case "size":
-		if len(e.Args) != 1 {
-			return nil, fmt.Errorf("size() requires 1 argument")
-		}
-		v, err := env.Eval(e.Args[0])
-		if err != nil {
-			return nil, err
-		}
-		switch val := v.(type) {
-		case []any:
-			return len(val), nil
-		case string:
-			return len(val), nil
-		case map[string]any:
-			return len(val), nil
-		case nil:
-			return 0, nil
-		default:
-			return nil, fmt.Errorf("size() not supported for %T", v)
-		}
 	case "assert":
 		// Handled by exec, but if called as expression just evaluate
 		if len(e.Args) != 1 {
@@ -520,20 +503,6 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 				}
 			}
 			return nil, nil
-		}
-	case "length":
-		if len(e.Args) != 0 {
-			return nil, fmt.Errorf("length() takes no arguments")
-		}
-		switch val := recv.(type) {
-		case []any:
-			return len(val), nil
-		case string:
-			return len(val), nil
-		case map[string]any:
-			return len(val), nil
-		default:
-			return nil, fmt.Errorf("length() not supported for %T", recv)
 		}
 	default:
 		if strings.HasPrefix(e.Method, "@") {

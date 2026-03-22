@@ -235,9 +235,6 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	if fn == "string" && len(args) == 1 {
 		return "String(" + translateExpr(args[0], scope) + ")"
 	}
-	if fn == "size" && len(args) == 1 {
-		return translateExpr(args[0], scope) + ".length"
-	}
 	if fn == "int" && len(args) == 1 {
 		return "Math.trunc(" + translateExpr(args[0], scope) + ")"
 	}
@@ -360,7 +357,7 @@ func isIntNode(e ast.Node) bool {
 	case *ast.LiteralExpr:
 		return n.Kind == ast.LiteralInt
 	case *ast.CallExpr:
-		return n.Func == "int" || n.Func == "size"
+		return n.Func == "int"
 	case *ast.BinaryExpr:
 		switch n.Op {
 		case ast.BinAdd, ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
@@ -465,6 +462,8 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "float.atan2", "*.atan2":
 		return "Math.atan2(" + a(0) + ", " + a(1) + ")"
 	// string
+	case "string.length", "*.length":
+		return a(0) + ".length"
 	case "string.upper", "*.upper":
 		return a(0) + ".toUpperCase()"
 	case "string.lower", "*.lower":
@@ -483,6 +482,8 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "color.rgba":
 		return `"#" + (` + a(0) + `).toString(16).padStart(2, "0") + (` + a(1) + `).toString(16).padStart(2, "0") + (` + a(2) + `).toString(16).padStart(2, "0") + Math.round(` + a(3) + ` * 255).toString(16).padStart(2, "0")`
 	// list
+	case "list.length":
+		return a(0) + ".length"
 	case "list.indexOf":
 		return a(0) + ".indexOf(" + a(1) + ")"
 	case "list.join", "*.join":

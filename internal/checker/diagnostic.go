@@ -15,7 +15,7 @@ type Diagnostic struct {
 // CheckDiagnostics type-checks a document and returns structured diagnostics
 // instead of a joined error string.
 func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver) (*ast.Document, []Diagnostic) {
-	registry, styleProps, _, _, err := LoadStdlib()
+	registry, styleProps, _, _, _, err := LoadStdlib()
 	if err != nil {
 		return doc, []Diagnostic{{Msg: fmt.Sprintf("loading stdlib: %v", err)}}
 	}

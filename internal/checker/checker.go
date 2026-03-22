@@ -50,7 +50,7 @@ func DefaultResolver() ImportResolver {
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
 func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
-	registry, styleProps, stdlibUnits, stdlibFuncs, err := LoadStdlib()
+	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}
@@ -77,6 +77,7 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
 
 	// Inject stdlib functions into the document (prepend so user funcs can override)
 	doc.Functions = append(stdlibFuncs, doc.Functions...)
+	doc.Structs = append(stdlibStructs, doc.Structs...)
 
 	if doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
@@ -469,8 +470,6 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 			return Int
 		case "float":
 			return Float
-		case "size":
-			return Int
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {
 				return t
@@ -771,8 +770,6 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 			return Int
 		case "float":
 			return Float
-		case "size":
-			return Int
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {
 				return t
