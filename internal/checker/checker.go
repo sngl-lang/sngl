@@ -207,6 +207,69 @@ func (c *checker) lookupMethod(typeName, method string) (Type, bool) {
 	return Dyn, false
 }
 
+// validateConstExpr checks that a const initializer only references literals, other consts,
+// and pure function/method calls — not var fields.
+func (c *checker) validateConstExpr(pos ast.Pos, n ast.Node, constNames map[string]bool) {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		// ok
+	case *ast.IdentExpr:
+		if !constNames[e.Name] {
+			c.errorAt(pos, "const initializer references non-const %q", e.Name)
+		}
+	case *ast.BinaryExpr:
+		c.validateConstExpr(pos, e.Left, constNames)
+		c.validateConstExpr(pos, e.Right, constNames)
+	case *ast.UnaryExpr:
+		c.validateConstExpr(pos, e.Operand, constNames)
+	case *ast.TernaryExpr:
+		c.validateConstExpr(pos, e.Cond, constNames)
+		c.validateConstExpr(pos, e.Then, constNames)
+		c.validateConstExpr(pos, e.Else, constNames)
+	case *ast.CallExpr:
+		for _, arg := range e.Args {
+			c.validateConstExpr(pos, arg, constNames)
+		}
+	case *ast.MethodExpr:
+		// Type-namespace calls (e.g., string.length("hi")) are fine
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if _, _, isMethod := ast.SplitMethodName(ident.Name + "." + e.Method); isMethod {
+				// Check if it looks like a type namespace
+				switch ident.Name {
+				case "int", "float", "string", "bool", "list", "color":
+					// ok — type namespace
+					for _, arg := range e.Args {
+						c.validateConstExpr(pos, arg, constNames)
+					}
+					return
+				}
+			}
+		}
+		// Instance method — receiver must be const
+		c.validateConstExpr(pos, e.Receiver, constNames)
+		for _, arg := range e.Args {
+			c.validateConstExpr(pos, arg, constNames)
+		}
+	case *ast.InterpolationExpr:
+		for _, p := range e.Parts {
+			c.validateConstExpr(pos, p, constNames)
+		}
+	case *ast.ListExpr:
+		for _, el := range e.Elements {
+			c.validateConstExpr(pos, el, constNames)
+		}
+	case *ast.StructExpr:
+		for _, f := range e.Fields {
+			c.validateConstExpr(pos, f.Value, constNames)
+		}
+	case *ast.SelectExpr:
+		c.validateConstExpr(pos, e.Operand, constNames)
+	case *ast.IndexExpr:
+		c.validateConstExpr(pos, e.Operand, constNames)
+		c.validateConstExpr(pos, e.Index, constNames)
+	}
+}
+
 func (c *checker) errorAt(pos ast.Pos, format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	if pos.IsValid() {
@@ -270,6 +333,17 @@ func (c *checker) pass1(doc *ast.Document) {
 
 	// Structs
 	c.structs = append(c.structs, doc.Structs...)
+
+	// Consts — must be compile-time constant expressions
+	constNames := map[string]bool{}
+	for _, cn := range doc.Consts {
+		if cn.Init.SNGL != nil {
+			c.validateConstExpr(cn.Pos, cn.Init.SNGL, constNames)
+		}
+		t := c.resolveExprType(cn.Pos, &cn.Init)
+		c.scope.Declare(cn.Name, t)
+		constNames[cn.Name] = true
+	}
 
 	// Data fields
 	for _, d := range doc.Data {
