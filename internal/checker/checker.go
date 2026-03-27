@@ -189,6 +189,7 @@ type checker struct {
 	components []*ast.Component
 	structs    []*ast.StructDef
 	enums      []*ast.EnumDef
+	constNames map[string]bool // names declared as const (for untyped constant detection)
 	dir        string
 	resolve    ImportResolver
 	visited    map[string]bool // tracks visited import paths to detect cycles
@@ -345,6 +346,7 @@ func (c *checker) pass1(doc *ast.Document) {
 		c.scope.Declare(cn.Name, t)
 		constNames[cn.Name] = true
 	}
+	c.constNames = constNames
 
 	// Data fields
 	for _, d := range doc.Data {
@@ -776,10 +778,61 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 }
 
 // checkExprType resolves an expression's type and checks it matches the expected type.
+// Numeric constant expressions are untyped: an int constant is assignable to float and vice versa.
 func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected Type, scope *Scope, context string) {
 	got := c.resolveExprInScope(pos, expr, scope)
 	if !isAssignable(got, expected) {
+		if isNumeric(got) && isNumeric(expected) && c.isConstantExpr(expr) {
+			return
+		}
 		c.errorAt(pos, "%s: expected %s, got %s", context, expected, got)
+	}
+}
+
+// isConstantExpr reports whether expr is a compile-time constant expression
+// (literals, const references, and pure operations on constants).
+func (c *checker) isConstantExpr(expr *ast.Expr) bool {
+	if expr.Literal != nil {
+		return true
+	}
+	if expr.SNGL != nil {
+		return c.isConstantNode(expr.SNGL)
+	}
+	return false
+}
+
+// isConstantNode reports whether an AST node is a compile-time constant.
+func (c *checker) isConstantNode(n ast.Node) bool {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		return true
+	case *ast.IdentExpr:
+		return c.constNames[e.Name]
+	case *ast.BinaryExpr:
+		return c.isConstantNode(e.Left) && c.isConstantNode(e.Right)
+	case *ast.UnaryExpr:
+		return c.isConstantNode(e.Operand)
+	case *ast.TernaryExpr:
+		return c.isConstantNode(e.Cond) && c.isConstantNode(e.Then) && c.isConstantNode(e.Else)
+	case *ast.CallExpr:
+		for _, arg := range e.Args {
+			if !c.isConstantNode(arg) {
+				return false
+			}
+		}
+		return true
+	case *ast.MethodExpr:
+		if !c.isConstantNode(e.Receiver) {
+			return false
+		}
+		for _, arg := range e.Args {
+			if !c.isConstantNode(arg) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
 	}
 }
 

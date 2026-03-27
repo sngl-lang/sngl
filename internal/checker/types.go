@@ -194,6 +194,11 @@ func narrowNumeric(left, right Type) Type {
 	return Dyn
 }
 
+// isNumeric reports whether t is Int or Float.
+func isNumeric(t Type) bool {
+	return t == Int || t == Float
+}
+
 // isAssignable reports whether a value of type got can be assigned where expected is required.
 func isAssignable(got, expected Type) bool {
 	if got == expected {

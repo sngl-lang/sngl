@@ -69,7 +69,7 @@ component main {
         divider
         text(value="Progress & Spinner", style={fontSize=20, fontWeight="bold"})
         hbox(style={alignItems="center", gap=24}) {
-            progress(max=1.0, value=sliderVal)
+            progress(max=1, value=sliderVal)
             spinner(label="Loading...")
         }
         text(value="Tabs", style={fontSize=20, fontWeight="bold"})
