@@ -55,6 +55,6 @@ require (
 
 tool (
 	git.duckfam.us/jonathan/sngl/cmd/sngl
-	git.duckfam.us/jonathan/sngl/internal/cmd/devtest
+	git.duckfam.us/jonathan/sngl/internal/cmd/verify
 	git.duckfam.us/jonathan/sngl/internal/cmd/docsgen
 )

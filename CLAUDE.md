@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 go install ./cmd/sngl          # build CLI (preferred over go build)
-go build ./...                  # verify all packages compile
-go tool devtest                 # full test suite with coverage
+go build ./...                 # verify all packages compile
+go tool verify                 # full test suite with coverage
 go test ./path/to/pkg/...      # test a single package tree
 go test -run TestName ./pkg/   # run a single test
 go fmt .                       # format Go (run from package dir)
@@ -15,6 +15,7 @@ go tool docsgen                # build docs site to _site/
 ```
 
 WASM build (used by docsgen for playground):
+
 ```bash
 GOOS=js GOARCH=wasm go build ./internal/playground
 ```
