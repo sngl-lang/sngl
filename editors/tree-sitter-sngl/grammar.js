@@ -421,7 +421,7 @@ module.exports = grammar({
         $.inline_enum_type,
       ),
 
-    _simple_type: ($) => $.identifier,
+    _simple_type: ($) => choice($.qualified_name, $.identifier),
 
     generic_type: ($) =>
       seq(
@@ -472,7 +472,7 @@ module.exports = grammar({
     visual_node: ($) =>
       prec.right(
         seq(
-          field("component", $.identifier),
+          field("component", choice($.qualified_name, $.identifier)),
           optional(field("element_id", $.element_ref)),
           optional($.prop_list),
           optional($.node_body),
@@ -718,6 +718,8 @@ module.exports = grammar({
       seq("[", commaSep($._expression), optional(","), "]"),
 
     // ─── Literals ────────────────────────────────────────────
+
+    qualified_name: ($) => seq($.identifier, ".", $.identifier),
 
     identifier: (_$) => /[a-zA-Z_][a-zA-Z0-9_]*/,
 

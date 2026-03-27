@@ -5,13 +5,7 @@ import "git.duckfam.us/jonathan/sngl/ast"
 // PromoteComponent creates a Document with the named component's fields
 // promoted to top-level, suitable for HTML codegen.
 func PromoteComponent(doc *ast.Document, name string) *ast.Document {
-	var comp *ast.Component
-	for _, c := range doc.Components {
-		if c.Name == name {
-			comp = c
-			break
-		}
-	}
+	comp := doc.FindComponent(name)
 	if comp == nil || len(comp.Body) == 0 {
 		return nil
 	}

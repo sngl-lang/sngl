@@ -1181,13 +1181,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	// Find the component definition
-	var comp *ast.Component
-	for _, c := range g.doc.Components {
-		if c.Name == vn.Component {
-			comp = c
-			break
-		}
-	}
+	comp := g.doc.FindComponent(vn.Component)
 	if comp == nil {
 		return
 	}

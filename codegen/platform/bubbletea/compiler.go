@@ -148,7 +148,7 @@ func analyze(doc *ast.Document) *analysisResult {
 	}
 
 	// Components and structs
-	info.components = doc.Components
+	info.components = doc.AllComponents()
 	info.structs = doc.Structs
 
 	// Walk visual tree to find inputs and buttons

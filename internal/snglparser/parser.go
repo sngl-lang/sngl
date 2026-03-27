@@ -134,7 +134,11 @@ func (p *parser) parseImport() *ast.Import {
 	pos := p.pos()
 	p.expect(KW_IMPORT)
 	path := p.expect(STRING)
-	return &ast.Import{Pos: pos, Path: path.Literal}
+	ns := path.Literal
+	if i := strings.LastIndex(ns, "/"); i >= 0 {
+		ns = ns[i+1:]
+	}
+	return &ast.Import{Pos: pos, Path: path.Literal, Namespace: ns}
 }
 
 func (p *parser) parseOutput() []*ast.Output {
@@ -727,6 +731,10 @@ func (p *parser) parseTypeString() string {
 		return p.parseInlineEnumType()
 	}
 	name := p.expect(IDENT).Literal
+	if p.at(DOT) {
+		p.advance()
+		name = name + "." + p.expect(IDENT).Literal
+	}
 	if p.at(LT) {
 		p.advance()
 		var inner strings.Builder
@@ -833,6 +841,10 @@ func (p *parser) parseForNode() *ast.VisualNode {
 func (p *parser) parseVisualNode() *ast.VisualNode {
 	pos := p.pos()
 	name := p.expect(IDENT).Literal
+	if p.at(DOT) {
+		p.advance()
+		name = name + "." + p.expect(IDENT).Literal
+	}
 	vn := &ast.VisualNode{
 		Pos:       pos,
 		Component: name,
@@ -1164,6 +1176,13 @@ func (p *parser) parsePostfix() ast.Node {
 				}
 				p.expect(RPAREN)
 				node = &ast.MethodExpr{Receiver: node, Method: field, Args: args}
+			} else if p.at(LBRACE) && !p.noStructLit {
+				// Qualified struct literal: ns.Type{field: value}
+				if ident, ok := node.(*ast.IdentExpr); ok {
+					node = p.parseStructLiteral(ident.Name + "." + field)
+				} else {
+					node = &ast.SelectExpr{Operand: node, Field: field}
+				}
 			} else {
 				node = &ast.SelectExpr{Operand: node, Field: field}
 			}

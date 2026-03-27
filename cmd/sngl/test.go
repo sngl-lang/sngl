@@ -89,7 +89,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		}
 
 		if doc.App != nil || len(doc.Tests) > 0 {
-			if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver()); err != nil {
+			if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver(), true); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 				totalFail++
 				continue

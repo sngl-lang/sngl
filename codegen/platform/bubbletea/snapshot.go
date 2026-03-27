@@ -487,12 +487,7 @@ func (sc *snapContext) findComponent(name string) *ast.Component {
 	if sc.doc == nil {
 		return nil
 	}
-	for _, c := range sc.doc.Components {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+	return sc.doc.FindComponent(name)
 }
 
 // viewToHTML converts ANSI-styled terminal text to an HTML page for screenshotting.

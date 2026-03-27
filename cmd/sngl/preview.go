@@ -125,7 +125,7 @@ func (s *previewServer) recompile() error {
 		return err
 	}
 
-	if err := checker.Check(doc, s.sourceDir, checker.DefaultResolver()); err != nil {
+	if err := checker.Check(doc, s.sourceDir, checker.DefaultResolver(), true); err != nil {
 		return err
 	}
 

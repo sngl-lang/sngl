@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
@@ -49,7 +50,7 @@ func DefaultResolver() ImportResolver {
 // component schemas. dir is the directory of the .sngl file, used to resolve
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
-func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
+func Check(doc *ast.Document, dir string, resolve ImportResolver, isMain bool) error {
 	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
@@ -69,19 +70,30 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver) error {
 		styleProps: styleProps,
 		unitTables: unitTables,
 		scope:      NewScope(nil),
-		methods: map[string]map[string]*methodInfo{},
-		dir:     dir,
-		resolve: resolve,
-		visited: map[string]bool{},
+		methods:    map[string]map[string]*methodInfo{},
+		dir:        dir,
+		resolve:    resolve,
+		visited:    map[string]bool{},
+		isMain:     isMain,
+		namespaces: map[string]*importNS{},
 	}
 
 	// Inject stdlib functions into the document (prepend so user funcs can override)
 	doc.Functions = append(stdlibFuncs, doc.Functions...)
 	doc.Structs = append(stdlibStructs, doc.Structs...)
 
-	if doc.App == nil && len(doc.Tests) == 0 {
+	if isMain && doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
 		return c.joinErrors()
+	}
+
+	if !isMain {
+		if doc.App != nil {
+			c.errorAt(ast.Pos{}, "component main can only be defined in the main package")
+		}
+		if len(doc.Outputs) > 0 {
+			c.errorAt(doc.Outputs[0].Pos, "output declarations can only appear in the main package")
+		}
 	}
 
 	c.pass1(doc)
@@ -193,7 +205,16 @@ type checker struct {
 	dir        string
 	resolve    ImportResolver
 	visited    map[string]bool // tracks visited import paths to detect cycles
+	isMain     bool            // true for the entry-point package
+	namespaces map[string]*importNS
 	errs       []error
+}
+
+// importNS stores the exported declarations from an imported package.
+type importNS struct {
+	components []*ast.Component
+	structs    []*ast.StructDef
+	enums      []*ast.EnumDef
 }
 
 // lookupMethod checks the method registry for a type-attached method and returns its return type.
@@ -311,11 +332,33 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 			continue
 		}
+		// Validate imported docs don't define compile targets.
 		for _, d := range docs {
-			c.structs = append(c.structs, d.Structs...)
-			c.enums = append(c.enums, d.Enums...)
+			if d.App != nil {
+				c.errorAt(imp.Pos, "import %q: component main can only be defined in the main package", imp.Path)
+			}
+			if len(d.Outputs) > 0 {
+				c.errorAt(imp.Pos, "import %q: output declarations can only appear in the main package", imp.Path)
+			}
+		}
+		ns := &importNS{}
+		for _, d := range docs {
+			for _, s := range d.Structs {
+				if isExported(s.Name) {
+					ns.structs = append(ns.structs, s)
+				}
+			}
+			for _, e := range d.Enums {
+				if isExported(e.Name) {
+					ns.enums = append(ns.enums, e)
+				}
+			}
 			for _, comp := range d.Components {
-				c.components = append(c.components, comp)
+				if !isExported(comp.Name) {
+					continue
+				}
+				ns.components = append(ns.components, comp)
+				qualName := imp.Namespace + "." + comp.Name
 				schema := &ComponentSchema{
 					Props:    make(map[string]PropSchema),
 					Events:   map[string]string{},
@@ -325,9 +368,11 @@ func (c *checker) pass1(doc *ast.Document) {
 					t := c.resolveParamType(p)
 					schema.Props[p.Name] = PropSchema{Type: t}
 				}
-				c.registry[comp.Name] = schema
+				c.registry[qualName] = schema
+				doc.ImportedComponents = append(doc.ImportedComponents, comp)
 			}
 		}
+		c.namespaces[imp.Namespace] = ns
 	}
 
 	// Enums from document
@@ -462,6 +507,23 @@ func (c *checker) resolveParamType(p *ast.Param) Type {
 // resolveTypeHint maps a type hint string to a Type, checking named enums
 // and inline enum syntax before falling back to TypeFromHint.
 func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
+	// Qualified type: ns.Type
+	if ns, local, ok := strings.Cut(hint, "."); ok {
+		if ins, exists := c.namespaces[ns]; exists {
+			for _, e := range ins.enums {
+				if e.Name == local {
+					return String
+				}
+			}
+			for _, s := range ins.structs {
+				if s.Name == local {
+					return Struct
+				}
+			}
+		}
+		c.errorAt(pos, "unknown type %q", hint)
+		return Dyn
+	}
 	// Named enum
 	for _, e := range c.enums {
 		if e.Name == hint {
@@ -953,12 +1015,30 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 
 // findComponent returns the AST component definition for a user-defined component, or nil.
 func (c *checker) findComponent(name string) *ast.Component {
+	if ns, local, ok := strings.Cut(name, "."); ok {
+		if ins, exists := c.namespaces[ns]; exists {
+			for _, comp := range ins.components {
+				if comp.Name == local {
+					return comp
+				}
+			}
+		}
+		return nil
+	}
 	for _, comp := range c.components {
 		if comp.Name == name {
 			return comp
 		}
 	}
 	return nil
+}
+
+// isExported reports whether a name is exported (starts with uppercase).
+func isExported(name string) bool {
+	if name == "" {
+		return false
+	}
+	return unicode.IsUpper(rune(name[0]))
 }
 
 // isStatement checks if an SNGL AST node represents a mutation statement.

@@ -1,0 +1,3 @@
+component main {
+    text(value="I should not be in a library")
+}

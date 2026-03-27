@@ -25,7 +25,7 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	groups := map[string]*compTests{}
 	// Detect which components have list-typed fields (not compilable to Go)
 	listComps := map[string]bool{}
-	for _, c := range doc.Components {
+	for _, c := range doc.AllComponents() {
 		for _, d := range c.Data {
 			if inferGoType(d.Init) == "any" {
 				listComps[c.Name] = true
@@ -431,12 +431,7 @@ func nodeUsesElementRef(n ast.Node) bool {
 }
 
 func findComp(doc *ast.Document, name string) *ast.Component {
-	for _, c := range doc.Components {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+	return doc.FindComponent(name)
 }
 
 func sanitizeTestName(desc string) string {

@@ -30,7 +30,7 @@ func FormatNode(n ast.Node) string {
 // file, used to resolve relative import paths. It uses the default filesystem-based
 // import resolver for directory imports.
 func Check(doc *ast.Document, dir string) error {
-	return checker.Check(doc, dir, checker.DefaultResolver())
+	return checker.Check(doc, dir, checker.DefaultResolver(), true)
 }
 
 // OptimizeConfig controls platform-specific AST transformations.

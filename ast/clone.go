@@ -18,6 +18,7 @@ func (d *Document) Clone() *Document {
 	c.Data = cloneData(d.Data)
 	c.Computeds = cloneComputeds(d.Computeds)
 	c.Components = cloneComponents(d.Components)
+	c.ImportedComponents = cloneComponents(d.ImportedComponents)
 	c.Timers = cloneSlice(d.Timers)
 	c.Styles = cloneStyleDecls(d.Styles)
 	c.StyleDefs = cloneSlice(d.StyleDefs)

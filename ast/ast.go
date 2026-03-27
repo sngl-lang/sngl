@@ -29,21 +29,51 @@ type Output struct {
 }
 
 type Document struct {
-	Outputs    []*Output
-	Structs    []*StructDef
-	Enums      []*EnumDef
-	Imports    []*Import
-	Units      []*UnitDef
-	Consts     []*Const
-	Data       []*Data
-	Computeds  []*Computed
-	Functions  []*FuncDef
-	Components []*Component
-	Timers     []*Timer
-	Styles     []*StyleDecl
-	StyleDefs  []*StylePropDef // from "styles" top-level node
-	App        *App
-	Tests      []*TestDef
+	Outputs            []*Output
+	Structs            []*StructDef
+	Enums              []*EnumDef
+	Imports            []*Import
+	Units              []*UnitDef
+	Consts             []*Const
+	Data               []*Data
+	Computeds          []*Computed
+	Functions          []*FuncDef
+	Components         []*Component
+	ImportedComponents []*Component // populated by checker; qualified-name keyed
+	Timers             []*Timer
+	Styles             []*StyleDecl
+	StyleDefs          []*StylePropDef // from "styles" top-level node
+	App                *App
+	Tests              []*TestDef
+}
+
+// FindComponent looks up a component by name, searching local components first,
+// then imported components. For qualified names like "widgets.Counter", only
+// imported components are searched (by their unqualified name).
+func (d *Document) FindComponent(name string) *Component {
+	if ns, local, ok := strings.Cut(name, "."); ok {
+		_ = ns
+		for _, c := range d.ImportedComponents {
+			if c.Name == local {
+				return c
+			}
+		}
+		return nil
+	}
+	for _, c := range d.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+// AllComponents returns local and imported components combined.
+func (d *Document) AllComponents() []*Component {
+	all := make([]*Component, 0, len(d.Components)+len(d.ImportedComponents))
+	all = append(all, d.Components...)
+	all = append(all, d.ImportedComponents...)
+	return all
 }
 
 // TestDef declares a test block targeting a component.
@@ -99,8 +129,9 @@ type StructField struct {
 }
 
 type Import struct {
-	Pos  Pos
-	Path string
+	Pos       Pos
+	Path      string
+	Namespace string // last path segment, e.g. "widgets" from "lib/widgets"
 }
 
 type Data struct {

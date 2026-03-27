@@ -35,7 +35,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver()); err != nil {
+		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver(), true); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)
@@ -47,7 +47,7 @@ func TestGettersSetters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, "../../../testdata", nil); err != nil {
+	if err := checker.Check(doc, "../../../testdata", nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	src := compileAndVerify(t, doc)
@@ -75,7 +75,7 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, "../../../_examples/todo", nil); err != nil {
+	if err := checker.Check(doc, "../../../_examples/todo", nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	compileAndVerify(t, doc)

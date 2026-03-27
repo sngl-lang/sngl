@@ -148,12 +148,7 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 }
 
 func findComponent(doc *ast.Document, name string) *ast.Component {
-	for _, c := range doc.Components {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+	return doc.FindComponent(name)
 }
 
 // evalInit extracts the initial value from an Expr.
