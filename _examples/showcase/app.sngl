@@ -18,7 +18,8 @@ component main {
         toggleOn = false
         selectedOption = ""
         notes = ""
-        sliderVal = 0.6
+        sliderVal float = 0
+        animating = true
         birthday date = "2000-01-01"
     )
 
@@ -27,96 +28,71 @@ component main {
     func increment() {
         count += 1
     }
-
     func reset() {
         count = 0
         name = "World"
     }
 
-    vbox(style={padding=24, gap=24, maxWidth=900}) {
+    timer 50ms animating {
+        sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
+    }
 
-        // Header
+    vbox(style={gap=24, maxWidth=900, padding=24}) {
         text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})
         text(value="Every component in the standard library", style={color=#666666})
-
         divider
-
-        // --- Text & Button ---
         text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=12, alignItems="center"}) {
+        hbox(style={alignItems="center", gap=12}) {
             text(value=greeting, style={fontSize=18})
             button(text="Increment", @click={ count += 1 })
             button(text="Reset", @click={ count = 0; name = "World" })
             badge(value=string(count), style={background=#2196f3, color=#ffffff})
         }
-
         divider
-
-        // --- Input ---
         text(value="Input", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            input(value=name, placeholder="Enter your name", @input={ name = event.value })
+            input(placeholder="Enter your name", value=name, @input={ name = event.value })
             input(placeholder="Password", type="password")
             input(placeholder="Search...", type="search")
         }
-
-        // --- Textarea ---
         text(value="Textarea", style={fontSize=20, fontWeight="bold"})
-        textarea(value=notes, placeholder="Write some notes...", rows=4, @input={ notes = event.value })
-
+        textarea(placeholder="Write some notes...", rows=4, value=notes, @input={ notes = event.value })
         divider
-
-        // --- Checkbox, Toggle, Radio ---
         text(value="Checkbox, Toggle & Radio", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=24}) {
             checkbox(checked=darkMode, label="Dark mode", @change={ darkMode!! })
             toggle(checked=toggleOn, label="Notifications")
-            radio(value=selectedRadio, options=["small", "medium", "large"], direction="horizontal")
+            radio(direction="horizontal", options=["small", "medium", "large"], value=selectedRadio)
         }
-
-        // --- Select ---
         text(value="Select", style={fontSize=20, fontWeight="bold"})
-        select(value=selectedOption, options=["Apple", "Banana", "Cherry", "Date"], placeholder="Pick a fruit")
-
+        select(options=["Apple", "Banana", "Cherry", "Date"], placeholder="Pick a fruit", value=selectedOption)
         divider
-
-        // --- Progress & Spinner ---
         text(value="Progress & Spinner", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=24, alignItems="center"}) {
-            progress(value=sliderVal, max=1.0)
+        hbox(style={alignItems="center", gap=24}) {
+            progress(max=1.0, value=sliderVal)
             spinner(label="Loading...")
         }
-
-        // --- Tabs ---
         text(value="Tabs", style={fontSize=20, fontWeight="bold"})
         tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
             text(value="This is the overview content.")
             text(value="Here are the details.")
             text(value="Settings would go here.")
         }
-
         divider
-
-        // --- Link & Chip ---
         text(value="Link & Chip", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=8, alignItems="center"}) {
-            link(text="SNGL Website", href="https://sngl.dev")
+        hbox(style={alignItems="center", gap=8}) {
+            link(href="https://sngl.dev", text="SNGL Website")
             chip(label="Tag")
             chip(label="Removable", removable=true)
             chip(label="Success", variant="success")
         }
-
-        // --- Avatar ---
         text(value="Avatar", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=8}) {
             avatar(initials="JD")
             avatar(initials="AB", variant="square")
             avatar(alt="User")
         }
-
         divider
-
-        // --- Card ---
         text(value="Card", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=16}) {
             card(variant="outlined") {
@@ -132,46 +108,36 @@ component main {
                 text(value="With a background")
             }
         }
-
         divider
-
-        // --- Modal & Drawer ---
         text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
             button(text="Open Modal", @click={ showModal = true })
             button(text="Open Drawer", @click={ showDrawer = true })
             button(text="Show Toast", @click={ showToast = true })
         }
-        modal(open=showModal, title="Example Modal", closable=true) {
+        modal(closable=true, open=showModal, title="Example Modal") {
             text(value="This is modal content.")
             button(text="Close", @click={ showModal = false })
         }
         drawer(open=showDrawer, side="right") {
-            vbox(style={padding=16, gap=12}) {
+            vbox(style={gap=12, padding=16}) {
                 text(value="Drawer Content", style={fontWeight="bold"})
                 text(value="Slide-out panel")
                 button(text="Close", @click={ showDrawer = false })
             }
         }
-        toast(message="Action completed!", variant="success", visible=showToast, position="bottom")
-
+        toast(message="Action completed!", position="bottom", variant="success", visible=showToast)
         divider
-
-        // --- Tooltip ---
         text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
         }
-
-        // --- Accordion ---
         text(value="Accordion", style={fontSize=20, fontWeight="bold"})
         accordion(items=["Section 1", "Section 2", "Section 3"]) {
             text(value="Content for section 1")
             text(value="Content for section 2")
             text(value="Content for section 3")
         }
-
-        // --- Splitview ---
         text(value="Split View", style={fontSize=20, fontWeight="bold"})
         splitview(direction="horizontal", style={height=120}) {
             vbox(style={padding=12}) {
@@ -183,24 +149,14 @@ component main {
                 text(value="Side by side")
             }
         }
-
         divider
-
-        // --- Table ---
         text(value="Table", style={fontSize=20, fontWeight="bold"})
         table(columns=["Name", "Role", "Status"])
-
-        // --- Tree ---
         text(value="Tree", style={fontSize=20, fontWeight="bold"})
         tree(items=["Documents", "Photos", "Music", "Videos"])
-
         divider
-
-        // --- Menubar ---
         text(value="Menubar", style={fontSize=20, fontWeight="bold"})
         menubar(items=["File", "Edit", "View", "Help"])
-
-        // --- Toolbar ---
         text(value="Toolbar", style={fontSize=20, fontWeight="bold"})
         toolbar {
             button(text="New")
@@ -209,19 +165,13 @@ component main {
             spacer
             button(text="Settings")
         }
-
         divider
-
-        // --- Datepicker ---
         text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
-        datepicker(value=birthday, placeholder="Select birthday")
-
-        // --- Pull to Refresh ---
+        datepicker(placeholder="Select birthday", value=birthday)
         text(value="Pull to Refresh (wrapper)", style={fontSize=20, fontWeight="bold"})
         pullrefresh {
             text(value="Pull down to refresh (mobile only)")
         }
-
         divider(label="End of Showcase")
     }
 }

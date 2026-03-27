@@ -169,6 +169,8 @@ func (g *htmlGen) generate() string {
 	b.WriteString("  <style>\n")
 	b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
 	b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
+	b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
+	b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
 	b.WriteString("  </style>\n")
 	b.WriteString("</head><body>\n\n")
 
@@ -286,6 +288,11 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.writeUserAttrs(b, id, vn)
 		b.WriteString(g.previewAttrs(vn.Pos))
 		b.WriteString("></progress>\n")
+		if id != "" {
+			if valExpr, ok := vn.Props["value"]; ok {
+				g.addAttrUpdater(id, "value", valExpr)
+			}
+		}
 	case "spinner":
 		style := g.buildCSSStyle(vn)
 		label := g.evalStaticString(vn.Props, "label")
@@ -294,7 +301,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
-		fmt.Fprintf(b, "⠋ %s</span>\n", html.EscapeString(label))
+		fmt.Fprintf(b, "<span class=\"sngl-spinner\"></span> %s</span>\n", html.EscapeString(label))
 	case "badge":
 		style := g.buildCSSStyle(vn)
 		style = appendCSS(style, "display", "inline-block")
@@ -1550,6 +1557,17 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
 		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
+		deps:     deps,
+	})
+}
+
+func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
+	jsExpr := g.exprToJS(expr)
+	deps := g.exprDeps(expr)
+	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
+	g.updates = append(g.updates, updateFunc{
+		funcName: name,
+		body:     fmt.Sprintf("%s.setAttribute(%q, %s);", elemID, attr, jsExpr),
 		deps:     deps,
 	})
 }

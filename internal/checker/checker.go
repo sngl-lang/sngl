@@ -364,6 +364,9 @@ func (c *checker) pass1(doc *ast.Document) {
 		c.validateEnumLiteral(d.Pos, &d.Init)
 		c.validateSpecialLiteral(d.Pos, &d.Init)
 		t := c.resolveExprType(d.Pos, &d.Init)
+		if hintType != Dyn {
+			t = hintType
+		}
 		c.scope.Declare(d.Name, t)
 	}
 
