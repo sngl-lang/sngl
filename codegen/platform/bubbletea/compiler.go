@@ -69,12 +69,20 @@ type forLoopCursor struct {
 	changeExpr  *ast.Expr
 }
 
+type timerInfo struct {
+	index      int
+	intervalMs int
+	activeVar  string
+	body       ast.Node
+}
+
 type analysisResult struct {
 	binds          []bindInfo
 	computeds      []computedInfo
 	inputs         []inputInfo
 	focusables     []string // ordered: "input0", "button0", etc.
 	forCursors     []forLoopCursor
+	timers         []timerInfo
 	components     []*ast.Component
 	structs        []*ast.StructDef
 	modelFields    map[string]bool   // all bind/computed names (fields)
@@ -123,6 +131,20 @@ func analyze(doc *ast.Document) *analysisResult {
 		})
 		info.modelFields[c.Name] = true
 		info.computedFields[c.Name] = true
+	}
+
+	// Timers
+	for i, t := range doc.Timers {
+		ms := intervalToMs(t.Interval)
+		info.timers = append(info.timers, timerInfo{
+			index:      i,
+			intervalMs: ms,
+			activeVar:  t.Active,
+			body:       t.Body,
+		})
+		if ms > 0 {
+			info.needsTime = true
+		}
 	}
 
 	// Components and structs
@@ -290,6 +312,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
+	// Timer tick message types
+	for _, t := range info.timers {
+		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.index)
+	}
+	if len(info.timers) > 0 {
+		b.WriteString("\n")
+	}
+
 	// Model struct
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
 	b.WriteString("type Model struct {\n")
@@ -378,7 +408,18 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	// Init()
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.inputs) > 0 {
+	if len(info.timers) > 0 {
+		b.WriteString("\tvar cmds []tea.Cmd\n")
+		if len(info.inputs) > 0 {
+			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
+		}
+		for _, t := range info.timers {
+			fmt.Fprintf(&b, "\tif m.%s {\n", exportName(t.activeVar))
+			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.intervalMs, t.index)
+			b.WriteString("\t}\n")
+		}
+		b.WriteString("\treturn tea.Batch(cmds...)\n")
+	} else if len(info.inputs) > 0 {
 		b.WriteString("\treturn textinput.Blink\n")
 	} else {
 		b.WriteString("\treturn nil\n")
@@ -573,6 +614,22 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 		getter := exportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
+	}
+
+	// Timer tick messages
+	for _, t := range info.timers {
+		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.index)
+		fmt.Fprintf(b, "\t\tif m.%s {\n", exportName(t.activeVar))
+		// Emit body mutations
+		stmts := ec.translateMutation(t.body)
+		for _, s := range stmts {
+			fmt.Fprintf(b, "\t\t\t%s\n", s)
+		}
+		// Re-schedule
+		fmt.Fprintf(b, "\t\t\tif m.%s {\n", exportName(t.activeVar))
+		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.intervalMs, t.index)
+		b.WriteString("\t\t\t}\n")
+		b.WriteString("\t\t}\n")
 	}
 
 	// WindowSizeMsg
@@ -886,6 +943,33 @@ func unexportName(s string) string {
 	runes := []rune(s)
 	runes[0] = unicode.ToLower(runes[0])
 	return string(runes)
+}
+
+func intervalToMs(expr ast.Expr) int {
+	if expr.SNGL == nil {
+		return 0
+	}
+	lit, ok := expr.SNGL.(*ast.LiteralExpr)
+	if !ok || lit.Kind != ast.LiteralUnit {
+		return 0
+	}
+	ul, ok := lit.Value.(ast.UnitLiteral)
+	if !ok {
+		return 0
+	}
+	num := 0.0
+	fmt.Sscanf(ul.Number, "%f", &num)
+	switch ul.Suffix {
+	case "ms":
+		return int(num)
+	case "s":
+		return int(num * 1000)
+	case "m":
+		return int(num * 60000)
+	case "h":
+		return int(num * 3600000)
+	}
+	return int(num)
 }
 
 func inferGoType(expr ast.Expr) string {

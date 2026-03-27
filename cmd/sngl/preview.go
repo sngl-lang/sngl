@@ -51,6 +51,9 @@ type previewServer struct {
 	schemas     checker.SchemaRegistry
 	styleNames  []string // all known style property names, sorted
 	styleSchema map[string]checker.StylePropSchema
+
+	// Runtime state synced from browser
+	runtimeState map[string]any
 }
 
 func runPreview(cmd *cobra.Command, args []string) error {
@@ -95,6 +98,8 @@ func runPreview(cmd *cobra.Command, args []string) error {
 	mux.HandleFunc("GET /events", s.handleEvents)
 	mux.HandleFunc("GET /targets", s.handleTargets)
 	mux.HandleFunc("GET /switch", s.handleSwitch)
+	mux.HandleFunc("GET /app", s.handleAppGet)
+	mux.HandleFunc("POST /app/state", s.handleAppStatePost)
 	mux.HandleFunc("GET /node", s.handleNodeGet)
 	mux.HandleFunc("POST /node", s.handleNodePost)
 
@@ -382,6 +387,77 @@ func exprToPropJSON(e ast.Expr, typeName string, enum []string) propJSON {
 		p.Literal = e.Literal
 	}
 	return p
+}
+
+func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	doc := s.doc
+	s.mu.RUnlock()
+
+	type dataJSON struct {
+		Name   string `json:"name"`
+		Init   string `json:"init,omitempty"`
+		Value  any    `json:"value,omitempty"`
+		Type   string `json:"type,omitempty"`
+		Extern bool   `json:"extern,omitempty"`
+		IsFunc bool   `json:"isFunc,omitempty"`
+	}
+	type computedJSON struct {
+		Name string `json:"name"`
+		Expr string `json:"expr"`
+	}
+	type appResponse struct {
+		Data     []dataJSON     `json:"data"`
+		Computed []computedJSON `json:"computed"`
+	}
+
+	resp := appResponse{
+		Data:     []dataJSON{},
+		Computed: []computedJSON{},
+	}
+
+	if doc != nil {
+		for _, d := range doc.Data {
+			dj := dataJSON{Name: d.Name, Extern: d.Extern, IsFunc: d.IsFunc}
+			if d.Init.SNGL != nil {
+				dj.Init = snglparser.FormatNode(d.Init.SNGL)
+			} else if d.Init.Literal != nil {
+				dj.Init = fmt.Sprintf("%v", d.Init.Literal)
+			}
+			if s.runtimeState != nil {
+				if v, ok := s.runtimeState[d.Name]; ok {
+					dj.Value = v
+				}
+			}
+			resp.Data = append(resp.Data, dj)
+		}
+		for _, c := range doc.Computeds {
+			cj := computedJSON{Name: c.Name}
+			if c.Expr.SNGL != nil {
+				cj.Expr = snglparser.FormatNode(c.Expr.SNGL)
+			} else if c.Expr.Literal != nil {
+				cj.Expr = fmt.Sprintf("%v", c.Expr.Literal)
+			}
+			resp.Computed = append(resp.Computed, cj)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *previewServer) handleAppStatePost(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		State map[string]any `json:"state"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.mu.Lock()
+	s.runtimeState = body.State
+	s.mu.Unlock()
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {

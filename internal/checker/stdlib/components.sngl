@@ -76,3 +76,250 @@ component checkbox {
 component slot {
     children none
 }
+
+// --- Tier 1: Core Input ---
+
+component radio {
+    prop value string
+    prop options dyn
+    prop disabled bool
+    prop direction string enum(vertical, horizontal)
+    event change ChangeEvent
+    children none
+}
+
+component toggle {
+    prop checked bool
+    prop label string
+    prop disabled bool
+    event change ChangeEvent
+    children none
+}
+
+component select {
+    prop value string
+    prop options dyn
+    prop placeholder string
+    prop disabled bool
+    prop multiple bool
+    event change ChangeEvent
+    event focus FocusEvent
+    event blur FocusEvent
+    children none
+}
+
+component textarea {
+    prop value string
+    prop placeholder string
+    prop disabled bool
+    prop readonly bool
+    prop rows int
+    prop maxLength int
+    event input InputEvent
+    event change ChangeEvent
+    event focus FocusEvent
+    event blur FocusEvent
+    children none
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+component progress {
+    prop value float
+    prop max float
+    prop label string
+    prop variant string enum(bar, circular)
+    prop showValue bool
+    children none
+}
+
+component spinner {
+    prop label string
+    prop variant string enum(dots, line, circle, pulse)
+    prop size string enum(small, medium, large)
+    children none
+}
+
+component badge {
+    prop value string
+    prop variant string enum(default, primary, success, warning, error)
+    prop size string enum(small, medium, large)
+    children none
+}
+
+component tabs {
+    prop items dyn
+    prop selected int
+    prop variant string enum(line, enclosed, pill)
+    event change SelectEvent
+    children many
+}
+
+component link {
+    prop href string
+    prop text string
+    prop target string enum(self, blank)
+    prop disabled bool
+    event click ClickEvent
+    children none
+}
+
+component divider {
+    prop direction string enum(horizontal, vertical)
+    prop label string
+    children none
+}
+
+// --- Tier 3: Overlays & Layout ---
+
+component modal {
+    prop open bool
+    prop title string
+    prop closable bool
+    prop size string enum(small, medium, large, fullscreen)
+    event close DismissEvent
+    children many
+}
+
+component drawer {
+    prop open bool
+    prop side string enum(left, right, top, bottom)
+    prop size string
+    event close DismissEvent
+    children many
+}
+
+component tooltip {
+    prop text string
+    prop position string enum(top, bottom, left, right)
+    prop delay int
+    children one
+}
+
+component popover {
+    prop open bool
+    prop position string enum(top, bottom, left, right)
+    prop openOn string enum(click, hover)
+    event close DismissEvent
+    children many
+}
+
+component accordion {
+    prop items dyn
+    prop expanded dyn
+    prop multiple bool
+    event change ExpandEvent
+    children many
+}
+
+component splitview {
+    prop direction string enum(horizontal, vertical)
+    prop position float
+    prop minPosition float
+    prop maxPosition float
+    prop resizable bool
+    event resize ResizeEvent
+    children many
+}
+
+// --- Tier 4: Data & Desktop ---
+
+component table {
+    prop columns dyn
+    prop rows dyn
+    prop selectable bool
+    prop selected int
+    prop sortable bool
+    prop sortColumn string
+    prop sortDirection string enum(asc, desc)
+    event select SelectEvent
+    event sort ChangeEvent
+    children none
+}
+
+component tree {
+    prop items dyn
+    prop selected string
+    prop expanded dyn
+    event select SelectEvent
+    event expand ExpandEvent
+    children none
+}
+
+component menu {
+    prop items dyn
+    prop open bool
+    event select MenuEvent
+    event close DismissEvent
+    children none
+}
+
+component menubar {
+    prop items dyn
+    event select MenuEvent
+    children none
+}
+
+component toolbar {
+    prop items dyn
+    event select MenuEvent
+    children many
+}
+
+// --- Tier 5: Mobile & Specialized ---
+
+component toast {
+    prop message string
+    prop variant string enum(info, success, warning, error)
+    prop visible bool
+    prop duration int
+    prop position string enum(top, bottom, topLeft, topRight, bottomLeft, bottomRight)
+    event close DismissEvent
+    children none
+}
+
+component pullrefresh {
+    prop refreshing bool
+    event refresh RefreshEvent
+    children one
+}
+
+component datepicker {
+    prop value date
+    prop min date
+    prop max date
+    prop disabled bool
+    prop placeholder string
+    event change DateEvent
+    event focus FocusEvent
+    event blur FocusEvent
+    children none
+}
+
+component chip {
+    prop label string
+    prop variant string enum(default, primary, success, warning, error)
+    prop removable bool
+    prop selected bool
+    prop disabled bool
+    event click ClickEvent
+    event remove DismissEvent
+    children none
+}
+
+component avatar {
+    prop src string
+    prop alt string
+    prop initials string
+    prop size string enum(small, medium, large, xlarge)
+    prop variant string enum(circle, square, rounded)
+    event click ClickEvent
+    children none
+}
+
+component card {
+    prop variant string enum(outlined, elevated, filled)
+    prop clickable bool
+    event click ClickEvent
+    children many
+}

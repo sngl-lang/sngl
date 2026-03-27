@@ -1,0 +1,28 @@
+output js html
+
+test main "tick increments progress" {
+    assert(progress == 0)
+    assert(running == true)
+    tick()
+    assert(progress == 0.1)
+    assert(running == true)
+}
+
+test main "tick respects active var" {
+    running = false
+    tick()
+    assert(progress == 0)
+}
+
+component main {
+    var (
+        progress float = 0
+        running = true
+    )
+
+    timer 100ms running {
+        progress += 0.1
+    }
+
+    text(value=string(progress))
+}

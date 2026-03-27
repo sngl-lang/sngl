@@ -17,6 +17,7 @@ type Env struct {
 	consts    map[string]any
 	funcs     map[string]*ast.FuncDef
 	units     map[string]*ast.UnitTable // suffix → unit table
+	timers    []*ast.Timer
 	doc       *ast.Document
 	body      []*ast.VisualNode
 }
@@ -320,6 +321,20 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 			return nil, err
 		}
 		return toFloat(v), nil
+	case "tick":
+		// Execute all active timers' body statements once
+		for _, t := range env.timers {
+			active, ok := env.vars[t.Active]
+			if !ok {
+				continue
+			}
+			if b, ok := active.(bool); ok && b {
+				if err := env.Exec(t.Body); err != nil {
+					return nil, err
+				}
+			}
+		}
+		return nil, nil
 	case "assert":
 		// Handled by exec, but if called as expression just evaluate
 		if len(e.Args) != 1 {

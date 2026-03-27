@@ -102,6 +102,8 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Styles = append(doc.Styles, p.parseStyleDecl())
 		case KW_STYLES:
 			doc.StyleDefs = append(doc.StyleDefs, p.parseStyles()...)
+		case KW_TIMER:
+			doc.Timers = append(doc.Timers, p.parseTimer())
 		case KW_TEST:
 			doc.Tests = append(doc.Tests, p.parseTestDef(true))
 		case KW_FUNC:
@@ -116,6 +118,7 @@ func (p *parser) parseDocument() *ast.Document {
 				doc.Computeds = append(doc.Computeds, comp.Computeds...)
 				doc.Consts = append(doc.Consts, comp.Consts...)
 				doc.Functions = append(doc.Functions, comp.Functions...)
+				doc.Timers = append(doc.Timers, comp.Timers...)
 			} else {
 				doc.Components = append(doc.Components, comp)
 			}
@@ -362,6 +365,8 @@ func (p *parser) parseComponent() *ast.Component {
 			cs.Computeds = append(cs.Computeds, p.parseComputedDecl()...)
 		case KW_FUNC:
 			comp.Functions = append(comp.Functions, p.parseFuncDef())
+		case KW_TIMER:
+			comp.Timers = append(comp.Timers, p.parseTimer())
 		default:
 			// Visual nodes or control flow
 			comp.Body = append(comp.Body, p.parseNodeOrControl())
@@ -618,6 +623,17 @@ func (p *parser) parseGroupedComputeds() []*ast.Computed {
 }
 
 // --- Function definitions ---
+
+func (p *parser) parseTimer() *ast.Timer {
+	pos := p.pos()
+	p.expect(KW_TIMER)
+	interval := p.parseExprAsExpr()
+	active := p.expect(IDENT).Literal
+	p.expect(LBRACE)
+	body := p.parseStmtList()
+	p.expect(RBRACE)
+	return &ast.Timer{Pos: pos, Interval: interval, Active: active, Body: body}
+}
 
 func (p *parser) parseFuncDef() *ast.FuncDef {
 	pos := p.pos()

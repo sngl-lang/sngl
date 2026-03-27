@@ -58,6 +58,9 @@ type htmlGen struct {
 	// Collected event handlers
 	handlers []eventHandler
 
+	// Collected timers
+	timers []timerDef
+
 	// Component param constants (name → JS expression)
 	componentParams []componentParam
 
@@ -90,6 +93,14 @@ type eventHandler struct {
 	event   string // "click", "input", "change"
 	body    string // JS statements
 	mutated map[string]bool
+}
+
+type timerDef struct {
+	index      int
+	intervalMs int
+	activeVar  string
+	body       string
+	mutated    map[string]bool
 }
 
 func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
@@ -241,6 +252,266 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			g.renderStaticNode(b, child, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
+
+	// --- Tier 1: Core Input ---
+	case "radio":
+		g.renderStaticRadio(b, vn, depth)
+	case "toggle":
+		g.renderStaticToggle(b, vn, depth)
+	case "select":
+		g.renderStaticSelect(b, vn, depth)
+	case "textarea":
+		g.renderStaticTextarea(b, vn, depth)
+
+	// --- Tier 2: Feedback & Navigation ---
+	case "progress":
+		style := g.buildCSSStyle(vn)
+		value := g.evalStaticString(vn.Props, "value")
+		maxVal := g.evalStaticString(vn.Props, "max")
+		if maxVal == "" {
+			maxVal = "1"
+		}
+		id := ""
+		if g.nodeIsReactive(vn) || g.preview {
+			id = g.allocID()
+		}
+		fmt.Fprintf(b, "%s<progress", indent)
+		if id != "" {
+			fmt.Fprintf(b, " id=\"%s\"", id)
+		}
+		if style != "" {
+			fmt.Fprintf(b, " style=\"%s\"", style)
+		}
+		fmt.Fprintf(b, " value=\"%s\" max=\"%s\"", value, maxVal)
+		g.writeUserAttrs(b, id, vn)
+		b.WriteString(g.previewAttrs(vn.Pos))
+		b.WriteString("></progress>\n")
+	case "spinner":
+		style := g.buildCSSStyle(vn)
+		label := g.evalStaticString(vn.Props, "label")
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
+		fmt.Fprintf(b, "⠋ %s</span>\n", html.EscapeString(label))
+	case "badge":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "inline-block")
+		style = appendCSS(style, "padding", "2px 8px")
+		style = appendCSS(style, "border-radius", "12px")
+		style = appendCSS(style, "font-size", "12px")
+		value := g.evalStaticString(vn.Props, "value")
+		id := ""
+		if g.nodeIsReactive(vn) || g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
+		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
+		if g.propIsReactive(vn.Props, "value") {
+			g.addTextUpdater(id, vn.Props["value"])
+		}
+	case "tabs":
+		g.renderStaticTabs(b, vn, depth)
+	case "link":
+		style := g.buildCSSStyle(vn)
+		text := g.evalStaticString(vn.Props, "text")
+		href := g.evalStaticString(vn.Props, "href")
+		target := g.evalStaticString(vn.Props, "target")
+		id := ""
+		if g.nodeIsReactive(vn) || g.preview {
+			id = g.allocID()
+		}
+		fmt.Fprintf(b, "%s<a", indent)
+		if id != "" {
+			fmt.Fprintf(b, " id=\"%s\"", id)
+		}
+		if style != "" {
+			fmt.Fprintf(b, " style=\"%s\"", style)
+		}
+		fmt.Fprintf(b, " href=\"%s\"", html.EscapeString(href))
+		if target == "blank" {
+			b.WriteString(` target="_blank" rel="noopener"`)
+		}
+		g.writeUserAttrs(b, id, vn)
+		b.WriteString(g.previewAttrs(vn.Pos))
+		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
+		if evt, ok := vn.Events["click"]; ok && evt.SNGL != nil {
+			if id == "" {
+				id = g.allocID()
+			}
+			g.addClickHandler(id, evt)
+		}
+	case "divider":
+		style := g.buildCSSStyle(vn)
+		label := g.evalStaticString(vn.Props, "label")
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		if label != "" {
+			style = appendCSS(style, "display", "flex")
+			style = appendCSS(style, "align-items", "center")
+			style = appendCSS(style, "gap", "8px")
+			g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+			fmt.Fprintf(b, "<hr style=\"flex:1;border:none;border-top:1px solid #ccc\"/>")
+			fmt.Fprintf(b, "<span>%s</span>", html.EscapeString(label))
+			fmt.Fprintf(b, "<hr style=\"flex:1;border:none;border-top:1px solid #ccc\"/>")
+			fmt.Fprintf(b, "</div>\n")
+		} else {
+			fmt.Fprintf(b, "%s<hr", indent)
+			if id != "" {
+				fmt.Fprintf(b, " id=\"%s\"", id)
+			}
+			if style != "" {
+				fmt.Fprintf(b, " style=\"%s\"", style)
+			}
+			b.WriteString(g.previewAttrs(vn.Pos))
+			b.WriteString(" />\n")
+		}
+
+	// --- Tier 3: Overlays & Layout ---
+	case "modal":
+		g.renderStaticModal(b, vn, depth)
+	case "drawer":
+		g.renderStaticConditionalContainer(b, vn, depth, "div")
+	case "tooltip":
+		// Wrap child with title attribute
+		title := g.evalStaticString(vn.Props, "text")
+		fmt.Fprintf(b, "%s<div title=\"%s\">\n", indent, html.EscapeString(title))
+		for _, child := range vn.Children {
+			g.renderStaticNode(b, child, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+	case "popover":
+		g.renderStaticConditionalContainer(b, vn, depth, "div")
+	case "accordion":
+		g.renderStaticAccordion(b, vn, depth)
+	case "splitview":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "flex")
+		direction := g.evalStaticString(vn.Props, "direction")
+		if direction == "vertical" {
+			style = appendCSS(style, "flex-direction", "column")
+		} else {
+			style = appendCSS(style, "flex-direction", "row")
+		}
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+		for i, child := range vn.Children {
+			if i > 0 {
+				fmt.Fprintf(b, "%s  <div style=\"width:4px;background:#ccc;cursor:col-resize\"></div>\n", indent)
+			}
+			fmt.Fprintf(b, "%s  <div style=\"flex:1;overflow:auto\">\n", indent)
+			g.renderStaticNode(b, child, depth+2)
+			fmt.Fprintf(b, "%s  </div>\n", indent)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+
+	// --- Tier 4: Data & Desktop ---
+	case "table":
+		g.renderStaticTable(b, vn, depth)
+	case "tree":
+		g.renderStaticTree(b, vn, depth)
+	case "menu":
+		g.renderStaticConditionalContainer(b, vn, depth, "div")
+	case "menubar":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "flex")
+		style = appendCSS(style, "gap", "4px")
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "nav", id, style, vn, depth, vn.Pos)
+		fmt.Fprintf(b, "</nav>\n")
+	case "toolbar":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "flex")
+		style = appendCSS(style, "gap", "4px")
+		style = appendCSS(style, "align-items", "center")
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+		for _, child := range vn.Children {
+			g.renderStaticNode(b, child, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+
+	// --- Tier 5: Mobile & Specialized ---
+	case "toast":
+		g.renderStaticToast(b, vn, depth)
+	case "pullrefresh":
+		// Pass-through to child
+		for _, child := range vn.Children {
+			g.renderStaticNode(b, child, depth)
+		}
+	case "datepicker":
+		g.renderStaticDatepicker(b, vn, depth)
+	case "chip":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "inline-flex")
+		style = appendCSS(style, "align-items", "center")
+		style = appendCSS(style, "padding", "4px 12px")
+		style = appendCSS(style, "border-radius", "16px")
+		style = appendCSS(style, "border", "1px solid #ccc")
+		style = appendCSS(style, "font-size", "14px")
+		label := g.evalStaticString(vn.Props, "label")
+		id := ""
+		if g.nodeIsReactive(vn) || g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
+		fmt.Fprintf(b, "%s", html.EscapeString(label))
+		b.WriteString("</span>\n")
+	case "avatar":
+		style := g.buildCSSStyle(vn)
+		style = appendCSS(style, "display", "inline-flex")
+		style = appendCSS(style, "align-items", "center")
+		style = appendCSS(style, "justify-content", "center")
+		style = appendCSS(style, "border-radius", "50%")
+		style = appendCSS(style, "width", "40px")
+		style = appendCSS(style, "height", "40px")
+		style = appendCSS(style, "background", "#ccc")
+		style = appendCSS(style, "font-weight", "bold")
+		initials := g.evalStaticString(vn.Props, "initials")
+		if initials == "" {
+			initials = g.evalStaticString(vn.Props, "alt")
+		}
+		id := ""
+		if g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+		fmt.Fprintf(b, "%s</div>\n", html.EscapeString(initials))
+	case "card":
+		style := g.buildCSSStyle(vn)
+		variant := g.evalStaticString(vn.Props, "variant")
+		switch variant {
+		case "elevated":
+			style = appendCSS(style, "box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
+		case "filled":
+			style = appendCSS(style, "background", "#f5f5f5")
+		default: // outlined
+			style = appendCSS(style, "border", "1px solid #ddd")
+		}
+		style = appendCSS(style, "border-radius", "8px")
+		style = appendCSS(style, "padding", "16px")
+		id := ""
+		if g.nodeIsReactive(vn) || g.preview {
+			id = g.allocID()
+		}
+		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+		for _, child := range vn.Children {
+			g.renderStaticNode(b, child, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+
 	default:
 		// User-defined component — inline at call site
 		g.renderStaticUserComponent(b, vn, depth)
@@ -534,6 +805,373 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 	b.WriteString(" />\n")
 }
 
+// --- New component renderers ---
+
+func (g *htmlGen) renderStaticRadio(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	g.writeOpenTag(b, "fieldset", id, style, vn, depth, vn.Pos)
+	// Static options rendered if literal
+	if v, ok := vn.Props["options"]; ok && v.Literal != nil {
+		value := g.evalStaticString(vn.Props, "value")
+		if items, ok := v.Literal.([]any); ok {
+			for _, item := range items {
+				s := fmt.Sprint(item)
+				checked := ""
+				if s == value {
+					checked = " checked"
+				}
+				fmt.Fprintf(b, "%s  <label><input type=\"radio\" name=\"%s\" value=\"%s\"%s /> %s</label>\n",
+					indent, id, html.EscapeString(s), checked, html.EscapeString(s))
+			}
+		}
+	}
+	fmt.Fprintf(b, "%s</fieldset>\n", indent)
+	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
+		g.addChangeHandler(id, evt)
+	}
+}
+
+func (g *htmlGen) renderStaticToggle(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	checked := false
+	if v, ok := vn.Props["checked"]; ok {
+		checked = g.evalStaticBool(&v)
+	}
+	label := g.evalStaticString(vn.Props, "label")
+	indent := strings.Repeat("  ", depth)
+	checkedAttr := ""
+	if checked {
+		checkedAttr = " checked"
+	}
+	fmt.Fprintf(b, "%s<label id=\"%s\"", indent, id)
+	if style != "" {
+		fmt.Fprintf(b, " style=\"%s\"", style)
+	}
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
+	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
+		g.addChangeHandler(id, evt)
+	}
+}
+
+func (g *htmlGen) renderStaticSelect(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	value := g.evalStaticString(vn.Props, "value")
+	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	fmt.Fprintf(b, "%s<select id=\"%s\"", indent, id)
+	if style != "" {
+		fmt.Fprintf(b, " style=\"%s\"", style)
+	}
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	b.WriteString(">\n")
+	if placeholder != "" {
+		fmt.Fprintf(b, "%s  <option value=\"\" disabled selected>%s</option>\n", indent, html.EscapeString(placeholder))
+	}
+	if v, ok := vn.Props["options"]; ok && v.Literal != nil {
+		if items, ok := v.Literal.([]any); ok {
+			for _, item := range items {
+				s := fmt.Sprint(item)
+				sel := ""
+				if s == value {
+					sel = " selected"
+				}
+				fmt.Fprintf(b, "%s  <option value=\"%s\"%s>%s</option>\n", indent, html.EscapeString(s), sel, html.EscapeString(s))
+			}
+		}
+	}
+	fmt.Fprintf(b, "%s</select>\n", indent)
+	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
+		g.addChangeHandler(id, evt)
+	}
+}
+
+func (g *htmlGen) renderStaticTextarea(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	value := g.evalStaticString(vn.Props, "value")
+	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	rows := "3"
+	if v, ok := vn.Props["rows"]; ok {
+		if n, ok := v.Literal.(int); ok {
+			rows = fmt.Sprint(n)
+		}
+	}
+	fmt.Fprintf(b, "%s<textarea id=\"%s\"", indent, id)
+	if style != "" {
+		fmt.Fprintf(b, " style=\"%s\"", style)
+	}
+	fmt.Fprintf(b, " rows=\"%s\"", rows)
+	if placeholder != "" {
+		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
+	}
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
+	if evt, ok := vn.Events["input"]; ok && evt.SNGL != nil {
+		g.addInputHandler(id, evt)
+	}
+}
+
+func (g *htmlGen) renderStaticTabs(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+	// Tab bar
+	fmt.Fprintf(b, "%s  <div role=\"tablist\" style=\"display:flex;gap:4px;border-bottom:1px solid #ccc\">\n", indent)
+	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
+		selected := 0
+		if sv, ok := vn.Props["selected"]; ok {
+			if n, ok := sv.Literal.(int); ok {
+				selected = n
+			}
+		}
+		if items, ok := v.Literal.([]any); ok {
+			for i, item := range items {
+				s := fmt.Sprint(item)
+				activeStyle := ""
+				if i == selected {
+					activeStyle = ";border-bottom:2px solid #333;font-weight:bold"
+				}
+				fmt.Fprintf(b, "%s    <button style=\"padding:8px 16px;border:none;background:none;cursor:pointer%s\">%s</button>\n",
+					indent, activeStyle, html.EscapeString(s))
+			}
+		}
+	}
+	fmt.Fprintf(b, "%s  </div>\n", indent)
+	// Tab content — show selected child
+	for _, child := range vn.Children {
+		g.renderStaticNode(b, child, depth+1)
+	}
+	fmt.Fprintf(b, "%s</div>\n", indent)
+}
+
+func (g *htmlGen) renderStaticModal(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	open := true
+	if v, ok := vn.Props["open"]; ok {
+		open = g.evalStaticBool(&v)
+	}
+	display := ""
+	if !open {
+		display = "display:none;"
+	}
+	title := g.evalStaticString(vn.Props, "title")
+	overlayStyle := display + "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000"
+	if !open {
+		overlayStyle = "display:none"
+	}
+	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, overlayStyle)
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	b.WriteString(">\n")
+	contentStyle := style
+	if contentStyle == "" {
+		contentStyle = "background:#fff;border-radius:8px;padding:24px;min-width:300px;max-width:80%"
+	} else {
+		contentStyle = appendCSS(contentStyle, "background", "#fff")
+		contentStyle = appendCSS(contentStyle, "border-radius", "8px")
+		contentStyle = appendCSS(contentStyle, "padding", "24px")
+	}
+	fmt.Fprintf(b, "%s  <div style=\"%s\">\n", indent, contentStyle)
+	if title != "" {
+		fmt.Fprintf(b, "%s    <h3 style=\"margin:0 0 16px\">%s</h3>\n", indent, html.EscapeString(title))
+	}
+	for _, child := range vn.Children {
+		g.renderStaticNode(b, child, depth+2)
+	}
+	fmt.Fprintf(b, "%s  </div>\n", indent)
+	fmt.Fprintf(b, "%s</div>\n", indent)
+	if g.propIsReactive(vn.Props, "open") {
+		g.addIfUpdater(id, vn.Props["open"])
+	}
+}
+
+func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, vn *ast.VisualNode, depth int, tag string) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	open := true
+	if v, ok := vn.Props["open"]; ok {
+		open = g.evalStaticBool(&v)
+	}
+	if v, ok := vn.Props["visible"]; ok {
+		open = g.evalStaticBool(&v)
+	}
+	if !open {
+		style = appendCSS(style, "display", "none")
+	}
+	g.writeOpenTag(b, tag, id, style, vn, depth, vn.Pos)
+	for _, child := range vn.Children {
+		g.renderStaticNode(b, child, depth+1)
+	}
+	fmt.Fprintf(b, "%s</%s>\n", indent, tag)
+	if g.propIsReactive(vn.Props, "open") {
+		g.addIfUpdater(id, vn.Props["open"])
+	}
+}
+
+func (g *htmlGen) renderStaticAccordion(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := ""
+	if g.preview {
+		id = g.allocID()
+	}
+	indent := strings.Repeat("  ", depth)
+	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
+	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
+		if items, ok := v.Literal.([]any); ok {
+			for i, item := range items {
+				s := fmt.Sprint(item)
+				fmt.Fprintf(b, "%s  <details>\n", indent)
+				fmt.Fprintf(b, "%s    <summary>%s</summary>\n", indent, html.EscapeString(s))
+				if i < len(vn.Children) {
+					g.renderStaticNode(b, vn.Children[i], depth+2)
+				}
+				fmt.Fprintf(b, "%s  </details>\n", indent)
+			}
+		}
+	}
+	fmt.Fprintf(b, "%s</div>\n", indent)
+}
+
+func (g *htmlGen) renderStaticTable(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	style = appendCSS(style, "border-collapse", "collapse")
+	style = appendCSS(style, "width", "100%")
+	id := ""
+	if g.nodeIsReactive(vn) || g.preview {
+		id = g.allocID()
+	}
+	indent := strings.Repeat("  ", depth)
+	g.writeOpenTag(b, "table", id, style, vn, depth, vn.Pos)
+	// Header
+	if v, ok := vn.Props["columns"]; ok && v.Literal != nil {
+		if cols, ok := v.Literal.([]any); ok {
+			fmt.Fprintf(b, "%s  <thead><tr>\n", indent)
+			for _, col := range cols {
+				fmt.Fprintf(b, "%s    <th style=\"text-align:left;padding:8px;border-bottom:2px solid #ddd\">%s</th>\n", indent, html.EscapeString(fmt.Sprint(col)))
+			}
+			fmt.Fprintf(b, "%s  </tr></thead>\n", indent)
+		}
+	}
+	// Body
+	if v, ok := vn.Props["rows"]; ok && v.Literal != nil {
+		if rows, ok := v.Literal.([]any); ok {
+			fmt.Fprintf(b, "%s  <tbody>\n", indent)
+			for _, row := range rows {
+				fmt.Fprintf(b, "%s    <tr>\n", indent)
+				if cells, ok := row.([]any); ok {
+					for _, cell := range cells {
+						fmt.Fprintf(b, "%s      <td style=\"padding:8px;border-bottom:1px solid #eee\">%s</td>\n", indent, html.EscapeString(fmt.Sprint(cell)))
+					}
+				}
+				fmt.Fprintf(b, "%s    </tr>\n", indent)
+			}
+			fmt.Fprintf(b, "%s  </tbody>\n", indent)
+		}
+	}
+	fmt.Fprintf(b, "%s</table>\n", indent)
+}
+
+func (g *htmlGen) renderStaticTree(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := ""
+	if g.preview {
+		id = g.allocID()
+	}
+	indent := strings.Repeat("  ", depth)
+	style = appendCSS(style, "list-style", "none")
+	style = appendCSS(style, "padding-left", "16px")
+	g.writeOpenTag(b, "ul", id, style, vn, depth, vn.Pos)
+	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
+		if items, ok := v.Literal.([]any); ok {
+			for _, item := range items {
+				fmt.Fprintf(b, "%s  <li>▶ %s</li>\n", indent, html.EscapeString(fmt.Sprint(item)))
+			}
+		}
+	}
+	fmt.Fprintf(b, "%s</ul>\n", indent)
+}
+
+func (g *htmlGen) renderStaticToast(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	style = appendCSS(style, "position", "fixed")
+	style = appendCSS(style, "padding", "12px 24px")
+	style = appendCSS(style, "border-radius", "8px")
+	style = appendCSS(style, "background", "#333")
+	style = appendCSS(style, "color", "#fff")
+	style = appendCSS(style, "z-index", "2000")
+	position := g.evalStaticString(vn.Props, "position")
+	switch position {
+	case "top":
+		style = appendCSS(style, "top", "16px")
+		style = appendCSS(style, "left", "50%")
+		style = appendCSS(style, "transform", "translateX(-50%)")
+	case "bottomLeft":
+		style = appendCSS(style, "bottom", "16px")
+		style = appendCSS(style, "left", "16px")
+	case "bottomRight":
+		style = appendCSS(style, "bottom", "16px")
+		style = appendCSS(style, "right", "16px")
+	default: // bottom
+		style = appendCSS(style, "bottom", "16px")
+		style = appendCSS(style, "left", "50%")
+		style = appendCSS(style, "transform", "translateX(-50%)")
+	}
+	id := g.allocID()
+	visible := true
+	if v, ok := vn.Props["visible"]; ok {
+		visible = g.evalStaticBool(&v)
+	}
+	if !visible {
+		style = appendCSS(style, "display", "none")
+	}
+	message := g.evalStaticString(vn.Props, "message")
+	indent := strings.Repeat("  ", depth)
+	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, style)
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	fmt.Fprintf(b, ">%s</div>\n", html.EscapeString(message))
+	if g.propIsReactive(vn.Props, "visible") {
+		g.addIfUpdater(id, vn.Props["visible"])
+	}
+}
+
+func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	style := g.buildCSSStyle(vn)
+	id := g.allocID()
+	indent := strings.Repeat("  ", depth)
+	value := g.evalStaticString(vn.Props, "value")
+	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	fmt.Fprintf(b, "%s<input id=\"%s\" type=\"date\"", indent, id)
+	if style != "" {
+		fmt.Fprintf(b, " style=\"%s\"", style)
+	}
+	if value != "" {
+		fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
+	}
+	if placeholder != "" {
+		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
+	}
+	g.writeUserAttrs(b, id, vn)
+	b.WriteString(g.previewAttrs(vn.Pos))
+	b.WriteString(" />\n")
+	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
+		g.addChangeHandler(id, evt)
+	}
+}
+
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	// Find the component definition
 	var comp *ast.Component
@@ -608,6 +1246,20 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 
 // emitScript writes the <script> block content.
 func (g *htmlGen) emitScript(b *strings.Builder) {
+	// Collect timers
+	for i, t := range g.doc.Timers {
+		ms := g.intervalToMs(t.Interval)
+		stmts := g.lang.TranslateMutation(t.Body, g.scope)
+		mutated := extractMutatedFields(t.Body)
+		g.timers = append(g.timers, timerDef{
+			index:      i,
+			intervalMs: ms,
+			activeVar:  t.Active,
+			body:       strings.Join(stmts, "\n  "),
+			mutated:    mutated,
+		})
+	}
+
 	// State initialization
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
@@ -686,6 +1338,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			cbField := "$on_" + d.Name + "_changed"
 			fmt.Fprintf(b, "  if (state.%s) state.%s(v);\n", cbField, cbField)
 		}
+		// Sync timers controlled by this var
+		for _, t := range g.timers {
+			if t.activeVar == d.Name {
+				fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
+			}
+		}
+		if g.preview {
+			b.WriteString("  __sngl_sync_state();\n")
+		}
 		b.WriteString("}\n")
 	}
 	if len(stateFields) > 0 {
@@ -748,6 +1409,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, u := range updaters {
 			lines = append(lines, u.funcName+"();")
 		}
+		if g.preview {
+			lines = append(lines, "__sngl_sync_state();")
+		}
 		body := strings.Join(lines, "\n  ")
 		if h.event == "input" {
 			fmt.Fprintf(b, "%s.addEventListener(\"%s\", function(e) {\n  %s\n});\n", h.elemID, h.event, body)
@@ -756,12 +1420,44 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 	}
 
+	// Timers
+	for _, t := range g.timers {
+		updaters := g.findAffectedUpdaters(t.mutated)
+		var tickLines []string
+		tickLines = append(tickLines, t.body)
+		for _, u := range updaters {
+			tickLines = append(tickLines, u.funcName+"();")
+		}
+		if g.preview {
+			tickLines = append(tickLines, "__sngl_sync_state();")
+		}
+		tickBody := strings.Join(tickLines, "\n  ")
+		fmt.Fprintf(b, "\nlet $timer_%d = null;\n", t.index)
+		fmt.Fprintf(b, "function $timer_%d_tick() {\n  %s\n}\n", t.index, tickBody)
+		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
+		fmt.Fprintf(b, "  if (state.%s && !$timer_%d) {\n", t.activeVar, t.index)
+		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
+		fmt.Fprintf(b, "  } else if (!state.%s && $timer_%d) {\n", t.activeVar, t.index)
+		fmt.Fprintf(b, "    clearInterval($timer_%d);\n", t.index)
+		fmt.Fprintf(b, "    $timer_%d = null;\n", t.index)
+		b.WriteString("  }\n}\n")
+	}
+
 	// Initial sync: call all update functions once to set DOM from initial state
-	if len(g.updates) > 0 {
+	if len(g.updates) > 0 || len(g.timers) > 0 {
 		b.WriteString("\n// Initial sync\n")
 		for _, u := range g.updates {
 			fmt.Fprintf(b, "%s();\n", u.funcName)
 		}
+		for _, t := range g.timers {
+			fmt.Fprintf(b, "$timer_%d_sync();\n", t.index)
+		}
+	}
+
+	// Preview mode: sync state to parent frame on every mutation
+	if g.preview {
+		b.WriteString("\nfunction __sngl_sync_state() { window.parent.postMessage({type: 'sngl-state', state: JSON.parse(JSON.stringify(state))}, '*'); }\n")
+		b.WriteString("__sngl_sync_state();\n")
 	}
 
 	// Preview mode: export update function names for state-preserving hot reload
@@ -1468,6 +2164,34 @@ func extractSetTarget(e ast.Node) (ast.Node, bool) {
 		}
 	}
 	return nil, false
+}
+
+// intervalToMs extracts the interval from a timer expression and converts to milliseconds.
+func (g *htmlGen) intervalToMs(expr ast.Expr) int {
+	if expr.SNGL == nil {
+		return 0
+	}
+	lit, ok := expr.SNGL.(*ast.LiteralExpr)
+	if !ok || lit.Kind != ast.LiteralUnit {
+		return 0
+	}
+	ul, ok := lit.Value.(ast.UnitLiteral)
+	if !ok {
+		return 0
+	}
+	num := 0.0
+	fmt.Sscanf(ul.Number, "%f", &num)
+	switch ul.Suffix {
+	case "ms":
+		return int(num)
+	case "s":
+		return int(num * 1000)
+	case "m":
+		return int(num * 60000)
+	case "h":
+		return int(num * 3600000)
+	}
+	return int(num) // fallback: treat as ms
 }
 
 func extractMutatedFields(e ast.Node) map[string]bool {

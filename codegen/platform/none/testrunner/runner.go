@@ -140,6 +140,9 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 
 	env.doc = doc
 	env.body = body
+	if compName == "main" {
+		env.timers = doc.Timers
+	}
 
 	return env, nil
 }

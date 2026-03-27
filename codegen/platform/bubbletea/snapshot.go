@@ -108,6 +108,84 @@ func (sc *snapContext) renderPrimitive(vn *ast.VisualNode) string {
 		return sc.renderInput(vn)
 	case "spacer":
 		return sc.buildStyle(vn).Render("")
+	case "image":
+		alt := fmt.Sprint(sc.evalProp(vn, "alt", "image"))
+		return sc.buildStyle(vn).Render("[image: " + alt + "]")
+	case "radio":
+		return sc.renderRadioSnap(vn)
+	case "toggle":
+		return sc.renderToggleSnap(vn)
+	case "select":
+		return sc.renderSelectSnap(vn)
+	case "textarea":
+		return sc.renderTextareaSnap(vn)
+	case "progress":
+		return sc.renderProgressSnap(vn)
+	case "spinner":
+		label := fmt.Sprint(sc.evalProp(vn, "label", ""))
+		return sc.buildStyle(vn).Render("⠋ " + label)
+	case "badge":
+		value := fmt.Sprint(sc.evalProp(vn, "value", ""))
+		return sc.buildStyle(vn).Render("[" + value + "]")
+	case "tabs":
+		return sc.renderTabsSnap(vn)
+	case "link":
+		text := fmt.Sprint(sc.evalProp(vn, "text", ""))
+		return sc.renderer.NewStyle().Underline(true).Render(text)
+	case "divider":
+		label := fmt.Sprint(sc.evalProp(vn, "label", ""))
+		if label != "" {
+			return sc.buildStyle(vn).Render("── " + label + " ──")
+		}
+		return sc.buildStyle(vn).Render("────────────────")
+	case "modal":
+		return sc.renderModalSnap(vn)
+	case "drawer", "popover":
+		return sc.renderConditionalSnap(vn)
+	case "tooltip", "pullrefresh":
+		if len(vn.Children) > 0 {
+			return sc.renderNode(vn.Children[0])
+		}
+		return ""
+	case "accordion":
+		return sc.renderAccordionSnap(vn)
+	case "splitview":
+		return sc.renderSplitviewSnap(vn)
+	case "table":
+		return sc.renderTableSnap(vn)
+	case "tree":
+		return sc.renderTreeSnap(vn)
+	case "menu":
+		return sc.renderMenuSnap(vn)
+	case "menubar":
+		return sc.renderMenubarSnap(vn)
+	case "toolbar":
+		return sc.renderBox(vn, false)
+	case "toast":
+		return sc.renderToastSnap(vn)
+	case "datepicker":
+		value := fmt.Sprint(sc.evalProp(vn, "value", ""))
+		placeholder := fmt.Sprint(sc.evalProp(vn, "placeholder", "YYYY-MM-DD"))
+		sc.focusIndex++
+		if value != "" {
+			return sc.buildStyle(vn).Render("  " + value)
+		}
+		return sc.buildStyle(vn).Render("  " + placeholder)
+	case "chip":
+		label := fmt.Sprint(sc.evalProp(vn, "label", ""))
+		removable, _ := sc.evalProp(vn, "removable", false).(bool)
+		if removable {
+			return sc.buildStyle(vn).Render("[" + label + " ×]")
+		}
+		return sc.buildStyle(vn).Render("[" + label + "]")
+	case "avatar":
+		initials := fmt.Sprint(sc.evalProp(vn, "initials", ""))
+		if initials == "" {
+			initials = fmt.Sprint(sc.evalProp(vn, "alt", ""))
+		}
+		return sc.buildStyle(vn).Render("[" + initials + "]")
+	case "card":
+		return sc.renderCardSnap(vn)
 	default:
 		// Fallback: render children vertically
 		return sc.renderBox(vn, true)
@@ -502,4 +580,262 @@ func cellCSS(cell *cellbuf.Cell) string {
 		return ""
 	}
 	return strings.Join(parts, ";")
+}
+
+// --- Snapshot renderers for new components ---
+
+func (sc *snapContext) renderRadioSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	value := fmt.Sprint(sc.evalProp(vn, "value", ""))
+	options, _ := sc.evalProp(vn, "options", []any{}).([]any)
+	var parts []string
+	for _, opt := range options {
+		s := fmt.Sprint(opt)
+		if s == value {
+			parts = append(parts, "(•) "+s)
+		} else {
+			parts = append(parts, "( ) "+s)
+		}
+	}
+	sc.focusIndex++
+	return style.Render("  " + strings.Join(parts, "  "))
+}
+
+func (sc *snapContext) renderToggleSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	checked, _ := sc.evalProp(vn, "checked", false).(bool)
+	label := fmt.Sprint(sc.evalProp(vn, "label", ""))
+	sc.focusIndex++
+	mark := "[OFF]"
+	if checked {
+		mark = "[ON] "
+	}
+	return style.Render("  " + mark + " " + label)
+}
+
+func (sc *snapContext) renderSelectSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	value := fmt.Sprint(sc.evalProp(vn, "value", ""))
+	placeholder := fmt.Sprint(sc.evalProp(vn, "placeholder", ""))
+	sc.focusIndex++
+	display := value
+	if display == "" {
+		display = placeholder
+	}
+	return style.Render("  [▼ " + display + "]")
+}
+
+func (sc *snapContext) renderTextareaSnap(vn *ast.VisualNode) string {
+	value := fmt.Sprint(sc.evalProp(vn, "value", ""))
+	placeholder := fmt.Sprint(sc.evalProp(vn, "placeholder", ""))
+	sc.focusIndex++
+	display := value
+	if display == "" {
+		display = placeholder
+	}
+	style := sc.renderer.NewStyle().Foreground(lipgloss.Color("#585b70"))
+	return style.Render(display)
+}
+
+func (sc *snapContext) renderProgressSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	value := 0.0
+	if v := sc.evalProp(vn, "value", 0.0); v != nil {
+		switch n := v.(type) {
+		case float64:
+			value = n
+		case int:
+			value = float64(n)
+		}
+	}
+	maxVal := 1.0
+	if v := sc.evalProp(vn, "max", 1.0); v != nil {
+		switch n := v.(type) {
+		case float64:
+			maxVal = n
+		case int:
+			maxVal = float64(n)
+		}
+	}
+	ratio := value / maxVal
+	if ratio > 1 {
+		ratio = 1
+	}
+	if ratio < 0 {
+		ratio = 0
+	}
+	width := 20
+	filled := int(float64(width) * ratio)
+	return style.Render("[" + strings.Repeat("█", filled) + strings.Repeat("░", width-filled) + "]")
+}
+
+func (sc *snapContext) renderTabsSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	items, _ := sc.evalProp(vn, "items", []any{}).([]any)
+	selected := 0
+	if v := sc.evalProp(vn, "selected", 0); v != nil {
+		if n, ok := v.(int); ok {
+			selected = n
+		}
+	}
+	var tabs []string
+	for i, item := range items {
+		s := fmt.Sprint(item)
+		if i == selected {
+			tabs = append(tabs, "["+s+"]")
+		} else {
+			tabs = append(tabs, " "+s+" ")
+		}
+	}
+	return style.Render(strings.Join(tabs, " "))
+}
+
+func (sc *snapContext) renderModalSnap(vn *ast.VisualNode) string {
+	open, _ := sc.evalProp(vn, "open", false).(bool)
+	if !open {
+		return ""
+	}
+	title := fmt.Sprint(sc.evalProp(vn, "title", ""))
+	style := sc.buildStyle(vn)
+	var children []string
+	if title != "" {
+		children = append(children, title)
+	}
+	for _, child := range vn.Children {
+		s := sc.renderNode(child)
+		if s != "" {
+			children = append(children, s)
+		}
+	}
+	return style.Border(lipgloss.RoundedBorder()).Render(lipgloss.JoinVertical(lipgloss.Left, children...))
+}
+
+func (sc *snapContext) renderConditionalSnap(vn *ast.VisualNode) string {
+	open, _ := sc.evalProp(vn, "open", false).(bool)
+	if !open {
+		return ""
+	}
+	var children []string
+	for _, child := range vn.Children {
+		s := sc.renderNode(child)
+		if s != "" {
+			children = append(children, s)
+		}
+	}
+	return sc.buildStyle(vn).Render(lipgloss.JoinVertical(lipgloss.Left, children...))
+}
+
+func (sc *snapContext) renderAccordionSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	items, _ := sc.evalProp(vn, "items", []any{}).([]any)
+	expanded, _ := sc.evalProp(vn, "expanded", []any{}).([]any)
+	expandedSet := map[string]bool{}
+	for _, e := range expanded {
+		expandedSet[fmt.Sprint(e)] = true
+	}
+	var parts []string
+	for i, item := range items {
+		if expandedSet[fmt.Sprint(i)] {
+			parts = append(parts, "▼ "+fmt.Sprint(item))
+		} else {
+			parts = append(parts, "▶ "+fmt.Sprint(item))
+		}
+	}
+	return style.Render(strings.Join(parts, "\n"))
+}
+
+func (sc *snapContext) renderSplitviewSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	if len(vn.Children) < 2 {
+		if len(vn.Children) == 1 {
+			return sc.renderNode(vn.Children[0])
+		}
+		return ""
+	}
+	left := sc.renderNode(vn.Children[0])
+	right := sc.renderNode(vn.Children[1])
+	direction := fmt.Sprint(sc.evalProp(vn, "direction", "horizontal"))
+	if direction == "vertical" {
+		return style.Render(lipgloss.JoinVertical(lipgloss.Left, left, right))
+	}
+	return style.Render(lipgloss.JoinHorizontal(lipgloss.Top, left, " │ ", right))
+}
+
+func (sc *snapContext) renderTableSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	columns, _ := sc.evalProp(vn, "columns", []any{}).([]any)
+	rows, _ := sc.evalProp(vn, "rows", []any{}).([]any)
+	var lines []string
+	var header []string
+	for _, col := range columns {
+		header = append(header, fmt.Sprint(col))
+	}
+	headerLine := strings.Join(header, " | ")
+	lines = append(lines, headerLine)
+	lines = append(lines, strings.Repeat("─", len(headerLine)))
+	for _, row := range rows {
+		if cells, ok := row.([]any); ok {
+			var cellStrs []string
+			for _, c := range cells {
+				cellStrs = append(cellStrs, fmt.Sprint(c))
+			}
+			lines = append(lines, strings.Join(cellStrs, " | "))
+		}
+	}
+	return style.Render(strings.Join(lines, "\n"))
+}
+
+func (sc *snapContext) renderTreeSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	items, _ := sc.evalProp(vn, "items", []any{}).([]any)
+	var lines []string
+	for _, item := range items {
+		lines = append(lines, "▶ "+fmt.Sprint(item))
+	}
+	return style.Render(strings.Join(lines, "\n"))
+}
+
+func (sc *snapContext) renderMenuSnap(vn *ast.VisualNode) string {
+	open, _ := sc.evalProp(vn, "open", false).(bool)
+	if !open {
+		return ""
+	}
+	style := sc.buildStyle(vn)
+	items, _ := sc.evalProp(vn, "items", []any{}).([]any)
+	var lines []string
+	for _, item := range items {
+		lines = append(lines, "  "+fmt.Sprint(item))
+	}
+	return style.Border(lipgloss.NormalBorder()).Render(strings.Join(lines, "\n"))
+}
+
+func (sc *snapContext) renderMenubarSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	items, _ := sc.evalProp(vn, "items", []any{}).([]any)
+	var tabs []string
+	for _, item := range items {
+		tabs = append(tabs, "["+fmt.Sprint(item)+"]")
+	}
+	return style.Render(strings.Join(tabs, " "))
+}
+
+func (sc *snapContext) renderToastSnap(vn *ast.VisualNode) string {
+	visible, _ := sc.evalProp(vn, "visible", false).(bool)
+	if !visible {
+		return ""
+	}
+	message := fmt.Sprint(sc.evalProp(vn, "message", ""))
+	return sc.buildStyle(vn).Render("ℹ " + message)
+}
+
+func (sc *snapContext) renderCardSnap(vn *ast.VisualNode) string {
+	style := sc.buildStyle(vn)
+	var children []string
+	for _, child := range vn.Children {
+		s := sc.renderNode(child)
+		if s != "" {
+			children = append(children, s)
+		}
+	}
+	return style.Border(lipgloss.RoundedBorder()).Render(lipgloss.JoinVertical(lipgloss.Left, children...))
 }

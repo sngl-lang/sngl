@@ -189,6 +189,17 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			memberBlank = true
 		}
 
+		// Timers
+		if len(doc.Timers) > 0 {
+			if memberBlank {
+				f.newline()
+			}
+			for _, t := range doc.Timers {
+				f.formatTimer(t)
+			}
+			memberBlank = true
+		}
+
 		// App body
 		if doc.App != nil && len(doc.App.Children) > 0 {
 			if memberBlank {
@@ -427,6 +438,21 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 	}
 }
 
+func (f *formatter) formatTimer(t *ast.Timer) {
+	line := "timer " + f.formatExprValue(t.Interval) + " " + t.Active + " {"
+	f.writeLine(line)
+	f.indent++
+	if sb, ok := t.Body.(*ast.StmtBlock); ok {
+		for _, stmt := range sb.Stmts {
+			f.writeLine(FormatNode(stmt))
+		}
+	} else {
+		f.writeLine(FormatNode(t.Body))
+	}
+	f.indent--
+	f.writeLine("}")
+}
+
 func (f *formatter) formatComponent(comp *ast.Component) {
 	f.writeLine("component " + comp.Name + " {")
 	f.indent++
@@ -506,6 +532,17 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 			f.newline()
 		}
 		f.formatFuncDefs(comp.Functions)
+		memberBlank = true
+	}
+
+	// Timers
+	if len(comp.Timers) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		for _, t := range comp.Timers {
+			f.formatTimer(t)
+		}
 		memberBlank = true
 	}
 

@@ -39,6 +39,7 @@ type Document struct {
 	Computeds  []*Computed
 	Functions  []*FuncDef
 	Components []*Component
+	Timers     []*Timer
 	Styles     []*StyleDecl
 	StyleDefs  []*StylePropDef // from "styles" top-level node
 	App        *App
@@ -187,6 +188,7 @@ type Component struct {
 	Data        []*Data      // var declarations (component-scoped state)
 	Computeds   []*Computed  // computed declarations
 	Functions   []*FuncDef   // func declarations
+	Timers      []*Timer     // timer declarations
 	PropDecls   []*PropDecl  // @prop (stdlib schemas)
 	EventDecls  []*EventDecl // @event (stdlib schemas)
 	ChildPolicy string       // @children value: "none"/"one"/"many"/""
@@ -203,6 +205,14 @@ type Param struct {
 type App struct {
 	Pos      Pos
 	Children []*VisualNode
+}
+
+// Timer declares a recurring interval that executes statements while active.
+type Timer struct {
+	Pos      Pos
+	Interval Expr   // duration literal (e.g., 100ms, 1s)
+	Active   string // name of bool var controlling start/stop
+	Body     Node   // StmtBlock of mutation statements
 }
 
 type VisualNode struct {

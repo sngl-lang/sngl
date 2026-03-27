@@ -68,7 +68,33 @@ targetSelect.addEventListener('change', function() {
 let selectedLine = 0, selectedCol = 0;
 
 window.addEventListener('message', function(e) {
-  if (!e.data || e.data.type !== 'sngl-select') return;
+  if (!e.data) return;
+  if (e.data.type === 'sngl-deselect') {
+    selectedLine = 0;
+    selectedCol = 0;
+    loadAppSidebar();
+    return;
+  }
+  if (e.data.type === 'sngl-state') {
+    fetch('/app/state', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({state: e.data.state}),
+    }).then(() => {
+      if (!selectedLine || !selectedCol) loadAppSidebar();
+    });
+    return;
+  }
+  if (e.data.type === 'sngl-reload') {
+    if (selectedLine && selectedCol) {
+      fetch('/node?line=' + selectedLine + '&col=' + selectedCol)
+        .then(r => r.json()).then(renderSidebar).catch(() => {});
+    } else {
+      loadAppSidebar();
+    }
+    return;
+  }
+  if (e.data.type !== 'sngl-select') return;
   selectedLine = e.data.line;
   selectedCol = e.data.col;
   fetch('/node?line=' + e.data.line + '&col=' + e.data.col)
@@ -76,6 +102,41 @@ window.addEventListener('message', function(e) {
     .then(renderSidebar)
     .catch(() => { sidebar.innerHTML = '<div class="empty">Could not load node</div>'; });
 });
+
+function loadAppSidebar() {
+  fetch('/app').then(r => r.json()).then(renderAppSidebar)
+    .catch(() => { sidebar.innerHTML = '<div class="empty">Could not load app state</div>'; });
+}
+
+function renderAppSidebar(app) {
+  var html = '<div class="prop-group"><h4>App State</h4></div>';
+  if (app.data && app.data.length > 0) {
+    html += '<div class="prop-group"><h4>Data</h4>';
+    app.data.forEach(function(d) {
+      html += '<div class="prop-row"><span class="prop-name">' + escapeHtml(d.name) + '</span>';
+      var val = d.value != null ? String(d.value) : (d.init || '');
+      html += '<input value="' + escapeHtml(val) + '" readonly />';
+      if (d.type) html += '<span class="prop-type">' + escapeHtml(d.type) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  if (app.computed && app.computed.length > 0) {
+    html += '<div class="prop-group"><h4>Computed</h4>';
+    app.computed.forEach(function(c) {
+      html += '<div class="prop-row"><span class="prop-name">' + escapeHtml(c.name) + '</span>';
+      html += '<input value="' + escapeHtml(c.expr || '') + '" readonly />';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  if (!app.data.length && !app.computed.length) {
+    html += '<div class="empty">No app state defined</div>';
+  }
+  sidebar.innerHTML = html;
+}
+
+loadAppSidebar();
 
 function propValue(v) {
   if (v.cel) return v.cel;
@@ -190,17 +251,23 @@ const liveReloadScript = `<script>
         Object.keys(saved).forEach(function(k) { if (k in state) state[k] = saved[k]; });
       }
       if (typeof __sngl_updates !== 'undefined') __sngl_updates.forEach(function(fn) { fn(); });
+      window.parent.postMessage({type: 'sngl-reload'}, '*');
     });
   });
 
   var selected = null;
   document.addEventListener('click', function(e) {
+    if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     e.stopPropagation();
     var el = e.target;
     while (el && !el.dataset.snglLine) el = el.parentElement;
-    if (!el) return;
     if (selected) selected.style.outline = '';
+    if (!el) {
+      selected = null;
+      window.parent.postMessage({type: 'sngl-deselect'}, '*');
+      return;
+    }
     selected = el;
     selected.style.outline = '2px solid #4a9eff';
     window.parent.postMessage({

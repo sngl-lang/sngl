@@ -53,6 +53,7 @@ module.exports = grammar({
         $.style_declaration,
         $.styles_declaration,
         $.func_declaration,
+        $.timer_declaration,
         $.component_declaration,
         $.test_declaration,
       ),
@@ -245,6 +246,7 @@ module.exports = grammar({
         $.var_declaration,
         $.computed_declaration,
         $.func_declaration,
+        $.timer_declaration,
         $._node_or_control,
       ),
 
@@ -339,6 +341,18 @@ module.exports = grammar({
         field("name", $.identifier),
         "=",
         field("value", $._expression),
+      ),
+
+    // ─── Timers ────────────────────────────────────────────────
+
+    timer_declaration: ($) =>
+      seq(
+        "timer",
+        field("interval", $._expression),
+        field("active", $.identifier),
+        "{",
+        repeat(seq($._statement, $._terminator)),
+        "}",
       ),
 
     // ─── Functions ────────────────────────────────────────────

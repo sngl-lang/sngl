@@ -141,6 +141,7 @@ func checkTestBody(td *ast.TestDef, comp *ast.Component) []Diagnostic {
 		known[fn.Name] = true
 	}
 	known["assert"] = true
+	known["tick"] = true
 
 	var diags []Diagnostic
 	for _, stmt := range td.Body {
@@ -420,6 +421,20 @@ func (c *checker) pass1(doc *ast.Document) {
 			}
 			c.resolveExprType(s.Pos, &expr)
 			s.Props[prop] = expr
+		}
+	}
+
+	// Timers
+	for _, t := range doc.Timers {
+		// Validate active var exists and is bool
+		if varType, ok := c.scope.Lookup(t.Active); !ok {
+			c.errorAt(t.Pos, "timer: unknown variable %q", t.Active)
+		} else if varType != Bool {
+			c.errorAt(t.Pos, "timer: active variable %q must be bool", t.Active)
+		}
+		// Validate body is a valid statement block
+		if t.Body != nil && !isStatement(t.Body) {
+			c.errorAt(t.Pos, "timer: body must contain statements")
 		}
 	}
 }
