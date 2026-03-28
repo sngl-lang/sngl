@@ -1,6 +1,9 @@
-// Command cogtest runs all project tests and reports coverage.
+// Command verify runs all project tests and reports per-package coverage.
 //
-// Usage: go tool cogtest [-v]
+// Each package's coverage reflects how much of its own code is exercised
+// by its tests.
+//
+// Usage: go tool verify [-v]
 package main
 
 import (
@@ -15,16 +18,13 @@ import (
 	"strings"
 )
 
-var coverRE = regexp.MustCompile(`^ok\s+\S+\s+\S+\s+coverage:\s+([\d.]+)%\s+of\s+statements`)
-var noTestRE = regexp.MustCompile(`^\?\s+\S+\s+\[no test files\]`)
-var noCoverRE = regexp.MustCompile(`^ok\s+(\S+).*coverage:\s+\[no statements\]`)
+var coverRE = regexp.MustCompile(`^ok\s+(\S+)\s+\S+\s+coverage:\s+([\d.]+)%\s+of\s+statements`)
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
-var skipRE = regexp.MustCompile(`^\s+\S+\s+coverage: 0\.0% of statements`)
 
 type pkgResult struct {
 	name     string
 	coverage float64
-	status   string // "ok", "fail", "skip", "no tests"
+	failed   bool
 }
 
 func main() {
@@ -32,9 +32,8 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(0)
-	log.SetPrefix("cogtest: ")
 
-	args := []string{"test", "-cover", "-coverpkg=./..."}
+	args := []string{"test", "-cover"}
 	if *verbose {
 		args = append(args, "-v")
 	}
@@ -47,7 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
@@ -59,44 +57,33 @@ func main() {
 		fmt.Println(line)
 
 		if m := coverRE.FindStringSubmatch(line); m != nil {
-			pct, _ := strconv.ParseFloat(m[1], 64)
-			name := strings.Fields(line)[1]
-			results = append(results, pkgResult{name: name, coverage: pct, status: "ok"})
-		} else if noTestRE.MatchString(line) {
-			// skip packages with no test files
-		} else if noCoverRE.MatchString(line) {
-			name := strings.Fields(line)[1]
-			results = append(results, pkgResult{name: name, status: "ok"})
-		} else if failRE.MatchString(line) {
-			name := strings.Fields(line)[1]
-			results = append(results, pkgResult{name: name, status: "fail"})
-		} else if skipRE.MatchString(line) {
-			// packages without test files that show 0.0% coverage
+			pct, _ := strconv.ParseFloat(m[2], 64)
+			results = append(results, pkgResult{name: m[1], coverage: pct})
+		} else if m := failRE.FindStringSubmatch(line); m != nil {
+			results = append(results, pkgResult{name: m[1], failed: true})
 		}
 	}
 
 	cmdErr := cmd.Wait()
 
-	// Print summary.
 	fmt.Println()
 	fmt.Println("=== Coverage Summary ===")
 
 	var totalPct float64
-	var covered int
+	var count int
 	for _, r := range results {
-		if r.status == "fail" {
+		if r.failed {
 			fmt.Printf("  %-60s FAIL\n", shortPkg(r.name))
 		} else if r.coverage > 0 {
 			fmt.Printf("  %-60s %5.1f%%\n", shortPkg(r.name), r.coverage)
 			totalPct += r.coverage
-			covered++
+			count++
 		}
 	}
 
-	if covered > 0 {
-		avg := totalPct / float64(covered)
+	if count > 0 {
 		fmt.Println()
-		fmt.Printf("total coverage: %.1f%% of statements\n", avg)
+		fmt.Printf("average coverage: %.1f%% across %d packages\n", totalPct/float64(count), count)
 	}
 
 	if cmdErr != nil {
@@ -107,7 +94,11 @@ func main() {
 func shortPkg(full string) string {
 	const prefix = "git.duckfam.us/jonathan/sngl/"
 	if strings.HasPrefix(full, prefix) {
-		return full[len(prefix):]
+		s := full[len(prefix):]
+		if s == "" {
+			return "."
+		}
+		return s
 	}
 	return full
 }

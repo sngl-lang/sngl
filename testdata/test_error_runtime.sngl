@@ -29,3 +29,7 @@ test errs "index on non-list" { // ERROR(test) "cannot index"
     assert(count == 0)
     assert(count[0] == 0)
 }
+
+test errs "division by zero" { // ERROR(test) "division by zero"
+    count = 1 / 0
+}

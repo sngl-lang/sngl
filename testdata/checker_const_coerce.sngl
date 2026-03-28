@@ -1,0 +1,22 @@
+component main {
+    const PROGRESS_VAL = 50
+    const DERIVED = PROGRESS_VAL + 25
+
+    // Simple int literals where float expected
+    progress(value=75, max=100)
+
+    // Const ident where float expected
+    progress(value=PROGRESS_VAL, max=DERIVED)
+
+    // Binary expr where float expected
+    progress(value=2 * 25, max=10 + 90)
+
+    // Unary expr where float expected
+    progress(value=-50)
+
+    // Ternary expr where float expected
+    progress(value=true ? 75 : 25)
+
+    // Call expr where float expected
+    progress(value=int(50))
+}

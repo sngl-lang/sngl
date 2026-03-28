@@ -1,0 +1,24 @@
+style primary {
+    color = #0000ff
+    fontWeight = "bold"
+    fontSize = 16
+}
+
+style secondary {
+    color = #777777
+    fontStyle = "italic"
+}
+
+styles {
+    padding int
+    margin int
+    color color
+    fontWeight string enum(normal, bold, lighter)
+}
+
+component main {
+    vbox {
+        text(value="hello", class="primary")
+        text(value="world", class="secondary")
+    }
+}

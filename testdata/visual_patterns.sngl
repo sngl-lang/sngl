@@ -1,0 +1,34 @@
+component Card {
+    param title = "Card"
+    param subtitle = ""
+
+    children allowed
+
+    vbox {
+        text(value=title)
+        text(value=subtitle)
+    }
+}
+
+component main {
+    var items = ["a", "b", "c"]
+    var show = true
+    var count = 0
+    var searchText = ""
+
+    vbox {
+        input #searchBox(value=searchText, @change={searchText = event})
+        text(value="Search: " + searchText, ref="searchLabel")
+
+        for item, idx in items {
+            if show {
+                Card(title=item, subtitle=string(idx)) {
+                    text(value="content")
+                    @attrs(data="extra")
+                }
+            }
+        }
+
+        button(text="Click", @click={count += 1})
+    }
+}

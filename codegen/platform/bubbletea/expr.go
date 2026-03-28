@@ -33,6 +33,9 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 	case *ast.BinaryExpr:
 		left := ec.translateExpr(n.Left)
 		right := ec.translateExpr(n.Right)
+		if n.Op == ast.BinDiv {
+			return "(float64(" + left + ") / float64(" + right + "))"
+		}
 		return "(" + left + " " + binaryOpToGo(n.Op) + " " + right + ")"
 	case *ast.UnaryExpr:
 		operand := ec.translateExpr(n.Operand)

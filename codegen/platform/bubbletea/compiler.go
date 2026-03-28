@@ -900,8 +900,15 @@ func snglNodeGoType(e ast.Node) string {
 		switch n.Op {
 		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
 			return "bool"
+		case ast.BinDiv:
+			return "float64"
 		default:
-			return snglNodeGoType(n.Left)
+			lt := snglNodeGoType(n.Left)
+			rt := snglNodeGoType(n.Right)
+			if lt == "float64" || rt == "float64" {
+				return "float64"
+			}
+			return lt
 		}
 	case *ast.UnaryExpr:
 		if n.Op == ast.UnaryNot {

@@ -1,0 +1,6 @@
+enum Theme { light, dark, system }
+
+struct Config {
+    name string = ""
+    enabled bool = false
+}

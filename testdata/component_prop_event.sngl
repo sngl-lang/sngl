@@ -1,0 +1,15 @@
+component Button {
+    prop variant string enum(primary, secondary, danger)
+    event click int
+
+    children allowed
+
+    button(text="Click me", @click={click(1)}) // ERROR(check) "handler must be a statement"
+}
+
+component main {
+    var count = 0
+
+    Button(variant="primary", @click={count += event}) // ERROR(check) "unknown property"
+    text(value=string(count))
+}

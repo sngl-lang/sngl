@@ -1,0 +1,6 @@
+import "widgets"
+
+component main {
+    widgets.Counter(label="Test")
+    widgets.Counter(label="Missing", nonExistent="x") // ERROR(check) "unknown property"
+}

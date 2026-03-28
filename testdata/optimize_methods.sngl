@@ -1,0 +1,56 @@
+component methodfold {
+    // int methods (qualified)
+    var imin = int.min(3, 7)       // FOLD 3
+    var imax = int.max(3, 7)       // FOLD 7
+    var iabs = int.abs(-5)         // FOLD 5
+    var iabsp = int.abs(5)         // FOLD 5
+
+    // float methods (qualified)
+    var fmin = float.min(1.5, 2.5) // FOLD 1.5
+    var fmax = float.max(1.5, 2.5) // FOLD 2.5
+    var fabs = float.abs(-3.14)    // FOLD 3.14
+    var fflr = float.floor(3.7)    // FOLD 3
+    var fceil = float.ceil(3.2)    // FOLD 4
+    var frnd = float.round(3.5)    // FOLD 4
+    var fsqrt = float.sqrt(4.0)    // FOLD 2.0
+
+    // string methods (qualified)
+    var sup = string.upper("hello") // FOLD "HELLO"
+    var slo = string.lower("HELLO") // FOLD "hello"
+    var str = string.trim("  hi  ") // FOLD "hi"
+    var srp = string.replace("hello", "l", "r") // FOLD "herro"
+    var sidx = string.indexOf("hello", "ll") // FOLD 2
+    var ssub = string.substring("hello", 1, 3) // FOLD "el"
+
+    // instance methods
+    var slen = "test".length()      // FOLD 4
+    var scon = "hello".contains("ell") // FOLD true
+    var ssw = "hello".startsWith("hel") // FOLD true
+    var sew = "hello".endsWith("llo") // FOLD true
+
+    // conversion functions
+    var si = string(100)           // FOLD "100"
+    var is = int(3.7)              // FOLD 3
+    var fi = float(5)              // FOLD 5.0
+
+    text(value="{imin}")
+}
+
+test methodfold "folded methods" {
+    assert(imin == 3)
+    assert(imax == 7)
+    assert(iabs == 5)
+    assert(fflr == 3)
+    assert(fceil == 4)
+    assert(frnd == 4)
+    assert(sup == "HELLO")
+    assert(slo == "hello")
+    assert(str == "hi")
+    assert(srp == "herro")
+    assert(sidx == 2)
+    assert(ssub == "el")
+    assert(slen == 4)
+    assert(scon == true)
+    assert(si == "100")
+    assert(is == 3)
+}

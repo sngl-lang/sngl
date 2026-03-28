@@ -478,6 +478,224 @@ func TestInterpolationFolded(t *testing.T) {
 	}
 }
 
+func TestCallIntOnInt_ReturnsSame(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "int",
+				Args: []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 42 {
+		t.Errorf("expected literal 42, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestCallFloatOnFloat_ReturnsSame(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "val",
+			Init: snglExpr(&ast.CallExpr{
+				Func: "float",
+				Args: []ast.Node{&ast.LiteralExpr{Value: 2.5, Kind: ast.LiteralFloat}},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != 2.5 {
+		t.Errorf("expected literal 2.5, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestEvalMethodListLength(t *testing.T) {
+	// Directly test the evalMethod path for []any .length()
+	recv := []any{"a", "b", "c"}
+	result, ok := evalMethod("length", recv, nil)
+	if !ok {
+		t.Fatal("expected evalMethod to succeed for []any .length()")
+	}
+	if result != 3 {
+		t.Errorf("expected 3, got %v", result)
+	}
+}
+
+func TestClassExprFolded(t *testing.T) {
+	classExpr := platformExpr()
+	doc := &ast.Document{
+		App: &ast.App{
+			Children: []*ast.VisualNode{{
+				Component: "div",
+				Class:     &classExpr,
+			}},
+		},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.App.Children[0].Class
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
+	}
+	if e.Literal != "html" {
+		t.Errorf("expected literal 'html', got %v", e.Literal)
+	}
+}
+
+func TestRefExprFolded(t *testing.T) {
+	refExpr := langExpr()
+	doc := &ast.Document{
+		App: &ast.App{
+			Children: []*ast.VisualNode{{
+				Component: "div",
+				Ref:       &refExpr,
+			}},
+		},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	e := doc.App.Children[0].Ref
+	if e.SNGL != nil {
+		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
+	}
+	if e.Literal != "js" {
+		t.Errorf("expected literal 'js', got %v", e.Literal)
+	}
+}
+
+func TestIsConstExprListExpr(t *testing.T) {
+	vars := map[string]any{
+		"PLATFORM": "html",
+		"LANGUAGE": "js",
+	}
+	// All-literal list should be constant
+	list := &ast.ListExpr{
+		Elements: []ast.Node{
+			&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			&ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			&ast.LiteralExpr{Value: 3, Kind: ast.LiteralInt},
+		},
+	}
+	if !isConstExpr(list, vars) {
+		t.Error("expected ListExpr with all literals to be constant")
+	}
+
+	// List with non-constant element should not be constant
+	listNonConst := &ast.ListExpr{
+		Elements: []ast.Node{
+			&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			&ast.IdentExpr{Name: "count"}, // not in vars
+		},
+	}
+	if isConstExpr(listNonConst, vars) {
+		t.Error("expected ListExpr with non-constant element to not be constant")
+	}
+
+	// List with PLATFORM reference should be constant
+	listWithVar := &ast.ListExpr{
+		Elements: []ast.Node{
+			&ast.IdentExpr{Name: "PLATFORM"},
+			&ast.LiteralExpr{Value: "x", Kind: ast.LiteralString},
+		},
+	}
+	if !isConstExpr(listWithVar, vars) {
+		t.Error("expected ListExpr with PLATFORM to be constant")
+	}
+}
+
+func TestUnaryNegFloat(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "x",
+			Init: snglExpr(&ast.UnaryExpr{
+				Op:      ast.UnaryNeg,
+				Operand: &ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != -3.14 {
+		t.Errorf("expected -3.14, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestUnaryNotBool(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "x",
+			Init: snglExpr(&ast.UnaryExpr{
+				Op:      ast.UnaryNot,
+				Operand: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != false {
+		t.Errorf("expected false, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestUnaryNegInt(t *testing.T) {
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "x",
+			Init: snglExpr(&ast.UnaryExpr{
+				Op:      ast.UnaryNeg,
+				Operand: &ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != -42 {
+		t.Errorf("expected -42, got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestFloatModReturnsNil(t *testing.T) {
+	// Float mod should not fold — numericOp falls through for BinMod on floats.
+	result, ok := numericOp(ast.BinMod, 3.5, 2.0)
+	if ok {
+		t.Errorf("expected float mod to not fold, but got %v", result)
+	}
+	if result != nil {
+		t.Errorf("expected nil result, got %v", result)
+	}
+}
+
+func TestToStrNonString(t *testing.T) {
+	// Interpolation with an int part exercises the toStr non-string branch.
+	doc := &ast.Document{
+		Data: []*ast.Data{{
+			Name: "msg",
+			Init: snglExpr(&ast.InterpolationExpr{
+				Parts: []ast.Node{
+					&ast.LiteralExpr{Value: "count: ", Kind: ast.LiteralString},
+					&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt},
+				},
+			}),
+		}},
+	}
+	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
+	if doc.Data[0].Init.Literal != "count: 42" {
+		t.Errorf("expected 'count: 42', got %v", doc.Data[0].Init.Literal)
+	}
+}
+
+func TestEvalMethodUnknown(t *testing.T) {
+	// Calling an unknown method on a string receiver should return nil, false.
+	result, ok := evalMethod("bogusMethod", "hello", nil)
+	if ok {
+		t.Errorf("expected unknown method to return false, got true with %v", result)
+	}
+}
+
+func TestEvalCallFuncZeroArgs(t *testing.T) {
+	// A function call with 0 args hits the len(args) != 1 early return.
+	result, ok := evalCallFunc("string", nil)
+	if ok {
+		t.Errorf("expected 0-arg call to return false, got true with %v", result)
+	}
+}
+
 func TestFoldFixtures(t *testing.T) {
 	matches, err := filepath.Glob(filepath.Join("..", "..", "testdata", "optimize_*.sngl"))
 	if err != nil {

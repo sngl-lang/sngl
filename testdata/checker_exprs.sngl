@@ -1,0 +1,42 @@
+struct Config {
+    name string = ""
+    value int = 0
+}
+
+component Widget {
+    param title = "default"
+    param count = 0
+    param active = true
+    param items = []
+    param config Config
+
+    computed label = title + ": " + string(count)
+    computed doubled = count * 2
+    computed negated = -count
+    computed toggled = !active
+    computed selected = active ? "yes" : "no"
+    computed converted = float(count) + 0.5
+    computed namespaceMethod = int.abs(count)
+    computed instanceMethod = title.length()
+    computed fieldAccess = config.name
+    computed indexAccess = items[0]
+    computed listVal = [1, 2, 3]
+    computed structVal = Config{name: "test", value: 42}
+    computed interpVal = "count={string(count)}"
+
+    vbox {
+        text(value=label)
+        text(value=string(doubled))
+        text(value=selected)
+    }
+}
+
+component main {
+    var n = 10
+    var active = true
+    var things = [1, 2, 3]
+    var cfg = Config("hello", 5)
+
+    Widget(title="test", count=n, active=active, items=things, config=cfg)
+    text(value=string(n))
+}

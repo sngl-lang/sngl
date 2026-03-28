@@ -1,0 +1,19 @@
+component main {
+    const (
+        MAX_ITEMS = 100
+        DEFAULT_NAME = "unnamed"
+        PI float = 3.14159
+    )
+
+    const SINGLE_CONST = 42
+
+    var count = MAX_ITEMS
+
+    text(value=DEFAULT_NAME)
+    text(value=string(count))
+    text(value=string(SINGLE_CONST))
+}
+
+test main "constants" {
+    assert(count == 100)
+}

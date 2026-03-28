@@ -1,0 +1,10 @@
+output {
+    js {
+        html(entry="app")
+    }
+    go bubbletea
+}
+
+component main {
+    text(value="hello")
+}

@@ -1,0 +1,22 @@
+component interpfold {
+    // Unary float negation
+    var fneg = -3.14           // FOLD -3.14
+    var fneg2 = -2.5           // FOLD -2.5
+
+    // Bool not
+    var bnot = !true           // FOLD false
+
+    // Chained operations
+    var chain = (2 + 3) * 4   // FOLD 20
+
+    // Platform-conditional ternary
+    var platLabel = PLATFORM == "html" ? "web" : "other" // FOLD "web"
+
+    text(value=string(chain))
+}
+
+test interpfold "values" {
+    assert(fneg == -3.14)
+    assert(bnot == false)
+    assert(chain == 20)
+}

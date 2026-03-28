@@ -64,7 +64,3 @@ test math "compound assignment mod" {
     x %= 3
     assert(x == 1)
 }
-
-test math "division by zero" {
-    x = 1 / 0
-}

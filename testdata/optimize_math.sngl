@@ -1,0 +1,27 @@
+component mathfold {
+    // Trig functions
+    var fsin = float.sin(0.0)       // FOLD 0.0
+    var fcos = float.cos(0.0)       // FOLD 1.0
+    var ftan = float.tan(0.0)       // FOLD 0.0
+    var fasin = float.asin(0.0)     // FOLD 0.0
+    var facos = float.acos(1.0)     // FOLD 0.0
+    var fatan = float.atan(0.0)     // FOLD 0.0
+    var fatan2 = float.atan2(0.0, 1.0) // FOLD 0.0
+    var fpow = float.pow(2.0, 3.0)  // FOLD 8.0
+
+    // String-to-number conversions
+    var si = int("42")              // FOLD 42
+    var sf = float("3.5")           // FOLD 3.5
+
+    // Float division
+    var fmod = 10.0 / 3.0           // FOLD 3.3333333333333335
+
+    text(value="{fsin}")
+}
+
+test mathfold "trig and conversions" {
+    assert(fsin == 0.0)
+    assert(fcos == 1.0)
+    assert(ftan == 0.0)
+    assert(si == 42)
+}

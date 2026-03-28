@@ -1,0 +1,8 @@
+component real {
+    var x = 0
+    text(value=string(x))
+}
+
+test real "calls unknown function" {
+    bogus() // ERROR(check) "unknown function"
+}

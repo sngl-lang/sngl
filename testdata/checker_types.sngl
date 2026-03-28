@@ -1,0 +1,48 @@
+struct Point {
+    x float = 0.0
+    y float = 0.0
+}
+
+enum Status { active, inactive, pending }
+
+component main {
+    const (
+        MAX = 100
+        LABEL = "items"
+        DERIVED = MAX + 1
+        GREETING = "hello" + " " + "world"
+        NEG_VAL = -MAX
+        IS_VALID = true && !false
+        TERNARY_CONST = true ? 1 : 2
+        CONVERTED = string(42)
+        METHOD_CONST = "hello".length()
+        NS_METHOD = int.abs(-5)
+    )
+
+    var count = 0
+    var label = "test"
+    var flag = true
+    var ratio float = 1.5
+    var items = [1, 2, 3]
+    var pt = Point(1.0, 2.0)
+    var status Status = "active"
+
+    computed total = count + MAX
+    computed desc = label + ": " + string(count)
+    computed neg = -count
+    computed isActive = flag && count > 0
+    computed selected = flag ? "yes" : "no"
+    computed floatCalc = float(count) + ratio
+    computed methodResult = "hello".length()
+    computed nsMethod = int.abs(count)
+
+    vbox {
+        for item, i in items {
+            text(value=string(item), key=string(i))
+        }
+        if flag {
+            text(value=string(total), style={color=#ff0000, padding=8})
+        }
+        text(value=desc)
+    }
+}

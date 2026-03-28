@@ -1,0 +1,44 @@
+struct Pair {
+    key string = ""
+    val int = 0
+}
+
+component main {
+    const (
+        MSG = "count: {string(10)}"
+        ITEMS = [1, 2, 3]
+        PT = Pair{key: "a", val: 1}
+        UPPER = "hello".upper()
+        LIST_METHOD = string.length("test")
+    )
+
+    var count = 0
+    var flag = true
+    var label = "hello"
+    var items = [10, 20, 30]
+    var pair = Pair("key", 5)
+
+    computed interp = "val: {string(count)}"
+    computed list = [count, count + 1]
+    computed structVal = Pair{key: label, val: count}
+    computed elemType = items[0]
+    computed fieldType = pair.key
+
+    func myFunc() int = 42
+
+    vbox {
+        text(value=interp)
+        text(value=string(list[0]))
+        button(text="add", @click={
+            count += 1
+            flag!!
+        })
+        button(text="reset", @click={count = 0})
+    }
+}
+
+test main "basic" {
+    assert(count == 0)
+    assert(flag == true)
+    assert(label == "hello")
+}

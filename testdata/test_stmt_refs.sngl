@@ -1,0 +1,27 @@
+test main "call expression and call statement refs" {
+    assert(count == 0)
+    increment(5)
+    assert(count == 5)
+    reset()
+    assert(count == 0)
+}
+
+test main "subtest call refs" {
+    test "nested" {
+        increment(1)
+        assert(count == 1)
+    }
+}
+
+component main {
+    var count = 0
+
+    func increment(n int) {
+        count += n
+    }
+    func reset() {
+        count = 0
+    }
+
+    text(value=string(count))
+}

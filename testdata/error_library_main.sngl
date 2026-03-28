@@ -1,0 +1,6 @@
+import "widgets"
+
+component main {
+    widgets.Badge(label="test") // ERROR(check) "unknown component"
+    text(value="hello")
+}
