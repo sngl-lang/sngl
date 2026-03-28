@@ -205,8 +205,8 @@ type FuncBlock struct {
 // SplitMethodName splits a dotted function name into type and method parts.
 // Returns ("int", "sqrt", true) for "int.sqrt", or ("", "add", false) for plain names.
 func SplitMethodName(name string) (typeName, method string, ok bool) {
-	if i := strings.IndexByte(name, '.'); i >= 0 {
-		return name[:i], name[i+1:], true
+	if before, after, ok0 := strings.Cut(name, "."); ok0 {
+		return before, after, true
 	}
 	return "", name, false
 }

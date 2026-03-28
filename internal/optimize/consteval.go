@@ -142,15 +142,15 @@ func evalConst(n ast.Node, vars map[string]any) (any, bool) {
 		}
 		return evalMethod(e.Method, recv, args)
 	case *ast.InterpolationExpr:
-		var result string
+		var result strings.Builder
 		for _, p := range e.Parts {
 			v, ok := evalConst(p, vars)
 			if !ok {
 				return nil, false
 			}
-			result += toStr(v)
+			result.WriteString(toStr(v))
 		}
-		return result, true
+		return result.String(), true
 	default:
 		return nil, false
 	}

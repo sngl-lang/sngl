@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"maps"
 	"math"
 	"strconv"
 	"strings"
@@ -117,9 +118,7 @@ func (u UnitValue) Add(other UnitValue) UnitValue {
 		Components: make(map[string]float64, len(u.Components)),
 		Suffixes:   u.Suffixes,
 	}
-	for k, v := range u.Components {
-		result.Components[k] = v
-	}
+	maps.Copy(result.Components, u.Components)
 	for k, v := range other.Components {
 		result.Components[k] += v
 	}
@@ -133,9 +132,7 @@ func (u UnitValue) Sub(other UnitValue) UnitValue {
 		Components: make(map[string]float64, len(u.Components)),
 		Suffixes:   u.Suffixes,
 	}
-	for k, v := range u.Components {
-		result.Components[k] = v
-	}
+	maps.Copy(result.Components, u.Components)
 	for k, v := range other.Components {
 		result.Components[k] -= v
 	}
