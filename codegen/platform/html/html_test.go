@@ -18,7 +18,7 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := path[:strings.LastIndex(path, "/")]
-	if err := checker.Check(doc, dir, checker.DefaultResolver(), true); err != nil {
+	if err := checker.Check(doc, dir, checker.DefaultResolver(), nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 

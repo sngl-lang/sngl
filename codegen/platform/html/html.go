@@ -1261,14 +1261,38 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		})
 	}
 
+	// Extern bindings (provided by host via window.__sngl_externs)
+	hasExterns := false
+	for _, d := range g.doc.Data {
+		if d.Extern || d.IsFunc {
+			hasExterns = true
+			break
+		}
+	}
+	if hasExterns {
+		b.WriteString("// Extern bindings\nconst $ext = window.__sngl_externs || {};\n")
+		for _, d := range g.doc.Data {
+			if !d.Extern && !d.IsFunc {
+				continue
+			}
+			if d.IsFunc {
+				fmt.Fprintf(b, "const %s = $ext.%s || function(){};\n", d.Name, d.Name)
+			}
+		}
+		b.WriteString("\n")
+	}
+
 	// State initialization
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
 	for _, d := range g.doc.Data {
-		if d.Extern || d.IsFunc {
+		if d.IsFunc {
 			continue
 		}
 		val := g.literalToJS(d.Init)
+		if d.Extern {
+			val = fmt.Sprintf("$ext.%s", d.Name)
+		}
 		stateFields = append(stateFields, d.Name+": "+val)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
@@ -1313,7 +1337,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// Getters
 	for _, d := range g.doc.Data {
-		if d.Extern || d.IsFunc {
+		if d.IsFunc {
 			continue
 		}
 		fmt.Fprintf(b, "function $get_%s() { return state.%s; }\n", d.Name, d.Name)
@@ -1324,7 +1348,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// Setters
 	for _, d := range g.doc.Data {
-		if d.Extern || d.IsFunc {
+		if d.IsFunc {
 			continue
 		}
 		fmt.Fprintf(b, "function $set_%s(v) {\n", d.Name)

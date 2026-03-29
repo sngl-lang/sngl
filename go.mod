@@ -15,7 +15,7 @@ require (
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/yuin/goldmark v1.7.8
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
-	golang.org/x/tools v0.24.0
+	golang.org/x/tools v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	rsc.io/script v0.0.2
 )
@@ -48,13 +48,15 @@ require (
 	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/term v0.41.0 // indirect
 )
 
 tool (
 	git.duckfam.us/jonathan/sngl/cmd/sngl
-	git.duckfam.us/jonathan/sngl/internal/cmd/verify
 	git.duckfam.us/jonathan/sngl/internal/cmd/docsgen
+	git.duckfam.us/jonathan/sngl/internal/cmd/verify
 )

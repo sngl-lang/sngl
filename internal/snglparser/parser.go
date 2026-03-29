@@ -134,11 +134,22 @@ func (p *parser) parseImport() *ast.Import {
 	pos := p.pos()
 	p.expect(KW_IMPORT)
 	path := p.expect(STRING)
-	ns := path.Literal
+	imp := &ast.Import{Pos: pos, Path: path.Literal}
+	rest := path.Literal
+	if scheme, after, ok := strings.Cut(rest, "://"); ok {
+		imp.Scheme = scheme
+		rest = after
+	}
+	ns := rest
 	if i := strings.LastIndex(ns, "/"); i >= 0 {
 		ns = ns[i+1:]
 	}
-	return &ast.Import{Pos: pos, Path: path.Literal, Namespace: ns}
+	// Strip file extensions for namespace derivation (e.g. "types.d.ts" → "types")
+	if i := strings.Index(ns, "."); i >= 0 {
+		ns = ns[:i]
+	}
+	imp.Namespace = ns
+	return imp
 }
 
 func (p *parser) parseOutput() []*ast.Output {

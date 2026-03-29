@@ -76,8 +76,17 @@ type timerInfo struct {
 	body       ast.Node
 }
 
+type externInfo struct {
+	name       string
+	goType     string
+	isFunc     bool
+	paramTypes []string
+	returnType string
+}
+
 type analysisResult struct {
 	binds          []bindInfo
+	externs        []externInfo
 	computeds      []computedInfo
 	inputs         []inputInfo
 	focusables     []string // ordered: "input0", "button0", etc.
@@ -87,6 +96,7 @@ type analysisResult struct {
 	structs        []*ast.StructDef
 	modelFields    map[string]bool   // all bind/computed names (fields)
 	computedFields map[string]bool   // computed names (methods, not struct fields)
+	externFuncs    map[string]bool   // extern function names
 	triggers       map[string]string // data field name → trigger func name
 	needsTime      bool              // emit "time" import
 }
@@ -95,12 +105,28 @@ func analyze(doc *ast.Document) *analysisResult {
 	info := &analysisResult{
 		modelFields:    make(map[string]bool),
 		computedFields: make(map[string]bool),
+		externFuncs:    make(map[string]bool),
 		triggers:       make(map[string]string),
 	}
 
-	// Data fields (non-extern, non-func only)
+	// Data fields
 	for _, d := range doc.Data {
 		if d.Extern || d.IsFunc {
+			// Extern functions and variables → model fields set by host
+			ext := externInfo{
+				name:   d.Name,
+				isFunc: d.IsFunc,
+			}
+			if d.IsFunc {
+				ext.paramTypes = d.ParamTypes
+				ext.returnType = d.ReturnType
+				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
+				info.externFuncs[d.Name] = true
+			} else {
+				ext.goType = typeHintToGo(d.Init.TypeHint)
+			}
+			info.externs = append(info.externs, ext)
+			info.modelFields[d.Name] = true
 			continue
 		}
 		goType := inferGoType(d.Init)
@@ -325,6 +351,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("type Model struct {\n")
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\t%s %s\n", bind.name, bind.goType)
+	}
+	// Extern fields (set by host before Init)
+	for _, ext := range info.externs {
+		fmt.Fprintf(&b, "\t%s %s // extern\n", exportName(ext.name), ext.goType)
 	}
 	// Trigger callback fields
 	for _, bind := range info.binds {
@@ -1027,6 +1057,20 @@ func typeHintToGo(hint string) string {
 	default:
 		return "any"
 	}
+}
+
+// externFuncGoType builds a Go function type from SNGL param/return types.
+// e.g., ["string", "int"] + "bool" → "func(string, int) bool"
+func externFuncGoType(paramTypes []string, returnType string) string {
+	params := make([]string, len(paramTypes))
+	for i, p := range paramTypes {
+		params[i] = typeHintToGo(p)
+	}
+	sig := "func(" + strings.Join(params, ", ") + ")"
+	if returnType != "" {
+		sig += " " + typeHintToGo(returnType)
+	}
+	return sig
 }
 
 func checkerTypeToGo(t checker.Type) string {

@@ -50,7 +50,8 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 				return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
 			}
 		}
-		return []string{"// unsupported method mutation: " + n.Method}
+		// General method call (e.g., extern namespace calls: api.SaveTodo(item))
+		return []string{ec.translateExpr(n)}
 	case *ast.CallStmt:
 		return []string{ec.translateExpr(n.Call)}
 	case *ast.CallExpr:

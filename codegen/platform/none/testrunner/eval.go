@@ -10,6 +10,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
+// maxCallDepth is the maximum allowed function call depth.
+const maxCallDepth = 100
+
 // Env holds the mutable state for test execution.
 type Env struct {
 	vars      map[string]any
@@ -20,6 +23,7 @@ type Env struct {
 	timers    []*ast.Timer
 	doc       *ast.Document
 	body      []*ast.VisualNode
+	depth     int // current call stack depth
 }
 
 func NewEnv() *Env {
@@ -51,6 +55,7 @@ func (env *Env) Snapshot() *Env {
 		units:     env.units,
 		doc:       env.doc,
 		body:      env.body,
+		depth:     env.depth,
 	}
 	maps.Copy(cp.vars, env.vars)
 	return cp
@@ -361,8 +366,9 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 }
 
 // evalUserFunc evaluates a user-defined function call.
+// Pure functions with tail-recursive self-calls are optimized via a trampoline loop.
 func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) {
-	// Evaluate arguments
+	// Evaluate arguments eagerly
 	args := make([]any, len(argNodes))
 	for i, a := range argNodes {
 		v, err := env.Eval(a)
@@ -372,81 +378,151 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) 
 		args[i] = v
 	}
 
-	// Void/action functions execute in the caller's env (they mutate state).
-	// Pure functions (have ReturnType) execute in a snapshot.
-	var execEnv *Env
-	if fn.ReturnType == "" {
-		execEnv = env
-	} else {
-		execEnv = env.Snapshot()
+	// Stack depth check — one frame for this call (TCO reuses it).
+	env.depth++
+	if env.depth > maxCallDepth {
+		env.depth--
+		return nil, fmt.Errorf("stack overflow: call depth exceeded %d", maxCallDepth)
 	}
+	defer func() { env.depth-- }()
 
-	// Bind params (save originals for cleanup in void case)
-	savedVars := make(map[string]any)
-	paramNames := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		paramNames[i] = p.Name
-		if v, ok := execEnv.vars[p.Name]; ok {
-			savedVars[p.Name] = v
-		}
-		if i < len(args) {
-			execEnv.vars[p.Name] = args[i]
-		}
-	}
+	// TCO only applies to pure functions (have ReturnType).
+	canTCO := fn.ReturnType != ""
 
-	// Cleanup params after void functions so they don't leak into env
-	defer func() {
+	for { // trampoline loop (only iterates >1 for tail calls)
+		// Void/action functions execute in the caller's env (they mutate state).
+		// Pure functions (have ReturnType) execute in a snapshot.
+		var execEnv *Env
 		if fn.ReturnType == "" {
-			for _, name := range paramNames {
-				if orig, ok := savedVars[name]; ok {
-					execEnv.vars[name] = orig
-				} else {
-					delete(execEnv.vars, name)
+			execEnv = env
+		} else {
+			execEnv = env.Snapshot()
+		}
+
+		// Bind params (save originals for cleanup in void case)
+		savedVars := make(map[string]any)
+		paramNames := make([]string, len(fn.Params))
+		for i, p := range fn.Params {
+			paramNames[i] = p.Name
+			if v, ok := execEnv.vars[p.Name]; ok {
+				savedVars[p.Name] = v
+			}
+			if i < len(args) {
+				execEnv.vars[p.Name] = args[i]
+			}
+		}
+
+		// restoreVoid cleans up params after void functions so they don't leak.
+		restoreVoid := func() {
+			if fn.ReturnType == "" {
+				for _, name := range paramNames {
+					if orig, ok := savedVars[name]; ok {
+						execEnv.vars[name] = orig
+					} else {
+						delete(execEnv.vars, name)
+					}
 				}
 			}
 		}
-	}()
 
-	// Single-expression form
-	if fn.Body.SNGL != nil {
-		return execEnv.Eval(fn.Body.SNGL)
-	}
-
-	// Block form
-	if fn.Block != nil {
-		// Track local vars for cleanup
+		// Determine the tail expression
+		var tailExpr ast.Node
 		var localVars []string
-		for _, stmt := range fn.Block.Stmts {
-			switch s := stmt.(type) {
-			case *ast.VarStmt:
-				v, err := execEnv.Eval(s.Init)
-				if err != nil {
-					return nil, err
-				}
-				execEnv.vars[s.Name] = v
-				localVars = append(localVars, s.Name)
-			default:
-				if err := execEnv.Exec(stmt); err != nil {
-					return nil, err
+
+		if fn.Body.SNGL != nil {
+			tailExpr = fn.Body.SNGL
+		} else if fn.Block != nil {
+			// Execute block statements
+			for _, stmt := range fn.Block.Stmts {
+				switch s := stmt.(type) {
+				case *ast.VarStmt:
+					v, err := execEnv.Eval(s.Init)
+					if err != nil {
+						restoreVoid()
+						return nil, err
+					}
+					execEnv.vars[s.Name] = v
+					localVars = append(localVars, s.Name)
+				default:
+					if err := execEnv.Exec(stmt); err != nil {
+						restoreVoid()
+						return nil, err
+					}
 				}
 			}
+			tailExpr = fn.Block.Return
 		}
-		var result any
-		if fn.Block.Return != nil {
-			var err error
-			result, err = execEnv.Eval(fn.Block.Return)
+
+		// If no tail expression, return nil
+		if tailExpr == nil {
+			restoreVoid()
+			for _, name := range localVars {
+				delete(execEnv.vars, name)
+			}
+			return nil, nil
+		}
+
+		// Try tail-call optimization on the tail expression
+		if canTCO {
+			result, newArgs, isTailCall, err := execEnv.evalTailAware(tailExpr, fn.Name)
+			for _, name := range localVars {
+				delete(execEnv.vars, name)
+			}
 			if err != nil {
 				return nil, err
 			}
+			if isTailCall {
+				args = newArgs
+				continue // trampoline — reuse this frame
+			}
+			return result, nil
 		}
-		// Clean up local vars
+
+		// No TCO — normal evaluation
+		result, err := execEnv.Eval(tailExpr)
+		restoreVoid()
 		for _, name := range localVars {
 			delete(execEnv.vars, name)
 		}
-		return result, nil
+		return result, err
 	}
+}
 
-	return nil, nil
+// evalTailAware evaluates a node, detecting tail calls to funcName.
+// Returns (result, newArgs, isTailCall, error).
+// When isTailCall is true, newArgs contains the evaluated arguments for the next iteration.
+func (env *Env) evalTailAware(n ast.Node, funcName string) (any, []any, bool, error) {
+	switch e := n.(type) {
+	case *ast.CallExpr:
+		if e.Func == funcName {
+			// Tail call — evaluate args and signal trampoline
+			newArgs, err := env.evalArgs(e.Args)
+			if err != nil {
+				return nil, nil, false, err
+			}
+			return nil, newArgs, true, nil
+		}
+		// Not a self-call — evaluate normally
+		result, err := env.Eval(n)
+		return result, nil, false, err
+	case *ast.TernaryExpr:
+		// Unwrap ternary: evaluate condition, then check chosen branch
+		cond, err := env.Eval(e.Cond)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		b, ok := cond.(bool)
+		if !ok {
+			return nil, nil, false, fmt.Errorf("ternary condition must be bool, got %T", cond)
+		}
+		if b {
+			return env.evalTailAware(e.Then, funcName)
+		}
+		return env.evalTailAware(e.Else, funcName)
+	default:
+		result, err := env.Eval(n)
+		return result, nil, false, err
+	}
 }
 
 func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {

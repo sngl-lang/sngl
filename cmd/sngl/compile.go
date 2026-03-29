@@ -71,7 +71,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 
-		if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver(), true); err != nil {
+		if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), true); err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 

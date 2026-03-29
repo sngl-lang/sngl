@@ -11,7 +11,7 @@ import (
 
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
 // Pass dir="" and resolve=nil when no filesystem is available (e.g. playground).
-func Analyze(content, filename, dir string, resolve checker.ImportResolver) (*ast.Document, []Diagnostic) {
+func Analyze(content, filename, dir string, resolve checker.ImportResolver, schemeResolve ...checker.SchemeResolver) (*ast.Document, []Diagnostic) {
 	doc, parseErr := snglparser.Parse(filename, strings.NewReader(content))
 
 	var diags []Diagnostic
@@ -20,8 +20,13 @@ func Analyze(content, filename, dir string, resolve checker.ImportResolver) (*as
 		diags = append(diags, ParseErrorsToDiagnostics(filename, parseErr)...)
 	}
 
+	var sr checker.SchemeResolver
+	if len(schemeResolve) > 0 {
+		sr = schemeResolve[0]
+	}
+
 	if doc != nil {
-		_, checkDiags := checker.CheckDiagnostics(doc, dir, resolve)
+		_, checkDiags := checker.CheckDiagnostics(doc, dir, resolve, sr)
 		for _, d := range checkDiags {
 			rng := Range{Start: Position{}, End: Position{}}
 			if d.Pos.IsValid() {

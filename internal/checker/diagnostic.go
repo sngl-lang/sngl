@@ -14,19 +14,20 @@ type Diagnostic struct {
 
 // CheckDiagnostics type-checks a document and returns structured diagnostics
 // instead of a joined error string.
-func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver) (*ast.Document, []Diagnostic) {
+func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver) (*ast.Document, []Diagnostic) {
 	registry, styleProps, _, _, _, err := LoadStdlib()
 	if err != nil {
 		return doc, []Diagnostic{{Msg: fmt.Sprintf("loading stdlib: %v", err)}}
 	}
 
 	c := &checker{
-		registry:   registry,
-		styleProps: styleProps,
-		scope:      NewScope(nil),
-		dir:        dir,
-		resolve:    resolve,
-		visited:    map[string]bool{},
+		registry:      registry,
+		styleProps:    styleProps,
+		scope:         NewScope(nil),
+		dir:           dir,
+		resolve:       resolve,
+		schemeResolve: schemeResolve,
+		visited:       map[string]bool{},
 	}
 
 	if doc.App == nil && len(doc.Tests) == 0 {

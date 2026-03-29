@@ -1,0 +1,45 @@
+component main {
+    // Tail-recursive factorial with accumulator
+    func factorial(n int, acc int) int = n <= 1 ? acc : factorial(n - 1, n * acc)
+
+    // Tail-recursive sum (safe from overflow at high depth)
+    func sumTo(n int, acc int) int = n <= 0 ? acc : sumTo(n - 1, acc + n)
+
+    // Non-tail recursive fibonacci
+    func fib(n int) int = n <= 1 ? n : fib(n - 1) + fib(n - 2)
+
+    // Tail-recursive GCD (block form)
+    func gcd(a int, b int) int {
+        return b == 0 ? a : gcd(b, a % b)
+    }
+
+    text(value="placeholder")
+}
+
+test main "tail-recursive factorial" {
+    assert(factorial(1, 1) == 1)
+    assert(factorial(5, 1) == 120)
+    assert(factorial(10, 1) == 3628800)
+}
+
+test main "tail-recursive sum (proves TCO)" {
+    assert(sumTo(0, 0) == 0)
+    assert(sumTo(10, 0) == 55)
+    // Depth > 100: would overflow stack without TCO
+    assert(sumTo(200, 0) == 20100)
+    assert(sumTo(1000, 0) == 500500)
+}
+
+test main "recursive fibonacci" {
+    assert(fib(0) == 0)
+    assert(fib(1) == 1)
+    assert(fib(10) == 55)
+}
+
+test main "recursive gcd (block form)" {
+    assert(gcd(12, 8) == 4)
+    assert(gcd(100, 75) == 25)
+    assert(gcd(17, 13) == 1)
+    // Depth > 100: proves TCO works for block form
+    assert(gcd(10946, 6765) == 1)
+}

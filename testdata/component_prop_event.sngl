@@ -4,7 +4,7 @@ component Button {
 
     children allowed
 
-    button(text="Click me", @click={click(1)}) // ERROR(check) "handler must be a statement"
+    button(text="Click me", @click={click(1)})
 }
 
 component main {

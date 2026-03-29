@@ -16,6 +16,11 @@ import (
 // The dir argument is the resolved absolute path of the directory to import.
 type ImportResolver func(dir string) ([]*ast.Document, error)
 
+// SchemeResolver resolves a scheme-based import URI (e.g., "go://pkg/path")
+// into native declarations. The scheme is the URI scheme (e.g., "go"), uri is
+// the full import path, and dir is the importing file's directory.
+type SchemeResolver func(scheme, uri, dir string) (*ast.NativeDecls, error)
+
 // DefaultResolver returns an ImportResolver that reads and parses all .sngl
 // files from the given directory.
 func DefaultResolver() ImportResolver {
@@ -50,7 +55,7 @@ func DefaultResolver() ImportResolver {
 // component schemas. dir is the directory of the .sngl file, used to resolve
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
-func Check(doc *ast.Document, dir string, resolve ImportResolver, isMain bool) error {
+func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver, isMain bool) error {
 	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
@@ -66,16 +71,17 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver, isMain bool) e
 	}
 
 	c := &checker{
-		registry:   registry,
-		styleProps: styleProps,
-		unitTables: unitTables,
-		scope:      NewScope(nil),
-		methods:    map[string]map[string]*methodInfo{},
-		dir:        dir,
-		resolve:    resolve,
-		visited:    map[string]bool{},
-		isMain:     isMain,
-		namespaces: map[string]*importNS{},
+		registry:      registry,
+		styleProps:    styleProps,
+		unitTables:    unitTables,
+		scope:         NewScope(nil),
+		methods:       map[string]map[string]*methodInfo{},
+		dir:           dir,
+		resolve:       resolve,
+		schemeResolve: schemeResolve,
+		visited:       map[string]bool{},
+		isMain:        isMain,
+		namespaces:    map[string]*importNS{},
 	}
 
 	// Inject stdlib functions into the document (prepend so user funcs can override)
@@ -193,21 +199,22 @@ type methodInfo struct {
 }
 
 type checker struct {
-	registry   SchemaRegistry
-	styleProps map[string]StylePropSchema
-	unitTables map[string]*ast.UnitTable
-	scope      *Scope
-	methods    map[string]map[string]*methodInfo // typeName -> methodName -> info
-	components []*ast.Component
-	structs    []*ast.StructDef
-	enums      []*ast.EnumDef
-	constNames map[string]bool // names declared as const (for untyped constant detection)
-	dir        string
-	resolve    ImportResolver
-	visited    map[string]bool // tracks visited import paths to detect cycles
-	isMain     bool            // true for the entry-point package
-	namespaces map[string]*importNS
-	errs       []error
+	registry      SchemaRegistry
+	styleProps    map[string]StylePropSchema
+	unitTables    map[string]*ast.UnitTable
+	scope         *Scope
+	methods       map[string]map[string]*methodInfo // typeName -> methodName -> info
+	components    []*ast.Component
+	structs       []*ast.StructDef
+	enums         []*ast.EnumDef
+	constNames    map[string]bool // names declared as const (for untyped constant detection)
+	dir           string
+	resolve       ImportResolver
+	schemeResolve SchemeResolver
+	visited       map[string]bool // tracks visited import paths to detect cycles
+	isMain        bool            // true for the entry-point package
+	namespaces    map[string]*importNS
+	errs          []error
 }
 
 // importNS stores the exported declarations from an imported package.
@@ -215,6 +222,7 @@ type importNS struct {
 	components []*ast.Component
 	structs    []*ast.StructDef
 	enums      []*ast.EnumDef
+	data       []*ast.Data // extern funcs and vars from native imports
 }
 
 // lookupMethod checks the method registry for a type-attached method and returns its return type.
@@ -315,8 +323,39 @@ func (c *checker) joinErrors() error {
 
 // pass1 resolves declarations: imports, enums, structs, binds, computeds, components, styles.
 func (c *checker) pass1(doc *ast.Document) {
-	// Imports (directory imports load .sngl files)
+	// Imports
 	for _, imp := range doc.Imports {
+		// Scheme-based native imports (e.g., "go://pkg/path")
+		if imp.Scheme != "" {
+			if c.schemeResolve == nil {
+				c.errorAt(imp.Pos, "import %q: scheme imports not supported in this context", imp.Path)
+				continue
+			}
+			decls, err := c.schemeResolve(imp.Scheme, imp.Path, c.dir)
+			if err != nil {
+				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
+				continue
+			}
+			ns := &importNS{
+				structs: decls.Structs,
+				enums:   decls.Enums,
+				data:    decls.Data,
+			}
+			c.namespaces[imp.Namespace] = ns
+			c.structs = append(c.structs, decls.Structs...)
+			c.enums = append(c.enums, decls.Enums...)
+			// Register extern data in scope qualified by namespace
+			for _, d := range decls.Data {
+				hintType := Dyn
+				if d.Init.TypeHint != "" {
+					hintType = c.resolveTypeHint(imp.Pos, d.Init.TypeHint)
+				}
+				c.scope.Declare(imp.Namespace+"."+d.Name, hintType)
+			}
+			continue
+		}
+
+		// Directory imports load .sngl files
 		if c.resolve == nil {
 			c.errorAt(imp.Pos, "import %q: directory imports not supported in this context", imp.Path)
 			continue
@@ -633,8 +672,16 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 			return Dyn
 		}
 	case *ast.MethodExpr:
-		// Check if receiver is a type name (e.g., int.sqrt(x))
+		// Check if receiver is a namespace with extern functions (e.g., api.SaveTodo(item))
 		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.IsFunc && d.ReturnType != "" {
+						return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
+					}
+				}
+			}
+			// Check if receiver is a type name (e.g., int.sqrt(x))
 			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
 				return t
 			}
@@ -646,6 +693,18 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		}
 		return Dyn
 	case *ast.SelectExpr:
+		// Check if operand is a namespace with extern vars (e.g., api.Items)
+		if ident, ok := e.Operand.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Field && !d.IsFunc {
+						if d.Init.TypeHint != "" {
+							return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+						}
+					}
+				}
+			}
+		}
 		return Dyn
 	case *ast.IndexExpr:
 		return Dyn
@@ -984,8 +1043,16 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 			return Dyn
 		}
 	case *ast.MethodExpr:
-		// Check if receiver is a type name (e.g., int.sqrt(x))
+		// Check if receiver is a namespace with extern functions
 		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.IsFunc && d.ReturnType != "" {
+						return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
+					}
+				}
+			}
+			// Check if receiver is a type name (e.g., int.sqrt(x))
 			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
 				return t
 			}
@@ -997,6 +1064,18 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		}
 		return Dyn
 	case *ast.SelectExpr:
+		// Check if operand is a namespace with extern vars
+		if ident, ok := e.Operand.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Field && !d.IsFunc {
+						if d.Init.TypeHint != "" {
+							return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+						}
+					}
+				}
+			}
+		}
 		return Dyn
 	case *ast.IndexExpr:
 		return Dyn
@@ -1049,6 +1128,11 @@ func isStatement(n ast.Node) bool {
 	case *ast.ToggleStmt:
 		return true
 	case *ast.EmitStmt:
+		return true
+	case *ast.CallStmt:
+		return true
+	case *ast.MethodExpr:
+		// Namespaced function calls used as statements (e.g., api.SaveTodo(item))
 		return true
 	case *ast.StmtBlock:
 		for _, s := range e.Stmts {

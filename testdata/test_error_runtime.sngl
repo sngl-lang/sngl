@@ -33,3 +33,12 @@ test errs "index on non-list" { // ERROR(test) "cannot index"
 test errs "division by zero" { // ERROR(test) "division by zero"
     count = 1 / 0
 }
+
+component overflow {
+    func boom(n int) int = 1 + boom(n + 1)
+    text(value="x")
+}
+
+test overflow "stack overflow" { // ERROR(test) "stack overflow"
+    assert(boom(0) == 0)
+}

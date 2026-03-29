@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -19,7 +21,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		err = Check(doc, "../../testdata", DefaultResolver(), true)
+		err = Check(doc, "../../testdata", DefaultResolver(), nil, true)
 		// When check error directives exist, also merge CheckTests
 		// diagnostics so ERROR(check) directives on test blocks match.
 		if len(checkErrs) > 0 {
@@ -41,6 +43,90 @@ func TestFixtures(t *testing.T) {
 		}
 		testutil.AssertErrors(t, err, checkErrs)
 	})
+}
+
+func TestSchemeImport(t *testing.T) {
+	mockResolver := func(scheme, uri, dir string) (*ast.NativeDecls, error) {
+		if scheme != "test" {
+			return nil, fmt.Errorf("unknown scheme %q", scheme)
+		}
+		return &ast.NativeDecls{
+			Structs: []*ast.StructDef{
+				{Name: "Todo", Fields: []*ast.StructField{
+					{Name: "id", Type: "int"},
+					{Name: "title", Type: "string"},
+				}},
+			},
+			Data: []*ast.Data{
+				{Name: "SaveTodo", Extern: true, IsFunc: true, ParamTypes: []string{"todo"}, ReturnType: "", Init: ast.Expr{TypeHint: "func:todo"}},
+				{Name: "FetchAll", Extern: true, IsFunc: true, ParamTypes: nil, ReturnType: "list:todo", Init: ast.Expr{TypeHint: "func~list:todo"}},
+				{Name: "Items", Extern: true, Init: ast.Expr{TypeHint: "list:todo"}},
+			},
+		}, nil
+	}
+
+	src := `import "test://myapi/api"
+
+component main {
+    var count = 0
+    text(value=string(count))
+    button(text="Save", @click={ count += 1 })
+}
+`
+	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := Check(doc, ".", nil, mockResolver, true); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+
+	// Verify import was parsed correctly
+	if len(doc.Imports) != 1 {
+		t.Fatalf("expected 1 import, got %d", len(doc.Imports))
+	}
+	imp := doc.Imports[0]
+	if imp.Scheme != "test" {
+		t.Errorf("scheme = %q, want %q", imp.Scheme, "test")
+	}
+	if imp.Namespace != "api" {
+		t.Errorf("namespace = %q, want %q", imp.Namespace, "api")
+	}
+}
+
+func TestSchemeImportUnknownScheme(t *testing.T) {
+	src := `import "unknown://foo/bar"
+
+component main {
+    text(value="hello")
+}
+`
+	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	err = Check(doc, ".", nil, nil, true)
+	if err == nil {
+		t.Fatal("expected error for unknown scheme, got nil")
+	}
+	if !strings.Contains(err.Error(), "scheme imports not supported") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCallStmtInHandler(t *testing.T) {
+	src := `component main {
+    var saveTodo func(string) extern
+    button(text="Save", @click={ saveTodo("test") })
+}
+`
+	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := Check(doc, ".", nil, nil, true); err != nil {
+		t.Fatalf("expected no error for CallStmt in handler, got: %v", err)
+	}
 }
 
 func TestCheckTests(t *testing.T) {

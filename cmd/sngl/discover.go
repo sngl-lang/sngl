@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
 
@@ -49,4 +51,16 @@ func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
 
 func isSNGLFile(path string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ".sngl")
+}
+
+// defaultSchemeResolver returns a SchemeResolver that delegates to registered
+// codegen scheme importers.
+func defaultSchemeResolver() checker.SchemeResolver {
+	return func(scheme, uri, dir string) (*ast.NativeDecls, error) {
+		imp := codegen.LookupScheme(scheme)
+		if imp == nil {
+			return nil, fmt.Errorf("unknown import scheme %q", scheme)
+		}
+		return imp.Resolve(uri, dir)
+	}
 }

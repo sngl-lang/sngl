@@ -190,6 +190,10 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 	for i, a := range args {
 		argStrs[i] = ec.translateExpr(a)
 	}
+	// Extern functions are model fields — prefix with m.
+	if ec.modelFields[fn] {
+		fn = "m." + exportName(fn)
+	}
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 

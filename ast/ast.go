@@ -131,7 +131,15 @@ type StructField struct {
 type Import struct {
 	Pos       Pos
 	Path      string
+	Scheme    string // "go", "ts", "proto", "" for directory imports
 	Namespace string // last path segment, e.g. "widgets" from "lib/widgets"
+}
+
+// NativeDecls holds SNGL-compatible declarations resolved from a native import.
+type NativeDecls struct {
+	Structs []*StructDef
+	Enums   []*EnumDef
+	Data    []*Data // extern funcs and vars
 }
 
 type Data struct {
