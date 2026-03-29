@@ -1,0 +1,66 @@
+output js html
+
+struct Config {
+    name string = ""
+    count int = 0
+}
+
+enum Status { active, inactive }
+
+component Counter {
+    param label = ""
+    param count int
+
+    text(value=label + ": " + string(count))
+    button(text="+", @click={ count = count + 1 })
+}
+
+component main {
+    var (
+        count = 0
+        name = "World"
+        active = true
+        conf = Config{name: "test", count: 0}
+    )
+
+    const (
+        MAX = 100
+        MIN = 0
+        LABEL = "Clicks: " + string(MAX)
+    )
+
+    computed (
+        greeting = "Hello, {name}"
+        doubled = count * 2
+        clamped = count > MAX ? MAX : count < MIN ? MIN : count
+    )
+
+    func add(a int, b int) int = a + b
+    func reset() {
+        count = 0
+    }
+
+    Counter(label="Count", count=count)
+    text(value=greeting)
+    button(text="reset", @click={ reset() })
+
+    for i, item in [1, 2, 3] {
+        text(value=string(item))
+    }
+
+    if active {
+        text(value="active")
+    }
+}
+
+test main "arithmetic" {
+    assert(count == 0)
+    count = 5
+    assert(count == 5)
+    assert(doubled == 10)
+}
+
+test main "const usage" {
+    assert(MAX == 100)
+    assert(MIN == 0)
+}

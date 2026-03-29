@@ -1,0 +1,22 @@
+component main {
+    var count int = 0
+    var name string = "hello"
+    var active bool = true
+    var price float = 9.99
+    var items = [1, 2, 3]
+
+    computed doubled = count * 2
+    computed greeting = "hi {name}"
+    computed isPositive = count > 0
+    computed sum = count + price
+    computed label = name + " " + string(count)
+    computed negated = -count
+    computed notActive = !active
+    computed pick = active ? "yes" : "no"
+    computed intVal = int(price)
+    computed floatVal = float(count)
+    computed strVal = string(count)
+    computed listLen = items.length()
+
+    text(value=greeting)
+}

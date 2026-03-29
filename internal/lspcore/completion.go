@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
@@ -17,8 +16,6 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 		return TopLevelKeywords()
 	case CtxComponent:
 		return ComponentKeywords()
-	case CtxPropValue, CtxExpression:
-		return ExpressionCompletions(doc)
 	case CtxVisualNode:
 		return ComponentNameCompletions(doc)
 	case CtxStyleProp:
@@ -26,19 +23,16 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 	case CtxEventHandler:
 		return EventCompletions()
 	default:
-		return AllCompletions(doc)
+		return ExpressionCompletions(doc)
 	}
 }
 
 type CompletionCtx int
 
 const (
-	CtxUnknown CompletionCtx = iota
-	CtxTopLevel
+	CtxTopLevel CompletionCtx = iota
 	CtxComponent
 	CtxVisualNode
-	CtxPropValue
-	CtxExpression
 	CtxStyleProp
 	CtxEventHandler
 )
@@ -68,10 +62,7 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 	if braceDepth == 1 {
 		return CtxComponent
 	}
-	if braceDepth >= 2 {
-		return CtxVisualNode
-	}
-	return CtxUnknown
+	return CtxVisualNode
 }
 
 func TopLevelKeywords() []CompletionItem {
@@ -191,12 +182,3 @@ func StdlibComponentItems() []CompletionItem {
 	return items
 }
 
-func AllCompletions(doc *ast.Document) []CompletionItem {
-	var items []CompletionItem
-	for kw := range snglparser.Keywords() {
-		items = append(items, CompletionItem{Label: kw, Kind: CIKKeyword})
-	}
-	items = append(items, StdlibComponentItems()...)
-	items = append(items, ExpressionCompletions(doc)...)
-	return items
-}
