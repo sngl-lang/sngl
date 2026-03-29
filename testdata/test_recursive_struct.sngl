@@ -1,0 +1,65 @@
+struct TreeNode {
+    value int = 0
+    left dyn = null
+    right dyn = null
+}
+
+component main {
+    // Build a small tree:
+    //       5
+    //      / \
+    //     3   8
+    //    / \
+    //   1   4
+    var leaf1 = TreeNode{value: 1}
+    var leaf4 = TreeNode{value: 4}
+    var node3 = TreeNode{value: 3, left: leaf1, right: leaf4}
+    var node8 = TreeNode{value: 8}
+    var root = TreeNode{value: 5, left: node3, right: node8}
+
+    // Recursive tree sum
+    func treeSum(node dyn) int {
+        return node == null ? 0 : node.value + treeSum(node.left) + treeSum(node.right)
+    }
+
+    // Recursive tree depth
+    func treeDepth(node dyn) int {
+        return node == null ? 0 : 1 + int.max(treeDepth(node.left), treeDepth(node.right))
+    }
+
+    // Recursive tree contains
+    func treeContains(node dyn, target int) bool {
+        return node == null ? false : node.value == target || treeContains(node.left, target) || treeContains(node.right, target)
+    }
+
+    text(value=string(treeSum(root)))
+}
+
+test main "tree sum" {
+    assert(treeSum(root) == 21)
+    assert(treeSum(null) == 0)
+    assert(treeSum(leaf1) == 1)
+    assert(treeSum(node3) == 8)
+}
+
+test main "tree depth" {
+    assert(treeDepth(null) == 0)
+    assert(treeDepth(leaf1) == 1)
+    assert(treeDepth(node3) == 2)
+    assert(treeDepth(root) == 3)
+}
+
+test main "tree contains" {
+    assert(treeContains(root, 5) == true)
+    assert(treeContains(root, 1) == true)
+    assert(treeContains(root, 8) == true)
+    assert(treeContains(root, 99) == false)
+    assert(treeContains(null, 1) == false)
+}
+
+test main "tree mutation" {
+    node8.left = TreeNode{value: 7}
+    assert(treeSum(root) == 28)
+    assert(treeDepth(root) == 3)
+    assert(treeContains(root, 7) == true)
+}

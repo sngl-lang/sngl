@@ -75,6 +75,9 @@ type htmlGen struct {
 
 	// Component invocation counter for unique param names
 	componentInvocations int
+
+	// Component nesting depth for recursion protection
+	componentDepth int
 }
 
 type componentParam struct {
@@ -1179,12 +1182,21 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 	}
 }
 
+const maxComponentDepth = 10
+
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	// Find the component definition
 	comp := g.doc.FindComponent(vn.Component)
 	if comp == nil {
 		return
 	}
+
+	g.componentDepth++
+	if g.componentDepth > maxComponentDepth {
+		g.componentDepth--
+		return // prevent infinite component recursion
+	}
+	defer func() { g.componentDepth-- }()
 
 	g.componentInvocations++
 	suffix := fmt.Sprintf("_%d", g.componentInvocations)

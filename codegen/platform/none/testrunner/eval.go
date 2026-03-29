@@ -23,7 +23,8 @@ type Env struct {
 	timers    []*ast.Timer
 	doc       *ast.Document
 	body      []*ast.VisualNode
-	depth     int // current call stack depth
+	depth       int // current call stack depth
+	renderDepth int // current component render depth
 }
 
 func NewEnv() *Env {
@@ -55,7 +56,8 @@ func (env *Env) Snapshot() *Env {
 		units:     env.units,
 		doc:       env.doc,
 		body:      env.body,
-		depth:     env.depth,
+		depth:       env.depth,
+		renderDepth: env.renderDepth,
 	}
 	maps.Copy(cp.vars, env.vars)
 	return cp
