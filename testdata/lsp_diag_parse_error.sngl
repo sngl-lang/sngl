@@ -1,0 +1,1 @@
+foobar blah // ERROR(parse) "unexpected" //@ diag("unexpected")

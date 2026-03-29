@@ -1,0 +1,3 @@
+component main {
+    unknown_widget(value="hi") // ERROR(check) "unknown component" //@ diag("unknown component")
+}

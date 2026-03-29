@@ -1,0 +1,3 @@
+component main {
+    text(value="hello", style={color=#ff0000}) //@ complete("style=", "color", "background")
+}

@@ -4,5 +4,5 @@ component greeter {
 }
 
 component main {
-    greeter() //@ diag("required property")
+    greeter() // ERROR(check) "required property" //@ diag("required property")
 }

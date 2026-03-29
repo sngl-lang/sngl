@@ -37,13 +37,14 @@ func TestFixtureAgreement(t *testing.T) {
 
 	for _, path := range matches {
 		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
-		isError := strings.HasPrefix(name, "error_")
 
 		t.Run(name, func(t *testing.T) {
 			src, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			isError := strings.HasPrefix(name, "error_") || strings.Contains(string(src), "ERROR(parse)")
 
 			// Parse with Go parser.
 			goDoc, goErr := snglparser.Parse(name+".sngl", strings.NewReader(string(src)))

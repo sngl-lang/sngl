@@ -72,12 +72,12 @@ func parseArgs(s string) []string {
 }
 
 func TestMarkers(t *testing.T) {
-	matches, err := filepath.Glob("testdata/*.sngl")
+	matches, err := filepath.Glob("../../testdata/lsp_*.sngl")
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
 	if len(matches) == 0 {
-		t.Fatal("no testdata/*.sngl files found")
+		t.Fatal("no testdata/lsp_*.sngl files found")
 	}
 
 	for _, path := range matches {
@@ -90,7 +90,7 @@ func TestMarkers(t *testing.T) {
 			content := string(data)
 			markers := parseMarkers(content)
 
-			doc, diags := lspcore.Analyze(content, filepath.Base(path), "testdata", checker.DefaultResolver())
+			doc, diags := lspcore.Analyze(content, filepath.Base(path), filepath.Dir(path), checker.DefaultResolver())
 
 			// Collect diag markers by line
 			diagExpected := map[int][]string{} // line (1-based) → expected substrings

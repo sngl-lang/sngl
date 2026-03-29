@@ -1,0 +1,11 @@
+struct Point {
+    x float = 0.0
+    y float = 0.0
+}
+
+enum Direction { up, down, left, right }
+
+component main {
+    var dir Direction = "up" //@ hover("Direction", "enum Direction")
+    text(value=dir) //@ hover("Point", "struct Point")
+}

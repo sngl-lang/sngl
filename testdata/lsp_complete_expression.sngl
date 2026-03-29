@@ -1,0 +1,12 @@
+struct Config {
+    debug bool = false
+}
+
+enum Status { active, inactive }
+
+component main {
+    var count int = 0
+    computed doubled = count * 2
+    const label = "hi"
+    text(value=string(count))
+}

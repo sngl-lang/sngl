@@ -1,0 +1,9 @@
+component card {
+    param title string required
+    text(value=title)
+}
+
+component main {
+    vbox() { //@ complete("", "text", "button", "card")
+    }
+}

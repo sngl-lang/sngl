@@ -1,3 +1,0 @@
-component main {
-    unknown_widget(value="hi") //@ diag("unknown component")
-}
