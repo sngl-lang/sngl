@@ -36,7 +36,7 @@ test:
   needs:
     - job: build-image
       optional: true
-  script: go tool devtest
+  script: go tool verify
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
 
 pages:
