@@ -13,6 +13,7 @@ type viewContext struct {
 	scaleFactor int
 	inputIndex  map[string]int // input node key → index in focusable list
 	focusIndex  int            // next focusable index
+	inputCount  int            // next input-specific index (for m.inputN field names)
 	forCursors  []forLoopCursor
 	buf         *strings.Builder
 	indent      int
@@ -183,7 +184,7 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 	prevVertical := vc.vertical
 	vc.vertical = vertical
 	for i, child := range vn.Children {
-		childVar := fmt.Sprintf("%s%d", resultVar, i)
+		childVar := fmt.Sprintf("%s_%d", resultVar, i)
 		// Declare childVar before the if/for so it's in scope after
 		vc.line("var %s string", childVar)
 		vc.renderNode(child, childVar)
@@ -305,9 +306,10 @@ func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderInput(vn *ast.VisualNode, resultVar string) {
-	idx := vc.focusIndex
+	inputIdx := vc.inputCount
+	vc.inputCount++
 	vc.focusIndex++
-	vc.line(`%s = m.input%d.View()`, resultVar, idx)
+	vc.line(`%s = m.input%d.View()`, resultVar, inputIdx)
 }
 
 func (vc *viewContext) renderSpacer(vn *ast.VisualNode, resultVar string) {
@@ -371,7 +373,7 @@ func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
 		vc.line(`var %sParts []string`, resultVar)
 		vc.line(`for _, opt := range %s {`, options)
 		vc.line(`	s := fmt.Sprint(opt)`)
-		vc.line(`	if s == fmt.Sprint(%s) { %sParts = append(%sParts, "(•) "+s) } else { %sParts = append(%sParts, "( ) "+s) }`, value, resultVar, resultVar, resultVar)
+		vc.line(`	if s == fmt.Sprint(%s) { %sParts = append(%sParts, "(•) "+s) } else { %sParts = append(%sParts, "( ) "+s) }`, value, resultVar, resultVar, resultVar, resultVar)
 		vc.line(`}`)
 		vc.line(`%s = %s.Render(strings.Join(%sParts, "  "))`, resultVar, style, resultVar)
 		vc.indent--
@@ -385,7 +387,7 @@ func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
 	vc.line(`var %sParts []string`, resultVar)
 	vc.line(`for _, opt := range %s {`, options)
 	vc.line(`	s := fmt.Sprint(opt)`)
-	vc.line(`	if s == fmt.Sprint(%s) { %sParts = append(%sParts, "(•) "+s) } else { %sParts = append(%sParts, "( ) "+s) }`, value, resultVar, resultVar, resultVar)
+	vc.line(`	if s == fmt.Sprint(%s) { %sParts = append(%sParts, "(•) "+s) } else { %sParts = append(%sParts, "( ) "+s) }`, value, resultVar, resultVar, resultVar, resultVar)
 	vc.line(`}`)
 	vc.line(`%sPrefix := " "`, resultVar)
 	vc.line(`if m.focus == %d { %sPrefix = ">" }`, focusIdx, resultVar)
@@ -560,7 +562,7 @@ func (vc *viewContext) renderConditionalContainer(vn *ast.VisualNode, resultVar 
 		prevVertical := vc.vertical
 		vc.vertical = true
 		for i, child := range vn.Children {
-			childVar := fmt.Sprintf("%s%d", resultVar, i)
+			childVar := fmt.Sprintf("%s_%d", resultVar, i)
 			vc.line("var %s string", childVar)
 			vc.renderNode(child, childVar)
 			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
@@ -598,7 +600,7 @@ func (vc *viewContext) renderAccordion(vn *ast.VisualNode, resultVar string) {
 	vc.line(`for i, item := range %s {`, items)
 	vc.line(`	isOpen := false`)
 	vc.line(`	for _, e := range %sExpanded { if fmt.Sprint(e) == fmt.Sprint(i) { isOpen = true } }`, resultVar)
-	vc.line(`	if isOpen { %sParts = append(%sParts, "▼ "+fmt.Sprint(item)) } else { %sParts = append(%sParts, "▶ "+fmt.Sprint(item)) }`, resultVar, resultVar, resultVar)
+	vc.line(`	if isOpen { %sParts = append(%sParts, "▼ "+fmt.Sprint(item)) } else { %sParts = append(%sParts, "▶ "+fmt.Sprint(item)) }`, resultVar, resultVar, resultVar, resultVar)
 	vc.line(`}`)
 	vc.line(`%s = %s.Render(strings.Join(%sParts, "\n"))`, resultVar, style, resultVar)
 	vc.indent--
@@ -784,7 +786,7 @@ func (vc *viewContext) renderCard(vn *ast.VisualNode, resultVar string) {
 		prevVertical := vc.vertical
 		vc.vertical = true
 		for i, child := range vn.Children {
-			childVar := fmt.Sprintf("%s%d", resultVar, i)
+			childVar := fmt.Sprintf("%s_%d", resultVar, i)
 			vc.line("var %s string", childVar)
 			vc.renderNode(child, childVar)
 			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)

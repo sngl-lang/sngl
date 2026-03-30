@@ -70,7 +70,14 @@ func runTest(cmd *cobra.Command, args []string) error {
 	var allResults []*codegen.TestResult
 
 	for _, filename := range files {
-		doc, err := parseTestFile(filename)
+		tf, err := os.Open(filename)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			totalFail++
+			continue
+		}
+		doc, err := parseSNGL(filename, tf)
+		tf.Close()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
@@ -81,12 +88,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		doc, err = mergeDir(doc, filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-			totalFail++
-			continue
-		}
+		doc = mergeDir(doc, filename)
 
 		if doc.App != nil || len(doc.Tests) > 0 {
 			if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), true); err != nil {
@@ -230,45 +232,3 @@ func toJSON(r *codegen.TestResult, prefix string) jsonResult {
 	return jr
 }
 
-func parseTestFile(filename string) (*ast.Document, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return parseSNGL(filename, f)
-}
-
-// mergeDir merges component definitions from sibling .sngl files in the same
-// directory so tests can reference components defined in other files.
-func mergeDir(doc *ast.Document, filename string) (*ast.Document, error) {
-	dir := filepath.Dir(filename)
-	base := filepath.Base(filename)
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return doc, nil
-	}
-
-	for _, e := range entries {
-		if e.IsDir() || !isSNGLFile(e.Name()) || e.Name() == base {
-			continue
-		}
-		path := filepath.Join(dir, e.Name())
-		sibling, err := parseTestFile(path)
-		if err != nil {
-			continue // skip unparseable sibling files
-		}
-		doc.Components = append(doc.Components, sibling.Components...)
-		doc.Structs = append(doc.Structs, sibling.Structs...)
-		doc.Enums = append(doc.Enums, sibling.Enums...)
-		if sibling.App != nil && doc.App == nil {
-			doc.App = sibling.App
-			doc.Data = append(doc.Data, sibling.Data...)
-			doc.Computeds = append(doc.Computeds, sibling.Computeds...)
-			doc.Consts = append(doc.Consts, sibling.Consts...)
-		}
-	}
-
-	return doc, nil
-}

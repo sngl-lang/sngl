@@ -25,6 +25,11 @@ exists out/index.html
 sngl compile --lang=js --platform=html --out=out2 -q app.sngl
 ! stdout .
 
+# Compile a directory merges all .sngl files.
+sngl compile --lang=js --platform=html --out=out3 myapp/
+stdout 'out3/index.html'
+exists out3/index.html
+
 -- app.sngl --
 component main {
     var count = 0
@@ -34,3 +39,13 @@ component main {
 -- bad.sngl --
 not valid sngl
 -- empty/.gitkeep --
+-- myapp/app.sngl --
+component main {
+    var count = 0
+    Counter(initial=count)
+}
+-- myapp/counter.sngl --
+component Counter {
+    param initial = 0
+    text(value="Count: " + string(initial))
+}

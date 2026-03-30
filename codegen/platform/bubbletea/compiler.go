@@ -444,7 +444,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
 		}
 		for _, t := range info.timers {
-			fmt.Fprintf(&b, "\tif m.%s {\n", exportName(t.activeVar))
+			fmt.Fprintf(&b, "\tif m.%s {\n", t.activeVar)
 			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.intervalMs, t.index)
 			b.WriteString("\t}\n")
 		}
@@ -649,14 +649,14 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	// Timer tick messages
 	for _, t := range info.timers {
 		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.index)
-		fmt.Fprintf(b, "\t\tif m.%s {\n", exportName(t.activeVar))
+		fmt.Fprintf(b, "\t\tif m.%s {\n", t.activeVar)
 		// Emit body mutations
 		stmts := ec.translateMutation(t.body)
 		for _, s := range stmts {
 			fmt.Fprintf(b, "\t\t\t%s\n", s)
 		}
 		// Re-schedule
-		fmt.Fprintf(b, "\t\t\tif m.%s {\n", exportName(t.activeVar))
+		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.activeVar)
 		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.intervalMs, t.index)
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
@@ -956,6 +956,16 @@ func snglNodeGoType(e ast.Node) string {
 		case "float":
 			return "float64"
 		case "size":
+			return "int"
+		}
+	case *ast.InterpolationExpr:
+		return "string"
+	case *ast.MethodExpr:
+		// String methods return string
+		switch n.Method {
+		case "upper", "lower", "trim", "replace", "substring":
+			return "string"
+		case "length", "indexOf":
 			return "int"
 		}
 	}

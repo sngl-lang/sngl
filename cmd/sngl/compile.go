@@ -59,25 +59,35 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no .sngl files found")
 	}
 
+	// Group files by directory so sibling .sngl files are merged into one
+	// compilation unit (package-level semantics).
+	seen := make(map[string]bool)
 	for _, filename := range files {
+		dir := filepath.Dir(filename)
+		if seen[dir] {
+			continue
+		}
+		seen[dir] = true
+
 		f, err := os.Open(filename)
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
-
 		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 
-		if err := checker.Check(doc, filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), true); err != nil {
-			return fmt.Errorf("%s: %w", filename, err)
+		doc = mergeDir(doc, filename)
+
+		if err := checker.Check(doc, dir, checker.DefaultResolver(), defaultSchemeResolver(), true); err != nil {
+			return fmt.Errorf("%s: %w", dir, err)
 		}
 
 		targets := resolveTargets(doc, cliLang, cliPlat, cliOpts)
 		if len(targets) == 0 {
-			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", filename)
+			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}
 
 		for _, target := range targets {
@@ -89,7 +99,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 				Platform: target.Platform,
 				Language: target.Lang,
 			}); err != nil {
-				return fmt.Errorf("%s: %w", filename, err)
+				return fmt.Errorf("%s: %w", dir, err)
 			}
 			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
 				return err

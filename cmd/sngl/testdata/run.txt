@@ -1,0 +1,18 @@
+# No file specified.
+! sngl run
+
+# --lang without --platform is an error.
+! sngl run --lang=js app.sngl
+
+# --platform without --lang is an error.
+! sngl run --platform=html app.sngl
+
+# Platform "none" does not support direct execution.
+! sngl run --lang=js --platform=none app.sngl
+
+-- app.sngl --
+component main {
+    var count = 0
+    button(text="+", @click={ count += 1 })
+    text(value="Count: {count}")
+}

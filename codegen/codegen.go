@@ -65,6 +65,13 @@ type Snapshotter interface {
 	Snapshot(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
 }
 
+// Runner is optionally implemented by PlatformGenerators that can execute
+// their generated output directly (e.g., "go run" for bubbletea, open
+// browser for HTML, adb install for Android).
+type Runner interface {
+	Run(dir string, args []string) error
+}
+
 // OutputFile represents a single generated file.
 type OutputFile struct {
 	Name    string // relative path, e.g. "model.go"
