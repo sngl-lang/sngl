@@ -53,6 +53,16 @@ func scaffoldFiles(cfg Config) []*codegen.OutputFile {
 		Content: []byte(gradleProperties()),
 	})
 
+	// Gradle wrapper
+	files = append(files, &codegen.OutputFile{
+		Name:    "gradle/wrapper/gradle-wrapper.properties",
+		Content: []byte(gradleWrapperProperties()),
+	})
+	files = append(files, &codegen.OutputFile{
+		Name:    "gradlew",
+		Content: []byte(gradlewScript()),
+	})
+
 	return files
 }
 
@@ -92,9 +102,9 @@ private val DefaultColorScheme = lightColorScheme()
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
-    val colorScheme = try {
+    val colorScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
         dynamicLightColorScheme(LocalContext.current)
-    } catch (_: Exception) {
+    } else {
         DefaultColorScheme
     }
     MaterialTheme(
@@ -112,7 +122,7 @@ func androidManifest(cfg Config) string {
         android:allowBackup="true"
         android:label="%s"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -188,7 +198,8 @@ func settingsGradle(cfg Config) string {
         gradlePluginPortal()
     }
 }
-dependencyResolution {
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
@@ -203,6 +214,45 @@ include(":app")
 func gradleProperties() string {
 	return `android.useAndroidX=true
 kotlin.code.style=official
+`
+}
+
+func gradleWrapperProperties() string {
+	return `distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+`
+}
+
+func gradlewScript() string {
+	return `#!/bin/sh
+# Lightweight Gradle bootstrap — downloads and caches a Gradle distribution.
+set -e
+
+GRADLE_VERSION="8.11.1"
+GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/gradle-${GRADLE_VERSION}-bin"
+GRADLE_BIN="$GRADLE_CACHE/gradle-${GRADLE_VERSION}/bin/gradle"
+
+if [ ! -x "$GRADLE_BIN" ]; then
+    echo "Downloading Gradle $GRADLE_VERSION..." >&2
+    mkdir -p "$GRADLE_CACHE"
+    DIST_ZIP="$GRADLE_CACHE/gradle-${GRADLE_VERSION}-bin.zip"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$DIST_ZIP" "$GRADLE_URL"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$DIST_ZIP" "$GRADLE_URL"
+    else
+        echo "Error: curl or wget required to download Gradle" >&2
+        exit 1
+    fi
+    unzip -q -o "$DIST_ZIP" -d "$GRADLE_CACHE"
+    rm -f "$DIST_ZIP"
+fi
+
+exec "$GRADLE_BIN" "$@"
 `
 }
 

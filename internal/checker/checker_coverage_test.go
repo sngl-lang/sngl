@@ -913,7 +913,7 @@ func TestInferNodeTypeInScope_AllCases(t *testing.T) {
 func TestCheckEmptyDoc(t *testing.T) {
 	// Empty doc with isMain=true and no app/tests => error
 	doc := &ast.Document{}
-	err := Check(doc, ".", nil, nil, true)
+	err := Check(doc, ".", nil, nil, nil, true)
 	if err == nil {
 		t.Error("expected error for empty doc with isMain=true")
 	}
@@ -922,7 +922,7 @@ func TestCheckEmptyDoc(t *testing.T) {
 func TestCheckEmptyDocLibrary(t *testing.T) {
 	// Empty doc with isMain=false => no error
 	doc := &ast.Document{}
-	err := Check(doc, ".", nil, nil, false)
+	err := Check(doc, ".", nil, nil, nil, false)
 	if err != nil {
 		t.Errorf("expected no error for library doc, got %v", err)
 	}
@@ -930,7 +930,7 @@ func TestCheckEmptyDocLibrary(t *testing.T) {
 
 func TestCheckDiagnosticsEmpty(t *testing.T) {
 	doc := &ast.Document{}
-	_, diags := CheckDiagnostics(doc, ".", nil, nil)
+	_, diags := CheckDiagnostics(doc, ".", nil, nil, nil)
 	// Just verify it runs without panic
 	_ = diags
 }

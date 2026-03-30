@@ -17,7 +17,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 	}
 	// Verify basic structural elements of generated Kotlin
 	code := string(src)
-	if !strings.Contains(code, "package app") {
+	if !strings.Contains(code, "package test.sngl.app") {
 		t.Errorf("missing package declaration")
 	}
 	if !strings.Contains(code, "@Composable") {
@@ -44,7 +44,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver(), nil, true); err != nil {
+		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver(), nil, nil, true); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)

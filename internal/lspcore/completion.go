@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
@@ -22,6 +23,10 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 		return StylePropCompletions()
 	case CtxEventHandler:
 		return EventCompletions()
+	case CtxOutputOpts:
+		return OutputOptsCompletions(content, line)
+	case CtxOutputTarget:
+		return OutputTargetCompletions(content, line)
 	default:
 		return ExpressionCompletions(doc)
 	}
@@ -35,6 +40,8 @@ const (
 	CtxVisualNode
 	CtxStyleProp
 	CtxEventHandler
+	CtxOutputOpts
+	CtxOutputTarget
 )
 
 func CompletionContext(content string, line, col int) CompletionCtx {
@@ -43,6 +50,17 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 		return CtxTopLevel
 	}
 	l := strings.TrimSpace(lines[line-1])
+
+	// Output line detection — must be before brace depth check since outputs are top-level
+	if strings.HasPrefix(l, "output ") || l == "output" {
+		// Check if cursor is inside parens
+		raw := lines[line-1]
+		prefix := raw[:min(col-1, len(raw))]
+		if strings.Contains(prefix, "(") && !strings.Contains(prefix, ")") {
+			return CtxOutputOpts
+		}
+		return CtxOutputTarget
+	}
 
 	if strings.HasPrefix(l, "@") {
 		return CtxEventHandler
@@ -182,3 +200,98 @@ func StdlibComponentItems() []CompletionItem {
 	return items
 }
 
+// OutputOptsCompletions returns completion items for output option keys
+// inside the parenthesized options of an output declaration.
+func OutputOptsCompletions(content string, line int) []CompletionItem {
+	lines := strings.Split(content, "\n")
+	if line < 1 || line > len(lines) {
+		return nil
+	}
+	l := strings.TrimSpace(lines[line-1])
+
+	// Extract platform name: "output lang platform(...)" → platform is 2nd word after "output"
+	platformName := extractOutputPlatform(l)
+	if platformName == "" {
+		return nil
+	}
+
+	plat := codegen.LookupPlatform(platformName)
+	if plat == nil {
+		return nil
+	}
+	ap, ok := plat.(codegen.APIProvider)
+	if !ok {
+		return nil
+	}
+	apiDoc := ap.API()
+	if apiDoc == nil {
+		return nil
+	}
+
+	var opts *ast.StructDef
+	for _, s := range apiDoc.Structs {
+		if s.Name == "Opts" {
+			opts = s
+			break
+		}
+	}
+	if opts == nil {
+		return nil
+	}
+
+	var items []CompletionItem
+	for _, f := range opts.Fields {
+		items = append(items, CompletionItem{
+			Label:      f.Name,
+			Kind:       CIKProperty,
+			Detail:     f.Type,
+			InsertText: f.Name + "=",
+		})
+	}
+	return items
+}
+
+// OutputTargetCompletions returns completion items for lang/platform names
+// on an output declaration line.
+func OutputTargetCompletions(content string, line int) []CompletionItem {
+	lines := strings.Split(content, "\n")
+	if line < 1 || line > len(lines) {
+		return nil
+	}
+	l := strings.TrimSpace(lines[line-1])
+
+	// Count words after "output" to determine position
+	words := strings.Fields(l)
+	// words[0] = "output", words[1] = lang (if present), words[2] = platform (if present)
+	switch len(words) {
+	case 1: // "output" — complete with lang names
+		var items []CompletionItem
+		for _, name := range codegen.Langs() {
+			items = append(items, CompletionItem{Label: name, Kind: CIKKeyword, Detail: "language"})
+		}
+		return items
+	case 2: // "output js" — complete with platform names
+		var items []CompletionItem
+		for _, name := range codegen.Platforms() {
+			items = append(items, CompletionItem{Label: name, Kind: CIKKeyword, Detail: "platform"})
+		}
+		return items
+	default:
+		return nil
+	}
+}
+
+// extractOutputPlatform extracts the platform name from an output line.
+// e.g., "output js html(package=...)" → "html"
+func extractOutputPlatform(line string) string {
+	words := strings.Fields(line)
+	if len(words) < 3 {
+		return ""
+	}
+	// words[2] may have parens: "html(" or "html(package="
+	plat := words[2]
+	if idx := strings.IndexByte(plat, '('); idx >= 0 {
+		plat = plat[:idx]
+	}
+	return plat
+}

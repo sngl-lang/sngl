@@ -18,7 +18,7 @@ func TestCheckDiagnostics_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	_, diags := CheckDiagnostics(doc, ".", nil, nil)
+	_, diags := CheckDiagnostics(doc, ".", nil, nil, nil)
 	// text is a stdlib component so should be valid
 	for _, d := range diags {
 		if strings.Contains(d.Msg, "unexpected") {
@@ -36,7 +36,7 @@ func TestCheckDiagnostics_UnknownComponent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	_, diags := CheckDiagnostics(doc, ".", nil, nil)
+	_, diags := CheckDiagnostics(doc, ".", nil, nil, nil)
 	found := false
 	for _, d := range diags {
 		if strings.Contains(d.Msg, "unknown component") {
@@ -51,7 +51,7 @@ func TestCheckDiagnostics_UnknownComponent(t *testing.T) {
 
 func TestCheckDiagnostics_NoApp(t *testing.T) {
 	doc := &ast.Document{}
-	_, diags := CheckDiagnostics(doc, ".", nil, nil)
+	_, diags := CheckDiagnostics(doc, ".", nil, nil, nil)
 	if len(diags) == 0 {
 		t.Error("expected diagnostic for missing app")
 	}

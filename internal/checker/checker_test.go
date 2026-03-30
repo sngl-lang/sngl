@@ -21,7 +21,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		err = Check(doc, "../../testdata", DefaultResolver(), nil, true)
+		err = Check(doc, "../../testdata", DefaultResolver(), nil, nil, true)
 		// When check error directives exist, also merge CheckTests
 		// diagnostics so ERROR(check) directives on test blocks match.
 		if len(checkErrs) > 0 {
@@ -77,7 +77,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := Check(doc, ".", nil, mockResolver, true); err != nil {
+	if err := Check(doc, ".", nil, mockResolver, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 
@@ -105,7 +105,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	err = Check(doc, ".", nil, nil, true)
+	err = Check(doc, ".", nil, nil, nil, true)
 	if err == nil {
 		t.Fatal("expected error for unknown scheme, got nil")
 	}
@@ -124,7 +124,7 @@ func TestCallStmtInHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := Check(doc, ".", nil, nil, true); err != nil {
+	if err := Check(doc, ".", nil, nil, nil, true); err != nil {
 		t.Fatalf("expected no error for CallStmt in handler, got: %v", err)
 	}
 }

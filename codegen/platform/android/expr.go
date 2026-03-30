@@ -42,6 +42,13 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		cond := ec.translateExpr(n.Cond)
 		a := ec.translateExpr(n.Then)
 		b := ec.translateExpr(n.Else)
+		// Kotlin if-expressions require matching branch types.
+		// Promote int literals to double when the other branch is float-typed.
+		if isIntLiteral(n.Then) && isFloatExpr(n.Else) {
+			a += ".0"
+		} else if isIntLiteral(n.Else) && isFloatExpr(n.Then) {
+			b += ".0"
+		}
 		return "(if (" + cond + ") " + a + " else " + b + ")"
 	case *ast.IndexExpr:
 		operand := ec.translateExpr(n.Operand)
@@ -182,6 +189,26 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 		argStrs[i] = ec.translateExpr(a)
 	}
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+func isIntLiteral(n ast.Node) bool {
+	if lit, ok := n.(*ast.LiteralExpr); ok {
+		return lit.Kind == ast.LiteralInt
+	}
+	return false
+}
+
+func isFloatExpr(n ast.Node) bool {
+	switch e := n.(type) {
+	case *ast.LiteralExpr:
+		return e.Kind == ast.LiteralFloat
+	case *ast.BinaryExpr:
+		return isFloatExpr(e.Left) || isFloatExpr(e.Right)
+	case *ast.IdentExpr:
+		// Heuristic: if it's used with a float literal in an arithmetic expr, likely float
+		return false
+	}
+	return false
 }
 
 func binaryOpToKt(op ast.BinaryOp) string {

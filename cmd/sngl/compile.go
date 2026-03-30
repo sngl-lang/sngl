@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -81,7 +82,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 		doc = mergeDir(doc, filename)
 
-		if err := checker.Check(doc, dir, checker.DefaultResolver(), defaultSchemeResolver(), true); err != nil {
+		if err := checker.Check(doc, dir, checker.DefaultResolver(), defaultSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
 

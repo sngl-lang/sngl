@@ -16,7 +16,7 @@ type Config struct {
 
 func (c Config) withDefaults() Config {
 	if c.Package == "" {
-		c.Package = "app"
+		c.Package = "test.sngl.app"
 	}
 	return c
 }
@@ -191,6 +191,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Main composable
+	b.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
 	b.WriteString("@Composable\n")
 	b.WriteString("fun MainScreen() {\n")
 
@@ -266,9 +267,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		emitComponentComposable(&b, comp, info.components, ec)
 	}
 
-	// User-defined functions
+	// User-defined functions (only pure functions that return values;
+	// void/mutation functions can't be top-level since they need Compose state)
 	for _, fn := range doc.Functions {
-		if fn.IsStdlib {
+		if fn.IsStdlib || fn.ReturnType == "" {
 			continue
 		}
 		emitKtFunc(&b, fn, ec)
@@ -532,6 +534,9 @@ func literalToKt(expr ast.Expr) string {
 		case string:
 			return fmt.Sprintf("%q", v)
 		case int:
+			if expr.TypeHint == "float" {
+				return fmt.Sprintf("%d.0", v)
+			}
 			return fmt.Sprintf("%d", v)
 		case float64:
 			s := fmt.Sprintf("%v", v)

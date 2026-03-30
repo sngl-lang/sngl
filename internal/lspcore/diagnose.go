@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 )
@@ -26,7 +27,7 @@ func Analyze(content, filename, dir string, resolve checker.ImportResolver, sche
 	}
 
 	if doc != nil {
-		_, checkDiags := checker.CheckDiagnostics(doc, dir, resolve, sr)
+		_, checkDiags := checker.CheckDiagnostics(doc, dir, resolve, sr, buildLSPAPIConfig(doc))
 		for _, d := range checkDiags {
 			rng := Range{Start: Position{}, End: Position{}}
 			if d.Pos.IsValid() {
@@ -42,6 +43,38 @@ func Analyze(content, filename, dir string, resolve checker.ImportResolver, sche
 	}
 
 	return doc, diags
+}
+
+// buildLSPAPIConfig builds an APIConfig from the document's output declarations
+// by looking up registered lang/platform providers.
+func buildLSPAPIConfig(doc *ast.Document) *checker.APIConfig {
+	if len(doc.Outputs) == 0 {
+		return nil
+	}
+	cfg := &checker.APIConfig{Namespaces: map[string]*ast.Document{}}
+	seen := map[string]bool{}
+	for _, out := range doc.Outputs {
+		if !seen[out.Lang] {
+			seen[out.Lang] = true
+			if lang := codegen.LookupLang(out.Lang); lang != nil {
+				if ap, ok := lang.(codegen.APIProvider); ok {
+					cfg.Namespaces[out.Lang] = ap.API()
+				}
+			}
+		}
+		if !seen[out.Platform] {
+			seen[out.Platform] = true
+			if plat := codegen.LookupPlatform(out.Platform); plat != nil {
+				if ap, ok := plat.(codegen.APIProvider); ok {
+					cfg.Namespaces[out.Platform] = ap.API()
+				}
+			}
+		}
+	}
+	if len(cfg.Namespaces) == 0 {
+		return nil
+	}
+	return cfg
 }
 
 // ParseErrorsToDiagnostics converts parse error strings into diagnostics.

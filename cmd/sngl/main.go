@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -36,11 +38,60 @@ func init() {
 	rootCmd.AddCommand(snapshotCmd)
 }
 
+// hasPathPrefix reports whether p is under the directory prefix.
+// It uses filepath.Rel to handle separators and clean paths correctly.
+func hasPathPrefix(p, prefix string) bool {
+	rel, err := filepath.Rel(prefix, p)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
+}
+
+// isUnderGoCache reports whether the given executable path is inside
+// the Go build cache or a Go temporary build directory.
+func isUnderGoCache(selfPath string) bool {
+	goCache := os.Getenv("GOCACHE")
+	if goCache == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			goCache = filepath.Join(home, ".cache", "go-build")
+		}
+	}
+	if goCache != "" && hasPathPrefix(selfPath, goCache) {
+		return true
+	}
+	// go tool builds to <tempdir>/go-build<digits>/... when running on the fly.
+	// Match any directory in tempdir that starts with "go-build".
+	tmpDir := filepath.Clean(os.TempDir())
+	dir := selfPath
+	for {
+		parent := filepath.Dir(dir)
+		if parent == tmpDir {
+			return strings.HasPrefix(filepath.Base(dir), "go-build")
+		}
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
+}
+
 // proxyToGoTool checks if "go tool sngl" is available and execs into it.
 // The SNGL_NO_PROXY env var prevents infinite recursion.
+// If the current binary is already in the Go cache, proxying is skipped.
 func proxyToGoTool() {
 	if os.Getenv("SNGL_NO_PROXY") != "" {
 		return
+	}
+
+	// If we're already running from the Go cache or a Go temp build dir,
+	// no need to proxy.
+	selfPath, err := os.Executable()
+	if err == nil {
+		selfPath = filepath.Clean(selfPath)
+		if isUnderGoCache(selfPath) {
+			return
+		}
 	}
 
 	goPath, err := exec.LookPath("go")
@@ -48,14 +99,16 @@ func proxyToGoTool() {
 		return
 	}
 
-	// Check that "go tool sngl" is configured by running "go tool sngl version".
-	check := exec.Command(goPath, "tool", "sngl", "version")
-	check.Env = append(os.Environ(), "SNGL_NO_PROXY=1")
-	if err := check.Run(); err != nil {
+	// Resolve the "go tool sngl" binary path.
+	toolPath := exec.Command(goPath, "tool", "-n", "sngl")
+	toolPath.Env = append(os.Environ(), "SNGL_NO_PROXY=1")
+	toolOut, err := toolPath.Output()
+	if err != nil {
 		return
 	}
+	toolBin := strings.TrimSpace(string(toolOut))
 
-	fmt.Fprintln(os.Stderr, "sngl: proxying to go tool sngl")
+	fmt.Fprintf(os.Stderr, "sngl: proxying %s -> %s\n", selfPath, toolBin)
 
 	args := append([]string{goPath, "tool", "sngl"}, os.Args[1:]...)
 	env := append(os.Environ(), "SNGL_NO_PROXY=1")

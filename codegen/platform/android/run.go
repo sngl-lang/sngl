@@ -18,14 +18,20 @@ var androidToolDirs = map[string]string{
 	"emulator": "emulator",
 }
 
+// sdkRoot returns the Android SDK root directory from ANDROID_HOME or
+// ANDROID_SDK_ROOT, or "" if neither is set.
+func sdkRoot() string {
+	if home := os.Getenv("ANDROID_HOME"); home != "" {
+		return home
+	}
+	return os.Getenv("ANDROID_SDK_ROOT")
+}
+
 func androidTool(name string) (string, error) {
 	if p, err := exec.LookPath(name); err == nil {
 		return p, nil
 	}
-	home := os.Getenv("ANDROID_HOME")
-	if home == "" {
-		home = os.Getenv("ANDROID_SDK_ROOT")
-	}
+	home := sdkRoot()
 	if home == "" {
 		return "", fmt.Errorf("%s not found in PATH and ANDROID_HOME is not set", name)
 	}
@@ -36,6 +42,45 @@ func androidTool(name string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("%s not found in PATH or ANDROID_HOME (%s)", name, home)
+}
+
+// androidEnv returns the current environment with ANDROID_SDK_ROOT set
+// (needed by the emulator even when launched by absolute path).
+func androidEnv() []string {
+	env := os.Environ()
+	home := sdkRoot()
+	if home == "" {
+		return env
+	}
+	// Ensure both vars are set so tools can find system images
+	hasHome, hasRoot := false, false
+	for _, e := range env {
+		if strings.HasPrefix(e, "ANDROID_HOME=") {
+			hasHome = true
+		}
+		if strings.HasPrefix(e, "ANDROID_SDK_ROOT=") {
+			hasRoot = true
+		}
+	}
+	if !hasHome {
+		env = append(env, "ANDROID_HOME="+home)
+	}
+	if !hasRoot {
+		env = append(env, "ANDROID_SDK_ROOT="+home)
+	}
+	return env
+}
+
+// setEnv sets key=value in env, replacing any existing entry for key.
+func setEnv(env []string, key, value string) []string {
+	prefix := key + "="
+	for i, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			env[i] = prefix + value
+			return env
+		}
+	}
+	return append(env, prefix+value)
 }
 
 // Run implements codegen.Runner. It builds the Android project with Gradle,
@@ -90,12 +135,14 @@ func readPackage(dir string) (string, error) {
 
 func gradleBuild(dir string) error {
 	gradle := filepath.Join(dir, "gradlew")
-	if _, err := os.Stat(gradle); err != nil {
+	if info, err := os.Stat(gradle); err != nil {
 		var lookErr error
 		gradle, lookErr = exec.LookPath("gradle")
 		if lookErr != nil {
 			return fmt.Errorf("neither gradlew nor gradle found (install Gradle or use Android Studio)")
 		}
+	} else if info.Mode()&0o111 == 0 {
+		os.Chmod(gradle, 0o755)
 	}
 
 	fmt.Fprintln(os.Stderr, "sngl: building APK...")
@@ -149,12 +196,18 @@ func ensureDevice() error {
 		return err
 	}
 
-	emu := exec.Command(emulatorPath, "-avd", avd)
-	emu.Stdout = nil
-	emu.Stderr = nil
+	emu := exec.Command(emulatorPath, "-avd", avd, "-no-snapshot-load")
+	emuEnv := androidEnv()
+	// The emulator bundles Qt with only xcb/offscreen plugins — force xcb
+	// so it works on Wayland compositors (Sway, GNOME Wayland, etc.)
+	emuEnv = setEnv(emuEnv, "QT_QPA_PLATFORM", "xcb")
+	emu.Env = emuEnv
+	emu.Stdout = os.Stderr
+	emu.Stderr = os.Stderr
 	if err := emu.Start(); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
 	}
+	go emu.Wait()
 
 	fmt.Fprintf(os.Stderr, "sngl: waiting for emulator %q...\n", avd)
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -204,19 +257,31 @@ func hasDevice() bool {
 }
 
 func pickAVD() (string, error) {
+	// Allow explicit override via environment variable
+	if avd := os.Getenv("SNGL_AVD"); avd != "" {
+		return avd, nil
+	}
+
 	emulatorPath, err := androidTool("emulator")
 	if err != nil {
 		return "", err
 	}
-	out, err := exec.Command(emulatorPath, "-list-avds").Output()
+	cmd := exec.Command(emulatorPath, "-list-avds")
+	cmd.Env = androidEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("listing AVDs: %w", err)
 	}
+	// Pick the last AVD (typically the newest API level)
+	var last string
 	for _, line := range strings.Split(string(out), "\n") {
 		name := strings.TrimSpace(line)
 		if name != "" {
-			return name, nil
+			last = name
 		}
 	}
-	return "", fmt.Errorf("no Android Virtual Devices configured; create one with Android Studio or avdmanager")
+	if last == "" {
+		return "", fmt.Errorf("no Android Virtual Devices configured; create one with Android Studio or avdmanager")
+	}
+	return last, nil
 }

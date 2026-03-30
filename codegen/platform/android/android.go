@@ -24,7 +24,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	cfg := Config{
 		Package:      req.Options["package"],
 		GenerateMain: req.Options["main"] == "true",
-	}
+	}.withDefaults()
 
 	src, err := Compile(req.Doc, cfg)
 	if err != nil {

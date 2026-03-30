@@ -55,7 +55,7 @@ func DefaultResolver() ImportResolver {
 // component schemas. dir is the directory of the .sngl file, used to resolve
 // relative import paths. resolve is an optional callback for directory imports;
 // pass nil if directory imports are not supported.
-func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver, isMain bool) error {
+func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig, isMain bool) error {
 	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
@@ -82,6 +82,7 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve 
 		visited:       map[string]bool{},
 		isMain:        isMain,
 		namespaces:    map[string]*importNS{},
+		apis:          apis,
 	}
 
 	// Inject stdlib functions into the document (prepend so user funcs can override)
@@ -192,6 +193,16 @@ func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {
 	return nil
 }
 
+// DynamicNSResolver resolves a name within a namespace dynamically.
+// Called when a name is not found in the static API document.
+type DynamicNSResolver func(namespace, name string) *ast.NativeDecls
+
+// APIConfig provides platform/language API namespaces to the checker.
+type APIConfig struct {
+	Namespaces map[string]*ast.Document // lang/platform name → API doc
+	DynamicNS  DynamicNSResolver        // optional dynamic fallback
+}
+
 // methodInfo describes a type-attached method (built-in or user-defined).
 type methodInfo struct {
 	ReturnType string
@@ -214,6 +225,7 @@ type checker struct {
 	visited       map[string]bool // tracks visited import paths to detect cycles
 	isMain        bool            // true for the entry-point package
 	namespaces    map[string]*importNS
+	apis          *APIConfig
 	errs          []error
 }
 
@@ -414,6 +426,41 @@ func (c *checker) pass1(doc *ast.Document) {
 		c.namespaces[imp.Namespace] = ns
 	}
 
+	// API namespaces from lang/platform providers
+	if c.apis != nil {
+		for nsName, apiDoc := range c.apis.Namespaces {
+			ns := &importNS{
+				components: apiDoc.Components,
+				structs:    apiDoc.Structs,
+				enums:      apiDoc.Enums,
+				data:       apiDoc.Data,
+			}
+			c.namespaces[nsName] = ns
+			c.structs = append(c.structs, apiDoc.Structs...)
+			c.enums = append(c.enums, apiDoc.Enums...)
+			for _, comp := range apiDoc.Components {
+				qualName := nsName + "." + comp.Name
+				schema := &ComponentSchema{
+					Props:    make(map[string]PropSchema),
+					Events:   map[string]string{},
+					Children: ChildrenMany,
+				}
+				for _, p := range comp.Params {
+					schema.Props[p.Name] = PropSchema{Type: c.resolveParamType(p)}
+				}
+				c.registry[qualName] = schema
+				doc.ImportedComponents = append(doc.ImportedComponents, comp)
+			}
+			for _, d := range apiDoc.Data {
+				hintType := Dyn
+				if d.Init.TypeHint != "" {
+					hintType = c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+				}
+				c.scope.Declare(nsName+"."+d.Name, hintType)
+			}
+		}
+	}
+
 	// Enums from document
 	c.enums = append(c.enums, doc.Enums...)
 
@@ -526,6 +573,8 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.errorAt(t.Pos, "timer: body must contain statements")
 		}
 	}
+
+	c.validateOutputOpts(doc)
 }
 
 // resolveParamType returns the type for a component param.
@@ -541,6 +590,36 @@ func (c *checker) resolveParamType(p *ast.Param) Type {
 	}
 	c.errorAt(p.Pos, "param %q: must have a type hint or a default value", p.Name)
 	return Dyn
+}
+
+// dynamicResolve attempts dynamic name resolution within a namespace,
+// caching the result in the namespace for future lookups.
+func (c *checker) dynamicResolve(nsName, name string) bool {
+	if c.apis == nil || c.apis.DynamicNS == nil {
+		return false
+	}
+	decls := c.apis.DynamicNS(nsName, name)
+	if decls == nil {
+		return false
+	}
+	ns := c.namespaces[nsName]
+	if ns == nil {
+		ns = &importNS{}
+		c.namespaces[nsName] = ns
+	}
+	ns.structs = append(ns.structs, decls.Structs...)
+	ns.enums = append(ns.enums, decls.Enums...)
+	ns.data = append(ns.data, decls.Data...)
+	c.structs = append(c.structs, decls.Structs...)
+	c.enums = append(c.enums, decls.Enums...)
+	for _, d := range decls.Data {
+		hintType := Dyn
+		if d.Init.TypeHint != "" {
+			hintType = c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+		}
+		c.scope.Declare(nsName+"."+d.Name, hintType)
+	}
+	return true
 }
 
 // resolveTypeHint maps a type hint string to a Type, checking named enums
@@ -680,6 +759,15 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 						return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
 					}
 				}
+				// Dynamic fallback: resolve unknown method in namespace
+				if c.dynamicResolve(ident.Name, e.Method) {
+					for _, d := range c.namespaces[ident.Name].data {
+						if d.Name == e.Method && d.IsFunc && d.ReturnType != "" {
+							return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
+						}
+					}
+					return Dyn
+				}
 			}
 			// Check if receiver is a type name (e.g., int.sqrt(x))
 			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
@@ -702,6 +790,17 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 							return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
 						}
 					}
+				}
+				// Dynamic fallback: resolve unknown field in namespace
+				if c.dynamicResolve(ident.Name, e.Field) {
+					for _, d := range c.namespaces[ident.Name].data {
+						if d.Name == e.Field && !d.IsFunc {
+							if d.Init.TypeHint != "" {
+								return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+							}
+						}
+					}
+					return Dyn
 				}
 			}
 		}
@@ -768,6 +867,38 @@ func (c *checker) validateSpecialLiteral(pos ast.Pos, expr *ast.Expr) {
 		"country2", "country3", "currency":
 		if err := validateSpecialLiteral(expr.TypeHint, expr.Literal); err != nil {
 			c.errorAt(pos, "%v", err)
+		}
+	}
+}
+
+// validateOutputOpts checks output option keys against the platform's Opts struct.
+func (c *checker) validateOutputOpts(doc *ast.Document) {
+	if c.apis == nil {
+		return
+	}
+	for _, out := range doc.Outputs {
+		apiDoc, ok := c.apis.Namespaces[out.Platform]
+		if !ok {
+			continue
+		}
+		var opts *ast.StructDef
+		for _, s := range apiDoc.Structs {
+			if s.Name == "Opts" {
+				opts = s
+				break
+			}
+		}
+		if opts == nil {
+			continue
+		}
+		validFields := map[string]bool{}
+		for _, f := range opts.Fields {
+			validFields[f.Name] = true
+		}
+		for key := range out.Options {
+			if !validFields[key] {
+				c.errorAt(out.Pos, "unknown option %q for platform %q", key, out.Platform)
+			}
 		}
 	}
 }
@@ -1051,6 +1182,14 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 						return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
 					}
 				}
+				if c.dynamicResolve(ident.Name, e.Method) {
+					for _, d := range c.namespaces[ident.Name].data {
+						if d.Name == e.Method && d.IsFunc && d.ReturnType != "" {
+							return c.resolveTypeHint(ast.Pos{}, d.ReturnType)
+						}
+					}
+					return Dyn
+				}
 			}
 			// Check if receiver is a type name (e.g., int.sqrt(x))
 			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
@@ -1073,6 +1212,16 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 							return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
 						}
 					}
+				}
+				if c.dynamicResolve(ident.Name, e.Field) {
+					for _, d := range c.namespaces[ident.Name].data {
+						if d.Name == e.Field && !d.IsFunc {
+							if d.Init.TypeHint != "" {
+								return c.resolveTypeHint(ast.Pos{}, d.Init.TypeHint)
+							}
+						}
+					}
+					return Dyn
 				}
 			}
 		}

@@ -72,6 +72,19 @@ type Runner interface {
 	Run(dir string, args []string) error
 }
 
+// APIProvider is optionally implemented by LangTranslator or PlatformGenerator
+// to expose a pre-defined SNGL API as a checker namespace. The returned document's
+// structs, enums, data, and components become available under the lang/platform name.
+type APIProvider interface {
+	API() *ast.Document
+}
+
+// APIResolver is optionally implemented alongside or instead of APIProvider
+// for dynamic name resolution when a name isn't found in the static API document.
+type APIResolver interface {
+	ResolveAPI(name string) *ast.NativeDecls
+}
+
 // OutputFile represents a single generated file.
 type OutputFile struct {
 	Name    string // relative path, e.g. "model.go"

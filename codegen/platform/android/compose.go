@@ -319,11 +319,15 @@ func (cc *composeContext) renderInput(vn *ast.VisualNode) {
 	}
 	onValueChange := "{ }"
 	if evt, ok := vn.Events["input"]; ok && evt.SNGL != nil {
-		cc.ec.eventVar = "it"
+		cc.ec.eventVar = "_inputValue_"
 		stmts := cc.ec.translateMutation(evt.SNGL)
 		cc.ec.eventVar = ""
-		onValueChange = "{ it ->\n"
+		// In Compose, onValueChange receives the new string directly.
+		// Replace event.value references with the lambda parameter.
+		onValueChange = "{ _v_ ->\n"
 		for _, s := range stmts {
+			s = strings.ReplaceAll(s, "_inputValue_.value", "_v_")
+			s = strings.ReplaceAll(s, "_inputValue_", "_v_")
 			onValueChange += strings.Repeat("    ", cc.indent+2) + s + "\n"
 		}
 		onValueChange += strings.Repeat("    ", cc.indent+1) + "}"
@@ -504,11 +508,15 @@ func (cc *composeContext) renderTextarea(vn *ast.VisualNode) {
 	}
 	onValueChange := "{ }"
 	if evt, ok := vn.Events["input"]; ok && evt.SNGL != nil {
-		cc.ec.eventVar = "it"
+		cc.ec.eventVar = "_inputValue_"
 		stmts := cc.ec.translateMutation(evt.SNGL)
 		cc.ec.eventVar = ""
-		onValueChange = "{ it ->\n"
+		// In Compose, onValueChange receives the new string directly.
+		// Replace event.value references with the lambda parameter.
+		onValueChange = "{ _v_ ->\n"
 		for _, s := range stmts {
+			s = strings.ReplaceAll(s, "_inputValue_.value", "_v_")
+			s = strings.ReplaceAll(s, "_inputValue_", "_v_")
 			onValueChange += strings.Repeat("    ", cc.indent+2) + s + "\n"
 		}
 		onValueChange += strings.Repeat("    ", cc.indent+1) + "}"

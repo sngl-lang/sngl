@@ -15,14 +15,14 @@ const maxCallDepth = 100
 
 // Env holds the mutable state for test execution.
 type Env struct {
-	vars      map[string]any
-	computeds map[string]ast.Expr
-	consts    map[string]any
-	funcs     map[string]*ast.FuncDef
-	units     map[string]*ast.UnitTable // suffix → unit table
-	timers    []*ast.Timer
-	doc       *ast.Document
-	body      []*ast.VisualNode
+	vars        map[string]any
+	computeds   map[string]ast.Expr
+	consts      map[string]any
+	funcs       map[string]*ast.FuncDef
+	units       map[string]*ast.UnitTable // suffix → unit table
+	timers      []*ast.Timer
+	doc         *ast.Document
+	body        []*ast.VisualNode
 	depth       int // current call stack depth
 	renderDepth int // current component render depth
 }
@@ -49,13 +49,13 @@ func (env *Env) SetVar(name string, val any) {
 // Snapshot returns a shallow copy of the env for subtest isolation.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
-		vars:      make(map[string]any, len(env.vars)),
-		computeds: env.computeds,
-		consts:    env.consts,
-		funcs:     env.funcs,
-		units:     env.units,
-		doc:       env.doc,
-		body:      env.body,
+		vars:        make(map[string]any, len(env.vars)),
+		computeds:   env.computeds,
+		consts:      env.consts,
+		funcs:       env.funcs,
+		units:       env.units,
+		doc:         env.doc,
+		body:        env.body,
 		depth:       env.depth,
 		renderDepth: env.renderDepth,
 	}

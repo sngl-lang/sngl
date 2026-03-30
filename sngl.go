@@ -32,7 +32,63 @@ func FormatNode(n ast.Node) string {
 // file, used to resolve relative import paths. It uses the default filesystem-based
 // import resolver for directory imports and the registered scheme importers.
 func Check(doc *ast.Document, dir string) error {
-	return checker.Check(doc, dir, checker.DefaultResolver(), DefaultSchemeResolver(), true)
+	return checker.Check(doc, dir, checker.DefaultResolver(), DefaultSchemeResolver(), BuildAPIConfig(doc), true)
+}
+
+// BuildAPIConfig resolves API namespaces from registered lang/platform providers
+// based on the document's output declarations.
+func BuildAPIConfig(doc *ast.Document) *checker.APIConfig {
+	if len(doc.Outputs) == 0 {
+		return nil
+	}
+	cfg := &checker.APIConfig{Namespaces: map[string]*ast.Document{}}
+	seen := map[string]bool{}
+	var resolvers []namedResolver
+	for _, out := range doc.Outputs {
+		if !seen[out.Lang] {
+			seen[out.Lang] = true
+			if lang := codegen.LookupLang(out.Lang); lang != nil {
+				if ap, ok := lang.(codegen.APIProvider); ok {
+					cfg.Namespaces[out.Lang] = ap.API()
+				}
+				if ar, ok := lang.(codegen.APIResolver); ok {
+					resolvers = append(resolvers, namedResolver{out.Lang, ar})
+				}
+			}
+		}
+		if !seen[out.Platform] {
+			seen[out.Platform] = true
+			if plat := codegen.LookupPlatform(out.Platform); plat != nil {
+				if ap, ok := plat.(codegen.APIProvider); ok {
+					cfg.Namespaces[out.Platform] = ap.API()
+				}
+				if ar, ok := plat.(codegen.APIResolver); ok {
+					resolvers = append(resolvers, namedResolver{out.Platform, ar})
+				}
+			}
+		}
+	}
+	if len(resolvers) > 0 {
+		byName := map[string]codegen.APIResolver{}
+		for _, r := range resolvers {
+			byName[r.name] = r.resolver
+		}
+		cfg.DynamicNS = func(namespace, name string) *ast.NativeDecls {
+			if r, ok := byName[namespace]; ok {
+				return r.ResolveAPI(name)
+			}
+			return nil
+		}
+	}
+	if len(cfg.Namespaces) == 0 && cfg.DynamicNS == nil {
+		return nil
+	}
+	return cfg
+}
+
+type namedResolver struct {
+	name     string
+	resolver codegen.APIResolver
 }
 
 // DefaultSchemeResolver returns a SchemeResolver that delegates to registered
