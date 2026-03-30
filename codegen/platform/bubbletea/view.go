@@ -110,7 +110,7 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	case "stack":
 		// Stub: render children vertically
 		vc.renderBox(vn, resultVar, true)
-	case "scroll", "tooltip", "pullrefresh":
+	case "scroll", "tooltip":
 		// Pass-through: render child directly
 		if len(vn.Children) > 0 {
 			vc.renderNode(vn.Children[0], resultVar)

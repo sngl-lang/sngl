@@ -142,7 +142,7 @@ func (sc *snapContext) renderPrimitive(vn *ast.VisualNode) string {
 		return sc.renderModalSnap(vn)
 	case "drawer", "popover":
 		return sc.renderConditionalSnap(vn)
-	case "tooltip", "pullrefresh":
+	case "tooltip":
 		if len(vn.Children) > 0 {
 			return sc.renderNode(vn.Children[0])
 		}

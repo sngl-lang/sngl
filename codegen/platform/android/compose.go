@@ -15,6 +15,22 @@ type composeContext struct {
 	components []*ast.Component
 }
 
+// propIsTrue checks if a boolean prop is set to true on a visual node.
+func propIsTrue(vn *ast.VisualNode, name string) bool {
+	if v, ok := vn.Props[name]; ok {
+		if b, ok := v.Literal.(bool); ok {
+			return b
+		}
+	}
+	return false
+}
+
+// hasProp checks if a prop exists on a visual node.
+func hasProp(vn *ast.VisualNode, name string) bool {
+	_, ok := vn.Props[name]
+	return ok
+}
+
 func (cc *composeContext) line(format string, args ...any) {
 	fmt.Fprintf(cc.buf, "%s"+format+"\n", append([]any{strings.Repeat("    ", cc.indent)}, args...)...)
 }
@@ -129,7 +145,8 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 	case "avatar":
 		cc.renderAvatar(vn)
 	case "pullrefresh":
-		cc.renderPullrefresh(vn)
+		// Legacy: treat as vbox
+		cc.renderColumn(vn)
 	case "toast":
 		cc.renderToast(vn)
 	default:
@@ -138,7 +155,29 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderColumn(vn *ast.VisualNode) {
+	hasRefresh := hasProp(vn, "refreshing")
+	if hasRefresh {
+		refreshing := exprToKtValue(vn.Props["refreshing"], cc.ec)
+		onRefresh := "{ }"
+		if evt, ok := vn.Events["refresh"]; ok && evt.SNGL != nil {
+			stmts := cc.ec.translateMutation(evt.SNGL)
+			onRefresh = "{\n"
+			for _, s := range stmts {
+				onRefresh += strings.Repeat("    ", cc.indent+2) + s + "\n"
+			}
+			onRefresh += strings.Repeat("    ", cc.indent+1) + "}"
+		}
+		cc.line("PullToRefreshBox(\n%sisRefreshing = %s,\n%sonRefresh = %s\n%s) {",
+			strings.Repeat("    ", cc.indent+1), refreshing,
+			strings.Repeat("    ", cc.indent+1), onRefresh,
+			strings.Repeat("    ", cc.indent))
+		cc.indent++
+	}
+
 	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	if propIsTrue(vn, "scroll") || hasRefresh {
+		mod += ".verticalScroll(rememberScrollState())"
+	}
 	gap := cc.getGap(vn)
 	arr := ""
 	if gap != "" {
@@ -151,10 +190,18 @@ func (cc *composeContext) renderColumn(vn *ast.VisualNode) {
 	}
 	cc.indent--
 	cc.line("}")
+
+	if hasRefresh {
+		cc.indent--
+		cc.line("}")
+	}
 }
 
 func (cc *composeContext) renderRow(vn *ast.VisualNode) {
 	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	if propIsTrue(vn, "scroll") {
+		mod += ".horizontalScroll(rememberScrollState())"
+	}
 	gap := cc.getGap(vn)
 	arr := ""
 	if gap != "" {
@@ -883,13 +930,6 @@ func (cc *composeContext) renderAvatar(vn *ast.VisualNode) {
 	cc.line("Text(%s)", initials)
 	cc.indent--
 	cc.line("}")
-}
-
-func (cc *composeContext) renderPullrefresh(vn *ast.VisualNode) {
-	cc.line("// PullToRefresh: rendering children directly")
-	for _, child := range vn.Children {
-		cc.renderNode(child)
-	}
 }
 
 func (cc *composeContext) renderToast(vn *ast.VisualNode) {

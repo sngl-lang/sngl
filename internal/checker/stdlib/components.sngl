@@ -1,8 +1,12 @@
 component vbox {
+    prop scroll bool
+    prop refreshing bool
+    event refresh RefreshEvent
     children many
 }
 
 component hbox {
+    prop scroll bool
     children many
 }
 
@@ -278,11 +282,6 @@ component toast {
     children none
 }
 
-component pullrefresh {
-    prop refreshing bool
-    event refresh RefreshEvent
-    children one
-}
 
 component datepicker {
     prop value date

@@ -456,11 +456,6 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	// --- Tier 5: Mobile & Specialized ---
 	case "toast":
 		g.renderStaticToast(b, vn, depth)
-	case "pullrefresh":
-		// Pass-through to child
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth)
-		}
 	case "datepicker":
 		g.renderStaticDatepicker(b, vn, depth)
 	case "chip":
@@ -536,6 +531,16 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 		style = appendCSS(style, "flex-direction", "column")
 	} else {
 		style = appendCSS(style, "flex-direction", "row")
+	}
+
+	if v, ok := vn.Props["scroll"]; ok {
+		if b, ok := v.Literal.(bool); ok && b {
+			if vertical {
+				style = appendCSS(style, "overflow-y", "auto")
+			} else {
+				style = appendCSS(style, "overflow-x", "auto")
+			}
+		}
 	}
 
 	reactive := g.nodeIsReactive(vn)

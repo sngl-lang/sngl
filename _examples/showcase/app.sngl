@@ -37,7 +37,7 @@ component main {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     }
 
-    vbox(style={gap=24, maxWidth=900, padding=24}) {
+    vbox(scroll=true, refreshing=false, @refresh={ showToast = true }, style={gap=24, maxWidth=900, padding=24}) {
         text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})
         text(value="Every component in the standard library", style={color=#666666})
         divider
@@ -168,10 +168,6 @@ component main {
         divider
         text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
         datepicker(placeholder="Select birthday", value=birthday)
-        text(value="Pull to Refresh (wrapper)", style={fontSize=20, fontWeight="bold"})
-        pullrefresh {
-            text(value="Pull down to refresh (mobile only)")
-        }
         divider(label="End of Showcase")
     }
 }

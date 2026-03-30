@@ -143,6 +143,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("import androidx.compose.foundation.rememberScrollState\n")
 	b.WriteString("import androidx.compose.foundation.verticalScroll\n")
 	b.WriteString("import androidx.compose.material3.*\n")
+	b.WriteString("import androidx.compose.material3.pulltorefresh.PullToRefreshBox\n")
 	b.WriteString("import androidx.compose.runtime.*\n")
 	b.WriteString("import androidx.compose.ui.Alignment\n")
 	b.WriteString("import androidx.compose.ui.Modifier\n")
