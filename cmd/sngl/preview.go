@@ -18,8 +18,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -382,7 +382,7 @@ type eventJSON struct {
 func exprToPropJSON(e ast.Expr, typeName string, enum []string) propJSON {
 	p := propJSON{Set: true, Type: typeName, Enum: enum}
 	if e.SNGL != nil {
-		p.Expr = snglparser.FormatNode(e.SNGL)
+		p.Expr = parser.FormatNode(e.SNGL)
 	} else {
 		p.Literal = e.Literal
 	}
@@ -420,7 +420,7 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 		for _, d := range doc.Data {
 			dj := dataJSON{Name: d.Name, Extern: d.Extern, IsFunc: d.IsFunc}
 			if d.Init.SNGL != nil {
-				dj.Init = snglparser.FormatNode(d.Init.SNGL)
+				dj.Init = parser.FormatNode(d.Init.SNGL)
 			} else if d.Init.Literal != nil {
 				dj.Init = fmt.Sprintf("%v", d.Init.Literal)
 			}
@@ -434,7 +434,7 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 		for _, c := range doc.Computeds {
 			cj := computedJSON{Name: c.Name}
 			if c.Expr.SNGL != nil {
-				cj.Expr = snglparser.FormatNode(c.Expr.SNGL)
+				cj.Expr = parser.FormatNode(c.Expr.SNGL)
 			} else if c.Expr.Literal != nil {
 				cj.Expr = fmt.Sprintf("%v", c.Expr.Literal)
 			}
@@ -610,7 +610,7 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	doc, err := snglparser.Parse(s.sourceFile, f)
+	doc, err := parser.Parse(s.sourceFile, f)
 	f.Close()
 	if err != nil {
 		http.Error(w, "parse: "+err.Error(), http.StatusInternalServerError)
@@ -640,7 +640,7 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write back formatted source
-	formatted := snglparser.Format(doc)
+	formatted := parser.Format(doc)
 	if err := os.WriteFile(s.sourceFile, []byte(formatted), 0o644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

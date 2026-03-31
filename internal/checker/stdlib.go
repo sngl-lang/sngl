@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 //go:embed stdlib/*.sngl
@@ -33,7 +33,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 		}
 
 		var doc *ast.Document
-		doc, err = snglparser.Parse(name, f)
+		doc, err = parser.Parse(name, f)
 		f.Close()
 		if err != nil {
 			return nil, nil, nil, nil, nil, fmt.Errorf("parsing %s: %w", name, err)

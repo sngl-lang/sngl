@@ -8,7 +8,7 @@ import (
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // CompileTests generates a Go test file from SNGL test definitions.
@@ -262,7 +262,7 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 		case *ast.CallStmt:
 			if s.Call.Func == "assert" && len(s.Call.Args) == 1 {
 				expr := ec.translateExpr(s.Call.Args[0])
-				original := snglparser.FormatNode(s.Call.Args[0])
+				original := parser.FormatNode(s.Call.Args[0])
 				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
 				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
 				fmt.Fprintf(b, "%s}\n", indent)
@@ -276,7 +276,7 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 		case *ast.CallExpr:
 			if s.Func == "assert" && len(s.Args) == 1 {
 				expr := ec.translateExpr(s.Args[0])
-				original := snglparser.FormatNode(s.Args[0])
+				original := parser.FormatNode(s.Args[0])
 				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
 				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
 				fmt.Fprintf(b, "%s}\n", indent)

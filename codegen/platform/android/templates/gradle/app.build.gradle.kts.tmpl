@@ -39,4 +39,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+{{- if .HasGoLib}}
+    implementation(files("golib.aar"))
+{{- end}}
 }

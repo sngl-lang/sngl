@@ -29,6 +29,7 @@ type Output struct {
 }
 
 type Document struct {
+	OutputDefaults     map[string]string // key=value from output(...) defaults
 	Outputs            []*Output
 	Structs            []*StructDef
 	Enums              []*EnumDef

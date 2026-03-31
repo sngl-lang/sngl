@@ -81,6 +81,12 @@ type Runner interface {
 	Run(dir string, opts map[string]string, args []string) error
 }
 
+// Builder is optionally implemented by PlatformGenerators that have a build
+// step between code generation and execution (e.g., compiling an APK).
+type Builder interface {
+	Build(dir string, opts map[string]string) (artifact string, err error)
+}
+
 // APIProvider is optionally implemented by LangTranslator or PlatformGenerator
 // to expose a pre-defined SNGL API as a checker namespace. The returned document's
 // structs, enums, data, and components become available under the lang/platform name.
@@ -98,7 +104,7 @@ type APIResolver interface {
 // the file content lazily, allowing template execution to be deferred to
 // write time.
 type OutputFile struct {
-	Name    string                              // relative path, e.g. "model.go"
+	Name    string // relative path, e.g. "model.go"
 	WriteTo func(w io.Writer) (int64, error)
 }
 

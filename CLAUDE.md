@@ -50,7 +50,7 @@ Languages and platforms register via `init()` and are looked up by name at runti
 
 ### Key Internal Packages
 
-- **`internal/snglparser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
+- **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker using CEL (pass1: register declarations, pass2: validate expressions)
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)

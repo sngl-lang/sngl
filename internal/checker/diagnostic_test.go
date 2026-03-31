@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestCheckDiagnostics_Valid(t *testing.T) {
@@ -14,7 +14,7 @@ func TestCheckDiagnostics_Valid(t *testing.T) {
 	text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestCheckDiagnostics_UnknownComponent(t *testing.T) {
 	nonexistent_widget(value="hi")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}

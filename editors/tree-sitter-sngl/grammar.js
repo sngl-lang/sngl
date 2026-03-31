@@ -28,7 +28,7 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   conflicts: ($) => [
-    [$._expression, $.struct_literal],
+    [$._expression, $._struct_name],
   ],
 
   supertypes: ($) => [$._declaration, $._expression, $._statement],
@@ -61,17 +61,7 @@ module.exports = grammar({
     import_declaration: ($) => seq("import", $.string_literal),
 
     output_declaration: ($) =>
-      choice(
-        seq("output", $._single_output),
-        seq("output", $.output_group),
-      ),
-
-    _single_output: ($) =>
-      seq(
-        field("lang", $.identifier),
-        field("platform", $.identifier),
-        optional($.kv_list),
-      ),
+      seq("output", optional($.kv_list), $.output_group),
 
     output_group: ($) =>
       seq(
@@ -81,26 +71,17 @@ module.exports = grammar({
       ),
 
     output_group_entry: ($) =>
-      choice(
-        // lang { platform; platform }
-        seq(
-          field("lang", $.identifier),
-          "{",
-          repeat(
-            seq(
-              field("platform", $.identifier),
-              optional($.kv_list),
-              $._terminator,
-            ),
+      seq(
+        field("lang", $.identifier),
+        "{",
+        repeat(
+          seq(
+            field("platform", $.identifier),
+            optional($.kv_list),
+            $._terminator,
           ),
-          "}",
         ),
-        // lang platform(opts)
-        seq(
-          field("lang", $.identifier),
-          field("platform", $.identifier),
-          optional($.kv_list),
-        ),
+        "}",
       ),
 
     kv_list: ($) =>
@@ -700,12 +681,15 @@ module.exports = grammar({
 
     struct_literal: ($) =>
       seq(
-        field("name", $.identifier),
+        field("name", $._struct_name),
         "{",
         commaSep($.struct_field_value),
         optional(","),
         "}",
       ),
+
+    _struct_name: ($) =>
+      seq($.identifier, optional(seq(".", $.identifier))),
 
     struct_field_value: ($) =>
       seq(

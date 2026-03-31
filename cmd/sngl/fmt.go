@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +48,7 @@ func runFmt(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		formatted := snglparser.Format(doc)
+		formatted := parser.Format(doc)
 		if formatted == string(original) {
 			continue
 		}

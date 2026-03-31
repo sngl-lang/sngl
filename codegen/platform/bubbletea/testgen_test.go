@@ -11,7 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -39,7 +39,7 @@ func TestGeneratedTests(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open: %v", err)
 			}
-			doc, err := snglparser.Parse(path, f)
+			doc, err := parser.Parse(path, f)
 			f.Close()
 			if err != nil {
 				t.Fatalf("parse: %v", err)

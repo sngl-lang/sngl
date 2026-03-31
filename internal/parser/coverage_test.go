@@ -1,28 +1,28 @@
-package snglparser_test
+package parser_test
 
 import (
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestKeywords(t *testing.T) {
-	kws := snglparser.Keywords()
+	kws := parser.Keywords()
 	if len(kws) == 0 {
 		t.Fatal("expected keywords to be non-empty")
 	}
 	// Verify it's a copy, not the original
 	kws["bogus"] = 0
-	kws2 := snglparser.Keywords()
+	kws2 := parser.Keywords()
 	if _, ok := kws2["bogus"]; ok {
 		t.Error("Keywords() should return a copy, not the original map")
 	}
 }
 
 func TestFormatNode_Nil(t *testing.T) {
-	if got := snglparser.FormatNode(nil); got != "null" {
+	if got := parser.FormatNode(nil); got != "null" {
 		t.Errorf("FormatNode(nil) = %q, want 'null'", got)
 	}
 }
@@ -45,7 +45,7 @@ func TestFormatNode_AssignStmt(t *testing.T) {
 			Op:     tc.op,
 			Value:  &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
 		}
-		got := snglparser.FormatNode(node)
+		got := parser.FormatNode(node)
 		if got != tc.want {
 			t.Errorf("FormatNode(assign %v) = %q, want %q", tc.op, got, tc.want)
 		}
@@ -54,7 +54,7 @@ func TestFormatNode_AssignStmt(t *testing.T) {
 
 func TestFormatNode_ToggleStmt(t *testing.T) {
 	node := &ast.ToggleStmt{Target: &ast.IdentExpr{Name: "active"}}
-	if got := snglparser.FormatNode(node); got != "active!!" {
+	if got := parser.FormatNode(node); got != "active!!" {
 		t.Errorf("FormatNode(toggle) = %q, want 'active!!'", got)
 	}
 }
@@ -64,18 +64,18 @@ func TestFormatNode_EmitStmt(t *testing.T) {
 		Name: "click",
 		Args: []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}},
 	}
-	if got := snglparser.FormatNode(node); got != "@click(42)" {
+	if got := parser.FormatNode(node); got != "@click(42)" {
 		t.Errorf("FormatNode(emit) = %q, want '@click(42)'", got)
 	}
 }
 
 func TestFormatNode_ReturnStmt(t *testing.T) {
 	node := &ast.ReturnStmt{Value: &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}}
-	if got := snglparser.FormatNode(node); got != "return 1" {
+	if got := parser.FormatNode(node); got != "return 1" {
 		t.Errorf("got %q, want 'return 1'", got)
 	}
 	node2 := &ast.ReturnStmt{}
-	if got := snglparser.FormatNode(node2); got != "return" {
+	if got := parser.FormatNode(node2); got != "return" {
 		t.Errorf("got %q, want 'return'", got)
 	}
 }
@@ -86,7 +86,7 @@ func TestFormatNode_VarStmt(t *testing.T) {
 		Type: "int",
 		Init: &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if !strings.Contains(got, "var x") {
 		t.Errorf("expected 'var x' in output, got %q", got)
 	}
@@ -99,7 +99,7 @@ func TestFormatNode_CallStmt(t *testing.T) {
 			Args: []ast.Node{&ast.LiteralExpr{Value: "arg", Kind: ast.LiteralString}},
 		},
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != `doStuff("arg")` {
 		t.Errorf("got %q, want 'doStuff(\"arg\")'", got)
 	}
@@ -110,7 +110,7 @@ func TestFormatNode_SelectExpr(t *testing.T) {
 		Operand: &ast.IdentExpr{Name: "obj"},
 		Field:   "name",
 	}
-	if got := snglparser.FormatNode(node); got != "obj.name" {
+	if got := parser.FormatNode(node); got != "obj.name" {
 		t.Errorf("got %q, want 'obj.name'", got)
 	}
 }
@@ -120,7 +120,7 @@ func TestFormatNode_IndexExpr(t *testing.T) {
 		Operand: &ast.IdentExpr{Name: "list"},
 		Index:   &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
 	}
-	if got := snglparser.FormatNode(node); got != "list[0]" {
+	if got := parser.FormatNode(node); got != "list[0]" {
 		t.Errorf("got %q, want 'list[0]'", got)
 	}
 }
@@ -133,7 +133,7 @@ func TestFormatNode_StructExpr(t *testing.T) {
 			{Name: "y", Value: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt}},
 		},
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != "Point{x: 1, y: 2}" {
 		t.Errorf("got %q, want 'Point{x: 1, y: 2}'", got)
 	}
@@ -141,7 +141,7 @@ func TestFormatNode_StructExpr(t *testing.T) {
 
 func TestFormatNode_ElementRefExpr(t *testing.T) {
 	node := &ast.ElementRefExpr{Name: "myBtn"}
-	if got := snglparser.FormatNode(node); got != "#myBtn" {
+	if got := parser.FormatNode(node); got != "#myBtn" {
 		t.Errorf("got %q, want '#myBtn'", got)
 	}
 }
@@ -153,7 +153,7 @@ func TestFormatNode_InterpolationExpr(t *testing.T) {
 			&ast.IdentExpr{Name: "name"},
 		},
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != `"hello {name}"` {
 		t.Errorf("got %q", got)
 	}
@@ -174,7 +174,7 @@ func TestFormatStmt_Block(t *testing.T) {
 			},
 		},
 	}
-	got := snglparser.FormatStmt(block)
+	got := parser.FormatStmt(block)
 	if got != "x = 1; y = 2" {
 		t.Errorf("got %q, want 'x = 1; y = 2'", got)
 	}
@@ -192,7 +192,7 @@ func TestFormatLiteral_Default(t *testing.T) {
 			}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "42") {
 		t.Errorf("expected default literal to contain '42', got %s", result)
 	}
@@ -210,7 +210,7 @@ func TestEscapeStringContent_ControlChars(t *testing.T) {
 			}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if strings.Contains(result, "\x01") || strings.Contains(result, "\x7f") {
 		t.Error("expected control characters to be stripped")
 	}
@@ -228,7 +228,7 @@ func TestEscapeStringContent_Backslash(t *testing.T) {
 			}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, `\\`) {
 		t.Error("expected backslash to be escaped")
 	}
@@ -246,7 +246,7 @@ func TestEscapeStringContent_CarriageReturn(t *testing.T) {
 			}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, `\r`) {
 		t.Error("expected carriage return to be escaped")
 	}
@@ -264,7 +264,7 @@ func TestEscapeStringContent_BraceEscape(t *testing.T) {
 			}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, `\{`) {
 		t.Errorf("expected brace to be escaped, got %s", result)
 	}
@@ -275,7 +275,7 @@ func TestParseScanString_EscapeSequences(t *testing.T) {
     var x = "line1\nline2\ttab\rret\\slash\"quote"
     text(value=x)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestParseScanString_UnknownEscape(t *testing.T) {
     var x = "test\xval"
     text(value=x)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestParseScanString_UnknownEscape(t *testing.T) {
 
 func TestParseScanString_Unterminated(t *testing.T) {
 	src := "component main {\n    var x = \"unterminated\n}"
-	_, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	_, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err == nil {
 		t.Error("expected parse error for unterminated string")
 	}
@@ -318,11 +318,11 @@ component main {
     var count = 0
     text(value=string(count))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "@myEvent(42)") {
 		t.Errorf("expected @myEvent(42) in formatted output:\n%s", result)
 	}
@@ -338,11 +338,11 @@ func TestParseAssignmentOperators(t *testing.T) {
     button(text="%", @click={ x %= 3 })
     text(value=string(x))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	for _, op := range []string{"+=", "-=", "*=", "/=", "%="} {
 		if !strings.Contains(result, op) {
 			t.Errorf("expected %q in formatted output:\n%s", op, result)
@@ -356,11 +356,11 @@ func TestParseToggleStmt(t *testing.T) {
     button(text="toggle", @click={ active!! })
     text(value=string(active))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "active!!") {
 		t.Errorf("expected 'active!!' in output:\n%s", result)
 	}
@@ -372,11 +372,11 @@ func TestParseStringInterpolation(t *testing.T) {
     computed greeting = "hello {name}!"
     text(value=greeting)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "{name}") {
 		t.Errorf("expected interpolation in output:\n%s", result)
 	}
@@ -388,7 +388,7 @@ func TestParseImport(t *testing.T) {
 component main {
     text(value="hi")
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestParseImportWithScheme(t *testing.T) {
 component main {
     text(value="hi")
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -432,11 +432,11 @@ func TestFormatTimer(t *testing.T) {
     }
     text(value=string(count))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "timer") {
 		t.Errorf("expected 'timer' in formatted output:\n%s", result)
 	}
@@ -453,7 +453,7 @@ func TestFormatFuncDefs_StdlibSkipped(t *testing.T) {
 			Body: []*ast.VisualNode{{Component: "text"}},
 		}},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "userFunc") {
 		t.Error("expected userFunc in output")
 	}
@@ -467,11 +467,11 @@ func TestCanInferType_NullLiteral(t *testing.T) {
     var x int = null
     text(value=string(x))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "int") {
 		t.Errorf("expected type hint kept for null value:\n%s", result)
 	}
@@ -479,7 +479,7 @@ func TestCanInferType_NullLiteral(t *testing.T) {
 
 func TestFormatLiteralExpr_ColorLiteral(t *testing.T) {
 	node := &ast.LiteralExpr{Value: "#ff0000", Kind: ast.LiteralColor}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != "#ff0000" {
 		t.Errorf("got %q, want '#ff0000'", got)
 	}
@@ -487,7 +487,7 @@ func TestFormatLiteralExpr_ColorLiteral(t *testing.T) {
 
 func TestFormatLiteralExpr_NullLiteral(t *testing.T) {
 	node := &ast.LiteralExpr{Value: nil, Kind: ast.LiteralNull}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != "null" {
 		t.Errorf("got %q, want 'null'", got)
 	}
@@ -498,7 +498,7 @@ func TestFormatLiteralExpr_UnitLiteral(t *testing.T) {
 		Value: ast.UnitLiteral{Number: "10", Suffix: "px"},
 		Kind:  ast.LiteralUnit,
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if got != "10px" {
 		t.Errorf("got %q, want '10px'", got)
 	}
@@ -529,7 +529,7 @@ func TestFormatBinOps(t *testing.T) {
 			Left:  &ast.IdentExpr{Name: "a"},
 			Right: &ast.IdentExpr{Name: "b"},
 		}
-		got := snglparser.FormatNode(node)
+		got := parser.FormatNode(node)
 		if !strings.Contains(got, tc.want) {
 			t.Errorf("expected %q in %q for op %v", tc.want, got, tc.op)
 		}
@@ -541,7 +541,7 @@ func TestFormatPostfixOperand_NumericLiteral(t *testing.T) {
 		Receiver: &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
 		Method:   "toString",
 	}
-	got := snglparser.FormatNode(node)
+	got := parser.FormatNode(node)
 	if !strings.Contains(got, "(0)") {
 		t.Errorf("expected (0) for numeric receiver, got %q", got)
 	}
@@ -556,11 +556,11 @@ func TestParseFuncBlock(t *testing.T) {
     }
     text(value=string(clamp(5, 0, 10)))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "func clamp") {
 		t.Errorf("expected 'func clamp' in output:\n%s", result)
 	}
@@ -578,7 +578,7 @@ func TestParseGroupedVars(t *testing.T) {
     )
     text(value=b)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -597,7 +597,7 @@ func TestParseGroupedComputeds(t *testing.T) {
     )
     text(value=string(double))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -614,7 +614,7 @@ func TestParseGroupedConsts(t *testing.T) {
     )
     text(value=string(A))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -630,11 +630,11 @@ func TestParseForLoop(t *testing.T) {
         text(value=string(item))
     }
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "for") {
 		t.Errorf("expected 'for' in output:\n%s", result)
 	}
@@ -647,11 +647,11 @@ func TestParseMultilineEvent(t *testing.T) {
     button(text="go", @click={ a += 1; b += 2 })
     text(value=string(a))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "a += 1") {
 		t.Errorf("expected compound event:\n%s", result)
 	}
@@ -664,7 +664,7 @@ component main {
     var c Color = "red"
     text(value=c)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -679,7 +679,7 @@ func TestParseStringInterpolation_Empty(t *testing.T) {
     var x = "hello {} world"
     text(value=x)
 }`
-	_, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	_, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err == nil {
 		t.Error("expected error for empty interpolation")
 	}
@@ -692,23 +692,25 @@ func TestParseStringInterpolation_Nested(t *testing.T) {
     computed msg = "sum={x + y}"
     text(value=msg)
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "{x + y}") {
 		t.Errorf("expected nested expr in interpolation:\n%s", result)
 	}
 }
 
 func TestParseOutput(t *testing.T) {
-	src := `output js html
+	src := `output {
+    js { html }
+}
 
 component main {
     text(value="hi")
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -722,19 +724,42 @@ component main {
 
 func TestParseOutputGroup(t *testing.T) {
 	src := `output {
-    js html
-    go bubbletea
+    js { html }
+    go { bubbletea }
 }
 
 component main {
     text(value="hi")
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 	if len(doc.Outputs) != 2 {
 		t.Fatalf("expected 2 outputs, got %d", len(doc.Outputs))
+	}
+}
+
+func TestParseOutputDefaults(t *testing.T) {
+	src := `output(name="My App", icon="icon.svg") {
+    js { html }
+}
+
+component main {
+    text(value="hi")
+}`
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(doc.Outputs) != 1 {
+		t.Fatalf("expected 1 output, got %d", len(doc.Outputs))
+	}
+	if doc.OutputDefaults["name"] != "My App" {
+		t.Errorf("expected name=My App, got %q", doc.OutputDefaults["name"])
+	}
+	if doc.OutputDefaults["icon"] != "icon.svg" {
+		t.Errorf("expected icon=icon.svg, got %q", doc.OutputDefaults["icon"])
 	}
 }
 
@@ -753,11 +778,11 @@ styles {
 component main {
     text(value="hi", class="primary")
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "styles") {
 		t.Errorf("expected 'styles' in output:\n%s", result)
 	}
@@ -769,11 +794,11 @@ func TestParseElementRef(t *testing.T) {
     button #myBtn (text="go", @click={ count += 1 })
     text(value=string(count))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "#myBtn") {
 		t.Errorf("expected '#myBtn' in output:\n%s", result)
 	}
@@ -789,7 +814,7 @@ component main {
     var p = Point{x: 1, y: 2}
     text(value=string(p.x))
 }`
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}

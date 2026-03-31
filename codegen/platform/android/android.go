@@ -14,22 +14,41 @@ func init() {
 type Generator struct{}
 
 func (g *Generator) Platform() string         { return "android" }
-func (g *Generator) SupportedLangs() []string { return []string{"kotlin"} }
+func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.Lang() != "kotlin" {
+	switch req.Lang.Lang() {
+	case "kotlin":
+		return g.generateKotlin(req)
+	case "go":
+		return g.generateGo(req)
+	default:
 		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", req.Lang.Lang())}, nil
 	}
+}
 
-	cfg := Config{
+func (g *Generator) configFromRequest(req *codegen.Request) Config {
+	appName := req.Opts.Name
+	if v := req.Options["appName"]; v != "" {
+		appName = v
+	}
+	icon := req.Opts.Icon
+	if v := req.Options["icon"]; v != "" {
+		icon = v
+	}
+	return Config{
 		Package:      req.Options["package"],
-		AppName:      req.Options["appName"],
+		AppName:      appName,
 		GenerateMain: req.Options["main"] == "true",
 		Gradle:       req.Options["gradle"] != "false",
-		Icon:         req.Options["icon"],
+		Icon:         icon,
 		Color:        req.Options["color"],
 		ProjectDir:   req.Options["projectDir"],
 	}.withDefaults()
+}
+
+func (g *Generator) generateKotlin(req *codegen.Request) (*codegen.Response, error) {
+	cfg := g.configFromRequest(req)
 
 	src, err := Compile(req.Doc, cfg)
 	if err != nil {
@@ -43,13 +62,11 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			codegen.BytesFile("MainScreen.kt", src),
 		}
 	} else if cfg.Gradle {
-		// Full Gradle project scaffold (templates handle conditional files)
 		pkgPath := pkgToPath(cfg.Package)
 		resp.Files = append(resp.Files, codegen.BytesFile(
 			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
 		))
 		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
-		// Dynamic icon resources (VectorDrawable/PNG) go under app/src/main/res/
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
 				f.Name = "app/src/main/" + f.Name
@@ -57,7 +74,6 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			resp.Files = append(resp.Files, iconRes...)
 		}
 	} else {
-		// Gradle-free: templates with Gradle=false skip gradle files
 		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
 		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
 		if iconRes, err := iconFiles(cfg); err == nil {

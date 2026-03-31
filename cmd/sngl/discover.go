@@ -12,7 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func discoverFiles(args []string) ([]string, error) {
@@ -47,7 +47,7 @@ func discoverFiles(args []string) ([]string, error) {
 
 // parseSNGL parses a .sngl file.
 func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
-	return snglparser.Parse(filename, r)
+	return parser.Parse(filename, r)
 }
 
 func isSNGLFile(path string) bool {

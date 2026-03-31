@@ -1,6 +1,10 @@
 output {
-    go bubbletea(package="main")
-    js html
+    go {
+        bubbletea(package="main")
+    }
+    js {
+        html
+    }
 }
 
 struct Todo {

@@ -5,18 +5,18 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestAPINamespaceStruct(t *testing.T) {
-	src := `output js testplat
+	src := `output { js { testplat } }
 
 component main {
     var x testplat.MyStruct
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -42,14 +42,14 @@ component main {
 }
 
 func TestAPINamespaceData(t *testing.T) {
-	src := `output js testplat
+	src := `output { js { testplat } }
 
 component main {
     var x int = testplat.magicNumber
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -74,14 +74,14 @@ component main {
 }
 
 func TestAPINamespaceEnum(t *testing.T) {
-	src := `output js testplat
+	src := `output { js { testplat } }
 
 component main {
     var x testplat.Color = "red"
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -105,13 +105,13 @@ component main {
 }
 
 func TestAPIOutputOptsValid(t *testing.T) {
-	src := `output js testplat(pkg="main")
+	src := `output { js { testplat(pkg="main") } }
 
 component main {
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -138,13 +138,13 @@ component main {
 }
 
 func TestAPIOutputOptsUnknown(t *testing.T) {
-	src := `output js testplat(badopt="yes")
+	src := `output { js { testplat(badopt="yes") } }
 
 component main {
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -173,14 +173,14 @@ component main {
 }
 
 func TestAPIDynamicResolve(t *testing.T) {
-	src := `output js testplat
+	src := `output { js { testplat } }
 
 component main {
     var x int = testplat.dynamicVal
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -215,13 +215,13 @@ component main {
 }
 
 func TestAPINoOptsStructSkipsValidation(t *testing.T) {
-	src := `output js testplat(anything="goes")
+	src := `output { js { testplat(anything="goes") } }
 
 component main {
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

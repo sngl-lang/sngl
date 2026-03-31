@@ -9,7 +9,7 @@ import (
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // ImportResolver loads all .sngl documents from a directory import path.
@@ -39,7 +39,7 @@ func DefaultResolver() ImportResolver {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", e.Name(), err)
 			}
-			doc, err := snglparser.Parse(e.Name(), f)
+			doc, err := parser.Parse(e.Name(), f)
 			f.Close()
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", e.Name(), err)

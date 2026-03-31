@@ -20,6 +20,7 @@ import (
 type outputTarget struct {
 	Lang     string
 	Platform string
+	Opts     codegen.Opts
 	Options  map[string]string
 }
 
@@ -125,16 +126,24 @@ func runCompile(cmd *cobra.Command, args []string) error {
 }
 
 func resolveTargets(doc *ast.Document, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
+	opts := optsFromDefaults(doc.OutputDefaults)
 	if cliLang != "" && cliPlat != "" {
-		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Options: cliOpts}}
+		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Opts: opts, Options: cliOpts}}
 	}
 	var targets []outputTarget
 	for _, o := range doc.Outputs {
-		opts := make(map[string]string)
-		maps.Copy(opts, o.Options)
-		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: opts})
+		perTarget := make(map[string]string)
+		maps.Copy(perTarget, o.Options)
+		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Opts: opts, Options: perTarget})
 	}
 	return targets
+}
+
+func optsFromDefaults(defaults map[string]string) codegen.Opts {
+	return codegen.Opts{
+		Name: defaults["name"],
+		Icon: defaults["icon"],
+	}
 }
 
 func generateTarget(filename string, doc *ast.Document, target outputTarget, outDir string, q bool) error {
@@ -156,6 +165,7 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 	resp, err := plat.Generate(&codegen.Request{
 		Doc:     doc,
 		Lang:    lang,
+		Opts:    target.Opts,
 		Options: target.Options,
 	})
 	if err != nil {

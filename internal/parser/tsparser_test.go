@@ -1,4 +1,4 @@
-package snglparser_test
+package parser_test
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser/internal/tsparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/parser/internal/tsparser"
 )
 
 func TestCanLoadGrammar(t *testing.T) {
@@ -47,7 +47,7 @@ func TestFixtureAgreement(t *testing.T) {
 			isError := strings.HasPrefix(name, "error_") || strings.Contains(string(src), "ERROR(parse)")
 
 			// Parse with Go parser.
-			goDoc, goErr := snglparser.Parse(name+".sngl", strings.NewReader(string(src)))
+			goDoc, goErr := parser.Parse(name+".sngl", strings.NewReader(string(src)))
 
 			// Parse with tree-sitter.
 			tree := tsparser.Parse(src)
@@ -99,11 +99,11 @@ func TestRoundTrip(t *testing.T) {
 			}
 
 			// Parse with Go, format back to source.
-			doc, goErr := snglparser.Parse(name+".sngl", strings.NewReader(string(src)))
+			doc, goErr := parser.Parse(name+".sngl", strings.NewReader(string(src)))
 			if goErr != nil {
 				t.Skipf("Go parser failed: %v", goErr)
 			}
-			formatted := snglparser.Format(doc)
+			formatted := parser.Format(doc)
 
 			// Re-parse formatted output with tree-sitter.
 			tree := tsparser.Parse([]byte(formatted))
@@ -389,7 +389,7 @@ func FuzzParse(f *testing.F) {
 					ch <- goResult{nil, fmt.Errorf("panic: %v", r)}
 				}
 			}()
-			doc, err := snglparser.Parse("fuzz.sngl", strings.NewReader(string(data)))
+			doc, err := parser.Parse("fuzz.sngl", strings.NewReader(string(data)))
 			ch <- goResult{doc, err}
 		}()
 
@@ -408,7 +408,7 @@ func FuzzParse(f *testing.F) {
 			// We check the formatted output rather than raw input because
 			// the Go parser is more lenient about separators/whitespace,
 			// while tree-sitter relies on ASI which needs newlines.
-			formatted := snglparser.Format(goDoc)
+			formatted := parser.Format(goDoc)
 			tree2 := tsparser.Parse([]byte(formatted))
 			defer tree2.Close()
 			if tsparser.HasErrors(tree2) {

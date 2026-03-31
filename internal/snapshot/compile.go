@@ -11,7 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -86,5 +86,5 @@ func ParseSNGL(filename string) (*ast.Document, error) {
 	}
 	defer f.Close()
 
-	return snglparser.Parse(filename, f)
+	return parser.Parse(filename, f)
 }

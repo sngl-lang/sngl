@@ -12,22 +12,24 @@ var templateFS embed.FS
 
 // templateData is the data passed to all scaffold templates.
 type templateData struct {
-	Package        string // e.g. "test.sngl.app"
-	AppName        string // e.g. "My App"
-	HasIcon        bool
+	Package         string // e.g. "test.sngl.app"
+	AppName         string // e.g. "My App"
+	HasIcon         bool
 	HasAdaptiveIcon bool   // true when icon is SVG (produces VectorDrawable foreground)
-	Color          string // e.g. "#6750A4" (empty if not set)
-	Gradle         bool   // true for Gradle scaffold
+	Color           string // e.g. "#6750A4" (empty if not set)
+	Gradle          bool   // true for Gradle scaffold
+	HasGoLib        bool   // true when Go module (golib.aar) is included
 }
 
 func newTemplateData(cfg Config) templateData {
 	return templateData{
-		Package:        cfg.Package,
-		AppName:        appLabel(cfg),
-		HasIcon:        cfg.Icon != "",
+		Package:         cfg.Package,
+		AppName:         appLabel(cfg),
+		HasIcon:         cfg.Icon != "",
 		HasAdaptiveIcon: cfg.Icon != "" && strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg"),
-		Color:          cfg.Color,
-		Gradle:         cfg.Gradle,
+		Color:           cfg.Color,
+		Gradle:          cfg.Gradle,
+		HasGoLib:        cfg.GoLib,
 	}
 }
 

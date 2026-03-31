@@ -14,7 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
@@ -48,7 +48,7 @@ func cachedParse(source string) (*ast.Document, error) {
 	if h == cacheHash && cacheDoc != nil {
 		return cacheDoc, nil
 	}
-	doc, err := snglparser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if doc != nil {
 		cacheHash = h
 		cacheDoc = doc
@@ -66,7 +66,7 @@ func compile(this js.Value, args []js.Value) any {
 	}
 	source := args[0].String()
 
-	doc, err := snglparser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
@@ -129,7 +129,7 @@ func astDump(this js.Value, args []js.Value) any {
 	}
 	source := args[0].String()
 
-	doc, err := snglparser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
@@ -173,7 +173,7 @@ func generate(this js.Value, args []js.Value) any {
 	platName := args[1].String()
 	langName := args[2].String()
 
-	doc, err := snglparser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)

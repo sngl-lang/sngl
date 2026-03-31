@@ -10,6 +10,7 @@ func (d *Document) Clone() *Document {
 		return nil
 	}
 	c := *d
+	c.OutputDefaults = maps.Clone(d.OutputDefaults)
 	c.Outputs = cloneSlice(d.Outputs)
 	c.Structs = cloneStructDefs(d.Structs)
 	c.Enums = cloneSlice(d.Enums)

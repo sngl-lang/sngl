@@ -1,4 +1,6 @@
-output js html
+output {
+    js { html }
+}
 
 struct Todo {
     text string = ""

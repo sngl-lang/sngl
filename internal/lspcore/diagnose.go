@@ -7,13 +7,13 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
 // Pass dir="" and resolve=nil when no filesystem is available (e.g. playground).
 func Analyze(content, filename, dir string, resolve checker.ImportResolver, schemeResolve ...checker.SchemeResolver) (*ast.Document, []Diagnostic) {
-	doc, parseErr := snglparser.Parse(filename, strings.NewReader(content))
+	doc, parseErr := parser.Parse(filename, strings.NewReader(content))
 
 	var diags []Diagnostic
 

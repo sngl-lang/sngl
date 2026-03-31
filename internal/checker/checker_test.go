@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -73,7 +73,7 @@ component main {
     button(text="Save", @click={ count += 1 })
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -101,7 +101,7 @@ component main {
     text(value="hello")
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestCallStmtInHandler(t *testing.T) {
     button(text="Save", @click={ saveTodo("test") })
 }
 `
-	doc, err := snglparser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

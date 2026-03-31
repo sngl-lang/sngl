@@ -1,4 +1,4 @@
-package snglparser_test
+package parser_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // TestParseFixtures parses each .sngl fixture file and verifies it round-trips
@@ -33,26 +33,26 @@ func TestParseFixtures(t *testing.T) {
 			}
 			defer f.Close()
 
-			doc, err := snglparser.Parse(name+".sngl", f)
+			doc, err := parser.Parse(name+".sngl", f)
 			if err != nil {
 				t.Fatalf("parse error: %v", err)
 			}
 
 			// Round-trip: format and re-parse
-			formatted := snglparser.Format(doc)
-			doc2, err := snglparser.Parse(name+".sngl", strings.NewReader(formatted))
+			formatted := parser.Format(doc)
+			doc2, err := parser.Parse(name+".sngl", strings.NewReader(formatted))
 			if err != nil {
 				t.Fatalf("re-parse error after format: %v\nformatted:\n%s", err, formatted)
 			}
 
 			// Format from re-parsed doc should be idempotent (map order is
 			// now deterministic since it came from a sequential parse).
-			formatted2 := snglparser.Format(doc2)
-			doc3, err := snglparser.Parse(name+".sngl", strings.NewReader(formatted2))
+			formatted2 := parser.Format(doc2)
+			doc3, err := parser.Parse(name+".sngl", strings.NewReader(formatted2))
 			if err != nil {
 				t.Fatalf("second re-parse error: %v\nformatted:\n%s", err, formatted2)
 			}
-			formatted3 := snglparser.Format(doc3)
+			formatted3 := parser.Format(doc3)
 			if formatted2 != formatted3 {
 				t.Errorf("format not idempotent after stabilization:\nsecond:\n%s\nthird:\n%s", formatted2, formatted3)
 			}

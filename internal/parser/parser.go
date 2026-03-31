@@ -1,4 +1,4 @@
-package snglparser
+package parser
 
 import (
 	"fmt"
@@ -91,7 +91,11 @@ func (p *parser) parseDocument() *ast.Document {
 		case KW_IMPORT:
 			doc.Imports = append(doc.Imports, p.parseImport())
 		case KW_OUTPUT:
-			doc.Outputs = append(doc.Outputs, p.parseOutput()...)
+			defaults, outputs := p.parseOutput()
+			if defaults != nil {
+				doc.OutputDefaults = defaults
+			}
+			doc.Outputs = append(doc.Outputs, outputs...)
 		case KW_STRUCT:
 			doc.Structs = append(doc.Structs, p.parseStruct())
 		case KW_ENUM:
@@ -152,55 +156,24 @@ func (p *parser) parseImport() *ast.Import {
 	return imp
 }
 
-func (p *parser) parseOutput() []*ast.Output {
+func (p *parser) parseOutput() (defaults map[string]string, outputs []*ast.Output) {
 	p.expect(KW_OUTPUT)
-	if p.at(LBRACE) {
-		return p.parseOutputGroup()
-	}
-	return []*ast.Output{p.parseSingleOutput()}
-}
-
-func (p *parser) parseSingleOutput() *ast.Output {
-	pos := p.pos()
-	lang := p.expect(IDENT).Literal
-	platform := p.expect(IDENT).Literal
-	opts := map[string]string{}
 	if p.at(LPAREN) {
-		opts = p.parseKVList()
+		defaults = p.parseKVList()
 	}
-	return &ast.Output{Pos: pos, Lang: lang, Platform: platform, Options: opts}
-}
-
-func (p *parser) parseOutputGroup() []*ast.Output {
 	p.expect(LBRACE)
-	var outputs []*ast.Output
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
 		if p.at(RBRACE) {
 			break
 		}
 		lang := p.expect(IDENT).Literal
-		if p.at(LBRACE) {
-			// lang { platform; platform }
-			p.advance()
-			for !p.at(RBRACE) && !p.at(EOF) {
-				p.skipSemicolons()
-				if p.at(RBRACE) {
-					break
-				}
-				pos := p.pos()
-				platform := p.expect(IDENT).Literal
-				opts := map[string]string{}
-				if p.at(LPAREN) {
-					opts = p.parseKVList()
-				}
-				outputs = append(outputs, &ast.Output{Pos: pos, Lang: lang, Platform: platform, Options: opts})
-				if p.at(SEMICOLON) {
-					p.advance()
-				}
+		p.expect(LBRACE)
+		for !p.at(RBRACE) && !p.at(EOF) {
+			p.skipSemicolons()
+			if p.at(RBRACE) {
+				break
 			}
-			p.expect(RBRACE)
-		} else {
 			pos := p.pos()
 			platform := p.expect(IDENT).Literal
 			opts := map[string]string{}
@@ -208,11 +181,15 @@ func (p *parser) parseOutputGroup() []*ast.Output {
 				opts = p.parseKVList()
 			}
 			outputs = append(outputs, &ast.Output{Pos: pos, Lang: lang, Platform: platform, Options: opts})
+			if p.at(SEMICOLON) {
+				p.advance()
+			}
 		}
+		p.expect(RBRACE)
 		p.skipSemicolons()
 	}
 	p.expect(RBRACE)
-	return outputs
+	return defaults, outputs
 }
 
 func (p *parser) parseKVList() map[string]string {

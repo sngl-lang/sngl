@@ -1,4 +1,4 @@
-package snglparser
+package parser
 
 import (
 	"fmt"
@@ -52,18 +52,32 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		if needBlank {
 			f.newline()
 		}
-		if len(doc.Outputs) == 1 {
-			o := doc.Outputs[0]
-			line := "output " + o.Lang + " " + o.Platform
-			if len(o.Options) > 0 {
-				line += "(" + formatKV(o.Options) + ")"
+		header := "output"
+		if len(doc.OutputDefaults) > 0 {
+			header += "(" + formatKV(doc.OutputDefaults) + ")"
+		}
+		f.writeLine(header + " {")
+		f.indent++
+		// Group outputs by lang
+		type langGroup struct {
+			lang    string
+			outputs []*ast.Output
+		}
+		var groups []langGroup
+		seen := map[string]int{}
+		for _, o := range doc.Outputs {
+			if idx, ok := seen[o.Lang]; ok {
+				groups[idx].outputs = append(groups[idx].outputs, o)
+			} else {
+				seen[o.Lang] = len(groups)
+				groups = append(groups, langGroup{lang: o.Lang, outputs: []*ast.Output{o}})
 			}
-			f.writeLine(line)
-		} else {
-			f.writeLine("output {")
+		}
+		for _, g := range groups {
+			f.writeLine(g.lang + " {")
 			f.indent++
-			for _, o := range doc.Outputs {
-				line := o.Lang + " " + o.Platform
+			for _, o := range g.outputs {
+				line := o.Platform
 				if len(o.Options) > 0 {
 					line += "(" + formatKV(o.Options) + ")"
 				}
@@ -72,6 +86,8 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			f.indent--
 			f.writeLine("}")
 		}
+		f.indent--
+		f.writeLine("}")
 		needBlank = true
 	}
 
@@ -1008,6 +1024,14 @@ func typeHintStr(hint string, d *ast.Data) string {
 	// Unit types: "unit:s" — inferred from unit literals, omit
 	if strings.HasPrefix(hint, "unit:") {
 		return ""
+	}
+
+	// Raw generic types stored with <> (e.g. "A<func:B>") — pass through as-is
+	// but recursively format the inner type.
+	if i := strings.Index(hint, "<"); i >= 0 && strings.HasSuffix(hint, ">") {
+		name := hint[:i]
+		inner := hint[i+1 : len(hint)-1]
+		return name + "<" + typeHintStr(inner, nil) + ">"
 	}
 
 	// Generic types: "list:Todo" → "list<Todo>"

@@ -14,6 +14,7 @@ type Config struct {
 	AppName      string // display name for the app (default: derived from package)
 	GenerateMain bool   // emit MainActivity.kt + project scaffold
 	Gradle       bool   // use Gradle build system (default: true)
+	GoLib        bool   // true when user funcs live in a Go module (gomobile bind)
 	Icon         string // path to icon file (SVG or PNG), relative to project root
 	Color        string // theme/icon background color as hex (#RRGGBB)
 	ProjectDir   string // project root directory (for resolving relative icon paths)
@@ -166,6 +167,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	if len(info.timers) > 0 {
 		b.WriteString("import kotlinx.coroutines.delay\n")
 	}
+	if cfg.GoLib {
+		b.WriteString("import golib.Golib\n")
+	}
 	b.WriteString("\n")
 
 	// Data classes for user structs
@@ -217,14 +221,19 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// Computed state
 	for _, comp := range info.computeds {
 		body := ""
-		for _, c := range doc.Computeds {
-			if c.Name == comp.name {
-				if c.Expr.SNGL != nil {
-					body = ec.translateExpr(c.Expr.SNGL)
-				} else if c.Expr.Literal != nil {
-					body = literalToKt(c.Expr)
+		if cfg.GoLib {
+			// Call into Go module for computed values
+			body = "golib.Golib." + exportName(comp.name) + "()"
+		} else {
+			for _, c := range doc.Computeds {
+				if c.Name == comp.name {
+					if c.Expr.SNGL != nil {
+						body = ec.translateExpr(c.Expr.SNGL)
+					} else if c.Expr.Literal != nil {
+						body = literalToKt(c.Expr)
+					}
+					break
 				}
-				break
 			}
 		}
 		fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
@@ -276,13 +285,15 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		emitComponentComposable(&b, comp, info.components, ec)
 	}
 
-	// User-defined functions (only pure functions that return values;
-	// void/mutation functions can't be top-level since they need Compose state)
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib || fn.ReturnType == "" {
-			continue
+	// User-defined functions — when GoLib is true, these live in the Go
+	// module and are called via Golib.FuncName(); otherwise emit inline Kotlin.
+	if !cfg.GoLib {
+		for _, fn := range doc.Functions {
+			if fn.IsStdlib || fn.ReturnType == "" {
+				continue
+			}
+			emitKtFunc(&b, fn, ec)
 		}
-		emitKtFunc(&b, fn, ec)
 	}
 
 	return []byte(b.String())

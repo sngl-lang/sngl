@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("struct A{A A=0 A A=0 A A=0}component A{var A=A{A:0}var A=A{A:0}var A=A{A:0 A:0 A:0}var A=A{A:0}var A=A{A:0 A:0}A}test A\"0\"{0(A(000)!=0)0(A(000)!=0)0(A(000)!=0)0(A(000)!=0)0(A(000)!=0)}test A\"0\"{A.A{}}")

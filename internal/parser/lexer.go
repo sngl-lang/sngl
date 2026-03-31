@@ -1,4 +1,4 @@
-package snglparser
+package parser
 
 import (
 	"strings"

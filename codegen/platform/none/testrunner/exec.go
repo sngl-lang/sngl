@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // AssertError is returned when an assertion fails.
@@ -15,7 +15,7 @@ type AssertError struct {
 }
 
 func (e *AssertError) Error() string {
-	return fmt.Sprintf("assert(%s) failed — got %v", snglparser.FormatNode(e.Expr), e.Got)
+	return fmt.Sprintf("assert(%s) failed — got %v", parser.FormatNode(e.Expr), e.Got)
 }
 
 // Exec executes a statement node, mutating the environment.

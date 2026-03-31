@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+"([^"]+)"`)
@@ -215,7 +215,7 @@ func ParseFile(path string) (*ast.Document, error) {
 	}
 	defer f.Close()
 	name := filepath.Base(path)
-	return snglparser.Parse(name, f)
+	return parser.Parse(name, f)
 }
 
 // RunFixtures globs dir for *.sngl files, creates a subtest per file,

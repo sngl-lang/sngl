@@ -10,22 +10,22 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // Parse reads SNGL source from r and returns the parsed document AST.
 func Parse(filename string, r io.Reader) (*ast.Document, error) {
-	return snglparser.Parse(filename, r)
+	return parser.Parse(filename, r)
 }
 
 // Format returns the formatted SNGL source for a document.
 func Format(doc *ast.Document) string {
-	return snglparser.Format(doc)
+	return parser.Format(doc)
 }
 
 // FormatNode returns the formatted SNGL source for a single AST node.
 func FormatNode(n ast.Node) string {
-	return snglparser.FormatNode(n)
+	return parser.FormatNode(n)
 }
 
 // Check type-checks a parsed SNGL document. dir is the directory of the source

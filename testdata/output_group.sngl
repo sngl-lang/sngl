@@ -2,7 +2,9 @@ output {
     js {
         html(entry="app")
     }
-    go bubbletea
+    go {
+        bubbletea
+    }
 }
 
 component main {

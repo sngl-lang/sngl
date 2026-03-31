@@ -1,11 +1,11 @@
-package snglparser_test
+package parser_test
 
 import (
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/snglparser"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // TestFormatLiteralExprs verifies that Format handles Expr.Literal values
@@ -66,7 +66,7 @@ func TestFormatLiteralExprs(t *testing.T) {
 		},
 	}
 
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 
 	expectations := []string{
 		`value="hello"`,
@@ -102,7 +102,7 @@ func TestFormatEventLiteralNull(t *testing.T) {
 			},
 		},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, "@click={ null }") {
 		t.Errorf("expected @click={ null } in output:\n%s", result)
 	}
@@ -122,7 +122,7 @@ func TestFormatStringEscapes(t *testing.T) {
 			},
 		},
 	}
-	result := snglparser.Format(doc)
+	result := parser.Format(doc)
 	if !strings.Contains(result, `\n`) || !strings.Contains(result, `\t`) || !strings.Contains(result, `\"`) {
 		t.Errorf("expected escaped characters in output:\n%s", result)
 	}
