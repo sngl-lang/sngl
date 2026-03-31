@@ -88,20 +88,33 @@ func (l *lexer) NextToken() Token {
 		ch := l.input[l.pos]
 		startLine, startCol := l.line, l.col
 
+		// Slashdash (must come before // and /* checks)
+		if ch == '/' && l.peekAt(1) == '-' {
+			l.advance()
+			l.advance()
+			return l.token(SLASHDASH, "/-", startLine, startCol)
+		}
+
 		// Line comment
 		if ch == '/' && l.peekAt(1) == '/' {
 			// Check for semicolon insertion before consuming comment
 			if insertsSemicolon(l.prevTok) {
 				return l.token(SEMICOLON, ";", l.line, l.col)
 			}
+			start := l.pos
 			for l.pos < len(l.input) && l.input[l.pos] != '\n' {
 				l.advance()
 			}
-			continue
+			return l.token(LINE_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
 		}
 
 		// Block comment
 		if ch == '/' && l.peekAt(1) == '*' {
+			// Check for semicolon insertion before consuming comment
+			if insertsSemicolon(l.prevTok) {
+				return l.token(SEMICOLON, ";", l.line, l.col)
+			}
+			start := l.pos
 			l.advance()
 			l.advance()
 			closed := false
@@ -117,7 +130,7 @@ func (l *lexer) NextToken() Token {
 			if !closed {
 				return l.token(ILLEGAL, "unterminated block comment", startLine, startCol)
 			}
-			continue
+			return l.token(BLOCK_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
 		}
 
 		// Color literal (#hex) or element reference (#id)

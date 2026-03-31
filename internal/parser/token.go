@@ -88,6 +88,11 @@ const (
 	KW_TRUE
 	KW_FALSE
 	KW_NULL
+
+	// Special
+	SLASHDASH    // /-
+	LINE_COMMENT // // ...
+	BLOCK_COMMENT // /* ... */
 )
 
 var keywords = map[string]TokenType{

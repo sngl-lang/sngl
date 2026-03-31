@@ -28,6 +28,13 @@ type Output struct {
 	Options  map[string]string // {"package": "main"}
 }
 
+// Comment is a source comment preserved for formatting.
+type Comment struct {
+	Pos   Pos
+	Text  string // includes delimiters (// or /* */)
+	Block bool   // true for /* */ comments
+}
+
 type Document struct {
 	OutputDefaults     map[string]string // key=value from output(...) defaults
 	Outputs            []*Output
@@ -46,6 +53,7 @@ type Document struct {
 	StyleDefs          []*StylePropDef // from "styles" top-level node
 	App                *App
 	Tests              []*TestDef
+	Comments           []Comment // all comments, ordered by position
 }
 
 // FindComponent looks up a component by name, searching local components first,
@@ -85,6 +93,7 @@ type TestDef struct {
 	Desc      string     // test description
 	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
 	Subtests  []*TestDef // nested test blocks
+	Disabled  bool       // true when prefixed with /-
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -105,21 +114,24 @@ type UnitSuffix struct {
 
 // Const is an immutable named value.
 type Const struct {
-	Pos  Pos
-	Name string
-	Init Expr
+	Pos      Pos
+	Name     string
+	Init     Expr
+	Disabled bool
 }
 
 type EnumDef struct {
-	Pos    Pos
-	Name   string
-	Values []string
+	Pos      Pos
+	Name     string
+	Values   []string
+	Disabled bool
 }
 
 type StructDef struct {
-	Pos    Pos
-	Name   string
-	Fields []*StructField
+	Pos      Pos
+	Name     string
+	Fields   []*StructField
+	Disabled bool
 }
 
 type StructField struct {
@@ -134,6 +146,7 @@ type Import struct {
 	Path      string
 	Scheme    string // "go", "ts", "proto", "" for directory imports
 	Namespace string // last path segment, e.g. "widgets" from "lib/widgets"
+	Disabled  bool
 }
 
 // NativeDecls holds SNGL-compatible declarations resolved from a native import.
@@ -152,12 +165,14 @@ type Data struct {
 	ParamTypes []string // parsed func params (e.g., ["string", "int"])
 	ReturnType string   // parsed func return type, "" for void
 	Trigger    string   // resolved trigger function name, "" for none
+	Disabled   bool
 }
 
 type Computed struct {
-	Pos  Pos
-	Name string
-	Expr Expr
+	Pos      Pos
+	Name     string
+	Expr     Expr
+	Disabled bool
 }
 
 type StyleDecl struct {
@@ -203,6 +218,7 @@ type FuncDef struct {
 	Body       Expr       // single-expression form (= expr)
 	Block      *FuncBlock // block form ({ ... }), nil for expression form
 	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
+	Disabled   bool
 }
 
 // FuncBlock is the body of a block-form function.
@@ -223,6 +239,7 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 type Component struct {
 	Pos         Pos
 	Name        string
+	Disabled    bool
 	Params      []*Param     // @param (user-defined components)
 	Consts      []*Const     // const declarations
 	Data        []*Data      // var declarations (component-scoped state)
@@ -240,6 +257,7 @@ type Param struct {
 	Name     string
 	Default  Expr
 	Required bool
+	Disabled bool
 }
 
 type App struct {
@@ -253,11 +271,13 @@ type Timer struct {
 	Interval Expr   // duration literal (e.g., 100ms, 1s)
 	Active   string // name of bool var controlling start/stop
 	Body     Node   // StmtBlock of mutation statements
+	Disabled bool
 }
 
 type VisualNode struct {
 	Pos        Pos
 	Component  string
+	Disabled   bool
 	ID         string // element ID from #id syntax (empty = no ID)
 	Key        *Expr
 	Class      *Expr

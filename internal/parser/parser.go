@@ -33,6 +33,7 @@ type parser struct {
 	cur         Token
 	errs        []error
 	noStructLit bool // when true, IDENT { is not parsed as struct literal (if/for contexts)
+	comments    []ast.Comment
 }
 
 func (p *parser) pos() ast.Pos {
@@ -41,7 +42,18 @@ func (p *parser) pos() ast.Pos {
 
 func (p *parser) advance() Token {
 	prev := p.cur
-	p.cur = p.lex.NextToken()
+	for {
+		p.cur = p.lex.NextToken()
+		if p.cur.Type == LINE_COMMENT || p.cur.Type == BLOCK_COMMENT {
+			p.comments = append(p.comments, ast.Comment{
+				Pos:   ast.Pos{Line: p.cur.Line, Column: p.cur.Column},
+				Text:  p.cur.Literal,
+				Block: p.cur.Type == BLOCK_COMMENT,
+			})
+			continue
+		}
+		break
+	}
 	return prev
 }
 
@@ -87,9 +99,18 @@ func (p *parser) parseDocument() *ast.Document {
 		if p.at(EOF) {
 			break
 		}
+
+		disabled := false
+		if p.at(SLASHDASH) {
+			p.advance()
+			disabled = true
+		}
+
 		switch p.cur.Type {
 		case KW_IMPORT:
-			doc.Imports = append(doc.Imports, p.parseImport())
+			imp := p.parseImport()
+			imp.Disabled = disabled
+			doc.Imports = append(doc.Imports, imp)
 		case KW_OUTPUT:
 			defaults, outputs := p.parseOutput()
 			if defaults != nil {
@@ -97,9 +118,13 @@ func (p *parser) parseDocument() *ast.Document {
 			}
 			doc.Outputs = append(doc.Outputs, outputs...)
 		case KW_STRUCT:
-			doc.Structs = append(doc.Structs, p.parseStruct())
+			sd := p.parseStruct()
+			sd.Disabled = disabled
+			doc.Structs = append(doc.Structs, sd)
 		case KW_ENUM:
-			doc.Enums = append(doc.Enums, p.parseEnum())
+			ed := p.parseEnum()
+			ed.Disabled = disabled
+			doc.Enums = append(doc.Enums, ed)
 		case KW_UNIT:
 			doc.Units = append(doc.Units, p.parseUnitDecl())
 		case KW_STYLE:
@@ -107,16 +132,21 @@ func (p *parser) parseDocument() *ast.Document {
 		case KW_STYLES:
 			doc.StyleDefs = append(doc.StyleDefs, p.parseStyles()...)
 		case KW_TIMER:
-			doc.Timers = append(doc.Timers, p.parseTimer())
+			t := p.parseTimer()
+			t.Disabled = disabled
+			doc.Timers = append(doc.Timers, t)
 		case KW_TEST:
-			doc.Tests = append(doc.Tests, p.parseTestDef(true))
+			td := p.parseTestDef(true)
+			td.Disabled = disabled
+			doc.Tests = append(doc.Tests, td)
 		case KW_FUNC:
-			doc.Functions = append(doc.Functions, p.parseFuncDef())
+			fn := p.parseFuncDef()
+			fn.Disabled = disabled
+			doc.Functions = append(doc.Functions, fn)
 		case KW_COMPONENT:
 			comp := p.parseComponent()
+			comp.Disabled = disabled
 			if comp.Name == "main" {
-				// The main component becomes the app root.
-				// Hoist data/computeds/consts/functions to document level.
 				doc.App = &ast.App{Pos: comp.Pos, Children: comp.Body}
 				doc.Data = append(doc.Data, comp.Data...)
 				doc.Computeds = append(doc.Computeds, comp.Computeds...)
@@ -131,6 +161,7 @@ func (p *parser) parseDocument() *ast.Document {
 			p.advance()
 		}
 	}
+	doc.Comments = p.comments
 	return doc
 }
 
@@ -339,9 +370,18 @@ func (p *parser) parseComponent() *ast.Component {
 		if p.at(RBRACE) {
 			break
 		}
+
+		disabled := false
+		if p.at(SLASHDASH) {
+			p.advance()
+			disabled = true
+		}
+
 		switch p.cur.Type {
 		case KW_PARAM:
-			comp.Params = append(comp.Params, p.parseParam())
+			param := p.parseParam()
+			param.Disabled = disabled
+			comp.Params = append(comp.Params, param)
 		case KW_PROP:
 			comp.PropDecls = append(comp.PropDecls, p.parsePropDecl())
 		case KW_EVENT:
@@ -350,18 +390,35 @@ func (p *parser) parseComponent() *ast.Component {
 			p.advance()
 			comp.ChildPolicy = p.expect(IDENT).Literal
 		case KW_CONST:
-			cs.Consts = append(cs.Consts, p.parseConstDecl()...)
+			consts := p.parseConstDecl()
+			for _, c := range consts {
+				c.Disabled = disabled
+			}
+			cs.Consts = append(cs.Consts, consts...)
 		case KW_VAR:
-			cs.Data = append(cs.Data, p.parseVarDecl()...)
+			vars := p.parseVarDecl()
+			for _, d := range vars {
+				d.Disabled = disabled
+			}
+			cs.Data = append(cs.Data, vars...)
 		case KW_COMPUTED:
-			cs.Computeds = append(cs.Computeds, p.parseComputedDecl()...)
+			computeds := p.parseComputedDecl()
+			for _, c := range computeds {
+				c.Disabled = disabled
+			}
+			cs.Computeds = append(cs.Computeds, computeds...)
 		case KW_FUNC:
-			comp.Functions = append(comp.Functions, p.parseFuncDef())
+			fn := p.parseFuncDef()
+			fn.Disabled = disabled
+			comp.Functions = append(comp.Functions, fn)
 		case KW_TIMER:
-			comp.Timers = append(comp.Timers, p.parseTimer())
+			t := p.parseTimer()
+			t.Disabled = disabled
+			comp.Timers = append(comp.Timers, t)
 		default:
-			// Visual nodes or control flow
-			comp.Body = append(comp.Body, p.parseNodeOrControl())
+			node := p.parseNodeOrControl()
+			node.Disabled = disabled
+			comp.Body = append(comp.Body, node)
 		}
 		p.skipSemicolons()
 	}

@@ -10,14 +10,36 @@ import (
 
 // Format writes an ast.Document as .sngl source text.
 func Format(doc *ast.Document) string {
-	f := &formatter{}
+	f := &formatter{comments: doc.Comments}
 	f.formatDocument(doc)
+	// Emit any trailing comments
+	f.emitRemainingComments()
 	return f.sb.String()
 }
 
+// emitCommentsBefore emits all comments with position before the given line.
+func (f *formatter) emitCommentsBefore(line int) {
+	for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line < line {
+		c := f.comments[f.commentI]
+		f.writeLine(c.Text)
+		f.commentI++
+	}
+}
+
+// emitRemainingComments emits any comments not yet emitted.
+func (f *formatter) emitRemainingComments() {
+	for f.commentI < len(f.comments) {
+		c := f.comments[f.commentI]
+		f.writeLine(c.Text)
+		f.commentI++
+	}
+}
+
 type formatter struct {
-	sb     strings.Builder
-	indent int
+	sb       strings.Builder
+	indent   int
+	comments []ast.Comment
+	commentI int // next comment index to emit
 }
 
 func (f *formatter) write(s string) { f.sb.WriteString(s) }
@@ -36,13 +58,26 @@ func (f *formatter) writeLine(s string) {
 	f.newline()
 }
 
+// writeDisabledLine writes a line prefixed with /- if disabled is true.
+func (f *formatter) writeDisabledLine(disabled bool, s string) {
+	if disabled {
+		f.write(f.indentStr())
+		f.write("/- ")
+		f.write(s)
+		f.newline()
+	} else {
+		f.writeLine(s)
+	}
+}
+
 func (f *formatter) formatDocument(doc *ast.Document) {
 	needBlank := false
 
 	// Imports
 	if len(doc.Imports) > 0 {
 		for _, imp := range doc.Imports {
-			f.writeLine(fmt.Sprintf("import \"%s\"", escapeStringContent(imp.Path)))
+			f.emitCommentsBefore(imp.Pos.Line)
+			f.writeDisabledLine(imp.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(imp.Path)))
 		}
 		needBlank = true
 	}
@@ -96,6 +131,10 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		if needBlank {
 			f.newline()
 		}
+		f.emitCommentsBefore(s.Pos.Line)
+		if s.Disabled {
+			f.write(f.indentStr() + "/- ")
+		}
 		f.formatStruct(s)
 		needBlank = true
 	}
@@ -105,7 +144,8 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		if needBlank {
 			f.newline()
 		}
-		f.writeLine(fmt.Sprintf("enum %s { %s }", e.Name, strings.Join(e.Values, ", ")))
+		f.emitCommentsBefore(e.Pos.Line)
+		f.writeDisabledLine(e.Disabled, fmt.Sprintf("enum %s { %s }", e.Name, strings.Join(e.Values, ", ")))
 		needBlank = true
 	}
 
@@ -141,6 +181,10 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		if needBlank {
 			f.newline()
 		}
+		f.emitCommentsBefore(comp.Pos.Line)
+		if comp.Disabled {
+			f.write(f.indentStr() + "/- ")
+		}
 		f.formatComponent(comp)
 		needBlank = true
 	}
@@ -149,6 +193,10 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 	for _, td := range doc.Tests {
 		if needBlank {
 			f.newline()
+		}
+		f.emitCommentsBefore(td.Pos.Line)
+		if td.Disabled {
+			f.write(f.indentStr() + "/- ")
 		}
 		f.formatTestDef(td, true)
 		needBlank = true
@@ -222,6 +270,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.newline()
 			}
 			for _, vn := range doc.App.Children {
+				f.emitCommentsBefore(vn.Pos.Line)
 				f.formatVisualNode(vn)
 			}
 		}
@@ -289,13 +338,13 @@ func (f *formatter) formatStyleDefs(defs []*ast.StylePropDef) {
 func (f *formatter) formatConsts(consts []*ast.Const) {
 	if len(consts) == 1 {
 		c := consts[0]
-		f.writeLine("const " + c.Name + " = " + f.formatExprValue(c.Init))
+		f.writeDisabledLine(c.Disabled, "const "+c.Name+" = "+f.formatExprValue(c.Init))
 		return
 	}
 	f.writeLine("const (")
 	f.indent++
 	for _, c := range consts {
-		f.writeLine(c.Name + " = " + f.formatExprValue(c.Init))
+		f.writeDisabledLine(c.Disabled, c.Name+" = "+f.formatExprValue(c.Init))
 	}
 	f.indent--
 	f.writeLine(")")
@@ -303,13 +352,13 @@ func (f *formatter) formatConsts(consts []*ast.Const) {
 
 func (f *formatter) formatVars(data []*ast.Data) {
 	if len(data) == 1 {
-		f.writeLine("var " + f.formatVarDecl(data[0]))
+		f.writeDisabledLine(data[0].Disabled, "var "+f.formatVarDecl(data[0]))
 		return
 	}
 	f.writeLine("var (")
 	f.indent++
 	for _, d := range data {
-		f.writeLine(f.formatVarDecl(d))
+		f.writeDisabledLine(d.Disabled, f.formatVarDecl(d))
 	}
 	f.indent--
 	f.writeLine(")")
@@ -395,13 +444,13 @@ func canInferType(expr ast.Expr, typeStr string) bool {
 func (f *formatter) formatComputeds(computeds []*ast.Computed) {
 	if len(computeds) == 1 {
 		c := computeds[0]
-		f.writeLine("computed " + c.Name + " = " + f.formatExprValue(c.Expr))
+		f.writeDisabledLine(c.Disabled, "computed "+c.Name+" = "+f.formatExprValue(c.Expr))
 		return
 	}
 	f.writeLine("computed (")
 	f.indent++
 	for _, c := range computeds {
-		f.writeLine(c.Name + " = " + f.formatExprValue(c.Expr))
+		f.writeDisabledLine(c.Disabled, c.Name+" = "+f.formatExprValue(c.Expr))
 	}
 	f.indent--
 	f.writeLine(")")
@@ -568,6 +617,7 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 			f.newline()
 		}
 		for _, vn := range comp.Body {
+			f.emitCommentsBefore(vn.Pos.Line)
 			f.formatVisualNode(vn)
 		}
 	}
@@ -598,6 +648,15 @@ func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
 }
 
 func (f *formatter) formatVisualNode(vn *ast.VisualNode) {
+	if vn.Disabled {
+		f.write(f.indentStr() + "/- ")
+		// Temporarily reduce indent so the inner node doesn't double-indent
+		saved := f.indent
+		f.indent = 0
+		f.formatVisualNodeInner(vn)
+		f.indent = saved
+		return
+	}
 	// If / For wrapping
 	if vn.If != nil || vn.For != nil {
 		if vn.For != nil {
@@ -694,6 +753,7 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 
 		// Children
 		for _, child := range vn.Children {
+			f.emitCommentsBefore(child.Pos.Line)
 			f.formatVisualNode(child)
 		}
 

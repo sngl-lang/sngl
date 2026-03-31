@@ -14,6 +14,18 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "slashdash"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "SYMBOL",
           "name": "_declaration"
         },
@@ -35,6 +47,10 @@
           "name": "_automatic_semicolon"
         }
       ]
+    },
+    "slashdash": {
+      "type": "STRING",
+      "value": "/-"
     },
     "_declaration": {
       "type": "CHOICE",
@@ -748,6 +764,18 @@
           "content": {
             "type": "SEQ",
             "members": [
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "slashdash"
+                  },
+                  {
+                    "type": "BLANK"
+                  }
+                ]
+              },
               {
                 "type": "SYMBOL",
                 "name": "_component_member"

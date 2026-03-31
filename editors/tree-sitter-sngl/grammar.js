@@ -37,11 +37,13 @@ module.exports = grammar({
     source_file: ($) => repeat($._declaration_with_terminator),
 
     _declaration_with_terminator: ($) =>
-      seq($._declaration, $._terminator),
+      seq(optional($.slashdash), $._declaration, $._terminator),
 
     _terminator: ($) => choice(";", $._automatic_semicolon),
 
     // ─── Top-level declarations ──────────────────────────────
+
+    slashdash: (_$) => "/-",
 
     _declaration: ($) =>
       choice(
@@ -186,7 +188,7 @@ module.exports = grammar({
         "component",
         field("name", $.identifier),
         "{",
-        repeat(seq($._component_member, $._terminator)),
+        repeat(seq(optional($.slashdash), $._component_member, $._terminator)),
         "}",
       ),
 
