@@ -11,7 +11,7 @@ import (
 
 // Run implements codegen.Runner. It opens the generated index.html in the
 // default web browser.
-func (g *Generator) Run(dir string, args []string) error {
+func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
 	path := filepath.Join(dir, "index.html")
 	return openBrowser(path)
 }

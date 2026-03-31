@@ -8,7 +8,7 @@ import (
 
 // Run implements codegen.Runner. It bootstraps a Go module in the output
 // directory and runs the generated code with "go run .".
-func (g *Generator) Run(dir string, args []string) error {
+func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return fmt.Errorf("go not found in PATH")

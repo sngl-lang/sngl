@@ -86,7 +86,7 @@ func setEnv(env []string, key, value string) []string {
 // Run implements codegen.Runner. It builds the Android project with Gradle,
 // ensures an ADB device is available (starting an emulator if needed),
 // installs the APK, and launches the main activity.
-func (g *Generator) Run(dir string, args []string) error {
+func (g *Generator) Run(dir string, opts map[string]string, args []string) error {
 	if _, err := androidTool("adb"); err != nil {
 		return err
 	}
@@ -95,16 +95,34 @@ func (g *Generator) Run(dir string, args []string) error {
 		return err
 	}
 
-	pkg, err := readPackage(dir)
-	if err != nil {
-		return err
+	useGradle := opts["gradle"] != "false"
+	pkg := opts["package"]
+	if pkg == "" {
+		pkg = "test.sngl.app"
 	}
 
-	if err := gradleBuild(dir); err != nil {
-		return err
+	var apk string
+	if useGradle {
+		var err error
+		pkg, err = readPackage(dir)
+		if err != nil {
+			return err
+		}
+		if err := gradleBuild(dir); err != nil {
+			return err
+		}
+		apk = filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+	} else {
+		tc, err := resolveToolchain()
+		if err != nil {
+			return fmt.Errorf("resolving toolchain: %w", err)
+		}
+		apk, err = directBuild(dir, tc, pkg)
+		if err != nil {
+			return err
+		}
 	}
 
-	apk := filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
 	if err := adbInstall(apk); err != nil {
 		return err
 	}
@@ -159,7 +177,7 @@ func gradleBuild(dir string) error {
 func adbInstall(apk string) error {
 	adb, _ := androidTool("adb")
 	fmt.Fprintln(os.Stderr, "sngl: installing APK...")
-	install := exec.Command(adb, "install", "-r", apk)
+	install := exec.Command(adb, "install", "-r", "-d", apk)
 	install.Stdout = os.Stdout
 	install.Stderr = os.Stderr
 	if err := install.Run(); err != nil {

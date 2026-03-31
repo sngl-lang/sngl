@@ -270,9 +270,10 @@ func OutputTargetCompletions(content string, line int) []CompletionItem {
 			items = append(items, CompletionItem{Label: name, Kind: CIKKeyword, Detail: "language"})
 		}
 		return items
-	case 2: // "output js" — complete with platform names
+	case 2: // "output js" — complete with platforms supporting this lang
+		lang := words[1]
 		var items []CompletionItem
-		for _, name := range codegen.Platforms() {
+		for _, name := range codegen.PlatformsForLang(lang) {
 			items = append(items, CompletionItem{Label: name, Kind: CIKKeyword, Detail: "platform"})
 		}
 		return items

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -140,6 +141,25 @@ func mergeInto(dst, src *ast.Document) {
 	if len(src.Outputs) > 0 && len(dst.Outputs) == 0 {
 		dst.Outputs = src.Outputs
 	}
+}
+
+// validateOutputs checks that output declarations reference valid lang/platform
+// pairs and that the platform supports the language.
+func validateOutputs(doc *ast.Document) error {
+	for _, out := range doc.Outputs {
+		lang := codegen.LookupLang(out.Lang)
+		if lang == nil {
+			return fmt.Errorf("%s: unknown language %q (available: %v)", out.Pos, out.Lang, codegen.Langs())
+		}
+		plat := codegen.LookupPlatform(out.Platform)
+		if plat == nil {
+			return fmt.Errorf("%s: unknown platform %q (available: %v)", out.Pos, out.Platform, codegen.Platforms())
+		}
+		if !slices.Contains(plat.SupportedLangs(), out.Lang) {
+			return fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", out.Pos, out.Platform, out.Lang, plat.SupportedLangs())
+		}
+	}
+	return nil
 }
 
 // defaultSchemeResolver returns a SchemeResolver that delegates to registered

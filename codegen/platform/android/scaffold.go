@@ -116,11 +116,21 @@ fun AppTheme(content: @Composable () -> Unit) {
 }
 
 func androidManifest(cfg Config) string {
+	iconAttrs := ""
+	if cfg.Icon != "" {
+		iconAttrs = `
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"`
+	}
 	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="%s"
+    android:versionCode="1"
+    android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
     <application
         android:allowBackup="true"
-        android:label="%s"
+        android:label="%s"%s
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
@@ -133,7 +143,14 @@ func androidManifest(cfg Config) string {
         </activity>
     </application>
 </manifest>
-`, appNameFromPkg(cfg.Package))
+`, cfg.Package, appLabel(cfg), iconAttrs)
+}
+
+func appLabel(cfg Config) string {
+	if cfg.AppName != "" {
+		return cfg.AppName
+	}
+	return appNameFromPkg(cfg.Package)
 }
 
 func appBuildGradle(cfg Config) string {
@@ -208,7 +225,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "%s"
 include(":app")
-`, appNameFromPkg(cfg.Package))
+`, appLabel(cfg))
 }
 
 func gradleProperties() string {
@@ -254,6 +271,27 @@ fi
 
 exec "$GRADLE_BIN" "$@"
 `
+}
+
+// directBuildFiles returns the minimal files needed for a gradle-free build:
+// just the Kotlin sources and AndroidManifest.xml.
+func directBuildFiles(cfg Config) []*codegen.OutputFile {
+	var files []*codegen.OutputFile
+
+	files = append(files, &codegen.OutputFile{
+		Name:    "MainActivity.kt",
+		Content: []byte(mainActivityKt(cfg)),
+	})
+	files = append(files, &codegen.OutputFile{
+		Name:    "Theme.kt",
+		Content: []byte(themeKt(cfg)),
+	})
+	files = append(files, &codegen.OutputFile{
+		Name:    "AndroidManifest.xml",
+		Content: []byte(androidManifest(cfg)),
+	})
+
+	return files
 }
 
 func appNameFromPkg(pkg string) string {

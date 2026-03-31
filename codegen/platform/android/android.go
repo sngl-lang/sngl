@@ -23,7 +23,12 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	cfg := Config{
 		Package:      req.Options["package"],
+		AppName:      req.Options["appName"],
 		GenerateMain: req.Options["main"] == "true",
+		Gradle:       req.Options["gradle"] != "false",
+		Icon:         req.Options["icon"],
+		Color:        req.Options["color"],
+		ProjectDir:   req.Options["projectDir"],
 	}.withDefaults()
 
 	src, err := Compile(req.Doc, cfg)
@@ -33,16 +38,33 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	resp := &codegen.Response{}
 
-	if cfg.GenerateMain {
+	if !cfg.GenerateMain {
+		resp.Files = []*codegen.OutputFile{
+			{Name: "MainScreen.kt", Content: src},
+		}
+	} else if cfg.Gradle {
+		// Full Gradle project scaffold
 		pkgPath := pkgToPath(cfg.Package)
 		resp.Files = append(resp.Files, &codegen.OutputFile{
 			Name:    "app/src/main/java/" + pkgPath + "/MainScreen.kt",
 			Content: src,
 		})
 		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
+		// Icon/color resources go under app/src/main/res/
+		if resFiles, err := resourceFiles(cfg); err == nil {
+			for _, f := range resFiles {
+				f.Name = "app/src/main/" + f.Name
+			}
+			resp.Files = append(resp.Files, resFiles...)
+		}
 	} else {
-		resp.Files = []*codegen.OutputFile{
-			{Name: "MainScreen.kt", Content: src},
+		// Gradle-free: just Kotlin sources + manifest + resources
+		resp.Files = append(resp.Files, &codegen.OutputFile{
+			Name: "MainScreen.kt", Content: src,
+		})
+		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
+		if resFiles, err := resourceFiles(cfg); err == nil {
+			resp.Files = append(resp.Files, resFiles...)
 		}
 	}
 

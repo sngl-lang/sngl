@@ -84,6 +84,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if err := validateOutputs(doc); err != nil {
+		return err
+	}
+
 	// Resolve target
 	targets := resolveTargets(doc, cliLang, cliPlat, cliOpts)
 	if len(targets) == 0 {
@@ -107,6 +111,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		target.Options = make(map[string]string)
 	}
 	target.Options["main"] = "true"
+	target.Options["projectDir"] = dir
 	if target.Platform == "bubbletea" {
 		target.Options["package"] = "main"
 	}
@@ -132,5 +137,5 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run
-	return runner.Run(tmpDir, progArgs)
+	return runner.Run(tmpDir, target.Options, progArgs)
 }

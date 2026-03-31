@@ -66,3 +66,19 @@ func Platforms() []string {
 	}
 	return names
 }
+
+// PlatformsForLang returns the platform names that support the given language.
+func PlatformsForLang(lang string) []string {
+	platMu.RLock()
+	defer platMu.RUnlock()
+	var names []string
+	for name, p := range platforms {
+		for _, l := range p.SupportedLangs() {
+			if l == lang {
+				names = append(names, name)
+				break
+			}
+		}
+	}
+	return names
+}

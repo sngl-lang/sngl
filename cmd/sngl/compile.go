@@ -86,12 +86,25 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
 
+		if err := validateOutputs(doc); err != nil {
+			return err
+		}
+
 		targets := resolveTargets(doc, cliLang, cliPlat, cliOpts)
 		if len(targets) == 0 {
 			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}
 
 		for _, target := range targets {
+			if target.Options == nil {
+				target.Options = make(map[string]string)
+			}
+			// Set projectDir for resolving relative paths in output options
+			// (icon paths from output declarations are relative to the .sngl dir)
+			if target.Options["projectDir"] == "" {
+				target.Options["projectDir"] = dir
+			}
+
 			targetDoc := doc
 			if len(targets) > 1 {
 				targetDoc = doc.Clone()

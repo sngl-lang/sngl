@@ -69,7 +69,7 @@ type Snapshotter interface {
 // their generated output directly (e.g., "go run" for bubbletea, open
 // browser for HTML, adb install for Android).
 type Runner interface {
-	Run(dir string, args []string) error
+	Run(dir string, opts map[string]string, args []string) error
 }
 
 // APIProvider is optionally implemented by LangTranslator or PlatformGenerator
