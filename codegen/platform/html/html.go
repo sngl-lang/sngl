@@ -31,7 +31,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	return &codegen.Response{
 		Files: []*codegen.OutputFile{
-			{Name: "index.html", Content: []byte(src)},
+			codegen.BytesFile("index.html", []byte(src)),
 		},
 	}, nil
 }

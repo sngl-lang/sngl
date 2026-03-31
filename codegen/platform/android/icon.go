@@ -27,25 +27,12 @@ var mipmapSizes = []struct {
 	{"xxxhdpi", 192},
 }
 
-// resourceFiles generates Android resource OutputFiles for icon and color.
-func resourceFiles(cfg Config) ([]*codegen.OutputFile, error) {
-	var files []*codegen.OutputFile
-
-	// Always generate colors.xml when color is set
-	if cfg.Color != "" {
-		files = append(files, &codegen.OutputFile{
-			Name: "res/values/colors.xml",
-			Content: []byte(fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="ic_launcher_background">%s</color>
-    <color name="theme_primary">%s</color>
-</resources>
-`, cfg.Color, cfg.Color)),
-		})
-	}
-
+// iconFiles generates dynamic icon resource files (VectorDrawable conversion,
+// PNG resizing). Static resources like colors.xml and adaptive icon XMLs are
+// handled by the scaffold templates.
+func iconFiles(cfg Config) ([]*codegen.OutputFile, error) {
 	if cfg.Icon == "" {
-		return files, nil
+		return nil, nil
 	}
 
 	// Resolve icon path: try as-is (CWD-relative) first, then project-dir-relative
@@ -61,62 +48,28 @@ func resourceFiles(cfg Config) ([]*codegen.OutputFile, error) {
 		return nil, fmt.Errorf("reading icon %s: %w", cfg.Icon, err)
 	}
 
+	var files []*codegen.OutputFile
 	isSVG := strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg")
 
 	if isSVG {
-		// Convert SVG → VectorDrawable XML for foreground
 		vd, err := svgToVectorDrawable(iconData)
 		if err != nil {
 			return nil, fmt.Errorf("converting SVG to VectorDrawable: %w", err)
 		}
-		files = append(files, &codegen.OutputFile{
-			Name:    "res/drawable/ic_launcher_foreground.xml",
-			Content: vd,
-		})
+		files = append(files, codegen.BytesFile("res/drawable/ic_launcher_foreground.xml", vd))
 
-		// Also generate raster fallbacks for pre-API-26
 		rasterFiles, err := svgToMipmapPNGs(iconData)
 		if err != nil {
-			// Non-fatal: adaptive icon will still work on API 26+
 			fmt.Fprintf(os.Stderr, "sngl: warning: could not rasterize SVG for fallback icons: %v\n", err)
 		} else {
 			files = append(files, rasterFiles...)
 		}
 	} else {
-		// PNG: resize to each density
 		pngFiles, err := pngToMipmaps(iconData)
 		if err != nil {
 			return nil, fmt.Errorf("resizing icon PNG: %w", err)
 		}
 		files = append(files, pngFiles...)
-	}
-
-	// Adaptive icon XML (API 26+)
-	bgColor := cfg.Color
-	if bgColor == "" {
-		bgColor = "#FFFFFF"
-	}
-
-	if isSVG {
-		// Reference the vector drawable foreground
-		files = append(files, &codegen.OutputFile{
-			Name: "res/mipmap-anydpi-v26/ic_launcher.xml",
-			Content: []byte(fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-</adaptive-icon>
-`)),
-		})
-		files = append(files, &codegen.OutputFile{
-			Name: "res/mipmap-anydpi-v26/ic_launcher_round.xml",
-			Content: []byte(fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-</adaptive-icon>
-`)),
-		})
 	}
 
 	return files, nil
@@ -136,15 +89,9 @@ func pngToMipmaps(pngData []byte) ([]*codegen.OutputFile, error) {
 		if err := png.Encode(&buf, resized); err != nil {
 			return nil, err
 		}
-		files = append(files, &codegen.OutputFile{
-			Name:    fmt.Sprintf("res/mipmap-%s/ic_launcher.png", m.density),
-			Content: buf.Bytes(),
-		})
+		files = append(files, codegen.BytesFile(fmt.Sprintf("res/mipmap-%s/ic_launcher.png", m.density), buf.Bytes()))
 		// Round icon is the same for now
-		files = append(files, &codegen.OutputFile{
-			Name:    fmt.Sprintf("res/mipmap-%s/ic_launcher_round.png", m.density),
-			Content: buf.Bytes(),
-		})
+		files = append(files, codegen.BytesFile(fmt.Sprintf("res/mipmap-%s/ic_launcher_round.png", m.density), buf.Bytes()))
 	}
 	return files, nil
 }
@@ -167,14 +114,8 @@ func rasterizeSVGExternal(svgData []byte) ([]*codegen.OutputFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		files = append(files, &codegen.OutputFile{
-			Name:    fmt.Sprintf("res/mipmap-%s/ic_launcher.png", m.density),
-			Content: pngData,
-		})
-		files = append(files, &codegen.OutputFile{
-			Name:    fmt.Sprintf("res/mipmap-%s/ic_launcher_round.png", m.density),
-			Content: pngData,
-		})
+		files = append(files, codegen.BytesFile(fmt.Sprintf("res/mipmap-%s/ic_launcher.png", m.density), pngData))
+		files = append(files, codegen.BytesFile(fmt.Sprintf("res/mipmap-%s/ic_launcher_round.png", m.density), pngData))
 	}
 	return files, nil
 }
@@ -423,4 +364,3 @@ func defaultStrokeWidth(sw string) string {
 	}
 	return sw
 }
-

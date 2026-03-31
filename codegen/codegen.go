@@ -1,10 +1,19 @@
 package codegen
 
 import (
+	"errors"
+	"io"
+	"io/fs"
+	"strings"
+	"text/template"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
+
+// ErrSkip is returned by an OutputFile's WriteTo to indicate the file should
+// be skipped entirely (no output written, no error reported).
+var ErrSkip = errors.New("skip")
 
 // ExprScope provides context for expression translation (which names are model
 // fields vs local vars vs computeds).
@@ -85,16 +94,99 @@ type APIResolver interface {
 	ResolveAPI(name string) *ast.NativeDecls
 }
 
-// OutputFile represents a single generated file.
+// OutputFile represents a single generated file. Its WriteTo function writes
+// the file content lazily, allowing template execution to be deferred to
+// write time.
 type OutputFile struct {
-	Name    string // relative path, e.g. "model.go"
-	Content []byte
+	Name    string                              // relative path, e.g. "model.go"
+	WriteTo func(w io.Writer) (int64, error)
+}
+
+// BytesFile creates an OutputFile backed by a byte slice.
+func BytesFile(name string, content []byte) *OutputFile {
+	return &OutputFile{
+		Name: name,
+		WriteTo: func(w io.Writer) (int64, error) {
+			n, err := w.Write(content)
+			return int64(n), err
+		},
+	}
+}
+
+// TemplateFile creates an OutputFile that executes a Go template lazily.
+// If the template calls {{skip}}, WriteTo returns ErrSkip.
+func TemplateFile(name string, tmpl *template.Template, data any) *OutputFile {
+	return &OutputFile{
+		Name: name,
+		WriteTo: func(w io.Writer) (n int64, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					if skipErr, ok := r.(skipError); ok {
+						err = skipErr
+					} else {
+						panic(r)
+					}
+				}
+			}()
+			cw := &countWriter{w: w}
+			err = tmpl.Execute(cw, data)
+			return cw.n, err
+		},
+	}
+}
+
+// TemplateFuncs returns the base template FuncMap with the skip function.
+func TemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"skip": func() string { panic(skipError(ErrSkip)) },
+	}
+}
+
+// RenderTemplates walks an embedded template FS, executing each .tmpl file
+// against data. The output file name is the path with .tmpl stripped.
+// Templates that call {{skip}} are silently omitted.
+func RenderTemplates(fsys fs.FS, root string, data any) []*OutputFile {
+	var files []*OutputFile
+	fs.WalkDir(fsys, root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+		tmpl, err := template.New(d.Name()).Funcs(TemplateFuncs()).ParseFS(fsys, path)
+		if err != nil {
+			return nil
+		}
+		outName := strings.TrimPrefix(path, root+"/")
+		outName = strings.TrimSuffix(outName, ".tmpl")
+		files = append(files, TemplateFile(outName, tmpl, data))
+		return nil
+	})
+	return files
+}
+
+type skipError error
+
+type countWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (cw *countWriter) Write(p []byte) (int, error) {
+	n, err := cw.w.Write(p)
+	cw.n += int64(n)
+	return n, err
+}
+
+// Opts are globally-applicable generator options set at the output level.
+type Opts struct {
+	Name string // display name for the app
+	Icon string // path to icon file (SVG or PNG)
 }
 
 // Request is the input to a platform generator.
 type Request struct {
 	Doc     *ast.Document
 	Lang    LangTranslator
+	Opts    Opts
 	Options map[string]string // key=value from --opt flags
 }
 

@@ -1,149 +1,83 @@
 package android
 
 import (
-	"fmt"
+	"embed"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
+//go:embed templates/*
+var templateFS embed.FS
+
+// templateData is the data passed to all scaffold templates.
+type templateData struct {
+	Package        string // e.g. "test.sngl.app"
+	AppName        string // e.g. "My App"
+	HasIcon        bool
+	HasAdaptiveIcon bool   // true when icon is SVG (produces VectorDrawable foreground)
+	Color          string // e.g. "#6750A4" (empty if not set)
+	Gradle         bool   // true for Gradle scaffold
+}
+
+func newTemplateData(cfg Config) templateData {
+	return templateData{
+		Package:        cfg.Package,
+		AppName:        appLabel(cfg),
+		HasIcon:        cfg.Icon != "",
+		HasAdaptiveIcon: cfg.Icon != "" && strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg"),
+		Color:          cfg.Color,
+		Gradle:         cfg.Gradle,
+	}
+}
+
+// scaffoldFiles generates all scaffold files for a full Gradle project.
+// Templates that call {{skip}} are automatically omitted.
 func scaffoldFiles(cfg Config) []*codegen.OutputFile {
+	data := newTemplateData(cfg)
 	pkgPath := pkgToPath(cfg.Package)
-	var files []*codegen.OutputFile
 
-	// MainActivity.kt
-	files = append(files, &codegen.OutputFile{
-		Name:    "app/src/main/java/" + pkgPath + "/MainActivity.kt",
-		Content: []byte(mainActivityKt(cfg)),
-	})
+	files := codegen.RenderTemplates(templateFS, "templates", data)
 
-	// Theme.kt
-	files = append(files, &codegen.OutputFile{
-		Name:    "app/src/main/java/" + pkgPath + "/ui/theme/Theme.kt",
-		Content: []byte(themeKt(cfg)),
-	})
-
-	// AndroidManifest.xml
-	files = append(files, &codegen.OutputFile{
-		Name:    "app/src/main/AndroidManifest.xml",
-		Content: []byte(androidManifest(cfg)),
-	})
-
-	// app/build.gradle.kts
-	files = append(files, &codegen.OutputFile{
-		Name:    "app/build.gradle.kts",
-		Content: []byte(appBuildGradle(cfg)),
-	})
-
-	// Root build.gradle.kts
-	files = append(files, &codegen.OutputFile{
-		Name:    "build.gradle.kts",
-		Content: []byte(rootBuildGradle()),
-	})
-
-	// settings.gradle.kts
-	files = append(files, &codegen.OutputFile{
-		Name:    "settings.gradle.kts",
-		Content: []byte(settingsGradle(cfg)),
-	})
-
-	// gradle.properties
-	files = append(files, &codegen.OutputFile{
-		Name:    "gradle.properties",
-		Content: []byte(gradleProperties()),
-	})
-
-	// Gradle wrapper
-	files = append(files, &codegen.OutputFile{
-		Name:    "gradle/wrapper/gradle-wrapper.properties",
-		Content: []byte(gradleWrapperProperties()),
-	})
-	files = append(files, &codegen.OutputFile{
-		Name:    "gradlew",
-		Content: []byte(gradlewScript()),
-	})
+	// Remap output paths for the Gradle project layout:
+	// - MainActivity.kt / Theme.kt → app/src/main/java/{pkg}/...
+	// - AndroidManifest.xml → app/src/main/...
+	// - res/ → app/src/main/res/...
+	// - gradle/* → root (strip gradle/ prefix for build files)
+	for _, f := range files {
+		switch {
+		case f.Name == "MainActivity.kt":
+			f.Name = "app/src/main/java/" + pkgPath + "/MainActivity.kt"
+		case f.Name == "Theme.kt":
+			f.Name = "app/src/main/java/" + pkgPath + "/ui/theme/Theme.kt"
+		case f.Name == "AndroidManifest.xml":
+			f.Name = "app/src/main/" + f.Name
+		case strings.HasPrefix(f.Name, "res/"):
+			f.Name = "app/src/main/" + f.Name
+		case f.Name == "gradle/app.build.gradle.kts":
+			f.Name = "app/build.gradle.kts"
+		case f.Name == "gradle/build.gradle.kts":
+			f.Name = "build.gradle.kts"
+		case f.Name == "gradle/settings.gradle.kts":
+			f.Name = "settings.gradle.kts"
+		case f.Name == "gradle/gradle.properties":
+			f.Name = "gradle.properties"
+		case f.Name == "gradle/gradlew":
+			f.Name = "gradlew"
+		case f.Name == "gradle/wrapper/gradle-wrapper.properties":
+			// keep as-is
+		}
+	}
 
 	return files
 }
 
-func mainActivityKt(cfg Config) string {
-	return fmt.Sprintf(`package %s
-
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import %s.ui.theme.AppTheme
-
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            AppTheme {
-                MainScreen()
-            }
-        }
-    }
-}
-`, cfg.Package, cfg.Package)
-}
-
-func themeKt(cfg Config) string {
-	return fmt.Sprintf(`package %s.ui.theme
-
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DefaultColorScheme = lightColorScheme()
-
-@Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    val colorScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        dynamicLightColorScheme(LocalContext.current)
-    } else {
-        DefaultColorScheme
-    }
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
-}
-`, cfg.Package)
-}
-
-func androidManifest(cfg Config) string {
-	iconAttrs := ""
-	if cfg.Icon != "" {
-		iconAttrs = `
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"`
-	}
-	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="%s"
-    android:versionCode="1"
-    android:versionName="1.0">
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
-    <application
-        android:allowBackup="true"
-        android:label="%s"%s
-        android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-`, cfg.Package, appLabel(cfg), iconAttrs)
+// directBuildFiles returns the minimal files for a gradle-free build.
+// Uses the same templates but with Gradle=false so gradle files are skipped.
+func directBuildFiles(cfg Config) []*codegen.OutputFile {
+	data := newTemplateData(cfg)
+	data.Gradle = false
+	return codegen.RenderTemplates(templateFS, "templates", data)
 }
 
 func appLabel(cfg Config) string {
@@ -151,147 +85,6 @@ func appLabel(cfg Config) string {
 		return cfg.AppName
 	}
 	return appNameFromPkg(cfg.Package)
-}
-
-func appBuildGradle(cfg Config) string {
-	return fmt.Sprintf(`plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-}
-
-android {
-    namespace = "%s"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "%s"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-}
-
-dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.03.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-}
-`, cfg.Package, cfg.Package)
-}
-
-func rootBuildGradle() string {
-	return `plugins {
-    id("com.android.application") version "8.7.3" apply false
-    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0" apply false
-}
-`
-}
-
-func settingsGradle(cfg Config) string {
-	return fmt.Sprintf(`pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.name = "%s"
-include(":app")
-`, appLabel(cfg))
-}
-
-func gradleProperties() string {
-	return `android.useAndroidX=true
-kotlin.code.style=official
-`
-}
-
-func gradleWrapperProperties() string {
-	return `distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-`
-}
-
-func gradlewScript() string {
-	return `#!/bin/sh
-# Lightweight Gradle bootstrap — downloads and caches a Gradle distribution.
-set -e
-
-GRADLE_VERSION="8.11.1"
-GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/gradle-${GRADLE_VERSION}-bin"
-GRADLE_BIN="$GRADLE_CACHE/gradle-${GRADLE_VERSION}/bin/gradle"
-
-if [ ! -x "$GRADLE_BIN" ]; then
-    echo "Downloading Gradle $GRADLE_VERSION..." >&2
-    mkdir -p "$GRADLE_CACHE"
-    DIST_ZIP="$GRADLE_CACHE/gradle-${GRADLE_VERSION}-bin.zip"
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "$DIST_ZIP" "$GRADLE_URL"
-    elif command -v wget >/dev/null 2>&1; then
-        wget -q -O "$DIST_ZIP" "$GRADLE_URL"
-    else
-        echo "Error: curl or wget required to download Gradle" >&2
-        exit 1
-    fi
-    unzip -q -o "$DIST_ZIP" -d "$GRADLE_CACHE"
-    rm -f "$DIST_ZIP"
-fi
-
-exec "$GRADLE_BIN" "$@"
-`
-}
-
-// directBuildFiles returns the minimal files needed for a gradle-free build:
-// just the Kotlin sources and AndroidManifest.xml.
-func directBuildFiles(cfg Config) []*codegen.OutputFile {
-	var files []*codegen.OutputFile
-
-	files = append(files, &codegen.OutputFile{
-		Name:    "MainActivity.kt",
-		Content: []byte(mainActivityKt(cfg)),
-	})
-	files = append(files, &codegen.OutputFile{
-		Name:    "Theme.kt",
-		Content: []byte(themeKt(cfg)),
-	})
-	files = append(files, &codegen.OutputFile{
-		Name:    "AndroidManifest.xml",
-		Content: []byte(androidManifest(cfg)),
-	})
-
-	return files
 }
 
 func appNameFromPkg(pkg string) string {

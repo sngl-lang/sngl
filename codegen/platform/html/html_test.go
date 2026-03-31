@@ -1,6 +1,7 @@
 package html
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -44,7 +45,9 @@ func generateHTML(t *testing.T, path string) string {
 	if resp.Files[0].Name != "index.html" {
 		t.Fatalf("expected index.html, got %s", resp.Files[0].Name)
 	}
-	return string(resp.Files[0].Content)
+	var buf bytes.Buffer
+	resp.Files[0].WriteTo(&buf)
+	return buf.String()
 }
 
 func TestFixtures(t *testing.T) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -169,8 +170,18 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(path, file.Content, 0o644); err != nil {
+		f, err := os.Create(path)
+		if err != nil {
 			return err
+		}
+		_, writeErr := file.WriteTo(f)
+		f.Close()
+		if errors.Is(writeErr, codegen.ErrSkip) {
+			os.Remove(path)
+			continue
+		}
+		if writeErr != nil {
+			return writeErr
 		}
 		if !q {
 			fmt.Println(path)

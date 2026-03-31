@@ -40,31 +40,28 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	if !cfg.GenerateMain {
 		resp.Files = []*codegen.OutputFile{
-			{Name: "MainScreen.kt", Content: src},
+			codegen.BytesFile("MainScreen.kt", src),
 		}
 	} else if cfg.Gradle {
-		// Full Gradle project scaffold
+		// Full Gradle project scaffold (templates handle conditional files)
 		pkgPath := pkgToPath(cfg.Package)
-		resp.Files = append(resp.Files, &codegen.OutputFile{
-			Name:    "app/src/main/java/" + pkgPath + "/MainScreen.kt",
-			Content: src,
-		})
+		resp.Files = append(resp.Files, codegen.BytesFile(
+			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
+		))
 		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
-		// Icon/color resources go under app/src/main/res/
-		if resFiles, err := resourceFiles(cfg); err == nil {
-			for _, f := range resFiles {
+		// Dynamic icon resources (VectorDrawable/PNG) go under app/src/main/res/
+		if iconRes, err := iconFiles(cfg); err == nil {
+			for _, f := range iconRes {
 				f.Name = "app/src/main/" + f.Name
 			}
-			resp.Files = append(resp.Files, resFiles...)
+			resp.Files = append(resp.Files, iconRes...)
 		}
 	} else {
-		// Gradle-free: just Kotlin sources + manifest + resources
-		resp.Files = append(resp.Files, &codegen.OutputFile{
-			Name: "MainScreen.kt", Content: src,
-		})
+		// Gradle-free: templates with Gradle=false skip gradle files
+		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
 		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
-		if resFiles, err := resourceFiles(cfg); err == nil {
-			resp.Files = append(resp.Files, resFiles...)
+		if iconRes, err := iconFiles(cfg); err == nil {
+			resp.Files = append(resp.Files, iconRes...)
 		}
 	}
 

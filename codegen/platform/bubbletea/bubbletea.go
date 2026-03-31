@@ -39,7 +39,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	resp := &codegen.Response{
 		Files: []*codegen.OutputFile{
-			{Name: "model.go", Content: src},
+			codegen.BytesFile("model.go", src),
 		},
 	}
 
@@ -47,10 +47,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if len(req.Doc.Tests) > 0 && req.Options["tests"] != "false" {
 		testSrc, err := CompileTests(req.Doc, cfg)
 		if err == nil && testSrc != nil {
-			resp.Files = append(resp.Files, &codegen.OutputFile{
-				Name:    "model_test.go",
-				Content: testSrc,
-			})
+			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))
 		}
 	}
 

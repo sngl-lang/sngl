@@ -3,6 +3,7 @@
 package html
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"time"
@@ -37,7 +38,9 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tes
 		if resp.Error != "" {
 			return nil, fmt.Errorf("generate %q: %s", compName, resp.Error)
 		}
-		html := string(resp.Files[0].Content)
+		var htmlBuf bytes.Buffer
+		resp.Files[0].WriteTo(&htmlBuf)
+		html := htmlBuf.String()
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +168,9 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 	if resp.Error != "" {
 		return nil, fmt.Errorf("%s", resp.Error)
 	}
-	return g.SnapshotHTML(resp.Files[0].Content, width, height)
+	var buf bytes.Buffer
+	resp.Files[0].WriteTo(&buf)
+	return g.SnapshotHTML(buf.Bytes(), width, height)
 }
 
 // SnapshotHTML captures a browser screenshot of pre-compiled HTML bytes.

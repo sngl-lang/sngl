@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,7 +52,11 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, fmt.Errorf("%s", resp.Error)
 	}
 
-	html := resp.Files[0].Content
+	var htmlBuf bytes.Buffer
+	if _, err := resp.Files[0].WriteTo(&htmlBuf); err != nil {
+		return nil, fmt.Errorf("writing HTML: %w", err)
+	}
+	html := htmlBuf.Bytes()
 
 	if platform != "html" {
 		plat := codegen.LookupPlatform(platform)
