@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/sngl.png" alt="SNGL" width="200">
+  <img src="docs/sngl.svg" alt="SNGL" width="200">
 </p>
 
 <h1 align="center">SNGL</h1>

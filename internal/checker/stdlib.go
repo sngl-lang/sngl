@@ -12,6 +12,12 @@ import (
 //go:embed stdlib/*.sngl
 var stdlibFS embed.FS
 
+// StdlibFS returns the embedded stdlib filesystem for external consumers
+// that need to read raw stdlib source files (e.g., tier comments).
+func StdlibFS() embed.FS {
+	return stdlibFS
+}
+
 // LoadStdlib parses the embedded stdlib files and returns the component
 // schema registry, style property type map, unit definitions, and stdlib functions.
 func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, []*ast.FuncDef, []*ast.StructDef, error) {

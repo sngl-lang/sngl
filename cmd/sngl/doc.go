@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
@@ -46,14 +47,21 @@ func init() {
 
 func runDoc(cmd *cobra.Command, args []string) error {
 	docsDir, _ := findDocsDir()
-	if docsDir == "" {
-		return fmt.Errorf("cannot find docs/ directory")
-	}
 
 	if len(args) == 0 {
-		return showTopicList(docsDir)
+		return showTopicListWithComponents(docsDir)
 	}
-	return showTopic(docsDir, args[0])
+	topic := args[0]
+
+	// Try documentation file lookup first.
+	if docsDir != "" {
+		if err := showTopic(docsDir, topic); err == nil {
+			return nil
+		}
+	}
+
+	// Fall back to component reference.
+	return showComponentDoc(topic)
 }
 
 func runDocBuild(cmd *cobra.Command, args []string) error {
@@ -72,6 +80,10 @@ func runDocServe(cmd *cobra.Command, args []string) error {
 	port, _ := cmd.Flags().GetInt("port")
 	if err := docsite.Build(docsDir, outDir); err != nil {
 		return err
+	}
+	// Generate the component gallery into the built site.
+	if err := docsite.GenerateGallery(docsDir, outDir, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: gallery generation failed: %v\n", err)
 	}
 	return docsite.Serve(outDir, port)
 }
@@ -96,20 +108,74 @@ func findDocsDir() (string, error) {
 	return "", nil
 }
 
-func showTopicList(docsDir string) error {
-	topics, err := listTopics(docsDir)
-	if err != nil {
-		return err
-	}
-
+// showTopicListWithComponents shows the topic list and appends a component
+// listing grouped by tier.
+func showTopicListWithComponents(docsDir string) error {
 	var sb strings.Builder
 	sb.WriteString("# SNGL Documentation\n\n")
 	sb.WriteString("SNGL is a purpose-built language for describing reactive, cross-platform UIs.\n\n")
-	sb.WriteString("## Topics\n\n")
-	for _, t := range topics {
-		sb.WriteString(fmt.Sprintf("- **%s** — %s\n", t.name, t.desc))
+
+	if docsDir != "" {
+		topics, err := listTopics(docsDir)
+		if err == nil && len(topics) > 0 {
+			sb.WriteString("## Topics\n\n")
+			for _, t := range topics {
+				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", t.name, t.desc))
+			}
+			sb.WriteString("\n")
+		}
 	}
-	sb.WriteString("\nRun `sngl doc <topic>` to read about a topic.\n")
+
+	// Component listing.
+	registry, _, _, _, _, err := checker.LoadStdlib()
+	if err == nil && len(registry) > 0 {
+		tiers := docsite.AssignTiers(registry)
+		tierIdx := map[string]int{}
+		for i, t := range docsite.TierOrder {
+			tierIdx[t] = i
+		}
+
+		type compEntry struct {
+			name string
+			doc  string
+			tier string
+		}
+		var entries []compEntry
+		for name, schema := range registry {
+			doc := schema.Doc
+			if i := strings.Index(doc, ". "); i > 0 {
+				doc = doc[:i+1]
+			}
+			entries = append(entries, compEntry{name: name, doc: doc, tier: tiers[name]})
+		}
+		sort.Slice(entries, func(i, j int) bool {
+			ti := tierIdx[entries[i].tier]
+			tj := tierIdx[entries[j].tier]
+			if ti != tj {
+				return ti < tj
+			}
+			return entries[i].name < entries[j].name
+		})
+
+		sb.WriteString("## Components\n\n")
+		currentTier := ""
+		for _, e := range entries {
+			if e.tier != currentTier {
+				currentTier = e.tier
+				sb.WriteString(fmt.Sprintf("### %s\n\n", currentTier))
+			}
+			if e.doc != "" {
+				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", e.name, e.doc))
+			} else {
+				sb.WriteString(fmt.Sprintf("- **%s**\n", e.name))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("Run `sngl doc <topic>` to read about a topic.\n")
+	sb.WriteString("Run `sngl doc <component>` to see component reference.\n")
+	sb.WriteString("Run `sngl doc <component>.<prop>` to see a specific property.\n")
 	sb.WriteString("Run `sngl doc build` to generate the HTML documentation site.\n")
 
 	return renderToTerminal(sb.String())
@@ -150,18 +216,142 @@ func showTopic(docsDir, topic string) error {
 		return showDirTopic(docsDir, dirPath, topic)
 	}
 
-	// Try fuzzy match
-	topics, _ := listTopics(docsDir)
-	var matches []string
-	for _, t := range topics {
-		if strings.Contains(strings.ToLower(t.name), strings.ToLower(topic)) {
-			matches = append(matches, t.name)
+	return fmt.Errorf("not found")
+}
+
+// showComponentDoc displays component reference for a component or
+// component.prop query.
+func showComponentDoc(query string) error {
+	registry, _, _, _, _, err := checker.LoadStdlib()
+	if err != nil {
+		return fmt.Errorf("failed to load stdlib: %w", err)
+	}
+
+	// Support "component.prop" syntax.
+	compName := query
+	propName := ""
+	if i := strings.IndexByte(query, '.'); i >= 0 {
+		compName = query[:i]
+		propName = query[i+1:]
+	}
+
+	schema, ok := registry[compName]
+	if !ok {
+		// Try fuzzy match on component names.
+		var matches []string
+		for name := range registry {
+			if strings.Contains(strings.ToLower(name), strings.ToLower(compName)) {
+				matches = append(matches, name)
+			}
 		}
+		sort.Strings(matches)
+		if len(matches) > 0 {
+			return fmt.Errorf("component %q not found. Did you mean: %s", compName, strings.Join(matches, ", "))
+		}
+		return fmt.Errorf("%q not found. Run 'sngl doc' to see available topics and components", query)
 	}
-	if len(matches) > 0 {
-		return fmt.Errorf("topic %q not found. Did you mean: %s", topic, strings.Join(matches, ", "))
+
+	// Show specific property.
+	if propName != "" {
+		return showPropDoc(compName, propName, schema)
 	}
-	return fmt.Errorf("topic %q not found. Run 'sngl doc' to see available topics", topic)
+
+	return renderToTerminal(renderComponentDoc(compName, schema))
+}
+
+func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", name))
+	if schema.Doc != "" {
+		sb.WriteString(schema.Doc)
+		sb.WriteString("\n\n")
+	}
+
+	if len(schema.Props) > 0 {
+		sb.WriteString("## Properties\n\n")
+		// Sort props by name.
+		type propEntry struct {
+			name string
+			ps   checker.PropSchema
+		}
+		var props []propEntry
+		for pname, ps := range schema.Props {
+			props = append(props, propEntry{name: pname, ps: ps})
+		}
+		sort.Slice(props, func(i, j int) bool {
+			return props[i].name < props[j].name
+		})
+		for _, p := range props {
+			line := fmt.Sprintf("  %-16s %s", p.name, p.ps.Type)
+			if len(p.ps.Enum) > 0 {
+				line += fmt.Sprintf("  (%s)", strings.Join(p.ps.Enum, ", "))
+			}
+			sb.WriteString(line + "\n")
+			if p.ps.Doc != "" {
+				sb.WriteString(fmt.Sprintf("                   %s\n", p.ps.Doc))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(schema.Events) > 0 {
+		sb.WriteString("## Events\n\n")
+		type eventEntry struct {
+			name    string
+			payload string
+		}
+		var events []eventEntry
+		for ename, payload := range schema.Events {
+			events = append(events, eventEntry{name: ename, payload: payload})
+		}
+		sort.Slice(events, func(i, j int) bool {
+			return events[i].name < events[j].name
+		})
+		for _, e := range events {
+			sb.WriteString(fmt.Sprintf("  %-16s %s\n", e.name, e.payload))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(fmt.Sprintf("## Children: %s\n", docsite.ChildPolicyString(schema.Children)))
+
+	return sb.String()
+}
+
+func showPropDoc(compName, propName string, schema *checker.ComponentSchema) error {
+	ps, ok := schema.Props[propName]
+	if !ok {
+		// Check events too.
+		payload, ok := schema.Events[propName]
+		if ok {
+			var sb strings.Builder
+			sb.WriteString(fmt.Sprintf("# %s.%s (event)\n\n", compName, propName))
+			sb.WriteString(fmt.Sprintf("Payload type: %s\n", payload))
+			return renderToTerminal(sb.String())
+		}
+
+		var available []string
+		for pname := range schema.Props {
+			available = append(available, pname)
+		}
+		for ename := range schema.Events {
+			available = append(available, ename)
+		}
+		sort.Strings(available)
+		return fmt.Errorf("property %q not found on %s. Available: %s", propName, compName, strings.Join(available, ", "))
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s.%s\n\n", compName, propName))
+	sb.WriteString(fmt.Sprintf("Type: %s\n\n", ps.Type))
+	if len(ps.Enum) > 0 {
+		sb.WriteString(fmt.Sprintf("Values: %s\n\n", strings.Join(ps.Enum, ", ")))
+	}
+	if ps.Doc != "" {
+		sb.WriteString(ps.Doc + "\n")
+	}
+
+	return renderToTerminal(sb.String())
 }
 
 func showDirTopic(docsDir, dirPath, topic string) error {

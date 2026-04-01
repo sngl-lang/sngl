@@ -230,27 +230,31 @@ Imports load all `.sngl` files from the specified directory, making their compon
 
 ### output
 
+Each language gets a brace-delimited block containing its target platforms:
+
 ```
-output go bubbletea(package="main")
-output js html
+output {
+    go { bubbletea(package="main") }
+    js { html }
+}
 ```
 
 → `ast.Output{Lang: "go", Platform: "bubbletea", Options: {"package": "main"}}`
 
 Options are optional. When present, they use `(key=value, ...)` syntax.
 
-#### Grouped outputs
-
-Multiple outputs can be grouped in a single `output` block:
+Multiple platforms for the same language are listed inside the braces:
 
 ```
 output {
-    go bubbletea(package="main")
-    js { html; node }
+    go {
+        bubbletea
+        fyne
+    }
+    js { html }
+    kotlin { android }
 }
 ```
-
-A language with multiple platforms uses `{ platform; platform }` syntax. Each platform can have its own options: `js { html; node(ssr=true) }`.
 
 ### struct
 
@@ -911,8 +915,8 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 
 ```
 output {
-    go bubbletea(package="main")
-    js html
+    go { bubbletea(package="main") }
+    js { html }
 }
 
 struct Todo {

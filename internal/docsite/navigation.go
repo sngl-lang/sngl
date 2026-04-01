@@ -78,6 +78,12 @@ func BuildNav(pages []Page) []*NavItem {
 	}
 
 	topLevel = append(topLevel, &NavItem{
+		Title: "Components",
+		Href:  "components/index.html",
+		Order: 9998,
+	})
+
+	topLevel = append(topLevel, &NavItem{
 		Title: "Playground",
 		Href:  "playground.html",
 		Order: 9999,

@@ -27,8 +27,8 @@ Tell the compiler which platforms to generate code for:
 
 ```sngl
 output {
-    go bubbletea(package="main")
-    js html
+    go { bubbletea(package="main") }
+    js { html }
 }
 ```
 

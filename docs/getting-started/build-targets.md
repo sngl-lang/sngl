@@ -6,26 +6,32 @@ description: "Output declarations and platform targets"
 
 ## Output Declaration
 
-The `output` block declares which platforms to compile for:
-
-```sngl
-output go bubbletea(package="main")
-```
-
-Or group multiple targets:
+The `output` block declares which language/platform combinations to compile for. Each language gets a block containing its target platforms:
 
 ```sngl
 output {
-    go bubbletea(package="main")
-    js html
+    js { html }
 }
 ```
 
-A language with multiple platforms uses braces:
+Multiple languages and platforms:
 
 ```sngl
 output {
-    js { html; node(ssr=true) }
+    go {
+        bubbletea
+        fyne
+    }
+    js { html }
+    kotlin { android }
+}
+```
+
+Platform options are passed in parentheses:
+
+```sngl
+output {
+    go { bubbletea(package="main") }
 }
 ```
 
@@ -33,22 +39,32 @@ output {
 
 | Language | Platform | Description |
 | --- | --- | --- |
-| `go` | `bubbletea` | Terminal UI via BubbleTea |
-| `js` | `html` | Web app with DOM rendering |
+| `js` | `html` | Web app with inline JS and DOM rendering |
+| `go` | `bubbletea` | Terminal UI via Charm's BubbleTea |
+| `go` | `fyne` | Desktop GUI via the Fyne toolkit |
+| `kotlin` | `android` | Android app via Jetpack Compose |
 
 ### CLI Flags
 
-You can override the output target from the command line:
+You can specify the target from the command line instead of using an `output` block:
 
 ```bash
-sngl compile --lang=go --platform=bubbletea todo.sngl
-sngl compile --lang=js --platform=html todo.sngl
+sngl compile --lang go --platform fyne todo.sngl
+sngl compile --lang js --platform html todo.sngl
+sngl compile --lang kotlin --platform android todo.sngl
 ```
 
 Options can be passed with `--opt`:
 
 ```bash
-sngl compile --lang=go --platform=bubbletea --opt=package=main todo.sngl
+sngl compile --lang go --platform bubbletea --opt package=main todo.sngl
+```
+
+Run an app directly (implies `main=true`):
+
+```bash
+sngl run --lang go --platform fyne todo.sngl
+sngl run --lang js --platform html todo.sngl
 ```
 
 ### Output Directory
@@ -56,5 +72,14 @@ sngl compile --lang=go --platform=bubbletea --opt=package=main todo.sngl
 By default, generated files are written to the current directory. Use `--out` to specify a different location:
 
 ```bash
-sngl compile --out=./output todo.sngl
+sngl compile --out ./output todo.sngl
+```
+
+### Building for Distribution
+
+The `build` command compiles to a runnable artifact:
+
+```bash
+sngl build todo.sngl
+sngl build --lang kotlin --platform android --opt name="My App" todo.sngl
 ```

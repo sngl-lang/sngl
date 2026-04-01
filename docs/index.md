@@ -6,7 +6,7 @@ description: "A purpose-built language for reactive, cross-platform UIs"
 
 ## What is SNGL?
 
-![SNGL Logo](./assets/sngl.png)
+![SNGL Logo](./assets/sngl.svg)
 
 SNGL is a purpose-built language for describing reactive user interfaces that compile to multiple languages and platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets. It combines the reactivity of Svelte, the ergonomics of Vue, with a language and platform agnostic code generator. With a syntax and name inspired by KDL. And tooling inspired by and built in Go.
 

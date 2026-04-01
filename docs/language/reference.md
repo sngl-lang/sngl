@@ -12,8 +12,8 @@ A `.sngl` file contains top-level declarations in any order. Every file must hav
 import "shared"
 
 output {
-    go bubbletea(package="main")
-    js html
+    go { bubbletea(package="main") }
+    js { html }
 }
 
 struct Todo { ... }
@@ -124,11 +124,9 @@ import "shared"
 ### output
 
 ```sngl
-output go bubbletea(package="main")
-
 output {
-    go bubbletea(package="main")
-    js { html; node(ssr=true) }
+    go { bubbletea(package="main") }
+    js { html }
 }
 ```
 

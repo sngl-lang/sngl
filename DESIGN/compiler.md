@@ -42,10 +42,10 @@ A **target** is a (language, platform) pair. Examples:
 | Language | Platform  | Output                                           | Status      |
 | -------- | --------- | ------------------------------------------------ | ----------- |
 | JS       | html      | Single `index.html` with inline JS               | Implemented |
-| Go       | bubbletea | Go TUI package using charmbracelet bubbletea     | Implemented |
+| Go       | bubbletea | Go TUI package using Charm's BubbleTea           | Implemented |
+| Go       | fyne      | Desktop GUI using the Fyne toolkit               | Implemented |
+| Kotlin   | android   | Android app using Jetpack Compose                | Implemented |
 | —        | none      | Interpreter-based headless test runner            | Implemented |
-
-Future targets may include native desktop (Gio, GTK), mobile (SwiftUI, Compose), and additional web frameworks.
 
 ## Language Translators
 
