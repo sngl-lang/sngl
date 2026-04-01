@@ -1,0 +1,17 @@
+output {
+    js { html }
+}
+
+component main {
+    var val float = 0
+    var running = true
+
+    timer 50ms running {
+        val = val >= 1 ? 0 : val + 0.01
+    }
+
+    vbox(style={gap=8, padding=16}) {
+        progress(value=val, max=1)
+        button(text=running ? "Pause" : "Resume", @click={ running!! })
+    }
+}

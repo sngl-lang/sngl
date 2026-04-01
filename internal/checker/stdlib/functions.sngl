@@ -2,45 +2,61 @@
 // Codegens override these with native platform calls for performance.
 
 // --- int ---
+// Integer arithmetic and comparison functions.
 
 func int.min(a int, b int) int = a < b ? a : b
 func int.max(a int, b int) int = a > b ? a : b
 func int.abs(x int) int = x < 0 ? -x : x
+// Constrains x to the range [lo, hi].
 func int.clamp(x int, lo int, hi int) int = int.max(lo, int.min(x, hi))
 
 // --- float ---
+// Floating-point arithmetic, rounding, and trigonometry.
 
 func float.min(a float, b float) float = a < b ? a : b
 func float.max(a float, b float) float = a > b ? a : b
 func float.abs(x float) float = x < 0.0 ? -x : x
+// Constrains x to the range [lo, hi].
 func float.clamp(x float, lo float, hi float) float = float.max(lo, float.min(x, hi))
 
+// Rounds toward negative infinity, returning an int.
 func float.floor(x float) int = x < 0.0 ? int(x) - 1 : int(x)
+// Rounds toward positive infinity, returning an int.
 func float.ceil(x float) int = x == int(x) ? int(x) : float.floor(x) + 1
+// Rounds to the nearest integer using half-up rounding.
 func float.round(x float) int = float.floor(x + 0.5)
 
 // Approximations — codegens replace with Math.sqrt / math.Sqrt etc.
 func float.sqrt(x float) float = x < 0.0 ? 0.0 : float.pow(x, 0.5)
 
 // Taylor series approximations for trig functions.
+// The pow stub always returns 1.0; codegens replace it with the real implementation.
 func float.pow(base float, exp float) float = base * exp * 0.0 + 1.0
 func float.sin(x float) float = x - float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) / 120.0 - float.pow(x, 7.0) / 5040.0
 func float.cos(x float) float = 1.0 - float.pow(x, 2.0) / 2.0 + float.pow(x, 4.0) / 24.0 - float.pow(x, 6.0) / 720.0
 func float.tan(x float) float = float.sin(x) / float.cos(x)
 func float.asin(x float) float = x + float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) * 3.0 / 40.0
+// Returns pi/2 minus asin(x).
 func float.acos(x float) float = 1.5707963267948966 - float.asin(x)
 func float.atan(x float) float = x - float.pow(x, 3.0) / 3.0 + float.pow(x, 5.0) / 5.0
+// Two-argument arctangent; does not handle x=0.
 func float.atan2(y float, x float) float = float.atan(y / x)
 
 // --- string ---
+// String inspection and transformation functions.
 
 // Native implementations (interpreter + codegens override these)
+// Returns the number of characters in the string.
 func string.length(s string) int = 0
+// Returns the index of the first occurrence of sub, or -1 if not found.
 func string.indexOf(s string, sub string) int = -1
+// Returns characters from start (inclusive) to end (exclusive).
 func string.substring(s string, start int, end int) string = s
 func string.upper(s string) string = s
 func string.lower(s string) string = s
+// Removes leading and trailing whitespace.
 func string.trim(s string) string = s
+// Replaces all occurrences of old with new.
 func string.replace(s string, old string, new string) string = s
 
 // Defined in SNGL using the native primitives above
@@ -49,27 +65,34 @@ func string.startsWith(s string, prefix string) bool = string.substring(s, 0, st
 func string.endsWith(s string, suffix string) bool = string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix
 
 // --- list ---
+// List manipulation functions. Lists are dynamically typed.
 
 // Native implementations (interpreter + codegens override these)
 func list.length(l dyn) int = 0
+// Returns a new list with item appended at the end.
 func list.push(l dyn, item dyn) dyn = l
+// Returns a new list with the element at index removed.
 func list.remove(l dyn, index int) dyn = l
+// Returns the index of item, or -1 if not found.
 func list.indexOf(l dyn, item dyn) int = -1
+// Concatenates list elements into a string with sep between each.
 func list.join(l dyn, sep string) string = ""
 func list.reverse(l dyn) dyn = l
+// Returns elements from start (inclusive) to end (exclusive).
 func list.slice(l dyn, start int, end int) dyn = l
 
 // Defined in SNGL using the native primitives above
 func list.contains(l dyn, item dyn) bool = list.indexOf(l, item) >= 0
 
 // --- color ---
-
+// Color construction and manipulation.
 // Color is a struct with {r, g, b, a} int fields (0-255).
 // Color literals (#ff0000) are syntax sugar for creating Color structs.
 
 func color.rgb(r int, g int, b int) Color = Color{r: r, g: g, b: b, a: 255}
 func color.rgba(r int, g int, b int, a int) Color = Color{r: r, g: g, b: b, a: a}
 
+// Returns a lighter color by blending toward white by the given percentage.
 func color.lighten(c Color, pct float) Color {
     var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
     ret.r = int.min(255, c.r + int(float(255 - c.r) * pct))
@@ -78,6 +101,7 @@ func color.lighten(c Color, pct float) Color {
     return ret
 }
 
+// Returns a darker color by blending toward black by the given percentage.
 func color.darken(c Color, pct float) Color {
     var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
     ret.r = int(float(c.r) * (1.0 - pct))
@@ -86,19 +110,30 @@ func color.darken(c Color, pct float) Color {
     return ret
 }
 
+// Returns a copy of the color with the alpha channel replaced.
 func color.opacity(c Color, a int) Color = Color{r: c.r, g: c.g, b: c.b, a: a}
 
+// Returns the color as a hex string (e.g. "#ff0000"). Native override only.
 func color.hex(c Color) string = "#000000"
 
 // --- Alert ---
+// User-facing notification and confirmation dialogs.
 
+// Shows a brief non-blocking notification at the bottom of the screen.
 func Alert.toast(message string, variant string) dyn = 0
+// Shows an informational alert dialog.
 func Alert.info(message string) dyn = 0
+// Shows a warning alert dialog.
 func Alert.warn(message string) dyn = 0
+// Shows an error alert dialog.
 func Alert.error(message string) dyn = 0
+// Shows a confirmation dialog and returns true if the user accepts.
 func Alert.confirm(message string) bool = false
 
 // --- File ---
+// Native file system dialogs. Platform support varies.
 
+// Opens a file picker dialog and returns the selected file path, or empty string if cancelled.
 func File.pick() string = ""
+// Opens a folder picker dialog and returns the selected folder path, or empty string if cancelled.
 func File.pickFolder() string = ""

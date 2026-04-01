@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
@@ -800,7 +801,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 							for _, stmt := range stmts {
 								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 							}
-							mutatedFields := extractMutatedFields(changeEvt.SNGL)
+							mutatedFields := codegen.MutatedFields(changeEvt.SNGL)
 							for _, inp := range info.inputs {
 								if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 									fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -828,7 +829,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						for _, stmt := range stmts {
 							fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 						}
-						mutatedFields := extractMutatedFields(clickEvt.SNGL)
+						mutatedFields := codegen.MutatedFields(clickEvt.SNGL)
 						for _, inp := range info.inputs {
 							if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 								fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -1147,10 +1148,10 @@ func inferGoType(expr ast.Expr) string {
 
 func typeHintToGo(hint string) string {
 	if strings.HasPrefix(hint, "[]") {
-		return "[]" + exportName(hint[2:])
+		return "[]" + typeHintToGo(hint[2:])
 	}
 	if strings.HasPrefix(hint, "list:") {
-		return "[]" + exportName(hint[5:])
+		return "[]" + typeHintToGo(hint[5:])
 	}
 	if strings.HasPrefix(hint, "enum:") {
 		return "string"
@@ -1172,6 +1173,11 @@ func typeHintToGo(hint string) string {
 	case "duration":
 		return "time.Duration"
 	default:
+		// User-defined struct types are simple identifiers; anything
+		// containing special chars (func:, unit:, etc.) is unknown.
+		if !strings.ContainsAny(hint, ":~<>") && hint != "" {
+			return exportName(hint)
+		}
 		return "any"
 	}
 }

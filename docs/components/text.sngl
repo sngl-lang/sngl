@@ -1,0 +1,12 @@
+output {
+    js { html }
+}
+
+component main {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Plain text")
+        text(value="Bold text", style={fontWeight="bold"})
+        text(value="Large colored text", style={fontSize=24, color=#2196f3})
+        text(value="Click me!", selectable=true, style={fontStyle="italic"})
+    }
+}

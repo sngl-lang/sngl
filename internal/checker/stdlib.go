@@ -3,6 +3,7 @@ package checker
 import (
 	"embed"
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -40,7 +41,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 		}
 
 		for _, comp := range doc.Components {
-			registry[comp.Name] = componentToSchema(comp)
+			registry[comp.Name] = componentToSchema(comp, doc.Comments)
 		}
 		for _, sd := range doc.StyleDefs {
 			styleProps[sd.Name] = StylePropSchema{
@@ -58,16 +59,18 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 	return registry, styleProps, units, funcs, structs, nil
 }
 
-func componentToSchema(comp *ast.Component) *ComponentSchema {
+func componentToSchema(comp *ast.Component, comments []ast.Comment) *ComponentSchema {
 	schema := &ComponentSchema{
 		Props:    make(map[string]PropSchema),
 		Events:   make(map[string]string),
 		Children: ChildrenMany, // default
+		Doc:      docForPos(comments, comp.Pos.Line),
 	}
 	for _, p := range comp.PropDecls {
 		schema.Props[p.Name] = PropSchema{
 			Type: TypeFromHint(p.TypeHint),
 			Enum: p.Enum,
+			Doc:  docForPos(comments, p.Pos.Line),
 		}
 	}
 	for _, e := range comp.EventDecls {
@@ -82,4 +85,27 @@ func componentToSchema(comp *ast.Component) *ComponentSchema {
 		schema.Children = ChildrenMany
 	}
 	return schema
+}
+
+// docForPos returns the doc comment text for a declaration at the given line.
+// It collects consecutive // comment lines immediately preceding the declaration.
+func docForPos(comments []ast.Comment, line int) string {
+	var docLines []string
+	target := line - 1
+	for i := len(comments) - 1; i >= 0; i-- {
+		c := comments[i]
+		if c.Pos.Line == target {
+			text := strings.TrimPrefix(c.Text, "// ")
+			text = strings.TrimPrefix(text, "//")
+			text = strings.TrimSpace(text)
+			if strings.HasPrefix(text, "---") {
+				break
+			}
+			docLines = append([]string{text}, docLines...)
+			target--
+		} else if c.Pos.Line < target {
+			break
+		}
+	}
+	return strings.Join(docLines, " ")
 }

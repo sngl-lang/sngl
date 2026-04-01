@@ -44,6 +44,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Generate component gallery.
+	generateGallery(*docsDir, *outDir)
+
 	fmt.Printf("Site built in %s/\n", *outDir)
 }
 

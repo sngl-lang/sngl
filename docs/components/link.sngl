@@ -1,0 +1,11 @@
+output {
+    js { html }
+}
+
+component main {
+    vbox(style={gap=8, padding=16}) {
+        link(href="https://sngl.dev", text="SNGL Website")
+        link(href="https://sngl.dev/docs", text="Documentation", target="blank")
+        link(href="#", text="Disabled link", disabled=true)
+    }
+}

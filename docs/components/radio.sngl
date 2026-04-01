@@ -1,0 +1,12 @@
+output {
+    js { html }
+}
+
+component main {
+    var size = "medium"
+
+    vbox(style={gap=8, padding=16}) {
+        radio(options=["small", "medium", "large"], value=size, direction="horizontal")
+        text(value="Selected: " + size)
+    }
+}

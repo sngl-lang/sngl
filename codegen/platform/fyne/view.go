@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // viewContext tracks state during BuildUI() code generation.
@@ -57,7 +58,7 @@ func (vc *viewContext) exprDeps(expr ast.Expr) map[string]bool {
 	if vc.info == nil {
 		return nil
 	}
-	return vc.info.exprDeps(expr)
+	return vc.info.depTracker().ExprDeps(expr)
 }
 
 // nodeDeps extracts expanded deps for an ast.Node expression.
@@ -65,11 +66,11 @@ func (vc *viewContext) nodeDeps(e ast.Node) map[string]bool {
 	if vc.info == nil || e == nil {
 		return nil
 	}
-	deps := extractDeps(e, vc.info.modelFields)
+	deps := codegen.ExtractDeps(e, vc.info.modelFields)
 	if len(deps) == 0 {
 		return nil
 	}
-	return vc.info.expandDeps(deps)
+	return vc.info.depTracker().ExpandDeps(deps)
 }
 
 // emitEventHandler emits mutation statements and affected updater calls for an event.
@@ -79,8 +80,8 @@ func (vc *viewContext) emitEventHandler(evtNode ast.Node) {
 		vc.line("%s", s)
 	}
 	if vc.info != nil {
-		mutated := extractMutatedFields(evtNode)
-		affected := vc.info.findAffectedUpdaters(vc.updaters, mutated)
+		mutated := codegen.MutatedFields(evtNode)
+		affected := codegen.FindAffected(vc.info.depTracker(), vc.updaters, mutated)
 		if len(affected) > 0 {
 			for _, u := range affected {
 				vc.line("m.%s()", u.name)

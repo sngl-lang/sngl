@@ -1,0 +1,15 @@
+output {
+    js { html }
+}
+
+component main {
+    vbox(style={gap=8, padding=16}) {
+        hbox(style={gap=8}) {
+            badge(value="New")
+            badge(value="3", variant="primary")
+            badge(value="OK", variant="success")
+            badge(value="!", variant="warning")
+            badge(value="Error", variant="error")
+        }
+    }
+}

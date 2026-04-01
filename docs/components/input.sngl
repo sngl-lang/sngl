@@ -1,0 +1,14 @@
+output {
+    js { html }
+}
+
+component main {
+    var name = ""
+
+    vbox(style={gap=8, padding=16}) {
+        input(placeholder="Type your name", value=name, @input={ name = event.value })
+        input(placeholder="Password", type="password")
+        input(placeholder="Search...", type="search")
+        text(value="Hello, " + (name == "" ? "stranger" : name) + "!")
+    }
+}

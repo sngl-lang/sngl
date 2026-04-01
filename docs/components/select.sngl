@@ -1,0 +1,12 @@
+output {
+    js { html }
+}
+
+component main {
+    var fruit = ""
+
+    vbox(style={gap=8, padding=16}) {
+        select(options=["Apple", "Banana", "Cherry", "Date"], placeholder="Pick a fruit", value=fruit)
+        text(value=fruit == "" ? "Nothing selected" : "You picked: " + fruit)
+    }
+}

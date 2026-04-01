@@ -2,7 +2,6 @@ package bubbletea
 
 import (
 	"fmt"
-	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -84,32 +83,6 @@ func (ec *exprContext) translateMutationTarget(e ast.Node) string {
 	default:
 		return ec.translateExpr(e)
 	}
-}
-
-// extractMutatedFields returns the set of field names mutated by a SNGL statement.
-func extractMutatedFields(e ast.Node) map[string]bool {
-	fields := make(map[string]bool)
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		for _, s := range n.Stmts {
-			maps.Copy(fields, extractMutatedFields(s))
-		}
-	case *ast.AssignStmt:
-		if ident, ok := n.Target.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.ToggleStmt:
-		if ident, ok := n.Target.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.MethodExpr:
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.CallStmt:
-		maps.Copy(fields, extractMutatedFields(n.Call))
-	}
-	return fields
 }
 
 // translateAlert translates Alert.toast/info/warn/error calls to toast queue operations.

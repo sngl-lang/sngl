@@ -48,6 +48,7 @@ type htmlGen struct {
 
 	// Computed dependency tracking
 	computedDeps map[string]map[string]bool // computed name → set of root state fields it reads
+	dt           *codegen.DepTracker
 
 	// Element ID counter
 	nextID int
@@ -151,9 +152,11 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 	// Compute dependency info for computeds
 	for _, c := range doc.Computeds {
 		if c.Expr.SNGL != nil {
-			g.computedDeps[c.Name] = extractDeps(c.Expr.SNGL, g.modelFields)
+			g.computedDeps[c.Name] = codegen.ExtractDeps(c.Expr.SNGL, g.modelFields)
 		}
 	}
+
+	g.dt = codegen.NewDepTracker(g.modelFields, g.computedFields, g.computedDeps)
 
 	return g
 }
@@ -715,7 +718,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 			// Extract the set() target to determine the JS expression for the bound value
 			if target, ok := extractSetTarget(inputEvt.SNGL); ok {
 				jsExpr := g.lang.TranslateExpr(target, g.scope)
-				root := findMutationRoot(target)
+				root := codegen.FindRootIdent(target)
 				name := fmt.Sprintf("$u_%s_val", id[1:])
 				g.updates = append(g.updates, updateFunc{
 					funcName: name,
@@ -1222,7 +1225,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	for i, t := range g.doc.Timers {
 		ms := g.intervalToMs(t.Interval)
 		stmts := g.lang.TranslateMutation(t.Body, g.scope)
-		mutated := extractMutatedFields(t.Body)
+		mutated := codegen.MutatedFields(t.Body)
 		g.timers = append(g.timers, timerDef{
 			index:      i,
 			intervalMs: ms,
@@ -1500,20 +1503,7 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 		return nil
 	}
 
-	// Expand mutated fields through computed deps
-	expanded := make(map[string]bool)
-	for f := range mutatedFields {
-		expanded[f] = true
-	}
-	// If a mutated field is read by a computed, anything that depends on
-	// that computed is also affected
-	for compName, compDeps := range g.computedDeps {
-		for dep := range compDeps {
-			if mutatedFields[dep] {
-				expanded[compName] = true
-			}
-		}
-	}
+	expanded := g.dt.ExpandMutated(mutatedFields)
 
 	var result []updateFunc
 	for _, u := range g.updates {
@@ -1530,7 +1520,7 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 // addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+	deps := g.dt.ExprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -1541,7 +1531,7 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+	deps := g.dt.ExprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -1552,7 +1542,7 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+	deps := g.dt.ExprDeps(expr)
 	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -1563,7 +1553,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
 
 func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+	deps := g.dt.ExprDeps(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -1574,7 +1564,7 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addIfUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+	deps := g.dt.ExprDeps(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -1594,7 +1584,7 @@ func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
 	}
 
 	iterableJS := g.exprToJS(vn.For.Iterable)
-	deps := g.exprDeps(vn.For.Iterable)
+	deps := g.dt.ExprDeps(vn.For.Iterable)
 
 	// Generate the inner HTML creation code
 	var innerBuf strings.Builder
@@ -1652,7 +1642,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		if changeEvt, ok := vn.Events["change"]; ok {
 			if changeEvt.SNGL != nil {
 				stmts := g.lang.TranslateMutation(changeEvt.SNGL, g.scope)
-				mutated := extractMutatedFields(changeEvt.SNGL)
+				mutated := codegen.MutatedFields(changeEvt.SNGL)
 				var handlerLines []string
 				for _, s := range stmts {
 					handlerLines = append(handlerLines, s+";")
@@ -1713,7 +1703,7 @@ func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
 		return
 	}
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := extractMutatedFields(expr.SNGL)
+	mutated := codegen.MutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -1735,7 +1725,7 @@ func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
 	g.scope.EventVar = "e.target"
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
 	g.scope.EventVar = savedEvent
-	mutated := extractMutatedFields(expr.SNGL)
+	mutated := codegen.MutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -1753,7 +1743,7 @@ func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
 		return
 	}
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := extractMutatedFields(expr.SNGL)
+	mutated := codegen.MutatedFields(expr.SNGL)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2044,119 +2034,6 @@ func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
 	return false
 }
 
-// Dependency extraction
-
-func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
-	if expr.SNGL != nil {
-		deps := extractDeps(expr.SNGL, g.modelFields)
-		// Expand through computeds
-		return g.expandDeps(deps)
-	}
-	return nil
-}
-
-func (g *htmlGen) expandDeps(deps map[string]bool) map[string]bool {
-	result := make(map[string]bool)
-	for d := range deps {
-		result[d] = true
-		// If d is a computed, add its transitive deps
-		if g.computedFields[d] {
-			if compDeps, ok := g.computedDeps[d]; ok {
-				for cd := range compDeps {
-					result[cd] = true
-				}
-			}
-		}
-	}
-	return result
-}
-
-func extractDeps(e ast.Node, modelFields map[string]bool) map[string]bool {
-	deps := make(map[string]bool)
-	walkDeps(e, modelFields, deps)
-	return deps
-}
-
-func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
-	if e == nil {
-		return
-	}
-	switch n := e.(type) {
-	case *ast.IdentExpr:
-		if modelFields[n.Name] {
-			deps[n.Name] = true
-		}
-	case *ast.SelectExpr:
-		root := findRootIdent(n.Operand)
-		if root != "" && modelFields[root] {
-			deps[root] = true
-		}
-	case *ast.CallExpr:
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
-		}
-	case *ast.MethodExpr:
-		walkDeps(n.Receiver, modelFields, deps)
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
-		}
-	case *ast.BinaryExpr:
-		walkDeps(n.Left, modelFields, deps)
-		walkDeps(n.Right, modelFields, deps)
-	case *ast.UnaryExpr:
-		walkDeps(n.Operand, modelFields, deps)
-	case *ast.TernaryExpr:
-		walkDeps(n.Cond, modelFields, deps)
-		walkDeps(n.Then, modelFields, deps)
-		walkDeps(n.Else, modelFields, deps)
-	case *ast.IndexExpr:
-		walkDeps(n.Operand, modelFields, deps)
-		walkDeps(n.Index, modelFields, deps)
-	case *ast.ListExpr:
-		for _, el := range n.Elements {
-			walkDeps(el, modelFields, deps)
-		}
-	case *ast.StructExpr:
-		for _, field := range n.Fields {
-			walkDeps(field.Value, modelFields, deps)
-		}
-	case *ast.InterpolationExpr:
-		for _, part := range n.Parts {
-			walkDeps(part, modelFields, deps)
-		}
-	case *ast.AssignStmt:
-		walkDeps(n.Target, modelFields, deps)
-		walkDeps(n.Value, modelFields, deps)
-	case *ast.ToggleStmt:
-		walkDeps(n.Target, modelFields, deps)
-	case *ast.EmitStmt:
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
-		}
-	case *ast.StmtBlock:
-		for _, stmt := range n.Stmts {
-			walkDeps(stmt, modelFields, deps)
-		}
-	}
-}
-
-func findRootIdent(e ast.Node) string {
-	if e == nil {
-		return ""
-	}
-	switch n := e.(type) {
-	case *ast.IdentExpr:
-		return n.Name
-	case *ast.SelectExpr:
-		return findRootIdent(n.Operand)
-	case *ast.IndexExpr:
-		return findRootIdent(n.Operand)
-	case *ast.MethodExpr:
-		return findRootIdent(n.Receiver)
-	}
-	return ""
-}
-
 // extractSetTarget finds the first argument of an AssignStmt, which is the target being assigned.
 func extractSetTarget(e ast.Node) (ast.Node, bool) {
 	if e == nil {
@@ -2199,60 +2076,6 @@ func (g *htmlGen) intervalToMs(expr ast.Expr) int {
 		return int(num * 3600000)
 	}
 	return int(num) // fallback: treat as ms
-}
-
-func extractMutatedFields(e ast.Node) map[string]bool {
-	fields := make(map[string]bool)
-	if e == nil {
-		return fields
-	}
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		for _, stmt := range n.Stmts {
-			maps.Copy(fields, extractMutatedFields(stmt))
-		}
-	case *ast.AssignStmt:
-		root := findMutationRoot(n.Target)
-		if root != "" {
-			fields[root] = true
-		}
-	case *ast.ToggleStmt:
-		root := findMutationRoot(n.Target)
-		if root != "" {
-			fields[root] = true
-		}
-	case *ast.CallStmt:
-		maps.Copy(fields, extractMutatedFields(n.Call))
-	case *ast.CallExpr:
-		// Function calls like append() etc — check first arg
-		if len(n.Args) >= 1 {
-			root := findMutationRoot(n.Args[0])
-			if root != "" {
-				fields[root] = true
-			}
-		}
-	case *ast.MethodExpr:
-		root := findMutationRoot(n.Receiver)
-		if root != "" {
-			fields[root] = true
-		}
-	}
-	return fields
-}
-
-func findMutationRoot(e ast.Node) string {
-	if e == nil {
-		return ""
-	}
-	switch n := e.(type) {
-	case *ast.IdentExpr:
-		return n.Name
-	case *ast.SelectExpr:
-		return findMutationRoot(n.Operand)
-	case *ast.IndexExpr:
-		return findMutationRoot(n.Operand)
-	}
-	return ""
 }
 
 func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *ast.VisualNode, depth int, pos ...ast.Pos) {
@@ -2302,7 +2125,7 @@ func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
 func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
 	if vn.Class != nil {
 		jsExpr := g.exprToJS(*vn.Class)
-		deps := g.exprDeps(*vn.Class)
+		deps := g.dt.ExprDeps(*vn.Class)
 		name := fmt.Sprintf("$u_%s_cls", elemID[1:])
 		g.updates = append(g.updates, updateFunc{
 			funcName: name,

@@ -13,6 +13,7 @@ const (
 type PropSchema struct {
 	Type Type
 	Enum []string
+	Doc  string
 }
 
 // ComponentSchema defines the properties, events, and child policy for a component.
@@ -20,6 +21,7 @@ type ComponentSchema struct {
 	Props    map[string]PropSchema
 	Events   map[string]string // event name → event type key
 	Children ChildPolicy
+	Doc      string
 }
 
 // StylePropSchema describes a style property's type and valid enum values.

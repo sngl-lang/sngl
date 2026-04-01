@@ -1,10 +1,14 @@
 package fyne
 
 import (
+	_ "embed"
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
+
+//go:embed preview.css
+var previewCSS string
 
 func init() {
 	codegen.RegisterPlatform(&Generator{})
@@ -15,6 +19,7 @@ type Generator struct{}
 
 func (g *Generator) Platform() string         { return "fyne" }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) PreviewCSS() string       { return previewCSS }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "go" {

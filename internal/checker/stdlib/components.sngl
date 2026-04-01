@@ -1,26 +1,37 @@
+// --- Core ---
+
+// Vertical box layout container. Children are stacked top to bottom.
 component vbox {
+    // Enable vertical scrolling for overflow content.
     prop scroll bool
+    // Whether a pull-to-refresh gesture is active.
     prop refreshing bool
     event refresh RefreshEvent
     children many
 }
 
+// Horizontal box layout container. Children are placed side by side, left to right.
 component hbox {
+    // Enable horizontal scrolling for overflow content.
     prop scroll bool
     children many
 }
 
+// Layered container where children overlap. Later children render on top.
 component stack {
     children many
 }
 
+// Displays a text string. Supports styling but has no child elements.
 component text {
     prop value string
+    // Allow the user to select and copy the text.
     prop selectable bool
     event click ClickEvent
     children none
 }
 
+// Clickable button that triggers an action. Supports text label or custom children.
 component button {
     prop text string
     prop disabled bool
@@ -29,12 +40,15 @@ component button {
     children many
 }
 
+// Single-line text input field with keyboard type variants.
 component input {
     prop value string
     prop placeholder string
     prop disabled bool
     prop readonly bool
+    // Keyboard and validation type for the input.
     prop type string enum(text, password, number, email, url, tel, search)
+    // Maximum number of characters allowed.
     prop maxLength int
     event input InputEvent
     event change ChangeEvent
@@ -44,9 +58,12 @@ component input {
     children none
 }
 
+// Displays an image from a URL or asset path.
 component image {
     prop src string
+    // Accessible description of the image content.
     prop alt string
+    // How the image is scaled to fit its container.
     prop fit string enum(contain, cover, fill, none, scaleDown)
     event click ClickEvent
     event load LoadEvent
@@ -54,9 +71,12 @@ component image {
     children none
 }
 
+// Scrollable viewport that wraps a single child element.
 component scroll {
     prop direction string enum(vertical, horizontal, both)
+    // Current horizontal scroll offset as a fraction (0.0 to 1.0).
     prop scrollX float
+    // Current vertical scroll offset as a fraction (0.0 to 1.0).
     prop scrollY float
     prop showScrollbar string enum(auto, always, never)
     event scroll ScrollEvent
@@ -64,11 +84,14 @@ component scroll {
     children one
 }
 
+// Flexible empty space used to push siblings apart in a layout.
 component spacer {
+    // Fixed size (CSS length) instead of flex-growing.
     prop size string
     children none
 }
 
+// Boolean toggle rendered as a checkmark box with an optional label.
 component checkbox {
     prop checked bool
     prop label string
@@ -77,14 +100,18 @@ component checkbox {
     children none
 }
 
+// Placeholder for projected content in custom component definitions.
 component slot {
     children none
 }
 
 // --- Tier 1: Core Input ---
 
+// Group of mutually exclusive options rendered as radio buttons.
 component radio {
+    // Currently selected option value.
     prop value string
+    // List of option values or {label, value} objects.
     prop options dyn
     prop disabled bool
     prop direction string enum(vertical, horizontal)
@@ -92,6 +119,7 @@ component radio {
     children none
 }
 
+// On/off switch control with an optional label.
 component toggle {
     prop checked bool
     prop label string
@@ -100,11 +128,14 @@ component toggle {
     children none
 }
 
+// Dropdown selection control for picking one or more options from a list.
 component select {
     prop value string
+    // List of option values or {label, value} objects.
     prop options dyn
     prop placeholder string
     prop disabled bool
+    // Allow selecting multiple options.
     prop multiple bool
     event change ChangeEvent
     event focus FocusEvent
@@ -112,11 +143,13 @@ component select {
     children none
 }
 
+// Multi-line text input field.
 component textarea {
     prop value string
     prop placeholder string
     prop disabled bool
     prop readonly bool
+    // Number of visible text rows.
     prop rows int
     prop maxLength int
     event input InputEvent
@@ -128,15 +161,18 @@ component textarea {
 
 // --- Tier 2: Feedback & Navigation ---
 
+// Determinate progress indicator showing completion toward a max value.
 component progress {
     prop value float
     prop max float
     prop label string
     prop variant string enum(bar, circular)
+    // Display the numeric value alongside the indicator.
     prop showValue bool
     children none
 }
 
+// Indeterminate loading indicator for operations with unknown duration.
 component spinner {
     prop label string
     prop variant string enum(dots, line, circle, pulse)
@@ -144,6 +180,7 @@ component spinner {
     children none
 }
 
+// Small status label for counts, labels, or state indicators.
 component badge {
     prop value string
     prop variant string enum(default, primary, success, warning, error)
@@ -151,55 +188,69 @@ component badge {
     children none
 }
 
+// Tabbed navigation that switches between child panels by index.
 component tabs {
+    // List of tab labels or {label, icon} objects.
     prop items dyn
+    // Zero-based index of the active tab.
     prop selected int
     prop variant string enum(line, enclosed, pill)
     event change SelectEvent
     children many
 }
 
+// Navigational hyperlink to an external URL or internal route.
 component link {
     prop href string
     prop text string
+    // Whether to open in the same window or a new tab.
     prop target string enum(self, blank)
     prop disabled bool
     event click ClickEvent
     children none
 }
 
+// Visual separator line between sections of content.
 component divider {
     prop direction string enum(horizontal, vertical)
+    // Optional text label displayed in the middle of the divider.
     prop label string
     children none
 }
 
 // --- Tier 3: Overlays & Layout ---
 
+// Dialog overlay that appears above page content with a backdrop.
 component modal {
     prop open bool
     prop title string
+    // Whether the modal can be dismissed by the user.
     prop closable bool
     prop size string enum(small, medium, large, fullscreen)
     event close DismissEvent
     children many
 }
 
+// Slide-out panel anchored to an edge of the screen.
 component drawer {
     prop open bool
     prop side string enum(left, right, top, bottom)
+    // Width or height of the drawer (CSS length).
     prop size string
     event close DismissEvent
     children many
 }
 
+// Small informational popup shown on hover or focus over its child element.
 component tooltip {
     prop text string
     prop position string enum(top, bottom, left, right)
+    // Delay in milliseconds before the tooltip appears.
     prop delay int
     children one
 }
 
+// Floating content panel anchored to its child element, toggled on click or hover.
 component popover {
     prop open bool
     prop position string enum(top, bottom, left, right)
@@ -208,16 +259,22 @@ component popover {
     children many
 }
 
+// Expandable/collapsible sections. Each item can be toggled open or closed.
 component accordion {
+    // List of section headers or {title, content} objects.
     prop items dyn
+    // List of currently expanded section indices.
     prop expanded dyn
+    // Allow more than one section to be open simultaneously.
     prop multiple bool
     event change ExpandEvent
     children many
 }
 
+// Resizable two-pane layout divided by a draggable handle.
 component splitview {
     prop direction string enum(horizontal, vertical)
+    // Divider position as a fraction (0.0 to 1.0).
     prop position float
     prop minPosition float
     prop maxPosition float
@@ -228,8 +285,11 @@ component splitview {
 
 // --- Tier 4: Data & Desktop ---
 
+// Tabular data display with optional sorting and row selection.
 component table {
+    // List of column definitions ({key, label, width}).
     prop columns dyn
+    // List of row data objects.
     prop rows dyn
     prop selectable bool
     prop selected int
@@ -241,16 +301,22 @@ component table {
     children none
 }
 
+// Hierarchical data display with expandable nodes.
 component tree {
+    // List of tree node objects ({label, children, id}).
     prop items dyn
+    // ID of the currently selected node.
     prop selected string
+    // List of currently expanded node IDs.
     prop expanded dyn
     event select SelectEvent
     event expand ExpandEvent
     children none
 }
 
+// Context or dropdown menu displaying a list of actionable items.
 component menu {
+    // List of menu items ({label, icon, action}) or separator strings.
     prop items dyn
     prop open bool
     event select MenuEvent
@@ -258,13 +324,17 @@ component menu {
     children none
 }
 
+// Horizontal menu bar typically used at the top of a desktop-style application.
 component menubar {
+    // List of top-level menu definitions ({label, items}).
     prop items dyn
     event select MenuEvent
     children none
 }
 
+// Horizontal bar of action buttons, typically displayed below a menubar.
 component toolbar {
+    // List of toolbar button definitions ({label, icon, action}).
     prop items dyn
     event select MenuEvent
     children many
@@ -272,9 +342,12 @@ component toolbar {
 
 // --- Tier 5: Mobile & Specialized ---
 
+// Calendar-based date selection input.
 component datepicker {
     prop value date
+    // Earliest selectable date.
     prop min date
+    // Latest selectable date.
     prop max date
     prop disabled bool
     prop placeholder string
@@ -284,9 +357,11 @@ component datepicker {
     children none
 }
 
+// Compact interactive tag used for filters, selections, or labels.
 component chip {
     prop label string
     prop variant string enum(default, primary, success, warning, error)
+    // Show a remove button on the chip.
     prop removable bool
     prop selected bool
     prop disabled bool
@@ -295,9 +370,11 @@ component chip {
     children none
 }
 
+// Circular or shaped user profile image with fallback to initials.
 component avatar {
     prop src string
     prop alt string
+    // Fallback text shown when no image is available.
     prop initials string
     prop size string enum(small, medium, large, xlarge)
     prop variant string enum(circle, square, rounded)
@@ -305,8 +382,10 @@ component avatar {
     children none
 }
 
+// Styled container for grouping related content with an optional click action.
 component card {
     prop variant string enum(outlined, elevated, filled)
+    // Make the entire card a clickable target.
     prop clickable bool
     event click ClickEvent
     children many

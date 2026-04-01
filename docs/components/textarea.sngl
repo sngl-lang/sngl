@@ -1,0 +1,12 @@
+output {
+    js { html }
+}
+
+component main {
+    var notes = ""
+
+    vbox(style={gap=8, padding=16}) {
+        textarea(placeholder="Write some notes...", rows=4, value=notes, @input={ notes = event.value })
+        text(value="Characters: " + string(len(notes)))
+    }
+}

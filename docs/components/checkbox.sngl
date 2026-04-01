@@ -1,0 +1,13 @@
+output {
+    js { html }
+}
+
+component main {
+    var accepted = false
+
+    vbox(style={gap=8, padding=16}) {
+        checkbox(checked=accepted, label="Accept terms", @change={ accepted!! })
+        checkbox(checked=true, label="Already checked", disabled=true)
+        text(value="Accepted: " + string(accepted))
+    }
+}

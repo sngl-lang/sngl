@@ -1,0 +1,223 @@
+package {{.Package}}
+
+import (
+	"fmt"
+{{- if .GenerateMain}}
+	"os"
+{{- end}}
+{{- if .NeedsURL}}
+	"net/url"
+{{- end}}
+{{- if .NeedsTime}}
+	"time"
+{{- end}}
+
+	"fyne.io/fyne/v2"
+{{- if .GenerateMain}}
+	"fyne.io/fyne/v2/app"
+{{- end}}
+{{- if .NeedsCanvas}}
+	"fyne.io/fyne/v2/canvas"
+{{- end}}
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
+)
+
+var _ = fmt.Sprint
+var _ fyne.CanvasObject
+var _ = container.NewVBox
+var _ = layout.NewSpacer
+var _ = widget.NewLabel
+{{- if .NeedsURL}}
+var _ = url.Parse
+{{- end}}
+{{- if .NeedsCanvas}}
+var _ = canvas.NewImageFromResource
+{{- end}}
+
+func ternary[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
+}
+{{if .NeedsTime}}
+func mustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil { panic(err) }
+	return d
+}
+
+func mustParseDate(s string) time.Time {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil { panic(err) }
+	return t
+}
+
+func mustParseTime(s string) time.Time {
+	t, err := time.Parse("15:04:05", s)
+	if err != nil {
+		t, err = time.Parse("15:04", s)
+		if err != nil { panic(err) }
+	}
+	return t
+}
+
+func mustParseDateTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil { panic(err) }
+	return t
+}
+{{end}}
+{{- range .Structs}}
+type {{.Name}} struct {
+{{- range .Fields}}
+	{{.Name}} {{.Type}}
+{{- end}}
+}
+
+{{end}}
+{{- if .NeedsToast}}
+type snglToast struct {
+	message string
+	variant string
+}
+
+{{end -}}
+// Model holds the state for this SNGL UI.
+type Model struct {
+{{- range .Binds}}
+	{{.Name}} {{.GoType}}
+{{- end}}
+{{- range .Externs}}
+	{{.Name}} {{.GoType}} // extern
+{{- end}}
+{{- range .Triggers}}
+	{{.CallbackField}} func({{.GoType}})
+{{- end}}
+{{- if .Binds}}
+{{end}}
+{{- range .Entries}}
+	{{.FieldName}} *widget.Entry
+{{- end}}
+{{- if .Entries}}
+{{end}}
+{{- range .WidgetFields}}
+	{{.Name}} {{.GoType}}
+{{- end}}
+{{- if .WidgetFields}}
+{{end}}
+{{- range .Timers}}
+	timer{{.Index}}Ticker *time.Ticker
+{{- end}}
+{{- if .NeedsToast}}
+	toasts     []snglToast
+	toastLabel *widget.Label
+	toastBox   *fyne.Container
+{{- end}}
+}
+
+// New creates a Model with default values.
+func New() *Model {
+	m := &Model{
+{{- range .Binds}}
+		{{.Name}}: {{.InitVal}},
+{{- end}}
+	}
+{{range .Entries}}
+{{- if .MultiLine}}	m.{{.FieldName}} = widget.NewMultiLineEntry()
+{{else if .Password}}	m.{{.FieldName}} = widget.NewPasswordEntry()
+{{else}}	m.{{.FieldName}} = widget.NewEntry()
+{{end}}
+{{- if .Placeholder}}	m.{{.FieldName}}.SetPlaceHolder({{.PlaceholderQuoted}})
+{{end}}
+{{- if .BindTarget}}	m.{{.FieldName}}.SetText(fmt.Sprint(m.{{.BindTarget}}))
+	m.{{.FieldName}}.OnChanged = func(s string) {
+		m.{{.BindTarget}} = s
+{{.OnChangedBody}}	}
+{{end}}
+{{- if .Rows}}	m.{{.FieldName}}.SetMinRowsVisible({{.Rows}})
+{{end}}
+{{- end}}	return m
+}
+
+func (m *Model) doRefresh() {
+{{- range .UpdaterNames}}
+	m.{{.}}()
+{{- end}}
+}
+{{if .NeedsToast}}
+func (m *Model) showToast(msg, variant string) {
+	m.toasts = append(m.toasts, snglToast{msg, variant})
+	m.updateToast()
+	time.AfterFunc(3*time.Second, func() {
+		fyne.Do(func() {
+			if len(m.toasts) > 0 {
+				m.toasts = m.toasts[1:]
+			}
+			m.updateToast()
+		})
+	})
+}
+
+func (m *Model) updateToast() {
+	if m.toastLabel == nil { return }
+	if len(m.toasts) > 0 {
+		m.toastLabel.SetText(m.toasts[0].message)
+		m.toastBox.Show()
+	} else {
+		m.toastBox.Hide()
+	}
+}
+{{end}}
+{{- range .Computeds}}
+func (m *Model) {{.Name}}() {{.GoType}} {
+	return {{.Body}}
+}
+
+{{end}}
+{{- .FunctionCode}}
+{{- range .Binds}}
+func (m *Model) {{.Getter}}() {{.GoType}} {
+	return m.{{.Name}}
+}
+
+func (m *Model) Set{{.Getter}}(v {{.GoType}}) {
+	m.{{.Name}} = v
+{{ .SetterExtra -}}
+}
+
+{{end}}
+{{- range .TriggerRegistrations}}
+func (m *Model) {{.MethodName}}(fn func({{.GoType}})) {
+	m.{{.CallbackField}} = fn
+}
+
+{{end}}
+{{- if .HasTimers}}
+// StartTimers starts all active timers.
+func (m *Model) StartTimers() {
+{{- range .Timers}}
+	if m.{{.ActiveVar}} {
+		m.timer{{.Index}}Ticker = time.NewTicker({{.IntervalMs}} * time.Millisecond)
+		go func() {
+			for range m.timer{{.Index}}Ticker.C {
+				fyne.Do(func() {
+{{.Body}}
+{{.AffectedUpdaters}}				})
+			}
+		}()
+	}
+{{- end}}
+}
+
+// StopTimers stops all active timers.
+func (m *Model) StopTimers() {
+{{- range .Timers}}
+	if m.timer{{.Index}}Ticker != nil {
+		m.timer{{.Index}}Ticker.Stop()
+	}
+{{- end}}
+}
+{{end}}

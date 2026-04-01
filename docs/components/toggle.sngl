@@ -1,0 +1,13 @@
+output {
+    js { html }
+}
+
+component main {
+    var notifications = false
+
+    vbox(style={gap=8, padding=16}) {
+        toggle(checked=notifications, label="Enable notifications")
+        toggle(checked=true, label="Always on", disabled=true)
+        text(value="Notifications: " + (notifications ? "on" : "off"))
+    }
+}
