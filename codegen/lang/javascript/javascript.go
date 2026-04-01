@@ -266,6 +266,9 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 		target := translateMutationTarget(n.Target, scope)
 		return []string{target + " = !" + target}
 	case *ast.MethodExpr:
+		if js := jsBuiltinMethod(n, scope); js != "" {
+			return []string{js}
+		}
 		target := translateMutationTarget(n.Receiver, scope)
 		switch n.Method {
 		case "push":
@@ -492,6 +495,22 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "[..." + a(0) + "].reverse()"
 	case "list.slice", "*.slice":
 		return a(0) + ".slice(" + a(1) + ", " + a(2) + ")"
+	// Alert
+	case "Alert.toast":
+		return `(function(){var d=document.createElement("div");d.textContent=` + a(0) + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
+	case "Alert.info":
+		return `alert(` + a(0) + `)`
+	case "Alert.warn":
+		return `alert("Warning: " + ` + a(0) + `)`
+	case "Alert.error":
+		return `alert("Error: " + ` + a(0) + `)`
+	case "Alert.confirm":
+		return `confirm(` + a(0) + `)`
+	// File
+	case "File.pick":
+		return `prompt("Enter file path:", "")`
+	case "File.pickFolder":
+		return `prompt("Enter folder path:", "")`
 	}
 	return ""
 }

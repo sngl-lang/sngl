@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/format"
 	"maps"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -20,7 +21,11 @@ type Config struct {
 
 func (c Config) withDefaults() Config {
 	if c.Package == "" {
-		c.Package = "ui"
+		if c.GenerateMain {
+			c.Package = "main"
+		} else {
+			c.Package = "ui"
+		}
 	}
 	if c.ScaleFactor == 0 {
 		c.ScaleFactor = 8
@@ -99,6 +104,7 @@ type analysisResult struct {
 	externFuncs    map[string]bool   // extern function names
 	triggers       map[string]string // data field name → trigger func name
 	needsTime      bool              // emit "time" import
+	needsToast     bool              // emit toast queue infrastructure
 }
 
 func analyze(doc *ast.Document) *analysisResult {
@@ -182,6 +188,14 @@ func analyze(doc *ast.Document) *analysisResult {
 		focusIdx := 0
 		for _, child := range doc.App.Children {
 			focusIdx = walkForFocusables(child, info, focusIdx)
+		}
+	}
+
+	// Detect Alert.toast/info/warn/error calls in event handlers, timers, and functions
+	if !info.needsToast {
+		info.needsToast = astUsesAlert(doc)
+		if info.needsToast {
+			info.needsTime = true
 		}
 	}
 
@@ -346,6 +360,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("\n")
 	}
 
+	// Toast infrastructure
+	if info.needsToast {
+		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
+		b.WriteString("type toastDismissMsg struct{}\n\n")
+	}
+
 	// Model struct
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
 	b.WriteString("type Model struct {\n")
@@ -377,6 +397,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 	if len(info.forCursors) > 0 {
 		b.WriteString("\n")
+	}
+	if info.needsToast {
+		b.WriteString("\ttoasts []snglToast\n")
 	}
 	b.WriteString("\tfocus int\n")
 	b.WriteString("\twidth, height int\n")
@@ -662,6 +685,17 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 		b.WriteString("\t\t}\n")
 	}
 
+	// Toast dismiss
+	if info.needsToast {
+		b.WriteString("\tcase toastDismissMsg:\n")
+		b.WriteString("\t\tif len(m.toasts) > 0 {\n")
+		b.WriteString("\t\t\tm.toasts = m.toasts[1:]\n")
+		b.WriteString("\t\t\tif len(m.toasts) > 0 {\n")
+		b.WriteString("\t\t\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
+		b.WriteString("\t\t\t}\n")
+		b.WriteString("\t\t}\n")
+	}
+
 	// WindowSizeMsg
 	b.WriteString("\tcase tea.WindowSizeMsg:\n")
 	b.WriteString("\t\tm.width = msg.Width\n")
@@ -701,6 +735,13 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 		if inp.bindTarget != "" {
 			fmt.Fprintf(b, "\t\tm.%s = m.%s.Value()\n", inp.bindTarget, inp.fieldName)
 		}
+		b.WriteString("\t}\n")
+	}
+
+	// Schedule toast dismiss if a toast was added
+	if info.needsToast {
+		b.WriteString("\tif len(m.toasts) > 0 && cmd == nil {\n")
+		b.WriteString("\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
 		b.WriteString("\t}\n")
 	}
 
@@ -838,6 +879,22 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 		b.WriteString(vc.buf.String())
 	}
 
+	// Toast overlay
+	if info.needsToast {
+		b.WriteString("\tif len(m.toasts) > 0 {\n")
+		b.WriteString("\t\tt := m.toasts[0]\n")
+		b.WriteString("\t\tvar bg string\n")
+		b.WriteString("\t\tswitch t.variant {\n")
+		b.WriteString("\t\tcase \"success\": bg = \"#2e7d32\"\n")
+		b.WriteString("\t\tcase \"error\": bg = \"#c62828\"\n")
+		b.WriteString("\t\tcase \"warn\", \"warning\": bg = \"#f57f17\"\n")
+		b.WriteString("\t\tdefault: bg = \"#1565c0\"\n")
+		b.WriteString("\t\t}\n")
+		b.WriteString("\t\ttoastStyle := lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(\"#ffffff\"))\n")
+		b.WriteString("\t\tcontent = lipgloss.JoinVertical(lipgloss.Left, content, toastStyle.Render(t.message))\n")
+		b.WriteString("\t}\n")
+	}
+
 	b.WriteString("\tv := tea.NewView(content)\n")
 	b.WriteString("\tv.AltScreen = true\n")
 	b.WriteString("\treturn v\n")
@@ -910,6 +967,56 @@ func extractAssignTarget(e ast.Node) string {
 		}
 	}
 	return ""
+}
+
+// astUsesAlert returns true if the document contains any Alert.toast/info/warn/error calls.
+func astUsesAlert(doc *ast.Document) bool {
+	// Check event handlers in visual nodes
+	if doc.App != nil {
+		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
+			return true
+		}
+	}
+	// Check timer bodies
+	for _, t := range doc.Timers {
+		if exprNodeUsesAlert(t.Body) {
+			return true
+		}
+	}
+	// Check function blocks
+	for _, fn := range doc.Functions {
+		if fn.Block != nil {
+			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func nodeUsesAlert(vn *ast.VisualNode) bool {
+	for _, evt := range vn.Events {
+		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
+			return true
+		}
+	}
+	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
+}
+
+func exprNodeUsesAlert(n ast.Node) bool {
+	switch e := n.(type) {
+	case *ast.MethodExpr:
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+			return true
+		}
+	case *ast.StmtBlock:
+		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
+			return true
+		}
+	case *ast.CallStmt:
+		return exprNodeUsesAlert(e.Call)
+	}
+	return false
 }
 
 // snglNodeGoType infers a Go type from a SNGL expression node.

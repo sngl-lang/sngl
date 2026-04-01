@@ -454,8 +454,6 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
 	// --- Tier 5: Mobile & Specialized ---
-	case "toast":
-		g.renderStaticToast(b, vn, depth)
 	case "datepicker":
 		g.renderStaticDatepicker(b, vn, depth)
 	case "chip":
@@ -1117,50 +1115,6 @@ func (g *htmlGen) renderStaticTree(b *strings.Builder, vn *ast.VisualNode, depth
 		}
 	}
 	fmt.Fprintf(b, "%s</ul>\n", indent)
-}
-
-func (g *htmlGen) renderStaticToast(b *strings.Builder, vn *ast.VisualNode, depth int) {
-	style := g.buildCSSStyle(vn)
-	style = appendCSS(style, "position", "fixed")
-	style = appendCSS(style, "padding", "12px 24px")
-	style = appendCSS(style, "border-radius", "8px")
-	style = appendCSS(style, "background", "#333")
-	style = appendCSS(style, "color", "#fff")
-	style = appendCSS(style, "z-index", "2000")
-	position := g.evalStaticString(vn.Props, "position")
-	switch position {
-	case "top":
-		style = appendCSS(style, "top", "16px")
-		style = appendCSS(style, "left", "50%")
-		style = appendCSS(style, "transform", "translateX(-50%)")
-	case "bottomLeft":
-		style = appendCSS(style, "bottom", "16px")
-		style = appendCSS(style, "left", "16px")
-	case "bottomRight":
-		style = appendCSS(style, "bottom", "16px")
-		style = appendCSS(style, "right", "16px")
-	default: // bottom
-		style = appendCSS(style, "bottom", "16px")
-		style = appendCSS(style, "left", "50%")
-		style = appendCSS(style, "transform", "translateX(-50%)")
-	}
-	id := g.allocID()
-	visible := true
-	if v, ok := vn.Props["visible"]; ok {
-		visible = g.evalStaticBool(&v)
-	}
-	if !visible {
-		style = appendCSS(style, "display", "none")
-	}
-	message := g.evalStaticString(vn.Props, "message")
-	indent := strings.Repeat("  ", depth)
-	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, style)
-	g.writeUserAttrs(b, id, vn)
-	b.WriteString(g.previewAttrs(vn.Pos))
-	fmt.Fprintf(b, ">%s</div>\n", html.EscapeString(message))
-	if g.propIsReactive(vn.Props, "visible") {
-		g.addIfUpdater(id, vn.Props["visible"])
-	}
 }
 
 func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode, depth int) {

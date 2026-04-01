@@ -57,6 +57,7 @@ type TestResult struct {
 	Desc      string
 	Passed    bool
 	Error     string
+	Log       []string
 	Children  []*TestResult
 	Duration  time.Duration
 }

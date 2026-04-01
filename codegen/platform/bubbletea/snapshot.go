@@ -161,8 +161,6 @@ func (sc *snapContext) renderPrimitive(vn *ast.VisualNode) string {
 		return sc.renderMenubarSnap(vn)
 	case "toolbar":
 		return sc.renderBox(vn, false)
-	case "toast":
-		return sc.renderToastSnap(vn)
 	case "datepicker":
 		value := fmt.Sprint(sc.evalProp(vn, "value", ""))
 		placeholder := fmt.Sprint(sc.evalProp(vn, "placeholder", "YYYY-MM-DD"))
@@ -812,15 +810,6 @@ func (sc *snapContext) renderMenubarSnap(vn *ast.VisualNode) string {
 		tabs = append(tabs, "["+fmt.Sprint(item)+"]")
 	}
 	return style.Render(strings.Join(tabs, " "))
-}
-
-func (sc *snapContext) renderToastSnap(vn *ast.VisualNode) string {
-	visible, _ := sc.evalProp(vn, "visible", false).(bool)
-	if !visible {
-		return ""
-	}
-	message := fmt.Sprint(sc.evalProp(vn, "message", ""))
-	return sc.buildStyle(vn).Render("ℹ " + message)
 }
 
 func (sc *snapContext) renderCardSnap(vn *ast.VisualNode) string {

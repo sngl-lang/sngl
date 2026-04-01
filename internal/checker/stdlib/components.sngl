@@ -272,17 +272,6 @@ component toolbar {
 
 // --- Tier 5: Mobile & Specialized ---
 
-component toast {
-    prop message string
-    prop variant string enum(info, success, warning, error)
-    prop visible bool
-    prop duration int
-    prop position string enum(top, bottom, topLeft, topRight, bottomLeft, bottomRight)
-    event close DismissEvent
-    children none
-}
-
-
 component datepicker {
     prop value date
     prop min date

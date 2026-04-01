@@ -1,5 +1,7 @@
 package codegen
 
+import "slices"
+
 import "sync"
 
 var (
@@ -73,11 +75,8 @@ func PlatformsForLang(lang string) []string {
 	defer platMu.RUnlock()
 	var names []string
 	for name, p := range platforms {
-		for _, l := range p.SupportedLangs() {
-			if l == lang {
-				names = append(names, name)
-				break
-			}
+		if slices.Contains(p.SupportedLangs(), lang) {
+			names = append(names, name)
 		}
 	}
 	return names

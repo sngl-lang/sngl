@@ -169,6 +169,11 @@ func printResult(r *codegen.TestResult, prefix string, verbose bool) {
 			fmt.Printf("    %s\n", r.Error)
 		}
 	}
+	if verbose {
+		for _, line := range r.Log {
+			fmt.Printf("    %s\n", line)
+		}
+	}
 
 	for _, child := range r.Children {
 		printResult(child, name, verbose)
@@ -194,6 +199,7 @@ type jsonResult struct {
 	Name     string       `json:"name"`
 	Passed   bool         `json:"passed"`
 	Error    string       `json:"error,omitempty"`
+	Log      []string     `json:"log,omitempty"`
 	Duration float64      `json:"duration_s"`
 	Children []jsonResult `json:"children,omitempty"`
 }
@@ -224,6 +230,7 @@ func toJSON(r *codegen.TestResult, prefix string) jsonResult {
 		Name:     name,
 		Passed:   r.Passed,
 		Error:    r.Error,
+		Log:      r.Log,
 		Duration: r.Duration.Seconds(),
 	}
 	for _, child := range r.Children {

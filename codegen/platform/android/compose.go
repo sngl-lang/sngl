@@ -147,8 +147,6 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 	case "pullrefresh":
 		// Legacy: treat as vbox
 		cc.renderColumn(vn)
-	case "toast":
-		cc.renderToast(vn)
 	default:
 		cc.renderUserComponent(vn)
 	}
@@ -928,22 +926,6 @@ func (cc *composeContext) renderAvatar(vn *ast.VisualNode) {
 		strings.Repeat("    ", cc.indent))
 	cc.indent++
 	cc.line("Text(%s)", initials)
-	cc.indent--
-	cc.line("}")
-}
-
-func (cc *composeContext) renderToast(vn *ast.VisualNode) {
-	message := `""`
-	if v, ok := vn.Props["message"]; ok {
-		message = exprToKtValue(v, cc.ec)
-	}
-	visible := "false"
-	if v, ok := vn.Props["visible"]; ok {
-		visible = exprToKtValue(v, cc.ec)
-	}
-	cc.line("if (%s) {", visible)
-	cc.indent++
-	cc.line("Snackbar { Text(%s) }", message)
 	cc.indent--
 	cc.line("}")
 }

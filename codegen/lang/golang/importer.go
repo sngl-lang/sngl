@@ -74,8 +74,8 @@ func goTypeToStruct(tn *types.TypeName) *ast.StructDef {
 		return nil
 	}
 	sd := &ast.StructDef{Name: tn.Name()}
-	for i := range st.NumFields() {
-		f := st.Field(i)
+	for f := range st.Fields() {
+		f := f
 		if !f.Exported() {
 			continue
 		}
@@ -96,8 +96,8 @@ func goFuncToData(fn *types.Func) *ast.Data {
 
 	var paramTypes []string
 	params := sig.Params()
-	for i := range params.Len() {
-		paramTypes = append(paramTypes, goTypeToHint(params.At(i).Type()))
+	for v := range params.Variables() {
+		paramTypes = append(paramTypes, goTypeToHint(v.Type()))
 	}
 
 	var returnType string

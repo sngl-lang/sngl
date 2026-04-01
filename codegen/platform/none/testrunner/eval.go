@@ -25,6 +25,7 @@ type Env struct {
 	body        []*ast.VisualNode
 	depth       int // current call stack depth
 	renderDepth int // current component render depth
+	Log         []string
 }
 
 func NewEnv() *Env {
@@ -535,6 +536,30 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			// Not a variable — treat as type namespace
 			qualName := ident.Name + "." + e.Method
 			if args, err := env.evalArgs(e.Args); err == nil {
+				// Log Alert/File calls for test visibility
+				switch qualName {
+				case "Alert.toast":
+					env.Log = append(env.Log, fmt.Sprintf("[toast:%v] %v", args[1], args[0]))
+					return nil, nil
+				case "Alert.info":
+					env.Log = append(env.Log, fmt.Sprintf("[info] %v", args[0]))
+					return nil, nil
+				case "Alert.warn":
+					env.Log = append(env.Log, fmt.Sprintf("[warn] %v", args[0]))
+					return nil, nil
+				case "Alert.error":
+					env.Log = append(env.Log, fmt.Sprintf("[error] %v", args[0]))
+					return nil, nil
+				case "Alert.confirm":
+					env.Log = append(env.Log, fmt.Sprintf("[confirm] %v", args[0]))
+					return true, nil
+				case "File.pick":
+					env.Log = append(env.Log, "[File.pick]")
+					return "/mock/file.txt", nil
+				case "File.pickFolder":
+					env.Log = append(env.Log, "[File.pickFolder]")
+					return "/mock/folder", nil
+				}
 				if result, handled, err := nativeMethod(qualName, args); handled {
 					return result, err
 				}

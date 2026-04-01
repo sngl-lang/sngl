@@ -89,3 +89,16 @@ func color.darken(c Color, pct float) Color {
 func color.opacity(c Color, a int) Color = Color{r: c.r, g: c.g, b: c.b, a: a}
 
 func color.hex(c Color) string = "#000000"
+
+// --- Alert ---
+
+func Alert.toast(message string, variant string) dyn = 0
+func Alert.info(message string) dyn = 0
+func Alert.warn(message string) dyn = 0
+func Alert.error(message string) dyn = 0
+func Alert.confirm(message string) bool = false
+
+// --- File ---
+
+func File.pick() string = ""
+func File.pickFolder() string = ""

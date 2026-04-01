@@ -1,8 +1,7 @@
-package bubbletea
+package fyne
 
 import (
 	"fmt"
-	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -54,7 +53,6 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 				return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
 			}
 		}
-		// General method call (e.g., extern namespace calls: api.SaveTodo(item))
 		return []string{ec.translateExpr(n)}
 	case *ast.CallStmt:
 		return []string{ec.translateExpr(n.Call)}
@@ -66,7 +64,6 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 }
 
 // translateMutationTarget translates a SNGL expression used as a mutation target.
-// Identifiers that are model fields get prefixed with "m.".
 func (ec *exprContext) translateMutationTarget(e ast.Node) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
@@ -86,32 +83,6 @@ func (ec *exprContext) translateMutationTarget(e ast.Node) string {
 	}
 }
 
-// extractMutatedFields returns the set of field names mutated by a SNGL statement.
-func extractMutatedFields(e ast.Node) map[string]bool {
-	fields := make(map[string]bool)
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		for _, s := range n.Stmts {
-			maps.Copy(fields, extractMutatedFields(s))
-		}
-	case *ast.AssignStmt:
-		if ident, ok := n.Target.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.ToggleStmt:
-		if ident, ok := n.Target.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.MethodExpr:
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-			fields[ident.Name] = true
-		}
-	case *ast.CallStmt:
-		maps.Copy(fields, extractMutatedFields(n.Call))
-	}
-	return fields
-}
-
 // translateAlert translates Alert.toast/info/warn/error calls to toast queue operations.
 func (ec *exprContext) translateAlert(n *ast.MethodExpr) []string {
 	switch n.Method {
@@ -121,10 +92,10 @@ func (ec *exprContext) translateAlert(n *ast.MethodExpr) []string {
 		if len(n.Args) > 1 {
 			variant = ec.translateExpr(n.Args[1])
 		}
-		return []string{fmt.Sprintf("m.toasts = append(m.toasts, snglToast{%s, %s})", msg, variant)}
+		return []string{fmt.Sprintf("m.showToast(%s, %s)", msg, variant)}
 	case "info", "warn", "error":
 		msg := ec.translateExpr(n.Args[0])
-		return []string{fmt.Sprintf("m.toasts = append(m.toasts, snglToast{%s, %q})", msg, n.Method)}
+		return []string{fmt.Sprintf("m.showToast(%s, %q)", msg, n.Method)}
 	case "confirm":
 		return []string{"// Alert.confirm not supported in TUI"}
 	}

@@ -15,8 +15,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "sngl",
-	Short: "SNGL compiler and toolchain",
+	Use:          "sngl",
+	Short:        "SNGL compiler and toolchain",
+	SilenceUsage: true,
 }
 
 func init() {

@@ -334,8 +334,8 @@ func readAARPackage(aarPath string) string {
 			s := string(data)
 			if i := strings.Index(s, `package="`); i >= 0 {
 				s = s[i+len(`package="`):]
-				if j := strings.Index(s, `"`); j >= 0 {
-					return s[:j]
+				if before, _, ok := strings.Cut(s, `"`); ok {
+					return before
 				}
 			}
 		}
@@ -395,8 +395,8 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 	// Detect app package from resource IDs
 	appPkg := ""
 	for k := range resourceIDs {
-		if i := strings.Index(k, ":"); i >= 0 {
-			appPkg = k[:i]
+		if before, _, ok := strings.Cut(k, ":"); ok {
+			appPkg = before
 			break
 		}
 	}
@@ -409,17 +409,17 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 	resTypes := map[string][]resEntry{} // e.g. "id" → [{name, id}, ...]
 	for key, id := range resourceIDs {
 		// key format: "test.sngl.app:type/name"
-		colonIdx := strings.Index(key, ":")
-		if colonIdx < 0 {
+		_, after, ok := strings.Cut(key, ":")
+		if !ok {
 			continue
 		}
-		rest := key[colonIdx+1:]
-		slashIdx := strings.Index(rest, "/")
-		if slashIdx < 0 {
+		rest := after
+		before, after, ok := strings.Cut(rest, "/")
+		if !ok {
 			continue
 		}
-		resType := rest[:slashIdx]
-		resName := rest[slashIdx+1:]
+		resType := before
+		resName := after
 		resTypes[resType] = append(resTypes[resType], resEntry{resName, id})
 	}
 
@@ -488,7 +488,7 @@ func readResourceIDs(path string) map[string]int {
 	if err != nil {
 		return ids
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		// Format: "pkg:type/name = 0xHHHHHHHH"
 		parts := strings.SplitN(line, " = ", 2)
 		if len(parts) != 2 {
@@ -541,8 +541,8 @@ func patchLibraryRJava(tc *toolchain, rJavaDir string, resourceIDs map[string]in
 	// and append the missing ones
 	appPkg := "" // detect app package from resource IDs
 	for k := range resourceIDs {
-		if i := strings.Index(k, ":"); i >= 0 {
-			appPkg = k[:i]
+		if before, _, ok := strings.Cut(k, ":"); ok {
+			appPkg = before
 			break
 		}
 	}
@@ -744,8 +744,8 @@ func readRTxt(aarPath string) (string, []rEntry) {
 			s := string(data)
 			if i := strings.Index(s, `package="`); i >= 0 {
 				s = s[i+len(`package="`):]
-				if j := strings.Index(s, `"`); j >= 0 {
-					pkg = s[:j]
+				if before, _, ok := strings.Cut(s, `"`); ok {
+					pkg = before
 				}
 			}
 		case "R.txt":
@@ -755,7 +755,7 @@ func readRTxt(aarPath string) (string, []rEntry) {
 			}
 			data, _ := io.ReadAll(rc)
 			rc.Close()
-			for _, line := range strings.Split(string(data), "\n") {
+			for line := range strings.SplitSeq(string(data), "\n") {
 				fields := strings.Fields(line)
 				if len(fields) >= 3 {
 					entries = append(entries, rEntry{

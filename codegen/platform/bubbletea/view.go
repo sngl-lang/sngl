@@ -155,8 +155,6 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 		vc.renderMenubar(vn, resultVar)
 	case "toolbar":
 		vc.renderBox(vn, resultVar, false) // toolbar = horizontal layout
-	case "toast":
-		vc.renderToast(vn, resultVar)
 	case "datepicker":
 		vc.renderDatepicker(vn, resultVar)
 	case "chip":
@@ -711,21 +709,6 @@ func (vc *viewContext) renderMenubar(vn *ast.VisualNode, resultVar string) {
 	vc.line(`for _, item := range %s { %sTabs = append(%sTabs, "["+fmt.Sprint(item)+"]") }`, items, resultVar, resultVar)
 	vc.line(`%s = %s.Render(strings.Join(%sTabs, " "))`, resultVar, style, resultVar)
 	vc.indent--
-	vc.line(`}`)
-}
-
-func (vc *viewContext) renderToast(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
-	message := `""`
-	if v, ok := vn.Props["message"]; ok {
-		message = exprToGoValue(v, vc.ec)
-	}
-	visible := "false"
-	if v, ok := vn.Props["visible"]; ok {
-		visible = exprToGoValue(v, vc.ec)
-	}
-	vc.line(`if %s {`, visible)
-	vc.line(`	%s = %s.Render("ℹ " + %s)`, resultVar, style, message)
 	vc.line(`}`)
 }
 

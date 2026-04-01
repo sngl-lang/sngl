@@ -269,6 +269,9 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 		target := translateMutationTarget(n.Target, scope)
 		return []string{target + " = !" + target}
 	case *ast.MethodExpr:
+		if goCode := goBuiltinMethod(n, scope); goCode != "" {
+			return []string{goCode}
+		}
 		target := translateMutationTarget(n.Receiver, scope)
 		switch n.Method {
 		case "push":
@@ -467,6 +470,22 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "len(" + a(0) + ")"
 	case "list.join", "*.join":
 		return "strings.Join(" + a(0) + ", " + a(1) + ")"
+	// Alert
+	case "Alert.toast":
+		return `fmt.Println("[" + ` + a(1) + ` + "] " + ` + a(0) + `)`
+	case "Alert.info":
+		return `fmt.Println("[info] " + ` + a(0) + `)`
+	case "Alert.warn":
+		return `fmt.Println("[warn] " + ` + a(0) + `)`
+	case "Alert.error":
+		return `fmt.Println("[error] " + ` + a(0) + `)`
+	case "Alert.confirm":
+		return `true`
+	// File
+	case "File.pick":
+		return `""`
+	case "File.pickFolder":
+		return `""`
 	}
 	return ""
 }

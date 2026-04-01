@@ -248,7 +248,7 @@ func hasDevice() bool {
 	if err != nil {
 		return false
 	}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "List of") || strings.HasPrefix(line, "*") {
 			continue
@@ -279,7 +279,7 @@ func pickAVD() (string, error) {
 	}
 	// Pick the last AVD (typically the newest API level)
 	var last string
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		name := strings.TrimSpace(line)
 		if name != "" {
 			last = name

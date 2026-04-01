@@ -14,7 +14,6 @@ component main {
         darkMode = false
         showModal = false
         showDrawer = false
-        showToast = false
         selectedTab = 0
         selectedRadio = "medium"
         toggleOn = false
@@ -39,7 +38,7 @@ component main {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     }
 
-    vbox(scroll=true, refreshing=false, @refresh={ showToast = true }, style={gap=24, maxWidth=900, padding=24}) {
+    vbox(scroll=true, refreshing=false, @refresh={ Alert.toast("Refreshed!", "info") }, style={gap=24, maxWidth=900, padding=24}) {
         text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})
         text(value="Every component in the standard library", style={color=#666666})
         divider
@@ -115,7 +114,7 @@ component main {
         hbox(style={gap=12}) {
             button(text="Open Modal", @click={ showModal = true })
             button(text="Open Drawer", @click={ showDrawer = true })
-            button(text="Show Toast", @click={ showToast = true })
+            button(text="Show Toast", @click={ Alert.toast("Action completed!", "success") })
         }
         modal(closable=true, open=showModal, title="Example Modal") {
             text(value="This is modal content.")
@@ -128,7 +127,6 @@ component main {
                 button(text="Close", @click={ showDrawer = false })
             }
         }
-        toast(message="Action completed!", position="bottom", variant="success", visible=showToast)
         divider
         text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
         tooltip(text="This is a tooltip") {

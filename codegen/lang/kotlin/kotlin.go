@@ -274,6 +274,9 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 		target := translateMutationTarget(n.Target, scope)
 		return []string{target + " = !" + target}
 	case *ast.MethodExpr:
+		if kt := kotlinBuiltinMethod(n, scope); kt != "" {
+			return []string{kt}
+		}
 		target := translateMutationTarget(n.Receiver, scope)
 		switch n.Method {
 		case "push":
@@ -493,6 +496,22 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "String.format(\"#%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "color.rgba":
 		return "String.format(\"#%02x%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ", (" + a(3) + " * 255).toInt())"
+	// Alert
+	case "Alert.toast":
+		return `Toast.makeText(context, ` + a(0) + `, Toast.LENGTH_SHORT).show()`
+	case "Alert.info":
+		return `android.app.AlertDialog.Builder(context).setMessage(` + a(0) + `).setPositiveButton("OK", null).show()`
+	case "Alert.warn":
+		return `android.app.AlertDialog.Builder(context).setTitle("Warning").setMessage(` + a(0) + `).setPositiveButton("OK", null).show()`
+	case "Alert.error":
+		return `android.app.AlertDialog.Builder(context).setTitle("Error").setMessage(` + a(0) + `).setPositiveButton("OK", null).show()`
+	case "Alert.confirm":
+		return `true`
+	// File
+	case "File.pick":
+		return `""`
+	case "File.pickFolder":
+		return `""`
 	}
 	return ""
 }

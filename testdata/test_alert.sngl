@@ -1,0 +1,39 @@
+component main {
+    var (
+        confirmed = false
+        filePath = ""
+    )
+
+    text(value="alert test")
+}
+
+test main "toast is a no-op in tests" {
+    Alert.toast("hello", "info")
+}
+
+test main "info is a no-op in tests" {
+    Alert.info("some info")
+}
+
+test main "warn is a no-op in tests" {
+    Alert.warn("some warning")
+}
+
+test main "error is a no-op in tests" {
+    Alert.error("some error")
+}
+
+test main "confirm returns true in tests" {
+    confirmed = Alert.confirm("Are you sure?")
+    assert(confirmed == true)
+}
+
+test main "pick returns mock path" {
+    filePath = File.pick()
+    assert(string.length(filePath) > 0)
+}
+
+test main "pickFolder returns mock path" {
+    filePath = File.pickFolder()
+    assert(string.length(filePath) > 0)
+}

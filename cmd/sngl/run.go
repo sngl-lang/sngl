@@ -112,9 +112,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 	target.Options["main"] = "true"
 	target.Options["projectDir"] = dir
-	if target.Platform == "bubbletea" {
-		target.Options["package"] = "main"
-	}
 
 	// Optimize
 	if err := optimize.Optimize(doc, optimize.Config{

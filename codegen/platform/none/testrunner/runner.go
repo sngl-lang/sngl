@@ -48,6 +48,7 @@ func runTest(doc *ast.Document, td *ast.TestDef) *codegen.TestResult {
 		r.Children = append(r.Children, child)
 	}
 
+	r.Log = env.Log
 	r.Passed = r.Error == "" && allPassed(r.Children)
 	r.Duration = time.Since(start)
 	return r
@@ -74,6 +75,7 @@ func runSubtest(parent *Env, td *ast.TestDef) *codegen.TestResult {
 		r.Children = append(r.Children, child)
 	}
 
+	r.Log = env.Log
 	r.Passed = r.Error == "" && allPassed(r.Children)
 	r.Duration = time.Since(start)
 	return r

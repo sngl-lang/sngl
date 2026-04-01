@@ -2,6 +2,8 @@ package android
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -67,6 +69,7 @@ type analysisResult struct {
 	enums          []*ast.EnumDef
 	modelFields    map[string]bool
 	computedFields map[string]bool
+	needsToast     bool
 }
 
 func analyze(doc *ast.Document) *analysisResult {
@@ -119,6 +122,7 @@ func analyze(doc *ast.Document) *analysisResult {
 	info.components = doc.AllComponents()
 	info.structs = doc.Structs
 	info.enums = doc.Enums
+	info.needsToast = astUsesAlert(doc)
 
 	return info
 }
@@ -167,6 +171,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	if len(info.timers) > 0 {
 		b.WriteString("import kotlinx.coroutines.delay\n")
 	}
+	if info.needsToast {
+		b.WriteString("import android.widget.Toast\n")
+		b.WriteString("import androidx.compose.ui.platform.LocalContext\n")
+	}
 	if cfg.GoLib {
 		b.WriteString("import golib.Golib\n")
 	}
@@ -207,6 +215,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
 	b.WriteString("@Composable\n")
 	b.WriteString("fun MainScreen() {\n")
+
+	if info.needsToast {
+		b.WriteString("    val context = LocalContext.current\n")
+	}
 
 	// State declarations
 	for _, bind := range info.binds {
@@ -314,9 +326,7 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 
 	// Add params as local vars
 	savedLocals := make(map[string]bool)
-	for k, v := range ec.localVars {
-		savedLocals[k] = v
-	}
+	maps.Copy(savedLocals, ec.localVars)
 	for _, p := range comp.Params {
 		ec.localVars[p.Name] = true
 	}
@@ -575,6 +585,53 @@ func literalToKt(expr ast.Expr) string {
 }
 
 // exprToKtValue converts an ast.Expr to a Kotlin value string.
+// astUsesAlert returns true if the document contains any Alert.* calls.
+func astUsesAlert(doc *ast.Document) bool {
+	if doc.App != nil {
+		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
+			return true
+		}
+	}
+	for _, t := range doc.Timers {
+		if exprNodeUsesAlert(t.Body) {
+			return true
+		}
+	}
+	for _, fn := range doc.Functions {
+		if fn.Block != nil {
+			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func nodeUsesAlert(vn *ast.VisualNode) bool {
+	for _, evt := range vn.Events {
+		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
+			return true
+		}
+	}
+	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
+}
+
+func exprNodeUsesAlert(n ast.Node) bool {
+	switch e := n.(type) {
+	case *ast.MethodExpr:
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+			return true
+		}
+	case *ast.StmtBlock:
+		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
+			return true
+		}
+	case *ast.CallStmt:
+		return exprNodeUsesAlert(e.Call)
+	}
+	return false
+}
+
 func exprToKtValue(expr ast.Expr, ec *exprContext) string {
 	if expr.Literal != nil {
 		return literalToKt(expr)

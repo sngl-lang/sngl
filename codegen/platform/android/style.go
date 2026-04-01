@@ -180,8 +180,8 @@ func toSp(val string) string {
 func toColor(val string) string {
 	// Strip quotes to check if it's a hex color
 	unquoted := strings.Trim(val, `"`)
-	if strings.HasPrefix(unquoted, "#") {
-		hex := strings.TrimPrefix(unquoted, "#")
+	if after, ok := strings.CutPrefix(unquoted, "#"); ok {
+		hex := after
 		switch len(hex) {
 		case 6:
 			return fmt.Sprintf("Color(0xFF%s)", strings.ToUpper(hex))

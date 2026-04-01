@@ -24,6 +24,10 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 		target := ec.translateMutationTarget(n.Target)
 		return []string{target + " = !" + target}
 	case *ast.MethodExpr:
+		// Alert namespace — translate to Android Toast/AlertDialog
+		if ident, ok := n.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+			return ec.translateAlert(n)
+		}
 		target := ec.translateMutationTarget(n.Receiver)
 		switch n.Method {
 		case "push":
@@ -75,6 +79,27 @@ func (ec *exprContext) translateMutationTarget(e ast.Node) string {
 	default:
 		return ec.translateExpr(e)
 	}
+}
+
+// translateAlert translates Alert.toast/info/warn/error to Android API calls.
+func (ec *exprContext) translateAlert(n *ast.MethodExpr) []string {
+	switch n.Method {
+	case "toast":
+		msg := ec.translateExpr(n.Args[0])
+		return []string{fmt.Sprintf("Toast.makeText(context, %s, Toast.LENGTH_SHORT).show()", msg)}
+	case "info":
+		msg := ec.translateExpr(n.Args[0])
+		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+	case "warn":
+		msg := ec.translateExpr(n.Args[0])
+		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Warning").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+	case "error":
+		msg := ec.translateExpr(n.Args[0])
+		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Error").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+	case "confirm":
+		return []string{"// Alert.confirm requires async dialog — not yet supported"}
+	}
+	return []string{ec.translateExpr(n)}
 }
 
 func assignOpToKt(op ast.AssignOp) string {
