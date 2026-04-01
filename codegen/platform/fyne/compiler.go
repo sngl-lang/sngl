@@ -81,6 +81,19 @@ type timerInfo struct {
 	body       ast.Node
 }
 
+// widgetUpdater tracks a function that updates one widget property.
+type widgetUpdater struct {
+	name string          // "updateLabel0"
+	body string          // Go code: m.label0.SetText(fmt.Sprint(...))
+	deps map[string]bool // which state fields this reads {"count": true}
+}
+
+// widgetField tracks a persistent widget stored on Model.
+type widgetField struct {
+	name   string // "label0"
+	goType string // "*widget.Label"
+}
+
 type analysisResult struct {
 	binds          []bindInfo
 	externs        []externInfo
@@ -91,6 +104,7 @@ type analysisResult struct {
 	structs        []*ast.StructDef
 	modelFields    map[string]bool
 	computedFields map[string]bool
+	computedDeps   map[string]map[string]bool // computed name → set of root state fields
 	externFuncs    map[string]bool
 	triggers       map[string]string
 	needsTime      bool
@@ -99,10 +113,57 @@ type analysisResult struct {
 	needsToast     bool
 }
 
+// expandDeps replaces computed field references with the root state fields they read.
+func (info *analysisResult) expandDeps(deps map[string]bool) map[string]bool {
+	result := make(map[string]bool)
+	for d := range deps {
+		result[d] = true
+		if info.computedFields[d] {
+			if compDeps, ok := info.computedDeps[d]; ok {
+				for cd := range compDeps {
+					result[cd] = true
+				}
+			}
+		}
+	}
+	return result
+}
+
+// findAffectedUpdaters returns updaters whose deps intersect with mutated fields.
+func (info *analysisResult) findAffectedUpdaters(updaters []widgetUpdater, mutated map[string]bool) []widgetUpdater {
+	if len(mutated) == 0 {
+		return nil
+	}
+	// Expand mutated fields through computed deps
+	expanded := make(map[string]bool)
+	for f := range mutated {
+		expanded[f] = true
+	}
+	for compName, compDeps := range info.computedDeps {
+		for dep := range compDeps {
+			if mutated[dep] {
+				expanded[compName] = true
+			}
+		}
+	}
+
+	var result []widgetUpdater
+	for _, u := range updaters {
+		for dep := range u.deps {
+			if expanded[dep] {
+				result = append(result, u)
+				break
+			}
+		}
+	}
+	return result
+}
+
 func analyze(doc *ast.Document) *analysisResult {
 	info := &analysisResult{
 		modelFields:    make(map[string]bool),
 		computedFields: make(map[string]bool),
+		computedDeps:   make(map[string]map[string]bool),
 		externFuncs:    make(map[string]bool),
 		triggers:       make(map[string]string),
 	}
@@ -154,6 +215,10 @@ func analyze(doc *ast.Document) *analysisResult {
 		})
 		info.modelFields[c.Name] = true
 		info.computedFields[c.Name] = true
+		// Build computed dependency map
+		if c.Expr.SNGL != nil {
+			info.computedDeps[c.Name] = extractDeps(c.Expr.SNGL, info.modelFields)
+		}
 	}
 
 	// Timers
@@ -276,11 +341,44 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		structNames:    structFields,
 	}
 
+	// --- Phase 1: Render BuildUI into a buffer, collecting widget fields + updaters ---
+	var buildBuf strings.Builder
+	var widgetFields []widgetField
+	var updaters []widgetUpdater
+
+	if doc.App != nil && len(doc.App.Children) > 0 {
+		vc := &viewContext{
+			ec:         ec,
+			buf:        &buildBuf,
+			indent:     1,
+			components: info.components,
+			info:       info,
+		}
+
+		if len(doc.App.Children) == 1 {
+			vc.line("var content fyne.CanvasObject")
+			vc.renderNode(doc.App.Children[0], "content")
+			vc.line("if content == nil { content = widget.NewLabel(\"\") }")
+		} else {
+			vc.line("var parts []fyne.CanvasObject")
+			for i, child := range doc.App.Children {
+				childVar := fmt.Sprintf("part%d", i)
+				vc.line("var %s fyne.CanvasObject", childVar)
+				vc.renderNode(child, childVar)
+				vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
+			}
+		}
+
+		widgetFields = vc.widgetFields
+		updaters = vc.updaters
+	}
+
+	// --- Phase 2: Emit the actual source ---
+
 	// Package
 	fmt.Fprintf(&b, "package %s\n\n", cfg.Package)
 
 	// Imports
-	needsSync := info.needsToast || len(info.timers) > 0
 	b.WriteString("import (\n")
 	b.WriteString("\t\"fmt\"\n")
 	if cfg.GenerateMain {
@@ -288,9 +386,6 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 	if info.needsURL {
 		b.WriteString("\t\"net/url\"\n")
-	}
-	if needsSync {
-		b.WriteString("\t\"sync\"\n")
 	}
 	if info.needsTime {
 		b.WriteString("\t\"time\"\n")
@@ -381,13 +476,16 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 	// Entry widget fields (persistent across rebuilds)
 	for _, entry := range info.entries {
-		if entry.multiLine {
-			fmt.Fprintf(&b, "\t%s *widget.Entry\n", entry.fieldName)
-		} else {
-			fmt.Fprintf(&b, "\t%s *widget.Entry\n", entry.fieldName)
-		}
+		fmt.Fprintf(&b, "\t%s *widget.Entry\n", entry.fieldName)
 	}
 	if len(info.entries) > 0 {
+		b.WriteString("\n")
+	}
+	// Persistent widget fields collected during BuildUI rendering
+	for _, wf := range widgetFields {
+		fmt.Fprintf(&b, "\t%s %s\n", wf.name, wf.goType)
+	}
+	if len(widgetFields) > 0 {
 		b.WriteString("\n")
 	}
 	// Timer ticker fields
@@ -396,11 +494,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 	if info.needsToast {
 		b.WriteString("\ttoasts []snglToast\n")
+		b.WriteString("\ttoastLabel *widget.Label\n")
+		b.WriteString("\ttoastBox *fyne.Container\n")
 	}
-	if needsSync {
-		b.WriteString("\tmu sync.Mutex\n")
-	}
-	b.WriteString("\tonRefresh func()\n")
 	b.WriteString("}\n\n")
 
 	// New()
@@ -428,7 +524,16 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			fmt.Fprintf(&b, "\tm.%s.SetText(fmt.Sprint(m.%s))\n", entry.fieldName, entry.bindTarget)
 			fmt.Fprintf(&b, "\tm.%s.OnChanged = func(s string) {\n", entry.fieldName)
 			fmt.Fprintf(&b, "\t\tm.%s = s\n", entry.bindTarget)
-			fmt.Fprintf(&b, "\t\tm.doRefresh()\n")
+			// Call affected updaters instead of doRefresh
+			entryMutated := map[string]bool{entry.bindTarget: true}
+			affected := info.findAffectedUpdaters(updaters, entryMutated)
+			if len(affected) > 0 {
+				for _, u := range affected {
+					fmt.Fprintf(&b, "\t\tm.%s()\n", u.name)
+				}
+			} else {
+				b.WriteString("\t\tm.doRefresh()\n")
+			}
 			fmt.Fprintf(&b, "\t}\n")
 		}
 		if entry.rows > 0 {
@@ -439,26 +544,36 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("\treturn m\n")
 	b.WriteString("}\n\n")
 
-	// doRefresh()
+	// doRefresh() — kept as fallback
 	b.WriteString("func (m *Model) doRefresh() {\n")
-	b.WriteString("\tif m.onRefresh != nil {\n")
-	b.WriteString("\t\tm.onRefresh()\n")
-	b.WriteString("\t}\n")
+	for _, u := range updaters {
+		fmt.Fprintf(&b, "\tm.%s()\n", u.name)
+	}
 	b.WriteString("}\n\n")
 
 	// Toast helper
 	if info.needsToast {
 		b.WriteString("func (m *Model) showToast(msg, variant string) {\n")
 		b.WriteString("\tm.toasts = append(m.toasts, snglToast{msg, variant})\n")
-		b.WriteString("\tm.doRefresh()\n")
+		b.WriteString("\tm.updateToast()\n")
 		b.WriteString("\ttime.AfterFunc(3*time.Second, func() {\n")
-		b.WriteString("\t\tm.mu.Lock()\n")
-		b.WriteString("\t\tif len(m.toasts) > 0 {\n")
-		b.WriteString("\t\t\tm.toasts = m.toasts[1:]\n")
-		b.WriteString("\t\t}\n")
-		b.WriteString("\t\tm.mu.Unlock()\n")
-		b.WriteString("\t\tm.doRefresh()\n")
+		b.WriteString("\t\tfyne.Do(func() {\n")
+		b.WriteString("\t\t\tif len(m.toasts) > 0 {\n")
+		b.WriteString("\t\t\t\tm.toasts = m.toasts[1:]\n")
+		b.WriteString("\t\t\t}\n")
+		b.WriteString("\t\t\tm.updateToast()\n")
+		b.WriteString("\t\t})\n")
 		b.WriteString("\t})\n")
+		b.WriteString("}\n\n")
+
+		b.WriteString("func (m *Model) updateToast() {\n")
+		b.WriteString("\tif m.toastLabel == nil { return }\n")
+		b.WriteString("\tif len(m.toasts) > 0 {\n")
+		b.WriteString("\t\tm.toastLabel.SetText(m.toasts[0].message)\n")
+		b.WriteString("\t\tm.toastBox.Show()\n")
+		b.WriteString("\t} else {\n")
+		b.WriteString("\t\tm.toastBox.Hide()\n")
+		b.WriteString("\t}\n")
 		b.WriteString("}\n\n")
 	}
 
@@ -488,16 +603,19 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		emitGoFunc(&b, fn, ec)
 	}
 
-	// Getters/setters
-	emitGettersSetters(&b, info)
+	// Getters/setters — setters call affected updaters
+	emitGettersSetters(&b, info, updaters)
 
 	// StartTimers()
 	if len(info.timers) > 0 {
-		emitTimers(&b, info, ec)
+		emitTimers(&b, info, ec, updaters)
 	}
 
-	// BuildUI()
-	emitBuildUI(&b, info, doc, ec)
+	// BuildUI() — creates widget tree once, returns root
+	emitBuildUI(&b, info, doc, &buildBuf, updaters)
+
+	// Updater methods
+	emitUpdaters(&b, updaters)
 
 	// User component render methods
 	for _, comp := range info.components {
@@ -607,7 +725,7 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 	}
 }
 
-func emitGettersSetters(b *strings.Builder, info *analysisResult) {
+func emitGettersSetters(b *strings.Builder, info *analysisResult, updaters []widgetUpdater) {
 	for _, bind := range info.binds {
 		getter := exportName(bind.name)
 
@@ -616,7 +734,7 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult) {
 		fmt.Fprintf(b, "\treturn m.%s\n", bind.name)
 		b.WriteString("}\n\n")
 
-		// Setter
+		// Setter — calls affected updaters instead of doRefresh
 		fmt.Fprintf(b, "func (m *Model) Set%s(v %s) {\n", getter, bind.goType)
 		fmt.Fprintf(b, "\tm.%s = v\n", bind.name)
 		// Sync bound entries
@@ -632,7 +750,14 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult) {
 			fmt.Fprintf(b, "\t\tm.%s(v)\n", cbField)
 			b.WriteString("\t}\n")
 		}
-		b.WriteString("\tm.doRefresh()\n")
+		// Call affected updaters
+		mutated := map[string]bool{bind.name: true}
+		affected := info.findAffectedUpdaters(updaters, mutated)
+		if len(affected) > 0 {
+			for _, u := range affected {
+				fmt.Fprintf(b, "\tm.%s()\n", u.name)
+			}
+		}
 		b.WriteString("}\n\n")
 	}
 
@@ -649,7 +774,7 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult) {
 	}
 }
 
-func emitTimers(b *strings.Builder, info *analysisResult, ec *exprContext) {
+func emitTimers(b *strings.Builder, info *analysisResult, ec *exprContext, updaters []widgetUpdater) {
 	b.WriteString("// StartTimers starts all active timers.\n")
 	b.WriteString("func (m *Model) StartTimers() {\n")
 	for _, t := range info.timers {
@@ -657,13 +782,22 @@ func emitTimers(b *strings.Builder, info *analysisResult, ec *exprContext) {
 		fmt.Fprintf(b, "\t\tm.timer%dTicker = time.NewTicker(%d * time.Millisecond)\n", t.index, t.intervalMs)
 		fmt.Fprintf(b, "\t\tgo func() {\n")
 		fmt.Fprintf(b, "\t\t\tfor range m.timer%dTicker.C {\n", t.index)
-		b.WriteString("\t\t\t\tm.mu.Lock()\n")
+		b.WriteString("\t\t\t\tfyne.Do(func() {\n")
 		stmts := ec.translateMutation(t.body)
 		for _, s := range stmts {
-			fmt.Fprintf(b, "\t\t\t\t%s\n", s)
+			fmt.Fprintf(b, "\t\t\t\t\t%s\n", s)
 		}
-		b.WriteString("\t\t\t\tm.mu.Unlock()\n")
-		b.WriteString("\t\t\t\tm.doRefresh()\n")
+		// Call only affected updaters for this timer
+		mutated := extractMutatedFields(t.body)
+		affected := info.findAffectedUpdaters(updaters, mutated)
+		if len(affected) > 0 {
+			for _, u := range affected {
+				fmt.Fprintf(b, "\t\t\t\t\tm.%s()\n", u.name)
+			}
+		} else {
+			b.WriteString("\t\t\t\t\tm.doRefresh()\n")
+		}
+		b.WriteString("\t\t\t\t})\n")
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}()\n")
 		b.WriteString("\t}\n")
@@ -680,8 +814,8 @@ func emitTimers(b *strings.Builder, info *analysisResult, ec *exprContext) {
 	b.WriteString("}\n\n")
 }
 
-func emitBuildUI(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *exprContext) {
-	b.WriteString("// BuildUI creates the widget tree. Set m.onRefresh to rebuild on state changes.\n")
+func emitBuildUI(b *strings.Builder, info *analysisResult, doc *ast.Document, buildBuf *strings.Builder, updaters []widgetUpdater) {
+	b.WriteString("// BuildUI creates the widget tree. Call once; widgets are updated selectively.\n")
 	b.WriteString("func (m *Model) BuildUI() fyne.CanvasObject {\n")
 
 	if doc.App == nil || len(doc.App.Children) == 0 {
@@ -690,47 +824,39 @@ func emitBuildUI(b *strings.Builder, info *analysisResult, doc *ast.Document, ec
 		return
 	}
 
-	vc := &viewContext{
-		ec:         ec,
-		buf:        &strings.Builder{},
-		indent:     1,
-		components: info.components,
-	}
+	// Write the buffered build code
+	b.WriteString(buildBuf.String())
 
+	// Return the root widget
 	if len(doc.App.Children) == 1 {
-		vc.line("var content fyne.CanvasObject")
-		vc.renderNode(doc.App.Children[0], "content")
-		vc.line("if content == nil { content = widget.NewLabel(\"\") }")
-		b.WriteString(vc.buf.String())
 		if info.needsToast {
-			b.WriteString("\tresult := content\n")
+			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+			b.WriteString("\tm.toastBox.Hide()\n")
+			b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, content)\n")
 		} else {
 			b.WriteString("\treturn content\n")
 		}
 	} else {
-		vc.line("var parts []fyne.CanvasObject")
-		for i, child := range doc.App.Children {
-			childVar := fmt.Sprintf("part%d", i)
-			vc.line("var %s fyne.CanvasObject", childVar)
-			vc.renderNode(child, childVar)
-			vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
-		}
-		b.WriteString(vc.buf.String())
 		if info.needsToast {
-			b.WriteString("\tresult := container.NewVBox(parts...)\n")
+			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+			b.WriteString("\tm.toastBox.Hide()\n")
+			b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, container.NewVBox(parts...))\n")
 		} else {
 			b.WriteString("\treturn container.NewVBox(parts...)\n")
 		}
 	}
 
-	if info.needsToast {
-		b.WriteString("\tif len(m.toasts) > 0 {\n")
-		b.WriteString("\t\tresult = container.NewVBox(result, widget.NewLabel(m.toasts[0].message))\n")
-		b.WriteString("\t}\n")
-		b.WriteString("\treturn result\n")
-	}
-
 	b.WriteString("}\n\n")
+}
+
+func emitUpdaters(b *strings.Builder, updaters []widgetUpdater) {
+	for _, u := range updaters {
+		fmt.Fprintf(b, "func (m *Model) %s() {\n", u.name)
+		fmt.Fprintf(b, "\t%s\n", u.body)
+		b.WriteString("}\n\n")
+	}
 }
 
 func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents []*ast.Component, ec *exprContext) {
@@ -783,24 +909,11 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
-	needsSync := info.needsToast || len(info.timers) > 0
 	b.WriteString("\tm := New()\n")
-	if needsSync {
-		b.WriteString("\tm.onRefresh = func() {\n")
-		b.WriteString("\t\tm.mu.Lock()\n")
-		b.WriteString("\t\tui := m.BuildUI()\n")
-		b.WriteString("\t\tm.mu.Unlock()\n")
-		b.WriteString("\t\tw.SetContent(ui)\n")
-		b.WriteString("\t}\n")
-	} else {
-		b.WriteString("\tm.onRefresh = func() {\n")
-		b.WriteString("\t\tw.SetContent(m.BuildUI())\n")
-		b.WriteString("\t}\n")
-	}
+	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	if len(info.timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")
 	}
-	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	b.WriteString("\tw.ShowAndRun()\n")
 	if len(info.timers) > 0 {
@@ -810,7 +923,156 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 	b.WriteString("}\n")
 }
 
-// Helper functions
+// --- Dependency tracking ---
+
+// extractDeps walks an AST node and returns all model field references.
+func extractDeps(e ast.Node, modelFields map[string]bool) map[string]bool {
+	deps := make(map[string]bool)
+	walkDeps(e, modelFields, deps)
+	return deps
+}
+
+// walkDeps is the recursive walker for dependency extraction.
+func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if modelFields[n.Name] {
+			deps[n.Name] = true
+		}
+	case *ast.SelectExpr:
+		root := findRootIdent(n.Operand)
+		if root != "" && modelFields[root] {
+			deps[root] = true
+		}
+	case *ast.BinaryExpr:
+		walkDeps(n.Left, modelFields, deps)
+		walkDeps(n.Right, modelFields, deps)
+	case *ast.UnaryExpr:
+		walkDeps(n.Operand, modelFields, deps)
+	case *ast.TernaryExpr:
+		walkDeps(n.Cond, modelFields, deps)
+		walkDeps(n.Then, modelFields, deps)
+		walkDeps(n.Else, modelFields, deps)
+	case *ast.CallExpr:
+		for _, arg := range n.Args {
+			walkDeps(arg, modelFields, deps)
+		}
+	case *ast.MethodExpr:
+		walkDeps(n.Receiver, modelFields, deps)
+		for _, arg := range n.Args {
+			walkDeps(arg, modelFields, deps)
+		}
+	case *ast.IndexExpr:
+		walkDeps(n.Operand, modelFields, deps)
+		walkDeps(n.Index, modelFields, deps)
+	case *ast.ListExpr:
+		for _, el := range n.Elements {
+			walkDeps(el, modelFields, deps)
+		}
+	case *ast.StructExpr:
+		for _, field := range n.Fields {
+			walkDeps(field.Value, modelFields, deps)
+		}
+	case *ast.InterpolationExpr:
+		for _, part := range n.Parts {
+			walkDeps(part, modelFields, deps)
+		}
+	case *ast.StmtBlock:
+		for _, stmt := range n.Stmts {
+			walkDeps(stmt, modelFields, deps)
+		}
+	case *ast.AssignStmt:
+		walkDeps(n.Target, modelFields, deps)
+		walkDeps(n.Value, modelFields, deps)
+	case *ast.ToggleStmt:
+		walkDeps(n.Target, modelFields, deps)
+	}
+}
+
+func findRootIdent(e ast.Node) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findRootIdent(n.Operand)
+	case *ast.IndexExpr:
+		return findRootIdent(n.Operand)
+	case *ast.MethodExpr:
+		return findRootIdent(n.Receiver)
+	}
+	return ""
+}
+
+// extractMutatedFields returns set of field names mutated by a statement.
+func extractMutatedFields(e ast.Node) map[string]bool {
+	fields := make(map[string]bool)
+	if e == nil {
+		return fields
+	}
+	switch n := e.(type) {
+	case *ast.StmtBlock:
+		for _, stmt := range n.Stmts {
+			maps.Copy(fields, extractMutatedFields(stmt))
+		}
+	case *ast.AssignStmt:
+		root := findMutationRoot(n.Target)
+		if root != "" {
+			fields[root] = true
+		}
+	case *ast.ToggleStmt:
+		root := findMutationRoot(n.Target)
+		if root != "" {
+			fields[root] = true
+		}
+	case *ast.CallStmt:
+		maps.Copy(fields, extractMutatedFields(n.Call))
+	case *ast.CallExpr:
+		if len(n.Args) >= 1 {
+			root := findMutationRoot(n.Args[0])
+			if root != "" {
+				fields[root] = true
+			}
+		}
+	case *ast.MethodExpr:
+		root := findMutationRoot(n.Receiver)
+		if root != "" {
+			fields[root] = true
+		}
+	}
+	return fields
+}
+
+func findMutationRoot(e ast.Node) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findMutationRoot(n.Operand)
+	case *ast.IndexExpr:
+		return findMutationRoot(n.Operand)
+	}
+	return ""
+}
+
+// exprDeps extracts deps from an ast.Expr, expanding through computeds.
+func (info *analysisResult) exprDeps(expr ast.Expr) map[string]bool {
+	if expr.SNGL != nil {
+		deps := extractDeps(expr.SNGL, info.modelFields)
+		return info.expandDeps(deps)
+	}
+	return nil
+}
+
+// --- Helper functions ---
 
 func exportName(s string) string {
 	if s == "" {

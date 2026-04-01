@@ -13,11 +13,84 @@ type viewContext struct {
 	buf        *strings.Builder
 	indent     int
 	components []*ast.Component
-	entryIndex int // next entry index for persistent entry fields
+	entryIndex int             // next entry index for persistent entry fields
+	info       *analysisResult // for dependency tracking (nil for component renders)
+
+	// Selective update tracking — collected during rendering
+	widgetFields   []widgetField
+	updaters       []widgetUpdater
+	labelCount     int
+	btnCount       int
+	checkCount     int
+	containerCount int
+	progressCount  int
+	radioCount     int
+	selectCount    int
+	scrollCount    int
+	badgeCount     int
+	spinnerCount   int
 }
 
 func (vc *viewContext) line(format string, args ...any) {
 	fmt.Fprintf(vc.buf, "%s"+format+"\n", append([]any{strings.Repeat("\t", vc.indent)}, args...)...)
+}
+
+// addField registers a persistent widget field on the Model.
+func (vc *viewContext) addField(name, goType string) {
+	vc.widgetFields = append(vc.widgetFields, widgetField{name, goType})
+}
+
+// addUpdater registers an updater function if there are state dependencies.
+func (vc *viewContext) addUpdater(name, body string, deps map[string]bool) {
+	if len(deps) == 0 {
+		return
+	}
+	vc.updaters = append(vc.updaters, widgetUpdater{
+		name: name,
+		body: body,
+		deps: deps,
+	})
+}
+
+// exprDeps extracts expanded deps for an ast.Expr. Returns nil if no info or no deps.
+func (vc *viewContext) exprDeps(expr ast.Expr) map[string]bool {
+	if vc.info == nil {
+		return nil
+	}
+	return vc.info.exprDeps(expr)
+}
+
+// nodeDeps extracts expanded deps for an ast.Node expression.
+func (vc *viewContext) nodeDeps(e ast.Node) map[string]bool {
+	if vc.info == nil || e == nil {
+		return nil
+	}
+	deps := extractDeps(e, vc.info.modelFields)
+	if len(deps) == 0 {
+		return nil
+	}
+	return vc.info.expandDeps(deps)
+}
+
+// emitEventHandler emits mutation statements and affected updater calls for an event.
+func (vc *viewContext) emitEventHandler(evtNode ast.Node) {
+	stmts := vc.ec.translateMutation(evtNode)
+	for _, s := range stmts {
+		vc.line("%s", s)
+	}
+	if vc.info != nil {
+		mutated := extractMutatedFields(evtNode)
+		affected := vc.info.findAffectedUpdaters(vc.updaters, mutated)
+		if len(affected) > 0 {
+			for _, u := range affected {
+				vc.line("m.%s()", u.name)
+			}
+		} else {
+			vc.line("m.doRefresh()")
+		}
+	} else {
+		vc.line("m.doRefresh()")
+	}
 }
 
 // renderNode generates Go code that creates a fyne.CanvasObject and assigns
@@ -26,6 +99,11 @@ func (vc *viewContext) line(format string, args ...any) {
 func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 	hasIf := vn.If != nil
 	if hasIf {
+		// For conditional nodes with info, use a persistent container with Show/Hide
+		if vc.info != nil && !hasForLoop(vn) {
+			vc.renderConditionalNode(vn, resultVar)
+			return
+		}
 		cond := exprToGoCond(*vn.If, vc.ec)
 		vc.line("if %s {", cond)
 		vc.indent++
@@ -44,10 +122,52 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 	}
 }
 
+func hasForLoop(vn *ast.VisualNode) bool {
+	return vn.For != nil
+}
+
+// renderConditionalNode renders an if-conditioned node as a persistent container
+// with Show/Hide updater.
+func (vc *viewContext) renderConditionalNode(vn *ast.VisualNode, resultVar string) {
+	id := vc.containerCount
+	vc.containerCount++
+	fieldName := fmt.Sprintf("ifBox%d", id)
+	vc.addField(fieldName, "*fyne.Container")
+
+	// Render the inner content into a temporary var
+	innerVar := resultVar + "Inner"
+	vc.line("var %s fyne.CanvasObject", innerVar)
+
+	// Temporarily strip the if condition to render just the inner node
+	savedIf := vn.If
+	vn.If = nil
+	if vn.For != nil {
+		vc.renderForLoop(vn, innerVar)
+	} else {
+		vc.renderNodeInner(vn, innerVar)
+	}
+	vn.If = savedIf
+
+	vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", innerVar, innerVar)
+	vc.line("m.%s = container.NewStack(%s)", fieldName, innerVar)
+
+	// Set initial visibility
+	cond := exprToGoCond(*vn.If, vc.ec)
+	vc.line("if !(%s) { m.%s.Hide() }", cond, fieldName)
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// Register visibility updater
+	deps := vc.exprDeps(*vn.If)
+	if len(deps) > 0 {
+		updaterName := fmt.Sprintf("updateIf%d", id)
+		body := fmt.Sprintf("if %s { m.%s.Show() } else { m.%s.Hide() }", cond, fieldName, fieldName)
+		vc.addUpdater(updaterName, body, deps)
+	}
+}
+
 func (vc *viewContext) renderForLoop(vn *ast.VisualNode, resultVar string) {
 	iterVar := vn.For.Variable
 	iterExpr := exprToGoValue(vn.For.Iterable, vc.ec)
-	loopItems := resultVar + "Items"
 	indexVar := "_"
 	if vn.For.IndexVar != "" {
 		indexVar = vn.For.IndexVar
@@ -57,6 +177,56 @@ func (vc *viewContext) renderForLoop(vn *ast.VisualNode, resultVar string) {
 	vc.ec.localVars[iterVar] = true
 	defer func() { delete(vc.ec.localVars, iterVar) }()
 
+	// For loops with info get a persistent container that rebuilds via updater
+	if vc.info != nil {
+		id := vc.containerCount
+		vc.containerCount++
+		fieldName := fmt.Sprintf("forBox%d", id)
+		vc.addField(fieldName, "*fyne.Container")
+
+		// Build the loop inline for initial creation
+		loopItems := resultVar + "Items"
+		vc.line("var %s []fyne.CanvasObject", loopItems)
+		vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
+		vc.indent++
+		if indexVar != "_" {
+			vc.line("_ = %s", indexVar)
+		}
+		innerVar := resultVar + "Item"
+		vc.line("var %s fyne.CanvasObject", innerVar)
+		vc.renderNodeInner(vn, innerVar)
+		vc.line("if %s != nil { %s = append(%s, %s) }", innerVar, loopItems, loopItems, innerVar)
+		vc.indent--
+		vc.line("}")
+		vc.line("m.%s = container.NewVBox(%s...)", fieldName, loopItems)
+		vc.line("%s = m.%s", resultVar, fieldName)
+
+		// Register an updater that rebuilds the for-loop container
+		deps := vc.exprDeps(vn.For.Iterable)
+		if len(deps) > 0 {
+			// The updater body rebuilds the container's children
+			updaterName := fmt.Sprintf("updateFor%d", id)
+			// Build the updater body as multi-line code
+			var bodyBuf strings.Builder
+			fmt.Fprintf(&bodyBuf, "var items []fyne.CanvasObject\n")
+			fmt.Fprintf(&bodyBuf, "\tfor %s, %s := range %s {\n", indexVar, iterVar, iterExpr)
+			if indexVar != "_" {
+				fmt.Fprintf(&bodyBuf, "\t\t_ = %s\n", indexVar)
+			}
+			// For the updater, we need a simplified inner render
+			// Use doRefresh-style full rebuild of just this container
+			fmt.Fprintf(&bodyBuf, "\t\t_ = %s\n", iterVar)
+			fmt.Fprintf(&bodyBuf, "\t\titems = append(items, widget.NewLabel(fmt.Sprint(%s)))\n", iterVar)
+			fmt.Fprintf(&bodyBuf, "\t}\n")
+			fmt.Fprintf(&bodyBuf, "\tm.%s.Objects = items\n", fieldName)
+			fmt.Fprintf(&bodyBuf, "\tm.%s.Refresh()", fieldName)
+			vc.addUpdater(updaterName, bodyBuf.String(), deps)
+		}
+		return
+	}
+
+	// Fallback: no info context (component renders)
+	loopItems := resultVar + "Items"
 	vc.line("var %s []fyne.CanvasObject", loopItems)
 	vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
 	vc.indent++
@@ -107,7 +277,7 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	case "progress":
 		vc.renderProgress(vn, resultVar)
 	case "spinner":
-		vc.line("%s = widget.NewProgressBarInfinite()", resultVar)
+		vc.renderSpinner(vn, resultVar)
 	case "badge":
 		vc.renderBadge(vn, resultVar)
 	case "tabs":
@@ -181,17 +351,24 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 	if vertical {
 		vc.line("%s = container.NewVBox(%s...)", resultVar, childrenVar)
 	} else {
-		vc.line("%s = container.NewHBox(%s...)", resultVar, childrenVar)
+		vc.line("%s = container.NewGridWithColumns(len(%s), %s...)", resultVar, childrenVar, childrenVar)
 	}
 
 	if hasPadding {
 		vc.line("%s = container.NewPadded(%s)", resultVar, resultVar)
 	}
 
-	// Wrap with scroll if requested
+	// Wrap with scroll if requested — store persistently to preserve scroll position
 	if v, ok := vn.Props["scroll"]; ok {
 		val := exprToGoValue(v, vc.ec)
-		if val == "true" {
+		if val == "true" && vc.info != nil {
+			id := vc.scrollCount
+			vc.scrollCount++
+			fieldName := fmt.Sprintf("scroll%d", id)
+			vc.addField(fieldName, "*container.Scroll")
+			vc.line("m.%s = container.NewVScroll(%s)", fieldName, resultVar)
+			vc.line("%s = m.%s", resultVar, fieldName)
+		} else if val == "true" {
 			vc.line("%s = container.NewVScroll(%s)", resultVar, resultVar)
 		}
 	}
@@ -210,11 +387,14 @@ func (vc *viewContext) renderStack(vn *ast.VisualNode, resultVar string) {
 	vc.line("%s = container.NewStack(%s...)", resultVar, childrenVar)
 }
 
-// renderText renders a text/label widget.
+// renderText renders a text/label widget. If the value depends on state, it is
+// stored persistently with an updater.
 func (vc *viewContext) renderText(vn *ast.VisualNode, resultVar string) {
 	val := `""`
+	var valExpr *ast.Expr
 	if v, ok := vn.Props["value"]; ok {
 		val = exprToGoValue(v, vc.ec)
+		valExpr = &v
 	}
 
 	// Check for bold/italic from style
@@ -234,56 +414,111 @@ func (vc *viewContext) renderText(vn *ast.VisualNode, resultVar string) {
 		}
 	}
 
-	if bold {
-		vc.line("%s = widget.NewLabelWithStyle(fmt.Sprint(%s), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})", resultVar, val)
-	} else {
-		vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", resultVar, val)
-	}
-
-	// Handle click event
+	// Handle click event — wrap as button
 	if clickEvt, ok := vn.Events["click"]; ok && clickEvt.SNGL != nil {
-		// Wrap in a tappable button with no visible styling
-		vc.line("// text with click handler — use button")
-		text := val
-		vc.line("%s = widget.NewButton(fmt.Sprint(%s), func() {", resultVar, text)
+		id := vc.btnCount
+		vc.btnCount++
+		fieldName := fmt.Sprintf("btn%d", id)
+		vc.addField(fieldName, "*widget.Button")
+		vc.line("m.%s = widget.NewButton(fmt.Sprint(%s), func() {", fieldName, val)
 		vc.indent++
-		stmts := vc.ec.translateMutation(clickEvt.SNGL)
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
+		vc.emitEventHandler(clickEvt.SNGL)
 		vc.indent--
 		vc.line("})")
+		vc.line("%s = m.%s", resultVar, fieldName)
+
+		// If button text is dynamic, add updater
+		if valExpr != nil {
+			deps := vc.exprDeps(*valExpr)
+			if len(deps) > 0 {
+				updaterName := fmt.Sprintf("updateBtn%d", id)
+				body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, val)
+				vc.addUpdater(updaterName, body, deps)
+			}
+		}
+		return
+	}
+
+	// Determine if we need a persistent label
+	var deps map[string]bool
+	if valExpr != nil {
+		deps = vc.exprDeps(*valExpr)
+	}
+
+	if vc.info != nil && len(deps) > 0 {
+		// Dynamic label: store on Model with updater
+		id := vc.labelCount
+		vc.labelCount++
+		fieldName := fmt.Sprintf("label%d", id)
+		vc.addField(fieldName, "*widget.Label")
+
+		if bold {
+			vc.line("m.%s = widget.NewLabelWithStyle(fmt.Sprint(%s), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})", fieldName, val)
+		} else {
+			vc.line("m.%s = widget.NewLabel(fmt.Sprint(%s))", fieldName, val)
+		}
+		vc.line("%s = m.%s", resultVar, fieldName)
+
+		updaterName := fmt.Sprintf("updateLabel%d", id)
+		body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, val)
+		vc.addUpdater(updaterName, body, deps)
+	} else {
+		// Static label: no updater needed
+		if bold {
+			vc.line("%s = widget.NewLabelWithStyle(fmt.Sprint(%s), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})", resultVar, val)
+		} else {
+			vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", resultVar, val)
+		}
 	}
 }
 
 // renderButton renders a button widget.
 func (vc *viewContext) renderButton(vn *ast.VisualNode, resultVar string) {
 	text := `""`
+	var textExpr *ast.Expr
 	if v, ok := vn.Props["text"]; ok {
 		text = exprToGoValue(v, vc.ec)
+		textExpr = &v
 	}
 
+	id := vc.btnCount
+	vc.btnCount++
+	fieldName := fmt.Sprintf("btn%d", id)
+	vc.addField(fieldName, "*widget.Button")
+
 	if clickEvt, ok := vn.Events["click"]; ok && clickEvt.SNGL != nil {
-		vc.line("%s = widget.NewButton(%s, func() {", resultVar, text)
+		vc.line("m.%s = widget.NewButton(%s, func() {", fieldName, text)
 		vc.indent++
-		stmts := vc.ec.translateMutation(clickEvt.SNGL)
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
+		vc.emitEventHandler(clickEvt.SNGL)
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("%s = widget.NewButton(%s, nil)", resultVar, text)
+		vc.line("m.%s = widget.NewButton(%s, nil)", fieldName, text)
 	}
+	vc.line("%s = m.%s", resultVar, fieldName)
 
 	// Disabled
 	if v, ok := vn.Props["disabled"]; ok {
 		val := exprToGoValue(v, vc.ec)
-		tmpVar := resultVar + "Btn"
-		vc.line("%s := %s.(*widget.Button)", tmpVar, resultVar)
-		vc.line("if %s { %s.Disable() }", val, tmpVar)
+		vc.line("if %s { m.%s.Disable() }", val, fieldName)
+
+		// Add updater for disabled state if dynamic
+		deps := vc.exprDeps(v)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateBtn%dDisabled", id)
+			body := fmt.Sprintf("if %s { m.%s.Disable() } else { m.%s.Enable() }", val, fieldName, fieldName)
+			vc.addUpdater(updaterName, body, deps)
+		}
+	}
+
+	// Add updater for dynamic button text
+	if textExpr != nil {
+		deps := vc.exprDeps(*textExpr)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateBtn%dText", id)
+			body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, text)
+			vc.addUpdater(updaterName, body, deps)
+		}
 	}
 }
 
@@ -301,7 +536,7 @@ func (vc *viewContext) renderTextarea(vn *ast.VisualNode, resultVar string) {
 	vc.line("%s = m.entry%d", resultVar, idx)
 }
 
-// renderCheckbox renders a Check widget.
+// renderCheckbox renders a Check widget stored persistently.
 func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
 	label := `""`
 	if v, ok := vn.Props["label"]; ok {
@@ -309,29 +544,41 @@ func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
 	}
 
 	checkedExpr := "false"
+	var checkedProp *ast.Expr
 	if v, ok := vn.Props["checked"]; ok {
 		checkedExpr = exprToGoValue(v, vc.ec)
+		checkedProp = &v
 	}
 
-	tmpVar := resultVar + "Chk"
+	id := vc.checkCount
+	vc.checkCount++
+	fieldName := fmt.Sprintf("check%d", id)
+	vc.addField(fieldName, "*widget.Check")
+
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
-		vc.line("%s := widget.NewCheck(%s, func(checked bool) {", tmpVar, label)
+		vc.line("m.%s = widget.NewCheck(%s, func(checked bool) {", fieldName, label)
 		vc.indent++
 		prevEventVar := vc.ec.eventVar
 		vc.ec.eventVar = "checked"
-		stmts := vc.ec.translateMutation(changeEvt.SNGL)
+		vc.emitEventHandler(changeEvt.SNGL)
 		vc.ec.eventVar = prevEventVar
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("%s := widget.NewCheck(%s, nil)", tmpVar, label)
+		vc.line("m.%s = widget.NewCheck(%s, nil)", fieldName, label)
 	}
-	vc.line("%s.Checked = %s", tmpVar, checkedExpr)
-	vc.line("%s = %s", resultVar, tmpVar)
+	vc.line("m.%s.Checked = %s", fieldName, checkedExpr)
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// Updater for checked state
+	if checkedProp != nil {
+		deps := vc.exprDeps(*checkedProp)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateCheck%d", id)
+			body := fmt.Sprintf("m.%s.Checked = %s\nm.%s.Refresh()", fieldName, checkedExpr, fieldName)
+			vc.addUpdater(updaterName, body, deps)
+		}
+	}
 }
 
 // renderRadio renders a RadioGroup widget.
@@ -342,37 +589,49 @@ func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
 	}
 
 	selected := `""`
+	var selectedProp *ast.Expr
 	if v, ok := vn.Props["value"]; ok {
 		selected = exprToGoValue(v, vc.ec)
+		selectedProp = &v
 	}
 
-	tmpVar := resultVar + "Radio"
+	id := vc.radioCount
+	vc.radioCount++
+	fieldName := fmt.Sprintf("radio%d", id)
+	vc.addField(fieldName, "*widget.RadioGroup")
+
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
-		vc.line("%s := widget.NewRadioGroup(%s, func(s string) {", tmpVar, options)
+		vc.line("m.%s = widget.NewRadioGroup(%s, func(s string) {", fieldName, options)
 		vc.indent++
 		prevEventVar := vc.ec.eventVar
 		vc.ec.eventVar = "s"
-		stmts := vc.ec.translateMutation(changeEvt.SNGL)
+		vc.emitEventHandler(changeEvt.SNGL)
 		vc.ec.eventVar = prevEventVar
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("%s := widget.NewRadioGroup(%s, nil)", tmpVar, options)
+		vc.line("m.%s = widget.NewRadioGroup(%s, nil)", fieldName, options)
 	}
-	vc.line("%s.Selected = %s", tmpVar, selected)
+	vc.line("m.%s.Selected = %s", fieldName, selected)
 
 	// Horizontal layout
 	if v, ok := vn.Props["direction"]; ok {
 		if s, ok := v.Literal.(string); ok && s == "horizontal" {
-			vc.line("%s.Horizontal = true", tmpVar)
+			vc.line("m.%s.Horizontal = true", fieldName)
 		}
 	}
 
-	vc.line("%s = %s", resultVar, tmpVar)
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// Updater for selected value
+	if selectedProp != nil {
+		deps := vc.exprDeps(*selectedProp)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateRadio%d", id)
+			body := fmt.Sprintf("m.%s.Selected = %s\nm.%s.Refresh()", fieldName, selected, fieldName)
+			vc.addUpdater(updaterName, body, deps)
+		}
+	}
 }
 
 // renderToggle renders a Check widget (Fyne has no toggle; use check).
@@ -388,49 +647,93 @@ func (vc *viewContext) renderSelectComp(vn *ast.VisualNode, resultVar string) {
 	}
 
 	selected := `""`
+	var selectedProp *ast.Expr
 	if v, ok := vn.Props["value"]; ok {
 		selected = exprToGoValue(v, vc.ec)
+		selectedProp = &v
 	}
 
-	tmpVar := resultVar + "Sel"
+	id := vc.selectCount
+	vc.selectCount++
+	fieldName := fmt.Sprintf("sel%d", id)
+	vc.addField(fieldName, "*widget.Select")
+
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
-		vc.line("%s := widget.NewSelect(%s, func(s string) {", tmpVar, options)
+		vc.line("m.%s = widget.NewSelect(%s, func(s string) {", fieldName, options)
 		vc.indent++
 		prevEventVar := vc.ec.eventVar
 		vc.ec.eventVar = "s"
-		stmts := vc.ec.translateMutation(changeEvt.SNGL)
+		vc.emitEventHandler(changeEvt.SNGL)
 		vc.ec.eventVar = prevEventVar
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("%s := widget.NewSelect(%s, nil)", tmpVar, options)
+		vc.line("m.%s = widget.NewSelect(%s, nil)", fieldName, options)
 	}
-	vc.line("%s.Selected = %s", tmpVar, selected)
+	vc.line("m.%s.Selected = %s", fieldName, selected)
 
 	if v, ok := vn.Props["placeholder"]; ok {
-		vc.line("%s.PlaceHolder = %s", tmpVar, exprToGoValue(v, vc.ec))
+		vc.line("m.%s.PlaceHolder = %s", fieldName, exprToGoValue(v, vc.ec))
 	}
 
-	vc.line("%s = %s", resultVar, tmpVar)
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// Updater for selected value
+	if selectedProp != nil {
+		deps := vc.exprDeps(*selectedProp)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateSel%d", id)
+			body := fmt.Sprintf("m.%s.Selected = %s\nm.%s.Refresh()", fieldName, selected, fieldName)
+			vc.addUpdater(updaterName, body, deps)
+		}
+	}
 }
 
-// renderProgress renders a ProgressBar widget.
+// renderProgress renders a ProgressBar widget with updater.
 func (vc *viewContext) renderProgress(vn *ast.VisualNode, resultVar string) {
-	tmpVar := resultVar + "Prog"
-	vc.line("%s := widget.NewProgressBar()", tmpVar)
+	id := vc.progressCount
+	vc.progressCount++
+	fieldName := fmt.Sprintf("progress%d", id)
+	vc.addField(fieldName, "*widget.ProgressBar")
+
+	vc.line("m.%s = widget.NewProgressBar()", fieldName)
 	if v, ok := vn.Props["value"]; ok {
 		val := exprToGoValue(v, vc.ec)
 		maxVal := "1.0"
 		if mv, ok := vn.Props["max"]; ok {
 			maxVal = exprToGoValue(mv, vc.ec)
 		}
-		vc.line("%s.SetValue(float64(%s) / float64(%s))", tmpVar, val, maxVal)
+		vc.line("m.%s.SetValue(float64(%s) / float64(%s))", fieldName, val, maxVal)
+
+		// Register updater
+		deps := vc.exprDeps(v)
+		if mv, ok := vn.Props["max"]; ok {
+			maxDeps := vc.exprDeps(mv)
+			if deps == nil {
+				deps = maxDeps
+			} else {
+				for k, v := range maxDeps {
+					deps[k] = v
+				}
+			}
+		}
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("updateProgress%d", id)
+			body := fmt.Sprintf("m.%s.SetValue(float64(%s) / float64(%s))", fieldName, val, maxVal)
+			vc.addUpdater(updaterName, body, deps)
+		}
 	}
-	vc.line("%s = %s", resultVar, tmpVar)
+	vc.line("%s = m.%s", resultVar, fieldName)
+}
+
+// renderSpinner renders an infinite progress bar stored persistently.
+func (vc *viewContext) renderSpinner(vn *ast.VisualNode, resultVar string) {
+	id := vc.spinnerCount
+	vc.spinnerCount++
+	fieldName := fmt.Sprintf("spinner%d", id)
+	vc.addField(fieldName, "*widget.ProgressBarInfinite")
+	vc.line("m.%s = widget.NewProgressBarInfinite()", fieldName)
+	vc.line("%s = m.%s", resultVar, fieldName)
 }
 
 // renderTabs renders an AppTabs container.
@@ -475,12 +778,8 @@ func (vc *viewContext) renderTabs(vn *ast.VisualNode, resultVar string) {
 		vc.indent++
 		prevEventVar := vc.ec.eventVar
 		vc.ec.eventVar = "i"
-		stmts := vc.ec.translateMutation(changeEvt.SNGL)
+		vc.emitEventHandler(changeEvt.SNGL)
 		vc.ec.eventVar = prevEventVar
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
 		vc.line("break")
 		vc.indent--
 		vc.line("}")
@@ -527,7 +826,7 @@ func (vc *viewContext) renderImage(vn *ast.VisualNode, resultVar string) {
 	}
 }
 
-// renderScroll wraps a child in a scroll container.
+// renderScroll wraps a child in a scroll container, stored persistently.
 func (vc *viewContext) renderScroll(vn *ast.VisualNode, resultVar string) {
 	if len(vn.Children) > 0 {
 		childVar := resultVar + "Content"
@@ -541,11 +840,26 @@ func (vc *viewContext) renderScroll(vn *ast.VisualNode, resultVar string) {
 				direction = s
 			}
 		}
-		switch direction {
-		case "horizontal":
-			vc.line("%s = container.NewHScroll(%s)", resultVar, childVar)
-		default:
-			vc.line("%s = container.NewVScroll(%s)", resultVar, childVar)
+
+		if vc.info != nil {
+			id := vc.scrollCount
+			vc.scrollCount++
+			fieldName := fmt.Sprintf("scroll%d", id)
+			vc.addField(fieldName, "*container.Scroll")
+			switch direction {
+			case "horizontal":
+				vc.line("m.%s = container.NewHScroll(%s)", fieldName, childVar)
+			default:
+				vc.line("m.%s = container.NewVScroll(%s)", fieldName, childVar)
+			}
+			vc.line("%s = m.%s", resultVar, fieldName)
+		} else {
+			switch direction {
+			case "horizontal":
+				vc.line("%s = container.NewHScroll(%s)", resultVar, childVar)
+			default:
+				vc.line("%s = container.NewVScroll(%s)", resultVar, childVar)
+			}
 		}
 	}
 }
@@ -553,21 +867,42 @@ func (vc *viewContext) renderScroll(vn *ast.VisualNode, resultVar string) {
 // renderBadge renders a label styled as a badge.
 func (vc *viewContext) renderBadge(vn *ast.VisualNode, resultVar string) {
 	val := `""`
+	var valExpr *ast.Expr
 	if v, ok := vn.Props["value"]; ok {
 		val = exprToGoValue(v, vc.ec)
+		valExpr = &v
 	}
-	vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", resultVar, val)
+
+	var deps map[string]bool
+	if valExpr != nil {
+		deps = vc.exprDeps(*valExpr)
+	}
+
+	if vc.info != nil && len(deps) > 0 {
+		id := vc.badgeCount
+		vc.badgeCount++
+		fieldName := fmt.Sprintf("badge%d", id)
+		vc.addField(fieldName, "*widget.Label")
+		vc.line("m.%s = widget.NewLabel(fmt.Sprint(%s))", fieldName, val)
+		vc.line("%s = m.%s", resultVar, fieldName)
+
+		updaterName := fmt.Sprintf("updateBadge%d", id)
+		body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, val)
+		vc.addUpdater(updaterName, body, deps)
+	} else {
+		vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", resultVar, val)
+	}
 }
 
-// renderConditionalContainer renders modal/drawer/popover as conditional vbox.
+// renderConditionalContainer renders modal/drawer/popover as conditional container
+// with Show/Hide.
 func (vc *viewContext) renderConditionalContainer(vn *ast.VisualNode, resultVar string) {
 	openExpr := "true"
+	var openProp *ast.Expr
 	if v, ok := vn.Props["open"]; ok {
 		openExpr = exprToGoValue(v, vc.ec)
+		openProp = &v
 	}
-
-	vc.line("if %s {", openExpr)
-	vc.indent++
 
 	childrenVar := resultVar + "Children"
 	vc.line("var %s []fyne.CanvasObject", childrenVar)
@@ -585,10 +920,30 @@ func (vc *viewContext) renderConditionalContainer(vn *ast.VisualNode, resultVar 
 		vc.line("if %s != nil { %s = append(%s, %s) }", itemVar, childrenVar, childrenVar, itemVar)
 	}
 
-	vc.line("%s = widget.NewCard(\"\", \"\", container.NewVBox(%s...))", resultVar, childrenVar)
+	if vc.info != nil {
+		id := vc.containerCount
+		vc.containerCount++
+		fieldName := fmt.Sprintf("condBox%d", id)
+		vc.addField(fieldName, "*fyne.Container")
+		vc.line("m.%s = container.NewVBox(widget.NewCard(\"\", \"\", container.NewVBox(%s...)))", fieldName, childrenVar)
+		vc.line("if !(%s) { m.%s.Hide() }", openExpr, fieldName)
+		vc.line("%s = m.%s", resultVar, fieldName)
 
-	vc.indent--
-	vc.line("}")
+		if openProp != nil {
+			deps := vc.exprDeps(*openProp)
+			if len(deps) > 0 {
+				updaterName := fmt.Sprintf("updateCond%d", id)
+				body := fmt.Sprintf("if %s { m.%s.Show() } else { m.%s.Hide() }", openExpr, fieldName, fieldName)
+				vc.addUpdater(updaterName, body, deps)
+			}
+		}
+	} else {
+		vc.line("if %s {", openExpr)
+		vc.indent++
+		vc.line("%s = widget.NewCard(\"\", \"\", container.NewVBox(%s...))", resultVar, childrenVar)
+		vc.indent--
+		vc.line("}")
+	}
 }
 
 // renderAccordion renders an Accordion widget.
@@ -661,7 +1016,6 @@ func (vc *viewContext) renderCard(vn *ast.VisualNode, resultVar string) {
 
 // renderTable renders a simple Table widget stub.
 func (vc *viewContext) renderTable(vn *ast.VisualNode, resultVar string) {
-	// Generate a basic label placeholder; full table needs data binding
 	if v, ok := vn.Props["columns"]; ok {
 		cols := exprToGoStringList(v, vc.ec)
 		vc.line("%s = widget.NewLabel(fmt.Sprint(\"[table: \", %s, \"]\"))", resultVar, cols)
@@ -686,19 +1040,22 @@ func (vc *viewContext) renderChip(vn *ast.VisualNode, resultVar string) {
 	if v, ok := vn.Props["label"]; ok {
 		label = exprToGoValue(v, vc.ec)
 	}
+
+	id := vc.btnCount
+	vc.btnCount++
+	fieldName := fmt.Sprintf("btn%d", id)
+	vc.addField(fieldName, "*widget.Button")
+
 	if clickEvt, ok := vn.Events["click"]; ok && clickEvt.SNGL != nil {
-		vc.line("%s = widget.NewButton(%s, func() {", resultVar, label)
+		vc.line("m.%s = widget.NewButton(%s, func() {", fieldName, label)
 		vc.indent++
-		stmts := vc.ec.translateMutation(clickEvt.SNGL)
-		for _, s := range stmts {
-			vc.line("%s", s)
-		}
-		vc.line("m.doRefresh()")
+		vc.emitEventHandler(clickEvt.SNGL)
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("%s = widget.NewButton(%s, nil)", resultVar, label)
+		vc.line("m.%s = widget.NewButton(%s, nil)", fieldName, label)
 	}
+	vc.line("%s = m.%s", resultVar, fieldName)
 }
 
 // renderAvatar renders a label showing initials.
