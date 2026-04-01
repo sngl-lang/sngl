@@ -2,6 +2,7 @@ package lspcore
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -78,7 +79,13 @@ func HoverInfo(doc *ast.Document, word string) string {
 
 	for _, c := range doc.Components {
 		if c.Name == word {
-			return formatComponentHover(c)
+			return formatComponentHoverWithDoc(c, doc)
+		}
+	}
+
+	for _, c := range doc.ImportedComponents {
+		if c.Name == word {
+			return formatComponentHoverWithDoc(c, doc)
 		}
 	}
 
@@ -115,8 +122,17 @@ func HoverInfo(doc *ast.Document, word string) string {
 }
 
 func formatComponentHover(c *ast.Component) string {
+	return formatComponentHoverWithDoc(c, nil)
+}
+
+func formatComponentHoverWithDoc(c *ast.Component, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\ncomponent %s\n```\n", c.Name)
+	if doc != nil {
+		if d := docForPos(doc, c.Pos); d != "" {
+			fmt.Fprintf(&sb, "\n%s\n", d)
+		}
+	}
 	if len(c.Params) > 0 {
 		sb.WriteString("\n**Params:**\n")
 		for _, p := range c.Params {
@@ -134,13 +150,58 @@ func formatComponentHover(c *ast.Component) string {
 	return sb.String()
 }
 
+// docForPos extracts a doc comment immediately preceding the given position.
+// It looks for contiguous // comment lines ending on the line before pos.Line.
+func docForPos(doc *ast.Document, pos ast.Pos) string {
+	if doc == nil || len(doc.Comments) == 0 {
+		return ""
+	}
+	targetLine := pos.Line
+	var lines []string
+	// Gather contiguous comment lines ending at targetLine-1
+	for i := len(doc.Comments) - 1; i >= 0; i-- {
+		c := doc.Comments[i]
+		if c.Block {
+			continue
+		}
+		if c.Pos.Line == targetLine-1-len(lines) {
+			text := strings.TrimPrefix(c.Text, "//")
+			text = strings.TrimPrefix(text, " ")
+			lines = append(lines, text)
+		} else if len(lines) > 0 {
+			break
+		}
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	// Reverse since we collected bottom-up
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
+	}
+	return strings.Join(lines, "\n")
+}
+
 func formatSchemaHover(name string, schema *checker.ComponentSchema) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\ncomponent %s  // stdlib\n```\n", name)
+	if schema.Doc != "" {
+		fmt.Fprintf(&sb, "\n%s\n", schema.Doc)
+	}
 	if len(schema.Props) > 0 {
 		sb.WriteString("\n**Props:**\n")
-		for pname, ps := range schema.Props {
-			fmt.Fprintf(&sb, "- `%s` %s\n", pname, ps.Type)
+		propNames := make([]string, 0, len(schema.Props))
+		for pname := range schema.Props {
+			propNames = append(propNames, pname)
+		}
+		sort.Strings(propNames)
+		for _, pname := range propNames {
+			ps := schema.Props[pname]
+			if ps.Doc != "" {
+				fmt.Fprintf(&sb, "- `%s` %s — %s\n", pname, ps.Type, ps.Doc)
+			} else {
+				fmt.Fprintf(&sb, "- `%s` %s\n", pname, ps.Type)
+			}
 			if len(ps.Enum) > 0 {
 				fmt.Fprintf(&sb, "  Values: %s\n", strings.Join(ps.Enum, ", "))
 			}
@@ -148,7 +209,13 @@ func formatSchemaHover(name string, schema *checker.ComponentSchema) string {
 	}
 	if len(schema.Events) > 0 {
 		sb.WriteString("\n**Events:**\n")
-		for ename, etype := range schema.Events {
+		eventNames := make([]string, 0, len(schema.Events))
+		for ename := range schema.Events {
+			eventNames = append(eventNames, ename)
+		}
+		sort.Strings(eventNames)
+		for _, ename := range eventNames {
+			etype := schema.Events[ename]
 			fmt.Fprintf(&sb, "- `@%s` (%s)\n", ename, etype)
 		}
 	}

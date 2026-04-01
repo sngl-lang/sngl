@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
@@ -15,6 +16,7 @@ type Config struct {
 	Width      int      // viewport width (default 1280)
 	Height     int      // viewport height (default 720)
 	OutDir     string   // directory to write PNGs
+	Prefix     string   // filename prefix (default: source file base name without extension)
 }
 
 // Result describes a generated screenshot.
@@ -77,7 +79,11 @@ func Generate(cfg Config) ([]Result, error) {
 			return nil, fmt.Errorf("snapshot %s: %w", t.platform, err)
 		}
 
-		outPath := filepath.Join(cfg.OutDir, t.platform+".png")
+		prefix := cfg.Prefix
+		if prefix == "" {
+			prefix = strings.TrimSuffix(filepath.Base(cfg.SourceFile), filepath.Ext(cfg.SourceFile))
+		}
+		outPath := filepath.Join(cfg.OutDir, prefix+"-"+t.platform+".png")
 		if err := os.WriteFile(outPath, pngBytes, 0o644); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", outPath, err)
 		}

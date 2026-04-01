@@ -34,6 +34,9 @@ func main() {
 	// Generate snapshots for all examples.
 	generateSnapshots(*docsDir, *outDir)
 
+	// docsgen always builds the playground, so include it in nav.
+	docsite.IncludePlayground = true
+
 	// Build the documentation site.
 	if err := docsite.Build(*docsDir, *outDir); err != nil {
 		log.Fatal(err)

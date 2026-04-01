@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"strings"
@@ -114,7 +115,9 @@ func compile(this js.Value, args []js.Value) any {
 
 	for _, f := range resp.Files {
 		if strings.HasSuffix(f.Name, ".html") {
-			result["html"] = string(f.Content)
+			var buf bytes.Buffer
+			f.WriteTo(&buf)
+			result["html"] = buf.String()
 			break
 		}
 	}
@@ -219,9 +222,11 @@ func generate(this js.Value, args []js.Value) any {
 
 	var files []any
 	for _, f := range resp.Files {
+		var buf bytes.Buffer
+		f.WriteTo(&buf)
 		files = append(files, map[string]any{
 			"name":    f.Name,
-			"content": string(f.Content),
+			"content": buf.String(),
 		})
 	}
 	result["files"] = files

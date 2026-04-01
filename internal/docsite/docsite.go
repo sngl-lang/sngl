@@ -92,6 +92,43 @@ func Build(docsDir, outDir string) error {
 	return nil
 }
 
+// SiteLayout holds the template and navigation needed to wrap pages in the
+// site chrome (sidebar, header). Used by gallery and other page generators.
+type SiteLayout struct {
+	Tmpl *template.Template
+	Nav  []*NavItem
+}
+
+// WrapPage renders content inside the site layout template.
+func (sl *SiteLayout) WrapPage(title string, content template.HTML, current string) ([]byte, error) {
+	var buf bytes.Buffer
+	data := templateData{
+		Title:   title,
+		Content: content,
+		Nav:     sl.Nav,
+		Current: current,
+	}
+	if err := sl.Tmpl.ExecuteTemplate(&buf, "layout.html", data); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// LoadLayout loads the site layout template and navigation from the docs
+// directory. Falls back to embedded defaults.
+func LoadLayout(docsDir string) (*SiteLayout, error) {
+	pages, err := collectPages(docsDir)
+	if err != nil {
+		return nil, err
+	}
+	nav := BuildNav(pages)
+	tmpl, err := loadTemplates(docsDir)
+	if err != nil {
+		return nil, err
+	}
+	return &SiteLayout{Tmpl: tmpl, Nav: nav}, nil
+}
+
 // Serve starts an HTTP server for the built site.
 func Serve(dir string, port int) error {
 	addr := fmt.Sprintf(":%d", port)

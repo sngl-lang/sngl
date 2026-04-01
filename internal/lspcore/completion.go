@@ -107,9 +107,18 @@ func ComponentNameCompletions(doc *ast.Document) []CompletionItem {
 	if doc != nil {
 		for _, c := range doc.Components {
 			items = append(items, CompletionItem{
-				Label:  c.Name,
-				Kind:   CIKClass,
-				Detail: "user component",
+				Label:         c.Name,
+				Kind:          CIKClass,
+				Detail:        "user component",
+				Documentation: docForPos(doc, c.Pos),
+			})
+		}
+		for _, c := range doc.ImportedComponents {
+			items = append(items, CompletionItem{
+				Label:         c.Name,
+				Kind:          CIKClass,
+				Detail:        "imported component",
+				Documentation: docForPos(doc, c.Pos),
 			})
 		}
 	}
@@ -149,13 +158,14 @@ func EventCompletions() []CompletionItem {
 	var items []CompletionItem
 	seen := map[string]bool{}
 	for _, schema := range registry {
-		for name := range schema.Events {
+		for name, etype := range schema.Events {
 			if !seen[name] {
 				seen[name] = true
 				items = append(items, CompletionItem{
-					Label:      "@" + name,
-					Kind:       CIKEvent,
-					InsertText: "@" + name + "={ }",
+					Label:         "@" + name,
+					Kind:          CIKEvent,
+					InsertText:    "@" + name + "={ }",
+					Documentation: "Payload type: " + etype,
 				})
 			}
 		}
@@ -190,11 +200,12 @@ func StdlibComponentItems() []CompletionItem {
 		return nil
 	}
 	items := make([]CompletionItem, 0, len(registry))
-	for name := range registry {
+	for name, schema := range registry {
 		items = append(items, CompletionItem{
-			Label:  name,
-			Kind:   CIKClass,
-			Detail: "stdlib component",
+			Label:         name,
+			Kind:          CIKClass,
+			Detail:        "stdlib component",
+			Documentation: schema.Doc,
 		})
 	}
 	return items

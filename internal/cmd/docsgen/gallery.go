@@ -10,7 +10,8 @@ import (
 )
 
 func generateGallery(docsDir, outDir string) {
-	err := docsite.GenerateGallery(docsDir, outDir, func(name, examplesDir, componentsDir, galleryAssetsDir string) {
+	layout, _ := docsite.LoadLayout(docsDir)
+	err := docsite.GenerateGallery(docsDir, outDir, layout, func(name, examplesDir, componentsDir, galleryAssetsDir string) {
 		generateComponentSnapshots(name, examplesDir, componentsDir, galleryAssetsDir)
 	})
 	if err != nil {

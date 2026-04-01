@@ -70,6 +70,13 @@ func runDocBuild(cmd *cobra.Command, args []string) error {
 	if err := docsite.Build(docsDir, outDir); err != nil {
 		return err
 	}
+	layout, err := docsite.LoadLayout(docsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not load layout: %v\n", err)
+	}
+	if err := docsite.GenerateGallery(docsDir, outDir, layout, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: gallery generation failed: %v\n", err)
+	}
 	fmt.Printf("Site built in %s/\n", outDir)
 	return nil
 }
@@ -81,8 +88,11 @@ func runDocServe(cmd *cobra.Command, args []string) error {
 	if err := docsite.Build(docsDir, outDir); err != nil {
 		return err
 	}
-	// Generate the component gallery into the built site.
-	if err := docsite.GenerateGallery(docsDir, outDir, nil); err != nil {
+	layout, err := docsite.LoadLayout(docsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not load layout: %v\n", err)
+	}
+	if err := docsite.GenerateGallery(docsDir, outDir, layout, nil); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: gallery generation failed: %v\n", err)
 	}
 	return docsite.Serve(outDir, port)

@@ -25,6 +25,10 @@ type Page struct {
 	Body []byte
 }
 
+// IncludePlayground controls whether the Playground nav item is added.
+// Set to true by docsgen after building the WASM playground.
+var IncludePlayground bool
+
 // BuildNav creates a nav tree from a set of pages. Pages are grouped by
 // directory (first path segment) and sorted by their Order field.
 func BuildNav(pages []Page) []*NavItem {
@@ -83,11 +87,13 @@ func BuildNav(pages []Page) []*NavItem {
 		Order: 9998,
 	})
 
-	topLevel = append(topLevel, &NavItem{
-		Title: "Playground",
-		Href:  "playground.html",
-		Order: 9999,
-	})
+	if IncludePlayground {
+		topLevel = append(topLevel, &NavItem{
+			Title: "Playground",
+			Href:  "playground.html",
+			Order: 9999,
+		})
+	}
 
 	sort.Slice(topLevel, func(i, j int) bool {
 		if topLevel[i].Order != topLevel[j].Order {
