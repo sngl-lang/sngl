@@ -111,6 +111,7 @@ type analysisResult struct {
 	computedDeps   map[string]map[string]bool // computed name → set of root state fields
 	externFuncs    map[string]bool
 	triggers       map[string]string
+	goImports      map[string]bool // native Go import paths from Resolved fields
 	needsTime      bool
 	needsURL       bool
 	needsCanvas    bool
@@ -133,10 +134,14 @@ func analyze(doc *ast.Document) *analysisResult {
 		computedDeps:   make(map[string]map[string]bool),
 		externFuncs:    make(map[string]bool),
 		triggers:       make(map[string]string),
+		goImports:      make(map[string]bool),
 	}
 
 	// Data fields
 	for _, d := range doc.Data {
+		if d.Resolved != nil && d.Resolved.NativePkg != "" {
+			info.goImports[d.Resolved.NativePkg] = true
+		}
 		if d.Extern || d.IsFunc {
 			ext := externInfo{
 				name:   d.Name,
@@ -147,6 +152,8 @@ func analyze(doc *ast.Document) *analysisResult {
 				ext.returnType = d.ReturnType
 				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
 				info.externFuncs[d.Name] = true
+			} else if d.Resolved != nil && d.Resolved.NativeType != "" {
+				ext.goType = d.Resolved.NativeType
 			} else {
 				ext.goType = typeHintToGo(d.Init.TypeHint)
 			}
@@ -155,6 +162,9 @@ func analyze(doc *ast.Document) *analysisResult {
 			continue
 		}
 		goType := inferGoType(d.Init)
+		if d.Resolved != nil && d.Resolved.NativeType != "" {
+			goType = d.Resolved.NativeType
+		}
 		initVal := literalToGo(d.Init)
 		if needsTimeType(d.Init.TypeHint) {
 			info.needsTime = true
@@ -205,6 +215,15 @@ func analyze(doc *ast.Document) *analysisResult {
 	// Components and structs
 	info.components = doc.AllComponents()
 	info.structs = doc.Structs
+
+	// Collect Go imports from struct fields with Resolved info
+	for _, sd := range doc.Structs {
+		for _, f := range sd.Fields {
+			if f.Resolved != nil && f.Resolved.NativePkg != "" {
+				info.goImports[f.Resolved.NativePkg] = true
+			}
+		}
+	}
 
 	// Walk visual tree to find entries
 	if doc.App != nil {
@@ -729,6 +748,10 @@ func typeHintToGo(hint string) string {
 	case "duration":
 		return "time.Duration"
 	default:
+		// Package-qualified type (e.g., "ast.File") — pass through
+		if strings.Contains(hint, ".") && !strings.ContainsAny(hint, ":~<>") {
+			return hint
+		}
 		// User-defined struct types are simple identifiers; anything
 		// containing special chars (func:, unit:, etc.) is unknown.
 		if !strings.ContainsAny(hint, ":~<>") && hint != "" {
@@ -825,6 +848,10 @@ func literalToGo(expr ast.Expr) string {
 		}
 	}
 	if expr.TypeHint != "" {
+		// Foreign struct types use zero-value constructor, not nil
+		if expr.Resolved != nil && expr.Resolved.NativeType != "" {
+			return expr.Resolved.NativeType + "{}"
+		}
 		return "nil"
 	}
 	return `""`

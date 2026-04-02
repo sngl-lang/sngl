@@ -1,5 +1,10 @@
 output {
     js { html }
+    go {
+        bubbletea
+        fyne
+    }
+    kotlin { android }
 }
 
 struct Todo {

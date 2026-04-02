@@ -21,6 +21,17 @@ func (p Pos) String() string {
 // IsValid reports whether the position has been set.
 func (p Pos) IsValid() bool { return p.Line > 0 }
 
+// TypeInfo holds resolved type information populated by the checker.
+type TypeInfo struct {
+	Type     string // SNGL type: "int", "float", "bool", "string", "dyn", struct name
+	IsList   bool   // true for list<T>
+	ElemType string // element type for lists
+
+	// Foreign type info (for go://, kt://, etc. imports)
+	NativePkg  string // import path: "go/ast"
+	NativeType string // qualified type: "ast.File"
+}
+
 type Output struct {
 	Pos      Pos
 	Lang     string            // "go"
@@ -135,10 +146,11 @@ type StructDef struct {
 }
 
 type StructField struct {
-	Pos     Pos
-	Name    string
-	Type    string // type hint: "string", "bool", "int", etc.
-	Default Expr
+	Pos      Pos
+	Name     string
+	Type     string // type hint: "string", "bool", "int", etc.
+	Default  Expr
+	Resolved *TypeInfo // populated by checker
 }
 
 type Import struct {
@@ -151,9 +163,10 @@ type Import struct {
 
 // NativeDecls holds SNGL-compatible declarations resolved from a native import.
 type NativeDecls struct {
-	Structs []*StructDef
-	Enums   []*EnumDef
-	Data    []*Data // extern funcs and vars
+	Structs    []*StructDef
+	Enums      []*EnumDef
+	Data       []*Data // extern funcs and vars
+	ImportPath string  // e.g., "go/ast" for go:// imports
 }
 
 type Data struct {
@@ -166,6 +179,7 @@ type Data struct {
 	ReturnType string   // parsed func return type, "" for void
 	Trigger    string   // resolved trigger function name, "" for none
 	Disabled   bool
+	Resolved   *TypeInfo // populated by checker
 }
 
 type Computed struct {
@@ -173,6 +187,7 @@ type Computed struct {
 	Name     string
 	Expr     Expr
 	Disabled bool
+	Resolved *TypeInfo // populated by checker
 }
 
 type StyleDecl struct {
@@ -203,9 +218,10 @@ type StylePropDef struct {
 
 // FuncParam is a parameter in a function definition.
 type FuncParam struct {
-	Pos  Pos
-	Name string
-	Type string // type hint: "int", "string", "User", etc.
+	Pos      Pos
+	Name     string
+	Type     string    // type hint: "int", "string", "User", etc.
+	Resolved *TypeInfo // populated by checker
 }
 
 // FuncDef declares a named function.
@@ -258,6 +274,7 @@ type Param struct {
 	Default  Expr
 	Required bool
 	Disabled bool
+	Resolved *TypeInfo // populated by checker
 }
 
 type App struct {

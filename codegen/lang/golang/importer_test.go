@@ -77,16 +77,16 @@ func TestGoImporter_Resolve(t *testing.T) {
 			}
 		}
 		if d.Name == "SaveTodo" {
-			if len(d.ParamTypes) != 1 {
-				t.Errorf("SaveTodo params = %v, want 1 param", d.ParamTypes)
+			if len(d.ParamTypes) != 1 || d.ParamTypes[0] != "testpkg.Todo" {
+				t.Errorf("SaveTodo params = %v, want [testpkg.Todo]", d.ParamTypes)
 			}
 			if d.ReturnType != "" {
 				t.Errorf("SaveTodo return = %q, want empty (void)", d.ReturnType)
 			}
 		}
 		if d.Name == "FetchAll" {
-			if d.ReturnType != "list:todo" {
-				t.Errorf("FetchAll return = %q, want list:todo", d.ReturnType)
+			if d.ReturnType != "list:testpkg.Todo" {
+				t.Errorf("FetchAll return = %q, want list:testpkg.Todo", d.ReturnType)
 			}
 		}
 	}

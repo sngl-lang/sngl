@@ -3,6 +3,7 @@ package fyne
 import (
 	"embed"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -32,7 +33,8 @@ type templateData struct {
 	WidgetFields         []widgetFieldData
 	Timers               []timerData
 	UpdaterNames         []string
-	FunctionCode         string // pre-rendered user functions
+	FunctionCode         string   // pre-rendered user functions
+	GoImports            []string // native Go import paths from Resolved fields
 }
 
 type structData struct {
@@ -107,13 +109,23 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 		FunctionCode: functionCode,
 	}
 
+	// Native Go imports from Resolved fields
+	for pkg := range info.goImports {
+		td.GoImports = append(td.GoImports, pkg)
+	}
+	slices.Sort(td.GoImports)
+
 	// Structs
 	for _, sd := range info.structs {
 		s := structData{Name: exportName(sd.Name)}
 		for _, f := range sd.Fields {
+			goType := typeHintToGo(f.Type)
+			if f.Resolved != nil && f.Resolved.NativeType != "" {
+				goType = f.Resolved.NativeType
+			}
 			s.Fields = append(s.Fields, structFieldData{
 				Name: exportName(f.Name),
-				Type: typeHintToGo(f.Type),
+				Type: goType,
 			})
 		}
 		td.Structs = append(td.Structs, s)

@@ -22,7 +22,7 @@ myapp/
   output/             # generated code (per target)
 ```
 
-Every SNGL file must have exactly one `component main` — this is the root of the UI tree.
+Every SNGL app must have exactly one `component main` — this is the root of the UI tree.
 
 ## Core Concepts
 
@@ -65,15 +65,15 @@ Changes to `name` automatically update `greeting` and any UI that references eit
 
 SNGL provides a standard set of primitive components:
 
-| Component | Purpose |
-| --- | --- |
-| `vbox` | Vertical flex container |
-| `hbox` | Horizontal flex container |
-| `stack` | Overlapping container |
-| `text` | Text display |
-| `button` | Clickable button |
-| `input` | Text input |
-| `checkbox` | Toggle checkbox |
-| `image` | Image display |
-| `scroll` | Scrollable container |
-| `spacer` | Flexible space |
+| Component  | Purpose                   |
+| ---------- | ------------------------- |
+| `vbox`     | Vertical flex container   |
+| `hbox`     | Horizontal flex container |
+| `stack`    | Overlapping container     |
+| `text`     | Text display              |
+| `button`   | Clickable button          |
+| `input`    | Text input                |
+| `checkbox` | Toggle checkbox           |
+| `image`    | Image display             |
+| `scroll`   | Scrollable container      |
+| `spacer`   | Flexible space            |

@@ -2,9 +2,10 @@ package ast
 
 // Expr is either a literal value or a SNGL expression.
 type Expr struct {
-	Literal  any    // non-nil for static values
-	SNGL     Node   // native SNGL expression tree
-	TypeHint string // type annotation: "int", "bool", "User", etc.
+	Literal  any       // non-nil for static values
+	SNGL     Node      // native SNGL expression tree
+	TypeHint string    // type annotation: "int", "bool", "User", etc.
+	Resolved *TypeInfo // populated by checker
 }
 
 // ForClause is the parsed form of for="item in items" or for="item, index in items".

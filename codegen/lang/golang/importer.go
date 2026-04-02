@@ -38,8 +38,12 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 		return nil, fmt.Errorf("loading %q: %s", pkgPath, pkgs[0].Errors[0].Msg)
 	}
 
-	decls := &ast.NativeDecls{}
+	decls := &ast.NativeDecls{
+		ImportPath: pkgPath,
+	}
 	scope := pkgs[0].Types.Scope()
+
+	pkgName := pkgs[0].Types.Name()
 
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
@@ -48,18 +52,28 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 		}
 		switch o := obj.(type) {
 		case *types.TypeName:
-			if sd := goTypeToStruct(o); sd != nil {
+			if sd := goTypeToStruct(o, pkgPath, pkgName); sd != nil {
 				decls.Structs = append(decls.Structs, sd)
 			}
 		case *types.Func:
 			if d := goFuncToData(o); d != nil {
+				d.Resolved = &ast.TypeInfo{
+					NativePkg:  pkgPath,
+					NativeType: pkgName + "." + o.Name(),
+				}
 				decls.Data = append(decls.Data, d)
 			}
 		case *types.Var:
+			hint := goTypeToHint(o.Type())
 			decls.Data = append(decls.Data, &ast.Data{
 				Name:   o.Name(),
 				Extern: true,
-				Init:   ast.Expr{TypeHint: goTypeToHint(o.Type())},
+				Init:   ast.Expr{TypeHint: hint},
+				Resolved: &ast.TypeInfo{
+					Type:       hint,
+					NativePkg:  pkgPath,
+					NativeType: pkgName + "." + o.Name(),
+				},
 			})
 		}
 	}
@@ -68,7 +82,7 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 }
 
 // goTypeToStruct converts a Go named struct type to an ast.StructDef.
-func goTypeToStruct(tn *types.TypeName) *ast.StructDef {
+func goTypeToStruct(tn *types.TypeName, pkgPath, pkgName string) *ast.StructDef {
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	if !ok {
 		return nil
@@ -79,12 +93,45 @@ func goTypeToStruct(tn *types.TypeName) *ast.StructDef {
 		if !f.Exported() {
 			continue
 		}
-		sd.Fields = append(sd.Fields, &ast.StructField{
+		hint := goTypeToHint(f.Type())
+		sf := &ast.StructField{
 			Name: lowerFirst(f.Name()),
-			Type: goTypeToHint(f.Type()),
-		})
+			Type: hint,
+		}
+		// Set Resolved with native type info for foreign types
+		if strings.Contains(hint, ".") {
+			// hint is package-qualified (e.g., "ast.Ident"), resolve its import path
+			sf.Resolved = &ast.TypeInfo{
+				Type:       hint,
+				NativePkg:  resolveFieldPkgPath(f.Type()),
+				NativeType: hint,
+			}
+		}
+		sd.Fields = append(sd.Fields, sf)
 	}
 	return sd
+}
+
+// resolveFieldPkgPath extracts the import path from a field's type.
+func resolveFieldPkgPath(t types.Type) string {
+	// Unwrap pointer and slice types
+	for {
+		switch u := t.(type) {
+		case *types.Pointer:
+			t = u.Elem()
+			continue
+		case *types.Slice:
+			t = u.Elem()
+			continue
+		}
+		break
+	}
+	if named, ok := t.(*types.Named); ok {
+		if pkg := named.Obj().Pkg(); pkg != nil {
+			return pkg.Path()
+		}
+	}
+	return ""
 }
 
 // goFuncToData converts a Go function to an ast.Data with extern/func flags.
@@ -152,8 +199,11 @@ func goTypeToHint(t types.Type) string {
 		if named, ok := t.(*types.Named); ok {
 			name := named.Obj().Name()
 			pkg := named.Obj().Pkg()
-			if pkg != nil && pkg.Path() == "time" && name == "Time" {
-				return "dateTime"
+			if pkg != nil {
+				if pkg.Path() == "time" && name == "Time" {
+					return "dateTime"
+				}
+				return pkg.Name() + "." + name // "ast.File" instead of "file"
 			}
 			return lowerFirst(name)
 		}

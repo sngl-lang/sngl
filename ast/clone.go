@@ -72,6 +72,10 @@ func cloneExprPtr(e *Expr) *Expr {
 		return nil
 	}
 	c := *e
+	if e.Resolved != nil {
+		r := *e.Resolved
+		c.Resolved = &r
+	}
 	return &c
 }
 
@@ -125,7 +129,23 @@ func cloneStructDefs(s []*StructDef) []*StructDef {
 	out := make([]*StructDef, len(s))
 	for i, v := range s {
 		c := *v
-		c.Fields = cloneSlice(v.Fields)
+		c.Fields = cloneStructFields(v.Fields)
+		out[i] = &c
+	}
+	return out
+}
+
+func cloneStructFields(s []*StructField) []*StructField {
+	if s == nil {
+		return nil
+	}
+	out := make([]*StructField, len(s))
+	for i, v := range s {
+		c := *v
+		if v.Resolved != nil {
+			r := *v.Resolved
+			c.Resolved = &r
+		}
 		out[i] = &c
 	}
 	return out
@@ -142,6 +162,10 @@ func cloneData(s []*Data) []*Data {
 			c.ParamTypes = make([]string, len(v.ParamTypes))
 			copy(c.ParamTypes, v.ParamTypes)
 		}
+		if v.Resolved != nil {
+			r := *v.Resolved
+			c.Resolved = &r
+		}
 		out[i] = &c
 	}
 	return out
@@ -154,6 +178,10 @@ func cloneComputeds(s []*Computed) []*Computed {
 	out := make([]*Computed, len(s))
 	for i, v := range s {
 		c := *v
+		if v.Resolved != nil {
+			r := *v.Resolved
+			c.Resolved = &r
+		}
 		out[i] = &c
 	}
 	return out

@@ -11,6 +11,9 @@ import (
 {{- if .NeedsTime}}
 	"time"
 {{- end}}
+{{- range .GoImports}}
+	"{{.}}"
+{{- end}}
 
 	"fyne.io/fyne/v2"
 {{- if .GenerateMain}}

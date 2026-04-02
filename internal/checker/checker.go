@@ -235,6 +235,7 @@ type importNS struct {
 	structs    []*ast.StructDef
 	enums      []*ast.EnumDef
 	data       []*ast.Data // extern funcs and vars from native imports
+	importPath string      // native import path (e.g., "go/ast") for scheme imports
 }
 
 // lookupMethod checks the method registry for a type-attached method and returns its return type.
@@ -349,9 +350,10 @@ func (c *checker) pass1(doc *ast.Document) {
 				continue
 			}
 			ns := &importNS{
-				structs: decls.Structs,
-				enums:   decls.Enums,
-				data:    decls.Data,
+				structs:    decls.Structs,
+				enums:      decls.Enums,
+				data:       decls.Data,
+				importPath: decls.ImportPath,
 			}
 			c.namespaces[imp.Namespace] = ns
 			c.structs = append(c.structs, decls.Structs...)
@@ -489,6 +491,9 @@ func (c *checker) pass1(doc *ast.Document) {
 		var hintType Type
 		if d.Init.TypeHint != "" {
 			hintType = c.resolveTypeHint(d.Pos, d.Init.TypeHint)
+			// Populate Resolved for foreign (namespace-qualified) types
+			c.maybeSetResolved(d.Init.TypeHint, &d.Resolved)
+			c.maybeSetResolved(d.Init.TypeHint, &d.Init.Resolved)
 		}
 		if d.Extern || d.IsFunc {
 			c.scope.Declare(d.Name, hintType)
@@ -496,6 +501,12 @@ func (c *checker) pass1(doc *ast.Document) {
 		}
 		c.validateEnumLiteral(d.Pos, &d.Init)
 		c.validateSpecialLiteral(d.Pos, &d.Init)
+		// Explicit null is not assignable to struct types
+		if hintType == Struct {
+			if lit, ok := d.Init.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
+				c.errorAt(d.Pos, "null is not assignable to struct type %q", d.Init.TypeHint)
+			}
+		}
 		t := c.resolveExprType(d.Pos, &d.Init)
 		if hintType != Dyn {
 			t = hintType
@@ -638,6 +649,17 @@ func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
 					return Struct
 				}
 			}
+			// Scheme-imported namespaces may have foreign types not
+			// registered as SNGL structs/enums. Accept them as Dyn.
+			if ins.importPath != "" {
+				return Dyn
+			}
+		}
+		// Also accept fully qualified types from function signatures
+		// (e.g., "token.FileSet" referenced by an imported function)
+		// as Dyn when we can't resolve the namespace.
+		if strings.Contains(hint, ".") {
+			return Dyn
 		}
 		c.errorAt(pos, "unknown type %q", hint)
 		return Dyn
@@ -663,6 +685,40 @@ func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
 		c.errorAt(pos, "unknown type %q", hint)
 	}
 	return t
+}
+
+// maybeSetResolved populates a Resolved pointer for namespace-qualified type hints
+// that come from scheme imports (e.g., "ast.File" → NativePkg="go/ast", NativeType="ast.File").
+func (c *checker) maybeSetResolved(hint string, resolved **ast.TypeInfo) {
+	ns, local, ok := strings.Cut(hint, ".")
+	if !ok {
+		return
+	}
+	ins, exists := c.namespaces[ns]
+	if !exists || ins.importPath == "" {
+		return
+	}
+	// Verify the type exists in the namespace
+	for _, s := range ins.structs {
+		if s.Name == local {
+			*resolved = &ast.TypeInfo{
+				Type:       hint,
+				NativePkg:  ins.importPath,
+				NativeType: ns + "." + local,
+			}
+			return
+		}
+	}
+	for _, e := range ins.enums {
+		if e.Name == local {
+			*resolved = &ast.TypeInfo{
+				Type:       hint,
+				NativePkg:  ins.importPath,
+				NativeType: ns + "." + local,
+			}
+			return
+		}
+	}
 }
 
 // resolveExprType determines the type of an expression.

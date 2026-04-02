@@ -1,22 +1,32 @@
+output {
+    go {
+        fyne
+    }
+}
+
+// import the go stdlib's AST package for direct usage of the AST types. 
+// The language handler makes it so we don't need to redefine these in SNGL.
+import "go://go/ast"
+
 component main {
     var (
         source = "package main"
-        nodes list<string> = null
+        file ast.File
         parseError = ""
-        parseGoAST func(string) -> list<string> extern
+        parse func(string) extern
     )
 
     vbox(style={gap=12, padding=16}) {
         text(value="Go AST Explorer", style={fontSize=24, fontWeight="bold"})
         text(value="Enter Go source code and click Parse to see the AST.")
         textarea(placeholder="Enter Go code...", rows=10, value=source, @input={ source = event.value })
-        button(text="Parse AST", @click={ nodes = parseGoAST(source) })
+        button(text="Parse AST", @click={ parse(source) })
         if parseError != "" {
             text(value=parseError, style={color=#c62828})
         }
         vbox(style={gap=2}) {
-            for node in nodes {
-                text(value=node, style={fontSize=13})
+            for decl in file.Decls {
+                text(value=decl, style={fontSize=13})
             }
         }
     }
