@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/parser"
+	"go/token"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -15,7 +16,7 @@ func main() {
 
 	m := New()
 	m.Parse = func(s string) {
-		f, err := parser.ParseFile(nil, "input.go", m.Source(), parser.AllErrors)
+		f, err := parser.ParseFile(token.NewFileSet(), "input.go", m.Source(), parser.AllErrors)
 		if err != nil {
 			m.SetParseError(err.Error())
 			return
