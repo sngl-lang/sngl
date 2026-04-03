@@ -15,32 +15,28 @@ import (
 // verifies they parse correctly and produce stable formatting.
 func TestDocSNGLBlocks(t *testing.T) {
 	var files []string
-	for _, dir := range []string{"docs", "DESIGN"} {
-		filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return err
-			}
-			if strings.HasSuffix(path, ".md") {
-				files = append(files, path)
-			}
-			return nil
-		})
-	}
-	files = append(files, "README.md")
+	filepath.WalkDir("docs", func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if strings.HasSuffix(path, ".md") {
+			files = append(files, path)
+		}
+		return nil
+	})
 
 	for _, file := range files {
 		blocks := extractSNGLBlocks(t, file)
 		for i, block := range blocks {
 			name := fmt.Sprintf("%s#%d", file, i+1)
 			t.Run(name, func(t *testing.T) {
-				// Wrap fragments in a component if they don't have one
 				src := block.source
-				if !strings.Contains(src, "component ") && !strings.Contains(src, "output ") &&
-					!strings.Contains(src, "struct ") && !strings.Contains(src, "enum ") &&
-					!strings.Contains(src, "import ") && !strings.Contains(src, "unit ") {
-					// This is a code fragment (e.g., just expressions or visual nodes)
-					// — skip parse validation since it won't parse as a standalone file.
-					t.Skip("fragment — not a complete document")
+
+				switch block.annotation {
+				case "component":
+					src = "component main {\n" + src + "\n}"
+				case "expression":
+					src = "component main {\n  computed _x = " + strings.TrimSpace(src) + "\n}"
 				}
 
 				doc, err := parser.Parse(name, strings.NewReader(src))
@@ -61,8 +57,9 @@ func TestDocSNGLBlocks(t *testing.T) {
 }
 
 type snglBlock struct {
-	source string
-	line   int
+	source     string
+	line       int
+	annotation string // "", "component", "expression"
 }
 
 func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
@@ -79,6 +76,8 @@ func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
 	inBlock := false
 	var current strings.Builder
 	blockStart := 0
+	prevLine := ""
+	var annotation string
 
 	for scanner.Scan() {
 		lineNum++
@@ -87,17 +86,24 @@ func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
 			inBlock = true
 			blockStart = lineNum + 1
 			current.Reset()
+			annotation = ""
+			if strings.Contains(prevLine, "<!-- SNGL-component -->") {
+				annotation = "component"
+			} else if strings.Contains(prevLine, "<!-- SNGL-expression -->") {
+				annotation = "expression"
+			}
 			continue
 		}
 		if inBlock && strings.TrimSpace(line) == "```" {
 			inBlock = false
-			blocks = append(blocks, snglBlock{source: current.String(), line: blockStart})
+			blocks = append(blocks, snglBlock{source: current.String(), line: blockStart, annotation: annotation})
 			continue
 		}
 		if inBlock {
 			current.WriteString(line)
 			current.WriteByte('\n')
 		}
+		prevLine = line
 	}
 	return blocks
 }

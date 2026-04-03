@@ -16,13 +16,23 @@ output {
     js { html }
 }
 
-struct Todo { ... }
+struct Todo {
+    text string = ""
+    done bool = false
+}
 enum Status { active, inactive, pending }
 unit duration(ms, s = 1000ms, m = 60s, h = 60m)
-style heading { ... }
+style heading {
+    fontSize = 24
+}
 
-component Counter { ... }
-component main { ... }
+component Counter {
+    param label = ""
+    text(value=label)
+}
+component main {
+    Counter(label="Hello")
+}
 ```
 
 ## Lexical Structure
@@ -58,10 +68,11 @@ Identifiers use camelCase (`fontSize`, `alignItems`).
 
 Inside double-quoted strings, `{expr}` evaluates the expression and converts to string:
 
+<!-- SNGL-component -->
 ```sngl
-"Hello, {name}!"
-"Todo List ({todos.length()} items)"
-"{user.name} is {user.age} years old"
+computed _a = "Hello, {name}!"
+computed _b = "Todo List ({todos.length()} items)"
+computed _c = "{user.name} is {user.age} years old"
 ```
 
 Escape literal braces with `\{`.
@@ -165,6 +176,7 @@ var status Status = "unknown"    // error: invalid enum value
 
 Enums can also be declared inline as a type annotation without a top-level declaration:
 
+<!-- SNGL-component -->
 ```sngl
 var mode enum<light | dark> = "light"
 param size enum<small | medium | large> = "medium"
@@ -198,23 +210,24 @@ For `duration(ms, s = 1000ms, m = 60s, h = 60m)`:
 
 Unit values support `+`, `-`, `*`, and `/`:
 
+<!-- SNGL-component -->
 ```sngl
 // Same-base addition normalizes automatically
-1s + 500ms        // 1500ms
-1h + 30m          // 5400000ms
-1rem + 2em        // 18em
-3px + 2px         // 5px
+computed _a = 1s + 500ms        // 1500ms
+computed _b = 1h + 30m          // 5400000ms
+computed _c = 1rem + 2em        // 18em
+computed _d = 3px + 2px         // 5px
 
 // Different bases produce compound values
-16px + 2em        // {px: 16, em: 2}
+computed _e = 16px + 2em        // {px: 16, em: 2}
 
 // Scalar multiplication and division
-2 * 3px           // 6px
-6px / 2           // 3px
+computed _f = 2 * 3px           // 6px
+computed _g = 6px / 2           // 3px
 
 // Subtraction
-5px - 2px         // 3px
-2s - 500ms        // 1500ms
+computed _h = 5px - 2px         // 3px
+computed _i = 2s - 500ms        // 1500ms
 ```
 
 Adding values from the same base group normalizes to the base suffix. Adding values from different base groups produces a compound value with multiple components. Arithmetic between different unit types (e.g., `5px + 3s`) is an error.
@@ -223,10 +236,11 @@ Adding values from the same base group normalizes to the base suffix. Adding val
 
 Unit values compare by their normalized components. Values that normalize to the same base amount are equal:
 
+<!-- SNGL-component -->
 ```sngl
-1s == 1000ms       // true
-1rem == 16em       // true
-16px + 2em == 2em + 16px  // true (order-independent)
+computed _a = 1s == 1000ms       // true
+computed _b = 1rem == 16em       // true
+computed _c = 16px + 2em == 2em + 16px  // true (order-independent)
 ```
 
 #### Usage
@@ -270,21 +284,23 @@ component Counter {
 
 ### param
 
+<!-- SNGL-component -->
 ```sngl
-param name type = default   // explicit type
-param name = default        // type inferred
-param name type             // no default, zero value
+param name string = "default"   // explicit type
+param label = "default"         // type inferred
+param count int                 // no default, zero value
 ```
 
 ### prop (stdlib)
 
+<!-- SNGL-component -->
 ```sngl
 prop value string
-prop type string enum(text, password, number, email)
 ```
 
 ### event (stdlib)
 
+<!-- SNGL-component -->
 ```sngl
 event click ClickEvent
 event input InputEvent
@@ -292,14 +308,14 @@ event input InputEvent
 
 ### children (stdlib)
 
+<!-- SNGL-component -->
 ```sngl
 children none
-children one
-children many
 ```
 
 ### Usage
 
+<!-- SNGL-component -->
 ```sngl
 Counter(label="Clicks")
 Counter(label="Score", start=10)
@@ -309,14 +325,16 @@ Counter(label="Score", start=10)
 
 ### Syntax
 
+<!-- SNGL-component -->
 ```sngl
-componentName(key=expr, key=expr) {
-    children...
+text(value="hello", style={fontSize=24}) {
+    @tooltip(text="A tip")
 }
 ```
 
 Both `()` and `{}` are optional:
 
+<!-- SNGL-component -->
 ```sngl
 spacer
 text(value="Hello")
@@ -327,6 +345,7 @@ vbox { text(value="Hi") }
 
 Events use the `@` prefix and contain statement blocks:
 
+<!-- SNGL-component -->
 ```sngl
 button(@click={ count += 1 })
 input(@input={ name = event.value })
@@ -338,6 +357,7 @@ button(@click={
 
 ### Inline Style
 
+<!-- SNGL-component -->
 ```sngl
 vbox(style={gap=12, padding=16})
 text(value="hello", style={color=#007700, fontSize=24})
@@ -347,6 +367,7 @@ text(value="hello", style={color=#007700, fontSize=24})
 
 Inside a children block, `@name(props)` defines attribute metadata:
 
+<!-- SNGL-component -->
 ```sngl
 text(value="hello") {
     @tooltip(text="A helpful tip")
@@ -357,6 +378,7 @@ text(value="hello") {
 
 ### if
 
+<!-- SNGL-component -->
 ```sngl
 if isAdult {
     text(value="(Adult)", style={color=#007700})
@@ -368,6 +390,7 @@ if !isAdult {
 
 ### for
 
+<!-- SNGL-component -->
 ```sngl
 for item in todos {
     text(value=item.text)
@@ -466,15 +489,16 @@ func Todo.label(t Todo) string = t.done ? "[x] {t.text}" : "[ ] {t.text}"
 
 Type methods support two call styles:
 
+<!-- SNGL-component -->
 ```sngl
 // Type-qualified — explicit receiver as first argument
-int.double(5)            // 10
-string.shout("hello")    // "hello!"
+computed _a = int.double(5)            // 10
+computed _b = string.shout("hello")    // "hello!"
 
 // Method syntax — receiver is implicit
 var n = 5
-n.double()               // 10
-"hello".shout()          // "hello!"
+computed _c = n.double()               // 10
+computed _d = "hello".shout()          // "hello!"
 ```
 
 ## Built-in Functions

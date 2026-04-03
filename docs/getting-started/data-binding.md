@@ -60,9 +60,7 @@ Use `func` to declare reusable logic alongside your state. Functions can read co
 component main {
     var count = 0
     var todos list<Todo> = []
-    computed remaining = todos.length() - doneCount()
-
-    func doneCount() int = todos.filter(t => t.done).length()
+    computed remaining = size(todos) - count
 
     func addTodo(text string) {
         todos.push(Todo{text: text, done: false})
@@ -72,12 +70,13 @@ component main {
         count = 0
     }
 
-    text(value="Done: {doneCount()} / {todos.length()}")
+    text(value="Remaining: {remaining}")
+    button(text="Add", @click={ addTodo("New item") })
     button(text="Reset", @click={ reset() })
 }
 ```
 
-Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
+Computed values can reference functions, and functions can read component state. Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
 
 ## Modifiers
 
@@ -120,6 +119,7 @@ SNGL uses Go-like expression syntax:
 
 Statements appear in event handler blocks and mutate state directly:
 
+<!-- SNGL-component -->
 ```sngl
 button(@click={ count += 1 })
 

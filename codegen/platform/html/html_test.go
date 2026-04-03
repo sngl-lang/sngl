@@ -71,7 +71,7 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestTodoApp(t *testing.T) {
-	html := generateHTML(t, "../../../_examples/todo/todo.sngl")
+	html := generateHTML(t, "../../../examples/todo/todo.sngl")
 
 	checks := []string{
 		"<!DOCTYPE html>",
@@ -112,7 +112,7 @@ func TestFullExample(t *testing.T) {
 }
 
 func TestJSGettersSetters(t *testing.T) {
-	html := generateHTML(t, "../../../_examples/todo/todo.sngl")
+	html := generateHTML(t, "../../../examples/todo/todo.sngl")
 
 	checks := []string{
 		"$set_todos",

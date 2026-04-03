@@ -5,8 +5,8 @@ the goal is to compile it from `todo.sngl.kdl` as the SNGL compiler matures.
 
 ## Run
 
-    go run ./_examples/todo/
+    go run ./examples/todo/
 
 ## SNGL check (validates the source)
 
-    sngl check _examples/todo/todo.sngl.kdl
+    sngl check examples/todo/todo.sngl.kdl

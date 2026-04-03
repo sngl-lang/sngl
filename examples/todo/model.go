@@ -125,7 +125,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 1:
-			m.todos = push(m.todos, Todo{Text: m.newTodo, Done: false})
+			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
 			m.input0.SetValue(m.newTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
@@ -142,7 +142,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.todosCursor++
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 3:
-			m.todos = remove(m.todos, (len(m.todos) - 1))
+			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
 		}
 	}
 	if m.focus == 0 {

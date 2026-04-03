@@ -101,7 +101,7 @@ go tool docsgen
 
 ## Examples
 
-See [`_examples/`](_examples/) for complete apps. The [todo app](_examples/todo/) demonstrates structs, reactive state, computed values, event handling, and iteration.
+See [`examples/`](examples/) for complete apps. The [todo app](examples/todo/) demonstrates structs, reactive state, computed values, event handling, and iteration.
 
 ## License
 

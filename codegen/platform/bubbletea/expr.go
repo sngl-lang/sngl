@@ -172,6 +172,14 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 	if fn == "float" && len(args) == 1 {
 		return "float64(" + ec.translateExpr(args[0]) + ")"
 	}
+	if fn == "push" && len(args) == 2 {
+		return "append(" + ec.translateExpr(args[0]) + ", " + ec.translateExpr(args[1]) + ")"
+	}
+	if fn == "remove" && len(args) == 2 {
+		list := ec.translateExpr(args[0])
+		idx := ec.translateExpr(args[1])
+		return "append(" + list + "[:" + idx + "], " + list + "[" + idx + "+1:]...)"
+	}
 
 	// Struct constructor call
 	if fields, ok := ec.structNames[fn]; ok {

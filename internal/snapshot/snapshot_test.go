@@ -18,7 +18,7 @@ import (
 
 func TestGenerate(t *testing.T) {
 	// Find the todo example relative to the module root.
-	sourceFile, err := filepath.Abs("../../_examples/todo/todo.sngl")
+	sourceFile, err := filepath.Abs("../../examples/todo/todo.sngl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ type htmlSnapshotter interface {
 }
 
 func TestSnapshotFidelity(t *testing.T) {
-	sourceFile, err := filepath.Abs("../../_examples/todo/todo.sngl")
+	sourceFile, err := filepath.Abs("../../examples/todo/todo.sngl")
 	if err != nil {
 		t.Fatal(err)
 	}

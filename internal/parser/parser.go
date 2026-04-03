@@ -139,6 +139,24 @@ func (p *parser) parseDocument() *ast.Document {
 			td := p.parseTestDef(true)
 			td.Disabled = disabled
 			doc.Tests = append(doc.Tests, td)
+		case KW_CONST:
+			consts := p.parseConstDecl()
+			for _, c := range consts {
+				c.Disabled = disabled
+			}
+			doc.Consts = append(doc.Consts, consts...)
+		case KW_VAR:
+			vars := p.parseVarDecl()
+			for _, d := range vars {
+				d.Disabled = disabled
+			}
+			doc.Data = append(doc.Data, vars...)
+		case KW_COMPUTED:
+			computeds := p.parseComputedDecl()
+			for _, c := range computeds {
+				c.Disabled = disabled
+			}
+			doc.Computeds = append(doc.Computeds, computeds...)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled

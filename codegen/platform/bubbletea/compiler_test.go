@@ -71,11 +71,11 @@ func TestGettersSetters(t *testing.T) {
 }
 
 func TestCompileTodo(t *testing.T) {
-	doc, err := testutil.ParseFile("../../../_examples/todo/todo.sngl")
+	doc, err := testutil.ParseFile("../../../examples/todo/todo.sngl")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, "../../../_examples/todo", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, "../../../examples/todo", nil, nil, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	compileAndVerify(t, doc)
