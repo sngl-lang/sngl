@@ -1,10 +1,10 @@
 output {
     go {
-        bubbletea(package="main")
+        bubbletea
+        fyne
     }
-    js {
-        html
-    }
+    js { html }
+    kotlin { android }
 }
 
 struct Todo {
