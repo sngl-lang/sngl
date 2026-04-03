@@ -640,11 +640,11 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tm := New()\n")
+	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	if len(info.timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")
 	}
-	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	b.WriteString("\tw.ShowAndRun()\n")
 	if len(info.timers) > 0 {
 		b.WriteString("\tm.StopTimers()\n")

@@ -79,6 +79,19 @@ func ParseOutputs(sourceFile string) ([]*ast.Output, error) {
 	return doc.Outputs, nil
 }
 
+// PlatformsForFile returns the platform names from a .sngl file's output block.
+func PlatformsForFile(sourceFile string) []string {
+	outputs, err := ParseOutputs(sourceFile)
+	if err != nil {
+		return nil
+	}
+	var platforms []string
+	for _, o := range outputs {
+		platforms = append(platforms, o.Platform)
+	}
+	return platforms
+}
+
 func ParseSNGL(filename string) (*ast.Document, error) {
 	f, err := os.Open(filename)
 	if err != nil {

@@ -234,13 +234,14 @@ document.querySelector(".tab-bar").addEventListener("click", (e) => {
 
 // Examples dropdown
 document.getElementById("examples").addEventListener("change", (e) => {
-    if (e.target.value === "default") {
-        const el = document.getElementById("default-source");
-        if (el) {
-            editor.dispatch({
-                changes: { from: 0, to: editor.state.doc.length, insert: el.textContent.trim() },
-            });
-        }
+    const val = e.target.value;
+    if (!val) return;
+    // Try name-specific source first, fall back to default-source
+    const el = document.getElementById(val + "-source") || document.getElementById("default-source");
+    if (el) {
+        editor.dispatch({
+            changes: { from: 0, to: editor.state.doc.length, insert: el.textContent.trim() },
+        });
     }
     e.target.value = "";
 });

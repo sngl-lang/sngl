@@ -6,7 +6,7 @@ description: "A purpose-built language for reactive, cross-platform UIs"
 
 ## What is SNGL?
 
-SNGL is a purpose-built language for describing reactive user interfaces that compile to multiple languages and platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets.
+SNGL (pronounced "snuggle") is a purpose-built language for describing reactive user interfaces that compile to multiple languages and platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets.
 
 <div class="platform-carousel">
   <div class="carousel-slides">
@@ -33,6 +33,17 @@ SNGL is a purpose-built language for describing reactive user interfaces that co
 <script>
 var carouselPlatforms = ['html', 'bubbletea', 'fyne', 'android'];
 var carouselIndex = 0;
+// Hide slides and tabs for missing screenshots.
+document.querySelectorAll('.slide img').forEach(function(img) {
+  img.onerror = function() {
+    var slide = img.closest('.slide');
+    var platform = slide.dataset.platform;
+    slide.remove();
+    var btn = document.querySelector('.carousel-tabs button[onclick*="' + platform + '"]');
+    if (btn) btn.remove();
+    carouselPlatforms = carouselPlatforms.filter(function(p) { return p !== platform; });
+  };
+});
 function showSlide(platform) {
   document.querySelectorAll('.carousel-slides .slide').forEach(function(s) { s.classList.remove('active'); });
   document.querySelectorAll('.carousel-tabs button').forEach(function(b) { b.classList.remove('active'); });
@@ -43,16 +54,17 @@ function showSlide(platform) {
   carouselIndex = carouselPlatforms.indexOf(platform);
 }
 setInterval(function() {
+  if (carouselPlatforms.length === 0) return;
   carouselIndex = (carouselIndex + 1) % carouselPlatforms.length;
   showSlide(carouselPlatforms[carouselIndex]);
 }, 5000);
 </script>
 <style>
 .platform-carousel { text-align: center; margin: 32px 0; }
-.carousel-slides { position: relative; max-width: 800px; margin: 0 auto; }
-.slide { display: none; }
-.slide.active { display: block; }
-.slide img { width: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.carousel-slides { position: relative; max-width: 800px; height: 500px; margin: 0 auto; }
+.slide { display: none; position: absolute; inset: 0; }
+.slide.active { display: flex; align-items: center; justify-content: center; }
+.slide img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); object-fit: contain; }
 .carousel-tabs { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
 .carousel-tabs button { padding: 8px 20px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
 .carousel-tabs button.active { background: #2196f3; color: #fff; border-color: #2196f3; }

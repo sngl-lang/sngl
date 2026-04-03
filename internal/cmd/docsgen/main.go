@@ -1,6 +1,6 @@
 // Command docsgen builds the documentation site with platform snapshots.
 //
-// Usage: go tool docsgen [-docs docs] [-out _site]
+// Usage: go tool docsgen [-docs docs] [-out _site] [-http :3580]
 package main
 
 import (
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,15 +18,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/playground"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
 func main() {
 	docsDir := flag.String("docs", "docs", "documentation source directory")
 	outDir := flag.String("out", "_site", "output directory")
+	httpAddr := flag.String("http", "", "start HTTP server after build (e.g., :3580)")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -51,6 +51,11 @@ func main() {
 	generateGallery(*docsDir, *outDir)
 
 	fmt.Printf("Site built in %s/\n", *outDir)
+
+	if *httpAddr != "" {
+		fmt.Printf("Serving on http://localhost%s\n", *httpAddr)
+		log.Fatal(http.ListenAndServe(*httpAddr, http.FileServer(http.Dir(*outDir))))
+	}
 }
 
 func buildPlayground(docsDir, outDir string) error {
@@ -108,34 +113,75 @@ func buildPlayground(docsDir, outDir string) error {
 		return err
 	}
 
-	// Embed default example source.
-	examplesDir := filepath.Join(filepath.Dir(docsDir), "_examples")
-	for _, name := range []string{"todo.sngl"} {
-		examplePath := filepath.Join(examplesDir, "todo", name)
-		exampleData, err := os.ReadFile(examplePath)
-		if err != nil {
+	// Inject example .sngl files from examples/ directory.
+	examplesDir := filepath.Join(filepath.Dir(docsDir), "examples")
+	type example struct {
+		name, label, source string
+	}
+	var examples []example
+	entries, _ := os.ReadDir(examplesDir)
+	for _, entry := range entries {
+		if !entry.IsDir() {
 			continue
 		}
-		placeholder := `app {
+		dir := filepath.Join(examplesDir, entry.Name())
+		files, _ := os.ReadDir(dir)
+		for _, f := range files {
+			if !strings.HasSuffix(f.Name(), ".sngl") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, f.Name()))
+			if err != nil {
+				continue
+			}
+			src := strings.TrimSpace(string(data))
+			// Skip examples with go:// imports (not supported in WASM playground)
+			if strings.Contains(src, `"go://`) {
+				continue
+			}
+			name := entry.Name()
+			label := strings.ReplaceAll(strings.Title(name), "-", " ") //nolint:staticcheck
+			examples = append(examples, example{name: name, label: label, source: src})
+		}
+	}
+
+	// Build <option> elements and <script> blocks for each example
+	var optionTags, scriptTags string
+	for _, ex := range examples {
+		optionTags += fmt.Sprintf("            <option value=\"%s\">%s</option>\n", ex.name, ex.label)
+		scriptTags += fmt.Sprintf("    <script type=\"text/sngl\" id=\"%s-source\">%s</script>\n", ex.name, ex.source)
+	}
+
+	// Replace the static examples dropdown
+	html := string(htmlData)
+	html = strings.Replace(html, `            <option value="default">Todo App</option>`, optionTags, 1)
+
+	// Replace the static default-source script with all example scripts
+	oldDefault := `    <script type="text/sngl" id="default-source">
+app {
     vbox style.padding=16 {
         text value="Hello, SNGL!"
     }
-}`
-		htmlData = []byte(strings.Replace(string(htmlData), placeholder, strings.TrimSpace(string(exampleData)), 1))
-		break
+}
+</script>`
+	html = strings.Replace(html, oldDefault, scriptTags, 1)
+
+	// Set the first example as default-source for initial load
+	if len(examples) > 0 {
+		html = strings.Replace(html, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
 	}
 
-	if err := os.WriteFile(filepath.Join(outDir, "playground.html"), htmlData, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(outDir, "playground.html"), []byte(html), 0o644); err != nil {
 		return err
 	}
 	os.Remove(filepath.Join(playgroundDir, "playground.html"))
 
-	log.Printf("playground: assets ready")
+	log.Printf("playground: %d examples injected", len(examples))
 	return nil
 }
 
 func generateSnapshots(docsDir, outDir string) {
-	examplesDir := filepath.Join(filepath.Dir(docsDir), "_examples")
+	examplesDir := filepath.Join(filepath.Dir(docsDir), "examples")
 	entries, err := os.ReadDir(examplesDir)
 	if err != nil {
 		return
@@ -151,23 +197,30 @@ func generateSnapshots(docsDir, outDir string) {
 			if err != nil || d.IsDir() {
 				return err
 			}
-			lower := filepath.Ext(path)
-			if lower == ".kdl" || lower == ".sngl" {
-				if filepath.Ext(path[:len(path)-len(lower)]) == ".sngl" || lower == ".sngl" {
-					snglFiles = append(snglFiles, path)
-				}
+			if strings.HasSuffix(path, ".sngl") {
+				snglFiles = append(snglFiles, path)
 			}
 			return nil
 		})
 
 		for _, sf := range snglFiles {
 			snapDir := filepath.Join(outDir, "assets", "snapshots", entry.Name())
-			results, err := snapshot.Generate(snapshot.Config{
-				SourceFile: sf,
-				OutDir:     snapDir,
-			})
-			if err != nil {
-				log.Printf("skipping snapshots for %s: %v", sf, err)
+			// Generate snapshots per-platform so one failure doesn't skip all.
+			platforms := snapshot.PlatformsForFile(sf)
+			var results []snapshot.Result
+			for _, plat := range platforms {
+				r, err := snapshot.Generate(snapshot.Config{
+					SourceFile: sf,
+					Platforms:  []string{plat},
+					OutDir:     snapDir,
+				})
+				if err != nil {
+					log.Printf("skipping %s/%s: %v", entry.Name(), plat, err)
+					continue
+				}
+				results = append(results, r...)
+			}
+			if len(results) == 0 {
 				continue
 			}
 			for _, r := range results {

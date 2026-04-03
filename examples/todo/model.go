@@ -19,6 +19,13 @@ func ternary[T any](cond bool, a, b T) T {
 	return b
 }
 
+type Color struct {
+	R int
+	G int
+	B int
+	A int
+}
+
 type Todo struct {
 	Text string
 	Done bool
@@ -44,7 +51,7 @@ func New() Model {
 		todos:   nil,
 	}
 	m.input0 = textinput.New()
-	m.input0.Placeholder = "What needs to be done?"
+	m.input0.Placeholder = "Buy eggs"
 	m.input0.SetValue(m.newTodo)
 	m.input0.Focus()
 	return m
@@ -118,7 +125,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 1:
-			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
+			m.todos = push(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
 			m.input0.SetValue(m.newTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
@@ -135,7 +142,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.todosCursor++
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 3:
-			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
+			m.todos = remove(m.todos, (len(m.todos) - 1))
 		}
 	}
 	if m.focus == 0 {
@@ -148,56 +155,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
-	var content0 string
-	content0 = lipgloss.NewStyle().
+	var content_0 string
+	content_0 = lipgloss.NewStyle().
 		Bold(true).Render(m.status())
-	contentChildren = append(contentChildren, content0)
-	var content1 string
-	var content1Children []string
-	var content10 string
-	content10 = m.input0.View()
-	content1Children = append(content1Children, content10)
-	var content11 string
-	content11Focused := m.focus == 1
-	content11Prefix := " "
-	if content11Focused {
-		content11Prefix = ">"
+	contentChildren = append(contentChildren, content_0)
+	var content_1 string
+	var content_1Children []string
+	var content_1_0 string
+	content_1_0 = m.input0.View()
+	content_1Children = append(content_1Children, content_1_0)
+	var content_1_1 string
+	content_1_1Focused := m.focus == 1
+	content_1_1Prefix := " "
+	if content_1_1Focused {
+		content_1_1Prefix = ">"
 	}
-	content11 = lipgloss.NewStyle().Render(content11Prefix + " " + "Add")
-	content1Children = append(content1Children, content11)
-	content1Gap := strings.Repeat(" ", 1)
-	content1Joined := strings.Join(content1Children, content1Gap)
-	content1 = content1Joined
-	contentChildren = append(contentChildren, content1)
-	var content2 string
-	var content2Children []string
-	var content20 string
-	var content20Items []string
+	content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + "Add")
+	content_1Children = append(content_1Children, content_1_1)
+	content_1Gap := strings.Repeat(" ", 1)
+	content_1Joined := strings.Join(content_1Children, content_1Gap)
+	content_1 = lipgloss.NewStyle().
+		AlignHorizontal(lipgloss.Center).Render(content_1Joined)
+	contentChildren = append(contentChildren, content_1)
+	var content_2 string
+	var content_2Children []string
+	var content_2_0 string
+	var content_2_0Items []string
 	for index, item := range m.todos {
 		_ = index
-		var content20Item string
-		content20ItemFocused := m.focus == 2 && m.todosCursor == index
-		content20ItemPrefix := " "
-		if content20ItemFocused {
-			content20ItemPrefix = ">"
+		var content_2_0Item string
+		content_2_0ItemFocused := m.focus == 2 && m.todosCursor == index
+		content_2_0ItemPrefix := " "
+		if content_2_0ItemFocused {
+			content_2_0ItemPrefix = ">"
 		}
-		content20Item = lipgloss.NewStyle().Render(content20ItemPrefix + " " + ternary(item.Done, "[x] ", "[ ] ") + item.Text)
-		content20Items = append(content20Items, content20Item)
+		content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + ternary(item.Done, "[x] ", "[ ] ") + item.Text)
+		content_2_0Items = append(content_2_0Items, content_2_0Item)
 	}
-	content20 = strings.Join(content20Items, "\n")
-	content2Children = append(content2Children, content20)
-	content2Gap := strings.Repeat("\n", 1)
-	content2Joined := strings.Join(content2Children, content2Gap)
-	content2 = content2Joined
-	contentChildren = append(contentChildren, content2)
-	var content3 string
-	content3Focused := m.focus == 3
-	content3Prefix := " "
-	if content3Focused {
-		content3Prefix = ">"
+	content_2_0 = strings.Join(content_2_0Items, "\n")
+	content_2Children = append(content_2Children, content_2_0)
+	content_2Gap := strings.Repeat("\n", 1)
+	content_2Joined := strings.Join(content_2Children, content_2Gap)
+	content_2 = content_2Joined
+	contentChildren = append(contentChildren, content_2)
+	var content_3 string
+	content_3Focused := m.focus == 3
+	content_3Prefix := " "
+	if content_3Focused {
+		content_3Prefix = ">"
 	}
-	content3 = lipgloss.NewStyle().Render(content3Prefix + " " + "Remove Last")
-	contentChildren = append(contentChildren, content3)
+	content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + "Remove")
+	contentChildren = append(contentChildren, content_3)
 	contentGap := strings.Repeat("\n", 1)
 	contentJoined := strings.Join(contentChildren, contentGap)
 	content = lipgloss.NewStyle().

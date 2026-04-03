@@ -4,30 +4,47 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; }
+    @keyframes sngl-spin { to { transform: rotate(360deg); } }
+    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }
   </style>
 </head><body>
 
 <div style="gap:12px;padding:16px;display:flex;flex-direction:column">
   <span id="$0" style="font-size:24px;font-weight:bold">
 </span>
-  <div style="gap:8px;display:flex;flex-direction:row">
-    <input id="$1" placeholder="What needs to be done?" value="" />
+  <div style="gap:8px;text-align:center;display:flex;flex-direction:row">
+    <input id="$1" placeholder="Buy eggs" value="" />
     <button id="$2">Add</button>
   </div>
   <div style="gap:4px;display:flex;flex-direction:column">
     <div id="$3">
     </div>
   </div>
-  <button id="$4">Remove Last</button>
+  <button id="$4">Remove</button>
 </div>
 
 <script>
 // State
 let state = {newTodo: "", todos: []};
 
+function Color(r, g, b, a) { return {r, g, b, a}; }
 function Todo(text, done) { return {text, done}; }
 
-function $status() { return (("Todo List (" + String(state.todos.length)) + " items)"); }
+function $status() { return (("Todo List (" + String(size(state.todos))) + " items)"); }
+
+function $get_newTodo() { return state.newTodo; }
+function $get_todos() { return state.todos; }
+
+function $set_newTodo(v) {
+  state.newTodo = v;
+  $u_1_val();
+}
+function $set_todos(v) {
+  state.todos = v;
+  $u_0_text();
+  $u_3_list();
+}
+
 
 function String(v) { return "" + v; }
 
@@ -62,14 +79,14 @@ $1.addEventListener("input", function(e) {
   $u_1_val();
 });
 $2.addEventListener("click", function() {
-  state.todos.push({text: state.newTodo, done: false});
+  state.todos = push(state.todos, Todo(state.newTodo, false));
   state.newTodo = "";
   $u_0_text();
   $u_1_val();
   $u_3_list();
 });
 $4.addEventListener("click", function() {
-  state.todos.splice((state.todos.length - 1), 1);
+  state.todos = remove(state.todos, (size(state.todos) - 1));
   $u_0_text();
   $u_3_list();
 });

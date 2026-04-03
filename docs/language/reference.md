@@ -139,6 +139,14 @@ struct Todo {
 }
 ```
 
+Structs are value types — they cannot be assigned `null`. Declare without an initializer for zero-value defaults:
+
+```sngl
+var todo Todo            // zero-value: Todo{text: "", done: false}
+var todo = Todo("Buy eggs", false)  // explicit construction
+var todo Todo = null     // ERROR: null is not assignable to struct
+```
+
 ### enum
 
 Declares a named set of allowed string values. Enum values are identifiers:
@@ -473,10 +481,12 @@ n.double()               // 10
 
 | Function | Signature | Description |
 | --- | --- | --- |
-| `string` | `string(value) -> string` | Convert to string |
-| `int` | `int(value) -> int` | Convert to int |
-| `float` | `float(value) -> float` | Convert to float |
+| `string` | `string(value) -> string` | Convert any value to string |
+| `int` | `int(value) -> int` | Convert to int (not valid on structs) |
+| `float` | `float(value) -> float` | Convert to float (not valid on structs) |
 | `embed` | `embed(path) -> string` | Compile-time file contents |
+
+Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.
 
 ## List Methods
 

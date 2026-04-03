@@ -795,10 +795,17 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 	case *ast.CallExpr:
 		switch e.Func {
 		case "string":
+			// string() is allowed on all types including structs
 			return String
 		case "int":
+			if len(e.Args) == 1 && c.inferNodeType(e.Args[0]) == Struct {
+				c.errorAt(ast.Pos{}, "cannot convert struct to int")
+			}
 			return Int
 		case "float":
+			if len(e.Args) == 1 && c.inferNodeType(e.Args[0]) == Struct {
+				c.errorAt(ast.Pos{}, "cannot convert struct to float")
+			}
 			return Float
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {
@@ -1220,8 +1227,14 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		case "string":
 			return String
 		case "int":
+			if len(e.Args) == 1 && c.inferNodeTypeInScope(e.Args[0], scope) == Struct {
+				c.errorAt(ast.Pos{}, "cannot convert struct to int")
+			}
 			return Int
 		case "float":
+			if len(e.Args) == 1 && c.inferNodeTypeInScope(e.Args[0], scope) == Struct {
+				c.errorAt(ast.Pos{}, "cannot convert struct to float")
+			}
 			return Float
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {

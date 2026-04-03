@@ -102,7 +102,7 @@ func Generate(cfg Config) ([]Result, error) {
 func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byte, error) {
 	plat := codegen.LookupPlatform(platform)
 
-	// If the platform implements Snapshotter, let it handle capture natively.
+	// If the platform implements Snapshotter, use native capture.
 	if snapshotter, ok := plat.(codegen.Snapshotter); ok {
 		doc, err := ParseSNGL(sourceFile)
 		if err != nil {
@@ -115,7 +115,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		return snapshotter.Snapshot(doc, langT, width, height)
 	}
 
-	// Fallback: compile to HTML preview, then use HTML platform's SnapshotHTML.
+	// Platforms without a Snapshotter: compile to HTML preview and screenshot.
 	return snapshotViaHTML(sourceFile, platform, lang, width, height)
 }
 
@@ -138,8 +138,10 @@ func snapshotViaHTML(sourceFile, platform, lang string, width, height int) ([]by
 // LangForPlatform returns the default language for a platform.
 func LangForPlatform(platform string) string {
 	switch platform {
-	case "bubbletea":
+	case "bubbletea", "fyne":
 		return "go"
+	case "android":
+		return "kotlin"
 	default:
 		return "js"
 	}

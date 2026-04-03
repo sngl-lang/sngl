@@ -129,9 +129,15 @@ func (tc *toolchain) findKotlinc() error {
 	if p, err := exec.LookPath("kotlinc"); err == nil {
 		tc.Kotlinc = p
 		kotlinHome := filepath.Dir(filepath.Dir(p))
-		libDir := filepath.Join(kotlinHome, "lib")
-		if dirExists(libDir) {
-			tc.KotlinLibs = findJars(libDir, "kotlin-stdlib")
+		// Check multiple lib locations — distro packages may use /usr/share/kotlin/lib/
+		for _, libDir := range []string{
+			filepath.Join(kotlinHome, "lib"),
+			filepath.Join(kotlinHome, "share", "kotlin", "lib"),
+		} {
+			if jars := findJars(libDir, "kotlin-stdlib"); len(jars) > 0 {
+				tc.KotlinLibs = jars
+				break
+			}
 		}
 		return nil
 	}
@@ -166,11 +172,22 @@ func (tc *toolchain) downloadKotlin() error {
 func (tc *toolchain) findComposePlugin() error {
 	// Kotlin 2.x ships compose-compiler-plugin.jar in its lib/ directory.
 	// Use the bundled version to avoid version mismatches.
+	// Check multiple possible locations since package managers put files in
+	// different places (e.g., /usr/share/kotlin/lib/ on some distros).
 	kotlinHome := filepath.Dir(filepath.Dir(tc.Kotlinc))
-	bundled := filepath.Join(kotlinHome, "lib", "compose-compiler-plugin.jar")
-	if fileExists(bundled) {
-		tc.ComposePlugin = bundled
-		return nil
+	candidates := []string{
+		filepath.Join(kotlinHome, "lib", "compose-compiler-plugin.jar"),
+		filepath.Join(kotlinHome, "share", "kotlin", "lib", "compose-compiler-plugin.jar"),
+	}
+	// Also check the directory containing the kotlin stdlib jars
+	if len(tc.KotlinLibs) > 0 {
+		candidates = append(candidates, filepath.Join(filepath.Dir(tc.KotlinLibs[0]), "compose-compiler-plugin.jar"))
+	}
+	for _, bundled := range candidates {
+		if fileExists(bundled) {
+			tc.ComposePlugin = bundled
+			return nil
+		}
 	}
 
 	// Fall back to downloading from Maven Central
