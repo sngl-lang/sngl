@@ -10,6 +10,7 @@ import "C"
 
 import (
 	_ "embed"
+	"time"
 	"unsafe"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
@@ -28,12 +29,28 @@ func Language() *ts.Language {
 }
 
 // Parse parses SNGL source code and returns a tree-sitter Tree.
-// The caller must call tree.Close() when done.
+// The caller must call tree.Close() when done. Returns nil if
+// parsing times out (3 seconds) to prevent editor hangs on
+// pathological inputs.
 func Parse(source []byte) *ts.Tree {
 	parser := ts.NewParser()
 	defer parser.Close()
 	parser.SetLanguage(Language())
-	return parser.Parse(source, nil)
+	deadline := time.Now().Add(3 * time.Second)
+	return parser.ParseWithOptions(
+		func(offset int, _ ts.Point) []byte {
+			if offset >= len(source) {
+				return nil
+			}
+			return source[offset:]
+		},
+		nil,
+		&ts.ParseOptions{
+			ProgressCallback: func(_ ts.ParseState) bool {
+				return time.Now().After(deadline)
+			},
+		},
+	)
 }
 
 // HasErrors returns true if any node in the tree is an ERROR or MISSING node.

@@ -412,36 +412,28 @@ func FuzzParse(f *testing.F) {
 			return
 		}
 
+		// Always parse with tree-sitter to detect timeouts on any input.
+		tsTree := tsparser.Parse(data)
+		if tsTree == nil {
+			t.Errorf("tree-sitter timed out on input: %q", data)
+			return
+		}
+		defer tsTree.Close()
+
 		if goErr == nil && goDoc != nil {
-			// Verify round-trip: format Go AST, re-parse with tree-sitter.
-			// We check the formatted output rather than raw input because
-			// the Go parser is more lenient about separators/whitespace,
-			// while tree-sitter relies on ASI which needs newlines.
+			// Round-trip: format Go AST, re-parse with tree-sitter.
 			formatted := parser.Format(goDoc)
 
-			// Run tree-sitter in a goroutine with timeout — the C parser
-			// can hang on pathological inputs.
-			type tsResult struct {
-				tree *ts.Tree
+			tree2 := tsparser.Parse([]byte(formatted))
+			if tree2 == nil {
+				t.Errorf("tree-sitter timed out on Go-formatted output\ninput: %q\nformatted: %q", data, formatted)
+				return
 			}
-			tsCh := make(chan tsResult, 1)
-			go func() {
-				tree := tsparser.Parse([]byte(formatted))
-				tsCh <- tsResult{tree}
-			}()
-			select {
-			case res := <-tsCh:
-				defer res.tree.Close()
-				if tsparser.HasErrors(res.tree) {
-					t.Errorf("tree-sitter failed on Go-formatted output\ninput: %q\nformatted: %q\nGo AST: %+v\nTS tree: %s",
-						data, formatted, goDoc, res.tree.RootNode().ToSexp())
-				}
-			case <-time.After(5 * time.Second):
-				t.Skipf("tree-sitter timed out on formatted output (pathological input)")
+			defer tree2.Close()
+			if tsparser.HasErrors(tree2) {
+				t.Errorf("tree-sitter failed on Go-formatted output\ninput: %q\nformatted: %q\nGo AST: %+v\nTS tree: %s",
+					data, formatted, goDoc, tree2.RootNode().ToSexp())
 			}
 		}
-
-		// Note: we don't check the reverse (tree-sitter accepts, Go rejects)
-		// because tree-sitter is error-recovering and more permissive by design.
 	})
 }

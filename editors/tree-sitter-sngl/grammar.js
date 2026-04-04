@@ -678,25 +678,25 @@ module.exports = grammar({
     parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
     struct_literal: ($) =>
-      seq(
+      prec(-1, seq(
         field("name", $._struct_name),
         "{",
         commaSep(choice($.struct_field_value, $.spread_expression)),
         optional(","),
         "}",
-      ),
+      )),
 
     _struct_name: ($) =>
       seq($.identifier, optional(seq(".", $.identifier))),
 
     // Anonymous struct literal (type inferred from context): {field=val, ...}
     anon_struct_literal: ($) =>
-      seq(
+      prec(-1, seq(
         "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),
         "}",
-      ),
+      )),
 
     struct_field_value: ($) =>
       seq(
