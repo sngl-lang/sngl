@@ -1,13 +1,13 @@
 component fold {
-    var s = string(42)       // FOLD "42"
-    var i = int(3.14)        // FOLD 3
-    var f = float(1)         // FOLD 1.0
-    var sz = string.length("hello") // FOLD 5
-    var ml = "abc".length()  // FOLD 3
-    var mc = "hello".contains("ell") // FOLD true
+    var s = string(42)                 // FOLD "42"
+    var i = int(3.14)                  // FOLD 3
+    var f = float(1)                   // FOLD 1.0
+    var sz = string.length("hello")    // FOLD 5
+    var ml = "abc".length()            // FOLD 3
+    var mc = "hello".contains("ell")   // FOLD true
     var sw = "hello".startsWith("hel") // FOLD true
-    var ew = "hello".endsWith("llo") // FOLD true
-    var noc = "hello".contains("xyz") // FOLD false
+    var ew = "hello".endsWith("llo")   // FOLD true
+    var noc = "hello".contains("xyz")  // FOLD false
 
     text(value="{s}")
 }

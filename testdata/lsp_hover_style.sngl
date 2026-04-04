@@ -1,4 +1,4 @@
 component main {
     text(value="hello") //@ hover("color", "style property")
-    // color is a known style property
+                        // color is a known style property
 }

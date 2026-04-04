@@ -1,18 +1,18 @@
 component counter {
     var count = 0
 
-    button #inc (text="+", @click={ count += 1 })
-    button #dec (text="-", @click={ count -= 1 })
-    text #display (value="Count: {count}")
+    button #inc(text="+", @click={ count += 1 })
+    button #dec(text="-", @click={ count -= 1 })
+    text #display(value="Count: {count}")
 }
 
 component wrapper {
     var visible = true
 
     vbox {
-        text #hdr (value="header")
+        text #hdr(value="header")
         if visible {
-            text #conditional (value="shown")
+            text #conditional(value="shown")
         }
     }
 }
@@ -22,7 +22,7 @@ component listcomp {
 
     vbox {
         for item = items {
-            text #item (value=item)
+            text #item(value=item)
         }
     }
 }

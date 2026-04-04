@@ -6,7 +6,7 @@ struct TreeNode {
 
 component tree_view(node dyn = null) {
     vbox {
-        text #val (value=string(node.value))
+        text #val(value=string(node.value))
         if node.left != null {
             tree_view(node=node.left)
         }

@@ -1,41 +1,41 @@
 component arithfold {
     // Integer arithmetic
-    var add = 3 + 4           // FOLD 7
-    var sub = 10 - 3          // FOLD 7
-    var mul = 6 * 7           // FOLD 42
-    var div = 20 / 4          // FOLD 5
-    var mod = 17 % 5          // FOLD 2
+    var add = 3 + 4  // FOLD 7
+    var sub = 10 - 3 // FOLD 7
+    var mul = 6 * 7  // FOLD 42
+    var div = 20 / 4 // FOLD 5
+    var mod = 17 % 5 // FOLD 2
 
     // Float arithmetic
-    var fadd = 1.5 + 2.5      // FOLD 4.0
-    var fsub = 5.0 - 1.5      // FOLD 3.5
-    var fmul = 2.5 * 4.0      // FOLD 10.0
-    var fdiv = 7.5 / 2.5      // FOLD 3.0
+    var fadd = 1.5 + 2.5 // FOLD 4.0
+    var fsub = 5.0 - 1.5 // FOLD 3.5
+    var fmul = 2.5 * 4.0 // FOLD 10.0
+    var fdiv = 7.5 / 2.5 // FOLD 3.0
 
     // Comparisons (int)
-    var lt = 3 < 5            // FOLD true
-    var lte = 5 <= 5          // FOLD true
-    var gt = 7 > 3            // FOLD true
-    var gte = 3 >= 4          // FOLD false
+    var lt = 3 < 5   // FOLD true
+    var lte = 5 <= 5 // FOLD true
+    var gt = 7 > 3   // FOLD true
+    var gte = 3 >= 4 // FOLD false
 
     // Comparisons (float)
-    var flt = 1.5 < 2.5       // FOLD true
-    var fgt = 3.5 > 2.5       // FOLD true
+    var flt = 1.5 < 2.5 // FOLD true
+    var fgt = 3.5 > 2.5 // FOLD true
 
     // Boolean logic
-    var band = true && true    // FOLD true
-    var bor = false || true    // FOLD true
-    var bandf = true && false  // FOLD false
-    var borf = false || false  // FOLD false
+    var band = true && true   // FOLD true
+    var bor = false || true   // FOLD true
+    var bandf = true && false // FOLD false
+    var borf = false || false // FOLD false
 
     // Unary operations
-    var neg = -42             // FOLD -42
-    var fneg = -3.14          // FOLD -3.14
-    var bnot = !false         // FOLD true
+    var neg = -42     // FOLD -42
+    var fneg = -3.14  // FOLD -3.14
+    var bnot = !false // FOLD true
 
     // Equality
-    var eq = 5 == 5           // FOLD true
-    var neq = 5 != 3          // FOLD true
+    var eq = 5 == 5  // FOLD true
+    var neq = 5 != 3 // FOLD true
 
     // String concat
     var cat = "hello" + " " + "world" // FOLD "hello world"

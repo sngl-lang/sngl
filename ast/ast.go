@@ -117,6 +117,7 @@ func (d *Document) AllComponents() []*Component {
 // Top-level tests specify a Component name; nested subtests inherit it.
 type TestDef struct {
 	Pos       Pos
+	EndLine   int        // line of closing } (set by parser)
 	Component string     // component under test (top-level only)
 	Desc      string     // test description
 	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
@@ -234,6 +235,7 @@ type FuncParam struct {
 // Exactly one of Body or Block is set.
 type FuncDef struct {
 	Pos        Pos
+	EndLine    int // line of closing } for block-form funcs (set by parser)
 	Name       string
 	TypeParams []string   // generic type parameters, e.g., ["T", "U"]
 	Params     []*FuncParam
@@ -304,7 +306,9 @@ type Timer struct {
 
 type VisualNode struct {
 	Pos        Pos
+	EndLine    int // line of closing } (set by parser)
 	Component  string
+	HasBody    bool // true when { } was present in source (even if empty)
 	Disabled   bool
 	ID         string // element ID from #id syntax (empty = no ID)
 	Key        *Expr

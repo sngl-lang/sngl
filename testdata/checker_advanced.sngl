@@ -33,7 +33,7 @@ component main {
             count += 1
             flag!!
         })
-        button(text="reset", @click={count = 0})
+        button(text="reset", @click={ count = 0 })
     }
 }
 

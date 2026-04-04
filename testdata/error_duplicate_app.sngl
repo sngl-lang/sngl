@@ -1,6 +1,7 @@
 component main {
     text(value="first")
 }
+
 component main { // ERROR(parse) "duplicate"
     text(value="second")
 }

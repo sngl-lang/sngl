@@ -3,9 +3,9 @@ component emptylist {
 
     vbox {
         for item = items {
-            text #item (value=item)
+            text #item(value=item)
         } else {
-            text #empty (value="No items yet")
+            text #empty(value="No items yet")
         }
     }
 }

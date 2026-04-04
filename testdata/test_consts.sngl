@@ -4,7 +4,7 @@ component config {
     var count = 0
     func remaining() => max - count
 
-    text #out (value="{remaining} remaining")
+    text #out(value="{remaining} remaining")
 }
 
 test config "const values" {

@@ -378,6 +378,18 @@ func (p *parser) parseDocument() *ast.Document {
 		}
 	}
 	doc.Decls = mergeCommentsIntoDecls(doc.Decls, topComments)
+	// Sync Inline flags back to doc.Comments so the formatter's emitInlineComment works
+	inlineLines := map[int]bool{}
+	for _, d := range doc.Decls {
+		if c, ok := d.(*ast.Comment); ok && c.Inline {
+			inlineLines[c.Pos.Line] = true
+		}
+	}
+	for i := range doc.Comments {
+		if inlineLines[doc.Comments[i].Pos.Line] {
+			doc.Comments[i].Inline = true
+		}
+	}
 	return doc
 }
 
@@ -751,6 +763,7 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 		}
 		p.skipSemicolons()
 	}
+	td.EndLine = p.pos().Line
 	p.expect(RBRACE)
 	return td
 }
@@ -1075,18 +1088,21 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		// Void block form: func name(params) { ... }
 		p.advance()
 		fd.Block = p.parseFuncBlock()
+		fd.EndLine = p.pos().Line
 		p.expect(RBRACE)
 	} else if p.at(IDENT) && p.peekToken().Type == LBRACE && p.isTypedBlockFunc() {
 		// Typed block form: func name(params) type { ... }
 		fd.ReturnType = p.parseTypeString()
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
+		fd.EndLine = p.pos().Line
 		p.expect(RBRACE)
 	} else if p.at(IDENT) && p.peekToken().Type == LT && p.isGenericReturnTypeBlock() {
 		// Typed block form with generic return type: func name(params) list<T> { ... }
 		fd.ReturnType = p.parseTypeString()
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
+		fd.EndLine = p.pos().Line
 		p.expect(RBRACE)
 	} else if p.at(FAT_ARROW) {
 		// Expression form: func name(params) => expr
@@ -1296,6 +1312,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 
 	// Optional children block
 	if p.at(LBRACE) {
+		vn.HasBody = true
 		p.advance()
 		for !p.at(RBRACE) && !p.at(EOF) {
 			p.skipSemicolons()
@@ -1305,6 +1322,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 			vn.Children = append(vn.Children, p.parseNodeOrControl())
 			p.skipSemicolons()
 		}
+		vn.EndLine = p.pos().Line
 		p.expect(RBRACE)
 	}
 

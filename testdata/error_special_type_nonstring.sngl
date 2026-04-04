@@ -1,5 +1,5 @@
 component main {
-    var bg color = 123  // ERROR(check) "expected string literal"
+    var bg color = 123 // ERROR(check) "expected string literal"
 
     text(value="test")
 }

@@ -1,7 +1,7 @@
 component badge(label = "default", count = 0) {
     func display() => label
 
-    text #lbl (value=display)
+    text #lbl(value=display)
 }
 
 component dashboard {
@@ -11,7 +11,7 @@ component dashboard {
     vbox {
         badge(label=name, count=total)
         badge()
-        text #foot (value="footer")
+        text #foot(value="footer")
     }
 }
 

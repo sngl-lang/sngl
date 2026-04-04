@@ -1,9 +1,9 @@
 component methodfold {
     // int methods (qualified)
-    var imin = int.min(3, 7)       // FOLD 3
-    var imax = int.max(3, 7)       // FOLD 7
-    var iabs = int.abs(-5)         // FOLD 5
-    var iabsp = int.abs(5)         // FOLD 5
+    var imin = int.min(3, 7) // FOLD 3
+    var imax = int.max(3, 7) // FOLD 7
+    var iabs = int.abs(-5)   // FOLD 5
+    var iabsp = int.abs(5)   // FOLD 5
 
     // float methods (qualified)
     var fmin = float.min(1.5, 2.5) // FOLD 1.5
@@ -15,23 +15,23 @@ component methodfold {
     var fsqrt = float.sqrt(4.0)    // FOLD 2.0
 
     // string methods (qualified)
-    var sup = string.upper("hello") // FOLD "HELLO"
-    var slo = string.lower("HELLO") // FOLD "hello"
-    var str = string.trim("  hi  ") // FOLD "hi"
+    var sup = string.upper("hello")             // FOLD "HELLO"
+    var slo = string.lower("HELLO")             // FOLD "hello"
+    var str = string.trim("  hi  ")             // FOLD "hi"
     var srp = string.replace("hello", "l", "r") // FOLD "herro"
-    var sidx = string.indexOf("hello", "ll") // FOLD 2
-    var ssub = string.substring("hello", 1, 3) // FOLD "el"
+    var sidx = string.indexOf("hello", "ll")    // FOLD 2
+    var ssub = string.substring("hello", 1, 3)  // FOLD "el"
 
     // instance methods
-    var slen = "test".length()      // FOLD 4
-    var scon = "hello".contains("ell") // FOLD true
+    var slen = "test".length()          // FOLD 4
+    var scon = "hello".contains("ell")  // FOLD true
     var ssw = "hello".startsWith("hel") // FOLD true
-    var sew = "hello".endsWith("llo") // FOLD true
+    var sew = "hello".endsWith("llo")   // FOLD true
 
     // conversion functions
-    var si = string(100)           // FOLD "100"
-    var is = int(3.7)              // FOLD 3
-    var fi = float(5)              // FOLD 5.0
+    var si = string(100) // FOLD "100"
+    var is = int(3.7)    // FOLD 3
+    var fi = float(5)    // FOLD 5.0
 
     text(value="{imin}")
 }

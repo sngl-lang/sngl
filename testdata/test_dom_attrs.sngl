@@ -2,8 +2,8 @@ component styled {
     var tag = "main"
     var mode = "active"
 
-    text #t (class="header", key="t", value="hello")
-    text #d (class=mode, key="d", value="dynamic")
+    text #t(class="header", key="t", value="hello")
+    text #d(class=mode, key="d", value="dynamic")
 }
 
 test styled "static class" {
