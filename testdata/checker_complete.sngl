@@ -9,10 +9,7 @@ struct Config {
 
 enum Status { active, inactive }
 
-component Counter {
-    param label = ""
-    param count int
-
+component Counter(label = "", count int) {
     text(value=label + ": " + string(count))
     button(text="+", @click={ count = count + 1 })
 }

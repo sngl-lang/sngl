@@ -1,15 +1,10 @@
-component Button {
-    prop variant string enum(primary, secondary, danger)
-    event click int
-
-    children allowed
-
-    button(text="Click me", @click={click(1)})
+component Button(variant = "primary", @click) {
+    button(text="Click me", @click={ @click(1) })
 }
 
 component main {
     var count = 0
 
-    Button(variant="primary", @click={count += event}) // ERROR(check) "unknown property"
+    Button(variant="primary", @click={ count += event })
     text(value=string(count))
 }

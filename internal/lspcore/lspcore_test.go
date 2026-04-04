@@ -339,15 +339,15 @@ func TestComplete_ComponentKeywords(t *testing.T) {
 	if len(items) == 0 {
 		t.Fatal("expected component keyword completions")
 	}
-	foundParam := false
+	foundVar := false
 	for _, item := range items {
-		if item.Label == "param" {
-			foundParam = true
+		if item.Label == "var" {
+			foundVar = true
 			break
 		}
 	}
-	if !foundParam {
-		t.Error("expected 'param' in component completions")
+	if !foundVar {
+		t.Error("expected 'var' in component completions")
 	}
 }
 

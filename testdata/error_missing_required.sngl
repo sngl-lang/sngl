@@ -1,6 +1,4 @@
-component Greeting {
-    param name string required
-
+component Greeting(name string required) {
     text(value=name)
 }
 

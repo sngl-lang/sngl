@@ -31,8 +31,7 @@ Every SNGL app must have exactly one `component main` — this is the root of th
 Components are the building blocks of SNGL UIs. They encapsulate state, layout, and behavior:
 
 ```sngl
-component Counter {
-    param label = ""
+component Counter(label = "") {
     var count = 0
 
     hbox {

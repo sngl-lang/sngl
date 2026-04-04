@@ -6,7 +6,7 @@ component vbox {
     prop scroll bool
     // Whether a pull-to-refresh gesture is active.
     prop refreshing bool
-    event refresh RefreshEvent
+    @refresh RefreshEvent
     children many
 }
 
@@ -27,7 +27,7 @@ component text {
     prop value string
     // Allow the user to select and copy the text.
     prop selectable bool
-    event click ClickEvent
+    @click ClickEvent
     children none
 }
 
@@ -35,14 +35,14 @@ component text {
 component button {
     prop text string
     prop disabled bool
-    event click ClickEvent
-    event longPress LongPressEvent
+    @click ClickEvent
+    @longPress LongPressEvent
     children many
 }
 
 // Single-line text input field with keyboard type variants.
 component input {
-    prop value string
+    :value string
     prop placeholder string
     prop disabled bool
     prop readonly bool
@@ -50,11 +50,11 @@ component input {
     prop type string enum(text, password, number, email, url, tel, search)
     // Maximum number of characters allowed.
     prop maxLength int
-    event input InputEvent
-    event change ChangeEvent
-    event focus FocusEvent
-    event blur FocusEvent
-    event submit SubmitEvent
+    @input InputEvent
+    @change ChangeEvent
+    @focus FocusEvent
+    @blur FocusEvent
+    @submit SubmitEvent
     children none
 }
 
@@ -65,9 +65,9 @@ component image {
     prop alt string
     // How the image is scaled to fit its container.
     prop fit string enum(contain, cover, fill, none, scaleDown)
-    event click ClickEvent
-    event load LoadEvent
-    event error ErrorEvent
+    @click ClickEvent
+    @load LoadEvent
+    @error ErrorEvent
     children none
 }
 
@@ -79,8 +79,8 @@ component scroll {
     // Current vertical scroll offset as a fraction (0.0 to 1.0).
     prop scrollY float
     prop showScrollbar string enum(auto, always, never)
-    event scroll ScrollEvent
-    event scrollEnd ScrollEvent
+    @scroll ScrollEvent
+    @scrollEnd ScrollEvent
     children one
 }
 
@@ -93,10 +93,10 @@ component spacer {
 
 // Boolean toggle rendered as a checkmark box with an optional label.
 component checkbox {
-    prop checked bool
+    :checked bool
     prop label string
     prop disabled bool
-    event change ChangeEvent
+    @change ChangeEvent
     children none
 }
 
@@ -115,47 +115,47 @@ component radio {
     prop options list<string>
     prop disabled bool
     prop direction string enum(vertical, horizontal)
-    event change ChangeEvent
+    @change ChangeEvent
     children none
 }
 
 // On/off switch control with an optional label.
 component toggle {
-    prop checked bool
+    :checked bool
     prop label string
     prop disabled bool
-    event change ChangeEvent
+    @change ChangeEvent
     children none
 }
 
 // Dropdown selection control for picking one or more options from a list.
 component select {
-    prop value string
+    :value string
     // List of option values or {label, value} objects.
     prop options list<string>
     prop placeholder string
     prop disabled bool
     // Allow selecting multiple options.
     prop multiple bool
-    event change ChangeEvent
-    event focus FocusEvent
-    event blur FocusEvent
+    @change ChangeEvent
+    @focus FocusEvent
+    @blur FocusEvent
     children none
 }
 
 // Multi-line text input field.
 component textarea {
-    prop value string
+    :value string
     prop placeholder string
     prop disabled bool
     prop readonly bool
     // Number of visible text rows.
     prop rows int
     prop maxLength int
-    event input InputEvent
-    event change ChangeEvent
-    event focus FocusEvent
-    event blur FocusEvent
+    @input InputEvent
+    @change ChangeEvent
+    @focus FocusEvent
+    @blur FocusEvent
     children none
 }
 
@@ -195,7 +195,7 @@ component tabs {
     // Zero-based index of the active tab.
     prop selected int
     prop variant string enum(line, enclosed, pill)
-    event change SelectEvent
+    @change SelectEvent
     children many
 }
 
@@ -206,7 +206,7 @@ component link {
     // Whether to open in the same window or a new tab.
     prop target string enum(self, blank)
     prop disabled bool
-    event click ClickEvent
+    @click ClickEvent
     children none
 }
 
@@ -227,7 +227,7 @@ component modal {
     // Whether the modal can be dismissed by the user.
     prop closable bool
     prop size string enum(small, medium, large, fullscreen)
-    event close DismissEvent
+    @close DismissEvent
     children many
 }
 
@@ -237,7 +237,7 @@ component drawer {
     prop side string enum(left, right, top, bottom)
     // Width or height of the drawer (CSS length).
     prop size string
-    event close DismissEvent
+    @close DismissEvent
     children many
 }
 
@@ -255,7 +255,7 @@ component popover {
     prop open bool
     prop position string enum(top, bottom, left, right)
     prop openOn string enum(click, hover)
-    event close DismissEvent
+    @close DismissEvent
     children many
 }
 
@@ -267,7 +267,7 @@ component accordion {
     prop expanded list<int>
     // Allow more than one section to be open simultaneously.
     prop multiple bool
-    event change ExpandEvent
+    @change ExpandEvent
     children many
 }
 
@@ -279,7 +279,7 @@ component splitview {
     prop minPosition float
     prop maxPosition float
     prop resizable bool
-    event resize ResizeEvent
+    @resize ResizeEvent
     children many
 }
 
@@ -296,8 +296,8 @@ component table {
     prop sortable bool
     prop sortColumn string
     prop sortDirection string enum(asc, desc)
-    event select SelectEvent
-    event sort ChangeEvent
+    @select SelectEvent
+    @sort ChangeEvent
     children none
 }
 
@@ -309,8 +309,8 @@ component tree {
     prop selected string
     // List of currently expanded node IDs.
     prop expanded list<int>
-    event select SelectEvent
-    event expand ExpandEvent
+    @select SelectEvent
+    @expand ExpandEvent
     children none
 }
 
@@ -319,8 +319,8 @@ component menu {
     // List of menu items ({label, icon, action}) or separator strings.
     prop items list<string>
     prop open bool
-    event select MenuEvent
-    event close DismissEvent
+    @select MenuEvent
+    @close DismissEvent
     children none
 }
 
@@ -328,7 +328,7 @@ component menu {
 component menubar {
     // List of top-level menu definitions ({label, items}).
     prop items list<string>
-    event select MenuEvent
+    @select MenuEvent
     children none
 }
 
@@ -336,7 +336,7 @@ component menubar {
 component toolbar {
     // List of toolbar button definitions ({label, icon, action}).
     prop items list<string>
-    event select MenuEvent
+    @select MenuEvent
     children many
 }
 
@@ -351,9 +351,9 @@ component datepicker {
     prop max date
     prop disabled bool
     prop placeholder string
-    event change DateEvent
-    event focus FocusEvent
-    event blur FocusEvent
+    @change DateEvent
+    @focus FocusEvent
+    @blur FocusEvent
     children none
 }
 
@@ -365,8 +365,8 @@ component chip {
     prop removable bool
     prop selected bool
     prop disabled bool
-    event click ClickEvent
-    event remove DismissEvent
+    @click ClickEvent
+    @remove DismissEvent
     children none
 }
 
@@ -378,7 +378,7 @@ component avatar {
     prop initials string
     prop size string enum(small, medium, large, xlarge)
     prop variant string enum(circle, square, rounded)
-    event click ClickEvent
+    @click ClickEvent
     children none
 }
 
@@ -387,6 +387,6 @@ component card {
     prop variant string enum(outlined, elevated, filled)
     // Make the entire card a clickable target.
     prop clickable bool
-    event click ClickEvent
+    @click ClickEvent
     children many
 }

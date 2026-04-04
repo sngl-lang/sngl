@@ -79,7 +79,7 @@ func TestComponentKeywords(t *testing.T) {
 	for _, item := range items {
 		labels[item.Label] = true
 	}
-	for _, kw := range []string{"param", "var", "const", "computed", "if", "for"} {
+	for _, kw := range []string{"var", "const", "if", "for"} {
 		if !labels[kw] {
 			t.Errorf("expected %q in component keywords", kw)
 		}

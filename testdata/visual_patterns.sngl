@@ -1,7 +1,4 @@
-component Card {
-    param title = "Card"
-    param subtitle = ""
-
+component Card(title = "Card", subtitle = "") {
     children allowed
 
     vbox {

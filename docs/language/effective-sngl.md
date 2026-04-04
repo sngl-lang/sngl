@@ -266,7 +266,7 @@ These are compile errors:
 | `null` → struct           | `null is not assignable to struct type`                   |
 | struct → `int()`          | `cannot convert struct to int`                            |
 | struct → `float()`        | `cannot convert struct to float`                          |
-| wrong type → param        | `does not match`                                          |
+| wrong type → component param | `does not match`                                          |
 | bad string → special type | format-specific error (e.g., invalid date, invalid email) |
 | wrong variant → enum      | `is not a valid variant`                                  |
 
@@ -477,9 +477,7 @@ Pure functions cannot mutate state. Void functions cannot return values. Attempt
 A component groups params, state, functions, and visual nodes:
 
 ```sngl
-component Counter {
-    param label = ""
-    param start = 0
+component Counter(label = "", start = 0) {
     var count = start
 
     hbox {
@@ -495,20 +493,18 @@ component Counter {
 
 ### Params
 
-Params are the component's public API. They accept values from parent components:
-
-<!-- SNGL-component -->
+Params are the component's public API. They are declared in parentheses after the component name and accept values from parent components:
 
 ```sngl
-param label = "default"
-param count int
-param size enum<small | medium | large> = "medium"
+component MyWidget(label = "default", count int, size enum<small | medium | large> = "medium") {
+    text(value=label)
+}
 ```
 
 Without a default, params use the type's zero value. Parents pass params as named arguments:
 
 <!-- SNGL-component
-component Counter { param label = "" param start = 0 text(value=label) }
+component Counter(label = "", start = 0) { text(value=label) }
 -->
 
 ```sngl
@@ -521,7 +517,7 @@ Counter()
 Components can use other components:
 
 <!-- SNGL-component
-component Counter { param label = "" param start = 0 text(value=label) }
+component Counter(label = "", start = 0) { text(value=label) }
 -->
 
 ```sngl

@@ -477,32 +477,83 @@ func (f *formatter) formatTimer(t *ast.Timer) {
 }
 
 func (f *formatter) formatComponent(comp *ast.Component) {
-	f.writeLine("component " + comp.Name + " {")
+	header := "component " + comp.Name
+
+	// Collect user-level events (no PayloadType = declared in ())
+	// Collect bidirectional names to avoid duplicating their auto-generated events
+	biNames := map[string]bool{}
+	for _, p := range comp.Params {
+		if p.Bidirectional {
+			biNames[p.Name] = true
+		}
+	}
+	for _, p := range comp.PropDecls {
+		if p.Bidirectional {
+			biNames[p.Name] = true
+		}
+	}
+
+	var userEvents []*ast.EventDecl
+	var stdlibEvents []*ast.EventDecl
+	for _, e := range comp.EventDecls {
+		if e.PayloadType == "" {
+			// Skip auto-generated events for bidirectional params/props
+			if !biNames[e.Name] {
+				userEvents = append(userEvents, e)
+			}
+		} else {
+			// Skip auto-generated events for bidirectional props
+			if !biNames[e.Name] {
+				stdlibEvents = append(stdlibEvents, e)
+			}
+		}
+	}
+
+	if len(comp.Params) > 0 || len(userEvents) > 0 {
+		header += "("
+		first := true
+		for _, p := range comp.Params {
+			if !first {
+				header += ", "
+			}
+			first = false
+			if p.Bidirectional {
+				header += ":"
+			}
+			header += p.Name
+			hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
+			typeStr := typeHintStr(p.Default.TypeHint, nil)
+			if typeStr != "" && !canInferType(p.Default, typeStr) {
+				header += " " + typeStr
+			}
+			if hasDefault {
+				header += " = " + f.formatExprValue(p.Default)
+			}
+			if p.Required {
+				header += " required"
+			}
+		}
+		for _, e := range userEvents {
+			if !first {
+				header += ", "
+			}
+			first = false
+			header += "@" + e.Name
+		}
+		header += ")"
+	}
+	f.writeLine(header + " {")
 	f.indent++
 
 	memberBlank := false
 
-	// Params
-	for _, p := range comp.Params {
-		line := "param " + p.Name
-		hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
-		typeStr := typeHintStr(p.Default.TypeHint, nil)
-		if typeStr != "" && !canInferType(p.Default, typeStr) {
-			line += " " + typeStr
-		}
-		if hasDefault {
-			line += " = " + f.formatExprValue(p.Default)
-		}
-		if p.Required {
-			line += " required"
-		}
-		f.writeLine(line)
-		memberBlank = true
-	}
-
 	// Prop decls (stdlib)
 	for _, p := range comp.PropDecls {
-		line := "prop " + p.Name + " " + p.TypeHint
+		prefix := "prop "
+		if p.Bidirectional {
+			prefix = ":"
+		}
+		line := prefix + p.Name + " " + p.TypeHint
 		if len(p.Enum) > 0 {
 			line += " enum(" + strings.Join(p.Enum, ", ") + ")"
 		}
@@ -510,9 +561,9 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 		memberBlank = true
 	}
 
-	// Event decls (stdlib)
-	for _, e := range comp.EventDecls {
-		f.writeLine("event " + e.Name + " " + e.PayloadType)
+	// Event decls (stdlib — only those with PayloadType)
+	for _, e := range stdlibEvents {
+		f.writeLine("@" + e.Name + " " + e.PayloadType)
 		memberBlank = true
 	}
 
@@ -664,13 +715,17 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		props = append(props, k+"="+f.formatExprValue(vn.Props[k]))
 	}
 
+	// Bindings (sorted for deterministic output)
+	bindingKeys := sortedKeys(vn.Bindings)
+	for _, name := range bindingKeys {
+		props = append(props, ":"+name+"="+f.formatExprValue(vn.Bindings[name]))
+	}
+
 	// Events (sorted for deterministic output)
 	eventKeys := sortedKeys(vn.Events)
 	for _, name := range eventKeys {
 		props = append(props, "@"+name+"="+f.formatEventValue(vn.Events[name]))
 	}
-
-	// Style is now a regular prop; no special formatting needed
 
 	// Build the line
 	line := vn.Component

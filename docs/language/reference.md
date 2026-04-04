@@ -24,8 +24,7 @@ style heading {
     fontSize = 24
 }
 
-component Counter {
-    param label = ""
+component Counter(label = "") {
     text(value=label)
 }
 component main {
@@ -52,21 +51,22 @@ Identifiers use camelCase (`fontSize`, `alignItems`).
 
 ### Literals
 
-| Literal | Examples |
-| --- | --- |
-| int | `0`, `42`, `-1` |
-| float | `1.0`, `-3.14` |
-| string | `"hello"`, `"it's a \"test\""` |
-| bool | `true`, `false` |
-| null | `null` |
-| color | `#ff0000`, `#fff`, `#ff000080` |
-| unit | `5s`, `100ms`, `12px`, `1.5em` |
+| Literal | Examples                       |
+| ------- | ------------------------------ |
+| int     | `0`, `42`, `-1`                |
+| float   | `1.0`, `-3.14`                 |
+| string  | `"hello"`, `"it's a \"test\""` |
+| bool    | `true`, `false`                |
+| null    | `null`                         |
+| color   | `#ff0000`, `#fff`, `#ff000080` |
+| unit    | `5s`, `100ms`, `12px`, `1.5em` |
 
 ### String Interpolation
 
 Inside double-quoted strings, `{expr}` evaluates the expression and converts to string:
 
 <!-- SNGL-component -->
+
 ```sngl
 func _a() "Hello, {name}!"
 func _b() "Todo List ({todos.length()} items)"
@@ -81,7 +81,7 @@ A semicolon is automatically inserted after a line's final token if that token i
 
 ### Keywords
 
-`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `styles`, `component`, `param`, `prop`, `event`, `children`, `if`, `else`, `for`, `in`, `extern`, `trigger`, `func`, `true`, `false`, `null`
+`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `component`, `prop`, `children`, `if`, `else`, `for`, `in`, `extern`, `trigger`, `func`, `true`, `false`, `null`
 
 ## Type System
 
@@ -116,6 +116,7 @@ struct User { name string = "" }
 struct Todo { text string = "" done bool = false }
 component main { text(value="") }
 -->
+
 ```sngl
 var count = 0
 var name = "World"
@@ -137,6 +138,7 @@ Imports load all `.sngl` files from a directory, making their component, struct,
 -- shared/types.sngl --
 struct Widget { name string = "" }
 -->
+
 ```sngl
 import "shared"
 
@@ -151,6 +153,7 @@ component main {
 <!-- SNGL-top
 component main { text(value="") }
 -->
+
 ```sngl
 output {
     go { bubbletea(package="main") }
@@ -173,6 +176,7 @@ Structs are value types — they cannot be assigned `null`. Declare without an i
 struct Todo { text string = "" done bool = false }
 component main { text(value="") }
 -->
+
 ```sngl
 var todo Todo
 var todo2 = Todo{text: "Buy eggs", done: false}
@@ -189,12 +193,13 @@ enum Status { active, inactive, pending }
 enum Theme { light, dark }
 ```
 
-Use a named enum as a type hint on `var`, `param`, or struct fields. The checker validates that literal values match one of the declared variants:
+Use a named enum as a type hint on `var`, component parameters, or struct fields. The checker validates that literal values match one of the declared variants:
 
 <!-- SNGL-top
 enum Status { active, inactive, pending }
 component main { text(value="") }
 -->
+
 ```sngl
 var status Status = "active"
 ```
@@ -204,9 +209,17 @@ Assigning an undeclared variant (e.g., `"unknown"`) is a compile error.
 Enums can also be declared inline as a type annotation without a top-level declaration:
 
 <!-- SNGL-component -->
+
 ```sngl
 var mode enum<light | dark> = "light"
-param size enum<small | medium | large> = "medium"
+```
+
+Inline enums can also be used as component parameter types:
+
+```sngl
+component MyWidget(size enum<small | medium | large> = "medium") {
+    text(value=size)
+}
 ```
 
 Inline enums use `enum<value1 | value2 | ...>` syntax. At runtime, enum values are strings.
@@ -227,10 +240,12 @@ A bare suffix (e.g., `ms`, `px`) is an independent base. A suffix with a factor 
 Suffixes that share a conversion chain form a base group. Within a group, values normalize to the base suffix automatically. Suffixes without any conversion relationship are independent bases.
 
 For `measurement(px, em, rem = 16em, vw, vh, pct)`:
+
 - `px`, `em`, `vw`, `vh`, `pct` are each independent bases
 - `rem` converts to `em` (1 `rem` = 16 `em`)
 
 For `duration(ms, s = 1000ms, m = 60s, h = 60m)`:
+
 - All suffixes chain to `ms`, so the entire unit is single-base
 
 #### Unit arithmetic
@@ -238,6 +253,7 @@ For `duration(ms, s = 1000ms, m = 60s, h = 60m)`:
 Unit values support `+`, `-`, `*`, and `/`:
 
 <!-- SNGL-component -->
+
 ```sngl
 // Same-base addition normalizes automatically
 func _a() 1s + 500ms        // 1500ms
@@ -264,6 +280,7 @@ Adding values from the same base group normalizes to the base suffix. Adding val
 Unit values compare by their normalized components. Values that normalize to the same base amount are equal:
 
 <!-- SNGL-component -->
+
 ```sngl
 func _a() 1s == 1000ms       // true
 func _b() 1rem == 16em       // true
@@ -277,6 +294,7 @@ Unit literals like `5s` and `12px` are resolved against unit declarations. Unit 
 <!-- SNGL-top
 component main { text(value="") }
 -->
+
 ```sngl
 var timeout duration = "5s"
 var spacing measurement = "12px"
@@ -299,9 +317,7 @@ style heading {
 ### Declaration
 
 ```sngl
-component Counter {
-    param label = ""
-    param start = 0
+component Counter(label = "", start = 0) {
     var count = start
 
     hbox {
@@ -312,34 +328,42 @@ component Counter {
 }
 ```
 
-### param
+### Component Parameters
 
-<!-- SNGL-component -->
+Parameters are declared in parentheses after the component name, comma-separated:
+
 ```sngl
-param name string = "default"   // explicit type
-param label = "default"         // type inferred
-param count int                 // no default, zero value
-param x, y int                  // multi-name, shared type
+component MyWidget(name string = "default", label = "default", count int, x int, y int) {
+    text(value=name)
+}
 ```
+
+- `name string = "default"` — explicit type with default
+- `label = "default"` — type inferred from default
+- `count int` — no default, uses zero value
+- `x int, y int` — each param declared separately
 
 ### prop (stdlib)
 
 <!-- SNGL-component -->
+
 ```sngl
 prop value string
 ```
 
-### event (stdlib)
+### Event declarations (stdlib)
 
 <!-- SNGL-component -->
+
 ```sngl
-event click ClickEvent
-event input InputEvent
+@click ClickEvent
+@input InputEvent
 ```
 
 ### children (stdlib)
 
 <!-- SNGL-component -->
+
 ```sngl
 children none
 ```
@@ -347,8 +371,9 @@ children none
 ### Usage
 
 <!-- SNGL-component
-component Counter { param label = "" param start = 0 text(value=label) }
+component Counter(label = "", start = 0) { text(value=label) }
 -->
+
 ```sngl
 Counter(label="Clicks")
 Counter(label="Score", start=10)
@@ -359,6 +384,7 @@ Counter(label="Score", start=10)
 ### Syntax
 
 <!-- SNGL-component -->
+
 ```sngl
 text(value="hello", style={fontSize=24}) {
     @tooltip(text="A tip")
@@ -368,6 +394,7 @@ text(value="hello", style={fontSize=24}) {
 Both `()` and `{}` are optional:
 
 <!-- SNGL-component -->
+
 ```sngl
 spacer
 text(value="Hello")
@@ -379,6 +406,7 @@ vbox { text(value="Hi") }
 Events use the `@` prefix and contain statement blocks:
 
 <!-- SNGL-component -->
+
 ```sngl
 button(@click={ count += 1 })
 input(@input={ name = event.value })
@@ -391,6 +419,7 @@ button(@click={
 ### Inline Style
 
 <!-- SNGL-component -->
+
 ```sngl
 vbox(style={gap=12, padding=16})
 text(value="hello", style={color=#007700, fontSize=24})
@@ -401,6 +430,7 @@ text(value="hello", style={color=#007700, fontSize=24})
 Inside a children block, `@name(props)` defines attribute metadata:
 
 <!-- SNGL-component -->
+
 ```sngl
 text(value="hello") {
     @tooltip(text="A helpful tip")
@@ -412,6 +442,7 @@ text(value="hello") {
 ### if
 
 <!-- SNGL-component -->
+
 ```sngl
 if isAdult {
     text(value="(Adult)", style={color=#007700})
@@ -424,6 +455,7 @@ if !isAdult {
 ### for
 
 <!-- SNGL-component -->
+
 ```sngl
 for item in todos {
     text(value=item.text)
@@ -440,6 +472,7 @@ for item, index in todos {
 The `else` block renders when the iterable list is empty:
 
 <!-- SNGL-component -->
+
 ```sngl
 for item in todos {
     text(value=item.text)
@@ -513,15 +546,15 @@ component Counter {
 
 Inside a block-form function body, the following are allowed:
 
-| Statement | Example |
-| --- | --- |
-| Local variable | `var x = expr` |
-| Assignment | `x = expr`, `x += expr` |
-| Toggle | `active!!` |
-| Method call | `todos.push(item)` |
-| Function call | `reset()` |
-| Emit | `@save(data)` |
-| Return | `return expr` |
+| Statement      | Example                 |
+| -------------- | ----------------------- |
+| Local variable | `var x = expr`          |
+| Assignment     | `x = expr`, `x += expr` |
+| Toggle         | `active!!`              |
+| Method call    | `todos.push(item)`      |
+| Function call  | `reset()`               |
+| Emit           | `@save(data)`           |
+| Return         | `return expr`           |
 
 ### Generic Functions
 
@@ -535,6 +568,7 @@ return l
 -- ... --
 return -1
 -->
+
 ```sngl
 func list.push<T>(l list<T>, item T) list<T> { ... }
 func list.reverse<T>(l list<T>) list<T> { ... }
@@ -544,6 +578,7 @@ func list.indexOf<T>(l list<T>, item T) int { ... }
 Type parameters are inferred at call sites. Users never write `<T>` when calling a generic function -- the compiler deduces the type arguments from the values passed:
 
 <!-- SNGL-component -->
+
 ```sngl
 var names = ["alice", "bob"]
 func upper() list.map(names, func(n) string.upper(n))
@@ -562,6 +597,7 @@ func Todo.label(t Todo) t.done ? "[x] {t.text}" : "[ ] {t.text}"
 Type methods support two call styles:
 
 <!-- SNGL-component -->
+
 ```sngl
 // Type-qualified — explicit receiver as first argument
 func _a() int.double(5)            // 10
@@ -575,21 +611,22 @@ func _d() "hello".shout()          // "hello!"
 
 ## Built-in Functions
 
-| Function | Signature | Description |
-| --- | --- | --- |
-| `string` | `string(value) -> string` | Convert any value to string |
-| `int` | `int(value) -> int` | Convert to int (not valid on structs) |
-| `float` | `float(value) -> float` | Convert to float (not valid on structs) |
-| `embed` | `embed(path) -> string` | Compile-time file contents |
-| `regex` | `regex(pattern) -> regex` | Compile-time validated regex constructor |
-| `regex.matches` | `regex.matches(r, s) -> bool` | Test if regex matches string |
-| `regex.find` | `regex.find(r, s) -> string` | First match of regex in string |
+| Function        | Signature                     | Description                              |
+| --------------- | ----------------------------- | ---------------------------------------- |
+| `string`        | `string(value) -> string`     | Convert any value to string              |
+| `int`           | `int(value) -> int`           | Convert to int (not valid on structs)    |
+| `float`         | `float(value) -> float`       | Convert to float (not valid on structs)  |
+| `embed`         | `embed(path) -> string`       | Compile-time file contents               |
+| `regex`         | `regex(pattern) -> regex`     | Compile-time validated regex constructor |
+| `regex.matches` | `regex.matches(r, s) -> bool` | Test if regex matches string             |
+| `regex.find`    | `regex.find(r, s) -> string`  | First match of regex in string           |
 
 Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.
 
 The `regex()` constructor validates the pattern at compile time -- invalid patterns produce a compile error:
 
 <!-- SNGL-component -->
+
 ```sngl
 var pattern = regex("[a-z]+")
 var emailPat regex = "^[^@]+@[^@]+$"
@@ -599,15 +636,15 @@ var emailPat regex = "^[^@]+@[^@]+$"
 
 All list functions use generics. Type parameters are inferred at call sites.
 
-| Method | Signature | Description |
-| --- | --- | --- |
-| `.length` | `list.length<T>(l list<T>) -> int` | Length of a list |
-| `.push` | `list.push<T>(l list<T>, item T) -> list<T>` | Append to a list |
-| `.remove` | `list.remove<T>(l list<T>, index int) -> list<T>` | Remove by index |
-| `.indexOf` | `list.indexOf<T>(l list<T>, item T) -> int` | Index of item, or -1 |
-| `.join` | `list.join<T>(l list<T>, sep string) -> string` | Join elements with separator |
-| `.reverse` | `list.reverse<T>(l list<T>) -> list<T>` | Reverse a list |
-| `.slice` | `list.slice<T>(l list<T>, start int, end int) -> list<T>` | Subsequence by index range |
-| `.contains` | `list.contains<T>(l list<T>, item T) -> bool` | Check if item is in list |
-| `.filter` | `list.filter<T>(l list<T>, pred func(T) -> bool) -> list<T>` | Keep elements matching predicate |
-| `.map` | `list.map<T, U>(l list<T>, fn func(T) -> U) -> list<U>` | Transform each element |
+| Method      | Signature                                                    | Description                      |
+| ----------- | ------------------------------------------------------------ | -------------------------------- |
+| `.length`   | `list.length<T>(l list<T>) -> int`                           | Length of a list                 |
+| `.push`     | `list.push<T>(l list<T>, item T) -> list<T>`                 | Append to a list                 |
+| `.remove`   | `list.remove<T>(l list<T>, index int) -> list<T>`            | Remove by index                  |
+| `.indexOf`  | `list.indexOf<T>(l list<T>, item T) -> int`                  | Index of item, or -1             |
+| `.join`     | `list.join<T>(l list<T>, sep string) -> string`              | Join elements with separator     |
+| `.reverse`  | `list.reverse<T>(l list<T>) -> list<T>`                      | Reverse a list                   |
+| `.slice`    | `list.slice<T>(l list<T>, start int, end int) -> list<T>`    | Subsequence by index range       |
+| `.contains` | `list.contains<T>(l list<T>, item T) -> bool`                | Check if item is in list         |
+| `.filter`   | `list.filter<T>(l list<T>, pred func(T) -> bool) -> list<T>` | Keep elements matching predicate |
+| `.map`      | `list.map<T, U>(l list<T>, fn func(T) -> U) -> list<U>`      | Transform each element           |

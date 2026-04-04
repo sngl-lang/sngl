@@ -93,7 +93,7 @@ func TopLevelKeywords() []CompletionItem {
 }
 
 func ComponentKeywords() []CompletionItem {
-	kws := []string{"param", "var", "const", "computed", "prop", "event", "children", "if", "for"}
+	kws := []string{"var", "const", "prop", "children", "if", "for"}
 	items := make([]CompletionItem, len(kws))
 	for i, kw := range kws {
 		items[i] = CompletionItem{Label: kw, Kind: CIKKeyword}

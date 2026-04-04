@@ -492,6 +492,9 @@ func (c *checker) pass1(doc *ast.Document) {
 				for _, p := range comp.Params {
 					schema.Props[p.Name] = PropSchema{Type: c.resolveParamType(p)}
 				}
+				for _, e := range comp.EventDecls {
+					schema.Events[e.Name] = e.PayloadType
+				}
 				c.registry[qualName] = schema
 				doc.ImportedComponents = append(doc.ImportedComponents, comp)
 			}
@@ -604,6 +607,9 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.validateEnumLiteral(comp.Pos, &p.Default)
 			c.validateSpecialLiteral(comp.Pos, &p.Default)
 			schema.Props[p.Name] = PropSchema{Type: t}
+		}
+		for _, e := range comp.EventDecls {
+			schema.Events[e.Name] = e.PayloadType
 		}
 		c.registry[comp.Name] = schema
 	}
@@ -1127,6 +1133,18 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 			}
 		}
 		vn.Events[name] = expr
+	}
+
+	// Bindings (:name=var desugars to prop + event)
+	for name, expr := range vn.Bindings {
+		if _, ok := schema.Props[name]; !ok {
+			c.errorAt(vn.Pos, "%s: unknown property %q (binding)", vn.Component, name)
+		}
+		if _, ok := schema.Events[name]; !ok {
+			c.errorAt(vn.Pos, "%s: no event %q for binding (component must declare :%s or @%s)", vn.Component, name, name, name)
+		}
+		c.resolveExprInScope(vn.Pos, &expr, childScope)
+		vn.Bindings[name] = expr
 	}
 
 	// Style fields (from Props["style"] anonymous struct)

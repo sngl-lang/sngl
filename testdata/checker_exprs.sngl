@@ -3,13 +3,7 @@ struct Config {
     value int = 0
 }
 
-component Widget {
-    param title = "default"
-    param count = 0
-    param active = true
-    param items = []
-    param config Config
-
+component Widget(title = "default", count = 0, active = true, items = [], config Config) {
     func label() title + ": " + string(count)
     func doubled() count * 2
     func negated() -count

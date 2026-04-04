@@ -1,8 +1,4 @@
-component Counter {
-    param label = ""
-    param start = 0
-    param name = ""
-
+component Counter(label = "", start = 0, name = "") {
     hbox {
         text(value=label + ": " + string(count))
         button(text="+", @click={ count = count + 1 })

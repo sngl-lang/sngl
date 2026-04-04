@@ -1,6 +1,4 @@
-component badge {
-    param label = "default"
-    param count = 0
+component badge(label = "default", count = 0) {
     func display() label
 
     text #lbl (value=display)

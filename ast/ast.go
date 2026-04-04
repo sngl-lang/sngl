@@ -187,10 +187,11 @@ type StyleDecl struct {
 }
 
 type PropDecl struct {
-	Pos      Pos
-	Name     string
-	TypeHint string   // "string", "bool", "int", "float", "dyn"
-	Enum     []string // optional enum constraints
+	Pos           Pos
+	Name          string
+	TypeHint      string   // "string", "bool", "int", "float", "dyn"
+	Enum          []string // optional enum constraints
+	Bidirectional bool     // :name — desugars to prop + change event
 }
 
 type EventDecl struct {
@@ -252,12 +253,13 @@ type Component struct {
 }
 
 type Param struct {
-	Pos      Pos
-	Name     string
-	Default  Expr
-	Required bool
-	Disabled bool
-	Resolved *TypeInfo // populated by checker
+	Pos           Pos
+	Name          string
+	Default       Expr
+	Required      bool
+	Disabled      bool
+	Bidirectional bool     // :name — desugars to param + change event
+	Resolved      *TypeInfo // populated by checker
 }
 
 type App struct {
@@ -286,6 +288,7 @@ type VisualNode struct {
 	Ref        *Expr
 	Props      map[string]Expr
 	Events     map[string]Expr
+	Bindings   map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
 	AttrNodes  map[string]*AttrNode
 	Children   []*VisualNode
 }

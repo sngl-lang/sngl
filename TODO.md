@@ -17,5 +17,5 @@
   - no /- commented out nodes
 - [ ] platform components; define stdlib in term of them
 - [x] ~~Allow reusing types in param/variable definitions like go~~ — done. `var x, y int`, `param width, height int = 100`, `const MAX_X, MAX_Y int = 1000`.
-- [ ] Move params to () on component; remove the keyword param.
-- [ ] Allow bi-directional params
+- [x] ~~Move params to () on component; remove the keyword param.~~ — done. `component Counter(label = "", start = 0) { ... }`. Event declarations moved to `()`: `component Counter(@save)`. Stdlib events use `@click ClickEvent` in body.
+- [x] ~~Allow bi-directional params~~ — done. `:name` syntax declares a prop + change event pair. In definitions: `component Stepper(:count int = 0)` or stdlib `:value string`. At call sites: `Stepper(:count=myVar)` binds prop and event.

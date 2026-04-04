@@ -1,6 +1,4 @@
-component Counter {
-    param label = "Count"
-
+component Counter(label = "Count") {
     hbox {
         text(value=label)
     }

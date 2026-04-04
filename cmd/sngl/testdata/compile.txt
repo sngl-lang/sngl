@@ -48,8 +48,7 @@ component main {
     Counter(initial=count)
 }
 -- myapp/counter.sngl --
-component Counter {
-    param initial = 0
+component Counter(initial = 0) {
     text(value="Count: " + string(initial))
 }
 -- badoutput/app.sngl --

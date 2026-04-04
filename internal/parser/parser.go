@@ -480,9 +480,36 @@ func (p *parser) parseComponent() *ast.Component {
 	pos := p.pos()
 	p.expect(KW_COMPONENT)
 	name := p.expect(IDENT).Literal
-	p.expect(LBRACE)
 
 	comp := &ast.Component{Pos: pos, Name: name}
+
+	// Parse optional param list: component Name(param1 = default, @save, :count int) { ... }
+	if p.at(LPAREN) {
+		p.advance()
+		for !p.at(RPAREN) && !p.at(EOF) {
+			if p.at(AT) {
+				// Event declaration: @eventName
+				p.advance()
+				ename := p.expect(IDENT).Literal
+				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: p.pos(), Name: ename})
+			} else if p.at(COLON) {
+				// Bidirectional param: :name type = default
+				p.advance()
+				param := p.parseComponentParam()
+				param.Bidirectional = true
+				comp.Params = append(comp.Params, param)
+				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: param.Pos, Name: param.Name})
+			} else {
+				comp.Params = append(comp.Params, p.parseComponentParam())
+			}
+			if p.at(COMMA) {
+				p.advance()
+			}
+		}
+		p.expect(RPAREN)
+	}
+
+	p.expect(LBRACE)
 	cs := &componentState{}
 
 	for !p.at(RBRACE) && !p.at(EOF) {
@@ -498,15 +525,17 @@ func (p *parser) parseComponent() *ast.Component {
 		}
 
 		switch p.cur.Type {
-		case KW_PARAM:
-			params := p.parseParams()
-			for _, param := range params {
-				param.Disabled = disabled
-			}
-			comp.Params = append(comp.Params, params...)
 		case KW_PROP:
 			comp.PropDecls = append(comp.PropDecls, p.parsePropDecl())
-		case KW_EVENT:
+		case COLON:
+			// Bidirectional prop: :value string — desugars to prop + event
+			p.advance()
+			pd := p.parsePropDeclBody()
+			pd.Bidirectional = true
+			comp.PropDecls = append(comp.PropDecls, pd)
+			comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: pd.Pos, Name: pd.Name, PayloadType: "ChangeEvent"})
+		case AT:
+			// Event declaration: @click ClickEvent
 			comp.EventDecls = append(comp.EventDecls, p.parseEventDecl())
 		case KW_CHILDREN:
 			p.advance()
@@ -572,44 +601,17 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	return td
 }
 
-func (p *parser) parseParams() []*ast.Param {
+// parseComponentParam parses a single component parameter inside ().
+// Syntax: name = default | name type | name type = default | name type required
+func (p *parser) parseComponentParam() *ast.Param {
 	pos := p.pos()
-	p.expect(KW_PARAM)
 	name := p.expect(IDENT).Literal
-
-	// Check for multi-name: param x, y int [= default]
-	if p.at(COMMA) && p.isMultiName() {
-		names := []string{name}
-		for p.at(COMMA) && p.isMultiName() {
-			p.advance()
-			names = append(names, p.expect(IDENT).Literal)
-		}
-		typeHint := p.parseTypeString()
-		var def ast.Expr
-		def.TypeHint = typeHint
-		if p.at(ASSIGN) {
-			p.advance()
-			def = p.parseExprAsExpr()
-			def.TypeHint = typeHint
-		}
-		required := false
-		if p.at(IDENT) && p.cur.Literal == "required" {
-			p.advance()
-			required = true
-		}
-		var params []*ast.Param
-		for _, n := range names {
-			params = append(params, &ast.Param{Pos: pos, Name: n, Default: def, Required: required})
-		}
-		return params
-	}
-
-	// Single param
 	param := &ast.Param{Pos: pos, Name: name}
+
 	if p.at(ASSIGN) {
 		p.advance()
 		param.Default = p.parseExprAsExpr()
-	} else if !p.at(SEMICOLON) && !p.at(RBRACE) && !p.at(EOF) && !p.at(KW_PARAM) && !p.at(KW_VAR) && !p.at(KW_CONST) && !p.at(KW_FUNC) {
+	} else if !p.at(COMMA) && !p.at(RPAREN) && !p.at(EOF) {
 		typeHint := p.parseTypeString()
 		param.Default.TypeHint = typeHint
 		if p.at(ASSIGN) {
@@ -622,12 +624,16 @@ func (p *parser) parseParams() []*ast.Param {
 		p.advance()
 		param.Required = true
 	}
-	return []*ast.Param{param}
+	return param
 }
 
 func (p *parser) parsePropDecl() *ast.PropDecl {
-	pos := p.pos()
 	p.expect(KW_PROP)
+	return p.parsePropDeclBody()
+}
+
+func (p *parser) parsePropDeclBody() *ast.PropDecl {
+	pos := p.pos()
 	name := p.expect(IDENT).Literal
 	typeHint := p.parseTypeString()
 	var enumValues []string
@@ -647,7 +653,7 @@ func (p *parser) parsePropDecl() *ast.PropDecl {
 
 func (p *parser) parseEventDecl() *ast.EventDecl {
 	pos := p.pos()
-	p.expect(KW_EVENT)
+	p.expect(AT)
 	name := p.expect(IDENT).Literal
 	payloadType := p.expect(IDENT).Literal
 	return &ast.EventDecl{Pos: pos, Name: name, PayloadType: payloadType}
@@ -1177,7 +1183,17 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 func (p *parser) parsePropList(vn *ast.VisualNode) {
 	p.expect(LPAREN)
 	for !p.at(RPAREN) && !p.at(EOF) {
-		if p.at(AT) {
+		if p.at(COLON) {
+			// Bidirectional binding: :name=expr
+			p.advance()
+			bname := p.expect(IDENT).Literal
+			p.expect(ASSIGN)
+			expr := p.parseExprAsExpr()
+			if vn.Bindings == nil {
+				vn.Bindings = map[string]ast.Expr{}
+			}
+			vn.Bindings[bname] = expr
+		} else if p.at(AT) {
 			// Event handler: @event={ stmts }
 			p.advance()
 			eventName := p.expect(IDENT).Literal

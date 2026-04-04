@@ -4,9 +4,7 @@ struct TreeNode {
     right dyn = null
 }
 
-component tree_view {
-    param node dyn = null
-
+component tree_view(node dyn = null) {
     vbox {
         text #val (value=string(node.value))
         if node.left != null {

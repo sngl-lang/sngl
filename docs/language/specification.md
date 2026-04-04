@@ -90,9 +90,11 @@ Expression form (`Expr`) is for pure single-expression functions; the return typ
 ### Component Members
 
 ```
-ComponentMember = "param" IDENT Type? "=" Expr
-               | "param" IDENT Type "required"?
-               | "prop" IDENT Type ("enum" "(" IDENT ("," IDENT)* ")")?
+ComponentDecl  = "component" IDENT ParamList? "{" ComponentMember* "}"
+ParamList      = "(" Param ("," Param)* ")"
+Param          = IDENT Type? "=" Expr
+               | IDENT Type
+ComponentMember = "prop" IDENT Type ("enum" "(" IDENT ("," IDENT)* ")")?
                | "event" IDENT IDENT
                | "children" ("none" | "one" | "many")
                | ConstDecl
@@ -192,7 +194,7 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | After `output` | IDENT vs `{` | Single output vs grouped block |
 | After `var` | IDENT vs `(` | Single var vs grouped declaration |
 | Inside `{}` children | `if`/`for`/`@`/IDENT | Control, attr, or node |
-| Inside component | `const`/`var`/`func`/`param`/IDENT | State, func, param, or visual node |
+| Inside component | `const`/`var`/`func`/IDENT | State, func, or visual node |
 | After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
 | Inside `()` props | `@`/`style`/IDENT | Event, style literal, or prop |
 | After IDENT in type | `<` or not | Generic type or plain type |
@@ -215,7 +217,7 @@ No virtual DOM or runtime diffing is involved. Assignments to state trigger only
 ### Component Scoping
 
 - State (`var`, `const`) and functions are scoped to the component that contains them
-- `param` values are passed from parent to child at instantiation
+- Component parameters (declared in `()` after the name) are passed from parent to child at instantiation
 - Components expand at compile time
 - Recursive components are forbidden
 
