@@ -122,6 +122,7 @@ type TestDef struct {
 	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
 	Subtests  []*TestDef // nested test blocks
 	Disabled  bool       // true when prefixed with /-
+	Decls     []Decl     // ordered body items (StmtDecl + *TestDef) for formatting
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -332,6 +333,15 @@ func (o *Output) DeclPos() Pos     { return o.Pos }
 func (c *Component) DeclPos() Pos  { return c.Pos }
 func (t *TestDef) DeclPos() Pos    { return t.Pos }
 func (vn *VisualNode) DeclPos() Pos { return vn.Pos }
+func (a *App) DeclPos() Pos         { return a.Pos }
+
+// StmtDecl wraps a statement Node so it can appear in a Decls slice (for test bodies).
+type StmtDecl struct {
+	Pos  Pos
+	Stmt Node
+}
+
+func (d *StmtDecl) DeclPos() Pos { return d.Pos }
 
 // StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
 // Returns nil if no style prop or if it's not an anonymous struct literal.

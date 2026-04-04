@@ -740,9 +740,14 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 			break
 		}
 		if p.at(KW_TEST) {
-			td.Subtests = append(td.Subtests, p.parseTestDef(false))
+			sub := p.parseTestDef(false)
+			td.Subtests = append(td.Subtests, sub)
+			td.Decls = append(td.Decls, sub)
 		} else {
-			td.Body = append(td.Body, p.parseStmt())
+			stmtPos := p.pos()
+			stmt := p.parseStmt()
+			td.Body = append(td.Body, stmt)
+			td.Decls = append(td.Decls, &ast.StmtDecl{Pos: stmtPos, Stmt: stmt})
 		}
 		p.skipSemicolons()
 	}
@@ -1939,9 +1944,9 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 		parts = append(parts, &ast.LiteralExpr{Value: buf.String(), Kind: ast.LiteralString})
 	}
 
-	if len(parts) == 1 {
-		return parts[0]
-	}
+	// Don't unwrap single-part interpolations — "{count}" must stay as
+	// InterpolationExpr, not bare IdentExpr. The optimizer can simplify
+	// this when type info confirms it's safe.
 	return &ast.InterpolationExpr{Parts: parts}
 }
 

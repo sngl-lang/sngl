@@ -144,7 +144,7 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 			prevType = "enum"
 			needBlank = true
 		case *ast.UnitDef:
-			if needBlank {
+			if needBlank && prevType != "unit" {
 				f.newline()
 			}
 			f.formatUnitDecl(decl)
@@ -776,10 +776,12 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 
 // formatDeclSlice formats the body of a component using its ordered Decls slice.
 func (f *formatter) formatDeclSlice(comp *ast.Component) {
+	decls := comp.Decls
 	memberBlank := false
 	var prevType string
 
-	for _, d := range comp.Decls {
+	for i := 0; i < len(decls); i++ {
+		d := decls[i]
 		switch decl := d.(type) {
 		case *ast.Comment:
 			if decl.Inline {
@@ -799,31 +801,43 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			}
 			continue // don't update prevType
 		case *ast.Const:
-			// Collect consecutive grouped consts
-			if decl.Grouped {
-				if memberBlank && prevType != "const" {
-					f.newline()
-				}
-				// Already handled by group collection below
-			} else {
-				if memberBlank {
-					f.newline()
-				}
+			if memberBlank && prevType != "const" {
+				f.newline()
 			}
-			f.formatConsts([]*ast.Const{decl})
+			if decl.Grouped {
+				group := []*ast.Const{decl}
+				for i+1 < len(decls) {
+					if next, ok := decls[i+1].(*ast.Const); ok && next.Grouped {
+						group = append(group, next)
+						i++
+					} else {
+						break
+					}
+				}
+				f.formatConsts(group)
+			} else {
+				f.formatConsts([]*ast.Const{decl})
+			}
 			prevType = "const"
 			memberBlank = true
 		case *ast.Data:
-			if decl.Grouped {
-				if memberBlank && prevType != "var" {
-					f.newline()
-				}
-			} else {
-				if memberBlank {
-					f.newline()
-				}
+			if memberBlank && prevType != "var" {
+				f.newline()
 			}
-			f.formatVars([]*ast.Data{decl})
+			if decl.Grouped {
+				group := []*ast.Data{decl}
+				for i+1 < len(decls) {
+					if next, ok := decls[i+1].(*ast.Data); ok && next.Grouped {
+						group = append(group, next)
+						i++
+					} else {
+						break
+					}
+				}
+				f.formatVars(group)
+			} else {
+				f.formatVars([]*ast.Data{decl})
+			}
 			prevType = "var"
 			memberBlank = true
 		case *ast.FuncDef:
@@ -948,14 +962,49 @@ func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
 	line += "\"" + escapeStringContent(td.Desc) + "\" {"
 	f.writeLine(line)
 	f.indent++
-	for _, stmt := range td.Body {
-		f.writeLine(FormatStmt(stmt))
-	}
-	for _, sub := range td.Subtests {
-		if len(td.Body) > 0 || sub != td.Subtests[0] {
-			f.newline()
+	if len(td.Decls) > 0 {
+		prevWasSubtest := false
+		prevWasStmt := false
+		for _, d := range td.Decls {
+			switch v := d.(type) {
+			case *ast.StmtDecl:
+				if prevWasSubtest {
+					f.newline()
+				}
+				f.writeLine(FormatStmt(v.Stmt))
+				prevWasStmt = true
+				prevWasSubtest = false
+			case *ast.TestDef:
+				if prevWasStmt || prevWasSubtest {
+					f.newline()
+				}
+				f.formatTestDef(v, false)
+				prevWasSubtest = true
+				prevWasStmt = false
+			case *ast.Comment:
+				if v.Inline {
+					s := f.sb.String()
+					if len(s) > 0 && s[len(s)-1] == '\n' {
+						f.sb.Reset()
+						f.sb.WriteString(s[:len(s)-1])
+					}
+					f.write(" " + v.Text)
+					f.newline()
+				} else {
+					f.writeLine(v.Text)
+				}
+			}
 		}
-		f.formatTestDef(sub, false)
+	} else {
+		for _, stmt := range td.Body {
+			f.writeLine(FormatStmt(stmt))
+		}
+		for _, sub := range td.Subtests {
+			if len(td.Body) > 0 || sub != td.Subtests[0] {
+				f.newline()
+			}
+			f.formatTestDef(sub, false)
+		}
 	}
 	f.indent--
 	f.writeLine("}")
