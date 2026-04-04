@@ -314,6 +314,9 @@ func (r *CDPRunner) exprToJS(n ast.Node) string {
 	case *ast.CallExpr:
 		return r.callToJS(e)
 
+	case *ast.ParenExpr:
+		return "(" + r.exprToJS(e.Inner) + ")"
+
 	default:
 		return r.lang.TranslateExpr(n, r.scope)
 	}

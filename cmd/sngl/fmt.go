@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/spf13/cobra"
@@ -48,7 +49,13 @@ func runFmt(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		formatted := parser.Format(doc)
+		var sb strings.Builder
+		if err := parser.FormatTo(doc, &sb); err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			unformatted = true
+			continue
+		}
+		formatted := sb.String()
 		if formatted == string(original) {
 			continue
 		}

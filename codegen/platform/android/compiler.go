@@ -537,6 +537,8 @@ func snglNodeKtType(e ast.Node) string {
 		case "size":
 			return "Int"
 		}
+	case *ast.ParenExpr:
+		return snglNodeKtType(n.Inner)
 	}
 	return "Any"
 }

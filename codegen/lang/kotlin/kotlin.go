@@ -195,6 +195,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.LambdaExpr:
 		body := translateExpr(n.Body, scope)
 		return "{ " + strings.Join(n.Params, ", ") + " -> " + body + " }"
+	case *ast.ParenExpr:
+		return "(" + translateExpr(n.Inner, scope) + ")"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}

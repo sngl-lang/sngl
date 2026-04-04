@@ -193,6 +193,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 			return n.Params[0] + " => " + body
 		}
 		return "(" + strings.Join(n.Params, ", ") + ") => " + body
+	case *ast.ParenExpr:
+		return "(" + translateExpr(n.Inner, scope) + ")"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
@@ -389,6 +391,8 @@ func isIntNode(e ast.Node) bool {
 		if n.Op == ast.UnaryNeg {
 			return isIntNode(n.Operand)
 		}
+	case *ast.ParenExpr:
+		return isIntNode(n.Inner)
 	}
 	return false
 }

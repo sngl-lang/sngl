@@ -125,6 +125,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 			params[i] = param + " any"
 		}
 		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
+	case *ast.ParenExpr:
+		return "(" + ec.translateExpr(n.Inner) + ")"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */nil", e)
 	}

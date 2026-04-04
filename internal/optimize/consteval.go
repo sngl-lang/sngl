@@ -65,6 +65,8 @@ func isConstExpr(n ast.Node, vars map[string]any) bool {
 		return true
 	case *ast.LambdaExpr:
 		return false
+	case *ast.ParenExpr:
+		return isConstExpr(e.Inner, vars)
 	default:
 		return false
 	}
@@ -153,6 +155,8 @@ func evalConst(n ast.Node, vars map[string]any) (any, bool) {
 			result.WriteString(toStr(v))
 		}
 		return result.String(), true
+	case *ast.ParenExpr:
+		return evalConst(e.Inner, vars)
 	default:
 		return nil, false
 	}

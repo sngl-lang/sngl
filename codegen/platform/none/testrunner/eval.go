@@ -200,6 +200,8 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 		return env.Eval(e.Operand)
 	case *ast.LambdaExpr:
 		return &lambdaValue{params: e.Params, body: e.Body, env: env}, nil
+	case *ast.ParenExpr:
+		return env.Eval(e.Inner)
 	default:
 		return nil, fmt.Errorf("cannot evaluate %T", n)
 	}
@@ -582,6 +584,8 @@ func (env *Env) evalTailAware(n ast.Node, funcName string) (any, []any, bool, er
 			return env.evalTailAware(e.Then, funcName)
 		}
 		return env.evalTailAware(e.Else, funcName)
+	case *ast.ParenExpr:
+		return env.evalTailAware(e.Inner, funcName)
 	default:
 		result, err := env.Eval(n)
 		return result, nil, false, err

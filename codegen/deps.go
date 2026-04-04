@@ -199,6 +199,8 @@ func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
 		for _, arg := range n.Args {
 			walkDeps(arg, modelFields, deps)
 		}
+	case *ast.ParenExpr:
+		walkDeps(n.Inner, modelFields, deps)
 	}
 }
 
@@ -216,6 +218,8 @@ func FindRootIdent(e ast.Node) string {
 		return FindRootIdent(n.Operand)
 	case *ast.MethodExpr:
 		return FindRootIdent(n.Receiver)
+	case *ast.ParenExpr:
+		return FindRootIdent(n.Inner)
 	}
 	return ""
 }

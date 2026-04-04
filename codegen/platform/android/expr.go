@@ -106,6 +106,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		return strings.Join(stmts, "\n")
 	case *ast.CallStmt:
 		return ec.translateCall(n.Call)
+	case *ast.ParenExpr:
+		return "(" + ec.translateExpr(n.Inner) + ")"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}

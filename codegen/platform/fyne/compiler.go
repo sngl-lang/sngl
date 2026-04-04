@@ -948,6 +948,8 @@ func snglNodeGoType(e ast.Node) string {
 		case "length", "indexOf":
 			return "int"
 		}
+	case *ast.ParenExpr:
+		return snglNodeGoType(n.Inner)
 	}
 	return "any"
 }

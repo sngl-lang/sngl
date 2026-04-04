@@ -171,6 +171,11 @@ type LambdaExpr struct {
 	Body       Node     // expression body
 }
 
+// ParenExpr preserves explicit parentheses in the source: (expr).
+type ParenExpr struct {
+	Inner Node
+}
+
 // --- Statements ---
 
 // AssignStmt is an assignment: target op= value.
@@ -229,6 +234,7 @@ func (*ListExpr) snglNode()          {}
 func (*InterpolationExpr) snglNode() {}
 func (*ElementRefExpr) snglNode()    {}
 func (*LambdaExpr) snglNode()        {}
+func (*ParenExpr) snglNode()         {}
 func (*AssignStmt) snglNode()        {}
 func (*ToggleStmt) snglNode()        {}
 func (*EmitStmt) snglNode()          {}

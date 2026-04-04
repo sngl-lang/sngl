@@ -120,6 +120,8 @@ func nodeNeedsFmt(n ast.Node) bool {
 		return nodeNeedsFmt(e.Cond) || nodeNeedsFmt(e.Then) || nodeNeedsFmt(e.Else)
 	case *ast.AssignStmt:
 		return nodeNeedsFmt(e.Value)
+	case *ast.ParenExpr:
+		return nodeNeedsFmt(e.Inner)
 	}
 	return false
 }
@@ -378,6 +380,8 @@ func nodeUsesUnsupported(n ast.Node) bool {
 		if slices.ContainsFunc(e.Stmts, nodeUsesUnsupported) {
 			return true
 		}
+	case *ast.ParenExpr:
+		return nodeUsesUnsupported(e.Inner)
 	}
 	return false
 }
@@ -399,6 +403,8 @@ func isDefinitelyBool(n ast.Node) bool {
 	case *ast.IdentExpr:
 		// Can't tell without type info — return false
 		return false
+	case *ast.ParenExpr:
+		return isDefinitelyBool(e.Inner)
 	}
 	return false
 }
@@ -433,6 +439,8 @@ func nodeUsesElementRef(n ast.Node) bool {
 		if slices.ContainsFunc(e.Stmts, nodeUsesElementRef) {
 			return true
 		}
+	case *ast.ParenExpr:
+		return nodeUsesElementRef(e.Inner)
 	}
 	return false
 }

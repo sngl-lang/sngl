@@ -2,21 +2,30 @@ package parser
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// Format writes an ast.Document as .sngl source text.
-func Format(doc *ast.Document) string {
+// FormatTo writes the formatted .sngl source for doc to w.
+func FormatTo(doc *ast.Document, w io.Writer) error {
 	f := &formatter{comments: doc.Comments}
 	f.formatDocument(doc)
-	// Emit any trailing comments (only for legacy path — Decls path handles comments inline)
 	if len(doc.Decls) == 0 {
 		f.emitRemainingComments()
 	}
-	return alignInlineComments(f.sb.String())
+	aligned := alignInlineComments(f.sb.String())
+	_, err := io.WriteString(w, aligned)
+	return err
+}
+
+// Format writes an ast.Document as .sngl source text.
+func Format(doc *ast.Document) string {
+	var sb strings.Builder
+	FormatTo(doc, &sb)
+	return sb.String()
 }
 
 // alignInlineComments finds runs of consecutive lines that all have inline
@@ -1230,6 +1239,21 @@ func (f *formatter) formatVisualNode(vn *ast.VisualNode) {
 	}
 	// If / For wrapping
 	if vn.If != nil || vn.For != nil {
+		// When both If and For are set (if cond { for ... { ... } }),
+		// emit the if wrapper first, then recurse for the for.
+		if vn.If != nil && vn.For != nil {
+			line := "if " + f.formatExprValue(*vn.If) + " {"
+			f.writeLine(line)
+			f.indent++
+			// Temporarily clear If and format the for+body
+			savedIf := vn.If
+			vn.If = nil
+			f.formatVisualNode(vn)
+			vn.If = savedIf
+			f.indent--
+			f.writeLine("}")
+			return
+		}
 		if vn.For != nil {
 			fc := vn.For
 			line := "for " + fc.Variable
@@ -1461,33 +1485,19 @@ func FormatNode(n ast.Node) string {
 			}
 		}
 		return "(" + strings.Join(params, ", ") + ") => " + body
+	case *ast.ParenExpr:
+		return "(" + FormatNode(e.Inner) + ")"
 	case *ast.BinaryExpr:
 		left := FormatNode(e.Left)
 		right := FormatNode(e.Right)
-		myPrec := binPrec(e.Op)
-		// Wrap left operand if it has lower precedence or is a ternary
-		if lb, ok := e.Left.(*ast.BinaryExpr); ok && binPrec(lb.Op) < myPrec {
-			left = "(" + left + ")"
-		} else if _, ok := e.Left.(*ast.TernaryExpr); ok {
-			left = "(" + left + ")"
-		}
-		// Wrap right operand if it has lower or equal precedence (since all
-		// binary operators are left-associative, same-precedence on the right
-		// needs parens to preserve tree structure: a + (b + c) != (a + b) + c).
-		if rb, ok := e.Right.(*ast.BinaryExpr); ok && binPrec(rb.Op) <= myPrec {
-			right = "(" + right + ")"
-		} else if _, ok := e.Right.(*ast.TernaryExpr); ok {
-			right = "(" + right + ")"
-		}
 		return left + " " + binOpString(e.Op) + " " + right
 	case *ast.UnaryExpr:
 		operand := FormatNode(e.Operand)
-		// Wrap binary/ternary operands in parens
-		switch e.Operand.(type) {
-		case *ast.BinaryExpr, *ast.TernaryExpr:
-			operand = "(" + operand + ")"
-		}
 		if e.Op == ast.UnaryNot {
+			// Avoid !! ambiguity: if operand starts with !, add space
+			if len(operand) > 0 && operand[0] == '!' {
+				return "! " + operand
+			}
 			return "!" + operand
 		}
 		return "-" + operand
@@ -1650,19 +1660,7 @@ func formatLiteral(v any, typeHint string) string {
 // formatPostfixOperand wraps numeric literals in parens to prevent
 // ambiguity with dot access (e.g. 0.field would parse as float 0.).
 func formatPostfixOperand(n ast.Node) string {
-	switch v := n.(type) {
-	case *ast.LiteralExpr:
-		if v.Kind == ast.LiteralInt || v.Kind == ast.LiteralFloat {
-			return "(" + FormatNode(n) + ")"
-		}
-	case *ast.UnaryExpr:
-		// (-3).abs() must keep parens; -3.abs() would parse as -(3.abs())
-		return "(" + FormatNode(n) + ")"
-	case *ast.BinaryExpr:
-		return "(" + FormatNode(n) + ")"
-	case *ast.TernaryExpr:
-		return "(" + FormatNode(n) + ")"
-	}
+	// ParenExpr preserves user-written parens; don't add synthetic ones.
 	return FormatNode(n)
 }
 
@@ -1672,27 +1670,6 @@ func formatArgs(args []ast.Node) string {
 		parts[i] = FormatNode(a)
 	}
 	return strings.Join(parts, ", ")
-}
-
-// binPrec returns the precedence level for a binary operator.
-// Higher values bind tighter.
-func binPrec(op ast.BinaryOp) int {
-	switch op {
-	case ast.BinOr:
-		return 1
-	case ast.BinAnd:
-		return 2
-	case ast.BinEq, ast.BinNeq:
-		return 3
-	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
-		return 4
-	case ast.BinAdd, ast.BinSub:
-		return 5
-	case ast.BinMul, ast.BinDiv, ast.BinMod:
-		return 6
-	default:
-		return 0
-	}
 }
 
 func binOpString(op ast.BinaryOp) string {

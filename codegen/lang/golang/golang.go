@@ -198,6 +198,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		}
 		body := translateExpr(n.Body, scope)
 		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
+	case *ast.ParenExpr:
+		return "(" + translateExpr(n.Inner, scope) + ")"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */nil", e)
 	}

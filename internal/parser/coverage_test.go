@@ -542,8 +542,8 @@ func TestFormatPostfixOperand_NumericLiteral(t *testing.T) {
 		Method:   "toString",
 	}
 	got := parser.FormatNode(node)
-	if !strings.Contains(got, "(0)") {
-		t.Errorf("expected (0) for numeric receiver, got %q", got)
+	if got != "0.toString()" {
+		t.Errorf("expected 0.toString(), got %q", got)
 	}
 }
 

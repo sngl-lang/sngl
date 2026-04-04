@@ -368,6 +368,8 @@ func (c *checker) validateConstExpr(pos ast.Pos, n ast.Node, constNames map[stri
 	case *ast.IndexExpr:
 		c.validateConstExpr(pos, e.Operand, constNames)
 		c.validateConstExpr(pos, e.Index, constNames)
+	case *ast.ParenExpr:
+		c.validateConstExpr(pos, e.Inner, constNames)
 	}
 }
 
@@ -991,6 +993,8 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		return Dyn
 	case *ast.LambdaExpr:
 		return Dyn
+	case *ast.ParenExpr:
+		return c.inferNodeType(e.Inner)
 	default:
 		return Dyn
 	}
@@ -1313,6 +1317,8 @@ func (c *checker) isConstantNode(n ast.Node) bool {
 			}
 		}
 		return true
+	case *ast.ParenExpr:
+		return c.isConstantNode(e.Inner)
 	default:
 		return false
 	}
@@ -1476,6 +1482,8 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		return Dyn
 	case *ast.LambdaExpr:
 		return Dyn
+	case *ast.ParenExpr:
+		return c.inferNodeTypeInScope(e.Inner, scope)
 	default:
 		return Dyn
 	}

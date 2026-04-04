@@ -780,15 +780,38 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	td.EndLine = p.pos().Line
 	p.expect(RBRACE)
 
-	// Merge comments that fall inside the test body.
+	// Merge comments that fall inside the test body, excluding those inside nested subtests.
 	bodyStart := td.Pos.Line
 	bodyEnd := td.EndLine
+	type lineRange struct{ start, end, braceCol int }
+	var nestedRanges []lineRange
+	for _, sub := range td.Subtests {
+		nestedRanges = append(nestedRanges, lineRange{sub.Pos.Line, sub.EndLine, sub.BraceCol})
+	}
 	var bodyComments []ast.Comment
 	for _, c := range p.comments {
+		inBody := false
 		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
-			bodyComments = append(bodyComments, c)
+			inBody = true
 		} else if c.Pos.Line == bodyStart && td.BraceCol > 0 && c.Pos.Column > td.BraceCol {
-			// Comment on the same line as { but after it — inside the body
+			inBody = true
+		}
+		if !inBody {
+			continue
+		}
+		// Exclude comments inside nested subtests
+		insideNested := false
+		for _, r := range nestedRanges {
+			if c.Pos.Line > r.start && c.Pos.Line < r.end {
+				insideNested = true
+				break
+			}
+			if c.Pos.Line == r.start && r.start != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
+				insideNested = true
+				break
+			}
+		}
+		if !insideNested {
 			bodyComments = append(bodyComments, c)
 		}
 	}
@@ -1127,6 +1150,10 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.expect(RBRACE)
 	} else if p.at(IDENT) && p.peekToken().Type == LBRACE && p.isTypedBlockFunc() {
 		// Typed block form: func name(params) type { ... }
+		if !hasParens {
+			p.errorf("block-form functions require (): func %s() { ... }", name)
+		}
+		fd.HasParens = true
 		fd.ReturnType = p.parseTypeString()
 		fd.BraceCol = p.cur.Column
 		p.advance() // consume LBRACE
@@ -1135,6 +1162,10 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.expect(RBRACE)
 	} else if p.at(IDENT) && p.peekToken().Type == LT && p.isGenericReturnTypeBlock() {
 		// Typed block form with generic return type: func name(params) list<T> { ... }
+		if !hasParens {
+			p.errorf("block-form functions require (): func %s() { ... }", name)
+		}
+		fd.HasParens = true
 		fd.ReturnType = p.parseTypeString()
 		fd.BraceCol = p.cur.Column
 		p.advance() // consume LBRACE
@@ -1601,7 +1632,7 @@ func (p *parser) parseParenOrLambda() ast.Node {
 	}
 
 	// Plain parenthesized expression
-	return expr
+	return &ast.ParenExpr{Inner: expr}
 }
 
 type lambdaParam struct {

@@ -25,6 +25,11 @@ func Format(doc *ast.Document) string {
 	return parser.Format(doc)
 }
 
+// FormatTo writes the formatted SNGL source for doc to w.
+func FormatTo(doc *ast.Document, w io.Writer) error {
+	return parser.FormatTo(doc, w)
+}
+
 // FormatNode returns the formatted SNGL source for a single AST node.
 func FormatNode(n ast.Node) string {
 	return parser.FormatNode(n)
