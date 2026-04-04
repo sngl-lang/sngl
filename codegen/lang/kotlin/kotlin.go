@@ -521,9 +521,9 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "color.rgba":
 		return "String.format(\"#%02x%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ", (" + a(3) + " * 255).toInt())"
 	// regex
-	case "regex.contains":
+	case "regex.matches":
 		return a(0) + ".containsMatchIn(" + a(1) + ")"
-	case "regex.match", "*.match":
+	case "regex.find", "*.find":
 		return "(" + a(0) + ".find(" + a(1) + ")?.value ?: \"\")"
 	// Alert
 	case "Alert.toast":

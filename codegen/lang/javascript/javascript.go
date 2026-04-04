@@ -521,9 +521,9 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "list.map", "*.map":
 		return a(0) + ".map(" + a(1) + ")"
 	// regex
-	case "regex.contains":
+	case "regex.matches":
 		return a(0) + ".test(" + a(1) + ")"
-	case "regex.match", "*.match":
+	case "regex.find", "*.find":
 		return "(" + a(0) + ".exec(" + a(1) + ") || [\"\"])[0]"
 	// Alert
 	case "Alert.toast":

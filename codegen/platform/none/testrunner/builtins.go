@@ -108,18 +108,18 @@ var nativeMethods = map[string]nativeFunc{
 	},
 
 	// --- regex ---
-	"regex.contains": func(args []any) (any, error) {
+	"regex.matches": func(args []any) (any, error) {
 		re, ok := args[0].(*regexp.Regexp)
 		if !ok {
-			return false, fmt.Errorf("regex.contains: first argument must be a regex, got %T", args[0])
+			return false, fmt.Errorf("regex.matches: first argument must be a regex, got %T", args[0])
 		}
 		s := fmt.Sprintf("%v", args[1])
 		return re.MatchString(s), nil
 	},
-	"regex.match": func(args []any) (any, error) {
+	"regex.find": func(args []any) (any, error) {
 		re, ok := args[0].(*regexp.Regexp)
 		if !ok {
-			return "", fmt.Errorf("regex.match: first argument must be a regex, got %T", args[0])
+			return "", fmt.Errorf("regex.find: first argument must be a regex, got %T", args[0])
 		}
 		s := fmt.Sprintf("%v", args[1])
 		return re.FindString(s), nil

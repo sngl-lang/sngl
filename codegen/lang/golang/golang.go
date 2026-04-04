@@ -499,9 +499,9 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "list.map", "*.map":
 		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
 	// regex
-	case "regex.contains":
+	case "regex.matches":
 		return a(0) + ".MatchString(" + a(1) + ")"
-	case "regex.match", "*.match":
+	case "regex.find", "*.find":
 		return a(0) + ".FindString(" + a(1) + ")"
 	// Alert
 	case "Alert.toast":

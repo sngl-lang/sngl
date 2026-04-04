@@ -92,18 +92,18 @@ The `regex` type represents a compiled regular expression. Declare one with the 
 <!-- SNGL-component -->
 
 ```sngl
-var pattern = regex("[a-z]+")
-var emailPat regex = "^[^@]+@[^@]+$"
+const pattern = regex("[a-z]+")
+const emailPat regex = "^[^@]+@[^@]+$"
 ```
 
-Invalid patterns are caught at compile time. Use `regex.contains` to check for a match and `regex.match` to extract the first match:
+Invalid patterns are caught at compile time. Use `regex.matches` to check for a match and `regex.find` to extract the first match:
 
 <!-- SNGL-component -->
 
 ```sngl
-var pattern = regex("[a-z]+")
-func _a() pattern.contains("hello")
-func _b() pattern.match("abc 123")
+const pattern = regex("[a-z]+")
+func _a() pattern.matches("hello")
+func _b() pattern.find("abc 123")
 ```
 
 ### Collections
@@ -228,7 +228,7 @@ var callback func(string) -> int = null
 var (
     count = 0,
     name = "World",
-    active = true
+    active = true,
 )
 ```
 
@@ -242,7 +242,7 @@ var (
 const (
     MAX_ITEMS = 100,
     DEFAULT_NAME = "unnamed",
-    PI float = 3.14159
+    PI float = 3.14159,
 )
 const SINGLE = 42
 ```

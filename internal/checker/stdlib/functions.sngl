@@ -95,9 +95,9 @@ func list.contains<T>(l list<T>, item T) list.indexOf(l, item) >= 0
 // Compile a regular expression pattern.
 func regex(pattern string) regex
 // Test if a regex matches a string.
-func regex.contains(r regex, s string) false
+func regex.matches(r regex, s string) false
 // Find the first match of a regex in a string.
-func regex.match(r regex, s string) ""
+func regex.find(r regex, s string) ""
 
 // --- color ---
 // Color construction and manipulation.

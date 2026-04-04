@@ -579,8 +579,8 @@ func _d() "hello".shout()          // "hello!"
 | `float` | `float(value) -> float` | Convert to float (not valid on structs) |
 | `embed` | `embed(path) -> string` | Compile-time file contents |
 | `regex` | `regex(pattern) -> regex` | Compile-time validated regex constructor |
-| `regex.contains` | `regex.contains(r, s) -> bool` | Test if regex matches string |
-| `regex.match` | `regex.match(r, s) -> string` | First match of regex in string |
+| `regex.matches` | `regex.matches(r, s) -> bool` | Test if regex matches string |
+| `regex.find` | `regex.find(r, s) -> string` | First match of regex in string |
 
 Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.
 
