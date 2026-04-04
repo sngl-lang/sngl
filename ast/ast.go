@@ -39,12 +39,22 @@ type Output struct {
 	Options  map[string]string // {"package": "main"}
 }
 
+// Decl is the interface for top-level and component-level declarations
+// that can appear in a Decls slice (including interleaved comments).
+type Decl interface {
+	DeclPos() Pos
+}
+
 // Comment is a source comment preserved for formatting.
 type Comment struct {
-	Pos   Pos
-	Text  string // includes delimiters (// or /* */)
-	Block bool   // true for /* */ comments
+	Pos    Pos
+	Text   string // includes delimiters (// or /* */)
+	Block  bool   // true for /* */ comments
+	Inline bool   // true for trailing same-line comments
 }
+
+// DeclPos implements the Decl interface for Comment.
+func (c *Comment) DeclPos() Pos { return c.Pos }
 
 type Document struct {
 	OutputDefaults     map[string]string // key=value from output(...) defaults
@@ -64,6 +74,7 @@ type Document struct {
 	App    *App
 	Tests              []*TestDef
 	Comments           []Comment // all comments, ordered by position
+	Decls              []Decl    // ordered declarations including interleaved comments
 }
 
 // FindComponent looks up a component by name, searching local components first,
@@ -135,6 +146,7 @@ type Const struct {
 	Name     string
 	Init     Expr
 	Disabled bool
+	Grouped  bool // parsed from const(...) grouped declaration
 }
 
 type EnumDef struct {
@@ -185,6 +197,7 @@ type Data struct {
 	ReturnType string   // parsed func return type, "" for void
 	Trigger    string   // resolved trigger function name, "" for none
 	Disabled   bool
+	Grouped    bool      // parsed from var(...) grouped declaration
 	Resolved   *TypeInfo // populated by checker
 }
 
@@ -228,6 +241,7 @@ type FuncDef struct {
 	Block      *FuncBlock // block form ({ ... }), nil for expression form
 	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
 	Disabled   bool
+	HasParens  bool       // true when () was explicit in source (for zero-param expression funcs)
 }
 
 // FuncBlock is the body of a block-form function.
@@ -247,6 +261,7 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 
 type Component struct {
 	Pos            Pos
+	EndLine        int    // line of closing }, for comment filtering
 	Name           string
 	Disabled       bool
 	Params         []*Param                // params/props declared in ()
@@ -258,6 +273,7 @@ type Component struct {
 	ChildrenType   string                  // return-type position: "", "component", "list<component>", "option<component>", etc.
 	Body           []*VisualNode           // default body (or only body for user components)
 	PlatformBodies map[string][]*VisualNode // platform-conditional bodies: platform name → visual nodes
+	Decls          []Decl                  // ordered declarations including interleaved comments
 }
 
 type Param struct {
@@ -298,8 +314,24 @@ type VisualNode struct {
 	Props      map[string]Expr
 	Events     map[string]Expr
 	Bindings   map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
+	PropOrder  []string        // insertion order of props/events/bindings (prefix: @=event, :=binding)
 	Children []*VisualNode
 }
+
+// DeclPos implementations for types that can appear in Decls slices.
+func (s *StructDef) DeclPos() Pos  { return s.Pos }
+func (e *EnumDef) DeclPos() Pos    { return e.Pos }
+func (u *UnitDef) DeclPos() Pos    { return u.Pos }
+func (s *StyleDecl) DeclPos() Pos  { return s.Pos }
+func (c *Const) DeclPos() Pos      { return c.Pos }
+func (d *Data) DeclPos() Pos       { return d.Pos }
+func (f *FuncDef) DeclPos() Pos    { return f.Pos }
+func (t *Timer) DeclPos() Pos      { return t.Pos }
+func (i *Import) DeclPos() Pos     { return i.Pos }
+func (o *Output) DeclPos() Pos     { return o.Pos }
+func (c *Component) DeclPos() Pos  { return c.Pos }
+func (t *TestDef) DeclPos() Pos    { return t.Pos }
+func (vn *VisualNode) DeclPos() Pos { return vn.Pos }
 
 // StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
 // Returns nil if no style prop or if it's not an anonymous struct literal.

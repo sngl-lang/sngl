@@ -12,8 +12,10 @@ import (
 func Format(doc *ast.Document) string {
 	f := &formatter{comments: doc.Comments}
 	f.formatDocument(doc)
-	// Emit any trailing comments
-	f.emitRemainingComments()
+	// Emit any trailing comments (only for legacy path — Decls path handles comments inline)
+	if len(doc.Decls) == 0 {
+		f.emitRemainingComments()
+	}
 	return f.sb.String()
 }
 
@@ -71,6 +73,219 @@ func (f *formatter) writeDisabledLine(disabled bool, s string) {
 }
 
 func (f *formatter) formatDocument(doc *ast.Document) {
+	if len(doc.Decls) > 0 {
+		f.formatDocumentDecls(doc)
+		return
+	}
+	// Legacy path: when Decls is empty, use the old ordered approach
+	f.formatDocumentLegacy(doc)
+}
+
+func (f *formatter) formatDocumentDecls(doc *ast.Document) {
+	needBlank := false
+	// Track output declarations separately since they get grouped
+	var prevType string
+	outputsSeen := false
+
+	for _, d := range doc.Decls {
+		switch decl := d.(type) {
+		case *ast.Comment:
+			if decl.Inline {
+				// Inline comment: remove last \n, append comment on same line
+				s := f.sb.String()
+				if len(s) > 0 && s[len(s)-1] == '\n' {
+					f.sb.Reset()
+					f.sb.WriteString(s[:len(s)-1])
+				}
+				f.write(" " + decl.Text)
+				f.newline()
+			} else {
+				if needBlank {
+					f.newline()
+				}
+				f.writeLine(decl.Text)
+				needBlank = false
+			}
+			continue // don't update prevType
+		case *ast.Import:
+			// Imports don't need blank between each other
+			if needBlank && prevType != "import" {
+				f.newline()
+			}
+			f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(decl.Path)))
+			prevType = "import"
+			needBlank = true
+		case *ast.Output:
+			if !outputsSeen {
+				if needBlank {
+					f.newline()
+				}
+				f.formatOutputGroup(doc)
+				outputsSeen = true
+				prevType = "output"
+				needBlank = true
+			}
+			// Skip subsequent Output decls since formatOutputGroup handles all
+		case *ast.StructDef:
+			if needBlank {
+				f.newline()
+			}
+			if decl.Disabled {
+				f.write(f.indentStr() + "/- ")
+			}
+			f.formatStruct(decl)
+			prevType = "struct"
+			needBlank = true
+		case *ast.EnumDef:
+			if needBlank {
+				f.newline()
+			}
+			f.writeDisabledLine(decl.Disabled, fmt.Sprintf("enum %s { %s }", decl.Name, strings.Join(decl.Values, ", ")))
+			prevType = "enum"
+			needBlank = true
+		case *ast.UnitDef:
+			if needBlank {
+				f.newline()
+			}
+			f.formatUnitDecl(decl)
+			prevType = "unit"
+			needBlank = true
+		case *ast.StyleDecl:
+			if needBlank {
+				f.newline()
+			}
+			f.formatStyleDecl(decl)
+			prevType = "style"
+			needBlank = true
+		case *ast.Component:
+			if decl.Name == "main" {
+				// Format using the component's own Decls if available
+				f.formatComponentAsMain(decl)
+			} else {
+				if needBlank {
+					f.newline()
+				}
+				if decl.Disabled {
+					f.write(f.indentStr() + "/- ")
+				}
+				f.formatComponent(decl)
+			}
+			prevType = "component"
+			needBlank = true
+		case *ast.TestDef:
+			if needBlank {
+				f.newline()
+			}
+			if decl.Disabled {
+				f.write(f.indentStr() + "/- ")
+			}
+			f.formatTestDef(decl, true)
+			prevType = "test"
+			needBlank = true
+		case *ast.Const:
+			// Consts at document level are part of main
+			// (they're handled via formatDocMain)
+		case *ast.Data:
+			// Data at document level is part of main
+		case *ast.FuncDef:
+			// Functions at document level are part of main
+		case *ast.Timer:
+			// Timers at document level are part of main
+		}
+	}
+
+	// If we haven't seen a main component in Decls but have main content,
+	// format it now (backward compat)
+	hasMainInDecls := false
+	for _, d := range doc.Decls {
+		if comp, ok := d.(*ast.Component); ok && comp.Name == "main" {
+			hasMainInDecls = true
+			break
+		}
+	}
+	if !hasMainInDecls {
+		f.formatDocMain(doc)
+	}
+}
+
+func (f *formatter) formatComponentAsMain(comp *ast.Component) {
+	if f.sb.Len() > 0 {
+		f.newline()
+	}
+	f.formatComponent(comp)
+}
+
+func (f *formatter) formatDocMain(doc *ast.Document) {
+	hasUserFuncs := false
+	for _, fn := range doc.Functions {
+		if !fn.IsStdlib {
+			hasUserFuncs = true
+			break
+		}
+	}
+	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Consts) > 0 || hasUserFuncs
+	if !hasMain {
+		return
+	}
+	if f.sb.Len() > 0 {
+		f.newline()
+	}
+	f.writeLine("component main {")
+	f.indent++
+
+	memberBlank := false
+
+	// Consts
+	if len(doc.Consts) > 0 {
+		f.formatConstsGrouped(doc.Consts)
+		memberBlank = true
+	}
+
+	// Vars
+	if len(doc.Data) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		f.formatVarsGrouped(doc.Data)
+		memberBlank = true
+	}
+
+	// Functions
+	if len(doc.Functions) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		f.formatFuncDefs(doc.Functions)
+		memberBlank = true
+	}
+
+	// Timers
+	if len(doc.Timers) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		for _, t := range doc.Timers {
+			f.formatTimer(t)
+		}
+		memberBlank = true
+	}
+
+	// App body
+	if doc.App != nil && len(doc.App.Children) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		for _, vn := range doc.App.Children {
+			f.emitCommentsBefore(vn.Pos.Line)
+			f.formatVisualNode(vn)
+		}
+	}
+
+	f.indent--
+	f.writeLine("}")
+}
+
+func (f *formatter) formatDocumentLegacy(doc *ast.Document) {
 	needBlank := false
 
 	// Imports
@@ -87,42 +302,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		if needBlank {
 			f.newline()
 		}
-		header := "output"
-		if len(doc.OutputDefaults) > 0 {
-			header += "(" + formatKV(doc.OutputDefaults) + ")"
-		}
-		f.writeLine(header + " {")
-		f.indent++
-		// Group outputs by lang
-		type langGroup struct {
-			lang    string
-			outputs []*ast.Output
-		}
-		var groups []langGroup
-		seen := map[string]int{}
-		for _, o := range doc.Outputs {
-			if idx, ok := seen[o.Lang]; ok {
-				groups[idx].outputs = append(groups[idx].outputs, o)
-			} else {
-				seen[o.Lang] = len(groups)
-				groups = append(groups, langGroup{lang: o.Lang, outputs: []*ast.Output{o}})
-			}
-		}
-		for _, g := range groups {
-			f.writeLine(g.lang + " {")
-			f.indent++
-			for _, o := range g.outputs {
-				line := o.Platform
-				if len(o.Options) > 0 {
-					line += "(" + formatKV(o.Options) + ")"
-				}
-				f.writeLine(line)
-			}
-			f.indent--
-			f.writeLine("}")
-		}
-		f.indent--
-		f.writeLine("}")
+		f.formatOutputGroup(doc)
 		needBlank = true
 	}
 
@@ -262,6 +442,50 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 	}
 }
 
+func (f *formatter) formatOutputGroup(doc *ast.Document) {
+	header := "output"
+	if len(doc.OutputDefaults) > 0 {
+		header += "(" + formatKV(doc.OutputDefaults) + ")"
+	}
+	f.writeLine(header + " {")
+	f.indent++
+	// Group outputs by lang
+	type langGroup struct {
+		lang    string
+		outputs []*ast.Output
+	}
+	var groups []langGroup
+	seen := map[string]int{}
+	for _, o := range doc.Outputs {
+		if idx, ok := seen[o.Lang]; ok {
+			groups[idx].outputs = append(groups[idx].outputs, o)
+		} else {
+			seen[o.Lang] = len(groups)
+			groups = append(groups, langGroup{lang: o.Lang, outputs: []*ast.Output{o}})
+		}
+	}
+	for _, g := range groups {
+		// One-liner: single platform with no options
+		if len(g.outputs) == 1 && len(g.outputs[0].Options) == 0 {
+			f.writeLine(g.lang + " { " + g.outputs[0].Platform + " }")
+			continue
+		}
+		f.writeLine(g.lang + " {")
+		f.indent++
+		for _, o := range g.outputs {
+			line := o.Platform
+			if len(o.Options) > 0 {
+				line += "(" + formatKV(o.Options) + ")"
+			}
+			f.writeLine(line)
+		}
+		f.indent--
+		f.writeLine("}")
+	}
+	f.indent--
+	f.writeLine("}")
+}
+
 func (f *formatter) formatStruct(s *ast.StructDef) {
 	f.writeLine("struct " + s.Name + " {")
 	f.indent++
@@ -305,7 +529,7 @@ func (f *formatter) formatStyleDecl(s *ast.StyleDecl) {
 
 
 func (f *formatter) formatConsts(consts []*ast.Const) {
-	if len(consts) == 1 {
+	if len(consts) == 1 && !consts[0].Grouped {
 		c := consts[0]
 		f.writeDisabledLine(c.Disabled, "const "+c.Name+" = "+f.formatExprValue(c.Init))
 		return
@@ -320,7 +544,7 @@ func (f *formatter) formatConsts(consts []*ast.Const) {
 }
 
 func (f *formatter) formatVars(data []*ast.Data) {
-	if len(data) == 1 {
+	if len(data) == 1 && !data[0].Grouped {
 		f.writeDisabledLine(data[0].Disabled, "var "+f.formatVarDecl(data[0]))
 		return
 	}
@@ -333,6 +557,45 @@ func (f *formatter) formatVars(data []*ast.Data) {
 	f.writeLine(")")
 }
 
+// formatConstsGrouped emits consts, grouping consecutive Grouped items together
+// and emitting non-grouped items individually.
+func (f *formatter) formatConstsGrouped(consts []*ast.Const) {
+	i := 0
+	for i < len(consts) {
+		if consts[i].Grouped {
+			// Collect consecutive grouped consts
+			j := i
+			for j < len(consts) && consts[j].Grouped {
+				j++
+			}
+			f.formatConsts(consts[i:j])
+			i = j
+		} else {
+			f.formatConsts(consts[i : i+1])
+			i++
+		}
+	}
+}
+
+// formatVarsGrouped emits vars, grouping consecutive Grouped items together
+// and emitting non-grouped items individually.
+func (f *formatter) formatVarsGrouped(data []*ast.Data) {
+	i := 0
+	for i < len(data) {
+		if data[i].Grouped {
+			j := i
+			for j < len(data) && data[j].Grouped {
+				j++
+			}
+			f.formatVars(data[i:j])
+			i = j
+		} else {
+			f.formatVars(data[i : i+1])
+			i++
+		}
+	}
+}
+
 func (f *formatter) formatVarDecl(d *ast.Data) string {
 	var sb strings.Builder
 	sb.WriteString(d.Name)
@@ -341,11 +604,8 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
 
 	if typeStr != "" {
-		// Omit type when it can be inferred from the default value
-		if !canInferType(d.Init, typeStr) {
-			sb.WriteByte(' ')
-			sb.WriteString(typeStr)
-		}
+		sb.WriteByte(' ')
+		sb.WriteString(typeStr)
 	}
 
 	if hasInit {
@@ -369,46 +629,6 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 	return sb.String()
 }
 
-// canInferType reports whether the type can be inferred from the expression.
-func canInferType(expr ast.Expr, typeStr string) bool {
-	// If the value is just null, we need the type
-	if expr.Literal == nil && expr.SNGL != nil {
-		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
-			return false
-		}
-	}
-	if expr.Literal == nil && expr.SNGL == nil {
-		return false
-	}
-
-	// Primitive types can be inferred from literal values
-	switch typeStr {
-	case "int":
-		_, isInt := expr.Literal.(int)
-		return isInt
-	case "float":
-		_, isFloat := expr.Literal.(float64)
-		return isFloat
-	case "string":
-		_, isStr := expr.Literal.(string)
-		return isStr
-	case "bool":
-		_, isBool := expr.Literal.(bool)
-		return isBool
-	case "color":
-		if s, ok := expr.Literal.(string); ok {
-			return strings.HasPrefix(s, "#")
-		}
-	}
-	// Unit types (duration, measurement, etc.) can be inferred from unit literals
-	if strings.HasPrefix(typeStr, "unit:") {
-		_, ok := expr.Literal.(ast.UnitLiteral)
-		return ok
-	}
-
-	// CEL expressions with complex types (list, struct, enum, func) need explicit type
-	return false
-}
 
 func (f *formatter) formatFuncDefs(funcs []*ast.FuncDef) {
 	for _, fn := range funcs {
@@ -428,7 +648,7 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		sb.WriteString(strings.Join(fn.TypeParams, ", "))
 		sb.WriteString(">")
 	}
-	if len(fn.Params) > 0 || fn.Block != nil {
+	if len(fn.Params) > 0 || fn.Block != nil || fn.HasParens {
 		sb.WriteString("(")
 		for i, p := range fn.Params {
 			if i > 0 {
@@ -509,11 +729,11 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 				header += ":"
 			}
 			header += p.Name
-			hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
 			typeStr := typeHintStr(p.Default.TypeHint, nil)
-			if typeStr != "" && !canInferType(p.Default, typeStr) {
+			if typeStr != "" {
 				header += " " + typeStr
 			}
+			hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
 			if len(p.Enum) > 0 {
 				header += " enum(" + strings.Join(p.Enum, ", ") + ")"
 			}
@@ -544,6 +764,113 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 	f.writeLine(header + " {")
 	f.indent++
 
+	if len(comp.Decls) > 0 {
+		f.formatDeclSlice(comp)
+	} else {
+		f.formatComponentLegacy(comp)
+	}
+
+	f.indent--
+	f.writeLine("}")
+}
+
+// formatDeclSlice formats the body of a component using its ordered Decls slice.
+func (f *formatter) formatDeclSlice(comp *ast.Component) {
+	memberBlank := false
+	var prevType string
+
+	for _, d := range comp.Decls {
+		switch decl := d.(type) {
+		case *ast.Comment:
+			if decl.Inline {
+				s := f.sb.String()
+				if len(s) > 0 && s[len(s)-1] == '\n' {
+					f.sb.Reset()
+					f.sb.WriteString(s[:len(s)-1])
+				}
+				f.write(" " + decl.Text)
+				f.newline()
+			} else {
+				if memberBlank {
+					f.newline()
+				}
+				f.writeLine(decl.Text)
+				memberBlank = false
+			}
+			continue // don't update prevType
+		case *ast.Const:
+			// Collect consecutive grouped consts
+			if decl.Grouped {
+				if memberBlank && prevType != "const" {
+					f.newline()
+				}
+				// Already handled by group collection below
+			} else {
+				if memberBlank {
+					f.newline()
+				}
+			}
+			f.formatConsts([]*ast.Const{decl})
+			prevType = "const"
+			memberBlank = true
+		case *ast.Data:
+			if decl.Grouped {
+				if memberBlank && prevType != "var" {
+					f.newline()
+				}
+			} else {
+				if memberBlank {
+					f.newline()
+				}
+			}
+			f.formatVars([]*ast.Data{decl})
+			prevType = "var"
+			memberBlank = true
+		case *ast.FuncDef:
+			if decl.IsStdlib {
+				continue
+			}
+			if memberBlank {
+				f.newline()
+			}
+			f.formatFuncDef(decl)
+			prevType = "func"
+			memberBlank = true
+		case *ast.Timer:
+			if memberBlank {
+				f.newline()
+			}
+			f.formatTimer(decl)
+			prevType = "timer"
+			memberBlank = true
+		case *ast.VisualNode:
+			if memberBlank && prevType != "visual" {
+				f.newline()
+			}
+			f.formatVisualNode(decl)
+			prevType = "visual"
+			memberBlank = true
+		}
+	}
+
+	// Platform-conditional bodies
+	for platName, nodes := range comp.PlatformBodies {
+		if memberBlank {
+			f.newline()
+		}
+		f.writeLine("platform " + platName + " {")
+		f.indent++
+		for _, vn := range nodes {
+			f.formatVisualNode(vn)
+		}
+		f.indent--
+		f.writeLine("}")
+		memberBlank = true
+	}
+}
+
+// formatComponentLegacy formats a component body using the old ordered approach.
+func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	memberBlank := false
 
 	// Consts
@@ -611,9 +938,6 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 		f.writeLine("}")
 		memberBlank = true
 	}
-
-	f.indent--
-	f.writeLine("}")
 }
 
 func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
@@ -688,33 +1012,70 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 	// Build prop list
 	var props []string
 
-	// Special props
-	if vn.Key != nil {
-		props = append(props, "key="+f.formatExprValue(*vn.Key))
-	}
-	if vn.Class != nil {
-		props = append(props, "class="+f.formatExprValue(*vn.Class))
-	}
-	if vn.Ref != nil {
-		props = append(props, "ref="+f.formatExprValue(*vn.Ref))
-	}
+	if len(vn.PropOrder) > 0 {
+		// Use insertion order from parser
+		for _, entry := range vn.PropOrder {
+			if strings.HasPrefix(entry, "@") {
+				name := entry[1:]
+				if expr, ok := vn.Events[name]; ok {
+					props = append(props, "@"+name+"="+f.formatEventValue(expr))
+				}
+			} else if strings.HasPrefix(entry, ":") {
+				name := entry[1:]
+				if expr, ok := vn.Bindings[name]; ok {
+					props = append(props, ":"+name+"="+f.formatExprValue(expr))
+				}
+			} else {
+				switch entry {
+				case "key":
+					if vn.Key != nil {
+						props = append(props, "key="+f.formatExprValue(*vn.Key))
+					}
+				case "class":
+					if vn.Class != nil {
+						props = append(props, "class="+f.formatExprValue(*vn.Class))
+					}
+				case "ref":
+					if vn.Ref != nil {
+						props = append(props, "ref="+f.formatExprValue(*vn.Ref))
+					}
+				default:
+					if expr, ok := vn.Props[entry]; ok {
+						props = append(props, entry+"="+f.formatExprValue(expr))
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback: sorted keys for deterministic output
+		// Special props
+		if vn.Key != nil {
+			props = append(props, "key="+f.formatExprValue(*vn.Key))
+		}
+		if vn.Class != nil {
+			props = append(props, "class="+f.formatExprValue(*vn.Class))
+		}
+		if vn.Ref != nil {
+			props = append(props, "ref="+f.formatExprValue(*vn.Ref))
+		}
 
-	// Regular props (sorted for deterministic output)
-	propKeys := sortedKeys(vn.Props)
-	for _, k := range propKeys {
-		props = append(props, k+"="+f.formatExprValue(vn.Props[k]))
-	}
+		// Regular props (sorted for deterministic output)
+		propKeys := sortedKeys(vn.Props)
+		for _, k := range propKeys {
+			props = append(props, k+"="+f.formatExprValue(vn.Props[k]))
+		}
 
-	// Bindings (sorted for deterministic output)
-	bindingKeys := sortedKeys(vn.Bindings)
-	for _, name := range bindingKeys {
-		props = append(props, ":"+name+"="+f.formatExprValue(vn.Bindings[name]))
-	}
+		// Bindings (sorted for deterministic output)
+		bindingKeys := sortedKeys(vn.Bindings)
+		for _, name := range bindingKeys {
+			props = append(props, ":"+name+"="+f.formatExprValue(vn.Bindings[name]))
+		}
 
-	// Events (sorted for deterministic output)
-	eventKeys := sortedKeys(vn.Events)
-	for _, name := range eventKeys {
-		props = append(props, "@"+name+"="+f.formatEventValue(vn.Events[name]))
+		// Events (sorted for deterministic output)
+		eventKeys := sortedKeys(vn.Events)
+		for _, name := range eventKeys {
+			props = append(props, "@"+name+"="+f.formatEventValue(vn.Events[name]))
+		}
 	}
 
 	// Build the line
@@ -747,6 +1108,16 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 
 func (f *formatter) formatEventValue(expr ast.Expr) string {
 	if expr.SNGL != nil {
+		if sb, ok := expr.SNGL.(*ast.StmtBlock); ok && len(sb.Stmts) > 1 {
+			// Multi-line event handler
+			var lines []string
+			lines = append(lines, "{")
+			for _, stmt := range sb.Stmts {
+				lines = append(lines, f.indentStr()+"        "+FormatNode(stmt))
+			}
+			lines = append(lines, f.indentStr()+"    }")
+			return strings.Join(lines, "\n")
+		}
 		return "{ " + FormatStmt(expr.SNGL) + " }"
 	}
 	return "{ null }"
@@ -789,9 +1160,27 @@ func FormatNode(n ast.Node) string {
 	case *ast.BinaryExpr:
 		left := FormatNode(e.Left)
 		right := FormatNode(e.Right)
+		myPrec := binPrec(e.Op)
+		// Wrap left operand if it has lower precedence or is a ternary
+		if lb, ok := e.Left.(*ast.BinaryExpr); ok && binPrec(lb.Op) < myPrec {
+			left = "(" + left + ")"
+		} else if _, ok := e.Left.(*ast.TernaryExpr); ok {
+			left = "(" + left + ")"
+		}
+		// Wrap right operand if it has lower precedence or is a ternary
+		if rb, ok := e.Right.(*ast.BinaryExpr); ok && binPrec(rb.Op) < myPrec {
+			right = "(" + right + ")"
+		} else if _, ok := e.Right.(*ast.TernaryExpr); ok {
+			right = "(" + right + ")"
+		}
 		return left + " " + binOpString(e.Op) + " " + right
 	case *ast.UnaryExpr:
 		operand := FormatNode(e.Operand)
+		// Wrap binary/ternary operands in parens
+		switch e.Operand.(type) {
+		case *ast.BinaryExpr, *ast.TernaryExpr:
+			operand = "(" + operand + ")"
+		}
 		if e.Op == ast.UnaryNot {
 			return "!" + operand
 		}
@@ -887,8 +1276,14 @@ func FormatStmt(n ast.Node) string {
 func formatLiteralExpr(e *ast.LiteralExpr) string {
 	switch e.Kind {
 	case ast.LiteralInt:
+		if e.Raw != "" {
+			return e.Raw
+		}
 		return fmt.Sprintf("%d", e.Value)
 	case ast.LiteralFloat:
+		if e.Raw != "" {
+			return e.Raw
+		}
 		return fmt.Sprintf("%v", e.Value)
 	case ast.LiteralString:
 		s := fmt.Sprintf("%v", e.Value)
@@ -954,6 +1349,27 @@ func formatArgs(args []ast.Node) string {
 		parts[i] = FormatNode(a)
 	}
 	return strings.Join(parts, ", ")
+}
+
+// binPrec returns the precedence level for a binary operator.
+// Higher values bind tighter.
+func binPrec(op ast.BinaryOp) int {
+	switch op {
+	case ast.BinOr:
+		return 1
+	case ast.BinAnd:
+		return 2
+	case ast.BinEq, ast.BinNeq:
+		return 3
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		return 4
+	case ast.BinAdd, ast.BinSub:
+		return 5
+	case ast.BinMul, ast.BinDiv, ast.BinMod:
+		return 6
+	default:
+		return 0
+	}
 }
 
 func binOpString(op ast.BinaryOp) string {

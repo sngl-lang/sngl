@@ -128,12 +128,42 @@ func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNo
 		foldExprMap(vn.Props, vars)
 		foldExprMap(vn.Events, vars)
 
+		// Unwrap trivial interpolations: "{expr}" → expr
+		unwrapTrivialInterpolations(vn.Props)
+		unwrapTrivialInterpolationPtr(vn.Key)
+		unwrapTrivialInterpolationPtr(vn.Class)
+
 		// Recurse into children.
 		vn.Children = optimizeNodes(vn.Children, vars)
 
 		out = append(out, vn)
 	}
 	return out
+}
+
+// unwrapTrivialInterpolations simplifies "{expr}" → expr in a prop map.
+// A single-expression interpolation with no surrounding text is equivalent
+// to the expression itself (implicit string conversion applies in prop context).
+func unwrapTrivialInterpolations(m map[string]ast.Expr) {
+	for k, e := range m {
+		if interp, ok := e.SNGL.(*ast.InterpolationExpr); ok && len(interp.Parts) == 1 {
+			if _, isLit := interp.Parts[0].(*ast.LiteralExpr); !isLit {
+				e.SNGL = interp.Parts[0]
+				m[k] = e
+			}
+		}
+	}
+}
+
+func unwrapTrivialInterpolationPtr(e *ast.Expr) {
+	if e == nil {
+		return
+	}
+	if interp, ok := e.SNGL.(*ast.InterpolationExpr); ok && len(interp.Parts) == 1 {
+		if _, isLit := interp.Parts[0].(*ast.LiteralExpr); !isLit {
+			e.SNGL = interp.Parts[0]
+		}
+	}
 }
 
 func foldExprPtr(e *ast.Expr, vars map[string]any) {

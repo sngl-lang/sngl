@@ -66,6 +66,7 @@ const (
 type LiteralExpr struct {
 	Value any
 	Kind  LiteralKind
+	Raw   string // original source text (for preserving "0.0" vs "0", "1_000", etc.)
 }
 
 // UnitLiteral is the value stored in a LiteralExpr with Kind == LiteralUnit.

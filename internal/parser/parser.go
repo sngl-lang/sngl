@@ -278,48 +278,63 @@ func (p *parser) parseDocument() *ast.Document {
 			imp := p.parseImport()
 			imp.Disabled = disabled
 			doc.Imports = append(doc.Imports, imp)
+			doc.Decls = append(doc.Decls, imp)
 		case KW_OUTPUT:
 			defaults, outputs := p.parseOutput()
 			if defaults != nil {
 				doc.OutputDefaults = defaults
 			}
 			doc.Outputs = append(doc.Outputs, outputs...)
+			for _, o := range outputs {
+				doc.Decls = append(doc.Decls, o)
+			}
 		case KW_STRUCT:
 			sd := p.parseStruct()
 			sd.Disabled = disabled
 			doc.Structs = append(doc.Structs, sd)
+			doc.Decls = append(doc.Decls, sd)
 		case KW_ENUM:
 			ed := p.parseEnum()
 			ed.Disabled = disabled
 			doc.Enums = append(doc.Enums, ed)
+			doc.Decls = append(doc.Decls, ed)
 		case KW_UNIT:
-			doc.Units = append(doc.Units, p.parseUnitDecl())
+			u := p.parseUnitDecl()
+			doc.Units = append(doc.Units, u)
+			doc.Decls = append(doc.Decls, u)
 		case KW_STYLE:
-			doc.Styles = append(doc.Styles, p.parseStyleDecl())
+			s := p.parseStyleDecl()
+			doc.Styles = append(doc.Styles, s)
+			doc.Decls = append(doc.Decls, s)
 		case KW_TIMER:
 			t := p.parseTimer()
 			t.Disabled = disabled
 			doc.Timers = append(doc.Timers, t)
+			doc.Decls = append(doc.Decls, t)
 		case KW_TEST:
 			td := p.parseTestDef(true)
 			td.Disabled = disabled
 			doc.Tests = append(doc.Tests, td)
+			doc.Decls = append(doc.Decls, td)
 		case KW_CONST:
 			consts := p.parseConstDecl()
 			for _, c := range consts {
 				c.Disabled = disabled
+				doc.Decls = append(doc.Decls, c)
 			}
 			doc.Consts = append(doc.Consts, consts...)
 		case KW_VAR:
 			vars := p.parseVarDecl()
 			for _, d := range vars {
 				d.Disabled = disabled
+				doc.Decls = append(doc.Decls, d)
 			}
 			doc.Data = append(doc.Data, vars...)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
 			doc.Functions = append(doc.Functions, fn)
+			doc.Decls = append(doc.Decls, fn)
 		case KW_COMPONENT:
 			comp := p.parseComponent()
 			comp.Disabled = disabled
@@ -332,13 +347,93 @@ func (p *parser) parseDocument() *ast.Document {
 			} else {
 				doc.Components = append(doc.Components, comp)
 			}
+			doc.Decls = append(doc.Decls, comp)
 		default:
 			p.errorf("unexpected token %v at top level", p.cur.Literal)
 			p.advance()
 		}
 	}
 	doc.Comments = p.comments
+	// Only merge comments that aren't inside nested blocks (components, tests).
+	// Build a set of line ranges covered by nested blocks.
+	type lineRange struct{ start, end int }
+	var nested []lineRange
+	for _, d := range doc.Decls {
+		switch v := d.(type) {
+		case *ast.Component:
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine})
+		}
+	}
+	var topComments []ast.Comment
+	for _, c := range p.comments {
+		inside := false
+		for _, r := range nested {
+			if c.Pos.Line > r.start && c.Pos.Line < r.end {
+				inside = true
+				break
+			}
+		}
+		if !inside {
+			topComments = append(topComments, c)
+		}
+	}
+	doc.Decls = mergeCommentsIntoDecls(doc.Decls, topComments)
 	return doc
+}
+
+// mergeCommentsIntoDecls merges comments into a declaration slice, preserving
+// source order. Inline comments (same line as a declaration) are placed
+// immediately after the declaration; non-inline comments are placed before
+// the next declaration.
+func mergeCommentsIntoDecls(decls []ast.Decl, comments []ast.Comment) []ast.Decl {
+	if len(comments) == 0 {
+		return decls
+	}
+
+	// Build a set of declaration line numbers so we can mark inline comments.
+	declLines := map[int]bool{}
+	for _, d := range decls {
+		declLines[d.DeclPos().Line] = true
+	}
+
+	// Mark inline comments.
+	for i := range comments {
+		if declLines[comments[i].Pos.Line] {
+			comments[i].Inline = true
+		}
+	}
+
+	// Merge: non-inline comments go before the next decl; inline comments go after
+	// the decl they share a line with.
+	result := make([]ast.Decl, 0, len(decls)+len(comments))
+	ci := 0
+	for _, d := range decls {
+		dLine := d.DeclPos().Line
+		// Emit non-inline comments that come before this decl
+		for ci < len(comments) && comments[ci].Pos.Line < dLine {
+			if !comments[ci].Inline {
+				c := comments[ci]
+				result = append(result, &c)
+			}
+			ci++
+		}
+		result = append(result, d)
+		// Emit inline comments on the same line as this decl
+		for ci < len(comments) && comments[ci].Pos.Line == dLine {
+			if comments[ci].Inline {
+				c := comments[ci]
+				result = append(result, &c)
+			}
+			ci++
+		}
+	}
+	// Emit remaining comments
+	for ci < len(comments) {
+		c := comments[ci]
+		result = append(result, &c)
+		ci++
+	}
+	return result
 }
 
 func (p *parser) parseImport() *ast.Import {
@@ -562,22 +657,26 @@ func (p *parser) parseComponent() *ast.Component {
 			consts := p.parseConstDecl()
 			for _, c := range consts {
 				c.Disabled = disabled
+				comp.Decls = append(comp.Decls, c)
 			}
 			cs.Consts = append(cs.Consts, consts...)
 		case KW_VAR:
 			vars := p.parseVarDecl()
 			for _, d := range vars {
 				d.Disabled = disabled
+				comp.Decls = append(comp.Decls, d)
 			}
 			cs.Data = append(cs.Data, vars...)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
 			comp.Functions = append(comp.Functions, fn)
+			comp.Decls = append(comp.Decls, fn)
 		case KW_TIMER:
 			t := p.parseTimer()
 			t.Disabled = disabled
 			comp.Timers = append(comp.Timers, t)
+			comp.Decls = append(comp.Decls, t)
 		case KW_PLATFORM:
 			p.advance()
 			platName := p.expect(IDENT).Literal
@@ -600,13 +699,27 @@ func (p *parser) parseComponent() *ast.Component {
 			node := p.parseNodeOrControl()
 			node.Disabled = disabled
 			comp.Body = append(comp.Body, node)
+			comp.Decls = append(comp.Decls, node)
 		}
 		p.skipSemicolons()
 	}
+	closeLine := p.cur.Line
+	comp.EndLine = closeLine
 	p.expect(RBRACE)
 
 	comp.Consts = cs.Consts
 	comp.Data = cs.Data
+
+	// Merge comments that fall inside the component body.
+	bodyStart := comp.Pos.Line
+	bodyEnd := closeLine
+	var bodyComments []ast.Comment
+	for _, c := range p.comments {
+		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
+			bodyComments = append(bodyComments, c)
+		}
+	}
+	comp.Decls = mergeCommentsIntoDecls(comp.Decls, bodyComments)
 	return comp
 }
 
@@ -739,6 +852,9 @@ func (p *parser) parseGroupedConsts() []*ast.Const {
 		p.skipSemicolons()
 	}
 	p.expect(RPAREN)
+	for _, s := range consts {
+		s.Grouped = true
+	}
 	return consts
 }
 
@@ -882,6 +998,9 @@ func (p *parser) parseGroupedVars() []*ast.Data {
 		p.skipSemicolons()
 	}
 	p.expect(RPAREN)
+	for _, s := range vars {
+		s.Grouped = true
+	}
 	return vars
 }
 
@@ -930,7 +1049,8 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 
 	// Parse parameter list (optional for expression-form with =>)
 	var params []*ast.FuncParam
-	if p.at(LPAREN) {
+	hasParens := p.at(LPAREN)
+	if hasParens {
 		p.advance()
 		for !p.at(RPAREN) && !p.at(EOF) {
 			ppos := p.pos()
@@ -944,7 +1064,7 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.expect(RPAREN)
 	}
 
-	fd := &ast.FuncDef{Pos: pos, Name: name, TypeParams: typeParams, Params: params}
+	fd := &ast.FuncDef{Pos: pos, Name: name, TypeParams: typeParams, Params: params, HasParens: hasParens}
 
 	if p.at(LBRACE) {
 		// Void block form: func name(params) { ... }
@@ -1199,6 +1319,7 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 				vn.Bindings = map[string]ast.Expr{}
 			}
 			vn.Bindings[bname] = expr
+			vn.PropOrder = append(vn.PropOrder, ":"+bname)
 		} else if p.at(AT) {
 			// Event handler: @event={ stmts }
 			p.advance()
@@ -1211,6 +1332,7 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 				vn.Events = map[string]ast.Expr{}
 			}
 			vn.Events[eventName] = ast.Expr{SNGL: stmts}
+			vn.PropOrder = append(vn.PropOrder, "@"+eventName)
 		} else {
 			// Regular prop: name=expr (style keyword is also valid as a prop name)
 			var propName string
@@ -1234,6 +1356,7 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 				}
 				vn.Props[propName] = expr
 			}
+			vn.PropOrder = append(vn.PropOrder, propName)
 		}
 		if p.at(COMMA) {
 			p.advance()
@@ -1610,14 +1733,14 @@ func (p *parser) parsePrimary() ast.Node {
 		if err != nil {
 			p.errorf("invalid integer literal %q: %v", tok.Literal, err)
 		}
-		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralInt}
+		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralInt, Raw: tok.Literal}
 	case FLOAT:
 		tok := p.advance()
 		val, err := strconv.ParseFloat(tok.Literal, 64)
 		if err != nil {
 			p.errorf("invalid float literal %q: %v", tok.Literal, err)
 		}
-		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralFloat}
+		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralFloat, Raw: tok.Literal}
 	case STRING:
 		tok := p.advance()
 		return p.parseStringWithInterpolation(tok.Literal)

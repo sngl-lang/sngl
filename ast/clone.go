@@ -58,6 +58,11 @@ func (vn *VisualNode) clone() *VisualNode {
 	c.For = cloneForClause(vn.For)
 	c.Props = cloneExprMap(vn.Props)
 	c.Events = cloneExprMap(vn.Events)
+	c.Bindings = cloneExprMap(vn.Bindings)
+	if vn.PropOrder != nil {
+		c.PropOrder = make([]string, len(vn.PropOrder))
+		copy(c.PropOrder, vn.PropOrder)
+	}
 	c.Children = cloneVisualNodes(vn.Children)
 	return &c
 }
