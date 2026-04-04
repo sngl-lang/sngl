@@ -18,7 +18,7 @@ struct Todo {
 
 component main {
     var (newTodo = "", todos list<Todo> = [])
-    func status() "Todo List ({todos.length()} items)"
+    func status() => "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
         text(value=status, style={font-weight="bold", font-size=24})

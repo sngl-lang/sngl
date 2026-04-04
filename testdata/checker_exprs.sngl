@@ -4,19 +4,19 @@ struct Config {
 }
 
 component Widget(title = "default", count = 0, active = true, items = [], config Config) {
-    func label() title + ": " + string(count)
-    func doubled() count * 2
-    func negated() -count
-    func toggled() !active
-    func selected() active ? "yes" : "no"
-    func converted() float(count) + 0.5
-    func namespaceMethod() int.abs(count)
-    func instanceMethod() title.length()
-    func fieldAccess() config.name
-    func indexAccess() items[0]
-    func listVal() [1, 2, 3]
-    func structVal() Config{name: "test", value: 42}
-    func interpVal() "count={string(count)}"
+    func label() => title + ": " + string(count)
+    func doubled() => count * 2
+    func negated() => -count
+    func toggled() => !active
+    func selected() => active ? "yes" : "no"
+    func converted() => float(count) + 0.5
+    func namespaceMethod() => int.abs(count)
+    func instanceMethod() => title.length()
+    func fieldAccess() => config.name
+    func indexAccess() => items[0]
+    func listVal() => [1, 2, 3]
+    func structVal() => Config{name: "test", value: 42}
+    func interpVal() => "count={string(count)}"
 
     vbox {
         text(value=label)

@@ -242,6 +242,10 @@ func (l *lexer) NextToken() Token {
 				l.advance()
 				return l.token(EQ, "==", startLine, startCol)
 			}
+			if l.peek() == '>' {
+				l.advance()
+				return l.token(FAT_ARROW, "=>", startLine, startCol)
+			}
 			return l.token(ASSIGN, "=", startLine, startCol)
 		case '<':
 			if l.peek() == '=' {

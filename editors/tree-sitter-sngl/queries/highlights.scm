@@ -87,6 +87,7 @@
 (unary_expression operator: _ @operator)
 (ternary_expression "?" @operator)
 (ternary_expression ":" @operator)
+(lambda_expression "=>" @operator)
 
 ; Literals
 (integer_literal) @number

@@ -49,7 +49,7 @@ State is declared with `var` (mutable) and zero-arg `func` (derived):
 ```sngl
 component main {
     var name = "World"
-    func greeting() "Hello, {name}!"
+    func greeting() => "Hello, {name}!"
 
     vbox {
         text(value=greeting)

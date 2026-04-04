@@ -6,7 +6,7 @@ component main {
         active = true
     )
 
-    func greeting() "Hello, " + name
-    func doubled() count * 2
-    func isActive() active
+    func greeting() => "Hello, " + name
+    func doubled() => count * 2
+    func isActive() => active
 }

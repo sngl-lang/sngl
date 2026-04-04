@@ -13,8 +13,8 @@ component main {
         active = true
     )
 
-    func greeting() "Hello, " + name
-    func doubled() count * 2
+    func greeting() => "Hello, " + name
+    func doubled() => count * 2
 
     vbox(style={padding=16, gap=12}) {
         text(value=greeting, style={fontSize=24, fontWeight="bold"})

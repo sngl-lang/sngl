@@ -17,9 +17,9 @@ component main {
         name = "hello"
     )
 
-    func int.double(x int) x * 2
-    func int.abs(x int) x < 0 ? -x : x
-    func string.exclaim(s string) "{s}!"
+    func int.double(x int) => x * 2
+    func int.abs(x int) => x < 0 ? -x : x
+    func string.exclaim(s string) => "{s}!"
 
     text(value="test")
 }

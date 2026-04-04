@@ -161,7 +161,7 @@ type ElementRefExpr struct {
 	Name string
 }
 
-// LambdaExpr is an inline function: func(t) t.done, func(a, b) a + b.
+// LambdaExpr is an inline function: (t) => t.done, (a, b) => a + b.
 // Parameter types are optional — inferred from context when omitted.
 type LambdaExpr struct {
 	Params     []string // parameter names

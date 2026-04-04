@@ -8,5 +8,5 @@ component main {
         formatDate func(string) -> string extern
     )
 
-    func doubled() count * 2
+    func doubled() => count * 2
 }

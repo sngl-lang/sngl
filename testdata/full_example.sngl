@@ -12,8 +12,8 @@ component main {
         count = 0
     )
 
-    func greeting() "Hello, " + user.name + "!"
-    func isAdult() user.age >= 18
+    func greeting() => "Hello, " + user.name + "!"
+    func isAdult() => user.age >= 18
 
     vbox(style={gap=12, padding=16}) {
         text(value=greeting, style={fontSize=24, fontWeight="bold"})

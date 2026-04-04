@@ -1,12 +1,12 @@
 component main {
     // Tail-recursive factorial with accumulator
-    func factorial(n int, acc int) n <= 1 ? acc : factorial(n - 1, n * acc)
+    func factorial(n int, acc int) => n <= 1 ? acc : factorial(n - 1, n * acc)
 
     // Tail-recursive sum (safe from overflow at high depth)
-    func sumTo(n int, acc int) n <= 0 ? acc : sumTo(n - 1, acc + n)
+    func sumTo(n int, acc int) => n <= 0 ? acc : sumTo(n - 1, acc + n)
 
     // Non-tail recursive fibonacci
-    func fib(n int) n <= 1 ? n : fib(n - 1) + fib(n - 2)
+    func fib(n int) => n <= 1 ? n : fib(n - 1) + fib(n - 2)
 
     // Tail-recursive GCD (block form)
     func gcd(a int, b int) int {

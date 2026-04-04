@@ -33,8 +33,9 @@ const (
 	ASSIGN    // =
 	AT        // @
 	PIPE  // |
-	ARROW    // ->
-	ELLIPSIS // ...
+	ARROW     // ->
+	FAT_ARROW // =>
+	ELLIPSIS  // ...
 
 	// Operators
 	PLUS     // +
@@ -166,7 +167,7 @@ var tokenNames = map[TokenType]string{
 	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
 	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
 	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",
-	AT: "AT", PIPE: "PIPE", ARROW: "ARROW", ELLIPSIS: "ELLIPSIS",
+	AT: "AT", PIPE: "PIPE", ARROW: "ARROW", FAT_ARROW: "FAT_ARROW", ELLIPSIS: "ELLIPSIS",
 	PLUS: "PLUS", MINUS: "MINUS", STAR: "STAR", SLASH: "SLASH", PERCENT: "PERCENT",
 	BANG: "BANG", BANGBANG: "BANGBANG", QUESTION: "QUESTION",
 	EQ: "EQ", NEQ: "NEQ", LT: "LT", GT: "GT", LTE: "LTE", GTE: "GTE",

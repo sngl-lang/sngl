@@ -1,5 +1,5 @@
 component badge(label = "default", count = 0) {
-    func display() label
+    func display() => label
 
     text #lbl (value=display)
 }

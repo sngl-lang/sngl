@@ -428,16 +428,18 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		sb.WriteString(strings.Join(fn.TypeParams, ", "))
 		sb.WriteString(">")
 	}
-	sb.WriteString("(")
-	for i, p := range fn.Params {
-		if i > 0 {
-			sb.WriteString(", ")
+	if len(fn.Params) > 0 || fn.Block != nil {
+		sb.WriteString("(")
+		for i, p := range fn.Params {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(p.Name)
+			sb.WriteString(" ")
+			sb.WriteString(typeHintStr(p.Type, nil))
 		}
-		sb.WriteString(p.Name)
-		sb.WriteString(" ")
-		sb.WriteString(typeHintStr(p.Type, nil))
+		sb.WriteString(")")
 	}
-	sb.WriteString(")")
 	if fn.Block != nil {
 		if fn.ReturnType != "" {
 			sb.WriteString(" ")
@@ -455,7 +457,7 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		f.indent--
 		f.writeLine("}")
 	} else {
-		sb.WriteString(" ")
+		sb.WriteString(" => ")
 		sb.WriteString(f.formatExprValue(fn.Body))
 		f.writeLine(sb.String())
 	}
@@ -783,7 +785,7 @@ func FormatNode(n ast.Node) string {
 				params = append(params, name)
 			}
 		}
-		return "func(" + strings.Join(params, ", ") + ") " + body
+		return "(" + strings.Join(params, ", ") + ") => " + body
 	case *ast.BinaryExpr:
 		left := FormatNode(e.Left)
 		right := FormatNode(e.Right)

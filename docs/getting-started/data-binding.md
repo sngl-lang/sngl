@@ -47,9 +47,9 @@ const apiUrl = "https://api.example.com"
 Zero-arg functions declare derived, read-only state that updates automatically when dependencies change. They are auto-invoked when referenced without `()`:
 
 ```sngl
-func greeting() "Hello, {name}!"
-func isAdult() user.age >= 18
-func status() "Todo List ({todos.length()} items)"
+func greeting() => "Hello, {name}!"
+func isAdult() => user.age >= 18
+func status() => "Todo List ({todos.length()} items)"
 ```
 
 ## Functions
@@ -59,8 +59,8 @@ Use `func` to declare reusable logic alongside your state. Functions can read co
 ```sngl
 component main {
     var todos list<Todo> = []
-    func done() todos.filter(func(t) t.done)
-    func remaining() size(todos) - size(done)
+    func done() => todos.filter((t) => t.done)
+    func remaining() => size(todos) - size(done)
 
     func addTodo(text string) {
         todos.push(Todo{text: text, done: false})
@@ -76,7 +76,7 @@ component main {
 }
 ```
 
-Inline functions (`func(params) expr`) can be passed to list methods like `filter` and `map`. Parameter types are inferred from context when omitted. Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
+Inline functions (`(params) => expr`) can be passed to list methods like `filter` and `map`. Parameter types are inferred from context when omitted. Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
 
 ## Modifiers
 

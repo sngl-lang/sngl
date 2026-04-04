@@ -28,11 +28,11 @@ component main {
         LABEL = "Clicks: " + string(MAX)
     )
 
-    func greeting() "Hello, {name}"
-    func doubled() count * 2
-    func clamped() count > MAX ? MAX : count < MIN ? MIN : count
+    func greeting() => "Hello, {name}"
+    func doubled() => count * 2
+    func clamped() => count > MAX ? MAX : count < MIN ? MIN : count
 
-    func add(a int, b int) a + b
+    func add(a int, b int) => a + b
     func reset() {
         count = 0
     }

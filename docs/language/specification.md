@@ -97,7 +97,7 @@ style_declaration        = (
 ```
 const_declaration        = (
         ("const", SingleConst),
-        ("const", "(", {(SingleConst, TERM)), ")"),
+        ("const", "(", {([Slashdash), SingleConst, TERM)), ")"),
       )
 single_const             = (
         field("name", IDENT),
@@ -107,7 +107,7 @@ single_const             = (
       )
 var_declaration          = (
         ("var", SingleVar),
-        ("var", "(", {(SingleVar, TERM)), ")"),
+        ("var", "(", {([Slashdash), SingleVar, TERM)), ")"),
       )
 single_var               = (
         field("name", IDENT),
@@ -457,6 +457,7 @@ lambda_expression        = (
         "(",
         commaSep(FuncParam),
         ")",
+        "=>",
         field("body", Expr),
       )
 ```
@@ -465,18 +466,18 @@ lambda_expression        = (
 
 ```
 struct_literal           = (
-        field("name", StructName),
+        field("name", (QualifiedName, IDENT)),
         "{",
         commaSep((StructFieldValue, SpreadExpression)),
         [","),
         "}",
       )
-anon_struct_literal      = (
+anon_struct_literal      = prec(-1, (  // Lower priority than node_body/func_block which also start with {
         "{",
         commaSep((AnonStructField, SpreadExpression)),
         [","),
         "}",
-      )
+      ))
 list_literal             = ("[", commaSep(ListElement), [","), "]")
 qualified_name           = (IDENT, ".", IDENT)
 string_literal           = (

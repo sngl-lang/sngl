@@ -30,9 +30,7 @@ module.exports = grammar({
   conflicts: ($) => [
     [$._expression, $.qualified_name],
     [$._expression, $.struct_literal],
-    [$._expression, $.anon_struct_field],
-    [$._simple_type, $._expression],
-    [$._simple_type, $.struct_literal],
+    [$.func_param, $._expression],
     [$.prop_assignment, $._expression],
   ],
 
@@ -333,12 +331,13 @@ module.exports = grammar({
       seq(
         "func",
         field("name", $.func_name),
-        $.func_params,
         choice(
-          // Block form with optional return type
-          seq(optional(field("return_type", $.type_identifier)), $.func_block),
-          // Expression form — body is the expression, no return type, no =
-          field("body", $._expression),
+          // Block form: func name(params) [type] { ... }
+          seq($.func_params, optional(field("return_type", $.type_identifier)), $.func_block),
+          // Expression form with params: func name(params) => expr
+          seq($.func_params, "=>", field("body", $._expression)),
+          // Expression form without params: func name => expr
+          seq("=>", field("body", $._expression)),
         ),
       ),
 
@@ -362,7 +361,7 @@ module.exports = grammar({
     func_param: ($) =>
       seq(
         field("name", $.identifier),
-        field("type", $.type_identifier),
+        optional(field("type", $.type_identifier)),
       ),
 
     func_block: ($) =>
@@ -412,13 +411,13 @@ module.exports = grammar({
       ),
 
     func_type: ($) =>
-      prec(1, seq(
+      seq(
         "func",
         "(",
         commaSep($.type_identifier),
         ")",
         optional(seq("->", field("return_type", $.type_identifier))),
-      )),
+      ),
 
     inline_enum_type: ($) =>
       seq("enum", "<", sepBy1("|", $.identifier), ">"),
@@ -715,10 +714,10 @@ module.exports = grammar({
     // Lambda expression: func(params) expr
     lambda_expression: ($) =>
       seq(
-        "func",
         "(",
         commaSep($.func_param),
         ")",
+        "=>",
         field("body", $._expression),
       ),
 

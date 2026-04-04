@@ -102,8 +102,8 @@ Invalid patterns are caught at compile time. Use `regex.matches` to check for a 
 
 ```sngl
 const pattern = regex("[a-z]+")
-func _a() pattern.matches("hello")
-func _b() pattern.find("abc 123")
+func _a() => pattern.matches("hello")
+func _b() => pattern.find("abc 123")
 ```
 
 ### Collections
@@ -225,13 +225,13 @@ var callback func(string) -> int = null
 <!-- SNGL-component -->
 
 ```sngl
-func _a() string(42)
-func _b() string(3.14)
-func _c() string(true)
-func _d() int("42")
-func _e() int(3.14)
-func _f() float(42)
-func _g() float("3.14")
+func _a() => string(42)
+func _b() => string(3.14)
+func _c() => string(true)
+func _d() => int("42")
+func _e() => int(3.14)
+func _f() => float(42)
+func _g() => float("3.14")
 ```
 
 `string()` accepts any type, including structs. `int()` and `float()` accept strings, numbers, and bools, but **not** structs -- `int(myStruct)` is a compile error.
@@ -279,7 +279,7 @@ String interpolation (`"{expr}"`) implicitly calls `string()` on the embedded ex
 ```sngl
 var count = 42
 var active = true
-func label() "Count: {count}, active: {active}"
+func label() => "Count: {count}, active: {active}"
 ```
 
 ## State
@@ -323,8 +323,8 @@ Zero-arg functions serve as derived state -- they auto-update reactively and are
 
 ```sngl
 var count = 0
-func doubled() count * 2
-func label() "Count: {count}"
+func doubled() => count * 2
+func label() => "Count: {count}"
 ```
 
 Zero-arg functions are auto-invoked when referenced without `()`: `text(value=label)` calls `label()` implicitly.
@@ -366,8 +366,8 @@ Structs cannot be null (`var todo Todo = null` is a compile error; use `var todo
 For single-expression pure functions, the body follows the parameter list directly:
 
 ```sngl
-func add(a int, b int) a + b
-func greet(name string) "Hello, {name}!"
+func add(a int, b int) => a + b
+func greet(name string) => "Hello, {name}!"
 ```
 
 ### Block form
@@ -405,8 +405,8 @@ Void functions can only appear inside a `component` block. Pure functions (with 
 Attach a function to a type with a dotted name. The first parameter is the receiver:
 
 ```sngl
-func int.double(x int) x * 2
-func string.shout(s string) "{s}!"
+func int.double(x int) => x * 2
+func string.shout(s string) => "{s}!"
 ```
 
 Call with either syntax:
@@ -414,9 +414,9 @@ Call with either syntax:
 <!-- SNGL-component -->
 
 ```sngl
-func _a() int.double(5)
-func _b() 5.double()
-func _c() "hello".shout()
+func _a() => int.double(5)
+func _b() => 5.double()
+func _c() => "hello".shout()
 ```
 
 Type methods work on primitives (`int`, `float`, `string`, `bool`, `color`, `list`) and user-defined structs.
@@ -448,8 +448,8 @@ struct Todo { text string = "" done bool = false }
 
 ```sngl
 var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
-func active() list.filter(todos, func(t) !t.done)
-func labels() list.map(todos, func(t) t.text)
+func active() => list.filter(todos, (t) => !t.done)
+func labels() => list.map(todos, (t) => t.text)
 ```
 
 ### Lambdas
@@ -460,8 +460,8 @@ Inline functions for filtering and mapping:
 
 ```sngl
 var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
-func active() list.filter(todos, func(t) !t.done)
-func labels() list.map(todos, func(t) t.text)
+func active() => list.filter(todos, (t) => !t.done)
+func labels() => list.map(todos, (t) => t.text)
 ```
 
 Lambda parameter types are inferred from context.
@@ -940,7 +940,7 @@ component main {
 ```sngl
 component main {
     var email = ""
-    func valid() string.contains(email, "@") && string.length(email) > 3
+    func valid() => string.contains(email, "@") && string.length(email) > 3
 
     vbox(style={padding=16, gap=8}) {
         input(value=email, placeholder="Email", type="email", @input={ email = event.value })
@@ -996,8 +996,8 @@ struct Todo {
 
 component main {
     var todos = [Todo{text: "Write docs", done: true}, Todo{text: "Fix bug", done: false}]
-    func active() list.filter(todos, func(t) !t.done)
-    func activeCount() list.length(active)
+    func active() => list.filter(todos, (t) => !t.done)
+    func activeCount() => list.length(active)
 
     vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")

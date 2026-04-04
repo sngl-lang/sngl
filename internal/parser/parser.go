@@ -928,19 +928,21 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.expect(GT)
 	}
 
-	// Parse parameter list
-	p.expect(LPAREN)
+	// Parse parameter list (optional for expression-form with =>)
 	var params []*ast.FuncParam
-	for !p.at(RPAREN) && !p.at(EOF) {
-		ppos := p.pos()
-		pname := p.expect(IDENT).Literal
-		ptype := p.parseTypeString()
-		params = append(params, &ast.FuncParam{Pos: ppos, Name: pname, Type: ptype})
-		if p.at(COMMA) {
-			p.advance()
+	if p.at(LPAREN) {
+		p.advance()
+		for !p.at(RPAREN) && !p.at(EOF) {
+			ppos := p.pos()
+			pname := p.expect(IDENT).Literal
+			ptype := p.parseTypeString()
+			params = append(params, &ast.FuncParam{Pos: ppos, Name: pname, Type: ptype})
+			if p.at(COMMA) {
+				p.advance()
+			}
 		}
+		p.expect(RPAREN)
 	}
-	p.expect(RPAREN)
 
 	fd := &ast.FuncDef{Pos: pos, Name: name, TypeParams: typeParams, Params: params}
 
@@ -961,9 +963,12 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
 		p.expect(RBRACE)
-	} else {
-		// Expression form: func name(params) expr
+	} else if p.at(FAT_ARROW) {
+		// Expression form: func name(params) => expr
+		p.advance()
 		fd.Body = p.parseExprAsExpr()
+	} else {
+		p.errorf("expected {, =>, or return type after func params, got %v (%q)", tokenNames[p.cur.Type], p.cur.Literal)
 	}
 
 	return fd
@@ -1319,29 +1324,103 @@ func (p *parser) parseExpression() ast.Node {
 	return p.parseTernary()
 }
 
-// parseLambdaExpr parses: func(name Type, name Type) expr
-// Parameter types are required to disambiguate from func types.
-func (p *parser) parseLambdaExpr() ast.Node {
-	p.advance() // consume func
-	if !p.at(LPAREN) {
-		p.errorf("expected ( after func, got %v (%q)", tokenNames[p.cur.Type], p.cur.Literal)
+// parseParenOrLambda parses either (expr) or (params) => expr.
+// Parses as a parenthesized expression first. If => follows ), and the
+// expression was a simple identifier or comma-separated identifiers,
+// reinterprets as lambda params.
+func (p *parser) parseParenOrLambda() ast.Node {
+	startPos := p.pos()
+	p.advance() // consume (
+
+	// Empty parens: () => expr
+	if p.at(RPAREN) {
+		p.advance()
+		if p.at(FAT_ARROW) {
+			p.advance()
+			body := p.parseExpression()
+			return &ast.LambdaExpr{Body: body}
+		}
+		p.errorf("unexpected empty parentheses")
 		return &ast.LiteralExpr{Kind: ast.LiteralNull}
 	}
-	p.advance() // consume (
-	var params []string
-	var paramTypes []string
-	for !p.at(RPAREN) && !p.at(EOF) {
-		name := p.expect(IDENT).Literal
-		params = append(params, name)
-		typeHint := p.parseTypeString()
-		paramTypes = append(paramTypes, typeHint)
-		if !p.at(RPAREN) {
-			p.expect(COMMA)
+
+	// Parse as expression
+	expr := p.parseExpression()
+
+	// Check for comma — could be multi-param lambda
+	if p.at(COMMA) {
+		// Collect remaining comma-separated items
+		// First item must be an ident (or ident type)
+		first := extractLambdaParam(expr)
+		if first == nil {
+			// Not a valid lambda param — parse error
+			p.errorf("invalid lambda parameter at %s", startPos)
+			// Consume remaining until )
+			for !p.at(RPAREN) && !p.at(EOF) {
+				p.advance()
+			}
+			p.expect(RPAREN)
+			return expr
+		}
+		params := []lambdaParam{*first}
+		for p.at(COMMA) {
+			p.advance()
+			name := p.expect(IDENT).Literal
+			typeHint := ""
+			if p.at(IDENT) {
+				typeHint = p.advance().Literal
+			}
+			params = append(params, lambdaParam{name, typeHint})
+		}
+		p.expect(RPAREN)
+		if !p.at(FAT_ARROW) {
+			p.errorf("expected => after parameter list")
+			return expr
+		}
+		p.advance()
+		var names, types []string
+		for _, lp := range params {
+			names = append(names, lp.name)
+			types = append(types, lp.typeHint)
+		}
+		body := p.parseExpression()
+		return &ast.LambdaExpr{Params: names, ParamTypes: types, Body: body}
+	}
+
+	p.expect(RPAREN)
+
+	// Check for => — single-param lambda
+	if p.at(FAT_ARROW) {
+		lp := extractLambdaParam(expr)
+		if lp != nil {
+			p.advance()
+			body := p.parseExpression()
+			return &ast.LambdaExpr{
+				Params:     []string{lp.name},
+				ParamTypes: []string{lp.typeHint},
+				Body:       body,
+			}
 		}
 	}
-	p.expect(RPAREN)
-	body := p.parseExpression()
-	return &ast.LambdaExpr{Params: params, ParamTypes: paramTypes, Body: body}
+
+	// Plain parenthesized expression
+	return expr
+}
+
+type lambdaParam struct {
+	name     string
+	typeHint string
+}
+
+// extractLambdaParam tries to interpret an expression node as a lambda parameter.
+// Returns nil if the expression isn't a valid param (identifier or identifier with type).
+func extractLambdaParam(expr ast.Node) *lambdaParam {
+	switch e := expr.(type) {
+	case *ast.IdentExpr:
+		return &lambdaParam{name: e.Name}
+	default:
+		return nil
+	}
 }
 
 func (p *parser) parseTernary() ast.Node {
@@ -1550,20 +1629,17 @@ func (p *parser) parsePrimary() ast.Node {
 		num, suffix := splitUnitLiteral(tok.Literal)
 		return &ast.LiteralExpr{Value: ast.UnitLiteral{Number: num, Suffix: suffix}, Kind: ast.LiteralUnit}
 	case LPAREN:
-		p.advance()
-		expr := p.parseExpression()
-		p.expect(RPAREN)
-		return expr
+		return p.parseParenOrLambda()
 	case LBRACKET:
 		return p.parseListLiteral()
 	case LBRACE:
 		// Anonymous struct literal: {field=val, ...}
 		return p.parseAnonStructLiteral()
 	case KW_FUNC:
-		// Lambda expression: func(params) expr
-		// Distinct from func declaration (which has a name after func).
-		// In expression context, func is always a lambda.
-		return p.parseLambdaExpr()
+		// func in expression context is an error — lambdas use (params) => expr syntax now
+		p.errorf("unexpected func in expression context; use (params) => expr for lambdas")
+		p.advance()
+		return &ast.LiteralExpr{Kind: ast.LiteralNull}
 	case ELEMENT_REF:
 		tok := p.advance()
 		return &ast.ElementRefExpr{Name: tok.Literal}

@@ -369,7 +369,7 @@ func TestParseToggleStmt(t *testing.T) {
 func TestParseStringInterpolation(t *testing.T) {
 	src := `component main {
     var name = "world"
-    func greeting() "hello {name}!"
+    func greeting() => "hello {name}!"
     text(value=greeting)
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -591,8 +591,8 @@ func TestParseGroupedVars(t *testing.T) {
 func TestParseGroupedComputeds(t *testing.T) {
 	src := `component main {
     var x = 1
-    func double() x * 2
-    func triple() x * 3
+    func double() => x * 2
+    func triple() => x * 3
     text(value=string(double))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -694,7 +694,7 @@ func TestParseStringInterpolation_Nested(t *testing.T) {
 	src := `component main {
     var x = 1
     var y = 2
-    func msg() "sum={x + y}"
+    func msg() => "sum={x + y}"
     text(value=msg)
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))

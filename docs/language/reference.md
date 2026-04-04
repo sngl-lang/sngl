@@ -68,9 +68,9 @@ Inside double-quoted strings, `{expr}` evaluates the expression and converts to 
 <!-- SNGL-component -->
 
 ```sngl
-func _a() "Hello, {name}!"
-func _b() "Todo List ({todos.length()} items)"
-func _c() "{user.name} is {user.age} years old"
+func _a() => "Hello, {name}!"
+func _b() => "Todo List ({todos.length()} items)"
+func _c() => "{user.name} is {user.age} years old"
 ```
 
 Escape literal braces with `\{`.
@@ -256,21 +256,21 @@ Unit values support `+`, `-`, `*`, and `/`:
 
 ```sngl
 // Same-base addition normalizes automatically
-func _a() 1s + 500ms        // 1500ms
-func _b() 1h + 30m          // 5400000ms
-func _c() 1rem + 2em        // 18em
-func _d() 3px + 2px         // 5px
+func _a() => 1s + 500ms        // 1500ms
+func _b() => 1h + 30m          // 5400000ms
+func _c() => 1rem + 2em        // 18em
+func _d() => 3px + 2px         // 5px
 
 // Different bases produce compound values
-func _e() 16px + 2em        // {px: 16, em: 2}
+func _e() => 16px + 2em        // {px: 16, em: 2}
 
 // Scalar multiplication and division
-func _f() 2 * 3px           // 6px
-func _g() 6px / 2           // 3px
+func _f() => 2 * 3px           // 6px
+func _g() => 6px / 2           // 3px
 
 // Subtraction
-func _h() 5px - 2px         // 3px
-func _i() 2s - 500ms        // 1500ms
+func _h() => 5px - 2px         // 3px
+func _i() => 2s - 500ms        // 1500ms
 ```
 
 Adding values from the same base group normalizes to the base suffix. Adding values from different base groups produces a compound value with multiple components. Arithmetic between different unit types (e.g., `5px + 3s`) is an error.
@@ -282,9 +282,9 @@ Unit values compare by their normalized components. Values that normalize to the
 <!-- SNGL-component -->
 
 ```sngl
-func _a() 1s == 1000ms       // true
-func _b() 1rem == 16em       // true
-func _c() 16px + 2em == 2em + 16px  // true (order-independent)
+func _a() => 1s == 1000ms       // true
+func _b() => 1rem == 16em       // true
+func _c() => 16px + 2em == 2em + 16px  // true (order-independent)
 ```
 
 #### Usage
@@ -469,8 +469,8 @@ Pure functions return a value and have no side effects. They can be declared at 
 **Expression form** — a single expression after the parameter list:
 
 ```sngl
-func add(a int, b int) a + b
-func greet(name string) "Hello, {name}!"
+func add(a int, b int) => a + b
+func greet(name string) => "Hello, {name}!"
 ```
 
 **Block form** — a body with local variables and `return`:
@@ -491,8 +491,8 @@ Functions inside a component can read component state. Zero-arg functions serve 
 component Counter {
     var count = 10
 
-    func square(n int) n * n
-    func label() "Count: {count}"
+    func square(n int) => n * n
+    func label() => "Count: {count}"
 
     text(value=label())
 }
@@ -558,7 +558,7 @@ Type parameters are inferred at call sites. Users never write `<T>` when calling
 
 ```sngl
 var names = ["alice", "bob"]
-func upper() list.map(names, func(n) string.upper(n))
+func upper() => list.map(names, (n) => string.upper(n))
 ```
 
 ### Type Methods
@@ -566,9 +566,9 @@ func upper() list.map(names, func(n) string.upper(n))
 Functions can be attached to a type using a dotted name. The first parameter is the receiver. This works for primitives (`int`, `string`, `float`, `bool`, `color`, `list`) and user-defined structs.
 
 ```sngl
-func int.double(x int) x * 2
-func string.shout(s string) s + "!"
-func Todo.label(t Todo) t.done ? "[x] {t.text}" : "[ ] {t.text}"
+func int.double(x int) => x * 2
+func string.shout(s string) => s + "!"
+func Todo.label(t Todo) => t.done ? "[x] {t.text}" : "[ ] {t.text}"
 ```
 
 Type methods support two call styles:
@@ -577,13 +577,13 @@ Type methods support two call styles:
 
 ```sngl
 // Type-qualified — explicit receiver as first argument
-func _a() int.double(5)            // 10
-func _b() string.shout("hello")    // "hello!"
+func _a() => int.double(5)            // 10
+func _b() => string.shout("hello")    // "hello!"
 
 // Method syntax — receiver is implicit
 var n = 5
-func _c() n.double()               // 10
-func _d() "hello".shout()          // "hello!"
+func _c() => n.double()               // 10
+func _d() => "hello".shout()          // "hello!"
 ```
 
 ## Built-in Functions
