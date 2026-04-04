@@ -79,17 +79,15 @@ Types are inferred from default values when possible.
 Declares derived, read-only state inside a component.
 
 ```sngl
-computed greeting = "Hello, {name}!"
-computed isAdult = user.age >= 18
+func greeting() "Hello, {name}!"
+func isAdult() user.age >= 18
 ```
 
 Grouped form:
 
 ```sngl
-computed (
-    greeting = "Hello, {name}!"
-    isAdult = user.age >= 18
-)
+func greeting() "Hello, {name}!"
+func isAdult() user.age >= 18
 ```
 
 ### const
@@ -625,10 +623,8 @@ component main {
         count = 0
     )
 
-    computed (
-        greeting = "Hello, {user.name}!"
-        isAdult = user.age >= 18
-    )
+    func greeting() "Hello, {user.name}!"
+    func isAdult() user.age >= 18
 
     vbox(style={padding=16, gap=12}) {
         text(value=greeting, style={font-size=24, font-weight="bold"})

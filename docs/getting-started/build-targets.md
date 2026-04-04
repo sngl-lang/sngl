@@ -8,6 +8,9 @@ description: "Output declarations and platform targets"
 
 The `output` block declares which language/platform combinations to compile for. Each language gets a block containing its target platforms:
 
+<!-- SNGL-top
+component main { text(value="") }
+-->
 ```sngl
 output {
     js { html }
@@ -16,6 +19,9 @@ output {
 
 Multiple languages and platforms:
 
+<!-- SNGL-top
+component main { text(value="") }
+-->
 ```sngl
 output {
     go {
@@ -29,6 +35,9 @@ output {
 
 Platform options are passed in parentheses:
 
+<!-- SNGL-top
+component main { text(value="") }
+-->
 ```sngl
 output {
     go { bubbletea(package="main") }

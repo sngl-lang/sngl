@@ -18,13 +18,13 @@ component main {
     var items = [10, 20, 30]
     var pair = Pair("key", 5)
 
-    computed interp = "val: {string(count)}"
-    computed list = [count, count + 1]
-    computed structVal = Pair{key: label, val: count}
-    computed elemType = items[0]
-    computed fieldType = pair.key
+    func interp() "val: {string(count)}"
+    func list() [count, count + 1]
+    func structVal() Pair{key: label, val: count}
+    func elemType() items[0]
+    func fieldType() pair.key
 
-    func myFunc() int = 42
+    func myFunc() 42
 
     vbox {
         text(value=interp)

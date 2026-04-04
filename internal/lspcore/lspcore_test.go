@@ -150,7 +150,7 @@ func TestComponentNameCompletions_NilDoc(t *testing.T) {
 func TestExpressionCompletions(t *testing.T) {
 	doc := &ast.Document{
 		Data:      []*ast.Data{{Name: "x", Init: ast.Expr{TypeHint: "int"}}},
-		Computeds: []*ast.Computed{{Name: "y"}},
+		Functions: []*ast.FuncDef{{Name: "y", Body: ast.Expr{Literal: 0}}},
 		Consts:    []*ast.Const{{Name: "Z"}},
 		Structs:   []*ast.StructDef{{Name: "Point"}},
 		Enums:     []*ast.EnumDef{{Name: "Color"}},
@@ -177,11 +177,11 @@ func TestExpressionCompletions_NilDoc(t *testing.T) {
 
 func TestHoverInfo_Computed(t *testing.T) {
 	doc := &ast.Document{
-		Computeds: []*ast.Computed{{Name: "total"}},
+		Functions: []*ast.FuncDef{{Name: "total", Body: ast.Expr{Literal: 0}}},
 	}
 	info := lspcore.HoverInfo(doc, "total")
 	if info == "" {
-		t.Error("expected hover info for computed")
+		t.Error("expected hover info for computed function")
 	}
 }
 

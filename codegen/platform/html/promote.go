@@ -18,7 +18,7 @@ func PromoteComponent(doc *ast.Document, name string) *ast.Document {
 	}
 
 	promoted.Data = append(promoted.Data, comp.Data...)
-	promoted.Computeds = append(promoted.Computeds, comp.Computeds...)
+	promoted.Functions = append(promoted.Functions, comp.Functions...)
 	promoted.Consts = append(promoted.Consts, comp.Consts...)
 
 	for _, p := range comp.Params {

@@ -45,6 +45,9 @@ func (t *Translator) TranslateLiteral(expr ast.Expr) string {
 }
 
 func (t *Translator) TypeToNative(hint string) string {
+	if strings.HasPrefix(hint, "option:") {
+		return t.TypeToNative(hint[7:]) // JS has no option types; everything is nullable
+	}
 	switch hint {
 	case "int", "float":
 		return "number"
@@ -140,7 +143,11 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
-			parts = append(parts, f.Name+": "+translateExpr(f.Value, scope))
+			if f.Spread {
+				parts = append(parts, "..."+translateExpr(f.Value, scope))
+			} else {
+				parts = append(parts, f.Name+": "+translateExpr(f.Value, scope))
+			}
 		}
 		return "{" + strings.Join(parts, ", ") + "}"
 	case *ast.ListExpr:
@@ -149,6 +156,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 			parts[i] = translateExpr(el, scope)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *ast.SpreadExpr:
+		return "..." + translateExpr(n.Operand, scope)
 	case *ast.InterpolationExpr:
 		// Use template literals
 		var sb strings.Builder
@@ -177,6 +186,12 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return strings.Join(stmts, "\n")
 	case *ast.CallStmt:
 		return translateCall(n.Call, scope)
+	case *ast.LambdaExpr:
+		body := translateExpr(n.Body, scope)
+		if len(n.Params) == 1 {
+			return n.Params[0] + " => " + body
+		}
+		return "(" + strings.Join(n.Params, ", ") + ") => " + body
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
@@ -240,6 +255,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	}
 	if fn == "float" && len(args) == 1 {
 		return "parseFloat(" + translateExpr(args[0], scope) + ")"
+	}
+	if fn == "regex" && len(args) == 1 {
+		return "new RegExp(" + translateExpr(args[0], scope) + ")"
 	}
 
 	argStrs := make([]string, len(args))
@@ -495,6 +513,15 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "[..." + a(0) + "].reverse()"
 	case "list.slice", "*.slice":
 		return a(0) + ".slice(" + a(1) + ", " + a(2) + ")"
+	case "list.filter", "*.filter":
+		return a(0) + ".filter(" + a(1) + ")"
+	case "list.map", "*.map":
+		return a(0) + ".map(" + a(1) + ")"
+	// regex
+	case "regex.test", "*.test":
+		return a(0) + ".test(" + a(1) + ")"
+	case "regex.match", "*.match":
+		return "(" + a(0) + ".exec(" + a(1) + ") || [\"\"])[0]"
 	// Alert
 	case "Alert.toast":
 		return `(function(){var d=document.createElement("div");d.textContent=` + a(0) + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`

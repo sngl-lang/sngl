@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -13,10 +14,27 @@ import (
 // maxCallDepth is the maximum allowed function call depth.
 const maxCallDepth = 100
 
+// lambdaValue is a closure captured by a lambda expression.
+type lambdaValue struct {
+	params []string
+	body   ast.Node
+	env    *Env
+}
+
+// call invokes the lambda with the given arguments.
+func (lv *lambdaValue) call(args []any) (any, error) {
+	child := lv.env.Snapshot()
+	for i, p := range lv.params {
+		if i < len(args) {
+			child.vars[p] = args[i]
+		}
+	}
+	return child.Eval(lv.body)
+}
+
 // Env holds the mutable state for test execution.
 type Env struct {
 	vars        map[string]any
-	computeds   map[string]ast.Expr
 	consts      map[string]any
 	funcs       map[string]*ast.FuncDef
 	units       map[string]*ast.UnitTable // suffix → unit table
@@ -30,10 +48,9 @@ type Env struct {
 
 func NewEnv() *Env {
 	return &Env{
-		vars:      map[string]any{},
-		computeds: map[string]ast.Expr{},
-		consts:    map[string]any{},
-		funcs:     map[string]*ast.FuncDef{},
+		vars:   map[string]any{},
+		consts: map[string]any{},
+		funcs:  map[string]*ast.FuncDef{},
 	}
 }
 
@@ -50,9 +67,8 @@ func (env *Env) SetVar(name string, val any) {
 // Snapshot returns a shallow copy of the env for subtest isolation.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
-		vars:        make(map[string]any, len(env.vars)),
-		computeds:   env.computeds,
-		consts:      env.consts,
+		vars:   make(map[string]any, len(env.vars)),
+		consts: env.consts,
 		funcs:       env.funcs,
 		units:       env.units,
 		doc:         env.doc,
@@ -137,25 +153,53 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 		}
 		return sb.String(), nil
 	case *ast.ListExpr:
-		list := make([]any, len(e.Elements))
-		for i, el := range e.Elements {
-			v, err := env.Eval(el)
-			if err != nil {
-				return nil, err
+		var list []any
+		for _, el := range e.Elements {
+			if spread, ok := el.(*ast.SpreadExpr); ok {
+				v, err := env.Eval(spread.Operand)
+				if err != nil {
+					return nil, err
+				}
+				if items, ok := v.([]any); ok {
+					list = append(list, items...)
+				} else {
+					list = append(list, v)
+				}
+			} else {
+				v, err := env.Eval(el)
+				if err != nil {
+					return nil, err
+				}
+				list = append(list, v)
 			}
-			list[i] = v
 		}
 		return list, nil
 	case *ast.StructExpr:
 		m := make(map[string]any, len(e.Fields))
 		for _, f := range e.Fields {
-			v, err := env.Eval(f.Value)
-			if err != nil {
-				return nil, err
+			if f.Spread {
+				v, err := env.Eval(f.Value)
+				if err != nil {
+					return nil, err
+				}
+				if src, ok := v.(map[string]any); ok {
+					for k, val := range src {
+						m[k] = val
+					}
+				}
+			} else {
+				v, err := env.Eval(f.Value)
+				if err != nil {
+					return nil, err
+				}
+				m[f.Name] = v
 			}
-			m[f.Name] = v
 		}
 		return m, nil
+	case *ast.SpreadExpr:
+		return env.Eval(e.Operand)
+	case *ast.LambdaExpr:
+		return &lambdaValue{params: e.Params, body: e.Body, env: env}, nil
 	default:
 		return nil, fmt.Errorf("cannot evaluate %T", n)
 	}
@@ -165,11 +209,12 @@ func (env *Env) lookup(name string) (any, error) {
 	if v, ok := env.vars[name]; ok {
 		return v, nil
 	}
-	if expr, ok := env.computeds[name]; ok {
-		return env.Eval(expr.SNGL)
-	}
 	if v, ok := env.consts[name]; ok {
 		return v, nil
+	}
+	// Auto-invoke zero-arg expression-form functions (formerly computed)
+	if fn, ok := env.funcs[name]; ok && len(fn.Params) == 0 && fn.Body.SNGL != nil {
+		return env.Eval(fn.Body.SNGL)
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }
@@ -329,6 +374,20 @@ func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
 			return nil, err
 		}
 		return toFloat(v), nil
+	case "regex":
+		if len(e.Args) != 1 {
+			return nil, fmt.Errorf("regex() requires 1 argument")
+		}
+		v, err := env.Eval(e.Args[0])
+		if err != nil {
+			return nil, err
+		}
+		pattern := fmt.Sprintf("%v", v)
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid regex pattern: %v", err)
+		}
+		return re, nil
 	case "tick":
 		// Execute all active timers' body statements once
 		for _, t := range env.timers {
@@ -389,14 +448,15 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) 
 	}
 	defer func() { env.depth-- }()
 
-	// TCO only applies to pure functions (have ReturnType).
-	canTCO := fn.ReturnType != ""
+	// TCO only applies to pure functions (expression-form or block with ReturnType).
+	canTCO := fn.Body.SNGL != nil || fn.ReturnType != ""
 
 	for { // trampoline loop (only iterates >1 for tail calls)
 		// Void/action functions execute in the caller's env (they mutate state).
-		// Pure functions (have ReturnType) execute in a snapshot.
+		// Pure functions (expression-form or block with ReturnType) execute in a snapshot.
+		isPure := fn.Body.SNGL != nil || fn.ReturnType != ""
 		var execEnv *Env
-		if fn.ReturnType == "" {
+		if !isPure {
 			execEnv = env
 		} else {
 			execEnv = env.Snapshot()
@@ -417,7 +477,7 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argNodes []ast.Node) (any, error) 
 
 		// restoreVoid cleans up params after void functions so they don't leak.
 		restoreVoid := func() {
-			if fn.ReturnType == "" {
+			if !isPure {
 				for _, name := range paramNames {
 					if orig, ok := savedVars[name]; ok {
 						execEnv.vars[name] = orig
@@ -587,6 +647,51 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 
 	// Built-in mutating methods (push, remove) and legacy methods
 	switch e.Method {
+	case "filter":
+		if list, ok := recv.([]any); ok && len(e.Args) == 1 {
+			pred, err := env.Eval(e.Args[0])
+			if err != nil {
+				return nil, err
+			}
+			lv, ok := pred.(*lambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("filter requires a lambda, got %T", pred)
+			}
+			var out []any
+			for _, item := range list {
+				result, err := lv.call([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				if b, ok := result.(bool); ok && b {
+					out = append(out, item)
+				}
+			}
+			if out == nil {
+				out = []any{}
+			}
+			return out, nil
+		}
+	case "map":
+		if list, ok := recv.([]any); ok && len(e.Args) == 1 {
+			fn, err := env.Eval(e.Args[0])
+			if err != nil {
+				return nil, err
+			}
+			lv, ok := fn.(*lambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("map requires a lambda, got %T", fn)
+			}
+			out := make([]any, len(list))
+			for i, item := range list {
+				result, err := lv.call([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				out[i] = result
+			}
+			return out, nil
+		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(e.Args) == 1 {
 			arg, err := env.Eval(e.Args[0])
@@ -744,6 +849,8 @@ func runtimeTypeName(v any) string {
 		return "list"
 	case map[string]any:
 		return "struct"
+	case *regexp.Regexp:
+		return "regex"
 	default:
 		return "dyn"
 	}

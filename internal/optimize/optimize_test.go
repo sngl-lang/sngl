@@ -135,13 +135,13 @@ func TestComputedFolded(t *testing.T) {
 		Right: &ast.IdentExpr{Name: "LANGUAGE"},
 	})
 	doc := &ast.Document{
-		Computeds: []*ast.Computed{{
+		Functions: []*ast.FuncDef{{
 			Name: "target",
-			Expr: expr,
+			Body: expr,
 		}},
 	}
 	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
-	e := doc.Computeds[0].Expr
+	e := doc.Functions[0].Body
 	if e.SNGL != nil {
 		t.Errorf("expected SNGL cleared, got %v", e.SNGL)
 	}

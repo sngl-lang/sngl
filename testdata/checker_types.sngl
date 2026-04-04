@@ -27,14 +27,14 @@ component main {
     var pt = Point(1.0, 2.0)
     var status Status = "active"
 
-    computed total = count + MAX
-    computed desc = label + ": " + string(count)
-    computed neg = -count
-    computed isActive = flag && count > 0
-    computed selected = flag ? "yes" : "no"
-    computed floatCalc = float(count) + ratio
-    computed methodResult = "hello".length()
-    computed nsMethod = int.abs(count)
+    func total() count + MAX
+    func desc() label + ": " + string(count)
+    func neg() -count
+    func isActive() flag && count > 0
+    func selected() flag ? "yes" : "no"
+    func floatCalc() float(count) + ratio
+    func methodResult() "hello".length()
+    func nsMethod() int.abs(count)
 
     vbox {
         for item, i in items {

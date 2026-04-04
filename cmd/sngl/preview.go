@@ -431,14 +431,16 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 			}
 			resp.Data = append(resp.Data, dj)
 		}
-		for _, c := range doc.Computeds {
-			cj := computedJSON{Name: c.Name}
-			if c.Expr.SNGL != nil {
-				cj.Expr = parser.FormatNode(c.Expr.SNGL)
-			} else if c.Expr.Literal != nil {
-				cj.Expr = fmt.Sprintf("%v", c.Expr.Literal)
+		for _, fn := range doc.Functions {
+			if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+				cj := computedJSON{Name: fn.Name}
+				if fn.Body.SNGL != nil {
+					cj.Expr = parser.FormatNode(fn.Body.SNGL)
+				} else if fn.Body.Literal != nil {
+					cj.Expr = fmt.Sprintf("%v", fn.Body.Literal)
+				}
+				resp.Computed = append(resp.Computed, cj)
 			}
-			resp.Computed = append(resp.Computed, cj)
 		}
 	}
 
@@ -532,11 +534,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 			Enum: sp.Enum,
 		}
 	}
-	for k, v := range vn.StyleAttrs {
-		sp := s.styleSchema[k]
-		resp.Styles[k] = exprToPropJSON(v, typeToString(sp.Type), sp.Enum)
-	}
-	for k, v := range vn.StyleBlock {
+	for k, v := range vn.StyleFields() {
 		sp := s.styleSchema[k]
 		resp.Styles[k] = exprToPropJSON(v, typeToString(sp.Type), sp.Enum)
 	}
@@ -632,11 +630,23 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		vn.Props[k] = parseSNGLValue(v)
 	}
 	// Update style properties
-	if vn.StyleAttrs == nil {
-		vn.StyleAttrs = map[string]ast.Expr{}
-	}
-	for k, v := range body.Styles {
-		vn.StyleAttrs[k] = parseSNGLValue(v)
+	// Build style struct fields from preview changes
+	if len(body.Styles) > 0 {
+		var fields []ast.StructFieldLit
+		for k, v := range body.Styles {
+			val := parseSNGLValue(v)
+			var valNode ast.Node
+			if val.SNGL != nil {
+				valNode = val.SNGL
+			} else if val.Literal != nil {
+				valNode = &ast.LiteralExpr{Value: val.Literal, Kind: ast.LiteralString}
+			}
+			fields = append(fields, ast.StructFieldLit{Name: k, Value: valNode})
+		}
+		if vn.Props == nil {
+			vn.Props = map[string]ast.Expr{}
+		}
+		vn.Props["style"] = ast.Expr{SNGL: &ast.StructExpr{Fields: fields}}
 	}
 
 	// Write back formatted source

@@ -10,19 +10,19 @@ component Widget {
     param items = []
     param config Config
 
-    computed label = title + ": " + string(count)
-    computed doubled = count * 2
-    computed negated = -count
-    computed toggled = !active
-    computed selected = active ? "yes" : "no"
-    computed converted = float(count) + 0.5
-    computed namespaceMethod = int.abs(count)
-    computed instanceMethod = title.length()
-    computed fieldAccess = config.name
-    computed indexAccess = items[0]
-    computed listVal = [1, 2, 3]
-    computed structVal = Config{name: "test", value: 42}
-    computed interpVal = "count={string(count)}"
+    func label() title + ": " + string(count)
+    func doubled() count * 2
+    func negated() -count
+    func toggled() !active
+    func selected() active ? "yes" : "no"
+    func converted() float(count) + 0.5
+    func namespaceMethod() int.abs(count)
+    func instanceMethod() title.length()
+    func fieldAccess() config.name
+    func indexAccess() items[0]
+    func listVal() [1, 2, 3]
+    func structVal() Config{name: "test", value: 42}
+    func interpVal() "count={string(count)}"
 
     vbox {
         text(value=label)

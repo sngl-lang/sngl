@@ -180,21 +180,23 @@ func analyze(doc *ast.Document) *analysisResult {
 		}
 	}
 
-	// Computeds
-	for _, c := range doc.Computeds {
-		goType := inferGoType(c.Expr)
-		if goType == "any" && c.Expr.SNGL != nil {
-			goType = snglNodeGoType(c.Expr.SNGL)
-		}
-		info.computeds = append(info.computeds, computedInfo{
-			name:   c.Name,
-			goType: goType,
-		})
-		info.modelFields[c.Name] = true
-		info.computedFields[c.Name] = true
-		// Build computed dependency map
-		if c.Expr.SNGL != nil {
-			info.computedDeps[c.Name] = codegen.ExtractDeps(c.Expr.SNGL, info.modelFields)
+	// Computed functions (zero-arg expression-form)
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			goType := inferGoType(fn.Body)
+			if goType == "any" && fn.Body.SNGL != nil {
+				goType = snglNodeGoType(fn.Body.SNGL)
+			}
+			info.computeds = append(info.computeds, computedInfo{
+				name:   fn.Name,
+				goType: goType,
+			})
+			info.modelFields[fn.Name] = true
+			info.computedFields[fn.Name] = true
+			// Build computed dependency map
+			if fn.Body.SNGL != nil {
+				info.computedDeps[fn.Name] = codegen.ExtractDeps(fn.Body.SNGL, info.modelFields)
+			}
 		}
 	}
 
@@ -363,12 +365,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
 		body := ""
-		for _, c := range doc.Computeds {
-			if c.Name == comp.name {
-				if c.Expr.SNGL != nil {
-					body = ec.translateExpr(c.Expr.SNGL)
-				} else if c.Expr.Literal != nil {
-					body = literalToGo(c.Expr)
+		for _, fn := range doc.Functions {
+			if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
+				if fn.Body.SNGL != nil {
+					body = ec.translateExpr(fn.Body.SNGL)
+				} else if fn.Body.Literal != nil {
+					body = literalToGo(fn.Body)
 				}
 				break
 			}
@@ -728,6 +730,9 @@ func typeHintToGo(hint string) string {
 	if strings.HasPrefix(hint, "list:") {
 		return "[]" + typeHintToGo(hint[5:])
 	}
+	if strings.HasPrefix(hint, "option:") {
+		return "*" + typeHintToGo(hint[7:])
+	}
 	if strings.HasPrefix(hint, "enum:") {
 		return "string"
 	}
@@ -821,6 +826,20 @@ func exprNodeUsesAlert(n ast.Node) bool {
 }
 
 func literalToGo(expr ast.Expr) string {
+	// Option types: wrap concrete literals with address-of via inline func
+	if strings.HasPrefix(expr.TypeHint, "option:") {
+		if expr.Literal == nil && expr.SNGL == nil {
+			return "nil"
+		}
+		inner := expr
+		inner.TypeHint = expr.TypeHint[7:]
+		val := literalToGo(inner)
+		if val == "nil" {
+			return "nil"
+		}
+		goType := typeHintToGo(inner.TypeHint)
+		return fmt.Sprintf("func() *%s { v := %s; return &v }()", goType, val)
+	}
 	if expr.Literal != nil {
 		switch v := expr.Literal.(type) {
 		case string:

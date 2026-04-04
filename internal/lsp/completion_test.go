@@ -89,7 +89,7 @@ func TestComponentKeywords(t *testing.T) {
 func TestExpressionCompletions(t *testing.T) {
 	doc := &ast.Document{
 		Data:      []*ast.Data{{Name: "count", Init: ast.Expr{TypeHint: "int"}}},
-		Computeds: []*ast.Computed{{Name: "greeting"}},
+		Functions: []*ast.FuncDef{{Name: "greeting", Body: ast.Expr{Literal: ""}}},
 		Consts:    []*ast.Const{{Name: "MAX"}},
 		Structs:   []*ast.StructDef{{Name: "User"}},
 		Enums:     []*ast.EnumDef{{Name: "Status"}},

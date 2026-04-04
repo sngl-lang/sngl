@@ -54,13 +54,13 @@ func TestHoverInfo_Var(t *testing.T) {
 
 func TestHoverInfo_Computed(t *testing.T) {
 	doc := &ast.Document{
-		Computeds: []*ast.Computed{
-			{Name: "greeting"},
+		Functions: []*ast.FuncDef{
+			{Name: "greeting", Body: ast.Expr{Literal: ""}},
 		},
 	}
 	info := lspcore.HoverInfo(doc, "greeting")
-	if !strings.Contains(info, "computed greeting") {
-		t.Errorf("expected computed hover, got %q", info)
+	if !strings.Contains(info, "func greeting()") {
+		t.Errorf("expected func hover, got %q", info)
 	}
 }
 

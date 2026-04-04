@@ -34,11 +34,11 @@ test main "void action functions" {
 component main {
     var count = 10
 
-    func add(a int, b int) int = a + b
-    func double(x int) int = x * 2
-    func greet(name string) string = "Hello, {name}!"
-    func square(n int) int = n * n
-    func label() string = "Count: {count}"
+    func add(a int, b int) a + b
+    func double(x int) x * 2
+    func greet(name string) "Hello, {name}!"
+    func square(n int) n * n
+    func label() "Count: {count}"
     func clamp(val int, lo int, hi int) int {
         var clamped = val < lo ? lo : val
         var result = clamped > hi ? hi : clamped

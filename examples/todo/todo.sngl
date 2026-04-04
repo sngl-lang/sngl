@@ -18,7 +18,7 @@ component main {
         todos list<Todo> = null
     )
 
-    computed status = "Todo List (" + string(size(todos)) + " items)"
+    func status() "Todo List (" + string(size(todos)) + " items)"
 
     vbox(style={gap=12, padding=16}) {
         text(value=status, style={fontWeight="bold", fontSize=24})

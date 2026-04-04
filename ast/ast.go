@@ -55,14 +55,12 @@ type Document struct {
 	Units              []*UnitDef
 	Consts             []*Const
 	Data               []*Data
-	Computeds          []*Computed
 	Functions          []*FuncDef
 	Components         []*Component
 	ImportedComponents []*Component // populated by checker; qualified-name keyed
 	Timers             []*Timer
-	Styles             []*StyleDecl
-	StyleDefs          []*StylePropDef // from "styles" top-level node
-	App                *App
+	Styles []*StyleDecl
+	App    *App
 	Tests              []*TestDef
 	Comments           []Comment // all comments, ordered by position
 }
@@ -182,14 +180,6 @@ type Data struct {
 	Resolved   *TypeInfo // populated by checker
 }
 
-type Computed struct {
-	Pos      Pos
-	Name     string
-	Expr     Expr
-	Disabled bool
-	Resolved *TypeInfo // populated by checker
-}
-
 type StyleDecl struct {
 	Pos   Pos
 	Name  string
@@ -209,13 +199,6 @@ type EventDecl struct {
 	PayloadType string // "ClickEvent", "InputEvent", etc.
 }
 
-type StylePropDef struct {
-	Pos      Pos
-	Name     string
-	TypeHint string
-	Enum     []string // optional enum constraints
-}
-
 // FuncParam is a parameter in a function definition.
 type FuncParam struct {
 	Pos      Pos
@@ -229,6 +212,7 @@ type FuncParam struct {
 type FuncDef struct {
 	Pos        Pos
 	Name       string
+	TypeParams []string   // generic type parameters, e.g., ["T", "U"]
 	Params     []*FuncParam
 	ReturnType string     // "" for void/action functions
 	Body       Expr       // single-expression form (= expr)
@@ -259,7 +243,6 @@ type Component struct {
 	Params      []*Param     // @param (user-defined components)
 	Consts      []*Const     // const declarations
 	Data        []*Data      // var declarations (component-scoped state)
-	Computeds   []*Computed  // computed declarations
 	Functions   []*FuncDef   // func declarations
 	Timers      []*Timer     // timer declarations
 	PropDecls   []*PropDecl  // @prop (stdlib schemas)
@@ -303,10 +286,31 @@ type VisualNode struct {
 	Ref        *Expr
 	Props      map[string]Expr
 	Events     map[string]Expr
-	StyleAttrs map[string]Expr
-	StyleBlock map[string]Expr
 	AttrNodes  map[string]*AttrNode
 	Children   []*VisualNode
+}
+
+// StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
+// Returns nil if no style prop or if it's not an anonymous struct literal.
+func (vn *VisualNode) StyleFields() map[string]Expr {
+	if vn.Props == nil {
+		return nil
+	}
+	styleProp, ok := vn.Props["style"]
+	if !ok {
+		return nil
+	}
+	se, ok := styleProp.SNGL.(*StructExpr)
+	if !ok || se == nil {
+		return nil
+	}
+	m := make(map[string]Expr, len(se.Fields))
+	for _, f := range se.Fields {
+		if !f.Spread {
+			m[f.Name] = Expr{SNGL: f.Value}
+		}
+	}
+	return m
 }
 
 type AttrNode struct {

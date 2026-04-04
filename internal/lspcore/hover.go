@@ -65,9 +65,9 @@ func HoverInfo(doc *ast.Document, word string) string {
 		}
 	}
 
-	for _, c := range doc.Computeds {
-		if c.Name == word {
-			return fmt.Sprintf("```sngl\ncomputed %s\n```", c.Name)
+	for _, fn := range doc.Functions {
+		if fn.Name == word && fn.Block == nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			return fmt.Sprintf("```sngl\nfunc %s()\n```", fn.Name)
 		}
 	}
 

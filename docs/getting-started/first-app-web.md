@@ -25,6 +25,9 @@ Structs define the shape of your data. Each field has a name, type, and default 
 
 Tell the compiler which platforms to generate code for:
 
+<!-- SNGL-top
+component main { text(value="") }
+-->
 ```sngl
 output {
     go { bubbletea(package="main") }
@@ -41,7 +44,7 @@ Every SNGL app has a `component main` as its entry point:
 ```sngl
 component main {
     var (newTodo = "", todos list<Todo> = [])
-    computed status = "Todo List ({todos.length()} items)"
+    func status() "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
         text(value=status, style={fontWeight="bold", fontSize=24})
@@ -68,7 +71,7 @@ component main {
 
 **Reactive state** — `var` declares mutable state. When `todos` changes, the `for` loop re-renders. When `newTodo` changes, the input stays in sync.
 
-**Computed values** — `computed status` derives from `todos` automatically. No manual subscription needed.
+**Derived state** — `func status()` derives from `todos` automatically. Zero-arg functions are auto-invoked when referenced without `()`. No manual subscription needed.
 
 **Event handlers** — `@click` and `@input` contain statement blocks that mutate state directly. `todos[index].done!!` is the toggle operator.
 

@@ -29,6 +29,11 @@ module.exports = grammar({
 
   conflicts: ($) => [
     [$._expression, $._struct_name],
+    [$._expression, $._struct_name, $.qualified_name],
+    [$._simple_type, $._struct_name],
+    [$._simple_type, $._expression],
+    [$.func_param, $._simple_type],
+    [$._struct_name, $.qualified_name],
   ],
 
   supertypes: ($) => [$._declaration, $._expression, $._statement],
@@ -53,7 +58,8 @@ module.exports = grammar({
         $.enum_declaration,
         $.unit_declaration,
         $.style_declaration,
-        $.styles_declaration,
+        $.const_declaration,
+        $.var_declaration,
         $.func_declaration,
         $.timer_declaration,
         $.component_declaration,
@@ -113,8 +119,7 @@ module.exports = grammar({
       seq(
         field("name", $.identifier),
         field("type", $.type_identifier),
-        "=",
-        field("default", $._expression),
+        optional(seq("=", field("default", $._expression))),
       ),
 
     enum_declaration: ($) =>
@@ -156,29 +161,6 @@ module.exports = grammar({
         field("name", $.identifier),
         "=",
         field("value", $._expression),
-      ),
-
-    styles_declaration: ($) =>
-      seq(
-        "styles",
-        "{",
-        repeat(seq($.style_prop_def, $._terminator)),
-        "}",
-      ),
-
-    style_prop_def: ($) =>
-      seq(
-        field("name", $.identifier),
-        field("type", $.type_identifier),
-        optional($.enum_constraint),
-      ),
-
-    enum_constraint: ($) =>
-      seq(
-        "enum",
-        "(",
-        commaSep(choice($.identifier, $.integer_literal, $.string_literal)),
-        ")",
       ),
 
     // ─── Component ───────────────────────────────────────────
@@ -227,7 +209,6 @@ module.exports = grammar({
         $.children_declaration,
         $.const_declaration,
         $.var_declaration,
-        $.computed_declaration,
         $.func_declaration,
         $.timer_declaration,
         $._node_or_control,
@@ -248,6 +229,14 @@ module.exports = grammar({
         field("name", $.identifier),
         field("type", $.type_identifier),
         optional($.enum_constraint),
+      ),
+
+    enum_constraint: ($) =>
+      seq(
+        "enum",
+        "(",
+        commaSep(choice($.identifier, $.integer_literal, $.string_literal)),
+        ")",
       ),
 
     event_declaration: ($) =>
@@ -308,24 +297,6 @@ module.exports = grammar({
     trigger_modifier: ($) =>
       seq("trigger", optional(seq("(", $.string_literal, ")"))),
 
-    computed_declaration: ($) =>
-      choice(
-        seq("computed", $.single_computed),
-        seq(
-          "computed",
-          "(",
-          repeat(seq($.single_computed, $._terminator)),
-          ")",
-        ),
-      ),
-
-    single_computed: ($) =>
-      seq(
-        field("name", $.identifier),
-        "=",
-        field("value", $._expression),
-      ),
-
     // ─── Timers ────────────────────────────────────────────────
 
     timer_declaration: ($) =>
@@ -339,21 +310,31 @@ module.exports = grammar({
       ),
 
     // ─── Functions ────────────────────────────────────────────
+    // Expression form: func name(params) expr
+    // Block form: func name(params) ReturnType { stmts; return expr }
 
     func_declaration: ($) =>
       seq(
         "func",
         field("name", $.func_name),
         $.func_params,
-        optional(field("return_type", $.type_identifier)),
         choice(
-          seq("=", field("body", $._expression)),
-          $.func_block,
+          // Block form with optional return type
+          seq(optional(field("return_type", $.type_identifier)), $.func_block),
+          // Expression form — body is the expression, no return type, no =
+          field("body", $._expression),
         ),
       ),
 
     func_name: ($) =>
-      seq($.identifier, optional(seq(".", $.identifier))),
+      seq(
+        $.identifier,
+        optional(seq(".", $.identifier)),
+        optional(field("type_params", $.type_param_list)),
+      ),
+
+    type_param_list: ($) =>
+      seq("<", commaSep1($.identifier), ">"),
 
     func_params: ($) =>
       seq(
@@ -365,15 +346,15 @@ module.exports = grammar({
     func_param: ($) =>
       seq(
         field("name", $.identifier),
-        field("type", $.type_identifier),
+        optional(field("type", $.type_identifier)),
       ),
 
     func_block: ($) =>
-      seq(
+      prec(1, seq(
         "{",
         repeat(seq($._func_body_stmt, $._terminator)),
         "}",
-      ),
+      )),
 
     _func_body_stmt: ($) =>
       choice(
@@ -450,6 +431,13 @@ module.exports = grammar({
         "{",
         optional($._node_or_control),
         "}",
+        optional(field("else", $.else_block)),
+      ),
+
+    else_block: ($) =>
+      seq(
+        "else",
+        $.node_body,
       ),
 
     visual_node: ($) =>
@@ -473,14 +461,13 @@ module.exports = grammar({
       choice(
         $.prop_assignment,
         $.event_handler,
-        $.style_block,
       ),
 
     prop_assignment: ($) =>
       seq(
         field("name", $.identifier),
         "=",
-        field("value", $._expression),
+        field("value", choice($.anon_struct_literal, $._expression)),
       ),
 
     event_handler: ($) =>
@@ -490,15 +477,6 @@ module.exports = grammar({
         "=",
         "{",
         repeat(seq($._statement, $._terminator)),
-        "}",
-      ),
-
-    style_block: ($) =>
-      seq(
-        "style",
-        "=",
-        "{",
-        commaSep($.style_property),
         "}",
       ),
 
@@ -570,6 +548,7 @@ module.exports = grammar({
         $.parenthesized_expression,
         $.struct_literal,
         $.list_literal,
+        $.lambda_expression,
         $.identifier,
         $.integer_literal,
         $.float_literal,
@@ -685,13 +664,22 @@ module.exports = grammar({
       seq(
         field("name", $._struct_name),
         "{",
-        commaSep($.struct_field_value),
+        commaSep(choice($.struct_field_value, $.spread_expression)),
         optional(","),
         "}",
       ),
 
     _struct_name: ($) =>
       seq($.identifier, optional(seq(".", $.identifier))),
+
+    // Anonymous struct literal (type inferred from context): {field=val, ...}
+    anon_struct_literal: ($) =>
+      seq(
+        "{",
+        commaSep(choice($.anon_struct_field, $.spread_expression)),
+        optional(","),
+        "}",
+      ),
 
     struct_field_value: ($) =>
       seq(
@@ -700,8 +688,32 @@ module.exports = grammar({
         field("value", $._expression),
       ),
 
+    anon_struct_field: ($) =>
+      seq(
+        field("name", $.identifier),
+        "=",
+        field("value", $._expression),
+      ),
+
     list_literal: ($) =>
-      seq("[", commaSep($._expression), optional(","), "]"),
+      seq("[", commaSep($._list_element), optional(","), "]"),
+
+    _list_element: ($) =>
+      choice($.spread_expression, $._expression),
+
+    // Lambda expression: func(params) expr
+    lambda_expression: ($) =>
+      seq(
+        "func",
+        "(",
+        commaSep($.func_param),
+        ")",
+        field("body", $._expression),
+      ),
+
+    // Spread expression: ...expr
+    spread_expression: ($) =>
+      seq("...", $._expression),
 
     // ─── Literals ────────────────────────────────────────────
 

@@ -3,6 +3,7 @@ package testrunner
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 )
 
@@ -104,6 +105,24 @@ var nativeMethods = map[string]nativeFunc{
 			return len(list), nil
 		}
 		return 0, nil
+	},
+
+	// --- regex ---
+	"regex.test": func(args []any) (any, error) {
+		re, ok := args[0].(*regexp.Regexp)
+		if !ok {
+			return false, fmt.Errorf("regex.test: first argument must be a regex, got %T", args[0])
+		}
+		s := fmt.Sprintf("%v", args[1])
+		return re.MatchString(s), nil
+	},
+	"regex.match": func(args []any) (any, error) {
+		re, ok := args[0].(*regexp.Regexp)
+		if !ok {
+			return "", fmt.Errorf("regex.match: first argument must be a regex, got %T", args[0])
+		}
+		s := fmt.Sprintf("%v", args[1])
+		return re.FindString(s), nil
 	},
 
 	// --- color ---

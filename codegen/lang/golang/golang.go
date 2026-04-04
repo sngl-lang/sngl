@@ -46,6 +46,9 @@ func (t *Translator) TranslateLiteral(expr ast.Expr) string {
 }
 
 func (t *Translator) TypeToNative(hint string) string {
+	if strings.HasPrefix(hint, "option:") {
+		return "*" + t.TypeToNative(hint[7:])
+	}
 	switch hint {
 	case "int":
 		return "int"
@@ -144,7 +147,12 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
-			parts = append(parts, exportName(f.Name)+": "+translateExpr(f.Value, scope))
+			if f.Spread {
+				// Go doesn't have spread; handled at a higher level
+				parts = append(parts, "/* ..."+translateExpr(f.Value, scope)+" */")
+			} else {
+				parts = append(parts, exportName(f.Name)+": "+translateExpr(f.Value, scope))
+			}
 		}
 		return exportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
 	case *ast.ListExpr:
@@ -153,6 +161,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 			parts[i] = translateExpr(el, scope)
 		}
 		return "[]any{" + strings.Join(parts, ", ") + "}"
+	case *ast.SpreadExpr:
+		return translateExpr(n.Operand, scope) + "..."
 	case *ast.InterpolationExpr:
 		// Interpolation in Go uses fmt.Sprintf
 		var fmtStr strings.Builder
@@ -180,6 +190,13 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.ToggleStmt:
 		stmts := translateMutation(n, scope)
 		return strings.Join(stmts, "\n")
+	case *ast.LambdaExpr:
+		params := make([]string, len(n.Params))
+		for i, p := range n.Params {
+			params[i] = p + " any"
+		}
+		body := translateExpr(n.Body, scope)
+		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */nil", e)
 	}
@@ -243,6 +260,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	}
 	if fn == "float" && len(args) == 1 {
 		return "float64(" + translateExpr(args[0], scope) + ")"
+	}
+	if fn == "regex" && len(args) == 1 {
+		return "regexp.MustCompile(" + translateExpr(args[0], scope) + ")"
 	}
 
 	argStrs := make([]string, len(args))
@@ -470,6 +490,15 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return "len(" + a(0) + ")"
 	case "list.join", "*.join":
 		return "strings.Join(" + a(0) + ", " + a(1) + ")"
+	case "list.filter", "*.filter":
+		return "func() []any { var out []any; for _, item := range " + a(0) + " { if " + a(1) + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
+	case "list.map", "*.map":
+		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
+	// regex
+	case "regex.test", "*.test":
+		return a(0) + ".MatchString(" + a(1) + ")"
+	case "regex.match", "*.match":
+		return a(0) + ".FindString(" + a(1) + ")"
 	// Alert
 	case "Alert.toast":
 		return `fmt.Println("[" + ` + a(1) + ` + "] " + ` + a(0) + `)`

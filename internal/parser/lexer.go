@@ -179,6 +179,11 @@ func (l *lexer) NextToken() Token {
 		case ',':
 			return l.token(COMMA, ",", startLine, startCol)
 		case '.':
+			if l.peek() == '.' && l.peekAt(1) == '.' {
+				l.advance()
+				l.advance()
+				return l.token(ELLIPSIS, "...", startLine, startCol)
+			}
 			return l.token(DOT, ".", startLine, startCol)
 		case ':':
 			return l.token(COLON, ":", startLine, startCol)

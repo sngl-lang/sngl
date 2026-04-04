@@ -23,8 +23,10 @@ func Optimize(doc *ast.Document, cfg Config) error {
 	for _, d := range doc.Data {
 		foldExpr(&d.Init, vars)
 	}
-	for _, c := range doc.Computeds {
-		foldExpr(&c.Expr, vars)
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil {
+			foldExpr(&fn.Body, vars)
+		}
 	}
 
 	// Fold constant expressions in struct field defaults.
@@ -47,8 +49,10 @@ func Optimize(doc *ast.Document, cfg Config) error {
 		for _, d := range comp.Data {
 			foldExpr(&d.Init, vars)
 		}
-		for _, c := range comp.Computeds {
-			foldExpr(&c.Expr, vars)
+		for _, fn := range comp.Functions {
+			if fn.Body.SNGL != nil {
+				foldExpr(&fn.Body, vars)
+			}
 		}
 		comp.Body = optimizeNodes(comp.Body, vars)
 	}
@@ -123,8 +127,6 @@ func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNo
 		}
 		foldExprMap(vn.Props, vars)
 		foldExprMap(vn.Events, vars)
-		foldExprMap(vn.StyleAttrs, vars)
-		foldExprMap(vn.StyleBlock, vars)
 		for _, an := range vn.AttrNodes {
 			foldExprMap(an.Props, vars)
 		}

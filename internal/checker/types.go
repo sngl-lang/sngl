@@ -22,6 +22,7 @@ const (
 	Float              // float
 	String             // string
 	List               // list ([]T)
+	Option             // option<T> (nullable wrapper)
 	Struct             // user-defined struct
 
 	// Special domain types (all stored as strings)
@@ -54,7 +55,7 @@ const (
 // typeNames maps Type to display string.
 var typeNames = map[Type]string{
 	Dyn: "dyn", Bool: "bool", Int: "int", Float: "float", String: "string",
-	List: "list", Struct: "struct",
+	List: "list", Option: "option", Struct: "struct",
 	Color: "color", Date: "date", Time: "time", DateTime: "dateTime",
 	Duration: "duration", URL: "url", Email: "email", UUID: "uuid",
 	Regex: "regex", Base64: "base64", IPV4: "ipv4", IPV6: "ipv6",
@@ -86,6 +87,9 @@ var specialTypes = []Type{
 func TypeFromHint(hint string) Type {
 	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "list:") {
 		return List
+	}
+	if strings.HasPrefix(hint, "option:") {
+		return Option
 	}
 	switch hint {
 	case "bool":

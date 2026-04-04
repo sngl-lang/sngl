@@ -97,17 +97,19 @@ func analyze(doc *ast.Document) *analysisResult {
 		info.modelFields[d.Name] = true
 	}
 
-	for _, c := range doc.Computeds {
-		ktType := inferKtType(c.Expr)
-		if ktType == "Any" && c.Expr.SNGL != nil {
-			ktType = snglNodeKtType(c.Expr.SNGL)
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			ktType := inferKtType(fn.Body)
+			if ktType == "Any" && fn.Body.SNGL != nil {
+				ktType = snglNodeKtType(fn.Body.SNGL)
+			}
+			info.computeds = append(info.computeds, computedInfo{
+				name:   fn.Name,
+				ktType: ktType,
+			})
+			info.modelFields[fn.Name] = true
+			info.computedFields[fn.Name] = true
 		}
-		info.computeds = append(info.computeds, computedInfo{
-			name:   c.Name,
-			ktType: ktType,
-		})
-		info.modelFields[c.Name] = true
-		info.computedFields[c.Name] = true
 	}
 
 	for _, t := range doc.Timers {
@@ -237,12 +239,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			// Call into Go module for computed values
 			body = "golib.Golib." + exportName(comp.name) + "()"
 		} else {
-			for _, c := range doc.Computeds {
-				if c.Name == comp.name {
-					if c.Expr.SNGL != nil {
-						body = ec.translateExpr(c.Expr.SNGL)
-					} else if c.Expr.Literal != nil {
-						body = literalToKt(c.Expr)
+			for _, fn := range doc.Functions {
+				if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
+					if fn.Body.SNGL != nil {
+						body = ec.translateExpr(fn.Body.SNGL)
+					} else if fn.Body.Literal != nil {
+						body = literalToKt(fn.Body)
 					}
 					break
 				}
@@ -452,6 +454,9 @@ func typeHintToKt(hint string) string {
 	}
 	if strings.HasPrefix(hint, "list:") {
 		return "List<" + exportName(hint[5:]) + ">"
+	}
+	if strings.HasPrefix(hint, "option:") {
+		return typeHintToKt(hint[7:]) + "?"
 	}
 	if strings.HasPrefix(hint, "enum:") {
 		return "String"

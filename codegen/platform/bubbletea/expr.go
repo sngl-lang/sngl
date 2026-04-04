@@ -84,6 +84,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 			parts[i] = ec.translateExpr(el)
 		}
 		return "[]any{" + strings.Join(parts, ", ") + "}"
+	case *ast.SpreadExpr:
+		return ec.translateExpr(n.Operand) + "..."
 	case *ast.InterpolationExpr:
 		var fmtParts []string
 		var args []string
@@ -110,6 +112,19 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		return strings.Join(stmts, "\n")
 	case *ast.CallStmt:
 		return ec.translateExpr(n.Call)
+	case *ast.LambdaExpr:
+		for _, param := range n.Params {
+			ec.localVars[param] = true
+		}
+		body := ec.translateExpr(n.Body)
+		for _, param := range n.Params {
+			delete(ec.localVars, param)
+		}
+		params := make([]string, len(n.Params))
+		for i, param := range n.Params {
+			params[i] = param + " any"
+		}
+		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */nil", e)
 	}
@@ -134,6 +149,8 @@ func (ec *exprContext) translateLiteral(n *ast.LiteralExpr) string {
 		return "false"
 	case ast.LiteralNull:
 		return "nil"
+	case ast.LiteralColor:
+		return fmt.Sprintf("%q", n.Value)
 	default:
 		return fmt.Sprintf("%v", n.Value)
 	}

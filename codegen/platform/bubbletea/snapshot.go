@@ -5,7 +5,6 @@ package bubbletea
 import (
 	"fmt"
 	"io"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -338,10 +337,10 @@ func (sc *snapContext) renderComponent(comp *ast.Component, vn *ast.VisualNode) 
 func (sc *snapContext) buildStyle(vn *ast.VisualNode) lipgloss.Style {
 	style := sc.renderer.NewStyle()
 
-	// Merge style block and attrs (attrs override)
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, vn.StyleBlock)
-	maps.Copy(merged, vn.StyleAttrs)
+	merged := vn.StyleFields()
+	if merged == nil {
+		merged = make(map[string]ast.Expr)
+	}
 
 	for prop, expr := range merged {
 		val := sc.evalExpr(expr)
@@ -436,10 +435,7 @@ func scaleInt(val any, scaleFactor int) int {
 }
 
 func (sc *snapContext) getGap(vn *ast.VisualNode) int {
-	for _, m := range []map[string]ast.Expr{vn.StyleBlock, vn.StyleAttrs} {
-		if m == nil {
-			continue
-		}
+	if m := vn.StyleFields(); m != nil {
 		if gapExpr, ok := m["gap"]; ok {
 			val := sc.evalExpr(gapExpr)
 			switch v := val.(type) {

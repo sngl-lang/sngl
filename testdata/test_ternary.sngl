@@ -2,8 +2,8 @@ component choice {
     var x = 10
     var y = 5
     var label = ""
-    computed bigger = x > y ? "x" : "y"
-    computed desc = x > 0 ? string(x) : "none"
+    func bigger() x > y ? "x" : "y"
+    func desc() x > 0 ? string(x) : "none"
 
     button #swap (text="swap", @click={ x = y; y = x })
     button #bump (text="bump", @click={ x += 1; y += 1 })

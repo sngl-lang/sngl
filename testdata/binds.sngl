@@ -5,11 +5,9 @@ component main {
         active = true
     )
 
-    computed (
-        greeting = "Hello, " + name
-        doubled = count * 2
-        isActive = active
-    )
+    func greeting() "Hello, " + name
+    func doubled() count * 2
+    func isActive() active
 
     text(value=greeting)
 }

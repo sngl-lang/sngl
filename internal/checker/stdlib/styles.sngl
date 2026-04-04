@@ -1,73 +1,76 @@
-styles {
+// Style property definitions. The fields of this struct define all valid
+// style properties and their types. All fields are optional so that unset
+// properties can be distinguished from zero values, enabling style cascading.
+struct Style {
     // Sizing
-    width measurement
-    height measurement
-    minWidth measurement
-    minHeight measurement
-    maxWidth measurement
-    maxHeight measurement
-    aspectRatio float
+    width option<measurement>
+    height option<measurement>
+    minWidth option<measurement>
+    minHeight option<measurement>
+    maxWidth option<measurement>
+    maxHeight option<measurement>
+    aspectRatio option<float>
 
     // Padding
-    padding measurement
-    paddingTop measurement
-    paddingRight measurement
-    paddingBottom measurement
-    paddingLeft measurement
-    paddingX measurement
-    paddingY measurement
+    padding option<measurement>
+    paddingTop option<measurement>
+    paddingRight option<measurement>
+    paddingBottom option<measurement>
+    paddingLeft option<measurement>
+    paddingX option<measurement>
+    paddingY option<measurement>
 
     // Margin
-    margin measurement
-    marginTop measurement
-    marginRight measurement
-    marginBottom measurement
-    marginLeft measurement
-    marginX measurement
-    marginY measurement
+    margin option<measurement>
+    marginTop option<measurement>
+    marginRight option<measurement>
+    marginBottom option<measurement>
+    marginLeft option<measurement>
+    marginX option<measurement>
+    marginY option<measurement>
 
-    // Flex
-    flex float
-    flexGrow float
-    flexShrink float
-    flexBasis measurement
-    alignSelf string enum(auto, flexStart, flexEnd, center, baseline, stretch)
+    // Flex layout
+    flex option<float>
+    flexGrow option<float>
+    flexShrink option<float>
+    flexBasis option<measurement>
+    flexWrap option<string>
+    alignItems option<string>
+    justifyContent option<string>
+    alignSelf option<string>
+
+    // Spacing
+    gap option<measurement>
+    rowGap option<measurement>
+    columnGap option<measurement>
 
     // Positioning
-    position string enum(static, relative, absolute, fixed, sticky)
-    top measurement
-    right measurement
-    bottom measurement
-    left measurement
-    zIndex int
+    position option<string>
+    top option<measurement>
+    right option<measurement>
+    bottom option<measurement>
+    left option<measurement>
+    zIndex option<int>
 
-    // Container Layout
-    gap measurement
-    rowGap measurement
-    columnGap measurement
-    alignItems string enum(flexStart, flexEnd, center, baseline, stretch)
-    justifyContent string enum(flexStart, flexEnd, center, spaceBetween, spaceAround, spaceEvenly)
-    flexWrap string enum(nowrap, wrap, wrapReverse)
+    // Text
+    color option<color>
+    fontSize option<float>
+    fontWeight option<string>
+    fontStyle option<string>
+    fontFamily option<string>
+    textAlign option<string>
+    lineHeight option<float>
+    textOverflow option<string>
+    maxLines option<int>
 
-    // Visual Properties
-    background color
-    borderColor color
-    borderWidth measurement
-    borderRadius measurement
-    opacity float
-    overflow string enum(visible, hidden, scroll, auto)
+    // Visual
+    background option<color>
+    borderColor option<color>
+    borderWidth option<float>
+    borderRadius option<measurement>
+    opacity option<float>
+    overflow option<string>
 
-    // Text-specific style properties
-    color color
-    fontSize measurement
-    fontWeight string enum(normal, bold, 100, 200, 300, 400, 500, 600, 700, 800, 900)
-    fontStyle string enum(normal, italic, oblique)
-    fontFamily string
-    textAlign string enum(left, center, right, justify)
-    lineHeight float
-    textOverflow string enum(clip, ellipsis)
-    maxLines int
-
-    // Input-specific style properties
-    placeholderColor color
+    // Input
+    placeholderColor option<color>
 }

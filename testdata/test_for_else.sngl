@@ -1,0 +1,20 @@
+component emptylist {
+    var items = []
+
+    vbox {
+        for item in items {
+            text #item (value=item)
+        } else {
+            text #empty (value="No items yet")
+        }
+    }
+}
+
+test emptylist "shows else for empty list" {
+    assert(#empty.value == "No items yet")
+}
+
+test emptylist "hides else when list has items" {
+    items = ["hello"]
+    assert(#item.value == "hello")
+}

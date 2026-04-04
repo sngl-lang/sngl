@@ -49,11 +49,6 @@ VarDecl        = "var" IDENT Type? "=" Expr VarMod*
 VarField       = IDENT Type? "=" Expr VarMod*
                | IDENT Type VarMod*
 
-ComputedDecl   = "computed" IDENT "=" Expr
-               | "computed" "(" ComputedField ("," ComputedField)* ","? ")"
-
-ComputedField  = IDENT "=" Expr
-
 VarMod         = "extern"
                | "trigger" ("(" STRING ")")?
 ```
@@ -77,7 +72,7 @@ FuncParamList  = FuncParam ("," FuncParam)*
 
 FuncParam      = IDENT Type
 
-FuncBody       = "=" Expr
+FuncBody       = Expr
                | "{" FuncStmt* ReturnStmt? "}"
 
 FuncStmt       = LocalVar | AssignStmt | ToggleStmt | MethodCallStmt
@@ -90,7 +85,7 @@ ReturnStmt     = "return" Expr?
 CallStmt       = IDENT "(" ArgList? ")"
 ```
 
-Expression form (`= Expr`) is for pure single-expression functions. Block form allows local variables, statements, and an optional `return`. Functions with a return type must end with a `return` in block form. Void functions omit the return type and may mutate component state.
+Expression form (`Expr`) is for pure single-expression functions; the return type is inferred from the expression. Block form allows local variables, statements, and an optional `return`. Functions with a return type must end with a `return` in block form. Void functions omit the return type and may mutate component state.
 
 ### Component Members
 
@@ -102,7 +97,6 @@ ComponentMember = "param" IDENT Type? "=" Expr
                | "children" ("none" | "one" | "many")
                | ConstDecl
                | VarDecl
-               | ComputedDecl
                | FuncDecl
                | NodeOrControl
 ```
@@ -198,7 +192,7 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | After `output` | IDENT vs `{` | Single output vs grouped block |
 | After `var` | IDENT vs `(` | Single var vs grouped declaration |
 | Inside `{}` children | `if`/`for`/`@`/IDENT | Control, attr, or node |
-| Inside component | `const`/`var`/`computed`/`func`/`param`/IDENT | State, func, param, or visual node |
+| Inside component | `const`/`var`/`func`/`param`/IDENT | State, func, param, or visual node |
 | After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
 | Inside `()` props | `@`/`style`/IDENT | Event, style literal, or prop |
 | After IDENT in type | `<` or not | Generic type or plain type |
@@ -220,7 +214,7 @@ No virtual DOM or runtime diffing is involved. Assignments to state trigger only
 
 ### Component Scoping
 
-- State (`var`, `computed`, `const`) is scoped to the component that contains it
+- State (`var`, `const`) and functions are scoped to the component that contains them
 - `param` values are passed from parent to child at instantiation
 - Components expand at compile time
 - Recursive components are forbidden
@@ -232,5 +226,5 @@ No virtual DOM or runtime diffing is involved. Assignments to state trigger only
 | Inside `()` prop list | `,` or `)` at nesting depth 0 |
 | After `if` | `{` at depth 0 (tracking `()` and `[]` only) |
 | After `in` in `for` | `{` at depth 0 (tracking `()` and `[]` only) |
-| After `=` in const/var/computed | Semicolon (inserted or explicit) |
+| After `=` in const/var | Semicolon (inserted or explicit) |
 | After `=` in struct field | Semicolon |

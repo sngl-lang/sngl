@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -129,7 +130,6 @@ func findTestComponent(doc *ast.Document, name string) *ast.Component {
 		return &ast.Component{
 			Name:      "main",
 			Data:      doc.Data,
-			Computeds: doc.Computeds,
 			Consts:    doc.Consts,
 			Functions: doc.Functions,
 		}
@@ -146,9 +146,6 @@ func checkTestBody(td *ast.TestDef, comp *ast.Component) []Diagnostic {
 	known := map[string]bool{}
 	for _, d := range comp.Data {
 		known[d.Name] = true
-	}
-	for _, c := range comp.Computeds {
-		known[c.Name] = true
 	}
 	for _, c := range comp.Consts {
 		known[c.Name] = true
@@ -206,6 +203,8 @@ type APIConfig struct {
 // methodInfo describes a type-attached method (built-in or user-defined).
 type methodInfo struct {
 	ReturnType string
+	TypeParams []string // generic type parameters from FuncDef
+	ParamTypes []string // parameter type hints for generic resolution
 	IsBuiltin  bool
 }
 
@@ -240,15 +239,54 @@ type importNS struct {
 
 // lookupMethod checks the method registry for a type-attached method and returns its return type.
 func (c *checker) lookupMethod(typeName, method string) (Type, bool) {
+	return c.lookupMethodWithReceiver(typeName, method, "")
+}
+
+// lookupMethodWithReceiver checks the method registry and resolves generic type parameters
+// from the receiver's concrete type.
+func (c *checker) lookupMethodWithReceiver(typeName, method, receiverTypeHint string) (Type, bool) {
 	if methods, ok := c.methods[typeName]; ok {
 		if entry, ok := methods[method]; ok {
 			if entry.ReturnType != "" {
-				return TypeFromHint(entry.ReturnType), true
+				retType := entry.ReturnType
+				// Resolve generic type params from receiver type
+				if len(entry.TypeParams) > 0 && receiverTypeHint != "" {
+					subs := resolveTypeParams(typeName, receiverTypeHint, entry.TypeParams)
+					retType = substituteTypeParams(retType, subs)
+				}
+				return TypeFromHint(retType), true
 			}
 			return Dyn, true
 		}
 	}
 	return Dyn, false
+}
+
+// resolveTypeParams builds a substitution map from type parameters to concrete types.
+// For example, if typeName is "list" and receiverTypeHint is "list:Todo", and typeParams is ["T"],
+// it returns {"T": "Todo"}.
+func resolveTypeParams(typeName, receiverTypeHint string, typeParams []string) map[string]string {
+	subs := make(map[string]string)
+	// Extract element type from list:X or option:X
+	if strings.HasPrefix(receiverTypeHint, typeName+":") {
+		elemType := receiverTypeHint[len(typeName)+1:]
+		if len(typeParams) > 0 {
+			subs[typeParams[0]] = elemType
+		}
+	}
+	return subs
+}
+
+// substituteTypeParams replaces type parameter names with concrete types in a type string.
+func substituteTypeParams(typeStr string, subs map[string]string) string {
+	if concrete, ok := subs[typeStr]; ok {
+		return concrete
+	}
+	// Handle list:T → list:Concrete
+	for param, concrete := range subs {
+		typeStr = strings.ReplaceAll(typeStr, param, concrete)
+	}
+	return typeStr
 }
 
 // validateConstExpr checks that a const initializer only references literals, other consts,
@@ -501,8 +539,8 @@ func (c *checker) pass1(doc *ast.Document) {
 		}
 		c.validateEnumLiteral(d.Pos, &d.Init)
 		c.validateSpecialLiteral(d.Pos, &d.Init)
-		// Explicit null is not assignable to struct types
-		if hintType == Struct {
+		// Explicit null is not assignable to struct types (but option types allow null)
+		if hintType == Struct && !strings.HasPrefix(d.Init.TypeHint, "option:") {
 			if lit, ok := d.Init.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
 				c.errorAt(d.Pos, "null is not assignable to struct type %q", d.Init.TypeHint)
 			}
@@ -514,17 +552,16 @@ func (c *checker) pass1(doc *ast.Document) {
 		c.scope.Declare(d.Name, t)
 	}
 
-	// Computeds
-	for _, comp := range doc.Computeds {
-		t := c.resolveExprType(comp.Pos, &comp.Expr)
-		c.scope.Declare(comp.Name, t)
-	}
-
 	// Functions
 	for _, fn := range doc.Functions {
-		t := Dyn
+		var t Type
 		if fn.ReturnType != "" {
 			t = c.resolveTypeHint(fn.Pos, fn.ReturnType)
+		} else if fn.Body.SNGL != nil && !fn.IsStdlib {
+			// Expression-form function: infer type from body (skip stdlib which has synthetic bodies)
+			t = c.resolveExprType(fn.Pos, &fn.Body)
+		} else {
+			t = Dyn
 		}
 		c.scope.Declare(fn.Name, t)
 		// Register type-attached methods
@@ -532,7 +569,15 @@ func (c *checker) pass1(doc *ast.Document) {
 			if c.methods[typeName] == nil {
 				c.methods[typeName] = map[string]*methodInfo{}
 			}
-			c.methods[typeName][methodName] = &methodInfo{ReturnType: fn.ReturnType}
+			var paramTypes []string
+			for _, p := range fn.Params {
+				paramTypes = append(paramTypes, p.Type)
+			}
+			c.methods[typeName][methodName] = &methodInfo{
+				ReturnType: fn.ReturnType,
+				TypeParams: fn.TypeParams,
+				ParamTypes: paramTypes,
+			}
 		}
 	}
 
@@ -674,6 +719,12 @@ func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
 	if strings.HasPrefix(hint, "enum:") {
 		return String
 	}
+	// Option type: validate the inner type
+	if strings.HasPrefix(hint, "option:") {
+		inner := hint[7:]
+		c.resolveTypeHint(pos, inner) // validate inner type exists
+		return Option
+	}
 	// Named struct
 	for _, s := range c.structs {
 		if s.Name == hint {
@@ -807,6 +858,18 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 				c.errorAt(ast.Pos{}, "cannot convert struct to float")
 			}
 			return Float
+		case "regex":
+			// Validate regex pattern at compile time if literal string
+			if len(e.Args) == 1 {
+				if lit, ok := e.Args[0].(*ast.LiteralExpr); ok {
+					if s, ok := lit.Value.(string); ok {
+						if _, err := regexp.Compile(s); err != nil {
+							c.errorAt(ast.Pos{}, "invalid regex pattern: %v", err)
+						}
+					}
+				}
+			}
+			return Regex
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {
 				return t
@@ -877,6 +940,8 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 	case *ast.InterpolationExpr:
 		return String
 	case *ast.ElementRefExpr:
+		return Dyn
+	case *ast.LambdaExpr:
 		return Dyn
 	default:
 		return Dyn
@@ -1020,6 +1085,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Props
 	for name, expr := range vn.Props {
+		if name == "style" {
+			// Style is a universal prop; validated separately via StyleFields()
+			continue
+		}
 		ps, ok := schema.Props[name]
 		if !ok {
 			c.errorAt(vn.Pos, "%s: unknown property %q", vn.Component, name)
@@ -1054,24 +1123,13 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 		vn.Events[name] = expr
 	}
 
-	// Style attrs
-	for name, expr := range vn.StyleAttrs {
+	// Style fields (from Props["style"] anonymous struct)
+	for name, expr := range vn.StyleFields() {
 		if _, ok := c.styleProps[name]; !ok {
 			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
 			continue
 		}
 		c.resolveExprInScope(vn.Pos, &expr, scope)
-		vn.StyleAttrs[name] = expr
-	}
-
-	// Style block
-	for name, expr := range vn.StyleBlock {
-		if _, ok := c.styleProps[name]; !ok {
-			c.errorAt(vn.Pos, "%s: unknown style property %q", vn.Component, name)
-			continue
-		}
-		c.resolveExprInScope(vn.Pos, &expr, scope)
-		vn.StyleBlock[name] = expr
 	}
 
 	// Children policy
@@ -1236,6 +1294,8 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 				c.errorAt(ast.Pos{}, "cannot convert struct to float")
 			}
 			return Float
+		case "regex":
+			return Regex
 		default:
 			if t, ok := c.scope.Lookup(e.Func); ok {
 				return t
@@ -1304,6 +1364,8 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 	case *ast.InterpolationExpr:
 		return String
 	case *ast.ElementRefExpr:
+		return Dyn
+	case *ast.LambdaExpr:
 		return Dyn
 	default:
 		return Dyn

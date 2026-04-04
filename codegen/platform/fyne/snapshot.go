@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
-	"maps"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -304,6 +303,21 @@ func (sc *snapContext) renderFor(vn *ast.VisualNode) fyne.CanvasObject {
 	}
 	list, ok := iterVal.([]any)
 	if !ok || len(list) == 0 {
+		if len(vn.For.Else) > 0 {
+			var elseObjects []fyne.CanvasObject
+			for _, elseNode := range vn.For.Else {
+				obj := sc.renderNode(elseNode)
+				if obj != nil {
+					elseObjects = append(elseObjects, obj)
+				}
+			}
+			if len(elseObjects) == 1 {
+				return elseObjects[0]
+			}
+			if len(elseObjects) > 1 {
+				return container.NewVBox(elseObjects...)
+			}
+		}
 		return nil
 	}
 
@@ -382,21 +396,20 @@ func evalLiteral(expr ast.Expr) any {
 }
 
 func (sc *snapContext) isBold(vn *ast.VisualNode) bool {
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, vn.StyleBlock)
-	maps.Copy(merged, vn.StyleAttrs)
-	if expr, ok := merged["fontWeight"]; ok {
-		return fmt.Sprint(sc.evalExpr(expr)) == "bold"
+	if sf := vn.StyleFields(); sf != nil {
+		if expr, ok := sf["fontWeight"]; ok {
+			return fmt.Sprint(sc.evalExpr(expr)) == "bold"
+		}
 	}
 	return false
 }
 
 func (sc *snapContext) hasPadding(vn *ast.VisualNode) bool {
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, vn.StyleBlock)
-	maps.Copy(merged, vn.StyleAttrs)
-	_, ok := merged["padding"]
-	return ok
+	if sf := vn.StyleFields(); sf != nil {
+		_, ok := sf["padding"]
+		return ok
+	}
+	return false
 }
 
 func (sc *snapContext) hasProp(vn *ast.VisualNode, name, value string) bool {

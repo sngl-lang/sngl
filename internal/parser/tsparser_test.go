@@ -215,13 +215,15 @@ func compareMainComponent(t *testing.T, doc *ast.Document, tsComp *ts.Node, src 
 	}
 	compareStringSlices(t, "main.vars", goVars, tsVars)
 
-	// Compare computed names.
-	tsComputeds := extractDescendantFields(tsComp, "single_computed", "name", src)
-	var goComputeds []string
-	for _, c := range doc.Computeds {
-		goComputeds = append(goComputeds, c.Name)
+	// Compare function names (all functions including zero-arg expression-form).
+	tsFuncs := extractDescendantFields(tsComp, "func_declaration", "name", src)
+	var goFuncs []string
+	for _, fn := range doc.Functions {
+		if !fn.IsStdlib {
+			goFuncs = append(goFuncs, fn.Name)
+		}
 	}
-	compareStringSlices(t, "main.computeds", goComputeds, tsComputeds)
+	compareStringSlices(t, "main.funcs", goFuncs, tsFuncs)
 
 	// Compare const names.
 	tsConsts := extractDescendantFields(tsComp, "single_const", "name", src)

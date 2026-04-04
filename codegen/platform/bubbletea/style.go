@@ -2,7 +2,6 @@ package bubbletea
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -10,14 +9,14 @@ import (
 
 // buildStyleExpr builds a Go expression that creates a lipgloss.Style from SNGL style properties.
 // styleAttrs are inline style.xxx=yyy attributes, styleBlock is from @style { ... }.
-func buildStyleExpr(styleAttrs, styleBlock map[string]ast.Expr, ec *exprContext, scaleFactor int) string {
+func buildStyleExpr(styles map[string]ast.Expr, ec *exprContext, scaleFactor int) string {
 	var chain []string
 	chain = append(chain, "lipgloss.NewStyle()")
 
-	// Merge styleBlock first, then styleAttrs (attrs override block)
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, styleBlock)
-	maps.Copy(merged, styleAttrs)
+	merged := styles
+	if merged == nil {
+		merged = make(map[string]ast.Expr)
+	}
 
 	for prop, expr := range merged {
 		if call := styleCall(prop, expr, ec, scaleFactor); call != "" {

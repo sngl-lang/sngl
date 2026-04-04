@@ -86,7 +86,6 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 	env := NewEnv()
 
 	var data []*ast.Data
-	var computeds []*ast.Computed
 	var consts []*ast.Const
 	var funcs []*ast.FuncDef
 	var params []*ast.Param
@@ -94,7 +93,6 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 
 	if compName == "main" {
 		data = doc.Data
-		computeds = doc.Computeds
 		consts = doc.Consts
 		funcs = doc.Functions
 		if doc.App != nil {
@@ -106,7 +104,6 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 			return nil, fmt.Errorf("component %q not found", compName)
 		}
 		data = comp.Data
-		computeds = comp.Computeds
 		consts = comp.Consts
 		funcs = comp.Functions
 		params = comp.Params
@@ -118,9 +115,6 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 
 	for _, d := range data {
 		env.vars[d.Name] = evalInit(env, d.Init)
-	}
-	for _, c := range computeds {
-		env.computeds[c.Name] = c.Expr
 	}
 	for _, c := range consts {
 		env.consts[c.Name] = evalInit(env, c.Init)

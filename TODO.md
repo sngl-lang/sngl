@@ -1,0 +1,19 @@
+- [ ] Audit implicit type conversions
+- [x] Remove `styles` from language. Replace it with a struct (or structs) in the stdlib that defines the styles that may be set.
+- [x] ~~Remove `computed` keyword~~ — done. All computeds are now zero-arg expression-form functions. Auto-invoked when referenced without `()`.
+- [x] ~~Drop `=` and return type from expression-form functions~~ — done. `func add(a int, b int) a + b`. Return type inferred from expression. Block form still requires explicit return type.
+- [x] ~~Eliminate `dyn` from stdlib~~ — done. Generic functions added (`func list.push<T>(...)`). List functions use `list<T>`, lambda params use `func(T) bool`. Alert functions are void. Component props tightened to `list<string>`/`list<int>`.
+- [x] ~~Add `regex("pattern")` constructor~~ — done. Compile-time validated via `regexp.Compile()`. Added `regex.test()` and `regex.match()` methods. Codegen: Go → `regexp.MustCompile()`, JS → `new RegExp()`, Kotlin → `Regex()`.
+- [x] Remove most of `null` from the language. Replace with:
+  - Empty lists: `[]` (already works)
+  - Structs: zero-value initialization (already works)
+  - Nullable references (trees, optional fields): add `option<T>` type with `null` value
+  - Extern functions: zero-value no-op default
+  - Current uses of `dyn = null` for recursive structs become `option<Node>` fields
+- [x] ~~Add spread operator (`...`)~~ — done. `Todo{...existing, done: true}`, `[...items, newItem]`. Supported in struct and list literals.
+- [x] ~~Unify style attributes with struct literals~~ — done. `style={fontSize=24}` is an anonymous type-inferred struct literal. Removed special style parsing from `parsePropList`. `StyleAttrs`/`StyleBlock` removed from AST; style is a regular prop.
+- [x] ~~Add else for for blocks when they have no elements~~ — done. `for item in items { ... } else { text(value="No items") }`
+- [ ] linter:
+  - no /- commented out nodes
+- [ ] platform components; define stdlib in term of them
+- [ ] Allow reusing types in param/variable definitions like go

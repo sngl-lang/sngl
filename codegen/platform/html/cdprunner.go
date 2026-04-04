@@ -35,9 +35,11 @@ func NewCDPRunner(page *rod.Page, doc *ast.Document, lang codegen.LangTranslator
 		modelFields[d.Name] = true
 		dataFields[d.Name] = true
 	}
-	for _, c := range doc.Computeds {
-		modelFields[c.Name] = true
-		computedFields[c.Name] = true
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			modelFields[fn.Name] = true
+			computedFields[fn.Name] = true
+		}
 	}
 
 	localVars := make(map[string]bool)

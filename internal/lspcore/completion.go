@@ -134,8 +134,10 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 		for _, d := range doc.Data {
 			items = append(items, CompletionItem{Label: d.Name, Kind: CIKVariable, Detail: d.Init.TypeHint})
 		}
-		for _, c := range doc.Computeds {
-			items = append(items, CompletionItem{Label: c.Name, Kind: CIKVariable, Detail: "computed"})
+		for _, fn := range doc.Functions {
+			if fn.Block == nil && len(fn.Params) == 0 && !fn.IsStdlib {
+				items = append(items, CompletionItem{Label: fn.Name, Kind: CIKVariable, Detail: "func"})
+			}
 		}
 		for _, c := range doc.Consts {
 			items = append(items, CompletionItem{Label: c.Name, Kind: CIKConstant, Detail: "const"})

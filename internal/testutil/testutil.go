@@ -102,26 +102,26 @@ func AssertFolds(t *testing.T, doc *ast.Document, folds []FoldDirective) {
 // findExprAtLine returns the Expr pointer and name for the data/computed/const
 // declaration at the given line, searching both top-level and inside components.
 func findExprAtLine(doc *ast.Document, line int) (*ast.Expr, string) {
-	if e, name := searchScope(doc.Data, doc.Computeds, doc.Consts, line); e != nil {
+	if e, name := searchScope(doc.Data, doc.Functions, doc.Consts, line); e != nil {
 		return e, name
 	}
 	for _, comp := range doc.Components {
-		if e, name := searchScope(comp.Data, comp.Computeds, comp.Consts, line); e != nil {
+		if e, name := searchScope(comp.Data, comp.Functions, comp.Consts, line); e != nil {
 			return e, name
 		}
 	}
 	return nil, ""
 }
 
-func searchScope(data []*ast.Data, computeds []*ast.Computed, consts []*ast.Const, line int) (*ast.Expr, string) {
+func searchScope(data []*ast.Data, funcs []*ast.FuncDef, consts []*ast.Const, line int) (*ast.Expr, string) {
 	for _, d := range data {
 		if d.Pos.Line == line {
 			return &d.Init, d.Name
 		}
 	}
-	for _, c := range computeds {
-		if c.Pos.Line == line {
-			return &c.Expr, c.Name
+	for _, fn := range funcs {
+		if fn.Pos.Line == line && fn.Body.SNGL != nil {
+			return &fn.Body, fn.Name
 		}
 	}
 	for _, c := range consts {

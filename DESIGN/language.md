@@ -78,7 +78,7 @@ var user = User{
 Multi-line expressions work when lines end with operators or commas:
 
 ```
-computed label = count > 0 ?
+func label() count > 0 ?
     "active" : "inactive"
 ```
 
@@ -437,7 +437,7 @@ var (
 Declares derived read-only state. Always an expression. Appears inside `component` blocks alongside `var` and `const`. Type is always inferred.
 
 ```
-computed greeting = "Hello, {name}!"
+func greeting() "Hello, {name}!"
 ```
 
 → `ast.Computed{Name, Expr}`. No type annotation — inferred from expression.
@@ -447,11 +447,9 @@ computed greeting = "Hello, {name}!"
 Multiple computed declarations can be grouped with parentheses (preferred):
 
 ```
-computed (
-    greeting = "Hello, {name}!"
-    isAdult = user.age >= 18
-    status = "Todo List ({todos.length()} items)"
-)
+func greeting() "Hello, {name}!"
+func isAdult() user.age >= 18
+func status() "Todo List ({todos.length()} items)"
 ```
 
 ### func
@@ -464,12 +462,12 @@ Declares a user-defined function. Functions may be declared at the top level or 
 
 Two body forms are supported:
 
-- **Expression form:** `= expr` — a single expression (pure only)
+- **Expression form:** body expression follows parameter list directly (pure only)
 - **Block form:** `{ ... }` — may contain `var` (local variables), statements, and `return`
 
 ```
-func add(a int, b int) int = a + b
-func greet(name string) string = "Hello, {name}!"
+func add(a int, b int) a + b
+func greet(name string) "Hello, {name}!"
 
 func clamp(val int, lo int, hi int) int {
     var result = val < lo ? lo : val
@@ -488,9 +486,9 @@ func reset() {
 Functions can be attached to a type by using a dotted name `Type.method`. The first parameter acts as the receiver. Type-attached functions work for primitives (`int`, `string`, `float`, `bool`, `color`, `list`) and user-defined structs.
 
 ```
-func int.double(x int) int = x * 2
-func string.shout(s string) string = s + "!"
-func Todo.summary(t Todo) string = t.done ? "[x] {t.text}" : "[ ] {t.text}"
+func int.double(x int) x * 2
+func string.shout(s string) s + "!"
+func Todo.summary(t Todo) t.done ? "[x] {t.text}" : "[ ] {t.text}"
 ```
 
 Type-attached functions can be called in two ways:
@@ -926,7 +924,7 @@ struct Todo {
 
 component main {
     var (newTodo = "", todos list<Todo> = [])
-    computed status = "Todo List ({todos.length()} items)"
+    func status() "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
         text(value=status, style={font-weight="bold", font-size=24})
@@ -973,10 +971,8 @@ component Counter {
 component main {
     var user = User{name: "World", age: 25, loggedIn: false}
 
-    computed (
-        greeting = "Hello, {user.name}!"
-        isAdult = user.age >= 18
-    )
+    func greeting() "Hello, {user.name}!"
+    func isAdult() user.age >= 18
 
     vbox(style={padding=16, gap=12}) {
         text(value=greeting, style={font-size=24, font-weight="bold"})
@@ -1037,7 +1033,7 @@ component main {
         saveTodo func(string) = null extern
         formatDate func(string) -> string = null extern
     )
-    computed doubled = count * 2
+    func doubled() count * 2
 }
 ```
 
@@ -1049,7 +1045,7 @@ func clamp(val int, lo int, hi int) int {
     return result > hi ? hi : result
 }
 
-func formatAmount(n int) string = n == 1 ? "1 item" : "{n} items"
+func formatAmount(n int) n == 1 ? "1 item" : "{n} items"
 
 component main {
     var (
@@ -1066,7 +1062,7 @@ component main {
         count = 0
     }
 
-    computed label = formatAmount(count)
+    func label() formatAmount(count)
 
     vbox(style={padding=16, gap=12}) {
         text(value=label, style={font-size=24})

@@ -1,7 +1,7 @@
 component badge {
     param label = "default"
     param count = 0
-    computed display = label
+    func display() label
 
     text #lbl (value=display)
 }

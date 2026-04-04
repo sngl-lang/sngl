@@ -82,6 +82,13 @@ func (env *Env) collectForByID(node *ast.VisualNode, id string, out *[]map[strin
 	}
 	list, ok := iterVal.([]any)
 	if !ok {
+		list = nil
+	}
+	if len(list) == 0 {
+		// Render else block if present
+		for _, elseNode := range node.For.Else {
+			env.collectNodeByID(elseNode, id, out)
+		}
 		return
 	}
 	for i, item := range list {
@@ -115,8 +122,8 @@ func (env *Env) componentEnv(comp *ast.Component, node *ast.VisualNode) *Env {
 	for _, d := range comp.Data {
 		childEnv.vars[d.Name] = evalInit(childEnv, d.Init)
 	}
-	for _, c := range comp.Computeds {
-		childEnv.computeds[c.Name] = c.Expr
+	for _, fn := range comp.Functions {
+		childEnv.funcs[fn.Name] = fn
 	}
 	for _, c := range comp.Consts {
 		childEnv.consts[c.Name] = evalInit(childEnv, c.Init)

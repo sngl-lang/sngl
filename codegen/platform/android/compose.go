@@ -172,7 +172,7 @@ func (cc *composeContext) renderColumn(vn *ast.VisualNode) {
 		cc.indent++
 	}
 
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	if propIsTrue(vn, "scroll") || hasRefresh {
 		mod += ".verticalScroll(rememberScrollState())"
 	}
@@ -196,7 +196,7 @@ func (cc *composeContext) renderColumn(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderRow(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	if propIsTrue(vn, "scroll") {
 		mod += ".horizontalScroll(rememberScrollState())"
 	}
@@ -215,7 +215,7 @@ func (cc *composeContext) renderRow(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderBox(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	cc.line("Box(modifier = %s) {", mod)
 	cc.indent++
 	for _, child := range vn.Children {
@@ -226,7 +226,7 @@ func (cc *composeContext) renderBox(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderScroll(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	cc.line("Column(modifier = %s.verticalScroll(rememberScrollState())) {", mod)
 	cc.indent++
 	for _, child := range vn.Children {
@@ -237,7 +237,7 @@ func (cc *composeContext) renderScroll(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderSpacer(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	cc.line("Spacer(modifier = %s)", mod)
 }
 
@@ -246,8 +246,8 @@ func (cc *composeContext) renderText(vn *ast.VisualNode) {
 	if v, ok := vn.Props["value"]; ok {
 		val = exprToKtValue(v, cc.ec)
 	}
-	textStyle := buildTextStyleExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	textStyle := buildTextStyleExpr(vn.StyleFields(), cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	extras := ""
 	if textStyle != "" {
 		extras += ",\n" + strings.Repeat("    ", cc.indent+1) + "style = " + textStyle
@@ -259,7 +259,7 @@ func (cc *composeContext) renderText(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderImage(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	src := `""`
 	if v, ok := vn.Props["src"]; ok {
 		src = exprToKtValue(v, cc.ec)
@@ -285,7 +285,7 @@ func (cc *composeContext) renderBadge(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderProgress(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	value := "0"
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToKtValue(v, cc.ec)
@@ -303,7 +303,7 @@ func (cc *composeContext) renderProgress(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderSpinner(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	if mod != "Modifier" {
 		cc.line("CircularProgressIndicator(modifier = %s)", mod)
 	} else {
@@ -312,7 +312,7 @@ func (cc *composeContext) renderSpinner(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderDivider(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	if mod != "Modifier" {
 		cc.line("HorizontalDivider(modifier = %s)", mod)
 	} else {
@@ -321,7 +321,7 @@ func (cc *composeContext) renderDivider(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) renderCard(vn *ast.VisualNode) {
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	cc.line("Card(modifier = %s) {", mod)
 	cc.indent++
 	for _, child := range vn.Children {
@@ -377,7 +377,7 @@ func (cc *composeContext) renderInput(vn *ast.VisualNode) {
 		}
 		onValueChange += strings.Repeat("    ", cc.indent+1) + "}"
 	}
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	extras := ""
 	if mod != "Modifier" {
 		extras += ",\n" + strings.Repeat("    ", cc.indent+1) + "modifier = " + mod
@@ -566,7 +566,7 @@ func (cc *composeContext) renderTextarea(vn *ast.VisualNode) {
 		}
 		onValueChange += strings.Repeat("    ", cc.indent+1) + "}"
 	}
-	mod := buildModifierExpr(vn.StyleAttrs, vn.StyleBlock, cc.ec)
+	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
 	extras := ""
 	if mod != "Modifier" {
 		extras += ",\n" + strings.Repeat("    ", cc.indent+1) + "modifier = " + mod
@@ -959,10 +959,7 @@ func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) getGap(vn *ast.VisualNode) string {
-	for _, m := range []map[string]ast.Expr{vn.StyleBlock, vn.StyleAttrs} {
-		if m == nil {
-			continue
-		}
+	if m := vn.StyleFields(); m != nil {
 		if gapExpr, ok := m["gap"]; ok {
 			if gapExpr.Literal != nil {
 				switch v := gapExpr.Literal.(type) {

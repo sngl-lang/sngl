@@ -5,18 +5,18 @@ component main {
     var price float = 9.99
     var items = [1, 2, 3]
 
-    computed doubled = count * 2
-    computed greeting = "hi {name}"
-    computed isPositive = count > 0
-    computed sum = count + price
-    computed label = name + " " + string(count)
-    computed negated = -count
-    computed notActive = !active
-    computed pick = active ? "yes" : "no"
-    computed intVal = int(price)
-    computed floatVal = float(count)
-    computed strVal = string(count)
-    computed listLen = items.length()
+    func doubled() count * 2
+    func greeting() "hi {name}"
+    func isPositive() count > 0
+    func sum() count + price
+    func label() name + " " + string(count)
+    func negated() -count
+    func notActive() !active
+    func pick() active ? "yes" : "no"
+    func intVal() int(price)
+    func floatVal() float(count)
+    func strVal() string(count)
+    func listLen() items.length()
 
     text(value=greeting)
 }

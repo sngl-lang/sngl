@@ -1,7 +1,7 @@
 ---
 title: "Data Binding"
 order: 4
-description: "Reactive state, computed values, and expressions"
+description: "Reactive state, derived values, and expressions"
 ---
 
 ## Reactive State
@@ -42,14 +42,14 @@ const maxItems = 100
 const apiUrl = "https://api.example.com"
 ```
 
-### computed
+### Derived state
 
-Declares derived, read-only state that updates automatically when dependencies change:
+Zero-arg functions declare derived, read-only state that updates automatically when dependencies change. They are auto-invoked when referenced without `()`:
 
 ```sngl
-computed greeting = "Hello, {name}!"
-computed isAdult = user.age >= 18
-computed status = "Todo List ({todos.length()} items)"
+func greeting() "Hello, {name}!"
+func isAdult() user.age >= 18
+func status() "Todo List ({todos.length()} items)"
 ```
 
 ## Functions
@@ -58,25 +58,25 @@ Use `func` to declare reusable logic alongside your state. Functions can read co
 
 ```sngl
 component main {
-    var count = 0
     var todos list<Todo> = []
-    computed remaining = size(todos) - count
+    func done() todos.filter(func(t) t.done)
+    func remaining() size(todos) - size(done)
 
     func addTodo(text string) {
         todos.push(Todo{text: text, done: false})
     }
 
     func reset() {
-        count = 0
+        todos = []
     }
 
-    text(value="Remaining: {remaining}")
+    text(value="{size(done)}/{size(todos)} done, {remaining} remaining")
     button(text="Add", @click={ addTodo("New item") })
     button(text="Reset", @click={ reset() })
 }
 ```
 
-Computed values can reference functions, and functions can read component state. Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
+Inline functions (`func(params) expr`) can be passed to list methods like `filter` and `map`. Parameter types are inferred from context when omitted. Functions with a return type are pure and work in any expression context. Void functions (no return type) can mutate state and are called from event handlers. See the [Language Reference](/language/reference/#functions) for the full syntax.
 
 ## Modifiers
 

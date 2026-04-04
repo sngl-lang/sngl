@@ -63,6 +63,8 @@ func isConstExpr(n ast.Node, vars map[string]any) bool {
 			}
 		}
 		return true
+	case *ast.LambdaExpr:
+		return false
 	default:
 		return false
 	}

@@ -129,12 +129,11 @@ func mergeInto(dst, src *ast.Document) {
 	dst.Functions = append(dst.Functions, src.Functions...)
 	dst.Units = append(dst.Units, src.Units...)
 	dst.Styles = append(dst.Styles, src.Styles...)
-	dst.StyleDefs = append(dst.StyleDefs, src.StyleDefs...)
 	dst.Timers = append(dst.Timers, src.Timers...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Data = append(dst.Data, src.Data...)
-	dst.Computeds = append(dst.Computeds, src.Computeds...)
+	dst.Functions = append(dst.Functions, src.Functions...)
 	if src.App != nil && dst.App == nil {
 		dst.App = src.App
 	}

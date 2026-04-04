@@ -79,6 +79,15 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 			sep = `"\n"`
 		}
 		vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
+		if len(vn.For.Else) > 0 {
+			vc.line("if len(%s) == 0 {", iterExpr)
+			vc.indent++
+			for _, elseNode := range vn.For.Else {
+				vc.renderNodeInner(elseNode, resultVar)
+			}
+			vc.indent--
+			vc.line("}")
+		}
 	} else {
 		vc.renderNodeInner(vn, resultVar)
 	}
@@ -170,7 +179,7 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical bool) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	hasStyle := style != "lipgloss.NewStyle()"
 
 	childrenVar := resultVar + "Children"
@@ -230,7 +239,7 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 }
 
 func (vc *viewContext) renderText(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	val := `""`
 	if v, ok := vn.Props["value"]; ok {
 		val = exprToGoValue(v, vc.ec)
@@ -239,7 +248,7 @@ func (vc *viewContext) renderText(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderButton(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	text := `""`
 	if v, ok := vn.Props["text"]; ok {
 		text = exprToGoValue(v, vc.ec)
@@ -261,7 +270,7 @@ func (vc *viewContext) renderButton(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	checked := "false"
 	if v, ok := vn.Props["checked"]; ok {
 		checked = exprToGoValue(v, vc.ec)
@@ -311,12 +320,12 @@ func (vc *viewContext) renderInput(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderSpacer(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	vc.line(`%s = %s.Render("")`, resultVar, style)
 }
 
 func (vc *viewContext) renderImage(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	alt := `"image"`
 	if v, ok := vn.Props["alt"]; ok {
 		alt = exprToGoValue(v, vc.ec)
@@ -356,7 +365,7 @@ func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string)
 // --- New component renderers ---
 
 func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `""`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -395,7 +404,7 @@ func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderToggle(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	checked := "false"
 	if v, ok := vn.Props["checked"]; ok {
 		checked = exprToGoValue(v, vc.ec)
@@ -416,7 +425,7 @@ func (vc *viewContext) renderToggle(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderSelectComp(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `""`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -438,7 +447,7 @@ func (vc *viewContext) renderSelectComp(vn *ast.VisualNode, resultVar string) {
 
 func (vc *viewContext) renderTextarea(vn *ast.VisualNode, resultVar string) {
 	// Treat like input for now — use View() from a textinput model
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `""`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -459,7 +468,7 @@ func (vc *viewContext) renderTextarea(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderProgress(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `0.0`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -481,7 +490,7 @@ func (vc *viewContext) renderProgress(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderSpinner(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	label := `""`
 	if v, ok := vn.Props["label"]; ok {
 		label = exprToGoValue(v, vc.ec)
@@ -490,7 +499,7 @@ func (vc *viewContext) renderSpinner(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderBadge(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `""`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -499,7 +508,7 @@ func (vc *viewContext) renderBadge(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderTabs(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	items := `[]any{}`
 	if v, ok := vn.Props["items"]; ok {
 		items = exprToGoValue(v, vc.ec)
@@ -521,7 +530,7 @@ func (vc *viewContext) renderTabs(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderLink(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	text := `""`
 	if v, ok := vn.Props["text"]; ok {
 		text = exprToGoValue(v, vc.ec)
@@ -530,7 +539,7 @@ func (vc *viewContext) renderLink(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderDivider(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	label := `""`
 	if v, ok := vn.Props["label"]; ok {
 		label = exprToGoValue(v, vc.ec)
@@ -544,7 +553,7 @@ func (vc *viewContext) renderDivider(vn *ast.VisualNode, resultVar string) {
 
 func (vc *viewContext) renderConditionalContainer(vn *ast.VisualNode, resultVar string) {
 	// For modal, drawer, popover: render children when open, empty when closed
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	open := "false"
 	if v, ok := vn.Props["open"]; ok {
 		open = exprToGoValue(v, vc.ec)
@@ -582,7 +591,7 @@ func (vc *viewContext) renderConditionalContainer(vn *ast.VisualNode, resultVar 
 }
 
 func (vc *viewContext) renderAccordion(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	items := `[]any{}`
 	if v, ok := vn.Props["items"]; ok {
 		items = exprToGoValue(v, vc.ec)
@@ -606,7 +615,7 @@ func (vc *viewContext) renderAccordion(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderSplitview(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	if len(vn.Children) < 2 {
 		if len(vn.Children) == 1 {
 			vc.renderNode(vn.Children[0], resultVar)
@@ -633,7 +642,7 @@ func (vc *viewContext) renderSplitview(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderTable(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	columns := `[]any{}`
 	if v, ok := vn.Props["columns"]; ok {
 		columns = exprToGoValue(v, vc.ec)
@@ -664,7 +673,7 @@ func (vc *viewContext) renderTable(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderTree(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	items := `[]any{}`
 	if v, ok := vn.Props["items"]; ok {
 		items = exprToGoValue(v, vc.ec)
@@ -679,7 +688,7 @@ func (vc *viewContext) renderTree(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderMenu(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	items := `[]any{}`
 	if v, ok := vn.Props["items"]; ok {
 		items = exprToGoValue(v, vc.ec)
@@ -698,7 +707,7 @@ func (vc *viewContext) renderMenu(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderMenubar(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	items := `[]any{}`
 	if v, ok := vn.Props["items"]; ok {
 		items = exprToGoValue(v, vc.ec)
@@ -713,7 +722,7 @@ func (vc *viewContext) renderMenubar(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderDatepicker(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	value := `""`
 	if v, ok := vn.Props["value"]; ok {
 		value = exprToGoValue(v, vc.ec)
@@ -734,7 +743,7 @@ func (vc *viewContext) renderDatepicker(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderChip(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	label := `""`
 	if v, ok := vn.Props["label"]; ok {
 		label = exprToGoValue(v, vc.ec)
@@ -751,7 +760,7 @@ func (vc *viewContext) renderChip(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderAvatar(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	initials := `""`
 	if v, ok := vn.Props["initials"]; ok {
 		initials = exprToGoValue(v, vc.ec)
@@ -762,7 +771,7 @@ func (vc *viewContext) renderAvatar(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) renderCard(vn *ast.VisualNode, resultVar string) {
-	style := buildStyleExpr(vn.StyleAttrs, vn.StyleBlock, vc.ec, vc.scaleFactor)
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
 	if len(vn.Children) > 0 {
 		childrenVar := resultVar + "Children"
 		vc.line("var %s []string", childrenVar)
@@ -782,11 +791,7 @@ func (vc *viewContext) renderCard(vn *ast.VisualNode, resultVar string) {
 }
 
 func (vc *viewContext) getGap(vn *ast.VisualNode) int {
-	// Check style attrs and block for gap
-	for _, m := range []map[string]ast.Expr{vn.StyleBlock, vn.StyleAttrs} {
-		if m == nil {
-			continue
-		}
+	if m := vn.StyleFields(); m != nil {
 		if gapExpr, ok := m["gap"]; ok {
 			if gapExpr.Literal != nil {
 				switch v := gapExpr.Literal.(type) {

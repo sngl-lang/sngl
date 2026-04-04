@@ -1,0 +1,30 @@
+struct Todo {
+    text string = ""
+    done bool = false
+}
+
+test main "option defaults to null" {
+    assert(name == null)
+    assert(count != null)
+    assert(todo == null)
+    assert(flag != null)
+}
+
+test main "option accepts concrete values" {
+    name = "hello"
+    assert(name != null)
+    assert(name == "hello")
+    count = 42
+    assert(count == 42)
+}
+
+component main {
+    var (
+        name option<string>
+        count option<int> = 5
+        todo option<Todo> = null
+        flag option<bool> = true
+    )
+
+    text(value="test")
+}

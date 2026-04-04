@@ -21,19 +21,20 @@ const (
 	ELEMENT_REF  // #identifier
 
 	// Punctuation
-	LPAREN   // (
-	RPAREN   // )
-	LBRACE   // {
-	RBRACE   // }
-	LBRACKET // [
-	RBRACKET // ]
-	COMMA    // ,
-	DOT      // .
-	COLON    // :
-	ASSIGN   // =
-	AT       // @
-	PIPE     // |
+	LPAREN    // (
+	RPAREN    // )
+	LBRACE    // {
+	RBRACE    // }
+	LBRACKET  // [
+	RBRACKET  // ]
+	COMMA     // ,
+	DOT       // .
+	COLON     // :
+	ASSIGN    // =
+	AT        // @
+	PIPE  // |
 	ARROW    // ->
+	ELLIPSIS // ...
 
 	// Operators
 	PLUS     // +
@@ -67,9 +68,8 @@ const (
 	KW_ENUM
 	KW_CONST
 	KW_VAR
-	KW_COMPUTED
+	KW_COMPUTED // deprecated, kept for backward compat token constant
 	KW_STYLE
-	KW_STYLES
 	KW_COMPONENT
 	KW_PARAM
 	KW_PROP
@@ -77,6 +77,7 @@ const (
 	KW_CHILDREN
 	KW_IF
 	KW_FOR
+	KW_ELSE
 	KW_IN
 	KW_EXTERN
 	KW_TRIGGER
@@ -90,8 +91,8 @@ const (
 	KW_NULL
 
 	// Special
-	SLASHDASH    // /-
-	LINE_COMMENT // // ...
+	SLASHDASH     // /-
+	LINE_COMMENT  // // ...
 	BLOCK_COMMENT // /* ... */
 )
 
@@ -102,9 +103,7 @@ var keywords = map[string]TokenType{
 	"enum":      KW_ENUM,
 	"const":     KW_CONST,
 	"var":       KW_VAR,
-	"computed":  KW_COMPUTED,
 	"style":     KW_STYLE,
-	"styles":    KW_STYLES,
 	"component": KW_COMPONENT,
 	"param":     KW_PARAM,
 	"prop":      KW_PROP,
@@ -112,6 +111,7 @@ var keywords = map[string]TokenType{
 	"children":  KW_CHILDREN,
 	"if":        KW_IF,
 	"for":       KW_FOR,
+	"else":      KW_ELSE,
 	"in":        KW_IN,
 	"extern":    KW_EXTERN,
 	"trigger":   KW_TRIGGER,
@@ -168,7 +168,7 @@ var tokenNames = map[TokenType]string{
 	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
 	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
 	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",
-	AT: "AT", PIPE: "PIPE", ARROW: "ARROW",
+	AT: "AT", PIPE: "PIPE", ARROW: "ARROW", ELLIPSIS: "ELLIPSIS",
 	PLUS: "PLUS", MINUS: "MINUS", STAR: "STAR", SLASH: "SLASH", PERCENT: "PERCENT",
 	BANG: "BANG", BANGBANG: "BANGBANG", QUESTION: "QUESTION",
 	EQ: "EQ", NEQ: "NEQ", LT: "LT", GT: "GT", LTE: "LTE", GTE: "GTE",

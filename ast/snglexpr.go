@@ -126,20 +126,28 @@ type MethodExpr struct {
 
 // StructFieldLit is a field in a struct literal.
 type StructFieldLit struct {
-	Name  string
-	Value Node
+	Name   string
+	Value  Node
+	Spread bool // if true, Value is the spread operand, Name is empty
 }
 
-// StructExpr is a struct literal: Name{field: value, ...}.
+// StructExpr is a struct literal: Name{field: value, ...expr}.
 type StructExpr struct {
 	Name   string
 	Fields []StructFieldLit
 }
 
-// ListExpr is a list literal: [a, b, c].
+// ListExpr is a list literal: [a, b, ...c].
 type ListExpr struct {
 	Elements []Node
 }
+
+// SpreadExpr represents a spread operation: ...expr.
+type SpreadExpr struct {
+	Operand Node
+}
+
+func (*SpreadExpr) snglNode() {}
 
 // InterpolationExpr is a string with interpolated expressions.
 // Parts alternate between *LiteralExpr (string) and expression nodes.
@@ -150,6 +158,14 @@ type InterpolationExpr struct {
 // ElementRefExpr references a visual element by its #id.
 type ElementRefExpr struct {
 	Name string
+}
+
+// LambdaExpr is an inline function: func(t) t.done, func(a, b) a + b.
+// Parameter types are optional — inferred from context when omitted.
+type LambdaExpr struct {
+	Params     []string // parameter names
+	ParamTypes []string // optional type hints (empty string = inferred)
+	Body       Node     // expression body
 }
 
 // --- Statements ---
@@ -209,6 +225,7 @@ func (*StructExpr) snglNode()        {}
 func (*ListExpr) snglNode()          {}
 func (*InterpolationExpr) snglNode() {}
 func (*ElementRefExpr) snglNode()    {}
+func (*LambdaExpr) snglNode()        {}
 func (*AssignStmt) snglNode()        {}
 func (*ToggleStmt) snglNode()        {}
 func (*EmitStmt) snglNode()          {}

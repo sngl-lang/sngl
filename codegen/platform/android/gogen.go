@@ -103,9 +103,11 @@ func emitGoLib(doc *ast.Document, lang codegen.LangTranslator) []byte {
 		emitGoLibFunc(&b, fn, lang, scope)
 	}
 
-	// Emit exported computeds (as functions taking their dependencies)
-	for _, c := range doc.Computeds {
-		emitGoLibComputed(&b, c, lang, scope)
+	// Emit exported computed functions (zero-arg expression-form)
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			emitGoLibComputed(&b, fn, lang, scope)
+		}
 	}
 
 	return []byte(b.String())
@@ -160,14 +162,14 @@ func emitGoLibFunc(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTransla
 	}
 }
 
-func emitGoLibComputed(b *strings.Builder, c *ast.Computed, lang codegen.LangTranslator, scope *codegen.ExprScope) {
-	if c.Expr.SNGL == nil {
+func emitGoLibComputed(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTranslator, scope *codegen.ExprScope) {
+	if fn.Body.SNGL == nil {
 		return
 	}
-	goName := goExportName(c.Name)
-	// Computeds are emitted as zero-arg functions; the Kotlin side passes
+	goName := goExportName(fn.Name)
+	// Computed functions are emitted as zero-arg functions; the Kotlin side passes
 	// state values inline in the derivedStateOf expression.
-	body := lang.TranslateExpr(c.Expr.SNGL, scope)
+	body := lang.TranslateExpr(fn.Body.SNGL, scope)
 	fmt.Fprintf(b, "\nfunc %s() string {\n\treturn %s\n}\n", goName, body)
 }
 

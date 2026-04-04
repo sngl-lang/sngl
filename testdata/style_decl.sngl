@@ -9,13 +9,6 @@ style secondary {
     fontStyle = "italic"
 }
 
-styles {
-    padding int
-    margin int
-    color color
-    fontWeight string enum(normal, bold, lighter)
-}
-
 component main {
     vbox {
         text(value="hello", class="primary")

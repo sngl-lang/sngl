@@ -369,7 +369,7 @@ func TestParseToggleStmt(t *testing.T) {
 func TestParseStringInterpolation(t *testing.T) {
 	src := `component main {
     var name = "world"
-    computed greeting = "hello {name}!"
+    func greeting() "hello {name}!"
     text(value=greeting)
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -591,18 +591,23 @@ func TestParseGroupedVars(t *testing.T) {
 func TestParseGroupedComputeds(t *testing.T) {
 	src := `component main {
     var x = 1
-    computed (
-        double = x * 2
-        triple = x * 3
-    )
+    func double() x * 2
+    func triple() x * 3
     text(value=string(double))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	if len(doc.Computeds) != 2 {
-		t.Errorf("expected 2 computeds, got %d", len(doc.Computeds))
+	// Two zero-arg expression-form functions (formerly computeds)
+	count := 0
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Errorf("expected 2 computed functions, got %d", count)
 	}
 }
 
@@ -689,7 +694,7 @@ func TestParseStringInterpolation_Nested(t *testing.T) {
 	src := `component main {
     var x = 1
     var y = 2
-    computed msg = "sum={x + y}"
+    func msg() "sum={x + y}"
     text(value=msg)
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -763,30 +768,6 @@ component main {
 	}
 }
 
-func TestParseStyles(t *testing.T) {
-	src := `style primary {
-    color = #0000ff
-    fontWeight = "bold"
-    fontSize = 16
-}
-
-styles {
-    padding int
-    margin int
-}
-
-component main {
-    text(value="hi", class="primary")
-}`
-	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
-	if err != nil {
-		t.Fatalf("parse error: %v", err)
-	}
-	result := parser.Format(doc)
-	if !strings.Contains(result, "styles") {
-		t.Errorf("expected 'styles' in output:\n%s", result)
-	}
-}
 
 func TestParseElementRef(t *testing.T) {
 	src := `component main {

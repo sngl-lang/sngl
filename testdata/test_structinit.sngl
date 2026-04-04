@@ -5,7 +5,7 @@ struct Vec {
 
 component geo {
     var pos = Vec{x: 5, y: 10}
-    computed sum = pos.x + pos.y
+    func sum() pos.x + pos.y
 
     text(value="{sum}")
 }

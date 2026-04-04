@@ -31,6 +31,7 @@ type parser struct {
 	filename    string
 	lex         *lexer
 	cur         Token
+	peeked      *Token // one-token lookahead buffer (nil = empty)
 	errs        []error
 	noStructLit bool // when true, IDENT { is not parsed as struct literal (if/for contexts)
 	comments    []ast.Comment
@@ -42,6 +43,11 @@ func (p *parser) pos() ast.Pos {
 
 func (p *parser) advance() Token {
 	prev := p.cur
+	if p.peeked != nil {
+		p.cur = *p.peeked
+		p.peeked = nil
+		return prev
+	}
 	for {
 		p.cur = p.lex.NextToken()
 		if p.cur.Type == LINE_COMMENT || p.cur.Type == BLOCK_COMMENT {
@@ -57,8 +63,82 @@ func (p *parser) advance() Token {
 	return prev
 }
 
+// peekToken returns the next token without consuming it.
+func (p *parser) peekToken() Token {
+	if p.peeked != nil {
+		return *p.peeked
+	}
+	var tok Token
+	for {
+		tok = p.lex.NextToken()
+		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT {
+			p.comments = append(p.comments, ast.Comment{
+				Pos:   ast.Pos{Line: tok.Line, Column: tok.Column},
+				Text:  tok.Literal,
+				Block: tok.Type == BLOCK_COMMENT,
+			})
+			continue
+		}
+		break
+	}
+	p.peeked = &tok
+	return tok
+}
+
 func (p *parser) at(t TokenType) bool {
 	return p.cur.Type == t
+}
+
+// isTypedBlockFunc distinguishes "type {block}" from "Type{struct literal}" after func params.
+// Called when cur is IDENT and peek is LBRACE. Returns true if this is a typed block function
+// (return type followed by block body), false if IDENT{ starts a struct literal expression.
+// Uses a snapshot of the lexer to scan past the { and check whether the content looks like
+// a struct literal (IDENT COLON) or RBRACE (empty struct) vs block statements.
+func (p *parser) isTypedBlockFunc() bool {
+	// Snapshot lexer state
+	savedPos := p.lex.pos
+	savedLine := p.lex.line
+	savedCol := p.lex.col
+	savedPrevTok := p.lex.prevTok
+	defer func() {
+		p.lex.pos = savedPos
+		p.lex.line = savedLine
+		p.lex.col = savedCol
+		p.lex.prevTok = savedPrevTok
+	}()
+
+	// We know peeked is LBRACE. Scan past it by reading tokens from the lexer directly.
+	// The peeked token consumed the LBRACE, so the lexer is positioned after {.
+	// Read the first meaningful token after {.
+	var tok Token
+	for {
+		tok = p.lex.NextToken()
+		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT || tok.Type == SEMICOLON {
+			continue
+		}
+		break
+	}
+	if tok.Type == RBRACE {
+		// Empty braces: "Type {}" — treat as typed block with empty body
+		return true
+	}
+	if tok.Type == IDENT {
+		// Peek at the next token after the IDENT
+		var tok2 Token
+		for {
+			tok2 = p.lex.NextToken()
+			if tok2.Type == LINE_COMMENT || tok2.Type == BLOCK_COMMENT || tok2.Type == SEMICOLON {
+				continue
+			}
+			break
+		}
+		if tok2.Type == COLON {
+			// IDENT COLON → struct literal field, not a block body
+			return false
+		}
+	}
+	// Everything else (var, return, assignment, etc.) → block body
+	return true
 }
 
 func (p *parser) expect(t TokenType) Token {
@@ -129,8 +209,6 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Units = append(doc.Units, p.parseUnitDecl())
 		case KW_STYLE:
 			doc.Styles = append(doc.Styles, p.parseStyleDecl())
-		case KW_STYLES:
-			doc.StyleDefs = append(doc.StyleDefs, p.parseStyles()...)
 		case KW_TIMER:
 			t := p.parseTimer()
 			t.Disabled = disabled
@@ -151,12 +229,6 @@ func (p *parser) parseDocument() *ast.Document {
 				d.Disabled = disabled
 			}
 			doc.Data = append(doc.Data, vars...)
-		case KW_COMPUTED:
-			computeds := p.parseComputedDecl()
-			for _, c := range computeds {
-				c.Disabled = disabled
-			}
-			doc.Computeds = append(doc.Computeds, computeds...)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
@@ -167,7 +239,6 @@ func (p *parser) parseDocument() *ast.Document {
 			if comp.Name == "main" {
 				doc.App = &ast.App{Pos: comp.Pos, Children: comp.Body}
 				doc.Data = append(doc.Data, comp.Data...)
-				doc.Computeds = append(doc.Computeds, comp.Computeds...)
 				doc.Consts = append(doc.Consts, comp.Consts...)
 				doc.Functions = append(doc.Functions, comp.Functions...)
 				doc.Timers = append(doc.Timers, comp.Timers...)
@@ -271,8 +342,11 @@ func (p *parser) parseStruct() *ast.StructDef {
 		fpos := p.pos()
 		fname := p.expect(IDENT).Literal
 		ftype := p.parseTypeString()
-		p.expect(ASSIGN)
-		fdefault := p.parseExprAsExpr()
+		var fdefault ast.Expr
+		if p.at(ASSIGN) {
+			p.advance()
+			fdefault = p.parseExprAsExpr()
+		}
 		fields = append(fields, &ast.StructField{Pos: fpos, Name: fname, Type: ftype, Default: fdefault})
 		p.skipSemicolons()
 	}
@@ -325,53 +399,11 @@ func (p *parser) parseStyleProps() map[string]ast.Expr {
 	return props
 }
 
-func (p *parser) parseStyles() []*ast.StylePropDef {
-	p.expect(KW_STYLES)
-	p.expect(LBRACE)
-	var defs []*ast.StylePropDef
-	for !p.at(RBRACE) && !p.at(EOF) {
-		p.skipSemicolons()
-		if p.at(RBRACE) {
-			break
-		}
-		pos := p.pos()
-		name := p.expect(IDENT).Literal
-		typeHint := p.parseTypeString()
-		var enumValues []string
-		if p.at(KW_ENUM) {
-			p.advance()
-			p.expect(LPAREN)
-			for !p.at(RPAREN) && !p.at(EOF) {
-				switch {
-				case p.at(IDENT):
-					enumValues = append(enumValues, p.advance().Literal)
-				case p.at(INT):
-					enumValues = append(enumValues, p.advance().Literal)
-				case p.at(STRING):
-					enumValues = append(enumValues, p.advance().Literal)
-				default:
-					p.errorf("expected enum value, got %v", tokenNames[p.cur.Type])
-					p.advance()
-				}
-				if p.at(COMMA) {
-					p.advance()
-				}
-			}
-			p.expect(RPAREN)
-		}
-		defs = append(defs, &ast.StylePropDef{Pos: pos, Name: name, TypeHint: typeHint, Enum: enumValues})
-		p.skipSemicolons()
-	}
-	p.expect(RBRACE)
-	return defs
-}
-
 // --- Component ---
 
 type componentState struct {
-	Data      []*ast.Data
-	Computeds []*ast.Computed
-	Consts    []*ast.Const
+	Data   []*ast.Data
+	Consts []*ast.Const
 }
 
 func (p *parser) parseComponent() *ast.Component {
@@ -419,12 +451,6 @@ func (p *parser) parseComponent() *ast.Component {
 				d.Disabled = disabled
 			}
 			cs.Data = append(cs.Data, vars...)
-		case KW_COMPUTED:
-			computeds := p.parseComputedDecl()
-			for _, c := range computeds {
-				c.Disabled = disabled
-			}
-			cs.Computeds = append(cs.Computeds, computeds...)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
@@ -444,7 +470,6 @@ func (p *parser) parseComponent() *ast.Component {
 
 	comp.Consts = cs.Consts
 	comp.Data = cs.Data
-	comp.Computeds = cs.Computeds
 	return comp
 }
 
@@ -485,7 +510,7 @@ func (p *parser) parseParam() *ast.Param {
 	if p.at(ASSIGN) {
 		p.advance()
 		param.Default = p.parseExprAsExpr()
-	} else if !p.at(SEMICOLON) && !p.at(RBRACE) && !p.at(EOF) && !p.at(KW_PARAM) && !p.at(KW_VAR) && !p.at(KW_CONST) && !p.at(KW_COMPUTED) {
+	} else if !p.at(SEMICOLON) && !p.at(RBRACE) && !p.at(EOF) && !p.at(KW_PARAM) && !p.at(KW_VAR) && !p.at(KW_CONST) && !p.at(KW_FUNC) {
 		typeHint := p.parseTypeString()
 		param.Default.TypeHint = typeHint
 		if p.at(ASSIGN) {
@@ -655,40 +680,6 @@ func (p *parser) parseGroupedVars() []*ast.Data {
 	return vars
 }
 
-func (p *parser) parseComputedDecl() []*ast.Computed {
-	p.expect(KW_COMPUTED)
-	if p.at(LPAREN) {
-		return p.parseGroupedComputeds()
-	}
-	return []*ast.Computed{p.parseSingleComputed()}
-}
-
-func (p *parser) parseSingleComputed() *ast.Computed {
-	pos := p.pos()
-	name := p.expect(IDENT).Literal
-	p.expect(ASSIGN)
-	expr := p.parseExprAsExpr()
-	return &ast.Computed{Pos: pos, Name: name, Expr: expr}
-}
-
-func (p *parser) parseGroupedComputeds() []*ast.Computed {
-	p.expect(LPAREN)
-	var computeds []*ast.Computed
-	for !p.at(RPAREN) && !p.at(EOF) {
-		p.skipSemicolons()
-		if p.at(RPAREN) {
-			break
-		}
-		computeds = append(computeds, p.parseSingleComputed())
-		if p.at(COMMA) {
-			p.advance()
-		}
-		p.skipSemicolons()
-	}
-	p.expect(RPAREN)
-	return computeds
-}
-
 // --- Function definitions ---
 
 func (p *parser) parseTimer() *ast.Timer {
@@ -708,7 +699,28 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	name := p.expect(IDENT).Literal
 	if p.at(DOT) {
 		p.advance()
-		name = name + "." + p.expect(IDENT).Literal
+		// Allow keywords as method names (e.g., regex.test, list.return)
+		tok := p.cur
+		if tok.Type == IDENT || (tok.Type >= KW_IMPORT && tok.Type <= KW_NULL) {
+			name = name + "." + tok.Literal
+			p.advance()
+		} else {
+			name = name + "." + p.expect(IDENT).Literal
+		}
+	}
+
+	// Parse optional type parameters: func name<T, U>(...)
+	var typeParams []string
+	if p.at(LT) {
+		p.advance()
+		for {
+			typeParams = append(typeParams, p.expect(IDENT).Literal)
+			if !p.at(COMMA) {
+				break
+			}
+			p.advance()
+		}
+		p.expect(GT)
 	}
 
 	// Parse parameter list
@@ -725,25 +737,22 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	}
 	p.expect(RPAREN)
 
-	// Optional return type: present if next token is not = or {
-	retType := ""
-	if !p.at(ASSIGN) && !p.at(LBRACE) {
-		retType = p.parseTypeString()
-	}
+	fd := &ast.FuncDef{Pos: pos, Name: name, TypeParams: typeParams, Params: params}
 
-	fd := &ast.FuncDef{Pos: pos, Name: name, Params: params, ReturnType: retType}
-
-	if p.at(ASSIGN) {
-		// Single-expression form: func name(params) type = expr
-		p.advance()
-		fd.Body = p.parseExprAsExpr()
-	} else if p.at(LBRACE) {
-		// Block form: func name(params) type { stmts; return expr }
+	if p.at(LBRACE) {
+		// Void block form: func name(params) { ... }
 		p.advance()
 		fd.Block = p.parseFuncBlock()
 		p.expect(RBRACE)
+	} else if p.at(IDENT) && p.peekToken().Type == LBRACE && p.isTypedBlockFunc() {
+		// Typed block form: func name(params) type { ... }
+		fd.ReturnType = p.parseTypeString()
+		p.advance() // consume LBRACE
+		fd.Block = p.parseFuncBlock()
+		p.expect(RBRACE)
 	} else {
-		p.errorf("expected = or { after function signature")
+		// Expression form: func name(params) expr
+		fd.Body = p.parseExprAsExpr()
 	}
 
 	return fd
@@ -807,9 +816,9 @@ func (p *parser) parseTypeString() string {
 			inner.WriteString("," + p.parseTypeString())
 		}
 		p.expect(GT)
-		// Convert list<Todo> → list:Todo for compatibility
-		if name == "list" {
-			return "list:" + inner.String()
+		// Convert list<Todo> → list:Todo, option<T> → option:T for compatibility
+		if name == "list" || name == "option" {
+			return name + ":" + inner.String()
 		}
 		return name + "<" + inner.String() + ">"
 	}
@@ -893,11 +902,25 @@ func (p *parser) parseForNode() *ast.VisualNode {
 	vn := p.parseNodeOrControl()
 	p.skipSemicolons()
 	p.expect(RBRACE)
-	vn.For = &ast.ForClause{
+	fc := &ast.ForClause{
 		Variable: variable,
 		IndexVar: indexVar,
 		Iterable: iterable,
 	}
+	if p.at(KW_ELSE) {
+		p.advance()
+		p.expect(LBRACE)
+		for !p.at(RBRACE) && !p.at(EOF) {
+			p.skipSemicolons()
+			if p.at(RBRACE) {
+				break
+			}
+			fc.Else = append(fc.Else, p.parseNodeOrControl())
+			p.skipSemicolons()
+		}
+		p.expect(RBRACE)
+	}
+	vn.For = fc
 	return vn
 }
 
@@ -976,26 +999,14 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 				vn.Events = map[string]ast.Expr{}
 			}
 			vn.Events[eventName] = ast.Expr{SNGL: stmts}
-		} else if p.cur.Type == KW_STYLE && p.cur.Literal == "style" {
-			// style={...}
-			p.advance()
-			p.expect(ASSIGN)
-			p.expect(LBRACE)
-			if vn.StyleAttrs == nil {
-				vn.StyleAttrs = map[string]ast.Expr{}
-			}
-			for !p.at(RBRACE) && !p.at(EOF) {
-				key := p.expect(IDENT).Literal
-				p.expect(ASSIGN)
-				vn.StyleAttrs[key] = p.parseExprAsExpr()
-				if p.at(COMMA) {
-					p.advance()
-				}
-			}
-			p.expect(RBRACE)
 		} else {
-			// Regular prop: name=expr
-			propName := p.expect(IDENT).Literal
+			// Regular prop: name=expr (style keyword is also valid as a prop name)
+			var propName string
+			if p.at(KW_STYLE) {
+				propName = p.advance().Literal
+			} else {
+				propName = p.expect(IDENT).Literal
+			}
 			p.expect(ASSIGN)
 			expr := p.parseExprAsExpr()
 			switch propName {
@@ -1099,6 +1110,31 @@ func (p *parser) parseStmt() ast.Node {
 
 func (p *parser) parseExpression() ast.Node {
 	return p.parseTernary()
+}
+
+// parseLambdaExpr parses: func(param, param Type) expr
+// Parameter types are optional. Unambiguous LL(1) — func keyword starts it.
+func (p *parser) parseLambdaExpr() ast.Node {
+	p.advance() // consume func
+	p.expect(LPAREN)
+	var params []string
+	var paramTypes []string
+	for !p.at(RPAREN) {
+		name := p.expect(IDENT).Literal
+		params = append(params, name)
+		// Optional type annotation
+		typeHint := ""
+		if p.at(IDENT) {
+			typeHint = p.advance().Literal
+		}
+		paramTypes = append(paramTypes, typeHint)
+		if !p.at(RPAREN) {
+			p.expect(COMMA)
+		}
+	}
+	p.expect(RPAREN)
+	body := p.parseExpression()
+	return &ast.LambdaExpr{Params: params, ParamTypes: paramTypes, Body: body}
 }
 
 func (p *parser) parseTernary() ast.Node {
@@ -1319,6 +1355,14 @@ func (p *parser) parsePrimary() ast.Node {
 		return expr
 	case LBRACKET:
 		return p.parseListLiteral()
+	case LBRACE:
+		// Anonymous struct literal: {field=val, ...}
+		return p.parseAnonStructLiteral()
+	case KW_FUNC:
+		// Lambda expression: func(params) expr
+		// Distinct from func declaration (which has a name after func).
+		// In expression context, func is always a lambda.
+		return p.parseLambdaExpr()
 	case ELEMENT_REF:
 		tok := p.advance()
 		return &ast.ElementRefExpr{Name: tok.Literal}
@@ -1343,7 +1387,12 @@ func (p *parser) parseListLiteral() ast.Node {
 	p.expect(LBRACKET)
 	var elems []ast.Node
 	for !p.at(RBRACKET) && !p.at(EOF) {
-		elems = append(elems, p.parseExpression())
+		if p.at(ELLIPSIS) {
+			p.advance()
+			elems = append(elems, &ast.SpreadExpr{Operand: p.parseExpression()})
+		} else {
+			elems = append(elems, p.parseExpression())
+		}
 		if p.at(COMMA) {
 			p.advance()
 		}
@@ -1360,10 +1409,16 @@ func (p *parser) parseStructLiteral(name string) ast.Node {
 		if p.at(RBRACE) {
 			break
 		}
-		fname := p.expect(IDENT).Literal
-		p.expect(COLON)
-		fval := p.parseExpression()
-		fields = append(fields, ast.StructFieldLit{Name: fname, Value: fval})
+		if p.at(ELLIPSIS) {
+			p.advance()
+			operand := p.parseExpression()
+			fields = append(fields, ast.StructFieldLit{Value: operand, Spread: true})
+		} else {
+			fname := p.expect(IDENT).Literal
+			p.expect(COLON)
+			fval := p.parseExpression()
+			fields = append(fields, ast.StructFieldLit{Name: fname, Value: fval})
+		}
 		if p.at(COMMA) {
 			p.advance()
 		}
@@ -1371,6 +1426,35 @@ func (p *parser) parseStructLiteral(name string) ast.Node {
 	}
 	p.expect(RBRACE)
 	return &ast.StructExpr{Name: name, Fields: fields}
+}
+
+// parseAnonStructLiteral parses an anonymous struct literal: {field=val, field2=val2}.
+// Uses = as field separator (not :). Used for style props and other type-inferred contexts.
+func (p *parser) parseAnonStructLiteral() ast.Node {
+	p.expect(LBRACE)
+	var fields []ast.StructFieldLit
+	for !p.at(RBRACE) && !p.at(EOF) {
+		p.skipSemicolons()
+		if p.at(RBRACE) {
+			break
+		}
+		if p.at(ELLIPSIS) {
+			p.advance()
+			operand := p.parseExpression()
+			fields = append(fields, ast.StructFieldLit{Value: operand, Spread: true})
+		} else {
+			fname := p.expect(IDENT).Literal
+			p.expect(ASSIGN)
+			fval := p.parseExpression()
+			fields = append(fields, ast.StructFieldLit{Name: fname, Value: fval})
+		}
+		if p.at(COMMA) {
+			p.advance()
+		}
+		p.skipSemicolons()
+	}
+	p.expect(RBRACE)
+	return &ast.StructExpr{Name: "", Fields: fields}
 }
 
 func (p *parser) parseStringWithInterpolation(raw string) ast.Node {

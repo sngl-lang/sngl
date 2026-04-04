@@ -2,17 +2,17 @@ package android
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
 // buildModifierExpr builds a Kotlin Modifier chain from SNGL style properties.
-func buildModifierExpr(styleAttrs, styleBlock map[string]ast.Expr, ec *exprContext) string {
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, styleBlock)
-	maps.Copy(merged, styleAttrs)
+func buildModifierExpr(styles map[string]ast.Expr, ec *exprContext) string {
+	merged := styles
+	if merged == nil {
+		merged = make(map[string]ast.Expr)
+	}
 
 	var chain []string
 	for prop, expr := range merged {
@@ -28,10 +28,11 @@ func buildModifierExpr(styleAttrs, styleBlock map[string]ast.Expr, ec *exprConte
 }
 
 // buildTextStyleExpr builds a Kotlin TextStyle expression from text-related SNGL style properties.
-func buildTextStyleExpr(styleAttrs, styleBlock map[string]ast.Expr, ec *exprContext) string {
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, styleBlock)
-	maps.Copy(merged, styleAttrs)
+func buildTextStyleExpr(styles map[string]ast.Expr, ec *exprContext) string {
+	merged := styles
+	if merged == nil {
+		merged = make(map[string]ast.Expr)
+	}
 
 	var params []string
 	for prop, expr := range merged {

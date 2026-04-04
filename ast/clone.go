@@ -17,12 +17,10 @@ func (d *Document) Clone() *Document {
 	c.Imports = cloneSlice(d.Imports)
 	c.Consts = cloneSlice(d.Consts)
 	c.Data = cloneData(d.Data)
-	c.Computeds = cloneComputeds(d.Computeds)
 	c.Components = cloneComponents(d.Components)
 	c.ImportedComponents = cloneComponents(d.ImportedComponents)
 	c.Timers = cloneSlice(d.Timers)
 	c.Styles = cloneStyleDecls(d.Styles)
-	c.StyleDefs = cloneSlice(d.StyleDefs)
 	c.App = d.App.clone()
 	c.Tests = cloneTests(d.Tests)
 	return &c
@@ -60,8 +58,6 @@ func (vn *VisualNode) clone() *VisualNode {
 	c.For = cloneForClause(vn.For)
 	c.Props = cloneExprMap(vn.Props)
 	c.Events = cloneExprMap(vn.Events)
-	c.StyleAttrs = cloneExprMap(vn.StyleAttrs)
-	c.StyleBlock = cloneExprMap(vn.StyleBlock)
 	c.AttrNodes = cloneAttrNodes(vn.AttrNodes)
 	c.Children = cloneVisualNodes(vn.Children)
 	return &c
@@ -84,6 +80,7 @@ func cloneForClause(f *ForClause) *ForClause {
 		return nil
 	}
 	c := *f
+	c.Else = cloneVisualNodes(f.Else)
 	return &c
 }
 
@@ -171,22 +168,6 @@ func cloneData(s []*Data) []*Data {
 	return out
 }
 
-func cloneComputeds(s []*Computed) []*Computed {
-	if s == nil {
-		return nil
-	}
-	out := make([]*Computed, len(s))
-	for i, v := range s {
-		c := *v
-		if v.Resolved != nil {
-			r := *v.Resolved
-			c.Resolved = &r
-		}
-		out[i] = &c
-	}
-	return out
-}
-
 func cloneComponents(s []*Component) []*Component {
 	if s == nil {
 		return nil
@@ -197,7 +178,6 @@ func cloneComponents(s []*Component) []*Component {
 		c.Params = cloneSlice(v.Params)
 		c.Consts = cloneSlice(v.Consts)
 		c.Data = cloneData(v.Data)
-		c.Computeds = cloneComputeds(v.Computeds)
 		c.Timers = cloneSlice(v.Timers)
 		c.PropDecls = cloneSlice(v.PropDecls)
 		c.EventDecls = cloneSlice(v.EventDecls)

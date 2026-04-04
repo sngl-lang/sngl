@@ -13,4 +13,5 @@ type ForClause struct {
 	Variable string // element variable, e.g. "item"
 	IndexVar string // optional index variable, e.g. "index"
 	Iterable Expr
+	Else     []*VisualNode // optional else block, rendered when iterable is empty
 }

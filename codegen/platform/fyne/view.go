@@ -199,6 +199,16 @@ func (vc *viewContext) renderForLoop(vn *ast.VisualNode, resultVar string) {
 		vc.line("if %s != nil { %s = append(%s, %s) }", innerVar, loopItems, loopItems, innerVar)
 		vc.indent--
 		vc.line("}")
+		if len(vn.For.Else) > 0 {
+			vc.line("if len(%s) == 0 {", iterExpr)
+			vc.indent++
+			for _, elseNode := range vn.For.Else {
+				vc.renderNodeInner(elseNode, loopItems+"Else")
+				vc.line("%s = append(%s, %sElse)", loopItems, loopItems, loopItems)
+			}
+			vc.indent--
+			vc.line("}")
+		}
 		vc.line("m.%s = container.NewVBox(%s...)", fieldName, loopItems)
 		vc.line("%s = m.%s", resultVar, fieldName)
 
@@ -242,6 +252,18 @@ func (vc *viewContext) renderForLoop(vn *ast.VisualNode, resultVar string) {
 
 	vc.indent--
 	vc.line("}")
+	if len(vn.For.Else) > 0 {
+		vc.line("if len(%s) == 0 {", iterExpr)
+		vc.indent++
+		for _, elseNode := range vn.For.Else {
+			elseVar := loopItems + "Else"
+			vc.line("var %s fyne.CanvasObject", elseVar)
+			vc.renderNodeInner(elseNode, elseVar)
+			vc.line("if %s != nil { %s = append(%s, %s) }", elseVar, loopItems, loopItems, elseVar)
+		}
+		vc.indent--
+		vc.line("}")
+	}
 	vc.line("%s = container.NewVBox(%s...)", resultVar, loopItems)
 }
 
@@ -338,13 +360,8 @@ func (vc *viewContext) renderBox(vn *ast.VisualNode, resultVar string, vertical 
 
 	// Apply padding if specified
 	hasPadding := false
-	if vn.StyleAttrs != nil {
-		if _, ok := vn.StyleAttrs["padding"]; ok {
-			hasPadding = true
-		}
-	}
-	if vn.StyleBlock != nil {
-		if _, ok := vn.StyleBlock["padding"]; ok {
+	if sf := vn.StyleFields(); sf != nil {
+		if _, ok := sf["padding"]; ok {
 			hasPadding = true
 		}
 	}
@@ -400,15 +417,8 @@ func (vc *viewContext) renderText(vn *ast.VisualNode, resultVar string) {
 
 	// Check for bold/italic from style
 	bold := false
-	if vn.StyleAttrs != nil {
-		if v, ok := vn.StyleAttrs["fontWeight"]; ok {
-			if s, ok := v.Literal.(string); ok && s == "bold" {
-				bold = true
-			}
-		}
-	}
-	if vn.StyleBlock != nil {
-		if v, ok := vn.StyleBlock["fontWeight"]; ok {
+	if sf := vn.StyleFields(); sf != nil {
+		if v, ok := sf["fontWeight"]; ok {
 			if s, ok := v.Literal.(string); ok && s == "bold" {
 				bold = true
 			}

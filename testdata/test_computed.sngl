@@ -1,7 +1,7 @@
 component pricing {
     var price = 100
     var quantity = 2
-    computed total = price * quantity
+    func total() price * quantity
 
     text(value="{total}")
 }

@@ -29,7 +29,7 @@ component main {
         birthday date = "2000-01-01"
     )
 
-    computed greeting = "Hello, {name}!"
+    func greeting() "Hello, {name}!"
 
     func increment() {
         count += 1

@@ -167,15 +167,6 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 		needBlank = true
 	}
 
-	// Styles schema (StyleDefs)
-	if len(doc.StyleDefs) > 0 {
-		if needBlank {
-			f.newline()
-		}
-		f.formatStyleDefs(doc.StyleDefs)
-		needBlank = true
-	}
-
 	// Non-main components
 	for _, comp := range doc.Components {
 		if needBlank {
@@ -210,7 +201,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			break
 		}
 	}
-	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Computeds) > 0 || len(doc.Consts) > 0 || hasUserFuncs
+	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Consts) > 0 || hasUserFuncs
 	if hasMain {
 		if needBlank {
 			f.newline()
@@ -232,15 +223,6 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.newline()
 			}
 			f.formatVars(doc.Data)
-			memberBlank = true
-		}
-
-		// Computeds
-		if len(doc.Computeds) > 0 {
-			if memberBlank {
-				f.newline()
-			}
-			f.formatComputeds(doc.Computeds)
 			memberBlank = true
 		}
 
@@ -321,19 +303,6 @@ func (f *formatter) formatStyleDecl(s *ast.StyleDecl) {
 	f.writeLine("}")
 }
 
-func (f *formatter) formatStyleDefs(defs []*ast.StylePropDef) {
-	f.writeLine("styles {")
-	f.indent++
-	for _, d := range defs {
-		line := d.Name + " " + d.TypeHint
-		if len(d.Enum) > 0 {
-			line += " enum(" + strings.Join(d.Enum, ", ") + ")"
-		}
-		f.writeLine(line)
-	}
-	f.indent--
-	f.writeLine("}")
-}
 
 func (f *formatter) formatConsts(consts []*ast.Const) {
 	if len(consts) == 1 {
@@ -441,21 +410,6 @@ func canInferType(expr ast.Expr, typeStr string) bool {
 	return false
 }
 
-func (f *formatter) formatComputeds(computeds []*ast.Computed) {
-	if len(computeds) == 1 {
-		c := computeds[0]
-		f.writeDisabledLine(c.Disabled, "computed "+c.Name+" = "+f.formatExprValue(c.Expr))
-		return
-	}
-	f.writeLine("computed (")
-	f.indent++
-	for _, c := range computeds {
-		f.writeDisabledLine(c.Disabled, c.Name+" = "+f.formatExprValue(c.Expr))
-	}
-	f.indent--
-	f.writeLine(")")
-}
-
 func (f *formatter) formatFuncDefs(funcs []*ast.FuncDef) {
 	for _, fn := range funcs {
 		if fn.IsStdlib {
@@ -469,6 +423,11 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 	var sb strings.Builder
 	sb.WriteString("func ")
 	sb.WriteString(fn.Name)
+	if len(fn.TypeParams) > 0 {
+		sb.WriteString("<")
+		sb.WriteString(strings.Join(fn.TypeParams, ", "))
+		sb.WriteString(">")
+	}
 	sb.WriteString("(")
 	for i, p := range fn.Params {
 		if i > 0 {
@@ -479,12 +438,11 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		sb.WriteString(typeHintStr(p.Type, nil))
 	}
 	sb.WriteString(")")
-	if fn.ReturnType != "" {
-		sb.WriteString(" ")
-		sb.WriteString(typeHintStr(fn.ReturnType, nil))
-	}
-
 	if fn.Block != nil {
+		if fn.ReturnType != "" {
+			sb.WriteString(" ")
+			sb.WriteString(typeHintStr(fn.ReturnType, nil))
+		}
 		sb.WriteString(" {")
 		f.writeLine(sb.String())
 		f.indent++
@@ -497,7 +455,7 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		f.indent--
 		f.writeLine("}")
 	} else {
-		sb.WriteString(" = ")
+		sb.WriteString(" ")
 		sb.WriteString(f.formatExprValue(fn.Body))
 		f.writeLine(sb.String())
 	}
@@ -582,15 +540,6 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 		memberBlank = true
 	}
 
-	// Computeds
-	if len(comp.Computeds) > 0 {
-		if memberBlank {
-			f.newline()
-		}
-		f.formatComputeds(comp.Computeds)
-		memberBlank = true
-	}
-
 	// Functions
 	if len(comp.Functions) > 0 {
 		if memberBlank {
@@ -671,6 +620,14 @@ func (f *formatter) formatVisualNode(vn *ast.VisualNode) {
 			f.indent++
 			f.formatVisualNodeInner(vn)
 			f.indent--
+			if len(fc.Else) > 0 {
+				f.writeLine("} else {")
+				f.indent++
+				for _, child := range fc.Else {
+					f.formatVisualNode(child)
+				}
+				f.indent--
+			}
 			f.writeLine("}")
 			return
 		}
@@ -713,17 +670,7 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		props = append(props, "@"+name+"="+f.formatEventValue(vn.Events[name]))
 	}
 
-	// Inline style attrs (merged from StyleAttrs + StyleBlock)
-	if len(vn.StyleAttrs) > 0 || len(vn.StyleBlock) > 0 {
-		var styleParts []string
-		for _, k := range sortedKeys(vn.StyleAttrs) {
-			styleParts = append(styleParts, k+"="+f.formatExprValue(vn.StyleAttrs[k]))
-		}
-		for _, k := range sortedKeys(vn.StyleBlock) {
-			styleParts = append(styleParts, k+"="+f.formatExprValue(vn.StyleBlock[k]))
-		}
-		props = append(props, "style={"+strings.Join(styleParts, ", ")+"}")
-	}
+	// Style is now a regular prop; no special formatting needed
 
 	// Build the line
 	line := vn.Component
@@ -794,6 +741,17 @@ func FormatNode(n ast.Node) string {
 		return e.Name
 	case *ast.ElementRefExpr:
 		return "#" + e.Name
+	case *ast.LambdaExpr:
+		body := FormatNode(e.Body)
+		var params []string
+		for i, name := range e.Params {
+			if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
+				params = append(params, name+" "+e.ParamTypes[i])
+			} else {
+				params = append(params, name)
+			}
+		}
+		return "func(" + strings.Join(params, ", ") + ") " + body
 	case *ast.BinaryExpr:
 		left := FormatNode(e.Left)
 		right := FormatNode(e.Right)
@@ -818,8 +776,16 @@ func FormatNode(n ast.Node) string {
 		return formatPostfixOperand(e.Receiver) + "." + e.Method + "(" + args + ")"
 	case *ast.StructExpr:
 		var fields []string
+		sep := ": " // named struct uses ":"
+		if e.Name == "" {
+			sep = "=" // anonymous struct uses "="
+		}
 		for _, field := range e.Fields {
-			fields = append(fields, field.Name+": "+FormatNode(field.Value))
+			if field.Spread {
+				fields = append(fields, "..."+FormatNode(field.Value))
+			} else {
+				fields = append(fields, field.Name+sep+FormatNode(field.Value))
+			}
 		}
 		return e.Name + "{" + strings.Join(fields, ", ") + "}"
 	case *ast.ListExpr:
@@ -828,6 +794,8 @@ func FormatNode(n ast.Node) string {
 			parts[i] = FormatNode(el)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *ast.SpreadExpr:
+		return "..." + FormatNode(e.Operand)
 	case *ast.InterpolationExpr:
 		var sb strings.Builder
 		sb.WriteByte('"')

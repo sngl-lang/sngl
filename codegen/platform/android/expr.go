@@ -75,6 +75,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 			parts[i] = ec.translateExpr(el)
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
+	case *ast.SpreadExpr:
+		return "*" + ec.translateExpr(n.Operand)
 	case *ast.InterpolationExpr:
 		var sb strings.Builder
 		sb.WriteByte('"')

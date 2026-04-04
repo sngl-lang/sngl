@@ -180,6 +180,8 @@ func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
 		for _, field := range n.Fields {
 			walkDeps(field.Value, modelFields, deps)
 		}
+	case *ast.SpreadExpr:
+		walkDeps(n.Operand, modelFields, deps)
 	case *ast.InterpolationExpr:
 		for _, part := range n.Parts {
 			walkDeps(part, modelFields, deps)

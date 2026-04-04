@@ -2,15 +2,15 @@ component main {
     var n = 5
     var name = "hello"
 
-    func int.double(x int) int = x * 2
-    func int.noop(x int) = x
-    func string.exclaim(s string) string = "{s}!"
+    func int.double(x int) x * 2
+    func int.noop(x int) x
+    func string.exclaim(s string) "{s}!"
 
-    computed doubled = n.double()
-    computed nooped = n.noop()
-    computed excited = name.exclaim()
-    computed nsDouble = int.double(3)
-    computed nsNoop = int.noop(7)
+    func doubled() n.double()
+    func nooped() n.noop()
+    func excited() name.exclaim()
+    func nsDouble() int.double(3)
+    func nsNoop() int.noop(7)
 
     text(value=string(doubled))
 }

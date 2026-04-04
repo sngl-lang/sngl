@@ -122,9 +122,11 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 	for _, d := range doc.Data {
 		g.modelFields[d.Name] = true
 	}
-	for _, c := range doc.Computeds {
-		g.modelFields[c.Name] = true
-		g.computedFields[c.Name] = true
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			g.modelFields[fn.Name] = true
+			g.computedFields[fn.Name] = true
+		}
 	}
 	for _, sd := range doc.Structs {
 		var fields []string
@@ -149,10 +151,10 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		LocalVars:      localVars,
 	}
 
-	// Compute dependency info for computeds
-	for _, c := range doc.Computeds {
-		if c.Expr.SNGL != nil {
-			g.computedDeps[c.Name] = codegen.ExtractDeps(c.Expr.SNGL, g.modelFields)
+	// Compute dependency info for computed functions
+	for _, fn := range doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			g.computedDeps[fn.Name] = codegen.ExtractDeps(fn.Body.SNGL, g.modelFields)
 		}
 	}
 
@@ -214,7 +216,20 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 		fmt.Fprintf(b, "%s</div>\n", indent)
+		// Render else container (shown when list is empty)
+		var elseID string
+		if len(vn.For.Else) > 0 {
+			elseID = g.allocID()
+			fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+			for _, elseNode := range vn.For.Else {
+				g.renderStaticNode(b, elseNode, depth+1)
+			}
+			fmt.Fprintf(b, "%s</div>\n", indent)
+		}
 		g.addForUpdater(id, vn)
+		if elseID != "" {
+			g.addForElseUpdater(id, elseID, vn)
+		}
 		return
 	}
 
@@ -1191,22 +1206,26 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 			value: jsVal,
 		})
 	}
-	// Handle component computeds: rename and register as local
-	for _, c := range comp.Computeds {
-		uniqueName := c.Name + suffix
-		g.scope.LocalVars[c.Name] = true
-		renames[c.Name] = uniqueName
+	// Handle component computed functions: rename and register as local
+	for _, fn := range comp.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			uniqueName := fn.Name + suffix
+			g.scope.LocalVars[fn.Name] = true
+			renames[fn.Name] = uniqueName
+		}
 	}
 	g.scope.Renames = renames
 
 	// Emit computed functions with renamed references
-	for _, c := range comp.Computeds {
-		uniqueName := c.Name + suffix
-		body := g.exprToJS(c.Expr)
-		g.componentParams = append(g.componentParams, componentParam{
-			name:  uniqueName,
-			value: body,
-		})
+	for _, fn := range comp.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			uniqueName := fn.Name + suffix
+			body := g.exprToJS(fn.Body)
+			g.componentParams = append(g.componentParams, componentParam{
+				name:  uniqueName,
+				value: body,
+			})
+		}
 	}
 
 	// Inline the component body at the call site
@@ -1287,12 +1306,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Computed functions
-	for _, c := range g.doc.Computeds {
-		body := g.exprToJS(c.Expr)
-		fmt.Fprintf(b, "function $%s() { return %s; }\n", c.Name, body)
+	// Computed functions (zero-arg expression-form)
+	hasComputed := false
+	for _, fn := range g.doc.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			body := g.exprToJS(fn.Body)
+			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+			hasComputed = true
+		}
 	}
-	if len(g.doc.Computeds) > 0 {
+	if hasComputed {
 		b.WriteString("\n")
 	}
 
@@ -1607,6 +1630,21 @@ func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
 	})
 }
 
+func (g *htmlGen) addForElseUpdater(forElemID, elseElemID string, vn *ast.VisualNode) {
+	iterableJS := g.exprToJS(vn.For.Iterable)
+	deps := g.dt.ExprDeps(vn.For.Iterable)
+
+	name := fmt.Sprintf("$u_%s_else", forElemID[1:])
+	body := fmt.Sprintf(`%s.style.display = %s.length === 0 ? "" : "none";`,
+		elseElemID, iterableJS)
+
+	g.updates = append(g.updates, updateFunc{
+		funcName: name,
+		body:     body,
+		deps:     deps,
+	})
+}
+
 func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVar, indexVar, containerID string) {
 	// Save local vars
 	savedLocals := make(map[string]bool)
@@ -1759,9 +1797,10 @@ func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
 // CSS building
 
 func (g *htmlGen) buildCSSStyle(vn *ast.VisualNode) string {
-	merged := make(map[string]ast.Expr)
-	maps.Copy(merged, vn.StyleBlock)
-	maps.Copy(merged, vn.StyleAttrs)
+	merged := vn.StyleFields()
+	if merged == nil {
+		merged = make(map[string]ast.Expr)
+	}
 
 	var parts []string
 	for prop, expr := range merged {

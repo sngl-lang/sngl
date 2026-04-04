@@ -2,7 +2,7 @@ component config {
     const max = 100
     const label = "limit"
     var count = 0
-    computed remaining = max - count
+    func remaining() max - count
 
     text #out (value="{remaining} remaining")
 }

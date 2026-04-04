@@ -49,6 +49,9 @@ func (t *Translator) TranslateLiteral(expr ast.Expr) string {
 }
 
 func (t *Translator) TypeToNative(hint string) string {
+	if strings.HasPrefix(hint, "option:") {
+		return t.TypeToNative(hint[7:]) + "?"
+	}
 	switch hint {
 	case "int":
 		return "Int"
@@ -141,7 +144,12 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
-			parts = append(parts, f.Name+" = "+translateExpr(f.Value, scope))
+			if f.Spread {
+				// Kotlin: spread struct → .copy() pattern (handled at higher level)
+				parts = append(parts, "/* ..."+translateExpr(f.Value, scope)+" */")
+			} else {
+				parts = append(parts, f.Name+" = "+translateExpr(f.Value, scope))
+			}
 		}
 		return exportName(n.Name) + "(" + strings.Join(parts, ", ") + ")"
 	case *ast.ListExpr:
@@ -150,6 +158,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 			parts[i] = translateExpr(el, scope)
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
+	case *ast.SpreadExpr:
+		return "*" + translateExpr(n.Operand, scope)
 	case *ast.InterpolationExpr:
 		var sb strings.Builder
 		sb.WriteByte('"')
@@ -181,6 +191,9 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return strings.Join(stmts, "\n")
 	case *ast.CallStmt:
 		return translateCall(n.Call, scope)
+	case *ast.LambdaExpr:
+		body := translateExpr(n.Body, scope)
+		return "{ " + strings.Join(n.Params, ", ") + " -> " + body + " }"
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
@@ -248,6 +261,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	}
 	if fn == "float" && len(args) == 1 {
 		return translateExpr(args[0], scope) + ".toDouble()"
+	}
+	if fn == "regex" && len(args) == 1 {
+		return "Regex(" + translateExpr(args[0], scope) + ")"
 	}
 
 	argStrs := make([]string, len(args))
@@ -491,11 +507,20 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return a(0) + ".subList(" + a(1) + ", " + a(2) + ")"
 	case "list.contains", "*.contains":
 		return a(0) + ".contains(" + a(1) + ")"
+	case "list.filter", "*.filter":
+		return a(0) + ".filter(" + a(1) + ")"
+	case "list.map", "*.map":
+		return a(0) + ".map(" + a(1) + ")"
 	// color
 	case "color.rgb":
 		return "String.format(\"#%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "color.rgba":
 		return "String.format(\"#%02x%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ", (" + a(3) + " * 255).toInt())"
+	// regex
+	case "regex.test", "*.test":
+		return a(0) + ".containsMatchIn(" + a(1) + ")"
+	case "regex.match", "*.match":
+		return "(" + a(0) + ".find(" + a(1) + ")?.value ?: \"\")"
 	// Alert
 	case "Alert.toast":
 		return `Toast.makeText(context, ` + a(0) + `, Toast.LENGTH_SHORT).show()`

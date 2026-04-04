@@ -62,8 +62,8 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 				needsFmt = true
 			}
 		}
-		for _, c := range g.comp.Computeds {
-			if c.Expr.SNGL != nil && nodeNeedsFmt(c.Expr.SNGL) {
+		for _, fn := range g.comp.Functions {
+			if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib && nodeNeedsFmt(fn.Body.SNGL) {
 				needsFmt = true
 			}
 		}
@@ -141,9 +141,11 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 	for _, d := range comp.Data {
 		modelFields[d.Name] = true
 	}
-	for _, c := range comp.Computeds {
-		modelFields[c.Name] = true
-		computedFields[c.Name] = true
+	for _, fn := range comp.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			modelFields[fn.Name] = true
+			computedFields[fn.Name] = true
+		}
 	}
 	for _, p := range comp.Params {
 		modelFields[p.Name] = true
@@ -186,19 +188,22 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 	}
 	b.WriteString("\t}\n}\n\n")
 
-	// Computed methods
-	for _, c := range comp.Computeds {
-		goType := inferGoType(c.Expr)
-		if goType == "any" && c.Expr.SNGL != nil {
-			goType = snglNodeGoType(c.Expr.SNGL)
+	// Computed methods (zero-arg expression-form functions)
+	for _, fn := range comp.Functions {
+		if fn.Body.SNGL == nil || len(fn.Params) != 0 || fn.IsStdlib {
+			continue
+		}
+		goType := inferGoType(fn.Body)
+		if goType == "any" && fn.Body.SNGL != nil {
+			goType = snglNodeGoType(fn.Body.SNGL)
 		}
 		body := ""
-		if c.Expr.SNGL != nil {
-			body = ec.translateExpr(c.Expr.SNGL)
-		} else if c.Expr.Literal != nil {
-			body = literalToGo(c.Expr)
+		if fn.Body.SNGL != nil {
+			body = ec.translateExpr(fn.Body.SNGL)
+		} else if fn.Body.Literal != nil {
+			body = literalToGo(fn.Body)
 		}
-		fmt.Fprintf(b, "func (m %sModel) %s() %s {\n", name, c.Name, goType)
+		fmt.Fprintf(b, "func (m %sModel) %s() %s {\n", name, fn.Name, goType)
 		fmt.Fprintf(b, "\treturn %s\n", body)
 		b.WriteString("}\n\n")
 	}
@@ -213,9 +218,11 @@ func emitTestFunc(b *strings.Builder, td *ast.TestDef, comp *ast.Component) {
 	for _, d := range comp.Data {
 		modelFields[d.Name] = true
 	}
-	for _, c := range comp.Computeds {
-		modelFields[c.Name] = true
-		computedFields[c.Name] = true
+	for _, fn := range comp.Functions {
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+			modelFields[fn.Name] = true
+			computedFields[fn.Name] = true
+		}
 	}
 	for _, p := range comp.Params {
 		modelFields[p.Name] = true

@@ -49,14 +49,24 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 		for _, comp := range doc.Components {
 			registry[comp.Name] = componentToSchema(comp, doc.Comments)
 		}
-		for _, sd := range doc.StyleDefs {
-			styleProps[sd.Name] = StylePropSchema{
-				Type: TypeFromHint(sd.TypeHint),
-				Enum: sd.Enum,
-			}
-		}
 		units = append(units, doc.Units...)
-		structs = append(structs, doc.Structs...)
+		for _, sd := range doc.Structs {
+			// The "Style" struct defines valid style properties via its fields.
+			if sd.Name == "Style" {
+				for _, field := range sd.Fields {
+					// Unwrap option<T> to get the inner type for validation.
+					typeHint := field.Type
+					if strings.HasPrefix(typeHint, "option:") {
+						typeHint = typeHint[7:]
+					}
+					styleProps[field.Name] = StylePropSchema{
+						Type: TypeFromHint(typeHint),
+					}
+				}
+				continue // don't export Style as a user-visible struct
+			}
+			structs = append(structs, sd)
+		}
 		for _, fn := range doc.Functions {
 			fn.IsStdlib = true
 			funcs = append(funcs, fn)
