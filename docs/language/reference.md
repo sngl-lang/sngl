@@ -81,7 +81,7 @@ A semicolon is automatically inserted after a line's final token if that token i
 
 ### Keywords
 
-`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `component`, `prop`, `children`, `if`, `else`, `for`, `in`, `extern`, `trigger`, `func`, `true`, `false`, `null`
+`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `component`, `prop`, `children`, `if`, `else`, `for`, `extern`, `func`, `true`, `false`, `null`
 
 ## Type System
 
@@ -343,29 +343,20 @@ component MyWidget(name string = "default", label = "default", count int, x int,
 - `count int` — no default, uses zero value
 - `x int, y int` — each param declared separately
 
-### prop (stdlib)
+### Children Return Type
 
-<!-- SNGL-component -->
+The children type appears after `()` and before `{`, like a function return type:
 
-```sngl
-prop value string
-```
-
-### Event declarations (stdlib)
-
-<!-- SNGL-component -->
+- No return type → no children (default)
+- `component` → exactly one child
+- `list<component>` → any number of children
+- `option<component>` → zero or one child
 
 ```sngl
-@click ClickEvent
-@input InputEvent
-```
-
-### children (stdlib)
-
-<!-- SNGL-component -->
-
-```sngl
-children none
+component spacer(size string) {}
+component scroll(direction string) component {}
+component vbox(scroll bool) list<component> {}
+component tooltip(text string) option<component> {}
 ```
 
 ### Usage
@@ -457,11 +448,11 @@ if !isAdult {
 <!-- SNGL-component -->
 
 ```sngl
-for item in todos {
+for item = todos {
     text(value=item.text)
 }
 
-for item, index in todos {
+for item, index = todos {
     checkbox(checked=item.done, key=index, label=item.text,
              @change={ todos[index].done!! })
 }
@@ -474,7 +465,7 @@ The `else` block renders when the iterable list is empty:
 <!-- SNGL-component -->
 
 ```sngl
-for item in todos {
+for item = todos {
     text(value=item.text)
 } else {
     text(value="No items yet")

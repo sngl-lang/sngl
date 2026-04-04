@@ -89,13 +89,13 @@ var apiClient dyn = null extern
 var save func(string) = null extern
 ```
 
-### trigger
+### @
 
 Generates an onChange callback:
 
 ```sngl
-var todos list<Todo> = null trigger
-var items list<Item> = null trigger("saveItems")
+var todos list<Todo> = null @
+var items list<Item> = null @saveItems
 ```
 
 ## Expressions

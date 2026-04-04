@@ -1,8 +1,8 @@
 component main {
     var (
         count = 0
-        todos list<Todo> trigger
-        items list<Item> trigger("SaveItems")
+        todos list<Todo> @
+        items list<Item> @SaveItems
         apiClient dyn extern
         saveTodo func(string) extern
         formatDate func(string) -> string extern

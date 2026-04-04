@@ -6,24 +6,22 @@ component Card(title = "Card", subtitle = "") list<component> {
 }
 
 component main {
-    var items = ["a", "b", "c"]
-    var show = true
-    var count = 0
-    var searchText = ""
+    var (
+        items = ["a", "b", "c"]
+        show = true
+        count = 0
+        searchText = ""
+    )
 
     vbox {
-        input #searchBox(value=searchText, @change={searchText = event})
-        text(value="Search: " + searchText, ref="searchLabel")
-
-        for item, idx in items {
-            if show {
-                Card(title=item, subtitle=string(idx)) {
-                    text(value="content")
-                    @attrs(data="extra")
-                }
+        input #searchBox(value=searchText, @change={ searchText = event })
+        text(ref="searchLabel", value="Search: " + searchText)
+        for item, idx = items {
+            Card(subtitle=string(idx), title=item) {
+                @attrs(data="extra")
+                text(value="content")
             }
         }
-
-        button(text="Click", @click={count += 1})
+        button(text="Click", @click={ count += 1 })
     }
 }

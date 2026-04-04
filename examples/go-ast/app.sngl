@@ -25,7 +25,7 @@ component main {
             text(value=parseError, style={color=#c62828})
         }
         vbox(style={gap=2}) {
-            for decl in file.Decls {
+            for decl = file.Decls {
                 text(value=decl, style={fontSize=13})
             }
         }

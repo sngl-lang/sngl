@@ -17,7 +17,6 @@
   "computed"
   "if"
   "for"
-  "in"
   "func"
   "test"
 ] @keyword

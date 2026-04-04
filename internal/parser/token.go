@@ -108,17 +108,13 @@ var keywords = map[string]TokenType{
 	"if":        KW_IF,
 	"for":       KW_FOR,
 	"else":      KW_ELSE,
-	"in":        KW_IN,
 	"extern":    KW_EXTERN,
-	"trigger":   KW_TRIGGER,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
 	"timer":     KW_TIMER,
 	"test":      KW_TEST,
 	"return":    KW_RETURN,
-	"true":      KW_TRUE,
-	"false":     KW_FALSE,
-	"null":      KW_NULL,
+	// "in", "trigger", "true", "false", "null" are no longer keywords
 }
 
 // Keywords returns a copy of the keyword map.
@@ -154,8 +150,7 @@ type Token struct {
 func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
-		KW_TRUE, KW_FALSE, KW_NULL,
-		KW_EXTERN, KW_RETURN,
+		AT, KW_EXTERN, KW_RETURN,
 		RPAREN, RBRACKET, RBRACE:
 		return true
 	}

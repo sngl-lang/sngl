@@ -631,7 +631,7 @@ func TestParseGroupedConsts(t *testing.T) {
 func TestParseForLoop(t *testing.T) {
 	src := `component main {
     var items = [1, 2, 3]
-    for item in items {
+    for item = items {
         text(value=string(item))
     }
 }`

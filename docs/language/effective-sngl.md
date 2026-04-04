@@ -342,18 +342,18 @@ var formatDate func(string) -> string extern
 
 Extern vars must have an explicit type since there is no initializer to infer from.
 
-### trigger -- onChange callbacks
+### @ -- onChange callbacks
 
-`trigger` attaches an onChange hook to a var. The platform generates the callback plumbing:
+`@` attaches an onChange hook to a var. The platform generates the callback plumbing:
 
 <!-- SNGL-component -->
 
 ```sngl
-var todos list<Todo> trigger
-var items list<Item> trigger("SaveItems")
+var todos list<Todo> @
+var items list<Item> @SaveItems
 ```
 
-Without an argument, the trigger name is generated from the var name. With a string argument, you control the callback name.
+Without a name, the callback name is generated from the var name. With a name after `@`, you control the callback name.
 
 ### Gotchas
 
@@ -623,10 +623,10 @@ if !active {
 
 ```sngl
 var items = ["a", "b", "c"]
-for item in items {
+for item = items {
     text(value=item)
 }
-for item, idx in items {
+for item, idx = items {
     text(value="{idx}: {item}", key=idx)
 }
 ```
@@ -635,13 +635,13 @@ Use `key` for stable identity across re-renders when the list changes.
 
 ### for...else
 
-The `else` block renders when the list is empty. It works with both `for item in list` and `for item, index in list`:
+The `else` block renders when the list is empty. It works with both `for item = list` and `for item, index = list`:
 
 <!-- SNGL-component -->
 
 ```sngl
 var items list<string> = []
-for item in items {
+for item = items {
     text(value=item)
 } else {
     text(value="No items yet")
@@ -936,7 +936,7 @@ component main {
                 newTodo = ""
             })
         }
-        for todo, idx in todos {
+        for todo, idx = todos {
             hbox(key=idx, style={gap=8}) {
                 checkbox(checked=todo.done, @change={ todos[idx].done!! })
                 text(value=todo.text)
@@ -1013,7 +1013,7 @@ component main {
 
     vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")
-        for todo, idx in todos {
+        for todo, idx = todos {
             checkbox(key=idx, checked=todo.done, label=todo.text, @change={ todos[idx].done!! })
         }
     }

@@ -50,7 +50,7 @@ VarField       = IDENT Type? "=" Expr VarMod*
                | IDENT Type VarMod*
 
 VarMod         = "extern"
-               | "trigger" ("(" STRING ")")?
+               | "@" IDENT?
 ```
 
 ### Type Syntax
@@ -110,7 +110,7 @@ ComponentMember = ConstDecl
 
 ```
 NodeOrControl  = "if" Expr "{" VisualNode "}"
-               | "for" IDENT ("," IDENT)? "in" Expr "{" VisualNode "}"
+               | "for" IDENT ("," IDENT)? "=" Expr "{" VisualNode "}"
                | VisualNode
 
 VisualNode     = IDENT ("(" PropList ")")? ("{" NodeBody* "}")?
@@ -201,7 +201,7 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
 | Inside `()` params | `@`/`:`/`style`/IDENT | Event, bidi prop, style literal, or param |
 | After IDENT in type | `<` or not | Generic type or plain type |
-| After `for` IDENT | `,` or `in` | Index variable or iterable |
+| After `for` IDENT | `,` or `=` | Index variable or iterable |
 | In statement | IDENT then `!!`/`=`/`.` | Toggle, assign, or method call |
 | In statement | `@` | Emit statement |
 

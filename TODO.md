@@ -12,7 +12,7 @@
   - Current uses of `dyn = null` for recursive structs become `option<Node>` fields
 - [x] ~~Add spread operator (`...`)~~ — done. `Todo{...existing, done: true}`, `[...items, newItem]`. Supported in struct and list literals.
 - [x] ~~Unify style attributes with struct literals~~ — done. `style={fontSize=24}` is an anonymous type-inferred struct literal. Removed special style parsing from `parsePropList`. `StyleAttrs`/`StyleBlock` removed from AST; style is a regular prop.
-- [x] ~~Add else for for blocks when they have no elements~~ — done. `for item in items { ... } else { text(value="No items") }`
+- [x] ~~Add else for for blocks when they have no elements~~ — done. `for item = items { ... } else { text(value="No items") }`
 - [ ] linter:
   - no /- commented out nodes
 - [ ] platform components; define stdlib in term of them

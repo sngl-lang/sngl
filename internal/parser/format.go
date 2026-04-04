@@ -360,9 +360,9 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 	if d.Trigger != "" {
 		autoName := "On" + strings.ToUpper(d.Name[:1]) + d.Name[1:] + "Changed"
 		if d.Trigger == autoName {
-			sb.WriteString(" trigger")
+			sb.WriteString(" @")
 		} else {
-			sb.WriteString(fmt.Sprintf(" trigger(\"%s\")", escapeStringContent(d.Trigger)))
+			sb.WriteString(" @" + d.Trigger)
 		}
 	}
 
@@ -636,7 +636,7 @@ func (f *formatter) formatVisualNode(vn *ast.VisualNode) {
 			if fc.IndexVar != "" {
 				line += ", " + fc.IndexVar
 			}
-			line += " in " + f.formatExprValue(fc.Iterable)
+			line += " = " + f.formatExprValue(fc.Iterable)
 			line += " {"
 			f.writeLine(line)
 			f.indent++

@@ -106,7 +106,7 @@ component main {
             }, text="Add")
         }
         vbox(style={gap=4}) {
-            for item, index in todos {
+            for item, index = todos {
                 checkbox(checked=item.done, key=index, label=item.text,
                          @change={ todos[index].done!! })
             }

@@ -4,7 +4,7 @@ component indexed {
     var empty = []
 
     vbox {
-        for item, idx in items {
+        for item, idx = items {
             text #item (value="{idx}:{item}")
         }
     }

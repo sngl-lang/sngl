@@ -33,7 +33,7 @@ var snglLexer = chroma.MustNewLexer(&chroma.Config{
 			// Block comments
 			{Pattern: `/\*[\s\S]*?\*/`, Type: chroma.CommentMultiline, Mutator: nil},
 			// Keywords
-			{Pattern: `\b(import|output|struct|enum|unit|style|component|const|var|if|for|in|func|extern|trigger)\b`, Type: chroma.Keyword, Mutator: nil},
+			{Pattern: `\b(import|output|struct|enum|unit|style|component|const|var|if|for|func|extern)\b`, Type: chroma.Keyword, Mutator: nil},
 			// Builtin constants
 			{Pattern: `\b(true|false|null)\b`, Type: chroma.KeywordConstant, Mutator: nil},
 			// Builtin types

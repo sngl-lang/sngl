@@ -782,7 +782,7 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 	if p.at(ASSIGN) {
 		p.advance()
 		d.Init = p.parseExprAsExpr()
-	} else if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(KW_TRIGGER) {
+	} else if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(AT) {
 		typeHint := p.parseTypeString()
 		d.Init.TypeHint = typeHint
 		// Parse func type components into Data fields
@@ -804,19 +804,17 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 }
 
 func (p *parser) parseVarModifiers(d *ast.Data) {
-	for p.at(KW_EXTERN) || p.at(KW_TRIGGER) {
+	for p.at(KW_EXTERN) || p.at(AT) {
 		if p.at(KW_EXTERN) {
 			p.advance()
 			d.Extern = true
 		}
-		if p.at(KW_TRIGGER) {
+		if p.at(AT) {
 			p.advance()
-			// Optional explicit name
-			if p.at(LPAREN) {
+			// @Name → explicit trigger name; bare @ → auto-generate
+			if p.at(IDENT) {
+				d.Trigger = p.cur.Literal
 				p.advance()
-				triggerName := p.expect(STRING).Literal
-				p.expect(RPAREN)
-				d.Trigger = triggerName
 			} else {
 				// Auto-generate trigger name
 				if len(d.Name) > 0 {
@@ -1073,7 +1071,7 @@ func (p *parser) parseForNode() *ast.VisualNode {
 		p.advance()
 		indexVar = p.expect(IDENT).Literal
 	}
-	p.expect(KW_IN)
+	p.expect(ASSIGN)
 	p.noStructLit = true
 	iterable := p.parseExprAsExpr()
 	p.noStructLit = false
@@ -1532,15 +1530,6 @@ func (p *parser) parsePrimary() ast.Node {
 		tok := p.advance()
 		num, suffix := splitUnitLiteral(tok.Literal)
 		return &ast.LiteralExpr{Value: ast.UnitLiteral{Number: num, Suffix: suffix}, Kind: ast.LiteralUnit}
-	case KW_TRUE:
-		p.advance()
-		return &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}
-	case KW_FALSE:
-		p.advance()
-		return &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}
-	case KW_NULL:
-		p.advance()
-		return &ast.LiteralExpr{Value: nil, Kind: ast.LiteralNull}
 	case LPAREN:
 		p.advance()
 		expr := p.parseExpression()
@@ -1560,9 +1549,16 @@ func (p *parser) parsePrimary() ast.Node {
 		tok := p.advance()
 		return &ast.ElementRefExpr{Name: tok.Literal}
 	case IDENT, KW_EVENT:
-		// KW_EVENT is allowed as an identifier in expression context
-		// (it refers to the event payload variable in event handlers).
 		tok := p.advance()
+		// Pre-declared identifiers
+		switch tok.Literal {
+		case "true":
+			return &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}
+		case "false":
+			return &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}
+		case "null":
+			return &ast.LiteralExpr{Value: nil, Kind: ast.LiteralNull}
+		}
 		// Check for struct literal: Name{field: value}
 		// Disabled in if/for contexts (same restriction as Go).
 		if p.at(LBRACE) && !p.noStructLit {

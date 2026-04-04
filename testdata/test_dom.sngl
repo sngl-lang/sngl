@@ -21,7 +21,7 @@ component listcomp {
     var items = ["a", "b", "c"]
 
     vbox {
-        for item in items {
+        for item = items {
             text #item (value=item)
         }
     }

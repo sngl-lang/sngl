@@ -151,7 +151,7 @@ For node
 
 component App {
   var items = ["a", "b"]
-  for item, idx in items {
+  for item, idx = items {
     text(value=item)
   }
 }
@@ -251,11 +251,11 @@ component MyBtn {
           value: (string_literal))))))
 
 ================
-Var with extern and trigger
+Var with extern and @
 ================
 
 component App {
-  var theme string extern trigger
+  var theme string extern @
   text(value=theme)
 }
 

@@ -295,7 +295,7 @@ module.exports = grammar({
     extern_modifier: (_$) => "extern",
 
     trigger_modifier: ($) =>
-      seq("trigger", optional(seq("(", $.string_literal, ")"))),
+      seq("@", optional($.identifier)),
 
     // ─── Timers ────────────────────────────────────────────────
 
@@ -426,7 +426,7 @@ module.exports = grammar({
         "for",
         field("variable", $.identifier),
         optional(seq(",", field("index", $.identifier))),
-        "in",
+        "=",
         field("iterable", $._expression),
         "{",
         optional($._node_or_control),

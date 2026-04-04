@@ -41,7 +41,7 @@ component main {
     text(value=greeting)
     button(text="reset", @click={ reset() })
 
-    for i, item in [1, 2, 3] {
+    for i, item = [1, 2, 3] {
         text(value=string(item))
     }
 
