@@ -168,10 +168,55 @@ module.exports = grammar({
     component_declaration: ($) =>
       seq(
         "component",
-        field("name", $.identifier),
+        field("name", choice($.qualified_name, $.identifier)),
+        optional($.component_params),
+        optional(field("children_type", $.type_identifier)),
         "{",
         repeat(seq(optional($.slashdash), $._component_member, $._terminator)),
         "}",
+      ),
+
+    component_params: ($) =>
+      seq(
+        "(",
+        commaSep(choice(
+          $.component_event_param,
+          $.component_binding_param,
+          $.component_param,
+        )),
+        ")",
+      ),
+
+    component_param: ($) =>
+      seq(
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        optional($.enum_constraint),
+        optional(seq("=", field("default", $._expression))),
+        optional("required"),
+      ),
+
+    enum_constraint: ($) =>
+      seq(
+        "enum",
+        "(",
+        commaSep(choice($.identifier, $.integer_literal, $.string_literal)),
+        ")",
+      ),
+
+    component_binding_param: ($) =>
+      seq(
+        ":",
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        optional(seq("=", field("default", $._expression))),
+      ),
+
+    component_event_param: ($) =>
+      seq(
+        "@",
+        field("name", $.identifier),
+        optional(field("payload_type", $.identifier)),
       ),
 
     // ─── Test declarations ─────────────────────────────────
@@ -203,51 +248,22 @@ module.exports = grammar({
 
     _component_member: ($) =>
       choice(
-        $.param_declaration,
-        $.prop_declaration,
-        $.event_declaration,
-        $.children_declaration,
         $.const_declaration,
         $.var_declaration,
         $.func_declaration,
         $.timer_declaration,
+        $.platform_block,
         $._node_or_control,
       ),
 
-    param_declaration: ($) =>
+    platform_block: ($) =>
       seq(
-        "param",
+        "platform",
         field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        optional(seq("=", field("default", $._expression))),
-        optional("required"),
+        "{",
+        repeat(seq($._node_or_control, $._terminator)),
+        "}",
       ),
-
-    prop_declaration: ($) =>
-      seq(
-        "prop",
-        field("name", $.identifier),
-        field("type", $.type_identifier),
-        optional($.enum_constraint),
-      ),
-
-    enum_constraint: ($) =>
-      seq(
-        "enum",
-        "(",
-        commaSep(choice($.identifier, $.integer_literal, $.string_literal)),
-        ")",
-      ),
-
-    event_declaration: ($) =>
-      seq(
-        "event",
-        field("name", $.identifier),
-        field("payload_type", $.identifier),
-      ),
-
-    children_declaration: ($) =>
-      seq("children", field("policy", $.identifier)),
 
     const_declaration: ($) =>
       choice(
@@ -460,7 +476,16 @@ module.exports = grammar({
     _prop_entry: ($) =>
       choice(
         $.prop_assignment,
+        $.prop_binding,
         $.event_handler,
+      ),
+
+    prop_binding: ($) =>
+      seq(
+        ":",
+        field("name", $.identifier),
+        "=",
+        field("value", $._expression),
       ),
 
     prop_assignment: ($) =>

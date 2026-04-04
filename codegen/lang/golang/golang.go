@@ -16,7 +16,8 @@ func init() {
 // Translator implements codegen.LangTranslator for Go.
 type Translator struct{}
 
-func (t *Translator) Lang() string { return "go" }
+func (t *Translator) Lang() string      { return "go" }
+func (t *Translator) PkgSource() string { return "" }
 
 func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

@@ -15,7 +15,8 @@ func init() {
 // Translator implements codegen.LangTranslator for Kotlin.
 type Translator struct{}
 
-func (t *Translator) Lang() string { return "kotlin" }
+func (t *Translator) Lang() string      { return "kotlin" }
+func (t *Translator) PkgSource() string { return "" }
 
 func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

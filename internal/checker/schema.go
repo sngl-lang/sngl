@@ -27,6 +27,7 @@ type ComponentSchema struct {
 	Doc            string
 	Body           []*ast.VisualNode           // default body (nil = pure abstract)
 	PlatformBodies map[string][]*ast.VisualNode // platform-conditional bodies
+	Permissive     bool                         // true for dynamically resolved elements (accept any props/events)
 }
 
 // StylePropSchema describes a style property's type and valid enum values.

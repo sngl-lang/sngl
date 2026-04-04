@@ -388,15 +388,35 @@
     }
   },
   {
-    "type": "children_declaration",
+    "type": "component_binding_param",
     "named": true,
     "fields": {
-      "policy": {
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "_expression",
+            "named": true
+          }
+        ]
+      },
+      "name": {
         "multiple": false,
         "required": true,
         "types": [
           {
             "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
             "named": true
           }
         ]
@@ -407,12 +427,26 @@
     "type": "component_declaration",
     "named": true,
     "fields": {
+      "children_type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
         "types": [
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "qualified_name",
             "named": true
           }
         ]
@@ -423,15 +457,11 @@
       "required": false,
       "types": [
         {
-          "type": "children_declaration",
+          "type": "component_params",
           "named": true
         },
         {
           "type": "const_declaration",
-          "named": true
-        },
-        {
-          "type": "event_declaration",
           "named": true
         },
         {
@@ -447,11 +477,7 @@
           "named": true
         },
         {
-          "type": "param_declaration",
-          "named": true
-        },
-        {
-          "type": "prop_declaration",
+          "type": "platform_block",
           "named": true
         },
         {
@@ -468,6 +494,101 @@
         },
         {
           "type": "visual_node",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "component_event_param",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "payload_type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "component_param",
+    "named": true,
+    "fields": {
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "_expression",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "enum_constraint",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "component_params",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "component_binding_param",
+          "named": true
+        },
+        {
+          "type": "component_event_param",
+          "named": true
+        },
+        {
+          "type": "component_param",
           "named": true
         }
       ]
@@ -576,32 +697,6 @@
           "named": true
         }
       ]
-    }
-  },
-  {
-    "type": "event_declaration",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "payload_type": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      }
     }
   },
   {
@@ -1270,42 +1365,6 @@
     }
   },
   {
-    "type": "param_declaration",
-    "named": true,
-    "fields": {
-      "default": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "_expression",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "type_identifier",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
     "type": "parenthesized_expression",
     "named": true,
     "fields": {},
@@ -1315,6 +1374,40 @@
       "types": [
         {
           "type": "_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "platform_block",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "for_node",
+          "named": true
+        },
+        {
+          "type": "if_node",
+          "named": true
+        },
+        {
+          "type": "visual_node",
           "named": true
         }
       ]
@@ -1351,7 +1444,7 @@
     }
   },
   {
-    "type": "prop_declaration",
+    "type": "prop_binding",
     "named": true,
     "fields": {
       "name": {
@@ -1364,26 +1457,16 @@
           }
         ]
       },
-      "type": {
+      "value": {
         "multiple": false,
         "required": true,
         "types": [
           {
-            "type": "type_identifier",
+            "type": "_expression",
             "named": true
           }
         ]
       }
-    },
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "enum_constraint",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -1400,6 +1483,10 @@
         },
         {
           "type": "prop_assignment",
+          "named": true
+        },
+        {
+          "type": "prop_binding",
           "named": true
         }
       ]
@@ -1924,7 +2011,7 @@
       "required": false,
       "types": [
         {
-          "type": "string_literal",
+          "type": "identifier",
           "named": true
         }
       ]
@@ -2274,10 +2361,6 @@
     "extra": true
   },
   {
-    "type": "children",
-    "named": false
-  },
-  {
     "type": "color_literal",
     "named": true
   },
@@ -2299,10 +2382,6 @@
   },
   {
     "type": "enum",
-    "named": false
-  },
-  {
-    "type": "event",
     "named": false
   },
   {
@@ -2342,10 +2421,6 @@
     "named": false
   },
   {
-    "type": "in",
-    "named": false
-  },
-  {
     "type": "integer_literal",
     "named": true
   },
@@ -2363,11 +2438,7 @@
     "named": false
   },
   {
-    "type": "param",
-    "named": false
-  },
-  {
-    "type": "prop",
+    "type": "platform",
     "named": false
   },
   {
@@ -2396,10 +2467,6 @@
   },
   {
     "type": "timer",
-    "named": false
-  },
-  {
-    "type": "trigger",
     "named": false
   },
   {

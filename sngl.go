@@ -87,29 +87,30 @@ type namedResolver struct {
 // PkgSource takes priority over APIProvider. Components named "sngl.X" in a
 // PkgSource file override the stdlib component X (body-only, inheriting API).
 func resolvePkgOrAPI(provider any, name string, cfg *checker.APIConfig, resolvers *[]namedResolver) {
-	if ps, ok := provider.(codegen.PkgSource); ok {
+	if ps, ok := provider.(interface{ PkgSource() string }); ok {
 		src := ps.PkgSource()
 		doc, err := parser.Parse(name+".sngl", strings.NewReader(src))
-		if err == nil {
-			// Separate sngl.X overrides from platform-local components
-			var local []*ast.Component
-			for _, comp := range doc.Components {
-				if pkg, compName, ok := strings.Cut(comp.Name, "."); ok && pkg == "sngl" {
-					// Store override body in APIConfig for checker to merge
-					if cfg.StdlibOverrides == nil {
-						cfg.StdlibOverrides = map[string]map[string]*ast.Component{}
-					}
-					if cfg.StdlibOverrides[name] == nil {
-						cfg.StdlibOverrides[name] = map[string]*ast.Component{}
-					}
-					cfg.StdlibOverrides[name][compName] = comp
-				} else {
-					local = append(local, comp)
-				}
-			}
-			doc.Components = local
-			cfg.Namespaces[name] = doc
+		if err != nil {
+			panic("sngl: " + name + ".sngl: " + err.Error()) // validated at registration; should not happen
 		}
+		// Separate sngl.X overrides from platform-local components
+		var local []*ast.Component
+		for _, comp := range doc.Components {
+			if pkg, compName, ok := strings.Cut(comp.Name, "."); ok && pkg == "sngl" {
+				// Store override body in APIConfig for checker to merge
+				if cfg.StdlibOverrides == nil {
+					cfg.StdlibOverrides = map[string]map[string]*ast.Component{}
+				}
+				if cfg.StdlibOverrides[name] == nil {
+					cfg.StdlibOverrides[name] = map[string]*ast.Component{}
+				}
+				cfg.StdlibOverrides[name][compName] = comp
+			} else {
+				local = append(local, comp)
+			}
+		}
+		doc.Components = local
+		cfg.Namespaces[name] = doc
 	} else if ap, ok := provider.(codegen.APIProvider); ok {
 		cfg.Namespaces[name] = ap.API()
 	}

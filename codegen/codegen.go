@@ -31,6 +31,7 @@ type ExprScope struct {
 // LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
 	Lang() string
+	PkgSource() string // .sngl package source for this language
 	TranslateExpr(e ast.Node, scope *ExprScope) string
 	TranslateMutation(e ast.Node, scope *ExprScope) []string
 	TranslateLiteral(expr ast.Expr) string
@@ -41,6 +42,7 @@ type LangTranslator interface {
 // PlatformGenerator produces output files from a checked SNGL document.
 type PlatformGenerator interface {
 	Platform() string
+	PkgSource() string // .sngl package source for this platform
 	SupportedLangs() []string
 	Generate(req *Request) (*Response, error)
 }
@@ -97,15 +99,6 @@ type APIProvider interface {
 	API() *ast.Document
 }
 
-// PkgSource is optionally implemented by LangTranslator or PlatformGenerator
-// to provide a .sngl package file as the platform/language's standard library.
-// The returned text is parsed and made available as a checker namespace.
-// Components named "sngl.X" override the stdlib component X (inheriting its
-// params/events/children); other components become platform-local (e.g., html.video).
-// A "struct Options" defines build options for the platform/language.
-type PkgSource interface {
-	PkgSource() string
-}
 
 // APIResolver is optionally implemented alongside or instead of APIProvider
 // for dynamic name resolution when a name isn't found in the static API document.

@@ -15,7 +15,8 @@ func init() {
 // Translator implements codegen.LangTranslator for JavaScript.
 type Translator struct{}
 
-func (t *Translator) Lang() string { return "js" }
+func (t *Translator) Lang() string      { return "js" }
+func (t *Translator) PkgSource() string { return "" }
 
 func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

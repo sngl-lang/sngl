@@ -702,6 +702,28 @@ func (c *checker) dynamicResolve(nsName, name string) bool {
 	return true
 }
 
+// dynamicResolveComponent attempts dynamic resolution of a component within a namespace.
+// If the DynamicNS resolver returns non-nil for the component name, a permissive
+// schema is created allowing any props, events, and children.
+func (c *checker) dynamicResolveComponent(nsName, qualName string) bool {
+	if c.apis == nil || c.apis.DynamicNS == nil {
+		return false
+	}
+	_, localName, _ := strings.Cut(qualName, ".")
+	decls := c.apis.DynamicNS(nsName, localName)
+	if decls == nil {
+		return false
+	}
+	// Create a permissive schema: accepts any props, events, and children
+	c.registry[qualName] = &ComponentSchema{
+		Props:      map[string]PropSchema{},
+		Events:     map[string]string{},
+		Children:   ChildrenMany,
+		Permissive: true,
+	}
+	return true
+}
+
 // resolveTypeHint maps a type hint string to a Type, checking named enums
 // and inline enum syntax before falling back to TypeFromHint.
 func (c *checker) resolveTypeHint(pos ast.Pos, hint string) Type {
@@ -1105,8 +1127,16 @@ func (c *checker) isComponentAvailable(name string, schema *ComponentSchema) boo
 func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	schema, ok := c.registry[vn.Component]
 	if !ok {
-		c.errorAt(vn.Pos, "unknown component %q", vn.Component)
-		return
+		// Try dynamic resolution for qualified names (e.g., html.div)
+		if ns, _, ok := strings.Cut(vn.Component, "."); ok {
+			if c.dynamicResolveComponent(ns, vn.Component) {
+				schema = c.registry[vn.Component]
+			}
+		}
+		if schema == nil {
+			c.errorAt(vn.Pos, "unknown component %q", vn.Component)
+			return
+		}
 	}
 
 	// Universal attributes
@@ -1137,18 +1167,26 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	}
 
 	// Props
-	for name, expr := range vn.Props {
-		if name == "style" {
-			// Style is a universal prop; validated separately via StyleFields()
-			continue
+	if schema.Permissive {
+		// Permissive schemas (dynamically resolved elements) accept any props
+		for name, expr := range vn.Props {
+			c.resolveExprInScope(vn.Pos, &expr, childScope)
+			vn.Props[name] = expr
 		}
-		ps, ok := schema.Props[name]
-		if !ok {
-			c.errorAt(vn.Pos, "%s: unknown property %q", vn.Component, name)
-			continue
+	} else {
+		for name, expr := range vn.Props {
+			if name == "style" {
+				// Style is a universal prop; validated separately via StyleFields()
+				continue
+			}
+			ps, ok := schema.Props[name]
+			if !ok {
+				c.errorAt(vn.Pos, "%s: unknown property %q", vn.Component, name)
+				continue
+			}
+			c.checkExprType(vn.Pos, &expr, ps.Type, childScope, vn.Component+"."+name)
+			vn.Props[name] = expr
 		}
-		c.checkExprType(vn.Pos, &expr, ps.Type, childScope, vn.Component+"."+name)
-		vn.Props[name] = expr
 	}
 
 	// Required params
@@ -1164,9 +1202,11 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 
 	// Events
 	for name, expr := range vn.Events {
-		if _, ok := schema.Events[name]; !ok {
-			c.errorAt(vn.Pos, "%s: unknown event %q", vn.Component, name)
-			continue
+		if !schema.Permissive {
+			if _, ok := schema.Events[name]; !ok {
+				c.errorAt(vn.Pos, "%s: unknown event %q", vn.Component, name)
+				continue
+			}
 		}
 		if expr.SNGL != nil {
 			if !isStatement(expr.SNGL) {

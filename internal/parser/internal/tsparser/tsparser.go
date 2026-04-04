@@ -1,10 +1,7 @@
 // Package tsparser provides a Go wrapper around the tree-sitter SNGL parser.
 package tsparser
 
-//go:generate sh -c "cd ../../../../editors/tree-sitter-sngl && tree-sitter generate"
-//go:generate sh -c "cd ../../../../editors/tree-sitter-sngl && cc -o sngl.so -shared -fPIC -Isrc src/parser.c src/scanner.c -Os"
-//go:generate sh -c "mkdir -p $HOME/.local/share/nvim/lazy/nvim-treesitter/parser && cp ../../../../editors/tree-sitter-sngl/sngl.so $HOME/.local/share/nvim/lazy/nvim-treesitter/parser/sngl.so"
-//go:generate sh -c "mkdir -p ../../../../editors/neovim/queries/sngl && cp ../../../../editors/tree-sitter-sngl/queries/*.scm ../../../../editors/neovim/queries/sngl/"
+//go:generate go run ../../../../internal/cmd/tsgen
 
 // #cgo CFLAGS: -std=c11 -fPIC -I../../../../editors/tree-sitter-sngl/src
 // #include "../../../../editors/tree-sitter-sngl/src/parser.c"
@@ -12,10 +9,18 @@ package tsparser
 import "C"
 
 import (
+	_ "embed"
 	"unsafe"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
 )
+
+// grammarHash is embedded to invalidate the Go build cache when the generated
+// C source changes. Without this, cgo compilation is cached and won't pick up
+// changes to the included parser.c/scanner.c files.
+//
+//go:embed grammar_hash.txt
+var grammarHash string
 
 // Language returns the tree-sitter Language for SNGL.
 func Language() *ts.Language {

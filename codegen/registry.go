@@ -1,8 +1,12 @@
 package codegen
 
-import "slices"
+import (
+	"slices"
+	"strings"
+	"sync"
 
-import "sync"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+)
 
 var (
 	langMu    sync.RWMutex
@@ -11,7 +15,8 @@ var (
 	platforms = map[string]PlatformGenerator{}
 )
 
-// RegisterLang registers a language translator. Panics on duplicate.
+// RegisterLang registers a language translator. Panics on duplicate or
+// if the provider's PkgSource fails to parse.
 func RegisterLang(l LangTranslator) {
 	langMu.Lock()
 	defer langMu.Unlock()
@@ -19,10 +24,12 @@ func RegisterLang(l LangTranslator) {
 	if _, ok := langs[name]; ok {
 		panic("codegen: duplicate lang registration: " + name)
 	}
+	validatePkgSource(l.PkgSource(), name)
 	langs[name] = l
 }
 
-// RegisterPlatform registers a platform generator. Panics on duplicate.
+// RegisterPlatform registers a platform generator. Panics on duplicate or
+// if the provider's PkgSource fails to parse.
 func RegisterPlatform(p PlatformGenerator) {
 	platMu.Lock()
 	defer platMu.Unlock()
@@ -30,7 +37,20 @@ func RegisterPlatform(p PlatformGenerator) {
 	if _, ok := platforms[name]; ok {
 		panic("codegen: duplicate platform registration: " + name)
 	}
+	validatePkgSource(p.PkgSource(), name)
 	platforms[name] = p
+}
+
+// validatePkgSource parses a .sngl package source at registration time
+// and panics if it contains syntax errors.
+func validatePkgSource(src, name string) {
+	if src == "" {
+		return
+	}
+	_, err := parser.Parse(name+".sngl", strings.NewReader(src))
+	if err != nil {
+		panic("codegen: " + name + ".sngl: " + err.Error())
+	}
 }
 
 // LookupLang returns the translator for the given language, or nil.

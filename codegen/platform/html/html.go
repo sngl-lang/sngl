@@ -26,6 +26,12 @@ func (g *Generator) Platform() string         { return "html" }
 func (g *Generator) SupportedLangs() []string { return []string{"js"} }
 func (g *Generator) PkgSource() string        { return pkgSource }
 
+// ResolveAPI makes any identifier valid as an HTML element.
+// This allows html.div, html.span, html.form, etc. to be used as components.
+func (g *Generator) ResolveAPI(name string) *ast.NativeDecls {
+	return &ast.NativeDecls{}
+}
+
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "js" {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
@@ -1175,10 +1181,114 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 
 const maxComponentDepth = 10
 
+// renderRawElement renders a VisualNode as a raw HTML element.
+// The component name (or its local part for qualified names) is used as the tag.
+func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	indent := strings.Repeat("  ", depth)
+	// Extract tag name: "html.div" → "div", "button" → "button"
+	tag := vn.Component
+	if _, local, ok := strings.Cut(tag, "."); ok {
+		tag = local
+	}
+
+	id := ""
+	if g.nodeIsReactive(vn) || g.preview || g.testMode {
+		id = g.allocID()
+	}
+	style := g.buildCSSStyle(vn)
+
+	// Build inline attributes from static props
+	var attrs strings.Builder
+	for name, expr := range vn.Props {
+		if name == "style" {
+			continue
+		}
+		if expr.SNGL == nil {
+			val := g.evalStaticString(vn.Props, name)
+			if val != "" {
+				fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+			} else if expr.Literal != nil {
+				if bv, ok := expr.Literal.(bool); ok && bv {
+					fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
+				}
+			}
+		}
+	}
+
+	// Write open tag with inline attributes
+	if g.preview && id == "" {
+		id = g.allocID()
+	}
+	fmt.Fprintf(b, "%s<%s", indent, tag)
+	if id != "" {
+		fmt.Fprintf(b, " id=\"%s\"", id)
+	}
+	if style != "" {
+		fmt.Fprintf(b, " style=\"%s\"", style)
+	}
+	b.WriteString(attrs.String())
+	if vn != nil {
+		g.writeDataKey(b, vn.Key)
+		g.writeUserAttrs(b, id, vn)
+	}
+	if g.preview && vn.Pos.IsValid() {
+		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", vn.Pos.Line, vn.Pos.Column)
+	}
+
+	// Self-closing tags
+	switch tag {
+	case "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr":
+		b.WriteString("/>\n")
+	default:
+		b.WriteString(">\n")
+		for _, child := range vn.Children {
+			g.renderStaticNode(b, child, depth+1)
+		}
+		fmt.Fprintf(b, "%s</%s>\n", indent, tag)
+	}
+
+	if id == "" {
+		return
+	}
+
+	// Reactive props: set via JS updaters
+	for name, expr := range vn.Props {
+		if name == "style" {
+			continue
+		}
+		if expr.SNGL != nil {
+			jsVal := g.exprToJS(expr)
+			deps := g.dt.ExprDeps(expr)
+			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
+			g.updates = append(g.updates, updateFunc{
+				funcName: uname,
+				body:     fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal),
+				deps:     deps,
+			})
+		}
+	}
+
+	// Wire up events
+	for name, expr := range vn.Events {
+		switch name {
+		case "click":
+			g.addClickHandler(id, expr)
+		case "input":
+			g.addInputHandler(id, expr)
+		case "change":
+			g.addChangeHandler(id, expr)
+		default:
+			g.addClickHandler(id, expr) // fallback
+		}
+	}
+}
+
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	// Find the component definition
 	comp := g.doc.FindComponent(vn.Component)
 	if comp == nil {
+		// Not a user/abstract component — render as raw HTML element
+		g.renderRawElement(b, vn, depth)
 		return
 	}
 

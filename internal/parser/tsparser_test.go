@@ -194,8 +194,9 @@ func compareStructure(t *testing.T, doc *ast.Document, root *ts.Node, src []byte
 			continue
 		}
 
-		// Compare params.
-		tsParams := extractDescendantFields(&tsComp, "param_declaration", "name", src)
+		// Compare params (component_param and component_binding_param).
+		tsParams := extractDescendantFields(&tsComp, "component_param", "name", src)
+		tsParams = append(tsParams, extractDescendantFields(&tsComp, "component_binding_param", "name", src)...)
 		var goParams []string
 		for _, p := range goComp.Params {
 			goParams = append(goParams, p.Name)

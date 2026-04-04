@@ -12,6 +12,7 @@ type Generator struct{}
 
 func (g *Generator) Platform() string         { return "none" }
 func (g *Generator) SupportedLangs() []string { return nil }
+func (g *Generator) PkgSource() string        { return "" }
 
 func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
 	return &codegen.Response{Error: "none platform does not generate code"}, nil
