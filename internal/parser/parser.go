@@ -1331,8 +1331,13 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 }
 
 func (p *parser) parsePropList(vn *ast.VisualNode) {
+	openLine := p.cur.Line
 	p.expect(LPAREN)
+	firstPropLine := 0
 	for !p.at(RPAREN) && !p.at(EOF) {
+		if firstPropLine == 0 {
+			firstPropLine = p.cur.Line
+		}
 		if p.at(COLON) {
 			// Bidirectional binding: :name=expr
 			p.advance()
@@ -1385,8 +1390,13 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 		if p.at(COMMA) {
 			p.advance()
 		}
+		p.skipSemicolons() // allow multi-line prop lists
 	}
 	p.expect(RPAREN)
+	// Multi-line if the first prop started on a different line than (
+	if firstPropLine > 0 && firstPropLine > openLine {
+		vn.MultilineProps = true
+	}
 }
 
 // --- Statement parsing ---
@@ -1833,12 +1843,17 @@ func (p *parser) parseListLiteral() ast.Node {
 }
 
 func (p *parser) parseStructLiteral(name string) ast.Node {
+	openLine := p.cur.Line
 	p.expect(LBRACE)
+	firstFieldLine := 0
 	var fields []ast.StructFieldLit
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
 		if p.at(RBRACE) {
 			break
+		}
+		if firstFieldLine == 0 {
+			firstFieldLine = p.cur.Line
 		}
 		if p.at(ELLIPSIS) {
 			p.advance()
@@ -1856,18 +1871,24 @@ func (p *parser) parseStructLiteral(name string) ast.Node {
 		p.skipSemicolons()
 	}
 	p.expect(RBRACE)
-	return &ast.StructExpr{Name: name, Fields: fields}
+	multiline := firstFieldLine > 0 && firstFieldLine > openLine
+	return &ast.StructExpr{Name: name, Fields: fields, Multiline: multiline}
 }
 
 // parseAnonStructLiteral parses an anonymous struct literal: {field=val, field2=val2}.
 // Uses = as field separator (not :). Used for style props and other type-inferred contexts.
 func (p *parser) parseAnonStructLiteral() ast.Node {
+	openLine := p.cur.Line
 	p.expect(LBRACE)
+	firstFieldLine := 0
 	var fields []ast.StructFieldLit
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
 		if p.at(RBRACE) {
 			break
+		}
+		if firstFieldLine == 0 {
+			firstFieldLine = p.cur.Line
 		}
 		if p.at(ELLIPSIS) {
 			p.advance()
@@ -1885,7 +1906,8 @@ func (p *parser) parseAnonStructLiteral() ast.Node {
 		p.skipSemicolons()
 	}
 	p.expect(RBRACE)
-	return &ast.StructExpr{Name: "", Fields: fields}
+	multiline := firstFieldLine > 0 && firstFieldLine > openLine
+	return &ast.StructExpr{Name: "", Fields: fields, Multiline: multiline}
 }
 
 func (p *parser) parseStringWithInterpolation(raw string) ast.Node {

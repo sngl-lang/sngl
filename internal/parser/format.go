@@ -885,6 +885,11 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 
 	if len(comp.Decls) > 0 {
 		f.formatDeclSlice(comp)
+		// Advance comment index past the component body to prevent
+		// emitCommentsBefore from re-emitting comments handled by Decls.
+		for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line < comp.EndLine {
+			f.commentI++
+		}
 	} else {
 		f.formatComponentLegacy(comp)
 	}
@@ -917,6 +922,12 @@ func declEndLine(d ast.Decl) int {
 
 // formatDeclSlice formats the body of a component using its ordered Decls slice.
 func (f *formatter) formatDeclSlice(comp *ast.Component) {
+	// Skip f.comments entries that are inside this component body —
+	// they'll be handled by Decls, not emitCommentsBefore.
+	for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line < comp.EndLine {
+		f.commentI++
+	}
+
 	decls := comp.Decls
 	prevEndLine := 0
 
@@ -1284,7 +1295,31 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		line += " #" + vn.ID
 	}
 	if len(props) > 0 {
-		line += "(" + strings.Join(props, ", ") + ")"
+		if vn.MultilineProps {
+			propIndent := f.indentStr() + "    "
+			line += "(\n"
+			for _, p := range props {
+				// Re-indent multi-line prop values (e.g., multi-line struct literals)
+				if strings.Contains(p, "\n") {
+					lines := strings.Split(p, "\n")
+					for i, pl := range lines {
+						if i == 0 {
+							line += propIndent + pl + "\n"
+						} else if i == len(lines)-1 {
+							// Closing brace — same indent as the prop
+							line += propIndent + pl + ",\n"
+						} else {
+							line += propIndent + "    " + pl + "\n"
+						}
+					}
+				} else {
+					line += propIndent + p + ",\n"
+				}
+			}
+			line += f.indentStr() + ")"
+		} else {
+			line += "(" + strings.Join(props, ", ") + ")"
+		}
 	} else if vn.HasProps {
 		line += "()"
 	}
@@ -1432,6 +1467,15 @@ func FormatNode(n ast.Node) string {
 			} else {
 				fields = append(fields, field.Name+sep+FormatNode(field.Value))
 			}
+		}
+		if e.Multiline {
+			var sb strings.Builder
+			sb.WriteString(e.Name + "{\n")
+			for _, f := range fields {
+				sb.WriteString(f + ",\n")
+			}
+			sb.WriteString("}")
+			return sb.String()
 		}
 		return e.Name + "{" + strings.Join(fields, ", ") + "}"
 	case *ast.ListExpr:

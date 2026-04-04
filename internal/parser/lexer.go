@@ -7,7 +7,7 @@ import (
 // lexer scans SNGL source text into tokens.
 type lexer struct {
 	input   []rune
-	pos     int // current position
+	pos     int       // current position
 	line    int
 	col     int
 	prevTok TokenType // for semicolon insertion

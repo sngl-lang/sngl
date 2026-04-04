@@ -135,8 +135,9 @@ type StructFieldLit struct {
 
 // StructExpr is a struct literal: Name{field: value, ...expr}.
 type StructExpr struct {
-	Name   string
-	Fields []StructFieldLit
+	Name      string
+	Fields    []StructFieldLit
+	Multiline bool // true when fields span multiple lines in source
 }
 
 // ListExpr is a list literal: [a, b, ...c].

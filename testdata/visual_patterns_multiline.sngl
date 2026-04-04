@@ -1,0 +1,25 @@
+component main {
+    // Single-line props — should stay on one line
+    text(value="hello", style={color=#ff0000})
+
+    // Multi-line props — should stay multi-line
+    input(
+        value="test",
+        placeholder="Enter text",
+        type="email",
+        disabled=false,
+        @input={ count = count + 1 },
+        @change={ name = event },
+    )
+
+    // Multi-line with style
+    vbox(
+        style={
+            padding=16,
+            gap=8,
+            background=#f0f0f0,
+        },
+    ) {
+        text(value="inside")
+    }
+}
