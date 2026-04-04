@@ -86,6 +86,7 @@ const (
 	KW_TIMER
 	KW_TEST
 	KW_RETURN
+	KW_PLATFORM
 	KW_TRUE
 	KW_FALSE
 	KW_NULL
@@ -114,6 +115,7 @@ var keywords = map[string]TokenType{
 	"timer":     KW_TIMER,
 	"test":      KW_TEST,
 	"return":    KW_RETURN,
+	"platform":  KW_PLATFORM,
 	// "in", "trigger", "true", "false", "null" are no longer keywords
 }
 

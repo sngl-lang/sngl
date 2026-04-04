@@ -29,7 +29,8 @@ type viewContext struct {
 	selectCount    int
 	scrollCount    int
 	badgeCount     int
-	spinnerCount   int
+	spinnerCount int
+	slotVar      string // variable holding pre-rendered slot content (for abstract components)
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -340,8 +341,14 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 		vc.renderToolbar(vn, resultVar)
 	case "datepicker":
 		vc.renderDatepicker(vn, resultVar)
+	case "slot":
+		if vc.slotVar != "" {
+			vc.line(`%s = %s`, resultVar, vc.slotVar)
+		} else {
+			vc.line(`%s = widget.NewLabel("")`, resultVar)
+		}
 	default:
-		// Try user-defined component
+		// Try user-defined or abstract component
 		vc.renderUserComponent(vn, resultVar)
 	}
 }
@@ -1135,5 +1142,31 @@ func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string)
 			args = append(args, "nil")
 		}
 	}
+
+	// If component accepts children, pre-render caller's children as slot content
+	if comp.ChildrenType != "" && len(vn.Children) > 0 {
+		slotVar := resultVar + "Slot"
+		vc.renderChildrenToObject(vn.Children, slotVar)
+		args = append(args, slotVar)
+	}
+
 	vc.line("%s = m.render%s(%s)", resultVar, exportName(vn.Component), strings.Join(args, ", "))
+}
+
+// renderChildrenToObject pre-renders children into a single fyne.CanvasObject variable.
+func (vc *viewContext) renderChildrenToObject(children []*ast.VisualNode, resultVar string) {
+	if len(children) == 1 {
+		vc.line("var %s fyne.CanvasObject", resultVar)
+		vc.renderNode(children[0], resultVar)
+	} else {
+		partsVar := resultVar + "Parts"
+		vc.line("var %s []fyne.CanvasObject", partsVar)
+		for i, child := range children {
+			childVar := fmt.Sprintf("%sPart%d", resultVar, i)
+			vc.line("var %s fyne.CanvasObject", childVar)
+			vc.renderNode(child, childVar)
+			vc.line("%s = append(%s, %s)", partsVar, partsVar, childVar)
+		}
+		vc.line("%s := container.NewVBox(%s...)", resultVar, partsVar)
+	}
 }

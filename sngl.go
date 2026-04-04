@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -49,23 +50,13 @@ func BuildAPIConfig(doc *ast.Document) *checker.APIConfig {
 		if !seen[out.Lang] {
 			seen[out.Lang] = true
 			if lang := codegen.LookupLang(out.Lang); lang != nil {
-				if ap, ok := lang.(codegen.APIProvider); ok {
-					cfg.Namespaces[out.Lang] = ap.API()
-				}
-				if ar, ok := lang.(codegen.APIResolver); ok {
-					resolvers = append(resolvers, namedResolver{out.Lang, ar})
-				}
+				resolvePkgOrAPI(lang, out.Lang, cfg, &resolvers)
 			}
 		}
 		if !seen[out.Platform] {
 			seen[out.Platform] = true
 			if plat := codegen.LookupPlatform(out.Platform); plat != nil {
-				if ap, ok := plat.(codegen.APIProvider); ok {
-					cfg.Namespaces[out.Platform] = ap.API()
-				}
-				if ar, ok := plat.(codegen.APIResolver); ok {
-					resolvers = append(resolvers, namedResolver{out.Platform, ar})
-				}
+				resolvePkgOrAPI(plat, out.Platform, cfg, &resolvers)
 			}
 		}
 	}
@@ -90,6 +81,41 @@ func BuildAPIConfig(doc *ast.Document) *checker.APIConfig {
 type namedResolver struct {
 	name     string
 	resolver codegen.APIResolver
+}
+
+// resolvePkgOrAPI resolves namespaces from a platform/language provider.
+// PkgSource takes priority over APIProvider. Components named "sngl.X" in a
+// PkgSource file override the stdlib component X (body-only, inheriting API).
+func resolvePkgOrAPI(provider any, name string, cfg *checker.APIConfig, resolvers *[]namedResolver) {
+	if ps, ok := provider.(codegen.PkgSource); ok {
+		src := ps.PkgSource()
+		doc, err := parser.Parse(name+".sngl", strings.NewReader(src))
+		if err == nil {
+			// Separate sngl.X overrides from platform-local components
+			var local []*ast.Component
+			for _, comp := range doc.Components {
+				if pkg, compName, ok := strings.Cut(comp.Name, "."); ok && pkg == "sngl" {
+					// Store override body in APIConfig for checker to merge
+					if cfg.StdlibOverrides == nil {
+						cfg.StdlibOverrides = map[string]map[string]*ast.Component{}
+					}
+					if cfg.StdlibOverrides[name] == nil {
+						cfg.StdlibOverrides[name] = map[string]*ast.Component{}
+					}
+					cfg.StdlibOverrides[name][compName] = comp
+				} else {
+					local = append(local, comp)
+				}
+			}
+			doc.Components = local
+			cfg.Namespaces[name] = doc
+		}
+	} else if ap, ok := provider.(codegen.APIProvider); ok {
+		cfg.Namespaces[name] = ap.API()
+	}
+	if ar, ok := provider.(codegen.APIResolver); ok {
+		*resolvers = append(*resolvers, namedResolver{name, ar})
+	}
 }
 
 // DefaultSchemeResolver returns a SchemeResolver that delegates to registered

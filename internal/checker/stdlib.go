@@ -19,35 +19,38 @@ func StdlibFS() embed.FS {
 }
 
 // LoadStdlib parses the embedded stdlib files and returns the component
-// schema registry, style property type map, unit definitions, and stdlib functions.
-func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, []*ast.FuncDef, []*ast.StructDef, error) {
+// schema registry, style property type map, unit definitions, stdlib functions,
+// stdlib structs, and stdlib components (for abstract body expansion).
+func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, []*ast.FuncDef, []*ast.StructDef, []*ast.Component, error) {
 	registry := SchemaRegistry{}
 	styleProps := map[string]StylePropSchema{}
 	var units []*ast.UnitDef
 	var funcs []*ast.FuncDef
 	var structs []*ast.StructDef
+	var components []*ast.Component
 
 	entries, err := stdlibFS.ReadDir("stdlib")
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("reading stdlib dir: %w", err)
+		return nil, nil, nil, nil, nil, nil, fmt.Errorf("reading stdlib dir: %w", err)
 	}
 
 	for _, entry := range entries {
 		name := entry.Name()
 		f, err := stdlibFS.Open("stdlib/" + name)
 		if err != nil {
-			return nil, nil, nil, nil, nil, fmt.Errorf("opening %s: %w", name, err)
+			return nil, nil, nil, nil, nil, nil, fmt.Errorf("opening %s: %w", name, err)
 		}
 
 		var doc *ast.Document
 		doc, err = parser.Parse(name, f)
 		f.Close()
 		if err != nil {
-			return nil, nil, nil, nil, nil, fmt.Errorf("parsing %s: %w", name, err)
+			return nil, nil, nil, nil, nil, nil, fmt.Errorf("parsing %s: %w", name, err)
 		}
 
 		for _, comp := range doc.Components {
 			registry[comp.Name] = componentToSchema(comp, doc.Comments)
+			components = append(components, comp)
 		}
 		units = append(units, doc.Units...)
 		for _, sd := range doc.Structs {
@@ -72,7 +75,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 			funcs = append(funcs, fn)
 		}
 	}
-	return registry, styleProps, units, funcs, structs, nil
+	return registry, styleProps, units, funcs, structs, components, nil
 }
 
 func componentToSchema(comp *ast.Component, comments []ast.Comment) *ComponentSchema {
@@ -93,6 +96,12 @@ func componentToSchema(comp *ast.Component, comments []ast.Comment) *ComponentSc
 		schema.Events[e.Name] = e.PayloadType
 	}
 	schema.Children = childrenFromType(comp.ChildrenType)
+	if len(comp.Body) > 0 {
+		schema.Body = comp.Body
+	}
+	if len(comp.PlatformBodies) > 0 {
+		schema.PlatformBodies = comp.PlatformBodies
+	}
 	return schema
 }
 

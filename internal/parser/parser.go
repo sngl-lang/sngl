@@ -480,6 +480,11 @@ func (p *parser) parseComponent() *ast.Component {
 	pos := p.pos()
 	p.expect(KW_COMPONENT)
 	name := p.expect(IDENT).Literal
+	// Support qualified names: component sngl.button(...)
+	if p.at(DOT) {
+		p.advance()
+		name = name + "." + p.expect(IDENT).Literal
+	}
 
 	comp := &ast.Component{Pos: pos, Name: name}
 
@@ -556,6 +561,24 @@ func (p *parser) parseComponent() *ast.Component {
 			t := p.parseTimer()
 			t.Disabled = disabled
 			comp.Timers = append(comp.Timers, t)
+		case KW_PLATFORM:
+			p.advance()
+			platName := p.expect(IDENT).Literal
+			p.expect(LBRACE)
+			var nodes []*ast.VisualNode
+			for !p.at(RBRACE) && !p.at(EOF) {
+				p.skipSemicolons()
+				if p.at(RBRACE) {
+					break
+				}
+				nodes = append(nodes, p.parseNodeOrControl())
+				p.skipSemicolons()
+			}
+			p.expect(RBRACE)
+			if comp.PlatformBodies == nil {
+				comp.PlatformBodies = map[string][]*ast.VisualNode{}
+			}
+			comp.PlatformBodies[platName] = nodes
 		default:
 			node := p.parseNodeOrControl()
 			node.Disabled = disabled

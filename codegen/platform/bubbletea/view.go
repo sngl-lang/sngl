@@ -20,6 +20,7 @@ type viewContext struct {
 	components  []*ast.Component // user-defined components for param lookup
 	inComponent bool             // true when rendering inside a component method
 	vertical    bool             // true when inside a vertical container (vbox)
+	slotVar     string           // variable holding pre-rendered slot content (for abstract components)
 	forIndexVar string           // current for-loop index variable (for cursor-aware rendering)
 }
 
@@ -172,8 +173,12 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 		vc.renderAvatar(vn, resultVar)
 	case "card":
 		vc.renderCard(vn, resultVar)
+	case "slot":
+		if vc.slotVar != "" {
+			vc.line(`%s = %s`, resultVar, vc.slotVar)
+		}
 	default:
-		// User-defined component
+		// User-defined or abstract component
 		vc.renderUserComponent(vn, resultVar)
 	}
 }
@@ -359,7 +364,33 @@ func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string)
 			args = append(args, exprToGoValue(expr, vc.ec))
 		}
 	}
+
+	// If component accepts children, pre-render caller's children as slot content
+	if comp != nil && comp.ChildrenType != "" && len(vn.Children) > 0 {
+		slotVar := resultVar + "Slot"
+		vc.renderChildren(vn.Children, slotVar)
+		args = append(args, slotVar)
+	}
+
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
+}
+
+// renderChildren pre-renders a list of children into a single string variable.
+func (vc *viewContext) renderChildren(children []*ast.VisualNode, resultVar string) {
+	if len(children) == 1 {
+		vc.line("var %s string", resultVar)
+		vc.renderNode(children[0], resultVar)
+	} else {
+		childrenParts := resultVar + "Parts"
+		vc.line("var %s []string", childrenParts)
+		for i, child := range children {
+			childVar := fmt.Sprintf("%sPart%d", resultVar, i)
+			vc.line("var %s string", childVar)
+			vc.renderNode(child, childVar)
+			vc.line("%s = append(%s, %s)", childrenParts, childrenParts, childVar)
+		}
+		vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenParts)
+	}
 }
 
 // --- New component renderers ---

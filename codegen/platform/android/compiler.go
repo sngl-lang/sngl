@@ -324,6 +324,10 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
+	hasSlot := comp.ChildrenType != ""
+	if hasSlot {
+		params = append(params, "slotContent: @Composable () -> Unit = {}")
+	}
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(comp.Name), strings.Join(params, ", "))
 
 	// Add params as local vars
@@ -338,6 +342,7 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 		buf:        b,
 		indent:     1,
 		components: allComponents,
+		hasSlot:    hasSlot,
 	}
 
 	for _, child := range comp.Body {

@@ -591,6 +591,23 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 			f.emitCommentsBefore(vn.Pos.Line)
 			f.formatVisualNode(vn)
 		}
+		memberBlank = true
+	}
+
+	// Platform-conditional bodies
+	for platName, nodes := range comp.PlatformBodies {
+		if memberBlank {
+			f.newline()
+		}
+		f.writeLine("platform " + platName + " {")
+		f.indent++
+		for _, vn := range nodes {
+			f.emitCommentsBefore(vn.Pos.Line)
+			f.formatVisualNode(vn)
+		}
+		f.indent--
+		f.writeLine("}")
+		memberBlank = true
 	}
 
 	f.indent--

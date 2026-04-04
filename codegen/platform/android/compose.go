@@ -13,6 +13,7 @@ type composeContext struct {
 	buf        *strings.Builder
 	indent     int
 	components []*ast.Component
+	hasSlot    bool // true when rendering inside a component with slot support
 }
 
 // propIsTrue checks if a boolean prop is set to true on a visual node.
@@ -147,6 +148,10 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 	case "pullrefresh":
 		// Legacy: treat as vbox
 		cc.renderColumn(vn)
+	case "slot":
+		if cc.hasSlot {
+			cc.line("slotContent()")
+		}
 	default:
 		cc.renderUserComponent(vn)
 	}
@@ -955,7 +960,18 @@ func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
 			args = append(args, name+" = "+exprToKtValue(expr, cc.ec))
 		}
 	}
-	cc.line("%s(%s)", fnName, strings.Join(args, ", "))
+	// If component accepts children, pass them as a trailing composable lambda
+	if comp != nil && comp.ChildrenType != "" && len(vn.Children) > 0 {
+		cc.line("%s(%s) {", fnName, strings.Join(args, ", "))
+		cc.indent++
+		for _, child := range vn.Children {
+			cc.renderNode(child)
+		}
+		cc.indent--
+		cc.line("}")
+	} else {
+		cc.line("%s(%s)", fnName, strings.Join(args, ", "))
+	}
 }
 
 func (cc *composeContext) getGap(vn *ast.VisualNode) string {

@@ -91,8 +91,20 @@ type Builder interface {
 // APIProvider is optionally implemented by LangTranslator or PlatformGenerator
 // to expose a pre-defined SNGL API as a checker namespace. The returned document's
 // structs, enums, data, and components become available under the lang/platform name.
+//
+// Deprecated: Use PkgSource instead for .sngl-based package definitions.
 type APIProvider interface {
 	API() *ast.Document
+}
+
+// PkgSource is optionally implemented by LangTranslator or PlatformGenerator
+// to provide a .sngl package file as the platform/language's standard library.
+// The returned text is parsed and made available as a checker namespace.
+// Components named "sngl.X" override the stdlib component X (inheriting its
+// params/events/children); other components become platform-local (e.g., html.video).
+// A "struct Options" defines build options for the platform/language.
+type PkgSource interface {
+	PkgSource() string
 }
 
 // APIResolver is optionally implemented alongside or instead of APIProvider

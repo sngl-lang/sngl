@@ -153,7 +153,7 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 }
 
 func EventCompletions() []CompletionItem {
-	registry, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return nil
 	}
@@ -176,7 +176,7 @@ func EventCompletions() []CompletionItem {
 }
 
 func StylePropCompletions() []CompletionItem {
-	_, styleProps, _, _, _, err := checker.LoadStdlib()
+	_, styleProps, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return nil
 	}
@@ -197,7 +197,7 @@ func StylePropCompletions() []CompletionItem {
 }
 
 func StdlibComponentItems() []CompletionItem {
-	registry, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return nil
 	}

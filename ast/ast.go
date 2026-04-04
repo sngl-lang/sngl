@@ -58,6 +58,7 @@ type Document struct {
 	Functions          []*FuncDef
 	Components         []*Component
 	ImportedComponents []*Component // populated by checker; qualified-name keyed
+	AbstractComponents []*Component // stdlib components with default bodies; populated by checker
 	Timers             []*Timer
 	Styles []*StyleDecl
 	App    *App
@@ -78,7 +79,13 @@ func (d *Document) FindComponent(name string) *Component {
 		}
 		return nil
 	}
+	// User components take priority over abstract stdlib components
 	for _, c := range d.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	for _, c := range d.AbstractComponents {
 		if c.Name == name {
 			return c
 		}
@@ -86,11 +93,12 @@ func (d *Document) FindComponent(name string) *Component {
 	return nil
 }
 
-// AllComponents returns local and imported components combined.
+// AllComponents returns local, imported, and abstract components combined.
 func (d *Document) AllComponents() []*Component {
-	all := make([]*Component, 0, len(d.Components)+len(d.ImportedComponents))
+	all := make([]*Component, 0, len(d.Components)+len(d.ImportedComponents)+len(d.AbstractComponents))
 	all = append(all, d.Components...)
 	all = append(all, d.ImportedComponents...)
+	all = append(all, d.AbstractComponents...)
 	return all
 }
 
@@ -238,17 +246,18 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 }
 
 type Component struct {
-	Pos          Pos
-	Name         string
-	Disabled     bool
-	Params       []*Param      // params/props declared in ()
-	Consts       []*Const      // const declarations
-	Data         []*Data       // var declarations (component-scoped state)
-	Functions    []*FuncDef    // func declarations
-	Timers       []*Timer      // timer declarations
-	EventDecls   []*EventDecl  // @event declarations in ()
-	ChildrenType string        // return-type position: "", "component", "list<component>", "option<component>", etc.
-	Body         []*VisualNode
+	Pos            Pos
+	Name           string
+	Disabled       bool
+	Params         []*Param                // params/props declared in ()
+	Consts         []*Const                // const declarations
+	Data           []*Data                 // var declarations (component-scoped state)
+	Functions      []*FuncDef              // func declarations
+	Timers         []*Timer                // timer declarations
+	EventDecls     []*EventDecl            // @event declarations in ()
+	ChildrenType   string                  // return-type position: "", "component", "list<component>", "option<component>", etc.
+	Body           []*VisualNode           // default body (or only body for user components)
+	PlatformBodies map[string][]*VisualNode // platform-conditional bodies: platform name → visual nodes
 }
 
 type Param struct {

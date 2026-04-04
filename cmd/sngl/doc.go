@@ -137,7 +137,7 @@ func showTopicListWithComponents(docsDir string) error {
 	}
 
 	// Component listing.
-	registry, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err == nil && len(registry) > 0 {
 		tiers := docsite.AssignTiers(registry)
 		tierIdx := map[string]int{}
@@ -232,7 +232,7 @@ func showTopic(docsDir, topic string) error {
 // showComponentDoc displays component reference for a component or
 // component.prop query.
 func showComponentDoc(query string) error {
-	registry, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("failed to load stdlib: %w", err)
 	}

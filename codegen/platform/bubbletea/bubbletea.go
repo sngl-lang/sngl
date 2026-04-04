@@ -10,6 +10,9 @@ import (
 //go:embed preview.css
 var previewCSS string
 
+//go:embed bubbletea.sngl
+var pkgSource string
+
 func init() {
 	codegen.RegisterPlatform(&Generator{})
 }
@@ -19,6 +22,7 @@ type Generator struct{}
 
 func (g *Generator) Platform() string         { return "bubbletea" }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) PkgSource() string        { return pkgSource }
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 

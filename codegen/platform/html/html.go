@@ -1,6 +1,7 @@
 package html
 
 import (
+	_ "embed"
 	"fmt"
 	"html"
 	"maps"
@@ -11,6 +12,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
+//go:embed html.sngl
+var pkgSource string
+
 func init() {
 	codegen.RegisterPlatform(&Generator{})
 }
@@ -20,6 +24,7 @@ type Generator struct{}
 
 func (g *Generator) Platform() string         { return "html" }
 func (g *Generator) SupportedLangs() []string { return []string{"js"} }
+func (g *Generator) PkgSource() string        { return pkgSource }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "js" {
@@ -79,6 +84,9 @@ type htmlGen struct {
 
 	// Component nesting depth for recursion protection
 	componentDepth int
+
+	// Slot children: caller's children for abstract component body expansion
+	slotChildren []*ast.VisualNode
 }
 
 type componentParam struct {
@@ -533,8 +541,14 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
+	case "slot":
+		// Project caller's children into this position
+		for _, child := range g.slotChildren {
+			g.renderStaticNode(b, child, depth)
+		}
+
 	default:
-		// User-defined component — inline at call site
+		// User-defined or abstract component — inline at call site
 		g.renderStaticUserComponent(b, vn, depth)
 	}
 }
@@ -1228,10 +1242,16 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 		}
 	}
 
+	// Set slot children for abstract component body expansion
+	savedSlot := g.slotChildren
+	g.slotChildren = vn.Children
+
 	// Inline the component body at the call site
 	for _, child := range comp.Body {
 		g.renderStaticNode(b, child, depth)
 	}
+
+	g.slotChildren = savedSlot
 
 	// Restore locals
 	g.scope.LocalVars = savedLocals

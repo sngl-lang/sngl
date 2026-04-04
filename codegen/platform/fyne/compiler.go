@@ -599,6 +599,10 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 		goType := inferGoType(p.Default)
 		params = append(params, p.Name+" "+goType)
 	}
+	hasSlot := comp.ChildrenType != ""
+	if hasSlot {
+		params = append(params, "slotContent fyne.CanvasObject")
+	}
 
 	fmt.Fprintf(b, "func (m *Model) %s(%s) fyne.CanvasObject {\n", methodName, strings.Join(params, ", "))
 
@@ -608,11 +612,17 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 		ec.localVars[p.Name] = true
 	}
 
+	var slotVar string
+	if hasSlot {
+		slotVar = "slotContent"
+	}
+
 	vc := &viewContext{
 		ec:         ec,
 		buf:        &strings.Builder{},
 		indent:     1,
 		components: allComponents,
+		slotVar:    slotVar,
 	}
 
 	if len(comp.Body) == 1 {

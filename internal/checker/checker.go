@@ -60,7 +60,7 @@ func DefaultResolver() ImportResolver {
 // that need a real directory. resolve is an optional callback for directory
 // imports; pass nil if directory imports are not supported.
 func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig, isMain bool) error {
-	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
+	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, stdlibComponents, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}
@@ -93,6 +93,18 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 	// Inject stdlib functions into the document (prepend so user funcs can override)
 	doc.Functions = append(stdlibFuncs, doc.Functions...)
 	doc.Structs = append(stdlibStructs, doc.Structs...)
+
+	// Attach abstract stdlib components with bodies for codegen expansion
+	for _, comp := range stdlibComponents {
+		if len(comp.Body) > 0 || len(comp.PlatformBodies) > 0 {
+			doc.AbstractComponents = append(doc.AbstractComponents, comp)
+		}
+	}
+
+	// Collect target platforms for availability checks
+	for _, out := range doc.Outputs {
+		c.targetPlatforms = append(c.targetPlatforms, out.Platform)
+	}
 
 	if isMain && doc.App == nil && len(doc.Tests) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
@@ -200,8 +212,9 @@ type DynamicNSResolver func(namespace, name string) *ast.NativeDecls
 
 // APIConfig provides platform/language API namespaces to the checker.
 type APIConfig struct {
-	Namespaces map[string]*ast.Document // lang/platform name → API doc
-	DynamicNS  DynamicNSResolver        // optional dynamic fallback
+	Namespaces      map[string]*ast.Document             // lang/platform name → API doc
+	DynamicNS       DynamicNSResolver                    // optional dynamic fallback
+	StdlibOverrides map[string]map[string]*ast.Component // platform → component name → override (from PkgSource "sngl.X" definitions)
 }
 
 // methodInfo describes a type-attached method (built-in or user-defined).
@@ -213,17 +226,18 @@ type methodInfo struct {
 }
 
 type checker struct {
-	registry      SchemaRegistry
-	styleProps    map[string]StylePropSchema
-	unitTables    map[string]*ast.UnitTable
-	scope         *Scope
-	methods       map[string]map[string]*methodInfo // typeName -> methodName -> info
-	components    []*ast.Component
-	structs       []*ast.StructDef
-	enums         []*ast.EnumDef
-	constNames    map[string]bool // names declared as const (for untyped constant detection)
-	fsys          fs.FS
-	schemeDir     string // real OS path for scheme imports (e.g., go://)
+	registry        SchemaRegistry
+	styleProps      map[string]StylePropSchema
+	unitTables      map[string]*ast.UnitTable
+	scope           *Scope
+	methods         map[string]map[string]*methodInfo // typeName -> methodName -> info
+	components      []*ast.Component
+	structs         []*ast.StructDef
+	enums           []*ast.EnumDef
+	constNames      map[string]bool // names declared as const (for untyped constant detection)
+	targetPlatforms []string        // platforms from output declarations (for availability checks)
+	fsys            fs.FS
+	schemeDir       string // real OS path for scheme imports (e.g., go://)
 	resolve       ImportResolver
 	schemeResolve SchemeResolver
 	visited       map[string]bool // tracks visited import paths to detect cycles
@@ -1059,6 +1073,33 @@ func (c *checker) pass2(doc *ast.Document) {
 			c.checkVisualNode(child, compScope)
 		}
 	}
+}
+
+// isComponentAvailable checks whether an abstract component has an implementation
+// for at least one of the target platforms. Returns true if the component has a
+// default body, a platform-conditional body, or a platform .sngl override.
+func (c *checker) isComponentAvailable(name string, schema *ComponentSchema) bool {
+	// Has a default body — always available
+	if schema.Body != nil {
+		return true
+	}
+	// Check platform-conditional bodies
+	for _, plat := range c.targetPlatforms {
+		if _, ok := schema.PlatformBodies[plat]; ok {
+			return true
+		}
+	}
+	// Check platform .sngl overrides
+	if c.apis != nil {
+		for _, plat := range c.targetPlatforms {
+			if overrides, ok := c.apis.StdlibOverrides[plat]; ok {
+				if _, ok := overrides[name]; ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {

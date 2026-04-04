@@ -181,6 +181,12 @@ func cloneComponents(s []*Component) []*Component {
 		c.Timers = cloneSlice(v.Timers)
 		c.EventDecls = cloneSlice(v.EventDecls)
 		c.Body = cloneVisualNodes(v.Body)
+		if v.PlatformBodies != nil {
+			c.PlatformBodies = make(map[string][]*VisualNode, len(v.PlatformBodies))
+			for k, nodes := range v.PlatformBodies {
+				c.PlatformBodies[k] = cloneVisualNodes(nodes)
+			}
+		}
 		out[i] = &c
 	}
 	return out

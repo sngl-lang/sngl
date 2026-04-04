@@ -1,0 +1,11 @@
+// Bubbletea (terminal UI) platform package.
+// Components defined here are available as bubbletea.X in user code.
+
+struct Options {
+    // Go package name for generated code.
+    package string
+    // Generate a main() function.
+    main bool
+    // Generate test files.
+    tests bool
+}

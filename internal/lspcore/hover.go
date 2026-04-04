@@ -89,7 +89,7 @@ func HoverInfo(doc *ast.Document, word string) string {
 		}
 	}
 
-	registry, styleProps, _, _, _, err := checker.LoadStdlib()
+	registry, styleProps, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return ""
 	}

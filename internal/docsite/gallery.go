@@ -102,7 +102,7 @@ func ChildPolicyString(cp checker.ChildPolicy) string {
 // BuildComponentData loads the stdlib and builds component page data for all
 // components, sorted by tier then name.
 func BuildComponentData(examplesDir string) ([]ComponentPageData, error) {
-	registry, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return nil, err
 	}

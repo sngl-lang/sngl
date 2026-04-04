@@ -1,0 +1,9 @@
+// Fyne platform package.
+// Components defined here are available as fyne.X in user code.
+
+struct Options {
+    // Go package name for generated code.
+    package string
+    // Generate a main() function.
+    main bool
+}

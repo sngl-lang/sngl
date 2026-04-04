@@ -65,7 +65,7 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	schemas, styleProps, _, _, _, err := checker.LoadStdlib()
+	schemas, styleProps, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}

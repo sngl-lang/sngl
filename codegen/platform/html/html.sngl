@@ -1,0 +1,9 @@
+// HTML platform package.
+// Components defined here are available as html.X in user code.
+
+struct Options {
+    // Render in preview mode (used by LSP/IDE).
+    preview bool
+    // Enable test harness generation.
+    test bool
+}

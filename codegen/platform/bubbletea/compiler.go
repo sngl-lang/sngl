@@ -945,6 +945,11 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 		goType := inferGoType(p.Default)
 		params = append(params, p.Name+" "+goType)
 	}
+	// If component accepts children, add a slotContent parameter
+	hasSlot := comp.ChildrenType != ""
+	if hasSlot {
+		params = append(params, "slotContent string")
+	}
 
 	fmt.Fprintf(b, "func (m Model) %s(%s) string {\n", methodName, strings.Join(params, ", "))
 
@@ -955,6 +960,11 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 		ec.localVars[p.Name] = true
 	}
 
+	var slotVar string
+	if hasSlot {
+		slotVar = "slotContent"
+	}
+
 	vc := &viewContext{
 		ec:          ec,
 		scaleFactor: cfg.ScaleFactor,
@@ -963,6 +973,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 		focusIndex:  0,
 		components:  allComponents,
 		inComponent: true,
+		slotVar:     slotVar,
 	}
 
 	if len(comp.Body) == 1 {

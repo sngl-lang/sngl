@@ -1,5 +1,7 @@
 package checker
 
+import "git.duckfam.us/jonathan/sngl/ast"
+
 // ChildPolicy specifies how many children a component allows.
 type ChildPolicy int
 
@@ -19,10 +21,12 @@ type PropSchema struct {
 
 // ComponentSchema defines the properties, events, and child policy for a component.
 type ComponentSchema struct {
-	Props    map[string]PropSchema
-	Events   map[string]string // event name → event type key
-	Children ChildPolicy
-	Doc      string
+	Props          map[string]PropSchema
+	Events         map[string]string           // event name → event type key
+	Children       ChildPolicy
+	Doc            string
+	Body           []*ast.VisualNode           // default body (nil = pure abstract)
+	PlatformBodies map[string][]*ast.VisualNode // platform-conditional bodies
 }
 
 // StylePropSchema describes a style property's type and valid enum values.

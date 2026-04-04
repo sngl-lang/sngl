@@ -10,6 +10,9 @@ import (
 //go:embed preview.css
 var previewCSS string
 
+//go:embed android.sngl
+var pkgSource string
+
 func init() {
 	codegen.RegisterPlatform(&Generator{})
 }
@@ -20,6 +23,7 @@ type Generator struct{}
 func (g *Generator) Platform() string         { return "android" }
 func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
+func (g *Generator) PkgSource() string        { return pkgSource }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	switch req.Lang.Lang() {

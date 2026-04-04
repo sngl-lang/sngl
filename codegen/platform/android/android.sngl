@@ -1,0 +1,19 @@
+// Android (Jetpack Compose) platform package.
+// Components defined here are available as android.X in user code.
+
+struct Options {
+    // Go or Kotlin package name for generated code.
+    package string
+    // Application display name.
+    appName string
+    // Path to app icon file.
+    icon string
+    // Generate a main activity.
+    main bool
+    // Generate Gradle build files.
+    gradle bool
+    // Theme primary color (hex).
+    color string
+    // Path to existing Android project directory.
+    projectDir string
+}
