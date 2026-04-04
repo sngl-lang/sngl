@@ -457,7 +457,7 @@ func (c *checker) pass1(doc *ast.Document) {
 				schema := &ComponentSchema{
 					Props:    make(map[string]PropSchema),
 					Events:   map[string]string{},
-					Children: ChildrenMany,
+					Children: childrenFromType(comp.ChildrenType),
 				}
 				for _, p := range comp.Params {
 					t := c.resolveParamType(p)
@@ -487,7 +487,7 @@ func (c *checker) pass1(doc *ast.Document) {
 				schema := &ComponentSchema{
 					Props:    make(map[string]PropSchema),
 					Events:   map[string]string{},
-					Children: ChildrenMany,
+					Children: childrenFromType(comp.ChildrenType),
 				}
 				for _, p := range comp.Params {
 					schema.Props[p.Name] = PropSchema{Type: c.resolveParamType(p)}
@@ -594,7 +594,7 @@ func (c *checker) pass1(doc *ast.Document) {
 		schema := &ComponentSchema{
 			Props:    make(map[string]PropSchema),
 			Events:   map[string]string{},
-			Children: ChildrenMany,
+			Children: childrenFromType(comp.ChildrenType),
 		}
 		for _, p := range comp.Params {
 			t := c.resolveParamType(p)
@@ -1165,6 +1165,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	case ChildrenOne:
 		if len(vn.Children) != 1 {
 			c.errorAt(vn.Pos, "%s: expects exactly one child, got %d", vn.Component, len(vn.Children))
+		}
+	case ChildrenOptional:
+		if len(vn.Children) > 1 {
+			c.errorAt(vn.Pos, "%s: expects at most one child, got %d", vn.Component, len(vn.Children))
 		}
 	}
 

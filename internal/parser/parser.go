@@ -483,22 +483,28 @@ func (p *parser) parseComponent() *ast.Component {
 
 	comp := &ast.Component{Pos: pos, Name: name}
 
-	// Parse optional param list: component Name(param1 = default, @save, :count int) { ... }
+	// Parse optional param list: Name(param1 = default, @save, :count int) { ... }
 	if p.at(LPAREN) {
 		p.advance()
 		for !p.at(RPAREN) && !p.at(EOF) {
 			if p.at(AT) {
-				// Event declaration: @eventName
+				// Event declaration: @eventName [PayloadType]
+				pos := p.pos()
 				p.advance()
 				ename := p.expect(IDENT).Literal
-				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: p.pos(), Name: ename})
+				payloadType := ""
+				if p.at(IDENT) {
+					payloadType = p.cur.Literal
+					p.advance()
+				}
+				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: pos, Name: ename, PayloadType: payloadType})
 			} else if p.at(COLON) {
 				// Bidirectional param: :name type = default
 				p.advance()
 				param := p.parseComponentParam()
 				param.Bidirectional = true
 				comp.Params = append(comp.Params, param)
-				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: param.Pos, Name: param.Name})
+				comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: param.Pos, Name: param.Name, PayloadType: "ChangeEvent"})
 			} else {
 				comp.Params = append(comp.Params, p.parseComponentParam())
 			}
@@ -507,6 +513,11 @@ func (p *parser) parseComponent() *ast.Component {
 			}
 		}
 		p.expect(RPAREN)
+	}
+
+	// Parse optional children type (return-type position): list<component>, component, option<component>
+	if !p.at(LBRACE) && !p.at(EOF) {
+		comp.ChildrenType = p.parseTypeString()
 	}
 
 	p.expect(LBRACE)
@@ -525,21 +536,6 @@ func (p *parser) parseComponent() *ast.Component {
 		}
 
 		switch p.cur.Type {
-		case KW_PROP:
-			comp.PropDecls = append(comp.PropDecls, p.parsePropDecl())
-		case COLON:
-			// Bidirectional prop: :value string — desugars to prop + event
-			p.advance()
-			pd := p.parsePropDeclBody()
-			pd.Bidirectional = true
-			comp.PropDecls = append(comp.PropDecls, pd)
-			comp.EventDecls = append(comp.EventDecls, &ast.EventDecl{Pos: pd.Pos, Name: pd.Name, PayloadType: "ChangeEvent"})
-		case AT:
-			// Event declaration: @click ClickEvent
-			comp.EventDecls = append(comp.EventDecls, p.parseEventDecl())
-		case KW_CHILDREN:
-			p.advance()
-			comp.ChildPolicy = p.expect(IDENT).Literal
 		case KW_CONST:
 			consts := p.parseConstDecl()
 			for _, c := range consts {
@@ -602,7 +598,7 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 }
 
 // parseComponentParam parses a single component parameter inside ().
-// Syntax: name = default | name type | name type = default | name type required
+// Syntax: name = default | name type [enum(...)] [= default] [required]
 func (p *parser) parseComponentParam() *ast.Param {
 	pos := p.pos()
 	name := p.expect(IDENT).Literal
@@ -614,6 +610,18 @@ func (p *parser) parseComponentParam() *ast.Param {
 	} else if !p.at(COMMA) && !p.at(RPAREN) && !p.at(EOF) {
 		typeHint := p.parseTypeString()
 		param.Default.TypeHint = typeHint
+		// Optional enum constraint: type string enum(text, password, number)
+		if p.at(KW_ENUM) {
+			p.advance()
+			p.expect(LPAREN)
+			for !p.at(RPAREN) && !p.at(EOF) {
+				param.Enum = append(param.Enum, p.expect(IDENT).Literal)
+				if p.at(COMMA) {
+					p.advance()
+				}
+			}
+			p.expect(RPAREN)
+		}
 		if p.at(ASSIGN) {
 			p.advance()
 			param.Default = p.parseExprAsExpr()
@@ -627,37 +635,6 @@ func (p *parser) parseComponentParam() *ast.Param {
 	return param
 }
 
-func (p *parser) parsePropDecl() *ast.PropDecl {
-	p.expect(KW_PROP)
-	return p.parsePropDeclBody()
-}
-
-func (p *parser) parsePropDeclBody() *ast.PropDecl {
-	pos := p.pos()
-	name := p.expect(IDENT).Literal
-	typeHint := p.parseTypeString()
-	var enumValues []string
-	if p.at(KW_ENUM) {
-		p.advance()
-		p.expect(LPAREN)
-		for !p.at(RPAREN) && !p.at(EOF) {
-			enumValues = append(enumValues, p.expect(IDENT).Literal)
-			if p.at(COMMA) {
-				p.advance()
-			}
-		}
-		p.expect(RPAREN)
-	}
-	return &ast.PropDecl{Pos: pos, Name: name, TypeHint: typeHint, Enum: enumValues}
-}
-
-func (p *parser) parseEventDecl() *ast.EventDecl {
-	pos := p.pos()
-	p.expect(AT)
-	name := p.expect(IDENT).Literal
-	payloadType := p.expect(IDENT).Literal
-	return &ast.EventDecl{Pos: pos, Name: name, PayloadType: payloadType}
-}
 
 func (p *parser) parseConstDecl() []*ast.Const {
 	p.expect(KW_CONST)
@@ -998,7 +975,14 @@ func (p *parser) parseTypeString() string {
 	if p.at(KW_ENUM) {
 		return p.parseInlineEnumType()
 	}
-	name := p.expect(IDENT).Literal
+	// Accept keywords as type names (e.g., "component" in list<component>)
+	var name string
+	if p.at(IDENT) || p.cur.Type.IsKeyword() {
+		name = p.cur.Literal
+		p.advance()
+	} else {
+		name = p.expect(IDENT).Literal // will error
+	}
 	if p.at(DOT) {
 		p.advance()
 		name = name + "." + p.expect(IDENT).Literal

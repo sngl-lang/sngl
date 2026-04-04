@@ -1,6 +1,4 @@
-component Card(title = "Card", subtitle = "") {
-    children allowed
-
+component Card(title = "Card", subtitle = "") list<component> {
     vbox {
         text(value=title)
         text(value=subtitle)

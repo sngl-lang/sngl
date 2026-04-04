@@ -52,7 +52,7 @@ component main {
 }
 ```
 
-The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `style`, `const`, `var`, `func`, `component`, `timer`, and `test`.
+The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `style`, `const`, `var`, `func`, components (PascalCase names), `timer`, and `test`.
 
 A complete minimal file needs only a `component main`:
 
@@ -266,7 +266,7 @@ These are compile errors:
 | `null` → struct           | `null is not assignable to struct type`                   |
 | struct → `int()`          | `cannot convert struct to int`                            |
 | struct → `float()`        | `cannot convert struct to float`                          |
-| wrong type → component param | `does not match`                                          |
+| wrong type → component param | `does not match`                                         |
 | bad string → special type | format-specific error (e.g., invalid date, invalid email) |
 | wrong variant → enum      | `is not a valid variant`                                  |
 
@@ -552,9 +552,9 @@ text(value="Hello")
 vbox { text(value="Hi") }
 ```
 
-### Props
+### Params
 
-Props are typed values defined by the component's schema. The compiler validates prop names and types:
+Params are typed values defined by the component's declaration. The compiler validates param names and types:
 
 <!-- SNGL-component -->
 
@@ -650,7 +650,7 @@ for item in items {
 
 ### Attribute nodes
 
-Inside a children block, `@name(props)` attaches metadata:
+Inside a node's body block, `@name(props)` attaches metadata:
 
 <!-- SNGL-component -->
 
@@ -767,7 +767,7 @@ Timer bodies can mutate state, like event handlers. The timer does not fire if t
 
 ### Inline styles
 
-All styles are applied via the `style` prop:
+All styles are applied via the `style` param:
 
 <!-- SNGL-component -->
 

@@ -22,7 +22,7 @@ Declaration    = "import" STRING
                | "style" IDENT "{" StyleProp* "}"
                | "styles" "{" StyleDef* "}"
                | FuncDecl
-               | "component" IDENT "{" ComponentMember* "}"
+               | ComponentDecl
 ```
 
 ### Output Declarations
@@ -90,14 +90,17 @@ Expression form (`Expr`) is for pure single-expression functions; the return typ
 ### Component Members
 
 ```
-ComponentDecl  = "component" IDENT ParamList? "{" ComponentMember* "}"
-ParamList      = "(" Param ("," Param)* ")"
+ComponentDecl  = "component" IDENT ParamList? ChildrenType? "{" ComponentMember* "}"
+ParamList      = "(" ParamOrEvent ("," ParamOrEvent)* ")"
+ParamOrEvent   = Param | EventDecl | BiDiProp
 Param          = IDENT Type? "=" Expr
                | IDENT Type
-ComponentMember = "prop" IDENT Type ("enum" "(" IDENT ("," IDENT)* ")")?
-               | "event" IDENT IDENT
-               | "children" ("none" | "one" | "many")
-               | ConstDecl
+EventDecl      = "@" IDENT IDENT
+BiDiProp       = ":" IDENT Type
+ChildrenType   = "component"
+               | "list" "<" "component" ">"
+               | "option" "<" "component" ">"
+ComponentMember = ConstDecl
                | VarDecl
                | FuncDecl
                | NodeOrControl
@@ -193,10 +196,10 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | Top-level | keyword | Which declaration to parse |
 | After `output` | IDENT vs `{` | Single output vs grouped block |
 | After `var` | IDENT vs `(` | Single var vs grouped declaration |
-| Inside `{}` children | `if`/`for`/`@`/IDENT | Control, attr, or node |
+| Inside `{}` body | `if`/`for`/`@`/IDENT | Control, attr, or node |
 | Inside component | `const`/`var`/`func`/IDENT | State, func, or visual node |
 | After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
-| Inside `()` props | `@`/`style`/IDENT | Event, style literal, or prop |
+| Inside `()` params | `@`/`:`/`style`/IDENT | Event, bidi prop, style literal, or param |
 | After IDENT in type | `<` or not | Generic type or plain type |
 | After `for` IDENT | `,` or `in` | Index variable or iterable |
 | In statement | IDENT then `!!`/`=`/`.` | Toggle, assign, or method call |
@@ -225,7 +228,7 @@ No virtual DOM or runtime diffing is involved. Assignments to state trigger only
 
 | Context | Boundary |
 | --- | --- |
-| Inside `()` prop list | `,` or `)` at nesting depth 0 |
+| Inside `()` param list | `,` or `)` at nesting depth 0 |
 | After `if` | `{` at depth 0 (tracking `()` and `[]` only) |
 | After `in` in `for` | `{` at depth 0 (tracking `()` and `[]` only) |
 | After `=` in const/var | Semicolon (inserted or explicit) |

@@ -179,7 +179,6 @@ func cloneComponents(s []*Component) []*Component {
 		c.Consts = cloneSlice(v.Consts)
 		c.Data = cloneData(v.Data)
 		c.Timers = cloneSlice(v.Timers)
-		c.PropDecls = cloneSlice(v.PropDecls)
 		c.EventDecls = cloneSlice(v.EventDecls)
 		c.Body = cloneVisualNodes(v.Body)
 		out[i] = &c

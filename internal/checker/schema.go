@@ -4,9 +4,10 @@ package checker
 type ChildPolicy int
 
 const (
-	ChildrenNone ChildPolicy = iota
-	ChildrenOne
-	ChildrenMany
+	ChildrenNone     ChildPolicy = iota
+	ChildrenOne                          // component
+	ChildrenMany                         // list<component>
+	ChildrenOptional                     // option<component>
 )
 
 // PropSchema describes a component property's type and valid enum values.
@@ -28,6 +29,25 @@ type ComponentSchema struct {
 type StylePropSchema struct {
 	Type Type
 	Enum []string
+}
+
+// childrenFromType converts a ChildrenType string to a ChildPolicy.
+// childrenFromType converts a ChildrenType string (internal format from parseTypeString)
+// to a ChildPolicy. Internal format uses : separator (e.g., "list:component").
+func childrenFromType(ct string) ChildPolicy {
+	switch ct {
+	case "":
+		return ChildrenNone
+	case "component":
+		return ChildrenOne
+	case "option:component":
+		return ChildrenOptional
+	default:
+		if len(ct) > 5 && ct[:5] == "list:" {
+			return ChildrenMany
+		}
+		return ChildrenNone
+	}
 }
 
 // SchemaRegistry maps component names to their schemas.

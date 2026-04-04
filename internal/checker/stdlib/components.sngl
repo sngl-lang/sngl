@@ -1,392 +1,354 @@
 // --- Core ---
 
 // Vertical box layout container. Children are stacked top to bottom.
-component vbox {
+component vbox(
     // Enable vertical scrolling for overflow content.
-    prop scroll bool
+    scroll bool,
     // Whether a pull-to-refresh gesture is active.
-    prop refreshing bool
-    @refresh RefreshEvent
-    children many
-}
+    refreshing bool,
+    @refresh RefreshEvent,
+) list<component> {}
 
 // Horizontal box layout container. Children are placed side by side, left to right.
-component hbox {
+component hbox(
     // Enable horizontal scrolling for overflow content.
-    prop scroll bool
-    children many
-}
+    scroll bool,
+) list<component> {}
 
 // Layered container where children overlap. Later children render on top.
-component stack {
-    children many
-}
+component stack() list<component> {}
 
 // Displays a text string. Supports styling but has no child elements.
-component text {
-    prop value string
+component text(
+    value string,
     // Allow the user to select and copy the text.
-    prop selectable bool
-    @click ClickEvent
-    children none
-}
+    selectable bool,
+    @click ClickEvent,
+) {}
 
 // Clickable button that triggers an action. Supports text label or custom children.
-component button {
-    prop text string
-    prop disabled bool
-    @click ClickEvent
-    @longPress LongPressEvent
-    children many
-}
+component button(
+    text string,
+    disabled bool,
+    @click ClickEvent,
+    @longPress LongPressEvent,
+) list<component> {}
 
 // Single-line text input field with keyboard type variants.
-component input {
-    :value string
-    prop placeholder string
-    prop disabled bool
-    prop readonly bool
+component input(
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
     // Keyboard and validation type for the input.
-    prop type string enum(text, password, number, email, url, tel, search)
+    type string enum(text, password, number, email, url, tel, search),
     // Maximum number of characters allowed.
-    prop maxLength int
-    @input InputEvent
-    @change ChangeEvent
-    @focus FocusEvent
-    @blur FocusEvent
-    @submit SubmitEvent
-    children none
-}
+    maxLength int,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+    @submit SubmitEvent,
+) {}
 
 // Displays an image from a URL or asset path.
-component image {
-    prop src string
+component image(
+    src string,
     // Accessible description of the image content.
-    prop alt string
+    alt string,
     // How the image is scaled to fit its container.
-    prop fit string enum(contain, cover, fill, none, scaleDown)
-    @click ClickEvent
-    @load LoadEvent
-    @error ErrorEvent
-    children none
-}
+    fit string enum(contain, cover, fill, none, scaleDown),
+    @click ClickEvent,
+    @load LoadEvent,
+    @error ErrorEvent,
+) {}
 
 // Scrollable viewport that wraps a single child element.
-component scroll {
-    prop direction string enum(vertical, horizontal, both)
+component scroll(
+    direction string enum(vertical, horizontal, both),
     // Current horizontal scroll offset as a fraction (0.0 to 1.0).
-    prop scrollX float
+    scrollX float,
     // Current vertical scroll offset as a fraction (0.0 to 1.0).
-    prop scrollY float
-    prop showScrollbar string enum(auto, always, never)
-    @scroll ScrollEvent
-    @scrollEnd ScrollEvent
-    children one
-}
+    scrollY float,
+    showScrollbar string enum(auto, always, never),
+    @scroll ScrollEvent,
+    @scrollEnd ScrollEvent,
+) component {}
 
 // Flexible empty space used to push siblings apart in a layout.
-component spacer {
+component spacer(
     // Fixed size (CSS length) instead of flex-growing.
-    prop size string
-    children none
-}
+    size string,
+) {}
 
 // Boolean toggle rendered as a checkmark box with an optional label.
-component checkbox {
-    :checked bool
-    prop label string
-    prop disabled bool
-    @change ChangeEvent
-    children none
-}
+component checkbox(
+    :checked bool,
+    label string,
+    disabled bool,
+    @change ChangeEvent,
+) {}
 
 // Placeholder for projected content in custom component definitions.
-component slot {
-    children none
-}
+component slot() {}
 
 // --- Tier 1: Core Input ---
 
 // Group of mutually exclusive options rendered as radio buttons.
-component radio {
+component radio(
     // Currently selected option value.
-    prop value string
+    value string,
     // List of option values or {label, value} objects.
-    prop options list<string>
-    prop disabled bool
-    prop direction string enum(vertical, horizontal)
-    @change ChangeEvent
-    children none
-}
+    options list<string>,
+    disabled bool,
+    direction string enum(vertical, horizontal),
+    @change ChangeEvent,
+) {}
 
 // On/off switch control with an optional label.
-component toggle {
-    :checked bool
-    prop label string
-    prop disabled bool
-    @change ChangeEvent
-    children none
-}
+component toggle(
+    :checked bool,
+    label string,
+    disabled bool,
+    @change ChangeEvent,
+) {}
 
 // Dropdown selection control for picking one or more options from a list.
-component select {
-    :value string
+component select(
+    :value string,
     // List of option values or {label, value} objects.
-    prop options list<string>
-    prop placeholder string
-    prop disabled bool
+    options list<string>,
+    placeholder string,
+    disabled bool,
     // Allow selecting multiple options.
-    prop multiple bool
-    @change ChangeEvent
-    @focus FocusEvent
-    @blur FocusEvent
-    children none
-}
+    multiple bool,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
 
 // Multi-line text input field.
-component textarea {
-    :value string
-    prop placeholder string
-    prop disabled bool
-    prop readonly bool
+component textarea(
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
     // Number of visible text rows.
-    prop rows int
-    prop maxLength int
-    @input InputEvent
-    @change ChangeEvent
-    @focus FocusEvent
-    @blur FocusEvent
-    children none
-}
+    rows int,
+    maxLength int,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
 
 // --- Tier 2: Feedback & Navigation ---
 
 // Determinate progress indicator showing completion toward a max value.
-component progress {
-    prop value float
-    prop max float
-    prop label string
-    prop variant string enum(bar, circular)
+component progress(
+    value float,
+    max float,
+    label string,
+    variant string enum(bar, circular),
     // Display the numeric value alongside the indicator.
-    prop showValue bool
-    children none
-}
+    showValue bool,
+) {}
 
 // Indeterminate loading indicator for operations with unknown duration.
-component spinner {
-    prop label string
-    prop variant string enum(dots, line, circle, pulse)
-    prop size string enum(small, medium, large)
-    children none
-}
+component spinner(
+    label string,
+    variant string enum(dots, line, circle, pulse),
+    size string enum(small, medium, large),
+) {}
 
 // Small status label for counts, labels, or state indicators.
-component badge {
-    prop value string
-    prop variant string enum(default, primary, success, warning, error)
-    prop size string enum(small, medium, large)
-    children none
-}
+component badge(
+    value string,
+    variant string enum(default, primary, success, warning, error),
+    size string enum(small, medium, large),
+) {}
 
 // Tabbed navigation that switches between child panels by index.
-component tabs {
+component tabs(
     // List of tab labels or {label, icon} objects.
-    prop items list<string>
+    items list<string>,
     // Zero-based index of the active tab.
-    prop selected int
-    prop variant string enum(line, enclosed, pill)
-    @change SelectEvent
-    children many
-}
+    selected int,
+    variant string enum(line, enclosed, pill),
+    @change SelectEvent,
+) list<component> {}
 
 // Navigational hyperlink to an external URL or internal route.
-component link {
-    prop href string
-    prop text string
+component link(
+    href string,
+    text string,
     // Whether to open in the same window or a new tab.
-    prop target string enum(self, blank)
-    prop disabled bool
-    @click ClickEvent
-    children none
-}
+    target string enum(self, blank),
+    disabled bool,
+    @click ClickEvent,
+) {}
 
 // Visual separator line between sections of content.
-component divider {
-    prop direction string enum(horizontal, vertical)
+component divider(
+    direction string enum(horizontal, vertical),
     // Optional text label displayed in the middle of the divider.
-    prop label string
-    children none
-}
+    label string,
+) {}
 
 // --- Tier 3: Overlays & Layout ---
 
 // Dialog overlay that appears above page content with a backdrop.
-component modal {
-    prop open bool
-    prop title string
+component modal(
+    open bool,
+    title string,
     // Whether the modal can be dismissed by the user.
-    prop closable bool
-    prop size string enum(small, medium, large, fullscreen)
-    @close DismissEvent
-    children many
-}
+    closable bool,
+    size string enum(small, medium, large, fullscreen),
+    @close DismissEvent,
+) list<component> {}
 
 // Slide-out panel anchored to an edge of the screen.
-component drawer {
-    prop open bool
-    prop side string enum(left, right, top, bottom)
+component drawer(
+    open bool,
+    side string enum(left, right, top, bottom),
     // Width or height of the drawer (CSS length).
-    prop size string
-    @close DismissEvent
-    children many
-}
+    size string,
+    @close DismissEvent,
+) list<component> {}
 
 // Small informational popup shown on hover or focus over its child element.
-component tooltip {
-    prop text string
-    prop position string enum(top, bottom, left, right)
+component tooltip(
+    text string,
+    position string enum(top, bottom, left, right),
     // Delay in milliseconds before the tooltip appears.
-    prop delay int
-    children one
-}
+    delay int,
+) component {}
 
 // Floating content panel anchored to its child element, toggled on click or hover.
-component popover {
-    prop open bool
-    prop position string enum(top, bottom, left, right)
-    prop openOn string enum(click, hover)
-    @close DismissEvent
-    children many
-}
+component popover(
+    open bool,
+    position string enum(top, bottom, left, right),
+    openOn string enum(click, hover),
+    @close DismissEvent,
+) list<component> {}
 
 // Expandable/collapsible sections. Each item can be toggled open or closed.
-component accordion {
+component accordion(
     // List of section headers or {title, content} objects.
-    prop items list<string>
+    items list<string>,
     // List of currently expanded section indices.
-    prop expanded list<int>
+    expanded list<int>,
     // Allow more than one section to be open simultaneously.
-    prop multiple bool
-    @change ExpandEvent
-    children many
-}
+    multiple bool,
+    @change ExpandEvent,
+) list<component> {}
 
 // Resizable two-pane layout divided by a draggable handle.
-component splitview {
-    prop direction string enum(horizontal, vertical)
+component splitview(
+    direction string enum(horizontal, vertical),
     // Divider position as a fraction (0.0 to 1.0).
-    prop position float
-    prop minPosition float
-    prop maxPosition float
-    prop resizable bool
-    @resize ResizeEvent
-    children many
-}
+    position float,
+    minPosition float,
+    maxPosition float,
+    resizable bool,
+    @resize ResizeEvent,
+) list<component> {}
 
 // --- Tier 4: Data & Desktop ---
 
 // Tabular data display with optional sorting and row selection.
-component table {
+component table(
     // List of column definitions ({key, label, width}).
-    prop columns list<string>
+    columns list<string>,
     // List of row data objects.
-    prop rows dyn
-    prop selectable bool
-    prop selected int
-    prop sortable bool
-    prop sortColumn string
-    prop sortDirection string enum(asc, desc)
-    @select SelectEvent
-    @sort ChangeEvent
-    children none
-}
+    rows dyn,
+    selectable bool,
+    selected int,
+    sortable bool,
+    sortColumn string,
+    sortDirection string enum(asc, desc),
+    @select SelectEvent,
+    @sort ChangeEvent,
+) {}
 
 // Hierarchical data display with expandable nodes.
-component tree {
+component tree(
     // List of tree node objects ({label, children, id}).
-    prop items list<string>
+    items list<string>,
     // ID of the currently selected node.
-    prop selected string
+    selected string,
     // List of currently expanded node IDs.
-    prop expanded list<int>
-    @select SelectEvent
-    @expand ExpandEvent
-    children none
-}
+    expanded list<int>,
+    @select SelectEvent,
+    @expand ExpandEvent,
+) {}
 
 // Context or dropdown menu displaying a list of actionable items.
-component menu {
+component menu(
     // List of menu items ({label, icon, action}) or separator strings.
-    prop items list<string>
-    prop open bool
-    @select MenuEvent
-    @close DismissEvent
-    children none
-}
+    items list<string>,
+    open bool,
+    @select MenuEvent,
+    @close DismissEvent,
+) {}
 
 // Horizontal menu bar typically used at the top of a desktop-style application.
-component menubar {
+component menubar(
     // List of top-level menu definitions ({label, items}).
-    prop items list<string>
-    @select MenuEvent
-    children none
-}
+    items list<string>,
+    @select MenuEvent,
+) {}
 
 // Horizontal bar of action buttons, typically displayed below a menubar.
-component toolbar {
+component toolbar(
     // List of toolbar button definitions ({label, icon, action}).
-    prop items list<string>
-    @select MenuEvent
-    children many
-}
+    items list<string>,
+    @select MenuEvent,
+) list<component> {}
 
 // --- Tier 5: Mobile & Specialized ---
 
 // Calendar-based date selection input.
-component datepicker {
-    prop value date
+component datepicker(
+    value date,
     // Earliest selectable date.
-    prop min date
+    min date,
     // Latest selectable date.
-    prop max date
-    prop disabled bool
-    prop placeholder string
-    @change DateEvent
-    @focus FocusEvent
-    @blur FocusEvent
-    children none
-}
+    max date,
+    disabled bool,
+    placeholder string,
+    @change DateEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
 
 // Compact interactive tag used for filters, selections, or labels.
-component chip {
-    prop label string
-    prop variant string enum(default, primary, success, warning, error)
+component chip(
+    label string,
+    variant string enum(default, primary, success, warning, error),
     // Show a remove button on the chip.
-    prop removable bool
-    prop selected bool
-    prop disabled bool
-    @click ClickEvent
-    @remove DismissEvent
-    children none
-}
+    removable bool,
+    selected bool,
+    disabled bool,
+    @click ClickEvent,
+    @remove DismissEvent,
+) {}
 
 // Circular or shaped user profile image with fallback to initials.
-component avatar {
-    prop src string
-    prop alt string
+component avatar(
+    src string,
+    alt string,
     // Fallback text shown when no image is available.
-    prop initials string
-    prop size string enum(small, medium, large, xlarge)
-    prop variant string enum(circle, square, rounded)
-    @click ClickEvent
-    children none
-}
+    initials string,
+    size string enum(small, medium, large, xlarge),
+    variant string enum(circle, square, rounded),
+    @click ClickEvent,
+) {}
 
 // Styled container for grouping related content with an optional click action.
-component card {
-    prop variant string enum(outlined, elevated, filled)
+component card(
+    variant string enum(outlined, elevated, filled),
     // Make the entire card a clickable target.
-    prop clickable bool
-    @click ClickEvent
-    children many
-}
+    clickable bool,
+    @click ClickEvent,
+) list<component> {}

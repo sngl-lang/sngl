@@ -79,12 +79,12 @@ func componentToSchema(comp *ast.Component, comments []ast.Comment) *ComponentSc
 	schema := &ComponentSchema{
 		Props:    make(map[string]PropSchema),
 		Events:   make(map[string]string),
-		Children: ChildrenMany, // default
+		Children: ChildrenNone, // default: no children
 		Doc:      docForPos(comments, comp.Pos.Line),
 	}
-	for _, p := range comp.PropDecls {
+	for _, p := range comp.Params {
 		schema.Props[p.Name] = PropSchema{
-			Type: TypeFromHint(p.TypeHint),
+			Type: TypeFromHint(p.Default.TypeHint),
 			Enum: p.Enum,
 			Doc:  docForPos(comments, p.Pos.Line),
 		}
@@ -92,14 +92,7 @@ func componentToSchema(comp *ast.Component, comments []ast.Comment) *ComponentSc
 	for _, e := range comp.EventDecls {
 		schema.Events[e.Name] = e.PayloadType
 	}
-	switch comp.ChildPolicy {
-	case "none":
-		schema.Children = ChildrenNone
-	case "one":
-		schema.Children = ChildrenOne
-	case "many":
-		schema.Children = ChildrenMany
-	}
+	schema.Children = childrenFromType(comp.ChildrenType)
 	return schema
 }
 

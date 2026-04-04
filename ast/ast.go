@@ -238,18 +238,17 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 }
 
 type Component struct {
-	Pos         Pos
-	Name        string
-	Disabled    bool
-	Params      []*Param     // @param (user-defined components)
-	Consts      []*Const     // const declarations
-	Data        []*Data      // var declarations (component-scoped state)
-	Functions   []*FuncDef   // func declarations
-	Timers      []*Timer     // timer declarations
-	PropDecls   []*PropDecl  // @prop (stdlib schemas)
-	EventDecls  []*EventDecl // @event (stdlib schemas)
-	ChildPolicy string       // @children value: "none"/"one"/"many"/""
-	Body        []*VisualNode
+	Pos          Pos
+	Name         string
+	Disabled     bool
+	Params       []*Param      // params/props declared in ()
+	Consts       []*Const      // const declarations
+	Data         []*Data       // var declarations (component-scoped state)
+	Functions    []*FuncDef    // func declarations
+	Timers       []*Timer      // timer declarations
+	EventDecls   []*EventDecl  // @event declarations in ()
+	ChildrenType string        // return-type position: "", "component", "list<component>", "option<component>", etc.
+	Body         []*VisualNode
 }
 
 type Param struct {
@@ -258,7 +257,8 @@ type Param struct {
 	Default       Expr
 	Required      bool
 	Disabled      bool
-	Bidirectional bool     // :name — desugars to param + change event
+	Bidirectional bool      // :name — desugars to param + change event
+	Enum          []string  // optional enum constraints (e.g., enum(text, password, number))
 	Resolved      *TypeInfo // populated by checker
 }
 

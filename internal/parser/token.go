@@ -105,8 +105,6 @@ var keywords = map[string]TokenType{
 	"var":       KW_VAR,
 	"style":     KW_STYLE,
 	"component": KW_COMPONENT,
-	"prop":      KW_PROP,
-	"children":  KW_CHILDREN,
 	"if":        KW_IF,
 	"for":       KW_FOR,
 	"else":      KW_ELSE,

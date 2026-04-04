@@ -13,8 +13,10 @@ cmp input.sngl expected.sngl
 component main {
 }
 -- unformatted.sngl --
-component   main {
+component   main   {
+    var   x   =   0
 }
 -- expected.sngl --
 component main {
+    var x = 0
 }

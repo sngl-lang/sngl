@@ -13,7 +13,7 @@ sngl fmt -q copy.sngl
 cmp copy.sngl expected.sngl
 
 -- dir/messy.sngl --
-component  widget  {
+component widget  {
     var   x  =  0
     text(value="{x}")
 }
@@ -24,7 +24,7 @@ component widget {
     text(value="{x}")
 }
 -- messy.sngl --
-component  main  {
+component main  {
 }
 -- expected.sngl --
 component main {
