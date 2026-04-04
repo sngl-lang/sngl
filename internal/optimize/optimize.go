@@ -127,9 +127,6 @@ func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNo
 		}
 		foldExprMap(vn.Props, vars)
 		foldExprMap(vn.Events, vars)
-		for _, an := range vn.AttrNodes {
-			foldExprMap(an.Props, vars)
-		}
 
 		// Recurse into children.
 		vn.Children = optimizeNodes(vn.Children, vars)

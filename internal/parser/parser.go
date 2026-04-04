@@ -1155,28 +1155,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 			if p.at(RBRACE) {
 				break
 			}
-			if p.at(AT) {
-				// Attribute node
-				p.advance()
-				attrName := p.expect(IDENT).Literal
-				p.expect(LPAREN)
-				attrProps := map[string]ast.Expr{}
-				for !p.at(RPAREN) && !p.at(EOF) {
-					key := p.expect(IDENT).Literal
-					p.expect(ASSIGN)
-					attrProps[key] = p.parseExprAsExpr()
-					if p.at(COMMA) {
-						p.advance()
-					}
-				}
-				p.expect(RPAREN)
-				if vn.AttrNodes == nil {
-					vn.AttrNodes = map[string]*ast.AttrNode{}
-				}
-				vn.AttrNodes[attrName] = &ast.AttrNode{Pos: p.pos(), Name: attrName, Props: attrProps}
-			} else {
-				vn.Children = append(vn.Children, p.parseNodeOrControl())
-			}
+			vn.Children = append(vn.Children, p.parseNodeOrControl())
 			p.skipSemicolons()
 		}
 		p.expect(RBRACE)

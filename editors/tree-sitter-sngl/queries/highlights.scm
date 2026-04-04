@@ -71,9 +71,6 @@
 (prop_binding name: (identifier) @property)
 (event_handler "@" @punctuation.special)
 (event_handler name: (identifier) @property)
-(attr_node "@" @punctuation.special)
-(attr_node name: (identifier) @property)
-
 ; Statements
 (assignment_statement operator: (_) @operator)
 (toggle_statement "!!" @operator)

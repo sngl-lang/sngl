@@ -724,22 +724,11 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		line += "(" + strings.Join(props, ", ") + ")"
 	}
 
-	hasBody := len(vn.Children) > 0 || len(vn.AttrNodes) > 0
+	hasBody := len(vn.Children) > 0
 	if hasBody {
 		line += " {"
 		f.writeLine(line)
 		f.indent++
-
-		// Attr nodes
-		for _, name := range sortedKeys(vn.AttrNodes) {
-			an := vn.AttrNodes[name]
-			var anProps []string
-			for _, k := range sortedKeys(an.Props) {
-				v := an.Props[k]
-				anProps = append(anProps, k+"="+f.formatExprValue(v))
-			}
-			f.writeLine("@" + an.Name + "(" + strings.Join(anProps, ", ") + ")")
-		}
 
 		// Children
 		for _, child := range vn.Children {

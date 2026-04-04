@@ -58,7 +58,6 @@ func (vn *VisualNode) clone() *VisualNode {
 	c.For = cloneForClause(vn.For)
 	c.Props = cloneExprMap(vn.Props)
 	c.Events = cloneExprMap(vn.Events)
-	c.AttrNodes = cloneAttrNodes(vn.AttrNodes)
 	c.Children = cloneVisualNodes(vn.Children)
 	return &c
 }
@@ -90,19 +89,6 @@ func cloneExprMap(m map[string]Expr) map[string]Expr {
 	}
 	out := make(map[string]Expr, len(m))
 	maps.Copy(out, m)
-	return out
-}
-
-func cloneAttrNodes(m map[string]*AttrNode) map[string]*AttrNode {
-	if m == nil {
-		return nil
-	}
-	out := make(map[string]*AttrNode, len(m))
-	for k, v := range m {
-		c := *v
-		c.Props = cloneExprMap(v.Props)
-		out[k] = &c
-	}
 	return out
 }
 

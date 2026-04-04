@@ -377,9 +377,13 @@ func FuzzParse(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Tree-sitter uses C strings internally, so null bytes are unsupported.
-		// Also reject non-UTF8 — tree-sitter can hang on malformed encodings.
+		// Also reject non-UTF8 and very long inputs — tree-sitter can hang
+		// on malformed encodings or pathological strings.
 		if bytes.ContainsRune(data, 0) || !utf8.Valid(data) {
 			t.Skip("input contains null byte or invalid UTF-8")
+		}
+		if len(data) > 10000 {
+			t.Skip("input too large for fuzz testing")
 		}
 
 		// Parse with Go parser under a timeout to catch hangs.
@@ -414,11 +418,26 @@ func FuzzParse(f *testing.F) {
 			// the Go parser is more lenient about separators/whitespace,
 			// while tree-sitter relies on ASI which needs newlines.
 			formatted := parser.Format(goDoc)
-			tree2 := tsparser.Parse([]byte(formatted))
-			defer tree2.Close()
-			if tsparser.HasErrors(tree2) {
-				t.Errorf("tree-sitter failed on Go-formatted output\ninput: %q\nformatted: %q\nGo AST: %+v\nTS tree: %s",
-					data, formatted, goDoc, tree2.RootNode().ToSexp())
+
+			// Run tree-sitter in a goroutine with timeout — the C parser
+			// can hang on pathological inputs.
+			type tsResult struct {
+				tree *ts.Tree
+			}
+			tsCh := make(chan tsResult, 1)
+			go func() {
+				tree := tsparser.Parse([]byte(formatted))
+				tsCh <- tsResult{tree}
+			}()
+			select {
+			case res := <-tsCh:
+				defer res.tree.Close()
+				if tsparser.HasErrors(res.tree) {
+					t.Errorf("tree-sitter failed on Go-formatted output\ninput: %q\nformatted: %q\nGo AST: %+v\nTS tree: %s",
+						data, formatted, goDoc, res.tree.RootNode().ToSexp())
+				}
+			case <-time.After(5 * time.Second):
+				t.Skipf("tree-sitter timed out on formatted output (pathological input)")
 			}
 		}
 

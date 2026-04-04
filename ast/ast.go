@@ -298,8 +298,7 @@ type VisualNode struct {
 	Props      map[string]Expr
 	Events     map[string]Expr
 	Bindings   map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
-	AttrNodes  map[string]*AttrNode
-	Children   []*VisualNode
+	Children []*VisualNode
 }
 
 // StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
@@ -325,8 +324,3 @@ func (vn *VisualNode) StyleFields() map[string]Expr {
 	return m
 }
 
-type AttrNode struct {
-	Pos   Pos
-	Name  string
-	Props map[string]Expr
-}

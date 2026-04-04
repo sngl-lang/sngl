@@ -377,9 +377,7 @@ Counter(label="Score", start=10)
 <!-- SNGL-component -->
 
 ```sngl
-text(value="hello", style={fontSize=24}) {
-    @tooltip(text="A tip")
-}
+text(value="hello", style={fontSize=24})
 ```
 
 Both `()` and `{}` are optional:
@@ -414,18 +412,6 @@ button(@click={
 ```sngl
 vbox(style={gap=12, padding=16})
 text(value="hello", style={color=#007700, fontSize=24})
-```
-
-### Attribute Nodes
-
-Inside a children block, `@name(props)` defines attribute metadata:
-
-<!-- SNGL-component -->
-
-```sngl
-text(value="hello") {
-    @tooltip(text="A helpful tip")
-}
 ```
 
 ## Control Flow

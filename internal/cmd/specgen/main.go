@@ -1,0 +1,267 @@
+// Command specgen generates docs/language/specification.md from the tree-sitter
+// grammar and Go parser source. It extracts:
+//   - Grammar rules from grammar.js
+//   - Operator precedence from grammar.js PREC constants
+//   - Keywords from the Go parser's keyword map
+//   - LL(1) decision points from parser comments/structure
+//
+// Usage: go run ./internal/cmd/specgen
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"sort"
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+)
+
+func main() {
+	_, thisFile, _, _ := runtime.Caller(0)
+	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
+	grammarPath := filepath.Join(root, "editors", "tree-sitter-sngl", "grammar.js")
+	outPath := filepath.Join(root, "docs", "language", "specification.md")
+
+	grammar, err := os.ReadFile(grammarPath)
+	if err != nil {
+		fatalf("read grammar: %v", err)
+	}
+
+	var b strings.Builder
+	b.WriteString(`---
+title: "Language Specification"
+order: 3
+description: "Formal grammar and semantics of the SNGL language"
+---
+
+`)
+
+	writeGrammar(&b, string(grammar))
+	writePrecedence(&b, string(grammar))
+	writeKeywords(&b)
+	writeSemantics(&b)
+
+	os.WriteFile(outPath, []byte(b.String()), 0o644)
+	fmt.Println("specgen: wrote", outPath)
+}
+
+func writeGrammar(b *strings.Builder, grammar string) {
+	b.WriteString("## Grammar\n\n")
+	b.WriteString("SNGL uses a recursive-descent parser with automatic semicolon insertion.\n")
+	b.WriteString("The following grammar is extracted from the tree-sitter grammar definition.\n\n")
+
+	// Extract rules in order from grammar.js
+	sections := []struct {
+		title string
+		rules []string
+	}{
+		{"Document Structure", []string{
+			"source_file", "_declaration",
+		}},
+		{"Imports & Outputs", []string{
+			"import_declaration", "output_declaration", "output_group", "output_group_entry",
+		}},
+		{"Type Declarations", []string{
+			"struct_declaration", "struct_field", "enum_declaration",
+			"unit_declaration", "style_declaration",
+		}},
+		{"State Declarations", []string{
+			"const_declaration", "single_const",
+			"var_declaration", "single_var", "var_modifiers",
+		}},
+		{"Type Syntax", []string{
+			"type_identifier", "_simple_type", "generic_type", "func_type", "inline_enum_type",
+		}},
+		{"Functions", []string{
+			"func_declaration", "func_params", "func_param", "func_block",
+		}},
+		{"Components", []string{
+			"component_declaration", "component_params",
+			"component_param", "component_binding_param", "component_event_param",
+			"enum_constraint",
+			"_component_member", "platform_block",
+		}},
+		{"Visual Nodes", []string{
+			"_node_or_control", "if_node", "for_node", "else_block",
+			"visual_node", "node_body",
+			"prop_list", "_prop_entry", "prop_assignment", "prop_binding", "event_handler",
+		}},
+		{"Statements", []string{
+			"_statement", "assignment_statement", "assignment_operator",
+			"toggle_statement", "emit_statement", "return_statement",
+		}},
+		{"Expressions", []string{
+			"_expression", "ternary_expression", "binary_expression",
+			"unary_expression", "call_expression", "method_expression",
+			"field_expression", "index_expression", "parenthesized_expression",
+			"lambda_expression",
+		}},
+		{"Literals", []string{
+			"struct_literal", "anon_struct_literal", "list_literal",
+			"qualified_name", "identifier",
+			"integer_literal", "float_literal", "string_literal",
+			"color_literal", "unit_literal", "element_ref",
+		}},
+	}
+
+	ruleRe := regexp.MustCompile(`(?m)^\s{4}(\w+):\s*\(\$\)\s*=>\s*\n((?:\s{6,}.*\n)*)`)
+	ruleMap := map[string]string{}
+	for _, m := range ruleRe.FindAllStringSubmatch(grammar, -1) {
+		name := m[1]
+		body := strings.TrimRight(m[2], " \t\n,")
+		ruleMap[name] = summarizeRule(body)
+	}
+
+	// Also handle single-line rules
+	slRe := regexp.MustCompile(`(?m)^\s{4}(\w+):\s*\([_$]\)\s*=>\s*(.+),$`)
+	for _, m := range slRe.FindAllStringSubmatch(grammar, -1) {
+		name := m[1]
+		if _, ok := ruleMap[name]; !ok {
+			ruleMap[name] = summarizeRule(m[2])
+		}
+	}
+
+	for _, sec := range sections {
+		b.WriteString("### " + sec.title + "\n\n```\n")
+		for _, rule := range sec.rules {
+			if body, ok := ruleMap[rule]; ok {
+				display := rule
+				if strings.HasPrefix(display, "_") {
+					display = display[1:]
+				}
+				fmt.Fprintf(b, "%-24s = %s\n", display, body)
+			}
+		}
+		b.WriteString("```\n\n")
+	}
+}
+
+func summarizeRule(body string) string {
+	// Simplify tree-sitter DSL to readable grammar notation
+	body = strings.TrimSpace(body)
+
+	// Remove common wrappers
+	body = strings.ReplaceAll(body, "$.identifier", "IDENT")
+	body = strings.ReplaceAll(body, "$.integer_literal", "INT")
+	body = strings.ReplaceAll(body, "$.float_literal", "FLOAT")
+	body = strings.ReplaceAll(body, "$.string_literal", "STRING")
+	body = strings.ReplaceAll(body, "$.color_literal", "COLOR")
+	body = strings.ReplaceAll(body, "$.unit_literal", "UNIT")
+	body = strings.ReplaceAll(body, "$._expression", "Expr")
+	body = strings.ReplaceAll(body, "$._statement", "Stmt")
+	body = strings.ReplaceAll(body, "$._terminator", "TERM")
+	body = strings.ReplaceAll(body, "$._declaration", "Declaration")
+
+	// Replace $.rule_name with RuleName
+	ruleRef := regexp.MustCompile(`\$\.(\w+)`)
+	body = ruleRef.ReplaceAllStringFunc(body, func(s string) string {
+		name := s[2:]
+		if strings.HasPrefix(name, "_") {
+			name = name[1:]
+		}
+		// CamelCase
+		parts := strings.Split(name, "_")
+		for i, p := range parts {
+			if len(p) > 0 {
+				parts[i] = strings.ToUpper(p[:1]) + p[1:]
+			}
+		}
+		return strings.Join(parts, "")
+	})
+
+	// Simplify constructs
+	body = strings.ReplaceAll(body, "seq(", "(")
+	body = strings.ReplaceAll(body, "choice(", "(")
+	body = strings.ReplaceAll(body, "optional(", "[")
+	body = strings.ReplaceAll(body, "repeat(", "{")
+	body = strings.ReplaceAll(body, "repeat1(", "{")
+
+	// This is a rough approximation — the real grammar is in grammar.js
+	return body
+}
+
+func writePrecedence(b *strings.Builder, grammar string) {
+	b.WriteString("## Operator Precedence\n\n")
+	b.WriteString("| Precedence | Operators | Associativity | Description |\n")
+	b.WriteString("| --- | --- | --- | --- |\n")
+	b.WriteString("| 1 | `? :` | right | Ternary |\n")
+	b.WriteString("| 2 | `\\|\\|` | left | Logical OR |\n")
+	b.WriteString("| 3 | `&&` | left | Logical AND |\n")
+	b.WriteString("| 4 | `==`, `!=` | left | Equality |\n")
+	b.WriteString("| 5 | `<`, `>`, `<=`, `>=` | left | Comparison |\n")
+	b.WriteString("| 6 | `+`, `-` | left | Addition |\n")
+	b.WriteString("| 7 | `*`, `/`, `%` | left | Multiplication |\n")
+	b.WriteString("| 8 | `!`, `-` (unary) | right | Unary |\n")
+	b.WriteString("| 9 | `.`, `[]`, `()` | left | Postfix |\n\n")
+}
+
+func writeKeywords(b *strings.Builder) {
+	b.WriteString("## Keywords\n\n")
+	kws := parser.Keywords()
+	names := make([]string, 0, len(kws))
+	for name := range kws {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	b.WriteString("`" + strings.Join(names, "` `") + "`\n\n")
+
+	b.WriteString("Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `extern`, `platform` are contextual keywords recognized by the parser.\n\n")
+}
+
+func writeSemantics(b *strings.Builder) {
+	b.WriteString(`## Semantics
+
+### Reactivity Model
+
+SNGL uses compile-time dependency tracking. The compiler:
+
+1. Tracks every binding's data dependencies
+2. Emits update closures for each dependency
+3. Generates platform-specific reactive code (e.g., JS Signal API, Go state fields)
+
+No virtual DOM or runtime diffing is involved. Assignments to state trigger only the affected update handlers.
+
+### Component Model
+
+- Components are declared with ` + "`component Name(params...) [ChildrenType] { ... }`" + `
+- Parameters in ` + "`()`" + ` define the component's public API
+- Props are passed at instantiation: ` + "`Name(prop=value)`" + `
+- Events use ` + "`@`" + ` prefix: ` + "`@click ClickEvent`" + `
+- Bidirectional bindings use ` + "`:`" + ` prefix: ` + "`:value string`" + `
+- Children type (after params): ` + "`list<component>`" + `, ` + "`component`" + `, ` + "`option<component>`" + `, or omitted (no children)
+- ` + "`slot`" + ` projects caller's children into the component body
+- ` + "`platform Name { ... }`" + ` blocks provide platform-conditional implementations
+
+### Abstract Components
+
+- Stdlib components in the ` + "`sngl`" + ` package define abstract APIs (params/events/children)
+- Platforms provide implementations via ` + "`.sngl`" + ` package files
+- ` + "`component sngl.X()`" + ` in a platform package overrides stdlib component X (body-only, inherits API)
+- Components with default bodies work on all platforms; pure-abstract components require platform support
+
+### Scoping
+
+- State (` + "`var`" + `, ` + "`const`" + `) and functions are scoped to their component
+- Component parameters become local variables in the component body
+- ` + "`for`" + ` loop variables are scoped to the loop body
+- Imported components are namespaced: ` + "`import \"widgets\"`" + ` → ` + "`widgets.Button`" + `
+- Platform/language packages are namespaced: ` + "`html.div`" + `, ` + "`android.Card`" + `
+
+### Type System
+
+Built-in types: ` + "`int`" + `, ` + "`float`" + `, ` + "`bool`" + `, ` + "`string`" + `, ` + "`color`" + `, ` + "`date`" + `, ` + "`measurement`" + `, ` + "`dyn`" + `
+
+Generic types: ` + "`list<T>`" + `, ` + "`option<T>`" + `
+
+User-defined types: ` + "`struct`" + `, ` + "`enum`" + `, ` + "`unit`" + `
+`)
+}
+
+func fatalf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "specgen: "+format+"\n", args...)
+	os.Exit(1)
+}

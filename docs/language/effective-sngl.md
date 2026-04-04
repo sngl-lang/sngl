@@ -648,18 +648,6 @@ for item = items {
 }
 ```
 
-### Attribute nodes
-
-Inside a node's body block, `@name(props)` attaches metadata:
-
-<!-- SNGL-component -->
-
-```sngl
-text(value="hello") {
-    @tooltip(text="A helpful tip")
-}
-```
-
 ### Element refs
 
 Tag a node with `#id` to reference it in tests:

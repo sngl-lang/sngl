@@ -18,7 +18,6 @@ component main {
         text(ref="searchLabel", value="Search: " + searchText)
         for item, idx = items {
             Card(subtitle=string(idx), title=item) {
-                @attrs(data="extra")
                 text(value="content")
             }
         }

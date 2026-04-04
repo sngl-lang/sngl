@@ -6,173 +6,489 @@ description: "Formal grammar and semantics of the SNGL language"
 
 ## Grammar
 
-SNGL uses an LL(1) grammar parseable with a single token of lookahead via recursive descent.
+SNGL uses a recursive-descent parser with automatic semicolon insertion.
+The following grammar is extracted from the tree-sitter grammar definition.
 
 ### Document Structure
 
 ```
-Document       = Declaration*
-
-Declaration    = "import" STRING
-               | "output" IDENT IDENT ("(" KVList ")")?
-               | "output" "{" OutputSpec* "}"
-               | "struct" IDENT "{" StructField* "}"
-               | "enum" IDENT "{" IDENT ("," IDENT)* "}"
-               | "unit" IDENT "(" UnitSuffixDef ("," UnitSuffixDef)* ")"
-               | "style" IDENT "{" StyleProp* "}"
-               | "styles" "{" StyleDef* "}"
-               | FuncDecl
-               | ComponentDecl
+source_file              = {Declaration_with_terminator)
+declaration              = (
+        ImportDeclaration,
+        OutputDeclaration,
+        StructDeclaration,
+        EnumDeclaration,
+        UnitDeclaration,
+        StyleDeclaration,
+        ConstDeclaration,
+        VarDeclaration,
+        FuncDeclaration,
+        TimerDeclaration,
+        ComponentDeclaration,
+        TestDeclaration,
+      )
 ```
 
-### Output Declarations
+### Imports & Outputs
 
 ```
-OutputSpec     = IDENT IDENT ("(" KVList ")")?
-               | IDENT "{" PlatformList "}"
+import_declaration       = ("import", STRING)
+output_declaration       = ("output", [KvList), OutputGroup)
+output_group             = (
+        "{",
+        {(OutputGroupEntry, TERM)),
+        "}",
+      )
+output_group_entry       = (
+        field("lang", IDENT),
+        "{",
+        {
+          (
+            field("platform", IDENT),
+            [KvList),
+            TERM,
+          ),
+        ),
+        "}",
+      )
+```
 
-PlatformList   = IDENT ("(" KVList ")")? ("," IDENT ("(" KVList ")")?)*
+### Type Declarations
+
+```
+struct_declaration       = (
+        "struct",
+        field("name", IDENT),
+        "{",
+        {(StructField, TERM)),
+        "}",
+      )
+struct_field             = (
+        field("name", IDENT),
+        field("type", TypeIdentifier),
+        [("=", field("default", Expr))),
+      )
+enum_declaration         = (
+        "enum",
+        field("name", IDENT),
+        "{",
+        commaSep(IDENT),
+        [","),
+        "}",
+      )
+unit_declaration         = (
+        "unit",
+        field("name", IDENT),
+        "(",
+        commaSep(UnitSuffix),
+        ")",
+      )
+style_declaration        = (
+        "style",
+        field("name", IDENT),
+        "{",
+        {(StyleProperty, TERM)),
+        "}",
+      )
 ```
 
 ### State Declarations
 
 ```
-ConstDecl      = "const" IDENT Type? "=" Expr
-               | "const" "(" ConstField ("," ConstField)* ","? ")"
-
-ConstField     = IDENT Type? "=" Expr
-
-VarDecl        = "var" IDENT Type? "=" Expr VarMod*
-               | "var" IDENT Type VarMod*
-               | "var" "(" VarField ("," VarField)* ","? ")"
-
-VarField       = IDENT Type? "=" Expr VarMod*
-               | IDENT Type VarMod*
-
-VarMod         = "extern"
-               | "@" IDENT?
+const_declaration        = (
+        ("const", SingleConst),
+        ("const", "(", {(SingleConst, TERM)), ")"),
+      )
+single_const             = (
+        field("name", IDENT),
+        [field("type", TypeIdentifier)),
+        "=",
+        field("value", Expr),
+      )
+var_declaration          = (
+        ("var", SingleVar),
+        ("var", "(", {(SingleVar, TERM)), ")"),
+      )
+single_var               = (
+        field("name", IDENT),
+        [
+          (
+            (
+              field("type", TypeIdentifier),
+              [("=", field("init", Expr))),
+            ),
+            ("=", field("init", Expr)),
+          ),
+        ),
+        [VarModifiers),
+      )
+var_modifiers            = {
+        (
+          ExternModifier,
+          TriggerModifier,
+        ),
+      )
 ```
 
 ### Type Syntax
 
 ```
-Type           = IDENT ("<" Type ("," Type)* ">")?
-               | "func" "(" TypeList? ")" ("->" Type)?
-               | "enum" "<" IDENT ("|" IDENT)* ">"
-
-TypeList       = Type ("," Type)*
+type_identifier          = (
+        SimpleType,
+        GenericType,
+        FuncType,
+        InlineEnumType,
+      )
+simple_type              = (QualifiedName, IDENT)
+generic_type             = (
+        field("name", SimpleType),
+        "<",
+        commaSep1(TypeIdentifier),
+        ">",
+      )
+func_type                = (
+        "func",
+        "(",
+        commaSep(TypeIdentifier),
+        ")",
+        [("->", field("return_type", TypeIdentifier))),
+      )
+inline_enum_type         = ("enum", "<", sepBy1("|", IDENT), ">")
 ```
 
-### Function Declarations
+### Functions
 
 ```
-FuncDecl       = "func" IDENT "(" FuncParamList? ")" Type? FuncBody
-
-FuncParamList  = FuncParam ("," FuncParam)*
-
-FuncParam      = IDENT Type
-
-FuncBody       = Expr
-               | "{" FuncStmt* ReturnStmt? "}"
-
-FuncStmt       = LocalVar | AssignStmt | ToggleStmt | MethodCallStmt
-               | CallStmt | EmitStmt
-
-LocalVar       = "var" IDENT Type? "=" Expr
-
-ReturnStmt     = "return" Expr?
-
-CallStmt       = IDENT "(" ArgList? ")"
+func_declaration         = (
+        "func",
+        field("name", FuncName),
+        FuncParams,
+        (
+          // Block form with optional return type
+          ([field("return_type", TypeIdentifier)), FuncBlock),
+          // Expression form — body is the expression, no return type, no =
+          field("body", Expr),
+        ),
+      )
+func_params              = (
+        "(",
+        commaSep(FuncParam),
+        ")",
+      )
+func_param               = (
+        field("name", IDENT),
+        [field("type", TypeIdentifier)),
+      )
+func_block               = prec(1, (
+        "{",
+        {(FuncBodyStmt, TERM)),
+        "}",
+      ))
 ```
 
-Expression form (`Expr`) is for pure single-expression functions; the return type is inferred from the expression. Block form allows local variables, statements, and an optional `return`. Functions with a return type must end with a `return` in block form. Void functions omit the return type and may mutate component state.
-
-### Component Members
+### Components
 
 ```
-ComponentDecl  = "component" IDENT ParamList? ChildrenType? "{" ComponentMember* "}"
-ParamList      = "(" ParamOrEvent ("," ParamOrEvent)* ")"
-ParamOrEvent   = Param | EventDecl | BiDiProp
-Param          = IDENT Type? "=" Expr
-               | IDENT Type
-EventDecl      = "@" IDENT IDENT
-BiDiProp       = ":" IDENT Type
-ChildrenType   = "component"
-               | "list" "<" "component" ">"
-               | "option" "<" "component" ">"
-ComponentMember = ConstDecl
-               | VarDecl
-               | FuncDecl
-               | NodeOrControl
+component_declaration    = (
+        "component",
+        field("name", (QualifiedName, IDENT)),
+        [ComponentParams),
+        [field("children_type", TypeIdentifier)),
+        "{",
+        {([Slashdash), ComponentMember, TERM)),
+        "}",
+      )
+component_params         = (
+        "(",
+        commaSep((
+          ComponentEventParam,
+          ComponentBindingParam,
+          ComponentParam,
+        )),
+        ")",
+      )
+component_param          = (
+        field("name", IDENT),
+        [field("type", TypeIdentifier)),
+        [EnumConstraint),
+        [("=", field("default", Expr))),
+        ["required"),
+      )
+component_binding_param  = (
+        ":",
+        field("name", IDENT),
+        [field("type", TypeIdentifier)),
+        [("=", field("default", Expr))),
+      )
+component_event_param    = (
+        "@",
+        field("name", IDENT),
+        [field("payload_type", IDENT)),
+      )
+enum_constraint          = (
+        "enum",
+        "(",
+        commaSep((IDENT, INT, STRING)),
+        ")",
+      )
+component_member         = (
+        ConstDeclaration,
+        VarDeclaration,
+        FuncDeclaration,
+        TimerDeclaration,
+        PlatformBlock,
+        NodeOrControl,
+      )
+platform_block           = (
+        "platform",
+        field("name", IDENT),
+        "{",
+        {(NodeOrControl, TERM)),
+        "}",
+      )
 ```
 
 ### Visual Nodes
 
 ```
-NodeOrControl  = "if" Expr "{" VisualNode "}"
-               | "for" IDENT ("," IDENT)? "=" Expr "{" VisualNode "}"
-               | VisualNode
-
-VisualNode     = IDENT ("(" PropList ")")? ("{" NodeBody* "}")?
-
-NodeBody       = "@" IDENT "(" KVList ")"
-               | NodeOrControl
-
-PropList       = Prop ("," Prop)*
-
-Prop           = "@" IDENT "=" "{" StmtList "}"
-               | "style" "=" StyleLiteral
-               | IDENT "=" Expr
-
-StyleLiteral   = "{" (IDENT "=" Expr ("," IDENT "=" Expr)*)? "}"
-
-KVList         = IDENT "=" Expr ("," IDENT "=" Expr)*
+node_or_control          = (IfNode, ForNode, VisualNode)
+if_node                  = (
+        "if",
+        field("condition", Expr),
+        "{",
+        [NodeOrControl),
+        "}",
+      )
+for_node                 = (
+        "for",
+        field("variable", IDENT),
+        [(",", field("index", IDENT))),
+        "=",
+        field("iterable", Expr),
+        "{",
+        [NodeOrControl),
+        "}",
+        [field("else", ElseBlock)),
+      )
+else_block               = (
+        "else",
+        NodeBody,
+      )
+visual_node              = prec.right(
+        (
+          field("component", (QualifiedName, IDENT)),
+          [field("element_id", ElementRef)),
+          [PropList),
+          [NodeBody),
+        ),
+      )
+node_body                = (
+        "{",
+        {(NodeBodyMember, TERM)),
+        "}",
+      )
+prop_list                = (
+        "(",
+        optCommaSep(PropEntry),
+        ")",
+      )
+prop_entry               = (
+        PropAssignment,
+        PropBinding,
+        EventHandler,
+      )
+prop_assignment          = (
+        field("name", IDENT),
+        "=",
+        field("value", (AnonStructLiteral, Expr)),
+      )
+prop_binding             = (
+        ":",
+        field("name", IDENT),
+        "=",
+        field("value", Expr),
+      )
+event_handler            = (
+        "@",
+        field("name", IDENT),
+        "=",
+        "{",
+        {(Stmt, TERM)),
+        "}",
+      )
 ```
 
 ### Statements
 
 ```
-StmtList       = Stmt (";" Stmt)* ";"?
-
-Stmt           = AssignStmt | ToggleStmt | MethodCallStmt | CallStmt | EmitStmt
-
-AssignStmt     = LValue "=" Expr
-               | LValue "+=" Expr
-               | LValue "-=" Expr
-               | LValue "*=" Expr
-               | LValue "/=" Expr
-               | LValue "%=" Expr
-
-ToggleStmt     = LValue "!!"
-
-LValue         = IDENT ("." IDENT | "[" Expr "]")*
-
-MethodCallStmt = LValue "." IDENT "(" ArgList? ")"
-
-EmitStmt       = "@" IDENT "(" ArgList? ")"
-
-ArgList        = Expr ("," Expr)*
+statement                = (
+        AssignmentStatement,
+        ToggleStatement,
+        EmitStatement,
+        Expr,
+      )
+assignment_statement     = (
+        field("target", Expr),
+        field("operator", AssignmentOperator),
+        field("value", Expr),
+      )
+toggle_statement         = (field("target", Expr), "!!")
+emit_statement           = (
+        "@",
+        field("name", IDENT),
+        "(",
+        commaSep(Expr),
+        ")",
+      )
+return_statement         = ("return", [field("value", Expr)))
 ```
 
 ### Expressions
 
 ```
-Expr           = Ternary
-Ternary        = LogicalOr ("?" Expr ":" Expr)?
-LogicalOr      = LogicalAnd ("||" LogicalAnd)*
-LogicalAnd     = Equality ("&&" Equality)*
-Equality       = Comparison (("==" | "!=") Comparison)*
-Comparison     = Addition (("<" | ">" | "<=" | ">=") Addition)*
-Addition       = Multiplication (("+" | "-") Multiplication)*
-Multiplication = Unary (("*" | "/" | "%") Unary)*
-Unary          = ("!" | "-") Unary | Postfix
-Postfix        = Primary (Selector | Index | Call)*
-Selector       = "." IDENT
-Index          = "[" Expr "]"
-Call           = "(" ArgList? ")"
-Primary        = IDENT | Literal | "(" Expr ")" | StructLiteral | ListLiteral
-StructLiteral  = IDENT "{" (IDENT ":" Expr ("," IDENT ":" Expr)* ","?)? "}"
-ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
+expression               = (
+        TernaryExpression,
+        BinaryExpression,
+        UnaryExpression,
+        CallExpression,
+        MethodExpression,
+        FieldExpression,
+        IndexExpression,
+        ParenthesizedExpression,
+        StructLiteral,
+        AnonStructLiteral,
+        ListLiteral,
+        LambdaExpression,
+        IDENT,
+        INT,
+        FLOAT,
+        STRING,
+        ElementRef,
+        COLOR,
+        UNIT,
+        True,
+        False,
+        Null,
+      )
+ternary_expression       = prec.right(
+        PREC.TERNARY,
+        (
+          field("condition", Expr),
+          "?",
+          field("consequence", Expr),
+          ":",
+          field("alternative", Expr),
+        ),
+      )
+binary_expression        = (
+        ...[
+          ["+", PREC.ADDITION],
+          ["-", PREC.ADDITION],
+          ["*", PREC.MULTIPLICATION],
+          ["/", PREC.MULTIPLICATION],
+          ["%", PREC.MULTIPLICATION],
+          ["==", PREC.EQUALITY],
+          ["!=", PREC.EQUALITY],
+          ["<", PREC.COMPARISON],
+          [">", PREC.COMPARISON],
+          ["<=", PREC.COMPARISON],
+          [">=", PREC.COMPARISON],
+          ["&&", PREC.AND],
+          ["||", PREC.OR],
+        ].map(([op, prec_val]) =>
+          prec.left(
+            /** @type {number} */ (prec_val),
+            (
+              field("left", Expr),
+              // @ts-ignore
+              field("operator", op),
+              field("right", Expr),
+            ),
+          ),
+        ),
+      )
+unary_expression         = prec(
+        PREC.UNARY,
+        (
+          field("operator", ("!", "-")),
+          field("operand", Expr),
+        ),
+      )
+call_expression          = prec(
+        PREC.POSTFIX,
+        (
+          field("function", IDENT),
+          "(",
+          commaSep(Expr),
+          ")",
+        ),
+      )
+method_expression        = prec(
+        PREC.POSTFIX,
+        (
+          field("receiver", Expr),
+          ".",
+          field("method", (IDENT, EventMethod)),
+          "(",
+          commaSep(Expr),
+          ")",
+        ),
+      )
+field_expression         = prec(
+        PREC.POSTFIX,
+        (
+          field("operand", Expr),
+          ".",
+          field("field", (IDENT, EventMethod)),
+        ),
+      )
+index_expression         = prec(
+        PREC.POSTFIX,
+        (
+          field("operand", Expr),
+          "[",
+          field("index", Expr),
+          "]",
+        ),
+      )
+parenthesized_expression = ("(", Expr, ")")
+lambda_expression        = (
+        "func",
+        "(",
+        commaSep(FuncParam),
+        ")",
+        field("body", Expr),
+      )
+```
+
+### Literals
+
+```
+struct_literal           = (
+        field("name", StructName),
+        "{",
+        commaSep((StructFieldValue, SpreadExpression)),
+        [","),
+        "}",
+      )
+anon_struct_literal      = (
+        "{",
+        commaSep((AnonStructField, SpreadExpression)),
+        [","),
+        "}",
+      )
+list_literal             = ("[", commaSep(ListElement), [","), "]")
+qualified_name           = (IDENT, ".", IDENT)
+string_literal           = (
+        '"',
+        {
+          (
+            StringContent,
+            StringInterpolation,
+          ),
+        ),
+        '"',
+      )
 ```
 
 ## Operator Precedence
@@ -189,47 +505,54 @@ ListLiteral    = "[" (Expr ("," Expr)* ","?)? "]"
 | 8 | `!`, `-` (unary) | right | Unary |
 | 9 | `.`, `[]`, `()` | left | Postfix |
 
-## LL(1) Decision Points
+## Keywords
 
-| Position | Lookahead | Decision |
-| --- | --- | --- |
-| Top-level | keyword | Which declaration to parse |
-| After `output` | IDENT vs `{` | Single output vs grouped block |
-| After `var` | IDENT vs `(` | Single var vs grouped declaration |
-| Inside `{}` body | `if`/`for`/`@`/IDENT | Control, attr, or node |
-| Inside component | `const`/`var`/`func`/IDENT | State, func, or visual node |
-| After `var` IDENT | `=` vs Type token | Inferred type vs explicit type |
-| Inside `()` params | `@`/`:`/`style`/IDENT | Event, bidi prop, style literal, or param |
-| After IDENT in type | `<` or not | Generic type or plain type |
-| After `for` IDENT | `,` or `=` | Index variable or iterable |
-| In statement | IDENT then `!!`/`=`/`.` | Toggle, assign, or method call |
-| In statement | `@` | Emit statement |
+`component` `const` `else` `enum` `extern` `for` `func` `if` `import` `output` `platform` `return` `struct` `style` `test` `timer` `unit` `var`
+
+Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `extern`, `platform` are contextual keywords recognized by the parser.
 
 ## Semantics
 
 ### Reactivity Model
 
-SNGL uses subscription-based compile-time propagation. At compile time, the compiler:
+SNGL uses compile-time dependency tracking. The compiler:
 
-1. Tracks every binding's dependencies (e.g., `greeting` depends on `name`)
+1. Tracks every binding's data dependencies
 2. Emits update closures for each dependency
-3. Generates a minimal `Signal` API: `signal.Set(value)` triggers observers
+3. Generates platform-specific reactive code (e.g., JS Signal API, Go state fields)
 
 No virtual DOM or runtime diffing is involved. Assignments to state trigger only the affected update handlers.
 
-### Component Scoping
+### Component Model
 
-- State (`var`, `const`) and functions are scoped to the component that contains them
-- Component parameters (declared in `()` after the name) are passed from parent to child at instantiation
-- Components expand at compile time
-- Recursive components are forbidden
+- Components are declared with `component Name(params...) [ChildrenType] { ... }`
+- Parameters in `()` define the component's public API
+- Props are passed at instantiation: `Name(prop=value)`
+- Events use `@` prefix: `@click ClickEvent`
+- Bidirectional bindings use `:` prefix: `:value string`
+- Children type (after params): `list<component>`, `component`, `option<component>`, or omitted (no children)
+- `slot` projects caller's children into the component body
+- `platform Name { ... }` blocks provide platform-conditional implementations
 
-### Expression Boundaries
+### Abstract Components
 
-| Context | Boundary |
-| --- | --- |
-| Inside `()` param list | `,` or `)` at nesting depth 0 |
-| After `if` | `{` at depth 0 (tracking `()` and `[]` only) |
-| After `in` in `for` | `{` at depth 0 (tracking `()` and `[]` only) |
-| After `=` in const/var | Semicolon (inserted or explicit) |
-| After `=` in struct field | Semicolon |
+- Stdlib components in the `sngl` package define abstract APIs (params/events/children)
+- Platforms provide implementations via `.sngl` package files
+- `component sngl.X()` in a platform package overrides stdlib component X (body-only, inherits API)
+- Components with default bodies work on all platforms; pure-abstract components require platform support
+
+### Scoping
+
+- State (`var`, `const`) and functions are scoped to their component
+- Component parameters become local variables in the component body
+- `for` loop variables are scoped to the loop body
+- Imported components are namespaced: `import "widgets"` → `widgets.Button`
+- Platform/language packages are namespaced: `html.div`, `android.Card`
+
+### Type System
+
+Built-in types: `int`, `float`, `bool`, `string`, `color`, `date`, `measurement`, `dyn`
+
+Generic types: `list<T>`, `option<T>`
+
+User-defined types: `struct`, `enum`, `unit`

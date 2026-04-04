@@ -256,32 +256,6 @@
     }
   },
   {
-    "type": "attr_node",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "prop_assignment",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "binary_expression",
     "named": true,
     "fields": {
@@ -1279,10 +1253,6 @@
       "multiple": true,
       "required": false,
       "types": [
-        {
-          "type": "attr_node",
-          "named": true
-        },
         {
           "type": "for_node",
           "named": true

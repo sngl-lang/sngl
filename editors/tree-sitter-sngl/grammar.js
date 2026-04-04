@@ -516,19 +516,7 @@ module.exports = grammar({
       ),
 
     _node_body_member: ($) =>
-      choice(
-        $.attr_node,
-        $._node_or_control,
-      ),
-
-    attr_node: ($) =>
-      seq(
-        "@",
-        field("name", $.identifier),
-        "(",
-        commaSep($.prop_assignment),
-        ")",
-      ),
+      $._node_or_control,
 
     // ─── Statements (event handlers) ─────────────────────────
 
