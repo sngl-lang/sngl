@@ -1307,6 +1307,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 
 	// Optional props list
 	if p.at(LPAREN) {
+		vn.HasProps = true
 		p.parsePropList(vn)
 	}
 

@@ -20,7 +20,6 @@ component widget  {
 -- dir/expected.sngl --
 component widget {
     var x = 0
-
     text(value="{x}")
 }
 -- messy.sngl --

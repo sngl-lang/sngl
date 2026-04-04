@@ -914,28 +914,11 @@ func declEndLine(d ast.Decl) int {
 
 // declCategory returns a category string for blank-line grouping.
 // Different categories get mandatory blank lines between them.
-func declCategory(d ast.Decl) string {
-	switch d.(type) {
-	case *ast.Const:
-		return "const"
-	case *ast.Data:
-		return "var"
-	case *ast.FuncDef:
-		return "func"
-	case *ast.Timer:
-		return "timer"
-	case *ast.VisualNode:
-		return "visual"
-	default:
-		return ""
-	}
-}
 
 // formatDeclSlice formats the body of a component using its ordered Decls slice.
 func (f *formatter) formatDeclSlice(comp *ast.Component) {
 	decls := comp.Decls
 	prevEndLine := 0
-	prevCategory := ""
 
 	for i := 0; i < len(decls); i++ {
 		d := decls[i]
@@ -956,11 +939,9 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				f.writeLine(decl.Text)
 			}
 			prevEndLine = decl.Pos.Line
-			continue // don't update prevCategory
+			continue
 		case *ast.Const:
-			cat := declCategory(decl)
-			needBlank := prevEndLine > 0 && (decl.Pos.Line > prevEndLine+1 || (prevCategory != "" && prevCategory != cat))
-			if needBlank {
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
 			if decl.Grouped {
@@ -978,11 +959,8 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				f.formatConsts([]*ast.Const{decl})
 			}
 			prevEndLine = decl.Pos.Line
-			prevCategory = cat
 		case *ast.Data:
-			cat := declCategory(decl)
-			needBlank := prevEndLine > 0 && (decl.Pos.Line > prevEndLine+1 || (prevCategory != "" && prevCategory != cat))
-			if needBlank {
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
 			if decl.Grouped {
@@ -1000,32 +978,23 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				f.formatVars([]*ast.Data{decl})
 			}
 			prevEndLine = decl.Pos.Line
-			prevCategory = cat
 		case *ast.FuncDef:
 			if decl.IsStdlib {
 				continue
 			}
-			cat := declCategory(decl)
-			needBlank := prevEndLine > 0 && (decl.Pos.Line > prevEndLine+1 || (prevCategory != "" && prevCategory != cat))
-			if needBlank {
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
 			f.formatFuncDef(decl)
 			prevEndLine = declEndLine(decl)
-			prevCategory = cat
 		case *ast.Timer:
-			cat := declCategory(decl)
-			needBlank := prevEndLine > 0 && (decl.Pos.Line > prevEndLine+1 || (prevCategory != "" && prevCategory != cat))
-			if needBlank {
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
 			f.formatTimer(decl)
 			prevEndLine = decl.Pos.Line
-			prevCategory = cat
 		case *ast.VisualNode:
-			cat := declCategory(decl)
-			needBlank := prevEndLine > 0 && (decl.Pos.Line > prevEndLine+1 || (prevCategory != "" && prevCategory != cat))
-			if needBlank {
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
 			// Peek ahead for inline comment on same line as this node
@@ -1038,7 +1007,6 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			}
 			f.formatVisualNodeWithComment(decl, inlineComment)
 			prevEndLine = declEndLine(decl)
-			prevCategory = cat
 		}
 	}
 
@@ -1317,14 +1285,25 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 	}
 	if len(props) > 0 {
 		line += "(" + strings.Join(props, ", ") + ")"
+	} else if vn.HasProps {
+		line += "()"
 	}
 
 	hasBody := vn.HasBody || len(vn.Children) > 0
 	if hasBody {
 		if len(vn.Children) == 0 {
-			line += " { }"
-			f.writeLine(line)
-			f.emitPendingInlineComment()
+			if vn.EndLine > vn.Pos.Line {
+				// Multi-line empty body in source — preserve as multi-line
+				line += " {"
+				f.writeLine(line)
+				f.emitPendingInlineComment()
+				f.emitInlineComment(vn.Pos.Line)
+				f.writeLine("}")
+			} else {
+				line += " { }"
+				f.writeLine(line)
+				f.emitPendingInlineComment()
+			}
 		} else {
 			line += " {"
 			f.writeLine(line)

@@ -309,6 +309,7 @@ type VisualNode struct {
 	EndLine    int // line of closing } (set by parser)
 	Component  string
 	HasBody    bool // true when { } was present in source (even if empty)
+	HasProps   bool // true when () was present in source (even if no props)
 	Disabled   bool
 	ID         string // element ID from #id syntax (empty = no ID)
 	Key        *Expr

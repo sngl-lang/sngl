@@ -3,7 +3,7 @@ component conv {
     var rate = 3.14
     var label = "hello"
     var active = true
-    text #out (value="{count}")
+    text #out(value="{count}")
 }
 
 test conv "string conversion" {
