@@ -2,12 +2,10 @@ package parser_test
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 	"unicode/utf8"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
@@ -386,29 +384,14 @@ func FuzzParse(f *testing.F) {
 			t.Skip("input too large for fuzz testing")
 		}
 
-		// Parse with Go parser under a timeout to catch hangs.
-		type goResult struct {
-			doc *ast.Document
-			err error
-		}
-		ch := make(chan goResult, 1)
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					ch <- goResult{nil, fmt.Errorf("panic: %v", r)}
-				}
-			}()
-			doc, err := parser.Parse("fuzz.sngl", strings.NewReader(string(data)))
-			ch <- goResult{doc, err}
-		}()
-
-		var goDoc *ast.Document
-		var goErr error
-		select {
-		case res := <-ch:
-			goDoc, goErr = res.doc, res.err
-		case <-time.After(2 * time.Second):
-			t.Skipf("Go parser timed out (likely hung on malformed input)")
+		// Parse with Go parser.
+		goDoc, goErr := parser.Parse("fuzz.sngl", strings.NewReader(string(data)))
+		if goErr != nil && strings.Contains(goErr.Error(), "parser bailout") {
+			// Bailout on short input suggests a real infinite loop.
+			// Long garbage input legitimately hits maxErrors one token at a time.
+			if len(data) < 50 {
+				t.Errorf("Go parser hit bailout (likely infinite loop) on short input: %q", data)
+			}
 			return
 		}
 

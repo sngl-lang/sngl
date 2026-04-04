@@ -10,20 +10,29 @@ import (
 )
 
 // Parse reads a .sngl file and produces a typed SNGL AST.
-func Parse(filename string, r io.Reader) (*ast.Document, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", filename, err)
+func Parse(filename string, r io.Reader) (doc *ast.Document, err error) {
+	data, readErr := io.ReadAll(r)
+	if readErr != nil {
+		return nil, fmt.Errorf("reading %s: %w", filename, readErr)
 	}
 	p := &parser{
 		filename: filename,
 		lex:      newLexer(string(data)),
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(parserBailout); !ok {
+				panic(r) // re-panic on unexpected panics
+			}
+			// Bailout hit — likely an infinite error loop in the parser.
+			p.errs = append(p.errs, fmt.Errorf("parser bailout: too many errors (possible infinite loop)"))
+		}
+		if len(p.errs) > 0 {
+			err = p.joinErrors()
+		}
+	}()
 	p.advance() // prime the first token
-	doc := p.parseDocument()
-	if len(p.errs) > 0 {
-		return doc, p.joinErrors()
-	}
+	doc = p.parseDocument()
 	return doc, nil
 }
 
@@ -221,10 +230,18 @@ func (p *parser) expect(t TokenType) Token {
 	return p.advance()
 }
 
+const maxErrors = 100
+
 func (p *parser) errorf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	p.errs = append(p.errs, fmt.Errorf("%s:%d:%d: %s", p.filename, p.cur.Line, p.cur.Column, msg))
+	if len(p.errs) >= maxErrors {
+		panic(parserBailout{})
+	}
 }
+
+// parserBailout is used to abort parsing after too many errors.
+type parserBailout struct{}
 
 func (p *parser) joinErrors() error {
 	msgs := make([]string, len(p.errs))
@@ -1302,21 +1319,21 @@ func (p *parser) parseExpression() ast.Node {
 	return p.parseTernary()
 }
 
-// parseLambdaExpr parses: func(param, param Type) expr
-// Parameter types are optional. Unambiguous LL(1) — func keyword starts it.
+// parseLambdaExpr parses: func(name Type, name Type) expr
+// Parameter types are required to disambiguate from func types.
 func (p *parser) parseLambdaExpr() ast.Node {
 	p.advance() // consume func
-	p.expect(LPAREN)
+	if !p.at(LPAREN) {
+		p.errorf("expected ( after func, got %v (%q)", tokenNames[p.cur.Type], p.cur.Literal)
+		return &ast.LiteralExpr{Kind: ast.LiteralNull}
+	}
+	p.advance() // consume (
 	var params []string
 	var paramTypes []string
-	for !p.at(RPAREN) {
+	for !p.at(RPAREN) && !p.at(EOF) {
 		name := p.expect(IDENT).Literal
 		params = append(params, name)
-		// Optional type annotation
-		typeHint := ""
-		if p.at(IDENT) {
-			typeHint = p.advance().Literal
-		}
+		typeHint := p.parseTypeString()
 		paramTypes = append(paramTypes, typeHint)
 		if !p.at(RPAREN) {
 			p.expect(COMMA)

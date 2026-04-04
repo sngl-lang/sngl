@@ -9,8 +9,10 @@ package tsparser
 import "C"
 
 import (
+	"bytes"
 	_ "embed"
 	"time"
+	"unicode/utf8"
 	"unsafe"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
@@ -29,10 +31,13 @@ func Language() *ts.Language {
 }
 
 // Parse parses SNGL source code and returns a tree-sitter Tree.
-// The caller must call tree.Close() when done. Returns nil if
-// parsing times out (3 seconds) to prevent editor hangs on
-// pathological inputs.
+// The caller must call tree.Close() when done. Returns nil if the
+// input is invalid (null bytes, non-UTF8) or parsing times out
+// (3 seconds) to prevent editor hangs on pathological inputs.
 func Parse(source []byte) *ts.Tree {
+	if bytes.ContainsRune(source, 0) || !utf8.Valid(source) {
+		return nil
+	}
 	parser := ts.NewParser()
 	defer parser.Close()
 	parser.SetLanguage(Language())

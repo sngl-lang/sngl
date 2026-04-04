@@ -583,6 +583,10 @@
         {
           "type": "single_const",
           "named": true
+        },
+        {
+          "type": "slashdash",
+          "named": true
         }
       ]
     }
@@ -912,7 +916,7 @@
       },
       "type": {
         "multiple": false,
-        "required": false,
+        "required": true,
         "types": [
           {
             "type": "type_identifier",
@@ -1733,15 +1737,15 @@
     "named": true,
     "fields": {
       "name": {
-        "multiple": true,
+        "multiple": false,
         "required": true,
         "types": [
           {
-            "type": ".",
-            "named": false
+            "type": "identifier",
+            "named": true
           },
           {
-            "type": "identifier",
+            "type": "qualified_name",
             "named": true
           }
         ]
@@ -2125,6 +2129,10 @@
       "types": [
         {
           "type": "single_var",
+          "named": true
+        },
+        {
+          "type": "slashdash",
           "named": true
         }
       ]

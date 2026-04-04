@@ -28,14 +28,11 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   conflicts: ($) => [
-    [$._expression, $._struct_name],
-    [$._expression, $._struct_name, $.qualified_name],
+    [$._expression, $.qualified_name],
+    [$._expression, $.struct_literal],
     [$._expression, $.anon_struct_field],
-    [$._simple_type, $._struct_name],
     [$._simple_type, $._expression],
-    [$.func_param, $._simple_type],
-    [$._struct_name, $.qualified_name],
-    [$.func_type, $.lambda_expression],
+    [$._simple_type, $.struct_literal],
     [$.prop_assignment, $._expression],
   ],
 
@@ -271,7 +268,7 @@ module.exports = grammar({
     const_declaration: ($) =>
       choice(
         seq("const", $.single_const),
-        seq("const", "(", repeat(seq($.single_const, $._terminator)), ")"),
+        seq("const", "(", repeat(seq(optional($.slashdash), $.single_const, $._terminator)), ")"),
       ),
 
     single_const: ($) =>
@@ -285,7 +282,7 @@ module.exports = grammar({
     var_declaration: ($) =>
       choice(
         seq("var", $.single_var),
-        seq("var", "(", repeat(seq($.single_var, $._terminator)), ")"),
+        seq("var", "(", repeat(seq(optional($.slashdash), $.single_var, $._terminator)), ")"),
       ),
 
     single_var: ($) =>
@@ -365,7 +362,7 @@ module.exports = grammar({
     func_param: ($) =>
       seq(
         field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
+        field("type", $.type_identifier),
       ),
 
     func_block: ($) =>
@@ -415,13 +412,13 @@ module.exports = grammar({
       ),
 
     func_type: ($) =>
-      seq(
+      prec(1, seq(
         "func",
         "(",
         commaSep($.type_identifier),
         ")",
         optional(seq("->", field("return_type", $.type_identifier))),
-      ),
+      )),
 
     inline_enum_type: ($) =>
       seq("enum", "<", sepBy1("|", $.identifier), ">"),
@@ -678,20 +675,17 @@ module.exports = grammar({
     parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
     struct_literal: ($) =>
-      prec(-1, seq(
-        field("name", $._struct_name),
+      seq(
+        field("name", choice($.qualified_name, $.identifier)),
         "{",
         commaSep(choice($.struct_field_value, $.spread_expression)),
         optional(","),
         "}",
-      )),
-
-    _struct_name: ($) =>
-      seq($.identifier, optional(seq(".", $.identifier))),
+      ),
 
     // Anonymous struct literal (type inferred from context): {field=val, ...}
     anon_struct_literal: ($) =>
-      prec(-1, seq(
+      prec(-1, seq(  // Lower priority than node_body/func_block which also start with {
         "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),
