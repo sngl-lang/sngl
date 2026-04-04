@@ -37,6 +37,7 @@ type Output struct {
 	Lang     string            // "go"
 	Platform string            // "bubbletea"
 	Options  map[string]string // {"package": "main"}
+	LangLine int               // source line of the lang keyword (for one-liner detection)
 }
 
 // Decl is the interface for top-level and component-level declarations
@@ -144,11 +145,12 @@ type UnitSuffix struct {
 
 // Const is an immutable named value.
 type Const struct {
-	Pos      Pos
-	Name     string
-	Init     Expr
-	Disabled bool
-	Grouped  bool // parsed from const(...) grouped declaration
+	Pos          Pos
+	Name         string
+	Init         Expr
+	Disabled     bool
+	Grouped      bool // parsed from const(...) grouped declaration
+	ExplicitType bool // true when a type was written between name and =
 }
 
 type EnumDef struct {
@@ -190,23 +192,25 @@ type NativeDecls struct {
 }
 
 type Data struct {
-	Pos        Pos
-	Name       string
-	Init       Expr
-	Extern     bool     // "extern" positional arg present
-	IsFunc     bool     // TypeHint starts with "func"
-	ParamTypes []string // parsed func params (e.g., ["string", "int"])
-	ReturnType string   // parsed func return type, "" for void
-	Trigger    string   // resolved trigger function name, "" for none
-	Disabled   bool
-	Grouped    bool      // parsed from var(...) grouped declaration
-	Resolved   *TypeInfo // populated by checker
+	Pos          Pos
+	Name         string
+	Init         Expr
+	Extern       bool     // "extern" positional arg present
+	IsFunc       bool     // TypeHint starts with "func"
+	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
+	ReturnType   string   // parsed func return type, "" for void
+	Trigger      string   // resolved trigger function name, "" for none
+	Disabled     bool
+	Grouped      bool      // parsed from var(...) grouped declaration
+	ExplicitType bool      // true when a type was written between name and =
+	Resolved     *TypeInfo // populated by checker
 }
 
 type StyleDecl struct {
-	Pos   Pos
-	Name  string
-	Props map[string]Expr
+	Pos       Pos
+	Name      string
+	Props     map[string]Expr
+	PropOrder []string // insertion order of property names from source
 }
 
 type PropDecl struct {

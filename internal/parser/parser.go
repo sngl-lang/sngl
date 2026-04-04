@@ -362,6 +362,8 @@ func (p *parser) parseDocument() *ast.Document {
 		switch v := d.(type) {
 		case *ast.Component:
 			nested = append(nested, lineRange{v.Pos.Line, v.EndLine})
+		case *ast.TestDef:
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine})
 		}
 	}
 	var topComments []ast.Comment
@@ -481,7 +483,9 @@ func (p *parser) parseOutput() (defaults map[string]string, outputs []*ast.Outpu
 		if p.at(RBRACE) {
 			break
 		}
-		lang := p.expect(IDENT).Literal
+		langTok := p.expect(IDENT)
+		lang := langTok.Literal
+		langLine := langTok.Line
 		p.expect(LBRACE)
 		for !p.at(RBRACE) && !p.at(EOF) {
 			p.skipSemicolons()
@@ -494,7 +498,7 @@ func (p *parser) parseOutput() (defaults map[string]string, outputs []*ast.Outpu
 			if p.at(LPAREN) {
 				opts = p.parseKVList()
 			}
-			outputs = append(outputs, &ast.Output{Pos: pos, Lang: lang, Platform: platform, Options: opts})
+			outputs = append(outputs, &ast.Output{Pos: pos, Lang: lang, Platform: platform, Options: opts, LangLine: langLine})
 			if p.at(SEMICOLON) {
 				p.advance()
 			}
@@ -573,13 +577,14 @@ func (p *parser) parseStyleDecl() *ast.StyleDecl {
 	p.expect(KW_STYLE)
 	name := p.expect(IDENT).Literal
 	p.expect(LBRACE)
-	props := p.parseStyleProps()
+	s := &ast.StyleDecl{Pos: pos, Name: name}
+	p.parseStyleProps(s)
 	p.expect(RBRACE)
-	return &ast.StyleDecl{Pos: pos, Name: name, Props: props}
+	return s
 }
 
-func (p *parser) parseStyleProps() map[string]ast.Expr {
-	props := map[string]ast.Expr{}
+func (p *parser) parseStyleProps(s *ast.StyleDecl) {
+	s.Props = map[string]ast.Expr{}
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
 		if p.at(RBRACE) {
@@ -587,10 +592,10 @@ func (p *parser) parseStyleProps() map[string]ast.Expr {
 		}
 		name := p.expect(IDENT).Literal
 		p.expect(ASSIGN)
-		props[name] = p.parseExprAsExpr()
+		s.Props[name] = p.parseExprAsExpr()
+		s.PropOrder = append(s.PropOrder, name)
 		p.skipSemicolons()
 	}
-	return props
 }
 
 // --- Component ---
@@ -765,6 +770,16 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	}
 	td.EndLine = p.pos().Line
 	p.expect(RBRACE)
+
+	// Merge comments that fall inside the test body.
+	var bodyComments []ast.Comment
+	for _, c := range p.comments {
+		if c.Pos.Line > td.Pos.Line && c.Pos.Line < td.EndLine {
+			bodyComments = append(bodyComments, c)
+		}
+	}
+	td.Decls = mergeCommentsIntoDecls(td.Decls, bodyComments)
+
 	return td
 }
 
@@ -837,7 +852,7 @@ func (p *parser) parseConstSpec() []*ast.Const {
 		}
 		var consts []*ast.Const
 		for _, n := range names {
-			consts = append(consts, &ast.Const{Pos: pos, Name: n, Init: init})
+			consts = append(consts, &ast.Const{Pos: pos, Name: n, Init: init, ExplicitType: typeHint != ""})
 		}
 		return consts
 	}
@@ -852,7 +867,7 @@ func (p *parser) parseConstSpec() []*ast.Const {
 	if typeHint != "" {
 		init.TypeHint = typeHint
 	}
-	return []*ast.Const{{Pos: pos, Name: name, Init: init}}
+	return []*ast.Const{{Pos: pos, Name: name, Init: init, ExplicitType: typeHint != ""}}
 }
 
 func (p *parser) parseGroupedConsts() []*ast.Const {
@@ -909,7 +924,7 @@ func (p *parser) parseVarSpec() []*ast.Data {
 		}
 		var vars []*ast.Data
 		for _, n := range names {
-			d := &ast.Data{Pos: pos, Name: n, Init: init}
+			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: true}
 			if strings.HasPrefix(typeHint, "func:") {
 				d.IsFunc = true
 				params, ret := splitFuncBody(typeHint[5:])
@@ -959,6 +974,7 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 	} else if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(AT) {
 		typeHint := p.parseTypeString()
 		d.Init.TypeHint = typeHint
+		d.ExplicitType = true
 		// Parse func type components into Data fields
 		if strings.HasPrefix(typeHint, "func:") {
 			d.IsFunc = true
@@ -1392,11 +1408,13 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 		}
 		p.skipSemicolons() // allow multi-line prop lists
 	}
-	p.expect(RPAREN)
+	closeTok := p.expect(RPAREN)
 	// Multi-line if the first prop started on a different line than (
 	if firstPropLine > 0 && firstPropLine > openLine {
 		vn.MultilineProps = true
 	}
+	// Track end of props for EndLine (used when no body follows)
+	vn.EndLine = closeTok.Line
 }
 
 // --- Statement parsing ---

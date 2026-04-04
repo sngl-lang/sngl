@@ -573,8 +573,8 @@ func (f *formatter) formatOutputGroup(doc *ast.Document) {
 		}
 	}
 	for _, g := range groups {
-		// One-liner: single platform with no options
-		if len(g.outputs) == 1 && len(g.outputs[0].Options) == 0 {
+		// One-liner: single platform, no options, and source was one line
+		if len(g.outputs) == 1 && len(g.outputs[0].Options) == 0 && g.outputs[0].LangLine == g.outputs[0].Pos.Line {
 			f.writeLine(g.lang + " { " + g.outputs[0].Platform + " }")
 			continue
 		}
@@ -628,7 +628,11 @@ func (f *formatter) formatUnitDecl(u *ast.UnitDef) {
 func (f *formatter) formatStyleDecl(s *ast.StyleDecl) {
 	f.writeLine("style " + s.Name + " {")
 	f.indent++
-	for _, k := range sortedKeys(s.Props) {
+	keys := s.PropOrder
+	if len(keys) == 0 {
+		keys = sortedKeys(s.Props)
+	}
+	for _, k := range keys {
 		f.writeLine(k + " = " + f.formatExprValue(s.Props[k]))
 	}
 	f.indent--
@@ -640,8 +644,10 @@ func (f *formatter) formatConsts(consts []*ast.Const) {
 	if len(consts) == 1 && !consts[0].Grouped {
 		c := consts[0]
 		line := "const " + c.Name
-		if ts := typeHintStr(c.Init.TypeHint, nil); ts != "" {
-			line += " " + ts
+		if c.ExplicitType {
+			if ts := typeHintStr(c.Init.TypeHint, nil); ts != "" {
+				line += " " + ts
+			}
 		}
 		line += " = " + f.formatExprValue(c.Init)
 		f.writeDisabledLine(c.Disabled, line)
@@ -651,8 +657,10 @@ func (f *formatter) formatConsts(consts []*ast.Const) {
 	f.indent++
 	for _, c := range consts {
 		line := c.Name
-		if ts := typeHintStr(c.Init.TypeHint, nil); ts != "" {
-			line += " " + ts
+		if c.ExplicitType {
+			if ts := typeHintStr(c.Init.TypeHint, nil); ts != "" {
+				line += " " + ts
+			}
 		}
 		line += " = " + f.formatExprValue(c.Init)
 		f.writeDisabledLine(c.Disabled, line)
@@ -718,12 +726,13 @@ func (f *formatter) formatVarDecl(d *ast.Data) string {
 	var sb strings.Builder
 	sb.WriteString(d.Name)
 
-	typeStr := typeHintStr(d.Init.TypeHint, d)
 	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
 
-	if typeStr != "" {
-		sb.WriteByte(' ')
-		sb.WriteString(typeStr)
+	if d.ExplicitType {
+		if typeStr := typeHintStr(d.Init.TypeHint, d); typeStr != "" {
+			sb.WriteByte(' ')
+			sb.WriteString(typeStr)
+		}
 	}
 
 	if hasInit {
@@ -1113,10 +1122,19 @@ func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
 	if topLevel && td.Component != "" {
 		line += td.Component + " "
 	}
-	line += "\"" + escapeStringContent(td.Desc) + "\" {"
+	if td.Desc != "" {
+		line += "\"" + escapeStringContent(td.Desc) + "\" "
+	}
+	line += "{"
 	f.writeLine(line)
 	f.emitInlineComment(td.Pos.Line)
 	f.indent++
+	// Skip f.comments entries inside this test body — they're handled by Decls.
+	if td.EndLine > 0 {
+		for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line < td.EndLine {
+			f.commentI++
+		}
+	}
 	if len(td.Decls) > 0 {
 		prevEndLine := 0
 		for _, d := range td.Decls {
