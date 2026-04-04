@@ -94,10 +94,29 @@ type ServerInfo struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync   int                `json:"textDocumentSync"` // 1=Full
-	HoverProvider      bool               `json:"hoverProvider,omitempty"`
-	CompletionProvider *CompletionOptions `json:"completionProvider,omitempty"`
-	DiagnosticProvider *DiagnosticOptions `json:"diagnosticProvider,omitempty"`
+	TextDocumentSync       int                     `json:"textDocumentSync"` // 1=Full
+	HoverProvider          bool                    `json:"hoverProvider,omitempty"`
+	CompletionProvider     *CompletionOptions      `json:"completionProvider,omitempty"`
+	DiagnosticProvider     *DiagnosticOptions      `json:"diagnosticProvider,omitempty"`
+	SemanticTokensProvider *SemanticTokensOptions  `json:"semanticTokensProvider,omitempty"`
+}
+
+type SemanticTokensOptions struct {
+	Legend SemanticTokensLegend `json:"legend"`
+	Full   bool                 `json:"full"`
+}
+
+type SemanticTokensLegend struct {
+	TokenTypes     []string `json:"tokenTypes"`
+	TokenModifiers []string `json:"tokenModifiers"`
+}
+
+type SemanticTokens struct {
+	Data []uint32 `json:"data"`
+}
+
+type SemanticTokensParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
 type CompletionOptions struct {
@@ -183,11 +202,12 @@ type CompletionList struct {
 }
 
 type CompletionItem struct {
-	Label         string         `json:"label"`
-	Kind          int            `json:"kind,omitempty"`
-	Detail        string         `json:"detail,omitempty"`
-	Documentation *MarkupContent `json:"documentation,omitempty"`
-	InsertText    string         `json:"insertText,omitempty"`
+	Label            string         `json:"label"`
+	Kind             int            `json:"kind,omitempty"`
+	Detail           string         `json:"detail,omitempty"`
+	Documentation    *MarkupContent `json:"documentation,omitempty"`
+	InsertText       string         `json:"insertText,omitempty"`
+	InsertTextFormat int            `json:"insertTextFormat,omitempty"`
 }
 
 // CompletionItemKind constants

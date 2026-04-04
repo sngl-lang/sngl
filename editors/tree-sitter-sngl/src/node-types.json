@@ -58,6 +58,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "anon_struct_literal",
+        "named": true
+      },
+      {
         "type": "binary_expression",
         "named": true
       },
@@ -1433,10 +1437,6 @@
         "types": [
           {
             "type": "_expression",
-            "named": true
-          },
-          {
-            "type": "anon_struct_literal",
             "named": true
           }
         ]

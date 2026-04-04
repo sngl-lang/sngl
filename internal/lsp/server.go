@@ -109,6 +109,8 @@ func (s *Server) serve() error {
 			s.handleHover(req.ID, req.Params)
 		case "textDocument/completion":
 			s.handleCompletion(req.ID, req.Params)
+		case "textDocument/semanticTokens/full":
+			s.handleSemanticTokensFull(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)

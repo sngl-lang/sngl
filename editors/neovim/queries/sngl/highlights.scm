@@ -6,19 +6,15 @@
   "enum"
   "unit"
   "style"
-  "styles"
   "component"
-  "param"
-  "prop"
-  "event"
-  "children"
+  "platform"
   "const"
   "var"
-  "computed"
   "if"
   "for"
   "func"
   "test"
+  "return"
 ] @keyword
 
 (extern_modifier) @keyword
@@ -34,6 +30,7 @@
 (generic_type name: (_) @type)
 (func_type "func" @keyword)
 (inline_enum_type "enum" @keyword)
+(enum_constraint "enum" @keyword)
 
 ; Declarations
 (import_declaration (string_literal) @string.special)
@@ -42,38 +39,40 @@
 (unit_declaration name: (identifier) @type.definition)
 (style_declaration name: (identifier) @type.definition)
 (component_declaration name: (identifier) @type.definition)
+(component_declaration name: (qualified_name) @type.definition)
 (test_declaration component: (identifier) @type)
 (test_declaration description: (string_literal) @string)
 (subtest_declaration description: (string_literal) @string)
+(platform_block name: (identifier) @constant)
 
-; Component members
-(param_declaration name: (identifier) @variable.parameter)
-(prop_declaration name: (identifier) @property)
-(event_declaration name: (identifier) @property)
-(children_declaration policy: (identifier) @constant)
+; Component params
+(component_param name: (identifier) @variable.parameter)
+(component_binding_param ":" @punctuation.special)
+(component_binding_param name: (identifier) @variable.parameter)
+(component_event_param "@" @punctuation.special)
+(component_event_param name: (identifier) @property)
 
 ; Variables
 (var_declaration) @keyword
 (const_declaration) @keyword
-(computed_declaration) @keyword
 (single_var name: (identifier) @variable)
 (single_const name: (identifier) @variable)
-(single_computed name: (identifier) @variable)
 
 ; Struct fields
 (struct_field name: (identifier) @property)
 (struct_field_value name: (identifier) @property)
 (style_property name: (identifier) @property)
-(style_prop_def name: (identifier) @property)
 
 ; Visual nodes
 (visual_node component: (identifier) @tag)
+(visual_node component: (qualified_name) @tag)
 (prop_assignment name: (identifier) @property)
+(prop_binding ":" @punctuation.special)
+(prop_binding name: (identifier) @property)
 (event_handler "@" @punctuation.special)
 (event_handler name: (identifier) @property)
 (attr_node "@" @punctuation.special)
 (attr_node name: (identifier) @property)
-(style_block "style" @keyword)
 
 ; Statements
 (assignment_statement operator: (_) @operator)

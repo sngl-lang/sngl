@@ -10,6 +10,13 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 			CompletionProvider: &CompletionOptions{
 				TriggerCharacters: []string{".", "@", "("},
 			},
+			SemanticTokensProvider: &SemanticTokensOptions{
+				Legend: SemanticTokensLegend{
+					TokenTypes:     SemanticTokenTypes(),
+					TokenModifiers: []string{},
+				},
+				Full: true,
+			},
 		},
 		ServerInfo: &ServerInfo{
 			Name:    "sngl-lsp",

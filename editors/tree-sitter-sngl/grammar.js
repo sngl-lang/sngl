@@ -30,10 +30,13 @@ module.exports = grammar({
   conflicts: ($) => [
     [$._expression, $._struct_name],
     [$._expression, $._struct_name, $.qualified_name],
+    [$._expression, $.anon_struct_field],
     [$._simple_type, $._struct_name],
     [$._simple_type, $._expression],
     [$.func_param, $._simple_type],
     [$._struct_name, $.qualified_name],
+    [$.func_type, $.lambda_expression],
+    [$.prop_assignment, $._expression],
   ],
 
   supertypes: ($) => [$._declaration, $._expression, $._statement],
@@ -572,6 +575,7 @@ module.exports = grammar({
         $.index_expression,
         $.parenthesized_expression,
         $.struct_literal,
+        $.anon_struct_literal,
         $.list_literal,
         $.lambda_expression,
         $.identifier,

@@ -2752,6 +2752,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "anon_struct_literal"
+        },
+        {
+          "type": "SYMBOL",
           "name": "list_literal"
         },
         {
@@ -4105,6 +4109,10 @@
       "qualified_name"
     ],
     [
+      "_expression",
+      "anon_struct_field"
+    ],
+    [
       "_simple_type",
       "_struct_name"
     ],
@@ -4119,6 +4127,14 @@
     [
       "_struct_name",
       "qualified_name"
+    ],
+    [
+      "func_type",
+      "lambda_expression"
+    ],
+    [
+      "prop_assignment",
+      "_expression"
     ]
   ],
   "precedences": [],

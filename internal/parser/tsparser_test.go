@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
 
@@ -376,8 +377,9 @@ func FuzzParse(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Tree-sitter uses C strings internally, so null bytes are unsupported.
-		if bytes.ContainsRune(data, 0) {
-			t.Skip("input contains null byte")
+		// Also reject non-UTF8 — tree-sitter can hang on malformed encodings.
+		if bytes.ContainsRune(data, 0) || !utf8.Valid(data) {
+			t.Skip("input contains null byte or invalid UTF-8")
 		}
 
 		// Parse with Go parser under a timeout to catch hangs.

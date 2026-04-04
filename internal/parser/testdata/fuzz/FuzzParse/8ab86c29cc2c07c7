@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("test A\"0\"{0(A(000)!=0)0(0)0(0!=0)}component A000{var A={}}")

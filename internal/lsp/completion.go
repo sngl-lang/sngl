@@ -26,10 +26,11 @@ func (s *Server) handleCompletion(id json.RawMessage, params json.RawMessage) {
 	items := make([]CompletionItem, len(coreItems))
 	for i, ci := range coreItems {
 		items[i] = CompletionItem{
-			Label:      ci.Label,
-			Kind:       ci.Kind,
-			Detail:     ci.Detail,
-			InsertText: ci.InsertText,
+			Label:            ci.Label,
+			Kind:             ci.Kind,
+			Detail:           ci.Detail,
+			InsertText:       ci.InsertText,
+			InsertTextFormat: ci.InsertTextFormat,
 		}
 		if ci.Documentation != "" {
 			items[i].Documentation = &MarkupContent{

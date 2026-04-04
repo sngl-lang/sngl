@@ -29,13 +29,20 @@ const (
 	SeverityHint        DiagSeverity = 4
 )
 
+// InsertTextFormat constants.
+const (
+	ITFPlainText = 1
+	ITFSnippet   = 2
+)
+
 // CompletionItem represents a single completion suggestion.
 type CompletionItem struct {
-	Label         string
-	Kind          int
-	Detail        string
-	Documentation string
-	InsertText    string
+	Label            string
+	Kind             int
+	Detail           string
+	Documentation    string
+	InsertText       string
+	InsertTextFormat int // ITFPlainText or ITFSnippet
 }
 
 // CompletionItemKind constants.
