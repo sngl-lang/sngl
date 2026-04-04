@@ -119,6 +119,7 @@ func (d *Document) AllComponents() []*Component {
 type TestDef struct {
 	Pos       Pos
 	EndLine   int        // line of closing } (set by parser)
+	BraceCol  int        // column of opening { (set by parser, for comment filtering)
 	Component string     // component under test (top-level only)
 	Desc      string     // test description
 	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
@@ -240,6 +241,7 @@ type FuncParam struct {
 type FuncDef struct {
 	Pos        Pos
 	EndLine    int // line of closing } for block-form funcs (set by parser)
+	BraceCol   int // column of opening { for block-form funcs (set by parser, for comment filtering)
 	Name       string
 	TypeParams []string   // generic type parameters, e.g., ["T", "U"]
 	Params     []*FuncParam
@@ -269,6 +271,7 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 type Component struct {
 	Pos            Pos
 	EndLine        int    // line of closing }, for comment filtering
+	BraceCol       int    // column of opening {, for comment filtering
 	Name           string
 	Disabled       bool
 	Params         []*Param                // params/props declared in ()
@@ -311,6 +314,7 @@ type Timer struct {
 type VisualNode struct {
 	Pos        Pos
 	EndLine    int // line of closing } (set by parser)
+	BraceCol   int // column of opening { (set by parser, for comment filtering)
 	Component  string
 	HasBody    bool // true when { } was present in source (even if empty)
 	HasProps       bool // true when () was present in source (even if no props)

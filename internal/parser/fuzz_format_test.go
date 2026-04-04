@@ -1,0 +1,214 @@
+package parser_test
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+)
+
+// FuzzFormat tests that parse → format → parse produces an equivalent AST.
+// Positions are zeroed before comparison; doc comments are compared by text.
+func FuzzFormat(f *testing.F) {
+	// Seed with testdata fixtures.
+	dir := filepath.Join("..", "..", "testdata")
+	matches, _ := filepath.Glob(filepath.Join(dir, "*.sngl"))
+	for _, path := range matches {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		f.Add(string(data))
+	}
+
+	f.Add("component main {}")
+	f.Add("component main { var x = 0 }")
+	f.Add("struct Foo { name string = \"\" }")
+	f.Add("component main { func doubled() => count * 2 }")
+	f.Add("component main { func greeting => \"hello\" }")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		// Parse original
+		doc1, err := parser.Parse("fuzz.sngl", strings.NewReader(input))
+		if err != nil {
+			t.Skip("failed to parse initial input: ", err)
+			return // invalid input — skip
+		}
+
+		// Format
+		formatted := parser.Format(doc1)
+
+		// Re-parse
+		doc2, err := parser.Parse("fuzz.fmt.sngl", strings.NewReader(formatted))
+		if err != nil {
+			t.Errorf("formatted output doesn't re-parse:\ninput: %q\nformatted: %q\nerror: %v", input, formatted, err)
+			return
+		}
+
+		// Compare ASTs (ignoring positions)
+		clearPositions(doc1)
+		clearPositions(doc2)
+
+		// Normalize: the formatter wraps loose data/functions in component main,
+		// so doc1 might have App=nil where doc2 has App set. Treat both as equivalent
+		// by clearing App when it has no children.
+		if doc1.App != nil && len(doc1.App.Children) == 0 {
+			doc1.App = nil
+		}
+		if doc2.App != nil && len(doc2.App.Children) == 0 {
+			doc2.App = nil
+		}
+
+		if !reflect.DeepEqual(doc1, doc2) {
+			t.Errorf("AST mismatch after format round-trip:\ninput: %q\nformatted: %q\ndoc1: %+v\ndoc2: %+v", input, formatted, doc1, doc2)
+		}
+	})
+}
+
+// clearPositions zeros all Pos/EndLine fields in a document so AST comparison
+// ignores source positions. Also normalizes comments and Decls.
+func clearPositions(doc *ast.Document) {
+	doc.Decls = nil // Decls ordering may differ; we compare typed slices
+	doc.Comments = clearCommentPositions(doc.Comments)
+
+	for _, imp := range doc.Imports {
+		imp.Pos = ast.Pos{}
+	}
+	for _, o := range doc.Outputs {
+		o.Pos = ast.Pos{}
+		o.LangLine = 0
+	}
+	for _, s := range doc.Structs {
+		clearStructPos(s)
+	}
+	for _, e := range doc.Enums {
+		e.Pos = ast.Pos{}
+	}
+	for _, u := range doc.Units {
+		u.Pos = ast.Pos{}
+		for i := range u.Suffixes {
+			u.Suffixes[i].Pos = ast.Pos{}
+		}
+	}
+	for _, s := range doc.Styles {
+		s.Pos = ast.Pos{}
+	}
+	for _, c := range doc.Consts {
+		clearConstPos(c)
+	}
+	for _, d := range doc.Data {
+		clearDataPos(d)
+	}
+	for _, f := range doc.Functions {
+		clearFuncPos(f)
+	}
+	for _, t := range doc.Timers {
+		t.Pos = ast.Pos{}
+	}
+	for _, comp := range doc.Components {
+		clearComponentPos(comp)
+	}
+	for _, comp := range doc.ImportedComponents {
+		clearComponentPos(comp)
+	}
+	for _, comp := range doc.AbstractComponents {
+		clearComponentPos(comp)
+	}
+	for _, td := range doc.Tests {
+		clearTestPos(td)
+	}
+	if doc.App != nil {
+		doc.App.Pos = ast.Pos{}
+		for _, vn := range doc.App.Children {
+			clearVisualNodePos(vn)
+		}
+	}
+}
+
+func clearCommentPositions(comments []ast.Comment) []ast.Comment {
+	for i := range comments {
+		comments[i].Pos = ast.Pos{}
+		comments[i].Inline = false // Inline is position-dependent, ignore for comparison
+	}
+	return comments
+}
+
+func clearStructPos(s *ast.StructDef) {
+	s.Pos = ast.Pos{}
+	for i := range s.Fields {
+		s.Fields[i].Pos = ast.Pos{}
+	}
+}
+
+func clearConstPos(c *ast.Const) {
+	c.Pos = ast.Pos{}
+}
+
+func clearDataPos(d *ast.Data) {
+	d.Pos = ast.Pos{}
+}
+
+func clearFuncPos(f *ast.FuncDef) {
+	f.Pos = ast.Pos{}
+	f.EndLine = 0
+	f.BraceCol = 0
+	for _, p := range f.Params {
+		p.Pos = ast.Pos{}
+	}
+}
+
+func clearComponentPos(comp *ast.Component) {
+	comp.Pos = ast.Pos{}
+	comp.EndLine = 0
+	comp.BraceCol = 0
+	comp.Decls = nil
+	for _, p := range comp.Params {
+		p.Pos = ast.Pos{}
+	}
+	for _, e := range comp.EventDecls {
+		e.Pos = ast.Pos{}
+	}
+	for _, c := range comp.Consts {
+		clearConstPos(c)
+	}
+	for _, d := range comp.Data {
+		clearDataPos(d)
+	}
+	for _, f := range comp.Functions {
+		clearFuncPos(f)
+	}
+	for _, t := range comp.Timers {
+		t.Pos = ast.Pos{}
+	}
+	for _, vn := range comp.Body {
+		clearVisualNodePos(vn)
+	}
+}
+
+func clearVisualNodePos(vn *ast.VisualNode) {
+	vn.Pos = ast.Pos{}
+	vn.EndLine = 0
+	vn.BraceCol = 0
+	if vn.For != nil {
+		for _, child := range vn.For.Else {
+			clearVisualNodePos(child)
+		}
+	}
+	for _, child := range vn.Children {
+		clearVisualNodePos(child)
+	}
+}
+
+func clearTestPos(td *ast.TestDef) {
+	td.Pos = ast.Pos{}
+	td.EndLine = 0
+	td.BraceCol = 0
+	td.Decls = nil
+	for _, sub := range td.Subtests {
+		clearTestPos(sub)
+	}
+}

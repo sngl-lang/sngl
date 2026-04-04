@@ -146,11 +146,6 @@ func (l *lexer) NextToken() Token {
 			return l.scanNumber(startLine, startCol)
 		}
 
-		// Negative number: - followed by digit, and previous token doesn't produce a value
-		if ch == '-' && l.pos+1 < len(l.input) && isDigit(l.peekAt(1)) && !insertsSemicolon(l.prevTok) {
-			return l.scanNumber(startLine, startCol)
-		}
-
 		// String literal
 		if ch == '"' {
 			return l.scanString(startLine, startCol)
@@ -352,6 +347,25 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 					sb.WriteRune('\\')
 				case '{':
 					sb.WriteRune('{')
+				case '0':
+					sb.WriteRune(0)
+				case 'x':
+					// \xHH hex escape
+					if l.pos+1 < len(l.input) {
+						hi := hexVal(l.input[l.pos])
+						lo := hexVal(l.input[l.pos+1])
+						if hi >= 0 && lo >= 0 {
+							sb.WriteRune(rune(hi*16 + lo))
+							l.advance()
+							l.advance()
+						} else {
+							sb.WriteRune('\\')
+							sb.WriteRune('x')
+						}
+					} else {
+						sb.WriteRune('\\')
+						sb.WriteRune('x')
+					}
 				default:
 					sb.WriteRune('\\')
 					sb.WriteRune(esc)
@@ -406,3 +420,17 @@ func isHexDigit(ch rune) bool {
 func isLetter(ch rune) bool        { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') }
 func isIdentStart(ch rune) bool    { return isLetter(ch) || ch == '_' }
 func isIdentContinue(ch rune) bool { return isLetter(ch) || isDigit(ch) || ch == '_' }
+
+// hexVal returns the numeric value of a hex digit, or -1 if not hex.
+func hexVal(r rune) int {
+	if r >= '0' && r <= '9' {
+		return int(r - '0')
+	}
+	if r >= 'a' && r <= 'f' {
+		return int(r - 'a' + 10)
+	}
+	if r >= 'A' && r <= 'F' {
+		return int(r - 'A' + 10)
+	}
+	return -1
+}

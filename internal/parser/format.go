@@ -65,6 +65,10 @@ func alignInlineComments(s string) string {
 				}
 			}
 			for k := i; k < j; k++ {
+				if strings.TrimSpace(splits[k].code) == "" {
+					// Standalone comment line — keep as-is, don't pad
+					continue
+				}
 				pad := maxCode - len(splits[k].code)
 				lines[k] = splits[k].code + strings.Repeat(" ", pad) + " " + splits[k].comment
 			}
@@ -291,19 +295,37 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 			f.formatTestDef(decl, true)
 			prevEndLine = declEndLine(decl)
 		case *ast.Const:
-			// Consts at document level are part of main
-			// (they're handled via formatDocMain)
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatConsts([]*ast.Const{decl})
+			prevEndLine = decl.Pos.Line
 		case *ast.Data:
-			// Data at document level is part of main
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatVars([]*ast.Data{decl})
+			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
-			// Functions at document level are part of main
+			if !decl.IsStdlib {
+				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+					f.newline()
+				}
+				f.formatFuncDef(decl)
+				prevEndLine = declEndLine(decl)
+			}
 		case *ast.Timer:
-			// Timers at document level are part of main
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatTimer(decl)
+			prevEndLine = decl.Pos.Line
 		}
 	}
 
-	// If we haven't seen a main component in Decls but have main content,
-	// format it now (backward compat)
+	// If we haven't seen a main component in Decls but have main content
+	// that wasn't already emitted (loose data/funcs handled above), wrap in
+	// component main. Only needed when App has visual children.
 	hasMainInDecls := false
 	for _, d := range doc.Decls {
 		if comp, ok := d.(*ast.Component); ok && comp.Name == "main" {
@@ -311,7 +333,9 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 			break
 		}
 	}
-	if !hasMainInDecls {
+	if !hasMainInDecls && doc.App != nil && len(doc.App.Children) > 0 {
+		// Only emit component main wrapper if there are visual children
+		// that need wrapping. Loose data/const/func were already emitted above.
 		f.formatDocMain(doc)
 	}
 }
@@ -599,7 +623,9 @@ func (f *formatter) formatStruct(s *ast.StructDef) {
 	f.indent++
 	for _, field := range s.Fields {
 		line := field.Name + " " + field.Type
-		line += " = " + f.formatExprValue(field.Default)
+		if field.Default.SNGL != nil || field.Default.Literal != nil {
+			line += " = " + f.formatExprValue(field.Default)
+		}
 		f.writeLine(line)
 	}
 	f.indent--
@@ -889,7 +915,9 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 	}
 
 	f.writeLine(header + " {")
-	f.emitInlineComment(comp.Pos.Line)
+	if comp.EndLine != comp.Pos.Line {
+		f.emitInlineComment(comp.Pos.Line)
+	}
 	f.indent++
 
 	if len(comp.Decls) > 0 {
@@ -1443,8 +1471,10 @@ func FormatNode(n ast.Node) string {
 		} else if _, ok := e.Left.(*ast.TernaryExpr); ok {
 			left = "(" + left + ")"
 		}
-		// Wrap right operand if it has lower precedence or is a ternary
-		if rb, ok := e.Right.(*ast.BinaryExpr); ok && binPrec(rb.Op) < myPrec {
+		// Wrap right operand if it has lower or equal precedence (since all
+		// binary operators are left-associative, same-precedence on the right
+		// needs parens to preserve tree structure: a + (b + c) != (a + b) + c).
+		if rb, ok := e.Right.(*ast.BinaryExpr); ok && binPrec(rb.Op) <= myPrec {
 			right = "(" + right + ")"
 		} else if _, ok := e.Right.(*ast.TernaryExpr); ok {
 			right = "(" + right + ")"
@@ -1620,10 +1650,18 @@ func formatLiteral(v any, typeHint string) string {
 // formatPostfixOperand wraps numeric literals in parens to prevent
 // ambiguity with dot access (e.g. 0.field would parse as float 0.).
 func formatPostfixOperand(n ast.Node) string {
-	if lit, ok := n.(*ast.LiteralExpr); ok {
-		if lit.Kind == ast.LiteralInt || lit.Kind == ast.LiteralFloat {
+	switch v := n.(type) {
+	case *ast.LiteralExpr:
+		if v.Kind == ast.LiteralInt || v.Kind == ast.LiteralFloat {
 			return "(" + FormatNode(n) + ")"
 		}
+	case *ast.UnaryExpr:
+		// (-3).abs() must keep parens; -3.abs() would parse as -(3.abs())
+		return "(" + FormatNode(n) + ")"
+	case *ast.BinaryExpr:
+		return "(" + FormatNode(n) + ")"
+	case *ast.TernaryExpr:
+		return "(" + FormatNode(n) + ")"
 	}
 	return FormatNode(n)
 }
@@ -1725,9 +1763,13 @@ func escapeStringContent(s string) string {
 			sb.WriteString(`\r`)
 		case '{':
 			sb.WriteString(`\{`)
+		case 0:
+			sb.WriteString(`\0`)
 		default:
-			// Drop control characters that SNGL can't represent.
-			if r >= 0x20 && r != 0x7f {
+			if r < 0x20 || r == 0x7f {
+				// Escape control characters as \xHH
+				sb.WriteString(fmt.Sprintf(`\x%02x`, r))
+			} else {
 				sb.WriteRune(r)
 			}
 		}

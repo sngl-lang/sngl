@@ -356,14 +356,14 @@ func (p *parser) parseDocument() *ast.Document {
 	doc.Comments = p.comments
 	// Only merge comments that aren't inside nested blocks (components, tests).
 	// Build a set of line ranges covered by nested blocks.
-	type lineRange struct{ start, end int }
+	type lineRange struct{ start, end, braceCol int }
 	var nested []lineRange
 	for _, d := range doc.Decls {
 		switch v := d.(type) {
 		case *ast.Component:
-			nested = append(nested, lineRange{v.Pos.Line, v.EndLine})
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol})
 		case *ast.TestDef:
-			nested = append(nested, lineRange{v.Pos.Line, v.EndLine})
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol})
 		}
 	}
 	var topComments []ast.Comment
@@ -371,6 +371,10 @@ func (p *parser) parseDocument() *ast.Document {
 		inside := false
 		for _, r := range nested {
 			if c.Pos.Line > r.start && c.Pos.Line < r.end {
+				inside = true
+				break
+			}
+			if c.Pos.Line == r.start && r.start != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
 				inside = true
 				break
 			}
@@ -654,6 +658,7 @@ func (p *parser) parseComponent() *ast.Component {
 		comp.ChildrenType = p.parseTypeString()
 	}
 
+	comp.BraceCol = p.cur.Column
 	p.expect(LBRACE)
 	cs := &componentState{}
 
@@ -734,6 +739,9 @@ func (p *parser) parseComponent() *ast.Component {
 	for _, c := range p.comments {
 		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
 			bodyComments = append(bodyComments, c)
+		} else if c.Pos.Line == bodyStart && bodyStart != bodyEnd && c.Pos.Column > comp.BraceCol {
+			// Comment on the same line as { but after it — inside the body
+			bodyComments = append(bodyComments, c)
 		}
 	}
 	comp.Decls = mergeCommentsIntoDecls(comp.Decls, bodyComments)
@@ -750,6 +758,7 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	if p.at(STRING) {
 		td.Desc = p.expect(STRING).Literal
 	}
+	td.BraceCol = p.cur.Column
 	p.expect(LBRACE)
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
@@ -772,9 +781,14 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	p.expect(RBRACE)
 
 	// Merge comments that fall inside the test body.
+	bodyStart := td.Pos.Line
+	bodyEnd := td.EndLine
 	var bodyComments []ast.Comment
 	for _, c := range p.comments {
-		if c.Pos.Line > td.Pos.Line && c.Pos.Line < td.EndLine {
+		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
+			bodyComments = append(bodyComments, c)
+		} else if c.Pos.Line == bodyStart && td.BraceCol > 0 && c.Pos.Column > td.BraceCol {
+			// Comment on the same line as { but after it — inside the body
 			bodyComments = append(bodyComments, c)
 		}
 	}
@@ -1102,6 +1116,11 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 
 	if p.at(LBRACE) {
 		// Void block form: func name(params) { ... }
+		if !hasParens {
+			p.errorf("block-form functions require (): func %s() { ... }", name)
+		}
+		fd.HasParens = true // block form always has parens
+		fd.BraceCol = p.cur.Column
 		p.advance()
 		fd.Block = p.parseFuncBlock()
 		fd.EndLine = p.pos().Line
@@ -1109,6 +1128,7 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	} else if p.at(IDENT) && p.peekToken().Type == LBRACE && p.isTypedBlockFunc() {
 		// Typed block form: func name(params) type { ... }
 		fd.ReturnType = p.parseTypeString()
+		fd.BraceCol = p.cur.Column
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
 		fd.EndLine = p.pos().Line
@@ -1116,6 +1136,7 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	} else if p.at(IDENT) && p.peekToken().Type == LT && p.isGenericReturnTypeBlock() {
 		// Typed block form with generic return type: func name(params) list<T> { ... }
 		fd.ReturnType = p.parseTypeString()
+		fd.BraceCol = p.cur.Column
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
 		fd.EndLine = p.pos().Line
@@ -1330,6 +1351,7 @@ func (p *parser) parseVisualNode() *ast.VisualNode {
 	// Optional children block
 	if p.at(LBRACE) {
 		vn.HasBody = true
+		vn.BraceCol = p.cur.Column
 		p.advance()
 		for !p.at(RBRACE) && !p.at(EOF) {
 			p.skipSemicolons()
