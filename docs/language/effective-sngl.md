@@ -216,6 +216,72 @@ var transform func(string) -> string = null
 var callback func(string) -> int = null
 ```
 
+## Type Conversions
+
+### Explicit conversions
+
+`string()`, `int()`, and `float()` convert between primitive types:
+
+<!-- SNGL-component -->
+
+```sngl
+func _a() string(42)
+func _b() string(3.14)
+func _c() string(true)
+func _d() int("42")
+func _e() int(3.14)
+func _f() float(42)
+func _g() float("3.14")
+```
+
+`string()` accepts any type, including structs. `int()` and `float()` accept strings, numbers, and bools, but **not** structs -- `int(myStruct)` is a compile error.
+
+### Implicit conversions
+
+The following conversions happen automatically without an explicit call:
+
+| From             | To           | When                                                  |
+| ---------------- | ------------ | ----------------------------------------------------- |
+| `int` constant   | `float`      | Constant expressions only: `var x float = 5`          |
+| `float` constant | `int`        | Constant expressions only: `var x int = 3.0`          |
+| `string`         | special type | Assignment: `var d date = "2024-01-15"`               |
+| special type     | `string`     | Assignment: `var s string = myDate`                   |
+| `string` literal | `enum`       | Assignment with validation: `var s Status = "active"` |
+| `T`              | `option<T>`  | Assignment: `var x option<int> = 5`                   |
+| `null`           | `option<T>`  | Default value: `var x option<int>`                    |
+| `bool`           | `int`        | Arithmetic: `true + 0 == 1`, `false * 2 == 0`         |
+| any              | `dyn`        | Always: `dyn` accepts any type                        |
+| `dyn`            | any          | Always: `dyn` is assignable to any type               |
+
+**Constant numeric coercion** only works for compile-time constants -- literals, `const` values, and pure expressions on constants. A `var` of type `int` is NOT assignable to `float` without an explicit `float()` call.
+
+**Special type coercion** means string values flow freely to and from types like `color`, `date`, `url`, `email`, `uuid`, `regex`, etc. The compiler validates the format at compile time when the value is a literal.
+
+### Disallowed conversions
+
+These are compile errors:
+
+| Conversion                | Error                                                     |
+| ------------------------- | --------------------------------------------------------- |
+| `null` → struct           | `null is not assignable to struct type`                   |
+| struct → `int()`          | `cannot convert struct to int`                            |
+| struct → `float()`        | `cannot convert struct to float`                          |
+| wrong type → param        | `does not match`                                          |
+| bad string → special type | format-specific error (e.g., invalid date, invalid email) |
+| wrong variant → enum      | `is not a valid variant`                                  |
+
+### String interpolation
+
+String interpolation (`"{expr}"`) implicitly calls `string()` on the embedded expression, so any type can appear inside `{}`:
+
+<!-- SNGL-component -->
+
+```sngl
+var count = 42
+var active = true
+func label() "Count: {count}, active: {active}"
+```
+
 ## State
 
 ### var -- mutable reactive state

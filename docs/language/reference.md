@@ -123,6 +123,8 @@ var bg = #ff0000
 var timeout duration = "5s"
 var user = User{name: "World"}
 var todos list<Todo> = []
+var x, y, z int
+var width, height int = 100
 ```
 
 ## Top-Level Declarations
@@ -317,6 +319,7 @@ component Counter {
 param name string = "default"   // explicit type
 param label = "default"         // type inferred
 param count int                 // no default, zero value
+param x, y int                  // multi-name, shared type
 ```
 
 ### prop (stdlib)

@@ -1,4 +1,4 @@
-- [ ] Audit implicit type conversions
+- [x] ~~Document all type conversions and indicate if they're implicit/explicitly allowed~~ — done. Added "Type Conversions" section to effective-sngl.md covering explicit (`string()`, `int()`, `float()`), implicit (constant numeric coercion, special type ↔ string, T → option\<T\>, bool → int in arithmetic, dyn), and disallowed (struct → numeric, null → struct).
 - [x] Remove `styles` from language. Replace it with a struct (or structs) in the stdlib that defines the styles that may be set.
 - [x] ~~Remove `computed` keyword~~ — done. All computeds are now zero-arg expression-form functions. Auto-invoked when referenced without `()`.
 - [x] ~~Drop `=` and return type from expression-form functions~~ — done. `func add(a int, b int) a + b`. Return type inferred from expression. Block form still requires explicit return type.
@@ -16,4 +16,6 @@
 - [ ] linter:
   - no /- commented out nodes
 - [ ] platform components; define stdlib in term of them
-- [ ] Allow reusing types in param/variable definitions like go
+- [x] ~~Allow reusing types in param/variable definitions like go~~ — done. `var x, y int`, `param width, height int = 100`, `const MAX_X, MAX_Y int = 1000`.
+- [ ] Move params to () on component; remove the keyword param.
+- [ ] Allow bi-directional params

@@ -499,9 +499,11 @@ func (p *parser) parseComponent() *ast.Component {
 
 		switch p.cur.Type {
 		case KW_PARAM:
-			param := p.parseParam()
-			param.Disabled = disabled
-			comp.Params = append(comp.Params, param)
+			params := p.parseParams()
+			for _, param := range params {
+				param.Disabled = disabled
+			}
+			comp.Params = append(comp.Params, params...)
 		case KW_PROP:
 			comp.PropDecls = append(comp.PropDecls, p.parsePropDecl())
 		case KW_EVENT:
@@ -570,13 +572,40 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	return td
 }
 
-func (p *parser) parseParam() *ast.Param {
+func (p *parser) parseParams() []*ast.Param {
 	pos := p.pos()
 	p.expect(KW_PARAM)
 	name := p.expect(IDENT).Literal
-	param := &ast.Param{Pos: pos, Name: name}
 
-	// param name type = default | param name = default | param name type | param name type required
+	// Check for multi-name: param x, y int [= default]
+	if p.at(COMMA) && p.isMultiName() {
+		names := []string{name}
+		for p.at(COMMA) && p.isMultiName() {
+			p.advance()
+			names = append(names, p.expect(IDENT).Literal)
+		}
+		typeHint := p.parseTypeString()
+		var def ast.Expr
+		def.TypeHint = typeHint
+		if p.at(ASSIGN) {
+			p.advance()
+			def = p.parseExprAsExpr()
+			def.TypeHint = typeHint
+		}
+		required := false
+		if p.at(IDENT) && p.cur.Literal == "required" {
+			p.advance()
+			required = true
+		}
+		var params []*ast.Param
+		for _, n := range names {
+			params = append(params, &ast.Param{Pos: pos, Name: n, Default: def, Required: required})
+		}
+		return params
+	}
+
+	// Single param
+	param := &ast.Param{Pos: pos, Name: name}
 	if p.at(ASSIGN) {
 		p.advance()
 		param.Default = p.parseExprAsExpr()
@@ -589,12 +618,11 @@ func (p *parser) parseParam() *ast.Param {
 			param.Default.TypeHint = typeHint
 		}
 	}
-	// "required" modifier
 	if p.at(IDENT) && p.cur.Literal == "required" {
 		p.advance()
 		param.Required = true
 	}
-	return param
+	return []*ast.Param{param}
 }
 
 func (p *parser) parsePropDecl() *ast.PropDecl {
@@ -630,13 +658,37 @@ func (p *parser) parseConstDecl() []*ast.Const {
 	if p.at(LPAREN) {
 		return p.parseGroupedConsts()
 	}
-	return []*ast.Const{p.parseSingleConst()}
+	return p.parseConstSpec()
 }
 
-func (p *parser) parseSingleConst() *ast.Const {
+func (p *parser) parseConstSpec() []*ast.Const {
 	pos := p.pos()
 	name := p.expect(IDENT).Literal
-	// Optional type
+
+	// Check for multi-name: NAME, NAME, ... TYPE = expr
+	if p.at(COMMA) && p.isMultiName() {
+		names := []string{name}
+		for p.at(COMMA) && p.isMultiName() {
+			p.advance()
+			names = append(names, p.expect(IDENT).Literal)
+		}
+		typeHint := ""
+		if !p.at(ASSIGN) {
+			typeHint = p.parseTypeString()
+		}
+		p.expect(ASSIGN)
+		init := p.parseExprAsExpr()
+		if typeHint != "" {
+			init.TypeHint = typeHint
+		}
+		var consts []*ast.Const
+		for _, n := range names {
+			consts = append(consts, &ast.Const{Pos: pos, Name: n, Init: init})
+		}
+		return consts
+	}
+
+	// Single const
 	typeHint := ""
 	if !p.at(ASSIGN) {
 		typeHint = p.parseTypeString()
@@ -646,7 +698,7 @@ func (p *parser) parseSingleConst() *ast.Const {
 	if typeHint != "" {
 		init.TypeHint = typeHint
 	}
-	return &ast.Const{Pos: pos, Name: name, Init: init}
+	return []*ast.Const{{Pos: pos, Name: name, Init: init}}
 }
 
 func (p *parser) parseGroupedConsts() []*ast.Const {
@@ -657,7 +709,7 @@ func (p *parser) parseGroupedConsts() []*ast.Const {
 		if p.at(RPAREN) {
 			break
 		}
-		consts = append(consts, p.parseSingleConst())
+		consts = append(consts, p.parseConstSpec()...)
 		if p.at(COMMA) {
 			p.advance()
 		}
@@ -672,14 +724,77 @@ func (p *parser) parseVarDecl() []*ast.Data {
 	if p.at(LPAREN) {
 		return p.parseGroupedVars()
 	}
-	return []*ast.Data{p.parseSingleVar()}
+	return p.parseVarSpec()
 }
 
-func (p *parser) parseSingleVar() *ast.Data {
+// parseVarSpec parses one or more var declarations that may share a type.
+// Supports: var x int, var x, y int, var x, y int = 0
+func (p *parser) parseVarSpec() []*ast.Data {
 	pos := p.pos()
 	name := p.expect(IDENT).Literal
-	d := &ast.Data{Pos: pos, Name: name}
 
+	// Check for multi-name: name1, name2, ... type
+	// Multi-name requires an explicit type after the last name.
+	if p.at(COMMA) && p.isMultiName() {
+		names := []string{name}
+		for p.at(COMMA) && p.isMultiName() {
+			p.advance() // consume comma
+			names = append(names, p.expect(IDENT).Literal)
+		}
+		typeHint := p.parseTypeString()
+		var init ast.Expr
+		if p.at(ASSIGN) {
+			p.advance()
+			init = p.parseExprAsExpr()
+			init.TypeHint = typeHint
+		} else {
+			init.TypeHint = typeHint
+		}
+		var vars []*ast.Data
+		for _, n := range names {
+			d := &ast.Data{Pos: pos, Name: n, Init: init}
+			if strings.HasPrefix(typeHint, "func:") {
+				d.IsFunc = true
+				params, ret := splitFuncBody(typeHint[5:])
+				d.ParamTypes = params
+				d.ReturnType = ret
+			}
+			p.parseVarModifiers(d)
+			vars = append(vars, d)
+		}
+		return vars
+	}
+
+	d := &ast.Data{Pos: pos, Name: name}
+	p.finishSingleVar(d)
+	return []*ast.Data{d}
+}
+
+// isMultiName peeks ahead to check if COMMA IDENT is followed by something
+// other than ASSIGN (which would indicate separate declarations).
+func (p *parser) isMultiName() bool {
+	if !p.at(COMMA) {
+		return false
+	}
+	peek := p.peekToken()
+	if peek.Type != IDENT {
+		return false
+	}
+	// Save state to look past the peeked IDENT
+	savedPos := p.lex.pos
+	savedLine := p.lex.line
+	savedCol := p.lex.col
+	savedPrevTok := p.lex.prevTok
+	tok := p.lex.NextToken() // read token after peeked IDENT
+	p.lex.pos = savedPos
+	p.lex.line = savedLine
+	p.lex.col = savedCol
+	p.lex.prevTok = savedPrevTok
+	// If token after the second IDENT is ASSIGN, it's a separate decl (y = expr)
+	return tok.Type != ASSIGN
+}
+
+func (p *parser) finishSingleVar(d *ast.Data) {
 	// var name = expr | var name type = expr | var name type [modifiers]
 	if p.at(ASSIGN) {
 		p.advance()
@@ -703,7 +818,6 @@ func (p *parser) parseSingleVar() *ast.Data {
 
 	// Parse modifiers
 	p.parseVarModifiers(d)
-	return d
 }
 
 func (p *parser) parseVarModifiers(d *ast.Data) {
@@ -740,7 +854,7 @@ func (p *parser) parseGroupedVars() []*ast.Data {
 		if p.at(RPAREN) {
 			break
 		}
-		vars = append(vars, p.parseSingleVar())
+		vars = append(vars, p.parseVarSpec()...)
 		if p.at(COMMA) {
 			p.advance()
 		}
