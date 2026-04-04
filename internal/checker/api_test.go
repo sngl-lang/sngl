@@ -35,7 +35,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -67,7 +67,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -98,7 +98,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -131,7 +131,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -163,7 +163,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err == nil {
 		t.Fatal("expected error for unknown option, got nil")
 	}
@@ -205,7 +205,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -239,7 +239,7 @@ component main {
 		},
 	}
 
-	err = Check(doc, ".", nil, nil, apis, true)
+	err = Check(doc, nil, "", nil, nil, apis, true)
 	if err != nil {
 		t.Fatalf("expected no error (no Opts struct), got: %v", err)
 	}

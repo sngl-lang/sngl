@@ -3,13 +3,20 @@ package sngl_test
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"golang.org/x/tools/txtar"
+
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
 // TestDocSNGLBlocks finds all ```sngl code blocks in markdown files and
@@ -36,6 +43,23 @@ func TestDocSNGLBlocks(t *testing.T) {
 				}
 
 				src := block.prelude
+				var checkFS fs.FS = os.DirFS(".")
+
+				// If prelude contains txtar markers, build an in-memory FS.
+				var replacements []string
+				if strings.Contains(block.prelude, "-- ") && strings.Contains(block.prelude, " --") {
+					ar := txtar.Parse([]byte(block.prelude))
+					src = string(ar.Comment) // non-file prelude content
+					mapFS := fstest.MapFS{}
+					for _, f := range ar.Files {
+						if f.Name == "..." {
+							replacements = append(replacements, strings.TrimSpace(string(f.Data)))
+							continue
+						}
+						mapFS[f.Name] = &fstest.MapFile{Data: f.Data}
+					}
+					checkFS = mapFS
+				}
 
 				switch block.annotation {
 				case "component":
@@ -46,6 +70,11 @@ func TestDocSNGLBlocks(t *testing.T) {
 					src += block.source
 				}
 
+				// Replace each "..." in source with the next -- ... -- file content.
+				for _, r := range replacements {
+					src = strings.Replace(src, "...", r, 1)
+				}
+
 				doc, err := parser.Parse(name, strings.NewReader(src))
 				if err != nil {
 					t.Errorf("parse error at %s line %d:\n%s\n---\n%v", file, block.line, src, err)
@@ -54,7 +83,7 @@ func TestDocSNGLBlocks(t *testing.T) {
 
 				// Type check
 				isMain := doc.App != nil
-				if err := checker.Check(doc, ".", checker.DefaultResolver(), nil, nil, isMain); err != nil {
+				if err := checker.Check(doc, checkFS, "", checker.DefaultResolver(), sngl.DefaultSchemeResolver(), sngl.BuildAPIConfig(doc), isMain); err != nil {
 					t.Errorf("type error at %s line %d:\n%s\n---\n%v", file, block.line, src, err)
 					return
 				}
@@ -134,13 +163,17 @@ func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
 // findAnnotation looks backward from fenceLine to find a <!-- SNGL-... --> comment.
 // It returns the annotation type and any prelude source from a multi-line comment.
 func findAnnotation(lines []string, fenceLine int) (annotation, prelude string) {
-	// Look at the line immediately before the fence
-	if fenceLine == 0 {
+	// Skip blank lines before the fence
+	i := fenceLine - 1
+	for i >= 0 && strings.TrimSpace(lines[i]) == "" {
+		i--
+	}
+	if i < 0 {
 		return "", ""
 	}
 
-	// First check: is the previous line a single-line annotation?
-	prev := strings.TrimSpace(lines[fenceLine-1])
+	// First check: is the previous non-blank line a single-line annotation?
+	prev := strings.TrimSpace(lines[i])
 	if strings.HasPrefix(prev, "<!-- SNGL-") && strings.HasSuffix(prev, "-->") {
 		// Single-line: <!-- SNGL-component -->
 		inner := strings.TrimPrefix(prev, "<!-- SNGL-")
@@ -156,7 +189,7 @@ func findAnnotation(lines []string, fenceLine int) (annotation, prelude string) 
 
 	// Scan backward to find the opening <!-- SNGL-
 	var preludeLines []string
-	for i := fenceLine - 2; i >= 0; i-- {
+	for i = i - 1; i >= 0; i-- {
 		trimmed := strings.TrimSpace(lines[i])
 		if strings.HasPrefix(trimmed, "<!-- SNGL-") {
 			// Found the opening line

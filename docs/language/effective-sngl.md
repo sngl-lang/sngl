@@ -17,6 +17,7 @@ The `output` block declares which language and platform combinations the file ta
 <!-- SNGL-top
 component main { text(value="") }
 -->
+
 ```sngl
 output {
     js { html }
@@ -26,9 +27,29 @@ output {
 
 Imports pull in definitions from other `.sngl` files by directory path, or from host-language packages via scheme imports:
 
-```
+<!-- SNGL-top
+-- shared/lib.sngl --
+struct Widget { name string = "" }
+-->
+
+```sngl
 import "shared"
+
+component main {
+    var w shared.Widget
+    text(value=w.name)
+}
+```
+
+Scheme imports pull in types from host-language packages:
+
+```sngl
 import "go://go/ast"
+
+component main {
+    var file ast.File
+    text(value=string(file))
+}
 ```
 
 The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `style`, `const`, `var`, `func`, `component`, `timer`, and `test`.
@@ -69,20 +90,20 @@ Every package that produces an executable must have exactly one `component main`
 The `regex` type represents a compiled regular expression. Declare one with the `regex()` constructor or as a typed variable:
 
 <!-- SNGL-component -->
+
 ```sngl
 var pattern = regex("[a-z]+")
 var emailPat regex = "^[^@]+@[^@]+$"
 ```
 
-Invalid patterns are caught at compile time. Use `regex.test` to check for a match and `regex.match` to extract the first match:
+Invalid patterns are caught at compile time. Use `regex.contains` to check for a match and `regex.match` to extract the first match:
 
-<!-- SNGL-top
-component main { text(value="") }
--->
+<!-- SNGL-component -->
+
 ```sngl
 var pattern = regex("[a-z]+")
-func _a() regex.test(pattern, "hello")
-func _b() regex.match(pattern, "abc 123")
+func _a() pattern.contains("hello")
+func _b() pattern.match("abc 123")
 ```
 
 ### Collections
@@ -90,6 +111,7 @@ func _b() regex.match(pattern, "abc 123")
 `list<T>` is an ordered, typed collection:
 
 <!-- SNGL-component -->
+
 ```sngl
 var names list<string> = []
 var scores = [100, 95, 87]
@@ -102,6 +124,7 @@ var scores = [100, 95, 87]
 <!-- SNGL-component
 struct Todo { text string = "" done bool = false }
 -->
+
 ```sngl
 var name option<string>
 var count option<int> = 5
@@ -124,6 +147,7 @@ struct Todo {
 <!-- SNGL-component
 struct Todo { text string = "" done bool = false }
 -->
+
 ```sngl
 var todo Todo
 var todo2 = Todo{text: "Buy eggs", done: false}
@@ -142,6 +166,7 @@ enum Status { active, inactive, pending }
 Inline enums skip the top-level declaration when you need a one-off constraint:
 
 <!-- SNGL-component -->
+
 ```sngl
 var mode enum<light | dark> = "light"
 ```
@@ -167,6 +192,7 @@ Types are inferred from initializers. Explicit types are needed when the initial
 struct Todo { text string = "" done bool = false }
 enum Status { active, inactive, pending }
 -->
+
 ```sngl
 var count = 0
 var name = "World"
@@ -183,6 +209,7 @@ The rule: if the right side is an empty list, a zero-value struct, an enum strin
 Function types use `func(ParamTypes) -> ReturnType` syntax. Omit `-> ReturnType` for void:
 
 <!-- SNGL-component -->
+
 ```sngl
 var handler func() = null
 var transform func(string) -> string = null
@@ -196,6 +223,7 @@ var callback func(string) -> int = null
 `var` declares mutable state that triggers UI updates when changed. Group related vars:
 
 <!-- SNGL-component -->
+
 ```sngl
 var (
     count = 0,
@@ -209,6 +237,7 @@ var (
 `const` declares immutable values evaluated at compile time. Use them for configuration and magic numbers:
 
 <!-- SNGL-component -->
+
 ```sngl
 const (
     MAX_ITEMS = 100,
@@ -225,6 +254,7 @@ Constants cannot reference `var` values.
 Zero-arg functions serve as derived state -- they auto-update reactively and are read-only:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 func doubled() count * 2
@@ -238,6 +268,7 @@ Zero-arg functions are auto-invoked when referenced without `()`: `text(value=la
 `extern` marks a var as injected by the host platform at runtime:
 
 <!-- SNGL-component -->
+
 ```sngl
 var apiClient dyn extern
 var formatDate func(string) -> string extern
@@ -250,6 +281,7 @@ Extern vars must have an explicit type since there is no initializer to infer fr
 `trigger` attaches an onChange hook to a var. The platform generates the callback plumbing:
 
 <!-- SNGL-component -->
+
 ```sngl
 var todos list<Todo> trigger
 var items list<Item> trigger("SaveItems")
@@ -289,6 +321,7 @@ func clamp(val int, lo int, hi int) int {
 Functions with no return type are void. They can mutate component state and are called from event handlers:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 func reset() {
@@ -313,6 +346,7 @@ func string.shout(s string) "{s}!"
 Call with either syntax:
 
 <!-- SNGL-component -->
+
 ```sngl
 func _a() int.double(5)
 func _b() 5.double()
@@ -325,10 +359,19 @@ Type methods work on primitives (`int`, `float`, `string`, `bool`, `color`, `lis
 
 Type parameters go after the function name inside angle brackets. All stdlib list functions use generics:
 
-```
-func list.push<T>(l list<T>, item T) list<T>
-func list.filter<T>(l list<T>, pred func(T) -> bool) list<T>
-func list.map<T, U>(l list<T>, fn func(T) -> U) list<U>
+<!-- SNGL-top
+-- ... --
+return l
+-- ... --
+return l
+-- ... --
+return -1
+-->
+
+```sngl
+func list.push<T>(l list<T>, item T) list<T> { ... }
+func list.reverse<T>(l list<T>) list<T> { ... }
+func list.indexOf<T>(l list<T>, item T) { ... }
 ```
 
 Type parameters are inferred at call sites -- you never write `<T>` explicitly when calling a generic function:
@@ -336,6 +379,7 @@ Type parameters are inferred at call sites -- you never write `<T>` explicitly w
 <!-- SNGL-component
 struct Todo { text string = "" done bool = false }
 -->
+
 ```sngl
 var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
 func active() list.filter(todos, func(t) !t.done)
@@ -347,6 +391,7 @@ func labels() list.map(todos, func(t) t.text)
 Inline functions for filtering and mapping:
 
 <!-- SNGL-component -->
+
 ```sngl
 var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
 func active() list.filter(todos, func(t) !t.done)
@@ -387,6 +432,7 @@ component Counter {
 Params are the component's public API. They accept values from parent components:
 
 <!-- SNGL-component -->
+
 ```sngl
 param label = "default"
 param count int
@@ -398,6 +444,7 @@ Without a default, params use the type's zero value. Parents pass params as name
 <!-- SNGL-component
 component Counter { param label = "" param start = 0 text(value=label) }
 -->
+
 ```sngl
 Counter(label="Clicks", start=10)
 Counter()
@@ -410,6 +457,7 @@ Components can use other components:
 <!-- SNGL-component
 component Counter { param label = "" param start = 0 text(value=label) }
 -->
+
 ```sngl
 Counter(label="Score")
 ```
@@ -427,6 +475,7 @@ The standard library provides layout (`vbox`, `hbox`, `stack`, `spacer`), input 
 Visual nodes are component instances rendered as UI elements:
 
 <!-- SNGL-component -->
+
 ```sngl
 text(value="hello", style={fontSize=24})
 ```
@@ -434,6 +483,7 @@ text(value="hello", style={fontSize=24})
 Both `()` and `{}` are optional:
 
 <!-- SNGL-component -->
+
 ```sngl
 spacer
 text(value="Hello")
@@ -445,6 +495,7 @@ vbox { text(value="Hi") }
 Props are typed values defined by the component's schema. The compiler validates prop names and types:
 
 <!-- SNGL-component -->
+
 ```sngl
 button(text="Submit", disabled=count <= 0)
 input(value=name, placeholder="Enter name", type="email")
@@ -456,6 +507,7 @@ image(src="photo.png", alt="Profile", fit="cover")
 Events use the `@` prefix and contain mutation statements:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 button(text="+", @click={ count += 1 })
@@ -465,6 +517,7 @@ input(value=name, @input={ name = event.value })
 Multi-statement events separate with semicolons:
 
 <!-- SNGL-component -->
+
 ```sngl
 var (newTodo = "", todos list<Todo> = [])
 button(text="Add", @click={
@@ -480,6 +533,7 @@ Available events depend on the component (check the stdlib definition). Use `eve
 Apply styles directly on any node:
 
 <!-- SNGL-component -->
+
 ```sngl
 vbox(style={padding=16, gap=12})
 text(value="hello", style={color=#007700, fontSize=24, fontWeight="bold"})
@@ -490,6 +544,7 @@ text(value="hello", style={color=#007700, fontSize=24, fontWeight="bold"})
 Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposite conditions (note: `else` is only available on `for` loops):
 
 <!-- SNGL-component -->
+
 ```sngl
 var active = true
 if active {
@@ -503,6 +558,7 @@ if !active {
 ### Iteration
 
 <!-- SNGL-component -->
+
 ```sngl
 var items = ["a", "b", "c"]
 for item in items {
@@ -520,6 +576,7 @@ Use `key` for stable identity across re-renders when the list changes.
 The `else` block renders when the list is empty. It works with both `for item in list` and `for item, index in list`:
 
 <!-- SNGL-component -->
+
 ```sngl
 var items list<string> = []
 for item in items {
@@ -534,6 +591,7 @@ for item in items {
 Inside a children block, `@name(props)` attaches metadata:
 
 <!-- SNGL-component -->
+
 ```sngl
 text(value="hello") {
     @tooltip(text="A helpful tip")
@@ -545,6 +603,7 @@ text(value="hello") {
 Tag a node with `#id` to reference it in tests:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 button #inc (text="+", @click={ count += 1 })
@@ -558,6 +617,7 @@ text #display (value="Count: {count}")
 `=`, `+=`, `-=`, `*=`, `/=`, `%=` work on vars and struct fields:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 var label = ""
@@ -570,6 +630,7 @@ button(text="tag", @click={ label += " tagged" })
 `!!` flips a boolean in place:
 
 <!-- SNGL-component -->
+
 ```sngl
 var active = true
 button(text="Toggle", @click={ active!! })
@@ -580,6 +641,7 @@ button(text="Toggle", @click={ active!! })
 Method syntax mutates in place. Function syntax returns a new list:
 
 <!-- SNGL-component -->
+
 ```sngl
 var items = [1, 2, 3]
 button(text="Add", @click={ items.push(4) })
@@ -591,6 +653,7 @@ button(text="Remove first", @click={ items.remove(0) })
 Separate statements with semicolons inside event handlers:
 
 <!-- SNGL-component -->
+
 ```sngl
 var (a = 0, b = 0)
 button(text="go", @click={ a += 1; b += 2 })
@@ -601,6 +664,7 @@ button(text="go", @click={ a += 1; b += 2 })
 Fire a component event to notify the parent:
 
 <!-- SNGL-component -->
+
 ```sngl
 var data = "saved"
 button(text="Save", @click={ @save(data) })
@@ -644,6 +708,7 @@ Timer bodies can mutate state, like event handlers. The timer does not fire if t
 All styles are applied via the `style` prop:
 
 <!-- SNGL-component -->
+
 ```sngl
 vbox(style={gap=12, padding=16})
 text(value="bold", style={fontWeight="bold", color=#007700, fontSize=24})
@@ -720,6 +785,7 @@ test counter "increments" {
 Tag nodes with `#id`, then access props and fire events in tests:
 
 <!-- SNGL-component -->
+
 ```sngl
 var count = 0
 button #inc (text="+", @click={ count += 1 })
@@ -774,15 +840,15 @@ Each platform maps stdlib components to native widgets. Core components (`vbox`,
 
 ## Naming Conventions
 
-| Category | Convention | Examples |
-| --- | --- | --- |
-| Files | `kebab-case.sngl` | `todo-item.sngl` |
-| Components | `PascalCase` | `TodoItem`, `Counter` |
-| Variables/params | `camelCase` | `newTodo`, `isActive` |
-| Structs/enums | `PascalCase` | `Todo`, `Status` |
-| Style properties | `camelCase` | `fontSize`, `fontWeight` |
-| Events | `@camelCase` | `@click`, `@longPress` |
-| Constants | `camelCase` or `UPPER_CASE` | `defaultName`, `MAX_ITEMS` |
+| Category         | Convention                  | Examples                   |
+| ---------------- | --------------------------- | -------------------------- |
+| Files            | `kebab-case.sngl`           | `todo-item.sngl`           |
+| Components       | `PascalCase`                | `TodoItem`, `Counter`      |
+| Variables/params | `camelCase`                 | `newTodo`, `isActive`      |
+| Structs/enums    | `PascalCase`                | `Todo`, `Status`           |
+| Style properties | `camelCase`                 | `fontSize`, `fontWeight`   |
+| Events           | `@camelCase`                | `@click`, `@longPress`     |
+| Constants        | `camelCase` or `UPPER_CASE` | `defaultName`, `MAX_ITEMS` |
 
 ## Common Patterns
 

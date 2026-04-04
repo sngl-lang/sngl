@@ -84,7 +84,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 		doc = mergeDir(doc, filename)
 
-		if err := checker.Check(doc, dir, checker.DefaultResolver(), defaultSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
 

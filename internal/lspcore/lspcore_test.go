@@ -96,7 +96,7 @@ func TestComplete_TopLevel(t *testing.T) {
 
 func TestComplete_EventHandler(t *testing.T) {
 	content := "component Foo {\n  app {\n    button {\n      @click\n    }\n  }\n}"
-	doc, _ := lspcore.Analyze(content, "test.sngl", "", checker.DefaultResolver())
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", checker.DefaultResolver())
 	items := lspcore.Complete(content, doc, 4, 7)
 	if len(items) == 0 {
 		t.Fatal("expected event completions")
@@ -115,7 +115,7 @@ func TestComplete_EventHandler(t *testing.T) {
 
 func TestComplete_VisualNode(t *testing.T) {
 	content := "component Foo {\n  app {\n    \n  }\n}"
-	doc, _ := lspcore.Analyze(content, "test.sngl", "", checker.DefaultResolver())
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", checker.DefaultResolver())
 	items := lspcore.Complete(content, doc, 3, 5)
 	if len(items) == 0 {
 		t.Fatal("expected component name completions at visual node level")
@@ -270,7 +270,7 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 
 func TestAnalyze_ParseError(t *testing.T) {
 	content := "component {"
-	_, diags := lspcore.Analyze(content, "bad.sngl", "", checker.DefaultResolver())
+	_, diags := lspcore.Analyze(content, "bad.sngl", nil, "", checker.DefaultResolver())
 	if len(diags) == 0 {
 		t.Error("expected diagnostics for parse error")
 	}
@@ -322,7 +322,7 @@ func TestEventCompletions(t *testing.T) {
 func TestComplete_PropValue(t *testing.T) {
 	// Line with style= triggers CtxStyleProp, line with value= at depth>=2 is prop value
 	content := "component Foo {\n  var x = 1\n  app {\n    text {\n      value=x\n    }\n  }\n}"
-	doc, _ := lspcore.Analyze(content, "test.sngl", "", checker.DefaultResolver())
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", checker.DefaultResolver())
 	// at brace depth 2 (inside app { text { ), it's CtxVisualNode
 	items := lspcore.Complete(content, doc, 5, 12)
 	// Should get some completions
@@ -333,7 +333,7 @@ func TestComplete_PropValue(t *testing.T) {
 
 func TestComplete_ComponentKeywords(t *testing.T) {
 	content := "component Foo {\n  \n  app {\n    text(value=\"hi\")\n  }\n}"
-	doc, _ := lspcore.Analyze(content, "test.sngl", "", checker.DefaultResolver())
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", checker.DefaultResolver())
 	// at brace depth 1, it's CtxComponent
 	items := lspcore.Complete(content, doc, 2, 3)
 	if len(items) == 0 {

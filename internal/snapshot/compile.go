@@ -22,7 +22,8 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	if err := checker.Check(doc, filepath.Dir(sourceFile), checker.DefaultResolver(), nil, nil, true); err != nil {
+	dir := filepath.Dir(sourceFile)
+	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, true); err != nil {
 		return nil, fmt.Errorf("check: %w", err)
 	}
 

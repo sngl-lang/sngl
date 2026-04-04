@@ -73,7 +73,7 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -182,7 +182,7 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -239,7 +239,7 @@ func diagnostics(this js.Value, args []js.Value) any {
 	}
 	source := args[0].String()
 
-	doc, diags := lspcore.Analyze(source, "playground.sngl", "", nil)
+	doc, diags := lspcore.Analyze(source, "playground.sngl", nil, "", nil)
 
 	// Update cache for completion/hover
 	if doc != nil {

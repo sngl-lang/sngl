@@ -5,6 +5,7 @@ package sngl
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -32,7 +33,7 @@ func FormatNode(n ast.Node) string {
 // file, used to resolve relative import paths. It uses the default filesystem-based
 // import resolver for directory imports and the registered scheme importers.
 func Check(doc *ast.Document, dir string) error {
-	return checker.Check(doc, dir, checker.DefaultResolver(), DefaultSchemeResolver(), BuildAPIConfig(doc), true)
+	return checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), DefaultSchemeResolver(), BuildAPIConfig(doc), true)
 }
 
 // BuildAPIConfig resolves API namespaces from registered lang/platform providers

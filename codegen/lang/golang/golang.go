@@ -421,7 +421,11 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		for _, a := range n.Args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		qualName = "*." + n.Method
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		} else {
+			qualName = "*." + n.Method
+		}
 	}
 
 	a := func(i int) string {
@@ -495,7 +499,7 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "list.map", "*.map":
 		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
 	// regex
-	case "regex.test", "*.test":
+	case "regex.contains":
 		return a(0) + ".MatchString(" + a(1) + ")"
 	case "regex.match", "*.match":
 		return a(0) + ".FindString(" + a(1) + ")"

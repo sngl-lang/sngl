@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"io/fs"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -14,7 +15,7 @@ type Diagnostic struct {
 
 // CheckDiagnostics type-checks a document and returns structured diagnostics
 // instead of a joined error string.
-func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig) (*ast.Document, []Diagnostic) {
+func CheckDiagnostics(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig) (*ast.Document, []Diagnostic) {
 	registry, styleProps, _, _, _, err := LoadStdlib()
 	if err != nil {
 		return doc, []Diagnostic{{Msg: fmt.Sprintf("loading stdlib: %v", err)}}
@@ -24,7 +25,8 @@ func CheckDiagnostics(doc *ast.Document, dir string, resolve ImportResolver, sch
 		registry:      registry,
 		styleProps:    styleProps,
 		scope:         NewScope(nil),
-		dir:           dir,
+		fsys:          fsys,
+		schemeDir:     schemeDir,
 		resolve:       resolve,
 		schemeResolve: schemeResolve,
 		visited:       map[string]bool{},

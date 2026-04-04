@@ -122,6 +122,7 @@ type MethodExpr struct {
 	Receiver Node
 	Method   string
 	Args     []Node
+	Resolved string // qualified name set by checker, e.g. "regex.contains"
 }
 
 // StructFieldLit is a field in a struct literal.

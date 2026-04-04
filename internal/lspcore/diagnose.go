@@ -2,6 +2,7 @@ package lspcore
 
 import (
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -12,7 +13,7 @@ import (
 
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
 // Pass dir="" and resolve=nil when no filesystem is available (e.g. playground).
-func Analyze(content, filename, dir string, resolve checker.ImportResolver, schemeResolve ...checker.SchemeResolver) (*ast.Document, []Diagnostic) {
+func Analyze(content, filename string, fsys fs.FS, schemeDir string, resolve checker.ImportResolver, schemeResolve ...checker.SchemeResolver) (*ast.Document, []Diagnostic) {
 	doc, parseErr := parser.Parse(filename, strings.NewReader(content))
 
 	var diags []Diagnostic
@@ -27,7 +28,7 @@ func Analyze(content, filename, dir string, resolve checker.ImportResolver, sche
 	}
 
 	if doc != nil {
-		_, checkDiags := checker.CheckDiagnostics(doc, dir, resolve, sr, buildLSPAPIConfig(doc))
+		_, checkDiags := checker.CheckDiagnostics(doc, fsys, schemeDir, resolve, sr, buildLSPAPIConfig(doc))
 		for _, d := range checkDiags {
 			rng := Range{Start: Position{}, End: Position{}}
 			if d.Pos.IsValid() {

@@ -2,8 +2,8 @@ package checker
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -14,19 +14,21 @@ import (
 )
 
 // ImportResolver loads all .sngl documents from a directory import path.
-// The dir argument is the resolved absolute path of the directory to import.
-type ImportResolver func(dir string) ([]*ast.Document, error)
+// fsys is the root filesystem and importPath is a forward-slash relative path
+// within it.
+type ImportResolver func(fsys fs.FS, importPath string) ([]*ast.Document, error)
 
 // SchemeResolver resolves a scheme-based import URI (e.g., "go://pkg/path")
 // into native declarations. The scheme is the URI scheme (e.g., "go"), uri is
-// the full import path, and dir is the importing file's directory.
+// the full import path, and dir is the importing file's directory (real
+// filesystem path for tools like go/packages).
 type SchemeResolver func(scheme, uri, dir string) (*ast.NativeDecls, error)
 
 // DefaultResolver returns an ImportResolver that reads and parses all .sngl
-// files from the given directory.
+// files from the given path within the provided fs.FS.
 func DefaultResolver() ImportResolver {
-	return func(dir string) ([]*ast.Document, error) {
-		entries, err := os.ReadDir(dir)
+	return func(fsys fs.FS, importPath string) ([]*ast.Document, error) {
+		entries, err := fs.ReadDir(fsys, importPath)
 		if err != nil {
 			return nil, err
 		}
@@ -35,8 +37,8 @@ func DefaultResolver() ImportResolver {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 				continue
 			}
-			path := filepath.Join(dir, e.Name())
-			f, err := os.Open(path)
+			fpath := path.Join(importPath, e.Name())
+			f, err := fsys.Open(fpath)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", e.Name(), err)
 			}
@@ -53,10 +55,11 @@ func DefaultResolver() ImportResolver {
 
 // Check type-checks an SNGL document AST. It resolves types for all declarations,
 // validates expressions against typed scopes, and checks visual nodes against
-// component schemas. dir is the directory of the .sngl file, used to resolve
-// relative import paths. resolve is an optional callback for directory imports;
-// pass nil if directory imports are not supported.
-func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig, isMain bool) error {
+// component schemas. fsys is the filesystem used for resolving SNGL imports.
+// schemeDir is an OS filesystem path used only for scheme imports (e.g., go://)
+// that need a real directory. resolve is an optional callback for directory
+// imports; pass nil if directory imports are not supported.
+func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig, isMain bool) error {
 	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
@@ -77,7 +80,8 @@ func Check(doc *ast.Document, dir string, resolve ImportResolver, schemeResolve 
 		unitTables:    unitTables,
 		scope:         NewScope(nil),
 		methods:       map[string]map[string]*methodInfo{},
-		dir:           dir,
+		fsys:          fsys,
+		schemeDir:     schemeDir,
 		resolve:       resolve,
 		schemeResolve: schemeResolve,
 		visited:       map[string]bool{},
@@ -218,7 +222,8 @@ type checker struct {
 	structs       []*ast.StructDef
 	enums         []*ast.EnumDef
 	constNames    map[string]bool // names declared as const (for untyped constant detection)
-	dir           string
+	fsys          fs.FS
+	schemeDir     string // real OS path for scheme imports (e.g., go://)
 	resolve       ImportResolver
 	schemeResolve SchemeResolver
 	visited       map[string]bool // tracks visited import paths to detect cycles
@@ -382,7 +387,7 @@ func (c *checker) pass1(doc *ast.Document) {
 				c.errorAt(imp.Pos, "import %q: scheme imports not supported in this context", imp.Path)
 				continue
 			}
-			decls, err := c.schemeResolve(imp.Scheme, imp.Path, c.dir)
+			decls, err := c.schemeResolve(imp.Scheme, imp.Path, c.schemeDir)
 			if err != nil {
 				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 				continue
@@ -412,13 +417,12 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.errorAt(imp.Pos, "import %q: directory imports not supported in this context", imp.Path)
 			continue
 		}
-		resolved := filepath.Join(c.dir, imp.Path)
-		if c.visited[resolved] {
+		if c.visited[imp.Path] {
 			c.errorAt(imp.Pos, "import %q: cycle detected", imp.Path)
 			continue
 		}
-		c.visited[resolved] = true
-		docs, err := c.resolve(resolved)
+		c.visited[imp.Path] = true
+		docs, err := c.resolve(c.fsys, imp.Path)
 		if err != nil {
 			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 			continue
@@ -897,12 +901,14 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 			}
 			// Check if receiver is a type name (e.g., int.sqrt(x))
 			if t, ok := c.lookupMethod(ident.Name, e.Method); ok {
+				e.Resolved = ident.Name + "." + e.Method
 				return t
 			}
 		}
 		// Check by inferred receiver type (e.g., x.sqrt())
 		recvType := c.inferNodeType(e.Receiver)
 		if t, ok := c.lookupMethod(recvType.String(), e.Method); ok {
+			e.Resolved = recvType.String() + "." + e.Method
 			return t
 		}
 		return Dyn

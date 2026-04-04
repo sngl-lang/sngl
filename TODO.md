@@ -3,7 +3,7 @@
 - [x] ~~Remove `computed` keyword~~ — done. All computeds are now zero-arg expression-form functions. Auto-invoked when referenced without `()`.
 - [x] ~~Drop `=` and return type from expression-form functions~~ — done. `func add(a int, b int) a + b`. Return type inferred from expression. Block form still requires explicit return type.
 - [x] ~~Eliminate `dyn` from stdlib~~ — done. Generic functions added (`func list.push<T>(...)`). List functions use `list<T>`, lambda params use `func(T) bool`. Alert functions are void. Component props tightened to `list<string>`/`list<int>`.
-- [x] ~~Add `regex("pattern")` constructor~~ — done. Compile-time validated via `regexp.Compile()`. Added `regex.test()` and `regex.match()` methods. Codegen: Go → `regexp.MustCompile()`, JS → `new RegExp()`, Kotlin → `Regex()`.
+- [x] ~~Add `regex("pattern")` constructor~~ — done. Compile-time validated via `regexp.Compile()`. Added `regex.contains()` and `regex.match()` methods. Codegen: Go → `regexp.MustCompile()`, JS → `new RegExp()`, Kotlin → `Regex()`.
 - [x] Remove most of `null` from the language. Replace with:
   - Empty lists: `[]` (already works)
   - Structs: zero-value initialization (already works)

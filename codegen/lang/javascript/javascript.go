@@ -428,8 +428,11 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		for _, a := range n.Args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		// We don't know the type statically, but check by method name
-		qualName = "*." + n.Method
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		} else {
+			qualName = "*." + n.Method
+		}
 	}
 
 	a := func(i int) string {
@@ -518,7 +521,7 @@ func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "list.map", "*.map":
 		return a(0) + ".map(" + a(1) + ")"
 	// regex
-	case "regex.test", "*.test":
+	case "regex.contains":
 		return a(0) + ".test(" + a(1) + ")"
 	case "regex.match", "*.match":
 		return "(" + a(0) + ".exec(" + a(1) + ") || [\"\"])[0]"

@@ -90,7 +90,8 @@ func TestMarkers(t *testing.T) {
 			content := string(data)
 			markers := parseMarkers(content)
 
-			doc, diags := lspcore.Analyze(content, filepath.Base(path), filepath.Dir(path), checker.DefaultResolver())
+			dir := filepath.Dir(path)
+			doc, diags := lspcore.Analyze(content, filepath.Base(path), os.DirFS(dir), dir, checker.DefaultResolver())
 
 			// Collect diag markers by line
 			diagExpected := map[int][]string{} // line (1-based) → expected substrings

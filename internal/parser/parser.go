@@ -141,6 +141,76 @@ func (p *parser) isTypedBlockFunc() bool {
 	return true
 }
 
+// isGenericReturnTypeBlock checks whether the current IDENT followed by LT (peek)
+// is a generic return type followed by a block body (e.g., list<T> { return ... }).
+// Called when cur is IDENT and peek is LT. Uses a lexer snapshot.
+func (p *parser) isGenericReturnTypeBlock() bool {
+	savedPos := p.lex.pos
+	savedLine := p.lex.line
+	savedCol := p.lex.col
+	savedPrevTok := p.lex.prevTok
+	defer func() {
+		p.lex.pos = savedPos
+		p.lex.line = savedLine
+		p.lex.col = savedCol
+		p.lex.prevTok = savedPrevTok
+	}()
+
+	// Lexer is positioned after the peeked LT token.
+	// Skip past <...> by counting angle bracket depth.
+	depth := 1
+	for depth > 0 {
+		tok := p.lex.NextToken()
+		switch tok.Type {
+		case LT:
+			depth++
+		case GT:
+			depth--
+		case EOF, SEMICOLON:
+			return false
+		}
+	}
+
+	// After the closing >, next meaningful token should be LBRACE.
+	var tok Token
+	for {
+		tok = p.lex.NextToken()
+		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT {
+			continue
+		}
+		break
+	}
+	if tok.Type != LBRACE {
+		return false
+	}
+
+	// Check the first token inside { to distinguish block vs struct literal.
+	for {
+		tok = p.lex.NextToken()
+		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT || tok.Type == SEMICOLON {
+			continue
+		}
+		break
+	}
+	if tok.Type == RBRACE {
+		return true // empty block
+	}
+	if tok.Type == IDENT {
+		var tok2 Token
+		for {
+			tok2 = p.lex.NextToken()
+			if tok2.Type == LINE_COMMENT || tok2.Type == BLOCK_COMMENT || tok2.Type == SEMICOLON {
+				continue
+			}
+			break
+		}
+		if tok2.Type == COLON {
+			return false // struct literal
+		}
+	}
+	return true
+}
+
 func (p *parser) expect(t TokenType) Token {
 	if p.cur.Type != t {
 		p.errorf("expected %v, got %v (%q)", tokenNames[t], tokenNames[p.cur.Type], p.cur.Literal)
@@ -699,7 +769,7 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 	name := p.expect(IDENT).Literal
 	if p.at(DOT) {
 		p.advance()
-		// Allow keywords as method names (e.g., regex.test, list.return)
+		// Allow keywords as method names (e.g., list.return)
 		tok := p.cur
 		if tok.Type == IDENT || (tok.Type >= KW_IMPORT && tok.Type <= KW_NULL) {
 			name = name + "." + tok.Literal
@@ -746,6 +816,12 @@ func (p *parser) parseFuncDef() *ast.FuncDef {
 		p.expect(RBRACE)
 	} else if p.at(IDENT) && p.peekToken().Type == LBRACE && p.isTypedBlockFunc() {
 		// Typed block form: func name(params) type { ... }
+		fd.ReturnType = p.parseTypeString()
+		p.advance() // consume LBRACE
+		fd.Block = p.parseFuncBlock()
+		p.expect(RBRACE)
+	} else if p.at(IDENT) && p.peekToken().Type == LT && p.isGenericReturnTypeBlock() {
+		// Typed block form with generic return type: func name(params) list<T> { ... }
 		fd.ReturnType = p.parseTypeString()
 		p.advance() // consume LBRACE
 		fd.Block = p.parseFuncBlock()
@@ -1260,8 +1336,11 @@ func (p *parser) parsePostfix() ast.Node {
 			if p.at(AT) {
 				p.advance()
 				field = "@" + p.expect(IDENT).Literal
+			} else if p.at(IDENT) || p.cur.Type.IsKeyword() {
+				field = p.cur.Literal
+				p.advance()
 			} else {
-				field = p.expect(IDENT).Literal
+				field = p.expect(IDENT).Literal // will error
 			}
 			// Method call: .field(args)
 			if p.at(LPAREN) {

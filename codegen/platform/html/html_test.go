@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := path[:strings.LastIndex(path, "/")]
-	if err := checker.Check(doc, dir, checker.DefaultResolver(), nil, nil, true); err != nil {
+	if err := checker.Check(doc, os.DirFS(dir), "", checker.DefaultResolver(), nil, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 

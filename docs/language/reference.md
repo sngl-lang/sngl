@@ -131,8 +131,17 @@ var todos list<Todo> = []
 
 Imports load all `.sngl` files from a directory, making their component, struct, and enum definitions available.
 
-```
+<!-- SNGL-top
+-- shared/types.sngl --
+struct Widget { name string = "" }
+-->
+```sngl
 import "shared"
+
+component main {
+    var w shared.Widget
+    text(value=w.name)
+}
 ```
 
 ### output
@@ -515,10 +524,18 @@ Inside a block-form function body, the following are allowed:
 
 Functions can declare type parameters in angle brackets after the name:
 
-```
-func list.push<T>(l list<T>, item T) list<T>
-func list.filter<T>(l list<T>, pred func(T) -> bool) list<T>
-func list.map<T, U>(l list<T>, fn func(T) -> U) list<U>
+<!-- SNGL-top
+-- ... --
+return l
+-- ... --
+return l
+-- ... --
+return -1
+-->
+```sngl
+func list.push<T>(l list<T>, item T) list<T> { ... }
+func list.reverse<T>(l list<T>) list<T> { ... }
+func list.indexOf<T>(l list<T>, item T) int { ... }
 ```
 
 Type parameters are inferred at call sites. Users never write `<T>` when calling a generic function -- the compiler deduces the type arguments from the values passed:
@@ -562,7 +579,7 @@ func _d() "hello".shout()          // "hello!"
 | `float` | `float(value) -> float` | Convert to float (not valid on structs) |
 | `embed` | `embed(path) -> string` | Compile-time file contents |
 | `regex` | `regex(pattern) -> regex` | Compile-time validated regex constructor |
-| `regex.test` | `regex.test(r, s) -> bool` | Test if regex matches string |
+| `regex.contains` | `regex.contains(r, s) -> bool` | Test if regex matches string |
 | `regex.match` | `regex.match(r, s) -> string` | First match of regex in string |
 
 Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.

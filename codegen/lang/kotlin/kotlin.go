@@ -420,7 +420,11 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		for _, a := range n.Args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		qualName = "*." + n.Method
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		} else {
+			qualName = "*." + n.Method
+		}
 	}
 
 	a := func(i int) string {
@@ -505,7 +509,7 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		return a(0) + ".reversed()"
 	case "list.slice", "*.slice":
 		return a(0) + ".subList(" + a(1) + ", " + a(2) + ")"
-	case "list.contains", "*.contains":
+	case "list.contains":
 		return a(0) + ".contains(" + a(1) + ")"
 	case "list.filter", "*.filter":
 		return a(0) + ".filter(" + a(1) + ")"
@@ -517,7 +521,7 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "color.rgba":
 		return "String.format(\"#%02x%02x%02x%02x\", " + a(0) + ", " + a(1) + ", " + a(2) + ", (" + a(3) + " * 255).toInt())"
 	// regex
-	case "regex.test", "*.test":
+	case "regex.contains":
 		return a(0) + ".containsMatchIn(" + a(1) + ")"
 	case "regex.match", "*.match":
 		return "(" + a(0) + ".find(" + a(1) + ")?.value ?: \"\")"

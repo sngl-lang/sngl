@@ -132,6 +132,11 @@ func Keywords() map[string]TokenType {
 	return m
 }
 
+// IsKeyword returns true if t is a keyword token.
+func (t TokenType) IsKeyword() bool {
+	return t >= KW_IMPORT && t <= KW_NULL
+}
+
 // LookupIdent returns the keyword token type for ident if it's a keyword,
 // or IDENT otherwise.
 func LookupIdent(ident string) TokenType {

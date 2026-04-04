@@ -1,6 +1,7 @@
 package android
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc, "../../../testdata", checker.DefaultResolver(), nil, nil, true); err != nil {
+		if err := checker.Check(doc, os.DirFS("../../../testdata"), "", checker.DefaultResolver(), nil, nil, true); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)

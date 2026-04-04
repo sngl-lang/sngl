@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,7 +16,7 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	filename := uriToPath(uri)
 	dir := filepath.Dir(filename)
 
-	doc, coreDiags := lspcore.Analyze(fs.Content, filename, dir, checker.DefaultResolver())
+	doc, coreDiags := lspcore.Analyze(fs.Content, filename, os.DirFS(dir), dir, checker.DefaultResolver())
 	if doc != nil {
 		fs.Doc = doc
 	}

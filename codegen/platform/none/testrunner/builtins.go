@@ -108,10 +108,10 @@ var nativeMethods = map[string]nativeFunc{
 	},
 
 	// --- regex ---
-	"regex.test": func(args []any) (any, error) {
+	"regex.contains": func(args []any) (any, error) {
 		re, ok := args[0].(*regexp.Regexp)
 		if !ok {
-			return false, fmt.Errorf("regex.test: first argument must be a regex, got %T", args[0])
+			return false, fmt.Errorf("regex.contains: first argument must be a regex, got %T", args[0])
 		}
 		s := fmt.Sprintf("%v", args[1])
 		return re.MatchString(s), nil
