@@ -562,6 +562,7 @@ module.exports = grammar({
         $.anon_struct_literal,
         $.list_literal,
         $.lambda_expression,
+        $.anon_func_expression,
         $.identifier,
         $.integer_literal,
         $.float_literal,
@@ -656,7 +657,7 @@ module.exports = grammar({
         seq(
           field("operand", $._expression),
           ".",
-          field("field", choice($.identifier, $.event_method)),
+          field("field", choice($.identifier, $.event_method, $.element_ref)),
         ),
       ),
 
@@ -711,7 +712,7 @@ module.exports = grammar({
     _list_element: ($) =>
       choice($.spread_expression, $._expression),
 
-    // Lambda expression: func(params) expr
+    // Lambda expression: (params) => expr
     lambda_expression: ($) =>
       seq(
         "(",
@@ -719,6 +720,17 @@ module.exports = grammar({
         ")",
         "=>",
         field("body", $._expression),
+      ),
+
+    // Anonymous function expression: func(params) { block } or func(params) => expr
+    anon_func_expression: ($) =>
+      seq(
+        "func",
+        $.func_params,
+        choice(
+          $.func_block,
+          seq("=>", field("body", $._expression)),
+        ),
       ),
 
     // Spread expression: ...expr

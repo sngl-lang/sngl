@@ -69,24 +69,6 @@ func (r *CDPRunner) ExecTest(body []ast.Node) error {
 	return nil
 }
 
-// SaveState saves the current JS state object onto a stack for subtest isolation.
-func (r *CDPRunner) SaveState() error {
-	return r.evalVoid(`
-		if (!window.__stateStack) window.__stateStack = [];
-		window.__stateStack.push(JSON.parse(JSON.stringify(state)));
-	`)
-}
-
-// RestoreState pops saved state and calls all update functions.
-func (r *CDPRunner) RestoreState() error {
-	return r.evalVoid(`
-		if (window.__stateStack && window.__stateStack.length > 0) {
-			Object.assign(state, window.__stateStack.pop());
-			if (window.__sngl_updaters) window.__sngl_updaters.forEach(function(f) { f(); });
-		}
-	`)
-}
-
 // InjectHelpers adds test helper functions to the page after load.
 func (r *CDPRunner) InjectHelpers() error {
 	return r.evalVoid(`

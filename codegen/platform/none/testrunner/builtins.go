@@ -223,31 +223,6 @@ func clampByte(v int) int {
 	return v
 }
 
-// colorLightenDarken adjusts a hex color by a percentage.
-func colorLightenDarken(hex string, pct float64, lighten bool) string {
-	if len(hex) < 7 || hex[0] != '#' {
-		return hex
-	}
-	r := hexToByte(hex[1:3])
-	g := hexToByte(hex[3:5])
-	b := hexToByte(hex[5:7])
-
-	if lighten {
-		r = r + int(float64(255-r)*pct)
-		g = g + int(float64(255-g)*pct)
-		b = b + int(float64(255-b)*pct)
-	} else {
-		r = int(float64(r) * (1 - pct))
-		g = int(float64(g) * (1 - pct))
-		b = int(float64(b) * (1 - pct))
-	}
-	suffix := ""
-	if len(hex) == 9 {
-		suffix = hex[7:9]
-	}
-	return fmt.Sprintf("#%02x%02x%02x%s", clampByte(r), clampByte(g), clampByte(b), suffix)
-}
-
 func hexToByte(s string) int {
 	v := 0
 	for _, c := range s {

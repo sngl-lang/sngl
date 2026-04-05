@@ -1,6 +1,0 @@
-- Tests
-  - [ ] should execute in order (they currently get deinterlaced with stmts and subtests)
-  - [ ] should allow test blocks not associated with a component (for testing functions)
-  - [ ] should use function syntax. The component and test API should be passed in.
-- [ ] linter:
-  - no /- commented out nodes

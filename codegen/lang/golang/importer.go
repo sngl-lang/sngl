@@ -89,7 +89,6 @@ func goTypeToStruct(tn *types.TypeName, pkgPath, pkgName string) *ast.StructDef 
 	}
 	sd := &ast.StructDef{Name: tn.Name()}
 	for f := range st.Fields() {
-		f := f
 		if !f.Exported() {
 			continue
 		}

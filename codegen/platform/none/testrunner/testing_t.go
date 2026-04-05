@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -86,15 +87,9 @@ func (tv *testingT) callMethod(env *Env, method string, args []ast.Node) (any, e
 				funcs:  make(map[string]*ast.FuncDef),
 			}
 			if parentCV != nil {
-				for k, v := range parentCV.vars {
-					childCV.vars[k] = v
-				}
-				for k, v := range parentCV.consts {
-					childCV.consts[k] = v
-				}
-				for k, v := range parentCV.funcs {
-					childCV.funcs[k] = v
-				}
+				maps.Copy(childCV.vars, parentCV.vars)
+				maps.Copy(childCV.consts, parentCV.consts)
+				maps.Copy(childCV.funcs, parentCV.funcs)
 			}
 			callArgs = append(callArgs, childCV)
 		}
@@ -157,20 +152,8 @@ func (cv *componentValue) setField(op ast.AssignOp, field string, val any) error
 // for evaluating computed fields.
 func (cv *componentValue) compEnv() *Env {
 	env := cv.env.Snapshot()
-	for k, v := range cv.vars {
-		env.vars[k] = v
-	}
+	maps.Copy(env.vars, cv.vars)
 	return env
-}
-
-// syncToEnv writes component state back to the shared env, but skips
-// keys that are test params (to avoid overwriting the T and component values).
-func (cv *componentValue) syncToEnv(testParams map[string]bool) {
-	for k, v := range cv.vars {
-		if !testParams[k] {
-			cv.env.vars[k] = v
-		}
-	}
 }
 
 // syncFromEnv reads component state from the shared env back into cv.vars.
@@ -229,4 +212,3 @@ func (lv *lambdaValue) callWithEnv(env *Env, args []any) (any, error) {
 	}
 	return env.Eval(lv.body)
 }
-

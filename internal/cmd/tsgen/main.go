@@ -72,7 +72,7 @@ func main() {
 		f.Close()
 	}
 	hashFile := filepath.Join(tsparserDir, "grammar_hash.txt")
-	os.WriteFile(hashFile, []byte(fmt.Sprintf("%x\n", h.Sum(nil))), 0o644)
+	os.WriteFile(hashFile, fmt.Appendf(nil, "%x\n", h.Sum(nil)), 0o644)
 
 	fmt.Println("tsgen: done")
 }

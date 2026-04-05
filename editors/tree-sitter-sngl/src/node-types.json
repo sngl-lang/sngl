@@ -58,6 +58,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "anon_func_expression",
+        "named": true
+      },
+      {
         "type": "anon_struct_literal",
         "named": true
       },
@@ -168,6 +172,36 @@
         "named": true
       }
     ]
+  },
+  {
+    "type": "anon_func_expression",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "_expression",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "func_block",
+          "named": true
+        },
+        {
+          "type": "func_params",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "anon_struct_field",
@@ -715,6 +749,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "element_ref",
+            "named": true
+          },
           {
             "type": "event_method",
             "named": true

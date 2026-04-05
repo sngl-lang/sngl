@@ -79,8 +79,8 @@ func (env *Env) SetVar(name string, val any) {
 // Snapshot returns a shallow copy of the env for subtest isolation.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
-		vars:   make(map[string]any, len(env.vars)),
-		consts: env.consts,
+		vars:        make(map[string]any, len(env.vars)),
+		consts:      env.consts,
 		funcs:       env.funcs,
 		units:       env.units,
 		doc:         env.doc,
@@ -198,9 +198,7 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 					return nil, err
 				}
 				if src, ok := v.(map[string]any); ok {
-					for k, val := range src {
-						m[k] = val
-					}
+					maps.Copy(m, src)
 				}
 			} else {
 				v, err := env.Eval(f.Value)

@@ -157,8 +157,8 @@ func compareStructure(t *testing.T, doc *ast.Document, root *ts.Node, src []byte
 	}
 	compareStringSlices(t, "imports", goImports, tsImports)
 
-	// Extract test function names.
-	tsTests := extractNamedChildren(root, "test_declaration", "component", src)
+	// Extract test function names (func declarations with "test" prefix).
+	tsTests := extractTestFuncNames(root, src)
 	var goTests []string
 	for _, fn := range doc.TestFuncs() {
 		goTests = append(goTests, fn.Name)
@@ -219,7 +219,7 @@ func compareMainComponent(t *testing.T, doc *ast.Document, tsComp *ts.Node, src 
 	tsFuncs := extractDescendantFields(tsComp, "func_declaration", "name", src)
 	var goFuncs []string
 	for _, fn := range doc.Functions {
-		if !fn.IsStdlib {
+		if !fn.IsStdlib && !fn.IsTest() {
 			goFuncs = append(goFuncs, fn.Name)
 		}
 	}
@@ -256,6 +256,24 @@ func compareStringSlices(t *testing.T, ctx string, goSlice, tsSlice []string) {
 			t.Errorf("%s: tree-sitter has %q, Go does not", ctx, s)
 		}
 	}
+}
+
+// extractTestFuncNames finds top-level func_declaration nodes whose name starts with "test".
+func extractTestFuncNames(root *ts.Node, src []byte) []string {
+	cursor := root.Walk()
+	defer cursor.Close()
+	var result []string
+	for _, n := range findNodes(root, "func_declaration", cursor) {
+		nameNode := n.ChildByFieldName("name")
+		if nameNode == nil {
+			continue
+		}
+		name := nameNode.Utf8Text(src)
+		if strings.HasPrefix(name, "test") {
+			result = append(result, name)
+		}
+	}
+	return result
 }
 
 // extractNamedChildren finds all nodes of nodeType under root and returns the

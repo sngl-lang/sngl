@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -29,8 +30,8 @@ type viewContext struct {
 	selectCount    int
 	scrollCount    int
 	badgeCount     int
-	spinnerCount int
-	slotVar      string // variable holding pre-rendered slot content (for abstract components)
+	spinnerCount   int
+	slotVar        string // variable holding pre-rendered slot content (for abstract components)
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -60,18 +61,6 @@ func (vc *viewContext) exprDeps(expr ast.Expr) map[string]bool {
 		return nil
 	}
 	return vc.info.depTracker().ExprDeps(expr)
-}
-
-// nodeDeps extracts expanded deps for an ast.Node expression.
-func (vc *viewContext) nodeDeps(e ast.Node) map[string]bool {
-	if vc.info == nil || e == nil {
-		return nil
-	}
-	deps := codegen.ExtractDeps(e, vc.info.modelFields)
-	if len(deps) == 0 {
-		return nil
-	}
-	return vc.info.depTracker().ExpandDeps(deps)
 }
 
 // emitEventHandler emits mutation statements and affected updater calls for an event.
@@ -730,9 +719,7 @@ func (vc *viewContext) renderProgress(vn *ast.VisualNode, resultVar string) {
 			if deps == nil {
 				deps = maxDeps
 			} else {
-				for k, v := range maxDeps {
-					deps[k] = v
-				}
+				maps.Copy(deps, maxDeps)
 			}
 		}
 		if len(deps) > 0 {

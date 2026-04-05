@@ -405,19 +405,19 @@ func findAnnotation(lines []string, fenceLine int) (annotation, prelude string) 
 	var preludeLines []string
 	for i = i - 1; i >= 0; i-- {
 		trimmed := strings.TrimSpace(lines[i])
-		if strings.HasPrefix(trimmed, "<!-- SNGL-") {
+		if after, ok := strings.CutPrefix(trimmed, "<!-- SNGL-"); ok {
 			// Found the opening line
-			inner := strings.TrimPrefix(trimmed, "<!-- SNGL-")
+			inner := after
 			// The annotation is the first word/token
 			inner = strings.TrimSpace(inner)
 			// If there's content after the annotation on this line
-			if idx := strings.IndexByte(inner, ' '); idx >= 0 {
-				annotation = inner[:idx]
+			if before, after, ok := strings.Cut(inner, " "); ok {
+				annotation = before
 				// Rest of first line is also prelude
-				preludeLines = append([]string{inner[idx+1:]}, preludeLines...)
-			} else if strings.HasSuffix(inner, "-->") {
+				preludeLines = append([]string{after}, preludeLines...)
+			} else if before, ok := strings.CutSuffix(inner, "-->"); ok {
 				// Shouldn't happen since we already checked single-line
-				annotation = strings.TrimSuffix(inner, "-->")
+				annotation = before
 				annotation = strings.TrimSpace(annotation)
 			} else {
 				annotation = inner

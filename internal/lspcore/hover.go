@@ -121,10 +121,6 @@ func HoverInfo(doc *ast.Document, word string) string {
 	return ""
 }
 
-func formatComponentHover(c *ast.Component) string {
-	return formatComponentHoverWithDoc(c, nil)
-}
-
 func formatComponentHoverWithDoc(c *ast.Component, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\ncomponent %s\n```\n", c.Name)

@@ -1082,33 +1082,6 @@ func (c *checker) pass2(doc *ast.Document) {
 	}
 }
 
-// isComponentAvailable checks whether an abstract component has an implementation
-// for at least one of the target platforms. Returns true if the component has a
-// default body, a platform-conditional body, or a platform .sngl override.
-func (c *checker) isComponentAvailable(name string, schema *ComponentSchema) bool {
-	// Has a default body — always available
-	if schema.Body != nil {
-		return true
-	}
-	// Check platform-conditional bodies
-	for _, plat := range c.targetPlatforms {
-		if _, ok := schema.PlatformBodies[plat]; ok {
-			return true
-		}
-	}
-	// Check platform .sngl overrides
-	if c.apis != nil {
-		for _, plat := range c.targetPlatforms {
-			if overrides, ok := c.apis.StdlibOverrides[plat]; ok {
-				if _, ok := overrides[name]; ok {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	schema, ok := c.registry[vn.Component]
 	if !ok {

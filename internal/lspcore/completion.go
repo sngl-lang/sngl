@@ -302,7 +302,7 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 	// Collect already-used prop names on this line to exclude them
 	used := map[string]bool{}
 	insideParens := prefix[parenIdx+1:]
-	for _, part := range strings.Split(insideParens, ",") {
+	for part := range strings.SplitSeq(insideParens, ",") {
 		part = strings.TrimSpace(part)
 		if eq := strings.Index(part, "="); eq > 0 {
 			name := strings.TrimSpace(part[:eq])

@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -58,15 +59,9 @@ func runTestFunc(doc *ast.Document, fn *ast.FuncDef) *codegen.TestResult {
 			funcs:      make(map[string]*ast.FuncDef),
 			testParams: testParams,
 		}
-		for k, v := range env.vars {
-			cVal.vars[k] = v
-		}
-		for k, v := range env.consts {
-			cVal.consts[k] = v
-		}
-		for k, v := range env.funcs {
-			cVal.funcs[k] = v
-		}
+		maps.Copy(cVal.vars, env.vars)
+		maps.Copy(cVal.consts, env.consts)
+		maps.Copy(cVal.funcs, env.funcs)
 		env.vars[fn.Params[1].Name] = cVal
 	}
 
@@ -116,10 +111,10 @@ type testingT struct {
 // collide with the component param "c").
 type componentValue struct {
 	env        *Env
-	vars       map[string]any         // component data/param vars
-	consts     map[string]any         // component consts
+	vars       map[string]any          // component data/param vars
+	consts     map[string]any          // component consts
 	funcs      map[string]*ast.FuncDef // component functions
-	testParams map[string]bool        // test param names to avoid syncing
+	testParams map[string]bool         // test param names to avoid syncing
 }
 
 // BuildEnv creates an Env for a test function.

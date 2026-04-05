@@ -240,9 +240,9 @@ func showComponentDoc(query string) error {
 	// Support "component.prop" syntax.
 	compName := query
 	propName := ""
-	if i := strings.IndexByte(query, '.'); i >= 0 {
-		compName = query[:i]
-		propName = query[i+1:]
+	if before, after, ok := strings.Cut(query, "."); ok {
+		compName = before
+		propName = after
 	}
 
 	schema, ok := registry[compName]

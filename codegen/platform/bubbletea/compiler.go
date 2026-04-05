@@ -10,7 +10,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Config controls code generation.
@@ -1251,32 +1250,6 @@ func externFuncGoType(paramTypes []string, returnType string) string {
 		sig += " " + typeHintToGo(returnType)
 	}
 	return sig
-}
-
-func checkerTypeToGo(t checker.Type) string {
-	switch t {
-	case checker.Int:
-		return "int"
-	case checker.Float:
-		return "float64"
-	case checker.Bool:
-		return "bool"
-	case checker.String, checker.Color,
-		checker.URL, checker.Email, checker.UUID,
-		checker.Regex, checker.Base64, checker.IPV4,
-		checker.IPV6, checker.Hostname, checker.IDNEmail,
-		checker.IDNHostname, checker.IRL, checker.IRLReference,
-		checker.URLReference, checker.URLTemplate,
-		checker.Currency, checker.Country2, checker.Country3,
-		checker.CountrySubdivision, checker.Decimal:
-		return "string"
-	case checker.Date, checker.Time, checker.DateTime:
-		return "time.Time"
-	case checker.Duration:
-		return "time.Duration"
-	default:
-		return "any"
-	}
 }
 
 func needsTimeType(hint string) bool {

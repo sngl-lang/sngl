@@ -334,7 +334,15 @@ func findInlineComment(line string) int {
 		return -1
 	}
 	inStr := false
+	inBlock := false
 	for i := 0; i < len(line); i++ {
+		if inBlock {
+			if line[i] == '*' && i+1 < len(line) && line[i+1] == '/' {
+				inBlock = false
+				i++ // skip '/'
+			}
+			continue
+		}
 		switch line[i] {
 		case '"':
 			if !inStr {
@@ -343,8 +351,14 @@ func findInlineComment(line string) int {
 				inStr = false
 			}
 		case '/':
-			if !inStr && i+1 < len(line) && line[i+1] == '/' && i > 0 && line[i-1] == ' ' {
-				return i
+			if !inStr && i+1 < len(line) {
+				if line[i+1] == '/' && i > 0 && line[i-1] == ' ' {
+					return i
+				}
+				if line[i+1] == '*' {
+					inBlock = true
+					i++ // skip '*'
+				}
 			}
 		}
 	}
