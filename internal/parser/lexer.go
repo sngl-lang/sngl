@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -11,6 +12,7 @@ type lexer struct {
 	line    int
 	col     int
 	prevTok TokenType // for semicolon insertion
+	errors  []string  // non-fatal errors accumulated during scanning
 }
 
 func newLexer(src string) *lexer {
@@ -346,6 +348,7 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 				case '\\':
 					sb.WriteRune('\\')
 				case '{':
+					sb.WriteRune('\\')
 					sb.WriteRune('{')
 				case '0':
 					sb.WriteRune(0)
@@ -359,14 +362,17 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 							l.advance()
 							l.advance()
 						} else {
+							l.errors = append(l.errors, fmt.Sprintf("%d:%d: invalid hex escape", l.line, l.col))
 							sb.WriteRune('\\')
 							sb.WriteRune('x')
 						}
 					} else {
+						l.errors = append(l.errors, fmt.Sprintf("%d:%d: incomplete hex escape", l.line, l.col))
 						sb.WriteRune('\\')
 						sb.WriteRune('x')
 					}
 				default:
+					l.errors = append(l.errors, fmt.Sprintf("%d:%d: unknown escape sequence: \\%c", l.line, l.col, esc))
 					sb.WriteRune('\\')
 					sb.WriteRune(esc)
 				}

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -11,13 +12,10 @@ import (
 
 // Format writes an ast.Document as .sngl source text.
 func Format(doc *ast.Document) string {
-	f := &formatter{comments: doc.Comments}
-	f.sb.Grow(estimateDocSize(doc))
-	f.formatDocument(doc)
-	if len(doc.Decls) == 0 {
-		f.emitRemainingComments()
-	}
-	return alignInlineComments(f.sb.String())
+	var sb strings.Builder
+	sb.Grow(estimateDocSize(doc))
+	FormatTo(doc, &sb)
+	return sb.String()
 }
 
 // estimateDocSize returns a rough byte estimate of the formatted output.
@@ -127,7 +125,6 @@ func estimateVNSize(vn *ast.VisualNode) int {
 	return n
 }
 
-
 func estimateExprSize(e ast.Expr) int {
 	if e.SNGL != nil {
 		return estimateNodeSize(e.SNGL)
@@ -184,185 +181,283 @@ func estimateNodeSize(n ast.Node) int {
 	}
 }
 
-// FormatTo writes the formatted .sngl source for doc to w.
-func FormatTo(doc *ast.Document, w io.Writer) error {
-	_, err := io.WriteString(w, Format(doc))
-	return err
+// FormatTo writes an ast.Document as .sngl source text to w.
+func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
+	f := &formatter{w: w, comments: doc.Comments}
+	f.formatDocument(doc)
+	f.flush()
+	return f.written, f.err
 }
 
-// alignInlineComments finds runs of consecutive lines that all have inline
-// comments (code followed by " //") and pads each line so the "//" starts
-// at the same column.
-func alignInlineComments(s string) string {
-	// Fast path: no inline comments at all
-	if !strings.Contains(s, " //") {
-		return s
+// commentAlignTarget maps a Decls index to the target column width for inline
+// comment alignment. Only populated for runs of 2+ consecutive declarations
+// that each have an inline comment.
+type commentAlignTarget map[int]int
+
+// computeCommentAlignment pre-scans a Decls slice to find runs of consecutive
+// declaration+inline-comment pairs and computes the alignment target width
+// (max formatted declaration width) for each run.
+func (f *formatter) computeCommentAlignment(decls []ast.Decl) commentAlignTarget {
+	// Identify runs of decl+inline-comment pairs.
+	type pair struct {
+		declIdx int
+		decl    ast.Decl
+	}
+	var current []pair
+	var runs [][]pair
+
+	flush := func() {
+		if len(current) >= 2 {
+			runs = append(runs, current)
+		}
+		current = nil
 	}
 
-	// Scan lines to find comment positions (byte offset of " //" in each line).
-	// Only lines with code before the comment get an entry.
-	type lineInfo struct {
-		start, end int // byte range in s (excluding \n)
-		commentOff int // offset of "//" within the line, or -1
-		codeLen    int // length of trimmed code portion
-	}
-
-	// Count lines for pre-allocation
-	n := strings.Count(s, "\n") + 1
-	lines := make([]lineInfo, 0, n)
-	pos := 0
-	for pos <= len(s) {
-		nl := strings.IndexByte(s[pos:], '\n')
-		var end int
-		if nl < 0 {
-			end = len(s)
-		} else {
-			end = pos + nl
+	for i := 0; i < len(decls); i++ {
+		d := decls[i]
+		if _, ok := d.(*ast.Comment); ok {
+			continue // skip standalone comments
 		}
-		line := s[pos:end]
-		ci := findInlineComment(line)
-		codeLen := 0
-		if ci >= 0 {
-			// Trim trailing spaces from code portion
-			code := line[:ci]
-			codeLen = len(strings.TrimRight(code, " "))
-		}
-		lines = append(lines, lineInfo{start: pos, end: end, commentOff: ci, codeLen: codeLen})
-		if nl < 0 {
-			break
-		}
-		pos = end + 1
-	}
-
-	// Find runs of consecutive lines with comments and check if any need padding.
-	needsRewrite := false
-	for i := 0; i < len(lines); {
-		li := lines[i]
-		if li.commentOff < 0 || isCommentOnlyLine(s[li.start:li.end]) {
-			i++
-			continue
-		}
-		j := i + 1
-		for j < len(lines) && lines[j].commentOff >= 0 {
-			j++
-		}
-		if j-i >= 2 {
-			maxCode := 0
-			for k := i; k < j; k++ {
-				if lines[k].codeLen > maxCode {
-					maxCode = lines[k].codeLen
-				}
-			}
-			for k := i; k < j; k++ {
-				if lines[k].codeLen < maxCode && !isCommentOnlyLine(s[lines[k].start:lines[k].end]) {
-					needsRewrite = true
-					break
-				}
+		// Check if next decl is an inline comment
+		if i+1 < len(decls) {
+			if c, ok := decls[i+1].(*ast.Comment); ok && c.Inline {
+				current = append(current, pair{i, d})
+				i++ // skip the comment
+				continue
 			}
 		}
-		if needsRewrite {
-			break
-		}
-		i = j
+		// No inline comment follows — break any current run
+		flush()
+	}
+	flush()
+
+	if len(runs) == 0 {
+		return nil
 	}
 
-	if !needsRewrite {
-		return s
-	}
-
-	// Rewrite: only modify runs that need alignment
-	var sb strings.Builder
-	sb.Grow(len(s) + 64)
-	written := 0
-
-	for i := 0; i < len(lines); {
-		li := lines[i]
-		if li.commentOff < 0 || isCommentOnlyLine(s[li.start:li.end]) {
-			i++
-			continue
-		}
-		j := i + 1
-		for j < len(lines) && lines[j].commentOff >= 0 {
-			j++
-		}
-		if j-i >= 2 {
-			maxCode := 0
-			for k := i; k < j; k++ {
-				if lines[k].codeLen > maxCode {
-					maxCode = lines[k].codeLen
-				}
+	targets := commentAlignTarget{}
+	var buf strings.Builder
+	for _, run := range runs {
+		maxWidth := 0
+		widths := make([]int, len(run))
+		for j, p := range run {
+			w := f.measureDeclWidth(&buf, p.decl)
+			widths[j] = w
+			if w > maxWidth {
+				maxWidth = w
 			}
-			// Write everything before this run
-			sb.WriteString(s[written:lines[i].start])
-			for k := i; k < j; k++ {
-				lk := lines[k]
-				line := s[lk.start:lk.end]
-				if isCommentOnlyLine(line) {
-					sb.WriteString(line)
-				} else {
-					sb.WriteString(s[lk.start : lk.start+lk.codeLen])
-					pad := maxCode - lk.codeLen
-					for p := 0; p < pad+1; p++ {
-						sb.WriteByte(' ')
+		}
+		for j, p := range run {
+			if widths[j] < maxWidth {
+				targets[p.declIdx] = maxWidth
+			}
+		}
+	}
+	return targets
+}
+
+// measureDeclWidth computes the exact formatted line width of a declaration
+// by writing to a scratch buffer.
+func (f *formatter) measureDeclWidth(buf *strings.Builder, d ast.Decl) int {
+	buf.Reset()
+	buf.WriteString(indentStr(f.indent))
+	switch decl := d.(type) {
+	case *ast.Const:
+		if decl.Disabled {
+			buf.WriteString("/- ")
+		}
+		buf.WriteString("const ")
+		buf.WriteString(decl.Name)
+		if decl.ExplicitType {
+			if ts := typeHintStr(decl.Init.TypeHint, nil); ts != "" {
+				buf.WriteByte(' ')
+				buf.WriteString(ts)
+			}
+		}
+		buf.WriteString(" = ")
+		f.writeExprTo(buf, decl.Init)
+	case *ast.Data:
+		if decl.Disabled {
+			buf.WriteString("/- ")
+		}
+		buf.WriteString("var ")
+		buf.WriteString(decl.Name)
+		hasInit := decl.Init.SNGL != nil || decl.Init.Literal != nil
+		if decl.ExplicitType {
+			if typeStr := typeHintStr(decl.Init.TypeHint, decl); typeStr != "" {
+				buf.WriteByte(' ')
+				buf.WriteString(typeStr)
+			}
+		}
+		if hasInit {
+			buf.WriteString(" = ")
+			f.writeExprTo(buf, decl.Init)
+		}
+		if decl.Extern {
+			buf.WriteString(" extern")
+		}
+		if decl.Trigger != "" {
+			autoName := "On" + strings.ToUpper(decl.Name[:1]) + decl.Name[1:] + "Changed"
+			if decl.Trigger == autoName {
+				buf.WriteString(" @")
+			} else {
+				buf.WriteString(" @")
+				buf.WriteString(decl.Trigger)
+			}
+		}
+	case *ast.FuncDef:
+		buf.WriteString("func ")
+		buf.WriteString(decl.Name)
+		if len(decl.TypeParams) > 0 {
+			buf.WriteByte('<')
+			buf.WriteString(strings.Join(decl.TypeParams, ", "))
+			buf.WriteByte('>')
+		}
+		if len(decl.Params) > 0 || decl.Block != nil || decl.HasParens {
+			buf.WriteByte('(')
+			for i, p := range decl.Params {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(p.Name)
+				buf.WriteByte(' ')
+				buf.WriteString(typeHintStr(p.Type, nil))
+			}
+			buf.WriteByte(')')
+		}
+		if decl.Block == nil {
+			buf.WriteString(" => ")
+			f.writeExprTo(buf, decl.Body)
+		}
+	case *ast.VisualNode:
+		f.measureVisualNode(buf, decl)
+	default:
+		// Timers, imports, etc. — measure conservatively
+		buf.WriteString("???")
+	}
+	return buf.Len()
+}
+
+// measureVisualNode writes the single-line representation of a leaf visual node
+// to buf for width measurement.
+func (f *formatter) measureVisualNode(buf *strings.Builder, vn *ast.VisualNode) {
+	if vn.Disabled {
+		buf.WriteString("/- ")
+	}
+	buf.WriteString(vn.Component)
+	if vn.ID != "" {
+		buf.WriteString(" #")
+		buf.WriteString(vn.ID)
+	}
+
+	// Build props using a separate buffer to avoid clobbering propBuf
+	var props []string
+	var pb strings.Builder
+	buildPropTo := func(prefix string, expr ast.Expr) string {
+		pb.Reset()
+		pb.WriteString(prefix)
+		pb.WriteByte('=')
+		f.writeExprTo(&pb, expr)
+		return pb.String()
+	}
+	buildEventTo := func(prefix string, expr ast.Expr) string {
+		pb.Reset()
+		pb.WriteString(prefix)
+		pb.WriteByte('=')
+		f.writeEventValue(&pb, expr)
+		return pb.String()
+	}
+
+	if len(vn.PropOrder) > 0 {
+		for _, entry := range vn.PropOrder {
+			if strings.HasPrefix(entry, "@") {
+				name := entry[1:]
+				if expr, ok := vn.Events[name]; ok {
+					props = append(props, buildEventTo("@"+name, expr))
+				}
+			} else if strings.HasPrefix(entry, ":") {
+				name := entry[1:]
+				if expr, ok := vn.Bindings[name]; ok {
+					props = append(props, buildPropTo(":"+name, expr))
+				}
+			} else {
+				switch entry {
+				case "key":
+					if vn.Key != nil {
+						props = append(props, buildPropTo("key", *vn.Key))
 					}
-					sb.WriteString(s[lk.start+lk.commentOff : lk.end])
+				case "class":
+					if vn.Class != nil {
+						props = append(props, buildPropTo("class", *vn.Class))
+					}
+				case "ref":
+					if vn.Ref != nil {
+						props = append(props, buildPropTo("ref", *vn.Ref))
+					}
+				default:
+					if expr, ok := vn.Props[entry]; ok {
+						props = append(props, buildPropTo(entry, expr))
+					}
 				}
-				if lk.end < len(s) {
-					sb.WriteByte('\n')
-				}
-			}
-			written = lines[j-1].end
-			if lines[j-1].end < len(s) {
-				written++ // skip \n
 			}
 		}
-		i = j
+	} else {
+		if vn.Key != nil {
+			props = append(props, buildPropTo("key", *vn.Key))
+		}
+		if vn.Class != nil {
+			props = append(props, buildPropTo("class", *vn.Class))
+		}
+		if vn.Ref != nil {
+			props = append(props, buildPropTo("ref", *vn.Ref))
+		}
+		for _, k := range sortedKeys(vn.Props) {
+			props = append(props, buildPropTo(k, vn.Props[k]))
+		}
+		for _, name := range sortedKeys(vn.Bindings) {
+			props = append(props, buildPropTo(":"+name, vn.Bindings[name]))
+		}
+		for _, name := range sortedKeys(vn.Events) {
+			props = append(props, buildEventTo("@"+name, vn.Events[name]))
+		}
 	}
-	sb.WriteString(s[written:])
-	return sb.String()
+
+	if len(props) > 0 {
+		if vn.MultilineProps {
+			// Multiline props: just measure the first line (component + id + "(")
+			buf.WriteByte('(')
+		} else {
+			buf.WriteByte('(')
+			for i, p := range props {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(p)
+			}
+			buf.WriteByte(')')
+		}
+	} else if vn.HasProps {
+		buf.WriteString("()")
+	}
+
+	if vn.HasBody || len(vn.Children) > 0 {
+		if len(vn.Children) == 0 && vn.EndLine <= vn.Pos.Line {
+			buf.WriteString(" { }")
+		}
+	}
 }
 
-func isCommentOnlyLine(line string) bool {
-	return strings.HasPrefix(strings.TrimSpace(line), "//")
-}
-
-// findInlineComment returns the index of " //" in a line, respecting strings.
-// Returns -1 if no inline comment found.
-func findInlineComment(line string) int {
-	// If the line is entirely a comment, there's no "inline" comment to find
-	if strings.HasPrefix(strings.TrimSpace(line), "//") {
-		return -1
-	}
-	inStr := false
-	inBlock := false
-	for i := 0; i < len(line); i++ {
-		if inBlock {
-			if line[i] == '*' && i+1 < len(line) && line[i+1] == '/' {
-				inBlock = false
-				i++ // skip '/'
-			}
-			continue
-		}
-		switch line[i] {
-		case '"':
-			if !inStr {
-				inStr = true
-			} else if i > 0 && line[i-1] != '\\' {
-				inStr = false
-			}
-		case '/':
-			if !inStr && i+1 < len(line) {
-				if line[i+1] == '/' && i > 0 && line[i-1] == ' ' {
-					return i
-				}
-				if line[i+1] == '*' {
-					inBlock = true
-					i++ // skip '*'
-				}
-			}
+// emitAlignedInlineComment appends an inline comment with padding to reach
+// targetWidth. If targetWidth is 0, emits with a single space separator.
+func (f *formatter) emitAlignedInlineComment(c *ast.Comment, targetWidth int) {
+	f.pendingNL = false // absorb trailing newline
+	if targetWidth > 0 {
+		for f.lineWidth < targetWidth {
+			io.WriteString(f, " ")
 		}
 	}
-	return -1
+	f.write(" " + c.Text)
+	f.newline()
 }
 
 // emitCommentsBefore emits all comments with position before the given line.
@@ -374,36 +469,12 @@ func (f *formatter) emitCommentsBefore(line int) {
 	}
 }
 
-// emitPendingInlineComment emits a pending inline comment (from Decls) on the current line.
-func (f *formatter) emitPendingInlineComment() {
-	if f.pendingInlineComment == nil {
-		return
-	}
-	c := f.pendingInlineComment
-	f.pendingInlineComment = nil
-	s := f.sb.String()
-	if len(s) > 0 && s[len(s)-1] == '\n' {
-		f.sb.Reset()
-		f.sb.WriteString(s[:len(s)-1])
-	}
-	f.write(" " + c.Text)
-	f.newline()
-	// Skip this comment in f.comments too (it appears in both Decls and Comments)
-	for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line <= c.Pos.Line {
-		f.commentI++
-	}
-}
-
 // emitInlineComment emits an inline comment on the given line if one exists.
 func (f *formatter) emitInlineComment(line int) {
 	if f.commentI < len(f.comments) {
 		c := f.comments[f.commentI]
 		if c.Inline && c.Pos.Line == line && !f.emittedInline[[2]int{c.Pos.Line, c.Pos.Column}] {
-			s := f.sb.String()
-			if len(s) > 0 && s[len(s)-1] == '\n' {
-				f.sb.Reset()
-				f.sb.WriteString(s[:len(s)-1])
-			}
+			f.pendingNL = false // absorb trailing newline
 			f.write(" " + c.Text)
 			f.newline()
 			if f.emittedInline == nil {
@@ -415,29 +486,50 @@ func (f *formatter) emitInlineComment(line int) {
 	}
 }
 
-// emitRemainingComments emits any comments not yet emitted.
-func (f *formatter) emitRemainingComments() {
-	for f.commentI < len(f.comments) {
-		c := f.comments[f.commentI]
-		f.writeLine(c.Text)
-		f.commentI++
+type formatter struct {
+	w         io.Writer
+	written   int   // total bytes written
+	lineWidth int   // bytes on current line (for comment alignment)
+	pendingNL bool  // deferred newline, flushed before next write
+	err       error // first write error; short-circuits subsequent writes
+
+	indent        int
+	comments      []ast.Comment
+	commentI      int             // next comment index to emit
+	emittedInline map[[2]int]bool // tracks inline comments emitted by emitInlineComment (key: [line, col])
+	propBuf       strings.Builder // reusable buffer for building prop strings
+}
+
+// Write implements io.Writer, flushing any pending newline before writing.
+func (f *formatter) Write(p []byte) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	f.flush()
+	n, err := f.w.Write(p)
+	f.written += n
+	if i := bytes.LastIndexByte(p[:n], '\n'); i >= 0 {
+		f.lineWidth = n - i - 1
+	} else {
+		f.lineWidth += n
+	}
+	f.err = err
+	return n, err
+}
+
+func (f *formatter) flush() {
+	if f.pendingNL && f.err == nil {
+		f.pendingNL = false
+		_, f.err = f.w.Write([]byte{'\n'})
+		f.written++
+		f.lineWidth = 0
 	}
 }
 
-type formatter struct {
-	sb                   strings.Builder
-	indent               int
-	comments             []ast.Comment
-	commentI             int             // next comment index to emit
-	pendingInlineComment *ast.Comment    // inline comment to emit on the visual node's line
-	emittedInline        map[[2]int]bool // tracks inline comments emitted by emitInlineComment (key: [line, col])
-	propBuf              strings.Builder // reusable buffer for building prop strings
-}
-
-func (f *formatter) write(s string) { f.sb.WriteString(s) }
+func (f *formatter) write(s string) { io.WriteString(f, s) }
 
 func (f *formatter) newline() {
-	f.sb.WriteByte('\n')
+	f.pendingNL = true
 }
 
 // Cached indent strings to avoid repeated allocation.
@@ -461,7 +553,7 @@ func indentStr(level int) string {
 }
 
 func (f *formatter) writeIndent() {
-	f.sb.WriteString(indentStr(f.indent))
+	io.WriteString(f, indentStr(f.indent))
 }
 
 func (f *formatter) writeLine(s string) {
@@ -480,35 +572,19 @@ func (f *formatter) writeDisabledLine(disabled bool, s string) {
 }
 
 func (f *formatter) formatDocument(doc *ast.Document) {
-	if len(doc.Decls) > 0 {
-		f.formatDocumentDecls(doc)
-		return
-	}
-	// Legacy path: when Decls is empty, use the old ordered approach
-	f.formatDocumentLegacy(doc)
-}
-
-func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 	prevEndLine := 0
 	outputsSeen := false
-
+	alignTargets := f.computeCommentAlignment(doc.Decls)
 	for di := 0; di < len(doc.Decls); di++ {
 		d := doc.Decls[di]
 		switch decl := d.(type) {
 		case *ast.Comment:
 			if decl.Inline {
-				// Skip if already consumed by emitInlineComment inside a component/test
 				if f.emittedInline[[2]int{decl.Pos.Line, decl.Pos.Column}] {
 					continue
 				}
-				// Inline comment: remove last \n, append comment on same line
-				s := f.sb.String()
-				if len(s) > 0 && s[len(s)-1] == '\n' {
-					f.sb.Reset()
-					f.sb.WriteString(s[:len(s)-1])
-				}
-				f.write(" " + decl.Text)
-				f.newline()
+				target := alignTargets[di-1]
+				f.emitAlignedInlineComment(decl, target)
 				if f.emittedInline == nil {
 					f.emittedInline = map[[2]int]bool{}
 				}
@@ -536,7 +612,6 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 				outputsSeen = true
 				prevEndLine = decl.Pos.Line
 			}
-			// Skip subsequent Output decls since formatOutputGroup handles all
 		case *ast.StructDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
@@ -567,7 +642,6 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 			prevEndLine = decl.Pos.Line
 		case *ast.Component:
 			if decl.Name == "main" {
-				// Format using the component's own Decls if available
 				f.formatComponentAsMain(decl)
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
@@ -608,10 +682,6 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 			prevEndLine = decl.Pos.Line
 		}
 	}
-
-	// If we haven't seen a main component in Decls but have main content
-	// that wasn't already emitted (loose data/funcs handled above), wrap in
-	// component main. Only needed when App has visual children.
 	hasMainInDecls := false
 	for _, d := range doc.Decls {
 		if comp, ok := d.(*ast.Component); ok && comp.Name == "main" {
@@ -620,14 +690,19 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 		}
 	}
 	if !hasMainInDecls && doc.App != nil && len(doc.App.Children) > 0 {
-		// Only emit component main wrapper if there are visual children
-		// that need wrapping. Loose data/const/func were already emitted above.
 		f.formatDocMain(doc)
+	}
+	if len(doc.Decls) == 0 {
+		for f.commentI < len(f.comments) {
+			c := f.comments[f.commentI]
+			f.writeLine(c.Text)
+			f.commentI++
+		}
 	}
 }
 
 func (f *formatter) formatComponentAsMain(comp *ast.Component) {
-	if f.sb.Len() > 0 {
+	if f.written > 0 {
 		f.newline()
 	}
 	f.formatComponent(comp)
@@ -645,7 +720,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	if !hasMain {
 		return
 	}
-	if f.sb.Len() > 0 {
+	if f.written > 0 {
 		f.newline()
 	}
 	f.writeLine("component main {")
@@ -701,152 +776,6 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 
 	f.indent--
 	f.writeLine("}")
-}
-
-func (f *formatter) formatDocumentLegacy(doc *ast.Document) {
-	needBlank := false
-
-	// Imports
-	if len(doc.Imports) > 0 {
-		for _, imp := range doc.Imports {
-			f.emitCommentsBefore(imp.Pos.Line)
-			f.writeDisabledLine(imp.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(imp.Path)))
-		}
-		needBlank = true
-	}
-
-	// Outputs
-	if len(doc.Outputs) > 0 {
-		if needBlank {
-			f.newline()
-		}
-		f.formatOutputGroup(doc)
-		needBlank = true
-	}
-
-	// Structs
-	for _, s := range doc.Structs {
-		if needBlank {
-			f.newline()
-		}
-		f.emitCommentsBefore(s.Pos.Line)
-		if s.Disabled {
-			f.writeIndent()
-			f.write("/- ")
-		}
-		f.formatStruct(s)
-		needBlank = true
-	}
-
-	// Enums
-	for _, e := range doc.Enums {
-		if needBlank {
-			f.newline()
-		}
-		f.emitCommentsBefore(e.Pos.Line)
-		f.writeDisabledLine(e.Disabled, fmt.Sprintf("enum %s { %s }", e.Name, strings.Join(e.Values, ", ")))
-		needBlank = true
-	}
-
-	// Units
-	for _, u := range doc.Units {
-		if needBlank {
-			f.newline()
-		}
-		f.formatUnitDecl(u)
-		needBlank = true
-	}
-
-	// Named styles
-	for _, s := range doc.Styles {
-		if needBlank {
-			f.newline()
-		}
-		f.formatStyleDecl(s)
-		needBlank = true
-	}
-
-	// Non-main components
-	for _, comp := range doc.Components {
-		if needBlank {
-			f.newline()
-		}
-		f.emitCommentsBefore(comp.Pos.Line)
-		if comp.Disabled {
-			f.writeIndent()
-			f.write("/- ")
-		}
-		f.formatComponent(comp)
-		needBlank = true
-	}
-
-	// component main (combines data, computed, consts, functions, app)
-	hasUserFuncs := false
-	for _, fn := range doc.Functions {
-		if !fn.IsStdlib {
-			hasUserFuncs = true
-			break
-		}
-	}
-	hasMain := doc.App != nil || len(doc.Data) > 0 || len(doc.Consts) > 0 || hasUserFuncs
-	if hasMain {
-		if needBlank {
-			f.newline()
-		}
-		f.writeLine("component main {")
-		f.indent++
-
-		memberBlank := false
-
-		// Consts
-		if len(doc.Consts) > 0 {
-			f.formatConsts(doc.Consts)
-			memberBlank = true
-		}
-
-		// Vars
-		if len(doc.Data) > 0 {
-			if memberBlank {
-				f.newline()
-			}
-			f.formatVars(doc.Data)
-			memberBlank = true
-		}
-
-		// Functions
-		if len(doc.Functions) > 0 {
-			if memberBlank {
-				f.newline()
-			}
-			f.formatFuncDefs(doc.Functions)
-			memberBlank = true
-		}
-
-		// Timers
-		if len(doc.Timers) > 0 {
-			if memberBlank {
-				f.newline()
-			}
-			for _, t := range doc.Timers {
-				f.formatTimer(t)
-			}
-			memberBlank = true
-		}
-
-		// App body
-		if doc.App != nil && len(doc.App.Children) > 0 {
-			if memberBlank {
-				f.newline()
-			}
-			for _, vn := range doc.App.Children {
-				f.emitCommentsBefore(vn.Pos.Line)
-				f.formatVisualNode(vn)
-			}
-		}
-
-		f.indent--
-		f.writeLine("}")
-	}
 }
 
 func (f *formatter) formatOutputGroup(doc *ast.Document) {
@@ -1122,13 +1051,13 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		f.indent++
 		for _, stmt := range fn.Block.Stmts {
 			f.writeIndent()
-			writeNode(&f.sb, stmt)
+			writeNode(f, stmt)
 			f.newline()
 		}
 		if fn.Block.Return != nil {
 			f.writeIndent()
 			f.write("return ")
-			writeNode(&f.sb, fn.Block.Return)
+			writeNode(f, fn.Block.Return)
 			f.newline()
 		}
 		f.indent--
@@ -1152,12 +1081,12 @@ func (f *formatter) formatTimer(t *ast.Timer) {
 	if sb, ok := t.Body.(*ast.StmtBlock); ok {
 		for _, stmt := range sb.Stmts {
 			f.writeIndent()
-			writeNode(&f.sb, stmt)
+			writeNode(f, stmt)
 			f.newline()
 		}
 	} else {
 		f.writeIndent()
-		writeNode(&f.sb, t.Body)
+		writeNode(f, t.Body)
 		f.newline()
 	}
 	f.indent--
@@ -1286,19 +1215,15 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 
 	decls := comp.Decls
 	prevEndLine := 0
+	alignTargets := f.computeCommentAlignment(decls)
 
 	for i := 0; i < len(decls); i++ {
 		d := decls[i]
 		switch decl := d.(type) {
 		case *ast.Comment:
 			if decl.Inline {
-				s := f.sb.String()
-				if len(s) > 0 && s[len(s)-1] == '\n' {
-					f.sb.Reset()
-					f.sb.WriteString(s[:len(s)-1])
-				}
-				f.write(" " + decl.Text)
-				f.newline()
+				target := alignTargets[i-1]
+				f.emitAlignedInlineComment(decl, target)
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 					f.newline()
@@ -1372,7 +1297,13 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 					i++ // consume the comment
 				}
 			}
-			f.formatVisualNodeWithComment(decl, inlineComment)
+			if inlineComment != nil {
+				target := alignTargets[i-1] // i was advanced past the comment; i-1 is the comment, i-2 is the VN... but we need the VN index
+				f.formatVisualNode(decl)
+				f.emitAlignedInlineComment(inlineComment, target)
+			} else {
+				f.formatVisualNode(decl)
+			}
 			prevEndLine = declEndLine(decl)
 		}
 	}
@@ -1462,13 +1393,6 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 		f.writeLine("}")
 		memberBlank = true
 	}
-}
-
-
-func (f *formatter) formatVisualNodeWithComment(vn *ast.VisualNode, inlineComment *ast.Comment) {
-	f.pendingInlineComment = inlineComment
-	f.formatVisualNode(vn)
-	f.pendingInlineComment = nil
 }
 
 func (f *formatter) formatVisualNode(vn *ast.VisualNode) {
@@ -1561,7 +1485,7 @@ func (f *formatter) buildEventProp(prefix string, expr ast.Expr) string {
 	return f.propBuf.String()
 }
 
-func (f *formatter) writeExprTo(sb *strings.Builder, expr ast.Expr) {
+func (f *formatter) writeExprTo(sb io.Writer, expr ast.Expr) {
 	if expr.SNGL != nil {
 		writeNode(sb, expr.SNGL)
 		return
@@ -1570,7 +1494,7 @@ func (f *formatter) writeExprTo(sb *strings.Builder, expr ast.Expr) {
 		writeLiteral(sb, expr.Literal, expr.TypeHint)
 		return
 	}
-	sb.WriteString("null")
+	io.WriteString(sb,"null")
 }
 
 func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
@@ -1631,7 +1555,7 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		}
 	}
 
-	// Write component name and ID directly to f.sb
+	// Write component name and ID
 	f.writeIndent()
 	f.write(vn.Component)
 	if vn.ID != "" {
@@ -1684,18 +1608,18 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 			if vn.EndLine > vn.Pos.Line {
 				f.write(" {")
 				f.newline()
-				f.emitPendingInlineComment()
+
 				f.emitInlineComment(vn.Pos.Line)
 				f.writeLine("}")
 			} else {
 				f.write(" { }")
 				f.newline()
-				f.emitPendingInlineComment()
+
 			}
 		} else {
 			f.write(" {")
 			f.newline()
-			f.emitPendingInlineComment()
+
 			f.emitInlineComment(vn.Pos.Line)
 			f.indent++
 			for _, child := range vn.Children {
@@ -1708,40 +1632,39 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		}
 	} else {
 		f.newline()
-		f.emitPendingInlineComment()
 	}
 }
 
-func (f *formatter) writeEventValue(sb *strings.Builder, expr ast.Expr) {
+func (f *formatter) writeEventValue(sb io.Writer, expr ast.Expr) {
 	if expr.SNGL != nil {
 		if block, ok := expr.SNGL.(*ast.StmtBlock); ok && len(block.Stmts) > 1 {
-			sb.WriteByte('{')
+			io.WriteString(sb, string('{'))
 			for _, stmt := range block.Stmts {
-				sb.WriteByte('\n')
-				sb.WriteString(indentStr(f.indent + 1))
+				io.WriteString(sb, "\n")
+				io.WriteString(sb,indentStr(f.indent + 1))
 				writeNode(sb, stmt)
 			}
-			sb.WriteByte('\n')
-			sb.WriteString(indentStr(f.indent))
-			sb.WriteByte('}')
+			io.WriteString(sb, "\n")
+			io.WriteString(sb,indentStr(f.indent))
+			io.WriteString(sb, string('}'))
 			return
 		}
-		sb.WriteString("{ ")
+		io.WriteString(sb,"{ ")
 		writeNode(sb, expr.SNGL)
-		sb.WriteString(" }")
+		io.WriteString(sb," }")
 		return
 	}
-	sb.WriteString("{ null }")
+	io.WriteString(sb,"{ null }")
 }
 
-// writeExprValue writes an Expr directly to f.sb, avoiding intermediate strings.
+// writeExprValue writes an Expr directly to the output writer.
 func (f *formatter) writeExprValue(expr ast.Expr) {
 	if expr.SNGL != nil {
-		writeNode(&f.sb, expr.SNGL)
+		writeNode(f, expr.SNGL)
 		return
 	}
 	if expr.Literal != nil {
-		writeLiteral(&f.sb, expr.Literal, expr.TypeHint)
+		writeLiteral(f, expr.Literal, expr.TypeHint)
 		return
 	}
 	f.write("null")
@@ -1775,203 +1698,203 @@ func FormatNode(n ast.Node) string {
 	return sb.String()
 }
 
-func writeNode(sb *strings.Builder, n ast.Node) {
+func writeNode(sb io.Writer, n ast.Node) {
 	if n == nil {
-		sb.WriteString("null")
+		io.WriteString(sb,"null")
 		return
 	}
 	switch e := n.(type) {
 	case *ast.LiteralExpr:
 		writeLiteralExpr(sb, e)
 	case *ast.IdentExpr:
-		sb.WriteString(e.Name)
+		io.WriteString(sb,e.Name)
 	case *ast.ElementRefExpr:
-		sb.WriteByte('#')
-		sb.WriteString(e.Name)
+		io.WriteString(sb, string('#'))
+		io.WriteString(sb,e.Name)
 	case *ast.LambdaExpr:
 		if e.Block != nil {
-			sb.WriteString("func(")
+			io.WriteString(sb,"func(")
 			for i, name := range e.Params {
 				if i > 0 {
-					sb.WriteString(", ")
+					io.WriteString(sb,", ")
 				}
-				sb.WriteString(name)
+				io.WriteString(sb,name)
 				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
-					sb.WriteByte(' ')
-					sb.WriteString(e.ParamTypes[i])
+					io.WriteString(sb, string(' '))
+					io.WriteString(sb,e.ParamTypes[i])
 				}
 			}
-			sb.WriteString(") {\n")
+			io.WriteString(sb,") {\n")
 			for _, stmt := range e.Block.Stmts {
-				sb.WriteString("    ")
+				io.WriteString(sb,"    ")
 				writeNode(sb, stmt)
-				sb.WriteByte('\n')
+				io.WriteString(sb, "\n")
 			}
 			if e.Block.Return != nil {
-				sb.WriteString("    return ")
+				io.WriteString(sb,"    return ")
 				writeNode(sb, e.Block.Return)
-				sb.WriteByte('\n')
+				io.WriteString(sb, "\n")
 			}
-			sb.WriteByte('}')
+			io.WriteString(sb, string('}'))
 		} else {
-			sb.WriteByte('(')
+			io.WriteString(sb, string('('))
 			for i, name := range e.Params {
 				if i > 0 {
-					sb.WriteString(", ")
+					io.WriteString(sb,", ")
 				}
-				sb.WriteString(name)
+				io.WriteString(sb,name)
 				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
-					sb.WriteByte(' ')
-					sb.WriteString(e.ParamTypes[i])
+					io.WriteString(sb, string(' '))
+					io.WriteString(sb,e.ParamTypes[i])
 				}
 			}
-			sb.WriteString(") => ")
+			io.WriteString(sb,") => ")
 			writeNode(sb, e.Body)
 		}
 	case *ast.ParenExpr:
-		sb.WriteByte('(')
+		io.WriteString(sb, string('('))
 		writeNode(sb, e.Inner)
-		sb.WriteByte(')')
+		io.WriteString(sb, string(')'))
 	case *ast.BinaryExpr:
 		writeNode(sb, e.Left)
-		sb.WriteByte(' ')
-		sb.WriteString(binOpString(e.Op))
-		sb.WriteByte(' ')
+		io.WriteString(sb, string(' '))
+		io.WriteString(sb,binOpString(e.Op))
+		io.WriteString(sb, string(' '))
 		writeNode(sb, e.Right)
 	case *ast.UnaryExpr:
 		if e.Op == ast.UnaryNot {
-			sb.WriteByte('!')
+			io.WriteString(sb, string('!'))
 			// Avoid !! ambiguity: if operand starts with !, add space
 			if u, ok := e.Operand.(*ast.UnaryExpr); ok && u.Op == ast.UnaryNot {
-				sb.WriteByte(' ')
+				io.WriteString(sb, string(' '))
 			}
 			writeNode(sb, e.Operand)
 		} else {
-			sb.WriteByte('-')
+			io.WriteString(sb, string('-'))
 			writeNode(sb, e.Operand)
 		}
 	case *ast.TernaryExpr:
 		writeNode(sb, e.Cond)
-		sb.WriteString(" ? ")
+		io.WriteString(sb," ? ")
 		writeNode(sb, e.Then)
-		sb.WriteString(" : ")
+		io.WriteString(sb," : ")
 		writeNode(sb, e.Else)
 	case *ast.SelectExpr:
 		writeNode(sb, e.Operand)
-		sb.WriteByte('.')
-		sb.WriteString(e.Field)
+		io.WriteString(sb, string('.'))
+		io.WriteString(sb,e.Field)
 	case *ast.IndexExpr:
 		writeNode(sb, e.Operand)
-		sb.WriteByte('[')
+		io.WriteString(sb, string('['))
 		writeNode(sb, e.Index)
-		sb.WriteByte(']')
+		io.WriteString(sb, string(']'))
 	case *ast.CallExpr:
-		sb.WriteString(e.Func)
-		sb.WriteByte('(')
+		io.WriteString(sb,e.Func)
+		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
-		sb.WriteByte(')')
+		io.WriteString(sb, string(')'))
 	case *ast.MethodExpr:
 		writeNode(sb, e.Receiver)
-		sb.WriteByte('.')
-		sb.WriteString(e.Method)
-		sb.WriteByte('(')
+		io.WriteString(sb, string('.'))
+		io.WriteString(sb,e.Method)
+		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
-		sb.WriteByte(')')
+		io.WriteString(sb, string(')'))
 	case *ast.StructExpr:
 		sep := ": "
 		if e.Name == "" {
 			sep = "="
 		}
-		sb.WriteString(e.Name)
-		sb.WriteByte('{')
+		io.WriteString(sb,e.Name)
+		io.WriteString(sb, string('{'))
 		if e.Multiline {
-			sb.WriteByte('\n')
+			io.WriteString(sb, "\n")
 			for _, field := range e.Fields {
 				if field.Spread {
-					sb.WriteString("...")
+					io.WriteString(sb,"...")
 					writeNode(sb, field.Value)
 				} else {
-					sb.WriteString(field.Name)
-					sb.WriteString(sep)
+					io.WriteString(sb,field.Name)
+					io.WriteString(sb,sep)
 					writeNode(sb, field.Value)
 				}
-				sb.WriteString(",\n")
+				io.WriteString(sb,",\n")
 			}
 		} else {
 			for i, field := range e.Fields {
 				if i > 0 {
-					sb.WriteString(", ")
+					io.WriteString(sb,", ")
 				}
 				if field.Spread {
-					sb.WriteString("...")
+					io.WriteString(sb,"...")
 					writeNode(sb, field.Value)
 				} else {
-					sb.WriteString(field.Name)
-					sb.WriteString(sep)
+					io.WriteString(sb,field.Name)
+					io.WriteString(sb,sep)
 					writeNode(sb, field.Value)
 				}
 			}
 		}
-		sb.WriteByte('}')
+		io.WriteString(sb, string('}'))
 	case *ast.ListExpr:
-		sb.WriteByte('[')
+		io.WriteString(sb, string('['))
 		for i, el := range e.Elements {
 			if i > 0 {
-				sb.WriteString(", ")
+				io.WriteString(sb,", ")
 			}
 			writeNode(sb, el)
 		}
-		sb.WriteByte(']')
+		io.WriteString(sb, string(']'))
 	case *ast.SpreadExpr:
-		sb.WriteString("...")
+		io.WriteString(sb,"...")
 		writeNode(sb, e.Operand)
 	case *ast.InterpolationExpr:
-		sb.WriteByte('"')
+		io.WriteString(sb, string('"'))
 		for _, p := range e.Parts {
 			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				sb.WriteString(escapeStringContent(fmt.Sprintf("%v", lit.Value)))
+				io.WriteString(sb,escapeStringContent(fmt.Sprintf("%v", lit.Value)))
 			} else {
-				sb.WriteByte('{')
+				io.WriteString(sb, string('{'))
 				writeNode(sb, p)
-				sb.WriteByte('}')
+				io.WriteString(sb, string('}'))
 			}
 		}
-		sb.WriteByte('"')
+		io.WriteString(sb, string('"'))
 	case *ast.AssignStmt:
 		writeNode(sb, e.Target)
-		sb.WriteByte(' ')
-		sb.WriteString(assignOpString(e.Op))
-		sb.WriteByte(' ')
+		io.WriteString(sb, string(' '))
+		io.WriteString(sb,assignOpString(e.Op))
+		io.WriteString(sb, string(' '))
 		writeNode(sb, e.Value)
 	case *ast.ToggleStmt:
 		writeNode(sb, e.Target)
-		sb.WriteString("!!")
+		io.WriteString(sb,"!!")
 	case *ast.EmitStmt:
-		sb.WriteByte('@')
-		sb.WriteString(e.Name)
-		sb.WriteByte('(')
+		io.WriteString(sb, string('@'))
+		io.WriteString(sb,e.Name)
+		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
-		sb.WriteByte(')')
+		io.WriteString(sb, string(')'))
 	case *ast.StmtBlock:
 		for i, s := range e.Stmts {
 			if i > 0 {
-				sb.WriteString("; ")
+				io.WriteString(sb,"; ")
 			}
 			writeNode(sb, s)
 		}
 	case *ast.VarStmt:
-		sb.WriteString("var ")
-		sb.WriteString(e.Name)
+		io.WriteString(sb,"var ")
+		io.WriteString(sb,e.Name)
 		if e.Type != "" {
-			sb.WriteByte(' ')
-			sb.WriteString(typeHintStr(e.Type, nil))
+			io.WriteString(sb, string(' '))
+			io.WriteString(sb,typeHintStr(e.Type, nil))
 		}
-		sb.WriteString(" = ")
+		io.WriteString(sb," = ")
 		writeNode(sb, e.Init)
 	case *ast.ReturnStmt:
-		sb.WriteString("return")
+		io.WriteString(sb,"return")
 		if e.Value != nil {
-			sb.WriteByte(' ')
+			io.WriteString(sb, string(' '))
 			writeNode(sb, e.Value)
 		}
 	case *ast.CallStmt:
@@ -1995,55 +1918,55 @@ func FormatStmt(n ast.Node) string {
 	}
 }
 
-func writeLiteralExpr(sb *strings.Builder, e *ast.LiteralExpr) {
+func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 	switch e.Kind {
 	case ast.LiteralInt:
 		if e.Raw != "" {
-			sb.WriteString(e.Raw)
+			io.WriteString(sb,e.Raw)
 		} else {
 			fmt.Fprintf(sb, "%d", e.Value)
 		}
 	case ast.LiteralFloat:
 		if e.Raw != "" {
-			sb.WriteString(e.Raw)
+			io.WriteString(sb,e.Raw)
 		} else {
 			fmt.Fprintf(sb, "%v", e.Value)
 		}
 	case ast.LiteralString:
-		sb.WriteByte('"')
-		sb.WriteString(escapeStringContent(fmt.Sprintf("%v", e.Value)))
-		sb.WriteByte('"')
+		io.WriteString(sb, string('"'))
+		io.WriteString(sb,escapeStringContent(fmt.Sprintf("%v", e.Value)))
+		io.WriteString(sb, string('"'))
 	case ast.LiteralBool:
 		if e.Value.(bool) {
-			sb.WriteString("true")
+			io.WriteString(sb,"true")
 		} else {
-			sb.WriteString("false")
+			io.WriteString(sb,"false")
 		}
 	case ast.LiteralNull:
-		sb.WriteString("null")
+		io.WriteString(sb,"null")
 	case ast.LiteralColor:
 		fmt.Fprintf(sb, "%v", e.Value)
 	case ast.LiteralUnit:
 		ul := e.Value.(ast.UnitLiteral)
-		sb.WriteString(ul.Number)
-		sb.WriteString(ul.Suffix)
+		io.WriteString(sb,ul.Number)
+		io.WriteString(sb,ul.Suffix)
 	default:
 		fmt.Fprintf(sb, "%v", e.Value)
 	}
 }
 
-func writeLiteral(sb *strings.Builder, v any, typeHint string) {
+func writeLiteral(sb io.Writer, v any, typeHint string) {
 	switch val := v.(type) {
 	case ast.UnitLiteral:
-		sb.WriteString(val.Number)
-		sb.WriteString(val.Suffix)
+		io.WriteString(sb,val.Number)
+		io.WriteString(sb,val.Suffix)
 	case string:
 		if strings.HasPrefix(val, "#") && (typeHint == "color" || typeHint == "") {
-			sb.WriteString(val)
+			io.WriteString(sb,val)
 		} else {
-			sb.WriteByte('"')
-			sb.WriteString(escapeStringContent(val))
-			sb.WriteByte('"')
+			io.WriteString(sb, string('"'))
+			io.WriteString(sb,escapeStringContent(val))
+			io.WriteString(sb, string('"'))
 		}
 	case int:
 		fmt.Fprintf(sb, "%d", val)
@@ -2051,12 +1974,12 @@ func writeLiteral(sb *strings.Builder, v any, typeHint string) {
 		fmt.Fprintf(sb, "%v", val)
 	case bool:
 		if val {
-			sb.WriteString("true")
+			io.WriteString(sb,"true")
 		} else {
-			sb.WriteString("false")
+			io.WriteString(sb,"false")
 		}
 	case nil:
-		sb.WriteString("null")
+		io.WriteString(sb,"null")
 	default:
 		fmt.Fprintf(sb, "%v", v)
 	}
@@ -2064,10 +1987,10 @@ func writeLiteral(sb *strings.Builder, v any, typeHint string) {
 
 // formatPostfixOperand wraps numeric literals in parens to prevent
 // ambiguity with dot access (e.g. 0.field would parse as float 0.).
-func writeArgs(sb *strings.Builder, args []ast.Node) {
+func writeArgs(sb io.Writer, args []ast.Node) {
 	for i, a := range args {
 		if i > 0 {
-			sb.WriteString(", ")
+			io.WriteString(sb,", ")
 		}
 		writeNode(sb, a)
 	}
@@ -2145,7 +2068,6 @@ func escapeStringContent(s string) string {
 			sb.WriteString(`\0`)
 		default:
 			if r < 0x20 || r == 0x7f {
-				// Escape control characters as \xHH
 				sb.WriteString(fmt.Sprintf(`\x%02x`, r))
 			} else {
 				sb.WriteRune(r)

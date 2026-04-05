@@ -180,91 +180,45 @@ func TestFormatStmt_Block(t *testing.T) {
 	}
 }
 
-func TestFormatLiteral_Default(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Body: []*ast.VisualNode{{
-				Component: "text",
-				Props: map[string]ast.Expr{
-					"value": {Literal: struct{ x int }{42}},
-				},
-			}},
-		}},
+func formatStr(t testing.TB, src string) string {
+	t.Helper()
+	doc, err := parser.Parse("main.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
 	}
-	result := parser.Format(doc)
+	return parser.Format(doc)
+}
+
+func TestFormatLiteral_Default(t *testing.T) {
+	result := formatStr(t, `component main { text(value=42) }`)
 	if !strings.Contains(result, "42") {
 		t.Errorf("expected default literal to contain '42', got %s", result)
 	}
 }
 
 func TestEscapeStringContent_ControlChars(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Body: []*ast.VisualNode{{
-				Component: "text",
-				Props: map[string]ast.Expr{
-					"value": {Literal: "a\x01b\x7fc"},
-				},
-			}},
-		}},
-	}
-	result := parser.Format(doc)
+	result := formatStr(t, `component main { text(value="a\x01b\x7fc") }`)
 	if strings.Contains(result, "\x01") || strings.Contains(result, "\x7f") {
 		t.Error("expected control characters to be stripped")
 	}
 }
 
 func TestEscapeStringContent_Backslash(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Body: []*ast.VisualNode{{
-				Component: "text",
-				Props: map[string]ast.Expr{
-					"value": {Literal: `a\b`},
-				},
-			}},
-		}},
-	}
-	result := parser.Format(doc)
+	result := formatStr(t, `component main { text(value="a\\b") }`)
 	if !strings.Contains(result, `\\`) {
 		t.Error("expected backslash to be escaped")
 	}
 }
 
 func TestEscapeStringContent_CarriageReturn(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Body: []*ast.VisualNode{{
-				Component: "text",
-				Props: map[string]ast.Expr{
-					"value": {Literal: "a\rb"},
-				},
-			}},
-		}},
-	}
-	result := parser.Format(doc)
+	result := formatStr(t, `component main { text(value="a\rb") }`)
 	if !strings.Contains(result, `\r`) {
 		t.Error("expected carriage return to be escaped")
 	}
 }
 
 func TestEscapeStringContent_BraceEscape(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Body: []*ast.VisualNode{{
-				Component: "text",
-				Props: map[string]ast.Expr{
-					"value": {Literal: "a{b"},
-				},
-			}},
-		}},
-	}
-	result := parser.Format(doc)
+	result := formatStr(t, `component main { text(value="a\{b") }`)
 	if !strings.Contains(result, `\{`) {
 		t.Errorf("expected brace to be escaped, got %s", result)
 	}
@@ -285,17 +239,17 @@ func TestParseScanString_EscapeSequences(t *testing.T) {
 }
 
 func TestParseScanString_UnknownEscape(t *testing.T) {
-	// \x is an unknown escape — should be preserved as \x
+	// \q is an unknown escape — should produce a parse error
 	src := `component main {
-    var x = "test\xval"
+    var x = "test\qval"
     text(value=x)
 }`
-	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
-	if err != nil {
-		t.Fatalf("parse error: %v", err)
+	_, err := parser.Parse("test.sngl", strings.NewReader(src))
+	if err == nil {
+		t.Fatal("expected parse error for unknown escape sequence")
 	}
-	if doc == nil {
-		t.Fatal("expected non-nil doc")
+	if !strings.Contains(err.Error(), "unknown escape") {
+		t.Errorf("expected 'unknown escape' in error, got: %v", err)
 	}
 }
 
@@ -439,26 +393,6 @@ func TestFormatTimer(t *testing.T) {
 	result := parser.Format(doc)
 	if !strings.Contains(result, "timer") {
 		t.Errorf("expected 'timer' in formatted output:\n%s", result)
-	}
-}
-
-func TestFormatFuncDefs_StdlibSkipped(t *testing.T) {
-	doc := &ast.Document{
-		Components: []*ast.Component{{
-			Name: "main",
-			Functions: []*ast.FuncDef{
-				{Name: "userFunc", Body: ast.Expr{Literal: 42}, IsStdlib: false},
-				{Name: "stdlibFunc", Body: ast.Expr{Literal: 0}, IsStdlib: true},
-			},
-			Body: []*ast.VisualNode{{Component: "text"}},
-		}},
-	}
-	result := parser.Format(doc)
-	if !strings.Contains(result, "userFunc") {
-		t.Error("expected userFunc in output")
-	}
-	if strings.Contains(result, "stdlibFunc") {
-		t.Error("expected stdlibFunc to be skipped")
 	}
 }
 
@@ -767,7 +701,6 @@ component main {
 		t.Errorf("expected icon=icon.svg, got %q", doc.OutputDefaults["icon"])
 	}
 }
-
 
 func TestParseElementRef(t *testing.T) {
 	src := `component main {

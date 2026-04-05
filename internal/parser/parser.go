@@ -58,7 +58,8 @@ func (p *parser) advance() Token {
 		return prev
 	}
 	for {
-		p.cur = p.lex.NextToken()
+		p.cur = p.nextToken()
+
 		if p.cur.Type == LINE_COMMENT || p.cur.Type == BLOCK_COMMENT {
 			p.comments = append(p.comments, ast.Comment{
 				Pos:   ast.Pos{Line: p.cur.Line, Column: p.cur.Column},
@@ -72,6 +73,17 @@ func (p *parser) advance() Token {
 	return prev
 }
 
+// nextToken returns the next token from the lexer, draining any non-fatal
+// lexer errors into the parser's error list.
+func (p *parser) nextToken() Token {
+	tok := p.lex.NextToken()
+	for _, e := range p.lex.errors {
+		p.errs = append(p.errs, fmt.Errorf("%s:%s", p.filename, e))
+	}
+	p.lex.errors = p.lex.errors[:0]
+	return tok
+}
+
 // peekToken returns the next token without consuming it.
 func (p *parser) peekToken() Token {
 	if p.peeked != nil {
@@ -79,7 +91,8 @@ func (p *parser) peekToken() Token {
 	}
 	var tok Token
 	for {
-		tok = p.lex.NextToken()
+		tok = p.nextToken()
+
 		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT {
 			p.comments = append(p.comments, ast.Comment{
 				Pos:   ast.Pos{Line: tok.Line, Column: tok.Column},
@@ -121,7 +134,7 @@ func (p *parser) isTypedBlockFunc() bool {
 	// Read the first meaningful token after {.
 	var tok Token
 	for {
-		tok = p.lex.NextToken()
+		tok = p.nextToken()
 		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT || tok.Type == SEMICOLON {
 			continue
 		}
@@ -135,7 +148,7 @@ func (p *parser) isTypedBlockFunc() bool {
 		// Peek at the next token after the IDENT
 		var tok2 Token
 		for {
-			tok2 = p.lex.NextToken()
+			tok2 = p.nextToken()
 			if tok2.Type == LINE_COMMENT || tok2.Type == BLOCK_COMMENT || tok2.Type == SEMICOLON {
 				continue
 			}
@@ -169,7 +182,7 @@ func (p *parser) isGenericReturnTypeBlock() bool {
 	// Skip past <...> by counting angle bracket depth.
 	depth := 1
 	for depth > 0 {
-		tok := p.lex.NextToken()
+		tok := p.nextToken()
 		switch tok.Type {
 		case LT:
 			depth++
@@ -183,7 +196,7 @@ func (p *parser) isGenericReturnTypeBlock() bool {
 	// After the closing >, next meaningful token should be LBRACE.
 	var tok Token
 	for {
-		tok = p.lex.NextToken()
+		tok = p.nextToken()
 		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT {
 			continue
 		}
@@ -195,7 +208,7 @@ func (p *parser) isGenericReturnTypeBlock() bool {
 
 	// Check the first token inside { to distinguish block vs struct literal.
 	for {
-		tok = p.lex.NextToken()
+		tok = p.nextToken()
 		if tok.Type == LINE_COMMENT || tok.Type == BLOCK_COMMENT || tok.Type == SEMICOLON {
 			continue
 		}
@@ -207,7 +220,7 @@ func (p *parser) isGenericReturnTypeBlock() bool {
 	if tok.Type == IDENT {
 		var tok2 Token
 		for {
-			tok2 = p.lex.NextToken()
+			tok2 = p.nextToken()
 			if tok2.Type == LINE_COMMENT || tok2.Type == BLOCK_COMMENT || tok2.Type == SEMICOLON {
 				continue
 			}
@@ -948,7 +961,7 @@ func (p *parser) isMultiName() bool {
 	savedLine := p.lex.line
 	savedCol := p.lex.col
 	savedPrevTok := p.lex.prevTok
-	tok := p.lex.NextToken() // read token after peeked IDENT
+	tok := p.nextToken() // read token after peeked IDENT
 	p.lex.pos = savedPos
 	p.lex.line = savedLine
 	p.lex.col = savedCol
@@ -1984,6 +1997,12 @@ func (p *parser) parseStringWithInterpolation(raw string) ast.Node {
 	var buf strings.Builder
 
 	for i < len(runes) {
+		if runes[i] == '\\' && i+1 < len(runes) && runes[i+1] == '{' {
+			// Escaped brace: \{ → literal {
+			buf.WriteRune('{')
+			i += 2
+			continue
+		}
 		if runes[i] == '{' {
 			// Find matching }
 			start := i

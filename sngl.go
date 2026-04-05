@@ -26,7 +26,7 @@ func Format(doc *ast.Document) string {
 }
 
 // FormatTo writes the formatted SNGL source for doc to w.
-func FormatTo(doc *ast.Document, w io.Writer) error {
+func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	return parser.FormatTo(doc, w)
 }
 
