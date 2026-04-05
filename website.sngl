@@ -102,9 +102,7 @@ component main {
 			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
 				html.p(innerText=comp.doc)
 
-				html.h2(innerText="Preview")
-				html.div(innerHTML=comp.previewHTML, class="preview-frame")
-				html.h2(innerText="Example")
+				html.div(innerHTML=comp.previewHTML)
 				html.div(innerHTML=comp.highlightedCode)
 
 				html.h2(innerText="Properties")

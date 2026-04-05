@@ -15,6 +15,9 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
+
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
 func main() {

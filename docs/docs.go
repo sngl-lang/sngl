@@ -176,7 +176,7 @@ func Components() []Component {
 			src := strings.TrimSpace(string(exData))
 			c.Example = src
 			c.HighlightedCode = docsite.HighlightSNGL(src)
-			c.PreviewHTML = compilePreview(src)
+			c.PreviewHTML = buildPreviewSection(name, src)
 		}
 
 		comps = append(comps, c)
@@ -215,6 +215,39 @@ func ComponentsByTier() []Tier {
 		}
 	}
 	return tiers
+}
+
+// buildPreviewSection generates the full tabbed preview HTML including
+// interactive iframe, bubbletea/fyne screenshot tabs.
+func buildPreviewSection(name, source string) string {
+	iframeHTML := compilePreview(source)
+	if iframeHTML == "" {
+		return ""
+	}
+
+	// Use html.EscapeString for srcdoc attribute
+	escaped := strings.ReplaceAll(iframeHTML, "&", "&amp;")
+	escaped = strings.ReplaceAll(escaped, "\"", "&quot;")
+	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
+	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
+
+	return `<div class="platform-tabs">` +
+		`<button class="active" onclick="switchPlatform('html', this)">HTML (Interactive)</button>` +
+		`<button onclick="switchPlatform('bubbletea', this)">Bubbletea</button>` +
+		`<button onclick="switchPlatform('fyne', this)">Fyne</button>` +
+		`</div>` +
+		`<div class="preview-frame">` +
+		`<div class="preview" data-platform="html">` +
+		`<iframe srcdoc="` + escaped + `"></iframe>` +
+		`</div>` +
+		`<div class="preview" data-platform="bubbletea" hidden>` +
+		`<img src="/assets/gallery/` + name + `-bubbletea.png" alt="` + name + ` on Bubbletea" onerror="this.parentElement.remove()">` +
+		`</div>` +
+		`<div class="preview" data-platform="fyne" hidden>` +
+		`<img src="/assets/gallery/` + name + `-fyne.png" alt="` + name + ` on Fyne" onerror="this.parentElement.remove()">` +
+		`</div>` +
+		`</div>` +
+		`<script>function switchPlatform(p, btn) { document.querySelectorAll('.preview').forEach(el => el.hidden = el.dataset.platform !== p); document.querySelectorAll('.platform-tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }</script>`
 }
 
 // compilePreview compiles a .sngl example to HTML for iframe preview.
