@@ -8,6 +8,7 @@ import "go://git.duckfam.us/jonathan/sngl/docs"
 import "file://public"
 
 const pages = docs.Pages()
+const tiers = docs.ComponentsByTier()
 const components = docs.Components()
 const logo = public.path("sngl.svg")
 
@@ -75,17 +76,21 @@ component PageLayout(title = "", currentHref = "") list<component> {
 }
 
 component main {
-	// Components gallery page
+	// Components gallery — grouped by tier
 	window(title="Components", href="/components/index.html", favicon=logo) {
-		PageLayout(title="Components", currentHref="/components/index.html") {
-			html.p(innerText="Browse all built-in components with API reference.")
-			for comp = components {
-				html.div(class="component-card") {
-					html.h3 {
-						html.a(href="/components/" + comp.name + ".html", innerText=comp.name)
+		PageLayout(title="Component Gallery", currentHref="/components/index.html") {
+			html.p(innerText="Browse all built-in components with API reference and live previews.")
+			for tier = tiers {
+				html.div(class="tier") {
+					html.h2(innerText=tier.name)
+					html.div(class="component-list") {
+						for comp = tier.components {
+							html.a(class="component-card", href="/components/" + comp.name + ".html") {
+								html.h3(innerText=comp.name)
+								html.p(innerText=comp.doc)
+							}
+						}
 					}
-					html.p(innerText=comp.doc)
-					html.span(class="tier-badge", innerText=comp.tier)
 				}
 			}
 		}
@@ -96,6 +101,12 @@ component main {
 		window(title=comp.name, href="/components/" + comp.name + ".html", favicon=logo) {
 			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
 				html.p(innerText=comp.doc)
+
+				html.h2(innerText="Preview")
+				html.div(innerHTML=comp.previewHTML, class="preview-frame")
+				html.h2(innerText="Example")
+				html.div(innerHTML=comp.highlightedCode)
+
 				html.h2(innerText="Properties")
 				html.table {
 					html.thead {
@@ -111,7 +122,9 @@ component main {
 								html.td {
 									html.code(innerText=prop.name)
 								}
-								html.td(innerText=prop.type)
+								html.td {
+									html.span(class="type-badge", innerText=prop.type)
+								}
 								html.td(innerText=prop.doc)
 							}
 						}

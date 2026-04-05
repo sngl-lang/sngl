@@ -3,17 +3,24 @@
 package docs
 
 import (
+	"bytes"
 	"embed"
 	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
-//go:embed *.md getting-started language
+//go:embed *.md getting-started language components
 var content embed.FS
 
 // Page holds the data for a single documentation page.
@@ -99,12 +106,15 @@ func Pages() []Page {
 
 // Component holds metadata for a single stdlib component.
 type Component struct {
-	Name     string
-	Doc      string
-	Tier     string
-	Children string // "none", "one", "many"
-	Props    []ComponentProp
-	Events   []ComponentEvent
+	Name            string
+	Doc             string
+	Tier            string
+	Children        string // "none", "one", "many"
+	Props           []ComponentProp
+	Events          []ComponentEvent
+	Example         string // raw .sngl source (empty if no example)
+	HighlightedCode string // syntax-highlighted HTML of the example
+	PreviewHTML     string // compiled HTML for interactive iframe preview
 }
 
 // ComponentProp describes a component property.
@@ -118,6 +128,12 @@ type ComponentProp struct {
 type ComponentEvent struct {
 	Name        string
 	PayloadType string
+}
+
+// Tier groups components by their tier for the gallery.
+type Tier struct {
+	Name       string
+	Components []Component
 }
 
 // Components returns metadata for all stdlib components, grouped by tier.
@@ -153,6 +169,16 @@ func Components() []Component {
 			})
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
+
+		// Load example source if available
+		examplePath := "components/" + name + ".sngl"
+		if exData, err := content.ReadFile(examplePath); err == nil {
+			src := strings.TrimSpace(string(exData))
+			c.Example = src
+			c.HighlightedCode = docsite.HighlightSNGL(src)
+			c.PreviewHTML = compilePreview(src)
+		}
+
 		comps = append(comps, c)
 	}
 
@@ -171,6 +197,58 @@ func Components() []Component {
 	})
 
 	return comps
+}
+
+// ComponentsByTier returns components grouped by tier for the gallery.
+//
+//sngl:pure
+func ComponentsByTier() []Tier {
+	comps := Components()
+	tierMap := map[string][]Component{}
+	for _, c := range comps {
+		tierMap[c.Tier] = append(tierMap[c.Tier], c)
+	}
+	var tiers []Tier
+	for _, t := range docsite.TierOrder {
+		if cs, ok := tierMap[t]; ok {
+			tiers = append(tiers, Tier{Name: t, Components: cs})
+		}
+	}
+	return tiers
+}
+
+// compilePreview compiles a .sngl example to HTML for iframe preview.
+func compilePreview(source string) string {
+	doc, err := parser.Parse("example.sngl", strings.NewReader(source))
+	if err != nil {
+		return ""
+	}
+	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+		return ""
+	}
+	clone := doc.Clone()
+	optimize.Optimize(clone, optimize.Config{Platform: "html", Language: "js"})
+
+	gen := codegen.LookupPlatform("html")
+	lang := codegen.LookupLang("js")
+	if gen == nil || lang == nil {
+		return ""
+	}
+	resp, err := gen.Generate(&codegen.Request{
+		Doc: clone, Lang: lang,
+		Options: map[string]string{"preview": "true"},
+	})
+	if err != nil || resp.Error != "" {
+		return ""
+	}
+	for _, f := range resp.Files {
+		if strings.HasSuffix(f.Name, ".html") {
+			var buf bytes.Buffer
+			f.WriteTo(&buf)
+			return buf.String()
+		}
+	}
+	return ""
 }
 
 func autoTitle(name string) string {

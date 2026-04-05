@@ -33,6 +33,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Generate component screenshots for gallery.
+	generateComponentSnapshots(*outDir)
+
 	// Build playground (WASM + static assets).
 	if err := buildPlayground(*outDir); err != nil {
 		log.Printf("playground: %v", err)
@@ -43,6 +46,44 @@ func main() {
 	if *httpAddr != "" {
 		fmt.Printf("Serving on http://localhost%s\n", *httpAddr)
 		log.Fatal(http.ListenAndServe(*httpAddr, http.FileServer(http.Dir(*outDir))))
+	}
+}
+
+func generateComponentSnapshots(outDir string) {
+	componentsDir := filepath.Join("docs", "components")
+	entries, err := os.ReadDir(componentsDir)
+	if err != nil {
+		return
+	}
+	galleryDir := filepath.Join(outDir, "assets", "gallery")
+	os.MkdirAll(galleryDir, 0o755)
+
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		name := strings.TrimSuffix(e.Name(), ".sngl")
+		sourceFile := filepath.Join(componentsDir, e.Name())
+
+		for _, platform := range []string{"bubbletea", "fyne"} {
+			results, err := snapshot.Generate(snapshot.Config{
+				SourceFile: sourceFile,
+				Platforms:  []string{platform},
+				OutDir:     galleryDir,
+				Width:      800,
+				Height:     400,
+			})
+			if err != nil {
+				continue
+			}
+			for _, r := range results {
+				target := filepath.Join(galleryDir, name+"-"+platform+".png")
+				if r.Path != target {
+					os.Rename(r.Path, target)
+				}
+				log.Printf("gallery: %s/%s → %s", name, platform, target)
+			}
+		}
 	}
 }
 

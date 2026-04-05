@@ -45,7 +45,8 @@ func AssignTiers(registry checker.SchemaRegistry) map[string]string {
 		if strings.HasPrefix(trimmed, "component ") {
 			parts := strings.Fields(trimmed)
 			if len(parts) >= 2 {
-				tiers[parts[1]] = currentTier
+				name, _, _ := strings.Cut(parts[1], "(")
+				tiers[name] = currentTier
 			}
 		}
 	}
