@@ -416,7 +416,9 @@ func (c *checker) pass1(doc *ast.Document) {
 				doc.NativeImports = map[string]*ast.NativeDecls{}
 			}
 			doc.NativeImports[imp.Namespace] = decls
-			// Register extern data in scope qualified by namespace
+			// Register extern data in scope.
+			// For file:// imports, register unqualified (the namespace IS the value).
+			// For go:// imports, register qualified by namespace.
 			for _, d := range decls.Data {
 				hintType := Dyn
 				if d.Init.TypeHint != "" {

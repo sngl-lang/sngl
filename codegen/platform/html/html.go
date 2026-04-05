@@ -2,9 +2,12 @@ package html
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html"
 	"maps"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -37,22 +40,116 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	windows := req.Doc.App.EffectiveWindows()
-	if len(windows) <= 1 {
-		// Single window or no windows — generate single index.html (backward compat)
-		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
-		src := gen.generate()
-		return &codegen.Response{
-			Files: []*codegen.OutputFile{
-				codegen.BytesFile("index.html", []byte(src)),
-			},
-		}, nil
+	// Collect file assets (populated by optimizer from file:// path() calls).
+	var files []*codegen.OutputFile
+	for _, fa := range req.Doc.FileAssets {
+		data, err := os.ReadFile(fa.SrcPath)
+		if err == nil {
+			files = append(files, codegen.BytesFile(fa.OutPath, data))
+		}
 	}
 
-	// Multi-window: generate one HTML file per window
-	var files []*codegen.OutputFile
+	// Resolve stylesheet option: source path relative to project dir.
+	stylesheetURL := ""
+	if ssPath := req.Options["stylesheet"]; ssPath != "" {
+		projectDir := req.Options["projectDir"]
+		absPath := ssPath
+		if projectDir != "" && !filepath.IsAbs(ssPath) {
+			absPath = filepath.Join(projectDir, ssPath)
+		}
+		outName := "assets/" + filepath.Base(ssPath)
+		stylesheetURL = "/" + outName
+		data, err := os.ReadFile(absPath)
+		if err == nil {
+			files = append(files, codegen.BytesFile(outName, data))
+		}
+	}
+
+	// Build WASM for imported packages that have runtime-used functions.
+	// Each import scheme's language may provide a WASMCompiler.
+	var wasmLoaderHTML string
+	wasmPkgs := collectWASMPackages(req.Doc)
+	if len(wasmPkgs) > 0 {
+		projectDir := req.Options["projectDir"]
+		wasmExecAdded := false
+		var loaderScripts []string
+
+		for _, wp := range wasmPkgs {
+			// Look up the lang for this import's scheme (e.g., go:// → "go" lang)
+			schemeLang := codegen.LookupLang(wp.namespace)
+			// Try all registered langs for WASMCompiler support
+			if schemeLang == nil {
+				for _, name := range codegen.Langs() {
+					l := codegen.LookupLang(name)
+					if _, ok := l.(codegen.WASMCompiler); ok {
+						schemeLang = l
+						break
+					}
+				}
+			}
+			wc, ok := schemeLang.(codegen.WASMCompiler)
+			if !ok {
+				continue
+			}
+
+			// Add runtime support JS (once)
+			if !wasmExecAdded {
+				wasmExecData, err := wc.WASMExecJS()
+				if err == nil {
+					files = append(files, codegen.BytesFile("assets/wasm_exec.js", wasmExecData))
+					wasmExecAdded = true
+				}
+			}
+
+			wasmBytes, err := wc.BuildWASM(projectDir, wp.importPath, wp.funcs)
+			if err != nil {
+				return &codegen.Response{Error: fmt.Sprintf("wasm build: %v", err)}, nil
+			}
+			wasmFile := "assets/" + wp.namespace + ".wasm"
+			files = append(files, codegen.BytesFile(wasmFile, wasmBytes))
+			loaderScripts = append(loaderScripts, fmt.Sprintf(
+				`  const _go_%s = new Go();
+  WebAssembly.instantiateStreaming(fetch("/%s"), _go_%s.importObject).then(r => { _go_%s.run(r.instance); });`,
+				wp.namespace, wasmFile, wp.namespace, wp.namespace))
+		}
+		if len(loaderScripts) > 0 {
+			wasmLoaderHTML = fmt.Sprintf(
+				"  <script src=\"/assets/wasm_exec.js\"></script>\n  <script>\n  window.__sngl_externs = window.__sngl_externs || {};\n%s\n  </script>\n",
+				strings.Join(loaderScripts, "\n"))
+		}
+	}
+
+	// Merge go:// extern functions into doc.Data so emitScript() can generate bindings.
+	// Functions are registered unqualified (matching how the JS translator emits them).
+	for _, ni := range req.Doc.NativeImports {
+		for _, d := range ni.Data {
+			if d.IsFunc && d.Extern && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+				req.Doc.Data = append(req.Doc.Data, d)
+			}
+		}
+	}
+
+	// Generate HTML pages from windows (or single-window fallback).
+	windows := req.Doc.App.EffectiveWindows()
+	if len(windows) <= 1 {
+		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
+		gen.wasmLoader = wasmLoaderHTML
+		src := gen.generate()
+		files = append(files, codegen.BytesFile("index.html", []byte(src)))
+		return &codegen.Response{Files: files}, nil
+	}
 	for _, win := range windows {
 		name := win.Name
+		// Try href prop for the filename if no static name
+		if name == "" {
+			name = staticPropString(win.Props, "href")
+		}
+		if name == "" {
+			name = staticPropString(win.Props, "slug")
+		}
+		if name == "" {
+			name = staticPropString(win.Props, "title")
+		}
 		// If name looks like a URL path (starts with /), use it directly
 		if strings.HasPrefix(name, "/") {
 			name = strings.TrimPrefix(name, "/")
@@ -72,10 +169,29 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		winDoc.Functions = append(winDoc.Functions, win.Functions...)
 		winDoc.Timers = append(winDoc.Timers, win.Timers...)
 		gen := newHTMLGen(winDoc, req.Lang, req.Options)
+		gen.title = staticPropString(win.Props, "title")
+		gen.stylesheet = stylesheetURL
+		gen.favicon = staticPropString(win.Props, "favicon")
+		gen.wasmLoader = wasmLoaderHTML
 		src := gen.generate()
 		files = append(files, codegen.BytesFile(name, []byte(src)))
 	}
 	return &codegen.Response{Files: files}, nil
+}
+
+// staticPropString extracts a static string value from a props map.
+func staticPropString(props map[string]ast.Expr, key string) string {
+	if props == nil {
+		return ""
+	}
+	e, ok := props[key]
+	if !ok {
+		return ""
+	}
+	if s, ok := e.Literal.(string); ok {
+		return s
+	}
+	return ""
 }
 
 // htmlGen holds all state for generating a single HTML file.
@@ -109,6 +225,18 @@ type htmlGen struct {
 
 	// For building the scope
 	scope *codegen.ExprScope
+
+	// Page title for <title> tag in <head>
+	title string
+
+	// Stylesheet URL path to emit as <link> in <head>
+	stylesheet string
+
+	// Favicon URL path to emit as <link rel="icon"> in <head>
+	favicon string
+
+	// WASM loader HTML to inject in <head> (script tags for wasm_exec.js + instantiation)
+	wasmLoader string
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
@@ -219,12 +347,25 @@ func (g *htmlGen) generate() string {
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
 	b.WriteString("  <meta charset=\"utf-8\">\n")
+	b.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	if g.title != "" {
+		fmt.Fprintf(&b, "  <title>%s</title>\n", html.EscapeString(g.title))
+	}
+	if g.favicon != "" {
+		fmt.Fprintf(&b, "  <link rel=\"icon\" href=\"%s\">\n", html.EscapeString(g.favicon))
+	}
+	if g.stylesheet != "" {
+		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
+	}
 	b.WriteString("  <style>\n")
 	b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
 	b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
 	b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
 	b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
 	b.WriteString("  </style>\n")
+	if g.wasmLoader != "" {
+		b.WriteString(g.wasmLoader)
+	}
 	b.WriteString("</head><body>\n\n")
 
 	// Render static HTML body
@@ -1450,7 +1591,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		})
 	}
 
-	// Extern bindings (provided by host via window.__sngl_externs)
+	// Extern bindings (provided by host via window.__sngl_externs or WASM)
 	hasExterns := false
 	for _, d := range g.doc.Data {
 		if d.Extern || d.IsFunc {
@@ -1460,11 +1601,39 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if hasExterns {
 		b.WriteString("// Extern bindings\nconst $ext = window.__sngl_externs || {};\n")
+
+		// Group go:// extern functions by namespace for qualified access (e.g., purepkg.Greet)
+		nsByName := map[string][]string{} // namespace → function names
+		for ns, ni := range g.doc.NativeImports {
+			for _, d := range ni.Data {
+				if d.IsFunc && d.Extern && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+					nsByName[ns] = append(nsByName[ns], d.Name)
+				}
+			}
+		}
+		for ns, funcs := range nsByName {
+			fmt.Fprintf(b, "const %s = {\n", ns)
+			for _, fn := range funcs {
+				fmt.Fprintf(b, "  %s: $ext.%s || function(){},\n", fn, fn)
+			}
+			b.WriteString("};\n")
+		}
+
+		// Non-namespaced extern functions (direct doc.Data externs)
 		for _, d := range g.doc.Data {
-			if !d.Extern && !d.IsFunc {
+			if !d.Extern || !d.IsFunc {
 				continue
 			}
-			if d.IsFunc {
+			// Skip if already in a namespace
+			inNS := false
+			for _, funcs := range nsByName {
+				for _, fn := range funcs {
+					if fn == d.Name {
+						inNS = true
+					}
+				}
+			}
+			if !inNS {
 				fmt.Fprintf(b, "const %s = $ext.%s || function(){};\n", d.Name, d.Name)
 			}
 		}
@@ -2182,6 +2351,10 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 				return "true"
 			}
 			return "false"
+		case []any:
+			return complexLiteralToJS(v)
+		case map[string]any:
+			return complexLiteralToJS(v)
 		}
 	}
 	// SNGL init expression (e.g., struct literal)
@@ -2198,6 +2371,15 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 		return "[]"
 	}
 	return `""`
+}
+
+// complexLiteralToJS converts []any or map[string]any to JSON for embedding in JS.
+func complexLiteralToJS(v any) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "null"
+	}
+	return string(data)
 }
 
 func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string {

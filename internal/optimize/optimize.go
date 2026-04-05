@@ -16,6 +16,7 @@ type foldCtx struct {
 	vars          map[string]any
 	nativeImports map[string]*ast.NativeDecls
 	dir           string
+	fileAssets    []ast.FileAsset // files referenced via file:// path() calls
 }
 
 // Optimize mutates doc in place: evaluates constant SNGL expressions referencing
@@ -94,6 +95,7 @@ func Optimize(doc *ast.Document, cfg Config) error {
 		}
 		doc.App.Windows = expandForWindows(doc.App.Windows, ctx)
 	}
+	doc.FileAssets = append(doc.FileAssets, ctx.fileAssets...)
 	return nil
 }
 
@@ -213,12 +215,41 @@ func optimizeNodes(nodes []*ast.VisualNode, ctx *foldCtx) []*ast.VisualNode {
 			}
 		}
 
-		// Eliminate for-loops over empty literal lists.
+		// Expand or eliminate for-loops over const literal lists.
 		if vn.For != nil {
 			foldExpr(&vn.For.Iterable, ctx)
-			// Check folded literal: empty []any{} from const evaluation
-			if items, ok := vn.For.Iterable.Literal.([]any); ok && len(items) == 0 {
-				continue // for over empty list — dead code
+			// Check folded literal: expand const list at compile time.
+			if items, ok := vn.For.Iterable.Literal.([]any); ok {
+				if len(items) == 0 {
+					continue // for over empty list — dead code
+				}
+				// Expand: replace for-loop with N copies of the node,
+				// each with the loop variable bound to the element.
+				for i, item := range items {
+					loopCtx := &foldCtx{
+						vars:          make(map[string]any, len(ctx.vars)+2),
+						nativeImports: ctx.nativeImports,
+						dir:           ctx.dir,
+					}
+					for k, v := range ctx.vars {
+						loopCtx.vars[k] = v
+					}
+					loopCtx.vars[vn.For.Variable] = item
+					if vn.For.IndexVar != "" {
+						loopCtx.vars[vn.For.IndexVar] = i
+					}
+					// Clone the node itself (not just children), remove the For clause
+					clone := ast.CloneVisualNodes([]*ast.VisualNode{vn})[0]
+					clone.For = nil
+					clone.Children = optimizeNodes(clone.Children, loopCtx)
+					// Fold props/class/key on the cloned node
+					foldExprMap(clone.Props, loopCtx)
+					foldExprPtr(clone.Key, loopCtx)
+					foldExprPtr(clone.Class, loopCtx)
+					foldExprPtr(clone.Ref, loopCtx)
+					out = append(out, clone)
+				}
+				continue
 			}
 			// Check AST: ListExpr with no elements
 			if list, ok := vn.For.Iterable.SNGL.(*ast.ListExpr); ok && len(list.Elements) == 0 {

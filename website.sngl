@@ -1,65 +1,151 @@
 output {
 	js {
-		html
+		html(stylesheet="public/style.css")
 	}
 }
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
+import "file://public"
 
 const pages = docs.Pages()
+const components = docs.Components()
+const logo = public.path("sngl.svg")
+
+component NavSidebar(currentHref = "") {
+	html.nav {
+		html.a(href="/index.html", class="nav-brand") {
+			html.img(src=logo, alt="SNGL")
+			html.span(innerText="SNGL")
+		}
+		html.ul {
+			html.li {
+				html.a(href="/index.html", class=currentHref == "/index.html" ? "active" : "", innerText="SNGL")
+			}
+			html.li {
+				html.a(href="/getting-started.html", innerText="Getting Started")
+				html.ul {
+					html.li {
+						html.a(href="/getting-started/installation.html", class=currentHref == "/getting-started/installation.html" ? "active" : "", innerText="Installation")
+					}
+					html.li {
+						html.a(href="/getting-started/first-app-web.html", class=currentHref == "/getting-started/first-app-web.html" ? "active" : "", innerText="Your First App")
+					}
+					html.li {
+						html.a(href="/getting-started/build-targets.html", class=currentHref == "/getting-started/build-targets.html" ? "active" : "", innerText="Build Targets")
+					}
+					html.li {
+						html.a(href="/getting-started/data-binding.html", class=currentHref == "/getting-started/data-binding.html" ? "active" : "", innerText="Data Binding")
+					}
+				}
+			}
+			html.li {
+				html.a(href="#", innerText="Language")
+				html.ul {
+					html.li {
+						html.a(href="/language/effective-sngl.html", class=currentHref == "/language/effective-sngl.html" ? "active" : "", innerText="Effective SNGL")
+					}
+					html.li {
+						html.a(href="/language/reference.html", class=currentHref == "/language/reference.html" ? "active" : "", innerText="Language Reference")
+					}
+					html.li {
+						html.a(href="/language/specification.html", class=currentHref == "/language/specification.html" ? "active" : "", innerText="Language Specification")
+					}
+				}
+			}
+			html.li {
+				html.a(href="/components/index.html", class=currentHref == "/components/index.html" ? "active" : "", innerText="Components")
+			}
+			html.li {
+				html.a(href="/playground.html", innerText="Playground")
+			}
+		}
+	}
+}
+
+component PageLayout(title = "", currentHref = "") list<component> {
+	html.div(class="site") {
+		NavSidebar(currentHref=currentHref)
+		html.main {
+			html.article {
+				html.h1(innerText=title)
+				slot
+			}
+		}
+	}
+}
 
 component main {
+	// Components gallery page
+	window(title="Components", href="/components/index.html", favicon=logo) {
+		PageLayout(title="Components", currentHref="/components/index.html") {
+			html.p(innerText="Browse all built-in components with API reference.")
+			for comp = components {
+				html.div(class="component-card") {
+					html.h3 {
+						html.a(href="/components/" + comp.name + ".html", innerText=comp.name)
+					}
+					html.p(innerText=comp.doc)
+					html.span(class="tier-badge", innerText=comp.tier)
+				}
+			}
+		}
+	}
+
+	// Individual component pages
+	for comp = components {
+		window(title=comp.name, href="/components/" + comp.name + ".html", favicon=logo) {
+			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
+				html.p(innerText=comp.doc)
+				html.h2(innerText="Properties")
+				html.table {
+					html.thead {
+						html.tr {
+							html.th(innerText="Name")
+							html.th(innerText="Type")
+							html.th(innerText="Description")
+						}
+					}
+					html.tbody {
+						for prop = comp.props {
+							html.tr {
+								html.td {
+									html.code(innerText=prop.name)
+								}
+								html.td(innerText=prop.type)
+								html.td(innerText=prop.doc)
+							}
+						}
+					}
+				}
+				html.h2(innerText="Events")
+				html.table {
+					html.thead {
+						html.tr {
+							html.th(innerText="Name")
+							html.th(innerText="Payload Type")
+						}
+					}
+					html.tbody {
+						for evt = comp.events {
+							html.tr {
+								html.td {
+									html.code(innerText=evt.name)
+								}
+								html.td(innerText=evt.payloadType)
+							}
+						}
+					}
+				}
+				html.p(innerText="Children: " + comp.children)
+			}
+		}
+	}
+
+	// Documentation pages
 	for page = pages {
-		window(title=page.title, href=page.href) {
-			html.link(rel="stylesheet", href="/assets/style.css")
-			html.div(class="site") {
-				html.nav {
-					html.a(href="/index.html", class="nav-brand") {
-						html.span(innerText="SNGL")
-					}
-					html.ul {
-						html.li {
-							html.a(href="/index.html", innerText="SNGL")
-						}
-						html.li {
-							html.a(href="/getting-started.html", innerText="Getting Started")
-							html.ul {
-								html.li {
-									html.a(href="/getting-started/installation.html", innerText="Installation")
-								}
-								html.li {
-									html.a(href="/getting-started/first-app-web.html", innerText="Your First App")
-								}
-								html.li {
-									html.a(href="/getting-started/build-targets.html", innerText="Build Targets")
-								}
-								html.li {
-									html.a(href="/getting-started/data-binding.html", innerText="Data Binding")
-								}
-							}
-						}
-						html.li {
-							html.a(href="#", innerText="Language")
-							html.ul {
-								html.li {
-									html.a(href="/language/effective-sngl.html", innerText="Effective SNGL")
-								}
-								html.li {
-									html.a(href="/language/reference.html", innerText="Language Reference")
-								}
-								html.li {
-									html.a(href="/language/specification.html", innerText="Language Specification")
-								}
-							}
-						}
-					}
-				}
-				html.main {
-					html.article {
-						html.h1(innerText=page.title)
-						html.div(innerHTML=page.body)
-					}
-				}
+		window(title=page.title, href=page.href, favicon=logo) {
+			PageLayout(title=page.title, currentHref=page.href) {
+				html.div(innerHTML=page.body)
 			}
 		}
 	}

@@ -1,6 +1,6 @@
-//go:build js && wasm
-
-package main
+// Package playground provides the SNGL compiler API for browser usage.
+// Functions are designed to be called from JavaScript via WASM bindings.
+package playground
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
-	"syscall/js"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -19,22 +18,11 @@ import (
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
-
-func main() {
-	js.Global().Set("snglCompile", js.FuncOf(compile))
-	js.Global().Set("snglAST", js.FuncOf(astDump))
-	js.Global().Set("snglTargets", js.FuncOf(targets))
-	js.Global().Set("snglGenerate", js.FuncOf(generate))
-	js.Global().Set("snglDiagnostics", js.FuncOf(diagnostics))
-	js.Global().Set("snglComplete", js.FuncOf(complete))
-	js.Global().Set("snglHover", js.FuncOf(hover))
-	select {}
-}
-
-// --- doc cache ---
 
 var (
 	cacheMu   sync.Mutex
@@ -57,60 +45,48 @@ func cachedParse(source string) (*ast.Document, error) {
 	return doc, err
 }
 
-// --- original functions ---
-
-func compile(this js.Value, args []js.Value) any {
+// Compile parses, checks, optimizes, and generates HTML from SNGL source.
+// Returns JSON: {"html": "...", "error": "..."}
+func Compile(source string) string {
 	result := map[string]any{"html": "", "error": ""}
-	if len(args) == 0 {
-		result["error"] = "no source provided"
-		return toJSObject(result)
-	}
-	source := args[0].String()
 
 	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	clone := doc.Clone()
 	if err := optimize.Optimize(clone, optimize.Config{
-		Platform: "html",
-		Language: "js",
+		Platform: "html", Language: "js",
 	}); err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	gen := codegen.LookupPlatform("html")
-	if gen == nil {
-		result["error"] = "html platform not registered"
-		return toJSObject(result)
-	}
-
 	lang := codegen.LookupLang("js")
-	if lang == nil {
-		result["error"] = "js language not registered"
-		return toJSObject(result)
+	if gen == nil || lang == nil {
+		result["error"] = "html/js codegen not registered"
+		return jsonStr(result)
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc:     clone,
-		Lang:    lang,
+		Doc: clone, Lang: lang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 	if resp.Error != "" {
 		result["error"] = resp.Error
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	for _, f := range resp.Files {
@@ -121,35 +97,31 @@ func compile(this js.Value, args []js.Value) any {
 			break
 		}
 	}
-	return toJSObject(result)
+	return jsonStr(result)
 }
 
-func astDump(this js.Value, args []js.Value) any {
+// ASTDump parses SNGL source and returns the AST as JSON.
+// Returns JSON: {"ast": "...", "error": "..."}
+func ASTDump(source string) string {
 	result := map[string]any{"ast": "", "error": ""}
-	if len(args) == 0 {
-		result["error"] = "no source provided"
-		return toJSObject(result)
-	}
-	source := args[0].String()
 
 	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 	result["ast"] = string(data)
-	return toJSObject(result)
+	return jsonStr(result)
 }
 
-// --- new functions ---
-
-func targets(this js.Value, args []js.Value) any {
+// Targets returns available platform/language combinations as JSON.
+func Targets() string {
 	var list []any
 	for _, platName := range codegen.Platforms() {
 		plat := codegen.LookupPlatform(platName)
@@ -163,61 +135,53 @@ func targets(this js.Value, args []js.Value) any {
 			})
 		}
 	}
-	return toJSValue(list)
+	data, _ := json.Marshal(list)
+	return string(data)
 }
 
-func generate(this js.Value, args []js.Value) any {
+// Generate compiles SNGL source for a specific platform/language.
+// Returns JSON: {"files": [...], "error": "..."}
+func Generate(source, platform, lang string) string {
 	result := map[string]any{"files": nil, "error": ""}
-	if len(args) < 3 {
-		result["error"] = "usage: snglGenerate(source, platform, lang)"
-		return toJSObject(result)
-	}
-	source := args[0].String()
-	platName := args[1].String()
-	langName := args[2].String()
 
 	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	clone := doc.Clone()
 	if err := optimize.Optimize(clone, optimize.Config{
-		Platform: platName,
-		Language: langName,
+		Platform: platform, Language: lang,
 	}); err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
-	gen := codegen.LookupPlatform(platName)
+	gen := codegen.LookupPlatform(platform)
 	if gen == nil {
-		result["error"] = "unknown platform: " + platName
-		return toJSObject(result)
+		result["error"] = "unknown platform: " + platform
+		return jsonStr(result)
 	}
-	lang := codegen.LookupLang(langName)
-	if lang == nil {
-		result["error"] = "unknown lang: " + langName
-		return toJSObject(result)
+	lt := codegen.LookupLang(lang)
+	if lt == nil {
+		result["error"] = "unknown lang: " + lang
+		return jsonStr(result)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
-		Doc:  clone,
-		Lang: lang,
-	})
+	resp, err := gen.Generate(&codegen.Request{Doc: clone, Lang: lt})
 	if err != nil {
 		result["error"] = err.Error()
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 	if resp.Error != "" {
 		result["error"] = resp.Error
-		return toJSObject(result)
+		return jsonStr(result)
 	}
 
 	var files []any
@@ -230,18 +194,12 @@ func generate(this js.Value, args []js.Value) any {
 		})
 	}
 	result["files"] = files
-	return toJSValue(result)
+	return jsonStr(result)
 }
 
-func diagnostics(this js.Value, args []js.Value) any {
-	if len(args) == 0 {
-		return toJSValue([]any{})
-	}
-	source := args[0].String()
-
+// Diagnostics returns LSP diagnostics for SNGL source as JSON.
+func Diagnostics(source string) string {
 	doc, diags := lspcore.Analyze(source, "playground.sngl", nil, "", nil)
-
-	// Update cache for completion/hover
 	if doc != nil {
 		h := sha256.Sum256([]byte(source))
 		cacheMu.Lock()
@@ -261,17 +219,12 @@ func diagnostics(this js.Value, args []js.Value) any {
 			"message":  d.Message,
 		})
 	}
-	return toJSValue(out)
+	data, _ := json.Marshal(out)
+	return string(data)
 }
 
-func complete(this js.Value, args []js.Value) any {
-	if len(args) < 3 {
-		return toJSValue([]any{})
-	}
-	source := args[0].String()
-	line := args[1].Int()
-	col := args[2].Int()
-
+// Complete returns LSP completions at the given position as JSON.
+func Complete(source string, line, col int) string {
 	doc, _ := cachedParse(source)
 	items := lspcore.Complete(source, doc, line, col)
 
@@ -284,59 +237,19 @@ func complete(this js.Value, args []js.Value) any {
 			"insertText": item.InsertText,
 		})
 	}
-	return toJSValue(out)
+	data, _ := json.Marshal(out)
+	return string(data)
 }
 
-func hover(this js.Value, args []js.Value) any {
-	if len(args) < 3 {
-		return toJSObject(map[string]any{"content": ""})
-	}
-	source := args[0].String()
-	line := args[1].Int()
-	col := args[2].Int()
-
+// Hover returns LSP hover content at the given position as JSON.
+func Hover(source string, line, col int) string {
 	doc, _ := cachedParse(source)
 	content := lspcore.Hover(source, doc, line, col)
-
-	return toJSObject(map[string]any{"content": content})
+	result := map[string]any{"content": content}
+	return jsonStr(result)
 }
 
-// --- helpers ---
-
-func toJSObject(m map[string]any) js.Value {
-	obj := js.Global().Get("Object").New()
-	for k, v := range m {
-		obj.Set(k, v)
-	}
-	return obj
-}
-
-// toJSValue recursively converts Go values to JS values.
-func toJSValue(v any) js.Value {
-	switch val := v.(type) {
-	case nil:
-		return js.Null()
-	case bool:
-		return js.ValueOf(val)
-	case int:
-		return js.ValueOf(val)
-	case float64:
-		return js.ValueOf(val)
-	case string:
-		return js.ValueOf(val)
-	case map[string]any:
-		obj := js.Global().Get("Object").New()
-		for k, v := range val {
-			obj.Set(k, toJSValue(v))
-		}
-		return obj
-	case []any:
-		arr := js.Global().Get("Array").New(len(val))
-		for i, v := range val {
-			arr.SetIndex(i, toJSValue(v))
-		}
-		return arr
-	default:
-		return js.ValueOf(v)
-	}
+func jsonStr(m map[string]any) string {
+	data, _ := json.Marshal(m)
+	return string(data)
 }

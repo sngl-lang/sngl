@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 )
 
@@ -94,6 +95,82 @@ func Pages() []Page {
 	})
 
 	return pages
+}
+
+// Component holds metadata for a single stdlib component.
+type Component struct {
+	Name     string
+	Doc      string
+	Tier     string
+	Children string // "none", "one", "many"
+	Props    []ComponentProp
+	Events   []ComponentEvent
+}
+
+// ComponentProp describes a component property.
+type ComponentProp struct {
+	Name string
+	Type string
+	Doc  string
+}
+
+// ComponentEvent describes a component event.
+type ComponentEvent struct {
+	Name        string
+	PayloadType string
+}
+
+// Components returns metadata for all stdlib components, grouped by tier.
+//
+//sngl:pure
+func Components() []Component {
+	registry, _, _, _, _, _, err := checker.LoadStdlib()
+	if err != nil {
+		return nil
+	}
+	tiers := docsite.AssignTiers(registry)
+
+	var comps []Component
+	for name, schema := range registry {
+		c := Component{
+			Name:     name,
+			Doc:      schema.Doc,
+			Tier:     tiers[name],
+			Children: docsite.ChildPolicyString(schema.Children),
+		}
+		for pname, ps := range schema.Props {
+			c.Props = append(c.Props, ComponentProp{
+				Name: pname,
+				Type: ps.Type.String(),
+				Doc:  ps.Doc,
+			})
+		}
+		sort.Slice(c.Props, func(i, j int) bool { return c.Props[i].Name < c.Props[j].Name })
+		for ename, payload := range schema.Events {
+			c.Events = append(c.Events, ComponentEvent{
+				Name:        ename,
+				PayloadType: payload,
+			})
+		}
+		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
+		comps = append(comps, c)
+	}
+
+	// Sort by tier order then name
+	tierIdx := map[string]int{}
+	for i, t := range docsite.TierOrder {
+		tierIdx[t] = i
+	}
+	sort.Slice(comps, func(i, j int) bool {
+		ti := tierIdx[comps[i].Tier]
+		tj := tierIdx[comps[j].Tier]
+		if ti != tj {
+			return ti < tj
+		}
+		return comps[i].Name < comps[j].Name
+	})
+
+	return comps
 }
 
 func autoTitle(name string) string {

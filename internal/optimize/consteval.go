@@ -2,7 +2,10 @@ package optimize
 
 import (
 	"fmt"
+	"io/fs"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -148,11 +151,25 @@ func evalConst(n ast.Node, ctx *foldCtx) (any, bool) {
 			if v, ok := evalQualifiedMethod(qualName, args); ok {
 				return v, true
 			}
+			// Try file:// scheme functions (path, contents)
+			if ctx.nativeImports != nil {
+				if ns, exists := ctx.nativeImports[ident.Name]; exists {
+					for _, d := range ns.Data {
+						if d.Name == e.Method && d.Resolved != nil && d.Resolved.NativePkg == "file" {
+							if len(args) == 1 {
+								if filename, ok := args[0].(string); ok {
+									return evalFileFunc(d.Resolved.NativeType, ns.ImportPath, filename, ctx)
+								}
+							}
+						}
+					}
+				}
+			}
 			// Try pure Go function execution
 			if ctx.nativeImports != nil && ctx.dir != "" {
 				if ns, exists := ctx.nativeImports[ident.Name]; exists {
 					for _, d := range ns.Data {
-						if d.Name == e.Method && d.Purity == ast.PurityPure && d.Resolved != nil {
+						if d.Name == e.Method && d.Purity == ast.PurityPure && d.Resolved != nil && d.Resolved.NativePkg != "file" {
 							result, err := execPureGoFunc(ctx.dir, ns.ImportPath, d.Resolved.NativeType, d.ParamTypes, d.ReturnType, args)
 							if err != nil {
 								return nil, false
@@ -218,6 +235,38 @@ func evalConst(n ast.Node, ctx *foldCtx) (any, bool) {
 	default:
 		return nil, false
 	}
+}
+
+// evalFileFunc evaluates file:// scheme functions (path, contents).
+// Uses os.DirFS to root file access within the imported directory,
+// preventing directory traversal. This pattern also works for future
+// remote import schemes that provide an fs.FS.
+func evalFileFunc(funcName, dirPath, filename string, ctx *foldCtx) (any, bool) {
+	fsys := os.DirFS(dirPath)
+
+	switch funcName {
+	case "path":
+		// Verify the file exists within the directory.
+		if _, err := fs.Stat(fsys, filename); err != nil {
+			return nil, false
+		}
+		outPath := "assets/" + filename
+		url := "/" + outPath
+		ctx.fileAssets = append(ctx.fileAssets, ast.FileAsset{
+			SrcPath: filepath.Join(dirPath, filename),
+			OutPath: outPath,
+			URL:     url,
+		})
+		return url, true
+
+	case "contents":
+		data, err := fs.ReadFile(fsys, filename)
+		if err != nil {
+			return nil, false
+		}
+		return string(data), true
+	}
+	return nil, false
 }
 
 func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {

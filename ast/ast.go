@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// FileAsset records a file that needs to be copied to the output directory.
+type FileAsset struct {
+	SrcPath string // absolute source path
+	OutPath string // output path relative to output dir (e.g., "assets/style.css")
+	URL     string // URL path for use in HTML (e.g., "/assets/style.css")
+}
+
 // Pos records the source position of an AST node.
 type Pos struct {
 	Line   int // 1-based line number
@@ -75,6 +82,7 @@ type Document struct {
 	Windows            []*Window // top-level window declarations
 	App                *App
 	NativeImports      map[string]*NativeDecls // namespace → resolved native decls (populated by checker)
+	FileAssets         []FileAsset             // files to copy to output (populated by optimizer)
 	Comments           []Comment               // all comments, ordered by position
 	Decls              []Decl                  // ordered declarations including interleaved comments
 }
