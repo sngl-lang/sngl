@@ -30,18 +30,18 @@ component main {
     tree_view(node=root)
 }
 
-test main "recursive component renders root" {
-    assert(#val[0].value == "5")
+func testRecursiveComponentRendersRoot(t T, c main) {
+    t.assert(c.#val[0].value == "5")
 }
 
-test main "recursive component renders children" {
-    assert(#val[1].value == "3")
-    assert(#val[2].value == "1")
-    assert(#val[3].value == "8")
+func testRecursiveComponentRendersChildren(t T, c main) {
+    t.assert(c.#val[1].value == "3")
+    t.assert(c.#val[2].value == "1")
+    t.assert(c.#val[3].value == "8")
 }
 
-test main "recursive component mutation" {
-    node3.right = TreeNode{value: 4}
-    assert(#val[3].value == "4")
-    assert(#val[4].value == "8")
+func testRecursiveComponentMutation(t T, c main) {
+    c.node3.right = TreeNode{value: 4}
+    t.assert(c.#val[3].value == "4")
+    t.assert(c.#val[4].value == "8")
 }

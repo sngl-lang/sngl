@@ -114,10 +114,10 @@ func TestGeneratedTests(t *testing.T) {
 }
 
 func shouldSkipTest(r *codegen.TestResult, doc *ast.Document) bool {
-	// Find the corresponding TestDef
-	for _, td := range doc.Tests {
-		if td.Component == r.Component && td.Desc == r.Desc {
-			return bubbletea.ShouldSkipTest(td)
+	// Find the corresponding test function
+	for _, fn := range doc.TestFuncs() {
+		if fn.Name == r.Desc {
+			return bubbletea.ShouldSkipTestFunc(fn)
 		}
 	}
 	return false

@@ -6,22 +6,22 @@ component counter {
     text(value="Count: {count}")
 }
 
-test counter "starts at zero" {
-    assert(count == 0)
+func testStartsAtZero(t T, c counter) {
+    t.assert(c.count == 0)
 }
 
-test counter "increments" {
-    assert(count == 0)
-    count += 1
-    assert(count == 1)
+func testIncrements(t T, c counter) {
+    t.assert(c.count == 0)
+    c.count += 1
+    t.assert(c.count == 1)
 
-    test "multiple increments" {
-        count += 5
-        assert(count == 6)
-    }
+    t.test("multiple increments", func(t, c) {
+        c.count += 5
+        t.assert(c.count == 6)
+    })
 }
 
-test counter "starts fresh each test" {
-    assert(count == 0)
-    assert(name == "hello")
+func testStartsFreshEachTest(t T, c counter) {
+    t.assert(c.count == 0)
+    t.assert(c.name == "hello")
 }

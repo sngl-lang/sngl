@@ -84,13 +84,13 @@ func runTest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if len(doc.Tests) == 0 {
+		if len(doc.TestFuncs()) == 0 {
 			continue
 		}
 
 		doc = mergeDir(doc, filename)
 
-		if doc.App != nil || len(doc.Tests) > 0 {
+		if doc.App != nil || len(doc.TestFuncs()) > 0 {
 			if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), nil, true); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 				totalFail++
@@ -98,7 +98,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		diags := checker.CheckTests(doc)
+		diags := checker.CheckTestFuncs(doc)
 		if len(diags) > 0 {
 			for _, d := range diags {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, d.Msg)
@@ -108,18 +108,19 @@ func runTest(cmd *cobra.Command, args []string) error {
 		}
 
 		// Filter tests by --run pattern
-		tests := doc.Tests
 		if runFilter != "" {
-			var filtered []*ast.TestDef
-			for _, td := range tests {
-				if strings.Contains(td.Desc, runFilter) {
-					filtered = append(filtered, td)
+			var filtered []*ast.FuncDef
+			for _, fn := range doc.Functions {
+				if fn.IsTest() && strings.Contains(fn.Name, runFilter) {
+					filtered = append(filtered, fn)
+				} else if !fn.IsTest() {
+					filtered = append(filtered, fn)
 				}
 			}
-			tests = filtered
+			doc.Functions = filtered
 		}
 
-		results, err := runner.RunTests(doc, lang, tests)
+		results, err := runner.RunTests(doc, lang)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++

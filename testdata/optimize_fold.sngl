@@ -12,13 +12,13 @@ component fold {
     text(value="{s}")
 }
 
-test fold "constant folding" {
-    assert(s == "42")
-    assert(i == 3)
-    assert(sz == 5)
-    assert(ml == 3)
-    assert(mc == true)
-    assert(sw == true)
-    assert(ew == true)
-    assert(noc == false)
+func testConstantFolding(t T, c fold) {
+    t.assert(c.s == "42")
+    t.assert(c.i == 3)
+    t.assert(c.sz == 5)
+    t.assert(c.ml == 3)
+    t.assert(c.mc == true)
+    t.assert(c.sw == true)
+    t.assert(c.ew == true)
+    t.assert(c.noc == false)
 }

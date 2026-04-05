@@ -53,17 +53,17 @@ component arithfold {
     text(value="{add}")
 }
 
-test arithfold "folded values" {
-    assert(add == 7)
-    assert(sub == 7)
-    assert(mul == 42)
-    assert(div == 5)
-    assert(mod == 2)
-    assert(neg == -42)
-    assert(bnot == true)
-    assert(eq == true)
-    assert(neq == true)
-    assert(cat == "hello world")
-    assert(tern == 1)
-    assert(ternf == 2)
+func testFoldedValues(t T, c arithfold) {
+    t.assert(c.add == 7)
+    t.assert(c.sub == 7)
+    t.assert(c.mul == 42)
+    t.assert(c.div == 5)
+    t.assert(c.mod == 2)
+    t.assert(c.neg == -42)
+    t.assert(c.bnot == true)
+    t.assert(c.eq == true)
+    t.assert(c.neq == true)
+    t.assert(c.cat == "hello world")
+    t.assert(c.tern == 1)
+    t.assert(c.ternf == 2)
 }

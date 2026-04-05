@@ -106,7 +106,7 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 		c.targetPlatforms = append(c.targetPlatforms, out.Platform)
 	}
 
-	if isMain && doc.App == nil && len(doc.Tests) == 0 {
+	if isMain && doc.App == nil && len(doc.TestFuncs()) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
 		return c.joinErrors()
 	}
@@ -125,17 +125,25 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 	return c.joinErrors()
 }
 
-// CheckTests validates test blocks in a document. It resolves each test's
-// target component and checks that the test body references valid variables.
-func CheckTests(doc *ast.Document) []Diagnostic {
+// CheckTestFuncs validates test functions in a document. Test functions
+// use the naming convention func testXxx(t T, c ComponentName) { ... }.
+func CheckTestFuncs(doc *ast.Document) []Diagnostic {
 	var diags []Diagnostic
-	for _, td := range doc.Tests {
-		comp := findTestComponent(doc, td.Component)
-		if comp == nil {
-			diags = append(diags, Diagnostic{Pos: td.Pos, Msg: fmt.Sprintf("test targets unknown component %q", td.Component)})
+	for _, fn := range doc.TestFuncs() {
+		if len(fn.Params) < 1 {
+			diags = append(diags, Diagnostic{Pos: fn.Pos, Msg: fmt.Sprintf("test function %q must have at least one parameter (t T)", fn.Name)})
 			continue
 		}
-		diags = append(diags, checkTestBody(td, comp)...)
+		if fn.Params[0].Type != "T" {
+			diags = append(diags, Diagnostic{Pos: fn.Pos, Msg: fmt.Sprintf("test function %q first parameter must be type T, got %q", fn.Name, fn.Params[0].Type)})
+		}
+		if len(fn.Params) >= 2 {
+			compName := fn.Params[1].Type
+			comp := findTestComponent(doc, compName)
+			if comp == nil {
+				diags = append(diags, Diagnostic{Pos: fn.Pos, Msg: fmt.Sprintf("test function %q targets unknown component %q", fn.Name, compName)})
+			}
+		}
 	}
 	return diags
 }
@@ -156,33 +164,6 @@ func findTestComponent(doc *ast.Document, name string) *ast.Component {
 		}
 	}
 	return nil
-}
-
-func checkTestBody(td *ast.TestDef, comp *ast.Component) []Diagnostic {
-	known := map[string]bool{}
-	for _, d := range comp.Data {
-		known[d.Name] = true
-	}
-	for _, c := range comp.Consts {
-		known[c.Name] = true
-	}
-	for _, p := range comp.Params {
-		known[p.Name] = true
-	}
-	for _, fn := range comp.Functions {
-		known[fn.Name] = true
-	}
-	known["assert"] = true
-	known["tick"] = true
-
-	var diags []Diagnostic
-	for _, stmt := range td.Body {
-		diags = append(diags, checkStmtRefs(stmt, known)...)
-	}
-	for _, sub := range td.Subtests {
-		diags = append(diags, checkTestBody(sub, comp)...)
-	}
-	return diags
 }
 
 func checkStmtRefs(n ast.Node, known map[string]bool) []Diagnostic {

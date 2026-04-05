@@ -119,9 +119,6 @@ func clearPositions(doc *ast.Document) {
 	for _, comp := range doc.AbstractComponents {
 		clearComponentPos(comp)
 	}
-	for _, td := range doc.Tests {
-		clearTestPos(td)
-	}
 	if doc.App != nil {
 		doc.App.Pos = ast.Pos{}
 		for _, vn := range doc.App.Children {
@@ -221,13 +218,3 @@ func clearVisualNodePos(vn *ast.VisualNode) {
 	}
 }
 
-func clearTestPos(td *ast.TestDef) {
-	td.Pos = ast.Pos{}
-	td.EndLine = 0
-	td.BraceCol = 0
-	td.BraceLine = 0
-	td.Decls = nil
-	for _, sub := range td.Subtests {
-		clearTestPos(sub)
-	}
-}

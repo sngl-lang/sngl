@@ -1,4 +1,3 @@
-- [ ] Build is failing in CI with go tool verify
 - Tests
   - [ ] should execute in order (they currently get deinterlaced with stmts and subtests)
   - [ ] should allow test blocks not associated with a component (for testing functions)

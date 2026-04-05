@@ -2,18 +2,18 @@ output {
     js { html }
 }
 
-test main "tick increments progress" {
-    assert(progress == 0)
-    assert(running == true)
-    tick()
-    assert(progress == 0.1)
-    assert(running == true)
+func testTickIncrementsProgress(t T, c main) {
+    t.assert(c.progress == 0)
+    t.assert(c.running == true)
+    t.tick()
+    t.assert(c.progress == 0.1)
+    t.assert(c.running == true)
 }
 
-test main "tick respects active var" {
-    running = false
-    tick()
-    assert(progress == 0)
+func testTickRespectsActiveVar(t T, c main) {
+    c.running = false
+    t.tick()
+    t.assert(c.progress == 0)
 }
 
 component main {

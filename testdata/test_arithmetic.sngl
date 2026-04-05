@@ -8,59 +8,59 @@ component math {
     text(value=a)
 }
 
-test math "addition" {
-    assert(a + b == 13)
+func testAddition(t T, c math) {
+    t.assert(c.a + c.b == 13)
 }
 
-test math "subtraction" {
-    assert(a - b == 7)
+func testSubtraction(t T, c math) {
+    t.assert(c.a - c.b == 7)
 }
 
-test math "multiplication" {
-    assert(a * b == 30)
+func testMultiplication(t T, c math) {
+    t.assert(c.a * c.b == 30)
 }
 
-test math "division" {
-    assert(12 / 4 == 3)
-    assert(a / 2 == 5)
+func testDivision(t T, c math) {
+    t.assert(12 / 4 == 3)
+    t.assert(c.a / 2 == 5)
 }
 
-test math "modulo" {
-    assert(a % b == 1)
-    assert(10 % 4 == 2)
+func testModulo(t T, c math) {
+    t.assert(c.a % c.b == 1)
+    t.assert(10 % 4 == 2)
 }
 
-test math "float arithmetic" {
-    assert(1.5 + 2.5 == 4)
-    assert(3 / 2 == 1.5)
+func testFloatArithmetic(t T, c math) {
+    t.assert(1.5 + 2.5 == 4)
+    t.assert(3 / 2 == 1.5)
 }
 
-test math "compound assignment add" {
-    x = 5
-    x += 3
-    assert(x == 8)
+func testCompoundAssignmentAdd(t T, c math) {
+    c.x = 5
+    c.x += 3
+    t.assert(c.x == 8)
 }
 
-test math "compound assignment sub" {
-    x = 10
-    x -= 4
-    assert(x == 6)
+func testCompoundAssignmentSub(t T, c math) {
+    c.x = 10
+    c.x -= 4
+    t.assert(c.x == 6)
 }
 
-test math "compound assignment mul" {
-    x = 3
-    x *= 4
-    assert(x == 12)
+func testCompoundAssignmentMul(t T, c math) {
+    c.x = 3
+    c.x *= 4
+    t.assert(c.x == 12)
 }
 
-test math "compound assignment div" {
-    x = 20
-    x /= 5
-    assert(x == 4)
+func testCompoundAssignmentDiv(t T, c math) {
+    c.x = 20
+    c.x /= 5
+    t.assert(c.x == 4)
 }
 
-test math "compound assignment mod" {
-    x = 10
-    x %= 3
-    assert(x == 1)
+func testCompoundAssignmentMod(t T, c math) {
+    c.x = 10
+    c.x %= 3
+    t.assert(c.x == 1)
 }

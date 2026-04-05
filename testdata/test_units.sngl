@@ -10,34 +10,34 @@ component units {
     text(value="test")
 }
 
-test units "duration arithmetic" {
-    assert(1s == 1000ms)
-    assert(1m == 60000ms)
-    assert(1h == 3600000ms)
-    assert(1s + 500ms == 1500ms)
-    assert(1h + 30m == 5400000ms)
+func testDurationArithmetic(t T, c units) {
+    t.assert(1s == 1000ms)
+    t.assert(1m == 60000ms)
+    t.assert(1h == 3600000ms)
+    t.assert(1s + 500ms == 1500ms)
+    t.assert(1h + 30m == 5400000ms)
 }
 
-test units "measurement arithmetic" {
-    assert(1rem == 16em)
-    assert(1rem + 2em == 18em)
-    assert(3px + 2px == 5px)
+func testMeasurementArithmetic(t T, c units) {
+    t.assert(1rem == 16em)
+    t.assert(1rem + 2em == 18em)
+    t.assert(3px + 2px == 5px)
 }
 
-test units "mixed measurement components" {
-    assert(16px + 2em == 2em + 16px)
+func testMixedMeasurementComponents(t T, c units) {
+    t.assert(16px + 2em == 2em + 16px)
 }
 
-test units "scalar multiplication" {
-    assert(2 * 3px == 6px)
-    assert(3px * 2 == 6px)
+func testScalarMultiplication(t T, c units) {
+    t.assert(2 * 3px == 6px)
+    t.assert(3px * 2 == 6px)
 }
 
-test units "scalar division" {
-    assert(6px / 2 == 3px)
+func testScalarDivision(t T, c units) {
+    t.assert(6px / 2 == 3px)
 }
 
-test units "subtraction" {
-    assert(5px - 2px == 3px)
-    assert(2s - 500ms == 1500ms)
+func testSubtraction(t T, c units) {
+    t.assert(5px - 2px == 3px)
+    t.assert(2s - 500ms == 1500ms)
 }

@@ -18,8 +18,6 @@ func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
 	return &codegen.Response{Error: "none platform does not generate code"}, nil
 }
 
-func (g *Generator) RunTests(doc *ast.Document, _ codegen.LangTranslator, tests []*ast.TestDef) ([]*codegen.TestResult, error) {
-	filtered := *doc
-	filtered.Tests = tests
-	return testrunner.Run(&filtered)
+func (g *Generator) RunTests(doc *ast.Document, _ codegen.LangTranslator) ([]*codegen.TestResult, error) {
+	return testrunner.Run(doc)
 }

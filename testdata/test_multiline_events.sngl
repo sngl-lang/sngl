@@ -11,16 +11,16 @@ component multi {
     text(value="{a}")
 }
 
-test multi "compound mutations" {
-    a = 1
-    b = 2
-    a += b
-    assert(a == 3)
+func testCompoundMutations(t T, c multi) {
+    c.a = 1
+    c.b = 2
+    c.a += c.b
+    t.assert(c.a == 3)
 }
 
-test multi "multiple assignments" {
-    a = 10
-    b = 20
-    c = a + b
-    assert(c == 30)
+func testMultipleAssignments(t T, c multi) {
+    c.a = 10
+    c.b = 20
+    c.c = c.a + c.b
+    t.assert(c.c == 30)
 }

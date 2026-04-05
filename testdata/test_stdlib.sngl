@@ -2,131 +2,131 @@ component main {
     text(value="test")
 }
 
-test main "int.min/max/abs/clamp" {
-    assert(int.min(3, 7) == 3)
-    assert(int.min(-1, 5) == -1)
-    assert(int.max(3, 7) == 7)
-    assert(int.max(-1, 5) == 5)
-    assert(int.abs(-5) == 5)
-    assert(int.abs(5) == 5)
-    assert(int.clamp(5, 0, 10) == 5)
-    assert(int.clamp(-5, 0, 10) == 0)
-    assert(int.clamp(15, 0, 10) == 10)
+func testIntMinMaxAbsClamp(t T, c main) {
+    t.assert(int.min(3, 7) == 3)
+    t.assert(int.min(-1, 5) == -1)
+    t.assert(int.max(3, 7) == 7)
+    t.assert(int.max(-1, 5) == 5)
+    t.assert(int.abs(-5) == 5)
+    t.assert(int.abs(5) == 5)
+    t.assert(int.clamp(5, 0, 10) == 5)
+    t.assert(int.clamp(-5, 0, 10) == 0)
+    t.assert(int.clamp(15, 0, 10) == 10)
 }
 
-test main "int method syntax" {
-    assert((-3).abs() == 3)
-    assert((3).min(5) == 3)
-    assert((3).max(5) == 5)
+func testIntMethodSyntax(t T, c main) {
+    t.assert((-3).abs() == 3)
+    t.assert((3).min(5) == 3)
+    t.assert((3).max(5) == 5)
 }
 
-test main "float.min/max/abs/clamp" {
-    assert(float.min(1.5, 2.5) == 1.5)
-    assert(float.max(1.5, 2.5) == 2.5)
-    assert(float.abs(-3.14) == 3.14)
-    assert(float.clamp(0.5, 0.0, 1.0) == 0.5)
-    assert(float.clamp(-0.5, 0.0, 1.0) == 0.0)
-    assert(float.clamp(1.5, 0.0, 1.0) == 1.0)
+func testFloatMinMaxAbsClamp(t T, c main) {
+    t.assert(float.min(1.5, 2.5) == 1.5)
+    t.assert(float.max(1.5, 2.5) == 2.5)
+    t.assert(float.abs(-3.14) == 3.14)
+    t.assert(float.clamp(0.5, 0.0, 1.0) == 0.5)
+    t.assert(float.clamp(-0.5, 0.0, 1.0) == 0.0)
+    t.assert(float.clamp(1.5, 0.0, 1.0) == 1.0)
 }
 
-test main "float.floor/ceil/round" {
-    assert(float.floor(3.7) == 3)
-    assert(float.floor(-1.2) == -2)
-    assert(float.ceil(3.2) == 4)
-    assert(float.ceil(-1.7) == -1)
-    assert(float.round(3.5) == 4)
-    assert(float.round(3.4) == 3)
-    assert(float.round(-0.5) == -1)
+func testFloatFloorCeilRound(t T, c main) {
+    t.assert(float.floor(3.7) == 3)
+    t.assert(float.floor(-1.2) == -2)
+    t.assert(float.ceil(3.2) == 4)
+    t.assert(float.ceil(-1.7) == -1)
+    t.assert(float.round(3.5) == 4)
+    t.assert(float.round(3.4) == 3)
+    t.assert(float.round(-0.5) == -1)
 }
 
-test main "float.sqrt" {
-    assert(float.sqrt(4.0) == 2.0)
-    assert(float.sqrt(9.0) == 3.0)
-    assert(float.sqrt(0.0) == 0.0)
+func testFloatSqrt(t T, c main) {
+    t.assert(float.sqrt(4.0) == 2.0)
+    t.assert(float.sqrt(9.0) == 3.0)
+    t.assert(float.sqrt(0.0) == 0.0)
 }
 
-test main "float.pow" {
-    assert(float.pow(2.0, 3.0) == 8.0)
-    assert(float.pow(3.0, 2.0) == 9.0)
-    assert(float.pow(2.0, 0.0) == 1.0)
+func testFloatPow(t T, c main) {
+    t.assert(float.pow(2.0, 3.0) == 8.0)
+    t.assert(float.pow(3.0, 2.0) == 9.0)
+    t.assert(float.pow(2.0, 0.0) == 1.0)
 }
 
-test main "float trig" {
-    assert(float.sin(0.0) == 0.0)
-    assert(float.cos(0.0) == 1.0)
-    assert(float.tan(0.0) == 0.0)
+func testFloatTrig(t T, c main) {
+    t.assert(float.sin(0.0) == 0.0)
+    t.assert(float.cos(0.0) == 1.0)
+    t.assert(float.tan(0.0) == 0.0)
 }
 
-test main "float inverse trig" {
-    assert(float.asin(0.0) == 0.0)
-    assert(float.acos(1.0) == 0.0)
-    assert(float.atan(0.0) == 0.0)
+func testFloatInverseTrig(t T, c main) {
+    t.assert(float.asin(0.0) == 0.0)
+    t.assert(float.acos(1.0) == 0.0)
+    t.assert(float.atan(0.0) == 0.0)
 }
 
-test main "string.length" {
-    assert(string.length("hello") == 5)
-    assert(string.length("") == 0)
-    assert("hello".length() == 5)
+func testStringLength(t T, c main) {
+    t.assert(string.length("hello") == 5)
+    t.assert(string.length("") == 0)
+    t.assert("hello".length() == 5)
 }
 
-test main "string methods" {
-    assert(string.upper("hello") == "HELLO")
-    assert(string.lower("HELLO") == "hello")
-    assert(string.trim("  hi  ") == "hi")
-    assert(string.replace("hello world", "world", "SNGL") == "hello SNGL")
-    assert(string.indexOf("hello", "llo") == 2)
-    assert(string.indexOf("hello", "xyz") == -1)
-    assert(string.substring("hello", 1, 4) == "ell")
+func testStringMethods(t T, c main) {
+    t.assert(string.upper("hello") == "HELLO")
+    t.assert(string.lower("HELLO") == "hello")
+    t.assert(string.trim("  hi  ") == "hi")
+    t.assert(string.replace("hello world", "world", "SNGL") == "hello SNGL")
+    t.assert(string.indexOf("hello", "llo") == 2)
+    t.assert(string.indexOf("hello", "xyz") == -1)
+    t.assert(string.substring("hello", 1, 4) == "ell")
 }
 
-test main "string.contains/startsWith/endsWith" {
-    assert(string.contains("hello world", "world"))
-    assert(!string.contains("hello", "xyz"))
-    assert(string.startsWith("hello", "hel"))
-    assert(!string.startsWith("hello", "xyz"))
-    assert(string.endsWith("hello", "llo"))
-    assert(!string.endsWith("hello", "xyz"))
+func testStringContainsStartsWithEndsWith(t T, c main) {
+    t.assert(string.contains("hello world", "world"))
+    t.assert(!string.contains("hello", "xyz"))
+    t.assert(string.startsWith("hello", "hel"))
+    t.assert(!string.startsWith("hello", "xyz"))
+    t.assert(string.endsWith("hello", "llo"))
+    t.assert(!string.endsWith("hello", "xyz"))
 }
 
-test main "string method syntax" {
-    assert("hello".upper() == "HELLO")
-    assert("HELLO".lower() == "hello")
-    assert("  hi  ".trim() == "hi")
+func testStringMethodSyntax(t T, c main) {
+    t.assert("hello".upper() == "HELLO")
+    t.assert("HELLO".lower() == "hello")
+    t.assert("  hi  ".trim() == "hi")
 }
 
-test main "color as struct" {
-    assert(#ff0000.r == 255)
-    assert(#ff0000.g == 0)
-    assert(#ff0000.b == 0)
-    assert(#ff0000.a == 255)
+func testColorAsStruct(t T, c main) {
+    t.assert(#ff0000.r == 255)
+    t.assert(#ff0000.g == 0)
+    t.assert(#ff0000.b == 0)
+    t.assert(#ff0000.a == 255)
 }
 
-test main "color.rgb" {
-    assert(color.rgb(255, 0, 0).r == 255)
-    assert(color.rgb(255, 0, 0).g == 0)
-    assert(color.rgb(0, 128, 255).g == 128)
-    assert(color.rgb(0, 0, 0).a == 255)
+func testColorRgb(t T, c main) {
+    t.assert(color.rgb(255, 0, 0).r == 255)
+    t.assert(color.rgb(255, 0, 0).g == 0)
+    t.assert(color.rgb(0, 128, 255).g == 128)
+    t.assert(color.rgb(0, 0, 0).a == 255)
 }
 
-test main "color.rgba" {
-    assert(color.rgba(255, 0, 0, 128).r == 255)
-    assert(color.rgba(255, 0, 0, 128).a == 128)
+func testColorRgba(t T, c main) {
+    t.assert(color.rgba(255, 0, 0, 128).r == 255)
+    t.assert(color.rgba(255, 0, 0, 128).a == 128)
 }
 
-test main "color.opacity" {
-    assert(color.opacity(#ff0000, 128).r == 255)
-    assert(color.opacity(#ff0000, 128).a == 128)
+func testColorOpacity(t T, c main) {
+    t.assert(color.opacity(#ff0000, 128).r == 255)
+    t.assert(color.opacity(#ff0000, 128).a == 128)
 }
 
-test main "color.hex" {
-    assert(color.hex(#ff0000) == "#ff0000")
-    assert(color.hex(color.rgb(0, 255, 0)) == "#00ff00")
+func testColorHex(t T, c main) {
+    t.assert(color.hex(#ff0000) == "#ff0000")
+    t.assert(color.hex(color.rgb(0, 255, 0)) == "#00ff00")
 }
 
-test main "list methods" {
-    assert(list.indexOf([1, 2, 3], 2) == 1)
-    assert(list.indexOf([1, 2, 3], 5) == -1)
-    assert(list.join(["a", "b", "c"], ", ") == "a, b, c")
-    assert(list.contains([1, 2, 3], 2))
-    assert(!list.contains([1, 2, 3], 5))
+func testListMethods(t T, c main) {
+    t.assert(list.indexOf([1, 2, 3], 2) == 1)
+    t.assert(list.indexOf([1, 2, 3], 5) == -1)
+    t.assert(list.join(["a", "b", "c"], ", ") == "a, b, c")
+    t.assert(list.contains([1, 2, 3], 2))
+    t.assert(!list.contains([1, 2, 3], 5))
 }

@@ -6,12 +6,12 @@ component styled {
     text #d(class=mode, key="d", value="dynamic")
 }
 
-test styled "static class" {
-    assert(#t.class == "header")
+func testStaticClass(t T, c styled) {
+    t.assert(c.#t.class == "header")
 }
 
-test styled "dynamic class" {
-    assert(#d.class == "active")
-    mode = "inactive"
-    assert(#d.class == "inactive")
+func testDynamicClass(t T, c styled) {
+    t.assert(c.#d.class == "active")
+    c.mode = "inactive"
+    t.assert(c.#d.class == "inactive")
 }

@@ -17,7 +17,8 @@ const maxCallDepth = 100
 // lambdaValue is a closure captured by a lambda expression.
 type lambdaValue struct {
 	params []string
-	body   ast.Node
+	body   ast.Node       // expression body (arrow form)
+	block  *ast.FuncBlock // block body (func(params) { ... } form)
 	env    *Env
 }
 
@@ -28,6 +29,17 @@ func (lv *lambdaValue) call(args []any) (any, error) {
 		if i < len(args) {
 			child.vars[p] = args[i]
 		}
+	}
+	if lv.block != nil {
+		for _, stmt := range lv.block.Stmts {
+			if err := child.Exec(stmt); err != nil {
+				return nil, err
+			}
+		}
+		if lv.block.Return != nil {
+			return child.Eval(lv.block.Return)
+		}
+		return nil, nil
 	}
 	return child.Eval(lv.body)
 }
@@ -115,6 +127,9 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		if cv, ok := obj.(*componentValue); ok {
+			return cv.getField(e.Field)
+		}
 		if m, ok := obj.(map[string]any); ok {
 			return m[e.Field], nil
 		}
@@ -199,7 +214,7 @@ func (env *Env) Eval(n ast.Node) (any, error) {
 	case *ast.SpreadExpr:
 		return env.Eval(e.Operand)
 	case *ast.LambdaExpr:
-		return &lambdaValue{params: e.Params, body: e.Body, env: env}, nil
+		return &lambdaValue{params: e.Params, body: e.Body, block: e.Block, env: env}, nil
 	case *ast.ParenExpr:
 		return env.Eval(e.Inner)
 	default:
@@ -639,6 +654,16 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 		return nil, err
 	}
 
+	// testingT method dispatch
+	if tv, ok := recv.(*testingT); ok {
+		return tv.callMethod(env, e.Method, e.Args)
+	}
+
+	// componentValue method dispatch (for c.@event() calls)
+	if cv, ok := recv.(*componentValue); ok {
+		return cv.callMethod(env, e.Method, e.Args)
+	}
+
 	// Instance method call: try native overrides first (for accurate math/string)
 	typeName := runtimeTypeName(recv)
 	qualName := typeName + "." + e.Method
@@ -710,9 +735,19 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 			if err != nil {
 				return nil, err
 			}
+			newList := append(list, arg)
 			// Find the receiver var and update it
 			if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
-				env.vars[ident.Name] = append(list, arg)
+				env.vars[ident.Name] = newList
+			} else if sel, ok := e.Receiver.(*ast.SelectExpr); ok {
+				if obj, err := env.Eval(sel.Operand); err == nil {
+					if cv, ok := obj.(*componentValue); ok {
+						cv.vars[sel.Field] = newList
+						if !cv.testParams[sel.Field] {
+							cv.env.vars[sel.Field] = newList
+						}
+					}
+				}
 			}
 			return nil, nil
 		}
@@ -727,6 +762,15 @@ func (env *Env) evalMethod(e *ast.MethodExpr) (any, error) {
 				newList := append(list[:idx], list[idx+1:]...)
 				if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
 					env.vars[ident.Name] = newList
+				} else if sel, ok := e.Receiver.(*ast.SelectExpr); ok {
+					if obj, err := env.Eval(sel.Operand); err == nil {
+						if cv, ok := obj.(*componentValue); ok {
+							cv.vars[sel.Field] = newList
+							if !cv.testParams[sel.Field] {
+								cv.env.vars[sel.Field] = newList
+							}
+						}
+					}
 				}
 			}
 			return nil, nil

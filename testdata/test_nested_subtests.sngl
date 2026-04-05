@@ -4,36 +4,36 @@ component nested {
     text(value="{x}")
 }
 
-test nested "three levels" {
-    x = 1
-    assert(x == 1)
+func testThreeLevels(t T, c nested) {
+    c.x = 1
+    t.assert(c.x == 1)
 
-    test "level 2" {
-        x = 2
-        assert(x == 2)
+    t.test("level 2", func(t, c) {
+        c.x = 2
+        t.assert(c.x == 2)
 
-        test "level 3" {
-            x = 3
-            assert(x == 3)
-        }
+        t.test("level 3", func(t, c) {
+            c.x = 3
+            t.assert(c.x == 3)
+        })
 
-        assert(x == 2)
-    }
+        t.assert(c.x == 2)
+    })
 
-    assert(x == 1)
+    t.assert(c.x == 1)
 }
 
-test nested "sibling subtests" {
-    x = 10
+func testSiblingSubtests(t T, c nested) {
+    c.x = 10
 
-    test "first sibling" {
-        y = 1
-        assert(y == 1)
-        assert(x == 10)
-    }
+    t.test("first sibling", func(t, c) {
+        c.y = 1
+        t.assert(c.y == 1)
+        t.assert(c.x == 10)
+    })
 
-    test "second sibling" {
-        assert(y == 0)
-        assert(x == 10)
-    }
+    t.test("second sibling", func(t, c) {
+        t.assert(c.y == 0)
+        t.assert(c.x == 10)
+    })
 }

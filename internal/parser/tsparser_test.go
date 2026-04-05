@@ -157,11 +157,11 @@ func compareStructure(t *testing.T, doc *ast.Document, root *ts.Node, src []byte
 	}
 	compareStringSlices(t, "imports", goImports, tsImports)
 
-	// Extract test descriptions.
+	// Extract test function names.
 	tsTests := extractNamedChildren(root, "test_declaration", "component", src)
 	var goTests []string
-	for _, td := range doc.Tests {
-		goTests = append(goTests, td.Component)
+	for _, fn := range doc.TestFuncs() {
+		goTests = append(goTests, fn.Name)
 	}
 	compareStringSlices(t, "tests", goTests, tsTests)
 

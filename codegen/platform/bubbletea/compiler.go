@@ -483,9 +483,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
-	// User-defined functions (skip stdlib — codegens use native calls)
+	// User-defined functions (skip stdlib and test functions)
 	for _, fn := range doc.Functions {
-		if fn.IsStdlib {
+		if fn.IsStdlib || fn.IsTest() {
 			continue
 		}
 		emitGoFunc(&b, fn, ec)
@@ -1029,8 +1029,11 @@ func astUsesAlert(doc *ast.Document) bool {
 			return true
 		}
 	}
-	// Check function blocks
+	// Check function blocks (skip test functions)
 	for _, fn := range doc.Functions {
+		if fn.IsTest() {
+			continue
+		}
 		if fn.Block != nil {
 			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
 				return true

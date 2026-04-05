@@ -312,10 +312,8 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Timers = append(doc.Timers, t)
 			doc.Decls = append(doc.Decls, t)
 		case KW_TEST:
-			td := p.parseTestDef(true)
-			td.Disabled = disabled
-			doc.Tests = append(doc.Tests, td)
-			doc.Decls = append(doc.Decls, td)
+			p.errorf("test keyword is no longer supported; use func testName(t T, ...) { ... } instead")
+			p.advance()
 		case KW_CONST:
 			consts := p.parseConstDecl()
 			for _, c := range consts {
@@ -361,8 +359,6 @@ func (p *parser) parseDocument() *ast.Document {
 	for _, d := range doc.Decls {
 		switch v := d.(type) {
 		case *ast.Component:
-			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
-		case *ast.TestDef:
 			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
 		}
 	}
@@ -772,78 +768,6 @@ func (p *parser) parseComponent() *ast.Component {
 	return comp
 }
 
-func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
-	pos := p.pos()
-	p.expect(KW_TEST)
-	td := &ast.TestDef{Pos: pos}
-	if topLevel {
-		td.Component = p.expect(IDENT).Literal
-	}
-	if p.at(STRING) {
-		td.Desc = p.expect(STRING).Literal
-	}
-	td.BraceCol = p.cur.Column
-	td.BraceLine = p.cur.Line
-	p.expect(LBRACE)
-	for !p.at(RBRACE) && !p.at(EOF) {
-		p.skipSemicolons()
-		if p.at(RBRACE) {
-			break
-		}
-		if p.at(KW_TEST) {
-			sub := p.parseTestDef(false)
-			td.Subtests = append(td.Subtests, sub)
-			td.Decls = append(td.Decls, sub)
-		} else {
-			stmtPos := p.pos()
-			stmt := p.parseStmt()
-			td.Body = append(td.Body, stmt)
-			td.Decls = append(td.Decls, &ast.StmtDecl{Pos: stmtPos, Stmt: stmt})
-		}
-		p.skipSemicolons()
-	}
-	td.EndLine = p.pos().Line
-	p.expect(RBRACE)
-
-	// Merge comments that fall inside the test body, excluding those inside nested subtests.
-	bodyStart := td.Pos.Line
-	bodyEnd := td.EndLine
-	type lineRange struct{ start, end, braceCol, braceLine int }
-	var nestedRanges []lineRange
-	for _, sub := range td.Subtests {
-		nestedRanges = append(nestedRanges, lineRange{sub.Pos.Line, sub.EndLine, sub.BraceCol, sub.BraceLine})
-	}
-	var bodyComments []ast.Comment
-	for _, c := range p.comments {
-		inBody := false
-		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd && c.Pos.Line >= td.BraceLine {
-			inBody = true
-		} else if c.Pos.Line == td.BraceLine && td.BraceLine != bodyEnd && td.BraceCol > 0 && c.Pos.Column > td.BraceCol {
-			inBody = true
-		}
-		if !inBody {
-			continue
-		}
-		// Exclude comments inside nested subtests
-		insideNested := false
-		for _, r := range nestedRanges {
-			if c.Pos.Line > r.start && c.Pos.Line < r.end && c.Pos.Line >= r.braceLine {
-				insideNested = true
-				break
-			}
-			if c.Pos.Line == r.braceLine && r.braceLine != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
-				insideNested = true
-				break
-			}
-		}
-		if !insideNested {
-			bodyComments = append(bodyComments, c)
-		}
-	}
-	td.Decls = mergeCommentsIntoDecls(td.Decls, bodyComments)
-
-	return td
-}
 
 // parseComponentParam parses a single component parameter inside ().
 // Syntax: name = default | name type [enum(...)] [= default] [required]
@@ -1665,6 +1589,42 @@ func (p *parser) parseParenOrLambda() ast.Node {
 	return &ast.ParenExpr{Inner: expr}
 }
 
+// parseAnonFunc parses an anonymous function in expression context:
+// func(params) { block } or func(params) => expr
+func (p *parser) parseAnonFunc() ast.Node {
+	p.advance() // consume func
+	p.expect(LPAREN)
+
+	var names, types []string
+	for !p.at(RPAREN) && !p.at(EOF) {
+		name := p.expect(IDENT).Literal
+		typeHint := ""
+		if p.at(IDENT) || p.cur.Type.IsKeyword() {
+			typeHint = p.parseTypeString()
+		}
+		names = append(names, name)
+		types = append(types, typeHint)
+		if p.at(COMMA) {
+			p.advance()
+		}
+	}
+	p.expect(RPAREN)
+
+	if p.at(LBRACE) {
+		p.advance()
+		block := p.parseFuncBlock()
+		p.expect(RBRACE)
+		return &ast.LambdaExpr{Params: names, ParamTypes: types, Block: block}
+	}
+	if p.at(FAT_ARROW) {
+		p.advance()
+		body := p.parseExpression()
+		return &ast.LambdaExpr{Params: names, ParamTypes: types, Body: body}
+	}
+	p.errorf("expected { or => after func parameters")
+	return &ast.LiteralExpr{Kind: ast.LiteralNull}
+}
+
 type lambdaParam struct {
 	name     string
 	typeHint string
@@ -1804,6 +1764,10 @@ func (p *parser) parsePostfix() ast.Node {
 			if p.at(AT) {
 				p.advance()
 				field = "@" + p.expect(IDENT).Literal
+			} else if p.at(ELEMENT_REF) {
+				// c.#id → select with field "#id"
+				field = "#" + p.cur.Literal
+				p.advance()
 			} else if p.at(IDENT) || p.cur.Type.IsKeyword() {
 				field = p.cur.Literal
 				p.advance()
@@ -1894,10 +1858,7 @@ func (p *parser) parsePrimary() ast.Node {
 		// Anonymous struct literal: {field=val, ...}
 		return p.parseAnonStructLiteral()
 	case KW_FUNC:
-		// func in expression context is an error — lambdas use (params) => expr syntax now
-		p.errorf("unexpected func in expression context; use (params) => expr for lambdas")
-		p.advance()
-		return &ast.LiteralExpr{Kind: ast.LiteralNull}
+		return p.parseAnonFunc()
 	case ELEMENT_REF:
 		tok := p.advance()
 		return &ast.ElementRefExpr{Name: tok.Literal}

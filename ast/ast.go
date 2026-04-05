@@ -73,7 +73,6 @@ type Document struct {
 	Timers             []*Timer
 	Styles []*StyleDecl
 	App    *App
-	Tests              []*TestDef
 	Comments           []Comment // all comments, ordered by position
 	Decls              []Decl    // ordered declarations including interleaved comments
 }
@@ -114,20 +113,6 @@ func (d *Document) AllComponents() []*Component {
 	return all
 }
 
-// TestDef declares a test block targeting a component.
-// Top-level tests specify a Component name; nested subtests inherit it.
-type TestDef struct {
-	Pos       Pos
-	EndLine   int        // line of closing } (set by parser)
-	BraceCol  int        // column of opening { (set by parser, for comment filtering)
-	BraceLine int        // line of opening { (set by parser, for comment filtering)
-	Component string     // component under test (top-level only)
-	Desc      string     // test description
-	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
-	Subtests  []*TestDef // nested test blocks
-	Disabled  bool       // true when prefixed with /-
-	Decls     []Decl     // ordered body items (StmtDecl + *TestDef) for formatting
-}
 
 // UnitDef declares a unit type with named suffixes.
 type UnitDef struct {
@@ -254,6 +239,20 @@ type FuncDef struct {
 	HasParens  bool       // true when () was explicit in source (for zero-param expression funcs)
 }
 
+// IsTest returns true if this function is a test function (name starts with "test").
+func (f *FuncDef) IsTest() bool { return strings.HasPrefix(f.Name, "test") }
+
+// TestFuncs returns all document-level functions that are test functions.
+func (d *Document) TestFuncs() []*FuncDef {
+	var out []*FuncDef
+	for _, fn := range d.Functions {
+		if fn.IsTest() {
+			out = append(out, fn)
+		}
+	}
+	return out
+}
+
 // FuncBlock is the body of a block-form function.
 type FuncBlock struct {
 	Stmts  []Node // VarStmt, AssignStmt, ToggleStmt, EmitStmt, CallStmt, etc.
@@ -347,17 +346,9 @@ func (t *Timer) DeclPos() Pos      { return t.Pos }
 func (i *Import) DeclPos() Pos     { return i.Pos }
 func (o *Output) DeclPos() Pos     { return o.Pos }
 func (c *Component) DeclPos() Pos  { return c.Pos }
-func (t *TestDef) DeclPos() Pos    { return t.Pos }
 func (vn *VisualNode) DeclPos() Pos { return vn.Pos }
 func (a *App) DeclPos() Pos         { return a.Pos }
 
-// StmtDecl wraps a statement Node so it can appear in a Decls slice (for test bodies).
-type StmtDecl struct {
-	Pos  Pos
-	Stmt Node
-}
-
-func (d *StmtDecl) DeclPos() Pos { return d.Pos }
 
 // StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
 // Returns nil if no style prop or if it's not an anonymous struct literal.

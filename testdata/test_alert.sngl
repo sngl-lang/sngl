@@ -7,33 +7,33 @@ component main {
     text(value="alert test")
 }
 
-test main "toast is a no-op in tests" {
+func testToastIsANoOpInTests(t T, c main) {
     Alert.toast("hello", "info")
 }
 
-test main "info is a no-op in tests" {
+func testInfoIsANoOpInTests(t T, c main) {
     Alert.info("some info")
 }
 
-test main "warn is a no-op in tests" {
+func testWarnIsANoOpInTests(t T, c main) {
     Alert.warn("some warning")
 }
 
-test main "error is a no-op in tests" {
+func testErrorIsANoOpInTests(t T, c main) {
     Alert.error("some error")
 }
 
-test main "confirm returns true in tests" {
-    confirmed = Alert.confirm("Are you sure?")
-    assert(confirmed == true)
+func testConfirmReturnsTrueInTests(t T, c main) {
+    c.confirmed = Alert.confirm("Are you sure?")
+    t.assert(c.confirmed == true)
 }
 
-test main "pick returns mock path" {
-    filePath = File.pick()
-    assert(string.length(filePath) > 0)
+func testPickReturnsMockPath(t T, c main) {
+    c.filePath = File.pick()
+    t.assert(string.length(c.filePath) > 0)
 }
 
-test main "pickFolder returns mock path" {
-    filePath = File.pickFolder()
-    assert(string.length(filePath) > 0)
+func testPickFolderReturnsMockPath(t T, c main) {
+    c.filePath = File.pickFolder()
+    t.assert(string.length(c.filePath) > 0)
 }

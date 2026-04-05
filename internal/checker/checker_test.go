@@ -23,10 +23,10 @@ func TestFixtures(t *testing.T) {
 			t.Fatalf("parse: %v", err)
 		}
 		err = Check(doc, os.DirFS("../../testdata"), "", DefaultResolver(), nil, nil, true)
-		// When check error directives exist, also merge CheckTests
-		// diagnostics so ERROR(check) directives on test blocks match.
+		// When check error directives exist, also merge CheckTestFuncs
+		// diagnostics so ERROR(check) directives on test functions match.
 		if len(checkErrs) > 0 {
-			diags := CheckTests(doc)
+			diags := CheckTestFuncs(doc)
 			if len(diags) > 0 {
 				var msgs []string
 				if err != nil {
@@ -130,7 +130,7 @@ func TestCallStmtInHandler(t *testing.T) {
 	}
 }
 
-func TestCheckTests(t *testing.T) {
+func TestCheckTestFuncs(t *testing.T) {
 	testutil.RunFixtures(t, "../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
 		base := strings.TrimSuffix(path, ".sngl")
 		isTestFile := strings.Contains(base, "test_")
@@ -139,7 +139,7 @@ func TestCheckTests(t *testing.T) {
 			return
 		}
 		// Skip test files with runtime error directives — those intentionally
-		// reference undefined vars which CheckTests may also flag.
+		// reference undefined vars which CheckTestFuncs may also flag.
 		if isTestFile && len(testutil.Filter(dirs, "test")) > 0 {
 			return
 		}
@@ -147,7 +147,7 @@ func TestCheckTests(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		diags := CheckTests(doc)
+		diags := CheckTestFuncs(doc)
 
 		checkErrs := testutil.Filter(dirs, "check")
 		if len(checkErrs) == 0 {

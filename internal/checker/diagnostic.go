@@ -33,7 +33,7 @@ func CheckDiagnostics(doc *ast.Document, fsys fs.FS, schemeDir string, resolve I
 		apis:          apis,
 	}
 
-	if doc.App == nil && len(doc.Tests) == 0 {
+	if doc.App == nil && len(doc.TestFuncs()) == 0 {
 		c.errorAt(ast.Pos{}, "missing app node")
 		return doc, toDiagnostics(c.errs)
 	}

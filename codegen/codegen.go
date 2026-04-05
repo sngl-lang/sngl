@@ -50,7 +50,7 @@ type PlatformGenerator interface {
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
 type TestRunner interface {
-	RunTests(doc *ast.Document, lang LangTranslator, tests []*ast.TestDef) ([]*TestResult, error)
+	RunTests(doc *ast.Document, lang LangTranslator) ([]*TestResult, error)
 }
 
 // TestResult holds the outcome of a single test.

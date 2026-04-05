@@ -48,7 +48,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	}
 
 	// Generate test file if tests exist and not disabled
-	if len(req.Doc.Tests) > 0 && req.Options["tests"] != "false" {
+	if len(req.Doc.TestFuncs()) > 0 && req.Options["tests"] != "false" {
 		testSrc, err := CompileTests(req.Doc, cfg)
 		if err == nil && testSrc != nil {
 			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))

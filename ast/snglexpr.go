@@ -163,12 +163,15 @@ type ElementRefExpr struct {
 	Name string
 }
 
-// LambdaExpr is an inline function: (t) => t.done, (a, b) => a + b.
+// LambdaExpr is an inline function: (t) => t.done, (a, b) => a + b,
+// or a block-body anonymous function: func(t, c) { stmts }.
 // Parameter types are optional — inferred from context when omitted.
+// Exactly one of Body or Block is set.
 type LambdaExpr struct {
-	Params     []string // parameter names
-	ParamTypes []string // optional type hints (empty string = inferred)
-	Body       Node     // expression body
+	Params     []string   // parameter names
+	ParamTypes []string   // optional type hints (empty string = inferred)
+	Body       Node       // expression body (arrow form)
+	Block      *FuncBlock // block body (func(params) { ... } form)
 }
 
 // ParenExpr preserves explicit parentheses in the source: (expr).

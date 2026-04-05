@@ -5,29 +5,29 @@ component state {
     text(value="{count}")
 }
 
-test state "first test mutates" {
-    count = 42
-    name = "changed"
-    assert(count == 42)
-    assert(name == "changed")
+func testFirstTestMutates(t T, c state) {
+    c.count = 42
+    c.name = "changed"
+    t.assert(c.count == 42)
+    t.assert(c.name == "changed")
 }
 
-test state "second test sees fresh state" {
-    assert(count == 0)
-    assert(name == "init")
+func testSecondTestSeesFreshState(t T, c state) {
+    t.assert(c.count == 0)
+    t.assert(c.name == "init")
 }
 
-test state "subtests get snapshots" {
-    count = 10
-    assert(count == 10)
+func testSubtestsGetSnapshots(t T, c state) {
+    c.count = 10
+    t.assert(c.count == 10)
 
-    test "subtest sees parent state" {
-        assert(count == 10)
-        count = 99
-        assert(count == 99)
-    }
+    t.test("subtest sees parent state", func(t, c) {
+        t.assert(c.count == 10)
+        c.count = 99
+        t.assert(c.count == 99)
+    })
 
-    test "another subtest also sees parent state" {
-        assert(count == 10)
-    }
+    t.test("another subtest also sees parent state", func(t, c) {
+        t.assert(c.count == 10)
+    })
 }

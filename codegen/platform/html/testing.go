@@ -13,15 +13,37 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 )
 
-func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tests []*ast.TestDef) ([]*codegen.TestResult, error) {
-	// Group tests by component
-	compTests := make(map[string][]*ast.TestDef)
-	for _, td := range tests {
-		compTests[td.Component] = append(compTests[td.Component], td)
+func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
+	testFuncs := doc.TestFuncs()
+	if len(testFuncs) == 0 {
+		return nil, nil
+	}
+
+	// Group tests by component (from second param type)
+	type testGroup struct {
+		compName string
+		funcs    []*ast.FuncDef
+	}
+	groups := map[string]*testGroup{}
+	for _, fn := range testFuncs {
+		compName := ""
+		if len(fn.Params) >= 2 {
+			compName = fn.Params[1].Type
+		}
+		g, ok := groups[compName]
+		if !ok {
+			g = &testGroup{compName: compName}
+			groups[compName] = g
+		}
+		g.funcs = append(g.funcs, fn)
 	}
 
 	var results []*codegen.TestResult
-	for compName, tests := range compTests {
+	for compName, group := range groups {
+		if compName == "" {
+			// Standalone tests — skip browser for now, use headless
+			continue
+		}
 		compDoc := PromoteComponent(doc, compName)
 		if compDoc == nil {
 			continue
@@ -40,17 +62,17 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tes
 		}
 		var htmlBuf bytes.Buffer
 		resp.Files[0].WriteTo(&htmlBuf)
-		html := htmlBuf.String()
+		htmlStr := htmlBuf.String()
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(html))
+			w.Write([]byte(htmlStr))
 		})
 		engine := webtest.New(mux)
 
-		for _, td := range tests {
-			result := g.runSingleTest(engine, compDoc, lang, compName, td)
+		for _, fn := range group.funcs {
+			result := g.runSingleTestFunc(engine, compDoc, lang, compName, fn)
 			results = append(results, result)
 		}
 
@@ -59,16 +81,11 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator, tes
 	return results, nil
 }
 
-func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, td *ast.TestDef) *codegen.TestResult {
+func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, fn *ast.FuncDef) *codegen.TestResult {
 	start := time.Now()
-	desc := td.Desc
-	if desc == "" {
-		desc = "unnamed"
-	}
-
 	result := &codegen.TestResult{
 		Component: compName,
-		Desc:      desc,
+		Desc:      fn.Name,
 		Passed:    true,
 	}
 
@@ -96,58 +113,10 @@ func (g *Generator) runSingleTest(engine *webtest.Engine, doc *ast.Document, lan
 		return result
 	}
 
-	if err := runner.ExecTest(td.Body); err != nil {
-		result.Passed = false
-		result.Error = err.Error()
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	for _, sub := range td.Subtests {
-		child := g.runSubtest(runner, compName, sub)
-		result.Children = append(result.Children, child)
-		if !child.Passed {
+	if fn.Block != nil {
+		if err := runner.ExecTest(fn.Block.Stmts); err != nil {
 			result.Passed = false
-		}
-	}
-
-	result.Duration = time.Since(start)
-	return result
-}
-
-func (g *Generator) runSubtest(runner *CDPRunner, compName string, td *ast.TestDef) *codegen.TestResult {
-	start := time.Now()
-	desc := td.Desc
-	if desc == "" {
-		desc = "unnamed"
-	}
-
-	result := &codegen.TestResult{
-		Component: compName,
-		Desc:      desc,
-		Passed:    true,
-	}
-
-	if err := runner.SaveState(); err != nil {
-		result.Passed = false
-		result.Error = fmt.Sprintf("save state: %v", err)
-		result.Duration = time.Since(start)
-		return result
-	}
-	defer runner.RestoreState()
-
-	if err := runner.ExecTest(td.Body); err != nil {
-		result.Passed = false
-		result.Error = err.Error()
-		result.Duration = time.Since(start)
-		return result
-	}
-
-	for _, sub := range td.Subtests {
-		child := g.runSubtest(runner, compName, sub)
-		result.Children = append(result.Children, child)
-		if !child.Passed {
-			result.Passed = false
+			result.Error = err.Error()
 		}
 	}
 

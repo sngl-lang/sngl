@@ -5,25 +5,25 @@ component exprs {
     text(value="{a}")
 }
 
-test exprs "string concatenation with vars" {
-    assert("val=" + string(a) == "val=10")
-    assert(s + "!" == "hello world!")
+func testStringConcatenationWithVars(t T, c exprs) {
+    t.assert("val=" + string(c.a) == "val=10")
+    t.assert(c.s + "!" == "hello world!")
 }
 
-test exprs "nested arithmetic" {
-    assert((a + b) * 2 == 26)
-    assert(a * b + 1 == 31)
+func testNestedArithmetic(t T, c exprs) {
+    t.assert((c.a + c.b) * 2 == 26)
+    t.assert(c.a * c.b + 1 == 31)
 }
 
-test exprs "string interpolation" {
-    assert("a={a}" == "a=10")
-    assert("{s} {a}" == "hello world 10")
+func testStringInterpolation(t T, c exprs) {
+    t.assert("a={c.a}" == "a=10")
+    t.assert("{c.s} {c.a}" == "hello world 10")
 }
 
-test exprs "equality on different types" {
-    assert(10 == 10)
-    assert("x" == "x")
-    assert(true == true)
-    assert(10 != 20)
-    assert("x" != "y")
+func testEqualityOnDifferentTypes(t T, c exprs) {
+    t.assert(10 == 10)
+    t.assert("x" == "x")
+    t.assert(true == true)
+    t.assert(10 != 20)
+    t.assert("x" != "y")
 }

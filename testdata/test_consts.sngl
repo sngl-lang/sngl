@@ -7,14 +7,14 @@ component config {
     text #out(value="{remaining} remaining")
 }
 
-test config "const values" {
-    assert(max == 100)
-    assert(label == "limit")
-    assert(#out.value == "100 remaining")
+func testConstValues(t T, c config) {
+    t.assert(c.max == 100)
+    t.assert(c.label == "limit")
+    t.assert(c.#out.value == "100 remaining")
 }
 
-test config "computed from const" {
-    count = 30
-    assert(remaining == 70)
-    assert(#out.value == "70 remaining")
+func testComputedFromConst(t T, c config) {
+    c.count = 30
+    t.assert(c.remaining == 70)
+    t.assert(c.#out.value == "70 remaining")
 }

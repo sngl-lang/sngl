@@ -8,7 +8,7 @@ stdout '3 tests, 0 failures'
 stdout 'FAIL'
 
 # --run filter.
-sngl test --run=add passing.sngl
+sngl test --run=testAdd passing.sngl
 stdout 'PASS'
 stdout '1 tests, 0 failures'
 
@@ -39,19 +39,19 @@ component math {
     text(value="{x}")
 }
 
-test math "add" {
-    x = 2 + 3
-    assert(x == 5)
+func testAdd(t T, c math) {
+    c.x = 2 + 3
+    t.assert(c.x == 5)
 }
 
-test math "sub" {
-    x = 10 - 4
-    assert(x == 6)
+func testSub(t T, c math) {
+    c.x = 10 - 4
+    t.assert(c.x == 6)
 }
 
-test math "mul" {
-    x = 3 * 7
-    assert(x == 21)
+func testMul(t T, c math) {
+    c.x = 3 * 7
+    t.assert(c.x == 21)
 }
 -- failing.sngl --
 component counter {
@@ -59,8 +59,8 @@ component counter {
     text(value="{n}")
 }
 
-test counter "should fail" {
-    assert(n == 999)
+func testShouldFail(t T, c counter) {
+    t.assert(c.n == 999)
 }
 -- notests.sngl --
 component main {

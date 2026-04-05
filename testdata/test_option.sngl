@@ -3,19 +3,19 @@ struct Todo {
     done bool = false
 }
 
-test main "option defaults to null" {
-    assert(name == null)
-    assert(count != null)
-    assert(todo == null)
-    assert(flag != null)
+func testOptionDefaultsToNull(t T, c main) {
+    t.assert(c.name == null)
+    t.assert(c.count != null)
+    t.assert(c.todo == null)
+    t.assert(c.flag != null)
 }
 
-test main "option accepts concrete values" {
-    name = "hello"
-    assert(name != null)
-    assert(name == "hello")
-    count = 42
-    assert(count == 42)
+func testOptionAcceptsConcreteValues(t T, c main) {
+    c.name = "hello"
+    t.assert(c.name != null)
+    t.assert(c.name == "hello")
+    c.count = 42
+    t.assert(c.count == 42)
 }
 
 component main {

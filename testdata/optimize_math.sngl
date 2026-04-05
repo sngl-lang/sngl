@@ -19,9 +19,9 @@ component mathfold {
     text(value="{fsin}")
 }
 
-test mathfold "trig and conversions" {
-    assert(fsin == 0.0)
-    assert(fcos == 1.0)
-    assert(ftan == 0.0)
-    assert(si == 42)
+func testTrigAndConversions(t T, c mathfold) {
+    t.assert(c.fsin == 0.0)
+    t.assert(c.fcos == 1.0)
+    t.assert(c.ftan == 0.0)
+    t.assert(c.si == 42)
 }

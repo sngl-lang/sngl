@@ -27,40 +27,40 @@ component listcomp {
     }
 }
 
-test counter "event triggering" {
-    assert(count == 0)
-    #inc.@click()
-    assert(count == 1)
-    #inc.@click()
-    #inc.@click()
-    assert(count == 3)
-    #dec.@click()
-    assert(count == 2)
-    assert(#display.value == "Count: 2")
+func testEventTriggering(t T, c counter) {
+    t.assert(c.count == 0)
+    c.#inc.@click()
+    t.assert(c.count == 1)
+    c.#inc.@click()
+    c.#inc.@click()
+    t.assert(c.count == 3)
+    c.#dec.@click()
+    t.assert(c.count == 2)
+    t.assert(c.#display.value == "Count: 2")
 }
 
-test counter "dom updates after mutation" {
-    count += 1
-    assert(#display.value == "Count: 1")
-    count += 4
-    assert(#display.value == "Count: 5")
+func testDomUpdatesAfterMutation(t T, c counter) {
+    c.count += 1
+    t.assert(c.#display.value == "Count: 1")
+    c.count += 4
+    t.assert(c.#display.value == "Count: 5")
 }
 
-test counter {
-    assert(count == 0)
+func testCounter(t T, c counter) {
+    t.assert(c.count == 0)
 }
 
-test wrapper "conditional rendering" {
-    assert(#conditional != null)
-    visible = false
-    assert(#conditional == null)
+func testConditionalRendering(t T, c wrapper) {
+    t.assert(c.#conditional != null)
+    c.visible = false
+    t.assert(c.#conditional == null)
 }
 
-test wrapper "nested find" {
-    assert(#hdr.value == "header")
+func testNestedFind(t T, c wrapper) {
+    t.assert(c.#hdr.value == "header")
 }
 
-test listcomp "for loop rendering" {
-    assert(#item[0].value == "a")
-    assert(#item[2].value == "c")
+func testForLoopRendering(t T, c listcomp) {
+    t.assert(c.#item[0].value == "a")
+    t.assert(c.#item[2].value == "c")
 }

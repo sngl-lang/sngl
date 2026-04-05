@@ -54,7 +54,7 @@ func (env *Env) collectNodeByID(node *ast.VisualNode, id string, out *[]map[stri
 
 	// Check if this is a user-defined component — expand inline
 	if env.doc != nil {
-		if comp := findComponent(env.doc, node.Component); comp != nil {
+		if comp := env.doc.FindComponent(node.Component); comp != nil {
 			if env.renderDepth >= maxCallDepth {
 				return // prevent infinite component recursion
 			}

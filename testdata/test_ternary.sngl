@@ -17,28 +17,28 @@ component choice {
     text #out(value=bigger)
 }
 
-test choice "ternary computed" {
-    assert(bigger == "x")
-    x = 1
-    assert(bigger == "y")
-    x = 100
-    assert(bigger == "x")
+func testTernaryComputed(t T, c choice) {
+    t.assert(c.bigger == "x")
+    c.x = 1
+    t.assert(c.bigger == "y")
+    c.x = 100
+    t.assert(c.bigger == "x")
 }
 
-test choice "ternary with conversion" {
-    assert(desc == "10")
-    x = -1
-    assert(desc == "none")
+func testTernaryWithConversion(t T, c choice) {
+    t.assert(c.desc == "10")
+    c.x = -1
+    t.assert(c.desc == "none")
 }
 
-test choice "multi-statement event" {
-    #bump.@click()
-    assert(x == 11)
-    assert(y == 6)
+func testMultiStatementEvent(t T, c choice) {
+    c.#bump.@click()
+    t.assert(c.x == 11)
+    t.assert(c.y == 6)
 }
 
-test choice "string append" {
-    label = "hello"
-    label += " world"
-    assert(label == "hello world")
+func testStringAppend(t T, c choice) {
+    c.label = "hello"
+    c.label += " world"
+    t.assert(c.label == "hello world")
 }

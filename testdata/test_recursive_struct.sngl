@@ -35,31 +35,31 @@ component main {
     text(value=string(treeSum(root)))
 }
 
-test main "tree sum" {
-    assert(treeSum(root) == 21)
-    assert(treeSum(null) == 0)
-    assert(treeSum(leaf1) == 1)
-    assert(treeSum(node3) == 8)
+func testTreeSum(t T, c main) {
+    t.assert(c.treeSum(c.root) == 21)
+    t.assert(c.treeSum(null) == 0)
+    t.assert(c.treeSum(c.leaf1) == 1)
+    t.assert(c.treeSum(c.node3) == 8)
 }
 
-test main "tree depth" {
-    assert(treeDepth(null) == 0)
-    assert(treeDepth(leaf1) == 1)
-    assert(treeDepth(node3) == 2)
-    assert(treeDepth(root) == 3)
+func testTreeDepth(t T, c main) {
+    t.assert(c.treeDepth(null) == 0)
+    t.assert(c.treeDepth(c.leaf1) == 1)
+    t.assert(c.treeDepth(c.node3) == 2)
+    t.assert(c.treeDepth(c.root) == 3)
 }
 
-test main "tree contains" {
-    assert(treeContains(root, 5) == true)
-    assert(treeContains(root, 1) == true)
-    assert(treeContains(root, 8) == true)
-    assert(treeContains(root, 99) == false)
-    assert(treeContains(null, 1) == false)
+func testTreeContains(t T, c main) {
+    t.assert(c.treeContains(c.root, 5) == true)
+    t.assert(c.treeContains(c.root, 1) == true)
+    t.assert(c.treeContains(c.root, 8) == true)
+    t.assert(c.treeContains(c.root, 99) == false)
+    t.assert(c.treeContains(null, 1) == false)
 }
 
-test main "tree mutation" {
-    node8.left = TreeNode{value: 7}
-    assert(treeSum(root) == 28)
-    assert(treeDepth(root) == 3)
-    assert(treeContains(root, 7) == true)
+func testTreeMutation(t T, c main) {
+    c.node8.left = TreeNode{value: 7}
+    t.assert(c.treeSum(c.root) == 28)
+    t.assert(c.treeDepth(c.root) == 3)
+    t.assert(c.treeContains(c.root, 7) == true)
 }

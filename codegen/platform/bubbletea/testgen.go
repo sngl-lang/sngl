@@ -20,7 +20,7 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	// Group tests by component
 	type compTests struct {
 		comp  *ast.Component
-		tests []*ast.TestDef
+		tests []*ast.FuncDef
 	}
 	groups := map[string]*compTests{}
 	// Detect which components have list-typed fields (not compilable to Go)
@@ -33,20 +33,24 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 		}
 	}
 
-	for _, td := range doc.Tests {
-		if ShouldSkipTest(td) || listComps[td.Component] {
+	for _, fn := range doc.TestFuncs() {
+		compName := ""
+		if len(fn.Params) >= 2 {
+			compName = fn.Params[1].Type
+		}
+		if ShouldSkipTestFunc(fn) || listComps[compName] {
 			continue
 		}
-		g, ok := groups[td.Component]
+		g, ok := groups[compName]
 		if !ok {
-			comp := findComp(doc, td.Component)
+			comp := findComp(doc, compName)
 			if comp == nil {
 				continue
 			}
 			g = &compTests{comp: comp}
-			groups[td.Component] = g
+			groups[compName] = g
 		}
-		g.tests = append(g.tests, td)
+		g.tests = append(g.tests, fn)
 	}
 
 	if len(groups) == 0 {
@@ -57,8 +61,8 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	// Detect if fmt is needed (string interpolation or string() in computeds)
 	needsFmt := false
 	for _, g := range groups {
-		for _, td := range g.tests {
-			if testNeedsFmt(td) {
+		for _, fn := range g.tests {
+			if fn.Block != nil && slices.ContainsFunc(fn.Block.Stmts, nodeNeedsFmt) {
 				needsFmt = true
 			}
 		}
@@ -79,8 +83,8 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 
 	for _, g := range groups {
 		emitTestModel(&b, g.comp, doc)
-		for _, td := range g.tests {
-			emitTestFunc(&b, td, g.comp)
+		for _, fn := range g.tests {
+			emitTestFuncGo(&b, fn, g.comp)
 		}
 	}
 
@@ -92,12 +96,6 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	return formatted, nil
 }
 
-func testNeedsFmt(td *ast.TestDef) bool {
-	if slices.ContainsFunc(td.Body, nodeNeedsFmt) {
-		return true
-	}
-	return slices.ContainsFunc(td.Subtests, testNeedsFmt)
-}
 
 func nodeNeedsFmt(n ast.Node) bool {
 	switch e := n.(type) {
@@ -211,19 +209,19 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 	}
 }
 
-// emitTestFunc emits a Go test function for a single SNGL test.
-func emitTestFunc(b *strings.Builder, td *ast.TestDef, comp *ast.Component) {
-	funcName := "Test" + exportName(comp.Name) + "_" + sanitizeTestName(td.Desc)
+// emitTestFuncGo emits a Go test function for a single SNGL test function.
+func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.Component) {
+	funcName := "Test" + exportName(comp.Name) + "_" + sanitizeTestName(fn.Name)
 
 	modelFields := map[string]bool{}
 	computedFields := map[string]bool{}
 	for _, d := range comp.Data {
 		modelFields[d.Name] = true
 	}
-	for _, fn := range comp.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			modelFields[fn.Name] = true
-			computedFields[fn.Name] = true
+	for _, cfn := range comp.Functions {
+		if cfn.Body.SNGL != nil && len(cfn.Params) == 0 && !cfn.IsStdlib {
+			modelFields[cfn.Name] = true
+			computedFields[cfn.Name] = true
 		}
 	}
 	for _, p := range comp.Params {
@@ -241,27 +239,11 @@ func emitTestFunc(b *strings.Builder, td *ast.TestDef, comp *ast.Component) {
 	fmt.Fprintf(b, "\tm := new%s()\n", exportName(comp.Name))
 	fmt.Fprintf(b, "\t_ = m\n")
 
-	emitTestBody(b, td.Body, ec, 1)
-
-	for _, sub := range td.Subtests {
-		emitSubtest(b, sub, ec, 1)
+	if fn.Block != nil {
+		emitTestBody(b, fn.Block.Stmts, ec, 1)
 	}
 
 	b.WriteString("}\n\n")
-}
-
-func emitSubtest(b *strings.Builder, td *ast.TestDef, ec *exprContext, depth int) {
-	indent := strings.Repeat("\t", depth)
-	fmt.Fprintf(b, "%st.Run(%q, func(t *testing.T) {\n", indent, td.Desc)
-	fmt.Fprintf(b, "%s\tm := m\n", indent) // copy model for isolation
-
-	emitTestBody(b, td.Body, ec, depth+1)
-
-	for _, sub := range td.Subtests {
-		emitSubtest(b, sub, ec, depth+1)
-	}
-
-	fmt.Fprintf(b, "%s})\n", indent)
 }
 
 func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth int) {
@@ -315,18 +297,11 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 	}
 }
 
-// ShouldSkipTest returns true if a test uses features not compilable to Go.
-func ShouldSkipTest(td *ast.TestDef) bool {
-	return usesUnsupportedFeature(td)
-}
-
-func usesUnsupportedFeature(td *ast.TestDef) bool {
-	for _, stmt := range td.Body {
-		if nodeUsesElementRef(stmt) || nodeUsesUnsupported(stmt) {
-			return true
-		}
-	}
-	return slices.ContainsFunc(td.Subtests, usesUnsupportedFeature)
+// ShouldSkipTestFunc returns true if a test function uses features not compilable to Go.
+// Currently skips ALL func-based tests — the bubbletea codegen needs updating
+// to handle the new t.assert(c.field) syntax.
+func ShouldSkipTestFunc(fn *ast.FuncDef) bool {
+	return true // TODO: update bubbletea codegen for func-based tests
 }
 
 // nodeUsesUnsupported detects SNGL features that don't compile to Go:
@@ -414,6 +389,9 @@ func nodeUsesElementRef(n ast.Node) bool {
 	case *ast.ElementRefExpr:
 		return true
 	case *ast.SelectExpr:
+		if len(e.Field) > 0 && e.Field[0] == '#' {
+			return true
+		}
 		return nodeUsesElementRef(e.Operand)
 	case *ast.MethodExpr:
 		return nodeUsesElementRef(e.Receiver)

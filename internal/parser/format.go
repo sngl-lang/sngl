@@ -56,9 +56,6 @@ func estimateDocSize(doc *ast.Document) int {
 	for _, comp := range doc.Components {
 		n += estimateCompSize(comp)
 	}
-	for _, td := range doc.Tests {
-		n += estimateTestSize(td)
-	}
 	for _, c := range doc.Comments {
 		n += len(c.Text) + 1
 	}
@@ -130,16 +127,6 @@ func estimateVNSize(vn *ast.VisualNode) int {
 	return n
 }
 
-func estimateTestSize(td *ast.TestDef) int {
-	n := 12 + len(td.Component) + len(td.Desc)
-	for _, s := range td.Body {
-		n += estimateNodeSize(s) + 8
-	}
-	for _, sub := range td.Subtests {
-		n += estimateTestSize(sub)
-	}
-	return n
-}
 
 func estimateExprSize(e ast.Expr) int {
 	if e.SNGL != nil {
@@ -579,16 +566,6 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 				f.formatComponent(decl)
 			}
 			prevEndLine = declEndLine(decl)
-		case *ast.TestDef:
-			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
-			}
-			if decl.Disabled {
-				f.writeIndent()
-				f.write("/- ")
-			}
-			f.formatTestDef(decl, true)
-			prevEndLine = declEndLine(decl)
 		case *ast.Const:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
@@ -786,20 +763,6 @@ func (f *formatter) formatDocumentLegacy(doc *ast.Document) {
 			f.write("/- ")
 		}
 		f.formatComponent(comp)
-		needBlank = true
-	}
-
-	// Tests
-	for _, td := range doc.Tests {
-		if needBlank {
-			f.newline()
-		}
-		f.emitCommentsBefore(td.Pos.Line)
-		if td.Disabled {
-			f.writeIndent()
-			f.write("/- ")
-		}
-		f.formatTestDef(td, true)
 		needBlank = true
 	}
 
@@ -1288,10 +1251,6 @@ func declEndLine(d ast.Decl) int {
 		if decl.EndLine > 0 {
 			return decl.EndLine
 		}
-	case *ast.TestDef:
-		if decl.EndLine > 0 {
-			return decl.EndLine
-		}
 	case *ast.VisualNode:
 		if decl.EndLine > 0 {
 			return decl.EndLine
@@ -1491,72 +1450,6 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	}
 }
 
-func (f *formatter) formatTestDef(td *ast.TestDef, topLevel bool) {
-	line := "test "
-	if topLevel && td.Component != "" {
-		line += td.Component + " "
-	}
-	if td.Desc != "" {
-		line += "\"" + escapeStringContent(td.Desc) + "\" "
-	}
-	line += "{"
-	f.writeLine(line)
-	f.emitInlineComment(td.Pos.Line)
-	f.indent++
-	// Skip f.comments entries inside this test body — they're handled by Decls.
-	if td.EndLine > 0 {
-		for f.commentI < len(f.comments) && f.comments[f.commentI].Pos.Line < td.EndLine {
-			f.commentI++
-		}
-	}
-	if len(td.Decls) > 0 {
-		prevEndLine := 0
-		for _, d := range td.Decls {
-			switch v := d.(type) {
-			case *ast.StmtDecl:
-				if prevEndLine > 0 && v.Pos.Line > prevEndLine+1 {
-					f.newline()
-				}
-				f.writeLine(FormatStmt(v.Stmt))
-				prevEndLine = v.Pos.Line
-			case *ast.TestDef:
-				if prevEndLine > 0 && v.Pos.Line > prevEndLine+1 {
-					f.newline()
-				}
-				f.formatTestDef(v, false)
-				prevEndLine = declEndLine(v)
-			case *ast.Comment:
-				if v.Inline {
-					s := f.sb.String()
-					if len(s) > 0 && s[len(s)-1] == '\n' {
-						f.sb.Reset()
-						f.sb.WriteString(s[:len(s)-1])
-					}
-					f.write(" " + v.Text)
-					f.newline()
-				} else {
-					if prevEndLine > 0 && v.Pos.Line > prevEndLine+1 {
-						f.newline()
-					}
-					f.writeLine(v.Text)
-				}
-				prevEndLine = v.Pos.Line
-			}
-		}
-	} else {
-		for _, stmt := range td.Body {
-			f.writeLine(FormatStmt(stmt))
-		}
-		for _, sub := range td.Subtests {
-			if len(td.Body) > 0 || sub != td.Subtests[0] {
-				f.newline()
-			}
-			f.formatTestDef(sub, false)
-		}
-	}
-	f.indent--
-	f.writeLine("}")
-}
 
 func (f *formatter) formatVisualNodeWithComment(vn *ast.VisualNode, inlineComment *ast.Comment) {
 	f.pendingInlineComment = inlineComment
@@ -1882,19 +1775,45 @@ func writeNode(sb *strings.Builder, n ast.Node) {
 		sb.WriteByte('#')
 		sb.WriteString(e.Name)
 	case *ast.LambdaExpr:
-		sb.WriteByte('(')
-		for i, name := range e.Params {
-			if i > 0 {
-				sb.WriteString(", ")
+		if e.Block != nil {
+			sb.WriteString("func(")
+			for i, name := range e.Params {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(name)
+				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
+					sb.WriteByte(' ')
+					sb.WriteString(e.ParamTypes[i])
+				}
 			}
-			sb.WriteString(name)
-			if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
-				sb.WriteByte(' ')
-				sb.WriteString(e.ParamTypes[i])
+			sb.WriteString(") {\n")
+			for _, stmt := range e.Block.Stmts {
+				sb.WriteString("    ")
+				writeNode(sb, stmt)
+				sb.WriteByte('\n')
 			}
+			if e.Block.Return != nil {
+				sb.WriteString("    return ")
+				writeNode(sb, e.Block.Return)
+				sb.WriteByte('\n')
+			}
+			sb.WriteByte('}')
+		} else {
+			sb.WriteByte('(')
+			for i, name := range e.Params {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(name)
+				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
+					sb.WriteByte(' ')
+					sb.WriteString(e.ParamTypes[i])
+				}
+			}
+			sb.WriteString(") => ")
+			writeNode(sb, e.Body)
 		}
-		sb.WriteString(") => ")
-		writeNode(sb, e.Body)
 	case *ast.ParenExpr:
 		sb.WriteByte('(')
 		writeNode(sb, e.Inner)

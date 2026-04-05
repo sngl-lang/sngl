@@ -1,14 +1,14 @@
-test main "type-qualified calls" {
-    assert(int.double(5) == 10)
-    assert(int.abs(-3) == 3)
-    assert(int.abs(7) == 7)
-    assert(string.exclaim("hi") == "hi!")
+func testTypeQualifiedCalls(t T, c main) {
+    t.assert(int.double(5) == 10)
+    t.assert(int.abs(-3) == 3)
+    t.assert(int.abs(7) == 7)
+    t.assert(string.exclaim("hi") == "hi!")
 }
 
-test main "method syntax calls" {
-    assert(n.double() == 10)
-    assert((-3).abs() == 3)
-    assert(name.exclaim() == "hello!")
+func testMethodSyntaxCalls(t T, c main) {
+    t.assert(c.n.double() == 10)
+    t.assert((-3).abs() == 3)
+    t.assert(c.name.exclaim() == "hello!")
 }
 
 component main {

@@ -5,25 +5,25 @@ component greeting {
     text(value="{msg}")
 }
 
-test greeting "concatenation" {
-    assert("hello" + " " + "world" == "hello world")
+func testConcatenation(t T, c greeting) {
+    t.assert("hello" + " " + "world" == "hello world")
 }
 
-test greeting "interpolation" {
-    assert("hello {name}" == "hello world")
+func testInterpolation(t T, c greeting) {
+    t.assert("hello {c.name}" == "hello world")
 }
 
-test greeting "length" {
-    assert("hello".length() == 5)
-    assert("".length() == 0)
+func testLength(t T, c greeting) {
+    t.assert("hello".length() == 5)
+    t.assert("".length() == 0)
 }
 
-test greeting "contains" {
-    assert("hello world".contains("world"))
-    assert(!"hello world".contains("xyz"))
+func testContains(t T, c greeting) {
+    t.assert("hello world".contains("world"))
+    t.assert(!"hello world".contains("xyz"))
 }
 
-test greeting "string concat assignment" {
-    msg += " world"
-    assert(msg == "hello world")
+func testStringConcatAssignment(t T, c greeting) {
+    c.msg += " world"
+    t.assert(c.msg == "hello world")
 }

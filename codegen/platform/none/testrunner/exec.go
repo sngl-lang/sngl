@@ -74,6 +74,9 @@ func (env *Env) execAssign(s *ast.AssignStmt) error {
 		if err != nil {
 			return err
 		}
+		if cv, ok := obj.(*componentValue); ok {
+			return cv.setField(s.Op, target.Field, val)
+		}
 		if m, ok := obj.(map[string]any); ok {
 			m[target.Field] = applyOp(s.Op, m[target.Field], val)
 			return nil
@@ -113,6 +116,26 @@ func (env *Env) execToggle(s *ast.ToggleStmt) error {
 			return nil
 		}
 		return fmt.Errorf("cannot toggle non-bool variable %q", ident.Name)
+	}
+	if sel, ok := s.Target.(*ast.SelectExpr); ok {
+		obj, err := env.Eval(sel.Operand)
+		if err != nil {
+			return err
+		}
+		if cv, ok := obj.(*componentValue); ok {
+			cur, exists := cv.vars[sel.Field]
+			if !exists {
+				return fmt.Errorf("cannot toggle undefined field %q", sel.Field)
+			}
+			if b, ok := cur.(bool); ok {
+				cv.vars[sel.Field] = !b
+				if !cv.testParams[sel.Field] {
+					cv.env.vars[sel.Field] = !b
+				}
+				return nil
+			}
+			return fmt.Errorf("cannot toggle non-bool field %q", sel.Field)
+		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)
 }

@@ -126,14 +126,18 @@ func mergeInto(dst, src *ast.Document) {
 	dst.Components = append(dst.Components, src.Components...)
 	dst.Structs = append(dst.Structs, src.Structs...)
 	dst.Enums = append(dst.Enums, src.Enums...)
-	dst.Functions = append(dst.Functions, src.Functions...)
+	// Merge non-test functions only; test functions belong to their source file.
+	for _, fn := range src.Functions {
+		if !fn.IsTest() {
+			dst.Functions = append(dst.Functions, fn)
+		}
+	}
 	dst.Units = append(dst.Units, src.Units...)
 	dst.Styles = append(dst.Styles, src.Styles...)
 	dst.Timers = append(dst.Timers, src.Timers...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Data = append(dst.Data, src.Data...)
-	dst.Functions = append(dst.Functions, src.Functions...)
 	if src.App != nil && dst.App == nil {
 		dst.App = src.App
 	}

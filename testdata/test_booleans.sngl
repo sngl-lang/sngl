@@ -7,49 +7,49 @@ component flags {
     text(value="{active}")
 }
 
-test flags "literals" {
-    assert(active == true)
-    assert(hidden == false)
+func testLiterals(t T, c flags) {
+    t.assert(c.active == true)
+    t.assert(c.hidden == false)
 }
 
-test flags "negation" {
-    assert(!hidden == true)
-    assert(!active == false)
+func testNegation(t T, c flags) {
+    t.assert(!c.hidden == true)
+    t.assert(!c.active == false)
 }
 
-test flags "and" {
-    assert(true && true)
-    assert(!(true && false))
-    assert(!(false && false))
+func testAnd(t T, c flags) {
+    t.assert(true && true)
+    t.assert(!(true && false))
+    t.assert(!(false && false))
 }
 
-test flags "or" {
-    assert(true || false)
-    assert(!(false || false))
-    assert(false || true)
+func testOr(t T, c flags) {
+    t.assert(true || false)
+    t.assert(!(false || false))
+    t.assert(false || true)
 }
 
-test flags "toggle" {
-    assert(active == true)
-    active!!
-    assert(active == false)
-    active!!
-    assert(active == true)
+func testToggle(t T, c flags) {
+    t.assert(c.active == true)
+    c.active!!
+    t.assert(c.active == false)
+    c.active!!
+    t.assert(c.active == true)
 }
 
-test flags "ternary" {
-    assert((active ? "yes" : "no") == "yes")
-    assert((hidden ? "yes" : "no") == "no")
+func testTernary(t T, c flags) {
+    t.assert((c.active ? "yes" : "no") == "yes")
+    t.assert((c.hidden ? "yes" : "no") == "no")
 }
 
-test flags "zero and empty checks" {
-    assert(count == 0)
-    assert(label == "")
-    assert(!hidden)
-    assert(null == null)
+func testZeroAndEmptyChecks(t T, c flags) {
+    t.assert(c.count == 0)
+    t.assert(c.label == "")
+    t.assert(!c.hidden)
+    t.assert(null == null)
 
-    count = 1
-    assert(count != 0)
-    label = "x"
-    assert(label != "")
+    c.count = 1
+    t.assert(c.count != 0)
+    c.label = "x"
+    t.assert(c.label != "")
 }
