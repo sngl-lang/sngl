@@ -1,0 +1,66 @@
+output {
+	js {
+		html
+	}
+}
+
+import "go://git.duckfam.us/jonathan/sngl/docs"
+
+const pages = docs.Pages()
+
+component main {
+	for page = pages {
+		window(title=page.title, href=page.href) {
+			html.link(rel="stylesheet", href="/assets/style.css")
+			html.div(class="site") {
+				html.nav {
+					html.a(href="/index.html", class="nav-brand") {
+						html.span(innerText="SNGL")
+					}
+					html.ul {
+						html.li {
+							html.a(href="/index.html", innerText="SNGL")
+						}
+						html.li {
+							html.a(href="/getting-started.html", innerText="Getting Started")
+							html.ul {
+								html.li {
+									html.a(href="/getting-started/installation.html", innerText="Installation")
+								}
+								html.li {
+									html.a(href="/getting-started/first-app-web.html", innerText="Your First App")
+								}
+								html.li {
+									html.a(href="/getting-started/build-targets.html", innerText="Build Targets")
+								}
+								html.li {
+									html.a(href="/getting-started/data-binding.html", innerText="Data Binding")
+								}
+							}
+						}
+						html.li {
+							html.a(href="#", innerText="Language")
+							html.ul {
+								html.li {
+									html.a(href="/language/effective-sngl.html", innerText="Effective SNGL")
+								}
+								html.li {
+									html.a(href="/language/reference.html", innerText="Language Reference")
+								}
+								html.li {
+									html.a(href="/language/specification.html", innerText="Language Specification")
+								}
+							}
+						}
+					}
+				}
+				html.main {
+					html.article {
+						html.h1(innerText=page.title)
+						html.div(innerHTML=page.body)
+					}
+				}
+			}
+		}
+	}
+}

@@ -233,7 +233,7 @@ func TestIsConstExpr_Default(t *testing.T) {
 	// SelectExpr is an unknown node type for isConstExpr
 	node := &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "x"}, Field: "y"}
 	vars := map[string]any{"PLATFORM": "html"}
-	if isConstExpr(node, vars) {
+	if isConstExpr(node, &foldCtx{vars: vars}) {
 		t.Error("expected SelectExpr to not be constant")
 	}
 }
@@ -241,7 +241,7 @@ func TestIsConstExpr_Default(t *testing.T) {
 func TestEvalConst_Default(t *testing.T) {
 	node := &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "x"}, Field: "y"}
 	vars := map[string]any{"PLATFORM": "html"}
-	_, ok := evalConst(node, vars)
+	_, ok := evalConst(node, &foldCtx{vars: vars})
 	if ok {
 		t.Error("expected unknown node to not evaluate")
 	}
@@ -424,7 +424,7 @@ func TestIsConstExpr_MethodExprTypeNS(t *testing.T) {
 		Method:   "length",
 		Args:     []ast.Node{&ast.LiteralExpr{Value: "hi", Kind: ast.LiteralString}},
 	}
-	if !isConstExpr(node, vars) {
+	if !isConstExpr(node, &foldCtx{vars: vars}) {
 		t.Error("expected type-ns method call to be constant")
 	}
 }
@@ -435,7 +435,7 @@ func TestIsConstExpr_MethodExprNonConstReceiver(t *testing.T) {
 		Receiver: &ast.IdentExpr{Name: "count"},
 		Method:   "toString",
 	}
-	if isConstExpr(node, vars) {
+	if isConstExpr(node, &foldCtx{vars: vars}) {
 		t.Error("expected non-const receiver method to not be constant")
 	}
 }
@@ -447,7 +447,7 @@ func TestEvalConst_TernaryNonBoolCond(t *testing.T) {
 		Then: &ast.LiteralExpr{Value: "a", Kind: ast.LiteralString},
 		Else: &ast.LiteralExpr{Value: "b", Kind: ast.LiteralString},
 	}
-	_, ok := evalConst(node, vars)
+	_, ok := evalConst(node, &foldCtx{vars: vars})
 	if ok {
 		t.Error("expected ternary with non-bool condition to fail")
 	}
@@ -460,7 +460,7 @@ func TestEvalConst_MethodExprNonConstArg(t *testing.T) {
 		Method:   "contains",
 		Args:     []ast.Node{&ast.IdentExpr{Name: "unknown"}},
 	}
-	_, ok := evalConst(node, vars)
+	_, ok := evalConst(node, &foldCtx{vars: vars})
 	if ok {
 		t.Error("expected method with non-const arg to fail")
 	}
@@ -472,7 +472,7 @@ func TestEvalConst_CallExprNonConstArg(t *testing.T) {
 		Func: "string",
 		Args: []ast.Node{&ast.IdentExpr{Name: "unknown"}},
 	}
-	_, ok := evalConst(node, vars)
+	_, ok := evalConst(node, &foldCtx{vars: vars})
 	if ok {
 		t.Error("expected call with non-const arg to fail")
 	}
@@ -486,7 +486,7 @@ func TestEvalConst_InterpolationNonConstPart(t *testing.T) {
 			&ast.IdentExpr{Name: "unknown"},
 		},
 	}
-	_, ok := evalConst(node, vars)
+	_, ok := evalConst(node, &foldCtx{vars: vars})
 	if ok {
 		t.Error("expected interpolation with non-const part to fail")
 	}

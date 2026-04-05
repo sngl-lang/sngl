@@ -74,8 +74,9 @@ type Document struct {
 	Styles             []*StyleDecl
 	Windows            []*Window // top-level window declarations
 	App                *App
-	Comments           []Comment // all comments, ordered by position
-	Decls              []Decl    // ordered declarations including interleaved comments
+	NativeImports      map[string]*NativeDecls // namespace → resolved native decls (populated by checker)
+	Comments           []Comment               // all comments, ordered by position
+	Decls              []Decl                  // ordered declarations including interleaved comments
 }
 
 // FindComponent looks up a component by name, searching local components first,
@@ -178,11 +179,22 @@ type NativeDecls struct {
 	ImportPath string  // e.g., "go/ast" for go:// imports
 }
 
+// Purity describes the side-effect level of a function.
+type Purity int
+
+const (
+	PurityUnknown  Purity = iota // not annotated
+	PurityPure                   // //sngl:pure — no side effects, deterministic, safe for compile-time evaluation
+	PurityReadonly               // //sngl:readonly — reads state but does not modify it
+	PurityMutates                // //sngl:mutates — modifies state
+)
+
 type Data struct {
 	Pos          Pos
 	Name         string
 	Init         Expr
 	Extern       bool     // "extern" positional arg present
+	Purity       Purity   // function purity level (from //sngl: annotations)
 	IsFunc       bool     // TypeHint starts with "func"
 	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
 	ReturnType   string   // parsed func return type, "" for void
@@ -236,7 +248,8 @@ type FuncDef struct {
 	Block      *FuncBlock // block form ({ ... }), nil for expression form
 	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
 	Disabled   bool
-	HasParens  bool // true when () was explicit in source (for zero-param expression funcs)
+	HasParens  bool   // true when () was explicit in source (for zero-param expression funcs)
+	Purity     Purity // populated by checker: pure, readonly, or mutates
 }
 
 // IsTest returns true if this function is a test function (name starts with "test").

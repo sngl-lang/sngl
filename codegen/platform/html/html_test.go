@@ -40,11 +40,8 @@ func generateHTML(t *testing.T, path string) string {
 	if resp.Error != "" {
 		t.Fatalf("generate error: %s", resp.Error)
 	}
-	if len(resp.Files) != 1 {
-		t.Fatalf("expected 1 file, got %d", len(resp.Files))
-	}
-	if resp.Files[0].Name != "index.html" {
-		t.Fatalf("expected index.html, got %s", resp.Files[0].Name)
+	if len(resp.Files) < 1 {
+		t.Fatal("expected at least 1 file")
 	}
 	var buf bytes.Buffer
 	resp.Files[0].WriteTo(&buf)

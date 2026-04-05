@@ -114,6 +114,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			if err := optimize.Optimize(targetDoc, optimize.Config{
 				Platform: target.Platform,
 				Language: target.Lang,
+				Dir:      dir,
 			}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}

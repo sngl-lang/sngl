@@ -99,7 +99,6 @@ type APIProvider interface {
 	API() *ast.Document
 }
 
-
 // APIResolver is optionally implemented alongside or instead of APIProvider
 // for dynamic name resolution when a name isn't found in the static API document.
 type APIResolver interface {

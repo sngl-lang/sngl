@@ -327,6 +327,19 @@ func (c *checker) validateConstExpr(pos ast.Pos, n ast.Node, constNames map[stri
 				}
 			}
 		}
+		// Check for pure Go function on an imported namespace
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.Purity == ast.PurityPure {
+						for _, arg := range e.Args {
+							c.validateConstExpr(pos, arg, constNames)
+						}
+						return
+					}
+				}
+			}
+		}
 		// Instance method — receiver must be const
 		c.validateConstExpr(pos, e.Receiver, constNames)
 		for _, arg := range e.Args {
@@ -398,6 +411,11 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.namespaces[imp.Namespace] = ns
 			c.structs = append(c.structs, decls.Structs...)
 			c.enums = append(c.enums, decls.Enums...)
+			// Propagate native decls to document for compile-time evaluation.
+			if doc.NativeImports == nil {
+				doc.NativeImports = map[string]*ast.NativeDecls{}
+			}
+			doc.NativeImports[imp.Namespace] = decls
 			// Register extern data in scope qualified by namespace
 			for _, d := range decls.Data {
 				hintType := Dyn
@@ -583,6 +601,15 @@ func (c *checker) pass1(doc *ast.Document) {
 				ParamTypes: paramTypes,
 			}
 		}
+	}
+
+	// Analyze purity of document-level functions.
+	docDataNames := map[string]bool{}
+	for _, d := range doc.Data {
+		docDataNames[d.Name] = true
+	}
+	for _, fn := range doc.Functions {
+		fn.Purity = analyzePurity(fn, docDataNames)
 	}
 
 	// User-defined components
@@ -1077,6 +1104,14 @@ func (c *checker) pass2(doc *ast.Document) {
 		for _, p := range comp.Params {
 			compScope.Declare(p.Name, c.resolveParamType(p))
 		}
+		// Analyze purity of component-scoped functions.
+		compDataNames := map[string]bool{}
+		for _, d := range comp.Data {
+			compDataNames[d.Name] = true
+		}
+		for _, fn := range comp.Functions {
+			fn.Purity = analyzePurity(fn, compDataNames)
+		}
 		for _, child := range comp.Body {
 			c.checkVisualNode(child, compScope)
 		}
@@ -1300,6 +1335,21 @@ func (c *checker) isConstantNode(n ast.Node) bool {
 		}
 		return true
 	case *ast.MethodExpr:
+		// Check if receiver is a namespace with a pure function
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.Purity == ast.PurityPure {
+						for _, arg := range e.Args {
+							if !c.isConstantNode(arg) {
+								return false
+							}
+						}
+						return true
+					}
+				}
+			}
+		}
 		if !c.isConstantNode(e.Receiver) {
 			return false
 		}

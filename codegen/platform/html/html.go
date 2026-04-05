@@ -37,14 +37,45 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	gen := newHTMLGen(req.Doc, req.Lang, req.Options)
-	src := gen.generate()
+	windows := req.Doc.App.EffectiveWindows()
+	if len(windows) <= 1 {
+		// Single window or no windows — generate single index.html (backward compat)
+		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
+		src := gen.generate()
+		return &codegen.Response{
+			Files: []*codegen.OutputFile{
+				codegen.BytesFile("index.html", []byte(src)),
+			},
+		}, nil
+	}
 
-	return &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("index.html", []byte(src)),
-		},
-	}, nil
+	// Multi-window: generate one HTML file per window
+	var files []*codegen.OutputFile
+	for _, win := range windows {
+		name := win.Name
+		// If name looks like a URL path (starts with /), use it directly
+		if strings.HasPrefix(name, "/") {
+			name = strings.TrimPrefix(name, "/")
+		} else if strings.HasSuffix(name, ".html") {
+			// Already has extension, use as-is
+		} else if name == "main" || name == "" || name == "index" {
+			name = "index.html"
+		} else {
+			name = name + ".html"
+		}
+		// Create a synthetic document with this window's children as the app body.
+		// Merge window-level state into the document so emitScript() can see it.
+		winDoc := req.Doc.Clone()
+		winDoc.App = &ast.App{Children: win.Children}
+		winDoc.Data = append(winDoc.Data, win.Data...)
+		winDoc.Consts = append(winDoc.Consts, win.Consts...)
+		winDoc.Functions = append(winDoc.Functions, win.Functions...)
+		winDoc.Timers = append(winDoc.Timers, win.Timers...)
+		gen := newHTMLGen(winDoc, req.Lang, req.Options)
+		src := gen.generate()
+		files = append(files, codegen.BytesFile(name, []byte(src)))
+	}
+	return &codegen.Response{Files: files}, nil
 }
 
 // htmlGen holds all state for generating a single HTML file.
@@ -1197,19 +1228,29 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 	style := g.buildCSSStyle(vn)
 
-	// Build inline attributes from static props
+	// Build inline attributes from static props.
+	// innerText and innerHTML are rendered as element content, not attributes.
 	var attrs strings.Builder
+	staticInnerText := ""
+	staticInnerHTML := ""
 	for name, expr := range vn.Props {
 		if name == "style" {
 			continue
 		}
 		if expr.SNGL == nil {
 			val := g.evalStaticString(vn.Props, name)
-			if val != "" {
-				fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
-			} else if expr.Literal != nil {
-				if bv, ok := expr.Literal.(bool); ok && bv {
-					fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
+			switch name {
+			case "innerText":
+				staticInnerText = val
+			case "innerHTML":
+				staticInnerHTML = val
+			default:
+				if val != "" {
+					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+				} else if expr.Literal != nil {
+					if bv, ok := expr.Literal.(bool); ok && bv {
+						fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
+					}
 				}
 			}
 		}
@@ -1222,6 +1263,12 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
 		fmt.Fprintf(b, " id=\"%s\"", id)
+	}
+	// Emit static class for raw HTML elements
+	if vn.Class != nil && vn.Class.Literal != nil {
+		if s, ok := vn.Class.Literal.(string); ok && s != "" {
+			fmt.Fprintf(b, " class=%q", s)
+		}
 	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1240,11 +1287,22 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	case "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr":
 		b.WriteString("/>\n")
 	default:
-		b.WriteString(">\n")
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		b.WriteString(">")
+		if staticInnerHTML != "" {
+			b.WriteString("\n")
+			b.WriteString(staticInnerHTML)
+			b.WriteString("\n")
+			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
+		} else if staticInnerText != "" {
+			b.WriteString(html.EscapeString(staticInnerText))
+			fmt.Fprintf(b, "</%s>\n", tag)
+		} else {
+			b.WriteString("\n")
+			for _, child := range vn.Children {
+				g.renderStaticNode(b, child, depth+1)
+			}
+			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
-		fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 	}
 
 	if id == "" {
@@ -1260,9 +1318,17 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 			jsVal := g.exprToJS(expr)
 			deps := g.dt.ExprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
+			var body string
+			switch name {
+			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled":
+				// DOM properties — set directly, not via setAttribute
+				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
+			default:
+				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
+			}
 			g.updates = append(g.updates, updateFunc{
 				funcName: uname,
-				body:     fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal),
+				body:     body,
 				deps:     deps,
 			})
 		}

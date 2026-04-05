@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	goast "go/ast"
 	"go/types"
 	"strings"
 
@@ -24,7 +25,7 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 	pkgPath := strings.TrimPrefix(uri, "go://")
 
 	cfg := &packages.Config{
-		Mode: packages.NeedTypes | packages.NeedName,
+		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
 		Dir:  dir,
 	}
 	pkgs, err := packages.Load(cfg, pkgPath)
@@ -42,8 +43,28 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 		ImportPath: pkgPath,
 	}
 	scope := pkgs[0].Types.Scope()
-
 	pkgName := pkgs[0].Types.Name()
+
+	// Scan syntax for //sngl: purity annotations on function declarations.
+	funcPurity := map[string]ast.Purity{}
+	for _, file := range pkgs[0].Syntax {
+		for _, decl := range file.Decls {
+			fd, ok := decl.(*goast.FuncDecl)
+			if !ok || fd.Doc == nil {
+				continue
+			}
+			for _, comment := range fd.Doc.List {
+				switch {
+				case strings.Contains(comment.Text, "sngl:pure"):
+					funcPurity[fd.Name.Name] = ast.PurityPure
+				case strings.Contains(comment.Text, "sngl:readonly"):
+					funcPurity[fd.Name.Name] = ast.PurityReadonly
+				case strings.Contains(comment.Text, "sngl:mutates"):
+					funcPurity[fd.Name.Name] = ast.PurityMutates
+				}
+			}
+		}
+	}
 
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
@@ -57,6 +78,9 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 			}
 		case *types.Func:
 			if d := goFuncToData(o); d != nil {
+				if p, ok := funcPurity[o.Name()]; ok {
+					d.Purity = p
+				}
 				d.Resolved = &ast.TypeInfo{
 					NativePkg:  pkgPath,
 					NativeType: pkgName + "." + o.Name(),

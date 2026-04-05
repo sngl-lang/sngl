@@ -759,6 +759,65 @@ func (p *parser) parseComponent() *ast.Component {
 			win.Disabled = disabled
 			cs.Windows = append(cs.Windows, win)
 			comp.Decls = append(comp.Decls, win)
+		case KW_FOR:
+			// Parse the for header, then check if the body is a window.
+			forPos := p.pos()
+			p.expect(KW_FOR)
+			variable := p.expect(IDENT).Literal
+			indexVar := ""
+			if p.at(COMMA) {
+				p.advance()
+				indexVar = p.expect(IDENT).Literal
+			}
+			p.expect(ASSIGN)
+			p.noStructLit = true
+			iterable := p.parseExprAsExpr()
+			p.noStructLit = false
+			p.expect(LBRACE)
+			p.skipSemicolons()
+
+			if p.at(KW_WINDOW) {
+				// For-window: parse window inside the for body
+				win := p.parseWindow()
+				p.skipSemicolons()
+				p.expect(RBRACE)
+				win.For = &ast.ForClause{
+					Variable: variable,
+					IndexVar: indexVar,
+					Iterable: iterable,
+				}
+				win.Disabled = disabled
+				cs.Windows = append(cs.Windows, win)
+				comp.Decls = append(comp.Decls, win)
+			} else {
+				// Regular for visual node
+				vn := p.parseNodeOrControl()
+				p.skipSemicolons()
+				p.expect(RBRACE)
+				fc := &ast.ForClause{
+					Variable: variable,
+					IndexVar: indexVar,
+					Iterable: iterable,
+				}
+				if p.at(KW_ELSE) {
+					p.advance()
+					p.expect(LBRACE)
+					for !p.at(RBRACE) && !p.at(EOF) {
+						p.skipSemicolons()
+						if p.at(RBRACE) {
+							break
+						}
+						fc.Else = append(fc.Else, p.parseNodeOrControl())
+						p.skipSemicolons()
+					}
+					p.expect(RBRACE)
+				}
+				vn.For = fc
+				vn.Pos = forPos
+				vn.Disabled = disabled
+				comp.Body = append(comp.Body, vn)
+				comp.Decls = append(comp.Decls, vn)
+			}
 		case KW_PLATFORM:
 			p.advance()
 			platName := p.expect(IDENT).Literal

@@ -575,7 +575,8 @@ func TestIsConstExprListExpr(t *testing.T) {
 			&ast.LiteralExpr{Value: 3, Kind: ast.LiteralInt},
 		},
 	}
-	if !isConstExpr(list, vars) {
+	ctx := &foldCtx{vars: vars}
+	if !isConstExpr(list, ctx) {
 		t.Error("expected ListExpr with all literals to be constant")
 	}
 
@@ -586,7 +587,7 @@ func TestIsConstExprListExpr(t *testing.T) {
 			&ast.IdentExpr{Name: "count"}, // not in vars
 		},
 	}
-	if isConstExpr(listNonConst, vars) {
+	if isConstExpr(listNonConst, ctx) {
 		t.Error("expected ListExpr with non-constant element to not be constant")
 	}
 
@@ -597,7 +598,7 @@ func TestIsConstExprListExpr(t *testing.T) {
 			&ast.LiteralExpr{Value: "x", Kind: ast.LiteralString},
 		},
 	}
-	if !isConstExpr(listWithVar, vars) {
+	if !isConstExpr(listWithVar, ctx) {
 		t.Error("expected ListExpr with PLATFORM to be constant")
 	}
 }
