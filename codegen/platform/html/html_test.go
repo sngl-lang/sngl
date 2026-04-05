@@ -40,11 +40,8 @@ func generateHTML(t *testing.T, path string) string {
 	if resp.Error != "" {
 		t.Fatalf("generate error: %s", resp.Error)
 	}
-	if len(resp.Files) != 1 {
-		t.Fatalf("expected 1 file, got %d", len(resp.Files))
-	}
-	if resp.Files[0].Name != "index.html" {
-		t.Fatalf("expected index.html, got %s", resp.Files[0].Name)
+	if len(resp.Files) < 1 {
+		t.Fatal("expected at least 1 file")
 	}
 	var buf bytes.Buffer
 	resp.Files[0].WriteTo(&buf)
@@ -112,19 +109,22 @@ func TestFullExample(t *testing.T) {
 	}
 }
 
-func TestJSGettersSetters(t *testing.T) {
+func TestJSStateAndUpdaters(t *testing.T) {
 	html := generateHTML(t, "../../../examples/todo/todo.sngl")
 
 	checks := []string{
-		"$set_todos",
-		"$get_todos",
-		"$set_newTodo",
-		"$get_newTodo",
+		"state.todos",
+		"state.newTodo",
+		"addEventListener",
 	}
 	for _, check := range checks {
 		if !strings.Contains(html, check) {
 			t.Errorf("missing expected content: %q\n\ngenerated:\n%s", check, html)
 		}
+	}
+	// Setters should NOT be emitted for fields without triggers/timers
+	if strings.Contains(html, "$get_") {
+		t.Error("unexpected getter function in output")
 	}
 }
 

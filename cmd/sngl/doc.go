@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -34,10 +36,8 @@ var docServeCmd = &cobra.Command{
 }
 
 func init() {
-	docBuildCmd.Flags().StringP("docs", "d", "docs", "documentation source directory")
 	docBuildCmd.Flags().StringP("out", "o", "_site", "output directory")
 
-	docServeCmd.Flags().StringP("docs", "d", "docs", "documentation source directory")
 	docServeCmd.Flags().StringP("out", "o", "_site", "output directory")
 	docServeCmd.Flags().IntP("port", "p", 8080, "port to serve on")
 
@@ -65,37 +65,30 @@ func runDoc(cmd *cobra.Command, args []string) error {
 }
 
 func runDocBuild(cmd *cobra.Command, args []string) error {
-	docsDir, _ := cmd.Flags().GetString("docs")
 	outDir, _ := cmd.Flags().GetString("out")
-	if err := docsite.Build(docsDir, outDir); err != nil {
+	snglFile := findWebsiteSNGL()
+	if snglFile == "" {
+		return fmt.Errorf("no website.sngl found")
+	}
+	if err := runSNGLCompile(snglFile, outDir); err != nil {
 		return err
-	}
-	layout, err := docsite.LoadLayout(docsDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not load layout: %v\n", err)
-	}
-	if err := docsite.GenerateGallery(docsDir, outDir, layout, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: gallery generation failed: %v\n", err)
 	}
 	fmt.Printf("Site built in %s/\n", outDir)
 	return nil
 }
 
 func runDocServe(cmd *cobra.Command, args []string) error {
-	docsDir, _ := cmd.Flags().GetString("docs")
 	outDir, _ := cmd.Flags().GetString("out")
 	port, _ := cmd.Flags().GetInt("port")
-	if err := docsite.Build(docsDir, outDir); err != nil {
+	snglFile := findWebsiteSNGL()
+	if snglFile == "" {
+		return fmt.Errorf("no website.sngl found")
+	}
+	if err := runSNGLCompile(snglFile, outDir); err != nil {
 		return err
 	}
-	layout, err := docsite.LoadLayout(docsDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not load layout: %v\n", err)
-	}
-	if err := docsite.GenerateGallery(docsDir, outDir, layout, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: gallery generation failed: %v\n", err)
-	}
-	return docsite.Serve(outDir, port)
+	fmt.Printf("Serving on http://localhost:%d\n", port)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), http.FileServer(http.Dir(outDir)))
 }
 
 // findDocsDir walks up from cwd looking for a docs/ directory.
@@ -459,6 +452,34 @@ func listTopics(docsDir string) ([]topicInfo, error) {
 		return topics[i].name < topics[j].name
 	})
 	return topics, nil
+}
+
+// findWebsiteSNGL walks up from cwd looking for a website.sngl file.
+func findWebsiteSNGL() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	for {
+		candidate := filepath.Join(dir, "website.sngl")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// runSNGLCompile shells out to sngl compile to build a .sngl file.
+func runSNGLCompile(snglFile, outDir string) error {
+	cmd := exec.Command(os.Args[0], "compile", "--out", outDir, snglFile)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func renderToTerminal(md string) error {

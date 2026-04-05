@@ -503,7 +503,6 @@ func readResourceIDs(path string) map[string]int {
 	return ids
 }
 
-
 // extractLibraryResources merges res/ directories from library AARs into
 // the project's res/ directory so aapt2 can compile them into the APK.
 func extractLibraryResources(tc *toolchain, dir string) {
@@ -558,7 +557,6 @@ func extractLibraryResources(tc *toolchain, dir string) {
 		r.Close()
 	}
 }
-
 
 // readRTxt extracts the package name from AndroidManifest.xml and the resource
 // entries from R.txt inside an AAR.
@@ -616,7 +614,6 @@ type rEntry struct {
 	rname string // resource type: "id", "string", "style", etc.
 	name  string // resource name
 }
-
 
 func dexSuffix(i int) string {
 	if i == 0 {

@@ -57,10 +57,22 @@ func estimateDocSize(doc *ast.Document) int {
 	for _, c := range doc.Comments {
 		n += len(c.Text) + 1
 	}
+	for _, win := range doc.Windows {
+		n += 16 + len(win.Name)
+		for _, vn := range win.Children {
+			n += estimateVNSize(vn)
+		}
+	}
 	if doc.App != nil {
 		n += 10
 		for _, vn := range doc.App.Children {
 			n += estimateVNSize(vn)
+		}
+		for _, win := range doc.App.Windows {
+			n += 16 + len(win.Name)
+			for _, vn := range win.Children {
+				n += estimateVNSize(vn)
+			}
 		}
 	}
 	if n < 256 {
@@ -680,6 +692,16 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			}
 			f.formatTimer(decl)
 			prevEndLine = decl.Pos.Line
+		case *ast.Window:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			if decl.Disabled {
+				f.writeIndent()
+				f.write("/- ")
+			}
+			f.formatWindow(decl)
+			prevEndLine = declEndLine(decl)
 		}
 	}
 	hasMainInDecls := false
@@ -771,6 +793,16 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 		for _, vn := range doc.App.Children {
 			f.emitCommentsBefore(vn.Pos.Line)
 			f.formatVisualNode(vn)
+		}
+	}
+
+	// App windows
+	if doc.App != nil && len(doc.App.Windows) > 0 {
+		if memberBlank {
+			f.newline()
+		}
+		for _, win := range doc.App.Windows {
+			f.formatWindow(win)
 		}
 	}
 
@@ -1093,6 +1125,82 @@ func (f *formatter) formatTimer(t *ast.Timer) {
 	f.writeLine("}")
 }
 
+func (f *formatter) formatWindow(win *ast.Window) {
+	f.writeIndent()
+	f.write("window")
+
+	if win.Name != "" {
+		f.write(" ")
+		f.write(win.Name)
+	}
+
+	if win.HasProps && len(win.PropOrder) > 0 {
+		f.write("(")
+		for i, key := range win.PropOrder {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.write(key)
+			f.write("=")
+			f.writeExprValue(win.Props[key])
+		}
+		f.write(")")
+	}
+
+	f.write(" {")
+	f.newline()
+	f.indent++
+
+	// Format declarations and visual nodes in order
+	prevEndLine := 0
+	for _, d := range win.Decls {
+		switch decl := d.(type) {
+		case *ast.Comment:
+			if decl.Inline {
+				continue
+			}
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.writeLine(decl.Text)
+			prevEndLine = decl.Pos.Line
+		case *ast.Const:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatConsts([]*ast.Const{decl})
+			prevEndLine = decl.Pos.Line
+		case *ast.Data:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatVars([]*ast.Data{decl})
+			prevEndLine = decl.Pos.Line
+		case *ast.FuncDef:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatFuncDef(decl)
+			prevEndLine = declEndLine(decl)
+		case *ast.Timer:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatTimer(decl)
+			prevEndLine = decl.Pos.Line
+		case *ast.VisualNode:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			f.formatVisualNode(decl)
+			prevEndLine = declEndLine(decl)
+		}
+	}
+
+	f.indent--
+	f.writeLine("}")
+}
+
 func (f *formatter) formatComponent(comp *ast.Component) {
 	f.writeIndent()
 	f.write("component ")
@@ -1195,6 +1303,10 @@ func declEndLine(d ast.Decl) int {
 			return decl.EndLine
 		}
 	case *ast.VisualNode:
+		if decl.EndLine > 0 {
+			return decl.EndLine
+		}
+	case *ast.Window:
 		if decl.EndLine > 0 {
 			return decl.EndLine
 		}
@@ -1304,6 +1416,16 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			} else {
 				f.formatVisualNode(decl)
 			}
+			prevEndLine = declEndLine(decl)
+		case *ast.Window:
+			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+				f.newline()
+			}
+			if decl.Disabled {
+				f.writeIndent()
+				f.write("/- ")
+			}
+			f.formatWindow(decl)
 			prevEndLine = declEndLine(decl)
 		}
 	}
@@ -1494,7 +1616,7 @@ func (f *formatter) writeExprTo(sb io.Writer, expr ast.Expr) {
 		writeLiteral(sb, expr.Literal, expr.TypeHint)
 		return
 	}
-	io.WriteString(sb,"null")
+	io.WriteString(sb, "null")
 }
 
 func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
@@ -1641,20 +1763,20 @@ func (f *formatter) writeEventValue(sb io.Writer, expr ast.Expr) {
 			io.WriteString(sb, string('{'))
 			for _, stmt := range block.Stmts {
 				io.WriteString(sb, "\n")
-				io.WriteString(sb,indentStr(f.indent + 1))
+				io.WriteString(sb, indentStr(f.indent+1))
 				writeNode(sb, stmt)
 			}
 			io.WriteString(sb, "\n")
-			io.WriteString(sb,indentStr(f.indent))
+			io.WriteString(sb, indentStr(f.indent))
 			io.WriteString(sb, string('}'))
 			return
 		}
-		io.WriteString(sb,"{ ")
+		io.WriteString(sb, "{ ")
 		writeNode(sb, expr.SNGL)
-		io.WriteString(sb," }")
+		io.WriteString(sb, " }")
 		return
 	}
-	io.WriteString(sb,"{ null }")
+	io.WriteString(sb, "{ null }")
 }
 
 // writeExprValue writes an Expr directly to the output writer.
@@ -1700,38 +1822,38 @@ func FormatNode(n ast.Node) string {
 
 func writeNode(sb io.Writer, n ast.Node) {
 	if n == nil {
-		io.WriteString(sb,"null")
+		io.WriteString(sb, "null")
 		return
 	}
 	switch e := n.(type) {
 	case *ast.LiteralExpr:
 		writeLiteralExpr(sb, e)
 	case *ast.IdentExpr:
-		io.WriteString(sb,e.Name)
+		io.WriteString(sb, e.Name)
 	case *ast.ElementRefExpr:
 		io.WriteString(sb, string('#'))
-		io.WriteString(sb,e.Name)
+		io.WriteString(sb, e.Name)
 	case *ast.LambdaExpr:
 		if e.Block != nil {
-			io.WriteString(sb,"func(")
+			io.WriteString(sb, "func(")
 			for i, name := range e.Params {
 				if i > 0 {
-					io.WriteString(sb,", ")
+					io.WriteString(sb, ", ")
 				}
-				io.WriteString(sb,name)
+				io.WriteString(sb, name)
 				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
 					io.WriteString(sb, string(' '))
-					io.WriteString(sb,e.ParamTypes[i])
+					io.WriteString(sb, e.ParamTypes[i])
 				}
 			}
-			io.WriteString(sb,") {\n")
+			io.WriteString(sb, ") {\n")
 			for _, stmt := range e.Block.Stmts {
-				io.WriteString(sb,"    ")
+				io.WriteString(sb, "    ")
 				writeNode(sb, stmt)
 				io.WriteString(sb, "\n")
 			}
 			if e.Block.Return != nil {
-				io.WriteString(sb,"    return ")
+				io.WriteString(sb, "    return ")
 				writeNode(sb, e.Block.Return)
 				io.WriteString(sb, "\n")
 			}
@@ -1740,15 +1862,15 @@ func writeNode(sb io.Writer, n ast.Node) {
 			io.WriteString(sb, string('('))
 			for i, name := range e.Params {
 				if i > 0 {
-					io.WriteString(sb,", ")
+					io.WriteString(sb, ", ")
 				}
-				io.WriteString(sb,name)
+				io.WriteString(sb, name)
 				if i < len(e.ParamTypes) && e.ParamTypes[i] != "" {
 					io.WriteString(sb, string(' '))
-					io.WriteString(sb,e.ParamTypes[i])
+					io.WriteString(sb, e.ParamTypes[i])
 				}
 			}
-			io.WriteString(sb,") => ")
+			io.WriteString(sb, ") => ")
 			writeNode(sb, e.Body)
 		}
 	case *ast.ParenExpr:
@@ -1758,7 +1880,7 @@ func writeNode(sb io.Writer, n ast.Node) {
 	case *ast.BinaryExpr:
 		writeNode(sb, e.Left)
 		io.WriteString(sb, string(' '))
-		io.WriteString(sb,binOpString(e.Op))
+		io.WriteString(sb, binOpString(e.Op))
 		io.WriteString(sb, string(' '))
 		writeNode(sb, e.Right)
 	case *ast.UnaryExpr:
@@ -1775,28 +1897,28 @@ func writeNode(sb io.Writer, n ast.Node) {
 		}
 	case *ast.TernaryExpr:
 		writeNode(sb, e.Cond)
-		io.WriteString(sb," ? ")
+		io.WriteString(sb, " ? ")
 		writeNode(sb, e.Then)
-		io.WriteString(sb," : ")
+		io.WriteString(sb, " : ")
 		writeNode(sb, e.Else)
 	case *ast.SelectExpr:
 		writeNode(sb, e.Operand)
 		io.WriteString(sb, string('.'))
-		io.WriteString(sb,e.Field)
+		io.WriteString(sb, e.Field)
 	case *ast.IndexExpr:
 		writeNode(sb, e.Operand)
 		io.WriteString(sb, string('['))
 		writeNode(sb, e.Index)
 		io.WriteString(sb, string(']'))
 	case *ast.CallExpr:
-		io.WriteString(sb,e.Func)
+		io.WriteString(sb, e.Func)
 		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.MethodExpr:
 		writeNode(sb, e.Receiver)
 		io.WriteString(sb, string('.'))
-		io.WriteString(sb,e.Method)
+		io.WriteString(sb, e.Method)
 		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
@@ -1805,32 +1927,32 @@ func writeNode(sb io.Writer, n ast.Node) {
 		if e.Name == "" {
 			sep = "="
 		}
-		io.WriteString(sb,e.Name)
+		io.WriteString(sb, e.Name)
 		io.WriteString(sb, string('{'))
 		if e.Multiline {
 			io.WriteString(sb, "\n")
 			for _, field := range e.Fields {
 				if field.Spread {
-					io.WriteString(sb,"...")
+					io.WriteString(sb, "...")
 					writeNode(sb, field.Value)
 				} else {
-					io.WriteString(sb,field.Name)
-					io.WriteString(sb,sep)
+					io.WriteString(sb, field.Name)
+					io.WriteString(sb, sep)
 					writeNode(sb, field.Value)
 				}
-				io.WriteString(sb,",\n")
+				io.WriteString(sb, ",\n")
 			}
 		} else {
 			for i, field := range e.Fields {
 				if i > 0 {
-					io.WriteString(sb,", ")
+					io.WriteString(sb, ", ")
 				}
 				if field.Spread {
-					io.WriteString(sb,"...")
+					io.WriteString(sb, "...")
 					writeNode(sb, field.Value)
 				} else {
-					io.WriteString(sb,field.Name)
-					io.WriteString(sb,sep)
+					io.WriteString(sb, field.Name)
+					io.WriteString(sb, sep)
 					writeNode(sb, field.Value)
 				}
 			}
@@ -1840,19 +1962,19 @@ func writeNode(sb io.Writer, n ast.Node) {
 		io.WriteString(sb, string('['))
 		for i, el := range e.Elements {
 			if i > 0 {
-				io.WriteString(sb,", ")
+				io.WriteString(sb, ", ")
 			}
 			writeNode(sb, el)
 		}
 		io.WriteString(sb, string(']'))
 	case *ast.SpreadExpr:
-		io.WriteString(sb,"...")
+		io.WriteString(sb, "...")
 		writeNode(sb, e.Operand)
 	case *ast.InterpolationExpr:
 		io.WriteString(sb, string('"'))
 		for _, p := range e.Parts {
 			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				io.WriteString(sb,escapeStringContent(fmt.Sprintf("%v", lit.Value)))
+				io.WriteString(sb, escapeStringContent(fmt.Sprintf("%v", lit.Value)))
 			} else {
 				io.WriteString(sb, string('{'))
 				writeNode(sb, p)
@@ -1863,36 +1985,36 @@ func writeNode(sb io.Writer, n ast.Node) {
 	case *ast.AssignStmt:
 		writeNode(sb, e.Target)
 		io.WriteString(sb, string(' '))
-		io.WriteString(sb,assignOpString(e.Op))
+		io.WriteString(sb, assignOpString(e.Op))
 		io.WriteString(sb, string(' '))
 		writeNode(sb, e.Value)
 	case *ast.ToggleStmt:
 		writeNode(sb, e.Target)
-		io.WriteString(sb,"!!")
+		io.WriteString(sb, "!!")
 	case *ast.EmitStmt:
 		io.WriteString(sb, string('@'))
-		io.WriteString(sb,e.Name)
+		io.WriteString(sb, e.Name)
 		io.WriteString(sb, string('('))
 		writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.StmtBlock:
 		for i, s := range e.Stmts {
 			if i > 0 {
-				io.WriteString(sb,"; ")
+				io.WriteString(sb, "; ")
 			}
 			writeNode(sb, s)
 		}
 	case *ast.VarStmt:
-		io.WriteString(sb,"var ")
-		io.WriteString(sb,e.Name)
+		io.WriteString(sb, "var ")
+		io.WriteString(sb, e.Name)
 		if e.Type != "" {
 			io.WriteString(sb, string(' '))
-			io.WriteString(sb,typeHintStr(e.Type, nil))
+			io.WriteString(sb, typeHintStr(e.Type, nil))
 		}
-		io.WriteString(sb," = ")
+		io.WriteString(sb, " = ")
 		writeNode(sb, e.Init)
 	case *ast.ReturnStmt:
-		io.WriteString(sb,"return")
+		io.WriteString(sb, "return")
 		if e.Value != nil {
 			io.WriteString(sb, string(' '))
 			writeNode(sb, e.Value)
@@ -1922,34 +2044,34 @@ func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 	switch e.Kind {
 	case ast.LiteralInt:
 		if e.Raw != "" {
-			io.WriteString(sb,e.Raw)
+			io.WriteString(sb, e.Raw)
 		} else {
 			fmt.Fprintf(sb, "%d", e.Value)
 		}
 	case ast.LiteralFloat:
 		if e.Raw != "" {
-			io.WriteString(sb,e.Raw)
+			io.WriteString(sb, e.Raw)
 		} else {
 			fmt.Fprintf(sb, "%v", e.Value)
 		}
 	case ast.LiteralString:
 		io.WriteString(sb, string('"'))
-		io.WriteString(sb,escapeStringContent(fmt.Sprintf("%v", e.Value)))
+		io.WriteString(sb, escapeStringContent(fmt.Sprintf("%v", e.Value)))
 		io.WriteString(sb, string('"'))
 	case ast.LiteralBool:
 		if e.Value.(bool) {
-			io.WriteString(sb,"true")
+			io.WriteString(sb, "true")
 		} else {
-			io.WriteString(sb,"false")
+			io.WriteString(sb, "false")
 		}
 	case ast.LiteralNull:
-		io.WriteString(sb,"null")
+		io.WriteString(sb, "null")
 	case ast.LiteralColor:
 		fmt.Fprintf(sb, "%v", e.Value)
 	case ast.LiteralUnit:
 		ul := e.Value.(ast.UnitLiteral)
-		io.WriteString(sb,ul.Number)
-		io.WriteString(sb,ul.Suffix)
+		io.WriteString(sb, ul.Number)
+		io.WriteString(sb, ul.Suffix)
 	default:
 		fmt.Fprintf(sb, "%v", e.Value)
 	}
@@ -1958,14 +2080,14 @@ func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 func writeLiteral(sb io.Writer, v any, typeHint string) {
 	switch val := v.(type) {
 	case ast.UnitLiteral:
-		io.WriteString(sb,val.Number)
-		io.WriteString(sb,val.Suffix)
+		io.WriteString(sb, val.Number)
+		io.WriteString(sb, val.Suffix)
 	case string:
 		if strings.HasPrefix(val, "#") && (typeHint == "color" || typeHint == "") {
-			io.WriteString(sb,val)
+			io.WriteString(sb, val)
 		} else {
 			io.WriteString(sb, string('"'))
-			io.WriteString(sb,escapeStringContent(val))
+			io.WriteString(sb, escapeStringContent(val))
 			io.WriteString(sb, string('"'))
 		}
 	case int:
@@ -1974,12 +2096,12 @@ func writeLiteral(sb io.Writer, v any, typeHint string) {
 		fmt.Fprintf(sb, "%v", val)
 	case bool:
 		if val {
-			io.WriteString(sb,"true")
+			io.WriteString(sb, "true")
 		} else {
-			io.WriteString(sb,"false")
+			io.WriteString(sb, "false")
 		}
 	case nil:
-		io.WriteString(sb,"null")
+		io.WriteString(sb, "null")
 	default:
 		fmt.Fprintf(sb, "%v", v)
 	}
@@ -1990,7 +2112,7 @@ func writeLiteral(sb io.Writer, v any, typeHint string) {
 func writeArgs(sb io.Writer, args []ast.Node) {
 	for i, a := range args {
 		if i > 0 {
-			io.WriteString(sb,", ")
+			io.WriteString(sb, ", ")
 		}
 		writeNode(sb, a)
 	}

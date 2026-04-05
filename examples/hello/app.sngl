@@ -1,0 +1,16 @@
+output {
+    js {
+        html
+    }
+}
+
+component main {
+    var name = "World"
+
+    vbox(style={gap=12, padding=16}) {
+        text(value="Hello, {name}!", style={fontSize=24, fontWeight="bold"})
+        hbox(style={gap=8, alignItems="center"}) {
+            input(@input={ name = event.value }, placeholder="Enter your name")
+        }
+    }
+}

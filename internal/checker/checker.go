@@ -219,13 +219,13 @@ type checker struct {
 	targetPlatforms []string        // platforms from output declarations (for availability checks)
 	fsys            fs.FS
 	schemeDir       string // real OS path for scheme imports (e.g., go://)
-	resolve       ImportResolver
-	schemeResolve SchemeResolver
-	visited       map[string]bool // tracks visited import paths to detect cycles
-	isMain        bool            // true for the entry-point package
-	namespaces    map[string]*importNS
-	apis          *APIConfig
-	errs          []error
+	resolve         ImportResolver
+	schemeResolve   SchemeResolver
+	visited         map[string]bool // tracks visited import paths to detect cycles
+	isMain          bool            // true for the entry-point package
+	namespaces      map[string]*importNS
+	apis            *APIConfig
+	errs            []error
 }
 
 // importNS stores the exported declarations from an imported package.
@@ -327,6 +327,19 @@ func (c *checker) validateConstExpr(pos ast.Pos, n ast.Node, constNames map[stri
 				}
 			}
 		}
+		// Check for pure Go function on an imported namespace
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.Purity == ast.PurityPure {
+						for _, arg := range e.Args {
+							c.validateConstExpr(pos, arg, constNames)
+						}
+						return
+					}
+				}
+			}
+		}
 		// Instance method — receiver must be const
 		c.validateConstExpr(pos, e.Receiver, constNames)
 		for _, arg := range e.Args {
@@ -398,7 +411,14 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.namespaces[imp.Namespace] = ns
 			c.structs = append(c.structs, decls.Structs...)
 			c.enums = append(c.enums, decls.Enums...)
-			// Register extern data in scope qualified by namespace
+			// Propagate native decls to document for compile-time evaluation.
+			if doc.NativeImports == nil {
+				doc.NativeImports = map[string]*ast.NativeDecls{}
+			}
+			doc.NativeImports[imp.Namespace] = decls
+			// Register extern data in scope.
+			// For file:// imports, register unqualified (the namespace IS the value).
+			// For go:// imports, register qualified by namespace.
 			for _, d := range decls.Data {
 				hintType := Dyn
 				if d.Init.TypeHint != "" {
@@ -583,6 +603,15 @@ func (c *checker) pass1(doc *ast.Document) {
 				ParamTypes: paramTypes,
 			}
 		}
+	}
+
+	// Analyze purity of document-level functions.
+	docDataNames := map[string]bool{}
+	for _, d := range doc.Data {
+		docDataNames[d.Name] = true
+	}
+	for _, fn := range doc.Functions {
+		fn.Purity = analyzePurity(fn, docDataNames)
 	}
 
 	// User-defined components
@@ -1070,14 +1099,60 @@ func (c *checker) pass2(doc *ast.Document) {
 		for _, child := range doc.App.Children {
 			c.checkVisualNode(child, c.scope)
 		}
+		c.checkWindows(doc.App.Windows)
 	}
 	for _, comp := range doc.Components {
 		compScope := NewScope(c.scope)
 		for _, p := range comp.Params {
 			compScope.Declare(p.Name, c.resolveParamType(p))
 		}
+		// Analyze purity of component-scoped functions.
+		compDataNames := map[string]bool{}
+		for _, d := range comp.Data {
+			compDataNames[d.Name] = true
+		}
+		for _, fn := range comp.Functions {
+			fn.Purity = analyzePurity(fn, compDataNames)
+		}
 		for _, child := range comp.Body {
 			c.checkVisualNode(child, compScope)
+		}
+	}
+}
+
+// checkWindows validates window declarations.
+func (c *checker) checkWindows(windows []*ast.Window) {
+	seen := map[string]bool{}
+	for _, win := range windows {
+		if win.Name != "" {
+			if seen[win.Name] {
+				c.errorAt(win.Pos, "duplicate window name %q", win.Name)
+			}
+			seen[win.Name] = true
+		}
+
+		// Create a scope for window-level declarations.
+		winScope := NewScope(c.scope)
+		for _, d := range win.Data {
+			t := Dyn
+			if d.Init.TypeHint != "" {
+				t = TypeFromHint(d.Init.TypeHint)
+			}
+			winScope.Declare(d.Name, t)
+		}
+		for _, cn := range win.Consts {
+			t := Dyn
+			if cn.Init.TypeHint != "" {
+				t = TypeFromHint(cn.Init.TypeHint)
+			}
+			winScope.Declare(cn.Name, t)
+		}
+		for _, fn := range win.Functions {
+			winScope.Declare(fn.Name, Dyn)
+		}
+
+		for _, child := range win.Children {
+			c.checkVisualNode(child, winScope)
 		}
 	}
 }
@@ -1262,6 +1337,21 @@ func (c *checker) isConstantNode(n ast.Node) bool {
 		}
 		return true
 	case *ast.MethodExpr:
+		// Check if receiver is a namespace with a pure function
+		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
+			if ns, exists := c.namespaces[ident.Name]; exists {
+				for _, d := range ns.data {
+					if d.Name == e.Method && d.Purity == ast.PurityPure {
+						for _, arg := range e.Args {
+							if !c.isConstantNode(arg) {
+								return false
+							}
+						}
+						return true
+					}
+				}
+			}
+		}
 		if !c.isConstantNode(e.Receiver) {
 			return false
 		}

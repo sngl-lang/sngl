@@ -94,11 +94,11 @@ type ServerInfo struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync       int                     `json:"textDocumentSync"` // 1=Full
-	HoverProvider          bool                    `json:"hoverProvider,omitempty"`
-	CompletionProvider     *CompletionOptions      `json:"completionProvider,omitempty"`
-	DiagnosticProvider     *DiagnosticOptions      `json:"diagnosticProvider,omitempty"`
-	SemanticTokensProvider *SemanticTokensOptions  `json:"semanticTokensProvider,omitempty"`
+	TextDocumentSync       int                    `json:"textDocumentSync"` // 1=Full
+	HoverProvider          bool                   `json:"hoverProvider,omitempty"`
+	CompletionProvider     *CompletionOptions     `json:"completionProvider,omitempty"`
+	DiagnosticProvider     *DiagnosticOptions     `json:"diagnosticProvider,omitempty"`
+	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
 }
 
 type SemanticTokensOptions struct {

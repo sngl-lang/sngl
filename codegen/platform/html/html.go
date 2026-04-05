@@ -2,9 +2,12 @@ package html
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html"
 	"maps"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -37,14 +40,158 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	gen := newHTMLGen(req.Doc, req.Lang, req.Options)
-	src := gen.generate()
+	// Collect file assets (populated by optimizer from file:// path() calls).
+	var files []*codegen.OutputFile
+	for _, fa := range req.Doc.FileAssets {
+		data, err := os.ReadFile(fa.SrcPath)
+		if err == nil {
+			files = append(files, codegen.BytesFile(fa.OutPath, data))
+		}
+	}
 
-	return &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("index.html", []byte(src)),
-		},
-	}, nil
+	// Resolve stylesheet option: source path relative to project dir.
+	stylesheetURL := ""
+	if ssPath := req.Options["stylesheet"]; ssPath != "" {
+		projectDir := req.Options["projectDir"]
+		absPath := ssPath
+		if projectDir != "" && !filepath.IsAbs(ssPath) {
+			absPath = filepath.Join(projectDir, ssPath)
+		}
+		outName := "assets/" + filepath.Base(ssPath)
+		stylesheetURL = "/" + outName
+		data, err := os.ReadFile(absPath)
+		if err == nil {
+			files = append(files, codegen.BytesFile(outName, data))
+		}
+	}
+
+	// Build WASM for imported packages that have runtime-used functions.
+	// Each import scheme's language may provide a WASMCompiler.
+	var wasmLoaderHTML string
+	wasmPkgs := collectWASMPackages(req.Doc)
+	if len(wasmPkgs) > 0 {
+		projectDir := req.Options["projectDir"]
+		wasmExecAdded := false
+		var loaderScripts []string
+
+		for _, wp := range wasmPkgs {
+			// Look up the lang for this import's scheme (e.g., go:// → "go" lang)
+			schemeLang := codegen.LookupLang(wp.namespace)
+			// Try all registered langs for WASMCompiler support
+			if schemeLang == nil {
+				for _, name := range codegen.Langs() {
+					l := codegen.LookupLang(name)
+					if _, ok := l.(codegen.WASMCompiler); ok {
+						schemeLang = l
+						break
+					}
+				}
+			}
+			wc, ok := schemeLang.(codegen.WASMCompiler)
+			if !ok {
+				continue
+			}
+
+			// Add runtime support JS (once)
+			if !wasmExecAdded {
+				wasmExecData, err := wc.WASMExecJS()
+				if err == nil {
+					files = append(files, codegen.BytesFile("assets/wasm_exec.js", wasmExecData))
+					wasmExecAdded = true
+				}
+			}
+
+			wasmBytes, err := wc.BuildWASM(projectDir, wp.importPath, wp.funcs)
+			if err != nil {
+				return &codegen.Response{Error: fmt.Sprintf("wasm build: %v", err)}, nil
+			}
+			wasmFile := "assets/" + wp.namespace + ".wasm"
+			files = append(files, codegen.BytesFile(wasmFile, wasmBytes))
+			loaderScripts = append(loaderScripts, fmt.Sprintf(
+				`  const _go_%s = new Go();
+  WebAssembly.instantiateStreaming(fetch("/%s"), _go_%s.importObject).then(r => { _go_%s.run(r.instance); });`,
+				wp.namespace, wasmFile, wp.namespace, wp.namespace))
+		}
+		if len(loaderScripts) > 0 {
+			wasmLoaderHTML = fmt.Sprintf(
+				"  <script src=\"/assets/wasm_exec.js\"></script>\n  <script>\n  window.__sngl_externs = window.__sngl_externs || {};\n%s\n  </script>\n",
+				strings.Join(loaderScripts, "\n"))
+		}
+	}
+
+	// Merge non-pure go:// extern functions into doc.Data for WASM bindings.
+	// Pure functions were fully evaluated at compile time and don't need runtime bindings.
+	for _, ni := range req.Doc.NativeImports {
+		for _, d := range ni.Data {
+			if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+				req.Doc.Data = append(req.Doc.Data, d)
+			}
+		}
+	}
+
+	// Generate HTML pages from windows (or single-window fallback).
+	windows := req.Doc.App.EffectiveWindows()
+	if len(windows) <= 1 {
+		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
+		gen.wasmLoader = wasmLoaderHTML
+		src := gen.generate()
+		files = append(files, codegen.BytesFile("index.html", []byte(src)))
+		return &codegen.Response{Files: files}, nil
+	}
+	for _, win := range windows {
+		name := win.Name
+		// Try href prop for the filename if no static name
+		if name == "" {
+			name = staticPropString(win.Props, "href")
+		}
+		if name == "" {
+			name = staticPropString(win.Props, "slug")
+		}
+		if name == "" {
+			name = staticPropString(win.Props, "title")
+		}
+		// If name looks like a URL path (starts with /), use it directly
+		if strings.HasPrefix(name, "/") {
+			name = strings.TrimPrefix(name, "/")
+		} else if strings.HasSuffix(name, ".html") {
+			// Already has extension, use as-is
+		} else if name == "main" || name == "" || name == "index" {
+			name = "index.html"
+		} else {
+			name = name + ".html"
+		}
+		// Create a synthetic document with this window's children as the app body.
+		// Merge window-level state into the document so emitScript() can see it.
+		winDoc := req.Doc.Clone()
+		winDoc.App = &ast.App{Children: win.Children}
+		winDoc.Data = append(winDoc.Data, win.Data...)
+		winDoc.Consts = append(winDoc.Consts, win.Consts...)
+		winDoc.Functions = append(winDoc.Functions, win.Functions...)
+		winDoc.Timers = append(winDoc.Timers, win.Timers...)
+		gen := newHTMLGen(winDoc, req.Lang, req.Options)
+		gen.title = staticPropString(win.Props, "title")
+		gen.stylesheet = stylesheetURL
+		gen.favicon = staticPropString(win.Props, "favicon")
+		gen.wasmLoader = wasmLoaderHTML
+		src := gen.generate()
+		files = append(files, codegen.BytesFile(name, []byte(src)))
+	}
+	return &codegen.Response{Files: files}, nil
+}
+
+// staticPropString extracts a static string value from a props map.
+func staticPropString(props map[string]ast.Expr, key string) string {
+	if props == nil {
+		return ""
+	}
+	e, ok := props[key]
+	if !ok {
+		return ""
+	}
+	if s, ok := e.Literal.(string); ok {
+		return s
+	}
+	return ""
 }
 
 // htmlGen holds all state for generating a single HTML file.
@@ -78,6 +225,18 @@ type htmlGen struct {
 
 	// For building the scope
 	scope *codegen.ExprScope
+
+	// Page title for <title> tag in <head>
+	title string
+
+	// Stylesheet URL path to emit as <link> in <head>
+	stylesheet string
+
+	// Favicon URL path to emit as <link rel="icon"> in <head>
+	favicon string
+
+	// WASM loader HTML to inject in <head> (script tags for wasm_exec.js + instantiation)
+	wasmLoader string
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
@@ -163,6 +322,7 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		ComputedFields: g.computedFields,
 		FuncNames:      funcNames,
 		LocalVars:      localVars,
+		NeededHelpers:  make(map[string]bool),
 	}
 
 	// Compute dependency info for computed functions
@@ -188,12 +348,28 @@ func (g *htmlGen) generate() string {
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
 	b.WriteString("  <meta charset=\"utf-8\">\n")
-	b.WriteString("  <style>\n")
-	b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
-	b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
-	b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
-	b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
-	b.WriteString("  </style>\n")
+	b.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	if g.title != "" {
+		fmt.Fprintf(&b, "  <title>%s</title>\n", html.EscapeString(g.title))
+	}
+	if g.favicon != "" {
+		fmt.Fprintf(&b, "  <link rel=\"icon\" href=\"%s\">\n", html.EscapeString(g.favicon))
+	}
+	if g.stylesheet != "" {
+		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
+	}
+	if g.stylesheet == "" {
+		// Only emit default inline styles when no external stylesheet is specified.
+		b.WriteString("  <style>\n")
+		b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
+		b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
+		b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
+		b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
+		b.WriteString("  </style>\n")
+	}
+	if g.wasmLoader != "" {
+		b.WriteString(g.wasmLoader)
+	}
 	b.WriteString("</head><body>\n\n")
 
 	// Render static HTML body
@@ -203,12 +379,32 @@ func (g *htmlGen) generate() string {
 		}
 	}
 
-	b.WriteString("\n<script>\n")
-	g.emitScript(&b)
-	b.WriteString("</script>\n")
+	// Only emit <script> if there's actual runtime JS to execute.
+	var scriptBuf strings.Builder
+	g.emitScript(&scriptBuf)
+	script := scriptBuf.String()
+	if strings.TrimSpace(script) != "" {
+		b.WriteString("\n<script>\n")
+		b.WriteString(script)
+		b.WriteString("</script>\n")
+	}
 	b.WriteString("</body></html>\n")
 
-	return b.String()
+	// Strip unreferenced IDs from HTML to reduce noise.
+	result := b.String()
+	referencedIDs := g.collectReferencedIDs()
+	refSet := map[string]bool{}
+	for _, id := range referencedIDs {
+		refSet[id] = true
+	}
+	for i := 0; i < g.nextID; i++ {
+		id := fmt.Sprintf("$%d", i)
+		if !refSet[id] {
+			result = strings.Replace(result, fmt.Sprintf(` id="%s"`, id), "", 1)
+		}
+	}
+
+	return result
 }
 
 // renderStaticNode renders a VisualNode as static HTML.
@@ -1197,19 +1393,29 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 	style := g.buildCSSStyle(vn)
 
-	// Build inline attributes from static props
+	// Build inline attributes from static props.
+	// innerText and innerHTML are rendered as element content, not attributes.
 	var attrs strings.Builder
+	staticInnerText := ""
+	staticInnerHTML := ""
 	for name, expr := range vn.Props {
 		if name == "style" {
 			continue
 		}
 		if expr.SNGL == nil {
 			val := g.evalStaticString(vn.Props, name)
-			if val != "" {
-				fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
-			} else if expr.Literal != nil {
-				if bv, ok := expr.Literal.(bool); ok && bv {
-					fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
+			switch name {
+			case "innerText":
+				staticInnerText = val
+			case "innerHTML":
+				staticInnerHTML = val
+			default:
+				if val != "" {
+					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+				} else if expr.Literal != nil {
+					if bv, ok := expr.Literal.(bool); ok && bv {
+						fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
+					}
 				}
 			}
 		}
@@ -1222,6 +1428,12 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
 		fmt.Fprintf(b, " id=\"%s\"", id)
+	}
+	// Emit static class for raw HTML elements
+	if vn.Class != nil && vn.Class.Literal != nil {
+		if s, ok := vn.Class.Literal.(string); ok && s != "" {
+			fmt.Fprintf(b, " class=%q", s)
+		}
 	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1240,11 +1452,22 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	case "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr":
 		b.WriteString("/>\n")
 	default:
-		b.WriteString(">\n")
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		b.WriteString(">")
+		if staticInnerHTML != "" {
+			b.WriteString("\n")
+			b.WriteString(staticInnerHTML)
+			b.WriteString("\n")
+			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
+		} else if staticInnerText != "" {
+			b.WriteString(html.EscapeString(staticInnerText))
+			fmt.Fprintf(b, "</%s>\n", tag)
+		} else {
+			b.WriteString("\n")
+			for _, child := range vn.Children {
+				g.renderStaticNode(b, child, depth+1)
+			}
+			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
-		fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 	}
 
 	if id == "" {
@@ -1260,9 +1483,17 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 			jsVal := g.exprToJS(expr)
 			deps := g.dt.ExprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
+			var body string
+			switch name {
+			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled":
+				// DOM properties — set directly, not via setAttribute
+				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
+			default:
+				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
+			}
 			g.updates = append(g.updates, updateFunc{
 				funcName: uname,
-				body:     fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal),
+				body:     body,
 				deps:     deps,
 			})
 		}
@@ -1384,7 +1615,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		})
 	}
 
-	// Extern bindings (provided by host via window.__sngl_externs)
+	// Extern bindings (provided by host via window.__sngl_externs or WASM)
 	hasExterns := false
 	for _, d := range g.doc.Data {
 		if d.Extern || d.IsFunc {
@@ -1394,11 +1625,39 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if hasExterns {
 		b.WriteString("// Extern bindings\nconst $ext = window.__sngl_externs || {};\n")
+
+		// Group go:// extern functions by namespace for qualified access (e.g., purepkg.Greet)
+		nsByName := map[string][]string{} // namespace → function names
+		for ns, ni := range g.doc.NativeImports {
+			for _, d := range ni.Data {
+				if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+					nsByName[ns] = append(nsByName[ns], d.Name)
+				}
+			}
+		}
+		for ns, funcs := range nsByName {
+			fmt.Fprintf(b, "const %s = {\n", ns)
+			for _, fn := range funcs {
+				fmt.Fprintf(b, "  %s: $ext.%s || function(){},\n", fn, fn)
+			}
+			b.WriteString("};\n")
+		}
+
+		// Non-namespaced extern functions (direct doc.Data externs)
 		for _, d := range g.doc.Data {
-			if !d.Extern && !d.IsFunc {
+			if !d.Extern || !d.IsFunc {
 				continue
 			}
-			if d.IsFunc {
+			// Skip if already in a namespace
+			inNS := false
+			for _, funcs := range nsByName {
+				for _, fn := range funcs {
+					if fn == d.Name {
+						inNS = true
+					}
+				}
+			}
+			if !inNS {
 				fmt.Fprintf(b, "const %s = $ext.%s || function(){};\n", d.Name, d.Name)
 			}
 		}
@@ -1462,20 +1721,21 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Getters
+	// Setters — only emit for fields with triggers, timer controls, or in preview mode
 	for _, d := range g.doc.Data {
 		if d.IsFunc {
 			continue
 		}
-		fmt.Fprintf(b, "function $get_%s() { return state.%s; }\n", d.Name, d.Name)
-	}
-	if len(stateFields) > 0 {
-		b.WriteString("\n")
-	}
-
-	// Setters
-	for _, d := range g.doc.Data {
-		if d.IsFunc {
+		needsSetter := d.Trigger != "" || g.preview
+		if !needsSetter {
+			for _, t := range g.timers {
+				if t.activeVar == d.Name {
+					needsSetter = true
+					break
+				}
+			}
+		}
+		if !needsSetter {
 			continue
 		}
 		fmt.Fprintf(b, "function $set_%s(v) {\n", d.Name)
@@ -1524,8 +1784,10 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Helper functions
-	b.WriteString("function String(v) { return \"\" + v; }\n\n")
+	// Helper functions — only emit if used
+	if g.scope.NeededHelpers["String"] {
+		b.WriteString("function String(v) { return \"\" + v; }\n\n")
+	}
 
 	// Component param constants
 	for _, cp := range g.componentParams {
@@ -2012,20 +2274,30 @@ func stylePropToCSS(prop string, expr ast.Expr) string {
 }
 
 func exprToStaticValue(expr ast.Expr) string {
+	// Check folded literal first
 	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return v
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
+		return literalToString(expr.Literal)
+	}
+	// Check SNGL literal expression (not yet folded)
+	if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
+		return literalToString(lit.Value)
+	}
+	return ""
+}
+
+func literalToString(v any) string {
+	switch val := v.(type) {
+	case string:
+		return val
+	case int:
+		return fmt.Sprintf("%d", val)
+	case float64:
+		return fmt.Sprintf("%v", val)
+	case bool:
+		if val {
+			return "true"
 		}
+		return "false"
 	}
 	return ""
 }
@@ -2116,6 +2388,10 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 				return "true"
 			}
 			return "false"
+		case []any:
+			return complexLiteralToJS(v)
+		case map[string]any:
+			return complexLiteralToJS(v)
 		}
 	}
 	// SNGL init expression (e.g., struct literal)
@@ -2132,6 +2408,15 @@ func (g *htmlGen) literalToJS(expr ast.Expr) string {
 		return "[]"
 	}
 	return `""`
+}
+
+// complexLiteralToJS converts []any or map[string]any to JSON for embedding in JS.
+func complexLiteralToJS(v any) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "null"
+	}
+	return string(data)
 }
 
 func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string {

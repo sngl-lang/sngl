@@ -251,6 +251,9 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	args := n.Args
 
 	if fn == "string" && len(args) == 1 {
+		if scope.NeededHelpers != nil {
+			scope.NeededHelpers["String"] = true
+		}
 		return "String(" + translateExpr(args[0], scope) + ")"
 	}
 	if fn == "int" && len(args) == 1 {

@@ -26,6 +26,7 @@ type ExprScope struct {
 	LocalVars      map[string]bool   // for-loop vars, params → no prefix
 	Renames        map[string]string // local var renames (original → unique name)
 	EventVar       string            // what "event" maps to in this context
+	NeededHelpers  map[string]bool   // helper functions needed (e.g., "String")
 }
 
 // LangTranslator translates SNGL expressions into a target language's syntax.
@@ -90,6 +91,28 @@ type Builder interface {
 	Build(dir string, opts map[string]string) (artifact string, err error)
 }
 
+// WASMCompiler is optionally implemented by LangTranslators that can compile
+// imported packages to WebAssembly with JS bindings. Platforms like HTML check
+// for this interface to enable go:// (or other scheme) imports at runtime.
+type WASMCompiler interface {
+	// BuildWASM compiles a package to WASM and returns the binary.
+	// projectDir is the project root (for module resolution).
+	// importPath is the Go/native package path.
+	// funcs lists which functions need JS bindings.
+	BuildWASM(projectDir, importPath string, funcs []WASMFunc) ([]byte, error)
+
+	// WASMExecJS returns the runtime support JS needed to bootstrap WASM
+	// (e.g., Go's wasm_exec.js).
+	WASMExecJS() ([]byte, error)
+}
+
+// WASMFunc describes a function to expose from WASM to JavaScript.
+type WASMFunc struct {
+	Name       string
+	ParamTypes []string
+	ReturnType string
+}
+
 // APIProvider is optionally implemented by LangTranslator or PlatformGenerator
 // to expose a pre-defined SNGL API as a checker namespace. The returned document's
 // structs, enums, data, and components become available under the lang/platform name.
@@ -98,7 +121,6 @@ type Builder interface {
 type APIProvider interface {
 	API() *ast.Document
 }
-
 
 // APIResolver is optionally implemented alongside or instead of APIProvider
 // for dynamic name resolution when a name isn't found in the static API document.

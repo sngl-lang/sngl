@@ -96,7 +96,6 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	return formatted, nil
 }
 
-
 func nodeNeedsFmt(n ast.Node) bool {
 	switch e := n.(type) {
 	case *ast.InterpolationExpr:

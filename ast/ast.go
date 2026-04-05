@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// FileAsset records a file that needs to be copied to the output directory.
+type FileAsset struct {
+	SrcPath string // absolute source path
+	OutPath string // output path relative to output dir (e.g., "assets/style.css")
+	URL     string // URL path for use in HTML (e.g., "/assets/style.css")
+}
+
 // Pos records the source position of an AST node.
 type Pos struct {
 	Line   int // 1-based line number
@@ -71,10 +78,13 @@ type Document struct {
 	ImportedComponents []*Component // populated by checker; qualified-name keyed
 	AbstractComponents []*Component // stdlib components with default bodies; populated by checker
 	Timers             []*Timer
-	Styles []*StyleDecl
-	App    *App
-	Comments           []Comment // all comments, ordered by position
-	Decls              []Decl    // ordered declarations including interleaved comments
+	Styles             []*StyleDecl
+	Windows            []*Window // top-level window declarations
+	App                *App
+	NativeImports      map[string]*NativeDecls // namespace → resolved native decls (populated by checker)
+	FileAssets         []FileAsset             // files to copy to output (populated by optimizer)
+	Comments           []Comment               // all comments, ordered by position
+	Decls              []Decl                  // ordered declarations including interleaved comments
 }
 
 // FindComponent looks up a component by name, searching local components first,
@@ -112,7 +122,6 @@ func (d *Document) AllComponents() []*Component {
 	all = append(all, d.AbstractComponents...)
 	return all
 }
-
 
 // UnitDef declares a unit type with named suffixes.
 type UnitDef struct {
@@ -178,11 +187,22 @@ type NativeDecls struct {
 	ImportPath string  // e.g., "go/ast" for go:// imports
 }
 
+// Purity describes the side-effect level of a function.
+type Purity int
+
+const (
+	PurityUnknown  Purity = iota // not annotated
+	PurityPure                   // //sngl:pure — no side effects, deterministic, safe for compile-time evaluation
+	PurityReadonly               // //sngl:readonly — reads state but does not modify it
+	PurityMutates                // //sngl:mutates — modifies state
+)
+
 type Data struct {
 	Pos          Pos
 	Name         string
 	Init         Expr
 	Extern       bool     // "extern" positional arg present
+	Purity       Purity   // function purity level (from //sngl: annotations)
 	IsFunc       bool     // TypeHint starts with "func"
 	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
 	ReturnType   string   // parsed func return type, "" for void
@@ -229,14 +249,15 @@ type FuncDef struct {
 	EndLine    int // line of closing } for block-form funcs (set by parser)
 	BraceCol   int // column of opening { for block-form funcs (set by parser, for comment filtering)
 	Name       string
-	TypeParams []string   // generic type parameters, e.g., ["T", "U"]
+	TypeParams []string // generic type parameters, e.g., ["T", "U"]
 	Params     []*FuncParam
 	ReturnType string     // "" for void/action functions
 	Body       Expr       // single-expression form (= expr)
 	Block      *FuncBlock // block form ({ ... }), nil for expression form
 	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
 	Disabled   bool
-	HasParens  bool       // true when () was explicit in source (for zero-param expression funcs)
+	HasParens  bool   // true when () was explicit in source (for zero-param expression funcs)
+	Purity     Purity // populated by checker: pure, readonly, or mutates
 }
 
 // IsTest returns true if this function is a test function (name starts with "test").
@@ -270,21 +291,22 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 
 type Component struct {
 	Pos            Pos
-	EndLine        int    // line of closing }, for comment filtering
-	BraceCol       int    // column of opening {, for comment filtering
-	BraceLine      int    // line of opening {, for comment filtering
+	EndLine        int // line of closing }, for comment filtering
+	BraceCol       int // column of opening {, for comment filtering
+	BraceLine      int // line of opening {, for comment filtering
 	Name           string
 	Disabled       bool
-	Params         []*Param                // params/props declared in ()
-	Consts         []*Const                // const declarations
-	Data           []*Data                 // var declarations (component-scoped state)
-	Functions      []*FuncDef              // func declarations
-	Timers         []*Timer                // timer declarations
-	EventDecls     []*EventDecl            // @event declarations in ()
-	ChildrenType   string                  // return-type position: "", "component", "list<component>", "option<component>", etc.
-	Body           []*VisualNode           // default body (or only body for user components)
+	Params         []*Param                 // params/props declared in ()
+	Consts         []*Const                 // const declarations
+	Data           []*Data                  // var declarations (component-scoped state)
+	Functions      []*FuncDef               // func declarations
+	Timers         []*Timer                 // timer declarations
+	EventDecls     []*EventDecl             // @event declarations in ()
+	ChildrenType   string                   // return-type position: "", "component", "list<component>", "option<component>", etc.
+	Body           []*VisualNode            // default body (or only body for user components)
 	PlatformBodies map[string][]*VisualNode // platform-conditional bodies: platform name → visual nodes
-	Decls          []Decl                  // ordered declarations including interleaved comments
+	Windows        []*Window                // window declarations (only used in component main, promoted to App)
+	Decls          []Decl                   // ordered declarations including interleaved comments
 }
 
 type Param struct {
@@ -300,7 +322,46 @@ type Param struct {
 
 type App struct {
 	Pos      Pos
+	Children []*VisualNode // implicit single window (backward compat)
+	Windows  []*Window     // explicit window declarations
+}
+
+// EffectiveWindows returns the window list. If no explicit windows are
+// declared, a synthetic single window wrapping Children is returned.
+func (a *App) EffectiveWindows() []*Window {
+	if a == nil {
+		return nil
+	}
+	if len(a.Windows) > 0 {
+		return a.Windows
+	}
+	if len(a.Children) > 0 {
+		return []*Window{{Name: "main", Children: a.Children}}
+	}
+	return nil
+}
+
+// Window represents a named window declaration.
+type Window struct {
+	Pos       Pos
+	EndLine   int
+	BraceCol  int
+	BraceLine int
+	Name      string          // "home", "settings", or "" for for-generated
+	Props     map[string]Expr // title, icon, etc.
+	PropOrder []string
+	HasProps  bool
+	// Own state (for top-level windows)
+	Consts    []*Const
+	Data      []*Data
+	Functions []*FuncDef
+	Timers    []*Timer
+	// Visual tree
 	Children []*VisualNode
+	// For const-expression loops
+	For      *ForClause
+	Disabled bool
+	Decls    []Decl // ordered declarations including interleaved comments
 }
 
 // Timer declares a recurring interval that executes statements while active.
@@ -313,42 +374,42 @@ type Timer struct {
 }
 
 type VisualNode struct {
-	Pos        Pos
-	EndLine    int // line of closing } (set by parser)
-	BraceCol   int // column of opening { (set by parser, for comment filtering)
-	Component  string
-	HasBody    bool // true when { } was present in source (even if empty)
+	Pos            Pos
+	EndLine        int // line of closing } (set by parser)
+	BraceCol       int // column of opening { (set by parser, for comment filtering)
+	Component      string
+	HasBody        bool // true when { } was present in source (even if empty)
 	HasProps       bool // true when () was present in source (even if no props)
 	MultilineProps bool // true when prop list spans multiple lines
-	Disabled   bool
-	ID         string // element ID from #id syntax (empty = no ID)
-	Key        *Expr
-	Class      *Expr
-	If         *Expr
-	For        *ForClause
-	Ref        *Expr
-	Props      map[string]Expr
-	Events     map[string]Expr
-	Bindings   map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
-	PropOrder  []string        // insertion order of props/events/bindings (prefix: @=event, :=binding)
-	Children []*VisualNode
+	Disabled       bool
+	ID             string // element ID from #id syntax (empty = no ID)
+	Key            *Expr
+	Class          *Expr
+	If             *Expr
+	For            *ForClause
+	Ref            *Expr
+	Props          map[string]Expr
+	Events         map[string]Expr
+	Bindings       map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
+	PropOrder      []string        // insertion order of props/events/bindings (prefix: @=event, :=binding)
+	Children       []*VisualNode
 }
 
 // DeclPos implementations for types that can appear in Decls slices.
-func (s *StructDef) DeclPos() Pos  { return s.Pos }
-func (e *EnumDef) DeclPos() Pos    { return e.Pos }
-func (u *UnitDef) DeclPos() Pos    { return u.Pos }
-func (s *StyleDecl) DeclPos() Pos  { return s.Pos }
-func (c *Const) DeclPos() Pos      { return c.Pos }
-func (d *Data) DeclPos() Pos       { return d.Pos }
-func (f *FuncDef) DeclPos() Pos    { return f.Pos }
-func (t *Timer) DeclPos() Pos      { return t.Pos }
-func (i *Import) DeclPos() Pos     { return i.Pos }
-func (o *Output) DeclPos() Pos     { return o.Pos }
-func (c *Component) DeclPos() Pos  { return c.Pos }
+func (s *StructDef) DeclPos() Pos   { return s.Pos }
+func (e *EnumDef) DeclPos() Pos     { return e.Pos }
+func (u *UnitDef) DeclPos() Pos     { return u.Pos }
+func (s *StyleDecl) DeclPos() Pos   { return s.Pos }
+func (c *Const) DeclPos() Pos       { return c.Pos }
+func (d *Data) DeclPos() Pos        { return d.Pos }
+func (f *FuncDef) DeclPos() Pos     { return f.Pos }
+func (t *Timer) DeclPos() Pos       { return t.Pos }
+func (i *Import) DeclPos() Pos      { return i.Pos }
+func (o *Output) DeclPos() Pos      { return o.Pos }
+func (c *Component) DeclPos() Pos   { return c.Pos }
 func (vn *VisualNode) DeclPos() Pos { return vn.Pos }
+func (w *Window) DeclPos() Pos      { return w.Pos }
 func (a *App) DeclPos() Pos         { return a.Pos }
-
 
 // StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
 // Returns nil if no style prop or if it's not an anonymous struct literal.
@@ -372,4 +433,3 @@ func (vn *VisualNode) StyleFields() map[string]Expr {
 	}
 	return m
 }
-

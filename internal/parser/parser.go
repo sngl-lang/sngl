@@ -346,11 +346,22 @@ func (p *parser) parseDocument() *ast.Document {
 			fn.Disabled = disabled
 			doc.Functions = append(doc.Functions, fn)
 			doc.Decls = append(doc.Decls, fn)
+		case KW_WINDOW:
+			win := p.parseWindow()
+			win.Disabled = disabled
+			doc.Windows = append(doc.Windows, win)
+			doc.Decls = append(doc.Decls, win)
 		case KW_COMPONENT:
 			comp := p.parseComponent()
 			comp.Disabled = disabled
 			if comp.Name == "main" {
-				doc.App = &ast.App{Pos: comp.Pos, Children: comp.Body}
+				app := &ast.App{Pos: comp.Pos}
+				if len(comp.Windows) > 0 {
+					app.Windows = comp.Windows
+				} else {
+					app.Children = comp.Body
+				}
+				doc.App = app
 				doc.Data = append(doc.Data, comp.Data...)
 				doc.Consts = append(doc.Consts, comp.Consts...)
 				doc.Functions = append(doc.Functions, comp.Functions...)
@@ -364,6 +375,14 @@ func (p *parser) parseDocument() *ast.Document {
 			p.advance()
 		}
 	}
+	// Promote top-level windows into App.
+	if len(doc.Windows) > 0 {
+		if doc.App == nil {
+			doc.App = &ast.App{}
+		}
+		doc.App.Windows = append(doc.App.Windows, doc.Windows...)
+	}
+
 	doc.Comments = p.comments
 	// Only merge comments that aren't inside nested blocks (components, tests).
 	// Build a set of line ranges covered by nested blocks.
@@ -372,6 +391,8 @@ func (p *parser) parseDocument() *ast.Document {
 	for _, d := range doc.Decls {
 		switch v := d.(type) {
 		case *ast.Component:
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
+		case *ast.Window:
 			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
 		}
 	}
@@ -637,8 +658,9 @@ func (p *parser) parseStyleProps(s *ast.StyleDecl) {
 // --- Component ---
 
 type componentState struct {
-	Data   []*ast.Data
-	Consts []*ast.Const
+	Data    []*ast.Data
+	Consts  []*ast.Const
+	Windows []*ast.Window
 }
 
 func (p *parser) parseComponent() *ast.Component {
@@ -732,6 +754,70 @@ func (p *parser) parseComponent() *ast.Component {
 			t.Disabled = disabled
 			comp.Timers = append(comp.Timers, t)
 			comp.Decls = append(comp.Decls, t)
+		case KW_WINDOW:
+			win := p.parseWindow()
+			win.Disabled = disabled
+			cs.Windows = append(cs.Windows, win)
+			comp.Decls = append(comp.Decls, win)
+		case KW_FOR:
+			// Parse the for header, then check if the body is a window.
+			forPos := p.pos()
+			p.expect(KW_FOR)
+			variable := p.expect(IDENT).Literal
+			indexVar := ""
+			if p.at(COMMA) {
+				p.advance()
+				indexVar = p.expect(IDENT).Literal
+			}
+			p.expect(ASSIGN)
+			p.noStructLit = true
+			iterable := p.parseExprAsExpr()
+			p.noStructLit = false
+			p.expect(LBRACE)
+			p.skipSemicolons()
+
+			if p.at(KW_WINDOW) {
+				// For-window: parse window inside the for body
+				win := p.parseWindow()
+				p.skipSemicolons()
+				p.expect(RBRACE)
+				win.For = &ast.ForClause{
+					Variable: variable,
+					IndexVar: indexVar,
+					Iterable: iterable,
+				}
+				win.Disabled = disabled
+				cs.Windows = append(cs.Windows, win)
+				comp.Decls = append(comp.Decls, win)
+			} else {
+				// Regular for visual node
+				vn := p.parseNodeOrControl()
+				p.skipSemicolons()
+				p.expect(RBRACE)
+				fc := &ast.ForClause{
+					Variable: variable,
+					IndexVar: indexVar,
+					Iterable: iterable,
+				}
+				if p.at(KW_ELSE) {
+					p.advance()
+					p.expect(LBRACE)
+					for !p.at(RBRACE) && !p.at(EOF) {
+						p.skipSemicolons()
+						if p.at(RBRACE) {
+							break
+						}
+						fc.Else = append(fc.Else, p.parseNodeOrControl())
+						p.skipSemicolons()
+					}
+					p.expect(RBRACE)
+				}
+				vn.For = fc
+				vn.Pos = forPos
+				vn.Disabled = disabled
+				comp.Body = append(comp.Body, vn)
+				comp.Decls = append(comp.Decls, vn)
+			}
 		case KW_PLATFORM:
 			p.advance()
 			platName := p.expect(IDENT).Literal
@@ -764,6 +850,7 @@ func (p *parser) parseComponent() *ast.Component {
 
 	comp.Consts = cs.Consts
 	comp.Data = cs.Data
+	comp.Windows = cs.Windows
 
 	// Merge comments that fall inside the component body.
 	bodyStart := comp.Pos.Line
@@ -781,6 +868,106 @@ func (p *parser) parseComponent() *ast.Component {
 	return comp
 }
 
+// --- Window ---
+
+// parseWindow parses a window declaration:
+//
+//	window [name][(props)] { [decls...] [visual-nodes...] }
+func (p *parser) parseWindow() *ast.Window {
+	pos := p.pos()
+	p.expect(KW_WINDOW)
+
+	win := &ast.Window{Pos: pos}
+
+	// Optional name
+	if p.at(IDENT) {
+		win.Name = p.advance().Literal
+	}
+
+	// Optional props in ()
+	if p.at(LPAREN) {
+		win.HasProps = true
+		p.advance()
+		for !p.at(RPAREN) && !p.at(EOF) {
+			key := p.expect(IDENT).Literal
+			p.expect(ASSIGN)
+			val := p.parseExprAsExpr()
+			if win.Props == nil {
+				win.Props = map[string]ast.Expr{}
+			}
+			win.Props[key] = val
+			win.PropOrder = append(win.PropOrder, key)
+			if p.at(COMMA) {
+				p.advance()
+			}
+		}
+		p.expect(RPAREN)
+	}
+
+	win.BraceCol = p.cur.Column
+	win.BraceLine = p.cur.Line
+	p.expect(LBRACE)
+
+	for !p.at(RBRACE) && !p.at(EOF) {
+		p.skipSemicolons()
+		if p.at(RBRACE) {
+			break
+		}
+
+		disabled := false
+		if p.at(SLASHDASH) {
+			p.advance()
+			disabled = true
+		}
+
+		switch p.cur.Type {
+		case KW_CONST:
+			consts := p.parseConstDecl()
+			for _, c := range consts {
+				c.Disabled = disabled
+				win.Decls = append(win.Decls, c)
+			}
+			win.Consts = append(win.Consts, consts...)
+		case KW_VAR:
+			vars := p.parseVarDecl()
+			for _, d := range vars {
+				d.Disabled = disabled
+				win.Decls = append(win.Decls, d)
+			}
+			win.Data = append(win.Data, vars...)
+		case KW_FUNC:
+			fn := p.parseFuncDef()
+			fn.Disabled = disabled
+			win.Functions = append(win.Functions, fn)
+			win.Decls = append(win.Decls, fn)
+		case KW_TIMER:
+			t := p.parseTimer()
+			t.Disabled = disabled
+			win.Timers = append(win.Timers, t)
+			win.Decls = append(win.Decls, t)
+		default:
+			node := p.parseNodeOrControl()
+			node.Disabled = disabled
+			win.Children = append(win.Children, node)
+			win.Decls = append(win.Decls, node)
+		}
+		p.skipSemicolons()
+	}
+	win.EndLine = p.cur.Line
+	p.expect(RBRACE)
+
+	// Merge comments that fall inside the window body.
+	var bodyComments []ast.Comment
+	for _, c := range p.comments {
+		if c.Pos.Line > pos.Line && c.Pos.Line < win.EndLine && c.Pos.Line >= win.BraceLine {
+			bodyComments = append(bodyComments, c)
+		} else if c.Pos.Line == win.BraceLine && win.BraceLine != win.EndLine && win.BraceCol > 0 && c.Pos.Column > win.BraceCol {
+			bodyComments = append(bodyComments, c)
+		}
+	}
+	win.Decls = mergeCommentsIntoDecls(win.Decls, bodyComments)
+	return win
+}
 
 // parseComponentParam parses a single component parameter inside ().
 // Syntax: name = default | name type [enum(...)] [= default] [required]
@@ -819,7 +1006,6 @@ func (p *parser) parseComponentParam() *ast.Param {
 	}
 	return param
 }
-
 
 func (p *parser) parseConstDecl() []*ast.Const {
 	p.expect(KW_CONST)

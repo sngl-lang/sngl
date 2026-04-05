@@ -1,0 +1,7 @@
+window home(title="Home") {
+	text(value="Welcome")
+}
+
+window settings(title="Settings") {
+	text(value="Config")
+}

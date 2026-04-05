@@ -117,6 +117,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: target.Platform,
 		Language: target.Lang,
+		Dir:      dir,
 	}); err != nil {
 		return err
 	}

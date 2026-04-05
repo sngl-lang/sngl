@@ -8,71 +8,184 @@ import (
 type Config struct {
 	Platform string // "html", "bubbletea"
 	Language string // "js", "go"
+	Dir      string // project directory (for compile-time go run execution)
+}
+
+// foldCtx carries state needed during constant folding.
+type foldCtx struct {
+	vars          map[string]any
+	nativeImports map[string]*ast.NativeDecls
+	dir           string
+	fileAssets    []ast.FileAsset // files referenced via file:// path() calls
 }
 
 // Optimize mutates doc in place: evaluates constant SNGL expressions referencing
 // PLATFORM/LANGUAGE and eliminates dead branches. Callers targeting multiple
 // outputs should Clone the document first.
 func Optimize(doc *ast.Document, cfg Config) error {
-	vars := map[string]any{
-		"PLATFORM": cfg.Platform,
-		"LANGUAGE": cfg.Language,
+	ctx := &foldCtx{
+		vars: map[string]any{
+			"PLATFORM": cfg.Platform,
+			"LANGUAGE": cfg.Language,
+		},
+		nativeImports: doc.NativeImports,
+		dir:           cfg.Dir,
+	}
+
+	// Fold const declarations and register their values for downstream use.
+	for _, c := range doc.Consts {
+		foldExpr(&c.Init, ctx)
+		if c.Init.Literal != nil {
+			ctx.vars[c.Name] = c.Init.Literal
+		}
 	}
 
 	// Fold constant expressions in data fields and computeds.
 	for _, d := range doc.Data {
-		foldExpr(&d.Init, vars)
+		foldExpr(&d.Init, ctx)
 	}
 	for _, fn := range doc.Functions {
 		if fn.Body.SNGL != nil {
-			foldExpr(&fn.Body, vars)
+			foldExpr(&fn.Body, ctx)
 		}
 	}
 
 	// Fold constant expressions in struct field defaults.
 	for _, s := range doc.Structs {
 		for _, f := range s.Fields {
-			foldExpr(&f.Default, vars)
+			foldExpr(&f.Default, ctx)
 		}
 	}
 
 	// Fold constant expressions in style declarations.
 	for _, s := range doc.Styles {
-		foldExprMap(s.Props, vars)
+		foldExprMap(s.Props, ctx)
 	}
 
 	// Fold constant expressions in component params, data, computeds, and bodies.
 	for _, comp := range doc.Components {
 		for _, p := range comp.Params {
-			foldExpr(&p.Default, vars)
+			foldExpr(&p.Default, ctx)
 		}
 		for _, d := range comp.Data {
-			foldExpr(&d.Init, vars)
+			foldExpr(&d.Init, ctx)
 		}
 		for _, fn := range comp.Functions {
 			if fn.Body.SNGL != nil {
-				foldExpr(&fn.Body, vars)
+				foldExpr(&fn.Body, ctx)
 			}
 		}
-		comp.Body = optimizeNodes(comp.Body, vars)
+		comp.Body = optimizeNodes(comp.Body, ctx)
 	}
 
 	// Fold and prune the app tree.
 	if doc.App != nil {
-		doc.App.Children = optimizeNodes(doc.App.Children, vars)
+		doc.App.Children = optimizeNodes(doc.App.Children, ctx)
+		for _, win := range doc.App.Windows {
+			foldExprMap(win.Props, ctx)
+			for _, d := range win.Data {
+				foldExpr(&d.Init, ctx)
+			}
+			for _, fn := range win.Functions {
+				if fn.Body.SNGL != nil {
+					foldExpr(&fn.Body, ctx)
+				}
+			}
+			win.Children = optimizeNodes(win.Children, ctx)
+		}
+		doc.App.Windows = expandForWindows(doc.App.Windows, ctx)
 	}
+	doc.FileAssets = append(doc.FileAssets, ctx.fileAssets...)
+
+	// Dead code elimination: remove consts/data/functions that are no longer
+	// referenced after compile-time expansion.
+	shakeUnused(doc)
+
 	return nil
 }
 
+// expandForWindows expands windows with For clauses over const iterables
+// into concrete windows, one per element.
+func expandForWindows(windows []*ast.Window, ctx *foldCtx) []*ast.Window {
+	var out []*ast.Window
+	for _, win := range windows {
+		if win.For == nil {
+			out = append(out, win)
+			continue
+		}
+		// Try to evaluate the iterable as a const list
+		foldExpr(&win.For.Iterable, ctx)
+		if win.For.Iterable.Literal == nil {
+			out = append(out, win) // can't expand, keep as-is
+			continue
+		}
+		items, ok := win.For.Iterable.Literal.([]any)
+		if !ok {
+			out = append(out, win)
+			continue
+		}
+		for i, item := range items {
+			// Create a new fold context with the loop variable bound
+			loopCtx := &foldCtx{
+				vars:          make(map[string]any, len(ctx.vars)+2),
+				nativeImports: ctx.nativeImports,
+				dir:           ctx.dir,
+			}
+			for k, v := range ctx.vars {
+				loopCtx.vars[k] = v
+			}
+			loopCtx.vars[win.For.Variable] = item
+			if win.For.IndexVar != "" {
+				loopCtx.vars[win.For.IndexVar] = i
+			}
+
+			// Create a concrete window, cloning children so each iteration gets its own copy.
+			clonedChildren := ast.CloneVisualNodes(win.Children)
+			clonedChildren = optimizeNodes(clonedChildren, loopCtx)
+			concrete := &ast.Window{
+				Pos:      win.Pos,
+				Name:     win.Name,
+				HasProps: win.HasProps,
+				Children: clonedChildren,
+			}
+			// Fold window name from props if available
+			if win.Props != nil {
+				concrete.Props = make(map[string]ast.Expr, len(win.Props))
+				concrete.PropOrder = make([]string, len(win.PropOrder))
+				copy(concrete.PropOrder, win.PropOrder)
+				for k, v := range win.Props {
+					e := v
+					foldExpr(&e, loopCtx)
+					concrete.Props[k] = e
+				}
+			}
+			// Derive window name from props if no static name.
+			// Prefer href (URL path), then slug, then title.
+			if concrete.Name == "" {
+				for _, key := range []string{"href", "slug", "title"} {
+					if e, ok := concrete.Props[key]; ok && e.Literal != nil {
+						if s, ok := e.Literal.(string); ok && s != "" {
+							concrete.Name = s
+							break
+						}
+					}
+				}
+			}
+			out = append(out, concrete)
+		}
+	}
+	return out
+}
+
 // foldExpr attempts to evaluate a SNGL expression as a constant and replace it with a literal.
-func foldExpr(expr *ast.Expr, vars map[string]any) {
+func foldExpr(expr *ast.Expr, ctx *foldCtx) {
 	if expr.SNGL == nil {
 		return
 	}
-	if !isConstExpr(expr.SNGL, vars) {
+	if !isConstExpr(expr.SNGL, ctx) {
 		return
 	}
-	val, ok := evalConst(expr.SNGL, vars)
+	val, ok := evalConst(expr.SNGL, ctx)
 	if !ok {
 		return
 	}
@@ -81,20 +194,20 @@ func foldExpr(expr *ast.Expr, vars map[string]any) {
 }
 
 // foldExprMap folds all constant expressions in a map.
-func foldExprMap(m map[string]ast.Expr, vars map[string]any) {
+func foldExprMap(m map[string]ast.Expr, ctx *foldCtx) {
 	for k, e := range m {
-		foldExpr(&e, vars)
+		foldExpr(&e, ctx)
 		m[k] = e
 	}
 }
 
 // optimizeNodes folds expressions in visual nodes and eliminates dead branches.
-func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNode {
+func optimizeNodes(nodes []*ast.VisualNode, ctx *foldCtx) []*ast.VisualNode {
 	var out []*ast.VisualNode
 	for _, vn := range nodes {
 		// Fold the If expression first.
 		if vn.If != nil {
-			foldExpr(vn.If, vars)
+			foldExpr(vn.If, ctx)
 		}
 
 		// Check if the If was folded to a literal.
@@ -107,26 +220,57 @@ func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNo
 			}
 		}
 
-		// Eliminate for-loops over empty literal lists.
+		// Expand or eliminate for-loops over const literal lists.
 		if vn.For != nil {
-			foldExpr(&vn.For.Iterable, vars)
-			if vn.For.Iterable.SNGL == nil && vn.For.Iterable.Literal == nil {
-				// Already nil — check if it was a SNGL ListExpr with no elements
+			foldExpr(&vn.For.Iterable, ctx)
+			// Check folded literal: expand const list at compile time.
+			if items, ok := vn.For.Iterable.Literal.([]any); ok {
+				if len(items) == 0 {
+					continue // for over empty list — dead code
+				}
+				// Expand: replace for-loop with N copies of the node,
+				// each with the loop variable bound to the element.
+				for i, item := range items {
+					loopCtx := &foldCtx{
+						vars:          make(map[string]any, len(ctx.vars)+2),
+						nativeImports: ctx.nativeImports,
+						dir:           ctx.dir,
+					}
+					for k, v := range ctx.vars {
+						loopCtx.vars[k] = v
+					}
+					loopCtx.vars[vn.For.Variable] = item
+					if vn.For.IndexVar != "" {
+						loopCtx.vars[vn.For.IndexVar] = i
+					}
+					// Clone the node itself (not just children), remove the For clause
+					clone := ast.CloneVisualNodes([]*ast.VisualNode{vn})[0]
+					clone.For = nil
+					clone.Children = optimizeNodes(clone.Children, loopCtx)
+					// Fold props/class/key on the cloned node
+					foldExprMap(clone.Props, loopCtx)
+					foldExprPtr(clone.Key, loopCtx)
+					foldExprPtr(clone.Class, loopCtx)
+					foldExprPtr(clone.Ref, loopCtx)
+					out = append(out, clone)
+				}
+				continue
 			}
+			// Check AST: ListExpr with no elements
 			if list, ok := vn.For.Iterable.SNGL.(*ast.ListExpr); ok && len(list.Elements) == 0 {
 				continue // for over empty list — dead code
 			}
 		}
 
 		// Fold expressions in the node's properties.
-		foldExprPtr(vn.Key, vars)
-		foldExprPtr(vn.Class, vars)
-		foldExprPtr(vn.Ref, vars)
+		foldExprPtr(vn.Key, ctx)
+		foldExprPtr(vn.Class, ctx)
+		foldExprPtr(vn.Ref, ctx)
 		if vn.For != nil {
-			foldExpr(&vn.For.Iterable, vars)
+			foldExpr(&vn.For.Iterable, ctx)
 		}
-		foldExprMap(vn.Props, vars)
-		foldExprMap(vn.Events, vars)
+		foldExprMap(vn.Props, ctx)
+		foldExprMap(vn.Events, ctx)
 
 		// Unwrap trivial interpolations: "{expr}" → expr
 		unwrapTrivialInterpolations(vn.Props)
@@ -134,7 +278,7 @@ func optimizeNodes(nodes []*ast.VisualNode, vars map[string]any) []*ast.VisualNo
 		unwrapTrivialInterpolationPtr(vn.Class)
 
 		// Recurse into children.
-		vn.Children = optimizeNodes(vn.Children, vars)
+		vn.Children = optimizeNodes(vn.Children, ctx)
 
 		out = append(out, vn)
 	}
@@ -166,8 +310,8 @@ func unwrapTrivialInterpolationPtr(e *ast.Expr) {
 	}
 }
 
-func foldExprPtr(e *ast.Expr, vars map[string]any) {
+func foldExprPtr(e *ast.Expr, ctx *foldCtx) {
 	if e != nil {
-		foldExpr(e, vars)
+		foldExpr(e, ctx)
 	}
 }
