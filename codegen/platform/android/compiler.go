@@ -3,11 +3,11 @@ package android
 import (
 	"fmt"
 	"maps"
-	"slices"
 	"strings"
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // Config controls code generation.
@@ -54,30 +54,20 @@ type computedInfo struct {
 	ktType string
 }
 
-type timerInfo struct {
-	intervalMs int
-	activeVar  string
-	body       ast.Node
-}
-
 type analysisResult struct {
-	binds          []bindInfo
-	computeds      []computedInfo
-	timers         []timerInfo
-	components     []*ast.Component
-	structs        []*ast.StructDef
-	enums          []*ast.EnumDef
-	modelFields    map[string]bool
-	computedFields map[string]bool
-	needsToast     bool
+	*codegen.CommonAnalysis
+	binds     []bindInfo
+	computeds []computedInfo
 }
 
 func analyze(doc *ast.Document) *analysisResult {
+	common := codegen.AnalyzeCommon(doc)
+
 	info := &analysisResult{
-		modelFields:    make(map[string]bool),
-		computedFields: make(map[string]bool),
+		CommonAnalysis: common,
 	}
 
+	// Platform-specific data field analysis (Kotlin types)
 	for _, d := range doc.Data {
 		if d.Extern {
 			continue
@@ -94,9 +84,9 @@ func analyze(doc *ast.Document) *analysisResult {
 			init:   initVal,
 			isList: isList,
 		})
-		info.modelFields[d.Name] = true
 	}
 
+	// Platform-specific computed function analysis (Kotlin types)
 	for _, fn := range doc.Functions {
 		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
 			ktType := inferKtType(fn.Body)
@@ -107,24 +97,8 @@ func analyze(doc *ast.Document) *analysisResult {
 				name:   fn.Name,
 				ktType: ktType,
 			})
-			info.modelFields[fn.Name] = true
-			info.computedFields[fn.Name] = true
 		}
 	}
-
-	for _, t := range doc.Timers {
-		ms := intervalToMs(t.Interval)
-		info.timers = append(info.timers, timerInfo{
-			intervalMs: ms,
-			activeVar:  t.Active,
-			body:       t.Body,
-		})
-	}
-
-	info.components = doc.AllComponents()
-	info.structs = doc.Structs
-	info.enums = doc.Enums
-	info.needsToast = astUsesAlert(doc)
 
 	return info
 }
@@ -133,7 +107,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var b strings.Builder
 
 	structFields := make(map[string][]string)
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		var fields []string
 		for _, f := range sd.Fields {
 			fields = append(fields, f.Name)
@@ -142,8 +116,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	ec := &exprContext{
-		modelFields:    info.modelFields,
-		computedFields: info.computedFields,
+		modelFields:    info.ModelFields,
+		computedFields: info.ComputedFields,
 		localVars:      make(map[string]bool),
 		structNames:    structFields,
 	}
@@ -170,10 +144,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("import androidx.compose.ui.text.style.TextAlign\n")
 	b.WriteString("import androidx.compose.ui.unit.dp\n")
 	b.WriteString("import androidx.compose.ui.unit.sp\n")
-	if len(info.timers) > 0 {
+	if len(info.Timers) > 0 {
 		b.WriteString("import kotlinx.coroutines.delay\n")
 	}
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("import android.widget.Toast\n")
 		b.WriteString("import androidx.compose.ui.platform.LocalContext\n")
 	}
@@ -183,7 +157,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("\n")
 
 	// Data classes for user structs
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := typeHintToKt(f.Type)
@@ -201,7 +175,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Enum classes
-	for _, ed := range info.enums {
+	for _, ed := range info.Enums {
 		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))
 		for i, v := range ed.Values {
 			comma := ","
@@ -218,7 +192,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("@Composable\n")
 	b.WriteString("fun MainScreen() {\n")
 
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("    val context = LocalContext.current\n")
 	}
 
@@ -258,11 +232,11 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Timers
-	for _, t := range info.timers {
-		fmt.Fprintf(&b, "    LaunchedEffect(%s) {\n", t.activeVar)
-		fmt.Fprintf(&b, "        while (%s) {\n", t.activeVar)
-		fmt.Fprintf(&b, "            delay(%dL)\n", t.intervalMs)
-		stmts := ec.translateMutation(t.body)
+	for _, t := range info.Timers {
+		fmt.Fprintf(&b, "    LaunchedEffect(%s) {\n", t.ActiveVar)
+		fmt.Fprintf(&b, "        while (%s) {\n", t.ActiveVar)
+		fmt.Fprintf(&b, "            delay(%dL)\n", t.IntervalMs)
+		stmts := ec.translateMutation(t.Body)
 		for _, s := range stmts {
 			fmt.Fprintf(&b, "            %s\n", s)
 		}
@@ -275,7 +249,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		ec:         ec,
 		buf:        &b,
 		indent:     1,
-		components: info.components,
+		components: info.Components,
 	}
 
 	if doc.App != nil {
@@ -295,8 +269,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("}\n")
 
 	// User-defined component composables
-	for _, comp := range info.components {
-		emitComponentComposable(&b, comp, info.components, ec)
+	for _, comp := range info.Components {
+		emitComponentComposable(&b, comp, info.Components, ec)
 	}
 
 	// User-defined functions — when GoLib is true, these live in the Go
@@ -543,33 +517,6 @@ func snglNodeKtType(e ast.Node) string {
 	return "Any"
 }
 
-func intervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
-		return 0
-	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
-	if !ok {
-		return 0
-	}
-	num := 0.0
-	fmt.Sscanf(ul.Number, "%f", &num)
-	switch ul.Suffix {
-	case "ms":
-		return int(num)
-	case "s":
-		return int(num * 1000)
-	case "m":
-		return int(num * 60000)
-	case "h":
-		return int(num * 3600000)
-	}
-	return int(num)
-}
-
 func literalToKt(expr ast.Expr) string {
 	if expr.Literal != nil {
 		switch v := expr.Literal.(type) {
@@ -597,53 +544,6 @@ func literalToKt(expr ast.Expr) string {
 }
 
 // exprToKtValue converts an ast.Expr to a Kotlin value string.
-// astUsesAlert returns true if the document contains any Alert.* calls.
-func astUsesAlert(doc *ast.Document) bool {
-	if doc.App != nil {
-		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
-			return true
-		}
-	}
-	for _, t := range doc.Timers {
-		if exprNodeUsesAlert(t.Body) {
-			return true
-		}
-	}
-	for _, fn := range doc.Functions {
-		if fn.Block != nil {
-			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func nodeUsesAlert(vn *ast.VisualNode) bool {
-	for _, evt := range vn.Events {
-		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
-			return true
-		}
-	}
-	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
-}
-
-func exprNodeUsesAlert(n ast.Node) bool {
-	switch e := n.(type) {
-	case *ast.MethodExpr:
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return true
-		}
-	case *ast.StmtBlock:
-		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
-			return true
-		}
-	case *ast.CallStmt:
-		return exprNodeUsesAlert(e.Call)
-	}
-	return false
-}
-
 func exprToKtValue(expr ast.Expr, ec *exprContext) string {
 	if expr.Literal != nil {
 		return literalToKt(expr)

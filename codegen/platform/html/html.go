@@ -199,14 +199,9 @@ type htmlGen struct {
 	doc  *ast.Document
 	lang codegen.LangTranslator
 
-	// Analysis results
-	modelFields    map[string]bool
-	computedFields map[string]bool
-	structFields   map[string][]string // struct name → ordered field names
-
-	// Computed dependency tracking
-	computedDeps map[string]map[string]bool // computed name → set of root state fields it reads
-	dt           *codegen.DepTracker
+	// Analysis (shared)
+	*codegen.CommonAnalysis
+	dt *codegen.DepTracker
 
 	// Element ID counter
 	nextID int
@@ -281,58 +276,23 @@ type timerDef struct {
 }
 
 func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+	common := codegen.AnalyzeCommon(doc)
+
 	g := &htmlGen{
 		doc:            doc,
 		lang:           lang,
+		CommonAnalysis: common,
 		preview:        opts["preview"] == "true",
 		testMode:       opts["test"] == "true",
-		modelFields:    make(map[string]bool),
-		computedFields: make(map[string]bool),
-		structFields:   make(map[string][]string),
-		computedDeps:   make(map[string]map[string]bool),
 	}
 
-	for _, d := range doc.Data {
-		g.modelFields[d.Name] = true
-	}
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			g.modelFields[fn.Name] = true
-			g.computedFields[fn.Name] = true
-		}
-	}
-	for _, sd := range doc.Structs {
-		var fields []string
-		for _, f := range sd.Fields {
-			fields = append(fields, f.Name)
-		}
-		g.structFields[sd.Name] = fields
-	}
-
-	localVars := make(map[string]bool)
+	// Build scope from common analysis, adding const names as local vars
+	g.scope = common.Scope()
 	for _, c := range doc.Consts {
-		localVars[c.Name] = true
-	}
-	funcNames := make(map[string]bool)
-	for _, fn := range doc.Functions {
-		funcNames[fn.Name] = true
-	}
-	g.scope = &codegen.ExprScope{
-		ModelFields:    g.modelFields,
-		ComputedFields: g.computedFields,
-		FuncNames:      funcNames,
-		LocalVars:      localVars,
-		NeededHelpers:  make(map[string]bool),
+		g.scope.LocalVars[c.Name] = true
 	}
 
-	// Compute dependency info for computed functions
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			g.computedDeps[fn.Name] = codegen.ExtractDeps(fn.Body.SNGL, g.modelFields)
-		}
-	}
-
-	g.dt = codegen.NewDepTracker(g.modelFields, g.computedFields, g.computedDeps)
+	g.dt = common.DepTracker()
 
 	return g
 }
@@ -1603,7 +1563,7 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Collect timers
 	for i, t := range g.doc.Timers {
-		ms := g.intervalToMs(t.Interval)
+		ms := codegen.IntervalToMs(t.Interval)
 		stmts := g.lang.TranslateMutation(t.Body, g.scope)
 		mutated := codegen.MutatedFields(t.Body)
 		g.timers = append(g.timers, timerDef{
@@ -2502,34 +2462,6 @@ func extractSetTarget(e ast.Node) (ast.Node, bool) {
 		}
 	}
 	return nil, false
-}
-
-// intervalToMs extracts the interval from a timer expression and converts to milliseconds.
-func (g *htmlGen) intervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
-		return 0
-	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
-	if !ok {
-		return 0
-	}
-	num := 0.0
-	fmt.Sscanf(ul.Number, "%f", &num)
-	switch ul.Suffix {
-	case "ms":
-		return int(num)
-	case "s":
-		return int(num * 1000)
-	case "m":
-		return int(num * 60000)
-	case "h":
-		return int(num * 3600000)
-	}
-	return int(num) // fallback: treat as ms
 }
 
 func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *ast.VisualNode, depth int, pos ...ast.Pos) {

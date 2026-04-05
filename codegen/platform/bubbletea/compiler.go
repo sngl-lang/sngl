@@ -74,13 +74,6 @@ type forLoopCursor struct {
 	changeExpr  *ast.Expr
 }
 
-type timerInfo struct {
-	index      int
-	intervalMs int
-	activeVar  string
-	body       ast.Node
-}
-
 type externInfo struct {
 	name       string
 	goType     string
@@ -90,40 +83,33 @@ type externInfo struct {
 }
 
 type analysisResult struct {
-	binds          []bindInfo
-	externs        []externInfo
-	computeds      []computedInfo
-	inputs         []inputInfo
-	focusables     []string // ordered: "input0", "button0", etc.
-	forCursors     []forLoopCursor
-	timers         []timerInfo
-	goImports      map[string]bool // native Go import paths from Resolved fields
-	components     []*ast.Component
-	structs        []*ast.StructDef
-	modelFields    map[string]bool   // all bind/computed names (fields)
-	computedFields map[string]bool   // computed names (methods, not struct fields)
-	externFuncs    map[string]bool   // extern function names
-	triggers       map[string]string // data field name → trigger func name
-	needsTime      bool              // emit "time" import
-	needsToast     bool              // emit toast queue infrastructure
+	*codegen.CommonAnalysis
+	binds      []bindInfo
+	externs    []externInfo
+	computeds  []computedInfo
+	inputs     []inputInfo
+	focusables []string // ordered: "input0", "button0", etc.
+	forCursors []forLoopCursor
+	goImports  map[string]bool   // native Go import paths from Resolved fields
+	triggers   map[string]string // data field name → trigger func name
+	needsTime  bool              // emit "time" import
 }
 
 func analyze(doc *ast.Document) *analysisResult {
+	common := codegen.AnalyzeCommon(doc)
+
 	info := &analysisResult{
-		modelFields:    make(map[string]bool),
-		computedFields: make(map[string]bool),
-		externFuncs:    make(map[string]bool),
+		CommonAnalysis: common,
 		triggers:       make(map[string]string),
 		goImports:      make(map[string]bool),
 	}
 
-	// Data fields
+	// Platform-specific data field analysis (Go types, init values, externs)
 	for _, d := range doc.Data {
 		if d.Resolved != nil && d.Resolved.NativePkg != "" {
 			info.goImports[d.Resolved.NativePkg] = true
 		}
 		if d.Extern || d.IsFunc {
-			// Extern functions and variables → model fields set by host
 			ext := externInfo{
 				name:   d.Name,
 				isFunc: d.IsFunc,
@@ -132,14 +118,12 @@ func analyze(doc *ast.Document) *analysisResult {
 				ext.paramTypes = d.ParamTypes
 				ext.returnType = d.ReturnType
 				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
-				info.externFuncs[d.Name] = true
 			} else if d.Resolved != nil && d.Resolved.NativeType != "" {
 				ext.goType = d.Resolved.NativeType
 			} else {
 				ext.goType = typeHintToGo(d.Init.TypeHint)
 			}
 			info.externs = append(info.externs, ext)
-			info.modelFields[d.Name] = true
 			continue
 		}
 		goType := inferGoType(d.Init)
@@ -155,13 +139,12 @@ func analyze(doc *ast.Document) *analysisResult {
 			goType:  goType,
 			initVal: initVal,
 		})
-		info.modelFields[d.Name] = true
 		if d.Trigger != "" {
 			info.triggers[d.Name] = d.Trigger
 		}
 	}
 
-	// Computed functions (zero-arg expression-form)
+	// Platform-specific computed function analysis (Go types)
 	for _, fn := range doc.Functions {
 		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
 			goType := inferGoType(fn.Body)
@@ -172,28 +155,15 @@ func analyze(doc *ast.Document) *analysisResult {
 				name:   fn.Name,
 				goType: goType,
 			})
-			info.modelFields[fn.Name] = true
-			info.computedFields[fn.Name] = true
 		}
 	}
 
-	// Timers
-	for i, t := range doc.Timers {
-		ms := intervalToMs(t.Interval)
-		info.timers = append(info.timers, timerInfo{
-			index:      i,
-			intervalMs: ms,
-			activeVar:  t.Active,
-			body:       t.Body,
-		})
-		if ms > 0 {
+	// Check timer intervals for time import
+	for _, t := range common.Timers {
+		if t.IntervalMs > 0 {
 			info.needsTime = true
 		}
 	}
-
-	// Components and structs
-	info.components = doc.AllComponents()
-	info.structs = doc.Structs
 
 	// Collect Go imports from struct fields with Resolved info
 	for _, sd := range doc.Structs {
@@ -212,12 +182,9 @@ func analyze(doc *ast.Document) *analysisResult {
 		}
 	}
 
-	// Detect Alert.toast/info/warn/error calls in event handlers, timers, and functions
-	if !info.needsToast {
-		info.needsToast = astUsesAlert(doc)
-		if info.needsToast {
-			info.needsTime = true
-		}
+	// Toast needs time
+	if common.NeedsToast {
+		info.needsTime = true
 	}
 
 	return info
@@ -294,7 +261,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var b strings.Builder
 
 	structFields := make(map[string][]string)
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		var fields []string
 		for _, f := range sd.Fields {
 			fields = append(fields, f.Name)
@@ -303,8 +270,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	ec := &exprContext{
-		modelFields:    info.modelFields,
-		computedFields: info.computedFields,
+		modelFields:    info.ModelFields,
+		computedFields: info.ComputedFields,
 		localVars:      make(map[string]bool),
 		structNames:    structFields,
 	}
@@ -375,7 +342,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Struct types
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", exportName(sd.Name))
 		for _, f := range sd.Fields {
 			goType := typeHintToGo(f.Type)
@@ -388,15 +355,15 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Timer tick message types
-	for _, t := range info.timers {
-		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.index)
+	for _, t := range info.Timers {
+		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
 	}
-	if len(info.timers) > 0 {
+	if len(info.Timers) > 0 {
 		b.WriteString("\n")
 	}
 
 	// Toast infrastructure
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
 		b.WriteString("type toastDismissMsg struct{}\n\n")
 	}
@@ -433,7 +400,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	if len(info.forCursors) > 0 {
 		b.WriteString("\n")
 	}
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
 	b.WriteString("\tfocus int\n")
@@ -495,14 +462,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	// Init()
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.timers) > 0 {
+	if len(info.Timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
 		if len(info.inputs) > 0 {
 			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
 		}
-		for _, t := range info.timers {
-			fmt.Fprintf(&b, "\tif m.%s {\n", t.activeVar)
-			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.intervalMs, t.index)
+		for _, t := range info.Timers {
+			fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
+			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.IntervalMs, t.Index)
 			b.WriteString("\t}\n")
 		}
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
@@ -520,8 +487,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	emitView(&b, info, doc, ec, cfg)
 
 	// User component render methods
-	for _, comp := range info.components {
-		emitComponentMethod(&b, comp, info.components, ec, cfg)
+	for _, comp := range info.Components {
+		emitComponentMethod(&b, comp, info.Components, ec, cfg)
 	}
 
 	// main() for standalone apps
@@ -704,23 +671,23 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	}
 
 	// Timer tick messages
-	for _, t := range info.timers {
-		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.index)
-		fmt.Fprintf(b, "\t\tif m.%s {\n", t.activeVar)
+	for _, t := range info.Timers {
+		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
+		fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
 		// Emit body mutations
-		stmts := ec.translateMutation(t.body)
+		stmts := ec.translateMutation(t.Body)
 		for _, s := range stmts {
 			fmt.Fprintf(b, "\t\t\t%s\n", s)
 		}
 		// Re-schedule
-		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.activeVar)
-		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.intervalMs, t.index)
+		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
+		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.IntervalMs, t.Index)
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
 	}
 
 	// Toast dismiss
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tcase toastDismissMsg:\n")
 		b.WriteString("\t\tif len(m.toasts) > 0 {\n")
 		b.WriteString("\t\t\tm.toasts = m.toasts[1:]\n")
@@ -773,7 +740,7 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	}
 
 	// Schedule toast dismiss if a toast was added
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tif len(m.toasts) > 0 && cmd == nil {\n")
 		b.WriteString("\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
 		b.WriteString("\t}\n")
@@ -893,7 +860,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 		buf:         &strings.Builder{},
 		indent:      1,
 		focusIndex:  0,
-		components:  info.components,
+		components:  info.Components,
 	}
 
 	// Render each top-level child
@@ -914,7 +881,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	}
 
 	// Toast overlay
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tif len(m.toasts) > 0 {\n")
 		b.WriteString("\t\tt := m.toasts[0]\n")
 		b.WriteString("\t\tvar bg string\n")
@@ -1014,59 +981,6 @@ func extractAssignTarget(e ast.Node) string {
 	return ""
 }
 
-// astUsesAlert returns true if the document contains any Alert.toast/info/warn/error calls.
-func astUsesAlert(doc *ast.Document) bool {
-	// Check event handlers in visual nodes
-	if doc.App != nil {
-		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
-			return true
-		}
-	}
-	// Check timer bodies
-	for _, t := range doc.Timers {
-		if exprNodeUsesAlert(t.Body) {
-			return true
-		}
-	}
-	// Check function blocks (skip test functions)
-	for _, fn := range doc.Functions {
-		if fn.IsTest() {
-			continue
-		}
-		if fn.Block != nil {
-			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func nodeUsesAlert(vn *ast.VisualNode) bool {
-	for _, evt := range vn.Events {
-		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
-			return true
-		}
-	}
-	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
-}
-
-func exprNodeUsesAlert(n ast.Node) bool {
-	switch e := n.(type) {
-	case *ast.MethodExpr:
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return true
-		}
-	case *ast.StmtBlock:
-		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
-			return true
-		}
-	case *ast.CallStmt:
-		return exprNodeUsesAlert(e.Call)
-	}
-	return false
-}
-
 // snglNodeGoType infers a Go type from a SNGL expression node.
 func snglNodeGoType(e ast.Node) string {
 	switch n := e.(type) {
@@ -1147,33 +1061,6 @@ func unexportName(s string) string {
 	runes := []rune(s)
 	runes[0] = unicode.ToLower(runes[0])
 	return string(runes)
-}
-
-func intervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
-		return 0
-	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
-	if !ok {
-		return 0
-	}
-	num := 0.0
-	fmt.Sscanf(ul.Number, "%f", &num)
-	switch ul.Suffix {
-	case "ms":
-		return int(num)
-	case "s":
-		return int(num * 1000)
-	case "m":
-		return int(num * 60000)
-	case "h":
-		return int(num * 3600000)
-	}
-	return int(num)
 }
 
 func inferGoType(expr ast.Expr) string {
