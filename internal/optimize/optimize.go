@@ -96,6 +96,11 @@ func Optimize(doc *ast.Document, cfg Config) error {
 		doc.App.Windows = expandForWindows(doc.App.Windows, ctx)
 	}
 	doc.FileAssets = append(doc.FileAssets, ctx.fileAssets...)
+
+	// Dead code elimination: remove consts/data/functions that are no longer
+	// referenced after compile-time expansion.
+	shakeUnused(doc)
+
 	return nil
 }
 

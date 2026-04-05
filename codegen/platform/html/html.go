@@ -119,11 +119,11 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		}
 	}
 
-	// Merge go:// extern functions into doc.Data so emitScript() can generate bindings.
-	// Functions are registered unqualified (matching how the JS translator emits them).
+	// Merge non-pure go:// extern functions into doc.Data for WASM bindings.
+	// Pure functions were fully evaluated at compile time and don't need runtime bindings.
 	for _, ni := range req.Doc.NativeImports {
 		for _, d := range ni.Data {
-			if d.IsFunc && d.Extern && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+			if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
 				req.Doc.Data = append(req.Doc.Data, d)
 			}
 		}
@@ -375,9 +375,15 @@ func (g *htmlGen) generate() string {
 		}
 	}
 
-	b.WriteString("\n<script>\n")
-	g.emitScript(&b)
-	b.WriteString("</script>\n")
+	// Only emit <script> if there's actual runtime JS to execute.
+	var scriptBuf strings.Builder
+	g.emitScript(&scriptBuf)
+	script := scriptBuf.String()
+	if strings.TrimSpace(script) != "" {
+		b.WriteString("\n<script>\n")
+		b.WriteString(script)
+		b.WriteString("</script>\n")
+	}
 	b.WriteString("</body></html>\n")
 
 	return b.String()
@@ -1606,7 +1612,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		nsByName := map[string][]string{} // namespace → function names
 		for ns, ni := range g.doc.NativeImports {
 			for _, d := range ni.Data {
-				if d.IsFunc && d.Extern && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
+				if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
 					nsByName[ns] = append(nsByName[ns], d.Name)
 				}
 			}
