@@ -26,6 +26,7 @@ type ExprScope struct {
 	LocalVars      map[string]bool   // for-loop vars, params → no prefix
 	Renames        map[string]string // local var renames (original → unique name)
 	EventVar       string            // what "event" maps to in this context
+	NeededHelpers  map[string]bool   // helper functions needed (e.g., "String")
 }
 
 // LangTranslator translates SNGL expressions into a target language's syntax.

@@ -322,6 +322,7 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 		ComputedFields: g.computedFields,
 		FuncNames:      funcNames,
 		LocalVars:      localVars,
+		NeededHelpers:  make(map[string]bool),
 	}
 
 	// Compute dependency info for computed functions
@@ -357,12 +358,15 @@ func (g *htmlGen) generate() string {
 	if g.stylesheet != "" {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
-	b.WriteString("  <style>\n")
-	b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
-	b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
-	b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
-	b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
-	b.WriteString("  </style>\n")
+	if g.stylesheet == "" {
+		// Only emit default inline styles when no external stylesheet is specified.
+		b.WriteString("  <style>\n")
+		b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
+		b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
+		b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
+		b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
+		b.WriteString("  </style>\n")
+	}
 	if g.wasmLoader != "" {
 		b.WriteString(g.wasmLoader)
 	}
@@ -386,7 +390,21 @@ func (g *htmlGen) generate() string {
 	}
 	b.WriteString("</body></html>\n")
 
-	return b.String()
+	// Strip unreferenced IDs from HTML to reduce noise.
+	result := b.String()
+	referencedIDs := g.collectReferencedIDs()
+	refSet := map[string]bool{}
+	for _, id := range referencedIDs {
+		refSet[id] = true
+	}
+	for i := 0; i < g.nextID; i++ {
+		id := fmt.Sprintf("$%d", i)
+		if !refSet[id] {
+			result = strings.Replace(result, fmt.Sprintf(` id="%s"`, id), "", 1)
+		}
+	}
+
+	return result
 }
 
 // renderStaticNode renders a VisualNode as static HTML.
@@ -1703,20 +1721,21 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Getters
+	// Setters — only emit for fields with triggers, timer controls, or in preview mode
 	for _, d := range g.doc.Data {
 		if d.IsFunc {
 			continue
 		}
-		fmt.Fprintf(b, "function $get_%s() { return state.%s; }\n", d.Name, d.Name)
-	}
-	if len(stateFields) > 0 {
-		b.WriteString("\n")
-	}
-
-	// Setters
-	for _, d := range g.doc.Data {
-		if d.IsFunc {
+		needsSetter := d.Trigger != "" || g.preview
+		if !needsSetter {
+			for _, t := range g.timers {
+				if t.activeVar == d.Name {
+					needsSetter = true
+					break
+				}
+			}
+		}
+		if !needsSetter {
 			continue
 		}
 		fmt.Fprintf(b, "function $set_%s(v) {\n", d.Name)
@@ -1765,8 +1784,10 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Helper functions
-	b.WriteString("function String(v) { return \"\" + v; }\n\n")
+	// Helper functions — only emit if used
+	if g.scope.NeededHelpers["String"] {
+		b.WriteString("function String(v) { return \"\" + v; }\n\n")
+	}
 
 	// Component param constants
 	for _, cp := range g.componentParams {
@@ -2253,20 +2274,30 @@ func stylePropToCSS(prop string, expr ast.Expr) string {
 }
 
 func exprToStaticValue(expr ast.Expr) string {
+	// Check folded literal first
 	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return v
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
+		return literalToString(expr.Literal)
+	}
+	// Check SNGL literal expression (not yet folded)
+	if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
+		return literalToString(lit.Value)
+	}
+	return ""
+}
+
+func literalToString(v any) string {
+	switch val := v.(type) {
+	case string:
+		return val
+	case int:
+		return fmt.Sprintf("%d", val)
+	case float64:
+		return fmt.Sprintf("%v", val)
+	case bool:
+		if val {
+			return "true"
 		}
+		return "false"
 	}
 	return ""
 }

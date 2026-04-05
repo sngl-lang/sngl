@@ -29,6 +29,15 @@ func shakeUnused(doc *ast.Document) {
 	}
 	doc.Data = data
 
+	// Filter structs — keep only referenced ones
+	structs := doc.Structs[:0]
+	for _, s := range doc.Structs {
+		if refs[s.Name] {
+			structs = append(structs, s)
+		}
+	}
+	doc.Structs = structs
+
 	// Filter functions — keep referenced, stdlib, or test
 	funcs := doc.Functions[:0]
 	for _, fn := range doc.Functions {
@@ -185,6 +194,9 @@ func walkNodeRefs(n ast.Node, refs map[string]bool) {
 			walkNodeRefs(el, refs)
 		}
 	case *ast.StructExpr:
+		if e.Name != "" {
+			refs[e.Name] = true
+		}
 		for _, f := range e.Fields {
 			walkNodeRefs(f.Value, refs)
 		}
