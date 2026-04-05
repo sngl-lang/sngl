@@ -5,7 +5,6 @@ import (
 	"go/format"
 	"maps"
 	"strings"
-	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -282,10 +281,11 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	ec := &exprContext{
-		modelFields:    info.ModelFields,
-		computedFields: info.ComputedFields,
-		localVars:      make(map[string]bool),
-		structNames:    structFields,
+		ModelFields:    info.ModelFields,
+		ComputedFields: info.ComputedFields,
+		LocalVars:      make(map[string]bool),
+		StructNames:    structFields,
+		AlertFunc:      fyneAlertFunc,
 	}
 
 	// --- Phase 1: Render BuildUI into a buffer, collecting widget fields + updaters ---
@@ -329,7 +329,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		for _, fn := range doc.Functions {
 			if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
 				if fn.Body.SNGL != nil {
-					body = ec.translateExpr(fn.Body.SNGL)
+					body = ec.TranslateExpr(fn.Body.SNGL)
 				} else if fn.Body.Literal != nil {
 					body = literalToGo(fn.Body)
 				}
@@ -356,7 +356,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var timerDatas []timerData
 	for _, t := range info.Timers {
 		var bodyBuf strings.Builder
-		stmts := ec.translateMutation(t.Body)
+		stmts := ec.TranslateMutation(t.Body)
 		for _, s := range stmts {
 			fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
 		}
@@ -456,11 +456,11 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 
 	if fn.Body.SNGL != nil {
 		for _, p := range fn.Params {
-			ec.localVars[p.Name] = true
+			ec.LocalVars[p.Name] = true
 		}
-		body := ec.translateExpr(fn.Body.SNGL)
+		body := ec.TranslateExpr(fn.Body.SNGL)
 		for _, p := range fn.Params {
-			delete(ec.localVars, p.Name)
+			delete(ec.LocalVars, p.Name)
 		}
 		if isTypeMethod {
 			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
@@ -476,31 +476,31 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
 		}
 		for _, p := range fn.Params {
-			ec.localVars[p.Name] = true
+			ec.LocalVars[p.Name] = true
 		}
 		for _, stmt := range fn.Block.Stmts {
 			switch s := stmt.(type) {
 			case *ast.VarStmt:
-				ec.localVars[s.Name] = true
-				val := ec.translateExpr(s.Init)
+				ec.LocalVars[s.Name] = true
+				val := ec.TranslateExpr(s.Init)
 				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
 			default:
-				stmts := ec.translateMutation(stmt)
+				stmts := ec.TranslateMutation(stmt)
 				for _, line := range stmts {
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
 		}
 		if fn.Block.Return != nil {
-			ret := ec.translateExpr(fn.Block.Return)
+			ret := ec.TranslateExpr(fn.Block.Return)
 			fmt.Fprintf(b, "\treturn %s\n", ret)
 		}
 		for _, p := range fn.Params {
-			delete(ec.localVars, p.Name)
+			delete(ec.LocalVars, p.Name)
 		}
 		for _, stmt := range fn.Block.Stmts {
 			if s, ok := stmt.(*ast.VarStmt); ok {
-				delete(ec.localVars, s.Name)
+				delete(ec.LocalVars, s.Name)
 			}
 		}
 		b.WriteString("}\n\n")
@@ -568,9 +568,9 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 	fmt.Fprintf(b, "func (m *Model) %s(%s) fyne.CanvasObject {\n", methodName, strings.Join(params, ", "))
 
 	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, ec.localVars)
+	maps.Copy(savedLocals, ec.LocalVars)
 	for _, p := range comp.Params {
-		ec.localVars[p.Name] = true
+		ec.LocalVars[p.Name] = true
 	}
 
 	var slotVar string
@@ -605,7 +605,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 	}
 
 	b.WriteString("}\n\n")
-	ec.localVars = savedLocals
+	ec.LocalVars = savedLocals
 }
 
 func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
@@ -629,217 +629,6 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 // --- Dependency tracking ---
 
 // --- Helper functions ---
-
-func exportName(s string) string {
-	if s == "" {
-		return s
-	}
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
-func unexportName(s string) string {
-	if s == "" {
-		return s
-	}
-	runes := []rune(s)
-	runes[0] = unicode.ToLower(runes[0])
-	return string(runes)
-}
-
-func inferGoType(expr ast.Expr) string {
-	if expr.TypeHint != "" {
-		return typeHintToGo(expr.TypeHint)
-	}
-	if expr.Literal != nil {
-		switch expr.Literal.(type) {
-		case int:
-			return "int"
-		case float64:
-			return "float64"
-		case bool:
-			return "bool"
-		case string:
-			return "string"
-		}
-	}
-	return "any"
-}
-
-func typeHintToGo(hint string) string {
-	if strings.HasPrefix(hint, "[]") {
-		return "[]" + typeHintToGo(hint[2:])
-	}
-	if strings.HasPrefix(hint, "list:") {
-		return "[]" + typeHintToGo(hint[5:])
-	}
-	if strings.HasPrefix(hint, "option:") {
-		return "*" + typeHintToGo(hint[7:])
-	}
-	if strings.HasPrefix(hint, "enum:") {
-		return "string"
-	}
-	switch hint {
-	case "int":
-		return "int"
-	case "float":
-		return "float64"
-	case "bool":
-		return "bool"
-	case "string", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
-		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
-		return "string"
-	case "date", "time", "dateTime":
-		return "time.Time"
-	case "duration":
-		return "time.Duration"
-	default:
-		// Package-qualified type (e.g., "ast.File") — pass through
-		if strings.Contains(hint, ".") && !strings.ContainsAny(hint, ":~<>") {
-			return hint
-		}
-		// User-defined struct types are simple identifiers; anything
-		// containing special chars (func:, unit:, etc.) is unknown.
-		if !strings.ContainsAny(hint, ":~<>") && hint != "" {
-			return exportName(hint)
-		}
-		return "any"
-	}
-}
-
-func externFuncGoType(paramTypes []string, returnType string) string {
-	params := make([]string, len(paramTypes))
-	for i, p := range paramTypes {
-		params[i] = typeHintToGo(p)
-	}
-	sig := "func(" + strings.Join(params, ", ") + ")"
-	if returnType != "" {
-		sig += " " + typeHintToGo(returnType)
-	}
-	return sig
-}
-
-func literalToGo(expr ast.Expr) string {
-	// Option types: wrap concrete literals with address-of via inline func
-	if strings.HasPrefix(expr.TypeHint, "option:") {
-		if expr.Literal == nil && expr.SNGL == nil {
-			return "nil"
-		}
-		inner := expr
-		inner.TypeHint = expr.TypeHint[7:]
-		val := literalToGo(inner)
-		if val == "nil" {
-			return "nil"
-		}
-		goType := typeHintToGo(inner.TypeHint)
-		return fmt.Sprintf("func() *%s { v := %s; return &v }()", goType, val)
-	}
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			switch expr.TypeHint {
-			case "duration":
-				return fmt.Sprintf("mustParseDuration(%q)", v)
-			case "date":
-				return fmt.Sprintf("mustParseDate(%q)", v)
-			case "time":
-				return fmt.Sprintf("mustParseTime(%q)", v)
-			case "dateTime":
-				return fmt.Sprintf("mustParseDateTime(%q)", v)
-			default:
-				return fmt.Sprintf("%q", v)
-			}
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		}
-	}
-	if expr.TypeHint != "" {
-		// Foreign struct types use zero-value constructor, not nil
-		if expr.Resolved != nil && expr.Resolved.NativeType != "" {
-			return expr.Resolved.NativeType + "{}"
-		}
-		return "nil"
-	}
-	return `""`
-}
-
-func needsTimeType(hint string) bool {
-	switch hint {
-	case "date", "time", "dateTime", "duration":
-		return true
-	}
-	return false
-}
-
-func snglNodeGoType(e ast.Node) string {
-	switch n := e.(type) {
-	case *ast.LiteralExpr:
-		switch n.Kind {
-		case ast.LiteralInt:
-			return "int"
-		case ast.LiteralFloat:
-			return "float64"
-		case ast.LiteralBool:
-			return "bool"
-		case ast.LiteralString:
-			return "string"
-		}
-	case *ast.BinaryExpr:
-		switch n.Op {
-		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
-			return "bool"
-		case ast.BinDiv:
-			return "float64"
-		default:
-			lt := snglNodeGoType(n.Left)
-			rt := snglNodeGoType(n.Right)
-			if lt == "float64" || rt == "float64" {
-				return "float64"
-			}
-			return lt
-		}
-	case *ast.UnaryExpr:
-		if n.Op == ast.UnaryNot {
-			return "bool"
-		}
-		return snglNodeGoType(n.Operand)
-	case *ast.TernaryExpr:
-		return snglNodeGoType(n.Then)
-	case *ast.CallExpr:
-		switch n.Func {
-		case "string":
-			return "string"
-		case "int":
-			return "int"
-		case "float":
-			return "float64"
-		case "size":
-			return "int"
-		}
-	case *ast.InterpolationExpr:
-		return "string"
-	case *ast.MethodExpr:
-		switch n.Method {
-		case "upper", "lower", "trim", "replace", "substring":
-			return "string"
-		case "length", "indexOf":
-			return "int"
-		}
-	case *ast.ParenExpr:
-		return snglNodeGoType(n.Inner)
-	}
-	return "any"
-}
 
 func extractAssignTarget(e ast.Node) string {
 	switch n := e.(type) {

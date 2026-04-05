@@ -48,8 +48,8 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 		indexVar := "_"
 		if vn.For.IndexVar != "" {
 			indexVar = vn.For.IndexVar
-			vc.ec.localVars[indexVar] = true
-			defer func() { delete(vc.ec.localVars, indexVar) }()
+			vc.ec.LocalVars[indexVar] = true
+			defer func() { delete(vc.ec.LocalVars, indexVar) }()
 		}
 		vc.line("var %s []string", loopVar)
 		vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
@@ -58,8 +58,8 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 			vc.line("_ = %s", indexVar)
 		}
 		// Push local var
-		vc.ec.localVars[iterVar] = true
-		defer func() { delete(vc.ec.localVars, iterVar) }()
+		vc.ec.LocalVars[iterVar] = true
+		defer func() { delete(vc.ec.LocalVars, iterVar) }()
 
 		// Track for-loop index var for cursor-aware rendering
 		prevForIndexVar := vc.forIndexVar
@@ -837,18 +837,3 @@ func (vc *viewContext) getGap(vn *ast.VisualNode) int {
 	return 0
 }
 
-// exprToGoCond converts an ast.Expr to a Go boolean expression string.
-func exprToGoCond(expr ast.Expr, ec *exprContext) string {
-	if expr.Literal != nil {
-		if v, ok := expr.Literal.(bool); ok {
-			if v {
-				return "true"
-			}
-			return "false"
-		}
-	}
-	if expr.SNGL != nil && ec != nil {
-		return ec.translateExpr(expr.SNGL)
-	}
-	return "true"
-}

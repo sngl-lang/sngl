@@ -107,31 +107,6 @@ func styleCall(prop string, expr ast.Expr, ec *exprContext, scaleFactor int) str
 	return ""
 }
 
-// exprToGoValue converts an ast.Expr to a Go value string.
-func exprToGoValue(expr ast.Expr, ec *exprContext) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		default:
-			return fmt.Sprintf("%v", v)
-		}
-	}
-	if expr.SNGL != nil && ec != nil {
-		return ec.translateExpr(expr.SNGL)
-	}
-	return `""`
-}
-
 // scaleVal wraps a numeric value expression with pixel-to-cell scaling.
 // For literal ints, it computes the scaled value at compile time.
 func scaleVal(val string, scaleFactor int) string {

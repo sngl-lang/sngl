@@ -65,7 +65,7 @@ func (vc *viewContext) exprDeps(expr ast.Expr) map[string]bool {
 
 // emitEventHandler emits mutation statements and affected updater calls for an event.
 func (vc *viewContext) emitEventHandler(evtNode ast.Node) {
-	stmts := vc.ec.translateMutation(evtNode)
+	stmts := vc.ec.TranslateMutation(evtNode)
 	for _, s := range stmts {
 		vc.line("%s", s)
 	}
@@ -162,11 +162,11 @@ func (vc *viewContext) renderForLoop(vn *ast.VisualNode, resultVar string) {
 	indexVar := "_"
 	if vn.For.IndexVar != "" {
 		indexVar = vn.For.IndexVar
-		vc.ec.localVars[indexVar] = true
-		defer func() { delete(vc.ec.localVars, indexVar) }()
+		vc.ec.LocalVars[indexVar] = true
+		defer func() { delete(vc.ec.LocalVars, indexVar) }()
 	}
-	vc.ec.localVars[iterVar] = true
-	defer func() { delete(vc.ec.localVars, iterVar) }()
+	vc.ec.LocalVars[iterVar] = true
+	defer func() { delete(vc.ec.LocalVars, iterVar) }()
 
 	// For loops with info get a persistent container that rebuilds via updater
 	if vc.info != nil {
@@ -565,10 +565,10 @@ func (vc *viewContext) renderCheckbox(vn *ast.VisualNode, resultVar string) {
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
 		vc.line("m.%s = widget.NewCheck(%s, func(checked bool) {", fieldName, label)
 		vc.indent++
-		prevEventVar := vc.ec.eventVar
-		vc.ec.eventVar = "checked"
+		prevEventVar := vc.ec.EventVar
+		vc.ec.EventVar = "checked"
 		vc.emitEventHandler(changeEvt.SNGL)
-		vc.ec.eventVar = prevEventVar
+		vc.ec.EventVar = prevEventVar
 		vc.indent--
 		vc.line("})")
 	} else {
@@ -610,10 +610,10 @@ func (vc *viewContext) renderRadio(vn *ast.VisualNode, resultVar string) {
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
 		vc.line("m.%s = widget.NewRadioGroup(%s, func(s string) {", fieldName, options)
 		vc.indent++
-		prevEventVar := vc.ec.eventVar
-		vc.ec.eventVar = "s"
+		prevEventVar := vc.ec.EventVar
+		vc.ec.EventVar = "s"
 		vc.emitEventHandler(changeEvt.SNGL)
-		vc.ec.eventVar = prevEventVar
+		vc.ec.EventVar = prevEventVar
 		vc.indent--
 		vc.line("})")
 	} else {
@@ -668,10 +668,10 @@ func (vc *viewContext) renderSelectComp(vn *ast.VisualNode, resultVar string) {
 	if changeEvt, ok := vn.Events["change"]; ok && changeEvt.SNGL != nil {
 		vc.line("m.%s = widget.NewSelect(%s, func(s string) {", fieldName, options)
 		vc.indent++
-		prevEventVar := vc.ec.eventVar
-		vc.ec.eventVar = "s"
+		prevEventVar := vc.ec.EventVar
+		vc.ec.EventVar = "s"
 		vc.emitEventHandler(changeEvt.SNGL)
-		vc.ec.eventVar = prevEventVar
+		vc.ec.EventVar = prevEventVar
 		vc.indent--
 		vc.line("})")
 	} else {
@@ -751,7 +751,7 @@ func (vc *viewContext) renderTabs(vn *ast.VisualNode, resultVar string) {
 		if items.SNGL != nil {
 			if list, ok := items.SNGL.(*ast.ListExpr); ok {
 				for i, el := range list.Elements {
-					label := vc.ec.translateExpr(el)
+					label := vc.ec.TranslateExpr(el)
 					if i < len(vn.Children) {
 						childVar := fmt.Sprintf("%sTab%d", resultVar, i)
 						vc.line("var %s fyne.CanvasObject", childVar)
@@ -781,10 +781,10 @@ func (vc *viewContext) renderTabs(vn *ast.VisualNode, resultVar string) {
 		vc.indent++
 		vc.line("if t == tab {")
 		vc.indent++
-		prevEventVar := vc.ec.eventVar
-		vc.ec.eventVar = "i"
+		prevEventVar := vc.ec.EventVar
+		vc.ec.EventVar = "i"
 		vc.emitEventHandler(changeEvt.SNGL)
-		vc.ec.eventVar = prevEventVar
+		vc.ec.EventVar = prevEventVar
 		vc.line("break")
 		vc.indent--
 		vc.line("}")
@@ -960,7 +960,7 @@ func (vc *viewContext) renderAccordion(vn *ast.VisualNode, resultVar string) {
 		if items.SNGL != nil {
 			if list, ok := items.SNGL.(*ast.ListExpr); ok {
 				for i, el := range list.Elements {
-					label := vc.ec.translateExpr(el)
+					label := vc.ec.TranslateExpr(el)
 					if i < len(vn.Children) {
 						childVar := fmt.Sprintf("%sAcc%d", resultVar, i)
 						vc.line("var %s fyne.CanvasObject", childVar)
