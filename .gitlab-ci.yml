@@ -57,6 +57,7 @@ pages:
   script:
     - go tool docsgen -out public
     - cd public
+    - rm -rf .git
     - git init
     - git checkout -b main
     - git add -A
