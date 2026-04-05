@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -134,6 +135,9 @@ func clearCommentPositions(comments []ast.Comment) []ast.Comment {
 		comments[i].Pos = ast.Pos{}
 		comments[i].Inline = false // Inline is position-dependent, ignore for comparison
 	}
+	sort.Slice(comments, func(i, j int) bool {
+		return comments[i].Text < comments[j].Text
+	})
 	return comments
 }
 
@@ -165,6 +169,7 @@ func clearComponentPos(comp *ast.Component) {
 	comp.Pos = ast.Pos{}
 	comp.EndLine = 0
 	comp.BraceCol = 0
+	comp.BraceLine = 0
 	comp.Decls = nil
 	for _, p := range comp.Params {
 		p.Pos = ast.Pos{}
@@ -207,6 +212,7 @@ func clearTestPos(td *ast.TestDef) {
 	td.Pos = ast.Pos{}
 	td.EndLine = 0
 	td.BraceCol = 0
+	td.BraceLine = 0
 	td.Decls = nil
 	for _, sub := range td.Subtests {
 		clearTestPos(sub)

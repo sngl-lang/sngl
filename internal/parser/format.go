@@ -90,6 +90,10 @@ func alignInlineComments(s string) string {
 // findInlineComment returns the index of " //" in a line, respecting strings.
 // Returns -1 if no inline comment found.
 func findInlineComment(line string) int {
+	// If the line is entirely a comment, there's no "inline" comment to find
+	if strings.HasPrefix(strings.TrimSpace(line), "//") {
+		return -1
+	}
 	inStr := false
 	for i := 0; i < len(line); i++ {
 		switch line[i] {
@@ -141,7 +145,7 @@ func (f *formatter) emitPendingInlineComment() {
 func (f *formatter) emitInlineComment(line int) {
 	if f.commentI < len(f.comments) {
 		c := f.comments[f.commentI]
-		if c.Inline && c.Pos.Line == line {
+		if c.Inline && c.Pos.Line == line && !f.emittedInline[[2]int{c.Pos.Line, c.Pos.Column}] {
 			s := f.sb.String()
 			if len(s) > 0 && s[len(s)-1] == '\n' {
 				f.sb.Reset()
@@ -149,6 +153,10 @@ func (f *formatter) emitInlineComment(line int) {
 			}
 			f.write(" " + c.Text)
 			f.newline()
+			if f.emittedInline == nil {
+				f.emittedInline = map[[2]int]bool{}
+			}
+			f.emittedInline[[2]int{c.Pos.Line, c.Pos.Column}] = true
 			f.commentI++
 		}
 	}
@@ -167,8 +175,9 @@ type formatter struct {
 	sb                   strings.Builder
 	indent               int
 	comments             []ast.Comment
-	commentI             int           // next comment index to emit
-	pendingInlineComment *ast.Comment  // inline comment to emit on the visual node's line
+	commentI             int              // next comment index to emit
+	pendingInlineComment *ast.Comment     // inline comment to emit on the visual node's line
+	emittedInline        map[[2]int]bool  // tracks inline comments emitted by emitInlineComment (key: [line, col])
 }
 
 func (f *formatter) write(s string) { f.sb.WriteString(s) }
@@ -218,7 +227,7 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 		case *ast.Comment:
 			if decl.Inline {
 				// Skip if already consumed by emitInlineComment inside a component/test
-				if f.commentI > 0 && f.comments[f.commentI-1].Pos.Line == decl.Pos.Line {
+				if f.emittedInline[[2]int{decl.Pos.Line, decl.Pos.Column}] {
 					continue
 				}
 				// Inline comment: remove last \n, append comment on same line
@@ -229,6 +238,10 @@ func (f *formatter) formatDocumentDecls(doc *ast.Document) {
 				}
 				f.write(" " + decl.Text)
 				f.newline()
+				if f.emittedInline == nil {
+					f.emittedInline = map[[2]int]bool{}
+				}
+				f.emittedInline[[2]int{decl.Pos.Line, decl.Pos.Column}] = true
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 					f.newline()
@@ -631,7 +644,7 @@ func (f *formatter) formatStruct(s *ast.StructDef) {
 	f.writeLine("struct " + s.Name + " {")
 	f.indent++
 	for _, field := range s.Fields {
-		line := field.Name + " " + field.Type
+		line := field.Name + " " + typeHintStr(field.Type, nil)
 		if field.Default.SNGL != nil || field.Default.Literal != nil {
 			line += " = " + f.formatExprValue(field.Default)
 		}
@@ -1831,15 +1844,17 @@ func consumeEncodedType(s string) (typ, rest string) {
 	if strings.HasPrefix(s, "func:") {
 		inner := s[5:]
 		var params []string
-		for inner != "" && inner[0] != '~' {
+		for inner != "" && inner[0] != '~' && inner[0] != ',' {
 			var param string
 			param, inner = consumeEncodedType(inner)
-			params = append(params, param)
-			if inner != "" && inner[0] == ':' {
+			if param != "" {
+				params = append(params, param)
+			}
+			if inner != "" && inner[0] == ',' {
 				inner = inner[1:]
 			}
 		}
-		result := "func:" + strings.Join(params, ":")
+		result := "func:" + strings.Join(params, ",")
 		if inner != "" && inner[0] == '~' {
 			inner = inner[1:]
 			var ret string
@@ -1849,7 +1864,7 @@ func consumeEncodedType(s string) (typ, rest string) {
 		return result, inner
 	}
 	for i := range len(s) {
-		if s[i] == ':' || s[i] == '~' {
+		if s[i] == ',' || s[i] == '~' {
 			return s[:i], s[i:]
 		}
 	}
@@ -1865,7 +1880,7 @@ func splitFuncBody(body string) (params []string, ret string) {
 		if param != "" {
 			params = append(params, param)
 		}
-		if body != "" && body[0] == ':' {
+		if body != "" && body[0] == ',' {
 			body = body[1:]
 		}
 	}

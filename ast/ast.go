@@ -120,6 +120,7 @@ type TestDef struct {
 	Pos       Pos
 	EndLine   int        // line of closing } (set by parser)
 	BraceCol  int        // column of opening { (set by parser, for comment filtering)
+	BraceLine int        // line of opening { (set by parser, for comment filtering)
 	Component string     // component under test (top-level only)
 	Desc      string     // test description
 	Body      []Node     // statements: assign, toggle, emit, call (assert), expressions
@@ -272,6 +273,7 @@ type Component struct {
 	Pos            Pos
 	EndLine        int    // line of closing }, for comment filtering
 	BraceCol       int    // column of opening {, for comment filtering
+	BraceLine      int    // line of opening {, for comment filtering
 	Name           string
 	Disabled       bool
 	Params         []*Param                // params/props declared in ()

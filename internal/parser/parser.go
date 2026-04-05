@@ -356,14 +356,14 @@ func (p *parser) parseDocument() *ast.Document {
 	doc.Comments = p.comments
 	// Only merge comments that aren't inside nested blocks (components, tests).
 	// Build a set of line ranges covered by nested blocks.
-	type lineRange struct{ start, end, braceCol int }
+	type lineRange struct{ start, end, braceCol, braceLine int }
 	var nested []lineRange
 	for _, d := range doc.Decls {
 		switch v := d.(type) {
 		case *ast.Component:
-			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol})
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
 		case *ast.TestDef:
-			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol})
+			nested = append(nested, lineRange{v.Pos.Line, v.EndLine, v.BraceCol, v.BraceLine})
 		}
 	}
 	var topComments []ast.Comment
@@ -371,16 +371,39 @@ func (p *parser) parseDocument() *ast.Document {
 		inside := false
 		for _, r := range nested {
 			if c.Pos.Line > r.start && c.Pos.Line < r.end {
-				inside = true
-				break
+				// Between start and end lines (exclusive) — but only if on or after the brace line
+				if c.Pos.Line >= r.braceLine {
+					inside = true
+					break
+				}
 			}
-			if c.Pos.Line == r.start && r.start != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
+			if c.Pos.Line == r.braceLine && r.braceLine != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
 				inside = true
 				break
 			}
 		}
 		if !inside {
 			topComments = append(topComments, c)
+		}
+	}
+	// Clear Inline on comments that are on a block's start line but before
+	// the opening brace — they can't remain inline after formatting spreads
+	// the declaration across multiple lines.
+	for i := range topComments {
+		if !topComments[i].Inline {
+			continue
+		}
+		for _, r := range nested {
+			if topComments[i].Pos.Line >= r.start && topComments[i].Pos.Line < r.braceLine {
+				topComments[i].Inline = false
+				// Also update doc.Comments
+				for j := range doc.Comments {
+					if doc.Comments[j].Pos == topComments[i].Pos {
+						doc.Comments[j].Inline = false
+					}
+				}
+				break
+			}
 		}
 	}
 	doc.Decls = mergeCommentsIntoDecls(doc.Decls, topComments)
@@ -659,6 +682,7 @@ func (p *parser) parseComponent() *ast.Component {
 	}
 
 	comp.BraceCol = p.cur.Column
+	comp.BraceLine = p.cur.Line
 	p.expect(LBRACE)
 	cs := &componentState{}
 
@@ -737,9 +761,9 @@ func (p *parser) parseComponent() *ast.Component {
 	bodyEnd := closeLine
 	var bodyComments []ast.Comment
 	for _, c := range p.comments {
-		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
+		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd && c.Pos.Line >= comp.BraceLine {
 			bodyComments = append(bodyComments, c)
-		} else if c.Pos.Line == bodyStart && bodyStart != bodyEnd && c.Pos.Column > comp.BraceCol {
+		} else if c.Pos.Line == comp.BraceLine && comp.BraceLine != bodyEnd && comp.BraceCol > 0 && c.Pos.Column > comp.BraceCol {
 			// Comment on the same line as { but after it — inside the body
 			bodyComments = append(bodyComments, c)
 		}
@@ -759,6 +783,7 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 		td.Desc = p.expect(STRING).Literal
 	}
 	td.BraceCol = p.cur.Column
+	td.BraceLine = p.cur.Line
 	p.expect(LBRACE)
 	for !p.at(RBRACE) && !p.at(EOF) {
 		p.skipSemicolons()
@@ -783,17 +808,17 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 	// Merge comments that fall inside the test body, excluding those inside nested subtests.
 	bodyStart := td.Pos.Line
 	bodyEnd := td.EndLine
-	type lineRange struct{ start, end, braceCol int }
+	type lineRange struct{ start, end, braceCol, braceLine int }
 	var nestedRanges []lineRange
 	for _, sub := range td.Subtests {
-		nestedRanges = append(nestedRanges, lineRange{sub.Pos.Line, sub.EndLine, sub.BraceCol})
+		nestedRanges = append(nestedRanges, lineRange{sub.Pos.Line, sub.EndLine, sub.BraceCol, sub.BraceLine})
 	}
 	var bodyComments []ast.Comment
 	for _, c := range p.comments {
 		inBody := false
-		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd {
+		if c.Pos.Line > bodyStart && c.Pos.Line < bodyEnd && c.Pos.Line >= td.BraceLine {
 			inBody = true
-		} else if c.Pos.Line == bodyStart && td.BraceCol > 0 && c.Pos.Column > td.BraceCol {
+		} else if c.Pos.Line == td.BraceLine && td.BraceLine != bodyEnd && td.BraceCol > 0 && c.Pos.Column > td.BraceCol {
 			inBody = true
 		}
 		if !inBody {
@@ -802,11 +827,11 @@ func (p *parser) parseTestDef(topLevel bool) *ast.TestDef {
 		// Exclude comments inside nested subtests
 		insideNested := false
 		for _, r := range nestedRanges {
-			if c.Pos.Line > r.start && c.Pos.Line < r.end {
+			if c.Pos.Line > r.start && c.Pos.Line < r.end && c.Pos.Line >= r.braceLine {
 				insideNested = true
 				break
 			}
-			if c.Pos.Line == r.start && r.start != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
+			if c.Pos.Line == r.braceLine && r.braceLine != r.end && r.braceCol > 0 && c.Pos.Column > r.braceCol {
 				insideNested = true
 				break
 			}
@@ -950,7 +975,12 @@ func (p *parser) parseVarSpec() []*ast.Data {
 			p.advance() // consume comma
 			names = append(names, p.expect(IDENT).Literal)
 		}
-		typeHint := p.parseTypeString()
+		var typeHint string
+		var hasExplicitType bool
+		if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(AT) && !p.at(ASSIGN) && !p.at(RBRACE) {
+			typeHint = p.parseTypeString()
+			hasExplicitType = true
+		}
 		var init ast.Expr
 		if p.at(ASSIGN) {
 			p.advance()
@@ -961,7 +991,7 @@ func (p *parser) parseVarSpec() []*ast.Data {
 		}
 		var vars []*ast.Data
 		for _, n := range names {
-			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: true}
+			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: hasExplicitType, Grouped: true}
 			if strings.HasPrefix(typeHint, "func:") {
 				d.IsFunc = true
 				params, ret := splitFuncBody(typeHint[5:])
@@ -1268,7 +1298,7 @@ func (p *parser) parseFuncType() string {
 		}
 	}
 	p.expect(RPAREN)
-	result := "func:" + strings.Join(params, ":")
+	result := "func:" + strings.Join(params, ",")
 	if p.at(ARROW) {
 		p.advance()
 		retType := p.parseTypeString()

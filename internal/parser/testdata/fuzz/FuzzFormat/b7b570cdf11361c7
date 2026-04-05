@@ -1,0 +1,2 @@
+go test fuzz v1
+string("component//\nA(A0000)A{//\n}")
