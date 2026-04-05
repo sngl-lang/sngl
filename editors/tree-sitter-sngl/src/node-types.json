@@ -50,6 +50,10 @@
       {
         "type": "var_declaration",
         "named": true
+      },
+      {
+        "type": "window_declaration",
+        "named": true
       }
     ]
   },
@@ -506,6 +510,10 @@
         },
         {
           "type": "visual_node",
+          "named": true
+        },
+        {
+          "type": "window_declaration",
           "named": true
         }
       ]
@@ -2240,6 +2248,64 @@
     }
   },
   {
+    "type": "window_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "const_declaration",
+          "named": true
+        },
+        {
+          "type": "for_node",
+          "named": true
+        },
+        {
+          "type": "func_declaration",
+          "named": true
+        },
+        {
+          "type": "if_node",
+          "named": true
+        },
+        {
+          "type": "prop_list",
+          "named": true
+        },
+        {
+          "type": "slashdash",
+          "named": true
+        },
+        {
+          "type": "timer_declaration",
+          "named": true
+        },
+        {
+          "type": "var_declaration",
+          "named": true
+        },
+        {
+          "type": "visual_node",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "!",
     "named": false
   },
@@ -2503,6 +2569,10 @@
   },
   {
     "type": "var",
+    "named": false
+  },
+  {
+    "type": "window",
     "named": false
   },
   {

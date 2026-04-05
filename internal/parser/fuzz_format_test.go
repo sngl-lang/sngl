@@ -57,10 +57,10 @@ func FuzzFormat(f *testing.F) {
 		// Normalize: the formatter wraps loose data/functions in component main,
 		// so doc1 might have App=nil where doc2 has App set. Treat both as equivalent
 		// by clearing App when it has no children.
-		if doc1.App != nil && len(doc1.App.Children) == 0 {
+		if doc1.App != nil && len(doc1.App.Children) == 0 && len(doc1.App.Windows) == 0 {
 			doc1.App = nil
 		}
-		if doc2.App != nil && len(doc2.App.Children) == 0 {
+		if doc2.App != nil && len(doc2.App.Children) == 0 && len(doc2.App.Windows) == 0 {
 			doc2.App = nil
 		}
 
@@ -119,10 +119,16 @@ func clearPositions(doc *ast.Document) {
 	for _, comp := range doc.AbstractComponents {
 		clearComponentPos(comp)
 	}
+	for _, win := range doc.Windows {
+		clearWindowPos(win)
+	}
 	if doc.App != nil {
 		doc.App.Pos = ast.Pos{}
 		for _, vn := range doc.App.Children {
 			clearVisualNodePos(vn)
+		}
+		for _, win := range doc.App.Windows {
+			clearWindowPos(win)
 		}
 	}
 }
@@ -202,6 +208,32 @@ func clearComponentPos(comp *ast.Component) {
 	for _, vn := range comp.Body {
 		clearVisualNodePos(vn)
 	}
+	for _, win := range comp.Windows {
+		clearWindowPos(win)
+	}
+}
+
+func clearWindowPos(win *ast.Window) {
+	win.Pos = ast.Pos{}
+	win.EndLine = 0
+	win.BraceCol = 0
+	win.BraceLine = 0
+	win.Decls = nil
+	for _, c := range win.Consts {
+		clearConstPos(c)
+	}
+	for _, d := range win.Data {
+		clearDataPos(d)
+	}
+	for _, f := range win.Functions {
+		clearFuncPos(f)
+	}
+	for _, t := range win.Timers {
+		t.Pos = ast.Pos{}
+	}
+	for _, vn := range win.Children {
+		clearVisualNodePos(vn)
+	}
 }
 
 func clearVisualNodePos(vn *ast.VisualNode) {
@@ -217,4 +249,3 @@ func clearVisualNodePos(vn *ast.VisualNode) {
 		clearVisualNodePos(child)
 	}
 }
-

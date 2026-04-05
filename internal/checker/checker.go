@@ -219,13 +219,13 @@ type checker struct {
 	targetPlatforms []string        // platforms from output declarations (for availability checks)
 	fsys            fs.FS
 	schemeDir       string // real OS path for scheme imports (e.g., go://)
-	resolve       ImportResolver
-	schemeResolve SchemeResolver
-	visited       map[string]bool // tracks visited import paths to detect cycles
-	isMain        bool            // true for the entry-point package
-	namespaces    map[string]*importNS
-	apis          *APIConfig
-	errs          []error
+	resolve         ImportResolver
+	schemeResolve   SchemeResolver
+	visited         map[string]bool // tracks visited import paths to detect cycles
+	isMain          bool            // true for the entry-point package
+	namespaces      map[string]*importNS
+	apis            *APIConfig
+	errs            []error
 }
 
 // importNS stores the exported declarations from an imported package.
@@ -1070,6 +1070,7 @@ func (c *checker) pass2(doc *ast.Document) {
 		for _, child := range doc.App.Children {
 			c.checkVisualNode(child, c.scope)
 		}
+		c.checkWindows(doc.App.Windows)
 	}
 	for _, comp := range doc.Components {
 		compScope := NewScope(c.scope)
@@ -1078,6 +1079,43 @@ func (c *checker) pass2(doc *ast.Document) {
 		}
 		for _, child := range comp.Body {
 			c.checkVisualNode(child, compScope)
+		}
+	}
+}
+
+// checkWindows validates window declarations.
+func (c *checker) checkWindows(windows []*ast.Window) {
+	seen := map[string]bool{}
+	for _, win := range windows {
+		if win.Name != "" {
+			if seen[win.Name] {
+				c.errorAt(win.Pos, "duplicate window name %q", win.Name)
+			}
+			seen[win.Name] = true
+		}
+
+		// Create a scope for window-level declarations.
+		winScope := NewScope(c.scope)
+		for _, d := range win.Data {
+			t := Dyn
+			if d.Init.TypeHint != "" {
+				t = TypeFromHint(d.Init.TypeHint)
+			}
+			winScope.Declare(d.Name, t)
+		}
+		for _, cn := range win.Consts {
+			t := Dyn
+			if cn.Init.TypeHint != "" {
+				t = TypeFromHint(cn.Init.TypeHint)
+			}
+			winScope.Declare(cn.Name, t)
+		}
+		for _, fn := range win.Functions {
+			winScope.Declare(fn.Name, Dyn)
+		}
+
+		for _, child := range win.Children {
+			c.checkVisualNode(child, winScope)
 		}
 	}
 }

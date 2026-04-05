@@ -61,6 +61,7 @@ module.exports = grammar({
         $.func_declaration,
         $.timer_declaration,
         $.component_declaration,
+        $.window_declaration,
         $.test_declaration,
       ),
 
@@ -161,6 +162,27 @@ module.exports = grammar({
         field("value", $._expression),
       ),
 
+    // ─── Window ───────────────────────────────────────────────
+
+    window_declaration: ($) =>
+      seq(
+        "window",
+        optional(field("name", $.identifier)),
+        optional($.prop_list),
+        "{",
+        repeat(seq(optional($.slashdash), $._window_member, $._terminator)),
+        "}",
+      ),
+
+    _window_member: ($) =>
+      choice(
+        $.const_declaration,
+        $.var_declaration,
+        $.func_declaration,
+        $.timer_declaration,
+        $._node_or_control,
+      ),
+
     // ─── Component ───────────────────────────────────────────
 
     component_declaration: ($) =>
@@ -251,6 +273,7 @@ module.exports = grammar({
         $.func_declaration,
         $.timer_declaration,
         $.platform_block,
+        $.window_declaration,
         $._node_or_control,
       ),
 

@@ -60,6 +60,18 @@ func Optimize(doc *ast.Document, cfg Config) error {
 	// Fold and prune the app tree.
 	if doc.App != nil {
 		doc.App.Children = optimizeNodes(doc.App.Children, vars)
+		for _, win := range doc.App.Windows {
+			foldExprMap(win.Props, vars)
+			for _, d := range win.Data {
+				foldExpr(&d.Init, vars)
+			}
+			for _, fn := range win.Functions {
+				if fn.Body.SNGL != nil {
+					foldExpr(&fn.Body, vars)
+				}
+			}
+			win.Children = optimizeNodes(win.Children, vars)
+		}
 	}
 	return nil
 }

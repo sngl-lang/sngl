@@ -7,9 +7,9 @@ type ChildPolicy int
 
 const (
 	ChildrenNone     ChildPolicy = iota
-	ChildrenOne                          // component
-	ChildrenMany                         // list<component>
-	ChildrenOptional                     // option<component>
+	ChildrenOne                  // component
+	ChildrenMany                 // list<component>
+	ChildrenOptional             // option<component>
 )
 
 // PropSchema describes a component property's type and valid enum values.
@@ -22,10 +22,10 @@ type PropSchema struct {
 // ComponentSchema defines the properties, events, and child policy for a component.
 type ComponentSchema struct {
 	Props          map[string]PropSchema
-	Events         map[string]string           // event name → event type key
+	Events         map[string]string // event name → event type key
 	Children       ChildPolicy
 	Doc            string
-	Body           []*ast.VisualNode           // default body (nil = pure abstract)
+	Body           []*ast.VisualNode            // default body (nil = pure abstract)
 	PlatformBodies map[string][]*ast.VisualNode // platform-conditional bodies
 	Permissive     bool                         // true for dynamically resolved elements (accept any props/events)
 }

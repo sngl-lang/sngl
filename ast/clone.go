@@ -21,6 +21,7 @@ func (d *Document) Clone() *Document {
 	c.ImportedComponents = cloneComponents(d.ImportedComponents)
 	c.Timers = cloneSlice(d.Timers)
 	c.Styles = cloneStyleDecls(d.Styles)
+	c.Windows = cloneWindows(d.Windows)
 	c.App = d.App.clone()
 	return &c
 }
@@ -31,7 +32,31 @@ func (a *App) clone() *App {
 	}
 	c := *a
 	c.Children = cloneVisualNodes(a.Children)
+	c.Windows = cloneWindows(a.Windows)
 	return &c
+}
+
+func cloneWindows(s []*Window) []*Window {
+	if s == nil {
+		return nil
+	}
+	out := make([]*Window, len(s))
+	for i, v := range s {
+		c := *v
+		c.Props = cloneExprMap(v.Props)
+		if v.PropOrder != nil {
+			c.PropOrder = make([]string, len(v.PropOrder))
+			copy(c.PropOrder, v.PropOrder)
+		}
+		c.Consts = cloneSlice(v.Consts)
+		c.Data = cloneData(v.Data)
+		c.Functions = cloneSlice(v.Functions)
+		c.Timers = cloneSlice(v.Timers)
+		c.Children = cloneVisualNodes(v.Children)
+		c.For = cloneForClause(v.For)
+		out[i] = &c
+	}
+	return out
 }
 
 func cloneVisualNodes(nodes []*VisualNode) []*VisualNode {
@@ -181,7 +206,6 @@ func cloneComponents(s []*Component) []*Component {
 	}
 	return out
 }
-
 
 func cloneStyleDecls(s []*StyleDecl) []*StyleDecl {
 	if s == nil {

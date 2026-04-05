@@ -128,7 +128,17 @@ func compareStructure(t *testing.T, doc *ast.Document, root *ts.Node, src []byte
 		goComponents = append(goComponents, c.Name)
 	}
 	if doc.App != nil {
-		goComponents = append(goComponents, "main")
+		// Check if a component main exists in Decls (not just top-level windows promoted to App)
+		hasMainDecl := false
+		for _, d := range doc.Decls {
+			if c, ok := d.(*ast.Component); ok && c.Name == "main" {
+				hasMainDecl = true
+				break
+			}
+		}
+		if len(doc.App.Children) > 0 || hasMainDecl {
+			goComponents = append(goComponents, "main")
+		}
 	}
 
 	compareStringSlices(t, "components", goComponents, tsComponents)
