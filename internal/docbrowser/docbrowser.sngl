@@ -1,26 +1,26 @@
 output {
     go {
         bubbletea(package="docbrowser")
+        http(package="docbrowser")
     }
 }
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
 
-var components list<docs.Component> = docs.Components()
-
 component main {
     var selectedIndex = 0
 
-    func currentName() => components[selectedIndex].name
-    func currentDoc() => components[selectedIndex].doc
-    func currentTier() => components[selectedIndex].tier
-    func currentChildren() => components[selectedIndex].children
+    func currentName() => docs.Components()[selectedIndex].name
+    func currentDoc() => docs.Components()[selectedIndex].doc
+    func currentTier() => docs.Components()[selectedIndex].tier
+    func currentChildren() => docs.Components()[selectedIndex].children
 
+    // TUI layout (used by bubbletea)
     hbox {
         vbox(style={width=200, padding=8}) {
             text(value="SNGL Components", style={fontWeight="bold"})
             text(value="")
-            for comp, index = components {
+            for comp, index = docs.Components() {
                 text(value=index == selectedIndex ? "> " + comp.name : "  " + comp.name)
             }
         }
@@ -31,6 +31,40 @@ component main {
             text(value=currentDoc)
             text(value="")
             text(value="Children: " + currentChildren)
+        }
+    }
+
+    // HTTP routes (used by http platform)
+    window index(title="SNGL Documentation", href="/") {
+        hbox {
+            vbox(style={width=260, padding=8, gap=2}) {
+                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+                for comp = docs.Components() {
+                    link(text=comp.name, href="/" + comp.name, style={padding=4})
+                }
+            }
+            vbox(style={padding=24, gap=16}) {
+                text(value="SNGL Documentation", style={fontSize=24, fontWeight="bold"})
+                text(value="Select a component from the sidebar.")
+            }
+        }
+    }
+
+    window detail(title="Component — SNGL Docs", href="/{name}") {
+        hbox {
+            vbox(style={width=260, padding=8, gap=2}) {
+                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+                for comp = docs.Components() {
+                    link(text=comp.name, href="/" + comp.name,
+                         style={fontWeight=comp.name == name ? "bold" : "normal", padding=4})
+                }
+            }
+            vbox(style={padding=24, gap=12}) {
+                text(value=docs.Lookup(name).name, style={fontSize=24, fontWeight="bold"})
+                text(value="[" + docs.Lookup(name).tier + "]", style={color="#d29922"})
+                text(value=docs.Lookup(name).doc)
+                text(value="Children: " + docs.Lookup(name).children, style={color="#888"})
+            }
         }
     }
 }

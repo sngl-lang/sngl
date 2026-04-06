@@ -49,7 +49,7 @@ func TestTranslateExpr(t *testing.T) {
 		{"select", &ast.SelectExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
 			Field:   "value",
-		}, "m.Count.value"},
+		}, "m.Count.Value"},
 		{"index", &ast.IndexExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
 			Index:   &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},

@@ -268,11 +268,24 @@ func (r *renderer) renderImage(b *strings.Builder, vn *ast.VisualNode, depth int
 
 func (r *renderer) renderLink(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	indent := strings.Repeat("\t", depth)
-	href := r.staticString(vn.Props, "href")
-	text := r.staticString(vn.Props, "text")
-	fmt.Fprintf(b, "%sfmt.Fprint(w, `<a href=%q>`)\n", indent, href)
-	if text != "" {
-		fmt.Fprintf(b, "%sfmt.Fprint(w, `<span>%s</span>`)\n", indent, html.EscapeString(text))
+	hrefExpr, hasHref := vn.Props["href"]
+	hrefStatic := r.staticString(vn.Props, "href")
+	if hasHref && hrefStatic == "" {
+		// Dynamic href.
+		goExpr := r.exprToGo(hrefExpr)
+		fmt.Fprintf(b, "%sfmt.Fprintf(w, `<a href=\"%%s\">`, html.EscapeString(fmt.Sprint(%s)))\n", indent, goExpr)
+	} else {
+		fmt.Fprintf(b, "%sfmt.Fprint(w, `<a href=%q>`)\n", indent, hrefStatic)
+	}
+	if textExpr, ok := vn.Props["text"]; ok {
+		textStatic := r.staticString(vn.Props, "text")
+		if textStatic != "" {
+			fmt.Fprintf(b, "%sfmt.Fprint(w, `<span>%s</span>`)\n", indent, html.EscapeString(textStatic))
+		} else {
+			fmt.Fprintf(b, "%sfmt.Fprint(w, `<span>`)\n", indent)
+			r.writeExprEscaped(b, indent, textExpr)
+			fmt.Fprintf(b, "%sfmt.Fprint(w, `</span>`)\n", indent)
+		}
 	}
 	for _, child := range vn.Children {
 		r.renderNode(b, child, depth)
@@ -289,12 +302,24 @@ func (r *renderer) renderForLoop(b *strings.Builder, vn *ast.VisualNode, depth i
 	}
 	iterableExpr := r.exprToGo(vn.For.Iterable)
 	fmt.Fprintf(b, "%sfor %s, %s := range %s {\n", indent, indexVar, iterVar, iterableExpr)
+	fmt.Fprintf(b, "%s\t_ = %s\n", indent, indexVar)
+	fmt.Fprintf(b, "%s\t_ = %s\n", indent, iterVar)
 	// Temporarily register loop vars as local.
 	r.scope.LocalVars[iterVar] = true
 	r.scope.LocalVars[indexVar] = true
-	for _, child := range vn.Children {
-		r.renderNode(b, child, depth+1)
+
+	if vn.Component != "" {
+		// The for-loop is on the component node itself (e.g. link(for=...)).
+		// Render the component body inside the loop.
+		inner := *vn
+		inner.For = nil
+		r.renderNode(b, &inner, depth+1)
+	} else {
+		for _, child := range vn.Children {
+			r.renderNode(b, child, depth+1)
+		}
 	}
+
 	delete(r.scope.LocalVars, iterVar)
 	delete(r.scope.LocalVars, indexVar)
 	fmt.Fprintf(b, "%s}\n", indent)

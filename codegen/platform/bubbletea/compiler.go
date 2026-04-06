@@ -4,12 +4,33 @@ import (
 	"fmt"
 	"go/format"
 	"maps"
-	"slices"
+	"path"
+	"sort"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"golang.org/x/tools/go/packages"
 )
+
+var pkgNameCache sync.Map // import path → package name
+
+// resolvePackageName returns the Go package name for the given import path.
+func resolvePackageName(importPath string) string {
+	if name, ok := pkgNameCache.Load(importPath); ok {
+		return name.(string)
+	}
+	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName}, importPath)
+	if err == nil && len(pkgs) > 0 && pkgs[0].Name != "" {
+		pkgNameCache.Store(importPath, pkgs[0].Name)
+		return pkgs[0].Name
+	}
+	// Fallback to last path segment.
+	name := path.Base(importPath)
+	pkgNameCache.Store(importPath, name)
+	return name
+}
 
 // Config controls code generation.
 type Config struct {
@@ -89,7 +110,7 @@ type analysisResult struct {
 	inputs     []inputInfo
 	focusables []string // ordered: "input0", "button0", etc.
 	forCursors []forLoopCursor
-	goImports  map[string]bool   // native Go import paths from Resolved fields
+	goImports map[string]string // import path → namespace alias (only imports used by generated types)
 	triggers   map[string]string // data field name → trigger func name
 	needsTime  bool              // emit "time" import
 }
@@ -100,21 +121,18 @@ func analyze(doc *ast.Document) *analysisResult {
 	info := &analysisResult{
 		CommonAnalysis: common,
 		triggers:       make(map[string]string),
-		goImports:      make(map[string]bool),
+		goImports:      make(map[string]string),
 	}
 
-	// Collect Go imports from native (go://) imports
-	for ns, decls := range doc.NativeImports {
-		if decls != nil && decls.ImportPath != "" {
-			info.goImports[decls.ImportPath] = true
-		}
-		_ = ns
-	}
+	// Note: go:// imports are not added to goImports here because they may
+	// not be referenced by the generated bubbletea code (e.g. when the View
+	// is empty due to platform-specific bodies). They are added below only
+	// when a data field or struct field has a Resolved type that needs them.
 
 	// Platform-specific data field analysis (Go types, init values, externs)
 	for _, d := range doc.Data {
 		if d.Resolved != nil && d.Resolved.NativePkg != "" {
-			info.goImports[d.Resolved.NativePkg] = true
+			info.goImports[d.Resolved.NativePkg] = resolvePackageName(d.Resolved.NativePkg)
 		}
 		if d.Extern || d.IsFunc {
 			ext := externInfo{
@@ -176,7 +194,7 @@ func analyze(doc *ast.Document) *analysisResult {
 	for _, sd := range doc.Structs {
 		for _, f := range sd.Fields {
 			if f.Resolved != nil && f.Resolved.NativePkg != "" {
-				info.goImports[f.Resolved.NativePkg] = true
+				info.goImports[f.Resolved.NativePkg] = resolvePackageName(f.Resolved.NativePkg)
 			}
 		}
 	}
@@ -297,13 +315,16 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("\t\"time\"\n")
 	}
 	if len(info.goImports) > 0 {
-		sorted := make([]string, 0, len(info.goImports))
+		var pkgs []string
 		for pkg := range info.goImports {
-			sorted = append(sorted, pkg)
+			pkgs = append(pkgs, pkg)
 		}
-		slices.Sort(sorted)
-		for _, pkg := range sorted {
-			fmt.Fprintf(&b, "\t%q\n", pkg)
+		sort.Strings(pkgs)
+		for _, pkg := range pkgs {
+			ns := info.goImports[pkg]
+			// Use the resolved namespace as an explicit alias so the
+			// generated code's type references (e.g. docs.Component) resolve.
+			fmt.Fprintf(&b, "\t%s %q\n", ns, pkg)
 		}
 	}
 	b.WriteString("\n")
@@ -316,7 +337,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	// Suppress unused import warnings
 	b.WriteString("var _ = fmt.Sprint\n")
-	b.WriteString("var _ = strings.Join\n\n")
+	b.WriteString("var _ = strings.Join\n")
+	b.WriteString("var _ = lipgloss.NewStyle\n\n")
 
 	// Ternary helper
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")

@@ -570,6 +570,8 @@ func Run() error {
 // RunWithDir launches the doc browser. If dir is non-empty and contains .sngl
 // files, those declarations are shown first, followed by stdlib components.
 func RunWithDir(dir string) error {
+	docs.SetWorkspaceDir(dir)
+
 	var items []navItem
 	title := "SNGL Stdlib"
 

@@ -6,10 +6,12 @@ import (
 	"bytes"
 	"embed"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
@@ -19,6 +21,12 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
+
+var workspaceDir string
+
+// SetWorkspaceDir sets the directory to scan for workspace .sngl files.
+// When set, Components() includes workspace component declarations before stdlib.
+func SetWorkspaceDir(dir string) { workspaceDir = dir }
 
 //go:embed *.md getting-started language
 var content embed.FS
@@ -136,18 +144,33 @@ type Tier struct {
 	Components []Component
 }
 
-// Components returns metadata for all stdlib components, grouped by tier.
-//
-//sngl:pure
+// Components returns metadata for all components. When a workspace directory
+// has been set via SetWorkspaceDir, workspace declarations appear first,
+// followed by stdlib components.
 func Components() []Component {
+	var comps []Component
+
+	// Workspace components (if dir set).
+	if workspaceDir != "" {
+		if doc, err := parseDir(workspaceDir); err == nil {
+			pd := checker.ExtractPackageDocs(doc)
+			for _, d := range pd.Components {
+				if !strings.HasPrefix(d.Name, "sngl.") {
+					comps = append(comps, Component{Name: d.Name, Doc: d.Doc, Tier: "workspace"})
+				}
+			}
+		}
+	}
+
+	// Stdlib components.
 	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
-		return nil
+		return comps
 	}
 	tiers := docsite.AssignTiers(registry)
 	stdlibExamples, _ := checker.StdlibExamples()
 
-	var comps []Component
+	var stdComps []Component
 	for name, schema := range registry {
 		c := Component{
 			Name:     name,
@@ -171,30 +194,30 @@ func Components() []Component {
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
 
-		// Load example from stdlib doc comments
 		if src, ok := stdlibExamples[name]; ok {
 			c.Example = src
 			c.HighlightedCode = docsite.HighlightSNGL(src)
 			c.PreviewHTML = buildPreviewSection(name, src)
 		}
 
-		comps = append(comps, c)
+		stdComps = append(stdComps, c)
 	}
 
-	// Sort by tier order then name
+	// Sort stdlib by tier order then name.
 	tierIdx := map[string]int{}
 	for i, t := range docsite.TierOrder {
 		tierIdx[t] = i
 	}
-	sort.Slice(comps, func(i, j int) bool {
-		ti := tierIdx[comps[i].Tier]
-		tj := tierIdx[comps[j].Tier]
+	sort.Slice(stdComps, func(i, j int) bool {
+		ti := tierIdx[stdComps[i].Tier]
+		tj := tierIdx[stdComps[j].Tier]
 		if ti != tj {
 			return ti < tj
 		}
-		return comps[i].Name < comps[j].Name
+		return stdComps[i].Name < stdComps[j].Name
 	})
 
+	comps = append(comps, stdComps...)
 	return comps
 }
 
@@ -217,8 +240,6 @@ func ComponentsByTier() []Tier {
 }
 
 // Lookup returns the component with the given name, or a zero Component if not found.
-//
-//sngl:pure
 func Lookup(name string) Component {
 	for _, c := range Components() {
 		if c.Name == name {
@@ -226,6 +247,37 @@ func Lookup(name string) Component {
 		}
 	}
 	return Component{Name: name, Doc: "Component not found."}
+}
+
+func parseDir(dir string) (*ast.Document, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var doc *ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		f, err := os.Open(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		d, err := parser.Parse(e.Name(), f)
+		f.Close()
+		if err != nil {
+			continue
+		}
+		if doc == nil {
+			doc = d
+		} else {
+			doc.Components = append(doc.Components, d.Components...)
+		}
+	}
+	if doc == nil {
+		return nil, fs.ErrNotExist
+	}
+	return doc, nil
 }
 
 // buildPreviewSection generates the full tabbed preview HTML including

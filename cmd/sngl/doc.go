@@ -431,6 +431,7 @@ func renderEnumDoc(e *ast.EnumDef, comments []ast.Comment) string {
 
 // serveDocHTTP starts the web documentation browser.
 func serveDocHTTP(addr, dir string) error {
+	docs.SetWorkspaceDir(dir)
 	fmt.Fprintf(os.Stderr, "SNGL docs → http://%s\n", addr)
 	return http.ListenAndServe(addr, docbrowser.Handler())
 }
