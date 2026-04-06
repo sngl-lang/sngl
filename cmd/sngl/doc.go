@@ -10,7 +10,9 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
@@ -73,18 +75,33 @@ func runDoc(cmd *cobra.Command, args []string) error {
 
 	first := args[0]
 
-	// Check if first arg is a directory → user package docs
-	if info, err := os.Stat(first); err == nil && info.IsDir() {
-		doc, err := parsePackage(first)
+	// Check if first arg is a directory or .sngl file → user package docs
+	isDir := false
+	isFile := false
+	if info, err := os.Stat(first); err == nil {
+		isDir = info.IsDir()
+		isFile = !isDir && strings.HasSuffix(first, ".sngl")
+	}
+	if isDir || isFile {
+		dir := first
+		if isFile {
+			dir = filepath.Dir(first)
+		}
+		doc, err := parsePackage(dir)
 		if err != nil {
 			return err
 		}
 		pkgDocs := checker.ExtractPackageDocs(doc)
 
 		if len(args) >= 2 {
+			// Check if second arg is a platform namespace
+			plat := codegen.LookupPlatform(args[1])
+			if plat != nil {
+				return showPlatformDocs(args[1], plat)
+			}
 			return showDeclDoc(pkgDocs, args[1], doc.Comments)
 		}
-		return showPackageIndex(first, pkgDocs)
+		return showPackageIndex(dir, pkgDocs)
 	}
 
 	// Try documentation file lookup.
@@ -99,11 +116,17 @@ func runDoc(cmd *cobra.Command, args []string) error {
 	return showComponentDoc(first)
 }
 
-// parsePackage discovers and parses all .sngl files in a directory.
+// parsePackage parses all .sngl files in a directory (non-recursive).
 func parsePackage(dir string) (*ast.Document, error) {
-	files, err := discoverFiles([]string{dir})
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
+	}
+	var files []string
+	for _, e := range entries {
+		if !e.IsDir() && isSNGLFile(e.Name()) {
+			files = append(files, filepath.Join(dir, e.Name()))
+		}
 	}
 	if len(files) == 0 {
 		return nil, fmt.Errorf("no .sngl files found in %s", dir)
@@ -118,91 +141,118 @@ func parsePackage(dir string) (*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	return mergeDir(doc, files[0]), nil
+
+	// Merge sibling files in the same directory
+	for _, path := range files[1:] {
+		sf, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		sibling, err := parseSNGL(path, sf)
+		sf.Close()
+		if err != nil {
+			continue
+		}
+		mergeInto(doc, sibling)
+	}
+
+	return doc, nil
 }
 
 // showPackageIndex displays all declarations in a user package.
+// Platform overrides (sngl.*) and platform-specific types (Options) are
+// separated into their own sections at the bottom.
 func showPackageIndex(dir string, pd *checker.PackageDocs) error {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# Package %s\n\n", dir))
 
-	if len(pd.Components) > 0 {
-		sb.WriteString("## Components\n\n")
-		for _, d := range pd.Components {
-			doc := d.Doc
-			if i := strings.Index(doc, ". "); i > 0 {
-				doc = doc[:i+1]
-			}
-			if doc != "" {
-				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", d.Name, doc))
-			} else {
-				sb.WriteString(fmt.Sprintf("- **%s**\n", d.Name))
-			}
+	// Separate user declarations from platform overrides
+	var userComps, overrideComps []checker.DeclInfo
+	for _, d := range pd.Components {
+		if strings.HasPrefix(d.Name, "sngl.") {
+			overrideComps = append(overrideComps, d)
+		} else {
+			userComps = append(userComps, d)
 		}
-		sb.WriteString("\n")
 	}
 
-	if len(pd.Structs) > 0 {
-		sb.WriteString("## Types\n\n")
-		for _, d := range pd.Structs {
-			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
-			if d.Doc != "" {
-				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
-			}
-			sb.WriteString("\n")
+	// User-specific types vs platform types (Options is typically a platform type)
+	var userStructs, platformStructs []checker.DeclInfo
+	for _, d := range pd.Structs {
+		if d.Name == "Options" {
+			platformStructs = append(platformStructs, d)
+		} else {
+			userStructs = append(userStructs, d)
 		}
-		sb.WriteString("\n")
 	}
 
-	if len(pd.Enums) > 0 {
-		sb.WriteString("## Enums\n\n")
-		for _, d := range pd.Enums {
-			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
-			if d.Doc != "" {
-				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
-			}
-			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
-	}
+	writeDeclSection(&sb, "Components", userComps)
+	writeDeclSection(&sb, "Types", userStructs)
+	writeDeclSection(&sb, "Enums", pd.Enums)
+	writeDeclSection(&sb, "Constants", pd.Consts)
+	writeDeclSection(&sb, "Data", pd.Data)
+	writeDeclSection(&sb, "Functions", pd.Functions)
 
-	if len(pd.Data) > 0 {
-		sb.WriteString("## Data\n\n")
-		for _, d := range pd.Data {
-			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
-			if d.Doc != "" {
-				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
-			}
-			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(pd.Functions) > 0 {
-		sb.WriteString("## Functions\n\n")
-		for _, d := range pd.Functions {
-			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
-			if d.Doc != "" {
-				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
-			}
-			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(pd.Consts) > 0 {
-		sb.WriteString("## Constants\n\n")
-		for _, d := range pd.Consts {
-			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
-			if d.Doc != "" {
-				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
-			}
-			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
+	// Platform sections at the bottom
+	if len(overrideComps) > 0 || len(platformStructs) > 0 {
+		sb.WriteString("---\n\n")
+		writeDeclSection(&sb, "Platform Overrides", overrideComps)
+		writeDeclSection(&sb, "Platform Types", platformStructs)
 	}
 
 	return renderToTerminal(sb.String())
+}
+
+// showPlatformDocs shows the declarations from a platform's PkgSource.
+func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
+	src := plat.PkgSource()
+	if src == "" {
+		return fmt.Errorf("platform %q has no package source", name)
+	}
+	doc, err := parser.Parse(name+".sngl", strings.NewReader(src))
+	if err != nil {
+		return fmt.Errorf("parsing %s package: %w", name, err)
+	}
+	pd := checker.ExtractPackageDocs(doc)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# Platform: %s\n\n", name))
+	sb.WriteString(fmt.Sprintf("Available as `%s.X` in your code.\n\n", name))
+
+	// Separate overrides from platform-local components
+	var local, overrides []checker.DeclInfo
+	for _, d := range pd.Components {
+		if strings.HasPrefix(d.Name, "sngl.") {
+			overrides = append(overrides, d)
+		} else {
+			local = append(local, d)
+		}
+	}
+
+	writeDeclSection(&sb, "Components", local)
+	writeDeclSection(&sb, "Types", pd.Structs)
+	writeDeclSection(&sb, "Stdlib Overrides", overrides)
+
+	return renderToTerminal(sb.String())
+}
+
+func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInfo) {
+	if len(items) == 0 {
+		return
+	}
+	sb.WriteString(fmt.Sprintf("## %s\n\n", title))
+	for _, d := range items {
+		doc := d.Doc
+		if i := strings.Index(doc, ". "); i > 0 {
+			doc = doc[:i+1]
+		}
+		if doc != "" {
+			sb.WriteString(fmt.Sprintf("- **%s** — %s\n", d.Name, doc))
+		} else {
+			sb.WriteString(fmt.Sprintf("- **%s**\n", d.Name))
+		}
+	}
+	sb.WriteString("\n")
 }
 
 // showDeclDoc displays documentation for a specific declaration.
