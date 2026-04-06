@@ -14,6 +14,7 @@ type exprContext struct {
 	localVars      map[string]bool
 	structNames    map[string][]string // struct name → ordered field names
 	eventVar       string
+	propOverrides  map[string]string // param name → pre-translated Kotlin expression (set during component expansion)
 }
 
 func (ec *exprContext) translateExpr(e ast.Node) string {
@@ -145,6 +146,12 @@ func (ec *exprContext) translateIdent(n *ast.IdentExpr) string {
 	name := n.Name
 	if name == "event" && ec.eventVar != "" {
 		return ec.eventVar
+	}
+	// Component param overrides: resolve to the caller's pre-translated expression.
+	if ec.propOverrides != nil {
+		if val, ok := ec.propOverrides[name]; ok {
+			return val
+		}
 	}
 	if ec.localVars[name] {
 		return name

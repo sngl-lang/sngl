@@ -104,8 +104,8 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 		NeedsTime:    info.needsTime,
 		NeedsURL:     info.needsURL,
 		NeedsCanvas:  info.needsCanvas,
-		NeedsToast:   info.needsToast,
-		HasTimers:    len(info.timers) > 0,
+		NeedsToast:   info.NeedsToast,
+		HasTimers:    len(info.Timers) > 0,
 		FunctionCode: functionCode,
 	}
 
@@ -116,7 +116,7 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 	slices.Sort(td.GoImports)
 
 	// Structs
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		s := structData{Name: exportName(sd.Name)}
 		for _, f := range sd.Fields {
 			goType := typeHintToGo(f.Type)

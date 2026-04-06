@@ -6,7 +6,6 @@ import (
 	"maps"
 	"slices"
 	"strings"
-	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -74,13 +73,6 @@ type forLoopCursor struct {
 	changeExpr  *ast.Expr
 }
 
-type timerInfo struct {
-	index      int
-	intervalMs int
-	activeVar  string
-	body       ast.Node
-}
-
 type externInfo struct {
 	name       string
 	goType     string
@@ -90,40 +82,33 @@ type externInfo struct {
 }
 
 type analysisResult struct {
-	binds          []bindInfo
-	externs        []externInfo
-	computeds      []computedInfo
-	inputs         []inputInfo
-	focusables     []string // ordered: "input0", "button0", etc.
-	forCursors     []forLoopCursor
-	timers         []timerInfo
-	goImports      map[string]bool // native Go import paths from Resolved fields
-	components     []*ast.Component
-	structs        []*ast.StructDef
-	modelFields    map[string]bool   // all bind/computed names (fields)
-	computedFields map[string]bool   // computed names (methods, not struct fields)
-	externFuncs    map[string]bool   // extern function names
-	triggers       map[string]string // data field name → trigger func name
-	needsTime      bool              // emit "time" import
-	needsToast     bool              // emit toast queue infrastructure
+	*codegen.CommonAnalysis
+	binds      []bindInfo
+	externs    []externInfo
+	computeds  []computedInfo
+	inputs     []inputInfo
+	focusables []string // ordered: "input0", "button0", etc.
+	forCursors []forLoopCursor
+	goImports  map[string]bool   // native Go import paths from Resolved fields
+	triggers   map[string]string // data field name → trigger func name
+	needsTime  bool              // emit "time" import
 }
 
 func analyze(doc *ast.Document) *analysisResult {
+	common := codegen.AnalyzeCommon(doc)
+
 	info := &analysisResult{
-		modelFields:    make(map[string]bool),
-		computedFields: make(map[string]bool),
-		externFuncs:    make(map[string]bool),
+		CommonAnalysis: common,
 		triggers:       make(map[string]string),
 		goImports:      make(map[string]bool),
 	}
 
-	// Data fields
+	// Platform-specific data field analysis (Go types, init values, externs)
 	for _, d := range doc.Data {
 		if d.Resolved != nil && d.Resolved.NativePkg != "" {
 			info.goImports[d.Resolved.NativePkg] = true
 		}
 		if d.Extern || d.IsFunc {
-			// Extern functions and variables → model fields set by host
 			ext := externInfo{
 				name:   d.Name,
 				isFunc: d.IsFunc,
@@ -132,14 +117,12 @@ func analyze(doc *ast.Document) *analysisResult {
 				ext.paramTypes = d.ParamTypes
 				ext.returnType = d.ReturnType
 				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
-				info.externFuncs[d.Name] = true
 			} else if d.Resolved != nil && d.Resolved.NativeType != "" {
 				ext.goType = d.Resolved.NativeType
 			} else {
 				ext.goType = typeHintToGo(d.Init.TypeHint)
 			}
 			info.externs = append(info.externs, ext)
-			info.modelFields[d.Name] = true
 			continue
 		}
 		goType := inferGoType(d.Init)
@@ -155,13 +138,12 @@ func analyze(doc *ast.Document) *analysisResult {
 			goType:  goType,
 			initVal: initVal,
 		})
-		info.modelFields[d.Name] = true
 		if d.Trigger != "" {
 			info.triggers[d.Name] = d.Trigger
 		}
 	}
 
-	// Computed functions (zero-arg expression-form)
+	// Platform-specific computed function analysis (Go types)
 	for _, fn := range doc.Functions {
 		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
 			goType := inferGoType(fn.Body)
@@ -172,28 +154,15 @@ func analyze(doc *ast.Document) *analysisResult {
 				name:   fn.Name,
 				goType: goType,
 			})
-			info.modelFields[fn.Name] = true
-			info.computedFields[fn.Name] = true
 		}
 	}
 
-	// Timers
-	for i, t := range doc.Timers {
-		ms := intervalToMs(t.Interval)
-		info.timers = append(info.timers, timerInfo{
-			index:      i,
-			intervalMs: ms,
-			activeVar:  t.Active,
-			body:       t.Body,
-		})
-		if ms > 0 {
+	// Check timer intervals for time import
+	for _, t := range common.Timers {
+		if t.IntervalMs > 0 {
 			info.needsTime = true
 		}
 	}
-
-	// Components and structs
-	info.components = doc.AllComponents()
-	info.structs = doc.Structs
 
 	// Collect Go imports from struct fields with Resolved info
 	for _, sd := range doc.Structs {
@@ -212,12 +181,9 @@ func analyze(doc *ast.Document) *analysisResult {
 		}
 	}
 
-	// Detect Alert.toast/info/warn/error calls in event handlers, timers, and functions
-	if !info.needsToast {
-		info.needsToast = astUsesAlert(doc)
-		if info.needsToast {
-			info.needsTime = true
-		}
+	// Toast needs time
+	if common.NeedsToast {
+		info.needsTime = true
 	}
 
 	return info
@@ -294,7 +260,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var b strings.Builder
 
 	structFields := make(map[string][]string)
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		var fields []string
 		for _, f := range sd.Fields {
 			fields = append(fields, f.Name)
@@ -303,10 +269,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	ec := &exprContext{
-		modelFields:    info.modelFields,
-		computedFields: info.computedFields,
-		localVars:      make(map[string]bool),
-		structNames:    structFields,
+		ModelFields:    info.ModelFields,
+		ComputedFields: info.ComputedFields,
+		LocalVars:      make(map[string]bool),
+		StructNames:    structFields,
 	}
 
 	// Package
@@ -375,7 +341,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Struct types
-	for _, sd := range info.structs {
+	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", exportName(sd.Name))
 		for _, f := range sd.Fields {
 			goType := typeHintToGo(f.Type)
@@ -388,15 +354,15 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// Timer tick message types
-	for _, t := range info.timers {
-		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.index)
+	for _, t := range info.Timers {
+		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
 	}
-	if len(info.timers) > 0 {
+	if len(info.Timers) > 0 {
 		b.WriteString("\n")
 	}
 
 	// Toast infrastructure
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
 		b.WriteString("type toastDismissMsg struct{}\n\n")
 	}
@@ -433,7 +399,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	if len(info.forCursors) > 0 {
 		b.WriteString("\n")
 	}
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
 	b.WriteString("\tfocus int\n")
@@ -470,7 +436,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		for _, fn := range doc.Functions {
 			if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
 				if fn.Body.SNGL != nil {
-					body = ec.translateExpr(fn.Body.SNGL)
+					body = ec.TranslateExpr(fn.Body.SNGL)
 				} else if fn.Body.Literal != nil {
 					body = literalToGo(fn.Body)
 				}
@@ -495,14 +461,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	// Init()
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.timers) > 0 {
+	if len(info.Timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
 		if len(info.inputs) > 0 {
 			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
 		}
-		for _, t := range info.timers {
-			fmt.Fprintf(&b, "\tif m.%s {\n", t.activeVar)
-			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.intervalMs, t.index)
+		for _, t := range info.Timers {
+			fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
+			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.IntervalMs, t.Index)
 			b.WriteString("\t}\n")
 		}
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
@@ -519,9 +485,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// View()
 	emitView(&b, info, doc, ec, cfg)
 
-	// User component render methods
-	for _, comp := range info.components {
-		emitComponentMethod(&b, comp, info.components, ec, cfg)
+	// User component render methods (not stdlib overrides)
+	for _, comp := range doc.Components {
+		emitComponentMethod(&b, comp, info.Components, ec, cfg)
 	}
 
 	// main() for standalone apps
@@ -589,11 +555,11 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 	if fn.Body.SNGL != nil {
 		// Add params as local vars for translation
 		for _, p := range fn.Params {
-			ec.localVars[p.Name] = true
+			ec.LocalVars[p.Name] = true
 		}
-		body := ec.translateExpr(fn.Body.SNGL)
+		body := ec.TranslateExpr(fn.Body.SNGL)
 		for _, p := range fn.Params {
-			delete(ec.localVars, p.Name)
+			delete(ec.LocalVars, p.Name)
 		}
 		if isTypeMethod {
 			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
@@ -609,32 +575,32 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
 		}
 		for _, p := range fn.Params {
-			ec.localVars[p.Name] = true
+			ec.LocalVars[p.Name] = true
 		}
 		for _, stmt := range fn.Block.Stmts {
 			switch s := stmt.(type) {
 			case *ast.VarStmt:
-				ec.localVars[s.Name] = true
-				val := ec.translateExpr(s.Init)
+				ec.LocalVars[s.Name] = true
+				val := ec.TranslateExpr(s.Init)
 				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
 			default:
-				stmts := ec.translateMutation(stmt)
+				stmts := ec.TranslateMutation(stmt)
 				for _, line := range stmts {
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
 		}
 		if fn.Block.Return != nil {
-			ret := ec.translateExpr(fn.Block.Return)
+			ret := ec.TranslateExpr(fn.Block.Return)
 			fmt.Fprintf(b, "\treturn %s\n", ret)
 		}
 		// Clean up local vars
 		for _, p := range fn.Params {
-			delete(ec.localVars, p.Name)
+			delete(ec.LocalVars, p.Name)
 		}
 		for _, stmt := range fn.Block.Stmts {
 			if s, ok := stmt.(*ast.VarStmt); ok {
-				delete(ec.localVars, s.Name)
+				delete(ec.LocalVars, s.Name)
 			}
 		}
 		b.WriteString("}\n\n")
@@ -704,23 +670,23 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	}
 
 	// Timer tick messages
-	for _, t := range info.timers {
-		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.index)
-		fmt.Fprintf(b, "\t\tif m.%s {\n", t.activeVar)
+	for _, t := range info.Timers {
+		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
+		fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
 		// Emit body mutations
-		stmts := ec.translateMutation(t.body)
+		stmts := ec.TranslateMutation(t.Body)
 		for _, s := range stmts {
 			fmt.Fprintf(b, "\t\t\t%s\n", s)
 		}
 		// Re-schedule
-		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.activeVar)
-		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.intervalMs, t.index)
+		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
+		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.IntervalMs, t.Index)
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
 	}
 
 	// Toast dismiss
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tcase toastDismissMsg:\n")
 		b.WriteString("\t\tif len(m.toasts) > 0 {\n")
 		b.WriteString("\t\t\tm.toasts = m.toasts[1:]\n")
@@ -773,7 +739,7 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	}
 
 	// Schedule toast dismiss if a toast was added
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tif len(m.toasts) > 0 && cmd == nil {\n")
 		b.WriteString("\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
 		b.WriteString("\t}\n")
@@ -814,9 +780,9 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 							}
 						}
 						if fc != nil {
-							ec.localVars[fc.indexVar] = true
-							stmts := ec.translateMutation(changeEvt.SNGL)
-							delete(ec.localVars, fc.indexVar)
+							ec.LocalVars[fc.indexVar] = true
+							stmts := ec.TranslateMutation(changeEvt.SNGL)
+							delete(ec.LocalVars, fc.indexVar)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s) {\n", fc.cursorField, fc.listField)
 							fmt.Fprintf(b, "\t\t\t\t%s := m.%s\n", fc.indexVar, fc.cursorField)
@@ -829,7 +795,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyDown && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s)-1 { m.%s++ }\n", fc.cursorField, fc.listField, fc.cursorField)
 						} else {
-							stmts := ec.translateMutation(changeEvt.SNGL)
+							stmts := ec.TranslateMutation(changeEvt.SNGL)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							for _, stmt := range stmts {
 								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
@@ -857,7 +823,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						}
 					}
 					if focusIdx >= 0 {
-						stmts := ec.translateMutation(clickEvt.SNGL)
+						stmts := ec.TranslateMutation(clickEvt.SNGL)
 						fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 						for _, stmt := range stmts {
 							fmt.Fprintf(b, "\t\t\t%s\n", stmt)
@@ -893,7 +859,8 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 		buf:         &strings.Builder{},
 		indent:      1,
 		focusIndex:  0,
-		components:  info.components,
+		doc:         doc,
+		components:  info.Components,
 	}
 
 	// Render each top-level child
@@ -914,7 +881,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	}
 
 	// Toast overlay
-	if info.needsToast {
+	if info.NeedsToast {
 		b.WriteString("\tif len(m.toasts) > 0 {\n")
 		b.WriteString("\t\tt := m.toasts[0]\n")
 		b.WriteString("\t\tvar bg string\n")
@@ -954,9 +921,9 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 
 	// Add params as local vars
 	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, ec.localVars)
+	maps.Copy(savedLocals, ec.LocalVars)
 	for _, p := range comp.Params {
-		ec.localVars[p.Name] = true
+		ec.LocalVars[p.Name] = true
 	}
 
 	var slotVar string
@@ -996,7 +963,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 	b.WriteString("}\n\n")
 
 	// Restore local vars
-	ec.localVars = savedLocals
+	ec.LocalVars = savedLocals
 }
 
 // extractAssignTarget extracts the target field name from an assignment SNGL node.
@@ -1014,299 +981,4 @@ func extractAssignTarget(e ast.Node) string {
 	return ""
 }
 
-// astUsesAlert returns true if the document contains any Alert.toast/info/warn/error calls.
-func astUsesAlert(doc *ast.Document) bool {
-	// Check event handlers in visual nodes
-	if doc.App != nil {
-		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
-			return true
-		}
-	}
-	// Check timer bodies
-	for _, t := range doc.Timers {
-		if exprNodeUsesAlert(t.Body) {
-			return true
-		}
-	}
-	// Check function blocks (skip test functions)
-	for _, fn := range doc.Functions {
-		if fn.IsTest() {
-			continue
-		}
-		if fn.Block != nil {
-			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
-				return true
-			}
-		}
-	}
-	return false
-}
 
-func nodeUsesAlert(vn *ast.VisualNode) bool {
-	for _, evt := range vn.Events {
-		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
-			return true
-		}
-	}
-	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
-}
-
-func exprNodeUsesAlert(n ast.Node) bool {
-	switch e := n.(type) {
-	case *ast.MethodExpr:
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return true
-		}
-	case *ast.StmtBlock:
-		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
-			return true
-		}
-	case *ast.CallStmt:
-		return exprNodeUsesAlert(e.Call)
-	}
-	return false
-}
-
-// snglNodeGoType infers a Go type from a SNGL expression node.
-func snglNodeGoType(e ast.Node) string {
-	switch n := e.(type) {
-	case *ast.LiteralExpr:
-		switch n.Kind {
-		case ast.LiteralInt:
-			return "int"
-		case ast.LiteralFloat:
-			return "float64"
-		case ast.LiteralBool:
-			return "bool"
-		case ast.LiteralString:
-			return "string"
-		}
-	case *ast.BinaryExpr:
-		switch n.Op {
-		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
-			return "bool"
-		case ast.BinDiv:
-			return "float64"
-		default:
-			lt := snglNodeGoType(n.Left)
-			rt := snglNodeGoType(n.Right)
-			if lt == "float64" || rt == "float64" {
-				return "float64"
-			}
-			return lt
-		}
-	case *ast.UnaryExpr:
-		if n.Op == ast.UnaryNot {
-			return "bool"
-		}
-		return snglNodeGoType(n.Operand)
-	case *ast.TernaryExpr:
-		return snglNodeGoType(n.Then)
-	case *ast.CallExpr:
-		switch n.Func {
-		case "string":
-			return "string"
-		case "int":
-			return "int"
-		case "float":
-			return "float64"
-		case "size":
-			return "int"
-		}
-	case *ast.InterpolationExpr:
-		return "string"
-	case *ast.MethodExpr:
-		// String methods return string
-		switch n.Method {
-		case "upper", "lower", "trim", "replace", "substring":
-			return "string"
-		case "length", "indexOf":
-			return "int"
-		}
-	case *ast.ParenExpr:
-		return snglNodeGoType(n.Inner)
-	}
-	return "any"
-}
-
-// Helper functions
-
-func exportName(s string) string {
-	if s == "" {
-		return s
-	}
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
-func unexportName(s string) string {
-	if s == "" {
-		return s
-	}
-	runes := []rune(s)
-	runes[0] = unicode.ToLower(runes[0])
-	return string(runes)
-}
-
-func intervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
-		return 0
-	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
-	if !ok {
-		return 0
-	}
-	num := 0.0
-	fmt.Sscanf(ul.Number, "%f", &num)
-	switch ul.Suffix {
-	case "ms":
-		return int(num)
-	case "s":
-		return int(num * 1000)
-	case "m":
-		return int(num * 60000)
-	case "h":
-		return int(num * 3600000)
-	}
-	return int(num)
-}
-
-func inferGoType(expr ast.Expr) string {
-	if expr.TypeHint != "" {
-		return typeHintToGo(expr.TypeHint)
-	}
-	if expr.Literal != nil {
-		switch expr.Literal.(type) {
-		case int:
-			return "int"
-		case float64:
-			return "float64"
-		case bool:
-			return "bool"
-		case string:
-			return "string"
-		}
-	}
-	return "any"
-}
-
-func typeHintToGo(hint string) string {
-	if strings.HasPrefix(hint, "[]") {
-		return "[]" + typeHintToGo(hint[2:])
-	}
-	if strings.HasPrefix(hint, "list:") {
-		return "[]" + typeHintToGo(hint[5:])
-	}
-	if strings.HasPrefix(hint, "option:") {
-		return "*" + typeHintToGo(hint[7:])
-	}
-	if strings.HasPrefix(hint, "enum:") {
-		return "string"
-	}
-	switch hint {
-	case "int":
-		return "int"
-	case "float":
-		return "float64"
-	case "bool":
-		return "bool"
-	case "string", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
-		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
-		return "string"
-	case "date", "time", "dateTime":
-		return "time.Time"
-	case "duration":
-		return "time.Duration"
-	default:
-		// Package-qualified type (e.g., "ast.File") — pass through
-		if strings.Contains(hint, ".") && !strings.ContainsAny(hint, ":~<>") {
-			return hint
-		}
-		// User-defined struct types are simple identifiers; anything
-		// containing special chars (func:, unit:, etc.) is unknown.
-		if !strings.ContainsAny(hint, ":~<>") && hint != "" {
-			return exportName(hint)
-		}
-		return "any"
-	}
-}
-
-// externFuncGoType builds a Go function type from SNGL param/return types.
-// e.g., ["string", "int"] + "bool" → "func(string, int) bool"
-func externFuncGoType(paramTypes []string, returnType string) string {
-	params := make([]string, len(paramTypes))
-	for i, p := range paramTypes {
-		params[i] = typeHintToGo(p)
-	}
-	sig := "func(" + strings.Join(params, ", ") + ")"
-	if returnType != "" {
-		sig += " " + typeHintToGo(returnType)
-	}
-	return sig
-}
-
-func needsTimeType(hint string) bool {
-	switch hint {
-	case "date", "time", "dateTime", "duration":
-		return true
-	}
-	return false
-}
-
-func literalToGo(expr ast.Expr) string {
-	// Option types: wrap concrete literals with address-of via inline func
-	if strings.HasPrefix(expr.TypeHint, "option:") {
-		if expr.Literal == nil && expr.SNGL == nil {
-			return "nil"
-		}
-		inner := expr
-		inner.TypeHint = expr.TypeHint[7:]
-		val := literalToGo(inner)
-		if val == "nil" {
-			return "nil"
-		}
-		goType := typeHintToGo(inner.TypeHint)
-		return fmt.Sprintf("func() *%s { v := %s; return &v }()", goType, val)
-	}
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			switch expr.TypeHint {
-			case "duration":
-				return fmt.Sprintf("mustParseDuration(%q)", v)
-			case "date":
-				return fmt.Sprintf("mustParseDate(%q)", v)
-			case "time":
-				return fmt.Sprintf("mustParseTime(%q)", v)
-			case "dateTime":
-				return fmt.Sprintf("mustParseDateTime(%q)", v)
-			default:
-				return fmt.Sprintf("%q", v)
-			}
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		}
-	}
-	if expr.TypeHint != "" {
-		// Foreign struct types use zero-value constructor, not nil
-		if expr.Resolved != nil && expr.Resolved.NativeType != "" {
-			return expr.Resolved.NativeType + "{}"
-		}
-		return "nil"
-	}
-	return `""`
-}

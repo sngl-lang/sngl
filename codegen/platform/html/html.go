@@ -199,14 +199,9 @@ type htmlGen struct {
 	doc  *ast.Document
 	lang codegen.LangTranslator
 
-	// Analysis results
-	modelFields    map[string]bool
-	computedFields map[string]bool
-	structFields   map[string][]string // struct name → ordered field names
-
-	// Computed dependency tracking
-	computedDeps map[string]map[string]bool // computed name → set of root state fields it reads
-	dt           *codegen.DepTracker
+	// Analysis (shared)
+	*codegen.CommonAnalysis
+	dt *codegen.DepTracker
 
 	// Element ID counter
 	nextID int
@@ -281,58 +276,23 @@ type timerDef struct {
 }
 
 func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+	common := codegen.AnalyzeCommon(doc)
+
 	g := &htmlGen{
 		doc:            doc,
 		lang:           lang,
+		CommonAnalysis: common,
 		preview:        opts["preview"] == "true",
 		testMode:       opts["test"] == "true",
-		modelFields:    make(map[string]bool),
-		computedFields: make(map[string]bool),
-		structFields:   make(map[string][]string),
-		computedDeps:   make(map[string]map[string]bool),
 	}
 
-	for _, d := range doc.Data {
-		g.modelFields[d.Name] = true
-	}
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			g.modelFields[fn.Name] = true
-			g.computedFields[fn.Name] = true
-		}
-	}
-	for _, sd := range doc.Structs {
-		var fields []string
-		for _, f := range sd.Fields {
-			fields = append(fields, f.Name)
-		}
-		g.structFields[sd.Name] = fields
-	}
-
-	localVars := make(map[string]bool)
+	// Build scope from common analysis, adding const names as local vars
+	g.scope = common.Scope()
 	for _, c := range doc.Consts {
-		localVars[c.Name] = true
-	}
-	funcNames := make(map[string]bool)
-	for _, fn := range doc.Functions {
-		funcNames[fn.Name] = true
-	}
-	g.scope = &codegen.ExprScope{
-		ModelFields:    g.modelFields,
-		ComputedFields: g.computedFields,
-		FuncNames:      funcNames,
-		LocalVars:      localVars,
-		NeededHelpers:  make(map[string]bool),
+		g.scope.LocalVars[c.Name] = true
 	}
 
-	// Compute dependency info for computed functions
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			g.computedDeps[fn.Name] = codegen.ExtractDeps(fn.Body.SNGL, g.modelFields)
-		}
-	}
-
-	g.dt = codegen.NewDepTracker(g.modelFields, g.computedFields, g.computedDeps)
+	g.dt = common.DepTracker()
 
 	return g
 }
@@ -360,11 +320,11 @@ func (g *htmlGen) generate() string {
 	}
 	if g.stylesheet == "" {
 		// Only emit default inline styles when no external stylesheet is specified.
+		// Component-specific CSS is registered via CommonAnalysis.AddStyle()
+		// during tree rendering and emitted here.
 		b.WriteString("  <style>\n")
 		b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
 		b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
-		b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
-		b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
 		b.WriteString("  </style>\n")
 	}
 	if g.wasmLoader != "" {
@@ -377,6 +337,15 @@ func (g *htmlGen) generate() string {
 		for _, child := range g.doc.App.Children {
 			g.renderStaticNode(&b, child, 0)
 		}
+	}
+
+	// Emit component-registered CSS (populated during tree rendering above).
+	if len(g.Styles) > 0 {
+		b.WriteString("<style>\n")
+		for _, css := range g.Styles {
+			fmt.Fprintf(&b, "  %s\n", css)
+		}
+		b.WriteString("</style>\n")
 	}
 
 	// Only emit <script> if there's actual runtime JS to execute.
@@ -525,6 +494,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			}
 		}
 	case "spinner":
+		g.CommonAnalysis.AddStyle("@keyframes sngl-spin { to { transform: rotate(360deg); } }")
+		g.CommonAnalysis.AddStyle(".sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }")
 		style := g.buildCSSStyle(vn)
 		label := g.evalStaticString(vn.Props, "label")
 		id := ""
@@ -1605,7 +1576,7 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Collect timers
 	for i, t := range g.doc.Timers {
-		ms := g.intervalToMs(t.Interval)
+		ms := codegen.IntervalToMs(t.Interval)
 		stmts := g.lang.TranslateMutation(t.Body, g.scope)
 		mutated := codegen.MutatedFields(t.Body)
 		g.timers = append(g.timers, timerDef{
@@ -1616,6 +1587,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			mutated:    mutated,
 		})
 	}
+
+	// Run IR optimizer on collected updaters, handlers, and timers.
+	g.optimizeIR()
 
 	// Extern bindings (provided by host via window.__sngl_externs or WASM)
 	hasExterns := false
@@ -1913,6 +1887,118 @@ func (g *htmlGen) collectReferencedIDs() []string {
 
 	sort.Strings(ids)
 	return ids
+}
+
+// optimizeIR builds a MutationModel from the collected updaters, handlers,
+// and timers, runs the IR optimizer, then writes the results back.
+func (g *htmlGen) optimizeIR() {
+	// Convert platform types → IR types.
+	updaters := make([]codegen.Updater, len(g.updates))
+	for i, u := range g.updates {
+		updaters[i] = codegen.Updater{
+			Name: u.funcName,
+			Body: u.body,
+			Deps: u.deps,
+		}
+	}
+	// Keep handler body strings keyed by elemID+event (IR uses ast.Node,
+	// but HTML has already translated to JS strings).
+	handlerBodyMap := make(map[string]string)
+	handlers := make([]codegen.Handler, len(g.handlers))
+	for i, h := range g.handlers {
+		handlerBodyMap[h.elemID+":"+h.event] = h.body
+		handlers[i] = codegen.Handler{
+			NodeID:  h.elemID,
+			Event:   h.event,
+			Mutated: h.mutated,
+		}
+	}
+	timers := make([]codegen.TimerHandler, len(g.timers))
+	for i, t := range g.timers {
+		timers[i] = codegen.TimerHandler{
+			TimerInfo: codegen.TimerInfo{
+				Index:      t.index,
+				IntervalMs: t.intervalMs,
+				ActiveVar:  t.activeVar,
+			},
+			Mutated: t.mutated,
+		}
+	}
+
+	m := &codegen.MutationModel{
+		Analysis:   g.CommonAnalysis,
+		DepTracker: g.dt,
+		Updaters:   updaters,
+		Handlers:   handlers,
+		Timers:     timers,
+	}
+
+	codegen.OptimizeMutation(m)
+
+	// Write back optimized updaters.
+	g.updates = make([]updateFunc, len(m.Updaters))
+	for i, u := range m.Updaters {
+		g.updates[i] = updateFunc{
+			funcName: u.Name,
+			body:     u.Body,
+			deps:     u.Deps,
+		}
+	}
+
+	// Write back optimized handlers, restoring body strings.
+	g.handlers = make([]eventHandler, len(m.Handlers))
+	for i, h := range m.Handlers {
+		g.handlers[i] = eventHandler{
+			elemID:  h.NodeID,
+			event:   h.Event,
+			body:    handlerBodyMap[h.NodeID+":"+h.Event],
+			mutated: h.Mutated,
+		}
+	}
+
+	// --- HTML-specific optimization passes ---
+
+	// Deduplicate component param constants: if two params have the same
+	// JS value, reuse the first name and rewrite references in updater bodies.
+	g.deduplicateComponentParams()
+}
+
+// deduplicateComponentParams merges component params with identical values.
+// If two params have the same JS expression, the second is removed and all
+// references in updater bodies are rewritten to use the first name.
+func (g *htmlGen) deduplicateComponentParams() {
+	if len(g.componentParams) <= 1 {
+		return
+	}
+
+	// Map value → first name that has this value.
+	valueToName := make(map[string]string)
+	var deduped []componentParam
+	renames := make(map[string]string) // old name → canonical name
+
+	for _, cp := range g.componentParams {
+		if canonical, exists := valueToName[cp.value]; exists {
+			renames[cp.name] = canonical
+		} else {
+			valueToName[cp.value] = cp.name
+			deduped = append(deduped, cp)
+		}
+	}
+
+	if len(renames) == 0 {
+		return
+	}
+
+	g.componentParams = deduped
+
+	// Rewrite updater bodies to use canonical names.
+	for i, u := range g.updates {
+		body := u.body
+		for old, canonical := range renames {
+			body = strings.ReplaceAll(body, old, canonical)
+		}
+		g.updates[i].body = body
+	}
 }
 
 func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFunc {
@@ -2504,34 +2590,6 @@ func extractSetTarget(e ast.Node) (ast.Node, bool) {
 		}
 	}
 	return nil, false
-}
-
-// intervalToMs extracts the interval from a timer expression and converts to milliseconds.
-func (g *htmlGen) intervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
-		return 0
-	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
-	if !ok {
-		return 0
-	}
-	num := 0.0
-	fmt.Sscanf(ul.Number, "%f", &num)
-	switch ul.Suffix {
-	case "ms":
-		return int(num)
-	case "s":
-		return int(num * 1000)
-	case "m":
-		return int(num * 60000)
-	case "h":
-		return int(num * 3600000)
-	}
-	return int(num) // fallback: treat as ms
 }
 
 func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *ast.VisualNode, depth int, pos ...ast.Pos) {

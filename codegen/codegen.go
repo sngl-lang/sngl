@@ -128,6 +128,26 @@ type APIResolver interface {
 	ResolveAPI(name string) *ast.NativeDecls
 }
 
+// MutationModelEmitter is optionally implemented by platforms that use the
+// Document+Mutations model: emit a static tree once, then generate targeted
+// updater functions to patch specific parts when state changes.
+//
+// Platforms: HTML, Fyne.
+type MutationModelEmitter interface {
+	BuildMutationModel(req *Request, analysis *CommonAnalysis) (*MutationModel, error)
+	EmitFromMutation(m *MutationModel, req *Request) (*Response, error)
+}
+
+// RenderModelEmitter is optionally implemented by platforms that use the
+// Render Loop model: re-render the full view from state on every change,
+// letting the framework handle diffing.
+//
+// Platforms: BubbleTea, Android/Compose.
+type RenderModelEmitter interface {
+	BuildRenderModel(req *Request, analysis *CommonAnalysis) (*RenderModel, error)
+	EmitFromRender(m *RenderModel, req *Request) (*Response, error)
+}
+
 // OutputFile represents a single generated file. Its WriteTo function writes
 // the file content lazily, allowing template execution to be deferred to
 // write time.

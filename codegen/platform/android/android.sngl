@@ -1,19 +1,223 @@
 // Android (Jetpack Compose) platform package.
-// Components defined here are available as android.X in user code.
+// Raw Compose composables (Column, Row, Text, Button, etc.) are implicitly
+// available via APIResolver — any identifier is a valid @Composable.
+//
+// Each component sngl.X() overrides the stdlib abstract component with a
+// Compose-native implementation. Props are inherited from the stdlib
+// definition and available as local variables in the body.
 
 struct Options {
-    // Go or Kotlin package name for generated code.
     package string
-    // Application display name.
     appName string
-    // Path to app icon file.
     icon string
-    // Generate a main activity.
     main bool
-    // Generate Gradle build files.
     gradle bool
-    // Theme primary color (hex).
     color string
-    // Path to existing Android project directory.
     projectDir string
+}
+
+// --- Core Layout ---
+
+component sngl.vbox() {
+    Column {
+        slot
+    }
+}
+
+component sngl.hbox() {
+    Row {
+        slot
+    }
+}
+
+component sngl.stack() {
+    Box {
+        slot
+    }
+}
+
+component sngl.spacer() {
+    Spacer {}
+}
+
+component sngl.scroll() {
+    Column {
+        slot
+    }
+}
+
+// --- Core Text & Media ---
+
+component sngl.text() {
+    Text(text=value) {}
+}
+
+component sngl.button() {
+    Button {
+        Text(text=text) {}
+    }
+}
+
+component sngl.image() {
+    AsyncImage(model=src, contentDescription=alt) {}
+}
+
+component sngl.input() {
+    OutlinedTextField(value=value) {}
+}
+
+component sngl.checkbox() {
+    Row {
+        Checkbox(checked=checked, ) {}
+        if label != "" {
+            Text(text=label) {}
+        }
+    }
+}
+
+// --- Tier 1: Core Input ---
+
+component sngl.radio() {
+    Column {
+        slot
+    }
+}
+
+component sngl.toggle() {
+    Row {
+        Switch(checked=checked, ) {}
+        if label != "" {
+            Text(text=label) {}
+        }
+    }
+}
+
+component sngl.select() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+component sngl.textarea() {
+    OutlinedTextField(value=value, minLines=3, @onValueChange={ emit input }) {}
+}
+
+component sngl.datepicker() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+component sngl.progress() {
+    LinearProgressIndicator {}
+}
+
+component sngl.spinner() {
+    CircularProgressIndicator {}
+}
+
+component sngl.badge() {
+    Badge {
+        Text(text=value) {}
+    }
+}
+
+component sngl.divider() {
+    HorizontalDivider {}
+}
+
+component sngl.card() {
+    Card {
+        slot
+    }
+}
+
+component sngl.chip() {
+    AssistChip(label=label, @onClick={ emit click }) {}
+}
+
+component sngl.link() {
+    TextButton(@onClick={ emit click }) {
+        Text(text=text) {}
+    }
+}
+
+component sngl.tabs() {
+    Column {
+        slot
+    }
+}
+
+component sngl.modal() {
+    if open {
+        AlertDialog(title=title, ) {
+            Column {
+                slot
+            }
+        }
+    }
+}
+
+component sngl.drawer() {
+    ModalNavigationDrawer {
+        slot
+    }
+}
+
+component sngl.tooltip() {
+    Box {
+        slot
+    }
+}
+
+component sngl.popover() {
+    DropdownMenu(expanded=open) {
+        slot
+    }
+}
+
+component sngl.accordion() {
+    Column {
+        slot
+    }
+}
+
+component sngl.splitview() {
+    Row {
+        slot
+    }
+}
+
+component sngl.table() {
+    Column {
+        slot
+    }
+}
+
+component sngl.tree() {
+    Column {
+        slot
+    }
+}
+
+component sngl.menu() {
+    DropdownMenu(expanded=open) {
+        slot
+    }
+}
+
+component sngl.menubar() {
+    Row {
+        slot
+    }
+}
+
+component sngl.toolbar() {
+    Row {
+        slot
+    }
+}
+
+component sngl.avatar() {
+    Box {
+        Text(text=initials) {}
+    }
 }

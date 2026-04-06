@@ -158,10 +158,10 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 	}
 
 	ec := &exprContext{
-		modelFields:    modelFields,
-		computedFields: computedFields,
-		localVars:      map[string]bool{},
-		structNames:    structNames,
+		ModelFields:    modelFields,
+		ComputedFields: computedFields,
+		LocalVars:      map[string]bool{},
+		StructNames:    structNames,
 	}
 
 	// Struct
@@ -198,7 +198,7 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 		}
 		body := ""
 		if fn.Body.SNGL != nil {
-			body = ec.translateExpr(fn.Body.SNGL)
+			body = ec.TranslateExpr(fn.Body.SNGL)
 		} else if fn.Body.Literal != nil {
 			body = literalToGo(fn.Body)
 		}
@@ -228,10 +228,10 @@ func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.Component) {
 	}
 
 	ec := &exprContext{
-		modelFields:    modelFields,
-		computedFields: computedFields,
-		localVars:      map[string]bool{},
-		structNames:    map[string][]string{},
+		ModelFields:    modelFields,
+		ComputedFields: computedFields,
+		LocalVars:      map[string]bool{},
+		StructNames:    map[string][]string{},
 	}
 
 	fmt.Fprintf(b, "func %s(t *testing.T) {\n", funcName)
@@ -251,21 +251,21 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 		switch s := stmt.(type) {
 		case *ast.CallStmt:
 			if s.Call.Func == "assert" && len(s.Call.Args) == 1 {
-				expr := ec.translateExpr(s.Call.Args[0])
+				expr := ec.TranslateExpr(s.Call.Args[0])
 				original := parser.FormatNode(s.Call.Args[0])
 				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
 				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
 				fmt.Fprintf(b, "%s}\n", indent)
 				continue
 			}
-			stmts := ec.translateMutation(s)
+			stmts := ec.TranslateMutation(s)
 			for _, line := range stmts {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
 		case *ast.CallExpr:
 			if s.Func == "assert" && len(s.Args) == 1 {
-				expr := ec.translateExpr(s.Args[0])
+				expr := ec.TranslateExpr(s.Args[0])
 				original := parser.FormatNode(s.Args[0])
 				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
 				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
@@ -273,26 +273,26 @@ func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth i
 				continue
 			}
 		case *ast.AssignStmt:
-			stmts := ec.translateMutation(s)
+			stmts := ec.TranslateMutation(s)
 			for _, line := range stmts {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
 		case *ast.ToggleStmt:
-			stmts := ec.translateMutation(s)
+			stmts := ec.TranslateMutation(s)
 			for _, line := range stmts {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
 		case *ast.MethodExpr:
-			stmts := ec.translateMutation(s)
+			stmts := ec.TranslateMutation(s)
 			for _, line := range stmts {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
 		}
 		// Fallback: expression statement
-		fmt.Fprintf(b, "%s_ = %s\n", indent, ec.translateExpr(stmt))
+		fmt.Fprintf(b, "%s_ = %s\n", indent, ec.TranslateExpr(stmt))
 	}
 }
 

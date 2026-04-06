@@ -3,7 +3,6 @@ package golang
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -68,12 +67,7 @@ func (t *Translator) TypeToNative(hint string) string {
 }
 
 func (t *Translator) ExportName(name string) string {
-	if name == "" {
-		return name
-	}
-	runes := []rune(name)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
+	return ExportName(name)
 }
 
 func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
@@ -118,7 +112,7 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
 			qualName := ident.Name + "." + n.Method
 			if scope.FuncNames[qualName] {
-				goName := exportName(ident.Name) + exportName(n.Method)
+				goName := ExportName(ident.Name) + ExportName(n.Method)
 				argStrs := make([]string, len(n.Args))
 				for i, a := range n.Args {
 					argStrs[i] = translateExpr(a, scope)
@@ -130,7 +124,7 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		if scope.FuncNames != nil {
 			for qualName := range scope.FuncNames {
 				if typeName, method, ok := ast.SplitMethodName(qualName); ok && method == n.Method {
-					goName := exportName(typeName) + exportName(method)
+					goName := ExportName(typeName) + ExportName(method)
 					argStrs := []string{translateExpr(n.Receiver, scope)}
 					for _, a := range n.Args {
 						argStrs = append(argStrs, translateExpr(a, scope))
@@ -152,10 +146,10 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 				// Go doesn't have spread; handled at a higher level
 				parts = append(parts, "/* ..."+translateExpr(f.Value, scope)+" */")
 			} else {
-				parts = append(parts, exportName(f.Name)+": "+translateExpr(f.Value, scope))
+				parts = append(parts, ExportName(f.Name)+": "+translateExpr(f.Value, scope))
 			}
 		}
-		return exportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
+		return ExportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
 	case *ast.ListExpr:
 		parts := make([]string, len(n.Elements))
 		for i, el := range n.Elements {
@@ -246,7 +240,7 @@ func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
 		return "m." + name + "()"
 	}
 	if scope.ModelFields[name] {
-		return "m." + exportName(name)
+		return "m." + ExportName(name)
 	}
 	return name
 }
@@ -333,7 +327,7 @@ func translateMutationTarget(e ast.Node, scope *codegen.ExprScope) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
 		if scope.ModelFields[n.Name] {
-			return "m." + exportName(n.Name)
+			return "m." + ExportName(n.Name)
 		}
 		return n.Name
 	case *ast.SelectExpr:
@@ -398,15 +392,6 @@ func assignOpStr(op ast.AssignOp) string {
 	default:
 		return "="
 	}
-}
-
-func exportName(s string) string {
-	if s == "" {
-		return s
-	}
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
 }
 
 // goBuiltinMethod returns native Go code for stdlib methods, or "" if not a stdlib method.
