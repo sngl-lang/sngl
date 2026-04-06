@@ -268,8 +268,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	b.WriteString("}\n")
 
-	// User-defined component composables
-	for _, comp := range info.Components {
+	// User-defined component composables (not stdlib overrides or abstract components)
+	for _, comp := range doc.Components {
 		emitComponentComposable(&b, comp, info.Components, ec)
 	}
 

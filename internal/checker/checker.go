@@ -101,6 +101,41 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 		}
 	}
 
+	// Apply platform-specific stdlib overrides (from PkgSource "sngl.X" definitions).
+	// These replace the stdlib component's body for a specific platform.
+	if apis != nil {
+		for platform, overrides := range apis.StdlibOverrides {
+			for compName, override := range overrides {
+				for _, comp := range doc.AbstractComponents {
+					if comp.Name == compName {
+						if comp.PlatformBodies == nil {
+							comp.PlatformBodies = make(map[string][]*ast.VisualNode)
+						}
+						comp.PlatformBodies[platform] = override.Body
+						break
+					}
+				}
+				// If no existing abstract component, add it.
+				found := false
+				for _, comp := range doc.AbstractComponents {
+					if comp.Name == compName {
+						found = true
+						break
+					}
+				}
+				if !found {
+					override.Name = compName
+					if override.PlatformBodies == nil {
+						override.PlatformBodies = make(map[string][]*ast.VisualNode)
+					}
+					override.PlatformBodies[platform] = override.Body
+					override.Body = nil
+					doc.AbstractComponents = append(doc.AbstractComponents, override)
+				}
+			}
+		}
+	}
+
 	// Collect target platforms for availability checks
 	for _, out := range doc.Outputs {
 		c.targetPlatforms = append(c.targetPlatforms, out.Platform)
