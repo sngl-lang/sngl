@@ -69,6 +69,12 @@ func generateComponentSnapshots(outDir string) {
 		sourceFile := filepath.Join(componentsDir, e.Name())
 
 		for _, platform := range []string{"bubbletea", "fyne"} {
+			target := filepath.Join(galleryDir, name+"-"+platform+".png")
+			// Skip if pre-rendered image exists (e.g., from sngl doc doc-examples).
+			if _, err := os.Stat(target); err == nil {
+				log.Printf("gallery: %s/%s → %s (pre-rendered)", name, platform, target)
+				continue
+			}
 			results, err := snapshot.Generate(snapshot.Config{
 				SourceFile: sourceFile,
 				Platforms:  []string{platform},
@@ -80,7 +86,6 @@ func generateComponentSnapshots(outDir string) {
 				continue
 			}
 			for _, r := range results {
-				target := filepath.Join(galleryDir, name+"-"+platform+".png")
 				if r.Path != target {
 					os.Rename(r.Path, target)
 				}

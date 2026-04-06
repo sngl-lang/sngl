@@ -19,6 +19,16 @@ component hbox(
 component stack() list<component> {}
 
 // Displays a text string. Supports styling but has no child elements.
+//
+// Example:
+//
+//   component main {
+//       vbox(style={gap=8, padding=16}) {
+//           text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+//           text(value="Regular text")
+//           text(value="Colored text", style={color=#0066CC})
+//       }
+//   }
 component text(
     value string,
     // Allow the user to select and copy the text.
@@ -27,6 +37,20 @@ component text(
 ) {}
 
 // Clickable button that triggers an action. Supports text label or custom children.
+//
+// Example:
+//
+//   component main {
+//       var count = 0
+//       vbox(style={gap=8, padding=16}) {
+//           hbox(style={gap=8}) {
+//               button(text="Click me", @click={ count += 1 })
+//               button(text="Reset", @click={ count = 0 })
+//               button(text="Disabled", disabled=true)
+//           }
+//           text(value="Clicked " + string(count) + " times")
+//       }
+//   }
 component button(
     text string,
     disabled bool,
