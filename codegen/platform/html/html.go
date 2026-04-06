@@ -320,11 +320,11 @@ func (g *htmlGen) generate() string {
 	}
 	if g.stylesheet == "" {
 		// Only emit default inline styles when no external stylesheet is specified.
+		// Component-specific CSS is registered via CommonAnalysis.AddStyle()
+		// during tree rendering and emitted here.
 		b.WriteString("  <style>\n")
 		b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
 		b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
-		b.WriteString("    @keyframes sngl-spin { to { transform: rotate(360deg); } }\n")
-		b.WriteString("    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }\n")
 		b.WriteString("  </style>\n")
 	}
 	if g.wasmLoader != "" {
@@ -337,6 +337,15 @@ func (g *htmlGen) generate() string {
 		for _, child := range g.doc.App.Children {
 			g.renderStaticNode(&b, child, 0)
 		}
+	}
+
+	// Emit component-registered CSS (populated during tree rendering above).
+	if len(g.Styles) > 0 {
+		b.WriteString("<style>\n")
+		for _, css := range g.Styles {
+			fmt.Fprintf(&b, "  %s\n", css)
+		}
+		b.WriteString("</style>\n")
 	}
 
 	// Only emit <script> if there's actual runtime JS to execute.
@@ -485,6 +494,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			}
 		}
 	case "spinner":
+		g.CommonAnalysis.AddStyle("@keyframes sngl-spin { to { transform: rotate(360deg); } }")
+		g.CommonAnalysis.AddStyle(".sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }")
 		style := g.buildCSSStyle(vn)
 		label := g.evalStaticString(vn.Props, "label")
 		id := ""
@@ -1941,6 +1952,50 @@ func (g *htmlGen) optimizeIR() {
 			body:    handlerBodyMap[h.NodeID+":"+h.Event],
 			mutated: h.Mutated,
 		}
+	}
+
+	// --- HTML-specific optimization passes ---
+
+	// Deduplicate component param constants: if two params have the same
+	// JS value, reuse the first name and rewrite references in updater bodies.
+	g.deduplicateComponentParams()
+}
+
+// deduplicateComponentParams merges component params with identical values.
+// If two params have the same JS expression, the second is removed and all
+// references in updater bodies are rewritten to use the first name.
+func (g *htmlGen) deduplicateComponentParams() {
+	if len(g.componentParams) <= 1 {
+		return
+	}
+
+	// Map value → first name that has this value.
+	valueToName := make(map[string]string)
+	var deduped []componentParam
+	renames := make(map[string]string) // old name → canonical name
+
+	for _, cp := range g.componentParams {
+		if canonical, exists := valueToName[cp.value]; exists {
+			renames[cp.name] = canonical
+		} else {
+			valueToName[cp.value] = cp.name
+			deduped = append(deduped, cp)
+		}
+	}
+
+	if len(renames) == 0 {
+		return
+	}
+
+	g.componentParams = deduped
+
+	// Rewrite updater bodies to use canonical names.
+	for i, u := range g.updates {
+		body := u.body
+		for old, canonical := range renames {
+			body = strings.ReplaceAll(body, old, canonical)
+		}
+		g.updates[i].body = body
 	}
 }
 

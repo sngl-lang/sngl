@@ -22,7 +22,9 @@ type CommonAnalysis struct {
 	Enums          []*ast.EnumDef
 	Timers         []TimerInfo
 	NeedsToast     bool
-	Helpers        map[string]bool // needed helper functions (populated during codegen)
+	Helpers        map[string]bool    // needed helper functions (populated during codegen)
+	UsedComponents map[string]bool    // primitive component names used in the visual tree
+	Styles         []string           // CSS rules registered by components during codegen
 }
 
 // TimerInfo captures platform-independent parts of a timer declaration.
@@ -102,7 +104,27 @@ func AnalyzeCommon(doc *ast.Document) *CommonAnalysis {
 	// Toast detection
 	a.NeedsToast = ASTUsesAlert(doc)
 
+	// Walk visual tree to collect used primitive component names.
+	a.UsedComponents = make(map[string]bool)
+	if doc.App != nil {
+		collectUsedComponents(doc.App.Children, a.UsedComponents)
+	}
+	for _, comp := range a.Components {
+		collectUsedComponents(comp.Body, a.UsedComponents)
+	}
+
 	return a
+}
+
+// collectUsedComponents walks visual nodes and records component names.
+func collectUsedComponents(nodes []*ast.VisualNode, used map[string]bool) {
+	for _, vn := range nodes {
+		used[vn.Component] = true
+		collectUsedComponents(vn.Children, used)
+		if vn.For != nil {
+			collectUsedComponents(vn.For.Else, used)
+		}
+	}
 }
 
 // DepTracker returns a new DepTracker initialized from this analysis.
@@ -123,6 +145,16 @@ func (a *CommonAnalysis) Scope() *ExprScope {
 		LocalVars:      localVars,
 		NeededHelpers:  a.Helpers,
 	}
+}
+
+// AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
+func (a *CommonAnalysis) AddStyle(css string) {
+	for _, s := range a.Styles {
+		if s == css {
+			return
+		}
+	}
+	a.Styles = append(a.Styles, css)
 }
 
 // PruneUnusedComputeds removes computed fields that are not referenced by
