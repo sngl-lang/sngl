@@ -12,8 +12,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 )
@@ -69,8 +70,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		docsDir, _ := findDocsDir()
-		return showTopicListWithComponents(docsDir)
+		return docbrowser.Run()
 	}
 
 	first := args[0]
