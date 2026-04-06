@@ -70,7 +70,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		return docbrowser.Run()
+		return docbrowser.RunWithDir(".")
 	}
 
 	first := args[0]

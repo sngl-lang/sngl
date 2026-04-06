@@ -218,6 +218,18 @@ func SnglNodeGoType(e ast.Node) string {
 		}
 	case *ast.ParenExpr:
 		return SnglNodeGoType(n.Inner)
+	case *ast.IdentExpr:
+		if n.ResolvedType != "" {
+			return TypeHintToGo(n.ResolvedType)
+		}
+	case *ast.SelectExpr:
+		if n.ResolvedType != "" {
+			return TypeHintToGo(n.ResolvedType)
+		}
+	case *ast.IndexExpr:
+		if n.ResolvedType != "" {
+			return TypeHintToGo(n.ResolvedType)
+		}
 	}
 	return "any"
 }

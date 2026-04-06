@@ -103,6 +103,14 @@ func analyze(doc *ast.Document) *analysisResult {
 		goImports:      make(map[string]bool),
 	}
 
+	// Collect Go imports from native (go://) imports
+	for ns, decls := range doc.NativeImports {
+		if decls != nil && decls.ImportPath != "" {
+			info.goImports[decls.ImportPath] = true
+		}
+		_ = ns
+	}
+
 	// Platform-specific data field analysis (Go types, init values, externs)
 	for _, d := range doc.Data {
 		if d.Resolved != nil && d.Resolved.NativePkg != "" {
@@ -448,9 +456,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
-	// User-defined functions (skip stdlib and test functions)
+	// User-defined functions (skip stdlib, test, and computed functions which
+	// are already emitted as lowercase methods above)
 	for _, fn := range doc.Functions {
 		if fn.IsStdlib || fn.IsTest() {
+			continue
+		}
+		// Skip computed functions — already emitted above
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 {
 			continue
 		}
 		emitGoFunc(&b, fn, ec)

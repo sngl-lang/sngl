@@ -607,7 +607,7 @@ func (c *checker) pass1(doc *ast.Document) {
 			c.maybeSetResolved(d.Init.TypeHint, &d.Init.Resolved)
 		}
 		if d.Extern || d.IsFunc {
-			c.scope.Declare(d.Name, hintType)
+			c.scope.DeclareHint(d.Name, hintType, d.Init.TypeHint)
 			continue
 		}
 		c.validateEnumLiteral(d.Pos, &d.Init)
@@ -622,7 +622,7 @@ func (c *checker) pass1(doc *ast.Document) {
 		if hintType != Dyn {
 			t = hintType
 		}
-		c.scope.Declare(d.Name, t)
+		c.scope.DeclareHint(d.Name, t, d.Init.TypeHint)
 	}
 
 	// Functions
@@ -917,10 +917,14 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		}
 	case *ast.IdentExpr:
 		if t, ok := c.scope.Lookup(e.Name); ok {
+			if hint, hok := c.scope.LookupHint(e.Name); hok {
+				e.ResolvedType = hint
+			}
 			return t
 		}
 		// Built-in compile-time constants
 		if e.Name == "PLATFORM" || e.Name == "LANGUAGE" {
+			e.ResolvedType = "string"
 			return String
 		}
 		return Dyn
@@ -1039,8 +1043,18 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 				}
 			}
 		}
+		operandHint := c.inferNodeResolvedType(e.Operand, c.scope)
+		if fieldType := c.lookupStructFieldType(operandHint, e.Field); fieldType != "" {
+			e.ResolvedType = fieldType
+			return c.resolveTypeHint(ast.Pos{}, fieldType)
+		}
 		return Dyn
 	case *ast.IndexExpr:
+		c.inferNodeType(e.Operand)
+		if elemType := c.resolvedElemType(e.Operand); elemType != "" {
+			e.ResolvedType = elemType
+			return c.resolveTypeHint(ast.Pos{}, elemType)
+		}
 		return Dyn
 	case *ast.ListExpr:
 		return List
@@ -1456,9 +1470,13 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		}
 	case *ast.IdentExpr:
 		if t, ok := scope.Lookup(e.Name); ok {
+			if hint, hok := scope.LookupHint(e.Name); hok {
+				e.ResolvedType = hint
+			}
 			return t
 		}
 		if e.Name == "PLATFORM" || e.Name == "LANGUAGE" {
+			e.ResolvedType = "string"
 			return String
 		}
 		return Dyn
@@ -1562,8 +1580,18 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 				}
 			}
 		}
+		operandHint := c.inferNodeResolvedType(e.Operand, scope)
+		if fieldType := c.lookupStructFieldType(operandHint, e.Field); fieldType != "" {
+			e.ResolvedType = fieldType
+			return c.resolveTypeHint(ast.Pos{}, fieldType)
+		}
 		return Dyn
 	case *ast.IndexExpr:
+		c.inferNodeTypeInScope(e.Operand, scope)
+		if elemType := c.resolvedElemType(e.Operand); elemType != "" {
+			e.ResolvedType = elemType
+			return c.resolveTypeHint(ast.Pos{}, elemType)
+		}
 		return Dyn
 	case *ast.ListExpr:
 		return List
@@ -1580,6 +1608,66 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 	default:
 		return Dyn
 	}
+}
+
+// inferNodeResolvedType returns the resolved type hint string for an expression node.
+// It first infers the type (which stamps ResolvedType on the node), then reads it back.
+func (c *checker) inferNodeResolvedType(n ast.Node, scope *Scope) string {
+	c.inferNodeTypeInScope(n, scope)
+	switch e := n.(type) {
+	case *ast.IdentExpr:
+		return e.ResolvedType
+	case *ast.IndexExpr:
+		return e.ResolvedType
+	case *ast.SelectExpr:
+		return e.ResolvedType
+	}
+	return ""
+}
+
+// resolvedElemType extracts the element type from a list-typed expression node.
+// Given a node whose ResolvedType is "list:X", returns "X".
+func (c *checker) resolvedElemType(n ast.Node) string {
+	var hint string
+	switch e := n.(type) {
+	case *ast.IdentExpr:
+		hint = e.ResolvedType
+	case *ast.IndexExpr:
+		hint = e.ResolvedType
+	case *ast.SelectExpr:
+		hint = e.ResolvedType
+	}
+	if strings.HasPrefix(hint, "list:") {
+		return hint[5:]
+	}
+	return ""
+}
+
+// lookupStructFieldType looks up a field's type on a struct identified by a type hint.
+// For example, given hint "docs.Component" and field "name", returns "string" if
+// the docs namespace has a Component struct with a Name field of type string.
+func (c *checker) lookupStructFieldType(hint, field string) string {
+	if hint == "" {
+		return ""
+	}
+	ns, typeName, ok := strings.Cut(hint, ".")
+	if !ok {
+		return ""
+	}
+	ins, exists := c.namespaces[ns]
+	if !exists {
+		return ""
+	}
+	for _, s := range ins.structs {
+		if s.Name == typeName {
+			for _, f := range s.Fields {
+				if f.Name == field {
+					return f.Type
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // findComponent returns the AST component definition for a user-defined component, or nil.

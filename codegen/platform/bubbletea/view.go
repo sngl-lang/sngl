@@ -206,12 +206,20 @@ func (vc *viewContext) renderRawTerminal(vn *ast.VisualNode, resultVar string) {
 		if s, ok := join.Literal.(string); ok {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
-			for i, child := range vn.Children {
+			// Expand slot children directly so each becomes a separate join entry
+			children := vn.Children
+			if len(children) == 1 && children[0].Component == "slot" && len(vc.slotChildren) > 0 {
+				children = vc.slotChildren
+			}
+			prevVertical := vc.vertical
+			vc.vertical = s == "vertical"
+			for i, child := range children {
 				childVar := fmt.Sprintf("%s_%d", resultVar, i)
 				vc.line("var %s string", childVar)
 				vc.renderNode(child, childVar)
 				vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 			}
+			vc.vertical = prevVertical
 			if s == "vertical" {
 				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 			} else {

@@ -77,7 +77,8 @@ type UnitLiteral struct {
 
 // IdentExpr is an identifier reference.
 type IdentExpr struct {
-	Name string
+	Name         string
+	ResolvedType string // type hint populated by checker, e.g. "list:docs.Component"
 }
 
 // BinaryExpr is a binary operation.
@@ -102,14 +103,16 @@ type TernaryExpr struct {
 
 // SelectExpr is field access: operand.field.
 type SelectExpr struct {
-	Operand Node
-	Field   string
+	Operand      Node
+	Field        string
+	ResolvedType string // type hint populated by checker, e.g. "string"
 }
 
 // IndexExpr is index access: operand[index].
 type IndexExpr struct {
-	Operand Node
-	Index   Node
+	Operand      Node
+	Index        Node
+	ResolvedType string // element type populated by checker, e.g. "docs.Component"
 }
 
 // CallExpr is a function call: func(args...).

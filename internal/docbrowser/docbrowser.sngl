@@ -1,0 +1,36 @@
+output {
+    go {
+        bubbletea(package="docbrowser")
+    }
+}
+
+import "go://git.duckfam.us/jonathan/sngl/docs"
+
+var components list<docs.Component> = docs.Components()
+
+component main {
+    var selectedIndex = 0
+
+    func currentName() => components[selectedIndex].name
+    func currentDoc() => components[selectedIndex].doc
+    func currentTier() => components[selectedIndex].tier
+    func currentChildren() => components[selectedIndex].children
+
+    hbox {
+        vbox(style={width=200, padding=8}) {
+            text(value="SNGL Components", style={fontWeight="bold"})
+            text(value="")
+            for comp, index = components {
+                text(value=index == selectedIndex ? "> " + comp.name : "  " + comp.name)
+            }
+        }
+        vbox(style={padding=8}) {
+            text(value=currentName, style={fontWeight="bold"})
+            text(value="[" + currentTier + "]")
+            text(value="")
+            text(value=currentDoc)
+            text(value="")
+            text(value="Children: " + currentChildren)
+        }
+    }
+}
