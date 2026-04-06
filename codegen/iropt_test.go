@@ -71,7 +71,9 @@ func TestOptimizeMutation_MergeUpdaters(t *testing.T) {
 	}
 }
 
-func TestOptimizeMutation_RemoveDeadHandlers(t *testing.T) {
+func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
+	// Handlers are kept even if their mutations don't affect updaters,
+	// because state writes are observable side effects.
 	m := &MutationModel{
 		Analysis: &CommonAnalysis{
 			ModelFields:    map[string]bool{"x": true, "unused": true},
@@ -93,11 +95,8 @@ func TestOptimizeMutation_RemoveDeadHandlers(t *testing.T) {
 		},
 	}
 	OptimizeMutation(m)
-	if len(m.Handlers) != 1 {
-		t.Fatalf("expected 1 handler (dead one removed), got %d", len(m.Handlers))
-	}
-	if m.Handlers[0].NodeID != "$0" {
-		t.Fatalf("expected $0 handler kept, got %s", m.Handlers[0].NodeID)
+	if len(m.Handlers) != 2 {
+		t.Fatalf("expected 2 handlers preserved, got %d", len(m.Handlers))
 	}
 }
 

@@ -40,19 +40,10 @@ func OptimizeMutation(m *MutationModel) {
 	maps.Copy(usedForComputeds, timerFields)
 	m.Analysis.PruneUnusedComputeds(usedForComputeds)
 
-	// Pass 6: Remove handlers that mutate fields affecting nothing.
-	m.Handlers = filterHandlers(m.Handlers, func(h Handler) bool {
-		if len(h.Mutated) == 0 {
-			return true // can't determine effects, keep
-		}
-		expanded := m.DepTracker.ExpandMutated(h.Mutated)
-		for f := range expanded {
-			if activeFields[f] || timerFields[f] {
-				return true
-			}
-		}
-		return false
-	})
+	// Note: we intentionally do NOT remove handlers based on mutation
+	// analysis. A handler that writes to state has observable side effects
+	// even if no updater currently reads that field (extern code, tests,
+	// or future updaters may depend on it).
 
 	// Pass 7: Prune helpers not referenced in any generated code.
 	pruneHelpers(m)

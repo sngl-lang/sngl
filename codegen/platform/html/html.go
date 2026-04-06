@@ -1575,6 +1575,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		})
 	}
 
+	// Run IR optimizer on collected updaters, handlers, and timers.
+	g.optimizeIR()
+
 	// Extern bindings (provided by host via window.__sngl_externs or WASM)
 	hasExterns := false
 	for _, d := range g.doc.Data {
@@ -1871,6 +1874,74 @@ func (g *htmlGen) collectReferencedIDs() []string {
 
 	sort.Strings(ids)
 	return ids
+}
+
+// optimizeIR builds a MutationModel from the collected updaters, handlers,
+// and timers, runs the IR optimizer, then writes the results back.
+func (g *htmlGen) optimizeIR() {
+	// Convert platform types → IR types.
+	updaters := make([]codegen.Updater, len(g.updates))
+	for i, u := range g.updates {
+		updaters[i] = codegen.Updater{
+			Name: u.funcName,
+			Body: u.body,
+			Deps: u.deps,
+		}
+	}
+	// Keep handler body strings keyed by elemID+event (IR uses ast.Node,
+	// but HTML has already translated to JS strings).
+	handlerBodyMap := make(map[string]string)
+	handlers := make([]codegen.Handler, len(g.handlers))
+	for i, h := range g.handlers {
+		handlerBodyMap[h.elemID+":"+h.event] = h.body
+		handlers[i] = codegen.Handler{
+			NodeID:  h.elemID,
+			Event:   h.event,
+			Mutated: h.mutated,
+		}
+	}
+	timers := make([]codegen.TimerHandler, len(g.timers))
+	for i, t := range g.timers {
+		timers[i] = codegen.TimerHandler{
+			TimerInfo: codegen.TimerInfo{
+				Index:      t.index,
+				IntervalMs: t.intervalMs,
+				ActiveVar:  t.activeVar,
+			},
+			Mutated: t.mutated,
+		}
+	}
+
+	m := &codegen.MutationModel{
+		Analysis:   g.CommonAnalysis,
+		DepTracker: g.dt,
+		Updaters:   updaters,
+		Handlers:   handlers,
+		Timers:     timers,
+	}
+
+	codegen.OptimizeMutation(m)
+
+	// Write back optimized updaters.
+	g.updates = make([]updateFunc, len(m.Updaters))
+	for i, u := range m.Updaters {
+		g.updates[i] = updateFunc{
+			funcName: u.Name,
+			body:     u.Body,
+			deps:     u.Deps,
+		}
+	}
+
+	// Write back optimized handlers, restoring body strings.
+	g.handlers = make([]eventHandler, len(m.Handlers))
+	for i, h := range m.Handlers {
+		g.handlers[i] = eventHandler{
+			elemID:  h.NodeID,
+			event:   h.Event,
+			body:    handlerBodyMap[h.NodeID+":"+h.Event],
+			mutated: h.Mutated,
+		}
+	}
 }
 
 func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFunc {
