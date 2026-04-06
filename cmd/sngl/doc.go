@@ -75,36 +75,64 @@ func runDoc(cmd *cobra.Command, args []string) error {
 
 	first := args[0]
 
-	// Check if first arg is a directory or .sngl file → user package docs
-	isDir := false
-	isFile := false
-	if info, err := os.Stat(first); err == nil {
-		isDir = info.IsDir()
-		isFile = !isDir && strings.HasSuffix(first, ".sngl")
-	}
-	if isDir || isFile {
-		dir := first
-		if isFile {
-			dir = filepath.Dir(first)
-		}
-		doc, err := parsePackage(dir)
-		if err != nil {
-			return err
-		}
-		pkgDocs := checker.ExtractPackageDocs(doc)
-
-		if len(args) >= 2 {
-			// Check if second arg is a platform namespace
+	// Two-arg form: sngl doc <dir> <decl|platform>
+	if len(args) >= 2 {
+		dir := resolvePackageDir(first)
+		if dir != "" {
+			doc, err := parsePackage(dir)
+			if err != nil {
+				return err
+			}
+			pkgDocs := checker.ExtractPackageDocs(doc)
 			plat := codegen.LookupPlatform(args[1])
 			if plat != nil {
 				return showPlatformDocs(args[1], plat)
 			}
 			return showDeclDoc(pkgDocs, args[1], doc.Comments)
 		}
-		return showPackageIndex(dir, pkgDocs)
 	}
 
-	// Try documentation file lookup.
+	// Single arg: try multiple resolution strategies.
+
+	// 1. Explicit directory or .sngl file
+	if dir := resolvePackageDir(first); dir != "" {
+		doc, err := parsePackage(dir)
+		if err != nil {
+			return err
+		}
+		return showPackageIndex(dir, checker.ExtractPackageDocs(doc))
+	}
+
+	// 2. path.Decl syntax: "examples/todo.Todo" → package=examples/todo, decl=Todo
+	if dotIdx := strings.LastIndex(first, "."); dotIdx > 0 {
+		pkgPath := first[:dotIdx]
+		declName := first[dotIdx+1:]
+		if dir := resolvePackageDir(pkgPath); dir != "" {
+			doc, err := parsePackage(dir)
+			if err != nil {
+				return err
+			}
+			return showDeclDoc(checker.ExtractPackageDocs(doc), declName, doc.Comments)
+		}
+	}
+
+	// 3. Platform name: "android" → show platform docs
+	if plat := codegen.LookupPlatform(first); plat != nil {
+		return showPlatformDocs(first, plat)
+	}
+
+	// 4. Platform name with fallback to current dir: "android" could also mean
+	//    "show android extensions for ." — already handled by case 3.
+
+	// 5. Try as a declaration in the current directory
+	if doc, err := parsePackage("."); err == nil {
+		pd := checker.ExtractPackageDocs(doc)
+		if info := pd.FindDecl(first); info != nil {
+			return showDeclDoc(pd, first, doc.Comments)
+		}
+	}
+
+	// 6. Documentation file lookup
 	docsDir, _ := findDocsDir()
 	if docsDir != "" {
 		if err := showTopic(docsDir, first); err == nil {
@@ -112,8 +140,24 @@ func runDoc(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Fall back to stdlib component reference.
+	// 7. Stdlib component reference
 	return showComponentDoc(first)
+}
+
+// resolvePackageDir resolves a path to a package directory.
+// Returns "" if the path doesn't point to a valid directory or .sngl file.
+func resolvePackageDir(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	if info.IsDir() {
+		return path
+	}
+	if strings.HasSuffix(path, ".sngl") {
+		return filepath.Dir(path)
+	}
+	return ""
 }
 
 // parsePackage parses all .sngl files in a directory (non-recursive).
