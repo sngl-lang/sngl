@@ -83,7 +83,7 @@ func Generate(cfg Config) ([]Result, error) {
 		if prefix == "" {
 			prefix = strings.TrimSuffix(filepath.Base(cfg.SourceFile), filepath.Ext(cfg.SourceFile))
 		}
-		outPath := filepath.Join(cfg.OutDir, prefix+"-"+t.platform+".png")
+		outPath := filepath.Join(cfg.OutDir, prefix+"_"+t.platform+".png")
 		if err := os.WriteFile(outPath, pngBytes, 0o644); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", outPath, err)
 		}
@@ -97,7 +97,7 @@ func Generate(cfg Config) ([]Result, error) {
 		// If the platform supports text snapshots, write a .txt alongside the PNG.
 		textBytes, textErr := textSnapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height)
 		if textErr == nil && len(textBytes) > 0 {
-			txtPath := filepath.Join(cfg.OutDir, prefix+"-"+t.platform+".txt")
+			txtPath := filepath.Join(cfg.OutDir, prefix+"_"+t.platform+".txt")
 			os.WriteFile(txtPath, textBytes, 0o644)
 			results = append(results, Result{
 				Platform: t.platform,

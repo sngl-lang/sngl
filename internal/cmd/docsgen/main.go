@@ -57,7 +57,7 @@ func generateComponentSnapshots(outDir string) {
 	os.MkdirAll(galleryDir, 0o755)
 
 	// Use pre-rendered stdlib examples from sngl snapshot examples --stdlib.
-	examplesDir := filepath.Join("internal", "checker", "stdlib", ".sngl-examples")
+	examplesDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
 	entries, err := os.ReadDir(examplesDir)
 	if err != nil {
 		log.Printf("gallery: no pre-rendered examples in %s (run: sngl snapshot examples --stdlib)", examplesDir)

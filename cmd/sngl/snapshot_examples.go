@@ -27,7 +27,7 @@ Examples are defined in doc comments above component declarations:
   //   }
   component MyButton(...) { ... }
 
-Screenshots are written to {dir}/.sngl-examples/{component}-{platform}.png.
+Screenshots are written to {dir}/snapshots/{component}-{platform}.png.
 
 With --stdlib, generates screenshots for the built-in stdlib components.`,
 	RunE: runSnapshotExamples,
@@ -117,7 +117,7 @@ func snapshotFile(path string, platforms []string, width, height int, force bool
 	}
 
 	dir := filepath.Dir(path)
-	outDir := filepath.Join(dir, ".sngl-examples")
+	outDir := filepath.Join(dir, "snapshots")
 
 	return renderExamples(examples, outDir, platforms, width, height, force)
 }
@@ -135,7 +135,7 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 	// Place alongside the stdlib source files that define the components.
 	// The stdlib is embedded from internal/checker/stdlib/ so snapshots
 	// go next to those definitions.
-	outDir := filepath.Join("internal", "checker", "stdlib", ".sngl-examples")
+	outDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
 
 	return renderExamples(examples, outDir, platforms, width, height, force)
 }

@@ -7,5 +7,6 @@ _site/
 /todo
 /_examples/todo/todo
 snapshots/
+!internal/checker/stdlib/snapshots/
 internal/snapshot/testdata/snapshots/
 *.wasm

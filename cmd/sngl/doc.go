@@ -686,14 +686,36 @@ func showComponentDoc(query string) error {
 func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s\n\n", name))
-	if schema.Doc != "" {
-		sb.WriteString(schema.Doc)
+
+	// Strip the example from the doc text (it's shown separately as a snapshot)
+	doc := schema.Doc
+	if idx := strings.Index(doc, " Example:"); idx > 0 {
+		doc = strings.TrimSpace(doc[:idx])
+	}
+	if doc != "" {
+		sb.WriteString(doc)
 		sb.WriteString("\n\n")
 	}
 
+	// Show ANSI snapshot if available
+	// Look for ANSI snapshot relative to the stdlib source
+	snapshotDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	if ansi, err := os.ReadFile(filepath.Join(snapshotDir, name+"_bubbletea.txt")); err == nil {
+		sb.WriteString("## Preview\n\n```\n")
+		sb.Write(ansi)
+		sb.WriteString("\n```\n\n")
+	}
+
+	// Show example source if available
+	examples, _ := checker.StdlibExamples()
+	if src, ok := examples[name]; ok {
+		sb.WriteString("## Example\n\n```sngl\n")
+		sb.WriteString(src)
+		sb.WriteString("\n```\n\n")
+	}
+
 	if len(schema.Props) > 0 {
-		sb.WriteString("## Properties\n\n")
-		// Sort props by name.
+		sb.WriteString("## Properties\n\n```\n")
 		type propEntry struct {
 			name string
 			ps   checker.PropSchema
@@ -706,20 +728,20 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 			return props[i].name < props[j].name
 		})
 		for _, p := range props {
-			line := fmt.Sprintf("  %-16s %s", p.name, p.ps.Type)
+			line := fmt.Sprintf("%-16s %s", p.name, p.ps.Type)
 			if len(p.ps.Enum) > 0 {
 				line += fmt.Sprintf("  (%s)", strings.Join(p.ps.Enum, ", "))
 			}
 			sb.WriteString(line + "\n")
 			if p.ps.Doc != "" {
-				sb.WriteString(fmt.Sprintf("                   %s\n", p.ps.Doc))
+				sb.WriteString(fmt.Sprintf("                 %s\n", p.ps.Doc))
 			}
 		}
-		sb.WriteString("\n")
+		sb.WriteString("```\n\n")
 	}
 
 	if len(schema.Events) > 0 {
-		sb.WriteString("## Events\n\n")
+		sb.WriteString("## Events\n\n```\n")
 		type eventEntry struct {
 			name    string
 			payload string
@@ -732,12 +754,12 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 			return events[i].name < events[j].name
 		})
 		for _, e := range events {
-			sb.WriteString(fmt.Sprintf("  %-16s %s\n", e.name, e.payload))
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", e.name, e.payload))
 		}
-		sb.WriteString("\n")
+		sb.WriteString("```\n\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("## Children: %s\n", docsite.ChildPolicyString(schema.Children)))
+	sb.WriteString(fmt.Sprintf("**Children:** %s\n", docsite.ChildPolicyString(schema.Children)))
 
 	return sb.String()
 }
