@@ -206,6 +206,7 @@ type Data struct {
 	IsFunc       bool     // TypeHint starts with "func"
 	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
 	ReturnType   string   // parsed func return type, "" for void
+	HiddenParam  string   // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
 	Trigger      string   // resolved trigger function name, "" for none
 	Disabled     bool
 	Grouped      bool      // parsed from var(...) grouped declaration

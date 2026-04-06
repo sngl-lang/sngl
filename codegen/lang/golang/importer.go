@@ -158,6 +158,9 @@ func resolveFieldPkgPath(t types.Type) string {
 }
 
 // goFuncToData converts a Go function to an ast.Data with extern/func flags.
+// If the first parameter is *http.Request or context.Context, it is stripped
+// from the SNGL-visible signature and recorded in HiddenParam so that HTTP
+// platform codegen can inject it automatically.
 func goFuncToData(fn *types.Func) *ast.Data {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok {
@@ -165,8 +168,16 @@ func goFuncToData(fn *types.Func) *ast.Data {
 	}
 
 	var paramTypes []string
+	var hiddenParam string
 	params := sig.Params()
-	for v := range params.Variables() {
+	for i := range params.Len() {
+		v := params.At(i)
+		if i == 0 {
+			if hp := detectHiddenParam(v.Type()); hp != "" {
+				hiddenParam = hp
+				continue
+			}
+		}
 		paramTypes = append(paramTypes, goTypeToHint(v.Type()))
 	}
 
@@ -186,13 +197,36 @@ func goFuncToData(fn *types.Func) *ast.Data {
 	}
 
 	return &ast.Data{
-		Name:       fn.Name(),
-		Extern:     true,
-		IsFunc:     true,
-		ParamTypes: paramTypes,
-		ReturnType: returnType,
-		Init:       ast.Expr{TypeHint: hint},
+		Name:        fn.Name(),
+		Extern:      true,
+		IsFunc:      true,
+		ParamTypes:  paramTypes,
+		ReturnType:  returnType,
+		HiddenParam: hiddenParam,
+		Init:        ast.Expr{TypeHint: hint},
 	}
+}
+
+// detectHiddenParam checks if a type is *http.Request or context.Context,
+// returning the Go type string if so (for injection by HTTP platform codegen).
+func detectHiddenParam(t types.Type) string {
+	// Check for *http.Request (pointer to named type)
+	if ptr, ok := t.(*types.Pointer); ok {
+		if named, ok := ptr.Elem().(*types.Named); ok {
+			pkg := named.Obj().Pkg()
+			if pkg != nil && pkg.Path() == "net/http" && named.Obj().Name() == "Request" {
+				return "*http.Request"
+			}
+		}
+	}
+	// Check for context.Context (interface, named type)
+	if named, ok := t.(*types.Named); ok {
+		pkg := named.Obj().Pkg()
+		if pkg != nil && pkg.Path() == "context" && named.Obj().Name() == "Context" {
+			return "context.Context"
+		}
+	}
+	return ""
 }
 
 // goTypeToHint maps a Go type to a SNGL type hint string.

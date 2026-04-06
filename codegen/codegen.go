@@ -98,6 +98,31 @@ type Builder interface {
 	Build(dir string, opts map[string]string) (artifact string, err error)
 }
 
+// HTTPCompiler is optionally implemented by LangTranslators that can generate
+// HTTP server code. The http platform delegates language-specific code generation
+// (handler scaffolding, server main, framework-specific routing) to this interface.
+type HTTPCompiler interface {
+	CompileHTTP(req *HTTPRequest) ([]byte, error)
+}
+
+// HTTPRequest describes what the http platform needs the language to generate.
+type HTTPRequest struct {
+	Doc         *ast.Document
+	Package     string       // target package name (e.g., "main", "ui")
+	Main        bool         // generate standalone server with main()
+	Framework   string       // HTTP framework: "net/http", "gin", "echo"
+	Routes      []HTTPRoute  // window → route mapping
+	RenderHTML  func(routeIdx int) string // callback: returns HTML body for a route
+}
+
+// HTTPRoute maps a window to an HTTP route.
+type HTTPRoute struct {
+	Name      string // handler function name (e.g., "handleHome")
+	Path      string // URL path: "/", "/about"
+	Title     string // page title
+	WindowIdx int    // index into doc.App.EffectiveWindows()
+}
+
 // WASMCompiler is optionally implemented by LangTranslators that can compile
 // imported packages to WebAssembly with JS bindings. Platforms like HTML check
 // for this interface to enable go:// (or other scheme) imports at runtime.
