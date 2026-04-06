@@ -485,8 +485,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// View()
 	emitView(&b, info, doc, ec, cfg)
 
-	// User component render methods
-	for _, comp := range info.Components {
+	// User component render methods (not stdlib overrides)
+	for _, comp := range doc.Components {
 		emitComponentMethod(&b, comp, info.Components, ec, cfg)
 	}
 
