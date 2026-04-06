@@ -1,0 +1,15 @@
+component NavItem(href = "", text = "", active = false) {
+    link(text=text, href=href, style={
+        fontWeight=active ? "bold" : "normal",
+        padding="4px 8px"
+    })
+}
+
+component NavGroup(title = "") list<component> {
+    vbox(style={gap=2, paddingTop=8}) {
+        text(value=title, style={fontWeight="bold", fontSize=14, padding="4px 8px", color="#666"})
+        vbox(style={gap=1, paddingLeft=8}) {
+            slot
+        }
+    }
+}

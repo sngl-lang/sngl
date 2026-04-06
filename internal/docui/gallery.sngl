@@ -1,0 +1,19 @@
+import "go://git.duckfam.us/jonathan/sngl/docs"
+
+component Gallery(hrefPrefix = "/", hrefSuffix = "") {
+    vbox(style={gap=24}) {
+        for tier = docs.ComponentsByTier() {
+            vbox(style={gap=8}) {
+                text(value=tier.name, style={fontSize=20, fontWeight="bold"})
+                vbox(style={gap=4}) {
+                    for comp = tier.components {
+                        card(variant="outlined", clickable=true) {
+                            link(text=comp.name, href=hrefPrefix + comp.name + hrefSuffix)
+                            text(value=comp.doc, style={color="#666"})
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

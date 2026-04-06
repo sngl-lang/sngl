@@ -1,0 +1,7 @@
+component Sidebar(homeHref = "/") list<component> {
+    vbox(style={width=260, padding=8, gap=4}) {
+        link(text="SNGL", href=homeHref, style={fontWeight="bold", fontSize=16, padding=8})
+        divider
+        slot
+    }
+}

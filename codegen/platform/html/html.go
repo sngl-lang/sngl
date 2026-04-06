@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -2411,10 +2412,83 @@ func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string
 	return ""
 }
 
-func (g *htmlGen) evalInitialString(_ ast.Expr) string {
-	// For the initial render, expressions can't be statically evaluated.
-	// Return empty and let JS update on load.
+func (g *htmlGen) evalInitialString(expr ast.Expr) string {
+	if expr.SNGL == nil {
+		return ""
+	}
+	// Translate the expression to JS and try to resolve it to a static value.
+	js := g.exprToJS(expr)
+	return g.resolveJSToString(js)
+}
+
+// resolveJSToString tries to evaluate a JS expression to a static string.
+// It resolves component param references (e.g. "text_1") through their
+// assigned values, and handles simple string literals and concatenation.
+func (g *htmlGen) resolveJSToString(js string) string {
+	// Direct string literal.
+	if len(js) >= 2 && js[0] == '"' && js[len(js)-1] == '"' {
+		if s, err := strconv.Unquote(js); err == nil {
+			return s
+		}
+	}
+	// Component param variable — look up its assigned value.
+	for _, cp := range g.componentParams {
+		if cp.name == js {
+			return g.resolveJSToString(cp.value)
+		}
+	}
+	// String concatenation: ("a" + "b") or "a" + b
+	if parts := splitJSConcat(js); len(parts) > 1 {
+		var sb strings.Builder
+		for _, p := range parts {
+			s := g.resolveJSToString(strings.TrimSpace(p))
+			if s == "" {
+				return "" // can't resolve a part
+			}
+			sb.WriteString(s)
+		}
+		return sb.String()
+	}
 	return ""
+}
+
+// splitJSConcat splits a JS expression on top-level " + " operators,
+// respecting string quoting and parentheses.
+func splitJSConcat(s string) []string {
+	var parts []string
+	depth := 0
+	inStr := false
+	start := 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"':
+			if !inStr {
+				inStr = true
+			} else if i > 0 && s[i-1] != '\\' {
+				inStr = false
+			}
+		case '(':
+			if !inStr {
+				depth++
+			}
+		case ')':
+			if !inStr {
+				depth--
+			}
+		case '+':
+			if !inStr && depth == 0 {
+				parts = append(parts, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	if start < len(s) {
+		parts = append(parts, s[start:])
+	}
+	if len(parts) <= 1 {
+		return nil
+	}
+	return parts
 }
 
 func (g *htmlGen) evalStaticBool(expr *ast.Expr) bool {

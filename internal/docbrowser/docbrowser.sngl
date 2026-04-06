@@ -6,6 +6,7 @@ output {
 }
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
+import "../docui"
 
 component main {
     var selectedIndex = 0
@@ -37,10 +38,9 @@ component main {
     // HTTP routes (used by http platform)
     window index(title="SNGL Documentation", href="/") {
         hbox {
-            vbox(style={width=260, padding=8, gap=2}) {
-                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+            docui.Sidebar {
                 for comp = docs.Components() {
-                    link(text=comp.name, href="/" + comp.name, style={padding=4})
+                    docui.NavItem(text=comp.name, href="/" + comp.name)
                 }
             }
             vbox(style={padding=24, gap=16}) {
@@ -52,18 +52,13 @@ component main {
 
     window detail(title="Component — SNGL Docs", href="/{name}") {
         hbox {
-            vbox(style={width=260, padding=8, gap=2}) {
-                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+            docui.Sidebar {
                 for comp = docs.Components() {
-                    link(text=comp.name, href="/" + comp.name,
-                         style={fontWeight=comp.name == name ? "bold" : "normal", padding=4})
+                    docui.NavItem(text=comp.name, href="/" + comp.name, active=comp.name == name)
                 }
             }
-            vbox(style={padding=24, gap=12}) {
-                text(value=docs.Lookup(name).name, style={fontSize=24, fontWeight="bold"})
-                text(value="[" + docs.Lookup(name).tier + "]", style={color="#d29922"})
-                text(value=docs.Lookup(name).doc)
-                text(value="Children: " + docs.Lookup(name).children, style={color="#888"})
+            vbox(style={padding=24}) {
+                docui.Detail(name=name)
             }
         }
     }

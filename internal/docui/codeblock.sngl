@@ -1,0 +1,15 @@
+component CodeBlock(code = "", language = "") {
+    text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
+
+    platform html {
+        html.pre {
+            html.code(class="language-" + language, innerText=code)
+        }
+    }
+
+    platform http {
+        html.pre(style={padding="12px", background="#1e1e1e", color="#d4d4d4", borderRadius="4px", overflow="auto"}) {
+            html.code(innerText=code)
+        }
+    }
+}

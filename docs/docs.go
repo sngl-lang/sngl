@@ -144,33 +144,18 @@ type Tier struct {
 	Components []Component
 }
 
-// Components returns metadata for all components. When a workspace directory
-// has been set via SetWorkspaceDir, workspace declarations appear first,
-// followed by stdlib components.
-func Components() []Component {
-	var comps []Component
-
-	// Workspace components (if dir set).
-	if workspaceDir != "" {
-		if doc, err := parseDir(workspaceDir); err == nil {
-			pd := checker.ExtractPackageDocs(doc)
-			for _, d := range pd.Components {
-				if !strings.HasPrefix(d.Name, "sngl.") {
-					comps = append(comps, Component{Name: d.Name, Doc: d.Doc, Tier: "workspace"})
-				}
-			}
-		}
-	}
-
-	// Stdlib components.
+// StdlibComponents returns metadata for all stdlib components.
+//
+//sngl:pure
+func StdlibComponents() []Component {
 	registry, _, _, _, _, _, err := checker.LoadStdlib()
 	if err != nil {
-		return comps
+		return nil
 	}
 	tiers := docsite.AssignTiers(registry)
 	stdlibExamples, _ := checker.StdlibExamples()
 
-	var stdComps []Component
+	var comps []Component
 	for name, schema := range registry {
 		c := Component{
 			Name:     name,
@@ -200,32 +185,53 @@ func Components() []Component {
 			c.PreviewHTML = buildPreviewSection(name, src)
 		}
 
-		stdComps = append(stdComps, c)
+		comps = append(comps, c)
 	}
 
-	// Sort stdlib by tier order then name.
+	// Sort by tier order then name.
 	tierIdx := map[string]int{}
 	for i, t := range docsite.TierOrder {
 		tierIdx[t] = i
 	}
-	sort.Slice(stdComps, func(i, j int) bool {
-		ti := tierIdx[stdComps[i].Tier]
-		tj := tierIdx[stdComps[j].Tier]
+	sort.Slice(comps, func(i, j int) bool {
+		ti := tierIdx[comps[i].Tier]
+		tj := tierIdx[comps[j].Tier]
 		if ti != tj {
 			return ti < tj
 		}
-		return stdComps[i].Name < stdComps[j].Name
+		return comps[i].Name < comps[j].Name
 	})
 
-	comps = append(comps, stdComps...)
 	return comps
 }
 
-// ComponentsByTier returns components grouped by tier for the gallery.
+// Components returns metadata for all components. When a workspace directory
+// has been set via SetWorkspaceDir, workspace declarations appear first,
+// followed by stdlib components.
+func Components() []Component {
+	var comps []Component
+
+	// Workspace components (if dir set).
+	if workspaceDir != "" {
+		if doc, err := parseDir(workspaceDir); err == nil {
+			pd := checker.ExtractPackageDocs(doc)
+			for _, d := range pd.Components {
+				if !strings.HasPrefix(d.Name, "sngl.") {
+					comps = append(comps, Component{Name: d.Name, Doc: d.Doc, Tier: "workspace"})
+				}
+			}
+		}
+	}
+
+	comps = append(comps, StdlibComponents()...)
+	return comps
+}
+
+// ComponentsByTier returns stdlib components grouped by tier for the gallery.
 //
 //sngl:pure
 func ComponentsByTier() []Tier {
-	comps := Components()
+	comps := StdlibComponents()
 	tierMap := map[string][]Component{}
 	for _, c := range comps {
 		tierMap[c.Tier] = append(tierMap[c.Tier], c)
@@ -242,6 +248,18 @@ func ComponentsByTier() []Tier {
 // Lookup returns the component with the given name, or a zero Component if not found.
 func Lookup(name string) Component {
 	for _, c := range Components() {
+		if c.Name == name {
+			return c
+		}
+	}
+	return Component{Name: name, Doc: "Component not found."}
+}
+
+// StdlibLookup returns the stdlib component with the given name.
+//
+//sngl:pure
+func StdlibLookup(name string) Component {
+	for _, c := range StdlibComponents() {
 		if c.Name == name {
 			return c
 		}

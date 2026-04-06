@@ -88,13 +88,14 @@ func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, 
 }
 
 type renderer struct {
-	doc      *ast.Document
-	info     *analysisResult
-	lang     codegen.LangTranslator
-	scope    *codegen.ExprScope
-	clientJS *clientJSState
-	nextID   int
-	actions  []codegen.HTTPAction // collected server-state form actions
+	doc          *ast.Document
+	info         *analysisResult
+	lang         codegen.LangTranslator
+	scope        *codegen.ExprScope
+	clientJS     *clientJSState
+	nextID       int
+	actions      []codegen.HTTPAction // collected server-state form actions
+	slotChildren []*ast.VisualNode    // children to inline at slot expansion points
 }
 
 func (r *renderer) allocID() string {
@@ -142,7 +143,9 @@ func (r *renderer) renderNode(b *strings.Builder, vn *ast.VisualNode, depth int)
 	case "divider":
 		fmt.Fprintf(b, "%sfmt.Fprint(w, `<hr>`)\n", indent)
 	case "slot":
-		// Slot expansion handled at component inline time.
+		for _, child := range r.slotChildren {
+			r.renderNode(b, child, depth)
+		}
 	default:
 		// Try user-defined component, fall back to raw HTML element.
 		if comp := r.doc.FindComponent(vn.Component); comp != nil {
@@ -364,14 +367,36 @@ func (r *renderer) renderNodeWithID(b *strings.Builder, vn *ast.VisualNode, dept
 }
 
 func (r *renderer) renderUserComponent(b *strings.Builder, vn *ast.VisualNode, comp *ast.Component, depth int) {
-	// Save and restore scope.
+	indent := strings.Repeat("\t", depth)
+
+	// Save and restore scope + slot children.
 	savedLocal := make(map[string]bool)
 	maps.Copy(savedLocal, r.scope.LocalVars)
+	savedSlot := r.slotChildren
 
-	// Register params as locals.
+	// Open a Go block scope so param names don't collide with outer vars.
+	needScope := len(comp.Params) > 0
+	if needScope {
+		fmt.Fprintf(b, "%s{\n", indent)
+	}
+
+	// Emit param variable declarations.
 	for _, p := range comp.Params {
 		r.scope.LocalVars[p.Name] = true
+		if val, ok := vn.Props[p.Name]; ok {
+			goExpr := r.exprToGo(val)
+			fmt.Fprintf(b, "%s\t%s := %s\n", indent, p.Name, goExpr)
+		} else if p.Default.Literal != nil || p.Default.SNGL != nil {
+			goExpr := r.exprToGo(p.Default)
+			fmt.Fprintf(b, "%s\t%s := %s\n", indent, p.Name, goExpr)
+		} else {
+			fmt.Fprintf(b, "%s\tvar %s string\n", indent, p.Name)
+		}
+		fmt.Fprintf(b, "%s\t_ = %s\n", indent, p.Name)
 	}
+
+	// Set slot children for expansion.
+	r.slotChildren = vn.Children
 
 	// Inline the component body.
 	body := comp.Body
@@ -380,12 +405,21 @@ func (r *renderer) renderUserComponent(b *strings.Builder, vn *ast.VisualNode, c
 	} else if platformBody, ok := comp.PlatformBodies["html"]; ok {
 		body = platformBody
 	}
+	innerDepth := depth
+	if needScope {
+		innerDepth++
+	}
 	for _, child := range body {
-		r.renderNode(b, child, depth)
+		r.renderNode(b, child, innerDepth)
 	}
 
-	// Restore scope.
+	if needScope {
+		fmt.Fprintf(b, "%s}\n", indent)
+	}
+
+	// Restore scope + slot children.
 	r.scope.LocalVars = savedLocal
+	r.slotChildren = savedSlot
 }
 
 func (r *renderer) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth int) {

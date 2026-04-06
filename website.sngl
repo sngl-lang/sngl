@@ -6,72 +6,38 @@ output {
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
 import "file://public"
+import "internal/docui"
 
 const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()
-const components = docs.Components()
+const components = docs.StdlibComponents()
 const logo = public.path("sngl.svg")
 
 component NavSidebar(currentHref = "") {
-	html.nav {
-		html.a(href="/index.html", class="nav-brand") {
-			html.img(src=logo, alt="SNGL")
-			html.span(innerText="SNGL")
+	docui.Sidebar(homeHref="/index.html") {
+		docui.NavItem(text="SNGL", href="/index.html", active=currentHref == "/index.html")
+		docui.NavGroup(title="Getting Started") {
+			docui.NavItem(text="Installation", href="/getting-started/installation.html", active=currentHref == "/getting-started/installation.html")
+			docui.NavItem(text="Your First App", href="/getting-started/first-app-web.html", active=currentHref == "/getting-started/first-app-web.html")
+			docui.NavItem(text="Build Targets", href="/getting-started/build-targets.html", active=currentHref == "/getting-started/build-targets.html")
+			docui.NavItem(text="Data Binding", href="/getting-started/data-binding.html", active=currentHref == "/getting-started/data-binding.html")
 		}
-		html.ul {
-			html.li {
-				html.a(href="/index.html", class=currentHref == "/index.html" ? "active" : "", innerText="SNGL")
-			}
-			html.li {
-				html.a(href="/getting-started.html", innerText="Getting Started")
-				html.ul {
-					html.li {
-						html.a(href="/getting-started/installation.html", class=currentHref == "/getting-started/installation.html" ? "active" : "", innerText="Installation")
-					}
-					html.li {
-						html.a(href="/getting-started/first-app-web.html", class=currentHref == "/getting-started/first-app-web.html" ? "active" : "", innerText="Your First App")
-					}
-					html.li {
-						html.a(href="/getting-started/build-targets.html", class=currentHref == "/getting-started/build-targets.html" ? "active" : "", innerText="Build Targets")
-					}
-					html.li {
-						html.a(href="/getting-started/data-binding.html", class=currentHref == "/getting-started/data-binding.html" ? "active" : "", innerText="Data Binding")
-					}
-				}
-			}
-			html.li {
-				html.a(href="#", innerText="Language")
-				html.ul {
-					html.li {
-						html.a(href="/language/effective-sngl.html", class=currentHref == "/language/effective-sngl.html" ? "active" : "", innerText="Effective SNGL")
-					}
-					html.li {
-						html.a(href="/language/reference.html", class=currentHref == "/language/reference.html" ? "active" : "", innerText="Language Reference")
-					}
-					html.li {
-						html.a(href="/language/specification.html", class=currentHref == "/language/specification.html" ? "active" : "", innerText="Language Specification")
-					}
-				}
-			}
-			html.li {
-				html.a(href="/components/index.html", class=currentHref == "/components/index.html" ? "active" : "", innerText="Components")
-			}
-			html.li {
-				html.a(href="/playground.html", class=currentHref == "/playground.html" ? "active" : "", innerText="Playground")
-			}
+		docui.NavGroup(title="Language") {
+			docui.NavItem(text="Effective SNGL", href="/language/effective-sngl.html", active=currentHref == "/language/effective-sngl.html")
+			docui.NavItem(text="Language Reference", href="/language/reference.html", active=currentHref == "/language/reference.html")
+			docui.NavItem(text="Language Specification", href="/language/specification.html", active=currentHref == "/language/specification.html")
 		}
+		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
+		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
 	}
 }
 
 component PageLayout(title = "", currentHref = "") list<component> {
-	html.div(class="site") {
-		html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
+	hbox {
 		NavSidebar(currentHref=currentHref)
-		html.main {
-			html.article {
-				html.h1(innerText=title)
-				slot
-			}
+		vbox(style={padding=24, flex=1}) {
+			text(value=title, style={fontSize=28, fontWeight="bold"})
+			slot
 		}
 	}
 }
@@ -80,20 +46,8 @@ component main {
 	// Components gallery — grouped by tier
 	window(title="Components", href="/components/index.html", favicon=logo) {
 		PageLayout(title="Component Gallery", currentHref="/components/index.html") {
-			html.p(innerText="Browse all built-in components with API reference and live previews.")
-			for tier = tiers {
-				html.div(class="tier") {
-					html.h2(innerText=tier.name)
-					html.div(class="component-list") {
-						for comp = tier.components {
-							html.a(class="component-card", href="/components/" + comp.name + ".html") {
-								html.h3(innerText=comp.name)
-								html.p(innerText=comp.doc)
-							}
-						}
-					}
-				}
-			}
+			text(value="Browse all built-in components with API reference and live previews.")
+			docui.Gallery(hrefPrefix="/components/", hrefSuffix=".html")
 		}
 	}
 
@@ -101,7 +55,7 @@ component main {
 	for comp = components {
 		window(title=comp.name, href="/components/" + comp.name + ".html", favicon=logo) {
 			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
-				html.p(innerText=comp.doc)
+				docui.Detail(name=comp.name)
 
 				html.div(innerHTML=comp.previewHTML)
 				html.div(innerHTML=comp.highlightedCode)
@@ -148,7 +102,7 @@ component main {
 						}
 					}
 				}
-				html.p(innerText="Children: " + comp.children)
+				text(value="Children: " + comp.children)
 			}
 		}
 	}
@@ -157,7 +111,7 @@ component main {
 	for page = pages {
 		window(title=page.title, href=page.href, favicon=logo) {
 			PageLayout(title=page.title, currentHref=page.href) {
-				html.div(innerHTML=page.body)
+				docui.Markdown(src=page.body)
 			}
 		}
 	}

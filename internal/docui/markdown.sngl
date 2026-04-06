@@ -1,0 +1,11 @@
+component Markdown(src = "") {
+    text(value=src)
+
+    platform html {
+        html.div(innerHTML=src)
+    }
+
+    platform http {
+        html.div(innerHTML=src)
+    }
+}
