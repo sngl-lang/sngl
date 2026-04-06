@@ -61,10 +61,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		} else if name != "" && name != "main" && name != "index" {
 			path = "/" + name
 		}
-		handlerName := "handle" + exportName(name)
-		if name == "" || name == "main" || name == "index" {
-			handlerName = "handleIndex"
-		}
+		handlerName := routeHandlerName(name, path)
 		routes[i] = codegen.HTTPRoute{
 			Name:      handlerName,
 			Path:      path,
@@ -132,4 +129,29 @@ func exportName(s string) string {
 		return "Index"
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// routeHandlerName generates a valid Go function name for a route handler.
+func routeHandlerName(windowName, path string) string {
+	if windowName == "main" || windowName == "index" || (windowName == "" && path == "/") {
+		return "handleIndex"
+	}
+	// Use the path to derive the handler name (more reliable than window name
+	// which may contain slashes from href-generated names).
+	source := path
+	if source == "" || source == "/" {
+		source = windowName
+	}
+	clean := strings.TrimPrefix(source, "/")
+	parts := strings.FieldsFunc(clean, func(r rune) bool {
+		return r == '/' || r == '-' || r == '_' || r == '.'
+	})
+	var name string
+	for _, p := range parts {
+		name += exportName(p)
+	}
+	if name == "" {
+		return "handleIndex"
+	}
+	return "handle" + name
 }

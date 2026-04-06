@@ -104,9 +104,18 @@ func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 	b.WriteString("var _ = fmt.Sprint\n")
 	b.WriteString("var _ = html.EscapeString\n\n")
 
-	// Ternary helper (used by conditional expressions).
-	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
-	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
+	// Ternary helper (only emitted when used by conditional expressions).
+	needsTernary := false
+	for _, body := range routeBodies {
+		if strings.Contains(body, "ternary(") {
+			needsTernary = true
+			break
+		}
+	}
+	if needsTernary {
+		b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
+		b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
+	}
 
 	// Handler function.
 	b.WriteString("// Handler returns an http.Handler that serves all routes.\n")

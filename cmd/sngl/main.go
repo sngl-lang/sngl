@@ -21,10 +21,18 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringP("directory", "C", "", "change to directory before running")
 	rootCmd.PersistentFlags().String("project", ".", "project root directory")
 	rootCmd.PersistentFlags().String("format", "text", "output format (text, json, sarif)")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress non-error output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if dir, _ := cmd.Flags().GetString("directory"); dir != "" {
+			return os.Chdir(dir)
+		}
+		return nil
+	}
 
 	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(buildCmd)

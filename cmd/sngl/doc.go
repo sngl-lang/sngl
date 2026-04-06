@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/docs"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
@@ -51,7 +53,8 @@ func init() {
 	docServeCmd.Flags().StringP("out", "o", "_site", "output directory")
 	docServeCmd.Flags().IntP("port", "p", 8080, "port to serve on")
 
-	docCmd.Flags().String("http", "", "start doc server at address (e.g., :6060)")
+	docCmd.Flags().String("http", "", "start doc server at address (e.g., :3680)")
+	docCmd.Flags().Bool("tui", false, "launch interactive TUI documentation browser")
 
 	docCmd.AddCommand(docBuildCmd)
 	docCmd.AddCommand(docServeCmd)
@@ -69,7 +72,8 @@ func runDoc(cmd *cobra.Command, args []string) error {
 		return serveDocHTTP(httpAddr, dir)
 	}
 
-	if len(args) == 0 {
+	tui, _ := cmd.Flags().GetBool("tui")
+	if tui || len(args) == 0 {
 		return docbrowser.RunWithDir(".")
 	}
 
@@ -425,64 +429,189 @@ func renderEnumDoc(e *ast.EnumDef, comments []ast.Comment) string {
 	return sb.String()
 }
 
-// serveDocHTTP starts a dynamic doc server that re-parses on each request.
+// serveDocHTTP starts an interactive doc browser as a web app.
 func serveDocHTTP(addr, dir string) error {
-	fmt.Printf("Serving docs for %s on http://%s\n", dir, addr)
+	fmt.Fprintf(os.Stderr, "SNGL docs → http://%s\n", addr)
 	return http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		doc, err := parsePackage(dir)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-		pd := checker.ExtractPackageDocs(doc)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" || path == "index.html" {
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", dir)
-			fmt.Fprintf(w, "<h1>Package %s</h1>", dir)
-
-			writeHTMLSection(w, "Components", pd.Components)
-			writeHTMLSection(w, "Types", pd.Structs)
-			writeHTMLSection(w, "Enums", pd.Enums)
-			writeHTMLSection(w, "Data", pd.Data)
-			writeHTMLSection(w, "Functions", pd.Functions)
-			writeHTMLSection(w, "Constants", pd.Consts)
-
-			fmt.Fprintf(w, "</body></html>")
-			return
+		// Build sidebar items: optional package decls + stdlib components.
+		type item struct {
+			Section string `json:"section,omitempty"`
+			Name    string `json:"name,omitempty"`
+			Kind    string `json:"kind,omitempty"`
+			Doc     string `json:"doc,omitempty"`
+			Detail  string `json:"detail,omitempty"`
 		}
 
-		// Lookup declaration
-		info := pd.FindDecl(path)
-		if info == nil {
-			http.NotFound(w, r)
-			return
+		var items []item
+
+		// Package declarations (if dir has .sngl files).
+		if doc, err := parsePackage(dir); err == nil {
+			pd := checker.ExtractPackageDocs(doc)
+			abs, _ := filepath.Abs(dir)
+			items = append(items, item{Section: filepath.Base(abs)})
+			for _, d := range pd.Components {
+				items = append(items, item{Name: d.Name, Kind: "component", Doc: d.Doc, Detail: declDetailHTML(d)})
+			}
+			for _, d := range pd.Structs {
+				items = append(items, item{Name: d.Name, Kind: "struct", Doc: d.Doc, Detail: declDetailHTML(d)})
+			}
+			for _, d := range pd.Enums {
+				items = append(items, item{Name: d.Name, Kind: "enum", Doc: d.Doc, Detail: declDetailHTML(d)})
+			}
+			for _, d := range pd.Functions {
+				items = append(items, item{Name: d.Name, Kind: "func", Doc: d.Doc, Detail: declDetailHTML(d)})
+			}
+			for _, d := range pd.Data {
+				items = append(items, item{Name: d.Name, Kind: "var", Doc: d.Doc, Detail: declDetailHTML(d)})
+			}
+			items = append(items, item{Section: "─── Stdlib ───"})
 		}
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", info.Name)
-		fmt.Fprintf(w, "<h1>%s</h1>", info.Name)
-		if info.Doc != "" {
-			fmt.Fprintf(w, "<p>%s</p>", info.Doc)
+
+		// Stdlib components.
+		for _, tier := range docs.ComponentsByTier() {
+			items = append(items, item{Section: tier.Name})
+			for _, c := range tier.Components {
+				items = append(items, item{
+					Name:   c.Name,
+					Kind:   "component",
+					Doc:    c.Doc,
+					Detail: componentDetailHTML(c),
+				})
+			}
 		}
-		fmt.Fprintf(w, "<p><a href=\"/\">← Back</a></p>")
-		fmt.Fprintf(w, "</body></html>")
+
+		data, _ := json.Marshal(items)
+		fmt.Fprint(w, docBrowserHTML(string(data)))
 	}))
 }
 
-func writeHTMLSection(w http.ResponseWriter, title string, items []checker.DeclInfo) {
-	if len(items) == 0 {
-		return
+func componentDetailHTML(c docs.Component) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "<h2>%s</h2>", c.Name)
+	if c.Tier != "" {
+		fmt.Fprintf(&b, "<span class='tier'>%s</span>", c.Tier)
 	}
-	fmt.Fprintf(w, "<h2>%s</h2><ul>", title)
-	for _, d := range items {
-		fmt.Fprintf(w, "<li><a href=\"/%s\"><b>%s</b></a>", d.Name, d.Name)
-		if d.Doc != "" {
-			fmt.Fprintf(w, " — %s", d.Doc)
+	if c.Doc != "" {
+		fmt.Fprintf(&b, "<p>%s</p>", c.Doc)
+	}
+	if c.Children != "none" && c.Children != "" {
+		fmt.Fprintf(&b, "<p><b>Children:</b> %s</p>", c.Children)
+	}
+	if len(c.Props) > 0 {
+		b.WriteString("<h3>Properties</h3><table>")
+		for _, p := range c.Props {
+			fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td><td>%s</td></tr>", p.Name, p.Type, p.Doc)
 		}
-		fmt.Fprintf(w, "</li>")
+		b.WriteString("</table>")
 	}
-	fmt.Fprintf(w, "</ul>")
+	if len(c.Events) > 0 {
+		b.WriteString("<h3>Events</h3><table>")
+		for _, e := range c.Events {
+			payload := ""
+			if e.PayloadType != "" {
+				payload = e.PayloadType
+			}
+			fmt.Fprintf(&b, "<tr><td class='pn'>@%s</td><td class='pt'>%s</td></tr>", e.Name, payload)
+		}
+		b.WriteString("</table>")
+	}
+	if c.Example != "" {
+		fmt.Fprintf(&b, "<h3>Example</h3><pre>%s</pre>", c.Example)
+	}
+	return b.String()
+}
+
+func declDetailHTML(d checker.DeclInfo) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "<h2>%s</h2>", d.Name)
+	if d.Doc != "" {
+		fmt.Fprintf(&b, "<p>%s</p>", d.Doc)
+	}
+	switch decl := d.Decl.(type) {
+	case *ast.Component:
+		if len(decl.Params) > 0 {
+			b.WriteString("<h3>Parameters</h3><table>")
+			for _, p := range decl.Params {
+				ptype := p.Default.TypeHint
+				if p.Resolved != nil {
+					ptype = p.Resolved.Type
+				}
+				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", p.Name, ptype)
+			}
+			b.WriteString("</table>")
+		}
+	case *ast.StructDef:
+		if len(decl.Fields) > 0 {
+			b.WriteString("<h3>Fields</h3><table>")
+			for _, f := range decl.Fields {
+				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", f.Name, f.Type)
+			}
+			b.WriteString("</table>")
+		}
+	case *ast.EnumDef:
+		if len(decl.Values) > 0 {
+			b.WriteString("<h3>Values</h3><ul>")
+			for _, v := range decl.Values {
+				fmt.Fprintf(&b, "<li>%s</li>", v)
+			}
+			b.WriteString("</ul>")
+		}
+	}
+	return b.String()
+}
+
+func docBrowserHTML(dataJSON string) string {
+	return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>SNGL Documentation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#1a1a2e;color:#e0e0e0;height:100vh;overflow:hidden}
+#app{display:flex;height:100vh}
+#sidebar{width:280px;overflow-y:auto;border-right:1px solid #333;padding:8px 0;flex-shrink:0}
+#detail{flex:1;overflow-y:auto;padding:24px 32px}
+.section{padding:8px 16px;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:8px}
+.item{padding:6px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:14px}
+.item:hover{background:#252545}
+.item.active{background:#2a2a4a;color:#7ee787;font-weight:600}
+.kind{font-size:11px;color:#58a6ff;min-width:14px;text-align:center}
+h2{color:#fff;margin-bottom:8px}
+h3{color:#ccc;margin:16px 0 8px;font-size:15px}
+p{margin:8px 0;line-height:1.5}
+.tier{background:#3a2a00;color:#d29922;padding:2px 8px;border-radius:4px;font-size:12px;margin-left:8px}
+table{border-collapse:collapse;margin:4px 0;width:100%}
+td{padding:4px 12px 4px 0;vertical-align:top;border-bottom:1px solid #2a2a3a}
+.pn{color:#7ee787;font-weight:500;white-space:nowrap}
+.pt{color:#58a6ff;font-size:13px;white-space:nowrap}
+pre{background:#12122a;padding:12px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.4}
+ul{padding-left:20px}
+li{margin:4px 0}
+.empty{color:#666;padding:40px;text-align:center;font-size:16px}
+</style></head><body>
+<div id="app"><nav id="sidebar"></nav><main id="detail"><div class="empty">Select an item</div></main></div>
+<script>
+const items=` + dataJSON + `;
+const sidebar=document.getElementById("sidebar");
+const detail=document.getElementById("detail");
+let active=-1;
+function kindLabel(k){return{component:"c",struct:"s",enum:"e",func:"f",var:"v","const":"c"}[k]||""}
+function select_(i){active=i;location.hash=items[i].name||"";render();detail.innerHTML=items[i].detail||"<div class='empty'>No details</div>";detail.scrollTop=0}
+function render(){
+  sidebar.innerHTML="";
+  items.forEach((it,i)=>{
+    if(it.section){const d=document.createElement("div");d.className="section";d.textContent=it.section;sidebar.appendChild(d);return}
+    const d=document.createElement("div");d.className="item"+(i===active?" active":"");
+    d.innerHTML="<span class='kind'>"+kindLabel(it.kind)+"</span>"+it.name;
+    d.onclick=()=>select_(i);
+    sidebar.appendChild(d);
+  });
+}
+function fromHash(){const h=decodeURIComponent(location.hash.slice(1));if(!h)return false;const i=items.findIndex(x=>x.name===h);if(i>=0){select_(i);return true}return false}
+render();
+if(!fromHash()){let f=items.findIndex(x=>!x.section);if(f>=0)select_(f)}
+window.addEventListener("hashchange",fromHash)
+</script></body></html>`
 }
 
 func runDocBuild(cmd *cobra.Command, args []string) error {

@@ -1,8 +1,19 @@
-// HTTP platform package.
-// Server-rendered HTML: same element mappings as the html platform.
-// Raw HTML elements (div, span, button, input, etc.) are implicitly available
+// HTTP platform package — server-rendered HTML.
+//
+// Generates Go HTTP handlers that render HTML on the server.
+// Each window becomes a route. External logic binds via go:// imports.
+// State that only touches local UI (sidebar toggles, etc.) runs client-side
+// via inline JavaScript. State that touches go:// functions stays server-side.
+//
+// Build options:
+//   framework — HTTP framework (default: net/http). Future: gin, echo.
+//   package   — Go package name (default: ui, or main with main=true).
+//   main      — Generate standalone server with main() (default: false).
+//
+// Raw HTML elements (div, span, form, etc.) are implicitly available
 // via APIResolver — any identifier is a valid HTML tag.
 
+// Options configures the HTTP platform at compile time.
 struct Options {
     preview bool
     testing bool
