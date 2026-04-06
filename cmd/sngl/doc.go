@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 	"github.com/charmbracelet/glamour"
@@ -16,11 +17,17 @@ import (
 )
 
 var docCmd = &cobra.Command{
-	Use:   "doc [topic]",
+	Use:   "doc [dir|topic] [decl]",
 	Short: "Show SNGL documentation",
-	Long:  "Show SNGL language documentation in the terminal.\nUse 'sngl doc build' to generate the HTML documentation site.",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runDoc,
+	Long: `Show SNGL documentation, similar to go doc.
+
+  sngl doc                 Show stdlib component index
+  sngl doc .               Index declarations in the current directory
+  sngl doc . MyComponent   Show docs for a specific declaration
+  sngl doc button          Show stdlib component reference
+  sngl doc build           Build the HTML documentation site`,
+	Args: cobra.MaximumNArgs(2),
+	RunE: runDoc,
 }
 
 var docBuildCmd = &cobra.Command{
@@ -41,27 +48,347 @@ func init() {
 	docServeCmd.Flags().StringP("out", "o", "_site", "output directory")
 	docServeCmd.Flags().IntP("port", "p", 8080, "port to serve on")
 
+	docCmd.Flags().String("http", "", "start doc server at address (e.g., :6060)")
+
 	docCmd.AddCommand(docBuildCmd)
 	docCmd.AddCommand(docServeCmd)
 }
 
 func runDoc(cmd *cobra.Command, args []string) error {
-	docsDir, _ := findDocsDir()
+	httpAddr, _ := cmd.Flags().GetString("http")
+
+	// --http mode: serve docs dynamically
+	if httpAddr != "" {
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+		return serveDocHTTP(httpAddr, dir)
+	}
 
 	if len(args) == 0 {
+		docsDir, _ := findDocsDir()
 		return showTopicListWithComponents(docsDir)
 	}
-	topic := args[0]
 
-	// Try documentation file lookup first.
+	first := args[0]
+
+	// Check if first arg is a directory → user package docs
+	if info, err := os.Stat(first); err == nil && info.IsDir() {
+		doc, err := parsePackage(first)
+		if err != nil {
+			return err
+		}
+		pkgDocs := checker.ExtractPackageDocs(doc)
+
+		if len(args) >= 2 {
+			return showDeclDoc(pkgDocs, args[1], doc.Comments)
+		}
+		return showPackageIndex(first, pkgDocs)
+	}
+
+	// Try documentation file lookup.
+	docsDir, _ := findDocsDir()
 	if docsDir != "" {
-		if err := showTopic(docsDir, topic); err == nil {
+		if err := showTopic(docsDir, first); err == nil {
 			return nil
 		}
 	}
 
-	// Fall back to component reference.
-	return showComponentDoc(topic)
+	// Fall back to stdlib component reference.
+	return showComponentDoc(first)
+}
+
+// parsePackage discovers and parses all .sngl files in a directory.
+func parsePackage(dir string) (*ast.Document, error) {
+	files, err := discoverFiles([]string{dir})
+	if err != nil {
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no .sngl files found in %s", dir)
+	}
+
+	f, err := os.Open(files[0])
+	if err != nil {
+		return nil, err
+	}
+	doc, err := parseSNGL(files[0], f)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
+	return mergeDir(doc, files[0]), nil
+}
+
+// showPackageIndex displays all declarations in a user package.
+func showPackageIndex(dir string, pd *checker.PackageDocs) error {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# Package %s\n\n", dir))
+
+	if len(pd.Components) > 0 {
+		sb.WriteString("## Components\n\n")
+		for _, d := range pd.Components {
+			doc := d.Doc
+			if i := strings.Index(doc, ". "); i > 0 {
+				doc = doc[:i+1]
+			}
+			if doc != "" {
+				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", d.Name, doc))
+			} else {
+				sb.WriteString(fmt.Sprintf("- **%s**\n", d.Name))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(pd.Structs) > 0 {
+		sb.WriteString("## Types\n\n")
+		for _, d := range pd.Structs {
+			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
+			if d.Doc != "" {
+				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(pd.Enums) > 0 {
+		sb.WriteString("## Enums\n\n")
+		for _, d := range pd.Enums {
+			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
+			if d.Doc != "" {
+				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(pd.Data) > 0 {
+		sb.WriteString("## Data\n\n")
+		for _, d := range pd.Data {
+			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
+			if d.Doc != "" {
+				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(pd.Functions) > 0 {
+		sb.WriteString("## Functions\n\n")
+		for _, d := range pd.Functions {
+			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
+			if d.Doc != "" {
+				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(pd.Consts) > 0 {
+		sb.WriteString("## Constants\n\n")
+		for _, d := range pd.Consts {
+			sb.WriteString(fmt.Sprintf("- **%s**", d.Name))
+			if d.Doc != "" {
+				sb.WriteString(fmt.Sprintf(" — %s", d.Doc))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	return renderToTerminal(sb.String())
+}
+
+// showDeclDoc displays documentation for a specific declaration.
+func showDeclDoc(pd *checker.PackageDocs, name string, comments []ast.Comment) error {
+	// Support "decl.field" syntax
+	declName := name
+	fieldName := ""
+	if before, after, ok := strings.Cut(name, "."); ok {
+		declName = before
+		fieldName = after
+	}
+
+	info := pd.FindDecl(declName)
+	if info == nil {
+		// Try stdlib fallback
+		return showComponentDoc(name)
+	}
+
+	switch decl := info.Decl.(type) {
+	case *ast.Component:
+		// Reuse stdlib component doc rendering via schema
+		registry, _, _, _, _, _, err := checker.LoadStdlib()
+		if err == nil {
+			if schema, ok := registry[declName]; ok {
+				if fieldName != "" {
+					return showPropDoc(declName, fieldName, schema)
+				}
+				return renderToTerminal(renderComponentDoc(declName, schema))
+			}
+		}
+		// User component — render manually
+		return renderToTerminal(renderUserComponentDoc(decl, comments))
+
+	case *ast.StructDef:
+		return renderToTerminal(renderStructDoc(decl, fieldName, comments))
+
+	case *ast.EnumDef:
+		return renderToTerminal(renderEnumDoc(decl, comments))
+
+	default:
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("# %s\n\n", info.Name))
+		if info.Doc != "" {
+			sb.WriteString(info.Doc + "\n")
+		}
+		return renderToTerminal(sb.String())
+	}
+}
+
+func renderUserComponentDoc(comp *ast.Component, comments []ast.Comment) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", comp.Name))
+
+	doc := checker.DeclDoc(comments, comp.Pos.Line)
+	if doc != "" {
+		sb.WriteString(doc + "\n\n")
+	}
+
+	if len(comp.Params) > 0 {
+		sb.WriteString("## Parameters\n\n")
+		for _, p := range comp.Params {
+			pType := p.Default.TypeHint
+			if pType == "" {
+				pType = "any"
+			}
+			sb.WriteString(fmt.Sprintf("  %-16s %s\n", p.Name, pType))
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(comp.EventDecls) > 0 {
+		sb.WriteString("## Events\n\n")
+		for _, e := range comp.EventDecls {
+			sb.WriteString(fmt.Sprintf("  @%s\n", e.Name))
+		}
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+func renderStructDoc(s *ast.StructDef, fieldName string, comments []ast.Comment) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# struct %s\n\n", s.Name))
+
+	doc := checker.DeclDoc(comments, s.Pos.Line)
+	if doc != "" {
+		sb.WriteString(doc + "\n\n")
+	}
+
+	if fieldName != "" {
+		// Show specific field
+		for _, f := range s.Fields {
+			if f.Name == fieldName {
+				sb.WriteString(fmt.Sprintf("## %s.%s\n\n", s.Name, f.Name))
+				sb.WriteString(fmt.Sprintf("Type: %s\n", f.Type))
+				return sb.String()
+			}
+		}
+		sb.WriteString(fmt.Sprintf("field %q not found\n", fieldName))
+		return sb.String()
+	}
+
+	sb.WriteString("## Fields\n\n")
+	for _, f := range s.Fields {
+		sb.WriteString(fmt.Sprintf("  %-16s %s\n", f.Name, f.Type))
+	}
+	sb.WriteString("\n")
+	return sb.String()
+}
+
+func renderEnumDoc(e *ast.EnumDef, comments []ast.Comment) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# enum %s\n\n", e.Name))
+
+	doc := checker.DeclDoc(comments, e.Pos.Line)
+	if doc != "" {
+		sb.WriteString(doc + "\n\n")
+	}
+
+	sb.WriteString("## Values\n\n")
+	for _, v := range e.Values {
+		sb.WriteString(fmt.Sprintf("  %s\n", v))
+	}
+	sb.WriteString("\n")
+	return sb.String()
+}
+
+// serveDocHTTP starts a dynamic doc server that re-parses on each request.
+func serveDocHTTP(addr, dir string) error {
+	fmt.Printf("Serving docs for %s on http://%s\n", dir, addr)
+	return http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		doc, err := parsePackage(dir)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		pd := checker.ExtractPackageDocs(doc)
+
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" || path == "index.html" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", dir)
+			fmt.Fprintf(w, "<h1>Package %s</h1>", dir)
+
+			writeHTMLSection(w, "Components", pd.Components)
+			writeHTMLSection(w, "Types", pd.Structs)
+			writeHTMLSection(w, "Enums", pd.Enums)
+			writeHTMLSection(w, "Data", pd.Data)
+			writeHTMLSection(w, "Functions", pd.Functions)
+			writeHTMLSection(w, "Constants", pd.Consts)
+
+			fmt.Fprintf(w, "</body></html>")
+			return
+		}
+
+		// Lookup declaration
+		info := pd.FindDecl(path)
+		if info == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", info.Name)
+		fmt.Fprintf(w, "<h1>%s</h1>", info.Name)
+		if info.Doc != "" {
+			fmt.Fprintf(w, "<p>%s</p>", info.Doc)
+		}
+		fmt.Fprintf(w, "<p><a href=\"/\">← Back</a></p>")
+		fmt.Fprintf(w, "</body></html>")
+	}))
+}
+
+func writeHTMLSection(w http.ResponseWriter, title string, items []checker.DeclInfo) {
+	if len(items) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "<h2>%s</h2><ul>", title)
+	for _, d := range items {
+		fmt.Fprintf(w, "<li><a href=\"/%s\"><b>%s</b></a>", d.Name, d.Name)
+		if d.Doc != "" {
+			fmt.Fprintf(w, " — %s", d.Doc)
+		}
+		fmt.Fprintf(w, "</li>")
+	}
+	fmt.Fprintf(w, "</ul>")
 }
 
 func runDocBuild(cmd *cobra.Command, args []string) error {

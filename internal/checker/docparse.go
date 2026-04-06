@@ -31,6 +31,132 @@ func DocBlock(comments []ast.Comment, line int) []string {
 	return lines
 }
 
+// DocText joins doc block lines into prose text, stopping before the Example section.
+func DocText(docLines []string) string {
+	var out []string
+	for _, line := range docLines {
+		if strings.TrimSpace(line) == "Example:" {
+			break
+		}
+		out = append(out, line)
+	}
+	// Trim trailing blank lines
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.Join(out, " ")
+}
+
+// DeclDoc extracts the doc comment text for any declaration at the given line.
+func DeclDoc(comments []ast.Comment, line int) string {
+	return DocText(DocBlock(comments, line))
+}
+
+// PackageDocs extracts documentation for all declarations in a document.
+type PackageDocs struct {
+	Components []DeclInfo
+	Structs    []DeclInfo
+	Enums      []DeclInfo
+	Data       []DeclInfo
+	Functions  []DeclInfo
+	Consts     []DeclInfo
+}
+
+// DeclInfo holds a declaration name with its doc comment.
+type DeclInfo struct {
+	Name string
+	Doc  string
+	Decl any // the underlying AST node
+}
+
+// ExtractPackageDocs extracts docs for all declarations in a document.
+func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
+	pd := &PackageDocs{}
+
+	for _, comp := range doc.Components {
+		pd.Components = append(pd.Components, DeclInfo{
+			Name: comp.Name,
+			Doc:  DeclDoc(doc.Comments, comp.Pos.Line),
+			Decl: comp,
+		})
+	}
+	for _, s := range doc.Structs {
+		pd.Structs = append(pd.Structs, DeclInfo{
+			Name: s.Name,
+			Doc:  DeclDoc(doc.Comments, s.Pos.Line),
+			Decl: s,
+		})
+	}
+	for _, e := range doc.Enums {
+		pd.Enums = append(pd.Enums, DeclInfo{
+			Name: e.Name,
+			Doc:  DeclDoc(doc.Comments, e.Pos.Line),
+			Decl: e,
+		})
+	}
+	for _, d := range doc.Data {
+		pd.Data = append(pd.Data, DeclInfo{
+			Name: d.Name,
+			Doc:  DeclDoc(doc.Comments, d.Pos.Line),
+			Decl: d,
+		})
+	}
+	for _, fn := range doc.Functions {
+		if fn.IsStdlib || fn.IsTest() {
+			continue
+		}
+		pd.Functions = append(pd.Functions, DeclInfo{
+			Name: fn.Name,
+			Doc:  DeclDoc(doc.Comments, fn.Pos.Line),
+			Decl: fn,
+		})
+	}
+	for _, c := range doc.Consts {
+		pd.Consts = append(pd.Consts, DeclInfo{
+			Name: c.Name,
+			Doc:  DeclDoc(doc.Comments, c.Pos.Line),
+			Decl: c,
+		})
+	}
+
+	return pd
+}
+
+// FindDecl searches for a named declaration across all types.
+func (pd *PackageDocs) FindDecl(name string) *DeclInfo {
+	for i := range pd.Components {
+		if pd.Components[i].Name == name {
+			return &pd.Components[i]
+		}
+	}
+	for i := range pd.Structs {
+		if pd.Structs[i].Name == name {
+			return &pd.Structs[i]
+		}
+	}
+	for i := range pd.Enums {
+		if pd.Enums[i].Name == name {
+			return &pd.Enums[i]
+		}
+	}
+	for i := range pd.Data {
+		if pd.Data[i].Name == name {
+			return &pd.Data[i]
+		}
+	}
+	for i := range pd.Functions {
+		if pd.Functions[i].Name == name {
+			return &pd.Functions[i]
+		}
+	}
+	for i := range pd.Consts {
+		if pd.Consts[i].Name == name {
+			return &pd.Consts[i]
+		}
+	}
+	return nil
+}
+
 // ExtractExample extracts an example SNGL app from a doc comment block.
 // The example starts with a line containing just "Example:" and is followed
 // by indented SNGL code (lines starting with at least 2 spaces). The example
