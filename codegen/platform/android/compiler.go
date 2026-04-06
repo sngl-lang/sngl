@@ -249,6 +249,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		ec:         ec,
 		buf:        &b,
 		indent:     1,
+		doc:        doc,
 		components: info.Components,
 	}
 

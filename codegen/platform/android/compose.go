@@ -11,12 +11,15 @@ import (
 
 // composeContext tracks state during Composable code generation.
 type composeContext struct {
-	ec           *exprContext
-	buf          *strings.Builder
-	indent       int
-	components   []*ast.Component
-	hasSlot      bool              // true when rendering inside a component with slot support
-	slotChildren []*ast.VisualNode // caller's children for slot expansion
+	ec             *exprContext
+	buf            *strings.Builder
+	indent         int
+	doc            *ast.Document
+	components     []*ast.Component
+	hasSlot        bool              // true when rendering inside a component with slot support
+	slotChildren   []*ast.VisualNode // caller's children for slot expansion
+	componentDepth int               // recursion guard for component expansion
+	callerEvents   map[string]ast.Expr // caller's event handlers (for emit propagation)
 }
 
 func (cc *composeContext) line(format string, args ...any) {
@@ -93,6 +96,9 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 }
 
 func (cc *composeContext) findComponent(name string) *ast.Component {
+	if cc.doc != nil {
+		return cc.doc.FindComponent(name)
+	}
 	for _, c := range cc.components {
 		if c.Name == name {
 			return c
@@ -102,18 +108,46 @@ func (cc *composeContext) findComponent(name string) *ast.Component {
 }
 
 // expandComponent inlines a component's body at the call site, binding
-// props to component params as local variables and providing slot children.
+// props to component params as local Kotlin vals and providing slot children.
 func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, body []*ast.VisualNode) {
+	cc.componentDepth++
+	if cc.componentDepth > 10 {
+		cc.componentDepth--
+		return
+	}
+	defer func() { cc.componentDepth-- }()
+
 	savedLocals := maps.Clone(cc.ec.localVars)
 	savedSlot := cc.hasSlot
 	savedSlotChildren := cc.slotChildren
 
-	// Bind component params as local vars
+	// Bind component params: translate caller's prop expressions to Kotlin
+	// strings and register them as local variable overrides so the expression
+	// translator resolves them correctly.
+	savedOverrides := cc.ec.propOverrides
+	overrides := make(map[string]string)
+	if savedOverrides != nil {
+		for k, v := range savedOverrides {
+			overrides[k] = v
+		}
+	}
 	for _, p := range comp.Params {
 		cc.ec.localVars[p.Name] = true
+		if expr, ok := vn.Props[p.Name]; ok {
+			overrides[p.Name] = exprToKtValue(expr, cc.ec)
+		} else if p.Default.Literal != nil {
+			overrides[p.Name] = literalToKt(p.Default)
+		}
 	}
+	cc.ec.propOverrides = overrides
 
-	// Set slot children to the caller's children
+	// Propagate caller's events: when the override body uses @eventName={ emit X },
+	// the codegen needs the caller's event handlers available. Store them so
+	// renderRawComposable can find them.
+	savedEvents := cc.callerEvents
+	cc.callerEvents = vn.Events
+
+	// Set slot children to the caller's children.
 	cc.hasSlot = len(vn.Children) > 0
 	cc.slotChildren = vn.Children
 
@@ -122,6 +156,8 @@ func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNod
 	}
 
 	cc.ec.localVars = savedLocals
+	cc.ec.propOverrides = savedOverrides
+	cc.callerEvents = savedEvents
 	cc.hasSlot = savedSlot
 	cc.slotChildren = savedSlotChildren
 }
@@ -193,10 +229,59 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		args = append(args, propName+" = "+val)
 	}
 
-	// Event props → lambda arguments (onClick, onValueChange, etc.)
+	// Event props: use the node's own events, falling back to caller events
+	// when inside a component expansion.
+	events := vn.Events
+	if len(events) == 0 && cc.callerEvents != nil {
+		events = cc.callerEvents
+	}
+
+	// Map SNGL event names → Compose parameter names and inject handlers.
+	eventMap := map[string]string{
+		"click":  "onClick",
+		"input":  "onValueChange",
+		"change": "onCheckedChange",
+	}
+	for snglName, ktName := range eventMap {
+		expr, ok := events[snglName]
+		if !ok || expr.SNGL == nil {
+			continue
+		}
+
+		isValueChange := ktName == "onValueChange"
+		if isValueChange {
+			cc.ec.eventVar = "_inputValue_"
+		}
+		stmts := cc.ec.translateMutation(expr.SNGL)
+		if isValueChange {
+			cc.ec.eventVar = ""
+		}
+
+		var b strings.Builder
+		if isValueChange {
+			b.WriteString("{ _v_ ->\n")
+			for _, s := range stmts {
+				s = strings.ReplaceAll(s, "_inputValue_.value", "_v_")
+				s = strings.ReplaceAll(s, "_inputValue_", "_v_")
+				fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+			}
+		} else {
+			b.WriteString("{\n")
+			for _, s := range stmts {
+				fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+			}
+		}
+		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
+		args = append(args, ktName+" = "+b.String())
+	}
+
+	// Also pass through any non-standard events directly.
 	for evtName, expr := range vn.Events {
 		if expr.SNGL == nil {
 			continue
+		}
+		if _, isStandard := eventMap[evtName]; isStandard {
+			continue // already handled above
 		}
 		stmts := cc.ec.translateMutation(expr.SNGL)
 		var b strings.Builder

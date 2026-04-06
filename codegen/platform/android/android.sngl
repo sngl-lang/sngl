@@ -53,7 +53,7 @@ component sngl.text() {
 }
 
 component sngl.button() {
-    Button(@onClick={ emit click }) {
+    Button {
         Text(text=text) {}
     }
 }
@@ -63,12 +63,12 @@ component sngl.image() {
 }
 
 component sngl.input() {
-    OutlinedTextField(value=value, @onValueChange={ emit input }) {}
+    OutlinedTextField(value=value) {}
 }
 
 component sngl.checkbox() {
     Row {
-        Checkbox(checked=checked, @onCheckedChange={ emit change }) {}
+        Checkbox(checked=checked, ) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -85,7 +85,7 @@ component sngl.radio() {
 
 component sngl.toggle() {
     Row {
-        Switch(checked=checked, @onCheckedChange={ emit change }) {}
+        Switch(checked=checked, ) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -148,7 +148,7 @@ component sngl.tabs() {
 
 component sngl.modal() {
     if open {
-        AlertDialog(title=title, @onDismissRequest={ emit dismiss }) {
+        AlertDialog(title=title, ) {
             Column {
                 slot
             }

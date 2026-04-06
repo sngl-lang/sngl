@@ -106,29 +106,43 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 	if apis != nil {
 		for platform, overrides := range apis.StdlibOverrides {
 			for compName, override := range overrides {
+				// Try to find existing abstract component.
+				found := false
 				for _, comp := range doc.AbstractComponents {
 					if comp.Name == compName {
 						if comp.PlatformBodies == nil {
 							comp.PlatformBodies = make(map[string][]*ast.VisualNode)
 						}
 						comp.PlatformBodies[platform] = override.Body
-						break
-					}
-				}
-				// If no existing abstract component, add it.
-				found := false
-				for _, comp := range doc.AbstractComponents {
-					if comp.Name == compName {
 						found = true
 						break
 					}
 				}
-				if !found {
-					override.Name = compName
-					if override.PlatformBodies == nil {
-						override.PlatformBodies = make(map[string][]*ast.VisualNode)
+				if found {
+					continue
+				}
+				// Not in AbstractComponents — find the stdlib component to
+				// get its params, then create an abstract component with the
+				// override body as a platform body.
+				var stdlib *ast.Component
+				for _, sc := range stdlibComponents {
+					if sc.Name == compName {
+						stdlib = sc
+						break
 					}
-					override.PlatformBodies[platform] = override.Body
+				}
+				if stdlib != nil {
+					abs := *stdlib // shallow copy
+					abs.PlatformBodies = map[string][]*ast.VisualNode{
+						platform: override.Body,
+					}
+					doc.AbstractComponents = append(doc.AbstractComponents, &abs)
+				} else {
+					// No stdlib definition — use the override directly.
+					override.Name = compName
+					override.PlatformBodies = map[string][]*ast.VisualNode{
+						platform: override.Body,
+					}
 					override.Body = nil
 					doc.AbstractComponents = append(doc.AbstractComponents, override)
 				}
