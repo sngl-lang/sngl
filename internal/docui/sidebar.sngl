@@ -1,7 +1,18 @@
-component Sidebar(homeHref = "/") list<component> {
+component Sidebar(homeHref = "/", logo = "") list<component> {
     vbox(style={width=260, padding=8, gap=4}) {
         link(text="SNGL", href=homeHref, style={fontWeight="bold", fontSize=16, padding=8})
         divider
         slot
+    }
+
+    platform html {
+        html.div(style={width=260, padding=8, display="flex", flexDirection="column", gap="4px"}) {
+            html.a(href=homeHref, style={fontWeight="bold", fontSize=16, padding=8, display="flex", alignItems="center", gap="8px", textDecoration="none"}) {
+                html.img(src=logo, alt="SNGL", style={height=24})
+                html.span(innerText="SNGL")
+            }
+            html.hr
+            slot
+        }
     }
 }

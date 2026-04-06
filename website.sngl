@@ -14,8 +14,7 @@ const components = docs.StdlibComponents()
 const logo = public.path("sngl.svg")
 
 component NavSidebar(currentHref = "") {
-	docui.Sidebar(homeHref="/index.html") {
-		docui.NavItem(text="SNGL", href="/index.html", active=currentHref == "/index.html")
+	docui.Sidebar(homeHref="/index.html", logo=logo) {
 		docui.NavGroup(title="Getting Started") {
 			docui.NavItem(text="Installation", href="/getting-started/installation.html", active=currentHref == "/getting-started/installation.html")
 			docui.NavItem(text="Your First App", href="/getting-started/first-app-web.html", active=currentHref == "/getting-started/first-app-web.html")
@@ -42,6 +41,52 @@ component PageLayout(title = "", currentHref = "") list<component> {
 	}
 }
 
+component PlaygroundContent() {
+	text(value="Interactive playground — available in browser only.")
+
+	platform html {
+		html.link(rel="stylesheet", href="/assets/playground/playground.css")
+		html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
+		html.div(class="playground-toolbar") {
+			html.select(id="examples") {
+				html.option(value="", innerText="Examples...")
+				html.option(value="default", innerText="Hello")
+			}
+			html.span(class="status", id="status", innerText="Loading WASM...")
+		}
+		html.div(class="error-banner", id="error")
+		html.div(class="split-pane") {
+			html.div(class="editor-pane", id="editor-pane")
+			html.div(class="output-pane") {
+				html.div(class="tab-bar", innerHTML="<button class='active' data-tab='preview'>Preview</button><button data-tab='code'>Code</button><button data-tab='ast'>AST</button>")
+				html.div(class="tab-content") {
+					html.div(class="tab-panel active", id="tab-preview") {
+						html.iframe(id="preview")
+					}
+					html.div(class="tab-panel", id="tab-code") {
+						html.div(id="code-header") {
+							html.select(id="target-select")
+						}
+						html.pre(id="code-output") {
+							html.code
+						}
+					}
+					html.div(class="tab-panel", id="tab-ast") {
+						html.div(id="ast-output")
+					}
+				}
+			}
+		}
+		html.div(id="playground-sources")
+		html.script(src="/assets/playground/wasm_exec.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
+		html.script(type="module", src="/assets/playground/playground.js")
+	}
+}
+
 component main {
 	// Components gallery — grouped by tier
 	window(title="Components", href="/components/index.html", favicon=logo) {
@@ -57,48 +102,33 @@ component main {
 			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
 				docui.Detail(name=comp.name)
 
-				html.div(innerHTML=comp.previewHTML)
-				html.div(innerHTML=comp.highlightedCode)
+				docui.CodeBlock(code=comp.example, language="sngl")
 
-				html.h2(innerText="Properties")
-				html.table {
-					html.thead {
-						html.tr {
-							html.th(innerText="Name")
-							html.th(innerText="Type")
-							html.th(innerText="Description")
-						}
+				text(value="Properties", style={fontSize=20, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Type")
+						docui.HeaderCell(value="Description")
 					}
-					html.tbody {
-						for prop = comp.props {
-							html.tr {
-								html.td {
-									html.code(innerText=prop.name)
-								}
-								html.td {
-									html.span(class="type-badge", innerText=prop.type)
-								}
-								html.td(innerText=prop.doc)
-							}
+					for prop = comp.props {
+						docui.Row {
+							docui.CodeCell(value=prop.name)
+							docui.Cell(value=prop.type)
+							docui.Cell(value=prop.doc)
 						}
 					}
 				}
-				html.h2(innerText="Events")
-				html.table {
-					html.thead {
-						html.tr {
-							html.th(innerText="Name")
-							html.th(innerText="Payload Type")
-						}
+				text(value="Events", style={fontSize=20, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Payload Type")
 					}
-					html.tbody {
-						for evt = comp.events {
-							html.tr {
-								html.td {
-									html.code(innerText=evt.name)
-								}
-								html.td(innerText=evt.payloadType)
-							}
+					for evt = comp.events {
+						docui.Row {
+							docui.CodeCell(value=evt.name)
+							docui.Cell(value=evt.payloadType)
 						}
 					}
 				}
@@ -116,48 +146,10 @@ component main {
 		}
 	}
 
-	// Playground
+	// Playground (HTML-only content via platform body)
 	window(title="Playground", href="/playground.html", favicon=logo) {
 		PageLayout(title="Playground", currentHref="/playground.html") {
-			html.link(rel="stylesheet", href="/assets/playground/playground.css")
-			html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
-			html.div(class="playground-toolbar") {
-				html.select(id="examples") {
-					html.option(value="", innerText="Examples...")
-					html.option(value="default", innerText="Hello")
-				}
-				html.span(class="status", id="status", innerText="Loading WASM...")
-			}
-			html.div(class="error-banner", id="error")
-			html.div(class="split-pane") {
-				html.div(class="editor-pane", id="editor-pane")
-				html.div(class="output-pane") {
-					html.div(class="tab-bar", innerHTML="<button class='active' data-tab='preview'>Preview</button><button data-tab='code'>Code</button><button data-tab='ast'>AST</button>")
-					html.div(class="tab-content") {
-						html.div(class="tab-panel active", id="tab-preview") {
-							html.iframe(id="preview")
-						}
-						html.div(class="tab-panel", id="tab-code") {
-							html.div(id="code-header") {
-								html.select(id="target-select")
-							}
-							html.pre(id="code-output") {
-								html.code
-							}
-						}
-						html.div(class="tab-panel", id="tab-ast") {
-							html.div(id="ast-output")
-						}
-					}
-				}
-			}
-			html.div(id="playground-sources")
-			html.script(src="/assets/playground/wasm_exec.js")
-			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
-			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
-			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
-			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
-			html.script(type="module", src="/assets/playground/playground.js")
+			PlaygroundContent
 		}
 	}
 }

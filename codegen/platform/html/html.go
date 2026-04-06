@@ -252,8 +252,9 @@ type htmlGen struct {
 }
 
 type componentParam struct {
-	name  string
-	value string
+	name       string
+	value      string
+	staticOnly bool // true if value was fully consumed during static HTML render (skip JS emission)
 }
 
 type updateFunc struct {
@@ -1375,6 +1376,21 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 		if name == "style" {
 			continue
 		}
+		// Try resolving SNGL expressions (e.g. component param references)
+		// to static values for the initial HTML render.
+		if expr.SNGL != nil {
+			if val := g.evalInitialString(expr); val != "" {
+				switch name {
+				case "innerHTML":
+					staticInnerHTML = val
+				case "innerText":
+					staticInnerText = val
+				default:
+					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+				}
+				continue
+			}
+		}
 		if expr.SNGL == nil {
 			val := g.evalStaticString(vn.Props, name)
 			switch name {
@@ -1562,8 +1578,12 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	savedSlot := g.slotChildren
 	g.slotChildren = vn.Children
 
-	// Inline the component body at the call site
-	for _, child := range comp.Body {
+	// Inline the component body at the call site, preferring platform-specific body.
+	body := comp.Body
+	if pb, ok := comp.PlatformBodies["html"]; ok {
+		body = pb
+	}
+	for _, child := range body {
 		g.renderStaticNode(b, child, depth)
 	}
 
@@ -1767,8 +1787,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
 	}
 
-	// Component param constants
+	// Component param constants (skip params fully consumed by static HTML render)
 	for _, cp := range g.componentParams {
+		if cp.staticOnly {
+			continue
+		}
 		fmt.Fprintf(b, "const %s = %s;\n", cp.name, cp.value)
 	}
 	if len(g.componentParams) > 0 {
@@ -2432,9 +2455,13 @@ func (g *htmlGen) resolveJSToString(js string) string {
 		}
 	}
 	// Component param variable — look up its assigned value.
-	for _, cp := range g.componentParams {
-		if cp.name == js {
-			return g.resolveJSToString(cp.value)
+	for i := range g.componentParams {
+		if g.componentParams[i].name == js {
+			if resolved := g.resolveJSToString(g.componentParams[i].value); resolved != "" {
+				g.componentParams[i].staticOnly = true
+				return resolved
+			}
+			return ""
 		}
 	}
 	// String concatenation: ("a" + "b") or "a" + b

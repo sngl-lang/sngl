@@ -1,0 +1,104 @@
+// Simple table layout — uses platform bodies for cross-platform rendering.
+// Children should be Row components.
+component Table() list<component> {
+    vbox(style={gap=0}) {
+        slot
+    }
+
+    platform html {
+        html.table {
+            slot
+        }
+    }
+
+    platform http {
+        html.table(style={width="100%", borderCollapse="collapse"}) {
+            slot
+        }
+    }
+}
+
+// Table header row.
+component HeaderRow() list<component> {
+    hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
+        slot
+    }
+
+    platform html {
+        html.thead {
+            html.tr {
+                slot
+            }
+        }
+    }
+
+    platform http {
+        html.thead {
+            html.tr {
+                slot
+            }
+        }
+    }
+}
+
+// Table body row.
+component Row() list<component> {
+    hbox(style={gap=16, padding=4}) {
+        slot
+    }
+
+    platform html {
+        html.tr {
+            slot
+        }
+    }
+
+    platform http {
+        html.tr {
+            slot
+        }
+    }
+}
+
+// Table cell.
+component Cell(value = "") {
+    text(value=value, style={minWidth=80})
+
+    platform html {
+        html.td(innerText=value)
+    }
+
+    platform http {
+        html.td(innerText=value)
+    }
+}
+
+// Table header cell.
+component HeaderCell(value = "") {
+    text(value=value, style={minWidth=80, fontWeight="bold"})
+
+    platform html {
+        html.th(innerText=value)
+    }
+
+    platform http {
+        html.th(innerText=value)
+    }
+}
+
+// Code-styled table cell (for property names etc.)
+component CodeCell(value = "") {
+    text(value=value, style={minWidth=80, fontFamily="monospace"})
+
+    platform html {
+        html.td {
+            html.code(innerText=value)
+        }
+    }
+
+    platform http {
+        html.td {
+            html.code(innerText=value)
+        }
+    }
+}

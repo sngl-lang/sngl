@@ -26,6 +26,7 @@ type viewContext struct {
 	forIndexVar    string              // current for-loop index variable (for cursor-aware rendering)
 	doc            *ast.Document       // for FindComponent
 	slotChildren   []*ast.VisualNode   // caller's children for inline component expansion
+	slotStack      [][]*ast.VisualNode // stack of outer slot children for nested expansions
 	callerEvents   map[string]ast.Expr // caller's event handlers (for event propagation)
 	componentDepth int                 // recursion guard
 }
@@ -108,12 +109,22 @@ func (vc *viewContext) renderNode(vn *ast.VisualNode, resultVar string) {
 func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	if vn.Component == "slot" {
 		if len(vc.slotChildren) > 0 {
-			for i, child := range vc.slotChildren {
+			// Pop one level: while rendering slot children, any nested
+			// slot nodes should resolve to the outer level's children.
+			expanded := vc.slotChildren
+			if len(vc.slotStack) > 0 {
+				vc.slotChildren = vc.slotStack[len(vc.slotStack)-1]
+				vc.slotStack = vc.slotStack[:len(vc.slotStack)-1]
+			} else {
+				vc.slotChildren = nil
+			}
+			for i, child := range expanded {
 				childVar := fmt.Sprintf("%sSlot%d", resultVar, i)
 				vc.line("var %s string", childVar)
 				vc.renderNode(child, childVar)
 				vc.line(`%s += %s`, resultVar, childVar)
 			}
+			// Restore (the expandComponent restore will handle the full reset)
 		} else if vc.slotVar != "" {
 			vc.line(`%s = %s`, resultVar, vc.slotVar)
 		}
@@ -159,6 +170,7 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 
 	savedLocals := maps.Clone(vc.ec.LocalVars)
 	savedSlot := vc.slotChildren
+	savedStack := vc.slotStack
 	savedEvents := vc.callerEvents
 
 	// Bind component params via propOverrides
@@ -177,6 +189,9 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 	}
 	vc.ec.PropOverrides = overrides
 
+	// Push current slot children onto the stack so nested slot nodes
+	// within the new children can resolve to the outer level.
+	vc.slotStack = append(vc.slotStack, vc.slotChildren)
 	vc.slotChildren = vn.Children
 	vc.callerEvents = vn.Events
 
@@ -187,6 +202,7 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 	vc.ec.LocalVars = savedLocals
 	vc.ec.PropOverrides = savedOverrides
 	vc.slotChildren = savedSlot
+	vc.slotStack = savedStack
 	vc.callerEvents = savedEvents
 }
 
