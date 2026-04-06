@@ -1,0 +1,38 @@
+output {
+    go {
+        http(main="true")
+    }
+}
+
+import "go://git.duckfam.us/jonathan/sngl/examples/http-session/session"
+
+component main {
+    var sidebarOpen = false
+
+    window home(title="Dashboard", href="/") {
+        hbox {
+            if sidebarOpen {
+                vbox(style={padding=16, gap=8, background="#f0f0f0", width=200}) {
+                    text(value="Navigation", style={fontWeight="bold"})
+                    link(text="Dashboard", href="/")
+                    link(text="About", href="/about")
+                }
+            }
+            vbox(style={padding=24, gap=16, flex=1}) {
+                hbox(style={gap=12, alignItems="center"}) {
+                    button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click={ sidebarOpen!! })
+                    text(value=session.Greeting("World"), style={fontSize=20, fontWeight="bold"})
+                }
+                text(value="Welcome to the dashboard!")
+            }
+        }
+    }
+
+    window about(title="About", href="/about") {
+        vbox(style={padding=24, gap=12}) {
+            text(value="About", style={fontSize=24, fontWeight="bold"})
+            text(value="This is a server-rendered SNGL app.")
+            link(text="Back to Dashboard", href="/")
+        }
+    }
+}

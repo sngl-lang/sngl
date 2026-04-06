@@ -76,6 +76,14 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	// Analyze document for state partitioning and rendering.
 	analysis := analyze(req.Doc)
 
+	// Pre-render all routes to collect both HTML code and server actions.
+	renderResults := make([]renderResult, len(routes))
+	for i, route := range routes {
+		win := windows[route.WindowIdx]
+		renderResults[i] = renderWindowHTML(req.Doc, win, analysis, req.Lang)
+		routes[i].Actions = renderResults[i].actions
+	}
+
 	// Build the HTTPRequest with a render callback.
 	httpReq := &codegen.HTTPRequest{
 		Doc:       req.Doc,
@@ -84,8 +92,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		Framework: cfg.Framework,
 		Routes:    routes,
 		RenderHTML: func(routeIdx int) string {
-			win := windows[routeIdx]
-			return renderWindowHTML(req.Doc, win, analysis, req.Lang)
+			return renderResults[routeIdx].code
 		},
 	}
 

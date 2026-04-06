@@ -11,7 +11,6 @@ import (
 )
 
 // CompileHTTP implements codegen.HTTPCompiler for Go.
-// It generates a Go source file with HTTP handlers using the specified framework.
 func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 	switch req.Framework {
 	case "net/http", "":
@@ -22,15 +21,57 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 }
 
 func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
-	var b strings.Builder
+	// Pre-render all route bodies to know which packages are referenced.
+	windows := req.Doc.App.EffectiveWindows()
+	routeBodies := make([]string, len(req.Routes))
+	for i := range req.Routes {
+		routeBodies[i] = req.RenderHTML(i)
+	}
 
-	// Collect go:// imports needed.
-	goImports := make(map[string]bool)
-	for _, decls := range req.Doc.NativeImports {
-		if decls != nil && decls.ImportPath != "" {
-			goImports[decls.ImportPath] = true
+	// Determine which go:// imports are actually referenced in the output.
+	goImports := make(map[string]string) // import path → package alias
+	for ns, decls := range req.Doc.NativeImports {
+		if decls == nil || decls.ImportPath == "" {
+			continue
+		}
+		// Check if any rendered body or action references this namespace.
+		used := false
+		for _, body := range routeBodies {
+			if strings.Contains(body, ns+".") {
+				used = true
+				break
+			}
+		}
+		if !used {
+			// Check action handlers too.
+			for _, route := range req.Routes {
+				for _, action := range route.Actions {
+					if action.Expr.SNGL != nil {
+						scope := makeExternScope(req.Doc)
+						t := &Translator{}
+						stmts := t.TranslateMutation(action.Expr.SNGL, scope)
+						for _, s := range stmts {
+							if strings.Contains(s, ns+".") {
+								used = true
+								break
+							}
+						}
+					}
+					if used {
+						break
+					}
+				}
+				if used {
+					break
+				}
+			}
+		}
+		if used {
+			goImports[decls.ImportPath] = ns
 		}
 	}
+
+	var b strings.Builder
 
 	// Package declaration.
 	fmt.Fprintf(&b, "package %s\n\n", req.Package)
@@ -46,7 +87,6 @@ func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 	if req.Main {
 		b.WriteString("\t\"os\"\n")
 	}
-	// Add go:// imports.
 	if len(goImports) > 0 {
 		b.WriteString("\n")
 		sorted := make([]string, 0, len(goImports))
@@ -64,40 +104,65 @@ func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 	b.WriteString("var _ = fmt.Sprint\n")
 	b.WriteString("var _ = html.EscapeString\n\n")
 
+	// Ternary helper (used by conditional expressions).
+	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
+	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
+
 	// Handler function.
 	b.WriteString("// Handler returns an http.Handler that serves all routes.\n")
 	b.WriteString("func Handler() http.Handler {\n")
 	b.WriteString("\tmux := http.NewServeMux()\n")
 	for _, route := range req.Routes {
 		fmt.Fprintf(&b, "\tmux.HandleFunc(\"GET %s\", %s)\n", route.Path, route.Name)
+		if len(route.Actions) > 0 {
+			fmt.Fprintf(&b, "\tmux.HandleFunc(\"POST %s\", %sAction)\n", route.Path, route.Name)
+		}
 	}
 	b.WriteString("\treturn mux\n")
 	b.WriteString("}\n\n")
 
 	// Route handlers.
-	windows := req.Doc.App.EffectiveWindows()
 	for i, route := range req.Routes {
 		fmt.Fprintf(&b, "func %s(w http.ResponseWriter, r *http.Request) {\n", route.Name)
 		b.WriteString("\tw.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n")
 
-		// Emit local variable declarations for state.
-		// Merge document-level and window-level data.
 		win := windows[route.WindowIdx]
 		emitLocalVars(&b, req.Doc.Data)
 		emitLocalVars(&b, win.Data)
 
-		// Write HTML document wrapper.
 		title := route.Title
 		if title == "" {
 			title = route.Name
 		}
 		fmt.Fprintf(&b, "\tfmt.Fprint(w, `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>%s</title></head><body>`)\n", title)
 
-		// Render body via platform callback.
-		bodyCode := req.RenderHTML(i)
-		b.WriteString(bodyCode)
+		b.WriteString(routeBodies[i])
 
 		b.WriteString("\tfmt.Fprint(w, `</body></html>`)\n")
+		b.WriteString("}\n\n")
+	}
+
+	// POST action handlers.
+	for _, route := range req.Routes {
+		if len(route.Actions) == 0 {
+			continue
+		}
+		fmt.Fprintf(&b, "func %sAction(w http.ResponseWriter, r *http.Request) {\n", route.Name)
+		b.WriteString("\tswitch r.FormValue(\"action\") {\n")
+		for _, action := range route.Actions {
+			fmt.Fprintf(&b, "\tcase %q:\n", action.Name)
+			scope := makeExternScope(req.Doc)
+			if action.Expr.SNGL != nil {
+				t := &Translator{}
+				stmts := t.TranslateMutation(action.Expr.SNGL, scope)
+				for _, s := range stmts {
+					stmt := injectHiddenParamsInStmt(s, req.Doc)
+					fmt.Fprintf(&b, "\t\t%s\n", stmt)
+				}
+			}
+		}
+		b.WriteString("\t}\n")
+		fmt.Fprintf(&b, "\thttp.Redirect(w, r, %q, http.StatusSeeOther)\n", route.Path)
 		b.WriteString("}\n\n")
 	}
 
@@ -121,7 +186,71 @@ func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 	return formatted, nil
 }
 
-// emitLocalVars writes local variable declarations for data fields.
+func makeExternScope(doc *ast.Document) *codegen.ExprScope {
+	scope := &codegen.ExprScope{
+		ModelFields:    make(map[string]bool),
+		ComputedFields: make(map[string]bool),
+		FuncNames:      make(map[string]bool),
+		ExternFuncs:    make(map[string]bool),
+		ExternVars:     make(map[string]bool),
+		LocalVars:      make(map[string]bool),
+		NeededHelpers:  make(map[string]bool),
+	}
+	for ns, decls := range doc.NativeImports {
+		if decls == nil {
+			continue
+		}
+		for _, d := range decls.Data {
+			scope.ExternFuncs[ns+"."+d.Name] = true
+		}
+	}
+	return scope
+}
+
+func injectHiddenParamsInStmt(stmt string, doc *ast.Document) string {
+	for ns, decls := range doc.NativeImports {
+		if decls == nil {
+			continue
+		}
+		for _, d := range decls.Data {
+			if d.HiddenParam == "" {
+				continue
+			}
+			injectedArg := hiddenParamArgs(d.HiddenParam)
+			call := ns + "." + d.Name + "("
+			for {
+				idx := strings.Index(stmt, call)
+				if idx < 0 {
+					break
+				}
+				afterCall := idx + len(call)
+				if afterCall < len(stmt) && stmt[afterCall] == ')' {
+					stmt = stmt[:afterCall] + injectedArg + stmt[afterCall:]
+				} else {
+					stmt = stmt[:afterCall] + injectedArg + ", " + stmt[afterCall:]
+				}
+			}
+		}
+	}
+	return stmt
+}
+
+func hiddenParamArgs(hidden string) string {
+	parts := strings.Split(hidden, ",")
+	var args []string
+	for _, p := range parts {
+		switch p {
+		case "*http.Request":
+			args = append(args, "r")
+		case "http.ResponseWriter":
+			args = append(args, "w")
+		case "context.Context":
+			args = append(args, "r.Context()")
+		}
+	}
+	return strings.Join(args, ", ")
+}
+
 func emitLocalVars(b *strings.Builder, data []*ast.Data) {
 	for _, d := range data {
 		if d.Extern || d.IsFunc {

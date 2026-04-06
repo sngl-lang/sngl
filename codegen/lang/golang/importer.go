@@ -168,18 +168,21 @@ func goFuncToData(fn *types.Func) *ast.Data {
 	}
 
 	var paramTypes []string
-	var hiddenParam string
+	var hiddenParams []string
 	params := sig.Params()
+	stripping := true
 	for i := range params.Len() {
 		v := params.At(i)
-		if i == 0 {
+		if stripping {
 			if hp := detectHiddenParam(v.Type()); hp != "" {
-				hiddenParam = hp
+				hiddenParams = append(hiddenParams, hp)
 				continue
 			}
+			stripping = false
 		}
 		paramTypes = append(paramTypes, goTypeToHint(v.Type()))
 	}
+	hiddenParam := strings.Join(hiddenParams, ",")
 
 	var returnType string
 	results := sig.Results()
@@ -207,8 +210,8 @@ func goFuncToData(fn *types.Func) *ast.Data {
 	}
 }
 
-// detectHiddenParam checks if a type is *http.Request or context.Context,
-// returning the Go type string if so (for injection by HTTP platform codegen).
+// detectHiddenParam checks if a type is http.ResponseWriter, *http.Request,
+// or context.Context, returning the Go type string if so.
 func detectHiddenParam(t types.Type) string {
 	// Check for *http.Request (pointer to named type)
 	if ptr, ok := t.(*types.Pointer); ok {
@@ -219,7 +222,14 @@ func detectHiddenParam(t types.Type) string {
 			}
 		}
 	}
-	// Check for context.Context (interface, named type)
+	// Check for http.ResponseWriter (interface)
+	if named, ok := t.(*types.Named); ok {
+		pkg := named.Obj().Pkg()
+		if pkg != nil && pkg.Path() == "net/http" && named.Obj().Name() == "ResponseWriter" {
+			return "http.ResponseWriter"
+		}
+	}
+	// Check for context.Context (interface)
 	if named, ok := t.(*types.Named); ok {
 		pkg := named.Obj().Pkg()
 		if pkg != nil && pkg.Path() == "context" && named.Obj().Name() == "Context" {

@@ -117,10 +117,17 @@ type HTTPRequest struct {
 
 // HTTPRoute maps a window to an HTTP route.
 type HTTPRoute struct {
-	Name      string // handler function name (e.g., "handleHome")
-	Path      string // URL path: "/", "/about"
-	Title     string // page title
-	WindowIdx int    // index into doc.App.EffectiveWindows()
+	Name      string       // handler function name (e.g., "handleHome")
+	Path      string       // URL path: "/", "/about"
+	Title     string       // page title
+	WindowIdx int          // index into doc.App.EffectiveWindows()
+	Actions   []HTTPAction // server-state form actions (POST handlers)
+}
+
+// HTTPAction describes a form-based server action triggered by a button click.
+type HTTPAction struct {
+	Name string    // action identifier (e.g., "action0")
+	Expr ast.Expr  // the mutation expression to execute
 }
 
 // WASMCompiler is optionally implemented by LangTranslators that can compile

@@ -13,6 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 )
 
 //go:embed html.sngl
@@ -387,11 +388,11 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		// For containers in boxes get flex layout from parent, but the container
 		// itself might have styles from the node
 		if vn.Component == "vbox" {
-			style = appendCSS(style, "display", "flex")
-			style = appendCSS(style, "flex-direction", "column")
+			style = htmlutil.AppendCSS(style, "display", "flex")
+			style = htmlutil.AppendCSS(style, "flex-direction", "column")
 		} else if vn.Component == "hbox" {
-			style = appendCSS(style, "display", "flex")
-			style = appendCSS(style, "flex-direction", "row")
+			style = htmlutil.AppendCSS(style, "display", "flex")
+			style = htmlutil.AppendCSS(style, "flex-direction", "row")
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 		fmt.Fprintf(b, "%s</div>\n", indent)
@@ -437,7 +438,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	case "scroll":
 		id := ""
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "overflow", "auto")
+		style = htmlutil.AppendCSS(style, "overflow", "auto")
 		if g.nodeIsReactive(vn) {
 			id = g.allocID()
 		}
@@ -448,7 +449,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "%s</div>\n", indent)
 	case "stack":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "position", "relative")
+		style = htmlutil.AppendCSS(style, "position", "relative")
 		g.writeOpenTag(b, "div", "", style, vn, depth, vn.Pos)
 		for _, child := range vn.Children {
 			g.renderStaticNode(b, child, depth+1)
@@ -506,10 +507,10 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "<span class=\"sngl-spinner\"></span> %s</span>\n", html.EscapeString(label))
 	case "badge":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "inline-block")
-		style = appendCSS(style, "padding", "2px 8px")
-		style = appendCSS(style, "border-radius", "12px")
-		style = appendCSS(style, "font-size", "12px")
+		style = htmlutil.AppendCSS(style, "display", "inline-block")
+		style = htmlutil.AppendCSS(style, "padding", "2px 8px")
+		style = htmlutil.AppendCSS(style, "border-radius", "12px")
+		style = htmlutil.AppendCSS(style, "font-size", "12px")
 		value := g.evalStaticString(vn.Props, "value")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
@@ -559,9 +560,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		if label != "" {
-			style = appendCSS(style, "display", "flex")
-			style = appendCSS(style, "align-items", "center")
-			style = appendCSS(style, "gap", "8px")
+			style = htmlutil.AppendCSS(style, "display", "flex")
+			style = htmlutil.AppendCSS(style, "align-items", "center")
+			style = htmlutil.AppendCSS(style, "gap", "8px")
 			g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 			fmt.Fprintf(b, "<hr style=\"flex:1;border:none;border-top:1px solid #ccc\"/>")
 			fmt.Fprintf(b, "<span>%s</span>", html.EscapeString(label))
@@ -598,12 +599,12 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.renderStaticAccordion(b, vn, depth)
 	case "splitview":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "flex")
+		style = htmlutil.AppendCSS(style, "display", "flex")
 		direction := g.evalStaticString(vn.Props, "direction")
 		if direction == "vertical" {
-			style = appendCSS(style, "flex-direction", "column")
+			style = htmlutil.AppendCSS(style, "flex-direction", "column")
 		} else {
-			style = appendCSS(style, "flex-direction", "row")
+			style = htmlutil.AppendCSS(style, "flex-direction", "row")
 		}
 		id := ""
 		if g.preview {
@@ -629,8 +630,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.renderStaticConditionalContainer(b, vn, depth, "div")
 	case "menubar":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "flex")
-		style = appendCSS(style, "gap", "4px")
+		style = htmlutil.AppendCSS(style, "display", "flex")
+		style = htmlutil.AppendCSS(style, "gap", "4px")
 		id := ""
 		if g.preview {
 			id = g.allocID()
@@ -639,9 +640,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "</nav>\n")
 	case "toolbar":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "flex")
-		style = appendCSS(style, "gap", "4px")
-		style = appendCSS(style, "align-items", "center")
+		style = htmlutil.AppendCSS(style, "display", "flex")
+		style = htmlutil.AppendCSS(style, "gap", "4px")
+		style = htmlutil.AppendCSS(style, "align-items", "center")
 		id := ""
 		if g.preview {
 			id = g.allocID()
@@ -657,12 +658,12 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.renderStaticDatepicker(b, vn, depth)
 	case "chip":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "inline-flex")
-		style = appendCSS(style, "align-items", "center")
-		style = appendCSS(style, "padding", "4px 12px")
-		style = appendCSS(style, "border-radius", "16px")
-		style = appendCSS(style, "border", "1px solid #ccc")
-		style = appendCSS(style, "font-size", "14px")
+		style = htmlutil.AppendCSS(style, "display", "inline-flex")
+		style = htmlutil.AppendCSS(style, "align-items", "center")
+		style = htmlutil.AppendCSS(style, "padding", "4px 12px")
+		style = htmlutil.AppendCSS(style, "border-radius", "16px")
+		style = htmlutil.AppendCSS(style, "border", "1px solid #ccc")
+		style = htmlutil.AppendCSS(style, "font-size", "14px")
 		label := g.evalStaticString(vn.Props, "label")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
@@ -673,14 +674,14 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		b.WriteString("</span>\n")
 	case "avatar":
 		style := g.buildCSSStyle(vn)
-		style = appendCSS(style, "display", "inline-flex")
-		style = appendCSS(style, "align-items", "center")
-		style = appendCSS(style, "justify-content", "center")
-		style = appendCSS(style, "border-radius", "50%")
-		style = appendCSS(style, "width", "40px")
-		style = appendCSS(style, "height", "40px")
-		style = appendCSS(style, "background", "#ccc")
-		style = appendCSS(style, "font-weight", "bold")
+		style = htmlutil.AppendCSS(style, "display", "inline-flex")
+		style = htmlutil.AppendCSS(style, "align-items", "center")
+		style = htmlutil.AppendCSS(style, "justify-content", "center")
+		style = htmlutil.AppendCSS(style, "border-radius", "50%")
+		style = htmlutil.AppendCSS(style, "width", "40px")
+		style = htmlutil.AppendCSS(style, "height", "40px")
+		style = htmlutil.AppendCSS(style, "background", "#ccc")
+		style = htmlutil.AppendCSS(style, "font-weight", "bold")
 		initials := g.evalStaticString(vn.Props, "initials")
 		if initials == "" {
 			initials = g.evalStaticString(vn.Props, "alt")
@@ -696,14 +697,14 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		variant := g.evalStaticString(vn.Props, "variant")
 		switch variant {
 		case "elevated":
-			style = appendCSS(style, "box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
+			style = htmlutil.AppendCSS(style, "box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
 		case "filled":
-			style = appendCSS(style, "background", "#f5f5f5")
+			style = htmlutil.AppendCSS(style, "background", "#f5f5f5")
 		default: // outlined
-			style = appendCSS(style, "border", "1px solid #ddd")
+			style = htmlutil.AppendCSS(style, "border", "1px solid #ddd")
 		}
-		style = appendCSS(style, "border-radius", "8px")
-		style = appendCSS(style, "padding", "16px")
+		style = htmlutil.AppendCSS(style, "border-radius", "8px")
+		style = htmlutil.AppendCSS(style, "padding", "16px")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
 			id = g.allocID()
@@ -729,19 +730,19 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth int, vertical bool) {
 	indent := strings.Repeat("  ", depth)
 	style := g.buildCSSStyle(vn)
-	style = appendCSS(style, "display", "flex")
+	style = htmlutil.AppendCSS(style, "display", "flex")
 	if vertical {
-		style = appendCSS(style, "flex-direction", "column")
+		style = htmlutil.AppendCSS(style, "flex-direction", "column")
 	} else {
-		style = appendCSS(style, "flex-direction", "row")
+		style = htmlutil.AppendCSS(style, "flex-direction", "row")
 	}
 
 	if v, ok := vn.Props["scroll"]; ok {
 		if b, ok := v.Literal.(bool); ok && b {
 			if vertical {
-				style = appendCSS(style, "overflow-y", "auto")
+				style = htmlutil.AppendCSS(style, "overflow-y", "auto")
 			} else {
-				style = appendCSS(style, "overflow-x", "auto")
+				style = htmlutil.AppendCSS(style, "overflow-x", "auto")
 			}
 		}
 	}
@@ -765,7 +766,7 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 	}
 
 	if ifDisplay != "" {
-		style = appendCSS(style, "display", "none")
+		style = htmlutil.AppendCSS(style, "display", "none")
 	}
 
 	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
@@ -800,7 +801,7 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 		g.addIfUpdater(id, *vn.If)
 	}
 	if ifDisplay != "" {
-		style = appendCSS(style, "display", "none")
+		style = htmlutil.AppendCSS(style, "display", "none")
 	}
 
 	g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
@@ -835,7 +836,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 		g.addIfUpdater(id, *vn.If)
 	}
 	if ifDisplay != "" {
-		style = appendCSS(style, "display", "none")
+		style = htmlutil.AppendCSS(style, "display", "none")
 	}
 
 	disabled := ""
@@ -988,7 +989,7 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 	}
 	if v, ok := vn.Props["fit"]; ok {
 		if s, ok := v.Literal.(string); ok {
-			style = appendCSS(style, "object-fit", s)
+			style = htmlutil.AppendCSS(style, "object-fit", s)
 		}
 	}
 
@@ -1197,9 +1198,9 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, vn *ast.VisualNode, dept
 	if contentStyle == "" {
 		contentStyle = "background:#fff;border-radius:8px;padding:24px;min-width:300px;max-width:80%"
 	} else {
-		contentStyle = appendCSS(contentStyle, "background", "#fff")
-		contentStyle = appendCSS(contentStyle, "border-radius", "8px")
-		contentStyle = appendCSS(contentStyle, "padding", "24px")
+		contentStyle = htmlutil.AppendCSS(contentStyle, "background", "#fff")
+		contentStyle = htmlutil.AppendCSS(contentStyle, "border-radius", "8px")
+		contentStyle = htmlutil.AppendCSS(contentStyle, "padding", "24px")
 	}
 	fmt.Fprintf(b, "%s  <div style=\"%s\">\n", indent, contentStyle)
 	if title != "" {
@@ -1227,7 +1228,7 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, vn *ast.V
 		open = g.evalStaticBool(&v)
 	}
 	if !open {
-		style = appendCSS(style, "display", "none")
+		style = htmlutil.AppendCSS(style, "display", "none")
 	}
 	g.writeOpenTag(b, tag, id, style, vn, depth, vn.Pos)
 	for _, child := range vn.Children {
@@ -1265,8 +1266,8 @@ func (g *htmlGen) renderStaticAccordion(b *strings.Builder, vn *ast.VisualNode, 
 
 func (g *htmlGen) renderStaticTable(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	style := g.buildCSSStyle(vn)
-	style = appendCSS(style, "border-collapse", "collapse")
-	style = appendCSS(style, "width", "100%")
+	style = htmlutil.AppendCSS(style, "border-collapse", "collapse")
+	style = htmlutil.AppendCSS(style, "width", "100%")
 	id := ""
 	if g.nodeIsReactive(vn) || g.preview {
 		id = g.allocID()
@@ -1309,8 +1310,8 @@ func (g *htmlGen) renderStaticTree(b *strings.Builder, vn *ast.VisualNode, depth
 		id = g.allocID()
 	}
 	indent := strings.Repeat("  ", depth)
-	style = appendCSS(style, "list-style", "none")
-	style = appendCSS(style, "padding-left", "16px")
+	style = htmlutil.AppendCSS(style, "list-style", "none")
+	style = htmlutil.AppendCSS(style, "padding-left", "16px")
 	g.writeOpenTag(b, "ul", id, style, vn, depth, vn.Pos)
 	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
 		if items, ok := v.Literal.([]any); ok {
@@ -2150,7 +2151,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 
 		fmt.Fprintf(b, "    const row = document.createElement(\"label\");\n")
 		g.emitForLoopDataKey(b, "row", vn)
-		style = appendCSS(style, "display", "block")
+		style = htmlutil.AppendCSS(style, "display", "block")
 		fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
 		fmt.Fprintf(b, "    const cb = document.createElement(\"input\");\n")
 		fmt.Fprintf(b, "    cb.type = \"checkbox\";\n")
@@ -2277,125 +2278,7 @@ func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
 // CSS building
 
 func (g *htmlGen) buildCSSStyle(vn *ast.VisualNode) string {
-	merged := vn.StyleFields()
-	if merged == nil {
-		merged = make(map[string]ast.Expr)
-	}
-
-	var parts []string
-	for prop, expr := range merged {
-		if css := stylePropToCSS(prop, expr); css != "" {
-			parts = append(parts, css)
-		}
-	}
-
-	sort.Strings(parts)
-	return strings.Join(parts, ";")
-}
-
-func stylePropToCSS(prop string, expr ast.Expr) string {
-	val := exprToStaticValue(expr)
-
-	switch prop {
-	case "padding":
-		return fmt.Sprintf("padding:%spx", val)
-	case "paddingTop":
-		return fmt.Sprintf("padding-top:%spx", val)
-	case "paddingRight":
-		return fmt.Sprintf("padding-right:%spx", val)
-	case "paddingBottom":
-		return fmt.Sprintf("padding-bottom:%spx", val)
-	case "paddingLeft":
-		return fmt.Sprintf("padding-left:%spx", val)
-	case "paddingX":
-		return fmt.Sprintf("padding-left:%spx;padding-right:%spx", val, val)
-	case "paddingY":
-		return fmt.Sprintf("padding-top:%spx;padding-bottom:%spx", val, val)
-	case "margin":
-		return fmt.Sprintf("margin:%spx", val)
-	case "marginTop":
-		return fmt.Sprintf("margin-top:%spx", val)
-	case "marginRight":
-		return fmt.Sprintf("margin-right:%spx", val)
-	case "marginBottom":
-		return fmt.Sprintf("margin-bottom:%spx", val)
-	case "marginLeft":
-		return fmt.Sprintf("margin-left:%spx", val)
-	case "marginX":
-		return fmt.Sprintf("margin-left:%spx;margin-right:%spx", val, val)
-	case "marginY":
-		return fmt.Sprintf("margin-top:%spx;margin-bottom:%spx", val, val)
-	case "width":
-		return fmt.Sprintf("width:%spx", val)
-	case "height":
-		return fmt.Sprintf("height:%spx", val)
-	case "maxWidth":
-		return fmt.Sprintf("max-width:%spx", val)
-	case "maxHeight":
-		return fmt.Sprintf("max-height:%spx", val)
-	case "gap":
-		return fmt.Sprintf("gap:%spx", val)
-	case "color":
-		return fmt.Sprintf("color:%s", val)
-	case "background":
-		return fmt.Sprintf("background-color:%s", val)
-	case "fontSize":
-		return fmt.Sprintf("font-size:%spx", val)
-	case "fontWeight":
-		return fmt.Sprintf("font-weight:%s", val)
-	case "fontStyle":
-		return fmt.Sprintf("font-style:%s", val)
-	case "textAlign":
-		return fmt.Sprintf("text-align:%s", val)
-	case "borderWidth":
-		return fmt.Sprintf("border-width:%spx;border-style:solid", val)
-	case "borderRadius":
-		return fmt.Sprintf("border-radius:%spx", val)
-	case "borderColor":
-		return fmt.Sprintf("border-color:%s", val)
-	case "opacity":
-		return fmt.Sprintf("opacity:%s", val)
-	case "maxLines":
-		return fmt.Sprintf("-webkit-line-clamp:%s;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical", val)
-	}
-	return ""
-}
-
-func exprToStaticValue(expr ast.Expr) string {
-	// Check folded literal first
-	if expr.Literal != nil {
-		return literalToString(expr.Literal)
-	}
-	// Check SNGL literal expression (not yet folded)
-	if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
-		return literalToString(lit.Value)
-	}
-	return ""
-}
-
-func literalToString(v any) string {
-	switch val := v.(type) {
-	case string:
-		return val
-	case int:
-		return fmt.Sprintf("%d", val)
-	case float64:
-		return fmt.Sprintf("%v", val)
-	case bool:
-		if val {
-			return "true"
-		}
-		return "false"
-	}
-	return ""
-}
-
-func appendCSS(existing, prop, value string) string {
-	entry := prop + ":" + value
-	if existing == "" {
-		return entry
-	}
-	return existing + ";" + entry
+	return htmlutil.BuildCSSStyle(vn)
 }
 
 // Expression evaluation helpers

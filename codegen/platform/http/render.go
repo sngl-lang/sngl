@@ -7,12 +7,19 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 )
 
+// renderResult holds the generated Go code and any server-state actions collected.
+type renderResult struct {
+	code    string
+	actions []codegen.HTTPAction
+}
+
 // renderWindowHTML generates Go code (fmt.Fprint statements) that writes
-// the HTML body for a window. The returned string is Go source code meant
-// to be embedded inside an http.HandlerFunc.
-func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, lang codegen.LangTranslator) string {
+// the HTML body for a window. The returned result includes the Go source code
+// and any collected server-state form actions.
+func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, lang codegen.LangTranslator) renderResult {
 	// Build a custom scope: state fields become local vars (no "m." prefix),
 	// extern funcs stay as extern funcs (namespace-qualified).
 	scope := &codegen.ExprScope{
@@ -45,25 +52,44 @@ func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, 
 	}
 
 	r := &renderer{
-		doc:   doc,
-		info:  info,
-		lang:  lang,
-		scope: scope,
+		doc:      doc,
+		info:     info,
+		lang:     lang,
+		scope:    scope,
+		clientJS: newClientJSState(info, doc),
 	}
 
 	var b strings.Builder
 	for _, child := range win.Children {
 		r.renderNode(&b, child, 1)
 	}
-	return b.String()
+
+	// Emit client-side JS for client-only state (if any).
+	if r.clientJS != nil {
+		if script := r.clientJS.emitScript(); script != "" {
+			fmt.Fprintf(&b, "\tfmt.Fprint(w, `%s`)\n", script)
+		}
+	}
+
+	code := b.String()
+
+	// Inject hidden params (e.g., *http.Request) into go:// function calls.
+	code = injectHiddenParams(code, doc)
+
+	return renderResult{
+		code:    code,
+		actions: r.actions,
+	}
 }
 
 type renderer struct {
-	doc   *ast.Document
-	info  *analysisResult
-	lang  codegen.LangTranslator
-	scope *codegen.ExprScope
-	nextID int
+	doc      *ast.Document
+	info     *analysisResult
+	lang     codegen.LangTranslator
+	scope    *codegen.ExprScope
+	clientJS *clientJSState
+	nextID   int
+	actions  []codegen.HTTPAction // collected server-state form actions
 }
 
 func (r *renderer) allocID() string {
@@ -125,8 +151,8 @@ func (r *renderer) renderNode(b *strings.Builder, vn *ast.VisualNode, depth int)
 func (r *renderer) renderBox(b *strings.Builder, vn *ast.VisualNode, depth int, direction string) {
 	indent := strings.Repeat("\t", depth)
 	style := r.buildStyle(vn)
-	style = appendStyle(style, "display", "flex")
-	style = appendStyle(style, "flex-direction", direction)
+	style = htmlutil.AppendCSS(style, "display", "flex")
+	style = htmlutil.AppendCSS(style, "flex-direction", direction)
 	r.writeOpen(b, indent, "div", style)
 	for _, child := range vn.Children {
 		r.renderNode(b, child, depth)
@@ -148,9 +174,36 @@ func (r *renderer) renderButton(b *strings.Builder, vn *ast.VisualNode, depth in
 	indent := strings.Repeat("\t", depth)
 	style := r.buildStyle(vn)
 	disabled := r.staticBool(vn.Props, "disabled")
-	extra := ""
+
+	clickExpr, hasClick := vn.Events["click"]
+	isClientClick := hasClick && r.clientJS != nil && r.clientJS.isClientMutation(clickExpr)
+	isServerClick := hasClick && !isClientClick && clickExpr.SNGL != nil
+
+	// Server-state click: wrap button in a form.
+	if isServerClick {
+		actionName := fmt.Sprintf("action%d", len(r.actions))
+		r.actions = append(r.actions, codegen.HTTPAction{
+			Name: actionName,
+			Expr: clickExpr,
+		})
+		fmt.Fprintf(b, "%sfmt.Fprint(w, `<form method=\"POST\"><input type=\"hidden\" name=\"action\" value=\"%s\">`)\n", indent, actionName)
+	}
+
+	// Client-state click: assign ID for JS handler.
+	var idAttr string
+	if isClientClick {
+		id := r.allocID()
+		idAttr = fmt.Sprintf(` id="%s"`, id)
+		r.clientJS.addClickHandler(id, clickExpr)
+	}
+
+	extra := idAttr
 	if disabled {
-		extra = ` disabled`
+		extra += ` disabled`
+	}
+	// Server forms use type=submit; client buttons use type=button.
+	if isServerClick {
+		extra += ` type="submit"`
 	}
 	if style != "" {
 		fmt.Fprintf(b, "%sfmt.Fprint(w, `<button style=%q%s>`)\n", indent, style, extra)
@@ -166,6 +219,10 @@ func (r *renderer) renderButton(b *strings.Builder, vn *ast.VisualNode, depth in
 		r.renderNode(b, child, depth)
 	}
 	fmt.Fprintf(b, "%sfmt.Fprint(w, `</button>`)\n", indent)
+
+	if isServerClick {
+		fmt.Fprintf(b, "%sfmt.Fprint(w, `</form>`)\n", indent)
+	}
 }
 
 func (r *renderer) renderInput(b *strings.Builder, vn *ast.VisualNode, depth int) {
@@ -241,13 +298,39 @@ func (r *renderer) renderForLoop(b *strings.Builder, vn *ast.VisualNode, depth i
 
 func (r *renderer) renderIfBlock(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	indent := strings.Repeat("\t", depth)
+
+	// Client-only conditional: render always with display:none, toggle via JS.
+	if r.clientJS != nil && r.clientJS.isClientOnly(*vn.If) {
+		id := r.allocID()
+		r.clientJS.addIfUpdater(id, *vn.If)
+		// Render the node without the if, but with the ID and hidden initially.
+		stripped := *vn
+		stripped.If = nil
+		// Emit with id and initial display:none.
+		fmt.Fprintf(b, "%s// client-state conditional: %s\n", indent, id)
+		r.renderNodeWithID(b, &stripped, depth, id, true)
+		return
+	}
+
+	// Server-state conditional: use Go if statement.
 	condExpr := r.exprToGo(*vn.If)
 	fmt.Fprintf(b, "%sif %s {\n", indent, condExpr)
-	// Render the node without the if (to avoid infinite recursion).
 	stripped := *vn
 	stripped.If = nil
 	r.renderNode(b, &stripped, depth+1)
 	fmt.Fprintf(b, "%s}\n", indent)
+}
+
+// renderNodeWithID wraps a node in a div with an ID, optionally hidden.
+func (r *renderer) renderNodeWithID(b *strings.Builder, vn *ast.VisualNode, depth int, id string, hidden bool) {
+	indent := strings.Repeat("\t", depth)
+	display := ""
+	if hidden {
+		display = ` style="display:none"`
+	}
+	fmt.Fprintf(b, "%sfmt.Fprint(w, `<div id=\"%s\"%s>`)\n", indent, id, display)
+	r.renderNode(b, vn, depth)
+	fmt.Fprintf(b, "%sfmt.Fprint(w, `</div>`)\n", indent)
 }
 
 func (r *renderer) renderUserComponent(b *strings.Builder, vn *ast.VisualNode, comp *ast.Component, depth int) {
@@ -300,7 +383,7 @@ func (r *renderer) renderRawElement(b *strings.Builder, vn *ast.VisualNode, dept
 		attrs += fmt.Sprintf(` style=%q`, style)
 	}
 
-	selfClosing := isSelfClosing(tag)
+	selfClosing := htmlutil.IsSelfClosing(tag)
 	if selfClosing {
 		fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s%s>`)\n", indent, tag, attrs)
 		return
@@ -344,6 +427,54 @@ func (r *renderer) exprToGo(expr ast.Expr) string {
 	return `""`
 }
 
+// injectHiddenParams scans generated Go code for calls to go:// imported
+// functions that have a hidden first parameter (*http.Request or context.Context)
+// and injects "r" or "r.Context()" as the first argument.
+func injectHiddenParams(code string, doc *ast.Document) string {
+	for ns, decls := range doc.NativeImports {
+		if decls == nil {
+			continue
+		}
+		for _, d := range decls.Data {
+			if d.HiddenParam == "" {
+				continue
+			}
+			injectedArg := hiddenParamArgs(d.HiddenParam)
+			call := ns + "." + d.Name + "("
+			for {
+				idx := strings.Index(code, call)
+				if idx < 0 {
+					break
+				}
+				afterCall := idx + len(call)
+				if afterCall < len(code) && code[afterCall] == ')' {
+					code = code[:afterCall] + injectedArg + code[afterCall:]
+				} else {
+					code = code[:afterCall] + injectedArg + ", " + code[afterCall:]
+				}
+			}
+		}
+	}
+	return code
+}
+
+// hiddenParamArgs returns the Go argument expression for injecting hidden params.
+func hiddenParamArgs(hidden string) string {
+	parts := strings.Split(hidden, ",")
+	var args []string
+	for _, p := range parts {
+		switch p {
+		case "*http.Request":
+			args = append(args, "r")
+		case "http.ResponseWriter":
+			args = append(args, "w")
+		case "context.Context":
+			args = append(args, "r.Context()")
+		}
+	}
+	return strings.Join(args, ", ")
+}
+
 func (r *renderer) writeOpen(b *strings.Builder, indent, tag, style string) {
 	if style != "" {
 		fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s style=%q>`)\n", indent, tag, style)
@@ -353,45 +484,15 @@ func (r *renderer) writeOpen(b *strings.Builder, indent, tag, style string) {
 }
 
 func (r *renderer) buildStyle(vn *ast.VisualNode) string {
-	merged := vn.StyleFields()
-	if len(merged) == 0 {
-		return ""
-	}
-	var parts []string
-	for prop, expr := range merged {
-		css := stylePropToCSS(prop, expr)
-		if css != "" {
-			parts = append(parts, css)
-		}
-	}
-	return strings.Join(parts, ";")
+	return htmlutil.BuildCSSStyle(vn)
 }
 
 func (r *renderer) staticString(props map[string]ast.Expr, key string) string {
-	v, ok := props[key]
-	if !ok {
-		return ""
-	}
-	if s, ok := v.Literal.(string); ok {
-		return s
-	}
-	if v.SNGL != nil {
-		if lit, ok := v.SNGL.(*ast.LiteralExpr); ok {
-			return fmt.Sprint(lit.Value)
-		}
-	}
-	return ""
+	return htmlutil.StaticString(props, key)
 }
 
 func (r *renderer) staticBool(props map[string]ast.Expr, key string) bool {
-	v, ok := props[key]
-	if !ok {
-		return false
-	}
-	if b, ok := v.Literal.(bool); ok {
-		return b
-	}
-	return false
+	return htmlutil.StaticBool(props, key)
 }
 
 func (r *renderer) collectAttrs(vn *ast.VisualNode, keys ...string) string {
@@ -409,152 +510,3 @@ func (r *renderer) collectAttrs(vn *ast.VisualNode, keys ...string) string {
 	return attrs
 }
 
-// stylePropToCSS converts a SNGL style property to a CSS declaration.
-func stylePropToCSS(prop string, expr ast.Expr) string {
-	val := exprToStaticValue(expr)
-	if val == "" {
-		return ""
-	}
-	cssProp := snglPropToCSS(prop)
-	if cssProp == "" {
-		return ""
-	}
-	// Add px suffix to numeric values for size properties.
-	if isNumeric(val) && isSizeProp(cssProp) {
-		val += "px"
-	}
-	return cssProp + ":" + val
-}
-
-func snglPropToCSS(prop string) string {
-	switch prop {
-	case "padding":
-		return "padding"
-	case "paddingTop":
-		return "padding-top"
-	case "paddingRight":
-		return "padding-right"
-	case "paddingBottom":
-		return "padding-bottom"
-	case "paddingLeft":
-		return "padding-left"
-	case "margin":
-		return "margin"
-	case "marginTop":
-		return "margin-top"
-	case "marginRight":
-		return "margin-right"
-	case "marginBottom":
-		return "margin-bottom"
-	case "marginLeft":
-		return "margin-left"
-	case "width":
-		return "width"
-	case "height":
-		return "height"
-	case "maxWidth":
-		return "max-width"
-	case "maxHeight":
-		return "max-height"
-	case "gap":
-		return "gap"
-	case "color":
-		return "color"
-	case "background":
-		return "background-color"
-	case "fontSize":
-		return "font-size"
-	case "fontWeight":
-		return "font-weight"
-	case "fontStyle":
-		return "font-style"
-	case "textAlign":
-		return "text-align"
-	case "borderWidth":
-		return "border-width"
-	case "borderRadius":
-		return "border-radius"
-	case "borderColor":
-		return "border-color"
-	case "opacity":
-		return "opacity"
-	case "flex":
-		return "flex"
-	case "display":
-		return "display"
-	case "flexDirection":
-		return "flex-direction"
-	case "position":
-		return "position"
-	case "top":
-		return "top"
-	case "bottom":
-		return "bottom"
-	case "left":
-		return "left"
-	case "right":
-		return "right"
-	case "overflow":
-		return "overflow"
-	case "zIndex":
-		return "z-index"
-	case "alignItems":
-		return "align-items"
-	case "justifyContent":
-		return "justify-content"
-	case "border":
-		return "border"
-	case "listStyleType":
-		return "list-style-type"
-	default:
-		return ""
-	}
-}
-
-func exprToStaticValue(expr ast.Expr) string {
-	if expr.Literal != nil {
-		return fmt.Sprint(expr.Literal)
-	}
-	if expr.SNGL != nil {
-		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
-			return fmt.Sprint(lit.Value)
-		}
-	}
-	return ""
-}
-
-func appendStyle(existing, prop, value string) string {
-	decl := prop + ":" + value
-	if existing == "" {
-		return decl
-	}
-	return existing + ";" + decl
-}
-
-func isNumeric(s string) bool {
-	for _, c := range s {
-		if (c < '0' || c > '9') && c != '.' && c != '-' {
-			return false
-		}
-	}
-	return len(s) > 0
-}
-
-func isSizeProp(cssProp string) bool {
-	switch cssProp {
-	case "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
-		"margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
-		"width", "height", "max-width", "max-height", "gap",
-		"font-size", "border-width", "border-radius", "top", "bottom", "left", "right":
-		return true
-	}
-	return false
-}
-
-func isSelfClosing(tag string) bool {
-	switch tag {
-	case "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr":
-		return true
-	}
-	return false
-}
