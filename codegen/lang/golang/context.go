@@ -21,6 +21,10 @@ type GoContext struct {
 	// provide their own because the toast mechanism differs per platform.
 	// If nil, a default "m.toasts = append(...)" implementation is used.
 	AlertFunc func(ec *GoContext, n *ast.MethodExpr) []string
+
+	// PropOverrides maps param names to pre-translated Go expressions.
+	// Set during component expansion to substitute caller prop values.
+	PropOverrides map[string]string
 }
 
 // NewContext creates a GoContext from a CommonAnalysis.
@@ -255,6 +259,12 @@ func (ec *GoContext) translateIdent(n *ast.IdentExpr) string {
 	name := n.Name
 	if name == "event" && ec.EventVar != "" {
 		return ec.EventVar
+	}
+	// Component param overrides: resolve to caller's pre-translated expression.
+	if ec.PropOverrides != nil {
+		if val, ok := ec.PropOverrides[name]; ok {
+			return val
+		}
 	}
 	if ec.LocalVars[name] {
 		return name

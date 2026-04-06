@@ -2,9 +2,11 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // viewContext tracks state during View() code generation.
@@ -20,8 +22,12 @@ type viewContext struct {
 	components  []*ast.Component // user-defined components for param lookup
 	inComponent bool             // true when rendering inside a component method
 	vertical    bool             // true when inside a vertical container (vbox)
-	slotVar     string           // variable holding pre-rendered slot content (for abstract components)
-	forIndexVar string           // current for-loop index variable (for cursor-aware rendering)
+	slotVar        string              // variable holding pre-rendered slot content (for abstract components)
+	forIndexVar    string              // current for-loop index variable (for cursor-aware rendering)
+	doc            *ast.Document       // for FindComponent
+	slotChildren   []*ast.VisualNode   // caller's children for inline component expansion
+	callerEvents   map[string]ast.Expr // caller's event handlers (for event propagation)
+	componentDepth int                 // recursion guard
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -174,12 +180,149 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	case "card":
 		vc.renderCard(vn, resultVar)
 	case "slot":
-		if vc.slotVar != "" {
+		if len(vc.slotChildren) > 0 {
+			// Inline slot expansion from component override
+			for i, child := range vc.slotChildren {
+				childVar := fmt.Sprintf("%sSlot%d", resultVar, i)
+				vc.line("var %s string", childVar)
+				vc.renderNode(child, childVar)
+				vc.line(`%s += %s`, resultVar, childVar)
+			}
+		} else if vc.slotVar != "" {
 			vc.line(`%s = %s`, resultVar, vc.slotVar)
 		}
 	default:
-		// User-defined or abstract component
-		vc.renderUserComponent(vn, resultVar)
+		// Look up component definition (user-defined or abstract/override)
+		comp := vc.findComponent(vn.Component)
+		if comp != nil {
+			body := codegen.ResolveComponentBody(comp, "bubbletea")
+			if len(body) > 0 {
+				vc.expandComponent(comp, vn, body, resultVar)
+			} else {
+				vc.renderUserComponent(vn, resultVar)
+			}
+		} else {
+			// Raw terminal component — interpret metadata props
+			vc.renderRawTerminal(vn, resultVar)
+		}
+	}
+}
+
+func (vc *viewContext) findComponent(name string) *ast.Component {
+	if vc.doc != nil {
+		return vc.doc.FindComponent(name)
+	}
+	for _, c := range vc.components {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+// expandComponent inlines a component override body at the call site.
+func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, body []*ast.VisualNode, resultVar string) {
+	vc.componentDepth++
+	if vc.componentDepth > 10 {
+		vc.componentDepth--
+		return
+	}
+	defer func() { vc.componentDepth-- }()
+
+	savedLocals := maps.Clone(vc.ec.LocalVars)
+	savedSlot := vc.slotChildren
+	savedEvents := vc.callerEvents
+
+	// Bind component params via propOverrides
+	savedOverrides := vc.ec.PropOverrides
+	overrides := make(map[string]string)
+	if savedOverrides != nil {
+		for k, v := range savedOverrides {
+			overrides[k] = v
+		}
+	}
+	for _, p := range comp.Params {
+		vc.ec.LocalVars[p.Name] = true
+		if expr, ok := vn.Props[p.Name]; ok {
+			overrides[p.Name] = exprToGoValue(expr, vc.ec)
+		} else if p.Default.Literal != nil {
+			overrides[p.Name] = literalToGo(p.Default)
+		}
+	}
+	vc.ec.PropOverrides = overrides
+
+	vc.slotChildren = vn.Children
+	vc.callerEvents = vn.Events
+
+	for _, child := range body {
+		vc.renderNode(child, resultVar)
+	}
+
+	vc.ec.LocalVars = savedLocals
+	vc.ec.PropOverrides = savedOverrides
+	vc.slotChildren = savedSlot
+	vc.callerEvents = savedEvents
+}
+
+// renderRawTerminal renders an implicit terminal component by interpreting
+// its metadata props. Recognized component patterns:
+//   Styled(content=expr)          → style.Render(expr)
+//   VJoin/HJoin(join=direction)   → lipgloss.JoinVertical/Horizontal(children)
+//   TextInput(modelType=..., ...) → m.inputN.View()
+func (vc *viewContext) renderRawTerminal(vn *ast.VisualNode, resultVar string) {
+	style := buildStyleExpr(vn.StyleFields(), vc.ec, vc.scaleFactor)
+
+	// Check for join layout
+	if join, ok := vn.Props["join"]; ok {
+		if s, ok := join.Literal.(string); ok {
+			childrenVar := resultVar + "Children"
+			vc.line("var %s []string", childrenVar)
+			for i, child := range vn.Children {
+				childVar := fmt.Sprintf("%s_%d", resultVar, i)
+				vc.line("var %s string", childVar)
+				vc.renderNode(child, childVar)
+				vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+			}
+			if s == "vertical" {
+				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
+			} else {
+				vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, childrenVar)
+			}
+			if style != "lipgloss.NewStyle()" {
+				vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+			}
+			return
+		}
+	}
+
+	// Check for model widget (textinput, etc.)
+	if modelView, ok := vn.Props["modelView"]; ok {
+		if viewMethod, ok := modelView.Literal.(string); ok {
+			// This is a stateful model widget — use m.inputN.View()
+			idx := vc.inputCount
+			vc.inputCount++
+			vc.focusIndex++
+			vc.line(`%s = m.input%d%s`, resultVar, idx, viewMethod)
+			return
+		}
+	}
+
+	// Default: styled content render
+	content := `""`
+	if v, ok := vn.Props["content"]; ok {
+		content = exprToGoValue(v, vc.ec)
+	}
+
+	if _, hasFocusable := vn.Props["focusable"]; hasFocusable {
+		// Focusable: add focus indicator
+		focusIdx := vc.focusIndex
+		vc.focusIndex++
+		vc.line(`%sFocused := m.focus == %d`, resultVar, focusIdx)
+		vc.line(`%sPrefix := " "`, resultVar)
+		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
+		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
+	} else {
+		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 	}
 }
 

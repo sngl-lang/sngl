@@ -859,6 +859,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 		buf:         &strings.Builder{},
 		indent:      1,
 		focusIndex:  0,
+		doc:         doc,
 		components:  info.Components,
 	}
 
