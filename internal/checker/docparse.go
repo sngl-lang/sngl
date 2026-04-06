@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -260,9 +261,7 @@ func StdlibExamples() (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		for name, ex := range ComponentExamples(doc) {
-			examples[name] = ex
-		}
+		maps.Copy(examples, ComponentExamples(doc))
 	}
 
 	return examples, nil

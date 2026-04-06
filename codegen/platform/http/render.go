@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"html"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -365,9 +366,7 @@ func (r *renderer) renderNodeWithID(b *strings.Builder, vn *ast.VisualNode, dept
 func (r *renderer) renderUserComponent(b *strings.Builder, vn *ast.VisualNode, comp *ast.Component, depth int) {
 	// Save and restore scope.
 	savedLocal := make(map[string]bool)
-	for k, v := range r.scope.LocalVars {
-		savedLocal[k] = v
-	}
+	maps.Copy(savedLocal, r.scope.LocalVars)
 
 	// Register params as locals.
 	for _, p := range comp.Params {
@@ -398,27 +397,27 @@ func (r *renderer) renderRawElement(b *strings.Builder, vn *ast.VisualNode, dept
 	}
 
 	style := r.buildStyle(vn)
-	attrs := ""
+	var attrs strings.Builder
 	for name := range vn.Props {
 		if name == "style" || name == "textContent" || name == "innerHTML" {
 			continue
 		}
 		val := r.staticString(vn.Props, name)
 		if val != "" {
-			attrs += fmt.Sprintf(` %s=%q`, name, val)
+			attrs.WriteString(fmt.Sprintf(` %s=%q`, name, val))
 		}
 	}
 	if style != "" {
-		attrs += fmt.Sprintf(` style=%q`, style)
+		attrs.WriteString(fmt.Sprintf(` style=%q`, style))
 	}
 
 	selfClosing := htmlutil.IsSelfClosing(tag)
 	if selfClosing {
-		fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s%s>`)\n", indent, tag, attrs)
+		fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s%s>`)\n", indent, tag, attrs.String())
 		return
 	}
 
-	fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s%s>`)\n", indent, tag, attrs)
+	fmt.Fprintf(b, "%sfmt.Fprint(w, `<%s%s>`)\n", indent, tag, attrs.String())
 
 	// Handle textContent prop.
 	if v, ok := vn.Props["textContent"]; ok {
@@ -525,17 +524,16 @@ func (r *renderer) staticBool(props map[string]ast.Expr, key string) bool {
 }
 
 func (r *renderer) collectAttrs(vn *ast.VisualNode, keys ...string) string {
-	var attrs string
+	var attrs strings.Builder
 	for _, key := range keys {
 		val := r.staticString(vn.Props, key)
 		if val != "" {
-			attrs += fmt.Sprintf(` %s=%q`, key, val)
+			attrs.WriteString(fmt.Sprintf(` %s=%q`, key, val))
 		}
 	}
 	style := r.buildStyle(vn)
 	if style != "" {
-		attrs += fmt.Sprintf(` style=%q`, style)
+		attrs.WriteString(fmt.Sprintf(` style=%q`, style))
 	}
-	return attrs
+	return attrs.String()
 }
-

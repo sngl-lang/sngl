@@ -286,9 +286,7 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 	savedOverrides := vc.ec.PropOverrides
 	overrides := make(map[string]string)
 	if savedOverrides != nil {
-		for k, v := range savedOverrides {
-			overrides[k] = v
-		}
+		maps.Copy(overrides, savedOverrides)
 	}
 	for _, p := range comp.Params {
 		vc.ec.LocalVars[p.Name] = true

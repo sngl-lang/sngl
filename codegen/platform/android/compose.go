@@ -16,9 +16,9 @@ type composeContext struct {
 	indent         int
 	doc            *ast.Document
 	components     []*ast.Component
-	hasSlot        bool              // true when rendering inside a component with slot support
-	slotChildren   []*ast.VisualNode // caller's children for slot expansion
-	componentDepth int               // recursion guard for component expansion
+	hasSlot        bool                // true when rendering inside a component with slot support
+	slotChildren   []*ast.VisualNode   // caller's children for slot expansion
+	componentDepth int                 // recursion guard for component expansion
 	callerEvents   map[string]ast.Expr // caller's event handlers (for emit propagation)
 }
 
@@ -127,9 +127,7 @@ func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNod
 	savedOverrides := cc.ec.propOverrides
 	overrides := make(map[string]string)
 	if savedOverrides != nil {
-		for k, v := range savedOverrides {
-			overrides[k] = v
-		}
+		maps.Copy(overrides, savedOverrides)
 	}
 	for _, p := range comp.Params {
 		cc.ec.localVars[p.Name] = true
@@ -313,7 +311,6 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		cc.line("%s(%s)", name, argStr)
 	}
 }
-
 
 // sortArgs sorts named Kotlin arguments for deterministic output.
 func sortArgs(args []string) {

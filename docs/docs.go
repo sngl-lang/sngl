@@ -65,8 +65,8 @@ func Pages() []Page {
 		}
 
 		slug := strings.TrimSuffix(path, ".md")
-		if strings.HasSuffix(slug, "/index") {
-			slug = strings.TrimSuffix(slug, "/index")
+		if before, ok := strings.CutSuffix(slug, "/index"); ok {
+			slug = before
 		}
 		if slug == "index" {
 			slug = ""

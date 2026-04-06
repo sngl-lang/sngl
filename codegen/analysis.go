@@ -22,9 +22,9 @@ type CommonAnalysis struct {
 	Enums          []*ast.EnumDef
 	Timers         []TimerInfo
 	NeedsToast     bool
-	Helpers        map[string]bool    // needed helper functions (populated during codegen)
-	UsedComponents map[string]bool    // primitive component names used in the visual tree
-	Styles         []string           // CSS rules registered by components during codegen
+	Helpers        map[string]bool // needed helper functions (populated during codegen)
+	UsedComponents map[string]bool // primitive component names used in the visual tree
+	Styles         []string        // CSS rules registered by components during codegen
 }
 
 // TimerInfo captures platform-independent parts of a timer declaration.
@@ -149,10 +149,8 @@ func (a *CommonAnalysis) Scope() *ExprScope {
 
 // AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
 func (a *CommonAnalysis) AddStyle(css string) {
-	for _, s := range a.Styles {
-		if s == css {
-			return
-		}
+	if slices.Contains(a.Styles, css) {
+		return
 	}
 	a.Styles = append(a.Styles, css)
 }

@@ -149,7 +149,7 @@ func hrefToRoutePath(props map[string]ast.Expr) string {
 // extractRouteParams finds {param} placeholders in a route path.
 func extractRouteParams(path string) []string {
 	var params []string
-	for _, seg := range strings.Split(path, "/") {
+	for seg := range strings.SplitSeq(path, "/") {
 		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
 			params = append(params, seg[1:len(seg)-1])
 		}
@@ -189,15 +189,15 @@ func routeHandlerName(windowName, path string) string {
 	parts := strings.FieldsFunc(clean, func(r rune) bool {
 		return r == '/' || r == '-' || r == '_' || r == '.' || r == '{' || r == '}'
 	})
-	var name string
+	var name strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
-		name += exportName(p)
+		name.WriteString(exportName(p))
 	}
-	if name == "" {
+	if name.String() == "" {
 		return "handleIndex"
 	}
-	return "handle" + name
+	return "handle" + name.String()
 }

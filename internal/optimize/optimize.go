@@ -1,6 +1,8 @@
 package optimize
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
@@ -131,9 +133,7 @@ func expandForWindows(windows []*ast.Window, ctx *foldCtx) []*ast.Window {
 				nativeImports: ctx.nativeImports,
 				dir:           ctx.dir,
 			}
-			for k, v := range ctx.vars {
-				loopCtx.vars[k] = v
-			}
+			maps.Copy(loopCtx.vars, ctx.vars)
 			loopCtx.vars[win.For.Variable] = item
 			if win.For.IndexVar != "" {
 				loopCtx.vars[win.For.IndexVar] = i
@@ -236,9 +236,7 @@ func optimizeNodes(nodes []*ast.VisualNode, ctx *foldCtx) []*ast.VisualNode {
 						nativeImports: ctx.nativeImports,
 						dir:           ctx.dir,
 					}
-					for k, v := range ctx.vars {
-						loopCtx.vars[k] = v
-					}
+					maps.Copy(loopCtx.vars, ctx.vars)
 					loopCtx.vars[vn.For.Variable] = item
 					if vn.For.IndexVar != "" {
 						loopCtx.vars[vn.For.IndexVar] = i

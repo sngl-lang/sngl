@@ -152,8 +152,8 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			name = staticPropString(win.Props, "title")
 		}
 		// If name looks like a URL path (starts with /), use it directly
-		if strings.HasPrefix(name, "/") {
-			name = strings.TrimPrefix(name, "/")
+		if after, ok := strings.CutPrefix(name, "/"); ok {
+			name = after
 		} else if strings.HasSuffix(name, ".html") {
 			// Already has extension, use as-is
 		} else if name == "main" || name == "" || name == "index" {

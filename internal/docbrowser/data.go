@@ -101,7 +101,7 @@ type declEntry struct {
 	Name   string
 	Kind   string // "component", "struct", "enum", "func", "var", "const"
 	Doc    string
-	Decl   any    // underlying AST node
+	Decl   any // underlying AST node
 	Source *ast.Document
 }
 
@@ -171,10 +171,7 @@ func (b *browser) moveDown() {
 }
 
 func (b *browser) ensureVisible() {
-	maxVis := b.height - 4
-	if maxVis < 1 {
-		maxVis = 1
-	}
+	maxVis := max(b.height-4, 1)
 	if b.selectedIndex < b.scroll {
 		b.scroll = b.selectedIndex
 	}
@@ -188,10 +185,7 @@ func (b browser) View() tea.View {
 		return tea.NewView("Loading...")
 	}
 
-	sw := 30
-	if sw > b.width/3 {
-		sw = b.width / 3
-	}
+	sw := min(30, b.width/3)
 	dw := b.width - sw - 4
 
 	sidebar := b.renderSidebar(sw)
@@ -212,10 +206,7 @@ func (b browser) renderSidebar(width int) string {
 	lines = append(lines, headerStyle.Render(b.title))
 	lines = append(lines, "")
 
-	maxVis := b.height - 4
-	if maxVis < 1 {
-		maxVis = 1
-	}
+	maxVis := max(b.height-4, 1)
 
 	vis := 0
 	for i, item := range b.flatItems {
@@ -326,7 +317,7 @@ func renderComponentDetail(comp *docs.Component, width int) []string {
 
 	if comp.Example != "" {
 		s = append(s, "", labelStyle.Render("Example"))
-		for _, line := range strings.Split(comp.Example, "\n") {
+		for line := range strings.SplitSeq(comp.Example, "\n") {
 			s = append(s, "  "+docStyle.Render(line))
 		}
 	}
