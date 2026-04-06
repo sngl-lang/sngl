@@ -1,9 +1,259 @@
 // Fyne platform package.
-// Components defined here are available as fyne.X in user code.
+// Raw Fyne widgets and containers are implicitly available via APIResolver.
+//
+// Components use metadata props to tell the generator how to produce Go code:
+//   container="NewVBox"         — Fyne container constructor
+//   widgetType="*widget.Label"  — persistent Model field type
+//   widgetNew="widget.NewLabel" — constructor function
+//   widgetArg="value"           — prop to pass as constructor arg
+//   widgetUpdate=".SetText"     — updater method for reactive arg
+//   entry=true                  — use existing entry infrastructure
 
 struct Options {
-    // Go package name for generated code.
     package string
-    // Generate a main() function.
     main bool
+}
+
+// --- Core Layout ---
+
+component sngl.vbox() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.hbox() {
+    HBox(container="NewHBox") {
+        slot
+    }
+}
+
+component sngl.stack() {
+    Stack(container="NewStack") {
+        slot
+    }
+}
+
+component sngl.spacer() {
+    Spacer(widgetType="*layout.Spacer", widgetNew="layout.NewSpacer") {}
+}
+
+component sngl.scroll() {
+    Scroll(container="NewVScroll") {
+        slot
+    }
+}
+
+// --- Core Text & Media ---
+
+component sngl.text() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="value",
+        widgetUpdate=".SetText",
+        value=value
+    ) {}
+}
+
+component sngl.button() {
+    Button(
+        widgetType="*widget.Button",
+        widgetNew="widget.NewButton",
+        widgetArg="text",
+        widgetUpdate=".SetText",
+        text=text
+    ) {}
+}
+
+component sngl.image() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="alt",
+        alt=alt
+    ) {}
+}
+
+component sngl.input() {
+    Entry(entry=true) {}
+}
+
+component sngl.checkbox() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="label",
+        label=label
+    ) {}
+}
+
+// --- Tier 1: Core Input ---
+
+component sngl.radio() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.toggle() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="label",
+        label=label
+    ) {}
+}
+
+component sngl.select() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="value",
+        value=value
+    ) {}
+}
+
+component sngl.textarea() {
+    Entry(entry=true) {}
+}
+
+component sngl.datepicker() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="value",
+        value=value
+    ) {}
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+component sngl.progress() {
+    Label(widgetType="*widget.Label", widgetNew="widget.NewLabel") {}
+}
+
+component sngl.spinner() {
+    Label(widgetType="*widget.Label", widgetNew="widget.NewLabel") {}
+}
+
+component sngl.badge() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="value",
+        widgetUpdate=".SetText",
+        value=value
+    ) {}
+}
+
+component sngl.divider() {
+    Divider(widgetType="*widget.Separator", widgetNew="widget.NewSeparator") {}
+}
+
+component sngl.card() {
+    Card(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.chip() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="label",
+        label=label
+    ) {}
+}
+
+component sngl.link() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="text",
+        text=text
+    ) {}
+}
+
+component sngl.tabs() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.modal() {
+    if open {
+        VBox(container="NewVBox") {
+            slot
+        }
+    }
+}
+
+component sngl.drawer() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.tooltip() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.popover() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.accordion() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.splitview() {
+    HBox(container="NewHBox") {
+        slot
+    }
+}
+
+component sngl.table() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.tree() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.menu() {
+    VBox(container="NewVBox") {
+        slot
+    }
+}
+
+component sngl.menubar() {
+    HBox(container="NewHBox") {
+        slot
+    }
+}
+
+component sngl.toolbar() {
+    HBox(container="NewHBox") {
+        slot
+    }
+}
+
+component sngl.avatar() {
+    Label(
+        widgetType="*widget.Label",
+        widgetNew="widget.NewLabel",
+        widgetArg="initials",
+        initials=initials
+    ) {}
 }

@@ -298,6 +298,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			ec:         ec,
 			buf:        &buildBuf,
 			indent:     1,
+			doc:        doc,
 			components: info.Components,
 			info:       info,
 		}
@@ -399,8 +400,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// Updater methods
 	emitUpdaters(&b, updaters)
 
-	// User component render methods
-	for _, comp := range info.Components {
+	// User component render methods (not stdlib overrides)
+	for _, comp := range doc.Components {
 		emitComponentMethod(&b, comp, info.Components, ec)
 	}
 

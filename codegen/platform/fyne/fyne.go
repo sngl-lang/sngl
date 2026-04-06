@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
@@ -24,6 +25,11 @@ func (g *Generator) Platform() string         { return "fyne" }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
 func (g *Generator) PkgSource() string        { return pkgSource }
+
+// ResolveAPI makes any identifier valid as a Fyne widget/container.
+func (g *Generator) ResolveAPI(name string) *ast.NativeDecls {
+	return &ast.NativeDecls{}
+}
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "go" {
