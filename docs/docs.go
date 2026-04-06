@@ -20,7 +20,7 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
-//go:embed *.md getting-started language components
+//go:embed *.md getting-started language
 var content embed.FS
 
 // Page holds the data for a single documentation page.
@@ -145,6 +145,7 @@ func Components() []Component {
 		return nil
 	}
 	tiers := docsite.AssignTiers(registry)
+	stdlibExamples, _ := checker.StdlibExamples()
 
 	var comps []Component
 	for name, schema := range registry {
@@ -170,10 +171,8 @@ func Components() []Component {
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
 
-		// Load example source if available
-		examplePath := "components/" + name + ".sngl"
-		if exData, err := content.ReadFile(examplePath); err == nil {
-			src := strings.TrimSpace(string(exData))
+		// Load example from stdlib doc comments
+		if src, ok := stdlibExamples[name]; ok {
 			c.Example = src
 			c.HighlightedCode = docsite.HighlightSNGL(src)
 			c.PreviewHTML = buildPreviewSection(name, src)

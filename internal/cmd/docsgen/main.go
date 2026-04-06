@@ -53,52 +53,31 @@ func main() {
 }
 
 func generateComponentSnapshots(outDir string) {
-	componentsDir := filepath.Join("docs", "components")
-	entries, err := os.ReadDir(componentsDir)
-	if err != nil {
-		return
-	}
 	galleryDir := filepath.Join(outDir, "assets", "gallery")
 	os.MkdirAll(galleryDir, 0o755)
 
+	// Use pre-rendered stdlib examples from sngl snapshot examples --stdlib.
+	examplesDir := filepath.Join("internal", "checker", "stdlib", ".sngl-examples")
+	entries, err := os.ReadDir(examplesDir)
+	if err != nil {
+		log.Printf("gallery: no pre-rendered examples in %s (run: sngl snapshot examples --stdlib)", examplesDir)
+		return
+	}
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".png") {
 			continue
 		}
-		name := strings.TrimSuffix(e.Name(), ".sngl")
-		sourceFile := filepath.Join(componentsDir, e.Name())
-
-		for _, platform := range []string{"bubbletea", "fyne"} {
-			target := filepath.Join(galleryDir, name+"-"+platform+".png")
-			// Skip if pre-rendered image exists (from sngl snapshot examples).
-			if _, err := os.Stat(target); err == nil {
-				log.Printf("gallery: %s/%s → %s (pre-rendered)", name, platform, target)
-				continue
-			}
-			// Also check pre-rendered examples (from sngl snapshot examples --stdlib).
-			preRendered := filepath.Join("internal", "checker", "stdlib", ".sngl-examples", name+"-"+platform+".png")
-			if data, err := os.ReadFile(preRendered); err == nil {
-				os.WriteFile(target, data, 0o644)
-				log.Printf("gallery: %s/%s → %s (from .sngl-examples)", name, platform, target)
-				continue
-			}
-			results, err := snapshot.Generate(snapshot.Config{
-				SourceFile: sourceFile,
-				Platforms:  []string{platform},
-				OutDir:     galleryDir,
-				Width:      800,
-				Height:     400,
-			})
-			if err != nil {
-				continue
-			}
-			for _, r := range results {
-				if r.Path != target {
-					os.Rename(r.Path, target)
-				}
-				log.Printf("gallery: %s/%s → %s", name, platform, target)
-			}
+		target := filepath.Join(galleryDir, e.Name())
+		if _, err := os.Stat(target); err == nil {
+			log.Printf("gallery: %s (exists)", e.Name())
+			continue
 		}
+		data, err := os.ReadFile(filepath.Join(examplesDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		os.WriteFile(target, data, 0o644)
+		log.Printf("gallery: %s", e.Name())
 	}
 }
 
