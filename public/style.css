@@ -221,21 +221,42 @@ article ul, article ol { padding-left: 2em; }
 .preview-frame img { max-width: 100%; }
 .preview[hidden] { display: none; }
 
-/* Hide SNGL default styles */
+/* Mobile nav toggle */
 .nav-toggle { display: none; }
+.nav-hamburger { display: none; }
 
-/* Mobile */
 @media (max-width: 768px) {
+  .nav-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 20;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    font-size: 1.5rem;
+    color: var(--fg);
+    cursor: pointer;
+  }
   .site > nav {
     transform: translateX(-100%);
     transition: transform 0.2s ease;
   }
-  .nav-toggle:checked ~ nav {
+  .site:has(.nav-toggle:checked) > nav {
     transform: translateX(0);
+  }
+  .site:has(.nav-toggle:checked) .nav-hamburger {
+    left: calc(var(--sidebar-width) + 0.75rem);
   }
   .site > main {
     margin-left: 0;
     padding: 2rem 1.25rem;
+    padding-top: 3.5rem;
   }
 }
 

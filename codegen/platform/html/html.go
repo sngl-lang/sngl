@@ -1410,12 +1410,14 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 			case "innerHTML":
 				staticInnerHTML = val
 			default:
-				if val != "" {
-					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
-				} else if expr.Literal != nil {
-					if bv, ok := expr.Literal.(bool); ok && bv {
+				if bv, ok := expr.Literal.(bool); ok {
+					if bv {
 						fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
 					}
+				} else if expr.Literal != nil {
+					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+				} else if val != "" {
+					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
 				}
 			}
 		}

@@ -1,54 +1,44 @@
-* {
-    margin: 0;
+/* Playground — scoped to work within the site layout */
+
+.site > main {
     padding: 0;
-    box-sizing: border-box;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    height: 100vh;
+.site > main > article {
+    max-width: none;
+    height: calc(100vh - 0px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-a { color: #7c8aff; }
+.site > main > article > h1 {
+    display: none;
+}
 
-.toolbar {
+.playground-toolbar {
     display: flex;
     align-items: center;
     gap: 16px;
     padding: 8px 16px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 
-.toolbar h1 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #e0e0e0;
-}
-
-.toolbar select {
-    background: #1a1a2e;
-    color: #e0e0e0;
-    border: 1px solid #0f3460;
+.playground-toolbar select {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 13px;
 }
 
-.toolbar .status {
+.playground-toolbar .status {
     font-size: 12px;
-    color: #888;
+    color: var(--fg-muted);
     margin-left: auto;
-}
-
-.toolbar .nav-link {
-    font-size: 13px;
 }
 
 .error-banner {
@@ -74,7 +64,7 @@ a { color: #7c8aff; }
 .editor-pane {
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #0f3460;
+    border-right: 1px solid var(--border);
     min-height: 0;
 }
 
@@ -95,15 +85,15 @@ a { color: #7c8aff; }
 
 .tab-bar {
     display: flex;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 
 .tab-bar button {
     background: none;
     border: none;
-    color: #888;
+    color: var(--fg-muted);
     padding: 8px 16px;
     font-size: 13px;
     cursor: pointer;
@@ -111,8 +101,8 @@ a { color: #7c8aff; }
 }
 
 .tab-bar button.active {
-    color: #e0e0e0;
-    border-bottom-color: #7c8aff;
+    color: var(--fg);
+    border-bottom-color: var(--accent);
 }
 
 .tab-content {
@@ -142,15 +132,15 @@ a { color: #7c8aff; }
     display: flex;
     align-items: center;
     padding: 6px 12px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 
 #code-header select {
-    background: #1a1a2e;
-    color: #e0e0e0;
-    border: 1px solid #0f3460;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 13px;
@@ -162,20 +152,20 @@ a { color: #7c8aff; }
     margin: 0;
     padding: 16px;
     font-size: 13px;
-    background: #1a1a2e !important;
-    color: #c0c0c0;
+    background: var(--bg-code) !important;
+    color: var(--fg);
 }
 
 #code-output code {
     background: transparent !important;
-    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 13px;
 }
 
-/* Override Prism theme background to match playground */
+/* Override Prism theme background to match */
 #code-output[class*="language-"],
 #code-output code[class*="language-"] {
-    background: #1a1a2e !important;
+    background: var(--bg-code) !important;
 }
 
 /* --- AST tab (collapsible tree) --- */
@@ -183,10 +173,10 @@ a { color: #7c8aff; }
 #ast-output {
     padding: 16px;
     font-size: 13px;
-    font-family: "Fira Code", "Cascadia Code", monospace;
+    font-family: var(--font-mono);
     overflow: auto;
     flex: 1;
-    color: #c0c0c0;
+    color: var(--fg);
 }
 
 #ast-output details {
@@ -199,12 +189,12 @@ a { color: #7c8aff; }
 
 #ast-output summary {
     cursor: pointer;
-    color: #7c8aff;
+    color: var(--accent);
     user-select: none;
 }
 
 #ast-output summary:hover {
-    color: #a0b0ff;
+    color: var(--accent-hover);
 }
 
 .ast-leaf {
@@ -212,7 +202,7 @@ a { color: #7c8aff; }
 }
 
 .ast-key {
-    color: #888;
+    color: var(--fg-muted);
 }
 
 .ast-string { color: #98c379; }
@@ -227,18 +217,18 @@ a { color: #7c8aff; }
 /* --- Hover tooltip --- */
 
 .sngl-hover {
-    background: #16213e;
-    border: 1px solid #0f3460;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 8px 12px;
     max-width: 500px;
     font-size: 13px;
-    color: #e0e0e0;
+    color: var(--fg);
     line-height: 1.5;
 }
 
 .sngl-hover pre {
-    background: #1a1a2e;
+    background: var(--bg-code);
     border-radius: 3px;
     padding: 6px 8px;
     margin: 4px 0;
@@ -246,31 +236,31 @@ a { color: #7c8aff; }
 }
 
 .sngl-hover code {
-    font-family: "Fira Code", "Cascadia Code", monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
     color: #98c379;
 }
 
 .sngl-hover strong {
-    color: #7c8aff;
+    color: var(--accent);
 }
 
 /* --- CodeMirror lint/autocomplete overrides --- */
 
 .cm-tooltip-autocomplete {
-    background: #16213e !important;
-    border: 1px solid #0f3460 !important;
+    background: var(--bg-sidebar) !important;
+    border: 1px solid var(--border) !important;
 }
 
 .cm-tooltip-autocomplete ul li {
-    color: #e0e0e0;
+    color: var(--fg);
 }
 
 .cm-tooltip-autocomplete ul li[aria-selected] {
-    background: #0f3460 !important;
+    background: var(--bg-code) !important;
 }
 
 .cm-diagnostic {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans);
     font-size: 12px;
 }

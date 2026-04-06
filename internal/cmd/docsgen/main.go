@@ -117,8 +117,8 @@ func buildPlayground(outDir string) error {
 	}
 	os.WriteFile(filepath.Join(playgroundDir, "wasm_exec.js"), wasmExecData, 0o644)
 
-	// Copy playground assets (HTML, CSS, JS).
-	for _, name := range []string{"playground.html", "playground.css", "playground.js"} {
+	// Copy playground CSS and JS assets.
+	for _, name := range []string{"playground.css", "playground.js"} {
 		src := filepath.Join("internal", "playground", "assets", name)
 		data, err := os.ReadFile(src)
 		if err != nil {
@@ -127,8 +127,8 @@ func buildPlayground(outDir string) error {
 		os.WriteFile(filepath.Join(playgroundDir, name), data, 0o644)
 	}
 
-	// Inject examples from examples/ directory into playground HTML.
-	pgHTML := filepath.Join(playgroundDir, "playground.html")
+	// Inject examples into the SNGL-generated playground.html.
+	pgHTML := filepath.Join(outDir, "playground.html")
 	htmlData, err := os.ReadFile(pgHTML)
 	if err != nil {
 		return fmt.Errorf("reading playground.html: %w", err)
@@ -171,42 +171,29 @@ func buildPlayground(outDir string) error {
 		}
 	}
 
+	// Build example source scripts and inject into page.
+	var scriptTags string
 	if len(examples) > 0 {
-		// Build <option> elements
 		var optionTags string
 		for _, ex := range examples {
-			optionTags += fmt.Sprintf("            <option value=%q>%s</option>\n", ex.name, ex.label)
+			optionTags += fmt.Sprintf("<option value=%q>%s</option>", ex.name, ex.label)
+			scriptTags += fmt.Sprintf("<script type=\"text/sngl\" id=%q>%s</script>\n", ex.name+"-source", ex.source)
 		}
-
-		// Build <script> blocks
-		var scriptTags string
-		for _, ex := range examples {
-			scriptTags += fmt.Sprintf("    <script type=\"text/sngl\" id=%q>%s</script>\n", ex.name+"-source", ex.source)
-		}
+		// Set the first example as default.
+		scriptTags = strings.Replace(scriptTags, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
 
 		html := string(htmlData)
-		// Replace the static dropdown option
-		html = strings.Replace(html, `            <option value="default">Todo App</option>`, optionTags, 1)
-		// Replace the static default source
-		oldDefault := `    <script type="text/sngl" id="default-source">
-app {
-    vbox style.padding=16 {
-        text value="Hello, SNGL!"
-    }
-}
-</script>`
-		html = strings.Replace(html, oldDefault, scriptTags, 1)
-		// Set the first example as default
-		if len(examples) > 0 {
-			html = strings.Replace(html, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
-		}
+		// Replace the static dropdown option with example options.
+		html = strings.Replace(html, `<option value="default">Hello</option>`, optionTags, 1)
 		htmlData = []byte(html)
 		log.Printf("playground: %d examples injected", len(examples))
+	} else {
+		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">app {\n    vbox style.padding=16 {\n        text value=\"Hello, SNGL!\"\n    }\n}</script>"
 	}
 
-	os.WriteFile(filepath.Join(outDir, "playground.html"), htmlData, 0o644)
-	os.Remove(pgHTML)
-
+	// Inject script tags into the playground-sources placeholder.
+	html := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
+	os.WriteFile(pgHTML, []byte(html), 0o644)
 	log.Printf("playground: ready")
 	return nil
 }

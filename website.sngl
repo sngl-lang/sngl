@@ -57,7 +57,7 @@ component NavSidebar(currentHref = "") {
 				html.a(href="/components/index.html", class=currentHref == "/components/index.html" ? "active" : "", innerText="Components")
 			}
 			html.li {
-				html.a(href="/playground.html", innerText="Playground")
+				html.a(href="/playground.html", class=currentHref == "/playground.html" ? "active" : "", innerText="Playground")
 			}
 		}
 	}
@@ -65,6 +65,7 @@ component NavSidebar(currentHref = "") {
 
 component PageLayout(title = "", currentHref = "") list<component> {
 	html.div(class="site") {
+		html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
 		NavSidebar(currentHref=currentHref)
 		html.main {
 			html.article {
@@ -158,6 +159,51 @@ component main {
 			PageLayout(title=page.title, currentHref=page.href) {
 				html.div(innerHTML=page.body)
 			}
+		}
+	}
+
+	// Playground
+	window(title="Playground", href="/playground.html", favicon=logo) {
+		PageLayout(title="Playground", currentHref="/playground.html") {
+			html.link(rel="stylesheet", href="/assets/playground/playground.css")
+			html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
+			html.div(class="playground-toolbar") {
+				html.select(id="examples") {
+					html.option(value="", innerText="Examples...")
+					html.option(value="default", innerText="Hello")
+				}
+				html.span(class="status", id="status", innerText="Loading WASM...")
+			}
+			html.div(class="error-banner", id="error")
+			html.div(class="split-pane") {
+				html.div(class="editor-pane", id="editor-pane")
+				html.div(class="output-pane") {
+					html.div(class="tab-bar", innerHTML="<button class='active' data-tab='preview'>Preview</button><button data-tab='code'>Code</button><button data-tab='ast'>AST</button>")
+					html.div(class="tab-content") {
+						html.div(class="tab-panel active", id="tab-preview") {
+							html.iframe(id="preview")
+						}
+						html.div(class="tab-panel", id="tab-code") {
+							html.div(id="code-header") {
+								html.select(id="target-select")
+							}
+							html.pre(id="code-output") {
+								html.code
+							}
+						}
+						html.div(class="tab-panel", id="tab-ast") {
+							html.div(id="ast-output")
+						}
+					}
+				}
+			}
+			html.div(id="playground-sources")
+			html.script(src="/assets/playground/wasm_exec.js")
+			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
+			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
+			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
+			html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
+			html.script(type="module", src="/assets/playground/playground.js")
 		}
 	}
 }
