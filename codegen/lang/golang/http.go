@@ -135,6 +135,12 @@ func compileNetHTTP(req *codegen.HTTPRequest) ([]byte, error) {
 		fmt.Fprintf(&b, "func %s(w http.ResponseWriter, r *http.Request) {\n", route.Name)
 		b.WriteString("\tw.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n")
 
+		// Route parameters from path (e.g., /{name} → name := r.PathValue("name"))
+		for _, param := range route.Params {
+			fmt.Fprintf(&b, "\t%s := r.PathValue(%q)\n", param, param)
+			fmt.Fprintf(&b, "\t_ = %s\n", param)
+		}
+
 		win := windows[route.WindowIdx]
 		emitLocalVars(&b, req.Doc.Data)
 		emitLocalVars(&b, win.Data)
@@ -266,6 +272,11 @@ func emitLocalVars(b *strings.Builder, data []*ast.Data) {
 			continue
 		}
 		initVal := LiteralToGo(d.Init)
+		if initVal == "nil" {
+			// Skip vars with non-literal init (e.g., function call results).
+			// These will be accessed via their original expressions at use sites.
+			continue
+		}
 		fmt.Fprintf(b, "\t%s := %s\n", d.Name, initVal)
 		fmt.Fprintf(b, "\t_ = %s\n", d.Name)
 	}

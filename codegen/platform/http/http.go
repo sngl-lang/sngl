@@ -56,7 +56,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	for i, win := range windows {
 		path := "/"
 		name := win.Name
-		if v := staticPropString(win.Props, "href"); v != "" {
+		if v := hrefToRoutePath(win.Props); v != "" {
 			path = v
 		} else if name != "" && name != "main" && name != "index" {
 			path = "/" + name
@@ -66,6 +66,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			Name:      handlerName,
 			Path:      path,
 			Title:     staticPropString(win.Props, "title"),
+			Params:    extractRouteParams(path),
 			WindowIdx: i,
 		}
 	}
@@ -77,7 +78,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	renderResults := make([]renderResult, len(routes))
 	for i, route := range routes {
 		win := windows[route.WindowIdx]
-		renderResults[i] = renderWindowHTML(req.Doc, win, analysis, req.Lang)
+		renderResults[i] = renderWindowHTML(req.Doc, win, analysis, req.Lang, routes[i].Params)
 		routes[i].Actions = renderResults[i].actions
 	}
 
@@ -113,6 +114,49 @@ type Config struct {
 	Framework string
 }
 
+// hrefToRoutePath extracts a route path from the href prop.
+// Handles both literal strings ("/" ) and interpolation expressions ("/{name}").
+// Interpolated identifiers become {param} route parameters.
+func hrefToRoutePath(props map[string]ast.Expr) string {
+	v, ok := props["href"]
+	if !ok {
+		return ""
+	}
+	// Literal string: return as-is.
+	if s, ok := v.Literal.(string); ok {
+		return s
+	}
+	// InterpolationExpr: reconstruct path with {param} for ident parts.
+	if v.SNGL != nil {
+		if interp, ok := v.SNGL.(*ast.InterpolationExpr); ok {
+			var path strings.Builder
+			for _, part := range interp.Parts {
+				switch p := part.(type) {
+				case *ast.LiteralExpr:
+					if s, ok := p.Value.(string); ok {
+						path.WriteString(s)
+					}
+				case *ast.IdentExpr:
+					path.WriteString("{" + p.Name + "}")
+				}
+			}
+			return path.String()
+		}
+	}
+	return ""
+}
+
+// extractRouteParams finds {param} placeholders in a route path.
+func extractRouteParams(path string) []string {
+	var params []string
+	for _, seg := range strings.Split(path, "/") {
+		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			params = append(params, seg[1:len(seg)-1])
+		}
+	}
+	return params
+}
+
 func staticPropString(props map[string]ast.Expr, key string) string {
 	v, ok := props[key]
 	if !ok {
@@ -136,18 +180,20 @@ func routeHandlerName(windowName, path string) string {
 	if windowName == "main" || windowName == "index" || (windowName == "" && path == "/") {
 		return "handleIndex"
 	}
-	// Use the path to derive the handler name (more reliable than window name
-	// which may contain slashes from href-generated names).
-	source := path
-	if source == "" || source == "/" {
-		source = windowName
+	// Use window name if it's a clean identifier, otherwise derive from path.
+	source := windowName
+	if source == "" || strings.Contains(source, "/") || strings.Contains(source, "{") {
+		source = path
 	}
 	clean := strings.TrimPrefix(source, "/")
 	parts := strings.FieldsFunc(clean, func(r rune) bool {
-		return r == '/' || r == '-' || r == '_' || r == '.'
+		return r == '/' || r == '-' || r == '_' || r == '.' || r == '{' || r == '}'
 	})
 	var name string
 	for _, p := range parts {
+		if p == "" {
+			continue
+		}
 		name += exportName(p)
 	}
 	if name == "" {

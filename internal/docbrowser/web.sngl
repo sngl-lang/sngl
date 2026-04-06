@@ -6,23 +6,15 @@ output {
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
 
-const components = docs.Components()
-
-component Sidebar(currentName = "") {
-    vbox(style={width=260, padding=8, gap=2}) {
-        text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
-        for comp = components {
-            link(text=comp.name, href="/" + comp.name,
-                 style={fontWeight=comp.name == currentName ? "bold" : "normal",
-                        padding=4})
-        }
-    }
-}
-
 component main {
     window index(title="SNGL Documentation", href="/") {
         hbox {
-            Sidebar()
+            vbox(style={width=260, padding=8, gap=2}) {
+                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+                for comp = docs.Components() {
+                    link(text=comp.name, href="/" + comp.name, style={padding=4})
+                }
+            }
             vbox(style={padding=24, gap=16}) {
                 text(value="SNGL Documentation", style={fontSize=24, fontWeight="bold"})
                 text(value="Select a component from the sidebar.")
@@ -30,16 +22,20 @@ component main {
         }
     }
 
-    for comp = components {
-        window(title=comp.name + " — SNGL Docs", href="/" + comp.name) {
-            hbox {
-                Sidebar(currentName=comp.name)
-                vbox(style={padding=24, gap=12}) {
-                    text(value=comp.name, style={fontSize=24, fontWeight="bold"})
-                    text(value="[" + comp.tier + "]", style={color="#d29922"})
-                    text(value=comp.doc)
-                    text(value="Children: " + comp.children, style={color="#888"})
+    window detail(title="Component — SNGL Docs", href="/{name}") {
+        hbox {
+            vbox(style={width=260, padding=8, gap=2}) {
+                text(value="SNGL Docs", style={fontWeight="bold", fontSize=16, padding=8})
+                for comp = docs.Components() {
+                    link(text=comp.name, href="/" + comp.name,
+                         style={fontWeight=comp.name == name ? "bold" : "normal", padding=4})
                 }
+            }
+            vbox(style={padding=24, gap=12}) {
+                text(value=docs.Lookup(name).name, style={fontSize=24, fontWeight="bold"})
+                text(value="[" + docs.Lookup(name).tier + "]", style={color="#d29922"})
+                text(value=docs.Lookup(name).doc)
+                text(value="Children: " + docs.Lookup(name).children, style={color="#888"})
             }
         }
     }

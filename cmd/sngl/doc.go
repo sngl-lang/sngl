@@ -429,9 +429,14 @@ func renderEnumDoc(e *ast.EnumDef, comments []ast.Comment) string {
 	return sb.String()
 }
 
-// serveDocHTTP starts an interactive doc browser as a web app.
+// serveDocHTTP starts the web documentation browser.
 func serveDocHTTP(addr, dir string) error {
 	fmt.Fprintf(os.Stderr, "SNGL docs → http://%s\n", addr)
+	return http.ListenAndServe(addr, docbrowser.Handler())
+}
+
+// serveDocHTTPFallback is the previous dynamic doc server (kept for package-specific docs).
+func serveDocHTTPFallback(addr, dir string) error {
 	return http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

@@ -96,7 +96,7 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return "ternary(" + cond + ", " + a + ", " + b + ")"
 	case *ast.SelectExpr:
 		operand := translateExpr(n.Operand, scope)
-		return operand + "." + n.Field
+		return operand + "." + ExportName(n.Field)
 	case *ast.IndexExpr:
 		operand := translateExpr(n.Operand, scope)
 		index := translateExpr(n.Index, scope)

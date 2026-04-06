@@ -19,7 +19,7 @@ type renderResult struct {
 // renderWindowHTML generates Go code (fmt.Fprint statements) that writes
 // the HTML body for a window. The returned result includes the Go source code
 // and any collected server-state form actions.
-func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, lang codegen.LangTranslator) renderResult {
+func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, lang codegen.LangTranslator, routeParams []string) renderResult {
 	// Build a custom scope: state fields become local vars (no "m." prefix),
 	// extern funcs stay as extern funcs (namespace-qualified).
 	scope := &codegen.ExprScope{
@@ -40,6 +40,10 @@ func renderWindowHTML(doc *ast.Document, win *ast.Window, info *analysisResult, 
 	}
 	for name := range info.FuncNames {
 		scope.FuncNames[name] = true
+	}
+	// Route parameters are local vars in the handler.
+	for _, param := range routeParams {
+		scope.LocalVars[param] = true
 	}
 	// Put extern func names from go:// imports in scope.
 	for ns, decls := range doc.NativeImports {

@@ -118,8 +118,9 @@ type HTTPRequest struct {
 // HTTPRoute maps a window to an HTTP route.
 type HTTPRoute struct {
 	Name      string       // handler function name (e.g., "handleHome")
-	Path      string       // URL path: "/", "/about"
-	Title     string       // page title
+	Path      string       // URL path: "/", "/about", "/{name}"
+	Title     string       // page title (may contain {param} placeholders)
+	Params    []string     // route parameter names extracted from Path (e.g., ["name"])
 	WindowIdx int          // index into doc.App.EffectiveWindows()
 	Actions   []HTTPAction // server-state form actions (POST handlers)
 }

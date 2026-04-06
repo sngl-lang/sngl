@@ -216,6 +216,18 @@ func ComponentsByTier() []Tier {
 	return tiers
 }
 
+// Lookup returns the component with the given name, or a zero Component if not found.
+//
+//sngl:pure
+func Lookup(name string) Component {
+	for _, c := range Components() {
+		if c.Name == name {
+			return c
+		}
+	}
+	return Component{Name: name, Doc: "Component not found."}
+}
+
 // buildPreviewSection generates the full tabbed preview HTML including
 // interactive iframe, bubbletea/fyne screenshot tabs.
 func buildPreviewSection(name, source string) string {
