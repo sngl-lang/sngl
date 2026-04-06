@@ -84,7 +84,7 @@ func TestDocSNGLBlocks(t *testing.T) {
 
 				// Type check
 				isMain := doc.App != nil
-				if err := checker.Check(doc, checkFS, "", checker.DefaultResolver(), sngl.DefaultSchemeResolver(), sngl.BuildAPIConfig(doc), isMain); err != nil {
+				if err := checker.Check(doc, checkFS, ".", checker.DefaultResolver(), sngl.DefaultSchemeResolver(), sngl.BuildAPIConfig(doc), isMain); err != nil {
 					t.Errorf("type error at %s line %d:\n%s\n---\n%v", file, block.line, src, err)
 					return
 				}

@@ -22,7 +22,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		err = Check(doc, os.DirFS("../../testdata"), "", DefaultResolver(), nil, nil, true)
+		err = Check(doc, os.DirFS("../../testdata"), "../../testdata", DefaultResolver(), nil, nil, true)
 		// When check error directives exist, also merge CheckTestFuncs
 		// diagnostics so ERROR(check) directives on test functions match.
 		if len(checkErrs) > 0 {
