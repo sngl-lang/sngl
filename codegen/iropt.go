@@ -1,75 +1,238 @@
 package codegen
 
+import (
+	"maps"
+	"strings"
+)
+
 // OptimizeMutation runs optimization passes on a MutationModel:
-//   - Remove updaters with empty dependency sets (static content that never changes)
-//   - Merge updaters that target the same node and have identical deps
-//   - Remove handlers whose mutated fields don't affect any updaters
-//   - Prune helpers that are no longer referenced
+//   - Remove updaters with empty dependency sets (static, never changes)
+//   - Deduplicate updaters by name (last registration wins)
+//   - Merge updaters that share the same target element and dependency set
+//   - Remove handlers whose mutations don't affect any updater or timer
+//   - Prune dead computed fields not referenced by any updater/handler/timer
+//   - Prune helpers not actually referenced in generated code
 func OptimizeMutation(m *MutationModel) {
-	// Remove updaters with no deps (they represent static content that was
-	// set once during initial render and never needs updating).
+	// Pass 1: Remove updaters with no deps (static content).
 	m.Updaters = filterUpdaters(m.Updaters, func(u Updater) bool {
 		return len(u.Deps) > 0
 	})
 
-	// Deduplicate updaters: if two updaters have the same name, keep only
-	// the last one (later registrations override earlier ones).
-	seen := make(map[string]int)
-	for i, u := range m.Updaters {
-		seen[u.Name] = i
-	}
-	if len(seen) < len(m.Updaters) {
-		m.Updaters = filterUpdaters(m.Updaters, func(u Updater) bool {
-			idx := seen[u.Name]
-			// Keep only if this is the last occurrence
-			for i := len(m.Updaters) - 1; i >= 0; i-- {
-				if m.Updaters[i].Name == u.Name {
-					return i == idx
-				}
-			}
-			return true
-		})
-	}
+	// Pass 2: Deduplicate updaters by name (last wins).
+	m.Updaters = deduplicateUpdaters(m.Updaters)
 
-	// Build the set of all fields that have at least one updater depending on them.
+	// Pass 3: Merge updaters that share the same target and deps.
+	m.Updaters = mergeUpdaters(m.Updaters)
+
+	// Pass 4: Collect fields referenced by updaters (the reactive targets).
 	activeFields := make(map[string]bool)
 	for _, u := range m.Updaters {
-		for dep := range u.Deps {
-			activeFields[dep] = true
-		}
+		maps.Copy(activeFields, u.Deps)
 	}
-
-	// Remove handlers that mutate fields which don't affect any updater
-	// or timer. Keep handlers that have side effects (empty mutated set
-	// means we can't determine effects, so keep them).
 	timerFields := make(map[string]bool)
 	for _, t := range m.Timers {
 		timerFields[t.ActiveVar] = true
 	}
+
+	// Pass 5: Prune dead computed fields (based on updater deps + timer vars).
+	usedForComputeds := make(map[string]bool)
+	maps.Copy(usedForComputeds, activeFields)
+	maps.Copy(usedForComputeds, timerFields)
+	m.Analysis.PruneUnusedComputeds(usedForComputeds)
+
+	// Pass 6: Remove handlers that mutate fields affecting nothing.
 	m.Handlers = filterHandlers(m.Handlers, func(h Handler) bool {
 		if len(h.Mutated) == 0 {
-			return true // can't determine effects, keep it
+			return true // can't determine effects, keep
 		}
-		for f := range h.Mutated {
+		expanded := m.DepTracker.ExpandMutated(h.Mutated)
+		for f := range expanded {
 			if activeFields[f] || timerFields[f] {
 				return true
 			}
 		}
 		return false
 	})
+
+	// Pass 7: Prune helpers not referenced in any generated code.
+	pruneHelpers(m)
 }
 
 // OptimizeRender runs optimization passes on a RenderModel:
-//   - Remove handlers with empty mutation sets (no-op handlers)
-//   - Flag expressions with no model field deps as invariant (platforms
-//     can hoist these out of the render loop)
+//   - Remove handlers with nil bodies (no-op)
+//   - Prune dead computed fields
+//   - Detect static fields (never mutated)
 func OptimizeRender(m *RenderModel) {
+	// Pass 1: Remove no-op handlers.
 	m.Handlers = filterHandlers(m.Handlers, func(h Handler) bool {
-		// Keep all handlers — in a render-loop model, even handlers that
-		// don't directly mutate fields might have side effects (toasts,
-		// extern calls). Only remove truly empty handlers.
 		return h.Body != nil
 	})
+
+	// Pass 2: Collect all referenced fields.
+	usedFields := make(map[string]bool)
+	for _, h := range m.Handlers {
+		maps.Copy(usedFields, h.Mutated)
+	}
+	for _, t := range m.Timers {
+		usedFields[t.ActiveVar] = true
+		maps.Copy(usedFields, t.Mutated)
+	}
+
+	// Pass 3: Prune dead computed fields.
+	m.Analysis.PruneUnusedComputeds(usedFields)
+}
+
+// StaticFields returns model fields that are never mutated by any handler
+// or timer. These are effectively constants after initialization.
+func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[string]bool) map[string]bool {
+	mutated := make(map[string]bool)
+	for _, h := range handlers {
+		maps.Copy(mutated, h.Mutated)
+	}
+	for _, t := range timers {
+		mutated[t.ActiveVar] = true
+		maps.Copy(mutated, t.Mutated)
+	}
+	static := make(map[string]bool)
+	for f := range modelFields {
+		if !mutated[f] {
+			static[f] = true
+		}
+	}
+	return static
+}
+
+// --- internal helpers ---
+
+func deduplicateUpdaters(us []Updater) []Updater {
+	last := make(map[string]int)
+	for i, u := range us {
+		last[u.Name] = i
+	}
+	if len(last) == len(us) {
+		return us
+	}
+	var out []Updater
+	for i, u := range us {
+		if last[u.Name] == i {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+// mergeUpdaters groups updaters by target element ID and dependency set,
+// merging those with identical deps into a single updater with concatenated
+// bodies. The target ID is extracted from the updater name prefix (e.g.,
+// "$u_0_text" → "0", "updateLabel3" → "3").
+func mergeUpdaters(us []Updater) []Updater {
+	type groupKey struct {
+		target string
+		deps   string // sorted dep names joined
+	}
+
+	targetOf := func(u Updater) string {
+		// HTML pattern: "$u_0_text" → "0"
+		name := u.Name
+		if strings.HasPrefix(name, "$u_") {
+			rest := name[3:]
+			if idx := strings.Index(rest, "_"); idx > 0 {
+				return rest[:idx]
+			}
+		}
+		// Fyne pattern: "updateLabel0" → "Label0"
+		for _, prefix := range []string{"update"} {
+			if strings.HasPrefix(name, prefix) {
+				return name[len(prefix):]
+			}
+		}
+		return name
+	}
+
+	depsKey := func(deps map[string]bool) string {
+		sorted := make([]string, 0, len(deps))
+		for k := range deps {
+			sorted = append(sorted, k)
+		}
+		// Simple sort for determinism
+		for i := range sorted {
+			for j := i + 1; j < len(sorted); j++ {
+				if sorted[i] > sorted[j] {
+					sorted[i], sorted[j] = sorted[j], sorted[i]
+				}
+			}
+		}
+		return strings.Join(sorted, ",")
+	}
+
+	// Group updaters by target + deps.
+	groups := make(map[groupKey][]int)
+	var order []groupKey
+	for i, u := range us {
+		key := groupKey{target: targetOf(u), deps: depsKey(u.Deps)}
+		if _, exists := groups[key]; !exists {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], i)
+	}
+
+	// Emit merged updaters. Groups of 1 pass through unchanged.
+	var out []Updater
+	for _, key := range order {
+		indices := groups[key]
+		if len(indices) == 1 {
+			out = append(out, us[indices[0]])
+			continue
+		}
+		// Merge: keep first updater's metadata, concatenate bodies.
+		first := us[indices[0]]
+		var bodies []string
+		for _, idx := range indices {
+			if us[idx].Body != "" {
+				bodies = append(bodies, us[idx].Body)
+			}
+		}
+		merged := Updater{
+			Name: first.Name,
+			Kind: "merged",
+			Node: first.Node,
+			Expr: first.Expr,
+			Body: strings.Join(bodies, "\n"),
+			Deps: first.Deps,
+		}
+		out = append(out, merged)
+	}
+	return out
+}
+
+// pruneHelpers removes entries from Analysis.Helpers that don't appear
+// in any updater body or handler body string.
+func pruneHelpers(m *MutationModel) {
+	if len(m.Analysis.Helpers) == 0 {
+		return
+	}
+
+	// Collect all generated code bodies.
+	var bodies []string
+	for _, u := range m.Updaters {
+		bodies = append(bodies, u.Body)
+	}
+
+	referenced := make(map[string]bool)
+	for name := range m.Analysis.Helpers {
+		for _, body := range bodies {
+			if strings.Contains(body, name) {
+				referenced[name] = true
+				break
+			}
+		}
+	}
+
+	for name := range m.Analysis.Helpers {
+		if !referenced[name] {
+			delete(m.Analysis.Helpers, name)
+		}
+	}
 }
 
 func filterUpdaters(us []Updater, keep func(Updater) bool) []Updater {

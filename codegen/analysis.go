@@ -125,6 +125,42 @@ func (a *CommonAnalysis) Scope() *ExprScope {
 	}
 }
 
+// PruneUnusedComputeds removes computed fields that are not referenced by
+// any of the given used field sets. A computed is "used" if it appears in
+// usedFields directly, or if another used computed transitively depends on it.
+// This mutates the CommonAnalysis in place.
+func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
+	// Build the set of transitively needed computeds.
+	needed := make(map[string]bool)
+	var mark func(string)
+	mark = func(name string) {
+		if needed[name] {
+			return
+		}
+		needed[name] = true
+		// If this computed depends on other computeds, mark them too.
+		for dep := range a.ComputedDeps[name] {
+			if a.ComputedFields[dep] {
+				mark(dep)
+			}
+		}
+	}
+	for name := range a.ComputedFields {
+		if usedFields[name] {
+			mark(name)
+		}
+	}
+
+	// Remove unused computeds.
+	for name := range a.ComputedFields {
+		if !needed[name] {
+			delete(a.ComputedFields, name)
+			delete(a.ComputedDeps, name)
+			delete(a.ModelFields, name)
+		}
+	}
+}
+
 // IntervalToMs converts a duration expression (e.g., 500ms, 1s, 2m) to
 // milliseconds. Returns 0 if the expression is not a recognized unit literal.
 func IntervalToMs(expr ast.Expr) int {
