@@ -20,16 +20,39 @@ type htmlSnapshotter interface {
 }
 
 func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	env, err := testrunner.BuildEnv(doc, "main")
+	view, err := g.renderView(doc, width, height)
 	if err != nil {
-		return nil, fmt.Errorf("build env: %w", err)
+		return nil, err
 	}
 
-	// Force true color for consistent rendering.
-	r := lipgloss.NewRenderer(io.Discard, termenv.WithProfile(termenv.TrueColor))
+	cols := width / 10
+	rows := height / 20
+	html := viewToHTML(view, cols, rows)
 
-	cols := width / 10  // approximate: 10px per character
-	rows := height / 20 // approximate: 20px per line
+	htmlPlat := codegen.LookupPlatform("html")
+	hs, ok := htmlPlat.(htmlSnapshotter)
+	if !ok {
+		return nil, fmt.Errorf("html platform does not implement SnapshotHTML")
+	}
+	return hs.SnapshotHTML(html, width, height)
+}
+
+// SnapshotText renders the TUI output as ANSI text.
+func (g *Generator) SnapshotText(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+	view, err := g.renderView(doc, width, height)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(view), nil
+}
+
+func (g *Generator) renderView(doc *ast.Document, width, height int) (string, error) {
+	env, err := testrunner.BuildEnv(doc, "main")
+	if err != nil {
+		return "", fmt.Errorf("build env: %w", err)
+	}
+
+	r := lipgloss.NewRenderer(io.Discard, termenv.WithProfile(termenv.TrueColor))
 
 	ctx := &snapContext{
 		env:         env,
@@ -50,15 +73,7 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 			view = lipgloss.JoinVertical(lipgloss.Left, parts...)
 		}
 	}
-
-	html := viewToHTML(view, cols, rows)
-
-	htmlPlat := codegen.LookupPlatform("html")
-	hs, ok := htmlPlat.(htmlSnapshotter)
-	if !ok {
-		return nil, fmt.Errorf("html platform does not implement SnapshotHTML")
-	}
-	return hs.SnapshotHTML(html, width, height)
+	return view, nil
 }
 
 type snapContext struct {

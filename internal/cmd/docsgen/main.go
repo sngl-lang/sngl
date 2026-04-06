@@ -75,8 +75,8 @@ func generateComponentSnapshots(outDir string) {
 				log.Printf("gallery: %s/%s → %s (pre-rendered)", name, platform, target)
 				continue
 			}
-			// Also check the .sngl-examples directory.
-			preRendered := filepath.Join(componentsDir, ".sngl-examples", name+"-"+platform+".png")
+			// Also check pre-rendered examples (from sngl snapshot examples --stdlib).
+			preRendered := filepath.Join("internal", "checker", "stdlib", ".sngl-examples", name+"-"+platform+".png")
 			if data, err := os.ReadFile(preRendered); err == nil {
 				os.WriteFile(target, data, 0o644)
 				log.Printf("gallery: %s/%s → %s (from .sngl-examples)", name, platform, target)

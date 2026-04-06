@@ -93,6 +93,18 @@ func Generate(cfg Config) ([]Result, error) {
 			Lang:     t.lang,
 			Path:     outPath,
 		})
+
+		// If the platform supports text snapshots, write a .txt alongside the PNG.
+		textBytes, textErr := textSnapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height)
+		if textErr == nil && len(textBytes) > 0 {
+			txtPath := filepath.Join(cfg.OutDir, prefix+"-"+t.platform+".txt")
+			os.WriteFile(txtPath, textBytes, 0o644)
+			results = append(results, Result{
+				Platform: t.platform,
+				Lang:     t.lang,
+				Path:     txtPath,
+			})
+		}
 	}
 
 	return results, nil
@@ -117,6 +129,24 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 
 	// Platforms without a Snapshotter: compile to HTML preview and screenshot.
 	return snapshotViaHTML(sourceFile, platform, lang, width, height)
+}
+
+// textSnapshotTarget returns ANSI text for platforms that support TextSnapshotter.
+func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+	plat := codegen.LookupPlatform(platform)
+	ts, ok := plat.(codegen.TextSnapshotter)
+	if !ok {
+		return nil, fmt.Errorf("platform %q does not support text snapshots", platform)
+	}
+	doc, err := ParseSNGL(sourceFile)
+	if err != nil {
+		return nil, err
+	}
+	langT := codegen.LookupLang(lang)
+	if langT == nil {
+		return nil, fmt.Errorf("lang %q not registered", lang)
+	}
+	return ts.SnapshotText(doc, langT, width, height)
 }
 
 // snapshotViaHTML compiles a preview HTML and uses the HTML platform to screenshot it.

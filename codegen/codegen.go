@@ -78,6 +78,13 @@ type Snapshotter interface {
 	Snapshot(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
 }
 
+// TextSnapshotter is optionally implemented by TUI platforms that can render
+// their output as ANSI text. This provides a .txt alternative to PNG
+// screenshots, useful for terminal-native documentation and diffing.
+type TextSnapshotter interface {
+	SnapshotText(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
+}
+
 // Runner is optionally implemented by PlatformGenerators that can execute
 // their generated output directly (e.g., "go run" for bubbletea, open
 // browser for HTML, adb install for Android).

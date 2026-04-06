@@ -132,8 +132,10 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 		return nil
 	}
 
-	// Use a well-known path relative to the project for stdlib examples.
-	outDir := filepath.Join("docs", "components", ".sngl-examples")
+	// Place alongside the stdlib source files that define the components.
+	// The stdlib is embedded from internal/checker/stdlib/ so snapshots
+	// go next to those definitions.
+	outDir := filepath.Join("internal", "checker", "stdlib", ".sngl-examples")
 
 	return renderExamples(examples, outDir, platforms, width, height, force)
 }

@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -50,6 +51,11 @@ func TestGenerate(t *testing.T) {
 			}
 			if info.Size() == 0 {
 				t.Fatal("output PNG is empty")
+			}
+
+			// Skip text snapshots — only validate PNGs.
+			if !strings.HasSuffix(r.Path, ".png") {
+				return
 			}
 
 			f, err := os.Open(r.Path)
