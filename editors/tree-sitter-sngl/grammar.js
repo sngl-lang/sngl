@@ -65,7 +65,11 @@ module.exports = grammar({
         $.test_declaration,
       ),
 
-    import_declaration: ($) => seq("import", $.string_literal),
+    import_declaration: ($) =>
+      choice(
+        seq("import", field("alias", $.identifier), "=>", $.string_literal),
+        seq("import", $.string_literal),
+      ),
 
     output_declaration: ($) =>
       seq("output", optional($.kv_list), $.output_group),
@@ -322,17 +326,17 @@ module.exports = grammar({
       ),
 
     var_modifiers: ($) =>
-      repeat1(
-        choice(
-          $.extern_modifier,
-          $.trigger_modifier,
-        ),
+      repeat1($.data_event),
+
+    data_event: ($) =>
+      seq(
+        "@",
+        field("kind", $.identifier),
+        optional(seq("(", field("param", $.identifier), ")")),
+        "{",
+        repeat(seq($._statement, $._terminator)),
+        "}",
       ),
-
-    extern_modifier: (_$) => "extern",
-
-    trigger_modifier: ($) =>
-      seq("@", optional($.identifier)),
 
     // ─── Timers ────────────────────────────────────────────────
 
@@ -521,7 +525,7 @@ module.exports = grammar({
       seq(
         "@",
         field("name", $.identifier),
-        "=",
+        optional(seq("(", field("param", $.identifier), ")")),
         "{",
         repeat(seq($._statement, $._terminator)),
         "}",
@@ -590,6 +594,8 @@ module.exports = grammar({
         $.integer_literal,
         $.float_literal,
         $.string_literal,
+        $.triple_string_literal,
+        $.raw_string_literal,
         $.element_ref,
         $.color_literal,
         $.unit_literal,
@@ -718,7 +724,7 @@ module.exports = grammar({
     struct_field_value: ($) =>
       seq(
         field("name", $.identifier),
-        ":",
+        "=",
         field("value", $._expression),
       ),
 
@@ -766,9 +772,10 @@ module.exports = grammar({
 
     identifier: (_$) => /[a-zA-Z_][a-zA-Z0-9_]*/,
 
-    integer_literal: (_$) => /[0-9]+/,
+    integer_literal: (_$) =>
+      /0[xX][0-9a-fA-F][0-9a-fA-F_]*|0[oO][0-7][0-7_]*|0[bB][01][01_]*|[0-9][0-9_]*/,
 
-    float_literal: (_$) => /[0-9]+\.[0-9]+/,
+    float_literal: (_$) => /[0-9][0-9_]*\.[0-9][0-9_]*/,
 
     string_literal: ($) =>
       seq(
@@ -789,11 +796,21 @@ module.exports = grammar({
         $._string_interpolation_end,
       ),
 
+    // Triple-quoted strings: """..."""
+    // We use a simple token here since the external scanner's STRING_CONTENT
+    // breaks on any " which conflicts with single quotes inside triple strings.
+    // Interpolation within triple strings is handled at the Go parser level.
+    // Triple-quoted strings use a regex that matches """ followed by content
+    // that doesn't contain """, then closing """.
+    triple_string_literal: (_$) => /"""("?"?[^"])*"""/,
+
+    raw_string_literal: (_$) => token(seq('`', /[^`]*/, '`')),
+
     element_ref: (_$) => token(seq("#", /[a-zA-Z_][a-zA-Z0-9_]*/)),
 
     color_literal: (_$) => /#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?/,
 
-    unit_literal: (_$) => /[0-9]+(\.[0-9]+)?[a-zA-Z]+/,
+    unit_literal: (_$) => /[0-9][0-9_]*(\.[0-9][0-9_]*)?[a-zA-Z]+/,
 
     true: (_$) => "true",
     false: (_$) => "false",

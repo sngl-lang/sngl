@@ -130,6 +130,10 @@
         "named": true
       },
       {
+        "type": "raw_string_literal",
+        "named": true
+      },
+      {
         "type": "string_literal",
         "named": true
       },
@@ -139,6 +143,10 @@
       },
       {
         "type": "ternary_expression",
+        "named": true
+      },
+      {
+        "type": "triple_string_literal",
         "named": true
       },
       {
@@ -634,6 +642,42 @@
     }
   },
   {
+    "type": "data_event",
+    "named": true,
+    "fields": {
+      "kind": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "param": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "else_block",
     "named": true,
     "fields": {},
@@ -730,6 +774,16 @@
       "name": {
         "multiple": false,
         "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "param": {
+        "multiple": false,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -1080,7 +1134,18 @@
   {
     "type": "import_declaration",
     "named": true,
-    "fields": {},
+    "fields": {
+      "alias": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": false,
       "required": true,
@@ -2023,21 +2088,6 @@
     }
   },
   {
-    "type": "trigger_modifier",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "identifier",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "type_identifier",
     "named": true,
     "fields": {},
@@ -2193,11 +2243,7 @@
       "required": true,
       "types": [
         {
-          "type": "extern_modifier",
-          "named": true
-        },
-        {
-          "type": "trigger_modifier",
+          "type": "data_event",
           "named": true
         }
       ]
@@ -2475,10 +2521,6 @@
     "named": true
   },
   {
-    "type": "extern_modifier",
-    "named": true
-  },
-  {
     "type": "false",
     "named": true
   },
@@ -2528,6 +2570,10 @@
     "named": false
   },
   {
+    "type": "raw_string_literal",
+    "named": true
+  },
+  {
     "type": "required",
     "named": false
   },
@@ -2554,6 +2600,10 @@
   {
     "type": "timer",
     "named": false
+  },
+  {
+    "type": "triple_string_literal",
+    "named": true
   },
   {
     "type": "true",
