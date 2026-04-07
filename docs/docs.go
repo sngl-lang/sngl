@@ -324,18 +324,25 @@ func buildPreviewSection(name, source string) string {
 		`<iframe srcdoc="` + escaped + `"></iframe>` +
 		`</div>` +
 		`<div class="preview" data-platform="bubbletea" hidden>` +
-		`<img src="/assets/gallery/` + name + `-bubbletea.png" alt="` + name + ` on Bubbletea" onerror="this.parentElement.remove()">` +
+		`<img src="/assets/gallery/` + name + `_bubbletea.png" alt="` + name + ` on Bubbletea" onerror="this.parentElement.remove()">` +
 		`</div>` +
 		`<div class="preview" data-platform="fyne" hidden>` +
-		`<img src="/assets/gallery/` + name + `-fyne.png" alt="` + name + ` on Fyne" onerror="this.parentElement.remove()">` +
+		`<img src="/assets/gallery/` + name + `_fyne.png" alt="` + name + ` on Fyne" onerror="this.parentElement.remove()">` +
 		`</div>` +
 		`</div>` +
 		`<script>function switchPlatform(p, btn) { document.querySelectorAll('.preview').forEach(el => el.hidden = el.dataset.platform !== p); document.querySelectorAll('.platform-tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }</script>`
 }
 
 // compilePreview compiles a .sngl example to HTML for iframe preview.
+// The source is a "component <name> { ... }" block; we re-parse it with
+// the component renamed to "main" so the parser creates an App.
 func compilePreview(source string) string {
-	doc, err := parser.Parse("example.sngl", strings.NewReader(source))
+	// Replace the first "component <name>" with "component main".
+	rewritten := source
+	if i := strings.Index(source, "{"); i > 0 {
+		rewritten = "component main " + source[i:]
+	}
+	doc, err := parser.Parse("example.sngl", strings.NewReader(rewritten))
 	if err != nil {
 		return ""
 	}

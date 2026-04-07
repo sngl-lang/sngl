@@ -30,6 +30,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Copy pre-generated stdlib example snapshots to gallery.
+	copySnapshots(*outDir)
+
 	// Build playground (WASM + static assets).
 	if err := buildPlayground(*outDir); err != nil {
 		log.Printf("playground: %v", err)
@@ -41,6 +44,28 @@ func main() {
 		fmt.Printf("Serving on http://localhost%s\n", *httpAddr)
 		log.Fatal(http.ListenAndServe(*httpAddr, http.FileServer(http.Dir(*outDir))))
 	}
+}
+
+func copySnapshots(outDir string) {
+	srcDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		log.Printf("gallery: no snapshots in %s (run: go generate ./internal/checker/...)", srcDir)
+		return
+	}
+	galleryDir := filepath.Join(outDir, "assets", "gallery")
+	os.MkdirAll(galleryDir, 0o755)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".png") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(srcDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		os.WriteFile(filepath.Join(galleryDir, e.Name()), data, 0o644)
+	}
+	log.Printf("gallery: copied %d snapshots", len(entries))
 }
 
 func compileSNGL(filename, outDir string) error {
