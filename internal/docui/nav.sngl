@@ -3,13 +3,28 @@ component NavItem(href = "", text = "", active = false) {
         fontWeight=active ? "bold" : "normal",
         padding="4px 8px"
     })
+
+    platform html {
+        html.li {
+            html.a(href=href, class=active ? "active" : "", innerText=text)
+        }
+    }
 }
 
-component NavGroup(title = "") list<component> {
+component NavGroup(title = "", href = "") list<component> {
     vbox(style={gap=2, paddingTop=8}) {
         text(value=title, style={fontWeight="bold", fontSize=14, padding="4px 8px", color="#666"})
         vbox(style={gap=1, paddingLeft=8}) {
             slot
+        }
+    }
+
+    platform html {
+        html.li {
+            html.a(href=href, innerText=title)
+            html.ul {
+                slot
+            }
         }
     }
 }

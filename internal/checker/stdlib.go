@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
-//go:embed stdlib/*.sngl
+//go:embed stdlib/*.sngl stdlib/examples/*.sngl
 var stdlibFS embed.FS
 
 // StdlibFS returns the embedded stdlib filesystem for external consumers
@@ -35,6 +35,9 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 	}
 
 	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
 		name := entry.Name()
 		f, err := stdlibFS.Open("stdlib/" + name)
 		if err != nil {
@@ -125,5 +128,16 @@ func docForPos(comments []ast.Comment, line int) string {
 			break
 		}
 	}
-	return strings.Join(docLines, " ")
+	// Strip "Example:" sections and trailing blank lines.
+	var out []string
+	for _, l := range docLines {
+		if l == "Example:" {
+			break
+		}
+		out = append(out, l)
+	}
+	for len(out) > 0 && out[len(out)-1] == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.Join(out, " ")
 }

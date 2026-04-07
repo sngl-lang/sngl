@@ -1,11 +1,9 @@
 package checker
 
 import (
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // DocBlock extracts the full doc comment for a declaration at the given line,
@@ -241,9 +239,11 @@ func ComponentExamples(doc *ast.Document) map[string]string {
 	return examples
 }
 
-// StdlibExamples parses the embedded stdlib and extracts component examples.
+// StdlibExamples reads example .sngl files from stdlib/examples/.
+// Each file is named after the component (e.g., button.sngl) and contains
+// a component main with a working example that the checker can validate.
 func StdlibExamples() (map[string]string, error) {
-	entries, err := stdlibFS.ReadDir("stdlib")
+	entries, err := stdlibFS.ReadDir("stdlib/examples")
 	if err != nil {
 		return nil, err
 	}
@@ -253,15 +253,12 @@ func StdlibExamples() (map[string]string, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sngl") {
 			continue
 		}
-		data, err := stdlibFS.ReadFile("stdlib/" + entry.Name())
+		data, err := stdlibFS.ReadFile("stdlib/examples/" + entry.Name())
 		if err != nil {
 			continue
 		}
-		doc, err := parser.Parse(entry.Name(), strings.NewReader(string(data)))
-		if err != nil {
-			continue
-		}
-		maps.Copy(examples, ComponentExamples(doc))
+		name := strings.TrimSuffix(entry.Name(), ".sngl")
+		examples[name] = strings.TrimSpace(string(data))
 	}
 
 	return examples, nil

@@ -1,0 +1,7 @@
+component main {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+        text(value="Regular text")
+        text(value="Colored text", style={color=#0066CC})
+    }
+}

@@ -6,13 +6,14 @@ component Sidebar(homeHref = "/", logo = "") list<component> {
     }
 
     platform html {
-        html.div(style={width=260, padding=8, display="flex", flexDirection="column", gap="4px"}) {
-            html.a(href=homeHref, style={fontWeight="bold", fontSize=16, padding=8, display="flex", alignItems="center", gap="8px", textDecoration="none"}) {
-                html.img(src=logo, alt="SNGL", style={height=24})
+        html.nav {
+            html.a(href=homeHref, class="nav-brand") {
+                html.img(src=logo, alt="SNGL")
                 html.span(innerText="SNGL")
             }
-            html.hr
-            slot
+            html.ul {
+                slot
+            }
         }
     }
 }
