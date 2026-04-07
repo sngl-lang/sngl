@@ -315,9 +315,9 @@ func renderComponentDetail(comp *docs.Component, width int) []string {
 		}
 	}
 
-	if comp.Example != "" {
+	if len(comp.Examples) > 0 {
 		s = append(s, "", labelStyle.Render("Example"))
-		for line := range strings.SplitSeq(comp.Example, "\n") {
+		for line := range strings.SplitSeq(comp.Examples[0], "\n") {
 			s = append(s, "  "+docStyle.Render(line))
 		}
 	}

@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
-//go:embed stdlib/*.sngl stdlib/examples/*.sngl
+//go:embed stdlib/*.sngl
 var stdlibFS embed.FS
 
 // StdlibFS returns the embedded stdlib filesystem for external consumers
@@ -52,6 +52,9 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, []*ast.UnitDef, [
 		}
 
 		for _, comp := range doc.Components {
+			if strings.HasPrefix(comp.Name, "example_") {
+				continue
+			}
 			registry[comp.Name] = componentToSchema(comp, doc.Comments)
 			components = append(components, comp)
 		}

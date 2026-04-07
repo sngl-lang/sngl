@@ -127,17 +127,21 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 	if err != nil {
 		return fmt.Errorf("extracting stdlib examples: %w", err)
 	}
-	if len(examples) == 0 {
-		fmt.Println("No examples found in stdlib doc comments.")
+	// Flatten to first example per component for snapshots.
+	flat := make(map[string]string, len(examples))
+	for name, srcs := range examples {
+		if len(srcs) > 0 {
+			flat[name] = srcs[0]
+		}
+	}
+	if len(flat) == 0 {
+		fmt.Println("No examples found in stdlib.")
 		return nil
 	}
 
-	// Place alongside the stdlib source files that define the components.
-	// The stdlib is embedded from internal/checker/stdlib/ so snapshots
-	// go next to those definitions.
 	outDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
 
-	return renderExamples(examples, outDir, platforms, width, height, force)
+	return renderExamples(flat, outDir, platforms, width, height, force)
 }
 
 func renderExamples(examples map[string]string, outDir string, platforms []string, width, height int, force bool) error {

@@ -523,8 +523,8 @@ func componentDetailHTML(c docs.Component) string {
 		}
 		b.WriteString("</table>")
 	}
-	if c.Example != "" {
-		fmt.Fprintf(&b, "<h3>Example</h3><pre>%s</pre>", c.Example)
+	if len(c.Examples) > 0 {
+		fmt.Fprintf(&b, "<h3>Example</h3><pre>%s</pre>", c.Examples[0])
 	}
 	return b.String()
 }
@@ -843,9 +843,9 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 
 	// Show example source if available
 	examples, _ := checker.StdlibExamples()
-	if src, ok := examples[name]; ok {
+	if srcs, ok := examples[name]; ok && len(srcs) > 0 {
 		sb.WriteString("## Example\n\n```sngl\n")
-		sb.WriteString(src)
+		sb.WriteString(srcs[0])
 		sb.WriteString("\n```\n\n")
 	}
 

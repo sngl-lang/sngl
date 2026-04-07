@@ -120,9 +120,9 @@ type Component struct {
 	Children        string // "none", "one", "many"
 	Props           []ComponentProp
 	Events          []ComponentEvent
-	Example         string // raw .sngl source (empty if no example)
-	HighlightedCode string // syntax-highlighted HTML of the example
-	PreviewHTML     string // compiled HTML for interactive iframe preview
+	Examples        []string // raw .sngl source for each example
+	HighlightedCode string   // syntax-highlighted HTML of the first example
+	PreviewHTML     string   // compiled HTML for interactive iframe preview
 }
 
 // ComponentProp describes a component property.
@@ -179,10 +179,12 @@ func StdlibComponents() []Component {
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
 
-		if src, ok := stdlibExamples[name]; ok {
-			c.Example = src
-			c.HighlightedCode = docsite.HighlightSNGL(src)
-			c.PreviewHTML = buildPreviewSection(name, src)
+		if srcs, ok := stdlibExamples[name]; ok {
+			c.Examples = srcs
+			if len(srcs) > 0 {
+				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
+				c.PreviewHTML = buildPreviewSection(name, srcs[0])
+			}
 		}
 
 		comps = append(comps, c)

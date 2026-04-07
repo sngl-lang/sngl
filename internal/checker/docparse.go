@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // DocBlock extracts the full doc comment for a declaration at the given line,
@@ -239,26 +240,49 @@ func ComponentExamples(doc *ast.Document) map[string]string {
 	return examples
 }
 
-// StdlibExamples reads example .sngl files from stdlib/examples/.
-// Each file is named after the component (e.g., button.sngl) and contains
-// a component main with a working example that the checker can validate.
-func StdlibExamples() (map[string]string, error) {
-	entries, err := stdlibFS.ReadDir("stdlib/examples")
+// StdlibExamples finds example_ prefixed components in the stdlib and returns
+// their formatted source keyed by the target component name. Components named
+// example_<name> or example_<name>_<suffix> map to component <name>. Multiple
+// examples per component are supported.
+func StdlibExamples() (map[string][]string, error) {
+	entries, err := stdlibFS.ReadDir("stdlib")
 	if err != nil {
 		return nil, err
 	}
 
-	examples := make(map[string]string)
+	examples := map[string][]string{}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sngl") {
 			continue
 		}
-		data, err := stdlibFS.ReadFile("stdlib/examples/" + entry.Name())
+		data, err := stdlibFS.ReadFile("stdlib/" + entry.Name())
 		if err != nil {
 			continue
 		}
-		name := strings.TrimSuffix(entry.Name(), ".sngl")
-		examples[name] = strings.TrimSpace(string(data))
+		doc, err := parser.Parse(entry.Name(), strings.NewReader(string(data)))
+		if err != nil {
+			continue
+		}
+		for _, comp := range doc.Components {
+			target, ok := strings.CutPrefix(comp.Name, "example_")
+			if !ok {
+				continue
+			}
+			// Strip optional suffix: example_button_click → button
+			if i := strings.Index(target, "_"); i >= 0 {
+				target = target[:i]
+			}
+			// Format the example component as standalone source.
+			// Rename to strip the example_ prefix for display.
+			display := *comp
+			display.Name = target
+			exDoc := &ast.Document{
+				Components: []*ast.Component{&display},
+				Decls:      []ast.Decl{&display},
+			}
+			src := strings.TrimSpace(parser.Format(exDoc))
+			examples[target] = append(examples[target], src)
+		}
 	}
 
 	return examples, nil

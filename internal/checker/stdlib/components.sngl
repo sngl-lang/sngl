@@ -352,3 +352,25 @@ component card(
     clickable bool,
     @click ClickEvent,
 ) list<component> {}
+
+// --- Examples ---
+
+component example_text {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+        text(value="Regular text")
+        text(value="Colored text", style={color=#0066CC})
+    }
+}
+
+component example_button {
+    var count = 0
+    vbox(style={gap=8, padding=16}) {
+        hbox(style={gap=8}) {
+            button(text="Click me", @click={ count += 1 })
+            button(text="Reset", @click={ count = 0 })
+            button(text="Disabled", disabled=true)
+        }
+        text(value="Clicked " + string(count) + " times")
+    }
+}

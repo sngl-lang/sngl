@@ -128,7 +128,7 @@ component main {
 			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
 				docui.Detail(name=comp.name)
 
-				docui.CodeBlock(code=comp.example, language="sngl")
+				docui.Markdown(src=comp.highlightedCode)
 
 				text(value="Properties", style={fontSize=20, fontWeight="bold"})
 				docui.Table {

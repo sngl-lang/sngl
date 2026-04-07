@@ -1,4 +1,4 @@
-// Command docsgen builds the documentation site with platform snapshots.
+// Command docsgen builds the documentation site.
 //
 // Usage: go tool docsgen [-out _site] [-http :3580]
 package main
@@ -6,15 +6,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
@@ -28,16 +25,10 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("docsgen: ")
 
-	// Generate snapshots for all examples.
-	generateSnapshots(*outDir)
-
 	// Compile website.sngl → output files.
 	if err := compileSNGL("website.sngl", *outDir); err != nil {
 		log.Fatal(err)
 	}
-
-	// Generate component screenshots for gallery.
-	generateComponentSnapshots(*outDir)
 
 	// Build playground (WASM + static assets).
 	if err := buildPlayground(*outDir); err != nil {
@@ -52,42 +43,11 @@ func main() {
 	}
 }
 
-func generateComponentSnapshots(outDir string) {
-	componentsDir := filepath.Join("docs", "components")
-	entries, err := os.ReadDir(componentsDir)
-	if err != nil {
-		return
-	}
-	galleryDir := filepath.Join(outDir, "assets", "gallery")
-	os.MkdirAll(galleryDir, 0o755)
-
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-			continue
-		}
-		name := strings.TrimSuffix(e.Name(), ".sngl")
-		sourceFile := filepath.Join(componentsDir, e.Name())
-
-		for _, platform := range []string{"bubbletea", "fyne"} {
-			results, err := snapshot.Generate(snapshot.Config{
-				SourceFile: sourceFile,
-				Platforms:  []string{platform},
-				OutDir:     galleryDir,
-				Width:      800,
-				Height:     400,
-			})
-			if err != nil {
-				continue
-			}
-			for _, r := range results {
-				target := filepath.Join(galleryDir, name+"-"+platform+".png")
-				if r.Path != target {
-					os.Rename(r.Path, target)
-				}
-				log.Printf("gallery: %s/%s → %s", name, platform, target)
-			}
-		}
-	}
+func compileSNGL(filename, outDir string) error {
+	cmd := exec.Command("go", "tool", "sngl", "compile", "--out", outDir, filename)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func buildPlayground(outDir string) error {
@@ -159,7 +119,6 @@ func buildPlayground(outDir string) error {
 			}
 			name := entry.Name()
 			label := strings.ReplaceAll(name, "-", " ")
-			// Simple title case
 			words := strings.Fields(label)
 			for i, w := range words {
 				if len(w) > 0 {
@@ -179,74 +138,18 @@ func buildPlayground(outDir string) error {
 			optionTags += fmt.Sprintf("<option value=%q>%s</option>", ex.name, ex.label)
 			scriptTags += fmt.Sprintf("<script type=\"text/sngl\" id=%q>%s</script>\n", ex.name+"-source", ex.source)
 		}
-		// Set the first example as default.
 		scriptTags = strings.Replace(scriptTags, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
 
 		html := string(htmlData)
-		// Replace the static dropdown option with example options.
 		html = strings.Replace(html, `<option value="default">Hello</option>`, optionTags, 1)
 		htmlData = []byte(html)
 		log.Printf("playground: %d examples injected", len(examples))
 	} else {
-		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">app {\n    vbox style.padding=16 {\n        text value=\"Hello, SNGL!\"\n    }\n}</script>"
+		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">component main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
 	}
 
-	// Inject script tags into the playground-sources placeholder.
 	html := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
 	os.WriteFile(pgHTML, []byte(html), 0o644)
 	log.Printf("playground: ready")
 	return nil
-}
-
-func compileSNGL(filename, outDir string) error {
-	cmd := exec.Command("go", "tool", "sngl", "compile", "--out", outDir, filename)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func generateSnapshots(outDir string) {
-	examplesDir := "examples"
-	entries, err := os.ReadDir(examplesDir)
-	if err != nil {
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		exampleDir := filepath.Join(examplesDir, entry.Name())
-		var snglFiles []string
-		filepath.WalkDir(exampleDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return err
-			}
-			if strings.HasSuffix(path, ".sngl") {
-				snglFiles = append(snglFiles, path)
-			}
-			return nil
-		})
-
-		for _, sf := range snglFiles {
-			snapDir := filepath.Join(outDir, "assets", "snapshots", entry.Name())
-			platforms := snapshot.PlatformsForFile(sf)
-			var results []snapshot.Result
-			for _, plat := range platforms {
-				r, err := snapshot.Generate(snapshot.Config{
-					SourceFile: sf,
-					Platforms:  []string{plat},
-					OutDir:     snapDir,
-				})
-				if err != nil {
-					log.Printf("skipping %s/%s: %v", entry.Name(), plat, err)
-					continue
-				}
-				results = append(results, r...)
-			}
-			for _, r := range results {
-				log.Printf("  %s/%s → %s", entry.Name(), r.Platform, r.Path)
-			}
-		}
-	}
 }
