@@ -183,7 +183,7 @@ func StdlibComponents() []Component {
 			c.Examples = srcs
 			if len(srcs) > 0 {
 				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
-				c.PreviewHTML = buildPreviewSection(name, srcs[0])
+				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name))
 			}
 		}
 
@@ -300,9 +300,34 @@ func parseDir(dir string) (*ast.Document, error) {
 	return doc, nil
 }
 
+// platformOrder defines the display order for platform tabs.
+var platformOrder = []string{"html", "android", "bubbletea", "fyne"}
+
+// platformDisplayName returns a human-readable label for a platform.
+var platformDisplayName = map[string]string{
+	"html":      "HTML (Interactive)",
+	"android":   "Android",
+	"bubbletea": "Bubbletea",
+	"fyne":      "Fyne",
+}
+
+// detectPlatforms scans the stdlib snapshots directory and returns the
+// platforms that have a .png snapshot for the given component name,
+// sorted by platformOrder.
+func detectPlatforms(name string) []string {
+	dir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	var platforms []string
+	for _, p := range platformOrder {
+		if _, err := os.Stat(filepath.Join(dir, name+"_"+p+".png")); err == nil {
+			platforms = append(platforms, p)
+		}
+	}
+	return platforms
+}
+
 // buildPreviewSection generates the full tabbed preview HTML including
-// interactive iframe, bubbletea/fyne screenshot tabs.
-func buildPreviewSection(name, source string) string {
+// interactive iframe and per-platform screenshot tabs.
+func buildPreviewSection(name, source string, platforms []string) string {
 	iframeHTML := compilePreview(source)
 	if iframeHTML == "" {
 		return ""
@@ -314,23 +339,39 @@ func buildPreviewSection(name, source string) string {
 	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
 	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
 
-	return `<div class="platform-tabs">` +
-		`<button class="active" onclick="switchPlatform('html', this)">HTML (Interactive)</button>` +
-		`<button onclick="switchPlatform('bubbletea', this)">Bubbletea</button>` +
-		`<button onclick="switchPlatform('fyne', this)">Fyne</button>` +
-		`</div>` +
-		`<div class="preview-frame">` +
-		`<div class="preview" data-platform="html">` +
-		`<iframe srcdoc="` + escaped + `"></iframe>` +
-		`</div>` +
-		`<div class="preview" data-platform="bubbletea" hidden>` +
-		`<img src="/assets/gallery/` + name + `_bubbletea.png" alt="` + name + ` on Bubbletea" onerror="this.parentElement.remove()">` +
-		`</div>` +
-		`<div class="preview" data-platform="fyne" hidden>` +
-		`<img src="/assets/gallery/` + name + `_fyne.png" alt="` + name + ` on Fyne" onerror="this.parentElement.remove()">` +
-		`</div>` +
-		`</div>` +
-		`<script>function switchPlatform(p, btn) { document.querySelectorAll('.preview').forEach(el => el.hidden = el.dataset.platform !== p); document.querySelectorAll('.platform-tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }</script>`
+	var b strings.Builder
+	b.WriteString(`<div class="platform-tabs">`)
+	for i, p := range platforms {
+		label := platformDisplayName[p]
+		if label == "" {
+			label = strings.ToUpper(p[:1]) + p[1:]
+		}
+		if i == 0 {
+			b.WriteString(`<button class="active" onclick="switchPlatform('` + p + `', this)">` + label + `</button>`)
+		} else {
+			b.WriteString(`<button onclick="switchPlatform('` + p + `', this)">` + label + `</button>`)
+		}
+	}
+	b.WriteString(`</div><div class="preview-frame">`)
+
+	for i, p := range platforms {
+		hidden := ""
+		if i > 0 {
+			hidden = " hidden"
+		}
+		if p == "html" {
+			b.WriteString(`<div class="preview" data-platform="html"` + hidden + `>`)
+			b.WriteString(`<iframe srcdoc="` + escaped + `"></iframe>`)
+			b.WriteString(`</div>`)
+		} else {
+			b.WriteString(`<div class="preview" data-platform="` + p + `"` + hidden + `>`)
+			b.WriteString(`<img src="/assets/gallery/` + name + `_` + p + `.png" alt="` + name + ` on ` + platformDisplayName[p] + `">`)
+			b.WriteString(`</div>`)
+		}
+	}
+	b.WriteString(`</div>`)
+	b.WriteString(`<script>function switchPlatform(p, btn) { document.querySelectorAll('.preview').forEach(el => el.hidden = el.dataset.platform !== p); document.querySelectorAll('.platform-tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }</script>`)
+	return b.String()
 }
 
 // compilePreview compiles a .sngl example to HTML for iframe preview.
