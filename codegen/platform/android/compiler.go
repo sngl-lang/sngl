@@ -144,6 +144,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("import androidx.compose.ui.text.style.TextAlign\n")
 	b.WriteString("import androidx.compose.ui.unit.dp\n")
 	b.WriteString("import androidx.compose.ui.unit.sp\n")
+	b.WriteString("import androidx.compose.ui.window.Dialog\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("import kotlinx.coroutines.delay\n")
 	}

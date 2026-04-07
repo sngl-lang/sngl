@@ -11,7 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/examples/todo/ui"
 )
 
-//go:generate go tool sngl compile todo.sngl
+//go:generate go tool sngl compile --lang go --platform bubbletea --out ui todo.sngl
 
 func main() {
 	m := ui.New()

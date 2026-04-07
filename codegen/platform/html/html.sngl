@@ -48,7 +48,7 @@ component sngl.text() {
 }
 
 component sngl.button() {
-    button(disabled=disabled, @click { emit click }) {
+    button(disabled=disabled, @click { @click() }) {
         span(textContent=text) {}
         slot
     }
@@ -59,12 +59,12 @@ component sngl.image() {
 }
 
 component sngl.input() {
-    input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { emit input }, @change { emit change }) {}
+    input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
 }
 
 component sngl.checkbox() {
     label(style={display="inline-flex", alignItems="center", gap=4}) {
-        input(type="checkbox", checked=checked, disabled=disabled, @change { emit change }) {}
+        input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
         span(textContent=label) {}
     }
 }
@@ -79,19 +79,19 @@ component sngl.radio() {
 
 component sngl.toggle() {
     label(style={display="inline-flex", alignItems="center", gap=8}) {
-        input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { emit change }) {}
+        input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
         span(textContent=label) {}
     }
 }
 
 component sngl.select() {
-    select(disabled=disabled, @change { emit change }) {
+    select(disabled=disabled, @change { @change() }) {
         slot
     }
 }
 
 component sngl.textarea() {
-    textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { emit input }, @change { emit change }) {
+    textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
         slot
     }
 }
@@ -124,7 +124,7 @@ component sngl.tabs() {
 }
 
 component sngl.link() {
-    a(href=href, @click { emit click }) {
+    a(href=href, @click { @click() }) {
         span(textContent=text) {}
     }
 }
@@ -208,7 +208,7 @@ component sngl.toolbar() {
 // --- Tier 5: Mobile & Specialized ---
 
 component sngl.datepicker() {
-    input(type="date", value=value, disabled=disabled, @change { emit change }) {}
+    input(type="date", value=value, disabled=disabled, @change { @change() }) {}
 }
 
 component sngl.chip() {

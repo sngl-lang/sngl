@@ -374,6 +374,34 @@ func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
 	return blocks
 }
 
+// TestPlatformSourcesPassChecker verifies that each platform's PkgSource .sngl
+// file passes the type checker (no bare expression statements, etc.).
+func TestPlatformSourcesPassChecker(t *testing.T) {
+	tests := []struct {
+		lang, platform string
+	}{
+		{"js", "html"},
+		{"go", "bubbletea"},
+		{"go", "fyne"},
+		{"kotlin", "android"},
+		{"go", "http"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.platform, func(t *testing.T) {
+			src := fmt.Sprintf("output {\n    %s {\n        %s\n    }\n}\n\ncomponent main {\n    text(value=\"hi\")\n}\n", tt.lang, tt.platform)
+			doc, err := parser.Parse("test.sngl", strings.NewReader(src))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			apiCfg := sngl.BuildAPIConfig(doc)
+			err = checker.Check(doc, os.DirFS("."), ".", checker.DefaultResolver(), sngl.DefaultSchemeResolver(), nil, apiCfg, true)
+			if err != nil {
+				t.Errorf("checker error: %v", err)
+			}
+		})
+	}
+}
+
 // findAnnotation looks backward from fenceLine to find a <!-- SNGL-... --> comment.
 // It returns the annotation type and any prelude source from a multi-line comment.
 func findAnnotation(lines []string, fenceLine int) (annotation, prelude string) {

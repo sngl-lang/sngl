@@ -73,7 +73,9 @@ component sngl.button() {
 }
 
 component sngl.image() {
-    AsyncImage(model=src, contentDescription=alt) {}
+    Box {
+        Text(text=alt) {}
+    }
 }
 
 component sngl.input() {
@@ -111,7 +113,7 @@ component sngl.select() {
 }
 
 component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange { emit input }) {}
+    OutlinedTextField(value=value, minLines=3, @onValueChange { @input() }) {}
 }
 
 component sngl.datepicker() {
@@ -149,7 +151,7 @@ component sngl.chip() {
 }
 
 component sngl.link() {
-    TextButton(@onClick { emit click }) {
+    TextButton(@onClick { @click() }) {
         Text(text=text) {}
     }
 }
@@ -162,13 +164,14 @@ component sngl.tabs() {
 
 component sngl.modal() {
     if open {
-        AlertDialog(
-            title=Composable{name="Text", props=[{key="text", value=title}]},
-            onDismissRequest=func(){},
-            confirmButton=func(){}
-        ) {
-            Column {
-                slot
+        Dialog(onDismissRequest=func(){}) {
+            Card {
+                Column {
+                    if title != "" {
+                        Text(text=title) {}
+                    }
+                    slot
+                }
             }
         }
     }
@@ -187,7 +190,7 @@ component sngl.tooltip() {
 }
 
 component sngl.popover() {
-    DropdownMenu(expanded=open) {
+    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
         slot
     }
 }
@@ -217,7 +220,7 @@ component sngl.tree() {
 }
 
 component sngl.menu() {
-    DropdownMenu(expanded=open) {
+    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
         slot
     }
 }

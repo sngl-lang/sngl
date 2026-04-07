@@ -136,7 +136,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if len(windows) <= 1 {
 		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
 		gen.wasmLoader = wasmLoaderHTML
-		src := gen.generate()
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 		files = append(files, codegen.BytesFile("index.html", []byte(src)))
 		return &codegen.Response{Files: files}, nil
 	}
@@ -175,7 +175,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		gen.stylesheet = stylesheetURL
 		gen.favicon = staticPropString(win.Props, "favicon")
 		gen.wasmLoader = wasmLoaderHTML
-		src := gen.generate()
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 		files = append(files, codegen.BytesFile(name, []byte(src)))
 	}
 	return &codegen.Response{Files: files}, nil

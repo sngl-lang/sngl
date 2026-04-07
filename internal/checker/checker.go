@@ -81,20 +81,20 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 	}
 
 	c := &checker{
-		registry:      registry,
-		styleProps:    styleProps,
-		unitTables:    unitTables,
-		scope:         NewScope(nil),
-		methods:       map[string]map[string]*methodInfo{},
-		fsys:          fsys,
-		schemeDir:     schemeDir,
+		registry:        registry,
+		styleProps:      styleProps,
+		unitTables:      unitTables,
+		scope:           NewScope(nil),
+		methods:         map[string]map[string]*methodInfo{},
+		fsys:            fsys,
+		schemeDir:       schemeDir,
 		resolve:         resolve,
 		schemeResolve:   schemeResolve,
 		fsSchemeResolve: fsSchemeResolve,
-		visited:       map[string]bool{},
-		isMain:        isMain,
-		namespaces:    map[string]*importNS{},
-		apis:          apis,
+		visited:         map[string]bool{},
+		isMain:          isMain,
+		namespaces:      map[string]*importNS{},
+		apis:            apis,
 	}
 
 	// Inject stdlib functions into the document (prepend so user funcs can override)
@@ -156,6 +156,9 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 			}
 		}
 	}
+
+	// Validate event handler bodies in platform override visual nodes.
+	c.validatePlatformBodies(doc)
 
 	// Collect target platforms for availability checks
 	for _, out := range doc.Outputs {
@@ -1760,5 +1763,28 @@ func isStatement(n ast.Node) bool {
 		return len(e.Stmts) > 0
 	default:
 		return false
+	}
+}
+
+// validatePlatformBodies checks that event handler bodies in platform override
+// visual nodes are valid statements (not bare expressions).
+func (c *checker) validatePlatformBodies(doc *ast.Document) {
+	for _, comp := range doc.AbstractComponents {
+		for platform, body := range comp.PlatformBodies {
+			for _, vn := range body {
+				c.validatePlatformVN(vn, comp.Name, platform)
+			}
+		}
+	}
+}
+
+func (c *checker) validatePlatformVN(vn *ast.VisualNode, compName, platform string) {
+	for name, eh := range vn.Events {
+		if eh.Body.SNGL != nil && !isStatement(eh.Body.SNGL) {
+			c.errorAt(vn.Pos, "%s [%s] @%s: handler must be a statement (assignment, toggle, or emit)", compName, platform, name)
+		}
+	}
+	for _, child := range vn.Children {
+		c.validatePlatformVN(child, compName, platform)
 	}
 }

@@ -60,6 +60,7 @@ component sngl.button() {
     Button(
         widgetType="*widget.Button",
         widgetNew="widget.NewButton",
+        widgetExtraArgs="nil",
         widgetArg="text",
         widgetUpdate=".SetText",
         text=text

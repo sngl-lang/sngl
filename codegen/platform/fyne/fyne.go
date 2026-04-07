@@ -47,6 +47,10 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
 
+	if h := codegen.Header("fyne", req.Source, "// ", ""); h != "" {
+		src = append([]byte(h), src...)
+	}
+
 	return &codegen.Response{
 		Files: []*codegen.OutputFile{
 			codegen.BytesFile("model.go", src),

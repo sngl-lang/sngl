@@ -22,8 +22,15 @@ func (g *Generator) generateGo(req *codegen.Request) (*codegen.Response, error) 
 		return &codegen.Response{Error: err.Error()}, nil
 	}
 
+	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
+		src = append([]byte(h), src...)
+	}
+
 	// Generate the Go module
 	goSrc := emitGoLib(req.Doc, req.Lang)
+	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
+		goSrc = append([]byte(h), goSrc...)
+	}
 
 	resp := &codegen.Response{}
 

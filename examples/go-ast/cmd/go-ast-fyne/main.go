@@ -10,7 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/examples/go-ast/cmd/go-ast-fyne/ui"
 )
 
-//go:generate go tool sngl compile --lang go --platform fyne --opt package=main ../../app.sngl
+//go:generate go tool sngl compile --lang go --platform fyne --out ui ../../app.sngl
 
 func main() {
 	a := app.New()

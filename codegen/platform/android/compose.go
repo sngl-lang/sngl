@@ -16,12 +16,12 @@ type composeContext struct {
 	indent               int
 	doc                  *ast.Document
 	components           []*ast.Component
-	hasSlot              bool                // true when rendering inside a component with slot support
-	slotChildren         []*ast.VisualNode   // caller's children for slot expansion
-	componentDepth       int                 // recursion guard for component expansion
+	hasSlot              bool                        // true when rendering inside a component with slot support
+	slotChildren         []*ast.VisualNode           // caller's children for slot expansion
+	componentDepth       int                         // recursion guard for component expansion
 	callerEvents         map[string]ast.EventHandler // caller's event handlers (for emit propagation)
-	callerEventsConsumed map[string]bool     // events already mapped to a Compose parameter
-	callerStyleFields    map[string]ast.Expr // caller's style fields forwarded to first raw composable
+	callerEventsConsumed map[string]bool             // events already mapped to a Compose parameter
+	callerStyleFields    map[string]ast.Expr         // caller's style fields forwarded to first raw composable
 }
 
 func (cc *composeContext) line(format string, args ...any) {
@@ -393,7 +393,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
 		args = append(args, "onClick = "+b.String())
 		cc.consumeEvent("click")
-	} else if requiresOnClick[name] {
+	} else if requiresOnClick[name] && vn.Events["onClick"].Body.SNGL == nil {
 		args = append(args, "onClick = {}")
 	}
 
@@ -411,6 +411,27 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	standardEvents := map[string]bool{"click": true, "input": true, "change": true}
 	for evtName, expr := range vn.Events {
 		if expr.Body.SNGL == nil || standardEvents[evtName] {
+			continue
+		}
+		// If the event body is an EmitStmt referencing a caller event,
+		// substitute the caller's handler body instead of emitting
+		// an unresolvable callback invocation.
+		if es, callerBody, ok := cc.resolveEmitToCallerEvent(expr.Body.SNGL); ok {
+			stmts := cc.ec.translateMutation(callerBody)
+			var b strings.Builder
+			b.WriteString("{\n")
+			for _, s := range stmts {
+				fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+			}
+			fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
+			args = append(args, evtName+" = "+b.String())
+			cc.consumeEvent(es.Name)
+			continue
+		}
+		// If the body is an EmitStmt with no matching caller event,
+		// emit an empty lambda — the emit has nothing to forward.
+		if _, ok := expr.Body.SNGL.(*ast.EmitStmt); ok {
+			args = append(args, evtName+" = {}")
 			continue
 		}
 		stmts := cc.ec.translateMutation(expr.Body.SNGL)
@@ -442,6 +463,26 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	} else {
 		cc.line("%s(%s)", name, argStr)
 	}
+}
+
+// resolveEmitToCallerEvent checks if a node's event body is a single EmitStmt
+// whose name matches a caller event. If so, returns the EmitStmt and the
+// caller's handler body for inlining. This is used for platform component
+// bodies like @onClick { @click() } where @click() should resolve to
+// the caller's click event handler.
+func (cc *composeContext) resolveEmitToCallerEvent(body ast.Node) (*ast.EmitStmt, ast.Node, bool) {
+	if cc.callerEvents == nil {
+		return nil, nil, false
+	}
+	es, ok := body.(*ast.EmitStmt)
+	if !ok {
+		return nil, nil, false
+	}
+	callerEvt, ok := cc.callerEvents[es.Name]
+	if !ok || callerEvt.Body.SNGL == nil {
+		return nil, nil, false
+	}
+	return es, callerEvt.Body.SNGL, true
 }
 
 // consumeEvent marks a caller event as consumed so it won't propagate

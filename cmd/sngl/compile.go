@@ -168,6 +168,7 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 		Lang:    lang,
 		Opts:    target.Opts,
 		Options: target.Options,
+		Source:  filepath.Base(filename),
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", filename, err)

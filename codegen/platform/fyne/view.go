@@ -363,11 +363,19 @@ func (vc *viewContext) renderRawWidget(vn *ast.VisualNode, resultVar string) {
 			fieldName := fmt.Sprintf("widget%d", id)
 			vc.addField(fieldName, goType)
 
+			// Extra constructor args (e.g., nil callback for widget.NewButton)
+			extraArgs := ""
+			if v, ok := vn.Props["widgetExtraArgs"]; ok {
+				if s, ok := v.Literal.(string); ok {
+					extraArgs = ", " + s
+				}
+			}
+
 			if wNew != "" {
 				if wArg != "" {
-					vc.line("m.%s = %s(fmt.Sprint(%s))", fieldName, wNew, wArg)
+					vc.line("m.%s = %s(fmt.Sprint(%s)%s)", fieldName, wNew, wArg, extraArgs)
 				} else {
-					vc.line("m.%s = %s()", fieldName, wNew)
+					vc.line("m.%s = %s(%s)", fieldName, wNew, strings.TrimPrefix(extraArgs, ", "))
 				}
 			}
 			vc.line("%s = m.%s", resultVar, fieldName)

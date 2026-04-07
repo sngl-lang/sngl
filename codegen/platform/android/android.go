@@ -71,6 +71,10 @@ func (g *Generator) generateKotlin(req *codegen.Request) (*codegen.Response, err
 		return &codegen.Response{Error: err.Error()}, nil
 	}
 
+	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
+		src = append([]byte(h), src...)
+	}
+
 	resp := &codegen.Response{}
 
 	if !cfg.GenerateMain {
