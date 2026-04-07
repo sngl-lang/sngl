@@ -37,7 +37,7 @@ component sngl.stack() {
 }
 
 component sngl.spacer() {
-    Spacer {}
+    Spacer(modifier=Modifier.weight(1f)) {}
 }
 
 component sngl.scroll() {
@@ -59,7 +59,9 @@ component sngl.button() {
 }
 
 component sngl.image() {
-    AsyncImage(model=src, contentDescription=alt) {}
+    Box {
+        Text(text="[image]") {}
+    }
 }
 
 component sngl.input() {
@@ -68,7 +70,7 @@ component sngl.input() {
 
 component sngl.checkbox() {
     Row {
-        Checkbox(checked=checked, ) {}
+        Checkbox(checked=checked) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -85,7 +87,7 @@ component sngl.radio() {
 
 component sngl.toggle() {
     Row {
-        Switch(checked=checked, ) {}
+        Switch(checked=checked) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -97,7 +99,7 @@ component sngl.select() {
 }
 
 component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange={ emit input }) {}
+    OutlinedTextField(value=value, minLines=3) {}
 }
 
 component sngl.datepicker() {
@@ -131,11 +133,13 @@ component sngl.card() {
 }
 
 component sngl.chip() {
-    AssistChip(label=label, @onClick={ emit click }) {}
+    TextButton {
+        Text(text=label) {}
+    }
 }
 
 component sngl.link() {
-    TextButton(@onClick={ emit click }) {
+    TextButton {
         Text(text=text) {}
     }
 }
@@ -148,16 +152,15 @@ component sngl.tabs() {
 
 component sngl.modal() {
     if open {
-        AlertDialog(title=title, ) {
-            Column {
-                slot
-            }
+        Column {
+            Text(text=title) {}
+            slot
         }
     }
 }
 
 component sngl.drawer() {
-    ModalNavigationDrawer {
+    Column {
         slot
     }
 }
@@ -169,8 +172,10 @@ component sngl.tooltip() {
 }
 
 component sngl.popover() {
-    DropdownMenu(expanded=open) {
-        slot
+    if open {
+        Column {
+            slot
+        }
     }
 }
 
@@ -199,8 +204,10 @@ component sngl.tree() {
 }
 
 component sngl.menu() {
-    DropdownMenu(expanded=open) {
-        slot
+    if open {
+        Column {
+            slot
+        }
     }
 }
 

@@ -1,62 +1,50 @@
 <!DOCTYPE html>
 <html><head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; }
-    @keyframes sngl-spin { to { transform: rotate(360deg); } }
-    .sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }
   </style>
 </head><body>
 
 <div style="gap:12px;padding:16px;display:flex;flex-direction:column">
-  <span id="$0" style="font-size:24px;font-weight:bold">
+  <span id="$1" style="font-size:24px;font-weight:bold">
 </span>
-  <div style="gap:8px;text-align:center;display:flex;flex-direction:row">
-    <input id="$1" placeholder="Buy eggs" value="" />
-    <button id="$2">Add</button>
+  <div style="align-items:center;gap:8px;text-align:center;display:flex;flex-direction:row">
+    <input id="$3" placeholder="Buy eggs" value="" />
+    <button id="$4">Add</button>
   </div>
   <div style="gap:4px;display:flex;flex-direction:column">
-    <div id="$3">
+    <div id="$6">
     </div>
   </div>
-  <button id="$4">Remove</button>
+  <button id="$7" style="align-items:center">Remove</button>
 </div>
 
 <script>
 // State
 let state = {newTodo: "", todos: []};
 
-function Color(r, g, b, a) { return {r, g, b, a}; }
 function Todo(text, done) { return {text, done}; }
 
 function $status() { return (("Todo List (" + String(size(state.todos))) + " items)"); }
 
-function $get_newTodo() { return state.newTodo; }
-function $get_todos() { return state.todos; }
+function status() { return (("Todo List (" + String(size(state.todos))) + " items)"); }
 
-function $set_newTodo(v) {
-  state.newTodo = v;
-  $u_1_val();
-}
-function $set_todos(v) {
-  state.todos = v;
-  $u_0_text();
-  $u_3_list();
-}
 
 
 function String(v) { return "" + v; }
 
-const $0 = document.getElementById("$0");
 const $1 = document.getElementById("$1");
-const $2 = document.getElementById("$2");
 const $3 = document.getElementById("$3");
 const $4 = document.getElementById("$4");
+const $6 = document.getElementById("$6");
+const $7 = document.getElementById("$7");
 
-function $u_0_text() { $0.textContent = $status(); }
-function $u_1_val() { $1.value = state.newTodo; }
-function $u_3_list() { $3.innerHTML = "";
+function $u_1_text() { $1.textContent = $status(); }
+function $u_3_val() { $3.value = state.newTodo; }
+function $u_6_list() { $6.innerHTML = "";
   for (let index = 0; index < state.todos.length; index++) {
     const item = state.todos[index];
     const row = document.createElement("label");
@@ -66,34 +54,34 @@ function $u_3_list() { $3.innerHTML = "";
     cb.checked = item.done;
     cb.addEventListener("change", function() {
       state.todos[index].done = !state.todos[index].done;
-      $u_3_list();
-      $u_0_text();
+      $u_6_list();
+      $u_1_text();
     });
     row.appendChild(cb);
     row.appendChild(document.createTextNode(" " + item.text));
-    $3.appendChild(row);
+    $6.appendChild(row);
   } }
 
-$1.addEventListener("input", function(e) {
+$3.addEventListener("input", function(e) {
   state.newTodo = e.target.value;
-  $u_1_val();
-});
-$2.addEventListener("click", function() {
-  state.todos = push(state.todos, Todo(state.newTodo, false));
-  state.newTodo = "";
-  $u_0_text();
-  $u_1_val();
-  $u_3_list();
+  $u_3_val();
 });
 $4.addEventListener("click", function() {
+  state.todos = push(state.todos, Todo(state.newTodo, false));
+  state.newTodo = "";
+  $u_1_text();
+  $u_3_val();
+  $u_6_list();
+});
+$7.addEventListener("click", function() {
   state.todos = remove(state.todos, (size(state.todos) - 1));
-  $u_0_text();
-  $u_3_list();
+  $u_1_text();
+  $u_6_list();
 });
 
 // Initial sync
-$u_0_text();
-$u_1_val();
-$u_3_list();
+$u_1_text();
+$u_3_val();
+$u_6_list();
 </script>
 </body></html>

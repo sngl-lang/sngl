@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Config controls snapshot generation.
@@ -119,6 +121,10 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		doc, err := ParseSNGL(sourceFile)
 		if err != nil {
 			return nil, err
+		}
+		dir := filepath.Dir(sourceFile)
+		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, sngl.BuildAPIConfig(doc), true); err != nil {
+			return nil, fmt.Errorf("check: %w", err)
 		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {

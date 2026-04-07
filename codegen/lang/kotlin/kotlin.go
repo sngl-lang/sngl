@@ -415,6 +415,9 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 
 	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
 		qualName = ident.Name + "." + n.Method
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		}
 		for _, a := range n.Args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}

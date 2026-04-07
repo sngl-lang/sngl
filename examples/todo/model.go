@@ -1,16 +1,19 @@
-package main
+package ui
 
 import (
 	"fmt"
-	"strings"
 
-	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
 )
 
 var _ = fmt.Sprint
-var _ = strings.Join
+var _ fyne.CanvasObject
+var _ = container.NewVBox
+var _ = layout.NewSpacer
+var _ = widget.NewLabel
 
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
@@ -19,198 +22,154 @@ func ternary[T any](cond bool, a, b T) T {
 	return b
 }
 
-type Color struct {
-	R int
-	G int
-	B int
-	A int
-}
-
 type Todo struct {
 	Text string
 	Done bool
 }
 
-// Model is the Bubble Tea model for this SNGL UI.
+// Model holds the state for this SNGL UI.
 type Model struct {
 	newTodo string
 	todos   []Todo
 
-	input0 textinput.Model
+	entry0 *widget.Entry
 
-	todosCursor int
-
-	focus         int
-	width, height int
+	widget0 *widget.Label
+	widget1 *widget.Button
+	forBox0 *fyne.Container
+	widget2 *widget.Label
+	widget3 *widget.Button
 }
 
-// New creates a Model with default bind values.
-func New() Model {
-	m := Model{
+// New creates a Model with default values.
+func New() *Model {
+	m := &Model{
 		newTodo: "",
 		todos:   nil,
 	}
-	m.input0 = textinput.New()
-	m.input0.Placeholder = "Buy eggs"
-	m.input0.SetValue(m.newTodo)
-	m.input0.Focus()
+	m.entry0 = widget.NewEntry()
+	m.entry0.SetPlaceHolder("Buy eggs")
+	m.entry0.SetText(fmt.Sprint(m.newTodo))
+	m.entry0.OnChanged = func(s string) {
+		m.newTodo = s
+		m.doRefresh()
+	}
 	return m
 }
 
-func (m Model) status() string {
+func (m *Model) doRefresh() {
+	m.updateFor0()
+}
+
+func (m *Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }
 
-func (m Model) NewTodo() string {
+func (m *Model) Status() {
+	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
+}
+
+func (m *Model) NewTodo() string {
 	return m.newTodo
 }
 
-func (m Model) SetNewTodo(v string) Model {
+func (m *Model) SetNewTodo(v string) {
 	m.newTodo = v
-	m.input0.SetValue(m.newTodo)
-	return m
+	m.entry0.SetText(v)
 }
 
-type setNewTodoMsg struct{ value string }
-
-func SetNewTodoCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setNewTodoMsg{value: v} }
-}
-
-func (m Model) Todos() []Todo {
+func (m *Model) Todos() []Todo {
 	return m.todos
 }
 
-func (m Model) SetTodos(v []Todo) Model {
+func (m *Model) SetTodos(v []Todo) {
 	m.todos = v
-	return m
+	m.updateFor0()
 }
 
-type setTodosMsg struct{ value []Todo }
-
-func SetTodosCmd(v []Todo) tea.Cmd {
-	return func() tea.Msg { return setTodosMsg{value: v} }
-}
-
-func (m Model) Init() tea.Cmd {
-	return textinput.Blink
-}
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case setNewTodoMsg:
-		m = m.SetNewTodo(msg.value)
-	case setTodosMsg:
-		m = m.SetTodos(msg.value)
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-	case tea.KeyPressMsg:
-		switch {
-		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
-		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.focus = (m.focus + 1) % 4
-			if m.focus == 0 {
-				m.input0.Focus()
-			} else {
-				m.input0.Blur()
-			}
-		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.focus = (m.focus - 1 + 4) % 4
-			if m.focus == 0 {
-				m.input0.Focus()
-			} else {
-				m.input0.Blur()
-			}
-		case msg.Code == tea.KeyEnter && m.focus == 1:
-			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
-			m.newTodo = ""
-			m.input0.SetValue(m.newTodo)
-		case msg.Code == tea.KeyEnter && m.focus == 2:
-			if m.todosCursor < len(m.todos) {
-				index := m.todosCursor
-				m.todos[index].Done = !m.todos[index].Done
-			}
-		case msg.Code == tea.KeyUp && m.focus == 2:
-			if m.todosCursor > 0 {
-				m.todosCursor--
-			}
-		case msg.Code == tea.KeyDown && m.focus == 2:
-			if m.todosCursor < len(m.todos)-1 {
-				m.todosCursor++
-			}
-		case msg.Code == tea.KeyEnter && m.focus == 3:
-			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
-		}
+// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	var content fyne.CanvasObject
+	var contentChildren []fyne.CanvasObject
+	var contentC0 fyne.CanvasObject
+	var contentC0Slot0 fyne.CanvasObject
+	m.widget0 = widget.NewLabel(fmt.Sprint(m.status()))
+	contentC0Slot0 = m.widget0
+	if contentC0Slot0 != nil {
+		contentC0 = contentC0Slot0
 	}
-	if m.focus == 0 {
-		m.input0, cmd = m.input0.Update(msg)
-		m.newTodo = m.input0.Value()
+	var contentC0Slot1 fyne.CanvasObject
+	var contentC0Slot1Children []fyne.CanvasObject
+	var contentC0Slot1C0 fyne.CanvasObject
+	var contentC0Slot1C0Slot0 fyne.CanvasObject
+	contentC0Slot1C0Slot0 = m.entry0
+	if contentC0Slot1C0Slot0 != nil {
+		contentC0Slot1C0 = contentC0Slot1C0Slot0
 	}
-	return m, cmd
-}
-
-func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().
-		Bold(true).Render(m.status())
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = m.input0.View()
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	content_1_1Focused := m.focus == 1
-	content_1_1Prefix := " "
-	if content_1_1Focused {
-		content_1_1Prefix = ">"
+	var contentC0Slot1C0Slot1 fyne.CanvasObject
+	m.widget1 = widget.NewButton(fmt.Sprint("Add"))
+	contentC0Slot1C0Slot1 = m.widget1
+	// TODO: wire click event on persistent widget
+	if contentC0Slot1C0Slot1 != nil {
+		contentC0Slot1C0 = contentC0Slot1C0Slot1
 	}
-	content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + "Add")
-	content_1Children = append(content_1Children, content_1_1)
-	content_1Gap := strings.Repeat(" ", 1)
-	content_1Joined := strings.Join(content_1Children, content_1Gap)
-	content_1 = lipgloss.NewStyle().
-		AlignHorizontal(lipgloss.Center).Render(content_1Joined)
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	var content_2Children []string
-	var content_2_0 string
-	var content_2_0Items []string
+	if contentC0Slot1C0 != nil {
+		contentC0Slot1Children = append(contentC0Slot1Children, contentC0Slot1C0)
+	}
+	contentC0Slot1 = container.NewHBox(contentC0Slot1Children...)
+	if contentC0Slot1 != nil {
+		contentC0 = contentC0Slot1
+	}
+	var contentC0Slot2 fyne.CanvasObject
+	var contentC0Slot2Children []fyne.CanvasObject
+	var contentC0Slot2C0 fyne.CanvasObject
+	var contentC0Slot2C0Slot0 fyne.CanvasObject
+	var contentC0Slot2C0Slot0Items []fyne.CanvasObject
 	for index, item := range m.todos {
 		_ = index
-		var content_2_0Item string
-		content_2_0ItemFocused := m.focus == 2 && m.todosCursor == index
-		content_2_0ItemPrefix := " "
-		if content_2_0ItemFocused {
-			content_2_0ItemPrefix = ">"
+		var contentC0Slot2C0Slot0Item fyne.CanvasObject
+		m.widget2 = widget.NewLabel(fmt.Sprint(item.Text))
+		contentC0Slot2C0Slot0Item = m.widget2
+		if contentC0Slot2C0Slot0Item != nil {
+			contentC0Slot2C0Slot0Items = append(contentC0Slot2C0Slot0Items, contentC0Slot2C0Slot0Item)
 		}
-		content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + ternary(item.Done, "[x] ", "[ ] ") + item.Text)
-		content_2_0Items = append(content_2_0Items, content_2_0Item)
 	}
-	content_2_0 = strings.Join(content_2_0Items, "\n")
-	content_2Children = append(content_2Children, content_2_0)
-	content_2Gap := strings.Repeat("\n", 1)
-	content_2Joined := strings.Join(content_2Children, content_2Gap)
-	content_2 = content_2Joined
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	content_3Focused := m.focus == 3
-	content_3Prefix := " "
-	if content_3Focused {
-		content_3Prefix = ">"
+	m.forBox0 = container.NewVBox(contentC0Slot2C0Slot0Items...)
+	contentC0Slot2C0Slot0 = m.forBox0
+	if contentC0Slot2C0Slot0 != nil {
+		contentC0Slot2C0 = contentC0Slot2C0Slot0
 	}
-	content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + "Remove")
-	contentChildren = append(contentChildren, content_3)
-	contentGap := strings.Repeat("\n", 1)
-	contentJoined := strings.Join(contentChildren, contentGap)
-	content = lipgloss.NewStyle().
-		Padding(2).Render(contentJoined)
-	v := tea.NewView(content)
-	v.AltScreen = true
-	return v
+	if contentC0Slot2C0 != nil {
+		contentC0Slot2Children = append(contentC0Slot2Children, contentC0Slot2C0)
+	}
+	contentC0Slot2 = container.NewVBox(contentC0Slot2Children...)
+	if contentC0Slot2 != nil {
+		contentC0 = contentC0Slot2
+	}
+	var contentC0Slot3 fyne.CanvasObject
+	m.widget3 = widget.NewButton(fmt.Sprint("Remove"))
+	contentC0Slot3 = m.widget3
+	// TODO: wire click event on persistent widget
+	if contentC0Slot3 != nil {
+		contentC0 = contentC0Slot3
+	}
+	if contentC0 != nil {
+		contentChildren = append(contentChildren, contentC0)
+	}
+	content = container.NewVBox(contentChildren...)
+	if content == nil {
+		content = widget.NewLabel("")
+	}
+	return content
+}
+
+func (m *Model) updateFor0() {
+	var items []fyne.CanvasObject
+	for index, item := range m.todos {
+		_ = index
+		_ = item
+		items = append(items, widget.NewLabel(fmt.Sprint(item)))
+	}
+	m.forBox0.Objects = items
+	m.forBox0.Refresh()
 }

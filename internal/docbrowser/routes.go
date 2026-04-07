@@ -28,11 +28,15 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	{
 		homeHref := "/"
 		_ = homeHref
-		fmt.Fprint(w, `<div style="gap:4px;padding:8px;width:260px;display:flex;flex-direction:column">`)
-		fmt.Fprintf(w, `<a href="%s">`, html.EscapeString(fmt.Sprint(homeHref)))
-		fmt.Fprint(w, `<span>SNGL</span>`)
+		logo := ""
+		_ = logo
+		fmt.Fprint(w, `<nav>`)
+		fmt.Fprint(w, `<a>`)
+		fmt.Fprint(w, `<img alt="SNGL">`)
+		fmt.Fprint(w, `<span innerText="SNGL">`)
+		fmt.Fprint(w, `</span>`)
 		fmt.Fprint(w, `</a>`)
-		fmt.Fprint(w, `<hr>`)
+		fmt.Fprint(w, `<ul>`)
 		for index, comp := range docs.Components() {
 			_ = index
 			_ = comp
@@ -43,14 +47,14 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 				_ = text
 				active := false
 				_ = active
-				fmt.Fprintf(w, `<a href="%s">`, html.EscapeString(fmt.Sprint(href)))
-				fmt.Fprint(w, `<span>`)
-				fmt.Fprint(w, html.EscapeString(fmt.Sprint(text)))
-				fmt.Fprint(w, `</span>`)
+				fmt.Fprint(w, `<li>`)
+				fmt.Fprint(w, `<a>`)
 				fmt.Fprint(w, `</a>`)
+				fmt.Fprint(w, `</li>`)
 			}
 		}
-		fmt.Fprint(w, `</div>`)
+		fmt.Fprint(w, `</ul>`)
+		fmt.Fprint(w, `</nav>`)
 	}
 	fmt.Fprint(w, `<div style="gap:16px;padding:24px;display:flex;flex-direction:column">`)
 	fmt.Fprint(w, `<span style="font-size:24px;font-weight:bold">`)
@@ -75,11 +79,15 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	{
 		homeHref := "/"
 		_ = homeHref
-		fmt.Fprint(w, `<div style="gap:4px;padding:8px;width:260px;display:flex;flex-direction:column">`)
-		fmt.Fprintf(w, `<a href="%s">`, html.EscapeString(fmt.Sprint(homeHref)))
-		fmt.Fprint(w, `<span>SNGL</span>`)
+		logo := ""
+		_ = logo
+		fmt.Fprint(w, `<nav>`)
+		fmt.Fprint(w, `<a>`)
+		fmt.Fprint(w, `<img alt="SNGL">`)
+		fmt.Fprint(w, `<span innerText="SNGL">`)
+		fmt.Fprint(w, `</span>`)
 		fmt.Fprint(w, `</a>`)
-		fmt.Fprint(w, `<hr>`)
+		fmt.Fprint(w, `<ul>`)
 		for index, comp := range docs.Components() {
 			_ = index
 			_ = comp
@@ -90,14 +98,14 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 				_ = text
 				active := (comp.Name == name)
 				_ = active
-				fmt.Fprintf(w, `<a href="%s">`, html.EscapeString(fmt.Sprint(href)))
-				fmt.Fprint(w, `<span>`)
-				fmt.Fprint(w, html.EscapeString(fmt.Sprint(text)))
-				fmt.Fprint(w, `</span>`)
+				fmt.Fprint(w, `<li>`)
+				fmt.Fprint(w, `<a>`)
 				fmt.Fprint(w, `</a>`)
+				fmt.Fprint(w, `</li>`)
 			}
 		}
-		fmt.Fprint(w, `</div>`)
+		fmt.Fprint(w, `</ul>`)
+		fmt.Fprint(w, `</nav>`)
 	}
 	fmt.Fprint(w, `<div style="padding:24px;display:flex;flex-direction:column">`)
 	{
@@ -105,10 +113,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		_ = name
 		fmt.Fprint(w, `<div style="gap:12px;display:flex;flex-direction:column">`)
 		fmt.Fprint(w, `<span style="font-size:24px;font-weight:bold">`)
-		fmt.Fprint(w, html.EscapeString(fmt.Sprint(docs.Lookup(name).Name)))
+		fmt.Fprint(w, html.EscapeString(fmt.Sprint(docs.StdlibLookup(name).Name)))
 		fmt.Fprint(w, `</span>`)
 		{
-			value := docs.Lookup(name).Tier
+			value := docs.StdlibLookup(name).Tier
 			_ = value
 			var variant string
 			_ = variant
@@ -121,10 +129,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, `</span>`)
 		}
 		fmt.Fprint(w, `<span>`)
-		fmt.Fprint(w, html.EscapeString(fmt.Sprint(docs.Lookup(name).Doc)))
+		fmt.Fprint(w, html.EscapeString(fmt.Sprint(docs.StdlibLookup(name).Doc)))
 		fmt.Fprint(w, `</span>`)
 		fmt.Fprint(w, `<span style="color:#888">`)
-		fmt.Fprint(w, html.EscapeString(fmt.Sprint(("Children: " + docs.Lookup(name).Children))))
+		fmt.Fprint(w, html.EscapeString(fmt.Sprint(("Children: " + docs.StdlibLookup(name).Children))))
 		fmt.Fprint(w, `</span>`)
 		fmt.Fprint(w, `</div>`)
 	}

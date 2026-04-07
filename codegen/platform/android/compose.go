@@ -212,8 +212,43 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Build named arguments from props (excluding style which becomes modifier).
 	var args []string
 
-	// Modifier from style props
+	// Event props: use the node's own events, falling back to caller events
+	// when inside a component expansion. Consume caller events so they don't
+	// propagate further to descendant composables.
+	events := vn.Events
+	if len(events) == 0 && cc.callerEvents != nil {
+		events = cc.callerEvents
+		cc.callerEvents = nil
+	}
+
+	// Composables that accept onClick as a named parameter.
+	onClickComposables := map[string]bool{
+		"Button": true, "IconButton": true, "TextButton": true,
+		"OutlinedButton": true, "FilledTonalButton": true,
+		"Card": true, "ElevatedCard": true, "OutlinedCard": true,
+		"Surface": true, "AssistChip": true, "FilterChip": true,
+		"InputChip": true, "SuggestionChip": true,
+		"NavigationBarItem": true, "NavigationRailItem": true,
+		"DropdownMenuItem": true, "FloatingActionButton": true,
+	}
+
+	// Modifier from style props — also inject click handler as Modifier.clickable
+	// for composables that don't accept onClick as a parameter.
 	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
+	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && !onClickComposables[name] {
+		stmts := cc.ec.translateMutation(clickExpr.SNGL)
+		var b strings.Builder
+		fmt.Fprintf(&b, ".clickable {\n")
+		for _, s := range stmts {
+			fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+		}
+		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
+		if mod == "Modifier" {
+			mod = "Modifier\n    " + b.String()
+		} else {
+			mod += "\n    " + b.String()
+		}
+	}
 	if mod != "Modifier" {
 		args = append(args, "modifier = "+mod)
 	}
@@ -227,20 +262,22 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		args = append(args, propName+" = "+val)
 	}
 
-	// Event props: use the node's own events, falling back to caller events
-	// when inside a component expansion.
-	events := vn.Events
-	if len(events) == 0 && cc.callerEvents != nil {
-		events = cc.callerEvents
+	// Map SNGL event names → Compose parameter names, only for composables
+	// that accept those parameters.
+	valueChangeComposables := map[string]bool{
+		"OutlinedTextField": true, "TextField": true, "BasicTextField": true,
 	}
-
-	// Map SNGL event names → Compose parameter names and inject handlers.
-	eventMap := map[string]string{
-		"click":  "onClick",
-		"input":  "onValueChange",
-		"change": "onCheckedChange",
+	checkedChangeComposables := map[string]bool{
+		"Checkbox": true, "Switch": true, "RadioButton": true,
 	}
-	for snglName, ktName := range eventMap {
+	eventMappings := map[string]string{}
+	if valueChangeComposables[name] {
+		eventMappings["input"] = "onValueChange"
+	}
+	if checkedChangeComposables[name] {
+		eventMappings["change"] = "onCheckedChange"
+	}
+	for snglName, ktName := range eventMappings {
 		expr, ok := events[snglName]
 		if !ok || expr.SNGL == nil {
 			continue
@@ -273,13 +310,23 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		args = append(args, ktName+" = "+b.String())
 	}
 
-	// Also pass through any non-standard events directly.
-	for evtName, expr := range vn.Events {
-		if expr.SNGL == nil {
-			continue
+	// onClick as named param for composables that support it.
+	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && onClickComposables[name] {
+		stmts := cc.ec.translateMutation(clickExpr.SNGL)
+		var b strings.Builder
+		b.WriteString("{\n")
+		for _, s := range stmts {
+			fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
 		}
-		if _, isStandard := eventMap[evtName]; isStandard {
-			continue // already handled above
+		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
+		args = append(args, "onClick = "+b.String())
+	}
+
+	// Pass through non-standard events directly.
+	standardEvents := map[string]bool{"click": true, "input": true, "change": true}
+	for evtName, expr := range vn.Events {
+		if expr.SNGL == nil || standardEvents[evtName] {
+			continue
 		}
 		stmts := cc.ec.translateMutation(expr.SNGL)
 		var b strings.Builder

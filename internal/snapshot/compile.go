@@ -12,6 +12,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+
+	sngl "git.duckfam.us/jonathan/sngl"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -23,7 +25,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 
 	dir := filepath.Dir(sourceFile)
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, true); err != nil {
+	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, sngl.BuildAPIConfig(doc), true); err != nil {
 		return nil, fmt.Errorf("check: %w", err)
 	}
 
