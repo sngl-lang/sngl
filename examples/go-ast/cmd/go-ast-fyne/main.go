@@ -6,6 +6,8 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+
+	"git.duckfam.us/jonathan/sngl/examples/go-ast/cmd/go-ast-fyne/ui"
 )
 
 //go:generate go tool sngl compile --lang go --platform fyne --opt package=main ../../app.sngl
@@ -14,7 +16,7 @@ func main() {
 	a := app.New()
 	w := a.NewWindow("Go AST Explorer")
 
-	m := New()
+	m := ui.New()
 	m.Parse = func(s string) {
 		f, err := parser.ParseFile(token.NewFileSet(), "input.go", m.Source(), parser.AllErrors)
 		if err != nil {

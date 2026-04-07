@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -114,7 +114,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		contentC0 = contentC0Slot2
 	}
 	var contentC0Slot3 fyne.CanvasObject
-	m.widget2 = widget.NewButton(fmt.Sprint("Parse AST"))
+	m.widget2 = widget.NewButton(fmt.Sprint("Parse AST"), nil)
 	contentC0Slot3 = m.widget2
 	// TODO: wire click event on persistent widget
 	if contentC0Slot3 != nil {

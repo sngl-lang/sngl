@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
+
+	"git.duckfam.us/jonathan/sngl/examples/todo/ui"
 )
 
 //go:generate go tool sngl compile todo.sngl
 
 func main() {
-	m := New()
+	m := ui.New()
 	path := savePath()
 	m = m.SetTodos(loadTodos(path))
 	p := tea.NewProgram(m)
@@ -21,7 +23,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	saveTodos(path, final.(Model).Todos())
+	saveTodos(path, final.(ui.Model).Todos())
 }
 
 func savePath() string {
@@ -29,19 +31,19 @@ func savePath() string {
 	return filepath.Join(home, ".sngl-todo.json")
 }
 
-func loadTodos(path string) []Todo {
+func loadTodos(path string) []ui.Todo {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
-	var todos []Todo
+	var todos []ui.Todo
 	if json.Unmarshal(data, &todos) != nil {
 		return nil
 	}
 	return todos
 }
 
-func saveTodos(path string, todos []Todo) {
+func saveTodos(path string, todos []ui.Todo) {
 	data, _ := json.MarshalIndent(todos, "", "  ")
 	os.WriteFile(path, data, 0644)
 }
