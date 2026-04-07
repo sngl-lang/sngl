@@ -548,5 +548,42 @@ func kotlinBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 	case "File.pickFolder":
 		return `""`
 	}
+
+	// For ident receivers (e.g., notes.length), retry with wildcard if no direct match.
+	if _, ok := n.Receiver.(*ast.IdentExpr); ok && !strings.HasPrefix(qualName, "*.") {
+		wildcard := "*." + n.Method
+		// Rebuild with receiver as a(0).
+		recv := translateExpr(n.Receiver, scope)
+		wa := func(i int) string {
+			if i == 0 {
+				return recv
+			}
+			if i-1 < len(argExprs) {
+				return argExprs[i-1]
+			}
+			return "null"
+		}
+		switch wildcard {
+		case "*.length":
+			return wa(0) + ".length"
+		case "*.upper":
+			return wa(0) + ".uppercase()"
+		case "*.lower":
+			return wa(0) + ".lowercase()"
+		case "*.trim":
+			return wa(0) + ".trim()"
+		case "*.replace":
+			return wa(0) + ".replace(" + wa(1) + ", " + wa(2) + ")"
+		case "*.indexOf":
+			return wa(0) + ".indexOf(" + wa(1) + ")"
+		case "*.startsWith":
+			return wa(0) + ".startsWith(" + wa(1) + ")"
+		case "*.endsWith":
+			return wa(0) + ".endsWith(" + wa(1) + ")"
+		case "*.join":
+			return wa(0) + ".joinToString(" + wa(1) + ")"
+		}
+	}
+
 	return ""
 }

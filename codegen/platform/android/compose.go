@@ -11,15 +11,17 @@ import (
 
 // composeContext tracks state during Composable code generation.
 type composeContext struct {
-	ec             *exprContext
-	buf            *strings.Builder
-	indent         int
-	doc            *ast.Document
-	components     []*ast.Component
-	hasSlot        bool                // true when rendering inside a component with slot support
-	slotChildren   []*ast.VisualNode   // caller's children for slot expansion
-	componentDepth int                 // recursion guard for component expansion
-	callerEvents   map[string]ast.Expr // caller's event handlers (for emit propagation)
+	ec                   *exprContext
+	buf                  *strings.Builder
+	indent               int
+	doc                  *ast.Document
+	components           []*ast.Component
+	hasSlot              bool                // true when rendering inside a component with slot support
+	slotChildren         []*ast.VisualNode   // caller's children for slot expansion
+	componentDepth       int                 // recursion guard for component expansion
+	callerEvents         map[string]ast.Expr // caller's event handlers (for emit propagation)
+	callerEventsConsumed map[string]bool     // events already mapped to a Compose parameter
+	callerStyleFields    map[string]ast.Expr // caller's style fields forwarded to first raw composable
 }
 
 func (cc *composeContext) line(format string, args ...any) {
@@ -135,15 +137,22 @@ func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNod
 			overrides[p.Name] = exprToKtValue(expr, cc.ec)
 		} else if p.Default.Literal != nil {
 			overrides[p.Name] = literalToKt(p.Default)
+		} else {
+			// Zero value for the param's type so the body doesn't
+			// reference an undefined identifier.
+			overrides[p.Name] = zeroValueKt(p.Default.TypeHint)
 		}
 	}
 	cc.ec.propOverrides = overrides
 
-	// Propagate caller's events: when the override body uses @eventName={ emit X },
-	// the codegen needs the caller's event handlers available. Store them so
-	// renderRawComposable can find them.
+	// Propagate caller's events and style. Fresh consumed set so each
+	// expansion tracks its own consumption independently.
 	savedEvents := cc.callerEvents
+	savedConsumed := cc.callerEventsConsumed
+	savedStyle := cc.callerStyleFields
 	cc.callerEvents = vn.Events
+	cc.callerEventsConsumed = make(map[string]bool)
+	cc.callerStyleFields = vn.StyleFields()
 
 	// Set slot children to the caller's children.
 	cc.hasSlot = len(vn.Children) > 0
@@ -156,6 +165,8 @@ func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNod
 	cc.ec.localVars = savedLocals
 	cc.ec.propOverrides = savedOverrides
 	cc.callerEvents = savedEvents
+	cc.callerEventsConsumed = savedConsumed
+	cc.callerStyleFields = savedStyle
 	cc.hasSlot = savedSlot
 	cc.slotChildren = savedSlotChildren
 }
@@ -213,12 +224,19 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	var args []string
 
 	// Event props: use the node's own events, falling back to caller events
-	// when inside a component expansion. Consume caller events so they don't
-	// propagate further to descendant composables.
+	// when inside a component expansion. Skip events already consumed by a
+	// sibling composable so they don't propagate further.
 	events := vn.Events
 	if len(events) == 0 && cc.callerEvents != nil {
-		events = cc.callerEvents
-		cc.callerEvents = nil
+		filtered := make(map[string]ast.Expr)
+		for k, v := range cc.callerEvents {
+			if !cc.callerEventsConsumed[k] {
+				filtered[k] = v
+			}
+		}
+		if len(filtered) > 0 {
+			events = filtered
+		}
 	}
 
 	// Composables that accept onClick as a named parameter.
@@ -232,9 +250,19 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		"DropdownMenuItem": true, "FloatingActionButton": true,
 	}
 
-	// Modifier from style props — also inject click handler as Modifier.clickable
-	// for composables that don't accept onClick as a parameter.
-	mod := buildModifierExpr(vn.StyleFields(), cc.ec)
+	// Modifier from style props — merge caller's forwarded style if this is the
+	// first raw composable in a component expansion.
+	styleFields := vn.StyleFields()
+	if cc.callerStyleFields != nil {
+		merged := maps.Clone(cc.callerStyleFields)
+		maps.Copy(merged, styleFields) // node's own styles win
+		styleFields = merged
+		cc.callerStyleFields = nil // consume after first use
+	}
+
+	// Also inject click handler as Modifier.clickable for composables that
+	// don't accept onClick as a parameter.
+	mod := buildModifierExpr(styleFields, cc.ec)
 	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && !onClickComposables[name] {
 		stmts := cc.ec.translateMutation(clickExpr.SNGL)
 		var b strings.Builder
@@ -248,15 +276,51 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		} else {
 			mod += "\n    " + b.String()
 		}
+		cc.consumeEvent("click")
 	}
-	if mod != "Modifier" {
+	// Spacer requires a modifier argument even if empty.
+	if mod != "Modifier" || name == "Spacer" {
 		args = append(args, "modifier = "+mod)
+	}
+
+	// Layout arrangement from gap style (Column/Row only).
+	if name == "Column" || name == "Row" {
+		if gapExpr, ok := styleFields["gap"]; ok {
+			gapVal := exprToKtValue(gapExpr, cc.ec)
+			if name == "Column" {
+				args = append(args, "verticalArrangement = Arrangement.spacedBy("+toDp(gapVal)+")")
+			} else {
+				args = append(args, "horizontalArrangement = Arrangement.spacedBy("+toDp(gapVal)+")")
+			}
+		}
+		if alignExpr, ok := styleFields["alignItems"]; ok {
+			alignVal := exprToKtValue(alignExpr, cc.ec)
+			switch alignVal {
+			case `"center"`:
+				if name == "Column" {
+					args = append(args, "horizontalAlignment = Alignment.CenterHorizontally")
+				} else {
+					args = append(args, "verticalAlignment = Alignment.CenterVertically")
+				}
+			case `"end"`, `"flexEnd"`:
+				if name == "Column" {
+					args = append(args, "horizontalAlignment = Alignment.End")
+				} else {
+					args = append(args, "verticalAlignment = Alignment.Bottom")
+				}
+			}
+		}
 	}
 
 	// Regular props → named Kotlin arguments
 	for propName, expr := range vn.Props {
 		if propName == "style" {
 			continue // handled as modifier above
+		}
+		// Detect Composable struct values and emit as composable lambdas.
+		if se, ok := isComposableStruct(expr); ok {
+			args = append(args, propName+" = "+cc.renderComposableStruct(se))
+			continue
 		}
 		val := exprToKtValue(expr, cc.ec)
 		args = append(args, propName+" = "+val)
@@ -282,6 +346,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		if !ok || expr.SNGL == nil {
 			continue
 		}
+		cc.consumeEvent(snglName)
 
 		isValueChange := ktName == "onValueChange"
 		if isValueChange {
@@ -311,6 +376,13 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	}
 
 	// onClick as named param for composables that support it.
+	// Composables like Button require onClick — provide empty lambda if no event.
+	requiresOnClick := map[string]bool{
+		"Button": true, "TextButton": true, "OutlinedButton": true,
+		"FilledTonalButton": true, "IconButton": true,
+		"AssistChip": true, "FilterChip": true, "InputChip": true,
+		"SuggestionChip": true,
+	}
 	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && onClickComposables[name] {
 		stmts := cc.ec.translateMutation(clickExpr.SNGL)
 		var b strings.Builder
@@ -320,6 +392,19 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		}
 		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
 		args = append(args, "onClick = "+b.String())
+		cc.consumeEvent("click")
+	} else if requiresOnClick[name] {
+		args = append(args, "onClick = {}")
+	}
+
+	// OutlinedTextField requires onValueChange.
+	if valueChangeComposables[name] {
+		if _, hasInput := events["input"]; !hasInput {
+			// Only add fallback if not already provided by a non-standard event.
+			if _, hasOnValueChange := vn.Events["onValueChange"]; !hasOnValueChange {
+				args = append(args, "onValueChange = {}")
+			}
+		}
 	}
 
 	// Pass through non-standard events directly.
@@ -357,6 +442,67 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	} else {
 		cc.line("%s(%s)", name, argStr)
 	}
+}
+
+// consumeEvent marks a caller event as consumed so it won't propagate
+// to sibling or descendant composables.
+func (cc *composeContext) consumeEvent(name string) {
+	if cc.callerEventsConsumed != nil {
+		cc.callerEventsConsumed[name] = true
+	}
+}
+
+// renderComposableStruct emits a composable lambda from a Composable struct
+// expression. The struct has fields: name (composable name), props (list of
+// ComposableProp with key/value pairs).
+func (cc *composeContext) renderComposableStruct(se *ast.StructExpr) string {
+	var composableName string
+	var propArgs []string
+	for _, f := range se.Fields {
+		switch f.Name {
+		case "name":
+			composableName = cc.ec.translateExpr(f.Value)
+			composableName = strings.Trim(composableName, `"`)
+		case "props":
+			if list, ok := f.Value.(*ast.ListExpr); ok {
+				for _, elem := range list.Elements {
+					if prop, ok := elem.(*ast.StructExpr); ok {
+						var key, val string
+						for _, pf := range prop.Fields {
+							switch pf.Name {
+							case "key":
+								key = cc.ec.translateExpr(pf.Value)
+								key = strings.Trim(key, `"`)
+							case "value":
+								val = exprToKtValue(ast.Expr{SNGL: pf.Value}, cc.ec)
+							}
+						}
+						if key != "" {
+							propArgs = append(propArgs, key+" = "+val)
+						}
+					}
+				}
+			}
+		}
+	}
+	if composableName == "" {
+		return "{ /* empty composable */ }"
+	}
+	if len(propArgs) == 0 {
+		return "{ " + composableName + "() }"
+	}
+	return "{ " + composableName + "(" + strings.Join(propArgs, ", ") + ") }"
+}
+
+// isComposableStruct checks if an expression is a Composable struct literal.
+func isComposableStruct(expr ast.Expr) (*ast.StructExpr, bool) {
+	if expr.SNGL == nil {
+		return nil, false
+	}
+	if se, ok := expr.SNGL.(*ast.StructExpr); ok && se.Name == "Composable" {
+		return se, true
+	}
+	return nil, false
 }
 
 // sortArgs sorts named Kotlin arguments for deterministic output.

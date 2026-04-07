@@ -462,6 +462,23 @@ func typeHintToKt(hint string) string {
 	}
 }
 
+// zeroValueKt returns the Kotlin zero-value literal for a SNGL type hint.
+func zeroValueKt(hint string) string {
+	if strings.HasPrefix(hint, "list") || strings.HasPrefix(hint, "[]") {
+		return "listOf()"
+	}
+	switch hint {
+	case "bool":
+		return "false"
+	case "int":
+		return "0"
+	case "float":
+		return "0.0"
+	default:
+		return `""`
+	}
+}
+
 func listElementType(listType string) string {
 	if strings.HasPrefix(listType, "List<") && strings.HasSuffix(listType, ">") {
 		return listType[5 : len(listType)-1]

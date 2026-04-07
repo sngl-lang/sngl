@@ -63,6 +63,27 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		for i, a := range n.Args {
 			argStrs[i] = ec.translateExpr(a)
 		}
+		// Map SNGL methods to Kotlin equivalents.
+		switch n.Method {
+		case "length":
+			return target + ".length" // Kotlin property, not function
+		case "upper":
+			return target + ".uppercase()"
+		case "lower":
+			return target + ".lowercase()"
+		case "trim":
+			return target + ".trim()"
+		case "replace":
+			return target + ".replace(" + strings.Join(argStrs, ", ") + ")"
+		case "indexOf":
+			return target + ".indexOf(" + strings.Join(argStrs, ", ") + ")"
+		case "startsWith":
+			return target + ".startsWith(" + strings.Join(argStrs, ", ") + ")"
+		case "endsWith":
+			return target + ".endsWith(" + strings.Join(argStrs, ", ") + ")"
+		case "push":
+			return target + " + " + strings.Join(argStrs, ", ")
+		}
 		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		var parts []string
@@ -109,6 +130,8 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		return ec.translateCall(n.Call)
 	case *ast.ParenExpr:
 		return "(" + ec.translateExpr(n.Inner) + ")"
+	case *ast.LambdaExpr:
+		return ec.translateLambda(n)
 	default:
 		return fmt.Sprintf("/* unsupported node %T */null", e)
 	}
@@ -200,6 +223,42 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 		argStrs[i] = ec.translateExpr(a)
 	}
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+func (ec *exprContext) translateLambda(n *ast.LambdaExpr) string {
+	if n.Body != nil {
+		// Arrow form: (params) => expr
+		body := ec.translateExpr(n.Body)
+		if len(n.Params) == 0 {
+			return "{ " + body + " }"
+		}
+		return "{ " + strings.Join(n.Params, ", ") + " -> " + body + " }"
+	}
+	if n.Block != nil {
+		// Block form: func(params) { stmts }
+		if len(n.Block.Stmts) == 0 && n.Block.Return == nil {
+			return "{}"
+		}
+		var b strings.Builder
+		if len(n.Params) > 0 {
+			b.WriteString("{ " + strings.Join(n.Params, ", ") + " ->\n")
+		} else {
+			b.WriteString("{\n")
+		}
+		for _, stmt := range n.Block.Stmts {
+			stmts := ec.translateMutation(stmt)
+			for _, s := range stmts {
+				fmt.Fprintf(&b, "    %s\n", s)
+			}
+		}
+		if n.Block.Return != nil {
+			ret := ec.translateExpr(n.Block.Return)
+			fmt.Fprintf(&b, "    %s\n", ret)
+		}
+		b.WriteString("}")
+		return b.String()
+	}
+	return "{}"
 }
 
 func isIntLiteral(n ast.Node) bool {

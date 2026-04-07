@@ -16,6 +16,20 @@ struct Options {
     projectDir string
 }
 
+// ComposableProp is a key-value pair for composable lambda parameters.
+struct ComposableProp {
+    key string
+    value dyn
+}
+
+// Composable describes a composable lambda to emit for a Compose parameter
+// that expects @Composable () -> Unit. The codegen detects this struct in
+// prop values and emits { Name(key1 = val1, ...) } instead of a data value.
+struct Composable {
+    name string
+    props list<ComposableProp>
+}
+
 // --- Core Layout ---
 
 component sngl.vbox() {
@@ -37,7 +51,7 @@ component sngl.stack() {
 }
 
 component sngl.spacer() {
-    Spacer(modifier=Modifier.weight(1f)) {}
+    Spacer {}
 }
 
 component sngl.scroll() {
@@ -59,9 +73,7 @@ component sngl.button() {
 }
 
 component sngl.image() {
-    Box {
-        Text(text="[image]") {}
-    }
+    AsyncImage(model=src, contentDescription=alt) {}
 }
 
 component sngl.input() {
@@ -70,7 +82,7 @@ component sngl.input() {
 
 component sngl.checkbox() {
     Row {
-        Checkbox(checked=checked) {}
+        Checkbox(checked=checked, ) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -87,7 +99,7 @@ component sngl.radio() {
 
 component sngl.toggle() {
     Row {
-        Switch(checked=checked) {}
+        Switch(checked=checked, ) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -99,7 +111,7 @@ component sngl.select() {
 }
 
 component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3) {}
+    OutlinedTextField(value=value, minLines=3, @onValueChange={ emit input }) {}
 }
 
 component sngl.datepicker() {
@@ -133,13 +145,11 @@ component sngl.card() {
 }
 
 component sngl.chip() {
-    TextButton {
-        Text(text=label) {}
-    }
+    AssistChip(label=Composable{name: "Text", props: [{key="text", value=label}]}) {}
 }
 
 component sngl.link() {
-    TextButton {
+    TextButton(@onClick={ emit click }) {
         Text(text=text) {}
     }
 }
@@ -152,9 +162,14 @@ component sngl.tabs() {
 
 component sngl.modal() {
     if open {
-        Column {
-            Text(text=title) {}
-            slot
+        AlertDialog(
+            title=Composable{name: "Text", props: [{key="text", value=title}]},
+            onDismissRequest=func(){},
+            confirmButton=func(){}
+        ) {
+            Column {
+                slot
+            }
         }
     }
 }
@@ -172,10 +187,8 @@ component sngl.tooltip() {
 }
 
 component sngl.popover() {
-    if open {
-        Column {
-            slot
-        }
+    DropdownMenu(expanded=open) {
+        slot
     }
 }
 
@@ -204,10 +217,8 @@ component sngl.tree() {
 }
 
 component sngl.menu() {
-    if open {
-        Column {
-            slot
-        }
+    DropdownMenu(expanded=open) {
+        slot
     }
 }
 

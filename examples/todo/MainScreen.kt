@@ -31,16 +31,25 @@ fun MainScreen() {
     val todos = remember { mutableStateListOf<Todo>() }
     val status by remember { derivedStateOf { (("Todo List (" + todos.size.toString()) + " items)") } }
 
-    Column() {
+    Column(
+        modifier = Modifier
+    .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Text(
             text = status
         )
-        Row() {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             OutlinedTextField(
+                modifier = Modifier
+    .weight(1f),
                 onValueChange = { _v_ ->
                     newTodo = _v_
                 },
-                value = value
+                value = ""
             )
             Button(
                 onClick = {
@@ -49,21 +58,15 @@ fun MainScreen() {
                 }
             ) {
                 Text(
-                    onClick = {
-                        todos = push(todos, Todo(text = newTodo, done = false))
-                        newTodo = ""
-                    },
                     text = "Add"
                 )
             }
         }
-        Column() {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             todos.forEachIndexed { index, item ->
-                Row(
-                    onCheckedChange = {
-                        todos[index].done = !todos[index].done
-                    }
-                ) {
+                Row() {
                     Checkbox(
                         checked = item.done,
                         onCheckedChange = {
@@ -72,9 +75,6 @@ fun MainScreen() {
                     )
                     if ((item.text != "")) {
                         Text(
-                            onCheckedChange = {
-                                todos[index].done = !todos[index].done
-                            },
                             text = item.text
                         )
                     }
@@ -87,9 +87,6 @@ fun MainScreen() {
             }
         ) {
             Text(
-                onClick = {
-                    todos = remove(todos, (todos.size - 1))
-                },
                 text = "Remove"
             )
         }
