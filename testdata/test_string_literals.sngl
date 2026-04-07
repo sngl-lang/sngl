@@ -1,0 +1,32 @@
+component main {
+    var regular = "hello world"
+    var withNewline = "line one
+line two"
+    var triple = """
+        indented
+        content
+    """
+    var raw = `no \escapes and no {interpolation}`
+    var interp = "count: {regular}"
+    var tripleInterp = """
+        greeting: {regular}
+    """
+
+    text(value=regular)
+}
+
+func testRegularString(t T, c main) {
+    t.assert(c.regular == "hello world")
+}
+
+func testMultilineString(t T, c main) {
+    t.assert(c.withNewline == "line one\nline two")
+}
+
+func testTripleQuoteStripsIndent(t T, c main) {
+    t.assert(c.triple == "indented\ncontent")
+}
+
+func testRawStringNoEscape(t T, c main) {
+    t.assert(c.raw == `no \escapes and no {interpolation}`)
+}

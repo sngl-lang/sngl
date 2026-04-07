@@ -47,7 +47,7 @@ fun MainScreen() {
                 modifier = Modifier
     .weight(1f),
                 onValueChange = { _v_ ->
-                    newTodo = _v_
+                    newTodo = e.value
                 },
                 value = ""
             )

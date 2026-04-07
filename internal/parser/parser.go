@@ -2047,14 +2047,16 @@ func (p *parser) parsePrimary() ast.Node {
 	switch p.cur.Type {
 	case INT:
 		tok := p.advance()
-		val, err := strconv.Atoi(tok.Literal)
+		clean := strings.ReplaceAll(tok.Literal, "_", "")
+		val, err := strconv.ParseInt(clean, 0, 64)
 		if err != nil {
 			p.errorf("invalid integer literal %q: %v", tok.Literal, err)
 		}
-		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralInt, Raw: tok.Literal}
+		return &ast.LiteralExpr{Value: int(val), Kind: ast.LiteralInt, Raw: tok.Literal}
 	case FLOAT:
 		tok := p.advance()
-		val, err := strconv.ParseFloat(tok.Literal, 64)
+		clean := strings.ReplaceAll(tok.Literal, "_", "")
+		val, err := strconv.ParseFloat(clean, 64)
 		if err != nil {
 			p.errorf("invalid float literal %q: %v", tok.Literal, err)
 		}

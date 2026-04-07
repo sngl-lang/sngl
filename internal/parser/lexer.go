@@ -298,8 +298,36 @@ func (l *lexer) scanNumber(startLine, startCol int) Token {
 		sb.WriteRune(l.advance())
 	}
 
-	// Integer part
-	for l.pos < len(l.input) && isDigit(l.input[l.pos]) {
+	// Check for base prefixes: 0x, 0o, 0b
+	if l.peek() == '0' && l.pos+1 < len(l.input) {
+		next := l.input[l.pos+1]
+		switch next {
+		case 'x', 'X':
+			sb.WriteRune(l.advance()) // 0
+			sb.WriteRune(l.advance()) // x
+			for l.pos < len(l.input) && (isHexDigit(l.input[l.pos]) || l.input[l.pos] == '_') {
+				sb.WriteRune(l.advance())
+			}
+			return l.token(INT, sb.String(), startLine, startCol)
+		case 'o', 'O':
+			sb.WriteRune(l.advance()) // 0
+			sb.WriteRune(l.advance()) // o
+			for l.pos < len(l.input) && ((l.input[l.pos] >= '0' && l.input[l.pos] <= '7') || l.input[l.pos] == '_') {
+				sb.WriteRune(l.advance())
+			}
+			return l.token(INT, sb.String(), startLine, startCol)
+		case 'b', 'B':
+			sb.WriteRune(l.advance()) // 0
+			sb.WriteRune(l.advance()) // b
+			for l.pos < len(l.input) && (l.input[l.pos] == '0' || l.input[l.pos] == '1' || l.input[l.pos] == '_') {
+				sb.WriteRune(l.advance())
+			}
+			return l.token(INT, sb.String(), startLine, startCol)
+		}
+	}
+
+	// Decimal integer part (with _ separators)
+	for l.pos < len(l.input) && (isDigit(l.input[l.pos]) || l.input[l.pos] == '_') {
 		sb.WriteRune(l.advance())
 	}
 
@@ -308,7 +336,7 @@ func (l *lexer) scanNumber(startLine, startCol int) Token {
 	if l.peek() == '.' && l.pos+1 < len(l.input) && isDigit(l.peekAt(1)) {
 		isFloat = true
 		sb.WriteRune(l.advance()) // .
-		for l.pos < len(l.input) && isDigit(l.input[l.pos]) {
+		for l.pos < len(l.input) && (isDigit(l.input[l.pos]) || l.input[l.pos] == '_') {
 			sb.WriteRune(l.advance())
 		}
 	}
