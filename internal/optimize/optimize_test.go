@@ -308,16 +308,16 @@ func TestEventFolded(t *testing.T) {
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
 				Component: "button",
-				Events: map[string]ast.Expr{
-					"click": langExpr(),
+				Events: map[string]ast.EventHandler{
+					"click": {Param: "_", Body: langExpr()},
 				},
 			}},
 		},
 	}
 	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
 	e := doc.App.Children[0].Events["click"]
-	if e.Literal != "js" {
-		t.Errorf("expected literal 'js', got %v", e.Literal)
+	if e.Body.Literal != "js" {
+		t.Errorf("expected literal 'js', got %v", e.Body.Literal)
 	}
 }
 

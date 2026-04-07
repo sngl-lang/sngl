@@ -95,7 +95,7 @@ type analysisResult struct {
 	externs     []externInfo
 	computeds   []computedInfo
 	entries     []entryInfo
-	triggers    map[string]string
+	dataEvents  map[string][]ast.DataEvent
 	goImports   map[string]bool // native Go import paths from Resolved fields
 	needsTime   bool
 	needsURL    bool
@@ -116,7 +116,7 @@ func analyze(doc *ast.Document) *analysisResult {
 
 	info := &analysisResult{
 		CommonAnalysis: common,
-		triggers:       make(map[string]string),
+		dataEvents:     make(map[string][]ast.DataEvent),
 		goImports:      make(map[string]bool),
 	}
 
@@ -155,8 +155,8 @@ func analyze(doc *ast.Document) *analysisResult {
 			goType:  goType,
 			initVal: initVal,
 		})
-		if d.Trigger != "" {
-			info.triggers[d.Name] = d.Trigger
+		if len(d.Events) > 0 {
+			info.dataEvents[d.Name] = d.Events
 		}
 	}
 
@@ -227,7 +227,7 @@ func walkForEntries(vn *ast.VisualNode, info *analysisResult) {
 			}
 		}
 		if inputEvt, ok := vn.Events["input"]; ok {
-			entry.bindTarget = extractAssignTarget(inputEvt.SNGL)
+			entry.bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
 		}
 		info.entries = append(info.entries, entry)
 	case "textarea":
@@ -246,7 +246,7 @@ func walkForEntries(vn *ast.VisualNode, info *analysisResult) {
 			}
 		}
 		if inputEvt, ok := vn.Events["input"]; ok {
-			entry.bindTarget = extractAssignTarget(inputEvt.SNGL)
+			entry.bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
 		}
 		info.entries = append(info.entries, entry)
 	}
@@ -381,7 +381,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// --- Phase 3: Build templateData and render template ---
-	td := newTemplateData(info, cfg, updaters, widgetFields, funcBuf.String())
+	td := newTemplateData(info, cfg, updaters, widgetFields, funcBuf.String(), ec, doc)
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 

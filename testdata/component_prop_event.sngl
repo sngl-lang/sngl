@@ -1,10 +1,10 @@
 component Button(variant = "primary", @click) {
-    button(text="Click me", @click={ @click(1) })
+    button(text="Click me", @click { @click(1) })
 }
 
 component main {
     var count = 0
 
-    Button(variant="primary", @click={ count += event })
+    Button(variant="primary", @click(e) { count += e })
     text(value=string(count))
 }

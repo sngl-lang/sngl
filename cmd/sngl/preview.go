@@ -125,7 +125,7 @@ func (s *previewServer) recompile() error {
 		return err
 	}
 
-	if err := checker.Check(doc, os.DirFS(s.sourceDir), s.sourceDir, checker.DefaultResolver(), defaultSchemeResolver(), nil, true); err != nil {
+	if err := checker.Check(doc, os.DirFS(s.sourceDir), s.sourceDir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
 		return err
 	}
 
@@ -399,7 +399,6 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 		Init   string `json:"init,omitempty"`
 		Value  any    `json:"value,omitempty"`
 		Type   string `json:"type,omitempty"`
-		Extern bool   `json:"extern,omitempty"`
 		IsFunc bool   `json:"isFunc,omitempty"`
 	}
 	type computedJSON struct {
@@ -418,7 +417,7 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 
 	if doc != nil {
 		for _, d := range doc.Data {
-			dj := dataJSON{Name: d.Name, Extern: d.Extern, IsFunc: d.IsFunc}
+			dj := dataJSON{Name: d.Name, IsFunc: d.IsFunc}
 			if d.Init.SNGL != nil {
 				dj.Init = parser.FormatNode(d.Init.SNGL)
 			} else if d.Init.Literal != nil {

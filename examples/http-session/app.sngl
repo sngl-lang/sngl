@@ -20,7 +20,7 @@ component main {
             }
             vbox(style={padding=24, gap=16, flex=1}) {
                 hbox(style={gap=12, alignItems="center"}) {
-                    button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click={ sidebarOpen!! })
+                    button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click { sidebarOpen!! })
                     text(value=session.Greeting("World"), style={fontSize=20, fontWeight="bold"})
                 }
                 text(value="Welcome to the dashboard!")

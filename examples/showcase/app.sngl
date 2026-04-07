@@ -43,30 +43,30 @@ component main {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     }
 
-    vbox(scroll=true, refreshing=false, @refresh={ Alert.toast("Refreshed!", "info") }, style={gap=24, maxWidth=900, padding=24}) {
+    vbox(scroll=true, refreshing=false, @refresh { Alert.toast("Refreshed!", "info") }, style={gap=24, maxWidth=900, padding=24}) {
         text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})
         text(value="Every component in the standard library", style={color=#666666})
         divider
         text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
         hbox(style={alignItems="center", gap=12}) {
             text(value=greeting, style={fontSize=18})
-            button(text="Increment", @click={ count += 1 })
-            button(text="Reset", @click={ count = 0; name = "World" })
+            button(text="Increment", @click { count += 1 })
+            button(text="Reset", @click { count = 0; name = "World" })
             badge(value=string(count), style={background=#2196f3, color=#ffffff})
         }
         divider
         text(value="Input", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            input(placeholder="Enter your name", value=name, @input={ name = event.value })
+            input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
             input(placeholder="Password", type="password")
             input(placeholder="Search...", type="search")
         }
         text(value="Textarea", style={fontSize=20, fontWeight="bold"})
-        textarea(placeholder="Write some notes...", rows=4, value=notes, @input={ notes = event.value })
+        textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
         divider
         text(value="Checkbox, Toggle & Radio", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=24}) {
-            checkbox(checked=darkMode, label="Dark mode", @change={ darkMode!! })
+            checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
             toggle(checked=toggleOn, label="Notifications")
             radio(direction="horizontal", options=["small", "medium", "large"], value=selectedRadio)
         }
@@ -117,19 +117,19 @@ component main {
         divider
         text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            button(text="Open Modal", @click={ showModal = true })
-            button(text="Open Drawer", @click={ showDrawer = true })
-            button(text="Show Toast", @click={ Alert.toast("Action completed!", "success") })
+            button(text="Open Modal", @click { showModal = true })
+            button(text="Open Drawer", @click { showDrawer = true })
+            button(text="Show Toast", @click { Alert.toast("Action completed!", "success") })
         }
         modal(closable=true, open=showModal, title="Example Modal") {
             text(value="This is modal content.")
-            button(text="Close", @click={ showModal = false })
+            button(text="Close", @click { showModal = false })
         }
         drawer(open=showDrawer, side="right") {
             vbox(style={gap=12, padding=16}) {
                 text(value="Drawer Content", style={fontWeight="bold"})
                 text(value="Slide-out panel")
-                button(text="Close", @click={ showDrawer = false })
+                button(text="Close", @click { showDrawer = false })
             }
         }
         divider

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
@@ -28,8 +29,6 @@ type templateData struct {
 	Externs              []externData
 	Computeds            []computedData
 	Entries              []entryData
-	Triggers             []triggerData
-	TriggerRegistrations []triggerData
 	WidgetFields         []widgetFieldData
 	Timers               []timerData
 	UpdaterNames         []string
@@ -77,12 +76,6 @@ type entryData struct {
 	Rows              int
 }
 
-type triggerData struct {
-	MethodName    string
-	CallbackField string
-	GoType        string
-}
-
 type widgetFieldData struct {
 	Name   string
 	GoType string
@@ -96,7 +89,7 @@ type timerData struct {
 	AffectedUpdaters string // pre-rendered updater calls
 }
 
-func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater, widgetFields []widgetField, functionCode string) templateData {
+func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater, widgetFields []widgetField, functionCode string, ec *exprContext, doc *ast.Document) templateData {
 	td := templateData{
 		Package:      cfg.Package,
 		GenerateMain: cfg.GenerateMain,
@@ -147,11 +140,16 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 				fmt.Fprintf(&extra, "\tm.%s.SetText(v)\n", entry.fieldName)
 			}
 		}
-		if trigger, ok := info.triggers[bind.name]; ok {
-			cbField := unexportName(trigger)
-			fmt.Fprintf(&extra, "\tif m.%s != nil {\n", cbField)
-			fmt.Fprintf(&extra, "\t\tm.%s(v)\n", cbField)
-			extra.WriteString("\t}\n")
+		// Pre-render @change event bodies for this data field.
+		if events, ok := info.dataEvents[bind.name]; ok {
+			for _, ev := range events {
+				if ev.Kind == "change" {
+					stmts := ec.TranslateMutation(ev.Body)
+					for _, s := range stmts {
+						fmt.Fprintf(&extra, "\t%s\n", s)
+					}
+				}
+			}
 		}
 		mutated := map[string]bool{bind.name: true}
 		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
@@ -168,22 +166,6 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 			Name:   exportName(ext.name),
 			GoType: ext.goType,
 		})
-	}
-
-	// Triggers (callback fields on the Model struct)
-	for _, bind := range info.binds {
-		if trigger, ok := info.triggers[bind.name]; ok {
-			cbField := unexportName(trigger)
-			td.Triggers = append(td.Triggers, triggerData{
-				CallbackField: cbField,
-				GoType:        bind.goType,
-			})
-			td.TriggerRegistrations = append(td.TriggerRegistrations, triggerData{
-				MethodName:    trigger,
-				CallbackField: cbField,
-				GoType:        bind.goType,
-			})
-		}
 	}
 
 	// Widget fields

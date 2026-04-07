@@ -508,9 +508,9 @@ string_literal           = (
 
 ## Keywords
 
-`component` `const` `else` `enum` `extern` `for` `func` `if` `import` `output` `platform` `return` `struct` `style` `test` `timer` `unit` `var`
+`component` `const` `else` `enum` `for` `func` `if` `import` `output` `platform` `return` `struct` `style` `test` `timer` `unit` `var`
 
-Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `extern`, `platform` are contextual keywords recognized by the parser.
+Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `platform` are contextual keywords recognized by the parser.
 
 ## Semantics
 

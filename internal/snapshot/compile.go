@@ -25,7 +25,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 
 	dir := filepath.Dir(sourceFile)
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, sngl.BuildAPIConfig(doc), true); err != nil {
+	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
 		return nil, fmt.Errorf("check: %w", err)
 	}
 

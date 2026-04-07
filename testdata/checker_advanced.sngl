@@ -7,7 +7,7 @@ component main {
     const (
         MSG = "count: {string(10)}"
         ITEMS = [1, 2, 3]
-        PT = Pair{key: "a", val: 1}
+        PT = Pair{key="a", val=1}
         UPPER = "hello".upper()
         LIST_METHOD = string.length("test")
     )
@@ -20,7 +20,7 @@ component main {
 
     func interp() => "val: {string(count)}"
     func list() => [count, count + 1]
-    func structVal() => Pair{key: label, val: count}
+    func structVal() => Pair{key=label, val=count}
     func elemType() => items[0]
     func fieldType() => pair.key
 
@@ -29,11 +29,11 @@ component main {
     vbox {
         text(value=interp)
         text(value=string(list[0]))
-        button(text="add", @click={
+        button(text="add", @click {
             count += 1
             flag!!
         })
-        button(text="reset", @click={ count = 0 })
+        button(text="reset", @click { count = 0 })
     }
 }
 

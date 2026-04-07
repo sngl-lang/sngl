@@ -81,7 +81,7 @@ A semicolon is automatically inserted after a line's final token if that token i
 
 ### Keywords
 
-`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `component`, `prop`, `children`, `if`, `else`, `for`, `extern`, `func`, `true`, `false`, `null`
+`import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `style`, `component`, `prop`, `children`, `if`, `else`, `for`, `func`, `true`, `false`, `null`
 
 ## Type System
 

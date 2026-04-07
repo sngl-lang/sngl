@@ -26,6 +26,10 @@ type ImportResolver func(fsys fs.FS, importPath string) ([]*ast.Document, error)
 // filesystem path for tools like go/packages).
 type SchemeResolver func(scheme, uri, dir string) (*ast.NativeDecls, error)
 
+// FSSchemeResolver resolves a scheme-based import URI to a filesystem of SNGL
+// sources. Returns nil fs.FS if the scheme is not an FS scheme.
+type FSSchemeResolver func(scheme, uri, dir string) (fs.FS, error)
+
 // DefaultResolver returns an ImportResolver that reads and parses all .sngl
 // files from the given path within the provided fs.FS.
 func DefaultResolver() ImportResolver {
@@ -61,7 +65,7 @@ func DefaultResolver() ImportResolver {
 // schemeDir is an OS filesystem path used only for scheme imports (e.g., go://)
 // that need a real directory. resolve is an optional callback for directory
 // imports; pass nil if directory imports are not supported.
-func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolver, schemeResolve SchemeResolver, apis *APIConfig, isMain bool) error {
+func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolver, schemeResolve SchemeResolver, fsSchemeResolve FSSchemeResolver, apis *APIConfig, isMain bool) error {
 	registry, styleProps, stdlibUnits, stdlibFuncs, stdlibStructs, stdlibComponents, err := LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
@@ -84,8 +88,9 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 		methods:       map[string]map[string]*methodInfo{},
 		fsys:          fsys,
 		schemeDir:     schemeDir,
-		resolve:       resolve,
-		schemeResolve: schemeResolve,
+		resolve:         resolve,
+		schemeResolve:   schemeResolve,
+		fsSchemeResolve: fsSchemeResolve,
 		visited:       map[string]bool{},
 		isMain:        isMain,
 		namespaces:    map[string]*importNS{},
@@ -272,6 +277,7 @@ type checker struct {
 	schemeDir       string // real OS path for scheme imports (e.g., go://)
 	resolve         ImportResolver
 	schemeResolve   SchemeResolver
+	fsSchemeResolve FSSchemeResolver
 	visited         map[string]bool // tracks visited import paths to detect cycles
 	isMain          bool            // true for the entry-point package
 	namespaces      map[string]*importNS
@@ -442,8 +448,30 @@ func (c *checker) joinErrors() error {
 func (c *checker) pass1(doc *ast.Document) {
 	// Imports
 	for _, imp := range doc.Imports {
-		// Scheme-based native imports (e.g., "go://pkg/path")
+		// Scheme-based imports
 		if imp.Scheme != "" {
+			// Check for FS scheme first (git://, http:// — provides .sngl files)
+			if c.fsSchemeResolve != nil {
+				fsys, err := c.fsSchemeResolve(imp.Scheme, imp.Path, c.schemeDir)
+				if err != nil {
+					c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
+					continue
+				}
+				if fsys != nil {
+					// FS scheme — resolve as directory import from the returned filesystem
+					if c.resolve != nil {
+						importDocs, err := c.resolve(fsys, ".")
+						if err != nil {
+							c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
+							continue
+						}
+						c.mergeDirectoryImport(doc, imp, importDocs)
+					}
+					continue
+				}
+			}
+
+			// Native scheme imports (e.g., "go://pkg/path")
 			if c.schemeResolve == nil {
 				c.errorAt(imp.Pos, "import %q: scheme imports not supported in this context", imp.Path)
 				continue
@@ -493,52 +521,12 @@ func (c *checker) pass1(doc *ast.Document) {
 		// Resolve the import path against the source directory so that
 		// parent traversal ("..") works with os.DirFS.
 		resolved := filepath.Clean(filepath.Join(c.schemeDir, filepath.FromSlash(imp.Path)))
-		docs, err := c.resolve(os.DirFS(resolved), ".")
+		importDocs, err := c.resolve(os.DirFS(resolved), ".")
 		if err != nil {
 			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 			continue
 		}
-		// Validate imported docs don't define compile targets.
-		for _, d := range docs {
-			if d.App != nil {
-				c.errorAt(imp.Pos, "import %q: component main can only be defined in the main package", imp.Path)
-			}
-			if len(d.Outputs) > 0 {
-				c.errorAt(imp.Pos, "import %q: output declarations can only appear in the main package", imp.Path)
-			}
-		}
-		ns := &importNS{}
-		for _, d := range docs {
-			for _, s := range d.Structs {
-				if isExported(s.Name) {
-					ns.structs = append(ns.structs, s)
-				}
-			}
-			for _, e := range d.Enums {
-				if isExported(e.Name) {
-					ns.enums = append(ns.enums, e)
-				}
-			}
-			for _, comp := range d.Components {
-				if !isExported(comp.Name) {
-					continue
-				}
-				ns.components = append(ns.components, comp)
-				qualName := imp.Namespace + "." + comp.Name
-				schema := &ComponentSchema{
-					Props:    make(map[string]PropSchema),
-					Events:   map[string]string{},
-					Children: childrenFromType(comp.ChildrenType),
-				}
-				for _, p := range comp.Params {
-					t := c.resolveParamType(p)
-					schema.Props[p.Name] = PropSchema{Type: t}
-				}
-				c.registry[qualName] = schema
-				doc.ImportedComponents = append(doc.ImportedComponents, comp)
-			}
-		}
-		c.namespaces[imp.Namespace] = ns
+		c.mergeDirectoryImport(doc, imp, importDocs)
 	}
 
 	// API namespaces from lang/platform providers
@@ -599,8 +587,8 @@ func (c *checker) pass1(doc *ast.Document) {
 
 	// Data fields
 	for _, d := range doc.Data {
-		if d.Extern && d.Trigger != "" {
-			c.errorAt(d.Pos, "data %q: trigger on extern field is not allowed", d.Name)
+		if d.Extern && len(d.Events) > 0 {
+			c.errorAt(d.Pos, "data %q: events on extern field are not allowed", d.Name)
 		}
 		// Validate type hint early so misspelled types are caught
 		// even when SNGL is also set (e.g., var x stirng = "hello").
@@ -1161,6 +1149,52 @@ func (c *checker) validateOutputOpts(doc *ast.Document) {
 	}
 }
 
+// mergeDirectoryImport registers exported declarations from a set of parsed
+// documents into the current checker scope under the given import's namespace.
+func (c *checker) mergeDirectoryImport(doc *ast.Document, imp *ast.Import, docs []*ast.Document) {
+	// Validate imported docs don't define compile targets.
+	for _, d := range docs {
+		if d.App != nil {
+			c.errorAt(imp.Pos, "import %q: component main can only be defined in the main package", imp.Path)
+		}
+		if len(d.Outputs) > 0 {
+			c.errorAt(imp.Pos, "import %q: output declarations can only appear in the main package", imp.Path)
+		}
+	}
+	ns := &importNS{}
+	for _, d := range docs {
+		for _, s := range d.Structs {
+			if isExported(s.Name) {
+				ns.structs = append(ns.structs, s)
+			}
+		}
+		for _, e := range d.Enums {
+			if isExported(e.Name) {
+				ns.enums = append(ns.enums, e)
+			}
+		}
+		for _, comp := range d.Components {
+			if !isExported(comp.Name) {
+				continue
+			}
+			ns.components = append(ns.components, comp)
+			qualName := imp.Namespace + "." + comp.Name
+			schema := &ComponentSchema{
+				Props:    make(map[string]PropSchema),
+				Events:   map[string]string{},
+				Children: childrenFromType(comp.ChildrenType),
+			}
+			for _, p := range comp.Params {
+				t := c.resolveParamType(p)
+				schema.Props[p.Name] = PropSchema{Type: t}
+			}
+			c.registry[qualName] = schema
+			doc.ImportedComponents = append(doc.ImportedComponents, comp)
+		}
+	}
+	c.namespaces[imp.Namespace] = ns
+}
+
 // pass2 validates the visual tree.
 func (c *checker) pass2(doc *ast.Document) {
 	if doc.App != nil {
@@ -1302,19 +1336,19 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode, scope *Scope) {
 	}
 
 	// Events
-	for name, expr := range vn.Events {
+	for name, eh := range vn.Events {
 		if !schema.Permissive {
 			if _, ok := schema.Events[name]; !ok {
 				c.errorAt(vn.Pos, "%s: unknown event %q", vn.Component, name)
 				continue
 			}
 		}
-		if expr.SNGL != nil {
-			if !isStatement(expr.SNGL) {
+		if eh.Body.SNGL != nil {
+			if !isStatement(eh.Body.SNGL) {
 				c.errorAt(vn.Pos, "%s on:%s: handler must be a statement (assignment, toggle, or emit)", vn.Component, name)
 			}
 		}
-		vn.Events[name] = expr
+		vn.Events[name] = eh
 	}
 
 	// Bindings (:name=var desugars to prop + event)

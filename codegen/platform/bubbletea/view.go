@@ -19,16 +19,16 @@ type viewContext struct {
 	forCursors     []forLoopCursor
 	buf            *strings.Builder
 	indent         int
-	components     []*ast.Component    // user-defined components for param lookup
-	inComponent    bool                // true when rendering inside a component method
-	vertical       bool                // true when inside a vertical container (vbox)
-	slotVar        string              // variable holding pre-rendered slot content (for abstract components)
-	forIndexVar    string              // current for-loop index variable (for cursor-aware rendering)
-	doc            *ast.Document       // for FindComponent
-	slotChildren   []*ast.VisualNode   // caller's children for inline component expansion
-	slotStack      [][]*ast.VisualNode // stack of outer slot children for nested expansions
-	callerEvents   map[string]ast.Expr // caller's event handlers (for event propagation)
-	componentDepth int                 // recursion guard
+	components     []*ast.Component            // user-defined components for param lookup
+	inComponent    bool                        // true when rendering inside a component method
+	vertical       bool                        // true when inside a vertical container (vbox)
+	slotVar        string                      // variable holding pre-rendered slot content (for abstract components)
+	forIndexVar    string                      // current for-loop index variable (for cursor-aware rendering)
+	doc            *ast.Document               // for FindComponent
+	slotChildren   []*ast.VisualNode           // caller's children for inline component expansion
+	slotStack      [][]*ast.VisualNode         // stack of outer slot children for nested expansions
+	callerEvents   map[string]ast.EventHandler // caller's event handlers (for event propagation)
+	componentDepth int                         // recursion guard
 }
 
 func (vc *viewContext) line(format string, args ...any) {

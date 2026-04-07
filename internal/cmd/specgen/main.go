@@ -209,7 +209,7 @@ func writeKeywords(b *strings.Builder) {
 	sort.Strings(names)
 	b.WriteString("`" + strings.Join(names, "` `") + "`\n\n")
 
-	b.WriteString("Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `extern`, `platform` are contextual keywords recognized by the parser.\n\n")
+	b.WriteString("Additionally, `true`, `false`, `null`, `in`, `else`, `return`, `required`, `platform` are contextual keywords recognized by the parser.\n\n")
 }
 
 func writeSemantics(b *strings.Builder) {

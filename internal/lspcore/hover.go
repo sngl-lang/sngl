@@ -58,9 +58,6 @@ func HoverInfo(doc *ast.Document, word string) string {
 			if hint == "" {
 				hint = "dyn"
 			}
-			if d.Extern {
-				return fmt.Sprintf("```sngl\nvar %s %s extern\n```", d.Name, hint)
-			}
 			return fmt.Sprintf("```sngl\nvar %s %s\n```", d.Name, hint)
 		}
 	}

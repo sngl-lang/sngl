@@ -5,6 +5,7 @@ package sngl
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -39,7 +40,7 @@ func FormatNode(n ast.Node) string {
 // file, used to resolve relative import paths. It uses the default filesystem-based
 // import resolver for directory imports and the registered scheme importers.
 func Check(doc *ast.Document, dir string) error {
-	return checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), DefaultSchemeResolver(), BuildAPIConfig(doc), true)
+	return checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), DefaultSchemeResolver(), DefaultFSSchemeResolver(), BuildAPIConfig(doc), true)
 }
 
 // BuildAPIConfig resolves API namespaces from registered lang/platform providers
@@ -133,6 +134,18 @@ func DefaultSchemeResolver() checker.SchemeResolver {
 			return nil, fmt.Errorf("unknown import scheme %q", scheme)
 		}
 		return imp.Resolve(uri, dir)
+	}
+}
+
+// DefaultFSSchemeResolver returns an FSSchemeResolver that delegates to
+// registered FS scheme importers (git://, http://, etc.).
+func DefaultFSSchemeResolver() checker.FSSchemeResolver {
+	return func(scheme, uri, dir string) (fs.FS, error) {
+		imp := codegen.LookupFSScheme(scheme)
+		if imp == nil {
+			return nil, nil // not an FS scheme, let the caller try native schemes
+		}
+		return imp.ResolveFS(uri, dir)
 	}
 }
 

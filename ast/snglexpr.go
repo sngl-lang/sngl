@@ -21,6 +21,15 @@ const (
 	LiteralUnit
 )
 
+// StringStyle identifies the quoting style of a string literal.
+type StringStyle int
+
+const (
+	StyleDouble StringStyle = iota // "..."
+	StyleTriple                    // """..."""
+	StyleRaw                       // `...`
+)
+
 // BinaryOp identifies a binary operator.
 type BinaryOp int
 
@@ -66,7 +75,8 @@ const (
 type LiteralExpr struct {
 	Value any
 	Kind  LiteralKind
-	Raw   string // original source text (for preserving "0.0" vs "0", "1_000", etc.)
+	Style StringStyle // quoting style for LiteralString (StyleDouble, StyleTriple, StyleRaw)
+	Raw   string      // original source text (for preserving "0.0" vs "0", "1_000", etc.)
 }
 
 // UnitLiteral is the value stored in a LiteralExpr with Kind == LiteralUnit.
@@ -159,6 +169,7 @@ func (*SpreadExpr) snglNode() {}
 // Parts alternate between *LiteralExpr (string) and expression nodes.
 type InterpolationExpr struct {
 	Parts []Node
+	Style StringStyle // quoting style (StyleDouble or StyleTriple)
 }
 
 // ElementRefExpr references a visual element by its #id.

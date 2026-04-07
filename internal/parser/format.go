@@ -22,7 +22,7 @@ func Format(doc *ast.Document) string {
 func estimateDocSize(doc *ast.Document) int {
 	n := 0
 	for _, imp := range doc.Imports {
-		n += 10 + len(imp.Path) // import "path"\n
+		n += 10 + len(imp.Path) + len(imp.Alias) + 4 // import [alias =>] "path"\n
 	}
 	for _, o := range doc.Outputs {
 		n += 20 + len(o.Platform) + len(o.Lang) // output platform lang { ... }\n
@@ -126,7 +126,7 @@ func estimateVNSize(vn *ast.VisualNode) int {
 		n += len(k) + estimateExprSize(v) + 4
 	}
 	for k, v := range vn.Events {
-		n += len(k) + estimateExprSize(v) + 4
+		n += len(k) + estimateExprSize(v.Body) + len(v.Param) + 8
 	}
 	for k, v := range vn.Bindings {
 		n += len(k) + estimateExprSize(v) + 4
@@ -305,17 +305,17 @@ func (f *formatter) measureDeclWidth(buf *strings.Builder, d ast.Decl) int {
 			buf.WriteString(" = ")
 			f.writeExprTo(buf, decl.Init)
 		}
-		if decl.Extern {
-			buf.WriteString(" extern")
-		}
-		if decl.Trigger != "" {
-			autoName := "On" + strings.ToUpper(decl.Name[:1]) + decl.Name[1:] + "Changed"
-			if decl.Trigger == autoName {
-				buf.WriteString(" @")
-			} else {
-				buf.WriteString(" @")
-				buf.WriteString(decl.Trigger)
+		for _, ev := range decl.Events {
+			buf.WriteString(" @")
+			buf.WriteString(ev.Kind)
+			if ev.Param != "" {
+				buf.WriteByte('(')
+				buf.WriteString(ev.Param)
+				buf.WriteByte(')')
 			}
+			buf.WriteString(" { ")
+			writeNode(buf, ev.Body)
+			buf.WriteString(" }")
 		}
 	case *ast.FuncDef:
 		buf.WriteString("func ")
@@ -372,11 +372,19 @@ func (f *formatter) measureVisualNode(buf *strings.Builder, vn *ast.VisualNode) 
 		f.writeExprTo(&pb, expr)
 		return pb.String()
 	}
-	buildEventTo := func(prefix string, expr ast.Expr) string {
+	buildEventTo := func(prefix string, eh ast.EventHandler) string {
 		pb.Reset()
 		pb.WriteString(prefix)
-		pb.WriteByte('=')
-		f.writeEventValue(&pb, expr)
+		if eh.Param != "" {
+			pb.WriteByte('(')
+			pb.WriteString(eh.Param)
+			pb.WriteString(") ")
+		} else {
+			pb.WriteByte(' ')
+		}
+		pb.WriteString("{ ")
+		f.writeExprTo(&pb, eh.Body)
+		pb.WriteString(" }")
 		return pb.String()
 	}
 
@@ -613,7 +621,11 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.newline()
 			}
-			f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(decl.Path)))
+			if decl.Alias != "" {
+				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import %s => \"%s\"", decl.Alias, escapeStringContent(decl.Path)))
+			} else {
+				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(decl.Path)))
+			}
 			prevEndLine = decl.Pos.Line
 		case *ast.Output:
 			if !outputsSeen {
@@ -1028,18 +1040,20 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 		f.writeExprValue(d.Init)
 	}
 
-	// Modifiers
-	if d.Extern {
-		f.write(" extern")
-	}
-	if d.Trigger != "" {
-		autoName := "On" + strings.ToUpper(d.Name[:1]) + d.Name[1:] + "Changed"
-		if d.Trigger == autoName {
-			f.write(" @")
-		} else {
-			f.write(" @")
-			f.write(d.Trigger)
+	// Data events
+	for _, ev := range d.Events {
+		f.write(" @")
+		f.write(ev.Kind)
+		if ev.Param != "" {
+			f.write("(")
+			f.write(ev.Param)
+			f.write(")")
 		}
+		f.write(" { ")
+		var buf strings.Builder
+		writeNode(&buf, ev.Body)
+		f.write(buf.String())
+		f.write(" }")
 	}
 }
 
@@ -1599,11 +1613,19 @@ func (f *formatter) buildProp(prefix string, expr ast.Expr) string {
 	return f.propBuf.String()
 }
 
-func (f *formatter) buildEventProp(prefix string, expr ast.Expr) string {
+func (f *formatter) buildEventProp(prefix string, eh ast.EventHandler) string {
 	f.propBuf.Reset()
 	f.propBuf.WriteString(prefix)
-	f.propBuf.WriteByte('=')
-	f.writeEventValue(&f.propBuf, expr)
+	if eh.Param != "" {
+		f.propBuf.WriteByte('(')
+		f.propBuf.WriteString(eh.Param)
+		f.propBuf.WriteString(") ")
+	} else {
+		f.propBuf.WriteByte(' ')
+	}
+	f.propBuf.WriteString("{ ")
+	f.writeExprTo(&f.propBuf, eh.Body)
+	f.propBuf.WriteString(" }")
 	return f.propBuf.String()
 }
 
@@ -1757,28 +1779,6 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 	}
 }
 
-func (f *formatter) writeEventValue(sb io.Writer, expr ast.Expr) {
-	if expr.SNGL != nil {
-		if block, ok := expr.SNGL.(*ast.StmtBlock); ok && len(block.Stmts) > 1 {
-			io.WriteString(sb, string('{'))
-			for _, stmt := range block.Stmts {
-				io.WriteString(sb, "\n")
-				io.WriteString(sb, indentStr(f.indent+1))
-				writeNode(sb, stmt)
-			}
-			io.WriteString(sb, "\n")
-			io.WriteString(sb, indentStr(f.indent))
-			io.WriteString(sb, string('}'))
-			return
-		}
-		io.WriteString(sb, "{ ")
-		writeNode(sb, expr.SNGL)
-		io.WriteString(sb, " }")
-		return
-	}
-	io.WriteString(sb, "{ null }")
-}
-
 // writeExprValue writes an Expr directly to the output writer.
 func (f *formatter) writeExprValue(expr ast.Expr) {
 	if expr.SNGL != nil {
@@ -1923,10 +1923,7 @@ func writeNode(sb io.Writer, n ast.Node) {
 		writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.StructExpr:
-		sep := ": "
-		if e.Name == "" {
-			sep = "="
-		}
+		sep := "="
 		io.WriteString(sb, e.Name)
 		io.WriteString(sb, string('{'))
 		if e.Multiline {
@@ -1971,17 +1968,23 @@ func writeNode(sb io.Writer, n ast.Node) {
 		io.WriteString(sb, "...")
 		writeNode(sb, e.Operand)
 	case *ast.InterpolationExpr:
-		io.WriteString(sb, string('"'))
+		quote := `"`
+		escFn := escapeStringContent
+		if e.Style == ast.StyleTriple {
+			quote = `"""`
+			escFn = escapeTripleStringContent
+		}
+		io.WriteString(sb, quote)
 		for _, p := range e.Parts {
 			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				io.WriteString(sb, escapeStringContent(fmt.Sprintf("%v", lit.Value)))
+				io.WriteString(sb, escFn(fmt.Sprintf("%v", lit.Value)))
 			} else {
 				io.WriteString(sb, string('{'))
 				writeNode(sb, p)
 				io.WriteString(sb, string('}'))
 			}
 		}
-		io.WriteString(sb, string('"'))
+		io.WriteString(sb, quote)
 	case *ast.AssignStmt:
 		writeNode(sb, e.Target)
 		io.WriteString(sb, string(' '))
@@ -2055,9 +2058,21 @@ func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 			fmt.Fprintf(sb, "%v", e.Value)
 		}
 	case ast.LiteralString:
-		io.WriteString(sb, string('"'))
-		io.WriteString(sb, escapeStringContent(fmt.Sprintf("%v", e.Value)))
-		io.WriteString(sb, string('"'))
+		s := fmt.Sprintf("%v", e.Value)
+		switch e.Style {
+		case ast.StyleTriple:
+			io.WriteString(sb, `"""`)
+			io.WriteString(sb, escapeTripleStringContent(s))
+			io.WriteString(sb, `"""`)
+		case ast.StyleRaw:
+			io.WriteString(sb, "`")
+			io.WriteString(sb, s)
+			io.WriteString(sb, "`")
+		default:
+			io.WriteString(sb, string('"'))
+			io.WriteString(sb, escapeStringContent(s))
+			io.WriteString(sb, string('"'))
+		}
 	case ast.LiteralBool:
 		if e.Value.(bool) {
 			io.WriteString(sb, "true")
@@ -2190,6 +2205,29 @@ func escapeStringContent(s string) string {
 			sb.WriteString(`\0`)
 		default:
 			if r < 0x20 || r == 0x7f {
+				sb.WriteString(fmt.Sprintf(`\x%02x`, r))
+			} else {
+				sb.WriteRune(r)
+			}
+		}
+	}
+	return sb.String()
+}
+
+// escapeTripleStringContent escapes content for triple-quoted strings.
+// Newlines are kept literal (not escaped), but other special chars are escaped.
+func escapeTripleStringContent(s string) string {
+	var sb strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			sb.WriteString(`\\`)
+		case '{':
+			sb.WriteString(`\{`)
+		case 0:
+			sb.WriteString(`\0`)
+		default:
+			if r < 0x20 && r != '\n' && r != '\t' && r != '\r' {
 				sb.WriteString(fmt.Sprintf(`\x%02x`, r))
 			} else {
 				sb.WriteRune(r)

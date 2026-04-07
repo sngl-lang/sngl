@@ -387,7 +387,7 @@ func compilePreview(source string) string {
 	if err != nil {
 		return ""
 	}
-	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		return ""
 	}
 	clone := doc.Clone()

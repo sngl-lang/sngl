@@ -75,7 +75,7 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -184,7 +184,7 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}

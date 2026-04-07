@@ -1,4 +1,0 @@
-component main {
-    var apiClient dyn extern //@ hover("apiClient", "extern")
-    text(value="hello")
-}

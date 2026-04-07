@@ -329,31 +329,22 @@ func label() => "Count: {count}"
 
 Zero-arg functions are auto-invoked when referenced without `()`: `text(value=label)` calls `label()` implicitly.
 
-### extern -- host-provided values
+### Data events
 
-`extern` marks a var as injected by the host platform at runtime:
-
-<!-- SNGL-component -->
-
-```sngl
-var apiClient dyn extern
-var formatDate func(string) -> string extern
-```
-
-Extern vars must have an explicit type since there is no initializer to infer from.
-
-### @ -- onChange callbacks
-
-`@` attaches an onChange hook to a var. The platform generates the callback plumbing:
+Data events let you react to variable changes with inline statement blocks:
 
 <!-- SNGL-component -->
 
 ```sngl
-var todos list<Todo> @
-var items list<Item> @SaveItems
+var todos list<Todo> @change {
+    saveTodos(todos)
+}
+var count = 0 @init {
+    loadCount()
+}
 ```
 
-Without a name, the callback name is generated from the var name. With a name after `@`, you control the callback name.
+Available events: `@change` (value changed), `@init` (component initialized), `@insert(item)` and `@delete(item)` (list-specific).
 
 ### Gotchas
 

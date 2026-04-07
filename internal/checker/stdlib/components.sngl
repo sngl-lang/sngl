@@ -390,8 +390,8 @@ component example_button {
     var count = 0
     vbox(style={gap=8, padding=16}) {
         hbox(style={gap=8}) {
-            button(text="Click me", @click={ count += 1 })
-            button(text="Reset", @click={ count = 0 })
+            button(text="Click me", @click { count += 1 })
+            button(text="Reset", @click { count = 0 })
             button(text="Disabled", disabled=true)
         }
         text(value="Clicked " + string(count) + " times")
@@ -401,7 +401,7 @@ component example_button {
 component example_input {
     var name = ""
     vbox(style={gap=8, padding=16}) {
-        input(placeholder="Enter your name", value=name, @input={ name = event.value })
+        input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
         input(placeholder="Password", type="password")
         input(placeholder="Search...", type="search")
         text(value="Hello, " + name)
@@ -440,7 +440,7 @@ component example_spacer {
 component example_checkbox {
     var darkMode = false
     vbox(style={gap=8, padding=16}) {
-        checkbox(checked=darkMode, label="Dark mode", @change={ darkMode!! })
+        checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
         text(value=darkMode ? "Dark mode on" : "Dark mode off")
     }
 }
@@ -456,7 +456,7 @@ component example_radio {
 component example_toggle {
     var notifications = false
     vbox(style={gap=8, padding=16}) {
-        toggle(checked=notifications, label="Notifications", @change={ notifications!! })
+        toggle(checked=notifications, label="Notifications", @change { notifications!! })
         text(value=notifications ? "Enabled" : "Disabled")
     }
 }
@@ -472,7 +472,7 @@ component example_select {
 component example_textarea {
     var notes = ""
     vbox(style={gap=8, padding=16}) {
-        textarea(placeholder="Write some notes...", rows=4, value=notes, @input={ notes = event.value })
+        textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
         text(value="Length: " + string(notes.length()))
     }
 }
@@ -530,10 +530,10 @@ component example_divider {
 component example_modal {
     var showModal = false
     vbox(style={padding=16}) {
-        button(text="Open Modal", @click={ showModal = true })
+        button(text="Open Modal", @click { showModal = true })
         modal(open=showModal, title="Example Modal", closable=true) {
             text(value="Modal content goes here.")
-            button(text="Close", @click={ showModal = false })
+            button(text="Close", @click { showModal = false })
         }
     }
 }
@@ -541,11 +541,11 @@ component example_modal {
 component example_drawer {
     var showDrawer = false
     vbox(style={padding=16}) {
-        button(text="Open Drawer", @click={ showDrawer = true })
+        button(text="Open Drawer", @click { showDrawer = true })
         drawer(open=showDrawer, side="right") {
             vbox(style={gap=8, padding=16}) {
                 text(value="Drawer Content", style={fontWeight="bold"})
-                button(text="Close", @click={ showDrawer = false })
+                button(text="Close", @click { showDrawer = false })
             }
         }
     }
@@ -563,7 +563,7 @@ component example_popover {
     var showPop = false
     vbox(style={padding=16}) {
         popover(open=showPop, position="bottom", openOn="click") {
-            button(text="Toggle", @click={ showPop!! })
+            button(text="Toggle", @click { showPop!! })
         }
     }
 }
@@ -604,7 +604,7 @@ component example_tree {
 component example_menu {
     var showMenu = false
     vbox(style={padding=16}) {
-        button(text="Show Menu", @click={ showMenu = true })
+        button(text="Show Menu", @click { showMenu = true })
         menu(items=["Cut", "Copy", "Paste"], open=showMenu)
     }
 }

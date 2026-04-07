@@ -1,14 +1,14 @@
 component Counter(label = "") {
     hbox {
         text(value=label + ": " + string(count))
-        button(text="+", @click={ count = count + 1 })
-        button(text="-", disabled=count <= 0, @click={ count = count - 1 })
+        button(text="+", @click { count = count + 1 })
+        button(text="-", disabled=count <= 0, @click { count = count - 1 })
     }
 }
 
 component main {
     var (
-        user = User{name: "World", age: 25, loggedIn: false}
+        user = User{name="World", age=25, loggedIn=false}
         count = 0
     )
 
@@ -23,8 +23,8 @@ component main {
         if !isAdult {
             text(value="(Minor)", style={color=#CC0000})
         }
-        input(placeholder="Enter name", value=user.name, @input={ user.name = event.value })
+        input(placeholder="Enter name", value=user.name, @input(e) { user.name = e.value })
         Counter(label="Clicks")
-        button(text=user.loggedIn ? "Logout" : "Login", @click={ user.loggedIn!! })
+        button(text=user.loggedIn ? "Logout" : "Login", @click { user.loggedIn!! })
     }
 }

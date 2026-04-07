@@ -13,14 +13,14 @@ component main {
         source = "package main"
         file ast.File
         parseError = ""
-        parse func(string) extern
+        parse func(string)
     )
 
     vbox(style={gap=12, padding=16}) {
         text(value="Go AST Explorer", style={fontSize=24, fontWeight="bold"})
         text(value="Enter Go source code and click Parse to see the AST.")
-        textarea(placeholder="Enter Go code...", rows=10, value=source, @input={ source = event.value })
-        button(text="Parse AST", @click={ parse(source) })
+        textarea(placeholder="Enter Go code...", rows=10, value=source, @input(e) { source = e.value })
+        button(text="Parse AST", @click { parse(source) })
         if parseError != "" {
             text(value=parseError, style={color=#c62828})
         }

@@ -111,7 +111,7 @@ component sngl.select() {
 }
 
 component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange={ emit input }) {}
+    OutlinedTextField(value=value, minLines=3, @onValueChange { emit input }) {}
 }
 
 component sngl.datepicker() {
@@ -145,11 +145,11 @@ component sngl.card() {
 }
 
 component sngl.chip() {
-    AssistChip(label=Composable{name: "Text", props: [{key="text", value=label}]}) {}
+    AssistChip(label=Composable{name="Text", props=[{key="text", value=label}]}) {}
 }
 
 component sngl.link() {
-    TextButton(@onClick={ emit click }) {
+    TextButton(@onClick { emit click }) {
         Text(text=text) {}
     }
 }
@@ -163,7 +163,7 @@ component sngl.tabs() {
 component sngl.modal() {
     if open {
         AlertDialog(
-            title=Composable{name: "Text", props: [{key="text", value=title}]},
+            title=Composable{name="Text", props=[{key="text", value=title}]},
             onDismissRequest=func(){},
             confirmButton=func(){}
         ) {

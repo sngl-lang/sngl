@@ -1,5 +1,5 @@
 component main {
     var count = 0
 
-    button(text="click", @click={ count + 1 }) // ERROR(check) "must be a statement"
+    button(text="click", @click { count + 1 }) // ERROR(check) "must be a statement"
 }

@@ -3,15 +3,15 @@
 component Counter(label = "", @save) {
     var count = 0
 
-    button(text="+", @click={ count += 1 })
-    button(text="Save", @click={ @save(count) })
+    button(text="+", @click { count += 1 })
+    button(text="Save", @click { @save(count) })
     text(value="{label}: {count}")
 }
 
 // Component with bidirectional param
 component Stepper(:count = 0) {
-    button(text="+", @click={ count += 1 })
-    button(text="-", @click={ count -= 1 })
+    button(text="+", @click { count += 1 })
+    button(text="-", @click { count -= 1 })
     text(value=string(count))
 }
 
@@ -22,7 +22,7 @@ component main {
     )
 
     // Use event handler
-    Counter(label="Score", @save={ score = event })
+    Counter(label="Score", @save(e) { score = e })
     // Use bidirectional binding
     Stepper(:count=steps)
     text(value="Score: {score}, Steps: {steps}")

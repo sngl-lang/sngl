@@ -420,7 +420,7 @@ func TestInferNodeTypeInScope(t *testing.T) {
 		t.Errorf("expected String for myFunc(), got %v", got)
 	}
 
-	// MethodExpr => namespace extern func
+	// MethodExpr => namespace imported func
 	got = c.inferNodeTypeInScope(&ast.MethodExpr{
 		Receiver: &ast.IdentExpr{Name: "api"},
 		Method:   "fetch",
@@ -429,7 +429,7 @@ func TestInferNodeTypeInScope(t *testing.T) {
 		t.Errorf("expected String for api.fetch(), got %v", got)
 	}
 
-	// SelectExpr => namespace extern var
+	// SelectExpr => namespace imported var
 	got = c.inferNodeTypeInScope(&ast.SelectExpr{
 		Operand: &ast.IdentExpr{Name: "api"},
 		Field:   "baseURL",
@@ -598,8 +598,8 @@ func TestInferNodeType(t *testing.T) {
 		{"call float", &ast.CallExpr{Func: "float", Args: []ast.Node{&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}}}, Float},
 		{"call scope fn", &ast.CallExpr{Func: "name", Args: nil}, String},
 		{"call unknown", &ast.CallExpr{Func: "bogus", Args: nil}, Dyn},
-		{"method ns extern", &ast.MethodExpr{Receiver: &ast.IdentExpr{Name: "api"}, Method: "fetch"}, String},
-		{"select ns extern", &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "api"}, Field: "baseURL"}, String},
+		{"method ns imported", &ast.MethodExpr{Receiver: &ast.IdentExpr{Name: "api"}, Method: "fetch"}, String},
+		{"select ns imported", &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "api"}, Field: "baseURL"}, String},
 		{"index", &ast.IndexExpr{Operand: &ast.IdentExpr{Name: "count"}, Index: &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt}}, Dyn},
 		{"list", &ast.ListExpr{}, List},
 		{"struct expr", &ast.StructExpr{Name: "Point"}, Struct},
@@ -913,7 +913,7 @@ func TestInferNodeTypeInScope_AllCases(t *testing.T) {
 func TestCheckEmptyDoc(t *testing.T) {
 	// Empty doc with isMain=true and no app/tests => error
 	doc := &ast.Document{}
-	err := Check(doc, nil, "", nil, nil, nil, true)
+	err := Check(doc, nil, "", nil, nil, nil, nil, true)
 	if err == nil {
 		t.Error("expected error for empty doc with isMain=true")
 	}
@@ -922,7 +922,7 @@ func TestCheckEmptyDoc(t *testing.T) {
 func TestCheckEmptyDocLibrary(t *testing.T) {
 	// Empty doc with isMain=false => no error
 	doc := &ast.Document{}
-	err := Check(doc, nil, "", nil, nil, nil, false)
+	err := Check(doc, nil, "", nil, nil, nil, nil, false)
 	if err != nil {
 		t.Errorf("expected no error for library doc, got %v", err)
 	}

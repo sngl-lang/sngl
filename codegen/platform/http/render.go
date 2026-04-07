@@ -183,7 +183,8 @@ func (r *renderer) renderButton(b *strings.Builder, vn *ast.VisualNode, depth in
 	style := r.buildStyle(vn)
 	disabled := r.staticBool(vn.Props, "disabled")
 
-	clickExpr, hasClick := vn.Events["click"]
+	clickHandler, hasClick := vn.Events["click"]
+	clickExpr := clickHandler.Body
 	isClientClick := hasClick && r.clientJS != nil && r.clientJS.isClientMutation(clickExpr)
 	isServerClick := hasClick && !isClientClick && clickExpr.SNGL != nil
 

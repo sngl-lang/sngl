@@ -510,22 +510,44 @@ func mergeCommentsIntoDecls(decls []ast.Decl, comments []ast.Comment) []ast.Decl
 func (p *parser) parseImport() *ast.Import {
 	pos := p.pos()
 	p.expect(KW_IMPORT)
-	path := p.expect(STRING)
-	imp := &ast.Import{Pos: pos, Path: path.Literal}
-	rest := path.Literal
+
+	imp := &ast.Import{Pos: pos}
+
+	if p.at(IDENT) {
+		// import alias => "path"
+		imp.Alias = p.advance().Literal
+		p.expect(FAT_ARROW)
+		imp.Path = p.expect(STRING).Literal
+		imp.Namespace = imp.Alias
+	} else {
+		// import "path"
+		imp.Path = p.expect(STRING).Literal
+	}
+
+	// Extract scheme from path
+	rest := imp.Path
 	if scheme, after, ok := strings.Cut(rest, "://"); ok {
 		imp.Scheme = scheme
 		rest = after
 	}
-	ns := rest
-	if i := strings.LastIndex(ns, "/"); i >= 0 {
-		ns = ns[i+1:]
+
+	// Derive namespace from path if no alias
+	if imp.Alias == "" {
+		ns := rest
+		if i := strings.LastIndex(ns, "/"); i >= 0 {
+			ns = ns[i+1:]
+		}
+		// Strip file extensions (e.g. "types.d.ts" → "types")
+		if i := strings.Index(ns, "."); i >= 0 {
+			ns = ns[:i]
+		}
+		// Strip @version and #hash for remote schemes
+		if i := strings.Index(ns, "@"); i >= 0 {
+			ns = ns[:i]
+		}
+		imp.Namespace = ns
 	}
-	// Strip file extensions for namespace derivation (e.g. "types.d.ts" → "types")
-	if i := strings.Index(ns, "."); i >= 0 {
-		ns = ns[:i]
-	}
-	imp.Namespace = ns
+
 	return imp
 }
 
@@ -1100,7 +1122,7 @@ func (p *parser) parseVarSpec() []*ast.Data {
 		}
 		var typeHint string
 		var hasExplicitType bool
-		if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(AT) && !p.at(ASSIGN) && !p.at(RBRACE) {
+		if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(AT) && !p.at(ASSIGN) && !p.at(RBRACE) {
 			typeHint = p.parseTypeString()
 			hasExplicitType = true
 		}
@@ -1161,7 +1183,7 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 	if p.at(ASSIGN) {
 		p.advance()
 		d.Init = p.parseExprAsExpr()
-	} else if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(KW_EXTERN) && !p.at(AT) {
+	} else if !p.at(SEMICOLON) && !p.at(RPAREN) && !p.at(EOF) && !p.at(AT) {
 		typeHint := p.parseTypeString()
 		d.Init.TypeHint = typeHint
 		d.ExplicitType = true
@@ -1184,26 +1206,19 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 }
 
 func (p *parser) parseVarModifiers(d *ast.Data) {
-	for p.at(KW_EXTERN) || p.at(AT) {
-		if p.at(KW_EXTERN) {
+	for p.at(AT) {
+		p.advance()
+		kind := p.expect(IDENT).Literal // "change", "insert", "delete", "init"
+		var param string
+		if p.at(LPAREN) {
 			p.advance()
-			d.Extern = true
+			param = p.expect(IDENT).Literal
+			p.expect(RPAREN)
 		}
-		if p.at(AT) {
-			p.advance()
-			// @Name → explicit trigger name; bare @ → auto-generate
-			if p.at(IDENT) {
-				d.Trigger = p.cur.Literal
-				p.advance()
-			} else {
-				// Auto-generate trigger name
-				if len(d.Name) > 0 {
-					d.Trigger = "On" + strings.ToUpper(d.Name[:1]) + d.Name[1:] + "Changed"
-				} else {
-					d.Trigger = "OnChanged"
-				}
-			}
-		}
+		p.expect(LBRACE)
+		body := p.parseStmtList()
+		p.expect(RBRACE)
+		d.Events = append(d.Events, ast.DataEvent{Kind: kind, Param: param, Body: body})
 	}
 }
 
@@ -1572,17 +1587,22 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 			vn.Bindings[bname] = expr
 			vn.PropOrder = append(vn.PropOrder, ":"+bname)
 		} else if p.at(AT) {
-			// Event handler: @event={ stmts }
+			// Event handler: @event(param) { stmts }
 			p.advance()
 			eventName := p.expect(IDENT).Literal
-			p.expect(ASSIGN)
+			var param string
+			if p.at(LPAREN) {
+				p.advance()
+				param = p.expect(IDENT).Literal
+				p.expect(RPAREN)
+			}
 			p.expect(LBRACE)
 			stmts := p.parseStmtList()
 			p.expect(RBRACE)
 			if vn.Events == nil {
-				vn.Events = map[string]ast.Expr{}
+				vn.Events = map[string]ast.EventHandler{}
 			}
-			vn.Events[eventName] = ast.Expr{SNGL: stmts}
+			vn.Events[eventName] = ast.EventHandler{Param: param, Body: ast.Expr{SNGL: stmts}}
 			vn.PropOrder = append(vn.PropOrder, "@"+eventName)
 		} else {
 			// Regular prop: name=expr (style keyword is also valid as a prop name)
@@ -2041,7 +2061,22 @@ func (p *parser) parsePrimary() ast.Node {
 		return &ast.LiteralExpr{Value: val, Kind: ast.LiteralFloat, Raw: tok.Literal}
 	case STRING:
 		tok := p.advance()
-		return p.parseStringWithInterpolation(tok.Literal)
+		node := p.parseStringWithInterpolation(tok.Literal)
+		return node
+	case TRIPLE_STRING:
+		tok := p.advance()
+		node := p.parseStringWithInterpolation(tok.Literal)
+		// Set style to triple on the result
+		switch n := node.(type) {
+		case *ast.LiteralExpr:
+			n.Style = ast.StyleTriple
+		case *ast.InterpolationExpr:
+			n.Style = ast.StyleTriple
+		}
+		return node
+	case RAW_STRING:
+		tok := p.advance()
+		return &ast.LiteralExpr{Value: tok.Literal, Kind: ast.LiteralString, Style: ast.StyleRaw}
 	case COLOR:
 		tok := p.advance()
 		return &ast.LiteralExpr{Value: tok.Literal, Kind: ast.LiteralColor}
@@ -2122,7 +2157,7 @@ func (p *parser) parseStructLiteral(name string) ast.Node {
 			fields = append(fields, ast.StructFieldLit{Value: operand, Spread: true})
 		} else {
 			fname := p.expect(IDENT).Literal
-			p.expect(COLON)
+			p.expect(ASSIGN)
 			fval := p.parseExpression()
 			fields = append(fields, ast.StructFieldLit{Name: fname, Value: fval})
 		}

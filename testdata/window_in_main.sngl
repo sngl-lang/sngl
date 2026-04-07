@@ -3,7 +3,7 @@ component main {
 
 	window home(title="Home") {
 		text(value="Count: {count}")
-		button(text="+", @click={ count += 1 })
+		button(text="+", @click { count += 1 })
 	}
 
 	window settings(title="Settings") {

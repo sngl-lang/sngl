@@ -134,8 +134,8 @@ func TestFormatNode_StructExpr(t *testing.T) {
 		},
 	}
 	got := parser.FormatNode(node)
-	if got != "Point{x: 1, y: 2}" {
-		t.Errorf("got %q, want 'Point{x: 1, y: 2}'", got)
+	if got != "Point{x=1, y=2}" {
+		t.Errorf("got %q, want 'Point{x=1, y=2}'", got)
 	}
 }
 
@@ -264,11 +264,11 @@ func TestParseScanString_Unterminated(t *testing.T) {
 func TestParseEmitStmt(t *testing.T) {
 	src := `component Button {
     event myEvent int
-    button(text="go", @click={ @myEvent(42) })
+    button(text="go", @click { @myEvent(42) })
 }
 
 component main {
-    Button(@myEvent={ count = event })
+    Button(@myEvent(e) { count = e })
     var count = 0
     text(value=string(count))
 }`
@@ -285,11 +285,11 @@ component main {
 func TestParseAssignmentOperators(t *testing.T) {
 	src := `component main {
     var x = 0
-    button(text="+", @click={ x += 1 })
-    button(text="-", @click={ x -= 1 })
-    button(text="*", @click={ x *= 2 })
-    button(text="/", @click={ x /= 2 })
-    button(text="%", @click={ x %= 3 })
+    button(text="+", @click { x += 1 })
+    button(text="-", @click { x -= 1 })
+    button(text="*", @click { x *= 2 })
+    button(text="/", @click { x /= 2 })
+    button(text="%", @click { x %= 3 })
     text(value=string(x))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -307,7 +307,7 @@ func TestParseAssignmentOperators(t *testing.T) {
 func TestParseToggleStmt(t *testing.T) {
 	src := `component main {
     var active = false
-    button(text="toggle", @click={ active!! })
+    button(text="toggle", @click { active!! })
     text(value=string(active))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -583,7 +583,7 @@ func TestParseMultilineEvent(t *testing.T) {
 	src := `component main {
     var a = 0
     var b = 0
-    button(text="go", @click={ a += 1; b += 2 })
+    button(text="go", @click { a += 1; b += 2 })
     text(value=string(a))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -705,7 +705,7 @@ component main {
 func TestParseElementRef(t *testing.T) {
 	src := `component main {
     var count = 0
-    button #myBtn (text="go", @click={ count += 1 })
+    button #myBtn (text="go", @click { count += 1 })
     text(value=string(count))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
@@ -725,7 +725,7 @@ func TestParseStruct(t *testing.T) {
 }
 
 component main {
-    var p = Point{x: 1, y: 2}
+    var p = Point{x=1, y=2}
     text(value=string(p.x))
 }`
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))

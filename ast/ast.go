@@ -173,9 +173,10 @@ type StructField struct {
 
 type Import struct {
 	Pos       Pos
-	Path      string
-	Scheme    string // "go", "ts", "proto", "" for directory imports
-	Namespace string // last path segment, e.g. "widgets" from "lib/widgets"
+	Path      string // import URI (right side of => if aliased)
+	Alias     string // explicit namespace alias (left side of =>), empty if none
+	Scheme    string // "go", "ts", "proto", "git", "" for directory imports
+	Namespace string // Alias if set, otherwise derived from path
 	Disabled  bool
 }
 
@@ -197,17 +198,24 @@ const (
 	PurityMutates                // //sngl:mutates — modifies state
 )
 
+// DataEvent is an inline event handler on a var declaration.
+type DataEvent struct {
+	Kind  string // "change", "insert", "delete", "init"
+	Param string // param name for @insert(x)/@delete(x); "" for @change/@init
+	Body  Node   // statement block
+}
+
 type Data struct {
 	Pos          Pos
 	Name         string
 	Init         Expr
-	Extern       bool     // "extern" positional arg present
+	Extern       bool     // set by importers (go://, file://); no longer a user-facing keyword
 	Purity       Purity   // function purity level (from //sngl: annotations)
 	IsFunc       bool     // TypeHint starts with "func"
 	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
 	ReturnType   string   // parsed func return type, "" for void
 	HiddenParam  string   // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
-	Trigger      string   // resolved trigger function name, "" for none
+	Events       []DataEvent // @change, @insert, @delete, @init handlers
 	Disabled     bool
 	Grouped      bool      // parsed from var(...) grouped declaration
 	ExplicitType bool      // true when a type was written between name and =
@@ -365,6 +373,12 @@ type Window struct {
 	Decls    []Decl // ordered declarations including interleaved comments
 }
 
+// EventHandler is an event handler on a visual node (e.g., @click(e) { ... }).
+type EventHandler struct {
+	Param string // explicit param name ("_" = discard)
+	Body  Expr   // statement block (Expr wrapping SNGL node)
+}
+
 // Timer declares a recurring interval that executes statements while active.
 type Timer struct {
 	Pos      Pos
@@ -390,7 +404,7 @@ type VisualNode struct {
 	For            *ForClause
 	Ref            *Expr
 	Props          map[string]Expr
-	Events         map[string]Expr
+	Events         map[string]EventHandler
 	Bindings       map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
 	PropOrder      []string        // insertion order of props/events/bindings (prefix: @=event, :=binding)
 	Children       []*VisualNode

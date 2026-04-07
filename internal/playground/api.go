@@ -56,7 +56,7 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
@@ -150,7 +150,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}

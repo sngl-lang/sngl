@@ -2,7 +2,7 @@ component counter {
     var count = 0
     var name = "hello"
 
-    button(text="+", @click={ count += 1 })
+    button(text="+", @click { count += 1 })
     text(value="Count: {count}")
 }
 

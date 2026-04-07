@@ -548,11 +548,11 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.writeUserAttrs(b, id, vn)
 		b.WriteString(g.previewAttrs(vn.Pos))
 		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
-		if evt, ok := vn.Events["click"]; ok && evt.SNGL != nil {
+		if evt, ok := vn.Events["click"]; ok && evt.Body.SNGL != nil {
 			if id == "" {
 				id = g.allocID()
 			}
-			g.addClickHandler(id, evt)
+			g.addClickHandler(id, evt.Body)
 		}
 	case "divider":
 		style := g.buildCSSStyle(vn)
@@ -874,8 +874,8 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 
 	// Event handlers
 	if clickEvt, ok := vn.Events["click"]; ok {
-		if clickEvt.SNGL != nil {
-			g.addClickHandler(id, clickEvt)
+		if clickEvt.Body.SNGL != nil {
+			g.addClickHandler(id, clickEvt.Body)
 		}
 	}
 }
@@ -919,9 +919,9 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 
 	// Add value sync updater if the input is bound to state via set()
 	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.SNGL != nil {
+		if inputEvt.Body.SNGL != nil {
 			// Extract the set() target to determine the JS expression for the bound value
-			if target, ok := extractSetTarget(inputEvt.SNGL); ok {
+			if target, ok := extractSetTarget(inputEvt.Body.SNGL); ok {
 				jsExpr := g.lang.TranslateExpr(target, g.scope)
 				root := codegen.FindRootIdent(target)
 				name := fmt.Sprintf("$u_%s_val", id[1:])
@@ -936,8 +936,8 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 
 	// Input event handler
 	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.SNGL != nil {
-			g.addInputHandler(id, inputEvt)
+		if inputEvt.Body.SNGL != nil {
+			g.addInputHandler(id, inputEvt.Body)
 		}
 	}
 }
@@ -969,8 +969,8 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	fmt.Fprintf(b, " %s</label>\n", html.EscapeString(label))
 
 	if changeEvt, ok := vn.Events["change"]; ok {
-		if changeEvt.SNGL != nil {
-			g.addChangeHandler(id, changeEvt)
+		if changeEvt.Body.SNGL != nil {
+			g.addChangeHandler(id, changeEvt.Body)
 		}
 	}
 }
@@ -1049,8 +1049,8 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, vn *ast.VisualNode, dept
 		}
 	}
 	fmt.Fprintf(b, "%s</fieldset>\n", indent)
-	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
-		g.addChangeHandler(id, evt)
+	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+		g.addChangeHandler(id, evt.Body)
 	}
 }
 
@@ -1074,8 +1074,8 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, vn *ast.VisualNode, dep
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
-	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
-		g.addChangeHandler(id, evt)
+	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+		g.addChangeHandler(id, evt.Body)
 	}
 }
 
@@ -1108,8 +1108,8 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, vn *ast.VisualNode, dep
 		}
 	}
 	fmt.Fprintf(b, "%s</select>\n", indent)
-	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
-		g.addChangeHandler(id, evt)
+	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+		g.addChangeHandler(id, evt.Body)
 	}
 }
 
@@ -1136,8 +1136,8 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, vn *ast.VisualNode, d
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
-	if evt, ok := vn.Events["input"]; ok && evt.SNGL != nil {
-		g.addInputHandler(id, evt)
+	if evt, ok := vn.Events["input"]; ok && evt.Body.SNGL != nil {
+		g.addInputHandler(id, evt.Body)
 	}
 }
 
@@ -1344,8 +1344,8 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(" />\n")
-	if evt, ok := vn.Events["change"]; ok && evt.SNGL != nil {
-		g.addChangeHandler(id, evt)
+	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+		g.addChangeHandler(id, evt.Body)
 	}
 }
 
@@ -1494,13 +1494,13 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	for name, expr := range vn.Events {
 		switch name {
 		case "click":
-			g.addClickHandler(id, expr)
+			g.addClickHandler(id, expr.Body)
 		case "input":
-			g.addInputHandler(id, expr)
+			g.addInputHandler(id, expr.Body)
 		case "change":
-			g.addChangeHandler(id, expr)
+			g.addChangeHandler(id, expr.Body)
 		default:
-			g.addClickHandler(id, expr) // fallback
+			g.addClickHandler(id, expr.Body) // fallback
 		}
 	}
 }
@@ -1724,7 +1724,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if d.IsFunc {
 			continue
 		}
-		needsSetter := d.Trigger != "" || g.preview
+		needsSetter := g.preview
+		for _, ev := range d.Events {
+			if ev.Kind == "change" {
+				needsSetter = true
+				break
+			}
+		}
 		if !needsSetter {
 			for _, t := range g.timers {
 				if t.activeVar == d.Name {
@@ -1743,10 +1749,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, u := range g.findAffectedUpdaters(mutated) {
 			fmt.Fprintf(b, "  %s();\n", u.funcName)
 		}
-		// Fire trigger callback
-		if d.Trigger != "" {
-			cbField := "$on_" + d.Name + "_changed"
-			fmt.Fprintf(b, "  if (state.%s) state.%s(v);\n", cbField, cbField)
+		// Inline @change event body
+		for _, ev := range d.Events {
+			if ev.Kind == "change" {
+				stmts := g.lang.TranslateMutation(ev.Body, g.scope)
+				for _, s := range stmts {
+					fmt.Fprintf(b, "  %s;\n", s)
+				}
+			}
 		}
 		// Sync timers controlled by this var
 		for _, t := range g.timers {
@@ -1763,14 +1773,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Trigger registration
-	for _, d := range g.doc.Data {
-		if d.Extern || d.IsFunc || d.Trigger == "" {
-			continue
-		}
-		cbField := "$on_" + d.Name + "_changed"
-		fmt.Fprintf(b, "function %s(fn) { state.%s = fn; }\n", d.Trigger, cbField)
-	}
 	b.WriteString("\n")
 
 	// Constants
@@ -2183,9 +2185,9 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 
 		// Change handler
 		if changeEvt, ok := vn.Events["change"]; ok {
-			if changeEvt.SNGL != nil {
-				stmts := g.lang.TranslateMutation(changeEvt.SNGL, g.scope)
-				mutated := codegen.MutatedFields(changeEvt.SNGL)
+			if changeEvt.Body.SNGL != nil {
+				stmts := g.lang.TranslateMutation(changeEvt.Body.SNGL, g.scope)
+				mutated := codegen.MutatedFields(changeEvt.Body.SNGL)
 				var handlerLines []string
 				for _, s := range stmts {
 					handlerLines = append(handlerLines, s+";")

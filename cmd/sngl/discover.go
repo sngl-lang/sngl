@@ -176,3 +176,13 @@ func defaultSchemeResolver() checker.SchemeResolver {
 		return imp.Resolve(uri, dir)
 	}
 }
+
+func defaultFSSchemeResolver() checker.FSSchemeResolver {
+	return func(scheme, uri, dir string) (fs.FS, error) {
+		imp := codegen.LookupFSScheme(scheme)
+		if imp == nil {
+			return nil, nil
+		}
+		return imp.ResolveFS(uri, dir)
+	}
+}

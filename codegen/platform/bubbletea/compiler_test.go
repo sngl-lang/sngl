@@ -1,7 +1,7 @@
 package bubbletea
 
 import (
-	"go/parser"
+	goparser "go/parser"
 	"go/token"
 	"os"
 	"strings"
@@ -9,6 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -20,7 +21,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 	}
 	// Verify the generated code parses as valid Go
 	fset := token.NewFileSet()
-	_, err = parser.ParseFile(fset, "generated.go", src, parser.AllErrors)
+	_, err = goparser.ParseFile(fset, "generated.go", src, goparser.AllErrors)
 	if err != nil {
 		t.Fatalf("generated code is not valid Go:\n%s\nerror: %v", src, err)
 	}
@@ -36,7 +37,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		if err := checker.Check(doc, os.DirFS("../../../testdata"), "../../../testdata", checker.DefaultResolver(), nil, nil, true); err != nil {
+		if err := checker.Check(doc, os.DirFS("../../../testdata"), "../../../testdata", checker.DefaultResolver(), nil, nil, nil, true); err != nil {
 			t.Fatalf("check: %v", err)
 		}
 		compileAndVerify(t, doc)
@@ -44,20 +45,26 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestGettersSetters(t *testing.T) {
-	doc, err := testutil.ParseFile("../../../testdata/data_extern_trigger.sngl")
+	src := `component main {
+    var (
+        count = 0
+        todos list<Todo>
+    )
+}
+`
+	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, os.DirFS("../../../testdata"), "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
-	src := compileAndVerify(t, doc)
-	code := string(src)
+	out := compileAndVerify(t, doc)
+	code := string(out)
 
 	checks := map[string]string{
 		"getter":       "func (m Model) Todos() []Todo",
 		"setter":       "func (m Model) SetTodos(v []Todo) Model",
-		"trigger reg":  "func (m Model) OnTodosChanged(fn func([]Todo)) Model",
 		"msg type":     "type setTodosMsg struct",
 		"cmd func":     "func SetTodosCmd(",
 		"update case":  "case setTodosMsg:",
@@ -76,7 +83,7 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, os.DirFS("../../../examples/todo"), "", nil, nil, nil, true); err != nil {
+	if err := checker.Check(doc, os.DirFS("../../../examples/todo"), "", nil, nil, nil, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	compileAndVerify(t, doc)

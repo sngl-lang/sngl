@@ -148,9 +148,15 @@ func (l *lexer) NextToken() Token {
 			return l.scanNumber(startLine, startCol)
 		}
 
-		// String literal
+		// String literals
 		if ch == '"' {
+			if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+				return l.scanTripleString(startLine, startCol)
+			}
 			return l.scanString(startLine, startCol)
+		}
+		if ch == '`' {
+			return l.scanRawString(startLine, startCol)
 		}
 
 		// Identifier or keyword (may include hyphens in style contexts)
@@ -384,6 +390,127 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 	}
 	// Unterminated string
 	return l.token(ILLEGAL, "unterminated string", startLine, startCol)
+}
+
+// scanTripleString scans a triple-quoted string literal ("""...""").
+// Supports escape sequences and interpolation, same as regular strings.
+// Leading indentation is stripped based on the closing """.
+func (l *lexer) scanTripleString(startLine, startCol int) Token {
+	l.advance() // consume first "
+	l.advance() // consume second "
+	l.advance() // consume third "
+
+	var sb strings.Builder
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		// Check for closing """
+		if ch == '"' && l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+			l.advance() // consume "
+			l.advance() // consume "
+			l.advance() // consume "
+			return l.token(TRIPLE_STRING, dedent(sb.String()), startLine, startCol)
+		}
+		if ch == '\\' {
+			l.advance()
+			if l.pos < len(l.input) {
+				esc := l.input[l.pos]
+				l.advance()
+				switch esc {
+				case 'n':
+					sb.WriteRune('\n')
+				case 't':
+					sb.WriteRune('\t')
+				case 'r':
+					sb.WriteRune('\r')
+				case '"':
+					sb.WriteRune('"')
+				case '\\':
+					sb.WriteRune('\\')
+				case '{':
+					sb.WriteRune('\\')
+					sb.WriteRune('{')
+				case '0':
+					sb.WriteRune(0)
+				default:
+					l.errors = append(l.errors, fmt.Sprintf("%d:%d: unknown escape sequence: \\%c", l.line, l.col, esc))
+					sb.WriteRune('\\')
+					sb.WriteRune(esc)
+				}
+			}
+			continue
+		}
+		sb.WriteRune(ch)
+		l.advance()
+	}
+	return l.token(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
+}
+
+// scanRawString scans a raw string literal (`...`).
+// No escape sequences or interpolation — content is literal.
+func (l *lexer) scanRawString(startLine, startCol int) Token {
+	l.advance() // consume opening `
+	var sb strings.Builder
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		if ch == '`' {
+			l.advance()
+			return l.token(RAW_STRING, sb.String(), startLine, startCol)
+		}
+		sb.WriteRune(ch)
+		l.advance()
+	}
+	return l.token(ILLEGAL, "unterminated raw string", startLine, startCol)
+}
+
+// dedent strips common leading whitespace from a multiline string.
+func dedent(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) <= 1 {
+		return s
+	}
+
+	// Skip leading newline if first line is empty (common: """ followed by newline)
+	start := 0
+	if lines[0] == "" {
+		start = 1
+	}
+
+	// Find minimum indentation of non-empty lines
+	minIndent := -1
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if minIndent < 0 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+	if minIndent <= 0 {
+		// No common indent to strip; still remove leading empty line
+		if start > 0 {
+			return strings.Join(lines[start:], "\n")
+		}
+		return s
+	}
+
+	// Strip common indent
+	result := make([]string, 0, len(lines)-start)
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
+		if len(line) >= minIndent {
+			line = line[minIndent:]
+		}
+		result = append(result, line)
+	}
+
+	// Trim trailing empty line (common: indented """ on its own line)
+	if len(result) > 0 && strings.TrimSpace(result[len(result)-1]) == "" {
+		result = result[:len(result)-1]
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // scanHashToken handles # followed by hex digits or identifier chars.

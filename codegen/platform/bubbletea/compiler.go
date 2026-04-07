@@ -110,8 +110,7 @@ type analysisResult struct {
 	inputs     []inputInfo
 	focusables []string // ordered: "input0", "button0", etc.
 	forCursors []forLoopCursor
-	goImports map[string]string // import path → namespace alias (only imports used by generated types)
-	triggers   map[string]string // data field name → trigger func name
+	goImports  map[string]string // import path → namespace alias (only imports used by generated types)
 	needsTime  bool              // emit "time" import
 }
 
@@ -120,7 +119,6 @@ func analyze(doc *ast.Document) *analysisResult {
 
 	info := &analysisResult{
 		CommonAnalysis: common,
-		triggers:       make(map[string]string),
 		goImports:      make(map[string]string),
 	}
 
@@ -164,9 +162,6 @@ func analyze(doc *ast.Document) *analysisResult {
 			goType:  goType,
 			initVal: initVal,
 		})
-		if d.Trigger != "" {
-			info.triggers[d.Name] = d.Trigger
-		}
 	}
 
 	// Platform-specific computed function analysis (Go types)
@@ -228,7 +223,7 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 		bindTarget := ""
 		// Extract bind target from on:input event: set(field, event.value) / field = event.value
 		if inputEvt, ok := vn.Events["input"]; ok {
-			bindTarget = extractAssignTarget(inputEvt.SNGL)
+			bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
 		}
 		info.inputs = append(info.inputs, inputInfo{
 			fieldName:   fieldName,
@@ -263,13 +258,14 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 				if ident, ok := vn.For.Iterable.SNGL.(*ast.IdentExpr); ok {
 					listField = ident.Name
 				}
+				body := changeEvt.Body
 				info.forCursors = append(info.forCursors, forLoopCursor{
 					cursorField: listField + "Cursor",
 					listField:   listField,
 					focusIdx:    focusIdx,
 					indexVar:    vn.For.IndexVar,
 					iterVar:     vn.For.Variable,
-					changeExpr:  &changeEvt,
+					changeExpr:  &body,
 				})
 			}
 		}
@@ -407,13 +403,6 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, ext := range info.externs {
 		fmt.Fprintf(&b, "\t%s %s // extern\n", exportName(ext.name), ext.goType)
 	}
-	// Trigger callback fields
-	for _, bind := range info.binds {
-		if trigger, ok := info.triggers[bind.name]; ok {
-			cbField := unexportName(trigger)
-			fmt.Fprintf(&b, "\t%s func(%s)\n", cbField, bind.goType)
-		}
-	}
 	if len(info.binds) > 0 {
 		b.WriteString("\n")
 	}
@@ -491,8 +480,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		emitGoFunc(&b, fn, ec)
 	}
 
-	// Getters, setters, Msg/Cmd types, trigger registration
-	emitGettersSetters(&b, info)
+	// Getters, setters, Msg/Cmd types
+	emitGettersSetters(&b, info, doc, ec)
 
 	// Init()
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
@@ -642,7 +631,7 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 	}
 }
 
-func emitGettersSetters(b *strings.Builder, info *analysisResult) {
+func emitGettersSetters(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *exprContext) {
 	for _, bind := range info.binds {
 		getter := exportName(bind.name)
 		// Getter
@@ -659,12 +648,19 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult) {
 				fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", inp.fieldName, bind.name)
 			}
 		}
-		// Fire trigger callback
-		if trigger, ok := info.triggers[bind.name]; ok {
-			cbField := unexportName(trigger)
-			fmt.Fprintf(b, "\tif m.%s != nil {\n", cbField)
-			fmt.Fprintf(b, "\t\tm.%s(v)\n", cbField)
-			b.WriteString("\t}\n")
+		// Inline @change event bodies
+		for _, d := range doc.Data {
+			if d.Name != bind.name {
+				continue
+			}
+			for _, ev := range d.Events {
+				if ev.Kind == "change" {
+					stmts := ec.TranslateMutation(ev.Body)
+					for _, s := range stmts {
+						fmt.Fprintf(b, "\t%s\n", s)
+					}
+				}
+			}
 		}
 		b.WriteString("\treturn m\n")
 		b.WriteString("}\n\n")
@@ -675,19 +671,6 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult) {
 		// Cmd function
 		fmt.Fprintf(b, "func Set%sCmd(v %s) tea.Cmd {\n", getter, bind.goType)
 		fmt.Fprintf(b, "\treturn func() tea.Msg { return set%sMsg{value: v} }\n", getter)
-		b.WriteString("}\n\n")
-	}
-
-	// Trigger registration methods
-	for _, bind := range info.binds {
-		trigger, ok := info.triggers[bind.name]
-		if !ok {
-			continue
-		}
-		cbField := unexportName(trigger)
-		fmt.Fprintf(b, "func (m Model) %s(fn func(%s)) Model {\n", trigger, bind.goType)
-		fmt.Fprintf(b, "\tm.%s = fn\n", cbField)
-		b.WriteString("\treturn m\n")
 		b.WriteString("}\n\n")
 	}
 }
@@ -798,7 +781,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 	for _, vn := range nodes {
 		if vn.Component == "checkbox" {
 			if changeEvt, ok := vn.Events["change"]; ok {
-				if changeEvt.SNGL != nil {
+				if changeEvt.Body.SNGL != nil {
 					focusIdx := -1
 					for i, f := range info.focusables {
 						if f == fmt.Sprintf("checkbox%d", *checkboxIdx) {
@@ -816,7 +799,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						}
 						if fc != nil {
 							ec.LocalVars[fc.indexVar] = true
-							stmts := ec.TranslateMutation(changeEvt.SNGL)
+							stmts := ec.TranslateMutation(changeEvt.Body.SNGL)
 							delete(ec.LocalVars, fc.indexVar)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s) {\n", fc.cursorField, fc.listField)
@@ -830,12 +813,12 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyDown && m.focus == %d:\n", focusIdx)
 							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s)-1 { m.%s++ }\n", fc.cursorField, fc.listField, fc.cursorField)
 						} else {
-							stmts := ec.TranslateMutation(changeEvt.SNGL)
+							stmts := ec.TranslateMutation(changeEvt.Body.SNGL)
 							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 							for _, stmt := range stmts {
 								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 							}
-							mutatedFields := codegen.MutatedFields(changeEvt.SNGL)
+							mutatedFields := codegen.MutatedFields(changeEvt.Body.SNGL)
 							for _, inp := range info.inputs {
 								if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 									fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -849,7 +832,7 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 		}
 		if vn.Component == "button" {
 			if clickEvt, ok := vn.Events["click"]; ok {
-				if clickEvt.SNGL != nil {
+				if clickEvt.Body.SNGL != nil {
 					focusIdx := -1
 					for i, f := range info.focusables {
 						if f == fmt.Sprintf("button%d", *buttonIdx) {
@@ -858,12 +841,12 @@ func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analy
 						}
 					}
 					if focusIdx >= 0 {
-						stmts := ec.TranslateMutation(clickEvt.SNGL)
+						stmts := ec.TranslateMutation(clickEvt.Body.SNGL)
 						fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
 						for _, stmt := range stmts {
 							fmt.Fprintf(b, "\t\t\t%s\n", stmt)
 						}
-						mutatedFields := codegen.MutatedFields(clickEvt.SNGL)
+						mutatedFields := codegen.MutatedFields(clickEvt.Body.SNGL)
 						for _, inp := range info.inputs {
 							if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
 								fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
@@ -1015,5 +998,3 @@ func extractAssignTarget(e ast.Node) string {
 	}
 	return ""
 }
-
-

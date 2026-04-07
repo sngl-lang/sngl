@@ -268,7 +268,10 @@ func optimizeNodes(nodes []*ast.VisualNode, ctx *foldCtx) []*ast.VisualNode {
 			foldExpr(&vn.For.Iterable, ctx)
 		}
 		foldExprMap(vn.Props, ctx)
-		foldExprMap(vn.Events, ctx)
+		for k, eh := range vn.Events {
+			foldExpr(&eh.Body, ctx)
+			vn.Events[k] = eh
+		}
 
 		// Unwrap trivial interpolations: "{expr}" → expr
 		unwrapTrivialInterpolations(vn.Props)

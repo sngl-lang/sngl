@@ -14,13 +14,13 @@ component main {
     )
 
     vbox {
-        input #searchBox(value=searchText, @change={ searchText = event })
+        input #searchBox(value=searchText, @change(e) { searchText = e })
         text(ref="searchLabel", value="Search: " + searchText)
         for item, idx = items {
             Card(subtitle=string(idx), title=item) {
                 text(value="content")
             }
         }
-        button(text="Click", @click={ count += 1 })
+        button(text="Click", @click { count += 1 })
     }
 }

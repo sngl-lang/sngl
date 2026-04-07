@@ -1,8 +1,8 @@
 component Counter(label = "") {
     hbox {
         text(value=label)
-        button(text="+", @click={ count = count + 1 })
-        button(text="-", @click={ count = count - 1 })
+        button(text="+", @click { count = count + 1 })
+        button(text="-", @click { count = count - 1 })
     }
 }
 
@@ -21,8 +21,8 @@ component main {
         if active {
             text(value="Active", style={color=#007700})
         }
-        input(placeholder="Enter name", value=name, @input={ name = event.value })
+        input(placeholder="Enter name", value=name, @input(e) { name = e.value })
         Counter(label="Clicks")
-        button(text=active ? "Deactivate" : "Activate", @click={ active!! })
+        button(text=active ? "Deactivate" : "Activate", @click { active!! })
     }
 }

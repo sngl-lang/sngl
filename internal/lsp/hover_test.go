@@ -47,8 +47,8 @@ func TestHoverInfo_Var(t *testing.T) {
 	}
 
 	info = lspcore.HoverInfo(doc, "user")
-	if !strings.Contains(info, "extern") {
-		t.Errorf("expected extern hover, got %q", info)
+	if !strings.Contains(info, "var user User") {
+		t.Errorf("expected var hover for imported, got %q", info)
 	}
 }
 

@@ -82,7 +82,7 @@ func (vn *VisualNode) clone() *VisualNode {
 	c.Ref = cloneExprPtr(vn.Ref)
 	c.For = cloneForClause(vn.For)
 	c.Props = cloneExprMap(vn.Props)
-	c.Events = cloneExprMap(vn.Events)
+	c.Events = cloneEventHandlerMap(vn.Events)
 	c.Bindings = cloneExprMap(vn.Bindings)
 	if vn.PropOrder != nil {
 		c.PropOrder = make([]string, len(vn.PropOrder))
@@ -118,6 +118,15 @@ func cloneExprMap(m map[string]Expr) map[string]Expr {
 		return nil
 	}
 	out := make(map[string]Expr, len(m))
+	maps.Copy(out, m)
+	return out
+}
+
+func cloneEventHandlerMap(m map[string]EventHandler) map[string]EventHandler {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]EventHandler, len(m))
 	maps.Copy(out, m)
 	return out
 }

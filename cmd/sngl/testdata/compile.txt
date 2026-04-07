@@ -36,7 +36,7 @@ exists out3/index.html
 -- app.sngl --
 component main {
     var count = 0
-    button(text="+", @click={ count += 1 })
+    button(text="+", @click { count += 1 })
     text(value="Count: {count}")
 }
 -- bad.sngl --

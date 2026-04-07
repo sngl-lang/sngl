@@ -80,23 +80,20 @@ Inline functions (`(params) => expr`) can be passed to list methods like `filter
 
 ## Modifiers
 
-### extern
+### Data events
 
-Marks a variable as externally provided (not auto-initialized):
-
-```sngl
-var apiClient dyn = null extern
-var save func(string) = null extern
-```
-
-### @
-
-Generates an onChange callback:
+React to variable changes with inline statement blocks:
 
 ```sngl
-var todos list<Todo> = null @
-var items list<Item> = null @saveItems
+var todos list<Todo> @change {
+    saveTodos(todos)
+}
+var count = 0 @init {
+    loadCount()
+}
 ```
+
+Events: `@change`, `@init`, `@insert(item)`, `@delete(item)`.
 
 ## Expressions
 

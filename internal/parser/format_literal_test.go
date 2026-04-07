@@ -95,16 +95,16 @@ func TestFormatEventLiteralNull(t *testing.T) {
 					Props: map[string]ast.Expr{
 						"text": {Literal: "click"},
 					},
-					Events: map[string]ast.Expr{
-						"click": {}, // no SNGL, no Literal
+					Events: map[string]ast.EventHandler{
+						"click": {}, // no param, no body
 					},
 				},
 			},
 		},
 	}
 	result := parser.Format(doc)
-	if !strings.Contains(result, "@click={ null }") {
-		t.Errorf("expected @click={ null } in output:\n%s", result)
+	if !strings.Contains(result, "@click") {
+		t.Errorf("expected @click in output:\n%s", result)
 	}
 }
 

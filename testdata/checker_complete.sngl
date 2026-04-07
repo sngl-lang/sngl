@@ -11,7 +11,7 @@ enum Status { active, inactive }
 
 component Counter(label = "", count int) {
     text(value=label + ": " + string(count))
-    button(text="+", @click={ count = count + 1 })
+    button(text="+", @click { count = count + 1 })
 }
 
 component main {
@@ -19,7 +19,7 @@ component main {
         count = 0
         name = "World"
         active = true
-        conf = Config{name: "test", count: 0}
+        conf = Config{name="test", count=0}
     )
 
     const (
@@ -39,7 +39,7 @@ component main {
 
     Counter(label="Count", count=count)
     text(value=greeting)
-    button(text="reset", @click={ reset() })
+    button(text="reset", @click { reset() })
 
     for i, item = [1, 2, 3] {
         text(value=string(item))

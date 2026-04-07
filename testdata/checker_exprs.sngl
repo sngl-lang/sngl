@@ -15,7 +15,7 @@ component Widget(title = "default", count = 0, active = true, items = [], config
     func fieldAccess() => config.name
     func indexAccess() => items[0]
     func listVal() => [1, 2, 3]
-    func structVal() => Config{name: "test", value: 42}
+    func structVal() => Config{name="test", value=42}
     func interpVal() => "count={string(count)}"
 
     vbox {

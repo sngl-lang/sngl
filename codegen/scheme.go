@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"io/fs"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -14,9 +15,18 @@ type SchemeImporter interface {
 	Resolve(uri, dir string) (*ast.NativeDecls, error)
 }
 
+// FSSchemeImporter resolves a scheme-based import to a filesystem of SNGL sources.
+// Used for remote SNGL libraries (git://, http://) that provide .sngl files
+// rather than native language declarations.
+type FSSchemeImporter interface {
+	Scheme() string
+	ResolveFS(uri, dir string) (fs.FS, error)
+}
+
 var (
-	schemeMu sync.RWMutex
-	schemes  = map[string]SchemeImporter{}
+	schemeMu  sync.RWMutex
+	schemes   = map[string]SchemeImporter{}
+	fsSchemes = map[string]FSSchemeImporter{}
 )
 
 // RegisterScheme registers a scheme importer. Panics on duplicate.
@@ -30,11 +40,29 @@ func RegisterScheme(s SchemeImporter) {
 	schemes[name] = s
 }
 
+// RegisterFSScheme registers a filesystem scheme importer. Panics on duplicate.
+func RegisterFSScheme(s FSSchemeImporter) {
+	schemeMu.Lock()
+	defer schemeMu.Unlock()
+	name := s.Scheme()
+	if _, ok := fsSchemes[name]; ok {
+		panic("codegen: duplicate FS scheme registration: " + name)
+	}
+	fsSchemes[name] = s
+}
+
 // LookupScheme returns the importer for the given scheme, or nil.
 func LookupScheme(scheme string) SchemeImporter {
 	schemeMu.RLock()
 	defer schemeMu.RUnlock()
 	return schemes[scheme]
+}
+
+// LookupFSScheme returns the FS importer for the given scheme, or nil.
+func LookupFSScheme(scheme string) FSSchemeImporter {
+	schemeMu.RLock()
+	defer schemeMu.RUnlock()
+	return fsSchemes[scheme]
 }
 
 // Schemes returns the names of all registered schemes.

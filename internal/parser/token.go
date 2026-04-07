@@ -15,8 +15,10 @@ const (
 	IDENT        // identifier
 	INT          // integer literal
 	FLOAT        // float literal
-	STRING       // "string literal"
-	COLOR        // #rrggbb
+	STRING        // "string literal"
+	TRIPLE_STRING // """multiline string"""
+	RAW_STRING    // `raw string`
+	COLOR         // #rrggbb
 	UNIT_LITERAL // 5s, 100ms, 12px, 1.5em, etc.
 	ELEMENT_REF  // #identifier
 
@@ -80,7 +82,6 @@ const (
 	KW_FOR
 	KW_ELSE
 	KW_IN
-	KW_EXTERN
 	KW_TRIGGER
 	KW_FUNC
 	KW_UNIT
@@ -111,7 +112,6 @@ var keywords = map[string]TokenType{
 	"if":        KW_IF,
 	"for":       KW_FOR,
 	"else":      KW_ELSE,
-	"extern":    KW_EXTERN,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
 	"timer":     KW_TIMER,
@@ -154,8 +154,8 @@ type Token struct {
 // insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
-		AT, KW_EXTERN, KW_RETURN,
+	case IDENT, INT, FLOAT, STRING, TRIPLE_STRING, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
+		AT, KW_RETURN,
 		RPAREN, RBRACKET, RBRACE:
 		return true
 	}
@@ -164,7 +164,7 @@ func insertsSemicolon(t TokenType) bool {
 
 var tokenNames = map[TokenType]string{
 	ILLEGAL: "ILLEGAL", EOF: "EOF", SEMICOLON: "SEMICOLON",
-	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING",
+	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING", TRIPLE_STRING: "TRIPLE_STRING", RAW_STRING: "RAW_STRING",
 	COLOR: "COLOR", UNIT_LITERAL: "UNIT_LITERAL", ELEMENT_REF: "ELEMENT_REF",
 	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
 	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",

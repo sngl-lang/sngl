@@ -234,13 +234,13 @@ func TestHoverInfo_ComponentWithParams(t *testing.T) {
 	}
 }
 
-func TestHoverInfo_ExternVar(t *testing.T) {
+func TestHoverInfo_ImportedVar(t *testing.T) {
 	doc := &ast.Document{
 		Data: []*ast.Data{{Name: "api", Init: ast.Expr{TypeHint: "string"}, Extern: true}},
 	}
 	info := lspcore.HoverInfo(doc, "api")
 	if info == "" {
-		t.Error("expected hover info for extern var")
+		t.Error("expected hover info for imported var")
 	}
 }
 

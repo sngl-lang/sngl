@@ -155,9 +155,9 @@ func (env *Env) renderNodeProps(node *ast.VisualNode) map[string]any {
 			m["class"] = node.Class.Literal
 		}
 	}
-	for name, expr := range node.Events {
-		if expr.SNGL != nil {
-			m["@"+name] = expr.SNGL
+	for name, handler := range node.Events {
+		if handler.Body.SNGL != nil {
+			m["@"+name] = handler.Body.SNGL
 		}
 	}
 	return m

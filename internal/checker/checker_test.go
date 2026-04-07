@@ -22,7 +22,7 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		err = Check(doc, os.DirFS("../../testdata"), "../../testdata", DefaultResolver(), nil, nil, true)
+		err = Check(doc, os.DirFS("../../testdata"), "../../testdata", DefaultResolver(), nil, nil, nil, true)
 		// When check error directives exist, also merge CheckTestFuncs
 		// diagnostics so ERROR(check) directives on test functions match.
 		if len(checkErrs) > 0 {
@@ -71,14 +71,14 @@ func TestSchemeImport(t *testing.T) {
 component main {
     var count = 0
     text(value=string(count))
-    button(text="Save", @click={ count += 1 })
+    button(text="Save", @click { count += 1 })
 }
 `
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := Check(doc, nil, ".", nil, mockResolver, nil, true); err != nil {
+	if err := Check(doc, nil, ".", nil, mockResolver, nil, nil, true); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 
@@ -106,7 +106,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	err = Check(doc, nil, "", nil, nil, nil, true)
+	err = Check(doc, nil, "", nil, nil, nil, nil, true)
 	if err == nil {
 		t.Fatal("expected error for unknown scheme, got nil")
 	}
@@ -117,15 +117,15 @@ component main {
 
 func TestCallStmtInHandler(t *testing.T) {
 	src := `component main {
-    var saveTodo func(string) extern
-    button(text="Save", @click={ saveTodo("test") })
+    var saveTodo func(string)
+    button(text="Save", @click { saveTodo("test") })
 }
 `
 	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := Check(doc, nil, "", nil, nil, nil, true); err != nil {
+	if err := Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
 		t.Fatalf("expected no error for CallStmt in handler, got: %v", err)
 	}
 }

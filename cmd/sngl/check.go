@@ -42,7 +42,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), nil, true); err != nil {
+		if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			failed = true
 			continue

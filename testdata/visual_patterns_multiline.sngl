@@ -8,8 +8,8 @@ component main {
         placeholder="Enter text",
         type="email",
         disabled=false,
-        @input={ count = count + 1 },
-        @change={ name = event },
+        @input { count = count + 1 },
+        @change(e) { name = e },
     )
 
     // Multi-line with style

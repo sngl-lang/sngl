@@ -104,12 +104,12 @@ func regex.find(r regex, s string) => ""
 // Color is a struct with {r, g, b, a} int fields (0-255).
 // Color literals (#ff0000) are syntax sugar for creating Color structs.
 
-func color.rgb(r int, g int, b int) => Color{r: r, g: g, b: b, a: 255}
-func color.rgba(r int, g int, b int, a int) => Color{r: r, g: g, b: b, a: a}
+func color.rgb(r int, g int, b int) => Color{r=r, g=g, b=b, a=255}
+func color.rgba(r int, g int, b int, a int) => Color{r=r, g=g, b=b, a=a}
 
 // Returns a lighter color by blending toward white by the given percentage.
 func color.lighten(c Color, pct float) Color {
-    var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
+    var ret = Color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = int.min(255, c.r + int(float(255 - c.r) * pct))
     ret.g = int.min(255, c.g + int(float(255 - c.g) * pct))
     ret.b = int.min(255, c.b + int(float(255 - c.b) * pct))
@@ -118,7 +118,7 @@ func color.lighten(c Color, pct float) Color {
 
 // Returns a darker color by blending toward black by the given percentage.
 func color.darken(c Color, pct float) Color {
-    var ret = Color{r: c.r, g: c.g, b: c.b, a: c.a}
+    var ret = Color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = int(float(c.r) * (1.0 - pct))
     ret.g = int(float(c.g) * (1.0 - pct))
     ret.b = int(float(c.b) * (1.0 - pct))
@@ -126,7 +126,7 @@ func color.darken(c Color, pct float) Color {
 }
 
 // Returns a copy of the color with the alpha channel replaced.
-func color.opacity(c Color, a int) => Color{r: c.r, g: c.g, b: c.b, a: a}
+func color.opacity(c Color, a int) => Color{r=c.r, g=c.g, b=c.b, a=a}
 
 // Returns the color as a hex string (e.g. "#ff0000"). Native override only.
 func color.hex(c Color) => "#000000"

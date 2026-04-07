@@ -36,7 +36,7 @@ type viewContext struct {
 	// Component expansion support
 	doc            *ast.Document
 	slotChildren   []*ast.VisualNode
-	callerEvents   map[string]ast.Expr
+	callerEvents   map[string]ast.EventHandler
 	componentDepth int
 }
 
@@ -391,7 +391,7 @@ func (vc *viewContext) renderRawWidget(vn *ast.VisualNode, resultVar string) {
 			}
 
 			// Handle click event
-			if clickEvt, ok := vc.callerEvents["click"]; ok && clickEvt.SNGL != nil {
+			if clickEvt, ok := vc.callerEvents["click"]; ok && clickEvt.Body.SNGL != nil {
 				vc.line("// TODO: wire click event on persistent widget")
 			}
 			return

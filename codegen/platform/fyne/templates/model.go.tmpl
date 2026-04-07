@@ -96,9 +96,6 @@ type Model struct {
 {{- range .Externs}}
 	{{.Name}} {{.GoType}} // extern
 {{- end}}
-{{- range .Triggers}}
-	{{.CallbackField}} func({{.GoType}})
-{{- end}}
 {{- if .Binds}}
 {{end}}
 {{- range .Entries}}
@@ -189,12 +186,6 @@ func (m *Model) {{.Getter}}() {{.GoType}} {
 func (m *Model) Set{{.Getter}}(v {{.GoType}}) {
 	m.{{.Name}} = v
 {{ .SetterExtra -}}
-}
-
-{{end}}
-{{- range .TriggerRegistrations}}
-func (m *Model) {{.MethodName}}(fn func({{.GoType}})) {
-	m.{{.CallbackField}} = fn
 }
 
 {{end}}

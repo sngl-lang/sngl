@@ -112,8 +112,8 @@ func walkExternRefs(nodes []*ast.VisualNode, externNames map[string]bool, tainte
 			checkExprTaints(expr, externNames, tainted, dt)
 		}
 		// Check events — mutations that assign from extern results taint the target.
-		for _, expr := range vn.Events {
-			checkExprTaints(expr, externNames, tainted, dt)
+		for _, handler := range vn.Events {
+			checkExprTaints(handler.Body, externNames, tainted, dt)
 		}
 		// Check bindings.
 		for _, expr := range vn.Bindings {

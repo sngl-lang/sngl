@@ -19,7 +19,7 @@ type composeContext struct {
 	hasSlot              bool                // true when rendering inside a component with slot support
 	slotChildren         []*ast.VisualNode   // caller's children for slot expansion
 	componentDepth       int                 // recursion guard for component expansion
-	callerEvents         map[string]ast.Expr // caller's event handlers (for emit propagation)
+	callerEvents         map[string]ast.EventHandler // caller's event handlers (for emit propagation)
 	callerEventsConsumed map[string]bool     // events already mapped to a Compose parameter
 	callerStyleFields    map[string]ast.Expr // caller's style fields forwarded to first raw composable
 }
@@ -228,7 +228,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// sibling composable so they don't propagate further.
 	events := vn.Events
 	if len(events) == 0 && cc.callerEvents != nil {
-		filtered := make(map[string]ast.Expr)
+		filtered := make(map[string]ast.EventHandler)
 		for k, v := range cc.callerEvents {
 			if !cc.callerEventsConsumed[k] {
 				filtered[k] = v
@@ -263,8 +263,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Also inject click handler as Modifier.clickable for composables that
 	// don't accept onClick as a parameter.
 	mod := buildModifierExpr(styleFields, cc.ec)
-	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && !onClickComposables[name] {
-		stmts := cc.ec.translateMutation(clickExpr.SNGL)
+	if clickExpr, ok := events["click"]; ok && clickExpr.Body.SNGL != nil && !onClickComposables[name] {
+		stmts := cc.ec.translateMutation(clickExpr.Body.SNGL)
 		var b strings.Builder
 		fmt.Fprintf(&b, ".clickable {\n")
 		for _, s := range stmts {
@@ -343,7 +343,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	}
 	for snglName, ktName := range eventMappings {
 		expr, ok := events[snglName]
-		if !ok || expr.SNGL == nil {
+		if !ok || expr.Body.SNGL == nil {
 			continue
 		}
 		cc.consumeEvent(snglName)
@@ -352,7 +352,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		if isValueChange {
 			cc.ec.eventVar = "_inputValue_"
 		}
-		stmts := cc.ec.translateMutation(expr.SNGL)
+		stmts := cc.ec.translateMutation(expr.Body.SNGL)
 		if isValueChange {
 			cc.ec.eventVar = ""
 		}
@@ -383,8 +383,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		"AssistChip": true, "FilterChip": true, "InputChip": true,
 		"SuggestionChip": true,
 	}
-	if clickExpr, ok := events["click"]; ok && clickExpr.SNGL != nil && onClickComposables[name] {
-		stmts := cc.ec.translateMutation(clickExpr.SNGL)
+	if clickExpr, ok := events["click"]; ok && clickExpr.Body.SNGL != nil && onClickComposables[name] {
+		stmts := cc.ec.translateMutation(clickExpr.Body.SNGL)
 		var b strings.Builder
 		b.WriteString("{\n")
 		for _, s := range stmts {
@@ -410,10 +410,10 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Pass through non-standard events directly.
 	standardEvents := map[string]bool{"click": true, "input": true, "change": true}
 	for evtName, expr := range vn.Events {
-		if expr.SNGL == nil || standardEvents[evtName] {
+		if expr.Body.SNGL == nil || standardEvents[evtName] {
 			continue
 		}
-		stmts := cc.ec.translateMutation(expr.SNGL)
+		stmts := cc.ec.translateMutation(expr.Body.SNGL)
 		var b strings.Builder
 		b.WriteString("{\n")
 		for _, s := range stmts {

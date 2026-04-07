@@ -20,10 +20,10 @@ func shakeUnused(doc *ast.Document) {
 	}
 	doc.Consts = consts
 
-	// Filter data — keep referenced or extern
+	// Filter data — keep referenced, extern, or has events (side effects)
 	data := doc.Data[:0]
 	for _, d := range doc.Data {
-		if refs[d.Name] || d.Extern {
+		if refs[d.Name] || d.Extern || len(d.Events) > 0 {
 			data = append(data, d)
 		}
 	}
@@ -66,9 +66,12 @@ func collectRefs(doc *ast.Document) map[string]bool {
 		}
 	}
 
-	// Walk data initializers
+	// Walk data initializers and event bodies
 	for _, d := range doc.Data {
 		walkExprRefs(d.Init, refs)
+		for _, ev := range d.Events {
+			walkNodeRefs(ev.Body, refs)
+		}
 	}
 
 	// Walk function bodies
@@ -128,7 +131,9 @@ func walkVNRefs(vn *ast.VisualNode, refs map[string]bool) {
 		}
 	}
 	walkExprMapRefs(vn.Props, refs)
-	walkExprMapRefs(vn.Events, refs)
+	for _, eh := range vn.Events {
+		walkExprRefs(eh.Body, refs)
+	}
 	walkExprMapRefs(vn.Bindings, refs)
 	for _, child := range vn.Children {
 		walkVNRefs(child, refs)

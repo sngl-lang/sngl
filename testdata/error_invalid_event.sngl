@@ -1,6 +1,6 @@
 component main {
     var x = 0
 
-    vbox(@click={ x = 1 }) { // ERROR(check) "unknown event"
+    vbox(@click { x = 1 }) { // ERROR(check) "unknown event"
     }
 }

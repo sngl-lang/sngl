@@ -248,7 +248,7 @@ func ASTUsesAlert(doc *ast.Document) bool {
 
 func nodeUsesAlert(vn *ast.VisualNode) bool {
 	for _, evt := range vn.Events {
-		if evt.SNGL != nil && exprNodeUsesAlert(evt.SNGL) {
+		if evt.Body.SNGL != nil && exprNodeUsesAlert(evt.Body.SNGL) {
 			return true
 		}
 	}
