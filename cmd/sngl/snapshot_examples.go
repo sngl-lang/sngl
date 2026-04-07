@@ -160,7 +160,7 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 		if !force {
 			allExist := true
 			for _, plat := range platforms {
-				target := filepath.Join(outDir, name+"-"+plat+".png")
+				target := filepath.Join(outDir, name+"_"+plat+".png")
 				if _, err := os.Stat(target); err != nil {
 					allExist = false
 					break
@@ -168,10 +168,15 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 			}
 			if allExist {
 				for _, plat := range platforms {
-					fmt.Printf("%s (exists)\n", filepath.Join(outDir, name+"-"+plat+".png"))
+					fmt.Printf("%s (exists)\n", filepath.Join(outDir, name+"_"+plat+".png"))
 				}
 				continue
 			}
+		}
+
+		// Rename "component <name>" to "component main" for compilation.
+		if i := strings.Index(src, "{"); i > 0 {
+			src = "component main " + src[i:]
 		}
 
 		// Wrap in output block if needed.
