@@ -172,7 +172,6 @@ func goFuncToData(fn *types.Func) *ast.Data {
 	params := sig.Params()
 	stripping := true
 	for v := range params.Variables() {
-		v := v
 		if stripping {
 			if hp := detectHiddenParam(v.Type()); hp != "" {
 				hiddenParams = append(hiddenParams, hp)

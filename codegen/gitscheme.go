@@ -89,10 +89,10 @@ func parseGitURI(uri string) (*gitURI, error) {
 	}
 
 	// Split host/path
-	if i := strings.Index(rest, "/"); i >= 0 {
+	if before, after, ok := strings.Cut(rest, "/"); ok {
 		return &gitURI{
-			host: rest[:i],
-			path: rest[i+1:],
+			host: before,
+			path: after,
 			ref:  ref,
 			hash: hash,
 		}, nil

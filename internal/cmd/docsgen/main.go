@@ -158,15 +158,15 @@ func buildPlayground(outDir string) error {
 	// Build example source scripts and inject into page.
 	var scriptTags string
 	if len(examples) > 0 {
-		var optionTags string
+		var optionTags strings.Builder
 		for _, ex := range examples {
-			optionTags += fmt.Sprintf("<option value=%q>%s</option>", ex.name, ex.label)
+			optionTags.WriteString(fmt.Sprintf("<option value=%q>%s</option>", ex.name, ex.label))
 			scriptTags += fmt.Sprintf("<script type=\"text/sngl\" id=%q>%s</script>\n", ex.name+"-source", ex.source)
 		}
 		scriptTags = strings.Replace(scriptTags, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
 
 		html := string(htmlData)
-		html = strings.Replace(html, `<option value="default">Hello</option>`, optionTags, 1)
+		html = strings.Replace(html, `<option value="default">Hello</option>`, optionTags.String(), 1)
 		htmlData = []byte(html)
 		log.Printf("playground: %d examples injected", len(examples))
 	} else {
