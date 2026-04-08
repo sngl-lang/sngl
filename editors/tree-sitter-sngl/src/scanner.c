@@ -94,6 +94,11 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
         bool has_ident = false;
         int depth = 1;
         while (lexer->lookahead != 0 && lexer->lookahead != '"') {
+          if (lexer->lookahead == '\\') {
+            lexer->advance(lexer, false);
+            if (lexer->lookahead != 0) lexer->advance(lexer, false);
+            continue;
+          }
           if (lexer->lookahead == '{') depth++;
           else if (lexer->lookahead == '}') {
             depth--;

@@ -67,8 +67,8 @@ module.exports = grammar({
 
     import_declaration: ($) =>
       choice(
-        seq("import", field("alias", $.identifier), "=>", $.string_literal),
-        seq("import", $.string_literal),
+        seq("import", field("alias", $.identifier), "=>", $.plain_string),
+        seq("import", $.plain_string),
       ),
 
     output_declaration: ($) =>
@@ -671,7 +671,7 @@ module.exports = grammar({
         seq(
           field("receiver", $._expression),
           ".",
-          field("method", choice($.identifier, $.event_method)),
+          field("method", choice($.identifier, $.event_method, $.element_ref)),
           "(",
           commaSep($._expression),
           ")",
@@ -802,9 +802,12 @@ module.exports = grammar({
     // Interpolation within triple strings is handled at the Go parser level.
     // Triple-quoted strings use a regex that matches """ followed by content
     // that doesn't contain """, then closing """.
-    triple_string_literal: (_$) => /"""("?"?[^"])*"""/,
+    triple_string_literal: (_$) => /"""("?"?([^"\\]|\\.))*"""/,
 
     raw_string_literal: (_$) => token(seq('`', /[^`]*/, '`')),
+
+    // Plain string without interpolation support, used for import paths.
+    plain_string: (_$) => token(seq('"', repeat(choice(/[^"\\]/, /\\./)), '"')),
 
     element_ref: (_$) => token(seq("#", /[a-zA-Z_][a-zA-Z0-9_]*/)),
 

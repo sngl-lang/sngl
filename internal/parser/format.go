@@ -622,9 +622,9 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.newline()
 			}
 			if decl.Alias != "" {
-				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import %s => \"%s\"", decl.Alias, escapeStringContent(decl.Path)))
+				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import %s => \"%s\"", decl.Alias, escapePathContent(decl.Path)))
 			} else {
-				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import \"%s\"", escapeStringContent(decl.Path)))
+				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import \"%s\"", escapePathContent(decl.Path)))
 			}
 			prevEndLine = decl.Pos.Line
 		case *ast.Output:
@@ -2061,8 +2061,12 @@ func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 		s := fmt.Sprintf("%v", e.Value)
 		switch e.Style {
 		case ast.StyleTriple:
+			escaped := escapeTripleStringContent(s)
 			io.WriteString(sb, `"""`)
-			io.WriteString(sb, escapeTripleStringContent(s))
+			if strings.Contains(s, "\n") {
+				io.WriteString(sb, "\n")
+			}
+			io.WriteString(sb, escaped)
 			io.WriteString(sb, `"""`)
 		case ast.StyleRaw:
 			io.WriteString(sb, "`")
@@ -2185,6 +2189,34 @@ func assignOpString(op ast.AssignOp) string {
 	}
 }
 
+// escapePathContent escapes a string for use in import paths (no interpolation).
+func escapePathContent(s string) string {
+	var sb strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			sb.WriteString(`\\`)
+		case '"':
+			sb.WriteString(`\"`)
+		case '\n':
+			sb.WriteString(`\n`)
+		case '\t':
+			sb.WriteString(`\t`)
+		case '\r':
+			sb.WriteString(`\r`)
+		case 0:
+			sb.WriteString(`\0`)
+		default:
+			if r < 0x20 || r == 0x7f {
+				sb.WriteString(fmt.Sprintf(`\x%02x`, r))
+			} else {
+				sb.WriteRune(r)
+			}
+		}
+	}
+	return sb.String()
+}
+
 func escapeStringContent(s string) string {
 	var sb strings.Builder
 	for _, r := range s {
@@ -2222,6 +2254,8 @@ func escapeTripleStringContent(s string) string {
 		switch r {
 		case '\\':
 			sb.WriteString(`\\`)
+		case '"':
+			sb.WriteString(`\"`)
 		case '{':
 			sb.WriteString(`\{`)
 		case 0:
@@ -2372,7 +2406,7 @@ func sortedKeys[V any](m map[string]V) []string {
 func formatKV(opts map[string]string) string {
 	var parts []string
 	for k, v := range opts {
-		parts = append(parts, fmt.Sprintf("%s=\"%s\"", k, escapeStringContent(v)))
+		parts = append(parts, fmt.Sprintf("%s=\"%s\"", k, escapePathContent(v)))
 	}
 	return strings.Join(parts, ", ")
 }

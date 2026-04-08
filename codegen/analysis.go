@@ -1,7 +1,6 @@
 package codegen
 
 import (
-	"fmt"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -205,8 +204,10 @@ func IntervalToMs(expr ast.Expr) int {
 	if !ok {
 		return 0
 	}
-	var num float64
-	fmt.Sscanf(ul.Number, "%f", &num)
+	num, err := ast.ParseUnitNumber(ul.Number)
+	if err != nil {
+		return 0
+	}
 	switch ul.Suffix {
 	case "ms":
 		return int(num)

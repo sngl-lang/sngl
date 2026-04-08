@@ -219,6 +219,10 @@ func clearWindowPos(win *ast.Window) {
 	win.BraceCol = 0
 	win.BraceLine = 0
 	win.Decls = nil
+	// Normalize: empty props list with HasProps=true is equivalent to HasProps=false.
+	if win.HasProps && len(win.Props) == 0 {
+		win.HasProps = false
+	}
 	for _, c := range win.Consts {
 		clearConstPos(c)
 	}

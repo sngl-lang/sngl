@@ -581,7 +581,7 @@ func TestInferNodeType(t *testing.T) {
 		{"literal string", &ast.LiteralExpr{Value: "hi", Kind: ast.LiteralString}, String},
 		{"literal null", &ast.LiteralExpr{Kind: ast.LiteralNull}, Dyn},
 		{"literal color", &ast.LiteralExpr{Value: "#ff0000", Kind: ast.LiteralColor}, Color},
-		{"literal unit", &ast.LiteralExpr{Value: ast.UnitLiteral{Number: "5", Suffix: "s"}, Kind: ast.LiteralUnit}, String},
+		{"literal unit", &ast.LiteralExpr{Value: ast.UnitLiteral{Number: "5", Suffix: "s"}, Kind: ast.LiteralUnit}, Unit},
 		{"ident known", &ast.IdentExpr{Name: "count"}, Int},
 		{"ident PLATFORM", &ast.IdentExpr{Name: "PLATFORM"}, String},
 		{"ident LANGUAGE", &ast.IdentExpr{Name: "LANGUAGE"}, String},
@@ -876,7 +876,7 @@ func TestInferNodeTypeInScope_AllCases(t *testing.T) {
 		{"literal_string", &ast.LiteralExpr{Value: "hi", Kind: ast.LiteralString}, String},
 		{"literal_null", &ast.LiteralExpr{Kind: ast.LiteralNull}, Dyn},
 		{"literal_color", &ast.LiteralExpr{Value: "#ff0000", Kind: ast.LiteralColor}, Color},
-		{"literal_unit", &ast.LiteralExpr{Value: ast.UnitLiteral{Number: "5", Suffix: "s"}, Kind: ast.LiteralUnit}, String},
+		{"literal_unit", &ast.LiteralExpr{Value: ast.UnitLiteral{Number: "5", Suffix: "s"}, Kind: ast.LiteralUnit}, Unit},
 		{"ident_x", &ast.IdentExpr{Name: "x"}, Int},
 		{"ident_PLATFORM", &ast.IdentExpr{Name: "PLATFORM"}, String},
 		{"binary_and", &ast.BinaryExpr{Op: ast.BinAnd, Left: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}, Right: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}}, Bool},
@@ -942,8 +942,8 @@ func TestIsKnownDynHint(t *testing.T) {
 	if !isKnownDynHint("func(int) -> string") {
 		t.Error("expected func hint to be known dyn hint")
 	}
-	if !isKnownDynHint("unit:px") {
-		t.Error("expected unit hint to be known dyn hint")
+	if isKnownDynHint("unit:px") {
+		t.Error("expected unit hint to NOT be known dyn hint")
 	}
 	if isKnownDynHint("int") {
 		t.Error("expected 'int' to not be known dyn hint")

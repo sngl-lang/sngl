@@ -80,10 +80,19 @@ func Check(doc *ast.Document, fsys fs.FS, schemeDir string, resolve ImportResolv
 		unitTables[u.Name] = ast.BuildUnitTable(u)
 	}
 
+	// Build reverse lookup: suffix → unit table.
+	unitBySuffix := map[string]*ast.UnitTable{}
+	for _, t := range unitTables {
+		for suffix := range t.Conversions {
+			unitBySuffix[suffix] = t
+		}
+	}
+
 	c := &checker{
 		registry:        registry,
 		styleProps:      styleProps,
 		unitTables:      unitTables,
+		unitBySuffix:    unitBySuffix,
 		scope:           NewScope(nil),
 		methods:         map[string]map[string]*methodInfo{},
 		fsys:            fsys,
@@ -269,6 +278,7 @@ type checker struct {
 	registry        SchemaRegistry
 	styleProps      map[string]StylePropSchema
 	unitTables      map[string]*ast.UnitTable
+	unitBySuffix    map[string]*ast.UnitTable // suffix → unit table (reverse lookup)
 	scope           *Scope
 	methods         map[string]map[string]*methodInfo // typeName -> methodName -> info
 	components      []*ast.Component
@@ -671,7 +681,7 @@ func (c *checker) pass1(doc *ast.Document) {
 			t := c.resolveParamType(p)
 			if p.Default.TypeHint != "" && p.Default.Literal != nil {
 				litType := InferLiteralType(p.Default.Literal)
-				if !isAssignable(litType, t) {
+				if !isAssignable(litType, t) && !(litType == Int && t == Unit && isLiteralZero(&p.Default)) {
 					c.errorAt(comp.Pos, "param %q: default value type %v does not match declared type %q", p.Name, litType, p.Default.TypeHint)
 				}
 			}
@@ -889,6 +899,16 @@ func (c *checker) resolveExprType(pos ast.Pos, expr *ast.Expr) Type {
 	return Dyn
 }
 
+// checkUnitLiteral validates a unit literal's suffix and returns the Unit type.
+func (c *checker) checkUnitLiteral(e *ast.LiteralExpr) Type {
+	if ul, ok := e.Value.(ast.UnitLiteral); ok {
+		if _, known := c.unitBySuffix[ul.Suffix]; !known {
+			c.errorAt(ast.Pos{}, "unknown unit suffix %q", ul.Suffix)
+		}
+	}
+	return Unit
+}
+
 // inferNodeType walks a SNGL AST node and returns its inferred type.
 func (c *checker) inferNodeType(n ast.Node) Type {
 	switch e := n.(type) {
@@ -907,7 +927,7 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		case ast.LiteralColor:
 			return Color
 		case ast.LiteralUnit:
-			return String // units are string-like
+			return c.checkUnitLiteral(e)
 		default:
 			return Dyn
 		}
@@ -932,6 +952,9 @@ func (c *checker) inferNodeType(n ast.Node) Type {
 		default:
 			left := c.inferNodeType(e.Left)
 			right := c.inferNodeType(e.Right)
+			if left == Unit || right == Unit {
+				return inferUnitBinaryOp(left, right, e.Op)
+			}
 			if left == Float || right == Float {
 				return Float
 			}
@@ -1405,8 +1428,28 @@ func (c *checker) checkExprType(pos ast.Pos, expr *ast.Expr, expected Type, scop
 		if isNumeric(got) && isNumeric(expected) && c.isConstantExpr(expr) {
 			return
 		}
+		if got == Int && expected == Unit && isLiteralZero(expr) {
+			return
+		}
 		c.errorAt(pos, "%s: expected %s, got %s", context, expected, got)
 	}
+}
+
+// isLiteralZero reports whether expr is the integer literal 0.
+func isLiteralZero(expr *ast.Expr) bool {
+	if expr.SNGL != nil {
+		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralInt {
+			if v, ok := lit.Value.(int); ok && v == 0 {
+				return true
+			}
+		}
+	}
+	if expr.Literal != nil {
+		if v, ok := expr.Literal.(int); ok && v == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // isConstantExpr reports whether expr is a compile-time constant expression
@@ -1506,7 +1549,7 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		case ast.LiteralColor:
 			return Color
 		case ast.LiteralUnit:
-			return String
+			return c.checkUnitLiteral(e)
 		default:
 			return Dyn
 		}
@@ -1530,6 +1573,9 @@ func (c *checker) inferNodeTypeInScope(n ast.Node, scope *Scope) Type {
 		default:
 			left := c.inferNodeTypeInScope(e.Left, scope)
 			right := c.inferNodeTypeInScope(e.Right, scope)
+			if left == Unit || right == Unit {
+				return inferUnitBinaryOp(left, right, e.Op)
+			}
 			if left == Float || right == Float {
 				return Float
 			}

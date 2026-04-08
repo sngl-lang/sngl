@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"git.duckfam.us/jonathan/sngl/ast"
 )
 
 // Type represents a SNGL type.
@@ -50,6 +52,7 @@ const (
 	Country3
 	CountrySubdivision
 	Decimal
+	Unit // unit type (duration, measurement, user-defined)
 )
 
 // typeNames maps Type to display string.
@@ -64,6 +67,7 @@ var typeNames = map[Type]string{
 	URLTemplate: "urlTemplate", Currency: "currency",
 	Country2: "country2", Country3: "country3",
 	CountrySubdivision: "countrySubdivision", Decimal: "decimal",
+	Unit: "unit",
 }
 
 func (t Type) GoString() string { return t.String() }
@@ -90,6 +94,9 @@ func TypeFromHint(hint string) Type {
 	}
 	if strings.HasPrefix(hint, "option:") {
 		return Option
+	}
+	if strings.HasPrefix(hint, "unit:") {
+		return Unit
 	}
 	switch hint {
 	case "bool":
@@ -149,7 +156,7 @@ func TypeFromHint(hint string) Type {
 	case "decimal":
 		return Decimal
 	case "measurement", "length":
-		return Dyn
+		return Unit
 	default:
 		return Dyn
 	}
@@ -177,10 +184,10 @@ func InferLiteralType(v any) Type {
 // This includes the explicit "dyn" keyword, func signatures, and unit type names
 // that don't yet have a dedicated checker Type.
 func isKnownDynHint(hint string) bool {
-	if hint == "dyn" || hint == "measurement" || hint == "length" {
+	if hint == "dyn" {
 		return true
 	}
-	if strings.HasPrefix(hint, "func") || strings.HasPrefix(hint, "unit:") {
+	if strings.HasPrefix(hint, "func") {
 		return true
 	}
 	return false
@@ -201,6 +208,26 @@ func narrowNumeric(left, right Type) Type {
 // isNumeric reports whether t is Int or Float.
 func isNumeric(t Type) bool {
 	return t == Int || t == Float
+}
+
+// inferUnitBinaryOp returns the result type for a binary operation involving a Unit.
+func inferUnitBinaryOp(left, right Type, op ast.BinaryOp) Type {
+	switch {
+	case left == Unit && right == Unit:
+		if op == ast.BinAdd || op == ast.BinSub {
+			return Unit
+		}
+		return Dyn // unit * unit or unit / unit doesn't make sense
+	case left == Unit && isNumeric(right):
+		return Unit // unit * scalar, unit / scalar
+	case isNumeric(left) && right == Unit:
+		if op == ast.BinMul {
+			return Unit // scalar * unit
+		}
+		return Dyn // scalar / unit, scalar - unit don't make sense
+	default:
+		return Dyn
+	}
 }
 
 // isAssignable reports whether a value of type got can be assigned where expected is required.

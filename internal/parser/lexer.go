@@ -459,6 +459,25 @@ func (l *lexer) scanTripleString(startLine, startCol int) Token {
 					sb.WriteRune('{')
 				case '0':
 					sb.WriteRune(0)
+				case 'x':
+					// \xHH hex escape
+					if l.pos+1 < len(l.input) {
+						hi := hexVal(l.input[l.pos])
+						lo := hexVal(l.input[l.pos+1])
+						if hi >= 0 && lo >= 0 {
+							sb.WriteRune(rune(hi*16 + lo))
+							l.advance()
+							l.advance()
+						} else {
+							l.errors = append(l.errors, fmt.Sprintf("%d:%d: invalid hex escape", l.line, l.col))
+							sb.WriteRune('\\')
+							sb.WriteRune('x')
+						}
+					} else {
+						l.errors = append(l.errors, fmt.Sprintf("%d:%d: incomplete hex escape", l.line, l.col))
+						sb.WriteRune('\\')
+						sb.WriteRune('x')
+					}
 				default:
 					l.errors = append(l.errors, fmt.Sprintf("%d:%d: unknown escape sequence: \\%c", l.line, l.col, esc))
 					sb.WriteRune('\\')

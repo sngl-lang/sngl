@@ -1151,7 +1151,7 @@
       "required": true,
       "types": [
         {
-          "type": "string_literal",
+          "type": "plain_string",
           "named": true
         }
       ]
@@ -1328,6 +1328,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "element_ref",
+            "named": true
+          },
           {
             "type": "event_method",
             "named": true
@@ -2564,6 +2568,10 @@
   {
     "type": "output",
     "named": false
+  },
+  {
+    "type": "plain_string",
+    "named": true
   },
   {
     "type": "platform",

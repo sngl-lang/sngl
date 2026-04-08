@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// ParseUnitNumber parses a unit literal's number string, stripping
+// underscore separators before conversion.
+func ParseUnitNumber(s string) (float64, error) {
+	return strconv.ParseFloat(strings.ReplaceAll(s, "_", ""), 64)
+}
+
 // UnitValue represents a compound unit measurement at runtime.
 // Keys are base suffix names, values are numeric amounts normalized to the base.
 type UnitValue struct {
@@ -54,7 +60,7 @@ func BuildUnitTable(def *UnitDef) *UnitTable {
 			// Factor is a LiteralExpr with UnitLiteral value (e.g., 1000ms)
 			if lit, ok := s.Factor.(*LiteralExpr); ok {
 				if ul, ok := lit.Value.(UnitLiteral); ok {
-					num, _ := strconv.ParseFloat(ul.Number, 64)
+					num, _ := ParseUnitNumber(ul.Number)
 					raw[s.Name] = &rawFactor{amount: num, target: ul.Suffix}
 				}
 			}

@@ -198,10 +198,24 @@ func BuildEnv(doc *ast.Document, compName string) (*Env, error) {
 // evalInit extracts the initial value from an Expr.
 func evalInit(env *Env, expr ast.Expr) any {
 	if expr.Literal != nil {
+		if ul, ok := expr.Literal.(ast.UnitLiteral); ok {
+			v, err := env.evalUnitLiteral(ul)
+			if err == nil {
+				return v
+			}
+		}
 		return expr.Literal
 	}
 	if expr.SNGL != nil {
 		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
+			if lit.Kind == ast.LiteralUnit {
+				if ul, ok := lit.Value.(ast.UnitLiteral); ok {
+					v, err := env.evalUnitLiteral(ul)
+					if err == nil {
+						return v
+					}
+				}
+			}
 			return lit.Value
 		}
 		v, err := env.Eval(expr.SNGL)

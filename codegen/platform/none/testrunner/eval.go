@@ -5,7 +5,6 @@ import (
 	"maps"
 	"math"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -807,7 +806,7 @@ func (env *Env) evalUnitLiteral(ul ast.UnitLiteral) (ast.UnitValue, error) {
 	if !ok {
 		return ast.UnitValue{}, fmt.Errorf("unknown unit suffix %q", ul.Suffix)
 	}
-	num, err := strconv.ParseFloat(ul.Number, 64)
+	num, err := ast.ParseUnitNumber(ul.Number)
 	if err != nil {
 		return ast.UnitValue{}, fmt.Errorf("invalid unit number %q: %w", ul.Number, err)
 	}

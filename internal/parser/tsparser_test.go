@@ -322,10 +322,10 @@ func extractImports(root *ts.Node, src []byte) []string {
 	defer cursor.Close()
 	var result []string
 	for _, n := range findNodes(root, "import_declaration", cursor) {
-		// The string_literal child contains the path with quotes.
+		// The plain_string child contains the path with quotes.
 		for i := range n.NamedChildCount() {
 			child := n.NamedChild(i)
-			if child.Kind() == "string_literal" {
+			if child.Kind() == "plain_string" {
 				text := child.Utf8Text(src)
 				// Strip quotes.
 				text = strings.Trim(text, "\"")
