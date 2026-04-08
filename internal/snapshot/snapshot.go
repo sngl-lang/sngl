@@ -122,9 +122,13 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if err != nil {
 			return nil, err
 		}
-		dir := filepath.Dir(sourceFile)
-		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
-			return nil, fmt.Errorf("check: %w", err)
+		// Platforms that compile real code (android) need checker; interpreter-based
+		// platforms (bubbletea, fyne) work directly on the parsed AST.
+		if _, isInterpreted := plat.(codegen.InterpreterSnapshotter); !isInterpreted {
+			dir := filepath.Dir(sourceFile)
+			if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
+				return nil, fmt.Errorf("check: %w", err)
+			}
 		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {

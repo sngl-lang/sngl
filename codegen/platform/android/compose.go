@@ -349,12 +349,23 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		cc.consumeEvent(snglName)
 
 		isValueChange := ktName == "onValueChange"
+		savedEventVar := cc.ec.eventVar
 		if isValueChange {
 			cc.ec.eventVar = "_inputValue_"
+			// Also register the user's event param name (e.g., "e" from @input(e))
+			// so it resolves through translateIdent.
+			if expr.Param != "" {
+				cc.ec.localVars[expr.Param] = true
+				cc.ec.propOverrides[expr.Param] = "_inputValue_"
+			}
 		}
 		stmts := cc.ec.translateMutation(expr.Body.SNGL)
 		if isValueChange {
-			cc.ec.eventVar = ""
+			cc.ec.eventVar = savedEventVar
+			if expr.Param != "" {
+				delete(cc.ec.localVars, expr.Param)
+				delete(cc.ec.propOverrides, expr.Param)
+			}
 		}
 
 		var b strings.Builder

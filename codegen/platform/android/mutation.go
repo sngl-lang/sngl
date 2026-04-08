@@ -16,11 +16,41 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 		}
 		return stmts
 	case *ast.AssignStmt:
+		// Detect push(list, val) and remove(list, idx) patterns on the
+		// assignment target and translate to direct list mutations.
+		if n.Op == ast.AssignSet {
+			if call, ok := n.Value.(*ast.CallExpr); ok {
+				if targetIdent, ok := n.Target.(*ast.IdentExpr); ok {
+					if call.Func == "push" && len(call.Args) == 2 {
+						if src, ok := call.Args[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
+							value := ec.translateExpr(call.Args[1])
+							return []string{ec.translateMutationTarget(n.Target) + ".add(" + value + ")"}
+						}
+					}
+					if call.Func == "remove" && len(call.Args) == 2 {
+						if src, ok := call.Args[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
+							idx := ec.translateExpr(call.Args[1])
+							return []string{ec.translateMutationTarget(n.Target) + ".removeAt(" + idx + ")"}
+						}
+					}
+				}
+			}
+		}
 		target := ec.translateMutationTarget(n.Target)
 		value := ec.translateExpr(n.Value)
 		op := assignOpToKt(n.Op)
 		return []string{target + " " + op + " " + value}
 	case *ast.ToggleStmt:
+		// For list[i].field!! on data classes, use .copy() since fields are val.
+		if sel, ok := n.Target.(*ast.SelectExpr); ok {
+			if idx, ok := sel.Operand.(*ast.IndexExpr); ok {
+				list := ec.translateMutationTarget(idx.Operand)
+				index := ec.translateExpr(idx.Index)
+				field := sel.Field
+				item := list + "[" + index + "]"
+				return []string{list + "[" + index + "] = " + item + ".copy(" + field + " = !" + item + "." + field + ")"}
+			}
+		}
 		target := ec.translateMutationTarget(n.Target)
 		return []string{target + " = !" + target}
 	case *ast.MethodExpr:

@@ -78,6 +78,14 @@ type Snapshotter interface {
 	Snapshot(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
 }
 
+// InterpreterSnapshotter is a marker interface for Snapshotters that use an
+// interpreter rather than compiling real code. These platforms work on the
+// parsed AST directly and should not have checker.Check called on the doc.
+type InterpreterSnapshotter interface {
+	Snapshotter
+	interpreterSnapshot()
+}
+
 // TextSnapshotter is optionally implemented by TUI platforms that can render
 // their output as ANSI text. This provides a .txt alternative to PNG
 // screenshots, useful for terminal-native documentation and diffing.

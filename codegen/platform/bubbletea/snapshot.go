@@ -19,6 +19,8 @@ type htmlSnapshotter interface {
 	SnapshotHTML(html []byte, width, height int) ([]byte, error)
 }
 
+func (g *Generator) interpreterSnapshot() {} // implements codegen.InterpreterSnapshotter
+
 func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	view, err := g.renderView(doc, width, height)
 	if err != nil {
@@ -60,6 +62,7 @@ func (g *Generator) renderView(doc *ast.Document, width, height int) (string, er
 		scaleFactor: 8,
 		doc:         doc,
 	}
+
 
 	var view string
 	if doc.App != nil && len(doc.App.Children) > 0 {

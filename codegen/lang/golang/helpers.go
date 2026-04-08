@@ -143,6 +143,54 @@ func LiteralToGo(expr ast.Expr) string {
 			return "false"
 		}
 	}
+	// Handle SNGL expression nodes for compound initializers (lists, structs).
+	if expr.SNGL != nil {
+		switch n := expr.SNGL.(type) {
+		case *ast.ListExpr:
+			if len(n.Elements) == 0 {
+				return "nil"
+			}
+			parts := make([]string, len(n.Elements))
+			for i, el := range n.Elements {
+				parts[i] = LiteralToGo(ast.Expr{SNGL: el})
+			}
+			elemType := ""
+			if strings.HasPrefix(expr.TypeHint, "list<") {
+				elemType = ExportName(strings.TrimSuffix(strings.TrimPrefix(expr.TypeHint, "list<"), ">"))
+			} else if se, ok := n.Elements[0].(*ast.StructExpr); ok && se.Name != "" {
+				elemType = ExportName(se.Name)
+			} else if ce, ok := n.Elements[0].(*ast.CallExpr); ok {
+				elemType = ExportName(ce.Func)
+			} else if lit, ok := n.Elements[0].(*ast.LiteralExpr); ok {
+				switch lit.Kind {
+				case ast.LiteralInt:
+					elemType = "int"
+				case ast.LiteralFloat:
+					elemType = "float64"
+				case ast.LiteralString:
+					elemType = "string"
+				case ast.LiteralBool:
+					elemType = "bool"
+				}
+			}
+			return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+		case *ast.CallExpr:
+			// Struct constructor: Todo("text", false) → Todo{Text: "text", Done: false}
+			parts := make([]string, len(n.Args))
+			for i, a := range n.Args {
+				parts[i] = LiteralToGo(ast.Expr{SNGL: a})
+			}
+			return ExportName(n.Func) + "{" + strings.Join(parts, ", ") + "}"
+		case *ast.StructExpr:
+			parts := make([]string, len(n.Fields))
+			for i, f := range n.Fields {
+				parts[i] = ExportName(f.Name) + ": " + LiteralToGo(ast.Expr{SNGL: f.Value})
+			}
+			return ExportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
+		case *ast.LiteralExpr:
+			return LiteralToGo(ast.Expr{Literal: n.Value, TypeHint: expr.TypeHint})
+		}
+	}
 	if expr.TypeHint != "" {
 		if expr.Resolved != nil && expr.Resolved.NativeType != "" {
 			return expr.Resolved.NativeType + "{}"

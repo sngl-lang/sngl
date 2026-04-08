@@ -75,6 +75,11 @@ func analyze(doc *ast.Document) *analysisResult {
 		ktType := inferKtType(d.Init)
 		initVal := literalToKt(d.Init)
 		isList := strings.HasPrefix(d.Init.TypeHint, "[]") || strings.HasPrefix(d.Init.TypeHint, "list:")
+		if !isList {
+			if _, ok := d.Init.SNGL.(*ast.ListExpr); ok {
+				isList = true
+			}
+		}
 		if isList && initVal == `""` {
 			initVal = ""
 		}
@@ -198,10 +203,19 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// State declarations
-	for _, bind := range info.binds {
+	for i, bind := range info.binds {
 		if bind.isList {
 			elemType := listElementType(bind.ktType)
-			fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
+			// Check for initial list items from the data field's ListExpr.
+			if listExpr, ok := doc.Data[i].Init.SNGL.(*ast.ListExpr); ok && len(listExpr.Elements) > 0 {
+				var items []string
+				for _, el := range listExpr.Elements {
+					items = append(items, ec.translateExpr(el))
+				}
+				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, strings.Join(items, ", "))
+			} else {
+				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
+			}
 		} else {
 			fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, bind.init)
 		}

@@ -27,6 +27,10 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 	case *ast.IdentExpr:
 		return ec.translateIdent(n)
 	case *ast.SelectExpr:
+		// event.value in an input handler → just the event var (already the plain value)
+		if ident, ok := n.Operand.(*ast.IdentExpr); ok && ident.Name == "event" && ec.eventVar != "" && n.Field == "value" {
+			return ec.eventVar
+		}
 		operand := ec.translateExpr(n.Operand)
 		return operand + "." + n.Field
 	case *ast.BinaryExpr:

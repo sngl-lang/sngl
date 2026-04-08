@@ -153,7 +153,11 @@ func analyze(doc *ast.Document) *analysisResult {
 		if d.Resolved != nil && d.Resolved.NativeType != "" {
 			goType = d.Resolved.NativeType
 		}
-		initVal := literalToGo(d.Init)
+		initExpr := d.Init
+		if initExpr.TypeHint == "" && d.Resolved != nil && d.Resolved.IsList {
+			initExpr.TypeHint = "list<" + d.Resolved.ElemType + ">"
+		}
+		initVal := literalToGo(initExpr)
 		if needsTimeType(d.Init.TypeHint) {
 			info.needsTime = true
 		}

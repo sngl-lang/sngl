@@ -16,6 +16,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
 )
 
+func (g *Generator) interpreterSnapshot() {} // implements codegen.InterpreterSnapshotter
+
 func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	env, err := testrunner.BuildEnv(doc, "main")
 	if err != nil {

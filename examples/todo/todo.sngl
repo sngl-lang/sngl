@@ -15,7 +15,11 @@ struct Todo {
 component main {
     var (
         newTodo = ""
-        todos list<Todo> = null
+        todos list<Todo> = [
+            Todo{text = "Buy groceries", done = false},
+            Todo{text = "Walk the dog", done = true},
+            Todo{text = "Write SNGL docs", done = false},
+        ]
     )
 
     func status() => "Todo List (" + string(size(todos)) + " items)"
