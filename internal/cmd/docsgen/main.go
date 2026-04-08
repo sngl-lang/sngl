@@ -33,6 +33,9 @@ func main() {
 	// Copy pre-generated stdlib example snapshots to gallery.
 	copySnapshots(*outDir)
 
+	// Copy homepage assets (carousel screenshots, etc.) from public/.
+	copyPublicAssets(*outDir)
+
 	// Build playground (WASM + static assets).
 	if err := buildPlayground(*outDir); err != nil {
 		log.Printf("playground: %v", err)
@@ -66,6 +69,36 @@ func copySnapshots(outDir string) {
 		os.WriteFile(filepath.Join(galleryDir, e.Name()), data, 0o644)
 	}
 	log.Printf("gallery: copied %d snapshots", len(entries))
+}
+
+func copyPublicAssets(outDir string) {
+	srcDir := filepath.Join("public", "assets", "snapshots")
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return
+	}
+	for _, sub := range entries {
+		if !sub.IsDir() {
+			continue
+		}
+		subDir := filepath.Join(srcDir, sub.Name())
+		files, err := os.ReadDir(subDir)
+		if err != nil {
+			continue
+		}
+		destDir := filepath.Join(outDir, "assets", "snapshots", sub.Name())
+		os.MkdirAll(destDir, 0o755)
+		for _, f := range files {
+			if f.IsDir() || !strings.HasSuffix(f.Name(), ".png") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(subDir, f.Name()))
+			if err != nil {
+				continue
+			}
+			os.WriteFile(filepath.Join(destDir, f.Name()), data, 0o644)
+		}
+	}
 }
 
 func compileSNGL(filename, outDir string) error {

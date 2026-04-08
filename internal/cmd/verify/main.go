@@ -1,7 +1,11 @@
-// Command verify runs all project tests and reports per-package coverage.
+// Command verify runs project checks and tests, reporting per-package coverage.
 //
-// Each package's coverage reflects how much of its own code is exercised
-// by its tests.
+// Steps:
+//  1. go generate ./...
+//  2. git diff to detect uncommitted generated code
+//  3. go fix ./...
+//  4. go vet ./...
+//  5. go test -cover ./...
 //
 // Usage: go tool verify [-v]
 package main
@@ -33,11 +37,66 @@ func main() {
 
 	log.SetFlags(0)
 
+	// Step 1: go generate
+	if !runStep("generate", "go", "generate", "./...") {
+		os.Exit(1)
+	}
+
+	// Step 2: check for dirty generated files
+	if !checkClean() {
+		os.Exit(1)
+	}
+
+	// Step 3: go fix
+	if !runStep("fix", "go", "fix", "./...") {
+		os.Exit(1)
+	}
+
+	// Step 4: go vet
+	if !runStep("vet", "go", "vet", "./...") {
+		os.Exit(1)
+	}
+
+	// Step 5: go test with coverage
+	runTests(*verbose)
+}
+
+func runStep(name string, command string, args ...string) bool {
+	fmt.Printf(">>> %s %s\n", command, strings.Join(args, " "))
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Printf("%s failed: %v", name, err)
+		return false
+	}
+	return true
+}
+
+func checkClean() bool {
+	fmt.Println(">>> git diff --stat")
+	cmd := exec.Command("git", "diff", "--stat")
+	out, err := cmd.Output()
+	if err != nil {
+		log.Printf("git diff failed: %v", err)
+		return false
+	}
+	if len(out) > 0 {
+		fmt.Print(string(out))
+		log.Print("working tree is dirty after go generate; commit or update generated files")
+		return false
+	}
+	return true
+}
+
+func runTests(verbose bool) {
 	args := []string{"test", "-cover"}
-	if *verbose {
+	if verbose {
 		args = append(args, "-v")
 	}
 	args = append(args, "./...")
+
+	fmt.Printf(">>> go %s\n", strings.Join(args, " "))
 
 	cmd := exec.Command("go", args...)
 	cmd.Stderr = os.Stderr

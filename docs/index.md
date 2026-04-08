@@ -11,16 +11,16 @@ SNGL (pronounced "snuggle") is a purpose-built language for describing reactive 
 <div class="platform-carousel">
   <div class="carousel-slides">
     <div class="slide active" data-platform="html">
-      <img src="assets/snapshots/todo/todo_html.png" alt="SNGL Todo App on Web (HTML/JS)">
+      <img src="assets/snapshots/todo/todo-html.png" alt="SNGL Todo App on Web (HTML/JS)">
     </div>
     <div class="slide" data-platform="bubbletea">
-      <img src="assets/snapshots/todo/todo_bubbletea.png" alt="SNGL Todo App on Terminal (BubbleTea)">
+      <img src="assets/snapshots/todo/todo-bubbletea.png" alt="SNGL Todo App on Terminal (BubbleTea)">
     </div>
     <div class="slide" data-platform="fyne">
-      <img src="assets/snapshots/todo/todo_fyne.png" alt="SNGL Todo App on Desktop (Fyne)">
+      <img src="assets/snapshots/todo/todo-fyne.png" alt="SNGL Todo App on Desktop (Fyne)">
     </div>
     <div class="slide" data-platform="android">
-      <img src="assets/snapshots/todo/todo_android.png" alt="SNGL Todo App on Android">
+      <img src="assets/snapshots/todo/todo-android.png" alt="SNGL Todo App on Android">
     </div>
   </div>
   <div class="carousel-tabs">
