@@ -262,14 +262,14 @@ The following conversions happen automatically without an explicit call:
 
 These are compile errors:
 
-| Conversion                | Error                                                     |
-| ------------------------- | --------------------------------------------------------- |
-| `null` → struct           | `null is not assignable to struct type`                   |
-| struct → `int()`          | `cannot convert struct to int`                            |
-| struct → `float()`        | `cannot convert struct to float`                          |
-| wrong type → component param | `does not match`                                         |
-| bad string → special type | format-specific error (e.g., invalid date, invalid email) |
-| wrong variant → enum      | `is not a valid variant`                                  |
+| Conversion                   | Error                                                     |
+| ---------------------------- | --------------------------------------------------------- |
+| `null` → struct              | `null is not assignable to struct type`                   |
+| struct → `int()`             | `cannot convert struct to int`                            |
+| struct → `float()`           | `cannot convert struct to float`                          |
+| wrong type → component param | `does not match`                                          |
+| bad string → special type    | format-specific error (e.g., invalid date, invalid email) |
+| wrong variant → enum         | `is not a valid variant`                                  |
 
 ### String interpolation
 
@@ -476,7 +476,7 @@ component Counter(label = "", start = 0) {
 
     hbox {
         text(value="{label}: {count}")
-        button(text="+", @click={ count += 1 })
+        button(text="+", @click { count += 1 })
     }
 }
 ```
@@ -566,8 +566,8 @@ Events use the `@` prefix and contain mutation statements:
 
 ```sngl
 var count = 0
-button(text="+", @click={ count += 1 })
-input(value=name, @input={ name = event.value })
+button(text="+", @click { count += 1 })
+input(value=name, @input { name = event.value })
 ```
 
 Multi-statement events separate with semicolons:
@@ -576,7 +576,7 @@ Multi-statement events separate with semicolons:
 
 ```sngl
 var (newTodo = "", todos list<Todo> = [])
-button(text="Add", @click={
+button(text="Add", @click{
     todos.push(Todo{text: newTodo, done: false})
     newTodo = ""
 })
@@ -653,8 +653,8 @@ Tag a node with `#id` to reference it in tests:
 
 ```sngl
 var count = 0
-button #inc (text="+", @click={ count += 1 })
-text #display (value="Count: {count}")
+button #inc(text="+", @click { count += 1 })
+text #display(value="Count: {count}")
 ```
 
 ## Events and Mutations
@@ -668,8 +668,8 @@ text #display (value="Count: {count}")
 ```sngl
 var count = 0
 var label = ""
-button(text="+5", @click={ count += 5 })
-button(text="tag", @click={ label += " tagged" })
+button(text="+5", @click { count += 5 })
+button(text="tag", @click { label += " tagged" })
 ```
 
 ### Toggle
@@ -680,7 +680,7 @@ button(text="tag", @click={ label += " tagged" })
 
 ```sngl
 var active = true
-button(text="Toggle", @click={ active!! })
+button(text="Toggle", @click { active!! })
 ```
 
 ### List mutations
@@ -691,8 +691,8 @@ Method syntax mutates in place. Function syntax returns a new list:
 
 ```sngl
 var items = [1, 2, 3]
-button(text="Add", @click={ items.push(4) })
-button(text="Remove first", @click={ items.remove(0) })
+button(text="Add", @click { items.push(4) })
+button(text="Remove first", @click { items.remove(0) })
 ```
 
 ### Multiple statements
@@ -702,8 +702,12 @@ Separate statements with semicolons inside event handlers:
 <!-- SNGL-component -->
 
 ```sngl
-var (a = 0, b = 0)
-button(text="go", @click={ a += 1; b += 2 })
+var (
+    a = 0
+    b = 0
+)
+
+button(text="go", @click { a += 1; b += 2 })
 ```
 
 ### Emit
@@ -714,7 +718,7 @@ Fire a component event to notify the parent:
 
 ```sngl
 var data = "saved"
-button(text="Save", @click={ @save(data) })
+button(text="Save", @click { @save(data) })
 ```
 
 ### Gotchas
@@ -732,7 +736,7 @@ component main {
     }
 
     text(value=string(progress))
-    button(text="Stop", @click={ running = false })
+    button(text="Stop", @click{ running = false })
 }
 
 test main "timer increments" {
@@ -808,7 +812,7 @@ Tests target a specific component and get a fresh copy of its state:
 component counter {
     var count = 0
 
-    button #inc (text="+", @click={ count += 1 })
+    button #inc (text="+", @click{ count += 1 })
     text #display (value="Count: {count}")
 }
 
@@ -835,8 +839,8 @@ Tag nodes with `#id`, then access props and fire events in tests:
 
 ```sngl
 var count = 0
-button #inc (text="+", @click={ count += 1 })
-text #display (value="Count: {count}")
+button #inc(text="+", @click { count += 1 })
+text #display(value="Count: {count}")
 ```
 
 In a for loop, refs become indexed: `#item[0].value`, `#item[2].value`.
@@ -915,17 +919,17 @@ component main {
 
     vbox(style={padding=16, gap=8}) {
         hbox(style={gap=8}) {
-            input(value=newTodo, placeholder="New todo", @input={ newTodo = event.value })
-            button(text="Add", disabled=newTodo == "", @click={
+            input(value=newTodo, placeholder="New todo", @input { newTodo = event.value })
+            button(text="Add", disabled=newTodo == "", @click{
                 todos.push(Todo{text: newTodo, done: false})
                 newTodo = ""
             })
         }
         for todo, idx = todos {
             hbox(key=idx, style={gap=8}) {
-                checkbox(checked=todo.done, @change={ todos[idx].done!! })
+                checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
-                button(text="x", @click={ todos.remove(idx) })
+                button(text="x", @click{ todos.remove(idx) })
             }
         }
     }
@@ -940,7 +944,7 @@ component main {
     func valid() => string.contains(email, "@") && string.length(email) > 3
 
     vbox(style={padding=16, gap=8}) {
-        input(value=email, placeholder="Email", type="email", @input={ email = event.value })
+        input(value=email, placeholder="Email", type="email", @input { email = event.value })
         if !valid {
             text(value="Enter a valid email", style={color=#CC0000, fontSize=12})
         }
@@ -956,10 +960,10 @@ component main {
     var showModal = false
 
     vbox(style={padding=16}) {
-        button(text="Open", @click={ showModal = true })
-        modal(open=showModal, title="Settings", @close={ showModal = false }) {
+        button(text="Open", @click { showModal = true })
+        modal(open=showModal, title="Settings", @close { showModal = false }) {
             text(value="Content goes here")
-            button(text="Close", @click={ showModal = false })
+            button(text="Close", @click { showModal = false })
         }
     }
 }
@@ -969,7 +973,10 @@ component main {
 
 ```sngl
 component main {
-    var (progress float = 0.0, running = false)
+    var (
+        progress float = 0.0
+        running = false
+    )
 
     timer 50ms running {
         progress += 0.01
@@ -977,8 +984,8 @@ component main {
 
     vbox(style={padding=16, gap=8}) {
         progress(value=progress, max=1.0, showValue=true)
-        button(text=running ? "Pause" : "Start", @click={ running!! })
-        button(text="Reset", @click={ progress = 0.0; running = false })
+        button(text=running ? "Pause" : "Start", @click { running!! })
+        button(text="Reset", @click { progress = 0.0; running = false })
     }
 }
 ```
@@ -999,7 +1006,7 @@ component main {
     vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")
         for todo, idx = todos {
-            checkbox(key=idx, checked=todo.done, label=todo.text, @change={ todos[idx].done!! })
+            checkbox(key=idx, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }
 }

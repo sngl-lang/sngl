@@ -325,8 +325,8 @@ component Counter(label = "", start = 0) {
 
     hbox {
         text(value="{label}: {count}")
-        button(text="+", @click={ count += 1 })
-        button(text="-", @click={ count -= 1 }, disabled=count <= 0)
+        button(text="+", @click { count += 1 })
+        button(text="-", @click { count -= 1 }, disabled=count <= 0)
     }
 }
 ```
@@ -400,9 +400,9 @@ Events use the `@` prefix and contain statement blocks:
 <!-- SNGL-component -->
 
 ```sngl
-button(@click={ count += 1 })
-input(@input={ name = event.value })
-button(@click={
+button(@click { count += 1 })
+input(@input { name = event.value })
+button(@click {
     todos.push(Todo{text: newTodo, done: false})
     newTodo = ""
 })
@@ -443,8 +443,7 @@ for item = todos {
 }
 
 for item, index = todos {
-    checkbox(checked=item.done, key=index, label=item.text,
-             @change={ todos[index].done!! })
+    checkbox(checked=item.done, key=index, label=item.text, @change { todos[index].done!! })
 }
 ```
 
@@ -518,8 +517,8 @@ component Counter {
         count += n
     }
 
-    button(text="Reset", @click={ reset() })
-    button(text="+5", @click={ increment(5) })
+    button(text="Reset", @click { reset() })
+    button(text="+5", @click { increment(5) })
 }
 ```
 
