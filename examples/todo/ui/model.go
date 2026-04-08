@@ -44,7 +44,7 @@ type Model struct {
 func New() Model {
 	m := Model{
 		newTodo: "",
-		todos:   nil,
+		todos:   []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}},
 	}
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "Buy eggs"

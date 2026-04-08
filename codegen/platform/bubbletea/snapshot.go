@@ -101,12 +101,33 @@ func (sc *snapContext) renderNode(vn *ast.VisualNode) string {
 		return sc.renderFor(vn)
 	}
 
-	// User-defined component
-	if comp := sc.findComponent(vn.Component); comp != nil {
-		return sc.renderComponent(comp, vn)
+	// User-defined component — only look up names that aren't handled
+	// as built-in primitives below.  Abstract stdlib components (vbox,
+	// text, etc.) may appear in doc.AbstractComponents as a side-effect
+	// of LoadStdlib, but their bodies are empty and must not be used.
+	if !isPrimitiveName(vn.Component) {
+		if comp := sc.findComponent(vn.Component); comp != nil {
+			return sc.renderComponent(comp, vn)
+		}
 	}
 
 	return sc.renderPrimitive(vn)
+}
+
+// isPrimitiveName returns true for stdlib component names that have built-in
+// rendering in renderPrimitive.  These must not be looked up via findComponent
+// because LoadStdlib may inject abstract (empty-body) definitions into the doc.
+func isPrimitiveName(name string) bool {
+	switch name {
+	case "vbox", "hbox", "text", "button", "checkbox", "input", "spacer",
+		"image", "radio", "toggle", "select", "textarea", "progress",
+		"spinner", "badge", "tabs", "link", "divider", "modal",
+		"drawer", "popover", "tooltip", "accordion", "splitview",
+		"table", "tree", "menu", "menubar", "toolbar", "datepicker",
+		"chip", "avatar", "card", "scroll", "stack":
+		return true
+	}
+	return false
 }
 
 func (sc *snapContext) renderPrimitive(vn *ast.VisualNode) string {

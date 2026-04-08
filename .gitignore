@@ -6,8 +6,4 @@ _site/
 /playground
 /todo
 /_examples/todo/todo
-snapshots/
-!internal/checker/stdlib/snapshots/
-!public/snapshots/
-internal/snapshot/testdata/snapshots/
 *.wasm
