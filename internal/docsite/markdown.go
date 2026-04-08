@@ -17,6 +17,7 @@ import (
 
 func init() {
 	lexers.Register(snglLexer)
+	lexers.Register(snglGrammarLexer)
 }
 
 // snglLexer is a Chroma lexer for SNGL source files.
@@ -71,6 +72,38 @@ var snglLexer = chroma.MustNewLexer(&chroma.Config{
 		"interp": {
 			{Pattern: `\}`, Type: chroma.LiteralStringInterpol, Mutator: chroma.Pop(1)},
 			chroma.Include("root"),
+		},
+	}
+})
+
+// snglGrammarLexer is a Chroma lexer for the EBNF-like grammar notation
+// used in the language specification.
+var snglGrammarLexer = chroma.MustNewLexer(&chroma.Config{
+	Name:    "SNGL Grammar",
+	Aliases: []string{"sngl-grammar"},
+}, func() chroma.Rules {
+	return chroma.Rules{
+		"root": {
+			// Comments
+			{Pattern: `//[^\n]*`, Type: chroma.CommentSingle, Mutator: nil},
+			// Quoted string literals
+			{Pattern: `"[^"]*"`, Type: chroma.LiteralString, Mutator: nil},
+			// Helper functions
+			{Pattern: `\b(field|commaSep|commaSep1|sepBy1|optCommaSep|prec)\b`, Type: chroma.NameBuiltin, Mutator: nil},
+			// ALL_CAPS terminals
+			{Pattern: `\b[A-Z][A-Z0-9_]{1,}\b`, Type: chroma.KeywordType, Mutator: nil},
+			// CamelCase rule references
+			{Pattern: `\b[A-Z][a-zA-Z0-9]+\b`, Type: chroma.NameClass, Mutator: nil},
+			// Numbers
+			{Pattern: `\b\d+\b`, Type: chroma.LiteralNumberInteger, Mutator: nil},
+			// Rule names (lowercase with underscores at start of line)
+			{Pattern: `^[a-z_]\w*`, Type: chroma.NameFunction, Mutator: nil},
+			// Operators
+			{Pattern: `=|\.\.\.`, Type: chroma.Operator, Mutator: nil},
+			// Punctuation
+			{Pattern: `[(){}\[\],]`, Type: chroma.Punctuation, Mutator: nil},
+			// Whitespace
+			{Pattern: `\s+`, Type: chroma.TextWhitespace, Mutator: nil},
 		},
 	}
 })
