@@ -1,15 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	sngl "git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
@@ -19,6 +16,9 @@ import (
 var dumpCmd = &cobra.Command{
 	Use:   "dump",
 	Short: "Dump compiler phase output",
+	Long: `Dump compiler phase output in various formats.
+
+Output format is unstable and may change between versions.`,
 }
 
 var dumpParsedCmd = &cobra.Command{
@@ -44,12 +44,16 @@ var dumpOptimizedCmd = &cobra.Command{
 
 var dumpAnalysisCmd = &cobra.Command{
 	Use:   "analysis [file|dir]",
-	Short: "Dump codegen analysis as JSON",
+	Short: "Dump codegen analysis",
 	Args:  cobra.MaximumNArgs(1),
 	RunE:  runDumpAnalysis,
 }
 
 func init() {
+	dumpCmd.PersistentFlags().String("format", "auto", "output format (auto, spew, color, json, sngl)")
+	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
+	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
+
 	dumpOptimizedCmd.Flags().String("lang", "", "target language")
 	dumpOptimizedCmd.Flags().String("platform", "", "target platform")
 	dumpAnalysisCmd.Flags().String("lang", "", "target language")
@@ -58,17 +62,39 @@ func init() {
 	dumpCmd.AddCommand(dumpParsedCmd, dumpCheckedCmd, dumpOptimizedCmd, dumpAnalysisCmd)
 }
 
+func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput, error) {
+	f, err := resolveDumpFormat(cmd)
+	if err != nil {
+		return "", "", err
+	}
+	i, err := resolveDumpInput(cmd, args)
+	if err != nil {
+		return "", "", err
+	}
+	if ptrs, _ := cmd.Flags().GetBool("pointers"); ptrs {
+		dumpSpew.DisablePointerAddresses = false
+	}
+	return f, i, nil
+}
+
 func runDumpParsed(cmd *cobra.Command, args []string) error {
-	doc, _, err := dumpParseAndMerge(args)
+	f, inp, err := dumpResolveFlags(cmd, args)
 	if err != nil {
 		return err
 	}
-	fmt.Print(sngl.Format(doc))
-	return nil
+	doc, _, err := dumpParseInput(inp, args)
+	if err != nil {
+		return err
+	}
+	return dumpDocument(f, doc)
 }
 
 func runDumpChecked(cmd *cobra.Command, args []string) error {
-	doc, dir, err := dumpParseAndMerge(args)
+	f, inp, err := dumpResolveFlags(cmd, args)
+	if err != nil {
+		return err
+	}
+	doc, dir, err := dumpParseInput(inp, args)
 	if err != nil {
 		return err
 	}
@@ -79,8 +105,7 @@ func runDumpChecked(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
-	fmt.Print(sngl.Format(doc))
-	return nil
+	return dumpDocument(f, doc)
 }
 
 func runDumpOptimized(cmd *cobra.Command, args []string) error {
@@ -88,8 +113,12 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f, inp, err := dumpResolveFlags(cmd, args)
+	if err != nil {
+		return err
+	}
 
-	doc, dir, err := dumpParseAndMerge(args)
+	doc, dir, err := dumpParseInput(inp, args)
 	if err != nil {
 		return err
 	}
@@ -110,8 +139,7 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
 
-	fmt.Print(sngl.Format(doc))
-	return nil
+	return dumpDocument(f, doc)
 }
 
 func runDumpAnalysis(cmd *cobra.Command, args []string) error {
@@ -119,8 +147,12 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f, inp, err := dumpResolveFlags(cmd, args)
+	if err != nil {
+		return err
+	}
 
-	doc, dir, err := dumpParseAndMerge(args)
+	doc, dir, err := dumpParseInput(inp, args)
 	if err != nil {
 		return err
 	}
@@ -141,80 +173,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
 
-	analysis := codegen.AnalyzeCommon(doc)
-
-	// Build a JSON-friendly representation
-	out := analysisJSON{
-		ModelFields:    sortedKeys(analysis.ModelFields),
-		ComputedFields: sortedKeys(analysis.ComputedFields),
-		ComputedDeps:   mapBoolToSlice(analysis.ComputedDeps),
-		FuncNames:      sortedKeys(analysis.FuncNames),
-		ExternFuncs:    sortedKeys(analysis.ExternFuncs),
-		ExternVars:     sortedKeys(analysis.ExternVars),
-		StructFields:   analysis.StructFields,
-		UsedComponents: sortedKeys(analysis.UsedComponents),
-		NeedsToast:     analysis.NeedsToast,
-	}
-	for _, c := range analysis.Components {
-		out.Components = append(out.Components, c.Name)
-	}
-	for _, s := range analysis.Structs {
-		out.Structs = append(out.Structs, s.Name)
-	}
-	for _, e := range analysis.Enums {
-		out.Enums = append(out.Enums, e.Name)
-	}
-	for _, t := range analysis.Timers {
-		out.Timers = append(out.Timers, timerJSON{
-			Index:      t.Index,
-			IntervalMs: t.IntervalMs,
-			ActiveVar:  t.ActiveVar,
-		})
-	}
-
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(out)
-}
-
-// dumpParseAndMerge parses the input file/directory and merges siblings.
-func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
-	target := "."
-	if len(args) > 0 {
-		target = args[0]
-	}
-
-	info, err := os.Stat(target)
-	if err != nil {
-		return nil, "", err
-	}
-
-	start := time.Now()
-	if info.IsDir() {
-		doc, err := parseDir(target)
-		if err != nil {
-			return nil, "", err
-		}
-		slog.Info("parse", "dir", target, "duration", time.Since(start))
-		return doc, target, nil
-	}
-
-	f, err := os.Open(target)
-	if err != nil {
-		return nil, "", err
-	}
-	doc, err := parseSNGL(target, f)
-	f.Close()
-	if err != nil {
-		return nil, "", err
-	}
-	slog.Info("parse", "file", target, "duration", time.Since(start))
-
-	start = time.Now()
-	doc = mergeDir(doc, target)
-	slog.Info("merge", "file", target, "duration", time.Since(start))
-
-	return doc, filepath.Dir(target), nil
+	return dumpValue(f, codegen.AnalyzeCommon(doc))
 }
 
 func dumpTargetFlags(cmd *cobra.Command) (lang, platform string, err error) {
@@ -224,57 +183,4 @@ func dumpTargetFlags(cmd *cobra.Command) (lang, platform string, err error) {
 		return "", "", fmt.Errorf("--lang and --platform are required")
 	}
 	return lang, platform, nil
-}
-
-type analysisJSON struct {
-	ModelFields    []string            `json:"modelFields"`
-	ComputedFields []string            `json:"computedFields"`
-	ComputedDeps   map[string][]string `json:"computedDeps"`
-	FuncNames      []string            `json:"funcNames"`
-	ExternFuncs    []string            `json:"externFuncs"`
-	ExternVars     []string            `json:"externVars"`
-	StructFields   map[string][]string `json:"structFields"`
-	Components     []string            `json:"components"`
-	Structs        []string            `json:"structs"`
-	Enums          []string            `json:"enums"`
-	Timers         []timerJSON         `json:"timers"`
-	UsedComponents []string            `json:"usedComponents"`
-	NeedsToast     bool                `json:"needsToast"`
-}
-
-type timerJSON struct {
-	Index      int    `json:"index"`
-	IntervalMs int    `json:"intervalMs"`
-	ActiveVar  string `json:"activeVar"`
-}
-
-func sortedKeys(m map[string]bool) []string {
-	if len(m) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	slices_sort(keys)
-	return keys
-}
-
-func slices_sort(s []string) {
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j] < s[j-1]; j-- {
-			s[j], s[j-1] = s[j-1], s[j]
-		}
-	}
-}
-
-func mapBoolToSlice(m map[string]map[string]bool) map[string][]string {
-	if len(m) == 0 {
-		return nil
-	}
-	out := make(map[string][]string, len(m))
-	for k, v := range m {
-		out[k] = sortedKeys(v)
-	}
-	return out
 }
