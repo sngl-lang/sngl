@@ -157,6 +157,10 @@ func clearConstPos(c *ast.Const) {
 
 func clearDataPos(d *ast.Data) {
 	d.Pos = ast.Pos{}
+	for i := range d.Events {
+		d.Events[i].Pos = ast.Pos{}
+		d.Events[i].EndLine = 0
+	}
 }
 
 func clearFuncPos(f *ast.FuncDef) {

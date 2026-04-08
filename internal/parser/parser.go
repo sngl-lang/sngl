@@ -293,6 +293,7 @@ func (p *parser) parseDocument() *ast.Document {
 			doc.Imports = append(doc.Imports, imp)
 			doc.Decls = append(doc.Decls, imp)
 		case KW_OUTPUT:
+			doc.OutputLine = p.cur.Line
 			defaults, outputs := p.parseOutput()
 			if defaults != nil {
 				doc.OutputDefaults = defaults
@@ -1207,6 +1208,7 @@ func (p *parser) finishSingleVar(d *ast.Data) {
 
 func (p *parser) parseVarModifiers(d *ast.Data) {
 	for p.at(AT) {
+		pos := p.pos()
 		p.advance()
 		kind := p.expect(IDENT).Literal // "change", "insert", "delete", "init"
 		var param string
@@ -1217,8 +1219,9 @@ func (p *parser) parseVarModifiers(d *ast.Data) {
 		}
 		p.expect(LBRACE)
 		body := p.parseStmtList()
+		endLine := p.pos().Line
 		p.expect(RBRACE)
-		d.Events = append(d.Events, ast.DataEvent{Kind: kind, Param: param, Body: body})
+		d.Events = append(d.Events, ast.DataEvent{Kind: kind, Param: param, Body: body, Pos: pos, EndLine: endLine})
 	}
 }
 

@@ -507,11 +507,12 @@ func (f *formatter) emitInlineComment(line int) {
 }
 
 type formatter struct {
-	w         io.Writer
-	written   int   // total bytes written
-	lineWidth int   // bytes on current line (for comment alignment)
-	pendingNL bool  // deferred newline, flushed before next write
-	err       error // first write error; short-circuits subsequent writes
+	w            io.Writer
+	written      int   // total bytes written
+	lineWidth    int   // bytes on current line (for comment alignment)
+	pendingNL    bool  // deferred newline, flushed before next write
+	pendingBlank bool  // deferred blank line (extra newline), flushed before next write
+	err          error // first write error; short-circuits subsequent writes
 
 	indent        int
 	comments      []ast.Comment
@@ -543,6 +544,11 @@ func (f *formatter) flush() {
 		_, f.err = f.w.Write([]byte{'\n'})
 		f.written++
 		f.lineWidth = 0
+		if f.pendingBlank {
+			f.pendingBlank = false
+			_, f.err = f.w.Write([]byte{'\n'})
+			f.written++
+		}
 	}
 }
 
@@ -550,6 +556,13 @@ func (f *formatter) write(s string) { io.WriteString(f, s) }
 
 func (f *formatter) newline() {
 	f.pendingNL = true
+}
+
+// blankLine requests a blank line before the next content.
+// Multiple calls collapse into a single blank line.
+func (f *formatter) blankLine() {
+	f.pendingNL = true
+	f.pendingBlank = true
 }
 
 // Cached indent strings to avoid repeated allocation.
@@ -611,7 +624,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.emittedInline[[2]int{decl.Pos.Line, decl.Pos.Column}] = true
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-					f.newline()
+					f.blankLine()
 				}
 				f.writeLine(decl.Text)
 			}
@@ -619,7 +632,7 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			continue
 		case *ast.Import:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Alias != "" {
 				f.writeDisabledLine(decl.Disabled, fmt.Sprintf("import %s => \"%s\"", decl.Alias, escapePathContent(decl.Path)))
@@ -629,16 +642,20 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			prevEndLine = decl.Pos.Line
 		case *ast.Output:
 			if !outputsSeen {
-				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-					f.newline()
+				outputStart := doc.OutputLine
+				if outputStart == 0 {
+					outputStart = decl.Pos.Line
+				}
+				if prevEndLine > 0 && outputStart > prevEndLine+1 {
+					f.blankLine()
 				}
 				f.formatOutputGroup(doc)
 				outputsSeen = true
-				prevEndLine = decl.Pos.Line
+				prevEndLine = outputStart
 			}
 		case *ast.StructDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Disabled {
 				f.writeIndent()
@@ -648,28 +665,31 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			prevEndLine = decl.Pos.Line
 		case *ast.EnumDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.writeDisabledLine(decl.Disabled, fmt.Sprintf("enum %s { %s }", decl.Name, strings.Join(decl.Values, ", ")))
 			prevEndLine = decl.Pos.Line
 		case *ast.UnitDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatUnitDecl(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.StyleDecl:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatStyleDecl(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.Component:
 			if decl.Name == "main" {
+				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
+					f.blankLine()
+				}
 				f.formatComponentAsMain(decl)
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-					f.newline()
+					f.blankLine()
 				}
 				if decl.Disabled {
 					f.writeIndent()
@@ -680,33 +700,59 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			prevEndLine = declEndLine(decl)
 		case *ast.Const:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
-			f.formatConsts([]*ast.Const{decl})
+			if decl.Grouped {
+				group := []*ast.Const{decl}
+				for di+1 < len(doc.Decls) {
+					if next, ok := doc.Decls[di+1].(*ast.Const); ok && next.Grouped {
+						group = append(group, next)
+						di++
+					} else {
+						break
+					}
+				}
+				f.formatConsts(group)
+			} else {
+				f.formatConsts([]*ast.Const{decl})
+			}
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
-			f.formatVars([]*ast.Data{decl})
+			if decl.Grouped {
+				group := []*ast.Data{decl}
+				for di+1 < len(doc.Decls) {
+					if next, ok := doc.Decls[di+1].(*ast.Data); ok && next.Grouped {
+						group = append(group, next)
+						di++
+					} else {
+						break
+					}
+				}
+				f.formatVars(group)
+			} else {
+				f.formatVars([]*ast.Data{decl})
+			}
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if !decl.IsStdlib {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-					f.newline()
+					f.blankLine()
 				}
 				f.formatFuncDef(decl)
 				prevEndLine = declEndLine(decl)
 			}
 		case *ast.Timer:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatTimer(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.Window:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Disabled {
 				f.writeIndent()
@@ -771,7 +817,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	// Vars
 	if len(doc.Data) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.formatVarsGrouped(doc.Data)
 		memberBlank = true
@@ -780,7 +826,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	// Functions
 	if len(doc.Functions) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.formatFuncDefs(doc.Functions)
 		memberBlank = true
@@ -789,7 +835,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	// Timers
 	if len(doc.Timers) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		for _, t := range doc.Timers {
 			f.formatTimer(t)
@@ -800,7 +846,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	// App body
 	if doc.App != nil && len(doc.App.Children) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		for _, vn := range doc.App.Children {
 			f.emitCommentsBefore(vn.Pos.Line)
@@ -811,7 +857,7 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 	// App windows
 	if doc.App != nil && len(doc.App.Windows) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		for _, win := range doc.App.Windows {
 			f.formatWindow(win)
@@ -845,9 +891,13 @@ func (f *formatter) formatOutputGroup(doc *ast.Document) {
 		}
 	}
 	for _, g := range groups {
-		// One-liner: single platform, no options, and source was one line
-		if len(g.outputs) == 1 && len(g.outputs[0].Options) == 0 && g.outputs[0].LangLine == g.outputs[0].Pos.Line {
-			f.writeLine(g.lang + " { " + g.outputs[0].Platform + " }")
+		// One-liner: single platform and source was one line
+		if len(g.outputs) == 1 && g.outputs[0].LangLine == g.outputs[0].Pos.Line {
+			line := g.outputs[0].Platform
+			if len(g.outputs[0].Options) > 0 {
+				line += "(" + formatKV(g.outputs[0].Options) + ")"
+			}
+			f.writeLine(g.lang + " { " + line + " }")
 			continue
 		}
 		f.writeLine(g.lang + " {")
@@ -1049,11 +1099,34 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 			f.write(ev.Param)
 			f.write(")")
 		}
-		f.write(" { ")
-		var buf strings.Builder
-		writeNode(&buf, ev.Body)
-		f.write(buf.String())
-		f.write(" }")
+		// Multiple statements always multiline; single statement preserves original layout
+		_, isBlock := ev.Body.(*ast.StmtBlock)
+		multiline := isBlock || ev.EndLine > ev.Pos.Line
+		if multiline {
+			f.write(" {")
+			f.newline()
+			f.indent++
+			if block, ok := ev.Body.(*ast.StmtBlock); ok {
+				for _, stmt := range block.Stmts {
+					f.writeIndent()
+					writeNode(f, stmt)
+					f.newline()
+				}
+			} else {
+				f.writeIndent()
+				writeNode(f, ev.Body)
+				f.newline()
+			}
+			f.indent--
+			f.writeIndent()
+			f.write("}")
+		} else {
+			f.write(" { ")
+			var buf strings.Builder
+			writeNode(&buf, ev.Body)
+			f.write(buf.String())
+			f.write(" }")
+		}
 	}
 }
 
@@ -1174,37 +1247,37 @@ func (f *formatter) formatWindow(win *ast.Window) {
 				continue
 			}
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.writeLine(decl.Text)
 			prevEndLine = decl.Pos.Line
 		case *ast.Const:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatConsts([]*ast.Const{decl})
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatVars([]*ast.Data{decl})
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatFuncDef(decl)
 			prevEndLine = declEndLine(decl)
 		case *ast.Timer:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatTimer(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.VisualNode:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatVisualNode(decl)
 			prevEndLine = declEndLine(decl)
@@ -1287,6 +1360,13 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 		f.write(typeHintStr(comp.ChildrenType, nil))
 	}
 
+	// Empty single-line component: component foo() {}
+	if comp.EndLine == comp.Pos.Line && len(comp.Decls) == 0 {
+		f.write(" {}")
+		f.newline()
+		return
+	}
+
 	f.write(" {")
 	f.newline()
 	if comp.EndLine != comp.Pos.Line {
@@ -1352,7 +1432,7 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				f.emitAlignedInlineComment(decl, target)
 			} else {
 				if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-					f.newline()
+					f.blankLine()
 				}
 				f.writeLine(decl.Text)
 			}
@@ -1360,7 +1440,7 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			continue
 		case *ast.Const:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Grouped {
 				group := []*ast.Const{decl}
@@ -1379,7 +1459,7 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Grouped {
 				group := []*ast.Data{decl}
@@ -1401,19 +1481,19 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				continue
 			}
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatFuncDef(decl)
 			prevEndLine = declEndLine(decl)
 		case *ast.Timer:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			f.formatTimer(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.VisualNode:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			// Peek ahead for inline comment on same line as this node
 			var inlineComment *ast.Comment
@@ -1433,7 +1513,7 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			prevEndLine = declEndLine(decl)
 		case *ast.Window:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
-				f.newline()
+				f.blankLine()
 			}
 			if decl.Disabled {
 				f.writeIndent()
@@ -1467,7 +1547,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Consts
 	if len(comp.Consts) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.formatConsts(comp.Consts)
 		memberBlank = true
@@ -1476,7 +1556,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Data (var)
 	if len(comp.Data) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.formatVars(comp.Data)
 		memberBlank = true
@@ -1485,7 +1565,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Functions
 	if len(comp.Functions) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.formatFuncDefs(comp.Functions)
 		memberBlank = true
@@ -1494,7 +1574,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Timers
 	if len(comp.Timers) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		for _, t := range comp.Timers {
 			f.formatTimer(t)
@@ -1505,7 +1585,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Visual body
 	if len(comp.Body) > 0 {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		for _, vn := range comp.Body {
 			f.emitCommentsBefore(vn.Pos.Line)
@@ -1517,7 +1597,7 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 	// Platform-conditional bodies
 	for platName, nodes := range comp.PlatformBodies {
 		if memberBlank {
-			f.newline()
+			f.blankLine()
 		}
 		f.writeLine("platform " + platName + " {")
 		f.indent++
@@ -1760,6 +1840,17 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 				f.newline()
 
 			}
+		} else if vn.EndLine == vn.Pos.Line {
+			// Single-line: preserve inline children
+			f.write(" { ")
+			for i, child := range vn.Children {
+				if i > 0 {
+					f.write(" ")
+				}
+				f.writeVisualNodeInline(child)
+			}
+			f.write(" }")
+			f.newline()
 		} else {
 			f.write(" {")
 			f.newline()
@@ -1776,6 +1867,96 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 		}
 	} else {
 		f.newline()
+	}
+}
+
+// writeVisualNodeInline writes a visual node as a single-line string to the formatter.
+func (f *formatter) writeVisualNodeInline(vn *ast.VisualNode) {
+	f.write(vn.Component)
+	if vn.ID != "" {
+		f.write(" #")
+		f.write(vn.ID)
+	}
+
+	var props []string
+	if len(vn.PropOrder) > 0 {
+		for _, entry := range vn.PropOrder {
+			if strings.HasPrefix(entry, "@") {
+				name := entry[1:]
+				if expr, ok := vn.Events[name]; ok {
+					props = append(props, f.buildEventProp("@"+name, expr))
+				}
+			} else if strings.HasPrefix(entry, ":") {
+				name := entry[1:]
+				if expr, ok := vn.Bindings[name]; ok {
+					props = append(props, f.buildProp(":"+name, expr))
+				}
+			} else {
+				switch entry {
+				case "key":
+					if vn.Key != nil {
+						props = append(props, f.buildProp("key", *vn.Key))
+					}
+				case "class":
+					if vn.Class != nil {
+						props = append(props, f.buildProp("class", *vn.Class))
+					}
+				case "ref":
+					if vn.Ref != nil {
+						props = append(props, f.buildProp("ref", *vn.Ref))
+					}
+				default:
+					if expr, ok := vn.Props[entry]; ok {
+						props = append(props, f.buildProp(entry, expr))
+					}
+				}
+			}
+		}
+	} else {
+		if vn.Key != nil {
+			props = append(props, f.buildProp("key", *vn.Key))
+		}
+		if vn.Class != nil {
+			props = append(props, f.buildProp("class", *vn.Class))
+		}
+		if vn.Ref != nil {
+			props = append(props, f.buildProp("ref", *vn.Ref))
+		}
+		for _, k := range sortedKeys(vn.Props) {
+			props = append(props, f.buildProp(k, vn.Props[k]))
+		}
+		for _, name := range sortedKeys(vn.Bindings) {
+			props = append(props, f.buildProp(":"+name, vn.Bindings[name]))
+		}
+		for _, name := range sortedKeys(vn.Events) {
+			props = append(props, f.buildEventProp("@"+name, vn.Events[name]))
+		}
+	}
+
+	if len(props) > 0 {
+		f.write("(")
+		for i, p := range props {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.write(p)
+		}
+		f.write(")")
+	} else if vn.HasProps {
+		f.write("()")
+	}
+
+	if len(vn.Children) > 0 {
+		f.write(" { ")
+		for i, child := range vn.Children {
+			if i > 0 {
+				f.write(" ")
+			}
+			f.writeVisualNodeInline(child)
+		}
+		f.write(" }")
+	} else if vn.HasBody {
+		f.write(" { }")
 	}
 }
 

@@ -66,6 +66,7 @@ func (c *Comment) DeclPos() Pos { return c.Pos }
 
 type Document struct {
 	OutputDefaults     map[string]string // key=value from output(...) defaults
+	OutputLine         int               // source line of `output` keyword
 	Outputs            []*Output
 	Structs            []*StructDef
 	Enums              []*EnumDef
@@ -200,9 +201,11 @@ const (
 
 // DataEvent is an inline event handler on a var declaration.
 type DataEvent struct {
-	Kind  string // "change", "insert", "delete", "init"
-	Param string // param name for @insert(x)/@delete(x); "" for @change/@init
-	Body  Node   // statement block
+	Kind    string // "change", "insert", "delete", "init"
+	Param   string // param name for @insert(x)/@delete(x); "" for @change/@init
+	Body    Node   // statement block
+	Pos     Pos    // position of @ token
+	EndLine int    // line of closing }
 }
 
 type Data struct {

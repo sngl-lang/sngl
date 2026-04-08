@@ -22,7 +22,6 @@ import (
 // TestDocSNGLBlocks finds all ```sngl code blocks in markdown files and
 // verifies they parse correctly and produce stable formatting.
 func TestDocSNGLBlocks(t *testing.T) {
-	t.Skip()
 	var files []string
 	filepath.WalkDir("docs", func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -103,7 +102,6 @@ func TestDocSNGLBlocks(t *testing.T) {
 // TestDocSNGLFormat checks that all ```sngl code blocks in docs are properly formatted.
 // Set SNGL_FMT_DOCS=1 to write formatted snippets back into the markdown files.
 func TestDocSNGLFormat(t *testing.T) {
-	t.Skip()
 	writeBack := os.Getenv("SNGL_FMT_DOCS") == "1"
 
 	var mdFiles []string
@@ -224,18 +222,23 @@ func unwrapComponent(formatted, prelude string) string {
 	}
 
 	lines := strings.Split(src, "\n")
-	// Find "component main {" and closing "}"
+	// Find "component main {" and closing "}" using brace depth
 	start := -1
 	end := -1
+	depth := 0
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if start == -1 && strings.HasPrefix(trimmed, "component main") && strings.HasSuffix(trimmed, "{") {
 			start = i + 1
+			depth = 1
 			continue
 		}
-		if start != -1 && trimmed == "}" {
-			end = i
-			break
+		if start != -1 {
+			depth += strings.Count(line, "{") - strings.Count(line, "}")
+			if depth == 0 {
+				end = i
+				break
+			}
 		}
 	}
 	if start == -1 || end == -1 {

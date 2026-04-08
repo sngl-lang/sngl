@@ -88,6 +88,7 @@ React to variable changes with inline statement blocks:
 var todos list<Todo> @change {
     saveTodos(todos)
 }
+
 var count = 0 @init {
     loadCount()
 }

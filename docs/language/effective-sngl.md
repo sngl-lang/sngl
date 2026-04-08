@@ -19,6 +19,7 @@ component main { text(value="") }
 -->
 
 ```sngl
+
 output {
     js { html }
     go { bubbletea(package="main") }
@@ -292,9 +293,9 @@ func label() => "Count: {count}, active: {active}"
 
 ```sngl
 var (
-    count = 0,
-    name = "World",
-    active = true,
+    count = 0
+    name = "World"
+    active = true
 )
 ```
 
@@ -306,10 +307,11 @@ var (
 
 ```sngl
 const (
-    MAX_ITEMS = 100,
-    DEFAULT_NAME = "unnamed",
-    PI float = 3.14159,
+    MAX_ITEMS = 100
+    DEFAULT_NAME = "unnamed"
+    PI float = 3.14159
 )
+
 const SINGLE = 42
 ```
 
@@ -339,6 +341,7 @@ Data events let you react to variable changes with inline statement blocks:
 var todos list<Todo> @change {
     saveTodos(todos)
 }
+
 var count = 0 @init {
     loadCount()
 }
@@ -600,9 +603,11 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 
 ```sngl
 var active = true
+
 if active {
     text(value="Active", style={color=#007700})
 }
+
 if !active {
     text(value="Inactive", style={color=#CC0000})
 }
@@ -617,6 +622,7 @@ var items = ["a", "b", "c"]
 for item = items {
     text(value=item)
 }
+
 for item, idx = items {
     text(value="{idx}: {item}", key=idx)
 }
