@@ -244,6 +244,10 @@ type htmlGen struct {
 	// Component invocation counter for unique param names
 	componentInvocations int
 
+	// dataRenames maps original component var names to promoted unique names
+	// during component inlining, so handler MutatedFields can be remapped.
+	dataRenames map[string]string
+
 	// Component nesting depth for recursion protection
 	componentDepth int
 
@@ -995,25 +999,22 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 		}
 	}
 
-	if g.preview {
-		id := g.allocID()
-		indent := strings.Repeat("  ", depth)
-		fmt.Fprintf(b, "%s<img id=\"%s\"", indent, id)
-		if src != "" {
-			fmt.Fprintf(b, " src=\"%s\"", html.EscapeString(src))
-		}
-		fmt.Fprintf(b, " alt=\"%s\"", html.EscapeString(alt))
-		if style != "" {
-			fmt.Fprintf(b, " style=\"%s\"", style)
-		}
-		g.writeDataKey(b, vn.Key)
-		g.writeUserAttrs(b, id, vn)
-		b.WriteString(g.previewAttrs(vn.Pos))
-		b.WriteString(" />\n")
-		return
+	id := ""
+	if vn.If != nil || g.preview {
+		id = g.allocID()
 	}
+	if vn.If != nil {
+		if !g.evalStaticBool(vn.If) {
+			style = htmlutil.AppendCSS(style, "display", "none")
+		}
+		g.addIfUpdater(id, *vn.If)
+	}
+
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<img", indent)
+	if id != "" {
+		fmt.Fprintf(b, " id=\"%s\"", id)
+	}
 	if src != "" {
 		fmt.Fprintf(b, " src=\"%s\"", html.EscapeString(src))
 	}
@@ -1022,7 +1023,10 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	g.writeDataKey(b, vn.Key)
-	g.writeUserAttrs(b, "", vn)
+	g.writeUserAttrs(b, id, vn)
+	if g.preview {
+		b.WriteString(g.previewAttrs(vn.Pos))
+	}
 	b.WriteString(" />\n")
 }
 
@@ -1472,7 +1476,7 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 		}
 		if expr.SNGL != nil {
 			jsVal := g.exprToJS(expr)
-			deps := g.dt.ExprDeps(expr)
+			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
 			switch name {
@@ -1574,6 +1578,42 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 		}
 	}
 
+	// Promote component state vars to the parent document with unique names.
+	dataRenames := make(map[string]string)
+	for _, d := range comp.Data {
+		uniqueName := d.Name + suffix
+		promoted := *d
+		promoted.Name = uniqueName
+		g.doc.Data = append(g.doc.Data, &promoted)
+		g.scope.ModelFields[uniqueName] = true
+		g.dt.ModelFields[uniqueName] = true
+		g.scope.LocalVars[d.Name] = true
+		renames[d.Name] = "state." + uniqueName
+		dataRenames[d.Name] = uniqueName
+	}
+	g.scope.Renames = renames
+
+	// Pre-translate component timers while the component scope is active.
+	for _, t := range comp.Timers {
+		ms := codegen.IntervalToMs(t.Interval)
+		stmts := g.lang.TranslateMutation(t.Body, g.scope)
+		mutated := g.remapMutated(codegen.MutatedFields(t.Body), dataRenames)
+		activeVar := t.Active
+		if renamed, ok := dataRenames[activeVar]; ok {
+			activeVar = renamed
+		}
+		g.timers = append(g.timers, timerDef{
+			intervalMs: ms,
+			activeVar:  activeVar,
+			body:       strings.Join(stmts, "\n  "),
+			mutated:    mutated,
+		})
+	}
+
+	// Set dataRenames so handler-adding methods can remap MutatedFields.
+	savedDataRenames := g.dataRenames
+	g.dataRenames = dataRenames
+
 	// Set slot children for abstract component body expansion
 	savedSlot := g.slotChildren
 	g.slotChildren = vn.Children
@@ -1588,6 +1628,7 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	}
 
 	g.slotChildren = savedSlot
+	g.dataRenames = savedDataRenames
 
 	// Restore locals
 	g.scope.LocalVars = savedLocals
@@ -1596,18 +1637,21 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 
 // emitScript writes the <script> block content.
 func (g *htmlGen) emitScript(b *strings.Builder) {
-	// Collect timers
-	for i, t := range g.doc.Timers {
+	// Collect document-level timers (component timers are pre-collected
+	// during renderStaticUserComponent while the component scope is active).
+	for _, t := range g.doc.Timers {
 		ms := codegen.IntervalToMs(t.Interval)
 		stmts := g.lang.TranslateMutation(t.Body, g.scope)
 		mutated := codegen.MutatedFields(t.Body)
 		g.timers = append(g.timers, timerDef{
-			index:      i,
 			intervalMs: ms,
 			activeVar:  t.Active,
 			body:       strings.Join(stmts, "\n  "),
 			mutated:    mutated,
 		})
+	}
+	for i := range g.timers {
+		g.timers[i].index = i
 	}
 
 	// Run IR optimizer on collected updaters, handlers, and timers.
@@ -2050,7 +2094,7 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 // addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.dt.ExprDeps(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2061,7 +2105,7 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.dt.ExprDeps(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2072,7 +2116,7 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.dt.ExprDeps(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2083,7 +2127,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
 
 func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.dt.ExprDeps(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2094,7 +2138,7 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
 
 func (g *htmlGen) addIfUpdater(elemID string, expr ast.Expr) {
 	jsExpr := g.exprToJS(expr)
-	deps := g.dt.ExprDeps(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2114,7 +2158,7 @@ func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
 	}
 
 	iterableJS := g.exprToJS(vn.For.Iterable)
-	deps := g.dt.ExprDeps(vn.For.Iterable)
+	deps := g.exprDeps(vn.For.Iterable)
 
 	// Generate the inner HTML creation code
 	var innerBuf strings.Builder
@@ -2139,7 +2183,7 @@ func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
 
 func (g *htmlGen) addForElseUpdater(forElemID, elseElemID string, vn *ast.VisualNode) {
 	iterableJS := g.exprToJS(vn.For.Iterable)
-	deps := g.dt.ExprDeps(vn.For.Iterable)
+	deps := g.exprDeps(vn.For.Iterable)
 
 	name := fmt.Sprintf("$u_%s_else", forElemID[1:])
 	body := fmt.Sprintf(`%s.style.display = %s.length === 0 ? "" : "none";`,
@@ -2243,12 +2287,47 @@ func (g *htmlGen) emitForLoopDataKey(b *strings.Builder, elVar string, vn *ast.V
 	fmt.Fprintf(b, "    %s.setAttribute('data-key', %s);\n", elVar, keyJS)
 }
 
+// exprDeps extracts model field dependencies, remapping through dataRenames
+// when inside a component scope so deps use promoted field names.
+func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
+	// Temporarily register original names so walkDeps can find them,
+	// then remap to the promoted unique names.
+	var added []string
+	for orig := range g.dataRenames {
+		if !g.dt.ModelFields[orig] {
+			g.dt.ModelFields[orig] = true
+			added = append(added, orig)
+		}
+	}
+	deps := g.dt.ExprDeps(expr)
+	for _, name := range added {
+		delete(g.dt.ModelFields, name)
+	}
+	return g.remapMutated(deps, g.dataRenames)
+}
+
+// remapMutated applies rename mappings to a set of mutated field names.
+func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]string) map[string]bool {
+	if len(renames) == 0 {
+		return mutated
+	}
+	remapped := make(map[string]bool, len(mutated))
+	for name := range mutated {
+		if renamed, ok := renames[name]; ok {
+			remapped[renamed] = true
+		} else {
+			remapped[name] = true
+		}
+	}
+	return remapped
+}
+
 func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
 	if expr.SNGL == nil {
 		return
 	}
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := codegen.MutatedFields(expr.SNGL)
+	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2270,7 +2349,7 @@ func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
 	g.scope.EventVar = "e.target"
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
 	g.scope.EventVar = savedEvent
-	mutated := codegen.MutatedFields(expr.SNGL)
+	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2288,7 +2367,7 @@ func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
 		return
 	}
 	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := codegen.MutatedFields(expr.SNGL)
+	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2625,7 +2704,7 @@ func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
 func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
 	if vn.Class != nil {
 		jsExpr := g.exprToJS(*vn.Class)
-		deps := g.dt.ExprDeps(*vn.Class)
+		deps := g.exprDeps(*vn.Class)
 		name := fmt.Sprintf("$u_%s_cls", elemID[1:])
 		g.updates = append(g.updates, updateFunc{
 			funcName: name,

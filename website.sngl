@@ -12,6 +12,8 @@ const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
 const logo = public.path("sngl.svg")
+const screenshotWeb = public.path("snapshots/todo/todo-html.png")
+const screenshotTerminal = public.path("snapshots/todo/todo-bubbletea.png")
 
 component NavSidebar(currentHref = "") {
 	docui.Sidebar(homeHref="/index.html", logo=logo) {
@@ -29,6 +31,39 @@ component NavSidebar(currentHref = "") {
 		}
 		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
 		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
+	}
+}
+
+component PlatformCarousel() {
+	var (
+		active = 0
+		rotating = true
+	)
+	timer 5000ms rotating {
+		active = (active + 1) % 2
+	}
+
+	vbox(style={gap=16, alignItems="center", padding="32 0"}) {
+		stack {
+			if active == 0 {
+				image(src=screenshotWeb, alt="SNGL Todo App on Web", fit=contain,
+					style={maxWidth=800, maxHeight=500, borderRadius=8})
+			}
+			if active == 1 {
+				image(src=screenshotTerminal, alt="SNGL Todo App in Terminal", fit=contain,
+					style={maxWidth=800, maxHeight=500, borderRadius=8})
+			}
+		}
+		hbox(style={gap=8}) {
+			button(text="Web", @click { active = 0 },
+				style={paddingLeft=20, paddingRight=20, borderRadius=20,
+					background=active == 0 ? "#2196f3" : "#f5f5f5",
+					color=active == 0 ? "#fff" : "#333"})
+			button(text="Terminal", @click { active = 1 },
+				style={paddingLeft=20, paddingRight=20, borderRadius=20,
+					background=active == 1 ? "#2196f3" : "#f5f5f5",
+					color=active == 1 ? "#fff" : "#333"})
+		}
 	}
 }
 
@@ -168,6 +203,9 @@ component main {
 	for page = pages {
 		window(title=page.title, href=page.href, favicon=logo) {
 			PageLayout(title=page.title, currentHref=page.href) {
+				if page.href == "/index.html" {
+					PlatformCarousel
+				}
 				docui.Markdown(src=page.body)
 			}
 		}

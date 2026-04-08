@@ -332,6 +332,11 @@ func translateMutationTarget(e ast.Node, scope *codegen.ExprScope) string {
 		if scope.ModelFields[n.Name] {
 			return "state." + n.Name
 		}
+		if scope.LocalVars[n.Name] && scope.Renames != nil {
+			if renamed, ok := scope.Renames[n.Name]; ok {
+				return renamed
+			}
+		}
 		return n.Name
 	case *ast.SelectExpr:
 		operand := translateMutationTarget(n.Operand, scope)
