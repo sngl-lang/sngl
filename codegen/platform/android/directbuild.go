@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +47,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	}
 	if dirExists(resDir) {
 		compiledRes := filepath.Join(outDir, "compiled_res.zip")
+		slog.Info("exec", "cmd", "aapt2 compile", "dir", resDir)
 		aapt2Compile := exec.Command(tc.Aapt2, "compile", "--dir", resDir, "-o", compiledRes)
 		aapt2Compile.Stdout = os.Stderr
 		aapt2Compile.Stderr = os.Stderr
@@ -54,6 +56,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		}
 		linkArgs = append(linkArgs, compiledRes)
 	}
+	slog.Info("exec", "cmd", "aapt2 link")
 	aapt2Link := exec.Command(tc.Aapt2, linkArgs...)
 	aapt2Link.Stdout = os.Stderr
 	aapt2Link.Stderr = os.Stderr
@@ -124,6 +127,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	}
 	kotlincArgs = append(kotlincArgs, ktFiles...)
 
+	slog.Info("exec", "cmd", "kotlinc", "dir", dir)
 	kotlinc := exec.Command(tc.Kotlinc, kotlincArgs...)
 	kotlinc.Dir = dir
 	kotlinc.Stdout = os.Stderr
@@ -209,6 +213,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	// Step 4: Zipalign
 	alignedApk := filepath.Join(outDir, "aligned.apk")
 	if fileExists(tc.Zipalign) {
+		slog.Info("exec", "cmd", "zipalign")
 		zipalign := exec.Command(tc.Zipalign, "-f", "4", baseApk, alignedApk)
 		zipalign.Stdout = os.Stderr
 		zipalign.Stderr = os.Stderr
@@ -251,6 +256,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	apksigner := filepath.Join(filepath.Dir(tc.Aapt2), "apksigner")
 	if fileExists(apksigner) {
 		// Copy aligned to signed first (apksigner signs in-place)
+		slog.Info("exec", "cmd", "apksigner sign")
 		copyFile(alignedApk, signedApk)
 		sign := exec.Command(apksigner, "sign",
 			"--ks", debugKeystore,
@@ -264,6 +270,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		}
 	} else {
 		// Fall back to jarsigner
+		slog.Info("exec", "cmd", "jarsigner")
 		copyFile(alignedApk, signedApk)
 		sign := exec.Command("jarsigner",
 			"-keystore", debugKeystore,
@@ -683,6 +690,7 @@ func preDexLibraries(tc *toolchain, cacheDir string) []string {
 }
 
 func runD8(tc *toolchain, args []string) error {
+	slog.Info("exec", "cmd", "d8")
 	// d8 can be a jar or a wrapper script
 	if strings.HasSuffix(tc.D8, ".jar") {
 		javaArgs := append([]string{"-jar", tc.D8}, args...)

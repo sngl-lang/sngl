@@ -202,4 +202,3 @@ func TestOptimizeRender_RemoveNilHandlers(t *testing.T) {
 		t.Fatalf("expected 1 handler, got %d", len(m.Handlers))
 	}
 }
-

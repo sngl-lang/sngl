@@ -16,15 +16,19 @@ type exprContext = golang.GoContext
 func exportName(s string) string   { return golang.ExportName(s) }
 func unexportName(s string) string { return golang.UnexportName(s) }
 
-func inferGoType(expr ast.Expr) string                              { return golang.InferGoType(expr) }
-func typeHintToGo(hint string) string                               { return golang.TypeHintToGo(hint) }
-func literalToGo(expr ast.Expr) string                              { return golang.LiteralToGo(expr) }
-func externFuncGoType(paramTypes []string, returnType string) string { return golang.ExternFuncGoType(paramTypes, returnType) }
-func snglNodeGoType(e ast.Node) string                              { return golang.SnglNodeGoType(e) }
-func needsTimeType(hint string) bool                                { return golang.NeedsTimeType(hint) }
-func exprToGoValue(expr ast.Expr, ec *exprContext) string           { return golang.ExprToGoValue(expr, ec) }
-func exprToGoCond(expr ast.Expr, ec *exprContext) string            { return golang.ExprToGoCond(expr, ec) }
-func exprToGoStringList(expr ast.Expr, ec *exprContext) string      { return golang.ExprToGoStringList(expr, ec) }
+func inferGoType(expr ast.Expr) string { return golang.InferGoType(expr) }
+func typeHintToGo(hint string) string  { return golang.TypeHintToGo(hint) }
+func literalToGo(expr ast.Expr) string { return golang.LiteralToGo(expr) }
+func externFuncGoType(paramTypes []string, returnType string) string {
+	return golang.ExternFuncGoType(paramTypes, returnType)
+}
+func snglNodeGoType(e ast.Node) string                    { return golang.SnglNodeGoType(e) }
+func needsTimeType(hint string) bool                      { return golang.NeedsTimeType(hint) }
+func exprToGoValue(expr ast.Expr, ec *exprContext) string { return golang.ExprToGoValue(expr, ec) }
+func exprToGoCond(expr ast.Expr, ec *exprContext) string  { return golang.ExprToGoCond(expr, ec) }
+func exprToGoStringList(expr ast.Expr, ec *exprContext) string {
+	return golang.ExprToGoStringList(expr, ec)
+}
 
 // fyneAlertFunc translates Alert calls for Fyne's toast method.
 func fyneAlertFunc(ec *golang.GoContext, n *ast.MethodExpr) []string {

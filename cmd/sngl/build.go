@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -63,17 +65,23 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
+		start := time.Now()
 		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
+		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
+		start = time.Now()
 		doc = mergeDir(doc, filename)
+		slog.Info("merge", "dir", dir, "duration", time.Since(start))
 
+		start = time.Now()
 		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
+		slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 		if err := validateOutputs(doc); err != nil {
 			return err
@@ -102,6 +110,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("platform %q does not support building", target.Platform)
 			}
 
+			start = time.Now()
 			if err := optimize.Optimize(doc, optimize.Config{
 				Platform: target.Platform,
 				Language: target.Lang,
@@ -109,15 +118,20 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
+			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
+			start = time.Now()
 			if err := generateTarget(filename, doc, target, outDir, true); err != nil {
 				return err
 			}
+			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
+			start = time.Now()
 			artifact, err := builder.Build(outDir, target.Options)
 			if err != nil {
 				return fmt.Errorf("%s: build failed: %w", filename, err)
 			}
+			slog.Info("build", "artifact", artifact, "duration", time.Since(start))
 			fmt.Println(artifact)
 		}
 	}

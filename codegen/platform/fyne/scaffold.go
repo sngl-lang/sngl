@@ -24,16 +24,16 @@ type templateData struct {
 	NeedsToast   bool
 	HasTimers    bool
 
-	Structs              []structData
-	Binds                []bindData
-	Externs              []externData
-	Computeds            []computedData
-	Entries              []entryData
-	WidgetFields         []widgetFieldData
-	Timers               []timerData
-	UpdaterNames         []string
-	FunctionCode         string   // pre-rendered user functions
-	GoImports            []string // native Go import paths from Resolved fields
+	Structs      []structData
+	Binds        []bindData
+	Externs      []externData
+	Computeds    []computedData
+	Entries      []entryData
+	WidgetFields []widgetFieldData
+	Timers       []timerData
+	UpdaterNames []string
+	FunctionCode string   // pre-rendered user functions
+	GoImports    []string // native Go import paths from Resolved fields
 }
 
 type structData struct {

@@ -5,6 +5,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,7 @@ func (t *Translator) BuildWASM(projectDir, importPath string, funcs []codegen.WA
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	slog.Info("exec", "cmd", "go build (wasm)", "pkg", importPath, "dir", absProject)
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", wasmPath, "./"+dirName+"/")
 	cmd.Dir = absProject
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")

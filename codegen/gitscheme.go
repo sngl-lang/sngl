@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -122,6 +123,7 @@ func gitClone(parsed *gitURI, destDir string) error {
 	}
 
 	repoURL := "https://" + parsed.host + "/" + parsed.path + ".git"
+	slog.Info("exec", "cmd", "git clone", "repo", repoURL, "ref", parsed.ref, "dest", destDir)
 	cmd := exec.Command("git", "clone", "--depth=1", "--branch="+parsed.ref, repoURL, destDir)
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

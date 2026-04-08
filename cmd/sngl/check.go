@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"github.com/spf13/cobra"
@@ -34,6 +36,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		start := time.Now()
 		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
@@ -41,12 +44,15 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			failed = true
 			continue
 		}
+		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
+		start = time.Now()
 		if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			failed = true
 			continue
 		}
+		slog.Info("check", "file", filename, "duration", time.Since(start))
 
 		if !quiet(cmd) {
 			fmt.Printf("%s: ok\n", filename)

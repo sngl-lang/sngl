@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -76,17 +78,23 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
+		start := time.Now()
 		doc, err := parseSNGL(filename, f)
 		f.Close()
 		if err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
+		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
+		start = time.Now()
 		doc = mergeDir(doc, filename)
+		slog.Info("merge", "dir", dir, "duration", time.Since(start))
 
+		start = time.Now()
 		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
+		slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 		if err := validateOutputs(doc); err != nil {
 			return err
@@ -111,6 +119,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			if len(targets) > 1 {
 				targetDoc = doc.Clone()
 			}
+			start = time.Now()
 			if err := optimize.Optimize(targetDoc, optimize.Config{
 				Platform: target.Platform,
 				Language: target.Lang,
@@ -118,9 +127,13 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
+			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+			start = time.Now()
 			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
 				return err
 			}
+			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 		}
 	}
 	return nil

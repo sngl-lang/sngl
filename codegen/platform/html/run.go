@@ -4,6 +4,7 @@ package html
 
 import (
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -13,6 +14,7 @@ import (
 // default web browser.
 func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
 	path := filepath.Join(dir, "index.html")
+	slog.Info("exec", "cmd", "open browser", "path", path)
 	return openBrowser(path)
 }
 

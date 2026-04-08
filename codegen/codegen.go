@@ -107,12 +107,12 @@ type HTTPCompiler interface {
 
 // HTTPRequest describes what the http platform needs the language to generate.
 type HTTPRequest struct {
-	Doc         *ast.Document
-	Package     string       // target package name (e.g., "main", "ui")
-	Main        bool         // generate standalone server with main()
-	Framework   string       // HTTP framework: "net/http", "gin", "echo"
-	Routes      []HTTPRoute  // window → route mapping
-	RenderHTML  func(routeIdx int) string // callback: returns HTML body for a route
+	Doc        *ast.Document
+	Package    string                    // target package name (e.g., "main", "ui")
+	Main       bool                      // generate standalone server with main()
+	Framework  string                    // HTTP framework: "net/http", "gin", "echo"
+	Routes     []HTTPRoute               // window → route mapping
+	RenderHTML func(routeIdx int) string // callback: returns HTML body for a route
 }
 
 // HTTPRoute maps a window to an HTTP route.
@@ -127,8 +127,8 @@ type HTTPRoute struct {
 
 // HTTPAction describes a form-based server action triggered by a button click.
 type HTTPAction struct {
-	Name string    // action identifier (e.g., "action0")
-	Expr ast.Expr  // the mutation expression to execute
+	Name string   // action identifier (e.g., "action0")
+	Expr ast.Expr // the mutation expression to execute
 }
 
 // WASMCompiler is optionally implemented by LangTranslators that can compile

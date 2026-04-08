@@ -1,6 +1,8 @@
 package optimize
 
 import (
+	"fmt"
+	"log/slog"
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -39,6 +41,7 @@ func Optimize(doc *ast.Document, cfg Config) error {
 		foldExpr(&c.Init, ctx)
 		if c.Init.Literal != nil {
 			ctx.vars[c.Name] = c.Init.Literal
+			slog.Debug("const folded", "name", c.Name, "value", fmt.Sprint(c.Init.Literal))
 		}
 	}
 
@@ -214,8 +217,10 @@ func optimizeNodes(nodes []*ast.VisualNode, ctx *foldCtx) []*ast.VisualNode {
 		if vn.If != nil && vn.If.SNGL == nil {
 			if b, ok := vn.If.Literal.(bool); ok {
 				if !b {
+					slog.Debug("dead branch eliminated", "node", vn.Component, "pos", vn.Pos)
 					continue // dead branch — remove node
 				}
+				slog.Debug("guard removed (always true)", "node", vn.Component, "pos", vn.Pos)
 				vn.If = nil // always true — remove guard
 			}
 		}

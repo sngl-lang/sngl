@@ -42,6 +42,15 @@ Languages and platforms register via `init()` and are looked up by name at runti
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
 
+### Codegen Models
+
+Platforms choose between two intermediate representations based on their rendering approach:
+
+- **MutationModel** (`codegen/model.go`) — emit a static tree once, then generate targeted `Updater` functions to patch when state changes. Used by HTML and Fyne. Interfaces: `MutationModelEmitter`.
+- **RenderModel** (`codegen/model.go`) — re-render the full view from state on every change; framework handles diffing. Used by BubbleTea and Android/Compose. Interfaces: `RenderModelEmitter`.
+
+Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, computed deps, functions, structs, and timers into a platform-independent `CommonAnalysis`.
+
 ### Platform Details
 
 - **html** — generates single `index.html` with inline JS; supports `js` lang only. Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
@@ -55,6 +64,10 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
+### Stdlib
+
+Stdlib is embedded via `//go:embed` in `internal/checker/stdlib.go` from `internal/checker/stdlib/*.sngl`. `LoadStdlib()` parses these at startup and returns components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
+
 ### AST
 
 - **`ast/ast.go`** — top-level types: `Document`, `Component`, `App`, `VisualNode`, `TestDef`, `Data`, `Computed`, `Param`, `Struct`, `Enum`
@@ -67,3 +80,22 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - `cmd/sngl/testdata/` contains CLI golden test files (`txtar` format)
 - Test runners resolve testdata via relative paths from their package directory
 - Error directive comments in test files (e.g., `// error:test "substring"`) drive expected-failure assertions via `internal/testutil`
+
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, and `!` for assertions.
+
+### Debugging
+
+Structured logging via `slog` at three levels controlled by CLI flags:
+
+- `-v, --verbose` — Info: phase timing, file discovery, external commands run
+- `--debug` — Debug: const folding, dead code elimination, import resolution
+- `-q, --quiet` — Error only
+
+Dump commands inspect each compiler phase:
+
+```bash
+sngl dump parsed [file|dir]                              # after parse + merge
+sngl dump checked [file|dir]                             # after type check
+sngl dump optimized --lang js --platform html [file|dir] # after optimization
+sngl dump analysis --lang js --platform html [file|dir]  # CommonAnalysis as JSON
+```

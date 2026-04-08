@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 )
@@ -20,6 +21,7 @@ func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
 	}
 
 	// Download dependencies
+	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
 	tidy := exec.Command(goPath, "mod", "tidy")
 	tidy.Dir = dir
 	tidy.Stdout = os.Stderr
@@ -30,6 +32,7 @@ func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
 
 	// Run the program
 	runArgs := append([]string{"run", "."}, args...)
+	slog.Info("exec", "cmd", "go run .", "dir", dir)
 	run := exec.Command(goPath, runArgs...)
 	run.Dir = dir
 	run.Stdin = os.Stdin

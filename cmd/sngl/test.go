@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -23,7 +25,6 @@ var testCmd = &cobra.Command{
 
 func init() {
 	testCmd.Flags().String("run", "", "filter tests by description pattern")
-	testCmd.Flags().Bool("verbose", false, "verbose output")
 	testCmd.Flags().String("format", "text", "output format: text or json")
 	testCmd.Flags().String("platform", "", "target platform (e.g. html)")
 	testCmd.Flags().String("language", "", "target language (e.g. js)")
@@ -63,7 +64,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	}
 
 	runFilter, _ := cmd.Flags().GetString("run")
-	verbose, _ := cmd.Flags().GetBool("verbose")
+	verbose, _ := cmd.Flags().GetBool("verbose") // root persistent flag
 	format, _ := cmd.Flags().GetString("format")
 
 	var totalTests, totalFail int
@@ -76,6 +77,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 			totalFail++
 			continue
 		}
+		start := time.Now()
 		doc, err := parseSNGL(filename, tf)
 		tf.Close()
 		if err != nil {
@@ -83,19 +85,24 @@ func runTest(cmd *cobra.Command, args []string) error {
 			totalFail++
 			continue
 		}
+		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
 		if len(doc.TestFuncs()) == 0 {
 			continue
 		}
 
+		start = time.Now()
 		doc = mergeDir(doc, filename)
+		slog.Info("merge", "file", filename, "duration", time.Since(start))
 
 		if doc.App != nil || len(doc.TestFuncs()) > 0 {
+			start = time.Now()
 			if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 				totalFail++
 				continue
 			}
+			slog.Info("check", "file", filename, "duration", time.Since(start))
 		}
 
 		diags := checker.CheckTestFuncs(doc)

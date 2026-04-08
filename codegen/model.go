@@ -31,12 +31,12 @@ type RenderModel struct {
 // The platform-specific code body is stored as a string; deps track which
 // root state fields this updater reads.
 type Updater struct {
-	Name string           // e.g., "$u_0_text", "updateLabel0"
-	Kind string           // "text", "attr", "if", "list", "else", "disabled", etc.
-	Node *ast.VisualNode  // the node this updater targets
-	Expr ast.Expr         // the reactive expression being watched
-	Body string           // platform-specific code body (filled during emit)
-	Deps map[string]bool  // root state field dependencies
+	Name string          // e.g., "$u_0_text", "updateLabel0"
+	Kind string          // "text", "attr", "if", "list", "else", "disabled", etc.
+	Node *ast.VisualNode // the node this updater targets
+	Expr ast.Expr        // the reactive expression being watched
+	Body string          // platform-specific code body (filled during emit)
+	Deps map[string]bool // root state field dependencies
 }
 
 // DepFields implements Dependent for use with FindAffected.

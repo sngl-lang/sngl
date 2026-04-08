@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,12 +26,33 @@ func init() {
 	rootCmd.PersistentFlags().String("project", ".", "project root directory")
 	rootCmd.PersistentFlags().String("format", "text", "output format (text, json, sarif)")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress non-error output")
-	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output (info-level logging)")
+	rootCmd.PersistentFlags().Bool("debug", false, "debug output (debug-level logging)")
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if dir, _ := cmd.Flags().GetString("directory"); dir != "" {
-			return os.Chdir(dir)
+			if err := os.Chdir(dir); err != nil {
+				return err
+			}
 		}
+
+		debug, _ := cmd.Flags().GetBool("debug")
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		quiet, _ := cmd.Flags().GetBool("quiet")
+
+		level := slog.LevelWarn
+		switch {
+		case debug:
+			level = slog.LevelDebug
+		case verbose:
+			level = slog.LevelInfo
+		case quiet:
+			level = slog.LevelError
+		}
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level: level,
+		})))
+
 		return nil
 	}
 
@@ -46,6 +68,7 @@ func init() {
 	rootCmd.AddCommand(previewCmd)
 	rootCmd.AddCommand(docCmd)
 	rootCmd.AddCommand(snapshotCmd)
+	rootCmd.AddCommand(dumpCmd)
 }
 
 // hasPathPrefix reports whether p is under the directory prefix.

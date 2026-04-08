@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -60,6 +62,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	var doc *ast.Document
 	var dir string
+	start := time.Now()
 	if info.IsDir() {
 		dir = file
 		doc, err = parseDir(file)
@@ -79,10 +82,13 @@ func runRun(cmd *cobra.Command, args []string) error {
 		}
 		doc = mergeDir(doc, file)
 	}
+	slog.Info("parse", "file", file, "duration", time.Since(start))
 
+	start = time.Now()
 	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
 		return err
 	}
+	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 	if err := validateOutputs(doc); err != nil {
 		return err
@@ -114,6 +120,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	target.Options["projectDir"] = dir
 
 	// Optimize
+	start = time.Now()
 	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: target.Platform,
 		Language: target.Lang,
@@ -121,6 +128,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}); err != nil {
 		return err
 	}
+	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "sngl-run-*")

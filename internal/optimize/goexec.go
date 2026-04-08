@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,6 +79,7 @@ func main() {
 
 	cmd := exec.CommandContext(ctx, "go", "run", "./.sngl-goexec/")
 	cmd.Dir = dir
+	slog.Info("exec", "cmd", "go run ./.sngl-goexec/", "dir", dir, "func", nativeType)
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {

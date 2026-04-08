@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -41,6 +42,10 @@ func discoverFiles(args []string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", arg, err)
 		}
+	}
+	slog.Info("discover", "files", len(files))
+	for _, f := range files {
+		slog.Debug("discovered", "file", f)
 	}
 	return files, nil
 }

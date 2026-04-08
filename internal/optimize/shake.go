@@ -1,6 +1,10 @@
 package optimize
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import (
+	"log/slog"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // shakeUnused removes consts, data, and functions that are not referenced
 // in the remaining AST after compile-time expansion and folding.
@@ -16,6 +20,8 @@ func shakeUnused(doc *ast.Document) {
 	for _, c := range doc.Consts {
 		if refs[c.Name] {
 			consts = append(consts, c)
+		} else {
+			slog.Debug("shaken: const", "name", c.Name)
 		}
 	}
 	doc.Consts = consts
@@ -25,6 +31,8 @@ func shakeUnused(doc *ast.Document) {
 	for _, d := range doc.Data {
 		if refs[d.Name] || d.Extern || len(d.Events) > 0 {
 			data = append(data, d)
+		} else {
+			slog.Debug("shaken: data", "name", d.Name)
 		}
 	}
 	doc.Data = data
@@ -34,6 +42,8 @@ func shakeUnused(doc *ast.Document) {
 	for _, s := range doc.Structs {
 		if refs[s.Name] {
 			structs = append(structs, s)
+		} else {
+			slog.Debug("shaken: struct", "name", s.Name)
 		}
 	}
 	doc.Structs = structs
@@ -43,6 +53,8 @@ func shakeUnused(doc *ast.Document) {
 	for _, fn := range doc.Functions {
 		if refs[fn.Name] || fn.IsStdlib || fn.IsTest() {
 			funcs = append(funcs, fn)
+		} else {
+			slog.Debug("shaken: func", "name", fn.Name)
 		}
 	}
 	doc.Functions = funcs

@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -494,6 +495,7 @@ func (c *checker) pass1(doc *ast.Document) {
 				c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 				continue
 			}
+			slog.Debug("import resolved", "scheme", imp.Scheme, "path", imp.Path, "namespace", imp.Namespace)
 			ns := &importNS{
 				structs:    decls.Structs,
 				enums:      decls.Enums,

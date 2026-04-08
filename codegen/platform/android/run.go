@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -150,7 +151,7 @@ func gradleBuild(dir string) error {
 		os.Chmod(gradle, 0o755)
 	}
 
-	fmt.Fprintln(os.Stderr, "sngl: building APK...")
+	slog.Info("exec", "cmd", "gradle assembleDebug", "dir", dir)
 	build := exec.Command(gradle, "assembleDebug")
 	build.Dir = dir
 	build.Stdout = os.Stdout
@@ -163,7 +164,7 @@ func gradleBuild(dir string) error {
 
 func adbInstall(apk string) error {
 	adb, _ := androidTool("adb")
-	fmt.Fprintln(os.Stderr, "sngl: installing APK...")
+	slog.Info("exec", "cmd", "adb install", "apk", apk)
 	install := exec.Command(adb, "install", "-r", "-d", apk)
 	install.Stdout = os.Stdout
 	install.Stderr = os.Stderr
@@ -175,7 +176,7 @@ func adbInstall(apk string) error {
 
 func adbLaunch(pkg string) error {
 	adb, _ := androidTool("adb")
-	fmt.Fprintf(os.Stderr, "sngl: launching %s/.MainActivity\n", pkg)
+	slog.Info("exec", "cmd", "adb launch", "activity", pkg+"/.MainActivity")
 	launch := exec.Command(adb, "shell", "am", "start", "-n", pkg+"/.MainActivity")
 	launch.Stdout = os.Stdout
 	launch.Stderr = os.Stderr
