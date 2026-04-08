@@ -88,8 +88,12 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 		return nil, err
 	}
 
-	// Wait for Compose to render.
-	time.Sleep(3 * time.Second)
+	// Wait for our activity to reach the foreground, then give Compose
+	// a moment to finish its first frame.
+	if err := waitForFocus(pkg, 15*time.Second); err != nil {
+		return nil, err
+	}
+	time.Sleep(2 * time.Second)
 
 	// Capture screenshot.
 	png, err := exec.Command(adb, "exec-out", "screencap", "-p").Output()

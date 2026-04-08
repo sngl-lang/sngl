@@ -262,6 +262,22 @@ func hasDevice() bool {
 	return false
 }
 
+// waitForFocus polls until the given package's activity holds window focus,
+// or the timeout elapses. This guards against screenshots taken before the
+// app has fully launched (e.g. on a cold-booted emulator).
+func waitForFocus(pkg string, timeout time.Duration) error {
+	adb, _ := androidTool("adb")
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		out, err := exec.Command(adb, "shell", "dumpsys", "window").Output()
+		if err == nil && strings.Contains(string(out), "mCurrentFocus=Window{") && strings.Contains(string(out), pkg) {
+			return nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("timed out waiting for %s to gain focus", pkg)
+}
+
 func pickAVD() (string, error) {
 	// Allow explicit override via environment variable
 	if avd := os.Getenv("SNGL_AVD"); avd != "" {

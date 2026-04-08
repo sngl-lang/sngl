@@ -12,10 +12,10 @@ const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
 const logo = public.path("sngl.svg")
-const screenshotWeb = public.path("snapshots/todo/todo-html.png")
-const screenshotTerminal = public.path("snapshots/todo/todo-bubbletea.png")
-const screenshotDesktop = public.path("snapshots/todo/todo-fyne.png")
-const screenshotAndroid = public.path("snapshots/todo/todo-android.png")
+const screenshotWeb = public.path("snapshots/todo/todo_html.png")
+const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
+const screenshotDesktop = public.path("snapshots/todo/todo_fyne.png")
+const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
 
 component NavSidebar(currentHref = "") {
 	docui.Sidebar(homeHref="/index.html", logo=logo) {
