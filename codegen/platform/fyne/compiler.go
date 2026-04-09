@@ -350,6 +350,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		if fn.IsStdlib {
 			continue
 		}
+		// Skip computed functions — already emitted via template
+		if fn.Body.SNGL != nil && len(fn.Params) == 0 {
+			continue
+		}
 		emitGoFunc(&funcBuf, fn, ec)
 	}
 

@@ -427,12 +427,32 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		// If the event body is an EmitStmt referencing a caller event,
 		// substitute the caller's handler body instead of emitting
 		// an unresolvable callback invocation.
-		if es, callerBody, ok := cc.resolveEmitToCallerEvent(expr.Body.SNGL); ok {
-			stmts := cc.ec.translateMutation(callerBody)
+		if es, callerEvt, ok := cc.resolveEmitToCallerEvent(expr.Body.SNGL); ok {
+			// For onValueChange, set up propOverrides so the caller's event
+			// parameter (e.g., "e" in @input(e)) resolves to the lambda value.
+			isValueChange := evtName == "onValueChange"
+			if isValueChange && callerEvt.Param != "" {
+				cc.ec.localVars[callerEvt.Param] = true
+				cc.ec.propOverrides[callerEvt.Param] = "_inputValue_"
+			}
+			stmts := cc.ec.translateMutation(callerEvt.Body.SNGL)
+			if isValueChange && callerEvt.Param != "" {
+				delete(cc.ec.localVars, callerEvt.Param)
+				delete(cc.ec.propOverrides, callerEvt.Param)
+			}
 			var b strings.Builder
-			b.WriteString("{\n")
-			for _, s := range stmts {
-				fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+			if isValueChange {
+				b.WriteString("{ _v_ ->\n")
+				for _, s := range stmts {
+					s = strings.ReplaceAll(s, "_inputValue_.value", "_v_")
+					s = strings.ReplaceAll(s, "_inputValue_", "_v_")
+					fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+				}
+			} else {
+				b.WriteString("{\n")
+				for _, s := range stmts {
+					fmt.Fprintf(&b, "%s%s\n", strings.Repeat("    ", cc.indent+2), s)
+				}
 			}
 			fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
 			args = append(args, evtName+" = "+b.String())
@@ -478,22 +498,22 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 
 // resolveEmitToCallerEvent checks if a node's event body is a single EmitStmt
 // whose name matches a caller event. If so, returns the EmitStmt and the
-// caller's handler body for inlining. This is used for platform component
+// caller's full EventHandler for inlining. This is used for platform component
 // bodies like @onClick { @click() } where @click() should resolve to
 // the caller's click event handler.
-func (cc *composeContext) resolveEmitToCallerEvent(body ast.Node) (*ast.EmitStmt, ast.Node, bool) {
+func (cc *composeContext) resolveEmitToCallerEvent(body ast.Node) (*ast.EmitStmt, ast.EventHandler, bool) {
 	if cc.callerEvents == nil {
-		return nil, nil, false
+		return nil, ast.EventHandler{}, false
 	}
 	es, ok := body.(*ast.EmitStmt)
 	if !ok {
-		return nil, nil, false
+		return nil, ast.EventHandler{}, false
 	}
 	callerEvt, ok := cc.callerEvents[es.Name]
 	if !ok || callerEvt.Body.SNGL == nil {
-		return nil, nil, false
+		return nil, ast.EventHandler{}, false
 	}
-	return es, callerEvt.Body.SNGL, true
+	return es, callerEvt, true
 }
 
 // consumeEvent marks a caller event as consumed so it won't propagate

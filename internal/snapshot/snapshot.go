@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	sngl "git.duckfam.us/jonathan/sngl"
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
@@ -173,6 +174,163 @@ func snapshotViaHTML(sourceFile, platform, lang string, width, height int) ([]by
 	}
 
 	return hs.SnapshotHTML(html, width, height)
+}
+
+// BatchConfig controls batch snapshot generation for multiple documents.
+type BatchConfig struct {
+	Docs      []DocEntry // documents to snapshot
+	Platforms []string   // platforms to snapshot for
+	Width     int
+	Height    int
+	OutDir    string
+}
+
+// DocEntry identifies a document for batch snapshotting.
+type DocEntry struct {
+	ID         string // unique identifier for output naming
+	SourceFile string // path to .sngl file
+}
+
+// GenerateBatch produces screenshots for multiple documents, using batch
+// snapshotting when the platform supports it. This amortises expensive
+// build steps (go mod tidy, compilation) across all documents.
+func GenerateBatch(cfg BatchConfig) ([]Result, error) {
+	if cfg.Width == 0 {
+		cfg.Width = 1280
+	}
+	if cfg.Height == 0 {
+		cfg.Height = 720
+	}
+	if err := os.MkdirAll(cfg.OutDir, 0o755); err != nil {
+		return nil, err
+	}
+
+	// Parse and check all documents upfront.
+	type parsedDoc struct {
+		entry DocEntry
+		doc   *ast.Document
+	}
+	var parsed []parsedDoc
+	for _, entry := range cfg.Docs {
+		sourceFile, err := filepath.Abs(entry.SourceFile)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", entry.ID, err)
+		}
+		doc, err := ParseSNGL(sourceFile)
+		if err != nil {
+			return nil, fmt.Errorf("%s: parse: %w", entry.ID, err)
+		}
+		dir := filepath.Dir(sourceFile)
+		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
+			return nil, fmt.Errorf("%s: check: %w", entry.ID, err)
+		}
+		parsed = append(parsed, parsedDoc{entry: entry, doc: doc})
+	}
+
+	var results []Result
+
+	for _, platform := range cfg.Platforms {
+		lang := LangForPlatform(platform)
+		langT := codegen.LookupLang(lang)
+		if langT == nil {
+			return nil, fmt.Errorf("lang %q not registered", lang)
+		}
+		plat := codegen.LookupPlatform(platform)
+
+		// Try batch path first.
+		if bs, ok := plat.(codegen.BatchSnapshotter); ok && len(parsed) > 1 {
+			var batchDocs []codegen.BatchDoc
+			for _, p := range parsed {
+				batchDocs = append(batchDocs, codegen.BatchDoc{
+					ID:   p.entry.ID,
+					Doc:  p.doc,
+					Lang: langT,
+				})
+			}
+
+			pngs, err := bs.BatchSnapshot(batchDocs, cfg.Width, cfg.Height)
+			if err != nil {
+				return nil, fmt.Errorf("batch snapshot %s: %w", platform, err)
+			}
+			for _, p := range parsed {
+				png, ok := pngs[p.entry.ID]
+				if !ok {
+					continue
+				}
+				outPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".png")
+				if err := os.WriteFile(outPath, png, 0o644); err != nil {
+					return nil, fmt.Errorf("writing %s: %w", outPath, err)
+				}
+				results = append(results, Result{Platform: platform, Lang: lang, Path: outPath})
+			}
+
+			// Batch text snapshots.
+			if bts, ok := plat.(codegen.BatchTextSnapshotter); ok {
+				texts, err := bts.BatchSnapshotText(batchDocs, cfg.Width, cfg.Height)
+				if err == nil {
+					for _, p := range parsed {
+						text, ok := texts[p.entry.ID]
+						if !ok || len(text) == 0 {
+							continue
+						}
+						txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
+						os.WriteFile(txtPath, text, 0o644)
+						results = append(results, Result{Platform: platform, Lang: lang, Path: txtPath})
+					}
+				}
+			}
+			continue
+		}
+
+		// Fall back to individual snapshots.
+		for _, p := range parsed {
+			snapshotter, ok := plat.(codegen.Snapshotter)
+			if !ok {
+				// No native snapshotter — try HTML fallback.
+				html, err := CompilePreviewHTML(p.entry.SourceFile, platform, lang)
+				if err != nil {
+					return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
+				}
+				htmlPlat := codegen.LookupPlatform("html")
+				hs, ok := htmlPlat.(htmlSnapshotter)
+				if !ok {
+					return nil, fmt.Errorf("html platform does not implement SnapshotHTML")
+				}
+				png, err := hs.SnapshotHTML(html, cfg.Width, cfg.Height)
+				if err != nil {
+					return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
+				}
+				outPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".png")
+				if err := os.WriteFile(outPath, png, 0o644); err != nil {
+					return nil, fmt.Errorf("writing %s: %w", outPath, err)
+				}
+				results = append(results, Result{Platform: platform, Lang: lang, Path: outPath})
+				continue
+			}
+
+			png, err := snapshotter.Snapshot(p.doc, langT, cfg.Width, cfg.Height)
+			if err != nil {
+				return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
+			}
+			outPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".png")
+			if err := os.WriteFile(outPath, png, 0o644); err != nil {
+				return nil, fmt.Errorf("writing %s: %w", outPath, err)
+			}
+			results = append(results, Result{Platform: platform, Lang: lang, Path: outPath})
+
+			// Text snapshots.
+			if ts, ok := plat.(codegen.TextSnapshotter); ok {
+				text, err := ts.SnapshotText(p.doc, langT, cfg.Width, cfg.Height)
+				if err == nil && len(text) > 0 {
+					txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
+					os.WriteFile(txtPath, text, 0o644)
+					results = append(results, Result{Platform: platform, Lang: lang, Path: txtPath})
+				}
+			}
+		}
+	}
+
+	return results, nil
 }
 
 // LangForPlatform returns the default language for a platform.

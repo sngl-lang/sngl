@@ -2,12 +2,18 @@
 // Raw Fyne widgets and containers are implicitly available via APIResolver.
 //
 // Components use metadata props to tell the generator how to produce Go code:
-//   container="NewVBox"         — Fyne container constructor
-//   widgetType="*widget.Label"  — persistent Model field type
-//   widgetNew="widget.NewLabel" — constructor function
-//   widgetArg="value"           — prop to pass as constructor arg
-//   widgetUpdate=".SetText"     — updater method for reactive arg
-//   entry=true                  — use existing entry infrastructure
+//   constructor="widget.NewLabel"          — Go constructor function
+//   constructorArgs=[value]                — ordered args; use VariadicChildren{} for variadic
+//   importPath="fyne.io/fyne/v2/widget"    — import path for the constructor's package
+//   updater=".SetText"                     — updater method for reactive arg
+//   updaterProp="value"                    — which prop to watch for updates
+//   entry=true                             — use existing entry infrastructure (input/textarea)
+
+// VariadicChildren is a sentinel: when present in constructorArgs, the codegen
+// renders all child nodes into a []fyne.CanvasObject slice and spreads them.
+struct VariadicChildren {
+    values list<dyn>
+}
 
 struct Options {
     package string
@@ -17,29 +23,29 @@ struct Options {
 // --- Core Layout ---
 
 component sngl.vbox() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.hbox() {
-    HBox(container="NewHBox") {
+    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.stack() {
-    Stack(container="NewStack") {
+    Stack(constructor="container.NewStack", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.spacer() {
-    Spacer(widgetType="*layout.Spacer", widgetNew="layout.NewSpacer") {}
+    Spacer(constructor="layout.NewSpacer", constructorArgs=[]) {}
 }
 
 component sngl.scroll() {
-    Scroll(container="NewVScroll") {
+    Scroll(constructor="container.NewVScroll", constructorArgs=[]) {
         slot
     }
 }
@@ -48,30 +54,28 @@ component sngl.scroll() {
 
 component sngl.text() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="value",
-        widgetUpdate=".SetText",
+        constructor="widget.NewLabel",
+        constructorArgs=[value],
+        updater=".SetText",
+        updaterProp="value",
         value=value
     ) {}
 }
 
 component sngl.button() {
     Button(
-        widgetType="*widget.Button",
-        widgetNew="widget.NewButton",
-        widgetExtraArgs="nil",
-        widgetArg="text",
-        widgetUpdate=".SetText",
+        constructor="widget.NewButton",
+        constructorArgs=[text, nil],
+        updater=".SetText",
+        updaterProp="text",
         text=text
     ) {}
 }
 
 component sngl.image() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="alt",
+        constructor="widget.NewLabel",
+        constructorArgs=[alt],
         alt=alt
     ) {}
 }
@@ -82,9 +86,8 @@ component sngl.input() {
 
 component sngl.checkbox() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="label",
+        constructor="widget.NewLabel",
+        constructorArgs=[label],
         label=label
     ) {}
 }
@@ -92,25 +95,23 @@ component sngl.checkbox() {
 // --- Tier 1: Core Input ---
 
 component sngl.radio() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.toggle() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="label",
+        constructor="widget.NewLabel",
+        constructorArgs=[label],
         label=label
     ) {}
 }
 
 component sngl.select() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="value",
+        constructor="widget.NewLabel",
+        constructorArgs=[value],
         value=value
     ) {}
 }
@@ -121,9 +122,8 @@ component sngl.textarea() {
 
 component sngl.datepicker() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="value",
+        constructor="widget.NewLabel",
+        constructorArgs=[value],
         value=value
     ) {}
 }
@@ -131,130 +131,127 @@ component sngl.datepicker() {
 // --- Tier 2: Feedback & Navigation ---
 
 component sngl.progress() {
-    Label(widgetType="*widget.Label", widgetNew="widget.NewLabel") {}
+    ProgressBar(constructor="widget.NewProgressBar", constructorArgs=[]) {}
 }
 
 component sngl.spinner() {
-    Label(widgetType="*widget.Label", widgetNew="widget.NewLabel") {}
+    Activity(constructor="widget.NewActivity", constructorArgs=[]) {}
 }
 
 component sngl.badge() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="value",
-        widgetUpdate=".SetText",
+        constructor="widget.NewLabel",
+        constructorArgs=[value],
+        updater=".SetText",
+        updaterProp="value",
         value=value
     ) {}
 }
 
 component sngl.divider() {
-    Divider(widgetType="*widget.Separator", widgetNew="widget.NewSeparator") {}
+    Divider(constructor="widget.NewSeparator", constructorArgs=[]) {}
 }
 
 component sngl.card() {
-    Card(container="NewVBox") {
+    Card(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.chip() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="label",
+        constructor="widget.NewLabel",
+        constructorArgs=[label],
         label=label
     ) {}
 }
 
 component sngl.link() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="text",
+        constructor="widget.NewLabel",
+        constructorArgs=[text],
         text=text
     ) {}
 }
 
 component sngl.tabs() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.modal() {
     if open {
-        VBox(container="NewVBox") {
+        VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
             slot
         }
     }
 }
 
 component sngl.drawer() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.tooltip() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.popover() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.accordion() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.splitview() {
-    HBox(container="NewHBox") {
+    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.table() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.tree() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.menu() {
-    VBox(container="NewVBox") {
+    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.menubar() {
-    HBox(container="NewHBox") {
+    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.toolbar() {
-    HBox(container="NewHBox") {
+    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
 component sngl.avatar() {
     Label(
-        widgetType="*widget.Label",
-        widgetNew="widget.NewLabel",
-        widgetArg="initials",
+        constructor="widget.NewLabel",
+        constructorArgs=[initials],
         initials=initials
     ) {}
 }

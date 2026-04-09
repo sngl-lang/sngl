@@ -37,6 +37,12 @@ func New() Model {
 	return m
 }
 
+// SetTerminalSize sets the terminal dimensions.
+func (m *Model) SetTerminalSize(w, h int) {
+	m.width = w
+	m.height = h
+}
+
 func (m Model) SelectedIndex() int {
 	return m.selectedIndex
 }

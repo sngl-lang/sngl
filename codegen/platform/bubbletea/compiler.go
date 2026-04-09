@@ -453,6 +453,13 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("\treturn m\n")
 	b.WriteString("}\n\n")
 
+	// SetTerminalSize allows callers to set terminal dimensions from outside the package.
+	b.WriteString("// SetTerminalSize sets the terminal dimensions.\n")
+	b.WriteString("func (m *Model) SetTerminalSize(w, h int) {\n")
+	b.WriteString("\tm.width = w\n")
+	b.WriteString("\tm.height = h\n")
+	b.WriteString("}\n\n")
+
 	// Computed methods (zero-arg expression-form functions)
 	for _, comp := range info.computeds {
 		body := ""

@@ -292,8 +292,14 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 		vc.ec.LocalVars[p.Name] = true
 		if expr, ok := vn.Props[p.Name]; ok {
 			overrides[p.Name] = exprToGoValue(expr, vc.ec)
+		} else if expr, ok := vn.Bindings[p.Name]; ok {
+			overrides[p.Name] = exprToGoValue(expr, vc.ec)
 		} else if p.Default.Literal != nil {
 			overrides[p.Name] = literalToGo(p.Default)
+		} else if p.Resolved != nil && p.Resolved.Type != "" {
+			overrides[p.Name] = zeroValueGo(p.Resolved.Type)
+		} else {
+			overrides[p.Name] = `""`
 		}
 	}
 	vc.ec.PropOverrides = overrides
@@ -313,95 +319,14 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 
 // renderRawWidget renders an implicit Fyne widget by interpreting metadata props.
 // Patterns:
-//   - container="NewVBox" → container.NewVBox(children...)
-//   - widgetType + widgetNew + widgetArg → persistent widget with updater
+//   - constructor + constructorArgs → persistent widget/container
+//   - entry=true → existing entry infrastructure (input/textarea)
 //   - fallback → widget.NewLabel(content)
 func (vc *viewContext) renderRawWidget(vn *ast.VisualNode, resultVar string) {
-	// Container pattern
-	if ctr, ok := vn.Props["container"]; ok {
-		if s, ok := ctr.Literal.(string); ok {
-			childrenVar := resultVar + "Children"
-			vc.line("var %s []fyne.CanvasObject", childrenVar)
-			for i, child := range vn.Children {
-				itemVar := fmt.Sprintf("%sC%d", resultVar, i)
-				vc.line("var %s fyne.CanvasObject", itemVar)
-				vc.renderNode(child, itemVar)
-				vc.line("if %s != nil { %s = append(%s, %s) }", itemVar, childrenVar, childrenVar, itemVar)
-			}
-			vc.line("%s = container.%s(%s...)", resultVar, s, childrenVar)
-			return
-		}
-	}
-
-	// Persistent widget pattern
-	if wType, ok := vn.Props["widgetType"]; ok {
-		if goType, ok := wType.Literal.(string); ok {
-			wNew := ""
-			if v, ok := vn.Props["widgetNew"]; ok {
-				if s, ok := v.Literal.(string); ok {
-					wNew = s
-				}
-			}
-			wArg := ""
-			wArgProp := ""
-			if v, ok := vn.Props["widgetArg"]; ok {
-				if s, ok := v.Literal.(string); ok {
-					wArgProp = s
-				}
-			}
-			if wArgProp != "" {
-				if expr, ok := vn.Props[wArgProp]; ok {
-					wArg = exprToGoValue(expr, vc.ec)
-				} else {
-					wArg = `""`
-				}
-			}
-
-			// Allocate persistent field
-			id := vc.labelCount
-			vc.labelCount++
-			fieldName := fmt.Sprintf("widget%d", id)
-			vc.addField(fieldName, goType)
-
-			// Extra constructor args (e.g., nil callback for widget.NewButton)
-			extraArgs := ""
-			if v, ok := vn.Props["widgetExtraArgs"]; ok {
-				if s, ok := v.Literal.(string); ok {
-					extraArgs = ", " + s
-				}
-			}
-
-			if wNew != "" {
-				if wArg != "" {
-					vc.line("m.%s = %s(fmt.Sprint(%s)%s)", fieldName, wNew, wArg, extraArgs)
-				} else {
-					vc.line("m.%s = %s(%s)", fieldName, wNew, strings.TrimPrefix(extraArgs, ", "))
-				}
-			}
-			vc.line("%s = m.%s", resultVar, fieldName)
-
-			// Register updater if arg has deps
-			wUpdate := ""
-			if v, ok := vn.Props["widgetUpdate"]; ok {
-				if s, ok := v.Literal.(string); ok {
-					wUpdate = s
-				}
-			}
-			if wUpdate != "" && wArgProp != "" {
-				if expr, ok := vn.Props[wArgProp]; ok {
-					deps := vc.exprDeps(expr)
-					if len(deps) > 0 {
-						updaterName := fmt.Sprintf("updateWidget%d", id)
-						body := fmt.Sprintf("m.%s%s(fmt.Sprint(%s))", fieldName, wUpdate, wArg)
-						vc.addUpdater(updaterName, body, deps)
-					}
-				}
-			}
-
-			// Handle click event
-			if clickEvt, ok := vc.callerEvents["click"]; ok && clickEvt.Body.SNGL != nil {
-				vc.line("// TODO: wire click event on persistent widget")
-			}
+	// Constructor pattern: constructor="widget.NewLabel" constructorArgs=[value]
+	if ctr, ok := vn.Props["constructor"]; ok {
+		if ctorName, ok := ctr.Literal.(string); ok {
+			vc.renderConstructor(vn, resultVar, ctorName)
 			return
 		}
 	}
@@ -420,6 +345,127 @@ func (vc *viewContext) renderRawWidget(vn *ast.VisualNode, resultVar string) {
 		content = exprToGoValue(v, vc.ec)
 	}
 	vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", resultVar, content)
+}
+
+// renderConstructor handles the constructor/constructorArgs metadata pattern.
+// It inspects each element of constructorArgs:
+//   - VariadicChildren{} sentinel → render children into slice, spread
+//   - nil literal → emit nil
+//   - prop reference → fmt.Sprint(value)
+//
+// If there are children but no VariadicChildren in args, children are rendered
+// as a single object and passed as the first (or only) arg.
+func (vc *viewContext) renderConstructor(vn *ast.VisualNode, resultVar, ctorName string) {
+	// Collect import path if specified
+	if ip, ok := vn.Props["importPath"]; ok {
+		if s, ok := ip.Literal.(string); ok && vc.info != nil {
+			vc.info.goImports[s] = true
+		}
+	}
+
+	// Parse constructorArgs list
+	var goArgs []string
+	hasVariadic := false
+	if argsExpr, ok := vn.Props["constructorArgs"]; ok && argsExpr.SNGL != nil {
+		if list, ok := argsExpr.SNGL.(*ast.ListExpr); ok {
+			for _, elem := range list.Elements {
+				// Check for VariadicChildren sentinel
+				if se, ok := elem.(*ast.StructExpr); ok && se.Name == "VariadicChildren" {
+					hasVariadic = true
+					childrenVar := resultVar + "Children"
+					vc.line("var %s []fyne.CanvasObject", childrenVar)
+					for i, child := range vn.Children {
+						itemVar := fmt.Sprintf("%sC%d", resultVar, i)
+						vc.line("var %s fyne.CanvasObject", itemVar)
+						vc.renderNode(child, itemVar)
+						vc.line("if %s != nil { %s = append(%s, %s) }", itemVar, childrenVar, childrenVar, itemVar)
+					}
+					goArgs = append(goArgs, childrenVar+"...")
+					continue
+				}
+				// nil literal (LiteralNull or IdentExpr "nil")
+				if lit, ok := elem.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
+					goArgs = append(goArgs, "nil")
+					continue
+				}
+				if ident, ok := elem.(*ast.IdentExpr); ok && ident.Name == "nil" {
+					goArgs = append(goArgs, "nil")
+					continue
+				}
+				// Regular expression → wrap in fmt.Sprint for string conversion
+				val := exprToGoValue(ast.Expr{SNGL: elem}, vc.ec)
+				goArgs = append(goArgs, "fmt.Sprint("+val+")")
+			}
+		}
+	}
+
+	// If component has children but no VariadicChildren, render them as a single
+	// object and pass as the first arg (e.g., container.NewVScroll(child)).
+	if !hasVariadic && len(vn.Children) > 0 {
+		childVar := resultVar + "Child"
+		vc.renderChildrenToObject(vn.Children, childVar)
+		goArgs = append([]string{childVar}, goArgs...)
+	}
+
+	// Derive field type from constructor name: "widget.NewLabel" → "*widget.Label"
+	goType := inferFieldType(ctorName)
+
+	// Allocate persistent field
+	id := vc.labelCount
+	vc.labelCount++
+	fieldName := fmt.Sprintf("widget%d", id)
+	vc.addField(fieldName, goType)
+
+	vc.line("m.%s = %s(%s)", fieldName, ctorName, strings.Join(goArgs, ", "))
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// Register updater if specified
+	updater := ""
+	if v, ok := vn.Props["updater"]; ok {
+		if s, ok := v.Literal.(string); ok {
+			updater = s
+		}
+	}
+	updaterProp := ""
+	if v, ok := vn.Props["updaterProp"]; ok {
+		if s, ok := v.Literal.(string); ok {
+			updaterProp = s
+		}
+	}
+	if updater != "" && updaterProp != "" {
+		if expr, ok := vn.Props[updaterProp]; ok {
+			deps := vc.exprDeps(expr)
+			if len(deps) > 0 {
+				val := exprToGoValue(expr, vc.ec)
+				updaterName := fmt.Sprintf("updateWidget%d", id)
+				body := fmt.Sprintf("m.%s%s(fmt.Sprint(%s))", fieldName, updater, val)
+				vc.addUpdater(updaterName, body, deps)
+			}
+		}
+	}
+}
+
+// inferFieldType derives a Go type from a constructor function name.
+// "widget.NewLabel" → "*widget.Label", "container.NewVBox" → "*fyne.Container"
+func inferFieldType(ctorName string) string {
+	// Special cases where the return type doesn't follow the convention
+	switch ctorName {
+	case "container.NewVBox", "container.NewHBox", "container.NewStack":
+		return "*fyne.Container"
+	case "container.NewVScroll":
+		return "*container.Scroll"
+	case "layout.NewSpacer":
+		return "fyne.CanvasObject"
+	}
+	// Convention: "pkg.NewFoo" → "*pkg.Foo"
+	dotIdx := strings.LastIndex(ctorName, ".")
+	if dotIdx < 0 {
+		return "fyne.CanvasObject"
+	}
+	pkg := ctorName[:dotIdx]
+	name := ctorName[dotIdx+1:]
+	name = strings.TrimPrefix(name, "New")
+	return "*" + pkg + "." + name
 }
 
 func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string) {

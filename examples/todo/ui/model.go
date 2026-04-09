@@ -53,6 +53,12 @@ func New() Model {
 	return m
 }
 
+// SetTerminalSize sets the terminal dimensions.
+func (m *Model) SetTerminalSize(w, h int) {
+	m.width = w
+	m.height = h
+}
+
 func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }

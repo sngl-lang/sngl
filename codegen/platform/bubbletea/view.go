@@ -183,8 +183,14 @@ func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, 
 		vc.ec.LocalVars[p.Name] = true
 		if expr, ok := vn.Props[p.Name]; ok {
 			overrides[p.Name] = exprToGoValue(expr, vc.ec)
+		} else if expr, ok := vn.Bindings[p.Name]; ok {
+			overrides[p.Name] = exprToGoValue(expr, vc.ec)
 		} else if p.Default.Literal != nil {
 			overrides[p.Name] = literalToGo(p.Default)
+		} else if p.Resolved != nil && p.Resolved.Type != "" {
+			overrides[p.Name] = zeroValueGo(p.Resolved.Type)
+		} else {
+			overrides[p.Name] = `""`
 		}
 	}
 	vc.ec.PropOverrides = overrides

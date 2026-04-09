@@ -85,6 +85,27 @@ type TextSnapshotter interface {
 	SnapshotText(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
 }
 
+// BatchDoc pairs an identifier with a parsed, checked document and its
+// language translator for batch snapshotting.
+type BatchDoc struct {
+	ID   string // unique identifier, used as result map key
+	Doc  *ast.Document
+	Lang LangTranslator
+}
+
+// BatchSnapshotter is optionally implemented by platforms that can amortize
+// build costs across multiple snapshots. The orchestrator groups documents
+// by platform and calls BatchSnapshot instead of individual Snapshot calls.
+type BatchSnapshotter interface {
+	BatchSnapshot(docs []BatchDoc, width, height int) (map[string][]byte, error)
+}
+
+// BatchTextSnapshotter is optionally implemented by TUI platforms that can
+// render multiple documents as ANSI text in a single build cycle.
+type BatchTextSnapshotter interface {
+	BatchSnapshotText(docs []BatchDoc, width, height int) (map[string][]byte, error)
+}
+
 // Runner is optionally implemented by PlatformGenerators that can execute
 // their generated output directly (e.g., "go run" for bubbletea, open
 // browser for HTML, adb install for Android).

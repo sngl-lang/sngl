@@ -11,25 +11,25 @@ import (
 // clientUpdate tracks a DOM update needed when client state changes.
 type clientUpdate struct {
 	elemID string
-	body   string            // JS statement
-	deps   map[string]bool   // client state fields this depends on
+	body   string          // JS statement
+	deps   map[string]bool // client state fields this depends on
 }
 
 // clientHandler tracks an event handler for client state mutations.
 type clientHandler struct {
 	elemID  string
 	event   string
-	body    string            // JS statements
-	mutated map[string]bool   // client state fields this mutates
+	body    string          // JS statements
+	mutated map[string]bool // client state fields this mutates
 }
 
 // clientJSState collects client-side JS elements during rendering.
 type clientJSState struct {
-	info     *analysisResult
-	jsLang   codegen.LangTranslator
-	scope    *codegen.ExprScope
-	updates  []clientUpdate
-	handlers []clientHandler
+	info      *analysisResult
+	jsLang    codegen.LangTranslator
+	scope     *codegen.ExprScope
+	updates   []clientUpdate
+	handlers  []clientHandler
 	stateInit map[string]string // field name → JS init value
 }
 

@@ -157,86 +157,30 @@ func (pd *PackageDocs) FindDecl(name string) *DeclInfo {
 	return nil
 }
 
-// ExtractExample extracts an example SNGL app from a doc comment block.
-// The example starts with a line containing just "Example:" and is followed
-// by indented SNGL code (lines starting with at least 2 spaces). The example
-// ends at the first non-indented, non-empty line or end of doc block.
-//
-// Returns the SNGL source with indentation stripped, or "" if no example found.
-func ExtractExample(docLines []string) string {
-	inExample := false
-	var exampleLines []string
-
-	for _, line := range docLines {
-		trimmed := strings.TrimSpace(line)
-		if !inExample {
-			if trimmed == "Example:" {
-				inExample = true
-				continue
-			}
-			continue
-		}
-
-		// In example section
-		if trimmed == "" {
-			// Blank line in example — keep it if we already have content
-			if len(exampleLines) > 0 {
-				exampleLines = append(exampleLines, "")
-			}
-			continue
-		}
-
-		// Check for indentation (at least 2 spaces)
-		if strings.HasPrefix(line, "  ") {
-			// Strip the common indent (find minimum)
-			exampleLines = append(exampleLines, line)
-		} else {
-			// Non-indented line ends the example
-			break
-		}
-	}
-
-	if len(exampleLines) == 0 {
-		return ""
-	}
-
-	// Strip common leading whitespace
-	minIndent := len(exampleLines[0])
-	for _, l := range exampleLines {
-		if l == "" {
-			continue
-		}
-		indent := len(l) - len(strings.TrimLeft(l, " "))
-		if indent < minIndent {
-			minIndent = indent
-		}
-	}
-	for i, l := range exampleLines {
-		if len(l) > minIndent {
-			exampleLines[i] = l[minIndent:]
-		}
-	}
-
-	// Trim trailing blank lines
-	for len(exampleLines) > 0 && exampleLines[len(exampleLines)-1] == "" {
-		exampleLines = exampleLines[:len(exampleLines)-1]
-	}
-
-	return strings.Join(exampleLines, "\n")
-}
-
-// ComponentExamples extracts all component name → example SNGL source pairs
-// from a parsed document's comments.
-func ComponentExamples(doc *ast.Document) map[string]string {
+// PrefixedExamples extracts example_* prefixed components from a parsed document.
+// Components named example_<name> or example_<name>_<suffix> map to <name>.
+// The first example per name wins when multiple suffixes exist.
+func PrefixedExamples(doc *ast.Document) map[string]string {
 	examples := make(map[string]string)
-
 	for _, comp := range doc.Components {
-		lines := DocBlock(doc.Comments, comp.Pos.Line)
-		if ex := ExtractExample(lines); ex != "" {
-			examples[comp.Name] = ex
+		target, ok := strings.CutPrefix(comp.Name, "example_")
+		if !ok {
+			continue
 		}
+		if i := strings.Index(target, "_"); i >= 0 {
+			target = target[:i]
+		}
+		if _, exists := examples[target]; exists {
+			continue
+		}
+		display := *comp
+		display.Name = target
+		exDoc := &ast.Document{
+			Components: []*ast.Component{&display},
+			Decls:      []ast.Decl{&display},
+		}
+		examples[target] = strings.TrimSpace(parser.Format(exDoc))
 	}
-
 	return examples
 }
 

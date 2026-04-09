@@ -96,6 +96,9 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return "ternary(" + cond + ", " + a + ", " + b + ")"
 	case *ast.SelectExpr:
 		operand := translateExpr(n.Operand, scope)
+		if n.Field == "length" {
+			return "len(" + operand + ")"
+		}
 		return operand + "." + ExportName(n.Field)
 	case *ast.IndexExpr:
 		operand := translateExpr(n.Operand, scope)
@@ -416,6 +419,13 @@ func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
 		}
 	}
 
+	return goBuiltinMethodFromArgs(qualName, argExprs)
+}
+
+// goBuiltinMethodFromArgs maps a qualified method name and pre-translated argument
+// expressions to native Go code. Returns "" if the method is not a builtin.
+// Used by both the standalone translator and GoContext.
+func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	a := func(i int) string {
 		if i < len(argExprs) {
 			return argExprs[i]

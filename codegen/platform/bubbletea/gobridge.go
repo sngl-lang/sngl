@@ -21,6 +21,7 @@ func externFuncGoType(paramTypes []string, returnType string) string {
 	return golang.ExternFuncGoType(paramTypes, returnType)
 }
 func snglNodeGoType(e ast.Node) string                    { return golang.SnglNodeGoType(e) }
+func zeroValueGo(hint string) string                      { return golang.ZeroValueGo(hint) }
 func needsTimeType(hint string) bool                      { return golang.NeedsTimeType(hint) }
 func exprToGoValue(expr ast.Expr, ec *exprContext) string { return golang.ExprToGoValue(expr, ec) }
 func exprToGoCond(expr ast.Expr, ec *exprContext) string  { return golang.ExprToGoCond(expr, ec) }

@@ -89,6 +89,33 @@ func TypeHintToGo(hint string) string {
 	}
 }
 
+// ZeroValueGo returns the Go zero-value expression for a SNGL type hint.
+func ZeroValueGo(hint string) string {
+	goType := TypeHintToGo(hint)
+	switch goType {
+	case "int":
+		return "0"
+	case "float64":
+		return "0.0"
+	case "bool":
+		return "false"
+	case "string":
+		return `""`
+	case "time.Time":
+		return "time.Time{}"
+	case "time.Duration":
+		return "0"
+	default:
+		if strings.HasPrefix(goType, "[]") {
+			return "nil"
+		}
+		if strings.HasPrefix(goType, "*") {
+			return "nil"
+		}
+		return `""`
+	}
+}
+
 // ExternFuncGoType returns the Go function type for an extern function declaration.
 func ExternFuncGoType(paramTypes []string, returnType string) string {
 	params := make([]string, len(paramTypes))
@@ -157,6 +184,8 @@ func LiteralToGo(expr ast.Expr) string {
 			elemType := ""
 			if strings.HasPrefix(expr.TypeHint, "list<") {
 				elemType = ExportName(strings.TrimSuffix(strings.TrimPrefix(expr.TypeHint, "list<"), ">"))
+			} else if strings.HasPrefix(expr.TypeHint, "list:") {
+				elemType = ExportName(strings.TrimPrefix(expr.TypeHint, "list:"))
 			} else if se, ok := n.Elements[0].(*ast.StructExpr); ok && se.Name != "" {
 				elemType = ExportName(se.Name)
 			} else if ce, ok := n.Elements[0].(*ast.CallExpr); ok {

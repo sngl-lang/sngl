@@ -1,0 +1,3 @@
+Hello, World!
+Regular text 
+Colored text 

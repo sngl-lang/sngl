@@ -49,6 +49,9 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 		return ec.translateIdent(n)
 	case *ast.SelectExpr:
 		operand := ec.TranslateExpr(n.Operand)
+		if n.Field == "length" {
+			return "len(" + operand + ")"
+		}
 		field := ExportName(n.Field)
 		return operand + "." + field
 	case *ast.BinaryExpr:
@@ -76,6 +79,9 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 	case *ast.CallExpr:
 		return ec.translateCall(n)
 	case *ast.MethodExpr:
+		if goCode := ec.builtinMethod(n); goCode != "" {
+			return goCode
+		}
 		target := ec.TranslateExpr(n.Receiver)
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
@@ -84,13 +90,16 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		if fields, ok := ec.StructNames[n.Name]; ok {
+			// Build name→value map from the expression's fields.
+			exprFields := make(map[string]ast.Node, len(n.Fields))
+			for _, f := range n.Fields {
+				exprFields[f.Name] = f.Value
+			}
 			var parts []string
-			for i, f := range fields {
-				val := "nil"
-				if i < len(n.Fields) {
-					val = ec.TranslateExpr(n.Fields[i].Value)
+			for _, f := range fields {
+				if val, ok := exprFields[f]; ok {
+					parts = append(parts, ExportName(f)+": "+ec.TranslateExpr(val))
 				}
-				parts = append(parts, ExportName(f)+": "+val)
 			}
 			return ExportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
 		}
@@ -388,6 +397,47 @@ func ExprToGoCond(expr ast.Expr, ec *GoContext) string {
 		}
 	}
 	return "true"
+}
+
+// builtinMethod checks for stdlib builtin methods (like string.length) and
+// returns translated Go code, or "" if not a builtin. Mirrors goBuiltinMethod
+// in golang.go but uses GoContext for sub-expression translation.
+func (ec *GoContext) builtinMethod(n *ast.MethodExpr) string {
+	var argExprs []string
+	var qualName string
+
+	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
+		// Check type-qualified name first (e.g., "string.length", "int.min")
+		qualName = ident.Name + "." + n.Method
+		for _, a := range n.Args {
+			argExprs = append(argExprs, ec.TranslateExpr(a))
+		}
+		if result := goBuiltinMethodFromArgs(qualName, argExprs); result != "" {
+			return result
+		}
+		// Not a type-qualified builtin; treat as instance method (e.g., notes.length())
+		argExprs = []string{ec.TranslateExpr(n.Receiver)}
+		for _, a := range n.Args {
+			argExprs = append(argExprs, ec.TranslateExpr(a))
+		}
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		} else {
+			qualName = "*." + n.Method
+		}
+	} else {
+		argExprs = append(argExprs, ec.TranslateExpr(n.Receiver))
+		for _, a := range n.Args {
+			argExprs = append(argExprs, ec.TranslateExpr(a))
+		}
+		if n.Resolved != "" {
+			qualName = n.Resolved
+		} else {
+			qualName = "*." + n.Method
+		}
+	}
+
+	return goBuiltinMethodFromArgs(qualName, argExprs)
 }
 
 // ExprToGoStringList converts an ast.Expr that should be a list of strings

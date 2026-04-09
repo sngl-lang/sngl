@@ -41,6 +41,8 @@ type Model struct {
 	widget3 *widget.Label
 	forBox1 *fyne.Container
 	widget4 *widget.Label
+	widget5 *fyne.Container
+	widget6 *fyne.Container
 }
 
 // New creates a Model with default values.
@@ -118,7 +120,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	var contentC0Slot3 fyne.CanvasObject
 	m.widget2 = widget.NewButton(fmt.Sprint("Parse AST"), nil)
 	contentC0Slot3 = m.widget2
-	// TODO: wire click event on persistent widget
 	if contentC0Slot3 != nil {
 		contentC0 = contentC0Slot3
 	}
@@ -158,14 +159,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	if contentC0Slot5C0 != nil {
 		contentC0Slot5Children = append(contentC0Slot5Children, contentC0Slot5C0)
 	}
-	contentC0Slot5 = container.NewVBox(contentC0Slot5Children...)
+	m.widget5 = container.NewVBox(contentC0Slot5Children...)
+	contentC0Slot5 = m.widget5
 	if contentC0Slot5 != nil {
 		contentC0 = contentC0Slot5
 	}
 	if contentC0 != nil {
 		contentChildren = append(contentChildren, contentC0)
 	}
-	content = container.NewVBox(contentChildren...)
+	m.widget6 = container.NewVBox(contentChildren...)
+	content = m.widget6
 	if content == nil {
 		content = widget.NewLabel("")
 	}

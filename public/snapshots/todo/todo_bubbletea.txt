@@ -1,10 +1,6 @@
-                         
-                         
-  <nil>                  
-  Buy eggs   Add         
-    [ ] Buy groceries    
-    [x] Walk the dog     
-    [ ] Write SNGL docs  
-    Remove               
-                         
-                         
+Todo List (3 items)
+[37m> [m[7;37mB[m  Add           
+  Buy groceries    
+  Walk the dog     
+  Write SNGL docs  
+  Remove           
