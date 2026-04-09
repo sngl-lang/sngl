@@ -34,9 +34,9 @@ component main {
     vbox(style={gap=12, padding=16}) {
         text(value=status, style={fontWeight="bold", fontSize=24})
         hbox(style={gap=8, alignItems="center"}) {
-            input(@input={ newTodo = event.value }, placeholder="Buy eggs",
+            input(@input { newTodo = event.value }, placeholder="Buy eggs",
                   style={flexGrow=1})
-            button(@click={
+            button(@click {
                 todos.push(Todo{text: newTodo, done: false})
                 newTodo = ""
             }, text="Add")
@@ -44,7 +44,7 @@ component main {
         vbox(style={gap=4}) {
             for item, index = todos {
                 checkbox(checked=item.done, key=index, label=item.text,
-                         @change={ todos[index].done!! })
+                         @change { todos[index].done!! })
             }
         }
     }

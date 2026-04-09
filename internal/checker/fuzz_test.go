@@ -11,7 +11,7 @@ import (
 )
 
 func FuzzCheckResolved(f *testing.F) {
-	t.Skip()
+	f.Skip()
 	f.Add(`component main { text(value="hello") }`)
 	f.Add(`component main { var count = 0; button(text="inc", @click { count += 1 }) }`)
 	f.Add(`struct User { name string; age int }`)

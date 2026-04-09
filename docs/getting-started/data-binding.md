@@ -71,8 +71,8 @@ component main {
     }
 
     text(value="{size(done)}/{size(todos)} done, {remaining} remaining")
-    button(text="Add", @click={ addTodo("New item") })
-    button(text="Reset", @click={ reset() })
+    button(text="Add", @click { addTodo("New item") })
+    button(text="Reset", @click { reset() })
 }
 ```
 
@@ -119,14 +119,14 @@ Statements appear in event handler blocks and mutate state directly:
 
 <!-- SNGL-component -->
 ```sngl
-button(@click={ count += 1 })
+button(@click { count += 1 })
 
-button(@click={
+button(@click {
     todos.push(Todo{text: newTodo, done: false})
     newTodo = ""
 })
 
-checkbox(@change={ todos[index].done!! })
+checkbox(@change { todos[index].done!! })
 ```
 
 | Operation | Syntax | Example |

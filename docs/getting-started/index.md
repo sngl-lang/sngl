@@ -36,8 +36,8 @@ component Counter(label = "") {
 
     hbox {
         text(value="{label}: {count}")
-        button(text="+", @click={ count += 1 })
-        button(text="-", @click={ count -= 1 })
+        button(text="+", @click { count += 1 })
+        button(text="-", @click { count -= 1 })
     }
 }
 ```
@@ -53,7 +53,7 @@ component main {
 
     vbox {
         text(value=greeting)
-        input(@input={ name = event.value })
+        input(@input { name = event.value })
     }
 }
 ```

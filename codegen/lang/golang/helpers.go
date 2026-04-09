@@ -182,10 +182,10 @@ func LiteralToGo(expr ast.Expr) string {
 				parts[i] = LiteralToGo(ast.Expr{SNGL: el})
 			}
 			elemType := ""
-			if strings.HasPrefix(expr.TypeHint, "list<") {
-				elemType = ExportName(strings.TrimSuffix(strings.TrimPrefix(expr.TypeHint, "list<"), ">"))
-			} else if strings.HasPrefix(expr.TypeHint, "list:") {
-				elemType = ExportName(strings.TrimPrefix(expr.TypeHint, "list:"))
+			if after, ok := strings.CutPrefix(expr.TypeHint, "list<"); ok {
+				elemType = ExportName(strings.TrimSuffix(after, ">"))
+			} else if after, ok := strings.CutPrefix(expr.TypeHint, "list:"); ok {
+				elemType = ExportName(after)
 			} else if se, ok := n.Elements[0].(*ast.StructExpr); ok && se.Name != "" {
 				elemType = ExportName(se.Name)
 			} else if ce, ok := n.Elements[0].(*ast.CallExpr); ok {
