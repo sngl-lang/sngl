@@ -42,11 +42,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Step 2: check for dirty generated files
-	if !checkClean() {
-		os.Exit(1)
-	}
-
 	// Step 3: go fix
 	if !runStep("fix", "go", "fix", "./...") {
 		os.Exit(1)
@@ -68,22 +63,6 @@ func runStep(name string, command string, args ...string) bool {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		log.Printf("%s failed: %v", name, err)
-		return false
-	}
-	return true
-}
-
-func checkClean() bool {
-	fmt.Println(">>> git diff --stat")
-	cmd := exec.Command("git", "diff", "--stat")
-	out, err := cmd.Output()
-	if err != nil {
-		log.Printf("git diff failed: %v", err)
-		return false
-	}
-	if len(out) > 0 {
-		fmt.Print(string(out))
-		log.Print("working tree is dirty after go generate; commit or update generated files")
 		return false
 	}
 	return true

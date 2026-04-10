@@ -63,7 +63,7 @@ component main {
     func remaining() => size(todos) - size(done)
 
     func addTodo(text string) {
-        todos.push(Todo{text: text, done: false})
+        todos.push(Todo{text=text, done=false})
     }
 
     func reset() {
@@ -109,7 +109,7 @@ SNGL uses Go-like expression syntax:
 | Field access | `user.name`, `todos[0].text` |
 | Method call | `todos.length()` |
 | Function call | `string(count)` |
-| Struct literal | `Todo{text: "hello", done: false}` |
+| Struct literal | `Todo{text="hello", done=false}` |
 | List literal | `[1, 2, 3]` |
 | String interpolation | `"Hello, {name}!"` |
 
@@ -122,7 +122,7 @@ Statements appear in event handler blocks and mutate state directly:
 button(@click { count += 1 })
 
 button(@click {
-    todos.push(Todo{text: newTodo, done: false})
+    todos.push(Todo{text=newTodo, done=false})
     newTodo = ""
 })
 

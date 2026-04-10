@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,7 +79,7 @@ func snapshotDir(dir string, platforms []string, outDir string, width, height in
 		}
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sngl") {
 			if err := snapshotFile(path, platforms, outDir, width, height, force); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", path, err)
+				slog.Warn("snapshot failed", "path", path, "err", err)
 			}
 		}
 	}
@@ -130,7 +131,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 	for name, src := range examples {
 		if !force && snapshotAllExist(effectiveOutDir, name, platforms) {
 			for _, plat := range platforms {
-				fmt.Printf("%s (exists)\n", filepath.Join(effectiveOutDir, name+"_"+plat+".png"))
+				slog.Info("exists", "path", filepath.Join(effectiveOutDir, name+"_"+plat+".png"))
 			}
 			continue
 		}
@@ -162,7 +163,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		basename := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if !force && snapshotAllExist(effectiveOutDir, basename, platforms) {
 			for _, plat := range platforms {
-				fmt.Printf("%s (exists)\n", filepath.Join(effectiveOutDir, basename+"_"+plat+".png"))
+				slog.Info("exists", "path", filepath.Join(effectiveOutDir, basename+"_"+plat+".png"))
 			}
 		} else {
 			docs = append(docs, snapshot.DocEntry{ID: basename, SourceFile: path})
@@ -184,7 +185,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		return err
 	}
 	for _, r := range results {
-		fmt.Println(r.Path)
+		slog.Info("wrote", "path", r.Path)
 	}
 	return nil
 }

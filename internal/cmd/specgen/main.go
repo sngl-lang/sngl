@@ -9,7 +9,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +23,14 @@ import (
 )
 
 func main() {
+	verbose := flag.Bool("v", false, "verbose output")
+	flag.Parse()
+	level := slog.LevelWarn
+	if *verbose {
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
 	grammarPath := filepath.Join(root, "editors", "tree-sitter-sngl", "grammar.js")
@@ -48,7 +58,7 @@ description: "Formal grammar and semantics of the SNGL language"
 	writeSemantics(&b)
 
 	os.WriteFile(outPath, []byte(b.String()), 0o644)
-	fmt.Println("specgen: wrote", outPath)
+	slog.Info("wrote", "path", outPath)
 }
 
 func writeGrammar(b *strings.Builder, grammar string) {

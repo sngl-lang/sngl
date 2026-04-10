@@ -130,7 +130,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 			start = time.Now()
-			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
+			if err := generateTarget(filename, targetDoc, target, outDir); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -160,7 +160,7 @@ func optsFromDefaults(defaults map[string]string) codegen.Opts {
 	}
 }
 
-func generateTarget(filename string, doc *ast.Document, target outputTarget, outDir string, q bool) error {
+func generateTarget(filename string, doc *ast.Document, target outputTarget, outDir string) error {
 	lang := codegen.LookupLang(target.Lang)
 	if lang == nil {
 		return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
@@ -208,9 +208,7 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 		if writeErr != nil {
 			return writeErr
 		}
-		if !q {
-			fmt.Println(path)
-		}
+		slog.Info("wrote", "path", path)
 	}
 	return nil
 }

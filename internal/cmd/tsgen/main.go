@@ -8,10 +8,13 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +22,14 @@ import (
 )
 
 func main() {
+	verbose := flag.Bool("v", false, "verbose output")
+	flag.Parse()
+	level := slog.LevelWarn
+	if *verbose {
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+
 	// Resolve project root relative to this source file.
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
@@ -74,13 +85,17 @@ func main() {
 	hashFile := filepath.Join(tsparserDir, "grammar_hash.txt")
 	os.WriteFile(hashFile, fmt.Appendf(nil, "%x\n", h.Sum(nil)), 0o644)
 
-	fmt.Println("tsgen: done")
+	slog.Info("done")
 }
 
 func run(dir string, name string, args ...string) {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
+	if slog.Default().Enabled(context.Background(), slog.LevelInfo) {
+		cmd.Stdout = os.Stdout
+	} else {
+		cmd.Stdout = io.Discard
+	}
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		fatalf("%s %v: %v", name, args, err)
