@@ -113,7 +113,7 @@ func isUnderGoCache(selfPath string) bool {
 // The SNGL_NO_PROXY env var prevents infinite recursion.
 // If the current binary is already in the Go cache, proxying is skipped.
 func proxyToGoTool() {
-	if os.Getenv("SNGL_NO_PROXY") != "" {
+	if os.Getenv("SNGL_NO_PROXY") != "" || (len(os.Args) > 1 && os.Args[1] == "completion") {
 		return
 	}
 
