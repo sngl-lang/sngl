@@ -12,15 +12,15 @@ const (
 	SEMICOLON // ; (explicit or inserted)
 
 	// Literals
-	IDENT        // identifier
-	INT          // integer literal
-	FLOAT        // float literal
+	IDENT         // identifier
+	INT           // integer literal
+	FLOAT         // float literal
 	STRING        // "string literal"
 	TRIPLE_STRING // """multiline string"""
 	RAW_STRING    // `raw string`
 	COLOR         // #rrggbb
-	UNIT_LITERAL // 5s, 100ms, 12px, 1.5em, etc.
-	ELEMENT_REF  // #identifier
+	UNIT_LITERAL  // 5s, 100ms, 12px, 1.5em, etc.
+	ELEMENT_REF   // #identifier
 
 	// Punctuation
 	LPAREN    // (

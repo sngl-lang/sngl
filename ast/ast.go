@@ -212,15 +212,15 @@ type Data struct {
 	Pos          Pos
 	Name         string
 	Init         Expr
-	Extern       bool     // set by importers (go://, file://); no longer a user-facing keyword
-	Purity       Purity   // function purity level (from //sngl: annotations)
-	IsFunc       bool     // TypeHint starts with "func"
-	ParamTypes   []string // parsed func params (e.g., ["string", "int"])
-	ReturnType   string   // parsed func return type, "" for void
-	HiddenParam  string   // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
+	Extern       bool        // set by importers (go://, file://); no longer a user-facing keyword
+	Purity       Purity      // function purity level (from //sngl: annotations)
+	IsFunc       bool        // TypeHint starts with "func"
+	ParamTypes   []string    // parsed func params (e.g., ["string", "int"])
+	ReturnType   string      // parsed func return type, "" for void
+	HiddenParam  string      // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
 	Events       []DataEvent // @change, @insert, @delete, @init handlers
 	Disabled     bool
-	ExplicitType bool // true when a type was written between name and =
+	ExplicitType bool      // true when a type was written between name and =
 	Resolved     *TypeInfo // populated by checker
 }
 

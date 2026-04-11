@@ -32,11 +32,11 @@ Of course, static data doesn't make much of an interactive application. SNGL sup
 
 ```sngl
 component main {
-  var name = "world"
-  vbox {
-    text(value="Hello, {world}!")
-    input(:value=name)
-  }
+    var name = "world"
+    vbox {
+        text(value="Hello, {world}!")
+        input(:value=name)
+    }
 }
 ```
 
@@ -48,15 +48,15 @@ Just replacing strings isn't all that useful. Often you need to do some simple c
 
 ```sngl
 component main {
-  var name = "world"
-  func isLong => name.length > 3
-  vbox {
-    text(value="Hello, {world}!")
-    input(:value=name)
-    if isLong {
-      text(value="Your name is is {name.length - 3} letters longer than Bob.")
+    var name = "world"
+    func isLong => name.length > 3
+    vbox {
+        text(value="Hello, {world}!")
+        input(:value=name)
+        if isLong {
+            text(value="Your name is is {name.length - 3} letters longer than Bob.")
+        }
     }
-  }
 }
 ```
 

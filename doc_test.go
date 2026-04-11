@@ -3,7 +3,6 @@ package sngl_test
 import (
 	"bufio"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ func TestDocSNGLBlocks(t *testing.T) {
 				}
 
 				src := block.prelude
-				var checkFS fs.FS = os.DirFS(".")
+				var checkFS = os.DirFS(".")
 
 				// If prelude contains txtar markers, build an in-memory FS.
 				var replacements []string
