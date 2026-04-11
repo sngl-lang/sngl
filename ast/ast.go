@@ -220,8 +220,10 @@ type Data struct {
 	HiddenParam  string   // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
 	Events       []DataEvent // @change, @insert, @delete, @init handlers
 	Disabled     bool
-	Grouped      bool      // parsed from var(...) grouped declaration
-	ExplicitType bool      // true when a type was written between name and =
+	Grouped         bool     // parsed from var(...) grouped declaration
+	MultiNames      []string // non-nil on the first var in "var x, y, z type"; contains all names
+	IsMultiNameTail bool     // true on the 2nd+ vars in a multi-name declaration
+	ExplicitType    bool     // true when a type was written between name and =
 	Resolved     *TypeInfo // populated by checker
 }
 

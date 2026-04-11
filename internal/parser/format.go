@@ -314,7 +314,7 @@ func (f *formatter) measureDeclWidth(buf *strings.Builder, d ast.Decl) int {
 				buf.WriteByte(')')
 			}
 			buf.WriteString(" { ")
-			writeNode(buf, ev.Body)
+			f.writeNode(buf, ev.Body)
 			buf.WriteString(" }")
 		}
 	case *ast.FuncDef:
@@ -718,10 +718,24 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 			}
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
+			if decl.IsMultiNameTail {
+				// Already emitted as part of a multi-name head; skip.
+				continue
+			}
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			if decl.Grouped {
+			if decl.MultiNames != nil && !decl.Grouped {
+				// Standalone multi-name: "var x, y, z type"
+				f.writeIndent()
+				if decl.Disabled {
+					f.write("/- ")
+				}
+				f.write("var ")
+				f.writeMultiVarDecl(decl)
+				f.newline()
+				di += len(decl.MultiNames) - 1
+			} else if decl.Grouped {
 				group := []*ast.Data{decl}
 				for di+1 < len(doc.Decls) {
 					if next, ok := doc.Decls[di+1].(*ast.Data); ok && next.Grouped {
@@ -1022,12 +1036,23 @@ func (f *formatter) formatVars(data []*ast.Data) {
 	}
 	f.writeLine("var (")
 	f.indent++
-	for _, d := range data {
+	for i := 0; i < len(data); {
+		d := data[i]
+		if d.IsMultiNameTail {
+			i++
+			continue
+		}
 		f.writeIndent()
 		if d.Disabled {
 			f.write("/- ")
 		}
-		f.writeVarDecl(d)
+		if d.MultiNames != nil {
+			f.writeMultiVarDecl(d)
+			i += len(d.MultiNames)
+		} else {
+			f.writeVarDecl(d)
+			i++
+		}
 		f.newline()
 	}
 	f.indent--
@@ -1059,13 +1084,29 @@ func (f *formatter) formatConstsGrouped(consts []*ast.Const) {
 func (f *formatter) formatVarsGrouped(data []*ast.Data) {
 	i := 0
 	for i < len(data) {
-		if data[i].Grouped {
+		d := data[i]
+		if d.IsMultiNameTail {
+			// Already emitted as part of a multi-name head; skip.
+			i++
+			continue
+		}
+		if d.Grouped {
 			j := i
 			for j < len(data) && data[j].Grouped {
 				j++
 			}
 			f.formatVars(data[i:j])
 			i = j
+		} else if d.MultiNames != nil {
+			// Standalone multi-name: "var x, y, z type"
+			f.writeIndent()
+			if d.Disabled {
+				f.write("/- ")
+			}
+			f.write("var ")
+			f.writeMultiVarDecl(d)
+			f.newline()
+			i += len(d.MultiNames)
 		} else {
 			f.formatVars(data[i : i+1])
 			i++
@@ -1109,12 +1150,12 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 			if block, ok := ev.Body.(*ast.StmtBlock); ok {
 				for _, stmt := range block.Stmts {
 					f.writeIndent()
-					writeNode(f, stmt)
+					f.writeNode(f, stmt)
 					f.newline()
 				}
 			} else {
 				f.writeIndent()
-				writeNode(f, ev.Body)
+				f.writeNode(f, ev.Body)
 				f.newline()
 			}
 			f.indent--
@@ -1123,10 +1164,28 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 		} else {
 			f.write(" { ")
 			var buf strings.Builder
-			writeNode(&buf, ev.Body)
+			f.writeNode(&buf, ev.Body)
 			f.write(buf.String())
 			f.write(" }")
 		}
+	}
+}
+
+// writeMultiVarDecl writes "name1, name2, name3 type [= init]" for a multi-name var head.
+func (f *formatter) writeMultiVarDecl(d *ast.Data) {
+	f.write(strings.Join(d.MultiNames, ", "))
+
+	if d.ExplicitType {
+		if typeStr := typeHintStr(d.Init.TypeHint, d); typeStr != "" {
+			f.write(" ")
+			f.write(typeStr)
+		}
+	}
+
+	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
+	if hasInit {
+		f.write(" = ")
+		f.writeExprValue(d.Init)
 	}
 }
 
@@ -1170,13 +1229,13 @@ func (f *formatter) formatFuncDef(fn *ast.FuncDef) {
 		f.indent++
 		for _, stmt := range fn.Block.Stmts {
 			f.writeIndent()
-			writeNode(f, stmt)
+			f.writeNode(f, stmt)
 			f.newline()
 		}
 		if fn.Block.Return != nil {
 			f.writeIndent()
 			f.write("return ")
-			writeNode(f, fn.Block.Return)
+			f.writeNode(f, fn.Block.Return)
 			f.newline()
 		}
 		f.indent--
@@ -1200,12 +1259,12 @@ func (f *formatter) formatTimer(t *ast.Timer) {
 	if sb, ok := t.Body.(*ast.StmtBlock); ok {
 		for _, stmt := range sb.Stmts {
 			f.writeIndent()
-			writeNode(f, stmt)
+			f.writeNode(f, stmt)
 			f.newline()
 		}
 	} else {
 		f.writeIndent()
-		writeNode(f, t.Body)
+		f.writeNode(f, t.Body)
 		f.newline()
 	}
 	f.indent--
@@ -1258,10 +1317,23 @@ func (f *formatter) formatWindow(win *ast.Window) {
 			f.formatConsts([]*ast.Const{decl})
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
+			if decl.IsMultiNameTail {
+				continue
+			}
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			f.formatVars([]*ast.Data{decl})
+			if decl.MultiNames != nil && !decl.Grouped {
+				f.writeIndent()
+				if decl.Disabled {
+					f.write("/- ")
+				}
+				f.write("var ")
+				f.writeMultiVarDecl(decl)
+				f.newline()
+			} else {
+				f.formatVars([]*ast.Data{decl})
+			}
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
@@ -1458,10 +1530,22 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 			}
 			prevEndLine = decl.Pos.Line
 		case *ast.Data:
+			if decl.IsMultiNameTail {
+				continue
+			}
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			if decl.Grouped {
+			if decl.MultiNames != nil && !decl.Grouped {
+				f.writeIndent()
+				if decl.Disabled {
+					f.write("/- ")
+				}
+				f.write("var ")
+				f.writeMultiVarDecl(decl)
+				f.newline()
+				i += len(decl.MultiNames) - 1
+			} else if decl.Grouped {
 				group := []*ast.Data{decl}
 				for i+1 < len(decls) {
 					if next, ok := decls[i+1].(*ast.Data); ok && next.Grouped {
@@ -1706,7 +1790,7 @@ func (f *formatter) buildEventProp(prefix string, eh ast.EventHandler) string {
 		if block, ok := eh.Body.SNGL.(*ast.StmtBlock); ok {
 			for _, stmt := range block.Stmts {
 				f.propBuf.WriteByte('\n')
-				writeNode(&f.propBuf, stmt)
+				f.writeNode(&f.propBuf, stmt)
 			}
 		} else {
 			f.propBuf.WriteByte('\n')
@@ -1723,7 +1807,7 @@ func (f *formatter) buildEventProp(prefix string, eh ast.EventHandler) string {
 
 func (f *formatter) writeExprTo(sb io.Writer, expr ast.Expr) {
 	if expr.SNGL != nil {
-		writeNode(sb, expr.SNGL)
+		f.writeNode(sb, expr.SNGL)
 		return
 	}
 	if expr.Literal != nil {
@@ -1997,7 +2081,7 @@ func (f *formatter) writeVisualNodeInline(vn *ast.VisualNode) {
 // writeExprValue writes an Expr directly to the output writer.
 func (f *formatter) writeExprValue(expr ast.Expr) {
 	if expr.SNGL != nil {
-		writeNode(f, expr.SNGL)
+		f.writeNode(f, expr.SNGL)
 		return
 	}
 	if expr.Literal != nil {
@@ -2031,11 +2115,12 @@ func FormatNode(n ast.Node) string {
 		}
 	}
 	var sb strings.Builder
-	writeNode(&sb, n)
+	f := &formatter{w: &sb}
+	f.writeNode(&sb, n)
 	return sb.String()
 }
 
-func writeNode(sb io.Writer, n ast.Node) {
+func (f *formatter) writeNode(sb io.Writer, n ast.Node) {
 	if n == nil {
 		io.WriteString(sb, "null")
 		return
@@ -2062,16 +2147,20 @@ func writeNode(sb io.Writer, n ast.Node) {
 				}
 			}
 			io.WriteString(sb, ") {\n")
+			f.indent++
 			for _, stmt := range e.Block.Stmts {
-				io.WriteString(sb, "    ")
-				writeNode(sb, stmt)
+				io.WriteString(sb, indentStr(f.indent))
+				f.writeNode(sb, stmt)
 				io.WriteString(sb, "\n")
 			}
 			if e.Block.Return != nil {
-				io.WriteString(sb, "    return ")
-				writeNode(sb, e.Block.Return)
+				io.WriteString(sb, indentStr(f.indent))
+				io.WriteString(sb, "return ")
+				f.writeNode(sb, e.Block.Return)
 				io.WriteString(sb, "\n")
 			}
+			f.indent--
+			io.WriteString(sb, indentStr(f.indent))
 			io.WriteString(sb, string('}'))
 		} else {
 			io.WriteString(sb, string('('))
@@ -2086,18 +2175,18 @@ func writeNode(sb io.Writer, n ast.Node) {
 				}
 			}
 			io.WriteString(sb, ") => ")
-			writeNode(sb, e.Body)
+			f.writeNode(sb, e.Body)
 		}
 	case *ast.ParenExpr:
 		io.WriteString(sb, string('('))
-		writeNode(sb, e.Inner)
+		f.writeNode(sb, e.Inner)
 		io.WriteString(sb, string(')'))
 	case *ast.BinaryExpr:
-		writeNode(sb, e.Left)
+		f.writeNode(sb, e.Left)
 		io.WriteString(sb, string(' '))
 		io.WriteString(sb, binOpString(e.Op))
 		io.WriteString(sb, string(' '))
-		writeNode(sb, e.Right)
+		f.writeNode(sb, e.Right)
 	case *ast.UnaryExpr:
 		if e.Op == ast.UnaryNot {
 			io.WriteString(sb, string('!'))
@@ -2105,37 +2194,37 @@ func writeNode(sb io.Writer, n ast.Node) {
 			if u, ok := e.Operand.(*ast.UnaryExpr); ok && u.Op == ast.UnaryNot {
 				io.WriteString(sb, string(' '))
 			}
-			writeNode(sb, e.Operand)
+			f.writeNode(sb, e.Operand)
 		} else {
 			io.WriteString(sb, string('-'))
-			writeNode(sb, e.Operand)
+			f.writeNode(sb, e.Operand)
 		}
 	case *ast.TernaryExpr:
-		writeNode(sb, e.Cond)
+		f.writeNode(sb, e.Cond)
 		io.WriteString(sb, " ? ")
-		writeNode(sb, e.Then)
+		f.writeNode(sb, e.Then)
 		io.WriteString(sb, " : ")
-		writeNode(sb, e.Else)
+		f.writeNode(sb, e.Else)
 	case *ast.SelectExpr:
-		writeNode(sb, e.Operand)
+		f.writeNode(sb, e.Operand)
 		io.WriteString(sb, string('.'))
 		io.WriteString(sb, e.Field)
 	case *ast.IndexExpr:
-		writeNode(sb, e.Operand)
+		f.writeNode(sb, e.Operand)
 		io.WriteString(sb, string('['))
-		writeNode(sb, e.Index)
+		f.writeNode(sb, e.Index)
 		io.WriteString(sb, string(']'))
 	case *ast.CallExpr:
 		io.WriteString(sb, e.Func)
 		io.WriteString(sb, string('('))
-		writeArgs(sb, e.Args)
+		f.writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.MethodExpr:
-		writeNode(sb, e.Receiver)
+		f.writeNode(sb, e.Receiver)
 		io.WriteString(sb, string('.'))
 		io.WriteString(sb, e.Method)
 		io.WriteString(sb, string('('))
-		writeArgs(sb, e.Args)
+		f.writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.StructExpr:
 		sep := "="
@@ -2146,11 +2235,11 @@ func writeNode(sb io.Writer, n ast.Node) {
 			for _, field := range e.Fields {
 				if field.Spread {
 					io.WriteString(sb, "...")
-					writeNode(sb, field.Value)
+					f.writeNode(sb, field.Value)
 				} else {
 					io.WriteString(sb, field.Name)
 					io.WriteString(sb, sep)
-					writeNode(sb, field.Value)
+					f.writeNode(sb, field.Value)
 				}
 				io.WriteString(sb, ",\n")
 			}
@@ -2161,11 +2250,11 @@ func writeNode(sb io.Writer, n ast.Node) {
 				}
 				if field.Spread {
 					io.WriteString(sb, "...")
-					writeNode(sb, field.Value)
+					f.writeNode(sb, field.Value)
 				} else {
 					io.WriteString(sb, field.Name)
 					io.WriteString(sb, sep)
-					writeNode(sb, field.Value)
+					f.writeNode(sb, field.Value)
 				}
 			}
 		}
@@ -2176,12 +2265,12 @@ func writeNode(sb io.Writer, n ast.Node) {
 			if i > 0 {
 				io.WriteString(sb, ", ")
 			}
-			writeNode(sb, el)
+			f.writeNode(sb, el)
 		}
 		io.WriteString(sb, string(']'))
 	case *ast.SpreadExpr:
 		io.WriteString(sb, "...")
-		writeNode(sb, e.Operand)
+		f.writeNode(sb, e.Operand)
 	case *ast.InterpolationExpr:
 		quote := `"`
 		escFn := escapeStringContent
@@ -2195,32 +2284,32 @@ func writeNode(sb io.Writer, n ast.Node) {
 				io.WriteString(sb, escFn(fmt.Sprintf("%v", lit.Value)))
 			} else {
 				io.WriteString(sb, string('{'))
-				writeNode(sb, p)
+				f.writeNode(sb, p)
 				io.WriteString(sb, string('}'))
 			}
 		}
 		io.WriteString(sb, quote)
 	case *ast.AssignStmt:
-		writeNode(sb, e.Target)
+		f.writeNode(sb, e.Target)
 		io.WriteString(sb, string(' '))
 		io.WriteString(sb, assignOpString(e.Op))
 		io.WriteString(sb, string(' '))
-		writeNode(sb, e.Value)
+		f.writeNode(sb, e.Value)
 	case *ast.ToggleStmt:
-		writeNode(sb, e.Target)
+		f.writeNode(sb, e.Target)
 		io.WriteString(sb, "!!")
 	case *ast.EmitStmt:
 		io.WriteString(sb, string('@'))
 		io.WriteString(sb, e.Name)
 		io.WriteString(sb, string('('))
-		writeArgs(sb, e.Args)
+		f.writeArgs(sb, e.Args)
 		io.WriteString(sb, string(')'))
 	case *ast.StmtBlock:
 		for i, s := range e.Stmts {
 			if i > 0 {
 				io.WriteString(sb, "; ")
 			}
-			writeNode(sb, s)
+			f.writeNode(sb, s)
 		}
 	case *ast.VarStmt:
 		io.WriteString(sb, "var ")
@@ -2230,15 +2319,15 @@ func writeNode(sb io.Writer, n ast.Node) {
 			io.WriteString(sb, typeHintStr(e.Type, nil))
 		}
 		io.WriteString(sb, " = ")
-		writeNode(sb, e.Init)
+		f.writeNode(sb, e.Init)
 	case *ast.ReturnStmt:
 		io.WriteString(sb, "return")
 		if e.Value != nil {
 			io.WriteString(sb, string(' '))
-			writeNode(sb, e.Value)
+			f.writeNode(sb, e.Value)
 		}
 	case *ast.CallStmt:
-		writeNode(sb, e.Call)
+		f.writeNode(sb, e.Call)
 	default:
 		fmt.Fprintf(sb, "/* unknown %T */", n)
 	}
@@ -2341,14 +2430,12 @@ func writeLiteral(sb io.Writer, v any, typeHint string) {
 	}
 }
 
-// formatPostfixOperand wraps numeric literals in parens to prevent
-// ambiguity with dot access (e.g. 0.field would parse as float 0.).
-func writeArgs(sb io.Writer, args []ast.Node) {
+func (f *formatter) writeArgs(sb io.Writer, args []ast.Node) {
 	for i, a := range args {
 		if i > 0 {
 			io.WriteString(sb, ", ")
 		}
-		writeNode(sb, a)
+		f.writeNode(sb, a)
 	}
 }
 

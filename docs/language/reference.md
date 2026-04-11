@@ -124,7 +124,7 @@ var count = 0
 var name = "World"
 var bg = #ff0000
 var timeout duration = "5s"
-var user = User{name: "World"}
+var user = User{name="World"}
 var todos list<Todo> = []
 var x, y, z int
 var width, height int = 100
@@ -182,7 +182,7 @@ component main { text(value="") }
 
 ```sngl
 var todo Todo
-var todo2 = Todo{text: "Buy eggs", done: false}
+var todo2 = Todo{text="Buy eggs", done=false}
 ```
 
 Assigning `null` to a struct is a compile error — use `option<Todo>` if you need nullable.
@@ -403,7 +403,7 @@ Events use the `@` prefix and contain statement blocks:
 button(@click { count += 1 })
 input(@input { name = event.value })
 button(@click {
-    todos.push(Todo{text: newTodo, done: false})
+    todos.push(Todo{text=newTodo, done=false})
     newTodo = ""
 })
 ```

@@ -1136,8 +1136,13 @@ func (p *parser) parseVarSpec() []*ast.Data {
 			init.TypeHint = typeHint
 		}
 		var vars []*ast.Data
-		for _, n := range names {
-			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: hasExplicitType, Grouped: true}
+		for i, n := range names {
+			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: hasExplicitType}
+			if i == 0 {
+				d.MultiNames = names
+			} else {
+				d.IsMultiNameTail = true
+			}
 			if strings.HasPrefix(typeHint, "func:") {
 				d.IsFunc = true
 				params, ret := splitFuncBody(typeHint[5:])
