@@ -1699,13 +1699,25 @@ func (f *formatter) buildEventProp(prefix string, eh ast.EventHandler) string {
 	if eh.Param != "" {
 		f.propBuf.WriteByte('(')
 		f.propBuf.WriteString(eh.Param)
-		f.propBuf.WriteString(") ")
-	} else {
-		f.propBuf.WriteByte(' ')
+		f.propBuf.WriteByte(')')
 	}
-	f.propBuf.WriteString("{ ")
-	f.writeExprTo(&f.propBuf, eh.Body)
-	f.propBuf.WriteString(" }")
+	if eh.Multiline {
+		f.propBuf.WriteString(" {")
+		if block, ok := eh.Body.SNGL.(*ast.StmtBlock); ok {
+			for _, stmt := range block.Stmts {
+				f.propBuf.WriteByte('\n')
+				writeNode(&f.propBuf, stmt)
+			}
+		} else {
+			f.propBuf.WriteByte('\n')
+			f.writeExprTo(&f.propBuf, eh.Body)
+		}
+		f.propBuf.WriteString("\n}")
+	} else {
+		f.propBuf.WriteString(" { ")
+		f.writeExprTo(&f.propBuf, eh.Body)
+		f.propBuf.WriteString(" }")
+	}
 	return f.propBuf.String()
 }
 
@@ -1818,7 +1830,29 @@ func (f *formatter) formatVisualNodeInner(vn *ast.VisualNode) {
 				if i > 0 {
 					f.write(", ")
 				}
-				f.write(p)
+				if strings.Contains(p, "\n") {
+					// Multiline prop (e.g., multiline event handler): indent body
+					// lines relative to the current indentation level.
+					lines := strings.Split(p, "\n")
+					bodyIndent := indentStr(f.indent + 1)
+					closeIndent := indentStr(f.indent)
+					for j, line := range lines {
+						switch {
+						case j == 0:
+							f.write(line)
+						case j == len(lines)-1:
+							f.write("\n")
+							f.write(closeIndent)
+							f.write(line)
+						default:
+							f.write("\n")
+							f.write(bodyIndent)
+							f.write(line)
+						}
+					}
+				} else {
+					f.write(p)
+				}
 			}
 			f.write(")")
 		}

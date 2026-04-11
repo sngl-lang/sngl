@@ -1599,13 +1599,14 @@ func (p *parser) parsePropList(vn *ast.VisualNode) {
 				param = p.expect(IDENT).Literal
 				p.expect(RPAREN)
 			}
-			p.expect(LBRACE)
+			open := p.expect(LBRACE)
 			stmts := p.parseStmtList()
-			p.expect(RBRACE)
+			close := p.expect(RBRACE)
+			multiline := close.Line > open.Line
 			if vn.Events == nil {
 				vn.Events = map[string]ast.EventHandler{}
 			}
-			vn.Events[eventName] = ast.EventHandler{Param: param, Body: ast.Expr{SNGL: stmts}}
+			vn.Events[eventName] = ast.EventHandler{Param: param, Body: ast.Expr{SNGL: stmts}, Multiline: multiline}
 			vn.PropOrder = append(vn.PropOrder, "@"+eventName)
 		} else {
 			// Regular prop: name=expr (style keyword is also valid as a prop name)

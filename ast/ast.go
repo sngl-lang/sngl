@@ -378,8 +378,9 @@ type Window struct {
 
 // EventHandler is an event handler on a visual node (e.g., @click(e) { ... }).
 type EventHandler struct {
-	Param string // explicit param name ("_" = discard)
-	Body  Expr   // statement block (Expr wrapping SNGL node)
+	Param     string // explicit param name ("_" = discard)
+	Body      Expr   // statement block (Expr wrapping SNGL node)
+	Multiline bool   // true when { } spans multiple lines in source
 }
 
 // Timer declares a recurring interval that executes statements while active.

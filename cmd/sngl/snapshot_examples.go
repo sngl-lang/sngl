@@ -66,11 +66,11 @@ func runSnapshotExamples(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if info.IsDir() {
-			if err := snapshotDir(p, platforms, width, height, recurse, force); err != nil {
+			if err := snapshotExamplesDir(p, platforms, width, height, recurse, force); err != nil {
 				return err
 			}
 		} else {
-			if err := snapshotFile(p, platforms, width, height, force); err != nil {
+			if err := snapshotExamplesFile(p, platforms, width, height, force); err != nil {
 				return err
 			}
 		}
@@ -78,7 +78,7 @@ func runSnapshotExamples(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func snapshotDir(dir string, platforms []string, width, height int, recurse, force bool) error {
+func snapshotExamplesDir(dir string, platforms []string, width, height int, recurse, force bool) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -86,13 +86,13 @@ func snapshotDir(dir string, platforms []string, width, height int, recurse, for
 	for _, e := range entries {
 		path := filepath.Join(dir, e.Name())
 		if e.IsDir() && recurse {
-			if err := snapshotDir(path, platforms, width, height, recurse, force); err != nil {
+			if err := snapshotExamplesDir(path, platforms, width, height, recurse, force); err != nil {
 				return err
 			}
 			continue
 		}
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sngl") {
-			if err := snapshotFile(path, platforms, width, height, force); err != nil {
+			if err := snapshotExamplesFile(path, platforms, width, height, force); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", path, err)
 			}
 		}
@@ -100,7 +100,7 @@ func snapshotDir(dir string, platforms []string, width, height int, recurse, for
 	return nil
 }
 
-func snapshotFile(path string, platforms []string, width, height int, force bool) error {
+func snapshotExamplesFile(path string, platforms []string, width, height int, force bool) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func snapshotFile(path string, platforms []string, width, height int, force bool
 		return err
 	}
 
-	examples := checker.ComponentExamples(doc)
+	examples := checker.PrefixedExamples(doc)
 	if len(examples) == 0 {
 		return nil
 	}

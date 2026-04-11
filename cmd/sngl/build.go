@@ -121,7 +121,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 			start = time.Now()
-			if err := generateTarget(filename, doc, target, outDir); err != nil {
+			if err := generateTarget(filename, doc, target, outDir, quiet(cmd)); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))

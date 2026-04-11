@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -533,10 +531,7 @@ func (c *checker) pass1(doc *ast.Document) {
 			continue
 		}
 		c.visited[imp.Path] = true
-		// Resolve the import path against the source directory so that
-		// parent traversal ("..") works with os.DirFS.
-		resolved := filepath.Clean(filepath.Join(c.schemeDir, filepath.FromSlash(imp.Path)))
-		importDocs, err := c.resolve(os.DirFS(resolved), ".")
+		importDocs, err := c.resolve(c.fsys, imp.Path)
 		if err != nil {
 			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 			continue

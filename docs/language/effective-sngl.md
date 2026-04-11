@@ -151,7 +151,7 @@ struct Todo { text string = "" done bool = false }
 
 ```sngl
 var todo Todo
-var todo2 = Todo{text: "Buy eggs", done: false}
+var todo2 = Todo{text="Buy eggs", done=false}
 ```
 
 Accessing and mutating fields uses dot notation: `todo.text`, `todo.done = true`.
@@ -441,7 +441,7 @@ struct Todo { text string = "" done bool = false }
 -->
 
 ```sngl
-var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
+var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => list.filter(todos, (t) => !t.done)
 func labels() => list.map(todos, (t) => t.text)
 ```
@@ -453,7 +453,7 @@ Inline functions for filtering and mapping:
 <!-- SNGL-component -->
 
 ```sngl
-var todos = [Todo{text: "a", done: true}, Todo{text: "b", done: false}]
+var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => list.filter(todos, (t) => !t.done)
 func labels() => list.map(todos, (t) => t.text)
 ```
@@ -575,9 +575,13 @@ Multi-statement events separate with semicolons:
 <!-- SNGL-component -->
 
 ```sngl
-var (newTodo = "", todos list<Todo> = [])
-button(text="Add", @click{
-    todos.push(Todo{text: newTodo, done: false})
+var (
+    newTodo = ""
+    todos list<Todo> = []
+)
+
+button(text="Add", @click {
+    todos.push(Todo{text=newTodo, done=false})
     newTodo = ""
 })
 ```
@@ -729,20 +733,23 @@ Mutations are only allowed in event handlers and void functions. You cannot muta
 
 ```sngl
 component main {
-    var (progress float = 0, running = true)
+    var (
+        progress float = 0
+        running = true
+    )
 
     timer 100ms running {
         progress += 0.1
     }
 
     text(value=string(progress))
-    button(text="Stop", @click{ running = false })
+    button(text="Stop", @click { running = false })
 }
 
-test main "timer increments" {
-    assert(progress == 0)
-    tick()
-    assert(progress == 0.1)
+func testTimerIncrements(t T, c main) {
+    t.assert(c.progress == 0)
+    t.tick()
+    t.assert(c.progress == 0.1)
 }
 ```
 
@@ -812,18 +819,18 @@ Tests target a specific component and get a fresh copy of its state:
 component counter {
     var count = 0
 
-    button #inc (text="+", @click{ count += 1 })
-    text #display (value="Count: {count}")
+    button #inc(text="+", @click { count += 1 })
+    text #display(value="Count: {count}")
 }
 
-test counter "starts at zero" {
-    assert(count == 0)
+func testStartsAtZero(t T, c counter) {
+    t.assert(c.count == 0)
 }
 
-test counter "increments" {
-    #inc.@click()
-    assert(count == 1)
-    assert(#display.value == "Count: 1")
+func testIncrements(t T, c counter) {
+    c.#inc.@click()
+    t.assert(c.count == 1)
+    t.assert(c.#display.value == "Count: 1")
 }
 ```
 
@@ -865,13 +872,13 @@ component app {
     text(value="{x}")
 }
 
-test app "nesting" {
-    x = 1
-    test "inner" {
-        x = 2
-        assert(x == 2)
-    }
-    assert(x == 1)
+func testNesting(t T, c app) {
+    c.x = 1
+    t.test("inner", func(t, c) {
+        c.x = 2
+        t.assert(c.x == 2)
+    })
+    t.assert(c.x == 1)
 }
 ```
 
@@ -913,15 +920,15 @@ struct Todo {
 
 component main {
     var (
-        newTodo = "",
+        newTodo = ""
         todos list<Todo> = []
     )
 
     vbox(style={padding=16, gap=8}) {
         hbox(style={gap=8}) {
             input(value=newTodo, placeholder="New todo", @input { newTodo = event.value })
-            button(text="Add", disabled=newTodo == "", @click{
-                todos.push(Todo{text: newTodo, done: false})
+            button(text="Add", disabled=newTodo == "", @click {
+                todos.push(Todo{text=newTodo, done=false})
                 newTodo = ""
             })
         }
@@ -929,7 +936,7 @@ component main {
             hbox(key=idx, style={gap=8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
-                button(text="x", @click{ todos.remove(idx) })
+                button(text="x", @click { todos.remove(idx) })
             }
         }
     }
@@ -999,7 +1006,7 @@ struct Todo {
 }
 
 component main {
-    var todos = [Todo{text: "Write docs", done: true}, Todo{text: "Fix bug", done: false}]
+    var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
     func active() => list.filter(todos, (t) => !t.done)
     func activeCount() => list.length(active)
 
