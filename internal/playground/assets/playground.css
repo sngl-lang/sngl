@@ -264,3 +264,15 @@
     font-family: var(--font-sans);
     font-size: 12px;
 }
+
+@media (max-width: 1200px) {
+    .split-pane {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+
+    .editor-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+}

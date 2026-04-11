@@ -49,19 +49,19 @@ component PlatformCarousel() {
 		stack {
 			if active == 0 {
 				image(src=screenshotWeb, alt="SNGL Todo App on Web", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
 			}
 			if active == 1 {
 				image(src=screenshotTerminal, alt="SNGL Todo App in Terminal", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
 			}
 			if active == 2 {
 				image(src=screenshotDesktop, alt="SNGL Todo App on Desktop", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
 			}
 			if active == 3 {
 				image(src=screenshotAndroid, alt="SNGL Todo App on Android", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
 			}
 		}
 		hbox(style={gap=8}) {
