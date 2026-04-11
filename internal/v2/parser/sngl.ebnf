@@ -180,16 +180,16 @@ ImportDecl = kw_import [ ident fat_arrow ] string_lit .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct ident lbrace { StructField } rbrace .
+StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
 
-StructField = ident TypeHint [ assign Expr ] semi .
+StructField = ident Type [ assign Expr ] semi .
 
 # Enum values use a brace list: enum Color{Red, Green, Blue} or enum Status{ok=0, err=1}
 # The body is a comma-separated ArgList, not a StmtBlock (no semis).
-EnumDecl = kw_enum ident lbrace [ ArgList ] rbrace .
+EnumDecl = kw_enum [ ident ] lbrace [ ArgList ] rbrace .
 
 # Unit suffixes use the same brace list: unit Length{px, em, rem=16}
-UnitDecl = kw_unit ident lbrace [ ArgList ] rbrace .
+UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
 
 # ── Style ─────────────────────────────────────────────────────────────────────
 
@@ -202,7 +202,7 @@ ConstDecl =
     | kw_const lparen ConstSpec { comma ConstSpec } rparen
     .
 
-ConstSpec = IdentList [ TypeHint ] assign Expr .
+ConstSpec = IdentList [ Type ] assign Expr .
 
 IdentList = ident { comma ident } .
 
@@ -213,7 +213,7 @@ VarDecl =
     | kw_var lparen VarSpec { comma VarSpec } rparen
     .
 
-VarSpec = IdentList [ TypeHint ] assign Expr { VarHandler } .
+VarSpec = IdentList [ Type ] assign Expr { VarHandler } .
 
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
 VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
@@ -222,9 +222,9 @@ VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 #
 # Two forms:
 #   func name [<T>] [params] => Expr          (expression body)
-#   func name [<T>] [params] [TypeHint] { }   (statement body, optional return type)
+#   func name [<T>] [params] [Type] { }   (statement body, optional return type)
 #
-# LL(1) after params: fat_arrow → expr body; ident|kw_func → TypeHint; lbrace → StmtBlock.
+# LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
 FuncDecl = kw_func FuncName [ TypeParamList ] FuncTail .
 
@@ -235,7 +235,7 @@ FuncTail =
 
 FuncBodyTail =
       fat_arrow Expr
-    | [ TypeHint ] StmtBlock
+    | [ Type ] StmtBlock
     .
 
 FuncName = ident [ dot ident ] .
@@ -244,24 +244,24 @@ TypeParamList = lt ident { comma ident } gt .
 
 ParamList = Param { comma Param } .
 
-Param = ident [ TypeHint ] [ assign Expr ] .
+Param = ident [ Type ] [ assign Expr ] .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
-ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ TypeHint ] StmtBlock .
+ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 
 CompParamList = CompParam { comma CompParam } .
 
 # CompParam first tokens: colon → binding :field, at → event @event, ident → regular param.
 CompParam =
-      colon ident [ TypeHint ] [ assign Expr ]
-    | at ident [ TypeHint ]
+      colon ident [ Type ] [ assign Expr ]
+    | at ident [ Type ]
     | ident CompParamTail
     .
 
 CompParamTail =
       assign Expr
-    | TypeHint [ assign Expr ]
+    | Type [ assign Expr ]
     .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
@@ -388,7 +388,7 @@ FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 ArgList = Arg { comma Arg } .
 
 Arg =
-      colon ident [ TypeHint ] [ assign Expr ]
+      colon ident [ Type ] [ assign Expr ]
     | ellipsis Expr
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
@@ -434,9 +434,10 @@ NonIdentPrimary =
 
 # ── Types ─────────────────────────────────────────────────────────────────────
 
-TypeHint =
-      ident [ dot ident | lt TypeHint gt ]
-    | kw_func lparen [ TypeHintList ] rparen [ arrow TypeHint ]
+Type =
+      ident [ dot ident | lt Type gt ]
+    | kw_func lparen [ TypeList ] rparen [ arrow TypeHint ]
+    | EnumDecl
     .
 
-TypeHintList = TypeHint { comma TypeHint } .
+TypeList = TypeHint { comma TypeHint } .
