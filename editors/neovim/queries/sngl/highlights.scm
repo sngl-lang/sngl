@@ -11,14 +11,15 @@
   "const"
   "var"
   "if"
+  "else"
   "for"
   "func"
   "test"
+  "timer"
+  "window"
   "return"
+  "required"
 ] @keyword
-
-(extern_modifier) @keyword
-(trigger_modifier) @keyword
 
 ; Literal keywords
 (true) @constant.builtin
@@ -33,13 +34,15 @@
 (enum_constraint "enum" @keyword)
 
 ; Declarations
-(import_declaration (string_literal) @string.special)
+(import_declaration (plain_string) @string.special)
+(import_declaration alias: (identifier) @variable)
 (struct_declaration name: (identifier) @type.definition)
 (enum_declaration name: (identifier) @type.definition)
 (unit_declaration name: (identifier) @type.definition)
 (style_declaration name: (identifier) @type.definition)
 (component_declaration name: (identifier) @type.definition)
 (component_declaration name: (qualified_name) @type.definition)
+(window_declaration name: (identifier) @type.definition)
 (test_declaration component: (identifier) @type)
 (test_declaration description: (string_literal) @string)
 (subtest_declaration description: (string_literal) @string)
@@ -71,16 +74,29 @@
 (prop_binding name: (identifier) @property)
 (event_handler "@" @punctuation.special)
 (event_handler name: (identifier) @property)
+; Data events
+(data_event "@" @punctuation.special)
+(data_event kind: (identifier) @property)
+
+; Timer
+(timer_declaration active: (identifier) @variable)
+
 ; Statements
 (assignment_statement operator: (_) @operator)
 (toggle_statement "!!" @operator)
 (emit_statement "@" @punctuation.special)
 (emit_statement name: (identifier) @function)
 
+; Functions
+(func_declaration name: (func_name (identifier) @function))
+(func_param name: (identifier) @variable.parameter)
+
 ; Expressions
 (call_expression function: (identifier) @function)
 (method_expression method: (identifier) @function.method)
+(method_expression method: (event_method) @function.method)
 (field_expression field: (identifier) @property)
+(field_expression field: (event_method) @property)
 
 ; Operators
 (binary_expression operator: _ @operator)
@@ -88,14 +104,20 @@
 (ternary_expression "?" @operator)
 (ternary_expression ":" @operator)
 (lambda_expression "=>" @operator)
+(spread_expression "..." @operator)
+(func_declaration "=>" @operator)
 
 ; Literals
 (integer_literal) @number
 (float_literal) @number.float
 (string_literal) @string
+(triple_string_literal) @string
+(raw_string_literal) @string
 (string_interpolation) @string.special
 (color_literal) @constant
 (unit_literal) @number
+(element_ref) @tag
+(slashdash) @comment
 
 ; Identifiers (fallback)
 (identifier) @variable
