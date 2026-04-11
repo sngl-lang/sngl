@@ -220,12 +220,20 @@ type Data struct {
 	HiddenParam  string   // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
 	Events       []DataEvent // @change, @insert, @delete, @init handlers
 	Disabled     bool
-	Grouped         bool     // parsed from var(...) grouped declaration
-	MultiNames      []string // non-nil on the first var in "var x, y, z type"; contains all names
-	IsMultiNameTail bool     // true on the 2nd+ vars in a multi-name declaration
-	ExplicitType    bool     // true when a type was written between name and =
+	ExplicitType bool // true when a type was written between name and =
 	Resolved     *TypeInfo // populated by checker
 }
+
+// VarDecl is the Decl representation of a var statement as written in source.
+// It holds the source structure for the formatter while the individual Data
+// entries are also stored flat in the parent's Data slice for the checker/codegen.
+type VarDecl struct {
+	Pos   Pos
+	Block bool      // written as var(...)
+	Specs [][]*Data // each inner slice is one spec line (single or multi-name)
+}
+
+func (v *VarDecl) DeclPos() Pos { return v.Pos }
 
 type StyleDecl struct {
 	Pos       Pos

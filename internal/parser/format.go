@@ -288,34 +288,48 @@ func (f *formatter) measureDeclWidth(buf *strings.Builder, d ast.Decl) int {
 		}
 		buf.WriteString(" = ")
 		f.writeExprTo(buf, decl.Init)
-	case *ast.Data:
-		if decl.Disabled {
-			buf.WriteString("/- ")
-		}
-		buf.WriteString("var ")
-		buf.WriteString(decl.Name)
-		hasInit := decl.Init.SNGL != nil || decl.Init.Literal != nil
-		if decl.ExplicitType {
-			if typeStr := typeHintStr(decl.Init.TypeHint, decl); typeStr != "" {
-				buf.WriteByte(' ')
-				buf.WriteString(typeStr)
+	case *ast.VarDecl:
+		if !decl.Block && len(decl.Specs) == 1 {
+			spec := decl.Specs[0]
+			if len(spec) > 0 && spec[0].Disabled {
+				buf.WriteString("/- ")
 			}
-		}
-		if hasInit {
-			buf.WriteString(" = ")
-			f.writeExprTo(buf, decl.Init)
-		}
-		for _, ev := range decl.Events {
-			buf.WriteString(" @")
-			buf.WriteString(ev.Kind)
-			if ev.Param != "" {
-				buf.WriteByte('(')
-				buf.WriteString(ev.Param)
-				buf.WriteByte(')')
+			buf.WriteString("var ")
+			d := spec[0]
+			if len(spec) == 1 {
+				buf.WriteString(d.Name)
+			} else {
+				names := make([]string, len(spec))
+				for i, s := range spec {
+					names[i] = s.Name
+				}
+				buf.WriteString(strings.Join(names, ", "))
 			}
-			buf.WriteString(" { ")
-			f.writeNode(buf, ev.Body)
-			buf.WriteString(" }")
+			if d.ExplicitType {
+				if typeStr := typeHintStr(d.Init.TypeHint, d); typeStr != "" {
+					buf.WriteByte(' ')
+					buf.WriteString(typeStr)
+				}
+			}
+			hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
+			if hasInit {
+				buf.WriteString(" = ")
+				f.writeExprTo(buf, d.Init)
+			}
+			for _, ev := range d.Events {
+				buf.WriteString(" @")
+				buf.WriteString(ev.Kind)
+				if ev.Param != "" {
+					buf.WriteByte('(')
+					buf.WriteString(ev.Param)
+					buf.WriteByte(')')
+				}
+				buf.WriteString(" { ")
+				f.writeNode(buf, ev.Body)
+				buf.WriteString(" }")
+			}
+		} else {
+			buf.WriteString("var (...)")
 		}
 	case *ast.FuncDef:
 		buf.WriteString("func ")
@@ -717,38 +731,11 @@ func (f *formatter) formatDocument(doc *ast.Document) {
 				f.formatConsts([]*ast.Const{decl})
 			}
 			prevEndLine = decl.Pos.Line
-		case *ast.Data:
-			if decl.IsMultiNameTail {
-				// Already emitted as part of a multi-name head; skip.
-				continue
-			}
+		case *ast.VarDecl:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			if decl.MultiNames != nil && !decl.Grouped {
-				// Standalone multi-name: "var x, y, z type"
-				f.writeIndent()
-				if decl.Disabled {
-					f.write("/- ")
-				}
-				f.write("var ")
-				f.writeMultiVarDecl(decl)
-				f.newline()
-				di += len(decl.MultiNames) - 1
-			} else if decl.Grouped {
-				group := []*ast.Data{decl}
-				for di+1 < len(doc.Decls) {
-					if next, ok := doc.Decls[di+1].(*ast.Data); ok && next.Grouped {
-						group = append(group, next)
-						di++
-					} else {
-						break
-					}
-				}
-				f.formatVars(group)
-			} else {
-				f.formatVars([]*ast.Data{decl})
-			}
+			f.formatVarDecl(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if !decl.IsStdlib {
@@ -833,7 +820,15 @@ func (f *formatter) formatDocMain(doc *ast.Document) {
 		if memberBlank {
 			f.blankLine()
 		}
-		f.formatVarsGrouped(doc.Data)
+		for _, d := range doc.Data {
+			f.writeIndent()
+			if d.Disabled {
+				f.write("/- ")
+			}
+			f.write("var ")
+			f.writeVarSpec([]*ast.Data{d})
+			f.newline()
+		}
 		memberBlank = true
 	}
 
@@ -1023,40 +1018,32 @@ func (f *formatter) formatConsts(consts []*ast.Const) {
 	f.writeLine(")")
 }
 
-func (f *formatter) formatVars(data []*ast.Data) {
-	if len(data) == 1 && !data[0].Grouped {
+// formatVarDecl emits a VarDecl (a var statement as written in source).
+func (f *formatter) formatVarDecl(vd *ast.VarDecl) {
+	if vd.Block {
+		f.writeLine("var (")
+		f.indent++
+		for _, spec := range vd.Specs {
+			f.writeIndent()
+			if len(spec) > 0 && spec[0].Disabled {
+				f.write("/- ")
+			}
+			f.writeVarSpec(spec)
+			f.newline()
+		}
+		f.indent--
+		f.writeLine(")")
+	} else {
+		// Single spec (possibly multi-name).
+		spec := vd.Specs[0]
 		f.writeIndent()
-		if data[0].Disabled {
+		if len(spec) > 0 && spec[0].Disabled {
 			f.write("/- ")
 		}
 		f.write("var ")
-		f.writeVarDecl(data[0])
-		f.newline()
-		return
-	}
-	f.writeLine("var (")
-	f.indent++
-	for i := 0; i < len(data); {
-		d := data[i]
-		if d.IsMultiNameTail {
-			i++
-			continue
-		}
-		f.writeIndent()
-		if d.Disabled {
-			f.write("/- ")
-		}
-		if d.MultiNames != nil {
-			f.writeMultiVarDecl(d)
-			i += len(d.MultiNames)
-		} else {
-			f.writeVarDecl(d)
-			i++
-		}
+		f.writeVarSpec(spec)
 		f.newline()
 	}
-	f.indent--
-	f.writeLine(")")
 }
 
 // formatConstsGrouped emits consts, grouping consecutive Grouped items together
@@ -1079,45 +1066,23 @@ func (f *formatter) formatConstsGrouped(consts []*ast.Const) {
 	}
 }
 
-// formatVarsGrouped emits vars, grouping consecutive Grouped items together
-// and emitting non-grouped items individually.
-func (f *formatter) formatVarsGrouped(data []*ast.Data) {
-	i := 0
-	for i < len(data) {
-		d := data[i]
-		if d.IsMultiNameTail {
-			// Already emitted as part of a multi-name head; skip.
-			i++
-			continue
-		}
-		if d.Grouped {
-			j := i
-			for j < len(data) && data[j].Grouped {
-				j++
-			}
-			f.formatVars(data[i:j])
-			i = j
-		} else if d.MultiNames != nil {
-			// Standalone multi-name: "var x, y, z type"
-			f.writeIndent()
-			if d.Disabled {
-				f.write("/- ")
-			}
-			f.write("var ")
-			f.writeMultiVarDecl(d)
-			f.newline()
-			i += len(d.MultiNames)
-		} else {
-			f.formatVars(data[i : i+1])
-			i++
-		}
+// writeVarSpec writes one spec line: "name [type] [= init] [@events]" or
+// "name1, name2 [type] [= init]" for a multi-name spec.
+// Events are written on the first (and typically only) Data entry.
+func (f *formatter) writeVarSpec(spec []*ast.Data) {
+	if len(spec) == 0 {
+		return
 	}
-}
-
-func (f *formatter) writeVarDecl(d *ast.Data) {
-	f.write(d.Name)
-
-	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
+	d := spec[0]
+	if len(spec) == 1 {
+		f.write(d.Name)
+	} else {
+		names := make([]string, len(spec))
+		for i, s := range spec {
+			names[i] = s.Name
+		}
+		f.write(strings.Join(names, ", "))
+	}
 
 	if d.ExplicitType {
 		if typeStr := typeHintStr(d.Init.TypeHint, d); typeStr != "" {
@@ -1126,12 +1091,12 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 		}
 	}
 
+	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
 	if hasInit {
 		f.write(" = ")
 		f.writeExprValue(d.Init)
 	}
 
-	// Data events
 	for _, ev := range d.Events {
 		f.write(" @")
 		f.write(ev.Kind)
@@ -1140,7 +1105,6 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 			f.write(ev.Param)
 			f.write(")")
 		}
-		// Multiple statements always multiline; single statement preserves original layout
 		_, isBlock := ev.Body.(*ast.StmtBlock)
 		multiline := isBlock || ev.EndLine > ev.Pos.Line
 		if multiline {
@@ -1168,24 +1132,6 @@ func (f *formatter) writeVarDecl(d *ast.Data) {
 			f.write(buf.String())
 			f.write(" }")
 		}
-	}
-}
-
-// writeMultiVarDecl writes "name1, name2, name3 type [= init]" for a multi-name var head.
-func (f *formatter) writeMultiVarDecl(d *ast.Data) {
-	f.write(strings.Join(d.MultiNames, ", "))
-
-	if d.ExplicitType {
-		if typeStr := typeHintStr(d.Init.TypeHint, d); typeStr != "" {
-			f.write(" ")
-			f.write(typeStr)
-		}
-	}
-
-	hasInit := d.Init.SNGL != nil || d.Init.Literal != nil
-	if hasInit {
-		f.write(" = ")
-		f.writeExprValue(d.Init)
 	}
 }
 
@@ -1316,24 +1262,11 @@ func (f *formatter) formatWindow(win *ast.Window) {
 			}
 			f.formatConsts([]*ast.Const{decl})
 			prevEndLine = decl.Pos.Line
-		case *ast.Data:
-			if decl.IsMultiNameTail {
-				continue
-			}
+		case *ast.VarDecl:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			if decl.MultiNames != nil && !decl.Grouped {
-				f.writeIndent()
-				if decl.Disabled {
-					f.write("/- ")
-				}
-				f.write("var ")
-				f.writeMultiVarDecl(decl)
-				f.newline()
-			} else {
-				f.formatVars([]*ast.Data{decl})
-			}
+			f.formatVarDecl(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
@@ -1529,36 +1462,11 @@ func (f *formatter) formatDeclSlice(comp *ast.Component) {
 				f.formatConsts([]*ast.Const{decl})
 			}
 			prevEndLine = decl.Pos.Line
-		case *ast.Data:
-			if decl.IsMultiNameTail {
-				continue
-			}
+		case *ast.VarDecl:
 			if prevEndLine > 0 && decl.Pos.Line > prevEndLine+1 {
 				f.blankLine()
 			}
-			if decl.MultiNames != nil && !decl.Grouped {
-				f.writeIndent()
-				if decl.Disabled {
-					f.write("/- ")
-				}
-				f.write("var ")
-				f.writeMultiVarDecl(decl)
-				f.newline()
-				i += len(decl.MultiNames) - 1
-			} else if decl.Grouped {
-				group := []*ast.Data{decl}
-				for i+1 < len(decls) {
-					if next, ok := decls[i+1].(*ast.Data); ok && next.Grouped {
-						group = append(group, next)
-						i++
-					} else {
-						break
-					}
-				}
-				f.formatVars(group)
-			} else {
-				f.formatVars([]*ast.Data{decl})
-			}
+			f.formatVarDecl(decl)
 			prevEndLine = decl.Pos.Line
 		case *ast.FuncDef:
 			if decl.IsStdlib {
@@ -1642,7 +1550,12 @@ func (f *formatter) formatComponentLegacy(comp *ast.Component) {
 		if memberBlank {
 			f.blankLine()
 		}
-		f.formatVars(comp.Data)
+		for _, d := range comp.Data {
+			f.writeIndent()
+			f.write("var ")
+			f.writeVarSpec([]*ast.Data{d})
+			f.newline()
+		}
 		memberBlank = true
 	}
 

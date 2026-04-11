@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -531,7 +533,15 @@ func (c *checker) pass1(doc *ast.Document) {
 			continue
 		}
 		c.visited[imp.Path] = true
-		importDocs, err := c.resolve(c.fsys, imp.Path)
+		var importDocs []*ast.Document
+		var err error
+		if !fs.ValidPath(imp.Path) {
+			// Path escapes the FS root (e.g. "../sibling"); resolve via the real OS path.
+			resolved := filepath.Clean(filepath.Join(c.schemeDir, filepath.FromSlash(imp.Path)))
+			importDocs, err = c.resolve(os.DirFS(resolved), ".")
+		} else {
+			importDocs, err = c.resolve(c.fsys, imp.Path)
+		}
 		if err != nil {
 			c.errorAt(imp.Pos, "import %q: %v", imp.Path, err)
 			continue

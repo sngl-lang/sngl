@@ -336,12 +336,14 @@ func (p *parser) parseDocument() *ast.Document {
 			}
 			doc.Consts = append(doc.Consts, consts...)
 		case KW_VAR:
-			vars := p.parseVarDecl()
-			for _, d := range vars {
-				d.Disabled = disabled
-				doc.Decls = append(doc.Decls, d)
+			vd := p.parseVarDecl()
+			for _, spec := range vd.Specs {
+				for _, d := range spec {
+					d.Disabled = disabled
+					doc.Data = append(doc.Data, d)
+				}
 			}
-			doc.Data = append(doc.Data, vars...)
+			doc.Decls = append(doc.Decls, vd)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
@@ -761,12 +763,14 @@ func (p *parser) parseComponent() *ast.Component {
 			}
 			cs.Consts = append(cs.Consts, consts...)
 		case KW_VAR:
-			vars := p.parseVarDecl()
-			for _, d := range vars {
-				d.Disabled = disabled
-				comp.Decls = append(comp.Decls, d)
+			vd := p.parseVarDecl()
+			for _, spec := range vd.Specs {
+				for _, d := range spec {
+					d.Disabled = disabled
+					cs.Data = append(cs.Data, d)
+				}
 			}
-			cs.Data = append(cs.Data, vars...)
+			comp.Decls = append(comp.Decls, vd)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
@@ -952,12 +956,14 @@ func (p *parser) parseWindow() *ast.Window {
 			}
 			win.Consts = append(win.Consts, consts...)
 		case KW_VAR:
-			vars := p.parseVarDecl()
-			for _, d := range vars {
-				d.Disabled = disabled
-				win.Decls = append(win.Decls, d)
+			vd := p.parseVarDecl()
+			for _, spec := range vd.Specs {
+				for _, d := range spec {
+					d.Disabled = disabled
+					win.Data = append(win.Data, d)
+				}
 			}
-			win.Data = append(win.Data, vars...)
+			win.Decls = append(win.Decls, vd)
 		case KW_FUNC:
 			fn := p.parseFuncDef()
 			fn.Disabled = disabled
@@ -1099,12 +1105,15 @@ func (p *parser) parseGroupedConsts() []*ast.Const {
 	return consts
 }
 
-func (p *parser) parseVarDecl() []*ast.Data {
+func (p *parser) parseVarDecl() *ast.VarDecl {
+	pos := p.pos()
 	p.expect(KW_VAR)
 	if p.at(LPAREN) {
-		return p.parseGroupedVars()
+		specs := p.parseGroupedVars()
+		return &ast.VarDecl{Pos: pos, Block: true, Specs: specs}
 	}
-	return p.parseVarSpec()
+	spec := p.parseVarSpec()
+	return &ast.VarDecl{Pos: pos, Block: false, Specs: [][]*ast.Data{spec}}
 }
 
 // parseVarSpec parses one or more var declarations that may share a type.
@@ -1136,13 +1145,8 @@ func (p *parser) parseVarSpec() []*ast.Data {
 			init.TypeHint = typeHint
 		}
 		var vars []*ast.Data
-		for i, n := range names {
+		for _, n := range names {
 			d := &ast.Data{Pos: pos, Name: n, Init: init, ExplicitType: hasExplicitType}
-			if i == 0 {
-				d.MultiNames = names
-			} else {
-				d.IsMultiNameTail = true
-			}
 			if strings.HasPrefix(typeHint, "func:") {
 				d.IsFunc = true
 				params, ret := splitFuncBody(typeHint[5:])
@@ -1230,25 +1234,22 @@ func (p *parser) parseVarModifiers(d *ast.Data) {
 	}
 }
 
-func (p *parser) parseGroupedVars() []*ast.Data {
+func (p *parser) parseGroupedVars() [][]*ast.Data {
 	p.expect(LPAREN)
-	var vars []*ast.Data
+	var specs [][]*ast.Data
 	for !p.at(RPAREN) && !p.at(EOF) {
 		p.skipSemicolons()
 		if p.at(RPAREN) {
 			break
 		}
-		vars = append(vars, p.parseVarSpec()...)
+		specs = append(specs, p.parseVarSpec())
 		if p.at(COMMA) {
 			p.advance()
 		}
 		p.skipSemicolons()
 	}
 	p.expect(RPAREN)
-	for _, s := range vars {
-		s.Grouped = true
-	}
-	return vars
+	return specs
 }
 
 // --- Function definitions ---
