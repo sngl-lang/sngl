@@ -71,8 +71,8 @@ const (
 	PERCENT_ASSIGN TokenType = 0x30 // %=
 
 	// Keywords
-	KW_IMPORT    TokenType = 0x31
-	KW_OUTPUT    TokenType = 0x32
+	KW_IMPORT TokenType = 0x31
+	// 0x32 freed: output is now a pre-declared identifier
 	KW_STRUCT    TokenType = 0x33
 	KW_ENUM      TokenType = 0x34
 	KW_CONST     TokenType = 0x35
@@ -84,14 +84,12 @@ const (
 	KW_ELSE      TokenType = 0x3B
 	KW_FUNC      TokenType = 0x3C
 	KW_UNIT      TokenType = 0x3D
-	KW_TIMER     TokenType = 0x3E
-	KW_TEST      TokenType = 0x3F
-	KW_RETURN    TokenType = 0x40
-	KW_PLATFORM  TokenType = 0x41
-	KW_WINDOW    TokenType = 0x42
-	KW_TRUE      TokenType = 0x43
-	KW_FALSE     TokenType = 0x44
-	KW_NULL      TokenType = 0x45
+	// 0x3E freed: timer is now a pre-declared identifier
+	KW_BREAK    TokenType = 0x3F // reserved
+	KW_RETURN   TokenType = 0x40
+	KW_CONTINUE TokenType = 0x41 // reserved
+	// 0x42 freed: window is now a pre-declared identifier
+	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
 	SLASHDASH     TokenType = 0x46 // /-
@@ -101,7 +99,6 @@ const (
 
 var keywords = map[string]TokenType{
 	"import":    KW_IMPORT,
-	"output":    KW_OUTPUT,
 	"struct":    KW_STRUCT,
 	"enum":      KW_ENUM,
 	"const":     KW_CONST,
@@ -113,15 +110,10 @@ var keywords = map[string]TokenType{
 	"else":      KW_ELSE,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
-	"timer":     KW_TIMER,
-	"test":      KW_TEST,
-	"return":    KW_RETURN,
-	"platform":  KW_PLATFORM,
-	"window":    KW_WINDOW,
-	// true/false/null are now proper keywords in v2
-	"true":  KW_TRUE,
-	"false": KW_FALSE,
-	"null":  KW_NULL,
+	"break":    KW_BREAK,
+	"return":   KW_RETURN,
+	"continue": KW_CONTINUE,
+	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
 }
 
 // LookupIdent returns the keyword TokenType for s, or IDENT if not a keyword.
@@ -144,17 +136,17 @@ type Token struct {
 func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STRING, TRIPLE_STRING, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
-		KW_TRUE, KW_FALSE, KW_NULL, KW_RETURN,
+		KW_RETURN,
 		AT, RPAREN, RBRACKET, RBRACE:
 		return true
 	}
 	return false
 }
 
-func isDigit(ch rune) bool     { return ch >= '0' && ch <= '9' }
-func isLetter(ch rune) bool    { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') }
-func isIdentStart(ch rune) bool  { return isLetter(ch) || ch == '_' }
-func isIdentCont(ch rune) bool   { return isLetter(ch) || isDigit(ch) || ch == '_' }
+func isDigit(ch rune) bool      { return ch >= '0' && ch <= '9' }
+func isLetter(ch rune) bool     { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') }
+func isIdentStart(ch rune) bool { return isLetter(ch) || ch == '_' }
+func isIdentCont(ch rune) bool  { return isLetter(ch) || isDigit(ch) || ch == '_' }
 func isHexDigit(ch rune) bool {
 	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }

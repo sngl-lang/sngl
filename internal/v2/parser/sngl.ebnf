@@ -6,7 +6,6 @@
 #
 # Terminal name → byte (hex) → v2 token
 # ──────────────────────────────────────
-# illegal       0x01  ILLEGAL
 # semi          0x02  SEMICOLON (explicit or ASI-inserted)
 # ident         0x03  IDENT
 # int_lit       0x04  INT
@@ -28,7 +27,6 @@
 # colon         0x14  COLON   :
 # assign        0x15  ASSIGN  =
 # at            0x16  AT      @
-# pipe          0x17  PIPE    |
 # arrow         0x18  ARROW   ->
 # fat_arrow     0x19  FAT_ARROW =>
 # ellipsis      0x1A  ELLIPSIS ...
@@ -55,7 +53,6 @@
 # slash_assign  0x2F  SLASH_ASSIGN  /=
 # pct_assign    0x30  PERCENT_ASSIGN %=
 # kw_import     0x31  KW_IMPORT
-# kw_output     0x32  KW_OUTPUT
 # kw_struct     0x33  KW_STRUCT
 # kw_enum       0x34  KW_ENUM
 # kw_const      0x35  KW_CONST
@@ -67,13 +64,7 @@
 # kw_else       0x3B  KW_ELSE
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
-# kw_timer      0x3E  KW_TIMER
 # kw_return     0x40  KW_RETURN
-# kw_platform   0x41  KW_PLATFORM
-# kw_window     0x42  KW_WINDOW
-# kw_true       0x43  KW_TRUE
-# kw_false      0x44  KW_FALSE
-# kw_null       0x45  KW_NULL
 # slashdash     0x46  SLASHDASH /-
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
@@ -126,7 +117,6 @@ star_assign  = `\x2E` .
 slash_assign = `\x2F` .
 pct_assign   = `\x30` .
 kw_import    = `\x31` .
-kw_output    = `\x32` .
 kw_struct    = `\x33` .
 kw_enum      = `\x34` .
 kw_const     = `\x35` .
@@ -138,13 +128,7 @@ kw_for       = `\x3A` .
 kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
-kw_timer     = `\x3E` .
 kw_return    = `\x40` .
-kw_platform  = `\x41` .
-kw_window    = `\x42` .
-kw_true      = `\x43` .
-kw_false     = `\x44` .
-kw_null      = `\x45` .
 slashdash    = `\x46` .
 
 # ── Document ─────────────────────────────────────────────────────────────────
@@ -153,45 +137,36 @@ Document = { [ slashdash ] Stmt semi } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
-# All declaration types are valid as statements in any context. Scope enforcement
-# (e.g. import at top-level only, window inside component only) is deferred to the IR lifter.
+# Removed from keywords (now plain identifiers): output, timer, true, false, null.
+# Emit statements and visual nodes both parse as VisualOrStmt.
+# Scope/position enforcement is deferred to the IR lifter.
 #
-# Stmt first-token sets are all disjoint:
+# Stmt first-token sets (all disjoint):
 #   kw_import     → ImportDecl
-#   kw_output     → OutputDecl
 #   kw_struct     → StructDecl
 #   kw_enum       → EnumDecl
 #   kw_unit       → UnitDecl
 #   kw_style      → StyleDecl
-#   kw_timer      → TimerDecl
 #   kw_const      → ConstDecl
 #   kw_var        → VarDecl
-#   kw_func       → FuncDecl  (kw_func excluded from StatementPrimary/VisualOrStmt)
-#   kw_window     → WindowDecl
+#   kw_func       → FuncDecl  (excluded from StatementPrimary)
 #   kw_component  → ComponentDecl
-#   kw_platform   → PlatformBlock
 #   kw_return     → return statement
-#   at            → emit statement
 #   kw_if         → IfNode
 #   kw_for        → ForNode
-#   everything else → VisualOrStmt
+#   everything else → VisualOrStmt (visual nodes, calls, assignments, emits)
 
 Stmt =
       ImportDecl
-    | OutputDecl
     | StructDecl
     | EnumDecl
     | UnitDecl
     | StyleDecl
-    | TimerDecl
     | ConstDecl
     | VarDecl
     | FuncDecl
-    | WindowDecl
     | ComponentDecl
-    | PlatformBlock
     | kw_return [ Expr ]
-    | at ident lparen [ ArgList ] rparen
     | IfNode
     | ForNode
     | VisualOrStmt
@@ -203,34 +178,22 @@ StmtBlock = lbrace { [ slashdash ] Stmt semi } rbrace .
 
 ImportDecl = kw_import [ ident fat_arrow ] string_lit .
 
-# ── Output ────────────────────────────────────────────────────────────────────
-#
-# Output block uses a normal StmtBlock, so if/for are allowed.
-# Lang and platform lines parse as VisualOrStmt:
-#   go { bubbletea { target = "cmd/app" } }
-#   if debug { go { bubbletea { debug = "true" } } }
-
-OutputDecl = kw_output [ lparen [ ArgList ] rparen ] StmtBlock .
-
 # ── Type declarations ─────────────────────────────────────────────────────────
 
 StructDecl = kw_struct ident lbrace { StructField } rbrace .
 
 StructField = ident TypeHint [ assign Expr ] semi .
 
-EnumDecl = kw_enum ident lbrace EnumValue { comma EnumValue } rbrace .
+# Enum values use a brace list: enum Color{Red, Green, Blue} or enum Status{ok=0, err=1}
+# The body is a comma-separated ArgList, not a StmtBlock (no semis).
+EnumDecl = kw_enum ident lbrace [ ArgList ] rbrace .
 
-EnumValue = ident .
-
-UnitDecl = kw_unit ident lparen UnitSuffix { comma UnitSuffix } rparen .
-
-UnitSuffix = ident [ assign Expr ] .
+# Unit suffixes use the same brace list: unit Length{px, em, rem=16}
+UnitDecl = kw_unit ident lbrace [ ArgList ] rbrace .
 
 # ── Style ─────────────────────────────────────────────────────────────────────
 
-StyleDecl = kw_style ident lbrace { StyleProp } rbrace .
-
-StyleProp = ident assign Expr semi .
+StyleDecl = kw_style ident StmtBlock .
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -252,21 +215,16 @@ VarDecl =
 
 VarSpec = IdentList [ TypeHint ] assign Expr { VarHandler } .
 
-VarHandler =
-      at ident lparen [ IdentList ] rparen StmtBlock
-    | at ident StmtBlock
-    .
+# Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
+VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 
 # ── Functions ─────────────────────────────────────────────────────────────────
 #
-# Two forms (v1-compatible, no -> separator needed):
+# Two forms:
 #   func name [<T>] [params] => Expr          (expression body)
 #   func name [<T>] [params] [TypeHint] { }   (statement body, optional return type)
 #
-# LL(1) disambiguation after params:
-#   fat_arrow → expression body
-#   ident | kw_func → TypeHint, then StmtBlock
-#   lbrace → no TypeHint, StmtBlock directly
+# LL(1) after params: fat_arrow → expr body; ident|kw_func → TypeHint; lbrace → StmtBlock.
 
 FuncDecl = kw_func FuncName [ TypeParamList ] FuncTail .
 
@@ -288,55 +246,40 @@ ParamList = Param { comma Param } .
 
 Param = ident [ TypeHint ] [ assign Expr ] .
 
-# ── Timers ────────────────────────────────────────────────────────────────────
-
-TimerDecl = kw_timer Expr ident StmtBlock .
-
-# ── Windows ───────────────────────────────────────────────────────────────────
-
-WindowDecl = kw_window [ ident ] [ lparen [ ArgList ] rparen ] StmtBlock .
-
 # ── Components ────────────────────────────────────────────────────────────────
 
 ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ TypeHint ] StmtBlock .
 
 CompParamList = CompParam { comma CompParam } .
 
-# CompParam first tokens:
-#   colon  → bidirectional binding  :field
-#   at     → event declaration      @event
-#   ident  → regular/typed param
+# CompParam first tokens: colon → binding :field, at → event @event, ident → regular param.
 CompParam =
       colon ident [ TypeHint ] [ assign Expr ]
     | at ident [ TypeHint ]
     | ident CompParamTail
     .
 
-# After seeing 'ident' as param name, the next token determines the form:
-#   assign  → optional default with no type hint:  name = Expr
-#   TypeHint starts (ident, kw_func) → typed param: name TypeHint [= Expr]
 CompParamTail =
       assign Expr
     | TypeHint [ assign Expr ]
     .
 
-# ── Platform blocks ───────────────────────────────────────────────────────────
-
-PlatformBlock = kw_platform ident StmtBlock .
-
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #
-# VisualOrStmt unifies expression statements (assignments, calls, toggles) and
-# visual node declarations. Both parse as PostfixExpr; the tail disambiguates:
+# VisualOrStmt unifies: visual node declarations, function/emit calls, assignments,
+# and toggles. All parse as StatementPrimary followed by PostfixOps.
 #
-#   PostfixExpr StmtBlock     → visual node with child body
-#   PostfixExpr AssignOp Expr → assignment statement
-#   PostfixExpr bangbang      → toggle statement
-#   PostfixExpr (semi)        → bare expression statement (call, ident, etc.)
+# StmtBlock is a PostfixOp, so trailing bodies attach naturally:
+#   Button { Text("hi") }           → ident + StmtBlock postfix
+#   Button(text="hi") { }           → ident + call postfix + StmtBlock postfix
+#   @tick { progress += 0.01 }      → at-ident primary + StmtBlock postfix
+#   @click(e) { doSomething() }     → at-ident primary + call postfix + StmtBlock postfix
+#   output { go { bubbletea { } } } → ident primary + StmtBlock postfix (nested)
+#   timer(interval=1s, @tick { })   → ident + call postfix (with @tick in ArgList)
 #
-# kw_func is excluded from StatementPrimary — it is handled by FuncDecl in Stmt.
+# kw_func is excluded from StatementPrimary — handled by FuncDecl in Stmt.
 
-VisualOrStmt = StatementPrimary { PostfixOp } [ StmtBlock | AssignOp Expr | bangbang ] .
+VisualOrStmt = StatementPrimary { PostfixOp } [ AssignOp Expr | bangbang ] .
 
 StatementPrimary =
       int_lit
@@ -346,13 +289,11 @@ StatementPrimary =
     | triple_str
     | raw_str
     | color
-    | kw_true
-    | kw_false
-    | kw_null
     | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
+    | at ident
     | ident
     .
 
@@ -390,6 +331,8 @@ UnaryExpr =
 
 PostfixExpr = PrimaryExpr { PostfixOp } .
 
+# StmtBlock as a PostfixOp enables trailing bodies on any expression:
+#   foo { }  foo(x) { }  @event { }  @event(e) { }
 PostfixOp =
       dot ident
     | dot at ident
@@ -397,6 +340,7 @@ PostfixOp =
     | elem_ref
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
+    | StmtBlock
     .
 
 PrimaryExpr =
@@ -407,14 +351,12 @@ PrimaryExpr =
     | triple_str
     | raw_str
     | color
-    | kw_true
-    | kw_false
-    | kw_null
     | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
+    | at ident
     | ident
     .
 
@@ -435,29 +377,18 @@ FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 
 # ── Argument list (unified: positional, named, binding, event) ────────────────
 #
-# Named args (foo = value) enable struct-literal syntax: Foo(x=1, y=2).
-# Binding args (:field) and event args (@event {...}) enable visual-node syntax.
-# The AST builder resolves whether a call is a struct literal, visual node, or function
-# call during type checking.
+# Named args (foo=value) → struct literal syntax: Foo(x=1, y=2)
+# Binding args (:field)  → visual node prop binding
+# Event args (@event { }) → event handlers; StmtBlock attaches via PostfixOp
 #
-# Left-factored on 'ident' to resolve the LL(1) conflict between:
+# Left-factored on 'ident' to resolve the predict conflict between:
 #   named arg:       ident assign Expr
 #   positional expr: ident (anything else)
-#
-# Arg first-token sets (all disjoint):
-#   colon      → binding prop  :field
-#   at         → event prop    @event
-#   ellipsis   → spread        ...expr
-#   ident      → named or expr (disambiguated in IdentArgCont)
-#   bang       → unary !
-#   minus      → unary -
-#   everything else → non-ident primary expression
 
 ArgList = Arg { comma Arg } .
 
 Arg =
       colon ident [ TypeHint ] [ assign Expr ]
-    | at ident PropEventTail
     | ellipsis Expr
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
@@ -465,15 +396,13 @@ Arg =
     | NonIdentPrimary { PostfixOp } ArgExprCont
     .
 
-# After consuming 'ident' at the start of an arg:
-#   assign      → named arg   (foo = value)
-#   anything else → expression continuation (postfix ops + binary/ternary ops)
+# After consuming 'ident': assign → named arg; anything else → expression.
 IdentArgCont =
       assign Expr
     | { PostfixOp } ArgExprCont
     .
 
-# Flattened binary + ternary suffix following a PostfixExpr / UnaryExpr.
+# Flattened binary + ternary suffix after a PostfixExpr.
 # Each operator level uses a disjoint first-token set → LL(1) clean.
 ArgExprCont =
       { MulOp UnaryExpr }
@@ -485,7 +414,8 @@ ArgExprCont =
       [ question Expr colon Expr ]
       .
 
-# All PrimaryExpr alternatives except 'ident' (handled separately in Arg above).
+# All PrimaryExpr alternatives except 'ident' (handled separately above).
+# Includes 'at ident' so event args (@click { }) parse as NonIdentPrimary + PostfixOps.
 NonIdentPrimary =
       int_lit
     | float_lit
@@ -494,29 +424,15 @@ NonIdentPrimary =
     | triple_str
     | raw_str
     | color
-    | kw_true
-    | kw_false
-    | kw_null
     | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
-    .
-
-# Event handler tail: @click(e) { … } or @click { … }
-PropEventTail =
-      lparen [ ident ] rparen StmtBlock
-    | StmtBlock
+    | at ident
     .
 
 # ── Types ─────────────────────────────────────────────────────────────────────
-#
-# TypeHint starts with ident (named type, qualified type, generic) or kw_func (function type).
-# After ident, left-factor:
-#   ident            → plain named type
-#   ident dot ident  → qualified type (ns.Type)
-#   ident lt T gt    → generic (list<T>, option<T>)
 
 TypeHint =
       ident [ dot ident | lt TypeHint gt ]
