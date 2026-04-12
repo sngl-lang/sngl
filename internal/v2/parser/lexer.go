@@ -338,20 +338,20 @@ func (l *lexer) scanNumber(startLine, startCol int) Token {
 		}
 		// Unit suffix on float
 		if l.pos < len(l.input) && isLetter(l.input[l.pos]) {
-			return l.scanUnitSuffix(sb, startLine, startCol)
+			return l.scanUnitSuffix(&sb, startLine, startCol)
 		}
 		return l.tok(FLOAT, sb.String(), startLine, startCol)
 	}
 
 	// Unit suffix on integer
 	if l.pos < len(l.input) && isLetter(l.input[l.pos]) {
-		return l.scanUnitSuffix(sb, startLine, startCol)
+		return l.scanUnitSuffix(&sb, startLine, startCol)
 	}
 
 	return l.tok(INT, sb.String(), startLine, startCol)
 }
 
-func (l *lexer) scanUnitSuffix(sb strings.Builder, startLine, startCol int) Token {
+func (l *lexer) scanUnitSuffix(sb *strings.Builder, startLine, startCol int) Token {
 	for l.pos < len(l.input) && isLetter(l.input[l.pos]) {
 		sb.WriteRune(l.advance())
 	}

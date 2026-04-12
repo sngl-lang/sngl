@@ -77,7 +77,7 @@ const (
 	KW_ENUM      TokenType = 0x34
 	KW_CONST     TokenType = 0x35
 	KW_VAR       TokenType = 0x36
-	KW_STYLE     TokenType = 0x37
+	// 0x37 freed: style is now a pre-declared identifier
 	KW_COMPONENT TokenType = 0x38
 	KW_IF        TokenType = 0x39
 	KW_FOR       TokenType = 0x3A
@@ -110,7 +110,7 @@ var keywords = map[string]TokenType{
 	"enum":      KW_ENUM,
 	"const":     KW_CONST,
 	"var":       KW_VAR,
-	"style":     KW_STYLE,
+	// style is now a pre-declared identifier, not a keyword
 	"component": KW_COMPONENT,
 	"if":        KW_IF,
 	"for":       KW_FOR,

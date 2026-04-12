@@ -57,7 +57,7 @@
 # kw_enum       0x34  KW_ENUM
 # kw_const      0x35  KW_CONST
 # kw_var        0x36  KW_VAR
-# kw_style      0x37  KW_STYLE
+# 0x37 freed: style is now a pre-declared identifier
 # kw_component  0x38  KW_COMPONENT
 # kw_if         0x39  KW_IF
 # kw_for        0x3A  KW_FOR
@@ -126,7 +126,6 @@ kw_struct    = `\x33` .
 kw_enum      = `\x34` .
 kw_const     = `\x35` .
 kw_var       = `\x36` .
-kw_style     = `\x37` .
 kw_component = `\x38` .
 kw_if        = `\x39` .
 kw_for       = `\x3A` .
@@ -148,7 +147,7 @@ TripleInterp = triple_start Expr { str_resume Expr } triple_end .
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
-Document = { [ slashdash ] Stmt semi } .
+Document = { [ slashdash ] Stmt [ semi ] } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -161,7 +160,6 @@ Document = { [ slashdash ] Stmt semi } .
 #   kw_struct     → StructDecl
 #   kw_enum       → EnumDecl
 #   kw_unit       → UnitDecl
-#   kw_style      → StyleDecl
 #   kw_const      → ConstDecl
 #   kw_var        → VarDecl
 #   kw_func       → FuncDecl  (excluded from StatementPrimary)
@@ -176,7 +174,6 @@ Stmt =
     | StructDecl
     | EnumDecl
     | UnitDecl
-    | StyleDecl
     | ConstDecl
     | VarDecl
     | FuncDecl
@@ -187,7 +184,7 @@ Stmt =
     | VisualOrStmt
     .
 
-StmtBlock = lbrace { [ slashdash ] Stmt semi } rbrace .
+StmtBlock = lbrace { [ slashdash ] Stmt [ semi ] } rbrace .
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
@@ -208,13 +205,13 @@ UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
 
 # ── Style ─────────────────────────────────────────────────────────────────────
 
-StyleDecl = kw_style ident StmtBlock .
+# style is no longer a keyword — style blocks parse as ident StmtBlock via VisualOrStmt.
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 ConstDecl =
       kw_const ConstSpec
-    | kw_const lparen ConstSpec { comma ConstSpec } rparen
+    | kw_const lparen { ConstSpec [ comma | semi ] } rparen
     .
 
 ConstSpec = IdentList [ Type ] assign Expr .
@@ -225,10 +222,10 @@ IdentList = ident { comma ident } .
 
 VarDecl =
       kw_var VarSpec
-    | kw_var lparen VarSpec { comma VarSpec } rparen
+    | kw_var lparen { VarSpec [ comma | semi ] } rparen
     .
 
-VarSpec = IdentList [ Type ] assign Expr { VarHandler } .
+VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
 VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
@@ -271,7 +268,7 @@ CompParamList = CompParam { comma CompParam } .
 CompParam =
       colon ident [ Type ] [ assign Expr ]
     | at ident [ Type ]
-    | ident CompParamTail
+    | ident [ CompParamTail ]
     .
 
 CompParamTail =
@@ -412,10 +409,10 @@ ListElem = ellipsis Expr | Expr .
 
 # Named struct literal body: Point{x=1, y=2} or pkg.Point{x=1, y=2}.
 # Used after ident in PrimaryExpr and after dot-ident in ExprPostfixOp.
-StructLitBody = lbrace [ AnonField { comma AnonField } ] rbrace .
+StructLitBody = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi ] ] rbrace .
 
 # Anonymous struct literal: {field = expr, …}  — starts with lbrace, unambiguous.
-AnonStructLit = lbrace [ AnonField { comma AnonField } ] rbrace .
+AnonStructLit = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi ] ] rbrace .
 
 AnonField =
       ellipsis Expr
@@ -435,7 +432,7 @@ FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 #   named arg:       ident assign Expr
 #   positional expr: ident (anything else)
 
-ArgList = Arg { comma Arg } .
+ArgList = Arg { (comma | semi) Arg } [ comma | semi ] .
 
 Arg =
       colon ident [ Type ] [ assign Expr ]
@@ -492,6 +489,7 @@ NonIdentPrimary =
 
 Type =
       ident [ dot ident | lt Type gt ]
+    | kw_component
     | kw_func lparen [ TypeList ] rparen [ arrow Type ]
     | EnumDecl
     .

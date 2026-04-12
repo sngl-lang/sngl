@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/v2/ast"
@@ -519,4 +522,62 @@ func identNameTest(e ast.Expr) string {
 		return id.Name
 	}
 	return ""
+}
+
+func hasParseError(src []byte) bool {
+	for _, line := range strings.Split(string(src), "\n") {
+		if strings.Contains(line, `ERROR(parse)`) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestParseTestdata(t *testing.T) {
+	// Files using v1-only syntax intentionally changed in v2:
+	//   enum<...> inline enums      → use enum { ... } anonymous syntax
+	//   required keyword on params  → dropped
+	//   unit name(...) with parens  → use unit name { ... }
+	//   style as identifier         → now kw_style keyword
+	//   bare binary expr as stmt    → v2 requires postfix-chain statements
+	v1Only := map[string]string{
+		"enum_inline.sngl":              "enum<...> inline syntax",
+		"checker_type_hints.sngl":       "enum<...> inline syntax",
+		"error_missing_required.sngl":   "required keyword",
+		"error_unit_types.sngl":         "unit name(...) parens syntax",
+		"test_unit_types.sngl":          "unit name(...) parens syntax",
+		"test_units.sngl":               "unit name(...) parens syntax",
+		"error_event_not_mutation.sngl": "bare binary expr as statement",
+		"test_numeric_literals.sngl":    "non-decimal integer literals",
+		"lsp_complete_visual_node.sngl": "required keyword",
+		"lsp_diag_required_prop.sngl":   "required keyword",
+		"lsp_hover_component.sngl":      "required keyword",
+	}
+
+	testdataDir := filepath.Join("..", "..", "..", "testdata")
+	entries, err := os.ReadDir(testdataDir)
+	if err != nil {
+		t.Fatalf("reading testdata: %v", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		t.Run(e.Name(), func(t *testing.T) {
+			if reason, ok := v1Only[e.Name()]; ok {
+				t.Skipf("v1-only syntax: %s", reason)
+			}
+			src, err := os.ReadFile(filepath.Join(testdataDir, e.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if hasParseError(src) {
+				t.Skip("has ERROR(parse) directive")
+			}
+			_, err = Parse(e.Name(), src)
+			if err != nil {
+				t.Errorf("parse failed: %v", err)
+			}
+		})
+	}
 }

@@ -149,8 +149,6 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildEnumDecl(it.enter())
 		case UnitDecl:
 			return b.buildUnitDecl(it.enter())
-		case StyleDecl:
-			return b.buildStyleDecl(it.enter())
 		case ConstDecl:
 			return b.buildConstDecl(it.enter())
 		case VarDecl:
@@ -359,22 +357,6 @@ func (b *builder) buildUnitSuffix(it nodeIter) *ast.UnitSuffix {
 }
 
 // --- Style declaration ---
-
-func (b *builder) buildStyleDecl(it nodeIter) ast.Stmt {
-	// StyleDecl = kw_style ident StmtBlock .
-	pos := b.posFromToken(it.shift()) // kw_style
-	name := it.shift().Literal
-	var block ast.StmtBlock
-	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
-		block = b.buildStmtBlock(it.enter())
-	}
-	return &ast.VisualNode{
-		Pos:    ast.Pos(pos),
-		Target: &ast.IdentExpr{Pos: ast.Pos(pos), Name: "style"},
-		Args:   ast.ArgList{Args: []ast.ArgOrEventHandler{ast.Arg{Value: &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: name}}}},
-		Block:  block,
-	}
-}
 
 // --- Const/Var declarations ---
 
@@ -1911,7 +1893,7 @@ func (b *builder) buildNonIdentPrimary(it nodeIter) ast.Expr {
 // --- Types ---
 
 func (b *builder) buildType(it nodeIter) ast.TypeExpr {
-	// Type = ident [ dot ident | lt Type gt ] | kw_func lparen [TypeList] rparen [arrow Type] | EnumDecl .
+	// Type = ident [ dot ident | lt Type gt ] | kw_component | kw_func lparen [TypeList] rparen [arrow Type] | EnumDecl .
 	if it.done() {
 		return nil
 	}
@@ -1924,6 +1906,9 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 	}
 	tok := it.token()
 	switch tok.Type {
+	case KW_COMPONENT:
+		pos := b.posFromToken(it.shift())
+		return &ast.NamedType{Pos: pos, Name: "component"}
 	case IDENT:
 		nameTok := it.shift()
 		nt := &ast.NamedType{Pos: b.posFromToken(nameTok), Name: nameTok.Literal}
