@@ -2,16 +2,21 @@
 //
 // Steps:
 //  1. go generate ./...
-//  2. git diff to detect uncommitted generated code
+//  2. go fmt ./...
 //  3. go fix ./...
 //  4. go vet ./...
 //  5. go test -cover ./...
 //
-// Usage: go tool verify [-v]
+// The -dry flag skips file-mutating steps: generate is skipped entirely,
+// fmt and fix run in check-only mode (reporting differences without writing),
+// and SNGL_FMT_DOCS is not set for tests.
+//
+// Usage: go tool verify [-v] [-dry]
 package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -33,18 +38,38 @@ type pkgResult struct {
 
 func main() {
 	verbose := flag.Bool("v", false, "pass -v to go test")
+	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	flag.Parse()
 
 	log.SetFlags(0)
 
-	// Step 1: go generate
-	if !runStep("generate", "go", "generate", "./...") {
-		os.Exit(1)
+	// Step 1: go generate (skip in dry mode)
+	if !*dry {
+		if !runStep("generate", "go", "generate", "./...") {
+			os.Exit(1)
+		}
+	}
+
+	// Step 2: go fmt
+	if *dry {
+		if !runCheckStep("fmt", "gofmt", "-l", ".") {
+			os.Exit(1)
+		}
+	} else {
+		if !runStep("fmt", "go", "fmt", "./...") {
+			os.Exit(1)
+		}
 	}
 
 	// Step 3: go fix
-	if !runStep("fix", "go", "fix", "./...") {
-		os.Exit(1)
+	if *dry {
+		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
+			os.Exit(1)
+		}
+	} else {
+		if !runStep("fix", "go", "fix", "./...") {
+			os.Exit(1)
+		}
 	}
 
 	// Step 4: go vet
@@ -53,7 +78,7 @@ func main() {
 	}
 
 	// Step 5: go test with coverage
-	runTests(*verbose)
+	runTests(*verbose, !*dry)
 }
 
 func runStep(name string, command string, args ...string) bool {
@@ -68,7 +93,28 @@ func runStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose bool) {
+// runCheckStep runs a command and fails if it produces any stdout output,
+// indicating that files need changes.
+func runCheckStep(name string, command string, args ...string) bool {
+	fmt.Printf(">>> %s %s\n", command, strings.Join(args, " "))
+	cmd := exec.Command(command, args...)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if buf.Len() > 0 {
+		fmt.Print(buf.String())
+		log.Printf("%s: files need changes", name)
+		return false
+	}
+	if err != nil {
+		log.Printf("%s failed: %v", name, err)
+		return false
+	}
+	return true
+}
+
+func runTests(verbose, fmtDocs bool) {
 	args := []string{"test", "-cover"}
 	if verbose {
 		args = append(args, "-v")
@@ -78,6 +124,9 @@ func runTests(verbose bool) {
 	fmt.Printf(">>> go %s\n", strings.Join(args, " "))
 
 	cmd := exec.Command("go", args...)
+	if fmtDocs {
+		cmd.Env = append(os.Environ(), "SNGL_FMT_DOCS=1")
+	}
 	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.StdoutPipe()
