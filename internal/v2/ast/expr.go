@@ -9,11 +9,13 @@ type Expr interface {
 // or anonymous declaration (StructDef, EnumDef, UnitDef).
 type TypeExpr interface {
 	Expr
+	typeExpr()
 }
 
 // TargetExpr is an expression for an addressable target value.
 type TargetExpr interface {
 	Expr
+	targetExpr()
 }
 
 // --- Enums ---
@@ -192,9 +194,10 @@ type StructFieldLit struct {
 	Spread bool // if true, Value is the spread operand
 }
 
-// StructExpr is a struct literal: Name{field = value, ...expr}.
+// StructExpr is a struct literal: Name{field = value, ...expr} or pkg.Name{...}.
 type StructExpr struct {
 	Pos
+	Package   string // qualifier in pkg.Type (empty if unqualified)
 	Name      string
 	Fields    []StructFieldLit
 	Multiline bool
@@ -339,6 +342,20 @@ func (x *StructDef) ExprPos() *Pos         { return &x.Pos }
 func (x *EnumDef) ExprPos() *Pos           { return &x.Pos }
 func (x *UnitDef) ExprPos() *Pos           { return &x.Pos }
 func (x *StmtBlock) ExprPos() *Pos         { return &x.Pos }
+
+// --- typeExpr implementations ---
+
+func (*NamedType) typeExpr()  {}
+func (*FuncType) typeExpr()   {}
+func (*StructDef) typeExpr()  {}
+func (*EnumDef) typeExpr()    {}
+func (*UnitDef) typeExpr()    {}
+
+// --- targetExpr implementations ---
+
+func (*IdentExpr) targetExpr()  {}
+func (*SelectExpr) targetExpr() {}
+func (*IndexExpr) targetExpr()  {}
 
 func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
 func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }

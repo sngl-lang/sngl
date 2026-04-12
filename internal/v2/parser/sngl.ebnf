@@ -294,7 +294,7 @@ CompParamTail =
 #
 # kw_func is excluded from StatementPrimary — handled by FuncDecl in Stmt.
 
-VisualOrStmt = StatementPrimary { PostfixOp } [ AssignOp Expr | bangbang ] .
+VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | bangbang ] .
 
 StatementPrimary =
       int_lit
@@ -346,11 +346,22 @@ UnaryExpr =
     | minus UnaryExpr
     .
 
-PostfixExpr = PrimaryExpr { PostfixOp } .
+PostfixExpr = PrimaryExpr { ExprPostfixOp } .
 
-# StmtBlock as a PostfixOp enables trailing bodies on any expression:
-#   foo { }  foo(x) { }  @event { }  @event(e) { }
-PostfixOp =
+# Expression context: struct lit available via dot-ident, NO StmtBlock.
+# lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]
+# in PrimaryExpr is LL(1) conflict-free.
+ExprPostfixOp =
+      dot ident [ StructLitBody ]
+    | dot at ident
+    | dot elem_ref
+    | elem_ref
+    | lbracket Expr rbracket
+    | lparen [ ArgList ] rparen
+    .
+
+# Statement context: StmtBlock for visual node bodies, NO struct lit.
+StmtPostfixOp =
       dot ident
     | dot at ident
     | dot elem_ref
@@ -376,12 +387,16 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | at ident
-    | ident
+    | ident [ StructLitBody ]
     .
 
 ListBody = [ ListElem { comma ListElem } ] .
 
 ListElem = ellipsis Expr | Expr .
+
+# Named struct literal body: Point{x=1, y=2} or pkg.Point{x=1, y=2}.
+# Used after ident in PrimaryExpr and after dot-ident in ExprPostfixOp.
+StructLitBody = lbrace [ AnonField { comma AnonField } ] rbrace .
 
 # Anonymous struct literal: {field = expr, …}  — starts with lbrace, unambiguous.
 AnonStructLit = lbrace [ AnonField { comma AnonField } ] rbrace .
@@ -412,13 +427,17 @@ Arg =
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
     | minus UnaryExpr ArgExprCont
-    | NonIdentPrimary { PostfixOp } ArgExprCont
+    | NonIdentPrimary { StmtPostfixOp } ArgExprCont
     .
 
-# After consuming 'ident': assign → named arg; anything else → expression.
+# After consuming 'ident':
+#   assign → named arg
+#   lbrace → struct literal (not in ExprPostfixOp FIRST)
+#   else   → expression postfix chain (ExprPostfixOp handles dot-ident + struct lit)
 IdentArgCont =
       assign Expr
-    | { PostfixOp } ArgExprCont
+    | StructLitBody { ExprPostfixOp } ArgExprCont
+    | { ExprPostfixOp } ArgExprCont
     .
 
 # Flattened binary + ternary suffix after a PostfixExpr.
