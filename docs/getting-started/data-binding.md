@@ -20,7 +20,7 @@ Types are inferred from default values. Explicit types are needed when the type 
 
 ```sngl
 var todos list<Todo> = []
-var mode enum<light | dark> = "light"
+var mode enum { light, dark } = "light"
 ```
 
 Group multiple declarations with parentheses:

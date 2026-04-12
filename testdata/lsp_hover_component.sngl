@@ -1,4 +1,4 @@
-component greeter(name string required) {
+component greeter(name string) {
     text(value=name) //@ hover("text", "stdlib")
 }
 

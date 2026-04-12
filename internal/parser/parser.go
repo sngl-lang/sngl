@@ -1456,6 +1456,18 @@ func (p *parser) parseFuncType() string {
 
 func (p *parser) parseInlineEnumType() string {
 	p.expect(KW_ENUM)
+	if p.at(LBRACE) {
+		p.advance()
+		var values []string
+		for !p.at(RBRACE) && !p.at(EOF) {
+			values = append(values, p.expect(IDENT).Literal)
+			if p.at(COMMA) {
+				p.advance()
+			}
+		}
+		p.expect(RBRACE)
+		return "enum:" + strings.Join(values, "|")
+	}
 	p.expect(LT)
 	var values []string
 	values = append(values, p.expect(IDENT).Literal)
@@ -2348,8 +2360,14 @@ func (p *parser) parseUnitDecl() *ast.UnitDef {
 	p.expect(KW_UNIT)
 	name := p.expect(IDENT).Literal
 	def := &ast.UnitDef{Pos: pos, Name: name}
-	p.expect(LPAREN)
-	for !p.at(RPAREN) && !p.at(EOF) {
+	close := RPAREN
+	if p.at(LBRACE) {
+		close = RBRACE
+		p.advance()
+	} else {
+		p.expect(LPAREN)
+	}
+	for !p.at(close) && !p.at(EOF) {
 		spos := p.pos()
 		sname := p.expect(IDENT).Literal
 		suffix := &ast.UnitSuffix{Pos: spos, Name: sname}
@@ -2362,6 +2380,6 @@ func (p *parser) parseUnitDecl() *ast.UnitDef {
 			p.advance()
 		}
 	}
-	p.expect(RPAREN)
+	p.expect(close)
 	return def
 }

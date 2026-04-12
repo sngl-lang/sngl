@@ -1,8 +1,8 @@
-component card(title string required) {
+component card(title string) {
     text(value=title)
 }
 
 component main {
-    vbox() { //@ complete("", "text", "button", "card")
-    }
+    vbox() {
+    } //@ complete("", "text", "button", "card")
 }

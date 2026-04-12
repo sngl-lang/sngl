@@ -1,5 +1,5 @@
 component main {
-    var mode enum<light | dark> = "light"
+    var mode enum { light, dark } = "light"
 
     text(value=mode)
 }

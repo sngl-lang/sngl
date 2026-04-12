@@ -20,7 +20,7 @@ struct Todo {
 }
 
 enum Status { active, inactive, pending }
-unit duration(ms, s = 1000ms, m = 60s, h = 60m)
+unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 style heading {
     fontSize = 24
 }
@@ -214,13 +214,13 @@ Enums can also be declared inline as a type annotation without a top-level decla
 <!-- SNGL-component -->
 
 ```sngl
-var mode enum<light | dark> = "light"
+var mode enum { light, dark } = "light"
 ```
 
 Inline enums can also be used as component parameter types:
 
 ```sngl
-component MyWidget(size enum<small | medium | large> = "medium") {
+component MyWidget(size enum { small, medium, large } = "medium") {
     text(value=size)
 }
 ```
@@ -232,8 +232,8 @@ Inline enums use `enum<value1 | value2 | ...>` syntax. At runtime, enum values a
 Declares a unit type with named suffixes and optional conversion factors:
 
 ```sngl
-unit duration(ms, s = 1000ms, m = 60s, h = 60m)
-unit measurement(px, em, rem = 16em, vw, vh, pct)
+unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+unit measurement { px, em, rem = 16em, vw, vh, pct }
 ```
 
 A bare suffix (e.g., `ms`, `px`) is an independent base. A suffix with a factor (e.g., `s = 1000ms`) converts to another suffix — meaning 1 `s` equals 1000 `ms`. Conversion factors chain: `m = 60s` means 1 `m` = 60 × 1000 `ms` = 60000 `ms`.

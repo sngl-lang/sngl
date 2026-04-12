@@ -947,7 +947,7 @@ func (f *formatter) formatUnitDecl(u *ast.UnitDef) {
 	var sb strings.Builder
 	sb.WriteString("unit ")
 	sb.WriteString(u.Name)
-	sb.WriteString("(")
+	sb.WriteString(" { ")
 	for i, s := range u.Suffixes {
 		if i > 0 {
 			sb.WriteString(", ")
@@ -958,7 +958,7 @@ func (f *formatter) formatUnitDecl(u *ast.UnitDef) {
 			sb.WriteString(FormatNode(s.Factor))
 		}
 	}
-	sb.WriteString(")")
+	sb.WriteString(" }")
 	f.writeLine(sb.String())
 }
 
@@ -1332,17 +1332,9 @@ func (f *formatter) formatComponent(comp *ast.Component) {
 				f.write(typeStr)
 			}
 			hasDefault := p.Default.SNGL != nil || p.Default.Literal != nil
-			if len(p.Enum) > 0 {
-				f.write(" enum(")
-				f.write(strings.Join(p.Enum, ", "))
-				f.write(")")
-			}
 			if hasDefault {
 				f.write(" = ")
 				f.writeExprValue(p.Default)
-			}
-			if p.Required {
-				f.write(" required")
 			}
 		}
 		for _, e := range events {
@@ -2264,7 +2256,21 @@ func writeLiteralExpr(sb io.Writer, e *ast.LiteralExpr) {
 	switch e.Kind {
 	case ast.LiteralInt:
 		if e.Raw != "" {
-			io.WriteString(sb, e.Raw)
+			if digits, ok := strings.CutPrefix(e.Raw, "0x"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 16)", strings.ReplaceAll(digits, "_", ""))
+			} else if digits, ok := strings.CutPrefix(e.Raw, "0X"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 16)", strings.ReplaceAll(digits, "_", ""))
+			} else if digits, ok := strings.CutPrefix(e.Raw, "0o"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 8)", strings.ReplaceAll(digits, "_", ""))
+			} else if digits, ok := strings.CutPrefix(e.Raw, "0O"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 8)", strings.ReplaceAll(digits, "_", ""))
+			} else if digits, ok := strings.CutPrefix(e.Raw, "0b"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 2)", strings.ReplaceAll(digits, "_", ""))
+			} else if digits, ok := strings.CutPrefix(e.Raw, "0B"); ok {
+				fmt.Fprintf(sb, "int.parse(%q, 2)", strings.ReplaceAll(digits, "_", ""))
+			} else {
+				io.WriteString(sb, e.Raw)
+			}
 		} else {
 			fmt.Fprintf(sb, "%d", e.Value)
 		}
@@ -2529,10 +2535,10 @@ func typeHintStr(hint string, d *ast.Data) string {
 		return sb.String()
 	}
 
-	// Inline enum: "enum:light|dark" → "enum<light | dark>"
+	// Inline enum: "enum:light|dark" → "enum { light, dark }"
 	if after, ok := strings.CutPrefix(hint, "enum:"); ok {
 		values := strings.Split(after, "|")
-		return "enum<" + strings.Join(values, " | ") + ">"
+		return "enum { " + strings.Join(values, ", ") + " }"
 	}
 
 	// Unit types: "unit:s" — inferred from unit literals, omit

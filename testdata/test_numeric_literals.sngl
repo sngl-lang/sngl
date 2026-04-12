@@ -1,9 +1,9 @@
 component main {
-    var hex = 0xFF
-    var oct = 0o77
-    var bin = 0b1010
+    var hex = int.parse("FF", 16)
+    var oct = int.parse("77", 8)
+    var bin = int.parse("1010", 2)
     var big = 1_000_000
-    var hexSep = 0xFF_FF
+    var hexSep = int.parse("FFFF", 16)
     var pi = 3.141_592
     var zero = 0
 

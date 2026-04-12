@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -21,6 +22,16 @@ func nativeMethod(qualName string, args []any) (any, bool, error) {
 type nativeFunc func(args []any) (any, error)
 
 var nativeMethods = map[string]nativeFunc{
+	// --- int ---
+	"int.parse": func(args []any) (any, error) {
+		s := fmt.Sprintf("%v", args[0])
+		base := toInt(args[1])
+		v, err := strconv.ParseInt(s, base, 64)
+		if err != nil {
+			return nil, fmt.Errorf("int.parse(%q, %d): %w", s, base, err)
+		}
+		return int(v), nil
+	},
 	// --- float math (accurate native implementations) ---
 	"float.floor": func(args []any) (any, error) {
 		return int(math.Floor(toFloat(args[0]))), nil

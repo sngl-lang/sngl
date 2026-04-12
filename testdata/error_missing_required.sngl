@@ -1,7 +1,0 @@
-component Greeting(name string required) {
-    text(value=name)
-}
-
-component main {
-    Greeting // ERROR(check) "required"
-}

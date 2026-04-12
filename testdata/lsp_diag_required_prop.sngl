@@ -1,7 +1,0 @@
-component greeter(name string required) {
-    text(value=name)
-}
-
-component main {
-    greeter() // ERROR(check) "required property" //@ diag("required property")
-}

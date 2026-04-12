@@ -169,7 +169,7 @@ Inline enums skip the top-level declaration when you need a one-off constraint:
 <!-- SNGL-component -->
 
 ```sngl
-var mode enum<light | dark> = "light"
+var mode enum { light, dark } = "light"
 ```
 
 At runtime, enum values are strings. The compiler validates assignments against declared variants.
@@ -179,8 +179,8 @@ At runtime, enum values are strings. The compiler validates assignments against 
 Units declare named suffixes with optional conversion factors:
 
 ```sngl
-unit duration(ms, s = 1000ms, m = 60s, h = 60m)
-unit measurement(px, em, rem = 16em, vw, vh, pct)
+unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+unit measurement { px, em, rem = 16em, vw, vh, pct }
 ```
 
 Same-base additions normalize automatically (`1s + 500ms` becomes `1500ms`). Different-base additions produce compound values (`16px + 2em`). Scalar multiplication and division work as expected (`3px * 2` is `6px`).
@@ -490,7 +490,7 @@ component Counter(label = "", start = 0) {
 Params are the component's public API. They are declared in parentheses after the component name and accept values from parent components:
 
 ```sngl
-component MyWidget(label = "default", count int, size enum<small | medium | large> = "medium") {
+component MyWidget(label = "default", count int, size enum { small, medium, large } = "medium") {
     text(value=label)
 }
 ```
