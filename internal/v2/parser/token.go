@@ -17,15 +17,15 @@ const (
 	SEMICOLON TokenType = 0x02 // ; (explicit or ASI-inserted)
 
 	// Literals
-	IDENT         TokenType = 0x03
-	INT           TokenType = 0x04 // decimal only in v2 (no 0x/0o/0b)
-	FLOAT         TokenType = 0x05
-	STRING        TokenType = 0x06 // "..." with {expr} interpolation
-	TRIPLE_STRING TokenType = 0x07 // """..."""
-	RAW_STRING    TokenType = 0x08 // `...`
-	COLOR         TokenType = 0x09 // #rrggbb or #rrggbbaa
-	UNIT_LITERAL  TokenType = 0x0A // 5px, 1.5em, 100ms …
-	ELEMENT_REF   TokenType = 0x0B // #identifier
+	IDENT        TokenType = 0x03
+	INT          TokenType = 0x04 // decimal only in v2 (no 0x/0o/0b)
+	FLOAT        TokenType = 0x05
+	STR_FULL     TokenType = 0x06 // "text" — complete string, no interpolation
+	TRIPLE_FULL  TokenType = 0x07 // """text""" — complete, no interpolation
+	RAW_STRING   TokenType = 0x08 // `...`
+	COLOR        TokenType = 0x09 // #rrggbb or #rrggbbaa
+	UNIT_LITERAL TokenType = 0x0A // 5px, 1.5em, 100ms …
+	ELEMENT_REF  TokenType = 0x0B // #identifier
 
 	// Punctuation
 	LPAREN    TokenType = 0x0C // (
@@ -95,6 +95,13 @@ const (
 	SLASHDASH     TokenType = 0x46 // /-
 	LINE_COMMENT  TokenType = 0x47 // // …
 	BLOCK_COMMENT TokenType = 0x48 // /* … */
+
+	// String interpolation boundary tokens
+	STR_START    TokenType = 0x49 // "text{  — opening segment
+	STR_END      TokenType = 0x4A // }text" — closing segment
+	STR_RESUME   TokenType = 0x4B // }text{ — middle segment (both " and """)
+	TRIPLE_START TokenType = 0x4C // """text{ — opening segment
+	TRIPLE_END   TokenType = 0x4D // }text""" — closing segment
 )
 
 var keywords = map[string]TokenType{
@@ -110,9 +117,9 @@ var keywords = map[string]TokenType{
 	"else":      KW_ELSE,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
-	"break":    KW_BREAK,
-	"return":   KW_RETURN,
-	"continue": KW_CONTINUE,
+	"break":     KW_BREAK,
+	"return":    KW_RETURN,
+	"continue":  KW_CONTINUE,
 	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
 }
 
@@ -135,7 +142,8 @@ type Token struct {
 // insertsSemicolon reports whether a token at end-of-line triggers ASI.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STRING, TRIPLE_STRING, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
+	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
+		STR_END, TRIPLE_END,
 		KW_RETURN,
 		AT, RPAREN, RBRACKET, RBRACE:
 		return true

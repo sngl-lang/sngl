@@ -1,12 +1,12 @@
 package ast
 
-// Expr represents any SNGL expression
-// The unexported method prevents external implementations.
+// Expr represents any SNGL expression.
 type Expr interface {
 	ExprPos() *Pos
 }
 
-// TypeExpr is an expression for a type, named or anonymous.
+// TypeExpr is a type expression: named, qualified, generic, function,
+// or anonymous declaration (StructDef, EnumDef, UnitDef).
 type TypeExpr interface {
 	Expr
 }
@@ -31,6 +31,15 @@ const (
 	LiteralNull
 	LiteralColor
 	LiteralUnit
+)
+
+// StringStyle identifies the quoting style of a string literal.
+type StringStyle int
+
+const (
+	StyleDouble StringStyle = iota // "..."
+	StyleTriple                    // """..."""
+	StyleRaw                       // `...`
 )
 
 // BinaryOp identifies a binary operator.
@@ -72,6 +81,34 @@ const (
 	AssignMod                 // %=
 )
 
+// SelectKind identifies the kind of member access in a SelectExpr.
+type SelectKind int
+
+const (
+	SelectField   SelectKind = iota // .field
+	SelectEvent                     // .@event
+	SelectElemRef                   // .#ref or #ref
+)
+
+// --- Type expressions ---
+
+// NamedType is a type reference: int, pkg.Type, List<int>.
+type NamedType struct {
+	Pos
+	Name    string   // type name
+	Package string   // qualifier in pkg.Type (empty if unqualified)
+	TypeArg TypeExpr // generic argument in List<int> (nil if not generic)
+}
+
+// FuncType is a function type: func(int, string) -> bool.
+type FuncType struct {
+	Pos
+	Params []TypeExpr // parameter types
+	Return TypeExpr   // nil for void
+}
+
+// StructDef, EnumDef, and UnitDef also implement TypeExpr for anonymous type forms.
+
 // --- Expressions ---
 
 // LiteralExpr is a literal value: int, float, string, bool, nil, color, unit.
@@ -90,6 +127,12 @@ type UnitLiteral struct {
 
 // IdentExpr is an identifier reference.
 type IdentExpr struct {
+	Pos
+	Name string
+}
+
+// EventRefExpr references an event by name: @click, @change.
+type EventRefExpr struct {
 	Pos
 	Name string
 }
@@ -117,12 +160,13 @@ type TernaryExpr struct {
 	Else Expr
 }
 
-// SelectExpr is field access: operand.field.
+// SelectExpr is member access: .field, .@event, .#ref, #ref.
 type SelectExpr struct {
 	Pos
 	Operand      Expr
 	Field        string
-	ResolvedType string // type hint populated by checker, e.g. "string"
+	Kind         SelectKind
+	ResolvedType string // populated by checker
 }
 
 // IndexExpr is index access: operand[index].
@@ -130,38 +174,30 @@ type IndexExpr struct {
 	Pos
 	Operand      Expr
 	Index        Expr
-	ResolvedType string // element type populated by checker, e.g. "docs.Component"
+	ResolvedType string // populated by checker
 }
 
-// CallExpr is a function call: func(args...).
+// CallExpr is a call expression: callee(args...).
+// Func is any expression — IdentExpr for plain calls, SelectExpr for method calls.
 type CallExpr struct {
 	Pos
-	Func string
-	Args []Expr
-}
-
-// MethodExpr is a method call: receiver.method(args...).
-type MethodExpr struct {
-	Pos
-	Receiver Expr
-	Method   string
-	Args     []Expr
-	Resolved string // qualified name set by checker, e.g. "regex.matches"
+	Func Expr
+	Args ArgList
 }
 
 // StructFieldLit is a field in a struct literal.
 type StructFieldLit struct {
 	Name   string
 	Value  Expr
-	Spread bool // if true, Value is the spread operand, Name is empty
+	Spread bool // if true, Value is the spread operand
 }
 
-// StructExpr is a struct literal: Name{field: value, ...expr}.
+// StructExpr is a struct literal: Name{field = value, ...expr}.
 type StructExpr struct {
 	Pos
 	Name      string
 	Fields    []StructFieldLit
-	Multiline bool // true when fields span multiple lines in source
+	Multiline bool
 }
 
 // ListExpr is a list literal: [a, b, ...c].
@@ -181,7 +217,7 @@ type SpreadExpr struct {
 type InterpolationExpr struct {
 	Pos
 	Parts []Expr
-	Style StringStyle // quoting style (StyleDouble or StyleTriple)
+	Style StringStyle
 }
 
 // ElementRefExpr references a visual element by its #id.
@@ -190,19 +226,17 @@ type ElementRefExpr struct {
 	Name string
 }
 
-// LambdaExpr is an inline function: (t) => t.done, (a, b) => a + b,
-// or a block-body anonymous function: func(t, c) { stmts }.
-// Parameter types are optional — inferred from context when omitted.
+// LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.
 // Exactly one of Body or Block is set.
 type LambdaExpr struct {
 	Pos
-	Params     []string   // parameter names
-	ParamTypes []string   // optional type hints (empty string = inferred)
-	Body       Expr       // expression body (arrow form)
-	Block      *FuncBlock // block body (func(params) { ... } form)
+	Params     ParamList
+	ReturnType TypeExpr
+	Body       Expr      // expression form (=> expr)
+	Block      StmtBlock // block form ({ ... })
 }
 
-// ParenExpr preserves explicit parentheses in the source: (expr).
+// ParenExpr preserves explicit parentheses: (expr).
 type ParenExpr struct {
 	Pos
 	Inner Expr
@@ -213,7 +247,7 @@ type ParenExpr struct {
 // AssignStmt is an assignment: target op= value.
 type AssignStmt struct {
 	Pos
-	Target Expr
+	Target TargetExpr
 	Op     AssignOp
 	Value  Expr
 }
@@ -221,22 +255,43 @@ type AssignStmt struct {
 // ToggleStmt is a boolean toggle: target!!.
 type ToggleStmt struct {
 	Pos
-	Target Expr
+	Target TargetExpr
 }
 
 // EmitStmt is an event emission: @name(args...).
 type EmitStmt struct {
 	Pos
 	Name string
-	Args []Expr
+	Args ArgList
 }
 
-// StmtBlock is a list of statements: { stmt; stmt }.
+// StmtBlock is a braced list of statements: { stmt; stmt }.
 type StmtBlock struct {
 	Pos
 	IsMultiline bool
 	Stmts       []Expr
 }
+
+// ArgList is an ordered list of arguments (positional, named, binding, event).
+type ArgList struct {
+	Pos
+	IsMultiline bool
+	Args        []ArgOrEventHandler
+}
+
+// Arg is a single argument: positional (Name empty) or named (Name set).
+type Arg struct {
+	Name  string
+	Value Expr
+}
+
+// ArgOrEventHandler is an argument or inline event handler in an ArgList.
+type ArgOrEventHandler interface {
+	argOrEventHandler()
+}
+
+func (Arg) argOrEventHandler()          {}
+func (EventHandler) argOrEventHandler() {}
 
 func (x StmtBlock) IsDefined() bool { return x.Pos.IsSet() }
 
@@ -244,8 +299,8 @@ func (x StmtBlock) IsDefined() bool { return x.Pos.IsSet() }
 type VarStmt struct {
 	Pos
 	Name string
-	Type string // optional type hint
-	Init Expr   // initializer expression
+	Type TypeExpr
+	Init Expr
 }
 
 // ReturnStmt is a return statement in a block function.
@@ -254,33 +309,40 @@ type ReturnStmt struct {
 	Value Expr // nil for bare return
 }
 
-// CallStmt wraps a CallExpr used as a statement (for void function calls).
+// CallStmt wraps a CallExpr used as a statement.
 type CallStmt struct {
 	Pos
 	Call *CallExpr
 }
 
-// --- Expr interface implementations ---
+// --- ExprPos implementations ---
 
 func (x *LiteralExpr) ExprPos() *Pos       { return &x.Pos }
 func (x *IdentExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *EventRefExpr) ExprPos() *Pos      { return &x.Pos }
 func (x *BinaryExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *UnaryExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *TernaryExpr) ExprPos() *Pos       { return &x.Pos }
 func (x *SelectExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *IndexExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *CallExpr) ExprPos() *Pos          { return &x.Pos }
-func (x *MethodExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *StructExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ListExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *SpreadExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *InterpolationExpr) ExprPos() *Pos { return &x.Pos }
 func (x *ElementRefExpr) ExprPos() *Pos    { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *AssignStmt) StmtPos() *Pos        { return &x.Pos }
-func (x *ToggleStmt) StmtPos() *Pos        { return &x.Pos }
-func (x *EmitStmt) StmtPos() *Pos          { return &x.Pos }
+func (x *NamedType) ExprPos() *Pos         { return &x.Pos }
+func (x *FuncType) ExprPos() *Pos          { return &x.Pos }
+func (x *StructDef) ExprPos() *Pos         { return &x.Pos }
+func (x *EnumDef) ExprPos() *Pos           { return &x.Pos }
+func (x *UnitDef) ExprPos() *Pos           { return &x.Pos }
 func (x *StmtBlock) ExprPos() *Pos         { return &x.Pos }
-func (x *VarStmt) StmtPos() *Pos           { return &x.Pos }
-func (x *ReturnStmt) StmtPos() *Pos        { return &x.Pos }
-func (x *CallStmt) StmtPos() *Pos          { return &x.Pos }
+
+func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
+func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
+func (x *EmitStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
+func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
+func (x *CallStmt) StmtPos() *Pos   { return &x.Pos }

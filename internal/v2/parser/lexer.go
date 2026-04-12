@@ -5,17 +5,24 @@ import (
 	"strings"
 )
 
+// interpFrame tracks one level of string interpolation nesting.
+type interpFrame struct {
+	triple bool // true for triple-quoted string
+	depth  int  // brace nesting within this interpolation expression
+}
+
 // lexer scans SNGL v2 source text into tokens.
 // v2 changes vs v1:
 //   - Non-base-10 integer literals (0x…, 0o…, 0b…) are rejected (ILLEGAL).
 //   - true, false, null are keyword tokens (KW_TRUE/KW_FALSE/KW_NULL).
 type lexer struct {
-	input   []rune
-	pos     int
-	line    int
-	col     int
-	prevTok TokenType
-	errors  []string
+	input       []rune
+	pos         int
+	line        int
+	col         int
+	prevTok     TokenType
+	errors      []string
+	interpStack []interpFrame // active string interpolation nesting
 }
 
 func newLexer(src string) *lexer {
@@ -173,8 +180,20 @@ func (l *lexer) NextToken() Token {
 		case ')':
 			return l.tok(RPAREN, ")", startLine, startCol)
 		case '{':
+			if len(l.interpStack) > 0 {
+				l.interpStack[len(l.interpStack)-1].depth++
+			}
 			return l.tok(LBRACE, "{", startLine, startCol)
 		case '}':
+			if len(l.interpStack) > 0 {
+				top := &l.interpStack[len(l.interpStack)-1]
+				if top.depth == 0 {
+					triple := top.triple
+					l.interpStack = l.interpStack[:len(l.interpStack)-1]
+					return l.scanStringContent(true, triple, startLine, startCol)
+				}
+				top.depth--
+			}
 			return l.tok(RBRACE, "}", startLine, startCol)
 		case '[':
 			return l.tok(LBRACKET, "[", startLine, startCol)
@@ -341,13 +360,53 @@ func (l *lexer) scanUnitSuffix(sb strings.Builder, startLine, startCol int) Toke
 
 func (l *lexer) scanString(startLine, startCol int) Token {
 	l.advance() // opening "
+	return l.scanStringContent(false, false, startLine, startCol)
+}
+
+// scanStringContent scans string text until a closing quote or interpolation {.
+// resume: true when resuming after } closes an interpolation.
+// triple: true for triple-quoted strings.
+func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) Token {
 	var sb strings.Builder
 	for l.pos < len(l.input) {
 		ch := l.input[l.pos]
-		if ch == '"' {
+
+		// Closing quote
+		if !triple && ch == '"' {
 			l.advance()
-			return l.tok(STRING, sb.String(), startLine, startCol)
+			if resume {
+				return l.tok(STR_END, sb.String(), startLine, startCol)
+			}
+			return l.tok(STR_FULL, sb.String(), startLine, startCol)
 		}
+		if triple && ch == '"' && l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+			l.advance()
+			l.advance()
+			l.advance()
+			text := sb.String()
+			if !resume {
+				text = dedent(text)
+			}
+			if resume {
+				return l.tok(TRIPLE_END, text, startLine, startCol)
+			}
+			return l.tok(TRIPLE_FULL, text, startLine, startCol)
+		}
+
+		// Interpolation start
+		if ch == '{' {
+			l.advance()
+			l.interpStack = append(l.interpStack, interpFrame{triple: triple})
+			if resume {
+				return l.tok(STR_RESUME, sb.String(), startLine, startCol)
+			}
+			if triple {
+				return l.tok(TRIPLE_START, sb.String(), startLine, startCol)
+			}
+			return l.tok(STR_START, sb.String(), startLine, startCol)
+		}
+
+		// Escape sequences
 		if ch == '\\' {
 			l.advance()
 			if l.pos < len(l.input) {
@@ -365,7 +424,6 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 				case '\\':
 					sb.WriteRune('\\')
 				case '{':
-					sb.WriteRune('\\')
 					sb.WriteRune('{')
 				case '0':
 					sb.WriteRune(0)
@@ -391,72 +449,21 @@ func (l *lexer) scanString(startLine, startCol int) Token {
 			}
 			continue
 		}
+
 		sb.WriteRune(ch)
 		l.advance()
+	}
+	if triple {
+		return l.tok(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
 	}
 	return l.tok(ILLEGAL, "unterminated string", startLine, startCol)
 }
 
 func (l *lexer) scanTripleString(startLine, startCol int) Token {
-	l.advance()
-	l.advance()
-	l.advance()
-	var sb strings.Builder
-	for l.pos < len(l.input) {
-		ch := l.input[l.pos]
-		if ch == '"' && l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
-			l.advance()
-			l.advance()
-			l.advance()
-			return l.tok(TRIPLE_STRING, dedent(sb.String()), startLine, startCol)
-		}
-		if ch == '\\' {
-			l.advance()
-			if l.pos < len(l.input) {
-				esc := l.input[l.pos]
-				l.advance()
-				switch esc {
-				case 'n':
-					sb.WriteRune('\n')
-				case 't':
-					sb.WriteRune('\t')
-				case 'r':
-					sb.WriteRune('\r')
-				case '"':
-					sb.WriteRune('"')
-				case '\\':
-					sb.WriteRune('\\')
-				case '{':
-					sb.WriteRune('\\')
-					sb.WriteRune('{')
-				case '0':
-					sb.WriteRune(0)
-				case 'x':
-					if l.pos+1 < len(l.input) {
-						hi := hexVal(l.input[l.pos])
-						lo := hexVal(l.input[l.pos+1])
-						if hi >= 0 && lo >= 0 {
-							sb.WriteRune(rune(hi*16 + lo))
-							l.advance()
-							l.advance()
-						} else {
-							l.errors = append(l.errors, fmt.Sprintf("%d:%d: invalid hex escape", l.line, l.col))
-							sb.WriteRune('\\')
-							sb.WriteRune('x')
-						}
-					}
-				default:
-					l.errors = append(l.errors, fmt.Sprintf("%d:%d: unknown escape \\%c", l.line, l.col, esc))
-					sb.WriteRune('\\')
-					sb.WriteRune(esc)
-				}
-			}
-			continue
-		}
-		sb.WriteRune(ch)
-		l.advance()
-	}
-	return l.tok(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
+	l.advance() // "
+	l.advance() // "
+	l.advance() // "
+	return l.scanStringContent(false, true, startLine, startCol)
 }
 
 func (l *lexer) scanRawString(startLine, startCol int) Token {

@@ -10,8 +10,8 @@
 # ident         0x03  IDENT
 # int_lit       0x04  INT
 # float_lit     0x05  FLOAT
-# string_lit    0x06  STRING
-# triple_str    0x07  TRIPLE_STRING
+# str_full      0x06  STR_FULL      "text"
+# triple_full   0x07  TRIPLE_FULL   """text"""
 # raw_str       0x08  RAW_STRING
 # color         0x09  COLOR
 # unit_lit      0x0A  UNIT_LITERAL
@@ -66,6 +66,11 @@
 # kw_unit       0x3D  KW_UNIT
 # kw_return     0x40  KW_RETURN
 # slashdash     0x46  SLASHDASH /-
+# str_start     0x49  STR_START     "text{
+# str_end       0x4A  STR_END       }text"
+# str_resume    0x4B  STR_RESUME    }text{
+# triple_start  0x4C  TRIPLE_START  """text{
+# triple_end    0x4D  TRIPLE_END    }text"""
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -75,8 +80,8 @@ semi         = `\x02` .
 ident        = `\x03` .
 int_lit      = `\x04` .
 float_lit    = `\x05` .
-string_lit   = `\x06` .
-triple_str   = `\x07` .
+str_full     = `\x06` .
+triple_full  = `\x07` .
 raw_str      = `\x08` .
 color        = `\x09` .
 unit_lit     = `\x0A` .
@@ -130,6 +135,16 @@ kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
 kw_return    = `\x40` .
 slashdash    = `\x46` .
+str_start    = `\x49` .
+str_end      = `\x4A` .
+str_resume   = `\x4B` .
+triple_start = `\x4C` .
+triple_end   = `\x4D` .
+
+# ── String interpolation ────────────────────────────────────────────────────
+
+InterpStr    = str_start Expr { str_resume Expr } str_end .
+TripleInterp = triple_start Expr { str_resume Expr } triple_end .
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
@@ -176,7 +191,7 @@ StmtBlock = lbrace { [ slashdash ] Stmt semi } rbrace .
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
-ImportDecl = kw_import [ ident fat_arrow ] string_lit .
+ImportDecl = kw_import [ ident fat_arrow ] str_full .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
@@ -285,9 +300,11 @@ StatementPrimary =
       int_lit
     | float_lit
     | unit_lit
-    | string_lit
-    | triple_str
+    | str_full
+    | triple_full
     | raw_str
+    | InterpStr
+    | TripleInterp
     | color
     | elem_ref
     | lparen Expr rparen
@@ -347,9 +364,11 @@ PrimaryExpr =
       int_lit
     | float_lit
     | unit_lit
-    | string_lit
-    | triple_str
+    | str_full
+    | triple_full
     | raw_str
+    | InterpStr
+    | TripleInterp
     | color
     | elem_ref
     | lparen Expr rparen
@@ -420,9 +439,11 @@ NonIdentPrimary =
       int_lit
     | float_lit
     | unit_lit
-    | string_lit
-    | triple_str
+    | str_full
+    | triple_full
     | raw_str
+    | InterpStr
+    | TripleInterp
     | color
     | elem_ref
     | lparen Expr rparen
@@ -436,8 +457,10 @@ NonIdentPrimary =
 
 Type =
       ident [ dot ident | lt Type gt ]
-    | kw_func lparen [ TypeList ] rparen [ arrow TypeHint ]
+    | kw_func lparen [ TypeList ] rparen [ arrow Type ]
     | EnumDecl
     .
+
+TypeHint = Type .
 
 TypeList = TypeHint { comma TypeHint } .
