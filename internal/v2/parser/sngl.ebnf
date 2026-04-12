@@ -316,9 +316,9 @@ StatementPrimary =
 
 # ── Control flow ──────────────────────────────────────────────────────────────
 
-IfNode = kw_if Expr StmtBlock [ kw_else StmtBlock ] .
+IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
 
-ForNode = kw_for ident [ comma ident ] assign Expr StmtBlock [ kw_else StmtBlock ] .
+ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 
@@ -347,6 +347,22 @@ UnaryExpr =
     .
 
 PostfixExpr = PrimaryExpr { ExprPostfixOp } .
+
+# ── Condition expressions ────────────────────────────────────────────────────
+# Restricted expression chain for contexts where Expr is followed by StmtBlock
+# (if condition, for iterator). Uses StatementPrimary (no bare ident{...} struct
+# lits) to avoid lbrace ambiguity with the following StmtBlock. Qualified struct
+# lits (pkg.Name{...}) remain available via ExprPostfixOp.
+
+CondExpr        = CondOrExpr [ question Expr colon Expr ] .
+CondOrExpr      = CondAndExpr  { lor  CondAndExpr  } .
+CondAndExpr     = CondEqExpr   { land CondEqExpr   } .
+CondEqExpr      = CondCmpExpr  { EqOp  CondCmpExpr  } .
+CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
+CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
+CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
+CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr .
+CondPostfixExpr = StatementPrimary { ExprPostfixOp } .
 
 # Expression context: struct lit available via dot-ident, NO StmtBlock.
 # lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]

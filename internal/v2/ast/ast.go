@@ -28,11 +28,6 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-// Decl is the interface for top-level and block-level declarations.
-type Decl interface {
-	DeclPos() Pos
-}
-
 // Comment is a source comment preserved for formatting.
 type Comment struct {
 	Pos    Pos
@@ -41,19 +36,15 @@ type Comment struct {
 	Inline bool   // true for trailing same-line comments
 }
 
-func (c *Comment) DeclPos() Pos { return c.Pos }
-
-// DisabledDecl wraps any declaration prefixed with slashdash (/-).
+// DisabledDecl wraps any statement prefixed with slashdash (/-).
 type DisabledDecl struct {
-	Pos  Pos
-	Decl Decl
+	Pos   Pos
+	Inner Stmt
 }
-
-func (d *DisabledDecl) DeclPos() Pos { return d.Pos }
 
 // Document is the top-level container for a .sngl file.
 type Document struct {
-	Stmts []Decl
+	Stmts []Stmt
 }
 
 // --- Type declarations ---
@@ -175,9 +166,8 @@ func (f *FuncDef) IsTest() bool { return strings.HasPrefix(f.Name, "test") }
 // TestFuncs returns all document-level test functions.
 func (d *Document) TestFuncs() []*FuncDef {
 	var out []*FuncDef
-	for _, stmt := range d.Stmts {
-		fn, ok := stmt.(*FuncDef)
-		if ok && fn.IsTest() {
+	for _, s := range d.Stmts {
+		if fn, ok := s.(*FuncDef); ok && fn.IsTest() {
 			out = append(out, fn)
 		}
 	}
@@ -267,16 +257,18 @@ type ForStmt struct {
 	Else  StmtBlock // zero value if no else
 }
 
-// --- DeclPos implementations ---
+// --- StmtPos implementations ---
 
-func (s *StructDef) DeclPos() Pos     { return s.Pos }
-func (e *EnumDef) DeclPos() Pos       { return e.Pos }
-func (u *UnitDef) DeclPos() Pos       { return u.Pos }
-func (c *ConstDecl) DeclPos() Pos     { return c.Pos }
-func (c *VarDecl) DeclPos() Pos       { return c.Pos }
-func (f *FuncDef) DeclPos() Pos       { return f.Pos }
-func (i *Import) DeclPos() Pos        { return i.Pos }
-func (c *ComponentDecl) DeclPos() Pos { return c.Pos }
-func (vn *VisualNode) DeclPos() Pos   { return vn.Pos }
-func (s *IfStmt) DeclPos() Pos        { return s.Pos }
-func (s *ForStmt) DeclPos() Pos       { return s.Pos }
+func (s *StructDef) StmtPos() *Pos     { return &s.Pos }
+func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
+func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }
+func (c *ConstDecl) StmtPos() *Pos     { return &c.Pos }
+func (c *VarDecl) StmtPos() *Pos       { return &c.Pos }
+func (f *FuncDef) StmtPos() *Pos       { return &f.Pos }
+func (i *Import) StmtPos() *Pos        { return &i.Pos }
+func (c *ComponentDecl) StmtPos() *Pos { return &c.Pos }
+func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
+func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
+func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
+func (c *Comment) StmtPos() *Pos       { return &c.Pos }
+func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }

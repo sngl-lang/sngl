@@ -132,28 +132,37 @@ const (
 	MulOp            = Symbol(110) // MulOp
 	UnaryExpr        = Symbol(111) // UnaryExpr
 	PostfixExpr      = Symbol(112) // PostfixExpr
-	ExprPostfixOp    = Symbol(113) // ExprPostfixOp
-	StmtPostfixOp    = Symbol(114) // StmtPostfixOp
-	PrimaryExpr      = Symbol(115) // PrimaryExpr
-	ListBody         = Symbol(116) // ListBody
-	ListElem         = Symbol(117) // ListElem
-	StructLitBody    = Symbol(118) // StructLitBody
-	AnonStructLit    = Symbol(119) // AnonStructLit
-	AnonField        = Symbol(120) // AnonField
-	FuncLit          = Symbol(121) // FuncLit
-	ArgList          = Symbol(122) // ArgList
-	Arg              = Symbol(123) // Arg
-	IdentArgCont     = Symbol(124) // IdentArgCont
-	ArgExprCont      = Symbol(125) // ArgExprCont
-	NonIdentPrimary  = Symbol(126) // NonIdentPrimary
-	Type             = Symbol(127) // Type
-	TypeHint         = Symbol(128) // TypeHint
-	TypeList         = Symbol(129) // TypeList
+	CondExpr         = Symbol(113) // CondExpr
+	CondOrExpr       = Symbol(114) // CondOrExpr
+	CondAndExpr      = Symbol(115) // CondAndExpr
+	CondEqExpr       = Symbol(116) // CondEqExpr
+	CondCmpExpr      = Symbol(117) // CondCmpExpr
+	CondAddExpr      = Symbol(118) // CondAddExpr
+	CondMulExpr      = Symbol(119) // CondMulExpr
+	CondUnaryExpr    = Symbol(120) // CondUnaryExpr
+	CondPostfixExpr  = Symbol(121) // CondPostfixExpr
+	ExprPostfixOp    = Symbol(122) // ExprPostfixOp
+	StmtPostfixOp    = Symbol(123) // StmtPostfixOp
+	PrimaryExpr      = Symbol(124) // PrimaryExpr
+	ListBody         = Symbol(125) // ListBody
+	ListElem         = Symbol(126) // ListElem
+	StructLitBody    = Symbol(127) // StructLitBody
+	AnonStructLit    = Symbol(128) // AnonStructLit
+	AnonField        = Symbol(129) // AnonField
+	FuncLit          = Symbol(130) // FuncLit
+	ArgList          = Symbol(131) // ArgList
+	Arg              = Symbol(132) // Arg
+	IdentArgCont     = Symbol(133) // IdentArgCont
+	ArgExprCont      = Symbol(134) // ArgExprCont
+	NonIdentPrimary  = Symbol(135) // NonIdentPrimary
+	Type             = Symbol(136) // Type
+	TypeHint         = Symbol(137) // TypeHint
+	TypeList         = Symbol(138) // TypeList
 )
 
-const SymbolNames = "EOFarrowassignatbangbangbangcoloncolorcommadotelem_refellipsiseqfat_arrowfloat_litgtgteidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_structkw_stylekw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignneqpct_assignpercentplusplus_assignquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpDocumentStmtStmtBlockImportDeclStructDeclStructFieldEnumDeclUnitDeclStyleDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclFuncTailFuncBodyTailFuncNameTypeParamListParamListParamComponentDeclCompParamListCompParamCompParamTailVisualOrStmtStatementPrimaryIfNodeForNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprExprPostfixOpStmtPostfixOpPrimaryExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeHintTypeList"
+const SymbolNames = "EOFarrowassignatbangbangbangcoloncolorcommadotelem_refellipsiseqfat_arrowfloat_litgtgteidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_structkw_stylekw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignneqpct_assignpercentplusplus_assignquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpDocumentStmtStmtBlockImportDeclStructDeclStructFieldEnumDeclUnitDeclStyleDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclFuncTailFuncBodyTailFuncNameTypeParamListParamListParamComponentDeclCompParamListCompParamCompParamTailVisualOrStmtStatementPrimaryIfNodeForNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprExprPostfixOpStmtPostfixOpPrimaryExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeHintTypeList"
 
-var SymbolIndex = [...]uint16{0, 3, 8, 14, 16, 20, 28, 33, 38, 43, 46, 54, 62, 64, 73, 82, 84, 87, 92, 99, 111, 119, 126, 133, 139, 146, 151, 160, 169, 178, 186, 193, 199, 203, 209, 217, 220, 226, 228, 231, 236, 248, 251, 261, 268, 272, 283, 291, 298, 304, 312, 318, 322, 327, 339, 348, 352, 363, 370, 378, 388, 397, 407, 418, 430, 438, 449, 458, 470, 478, 482, 491, 501, 511, 522, 530, 538, 547, 556, 565, 574, 581, 588, 598, 606, 614, 626, 634, 647, 656, 661, 674, 687, 696, 709, 721, 737, 743, 750, 758, 762, 773, 779, 786, 792, 799, 806, 813, 817, 822, 827, 832, 841, 852, 865, 878, 889, 897, 905, 918, 931, 940, 947, 954, 957, 969, 980, 995, 999, 1007, 1015}
+var SymbolIndex = [...]uint16{0, 3, 8, 14, 16, 20, 28, 33, 38, 43, 46, 54, 62, 64, 73, 82, 84, 87, 92, 99, 111, 119, 126, 133, 139, 146, 151, 160, 169, 178, 186, 193, 199, 203, 209, 217, 220, 226, 228, 231, 236, 248, 251, 261, 268, 272, 283, 291, 298, 304, 312, 318, 322, 327, 339, 348, 352, 363, 370, 378, 388, 397, 407, 418, 430, 438, 449, 458, 470, 478, 482, 491, 501, 511, 522, 530, 538, 547, 556, 565, 574, 581, 588, 598, 606, 614, 626, 634, 647, 656, 661, 674, 687, 696, 709, 721, 737, 743, 750, 758, 762, 773, 779, 786, 792, 799, 806, 813, 817, 822, 827, 832, 841, 852, 860, 870, 881, 891, 902, 913, 924, 937, 952, 965, 978, 989, 997, 1005, 1018, 1031, 1040, 1047, 1054, 1057, 1069, 1080, 1095, 1099, 1107, 1115}
 
 func (s Symbol) String() string {
 	idx := int(s) - 0
@@ -233,6 +242,15 @@ var errorSets = [...][]Symbol{
 	{FuncLit, AnonStructLit, PrimaryExpr, PostfixExpr, UnaryExpr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, elem_ref, color, bang, at},
 	{FuncLit, AnonStructLit, PrimaryExpr, PostfixExpr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, elem_ref, color, bang, at},
 	{FuncLit, AnonStructLit, PrimaryExpr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, CondAddExpr, CondCmpExpr, CondEqExpr, CondAndExpr, CondOrExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, CondAddExpr, CondCmpExpr, CondEqExpr, CondAndExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, CondAddExpr, CondCmpExpr, CondEqExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, CondAddExpr, CondCmpExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, CondAddExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, CondMulExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, CondUnaryExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, CondPostfixExpr, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
+	{AnonStructLit, StatementPrimary, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, int_lit, ident, float_lit, elem_ref, color, bang, at},
 	{CompParam, rparen, ident, colon, at},
 	{ident, colon, at},
 	{AnonStructLit, ForNode, IfNode, StatementPrimary, VisualOrStmt, ComponentDecl, FuncDecl, VarDecl, ConstDecl, StyleDecl, UnitDecl, EnumDecl, StructDecl, ImportDecl, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, slashdash, rbrace, raw_str, lparen, lbracket, lbrace, kw_var, kw_unit, kw_style, kw_struct, kw_return, kw_import, kw_if, kw_func, kw_for, kw_enum, kw_const, kw_component, int_lit, ident, float_lit, elem_ref, color, at},
@@ -853,7 +871,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 90
+	accept, errorSet = true, 99
 	switch Symbol(p.tok.Ch) {
 	case minus, plus:
 		r = p.add(r, p.AddOp())
@@ -877,7 +895,7 @@ func (p *Parser) AddOp() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(AddOp), 0)
 	// state0:
-	accept, errorSet = false, 90
+	accept, errorSet = false, 99
 	switch Symbol(p.tok.Ch) {
 	case minus, plus:
 		r = append(r, p.shift())
@@ -914,7 +932,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 83
+	accept, errorSet = true, 92
 	switch Symbol(p.tok.Ch) {
 	case land:
 		r = append(r, p.shift())
@@ -1009,7 +1027,7 @@ func (p *Parser) AnonStructLit() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(AnonStructLit), 0)
 	// state0:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -1031,7 +1049,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 105
+	accept, errorSet = false, 114
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		r = append(r, p.shift())
@@ -1196,7 +1214,7 @@ state8:
 	}
 	return p.stop(r, accept, errorSet)
 state9:
-	accept, errorSet = true, 108
+	accept, errorSet = true, 117
 	switch Symbol(p.tok.Ch) {
 	case dot, elem_ref, lbrace, lbracket, lparen:
 		r = p.add(r, p.StmtPostfixOp())
@@ -1373,7 +1391,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = true, 82
+	accept, errorSet = true, 91
 	switch Symbol(p.tok.Ch) {
 	case land:
 		r = append(r, p.shift())
@@ -1395,7 +1413,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = true, 86
+	accept, errorSet = true, 95
 	switch Symbol(p.tok.Ch) {
 	case lor:
 		r = append(r, p.shift())
@@ -1414,7 +1432,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 103
+	accept, errorSet = false, 112
 	switch Symbol(p.tok.Ch) {
 	case colon:
 		r = append(r, p.shift())
@@ -1587,7 +1605,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -1734,7 +1752,7 @@ func (p *Parser) CompParam() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(CompParam), 0)
 	// state0:
-	accept, errorSet = false, 70
+	accept, errorSet = false, 79
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = append(r, p.shift())
@@ -1828,7 +1846,7 @@ func (p *Parser) CompParamList() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(CompParamList), 0)
 state0:
-	accept, errorSet = false, 70
+	accept, errorSet = false, 79
 	switch Symbol(p.tok.Ch) {
 	case at, colon, ident:
 		r = p.add(r, p.CompParam())
@@ -1836,7 +1854,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -1976,7 +1994,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 69
+	accept, errorSet = false, 78
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -2001,7 +2019,7 @@ state5:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -2009,12 +2027,371 @@ state6:
 	}
 	return p.stop(r, accept, errorSet)
 state7:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
 		goto state4
 	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondAddExpr grammar:
+//
+//	CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondMulExpr and goto state 1
+//	State 1
+//		Accept
+//		on  minus, plus
+//			call AddOp and goto state 0
+//
+// CondAddExpr is used internally from Parse.
+func (p *Parser) CondAddExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondAddExpr), 0)
+state0:
+	accept, errorSet = false, 75
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondMulExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 99
+	switch Symbol(p.tok.Ch) {
+	case minus, plus:
+		r = p.add(r, p.AddOp())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondAndExpr grammar:
+//
+//	CondAndExpr     = CondEqExpr   { land CondEqExpr   } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondEqExpr and goto state 1
+//	State 1
+//		Accept
+//		on  land
+//			shift and goto state 0
+//
+// CondAndExpr is used internally from Parse.
+func (p *Parser) CondAndExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondAndExpr), 0)
+state0:
+	accept, errorSet = false, 72
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondEqExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 92
+	switch Symbol(p.tok.Ch) {
+	case land:
+		r = append(r, p.shift())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondCmpExpr grammar:
+//
+//	CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondAddExpr and goto state 1
+//	State 1
+//		Accept
+//		on  gt, gte, lt, lte
+//			call CmpOp and goto state 0
+//
+// CondCmpExpr is used internally from Parse.
+func (p *Parser) CondCmpExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondCmpExpr), 0)
+state0:
+	accept, errorSet = false, 74
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondAddExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 15
+	switch Symbol(p.tok.Ch) {
+	case gt, gte, lt, lte:
+		r = p.add(r, p.CmpOp())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondEqExpr grammar:
+//
+//	CondEqExpr      = CondCmpExpr  { EqOp  CondCmpExpr  } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondCmpExpr and goto state 1
+//	State 1
+//		Accept
+//		on  eq, neq
+//			call EqOp and goto state 0
+//
+// CondEqExpr is used internally from Parse.
+func (p *Parser) CondEqExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondEqExpr), 0)
+state0:
+	accept, errorSet = false, 73
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondCmpExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 8
+	switch Symbol(p.tok.Ch) {
+	case eq, neq:
+		r = p.add(r, p.EqOp())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondExpr grammar:
+//
+//	# ── Condition expressions ────────────────────────────────────────────────────
+//	# Restricted expression chain for contexts where Expr is followed by StmtBlock
+//	# (if condition, for iterator). Uses StatementPrimary (no bare ident{...} struct
+//	# lits) to avoid lbrace ambiguity with the following StmtBlock. Qualified struct
+//	# lits (pkg.Name{...}) remain available via ExprPostfixOp.
+//
+//	CondExpr        = CondOrExpr [ question Expr colon Expr ] .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondOrExpr and goto state 1
+//	State 1
+//		Accept
+//		on  question
+//			shift and goto state 2
+//	State 2
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call Expr and goto state 3
+//	State 3
+//		on  colon
+//			shift and goto state 4
+//	State 4
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call Expr and goto state 5
+//	State 5
+//		Accept
+//
+// CondExpr is used internally from Parse.
+func (p *Parser) CondExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondExpr), 0)
+	// state0:
+	accept, errorSet = false, 70
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondOrExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 102
+	switch Symbol(p.tok.Ch) {
+	case question:
+		r = append(r, p.shift())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = false, 59
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.Expr())
+		goto state3
+	}
+	return p.stop(r, accept, errorSet)
+state3:
+	accept, errorSet = false, 112
+	switch Symbol(p.tok.Ch) {
+	case colon:
+		r = append(r, p.shift())
+		goto state4
+	}
+	return p.stop(r, accept, errorSet)
+state4:
+	accept, errorSet = false, 59
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.Expr())
+		goto state5
+	}
+	return p.stop(r, accept, errorSet)
+state5:
+	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+}
+
+// CondMulExpr grammar:
+//
+//	CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondUnaryExpr and goto state 1
+//	State 1
+//		Accept
+//		on  percent, slash, star
+//			call MulOp and goto state 0
+//
+// CondMulExpr is used internally from Parse.
+func (p *Parser) CondMulExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondMulExpr), 0)
+state0:
+	accept, errorSet = false, 76
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondUnaryExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 101
+	switch Symbol(p.tok.Ch) {
+	case percent, slash, star:
+		r = p.add(r, p.MulOp())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondOrExpr grammar:
+//
+//	CondOrExpr      = CondAndExpr  { lor  CondAndExpr  } .
+//
+//	State 0
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondAndExpr and goto state 1
+//	State 1
+//		Accept
+//		on  lor
+//			shift and goto state 0
+//
+// CondOrExpr is used internally from Parse.
+func (p *Parser) CondOrExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondOrExpr), 0)
+state0:
+	accept, errorSet = false, 71
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondAndExpr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 96
+	switch Symbol(p.tok.Ch) {
+	case lor:
+		r = append(r, p.shift())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondPostfixExpr grammar:
+//
+//	CondPostfixExpr = StatementPrimary { ExprPostfixOp } .
+//
+//	State 0
+//		on  at, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call StatementPrimary and goto state 1
+//	State 1
+//		Accept
+//		on  dot, elem_ref, lbracket, lparen
+//			call ExprPostfixOp and goto state 1
+//
+// CondPostfixExpr is used internally from Parse.
+func (p *Parser) CondPostfixExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondPostfixExpr), 0)
+	// state0:
+	accept, errorSet = false, 86
+	switch Symbol(p.tok.Ch) {
+	case at, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.StatementPrimary())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 120
+	switch Symbol(p.tok.Ch) {
+	case dot, elem_ref, lbracket, lparen:
+		r = p.add(r, p.ExprPostfixOp())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+}
+
+// CondUnaryExpr grammar:
+//
+//	CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr .
+//
+//	State 0
+//		on  bang, minus
+//			shift and goto state 1
+//		on  at, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondPostfixExpr and goto state 2
+//	State 1
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondUnaryExpr and goto state 2
+//	State 2
+//		Accept
+//
+// CondUnaryExpr is used internally from Parse.
+func (p *Parser) CondUnaryExpr() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(CondUnaryExpr), 0)
+	// state0:
+	accept, errorSet = false, 77
+	switch Symbol(p.tok.Ch) {
+	case bang, minus:
+		r = append(r, p.shift())
+		goto state1
+	case at, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondPostfixExpr())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = false, 76
+	switch Symbol(p.tok.Ch) {
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondUnaryExpr())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 }
 
@@ -2078,7 +2455,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 106
+	accept, errorSet = false, 115
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -2188,7 +2565,7 @@ func (p *Parser) Document() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(Document), 0)
 	// state0:
-	accept, errorSet = true, 72
+	accept, errorSet = true, 81
 	switch Symbol(p.tok.Ch) {
 	case slashdash:
 		r = append(r, p.shift())
@@ -2199,7 +2576,7 @@ func (p *Parser) Document() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 73
+	accept, errorSet = false, 82
 	switch Symbol(p.tok.Ch) {
 	case at, color, elem_ref, float_lit, ident, int_lit, kw_component, kw_const, kw_enum, kw_for, kw_func, kw_if, kw_import, kw_return, kw_struct, kw_style, kw_unit, kw_var, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		r = p.add(r, p.Stmt())
@@ -2207,7 +2584,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 97
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		r = append(r, p.shift())
@@ -2215,7 +2592,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = true, 72
+	accept, errorSet = true, 81
 	switch Symbol(p.tok.Ch) {
 	case slashdash:
 		r = append(r, p.shift())
@@ -2286,7 +2663,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -2308,7 +2685,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = false, 94
+	accept, errorSet = false, 103
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		r = append(r, p.shift())
@@ -2466,7 +2843,7 @@ func (p *Parser) ExprPostfixOp() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(ExprPostfixOp), 0)
 	// state0:
-	accept, errorSet = false, 111
+	accept, errorSet = false, 120
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -2508,7 +2885,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = true, 85
+	accept, errorSet = true, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StructLitBody())
@@ -2524,7 +2901,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
@@ -2543,7 +2920,7 @@ state7:
 	}
 	return p.stop(r, accept, errorSet)
 state8:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -2554,7 +2931,7 @@ state8:
 
 // ForNode grammar:
 //
-//	ForNode = kw_for ident [ comma ident ] assign Expr StmtBlock [ kw_else StmtBlock ] .
+//	ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 //
 //	State 0
 //		on  kw_for
@@ -2568,8 +2945,8 @@ state8:
 //		on  comma
 //			shift and goto state 8
 //	State 3
-//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 4
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondExpr and goto state 4
 //	State 4
 //		on  lbrace
 //			call StmtBlock and goto state 5
@@ -2621,15 +2998,15 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 59
+	accept, errorSet = false, 69
 	switch Symbol(p.tok.Ch) {
-	case at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondExpr())
 		goto state4
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -2645,7 +3022,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -2726,7 +3103,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -2881,7 +3258,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -2920,7 +3297,7 @@ func (p *Parser) FuncName() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 113
+	accept, errorSet = true, 122
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -3004,7 +3381,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -3080,7 +3457,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = true, 109
+	accept, errorSet = true, 118
 	switch Symbol(p.tok.Ch) {
 	case dot, elem_ref, lbracket, lparen:
 		r = p.add(r, p.ExprPostfixOp())
@@ -3117,7 +3494,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -3130,14 +3507,14 @@ state1:
 //
 //	# ── Control flow ──────────────────────────────────────────────────────────────
 //
-//	IfNode = kw_if Expr StmtBlock [ kw_else StmtBlock ] .
+//	IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
 //
 //	State 0
 //		on  kw_if
 //			shift and goto state 1
 //	State 1
-//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 2
+//		on  at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondExpr and goto state 2
 //	State 2
 //		on  lbrace
 //			call StmtBlock and goto state 3
@@ -3164,15 +3541,15 @@ func (p *Parser) IfNode() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 59
+	accept, errorSet = false, 69
 	switch Symbol(p.tok.Ch) {
-	case at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+	case at, bang, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.CondExpr())
 		goto state2
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -3188,7 +3565,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -3255,7 +3632,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 108
 	switch Symbol(p.tok.Ch) {
 	case str_full:
 		r = append(r, p.shift())
@@ -3292,7 +3669,7 @@ func (p *Parser) InterpStr() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(InterpStr), 0)
 	// state0:
-	accept, errorSet = false, 101
+	accept, errorSet = false, 110
 	switch Symbol(p.tok.Ch) {
 	case str_start:
 		r = append(r, p.shift())
@@ -3308,7 +3685,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 98
+	accept, errorSet = false, 107
 	switch Symbol(p.tok.Ch) {
 	case str_resume:
 		r = append(r, p.shift())
@@ -3352,7 +3729,7 @@ func (p *Parser) ListBody() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -3437,7 +3814,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 92
+	accept, errorSet = true, 101
 	switch Symbol(p.tok.Ch) {
 	case percent, slash, star:
 		r = p.add(r, p.MulOp())
@@ -3461,7 +3838,7 @@ func (p *Parser) MulOp() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(MulOp), 0)
 	// state0:
-	accept, errorSet = false, 92
+	accept, errorSet = false, 101
 	switch Symbol(p.tok.Ch) {
 	case percent, slash, star:
 		r = append(r, p.shift())
@@ -3537,7 +3914,7 @@ func (p *Parser) NonIdentPrimary() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(NonIdentPrimary), 0)
 	// state0:
-	accept, errorSet = false, 79
+	accept, errorSet = false, 88
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = append(r, p.shift())
@@ -3588,7 +3965,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
@@ -3604,7 +3981,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -3638,7 +4015,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 87
+	accept, errorSet = true, 96
 	switch Symbol(p.tok.Ch) {
 	case lor:
 		r = append(r, p.shift())
@@ -3739,7 +4116,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -3765,7 +4142,7 @@ func (p *Parser) PostfixExpr() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(PostfixExpr), 0)
 	// state0:
-	accept, errorSet = false, 75
+	accept, errorSet = false, 84
 	switch Symbol(p.tok.Ch) {
 	case at, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		r = p.add(r, p.PrimaryExpr())
@@ -3773,7 +4150,7 @@ func (p *Parser) PostfixExpr() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 111
+	accept, errorSet = true, 120
 	switch Symbol(p.tok.Ch) {
 	case dot, elem_ref, lbracket, lparen:
 		r = p.add(r, p.ExprPostfixOp())
@@ -3851,7 +4228,7 @@ func (p *Parser) PrimaryExpr() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(PrimaryExpr), 0)
 	// state0:
-	accept, errorSet = false, 76
+	accept, errorSet = false, 85
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = append(r, p.shift())
@@ -3894,7 +4271,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = true, 85
+	accept, errorSet = true, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StructLitBody())
@@ -3913,7 +4290,7 @@ state4:
 	}
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
@@ -3929,7 +4306,7 @@ state6:
 	}
 	return p.stop(r, accept, errorSet)
 state7:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -3998,7 +4375,7 @@ func (p *Parser) StatementPrimary() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(StatementPrimary), 0)
 	// state0:
-	accept, errorSet = false, 78
+	accept, errorSet = false, 87
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = append(r, p.shift())
@@ -4046,7 +4423,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
@@ -4062,7 +4439,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -4149,7 +4526,7 @@ func (p *Parser) Stmt() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(Stmt), 0)
 	// state0:
-	accept, errorSet = false, 74
+	accept, errorSet = false, 83
 	switch Symbol(p.tok.Ch) {
 	case kw_return:
 		r = append(r, p.shift())
@@ -4233,7 +4610,7 @@ func (p *Parser) StmtBlock() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(StmtBlock), 0)
 	// state0:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -4241,7 +4618,7 @@ func (p *Parser) StmtBlock() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 71
+	accept, errorSet = false, 80
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		r = append(r, p.shift())
@@ -4258,7 +4635,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 73
+	accept, errorSet = false, 82
 	switch Symbol(p.tok.Ch) {
 	case at, color, elem_ref, float_lit, ident, int_lit, kw_component, kw_const, kw_enum, kw_for, kw_func, kw_if, kw_import, kw_return, kw_struct, kw_style, kw_unit, kw_var, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		r = p.add(r, p.Stmt())
@@ -4266,7 +4643,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 97
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		r = append(r, p.shift())
@@ -4329,7 +4706,7 @@ func (p *Parser) StmtPostfixOp() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(StmtPostfixOp), 0)
 	// state0:
-	accept, errorSet = false, 110
+	accept, errorSet = false, 119
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -4379,7 +4756,7 @@ state4:
 	}
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
@@ -4398,7 +4775,7 @@ state6:
 	}
 	return p.stop(r, accept, errorSet)
 state7:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -4456,7 +4833,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -4543,7 +4920,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 97
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		r = append(r, p.shift())
@@ -4585,7 +4962,7 @@ func (p *Parser) StructLitBody() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(StructLitBody), 0)
 	// state0:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -4607,7 +4984,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 105
+	accept, errorSet = false, 114
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		r = append(r, p.shift())
@@ -4666,7 +5043,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -4714,7 +5091,7 @@ func (p *Parser) TernaryExpr() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 93
+	accept, errorSet = true, 102
 	switch Symbol(p.tok.Ch) {
 	case question:
 		r = append(r, p.shift())
@@ -4730,7 +5107,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 103
+	accept, errorSet = false, 112
 	switch Symbol(p.tok.Ch) {
 	case colon:
 		r = append(r, p.shift())
@@ -4773,7 +5150,7 @@ func (p *Parser) TripleInterp() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(TripleInterp), 0)
 	// state0:
-	accept, errorSet = false, 102
+	accept, errorSet = false, 111
 	switch Symbol(p.tok.Ch) {
 	case triple_start:
 		r = append(r, p.shift())
@@ -4789,7 +5166,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 100
+	accept, errorSet = false, 109
 	switch Symbol(p.tok.Ch) {
 	case str_resume:
 		r = append(r, p.shift())
@@ -4876,7 +5253,7 @@ func (p *Parser) Type() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 112
+	accept, errorSet = true, 121
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -4914,7 +5291,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 88
+	accept, errorSet = false, 97
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -4949,7 +5326,7 @@ state9:
 	}
 	return p.stop(r, accept, errorSet)
 state10:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -5010,7 +5387,7 @@ state0:
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 107
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -5042,7 +5419,7 @@ func (p *Parser) TypeParamList() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(TypeParamList), 0)
 	// state0:
-	accept, errorSet = false, 89
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case lt:
 		r = append(r, p.shift())
@@ -5058,7 +5435,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 104
+	accept, errorSet = false, 113
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -5152,7 +5529,7 @@ func (p *Parser) UnitDecl() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(UnitDecl), 0)
 	// state0:
-	accept, errorSet = false, 80
+	accept, errorSet = false, 89
 	switch Symbol(p.tok.Ch) {
 	case kw_unit:
 		r = append(r, p.shift())
@@ -5171,7 +5548,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = append(r, p.shift())
@@ -5193,7 +5570,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = false, 94
+	accept, errorSet = false, 103
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		r = append(r, p.shift())
@@ -5235,7 +5612,7 @@ func (p *Parser) VarDecl() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(VarDecl), 0)
 	// state0:
-	accept, errorSet = false, 81
+	accept, errorSet = false, 90
 	switch Symbol(p.tok.Ch) {
 	case kw_var:
 		r = append(r, p.shift())
@@ -5262,7 +5639,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 106
+	accept, errorSet = false, 115
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
@@ -5312,7 +5689,7 @@ func (p *Parser) VarHandler() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(VarHandler), 0)
 	// state0:
-	accept, errorSet = false, 91
+	accept, errorSet = false, 100
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = append(r, p.shift())
@@ -5328,7 +5705,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 84
+	accept, errorSet = false, 93
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -5350,7 +5727,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 85
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -5361,7 +5738,7 @@ state5:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
@@ -5425,7 +5802,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = true, 91
+	accept, errorSet = true, 100
 	switch Symbol(p.tok.Ch) {
 	case at:
 		r = p.add(r, p.VarHandler())
@@ -5483,7 +5860,7 @@ func (p *Parser) VisualOrStmt() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(VisualOrStmt), 0)
 	// state0:
-	accept, errorSet = false, 77
+	accept, errorSet = false, 86
 	switch Symbol(p.tok.Ch) {
 	case at, color, elem_ref, float_lit, ident, int_lit, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		r = p.add(r, p.StatementPrimary())

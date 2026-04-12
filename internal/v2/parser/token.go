@@ -145,7 +145,7 @@ func insertsSemicolon(t TokenType) bool {
 	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
 		STR_END, TRIPLE_END,
 		KW_RETURN,
-		AT, RPAREN, RBRACKET, RBRACE:
+		AT, RPAREN, RBRACKET, RBRACE, BANGBANG:
 		return true
 	}
 	return false

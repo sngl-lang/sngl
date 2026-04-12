@@ -247,6 +247,11 @@ type ParenExpr struct {
 
 // --- Statements ---
 
+// Stmt is any node valid inside a StmtBlock: declarations, statements, expressions.
+type Stmt interface {
+	StmtPos() *Pos
+}
+
 // AssignStmt is an assignment: target op= value.
 type AssignStmt struct {
 	Pos
@@ -272,7 +277,7 @@ type EmitStmt struct {
 type StmtBlock struct {
 	Pos
 	IsMultiline bool
-	Stmts       []Expr
+	Stmts       []Stmt
 }
 
 // ArgList is an ordered list of arguments (positional, named, binding, event).
@@ -357,9 +362,11 @@ func (*IdentExpr) targetExpr()  {}
 func (*SelectExpr) targetExpr() {}
 func (*IndexExpr) targetExpr()  {}
 
-func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
-func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
-func (x *EmitStmt) StmtPos() *Pos   { return &x.Pos }
-func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
-func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
-func (x *CallStmt) StmtPos() *Pos   { return &x.Pos }
+// --- StmtPos implementations ---
+
+func (x *AssignStmt) StmtPos() *Pos  { return &x.Pos }
+func (x *ToggleStmt) StmtPos() *Pos  { return &x.Pos }
+func (x *EmitStmt) StmtPos() *Pos    { return &x.Pos }
+func (x *VarStmt) StmtPos() *Pos     { return &x.Pos }
+func (x *ReturnStmt) StmtPos() *Pos  { return &x.Pos }
+func (x *CallStmt) StmtPos() *Pos    { return &x.Pos }
