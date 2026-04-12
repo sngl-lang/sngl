@@ -132,7 +132,6 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 	return doc
 }
 
-
 // --- Stmt dispatch ---
 
 func (b *builder) buildStmt(it nodeIter) ast.Stmt {

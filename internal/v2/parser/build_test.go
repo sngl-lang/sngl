@@ -525,7 +525,7 @@ func identNameTest(e ast.Expr) string {
 }
 
 func hasParseError(src []byte) bool {
-	for _, line := range strings.Split(string(src), "\n") {
+	for line := range strings.SplitSeq(string(src), "\n") {
 		if strings.Contains(line, `ERROR(parse)`) {
 			return true
 		}

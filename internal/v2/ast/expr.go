@@ -350,11 +350,11 @@ func (x *StmtBlock) ExprPos() *Pos         { return &x.Pos }
 
 // --- typeExpr implementations ---
 
-func (*NamedType) typeExpr()  {}
-func (*FuncType) typeExpr()   {}
-func (*StructDef) typeExpr()  {}
-func (*EnumDef) typeExpr()    {}
-func (*UnitDef) typeExpr()    {}
+func (*NamedType) typeExpr() {}
+func (*FuncType) typeExpr()  {}
+func (*StructDef) typeExpr() {}
+func (*EnumDef) typeExpr()   {}
+func (*UnitDef) typeExpr()   {}
 
 // --- targetExpr implementations ---
 
@@ -364,9 +364,9 @@ func (*IndexExpr) targetExpr()  {}
 
 // --- StmtPos implementations ---
 
-func (x *AssignStmt) StmtPos() *Pos  { return &x.Pos }
-func (x *ToggleStmt) StmtPos() *Pos  { return &x.Pos }
-func (x *EmitStmt) StmtPos() *Pos    { return &x.Pos }
-func (x *VarStmt) StmtPos() *Pos     { return &x.Pos }
-func (x *ReturnStmt) StmtPos() *Pos  { return &x.Pos }
-func (x *CallStmt) StmtPos() *Pos    { return &x.Pos }
+func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
+func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
+func (x *EmitStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
+func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
+func (x *CallStmt) StmtPos() *Pos   { return &x.Pos }

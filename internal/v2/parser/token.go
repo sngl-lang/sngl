@@ -73,10 +73,10 @@ const (
 	// Keywords
 	KW_IMPORT TokenType = 0x31
 	// 0x32 freed: output is now a pre-declared identifier
-	KW_STRUCT    TokenType = 0x33
-	KW_ENUM      TokenType = 0x34
-	KW_CONST     TokenType = 0x35
-	KW_VAR       TokenType = 0x36
+	KW_STRUCT TokenType = 0x33
+	KW_ENUM   TokenType = 0x34
+	KW_CONST  TokenType = 0x35
+	KW_VAR    TokenType = 0x36
 	// 0x37 freed: style is now a pre-declared identifier
 	KW_COMPONENT TokenType = 0x38
 	KW_IF        TokenType = 0x39
@@ -105,11 +105,11 @@ const (
 )
 
 var keywords = map[string]TokenType{
-	"import":    KW_IMPORT,
-	"struct":    KW_STRUCT,
-	"enum":      KW_ENUM,
-	"const":     KW_CONST,
-	"var":       KW_VAR,
+	"import": KW_IMPORT,
+	"struct": KW_STRUCT,
+	"enum":   KW_ENUM,
+	"const":  KW_CONST,
+	"var":    KW_VAR,
 	// style is now a pre-declared identifier, not a keyword
 	"component": KW_COMPONENT,
 	"if":        KW_IF,
