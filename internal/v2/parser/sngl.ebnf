@@ -494,6 +494,4 @@ Type =
     | EnumDecl
     .
 
-TypeHint = Type .
-
-TypeList = TypeHint { comma TypeHint } .
+TypeList = Type { comma Type } .
