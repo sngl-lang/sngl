@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -12,38 +11,39 @@ import (
 )
 
 func TestFixtures(t *testing.T) {
-	testutil.RunFixtures(t, "../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
-		parseErrs := testutil.Filter(dirs, "parse")
-		if len(parseErrs) > 0 {
-			return // skip files that test parser errors
-		}
-		checkErrs := testutil.Filter(dirs, "check")
-		doc, err := testutil.ParseFile(path)
-		if err != nil {
-			t.Fatalf("parse: %v", err)
-		}
-		err = Check(doc, os.DirFS("../../testdata"), "../../testdata", DefaultResolver(), nil, nil, nil, true)
-		// When check error directives exist, also merge CheckTestFuncs
-		// diagnostics so ERROR(check) directives on test functions match.
-		if len(checkErrs) > 0 {
-			diags := CheckTestFuncs(doc)
-			if len(diags) > 0 {
-				var msgs []string
-				if err != nil {
-					msgs = append(msgs, err.Error())
-				}
-				for _, d := range diags {
-					if d.Pos.Line > 0 {
-						msgs = append(msgs, fmt.Sprintf("%d:%d: %s", d.Pos.Line, d.Pos.Column, d.Msg))
-					} else {
-						msgs = append(msgs, d.Msg)
-					}
-				}
-				err = fmt.Errorf("%s", strings.Join(msgs, "\n"))
+	for s := range testutil.TestdataSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			if s.ExpectsError("parse") {
+				return
 			}
-		}
-		testutil.AssertErrors(t, err, checkErrs)
-	})
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			checkErrs := s.PhaseErrors("check")
+			err = Check(doc, s.FS, s.Dir, DefaultResolver(), nil, nil, nil, true)
+			// When check error directives exist, also merge CheckTestFuncs
+			// diagnostics so ERROR(check) directives on test functions match.
+			if len(checkErrs) > 0 {
+				diags := CheckTestFuncs(doc)
+				if len(diags) > 0 {
+					var msgs []string
+					if err != nil {
+						msgs = append(msgs, err.Error())
+					}
+					for _, d := range diags {
+						if d.Pos.Line > 0 {
+							msgs = append(msgs, fmt.Sprintf("%d:%d: %s", d.Pos.Line, d.Pos.Column, d.Msg))
+						} else {
+							msgs = append(msgs, d.Msg)
+						}
+					}
+					err = fmt.Errorf("%s", strings.Join(msgs, "\n"))
+				}
+			}
+			s.AssertErrors(t, err, "check")
+		})
+	}
 }
 
 func TestSchemeImport(t *testing.T) {
@@ -131,43 +131,47 @@ func TestCallStmtInHandler(t *testing.T) {
 }
 
 func TestCheckTestFuncs(t *testing.T) {
-	testutil.RunFixtures(t, "../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
-		base := strings.TrimSuffix(path, ".sngl")
-		isTestFile := strings.Contains(base, "test_")
-		isCheckTestError := strings.HasSuffix(base, "error_unknown_test_component")
+	for s := range testutil.TestdataSamples(t) {
+		isTestFile := strings.Contains(s.Name, "test_")
+		isCheckTestError := s.Name == "error_unknown_test_component"
 		if !isTestFile && !isCheckTestError {
-			return
+			continue
 		}
-		// Skip test files with runtime error directives — those intentionally
-		// reference undefined vars which CheckTestFuncs may also flag.
-		if isTestFile && len(testutil.Filter(dirs, "test")) > 0 {
-			return
-		}
-		doc, err := testutil.ParseFile(path)
-		if err != nil {
-			t.Fatalf("parse: %v", err)
-		}
-		diags := CheckTestFuncs(doc)
+		t.Run(s.Name, func(t *testing.T) {
+			if s.ExpectsError("parse") {
+				return
+			}
+			// Skip test files with runtime error directives — those intentionally
+			// reference undefined vars which CheckTestFuncs may also flag.
+			if isTestFile && s.ExpectsError("test") {
+				return
+			}
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			diags := CheckTestFuncs(doc)
 
-		checkErrs := testutil.Filter(dirs, "check")
-		if len(checkErrs) == 0 {
-			if len(diags) > 0 {
-				t.Errorf("expected no diagnostics, got %v", diags)
+			checkErrs := s.PhaseErrors("check")
+			if len(checkErrs) == 0 {
+				if len(diags) > 0 {
+					t.Errorf("expected no diagnostics, got %v", diags)
+				}
+				return
 			}
-			return
-		}
-		var msgs []string
-		for _, d := range diags {
-			if d.Pos.Line > 0 {
-				msgs = append(msgs, fmt.Sprintf("%d:%d: %s", d.Pos.Line, d.Pos.Column, d.Msg))
-			} else {
-				msgs = append(msgs, d.Msg)
+			var msgs []string
+			for _, d := range diags {
+				if d.Pos.Line > 0 {
+					msgs = append(msgs, fmt.Sprintf("%d:%d: %s", d.Pos.Line, d.Pos.Column, d.Msg))
+				} else {
+					msgs = append(msgs, d.Msg)
+				}
 			}
-		}
-		var diagErr error
-		if len(msgs) > 0 {
-			diagErr = fmt.Errorf("%s", strings.Join(msgs, "\n"))
-		}
-		testutil.AssertErrors(t, diagErr, checkErrs)
-	})
+			var diagErr error
+			if len(msgs) > 0 {
+				diagErr = fmt.Errorf("%s", strings.Join(msgs, "\n"))
+			}
+			s.AssertErrors(t, diagErr, "check")
+		})
+	}
 }

@@ -2,8 +2,6 @@ package parser_test
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -11,6 +9,7 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 
 	"git.duckfam.us/jonathan/sngl/internal/parser/internal/tsparser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	v2parser "git.duckfam.us/jonathan/sngl/internal/v2/parser"
 )
 
@@ -24,28 +23,13 @@ func TestCanLoadGrammar(t *testing.T) {
 // TestFixtureAgreement parses every testdata/*.sngl file with both the v2
 // Go parser and tree-sitter, checking that they agree on accept/reject.
 func TestFixtureAgreement(t *testing.T) {
-	dir := filepath.Join("..", "..", "testdata")
-	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(matches) == 0 {
-		t.Fatal("no .sngl files in testdata/")
-	}
-
-	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
-
-		t.Run(name, func(t *testing.T) {
-			src, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			isError := strings.HasPrefix(name, "error_") || strings.Contains(string(src), "ERROR(parse)")
+	for s := range testutil.TestdataSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			src := []byte(s.Source)
+			isError := strings.HasPrefix(s.Name, "error_") || s.ExpectsError("parse")
 
 			// Parse with v2 Go parser.
-			_, goErr := v2parser.Parse(name+".sngl", src)
+			_, goErr := v2parser.Parse(s.Filename, src)
 
 			// Parse with tree-sitter.
 			tree := tsparser.Parse(src)
@@ -106,20 +90,11 @@ func reportErrors(t *testing.T, root *ts.Node, src []byte) {
 // the input (no error), the tree-sitter parser must produce an error-free tree.
 func FuzzParse(f *testing.F) {
 	// Seed with valid testdata fixtures (skip error fixtures).
-	dir := filepath.Join("..", "..", "testdata")
-	matches, _ := filepath.Glob(filepath.Join(dir, "*.sngl"))
-	for _, path := range matches {
-		if strings.HasPrefix(filepath.Base(path), "error_") {
+	for s := range testutil.TestdataSamples(f) {
+		if strings.HasPrefix(s.Name, "error_") || s.ExpectsError("parse") {
 			continue
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		if strings.Contains(string(data), "ERROR(parse)") {
-			continue
-		}
-		f.Add(data)
+		f.Add([]byte(s.Source))
 	}
 
 	// Add targeted seeds for edge cases.

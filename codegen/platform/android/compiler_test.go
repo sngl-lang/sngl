@@ -1,12 +1,12 @@
 package android
 
 import (
-	"os"
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -37,17 +37,19 @@ func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 }
 
 func TestFixtures(t *testing.T) {
-	testutil.RunFixtures(t, "../../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
-		if len(dirs) > 0 {
-			return // skip error fixtures
+	for s := range testutil.TestdataSamples(t) {
+		if len(s.Errors) > 0 {
+			continue
 		}
-		doc, err := testutil.ParseFile(path)
-		if err != nil {
-			t.Fatalf("parse: %v", err)
-		}
-		if err := checker.Check(doc, os.DirFS("../../../testdata"), "../../../testdata", checker.DefaultResolver(), nil, nil, nil, true); err != nil {
-			t.Fatalf("check: %v", err)
-		}
-		compileAndVerify(t, doc)
-	})
+		t.Run(s.Name, func(t *testing.T) {
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if err := checker.Check(doc, s.FS, s.Dir, checker.DefaultResolver(), nil, nil, nil, true); err != nil {
+				t.Fatalf("check: %v", err)
+			}
+			compileAndVerify(t, doc)
+		})
+	}
 }

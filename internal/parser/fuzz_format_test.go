@@ -1,8 +1,6 @@
 package parser_test
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -10,20 +8,15 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 // FuzzFormat tests that parse → format → parse produces an equivalent AST.
 // Positions are zeroed before comparison; doc comments are compared by text.
 func FuzzFormat(f *testing.F) {
 	// Seed with testdata fixtures.
-	dir := filepath.Join("..", "..", "testdata")
-	matches, _ := filepath.Glob(filepath.Join(dir, "*.sngl"))
-	for _, path := range matches {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		f.Add(string(data))
+	for s := range testutil.TestdataSamples(f) {
+		f.Add(s.Source)
 	}
 
 	f.Add("component main {}")

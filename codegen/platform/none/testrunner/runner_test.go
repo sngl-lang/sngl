@@ -1,38 +1,27 @@
 package testrunner_test
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func TestRunFixtures(t *testing.T) {
-	matches, err := filepath.Glob("../../../../testdata/test_*.sngl")
-	if err != nil {
-		t.Fatalf("glob: %v", err)
-	}
-	if len(matches) == 0 {
-		t.Fatal("no test_*.sngl files found")
-	}
-
-	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
-		t.Run(name, func(t *testing.T) {
-			dirs, err := testutil.ParseDirectives(path)
-			if err != nil {
-				t.Fatalf("parse directives: %v", err)
-			}
-
-			doc, err := testutil.ParseFile(path)
+	for s := range testutil.TestdataSamples(t) {
+		if !strings.HasPrefix(s.Name, "test_") {
+			continue
+		}
+		t.Run(s.Name, func(t *testing.T) {
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
 
-			testDirs := testutil.Filter(dirs, "test")
+			testDirs := s.PhaseErrors("test")
 
 			results, err := testrunner.Run(doc)
 			if err != nil {

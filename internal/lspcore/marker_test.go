@@ -2,14 +2,13 @@ package lspcore_test
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 // marker represents a single //@ directive in a test file.
@@ -72,26 +71,15 @@ func parseArgs(s string) []string {
 }
 
 func TestMarkers(t *testing.T) {
-	matches, err := filepath.Glob("../../testdata/lsp_*.sngl")
-	if err != nil {
-		t.Fatalf("glob: %v", err)
-	}
-	if len(matches) == 0 {
-		t.Fatal("no testdata/lsp_*.sngl files found")
-	}
-
-	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
-		t.Run(name, func(t *testing.T) {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatalf("read: %v", err)
-			}
-			content := string(data)
+	for s := range testutil.TestdataSamples(t) {
+		if !strings.HasPrefix(s.Name, "lsp_") {
+			continue
+		}
+		t.Run(s.Name, func(t *testing.T) {
+			content := s.Source
 			markers := parseMarkers(content)
 
-			dir := filepath.Dir(path)
-			doc, diags := lspcore.Analyze(content, filepath.Base(path), os.DirFS(dir), dir, checker.DefaultResolver())
+			doc, diags := lspcore.Analyze(content, s.Filename, s.FS, s.Dir, checker.DefaultResolver())
 
 			// Collect diag markers by line
 			diagExpected := map[int][]string{} // line (1-based) → expected substrings
@@ -146,7 +134,6 @@ func TestMarkers(t *testing.T) {
 				if d.Range.Start.Line == 0 && d.Range.Start.Character == 0 {
 					if _, ok := diagExpected[0]; !ok {
 						// Allow line-0 diags only if they were explicitly expected at some line
-						// (position-less diags can't be pinned to a line)
 					}
 				}
 			}

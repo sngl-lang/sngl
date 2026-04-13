@@ -1,18 +1,16 @@
 package sngl_test
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"golang.org/x/tools/txtar"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
@@ -21,80 +19,27 @@ import (
 // TestDocSNGLBlocks finds all ```sngl code blocks in markdown files and
 // verifies they parse correctly and produce stable formatting.
 func TestDocSNGLBlocks(t *testing.T) {
-	var files []string
-	filepath.WalkDir("docs", func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		if strings.HasSuffix(path, ".md") {
-			files = append(files, path)
-		}
-		return nil
-	})
+	for s := range testutil.DocSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+			if err != nil {
+				t.Errorf("parse error at %s:\n%s\n---\n%v", s.Name, s.Source, err)
+				return
+			}
 
-	for _, file := range files {
-		blocks := extractSNGLBlocks(t, file)
-		for i, block := range blocks {
-			name := fmt.Sprintf("%s#%d", file, i+1)
-			t.Run(name, func(t *testing.T) {
-				if block.annotation == "nocheck" {
-					return
-				}
+			isMain := doc.App != nil
+			if err := checker.Check(doc, s.FS, s.Dir, checker.DefaultResolver(), sngl.DefaultSchemeResolver(), nil, sngl.BuildAPIConfig(doc), isMain); err != nil {
+				t.Errorf("type error at %s:\n%s\n---\n%v", s.Name, s.Source, err)
+				return
+			}
 
-				src := block.prelude
-				var checkFS = os.DirFS(".")
-
-				// If prelude contains txtar markers, build an in-memory FS.
-				var replacements []string
-				if strings.Contains(block.prelude, "-- ") && strings.Contains(block.prelude, " --") {
-					ar := txtar.Parse([]byte(block.prelude))
-					src = string(ar.Comment) // non-file prelude content
-					mapFS := fstest.MapFS{}
-					for _, f := range ar.Files {
-						if f.Name == "..." {
-							replacements = append(replacements, strings.TrimSpace(string(f.Data)))
-							continue
-						}
-						mapFS[f.Name] = &fstest.MapFile{Data: f.Data}
-					}
-					checkFS = mapFS
-				}
-
-				switch block.annotation {
-				case "component":
-					src += "component main {\n" + block.source + "\n}"
-				case "expression":
-					src += "component main {\n  computed _x = " + strings.TrimSpace(block.source) + "\n}"
-				default:
-					src += block.source
-				}
-
-				// Replace each "..." in source with the next -- ... -- file content.
-				for _, r := range replacements {
-					src = strings.Replace(src, "...", r, 1)
-				}
-
-				doc, err := parser.Parse(name, strings.NewReader(src))
-				if err != nil {
-					t.Errorf("parse error at %s line %d:\n%s\n---\n%v", file, block.line, src, err)
-					return
-				}
-
-				// Type check
-				isMain := doc.App != nil
-				if err := checker.Check(doc, checkFS, ".", checker.DefaultResolver(), sngl.DefaultSchemeResolver(), nil, sngl.BuildAPIConfig(doc), isMain); err != nil {
-					t.Errorf("type error at %s line %d:\n%s\n---\n%v", file, block.line, src, err)
-					return
-				}
-
-				// Round-trip format check: format and re-parse to verify stability
-				formatted := parser.Format(doc)
-				_, err = parser.Parse(name+".fmt", strings.NewReader(formatted))
-				if err != nil {
-					t.Errorf("formatted output doesn't re-parse at %s line %d:\n%s\n---\n%v", file, block.line, formatted, err)
-				}
-			})
-		}
+			// Round-trip format check
+			formatted := parser.Format(doc)
+			_, err = parser.Parse(s.Filename+".fmt", strings.NewReader(formatted))
+			if err != nil {
+				t.Errorf("formatted output doesn't re-parse at %s:\n%s\n---\n%v", s.Name, formatted, err)
+			}
+		})
 	}
 }
 
@@ -115,7 +60,7 @@ func TestDocSNGLFormat(t *testing.T) {
 	})
 
 	for _, file := range mdFiles {
-		blocks := extractSNGLBlocks(t, file)
+		blocks := testutil.ExtractSNGLBlocks(t, file)
 		if len(blocks) == 0 {
 			continue
 		}
@@ -125,28 +70,24 @@ func TestDocSNGLFormat(t *testing.T) {
 		for i, block := range blocks {
 			name := fmt.Sprintf("%s#%d", file, i+1)
 			t.Run(name, func(t *testing.T) {
-				if block.annotation == "nocheck" || block.annotation == "expression" {
+				if block.Annotation == "nocheck" || block.Annotation == "expression" {
 					return
 				}
 
-				src := block.prelude
+				src := block.Prelude
 				hasReplacements := false
 
-				if strings.Contains(block.prelude, "-- ") && strings.Contains(block.prelude, " --") {
-					ar := txtar.Parse([]byte(block.prelude))
-					src = string(ar.Comment)
-					for _, f := range ar.Files {
-						if f.Name == "..." {
-							hasReplacements = true
-						}
-					}
+				if strings.Contains(block.Prelude, "-- ") && strings.Contains(block.Prelude, " --") {
+					ar := txtarParse(block.Prelude)
+					src = ar.comment
+					hasReplacements = ar.hasReplacements
 				}
 
-				switch block.annotation {
+				switch block.Annotation {
 				case "component":
-					src += "component main {\n" + block.source + "\n}"
+					src += "component main {\n" + block.Source + "\n}"
 				default:
-					src += block.source
+					src += block.Source
 				}
 
 				doc, err := parser.Parse(name, strings.NewReader(src))
@@ -158,39 +99,30 @@ func TestDocSNGLFormat(t *testing.T) {
 
 				// Unwrap: extract the snippet portion from the formatted output
 				var snippet string
-				switch block.annotation {
+				switch block.Annotation {
 				case "component":
-					snippet = unwrapComponent(formatted, block.prelude)
+					snippet = testutil.UnwrapComponent(formatted, block.Prelude)
 				default:
-					// Top-level: strip the prelude portion
-					if block.prelude != "" {
-						fmtPrelude := formatted
-						// Re-parse just the prelude to get its formatted length
-						preDoc, perr := parser.Parse("prelude", strings.NewReader(block.prelude))
+					if block.Prelude != "" {
+						preDoc, perr := parser.Parse("prelude", strings.NewReader(block.Prelude))
 						if perr == nil {
 							fmtPre := parser.Format(preDoc)
-							if strings.HasPrefix(formatted, fmtPre) {
-								fmtPrelude = formatted[len(fmtPre):]
-							}
+							formatted = strings.TrimPrefix(formatted, fmtPre)
 						}
-						snippet = fmtPrelude
-					} else {
-						snippet = formatted
 					}
+					snippet = formatted
 				}
 
-				// Normalize: trim trailing whitespace from both
-				original := strings.TrimRight(block.source, " \t\n")
+				original := strings.TrimRight(block.Source, " \t\n")
 				snippet = strings.TrimRight(snippet, " \t\n")
 
 				if original != snippet {
 					if hasReplacements {
-						// Has ... replacements — check only, don't write back
 						t.Errorf("formatting differs (has ... replacement, not auto-fixable):\n--- original ---\n%s\n--- formatted ---\n%s", original, snippet)
 					} else if writeBack {
 						edits = append(edits, edit{
-							startLine: block.line,
-							source:    block.source,
+							startLine: block.Line,
+							source:    block.Source,
 							formatted: snippet + "\n",
 						})
 					} else {
@@ -200,64 +132,48 @@ func TestDocSNGLFormat(t *testing.T) {
 			})
 		}
 
-		// Apply edits to the file
 		if writeBack && len(edits) > 0 {
 			applyDocEdits(t, file, edits)
 		}
 	}
 }
 
-// unwrapComponent extracts the inner body from a formatted "component main { ... }"
-// and un-indents by one level (4 spaces).
-func unwrapComponent(formatted, prelude string) string {
-	// Strip prelude from formatted output
-	src := formatted
-	if prelude != "" {
-		preDoc, err := parser.Parse("prelude", strings.NewReader(prelude))
-		if err == nil {
-			fmtPre := parser.Format(preDoc)
-			src = strings.TrimPrefix(formatted, fmtPre)
-		}
-	}
-
-	lines := strings.Split(src, "\n")
-	// Find "component main {" and closing "}" using brace depth
-	start := -1
-	end := -1
-	depth := 0
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if start == -1 && strings.HasPrefix(trimmed, "component main") && strings.HasSuffix(trimmed, "{") {
-			start = i + 1
-			depth = 1
-			continue
-		}
-		if start != -1 {
-			depth += strings.Count(line, "{") - strings.Count(line, "}")
-			if depth == 0 {
-				end = i
-				break
-			}
-		}
-	}
-	if start == -1 || end == -1 {
-		return src
-	}
-
-	// Un-indent inner lines by 4 spaces
-	var b strings.Builder
-	for _, line := range lines[start:end] {
-		if len(line) >= 4 && line[:4] == "    " {
-			b.WriteString(line[4:])
-		} else {
-			b.WriteString(line)
-		}
-		b.WriteByte('\n')
-	}
-	return b.String()
+type edit struct {
+	startLine int
+	source    string
+	formatted string
 }
 
-// applyDocEdits rewrites a markdown file, replacing code block contents.
+type txtarResult struct {
+	comment         string
+	hasReplacements bool
+}
+
+func txtarParse(prelude string) txtarResult {
+	// Minimal txtar-like parsing for prelude replacement detection.
+	var r txtarResult
+	lines := strings.Split(prelude, "\n")
+	var comment strings.Builder
+	inFile := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "-- ") && strings.HasSuffix(line, " --") {
+			name := strings.TrimPrefix(line, "-- ")
+			name = strings.TrimSuffix(name, " --")
+			if name == "..." {
+				r.hasReplacements = true
+			}
+			inFile = true
+			continue
+		}
+		if !inFile {
+			comment.WriteString(line)
+			comment.WriteByte('\n')
+		}
+	}
+	r.comment = comment.String()
+	return r
+}
+
 func applyDocEdits(t *testing.T, path string, edits []edit) {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -267,7 +183,6 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 	}
 
 	lines := strings.Split(string(data), "\n")
-	// Build a map: startLine → formatted source
 	editMap := map[int]string{}
 	for _, e := range edits {
 		editMap[e.startLine] = e.formatted
@@ -277,7 +192,7 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 	inBlock := false
 	blockStart := 0
 	for i, line := range lines {
-		lineNum := i + 1 // 1-based
+		lineNum := i + 1
 		if strings.TrimSpace(line) == "```sngl" {
 			inBlock = true
 			blockStart = lineNum + 1
@@ -297,7 +212,7 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 		}
 		if inBlock {
 			if _, ok := editMap[blockStart]; ok {
-				continue // skip original lines — will be replaced
+				continue
 			}
 		}
 		out.WriteString(line)
@@ -307,73 +222,6 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 	}
 
 	os.WriteFile(path, []byte(out.String()), 0o644)
-}
-
-type edit struct {
-	startLine int
-	source    string
-	formatted string
-}
-
-type snglBlock struct {
-	source     string
-	line       int
-	annotation string // "", "component", "expression"
-	prelude    string // optional SNGL source from HTML comment body
-}
-
-func extractSNGLBlocks(t *testing.T, path string) []snglBlock {
-	t.Helper()
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatalf("open %s: %v", path, err)
-	}
-	defer f.Close()
-
-	var blocks []snglBlock
-	scanner := bufio.NewScanner(f)
-	lineNum := 0
-	inBlock := false
-	var current strings.Builder
-	blockStart := 0
-	var annotation string
-	var prelude string
-
-	// Store all lines so we can look backward from ```sngl
-	var lines []string
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	for lineNum = 0; lineNum < len(lines); lineNum++ {
-		line := lines[lineNum]
-		if strings.TrimSpace(line) == "```sngl" {
-			inBlock = true
-			blockStart = lineNum + 2 // 1-based, next line
-			current.Reset()
-			annotation = ""
-			prelude = ""
-
-			// Look backward to find <!-- SNGL-... comment
-			annotation, prelude = findAnnotation(lines, lineNum)
-			continue
-		}
-		if inBlock && strings.TrimSpace(line) == "```" {
-			inBlock = false
-			blocks = append(blocks, snglBlock{
-				source:     current.String(),
-				line:       blockStart,
-				annotation: annotation,
-				prelude:    prelude,
-			})
-			continue
-		}
-		if inBlock {
-			current.WriteString(line)
-			current.WriteByte('\n')
-		}
-	}
-	return blocks
 }
 
 // TestPlatformSourcesPassChecker verifies that each platform's PkgSource .sngl
@@ -390,7 +238,7 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.platform, func(t *testing.T) {
-			src := fmt.Sprintf("output {\n    %s {\n        %s\n    }\n}\n\ncomponent main {\n    text(value=\"hi\")\n}\n", tt.lang, tt.platform)
+			src := "output {\n    " + tt.lang + " {\n        " + tt.platform + "\n    }\n}\n\ncomponent main {\n    text(value=\"hi\")\n}\n"
 			doc, err := parser.Parse("test.sngl", strings.NewReader(src))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
@@ -402,64 +250,4 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 			}
 		})
 	}
-}
-
-// findAnnotation looks backward from fenceLine to find a <!-- SNGL-... --> comment.
-// It returns the annotation type and any prelude source from a multi-line comment.
-func findAnnotation(lines []string, fenceLine int) (annotation, prelude string) {
-	// Skip blank lines before the fence
-	i := fenceLine - 1
-	for i >= 0 && strings.TrimSpace(lines[i]) == "" {
-		i--
-	}
-	if i < 0 {
-		return "", ""
-	}
-
-	// First check: is the previous non-blank line a single-line annotation?
-	prev := strings.TrimSpace(lines[i])
-	if strings.HasPrefix(prev, "<!-- SNGL-") && strings.HasSuffix(prev, "-->") {
-		// Single-line: <!-- SNGL-component -->
-		inner := strings.TrimPrefix(prev, "<!-- SNGL-")
-		inner = strings.TrimSuffix(inner, "-->")
-		inner = strings.TrimSpace(inner)
-		return inner, ""
-	}
-
-	// Check for multi-line: the line before the fence should be "-->"
-	if prev != "-->" {
-		return "", ""
-	}
-
-	// Scan backward to find the opening <!-- SNGL-
-	var preludeLines []string
-	for i = i - 1; i >= 0; i-- {
-		trimmed := strings.TrimSpace(lines[i])
-		if after, ok := strings.CutPrefix(trimmed, "<!-- SNGL-"); ok {
-			// Found the opening line
-			inner := after
-			// The annotation is the first word/token
-			inner = strings.TrimSpace(inner)
-			// If there's content after the annotation on this line
-			if before, after, ok := strings.Cut(inner, " "); ok {
-				annotation = before
-				// Rest of first line is also prelude
-				preludeLines = append([]string{after}, preludeLines...)
-			} else if before, ok := strings.CutSuffix(inner, "-->"); ok {
-				// Shouldn't happen since we already checked single-line
-				annotation = before
-				annotation = strings.TrimSpace(annotation)
-			} else {
-				annotation = inner
-			}
-			var b strings.Builder
-			for _, pl := range preludeLines {
-				b.WriteString(pl)
-				b.WriteByte('\n')
-			}
-			return annotation, b.String()
-		}
-		preludeLines = append([]string{lines[i]}, preludeLines...)
-	}
-	return "", ""
 }

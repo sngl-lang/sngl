@@ -8,10 +8,45 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 )
+
+func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
+	t.Helper()
+	doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := checker.Check(doc, s.FS, s.Dir, checker.DefaultResolver(), nil, nil, nil, true); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+
+	lang := codegen.LookupLang("js")
+	if lang == nil {
+		t.Fatal("js language translator not registered")
+	}
+
+	gen := &Generator{}
+	resp, err := gen.Generate(&codegen.Request{
+		Doc:  doc,
+		Lang: lang,
+	})
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if resp.Error != "" {
+		t.Fatalf("generate error: %s", resp.Error)
+	}
+	if len(resp.Files) < 1 {
+		t.Fatal("expected at least 1 file")
+	}
+	var buf bytes.Buffer
+	resp.Files[0].WriteTo(&buf)
+	return buf.String()
+}
 
 func generateHTML(t *testing.T, path string) string {
 	t.Helper()
@@ -49,23 +84,25 @@ func generateHTML(t *testing.T, path string) string {
 }
 
 func TestFixtures(t *testing.T) {
-	testutil.RunFixtures(t, "../../../testdata", func(t *testing.T, path string, dirs []testutil.ErrorDirective) {
-		if len(dirs) > 0 {
-			return // skip error fixtures
+	for s := range testutil.TestdataSamples(t) {
+		if len(s.Errors) > 0 {
+			continue
 		}
-		html := generateHTML(t, path)
+		t.Run(s.Name, func(t *testing.T) {
+			html := generateHTMLFromSample(t, s)
 
-		// Basic structure checks
-		if !strings.Contains(html, "<!DOCTYPE html>") {
-			t.Error("missing <!DOCTYPE html>")
-		}
-		if !strings.Contains(html, "<script>") {
-			t.Error("missing <script> tag")
-		}
-		if !strings.Contains(html, "let state = {") {
-			t.Error("missing state initialization")
-		}
-	})
+			// Basic structure checks
+			if !strings.Contains(html, "<!DOCTYPE html>") {
+				t.Error("missing <!DOCTYPE html>")
+			}
+			if !strings.Contains(html, "<script>") {
+				t.Error("missing <script> tag")
+			}
+			if !strings.Contains(html, "let state = {") {
+				t.Error("missing state initialization")
+			}
+		})
+	}
 }
 
 func TestTodoApp(t *testing.T) {

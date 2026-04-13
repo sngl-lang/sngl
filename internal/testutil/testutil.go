@@ -82,6 +82,11 @@ func parseSNGLLiteral(s string) (any, error) {
 // to the expected literal values after optimization. Both value and type must match.
 func AssertFolds(t *testing.T, doc *ast.Document, folds []FoldDirective) {
 	t.Helper()
+	assertFolds(t, doc, folds)
+}
+
+func assertFolds(t testing.TB, doc *ast.Document, folds []FoldDirective) {
+	t.Helper()
 	for _, fd := range folds {
 		expr, name := findExprAtLine(doc, fd.Line)
 		if expr == nil {
@@ -169,6 +174,11 @@ func Filter(dirs []ErrorDirective, phase string) []ErrorDirective {
 // For errors without position prefixes (e.g. "missing app node"), the directive
 // matches if any error line contains the substring.
 func AssertErrors(t *testing.T, err error, expected []ErrorDirective) {
+	t.Helper()
+	assertErrors(t, err, expected)
+}
+
+func assertErrors(t testing.TB, err error, expected []ErrorDirective) {
 	t.Helper()
 	if len(expected) == 0 {
 		if err != nil {

@@ -1,11 +1,9 @@
 package parser
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/internal/v2/ast"
 )
 
@@ -524,34 +522,13 @@ func identNameTest(e ast.Expr) string {
 	return ""
 }
 
-func hasParseError(src []byte) bool {
-	for line := range strings.SplitSeq(string(src), "\n") {
-		if strings.Contains(line, `ERROR(parse)`) {
-			return true
-		}
-	}
-	return false
-}
-
 func TestParseTestdata(t *testing.T) {
-	testdataDir := filepath.Join("..", "..", "..", "testdata")
-	entries, err := os.ReadDir(testdataDir)
-	if err != nil {
-		t.Fatalf("reading testdata: %v", err)
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-			continue
-		}
-		t.Run(e.Name(), func(t *testing.T) {
-			src, err := os.ReadFile(filepath.Join(testdataDir, e.Name()))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if hasParseError(src) {
+	for s := range testutil.TestdataSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			if s.ExpectsError("parse") {
 				t.Skip("has ERROR(parse) directive")
 			}
-			_, err = Parse(e.Name(), src)
+			_, err := Parse(s.Filename, []byte(s.Source))
 			if err != nil {
 				t.Errorf("parse failed: %v", err)
 			}

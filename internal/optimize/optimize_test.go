@@ -1,10 +1,11 @@
 package optimize
 
 import (
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
@@ -698,29 +699,20 @@ func TestEvalCallFuncZeroArgs(t *testing.T) {
 }
 
 func TestFoldFixtures(t *testing.T) {
-	matches, err := filepath.Glob(filepath.Join("..", "..", "testdata", "optimize_*.sngl"))
-	if err != nil {
-		t.Fatalf("glob: %v", err)
-	}
-	if len(matches) == 0 {
-		t.Fatal("no optimize_*.sngl fixtures found")
-	}
-	for _, path := range matches {
-		name := filepath.Base(path)
-		t.Run(name, func(t *testing.T) {
-			folds, err := testutil.ParseFoldDirectives(path)
-			if err != nil {
-				t.Fatalf("parse fold directives: %v", err)
-			}
-			if len(folds) == 0 {
+	for s := range testutil.TestdataSamples(t) {
+		if !strings.HasPrefix(s.Name, "optimize_") {
+			continue
+		}
+		t.Run(s.Name, func(t *testing.T) {
+			if len(s.Folds) == 0 {
 				t.Skip("no FOLD directives")
 			}
-			doc, err := testutil.ParseFile(path)
+			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
 			must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
-			testutil.AssertFolds(t, doc, folds)
+			s.AssertFolds(t, doc)
 		})
 	}
 }
