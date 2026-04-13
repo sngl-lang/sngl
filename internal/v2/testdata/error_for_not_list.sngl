@@ -1,0 +1,5 @@
+func foo() {
+    var x int
+    for item = x { // ERROR(check) "for iterator must be list"
+    }
+}

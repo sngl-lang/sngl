@@ -248,6 +248,12 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 	if calleeType.Kind == TypeFunc && calleeType.Sig != nil {
 		sig = calleeType.Sig
 	}
+
+	// Infer generic type params from arguments.
+	if sig != nil && len(sig.TypeParams) > 0 {
+		sig = c.inferTypeParams(sig, x.Args)
+	}
+
 	c.checkArgs(x.Args, sig)
 
 	if sig != nil && sig.Return != nil {
@@ -257,6 +263,17 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 }
 
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type {
+	// Determine if operand is a type name (static call) vs a value (instance call).
+	isStatic := false
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			switch sym.(type) {
+			case *TypeSym, *StructDef, *EnumDef, *UnitDef:
+				isStatic = true
+			}
+		}
+	}
+
 	receiver := c.checkExpr(sel.Operand)
 
 	// Namespace function call: ns.func().
@@ -279,13 +296,29 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 		}
 	}
 
-	// Type-attached method: receiver.method().
+	// Type-attached method call.
 	typeName := receiver.String()
 	if fn, ok := c.symtab.LookupMethod(typeName, sel.Field); ok {
-		c.checkArgs(call.Args, fn.FuncSig())
-		if fn.Return != nil {
-			// TODO: generic type param substitution.
-			return fn.Return
+		sig := fn.FuncSig()
+		if len(sig.TypeParams) > 0 {
+			sig = c.inferTypeParams(sig, call.Args)
+		}
+		if isStatic {
+			// Static call: Type.method(args...) — all args explicit.
+			c.checkArgs(call.Args, sig)
+		} else if len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
+			// Instance call: expr.method(args...) — receiver is implicit first arg.
+			shifted := &FuncSig{
+				Params:     sig.Params[1:],
+				Return:     sig.Return,
+				TypeParams: sig.TypeParams,
+			}
+			c.checkArgs(call.Args, shifted)
+		} else {
+			c.checkArgs(call.Args, sig)
+		}
+		if sig.Return != nil {
+			return sig.Return
 		}
 		return TypDyn
 	}
@@ -433,6 +466,52 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *Type {
 	c.popScope()
 
 	return &Type{Kind: TypeFunc, Sig: fn.FuncSig()}
+}
+
+// inferTypeParams infers concrete types for generic type params by matching
+// argument types against parameter types, then returns a substituted FuncSig.
+func (c *checker) inferTypeParams(sig *FuncSig, args ast.ArgList) *FuncSig {
+	bindings := make(map[string]*Type)
+	// Match positional args to params.
+	pos := 0
+	for _, a := range args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name != "" {
+			continue
+		}
+		if pos >= len(sig.Params) {
+			break
+		}
+		argType := c.checkExpr(arg.Value)
+		if argType.Kind != TypeDyn {
+			bindTypeParams(sig.Params[pos].Type, argType, bindings)
+		}
+		pos++
+	}
+	if len(bindings) == 0 {
+		return sig
+	}
+	return sig.Substitute(bindings)
+}
+
+// bindTypeParams recursively matches a param type pattern against a concrete
+// arg type to extract type parameter bindings. E.g. list<T> vs list<int> → T=int.
+func bindTypeParams(param, arg *Type, bindings map[string]*Type) {
+	if param == nil || arg == nil {
+		return
+	}
+	if param.Kind == TypeTypeParam {
+		if _, exists := bindings[param.ParamName]; !exists {
+			bindings[param.ParamName] = arg
+		}
+		return
+	}
+	// Recurse into type arguments (list<T>, option<T>, etc.).
+	if param.Kind == arg.Kind && len(param.Elems) == len(arg.Elems) {
+		for i := range param.Elems {
+			bindTypeParams(param.Elems[i], arg.Elems[i], bindings)
+		}
+	}
 }
 
 func (c *checker) inferEventRef(x *ast.EventRefExpr) *Type {

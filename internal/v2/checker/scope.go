@@ -66,6 +66,48 @@ func (s *Scope) LookupLocal(name string) (Symbol, bool) {
 	return sym, ok
 }
 
+// TypeSym represents a builtin type name in the base scope (int, string, etc.).
+type TypeSym struct {
+	Name string
+	Type *Type
+}
+
+func (t *TypeSym) SymName() string { return t.Name }
+func (t *TypeSym) SymType() *Type  { return t.Type }
+func (t *TypeSym) SymPos() ast.Pos { return ast.Pos{} }
+
+// newBaseScope creates a scope pre-populated with builtin type names.
+// Fresh instances are created each call to avoid mutating shared state.
+func newBaseScope() *Scope {
+	s := &Scope{symbols: make(map[string]Symbol)}
+	for _, entry := range []struct {
+		name string
+		typ  *Type
+	}{
+		{"bool", TypBool},
+		{"int", TypInt},
+		{"float", TypFloat},
+		{"string", TypString},
+		{"color", TypColor},
+		{"date", TypDate},
+		{"time", TypTime},
+		{"dateTime", TypDateTime},
+		{"duration", TypDuration},
+		{"url", TypURL},
+		{"email", TypEmail},
+		{"uuid", TypUUID},
+		{"regex", TypRegex},
+		{"base64", TypBase64},
+		{"ipv4", TypIPV4},
+		{"ipv6", TypIPV6},
+		{"hostname", TypHostname},
+		{"decimal", TypDecimal},
+	} {
+		s.symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
+	}
+	return s
+}
+
 // SymbolTable is the package-level symbol registry.
 type SymbolTable struct {
 	Root    *Scope
@@ -77,7 +119,7 @@ type SymbolTable struct {
 // NewSymbolTable creates an empty symbol table.
 func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
-		Root:    NewScope(nil),
+		Root:    NewScope(newBaseScope()),
 		Types:   make(map[string]Symbol),
 		Comps:   make(map[string]Symbol),
 		Methods: make(map[string]map[string]*Func),

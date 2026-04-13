@@ -304,6 +304,9 @@ func (c *checker) buildParams(pl ast.ParamList) []*Param {
 func (c *checker) buildFunc(f *ast.FuncDef) *Func {
 	typeName, methodName, isMethod := ast.SplitMethodName(f.Name)
 
+	// Set type params so T resolves during param/return type resolution.
+	prevTypeParams := c.typeParams
+	c.typeParams = f.TypeParams
 	fn := &Func{
 		AST:        f,
 		Name:       f.Name,
@@ -314,6 +317,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *Func {
 		IsTest:     f.IsTest(),
 		Pos:        f.Pos,
 	}
+	c.typeParams = prevTypeParams
 	if f.Block.IsDefined() {
 		fn.Block = &f.Block
 	}

@@ -166,6 +166,70 @@ func (t *Type) IsNumeric() bool {
 	return t.Kind == TypeInt || t.Kind == TypeFloat
 }
 
+// Substitute replaces TypeTypeParam nodes with concrete types from bindings.
+// Returns t unchanged if no substitution is needed.
+func (t *Type) Substitute(bindings map[string]*Type) *Type {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case TypeTypeParam:
+		if bound, ok := bindings[t.ParamName]; ok {
+			return bound
+		}
+		return t
+	case TypeList, TypeOption:
+		elems := make([]*Type, len(t.Elems))
+		changed := false
+		for i, e := range t.Elems {
+			elems[i] = e.Substitute(bindings)
+			if elems[i] != e {
+				changed = true
+			}
+		}
+		if !changed {
+			return t
+		}
+		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
+	case TypeFunc:
+		if t.Sig == nil {
+			return t
+		}
+		sig := t.Sig.Substitute(bindings)
+		if sig == t.Sig {
+			return t
+		}
+		return &Type{Kind: TypeFunc, Sig: sig}
+	}
+	return t
+}
+
+// Substitute replaces TypeTypeParam in params and return type.
+func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
+	if s == nil || len(bindings) == 0 {
+		return s
+	}
+	params := make([]*Param, len(s.Params))
+	changed := false
+	for i, p := range s.Params {
+		nt := p.Type.Substitute(bindings)
+		if nt != p.Type {
+			changed = true
+			params[i] = &Param{Name: p.Name, Type: nt, HasDefault: p.HasDefault, Pos: p.Pos}
+		} else {
+			params[i] = p
+		}
+	}
+	ret := s.Return.Substitute(bindings)
+	if ret != s.Return {
+		changed = true
+	}
+	if !changed {
+		return s
+	}
+	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, Purity: s.Purity}
+}
+
 // Equal reports structural type equality.
 func (t *Type) Equal(other *Type) bool {
 	if t == other {

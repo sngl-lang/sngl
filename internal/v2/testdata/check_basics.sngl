@@ -1,0 +1,28 @@
+var count int
+var name string = "hello"
+var active bool
+
+const pi float = 3.14
+const greeting = "hi"
+
+const (
+    a = 1
+    b = a + 2
+)
+
+struct Todo {
+    title string
+    done bool
+}
+
+enum Color { red, green, blue }
+
+unit length { px, em, rem }
+
+func add(a int, b int) => a + b
+
+func greet(name string) string {
+    return name
+}
+
+func int.double(x int) => x + x

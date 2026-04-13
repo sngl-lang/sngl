@@ -1,0 +1,4 @@
+const a = "hello" + true // ERROR(check) "operator + not defined"
+const b = "hello" - 1 // ERROR(check) "operator - not defined"
+const c = !1 // ERROR(check) "operator ! not defined"
+const d = -true // ERROR(check) "operator - not defined"

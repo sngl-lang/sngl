@@ -1,0 +1,12 @@
+func identity<T>(x T) => x
+
+func first<T>(items list<T>) T {
+    return items[0]
+}
+
+func test() {
+    var a = identity(42)
+    var b = identity("hello")
+    var items list<int>
+    var c = first(items)
+}

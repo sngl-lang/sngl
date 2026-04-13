@@ -639,6 +639,10 @@ func (c *checker) checkFuncBody(fn *Func) {
 
 	if fn.Body != nil {
 		bodyType := c.checkExpr(fn.Body)
+		// Infer return type from expression body if not declared.
+		if fn.Return.Kind == TypeDyn && bodyType.Kind != TypeDyn {
+			fn.Return = bodyType
+		}
 		// Expression-body return type check.
 		if fn.Return != nil && fn.Return.Kind != TypeDyn && bodyType.Kind != TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
 			c.error(fn.Pos, "cannot return %s as %s", bodyType, fn.Return)

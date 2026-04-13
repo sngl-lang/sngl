@@ -1,9 +1,14 @@
 package checker_test
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/internal/v2/checker"
 	"git.duckfam.us/jonathan/sngl/internal/v2/parser"
 )
@@ -453,4 +458,197 @@ func test() {
 	var x = add(1, 2)
 }
 `)
+}
+
+func TestGenericTypeInference(t *testing.T) {
+	pkg := parse(t, `
+func identity<T>(x T) => x
+func first<T>(items list<T>) T {
+	return items[0]
+}
+func test() {
+	var a = identity(42)
+	var b = identity("hello")
+	var items list<int>
+	var c = first(items)
+}
+`)
+	// Verify inferred return types via function IR.
+	for _, fn := range pkg.Funcs {
+		switch fn.Name {
+		case "identity":
+			if fn.Return == nil || fn.Return.String() == "dyn" {
+				t.Errorf("identity return type not inferred: %s", fn.Return)
+			}
+		case "first":
+			if fn.Return == nil || fn.Return.String() != "T" {
+				t.Errorf("first return type: got %s, want T", fn.Return)
+			}
+		}
+	}
+}
+
+// --- Method call semantics ---
+
+func TestMethodInstanceCall(t *testing.T) {
+	// 2.add(3) — receiver is implicit first arg.
+	expectNoErrors(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = 2.add(3)
+}
+`)
+}
+
+func TestMethodStaticCall(t *testing.T) {
+	// int.add(2, 3) — all args explicit.
+	expectNoErrors(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = int.add(2, 3)
+}
+`)
+}
+
+func TestMethodInstanceWrongArgType(t *testing.T) {
+	expectError(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = 2.add("hello")
+}
+`, "cannot pass string as int")
+}
+
+func TestMethodStaticWrongArgType(t *testing.T) {
+	expectError(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = int.add(2, "hello")
+}
+`, "cannot pass string as int")
+}
+
+func TestMethodStaticArity(t *testing.T) {
+	expectError(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = int.add(2)
+}
+`, "expected 2 arguments, got 1")
+}
+
+func TestMethodInstanceArity(t *testing.T) {
+	// Instance form shifts sig: 2.add() passes only receiver, missing second param.
+	expectError(t, `
+func int.add(a int, b int) => a + b
+func test() {
+	var x = 2.add()
+}
+`, "expected 1 arguments, got 0")
+}
+
+func TestMethodStringReceiver(t *testing.T) {
+	expectNoErrors(t, `
+func string.upper(s string) string {
+	return s
+}
+func test() {
+	var x = "hello".upper()
+	var y = string.upper("hello")
+}
+`)
+}
+
+// --- Testdata-driven tests ---
+
+func testdataDir() string {
+	_, thisFile, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(thisFile), "..", "testdata")
+}
+
+func TestCheckTestdata(t *testing.T) {
+	dir := testdataDir()
+	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatalf("no *.sngl files in %s", dir)
+	}
+	for _, path := range matches {
+		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
+		t.Run(name, func(t *testing.T) {
+			src, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read: %v", err)
+			}
+			dirs, err := testutil.ParseDirectives(path)
+			if err != nil {
+				t.Fatalf("directives: %v", err)
+			}
+			expected := testutil.Filter(dirs, "check")
+
+			doc, parseErr := parser.Parse(filepath.Base(path), src)
+			if parseErr != nil {
+				t.Fatalf("parse: %v", parseErr)
+			}
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+
+			if len(expected) == 0 {
+				// No error directives — expect clean check.
+				for _, d := range diags {
+					if d.Severity == checker.Error {
+						t.Errorf("unexpected error: %s", d.Error())
+					}
+				}
+				return
+			}
+			// Match each directive against diagnostics.
+			for _, exp := range expected {
+				found := false
+				for _, d := range diags {
+					if d.Severity != checker.Error {
+						continue
+					}
+					// Match by line number and substring.
+					if d.Pos.Line == exp.Line && strings.Contains(d.Msg, exp.Substring) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					var got strings.Builder
+					for _, d := range diags {
+						fmt.Fprintf(&got, "\n  %s", d.Error())
+					}
+					t.Errorf("line %d: expected error containing %q, got:%s",
+						exp.Line, exp.Substring, got.String())
+				}
+			}
+		})
+	}
+}
+
+// TestCheckProjectTestdata runs the v2 checker over all project-level testdata
+// samples (testdata/*.sngl) that don't have parse errors.
+func TestCheckProjectTestdata(t *testing.T) {
+	for s := range testutil.TestdataSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			if s.ExpectsError("parse") {
+				t.Skip("has ERROR(parse) directive")
+			}
+			doc, err := parser.Parse(s.Filename, []byte(s.Source))
+			if err != nil {
+				t.Skipf("v2 parse failed: %v", err)
+			}
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			// Log errors but don't fail — project testdata uses v1 ERROR(check)
+			// directives which may not match v2 checker messages.
+			for _, d := range diags {
+				if d.Severity == checker.Error {
+					t.Logf("diagnostic: %s", d.Error())
+				}
+			}
+		})
+	}
 }
