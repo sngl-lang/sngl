@@ -311,6 +311,9 @@ func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		u.Name = it.shift().Literal
 	}
+	if it.done() {
+		return u
+	}
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
@@ -1954,14 +1957,11 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 }
 
 func (b *builder) buildTypeList(it nodeIter) []ast.TypeExpr {
-	// TypeList = TypeHint { comma TypeHint } .
+	// TypeList = Type { comma Type } .
 	var types []ast.TypeExpr
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == TypeHint {
-			sub := it.enter()
-			if !sub.done() && sub.isNonTerminal() && sub.symbol() == Type {
-				types = append(types, b.buildType(sub.enter()))
-			}
+		if it.isNonTerminal() && it.symbol() == Type {
+			types = append(types, b.buildType(it.enter()))
 		} else {
 			it.skip() // comma
 		}

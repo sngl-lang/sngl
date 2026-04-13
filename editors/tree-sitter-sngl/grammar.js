@@ -1,3 +1,5 @@
+// AUTO-GENERATED from internal/v2/parser/sngl.ebnf — do not edit manually.
+// Regenerate: go run ./internal/cmd/ebnf2ts internal/v2/parser/sngl.ebnf > editors/tree-sitter-sngl/grammar.js
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
@@ -30,524 +32,290 @@ module.exports = grammar({
   conflicts: ($) => [
     [$._expression, $.qualified_name],
     [$._expression, $.struct_literal],
-    [$.func_param, $._expression],
-    [$.prop_assignment, $._expression],
+    [$._expression, $.visual_node],
+    [$._expression, $.visual_node, $.struct_literal],
+    [$.func_name, $.type_identifier],
+    [$.statement_block, $.struct_literal],
+    [$.method_expression, $.field_expression],
+    [$.anon_struct_field, $.spread_expression],
+    [$.anon_struct_field, $._expression],
   ],
 
-  supertypes: ($) => [$._declaration, $._expression, $._statement],
+  supertypes: ($) => [$._stmt, $._expression],
 
   rules: {
-    source_file: ($) => repeat($._declaration_with_terminator),
+    // ─── Generated from EBNF ──────────────────────────────────
 
-    _declaration_with_terminator: ($) =>
-      seq(optional($.slashdash), $._declaration, $._terminator),
+    source_file: ($) =>
+      repeat(seq(optional("/-"), $._stmt, optional($._terminator))),
 
-    _terminator: ($) => choice(";", $._automatic_semicolon),
-
-    // ─── Top-level declarations ──────────────────────────────
-
-    slashdash: (_$) => "/-",
-
-    _declaration: ($) =>
-      choice(
-        $.import_declaration,
-        $.output_declaration,
-        $.struct_declaration,
-        $.enum_declaration,
-        $.unit_declaration,
-        $.style_declaration,
-        $.const_declaration,
-        $.var_declaration,
-        $.func_declaration,
-        $.timer_declaration,
-        $.component_declaration,
-        $.window_declaration,
-        $.test_declaration,
-      ),
+    statement_block: ($) =>
+      seq("{", repeat(seq(optional("/-"), $._stmt, optional($._terminator))), "}"),
 
     import_declaration: ($) =>
-      choice(
-        seq("import", field("alias", $.identifier), "=>", $.plain_string),
-        seq("import", $.plain_string),
-      ),
-
-    output_declaration: ($) =>
-      seq("output", optional($.kv_list), $.output_group),
-
-    output_group: ($) =>
-      seq(
-        "{",
-        repeat(seq($.output_group_entry, $._terminator)),
-        "}",
-      ),
-
-    output_group_entry: ($) =>
-      seq(
-        field("lang", $.identifier),
-        "{",
-        repeat(
-          seq(
-            field("platform", $.identifier),
-            optional($.kv_list),
-            $._terminator,
-          ),
-        ),
-        "}",
-      ),
-
-    kv_list: ($) =>
-      seq(
-        "(",
-        commaSep($.kv_pair),
-        ")",
-      ),
-
-    kv_pair: ($) =>
-      seq(
-        field("key", $.identifier),
-        "=",
-        field("value", $.string_literal),
-      ),
+      seq("import", optional(seq($.identifier, "=>")), $.string_literal),
 
     struct_declaration: ($) =>
-      seq(
-        "struct",
-        field("name", $.identifier),
-        "{",
-        repeat(seq($.struct_field, $._terminator)),
-        "}",
-      ),
+      seq("struct", optional($.identifier), "{", repeat($.struct_field), "}"),
 
     struct_field: ($) =>
       seq(
-        field("name", $.identifier),
-        field("type", $.type_identifier),
-        optional(seq("=", field("default", $._expression))),
-      ),
+      $.identifier,
+      $.type_identifier,
+      optional(seq("=", $._expression)),
+      $._terminator
+    ),
 
     enum_declaration: ($) =>
-      seq(
-        "enum",
-        field("name", $.identifier),
-        "{",
-        commaSep($.identifier),
-        optional(","),
-        "}",
-      ),
+      seq("enum", optional($.identifier), "{", optional($._arg_list), "}"),
 
     unit_declaration: ($) =>
-      seq(
-        "unit",
-        field("name", $.identifier),
-        "(",
-        commaSep($.unit_suffix),
-        ")",
-      ),
-
-    unit_suffix: ($) =>
-      seq(
-        field("name", $.identifier),
-        optional(seq("=", field("factor", $._expression))),
-      ),
-
-    style_declaration: ($) =>
-      seq(
-        "style",
-        field("name", $.identifier),
-        "{",
-        repeat(seq($.style_property, $._terminator)),
-        "}",
-      ),
-
-    style_property: ($) =>
-      seq(
-        field("name", $.identifier),
-        "=",
-        field("value", $._expression),
-      ),
-
-    // ─── Window ───────────────────────────────────────────────
-
-    window_declaration: ($) =>
-      seq(
-        "window",
-        optional(field("name", $.identifier)),
-        optional($.prop_list),
-        "{",
-        repeat(seq(optional($.slashdash), $._window_member, $._terminator)),
-        "}",
-      ),
-
-    _window_member: ($) =>
-      choice(
-        $.const_declaration,
-        $.var_declaration,
-        $.func_declaration,
-        $.timer_declaration,
-        $._node_or_control,
-      ),
-
-    // ─── Component ───────────────────────────────────────────
-
-    component_declaration: ($) =>
-      seq(
-        "component",
-        field("name", choice($.qualified_name, $.identifier)),
-        optional($.component_params),
-        optional(field("children_type", $.type_identifier)),
-        "{",
-        repeat(seq(optional($.slashdash), $._component_member, $._terminator)),
-        "}",
-      ),
-
-    component_params: ($) =>
-      seq(
-        "(",
-        commaSep(choice(
-          $.component_event_param,
-          $.component_binding_param,
-          $.component_param,
-        )),
-        ")",
-      ),
-
-    component_param: ($) =>
-      seq(
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        optional($.enum_constraint),
-        optional(seq("=", field("default", $._expression))),
-        optional("required"),
-      ),
-
-    enum_constraint: ($) =>
-      seq(
-        "enum",
-        "(",
-        commaSep(choice($.identifier, $.integer_literal, $.string_literal)),
-        ")",
-      ),
-
-    component_binding_param: ($) =>
-      seq(
-        ":",
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        optional(seq("=", field("default", $._expression))),
-      ),
-
-    component_event_param: ($) =>
-      seq(
-        "@",
-        field("name", $.identifier),
-        optional(field("payload_type", $.identifier)),
-      ),
-
-    // ─── Test declarations ─────────────────────────────────
-
-    test_declaration: ($) =>
-      seq(
-        "test",
-        field("component", $.identifier),
-        optional(field("description", $.string_literal)),
-        "{",
-        repeat(seq($._test_body_member, $._terminator)),
-        "}",
-      ),
-
-    subtest_declaration: ($) =>
-      seq(
-        "test",
-        optional(field("description", $.string_literal)),
-        "{",
-        repeat(seq($._test_body_member, $._terminator)),
-        "}",
-      ),
-
-    _test_body_member: ($) =>
-      choice(
-        $.subtest_declaration,
-        $._statement,
-      ),
-
-    _component_member: ($) =>
-      choice(
-        $.const_declaration,
-        $.var_declaration,
-        $.func_declaration,
-        $.timer_declaration,
-        $.platform_block,
-        $.window_declaration,
-        $._node_or_control,
-      ),
-
-    platform_block: ($) =>
-      seq(
-        "platform",
-        field("name", $.identifier),
-        "{",
-        repeat(seq($._node_or_control, $._terminator)),
-        "}",
-      ),
+      seq("unit", optional($.identifier), "{", optional($._arg_list), "}"),
 
     const_declaration: ($) =>
       choice(
-        seq("const", $.single_const),
-        seq("const", "(", repeat(seq(optional($.slashdash), $.single_const, $._terminator)), ")"),
-      ),
-
-    single_const: ($) =>
+      seq("const", $.const_spec),
       seq(
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        "=",
-        field("value", $._expression),
-      ),
+        "const",
+        "(",
+        repeat(seq($.const_spec, optional(choice(
+        ",",
+        $._terminator
+      )))),
+        ")"
+      )
+    ),
+
+    const_spec: ($) =>
+      prec.right(seq($.identifier_list, optional($.type_identifier), "=", $._expression)),
+
+    identifier_list: ($) =>
+      prec.right(seq($.identifier, repeat(seq(",", $.identifier)))),
 
     var_declaration: ($) =>
       choice(
-        seq("var", $.single_var),
-        seq("var", "(", repeat(seq(optional($.slashdash), $.single_var, $._terminator)), ")"),
-      ),
-
-    single_var: ($) =>
-      seq(
-        field("name", $.identifier),
-        optional(
-          choice(
-            seq(
-              field("type", $.type_identifier),
-              optional(seq("=", field("init", $._expression))),
-            ),
-            seq("=", field("init", $._expression)),
-          ),
-        ),
-        optional($.var_modifiers),
-      ),
-
-    var_modifiers: ($) =>
-      repeat1($.data_event),
-
-    data_event: ($) =>
-      seq(
-        "@",
-        field("kind", $.identifier),
-        optional(seq("(", field("param", $.identifier), ")")),
-        "{",
-        repeat(seq($._statement, $._terminator)),
-        "}",
-      ),
-
-    // ─── Timers ────────────────────────────────────────────────
-
-    timer_declaration: ($) =>
-      seq(
-        "timer",
-        field("interval", $._expression),
-        field("active", $.identifier),
-        "{",
-        repeat(seq($._statement, $._terminator)),
-        "}",
-      ),
-
-    // ─── Functions ────────────────────────────────────────────
-    // Expression form: func name(params) expr
-    // Block form: func name(params) ReturnType { stmts; return expr }
-
-    func_declaration: ($) =>
-      seq(
-        "func",
-        field("name", $.func_name),
-        choice(
-          // Block form: func name(params) [type] { ... }
-          seq($.func_params, optional(field("return_type", $.type_identifier)), $.func_block),
-          // Expression form with params: func name(params) => expr
-          seq($.func_params, "=>", field("body", $._expression)),
-          // Expression form without params: func name => expr
-          seq("=>", field("body", $._expression)),
-        ),
-      ),
-
-    func_name: ($) =>
-      seq(
-        $.identifier,
-        optional(seq(".", $.identifier)),
-        optional(field("type_params", $.type_param_list)),
-      ),
-
-    type_param_list: ($) =>
-      seq("<", commaSep1($.identifier), ">"),
-
-    func_params: ($) =>
-      seq(
-        "(",
-        commaSep($.func_param),
-        ")",
-      ),
-
-    func_param: ($) =>
-      seq(
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-      ),
-
-    func_block: ($) =>
-      prec(1, seq(
-        "{",
-        repeat(seq($._func_body_stmt, $._terminator)),
-        "}",
-      )),
-
-    _func_body_stmt: ($) =>
-      choice(
-        $.local_var,
-        $.return_statement,
-        $._statement,
-      ),
-
-    local_var: ($) =>
+      seq("var", $.var_spec),
       seq(
         "var",
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        "=",
-        field("init", $._expression),
-      ),
-
-    return_statement: ($) =>
-      seq("return", optional(field("value", $._expression))),
-
-    // ─── Types ───────────────────────────────────────────────
-
-    type_identifier: ($) =>
-      choice(
-        $._simple_type,
-        $.generic_type,
-        $.func_type,
-        $.inline_enum_type,
-      ),
-
-    _simple_type: ($) => choice($.qualified_name, $.identifier),
-
-    generic_type: ($) =>
-      seq(
-        field("name", $._simple_type),
-        "<",
-        commaSep1($.type_identifier),
-        ">",
-      ),
-
-    func_type: ($) =>
-      seq(
-        "func",
         "(",
-        commaSep($.type_identifier),
-        ")",
-        optional(seq("->", field("return_type", $.type_identifier))),
+        repeat(seq($.var_spec, optional(choice(
+        ",",
+        $._terminator
+      )))),
+        ")"
+      )
+    ),
+
+    var_spec: ($) =>
+      prec.right(seq(
+      $.identifier_list,
+      optional($.type_identifier),
+      optional(seq("=", $._expression)),
+      repeat($.var_handler)
+    )),
+
+    var_handler: ($) =>
+      seq(
+      "@",
+      $.identifier,
+      optional(seq("(", optional($.identifier_list), ")")),
+      $.statement_block
+    ),
+
+    func_declaration: ($) =>
+      seq("func", $.func_name, optional($.type_param_list), $._func_tail),
+
+    _func_tail: ($) =>
+      choice(
+      seq("(", optional($._param_list), ")", $._func_body_tail),
+      $._func_body_tail
+    ),
+
+    _func_body_tail: ($) =>
+      choice(
+      seq("=>", $._expression),
+      seq(optional($.type_identifier), $.statement_block)
+    ),
+
+    func_name: ($) =>
+      seq($.identifier, optional(seq(".", $.identifier))),
+
+    type_param_list: ($) =>
+      seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
+
+    _param_list: ($) =>
+      seq($.func_param, repeat(seq(",", $.func_param))),
+
+    func_param: ($) =>
+      prec.right(seq($.identifier, optional($.type_identifier), optional(seq("=", $._expression)))),
+
+    component_declaration: ($) =>
+      seq(
+      "component",
+      $.identifier,
+      optional(seq("(", optional($._comp_param_list), ")")),
+      optional($.type_identifier),
+      $.statement_block
+    ),
+
+    _comp_param_list: ($) =>
+      seq($.component_param, repeat(seq(",", $.component_param))),
+
+    component_param: ($) =>
+      choice(
+      seq(
+        ":",
+        $.identifier,
+        optional($.type_identifier),
+        optional(seq("=", $._expression))
       ),
+      seq("@", $.identifier, optional($.type_identifier)),
+      seq($.identifier, optional($._comp_param_tail))
+    ),
 
-    inline_enum_type: ($) =>
-      seq("enum", "<", sepBy1("|", $.identifier), ">"),
-
-    // ─── Visual nodes and control flow ───────────────────────
-
-    _node_or_control: ($) =>
-      choice($.if_node, $.for_node, $.visual_node),
+    _comp_param_tail: ($) =>
+      prec.right(choice(
+      seq("=", $._expression),
+      seq($.type_identifier, optional(seq("=", $._expression)))
+    )),
 
     if_node: ($) =>
       seq(
-        "if",
-        field("condition", $._expression),
-        "{",
-        optional($._node_or_control),
-        "}",
-      ),
+      "if",
+      $._expression,
+      $.statement_block,
+      optional(seq("else", $.statement_block))
+    ),
 
     for_node: ($) =>
       seq(
-        "for",
-        field("variable", $.identifier),
-        optional(seq(",", field("index", $.identifier))),
-        "=",
-        field("iterable", $._expression),
-        "{",
-        optional($._node_or_control),
-        "}",
-        optional(field("else", $.else_block)),
-      ),
+      "for",
+      $.identifier,
+      optional(seq(",", $.identifier)),
+      "=",
+      $._expression,
+      $.statement_block,
+      optional(seq("else", $.statement_block))
+    ),
 
-    else_block: ($) =>
-      seq(
-        "else",
-        $.node_body,
-      ),
-
-    visual_node: ($) =>
-      prec.right(
-        seq(
-          field("component", choice($.qualified_name, $.identifier)),
-          optional(field("element_id", $.element_ref)),
-          optional($.prop_list),
-          optional($.node_body),
-        ),
-      ),
-
-    prop_list: ($) =>
-      seq(
-        "(",
-        optCommaSep($._prop_entry),
-        ")",
-      ),
-
-    _prop_entry: ($) =>
+    assignment_operator: ($) =>
       choice(
-        $.prop_assignment,
-        $.prop_binding,
-        $.event_handler,
-      ),
+      "=",
+      "+=",
+      "-=",
+      "*=",
+      "/=",
+      "%="
+    ),
 
-    prop_binding: ($) =>
+    _list_body: ($) =>
+      optional(seq($._list_element, repeat(seq(",", $._list_element)))),
+
+    _list_element: ($) =>
+      choice(
+      seq("...", $._expression),
+      $._expression
+    ),
+
+    _struct_lit_body: ($) =>
       seq(
-        ":",
-        field("name", $.identifier),
-        "=",
-        field("value", $._expression),
-      ),
+      "{",
+      optional(seq(
+      $.anon_struct_field,
+      repeat(seq(choice(
+      ",",
+      $._terminator
+    ), $.anon_struct_field)),
+      optional(choice(
+      ",",
+      $._terminator
+    ))
+    )),
+      "}"
+    ),
 
-    prop_assignment: ($) =>
+    anon_struct_literal: ($) =>
       seq(
-        field("name", $.identifier),
-        "=",
-        field("value", choice($.anon_struct_literal, $._expression)),
-      ),
+      "{",
+      optional(seq(
+      $.anon_struct_field,
+      repeat(seq(choice(
+      ",",
+      $._terminator
+    ), $.anon_struct_field)),
+      optional(choice(
+      ",",
+      $._terminator
+    ))
+    )),
+      "}"
+    ),
 
-    event_handler: ($) =>
+    anon_struct_field: ($) =>
+      choice(
+      seq("...", $._expression),
+      seq($.identifier, "=", $._expression)
+    ),
+
+    anon_func_expression: ($) =>
+      seq("func", optional(seq("(", optional($._param_list), ")")), $._func_body_tail),
+
+    type_identifier: ($) =>
+      choice(
       seq(
-        "@",
-        field("name", $.identifier),
-        optional(seq("(", field("param", $.identifier), ")")),
-        "{",
-        repeat(seq($._statement, $._terminator)),
-        "}",
+        $.identifier,
+        optional(choice(
+        seq(".", $.identifier),
+        seq("<", $.type_identifier, ">")
+      ))
       ),
-
-    node_body: ($) =>
+      "component",
       seq(
-        "{",
-        repeat(seq($._node_body_member, $._terminator)),
-        "}",
+        "func",
+        "(",
+        optional($._type_list),
+        ")",
+        optional(seq("->", $.type_identifier))
+      ),
+      $.enum_declaration
+    ),
+
+    _type_list: ($) =>
+      seq($.type_identifier, repeat(seq(",", $.type_identifier))),
+
+    // ─── Statements (hand-crafted for named nodes) ────────────
+
+    _terminator: ($) => choice(";", $._automatic_semicolon),
+
+    _stmt: ($) =>
+      choice(
+        $.import_declaration,
+        $.struct_declaration,
+        $.enum_declaration,
+        $.unit_declaration,
+        $.const_declaration,
+        $.var_declaration,
+        $.func_declaration,
+        $.component_declaration,
+        $.return_statement,
+        $.if_node,
+        $.for_node,
+        $.assignment_statement,
+        $.toggle_statement,
+        $.emit_expression,
+        $.visual_node,
+        $._expression,
       ),
 
-    _node_body_member: ($) =>
-      $._node_or_control,
+    return_statement: ($) =>
+      prec.right(seq("return", optional($._expression))),
 
-    // ─── Statements (event handlers) ─────────────────────────
-
-    _statement: ($) =>
+    _visual_or_stmt: ($) =>
       choice(
         $.assignment_statement,
         $.toggle_statement,
-        $.emit_statement,
+        $.emit_expression,
+        $.visual_node,
         $._expression,
       ),
 
@@ -558,22 +326,62 @@ module.exports = grammar({
         field("value", $._expression),
       ),
 
-    assignment_operator: (_$) =>
-      choice("=", "+=", "-=", "*=", "/=", "%="),
-
     toggle_statement: ($) =>
       seq(field("target", $._expression), "!!"),
 
-    emit_statement: ($) =>
+    visual_node: ($) =>
+      prec.right(
+        seq(
+          field("component", choice($.qualified_name, $.identifier)),
+          optional(field("element_id", $.element_ref)),
+          optional(seq("(", optional($._arg_list), ")")),
+          optional($.statement_block),
+        ),
+      ),
+
+    // ─── Argument list (hand-crafted, no left-factoring) ──────
+
+    _arg_list: ($) =>
+      seq(
+        $._arg,
+        repeat(seq(choice(",", $._terminator), $._arg)),
+        optional(choice(",", $._terminator)),
+      ),
+
+    _arg: ($) =>
+      choice(
+        $.binding_arg,
+        $.event_arg,
+        $.named_arg,
+        $.spread_expression,
+        $._expression,
+      ),
+
+    binding_arg: ($) =>
+      seq(
+        ":",
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        optional(seq("=", field("default", $._expression))),
+      ),
+
+    event_arg: ($) =>
       seq(
         "@",
         field("name", $.identifier),
-        "(",
-        commaSep($._expression),
-        ")",
+        optional(field("type", $.type_identifier)),
+        optional(seq("(", optional($.identifier), ")")),
+        optional($.statement_block),
       ),
 
-    // ─── Expressions ─────────────────────────────────────────
+    named_arg: ($) =>
+      seq(
+        field("name", $.identifier),
+        "=",
+        field("value", $._expression),
+      ),
+
+    // ─── Expressions (hand-crafted, precedence-based) ─────────
 
     _expression: ($) =>
       choice(
@@ -588,7 +396,6 @@ module.exports = grammar({
         $.struct_literal,
         $.anon_struct_literal,
         $.list_literal,
-        $.lambda_expression,
         $.anon_func_expression,
         $.identifier,
         $.integer_literal,
@@ -603,6 +410,13 @@ module.exports = grammar({
         $.false,
         $.null,
       ),
+
+    // Emit/event expression for statement context: @click, @click(1)
+    emit_expression: ($) =>
+      prec.right(PREC.POSTFIX, seq(
+        $.event_method,
+        optional(seq("(", optional($._arg_list), ")")),
+      )),
 
     ternary_expression: ($) =>
       prec.right(
@@ -658,9 +472,9 @@ module.exports = grammar({
       prec(
         PREC.POSTFIX,
         seq(
-          field("function", $.identifier),
+          field("function", $._expression),
           "(",
-          commaSep($._expression),
+          optional($._arg_list),
           ")",
         ),
       ),
@@ -673,7 +487,7 @@ module.exports = grammar({
           ".",
           field("method", choice($.identifier, $.event_method, $.element_ref)),
           "(",
-          commaSep($._expression),
+          optional($._arg_list),
           ")",
         ),
       ),
@@ -707,73 +521,24 @@ module.exports = grammar({
       seq(
         field("name", choice($.qualified_name, $.identifier)),
         "{",
-        commaSep(choice($.struct_field_value, $.spread_expression)),
-        optional(","),
-        "}",
-      ),
-
-    // Anonymous struct literal (type inferred from context): {field=val, ...}
-    anon_struct_literal: ($) =>
-      prec(-1, seq(  // Lower priority than node_body/func_block which also start with {
-        "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),
         "}",
-      )),
-
-    struct_field_value: ($) =>
-      seq(
-        field("name", $.identifier),
-        "=",
-        field("value", $._expression),
-      ),
-
-    anon_struct_field: ($) =>
-      seq(
-        field("name", $.identifier),
-        "=",
-        field("value", $._expression),
       ),
 
     list_literal: ($) =>
       seq("[", commaSep($._list_element), optional(","), "]"),
 
-    _list_element: ($) =>
-      choice($.spread_expression, $._expression),
-
-    // Lambda expression: (params) => expr
-    lambda_expression: ($) =>
-      seq(
-        "(",
-        commaSep($.func_param),
-        ")",
-        "=>",
-        field("body", $._expression),
-      ),
-
-    // Anonymous function expression: func(params) { block } or func(params) => expr
-    anon_func_expression: ($) =>
-      seq(
-        "func",
-        $.func_params,
-        choice(
-          $.func_block,
-          seq("=>", field("body", $._expression)),
-        ),
-      ),
-
-    // Spread expression: ...expr
     spread_expression: ($) =>
       seq("...", $._expression),
 
-    // ─── Literals ────────────────────────────────────────────
+    // ─── Literals ──────────────────────────────────────────────
 
     qualified_name: ($) => seq($.identifier, ".", $.identifier),
 
     identifier: (_$) => /[a-zA-Z_][a-zA-Z0-9_]*/,
 
-    integer_literal: (_$) =>
-      /0[xX][0-9a-fA-F][0-9a-fA-F_]*|0[oO][0-7][0-7_]*|0[bB][01][01_]*|[0-9][0-9_]*/,
+    integer_literal: (_$) => /[0-9][0-9_]*/,
 
     float_literal: (_$) => /[0-9][0-9_]*\.[0-9][0-9_]*/,
 
@@ -796,17 +561,10 @@ module.exports = grammar({
         $._string_interpolation_end,
       ),
 
-    // Triple-quoted strings: """..."""
-    // We use a simple token here since the external scanner's STRING_CONTENT
-    // breaks on any " which conflicts with single quotes inside triple strings.
-    // Interpolation within triple strings is handled at the Go parser level.
-    // Triple-quoted strings use a regex that matches """ followed by content
-    // that doesn't contain """, then closing """.
     triple_string_literal: (_$) => /"""("?"?([^"\\]|\\.))*"""/,
 
     raw_string_literal: (_$) => token(seq('`', /[^`]*/, '`')),
 
-    // Plain string without interpolation support, used for import paths.
     plain_string: (_$) => token(seq('"', repeat(choice(/[^"\\]/, /\\./)), '"')),
 
     element_ref: (_$) => token(seq("#", /[a-zA-Z_][a-zA-Z0-9_]*/)),
@@ -819,7 +577,7 @@ module.exports = grammar({
     false: (_$) => "false",
     null: (_$) => "null",
 
-    // ─── Comments ────────────────────────────────────────────
+    // ─── Comments ──────────────────────────────────────────────
 
     line_comment: (_$) => token(seq("//", /.*/)),
 
@@ -834,14 +592,6 @@ module.exports = grammar({
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));
-}
-
-/**
- * List with optional comma separators (zero or more).
- * @param {RuleOrLiteral} rule
- */
-function optCommaSep(rule) {
-  return repeat(seq(rule, optional(",")));
 }
 
 /**

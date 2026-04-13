@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("test \"\"!0A0st\xa0\"\x80")
