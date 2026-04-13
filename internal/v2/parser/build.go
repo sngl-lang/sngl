@@ -1228,7 +1228,26 @@ func (b *builder) buildBinaryChain(it nodeIter, level Symbol) ast.Expr {
 
 	for !it.done() {
 		if !it.isNonTerminal() {
-			// Skip unexpected terminals
+			// land/lor appear as bare terminals in OrExpr/AndExpr.
+			tt := it.tokenType()
+			if tt == AND || tt == OR {
+				it.shift()
+				op := tokenToBinaryOp(tt)
+				var right ast.Expr
+				if !it.done() && it.isNonTerminal() {
+					right = b.buildExprNonTerminal(&it)
+				}
+				if right != nil {
+					left = &ast.BinaryExpr{
+						Pos:   ast.Pos(*left.ExprPos()),
+						Op:    op,
+						Left:  left,
+						Right: right,
+					}
+				}
+				continue
+			}
+			// Skip unexpected terminals.
 			it.skip()
 			continue
 		}

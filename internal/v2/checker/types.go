@@ -6,8 +6,8 @@ import "fmt"
 type TypeKind int
 
 const (
-	TypeInvalid  TypeKind = iota // error sentinel
-	TypeDyn                      // unknown/dynamic
+	TypeInvalid TypeKind = iota // error sentinel
+	TypeDyn                     // unknown/dynamic
 	TypeBool
 	TypeInt
 	TypeFloat
@@ -199,12 +199,14 @@ func (t *Type) Equal(other *Type) bool {
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
+// Dyn works like Go's any/interface{}: any value is assignable TO dyn,
+// but dyn is not assignable to concrete types without explicit conversion.
 func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
 		return true
 	}
-	// Dyn is compatible with everything.
-	if t.Kind == TypeDyn || target.Kind == TypeDyn {
+	// Any value can be assigned to dyn (like interface{} in Go).
+	if target.Kind == TypeDyn {
 		return true
 	}
 	// Null assignable to option types.

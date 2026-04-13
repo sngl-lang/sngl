@@ -1,6 +1,7 @@
 package checker_test
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/v2/checker"
@@ -203,4 +204,253 @@ func TestDiagnosticUnknownType(t *testing.T) {
 	if !found {
 		t.Error("expected error diagnostic for unknown type")
 	}
+}
+
+// expectError parses src, runs Check, and asserts at least one error diagnostic
+// contains the given substring.
+func expectError(t *testing.T, src, substr string) {
+	t.Helper()
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == checker.Error && contains(d.Msg, substr) {
+			return
+		}
+	}
+	var msgs strings.Builder
+	for _, d := range diags {
+		msgs.WriteString("\n  " + d.Error())
+	}
+	t.Errorf("expected error containing %q, got:%s", substr, msgs.String())
+}
+
+// expectNoErrors parses src, runs Check, and asserts no error diagnostics.
+func expectNoErrors(t *testing.T, src string) {
+	t.Helper()
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(substr) > 0 && len(s) >= len(substr) && containsStr(s, substr)
+}
+
+func containsStr(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
+// --- Binary/unary operator validation ---
+
+func TestBinaryOpTypeMismatch(t *testing.T) {
+	expectError(t, `const x = "hello" + true`, "operator + not defined")
+	expectError(t, `const x = "hello" - 1`, "operator - not defined")
+	expectError(t, `const x = true && 1`, "operator && not defined")
+	expectError(t, `const x = 1 || 2`, "operator || not defined")
+}
+
+func TestBinaryOpValid(t *testing.T) {
+	expectNoErrors(t, `const x = 1 + 2`)
+	expectNoErrors(t, `const x = 1.0 + 2`)
+	expectNoErrors(t, `const x = "a" + "b"`)
+	expectNoErrors(t, `const x = true && false`)
+	expectNoErrors(t, `const x = 1 < 2`)
+	expectNoErrors(t, `const x = 1 == 2`)
+}
+
+func TestUnaryOpTypeMismatch(t *testing.T) {
+	expectError(t, `const x = !1`, "operator ! not defined")
+	expectError(t, `const x = -true`, "operator - not defined")
+}
+
+func TestUnaryOpValid(t *testing.T) {
+	expectNoErrors(t, `const x = !true`)
+	expectNoErrors(t, `const x = -1`)
+	expectNoErrors(t, `const x = -1.5`)
+}
+
+// --- If condition / for iterator ---
+
+func TestIfConditionMustBeBool(t *testing.T) {
+	expectError(t, `
+func foo() {
+	if 1 {
+	}
+}`, "if condition must be bool")
+}
+
+func TestIfConditionBoolOk(t *testing.T) {
+	expectNoErrors(t, `
+func foo() {
+	if true {
+	}
+}`)
+}
+
+func TestForIteratorMustBeList(t *testing.T) {
+	expectError(t, `
+func foo() {
+	var x int
+	for item = x {
+	}
+}`, "for iterator must be list")
+}
+
+func TestForIteratorListOk(t *testing.T) {
+	expectNoErrors(t, `
+func foo() {
+	var items list<int>
+	for item = items {
+	}
+}`)
+}
+
+// --- Assignment type checking ---
+
+func TestAssignTypeMismatch(t *testing.T) {
+	expectError(t, `
+func foo() {
+	var x int
+	x = "hello"
+}`, "cannot assign string to int")
+}
+
+func TestAssignValid(t *testing.T) {
+	expectNoErrors(t, `
+func foo() {
+	var x int
+	x = 42
+}`)
+}
+
+func TestAssignIntToFloat(t *testing.T) {
+	expectNoErrors(t, `
+func foo() {
+	var x float
+	x = 42
+}`)
+}
+
+// --- Const reassignment ---
+
+func TestConstReassignment(t *testing.T) {
+	expectError(t, `
+const x = 1
+func foo() {
+	x = 2
+}`, "cannot assign to const")
+}
+
+// --- Return type checking ---
+
+func TestReturnTypeMismatch(t *testing.T) {
+	expectError(t, `
+func foo() int {
+	return "hello"
+}`, "cannot return string as int")
+}
+
+func TestReturnTypeValid(t *testing.T) {
+	expectNoErrors(t, `
+func foo() int {
+	return 42
+}`)
+}
+
+func TestExprBodyReturnMismatch(t *testing.T) {
+	// Expression body funcs infer return type from body — no explicit
+	// return type annotation, so no mismatch possible for => form.
+	// Test block form instead.
+	expectError(t, `
+func foo() int {
+	return "hello"
+}`, "cannot return string as int")
+}
+
+func TestExprBodyReturnValid(t *testing.T) {
+	expectNoErrors(t, `
+func foo() int {
+	return 42
+}`)
+}
+
+// --- Const expression validation ---
+
+func TestConstNonConstRef(t *testing.T) {
+	expectError(t, `
+var mutable = 5
+const BAD = mutable + 1
+`, "non-const")
+}
+
+func TestConstConstRefOk(t *testing.T) {
+	expectNoErrors(t, `
+const a = 1
+const b = a + 2
+`)
+}
+
+func TestConstFuncCallNotAllowed(t *testing.T) {
+	expectError(t, `
+func compute() => 42
+const x = compute()
+`, "non-const")
+}
+
+// --- Var init type checking ---
+
+func TestVarInitTypeMismatch(t *testing.T) {
+	expectError(t, `var x int = "hello"`, "cannot initialize int with string")
+}
+
+func TestVarInitValid(t *testing.T) {
+	expectNoErrors(t, `var x int = 42`)
+}
+
+func TestVarInitIntToFloat(t *testing.T) {
+	expectNoErrors(t, `var x float = 42`)
+}
+
+// --- Function argument type checking ---
+
+func TestFuncArgTypeMismatch(t *testing.T) {
+	expectError(t, `
+func add(a int, b int) => a + b
+func test() {
+	var x = add("hello", 1)
+}
+`, "argument 1: cannot pass string as int")
+}
+
+func TestFuncArgArityMismatch(t *testing.T) {
+	expectError(t, `
+func add(a int, b int) => a + b
+func test() {
+	var x = add(1)
+}
+`, "expected 2 arguments, got 1")
+}
+
+func TestFuncArgValid(t *testing.T) {
+	expectNoErrors(t, `
+func add(a int, b int) => a + b
+func test() {
+	var x = add(1, 2)
+}
+`)
 }

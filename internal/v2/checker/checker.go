@@ -229,6 +229,21 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 func (c *checker) registerConsts(decl *ast.ConstDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		// Validate const initializer only references consts/literals.
+		if spec.Default != nil {
+			if name := c.nonConstRef(spec.Default); name != "" {
+				c.error(decl.Pos, "const initializer references non-const %q", name)
+			}
+			// Type check initializer.
+			initType := c.checkExpr(spec.Default)
+			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
+				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+			// Infer type from init if not declared.
+			if typ.Kind == TypeDyn {
+				typ = initType
+			}
+		}
 		for _, name := range spec.Names {
 			v := &Var{
 				AST:     decl,
@@ -243,9 +258,93 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 	}
 }
 
+// nonConstRef walks an expression and returns the name of the first
+// non-const identifier found, or "" if the expression is const-safe.
+func (c *checker) nonConstRef(e ast.Expr) string {
+	if e == nil {
+		return ""
+	}
+	switch x := e.(type) {
+	case *ast.LiteralExpr, *ast.UnitLiteral:
+		return ""
+	case *ast.IdentExpr:
+		// Builtin constants are fine.
+		switch x.Name {
+		case "true", "false", "null", "PLATFORM", "LANGUAGE":
+			return ""
+		}
+		if sym, ok := c.scope.Lookup(x.Name); ok {
+			if v, ok := sym.(*Var); ok && v.IsConst {
+				return ""
+			}
+			// Enum/struct types are fine as identifiers.
+			if _, ok := sym.(*EnumDef); ok {
+				return ""
+			}
+			if _, ok := sym.(*StructDef); ok {
+				return ""
+			}
+		}
+		return x.Name
+	case *ast.BinaryExpr:
+		if name := c.nonConstRef(x.Left); name != "" {
+			return name
+		}
+		return c.nonConstRef(x.Right)
+	case *ast.UnaryExpr:
+		return c.nonConstRef(x.Operand)
+	case *ast.ParenExpr:
+		return c.nonConstRef(x.Inner)
+	case *ast.TernaryExpr:
+		if name := c.nonConstRef(x.Cond); name != "" {
+			return name
+		}
+		if name := c.nonConstRef(x.Then); name != "" {
+			return name
+		}
+		return c.nonConstRef(x.Else)
+	case *ast.ListExpr:
+		for _, el := range x.Elements {
+			if name := c.nonConstRef(el); name != "" {
+				return name
+			}
+		}
+		return ""
+	case *ast.CallExpr:
+		// Function calls in const context reference non-const values.
+		if ident, ok := x.Func.(*ast.IdentExpr); ok {
+			// Builtin conversions are const-safe.
+			switch ident.Name {
+			case "int", "float", "string", "bool":
+				for _, a := range x.Args.Args {
+					if arg, ok := a.(ast.Arg); ok {
+						if name := c.nonConstRef(arg.Value); name != "" {
+							return name
+						}
+					}
+				}
+				return ""
+			}
+		}
+		return "<function call>"
+	}
+	return ""
+}
+
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		// Type check initializer.
+		if spec.Default != nil {
+			initType := c.checkExpr(spec.Default)
+			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
+				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+			// Infer type from init if not declared.
+			if typ.Kind == TypeDyn {
+				typ = initType
+			}
+		}
 		for _, name := range spec.Names {
 			v := &Var{
 				AST:  decl,
@@ -539,7 +638,11 @@ func (c *checker) checkFuncBody(fn *Func) {
 	defer func() { c.typeParams = prevTypeParams }()
 
 	if fn.Body != nil {
-		c.checkExpr(fn.Body)
+		bodyType := c.checkExpr(fn.Body)
+		// Expression-body return type check.
+		if fn.Return != nil && fn.Return.Kind != TypeDyn && bodyType.Kind != TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
+			c.error(fn.Pos, "cannot return %s as %s", bodyType, fn.Return)
+		}
 	}
 	if fn.Block != nil {
 		c.checkBlock(fn.Block)

@@ -108,20 +108,72 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) *Type {
 	left := c.checkExpr(x.Left)
 	right := c.checkExpr(x.Right)
 
+	skip := left.Kind == TypeDyn || right.Kind == TypeDyn
+
 	switch x.Op {
-	case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte,
-		ast.BinAnd, ast.BinOr:
+	case ast.BinAnd, ast.BinOr:
+		if !skip && (left.Kind != TypeBool || right.Kind != TypeBool) {
+			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+		}
+		return TypBool
+	case ast.BinEq, ast.BinNeq:
+		return TypBool
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
+			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+		}
 		return TypBool
 	case ast.BinAdd:
-		// String concatenation.
 		if left.Kind == TypeString || right.Kind == TypeString {
+			if !skip && (left.Kind != TypeString || right.Kind != TypeString) {
+				c.error(x.Pos, "operator + not defined for %s and %s", left, right)
+			}
 			return TypString
+		}
+		if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
+			c.error(x.Pos, "operator + not defined for %s and %s", left, right)
 		}
 		return c.narrowNumeric(left, right)
 	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
+		if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
+			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+		}
 		return c.narrowNumeric(left, right)
 	}
 	return TypDyn
+}
+
+// binOpStr returns the source representation of a binary operator.
+func binOpStr(op ast.BinaryOp) string {
+	switch op {
+	case ast.BinAdd:
+		return "+"
+	case ast.BinSub:
+		return "-"
+	case ast.BinMul:
+		return "*"
+	case ast.BinDiv:
+		return "/"
+	case ast.BinMod:
+		return "%"
+	case ast.BinEq:
+		return "=="
+	case ast.BinNeq:
+		return "!="
+	case ast.BinLt:
+		return "<"
+	case ast.BinLte:
+		return "<="
+	case ast.BinGt:
+		return ">"
+	case ast.BinGte:
+		return ">="
+	case ast.BinAnd:
+		return "&&"
+	case ast.BinOr:
+		return "||"
+	}
+	return "?"
 }
 
 // narrowNumeric returns the wider of two numeric types.
@@ -143,10 +195,17 @@ func (c *checker) narrowNumeric(left, right *Type) *Type {
 
 func (c *checker) inferUnary(x *ast.UnaryExpr) *Type {
 	operand := c.checkExpr(x.Operand)
+	skip := operand.Kind == TypeDyn
 	switch x.Op {
 	case ast.UnaryNot:
+		if !skip && operand.Kind != TypeBool {
+			c.error(x.Pos, "operator ! not defined for %s", operand)
+		}
 		return TypBool
 	case ast.UnaryNeg:
+		if !skip && !operand.IsNumeric() {
+			c.error(x.Pos, "operator - not defined for %s", operand)
+		}
 		return operand
 	}
 	return TypDyn
@@ -169,41 +228,52 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
 		switch ident.Name {
 		case "int":
-			c.checkArgs(x.Args)
+			c.checkArgs(x.Args, nil)
 			return TypInt
 		case "float":
-			c.checkArgs(x.Args)
+			c.checkArgs(x.Args, nil)
 			return TypFloat
 		case "string":
-			c.checkArgs(x.Args)
+			c.checkArgs(x.Args, nil)
 			return TypString
 		case "bool":
-			c.checkArgs(x.Args)
+			c.checkArgs(x.Args, nil)
 			return TypBool
 		}
 	}
 
 	// Regular function call.
 	calleeType := c.checkExpr(x.Func)
-	c.checkArgs(x.Args)
+	var sig *FuncSig
+	if calleeType.Kind == TypeFunc && calleeType.Sig != nil {
+		sig = calleeType.Sig
+	}
+	c.checkArgs(x.Args, sig)
 
-	if calleeType.Kind == TypeFunc && calleeType.Sig != nil && calleeType.Sig.Return != nil {
-		return calleeType.Sig.Return
+	if sig != nil && sig.Return != nil {
+		return sig.Return
 	}
 	return TypDyn
 }
 
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type {
 	receiver := c.checkExpr(sel.Operand)
-	c.checkArgs(call.Args)
 
 	// Namespace function call: ns.func().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
 			if ns, ok := sym.(*Namespace); ok && ns.Pkg != nil {
-				// Look up function in the namespace package.
 				if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
-					return fsym.SymType()
+					t := fsym.SymType()
+					var sig *FuncSig
+					if t != nil && t.Kind == TypeFunc && t.Sig != nil {
+						sig = t.Sig
+					}
+					c.checkArgs(call.Args, sig)
+					if sig != nil && sig.Return != nil {
+						return sig.Return
+					}
+					return t
 				}
 			}
 		}
@@ -212,12 +282,15 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 	// Type-attached method: receiver.method().
 	typeName := receiver.String()
 	if fn, ok := c.symtab.LookupMethod(typeName, sel.Field); ok {
+		c.checkArgs(call.Args, fn.FuncSig())
 		if fn.Return != nil {
 			// TODO: generic type param substitution.
 			return fn.Return
 		}
 		return TypDyn
 	}
+
+	c.checkArgs(call.Args, nil)
 
 	return TypDyn
 }
@@ -377,12 +450,24 @@ func (c *checker) inferEventRef(x *ast.EventRefExpr) *Type {
 }
 
 // checkArgs type-checks all arguments in an ArgList.
-func (c *checker) checkArgs(args ast.ArgList) {
+// If sig is non-nil, validates positional arg types and arity against it.
+func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
+	positional := 0
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
-				c.checkExpr(arg.Value)
+				argType := c.checkExpr(arg.Value)
+				// Validate positional arg type against param.
+				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
+					paramType := sig.Params[positional].Type
+					if argType.Kind != TypeDyn && paramType.Kind != TypeDyn && !argType.IsAssignableTo(paramType) {
+						c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
+					}
+				}
+			}
+			if arg.Name == "" {
+				positional++
 			}
 		case ast.EventHandler:
 			// Inline event handler — check body.
@@ -396,6 +481,21 @@ func (c *checker) checkArgs(args ast.ArgList) {
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
+		}
+	}
+	// Arity check.
+	if sig != nil {
+		// Count required params (no default).
+		required := 0
+		for _, p := range sig.Params {
+			if !p.HasDefault {
+				required++
+			}
+		}
+		if positional < required {
+			c.error(args.Pos, "expected %d arguments, got %d", required, positional)
+		} else if positional > len(sig.Params) {
+			c.error(args.Pos, "expected %d arguments, got %d", len(sig.Params), positional)
 		}
 	}
 }
@@ -418,12 +518,35 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 func (c *checker) checkStmt(s ast.Stmt) {
 	switch x := s.(type) {
 	case *ast.AssignStmt:
-		c.checkExpr(x.Target)
-		c.checkExpr(x.Value)
+		targetType := c.checkExpr(x.Target)
+		valueType := c.checkExpr(x.Value)
+		// Const reassignment check.
+		if ident, ok := x.Target.(*ast.IdentExpr); ok {
+			if sym, ok := c.scope.Lookup(ident.Name); ok {
+				if v, ok := sym.(*Var); ok && v.IsConst {
+					c.error(x.Pos, "cannot assign to const %q", ident.Name)
+				}
+			}
+		}
+		// Type checking.
+		if x.Op == ast.AssignSet {
+			if targetType.Kind != TypeDyn && valueType.Kind != TypeDyn && !valueType.IsAssignableTo(targetType) {
+				c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+			}
+		} else {
+			// Compound assignment: both sides must be numeric (or string for +=).
+			if targetType.Kind != TypeDyn && valueType.Kind != TypeDyn {
+				if x.Op == ast.AssignAdd && targetType.Kind == TypeString {
+					// string += string is fine.
+				} else if !targetType.IsNumeric() || !valueType.IsNumeric() {
+					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+				}
+			}
+		}
 	case *ast.ToggleStmt:
 		c.checkExpr(x.Target)
 	case *ast.EmitStmt:
-		c.checkArgs(x.Args)
+		c.checkArgs(x.Args, nil)
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		if x.Init != nil {
@@ -440,18 +563,27 @@ func (c *checker) checkStmt(s ast.Stmt) {
 		})
 	case *ast.ReturnStmt:
 		if x.Value != nil {
-			c.checkExpr(x.Value)
+			valType := c.checkExpr(x.Value)
+			if c.returnType != nil && c.returnType.Kind != TypeDyn && valType.Kind != TypeDyn && !valType.IsAssignableTo(c.returnType) {
+				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
+			}
 		}
 	case *ast.CallStmt:
 		c.checkExpr(x.Call)
 	case *ast.IfStmt:
-		c.checkExpr(x.Cond)
+		condType := c.checkExpr(x.Cond)
+		if condType.Kind != TypeDyn && condType.Kind != TypeBool {
+			c.error(x.Pos, "if condition must be bool, got %s", condType)
+		}
 		c.checkBlock(&x.Body)
 		if x.Else.IsDefined() {
 			c.checkBlock(&x.Else)
 		}
 	case *ast.ForStmt:
 		iter := c.checkExpr(x.Iter)
+		if iter.Kind != TypeDyn && iter.Kind != TypeList {
+			c.error(x.Pos, "for iterator must be list, got %s", iter)
+		}
 		c.pushScope()
 		// Declare loop variables.
 		elemType := TypDyn
@@ -531,7 +663,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 	}
 
 	// Check args (props + events).
-	c.checkArgs(vn.Args)
+	c.checkArgs(vn.Args, nil)
 
 	// Validate props against component definition.
 	if comp != nil {

@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -97,10 +98,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *Type {
 	}
 
 	// Type parameter.
-	for _, tp := range c.typeParams {
-		if tp == t.Name {
-			return &Type{Kind: TypeTypeParam, ParamName: t.Name}
-		}
+	if slices.Contains(c.typeParams, t.Name) {
+		return &Type{Kind: TypeTypeParam, ParamName: t.Name}
 	}
 
 	c.error(t.Pos, "unknown type %q", t.Name)

@@ -43,9 +43,9 @@ type NativeImport struct {
 
 // Func represents any function: top-level, type-attached method, or lambda.
 type Func struct {
-	AST        *ast.FuncDef   // nil for lambdas and event handlers
-	Name       string         // empty for lambdas and event handlers
-	Receiver   string         // "int" for int.abs (empty for plain funcs)
+	AST        *ast.FuncDef // nil for lambdas and event handlers
+	Name       string       // empty for lambdas and event handlers
+	Receiver   string       // "int" for int.abs (empty for plain funcs)
 	TypeParams []string
 	Params     []*Param
 	Return     *Type
