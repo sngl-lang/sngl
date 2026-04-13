@@ -58,16 +58,18 @@ type EnumMember struct {
 
 // EnumDef declares an enum type. Name is empty for anonymous enum types.
 type EnumDef struct {
-	Pos     Pos
-	Name    string
-	Members []EnumMember
+	Pos         Pos
+	Name        string
+	Members     []EnumMember
+	IsMultiline bool
 }
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
-	Pos    Pos
-	Name   string
-	Fields []*StructField
+	Pos         Pos
+	Name        string
+	Fields      []*StructField
+	IsMultiline bool
 }
 
 // StructField is a field in a struct declaration.
@@ -81,9 +83,10 @@ type StructField struct {
 // UnitDef declares a unit type with named suffixes.
 // Name is empty for anonymous unit types.
 type UnitDef struct {
-	Pos      Pos
-	Name     string
-	Suffixes []*UnitSuffix
+	Pos         Pos
+	Name        string
+	Suffixes    []*UnitSuffix
+	IsMultiline bool
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.
@@ -150,8 +153,6 @@ type ParamList struct {
 // Exactly one of Body or Block is set.
 type FuncDef struct {
 	Pos        Pos
-	EndLine    int // line of closing } for block-form funcs
-	BraceCol   int // column of opening { for block-form funcs
 	Name       string
 	TypeParams []string // generic type parameters, e.g., ["T", "U"]
 	Params     ParamList
@@ -228,9 +229,7 @@ type EventHandler struct {
 // VisualNode is a visual element instantiation with optional args and body.
 type VisualNode struct {
 	Pos
-	EndLine  int // line of closing }
-	BraceCol int // column of opening {
-	Target   TargetExpr
+	Target TargetExpr
 	Block    StmtBlock
 	Args     ArgList
 	ID       string // element ID from #id syntax

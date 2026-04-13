@@ -206,7 +206,8 @@ type StructExpr struct {
 // ListExpr is a list literal: [a, b, ...c].
 type ListExpr struct {
 	Pos
-	Elements []Expr
+	Elements    []Expr
+	IsMultiline bool
 }
 
 // SpreadExpr represents a spread operation: ...expr.

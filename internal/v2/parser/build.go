@@ -129,7 +129,46 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 			it.skip()
 		}
 	}
+	b.injectComments(doc)
 	return doc
+}
+
+// injectComments inserts comment tokens into doc.Stmts at positions
+// determined by their source line numbers.
+func (b *builder) injectComments(doc *ast.Document) {
+	if len(b.comments) == 0 {
+		return
+	}
+	var merged []ast.Stmt
+	ci := 0
+	for _, s := range doc.Stmts {
+		pos := s.StmtPos()
+		line := 0
+		if pos != nil {
+			line = pos.Line
+		}
+		// Insert all comments before this statement.
+		for ci < len(b.comments) && (line == 0 || b.comments[ci].Line < line) {
+			merged = append(merged, b.commentToStmt(b.comments[ci]))
+			ci++
+		}
+		merged = append(merged, s)
+	}
+	// Trailing comments after all statements.
+	for ci < len(b.comments) {
+		merged = append(merged, b.commentToStmt(b.comments[ci]))
+		ci++
+	}
+	doc.Stmts = merged
+}
+
+func (b *builder) commentToStmt(tok Token) *ast.Comment {
+	return &ast.Comment{
+		Pos:    ast.Pos(b.posFromToken(tok)),
+		Text:   tok.Literal,
+		Block:  tok.Type == BLOCK_COMMENT,
+		Inline: false, // TODO: detect inline comments
+	}
 }
 
 // --- Stmt dispatch ---
@@ -217,6 +256,9 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 		if it.isNonTerminal() && it.symbol() == StructField {
 			s.Fields = append(s.Fields, b.buildStructField(it.enter()))
 		} else {
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				s.IsMultiline = true
+			}
 			it.skip() // rbrace or semi
 		}
 	}
@@ -259,7 +301,7 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
-			e.Members = b.buildEnumMembers(it.enter())
+			e.Members = b.buildEnumMembers(it.enter(), &e.IsMultiline)
 		} else {
 			it.skip() // rbrace
 		}
@@ -267,7 +309,7 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	return e
 }
 
-func (b *builder) buildEnumMembers(it nodeIter) []ast.EnumMember {
+func (b *builder) buildEnumMembers(it nodeIter, multiline *bool) []ast.EnumMember {
 	// ArgList = Arg { comma Arg } — each Arg is either ident or ident=Expr
 	var members []ast.EnumMember
 	for !it.done() {
@@ -276,7 +318,10 @@ func (b *builder) buildEnumMembers(it nodeIter) []ast.EnumMember {
 			m := b.buildEnumMember(sub)
 			members = append(members, m)
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				*multiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return members
@@ -317,7 +362,7 @@ func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
-			u.Suffixes = b.buildUnitSuffixes(it.enter())
+			u.Suffixes = b.buildUnitSuffixes(it.enter(), &u.IsMultiline)
 		} else {
 			it.skip() // rbrace
 		}
@@ -325,7 +370,7 @@ func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
 	return u
 }
 
-func (b *builder) buildUnitSuffixes(it nodeIter) []*ast.UnitSuffix {
+func (b *builder) buildUnitSuffixes(it nodeIter, multiline *bool) []*ast.UnitSuffix {
 	var suffixes []*ast.UnitSuffix
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == Arg {
@@ -333,7 +378,10 @@ func (b *builder) buildUnitSuffixes(it nodeIter) []*ast.UnitSuffix {
 			s := b.buildUnitSuffix(sub)
 			suffixes = append(suffixes, s)
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				*multiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return suffixes
@@ -538,9 +586,7 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 		f.ReturnType = b.buildType(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
-		block := b.buildStmtBlock(it.enter())
-		f.Block = block
-		f.BraceCol = block.Pos.Column
+		f.Block = b.buildStmtBlock(it.enter())
 	}
 }
 
@@ -569,7 +615,10 @@ func (b *builder) buildParamList(it nodeIter) ast.ParamList {
 			}
 			pl.Params = append(pl.Params, p)
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				pl.IsMultiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return pl
@@ -628,7 +677,10 @@ func (b *builder) buildCompParamList(it nodeIter) ast.PropList {
 			p := b.buildCompParam(it.enter())
 			pl.Props = append(pl.Props, p)
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				pl.IsMultiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return pl
@@ -795,7 +847,6 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		}
 		if lastBlock != nil {
 			vn.Block = *lastBlock
-			vn.BraceCol = lastBlock.Pos.Column
 		}
 		return vn
 	}
@@ -928,12 +979,11 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 		tok := it.shift()
 		block.Pos = ast.Pos(b.posFromToken(tok))
 	}
-	startLine := block.Pos.Line
 	for !it.done() {
 		if !it.isNonTerminal() {
 			tok := it.token()
 			if tok.Type == RBRACE {
-				if tok.Line > startLine {
+				if tok.Line > block.Pos.Line {
 					block.IsMultiline = true
 				}
 				it.skip()
@@ -948,6 +998,9 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 					})
 				}
 				continue
+			}
+			if tok.Type == SEMICOLON {
+				block.IsMultiline = true
 			}
 			it.skip() // semi
 			continue
@@ -1317,13 +1370,13 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 			// StructLitBody after dot ident — qualified struct lit
 			// base should be a SelectExpr from the preceding dot ident
 			if sel, ok := base.(*ast.SelectExpr); ok {
-				fields := b.buildStructLitFields(it.enter())
-				return &ast.StructExpr{
+				s := &ast.StructExpr{
 					Pos:     ast.Pos(*sel.Operand.ExprPos()),
 					Package: identName(sel.Operand),
 					Name:    sel.Field,
-					Fields:  fields,
 				}
+				s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+				return s
 			}
 			it.skip()
 			return base
@@ -1352,13 +1405,13 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 				}
 				// Check for StructLitBody after dot ident
 				if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
-					fields := b.buildStructLitFields(it.enter())
-					return &ast.StructExpr{
+					s := &ast.StructExpr{
 						Pos:     ast.Pos(*base.ExprPos()),
 						Package: identName(base),
 						Name:    field.Literal,
-						Fields:  fields,
 					}
+					s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+					return s
 				}
 				return sel
 			case AT:
@@ -1444,7 +1497,9 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			it.skip()
 			return nil
 		case ListBody:
-			return &ast.ListExpr{Elements: b.buildListBody(it.enter())}
+			le := &ast.ListExpr{}
+			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
+			return le
 		}
 		return b.buildExprBySymbol(sym, it.enter())
 	}
@@ -1466,14 +1521,14 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 		return &ast.ParenExpr{Pos: ast.Pos(b.posFromToken(tok)), Inner: inner}
 	case LBRACKET:
 		pos := b.posFromToken(it.shift()) // lbracket
-		var elems []ast.Expr
+		le := &ast.ListExpr{Pos: ast.Pos(pos)}
 		if !it.done() && it.isNonTerminal() && it.symbol() == ListBody {
-			elems = b.buildListBody(it.enter())
+			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 		}
 		if !it.done() {
 			it.skip() // rbracket
 		}
-		return &ast.ListExpr{Pos: ast.Pos(pos), Elements: elems}
+		return le
 	case AT:
 		it.skip() // at
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -1485,12 +1540,12 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 		identTok := it.shift()
 		// In expression context, ident may be followed by StructLitBody
 		if exprContext && !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
-			fields := b.buildStructLitFields(it.enter())
-			return &ast.StructExpr{
-				Pos:    ast.Pos(b.posFromToken(identTok)),
-				Name:   identTok.Literal,
-				Fields: fields,
+			s := &ast.StructExpr{
+				Pos:  ast.Pos(b.posFromToken(identTok)),
+				Name: identTok.Literal,
 			}
+			s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+			return s
 		}
 		return b.tokenToExpr(identTok)
 	default:
@@ -1500,21 +1555,24 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 
 // --- Composite literals ---
 
-func (b *builder) buildStructLitFields(it nodeIter) []ast.StructFieldLit {
-	// StructLitBody = lbrace [ AnonField { comma AnonField } ] rbrace .
+func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.StructFieldLit {
+	// StructLitBody = lbrace [ AnonField { (comma | semi) AnonField } ] rbrace .
 	var fields []ast.StructFieldLit
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			fields = append(fields, b.buildAnonField(it.enter()))
 		} else {
-			it.skip() // lbrace, rbrace, comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				*multiline = true
+			}
+			it.skip() // lbrace, rbrace, comma, semi
 		}
 	}
 	return fields
 }
 
 func (b *builder) buildAnonStructLit(it nodeIter) *ast.StructExpr {
-	// AnonStructLit = lbrace [ AnonField { comma AnonField } ] rbrace .
+	// AnonStructLit = lbrace [ AnonField { (comma | semi) AnonField } ] rbrace .
 	s := &ast.StructExpr{}
 	var fields []ast.StructFieldLit
 	for !it.done() {
@@ -1526,7 +1584,10 @@ func (b *builder) buildAnonStructLit(it nodeIter) *ast.StructExpr {
 			if tok.Type == LBRACE && !s.Pos.IsSet() {
 				s.Pos = ast.Pos(b.posFromToken(tok))
 			}
-			it.skip() // lbrace, rbrace, comma
+			if tok.Type == SEMICOLON {
+				s.Multiline = true
+			}
+			it.skip() // lbrace, rbrace, comma, semi
 		}
 	}
 	s.Fields = fields
@@ -1561,14 +1622,17 @@ func (b *builder) buildAnonField(it nodeIter) ast.StructFieldLit {
 	return ast.StructFieldLit{Name: name, Value: val}
 }
 
-func (b *builder) buildListBody(it nodeIter) []ast.Expr {
+func (b *builder) buildListBody(it nodeIter, multiline *bool) []ast.Expr {
 	// ListBody = [ ListElem { comma ListElem } ] .
 	var elems []ast.Expr
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ListElem {
 			elems = append(elems, b.buildListElem(it.enter()))
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				*multiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return elems
@@ -1649,7 +1713,7 @@ func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 // --- Argument lists ---
 
 func (b *builder) buildArgList(it nodeIter) ast.ArgList {
-	// ArgList = Arg { comma Arg } .
+	// ArgList = Arg { (comma | semi) Arg } .
 	var al ast.ArgList
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == Arg {
@@ -1662,7 +1726,10 @@ func (b *builder) buildArgList(it nodeIter) ast.ArgList {
 				al.Args = append(al.Args, a)
 			}
 		} else {
-			it.skip() // comma
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				al.IsMultiline = true
+			}
+			it.skip() // comma or semi
 		}
 	}
 	return al
@@ -1751,11 +1818,34 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 	// NonIdentPrimary { StmtPostfixOp } ArgExprCont
 	if it.isNonTerminal() && it.symbol() == NonIdentPrimary {
 		base := b.buildNonIdentPrimary(it.enter())
+		var lastBlock *ast.StmtBlock
+		var lastArgs *ast.ArgList
 		for !it.done() && it.isNonTerminal() && it.symbol() == StmtPostfixOp {
-			base, _, _ = b.applyStmtPostfixOp(it.enter(), base, nil, nil)
+			base, lastBlock, lastArgs = b.applyStmtPostfixOp(it.enter(), base, lastBlock, lastArgs)
+		}
+		// Convert EventRefExpr with trailing block to EventHandler.
+		if ref, ok := base.(*ast.EventRefExpr); ok && lastBlock != nil {
+			h := ast.EventHandler{
+				Pos:  ref.Pos,
+				Name: ref.Name,
+				Body: *lastBlock,
+			}
+			if lastArgs != nil {
+				// @click(e) { ... } — params from the call args
+				for _, a := range lastArgs.Args {
+					if arg, ok := a.(ast.Arg); ok {
+						if ident, ok := arg.Value.(*ast.IdentExpr); ok && arg.Name == "" {
+							h.Params.Params = append(h.Params.Params, ast.Param{
+								Pos:  ident.Pos,
+								Name: ident.Name,
+							})
+						}
+					}
+				}
+			}
+			return h
 		}
 		expr := b.applyArgExprCont(&it, base)
-		// Check if this is an event handler (EventRefExpr with body)
 		return ast.Arg{Value: expr}
 	}
 
@@ -1787,12 +1877,12 @@ func (b *builder) buildIdentArgCont(it nodeIter, identTok Token) ast.ArgOrEventH
 
 	// StructLitBody path
 	if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
-		fields := b.buildStructLitFields(it.enter())
-		base = &ast.StructExpr{
-			Pos:    ast.Pos(b.posFromToken(identTok)),
-			Name:   identTok.Literal,
-			Fields: fields,
+		s := &ast.StructExpr{
+			Pos:  ast.Pos(b.posFromToken(identTok)),
+			Name: identTok.Literal,
 		}
+		s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+		base = s
 	}
 
 	// ExprPostfixOp chain
@@ -2051,15 +2141,6 @@ func extractUnitSuffix(raw string) string {
 		i++
 	}
 	return raw[i:]
-}
-
-// multilineStructLit checks if any field is on a different line than the opening brace.
-func multilineStructLit(fields []ast.StructFieldLit) bool {
-	if len(fields) == 0 {
-		return false
-	}
-	// TODO: track multiline from brace positions
-	return false
 }
 
 var _ = strings.Contains // keep import
