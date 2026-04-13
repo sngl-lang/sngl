@@ -557,7 +557,7 @@ func emitUpdaters(b *strings.Builder, updaters []widgetUpdater) {
 	}
 }
 
-func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents []*ast.Component, ec *exprContext) {
+func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext) {
 	methodName := "render" + exportName(comp.Name)
 
 	var params []string
@@ -635,7 +635,7 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 
 // --- Helper functions ---
 
-func extractAssignTarget(e ast.Node) string {
+func extractAssignTarget(e ast.Expr) string {
 	switch n := e.(type) {
 	case *ast.AssignStmt:
 		if ident, ok := n.Target.(*ast.IdentExpr); ok {

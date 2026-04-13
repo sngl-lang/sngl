@@ -1,3 +1,1 @@
-component main {
-    var x stirng = "hello" // ERROR(check) "unknown type"
-}
+var x Nonexistent // ERROR(check) "unknown type"

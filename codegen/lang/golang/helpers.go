@@ -30,22 +30,10 @@ func UnexportName(s string) string {
 
 // InferGoType infers a Go type string from an ast.Expr.
 func InferGoType(expr ast.Expr) string {
-	if expr.TypeHint != "" {
-		return TypeHintToGo(expr.TypeHint)
+	if expr == nil {
+		return "any"
 	}
-	if expr.Literal != nil {
-		switch expr.Literal.(type) {
-		case int:
-			return "int"
-		case float64:
-			return "float64"
-		case bool:
-			return "bool"
-		case string:
-			return "string"
-		}
-	}
-	return "any"
+	return SnglNodeGoType(expr)
 }
 
 // TypeHintToGo converts a SNGL type hint to a Go type string.
@@ -129,102 +117,62 @@ func ExternFuncGoType(paramTypes []string, returnType string) string {
 	return sig
 }
 
-// LiteralToGo converts an ast.Expr literal to a Go literal string.
+// LiteralToGo converts an ast.Expr to a Go literal string.
 func LiteralToGo(expr ast.Expr) string {
-	if strings.HasPrefix(expr.TypeHint, "option:") {
-		if expr.Literal == nil && expr.SNGL == nil {
+	if expr == nil {
+		return `""`
+	}
+	switch n := expr.(type) {
+	case *ast.LiteralExpr:
+		return translateLiteral(n)
+	case *ast.UnitLiteral:
+		return fmt.Sprintf("%q", n.Raw+n.Suffix)
+	case *ast.ListExpr:
+		if len(n.Elements) == 0 {
 			return "nil"
 		}
-		inner := expr
-		inner.TypeHint = expr.TypeHint[7:]
-		val := LiteralToGo(inner)
-		if val == "nil" {
-			return "nil"
+		parts := make([]string, len(n.Elements))
+		for i, el := range n.Elements {
+			parts[i] = LiteralToGo(el)
 		}
-		goType := TypeHintToGo(inner.TypeHint)
-		return fmt.Sprintf("func() *%s { v := %s; return &v }()", goType, val)
-	}
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			switch expr.TypeHint {
-			case "duration":
-				return fmt.Sprintf("mustParseDuration(%q)", v)
-			case "date":
-				return fmt.Sprintf("mustParseDate(%q)", v)
-			case "time":
-				return fmt.Sprintf("mustParseTime(%q)", v)
-			case "dateTime":
-				return fmt.Sprintf("mustParseDateTime(%q)", v)
-			default:
-				return fmt.Sprintf("%q", v)
+		elemType := ""
+		if se, ok := n.Elements[0].(*ast.StructExpr); ok && se.Name != "" {
+			elemType = ExportName(se.Name)
+		} else if ce, ok := n.Elements[0].(*ast.CallExpr); ok {
+			if ident, ok2 := ce.Func.(*ast.IdentExpr); ok2 {
+				elemType = ExportName(ident.Name)
 			}
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
+		} else if lit, ok := n.Elements[0].(*ast.LiteralExpr); ok {
+			switch lit.Kind {
+			case ast.LiteralInt:
+				elemType = "int"
+			case ast.LiteralFloat:
+				elemType = "float64"
+			case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+				elemType = "string"
+			case ast.LiteralBool:
+				elemType = "bool"
 			}
-			return "false"
 		}
-	}
-	// Handle SNGL expression nodes for compound initializers (lists, structs).
-	if expr.SNGL != nil {
-		switch n := expr.SNGL.(type) {
-		case *ast.ListExpr:
-			if len(n.Elements) == 0 {
-				return "nil"
-			}
-			parts := make([]string, len(n.Elements))
-			for i, el := range n.Elements {
-				parts[i] = LiteralToGo(ast.Expr{SNGL: el})
-			}
-			elemType := ""
-			if after, ok := strings.CutPrefix(expr.TypeHint, "list<"); ok {
-				elemType = ExportName(strings.TrimSuffix(after, ">"))
-			} else if after, ok := strings.CutPrefix(expr.TypeHint, "list:"); ok {
-				elemType = ExportName(after)
-			} else if se, ok := n.Elements[0].(*ast.StructExpr); ok && se.Name != "" {
-				elemType = ExportName(se.Name)
-			} else if ce, ok := n.Elements[0].(*ast.CallExpr); ok {
-				elemType = ExportName(ce.Func)
-			} else if lit, ok := n.Elements[0].(*ast.LiteralExpr); ok {
-				switch lit.Kind {
-				case ast.LiteralInt:
-					elemType = "int"
-				case ast.LiteralFloat:
-					elemType = "float64"
-				case ast.LiteralString:
-					elemType = "string"
-				case ast.LiteralBool:
-					elemType = "bool"
-				}
-			}
-			return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
-		case *ast.CallExpr:
-			// Struct constructor: Todo("text", false) → Todo{Text: "text", Done: false}
-			parts := make([]string, len(n.Args))
-			for i, a := range n.Args {
-				parts[i] = LiteralToGo(ast.Expr{SNGL: a})
-			}
-			return ExportName(n.Func) + "{" + strings.Join(parts, ", ") + "}"
-		case *ast.StructExpr:
-			parts := make([]string, len(n.Fields))
-			for i, f := range n.Fields {
-				parts[i] = ExportName(f.Name) + ": " + LiteralToGo(ast.Expr{SNGL: f.Value})
-			}
-			return ExportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
-		case *ast.LiteralExpr:
-			return LiteralToGo(ast.Expr{Literal: n.Value, TypeHint: expr.TypeHint})
+		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+	case *ast.CallExpr:
+		// Struct constructor: Todo("text", false) → Todo{Text: "text", Done: false}
+		args := extractArgs(n.Args)
+		parts := make([]string, len(args))
+		for i, a := range args {
+			parts[i] = LiteralToGo(a)
 		}
-	}
-	if expr.TypeHint != "" {
-		if expr.Resolved != nil && expr.Resolved.NativeType != "" {
-			return expr.Resolved.NativeType + "{}"
+		fn := ""
+		if ident, ok := n.Func.(*ast.IdentExpr); ok {
+			fn = ident.Name
 		}
-		return "nil"
+		return ExportName(fn) + "{" + strings.Join(parts, ", ") + "}"
+	case *ast.StructExpr:
+		parts := make([]string, len(n.Fields))
+		for i, f := range n.Fields {
+			parts[i] = ExportName(f.Name) + ": " + LiteralToGo(f.Value)
+		}
+		return ExportName(n.Name) + "{" + strings.Join(parts, ", ") + "}"
 	}
 	return `""`
 }
@@ -239,7 +187,7 @@ func NeedsTimeType(hint string) bool {
 }
 
 // SnglNodeGoType infers a Go type from a SNGL expression node.
-func SnglNodeGoType(e ast.Node) string {
+func SnglNodeGoType(e ast.Expr) string {
 	switch n := e.(type) {
 	case *ast.LiteralExpr:
 		switch n.Kind {
@@ -249,7 +197,7 @@ func SnglNodeGoType(e ast.Node) string {
 			return "float64"
 		case ast.LiteralBool:
 			return "bool"
-		case ast.LiteralString:
+		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
 			return "string"
 		}
 	case *ast.BinaryExpr:
@@ -274,31 +222,31 @@ func SnglNodeGoType(e ast.Node) string {
 	case *ast.TernaryExpr:
 		return SnglNodeGoType(n.Then)
 	case *ast.CallExpr:
-		switch n.Func {
-		case "string":
-			return "string"
-		case "int":
-			return "int"
-		case "float":
-			return "float64"
-		case "size":
-			return "int"
+		if ident, ok := n.Func.(*ast.IdentExpr); ok {
+			switch ident.Name {
+			case "string":
+				return "string"
+			case "int":
+				return "int"
+			case "float":
+				return "float64"
+			case "size":
+				return "int"
+			}
+		}
+		// Method call: check the method name for known return types
+		if sel, ok := n.Func.(*ast.SelectExpr); ok {
+			switch sel.Field {
+			case "upper", "lower", "trim", "replace", "substring":
+				return "string"
+			case "length", "indexOf":
+				return "int"
+			}
 		}
 	case *ast.InterpolationExpr:
 		return "string"
-	case *ast.MethodExpr:
-		switch n.Method {
-		case "upper", "lower", "trim", "replace", "substring":
-			return "string"
-		case "length", "indexOf":
-			return "int"
-		}
 	case *ast.ParenExpr:
 		return SnglNodeGoType(n.Inner)
-	case *ast.IdentExpr:
-		if n.ResolvedType != "" {
-			return TypeHintToGo(n.ResolvedType)
-		}
 	case *ast.SelectExpr:
 		if n.ResolvedType != "" {
 			return TypeHintToGo(n.ResolvedType)

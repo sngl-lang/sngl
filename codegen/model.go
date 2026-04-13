@@ -46,7 +46,7 @@ func (u Updater) DepFields() map[string]bool { return u.Deps }
 type Handler struct {
 	NodeID  string          // element/widget identifier
 	Event   string          // "click", "input", "change"
-	Body    ast.Node        // mutation AST (StmtBlock, AssignStmt, etc.)
+	Body    ast.Stmt        // mutation AST (StmtBlock, AssignStmt, etc.)
 	Mutated map[string]bool // fields this handler mutates
 }
 

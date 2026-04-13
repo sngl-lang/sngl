@@ -18,29 +18,17 @@ type Translator struct{}
 func (t *Translator) Lang() string      { return "js" }
 func (t *Translator) PkgSource() string { return "" }
 
-func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
+func (t *Translator) TranslateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)
 }
 
-func (t *Translator) TranslateMutation(e ast.Node, scope *codegen.ExprScope) []string {
+func (t *Translator) TranslateMutation(e ast.Stmt, scope *codegen.ExprScope) []string {
 	return translateMutation(e, scope)
 }
 
 func (t *Translator) TranslateLiteral(expr ast.Expr) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		}
+	if lit, ok := expr.(*ast.LiteralExpr); ok {
+		return translateLiteral(lit)
 	}
 	return `""`
 }
@@ -68,7 +56,7 @@ func (t *Translator) ExportName(name string) string {
 	return name
 }
 
-func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
+func translateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	if e == nil {
 		return "null"
 	}
@@ -105,42 +93,6 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return operand + "[" + index + "]"
 	case *ast.CallExpr:
 		return translateCall(n, scope)
-	case *ast.MethodExpr:
-		// Stdlib native override: emit native JS instead of user-func call
-		if js := jsBuiltinMethod(n, scope); js != "" {
-			return js
-		}
-		// Type-qualified call: int.double(5) → int_double(5)
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-			qualName := ident.Name + "." + n.Method
-			if scope.FuncNames[qualName] {
-				jsName := strings.ReplaceAll(qualName, ".", "_")
-				argStrs := make([]string, len(n.Args))
-				for i, a := range n.Args {
-					argStrs[i] = translateExpr(a, scope)
-				}
-				return jsName + "(" + strings.Join(argStrs, ", ") + ")"
-			}
-		}
-		// Instance method: x.double() → look for type_method(x, ...)
-		if scope.FuncNames != nil {
-			for qualName := range scope.FuncNames {
-				if _, method, ok := ast.SplitMethodName(qualName); ok && method == n.Method {
-					jsName := strings.ReplaceAll(qualName, ".", "_")
-					argStrs := []string{translateExpr(n.Receiver, scope)}
-					for _, a := range n.Args {
-						argStrs = append(argStrs, translateExpr(a, scope))
-					}
-					return jsName + "(" + strings.Join(argStrs, ", ") + ")"
-				}
-			}
-		}
-		target := translateExpr(n.Receiver, scope)
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = translateExpr(a, scope)
-		}
-		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
@@ -164,8 +116,16 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		var sb strings.Builder
 		sb.WriteByte('`')
 		for _, p := range n.Parts {
-			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				fmt.Fprintf(&sb, "%v", lit.Value)
+			if lit, ok := p.(*ast.LiteralExpr); ok && (lit.Kind == ast.LiteralStringQuoted || lit.Kind == ast.LiteralStringBackticked || lit.Kind == ast.LiteralStringTrippleQuoted) {
+				// Raw includes quotes; strip them for template literal content
+				raw := lit.Raw
+				raw = strings.TrimPrefix(raw, `"`)
+				raw = strings.TrimSuffix(raw, `"`)
+				raw = strings.TrimPrefix(raw, "`")
+				raw = strings.TrimSuffix(raw, "`")
+				raw = strings.TrimPrefix(raw, `"""`)
+				raw = strings.TrimSuffix(raw, `"""`)
+				sb.WriteString(raw)
 			} else {
 				sb.WriteString("${")
 				sb.WriteString(translateExpr(p, scope))
@@ -177,22 +137,21 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 	case *ast.ElementRefExpr:
 		return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", n.Name)
 	case *ast.StmtBlock:
-		stmts := translateMutation(n, scope)
+		var stmts []string
+		for _, s := range n.Stmts {
+			stmts = append(stmts, translateMutation(s, scope)...)
+		}
 		return strings.Join(stmts, "\n")
-	case *ast.AssignStmt:
-		stmts := translateMutation(n, scope)
-		return strings.Join(stmts, "\n")
-	case *ast.ToggleStmt:
-		stmts := translateMutation(n, scope)
-		return strings.Join(stmts, "\n")
-	case *ast.CallStmt:
-		return translateCall(n.Call, scope)
 	case *ast.LambdaExpr:
 		body := translateExpr(n.Body, scope)
-		if len(n.Params) == 1 {
-			return n.Params[0] + " => " + body
+		params := make([]string, len(n.Params.Params))
+		for i, p := range n.Params.Params {
+			params[i] = p.Name
 		}
-		return "(" + strings.Join(n.Params, ", ") + ") => " + body
+		if len(params) == 1 {
+			return params[0] + " => " + body
+		}
+		return "(" + strings.Join(params, ", ") + ") => " + body
 	case *ast.ParenExpr:
 		return "(" + translateExpr(n.Inner, scope) + ")"
 	default:
@@ -202,25 +161,20 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 
 func translateLiteral(n *ast.LiteralExpr) string {
 	switch n.Kind {
-	case ast.LiteralString:
-		return fmt.Sprintf("%q", n.Value)
-	case ast.LiteralInt:
-		return fmt.Sprintf("%d", n.Value)
-	case ast.LiteralFloat:
-		return fmt.Sprintf("%v", n.Value)
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		return fmt.Sprintf("%q", n.Raw)
+	case ast.LiteralInt, ast.LiteralFloat:
+		return n.Raw
 	case ast.LiteralBool:
-		if n.Value.(bool) {
-			return "true"
-		}
-		return "false"
+		return n.Raw
 	case ast.LiteralNull:
 		return "null"
 	case ast.LiteralColor:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	case ast.LiteralUnit:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	default:
-		return fmt.Sprintf("%v", n.Value)
+		return n.Raw
 	}
 }
 
@@ -247,8 +201,20 @@ func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
 }
 
 func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
-	fn := n.Func
-	args := n.Args
+	// Method call: receiver.method(args) — Func is a *ast.SelectExpr
+	if sel, ok := n.Func.(*ast.SelectExpr); ok {
+		return translateMethodCall(sel, n.Args, scope)
+	}
+
+	// Plain function call: Func is *ast.IdentExpr
+	fn := ""
+	if ident, ok := n.Func.(*ast.IdentExpr); ok {
+		fn = ident.Name
+	} else {
+		fn = translateExpr(n.Func, scope)
+	}
+
+	args := extractArgs(n.Args)
 
 	if fn == "string" && len(args) == 1 {
 		if scope.NeededHelpers != nil {
@@ -273,14 +239,61 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		var stmts []string
-		for _, s := range n.Stmts {
-			stmts = append(stmts, translateMutation(s, scope)...)
+// translateMethodCall handles a call where Func is a SelectExpr (receiver.method).
+func translateMethodCall(sel *ast.SelectExpr, argList ast.ArgList, scope *codegen.ExprScope) string {
+	method := sel.Field
+	args := extractArgs(argList)
+
+	// Stdlib native override
+	if js := jsBuiltinMethod(sel, args, scope); js != "" {
+		return js
+	}
+	// Type-qualified call: int.double(5) → int_double(5)
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+		qualName := ident.Name + "." + method
+		if scope.FuncNames[qualName] {
+			jsName := strings.ReplaceAll(qualName, ".", "_")
+			argStrs := make([]string, len(args))
+			for i, a := range args {
+				argStrs[i] = translateExpr(a, scope)
+			}
+			return jsName + "(" + strings.Join(argStrs, ", ") + ")"
 		}
-		return stmts
+	}
+	// Instance method: x.double() → look for type_method(x, ...)
+	if scope.FuncNames != nil {
+		for qualName := range scope.FuncNames {
+			if _, m, ok := ast.SplitMethodName(qualName); ok && m == method {
+				jsName := strings.ReplaceAll(qualName, ".", "_")
+				argStrs := []string{translateExpr(sel.Operand, scope)}
+				for _, a := range args {
+					argStrs = append(argStrs, translateExpr(a, scope))
+				}
+				return jsName + "(" + strings.Join(argStrs, ", ") + ")"
+			}
+		}
+	}
+	target := translateExpr(sel.Operand, scope)
+	argStrs := make([]string, len(args))
+	for i, a := range args {
+		argStrs[i] = translateExpr(a, scope)
+	}
+	return target + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// extractArgs extracts expression values from an ArgList.
+func extractArgs(al ast.ArgList) []ast.Expr {
+	var out []ast.Expr
+	for _, a := range al.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			out = append(out, arg.Value)
+		}
+	}
+	return out
+}
+
+func translateMutation(e ast.Stmt, scope *codegen.ExprScope) []string {
+	switch n := e.(type) {
 	case *ast.AssignStmt:
 		target := translateMutationTarget(n.Target, scope)
 		value := translateExpr(n.Value, scope)
@@ -289,44 +302,40 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 	case *ast.ToggleStmt:
 		target := translateMutationTarget(n.Target, scope)
 		return []string{target + " = !" + target}
-	case *ast.MethodExpr:
-		if js := jsBuiltinMethod(n, scope); js != "" {
-			return []string{js}
-		}
-		target := translateMutationTarget(n.Receiver, scope)
-		switch n.Method {
-		case "push":
-			if len(n.Args) == 1 {
-				value := translateExpr(n.Args[0], scope)
-				return []string{target + ".push(" + value + ")"}
+	case *ast.CallStmt:
+		if sel, ok := n.Call.Func.(*ast.SelectExpr); ok {
+			args := extractArgs(n.Call.Args)
+			method := sel.Field
+			// Handle mutation methods: push, remove
+			switch method {
+			case "push":
+				if len(args) == 1 {
+					target := translateMutationTarget(sel.Operand, scope)
+					value := translateExpr(args[0], scope)
+					return []string{target + ".push(" + value + ")"}
+				}
+			case "remove":
+				if len(args) == 1 {
+					target := translateMutationTarget(sel.Operand, scope)
+					idx := translateExpr(args[0], scope)
+					return []string{target + ".splice(" + idx + ", 1)"}
+				}
 			}
-		case "remove":
-			if len(n.Args) == 1 {
-				idx := translateExpr(n.Args[0], scope)
-				return []string{target + ".splice(" + idx + ", 1)"}
-			}
 		}
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = translateExpr(a, scope)
-		}
-		return []string{target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"}
+		return []string{translateCall(n.Call, scope)}
 	case *ast.EmitStmt:
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
+		args := extractArgs(n.Args)
+		argStrs := make([]string, len(args))
+		for i, a := range args {
 			argStrs[i] = translateExpr(a, scope)
 		}
 		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
-	case *ast.CallStmt:
-		return []string{translateCall(n.Call, scope)}
-	case *ast.CallExpr:
-		return []string{translateCall(n, scope)}
 	default:
 		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}
 }
 
-func translateMutationTarget(e ast.Node, scope *codegen.ExprScope) string {
+func translateMutationTarget(e ast.Expr, scope *codegen.ExprScope) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
 		if scope.ModelFields[n.Name] {
@@ -384,12 +393,15 @@ func binaryOpStr(op ast.BinaryOp) string {
 }
 
 // isIntNode reports whether a SNGL node is known to produce an integer value.
-func isIntNode(e ast.Node) bool {
+func isIntNode(e ast.Expr) bool {
 	switch n := e.(type) {
 	case *ast.LiteralExpr:
 		return n.Kind == ast.LiteralInt
 	case *ast.CallExpr:
-		return n.Func == "int"
+		if ident, ok := n.Func.(*ast.IdentExpr); ok {
+			return ident.Name == "int"
+		}
+		return false
 	case *ast.BinaryExpr:
 		switch n.Op {
 		case ast.BinAdd, ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
@@ -425,26 +437,27 @@ func assignOpStr(op ast.AssignOp) string {
 }
 
 // jsBuiltinMethod returns a native JS expression for stdlib methods, or "" if not a stdlib method.
-func jsBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
-	// Determine the qualified name and argument expressions
+// sel is the SelectExpr (receiver.method), args are the already-extracted argument expressions.
+func jsBuiltinMethod(sel *ast.SelectExpr, args []ast.Expr, scope *codegen.ExprScope) string {
+	method := sel.Field
 	var qualName string
 	var argExprs []string
 
-	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-		qualName = ident.Name + "." + n.Method
-		for _, a := range n.Args {
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+		qualName = ident.Name + "." + method
+		for _, a := range args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
 	} else {
 		// Instance method: receiver becomes first arg
-		argExprs = append(argExprs, translateExpr(n.Receiver, scope))
-		for _, a := range n.Args {
+		argExprs = append(argExprs, translateExpr(sel.Operand, scope))
+		for _, a := range args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		if n.Resolved != "" {
-			qualName = n.Resolved
+		if sel.ResolvedType != "" {
+			qualName = sel.ResolvedType
 		} else {
-			qualName = "*." + n.Method
+			qualName = "*." + method
 		}
 	}
 

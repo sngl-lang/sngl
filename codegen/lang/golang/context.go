@@ -20,7 +20,7 @@ type GoContext struct {
 	// AlertFunc translates Alert.toast/info/warn/error calls. Platforms
 	// provide their own because the toast mechanism differs per platform.
 	// If nil, a default "m.toasts = append(...)" implementation is used.
-	AlertFunc func(ec *GoContext, n *ast.MethodExpr) []string
+	AlertFunc func(ec *GoContext, method string, args []ast.Expr) []string
 
 	// PropOverrides maps param names to pre-translated Go expressions.
 	// Set during component expansion to substitute caller prop values.
@@ -37,14 +37,16 @@ func (t *Translator) NewContext(modelFields, computedFields map[string]bool, str
 	}
 }
 
-// TranslateExpr converts a SNGL expression Node into a Go expression string.
-func (ec *GoContext) TranslateExpr(e ast.Node) string {
+// TranslateExpr converts a SNGL expression into a Go expression string.
+func (ec *GoContext) TranslateExpr(e ast.Expr) string {
 	if e == nil {
 		return "nil"
 	}
 	switch n := e.(type) {
 	case *ast.LiteralExpr:
 		return ec.translateLiteral(n)
+	case *ast.UnitLiteral:
+		return fmt.Sprintf("%q", n.Raw+n.Suffix)
 	case *ast.IdentExpr:
 		return ec.translateIdent(n)
 	case *ast.SelectExpr:
@@ -78,20 +80,10 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 		return operand + "[" + index + "]"
 	case *ast.CallExpr:
 		return ec.translateCall(n)
-	case *ast.MethodExpr:
-		if goCode := ec.builtinMethod(n); goCode != "" {
-			return goCode
-		}
-		target := ec.TranslateExpr(n.Receiver)
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = ec.TranslateExpr(a)
-		}
-		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		if fields, ok := ec.StructNames[n.Name]; ok {
 			// Build name→value map from the expression's fields.
-			exprFields := make(map[string]ast.Node, len(n.Fields))
+			exprFields := make(map[string]ast.Expr, len(n.Fields))
 			for _, f := range n.Fields {
 				exprFields[f.Name] = f.Value
 			}
@@ -120,8 +112,8 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 		var fmtParts []string
 		var args []string
 		for _, part := range n.Parts {
-			if lit, ok := part.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				fmtParts = append(fmtParts, strings.ReplaceAll(fmt.Sprintf("%v", lit.Value), "%", "%%"))
+			if lit, ok := part.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
+				fmtParts = append(fmtParts, strings.ReplaceAll(lit.Raw, "%", "%%"))
 			} else {
 				fmtParts = append(fmtParts, "%v")
 				args = append(args, ec.TranslateExpr(part))
@@ -132,27 +124,22 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 		}
 		return "fmt.Sprintf(" + fmt.Sprintf("%q", strings.Join(fmtParts, "")) + ", " + strings.Join(args, ", ") + ")"
 	case *ast.StmtBlock:
-		stmts := ec.TranslateMutation(n)
+		var stmts []string
+		for _, s := range n.Stmts {
+			stmts = append(stmts, ec.TranslateMutation(s)...)
+		}
 		return strings.Join(stmts, "\n")
-	case *ast.AssignStmt:
-		stmts := ec.TranslateMutation(n)
-		return strings.Join(stmts, "\n")
-	case *ast.ToggleStmt:
-		stmts := ec.TranslateMutation(n)
-		return strings.Join(stmts, "\n")
-	case *ast.CallStmt:
-		return ec.TranslateExpr(n.Call)
 	case *ast.LambdaExpr:
-		for _, param := range n.Params {
-			ec.LocalVars[param] = true
+		for _, param := range n.Params.Params {
+			ec.LocalVars[param.Name] = true
 		}
 		body := ec.TranslateExpr(n.Body)
-		for _, param := range n.Params {
-			delete(ec.LocalVars, param)
+		for _, param := range n.Params.Params {
+			delete(ec.LocalVars, param.Name)
 		}
-		params := make([]string, len(n.Params))
-		for i, param := range n.Params {
-			params[i] = param + " any"
+		params := make([]string, len(n.Params.Params))
+		for i, param := range n.Params.Params {
+			params[i] = param.Name + " any"
 		}
 		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
 	case *ast.ParenExpr:
@@ -163,14 +150,8 @@ func (ec *GoContext) TranslateExpr(e ast.Node) string {
 }
 
 // TranslateMutation converts a SNGL statement node into Go assignment statements.
-func (ec *GoContext) TranslateMutation(e ast.Node) []string {
+func (ec *GoContext) TranslateMutation(e ast.Stmt) []string {
 	switch n := e.(type) {
-	case *ast.StmtBlock:
-		var stmts []string
-		for _, s := range n.Stmts {
-			stmts = append(stmts, ec.TranslateMutation(s)...)
-		}
-		return stmts
 	case *ast.AssignStmt:
 		target := ec.TranslateMutationTarget(n.Target)
 		value := ec.TranslateExpr(n.Value)
@@ -191,35 +172,39 @@ func (ec *GoContext) TranslateMutation(e ast.Node) []string {
 	case *ast.ToggleStmt:
 		target := ec.TranslateMutationTarget(n.Target)
 		return []string{target + " = !" + target}
-	case *ast.MethodExpr:
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return ec.translateAlert(n)
-		}
-		target := ec.TranslateMutationTarget(n.Receiver)
-		switch n.Method {
-		case "push":
-			if len(n.Args) == 1 {
-				value := ec.TranslateExpr(n.Args[0])
-				return []string{target + " = append(" + target + ", " + value + ")"}
-			}
-		case "remove":
-			if len(n.Args) == 1 {
-				idx := ec.TranslateExpr(n.Args[0])
-				return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
-			}
-		}
-		return []string{ec.TranslateExpr(n)}
 	case *ast.CallStmt:
-		return []string{ec.TranslateExpr(n.Call)}
-	case *ast.CallExpr:
-		return []string{ec.TranslateExpr(n)}
+		call := n.Call
+		// Check for method calls (receiver.method) that may be mutations
+		if sel, ok := call.Func.(*ast.SelectExpr); ok {
+			method := sel.Field
+			args := extractArgs(call.Args)
+			// Alert.* calls
+			if ident, ok := sel.Operand.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+				return ec.translateAlert(method, args)
+			}
+			target := ec.TranslateMutationTarget(sel.Operand)
+			switch method {
+			case "push":
+				if len(args) == 1 {
+					value := ec.TranslateExpr(args[0])
+					return []string{target + " = append(" + target + ", " + value + ")"}
+				}
+			case "remove":
+				if len(args) == 1 {
+					idx := ec.TranslateExpr(args[0])
+					return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
+				}
+			}
+			return []string{ec.TranslateExpr(call)}
+		}
+		return []string{ec.TranslateExpr(call)}
 	default:
 		return []string{fmt.Sprintf("// unsupported mutation: %T", e)}
 	}
 }
 
 // TranslateMutationTarget translates a SNGL expression used as a mutation target.
-func (ec *GoContext) TranslateMutationTarget(e ast.Node) string {
+func (ec *GoContext) TranslateMutationTarget(e ast.Expr) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
 		if ec.ModelFields[n.Name] {
@@ -240,27 +225,24 @@ func (ec *GoContext) TranslateMutationTarget(e ast.Node) string {
 
 func (ec *GoContext) translateLiteral(n *ast.LiteralExpr) string {
 	switch n.Kind {
-	case ast.LiteralString:
-		return fmt.Sprintf("%q", n.Value)
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		return fmt.Sprintf("%q", n.Raw)
 	case ast.LiteralInt:
-		return fmt.Sprintf("%d", n.Value)
+		return n.Raw
 	case ast.LiteralFloat:
-		s := fmt.Sprintf("%v", n.Value)
+		s := n.Raw
 		if !strings.Contains(s, ".") {
 			s += ".0"
 		}
 		return s
 	case ast.LiteralBool:
-		if n.Value.(bool) {
-			return "true"
-		}
-		return "false"
+		return n.Raw
 	case ast.LiteralNull:
 		return "nil"
 	case ast.LiteralColor:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	default:
-		return fmt.Sprintf("%v", n.Value)
+		return n.Raw
 	}
 }
 
@@ -288,8 +270,20 @@ func (ec *GoContext) translateIdent(n *ast.IdentExpr) string {
 }
 
 func (ec *GoContext) translateCall(n *ast.CallExpr) string {
-	fn := n.Func
-	args := n.Args
+	// Method call: receiver.method(args) — Func is a *ast.SelectExpr
+	if sel, ok := n.Func.(*ast.SelectExpr); ok {
+		return ec.translateMethodCall(sel, n.Args)
+	}
+
+	// Plain function call: Func is *ast.IdentExpr
+	fn := ""
+	if ident, ok := n.Func.(*ast.IdentExpr); ok {
+		fn = ident.Name
+	} else {
+		fn = ec.TranslateExpr(n.Func)
+	}
+
+	args := extractArgs(n.Args)
 
 	if fn == "string" && len(args) == 1 {
 		return "fmt.Sprint(" + ec.TranslateExpr(args[0]) + ")"
@@ -336,105 +330,101 @@ func (ec *GoContext) translateCall(n *ast.CallExpr) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func (ec *GoContext) translateAlert(n *ast.MethodExpr) []string {
+// translateMethodCall handles a call where Func is a SelectExpr (receiver.method).
+func (ec *GoContext) translateMethodCall(sel *ast.SelectExpr, argList ast.ArgList) string {
+	method := sel.Field
+	args := extractArgs(argList)
+
+	// Stdlib native override
+	if goCode := ec.builtinMethodFromCall(sel, args); goCode != "" {
+		return goCode
+	}
+	target := ec.TranslateExpr(sel.Operand)
+	argStrs := make([]string, len(args))
+	for i, a := range args {
+		argStrs[i] = ec.TranslateExpr(a)
+	}
+	return target + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+func (ec *GoContext) translateAlert(method string, args []ast.Expr) []string {
 	if ec.AlertFunc != nil {
-		return ec.AlertFunc(ec, n)
+		return ec.AlertFunc(ec, method, args)
 	}
 	// Default: append to m.toasts
-	switch n.Method {
+	switch method {
 	case "toast":
-		msg := ec.TranslateExpr(n.Args[0])
+		msg := ec.TranslateExpr(args[0])
 		variant := `"info"`
-		if len(n.Args) > 1 {
-			variant = ec.TranslateExpr(n.Args[1])
+		if len(args) > 1 {
+			variant = ec.TranslateExpr(args[1])
 		}
 		return []string{fmt.Sprintf("m.toasts = append(m.toasts, snglToast{%s, %s})", msg, variant)}
 	case "info", "warn", "error":
-		msg := ec.TranslateExpr(n.Args[0])
-		return []string{fmt.Sprintf("m.toasts = append(m.toasts, snglToast{%s, %q})", msg, n.Method)}
+		msg := ec.TranslateExpr(args[0])
+		return []string{fmt.Sprintf("m.toasts = append(m.toasts, snglToast{%s, %q})", msg, method)}
 	case "confirm":
 		return []string{"// Alert.confirm not supported in TUI"}
 	}
-	return []string{ec.TranslateExpr(n)}
+	return []string{"// unsupported Alert." + method}
 }
 
 // ExprToGoValue converts an ast.Expr to a Go value string.
 func ExprToGoValue(expr ast.Expr, ec *GoContext) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		default:
-			return fmt.Sprintf("%v", v)
-		}
+	if expr == nil {
+		return `""`
 	}
-	if expr.SNGL != nil && ec != nil {
-		return ec.TranslateExpr(expr.SNGL)
+	if ec != nil {
+		return ec.TranslateExpr(expr)
+	}
+	if lit, ok := expr.(*ast.LiteralExpr); ok {
+		return translateLiteral(lit)
 	}
 	return `""`
 }
 
 // ExprToGoCond converts an ast.Expr to a Go boolean expression string.
 func ExprToGoCond(expr ast.Expr, ec *GoContext) string {
-	if expr.SNGL != nil {
-		return ec.TranslateExpr(expr.SNGL)
+	if expr == nil {
+		return "true"
 	}
-	if expr.Literal != nil {
-		if v, ok := expr.Literal.(bool); ok {
-			if v {
-				return "true"
-			}
-			return "false"
-		}
+	if ec != nil {
+		return ec.TranslateExpr(expr)
+	}
+	if lit, ok := expr.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralBool {
+		return lit.Raw
 	}
 	return "true"
 }
 
-// builtinMethod checks for stdlib builtin methods (like string.length) and
-// returns translated Go code, or "" if not a builtin. Mirrors goBuiltinMethod
-// in golang.go but uses GoContext for sub-expression translation.
-func (ec *GoContext) builtinMethod(n *ast.MethodExpr) string {
+// builtinMethodFromCall checks for stdlib builtin methods (like string.length) and
+// returns translated Go code, or "" if not a builtin. Uses GoContext for sub-expression translation.
+func (ec *GoContext) builtinMethodFromCall(sel *ast.SelectExpr, args []ast.Expr) string {
+	method := sel.Field
 	var argExprs []string
 	var qualName string
 
-	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		// Check type-qualified name first (e.g., "string.length", "int.min")
-		qualName = ident.Name + "." + n.Method
-		for _, a := range n.Args {
+		qualName = ident.Name + "." + method
+		for _, a := range args {
 			argExprs = append(argExprs, ec.TranslateExpr(a))
 		}
 		if result := goBuiltinMethodFromArgs(qualName, argExprs); result != "" {
 			return result
 		}
 		// Not a type-qualified builtin; treat as instance method (e.g., notes.length())
-		argExprs = []string{ec.TranslateExpr(n.Receiver)}
-		for _, a := range n.Args {
+		argExprs = []string{ec.TranslateExpr(sel.Operand)}
+		for _, a := range args {
 			argExprs = append(argExprs, ec.TranslateExpr(a))
 		}
-		if n.Resolved != "" {
-			qualName = n.Resolved
-		} else {
-			qualName = "*." + n.Method
-		}
+		qualName = "*." + method
 	} else {
-		argExprs = append(argExprs, ec.TranslateExpr(n.Receiver))
-		for _, a := range n.Args {
+		argExprs = append(argExprs, ec.TranslateExpr(sel.Operand))
+		for _, a := range args {
 			argExprs = append(argExprs, ec.TranslateExpr(a))
 		}
-		if n.Resolved != "" {
-			qualName = n.Resolved
-		} else {
-			qualName = "*." + n.Method
-		}
+		qualName = "*." + method
 	}
 
 	return goBuiltinMethodFromArgs(qualName, argExprs)
@@ -443,15 +433,15 @@ func (ec *GoContext) builtinMethod(n *ast.MethodExpr) string {
 // ExprToGoStringList converts an ast.Expr that should be a list of strings
 // into a Go []string expression.
 func ExprToGoStringList(expr ast.Expr, ec *GoContext) string {
-	if expr.SNGL != nil {
-		if list, ok := expr.SNGL.(*ast.ListExpr); ok {
-			parts := make([]string, len(list.Elements))
-			for i, el := range list.Elements {
-				parts[i] = ec.TranslateExpr(el)
-			}
-			return "[]string{" + strings.Join(parts, ", ") + "}"
-		}
-		return ec.TranslateExpr(expr.SNGL)
+	if expr == nil {
+		return "nil"
 	}
-	return "nil"
+	if list, ok := expr.(*ast.ListExpr); ok {
+		parts := make([]string, len(list.Elements))
+		for i, el := range list.Elements {
+			parts[i] = ec.TranslateExpr(el)
+		}
+		return "[]string{" + strings.Join(parts, ", ") + "}"
+	}
+	return ec.TranslateExpr(expr)
 }

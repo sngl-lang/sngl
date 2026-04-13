@@ -27,8 +27,10 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator) ([]
 	groups := map[string]*testGroup{}
 	for _, fn := range testFuncs {
 		compName := ""
-		if len(fn.Params) >= 2 {
-			compName = fn.Params[1].Type
+		if len(fn.Params.Params) >= 2 {
+			if nt, ok := fn.Params.Params[1].Type.(*ast.NamedType); ok {
+				compName = nt.Name
+			}
 		}
 		g, ok := groups[compName]
 		if !ok {
@@ -113,7 +115,7 @@ func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document,
 		return result
 	}
 
-	if fn.Block != nil {
+	if fn.Block.IsDefined() {
 		if err := runner.ExecTest(fn.Block.Stmts); err != nil {
 			result.Passed = false
 			result.Error = err.Error()

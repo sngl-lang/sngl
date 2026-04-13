@@ -1,0 +1,537 @@
+package parser
+
+import (
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/ast"
+)
+
+func mustParse(t *testing.T, src string) *ast.Document {
+	t.Helper()
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	return doc
+}
+
+func TestParseLiterals(t *testing.T) {
+	doc := mustParse(t, `const x = 42`)
+	if len(doc.Stmts) != 1 {
+		t.Fatalf("expected 1 stmt, got %d", len(doc.Stmts))
+	}
+	cd, ok := doc.Stmts[0].(*ast.ConstDecl)
+	if !ok {
+		t.Fatalf("expected ConstDecl, got %T", doc.Stmts[0])
+	}
+	if len(cd.Specs) != 1 {
+		t.Fatalf("expected 1 spec, got %d", len(cd.Specs))
+	}
+	lit, ok := cd.Specs[0].Default.(*ast.LiteralExpr)
+	if !ok {
+		t.Fatalf("expected LiteralExpr, got %T", cd.Specs[0].Default)
+	}
+	if lit.Kind != ast.LiteralInt || lit.Raw != "42" {
+		t.Errorf("expected int 42, got %v %q", lit.Kind, lit.Raw)
+	}
+}
+
+func TestParseStringLiteral(t *testing.T) {
+	doc := mustParse(t, `const s = "hello"`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	lit := cd.Specs[0].Default.(*ast.LiteralExpr)
+	if lit.Kind != ast.LiteralStringQuoted {
+		t.Errorf("expected string, got %v", lit.Kind)
+	}
+}
+
+func TestParseBinaryExpr(t *testing.T) {
+	doc := mustParse(t, `const x = 1 + 2 * 3`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	// Should be 1 + (2 * 3) due to precedence
+	bin, ok := cd.Specs[0].Default.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected BinaryExpr, got %T", cd.Specs[0].Default)
+	}
+	if bin.Op != ast.BinAdd {
+		t.Errorf("expected BinAdd, got %v", bin.Op)
+	}
+	right, ok := bin.Right.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected BinaryExpr on right, got %T", bin.Right)
+	}
+	if right.Op != ast.BinMul {
+		t.Errorf("expected BinMul, got %v", right.Op)
+	}
+}
+
+func TestParseTernary(t *testing.T) {
+	doc := mustParse(t, `const x = a ? b : c`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	tern, ok := cd.Specs[0].Default.(*ast.TernaryExpr)
+	if !ok {
+		t.Fatalf("expected TernaryExpr, got %T", cd.Specs[0].Default)
+	}
+	if identName(tern.Cond) != "a" {
+		t.Errorf("expected cond=a, got %v", tern.Cond)
+	}
+}
+
+func TestParseUnary(t *testing.T) {
+	doc := mustParse(t, `const x = !flag`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	un, ok := cd.Specs[0].Default.(*ast.UnaryExpr)
+	if !ok {
+		t.Fatalf("expected UnaryExpr, got %T", cd.Specs[0].Default)
+	}
+	if un.Op != ast.UnaryNot {
+		t.Errorf("expected UnaryNot, got %v", un.Op)
+	}
+}
+
+func TestParseStructDecl(t *testing.T) {
+	doc := mustParse(t, `struct Point {
+		x int
+		y int = 0
+	}`)
+	sd, ok := doc.Stmts[0].(*ast.StructDef)
+	if !ok {
+		t.Fatalf("expected StructDef, got %T", doc.Stmts[0])
+	}
+	if sd.Name != "Point" {
+		t.Errorf("expected name Point, got %q", sd.Name)
+	}
+	if len(sd.Fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(sd.Fields))
+	}
+	if sd.Fields[0].Name != "x" {
+		t.Errorf("expected field x, got %q", sd.Fields[0].Name)
+	}
+	if sd.Fields[1].Default == nil {
+		t.Error("expected default on field y")
+	}
+}
+
+func TestParseEnumDecl(t *testing.T) {
+	doc := mustParse(t, `enum Color { Red, Green, Blue }`)
+	ed, ok := doc.Stmts[0].(*ast.EnumDef)
+	if !ok {
+		t.Fatalf("expected EnumDef, got %T", doc.Stmts[0])
+	}
+	if ed.Name != "Color" {
+		t.Errorf("expected name Color, got %q", ed.Name)
+	}
+	if len(ed.Members) != 3 {
+		t.Fatalf("expected 3 members, got %d", len(ed.Members))
+	}
+	if ed.Members[0].Name != "Red" {
+		t.Errorf("expected Red, got %q", ed.Members[0].Name)
+	}
+}
+
+func TestParseImport(t *testing.T) {
+	doc := mustParse(t, `import "math"`)
+	imp, ok := doc.Stmts[0].(*ast.Import)
+	if !ok {
+		t.Fatalf("expected Import, got %T", doc.Stmts[0])
+	}
+	if imp.Path != "math" {
+		t.Errorf("expected path math, got %q", imp.Path)
+	}
+}
+
+func TestParseImportAliased(t *testing.T) {
+	doc := mustParse(t, `import m => "math"`)
+	imp := doc.Stmts[0].(*ast.Import)
+	if imp.Alias != "m" || imp.Path != "math" {
+		t.Errorf("expected alias=m path=math, got %q %q", imp.Alias, imp.Path)
+	}
+}
+
+func TestParseFuncExprBody(t *testing.T) {
+	doc := mustParse(t, `func add(a int, b int) => a + b`)
+	fd, ok := doc.Stmts[0].(*ast.FuncDef)
+	if !ok {
+		t.Fatalf("expected FuncDef, got %T", doc.Stmts[0])
+	}
+	if fd.Name != "add" {
+		t.Errorf("expected name add, got %q", fd.Name)
+	}
+	if len(fd.Params.Params) != 2 {
+		t.Fatalf("expected 2 params, got %d", len(fd.Params.Params))
+	}
+	if fd.Body == nil {
+		t.Error("expected expression body")
+	}
+}
+
+func TestParseFuncBlockBody(t *testing.T) {
+	doc := mustParse(t, `func greet(name string) {
+		return name
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	if !fd.Block.IsDefined() {
+		t.Error("expected block body")
+	}
+	if len(fd.Block.Stmts) != 1 {
+		t.Fatalf("expected 1 stmt in block, got %d", len(fd.Block.Stmts))
+	}
+	ret, ok := fd.Block.Stmts[0].(*ast.ReturnStmt)
+	if !ok {
+		t.Fatalf("expected ReturnStmt, got %T", fd.Block.Stmts[0])
+	}
+	if ret.Value == nil {
+		t.Error("expected return value")
+	}
+}
+
+func TestParseFuncMethod(t *testing.T) {
+	doc := mustParse(t, `func int.double => self * 2`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	if fd.Name != "int.double" {
+		t.Errorf("expected int.double, got %q", fd.Name)
+	}
+}
+
+func TestParseFuncGeneric(t *testing.T) {
+	doc := mustParse(t, `func identity<T>(x T) => x`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	if len(fd.TypeParams) != 1 || fd.TypeParams[0] != "T" {
+		t.Errorf("expected type param T, got %v", fd.TypeParams)
+	}
+}
+
+func TestParseVarDecl(t *testing.T) {
+	doc := mustParse(t, `var count int = 0`)
+	vd, ok := doc.Stmts[0].(*ast.VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", doc.Stmts[0])
+	}
+	if len(vd.Specs) != 1 {
+		t.Fatalf("expected 1 spec, got %d", len(vd.Specs))
+	}
+	if vd.Specs[0].Names[0] != "count" {
+		t.Errorf("expected name count, got %v", vd.Specs[0].Names)
+	}
+}
+
+func TestParseIfStmt(t *testing.T) {
+	doc := mustParse(t, `func f {
+		if x > 0 {
+			return x
+		} else {
+			return 0
+		}
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	ifStmt, ok := fd.Block.Stmts[0].(*ast.IfStmt)
+	if !ok {
+		t.Fatalf("expected IfStmt, got %T", fd.Block.Stmts[0])
+	}
+	if ifStmt.Cond == nil {
+		t.Error("expected condition")
+	}
+	if !ifStmt.Else.IsDefined() {
+		t.Error("expected else block")
+	}
+}
+
+func TestParseForStmt(t *testing.T) {
+	doc := mustParse(t, `func f {
+		for i = items {
+			Text(i)
+		}
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	forStmt, ok := fd.Block.Stmts[0].(*ast.ForStmt)
+	if !ok {
+		t.Fatalf("expected ForStmt, got %T", fd.Block.Stmts[0])
+	}
+	if forStmt.Key != "i" {
+		t.Errorf("expected key i, got %q", forStmt.Key)
+	}
+}
+
+func TestParseForStmtTwoVars(t *testing.T) {
+	doc := mustParse(t, `func f {
+		for k, v = map {
+			Text(v)
+		}
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	forStmt := fd.Block.Stmts[0].(*ast.ForStmt)
+	if forStmt.Key != "k" || forStmt.Value != "v" {
+		t.Errorf("expected k,v got %q,%q", forStmt.Key, forStmt.Value)
+	}
+}
+
+func TestParseComponent(t *testing.T) {
+	doc := mustParse(t, `component Button(label string) {
+		Text(label)
+	}`)
+	cd, ok := doc.Stmts[0].(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected ComponentDecl, got %T", doc.Stmts[0])
+	}
+	if cd.Name != "Button" {
+		t.Errorf("expected Button, got %q", cd.Name)
+	}
+	if len(cd.Props.Props) != 1 {
+		t.Fatalf("expected 1 prop, got %d", len(cd.Props.Props))
+	}
+}
+
+func TestParseVisualNode(t *testing.T) {
+	doc := mustParse(t, `component App {
+		Button(label="Click") {
+			Text("hello")
+		}
+	}`)
+	cd := doc.Stmts[0].(*ast.ComponentDecl)
+	if len(cd.Body.Stmts) != 1 {
+		t.Fatalf("expected 1 stmt, got %d", len(cd.Body.Stmts))
+	}
+	vn, ok := cd.Body.Stmts[0].(*ast.VisualNode)
+	if !ok {
+		t.Fatalf("expected VisualNode, got %T", cd.Body.Stmts[0])
+	}
+	if vn.Target == nil {
+		t.Error("expected target")
+	}
+	if len(vn.Args.Args) != 1 {
+		t.Errorf("expected 1 arg, got %d", len(vn.Args.Args))
+	}
+	if !vn.Block.IsDefined() {
+		t.Error("expected block body")
+	}
+}
+
+func TestParseAssignment(t *testing.T) {
+	doc := mustParse(t, `func f {
+		x = 1
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	assign, ok := fd.Block.Stmts[0].(*ast.AssignStmt)
+	if !ok {
+		t.Fatalf("expected AssignStmt, got %T", fd.Block.Stmts[0])
+	}
+	if assign.Op != ast.AssignSet {
+		t.Errorf("expected AssignSet, got %v", assign.Op)
+	}
+}
+
+func TestParseCompoundAssignment(t *testing.T) {
+	doc := mustParse(t, `func f {
+		x += 1
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	assign := fd.Block.Stmts[0].(*ast.AssignStmt)
+	if assign.Op != ast.AssignAdd {
+		t.Errorf("expected AssignAdd, got %v", assign.Op)
+	}
+}
+
+func TestParseToggle(t *testing.T) {
+	doc := mustParse(t, `func f {
+		visible!!
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	toggle, ok := fd.Block.Stmts[0].(*ast.ToggleStmt)
+	if !ok {
+		t.Fatalf("expected ToggleStmt, got %T", fd.Block.Stmts[0])
+	}
+	ident, ok := toggle.Target.(*ast.IdentExpr)
+	if !ok || ident.Name != "visible" {
+		t.Errorf("expected target visible, got %v", toggle.Target)
+	}
+}
+
+func TestParseListLiteral(t *testing.T) {
+	doc := mustParse(t, `const xs = [1, 2, 3]`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	list, ok := cd.Specs[0].Default.(*ast.ListExpr)
+	if !ok {
+		t.Fatalf("expected ListExpr, got %T", cd.Specs[0].Default)
+	}
+	if len(list.Elements) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(list.Elements))
+	}
+}
+
+func TestParseAnonStructLit(t *testing.T) {
+	doc := mustParse(t, `const p = {x=1, y=2}`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	s, ok := cd.Specs[0].Default.(*ast.StructExpr)
+	if !ok {
+		t.Fatalf("expected StructExpr, got %T", cd.Specs[0].Default)
+	}
+	if s.Name != "" {
+		t.Errorf("expected anonymous, got name %q", s.Name)
+	}
+	if len(s.Fields) != 2 {
+		t.Errorf("expected 2 fields, got %d", len(s.Fields))
+	}
+}
+
+func TestParseNamedStructLit(t *testing.T) {
+	doc := mustParse(t, `const p = Point{x=1, y=2}`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	s, ok := cd.Specs[0].Default.(*ast.StructExpr)
+	if !ok {
+		t.Fatalf("expected StructExpr, got %T", cd.Specs[0].Default)
+	}
+	if s.Name != "Point" {
+		t.Errorf("expected name Point, got %q", s.Name)
+	}
+	if len(s.Fields) != 2 {
+		t.Errorf("expected 2 fields, got %d", len(s.Fields))
+	}
+}
+
+func TestParseQualifiedStructLit(t *testing.T) {
+	doc := mustParse(t, `const p = geo.Point{x=1, y=2}`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	s, ok := cd.Specs[0].Default.(*ast.StructExpr)
+	if !ok {
+		t.Fatalf("expected StructExpr, got %T", cd.Specs[0].Default)
+	}
+	if s.Package != "geo" || s.Name != "Point" {
+		t.Errorf("expected geo.Point, got %q.%q", s.Package, s.Name)
+	}
+}
+
+func TestParseEmptyStructLit(t *testing.T) {
+	doc := mustParse(t, `const p = Point{}`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	s, ok := cd.Specs[0].Default.(*ast.StructExpr)
+	if !ok {
+		t.Fatalf("expected StructExpr, got %T", cd.Specs[0].Default)
+	}
+	if s.Name != "Point" {
+		t.Errorf("expected Point, got %q", s.Name)
+	}
+	if len(s.Fields) != 0 {
+		t.Errorf("expected 0 fields, got %d", len(s.Fields))
+	}
+}
+
+func TestParseFuncLit(t *testing.T) {
+	doc := mustParse(t, `const f = func(x) => x + 1`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	lam, ok := cd.Specs[0].Default.(*ast.LambdaExpr)
+	if !ok {
+		t.Fatalf("expected LambdaExpr, got %T", cd.Specs[0].Default)
+	}
+	if len(lam.Params.Params) != 1 {
+		t.Errorf("expected 1 param, got %d", len(lam.Params.Params))
+	}
+	if lam.Body == nil {
+		t.Error("expected expression body")
+	}
+}
+
+func TestParseSelectExpr(t *testing.T) {
+	doc := mustParse(t, `const x = foo.bar`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	sel, ok := cd.Specs[0].Default.(*ast.SelectExpr)
+	if !ok {
+		t.Fatalf("expected SelectExpr, got %T", cd.Specs[0].Default)
+	}
+	if sel.Field != "bar" {
+		t.Errorf("expected field bar, got %q", sel.Field)
+	}
+}
+
+func TestParseCallExpr(t *testing.T) {
+	doc := mustParse(t, `const x = foo(1, 2)`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	call, ok := cd.Specs[0].Default.(*ast.CallExpr)
+	if !ok {
+		t.Fatalf("expected CallExpr, got %T", cd.Specs[0].Default)
+	}
+	if len(call.Args.Args) != 2 {
+		t.Errorf("expected 2 args, got %d", len(call.Args.Args))
+	}
+}
+
+func TestParseIndexExpr(t *testing.T) {
+	doc := mustParse(t, `const x = arr[0]`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	idx, ok := cd.Specs[0].Default.(*ast.IndexExpr)
+	if !ok {
+		t.Fatalf("expected IndexExpr, got %T", cd.Specs[0].Default)
+	}
+	if idx.Index == nil {
+		t.Error("expected index expression")
+	}
+}
+
+func TestParseDisabledDecl(t *testing.T) {
+	doc := mustParse(t, `/- const x = 1`)
+	dd, ok := doc.Stmts[0].(*ast.DisabledDecl)
+	if !ok {
+		t.Fatalf("expected DisabledDecl, got %T", doc.Stmts[0])
+	}
+	if dd.Inner == nil {
+		t.Error("expected inner stmt")
+	}
+}
+
+func TestParseType(t *testing.T) {
+	doc := mustParse(t, `const x List<int> = [1]`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	nt, ok := cd.Specs[0].Type.(*ast.NamedType)
+	if !ok {
+		t.Fatalf("expected NamedType, got %T", cd.Specs[0].Type)
+	}
+	if nt.Name != "List" {
+		t.Errorf("expected List, got %q", nt.Name)
+	}
+	if nt.TypeArg == nil {
+		t.Error("expected type arg")
+	}
+}
+
+func TestParseUnitDecl(t *testing.T) {
+	doc := mustParse(t, `unit Length { px, em, rem }`)
+	ud, ok := doc.Stmts[0].(*ast.UnitDef)
+	if !ok {
+		t.Fatalf("expected UnitDef, got %T", doc.Stmts[0])
+	}
+	if ud.Name != "Length" {
+		t.Errorf("expected Length, got %q", ud.Name)
+	}
+	if len(ud.Suffixes) != 3 {
+		t.Errorf("expected 3 suffixes, got %d", len(ud.Suffixes))
+	}
+}
+
+func TestParsePos(t *testing.T) {
+	doc := mustParse(t, `const x = 1`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	if cd.Pos.Line != 1 || cd.Pos.Column != 1 {
+		t.Errorf("expected pos 1:1, got %d:%d", cd.Pos.Line, cd.Pos.Column)
+	}
+}
+
+func identNameTest(e ast.Expr) string {
+	if id, ok := e.(*ast.IdentExpr); ok {
+		return id.Name
+	}
+	return ""
+}
+
+func TestParseTestdata(t *testing.T) {
+	for s := range testutil.TestdataSamples(t) {
+		t.Run(s.Name, func(t *testing.T) {
+			if s.ExpectsError("parse") {
+				t.Skip("has ERROR(parse) directive")
+			}
+			_, err := Parse(s.Filename, []byte(s.Source))
+			if err != nil {
+				t.Errorf("parse failed: %v", err)
+			}
+		})
+	}
+}

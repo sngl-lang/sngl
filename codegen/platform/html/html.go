@@ -33,8 +33,8 @@ func (g *Generator) PkgSource() string        { return pkgSource }
 
 // ResolveAPI makes any identifier valid as an HTML element.
 // This allows html.div, html.span, html.form, etc. to be used as components.
-func (g *Generator) ResolveAPI(name string) *ast.NativeDecls {
-	return &ast.NativeDecls{}
+func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
+	return &codegen.NativeDecls{}
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
@@ -42,14 +42,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
 	}
 
-	// Collect file assets (populated by optimizer from file:// path() calls).
 	var files []*codegen.OutputFile
-	for _, fa := range req.Doc.FileAssets {
-		data, err := os.ReadFile(fa.SrcPath)
-		if err == nil {
-			files = append(files, codegen.BytesFile(fa.OutPath, data))
-		}
-	}
 
 	// Resolve stylesheet option: source path relative to project dir.
 	stylesheetURL := ""
@@ -68,7 +61,6 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	}
 
 	// Build WASM for imported packages that have runtime-used functions.
-	// Each import scheme's language may provide a WASMCompiler.
 	var wasmLoaderHTML string
 	wasmPkgs := collectWASMPackages(req.Doc)
 	if len(wasmPkgs) > 0 {
@@ -77,9 +69,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		var loaderScripts []string
 
 		for _, wp := range wasmPkgs {
-			// Look up the lang for this import's scheme (e.g., go:// → "go" lang)
 			schemeLang := codegen.LookupLang(wp.namespace)
-			// Try all registered langs for WASMCompiler support
 			if schemeLang == nil {
 				for _, name := range codegen.Langs() {
 					l := codegen.LookupLang(name)
@@ -94,7 +84,6 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 				continue
 			}
 
-			// Add runtime support JS (once)
 			if !wasmExecAdded {
 				wasmExecData, err := wc.WASMExecJS()
 				if err == nil {
@@ -120,64 +109,13 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 				strings.Join(loaderScripts, "\n"))
 		}
 	}
+	_ = stylesheetURL // used by multi-window below
 
-	// Merge non-pure go:// extern functions into doc.Data for WASM bindings.
-	// Pure functions were fully evaluated at compile time and don't need runtime bindings.
-	for _, ni := range req.Doc.NativeImports {
-		for _, d := range ni.Data {
-			if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
-				req.Doc.Data = append(req.Doc.Data, d)
-			}
-		}
-	}
-
-	// Generate HTML pages from windows (or single-window fallback).
-	windows := req.Doc.App.EffectiveWindows()
-	if len(windows) <= 1 {
-		gen := newHTMLGen(req.Doc, req.Lang, req.Options)
-		gen.wasmLoader = wasmLoaderHTML
-		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
-		files = append(files, codegen.BytesFile("index.html", []byte(src)))
-		return &codegen.Response{Files: files}, nil
-	}
-	for _, win := range windows {
-		name := win.Name
-		// Try href prop for the filename if no static name
-		if name == "" {
-			name = staticPropString(win.Props, "href")
-		}
-		if name == "" {
-			name = staticPropString(win.Props, "slug")
-		}
-		if name == "" {
-			name = staticPropString(win.Props, "title")
-		}
-		// If name looks like a URL path (starts with /), use it directly
-		if after, ok := strings.CutPrefix(name, "/"); ok {
-			name = after
-		} else if strings.HasSuffix(name, ".html") {
-			// Already has extension, use as-is
-		} else if name == "main" || name == "" || name == "index" {
-			name = "index.html"
-		} else {
-			name = name + ".html"
-		}
-		// Create a synthetic document with this window's children as the app body.
-		// Merge window-level state into the document so emitScript() can see it.
-		winDoc := req.Doc.Clone()
-		winDoc.App = &ast.App{Children: win.Children}
-		winDoc.Data = append(winDoc.Data, win.Data...)
-		winDoc.Consts = append(winDoc.Consts, win.Consts...)
-		winDoc.Functions = append(winDoc.Functions, win.Functions...)
-		winDoc.Timers = append(winDoc.Timers, win.Timers...)
-		gen := newHTMLGen(winDoc, req.Lang, req.Options)
-		gen.title = staticPropString(win.Props, "title")
-		gen.stylesheet = stylesheetURL
-		gen.favicon = staticPropString(win.Props, "favicon")
-		gen.wasmLoader = wasmLoaderHTML
-		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
-		files = append(files, codegen.BytesFile(name, []byte(src)))
-	}
+	// Single-page generation (no multi-window support in v2 yet).
+	gen := newHTMLGen(req.Doc, req.Lang, req.Options)
+	gen.wasmLoader = wasmLoaderHTML
+	src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
+	files = append(files, codegen.BytesFile("index.html", []byte(src)))
 	return &codegen.Response{Files: files}, nil
 }
 

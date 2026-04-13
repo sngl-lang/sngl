@@ -11,15 +11,15 @@ import (
 )
 
 // BuildCSSStyle builds a complete inline CSS style string from a visual node's
-// style fields.
+// named args that map to CSS properties.
 func BuildCSSStyle(vn *ast.VisualNode) string {
-	merged := vn.StyleFields()
-	if len(merged) == 0 {
-		return ""
-	}
 	var parts []string
-	for prop, expr := range merged {
-		if css := StylePropToCSS(prop, expr); css != "" {
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name == "" {
+			continue
+		}
+		if css := StylePropToCSS(arg.Name, arg.Value); css != "" {
 			parts = append(parts, css)
 		}
 	}

@@ -17,7 +17,7 @@ type exprContext struct {
 	propOverrides  map[string]string // param name → pre-translated Kotlin expression (set during component expansion)
 }
 
-func (ec *exprContext) translateExpr(e ast.Node) string {
+func (ec *exprContext) translateExpr(e ast.Expr) string {
 	if e == nil {
 		return "null"
 	}
@@ -61,34 +61,6 @@ func (ec *exprContext) translateExpr(e ast.Node) string {
 		return operand + "[" + index + "]"
 	case *ast.CallExpr:
 		return ec.translateCall(n)
-	case *ast.MethodExpr:
-		target := ec.translateExpr(n.Receiver)
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = ec.translateExpr(a)
-		}
-		// Map SNGL methods to Kotlin equivalents.
-		switch n.Method {
-		case "length":
-			return target + ".length" // Kotlin property, not function
-		case "upper":
-			return target + ".uppercase()"
-		case "lower":
-			return target + ".lowercase()"
-		case "trim":
-			return target + ".trim()"
-		case "replace":
-			return target + ".replace(" + strings.Join(argStrs, ", ") + ")"
-		case "indexOf":
-			return target + ".indexOf(" + strings.Join(argStrs, ", ") + ")"
-		case "startsWith":
-			return target + ".startsWith(" + strings.Join(argStrs, ", ") + ")"
-		case "endsWith":
-			return target + ".endsWith(" + strings.Join(argStrs, ", ") + ")"
-		case "push":
-			return target + " + " + strings.Join(argStrs, ", ")
-		}
-		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
@@ -193,8 +165,20 @@ func (ec *exprContext) translateIdent(n *ast.IdentExpr) string {
 }
 
 func (ec *exprContext) translateCall(n *ast.CallExpr) string {
-	fn := n.Func
-	args := n.Args
+	// Method call: receiver.method(args) — Func is a *ast.SelectExpr
+	if sel, ok := n.Func.(*ast.SelectExpr); ok {
+		return ec.translateMethodCall(sel, n.Args)
+	}
+
+	// Plain function call: Func is *ast.IdentExpr
+	fn := ""
+	if ident, ok := n.Func.(*ast.IdentExpr); ok {
+		fn = ident.Name
+	} else {
+		fn = ec.translateExpr(n.Func)
+	}
+
+	args := callArgs(n)
 
 	if fn == "string" && len(args) == 1 {
 		return ec.translateExpr(args[0]) + ".toString()"
@@ -227,6 +211,41 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 		argStrs[i] = ec.translateExpr(a)
 	}
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateMethodCall handles a call where Func is a SelectExpr (receiver.method).
+func (ec *exprContext) translateMethodCall(sel *ast.SelectExpr, argList ast.ArgList) string {
+	target := ec.translateExpr(sel.Operand)
+	method := sel.Field
+	args := make([]string, 0)
+	for _, a := range argList.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			args = append(args, ec.translateExpr(arg.Value))
+		}
+	}
+
+	// Map SNGL methods to Kotlin equivalents.
+	switch method {
+	case "length":
+		return target + ".length" // Kotlin property, not function
+	case "upper":
+		return target + ".uppercase()"
+	case "lower":
+		return target + ".lowercase()"
+	case "trim":
+		return target + ".trim()"
+	case "replace":
+		return target + ".replace(" + strings.Join(args, ", ") + ")"
+	case "indexOf":
+		return target + ".indexOf(" + strings.Join(args, ", ") + ")"
+	case "startsWith":
+		return target + ".startsWith(" + strings.Join(args, ", ") + ")"
+	case "endsWith":
+		return target + ".endsWith(" + strings.Join(args, ", ") + ")"
+	case "push":
+		return target + " + " + strings.Join(args, ", ")
+	}
+	return target + "." + method + "(" + strings.Join(args, ", ") + ")"
 }
 
 func (ec *exprContext) translateLambda(n *ast.LambdaExpr) string {
@@ -265,14 +284,14 @@ func (ec *exprContext) translateLambda(n *ast.LambdaExpr) string {
 	return "{}"
 }
 
-func isIntLiteral(n ast.Node) bool {
+func isIntLiteral(n ast.Expr) bool {
 	if lit, ok := n.(*ast.LiteralExpr); ok {
 		return lit.Kind == ast.LiteralInt
 	}
 	return false
 }
 
-func isFloatExpr(n ast.Node) bool {
+func isFloatExpr(n ast.Expr) bool {
 	switch e := n.(type) {
 	case *ast.LiteralExpr:
 		return e.Kind == ast.LiteralFloat

@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"slices"
-	"strings"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -47,7 +46,7 @@ func validatePkgSource(src, name string) {
 	if src == "" {
 		return
 	}
-	_, err := parser.Parse(name+".sngl", strings.NewReader(src))
+	_, err := parser.Parse(name+".sngl", []byte(src))
 	if err != nil {
 		panic("codegen: " + name + ".sngl: " + err.Error())
 	}

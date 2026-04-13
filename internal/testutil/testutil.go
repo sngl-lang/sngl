@@ -93,45 +93,85 @@ func assertFolds(t testing.TB, doc *ast.Document, folds []FoldDirective) {
 			t.Errorf("line %d: no data or computed field found for FOLD directive", fd.Line)
 			continue
 		}
-		if expr.SNGL != nil {
-			t.Errorf("line %d (%s): expression was not folded (SNGL still set)", fd.Line, name)
+		lit, ok := expr.(*ast.LiteralExpr)
+		if !ok {
+			t.Errorf("line %d (%s): expression was not folded (not a literal)", fd.Line, name)
 			continue
 		}
-		if expr.Literal != fd.Expected {
+		got := parseLiteralValue(lit)
+		if got != fd.Expected {
 			t.Errorf("line %d (%s): expected %v (%T), got %v (%T)",
-				fd.Line, name, fd.Expected, fd.Expected, expr.Literal, expr.Literal)
+				fd.Line, name, fd.Expected, fd.Expected, got, got)
 		}
 	}
 }
 
-// findExprAtLine returns the Expr pointer and name for the data/computed/const
-// declaration at the given line, searching both top-level and inside components.
-func findExprAtLine(doc *ast.Document, line int) (*ast.Expr, string) {
-	if e, name := searchScope(doc.Data, doc.Functions, doc.Consts, line); e != nil {
-		return e, name
+// parseLiteralValue extracts a Go value from a v2 LiteralExpr.
+func parseLiteralValue(lit *ast.LiteralExpr) any {
+	switch lit.Kind {
+	case ast.LiteralBool:
+		return lit.Raw == "true"
+	case ast.LiteralNull:
+		return nil
+	case ast.LiteralInt:
+		if v, err := strconv.Atoi(lit.Raw); err == nil {
+			return v
+		}
+	case ast.LiteralFloat:
+		if v, err := strconv.ParseFloat(lit.Raw, 64); err == nil {
+			return v
+		}
+	case ast.LiteralStringQuoted:
+		if v, err := strconv.Unquote(lit.Raw); err == nil {
+			return v
+		}
 	}
-	for _, comp := range doc.Components {
-		if e, name := searchScope(comp.Data, comp.Functions, comp.Consts, line); e != nil {
-			return e, name
+	return lit.Raw
+}
+
+// findExprAtLine returns the Expr and name for the var/const/func
+// declaration at the given line, searching both top-level and inside components.
+func findExprAtLine(doc *ast.Document, line int) (ast.Expr, string) {
+	for _, stmt := range doc.Stmts {
+		switch s := stmt.(type) {
+		case *ast.VarDecl:
+			if e, name := searchVarSpecs(s.Specs, s.Pos.Line, line); e != nil {
+				return e, name
+			}
+		case *ast.ConstDecl:
+			if e, name := searchVarSpecs(s.Specs, s.Pos.Line, line); e != nil {
+				return e, name
+			}
+		case *ast.FuncDef:
+			if s.Pos.Line == line && s.Body != nil {
+				return s.Body, s.Name
+			}
+		case *ast.ComponentDecl:
+			for _, cs := range s.Body.Stmts {
+				switch cs := cs.(type) {
+				case *ast.VarDecl:
+					if e, name := searchVarSpecs(cs.Specs, cs.Pos.Line, line); e != nil {
+						return e, name
+					}
+				case *ast.ConstDecl:
+					if e, name := searchVarSpecs(cs.Specs, cs.Pos.Line, line); e != nil {
+						return e, name
+					}
+				case *ast.FuncDef:
+					if cs.Pos.Line == line && cs.Body != nil {
+						return cs.Body, cs.Name
+					}
+				}
+			}
 		}
 	}
 	return nil, ""
 }
 
-func searchScope(data []*ast.Data, funcs []*ast.FuncDef, consts []*ast.Const, line int) (*ast.Expr, string) {
-	for _, d := range data {
-		if d.Pos.Line == line {
-			return &d.Init, d.Name
-		}
-	}
-	for _, fn := range funcs {
-		if fn.Pos.Line == line && fn.Body.SNGL != nil {
-			return &fn.Body, fn.Name
-		}
-	}
-	for _, c := range consts {
-		if c.Pos.Line == line {
-			return &c.Init, c.Name
+func searchVarSpecs(specs []ast.VarSpec, declLine, targetLine int) (ast.Expr, string) {
+	for _, spec := range specs {
+		if declLine == targetLine && spec.Default != nil && len(spec.Names) > 0 {
+			return spec.Default, spec.Names[0]
 		}
 	}
 	return nil, ""
@@ -219,13 +259,12 @@ func assertErrors(t testing.TB, err error, expected []ErrorDirective) {
 
 // ParseFile opens and parses a .sngl file.
 func ParseFile(path string) (*ast.Document, error) {
-	f, err := os.Open(path)
+	src, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 	name := filepath.Base(path)
-	return parser.Parse(name, f)
+	return parser.Parse(name, src)
 }
 
 // RunFixtures globs dir for *.sngl files, creates a subtest per file,

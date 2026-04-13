@@ -35,15 +35,14 @@ func TestGoImporter_Resolve(t *testing.T) {
 		}
 	}
 
-	// Check data (functions + vars)
+	// Check funcs and vars
 	funcNames := map[string]bool{}
+	for _, f := range decls.Funcs {
+		funcNames[f.Name] = true
+	}
 	varNames := map[string]bool{}
-	for _, d := range decls.Data {
-		if d.IsFunc {
-			funcNames[d.Name] = true
-		} else {
-			varNames[d.Name] = true
-		}
+	for _, v := range decls.Vars {
+		varNames[v.Name] = true
 	}
 
 	// Should have SaveTodo, FormatDate, FetchAll
@@ -67,26 +66,26 @@ func TestGoImporter_Resolve(t *testing.T) {
 	}
 
 	// Check FormatDate has correct param/return types
-	for _, d := range decls.Data {
-		if d.Name == "FormatDate" {
-			if len(d.ParamTypes) != 1 || d.ParamTypes[0] != "string" {
-				t.Errorf("FormatDate params = %v, want [string]", d.ParamTypes)
+	for _, f := range decls.Funcs {
+		if f.Name == "FormatDate" {
+			if len(f.ParamTypes) != 1 || f.ParamTypes[0] != "string" {
+				t.Errorf("FormatDate params = %v, want [string]", f.ParamTypes)
 			}
-			if d.ReturnType != "string" {
-				t.Errorf("FormatDate return = %q, want string", d.ReturnType)
-			}
-		}
-		if d.Name == "SaveTodo" {
-			if len(d.ParamTypes) != 1 || d.ParamTypes[0] != "testpkg.Todo" {
-				t.Errorf("SaveTodo params = %v, want [testpkg.Todo]", d.ParamTypes)
-			}
-			if d.ReturnType != "" {
-				t.Errorf("SaveTodo return = %q, want empty (void)", d.ReturnType)
+			if f.ReturnType != "string" {
+				t.Errorf("FormatDate return = %q, want string", f.ReturnType)
 			}
 		}
-		if d.Name == "FetchAll" {
-			if d.ReturnType != "list:testpkg.Todo" {
-				t.Errorf("FetchAll return = %q, want list:testpkg.Todo", d.ReturnType)
+		if f.Name == "SaveTodo" {
+			if len(f.ParamTypes) != 1 || f.ParamTypes[0] != "testpkg.Todo" {
+				t.Errorf("SaveTodo params = %v, want [testpkg.Todo]", f.ParamTypes)
+			}
+			if f.ReturnType != "" {
+				t.Errorf("SaveTodo return = %q, want empty (void)", f.ReturnType)
+			}
+		}
+		if f.Name == "FetchAll" {
+			if f.ReturnType != "list:testpkg.Todo" {
+				t.Errorf("FetchAll return = %q, want list:testpkg.Todo", f.ReturnType)
 			}
 		}
 	}

@@ -12,8 +12,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
-
-	sngl "git.duckfam.us/jonathan/sngl"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -25,11 +23,15 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 
 	dir := filepath.Dir(sourceFile)
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
-		return nil, fmt.Errorf("check: %w", err)
+	if err := checkDoc(doc, dir); err != nil {
+		return nil, err
 	}
 
-	previewDoc := doc.Clone()
+	// Re-parse for a fresh copy to optimize (no Clone in v2).
+	previewDoc, err := ParseSNGL(sourceFile)
+	if err != nil {
+		return nil, fmt.Errorf("parse preview: %w", err)
+	}
 	if err := optimize.Optimize(previewDoc, optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -73,18 +75,31 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	return html, nil
 }
 
-// ParseOutputs parses a .sngl file and returns its output targets.
-func ParseOutputs(sourceFile string) ([]*ast.Output, error) {
+// CheckOutputs parses and type-checks a .sngl file, returning the checker
+// output targets. In v2 the output directives live in the checker Package, not
+// the AST.
+func CheckOutputs(sourceFile string) ([]*checker.Output, error) {
 	doc, err := ParseSNGL(sourceFile)
 	if err != nil {
 		return nil, err
 	}
-	return doc.Outputs, nil
+	dir := filepath.Dir(sourceFile)
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS:     os.DirFS(dir),
+		Dir:    dir,
+		IsMain: true,
+	})
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			return nil, fmt.Errorf("check: %s", d.Error())
+		}
+	}
+	return pkg.Outputs, nil
 }
 
 // PlatformsForFile returns the platform names from a .sngl file's output block.
 func PlatformsForFile(sourceFile string) []string {
-	outputs, err := ParseOutputs(sourceFile)
+	outputs, err := CheckOutputs(sourceFile)
 	if err != nil {
 		return nil
 	}
@@ -95,12 +110,26 @@ func PlatformsForFile(sourceFile string) []string {
 	return platforms
 }
 
+// ParseSNGL parses a .sngl file and returns the AST document.
 func ParseSNGL(filename string) (*ast.Document, error) {
-	f, err := os.Open(filename)
+	src, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	return parser.Parse(filename, src)
+}
 
-	return parser.Parse(filename, f)
+// checkDoc type-checks a document and returns the first error diagnostic, if any.
+func checkDoc(doc *ast.Document, dir string) error {
+	_, diags := checker.Check(doc, &checker.Config{
+		FS:     os.DirFS(dir),
+		Dir:    dir,
+		IsMain: true,
+	})
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			return fmt.Errorf("check: %s", d.Error())
+		}
+	}
+	return nil
 }

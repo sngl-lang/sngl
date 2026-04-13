@@ -9,6 +9,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
+// errNotPortedV2 is returned by any functionality not yet ported to the v2 AST.
+var errNotPortedV2 = fmt.Errorf("http platform not yet ported to v2 AST")
+
 //go:embed http.sngl
 var pkgSource string
 
@@ -24,91 +27,14 @@ func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PkgSource() string        { return pkgSource }
 
 // ResolveAPI makes any identifier valid as an HTML element.
-func (g *Generator) ResolveAPI(name string) *ast.NativeDecls {
-	return &ast.NativeDecls{}
+func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
+	return &codegen.NativeDecls{}
 }
 
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	hc, ok := req.Lang.(codegen.HTTPCompiler)
-	if !ok {
-		return &codegen.Response{Error: fmt.Sprintf("http: lang %q does not implement HTTPCompiler", req.Lang.Lang())}, nil
-	}
-
-	cfg := Config{
-		Package:   req.Options["package"],
-		Main:      req.Options["main"] == "true",
-		Framework: req.Options["framework"],
-	}
-	if cfg.Package == "" {
-		if cfg.Main {
-			cfg.Package = "main"
-		} else {
-			cfg.Package = "ui"
-		}
-	}
-	if cfg.Framework == "" {
-		cfg.Framework = "net/http"
-	}
-
-	// Build routes from windows.
-	windows := req.Doc.App.EffectiveWindows()
-	routes := make([]codegen.HTTPRoute, len(windows))
-	for i, win := range windows {
-		path := "/"
-		name := win.Name
-		if v := hrefToRoutePath(win.Props); v != "" {
-			path = v
-		} else if name != "" && name != "main" && name != "index" {
-			path = "/" + name
-		}
-		handlerName := routeHandlerName(name, path)
-		routes[i] = codegen.HTTPRoute{
-			Name:      handlerName,
-			Path:      path,
-			Title:     staticPropString(win.Props, "title"),
-			Params:    extractRouteParams(path),
-			WindowIdx: i,
-		}
-	}
-
-	// Analyze document for state partitioning and rendering.
-	analysis := analyze(req.Doc)
-
-	// Pre-render all routes to collect both HTML code and server actions.
-	renderResults := make([]renderResult, len(routes))
-	for i, route := range routes {
-		win := windows[route.WindowIdx]
-		renderResults[i] = renderWindowHTML(req.Doc, win, analysis, req.Lang, routes[i].Params)
-		routes[i].Actions = renderResults[i].actions
-	}
-
-	// Build the HTTPRequest with a render callback.
-	httpReq := &codegen.HTTPRequest{
-		Doc:       req.Doc,
-		Package:   cfg.Package,
-		Main:      cfg.Main,
-		Framework: cfg.Framework,
-		Routes:    routes,
-		RenderHTML: func(routeIdx int) string {
-			return renderResults[routeIdx].code
-		},
-	}
-
-	src, err := hc.CompileHTTP(httpReq)
-	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
-	}
-
-	if h := codegen.Header("http", req.Source, "// ", ""); h != "" {
-		src = append([]byte(h), src...)
-	}
-
-	resp := &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("routes.go", src),
-		},
-	}
-	return resp, nil
+// Generate is not yet ported to the v2 AST.
+// TODO: Port to v2 AST — requires Doc.Stmts iteration instead of Doc.App/Data/NativeImports.
+func (g *Generator) Generate(_ *codegen.Request) (*codegen.Response, error) {
+	return nil, errNotPortedV2
 }
 
 // Config controls code generation options.

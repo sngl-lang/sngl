@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
@@ -79,7 +78,7 @@ func TestMarkers(t *testing.T) {
 			content := s.Source
 			markers := parseMarkers(content)
 
-			doc, diags := lspcore.Analyze(content, s.Filename, s.FS, s.Dir, checker.DefaultResolver())
+			doc, diags := lspcore.Analyze(content, s.Filename, s.FS, s.Dir, nil)
 
 			// Collect diag markers by line
 			diagExpected := map[int][]string{} // line (1-based) → expected substrings

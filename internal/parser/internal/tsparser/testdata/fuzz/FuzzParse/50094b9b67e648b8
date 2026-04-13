@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("component 0!var(!trigger tri\xff\xffe\x80(\"\"0 trigger trigger")

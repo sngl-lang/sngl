@@ -33,8 +33,8 @@ type ExprScope struct {
 type LangTranslator interface {
 	Lang() string
 	PkgSource() string // .sngl package source for this language
-	TranslateExpr(e ast.Node, scope *ExprScope) string
-	TranslateMutation(e ast.Node, scope *ExprScope) []string
+	TranslateExpr(e ast.Expr, scope *ExprScope) string
+	TranslateMutation(e ast.Stmt, scope *ExprScope) []string
 	TranslateLiteral(expr ast.Expr) string
 	TypeToNative(hint string) string // "int" → "int", "float" → "float64", etc.
 	ExportName(name string) string   // capitalize for Go, camelCase for TS, etc.
@@ -186,7 +186,7 @@ type APIProvider interface {
 // APIResolver is optionally implemented alongside or instead of APIProvider
 // for dynamic name resolution when a name isn't found in the static API document.
 type APIResolver interface {
-	ResolveAPI(name string) *ast.NativeDecls
+	ResolveAPI(name string) *NativeDecls
 }
 
 // MutationModelEmitter is optionally implemented by platforms that use the

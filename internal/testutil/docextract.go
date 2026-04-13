@@ -127,7 +127,7 @@ func FindAnnotation(lines []string, fenceLine int) (annotation, prelude string) 
 func UnwrapComponent(formatted, prelude string) string {
 	src := formatted
 	if prelude != "" {
-		preDoc, err := parser.Parse("prelude", strings.NewReader(prelude))
+		preDoc, err := parser.Parse("prelude", []byte(prelude))
 		if err == nil {
 			fmtPre := parser.Format(preDoc)
 			src = strings.TrimPrefix(formatted, fmtPre)

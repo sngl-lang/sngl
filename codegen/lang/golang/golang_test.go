@@ -20,31 +20,31 @@ func TestTranslateExpr(t *testing.T) {
 	s := scope()
 	tests := []struct {
 		name string
-		node ast.Node
+		node ast.Expr
 		want string
 	}{
-		{"int literal", &ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}, "42"},
-		{"float literal", &ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}, "3.14"},
-		{"string literal", &ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}, `"hello"`},
-		{"bool true", &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}, "true"},
-		{"bool false", &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}, "false"},
-		{"null", &ast.LiteralExpr{Value: nil, Kind: ast.LiteralNull}, "nil"},
+		{"int literal", &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "42"}, "42"},
+		{"float literal", &ast.LiteralExpr{Kind: ast.LiteralFloat, Raw: "3.14"}, "3.14"},
+		{"string literal", &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: `"hello"`}, `"\"hello\""`},
+		{"bool true", &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: "true"}, "true"},
+		{"bool false", &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: "false"}, "false"},
+		{"null", &ast.LiteralExpr{Kind: ast.LiteralNull, Raw: "null"}, "nil"},
 		{"model field", &ast.IdentExpr{Name: "count"}, "m.Count"},
 		{"computed field", &ast.IdentExpr{Name: "doubled"}, "m.doubled()"},
 		{"local var with rename", &ast.IdentExpr{Name: "item"}, "item_0"},
 		{"binary add", &ast.BinaryExpr{
-			Left:  &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			Left:  &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "1"},
 			Op:    ast.BinAdd,
-			Right: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Right: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "2"},
 		}, "(1 + 2)"},
 		{"unary not", &ast.UnaryExpr{
 			Op:      ast.UnaryNot,
-			Operand: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool},
+			Operand: &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: "true"},
 		}, "!true"},
 		{"ternary", &ast.TernaryExpr{
-			Cond: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool},
-			Then: &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
-			Else: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Cond: &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: "true"},
+			Then: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "1"},
+			Else: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "2"},
 		}, "ternary(true, 1, 2)"},
 		{"select", &ast.SelectExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
@@ -52,20 +52,20 @@ func TestTranslateExpr(t *testing.T) {
 		}, "m.Count.Value"},
 		{"index", &ast.IndexExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
-			Index:   &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
+			Index:   &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "0"},
 		}, "m.Count[0]"},
 		{"element ref", &ast.ElementRefExpr{Name: "myBtn"}, `elementRef("myBtn")`},
 		{"list", &ast.ListExpr{
-			Elements: []ast.Node{
-				&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
-				&ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Elements: []ast.Expr{
+				&ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "1"},
+				&ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "2"},
 			},
 		}, "[]any{1, 2}"},
 		{"struct", &ast.StructExpr{
 			Name: "point",
 			Fields: []ast.StructFieldLit{
-				{Name: "x", Value: &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}},
-				{Name: "y", Value: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt}},
+				{Name: "x", Value: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "1"}},
+				{Name: "y", Value: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "2"}},
 			},
 		}, "Point{X: 1, Y: 2}"},
 		{"nil expr", nil, "nil"},
@@ -85,16 +85,24 @@ func TestTranslateCall(t *testing.T) {
 	tests := []struct {
 		name string
 		fn   string
-		args []ast.Node
+		args []ast.Expr
 		want string
 	}{
-		{"string()", "string", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "fmt.Sprint(42)"},
-		{"int()", "int", []ast.Node{&ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}}, "int(3.14)"},
-		{"float()", "float", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "float64(42)"},
+		{"string()", "string", []ast.Expr{&ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "42"}}, "fmt.Sprint(42)"},
+		{"int()", "int", []ast.Expr{&ast.LiteralExpr{Kind: ast.LiteralFloat, Raw: "3.14"}}, "int(3.14)"},
+		{"float()", "float", []ast.Expr{&ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "42"}}, "float64(42)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := translateCall(&ast.CallExpr{Func: tt.fn, Args: tt.args}, s)
+			var argList []ast.ArgOrEventHandler
+			for _, a := range tt.args {
+				argList = append(argList, ast.Arg{Value: a})
+			}
+			call := &ast.CallExpr{
+				Func: &ast.IdentExpr{Name: tt.fn},
+				Args: ast.ArgList{Args: argList},
+			}
+			got := translateCall(call, s)
 			if got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
@@ -105,8 +113,8 @@ func TestTranslateCall(t *testing.T) {
 func TestTranslateInterpolation(t *testing.T) {
 	s := scope()
 	node := &ast.InterpolationExpr{
-		Parts: []ast.Node{
-			&ast.LiteralExpr{Value: "count is ", Kind: ast.LiteralString},
+		Parts: []ast.Expr{
+			&ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: "count is "},
 			&ast.IdentExpr{Name: "count"},
 		},
 	}

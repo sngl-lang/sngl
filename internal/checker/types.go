@@ -1,355 +1,361 @@
 package checker
 
-import (
-	"encoding/base64"
-	"fmt"
-	"net"
-	"net/mail"
-	"net/url"
-	"regexp"
-	"strings"
-	"time"
-	"unicode"
+import "fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-)
-
-// Type represents a SNGL type.
-type Type int
+// TypeKind classifies the shape of a type.
+type TypeKind int
 
 const (
-	Dyn    Type = iota // dynamic/unknown type
-	Bool               // bool
-	Int                // int
-	Float              // float
-	String             // string
-	List               // list ([]T)
-	Option             // option<T> (nullable wrapper)
-	Struct             // user-defined struct
-
-	// Special domain types (all stored as strings)
-	Color
-	Date
-	Time
-	DateTime
-	Duration
-	URL
-	Email
-	UUID
-	Regex
-	Base64
-	IPV4
-	IPV6
-	Hostname
-	IDNEmail
-	IDNHostname
-	IRL
-	IRLReference
-	URLReference
-	URLTemplate
-	Currency
-	Country2
-	Country3
-	CountrySubdivision
-	Decimal
-	Unit // unit type (duration, measurement, user-defined)
+	TypeInvalid TypeKind = iota // error sentinel
+	TypeDyn                     // unknown/dynamic
+	TypeBool
+	TypeInt
+	TypeFloat
+	TypeString
+	TypeList      // Elem set
+	TypeOption    // Elem set
+	TypeStruct    // Decl set
+	TypeEnum      // Decl set
+	TypeUnit      // Decl set
+	TypeFunc      // Sig set
+	TypeComponent // Decl set
+	TypeColor
+	TypeDate
+	TypeTime
+	TypeDateTime
+	TypeDuration
+	TypeURL
+	TypeEmail
+	TypeUUID
+	TypeRegex
+	TypeBase64
+	TypeIPV4
+	TypeIPV6
+	TypeHostname
+	TypeDecimal
+	TypeNull      // type of null literal
+	TypeTypeParam // unresolved generic param; ParamName set
 )
 
-// typeNames maps Type to display string.
-var typeNames = map[Type]string{
-	Dyn: "dyn", Bool: "bool", Int: "int", Float: "float", String: "string",
-	List: "list", Option: "option", Struct: "struct",
-	Color: "color", Date: "date", Time: "time", DateTime: "dateTime",
-	Duration: "duration", URL: "url", Email: "email", UUID: "uuid",
-	Regex: "regex", Base64: "base64", IPV4: "ipv4", IPV6: "ipv6",
-	Hostname: "hostname", IDNEmail: "idnEmail", IDNHostname: "idnHostname",
-	IRL: "irl", IRLReference: "irlReference", URLReference: "urlReference",
-	URLTemplate: "urlTemplate", Currency: "currency",
-	Country2: "country2", Country3: "country3",
-	CountrySubdivision: "countrySubdivision", Decimal: "decimal",
-	Unit: "unit",
+// Type is the unified representation of all SNGL types.
+// Zero value is TypeInvalid.
+type Type struct {
+	Kind      TypeKind
+	Elems     []*Type  // type arguments: List<T>, Option<T>, Map<K,V>, etc.
+	Decl      Symbol   // struct, enum, unit, component declaration
+	Sig       *FuncSig // function types
+	ParamName string   // generic type param name ("T")
+	Package   string   // import origin for qualified types
 }
 
-func (t Type) GoString() string { return t.String() }
-func (t Type) String() string {
-	if s, ok := typeNames[t]; ok {
-		return s
-	}
-	return "unknown"
-}
-
-// specialTypes are domain types assignable to/from string.
-var specialTypes = []Type{
-	Color, Date, Time, DateTime, Duration,
-	URL, Email, UUID, Regex, Base64,
-	IPV4, IPV6, Hostname, IDNEmail, IDNHostname,
-	IRL, IRLReference, URLReference, URLTemplate,
-	Currency, Country2, Country3, CountrySubdivision, Decimal,
-}
-
-// TypeFromHint maps a type hint string to a Type.
-func TypeFromHint(hint string) Type {
-	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "list:") {
-		return List
-	}
-	if strings.HasPrefix(hint, "option:") {
-		return Option
-	}
-	if strings.HasPrefix(hint, "unit:") {
-		return Unit
-	}
-	switch hint {
-	case "bool":
-		return Bool
-	case "int":
-		return Int
-	case "float":
-		return Float
-	case "string":
-		return String
-	case "color":
-		return Color
-	case "date":
-		return Date
-	case "time":
-		return Time
-	case "dateTime":
-		return DateTime
-	case "duration":
-		return Duration
-	case "url":
-		return URL
-	case "email":
-		return Email
-	case "uuid":
-		return UUID
-	case "regex":
-		return Regex
-	case "base64":
-		return Base64
-	case "ipv4":
-		return IPV4
-	case "ipv6":
-		return IPV6
-	case "hostname":
-		return Hostname
-	case "idnEmail":
-		return IDNEmail
-	case "idnHostname":
-		return IDNHostname
-	case "irl":
-		return IRL
-	case "irlReference":
-		return IRLReference
-	case "urlReference":
-		return URLReference
-	case "urlTemplate":
-		return URLTemplate
-	case "currency":
-		return Currency
-	case "country2":
-		return Country2
-	case "country3":
-		return Country3
-	case "countrySubdivision":
-		return CountrySubdivision
-	case "decimal":
-		return Decimal
-	case "measurement", "length":
-		return Unit
-	default:
-		return Dyn
-	}
-}
-
-// InferLiteralType returns the type for a Go literal value.
-func InferLiteralType(v any) Type {
-	switch v.(type) {
-	case bool:
-		return Bool
-	case int:
-		return Int
-	case float64:
-		return Float
-	case string:
-		return String
-	case []any:
-		return List
-	default:
-		return Dyn
-	}
-}
-
-// isKnownDynHint reports whether a type hint string legitimately resolves to Dyn.
-// This includes the explicit "dyn" keyword, func signatures, and unit type names
-// that don't yet have a dedicated checker Type.
-func isKnownDynHint(hint string) bool {
-	if hint == "dyn" {
-		return true
-	}
-	if strings.HasPrefix(hint, "func") {
-		return true
-	}
-	return false
-}
-
-// narrowNumeric returns the known numeric type when one side is numeric and
-// the other is Dyn. Returns Dyn only when both sides are Dyn.
-func narrowNumeric(left, right Type) Type {
-	if left == Int || left == Float {
-		return left
-	}
-	if right == Int || right == Float {
-		return right
-	}
-	return Dyn
-}
-
-// isNumeric reports whether t is Int or Float.
-func isNumeric(t Type) bool {
-	return t == Int || t == Float
-}
-
-// inferUnitBinaryOp returns the result type for a binary operation involving a Unit.
-func inferUnitBinaryOp(left, right Type, op ast.BinaryOp) Type {
-	switch {
-	case left == Unit && right == Unit:
-		if op == ast.BinAdd || op == ast.BinSub {
-			return Unit
-		}
-		return Dyn // unit * unit or unit / unit doesn't make sense
-	case left == Unit && isNumeric(right):
-		return Unit // unit * scalar, unit / scalar
-	case isNumeric(left) && right == Unit:
-		if op == ast.BinMul {
-			return Unit // scalar * unit
-		}
-		return Dyn // scalar / unit, scalar - unit don't make sense
-	default:
-		return Dyn
-	}
-}
-
-// isAssignable reports whether a value of type got can be assigned where expected is required.
-func isAssignable(got, expected Type) bool {
-	if got == expected {
-		return true
-	}
-	if got == Dyn || expected == Dyn {
-		return true
-	}
-	// Strings are assignable to special domain types and vice versa.
-	for _, t := range specialTypes {
-		if got == String && expected == t {
-			return true
-		}
-		if got == t && expected == String {
-			return true
-		}
-	}
-	return false
-}
-
+// Predefined singleton types for primitives.
 var (
-	colorRE    = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
-	uuidRE     = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	hostnameRE = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
+	TypDyn      = &Type{Kind: TypeDyn}
+	TypBool     = &Type{Kind: TypeBool}
+	TypInt      = &Type{Kind: TypeInt}
+	TypFloat    = &Type{Kind: TypeFloat}
+	TypString   = &Type{Kind: TypeString}
+	TypColor    = &Type{Kind: TypeColor}
+	TypNull     = &Type{Kind: TypeNull}
+	TypDate     = &Type{Kind: TypeDate}
+	TypTime     = &Type{Kind: TypeTime}
+	TypDateTime = &Type{Kind: TypeDateTime}
+	TypDuration = &Type{Kind: TypeDuration}
+	TypURL      = &Type{Kind: TypeURL}
+	TypEmail    = &Type{Kind: TypeEmail}
+	TypUUID     = &Type{Kind: TypeUUID}
+	TypRegex    = &Type{Kind: TypeRegex}
+	TypBase64   = &Type{Kind: TypeBase64}
+	TypIPV4     = &Type{Kind: TypeIPV4}
+	TypIPV6     = &Type{Kind: TypeIPV6}
+	TypHostname = &Type{Kind: TypeHostname}
+	TypDecimal  = &Type{Kind: TypeDecimal}
 )
 
-// validateSpecialLiteral checks that a literal value is valid for a special type hint.
-func validateSpecialLiteral(hint string, value any) error {
-	s, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("expected string literal for %s type", hint)
+// ListOf returns a list type with the given element type.
+func ListOf(elem *Type) *Type {
+	return &Type{Kind: TypeList, Elems: []*Type{elem}}
+}
+
+// OptionOf returns an option type wrapping the given type.
+func OptionOf(inner *Type) *Type {
+	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
+}
+
+func (t *Type) String() string {
+	if t == nil {
+		return "<nil>"
 	}
-	switch hint {
-	case "color":
-		if !colorRE.MatchString(s) {
-			return fmt.Errorf("invalid color literal %q: expected #RGB, #RRGGBB, or #RRGGBBAA", s)
+	switch t.Kind {
+	case TypeInvalid:
+		return "<invalid>"
+	case TypeDyn:
+		return "dyn"
+	case TypeBool:
+		return "bool"
+	case TypeInt:
+		return "int"
+	case TypeFloat:
+		return "float"
+	case TypeString:
+		return "string"
+	case TypeList:
+		return fmt.Sprintf("list<%s>", t.Elems[0])
+	case TypeOption:
+		return fmt.Sprintf("option<%s>", t.Elems[0])
+	case TypeStruct:
+		if t.Decl != nil {
+			return t.Decl.SymName()
 		}
-	case "date":
-		if _, err := time.Parse("2006-01-02", s); err != nil {
-			return fmt.Errorf("invalid date literal %q: expected YYYY-MM-DD", s)
+		return "struct"
+	case TypeEnum:
+		if t.Decl != nil {
+			return t.Decl.SymName()
 		}
-	case "time":
-		if _, err := time.Parse("15:04", s); err != nil {
-			if _, err2 := time.Parse("15:04:05", s); err2 != nil {
-				return fmt.Errorf("invalid time literal %q: expected HH:MM or HH:MM:SS", s)
+		return "enum"
+	case TypeUnit:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
+		return "unit"
+	case TypeFunc:
+		return "func"
+	case TypeComponent:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
+		return "component"
+	case TypeColor:
+		return "color"
+	case TypeDate:
+		return "date"
+	case TypeTime:
+		return "time"
+	case TypeDateTime:
+		return "dateTime"
+	case TypeDuration:
+		return "duration"
+	case TypeURL:
+		return "url"
+	case TypeEmail:
+		return "email"
+	case TypeUUID:
+		return "uuid"
+	case TypeRegex:
+		return "regex"
+	case TypeBase64:
+		return "base64"
+	case TypeIPV4:
+		return "ipv4"
+	case TypeIPV6:
+		return "ipv6"
+	case TypeHostname:
+		return "hostname"
+	case TypeDecimal:
+		return "decimal"
+	case TypeNull:
+		return "null"
+	case TypeTypeParam:
+		return t.ParamName
+	}
+	return "<unknown>"
+}
+
+// IsNumeric reports whether the type is int or float.
+func (t *Type) IsNumeric() bool {
+	return t.Kind == TypeInt || t.Kind == TypeFloat
+}
+
+// Substitute replaces TypeTypeParam nodes with concrete types from bindings.
+// Returns t unchanged if no substitution is needed.
+func (t *Type) Substitute(bindings map[string]*Type) *Type {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case TypeTypeParam:
+		if bound, ok := bindings[t.ParamName]; ok {
+			return bound
+		}
+		return t
+	case TypeList, TypeOption:
+		elems := make([]*Type, len(t.Elems))
+		changed := false
+		for i, e := range t.Elems {
+			elems[i] = e.Substitute(bindings)
+			if elems[i] != e {
+				changed = true
 			}
 		}
-	case "dateTime":
-		if _, err := time.Parse(time.RFC3339, s); err != nil {
-			return fmt.Errorf("invalid dateTime literal %q: expected RFC 3339 format", s)
+		if !changed {
+			return t
 		}
-	case "duration":
-		if _, err := time.ParseDuration(s); err != nil {
-			return fmt.Errorf("invalid duration literal %q: %w", s, err)
+		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
+	case TypeFunc:
+		if t.Sig == nil {
+			return t
 		}
-	case "url", "urlReference", "irl", "irlReference", "urlTemplate":
-		u, err := url.Parse(s)
-		if err != nil || u.Scheme == "" {
-			return fmt.Errorf("invalid %s literal %q: expected a URL with scheme", hint, s)
+		sig := t.Sig.Substitute(bindings)
+		if sig == t.Sig {
+			return t
 		}
-	case "email":
-		if _, err := mail.ParseAddress(s); err != nil {
-			return fmt.Errorf("invalid email literal %q: %w", s, err)
-		}
-	case "uuid":
-		if !uuidRE.MatchString(s) {
-			return fmt.Errorf("invalid uuid literal %q: expected UUID format", s)
-		}
-	case "regex":
-		if _, err := regexp.Compile(s); err != nil {
-			return fmt.Errorf("invalid regex literal %q: %w", s, err)
-		}
-	case "base64":
-		if _, err := base64.StdEncoding.DecodeString(s); err != nil {
-			return fmt.Errorf("invalid base64 literal %q: %w", s, err)
-		}
-	case "ipv4":
-		ip := net.ParseIP(s)
-		if ip == nil || ip.To4() == nil {
-			return fmt.Errorf("invalid ipv4 literal %q: expected IPv4 address", s)
-		}
-	case "ipv6":
-		ip := net.ParseIP(s)
-		if ip == nil || ip.To4() != nil {
-			return fmt.Errorf("invalid ipv6 literal %q: expected IPv6 address", s)
-		}
-	case "hostname":
-		if !hostnameRE.MatchString(s) {
-			return fmt.Errorf("invalid hostname literal %q: expected RFC 1123 hostname", s)
-		}
-	case "country2":
-		if len(s) != 2 || !isAllAlpha(s) {
-			return fmt.Errorf("invalid country2 literal %q: expected 2-letter country code", s)
-		}
-	case "country3":
-		if len(s) != 3 || !isAllAlpha(s) {
-			return fmt.Errorf("invalid country3 literal %q: expected 3-letter country code", s)
-		}
-	case "currency":
-		if len(s) != 3 || !isAllAlphaUpper(s) {
-			return fmt.Errorf("invalid currency literal %q: expected 3-letter uppercase currency code", s)
-		}
+		return &Type{Kind: TypeFunc, Sig: sig}
 	}
-	return nil
+	return t
 }
 
-func isAllAlpha(s string) bool {
-	for _, r := range s {
-		if !unicode.IsLetter(r) {
+// Substitute replaces TypeTypeParam in params and return type.
+func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
+	if s == nil || len(bindings) == 0 {
+		return s
+	}
+	params := make([]*Param, len(s.Params))
+	changed := false
+	for i, p := range s.Params {
+		nt := p.Type.Substitute(bindings)
+		if nt != p.Type {
+			changed = true
+			params[i] = &Param{Name: p.Name, Type: nt, HasDefault: p.HasDefault, Pos: p.Pos}
+		} else {
+			params[i] = p
+		}
+	}
+	ret := s.Return.Substitute(bindings)
+	if ret != s.Return {
+		changed = true
+	}
+	if !changed {
+		return s
+	}
+	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, Purity: s.Purity}
+}
+
+// Equal reports structural type equality.
+func (t *Type) Equal(other *Type) bool {
+	if t == other {
+		return true
+	}
+	if t == nil || other == nil {
+		return false
+	}
+	if t.Kind != other.Kind {
+		return false
+	}
+	switch t.Kind {
+	case TypeList, TypeOption:
+		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
+		for i, e := range t.Elems {
+			if !e.Equal(other.Elems[i]) {
+				return false
+			}
+		}
+		return true
+	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
+		return t.Decl == other.Decl
+	case TypeFunc:
+		return t.Sig.Equal(other.Sig)
+	case TypeTypeParam:
+		return t.ParamName == other.ParamName
 	}
 	return true
 }
 
-func isAllAlphaUpper(s string) bool {
-	for _, r := range s {
-		if !unicode.IsUpper(r) {
+// IsAssignableTo reports whether a value of type t can be assigned to target.
+// Dyn works like Go's any/interface{}: any value is assignable TO dyn,
+// but dyn is not assignable to concrete types without explicit conversion.
+func (t *Type) IsAssignableTo(target *Type) bool {
+	if t.Equal(target) {
+		return true
+	}
+	// Any value can be assigned to dyn (like interface{} in Go).
+	if target.Kind == TypeDyn {
+		return true
+	}
+	// Null assignable to option types.
+	if t.Kind == TypeNull && target.Kind == TypeOption {
+		return true
+	}
+	// Int literal 0 assignable to unit types.
+	if t.Kind == TypeInt && target.Kind == TypeUnit {
+		return true
+	}
+	// Numeric widening: int → float.
+	if t.Kind == TypeInt && target.Kind == TypeFloat {
+		return true
+	}
+	// String ↔ domain string types.
+	if t.Kind == TypeString && isStringDomain(target.Kind) {
+		return true
+	}
+	if isStringDomain(t.Kind) && target.Kind == TypeString {
+		return true
+	}
+	// List covariance with dyn element.
+	if t.Kind == TypeList && target.Kind == TypeList {
+		return t.Elems[0].IsAssignableTo(target.Elems[0])
+	}
+	// Option covariance.
+	if t.Kind == TypeOption && target.Kind == TypeOption {
+		return t.Elems[0].IsAssignableTo(target.Elems[0])
+	}
+	// Value assignable to option of same type.
+	if target.Kind == TypeOption {
+		return t.IsAssignableTo(target.Elems[0])
+	}
+	return false
+}
+
+func isStringDomain(k TypeKind) bool {
+	switch k {
+	case TypeColor, TypeDate, TypeTime, TypeDateTime, TypeDuration,
+		TypeURL, TypeEmail, TypeUUID, TypeRegex, TypeBase64,
+		TypeIPV4, TypeIPV6, TypeHostname, TypeDecimal:
+		return true
+	}
+	return false
+}
+
+// FuncSig describes a function signature.
+type FuncSig struct {
+	Params     []*Param
+	Return     *Type // nil for void/action
+	TypeParams []string
+	Purity     Purity
+}
+
+// Equal reports structural signature equality (ignoring parameter names).
+func (s *FuncSig) Equal(other *FuncSig) bool {
+	if s == other {
+		return true
+	}
+	if s == nil || other == nil {
+		return false
+	}
+	if len(s.Params) != len(other.Params) {
+		return false
+	}
+	for i, p := range s.Params {
+		if !p.Type.Equal(other.Params[i].Type) {
 			return false
 		}
 	}
-	return true
+	if s.Return == nil && other.Return == nil {
+		return true
+	}
+	if s.Return == nil || other.Return == nil {
+		return false
+	}
+	return s.Return.Equal(other.Return)
 }
+
+// Purity describes the side-effect level of a function.
+type Purity int
+
+const (
+	PurityUnknown  Purity = iota
+	PurityPure            // no reads or mutations of mutable state
+	PurityReadonly        // reads mutable state but doesn't modify
+	PurityMutates         // modifies mutable state
+)

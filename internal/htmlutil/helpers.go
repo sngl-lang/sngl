@@ -2,6 +2,8 @@ package htmlutil
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -9,13 +11,34 @@ import (
 // ExprToStaticValue extracts a static literal value from an expression.
 // Returns "" if the expression is dynamic (not a literal).
 func ExprToStaticValue(expr ast.Expr) string {
-	if expr.Literal != nil {
-		return LiteralToString(expr.Literal)
-	}
-	if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok {
-		return LiteralToString(lit.Value)
+	switch e := expr.(type) {
+	case *ast.LiteralExpr:
+		return LiteralRawToString(e)
+	case *ast.UnitLiteral:
+		return LiteralRawToString(&e.LiteralExpr)
 	}
 	return ""
+}
+
+// LiteralRawToString converts a v2 LiteralExpr to its display string.
+func LiteralRawToString(lit *ast.LiteralExpr) string {
+	switch lit.Kind {
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		// Strip quotes
+		raw := lit.Raw
+		if strings.HasPrefix(raw, `"""`) {
+			return strings.TrimPrefix(strings.TrimSuffix(raw, `"""`), `"""`)
+		}
+		if len(raw) >= 2 {
+			return raw[1 : len(raw)-1]
+		}
+		return raw
+	case ast.LiteralBool, ast.LiteralInt, ast.LiteralFloat, ast.LiteralColor:
+		return lit.Raw
+	case ast.LiteralNull:
+		return ""
+	}
+	return lit.Raw
 }
 
 // LiteralToString converts a literal value to its string representation.
@@ -36,36 +59,38 @@ func LiteralToString(v any) string {
 	return ""
 }
 
-// StaticString extracts a static string value from a prop map.
-func StaticString(props map[string]ast.Expr, key string) string {
-	v, ok := props[key]
-	if !ok {
-		return ""
-	}
-	if s, ok := v.Literal.(string); ok {
-		return s
-	}
-	if v.SNGL != nil {
-		if lit, ok := v.SNGL.(*ast.LiteralExpr); ok {
-			if s, ok := lit.Value.(string); ok {
-				return s
+// StaticStringArg extracts a static string value from an ArgList by name.
+func StaticStringArg(args ast.ArgList, key string) string {
+	for _, a := range args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == key {
+			if lit, ok := arg.Value.(*ast.LiteralExpr); ok {
+				return unquote(lit.Raw)
 			}
-			return fmt.Sprint(lit.Value)
 		}
 	}
 	return ""
 }
 
-// StaticBool extracts a static bool value from a prop map.
-func StaticBool(props map[string]ast.Expr, key string) bool {
-	v, ok := props[key]
-	if !ok {
-		return false
-	}
-	if b, ok := v.Literal.(bool); ok {
-		return b
+// StaticBoolArg extracts a static bool value from an ArgList by name.
+func StaticBoolArg(args ast.ArgList, key string) bool {
+	for _, a := range args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == key {
+			if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralBool {
+				return lit.Raw == "true"
+			}
+		}
 	}
 	return false
+}
+
+func unquote(raw string) string {
+	if s, err := strconv.Unquote(raw); err == nil {
+		return s
+	}
+	if len(raw) >= 2 && (raw[0] == '"' || raw[0] == '`') {
+		return raw[1 : len(raw)-1]
+	}
+	return raw
 }
 
 // IsSelfClosing reports whether an HTML tag is self-closing (void element).

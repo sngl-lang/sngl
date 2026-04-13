@@ -18,29 +18,17 @@ type Translator struct{}
 func (t *Translator) Lang() string      { return "go" }
 func (t *Translator) PkgSource() string { return "" }
 
-func (t *Translator) TranslateExpr(e ast.Node, scope *codegen.ExprScope) string {
+func (t *Translator) TranslateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)
 }
 
-func (t *Translator) TranslateMutation(e ast.Node, scope *codegen.ExprScope) []string {
+func (t *Translator) TranslateMutation(e ast.Stmt, scope *codegen.ExprScope) []string {
 	return translateMutation(e, scope)
 }
 
 func (t *Translator) TranslateLiteral(expr ast.Expr) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
-		}
+	if lit, ok := expr.(*ast.LiteralExpr); ok {
+		return translateLiteral(lit)
 	}
 	return `""`
 }
@@ -70,13 +58,15 @@ func (t *Translator) ExportName(name string) string {
 	return ExportName(name)
 }
 
-func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
+func translateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	if e == nil {
 		return "nil"
 	}
 	switch n := e.(type) {
 	case *ast.LiteralExpr:
 		return translateLiteral(n)
+	case *ast.UnitLiteral:
+		return fmt.Sprintf("%q", n.Raw+n.Suffix)
 	case *ast.IdentExpr:
 		return translateIdent(n, scope)
 	case *ast.BinaryExpr:
@@ -106,42 +96,6 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return operand + "[" + index + "]"
 	case *ast.CallExpr:
 		return translateCall(n, scope)
-	case *ast.MethodExpr:
-		// Stdlib native override
-		if goCode := goBuiltinMethod(n, scope); goCode != "" {
-			return goCode
-		}
-		// Type-qualified call: int.double(5) → IntDouble(5)
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-			qualName := ident.Name + "." + n.Method
-			if scope.FuncNames[qualName] {
-				goName := ExportName(ident.Name) + ExportName(n.Method)
-				argStrs := make([]string, len(n.Args))
-				for i, a := range n.Args {
-					argStrs[i] = translateExpr(a, scope)
-				}
-				return goName + "(" + strings.Join(argStrs, ", ") + ")"
-			}
-		}
-		// Instance method: x.double() → look for TypeMethod(x, ...)
-		if scope.FuncNames != nil {
-			for qualName := range scope.FuncNames {
-				if typeName, method, ok := ast.SplitMethodName(qualName); ok && method == n.Method {
-					goName := ExportName(typeName) + ExportName(method)
-					argStrs := []string{translateExpr(n.Receiver, scope)}
-					for _, a := range n.Args {
-						argStrs = append(argStrs, translateExpr(a, scope))
-					}
-					return goName + "(" + strings.Join(argStrs, ", ") + ")"
-				}
-			}
-		}
-		target := translateExpr(n.Receiver, scope)
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = translateExpr(a, scope)
-		}
-		return target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"
 	case *ast.StructExpr:
 		var parts []string
 		for _, f := range n.Fields {
@@ -166,8 +120,8 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		var fmtStr strings.Builder
 		var fmtArgs []string
 		for _, p := range n.Parts {
-			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				fmtStr.WriteString(fmt.Sprintf("%v", lit.Value))
+			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
+				fmtStr.WriteString(lit.Raw)
 			} else {
 				fmtStr.WriteString("%v")
 				fmtArgs = append(fmtArgs, translateExpr(p, scope))
@@ -179,19 +133,10 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 		return "fmt.Sprintf(" + fmt.Sprintf("%q", fmtStr.String()) + ", " + strings.Join(fmtArgs, ", ") + ")"
 	case *ast.ElementRefExpr:
 		return fmt.Sprintf("elementRef(%q)", n.Name)
-	case *ast.StmtBlock:
-		stmts := translateMutation(n, scope)
-		return strings.Join(stmts, "\n")
-	case *ast.AssignStmt:
-		stmts := translateMutation(n, scope)
-		return strings.Join(stmts, "\n")
-	case *ast.ToggleStmt:
-		stmts := translateMutation(n, scope)
-		return strings.Join(stmts, "\n")
 	case *ast.LambdaExpr:
-		params := make([]string, len(n.Params))
-		for i, p := range n.Params {
-			params[i] = p + " any"
+		params := make([]string, len(n.Params.Params))
+		for i, p := range n.Params.Params {
+			params[i] = p.Name + " any"
 		}
 		body := translateExpr(n.Body, scope)
 		return "func(" + strings.Join(params, ", ") + ") any { return " + body + " }"
@@ -204,25 +149,22 @@ func translateExpr(e ast.Node, scope *codegen.ExprScope) string {
 
 func translateLiteral(n *ast.LiteralExpr) string {
 	switch n.Kind {
-	case ast.LiteralString:
-		return fmt.Sprintf("%q", n.Value)
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		return fmt.Sprintf("%q", n.Raw)
 	case ast.LiteralInt:
-		return fmt.Sprintf("%d", n.Value)
+		return n.Raw
 	case ast.LiteralFloat:
-		return fmt.Sprintf("%v", n.Value)
+		return n.Raw
 	case ast.LiteralBool:
-		if n.Value.(bool) {
-			return "true"
-		}
-		return "false"
+		return n.Raw
 	case ast.LiteralNull:
 		return "nil"
 	case ast.LiteralColor:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	case ast.LiteralUnit:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	default:
-		return fmt.Sprintf("%v", n.Value)
+		return n.Raw
 	}
 }
 
@@ -249,8 +191,20 @@ func translateIdent(n *ast.IdentExpr, scope *codegen.ExprScope) string {
 }
 
 func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
-	fn := n.Func
-	args := n.Args
+	// Method call: receiver.method(args) — Func is a *ast.SelectExpr
+	if sel, ok := n.Func.(*ast.SelectExpr); ok {
+		return translateMethodCall(sel, n.Args, scope)
+	}
+
+	// Plain function call: Func is *ast.IdentExpr
+	fn := ""
+	if ident, ok := n.Func.(*ast.IdentExpr); ok {
+		fn = ident.Name
+	} else {
+		fn = translateExpr(n.Func, scope)
+	}
+
+	args := extractArgs(n.Args)
 
 	if fn == "string" && len(args) == 1 {
 		return "fmt.Sprint(" + translateExpr(args[0], scope) + ")"
@@ -272,14 +226,61 @@ func translateCall(n *ast.CallExpr, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		var stmts []string
-		for _, s := range n.Stmts {
-			stmts = append(stmts, translateMutation(s, scope)...)
+// translateMethodCall handles a call where Func is a SelectExpr (receiver.method).
+func translateMethodCall(sel *ast.SelectExpr, argList ast.ArgList, scope *codegen.ExprScope) string {
+	method := sel.Field
+	args := extractArgs(argList)
+
+	// Stdlib native override
+	if goCode := goBuiltinMethodFromCall(sel, args, scope); goCode != "" {
+		return goCode
+	}
+	// Type-qualified call: int.double(5) → IntDouble(5)
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+		qualName := ident.Name + "." + method
+		if scope.FuncNames[qualName] {
+			goName := ExportName(ident.Name) + ExportName(method)
+			argStrs := make([]string, len(args))
+			for i, a := range args {
+				argStrs[i] = translateExpr(a, scope)
+			}
+			return goName + "(" + strings.Join(argStrs, ", ") + ")"
 		}
-		return stmts
+	}
+	// Instance method: x.double() → look for TypeMethod(x, ...)
+	if scope.FuncNames != nil {
+		for qualName := range scope.FuncNames {
+			if typeName, m, ok := ast.SplitMethodName(qualName); ok && m == method {
+				goName := ExportName(typeName) + ExportName(m)
+				argStrs := []string{translateExpr(sel.Operand, scope)}
+				for _, a := range args {
+					argStrs = append(argStrs, translateExpr(a, scope))
+				}
+				return goName + "(" + strings.Join(argStrs, ", ") + ")"
+			}
+		}
+	}
+	target := translateExpr(sel.Operand, scope)
+	argStrs := make([]string, len(args))
+	for i, a := range args {
+		argStrs[i] = translateExpr(a, scope)
+	}
+	return target + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// extractArgs extracts expression values from an ArgList.
+func extractArgs(al ast.ArgList) []ast.Expr {
+	var out []ast.Expr
+	for _, a := range al.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			out = append(out, arg.Value)
+		}
+	}
+	return out
+}
+
+func translateMutation(e ast.Stmt, scope *codegen.ExprScope) []string {
+	switch n := e.(type) {
 	case *ast.AssignStmt:
 		target := translateMutationTarget(n.Target, scope)
 		value := translateExpr(n.Value, scope)
@@ -288,45 +289,21 @@ func translateMutation(e ast.Node, scope *codegen.ExprScope) []string {
 	case *ast.ToggleStmt:
 		target := translateMutationTarget(n.Target, scope)
 		return []string{target + " = !" + target}
-	case *ast.MethodExpr:
-		if goCode := goBuiltinMethod(n, scope); goCode != "" {
-			return []string{goCode}
-		}
-		target := translateMutationTarget(n.Receiver, scope)
-		switch n.Method {
-		case "push":
-			if len(n.Args) == 1 {
-				value := translateExpr(n.Args[0], scope)
-				return []string{target + " = append(" + target + ", " + value + ")"}
-			}
-		case "remove":
-			if len(n.Args) == 1 {
-				idx := translateExpr(n.Args[0], scope)
-				return []string{target + " = append(" + target + "[:" + idx + "], " + target + "[" + idx + "+1:]...)"}
-			}
-		}
-		// Generic method call
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = translateExpr(a, scope)
-		}
-		return []string{target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"}
 	case *ast.EmitStmt:
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
+		args := extractArgs(n.Args)
+		argStrs := make([]string, len(args))
+		for i, a := range args {
 			argStrs[i] = translateExpr(a, scope)
 		}
 		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
 	case *ast.CallStmt:
 		return []string{translateCall(n.Call, scope)}
-	case *ast.CallExpr:
-		return []string{translateCall(n, scope)}
 	default:
 		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}
 }
 
-func translateMutationTarget(e ast.Node, scope *codegen.ExprScope) string {
+func translateMutationTarget(e ast.Expr, scope *codegen.ExprScope) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
 		if scope.ModelFields[n.Name] {
@@ -397,26 +374,24 @@ func assignOpStr(op ast.AssignOp) string {
 	}
 }
 
-// goBuiltinMethod returns native Go code for stdlib methods, or "" if not a stdlib method.
-func goBuiltinMethod(n *ast.MethodExpr, scope *codegen.ExprScope) string {
+// goBuiltinMethodFromCall returns native Go code for stdlib methods, or "" if not a stdlib method.
+// sel is the SelectExpr (receiver.method), args are the already-extracted argument expressions.
+func goBuiltinMethodFromCall(sel *ast.SelectExpr, args []ast.Expr, scope *codegen.ExprScope) string {
+	method := sel.Field
 	var qualName string
 	var argExprs []string
 
-	if ident, ok := n.Receiver.(*ast.IdentExpr); ok {
-		qualName = ident.Name + "." + n.Method
-		for _, a := range n.Args {
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+		qualName = ident.Name + "." + method
+		for _, a := range args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
 	} else {
-		argExprs = append(argExprs, translateExpr(n.Receiver, scope))
-		for _, a := range n.Args {
+		argExprs = append(argExprs, translateExpr(sel.Operand, scope))
+		for _, a := range args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		if n.Resolved != "" {
-			qualName = n.Resolved
-		} else {
-			qualName = "*." + n.Method
-		}
+		qualName = "*." + method
 	}
 
 	return goBuiltinMethodFromArgs(qualName, argExprs)

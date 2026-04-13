@@ -29,8 +29,8 @@ func (g *Generator) PreviewCSS() string { return previewCSS }
 
 // ResolveAPI makes any identifier valid as a terminal component.
 // This allows bubbletea.TextInput, bubbletea.Spinner, etc.
-func (g *Generator) ResolveAPI(name string) *ast.NativeDecls {
-	return &ast.NativeDecls{}
+func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
+	return &codegen.NativeDecls{}
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {

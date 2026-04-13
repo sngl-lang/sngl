@@ -2,200 +2,127 @@ package optimize
 
 import (
 	"fmt"
-	"io/fs"
 	"math"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// isConstExpr reports whether the SNGL expression references only compile-time
+// isConstExpr reports whether the expression references only compile-time
 // constant identifiers (PLATFORM, LANGUAGE) and literal values.
-func isConstExpr(n ast.Node, ctx *foldCtx) bool {
-	switch e := n.(type) {
-	case *ast.LiteralExpr:
+func isConstExpr(e ast.Expr, ctx *foldCtx) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *ast.LiteralExpr, *ast.UnitLiteral:
 		return true
 	case *ast.IdentExpr:
-		_, ok := ctx.vars[e.Name]
+		_, ok := ctx.vars[x.Name]
 		return ok
 	case *ast.BinaryExpr:
-		return isConstExpr(e.Left, ctx) && isConstExpr(e.Right, ctx)
+		return isConstExpr(x.Left, ctx) && isConstExpr(x.Right, ctx)
 	case *ast.UnaryExpr:
-		return isConstExpr(e.Operand, ctx)
+		return isConstExpr(x.Operand, ctx)
 	case *ast.TernaryExpr:
-		return isConstExpr(e.Cond, ctx) && isConstExpr(e.Then, ctx) && isConstExpr(e.Else, ctx)
+		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
 	case *ast.CallExpr:
-		for _, arg := range e.Args {
-			if !isConstExpr(arg, ctx) {
-				return false
-			}
-		}
-		return true
-	case *ast.MethodExpr:
-		// Type-namespace calls like string.length("hi") — receiver is a type name, not a variable
-		isTypeNS := false
-		isPureNS := false
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
-			switch ident.Name {
-			case "int", "float", "string", "bool", "list", "color":
-				isTypeNS = true
-			}
-			// Check if it's a namespace with a pure Go function
-			if !isTypeNS && ctx.nativeImports != nil {
-				if ns, exists := ctx.nativeImports[ident.Name]; exists {
-					for _, d := range ns.Data {
-						if d.Name == e.Method && d.Purity == ast.PurityPure {
-							isPureNS = true
-							break
-						}
-					}
-					if !isPureNS {
-						return false // namespace function exists but is not pure
-					}
+		for _, a := range x.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				if !isConstExpr(arg.Value, ctx) {
+					return false
 				}
-			}
-		}
-		if !isTypeNS && !isPureNS && !isConstExpr(e.Receiver, ctx) {
-			return false
-		}
-		for _, arg := range e.Args {
-			if !isConstExpr(arg, ctx) {
-				return false
 			}
 		}
 		return true
 	case *ast.InterpolationExpr:
-		for _, p := range e.Parts {
+		for _, p := range x.Parts {
 			if !isConstExpr(p, ctx) {
 				return false
 			}
 		}
 		return true
 	case *ast.ListExpr:
-		for _, el := range e.Elements {
+		for _, el := range x.Elements {
 			if !isConstExpr(el, ctx) {
 				return false
 			}
 		}
 		return true
 	case *ast.SelectExpr:
-		return isConstExpr(e.Operand, ctx)
-	case *ast.LambdaExpr:
-		return false
+		return isConstExpr(x.Operand, ctx)
 	case *ast.ParenExpr:
-		return isConstExpr(e.Inner, ctx)
+		return isConstExpr(x.Inner, ctx)
 	default:
 		return false
 	}
 }
 
-// evalConst evaluates a constant SNGL expression and returns the result.
-// It returns (nil, false) if the expression cannot be evaluated.
-func evalConst(n ast.Node, ctx *foldCtx) (any, bool) {
-	switch e := n.(type) {
+// evalConst evaluates a constant expression and returns the result.
+func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
+	if e == nil {
+		return nil, false
+	}
+	if !isConstExpr(e, ctx) {
+		return nil, false
+	}
+	switch x := e.(type) {
 	case *ast.LiteralExpr:
-		return e.Value, true
+		return parseLiteralValue(x), true
 	case *ast.IdentExpr:
-		v, ok := ctx.vars[e.Name]
+		v, ok := ctx.vars[x.Name]
 		return v, ok
 	case *ast.BinaryExpr:
-		left, lok := evalConst(e.Left, ctx)
-		right, rok := evalConst(e.Right, ctx)
+		left, lok := evalConst(x.Left, ctx)
+		right, rok := evalConst(x.Right, ctx)
 		if !lok || !rok {
 			return nil, false
 		}
-		return evalBinaryOp(e.Op, left, right)
+		return evalBinaryOp(x.Op, left, right)
 	case *ast.UnaryExpr:
-		operand, ok := evalConst(e.Operand, ctx)
+		operand, ok := evalConst(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
-		return evalUnaryOp(e.Op, operand)
+		return evalUnaryOp(x.Op, operand)
 	case *ast.TernaryExpr:
-		cond, ok := evalConst(e.Cond, ctx)
+		cond, ok := evalConst(x.Cond, ctx)
 		if !ok {
 			return nil, false
 		}
 		if b, ok := cond.(bool); ok {
 			if b {
-				return evalConst(e.Then, ctx)
+				return evalConst(x.Then, ctx)
 			}
-			return evalConst(e.Else, ctx)
+			return evalConst(x.Else, ctx)
 		}
 		return nil, false
 	case *ast.CallExpr:
-		args := make([]any, len(e.Args))
-		for i, a := range e.Args {
-			v, ok := evalConst(a, ctx)
-			if !ok {
-				return nil, false
-			}
-			args[i] = v
-		}
-		return evalCallFunc(e.Func, args)
-	case *ast.MethodExpr:
-		// Type-namespace call: int.min(3, 7) — receiver is IdentExpr("int")
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok {
-			qualName := ident.Name + "." + e.Method
-			args := make([]any, len(e.Args))
-			for i, a := range e.Args {
-				v, ok := evalConst(a, ctx)
-				if !ok {
-					return nil, false
-				}
-				args[i] = v
-			}
-			if v, ok := evalQualifiedMethod(qualName, args); ok {
-				return v, true
-			}
-			// Try file:// scheme functions (path, contents)
-			if ctx.nativeImports != nil {
-				if ns, exists := ctx.nativeImports[ident.Name]; exists {
-					for _, d := range ns.Data {
-						if d.Name == e.Method && d.Resolved != nil && d.Resolved.NativePkg == "file" {
-							if len(args) == 1 {
-								if filename, ok := args[0].(string); ok {
-									return evalFileFunc(d.Resolved.NativeType, ns.ImportPath, filename, ctx)
-								}
-							}
-						}
-					}
-				}
-			}
-			// Try pure Go function execution
-			if ctx.nativeImports != nil && ctx.dir != "" {
-				if ns, exists := ctx.nativeImports[ident.Name]; exists {
-					for _, d := range ns.Data {
-						if d.Name == e.Method && d.Purity == ast.PurityPure && d.Resolved != nil && d.Resolved.NativePkg != "file" {
-							result, err := execPureGoFunc(ctx.dir, ns.ImportPath, d.Resolved.NativeType, d.ParamTypes, d.ReturnType, args)
-							if err != nil {
-								return nil, false
-							}
-							return result, true
-						}
-					}
-				}
-			}
-		}
-		recv, ok := evalConst(e.Receiver, ctx)
-		if !ok {
+		args := collectArgs(x, ctx)
+		if args == nil {
 			return nil, false
 		}
-		args := make([]any, len(e.Args))
-		for i, a := range e.Args {
-			v, ok := evalConst(a, ctx)
+		// Check for method-style call (SelectExpr func)
+		if sel, ok := x.Func.(*ast.SelectExpr); ok {
+			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+				qualName := ident.Name + "." + sel.Field
+				return evalQualifiedMethod(qualName, args)
+			}
+			recv, ok := evalConst(sel.Operand, ctx)
 			if !ok {
 				return nil, false
 			}
-			args[i] = v
+			return evalMethod(sel.Field, recv, args)
 		}
-		return evalMethod(e.Method, recv, args)
+		// Simple function call
+		if ident, ok := x.Func.(*ast.IdentExpr); ok {
+			return evalCallFunc(ident.Name, args)
+		}
+		return nil, false
 	case *ast.InterpolationExpr:
 		var result strings.Builder
-		for _, p := range e.Parts {
+		for _, p := range x.Parts {
 			v, ok := evalConst(p, ctx)
 			if !ok {
 				return nil, false
@@ -204,69 +131,46 @@ func evalConst(n ast.Node, ctx *foldCtx) (any, bool) {
 		}
 		return result.String(), true
 	case *ast.SelectExpr:
-		recv, ok := evalConst(e.Operand, ctx)
+		recv, ok := evalConst(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
 		if m, ok := recv.(map[string]any); ok {
-			v, exists := m[e.Field]
+			v, exists := m[x.Field]
 			if exists {
-				return v, true
-			}
-			// Try with uppercase first letter (JSON from Go structs uses Go field names)
-			upper := strings.ToUpper(e.Field[:1]) + e.Field[1:]
-			if v, exists = m[upper]; exists {
 				return v, true
 			}
 		}
 		return nil, false
 	case *ast.ListExpr:
-		result := make([]any, len(e.Elements))
-		for i, el := range e.Elements {
+		result := make([]any, 0, len(x.Elements))
+		for _, el := range x.Elements {
 			v, ok := evalConst(el, ctx)
 			if !ok {
 				return nil, false
 			}
-			result[i] = v
+			result = append(result, v)
 		}
 		return result, true
 	case *ast.ParenExpr:
-		return evalConst(e.Inner, ctx)
+		return evalConst(x.Inner, ctx)
 	default:
 		return nil, false
 	}
 }
 
-// evalFileFunc evaluates file:// scheme functions (path, contents).
-// Uses os.DirFS to root file access within the imported directory,
-// preventing directory traversal. This pattern also works for future
-// remote import schemes that provide an fs.FS.
-func evalFileFunc(funcName, dirPath, filename string, ctx *foldCtx) (any, bool) {
-	fsys := os.DirFS(dirPath)
-
-	switch funcName {
-	case "path":
-		// Verify the file exists within the directory.
-		if _, err := fs.Stat(fsys, filename); err != nil {
-			return nil, false
+func collectArgs(call *ast.CallExpr, ctx *foldCtx) []any {
+	var args []any
+	for _, a := range call.Args.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			v, ok := evalConst(arg.Value, ctx)
+			if !ok {
+				return nil
+			}
+			args = append(args, v)
 		}
-		outPath := "assets/" + filename
-		url := "/" + outPath
-		ctx.fileAssets = append(ctx.fileAssets, ast.FileAsset{
-			SrcPath: filepath.Join(dirPath, filename),
-			OutPath: outPath,
-			URL:     url,
-		})
-		return url, true
-
-	case "contents":
-		data, err := fs.ReadFile(fsys, filename)
-		if err != nil {
-			return nil, false
-		}
-		return string(data), true
 	}
-	return nil, false
+	return args
 }
 
 func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
@@ -409,12 +313,10 @@ func evalUnaryOp(op ast.UnaryOp, operand any) (any, bool) {
 }
 
 func toInt(v any) (int, bool) {
-	switch n := v.(type) {
-	case int:
+	if n, ok := v.(int); ok {
 		return n, true
-	default:
-		return 0, false
 	}
+	return 0, false
 }
 
 func toFloat(v any) (float64, bool) {
@@ -423,18 +325,15 @@ func toFloat(v any) (float64, bool) {
 		return n, true
 	case int:
 		return float64(n), true
-	default:
-		return 0, false
 	}
+	return 0, false
 }
 
 func toStr(v any) string {
-	switch s := v.(type) {
-	case string:
+	if s, ok := v.(string); ok {
 		return s
-	default:
-		return fmt.Sprintf("%v", v)
 	}
+	return fmt.Sprintf("%v", v)
 }
 
 func evalCallFunc(name string, args []any) (any, bool) {
@@ -476,7 +375,6 @@ func evalCallFunc(name string, args []any) (any, bool) {
 }
 
 func evalMethod(method string, recv any, args []any) (any, bool) {
-	// Try as instance method with runtime type
 	typeName := "dyn"
 	switch recv.(type) {
 	case int:
@@ -489,47 +387,11 @@ func evalMethod(method string, recv any, args []any) (any, bool) {
 		typeName = "bool"
 	}
 	allArgs := append([]any{recv}, args...)
-	if v, ok := evalQualifiedMethod(typeName+"."+method, allArgs); ok {
-		return v, true
-	}
-
-	// Legacy built-in methods
-	switch method {
-	case "length":
-		if len(args) != 0 {
-			return nil, false
-		}
-		switch v := recv.(type) {
-		case string:
-			return len(v), true
-		case []any:
-			return len(v), true
-		}
-	case "contains":
-		if s, ok := recv.(string); ok && len(args) == 1 {
-			if sub, ok := args[0].(string); ok {
-				return strings.Contains(s, sub), true
-			}
-		}
-	case "startsWith":
-		if s, ok := recv.(string); ok && len(args) == 1 {
-			if prefix, ok := args[0].(string); ok {
-				return strings.HasPrefix(s, prefix), true
-			}
-		}
-	case "endsWith":
-		if s, ok := recv.(string); ok && len(args) == 1 {
-			if suffix, ok := args[0].(string); ok {
-				return strings.HasSuffix(s, suffix), true
-			}
-		}
-	}
-	return nil, false
+	return evalQualifiedMethod(typeName+"."+method, allArgs)
 }
 
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	switch qualName {
-	// int
 	case "int.min":
 		a, aok := toInt(args[0])
 		b, bok := toInt(args[1])
@@ -556,7 +418,6 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 			}
 			return x, true
 		}
-	// float
 	case "float.min":
 		a, aok := toFloat(args[0])
 		b, bok := toFloat(args[1])
@@ -594,49 +455,6 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if ok {
 			return math.Sqrt(x), true
 		}
-	case "float.pow":
-		x, xok := toFloat(args[0])
-		y, yok := toFloat(args[1])
-		if xok && yok {
-			return math.Pow(x, y), true
-		}
-	case "float.sin":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Sin(x), true
-		}
-	case "float.cos":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Cos(x), true
-		}
-	case "float.tan":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Tan(x), true
-		}
-	case "float.asin":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Asin(x), true
-		}
-	case "float.acos":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Acos(x), true
-		}
-	case "float.atan":
-		x, ok := toFloat(args[0])
-		if ok {
-			return math.Atan(x), true
-		}
-	case "float.atan2":
-		y, yok := toFloat(args[0])
-		x, xok := toFloat(args[1])
-		if yok && xok {
-			return math.Atan2(y, x), true
-		}
-	// string
 	case "string.length":
 		if s, ok := args[0].(string); ok {
 			return len(s), true
@@ -657,34 +475,18 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if s, ok := args[0].(string); ok {
 			return strings.TrimSpace(s), true
 		}
+	case "string.contains":
+		s, sok := args[0].(string)
+		sub, subok := args[1].(string)
+		if sok && subok {
+			return strings.Contains(s, sub), true
+		}
 	case "string.replace":
 		s, sok := args[0].(string)
 		old, ook := args[1].(string)
 		new_, nok := args[2].(string)
 		if sok && ook && nok {
 			return strings.ReplaceAll(s, old, new_), true
-		}
-	case "string.indexOf":
-		s, sok := args[0].(string)
-		sub, subok := args[1].(string)
-		if sok && subok {
-			return strings.Index(s, sub), true
-		}
-	case "string.substring":
-		s, sok := args[0].(string)
-		start, staok := toInt(args[1])
-		end, endok := toInt(args[2])
-		if sok && staok && endok {
-			if start < 0 {
-				start = 0
-			}
-			if end > len(s) {
-				end = len(s)
-			}
-			if start > end {
-				return "", true
-			}
-			return s[start:end], true
 		}
 	}
 	return nil, false

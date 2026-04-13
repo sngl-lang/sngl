@@ -1,5 +1,4 @@
-component main {
-    if "hello" {
-        text(value="x") // ERROR(check) "expected bool"
+func foo() {
+    if 1 { // ERROR(check) "if condition must be bool"
     }
 }

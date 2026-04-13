@@ -19,7 +19,7 @@ type viewContext struct {
 	forCursors     []forLoopCursor
 	buf            *strings.Builder
 	indent         int
-	components     []*ast.Component            // user-defined components for param lookup
+	components     []*ast.ComponentDecl         // user-defined components for param lookup
 	inComponent    bool                        // true when rendering inside a component method
 	vertical       bool                        // true when inside a vertical container (vbox)
 	slotVar        string                      // variable holding pre-rendered slot content (for abstract components)
@@ -147,7 +147,7 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	vc.renderRawTerminal(vn, resultVar)
 }
 
-func (vc *viewContext) findComponent(name string) *ast.Component {
+func (vc *viewContext) findComponent(name string) *ast.ComponentDecl {
 	if vc.doc != nil {
 		return vc.doc.FindComponent(name)
 	}
@@ -160,7 +160,7 @@ func (vc *viewContext) findComponent(name string) *ast.Component {
 }
 
 // expandComponent inlines a component override body at the call site.
-func (vc *viewContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, body []*ast.VisualNode, resultVar string) {
+func (vc *viewContext) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode, body []*ast.VisualNode, resultVar string) {
 	vc.componentDepth++
 	if vc.componentDepth > 10 {
 		vc.componentDepth--

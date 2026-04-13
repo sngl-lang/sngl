@@ -931,7 +931,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	b.WriteString("}\n\n")
 }
 
-func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents []*ast.Component, ec *exprContext, cfg Config) {
+func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext, cfg Config) {
 	methodName := "render" + exportName(comp.Name)
 
 	// Build parameter list
@@ -996,7 +996,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.Component, allComponents 
 }
 
 // extractAssignTarget extracts the target field name from an assignment SNGL node.
-func extractAssignTarget(e ast.Node) string {
+func extractAssignTarget(e ast.Stmt) string {
 	switch n := e.(type) {
 	case *ast.AssignStmt:
 		if ident, ok := n.Target.(*ast.IdentExpr); ok {

@@ -1,4 +1,7 @@
+component label(value string) {
+}
+
 component main {
     var count int = 0
-    text(value="hello")
+    label(value="hello")
 }

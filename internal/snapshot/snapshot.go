@@ -6,10 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Config controls snapshot generation.
@@ -59,7 +57,7 @@ func Generate(cfg Config) ([]Result, error) {
 			targets = append(targets, target{platform: p, lang: LangForPlatform(p)})
 		}
 	} else {
-		outputs, err := ParseOutputs(sourceFile)
+		outputs, err := CheckOutputs(sourceFile)
 		if err != nil {
 			return nil, fmt.Errorf("parsing outputs: %w", err)
 		}
@@ -124,8 +122,8 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 			return nil, err
 		}
 		dir := filepath.Dir(sourceFile)
-		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
-			return nil, fmt.Errorf("check: %w", err)
+		if err := checkDoc(doc, dir); err != nil {
+			return nil, err
 		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
@@ -150,8 +148,8 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 		return nil, err
 	}
 	dir := filepath.Dir(sourceFile)
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
-		return nil, fmt.Errorf("check: %w", err)
+	if err := checkDoc(doc, dir); err != nil {
+		return nil, err
 	}
 	langT := codegen.LookupLang(lang)
 	if langT == nil {
@@ -221,8 +219,8 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			return nil, fmt.Errorf("%s: parse: %w", entry.ID, err)
 		}
 		dir := filepath.Dir(sourceFile)
-		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, sngl.BuildAPIConfig(doc), true); err != nil {
-			return nil, fmt.Errorf("%s: check: %w", entry.ID, err)
+		if err := checkDoc(doc, dir); err != nil {
+			return nil, fmt.Errorf("%s: %w", entry.ID, err)
 		}
 		parsed = append(parsed, parsedDoc{entry: entry, doc: doc})
 	}

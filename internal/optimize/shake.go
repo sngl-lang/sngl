@@ -8,239 +8,190 @@ import (
 
 // shakeUnused removes consts, data, and functions that are not referenced
 // in the remaining AST after compile-time expansion and folding.
-// Only runs when there's an App (visual tree) to check references against.
 func shakeUnused(doc *ast.Document) {
-	if doc.App == nil {
-		return // no visual tree — nothing to shake against
-	}
 	refs := collectRefs(doc)
 
-	// Filter consts — keep only referenced ones
-	consts := doc.Consts[:0]
-	for _, c := range doc.Consts {
-		if refs[c.Name] {
-			consts = append(consts, c)
-		} else {
-			slog.Debug("shaken: const", "name", c.Name)
+	var out []ast.Stmt
+	for _, s := range doc.Stmts {
+		switch n := s.(type) {
+		case *ast.ConstDecl:
+			if anyNameReferenced(n.Specs, refs) {
+				out = append(out, s)
+			} else {
+				slog.Debug("shaken: const decl")
+			}
+		case *ast.VarDecl:
+			if anyNameReferenced(n.Specs, refs) {
+				out = append(out, s)
+			} else {
+				slog.Debug("shaken: var decl")
+			}
+		case *ast.FuncDef:
+			if refs[n.Name] || n.IsTest() {
+				out = append(out, s)
+			} else {
+				slog.Debug("shaken: func", "name", n.Name)
+			}
+		case *ast.StructDef:
+			if refs[n.Name] {
+				out = append(out, s)
+			} else {
+				slog.Debug("shaken: struct", "name", n.Name)
+			}
+		default:
+			out = append(out, s)
 		}
 	}
-	doc.Consts = consts
+	doc.Stmts = out
+}
 
-	// Filter data — keep referenced, extern, or has events (side effects)
-	data := doc.Data[:0]
-	for _, d := range doc.Data {
-		if refs[d.Name] || d.Extern || len(d.Events) > 0 {
-			data = append(data, d)
-		} else {
-			slog.Debug("shaken: data", "name", d.Name)
+func anyNameReferenced(specs []ast.VarSpec, refs map[string]bool) bool {
+	for _, spec := range specs {
+		for _, name := range spec.Names {
+			if refs[name] {
+				return true
+			}
 		}
 	}
-	doc.Data = data
-
-	// Filter structs — keep only referenced ones
-	structs := doc.Structs[:0]
-	for _, s := range doc.Structs {
-		if refs[s.Name] {
-			structs = append(structs, s)
-		} else {
-			slog.Debug("shaken: struct", "name", s.Name)
-		}
-	}
-	doc.Structs = structs
-
-	// Filter functions — keep referenced, stdlib, or test
-	funcs := doc.Functions[:0]
-	for _, fn := range doc.Functions {
-		if refs[fn.Name] || fn.IsStdlib || fn.IsTest() {
-			funcs = append(funcs, fn)
-		} else {
-			slog.Debug("shaken: func", "name", fn.Name)
-		}
-	}
-	doc.Functions = funcs
+	return false
 }
 
 // collectRefs walks the document AST and returns all identifier names
 // that are still referenced in expressions.
 func collectRefs(doc *ast.Document) map[string]bool {
 	refs := map[string]bool{}
-
-	// Walk visual trees
-	if doc.App != nil {
-		for _, vn := range doc.App.Children {
-			walkVNRefs(vn, refs)
-		}
-		for _, win := range doc.App.Windows {
-			for _, vn := range win.Children {
-				walkVNRefs(vn, refs)
-			}
-			walkExprMapRefs(win.Props, refs)
-		}
+	for _, s := range doc.Stmts {
+		collectStmtRefs(s, refs)
 	}
-
-	// Walk data initializers and event bodies
-	for _, d := range doc.Data {
-		walkExprRefs(d.Init, refs)
-		for _, ev := range d.Events {
-			walkNodeRefs(ev.Body, refs)
-		}
-	}
-
-	// Walk function bodies
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib {
-			continue
-		}
-		walkExprRefs(fn.Body, refs)
-		if fn.Block != nil {
-			for _, s := range fn.Block.Stmts {
-				walkNodeRefs(s, refs)
-			}
-			if fn.Block.Return != nil {
-				walkNodeRefs(fn.Block.Return, refs)
-			}
-		}
-	}
-
-	// Walk component bodies and params
-	for _, comp := range doc.Components {
-		for _, p := range comp.Params {
-			walkExprRefs(p.Default, refs)
-		}
-		for _, d := range comp.Data {
-			walkExprRefs(d.Init, refs)
-		}
-		for _, fn := range comp.Functions {
-			walkExprRefs(fn.Body, refs)
-		}
-		for _, vn := range comp.Body {
-			walkVNRefs(vn, refs)
-		}
-	}
-
-	// Walk timer bodies
-	for _, t := range doc.Timers {
-		walkNodeRefs(t.Body, refs)
-		refs[t.Active] = true
-	}
-
 	return refs
 }
 
-// walkVNRefs walks a visual node tree collecting referenced identifiers.
-func walkVNRefs(vn *ast.VisualNode, refs map[string]bool) {
-	if vn == nil {
-		return
-	}
-	walkExprPtrRefs(vn.If, refs)
-	walkExprPtrRefs(vn.Key, refs)
-	walkExprPtrRefs(vn.Class, refs)
-	walkExprPtrRefs(vn.Ref, refs)
-	if vn.For != nil {
-		walkExprRefs(vn.For.Iterable, refs)
-		for _, child := range vn.For.Else {
-			walkVNRefs(child, refs)
+func collectStmtRefs(s ast.Stmt, refs map[string]bool) {
+	switch n := s.(type) {
+	case *ast.VarDecl:
+		for _, spec := range n.Specs {
+			if spec.Default != nil {
+				collectExprRefs(spec.Default, refs)
+			}
+			for _, h := range spec.Handlers {
+				for _, bs := range h.Body.Stmts {
+					collectStmtRefs(bs, refs)
+				}
+			}
 		}
-	}
-	walkExprMapRefs(vn.Props, refs)
-	for _, eh := range vn.Events {
-		walkExprRefs(eh.Body, refs)
-	}
-	walkExprMapRefs(vn.Bindings, refs)
-	for _, child := range vn.Children {
-		walkVNRefs(child, refs)
-	}
-}
-
-func walkExprRefs(expr ast.Expr, refs map[string]bool) {
-	if expr.SNGL != nil {
-		walkNodeRefs(expr.SNGL, refs)
-	}
-}
-
-func walkExprPtrRefs(expr *ast.Expr, refs map[string]bool) {
-	if expr != nil {
-		walkExprRefs(*expr, refs)
-	}
-}
-
-func walkExprMapRefs(m map[string]ast.Expr, refs map[string]bool) {
-	for _, e := range m {
-		walkExprRefs(e, refs)
-	}
-}
-
-// walkNodeRefs walks an AST node collecting IdentExpr names.
-func walkNodeRefs(n ast.Node, refs map[string]bool) {
-	if n == nil {
-		return
-	}
-	switch e := n.(type) {
-	case *ast.IdentExpr:
-		refs[e.Name] = true
-	case *ast.BinaryExpr:
-		walkNodeRefs(e.Left, refs)
-		walkNodeRefs(e.Right, refs)
-	case *ast.UnaryExpr:
-		walkNodeRefs(e.Operand, refs)
-	case *ast.TernaryExpr:
-		walkNodeRefs(e.Cond, refs)
-		walkNodeRefs(e.Then, refs)
-		walkNodeRefs(e.Else, refs)
-	case *ast.CallExpr:
-		refs[e.Func] = true
-		for _, arg := range e.Args {
-			walkNodeRefs(arg, refs)
+	case *ast.FuncDef:
+		if n.Body != nil {
+			collectExprRefs(n.Body, refs)
 		}
-	case *ast.MethodExpr:
-		walkNodeRefs(e.Receiver, refs)
-		for _, arg := range e.Args {
-			walkNodeRefs(arg, refs)
+		for _, bs := range n.Block.Stmts {
+			collectStmtRefs(bs, refs)
 		}
-	case *ast.SelectExpr:
-		walkNodeRefs(e.Operand, refs)
-	case *ast.IndexExpr:
-		walkNodeRefs(e.Operand, refs)
-		walkNodeRefs(e.Index, refs)
-	case *ast.InterpolationExpr:
-		for _, p := range e.Parts {
-			walkNodeRefs(p, refs)
+	case *ast.ComponentDecl:
+		for _, p := range n.Props.Props {
+			if param, ok := p.(ast.Param); ok && param.Default != nil {
+				collectExprRefs(param.Default, refs)
+			}
 		}
-	case *ast.ListExpr:
-		for _, el := range e.Elements {
-			walkNodeRefs(el, refs)
+		for _, bs := range n.Body.Stmts {
+			collectStmtRefs(bs, refs)
 		}
-	case *ast.StructExpr:
-		if e.Name != "" {
-			refs[e.Name] = true
+	case *ast.VisualNode:
+		for _, a := range n.Args.Args {
+			switch x := a.(type) {
+			case ast.Arg:
+				collectExprRefs(x.Value, refs)
+			case ast.EventHandler:
+				for _, bs := range x.Body.Stmts {
+					collectStmtRefs(bs, refs)
+				}
+			}
 		}
-		for _, f := range e.Fields {
-			walkNodeRefs(f.Value, refs)
+		for _, bs := range n.Block.Stmts {
+			collectStmtRefs(bs, refs)
 		}
-	case *ast.LambdaExpr:
-		walkNodeRefs(e.Body, refs)
-	case *ast.ParenExpr:
-		walkNodeRefs(e.Inner, refs)
+	case *ast.IfStmt:
+		collectExprRefs(n.Cond, refs)
+		for _, bs := range n.Body.Stmts {
+			collectStmtRefs(bs, refs)
+		}
+		for _, bs := range n.Else.Stmts {
+			collectStmtRefs(bs, refs)
+		}
+	case *ast.ForStmt:
+		collectExprRefs(n.Iter, refs)
+		for _, bs := range n.Body.Stmts {
+			collectStmtRefs(bs, refs)
+		}
 	case *ast.AssignStmt:
-		walkNodeRefs(e.Target, refs)
-		walkNodeRefs(e.Value, refs)
-	case *ast.ToggleStmt:
-		walkNodeRefs(e.Target, refs)
-	case *ast.EmitStmt:
-		for _, arg := range e.Args {
-			walkNodeRefs(arg, refs)
-		}
+		collectExprRefs(n.Value, refs)
 	case *ast.CallStmt:
-		if e.Call != nil {
-			walkNodeRefs(e.Call, refs)
-		}
-	case *ast.StmtBlock:
-		for _, s := range e.Stmts {
-			walkNodeRefs(s, refs)
+		if n.Call != nil {
+			collectExprRefs(n.Call, refs)
 		}
 	case *ast.ReturnStmt:
-		walkNodeRefs(e.Value, refs)
+		collectExprRefs(n.Value, refs)
 	case *ast.VarStmt:
-		walkNodeRefs(e.Init, refs)
+		collectExprRefs(n.Init, refs)
+	case *ast.EmitStmt:
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				collectExprRefs(arg.Value, refs)
+			}
+		}
+	}
+}
+
+func collectExprRefs(e ast.Expr, refs map[string]bool) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		refs[n.Name] = true
+	case *ast.BinaryExpr:
+		collectExprRefs(n.Left, refs)
+		collectExprRefs(n.Right, refs)
+	case *ast.UnaryExpr:
+		collectExprRefs(n.Operand, refs)
+	case *ast.TernaryExpr:
+		collectExprRefs(n.Cond, refs)
+		collectExprRefs(n.Then, refs)
+		collectExprRefs(n.Else, refs)
+	case *ast.CallExpr:
+		collectExprRefs(n.Func, refs)
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				collectExprRefs(arg.Value, refs)
+			}
+		}
+	case *ast.SelectExpr:
+		collectExprRefs(n.Operand, refs)
+	case *ast.IndexExpr:
+		collectExprRefs(n.Operand, refs)
+		collectExprRefs(n.Index, refs)
+	case *ast.InterpolationExpr:
+		for _, p := range n.Parts {
+			collectExprRefs(p, refs)
+		}
+	case *ast.ListExpr:
+		for _, el := range n.Elements {
+			collectExprRefs(el, refs)
+		}
+	case *ast.StructExpr:
+		refs[n.Name] = true
+		for _, f := range n.Fields {
+			collectExprRefs(f.Value, refs)
+		}
+	case *ast.LambdaExpr:
+		if n.Body != nil {
+			collectExprRefs(n.Body, refs)
+		}
+		for _, bs := range n.Block.Stmts {
+			collectStmtRefs(bs, refs)
+		}
+	case *ast.ParenExpr:
+		collectExprRefs(n.Inner, refs)
+	case *ast.SpreadExpr:
+		collectExprRefs(n.Operand, refs)
 	}
 }

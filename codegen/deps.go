@@ -7,12 +7,11 @@ import (
 )
 
 // DepTracker tracks reactive dependencies between state fields, computed
-// fields, and updaters. Platforms build one during analysis and use it
-// for selective update codegen and template data.
+// fields, and updaters.
 type DepTracker struct {
-	ModelFields    map[string]bool            // all state + computed field names
-	ComputedFields map[string]bool            // subset that are computed
-	ComputedDeps   map[string]map[string]bool // computed name → root field deps
+	ModelFields    map[string]bool
+	ComputedFields map[string]bool
+	ComputedDeps   map[string]map[string]bool
 }
 
 // NewDepTracker creates a DepTracker.
@@ -24,20 +23,19 @@ func NewDepTracker(modelFields, computedFields map[string]bool, computedDeps map
 	}
 }
 
-// ExprDeps returns the set of root state fields referenced by an ast.Expr,
-// expanding through computed fields automatically.
+// ExprDeps returns the set of root state fields referenced by an expression.
 func (dt *DepTracker) ExprDeps(expr ast.Expr) map[string]bool {
-	if expr.SNGL != nil {
-		deps := dt.ExtractDeps(expr.SNGL)
+	if expr != nil {
+		deps := dt.ExtractDeps(expr)
 		return dt.ExpandDeps(deps)
 	}
 	return nil
 }
 
-// ExtractDeps walks an AST node and returns direct model field references.
-func (dt *DepTracker) ExtractDeps(e ast.Node) map[string]bool {
+// ExtractDeps walks an expression and returns direct model field references.
+func (dt *DepTracker) ExtractDeps(e ast.Expr) map[string]bool {
 	deps := make(map[string]bool)
-	walkDeps(e, dt.ModelFields, deps)
+	walkExprDeps(e, dt.ModelFields, deps)
 	return deps
 }
 
@@ -56,7 +54,7 @@ func (dt *DepTracker) ExpandDeps(deps map[string]bool) map[string]bool {
 }
 
 // ExpandMutated expands a set of mutated field names to include any computed
-// fields that transitively depend on them. Used by findAffectedUpdaters.
+// fields that transitively depend on them.
 func (dt *DepTracker) ExpandMutated(mutated map[string]bool) map[string]bool {
 	expanded := make(map[string]bool)
 	maps.Copy(expanded, mutated)
@@ -70,13 +68,12 @@ func (dt *DepTracker) ExpandMutated(mutated map[string]bool) map[string]bool {
 	return expanded
 }
 
-// Dependent is implemented by types that have dependency fields (updaters, handlers).
+// Dependent is implemented by types that have dependency fields.
 type Dependent interface {
 	DepFields() map[string]bool
 }
 
-// FindAffected returns items from the slice whose deps intersect with
-// the expanded mutated fields.
+// FindAffected returns items whose deps intersect with expanded mutated fields.
 func FindAffected[T Dependent](dt *DepTracker, items []T, mutated map[string]bool) []T {
 	if len(mutated) == 0 {
 		return nil
@@ -94,17 +91,13 @@ func FindAffected[T Dependent](dt *DepTracker, items []T, mutated map[string]boo
 	return result
 }
 
-// MutatedFields returns the set of field names mutated by a statement AST node.
-func MutatedFields(e ast.Node) map[string]bool {
+// MutatedFields returns the set of field names mutated by a statement.
+func MutatedFields(s ast.Stmt) map[string]bool {
 	fields := make(map[string]bool)
-	if e == nil {
+	if s == nil {
 		return fields
 	}
-	switch n := e.(type) {
-	case *ast.StmtBlock:
-		for _, stmt := range n.Stmts {
-			maps.Copy(fields, MutatedFields(stmt))
-		}
+	switch n := s.(type) {
 	case *ast.AssignStmt:
 		if root := findMutationRoot(n.Target); root != "" {
 			fields[root] = true
@@ -114,31 +107,37 @@ func MutatedFields(e ast.Node) map[string]bool {
 			fields[root] = true
 		}
 	case *ast.CallStmt:
-		maps.Copy(fields, MutatedFields(n.Call))
-	case *ast.CallExpr:
-		if len(n.Args) >= 1 {
-			if root := findMutationRoot(n.Args[0]); root != "" {
+		maps.Copy(fields, MutatedFieldsExpr(n.Call))
+	}
+	return fields
+}
+
+// MutatedFieldsExpr returns mutated fields from an expression (e.g., method call).
+func MutatedFieldsExpr(e ast.Expr) map[string]bool {
+	fields := make(map[string]bool)
+	if e == nil {
+		return fields
+	}
+	if call, ok := e.(*ast.CallExpr); ok {
+		// Method call — the receiver may be a model field
+		if sel, ok := call.Func.(*ast.SelectExpr); ok {
+			if root := FindRootIdent(sel.Operand); root != "" {
 				fields[root] = true
 			}
-		}
-	case *ast.MethodExpr:
-		if root := findMutationRoot(n.Receiver); root != "" {
-			fields[root] = true
 		}
 	}
 	return fields
 }
 
-// ExtractDeps walks an AST node and returns all model field references.
-// Standalone version for use before a DepTracker is constructed.
-func ExtractDeps(e ast.Node, modelFields map[string]bool) map[string]bool {
+// ExtractDeps walks an expression and returns all model field references.
+func ExtractDeps(e ast.Expr, modelFields map[string]bool) map[string]bool {
 	deps := make(map[string]bool)
-	walkDeps(e, modelFields, deps)
+	walkExprDeps(e, modelFields, deps)
 	return deps
 }
 
-// walkDeps recursively finds model field references in an expression tree.
-func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
+// walkExprDeps recursively finds model field references in an expression tree.
+func walkExprDeps(e ast.Expr, modelFields map[string]bool, deps map[string]bool) {
 	if e == nil {
 		return
 	}
@@ -152,60 +151,74 @@ func walkDeps(e ast.Node, modelFields map[string]bool, deps map[string]bool) {
 			deps[root] = true
 		}
 	case *ast.BinaryExpr:
-		walkDeps(n.Left, modelFields, deps)
-		walkDeps(n.Right, modelFields, deps)
+		walkExprDeps(n.Left, modelFields, deps)
+		walkExprDeps(n.Right, modelFields, deps)
 	case *ast.UnaryExpr:
-		walkDeps(n.Operand, modelFields, deps)
+		walkExprDeps(n.Operand, modelFields, deps)
 	case *ast.TernaryExpr:
-		walkDeps(n.Cond, modelFields, deps)
-		walkDeps(n.Then, modelFields, deps)
-		walkDeps(n.Else, modelFields, deps)
+		walkExprDeps(n.Cond, modelFields, deps)
+		walkExprDeps(n.Then, modelFields, deps)
+		walkExprDeps(n.Else, modelFields, deps)
 	case *ast.CallExpr:
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
-		}
-	case *ast.MethodExpr:
-		walkDeps(n.Receiver, modelFields, deps)
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
+		walkExprDeps(n.Func, modelFields, deps)
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				walkExprDeps(arg.Value, modelFields, deps)
+			}
 		}
 	case *ast.IndexExpr:
-		walkDeps(n.Operand, modelFields, deps)
-		walkDeps(n.Index, modelFields, deps)
+		walkExprDeps(n.Operand, modelFields, deps)
+		walkExprDeps(n.Index, modelFields, deps)
 	case *ast.ListExpr:
 		for _, el := range n.Elements {
-			walkDeps(el, modelFields, deps)
+			walkExprDeps(el, modelFields, deps)
 		}
 	case *ast.StructExpr:
 		for _, field := range n.Fields {
-			walkDeps(field.Value, modelFields, deps)
+			walkExprDeps(field.Value, modelFields, deps)
 		}
 	case *ast.SpreadExpr:
-		walkDeps(n.Operand, modelFields, deps)
+		walkExprDeps(n.Operand, modelFields, deps)
 	case *ast.InterpolationExpr:
 		for _, part := range n.Parts {
-			walkDeps(part, modelFields, deps)
-		}
-	case *ast.StmtBlock:
-		for _, stmt := range n.Stmts {
-			walkDeps(stmt, modelFields, deps)
-		}
-	case *ast.AssignStmt:
-		walkDeps(n.Target, modelFields, deps)
-		walkDeps(n.Value, modelFields, deps)
-	case *ast.ToggleStmt:
-		walkDeps(n.Target, modelFields, deps)
-	case *ast.EmitStmt:
-		for _, arg := range n.Args {
-			walkDeps(arg, modelFields, deps)
+			walkExprDeps(part, modelFields, deps)
 		}
 	case *ast.ParenExpr:
-		walkDeps(n.Inner, modelFields, deps)
+		walkExprDeps(n.Inner, modelFields, deps)
+	case *ast.LambdaExpr:
+		if n.Body != nil {
+			walkExprDeps(n.Body, modelFields, deps)
+		}
+	}
+}
+
+// walkStmtDeps recursively finds model field references in statements.
+func walkStmtDeps(s ast.Stmt, modelFields map[string]bool, deps map[string]bool) {
+	if s == nil {
+		return
+	}
+	switch n := s.(type) {
+	case *ast.AssignStmt:
+		walkExprDeps(n.Value, modelFields, deps)
+	case *ast.EmitStmt:
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				walkExprDeps(arg.Value, modelFields, deps)
+			}
+		}
+	case *ast.CallStmt:
+		if n.Call != nil {
+			walkExprDeps(n.Call, modelFields, deps)
+		}
+	case *ast.ReturnStmt:
+		walkExprDeps(n.Value, modelFields, deps)
+	case *ast.VarStmt:
+		walkExprDeps(n.Init, modelFields, deps)
 	}
 }
 
 // FindRootIdent extracts the root identifier from nested select/index expressions.
-func FindRootIdent(e ast.Node) string {
+func FindRootIdent(e ast.Expr) string {
 	if e == nil {
 		return ""
 	}
@@ -216,8 +229,6 @@ func FindRootIdent(e ast.Node) string {
 		return FindRootIdent(n.Operand)
 	case *ast.IndexExpr:
 		return FindRootIdent(n.Operand)
-	case *ast.MethodExpr:
-		return FindRootIdent(n.Receiver)
 	case *ast.ParenExpr:
 		return FindRootIdent(n.Inner)
 	}
@@ -225,7 +236,7 @@ func FindRootIdent(e ast.Node) string {
 }
 
 // findMutationRoot extracts the root field name from a mutation target.
-func findMutationRoot(e ast.Node) string {
+func findMutationRoot(e ast.TargetExpr) string {
 	if e == nil {
 		return ""
 	}
@@ -233,9 +244,9 @@ func findMutationRoot(e ast.Node) string {
 	case *ast.IdentExpr:
 		return n.Name
 	case *ast.SelectExpr:
-		return findMutationRoot(n.Operand)
+		return FindRootIdent(n.Operand)
 	case *ast.IndexExpr:
-		return findMutationRoot(n.Operand)
+		return FindRootIdent(n.Operand)
 	}
 	return ""
 }

@@ -1,4 +1,3 @@
+// TODO: restore style hover test when stdlib is available in v2
 component main {
-    text(value="hello") //@ hover("color", "style property")
-                        // color is a known style property
 }

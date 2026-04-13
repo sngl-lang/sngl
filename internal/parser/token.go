@@ -1,149 +1,137 @@
 package parser
 
-import "maps"
-
 // TokenType identifies a lexical token.
-type TokenType int
+// The underlying byte value is the sentinel used in the egg parser's token stream.
+// Byte 0x20 (space) is reserved as the stream separator and must not be a token value.
+type TokenType byte
 
 const (
+	streamSep byte = 0x20 // emitted between every token in the egg stream (white_space)
+)
+
+const (
+	EOF TokenType = 0x00 // end of input
+
 	// Specials
-	ILLEGAL TokenType = iota
-	EOF
-	SEMICOLON // ; (explicit or inserted)
+	ILLEGAL   TokenType = 0x01
+	SEMICOLON TokenType = 0x02 // ; (explicit or ASI-inserted)
 
 	// Literals
-	IDENT         // identifier
-	INT           // integer literal
-	FLOAT         // float literal
-	STRING        // "string literal"
-	TRIPLE_STRING // """multiline string"""
-	RAW_STRING    // `raw string`
-	COLOR         // #rrggbb
-	UNIT_LITERAL  // 5s, 100ms, 12px, 1.5em, etc.
-	ELEMENT_REF   // #identifier
+	IDENT        TokenType = 0x03
+	INT          TokenType = 0x04 // decimal only in v2 (no 0x/0o/0b)
+	FLOAT        TokenType = 0x05
+	STR_FULL     TokenType = 0x06 // "text" — complete string, no interpolation
+	TRIPLE_FULL  TokenType = 0x07 // """text""" — complete, no interpolation
+	RAW_STRING   TokenType = 0x08 // `...`
+	COLOR        TokenType = 0x09 // #rrggbb or #rrggbbaa
+	UNIT_LITERAL TokenType = 0x0A // 5px, 1.5em, 100ms …
+	ELEMENT_REF  TokenType = 0x0B // #identifier
 
 	// Punctuation
-	LPAREN    // (
-	RPAREN    // )
-	LBRACE    // {
-	RBRACE    // }
-	LBRACKET  // [
-	RBRACKET  // ]
-	COMMA     // ,
-	DOT       // .
-	COLON     // :
-	ASSIGN    // =
-	AT        // @
-	PIPE      // |
-	ARROW     // ->
-	FAT_ARROW // =>
-	ELLIPSIS  // ...
+	LPAREN    TokenType = 0x0C // (
+	RPAREN    TokenType = 0x0D // )
+	LBRACE    TokenType = 0x0E // {
+	RBRACE    TokenType = 0x0F // }
+	LBRACKET  TokenType = 0x10 // [
+	RBRACKET  TokenType = 0x11 // ]
+	COMMA     TokenType = 0x12 // ,
+	DOT       TokenType = 0x13 // .
+	COLON     TokenType = 0x14 // :
+	ASSIGN    TokenType = 0x15 // =
+	AT        TokenType = 0x16 // @
+	PIPE      TokenType = 0x17 // |
+	ARROW     TokenType = 0x18 // ->
+	FAT_ARROW TokenType = 0x19 // =>
+	ELLIPSIS  TokenType = 0x1A // ...
 
 	// Operators
-	PLUS     // +
-	MINUS    // -
-	STAR     // *
-	SLASH    // /
-	PERCENT  // %
-	BANG     // !
-	BANGBANG // !!
-	QUESTION // ?
-	EQ       // ==
-	NEQ      // !=
-	LT       // <
-	GT       // >
-	LTE      // <=
-	GTE      // >=
-	AND      // &&
-	OR       // ||
+	PLUS    TokenType = 0x1B // +
+	MINUS   TokenType = 0x1C // -
+	STAR    TokenType = 0x1D // *
+	SLASH   TokenType = 0x1E // /
+	PERCENT TokenType = 0x1F // %
+	// 0x20 reserved: stream separator
+	BANG     TokenType = 0x21 // !
+	BANGBANG TokenType = 0x22 // !!
+	QUESTION TokenType = 0x23 // ?
+	EQ       TokenType = 0x24 // ==
+	NEQ      TokenType = 0x25 // !=
+	LT       TokenType = 0x26 // <
+	GT       TokenType = 0x27 // >
+	LTE      TokenType = 0x28 // <=
+	GTE      TokenType = 0x29 // >=
+	AND      TokenType = 0x2A // &&
+	OR       TokenType = 0x2B // ||
 
 	// Compound assignment
-	PLUS_ASSIGN    // +=
-	MINUS_ASSIGN   // -=
-	STAR_ASSIGN    // *=
-	SLASH_ASSIGN   // /=
-	PERCENT_ASSIGN // %=
+	PLUS_ASSIGN    TokenType = 0x2C // +=
+	MINUS_ASSIGN   TokenType = 0x2D // -=
+	STAR_ASSIGN    TokenType = 0x2E // *=
+	SLASH_ASSIGN   TokenType = 0x2F // /=
+	PERCENT_ASSIGN TokenType = 0x30 // %=
 
 	// Keywords
-	KW_IMPORT
-	KW_OUTPUT
-	KW_STRUCT
-	KW_ENUM
-	KW_CONST
-	KW_VAR
-	KW_COMPUTED // deprecated, kept for backward compat token constant
-	KW_STYLE
-	KW_COMPONENT
-	KW_PARAM
-	KW_PROP
-	KW_EVENT
-	KW_CHILDREN
-	KW_IF
-	KW_FOR
-	KW_ELSE
-	KW_IN
-	KW_TRIGGER
-	KW_FUNC
-	KW_UNIT
-	KW_TIMER
-	KW_TEST
-	KW_RETURN
-	KW_PLATFORM
-	KW_WINDOW
-	KW_TRUE
-	KW_FALSE
-	KW_NULL
+	KW_IMPORT TokenType = 0x31
+	// 0x32 freed: output is now a pre-declared identifier
+	KW_STRUCT TokenType = 0x33
+	KW_ENUM   TokenType = 0x34
+	KW_CONST  TokenType = 0x35
+	KW_VAR    TokenType = 0x36
+	// 0x37 freed: style is now a pre-declared identifier
+	KW_COMPONENT TokenType = 0x38
+	KW_IF        TokenType = 0x39
+	KW_FOR       TokenType = 0x3A
+	KW_ELSE      TokenType = 0x3B
+	KW_FUNC      TokenType = 0x3C
+	KW_UNIT      TokenType = 0x3D
+	// 0x3E freed: timer is now a pre-declared identifier
+	KW_BREAK    TokenType = 0x3F // reserved
+	KW_RETURN   TokenType = 0x40
+	KW_CONTINUE TokenType = 0x41 // reserved
+	// 0x42 freed: window is now a pre-declared identifier
+	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
-	SLASHDASH     // /-
-	LINE_COMMENT  // // ...
-	BLOCK_COMMENT // /* ... */
+	SLASHDASH     TokenType = 0x46 // /-
+	LINE_COMMENT  TokenType = 0x47 // // …
+	BLOCK_COMMENT TokenType = 0x48 // /* … */
+
+	// String interpolation boundary tokens
+	STR_START    TokenType = 0x49 // "text{  — opening segment
+	STR_END      TokenType = 0x4A // }text" — closing segment
+	STR_RESUME   TokenType = 0x4B // }text{ — middle segment (both " and """)
+	TRIPLE_START TokenType = 0x4C // """text{ — opening segment
+	TRIPLE_END   TokenType = 0x4D // }text""" — closing segment
 )
 
 var keywords = map[string]TokenType{
-	"import":    KW_IMPORT,
-	"output":    KW_OUTPUT,
-	"struct":    KW_STRUCT,
-	"enum":      KW_ENUM,
-	"const":     KW_CONST,
-	"var":       KW_VAR,
-	"style":     KW_STYLE,
+	"import": KW_IMPORT,
+	"struct": KW_STRUCT,
+	"enum":   KW_ENUM,
+	"const":  KW_CONST,
+	"var":    KW_VAR,
+	// style is now a pre-declared identifier, not a keyword
 	"component": KW_COMPONENT,
 	"if":        KW_IF,
 	"for":       KW_FOR,
 	"else":      KW_ELSE,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
-	"timer":     KW_TIMER,
-	"test":      KW_TEST,
+	"break":     KW_BREAK,
 	"return":    KW_RETURN,
-	"platform":  KW_PLATFORM,
-	"window":    KW_WINDOW,
-	// "in", "trigger", "true", "false", "null" are no longer keywords
+	"continue":  KW_CONTINUE,
+	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
 }
 
-// Keywords returns a copy of the keyword map.
-func Keywords() map[string]TokenType {
-	m := make(map[string]TokenType, len(keywords))
-	maps.Copy(m, keywords)
-	return m
-}
-
-// IsKeyword returns true if t is a keyword token.
-func (t TokenType) IsKeyword() bool {
-	return t >= KW_IMPORT && t <= KW_NULL
-}
-
-// LookupIdent returns the keyword token type for ident if it's a keyword,
-// or IDENT otherwise.
-func LookupIdent(ident string) TokenType {
-	if tok, ok := keywords[ident]; ok {
-		return tok
+// LookupIdent returns the keyword TokenType for s, or IDENT if not a keyword.
+func LookupIdent(s string) TokenType {
+	if t, ok := keywords[s]; ok {
+		return t
 	}
 	return IDENT
 }
 
-// Token is a lexical token with position information.
+// Token is a lexical token with source location.
 type Token struct {
 	Type    TokenType
 	Literal string
@@ -151,33 +139,34 @@ type Token struct {
 	Column  int
 }
 
-// insertsSemicolon reports whether a token at end-of-line triggers semicolon insertion.
+// insertsSemicolon reports whether a token at end-of-line triggers ASI.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STRING, TRIPLE_STRING, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
-		AT, KW_RETURN,
-		RPAREN, RBRACKET, RBRACE:
+	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
+		STR_END, TRIPLE_END,
+		KW_RETURN,
+		AT, RPAREN, RBRACKET, RBRACE, BANGBANG:
 		return true
 	}
 	return false
 }
 
-var tokenNames = map[TokenType]string{
-	ILLEGAL: "ILLEGAL", EOF: "EOF", SEMICOLON: "SEMICOLON",
-	IDENT: "IDENT", INT: "INT", FLOAT: "FLOAT", STRING: "STRING", TRIPLE_STRING: "TRIPLE_STRING", RAW_STRING: "RAW_STRING",
-	COLOR: "COLOR", UNIT_LITERAL: "UNIT_LITERAL", ELEMENT_REF: "ELEMENT_REF",
-	LPAREN: "LPAREN", RPAREN: "RPAREN", LBRACE: "LBRACE", RBRACE: "RBRACE",
-	LBRACKET: "LBRACKET", RBRACKET: "RBRACKET",
-	COMMA: "COMMA", DOT: "DOT", COLON: "COLON", ASSIGN: "ASSIGN",
-	AT: "AT", PIPE: "PIPE", ARROW: "ARROW", FAT_ARROW: "FAT_ARROW", ELLIPSIS: "ELLIPSIS",
-	PLUS: "PLUS", MINUS: "MINUS", STAR: "STAR", SLASH: "SLASH", PERCENT: "PERCENT",
-	BANG: "BANG", BANGBANG: "BANGBANG", QUESTION: "QUESTION",
-	EQ: "EQ", NEQ: "NEQ", LT: "LT", GT: "GT", LTE: "LTE", GTE: "GTE",
-	AND: "AND", OR: "OR",
-	PLUS_ASSIGN: "PLUS_ASSIGN", MINUS_ASSIGN: "MINUS_ASSIGN",
-	STAR_ASSIGN: "STAR_ASSIGN", SLASH_ASSIGN: "SLASH_ASSIGN",
-	PERCENT_ASSIGN: "PERCENT_ASSIGN",
-	KW_TIMER:       "KW_TIMER",
-	KW_TEST:        "KW_TEST",
-	KW_RETURN:      "KW_RETURN",
+func isDigit(ch rune) bool      { return ch >= '0' && ch <= '9' }
+func isLetter(ch rune) bool     { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') }
+func isIdentStart(ch rune) bool { return isLetter(ch) || ch == '_' }
+func isIdentCont(ch rune) bool  { return isLetter(ch) || isDigit(ch) || ch == '_' }
+func isHexDigit(ch rune) bool {
+	return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
+}
+
+func hexVal(r rune) int {
+	switch {
+	case r >= '0' && r <= '9':
+		return int(r - '0')
+	case r >= 'a' && r <= 'f':
+		return int(r-'a') + 10
+	case r >= 'A' && r <= 'F':
+		return int(r-'A') + 10
+	}
+	return -1
 }

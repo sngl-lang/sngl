@@ -2,11 +2,9 @@ package lspcore
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Hover returns markdown hover info for the word at the given 1-based position.
@@ -52,73 +50,71 @@ func isIdentRune(r rune) bool {
 }
 
 func HoverInfo(doc *ast.Document, word string) string {
-	for _, d := range doc.Data {
-		if d.Name == word {
-			hint := d.Init.TypeHint
-			if hint == "" {
-				hint = "dyn"
-			}
-			return fmt.Sprintf("```sngl\nvar %s %s\n```", d.Name, hint)
-		}
-	}
-
-	for _, fn := range doc.Functions {
-		if fn.Name == word && fn.Block == nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			return fmt.Sprintf("```sngl\nfunc %s()\n```", fn.Name)
-		}
-	}
-
-	for _, c := range doc.Consts {
-		if c.Name == word {
-			return fmt.Sprintf("```sngl\nconst %s\n```", c.Name)
-		}
-	}
-
-	for _, c := range doc.Components {
-		if c.Name == word {
-			return formatComponentHoverWithDoc(c, doc)
-		}
-	}
-
-	for _, c := range doc.ImportedComponents {
-		if c.Name == word {
-			return formatComponentHoverWithDoc(c, doc)
-		}
-	}
-
-	registry, styleProps, _, _, _, _, err := checker.LoadStdlib()
-	if err != nil {
-		return ""
-	}
-
-	if schema, ok := registry[word]; ok {
-		return formatSchemaHover(word, schema)
-	}
-
-	if sp, ok := styleProps[word]; ok {
-		info := fmt.Sprintf("**style property** `%s`\n\nType: `%s`", word, sp.Type)
-		if len(sp.Enum) > 0 {
-			info += fmt.Sprintf("\n\nValues: %s", strings.Join(sp.Enum, ", "))
-		}
+	// Search top-level and component-body statements.
+	if info := hoverInStmts(doc.Stmts, doc, word); info != "" {
 		return info
 	}
 
-	for _, s := range doc.Structs {
-		if s.Name == word {
-			return formatStructHover(s)
-		}
-	}
-
-	for _, e := range doc.Enums {
-		if e.Name == word {
-			return fmt.Sprintf("```sngl\nenum %s { %s }\n```", e.Name, strings.Join(e.Values, ", "))
-		}
-	}
+	// TODO: stdlib hover lookup (LoadStdlib removed in v2)
 
 	return ""
 }
 
-func formatComponentHoverWithDoc(c *ast.Component, doc *ast.Document) string {
+// hoverInStmts searches a slice of statements for hover info, recursing
+// into component bodies.
+func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.VarDecl:
+			for _, spec := range s.Specs {
+				for _, name := range spec.Names {
+					if name == word {
+						hint := typeExprString(spec.Type)
+						if hint == "" {
+							hint = "dyn"
+						}
+						return fmt.Sprintf("```sngl\nvar %s %s\n```", name, hint)
+					}
+				}
+			}
+		case *ast.FuncDef:
+			if s.Name == word && !s.Block.IsDefined() && len(s.Params.Params) == 0 {
+				return fmt.Sprintf("```sngl\nfunc %s()\n```", s.Name)
+			}
+		case *ast.ConstDecl:
+			for _, spec := range s.Specs {
+				for _, name := range spec.Names {
+					if name == word {
+						return fmt.Sprintf("```sngl\nconst %s\n```", name)
+					}
+				}
+			}
+		case *ast.ComponentDecl:
+			if s.Name == word {
+				return formatComponentHoverWithDoc(s, doc)
+			}
+			// Also search inside the component body for nested declarations.
+			if info := hoverInStmts(s.Body.Stmts, doc, word); info != "" {
+				return info
+			}
+		case *ast.StructDef:
+			if s.Name == word {
+				return formatStructHover(s)
+			}
+		case *ast.EnumDef:
+			if s.Name == word {
+				var names []string
+				for _, m := range s.Members {
+					names = append(names, m.Name)
+				}
+				return fmt.Sprintf("```sngl\nenum %s { %s }\n```", s.Name, strings.Join(names, ", "))
+			}
+		}
+	}
+	return ""
+}
+
+func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\ncomponent %s\n```\n", c.Name)
 	if doc != nil {
@@ -126,14 +122,20 @@ func formatComponentHoverWithDoc(c *ast.Component, doc *ast.Document) string {
 			fmt.Fprintf(&sb, "\n%s\n", d)
 		}
 	}
-	if len(c.Params) > 0 {
+	var params []ast.Param
+	for _, p := range c.Props.Props {
+		if param, ok := p.(ast.Param); ok {
+			params = append(params, param)
+		}
+	}
+	if len(params) > 0 {
 		sb.WriteString("\n**Params:**\n")
-		for _, p := range c.Params {
-			hint := p.Default.TypeHint
+		for _, p := range params {
+			hint := typeExprString(p.Type)
 			if hint == "" {
 				hint = "dyn"
 			}
-			if p.Required {
+			if p.Default == nil {
 				fmt.Fprintf(&sb, "- `%s` %s (required)\n", p.Name, hint)
 			} else {
 				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, hint)
@@ -146,14 +148,24 @@ func formatComponentHoverWithDoc(c *ast.Component, doc *ast.Document) string {
 // docForPos extracts a doc comment immediately preceding the given position.
 // It looks for contiguous // comment lines ending on the line before pos.Line.
 func docForPos(doc *ast.Document, pos ast.Pos) string {
-	if doc == nil || len(doc.Comments) == 0 {
+	if doc == nil {
+		return ""
+	}
+	// Collect all comments from doc.Stmts.
+	var comments []*ast.Comment
+	for _, s := range doc.Stmts {
+		if c, ok := s.(*ast.Comment); ok {
+			comments = append(comments, c)
+		}
+	}
+	if len(comments) == 0 {
 		return ""
 	}
 	targetLine := pos.Line
 	var lines []string
 	// Gather contiguous comment lines ending at targetLine-1
-	for i := len(doc.Comments) - 1; i >= 0; i-- {
-		c := doc.Comments[i]
+	for i := len(comments) - 1; i >= 0; i-- {
+		c := comments[i]
 		if c.Block {
 			continue
 		}
@@ -175,52 +187,42 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 	return strings.Join(lines, "\n")
 }
 
-func formatSchemaHover(name string, schema *checker.ComponentSchema) string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "```sngl\ncomponent %s  // stdlib\n```\n", name)
-	if schema.Doc != "" {
-		fmt.Fprintf(&sb, "\n%s\n", schema.Doc)
-	}
-	if len(schema.Props) > 0 {
-		sb.WriteString("\n**Props:**\n")
-		propNames := make([]string, 0, len(schema.Props))
-		for pname := range schema.Props {
-			propNames = append(propNames, pname)
-		}
-		sort.Strings(propNames)
-		for _, pname := range propNames {
-			ps := schema.Props[pname]
-			if ps.Doc != "" {
-				fmt.Fprintf(&sb, "- `%s` %s — %s\n", pname, ps.Type, ps.Doc)
-			} else {
-				fmt.Fprintf(&sb, "- `%s` %s\n", pname, ps.Type)
-			}
-			if len(ps.Enum) > 0 {
-				fmt.Fprintf(&sb, "  Values: %s\n", strings.Join(ps.Enum, ", "))
-			}
-		}
-	}
-	if len(schema.Events) > 0 {
-		sb.WriteString("\n**Events:**\n")
-		eventNames := make([]string, 0, len(schema.Events))
-		for ename := range schema.Events {
-			eventNames = append(eventNames, ename)
-		}
-		sort.Strings(eventNames)
-		for _, ename := range eventNames {
-			etype := schema.Events[ename]
-			fmt.Fprintf(&sb, "- `@%s` (%s)\n", ename, etype)
-		}
-	}
-	return sb.String()
-}
-
 func formatStructHover(s *ast.StructDef) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
 	for _, f := range s.Fields {
-		fmt.Fprintf(&sb, "    %s %s\n", f.Name, f.Type)
+		fmt.Fprintf(&sb, "    %s %s\n", f.Name, typeExprString(f.Type))
 	}
 	sb.WriteString("}\n```")
 	return sb.String()
+}
+
+// typeExprString converts a TypeExpr to a readable string.
+func typeExprString(te ast.TypeExpr) string {
+	if te == nil {
+		return ""
+	}
+	switch t := te.(type) {
+	case *ast.NamedType:
+		s := t.Name
+		if t.Package != "" {
+			s = t.Package + "." + s
+		}
+		if t.TypeArg != nil {
+			s += "<" + typeExprString(t.TypeArg) + ">"
+		}
+		return s
+	case *ast.FuncType:
+		var params []string
+		for _, p := range t.Params {
+			params = append(params, typeExprString(p))
+		}
+		s := "func(" + strings.Join(params, ", ") + ")"
+		if t.Return != nil {
+			s += " -> " + typeExprString(t.Return)
+		}
+		return s
+	default:
+		return fmt.Sprintf("%v", te)
+	}
 }

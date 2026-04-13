@@ -16,40 +16,48 @@ func scope() *codegen.ExprScope {
 	}
 }
 
+func mkArgs(exprs ...ast.Expr) ast.ArgList {
+	var args []ast.ArgOrEventHandler
+	for _, e := range exprs {
+		args = append(args, ast.Arg{Value: e})
+	}
+	return ast.ArgList{Args: args}
+}
+
 func TestTranslateExpr(t *testing.T) {
 	s := scope()
 	tests := []struct {
 		name string
-		node ast.Node
+		node ast.Expr
 		want string
 	}{
-		{"int literal", &ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}, "42"},
-		{"float literal", &ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}, "3.14"},
-		{"string literal", &ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}, `"hello"`},
-		{"bool true", &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}, "true"},
-		{"bool false", &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}, "false"},
-		{"null", &ast.LiteralExpr{Value: nil, Kind: ast.LiteralNull}, "null"},
+		{"int literal", &ast.LiteralExpr{Raw: "42", Kind: ast.LiteralInt}, "42"},
+		{"float literal", &ast.LiteralExpr{Raw: "3.14", Kind: ast.LiteralFloat}, "3.14"},
+		{"string literal", &ast.LiteralExpr{Raw: "hello", Kind: ast.LiteralStringQuoted}, `"hello"`},
+		{"bool true", &ast.LiteralExpr{Raw: "true", Kind: ast.LiteralBool}, "true"},
+		{"bool false", &ast.LiteralExpr{Raw: "false", Kind: ast.LiteralBool}, "false"},
+		{"null", &ast.LiteralExpr{Raw: "", Kind: ast.LiteralNull}, "null"},
 		{"model field", &ast.IdentExpr{Name: "count"}, "count"},
 		{"computed field", &ast.IdentExpr{Name: "doubled"}, "doubled"},
 		{"local var with rename", &ast.IdentExpr{Name: "item"}, "item_0"},
 		{"binary add", &ast.BinaryExpr{
-			Left:  &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			Left:  &ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt},
 			Op:    ast.BinAdd,
-			Right: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Right: &ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt},
 		}, "(1 + 2)"},
 		{"binary eq", &ast.BinaryExpr{
-			Left:  &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			Left:  &ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt},
 			Op:    ast.BinEq,
-			Right: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Right: &ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt},
 		}, "(1 == 2)"},
 		{"unary not", &ast.UnaryExpr{
 			Op:      ast.UnaryNot,
-			Operand: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool},
+			Operand: &ast.LiteralExpr{Raw: "true", Kind: ast.LiteralBool},
 		}, "!true"},
 		{"ternary", &ast.TernaryExpr{
-			Cond: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool},
-			Then: &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
-			Else: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Cond: &ast.LiteralExpr{Raw: "true", Kind: ast.LiteralBool},
+			Then: &ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt},
+			Else: &ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt},
 		}, "(if (true) 1 else 2)"},
 		{"select", &ast.SelectExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
@@ -57,19 +65,19 @@ func TestTranslateExpr(t *testing.T) {
 		}, "count.value"},
 		{"index", &ast.IndexExpr{
 			Operand: &ast.IdentExpr{Name: "count"},
-			Index:   &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
+			Index:   &ast.LiteralExpr{Raw: "0", Kind: ast.LiteralInt},
 		}, "count[0]"},
 		{"list", &ast.ListExpr{
-			Elements: []ast.Node{
-				&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
-				&ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt},
+			Elements: []ast.Expr{
+				&ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt},
+				&ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt},
 			},
 		}, "listOf(1, 2)"},
 		{"struct", &ast.StructExpr{
 			Name: "point",
 			Fields: []ast.StructFieldLit{
-				{Name: "x", Value: &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}},
-				{Name: "y", Value: &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt}},
+				{Name: "x", Value: &ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt}},
+				{Name: "y", Value: &ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt}},
 			},
 		}, "Point(x = 1, y = 2)"},
 		{"nil expr", nil, "null"},
@@ -89,16 +97,19 @@ func TestTranslateCall(t *testing.T) {
 	tests := []struct {
 		name string
 		fn   string
-		args []ast.Node
+		args []ast.Expr
 		want string
 	}{
-		{"string()", "string", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "42.toString()"},
-		{"int()", "int", []ast.Node{&ast.LiteralExpr{Value: 3.14, Kind: ast.LiteralFloat}}, "3.14.toInt()"},
-		{"float()", "float", []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}}, "42.toDouble()"},
+		{"string()", "string", []ast.Expr{&ast.LiteralExpr{Raw: "42", Kind: ast.LiteralInt}}, "42.toString()"},
+		{"int()", "int", []ast.Expr{&ast.LiteralExpr{Raw: "3.14", Kind: ast.LiteralFloat}}, "3.14.toInt()"},
+		{"float()", "float", []ast.Expr{&ast.LiteralExpr{Raw: "42", Kind: ast.LiteralInt}}, "42.toDouble()"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := translateCall(&ast.CallExpr{Func: tt.fn, Args: tt.args}, s)
+			got := translateCall(&ast.CallExpr{
+				Func: &ast.IdentExpr{Name: tt.fn},
+				Args: mkArgs(tt.args...),
+			}, s)
 			if got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
@@ -109,8 +120,8 @@ func TestTranslateCall(t *testing.T) {
 func TestTranslateInterpolation(t *testing.T) {
 	s := scope()
 	node := &ast.InterpolationExpr{
-		Parts: []ast.Node{
-			&ast.LiteralExpr{Value: "count is ", Kind: ast.LiteralString},
+		Parts: []ast.Expr{
+			&ast.LiteralExpr{Raw: `"count is "`, Kind: ast.LiteralStringQuoted},
 			&ast.IdentExpr{Name: "count"},
 		},
 	}
@@ -125,35 +136,43 @@ func TestTranslateMutation(t *testing.T) {
 	s := scope()
 	tests := []struct {
 		name string
-		node ast.Node
+		node ast.Stmt
 		want []string
 	}{
 		{"assign", &ast.AssignStmt{
 			Target: &ast.IdentExpr{Name: "count"},
 			Op:     ast.AssignSet,
-			Value:  &ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
+			Value:  &ast.LiteralExpr{Raw: "0", Kind: ast.LiteralInt},
 		}, []string{"count = 0"}},
 		{"add assign", &ast.AssignStmt{
 			Target: &ast.IdentExpr{Name: "count"},
 			Op:     ast.AssignAdd,
-			Value:  &ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt},
+			Value:  &ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt},
 		}, []string{"count += 1"}},
 		{"toggle", &ast.ToggleStmt{
 			Target: &ast.IdentExpr{Name: "count"},
 		}, []string{"count = !count"}},
-		{"push", &ast.MethodExpr{
-			Receiver: &ast.IdentExpr{Name: "count"},
-			Method:   "push",
-			Args:     []ast.Node{&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}},
+		{"push", &ast.CallStmt{
+			Call: &ast.CallExpr{
+				Func: &ast.SelectExpr{
+					Operand: &ast.IdentExpr{Name: "count"},
+					Field:   "push",
+				},
+				Args: mkArgs(&ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt}),
+			},
 		}, []string{"count.add(1)"}},
-		{"remove", &ast.MethodExpr{
-			Receiver: &ast.IdentExpr{Name: "count"},
-			Method:   "remove",
-			Args:     []ast.Node{&ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt}},
+		{"remove", &ast.CallStmt{
+			Call: &ast.CallExpr{
+				Func: &ast.SelectExpr{
+					Operand: &ast.IdentExpr{Name: "count"},
+					Field:   "remove",
+				},
+				Args: mkArgs(&ast.LiteralExpr{Raw: "0", Kind: ast.LiteralInt}),
+			},
 		}, []string{"count.removeAt(0)"}},
 		{"emit", &ast.EmitStmt{
 			Name: "click",
-			Args: []ast.Node{&ast.LiteralExpr{Value: 42, Kind: ast.LiteralInt}},
+			Args: mkArgs(&ast.LiteralExpr{Raw: "42", Kind: ast.LiteralInt}),
 		}, []string{"onClick?.invoke(42)"}},
 	}
 	for _, tt := range tests {
@@ -213,45 +232,44 @@ func TestKotlinBuiltinMethod(t *testing.T) {
 	s := scope()
 	tests := []struct {
 		name     string
-		receiver ast.Node
+		receiver ast.Expr
 		method   string
-		args     []ast.Node
+		args     []ast.Expr
 		want     string
 	}{
 		{"int.min", &ast.IdentExpr{Name: "int"}, "min",
-			[]ast.Node{&ast.LiteralExpr{Value: 1, Kind: ast.LiteralInt}, &ast.LiteralExpr{Value: 2, Kind: ast.LiteralInt}},
+			[]ast.Expr{&ast.LiteralExpr{Raw: "1", Kind: ast.LiteralInt}, &ast.LiteralExpr{Raw: "2", Kind: ast.LiteralInt}},
 			"minOf(1, 2)"},
 		{"int.abs", &ast.IdentExpr{Name: "int"}, "abs",
-			[]ast.Node{&ast.LiteralExpr{Value: 5, Kind: ast.LiteralInt}},
+			[]ast.Expr{&ast.LiteralExpr{Raw: "5", Kind: ast.LiteralInt}},
 			"kotlin.math.abs(5)"},
 		{"int.clamp", &ast.IdentExpr{Name: "int"}, "clamp",
-			[]ast.Node{
-				&ast.LiteralExpr{Value: 5, Kind: ast.LiteralInt},
-				&ast.LiteralExpr{Value: 0, Kind: ast.LiteralInt},
-				&ast.LiteralExpr{Value: 10, Kind: ast.LiteralInt},
+			[]ast.Expr{
+				&ast.LiteralExpr{Raw: "5", Kind: ast.LiteralInt},
+				&ast.LiteralExpr{Raw: "0", Kind: ast.LiteralInt},
+				&ast.LiteralExpr{Raw: "10", Kind: ast.LiteralInt},
 			},
 			"5.coerceIn(0, 10)"},
 		{"string.upper", &ast.IdentExpr{Name: "string"}, "upper",
-			[]ast.Node{&ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}},
+			[]ast.Expr{&ast.LiteralExpr{Raw: "hello", Kind: ast.LiteralStringQuoted}},
 			`"hello".uppercase()`},
 		{"string.length", &ast.IdentExpr{Name: "string"}, "length",
-			[]ast.Node{&ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString}},
+			[]ast.Expr{&ast.LiteralExpr{Raw: "hello", Kind: ast.LiteralStringQuoted}},
 			`"hello".length`},
 		{"list.length", &ast.IdentExpr{Name: "list"}, "length",
-			[]ast.Node{&ast.IdentExpr{Name: "count"}},
+			[]ast.Expr{&ast.IdentExpr{Name: "count"}},
 			"count.size"},
 		{"list.join", &ast.IdentExpr{Name: "list"}, "join",
-			[]ast.Node{&ast.IdentExpr{Name: "count"}, &ast.LiteralExpr{Value: ", ", Kind: ast.LiteralString}},
+			[]ast.Expr{&ast.IdentExpr{Name: "count"}, &ast.LiteralExpr{Raw: ", ", Kind: ast.LiteralStringQuoted}},
 			`count.joinToString(", ")`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			node := &ast.MethodExpr{
-				Receiver: tt.receiver,
-				Method:   tt.method,
-				Args:     tt.args,
+			sel := &ast.SelectExpr{
+				Operand: tt.receiver,
+				Field:   tt.method,
 			}
-			got := kotlinBuiltinMethod(node, s)
+			got := kotlinBuiltinMethod(sel, tt.args, s)
 			if got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}

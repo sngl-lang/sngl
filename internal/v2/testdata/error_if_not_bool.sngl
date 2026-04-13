@@ -1,4 +1,0 @@
-func foo() {
-    if 1 { // ERROR(check) "if condition must be bool"
-    }
-}

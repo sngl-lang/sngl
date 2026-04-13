@@ -6,34 +6,15 @@ import (
 
 const maxComponentDepth = 10
 
-// NodeVisitor is called by WalkTree for each visual node. Platforms provide
-// this to control how nodes are processed without reimplementing traversal
-// of if/for/component/slot structure.
+// NodeVisitor is called by WalkTree for each visual node.
 type NodeVisitor interface {
-	// VisitNode is called for each node (primitive or user component).
-	// If the node is a user component, comp is non-nil and the visitor can
-	// choose to handle it (return true) or let the walker expand it inline
-	// (return false). For primitives, comp is nil and the return value is
-	// ignored.
-	VisitNode(vn *ast.VisualNode, comp *ast.Component) (handled bool)
-
-	// BeforeIf is called before processing a node with an If condition.
-	BeforeIf(vn *ast.VisualNode)
-	// AfterIf is called after processing a node with an If condition.
-	AfterIf(vn *ast.VisualNode)
-
-	// BeforeFor is called before processing a node with a For clause.
-	BeforeFor(vn *ast.VisualNode)
-	// AfterFor is called after processing a node with a For clause.
-	AfterFor(vn *ast.VisualNode)
-
-	// BeforeComponent is called before inlining a user component body.
-	// Return false to skip expansion (e.g., recursion limit).
-	BeforeComponent(comp *ast.Component, vn *ast.VisualNode) bool
-	// AfterComponent is called after inlining a user component body.
-	AfterComponent(comp *ast.Component, vn *ast.VisualNode)
-
-	// VisitSlot is called for <slot> nodes.
+	VisitNode(vn *ast.VisualNode, comp *ast.ComponentDecl) (handled bool)
+	BeforeIf(stmt *ast.IfStmt)
+	AfterIf(stmt *ast.IfStmt)
+	BeforeFor(stmt *ast.ForStmt)
+	AfterFor(stmt *ast.ForStmt)
+	BeforeComponent(comp *ast.ComponentDecl, vn *ast.VisualNode) bool
+	AfterComponent(comp *ast.ComponentDecl, vn *ast.VisualNode)
 	VisitSlot(vn *ast.VisualNode)
 }
 
@@ -44,50 +25,42 @@ type TreeWalker struct {
 	Visitor  NodeVisitor
 
 	componentDepth int
-	slotChildren   []*ast.VisualNode
+	slotChildren   []ast.Stmt
 }
 
-// Walk traverses a list of visual nodes, calling the visitor for each.
-func (tw *TreeWalker) Walk(nodes []*ast.VisualNode) {
-	for _, vn := range nodes {
-		tw.walkNode(vn)
-	}
-}
-
-func (tw *TreeWalker) walkNode(vn *ast.VisualNode) {
-	hasIf := vn.If != nil
-	if hasIf {
-		tw.Visitor.BeforeIf(vn)
-	}
-
-	hasFor := vn.For != nil
-	if hasFor {
-		tw.Visitor.BeforeFor(vn)
-	}
-
-	tw.walkNodeInner(vn)
-
-	if hasFor {
-		tw.Visitor.AfterFor(vn)
-	}
-
-	if hasIf {
-		tw.Visitor.AfterIf(vn)
+// WalkStmts traverses a list of statements, calling the visitor for visual nodes.
+func (tw *TreeWalker) WalkStmts(stmts []ast.Stmt) {
+	for _, s := range stmts {
+		tw.walkStmt(s)
 	}
 }
 
-func (tw *TreeWalker) walkNodeInner(vn *ast.VisualNode) {
-	if vn.Component == "slot" {
+func (tw *TreeWalker) walkStmt(s ast.Stmt) {
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		tw.walkVisualNode(n)
+	case *ast.IfStmt:
+		tw.Visitor.BeforeIf(n)
+		tw.WalkStmts(n.Body.Stmts)
+		if len(n.Else.Stmts) > 0 {
+			tw.WalkStmts(n.Else.Stmts)
+		}
+		tw.Visitor.AfterIf(n)
+	case *ast.ForStmt:
+		tw.Visitor.BeforeFor(n)
+		tw.WalkStmts(n.Body.Stmts)
+		tw.Visitor.AfterFor(n)
+	}
+}
+
+func (tw *TreeWalker) walkVisualNode(vn *ast.VisualNode) {
+	name := VisualNodeName(vn)
+	if name == "slot" {
 		tw.Visitor.VisitSlot(vn)
 		return
 	}
 
-	// Resolve user/abstract component
-	comp := tw.Doc.FindComponent(vn.Component)
-
-	// Let the visitor handle this node. If it's a user component and the
-	// visitor returns true, the visitor handled it (e.g., BubbleTea emits
-	// a method call). Otherwise we inline the component body.
+	comp := FindComponent(tw.Doc, name)
 	handled := tw.Visitor.VisitNode(vn, comp)
 
 	if comp != nil && !handled {
@@ -95,8 +68,7 @@ func (tw *TreeWalker) walkNodeInner(vn *ast.VisualNode) {
 	}
 }
 
-// expandComponent inlines a user component body at the call site.
-func (tw *TreeWalker) expandComponent(comp *ast.Component, vn *ast.VisualNode) {
+func (tw *TreeWalker) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode) {
 	tw.componentDepth++
 	if tw.componentDepth > maxComponentDepth {
 		tw.componentDepth--
@@ -108,31 +80,26 @@ func (tw *TreeWalker) expandComponent(comp *ast.Component, vn *ast.VisualNode) {
 		return
 	}
 
-	body := ResolveComponentBody(comp, tw.Platform)
-
 	savedSlot := tw.slotChildren
-	tw.slotChildren = vn.Children
+	tw.slotChildren = vn.Block.Stmts
 
-	tw.Walk(body)
+	tw.WalkStmts(comp.Body.Stmts)
 
 	tw.slotChildren = savedSlot
-
 	tw.Visitor.AfterComponent(comp, vn)
 }
 
-// SlotChildren returns the current slot children (caller's children for
-// the component being expanded). Visitors can use this in VisitSlot.
-func (tw *TreeWalker) SlotChildren() []*ast.VisualNode {
+// SlotChildren returns the current slot children.
+func (tw *TreeWalker) SlotChildren() []ast.Stmt {
 	return tw.slotChildren
 }
 
-// ResolveComponentBody returns the appropriate body for a component,
-// checking PlatformBodies first for platform-specific overrides.
-func ResolveComponentBody(comp *ast.Component, platform string) []*ast.VisualNode {
-	if comp.PlatformBodies != nil {
-		if body, ok := comp.PlatformBodies[platform]; ok {
-			return body
+// FindComponent finds a ComponentDecl by name in the document.
+func FindComponent(doc *ast.Document, name string) *ast.ComponentDecl {
+	for _, s := range doc.Stmts {
+		if comp, ok := s.(*ast.ComponentDecl); ok && comp.Name == name {
+			return comp
 		}
 	}
-	return comp.Body
+	return nil
 }

@@ -96,7 +96,7 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	return formatted, nil
 }
 
-func nodeNeedsFmt(n ast.Node) bool {
+func nodeNeedsFmt(n ast.Stmt) bool {
 	switch e := n.(type) {
 	case *ast.InterpolationExpr:
 		return true
@@ -129,7 +129,7 @@ func emitTestHelpers(b *strings.Builder) {
 }
 
 // emitTestModel emits a simple struct, constructor, and computed methods for a component.
-func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
+func emitTestModel(b *strings.Builder, comp *ast.ComponentDecl, doc *ast.Document) {
 	name := comp.Name
 
 	// Build field info
@@ -209,7 +209,7 @@ func emitTestModel(b *strings.Builder, comp *ast.Component, doc *ast.Document) {
 }
 
 // emitTestFuncGo emits a Go test function for a single SNGL test function.
-func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.Component) {
+func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.ComponentDecl) {
 	funcName := "Test" + exportName(comp.Name) + "_" + sanitizeTestName(fn.Name)
 
 	modelFields := map[string]bool{}
@@ -245,7 +245,7 @@ func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.Component) {
 	b.WriteString("}\n\n")
 }
 
-func emitTestBody(b *strings.Builder, stmts []ast.Node, ec *exprContext, depth int) {
+func emitTestBody(b *strings.Builder, stmts []ast.Stmt, ec *exprContext, depth int) {
 	indent := strings.Repeat("\t", depth)
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
@@ -303,7 +303,7 @@ func ShouldSkipTestFunc(fn *ast.FuncDef) bool {
 	return true // TODO: update bubbletea codegen for func-based tests
 }
 
-func findComp(doc *ast.Document, name string) *ast.Component {
+func findComp(doc *ast.Document, name string) *ast.ComponentDecl {
 	return doc.FindComponent(name)
 }
 

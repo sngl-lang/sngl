@@ -6,7 +6,6 @@ import (
 	"go/types"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"golang.org/x/tools/go/packages"
 )
@@ -21,7 +20,7 @@ type GoImporter struct{}
 
 func (g *GoImporter) Scheme() string { return "go" }
 
-func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
+func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 	pkgPath := strings.TrimPrefix(uri, "go://")
 
 	cfg := &packages.Config{
@@ -39,14 +38,14 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 		return nil, fmt.Errorf("loading %q: %s", pkgPath, pkgs[0].Errors[0].Msg)
 	}
 
-	decls := &ast.NativeDecls{
+	decls := &codegen.NativeDecls{
 		ImportPath: pkgPath,
 	}
 	scope := pkgs[0].Types.Scope()
 	pkgName := pkgs[0].Types.Name()
 
-	// Scan syntax for //sngl: purity annotations on function declarations.
-	funcPurity := map[string]ast.Purity{}
+	// Scan syntax for //sngl:pure annotations on function declarations.
+	funcPure := map[string]bool{}
 	for _, file := range pkgs[0].Syntax {
 		for _, decl := range file.Decls {
 			fd, ok := decl.(*goast.FuncDecl)
@@ -54,13 +53,8 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 				continue
 			}
 			for _, comment := range fd.Doc.List {
-				switch {
-				case strings.Contains(comment.Text, "sngl:pure"):
-					funcPurity[fd.Name.Name] = ast.PurityPure
-				case strings.Contains(comment.Text, "sngl:readonly"):
-					funcPurity[fd.Name.Name] = ast.PurityReadonly
-				case strings.Contains(comment.Text, "sngl:mutates"):
-					funcPurity[fd.Name.Name] = ast.PurityMutates
+				if strings.Contains(comment.Text, "sngl:pure") {
+					funcPure[fd.Name.Name] = true
 				}
 			}
 		}
@@ -73,31 +67,21 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 		}
 		switch o := obj.(type) {
 		case *types.TypeName:
-			if sd := goTypeToStruct(o, pkgPath, pkgName); sd != nil {
-				decls.Structs = append(decls.Structs, sd)
+			if ns := goTypeToNativeStruct(o); ns != nil {
+				decls.Structs = append(decls.Structs, *ns)
 			}
 		case *types.Func:
-			if d := goFuncToData(o); d != nil {
-				if p, ok := funcPurity[o.Name()]; ok {
-					d.Purity = p
-				}
-				d.Resolved = &ast.TypeInfo{
-					NativePkg:  pkgPath,
-					NativeType: pkgName + "." + o.Name(),
-				}
-				decls.Data = append(decls.Data, d)
+			if nf := goFuncToNativeFunc(o, pkgPath, pkgName); nf != nil {
+				nf.Pure = funcPure[o.Name()]
+				decls.Funcs = append(decls.Funcs, *nf)
 			}
 		case *types.Var:
 			hint := goTypeToHint(o.Type())
-			decls.Data = append(decls.Data, &ast.Data{
-				Name:   o.Name(),
-				Extern: true,
-				Init:   ast.Expr{TypeHint: hint},
-				Resolved: &ast.TypeInfo{
-					Type:       hint,
-					NativePkg:  pkgPath,
-					NativeType: pkgName + "." + o.Name(),
-				},
+			decls.Vars = append(decls.Vars, codegen.NativeVar{
+				Name:       o.Name(),
+				Type:       hint,
+				NativePkg:  pkgPath,
+				NativeType: pkgName + "." + o.Name(),
 			})
 		}
 	}
@@ -105,83 +89,47 @@ func (g *GoImporter) Resolve(uri, dir string) (*ast.NativeDecls, error) {
 	return decls, nil
 }
 
-// goTypeToStruct converts a Go named struct type to an ast.StructDef.
-func goTypeToStruct(tn *types.TypeName, pkgPath, pkgName string) *ast.StructDef {
+// goTypeToNativeStruct converts a Go named struct type to a codegen.NativeStruct.
+func goTypeToNativeStruct(tn *types.TypeName) *codegen.NativeStruct {
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	if !ok {
 		return nil
 	}
-	sd := &ast.StructDef{Name: tn.Name()}
+	ns := &codegen.NativeStruct{Name: tn.Name()}
 	for f := range st.Fields() {
 		if !f.Exported() {
 			continue
 		}
 		hint := goTypeToHint(f.Type())
-		sf := &ast.StructField{
+		ns.Fields = append(ns.Fields, codegen.NativeField{
 			Name: lowerFirst(f.Name()),
 			Type: hint,
-		}
-		// Set Resolved with native type info for foreign types
-		if strings.Contains(hint, ".") {
-			// hint is package-qualified (e.g., "ast.Ident"), resolve its import path
-			sf.Resolved = &ast.TypeInfo{
-				Type:       hint,
-				NativePkg:  resolveFieldPkgPath(f.Type()),
-				NativeType: hint,
-			}
-		}
-		sd.Fields = append(sd.Fields, sf)
+		})
 	}
-	return sd
+	return ns
 }
 
-// resolveFieldPkgPath extracts the import path from a field's type.
-func resolveFieldPkgPath(t types.Type) string {
-	// Unwrap pointer and slice types
-	for {
-		switch u := t.(type) {
-		case *types.Pointer:
-			t = u.Elem()
-			continue
-		case *types.Slice:
-			t = u.Elem()
-			continue
-		}
-		break
-	}
-	if named, ok := t.(*types.Named); ok {
-		if pkg := named.Obj().Pkg(); pkg != nil {
-			return pkg.Path()
-		}
-	}
-	return ""
-}
-
-// goFuncToData converts a Go function to an ast.Data with extern/func flags.
+// goFuncToNativeFunc converts a Go function to a codegen.NativeFunc.
 // If the first parameter is *http.Request or context.Context, it is stripped
-// from the SNGL-visible signature and recorded in HiddenParam so that HTTP
-// platform codegen can inject it automatically.
-func goFuncToData(fn *types.Func) *ast.Data {
+// from the SNGL-visible signature.
+func goFuncToNativeFunc(fn *types.Func, pkgPath, pkgName string) *codegen.NativeFunc {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok {
 		return nil
 	}
 
 	var paramTypes []string
-	var hiddenParams []string
 	params := sig.Params()
 	stripping := true
 	for v := range params.Variables() {
 		if stripping {
 			if hp := detectHiddenParam(v.Type()); hp != "" {
-				hiddenParams = append(hiddenParams, hp)
 				continue
 			}
 			stripping = false
 		}
 		paramTypes = append(paramTypes, goTypeToHint(v.Type()))
 	}
-	hiddenParam := strings.Join(hiddenParams, ",")
 
 	var returnType string
 	results := sig.Results()
@@ -189,23 +137,12 @@ func goFuncToData(fn *types.Func) *ast.Data {
 		returnType = goTypeToHint(results.At(0).Type())
 	}
 
-	// Build a type hint for the func type
-	hint := "func"
-	if len(paramTypes) > 0 {
-		hint += ":" + strings.Join(paramTypes, ":")
-	}
-	if returnType != "" {
-		hint += "~" + returnType
-	}
-
-	return &ast.Data{
-		Name:        fn.Name(),
-		Extern:      true,
-		IsFunc:      true,
-		ParamTypes:  paramTypes,
-		ReturnType:  returnType,
-		HiddenParam: hiddenParam,
-		Init:        ast.Expr{TypeHint: hint},
+	return &codegen.NativeFunc{
+		Name:       fn.Name(),
+		ParamTypes: paramTypes,
+		ReturnType: returnType,
+		NativePkg:  pkgPath,
+		NativeType: pkgName + "." + fn.Name(),
 	}
 }
 

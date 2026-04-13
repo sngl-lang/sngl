@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
@@ -116,32 +115,25 @@ func ComponentKeywords() []CompletionItem {
 	for i, kw := range kws {
 		items[i] = CompletionItem{Label: kw, Kind: CIKKeyword}
 	}
-	items = append(items, StdlibComponentItems()...)
+	// TODO: add stdlib component items (LoadStdlib removed in v2)
 	return items
 }
 
 func ComponentNameCompletions(doc *ast.Document) []CompletionItem {
-	items := StdlibComponentItems()
+	// TODO: add stdlib component items (LoadStdlib removed in v2)
+	var items []CompletionItem
 	if doc != nil {
-		for _, c := range doc.Components {
-			items = append(items, CompletionItem{
-				Label:            c.Name,
-				Kind:             CIKClass,
-				Detail:           "user component",
-				Documentation:    docForPos(doc, c.Pos),
-				InsertText:       c.Name + "($1)",
-				InsertTextFormat: ITFSnippet,
-			})
-		}
-		for _, c := range doc.ImportedComponents {
-			items = append(items, CompletionItem{
-				Label:            c.Name,
-				Kind:             CIKClass,
-				Detail:           "imported component",
-				Documentation:    docForPos(doc, c.Pos),
-				InsertText:       c.Name + "($1)",
-				InsertTextFormat: ITFSnippet,
-			})
+		for _, s := range doc.Stmts {
+			if c, ok := s.(*ast.ComponentDecl); ok {
+				items = append(items, CompletionItem{
+					Label:            c.Name,
+					Kind:             CIKClass,
+					Detail:           "user component",
+					Documentation:    docForPos(doc, c.Pos),
+					InsertText:       c.Name + "($1)",
+					InsertTextFormat: ITFSnippet,
+				})
+			}
 		}
 	}
 	return items
@@ -153,88 +145,43 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 		items = append(items, CompletionItem{Label: kw, Kind: CIKKeyword})
 	}
 	if doc != nil {
-		for _, d := range doc.Data {
-			items = append(items, CompletionItem{Label: d.Name, Kind: CIKVariable, Detail: d.Init.TypeHint})
-		}
-		for _, fn := range doc.Functions {
-			if fn.Block == nil && len(fn.Params) == 0 && !fn.IsStdlib {
-				items = append(items, CompletionItem{Label: fn.Name, Kind: CIKVariable, Detail: "func"})
+		for _, stmt := range doc.Stmts {
+			switch s := stmt.(type) {
+			case *ast.VarDecl:
+				for _, spec := range s.Specs {
+					hint := typeExprString(spec.Type)
+					for _, name := range spec.Names {
+						items = append(items, CompletionItem{Label: name, Kind: CIKVariable, Detail: hint})
+					}
+				}
+			case *ast.FuncDef:
+				if !s.Block.IsDefined() && len(s.Params.Params) == 0 {
+					items = append(items, CompletionItem{Label: s.Name, Kind: CIKVariable, Detail: "func"})
+				}
+			case *ast.ConstDecl:
+				for _, spec := range s.Specs {
+					for _, name := range spec.Names {
+						items = append(items, CompletionItem{Label: name, Kind: CIKConstant, Detail: "const"})
+					}
+				}
+			case *ast.StructDef:
+				items = append(items, CompletionItem{Label: s.Name, Kind: CIKStruct})
+			case *ast.EnumDef:
+				items = append(items, CompletionItem{Label: s.Name, Kind: CIKEnum})
 			}
-		}
-		for _, c := range doc.Consts {
-			items = append(items, CompletionItem{Label: c.Name, Kind: CIKConstant, Detail: "const"})
-		}
-		for _, s := range doc.Structs {
-			items = append(items, CompletionItem{Label: s.Name, Kind: CIKStruct})
-		}
-		for _, e := range doc.Enums {
-			items = append(items, CompletionItem{Label: e.Name, Kind: CIKEnum})
 		}
 	}
 	return items
 }
 
 func EventCompletions() []CompletionItem {
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
-	if err != nil {
-		return nil
-	}
-	var items []CompletionItem
-	seen := map[string]bool{}
-	for _, schema := range registry {
-		for name, etype := range schema.Events {
-			if !seen[name] {
-				seen[name] = true
-				items = append(items, CompletionItem{
-					Label:         "@" + name,
-					Kind:          CIKEvent,
-					InsertText:    "@" + name + "={ }",
-					Documentation: "Payload type: " + etype,
-				})
-			}
-		}
-	}
-	return items
+	// TODO: restore event completions from stdlib (LoadStdlib removed in v2)
+	return nil
 }
 
 func StylePropCompletions() []CompletionItem {
-	_, styleProps, _, _, _, _, err := checker.LoadStdlib()
-	if err != nil {
-		return nil
-	}
-	items := make([]CompletionItem, 0, len(styleProps))
-	for name, sp := range styleProps {
-		detail := sp.Type.String()
-		if len(sp.Enum) > 0 {
-			detail += " (" + strings.Join(sp.Enum, "|") + ")"
-		}
-		items = append(items, CompletionItem{
-			Label:      name,
-			Kind:       CIKProperty,
-			Detail:     detail,
-			InsertText: name + "=",
-		})
-	}
-	return items
-}
-
-func StdlibComponentItems() []CompletionItem {
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
-	if err != nil {
-		return nil
-	}
-	items := make([]CompletionItem, 0, len(registry))
-	for name, schema := range registry {
-		items = append(items, CompletionItem{
-			Label:            name,
-			Kind:             CIKClass,
-			Detail:           "stdlib component",
-			Documentation:    schema.Doc,
-			InsertText:       name + "($1)",
-			InsertTextFormat: ITFSnippet,
-		})
-	}
-	return items
+	// TODO: restore style prop completions from stdlib (LoadStdlib removed in v2)
+	return nil
 }
 
 // PropListCompletions returns props and events for the component whose
@@ -258,7 +205,7 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 	if sp := strings.LastIndexAny(before, " \t{"); sp >= 0 {
 		compName = before[sp+1:]
 	}
-	// Strip element ref prefix: "input #foo" → take text before #
+	// Strip element ref prefix: "input #foo" -> take text before #
 	if hi := strings.LastIndex(compName, "#"); hi > 0 {
 		compName = strings.TrimSpace(compName[:hi])
 	} else if strings.HasPrefix(compName, "#") {
@@ -271,33 +218,26 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		return nil
 	}
 
-	// Look up schema for this component
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
-	if err != nil {
-		return nil
+	// Look up user-defined components
+	var props []ast.Param
+	var events []ast.EventDecl
+	if doc != nil {
+		for _, stmt := range doc.Stmts {
+			if c, ok := stmt.(*ast.ComponentDecl); ok && c.Name == compName {
+				for _, p := range c.Props.Props {
+					switch pd := p.(type) {
+					case ast.Param:
+						props = append(props, pd)
+					case ast.EventDecl:
+						events = append(events, pd)
+					}
+				}
+				break
+			}
+		}
 	}
-	schema := registry[compName]
 
-	// Also check user-defined components
-	if schema == nil && doc != nil {
-		for _, c := range doc.Components {
-			if c.Name == compName {
-				schema = buildUserComponentSchema(c)
-				break
-			}
-		}
-	}
-	if schema == nil && doc != nil {
-		for _, c := range doc.ImportedComponents {
-			if c.Name == compName {
-				schema = buildUserComponentSchema(c)
-				break
-			}
-		}
-	}
-	if schema == nil {
-		return nil
-	}
+	// TODO: look up stdlib component schemas (LoadStdlib removed in v2)
 
 	// Collect already-used prop names on this line to exclude them
 	used := map[string]bool{}
@@ -315,34 +255,30 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 	var items []CompletionItem
 
 	// Props
-	for name, ps := range schema.Props {
-		if used[name] {
+	for _, p := range props {
+		if used[p.Name] {
 			continue
 		}
-		detail := ps.Type.String()
-		if len(ps.Enum) > 0 {
-			detail += " (" + strings.Join(ps.Enum, "|") + ")"
-		}
+		detail := typeExprString(p.Type)
 		items = append(items, CompletionItem{
-			Label:            name,
+			Label:            p.Name,
 			Kind:             CIKProperty,
 			Detail:           detail,
-			Documentation:    ps.Doc,
-			InsertText:       name + "=$1",
+			InsertText:       p.Name + "=$1",
 			InsertTextFormat: ITFSnippet,
 		})
 	}
 
 	// Events
-	for name, etype := range schema.Events {
-		if used[name] {
+	for _, e := range events {
+		if used[e.Name] {
 			continue
 		}
 		items = append(items, CompletionItem{
-			Label:            "@" + name,
+			Label:            "@" + e.Name,
 			Kind:             CIKEvent,
-			Detail:           etype,
-			InsertText:       "@" + name + "={ $1 }",
+			Detail:           typeExprString(e.Type),
+			InsertText:       "@" + e.Name + "={ $1 }",
 			InsertTextFormat: ITFSnippet,
 		})
 	}
@@ -361,23 +297,6 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 	return items
 }
 
-// buildUserComponentSchema creates a ComponentSchema from a user-defined component.
-func buildUserComponentSchema(comp *ast.Component) *checker.ComponentSchema {
-	schema := &checker.ComponentSchema{
-		Props:  make(map[string]checker.PropSchema),
-		Events: make(map[string]string),
-	}
-	for _, p := range comp.Params {
-		schema.Props[p.Name] = checker.PropSchema{
-			Type: checker.TypeFromHint(p.Default.TypeHint),
-		}
-	}
-	for _, e := range comp.EventDecls {
-		schema.Events[e.Name] = e.PayloadType
-	}
-	return schema
-}
-
 // OutputOptsCompletions returns completion items for output option keys
 // inside the parenthesized options of an output declaration.
 func OutputOptsCompletions(content string, line int) []CompletionItem {
@@ -387,7 +306,7 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	}
 	l := strings.TrimSpace(lines[line-1])
 
-	// Extract platform name: "output lang platform(...)" → platform is 2nd word after "output"
+	// Extract platform name: "output lang platform(...)" -> platform is 2nd word after "output"
 	platformName := extractOutputPlatform(l)
 	if platformName == "" {
 		return nil
@@ -407,8 +326,8 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	}
 
 	var opts *ast.StructDef
-	for _, s := range apiDoc.Structs {
-		if s.Name == "Options" {
+	for _, stmt := range apiDoc.Stmts {
+		if s, ok := stmt.(*ast.StructDef); ok && s.Name == "Options" {
 			opts = s
 			break
 		}
@@ -422,7 +341,7 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 		items = append(items, CompletionItem{
 			Label:      f.Name,
 			Kind:       CIKProperty,
-			Detail:     f.Type,
+			Detail:     typeExprString(f.Type),
 			InsertText: f.Name + "=",
 		})
 	}
@@ -461,7 +380,7 @@ func OutputTargetCompletions(content string, line int) []CompletionItem {
 }
 
 // extractOutputPlatform extracts the platform name from an output line.
-// e.g., "output js html(package=...)" → "html"
+// e.g., "output js html(package=...)" -> "html"
 func extractOutputPlatform(line string) string {
 	words := strings.Fields(line)
 	if len(words) < 3 {
@@ -476,7 +395,7 @@ func extractOutputPlatform(line string) string {
 }
 
 func parseSngl(name, src string) (*ast.Document, error) {
-	return parser.Parse(name, strings.NewReader(src))
+	return parser.Parse(name, []byte(src))
 }
 
 // NamespaceCompletions returns completions for "namespace." (e.g., "html.").
@@ -524,20 +443,12 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 	// Also check imported namespaces in the document
 	if pkgDoc == nil && doc != nil {
-		for _, imp := range doc.Imports {
-			if imp.Namespace == nsName {
-				// Imported package — offer its components
-				var items []CompletionItem
-				for _, c := range doc.ImportedComponents {
-					items = append(items, CompletionItem{
-						Label:            c.Name,
-						Kind:             CIKClass,
-						Detail:           "imported component",
-						InsertText:       c.Name + "($1)",
-						InsertTextFormat: ITFSnippet,
-					})
-				}
-				return items
+		for _, stmt := range doc.Stmts {
+			if imp, ok := stmt.(*ast.Import); ok && imp.Alias == nsName {
+				// Imported package — we don't have resolved components here,
+				// so return empty for now.
+				// TODO: resolve imported components for namespace completions
+				return nil
 			}
 		}
 	}
@@ -548,36 +459,32 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 	var items []CompletionItem
 
-	// Components from the package (excluding sngl.X overrides)
-	for _, c := range pkgDoc.Components {
-		if strings.Contains(c.Name, ".") {
-			continue // skip sngl.X overrides
+	for _, stmt := range pkgDoc.Stmts {
+		switch s := stmt.(type) {
+		case *ast.ComponentDecl:
+			if strings.Contains(s.Name, ".") {
+				continue // skip sngl.X overrides
+			}
+			items = append(items, CompletionItem{
+				Label:            s.Name,
+				Kind:             CIKClass,
+				Detail:           nsName + " component",
+				InsertText:       s.Name + "($1)",
+				InsertTextFormat: ITFSnippet,
+			})
+		case *ast.StructDef:
+			items = append(items, CompletionItem{
+				Label:  s.Name,
+				Kind:   CIKStruct,
+				Detail: nsName + " struct",
+			})
+		case *ast.EnumDef:
+			items = append(items, CompletionItem{
+				Label:  s.Name,
+				Kind:   CIKEnum,
+				Detail: nsName + " enum",
+			})
 		}
-		items = append(items, CompletionItem{
-			Label:            c.Name,
-			Kind:             CIKClass,
-			Detail:           nsName + " component",
-			InsertText:       c.Name + "($1)",
-			InsertTextFormat: ITFSnippet,
-		})
-	}
-
-	// Structs
-	for _, s := range pkgDoc.Structs {
-		items = append(items, CompletionItem{
-			Label:  s.Name,
-			Kind:   CIKStruct,
-			Detail: nsName + " struct",
-		})
-	}
-
-	// Enums
-	for _, e := range pkgDoc.Enums {
-		items = append(items, CompletionItem{
-			Label:  e.Name,
-			Kind:   CIKEnum,
-			Detail: nsName + " enum",
-		})
 	}
 
 	return items

@@ -16,7 +16,7 @@ type CommonAnalysis struct {
 	ExternFuncs    map[string]bool            // extern func names
 	ExternVars     map[string]bool            // extern var names
 	StructFields   map[string][]string        // struct name → ordered field names
-	Components     []*ast.Component
+	Components     []*ast.ComponentDecl
 	Structs        []*ast.StructDef
 	Enums          []*ast.EnumDef
 	Timers         []TimerInfo
@@ -31,7 +31,7 @@ type TimerInfo struct {
 	Index      int
 	IntervalMs int
 	ActiveVar  string
-	Body       ast.Node
+	Body       *ast.StmtBlock
 }
 
 // AnalyzeCommon extracts CommonAnalysis from a Document. Platforms call this
@@ -46,84 +46,90 @@ func AnalyzeCommon(doc *ast.Document) *CommonAnalysis {
 		ExternVars:     make(map[string]bool),
 		StructFields:   make(map[string][]string),
 		Helpers:        make(map[string]bool),
+		UsedComponents: make(map[string]bool),
 	}
 
-	// Data fields
-	for _, d := range doc.Data {
-		a.ModelFields[d.Name] = true
-		if d.Extern || d.IsFunc {
-			if d.IsFunc {
-				a.ExternFuncs[d.Name] = true
-			} else {
-				a.ExternVars[d.Name] = true
+	for _, stmt := range doc.Stmts {
+		switch s := stmt.(type) {
+		case *ast.VarDecl:
+			for _, spec := range s.Specs {
+				for _, name := range spec.Names {
+					a.ModelFields[name] = true
+				}
 			}
-		}
-	}
-
-	// Computed functions (zero-arg expression-form, non-stdlib)
-	for _, fn := range doc.Functions {
-		a.FuncNames[fn.Name] = true
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			a.ModelFields[fn.Name] = true
-			a.ComputedFields[fn.Name] = true
+		case *ast.FuncDef:
+			a.FuncNames[s.Name] = true
+			if s.Body != nil && len(s.Params.Params) == 0 {
+				a.ModelFields[s.Name] = true
+				a.ComputedFields[s.Name] = true
+			}
+		case *ast.StructDef:
+			fields := make([]string, len(s.Fields))
+			for i, f := range s.Fields {
+				fields[i] = f.Name
+			}
+			a.StructFields[s.Name] = fields
+			a.Structs = append(a.Structs, s)
+		case *ast.EnumDef:
+			a.Enums = append(a.Enums, s)
+		case *ast.ComponentDecl:
+			a.Components = append(a.Components, s)
 		}
 	}
 
 	// Computed dependency map
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			a.ComputedDeps[fn.Name] = ExtractDeps(fn.Body.SNGL, a.ModelFields)
+	for _, stmt := range doc.Stmts {
+		if fn, ok := stmt.(*ast.FuncDef); ok {
+			if fn.Body != nil && len(fn.Params.Params) == 0 {
+				a.ComputedDeps[fn.Name] = ExtractDeps(fn.Body, a.ModelFields)
+			}
 		}
 	}
-
-	// Struct fields
-	for _, sd := range doc.Structs {
-		fields := make([]string, len(sd.Fields))
-		for i, f := range sd.Fields {
-			fields[i] = f.Name
-		}
-		a.StructFields[sd.Name] = fields
-	}
-
-	// Timers
-	for i, t := range doc.Timers {
-		a.Timers = append(a.Timers, TimerInfo{
-			Index:      i,
-			IntervalMs: IntervalToMs(t.Interval),
-			ActiveVar:  t.Active,
-			Body:       t.Body,
-		})
-	}
-
-	// Components, structs, enums
-	a.Components = doc.AllComponents()
-	a.Structs = doc.Structs
-	a.Enums = doc.Enums
-
-	// Toast detection
-	a.NeedsToast = ASTUsesAlert(doc)
 
 	// Walk visual tree to collect used primitive component names.
-	a.UsedComponents = make(map[string]bool)
-	if doc.App != nil {
-		collectUsedComponents(doc.App.Children, a.UsedComponents)
-	}
-	for _, comp := range a.Components {
-		collectUsedComponents(comp.Body, a.UsedComponents)
+	for _, stmt := range doc.Stmts {
+		if comp, ok := stmt.(*ast.ComponentDecl); ok {
+			collectUsedStmts(comp.Body.Stmts, a.UsedComponents)
+		}
 	}
 
 	return a
 }
 
-// collectUsedComponents walks visual nodes and records component names.
-func collectUsedComponents(nodes []*ast.VisualNode, used map[string]bool) {
-	for _, vn := range nodes {
-		used[vn.Component] = true
-		collectUsedComponents(vn.Children, used)
-		if vn.For != nil {
-			collectUsedComponents(vn.For.Else, used)
+// collectUsedStmts walks statements collecting used visual node names.
+func collectUsedStmts(stmts []ast.Stmt, used map[string]bool) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			if name := VisualNodeName(n); name != "" {
+				used[name] = true
+			}
+			collectUsedStmts(n.Block.Stmts, used)
+		case *ast.IfStmt:
+			collectUsedStmts(n.Body.Stmts, used)
+			collectUsedStmts(n.Else.Stmts, used)
+		case *ast.ForStmt:
+			collectUsedStmts(n.Body.Stmts, used)
+			collectUsedStmts(n.Else.Stmts, used)
 		}
 	}
+}
+
+// VisualNodeName extracts the component/element name from a VisualNode's Target.
+func VisualNodeName(vn *ast.VisualNode) string {
+	if vn.Target == nil {
+		return ""
+	}
+	switch t := vn.Target.(type) {
+	case *ast.IdentExpr:
+		return t.Name
+	case *ast.SelectExpr:
+		// pkg.Component
+		if ident, ok := t.Operand.(*ast.IdentExpr); ok {
+			return ident.Name + "." + t.Field
+		}
+	}
+	return ""
 }
 
 // DepTracker returns a new DepTracker initialized from this analysis.
@@ -155,11 +161,8 @@ func (a *CommonAnalysis) AddStyle(css string) {
 }
 
 // PruneUnusedComputeds removes computed fields that are not referenced by
-// any of the given used field sets. A computed is "used" if it appears in
-// usedFields directly, or if another used computed transitively depends on it.
-// This mutates the CommonAnalysis in place.
+// any of the given used field sets.
 func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
-	// Build the set of transitively needed computeds.
 	needed := make(map[string]bool)
 	var mark func(string)
 	mark = func(name string) {
@@ -167,7 +170,6 @@ func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 			return
 		}
 		needed[name] = true
-		// If this computed depends on other computeds, mark them too.
 		for dep := range a.ComputedDeps[name] {
 			if a.ComputedFields[dep] {
 				mark(dep)
@@ -179,8 +181,6 @@ func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 			mark(name)
 		}
 	}
-
-	// Remove unused computeds.
 	for name := range a.ComputedFields {
 		if !needed[name] {
 			delete(a.ComputedFields, name)
@@ -190,24 +190,18 @@ func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 	}
 }
 
-// IntervalToMs converts a duration expression (e.g., 500ms, 1s, 2m) to
-// milliseconds. Returns 0 if the expression is not a recognized unit literal.
+// IntervalToMs converts a duration expression to milliseconds.
 func IntervalToMs(expr ast.Expr) int {
-	if expr.SNGL == nil {
+	if expr == nil {
 		return 0
 	}
-	lit, ok := expr.SNGL.(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralUnit {
-		return 0
-	}
-	ul, ok := lit.Value.(ast.UnitLiteral)
+	ul, ok := expr.(*ast.UnitLiteral)
 	if !ok {
 		return 0
 	}
-	num, err := ast.ParseUnitNumber(ul.Number)
-	if err != nil {
-		return 0
-	}
+	// Parse the numeric part from the raw literal
+	raw := ul.LiteralExpr.Raw
+	num := parseNumber(raw)
 	switch ul.Suffix {
 	case "ms":
 		return int(num)
@@ -221,53 +215,71 @@ func IntervalToMs(expr ast.Expr) int {
 	return int(num)
 }
 
-// ASTUsesAlert reports whether a document uses Alert.toast/info/warn/error
-// calls in event handlers, timers, or functions.
+func parseNumber(raw string) float64 {
+	var n float64
+	for _, c := range raw {
+		if c >= '0' && c <= '9' {
+			n = n*10 + float64(c-'0')
+		} else if c == '.' {
+			// Simple float parsing
+			break
+		} else {
+			break
+		}
+	}
+	return n
+}
+
+// ASTUsesAlert reports whether a document uses Alert.toast/info/warn/error.
 func ASTUsesAlert(doc *ast.Document) bool {
-	if doc.App != nil {
-		if slices.ContainsFunc(doc.App.Children, nodeUsesAlert) {
+	for _, stmt := range doc.Stmts {
+		if stmtUsesAlert(stmt) {
 			return true
-		}
-	}
-	for _, t := range doc.Timers {
-		if exprNodeUsesAlert(t.Body) {
-			return true
-		}
-	}
-	for _, fn := range doc.Functions {
-		if fn.IsTest() {
-			continue
-		}
-		if fn.Block != nil {
-			if slices.ContainsFunc(fn.Block.Stmts, exprNodeUsesAlert) {
-				return true
-			}
 		}
 	}
 	return false
 }
 
-func nodeUsesAlert(vn *ast.VisualNode) bool {
-	for _, evt := range vn.Events {
-		if evt.Body.SNGL != nil && exprNodeUsesAlert(evt.Body.SNGL) {
-			return true
+func stmtUsesAlert(s ast.Stmt) bool {
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		for _, a := range n.Args.Args {
+			if eh, ok := a.(ast.EventHandler); ok {
+				for _, bs := range eh.Body.Stmts {
+					if stmtUsesAlert(bs) {
+						return true
+					}
+				}
+			}
 		}
-	}
-	return slices.ContainsFunc(vn.Children, nodeUsesAlert)
-}
-
-func exprNodeUsesAlert(n ast.Node) bool {
-	switch e := n.(type) {
-	case *ast.MethodExpr:
-		if ident, ok := e.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return true
-		}
-	case *ast.StmtBlock:
-		if slices.ContainsFunc(e.Stmts, exprNodeUsesAlert) {
-			return true
+		for _, bs := range n.Block.Stmts {
+			if stmtUsesAlert(bs) {
+				return true
+			}
 		}
 	case *ast.CallStmt:
-		return exprNodeUsesAlert(e.Call)
+		if n.Call != nil {
+			if sel, ok := n.Call.Func.(*ast.SelectExpr); ok {
+				if ident, ok := sel.Operand.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+					return true
+				}
+			}
+		}
+	case *ast.FuncDef:
+		if n.IsTest() {
+			return false
+		}
+		for _, bs := range n.Block.Stmts {
+			if stmtUsesAlert(bs) {
+				return true
+			}
+		}
+	case *ast.ComponentDecl:
+		for _, bs := range n.Body.Stmts {
+			if stmtUsesAlert(bs) {
+				return true
+			}
+		}
 	}
 	return false
 }

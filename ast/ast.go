@@ -8,8 +8,8 @@ import (
 // FileAsset records a file that needs to be copied to the output directory.
 type FileAsset struct {
 	SrcPath string // absolute source path
-	OutPath string // output path relative to output dir (e.g., "assets/style.css")
-	URL     string // URL path for use in HTML (e.g., "/assets/style.css")
+	OutPath string // output path relative to output dir
+	URL     string // URL path for use in HTML
 }
 
 // Pos records the source position of an AST node.
@@ -18,39 +18,14 @@ type Pos struct {
 	Column int // 1-based column number
 }
 
+func (p Pos) IsSet() bool   { return p != Pos{} }
+func (p Pos) IsValid() bool { return p.Line > 0 }
+
 func (p Pos) String() string {
 	if p.Line == 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
-}
-
-// IsValid reports whether the position has been set.
-func (p Pos) IsValid() bool { return p.Line > 0 }
-
-// TypeInfo holds resolved type information populated by the checker.
-type TypeInfo struct {
-	Type     string // SNGL type: "int", "float", "bool", "string", "dyn", struct name
-	IsList   bool   // true for list<T>
-	ElemType string // element type for lists
-
-	// Foreign type info (for go://, kt://, etc. imports)
-	NativePkg  string // import path: "go/ast"
-	NativeType string // qualified type: "ast.File"
-}
-
-type Output struct {
-	Pos      Pos
-	Lang     string            // "go"
-	Platform string            // "bubbletea"
-	Options  map[string]string // {"package": "main"}
-	LangLine int               // source line of the lang keyword (for one-liner detection)
-}
-
-// Decl is the interface for top-level and component-level declarations
-// that can appear in a Decls slice (including interleaved comments).
-type Decl interface {
-	DeclPos() Pos
 }
 
 // Comment is a source comment preserved for formatting.
@@ -61,249 +36,146 @@ type Comment struct {
 	Inline bool   // true for trailing same-line comments
 }
 
-// DeclPos implements the Decl interface for Comment.
-func (c *Comment) DeclPos() Pos { return c.Pos }
+// DisabledDecl wraps any statement prefixed with slashdash (/-).
+type DisabledDecl struct {
+	Pos   Pos
+	Inner Stmt
+}
 
+// Document is the top-level container for a .sngl file.
 type Document struct {
-	OutputDefaults     map[string]string // key=value from output(...) defaults
-	OutputLine         int               // source line of `output` keyword
-	Outputs            []*Output
-	Structs            []*StructDef
-	Enums              []*EnumDef
-	Imports            []*Import
-	Units              []*UnitDef
-	Consts             []*Const
-	Data               []*Data
-	Functions          []*FuncDef
-	Components         []*Component
-	ImportedComponents []*Component // populated by checker; qualified-name keyed
-	AbstractComponents []*Component // stdlib components with default bodies; populated by checker
-	Timers             []*Timer
-	Styles             []*StyleDecl
-	Windows            []*Window // top-level window declarations
-	App                *App
-	NativeImports      map[string]*NativeDecls // namespace → resolved native decls (populated by checker)
-	FileAssets         []FileAsset             // files to copy to output (populated by optimizer)
-	Comments           []Comment               // all comments, ordered by position
-	Decls              []Decl                  // ordered declarations including interleaved comments
+	Stmts []Stmt
 }
 
-// FindComponent looks up a component by name, searching local components first,
-// then imported components. For qualified names like "widgets.Counter", only
-// imported components are searched (by their unqualified name).
-func (d *Document) FindComponent(name string) *Component {
-	if ns, local, ok := strings.Cut(name, "."); ok {
-		_ = ns
-		for _, c := range d.ImportedComponents {
-			if c.Name == local {
-				return c
-			}
-		}
-		return nil
-	}
-	// User components take priority over abstract stdlib components
-	for _, c := range d.Components {
-		if c.Name == name {
-			return c
-		}
-	}
-	for _, c := range d.AbstractComponents {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+// --- Type declarations ---
+
+// EnumMember is a single value in an enum declaration.
+type EnumMember struct {
+	Pos   Pos
+	Name  string
+	Value Expr // nil for bare members
 }
 
-// AllComponents returns local, imported, and abstract components combined.
-func (d *Document) AllComponents() []*Component {
-	all := make([]*Component, 0, len(d.Components)+len(d.ImportedComponents)+len(d.AbstractComponents))
-	all = append(all, d.Components...)
-	all = append(all, d.ImportedComponents...)
-	all = append(all, d.AbstractComponents...)
-	return all
+// EnumDef declares an enum type. Name is empty for anonymous enum types.
+type EnumDef struct {
+	Pos         Pos
+	Name        string
+	Members     []EnumMember
+	IsMultiline bool
+}
+
+// StructDef declares a struct type. Name is empty for anonymous struct types.
+type StructDef struct {
+	Pos         Pos
+	Name        string
+	Fields      []*StructField
+	IsMultiline bool
+}
+
+// StructField is a field in a struct declaration.
+type StructField struct {
+	Pos     Pos
+	Name    string
+	Type    TypeExpr
+	Default Expr
 }
 
 // UnitDef declares a unit type with named suffixes.
+// Name is empty for anonymous unit types.
 type UnitDef struct {
-	Pos      Pos
-	Name     string        // "duration", "measurement"
-	Suffixes []*UnitSuffix // all suffixes in a single group
+	Pos         Pos
+	Name        string
+	Suffixes    []*UnitSuffix
+	IsMultiline bool
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.
-// A bare suffix (Factor == nil) is an independent base.
-// A suffix with a factor (e.g., rem = 16em) is related to another suffix.
 type UnitSuffix struct {
 	Pos    Pos
 	Name   string // "ms", "px"
-	Factor Node   // nil for bare suffixes, expression for related suffixes
+	Factor Expr   // nil for bare suffixes
 }
 
-// Const is an immutable named value.
-type Const struct {
-	Pos          Pos
-	Name         string
-	Init         Expr
-	Disabled     bool
-	Grouped      bool // parsed from const(...) grouped declaration
-	ExplicitType bool // true when a type was written between name and =
-}
+// --- Variables and constants ---
 
-type EnumDef struct {
-	Pos      Pos
-	Name     string
-	Values   []string
-	Disabled bool
-}
-
-type StructDef struct {
-	Pos      Pos
-	Name     string
-	Fields   []*StructField
-	Disabled bool
-}
-
-type StructField struct {
-	Pos      Pos
-	Name     string
-	Type     string // type hint: "string", "bool", "int", etc.
+// VarSpec is a single binding in a const or var declaration.
+type VarSpec struct {
+	Names    []string
+	Type     TypeExpr
 	Default  Expr
-	Resolved *TypeInfo // populated by checker
+	Handlers []EventHandler
 }
 
-type Import struct {
-	Pos       Pos
-	Path      string // import URI (right side of => if aliased)
-	Alias     string // explicit namespace alias (left side of =>), empty if none
-	Scheme    string // "go", "ts", "proto", "git", "" for directory imports
-	Namespace string // Alias if set, otherwise derived from path
-	Disabled  bool
+// ConstDecl declares one or more constants.
+type ConstDecl struct {
+	Pos
+	IsGrouped bool
+	Specs     []VarSpec
 }
 
-// NativeDecls holds SNGL-compatible declarations resolved from a native import.
-type NativeDecls struct {
-	Structs    []*StructDef
-	Enums      []*EnumDef
-	Data       []*Data // extern funcs and vars
-	ImportPath string  // e.g., "go/ast" for go:// imports
-}
-
-// Purity describes the side-effect level of a function.
-type Purity int
-
-const (
-	PurityUnknown  Purity = iota // not annotated
-	PurityPure                   // //sngl:pure — no side effects, deterministic, safe for compile-time evaluation
-	PurityReadonly               // //sngl:readonly — reads state but does not modify it
-	PurityMutates                // //sngl:mutates — modifies state
-)
-
-// DataEvent is an inline event handler on a var declaration.
-type DataEvent struct {
-	Kind    string // "change", "insert", "delete", "init"
-	Param   string // param name for @insert(x)/@delete(x); "" for @change/@init
-	Body    Node   // statement block
-	Pos     Pos    // position of @ token
-	EndLine int    // line of closing }
-}
-
-type Data struct {
-	Pos          Pos
-	Name         string
-	Init         Expr
-	Extern       bool        // set by importers (go://, file://); no longer a user-facing keyword
-	Purity       Purity      // function purity level (from //sngl: annotations)
-	IsFunc       bool        // TypeHint starts with "func"
-	ParamTypes   []string    // parsed func params (e.g., ["string", "int"])
-	ReturnType   string      // parsed func return type, "" for void
-	HiddenParam  string      // hidden first param type stripped from SNGL signature (e.g., "*http.Request", "context.Context")
-	Events       []DataEvent // @change, @insert, @delete, @init handlers
-	Disabled     bool
-	ExplicitType bool      // true when a type was written between name and =
-	Resolved     *TypeInfo // populated by checker
-}
-
-// VarDecl is the Decl representation of a var statement as written in source.
-// It holds the source structure for the formatter while the individual Data
-// entries are also stored flat in the parent's Data slice for the checker/codegen.
+// VarDecl declares one or more variables.
 type VarDecl struct {
+	Pos
+	IsGrouped bool
+	Specs     []VarSpec
+}
+
+// --- Imports ---
+
+// Import declares a module import, optionally aliased.
+type Import struct {
 	Pos   Pos
-	Block bool      // written as var(...)
-	Specs [][]*Data // each inner slice is one spec line (single or multi-name)
+	Path  string // import URI (right side of => if aliased)
+	Alias string // explicit alias (left side of =>), empty if none
 }
 
-func (v *VarDecl) DeclPos() Pos { return v.Pos }
+// --- Parameters ---
 
-type StyleDecl struct {
-	Pos       Pos
-	Name      string
-	Props     map[string]Expr
-	PropOrder []string // insertion order of property names from source
-}
-
-type PropDecl struct {
-	Pos           Pos
+// Param is a parameter in a function, component, or lambda definition.
+type Param struct {
+	Pos
 	Name          string
-	TypeHint      string   // "string", "bool", "int", "float", "dyn"
-	Enum          []string // optional enum constraints
-	Bidirectional bool     // :name — desugars to prop + change event
+	Type          TypeExpr
+	Default       Expr
+	Bidirectional bool // :name — component binding param
 }
 
-type EventDecl struct {
-	Pos         Pos
-	Name        string
-	PayloadType string // "ClickEvent", "InputEvent", etc.
+// ParamList is an ordered list of parameters.
+type ParamList struct {
+	Pos
+	IsMultiline bool
+	Params      []Param
 }
 
-// FuncParam is a parameter in a function definition.
-type FuncParam struct {
-	Pos      Pos
-	Name     string
-	Type     string    // type hint: "int", "string", "User", etc.
-	Resolved *TypeInfo // populated by checker
-}
+// --- Functions ---
 
 // FuncDef declares a named function.
 // Exactly one of Body or Block is set.
 type FuncDef struct {
 	Pos        Pos
-	EndLine    int // line of closing } for block-form funcs (set by parser)
-	BraceCol   int // column of opening { for block-form funcs (set by parser, for comment filtering)
 	Name       string
 	TypeParams []string // generic type parameters, e.g., ["T", "U"]
-	Params     []*FuncParam
-	ReturnType string     // "" for void/action functions
-	Body       Expr       // single-expression form (= expr)
-	Block      *FuncBlock // block form ({ ... }), nil for expression form
-	IsStdlib   bool       // true for stdlib-provided functions (codegens use native implementations)
-	Disabled   bool
-	HasParens  bool   // true when () was explicit in source (for zero-param expression funcs)
-	Purity     Purity // populated by checker: pure, readonly, or mutates
+	Params     ParamList
+	ReturnType TypeExpr  // nil for void/action functions
+	Body       Expr      // single-expression form (=> expr)
+	Block      StmtBlock // block form ({ ... })
 }
 
-// IsTest returns true if this function is a test function (name starts with "test").
+// IsTest returns true if this function is a test function.
 func (f *FuncDef) IsTest() bool { return strings.HasPrefix(f.Name, "test") }
 
-// TestFuncs returns all document-level functions that are test functions.
+// TestFuncs returns all document-level test functions.
 func (d *Document) TestFuncs() []*FuncDef {
 	var out []*FuncDef
-	for _, fn := range d.Functions {
-		if fn.IsTest() {
+	for _, s := range d.Stmts {
+		if fn, ok := s.(*FuncDef); ok && fn.IsTest() {
 			out = append(out, fn)
 		}
 	}
 	return out
 }
 
-// FuncBlock is the body of a block-form function.
-type FuncBlock struct {
-	Stmts  []Node // VarStmt, AssignStmt, ToggleStmt, EmitStmt, CallStmt, etc.
-	Return Node   // return expression (nil for void functions)
-}
-
-// SplitMethodName splits a dotted function name into type and method parts.
-// Returns ("int", "sqrt", true) for "int.sqrt", or ("", "add", false) for plain names.
+// SplitMethodName splits "int.sqrt" into ("int", "sqrt", true).
 func SplitMethodName(name string) (typeName, method string, ok bool) {
 	if before, after, ok0 := strings.Cut(name, "."); ok0 {
 		return before, after, true
@@ -311,154 +183,91 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 	return "", name, false
 }
 
-type Component struct {
-	Pos            Pos
-	EndLine        int // line of closing }, for comment filtering
-	BraceCol       int // column of opening {, for comment filtering
-	BraceLine      int // line of opening {, for comment filtering
-	Name           string
-	Disabled       bool
-	Params         []*Param                 // params/props declared in ()
-	Consts         []*Const                 // const declarations
-	Data           []*Data                  // var declarations (component-scoped state)
-	Functions      []*FuncDef               // func declarations
-	Timers         []*Timer                 // timer declarations
-	EventDecls     []*EventDecl             // @event declarations in ()
-	ChildrenType   string                   // return-type position: "", "component", "list<component>", "option<component>", etc.
-	Body           []*VisualNode            // default body (or only body for user components)
-	PlatformBodies map[string][]*VisualNode // platform-conditional bodies: platform name → visual nodes
-	Windows        []*Window                // window declarations (only used in component main, promoted to App)
-	Decls          []Decl                   // ordered declarations including interleaved comments
+// --- Components ---
+
+// ComponentDecl declares a component with props and a body.
+type ComponentDecl struct {
+	Pos          Pos
+	Name         string
+	Props        PropList
+	ChildrenType TypeExpr
+	Body         StmtBlock
 }
 
-type Param struct {
-	Pos           Pos
-	Name          string
-	Default       Expr
-	Required      bool
-	Disabled      bool
-	Bidirectional bool      // :name — desugars to param + change event
-	Enum          []string  // optional enum constraints (e.g., enum(text, password, number))
-	Resolved      *TypeInfo // populated by checker
+// PropList is the parameter list of a component declaration.
+type PropList struct {
+	Pos
+	IsMultiline bool
+	Props       []ParamOrEventDecl
 }
 
-type App struct {
-	Pos      Pos
-	Children []*VisualNode // implicit single window (backward compat)
-	Windows  []*Window     // explicit window declarations
+// ParamOrEventDecl is a component parameter or event declaration.
+type ParamOrEventDecl interface {
+	paramOrEventDecl()
 }
 
-// EffectiveWindows returns the window list. If no explicit windows are
-// declared, a synthetic single window wrapping Children is returned.
-func (a *App) EffectiveWindows() []*Window {
-	if a == nil {
-		return nil
-	}
-	if len(a.Windows) > 0 {
-		return a.Windows
-	}
-	if len(a.Children) > 0 {
-		return []*Window{{Name: "main", Children: a.Children}}
-	}
-	return nil
+func (Param) paramOrEventDecl()     {}
+func (EventDecl) paramOrEventDecl() {}
+
+// EventDecl declares an event on a component: @click, @change Type.
+type EventDecl struct {
+	Pos  Pos
+	Name string
+	Type TypeExpr // optional type annotation
 }
 
-// Window represents a named window declaration.
-type Window struct {
-	Pos       Pos
-	EndLine   int
-	BraceCol  int
-	BraceLine int
-	Name      string          // "home", "settings", or "" for for-generated
-	Props     map[string]Expr // title, icon, etc.
-	PropOrder []string
-	HasProps  bool
-	// Own state (for top-level windows)
-	Consts    []*Const
-	Data      []*Data
-	Functions []*FuncDef
-	Timers    []*Timer
-	// Visual tree
-	Children []*VisualNode
-	// For const-expression loops
-	For      *ForClause
-	Disabled bool
-	Decls    []Decl // ordered declarations including interleaved comments
-}
-
-// EventHandler is an event handler on a visual node (e.g., @click(e) { ... }).
+// EventHandler is an event handler: @name[(params)] { body }.
 type EventHandler struct {
-	Param     string // explicit param name ("_" = discard)
-	Body      Expr   // statement block (Expr wrapping SNGL node)
-	Multiline bool   // true when { } spans multiple lines in source
+	Pos
+	Name   string
+	Params ParamList
+	Body   StmtBlock
 }
 
-// Timer declares a recurring interval that executes statements while active.
-type Timer struct {
-	Pos      Pos
-	Interval Expr   // duration literal (e.g., 100ms, 1s)
-	Active   string // name of bool var controlling start/stop
-	Body     Node   // StmtBlock of mutation statements
-	Disabled bool
-}
+// --- Visual nodes ---
 
+// VisualNode is a visual element instantiation with optional args and body.
 type VisualNode struct {
-	Pos            Pos
-	EndLine        int // line of closing } (set by parser)
-	BraceCol       int // column of opening { (set by parser, for comment filtering)
-	Component      string
-	HasBody        bool // true when { } was present in source (even if empty)
-	HasProps       bool // true when () was present in source (even if no props)
-	MultilineProps bool // true when prop list spans multiple lines
-	Disabled       bool
-	ID             string // element ID from #id syntax (empty = no ID)
-	Key            *Expr
-	Class          *Expr
-	If             *Expr
-	For            *ForClause
-	Ref            *Expr
-	Props          map[string]Expr
-	Events         map[string]EventHandler
-	Bindings       map[string]Expr // :name=var — bidirectional binding (desugars to prop + event)
-	PropOrder      []string        // insertion order of props/events/bindings (prefix: @=event, :=binding)
-	Children       []*VisualNode
+	Pos
+	Target TargetExpr
+	Block  StmtBlock
+	Args   ArgList
+	ID     string // element ID from #id syntax
+	Ref    *Expr
 }
 
-// DeclPos implementations for types that can appear in Decls slices.
-func (s *StructDef) DeclPos() Pos   { return s.Pos }
-func (e *EnumDef) DeclPos() Pos     { return e.Pos }
-func (u *UnitDef) DeclPos() Pos     { return u.Pos }
-func (s *StyleDecl) DeclPos() Pos   { return s.Pos }
-func (c *Const) DeclPos() Pos       { return c.Pos }
-func (d *Data) DeclPos() Pos        { return d.Pos }
-func (f *FuncDef) DeclPos() Pos     { return f.Pos }
-func (t *Timer) DeclPos() Pos       { return t.Pos }
-func (i *Import) DeclPos() Pos      { return i.Pos }
-func (o *Output) DeclPos() Pos      { return o.Pos }
-func (c *Component) DeclPos() Pos   { return c.Pos }
-func (vn *VisualNode) DeclPos() Pos { return vn.Pos }
-func (w *Window) DeclPos() Pos      { return w.Pos }
-func (a *App) DeclPos() Pos         { return a.Pos }
+// --- Control flow ---
 
-// StyleFields extracts style attributes from Props["style"] if it exists and is a StructExpr.
-// Returns nil if no style prop or if it's not an anonymous struct literal.
-func (vn *VisualNode) StyleFields() map[string]Expr {
-	if vn.Props == nil {
-		return nil
-	}
-	styleProp, ok := vn.Props["style"]
-	if !ok {
-		return nil
-	}
-	se, ok := styleProp.SNGL.(*StructExpr)
-	if !ok || se == nil {
-		return nil
-	}
-	m := make(map[string]Expr, len(se.Fields))
-	for _, f := range se.Fields {
-		if !f.Spread {
-			m[f.Name] = Expr{SNGL: f.Value}
-		}
-	}
-	return m
+// IfStmt: if cond { body } [else { alt }].
+type IfStmt struct {
+	Pos  Pos
+	Cond Expr
+	Body StmtBlock
+	Else StmtBlock // zero value if no else
 }
+
+// ForStmt: for key [, value] = iter { body } [else { alt }].
+type ForStmt struct {
+	Pos   Pos
+	Key   string // iterator variable
+	Value string // optional second variable (empty if single-var form)
+	Iter  Expr
+	Body  StmtBlock
+	Else  StmtBlock // zero value if no else
+}
+
+// --- StmtPos implementations ---
+
+func (s *StructDef) StmtPos() *Pos     { return &s.Pos }
+func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
+func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }
+func (c *ConstDecl) StmtPos() *Pos     { return &c.Pos }
+func (c *VarDecl) StmtPos() *Pos       { return &c.Pos }
+func (f *FuncDef) StmtPos() *Pos       { return &f.Pos }
+func (i *Import) StmtPos() *Pos        { return &i.Pos }
+func (c *ComponentDecl) StmtPos() *Pos { return &c.Pos }
+func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
+func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
+func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
+func (c *Comment) StmtPos() *Pos       { return &c.Pos }
+func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }

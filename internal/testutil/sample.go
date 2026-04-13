@@ -233,7 +233,7 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 							snippet = UnwrapComponent(formatted, prelude)
 						default:
 							if prelude != "" {
-								preDoc, perr := parser.Parse("prelude", strings.NewReader(prelude))
+								preDoc, perr := parser.Parse("prelude", []byte(prelude))
 								if perr == nil {
 									fmtPre := parser.Format(preDoc)
 									formatted = strings.TrimPrefix(formatted, fmtPre)

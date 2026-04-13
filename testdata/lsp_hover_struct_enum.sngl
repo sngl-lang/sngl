@@ -6,6 +6,6 @@ struct Point {
 enum Direction { up, down, left, right }
 
 component main {
-    var dir Direction = "up" //@ hover("Direction", "enum Direction")
-    text(value=dir)          //@ hover("Point", "struct Point")
+    var dir Direction = Direction.up //@ hover("Direction", "enum Direction")
+    //@ hover("Point", "struct Point")
 }

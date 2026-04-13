@@ -22,7 +22,7 @@ func literalToGo(expr ast.Expr) string { return golang.LiteralToGo(expr) }
 func externFuncGoType(paramTypes []string, returnType string) string {
 	return golang.ExternFuncGoType(paramTypes, returnType)
 }
-func snglNodeGoType(e ast.Node) string                    { return golang.SnglNodeGoType(e) }
+func snglNodeGoType(e ast.Expr) string                    { return golang.SnglNodeGoType(e) }
 func zeroValueGo(hint string) string                      { return golang.ZeroValueGo(hint) }
 func needsTimeType(hint string) bool                      { return golang.NeedsTimeType(hint) }
 func exprToGoValue(expr ast.Expr, ec *exprContext) string { return golang.ExprToGoValue(expr, ec) }
@@ -32,20 +32,20 @@ func exprToGoStringList(expr ast.Expr, ec *exprContext) string {
 }
 
 // fyneAlertFunc translates Alert calls for Fyne's toast method.
-func fyneAlertFunc(ec *golang.GoContext, n *ast.MethodExpr) []string {
-	switch n.Method {
+func fyneAlertFunc(ec *golang.GoContext, method string, args []ast.Expr) []string {
+	switch method {
 	case "toast":
-		msg := ec.TranslateExpr(n.Args[0])
+		msg := ec.TranslateExpr(args[0])
 		variant := `"info"`
-		if len(n.Args) > 1 {
-			variant = ec.TranslateExpr(n.Args[1])
+		if len(args) > 1 {
+			variant = ec.TranslateExpr(args[1])
 		}
 		return []string{fmt.Sprintf("m.showToast(%s, %s)", msg, variant)}
 	case "info", "warn", "error":
-		msg := ec.TranslateExpr(n.Args[0])
-		return []string{fmt.Sprintf("m.showToast(%s, %q)", msg, n.Method)}
+		msg := ec.TranslateExpr(args[0])
+		return []string{fmt.Sprintf("m.showToast(%s, %q)", msg, method)}
 	case "confirm":
 		return []string{"// Alert.confirm not supported in Fyne"}
 	}
-	return []string{ec.TranslateExpr(n)}
+	return []string{"// unsupported Alert." + method}
 }

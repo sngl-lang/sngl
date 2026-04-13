@@ -1,3 +1,6 @@
-component main {
-    text(selectable="yes") // ERROR(check) "expected bool"
+var x int = "hello" // ERROR(check) "cannot initialize int with string"
+
+func foo() {
+    var y int
+    y = "hello" // ERROR(check) "cannot assign string to int"
 }
