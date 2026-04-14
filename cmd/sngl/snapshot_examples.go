@@ -101,12 +101,11 @@ func snapshotExamplesDir(dir string, platforms []string, width, height int, recu
 }
 
 func snapshotExamplesFile(path string, platforms []string, width, height int, force bool) error {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	doc, err := parser.Parse(path, f)
-	f.Close()
+	doc, err := parser.Parse(path, data)
 	if err != nil {
 		return err
 	}

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -91,16 +90,17 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		slog.Info("merge", "dir", dir, "duration", time.Since(start))
 
 		start = time.Now()
-		if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+		pkg, err := checkDoc(doc, dir, true)
+		if err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
 		slog.Info("check", "dir", dir, "duration", time.Since(start))
 
-		if err := validateOutputs(doc); err != nil {
+		if err := validateOutputs(pkg); err != nil {
 			return err
 		}
 
-		targets := resolveTargets(doc, cliLang, cliPlat, cliOpts)
+		targets := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
 		if len(targets) == 0 {
 			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}
@@ -116,9 +116,6 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			}
 
 			targetDoc := doc
-			if len(targets) > 1 {
-				targetDoc = doc.Clone()
-			}
 			start = time.Now()
 			if err := optimize.Optimize(targetDoc, optimize.Config{
 				Platform: target.Platform,
@@ -139,25 +136,17 @@ func runCompile(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func resolveTargets(doc *ast.Document, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
-	opts := optsFromDefaults(doc.OutputDefaults)
+func resolveTargets(pkg *checker.Package, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
 	if cliLang != "" && cliPlat != "" {
-		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Opts: opts, Options: cliOpts}}
+		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Options: cliOpts}}
 	}
 	var targets []outputTarget
-	for _, o := range doc.Outputs {
+	for _, o := range pkg.Outputs {
 		perTarget := make(map[string]string)
 		maps.Copy(perTarget, o.Options)
-		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Opts: opts, Options: perTarget})
+		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: perTarget})
 	}
 	return targets
-}
-
-func optsFromDefaults(defaults map[string]string) codegen.Opts {
-	return codegen.Opts{
-		Name: defaults["name"],
-		Icon: defaults["icon"],
-	}
 }
 
 func generateTarget(filename string, doc *ast.Document, target outputTarget, outDir string, q bool) error {

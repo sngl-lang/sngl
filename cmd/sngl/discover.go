@@ -52,7 +52,11 @@ func discoverFiles(args []string) ([]string, error) {
 
 // parseSNGL parses a .sngl file.
 func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
-	return parser.Parse(filename, r)
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return parser.Parse(filename, data)
 }
 
 func isSNGLFile(path string) bool {
@@ -128,33 +132,13 @@ func mergeDir(doc *ast.Document, filename string) *ast.Document {
 
 // mergeInto merges definitions from src into dst.
 func mergeInto(dst, src *ast.Document) {
-	dst.Components = append(dst.Components, src.Components...)
-	dst.Structs = append(dst.Structs, src.Structs...)
-	dst.Enums = append(dst.Enums, src.Enums...)
-	// Merge non-test functions only; test functions belong to their source file.
-	for _, fn := range src.Functions {
-		if !fn.IsTest() {
-			dst.Functions = append(dst.Functions, fn)
-		}
-	}
-	dst.Units = append(dst.Units, src.Units...)
-	dst.Styles = append(dst.Styles, src.Styles...)
-	dst.Timers = append(dst.Timers, src.Timers...)
-	dst.Imports = append(dst.Imports, src.Imports...)
-	dst.Consts = append(dst.Consts, src.Consts...)
-	dst.Data = append(dst.Data, src.Data...)
-	if src.App != nil && dst.App == nil {
-		dst.App = src.App
-	}
-	if len(src.Outputs) > 0 && len(dst.Outputs) == 0 {
-		dst.Outputs = src.Outputs
-	}
+	dst.Stmts = append(dst.Stmts, src.Stmts...)
 }
 
 // validateOutputs checks that output declarations reference valid lang/platform
 // pairs and that the platform supports the language.
-func validateOutputs(doc *ast.Document) error {
-	for _, out := range doc.Outputs {
+func validateOutputs(pkg *checker.Package) error {
+	for _, out := range pkg.Outputs {
 		lang := codegen.LookupLang(out.Lang)
 		if lang == nil {
 			return fmt.Errorf("%s: unknown language %q (available: %v)", out.Pos, out.Lang, codegen.Langs())
@@ -170,24 +154,17 @@ func validateOutputs(doc *ast.Document) error {
 	return nil
 }
 
-// defaultSchemeResolver returns a SchemeResolver that delegates to registered
-// codegen scheme importers.
-func defaultSchemeResolver() checker.SchemeResolver {
-	return func(scheme, uri, dir string) (*ast.NativeDecls, error) {
-		imp := codegen.LookupScheme(scheme)
-		if imp == nil {
-			return nil, fmt.Errorf("unknown import scheme %q", scheme)
+// checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
+func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, error) {
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS:     os.DirFS(dir),
+		Dir:    dir,
+		IsMain: isMain,
+	})
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			return pkg, d
 		}
-		return imp.Resolve(uri, dir)
 	}
-}
-
-func defaultFSSchemeResolver() checker.FSSchemeResolver {
-	return func(scheme, uri, dir string) (fs.FS, error) {
-		imp := codegen.LookupFSScheme(scheme)
-		if imp == nil {
-			return nil, nil
-		}
-		return imp.ResolveFS(uri, dir)
-	}
+	return pkg, nil
 }

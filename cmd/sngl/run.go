@@ -8,10 +8,8 @@ import (
 	"strings"
 	"time"
 
-	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"github.com/spf13/cobra"
 )
@@ -85,17 +83,18 @@ func runRun(cmd *cobra.Command, args []string) error {
 	slog.Info("parse", "file", file, "duration", time.Since(start))
 
 	start = time.Now()
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+	pkg, err := checkDoc(doc, dir, true)
+	if err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
-	if err := validateOutputs(doc); err != nil {
+	if err := validateOutputs(pkg); err != nil {
 		return err
 	}
 
 	// Resolve target
-	targets := resolveTargets(doc, cliLang, cliPlat, cliOpts)
+	targets := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
 	if len(targets) == 0 {
 		return fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
 	}

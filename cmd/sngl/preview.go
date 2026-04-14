@@ -65,7 +65,7 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	schemas, styleProps, _, _, _, _, err := checker.LoadStdlib()
+	schemas, styleProps, err := checker.LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("loading stdlib: %w", err)
 	}
@@ -125,7 +125,8 @@ func (s *previewServer) recompile() error {
 		return err
 	}
 
-	if err := checker.Check(doc, os.DirFS(s.sourceDir), s.sourceDir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
+	pkg, err := checkDoc(doc, s.sourceDir, true)
+	if err != nil {
 		return err
 	}
 
@@ -133,9 +134,9 @@ func (s *previewServer) recompile() error {
 
 	// Resolve active target if not set
 	if s.activeLang == "" || s.activePlat == "" {
-		if len(doc.Outputs) > 0 {
-			s.activeLang = doc.Outputs[0].Lang
-			s.activePlat = doc.Outputs[0].Platform
+		if pkg != nil && len(pkg.Outputs) > 0 {
+			s.activeLang = pkg.Outputs[0].Lang
+			s.activePlat = pkg.Outputs[0].Platform
 		} else {
 			s.activeLang = "js"
 			s.activePlat = "html"
@@ -285,20 +286,9 @@ func (s *previewServer) handleTargets(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{}
 	var targets []target
 
-	// From document outputs
+	// Active target from checker (outputs are resolved during check).
 	if doc != nil {
-		for _, o := range doc.Outputs {
-			key := o.Platform + "/" + o.Lang
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			targets = append(targets, target{
-				Platform: o.Platform,
-				Lang:     o.Lang,
-				Active:   o.Platform == activePlat && o.Lang == activeLang,
-			})
-		}
+		_ = doc // outputs are resolved during check; fallback below covers all platforms
 	}
 
 	// From registry
@@ -381,10 +371,11 @@ type eventJSON struct {
 
 func exprToPropJSON(e ast.Expr, typeName string, enum []string) propJSON {
 	p := propJSON{Set: true, Type: typeName, Enum: enum}
-	if e.SNGL != nil {
-		p.Expr = parser.FormatNode(e.SNGL)
-	} else {
-		p.Literal = e.Literal
+	switch v := e.(type) {
+	case *ast.LiteralExpr:
+		p.Literal = v.Raw
+	default:
+		p.Expr = parser.FormatExpr(e)
 	}
 	return p
 }
@@ -416,29 +407,24 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if doc != nil {
-		for _, d := range doc.Data {
-			dj := dataJSON{Name: d.Name, IsFunc: d.IsFunc}
-			if d.Init.SNGL != nil {
-				dj.Init = parser.FormatNode(d.Init.SNGL)
-			} else if d.Init.Literal != nil {
-				dj.Init = fmt.Sprintf("%v", d.Init.Literal)
-			}
-			if s.runtimeState != nil {
-				if v, ok := s.runtimeState[d.Name]; ok {
-					dj.Value = v
+		// Extract data and computed declarations from v2 AST.
+		for _, stmt := range doc.Stmts {
+			switch s := stmt.(type) {
+			case *ast.VarDecl:
+				for _, spec := range s.Specs {
+					for _, name := range spec.Names {
+						dj := dataJSON{Name: name}
+						if spec.Default != nil {
+							dj.Init = parser.FormatExpr(spec.Default)
+						}
+						resp.Data = append(resp.Data, dj)
+					}
 				}
-			}
-			resp.Data = append(resp.Data, dj)
-		}
-		for _, fn := range doc.Functions {
-			if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-				cj := computedJSON{Name: fn.Name}
-				if fn.Body.SNGL != nil {
-					cj.Expr = parser.FormatNode(fn.Body.SNGL)
-				} else if fn.Body.Literal != nil {
-					cj.Expr = fmt.Sprintf("%v", fn.Body.Literal)
+			case *ast.FuncDef:
+				if s.Body != nil && len(s.Params.Params) == 0 {
+					cj := computedJSON{Name: s.Name, Expr: parser.FormatExpr(s.Body)}
+					resp.Computed = append(resp.Computed, cj)
 				}
-				resp.Computed = append(resp.Computed, cj)
 			}
 		}
 	}
@@ -473,35 +459,29 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 	doc := s.doc
 	s.mu.RUnlock()
 
-	if doc == nil || doc.App == nil {
+	if doc == nil {
 		http.Error(w, "no document", http.StatusNotFound)
 		return
 	}
 
-	vn := findNode(doc.App.Children, line, col)
-	if vn == nil {
-		// Also search component bodies
-		for _, comp := range doc.Components {
-			vn = findNode(comp.Body, line, col)
-			if vn != nil {
-				break
-			}
-		}
-	}
+	// Find visual node at position in v2 AST.
+	vn := findNodeInDoc(doc, line, col)
 	if vn == nil {
 		http.Error(w, "node not found", http.StatusNotFound)
 		return
 	}
 
+	compName := vnComponentName(vn)
+
 	resp := nodeResponse{
-		Component: vn.Component,
+		Component: compName,
 		Pos:       nodePos{Line: vn.Pos.Line, Col: vn.Pos.Column},
 		Props:     make(map[string]propJSON),
 		Styles:    make(map[string]propJSON),
 	}
 
 	// Look up the component schema for all possible props/events
-	schema := s.schemas[vn.Component]
+	schema := s.schemas[compName]
 
 	// Add all schema props (unset ones first, then overwrite with set ones)
 	if schema != nil {
@@ -512,17 +492,21 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Overwrite with actually-set props
-	for k, v := range vn.Props {
+	// Overwrite with actually-set props from Args
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name == "" {
+			continue
+		}
 		typeName := ""
 		var enum []string
 		if schema != nil {
-			if ps, ok := schema.Props[k]; ok {
+			if ps, ok := schema.Props[arg.Name]; ok {
 				typeName = typeToString(ps.Type)
 				enum = ps.Enum
 			}
 		}
-		resp.Props[k] = exprToPropJSON(v, typeName, enum)
+		resp.Props[arg.Name] = exprToPropJSON(arg.Value, typeName, enum)
 	}
 
 	// Add all known style properties (unset first, then overwrite)
@@ -533,35 +517,38 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 			Enum: sp.Enum,
 		}
 	}
-	for k, v := range vn.StyleFields() {
-		sp := s.styleSchema[k]
-		resp.Styles[k] = exprToPropJSON(v, typeToString(sp.Type), sp.Enum)
+	// Find style arg and extract struct fields
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name != "style" {
+			continue
+		}
+		if se, ok := arg.Value.(*ast.StructExpr); ok {
+			for _, f := range se.Fields {
+				sp := s.styleSchema[f.Name]
+				resp.Styles[f.Name] = exprToPropJSON(f.Value, typeToString(sp.Type), sp.Enum)
+			}
+		}
+	}
+
+	// Collect event handler names from Args
+	setEvents := map[string]bool{}
+	for _, a := range vn.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok {
+			setEvents[eh.Name] = true
+		}
 	}
 
 	// Add all schema events (unset first, then mark set ones)
 	if schema != nil {
 		for name := range schema.Events {
-			resp.Events = append(resp.Events, eventJSON{Name: name})
+			resp.Events = append(resp.Events, eventJSON{Name: name, Set: setEvents[name]})
+			delete(setEvents, name)
 		}
 	}
-	// Mark set events
-	for i, ev := range resp.Events {
-		if _, ok := vn.Events[ev.Name]; ok {
-			resp.Events[i].Set = true
-		}
-	}
-	// Add any events set on the node that aren't in the schema
-	for k := range vn.Events {
-		found := false
-		for _, ev := range resp.Events {
-			if ev.Name == k {
-				found = true
-				break
-			}
-		}
-		if !found {
-			resp.Events = append(resp.Events, eventJSON{Name: k, Set: true})
-		}
+	// Add remaining events not in schema
+	for name := range setEvents {
+		resp.Events = append(resp.Events, eventJSON{Name: name, Set: true})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -572,12 +559,35 @@ func typeToString(t checker.Type) string {
 	return t.String()
 }
 
-func findNode(nodes []*ast.VisualNode, line, col int) *ast.VisualNode {
-	for _, vn := range nodes {
+func vnComponentName(vn *ast.VisualNode) string {
+	if id, ok := vn.Target.(*ast.IdentExpr); ok {
+		return id.Name
+	}
+	return parser.FormatExpr(vn.Target)
+}
+
+// findNodeInDoc searches all components in the document for a VisualNode at the given position.
+func findNodeInDoc(doc *ast.Document, line, col int) *ast.VisualNode {
+	for _, stmt := range doc.Stmts {
+		if comp, ok := stmt.(*ast.ComponentDecl); ok {
+			if vn := findNodeInStmts(comp.Body.Stmts, line, col); vn != nil {
+				return vn
+			}
+		}
+	}
+	return nil
+}
+
+func findNodeInStmts(stmts []ast.Stmt, line, col int) *ast.VisualNode {
+	for _, s := range stmts {
+		vn, ok := s.(*ast.VisualNode)
+		if !ok {
+			continue
+		}
 		if vn.Pos.Line == line && vn.Pos.Column == col {
 			return vn
 		}
-		if found := findNode(vn.Children, line, col); found != nil {
+		if found := findNodeInStmts(vn.Block.Stmts, line, col); found != nil {
 			return found
 		}
 	}
@@ -602,50 +612,35 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse SNGL source
-	f, err := os.Open(s.sourceFile)
+	data, err := os.ReadFile(s.sourceFile)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	doc, err := parser.Parse(s.sourceFile, f)
-	f.Close()
+	doc, err := parser.Parse(s.sourceFile, data)
 	if err != nil {
 		http.Error(w, "parse: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Find the visual node at the given position
-	vn := findNode(doc.App.Children, line, col)
+	vn := findNodeInDoc(doc, line, col)
 	if vn == nil {
 		http.Error(w, "node not found at position", http.StatusNotFound)
 		return
 	}
 
-	// Update properties
-	if vn.Props == nil {
-		vn.Props = map[string]ast.Expr{}
-	}
+	// Update properties by replacing/adding named args
 	for k, v := range body.Props {
-		vn.Props[k] = parseSNGLValue(v)
+		setArg(vn, k, parseSNGLValue(v))
 	}
 	// Update style properties
-	// Build style struct fields from preview changes
 	if len(body.Styles) > 0 {
 		var fields []ast.StructFieldLit
 		for k, v := range body.Styles {
-			val := parseSNGLValue(v)
-			var valNode ast.Node
-			if val.SNGL != nil {
-				valNode = val.SNGL
-			} else if val.Literal != nil {
-				valNode = &ast.LiteralExpr{Value: val.Literal, Kind: ast.LiteralString}
-			}
-			fields = append(fields, ast.StructFieldLit{Name: k, Value: valNode})
+			fields = append(fields, ast.StructFieldLit{Name: k, Value: parseSNGLValue(v)})
 		}
-		if vn.Props == nil {
-			vn.Props = map[string]ast.Expr{}
-		}
-		vn.Props["style"] = ast.Expr{SNGL: &ast.StructExpr{Fields: fields}}
+		setArg(vn, "style", &ast.StructExpr{Fields: fields})
 	}
 
 	// Write back formatted source
@@ -663,25 +658,33 @@ func parseSNGLValue(s string) ast.Expr {
 	// Try integer
 	var i int
 	if _, err := fmt.Sscanf(s, "%d", &i); err == nil && fmt.Sprintf("%d", i) == s {
-		return ast.Expr{SNGL: &ast.LiteralExpr{Value: i, Kind: ast.LiteralInt}}
+		return &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: s}
 	}
 	// Try float
 	var f float64
 	if _, err := fmt.Sscanf(s, "%g", &f); err == nil {
-		return ast.Expr{SNGL: &ast.LiteralExpr{Value: f, Kind: ast.LiteralFloat}}
+		return &ast.LiteralExpr{Kind: ast.LiteralFloat, Raw: s}
 	}
 	// Try bool
-	if s == "true" {
-		return ast.Expr{SNGL: &ast.LiteralExpr{Value: true, Kind: ast.LiteralBool}}
-	}
-	if s == "false" {
-		return ast.Expr{SNGL: &ast.LiteralExpr{Value: false, Kind: ast.LiteralBool}}
+	if s == "true" || s == "false" {
+		return &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: s}
 	}
 	// Color
 	if strings.HasPrefix(s, "#") {
-		return ast.Expr{SNGL: &ast.LiteralExpr{Value: s, Kind: ast.LiteralColor}}
+		return &ast.LiteralExpr{Kind: ast.LiteralColor, Raw: s}
 	}
-	return ast.Expr{SNGL: &ast.LiteralExpr{Value: s, Kind: ast.LiteralString}}
+	return &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: `"` + s + `"`}
+}
+
+// setArg replaces or adds a named argument on a VisualNode.
+func setArg(vn *ast.VisualNode, name string, val ast.Expr) {
+	for i, a := range vn.Args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == name {
+			vn.Args.Args[i] = ast.Arg{Name: name, Value: val}
+			return
+		}
+	}
+	vn.Args.Args = append(vn.Args.Args, ast.Arg{Name: name, Value: val})
 }
 
 func queryInt(r *http.Request, key string) int {

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -51,7 +52,7 @@ func cachedParse(source string) (*ast.Document, error) {
 	if h == cacheHash && cacheDoc != nil {
 		return cacheDoc, nil
 	}
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if doc != nil {
 		cacheHash = h
 		cacheDoc = doc
@@ -69,19 +70,21 @@ func compile(this js.Value, args []js.Value) any {
 	}
 	source := args[0].String()
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+		err = fmt.Errorf("%s", diags[0].Msg)
+	}
+	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
 
-	clone := doc.Clone()
-	if err := optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: "html",
 		Language: "js",
 	}); err != nil {
@@ -102,7 +105,7 @@ func compile(this js.Value, args []js.Value) any {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc:     clone,
+		Doc:     doc,
 		Lang:    lang,
 		Options: map[string]string{"preview": "true"},
 	})
@@ -134,7 +137,7 @@ func astDump(this js.Value, args []js.Value) any {
 	}
 	source := args[0].String()
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
@@ -178,19 +181,21 @@ func generate(this js.Value, args []js.Value) any {
 	platName := args[1].String()
 	langName := args[2].String()
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+		err = fmt.Errorf("%s", diags[0].Msg)
+	}
+	if err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
 
-	clone := doc.Clone()
-	if err := optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: platName,
 		Language: langName,
 	}); err != nil {
@@ -210,7 +215,7 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc:  clone,
+		Doc:  doc,
 		Lang: lang,
 	})
 	if err != nil {

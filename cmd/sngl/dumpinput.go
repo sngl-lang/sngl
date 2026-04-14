@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -112,7 +113,11 @@ func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
 }
 
 func dumpParseStdin() (*ast.Document, string, error) {
-	doc, err := parser.Parse("-", os.Stdin)
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, "", err
+	}
+	doc, err := parser.Parse("-", data)
 	if err != nil {
 		return nil, "", err
 	}
@@ -129,7 +134,7 @@ func dumpParseTxtar(path string) (*ast.Document, string, error) {
 		if !strings.HasSuffix(strings.ToLower(f.Name), ".sngl") {
 			continue
 		}
-		d, err := parser.Parse(f.Name, strings.NewReader(string(f.Data)))
+		d, err := parser.Parse(f.Name, f.Data)
 		if err != nil {
 			return nil, "", fmt.Errorf("%s: %w", f.Name, err)
 		}
@@ -178,7 +183,7 @@ func dumpParseMarkdown(path string) (*ast.Document, string, error) {
 		}
 	}
 
-	doc, err := parser.Parse(path, strings.NewReader(src.String()))
+	doc, err := parser.Parse(path, []byte(src.String()))
 	if err != nil {
 		return nil, "", err
 	}

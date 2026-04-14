@@ -148,7 +148,7 @@ type Tier struct {
 //
 //sngl:pure
 func StdlibComponents() []Component {
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, err := checker.LoadStdlib()
 	if err != nil {
 		return nil
 	}
@@ -279,19 +279,18 @@ func parseDir(dir string) (*ast.Document, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 			continue
 		}
-		f, err := os.Open(filepath.Join(dir, e.Name()))
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
 		if err != nil {
 			continue
 		}
-		d, err := parser.Parse(e.Name(), f)
-		f.Close()
+		d, err := parser.Parse(e.Name(), data)
 		if err != nil {
 			continue
 		}
 		if doc == nil {
 			doc = d
 		} else {
-			doc.Components = append(doc.Components, d.Components...)
+			doc.Stmts = append(doc.Stmts, d.Stmts...)
 		}
 	}
 	if doc == nil {
@@ -383,15 +382,14 @@ func compilePreview(source string) string {
 	if i := strings.Index(source, "{"); i > 0 {
 		rewritten = "component main " + source[i:]
 	}
-	doc, err := parser.Parse("example.sngl", strings.NewReader(rewritten))
+	doc, err := parser.Parse("example.sngl", []byte(rewritten))
 	if err != nil {
 		return ""
 	}
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 {
 		return ""
 	}
-	clone := doc.Clone()
-	optimize.Optimize(clone, optimize.Config{Platform: "html", Language: "js"})
+	optimize.Optimize(doc, optimize.Config{Platform: "html", Language: "js"})
 
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("js")
@@ -399,7 +397,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 	resp, err := gen.Generate(&codegen.Request{
-		Doc: clone, Lang: lang,
+		Doc: doc, Lang: lang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil || resp.Error != "" {

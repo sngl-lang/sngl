@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
 		start = time.Now()
-		if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
+		if _, err := checkDoc(doc, filepath.Dir(filename), true); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			failed = true
 			continue

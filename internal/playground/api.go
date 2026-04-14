@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -37,7 +38,7 @@ func cachedParse(source string) (*ast.Document, error) {
 	if h == cacheHash && cacheDoc != nil {
 		return cacheDoc, nil
 	}
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if doc != nil {
 		cacheHash = h
 		cacheDoc = doc
@@ -50,19 +51,21 @@ func cachedParse(source string) (*ast.Document, error) {
 func Compile(source string) string {
 	result := map[string]any{"html": "", "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+		err = fmt.Errorf("%s", diags[0].Msg)
+	}
+	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	clone := doc.Clone()
-	if err := optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: "html", Language: "js",
 	}); err != nil {
 		result["error"] = err.Error()
@@ -77,7 +80,7 @@ func Compile(source string) string {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc: clone, Lang: lang,
+		Doc: doc, Lang: lang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil {
@@ -105,7 +108,7 @@ func Compile(source string) string {
 func ASTDump(source string) string {
 	result := map[string]any{"ast": "", "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
@@ -144,19 +147,21 @@ func Targets() string {
 func Generate(source, platform, lang string) string {
 	result := map[string]any{"files": nil, "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", strings.NewReader(source))
+	doc, err := parser.Parse("playground.sngl", []byte(source))
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+		err = fmt.Errorf("%s", diags[0].Msg)
+	}
+	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	clone := doc.Clone()
-	if err := optimize.Optimize(clone, optimize.Config{
+	if err := optimize.Optimize(doc, optimize.Config{
 		Platform: platform, Language: lang,
 	}); err != nil {
 		result["error"] = err.Error()
@@ -174,7 +179,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{Doc: clone, Lang: lt})
+	resp, err := gen.Generate(&codegen.Request{Doc: doc, Lang: lt})
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)

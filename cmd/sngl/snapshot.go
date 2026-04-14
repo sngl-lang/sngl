@@ -87,12 +87,11 @@ func snapshotDir(dir string, platforms []string, outDir string, width, height in
 }
 
 func snapshotFile(path string, flagPlatforms []string, outOverride string, width, height int, force bool) error {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	doc, err := parser.Parse(path, f)
-	f.Close()
+	doc, err := parser.Parse(path, data)
 	if err != nil {
 		return err
 	}
@@ -100,8 +99,11 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 	// Determine platforms: from flag, or from the file's output {} block.
 	platforms := flagPlatforms
 	if len(platforms) == 0 {
-		for _, o := range doc.Outputs {
-			platforms = append(platforms, o.Platform)
+		pkg, err := checkDoc(doc, filepath.Dir(path), true)
+		if err == nil && pkg != nil {
+			for _, o := range pkg.Outputs {
+				platforms = append(platforms, o.Platform)
+			}
 		}
 	}
 	if len(platforms) == 0 {
@@ -159,7 +161,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 	}
 
 	// Main app: if the file has an output {} block, snapshot it too.
-	if len(doc.Outputs) > 0 {
+	if len(platforms) > 0 {
 		basename := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if !force && snapshotAllExist(effectiveOutDir, basename, platforms) {
 			for _, plat := range platforms {

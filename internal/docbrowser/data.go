@@ -337,86 +337,88 @@ func renderDeclDetail(d *declEntry, width int) []string {
 	}
 
 	switch decl := d.Decl.(type) {
-	case *ast.Component:
-		if len(decl.Params) > 0 {
+	case *ast.ComponentDecl:
+		var params []ast.Param
+		var events []ast.EventDecl
+		for _, p := range decl.Props.Props {
+			switch pd := p.(type) {
+			case ast.Param:
+				params = append(params, pd)
+			case ast.EventDecl:
+				events = append(events, pd)
+			}
+		}
+		if len(params) > 0 {
 			s = append(s, "", labelStyle.Render("Parameters"))
-			for _, p := range decl.Params {
-				pType := p.Default.TypeHint
-				if pType == "" {
-					pType = "any"
+			for _, p := range params {
+				pType := "any"
+				if p.Type != nil {
+					pType = fmt.Sprint(p.Type)
 				}
 				line := "  " + propNameStyle.Render(p.Name) + " " + propTypeStyle.Render(pType)
 				s = append(s, line)
 			}
 		}
-		if len(decl.EventDecls) > 0 {
+		if len(events) > 0 {
 			s = append(s, "", labelStyle.Render("Events"))
-			for _, e := range decl.EventDecls {
+			for _, e := range events {
 				line := "  " + propNameStyle.Render("@"+e.Name)
-				if e.PayloadType != "" {
-					line += " " + propTypeStyle.Render(e.PayloadType)
+				if e.Type != nil {
+					line += " " + propTypeStyle.Render(fmt.Sprint(e.Type))
 				}
 				s = append(s, line)
 			}
 		}
-		if decl.ChildrenType != "" {
-			s = append(s, "", labelStyle.Render("Children: ")+decl.ChildrenType)
+		if decl.ChildrenType != nil {
+			s = append(s, "", labelStyle.Render("Children: ")+fmt.Sprint(decl.ChildrenType))
 		}
 
 	case *ast.StructDef:
 		if len(decl.Fields) > 0 {
 			s = append(s, "", labelStyle.Render("Fields"))
 			for _, f := range decl.Fields {
-				s = append(s, "  "+propNameStyle.Render(f.Name)+" "+propTypeStyle.Render(f.Type))
+				s = append(s, "  "+propNameStyle.Render(f.Name)+" "+propTypeStyle.Render(fmt.Sprint(f.Type)))
 			}
 		}
 
 	case *ast.EnumDef:
-		if len(decl.Values) > 0 {
+		if len(decl.Members) > 0 {
 			s = append(s, "", labelStyle.Render("Values"))
-			for _, v := range decl.Values {
-				s = append(s, "  "+propNameStyle.Render(v))
+			for _, m := range decl.Members {
+				s = append(s, "  "+propNameStyle.Render(m.Name))
 			}
 		}
 
 	case *ast.FuncDef:
 		var sig strings.Builder
 		sig.WriteString("func " + d.Name + "(")
-		for i, p := range decl.Params {
+		for i, p := range decl.Params.Params {
 			if i > 0 {
 				sig.WriteString(", ")
 			}
 			sig.WriteString(p.Name)
-			if p.Type != "" {
-				sig.WriteString(" " + p.Type)
+			if p.Type != nil {
+				sig.WriteString(" " + fmt.Sprint(p.Type))
 			}
 		}
 		sig.WriteString(")")
-		if decl.ReturnType != "" {
-			sig.WriteString(" " + decl.ReturnType)
+		if decl.ReturnType != nil {
+			sig.WriteString(" " + fmt.Sprint(decl.ReturnType))
 		}
 		s = append(s, "", propTypeStyle.Render(sig.String()))
 
-	case *ast.Data:
-		if decl.IsFunc {
-			var sig strings.Builder
-			sig.WriteString("func(")
-			sig.WriteString(strings.Join(decl.ParamTypes, ", "))
-			sig.WriteString(")")
-			if decl.ReturnType != "" {
-				sig.WriteString(" " + decl.ReturnType)
+	case *ast.VarDecl:
+		for _, spec := range decl.Specs {
+			if spec.Type != nil {
+				s = append(s, "", labelStyle.Render("Type: ")+propTypeStyle.Render(fmt.Sprint(spec.Type)))
 			}
-			s = append(s, "", propTypeStyle.Render(sig.String()))
-		} else if decl.Init.TypeHint != "" {
-			s = append(s, "", labelStyle.Render("Type: ")+propTypeStyle.Render(decl.Init.TypeHint))
 		}
 
-	case *ast.Const:
-		if decl.Init.TypeHint != "" {
-			s = append(s, "", labelStyle.Render("Type: ")+propTypeStyle.Render(decl.Init.TypeHint))
-		}
-		if decl.Init.Literal != nil {
-			s = append(s, labelStyle.Render("Value: ")+fmt.Sprint(decl.Init.Literal))
+	case *ast.ConstDecl:
+		for _, spec := range decl.Specs {
+			if spec.Type != nil {
+				s = append(s, "", labelStyle.Render("Type: ")+propTypeStyle.Render(fmt.Sprint(spec.Type)))
+			}
 		}
 	}
 
@@ -458,26 +460,18 @@ func parseDir(dir string) (*ast.Document, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 			continue
 		}
-		path := filepath.Join(dir, e.Name())
-		f, err := os.Open(path)
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
 		if err != nil {
 			continue
 		}
-		d, err := parser.Parse(e.Name(), f)
-		f.Close()
+		d, err := parser.Parse(e.Name(), data)
 		if err != nil {
 			continue
 		}
 		if doc == nil {
 			doc = d
 		} else {
-			doc.Components = append(doc.Components, d.Components...)
-			doc.Structs = append(doc.Structs, d.Structs...)
-			doc.Enums = append(doc.Enums, d.Enums...)
-			doc.Data = append(doc.Data, d.Data...)
-			doc.Functions = append(doc.Functions, d.Functions...)
-			doc.Consts = append(doc.Consts, d.Consts...)
-			doc.Comments = append(doc.Comments, d.Comments...)
+			doc.Stmts = append(doc.Stmts, d.Stmts...)
 		}
 	}
 	if doc == nil {

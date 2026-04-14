@@ -3,12 +3,9 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
-	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +97,7 @@ func runDumpChecked(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+	if _, err := checkDoc(doc, dir, true); err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
@@ -124,7 +121,7 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+	if _, err := checkDoc(doc, dir, true); err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
@@ -158,7 +155,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), sngl.BuildAPIConfig(doc), true); err != nil {
+	if _, err := checkDoc(doc, dir, true); err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))

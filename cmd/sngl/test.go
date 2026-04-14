@@ -12,7 +12,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"github.com/spf13/cobra"
 )
 
@@ -95,9 +94,9 @@ func runTest(cmd *cobra.Command, args []string) error {
 		doc = mergeDir(doc, filename)
 		slog.Info("merge", "file", filename, "duration", time.Since(start))
 
-		if doc.App != nil || len(doc.TestFuncs()) > 0 {
+		if len(doc.TestFuncs()) > 0 {
 			start = time.Now()
-			if err := checker.Check(doc, os.DirFS(filepath.Dir(filename)), filepath.Dir(filename), checker.DefaultResolver(), defaultSchemeResolver(), defaultFSSchemeResolver(), nil, true); err != nil {
+			if _, err := checkDoc(doc, filepath.Dir(filename), true); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 				totalFail++
 				continue
@@ -105,26 +104,22 @@ func runTest(cmd *cobra.Command, args []string) error {
 			slog.Info("check", "file", filename, "duration", time.Since(start))
 		}
 
-		diags := checker.CheckTestFuncs(doc)
-		if len(diags) > 0 {
-			for _, d := range diags {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, d.Msg)
-			}
-			totalFail++
-			continue
-		}
-
 		// Filter tests by --run pattern
 		if runFilter != "" {
-			var filtered []*ast.FuncDef
-			for _, fn := range doc.Functions {
+			var filtered []ast.Stmt
+			for _, stmt := range doc.Stmts {
+				fn, ok := stmt.(*ast.FuncDef)
+				if !ok {
+					filtered = append(filtered, stmt)
+					continue
+				}
 				if fn.IsTest() && strings.Contains(fn.Name, runFilter) {
 					filtered = append(filtered, fn)
 				} else if !fn.IsTest() {
 					filtered = append(filtered, fn)
 				}
 			}
-			doc.Functions = filtered
+			doc.Stmts = filtered
 		}
 
 		results, err := runner.RunTests(doc, lang)

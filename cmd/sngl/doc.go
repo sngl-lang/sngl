@@ -92,7 +92,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			if plat != nil {
 				return showPlatformDocs(args[1], plat)
 			}
-			return showDeclDoc(pkgDocs, args[1], doc.Comments)
+			return showDeclDoc(pkgDocs, args[1], doc.Stmts)
 		}
 	}
 
@@ -116,7 +116,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			return showDeclDoc(checker.ExtractPackageDocs(doc), declName, doc.Comments)
+			return showDeclDoc(checker.ExtractPackageDocs(doc), declName, doc.Stmts)
 		}
 	}
 
@@ -132,7 +132,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 	if doc, err := parsePackage("."); err == nil {
 		pd := checker.ExtractPackageDocs(doc)
 		if info := pd.FindDecl(first); info != nil {
-			return showDeclDoc(pd, first, doc.Comments)
+			return showDeclDoc(pd, first, doc.Stmts)
 		}
 	}
 
@@ -257,7 +257,7 @@ func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	if src == "" {
 		return fmt.Errorf("platform %q has no package source", name)
 	}
-	doc, err := parser.Parse(name+".sngl", strings.NewReader(src))
+	doc, err := parser.Parse(name+".sngl", []byte(src))
 	if err != nil {
 		return fmt.Errorf("parsing %s package: %w", name, err)
 	}
@@ -304,7 +304,7 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 }
 
 // showDeclDoc displays documentation for a specific declaration.
-func showDeclDoc(pd *checker.PackageDocs, name string, comments []ast.Comment) error {
+func showDeclDoc(pd *checker.PackageDocs, name string, stmts []ast.Stmt) error {
 	// Support "decl.field" syntax
 	declName := name
 	fieldName := ""
@@ -320,9 +320,9 @@ func showDeclDoc(pd *checker.PackageDocs, name string, comments []ast.Comment) e
 	}
 
 	switch decl := info.Decl.(type) {
-	case *ast.Component:
+	case *ast.ComponentDecl:
 		// Reuse stdlib component doc rendering via schema
-		registry, _, _, _, _, _, err := checker.LoadStdlib()
+		registry, _, err := checker.LoadStdlib()
 		if err == nil {
 			if schema, ok := registry[declName]; ok {
 				if fieldName != "" {
@@ -332,13 +332,13 @@ func showDeclDoc(pd *checker.PackageDocs, name string, comments []ast.Comment) e
 			}
 		}
 		// User component — render manually
-		return renderToTerminal(renderUserComponentDoc(decl, comments))
+		return renderToTerminal(renderUserComponentDoc(decl, stmts))
 
 	case *ast.StructDef:
-		return renderToTerminal(renderStructDoc(decl, fieldName, comments))
+		return renderToTerminal(renderStructDoc(decl, fieldName, stmts))
 
 	case *ast.EnumDef:
-		return renderToTerminal(renderEnumDoc(decl, comments))
+		return renderToTerminal(renderEnumDoc(decl, stmts))
 
 	default:
 		var sb strings.Builder
@@ -350,30 +350,41 @@ func showDeclDoc(pd *checker.PackageDocs, name string, comments []ast.Comment) e
 	}
 }
 
-func renderUserComponentDoc(comp *ast.Component, comments []ast.Comment) string {
+func renderUserComponentDoc(comp *ast.ComponentDecl, stmts []ast.Stmt) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s\n\n", comp.Name))
 
-	doc := checker.DeclDoc(comments, comp.Pos.Line)
+	doc := checker.DeclDoc(stmts, comp.Pos.Line)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
 
-	if len(comp.Params) > 0 {
+	var params []ast.Param
+	var events []ast.EventDecl
+	for _, p := range comp.Props.Props {
+		switch pd := p.(type) {
+		case ast.Param:
+			params = append(params, pd)
+		case ast.EventDecl:
+			events = append(events, pd)
+		}
+	}
+
+	if len(params) > 0 {
 		sb.WriteString("## Parameters\n\n")
-		for _, p := range comp.Params {
-			pType := p.Default.TypeHint
-			if pType == "" {
-				pType = "any"
+		for _, p := range params {
+			pType := "any"
+			if p.Type != nil {
+				pType = fmt.Sprint(p.Type)
 			}
 			sb.WriteString(fmt.Sprintf("  %-16s %s\n", p.Name, pType))
 		}
 		sb.WriteString("\n")
 	}
 
-	if len(comp.EventDecls) > 0 {
+	if len(events) > 0 {
 		sb.WriteString("## Events\n\n")
-		for _, e := range comp.EventDecls {
+		for _, e := range events {
 			sb.WriteString(fmt.Sprintf("  @%s\n", e.Name))
 		}
 		sb.WriteString("\n")
@@ -382,11 +393,11 @@ func renderUserComponentDoc(comp *ast.Component, comments []ast.Comment) string 
 	return sb.String()
 }
 
-func renderStructDoc(s *ast.StructDef, fieldName string, comments []ast.Comment) string {
+func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# struct %s\n\n", s.Name))
 
-	doc := checker.DeclDoc(comments, s.Pos.Line)
+	doc := checker.DeclDoc(stmts, s.Pos.Line)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
@@ -412,18 +423,18 @@ func renderStructDoc(s *ast.StructDef, fieldName string, comments []ast.Comment)
 	return sb.String()
 }
 
-func renderEnumDoc(e *ast.EnumDef, comments []ast.Comment) string {
+func renderEnumDoc(e *ast.EnumDef, stmts []ast.Stmt) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# enum %s\n\n", e.Name))
 
-	doc := checker.DeclDoc(comments, e.Pos.Line)
+	doc := checker.DeclDoc(stmts, e.Pos.Line)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
 
 	sb.WriteString("## Values\n\n")
-	for _, v := range e.Values {
-		sb.WriteString(fmt.Sprintf("  %s\n", v))
+	for _, m := range e.Members {
+		sb.WriteString(fmt.Sprintf("  %s\n", m.Name))
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -536,31 +547,31 @@ func declDetailHTML(d checker.DeclInfo) string {
 		fmt.Fprintf(&b, "<p>%s</p>", d.Doc)
 	}
 	switch decl := d.Decl.(type) {
-	case *ast.Component:
-		if len(decl.Params) > 0 {
-			b.WriteString("<h3>Parameters</h3><table>")
-			for _, p := range decl.Params {
-				ptype := p.Default.TypeHint
-				if p.Resolved != nil {
-					ptype = p.Resolved.Type
+	case *ast.ComponentDecl:
+		for _, p := range decl.Props.Props {
+			if param, ok := p.(ast.Param); ok {
+				ptype := "any"
+				if param.Type != nil {
+					ptype = fmt.Sprint(param.Type)
 				}
-				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", p.Name, ptype)
+				b.WriteString("<h3>Parameters</h3><table>")
+				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", param.Name, ptype)
+				b.WriteString("</table>")
 			}
-			b.WriteString("</table>")
 		}
 	case *ast.StructDef:
 		if len(decl.Fields) > 0 {
 			b.WriteString("<h3>Fields</h3><table>")
 			for _, f := range decl.Fields {
-				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", f.Name, f.Type)
+				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", f.Name, fmt.Sprint(f.Type))
 			}
 			b.WriteString("</table>")
 		}
 	case *ast.EnumDef:
-		if len(decl.Values) > 0 {
+		if len(decl.Members) > 0 {
 			b.WriteString("<h3>Values</h3><ul>")
-			for _, v := range decl.Values {
-				fmt.Fprintf(&b, "<li>%s</li>", v)
+			for _, m := range decl.Members {
+				fmt.Fprintf(&b, "<li>%s</li>", m.Name)
 			}
 			b.WriteString("</ul>")
 		}
@@ -686,7 +697,7 @@ func showTopicListWithComponents(docsDir string) error {
 	}
 
 	// Component listing.
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, err := checker.LoadStdlib()
 	if err == nil && len(registry) > 0 {
 		tiers := docsite.AssignTiers(registry)
 		tierIdx := map[string]int{}
@@ -781,7 +792,7 @@ func showTopic(docsDir, topic string) error {
 // showComponentDoc displays component reference for a component or
 // component.prop query.
 func showComponentDoc(query string) error {
-	registry, _, _, _, _, _, err := checker.LoadStdlib()
+	registry, _, err := checker.LoadStdlib()
 	if err != nil {
 		return fmt.Errorf("failed to load stdlib: %w", err)
 	}
