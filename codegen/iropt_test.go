@@ -194,7 +194,7 @@ func TestOptimizeRender_RemoveNilHandlers(t *testing.T) {
 		},
 		Handlers: []Handler{
 			{NodeID: "btn0", Event: "click", Body: nil},
-			{NodeID: "btn1", Event: "click", Body: &ast.StmtBlock{}},
+			{NodeID: "btn1", Event: "click", Body: &ast.CallStmt{}},
 		},
 	}
 	OptimizeRender(m)

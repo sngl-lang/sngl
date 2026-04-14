@@ -4,6 +4,7 @@ import (
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // DepTracker tracks reactive dependencies between state fields, computed
@@ -19,6 +20,55 @@ func NewDepTracker(modelFields, computedFields map[string]bool, computedDeps map
 	return &DepTracker{
 		ModelFields:    modelFields,
 		ComputedFields: computedFields,
+		ComputedDeps:   computedDeps,
+	}
+}
+
+// NewDepTrackerFromPkg derives a DepTracker from a checker.Package.
+// State fields come from Pkg.Vars, computed fields from zero-param funcs,
+// and computed deps from Func.Reads (purity analysis).
+func NewDepTrackerFromPkg(pkg *checker.Package) *DepTracker {
+	model := make(map[string]bool)
+	computed := make(map[string]bool)
+	computedDeps := make(map[string]map[string]bool)
+
+	for _, v := range pkg.Vars {
+		model[v.Name] = true
+	}
+
+	for _, f := range pkg.Funcs {
+		if IsComputed(f) {
+			model[f.Name] = true
+			computed[f.Name] = true
+			deps := make(map[string]bool)
+			for _, r := range f.Reads {
+				deps[r.Name] = true
+			}
+			computedDeps[f.Name] = deps
+		}
+	}
+
+	// Include component-level vars and computeds for the main component.
+	for _, comp := range pkg.Components {
+		for _, v := range comp.Vars {
+			model[v.Name] = true
+		}
+		for _, f := range comp.Funcs {
+			if IsComputed(f) {
+				model[f.Name] = true
+				computed[f.Name] = true
+				deps := make(map[string]bool)
+				for _, r := range f.Reads {
+					deps[r.Name] = true
+				}
+				computedDeps[f.Name] = deps
+			}
+		}
+	}
+
+	return &DepTracker{
+		ModelFields:    model,
+		ComputedFields: computed,
 		ComputedDeps:   computedDeps,
 	}
 }

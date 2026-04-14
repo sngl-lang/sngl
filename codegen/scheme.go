@@ -3,7 +3,6 @@ package codegen
 import (
 	"io/fs"
 	"sync"
-
 )
 
 // NativeDecls holds native language declarations resolved from a scheme import.

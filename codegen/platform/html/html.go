@@ -14,6 +14,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 )
 
@@ -112,7 +113,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	_ = stylesheetURL // used by multi-window below
 
 	// Single-page generation (no multi-window support in v2 yet).
-	gen := newHTMLGen(req.Doc, req.Lang, req.Options)
+	gen := newHTMLGen(req.Doc, req.Pkg, req.Lang, req.Options)
 	gen.wasmLoader = wasmLoaderHTML
 	src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 	files = append(files, codegen.BytesFile("index.html", []byte(src)))
@@ -128,7 +129,7 @@ func staticPropString(props map[string]ast.Expr, key string) string {
 	if !ok {
 		return ""
 	}
-	if s, ok := e.Literal.(string); ok {
+	if s, ok := exprLiteralString(e); ok {
 		return s
 	}
 	return ""
@@ -138,6 +139,11 @@ func staticPropString(props map[string]ast.Expr, key string) string {
 type htmlGen struct {
 	doc  *ast.Document
 	lang codegen.LangTranslator
+
+	// v2: type-checked package and expression context
+	pkg        *checker.Package
+	translator codegen.ExprTranslator
+	ctx        *codegen.ExprCtx
 
 	// Analysis (shared)
 	*codegen.CommonAnalysis
@@ -190,7 +196,7 @@ type htmlGen struct {
 	componentDepth int
 
 	// Slot children: caller's children for abstract component body expansion
-	slotChildren []*ast.VisualNode
+	slotChildren []ast.Stmt
 }
 
 type componentParam struct {
@@ -220,11 +226,12 @@ type timerDef struct {
 	mutated    map[string]bool
 }
 
-func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+func newHTMLGen(doc *ast.Document, pkg *checker.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
 	common := codegen.AnalyzeCommon(doc)
 
 	g := &htmlGen{
 		doc:            doc,
+		pkg:            pkg,
 		lang:           lang,
 		CommonAnalysis: common,
 		preview:        opts["preview"] == "true",
@@ -233,7 +240,7 @@ func newHTMLGen(doc *ast.Document, lang codegen.LangTranslator, opts map[string]
 
 	// Build scope from common analysis, adding const names as local vars
 	g.scope = common.Scope()
-	for _, c := range doc.Consts {
+	for _, c := range docConsts(doc) {
 		g.scope.LocalVars[c.Name] = true
 	}
 
@@ -277,10 +284,11 @@ func (g *htmlGen) generate() string {
 	}
 	b.WriteString("</head><body>\n\n")
 
-	// Render static HTML body
-	if g.doc.App != nil {
-		for _, child := range g.doc.App.Children {
-			g.renderStaticNode(&b, child, 0)
+	// Render static HTML body from the main component
+	mainComp := findMainComponent(g.doc)
+	if mainComp != nil {
+		for _, s := range compBodyStmts(mainComp) {
+			g.renderStaticStmt(&b, s, 0)
 		}
 	}
 
@@ -321,43 +329,66 @@ func (g *htmlGen) generate() string {
 	return result
 }
 
+// renderStaticStmt dispatches a statement to the appropriate renderer.
+// In v2, ForStmt and IfStmt are separate statement types, not fields on VisualNode.
+func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		g.renderStaticNode(b, n, depth)
+	case *ast.IfStmt:
+		g.renderStaticIf(b, n, depth)
+	case *ast.ForStmt:
+		g.renderStaticFor(b, n, depth)
+	}
+}
+
+// renderStaticIf renders a conditional block as a hidden div with an updater.
+func (g *htmlGen) renderStaticIf(b *strings.Builder, stmt *ast.IfStmt, depth int) {
+	indent := strings.Repeat("  ", depth)
+	id := g.allocID()
+	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"display:none\">\n", indent, id)
+	for _, s := range stmt.Body.Stmts {
+		g.renderStaticStmt(b, s, depth+1)
+	}
+	fmt.Fprintf(b, "%s</div>\n", indent)
+	g.addIfUpdater(id, stmt.Cond)
+
+	if len(stmt.Else.Stmts) > 0 {
+		elseID := g.allocID()
+		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+		for _, s := range stmt.Else.Stmts {
+			g.renderStaticStmt(b, s, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+		g.addElseUpdater(elseID, stmt.Cond)
+	}
+}
+
+// renderStaticFor renders a for-loop as an empty container with a JS updater.
+func (g *htmlGen) renderStaticFor(b *strings.Builder, stmt *ast.ForStmt, depth int) {
+	indent := strings.Repeat("  ", depth)
+	id := g.allocID()
+	fmt.Fprintf(b, "%s<div id=\"%s\"></div>\n", indent, id)
+	g.addForStmtUpdater(id, stmt)
+
+	if len(stmt.Else.Stmts) > 0 {
+		elseID := g.allocID()
+		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+		for _, s := range stmt.Else.Stmts {
+			g.renderStaticStmt(b, s, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+		g.addForElseStmtUpdater(id, elseID, stmt)
+	}
+}
+
 // renderStaticNode renders a VisualNode as static HTML.
 func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	indent := strings.Repeat("  ", depth)
+	_ = indent // used by generated template code below
+	name := vnName(vn)
 
-	// Handle for-loops: render an empty container div, generate JS updater
-	if vn.For != nil {
-		id := g.allocID()
-		style := g.buildCSSStyle(vn)
-		// For containers in boxes get flex layout from parent, but the container
-		// itself might have styles from the node
-		if vn.Component == "vbox" {
-			style = htmlutil.AppendCSS(style, "display", "flex")
-			style = htmlutil.AppendCSS(style, "flex-direction", "column")
-		} else if vn.Component == "hbox" {
-			style = htmlutil.AppendCSS(style, "display", "flex")
-			style = htmlutil.AppendCSS(style, "flex-direction", "row")
-		}
-		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-		fmt.Fprintf(b, "%s</div>\n", indent)
-		// Render else container (shown when list is empty)
-		var elseID string
-		if len(vn.For.Else) > 0 {
-			elseID = g.allocID()
-			fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-			for _, elseNode := range vn.For.Else {
-				g.renderStaticNode(b, elseNode, depth+1)
-			}
-			fmt.Fprintf(b, "%s</div>\n", indent)
-		}
-		g.addForUpdater(id, vn)
-		if elseID != "" {
-			g.addForElseUpdater(id, elseID, vn)
-		}
-		return
-	}
-
-	switch vn.Component {
+	switch name {
 	case "vbox":
 		g.renderStaticBox(b, vn, depth, true)
 	case "hbox":
@@ -387,16 +418,16 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		for _, s := range vnChildren(vn) {
+			g.renderStaticStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 	case "stack":
 		style := g.buildCSSStyle(vn)
 		style = htmlutil.AppendCSS(style, "position", "relative")
 		g.writeOpenTag(b, "div", "", style, vn, depth, vn.Pos)
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		for _, s := range vnChildren(vn) {
+			g.renderStaticStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
@@ -413,8 +444,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	// --- Tier 2: Feedback & Navigation ---
 	case "progress":
 		style := g.buildCSSStyle(vn)
-		value := g.evalStaticString(vn.Props, "value")
-		maxVal := g.evalStaticString(vn.Props, "max")
+		value := g.evalStaticString(vnProps(vn), "value")
+		maxVal := g.evalStaticString(vnProps(vn), "max")
 		if maxVal == "" {
 			maxVal = "1"
 		}
@@ -434,7 +465,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		b.WriteString(g.previewAttrs(vn.Pos))
 		b.WriteString("></progress>\n")
 		if id != "" {
-			if valExpr, ok := vn.Props["value"]; ok {
+			if valExpr := vnProp(vn, "value"); valExpr != nil {
 				g.addAttrUpdater(id, "value", valExpr)
 			}
 		}
@@ -442,7 +473,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.CommonAnalysis.AddStyle("@keyframes sngl-spin { to { transform: rotate(360deg); } }")
 		g.CommonAnalysis.AddStyle(".sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }")
 		style := g.buildCSSStyle(vn)
-		label := g.evalStaticString(vn.Props, "label")
+		label := g.evalStaticString(vnProps(vn), "label")
 		id := ""
 		if g.preview {
 			id = g.allocID()
@@ -455,23 +486,23 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		style = htmlutil.AppendCSS(style, "padding", "2px 8px")
 		style = htmlutil.AppendCSS(style, "border-radius", "12px")
 		style = htmlutil.AppendCSS(style, "font-size", "12px")
-		value := g.evalStaticString(vn.Props, "value")
+		value := g.evalStaticString(vnProps(vn), "value")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
 		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
-		if g.propIsReactive(vn.Props, "value") {
-			g.addTextUpdater(id, vn.Props["value"])
+		if g.propIsReactive(vnProps(vn), "value") {
+			g.addTextUpdater(id, vnProp(vn, "value"))
 		}
 	case "tabs":
 		g.renderStaticTabs(b, vn, depth)
 	case "link":
 		style := g.buildCSSStyle(vn)
-		text := g.evalStaticString(vn.Props, "text")
-		href := g.evalStaticString(vn.Props, "href")
-		target := g.evalStaticString(vn.Props, "target")
+		text := g.evalStaticString(vnProps(vn), "text")
+		href := g.evalStaticString(vnProps(vn), "href")
+		target := g.evalStaticString(vnProps(vn), "target")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
 			id = g.allocID()
@@ -490,7 +521,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.writeUserAttrs(b, id, vn)
 		b.WriteString(g.previewAttrs(vn.Pos))
 		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
-		if evt, ok := vn.Events["click"]; ok && evt.Body.SNGL != nil {
+		if evt := vnEvent(vn, "click"); evt != nil && len(evt.Body.Stmts) > 0 {
 			if id == "" {
 				id = g.allocID()
 			}
@@ -498,7 +529,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		}
 	case "divider":
 		style := g.buildCSSStyle(vn)
-		label := g.evalStaticString(vn.Props, "label")
+		label := g.evalStaticString(vnProps(vn), "label")
 		id := ""
 		if g.preview {
 			id = g.allocID()
@@ -531,10 +562,10 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		g.renderStaticConditionalContainer(b, vn, depth, "div")
 	case "tooltip":
 		// Wrap child with title attribute
-		title := g.evalStaticString(vn.Props, "text")
+		title := g.evalStaticString(vnProps(vn), "text")
 		fmt.Fprintf(b, "%s<div title=\"%s\">\n", indent, html.EscapeString(title))
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		for _, s := range vnChildren(vn) {
+			g.renderStaticStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 	case "popover":
@@ -544,7 +575,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 	case "splitview":
 		style := g.buildCSSStyle(vn)
 		style = htmlutil.AppendCSS(style, "display", "flex")
-		direction := g.evalStaticString(vn.Props, "direction")
+		direction := g.evalStaticString(vnProps(vn), "direction")
 		if direction == "vertical" {
 			style = htmlutil.AppendCSS(style, "flex-direction", "column")
 		} else {
@@ -555,12 +586,12 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-		for i, child := range vn.Children {
+		for i, s := range vnChildren(vn) {
 			if i > 0 {
 				fmt.Fprintf(b, "%s  <div style=\"width:4px;background:#ccc;cursor:col-resize\"></div>\n", indent)
 			}
 			fmt.Fprintf(b, "%s  <div style=\"flex:1;overflow:auto\">\n", indent)
-			g.renderStaticNode(b, child, depth+2)
+			g.renderStaticStmt(b, s, depth+2)
 			fmt.Fprintf(b, "%s  </div>\n", indent)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
@@ -592,8 +623,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		for _, s := range vnChildren(vn) {
+			g.renderStaticStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
@@ -608,7 +639,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		style = htmlutil.AppendCSS(style, "border-radius", "16px")
 		style = htmlutil.AppendCSS(style, "border", "1px solid #ccc")
 		style = htmlutil.AppendCSS(style, "font-size", "14px")
-		label := g.evalStaticString(vn.Props, "label")
+		label := g.evalStaticString(vnProps(vn), "label")
 		id := ""
 		if g.nodeIsReactive(vn) || g.preview {
 			id = g.allocID()
@@ -626,9 +657,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		style = htmlutil.AppendCSS(style, "height", "40px")
 		style = htmlutil.AppendCSS(style, "background", "#ccc")
 		style = htmlutil.AppendCSS(style, "font-weight", "bold")
-		initials := g.evalStaticString(vn.Props, "initials")
+		initials := g.evalStaticString(vnProps(vn), "initials")
 		if initials == "" {
-			initials = g.evalStaticString(vn.Props, "alt")
+			initials = g.evalStaticString(vnProps(vn), "alt")
 		}
 		id := ""
 		if g.preview {
@@ -638,7 +669,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "%s</div>\n", html.EscapeString(initials))
 	case "card":
 		style := g.buildCSSStyle(vn)
-		variant := g.evalStaticString(vn.Props, "variant")
+		variant := g.evalStaticString(vnProps(vn), "variant")
 		switch variant {
 		case "elevated":
 			style = htmlutil.AppendCSS(style, "box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
@@ -654,15 +685,15 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-		for _, child := range vn.Children {
-			g.renderStaticNode(b, child, depth+1)
+		for _, s := range vnChildren(vn) {
+			g.renderStaticStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
 	case "slot":
 		// Project caller's children into this position
-		for _, child := range g.slotChildren {
-			g.renderStaticNode(b, child, depth)
+		for _, s := range g.slotChildren {
+			g.renderStaticStmt(b, s, depth)
 		}
 
 	default:
@@ -681,8 +712,8 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 		style = htmlutil.AppendCSS(style, "flex-direction", "row")
 	}
 
-	if v, ok := vn.Props["scroll"]; ok {
-		if b, ok := v.Literal.(bool); ok && b {
+	if v := vnProp(vn, "scroll"); v != nil {
+		if b, ok := exprLiteralBool(v); ok && b {
 			if vertical {
 				style = htmlutil.AppendCSS(style, "overflow-y", "auto")
 			} else {
@@ -697,33 +728,17 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, vn *ast.VisualNode, depth 
 		id = g.allocID()
 	}
 
-	// Handle if
-	ifDisplay := ""
-	if vn.If != nil {
-		if !g.evalStaticBool(vn.If) {
-			ifDisplay = "display:none"
-		}
-		if id == "" {
-			id = g.allocID()
-		}
-		g.addIfUpdater(id, *vn.If)
-	}
-
-	if ifDisplay != "" {
-		style = htmlutil.AppendCSS(style, "display", "none")
-	}
-
 	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-	for _, child := range vn.Children {
-		g.renderStaticNode(b, child, depth+1)
+	for _, s := range vnChildren(vn) {
+		g.renderStaticStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</div>\n", indent)
 }
 
 func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	style := g.buildCSSStyle(vn)
-	val := g.evalStaticString(vn.Props, "value")
-	reactive := g.propIsReactive(vn.Props, "value") || vn.If != nil
+	val := g.evalStaticString(vnProps(vn), "value")
+	reactive := g.propIsReactive(vnProps(vn), "value")
 	id := ""
 	if reactive {
 		id = g.allocID()
@@ -734,26 +749,12 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 		id = g.allocID()
 	}
 
-	ifDisplay := ""
-	if vn.If != nil {
-		if !g.evalStaticBool(vn.If) {
-			ifDisplay = "none"
-		}
-		if id == "" {
-			id = g.allocID()
-		}
-		g.addIfUpdater(id, *vn.If)
-	}
-	if ifDisplay != "" {
-		style = htmlutil.AppendCSS(style, "display", "none")
-	}
-
 	g.writeOpenTag(b, "span", id, style, vn, depth, vn.Pos)
 	b.WriteString(html.EscapeString(val))
 	b.WriteString("</span>\n")
 
-	if g.propIsReactive(vn.Props, "value") {
-		g.addTextUpdater(id, vn.Props["value"])
+	if g.propIsReactive(vnProps(vn), "value") {
+		g.addTextUpdater(id, vnProp(vn, "value"))
 	}
 	if g.testMode && id != "" {
 		g.addUserAttrUpdaters(id, vn)
@@ -762,29 +763,15 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, vn *ast.VisualNode, depth
 
 func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	style := g.buildCSSStyle(vn)
-	text := g.evalStaticString(vn.Props, "text")
-	reactive := g.propIsReactive(vn.Props, "text") || vn.If != nil || len(vn.Events) > 0 || g.propIsReactive(vn.Props, "disabled")
+	text := g.evalStaticString(vnProps(vn), "text")
+	reactive := g.propIsReactive(vnProps(vn), "text") || vnHasEvents(vn) || g.propIsReactive(vnProps(vn), "disabled")
 	id := ""
 	if reactive {
 		id = g.allocID()
 	}
 
-	ifDisplay := ""
-	if vn.If != nil {
-		if !g.evalStaticBool(vn.If) {
-			ifDisplay = "none"
-		}
-		if id == "" {
-			id = g.allocID()
-		}
-		g.addIfUpdater(id, *vn.If)
-	}
-	if ifDisplay != "" {
-		style = htmlutil.AppendCSS(style, "display", "none")
-	}
-
 	disabled := ""
-	if v, ok := vn.Props["disabled"]; ok {
+	if v := vnProp(vn, "disabled"); v != nil {
 		if g.evalStaticBool(&v) {
 			disabled = " disabled"
 		}
@@ -802,21 +789,21 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, vn *ast.VisualNode, dep
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	g.writeDataKey(b, vn.Key)
+
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
-	if g.propIsReactive(vn.Props, "text") {
-		g.addTextContentUpdater(id, vn.Props["text"])
+	if g.propIsReactive(vnProps(vn), "text") {
+		g.addTextContentUpdater(id, vnProp(vn, "text"))
 	}
-	if g.propIsReactive(vn.Props, "disabled") {
-		g.addDisabledUpdater(id, vn.Props["disabled"])
+	if g.propIsReactive(vnProps(vn), "disabled") {
+		g.addDisabledUpdater(id, vnProp(vn, "disabled"))
 	}
 
 	// Event handlers
-	if clickEvt, ok := vn.Events["click"]; ok {
-		if clickEvt.Body.SNGL != nil {
+	if clickEvt := vnEvent(vn, "click"); clickEvt != nil {
+		if len(clickEvt.Body.Stmts) > 0 {
 			g.addClickHandler(id, clickEvt.Body)
 		}
 	}
@@ -827,20 +814,20 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 	id := g.allocID() // inputs are always reactive
 
 	placeholder := ""
-	if v, ok := vn.Props["placeholder"]; ok {
-		if s, ok := v.Literal.(string); ok {
+	if v := vnProp(vn, "placeholder"); v != nil {
+		if s, ok := exprLiteralString(v); ok {
 			placeholder = s
 		}
 	}
 
 	inputType := "text"
-	if v, ok := vn.Props["type"]; ok {
-		if s, ok := v.Literal.(string); ok {
+	if v := vnProp(vn, "type"); v != nil {
+		if s, ok := exprLiteralString(v); ok {
 			inputType = s
 		}
 	}
 
-	value := g.evalStaticString(vn.Props, "value")
+	value := g.evalStaticString(vnProps(vn), "value")
 
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<input id=\"%s\"", indent, id)
@@ -854,16 +841,16 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
 	fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
-	g.writeDataKey(b, vn.Key)
+
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(" />\n")
 
 	// Add value sync updater if the input is bound to state via set()
-	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.Body.SNGL != nil {
+	if inputEvt := vnEvent(vn, "input"); inputEvt != nil {
+		if len(inputEvt.Body.Stmts) > 0 {
 			// Extract the set() target to determine the JS expression for the bound value
-			if target, ok := extractSetTarget(inputEvt.Body.SNGL); ok {
+			if target, ok := extractSetTarget(inputEvt.Body.Stmts[0]); ok {
 				jsExpr := g.lang.TranslateExpr(target, g.scope)
 				root := codegen.FindRootIdent(target)
 				name := fmt.Sprintf("$u_%s_val", id[1:])
@@ -877,8 +864,8 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 	}
 
 	// Input event handler
-	if inputEvt, ok := vn.Events["input"]; ok {
-		if inputEvt.Body.SNGL != nil {
+	if inputEvt := vnEvent(vn, "input"); inputEvt != nil {
+		if len(inputEvt.Body.Stmts) > 0 {
 			g.addInputHandler(id, inputEvt.Body)
 		}
 	}
@@ -889,17 +876,17 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	id := g.allocID()
 
 	checked := false
-	if v, ok := vn.Props["checked"]; ok {
+	if v := vnProp(vn, "checked"); v != nil {
 		checked = g.evalStaticBool(&v)
 	}
-	label := g.evalStaticString(vn.Props, "label")
+	label := g.evalStaticString(vnProps(vn), "label")
 
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<label id=\"%s\"", indent, id)
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	g.writeDataKey(b, vn.Key)
+
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(">")
@@ -910,8 +897,8 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 	}
 	fmt.Fprintf(b, " %s</label>\n", html.EscapeString(label))
 
-	if changeEvt, ok := vn.Events["change"]; ok {
-		if changeEvt.Body.SNGL != nil {
+	if changeEvt := vnEvent(vn, "change"); changeEvt != nil {
+		if len(changeEvt.Body.Stmts) > 0 {
 			g.addChangeHandler(id, changeEvt.Body)
 		}
 	}
@@ -920,32 +907,26 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, vn *ast.VisualNode, d
 func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	style := g.buildCSSStyle(vn)
 	alt := "image"
-	if v, ok := vn.Props["alt"]; ok {
-		if s, ok := v.Literal.(string); ok {
+	if v := vnProp(vn, "alt"); v != nil {
+		if s, ok := exprLiteralString(v); ok {
 			alt = s
 		}
 	}
 	src := ""
-	if v, ok := vn.Props["src"]; ok {
-		if s, ok := v.Literal.(string); ok {
+	if v := vnProp(vn, "src"); v != nil {
+		if s, ok := exprLiteralString(v); ok {
 			src = s
 		}
 	}
-	if v, ok := vn.Props["fit"]; ok {
-		if s, ok := v.Literal.(string); ok {
+	if v := vnProp(vn, "fit"); v != nil {
+		if s, ok := exprLiteralString(v); ok {
 			style = htmlutil.AppendCSS(style, "object-fit", s)
 		}
 	}
 
 	id := ""
-	if vn.If != nil || g.preview {
+	if g.preview {
 		id = g.allocID()
-	}
-	if vn.If != nil {
-		if !g.evalStaticBool(vn.If) {
-			style = htmlutil.AppendCSS(style, "display", "none")
-		}
-		g.addIfUpdater(id, *vn.If)
 	}
 
 	indent := strings.Repeat("  ", depth)
@@ -960,7 +941,7 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, vn *ast.VisualNode, dept
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	g.writeDataKey(b, vn.Key)
+
 	g.writeUserAttrs(b, id, vn)
 	if g.preview {
 		b.WriteString(g.previewAttrs(vn.Pos))
@@ -976,9 +957,9 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, vn *ast.VisualNode, dept
 	indent := strings.Repeat("  ", depth)
 	g.writeOpenTag(b, "fieldset", id, style, vn, depth, vn.Pos)
 	// Static options rendered if literal
-	if v, ok := vn.Props["options"]; ok && v.Literal != nil {
-		value := g.evalStaticString(vn.Props, "value")
-		if items, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "options"); exprIsLiteral(v) {
+		value := g.evalStaticString(vnProps(vn), "value")
+		if items, ok := exprLiteralAny(v).([]any); ok {
 			for _, item := range items {
 				s := fmt.Sprint(item)
 				checked := ""
@@ -991,7 +972,7 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, vn *ast.VisualNode, dept
 		}
 	}
 	fmt.Fprintf(b, "%s</fieldset>\n", indent)
-	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+	if evt := vnEvent(vn, "change"); evt != nil && len(evt.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Body)
 	}
 }
@@ -1000,10 +981,10 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, vn *ast.VisualNode, dep
 	style := g.buildCSSStyle(vn)
 	id := g.allocID()
 	checked := false
-	if v, ok := vn.Props["checked"]; ok {
+	if v := vnProp(vn, "checked"); v != nil {
 		checked = g.evalStaticBool(&v)
 	}
-	label := g.evalStaticString(vn.Props, "label")
+	label := g.evalStaticString(vnProps(vn), "label")
 	indent := strings.Repeat("  ", depth)
 	checkedAttr := ""
 	if checked {
@@ -1016,7 +997,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, vn *ast.VisualNode, dep
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
-	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+	if evt := vnEvent(vn, "change"); evt != nil && len(evt.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Body)
 	}
 }
@@ -1025,8 +1006,8 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, vn *ast.VisualNode, dep
 	style := g.buildCSSStyle(vn)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticString(vn.Props, "value")
-	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	value := g.evalStaticString(vnProps(vn), "value")
+	placeholder := g.evalStaticString(vnProps(vn), "placeholder")
 	fmt.Fprintf(b, "%s<select id=\"%s\"", indent, id)
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1037,8 +1018,8 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, vn *ast.VisualNode, dep
 	if placeholder != "" {
 		fmt.Fprintf(b, "%s  <option value=\"\" disabled selected>%s</option>\n", indent, html.EscapeString(placeholder))
 	}
-	if v, ok := vn.Props["options"]; ok && v.Literal != nil {
-		if items, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "options"); exprIsLiteral(v) {
+		if items, ok := exprLiteralAny(v).([]any); ok {
 			for _, item := range items {
 				s := fmt.Sprint(item)
 				sel := ""
@@ -1050,7 +1031,7 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, vn *ast.VisualNode, dep
 		}
 	}
 	fmt.Fprintf(b, "%s</select>\n", indent)
-	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+	if evt := vnEvent(vn, "change"); evt != nil && len(evt.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Body)
 	}
 }
@@ -1059,11 +1040,11 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, vn *ast.VisualNode, d
 	style := g.buildCSSStyle(vn)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticString(vn.Props, "value")
-	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	value := g.evalStaticString(vnProps(vn), "value")
+	placeholder := g.evalStaticString(vnProps(vn), "placeholder")
 	rows := "3"
-	if v, ok := vn.Props["rows"]; ok {
-		if n, ok := v.Literal.(int); ok {
+	if v := vnProp(vn, "rows"); v != nil {
+		if n, ok := exprLiteralInt(v); ok {
 			rows = fmt.Sprint(n)
 		}
 	}
@@ -1078,7 +1059,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, vn *ast.VisualNode, d
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
-	if evt, ok := vn.Events["input"]; ok && evt.Body.SNGL != nil {
+	if evt := vnEvent(vn, "input"); evt != nil && len(evt.Body.Stmts) > 0 {
 		g.addInputHandler(id, evt.Body)
 	}
 }
@@ -1090,14 +1071,14 @@ func (g *htmlGen) renderStaticTabs(b *strings.Builder, vn *ast.VisualNode, depth
 	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
 	// Tab bar
 	fmt.Fprintf(b, "%s  <div role=\"tablist\" style=\"display:flex;gap:4px;border-bottom:1px solid #ccc\">\n", indent)
-	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
+	if v := vnProp(vn, "items"); exprIsLiteral(v) {
 		selected := 0
-		if sv, ok := vn.Props["selected"]; ok {
-			if n, ok := sv.Literal.(int); ok {
+		if sv := vnProp(vn, "selected"); sv != nil {
+			if n, ok := exprLiteralInt(sv); ok {
 				selected = n
 			}
 		}
-		if items, ok := v.Literal.([]any); ok {
+		if items, ok := exprLiteralAny(v).([]any); ok {
 			for i, item := range items {
 				s := fmt.Sprint(item)
 				activeStyle := ""
@@ -1111,8 +1092,8 @@ func (g *htmlGen) renderStaticTabs(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 	fmt.Fprintf(b, "%s  </div>\n", indent)
 	// Tab content — show selected child
-	for _, child := range vn.Children {
-		g.renderStaticNode(b, child, depth+1)
+	for _, s := range vnChildren(vn) {
+		g.renderStaticStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</div>\n", indent)
 }
@@ -1122,14 +1103,14 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, vn *ast.VisualNode, dept
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
 	open := true
-	if v, ok := vn.Props["open"]; ok {
+	if v := vnProp(vn, "open"); v != nil {
 		open = g.evalStaticBool(&v)
 	}
 	display := ""
 	if !open {
 		display = "display:none;"
 	}
-	title := g.evalStaticString(vn.Props, "title")
+	title := g.evalStaticString(vnProps(vn), "title")
 	overlayStyle := display + "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000"
 	if !open {
 		overlayStyle = "display:none"
@@ -1150,13 +1131,13 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, vn *ast.VisualNode, dept
 	if title != "" {
 		fmt.Fprintf(b, "%s    <h3 style=\"margin:0 0 16px\">%s</h3>\n", indent, html.EscapeString(title))
 	}
-	for _, child := range vn.Children {
-		g.renderStaticNode(b, child, depth+2)
+	for _, s := range vnChildren(vn) {
+		g.renderStaticStmt(b, s, depth+2)
 	}
 	fmt.Fprintf(b, "%s  </div>\n", indent)
 	fmt.Fprintf(b, "%s</div>\n", indent)
-	if g.propIsReactive(vn.Props, "open") {
-		g.addIfUpdater(id, vn.Props["open"])
+	if g.propIsReactive(vnProps(vn), "open") {
+		g.addIfUpdater(id, vnProp(vn, "open"))
 	}
 }
 
@@ -1165,22 +1146,22 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, vn *ast.V
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
 	open := true
-	if v, ok := vn.Props["open"]; ok {
+	if v := vnProp(vn, "open"); v != nil {
 		open = g.evalStaticBool(&v)
 	}
-	if v, ok := vn.Props["visible"]; ok {
+	if v := vnProp(vn, "visible"); v != nil {
 		open = g.evalStaticBool(&v)
 	}
 	if !open {
 		style = htmlutil.AppendCSS(style, "display", "none")
 	}
 	g.writeOpenTag(b, tag, id, style, vn, depth, vn.Pos)
-	for _, child := range vn.Children {
-		g.renderStaticNode(b, child, depth+1)
+	for _, s := range vnChildren(vn) {
+		g.renderStaticStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</%s>\n", indent, tag)
-	if g.propIsReactive(vn.Props, "open") {
-		g.addIfUpdater(id, vn.Props["open"])
+	if g.propIsReactive(vnProps(vn), "open") {
+		g.addIfUpdater(id, vnProp(vn, "open"))
 	}
 }
 
@@ -1192,14 +1173,15 @@ func (g *htmlGen) renderStaticAccordion(b *strings.Builder, vn *ast.VisualNode, 
 	}
 	indent := strings.Repeat("  ", depth)
 	g.writeOpenTag(b, "div", id, style, vn, depth, vn.Pos)
-	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
-		if items, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "items"); exprIsLiteral(v) {
+		if items, ok := exprLiteralAny(v).([]any); ok {
 			for i, item := range items {
 				s := fmt.Sprint(item)
 				fmt.Fprintf(b, "%s  <details>\n", indent)
 				fmt.Fprintf(b, "%s    <summary>%s</summary>\n", indent, html.EscapeString(s))
-				if i < len(vn.Children) {
-					g.renderStaticNode(b, vn.Children[i], depth+2)
+				children := vnChildNodes(vn)
+				if i < len(children) {
+					g.renderStaticNode(b, children[i], depth+2)
 				}
 				fmt.Fprintf(b, "%s  </details>\n", indent)
 			}
@@ -1219,8 +1201,8 @@ func (g *htmlGen) renderStaticTable(b *strings.Builder, vn *ast.VisualNode, dept
 	indent := strings.Repeat("  ", depth)
 	g.writeOpenTag(b, "table", id, style, vn, depth, vn.Pos)
 	// Header
-	if v, ok := vn.Props["columns"]; ok && v.Literal != nil {
-		if cols, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "columns"); exprIsLiteral(v) {
+		if cols, ok := exprLiteralAny(v).([]any); ok {
 			fmt.Fprintf(b, "%s  <thead><tr>\n", indent)
 			for _, col := range cols {
 				fmt.Fprintf(b, "%s    <th style=\"text-align:left;padding:8px;border-bottom:2px solid #ddd\">%s</th>\n", indent, html.EscapeString(fmt.Sprint(col)))
@@ -1229,8 +1211,8 @@ func (g *htmlGen) renderStaticTable(b *strings.Builder, vn *ast.VisualNode, dept
 		}
 	}
 	// Body
-	if v, ok := vn.Props["rows"]; ok && v.Literal != nil {
-		if rows, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "rows"); exprIsLiteral(v) {
+		if rows, ok := exprLiteralAny(v).([]any); ok {
 			fmt.Fprintf(b, "%s  <tbody>\n", indent)
 			for _, row := range rows {
 				fmt.Fprintf(b, "%s    <tr>\n", indent)
@@ -1257,8 +1239,8 @@ func (g *htmlGen) renderStaticTree(b *strings.Builder, vn *ast.VisualNode, depth
 	style = htmlutil.AppendCSS(style, "list-style", "none")
 	style = htmlutil.AppendCSS(style, "padding-left", "16px")
 	g.writeOpenTag(b, "ul", id, style, vn, depth, vn.Pos)
-	if v, ok := vn.Props["items"]; ok && v.Literal != nil {
-		if items, ok := v.Literal.([]any); ok {
+	if v := vnProp(vn, "items"); exprIsLiteral(v) {
+		if items, ok := exprLiteralAny(v).([]any); ok {
 			for _, item := range items {
 				fmt.Fprintf(b, "%s  <li>▶ %s</li>\n", indent, html.EscapeString(fmt.Sprint(item)))
 			}
@@ -1271,8 +1253,8 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 	style := g.buildCSSStyle(vn)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticString(vn.Props, "value")
-	placeholder := g.evalStaticString(vn.Props, "placeholder")
+	value := g.evalStaticString(vnProps(vn), "value")
+	placeholder := g.evalStaticString(vnProps(vn), "placeholder")
 	fmt.Fprintf(b, "%s<input id=\"%s\" type=\"date\"", indent, id)
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1286,7 +1268,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 	g.writeUserAttrs(b, id, vn)
 	b.WriteString(g.previewAttrs(vn.Pos))
 	b.WriteString(" />\n")
-	if evt, ok := vn.Events["change"]; ok && evt.Body.SNGL != nil {
+	if evt := vnEvent(vn, "change"); evt != nil && len(evt.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Body)
 	}
 }
@@ -1298,7 +1280,7 @@ const maxComponentDepth = 10
 func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	indent := strings.Repeat("  ", depth)
 	// Extract tag name: "html.div" → "div", "button" → "button"
-	tag := vn.Component
+	tag := vnName(vn)
 	if _, local, ok := strings.Cut(tag, "."); ok {
 		tag = local
 	}
@@ -1314,13 +1296,13 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""
-	for name, expr := range vn.Props {
+	for name, expr := range vnProps(vn) {
 		if name == "style" {
 			continue
 		}
 		// Try resolving SNGL expressions (e.g. component param references)
 		// to static values for the initial HTML render.
-		if expr.SNGL != nil {
+		if exprIsReactive(expr) {
 			if val := g.evalInitialString(expr); val != "" {
 				switch name {
 				case "innerHTML":
@@ -1333,19 +1315,19 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 				continue
 			}
 		}
-		if expr.SNGL == nil {
-			val := g.evalStaticString(vn.Props, name)
+		if !exprIsReactive(expr) {
+			val := g.evalStaticString(vnProps(vn), name)
 			switch name {
 			case "innerText":
 				staticInnerText = val
 			case "innerHTML":
 				staticInnerHTML = val
 			default:
-				if bv, ok := expr.Literal.(bool); ok {
+				if bv, ok := exprLiteralBool(expr); ok {
 					if bv {
 						fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
 					}
-				} else if expr.Literal != nil {
+				} else if exprIsLiteral(expr) {
 					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
 				} else if val != "" {
 					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
@@ -1363,8 +1345,8 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, " id=\"%s\"", id)
 	}
 	// Emit static class for raw HTML elements
-	if vn.Class != nil && vn.Class.Literal != nil {
-		if s, ok := vn.Class.Literal.(string); ok && s != "" {
+	if exprIsLiteral(vnProp(vn, "class")) {
+		if s, ok := exprLiteralString(vnProp(vn, "class")); ok && s != "" {
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}
@@ -1373,7 +1355,7 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 	b.WriteString(attrs.String())
 	if vn != nil {
-		g.writeDataKey(b, vn.Key)
+
 		g.writeUserAttrs(b, id, vn)
 	}
 	if g.preview && vn.Pos.IsValid() {
@@ -1396,8 +1378,8 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
-			for _, child := range vn.Children {
-				g.renderStaticNode(b, child, depth+1)
+			for _, s := range vnChildren(vn) {
+				g.renderStaticStmt(b, s, depth+1)
 			}
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
@@ -1408,11 +1390,11 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 
 	// Reactive props: set via JS updaters
-	for name, expr := range vn.Props {
+	for name, expr := range vnProps(vn) {
 		if name == "style" {
 			continue
 		}
-		if expr.SNGL != nil {
+		if exprIsReactive(expr) {
 			jsVal := g.exprToJS(expr)
 			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
@@ -1433,7 +1415,7 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 
 	// Wire up events
-	for name, expr := range vn.Events {
+	for name, expr := range vnEvents(vn) {
 		switch name {
 		case "click":
 			g.addClickHandler(id, expr.Body)
@@ -1449,7 +1431,7 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
 	// Find the component definition
-	comp := g.doc.FindComponent(vn.Component)
+	comp := codegen.FindComponent(g.doc, vnName(vn))
 	if comp == nil {
 		// Not a user/abstract component — render as raw HTML element
 		g.renderRawElement(b, vn, depth)
@@ -1477,14 +1459,14 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	}
 
 	// Record component param values for JS constants with unique names
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		uniqueName := p.Name + suffix
 		g.scope.LocalVars[p.Name] = true
 		renames[p.Name] = uniqueName
 
 		// Resolve param value from call-site props or default
 		var jsVal string
-		if expr, ok := vn.Props[p.Name]; ok {
+		if expr := vnProp(vn, p.Name); expr != nil {
 			jsVal = g.exprToJS(expr)
 		} else {
 			jsVal = g.literalToJS(p.Default)
@@ -1495,8 +1477,8 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 		})
 	}
 	// Handle component computed functions: rename and register as local
-	for _, fn := range comp.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+	for _, fn := range compFuncs(comp) {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
 			uniqueName := fn.Name + suffix
 			g.scope.LocalVars[fn.Name] = true
 			renames[fn.Name] = uniqueName
@@ -1505,8 +1487,8 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	g.scope.Renames = renames
 
 	// Emit computed functions with renamed references
-	for _, fn := range comp.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+	for _, fn := range compFuncs(comp) {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
 			uniqueName := fn.Name + suffix
 			body := g.exprToJS(fn.Body)
 			g.componentParams = append(g.componentParams, componentParam{
@@ -1516,37 +1498,19 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 		}
 	}
 
-	// Promote component state vars to the parent document with unique names.
+	// Promote component state vars to the parent scope with unique names.
 	dataRenames := make(map[string]string)
-	for _, d := range comp.Data {
-		uniqueName := d.Name + suffix
-		promoted := *d
-		promoted.Name = uniqueName
-		g.doc.Data = append(g.doc.Data, &promoted)
+	for _, dv := range compVars(comp) {
+		uniqueName := dv.Name + suffix
 		g.scope.ModelFields[uniqueName] = true
 		g.dt.ModelFields[uniqueName] = true
-		g.scope.LocalVars[d.Name] = true
-		renames[d.Name] = "state." + uniqueName
-		dataRenames[d.Name] = uniqueName
+		g.scope.LocalVars[dv.Name] = true
+		renames[dv.Name] = "state." + uniqueName
+		dataRenames[dv.Name] = uniqueName
 	}
 	g.scope.Renames = renames
 
-	// Pre-translate component timers while the component scope is active.
-	for _, t := range comp.Timers {
-		ms := codegen.IntervalToMs(t.Interval)
-		stmts := g.lang.TranslateMutation(t.Body, g.scope)
-		mutated := g.remapMutated(codegen.MutatedFields(t.Body), dataRenames)
-		activeVar := t.Active
-		if renamed, ok := dataRenames[activeVar]; ok {
-			activeVar = renamed
-		}
-		g.timers = append(g.timers, timerDef{
-			intervalMs: ms,
-			activeVar:  activeVar,
-			body:       strings.Join(stmts, "\n  "),
-			mutated:    mutated,
-		})
-	}
+	// TODO: Pre-translate component timers (requires checker.Package)
 
 	// Set dataRenames so handler-adding methods can remap MutatedFields.
 	savedDataRenames := g.dataRenames
@@ -1554,15 +1518,11 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 
 	// Set slot children for abstract component body expansion
 	savedSlot := g.slotChildren
-	g.slotChildren = vn.Children
+	g.slotChildren = vnChildren(vn)
 
-	// Inline the component body at the call site, preferring platform-specific body.
-	body := comp.Body
-	if pb, ok := comp.PlatformBodies["html"]; ok {
-		body = pb
-	}
-	for _, child := range body {
-		g.renderStaticNode(b, child, depth)
+	// Inline the component body at the call site.
+	for _, s := range compBodyStmts(comp) {
+		g.renderStaticStmt(b, s, depth)
 	}
 
 	g.slotChildren = savedSlot
@@ -1575,19 +1535,7 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 
 // emitScript writes the <script> block content.
 func (g *htmlGen) emitScript(b *strings.Builder) {
-	// Collect document-level timers (component timers are pre-collected
-	// during renderStaticUserComponent while the component scope is active).
-	for _, t := range g.doc.Timers {
-		ms := codegen.IntervalToMs(t.Interval)
-		stmts := g.lang.TranslateMutation(t.Body, g.scope)
-		mutated := codegen.MutatedFields(t.Body)
-		g.timers = append(g.timers, timerDef{
-			intervalMs: ms,
-			activeVar:  t.Active,
-			body:       strings.Join(stmts, "\n  "),
-			mutated:    mutated,
-		})
-	}
+	// TODO: Collect document-level timers (requires checker.Package)
 	for i := range g.timers {
 		g.timers[i].index = i
 	}
@@ -1595,73 +1543,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Run IR optimizer on collected updaters, handlers, and timers.
 	g.optimizeIR()
 
-	// Extern bindings (provided by host via window.__sngl_externs or WASM)
-	hasExterns := false
-	for _, d := range g.doc.Data {
-		if d.Extern || d.IsFunc {
-			hasExterns = true
-			break
-		}
-	}
-	if hasExterns {
-		b.WriteString("// Extern bindings\nconst $ext = window.__sngl_externs || {};\n")
-
-		// Group go:// extern functions by namespace for qualified access (e.g., purepkg.Greet)
-		nsByName := map[string][]string{} // namespace → function names
-		for ns, ni := range g.doc.NativeImports {
-			for _, d := range ni.Data {
-				if d.IsFunc && d.Extern && d.Purity != ast.PurityPure && (d.Resolved == nil || d.Resolved.NativePkg != "file") {
-					nsByName[ns] = append(nsByName[ns], d.Name)
-				}
-			}
-		}
-		for ns, funcs := range nsByName {
-			fmt.Fprintf(b, "const %s = {\n", ns)
-			for _, fn := range funcs {
-				fmt.Fprintf(b, "  %s: $ext.%s || function(){},\n", fn, fn)
-			}
-			b.WriteString("};\n")
-		}
-
-		// Non-namespaced extern functions (direct doc.Data externs)
-		for _, d := range g.doc.Data {
-			if !d.Extern || !d.IsFunc {
-				continue
-			}
-			// Skip if already in a namespace
-			inNS := false
-			for _, funcs := range nsByName {
-				for _, fn := range funcs {
-					if fn == d.Name {
-						inNS = true
-					}
-				}
-			}
-			if !inNS {
-				fmt.Fprintf(b, "const %s = $ext.%s || function(){};\n", d.Name, d.Name)
-			}
-		}
-		b.WriteString("\n")
-	}
+	// TODO: Extern bindings (requires checker.Package for import resolution)
 
 	// State initialization
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
-	for _, d := range g.doc.Data {
-		if d.IsFunc {
-			continue
-		}
-		val := g.literalToJS(d.Init)
-		if d.Extern {
-			val = fmt.Sprintf("$ext.%s", d.Name)
-		}
-		stateFields = append(stateFields, d.Name+": "+val)
+	for _, dv := range docVars(g.doc) {
+		val := g.literalToJS(dv.Init)
+		stateFields = append(stateFields, dv.Name+": "+val)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n\n")
 
 	// Struct constructors
-	for _, sd := range g.doc.Structs {
+	for _, sd := range docStructs(g.doc) {
 		var params []string
 		var body []string
 		for _, f := range sd.Fields {
@@ -1671,14 +1566,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
 	}
-	if len(g.doc.Structs) > 0 {
+	if len(docStructs(g.doc)) > 0 {
 		b.WriteString("\n")
 	}
 
 	// Computed functions (zero-arg expression-form)
 	hasComputed := false
-	for _, fn := range g.doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+	for _, fn := range docFuncs(g.doc) {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
 			body := g.exprToJS(fn.Body)
 			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
 			hasComputed = true
@@ -1688,12 +1583,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// User-defined functions (skip stdlib — codegens use native calls)
+	// User-defined functions
 	emittedFuncs := false
-	for _, fn := range g.doc.Functions {
-		if fn.IsStdlib {
-			continue
-		}
+	for _, fn := range docFuncs(g.doc) {
 		g.emitJSFunc(b, fn)
 		emittedFuncs = true
 	}
@@ -1701,21 +1593,18 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Setters — only emit for fields with triggers, timer controls, or in preview mode
-	for _, d := range g.doc.Data {
-		if d.IsFunc {
-			continue
-		}
+	// Setters — emit for fields with @change handlers, timer controls, or preview mode
+	for _, dv := range docVars(g.doc) {
 		needsSetter := g.preview
-		for _, ev := range d.Events {
-			if ev.Kind == "change" {
+		for _, h := range dv.Handlers {
+			if h.Name == "change" {
 				needsSetter = true
 				break
 			}
 		}
 		if !needsSetter {
 			for _, t := range g.timers {
-				if t.activeVar == d.Name {
+				if t.activeVar == dv.Name {
 					needsSetter = true
 					break
 				}
@@ -1724,25 +1613,24 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if !needsSetter {
 			continue
 		}
-		fmt.Fprintf(b, "function $set_%s(v) {\n", d.Name)
-		fmt.Fprintf(b, "  state.%s = v;\n", d.Name)
-		// Call affected updaters
-		mutated := map[string]bool{d.Name: true}
+		fmt.Fprintf(b, "function $set_%s(v) {\n", dv.Name)
+		fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
+		mutated := map[string]bool{dv.Name: true}
 		for _, u := range g.findAffectedUpdaters(mutated) {
 			fmt.Fprintf(b, "  %s();\n", u.funcName)
 		}
-		// Inline @change event body
-		for _, ev := range d.Events {
-			if ev.Kind == "change" {
-				stmts := g.lang.TranslateMutation(ev.Body, g.scope)
-				for _, s := range stmts {
-					fmt.Fprintf(b, "  %s;\n", s)
+		for _, h := range dv.Handlers {
+			if h.Name == "change" {
+				for _, s := range h.Body.Stmts {
+					stmts := g.lang.TranslateMutation(s, g.scope)
+					for _, js := range stmts {
+						fmt.Fprintf(b, "  %s;\n", js)
+					}
 				}
 			}
 		}
-		// Sync timers controlled by this var
 		for _, t := range g.timers {
-			if t.activeVar == d.Name {
+			if t.activeVar == dv.Name {
 				fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 			}
 		}
@@ -1758,11 +1646,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	b.WriteString("\n")
 
 	// Constants
-	for _, c := range g.doc.Consts {
+	for _, c := range docConsts(g.doc) {
 		val := g.literalToJS(c.Init)
 		fmt.Fprintf(b, "const %s = %s;\n", c.Name, val)
 	}
-	if len(g.doc.Consts) > 0 {
+	if len(docConsts(g.doc)) > 0 {
 		b.WriteString("\n")
 	}
 
@@ -2085,22 +1973,32 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
-	if vn.For == nil {
-		return
-	}
-	iterVar := vn.For.Variable
-	indexVar := vn.For.IndexVar
+// addElseUpdater adds a display updater for the else branch of an if statement.
+func (g *htmlGen) addElseUpdater(elemID string, cond ast.Expr) {
+	jsExpr := g.exprToJS(cond)
+	deps := g.exprDeps(cond)
+	name := fmt.Sprintf("$u_%s_else", elemID[1:])
+	g.updates = append(g.updates, updateFunc{
+		funcName: name,
+		body:     fmt.Sprintf("%s.style.display = %s ? \"none\" : \"\";", elemID, jsExpr),
+		deps:     deps,
+	})
+}
+
+// addForStmtUpdater adds a list updater for a v2 ForStmt.
+func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ast.ForStmt) {
+	iterVar := stmt.Key
+	indexVar := stmt.Value
 	if indexVar == "" {
 		indexVar = "index"
 	}
 
-	iterableJS := g.exprToJS(vn.For.Iterable)
-	deps := g.exprDeps(vn.For.Iterable)
+	iterableJS := g.exprToJS(stmt.Iter)
+	deps := g.exprDeps(stmt.Iter)
 
-	// Generate the inner HTML creation code
+	// Generate inner HTML creation code from the for body
 	var innerBuf strings.Builder
-	g.emitForLoopBody(&innerBuf, vn, iterVar, indexVar, elemID)
+	g.emitForStmtBody(&innerBuf, stmt, iterVar, indexVar, elemID)
 
 	name := fmt.Sprintf("$u_%s_list", elemID[1:])
 	body := fmt.Sprintf(`%s.innerHTML = "";
@@ -2119,9 +2017,10 @@ func (g *htmlGen) addForUpdater(elemID string, vn *ast.VisualNode) {
 	})
 }
 
-func (g *htmlGen) addForElseUpdater(forElemID, elseElemID string, vn *ast.VisualNode) {
-	iterableJS := g.exprToJS(vn.For.Iterable)
-	deps := g.exprDeps(vn.For.Iterable)
+// addForElseStmtUpdater adds a display updater for the else branch of a for loop.
+func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ast.ForStmt) {
+	iterableJS := g.exprToJS(stmt.Iter)
+	deps := g.exprDeps(stmt.Iter)
 
 	name := fmt.Sprintf("$u_%s_else", forElemID[1:])
 	body := fmt.Sprintf(`%s.style.display = %s.length === 0 ? "" : "none";`,
@@ -2132,6 +2031,25 @@ func (g *htmlGen) addForElseUpdater(forElemID, elseElemID string, vn *ast.Visual
 		body:     body,
 		deps:     deps,
 	})
+}
+
+// emitForStmtBody generates the inner HTML creation code for a v2 ForStmt.
+func (g *htmlGen) emitForStmtBody(b *strings.Builder, stmt *ast.ForStmt, iterVar, indexVar, containerID string) {
+	savedLocals := make(map[string]bool)
+	maps.Copy(savedLocals, g.scope.LocalVars)
+	g.scope.LocalVars[iterVar] = true
+	g.scope.LocalVars[indexVar] = true
+	defer func() { g.scope.LocalVars = savedLocals }()
+
+	listFuncName := fmt.Sprintf("$u_%s_list", containerID[1:])
+	_ = listFuncName
+
+	for _, s := range stmt.Body.Stmts {
+		if vn, ok := s.(*ast.VisualNode); ok {
+			// Delegate to existing emitForLoopBody per-child
+			g.emitForLoopBody(b, vn, iterVar, indexVar, containerID)
+		}
+	}
 }
 
 func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVar, indexVar, containerID string) {
@@ -2145,14 +2063,14 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 	listFuncName := fmt.Sprintf("$u_%s_list", containerID[1:])
 
 	// Generate based on component type
-	switch vn.Component {
+	switch vnName(vn) {
 	case "checkbox":
 		checked := "false"
-		if v, ok := vn.Props["checked"]; ok {
+		if v := vnProp(vn, "checked"); v != nil {
 			checked = g.exprToJS(v)
 		}
 		label := `""`
-		if v, ok := vn.Props["label"]; ok {
+		if v := vnProp(vn, "label"); v != nil {
 			label = g.exprToJS(v)
 		}
 		style := g.buildCSSStyle(vn)
@@ -2166,10 +2084,10 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		fmt.Fprintf(b, "    cb.checked = %s;\n", checked)
 
 		// Change handler
-		if changeEvt, ok := vn.Events["change"]; ok {
-			if changeEvt.Body.SNGL != nil {
-				stmts := g.lang.TranslateMutation(changeEvt.Body.SNGL, g.scope)
-				mutated := codegen.MutatedFields(changeEvt.Body.SNGL)
+		if changeEvt := vnEvent(vn, "change"); changeEvt != nil {
+			if len(changeEvt.Body.Stmts) > 0 {
+				stmts := g.lang.TranslateMutation(changeEvt.Body.Stmts[0], g.scope)
+				mutated := codegen.MutatedFields(changeEvt.Body.Stmts[0])
 				var handlerLines []string
 				for _, s := range stmts {
 					handlerLines = append(handlerLines, s+";")
@@ -2198,7 +2116,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		fmt.Fprintf(b, "    const el = document.createElement(%q);\n", tag)
 		g.emitForLoopDataKey(b, "el", vn)
 		val := `""`
-		if v, ok := vn.Props["value"]; ok {
+		if v := vnProp(vn, "value"); v != nil {
 			val = g.exprToJS(v)
 		}
 		fmt.Fprintf(b, "    el.textContent = %s;\n", val)
@@ -2215,14 +2133,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 
 // emitForLoopDataKey emits a data-key attribute for elements inside for loops.
 func (g *htmlGen) emitForLoopDataKey(b *strings.Builder, elVar string, vn *ast.VisualNode) {
-	if !g.testMode && !g.preview {
-		return
-	}
-	if vn.Key == nil {
-		return
-	}
-	keyJS := g.exprToJS(*vn.Key)
-	fmt.Fprintf(b, "    %s.setAttribute('data-key', %s);\n", elVar, keyJS)
+	// TODO: Key is on ForStmt in v2, not on VisualNode — needs refactoring
 }
 
 // exprDeps extracts model field dependencies, remapping through dataRenames
@@ -2260,12 +2171,22 @@ func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]strin
 	return remapped
 }
 
-func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
-	if expr.SNGL == nil {
+func (g *htmlGen) addClickHandler(elemID string, body ast.StmtBlock) {
+	if len(body.Stmts) == 0 {
 		return
 	}
-	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
+	var stmts []string
+	var mutated map[string]bool
+	for _, s := range body.Stmts {
+		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
+		for k, v := range codegen.MutatedFields(s) {
+			if mutated == nil {
+				mutated = make(map[string]bool)
+			}
+			mutated[k] = v
+		}
+	}
+	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2278,16 +2199,22 @@ func (g *htmlGen) addClickHandler(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
-	if expr.SNGL == nil {
+func (g *htmlGen) addInputHandler(elemID string, body ast.StmtBlock) {
+	if len(body.Stmts) == 0 {
 		return
 	}
-	// Set event var for input handlers
 	savedEvent := g.scope.EventVar
 	g.scope.EventVar = "e.target"
-	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
+	var stmts []string
+	mutated := make(map[string]bool)
+	for _, s := range body.Stmts {
+		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
+		for k, v := range codegen.MutatedFields(s) {
+			mutated[k] = v
+		}
+	}
 	g.scope.EventVar = savedEvent
-	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
+	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2300,12 +2227,19 @@ func (g *htmlGen) addInputHandler(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addChangeHandler(elemID string, expr ast.Expr) {
-	if expr.SNGL == nil {
+func (g *htmlGen) addChangeHandler(elemID string, body ast.StmtBlock) {
+	if len(body.Stmts) == 0 {
 		return
 	}
-	stmts := g.lang.TranslateMutation(expr.SNGL, g.scope)
-	mutated := g.remapMutated(codegen.MutatedFields(expr.SNGL), g.dataRenames)
+	var stmts []string
+	mutated := make(map[string]bool)
+	for _, s := range body.Stmts {
+		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
+		for k, v := range codegen.MutatedFields(s) {
+			mutated[k] = v
+		}
+	}
+	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, s+";")
@@ -2328,8 +2262,8 @@ func (g *htmlGen) buildCSSStyle(vn *ast.VisualNode) string {
 
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 	// Build param list
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
+	params := make([]string, len(fn.Params.Params))
+	for i, p := range fn.Params.Params {
 		params[i] = p.Name
 	}
 	paramStr := strings.Join(params, ", ")
@@ -2344,18 +2278,18 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 	for k := range g.scope.LocalVars {
 		funcScope.LocalVars[k] = true
 	}
-	for _, p := range fn.Params {
+	for _, p := range fn.Params.Params {
 		funcScope.LocalVars[p.Name] = true
 	}
 
 	// Mangle dotted names for JS: int.sqrt → int_sqrt
 	jsName := strings.ReplaceAll(fn.Name, ".", "_")
 
-	if fn.Body.SNGL != nil {
+	if fn.Body != nil {
 		// Single-expression function
-		body := g.lang.TranslateExpr(fn.Body.SNGL, funcScope)
+		body := g.lang.TranslateExpr(fn.Body, funcScope)
 		fmt.Fprintf(b, "function %s(%s) { return %s; }\n", jsName, paramStr, body)
-	} else if fn.Block != nil {
+	} else if len(fn.Block.Stmts) > 0 {
 		fmt.Fprintf(b, "function %s(%s) {\n", jsName, paramStr)
 		for _, stmt := range fn.Block.Stmts {
 			switch s := stmt.(type) {
@@ -2363,6 +2297,13 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 				funcScope.LocalVars[s.Name] = true
 				val := g.lang.TranslateExpr(s.Init, funcScope)
 				fmt.Fprintf(b, "  let %s = %s;\n", s.Name, val)
+			case *ast.ReturnStmt:
+				if s.Value != nil {
+					ret := g.lang.TranslateExpr(s.Value, funcScope)
+					fmt.Fprintf(b, "  return %s;\n", ret)
+				} else {
+					b.WriteString("  return;\n")
+				}
 			default:
 				stmts := g.lang.TranslateMutation(stmt, funcScope)
 				for _, line := range stmts {
@@ -2370,58 +2311,43 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 				}
 			}
 		}
-		if fn.Block.Return != nil {
-			ret := g.lang.TranslateExpr(fn.Block.Return, funcScope)
-			fmt.Fprintf(b, "  return %s;\n", ret)
-		}
 		b.WriteString("}\n")
 	}
 }
 
 func (g *htmlGen) exprToJS(expr ast.Expr) string {
-	if expr.SNGL != nil {
-		return g.lang.TranslateExpr(expr.SNGL, g.scope)
+	if exprIsReactive(expr) {
+		return g.lang.TranslateExpr(expr, g.scope)
 	}
-	if expr.Literal != nil {
+	if exprIsLiteral(expr) {
 		return g.lang.TranslateLiteral(expr)
 	}
 	return `""`
 }
 
 func (g *htmlGen) literalToJS(expr ast.Expr) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			return fmt.Sprintf("%d", v)
-		case float64:
-			return fmt.Sprintf("%v", v)
-		case bool:
-			if v {
-				return "true"
+	if expr == nil {
+		return `""`
+	}
+	if lit, ok := expr.(*ast.LiteralExpr); ok {
+		switch lit.Kind {
+		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+			if s, ok := exprLiteralString(expr); ok {
+				return fmt.Sprintf("%q", s)
 			}
-			return "false"
-		case []any:
-			return complexLiteralToJS(v)
-		case map[string]any:
-			return complexLiteralToJS(v)
+		case ast.LiteralInt:
+			return lit.Raw
+		case ast.LiteralFloat:
+			return lit.Raw
+		case ast.LiteralBool:
+			return lit.Raw
+		case ast.LiteralNull:
+			return "null"
 		}
+		return lit.Raw
 	}
-	// SNGL init expression (e.g., struct literal)
-	if expr.SNGL != nil {
-		// null literal on a list type → empty array (avoids null.length errors)
-		if lit, ok := expr.SNGL.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralNull {
-			if strings.HasPrefix(expr.TypeHint, "list:") || strings.HasPrefix(expr.TypeHint, "[]") {
-				return "[]"
-			}
-		}
-		return g.exprToJS(expr)
-	}
-	if strings.HasPrefix(expr.TypeHint, "list:") || strings.HasPrefix(expr.TypeHint, "[]") {
-		return "[]"
-	}
-	return `""`
+	// Non-literal expression — translate to JS
+	return g.exprToJS(expr)
 }
 
 // complexLiteralToJS converts []any or map[string]any to JSON for embedding in JS.
@@ -2441,21 +2367,21 @@ func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string
 	if !ok {
 		return ""
 	}
-	if v.Literal != nil {
-		if s, ok := v.Literal.(string); ok {
+	if exprIsLiteral(v) {
+		if s, ok := exprLiteralString(v); ok {
 			return s
 		}
-		return fmt.Sprintf("%v", v.Literal)
+		return fmt.Sprintf("%v", exprLiteralAny(v))
 	}
 	// For SNGL expressions, evaluate with initial state
-	if v.SNGL != nil {
+	if exprIsReactive(v) {
 		return g.evalInitialString(v)
 	}
 	return ""
 }
 
 func (g *htmlGen) evalInitialString(expr ast.Expr) string {
-	if expr.SNGL == nil {
+	if !exprIsReactive(expr) {
 		return ""
 	}
 	// Translate the expression to JS and try to resolve it to a static value.
@@ -2541,8 +2467,8 @@ func (g *htmlGen) evalStaticBool(expr *ast.Expr) bool {
 	if expr == nil {
 		return true
 	}
-	if expr.Literal != nil {
-		if v, ok := expr.Literal.(bool); ok {
+	if exprIsLiteral(*expr) {
+		if v, ok := exprLiteralBool(*expr); ok {
 			return v
 		}
 	}
@@ -2558,21 +2484,15 @@ func (g *htmlGen) propIsReactive(props map[string]ast.Expr, key string) bool {
 	if !ok {
 		return false
 	}
-	return v.SNGL != nil
+	return exprIsReactive(v)
 }
 
 func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
-	if vn.If != nil {
+	if vnHasEvents(vn) {
 		return true
 	}
-	if vn.For != nil {
-		return true
-	}
-	if len(vn.Events) > 0 {
-		return true
-	}
-	for _, v := range vn.Props {
-		if v.SNGL != nil {
+	for _, v := range vnProps(vn) {
+		if exprIsReactive(v) {
 			return true
 		}
 	}
@@ -2580,17 +2500,13 @@ func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
 }
 
 // extractSetTarget finds the first argument of an AssignStmt, which is the target being assigned.
-func extractSetTarget(e ast.Node) (ast.Node, bool) {
-	if e == nil {
+func extractSetTarget(s ast.Stmt) (ast.Expr, bool) {
+	if s == nil {
 		return nil, false
 	}
-	switch n := e.(type) {
+	switch n := s.(type) {
 	case *ast.AssignStmt:
 		return n.Target, true
-	case *ast.StmtBlock:
-		if len(n.Stmts) > 0 {
-			return extractSetTarget(n.Stmts[0])
-		}
 	}
 	return nil, false
 }
@@ -2608,7 +2524,7 @@ func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *as
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	if vn != nil {
-		g.writeDataKey(b, vn.Key)
+
 		g.writeUserAttrs(b, id, vn)
 	}
 	if g.preview && len(pos) > 0 && pos[0].IsValid() {
@@ -2626,8 +2542,8 @@ func (g *htmlGen) writeDataKey(b *strings.Builder, key *ast.Expr) {
 	if key == nil {
 		return
 	}
-	if key.Literal != nil {
-		if s, ok := key.Literal.(string); ok {
+	if exprIsLiteral(*key) {
+		if s, ok := exprLiteralString(*key); ok {
 			fmt.Fprintf(b, " data-key=%q", s)
 		}
 	}
@@ -2635,14 +2551,14 @@ func (g *htmlGen) writeDataKey(b *strings.Builder, key *ast.Expr) {
 
 // vnHasUserAttrs returns true if the visual node has user-specified id or class.
 func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
-	return vn.ID != "" || vn.Class != nil
+	return vn.ID != "" || vnProp(vn, "class") != nil
 }
 
 // addUserAttrUpdaters adds DOM updaters for user-specified id and class attributes.
 func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
-	if vn.Class != nil {
-		jsExpr := g.exprToJS(*vn.Class)
-		deps := g.exprDeps(*vn.Class)
+	if vnProp(vn, "class") != nil {
+		jsExpr := g.exprToJS(vnProp(vn, "class"))
+		deps := g.exprDeps(vnProp(vn, "class"))
 		name := fmt.Sprintf("$u_%s_cls", elemID[1:])
 		g.updates = append(g.updates, updateFunc{
 			funcName: name,
@@ -2659,8 +2575,8 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, vn *ast.
 		return
 	}
 	// Static class can always be emitted directly (no conflict with internal attrs)
-	if vn.Class != nil && vn.Class.Literal != nil {
-		if s, ok := vn.Class.Literal.(string); ok {
+	if exprIsLiteral(vnProp(vn, "class")) {
+		if s, ok := exprLiteralString(vnProp(vn, "class")); ok {
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}

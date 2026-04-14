@@ -15,7 +15,7 @@ type composeContext struct {
 	buf                  *strings.Builder
 	indent               int
 	doc                  *ast.Document
-	components           []*ast.Component
+	components           []*ast.ComponentDecl
 	hasSlot              bool                        // true when rendering inside a component with slot support
 	slotChildren         []*ast.VisualNode           // caller's children for slot expansion
 	componentDepth       int                         // recursion guard for component expansion
@@ -97,7 +97,7 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 	cc.renderRawComposable(vn)
 }
 
-func (cc *composeContext) findComponent(name string) *ast.Component {
+func (cc *composeContext) findComponent(name string) *ast.ComponentDecl {
 	if cc.doc != nil {
 		return cc.doc.FindComponent(name)
 	}
@@ -111,7 +111,7 @@ func (cc *composeContext) findComponent(name string) *ast.Component {
 
 // expandComponent inlines a component's body at the call site, binding
 // props to component params as local Kotlin vals and providing slot children.
-func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNode, body []*ast.VisualNode) {
+func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode, body []*ast.VisualNode) {
 	cc.componentDepth++
 	if cc.componentDepth > 10 {
 		cc.componentDepth--
@@ -174,7 +174,7 @@ func (cc *composeContext) expandComponent(comp *ast.Component, vn *ast.VisualNod
 func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
 	fnName := exportName(vn.Component)
 
-	var comp *ast.Component
+	var comp *ast.ComponentDecl
 	for _, c := range cc.components {
 		if c.Name == vn.Component {
 			comp = c

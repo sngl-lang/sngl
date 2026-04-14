@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 type rawToken struct {
@@ -24,18 +23,16 @@ func computeSemanticTokens(content string, doc *ast.Document) []uint32 {
 		"component": true,
 	}
 
-	// Stdlib component names
-	registry, _, _, _, _, _, _ := checker.LoadStdlib()
+	// TODO: Restore stdlib component names once v2 has stdlib loading
 	stdlibNames := map[string]bool{}
-	for name := range registry {
-		stdlibNames[name] = true
-	}
 
 	// User component names
 	userCompNames := map[string]bool{}
 	if doc != nil {
-		for _, c := range doc.Components {
-			userCompNames[c.Name] = true
+		for _, s := range doc.Stmts {
+			if c, ok := s.(*ast.ComponentDecl); ok {
+				userCompNames[c.Name] = true
+			}
 		}
 	}
 
@@ -106,14 +103,12 @@ func computeSemanticTokens(content string, doc *ast.Document) []uint32 {
 
 				// Struct/enum types (capitalized user types)
 				if doc != nil {
-					for _, s := range doc.Structs {
-						if s.Name == word {
+					for _, stmt := range doc.Stmts {
+						if sd, ok := stmt.(*ast.StructDef); ok && sd.Name == word {
 							tokens = append(tokens, rawToken{lineNum, start, len(word), stType})
 							break
 						}
-					}
-					for _, e := range doc.Enums {
-						if e.Name == word {
+						if ed, ok := stmt.(*ast.EnumDef); ok && ed.Name == word {
 							tokens = append(tokens, rawToken{lineNum, start, len(word), stType})
 							break
 						}

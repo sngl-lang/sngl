@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 )
 
@@ -16,7 +15,7 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	filename := uriToPath(uri)
 	dir := filepath.Dir(filename)
 
-	doc, coreDiags := lspcore.Analyze(fs.Content, filename, os.DirFS(dir), dir, checker.DefaultResolver())
+	doc, coreDiags := lspcore.Analyze(fs.Content, filename, os.DirFS(dir), dir, nil)
 	if doc != nil {
 		fs.Doc = doc
 	}

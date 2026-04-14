@@ -19,7 +19,7 @@ type viewContext struct {
 	forCursors     []forLoopCursor
 	buf            *strings.Builder
 	indent         int
-	components     []*ast.ComponentDecl         // user-defined components for param lookup
+	components     []*ast.ComponentDecl        // user-defined components for param lookup
 	inComponent    bool                        // true when rendering inside a component method
 	vertical       bool                        // true when inside a vertical container (vbox)
 	slotVar        string                      // variable holding pre-rendered slot content (for abstract components)

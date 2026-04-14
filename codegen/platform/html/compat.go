@@ -426,6 +426,16 @@ func compConsts(comp *ast.ComponentDecl) []docConst {
 	return out
 }
 
+// findMainComponent finds the "main" ComponentDecl in a document.
+func findMainComponent(doc *ast.Document) *ast.ComponentDecl {
+	for _, s := range doc.Stmts {
+		if c, ok := s.(*ast.ComponentDecl); ok && c.Name == "main" {
+			return c
+		}
+	}
+	return nil
+}
+
 // compBodyStmts returns the visual/control-flow statements in a component body.
 func compBodyStmts(comp *ast.ComponentDecl) []ast.Stmt {
 	var out []ast.Stmt

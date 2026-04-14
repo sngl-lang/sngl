@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // ErrSkip is returned by an OutputFile's WriteTo to indicate the file should
@@ -300,6 +301,7 @@ type Opts struct {
 // Request is the input to a platform generator.
 type Request struct {
 	Doc     *ast.Document
+	Pkg     *checker.Package   // v2 checked IR (nil for legacy callers)
 	Lang    LangTranslator
 	Opts    Opts
 	Options map[string]string // key=value from --opt flags

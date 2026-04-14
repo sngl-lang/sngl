@@ -114,33 +114,23 @@ func (r *CDPRunner) execStmt(stmt ast.Stmt) error {
 		}
 		js := r.exprToJS(s.Call)
 		return r.evalVoid(js + ";")
-	case *ast.CallExpr:
-		name := callFuncName(s)
-		args := callArgs(s)
-		if name == "assert" && len(args) == 1 {
-			return r.execAssert(args[0])
-		}
-		js := r.exprToJS(s)
-		return r.evalVoid(js + ";")
 	case *ast.EmitStmt:
-		return nil
-	case *ast.StmtBlock:
-		for _, sub := range s.Stmts {
-			if err := r.execStmt(sub); err != nil {
-				return err
-			}
-		}
 		return nil
 	default:
 		// Try as expression
 		if expr, ok := stmt.(ast.Expr); ok {
 			// Method call: SelectExpr-based CallExpr
 			if call, ok := expr.(*ast.CallExpr); ok {
+				name := callFuncName(call)
+				args := callArgs(call)
+				if name == "assert" && len(args) == 1 {
+					return r.execAssert(args[0])
+				}
 				if sel, ok := call.Func.(*ast.SelectExpr); ok {
 					if strings.HasPrefix(sel.Field, "@") {
-						return r.triggerEvent(sel.Operand, sel.Field, callArgs(call))
+						return r.triggerEvent(sel.Operand, sel.Field, args)
 					}
-					stmts := r.lang.TranslateMutation(call, r.scope)
+					stmts := r.lang.TranslateMutation(stmt, r.scope)
 					for _, js := range stmts {
 						if err := r.evalVoid(js + ";"); err != nil {
 							return fmt.Errorf("method: %w", err)

@@ -1,6 +1,10 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import (
+	"slices"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // Package is the top-level IR for a checked .sngl package.
 type Package struct {
@@ -17,6 +21,10 @@ type Package struct {
 	Outputs    []*Output
 	TypeMap    map[ast.Expr]*Type // every expression → its resolved type
 	Symbols    *SymbolTable
+}
+
+func (p *Package) IsMain() bool {
+	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
 }
 
 // Import records a resolved import.

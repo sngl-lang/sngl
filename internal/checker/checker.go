@@ -11,8 +11,8 @@ import (
 type Config struct {
 	FS       fs.FS          // filesystem for resolving relative imports
 	Dir      string         // OS directory for scheme imports
+	IsMain   bool           // whether output declarations are allowed
 	Resolver ImportResolver // import resolver (nil = no imports)
-	IsMain   bool           // true for the entry-point package
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.

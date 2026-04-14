@@ -16,12 +16,13 @@ import (
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	t.Helper()
-	doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+	doc, err := parser.Parse(s.Filename, []byte(s.Source))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, s.FS, s.Dir, checker.DefaultResolver(), nil, nil, nil, true); err != nil {
-		t.Fatalf("check: %v", err)
+	pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+	if len(diags) > 0 {
+		t.Fatalf("check: %v", diags[0])
 	}
 
 	lang := codegen.LookupLang("js")
@@ -32,6 +33,7 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	gen := &Generator{}
 	resp, err := gen.Generate(&codegen.Request{
 		Doc:  doc,
+		Pkg:  pkg,
 		Lang: lang,
 	})
 	if err != nil {
@@ -55,8 +57,9 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := path[:strings.LastIndex(path, "/")]
-	if err := checker.Check(doc, os.DirFS(dir), dir, checker.DefaultResolver(), nil, nil, nil, true); err != nil {
-		t.Fatalf("check: %v", err)
+	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS(dir), Dir: dir, IsMain: true})
+	if len(diags) > 0 {
+		t.Fatalf("check: %v", diags[0])
 	}
 
 	lang := codegen.LookupLang("js")
@@ -67,6 +70,7 @@ func generateHTML(t *testing.T, path string) string {
 	gen := &Generator{}
 	resp, err := gen.Generate(&codegen.Request{
 		Doc:  doc,
+		Pkg:  pkg,
 		Lang: lang,
 	})
 	if err != nil {
