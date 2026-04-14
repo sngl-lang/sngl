@@ -62,7 +62,7 @@ type checker struct {
 
 func newChecker(doc *ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
-	return &checker{
+	c := &checker{
 		doc:          doc,
 		cfg:          cfg,
 		pkg:          &Package{TypeMap: make(map[ast.Expr]*Type)},
@@ -71,6 +71,14 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		unitBySuffix: make(map[string]*UnitDef),
 		visited:      make(map[string]bool),
 	}
+	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
+	stdlibScope := NewScope(symtab.Root.parent) // parent = baseScope
+	c.scope = stdlibScope
+	stdlibPkg := c.loadStdlib()
+	c.pkg.Stdlib = stdlibPkg
+	symtab.Root.parent = stdlibScope
+	c.scope = symtab.Root
+	return c
 }
 
 func (c *checker) error(pos ast.Pos, format string, args ...any) {

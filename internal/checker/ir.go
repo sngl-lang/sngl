@@ -21,6 +21,7 @@ type Package struct {
 	Outputs    []*Output
 	TypeMap    map[ast.Expr]*Type // every expression → its resolved type
 	Symbols    *SymbolTable
+	Stdlib     *Package // stdlib package (nil on the stdlib package itself)
 }
 
 func (p *Package) IsMain() bool {

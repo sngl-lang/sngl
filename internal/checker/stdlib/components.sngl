@@ -1,0 +1,313 @@
+// --- Core ---
+
+// Vertical box layout container. Children are stacked top to bottom.
+component vbox(
+    scroll bool,
+    refreshing bool,
+    @refresh RefreshEvent,
+) list<component> {}
+
+// Horizontal box layout container. Children are placed side by side.
+component hbox(
+    scroll bool,
+) list<component> {}
+
+// Layered container where children overlap.
+component stack() list<component> {}
+
+// Displays a text string.
+component text(
+    value string,
+    selectable bool,
+    @click ClickEvent,
+) {}
+
+// Clickable button that triggers an action.
+component button(
+    text string,
+    disabled bool,
+    @click ClickEvent,
+    @longPress LongPressEvent,
+) list<component> {}
+
+// Single-line text input field.
+component input(
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
+    type string,
+    maxLength int,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+    @submit SubmitEvent,
+) {}
+
+// Displays an image from a URL or asset path.
+component image(
+    src string,
+    alt string,
+    fit string,
+    @click ClickEvent,
+    @load LoadEvent,
+    @error ErrorEvent,
+) {}
+
+// Scrollable viewport.
+component scroll(
+    direction string,
+    scrollX float,
+    scrollY float,
+    showScrollbar string,
+    @scroll ScrollEvent,
+    @scrollEnd ScrollEvent,
+) component {}
+
+// Flexible empty space.
+component spacer(
+    size string,
+) {}
+
+// Boolean toggle rendered as a checkmark box.
+component checkbox(
+    :checked bool,
+    label string,
+    disabled bool,
+    @change ChangeEvent,
+) {}
+
+// Placeholder for projected content in custom component definitions.
+component slot() {}
+
+// --- Input ---
+
+// Group of mutually exclusive options.
+component radio(
+    value string,
+    options list<string>,
+    disabled bool,
+    direction string,
+    @change ChangeEvent,
+) {}
+
+// On/off switch control.
+component toggle(
+    :checked bool,
+    label string,
+    disabled bool,
+    @change ChangeEvent,
+) {}
+
+// Dropdown selection control.
+component select(
+    :value string,
+    options list<string>,
+    placeholder string,
+    disabled bool,
+    multiple bool,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+// Multi-line text input field.
+component textarea(
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
+    rows int,
+    maxLength int,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+// --- Feedback & Navigation ---
+
+// Determinate progress indicator.
+component progress(
+    value float,
+    max float,
+    label string,
+    variant string,
+    showValue bool,
+) {}
+
+// Indeterminate loading indicator.
+component spinner(
+    label string,
+    variant string,
+    size string,
+) {}
+
+// Small status label.
+component badge(
+    value string,
+    variant string,
+    size string,
+) {}
+
+// Tabbed navigation.
+component tabs(
+    items list<string>,
+    selected int,
+    variant string,
+    @change SelectEvent,
+) list<component> {}
+
+// Navigational hyperlink.
+component link(
+    href string,
+    text string,
+    target string,
+    disabled bool,
+    @click ClickEvent,
+) {}
+
+// Visual separator line.
+component divider(
+    direction string,
+    label string,
+) {}
+
+// --- Overlays & Layout ---
+
+// Dialog overlay.
+component modal(
+    open bool,
+    title string,
+    closable bool,
+    size string,
+    @close DismissEvent,
+) list<component> {}
+
+// Slide-out panel.
+component drawer(
+    open bool,
+    side string,
+    size string,
+    @close DismissEvent,
+) list<component> {}
+
+// Informational popup on hover or focus.
+component tooltip(
+    text string,
+    position string,
+    delay int,
+) component {}
+
+// Floating content panel.
+component popover(
+    open bool,
+    position string,
+    openOn string,
+    @close DismissEvent,
+) list<component> {}
+
+// Expandable/collapsible sections.
+component accordion(
+    items list<string>,
+    expanded list<int>,
+    multiple bool,
+    @change ExpandEvent,
+) list<component> {}
+
+// Resizable two-pane layout.
+component splitview(
+    direction string,
+    position float,
+    minPosition float,
+    maxPosition float,
+    resizable bool,
+    @resize ResizeEvent,
+) list<component> {}
+
+// --- Data & Desktop ---
+
+// Tabular data display.
+component table(
+    columns list<string>,
+    rows dyn,
+    selectable bool,
+    selected int,
+    sortable bool,
+    sortColumn string,
+    sortDirection string,
+    @select SelectEvent,
+    @sort ChangeEvent,
+) {}
+
+// Hierarchical data display.
+component tree(
+    items list<string>,
+    selected string,
+    expanded list<int>,
+    @select SelectEvent,
+    @expand ExpandEvent,
+) {}
+
+// Context or dropdown menu.
+component menu(
+    items list<string>,
+    open bool,
+    @select MenuEvent,
+    @close DismissEvent,
+) {}
+
+// Horizontal menu bar.
+component menubar(
+    items list<string>,
+    @select MenuEvent,
+) {}
+
+// Horizontal bar of action buttons.
+component toolbar(
+    items list<string>,
+    @select MenuEvent,
+) list<component> {}
+
+// --- Mobile & Specialized ---
+
+// Calendar-based date selection.
+component datepicker(
+    value date,
+    min date,
+    max date,
+    disabled bool,
+    placeholder string,
+    @change DateEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+// Compact interactive tag.
+component chip(
+    label string,
+    variant string,
+    removable bool,
+    selected bool,
+    disabled bool,
+    @click ClickEvent,
+    @remove DismissEvent,
+) {}
+
+// User profile image with fallback.
+component avatar(
+    src string,
+    alt string,
+    initials string,
+    size string,
+    variant string,
+    @click ClickEvent,
+) {}
+
+// Styled container for grouping related content.
+component card(
+    variant string,
+    clickable bool,
+    @click ClickEvent,
+) list<component> {}

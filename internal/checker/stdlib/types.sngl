@@ -1,0 +1,23 @@
+struct Color {
+    r int = 0
+    g int = 0
+    b int = 0
+    a int = 255
+}
+
+struct ClickEvent {}
+struct LongPressEvent {}
+struct InputEvent {}
+struct ChangeEvent {}
+struct FocusEvent {}
+struct SubmitEvent {}
+struct RefreshEvent {}
+struct ScrollEvent {}
+struct DismissEvent {}
+struct SelectEvent {}
+struct ExpandEvent {}
+struct ResizeEvent {}
+struct MenuEvent {}
+struct LoadEvent {}
+struct ErrorEvent {}
+struct DateEvent {}

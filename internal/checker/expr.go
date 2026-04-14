@@ -101,7 +101,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) *Type {
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return TypDyn
 	}
-	return sym.SymType()
+	if t := sym.SymType(); t != nil {
+		return t
+	}
+	return TypDyn
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) *Type {
@@ -244,6 +247,15 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 
 	// Regular function call.
 	calleeType := c.checkExpr(x.Func)
+
+	// Component instantiation: text(value="hi")
+	if calleeType.Kind == TypeComponent {
+		if comp, ok := calleeType.Decl.(*Component); ok {
+			c.validateComponentCallArgs(x, comp)
+		}
+		return calleeType
+	}
+
 	var sig *FuncSig
 	if calleeType.Kind == TypeFunc && calleeType.Sig != nil {
 		sig = calleeType.Sig
@@ -298,9 +310,28 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 
 	// Type-attached method call.
 	typeName := receiver.String()
-	if fn, ok := c.symtab.LookupMethod(typeName, sel.Field); ok {
+	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
+	// Fallback for generic types: list<int> → "list", option<int> → "option".
+	if !ok {
+		switch receiver.Kind {
+		case TypeList:
+			fn, ok = c.symtab.LookupMethod("list", sel.Field)
+		case TypeOption:
+			fn, ok = c.symtab.LookupMethod("option", sel.Field)
+		}
+	}
+	if ok {
 		sig := fn.FuncSig()
 		if len(sig.TypeParams) > 0 {
+			// For instance calls, bind receiver to param[0] before inferring
+			// from explicit args so that e.g. list<int>.length() binds T=int.
+			if !isStatic && len(sig.Params) > 0 {
+				bindings := make(map[string]*Type)
+				bindTypeParams(sig.Params[0].Type, receiver, bindings)
+				if len(bindings) > 0 {
+					sig = sig.Substitute(bindings)
+				}
+			}
 			sig = c.inferTypeParams(sig, call.Args)
 		}
 		if isStatic {
@@ -774,6 +805,39 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *Component) {
 		case ast.EventHandler:
 			if !componentHasEvent(comp, arg.Name) {
 				c.error(vn.Pos, "unknown event %q on component %s", arg.Name, comp.Name)
+			}
+		}
+	}
+}
+
+// validateComponentCallArgs validates a component call (text(value="hi"))
+// against the component's prop and event declarations.
+func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *Component) {
+	for _, a := range call.Args.Args {
+		switch arg := a.(type) {
+		case ast.Arg:
+			if arg.Value != nil {
+				c.checkExpr(arg.Value)
+			}
+			if arg.Name == "" {
+				continue // positional args
+			}
+			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
+				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
+			}
+		case ast.EventHandler:
+			c.pushScope()
+			for _, p := range arg.Params.Params {
+				c.scope.Declare(&Param{
+					Name: p.Name,
+					Type: c.resolveType(p.Type),
+					Pos:  p.Pos,
+				})
+			}
+			c.checkBlock(&arg.Body)
+			c.popScope()
+			if !componentHasEvent(comp, arg.Name) {
+				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
 	}

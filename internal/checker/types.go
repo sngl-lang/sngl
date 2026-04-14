@@ -100,9 +100,15 @@ func (t *Type) String() string {
 	case TypeString:
 		return "string"
 	case TypeList:
-		return fmt.Sprintf("list<%s>", t.Elems[0])
+		if len(t.Elems) > 0 {
+			return fmt.Sprintf("list<%s>", t.Elems[0])
+		}
+		return "list"
 	case TypeOption:
-		return fmt.Sprintf("option<%s>", t.Elems[0])
+		if len(t.Elems) > 0 {
+			return fmt.Sprintf("option<%s>", t.Elems[0])
+		}
+		return "option"
 	case TypeStruct:
 		if t.Decl != nil {
 			return t.Decl.SymName()

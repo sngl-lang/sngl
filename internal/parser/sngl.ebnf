@@ -262,7 +262,7 @@ Param = ident [ Type ] [ assign Expr ] .
 
 ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 
-CompParamList = CompParam { comma CompParam } .
+CompParamList = CompParam { comma CompParam } [ comma ] .
 
 # CompParam first tokens: colon → binding :field, at → event @event, ident → regular param.
 CompParam =

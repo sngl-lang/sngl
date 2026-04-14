@@ -559,6 +559,94 @@ func test() {
 `)
 }
 
+// --- Stdlib tests ---
+
+func TestStdlibComponentResolution(t *testing.T) {
+	// text() should resolve as a stdlib component, not an error.
+	expectNoErrors(t, `
+component main {
+	text(value="hello")
+}
+`)
+}
+
+func TestStdlibComponentWithChildren(t *testing.T) {
+	expectNoErrors(t, `
+component main {
+	vbox {
+		text(value="a")
+		text(value="b")
+	}
+}
+`)
+}
+
+func TestStdlibComponentUnknownProp(t *testing.T) {
+	expectError(t, `
+component main {
+	text(bogus="bad")
+}
+`, `unknown prop "bogus" on component text`)
+}
+
+func TestStdlibMethodCall(t *testing.T) {
+	expectNoErrors(t, `
+func test() {
+	var x = "hello".upper()
+	var y = "hello".length()
+}
+`)
+}
+
+func TestStdlibListMethodCall(t *testing.T) {
+	expectNoErrors(t, `
+func test() {
+	var items = [1, 2, 3]
+	var n = items.length()
+}
+`)
+}
+
+func TestStdlibComponentCallStmt(t *testing.T) {
+	expectNoErrors(t, `
+component main {
+	text(value="hello")
+	button(text="click me")
+}
+`)
+}
+
+func TestStdlibQualifiedAccess(t *testing.T) {
+	// sngl.text resolves to stdlib text even when user shadows it.
+	expectNoErrors(t, `
+component text() {}
+component main {
+	sngl.text(value="stdlib text")
+	text()
+}
+`)
+}
+
+func TestStdlibPackageOnPkg(t *testing.T) {
+	pkg := parse(t, `var x = 1`)
+	if pkg.Stdlib == nil {
+		t.Fatal("Stdlib package is nil")
+	}
+	if len(pkg.Stdlib.Components) == 0 {
+		t.Fatal("Stdlib has no components")
+	}
+	found := false
+	for _, c := range pkg.Stdlib.Components {
+		if c.Name == "text" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("text component not in stdlib package")
+	}
+}
+
 // --- Testdata-driven tests ---
 
 func testdataDir() string {

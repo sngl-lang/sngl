@@ -1826,7 +1826,7 @@ state8:
 
 // CompParamList grammar:
 //
-//	CompParamList = CompParam { comma CompParam } .
+//	CompParamList = CompParam { comma CompParam } [ comma ] .
 //
 //	State 0
 //		on  at, colon, ident
@@ -1834,13 +1834,17 @@ state8:
 //	State 1
 //		Accept
 //		on  comma
-//			shift and goto state 0
+//			shift and goto state 2
+//	State 2
+//		Accept
+//		on  at, colon, ident
+//			call CompParam and goto state 1
 //
 // CompParamList is used internally from Parse.
 func (p *Parser) CompParamList() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(CompParamList), 0)
-state0:
+	// state0:
 	accept, errorSet = false, 80
 	switch Symbol(p.tok.Ch) {
 	case at, colon, ident:
@@ -1853,7 +1857,15 @@ state1:
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		r = append(r, p.shift())
-		goto state0
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = true, 80
+	switch Symbol(p.tok.Ch) {
+	case at, colon, ident:
+		r = p.add(r, p.CompParam())
+		goto state1
 	}
 	return p.stop(r, accept, errorSet)
 }
