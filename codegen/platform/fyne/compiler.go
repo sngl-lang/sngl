@@ -95,7 +95,7 @@ type analysisResult struct {
 	externs     []externInfo
 	computeds   []computedInfo
 	entries     []entryInfo
-	dataEvents  map[string][]ast.DataEvent
+	dataEvents  map[string][]ast.EventHandler
 	goImports   map[string]bool // native Go import paths from Resolved fields
 	needsTime   bool
 	needsURL    bool
@@ -116,38 +116,16 @@ func analyze(doc *ast.Document) *analysisResult {
 
 	info := &analysisResult{
 		CommonAnalysis: common,
-		dataEvents:     make(map[string][]ast.DataEvent),
+		dataEvents:     make(map[string][]ast.EventHandler),
 		goImports:      make(map[string]bool),
 	}
 
-	// Platform-specific data field analysis (types, init values, externs)
-	for _, d := range doc.Data {
-		if d.Resolved != nil && d.Resolved.NativePkg != "" {
-			info.goImports[d.Resolved.NativePkg] = true
-		}
-		if d.Extern || d.IsFunc {
-			ext := externInfo{
-				name:   d.Name,
-				isFunc: d.IsFunc,
-			}
-			if d.IsFunc {
-				ext.paramTypes = d.ParamTypes
-				ext.returnType = d.ReturnType
-				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
-			} else if d.Resolved != nil && d.Resolved.NativeType != "" {
-				ext.goType = d.Resolved.NativeType
-			} else {
-				ext.goType = typeHintToGo(d.Init.TypeHint)
-			}
-			info.externs = append(info.externs, ext)
-			continue
-		}
+	// Platform-specific data field analysis (types, init values)
+	for _, d := range docVars(doc) {
 		goType := inferGoType(d.Init)
-		if d.Resolved != nil && d.Resolved.NativeType != "" {
-			goType = d.Resolved.NativeType
-		}
 		initVal := literalToGo(d.Init)
-		if needsTimeType(d.Init.TypeHint) {
+		typeHint := exprTypeHint(d.Type)
+		if needsTimeType(typeHint) {
 			info.needsTime = true
 		}
 		info.binds = append(info.binds, bindInfo{
@@ -155,18 +133,18 @@ func analyze(doc *ast.Document) *analysisResult {
 			goType:  goType,
 			initVal: initVal,
 		})
-		if len(d.Events) > 0 {
-			info.dataEvents[d.Name] = d.Events
+		if len(d.Handlers) > 0 {
+			info.dataEvents[d.Name] = d.Handlers
 		}
 	}
 
 	// Platform-specific computed function analysis (Go types)
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			goType := inferGoType(fn.Body)
-			if goType == "any" && fn.Body.SNGL != nil {
-				goType = snglNodeGoType(fn.Body.SNGL)
-			}
+	for _, fn := range docFuncDefs(doc) {
+		if isStdlibFunc(fn) {
+			continue
+		}
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
+			goType := snglNodeGoType(fn.Body)
 			info.computeds = append(info.computeds, computedInfo{
 				name:   fn.Name,
 				goType: goType,
@@ -181,26 +159,16 @@ func analyze(doc *ast.Document) *analysisResult {
 		}
 	}
 
-	// Collect Go imports from struct fields with Resolved info
-	for _, sd := range doc.Structs {
-		for _, f := range sd.Fields {
-			if f.Resolved != nil && f.Resolved.NativePkg != "" {
-				info.goImports[f.Resolved.NativePkg] = true
-			}
-		}
-	}
-
 	// Walk visual tree to find entries
-	if doc.App != nil {
-		for _, child := range doc.App.Children {
-			walkForEntries(child, info)
+	bodyStmts := docBodyStmts(doc)
+	for _, stmt := range bodyStmts {
+		if vn, ok := stmt.(*ast.VisualNode); ok {
+			walkForEntries(vn, info)
 		}
 	}
 
 	// Check if we need url or canvas imports
-	if doc.App != nil {
-		walkForImports(doc.App.Children, info)
-	}
+	walkStmtsForImports(bodyStmts, info)
 
 	// Toast needs time
 	if common.NeedsToast {
@@ -211,23 +179,26 @@ func analyze(doc *ast.Document) *analysisResult {
 }
 
 func walkForEntries(vn *ast.VisualNode, info *analysisResult) {
-	switch vn.Component {
+	name := vnName(vn)
+	props := vnProps(vn)
+	events := vnEvents(vn)
+	switch name {
 	case "input":
 		entry := entryInfo{
 			fieldName: fmt.Sprintf("entry%d", len(info.entries)),
 		}
-		if v, ok := vn.Props["placeholder"]; ok {
-			if s, ok := v.Literal.(string); ok {
+		if v, ok := props["placeholder"]; ok {
+			if s, ok := exprLiteralString(v); ok {
 				entry.placeholder = s
 			}
 		}
-		if v, ok := vn.Props["type"]; ok {
-			if s, ok := v.Literal.(string); ok && s == "password" {
+		if v, ok := props["type"]; ok {
+			if s, ok := exprLiteralString(v); ok && s == "password" {
 				entry.password = true
 			}
 		}
-		if inputEvt, ok := vn.Events["input"]; ok {
-			entry.bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
+		if inputEvt, ok := events["input"]; ok {
+			entry.bindTarget = extractAssignTargetFromBlock(&inputEvt.Body)
 		}
 		info.entries = append(info.entries, entry)
 	case "textarea":
@@ -235,38 +206,49 @@ func walkForEntries(vn *ast.VisualNode, info *analysisResult) {
 			fieldName: fmt.Sprintf("entry%d", len(info.entries)),
 			multiLine: true,
 		}
-		if v, ok := vn.Props["placeholder"]; ok {
-			if s, ok := v.Literal.(string); ok {
+		if v, ok := props["placeholder"]; ok {
+			if s, ok := exprLiteralString(v); ok {
 				entry.placeholder = s
 			}
 		}
-		if v, ok := vn.Props["rows"]; ok {
-			if n, ok := v.Literal.(int); ok {
+		if v, ok := props["rows"]; ok {
+			if n, ok := exprLiteralInt(v); ok {
 				entry.rows = n
 			}
 		}
-		if inputEvt, ok := vn.Events["input"]; ok {
-			entry.bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
+		if inputEvt, ok := events["input"]; ok {
+			entry.bindTarget = extractAssignTargetFromBlock(&inputEvt.Body)
 		}
 		info.entries = append(info.entries, entry)
 	}
 
-	for _, child := range vn.Children {
+	for _, child := range vnChildNodes(vn) {
 		walkForEntries(child, info)
 	}
 }
 
-func walkForImports(nodes []*ast.VisualNode, info *analysisResult) {
-	for _, vn := range nodes {
-		switch vn.Component {
-		case "link":
-			info.needsURL = true
-		case "image":
-			if _, ok := vn.Props["src"]; ok {
-				info.needsCanvas = true
+func walkStmtsForImports(stmts []ast.Stmt, info *analysisResult) {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.VisualNode:
+			name := vnName(s)
+			props := vnProps(s)
+			switch name {
+			case "link":
+				info.needsURL = true
+			case "image":
+				if _, ok := props["src"]; ok {
+					info.needsCanvas = true
+				}
 			}
+			walkStmtsForImports(vnChildren(s), info)
+		case *ast.IfStmt:
+			walkStmtsForImports(s.Body.Stmts, info)
+			walkStmtsForImports(s.Else.Stmts, info)
+		case *ast.ForStmt:
+			walkStmtsForImports(s.Body.Stmts, info)
+			walkStmtsForImports(s.Else.Stmts, info)
 		}
-		walkForImports(vn.Children, info)
 	}
 }
 
@@ -293,7 +275,8 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var widgetFields []widgetField
 	var updaters []widgetUpdater
 
-	if doc.App != nil && len(doc.App.Children) > 0 {
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) > 0 {
 		vc := &viewContext{
 			ec:         ec,
 			buf:        &buildBuf,
@@ -303,16 +286,16 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			info:       info,
 		}
 
-		if len(doc.App.Children) == 1 {
+		if len(bodyStmts) == 1 {
 			vc.line("var content fyne.CanvasObject")
-			vc.renderNode(doc.App.Children[0], "content")
+			vc.renderStmt(bodyStmts[0], "content")
 			vc.line("if content == nil { content = widget.NewLabel(\"\") }")
 		} else {
 			vc.line("var parts []fyne.CanvasObject")
-			for i, child := range doc.App.Children {
+			for i, child := range bodyStmts {
 				childVar := fmt.Sprintf("part%d", i)
 				vc.line("var %s fyne.CanvasObject", childVar)
-				vc.renderNode(child, childVar)
+				vc.renderStmt(child, childVar)
 				vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
 			}
 		}
@@ -327,13 +310,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
 		body := ""
-		for _, fn := range doc.Functions {
-			if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
-				if fn.Body.SNGL != nil {
-					body = ec.TranslateExpr(fn.Body.SNGL)
-				} else if fn.Body.Literal != nil {
-					body = literalToGo(fn.Body)
-				}
+		for _, fn := range docFuncDefs(doc) {
+			if fn.Name == comp.name && fn.Body != nil && len(fn.Params.Params) == 0 {
+				body = ec.TranslateExpr(fn.Body)
 				break
 			}
 		}
@@ -346,12 +325,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 	// Pre-render user-defined functions
 	var funcBuf strings.Builder
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib {
+	for _, fn := range docFuncDefs(doc) {
+		if isStdlibFunc(fn) {
 			continue
 		}
 		// Skip computed functions — already emitted via template
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
 			continue
 		}
 		emitGoFunc(&funcBuf, fn, ec)
@@ -361,12 +340,17 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	var timerDatas []timerData
 	for _, t := range info.Timers {
 		var bodyBuf strings.Builder
-		stmts := ec.TranslateMutation(t.Body)
-		for _, s := range stmts {
-			fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
+		mutated := make(map[string]bool)
+		for _, bodyStmt := range t.Body.Stmts {
+			stmts := ec.TranslateMutation(bodyStmt)
+			for _, s := range stmts {
+				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
+			}
+			for k, v := range codegen.MutatedFields(bodyStmt) {
+				mutated[k] = v
+			}
 		}
 		var updBuf strings.Builder
-		mutated := codegen.MutatedFields(t.Body)
 		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
 		if len(affected) > 0 {
 			for _, u := range affected {
@@ -405,7 +389,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	emitUpdaters(&b, updaters)
 
 	// User component render methods (not stdlib overrides)
-	for _, comp := range doc.Components {
+	for _, comp := range docComponents(doc) {
 		emitComponentMethod(&b, comp, info.Components, ec)
 	}
 
@@ -418,35 +402,21 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 }
 
 func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		goType := "any"
-		switch p.Type {
-		case "int":
-			goType = "int"
-		case "float":
-			goType = "float64"
-		case "bool":
-			goType = "bool"
-		case "string":
-			goType = "string"
+	params := make([]string, len(fn.Params.Params))
+	for i, p := range fn.Params.Params {
+		goType := typeHintToGo(exprTypeHint(p.Type))
+		if goType == "" {
+			goType = "any"
 		}
 		params[i] = p.Name + " " + goType
 	}
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.ReturnType != "" {
-		switch fn.ReturnType {
-		case "int":
-			retType = "int"
-		case "float":
-			retType = "float64"
-		case "bool":
-			retType = "bool"
-		case "string":
-			retType = "string"
-		default:
+	retTypeHint := funcReturnType(fn)
+	if retTypeHint != "" {
+		retType = typeHintToGo(retTypeHint)
+		if retType == "" {
 			retType = "any"
 		}
 	}
@@ -459,12 +429,12 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 
 	receiver := "m *Model"
 
-	if fn.Body.SNGL != nil {
-		for _, p := range fn.Params {
+	if fn.Body != nil {
+		for _, p := range fn.Params.Params {
 			ec.LocalVars[p.Name] = true
 		}
-		body := ec.TranslateExpr(fn.Body.SNGL)
-		for _, p := range fn.Params {
+		body := ec.TranslateExpr(fn.Body)
+		for _, p := range fn.Params.Params {
 			delete(ec.LocalVars, p.Name)
 		}
 		if isTypeMethod {
@@ -474,13 +444,13 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 		}
 		fmt.Fprintf(b, "\treturn %s\n", body)
 		b.WriteString("}\n\n")
-	} else if fn.Block != nil {
+	} else if fn.Block.IsDefined() {
 		if isTypeMethod {
 			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
 		} else {
 			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
 		}
-		for _, p := range fn.Params {
+		for _, p := range fn.Params.Params {
 			ec.LocalVars[p.Name] = true
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -489,6 +459,13 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				ec.LocalVars[s.Name] = true
 				val := ec.TranslateExpr(s.Init)
 				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
+			case *ast.ReturnStmt:
+				if s.Value != nil {
+					ret := ec.TranslateExpr(s.Value)
+					fmt.Fprintf(b, "\treturn %s\n", ret)
+				} else {
+					fmt.Fprintf(b, "\treturn\n")
+				}
 			default:
 				stmts := ec.TranslateMutation(stmt)
 				for _, line := range stmts {
@@ -496,11 +473,7 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				}
 			}
 		}
-		if fn.Block.Return != nil {
-			ret := ec.TranslateExpr(fn.Block.Return)
-			fmt.Fprintf(b, "\treturn %s\n", ret)
-		}
-		for _, p := range fn.Params {
+		for _, p := range fn.Params.Params {
 			delete(ec.LocalVars, p.Name)
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -516,7 +489,8 @@ func emitBuildUI(b *strings.Builder, info *analysisResult, doc *ast.Document, bu
 	b.WriteString("// BuildUI creates the widget tree. Call once; widgets are updated selectively.\n")
 	b.WriteString("func (m *Model) BuildUI() fyne.CanvasObject {\n")
 
-	if doc.App == nil || len(doc.App.Children) == 0 {
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) == 0 {
 		b.WriteString("\treturn widget.NewLabel(\"\")\n")
 		b.WriteString("}\n\n")
 		return
@@ -526,7 +500,7 @@ func emitBuildUI(b *strings.Builder, info *analysisResult, doc *ast.Document, bu
 	b.WriteString(buildBuf.String())
 
 	// Return the root widget
-	if len(doc.App.Children) == 1 {
+	if len(bodyStmts) == 1 {
 		if info.NeedsToast {
 			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
 			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
@@ -561,11 +535,11 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 	methodName := "render" + exportName(comp.Name)
 
 	var params []string
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		goType := inferGoType(p.Default)
 		params = append(params, p.Name+" "+goType)
 	}
-	hasSlot := comp.ChildrenType != ""
+	hasSlot := compHasChildren(comp)
 	if hasSlot {
 		params = append(params, "slotContent fyne.CanvasObject")
 	}
@@ -574,7 +548,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, ec.LocalVars)
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		ec.LocalVars[p.Name] = true
 	}
 
@@ -591,18 +565,19 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 		slotVar:    slotVar,
 	}
 
-	if len(comp.Body) == 1 {
+	body := compBodyStmts(comp)
+	if len(body) == 1 {
 		vc.line("var result fyne.CanvasObject")
-		vc.renderNode(comp.Body[0], "result")
+		vc.renderStmt(body[0], "result")
 		vc.line("if result == nil { result = widget.NewLabel(\"\") }")
 		b.WriteString(vc.buf.String())
 		b.WriteString("\treturn result\n")
 	} else {
 		vc.line("var parts []fyne.CanvasObject")
-		for i, child := range comp.Body {
+		for i, child := range body {
 			childVar := fmt.Sprintf("part%d", i)
 			vc.line("var %s fyne.CanvasObject", childVar)
-			vc.renderNode(child, childVar)
+			vc.renderStmt(child, childVar)
 			vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
 		}
 		b.WriteString(vc.buf.String())
@@ -635,15 +610,18 @@ func emitMain(b *strings.Builder, cfg Config, info *analysisResult) {
 
 // --- Helper functions ---
 
-func extractAssignTarget(e ast.Expr) string {
-	switch n := e.(type) {
+func extractAssignTargetFromBlock(block *ast.StmtBlock) string {
+	if block == nil || len(block.Stmts) == 0 {
+		return ""
+	}
+	return extractAssignTargetStmt(block.Stmts[0])
+}
+
+func extractAssignTargetStmt(s ast.Stmt) string {
+	switch n := s.(type) {
 	case *ast.AssignStmt:
 		if ident, ok := n.Target.(*ast.IdentExpr); ok {
 			return ident.Name
-		}
-	case *ast.StmtBlock:
-		if len(n.Stmts) > 0 {
-			return extractAssignTarget(n.Stmts[0])
 		}
 	}
 	return ""

@@ -112,10 +112,7 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 	for _, sd := range info.Structs {
 		s := structData{Name: exportName(sd.Name)}
 		for _, f := range sd.Fields {
-			goType := typeHintToGo(f.Type)
-			if f.Resolved != nil && f.Resolved.NativeType != "" {
-				goType = f.Resolved.NativeType
-			}
+			goType := typeHintToGo(exprTypeHint(f.Type))
 			s.Fields = append(s.Fields, structFieldData{
 				Name: exportName(f.Name),
 				Type: goType,
@@ -141,12 +138,14 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 			}
 		}
 		// Pre-render @change event bodies for this data field.
-		if events, ok := info.dataEvents[bind.name]; ok {
-			for _, ev := range events {
-				if ev.Kind == "change" {
-					stmts := ec.TranslateMutation(ev.Body)
-					for _, s := range stmts {
-						fmt.Fprintf(&extra, "\t%s\n", s)
+		if handlers, ok := info.dataEvents[bind.name]; ok {
+			for i := range handlers {
+				if handlers[i].Name == "change" {
+					for _, bodyStmt := range handlers[i].Body.Stmts {
+						stmts := ec.TranslateMutation(bodyStmt)
+						for _, s := range stmts {
+							fmt.Fprintf(&extra, "\t%s\n", s)
+						}
 					}
 				}
 			}

@@ -27,6 +27,12 @@ var stdlibParseOrder = []string{
 	"stdlib/components.sngl",
 }
 
+// StdlibDocs returns the parsed stdlib documents.
+// The results are cached after the first call.
+func StdlibDocs() []*ast.Document {
+	return parseStdlibDocs()
+}
+
 func parseStdlibDocs() []*ast.Document {
 	stdlibOnce.Do(func() {
 		for _, name := range stdlibParseOrder {

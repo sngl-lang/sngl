@@ -47,6 +47,7 @@ type bindInfo struct {
 	ktType string
 	init   string // Kotlin expression for default value
 	isList bool
+	listInit ast.Expr // original init expr for list items extraction
 }
 
 type computedInfo struct {
@@ -68,15 +69,15 @@ func analyze(doc *ast.Document) *analysisResult {
 	}
 
 	// Platform-specific data field analysis (Kotlin types)
-	for _, d := range doc.Data {
-		if d.Extern {
-			continue
+	for _, dv := range docVars(doc) {
+		ktType := inferKtType(dv.Init, dv.Type)
+		initVal := literalToKt(dv.Init)
+		isList := false
+		if hint := codegen.ExprTypeHint(dv.Type); hint != "" {
+			isList = strings.HasPrefix(hint, "list")
 		}
-		ktType := inferKtType(d.Init)
-		initVal := literalToKt(d.Init)
-		isList := strings.HasPrefix(d.Init.TypeHint, "[]") || strings.HasPrefix(d.Init.TypeHint, "list:")
 		if !isList {
-			if _, ok := d.Init.SNGL.(*ast.ListExpr); ok {
+			if _, ok := dv.Init.(*ast.ListExpr); ok {
 				isList = true
 			}
 		}
@@ -84,20 +85,18 @@ func analyze(doc *ast.Document) *analysisResult {
 			initVal = ""
 		}
 		info.binds = append(info.binds, bindInfo{
-			name:   d.Name,
-			ktType: ktType,
-			init:   initVal,
-			isList: isList,
+			name:     dv.Name,
+			ktType:   ktType,
+			init:     initVal,
+			isList:   isList,
+			listInit: dv.Init,
 		})
 	}
 
 	// Platform-specific computed function analysis (Kotlin types)
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			ktType := inferKtType(fn.Body)
-			if ktType == "Any" && fn.Body.SNGL != nil {
-				ktType = snglNodeKtType(fn.Body.SNGL)
-			}
+	for _, fn := range docFuncs(doc) {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
+			ktType := inferKtTypeFromExpr(fn.Body)
 			info.computeds = append(info.computeds, computedInfo{
 				name:   fn.Name,
 				ktType: ktType,
@@ -166,9 +165,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
-			ktType := typeHintToKt(f.Type)
+			ktType := typeHintToKt(codegen.ExprTypeHint(f.Type))
 			def := ""
-			if f.Default.Literal != nil {
+			if f.Default != nil && codegen.ExprIsLiteral(f.Default) {
 				def = " = " + literalToKt(f.Default)
 			}
 			comma := ","
@@ -183,12 +182,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	// Enum classes
 	for _, ed := range info.Enums {
 		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))
-		for i, v := range ed.Values {
+		for i, m := range ed.Members {
 			comma := ","
-			if i == len(ed.Values)-1 {
+			if i == len(ed.Members)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&b, "    %s%s\n", strings.ToUpper(v), comma)
+			fmt.Fprintf(&b, "    %s%s\n", strings.ToUpper(m.Name), comma)
 		}
 		b.WriteString("}\n\n")
 	}
@@ -203,11 +202,11 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	}
 
 	// State declarations
-	for i, bind := range info.binds {
+	for _, bind := range info.binds {
 		if bind.isList {
 			elemType := listElementType(bind.ktType)
 			// Check for initial list items from the data field's ListExpr.
-			if listExpr, ok := doc.Data[i].Init.SNGL.(*ast.ListExpr); ok && len(listExpr.Elements) > 0 {
+			if listExpr, ok := bind.listInit.(*ast.ListExpr); ok && len(listExpr.Elements) > 0 {
 				var items []string
 				for _, el := range listExpr.Elements {
 					items = append(items, ec.translateExpr(el))
@@ -228,13 +227,9 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			// Call into Go module for computed values
 			body = "golib.Golib." + exportName(comp.name) + "()"
 		} else {
-			for _, fn := range doc.Functions {
-				if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
-					if fn.Body.SNGL != nil {
-						body = ec.translateExpr(fn.Body.SNGL)
-					} else if fn.Body.Literal != nil {
-						body = literalToKt(fn.Body)
-					}
+			for _, fn := range docFuncs(doc) {
+				if fn.Name == comp.name && fn.Body != nil && len(fn.Params.Params) == 0 {
+					body = ec.translateExpr(fn.Body)
 					break
 				}
 			}
@@ -268,32 +263,35 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		components: info.Components,
 	}
 
-	if doc.App != nil {
-		if len(doc.App.Children) == 1 {
-			vc.renderNode(doc.App.Children[0])
-		} else {
-			vc.line("Column {")
-			vc.indent++
-			for _, child := range doc.App.Children {
-				vc.renderNode(child)
-			}
-			vc.indent--
-			vc.line("}")
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) == 1 {
+		vc.renderStmt(bodyStmts[0])
+	} else if len(bodyStmts) > 0 {
+		vc.line("Column {")
+		vc.indent++
+		for _, s := range bodyStmts {
+			vc.renderStmt(s)
 		}
+		vc.indent--
+		vc.line("}")
 	}
 
 	b.WriteString("}\n")
 
-	// User-defined component composables (not stdlib overrides or abstract components)
-	for _, comp := range doc.Components {
+	// User-defined component composables
+	for _, comp := range docComponents(doc) {
 		emitComponentComposable(&b, comp, info.Components, ec)
 	}
 
 	// User-defined functions — when GoLib is true, these live in the Go
 	// module and are called via Golib.FuncName(); otherwise emit inline Kotlin.
 	if !cfg.GoLib {
-		for _, fn := range doc.Functions {
-			if fn.IsStdlib || fn.ReturnType == "" {
+		for _, fn := range docFuncs(doc) {
+			if fn.ReturnType == nil {
+				continue
+			}
+			// Skip type-attached methods that come from stdlib
+			if strings.Contains(fn.Name, ".") {
 				continue
 			}
 			emitKtFunc(&b, fn, ec)
@@ -303,18 +301,18 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	return []byte(b.String())
 }
 
-func emitComponentComposable(b *strings.Builder, comp *ast.Component, allComponents []*ast.Component, ec *exprContext) {
+func emitComponentComposable(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext) {
 	b.WriteString("\n@Composable\n")
 	var params []string
-	for _, p := range comp.Params {
-		ktType := inferKtType(p.Default)
+	for _, p := range compParams(comp) {
+		ktType := inferKtType(p.Default, p.Type)
 		def := ""
-		if p.Default.Literal != nil {
+		if p.Default != nil && codegen.ExprIsLiteral(p.Default) {
 			def = " = " + literalToKt(p.Default)
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
-	hasSlot := comp.ChildrenType != ""
+	hasSlot := codegen.CompHasChildren(comp)
 	if hasSlot {
 		params = append(params, "slotContent: @Composable () -> Unit = {}")
 	}
@@ -323,7 +321,7 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 	// Add params as local vars
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, ec.localVars)
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		ec.localVars[p.Name] = true
 	}
 
@@ -335,8 +333,8 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 		hasSlot:    hasSlot,
 	}
 
-	for _, child := range comp.Body {
-		vc.renderNode(child)
+	for _, s := range compBodyStmts(comp) {
+		vc.renderStmt(s)
 	}
 
 	b.WriteString("}\n")
@@ -345,16 +343,16 @@ func emitComponentComposable(b *strings.Builder, comp *ast.Component, allCompone
 }
 
 func emitKtFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		ktType := typeHintToKt(p.Type)
+	params := make([]string, len(fn.Params.Params))
+	for i, p := range fn.Params.Params {
+		ktType := typeHintToKt(codegen.ExprTypeHint(p.Type))
 		params[i] = p.Name + ": " + ktType
 	}
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.ReturnType != "" {
-		retType = ": " + typeHintToKt(fn.ReturnType)
+	if fn.ReturnType != nil {
+		retType = ": " + typeHintToKt(codegen.ExprTypeHint(fn.ReturnType))
 	}
 
 	isTypeMethod := strings.Contains(fn.Name, ".")
@@ -366,18 +364,18 @@ func emitKtFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 		ktName = fn.Name
 	}
 
-	if fn.Body.SNGL != nil {
-		for _, p := range fn.Params {
+	if fn.Body != nil {
+		for _, p := range fn.Params.Params {
 			ec.localVars[p.Name] = true
 		}
-		body := ec.translateExpr(fn.Body.SNGL)
-		for _, p := range fn.Params {
+		body := ec.translateExpr(fn.Body)
+		for _, p := range fn.Params.Params {
 			delete(ec.localVars, p.Name)
 		}
 		fmt.Fprintf(b, "\nfun %s(%s)%s = %s\n", ktName, paramStr, retType, body)
-	} else if fn.Block != nil {
+	} else if len(fn.Block.Stmts) > 0 {
 		fmt.Fprintf(b, "\nfun %s(%s)%s {\n", ktName, paramStr, retType)
-		for _, p := range fn.Params {
+		for _, p := range fn.Params.Params {
 			ec.localVars[p.Name] = true
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -386,6 +384,13 @@ func emitKtFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				ec.localVars[s.Name] = true
 				val := ec.translateExpr(s.Init)
 				fmt.Fprintf(b, "    var %s = %s\n", s.Name, val)
+			case *ast.ReturnStmt:
+				if s.Value != nil {
+					ret := ec.translateExpr(s.Value)
+					fmt.Fprintf(b, "    return %s\n", ret)
+				} else {
+					b.WriteString("    return\n")
+				}
 			default:
 				stmts := ec.translateMutation(stmt)
 				for _, line := range stmts {
@@ -393,11 +398,7 @@ func emitKtFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				}
 			}
 		}
-		if fn.Block.Return != nil {
-			ret := ec.translateExpr(fn.Block.Return)
-			fmt.Fprintf(b, "    return %s\n", ret)
-		}
-		for _, p := range fn.Params {
+		for _, p := range fn.Params.Params {
 			delete(ec.localVars, p.Name)
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -424,21 +425,67 @@ func pkgToPath(pkg string) string {
 	return strings.ReplaceAll(pkg, ".", "/")
 }
 
-func inferKtType(expr ast.Expr) string {
-	if expr.TypeHint != "" {
-		return typeHintToKt(expr.TypeHint)
+// inferKtType determines the Kotlin type from a v2 Expr and optional TypeExpr.
+func inferKtType(expr ast.Expr, typeExpr ast.TypeExpr) string {
+	if hint := codegen.ExprTypeHint(typeExpr); hint != "" {
+		return typeHintToKt(hint)
 	}
-	if expr.Literal != nil {
-		switch expr.Literal.(type) {
-		case int:
+	return inferKtTypeFromExpr(expr)
+}
+
+// inferKtTypeFromExpr determines Kotlin type from an expression.
+func inferKtTypeFromExpr(e ast.Expr) string {
+	if e == nil {
+		return "Any"
+	}
+	switch n := e.(type) {
+	case *ast.LiteralExpr:
+		switch n.Kind {
+		case ast.LiteralInt:
 			return "Int"
-		case float64:
+		case ast.LiteralFloat:
 			return "Double"
-		case bool:
+		case ast.LiteralBool:
 			return "Boolean"
-		case string:
+		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
 			return "String"
 		}
+	case *ast.BinaryExpr:
+		switch n.Op {
+		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
+			return "Boolean"
+		default:
+			lt := inferKtTypeFromExpr(n.Left)
+			rt := inferKtTypeFromExpr(n.Right)
+			if lt == "Double" || rt == "Double" {
+				return "Double"
+			}
+			return lt
+		}
+	case *ast.UnaryExpr:
+		if n.Op == ast.UnaryNot {
+			return "Boolean"
+		}
+		return inferKtTypeFromExpr(n.Operand)
+	case *ast.TernaryExpr:
+		return inferKtTypeFromExpr(n.Then)
+	case *ast.CallExpr:
+		if name := codegen.CallFuncName(n); name != "" {
+			switch name {
+			case "string":
+				return "String"
+			case "int":
+				return "Int"
+			case "float":
+				return "Double"
+			case "size":
+				return "Int"
+			}
+		}
+	case *ast.ParenExpr:
+		return inferKtTypeFromExpr(n.Inner)
+	case *ast.ListExpr:
+		return "List<Any>"
 	}
 	return "Any"
 }
@@ -501,104 +548,68 @@ func listElementType(listType string) string {
 	return "Any"
 }
 
-func snglNodeKtType(e ast.Node) string {
-	switch n := e.(type) {
-	case *ast.LiteralExpr:
-		switch n.Kind {
-		case ast.LiteralInt:
-			return "Int"
-		case ast.LiteralFloat:
-			return "Double"
-		case ast.LiteralBool:
-			return "Boolean"
-		case ast.LiteralString:
-			return "String"
-		}
-	case *ast.BinaryExpr:
-		switch n.Op {
-		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte, ast.BinAnd, ast.BinOr:
-			return "Boolean"
-		default:
-			lt := snglNodeKtType(n.Left)
-			rt := snglNodeKtType(n.Right)
-			if lt == "Double" || rt == "Double" {
-				return "Double"
-			}
-			return lt
-		}
-	case *ast.UnaryExpr:
-		if n.Op == ast.UnaryNot {
-			return "Boolean"
-		}
-		return snglNodeKtType(n.Operand)
-	case *ast.TernaryExpr:
-		return snglNodeKtType(n.Then)
-	case *ast.CallExpr:
-		switch n.Func {
-		case "string":
-			return "String"
-		case "int":
-			return "Int"
-		case "float":
-			return "Double"
-		case "size":
-			return "Int"
-		}
-	case *ast.ParenExpr:
-		return snglNodeKtType(n.Inner)
-	}
-	return "Any"
-}
-
 func literalToKt(expr ast.Expr) string {
-	if expr.Literal != nil {
-		switch v := expr.Literal.(type) {
-		case string:
-			return fmt.Sprintf("%q", v)
-		case int:
-			if expr.TypeHint == "float" {
-				return fmt.Sprintf("%d.0", v)
-			}
-			return fmt.Sprintf("%d", v)
-		case float64:
-			s := fmt.Sprintf("%v", v)
-			if !strings.Contains(s, ".") {
-				s += ".0"
-			}
-			return s
-		case bool:
-			if v {
-				return "true"
-			}
-			return "false"
+	if expr == nil {
+		return `""`
+	}
+	lit, ok := expr.(*ast.LiteralExpr)
+	if !ok {
+		return `""`
+	}
+	switch lit.Kind {
+	case ast.LiteralStringQuoted:
+		if s, ok := codegen.ExprLiteralString(expr); ok {
+			return fmt.Sprintf("%q", s)
 		}
+		return fmt.Sprintf("%q", lit.Raw)
+	case ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		if s, ok := codegen.ExprLiteralString(expr); ok {
+			return fmt.Sprintf("%q", s)
+		}
+		return fmt.Sprintf("%q", lit.Raw)
+	case ast.LiteralInt:
+		return lit.Raw
+	case ast.LiteralFloat:
+		s := lit.Raw
+		if !strings.Contains(s, ".") {
+			s += ".0"
+		}
+		return s
+	case ast.LiteralBool:
+		return lit.Raw
+	case ast.LiteralNull:
+		return "null"
 	}
 	return `""`
 }
 
 // exprToKtValue converts an ast.Expr to a Kotlin value string.
 func exprToKtValue(expr ast.Expr, ec *exprContext) string {
-	if expr.Literal != nil {
+	if expr == nil {
+		return `""`
+	}
+	if codegen.ExprIsLiteral(expr) {
 		return literalToKt(expr)
 	}
-	if expr.SNGL != nil && ec != nil {
-		return ec.translateExpr(expr.SNGL)
+	if ec != nil {
+		return ec.translateExpr(expr)
 	}
 	return `""`
 }
 
 // exprToKtCond converts an ast.Expr to a Kotlin boolean expression string.
 func exprToKtCond(expr ast.Expr, ec *exprContext) string {
-	if expr.Literal != nil {
-		if v, ok := expr.Literal.(bool); ok {
-			if v {
-				return "true"
-			}
-			return "false"
-		}
+	if expr == nil {
+		return "true"
 	}
-	if expr.SNGL != nil && ec != nil {
-		return ec.translateExpr(expr.SNGL)
+	if v, ok := codegen.ExprLiteralBool(expr); ok {
+		if v {
+			return "true"
+		}
+		return "false"
+	}
+	if ec != nil {
+		return ec.translateExpr(expr)
 	}
 	return "true"
 }

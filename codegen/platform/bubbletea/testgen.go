@@ -19,26 +19,18 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 
 	// Group tests by component
 	type compTests struct {
-		comp  *ast.Component
+		comp  *ast.ComponentDecl
 		tests []*ast.FuncDef
 	}
 	groups := map[string]*compTests{}
-	// Detect which components have list-typed fields (not compilable to Go)
-	listComps := map[string]bool{}
-	for _, c := range doc.AllComponents() {
-		for _, d := range c.Data {
-			if inferGoType(d.Init) == "any" {
-				listComps[c.Name] = true
-			}
-		}
-	}
 
 	for _, fn := range doc.TestFuncs() {
+		fnParams := fn.Params.Params
 		compName := ""
-		if len(fn.Params) >= 2 {
-			compName = fn.Params[1].Type
+		if len(fnParams) >= 2 {
+			compName = exprTypeHint(fnParams[1].Type)
 		}
-		if ShouldSkipTestFunc(fn) || listComps[compName] {
+		if ShouldSkipTestFunc(fn) {
 			continue
 		}
 		g, ok := groups[compName]
@@ -62,13 +54,16 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 	needsFmt := false
 	for _, g := range groups {
 		for _, fn := range g.tests {
-			if fn.Block != nil && slices.ContainsFunc(fn.Block.Stmts, nodeNeedsFmt) {
+			if len(fn.Block.Stmts) > 0 && slices.ContainsFunc(fn.Block.Stmts, nodeNeedsFmt) {
 				needsFmt = true
 			}
 		}
-		for _, fn := range g.comp.Functions {
-			if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib && nodeNeedsFmt(fn.Body.SNGL) {
-				needsFmt = true
+		// Check computed functions in the component body
+		for _, stmt := range g.comp.Body.Stmts {
+			if fn, ok := stmt.(*ast.FuncDef); ok {
+				if isComputed(fn) && fn.Body != nil && nodeNeedsFmtExpr(fn.Body) {
+					needsFmt = true
+				}
 			}
 		}
 	}
@@ -98,27 +93,42 @@ func CompileTests(doc *ast.Document, cfg Config) ([]byte, error) {
 
 func nodeNeedsFmt(n ast.Stmt) bool {
 	switch e := n.(type) {
+	case *ast.CallStmt:
+		if e.Call != nil {
+			return nodeNeedsFmtExpr(e.Call)
+		}
+	case *ast.AssignStmt:
+		return nodeNeedsFmtExpr(e.Value)
+	}
+	return false
+}
+
+func nodeNeedsFmtExpr(e ast.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
 	case *ast.InterpolationExpr:
 		return true
-	case *ast.CallStmt:
-		return nodeNeedsFmt(e.Call)
 	case *ast.CallExpr:
-		if slices.ContainsFunc(e.Args, nodeNeedsFmt) {
+		if callFuncName(x) == "string" {
 			return true
 		}
-		if e.Func == "string" {
-			return true
+		for _, a := range x.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				if nodeNeedsFmtExpr(arg.Value) {
+					return true
+				}
+			}
 		}
 	case *ast.BinaryExpr:
-		return nodeNeedsFmt(e.Left) || nodeNeedsFmt(e.Right)
+		return nodeNeedsFmtExpr(x.Left) || nodeNeedsFmtExpr(x.Right)
 	case *ast.UnaryExpr:
-		return nodeNeedsFmt(e.Operand)
+		return nodeNeedsFmtExpr(x.Operand)
 	case *ast.TernaryExpr:
-		return nodeNeedsFmt(e.Cond) || nodeNeedsFmt(e.Then) || nodeNeedsFmt(e.Else)
-	case *ast.AssignStmt:
-		return nodeNeedsFmt(e.Value)
+		return nodeNeedsFmtExpr(x.Cond) || nodeNeedsFmtExpr(x.Then) || nodeNeedsFmtExpr(x.Else)
 	case *ast.ParenExpr:
-		return nodeNeedsFmt(e.Inner)
+		return nodeNeedsFmtExpr(x.Inner)
 	}
 	return false
 }
@@ -137,19 +147,36 @@ func emitTestModel(b *strings.Builder, comp *ast.ComponentDecl, doc *ast.Documen
 	computedFields := map[string]bool{}
 	structNames := map[string][]string{}
 
-	for _, d := range comp.Data {
-		modelFields[d.Name] = true
+	// Component body may contain VarDecl and FuncDef statements
+	type dataField struct {
+		name string
+		init ast.Expr
 	}
-	for _, fn := range comp.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
-			modelFields[fn.Name] = true
-			computedFields[fn.Name] = true
+	var dataFields []dataField
+	var computedFuncs []*ast.FuncDef
+
+	for _, stmt := range comp.Body.Stmts {
+		switch s := stmt.(type) {
+		case *ast.VarDecl:
+			for _, spec := range s.Specs {
+				for _, n := range spec.Names {
+					modelFields[n] = true
+					dataFields = append(dataFields, dataField{name: n, init: spec.Default})
+				}
+			}
+		case *ast.FuncDef:
+			if isComputed(s) {
+				modelFields[s.Name] = true
+				computedFields[s.Name] = true
+				computedFuncs = append(computedFuncs, s)
+			}
 		}
 	}
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		modelFields[p.Name] = true
+		dataFields = append(dataFields, dataField{name: p.Name, init: p.Default})
 	}
-	for _, sd := range doc.Structs {
+	for _, sd := range docStructDefs(doc) {
 		var fields []string
 		for _, f := range sd.Fields {
 			fields = append(fields, f.Name)
@@ -166,41 +193,35 @@ func emitTestModel(b *strings.Builder, comp *ast.ComponentDecl, doc *ast.Documen
 
 	// Struct
 	fmt.Fprintf(b, "type %sModel struct {\n", name)
-	for _, d := range comp.Data {
-		goType := inferGoType(d.Init)
-		fmt.Fprintf(b, "\t%s %s\n", d.Name, goType)
-	}
-	for _, p := range comp.Params {
-		goType := inferGoType(p.Default)
-		fmt.Fprintf(b, "\t%s %s\n", p.Name, goType)
+	for _, d := range dataFields {
+		if computedFields[d.name] {
+			continue
+		}
+		goType := inferGoType(d.init)
+		fmt.Fprintf(b, "\t%s %s\n", d.name, goType)
 	}
 	b.WriteString("}\n\n")
 
 	// Constructor
 	fmt.Fprintf(b, "func new%s() %sModel {\n", exportName(name), name)
 	fmt.Fprintf(b, "\treturn %sModel{\n", name)
-	for _, d := range comp.Data {
-		fmt.Fprintf(b, "\t\t%s: %s,\n", d.Name, literalToGo(d.Init))
-	}
-	for _, p := range comp.Params {
-		fmt.Fprintf(b, "\t\t%s: %s,\n", p.Name, literalToGo(p.Default))
+	for _, d := range dataFields {
+		if computedFields[d.name] {
+			continue
+		}
+		fmt.Fprintf(b, "\t\t%s: %s,\n", d.name, literalToGo(d.init))
 	}
 	b.WriteString("\t}\n}\n\n")
 
 	// Computed methods (zero-arg expression-form functions)
-	for _, fn := range comp.Functions {
-		if fn.Body.SNGL == nil || len(fn.Params) != 0 || fn.IsStdlib {
-			continue
-		}
+	for _, fn := range computedFuncs {
 		goType := inferGoType(fn.Body)
-		if goType == "any" && fn.Body.SNGL != nil {
-			goType = snglNodeGoType(fn.Body.SNGL)
+		if goType == "any" && fn.Body != nil {
+			goType = snglNodeGoType(fn.Body)
 		}
 		body := ""
-		if fn.Body.SNGL != nil {
-			body = ec.TranslateExpr(fn.Body.SNGL)
-		} else if fn.Body.Literal != nil {
-			body = literalToGo(fn.Body)
+		if fn.Body != nil {
+			body = ec.TranslateExpr(fn.Body)
 		}
 		fmt.Fprintf(b, "func (m %sModel) %s() %s {\n", name, fn.Name, goType)
 		fmt.Fprintf(b, "\treturn %s\n", body)
@@ -214,16 +235,22 @@ func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.ComponentDecl
 
 	modelFields := map[string]bool{}
 	computedFields := map[string]bool{}
-	for _, d := range comp.Data {
-		modelFields[d.Name] = true
-	}
-	for _, cfn := range comp.Functions {
-		if cfn.Body.SNGL != nil && len(cfn.Params) == 0 && !cfn.IsStdlib {
-			modelFields[cfn.Name] = true
-			computedFields[cfn.Name] = true
+	for _, stmt := range comp.Body.Stmts {
+		switch s := stmt.(type) {
+		case *ast.VarDecl:
+			for _, spec := range s.Specs {
+				for _, n := range spec.Names {
+					modelFields[n] = true
+				}
+			}
+		case *ast.FuncDef:
+			if isComputed(s) {
+				modelFields[s.Name] = true
+				computedFields[s.Name] = true
+			}
 		}
 	}
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		modelFields[p.Name] = true
 	}
 
@@ -238,7 +265,7 @@ func emitTestFuncGo(b *strings.Builder, fn *ast.FuncDef, comp *ast.ComponentDecl
 	fmt.Fprintf(b, "\tm := new%s()\n", exportName(comp.Name))
 	fmt.Fprintf(b, "\t_ = m\n")
 
-	if fn.Block != nil {
+	if len(fn.Block.Stmts) > 0 {
 		emitTestBody(b, fn.Block.Stmts, ec, 1)
 	}
 
@@ -250,49 +277,41 @@ func emitTestBody(b *strings.Builder, stmts []ast.Stmt, ec *exprContext, depth i
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.CallStmt:
-			if s.Call.Func == "assert" && len(s.Call.Args) == 1 {
-				expr := ec.TranslateExpr(s.Call.Args[0])
-				original := parser.FormatNode(s.Call.Args[0])
-				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
-				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
-				fmt.Fprintf(b, "%s}\n", indent)
-				continue
+			if s.Call != nil && callFuncName(s.Call) == "assert" {
+				args := callArgs(s.Call)
+				if len(args) == 1 {
+					expr := ec.TranslateExpr(args[0])
+					original := parser.FormatExpr(args[0])
+					fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
+					fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
+					fmt.Fprintf(b, "%s}\n", indent)
+					continue
+				}
 			}
-			stmts := ec.TranslateMutation(s)
-			for _, line := range stmts {
+			translated := ec.TranslateMutation(s)
+			for _, line := range translated {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
-		case *ast.CallExpr:
-			if s.Func == "assert" && len(s.Args) == 1 {
-				expr := ec.TranslateExpr(s.Args[0])
-				original := parser.FormatNode(s.Args[0])
-				fmt.Fprintf(b, "%sif !(%s) {\n", indent, expr)
-				fmt.Fprintf(b, "%s\tt.Fatalf(\"assert(%s) failed\")\n", indent, escapeFmt(original))
-				fmt.Fprintf(b, "%s}\n", indent)
-				continue
-			}
 		case *ast.AssignStmt:
-			stmts := ec.TranslateMutation(s)
-			for _, line := range stmts {
+			translated := ec.TranslateMutation(s)
+			for _, line := range translated {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
 		case *ast.ToggleStmt:
-			stmts := ec.TranslateMutation(s)
-			for _, line := range stmts {
+			translated := ec.TranslateMutation(s)
+			for _, line := range translated {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
 			continue
-		case *ast.MethodExpr:
-			stmts := ec.TranslateMutation(s)
-			for _, line := range stmts {
+		default:
+			// Try to translate as mutation
+			translated := ec.TranslateMutation(s)
+			for _, line := range translated {
 				fmt.Fprintf(b, "%s%s\n", indent, line)
 			}
-			continue
 		}
-		// Fallback: expression statement
-		fmt.Fprintf(b, "%s_ = %s\n", indent, ec.TranslateExpr(stmt))
 	}
 }
 
@@ -304,7 +323,7 @@ func ShouldSkipTestFunc(fn *ast.FuncDef) bool {
 }
 
 func findComp(doc *ast.Document, name string) *ast.ComponentDecl {
-	return doc.FindComponent(name)
+	return findComponentInDoc(doc, name)
 }
 
 func sanitizeTestName(desc string) string {

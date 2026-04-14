@@ -16,78 +16,97 @@ type composeContext struct {
 	indent               int
 	doc                  *ast.Document
 	components           []*ast.ComponentDecl
-	hasSlot              bool                        // true when rendering inside a component with slot support
-	slotChildren         []*ast.VisualNode           // caller's children for slot expansion
-	componentDepth       int                         // recursion guard for component expansion
-	callerEvents         map[string]ast.EventHandler // caller's event handlers (for emit propagation)
-	callerEventsConsumed map[string]bool             // events already mapped to a Compose parameter
-	callerStyleFields    map[string]ast.Expr         // caller's style fields forwarded to first raw composable
+	hasSlot              bool                         // true when rendering inside a component with slot support
+	slotChildren         []ast.Stmt                   // caller's children for slot expansion
+	componentDepth       int                          // recursion guard for component expansion
+	callerEvents         map[string]*ast.EventHandler // caller's event handlers (for emit propagation)
+	callerEventsConsumed map[string]bool              // events already mapped to a Compose parameter
+	callerStyleFields    map[string]ast.Expr          // caller's style fields forwarded to first raw composable
 }
 
 func (cc *composeContext) line(format string, args ...any) {
 	fmt.Fprintf(cc.buf, "%s"+format+"\n", append([]any{strings.Repeat("    ", cc.indent)}, args...)...)
 }
 
-func (cc *composeContext) renderNode(vn *ast.VisualNode) {
-	// Handle if
-	if vn.If != nil {
-		cond := exprToKtCond(*vn.If, cc.ec)
-		cc.line("if (%s) {", cond)
-		cc.indent++
-		cc.renderNodeCore(vn)
-		cc.indent--
-		cc.line("}")
-		return
+// renderStmt dispatches a top-level statement (VisualNode, IfStmt, ForStmt).
+func (cc *composeContext) renderStmt(stmt ast.Stmt) {
+	switch s := stmt.(type) {
+	case *ast.VisualNode:
+		cc.renderNodeCore(s)
+	case *ast.IfStmt:
+		cc.renderIfStmt(s)
+	case *ast.ForStmt:
+		cc.renderForStmt(s)
 	}
+}
 
-	// Handle for
-	if vn.For != nil {
-		iterVar := vn.For.Variable
-		iterExpr := exprToKtValue(vn.For.Iterable, cc.ec)
-		if vn.For.IndexVar != "" {
-			cc.ec.localVars[vn.For.IndexVar] = true
-			cc.line("%s.forEachIndexed { %s, %s ->", iterExpr, vn.For.IndexVar, iterVar)
-		} else {
-			cc.line("%s.forEach { %s ->", iterExpr, iterVar)
+func (cc *composeContext) renderIfStmt(s *ast.IfStmt) {
+	cond := exprToKtCond(s.Cond, cc.ec)
+	cc.line("if (%s) {", cond)
+	cc.indent++
+	for _, child := range s.Body.Stmts {
+		cc.renderStmt(child)
+	}
+	cc.indent--
+	if len(s.Else.Stmts) > 0 {
+		cc.line("} else {")
+		cc.indent++
+		for _, child := range s.Else.Stmts {
+			cc.renderStmt(child)
 		}
+		cc.indent--
+	}
+	cc.line("}")
+}
+
+func (cc *composeContext) renderForStmt(s *ast.ForStmt) {
+	iterExpr := exprToKtValue(s.Iter, cc.ec)
+	iterVar := s.Key
+	if s.Value != "" {
+		cc.ec.localVars[s.Key] = true
+		cc.line("%s.forEachIndexed { %s, %s ->", iterExpr, s.Key, s.Value)
+		cc.indent++
+		cc.ec.localVars[s.Value] = true
+		for _, child := range s.Body.Stmts {
+			cc.renderStmt(child)
+		}
+		delete(cc.ec.localVars, s.Value)
+		delete(cc.ec.localVars, s.Key)
+	} else {
+		cc.line("%s.forEach { %s ->", iterExpr, iterVar)
 		cc.indent++
 		cc.ec.localVars[iterVar] = true
-		cc.renderNodeCore(vn)
-		delete(cc.ec.localVars, iterVar)
-		if vn.For.IndexVar != "" {
-			delete(cc.ec.localVars, vn.For.IndexVar)
+		for _, child := range s.Body.Stmts {
+			cc.renderStmt(child)
 		}
-		cc.indent--
-		cc.line("}")
-		return
+		delete(cc.ec.localVars, iterVar)
 	}
-
-	cc.renderNodeCore(vn)
+	cc.indent--
+	cc.line("}")
 }
 
 func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
-	if vn.Component == "slot" {
+	name := vnName(vn)
+	if name == "slot" {
+		children := vnChildNodes(vn)
 		if cc.hasSlot && len(cc.slotChildren) > 0 {
 			for _, child := range cc.slotChildren {
-				cc.renderNode(child)
+				cc.renderStmt(child)
 			}
-		} else if cc.hasSlot {
+		} else if cc.hasSlot && len(children) == 0 {
 			cc.line("slotContent()")
 		}
 		return
 	}
 
 	// Look up component definition
-	comp := cc.findComponent(vn.Component)
+	comp := cc.findComponent(name)
 	if comp != nil {
-		body := codegen.ResolveComponentBody(comp, "android")
+		body := compBodyStmts(comp)
 		if len(body) > 0 {
 			cc.expandComponent(comp, vn, body)
-		} else if len(comp.Body) > 0 {
-			// User component with default body — emit as function call
-			cc.renderUserComponent(vn)
 		} else {
-			// Fallback: component with no body at all
+			// User component with no body — emit as function call
 			cc.renderUserComponent(vn)
 		}
 		return
@@ -99,7 +118,11 @@ func (cc *composeContext) renderNodeCore(vn *ast.VisualNode) {
 
 func (cc *composeContext) findComponent(name string) *ast.ComponentDecl {
 	if cc.doc != nil {
-		return cc.doc.FindComponent(name)
+		for _, c := range docComponents(cc.doc) {
+			if c.Name == name {
+				return c
+			}
+		}
 	}
 	for _, c := range cc.components {
 		if c.Name == name {
@@ -111,7 +134,7 @@ func (cc *composeContext) findComponent(name string) *ast.ComponentDecl {
 
 // expandComponent inlines a component's body at the call site, binding
 // props to component params as local Kotlin vals and providing slot children.
-func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode, body []*ast.VisualNode) {
+func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode, body []ast.Stmt) {
 	cc.componentDepth++
 	if cc.componentDepth > 10 {
 		cc.componentDepth--
@@ -126,21 +149,22 @@ func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.Visua
 	// Bind component params: translate caller's prop expressions to Kotlin
 	// strings and register them as local variable overrides so the expression
 	// translator resolves them correctly.
+	props := vnProps(vn)
 	savedOverrides := cc.ec.propOverrides
 	overrides := make(map[string]string)
 	if savedOverrides != nil {
 		maps.Copy(overrides, savedOverrides)
 	}
-	for _, p := range comp.Params {
+	for _, p := range compParams(comp) {
 		cc.ec.localVars[p.Name] = true
-		if expr, ok := vn.Props[p.Name]; ok {
+		if expr, ok := props[p.Name]; ok {
 			overrides[p.Name] = exprToKtValue(expr, cc.ec)
-		} else if p.Default.Literal != nil {
+		} else if p.Default != nil && codegen.ExprIsLiteral(p.Default) {
 			overrides[p.Name] = literalToKt(p.Default)
 		} else {
 			// Zero value for the param's type so the body doesn't
 			// reference an undefined identifier.
-			overrides[p.Name] = zeroValueKt(p.Default.TypeHint)
+			overrides[p.Name] = zeroValueKt(exprTypeHint(p.Type))
 		}
 	}
 	cc.ec.propOverrides = overrides
@@ -150,16 +174,17 @@ func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.Visua
 	savedEvents := cc.callerEvents
 	savedConsumed := cc.callerEventsConsumed
 	savedStyle := cc.callerStyleFields
-	cc.callerEvents = vn.Events
+	cc.callerEvents = vnEvents(vn)
 	cc.callerEventsConsumed = make(map[string]bool)
-	cc.callerStyleFields = vn.StyleFields()
+	cc.callerStyleFields = vnStyleFields(vn)
 
 	// Set slot children to the caller's children.
-	cc.hasSlot = len(vn.Children) > 0
-	cc.slotChildren = vn.Children
+	children := vnChildren(vn)
+	cc.hasSlot = len(children) > 0
+	cc.slotChildren = children
 
 	for _, child := range body {
-		cc.renderNode(child)
+		cc.renderStmt(child)
 	}
 
 	cc.ec.localVars = savedLocals
@@ -172,36 +197,40 @@ func (cc *composeContext) expandComponent(comp *ast.ComponentDecl, vn *ast.Visua
 }
 
 func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
-	fnName := exportName(vn.Component)
+	name := vnName(vn)
+	fnName := exportName(name)
 
 	var comp *ast.ComponentDecl
 	for _, c := range cc.components {
-		if c.Name == vn.Component {
+		if c.Name == name {
 			comp = c
 			break
 		}
 	}
 
+	props := vnProps(vn)
 	var args []string
 	if comp != nil {
-		for _, p := range comp.Params {
-			if expr, ok := vn.Props[p.Name]; ok {
+		for _, p := range compParams(comp) {
+			if expr, ok := props[p.Name]; ok {
 				args = append(args, p.Name+" = "+exprToKtValue(expr, cc.ec))
-			} else if p.Default.Literal != nil {
+			} else if p.Default != nil && codegen.ExprIsLiteral(p.Default) {
 				args = append(args, p.Name+" = "+literalToKt(p.Default))
 			}
 		}
 	} else {
-		for name, expr := range vn.Props {
-			args = append(args, name+" = "+exprToKtValue(expr, cc.ec))
+		for pname, expr := range props {
+			args = append(args, pname+" = "+exprToKtValue(expr, cc.ec))
 		}
 	}
+
 	// If component accepts children, pass them as a trailing composable lambda
-	if comp != nil && comp.ChildrenType != "" && len(vn.Children) > 0 {
+	children := vnChildren(vn)
+	if comp != nil && compHasChildren(comp) && len(children) > 0 {
 		cc.line("%s(%s) {", fnName, strings.Join(args, ", "))
 		cc.indent++
-		for _, child := range vn.Children {
-			cc.renderNode(child)
+		for _, child := range children {
+			cc.renderStmt(child)
 		}
 		cc.indent--
 		cc.line("}")
@@ -215,7 +244,7 @@ func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
 // android.Column, android.Text, etc. to be used directly.
 func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Extract composable name: "android.Column" → "Column", "Column" → "Column"
-	name := vn.Component
+	name := vnName(vn)
 	if _, local, ok := strings.Cut(name, "."); ok {
 		name = local
 	}
@@ -226,9 +255,9 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Event props: use the node's own events, falling back to caller events
 	// when inside a component expansion. Skip events already consumed by a
 	// sibling composable so they don't propagate further.
-	events := vn.Events
+	events := vnEvents(vn)
 	if len(events) == 0 && cc.callerEvents != nil {
-		filtered := make(map[string]ast.EventHandler)
+		filtered := make(map[string]*ast.EventHandler)
 		for k, v := range cc.callerEvents {
 			if !cc.callerEventsConsumed[k] {
 				filtered[k] = v
@@ -252,7 +281,7 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 
 	// Modifier from style props — merge caller's forwarded style if this is the
 	// first raw composable in a component expansion.
-	styleFields := vn.StyleFields()
+	styleFields := vnStyleFields(vn)
 	if cc.callerStyleFields != nil {
 		merged := maps.Clone(cc.callerStyleFields)
 		maps.Copy(merged, styleFields) // node's own styles win
@@ -263,8 +292,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	// Also inject click handler as Modifier.clickable for composables that
 	// don't accept onClick as a parameter.
 	mod := buildModifierExpr(styleFields, cc.ec)
-	if clickExpr, ok := events["click"]; ok && clickExpr.Body.SNGL != nil && !onClickComposables[name] {
-		stmts := cc.ec.translateMutation(clickExpr.Body.SNGL)
+	if clickHandler := events["click"]; clickHandler != nil && clickHandler.Body.IsDefined() && !onClickComposables[name] {
+		stmts := cc.ec.translateMutation(&clickHandler.Body)
 		var b strings.Builder
 		fmt.Fprintf(&b, ".clickable {\n")
 		for _, s := range stmts {
@@ -313,7 +342,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	}
 
 	// Regular props → named Kotlin arguments
-	for propName, expr := range vn.Props {
+	props := vnProps(vn)
+	for propName, expr := range props {
 		if propName == "style" {
 			continue // handled as modifier above
 		}
@@ -342,8 +372,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		eventMappings["change"] = "onCheckedChange"
 	}
 	for snglName, ktName := range eventMappings {
-		expr, ok := events[snglName]
-		if !ok || expr.Body.SNGL == nil {
+		handler, ok := events[snglName]
+		if !ok || handler == nil || !handler.Body.IsDefined() {
 			continue
 		}
 		cc.consumeEvent(snglName)
@@ -354,17 +384,19 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 			cc.ec.eventVar = "_inputValue_"
 			// Also register the user's event param name (e.g., "e" from @input(e))
 			// so it resolves through translateIdent.
-			if expr.Param != "" {
-				cc.ec.localVars[expr.Param] = true
-				cc.ec.propOverrides[expr.Param] = "_inputValue_"
+			if len(handler.Params.Params) > 0 {
+				paramName := handler.Params.Params[0].Name
+				cc.ec.localVars[paramName] = true
+				cc.ec.propOverrides[paramName] = "_inputValue_"
 			}
 		}
-		stmts := cc.ec.translateMutation(expr.Body.SNGL)
+		stmts := cc.ec.translateMutation(&handler.Body)
 		if isValueChange {
 			cc.ec.eventVar = savedEventVar
-			if expr.Param != "" {
-				delete(cc.ec.localVars, expr.Param)
-				delete(cc.ec.propOverrides, expr.Param)
+			if len(handler.Params.Params) > 0 {
+				paramName := handler.Params.Params[0].Name
+				delete(cc.ec.localVars, paramName)
+				delete(cc.ec.propOverrides, paramName)
 			}
 		}
 
@@ -394,8 +426,8 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		"AssistChip": true, "FilterChip": true, "InputChip": true,
 		"SuggestionChip": true,
 	}
-	if clickExpr, ok := events["click"]; ok && clickExpr.Body.SNGL != nil && onClickComposables[name] {
-		stmts := cc.ec.translateMutation(clickExpr.Body.SNGL)
+	if clickHandler := events["click"]; clickHandler != nil && clickHandler.Body.IsDefined() && onClickComposables[name] {
+		stmts := cc.ec.translateMutation(&clickHandler.Body)
 		var b strings.Builder
 		b.WriteString("{\n")
 		for _, s := range stmts {
@@ -404,15 +436,17 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		fmt.Fprintf(&b, "%s}", strings.Repeat("    ", cc.indent+1))
 		args = append(args, "onClick = "+b.String())
 		cc.consumeEvent("click")
-	} else if requiresOnClick[name] && vn.Events["onClick"].Body.SNGL == nil {
-		args = append(args, "onClick = {}")
+	} else if requiresOnClick[name] {
+		if onClickHandler := vnEvent(vn, "onClick"); onClickHandler == nil || !onClickHandler.Body.IsDefined() {
+			args = append(args, "onClick = {}")
+		}
 	}
 
 	// OutlinedTextField requires onValueChange.
 	if valueChangeComposables[name] {
 		if _, hasInput := events["input"]; !hasInput {
 			// Only add fallback if not already provided by a non-standard event.
-			if _, hasOnValueChange := vn.Events["onValueChange"]; !hasOnValueChange {
+			if onValueChangeHandler := vnEvent(vn, "onValueChange"); onValueChangeHandler == nil {
 				args = append(args, "onValueChange = {}")
 			}
 		}
@@ -420,25 +454,27 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 
 	// Pass through non-standard events directly.
 	standardEvents := map[string]bool{"click": true, "input": true, "change": true}
-	for evtName, expr := range vn.Events {
-		if expr.Body.SNGL == nil || standardEvents[evtName] {
+	for evtName, handler := range events {
+		if handler == nil || !handler.Body.IsDefined() || standardEvents[evtName] {
 			continue
 		}
 		// If the event body is an EmitStmt referencing a caller event,
 		// substitute the caller's handler body instead of emitting
 		// an unresolvable callback invocation.
-		if es, callerEvt, ok := cc.resolveEmitToCallerEvent(expr.Body.SNGL); ok {
+		if es, callerEvt, ok := cc.resolveEmitToCallerEvent(&handler.Body); ok {
 			// For onValueChange, set up propOverrides so the caller's event
 			// parameter (e.g., "e" in @input(e)) resolves to the lambda value.
 			isValueChange := evtName == "onValueChange"
-			if isValueChange && callerEvt.Param != "" {
-				cc.ec.localVars[callerEvt.Param] = true
-				cc.ec.propOverrides[callerEvt.Param] = "_inputValue_"
+			if isValueChange && len(callerEvt.Params.Params) > 0 {
+				paramName := callerEvt.Params.Params[0].Name
+				cc.ec.localVars[paramName] = true
+				cc.ec.propOverrides[paramName] = "_inputValue_"
 			}
-			stmts := cc.ec.translateMutation(callerEvt.Body.SNGL)
-			if isValueChange && callerEvt.Param != "" {
-				delete(cc.ec.localVars, callerEvt.Param)
-				delete(cc.ec.propOverrides, callerEvt.Param)
+			stmts := cc.ec.translateMutation(&callerEvt.Body)
+			if isValueChange && len(callerEvt.Params.Params) > 0 {
+				paramName := callerEvt.Params.Params[0].Name
+				delete(cc.ec.localVars, paramName)
+				delete(cc.ec.propOverrides, paramName)
 			}
 			var b strings.Builder
 			if isValueChange {
@@ -461,11 +497,13 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		}
 		// If the body is an EmitStmt with no matching caller event,
 		// emit an empty lambda — the emit has nothing to forward.
-		if _, ok := expr.Body.SNGL.(*ast.EmitStmt); ok {
-			args = append(args, evtName+" = {}")
-			continue
+		if len(handler.Body.Stmts) == 1 {
+			if _, ok := handler.Body.Stmts[0].(*ast.EmitStmt); ok {
+				args = append(args, evtName+" = {}")
+				continue
+			}
 		}
-		stmts := cc.ec.translateMutation(expr.Body.SNGL)
+		stmts := cc.ec.translateMutation(&handler.Body)
 		var b strings.Builder
 		b.WriteString("{\n")
 		for _, s := range stmts {
@@ -483,11 +521,12 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 		argStr = "\n" + strings.Repeat("    ", cc.indent+1) + argStr + "\n" + strings.Repeat("    ", cc.indent)
 	}
 
-	if len(vn.Children) > 0 {
+	children := vnChildren(vn)
+	if len(children) > 0 {
 		cc.line("%s(%s) {", name, argStr)
 		cc.indent++
-		for _, child := range vn.Children {
-			cc.renderNode(child)
+		for _, child := range children {
+			cc.renderStmt(child)
 		}
 		cc.indent--
 		cc.line("}")
@@ -496,22 +535,22 @@ func (cc *composeContext) renderRawComposable(vn *ast.VisualNode) {
 	}
 }
 
-// resolveEmitToCallerEvent checks if a node's event body is a single EmitStmt
+// resolveEmitToCallerEvent checks if a handler body is a single EmitStmt
 // whose name matches a caller event. If so, returns the EmitStmt and the
 // caller's full EventHandler for inlining. This is used for platform component
 // bodies like @onClick { @click() } where @click() should resolve to
 // the caller's click event handler.
-func (cc *composeContext) resolveEmitToCallerEvent(body ast.Node) (*ast.EmitStmt, ast.EventHandler, bool) {
-	if cc.callerEvents == nil {
-		return nil, ast.EventHandler{}, false
+func (cc *composeContext) resolveEmitToCallerEvent(body *ast.StmtBlock) (*ast.EmitStmt, *ast.EventHandler, bool) {
+	if cc.callerEvents == nil || len(body.Stmts) != 1 {
+		return nil, nil, false
 	}
-	es, ok := body.(*ast.EmitStmt)
+	es, ok := body.Stmts[0].(*ast.EmitStmt)
 	if !ok {
-		return nil, ast.EventHandler{}, false
+		return nil, nil, false
 	}
 	callerEvt, ok := cc.callerEvents[es.Name]
-	if !ok || callerEvt.Body.SNGL == nil {
-		return nil, ast.EventHandler{}, false
+	if !ok || callerEvt == nil || !callerEvt.Body.IsDefined() {
+		return nil, nil, false
 	}
 	return es, callerEvt, true
 }
@@ -546,7 +585,7 @@ func (cc *composeContext) renderComposableStruct(se *ast.StructExpr) string {
 								key = cc.ec.translateExpr(pf.Value)
 								key = strings.Trim(key, `"`)
 							case "value":
-								val = exprToKtValue(ast.Expr{SNGL: pf.Value}, cc.ec)
+								val = exprToKtValue(pf.Value, cc.ec)
 							}
 						}
 						if key != "" {
@@ -568,10 +607,10 @@ func (cc *composeContext) renderComposableStruct(se *ast.StructExpr) string {
 
 // isComposableStruct checks if an expression is a Composable struct literal.
 func isComposableStruct(expr ast.Expr) (*ast.StructExpr, bool) {
-	if expr.SNGL == nil {
+	if expr == nil {
 		return nil, false
 	}
-	if se, ok := expr.SNGL.(*ast.StructExpr); ok && se.Name == "Composable" {
+	if se, ok := expr.(*ast.StructExpr); ok && se.Name == "Composable" {
 		return se, true
 	}
 	return nil, false

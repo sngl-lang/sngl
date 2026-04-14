@@ -55,11 +55,15 @@ func newClientJSState(info *analysisResult, doc *ast.Document) *clientJSState {
 
 	// Collect initial values for client state.
 	stateInit := make(map[string]string)
-	for _, d := range doc.Data {
-		if !info.clientFields[d.Name] {
-			continue
+	for _, vd := range codegen.DocVarDecls(doc) {
+		for _, spec := range vd.Specs {
+			for _, name := range spec.Names {
+				if !info.clientFields[name] {
+					continue
+				}
+				stateInit[name] = jsLang.TranslateLiteral(spec.Default)
+			}
 		}
-		stateInit[d.Name] = jsLang.TranslateLiteral(d.Init)
 	}
 
 	return &clientJSState{
@@ -72,7 +76,7 @@ func newClientJSState(info *analysisResult, doc *ast.Document) *clientJSState {
 
 // isClientOnly reports whether an expression only references client state fields.
 func (cs *clientJSState) isClientOnly(expr ast.Expr) bool {
-	if expr.SNGL == nil {
+	if expr == nil || codegen.ExprIsLiteral(expr) {
 		return false
 	}
 	deps := cs.exprDeps(expr)
@@ -88,11 +92,11 @@ func (cs *clientJSState) isClientOnly(expr ast.Expr) bool {
 }
 
 // isClientMutation reports whether a mutation only touches client state.
-func (cs *clientJSState) isClientMutation(expr ast.Expr) bool {
-	if expr.SNGL == nil {
+func (cs *clientJSState) isClientMutation(stmt ast.Stmt) bool {
+	if stmt == nil {
 		return false
 	}
-	mutated := codegen.MutatedFields(expr.SNGL)
+	mutated := codegen.MutatedFields(stmt)
 	if len(mutated) == 0 {
 		return false
 	}
@@ -106,7 +110,7 @@ func (cs *clientJSState) isClientMutation(expr ast.Expr) bool {
 
 // addIfUpdater registers a visibility updater for a client-state conditional.
 func (cs *clientJSState) addIfUpdater(elemID string, expr ast.Expr) {
-	jsExpr := cs.jsLang.TranslateExpr(expr.SNGL, cs.scope)
+	jsExpr := cs.jsLang.TranslateExpr(expr, cs.scope)
 	cs.updates = append(cs.updates, clientUpdate{
 		elemID: elemID,
 		body:   fmt.Sprintf(`document.getElementById("%s").style.display = %s ? "" : "none";`, elemID, jsExpr),
@@ -115,9 +119,9 @@ func (cs *clientJSState) addIfUpdater(elemID string, expr ast.Expr) {
 }
 
 // addClickHandler registers a click handler for a client-state mutation.
-func (cs *clientJSState) addClickHandler(elemID string, expr ast.Expr) {
-	mutated := codegen.MutatedFields(expr.SNGL)
-	stmts := cs.jsLang.TranslateMutation(expr.SNGL, cs.scope)
+func (cs *clientJSState) addClickHandler(elemID string, handler ast.Stmt) {
+	mutated := codegen.MutatedFields(handler)
+	stmts := cs.jsLang.TranslateMutation(handler, cs.scope)
 	var body strings.Builder
 	for _, s := range stmts {
 		body.WriteString("    " + s + ";\n")
@@ -180,8 +184,8 @@ func (cs *clientJSState) emitScript() string {
 }
 
 func (cs *clientJSState) exprDeps(expr ast.Expr) map[string]bool {
-	if expr.SNGL == nil {
+	if expr == nil || codegen.ExprIsLiteral(expr) {
 		return nil
 	}
-	return codegen.ExtractDeps(expr.SNGL, cs.info.clientFields)
+	return codegen.ExtractDeps(expr, cs.info.clientFields)
 }

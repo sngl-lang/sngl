@@ -2,7 +2,7 @@ package http
 
 import (
 	_ "embed"
-	"fmt"
+	"errors"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -10,7 +10,7 @@ import (
 )
 
 // errNotPortedV2 is returned by any functionality not yet ported to the v2 AST.
-var errNotPortedV2 = fmt.Errorf("http platform not yet ported to v2 AST")
+var errNotPortedV2 = errors.New("http platform not yet ported to v2 AST")
 
 //go:embed http.sngl
 var pkgSource string
@@ -53,25 +53,23 @@ func hrefToRoutePath(props map[string]ast.Expr) string {
 		return ""
 	}
 	// Literal string: return as-is.
-	if s, ok := v.Literal.(string); ok {
+	if s, ok := codegen.ExprLiteralString(v); ok {
 		return s
 	}
 	// InterpolationExpr: reconstruct path with {param} for ident parts.
-	if v.SNGL != nil {
-		if interp, ok := v.SNGL.(*ast.InterpolationExpr); ok {
-			var path strings.Builder
-			for _, part := range interp.Parts {
-				switch p := part.(type) {
-				case *ast.LiteralExpr:
-					if s, ok := p.Value.(string); ok {
-						path.WriteString(s)
-					}
-				case *ast.IdentExpr:
-					path.WriteString("{" + p.Name + "}")
+	if interp, ok := v.(*ast.InterpolationExpr); ok {
+		var path strings.Builder
+		for _, part := range interp.Parts {
+			switch p := part.(type) {
+			case *ast.LiteralExpr:
+				if s, ok := codegen.ExprLiteralString(p); ok {
+					path.WriteString(s)
 				}
+			case *ast.IdentExpr:
+				path.WriteString("{" + p.Name + "}")
 			}
-			return path.String()
 		}
+		return path.String()
 	}
 	return ""
 }
@@ -92,7 +90,7 @@ func staticPropString(props map[string]ast.Expr, key string) string {
 	if !ok {
 		return ""
 	}
-	if s, ok := v.Literal.(string); ok {
+	if s, ok := codegen.ExprLiteralString(v); ok {
 		return s
 	}
 	return ""

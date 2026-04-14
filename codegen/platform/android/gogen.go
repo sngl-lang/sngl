@@ -76,8 +76,8 @@ func emitGoLib(doc *ast.Document, lang codegen.LangTranslator) []byte {
 	// Collect imports needed by generated code
 	needMath := false
 	needStrings := false
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib || fn.ReturnType == "" {
+	for _, fn := range docFuncs(doc) {
+		if fn.ReturnType == nil || strings.Contains(fn.Name, ".") {
 			continue
 		}
 		src := formatFuncBody(fn, lang)
@@ -103,16 +103,16 @@ func emitGoLib(doc *ast.Document, lang codegen.LangTranslator) []byte {
 	scope := &codegen.ExprScope{
 		LocalVars: map[string]bool{},
 	}
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib || fn.ReturnType == "" {
+	for _, fn := range docFuncs(doc) {
+		if fn.ReturnType == nil || strings.Contains(fn.Name, ".") {
 			continue
 		}
 		emitGoLibFunc(&b, fn, lang, scope)
 	}
 
 	// Emit exported computed functions (zero-arg expression-form)
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+	for _, fn := range docFuncs(doc) {
+		if fn.Body != nil && len(fn.Params.Params) == 0 {
 			emitGoLibComputed(&b, fn, lang, scope)
 		}
 	}
@@ -121,27 +121,27 @@ func emitGoLib(doc *ast.Document, lang codegen.LangTranslator) []byte {
 }
 
 func emitGoLibFunc(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTranslator, scope *codegen.ExprScope) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		params[i] = p.Name + " " + lang.TypeToNative(p.Type)
+	params := make([]string, len(fn.Params.Params))
+	for i, p := range fn.Params.Params {
+		params[i] = p.Name + " " + lang.TypeToNative(codegen.ExprTypeHint(p.Type))
 	}
 	paramStr := strings.Join(params, ", ")
-	retType := lang.TypeToNative(fn.ReturnType)
+	retType := lang.TypeToNative(codegen.ExprTypeHint(fn.ReturnType))
 	goName := goExportName(fn.Name)
 
-	for _, p := range fn.Params {
+	for _, p := range fn.Params.Params {
 		scope.LocalVars[p.Name] = true
 	}
 	defer func() {
-		for _, p := range fn.Params {
+		for _, p := range fn.Params.Params {
 			delete(scope.LocalVars, p.Name)
 		}
 	}()
 
-	if fn.Body.SNGL != nil {
-		body := lang.TranslateExpr(fn.Body.SNGL, scope)
+	if fn.Body != nil {
+		body := lang.TranslateExpr(fn.Body, scope)
 		fmt.Fprintf(b, "\nfunc %s(%s) %s {\n\treturn %s\n}\n", goName, paramStr, retType, body)
-	} else if fn.Block != nil {
+	} else if len(fn.Block.Stmts) > 0 {
 		fmt.Fprintf(b, "\nfunc %s(%s) %s {\n", goName, paramStr, retType)
 		for _, stmt := range fn.Block.Stmts {
 			switch s := stmt.(type) {
@@ -149,16 +149,19 @@ func emitGoLibFunc(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTransla
 				scope.LocalVars[s.Name] = true
 				val := lang.TranslateExpr(s.Init, scope)
 				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
+			case *ast.ReturnStmt:
+				if s.Value != nil {
+					ret := lang.TranslateExpr(s.Value, scope)
+					fmt.Fprintf(b, "\treturn %s\n", ret)
+				} else {
+					b.WriteString("\treturn\n")
+				}
 			default:
 				stmts := lang.TranslateMutation(stmt, scope)
 				for _, line := range stmts {
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
-		}
-		if fn.Block.Return != nil {
-			ret := lang.TranslateExpr(fn.Block.Return, scope)
-			fmt.Fprintf(b, "\treturn %s\n", ret)
 		}
 		for _, stmt := range fn.Block.Stmts {
 			if s, ok := stmt.(*ast.VarStmt); ok {
@@ -170,20 +173,18 @@ func emitGoLibFunc(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTransla
 }
 
 func emitGoLibComputed(b *strings.Builder, fn *ast.FuncDef, lang codegen.LangTranslator, scope *codegen.ExprScope) {
-	if fn.Body.SNGL == nil {
+	if fn.Body == nil {
 		return
 	}
 	goName := goExportName(fn.Name)
-	// Computed functions are emitted as zero-arg functions; the Kotlin side passes
-	// state values inline in the derivedStateOf expression.
-	body := lang.TranslateExpr(fn.Body.SNGL, scope)
+	body := lang.TranslateExpr(fn.Body, scope)
 	fmt.Fprintf(b, "\nfunc %s() string {\n\treturn %s\n}\n", goName, body)
 }
 
 func formatFuncBody(fn *ast.FuncDef, lang codegen.LangTranslator) string {
 	scope := &codegen.ExprScope{LocalVars: map[string]bool{}}
-	if fn.Body.SNGL != nil {
-		return lang.TranslateExpr(fn.Body.SNGL, scope)
+	if fn.Body != nil {
+		return lang.TranslateExpr(fn.Body, scope)
 	}
 	return ""
 }

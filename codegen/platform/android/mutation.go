@@ -5,9 +5,10 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-func (ec *exprContext) translateMutation(e ast.Node) []string {
+func (ec *exprContext) translateMutation(e any) []string {
 	switch n := e.(type) {
 	case *ast.StmtBlock:
 		var stmts []string
@@ -21,15 +22,17 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 		if n.Op == ast.AssignSet {
 			if call, ok := n.Value.(*ast.CallExpr); ok {
 				if targetIdent, ok := n.Target.(*ast.IdentExpr); ok {
-					if call.Func == "push" && len(call.Args) == 2 {
-						if src, ok := call.Args[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
-							value := ec.translateExpr(call.Args[1])
+					funcName := codegen.CallFuncName(call)
+					callArgList := codegen.CallArgs(call)
+					if funcName == "push" && len(callArgList) == 2 {
+						if src, ok := callArgList[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
+							value := ec.translateExpr(callArgList[1])
 							return []string{ec.translateMutationTarget(n.Target) + ".add(" + value + ")"}
 						}
 					}
-					if call.Func == "remove" && len(call.Args) == 2 {
-						if src, ok := call.Args[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
-							idx := ec.translateExpr(call.Args[1])
+					if funcName == "remove" && len(callArgList) == 2 {
+						if src, ok := callArgList[0].(*ast.IdentExpr); ok && src.Name == targetIdent.Name {
+							idx := ec.translateExpr(callArgList[1])
 							return []string{ec.translateMutationTarget(n.Target) + ".removeAt(" + idx + ")"}
 						}
 					}
@@ -53,32 +56,14 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 		}
 		target := ec.translateMutationTarget(n.Target)
 		return []string{target + " = !" + target}
-	case *ast.MethodExpr:
-		// Alert namespace — translate to Android Toast/AlertDialog
-		if ident, ok := n.Receiver.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-			return ec.translateAlert(n)
-		}
-		target := ec.translateMutationTarget(n.Receiver)
-		switch n.Method {
-		case "push":
-			if len(n.Args) == 1 {
-				value := ec.translateExpr(n.Args[0])
-				return []string{target + ".add(" + value + ")"}
-			}
-		case "remove":
-			if len(n.Args) == 1 {
-				idx := ec.translateExpr(n.Args[0])
-				return []string{target + ".removeAt(" + idx + ")"}
-			}
-		}
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = ec.translateExpr(a)
-		}
-		return []string{target + "." + n.Method + "(" + strings.Join(argStrs, ", ") + ")"}
+	case *ast.CallStmt:
+		return ec.translateCallStmt(n)
+	case *ast.CallExpr:
+		return []string{ec.translateCall(n)}
 	case *ast.EmitStmt:
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
+		args := codegen.CallArgs(&ast.CallExpr{Args: n.Args})
+		argStrs := make([]string, len(args))
+		for i, a := range args {
 			argStrs[i] = ec.translateExpr(a)
 		}
 		name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
@@ -86,16 +71,51 @@ func (ec *exprContext) translateMutation(e ast.Node) []string {
 			return []string{name + "?.invoke(" + strings.Join(argStrs, ", ") + ")"}
 		}
 		return []string{name + "?.invoke()"}
-	case *ast.CallStmt:
-		return []string{ec.translateCall(n.Call)}
-	case *ast.CallExpr:
-		return []string{ec.translateCall(n)}
 	default:
 		return []string{"// unsupported mutation: " + fmt.Sprintf("%T", e)}
 	}
 }
 
-func (ec *exprContext) translateMutationTarget(e ast.Node) string {
+// translateCallStmt handles a CallStmt, including method calls that were
+// previously ast.MethodExpr in v1. In v2, method calls are CallExpr with
+// a SelectExpr as Func.
+func (ec *exprContext) translateCallStmt(n *ast.CallStmt) []string {
+	call := n.Call
+	sel, isMethod := call.Func.(*ast.SelectExpr)
+	if !isMethod {
+		return []string{ec.translateCall(call)}
+	}
+
+	// Alert namespace — translate to Android Toast/AlertDialog
+	if ident, ok := sel.Operand.(*ast.IdentExpr); ok && ident.Name == "Alert" {
+		return ec.translateAlertCall(sel.Field, call)
+	}
+
+	target := ec.translateMutationTarget(sel.Operand)
+	method := sel.Field
+	args := codegen.CallArgs(call)
+
+	switch method {
+	case "push":
+		if len(args) == 1 {
+			value := ec.translateExpr(args[0])
+			return []string{target + ".add(" + value + ")"}
+		}
+	case "remove":
+		if len(args) == 1 {
+			idx := ec.translateExpr(args[0])
+			return []string{target + ".removeAt(" + idx + ")"}
+		}
+	}
+
+	argStrs := make([]string, len(args))
+	for i, a := range args {
+		argStrs[i] = ec.translateExpr(a)
+	}
+	return []string{target + "." + method + "(" + strings.Join(argStrs, ", ") + ")"}
+}
+
+func (ec *exprContext) translateMutationTarget(e any) string {
 	switch n := e.(type) {
 	case *ast.IdentExpr:
 		return n.Name
@@ -107,29 +127,41 @@ func (ec *exprContext) translateMutationTarget(e ast.Node) string {
 		index := ec.translateExpr(n.Index)
 		return operand + "[" + index + "]"
 	default:
-		return ec.translateExpr(e)
+		if expr, ok := e.(ast.Expr); ok {
+			return ec.translateExpr(expr)
+		}
+		return fmt.Sprintf("/* unsupported target %T */", e)
 	}
 }
 
-// translateAlert translates Alert.toast/info/warn/error to Android API calls.
-func (ec *exprContext) translateAlert(n *ast.MethodExpr) []string {
-	switch n.Method {
+// translateAlertCall translates Alert.toast/info/warn/error to Android API calls.
+func (ec *exprContext) translateAlertCall(method string, call *ast.CallExpr) []string {
+	args := codegen.CallArgs(call)
+	switch method {
 	case "toast":
-		msg := ec.translateExpr(n.Args[0])
-		return []string{fmt.Sprintf("Toast.makeText(context, %s, Toast.LENGTH_SHORT).show()", msg)}
+		if len(args) > 0 {
+			msg := ec.translateExpr(args[0])
+			return []string{fmt.Sprintf("Toast.makeText(context, %s, Toast.LENGTH_SHORT).show()", msg)}
+		}
 	case "info":
-		msg := ec.translateExpr(n.Args[0])
-		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		if len(args) > 0 {
+			msg := ec.translateExpr(args[0])
+			return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		}
 	case "warn":
-		msg := ec.translateExpr(n.Args[0])
-		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Warning").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		if len(args) > 0 {
+			msg := ec.translateExpr(args[0])
+			return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Warning").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		}
 	case "error":
-		msg := ec.translateExpr(n.Args[0])
-		return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Error").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		if len(args) > 0 {
+			msg := ec.translateExpr(args[0])
+			return []string{fmt.Sprintf(`android.app.AlertDialog.Builder(context).setTitle("Error").setMessage(%s).setPositiveButton("OK", null).show()`, msg)}
+		}
 	case "confirm":
 		return []string{"// Alert.confirm requires async dialog — not yet supported"}
 	}
-	return []string{ec.translateExpr(n)}
+	return []string{ec.translateCall(call)}
 }
 
 func assignOpToKt(op ast.AssignOp) string {

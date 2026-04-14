@@ -10,7 +10,7 @@ import (
 )
 
 // callMethod dispatches method calls on the T value: t.assert(), t.tick(), t.test().
-func (tv *testingT) callMethod(env *Env, method string, args []ast.Node) (any, error) {
+func (tv *testingT) callMethod(env *Env, method string, args []ast.Expr) (any, error) {
 	switch method {
 	case "assert":
 		if len(args) != 1 {
@@ -30,17 +30,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ast.Node) (any, e
 		return nil, nil
 
 	case "tick":
-		for _, t := range env.timers {
-			active, ok := env.vars[t.Active]
-			if !ok {
-				continue
-			}
-			if b, ok := active.(bool); ok && b {
-				if err := env.Exec(t.Body); err != nil {
-					return nil, err
-				}
-			}
-		}
+		// No-op in v2: timers are handled differently
 		return nil, nil
 
 	case "test":
@@ -121,15 +111,10 @@ func (cv *componentValue) getField(field string) (any, error) {
 	}
 	// Check computed fields (zero-param functions)
 	if fn, ok := cv.funcs[field]; ok {
-		if len(fn.Params) == 0 {
-			// Evaluate the computed field using an env that has our vars
+		if len(fn.Params.Params) == 0 {
 			compEnv := cv.compEnv()
 			return compEnv.evalUserFunc(fn, nil)
 		}
-	}
-	// Check #id element refs
-	if len(field) > 0 && field[0] == '#' {
-		return cv.env.resolveElementRef(field[1:])
 	}
 	return nil, fmt.Errorf("component has no field %q", field)
 }
@@ -157,7 +142,6 @@ func (cv *componentValue) compEnv() *Env {
 }
 
 // syncFromEnv reads component state from the shared env back into cv.vars.
-// This is needed after event handlers modify env.vars directly.
 func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
 	for k := range cv.vars {
 		if !testParams[k] {
@@ -169,7 +153,7 @@ func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
 }
 
 // callMethod dispatches method calls on componentValue (for c.@event() and c.func() calls).
-func (cv *componentValue) callMethod(_ *Env, method string, args []ast.Node) (any, error) {
+func (cv *componentValue) callMethod(_ *Env, method string, args []ast.Expr) (any, error) {
 	if len(method) > 0 && method[0] == '@' {
 		// Event emission — no-op in headless mode
 		return nil, nil
@@ -199,16 +183,22 @@ func (lv *lambdaValue) callWithEnv(env *Env, args []any) (any, error) {
 			env.vars[p] = args[i]
 		}
 	}
-	if lv.block != nil {
+	if lv.block.IsDefined() {
 		for _, stmt := range lv.block.Stmts {
+			if ret, ok := stmt.(*ast.ReturnStmt); ok {
+				if ret.Value != nil {
+					return env.Eval(ret.Value)
+				}
+				return nil, nil
+			}
 			if err := env.Exec(stmt); err != nil {
 				return nil, err
 			}
 		}
-		if lv.block.Return != nil {
-			return env.Eval(lv.block.Return)
-		}
 		return nil, nil
 	}
-	return env.Eval(lv.body)
+	if lv.body != nil {
+		return env.Eval(lv.body)
+	}
+	return nil, nil
 }

@@ -91,7 +91,6 @@ type forLoopCursor struct {
 	focusIdx    int    // focus index of this group
 	indexVar    string // for-loop index variable, e.g. "index"
 	iterVar     string // for-loop element variable, e.g. "item"
-	changeExpr  *ast.Expr
 }
 
 type externInfo struct {
@@ -127,53 +126,30 @@ func analyze(doc *ast.Document) *analysisResult {
 	// is empty due to platform-specific bodies). They are added below only
 	// when a data field or struct field has a Resolved type that needs them.
 
-	// Platform-specific data field analysis (Go types, init values, externs)
-	for _, d := range doc.Data {
-		if d.Resolved != nil && d.Resolved.NativePkg != "" {
-			info.goImports[d.Resolved.NativePkg] = resolvePackageName(d.Resolved.NativePkg)
+	// Platform-specific data field analysis (Go types, init values)
+	for _, dv := range docVars(doc) {
+		goType := inferGoType(dv.Init)
+		hint := exprTypeHint(dv.Type)
+		if hint != "" {
+			goType = typeHintToGo(hint)
 		}
-		if d.Extern || d.IsFunc {
-			ext := externInfo{
-				name:   d.Name,
-				isFunc: d.IsFunc,
-			}
-			if d.IsFunc {
-				ext.paramTypes = d.ParamTypes
-				ext.returnType = d.ReturnType
-				ext.goType = externFuncGoType(d.ParamTypes, d.ReturnType)
-			} else if d.Resolved != nil && d.Resolved.NativeType != "" {
-				ext.goType = d.Resolved.NativeType
-			} else {
-				ext.goType = typeHintToGo(d.Init.TypeHint)
-			}
-			info.externs = append(info.externs, ext)
-			continue
-		}
-		goType := inferGoType(d.Init)
-		if d.Resolved != nil && d.Resolved.NativeType != "" {
-			goType = d.Resolved.NativeType
-		}
-		initExpr := d.Init
-		if initExpr.TypeHint == "" && d.Resolved != nil && d.Resolved.IsList {
-			initExpr.TypeHint = "list<" + d.Resolved.ElemType + ">"
-		}
-		initVal := literalToGo(initExpr)
-		if needsTimeType(d.Init.TypeHint) {
+		initVal := literalToGo(dv.Init)
+		if needsTimeType(hint) {
 			info.needsTime = true
 		}
 		info.binds = append(info.binds, bindInfo{
-			name:    d.Name,
+			name:    dv.Name,
 			goType:  goType,
 			initVal: initVal,
 		})
 	}
 
 	// Platform-specific computed function analysis (Go types)
-	for _, fn := range doc.Functions {
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 && !fn.IsStdlib {
+	for _, fn := range docFuncDefs(doc) {
+		if isComputed(fn) {
 			goType := inferGoType(fn.Body)
-			if goType == "any" && fn.Body.SNGL != nil {
-				goType = snglNodeGoType(fn.Body.SNGL)
+			if goType == "any" && fn.Body != nil {
+				goType = snglNodeGoType(fn.Body)
 			}
 			info.computeds = append(info.computeds, computedInfo{
 				name:   fn.Name,
@@ -189,20 +165,15 @@ func analyze(doc *ast.Document) *analysisResult {
 		}
 	}
 
-	// Collect Go imports from struct fields with Resolved info
-	for _, sd := range doc.Structs {
-		for _, f := range sd.Fields {
-			if f.Resolved != nil && f.Resolved.NativePkg != "" {
-				info.goImports[f.Resolved.NativePkg] = resolvePackageName(f.Resolved.NativePkg)
-			}
-		}
-	}
+	// Collect Go imports from struct fields (placeholder for future resolved info)
+	_ = docStructDefs(doc)
 
 	// Walk visual tree to find inputs and buttons
-	if doc.App != nil {
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) > 0 {
 		focusIdx := 0
-		for _, child := range doc.App.Children {
-			focusIdx = walkForFocusables(child, info, focusIdx)
+		for _, stmt := range bodyStmts {
+			focusIdx = walkStmtForFocusables(stmt, info, focusIdx)
 		}
 	}
 
@@ -214,20 +185,43 @@ func analyze(doc *ast.Document) *analysisResult {
 	return info
 }
 
+// walkStmtForFocusables dispatches statement types for focusable scanning.
+func walkStmtForFocusables(stmt ast.Stmt, info *analysisResult, idx int) int {
+	switch s := stmt.(type) {
+	case *ast.VisualNode:
+		idx = walkForFocusables(s, info, idx)
+	case *ast.IfStmt:
+		for _, child := range s.Body.Stmts {
+			idx = walkStmtForFocusables(child, info, idx)
+		}
+		for _, child := range s.Else.Stmts {
+			idx = walkStmtForFocusables(child, info, idx)
+		}
+	case *ast.ForStmt:
+		for _, child := range s.Body.Stmts {
+			idx = walkStmtForFocusables(child, info, idx)
+		}
+	}
+	return idx
+}
+
 func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
-	switch vn.Component {
+	name := vnName(vn)
+	switch name {
 	case "input":
 		fieldName := fmt.Sprintf("input%d", len(info.inputs))
 		placeholder := ""
-		if v, ok := vn.Props["placeholder"]; ok {
-			if s, ok := v.Literal.(string); ok {
+		if v := vnProp(vn, "placeholder"); v != nil {
+			if s, ok := codegen.ExprLiteralString(v); ok {
 				placeholder = s
 			}
 		}
 		bindTarget := ""
-		// Extract bind target from on:input event: set(field, event.value) / field = event.value
-		if inputEvt, ok := vn.Events["input"]; ok {
-			bindTarget = extractAssignTarget(inputEvt.Body.SNGL)
+		// Extract bind target from on:input event
+		if inputEvt := vnEvent(vn, "input"); inputEvt != nil {
+			if len(inputEvt.Body.Stmts) > 0 {
+				bindTarget = extractAssignTarget(inputEvt.Body.Stmts[0])
+			}
 		}
 		info.inputs = append(info.inputs, inputInfo{
 			fieldName:   fieldName,
@@ -255,29 +249,12 @@ func walkForFocusables(vn *ast.VisualNode, info *analysisResult, idx int) int {
 		focusName := fmt.Sprintf("checkbox%d", chkCount)
 		focusIdx := len(info.focusables)
 		info.focusables = append(info.focusables, focusName)
-		// For-looped checkboxes with on:change need a cursor
-		if vn.For != nil && vn.For.IndexVar != "" {
-			if changeEvt, ok := vn.Events["change"]; ok {
-				listField := ""
-				if ident, ok := vn.For.Iterable.SNGL.(*ast.IdentExpr); ok {
-					listField = ident.Name
-				}
-				body := changeEvt.Body
-				info.forCursors = append(info.forCursors, forLoopCursor{
-					cursorField: listField + "Cursor",
-					listField:   listField,
-					focusIdx:    focusIdx,
-					indexVar:    vn.For.IndexVar,
-					iterVar:     vn.For.Variable,
-					changeExpr:  &body,
-				})
-			}
-		}
 		idx++
+		_ = focusIdx // for-loop cursor logic would go here if needed
 	}
 
-	for _, child := range vn.Children {
-		idx = walkForFocusables(child, info, idx)
+	for _, child := range vnChildren(vn) {
+		idx = walkStmtForFocusables(child, info, idx)
 	}
 	return idx
 }
@@ -374,10 +351,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", exportName(sd.Name))
 		for _, f := range sd.Fields {
-			goType := typeHintToGo(f.Type)
-			if f.Resolved != nil && f.Resolved.NativeType != "" {
-				goType = f.Resolved.NativeType
-			}
+			goType := typeHintToGo(exprTypeHint(f.Type))
 			fmt.Fprintf(&b, "\t%s %s\n", exportName(f.Name), goType)
 		}
 		b.WriteString("}\n\n")
@@ -461,14 +435,13 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	b.WriteString("}\n\n")
 
 	// Computed methods (zero-arg expression-form functions)
+	fns := docFuncDefs(doc)
 	for _, comp := range info.computeds {
 		body := ""
-		for _, fn := range doc.Functions {
-			if fn.Name == comp.name && fn.Body.SNGL != nil && len(fn.Params) == 0 {
-				if fn.Body.SNGL != nil {
-					body = ec.TranslateExpr(fn.Body.SNGL)
-				} else if fn.Body.Literal != nil {
-					body = literalToGo(fn.Body)
+		for _, fn := range fns {
+			if fn.Name == comp.name && isComputed(fn) {
+				if fn.Body != nil {
+					body = ec.TranslateExpr(fn.Body)
 				}
 				break
 			}
@@ -478,14 +451,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
-	// User-defined functions (skip stdlib, test, and computed functions which
+	// User-defined functions (skip methods, test, and computed functions which
 	// are already emitted as lowercase methods above)
-	for _, fn := range doc.Functions {
-		if fn.IsStdlib || fn.IsTest() {
+	for _, fn := range fns {
+		if strings.Contains(fn.Name, ".") || fn.IsTest() {
 			continue
 		}
 		// Skip computed functions — already emitted above
-		if fn.Body.SNGL != nil && len(fn.Params) == 0 {
+		if isComputed(fn) {
 			continue
 		}
 		emitGoFunc(&b, fn, ec)
@@ -521,7 +494,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	emitView(&b, info, doc, ec, cfg)
 
 	// User component render methods (not stdlib overrides)
-	for _, comp := range doc.Components {
+	for _, comp := range docComponents(doc) {
 		emitComponentMethod(&b, comp, info.Components, ec, cfg)
 	}
 
@@ -541,10 +514,12 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 
 func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 	// Build param list
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
+	fnParams := fn.Params.Params
+	params := make([]string, len(fnParams))
+	for i, p := range fnParams {
 		goType := "any"
-		switch p.Type {
+		hint := exprTypeHint(p.Type)
+		switch hint {
 		case "int":
 			goType = "int"
 		case "float":
@@ -558,9 +533,10 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 	}
 	paramStr := strings.Join(params, ", ")
 
+	retHint := funcReturnType(fn)
 	retType := ""
-	if fn.ReturnType != "" {
-		switch fn.ReturnType {
+	if retHint != "" {
+		switch retHint {
 		case "int":
 			retType = "int"
 		case "float":
@@ -583,17 +559,17 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 
 	// Void functions use pointer receiver (mutation)
 	receiver := "m Model"
-	if fn.ReturnType == "" {
+	if fn.ReturnType == nil {
 		receiver = "m *Model"
 	}
 
-	if fn.Body.SNGL != nil {
+	if fn.Body != nil {
 		// Add params as local vars for translation
-		for _, p := range fn.Params {
+		for _, p := range fnParams {
 			ec.LocalVars[p.Name] = true
 		}
-		body := ec.TranslateExpr(fn.Body.SNGL)
-		for _, p := range fn.Params {
+		body := ec.TranslateExpr(fn.Body)
+		for _, p := range fnParams {
 			delete(ec.LocalVars, p.Name)
 		}
 		if isTypeMethod {
@@ -603,13 +579,13 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 		}
 		fmt.Fprintf(b, "\treturn %s\n", body)
 		b.WriteString("}\n\n")
-	} else if fn.Block != nil {
+	} else if len(fn.Block.Stmts) > 0 {
 		if isTypeMethod {
 			fmt.Fprintf(b, "func %s(%s) %s {\n", goName, paramStr, retType)
 		} else {
 			fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
 		}
-		for _, p := range fn.Params {
+		for _, p := range fnParams {
 			ec.LocalVars[p.Name] = true
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -618,6 +594,13 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				ec.LocalVars[s.Name] = true
 				val := ec.TranslateExpr(s.Init)
 				fmt.Fprintf(b, "\t%s := %s\n", s.Name, val)
+			case *ast.ReturnStmt:
+				if s.Value != nil {
+					ret := ec.TranslateExpr(s.Value)
+					fmt.Fprintf(b, "\treturn %s\n", ret)
+				} else {
+					b.WriteString("\treturn\n")
+				}
 			default:
 				stmts := ec.TranslateMutation(stmt)
 				for _, line := range stmts {
@@ -625,12 +608,8 @@ func emitGoFunc(b *strings.Builder, fn *ast.FuncDef, ec *exprContext) {
 				}
 			}
 		}
-		if fn.Block.Return != nil {
-			ret := ec.TranslateExpr(fn.Block.Return)
-			fmt.Fprintf(b, "\treturn %s\n", ret)
-		}
 		// Clean up local vars
-		for _, p := range fn.Params {
+		for _, p := range fnParams {
 			delete(ec.LocalVars, p.Name)
 		}
 		for _, stmt := range fn.Block.Stmts {
@@ -660,15 +639,17 @@ func emitGettersSetters(b *strings.Builder, info *analysisResult, doc *ast.Docum
 			}
 		}
 		// Inline @change event bodies
-		for _, d := range doc.Data {
-			if d.Name != bind.name {
+		for _, dv := range docVars(doc) {
+			if dv.Name != bind.name {
 				continue
 			}
-			for _, ev := range d.Events {
-				if ev.Kind == "change" {
-					stmts := ec.TranslateMutation(ev.Body)
-					for _, s := range stmts {
-						fmt.Fprintf(b, "\t%s\n", s)
+			for _, ev := range dv.Handlers {
+				if ev.Name == "change" {
+					for _, stmt := range ev.Body.Stmts {
+						stmts := ec.TranslateMutation(stmt)
+						for _, s := range stmts {
+							fmt.Fprintf(b, "\t%s\n", s)
+						}
 					}
 				}
 			}
@@ -703,9 +684,11 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
 		fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
 		// Emit body mutations
-		stmts := ec.TranslateMutation(t.Body)
-		for _, s := range stmts {
-			fmt.Fprintf(b, "\t\t\t%s\n", s)
+		for _, bodyStmt := range t.Body.Stmts {
+			translated := ec.TranslateMutation(bodyStmt)
+			for _, s := range translated {
+				fmt.Fprintf(b, "\t\t\t%s\n", s)
+			}
 		}
 		// Re-schedule
 		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
@@ -747,10 +730,11 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 	}
 
 	// Enter key for buttons
-	if doc.App != nil {
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) > 0 {
 		buttonIdx := 0
 		checkboxIdx := 0
-		emitButtonHandlers(b, doc.App.Children, info, ec, &buttonIdx, &checkboxIdx)
+		emitButtonHandlersStmts(b, bodyStmts, info, ec, &buttonIdx, &checkboxIdx)
 	}
 
 	b.WriteString("\t\t}\n") // end switch
@@ -788,94 +772,105 @@ func emitFocusSync(b *strings.Builder, info *analysisResult) {
 	}
 }
 
-func emitButtonHandlers(b *strings.Builder, nodes []*ast.VisualNode, info *analysisResult, ec *exprContext, buttonIdx *int, checkboxIdx *int) {
-	for _, vn := range nodes {
-		if vn.Component == "checkbox" {
-			if changeEvt, ok := vn.Events["change"]; ok {
-				if changeEvt.Body.SNGL != nil {
-					focusIdx := -1
-					for i, f := range info.focusables {
-						if f == fmt.Sprintf("checkbox%d", *checkboxIdx) {
-							focusIdx = i
-							break
-						}
-					}
-					if focusIdx >= 0 {
-						var fc *forLoopCursor
-						for i := range info.forCursors {
-							if info.forCursors[i].focusIdx == focusIdx {
-								fc = &info.forCursors[i]
-								break
-							}
-						}
-						if fc != nil {
-							ec.LocalVars[fc.indexVar] = true
-							stmts := ec.TranslateMutation(changeEvt.Body.SNGL)
-							delete(ec.LocalVars, fc.indexVar)
-							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
-							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s) {\n", fc.cursorField, fc.listField)
-							fmt.Fprintf(b, "\t\t\t\t%s := m.%s\n", fc.indexVar, fc.cursorField)
-							for _, stmt := range stmts {
-								fmt.Fprintf(b, "\t\t\t\t%s\n", stmt)
-							}
-							fmt.Fprintf(b, "\t\t\t}\n")
-							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyUp && m.focus == %d:\n", focusIdx)
-							fmt.Fprintf(b, "\t\t\tif m.%s > 0 { m.%s-- }\n", fc.cursorField, fc.cursorField)
-							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyDown && m.focus == %d:\n", focusIdx)
-							fmt.Fprintf(b, "\t\t\tif m.%s < len(m.%s)-1 { m.%s++ }\n", fc.cursorField, fc.listField, fc.cursorField)
-						} else {
-							stmts := ec.TranslateMutation(changeEvt.Body.SNGL)
-							fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
-							for _, stmt := range stmts {
-								fmt.Fprintf(b, "\t\t\t%s\n", stmt)
-							}
-							mutatedFields := codegen.MutatedFields(changeEvt.Body.SNGL)
-							for _, inp := range info.inputs {
-								if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
-									fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
-								}
-							}
-						}
-					}
-				}
-			}
-			*checkboxIdx++
+// emitButtonHandlersStmts dispatches statement types for button/checkbox handlers.
+func emitButtonHandlersStmts(b *strings.Builder, stmts []ast.Stmt, info *analysisResult, ec *exprContext, buttonIdx *int, checkboxIdx *int) {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.VisualNode:
+			emitButtonHandlersVN(b, s, info, ec, buttonIdx, checkboxIdx)
+		case *ast.IfStmt:
+			emitButtonHandlersStmts(b, s.Body.Stmts, info, ec, buttonIdx, checkboxIdx)
+			emitButtonHandlersStmts(b, s.Else.Stmts, info, ec, buttonIdx, checkboxIdx)
+		case *ast.ForStmt:
+			emitButtonHandlersStmts(b, s.Body.Stmts, info, ec, buttonIdx, checkboxIdx)
 		}
-		if vn.Component == "button" {
-			if clickEvt, ok := vn.Events["click"]; ok {
-				if clickEvt.Body.SNGL != nil {
-					focusIdx := -1
-					for i, f := range info.focusables {
-						if f == fmt.Sprintf("button%d", *buttonIdx) {
-							focusIdx = i
-							break
-						}
-					}
-					if focusIdx >= 0 {
-						stmts := ec.TranslateMutation(clickEvt.Body.SNGL)
-						fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
-						for _, stmt := range stmts {
-							fmt.Fprintf(b, "\t\t\t%s\n", stmt)
-						}
-						mutatedFields := codegen.MutatedFields(clickEvt.Body.SNGL)
-						for _, inp := range info.inputs {
-							if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
-								fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
-							}
-						}
-					}
-				}
-			}
-			*buttonIdx++
-		}
-		emitButtonHandlers(b, vn.Children, info, ec, buttonIdx, checkboxIdx)
 	}
+}
+
+func emitButtonHandlersVN(b *strings.Builder, vn *ast.VisualNode, info *analysisResult, ec *exprContext, buttonIdx *int, checkboxIdx *int) {
+	name := vnName(vn)
+	events := vnEvents(vn)
+
+	if name == "checkbox" {
+		if changeEvt, ok := events["change"]; ok {
+			if len(changeEvt.Body.Stmts) > 0 {
+				focusIdx := -1
+				for i, f := range info.focusables {
+					if f == fmt.Sprintf("checkbox%d", *checkboxIdx) {
+						focusIdx = i
+						break
+					}
+				}
+				if focusIdx >= 0 {
+					// Translate the event body stmts
+					var translated []string
+					for _, stmt := range changeEvt.Body.Stmts {
+						translated = append(translated, ec.TranslateMutation(stmt)...)
+					}
+					fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+					for _, stmt := range translated {
+						fmt.Fprintf(b, "\t\t\t%s\n", stmt)
+					}
+					// Collect mutated fields from all body stmts
+					mutatedFields := make(map[string]bool)
+					for _, stmt := range changeEvt.Body.Stmts {
+						for k, v := range codegen.MutatedFields(stmt) {
+							mutatedFields[k] = v
+						}
+					}
+					for _, inp := range info.inputs {
+						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
+							fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
+						}
+					}
+				}
+			}
+		}
+		*checkboxIdx++
+	}
+	if name == "button" {
+		if clickEvt, ok := events["click"]; ok {
+			if len(clickEvt.Body.Stmts) > 0 {
+				focusIdx := -1
+				for i, f := range info.focusables {
+					if f == fmt.Sprintf("button%d", *buttonIdx) {
+						focusIdx = i
+						break
+					}
+				}
+				if focusIdx >= 0 {
+					var translated []string
+					for _, stmt := range clickEvt.Body.Stmts {
+						translated = append(translated, ec.TranslateMutation(stmt)...)
+					}
+					fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+					for _, stmt := range translated {
+						fmt.Fprintf(b, "\t\t\t%s\n", stmt)
+					}
+					mutatedFields := make(map[string]bool)
+					for _, stmt := range clickEvt.Body.Stmts {
+						for k, v := range codegen.MutatedFields(stmt) {
+							mutatedFields[k] = v
+						}
+					}
+					for _, inp := range info.inputs {
+						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
+							fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
+						}
+					}
+				}
+			}
+		}
+		*buttonIdx++
+	}
+	emitButtonHandlersStmts(b, vnChildren(vn), info, ec, buttonIdx, checkboxIdx)
 }
 
 func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *exprContext, cfg Config) {
 	b.WriteString("func (m Model) View() tea.View {\n")
 
-	if doc.App == nil || len(doc.App.Children) == 0 {
+	bodyStmts := docBodyStmts(doc)
+	if len(bodyStmts) == 0 {
 		b.WriteString("\treturn tea.NewView(\"\")\n")
 		b.WriteString("}\n\n")
 		return
@@ -893,16 +888,16 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	}
 
 	// Render each top-level child
-	if len(doc.App.Children) == 1 {
+	if len(bodyStmts) == 1 {
 		vc.line("var content string")
-		vc.renderNode(doc.App.Children[0], "content")
+		vc.renderStmt(bodyStmts[0], "content")
 		b.WriteString(vc.buf.String())
 	} else {
 		vc.line("var parts []string")
-		for i, child := range doc.App.Children {
+		for i, child := range bodyStmts {
 			childVar := fmt.Sprintf("part%d", i)
 			vc.line("var %s string", childVar)
-			vc.renderNode(child, childVar)
+			vc.renderStmt(child, childVar)
 			vc.line("parts = append(parts, %s)", childVar)
 		}
 		vc.line(`content := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
@@ -935,13 +930,14 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 	methodName := "render" + exportName(comp.Name)
 
 	// Build parameter list
+	cParams := compParams(comp)
 	var params []string
-	for _, p := range comp.Params {
+	for _, p := range cParams {
 		goType := inferGoType(p.Default)
 		params = append(params, p.Name+" "+goType)
 	}
 	// If component accepts children, add a slotContent parameter
-	hasSlot := comp.ChildrenType != ""
+	hasSlot := compHasChildren(comp)
 	if hasSlot {
 		params = append(params, "slotContent string")
 	}
@@ -951,7 +947,7 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 	// Add params as local vars
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, ec.LocalVars)
-	for _, p := range comp.Params {
+	for _, p := range cParams {
 		ec.LocalVars[p.Name] = true
 	}
 
@@ -971,17 +967,18 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 		slotVar:     slotVar,
 	}
 
-	if len(comp.Body) == 1 {
+	bodyStmts := compBodyStmts(comp)
+	if len(bodyStmts) == 1 {
 		vc.line("var result string")
-		vc.renderNode(comp.Body[0], "result")
+		vc.renderStmt(bodyStmts[0], "result")
 		b.WriteString(vc.buf.String())
 		b.WriteString("\treturn result\n")
 	} else {
 		vc.line("var parts []string")
-		for i, child := range comp.Body {
+		for i, child := range bodyStmts {
 			childVar := fmt.Sprintf("part%d", i)
 			vc.line("var %s string", childVar)
-			vc.renderNode(child, childVar)
+			vc.renderStmt(child, childVar)
 			vc.line("parts = append(parts, %s)", childVar)
 		}
 		vc.line(`result := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
@@ -997,14 +994,9 @@ func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allCompone
 
 // extractAssignTarget extracts the target field name from an assignment SNGL node.
 func extractAssignTarget(e ast.Stmt) string {
-	switch n := e.(type) {
-	case *ast.AssignStmt:
+	if n, ok := e.(*ast.AssignStmt); ok {
 		if ident, ok := n.Target.(*ast.IdentExpr); ok {
 			return ident.Name
-		}
-	case *ast.StmtBlock:
-		if len(n.Stmts) > 0 {
-			return extractAssignTarget(n.Stmts[0])
 		}
 	}
 	return ""

@@ -10,49 +10,63 @@ import (
 
 // AssertError is returned when an assertion fails.
 type AssertError struct {
-	Expr ast.Node // the expression that was asserted
+	Expr ast.Expr // the expression that was asserted
 	Got  any      // the value it evaluated to
 }
 
 func (e *AssertError) Error() string {
-	return fmt.Sprintf("assert(%s) failed — got %v", parser.FormatNode(e.Expr), e.Got)
+	return fmt.Sprintf("assert(%s) failed — got %v", parser.FormatExpr(e.Expr), e.Got)
 }
 
 // Exec executes a statement node, mutating the environment.
-func (env *Env) Exec(n ast.Node) error {
-	switch s := n.(type) {
+func (env *Env) Exec(s ast.Stmt) error {
+	switch n := s.(type) {
 	case *ast.AssignStmt:
-		return env.execAssign(s)
+		return env.execAssign(n)
 	case *ast.ToggleStmt:
-		return env.execToggle(s)
+		return env.execToggle(n)
 	case *ast.EmitStmt:
 		// In headless mode, emissions are no-ops
 		return nil
-	case *ast.CallExpr:
-		_, err := env.evalCall(s)
-		return err
 	case *ast.CallStmt:
-		_, err := env.evalCall(s.Call)
+		_, err := env.evalCall(n.Call)
 		return err
 	case *ast.VarStmt:
-		v, err := env.Eval(s.Init)
+		v, err := env.Eval(n.Init)
 		if err != nil {
 			return err
 		}
-		env.vars[s.Name] = v
+		env.vars[n.Name] = v
 		return nil
-	case *ast.StmtBlock:
-		for _, stmt := range s.Stmts {
-			if err := env.Exec(stmt); err != nil {
-				return err
+	case *ast.VarDecl:
+		for _, spec := range n.Specs {
+			val := evalInit(env, spec.Default)
+			for _, name := range spec.Names {
+				env.vars[name] = val
 			}
 		}
 		return nil
+	case *ast.ReturnStmt:
+		// ReturnStmt in exec context — should be handled by caller
+		return nil
 	default:
-		// Expression statement — evaluate and discard
-		_, err := env.Eval(n)
-		return err
+		// Try as expression
+		if expr, ok := s.(ast.Expr); ok {
+			_, err := env.Eval(expr)
+			return err
+		}
+		return fmt.Errorf("cannot execute %T", s)
 	}
+}
+
+// ExecBlock executes all statements in a StmtBlock.
+func (env *Env) ExecBlock(b *ast.StmtBlock) error {
+	for _, stmt := range b.Stmts {
+		if err := env.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (env *Env) execAssign(s *ast.AssignStmt) error {

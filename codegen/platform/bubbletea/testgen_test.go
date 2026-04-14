@@ -35,12 +35,11 @@ func TestGeneratedTests(t *testing.T) {
 				}
 			}
 
-			f, err := os.Open(path)
+			src, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("open: %v", err)
+				t.Fatalf("read: %v", err)
 			}
-			doc, err := parser.Parse(path, f)
-			f.Close()
+			doc, err := parser.Parse(path, src)
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}

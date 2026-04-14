@@ -2,9 +2,11 @@ package android
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // exprContext holds state needed to translate SNGL expression nodes into Kotlin expressions.
@@ -24,6 +26,8 @@ func (ec *exprContext) translateExpr(e ast.Expr) string {
 	switch n := e.(type) {
 	case *ast.LiteralExpr:
 		return ec.translateLiteral(n)
+	case *ast.UnitLiteral:
+		return n.LiteralExpr.Raw
 	case *ast.IdentExpr:
 		return ec.translateIdent(n)
 	case *ast.SelectExpr:
@@ -47,8 +51,6 @@ func (ec *exprContext) translateExpr(e ast.Expr) string {
 		cond := ec.translateExpr(n.Cond)
 		a := ec.translateExpr(n.Then)
 		b := ec.translateExpr(n.Else)
-		// Kotlin if-expressions require matching branch types.
-		// Promote int literals to double when the other branch is float-typed.
 		if isIntLiteral(n.Then) && isFloatExpr(n.Else) {
 			a += ".0"
 		} else if isIntLiteral(n.Else) && isFloatExpr(n.Then) {
@@ -79,8 +81,8 @@ func (ec *exprContext) translateExpr(e ast.Expr) string {
 		var sb strings.Builder
 		sb.WriteByte('"')
 		for _, p := range n.Parts {
-			if lit, ok := p.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralString {
-				s := fmt.Sprintf("%v", lit.Value)
+			if lit, ok := p.(*ast.LiteralExpr); ok && isStringLiteral(lit) {
+				s, _ := codegen.ExprLiteralString(lit)
 				s = strings.ReplaceAll(s, "\\", "\\\\")
 				s = strings.ReplaceAll(s, "\"", "\\\"")
 				s = strings.ReplaceAll(s, "$", "\\$")
@@ -93,17 +95,6 @@ func (ec *exprContext) translateExpr(e ast.Expr) string {
 		}
 		sb.WriteByte('"')
 		return sb.String()
-	case *ast.StmtBlock:
-		stmts := ec.translateMutation(n)
-		return strings.Join(stmts, "\n")
-	case *ast.AssignStmt:
-		stmts := ec.translateMutation(n)
-		return strings.Join(stmts, "\n")
-	case *ast.ToggleStmt:
-		stmts := ec.translateMutation(n)
-		return strings.Join(stmts, "\n")
-	case *ast.CallStmt:
-		return ec.translateCall(n.Call)
 	case *ast.ParenExpr:
 		return "(" + ec.translateExpr(n.Inner) + ")"
 	case *ast.LambdaExpr:
@@ -115,29 +106,35 @@ func (ec *exprContext) translateExpr(e ast.Expr) string {
 
 func (ec *exprContext) translateLiteral(n *ast.LiteralExpr) string {
 	switch n.Kind {
-	case ast.LiteralString:
-		return fmt.Sprintf("%q", n.Value)
+	case ast.LiteralStringQuoted:
+		// Raw already includes quotes for quoted strings
+		return n.Raw
+	case ast.LiteralStringBackticked:
+		if s, ok := codegen.ExprLiteralString(n); ok {
+			return fmt.Sprintf("%q", s)
+		}
+		return n.Raw
+	case ast.LiteralStringTrippleQuoted:
+		if s, ok := codegen.ExprLiteralString(n); ok {
+			return fmt.Sprintf("%q", s)
+		}
+		return n.Raw
 	case ast.LiteralInt:
-		return fmt.Sprintf("%d", n.Value)
+		return n.Raw
 	case ast.LiteralFloat:
-		s := fmt.Sprintf("%v", n.Value)
+		s := n.Raw
 		if !strings.Contains(s, ".") {
 			s += ".0"
 		}
 		return s
 	case ast.LiteralBool:
-		if n.Value.(bool) {
-			return "true"
-		}
-		return "false"
+		return n.Raw
 	case ast.LiteralNull:
 		return "null"
 	case ast.LiteralColor:
-		return fmt.Sprintf("%q", n.Value)
-	case ast.LiteralUnit:
-		return fmt.Sprintf("%q", n.Value)
+		return fmt.Sprintf("%q", n.Raw)
 	default:
-		return fmt.Sprintf("%v", n.Value)
+		return n.Raw
 	}
 }
 
@@ -146,7 +143,6 @@ func (ec *exprContext) translateIdent(n *ast.IdentExpr) string {
 	if name == "event" && ec.eventVar != "" {
 		return ec.eventVar
 	}
-	// Component param overrides: resolve to the caller's pre-translated expression.
 	if ec.propOverrides != nil {
 		if val, ok := ec.propOverrides[name]; ok {
 			return val
@@ -170,7 +166,6 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 		return ec.translateMethodCall(sel, n.Args)
 	}
 
-	// Plain function call: Func is *ast.IdentExpr
 	fn := ""
 	if ident, ok := n.Func.(*ast.IdentExpr); ok {
 		fn = ident.Name
@@ -213,7 +208,6 @@ func (ec *exprContext) translateCall(n *ast.CallExpr) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-// translateMethodCall handles a call where Func is a SelectExpr (receiver.method).
 func (ec *exprContext) translateMethodCall(sel *ast.SelectExpr, argList ast.ArgList) string {
 	target := ec.translateExpr(sel.Operand)
 	method := sel.Field
@@ -224,10 +218,9 @@ func (ec *exprContext) translateMethodCall(sel *ast.SelectExpr, argList ast.ArgL
 		}
 	}
 
-	// Map SNGL methods to Kotlin equivalents.
 	switch method {
 	case "length":
-		return target + ".length" // Kotlin property, not function
+		return target + ".length"
 	case "upper":
 		return target + ".uppercase()"
 	case "lower":
@@ -249,39 +242,48 @@ func (ec *exprContext) translateMethodCall(sel *ast.SelectExpr, argList ast.ArgL
 }
 
 func (ec *exprContext) translateLambda(n *ast.LambdaExpr) string {
+	paramNames := make([]string, len(n.Params.Params))
+	for i, p := range n.Params.Params {
+		paramNames[i] = p.Name
+	}
+
 	if n.Body != nil {
-		// Arrow form: (params) => expr
 		body := ec.translateExpr(n.Body)
-		if len(n.Params) == 0 {
+		if len(paramNames) == 0 {
 			return "{ " + body + " }"
 		}
-		return "{ " + strings.Join(n.Params, ", ") + " -> " + body + " }"
+		return "{ " + strings.Join(paramNames, ", ") + " -> " + body + " }"
 	}
-	if n.Block != nil {
-		// Block form: func(params) { stmts }
-		if len(n.Block.Stmts) == 0 && n.Block.Return == nil {
-			return "{}"
-		}
+	if len(n.Block.Stmts) > 0 {
 		var b strings.Builder
-		if len(n.Params) > 0 {
-			b.WriteString("{ " + strings.Join(n.Params, ", ") + " ->\n")
+		if len(paramNames) > 0 {
+			b.WriteString("{ " + strings.Join(paramNames, ", ") + " ->\n")
 		} else {
 			b.WriteString("{\n")
 		}
 		for _, stmt := range n.Block.Stmts {
-			stmts := ec.translateMutation(stmt)
-			for _, s := range stmts {
-				fmt.Fprintf(&b, "    %s\n", s)
+			if ret, ok := stmt.(*ast.ReturnStmt); ok && ret.Value != nil {
+				val := ec.translateExpr(ret.Value)
+				fmt.Fprintf(&b, "    %s\n", val)
+			} else {
+				stmts := ec.translateMutation(stmt)
+				for _, s := range stmts {
+					fmt.Fprintf(&b, "    %s\n", s)
+				}
 			}
-		}
-		if n.Block.Return != nil {
-			ret := ec.translateExpr(n.Block.Return)
-			fmt.Fprintf(&b, "    %s\n", ret)
 		}
 		b.WriteString("}")
 		return b.String()
 	}
 	return "{}"
+}
+
+func isStringLiteral(lit *ast.LiteralExpr) bool {
+	switch lit.Kind {
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		return true
+	}
+	return false
 }
 
 func isIntLiteral(n ast.Expr) bool {
@@ -297,9 +299,6 @@ func isFloatExpr(n ast.Expr) bool {
 		return e.Kind == ast.LiteralFloat
 	case *ast.BinaryExpr:
 		return isFloatExpr(e.Left) || isFloatExpr(e.Right)
-	case *ast.IdentExpr:
-		// Heuristic: if it's used with a float literal in an arithmetic expr, likely float
-		return false
 	}
 	return false
 }
@@ -336,3 +335,33 @@ func binaryOpToKt(op ast.BinaryOp) string {
 		return "?"
 	}
 }
+
+// literalToKtFromRaw converts a LiteralExpr Raw string to Kotlin.
+func literalToKtFromRaw(lit *ast.LiteralExpr) string {
+	switch lit.Kind {
+	case ast.LiteralStringQuoted:
+		return lit.Raw
+	case ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		if s, ok := codegen.ExprLiteralString(lit); ok {
+			return fmt.Sprintf("%q", s)
+		}
+		return lit.Raw
+	case ast.LiteralInt:
+		return lit.Raw
+	case ast.LiteralFloat:
+		s := lit.Raw
+		if !strings.Contains(s, ".") {
+			s += ".0"
+		}
+		return s
+	case ast.LiteralBool:
+		return lit.Raw
+	case ast.LiteralNull:
+		return "null"
+	default:
+		return lit.Raw
+	}
+}
+
+// Ensure strconv is used
+var _ = strconv.Atoi

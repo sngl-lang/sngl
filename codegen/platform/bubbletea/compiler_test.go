@@ -13,6 +13,24 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
+func hasErrors(diags []checker.Diagnostic) bool {
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			return true
+		}
+	}
+	return false
+}
+
+func firstError(diags []checker.Diagnostic) string {
+	for _, d := range diags {
+		if d.Severity == checker.Error {
+			return d.Error()
+		}
+	}
+	return ""
+}
+
 func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
 	t.Helper()
 	src, err := Compile(doc, Config{})
@@ -34,12 +52,13 @@ func TestFixtures(t *testing.T) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, strings.NewReader(s.Source))
+			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			if err := checker.Check(doc, s.FS, s.Dir, checker.DefaultResolver(), nil, nil, nil, true); err != nil {
-				t.Fatalf("check: %v", err)
+			_, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			if hasErrors(diags) {
+				t.Fatalf("check: %s", firstError(diags))
 			}
 			compileAndVerify(t, doc)
 		})
@@ -54,12 +73,13 @@ func TestGettersSetters(t *testing.T) {
     )
 }
 `
-	doc, err := parser.Parse("test.sngl", strings.NewReader(src))
+	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, nil, "", nil, nil, nil, nil, true); err != nil {
-		t.Fatalf("check: %v", err)
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if hasErrors(diags) {
+		t.Fatalf("check: %s", firstError(diags))
 	}
 	out := compileAndVerify(t, doc)
 	code := string(out)
@@ -85,8 +105,9 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if err := checker.Check(doc, os.DirFS("../../../examples/todo"), "", nil, nil, nil, nil, true); err != nil {
-		t.Fatalf("check: %v", err)
+	_, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("../../../examples/todo"), IsMain: true})
+	if hasErrors(diags) {
+		t.Fatalf("check: %s", firstError(diags))
 	}
 	compileAndVerify(t, doc)
 }
