@@ -954,7 +954,13 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 		if !it.done() && it.isNonTerminal() && it.symbol() == ArgList {
 			call.Args = b.buildArgList(it.enter())
 		}
-		// rparen consumed as part of tree
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
+			it.skip() // rparen
+		}
+		if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
+			block := b.buildStmtBlock(it.enter())
+			return call, &block, nil
+		}
 		return call, nil, nil
 	case LBRACE:
 		// StmtBlock path

@@ -81,6 +81,10 @@ type checker struct {
 	// Current function return type (for return stmt checking).
 	returnType *Type
 
+	// Expected type for the expression currently being checked.
+	// When set to an enum type, bare enum member names resolve automatically.
+	expected *Type
+
 	// Current component (for event validation).
 	currentComponent *Component
 
@@ -109,6 +113,18 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.pkg.Stdlib = stdlibPkg
 	symtab.Root.parent = stdlibScope
 	c.scope = symtab.Root
+
+	// Inject all registered platform and language names as permissive namespaces
+	// so raw element access (e.g., html.div) resolves without error.
+	// The optimizer shakes off unused platform references; codegen fails if
+	// an unresolvable platform element survives.
+	for _, p := range cfg.Platforms {
+		stdlibScope.Declare(&Namespace{Name: p.Identifier()})
+	}
+	for _, l := range cfg.Languages {
+		stdlibScope.Declare(&Namespace{Name: l.Identifier()})
+	}
+
 	return c
 }
 
@@ -276,7 +292,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
 			// Type check initializer.
-			initType := c.checkExpr(spec.Default)
+			initType := c.checkExprExpecting(spec.Default, typ)
 			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -419,7 +435,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 		typ := c.resolveType(spec.Type)
 		// Type check initializer.
 		if spec.Default != nil {
-			initType := c.checkExpr(spec.Default)
+			initType := c.checkExprExpecting(spec.Default, typ)
 			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}

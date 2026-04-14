@@ -57,7 +57,7 @@ component image(
     style Style,
     src string,
     alt string,
-    fit string,
+    fit ObjectFit,
     @click ClickEvent,
     @load LoadEvent,
     @error ErrorEvent,

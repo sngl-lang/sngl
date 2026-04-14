@@ -12,6 +12,16 @@ func (c *checker) checkExpr(e ast.Expr) *Type {
 	return t
 }
 
+// checkExprExpecting checks an expression with an expected type hint.
+// When the expected type is an enum, bare member names resolve automatically.
+func (c *checker) checkExprExpecting(e ast.Expr, expected *Type) *Type {
+	saved := c.expected
+	c.expected = expected
+	t := c.checkExpr(e)
+	c.expected = saved
+	return t
+}
+
 // inferExpr dispatches on expression type to infer its type.
 func (c *checker) inferExpr(e ast.Expr) *Type {
 	switch x := e.(type) {
@@ -98,6 +108,16 @@ func (c *checker) inferIdent(x *ast.IdentExpr) *Type {
 
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
+		// When expected type is an enum, resolve bare member names.
+		if c.expected != nil && c.expected.Kind == TypeEnum {
+			if ed, ok := c.expected.Decl.(*EnumDef); ok {
+				for _, m := range ed.Members {
+					if m.Name == x.Name {
+						return c.expected
+					}
+				}
+			}
+		}
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return TypDyn
 	}
@@ -371,13 +391,30 @@ func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
 		// Namespace member access: ns.field.
 		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if ns, ok := sym.(*Namespace); ok && ns.Pkg != nil {
+				if ns, ok := sym.(*Namespace); ok {
+					if ns.Pkg == nil {
+						// Permissive namespace (platform raw elements).
+						return TypDyn
+					}
 					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
 						t := fsym.SymType()
 						x.ResolvedType = t.String()
 						return t
 					}
 				}
+			}
+		}
+
+		// Enum member access: EnumType.member.
+		if operand.Kind == TypeEnum && operand.Decl != nil {
+			if ed, ok := operand.Decl.(*EnumDef); ok {
+				for _, m := range ed.Members {
+					if m.Name == x.Field {
+						x.ResolvedType = operand.String()
+						return operand
+					}
+				}
+				c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
 			}
 		}
 
@@ -424,8 +461,15 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 				}
 			}
 		}
-	} else if sym, ok := c.symtab.LookupType(x.Name); ok {
-		if s, ok := sym.(*StructDef); ok {
+	} else if x.Name != "" {
+		if sym, ok := c.symtab.LookupType(x.Name); ok {
+			if s, ok := sym.(*StructDef); ok {
+				sd = s
+			}
+		}
+	} else if c.expected != nil && c.expected.Kind == TypeStruct && c.expected.Decl != nil {
+		// Anonymous struct literal with expected struct type: infer the type.
+		if s, ok := c.expected.Decl.(*StructDef); ok {
 			sd = s
 		}
 	}
@@ -439,7 +483,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 		c.checkExpr(f.Value)
 		// Validate field exists on struct.
 		if sd != nil && !structHasField(sd, f.Name) {
-			c.error(x.Pos, "unknown field %q on struct %s", f.Name, x.Name)
+			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
 	}
 
@@ -567,7 +611,12 @@ func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
-				argType := c.checkExpr(arg.Value)
+				// Determine expected type from function signature.
+				var expected *Type
+				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
+					expected = sig.Params[positional].Type
+				}
+				argType := c.checkExprExpecting(arg.Value, expected)
 				// Validate positional arg type against param.
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					paramType := sig.Params[positional].Type
@@ -629,7 +678,7 @@ func (c *checker) checkStmt(s ast.Stmt) {
 	switch x := s.(type) {
 	case *ast.AssignStmt:
 		targetType := c.checkExpr(x.Target)
-		valueType := c.checkExpr(x.Value)
+		valueType := c.checkExprExpecting(x.Value, targetType)
 		// Const reassignment check.
 		if ident, ok := x.Target.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
@@ -660,7 +709,7 @@ func (c *checker) checkStmt(s ast.Stmt) {
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		if x.Init != nil {
-			initType := c.checkExpr(x.Init)
+			initType := c.checkExprExpecting(x.Init, typ)
 			if typ.Kind == TypeDyn {
 				typ = initType
 			}
@@ -673,7 +722,7 @@ func (c *checker) checkStmt(s ast.Stmt) {
 		})
 	case *ast.ReturnStmt:
 		if x.Value != nil {
-			valType := c.checkExpr(x.Value)
+			valType := c.checkExprExpecting(x.Value, c.returnType)
 			if c.returnType != nil && c.returnType.Kind != TypeDyn && valType.Kind != TypeDyn && !valType.IsAssignableTo(c.returnType) {
 				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
 			}
@@ -860,10 +909,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 		}
 	}
 
-	// Check args (props + events).
-	c.checkArgs(vn.Args, nil)
+	// Check args with expected types from component props.
+	c.checkVisualNodeArgs(vn.Args, comp)
 
-	// Validate props against component definition.
+	// Validate prop names against component definition.
 	if comp != nil {
 		c.validateVisualNodeProps(vn, comp)
 	}
@@ -876,6 +925,37 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 		}
 		c.popScope()
 	}
+}
+
+// checkVisualNodeArgs type-checks args, threading expected types from component props.
+func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *Component) {
+	for _, a := range args.Args {
+		switch arg := a.(type) {
+		case ast.Arg:
+			if arg.Value != nil {
+				var expected *Type
+				if comp != nil && arg.Name != "" {
+					expected = componentPropType(comp, arg.Name)
+				}
+				actual := c.checkExprExpecting(arg.Value, expected)
+				if expected != nil && actual.Kind != TypeDyn && expected.Kind != TypeDyn && !actual.IsAssignableTo(expected) {
+					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+				}
+			}
+		case ast.EventHandler:
+			c.checkBlock(&arg.Body)
+		}
+	}
+}
+
+// componentPropType returns the type of a named prop on a component, or nil.
+func componentPropType(comp *Component, name string) *Type {
+	for _, p := range comp.Props {
+		if p.Name == name {
+			return p.Type
+		}
+	}
+	return nil
 }
 
 // validateVisualNodeProps validates props and events against a component definition.
@@ -905,7 +985,14 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *Component)
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
-				c.checkExpr(arg.Value)
+				var expected *Type
+				if arg.Name != "" {
+					expected = componentPropType(comp, arg.Name)
+				}
+				actual := c.checkExprExpecting(arg.Value, expected)
+				if expected != nil && actual.Kind != TypeDyn && expected.Kind != TypeDyn && !actual.IsAssignableTo(expected) {
+					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+				}
 			}
 			if arg.Name == "" {
 				continue // positional args
