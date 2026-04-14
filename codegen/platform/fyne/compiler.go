@@ -248,6 +248,8 @@ func walkStmtsForImports(stmts []ast.Stmt, info *analysisResult) {
 		case *ast.ForStmt:
 			walkStmtsForImports(s.Body.Stmts, info)
 			walkStmtsForImports(s.Else.Stmts, info)
+		case *ast.PlatformStmt:
+			walkStmtsForImports(s.Body.Stmts, info)
 		}
 	}
 }

@@ -199,6 +199,8 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildIfNode(it.enter())
 		case ForNode:
 			return b.buildForNode(it.enter())
+		case PlatformNode:
+			return b.buildPlatformNode(it.enter())
 		case VisualOrStmt:
 			return b.buildVisualOrStmt(it.enter())
 		}
@@ -1065,6 +1067,17 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	return stmt
 }
 
+func (b *builder) buildPlatformNode(it nodeIter) *ast.PlatformStmt {
+	// PlatformNode = kw_platform ident StmtBlock .
+	pos := b.posFromToken(it.shift()) // kw_platform
+	stmt := &ast.PlatformStmt{Pos: ast.Pos(pos)}
+	stmt.Platform = it.shift().Literal // ident
+	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
+		stmt.Body = b.buildStmtBlock(it.enter())
+	}
+	return stmt
+}
+
 // --- Expressions ---
 
 func (b *builder) buildExpr(it nodeIter) ast.Expr {
@@ -1347,7 +1360,7 @@ func (b *builder) buildUnaryExpr(it nodeIter) ast.Expr {
 
 func (b *builder) buildPostfixExpr(it nodeIter) ast.Expr {
 	// PostfixExpr = PrimaryExpr { ExprPostfixOp } .
-	// CondPostfixExpr = StatementPrimary { ExprPostfixOp } .
+	// CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 	if it.done() {
 		return nil
 	}
@@ -1365,7 +1378,7 @@ func (b *builder) buildPostfixExpr(it nodeIter) ast.Expr {
 		base = b.buildAnyExpr(&it)
 	}
 
-	for !it.done() && it.isNonTerminal() && it.symbol() == ExprPostfixOp {
+	for !it.done() && it.isNonTerminal() && (it.symbol() == ExprPostfixOp || it.symbol() == CondPostfixOp) {
 		base = b.buildExprPostfixOp(it.enter(), base)
 	}
 	return base

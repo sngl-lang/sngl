@@ -5,6 +5,79 @@ struct Color {
     a int = 255
 }
 
+enum FlexDirection { row, column, rowReverse, columnReverse }
+enum Alignment { start, center, end, stretch, baseline }
+enum Justification { start, center, end, spaceBetween, spaceAround, spaceEvenly }
+enum TextAlign { left, center, right, justify }
+enum FontWeight { normal, bold, lighter, bolder }
+enum FontStyle { normal, italic, oblique }
+enum Position { static, relative, absolute, fixed, sticky }
+enum Display { flex, block, inline, inlineBlock, inlineFlex, none, grid }
+enum Overflow { visible, hidden, scroll, auto }
+enum ObjectFit { contain, cover, fill, none, scaleDown }
+enum BorderStyle { none, solid, dashed, dotted, double }
+enum ListStyle { none, disc, circle, square, decimal }
+
+struct Style {
+    // Spacing
+    padding measurement
+    paddingTop measurement
+    paddingRight measurement
+    paddingBottom measurement
+    paddingLeft measurement
+    paddingX measurement
+    paddingY measurement
+    margin measurement
+    marginTop measurement
+    marginRight measurement
+    marginBottom measurement
+    marginLeft measurement
+    marginX measurement
+    marginY measurement
+    gap measurement
+
+    // Size
+    width measurement
+    height measurement
+    maxWidth measurement
+    maxHeight measurement
+
+    // Flex
+    flex float
+    flexDirection FlexDirection
+    alignItems Alignment
+    justifyContent Justification
+
+    // Position
+    position Position
+    top measurement
+    bottom measurement
+    left measurement
+    right measurement
+    zIndex int
+
+    // Typography
+    color color
+    fontSize measurement
+    fontWeight FontWeight
+    fontStyle FontStyle
+    textAlign TextAlign
+    maxLines int
+
+    // Decoration
+    background color
+    borderRadius measurement
+    borderColor color
+    borderWidth measurement
+    borderStyle BorderStyle
+    opacity float
+
+    // Display
+    display Display
+    overflow Overflow
+    listStyleType ListStyle
+}
+
 struct ClickEvent {}
 struct LongPressEvent {}
 struct InputEvent {}

@@ -7,12 +7,37 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
+// Target provides type information for a registered language or platform.
+type Target interface {
+	Identifier() string
+	Package() []*ast.Document          // parsed .sngl API docs (includes Options struct)
+	Resolve(identifier string) Symbol  // dynamic identifiers (e.g., html.div); nil if unknown
+}
+
+// Language is a Target for a registered language translator.
+type Language interface{ Target }
+
+// Platform is a Target for a registered platform generator.
+type Platform interface {
+	Target
+	IsLanguageSupported(Language) bool
+}
+
+// StaticTarget identifies the compile target by name.
+type StaticTarget struct {
+	Platform string
+	Language string
+}
+
 // Config holds checker configuration.
 type Config struct {
-	FS       fs.FS          // filesystem for resolving relative imports
-	Dir      string         // OS directory for scheme imports
-	IsMain   bool           // whether output declarations are allowed
-	Resolver ImportResolver // import resolver (nil = no imports)
+	FS        fs.FS          // filesystem for resolving relative imports
+	Dir       string         // OS directory for scheme imports
+	IsMain    bool           // whether output declarations are allowed
+	Resolver  ImportResolver // import resolver (nil = no imports)
+	Languages []Language     // registered languages
+	Platforms []Platform     // registered platforms
+	Target    *StaticTarget  // current compile target (nil = check all)
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -58,6 +83,12 @@ type checker struct {
 
 	// Current component (for event validation).
 	currentComponent *Component
+
+	// Cached Options structs from platform/language packages.
+	optionsCache map[string]*StructDef
+
+	// Cached platform scopes built from Platform.Package() docs.
+	platformScopeCache map[string]*Scope
 }
 
 func newChecker(doc *ast.Document, cfg *Config) *checker {
@@ -130,6 +161,8 @@ func (c *checker) pass1() {
 			c.registerComponent(s)
 		case *ast.VisualNode:
 			c.registerRootVisualNode(s)
+		case *ast.PlatformStmt:
+			c.pass1PlatformStmt(s)
 		case *ast.DisabledDecl:
 			// Skip disabled declarations.
 		case *ast.Comment:
@@ -318,25 +351,67 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 			}
 		}
 		return ""
-	case *ast.CallExpr:
-		// Function calls in const context reference non-const values.
-		if ident, ok := x.Func.(*ast.IdentExpr); ok {
-			// Builtin conversions are const-safe.
-			switch ident.Name {
-			case "int", "float", "string", "bool":
-				for _, a := range x.Args.Args {
-					if arg, ok := a.(ast.Arg); ok {
-						if name := c.nonConstRef(arg.Value); name != "" {
-							return name
-						}
-					}
-				}
-				return ""
+	case *ast.SelectExpr:
+		return c.nonConstRef(x.Operand)
+	case *ast.InterpolationExpr:
+		for _, part := range x.Parts {
+			if name := c.nonConstRef(part); name != "" {
+				return name
 			}
 		}
-		return "<function call>"
+		return ""
+	case *ast.StructExpr:
+		for _, f := range x.Fields {
+			if name := c.nonConstRef(f.Value); name != "" {
+				return name
+			}
+		}
+		return ""
+	case *ast.CallExpr:
+		return c.nonConstCallRef(x)
 	}
 	return ""
+}
+
+// nonConstCallRef checks whether a call expression is const-safe.
+func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
+	checkArgs := func() string {
+		for _, a := range x.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				if name := c.nonConstRef(arg.Value); name != "" {
+					return name
+				}
+			}
+		}
+		return ""
+	}
+
+	switch fn := x.Func.(type) {
+	case *ast.IdentExpr:
+		switch fn.Name {
+		case "int", "float", "string", "bool":
+			return checkArgs()
+		}
+	case *ast.SelectExpr:
+		if ident, ok := fn.Operand.(*ast.IdentExpr); ok {
+			// Type-namespace methods (e.g., string.length("hi")).
+			switch ident.Name {
+			case "int", "float", "string", "bool", "list", "color":
+				return checkArgs()
+			}
+			// Namespace function calls (e.g., docs.Pages()).
+			if sym, ok := c.scope.Lookup(ident.Name); ok {
+				if _, ok := sym.(*Namespace); ok {
+					return checkArgs()
+				}
+			}
+		}
+		// Method on const-safe receiver (e.g., "hello".length()).
+		if name := c.nonConstRef(fn.Operand); name == "" {
+			return checkArgs()
+		}
+	}
+	return "<function call>"
 }
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
@@ -474,8 +549,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 			return
 		}
-		out := c.buildOutput(vn)
-		c.pkg.Outputs = append(c.pkg.Outputs, out)
+		c.buildOutputs(vn)
 	case "window":
 		w := c.buildWindow(vn)
 		c.pkg.Windows = append(c.pkg.Windows, w)
@@ -498,51 +572,255 @@ func visualNodeTarget(vn *ast.VisualNode) string {
 	return ""
 }
 
-func (c *checker) buildOutput(vn *ast.VisualNode) *Output {
-	out := &Output{
-		AST:     vn,
-		Options: make(map[string]string),
-		Pos:     vn.Pos,
+// buildOutputs validates and extracts output declarations from an output visual node.
+// Supports flat form: output(lang="js", platform="html", stylesheet="...")
+// and nested form: output { lang { platform(opts...) } }
+func (c *checker) buildOutputs(vn *ast.VisualNode) {
+	c.validateOutputArgs(vn)
+
+	// Flat form: output node itself has lang/platform args.
+	if c.outputHasLangPlatform(vn) {
+		out := &Output{
+			AST:     vn,
+			Options: make(map[string]string),
+			Pos:     vn.Pos,
+		}
+		for _, a := range vn.Args.Args {
+			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
+				switch arg.Name {
+				case "lang":
+					out.Lang = literalString(arg.Value)
+				case "platform":
+					out.Platform = literalString(arg.Value)
+				default:
+					out.Options[arg.Name] = literalString(arg.Value)
+				}
+			}
+		}
+		c.pkg.Outputs = append(c.pkg.Outputs, out)
+		return
 	}
-	// Extract props from args.
-	for _, arg := range vn.Args.Args {
-		if a, ok := arg.(ast.Arg); ok && a.Name != "" {
-			switch a.Name {
-			case "lang":
-				out.Lang = literalString(a.Value)
-			case "platform":
-				out.Platform = literalString(a.Value)
-			default:
-				out.Options[a.Name] = literalString(a.Value)
+
+	// Nested form: output { lang { platform(opts...) } }
+	for _, stmt := range vn.Block.Stmts {
+		langNode, ok := stmt.(*ast.VisualNode)
+		if !ok {
+			c.error(*stmt.StmtPos(), "output block may only contain language targets")
+			continue
+		}
+		c.validateOutputArgs(langNode)
+		lang := visualNodeTarget(langNode)
+
+		// Lang node with no block = bare lang (no platforms specified).
+		if len(langNode.Block.Stmts) == 0 {
+			continue
+		}
+
+		for _, langStmt := range langNode.Block.Stmts {
+			out := c.buildPlatformOutput(langStmt, lang)
+			if out != nil {
+				c.pkg.Outputs = append(c.pkg.Outputs, out)
 			}
 		}
 	}
-	// Also check block body for nested platform/lang nodes.
-	// Output blocks can contain nested visual nodes for platform { lang { options } }.
-	for _, stmt := range vn.Block.Stmts {
-		if child, ok := stmt.(*ast.VisualNode); ok {
-			platform := visualNodeTarget(child)
-			for _, childStmt := range child.Block.Stmts {
-				if langNode, ok := childStmt.(*ast.VisualNode); ok {
-					lang := visualNodeTarget(langNode)
-					nested := &Output{
-						AST:      langNode,
-						Platform: platform,
-						Lang:     lang,
-						Options:  make(map[string]string),
-						Pos:      langNode.Pos,
+}
+
+// buildPlatformOutput extracts a platform Output from a statement inside a lang block.
+// Handles both VisualNode (bare `bubbletea`) and CallStmt (`html(entry="app")`).
+func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *Output {
+	switch s := stmt.(type) {
+	case *ast.VisualNode:
+		c.validateOutputArgs(s)
+		platform := visualNodeTarget(s)
+		if len(s.Block.Stmts) > 0 {
+			c.error(s.Pos, "platform %q must not contain a body", platform)
+		}
+		out := &Output{
+			AST:      s,
+			Lang:     lang,
+			Platform: platform,
+			Options:  make(map[string]string),
+			Pos:      s.Pos,
+		}
+		for _, a := range s.Args.Args {
+			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
+				out.Options[arg.Name] = literalString(arg.Value)
+			}
+		}
+		if opts := c.lookupOptions(platform); opts != nil {
+			c.validateOptionsAgainst(s.Pos, s.Args, opts)
+		}
+		return out
+	case *ast.CallStmt:
+		out := &Output{
+			Lang:    lang,
+			Options: make(map[string]string),
+			Pos:     s.Pos,
+		}
+		// Extract platform name from call target.
+		if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
+			out.Platform = ident.Name
+		} else {
+			c.error(s.Pos, "platform target must be a simple name")
+			return nil
+		}
+		// Extract and validate options from call args.
+		for _, a := range s.Call.Args.Args {
+			switch arg := a.(type) {
+			case ast.EventHandler:
+				c.error(s.Pos, "event handlers not permitted in output declarations")
+			case ast.Arg:
+				if arg.Value != nil {
+					if name := c.nonConstRef(arg.Value); name != "" {
+						c.error(s.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
 					}
-					for _, a := range langNode.Args.Args {
-						if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
-							nested.Options[arg.Name] = literalString(arg.Value)
-						}
-					}
-					c.pkg.Outputs = append(c.pkg.Outputs, nested)
+				}
+				if arg.Name != "" {
+					out.Options[arg.Name] = literalString(arg.Value)
+				}
+			}
+		}
+		if opts := c.lookupOptions(out.Platform); opts != nil {
+			c.validateOptionsAgainst(s.Pos, s.Call.Args, opts)
+		}
+		return out
+	default:
+		c.error(*stmt.StmtPos(), "language block may only contain platform targets")
+		return nil
+	}
+}
+
+// validateOutputArgs checks that an output-level node has no event handlers
+// and all option values are constant expressions.
+func (c *checker) validateOutputArgs(vn *ast.VisualNode) {
+	for _, a := range vn.Args.Args {
+		switch a.(type) {
+		case ast.EventHandler:
+			c.error(vn.Pos, "event handlers not permitted in output declarations")
+		case ast.Arg:
+			arg := a.(ast.Arg)
+			if arg.Value != nil {
+				if name := c.nonConstRef(arg.Value); name != "" {
+					c.error(vn.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
 				}
 			}
 		}
 	}
-	return out
+}
+
+// outputHasLangPlatform reports whether the output node uses flat form with explicit lang/platform args.
+func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
+	for _, a := range vn.Args.Args {
+		if arg, ok := a.(ast.Arg); ok && (arg.Name == "lang" || arg.Name == "platform") {
+			return true
+		}
+	}
+	return false
+}
+
+// lookupTarget finds a registered platform or language by name.
+func (c *checker) lookupTarget(name string) Target {
+	if c.cfg == nil {
+		return nil
+	}
+	for _, p := range c.cfg.Platforms {
+		if p.Identifier() == name {
+			return p
+		}
+	}
+	for _, l := range c.cfg.Languages {
+		if l.Identifier() == name {
+			return l
+		}
+	}
+	return nil
+}
+
+// lookupOptions returns the Options struct for a platform or lang name.
+// Returns nil if no target or no Options struct found.
+func (c *checker) lookupOptions(name string) *StructDef {
+	if c.optionsCache != nil {
+		if sd, ok := c.optionsCache[name]; ok {
+			return sd
+		}
+	}
+	t := c.lookupTarget(name)
+	if t == nil {
+		return nil
+	}
+	if c.optionsCache == nil {
+		c.optionsCache = make(map[string]*StructDef)
+	}
+	for _, doc := range t.Package() {
+		for _, stmt := range doc.Stmts {
+			if sd, ok := stmt.(*ast.StructDef); ok && sd.Name == "Options" {
+				irSD := c.buildStructDef(sd)
+				c.optionsCache[name] = irSD
+				return irSD
+			}
+		}
+	}
+	c.optionsCache[name] = nil
+	return nil
+}
+
+// pass1PlatformStmt registers declarations inside a platform block.
+// Skipped when the target platform is known and doesn't match.
+func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
+	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+		return
+	}
+	for _, stmt := range s.Body.Stmts {
+		switch inner := stmt.(type) {
+		case *ast.Import:
+			c.registerImport(inner)
+		case *ast.EnumDef:
+			c.registerEnum(inner)
+		case *ast.StructDef:
+			c.registerStruct(inner)
+		case *ast.UnitDef:
+			c.registerUnit(inner)
+		case *ast.ConstDecl:
+			c.registerConsts(inner)
+		case *ast.VarDecl:
+			c.registerVars(inner)
+		case *ast.FuncDef:
+			c.registerFunc(inner)
+		case *ast.ComponentDecl:
+			c.registerComponent(inner)
+		case *ast.VisualNode:
+			c.registerRootVisualNode(inner)
+		}
+	}
+}
+
+// validateOptionsAgainst checks that all option names in the args are valid fields
+// of the given Options struct.
+func (c *checker) validateOptionsAgainst(pos ast.Pos, args ast.ArgList, opts *StructDef) {
+	for _, a := range args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name == "" {
+			continue
+		}
+		found := false
+		for _, f := range opts.Fields {
+			if f.Name == arg.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			c.error(pos, "unknown option %q (available: %s)", arg.Name, optionFieldNames(opts))
+		}
+	}
+}
+
+func optionFieldNames(sd *StructDef) string {
+	names := make([]string, len(sd.Fields))
+	for i, f := range sd.Fields {
+		names[i] = f.Name
+	}
+	return fmt.Sprintf("%v", names)
 }
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *Window {

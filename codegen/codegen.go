@@ -33,7 +33,7 @@ type ExprScope struct {
 // LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
 	Lang() string
-	PkgSource() string // .sngl package source for this language
+	checker.Language
 	TranslateExpr(e ast.Expr, scope *ExprScope) string
 	TranslateMutation(e ast.Stmt, scope *ExprScope) []string
 	TranslateLiteral(expr ast.Expr) string
@@ -44,7 +44,7 @@ type LangTranslator interface {
 // PlatformGenerator produces output files from a checked SNGL document.
 type PlatformGenerator interface {
 	Platform() string
-	PkgSource() string // .sngl package source for this platform
+	checker.Platform
 	SupportedLangs() []string
 	Generate(req *Request) (*Response, error)
 }
@@ -175,17 +175,8 @@ type WASMFunc struct {
 	ReturnType string
 }
 
-// APIProvider is optionally implemented by LangTranslator or PlatformGenerator
-// to expose a pre-defined SNGL API as a checker namespace. The returned document's
-// structs, enums, data, and components become available under the lang/platform name.
-//
-// Deprecated: Use PkgSource instead for .sngl-based package definitions.
-type APIProvider interface {
-	API() *ast.Document
-}
-
-// APIResolver is optionally implemented alongside or instead of APIProvider
-// for dynamic name resolution when a name isn't found in the static API document.
+// APIResolver is optionally implemented alongside Target.Resolve for legacy
+// dynamic name resolution returning codegen-level declarations.
 type APIResolver interface {
 	ResolveAPI(name string) *NativeDecls
 }

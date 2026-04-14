@@ -256,6 +256,14 @@ type ForStmt struct {
 	Else  StmtBlock // zero value if no else
 }
 
+// PlatformStmt: platform ident { body }.
+// Conditional on the target platform; also injects the platform's package as a fallback scope.
+type PlatformStmt struct {
+	Pos      Pos
+	Platform string    // "html", "bubbletea", etc.
+	Body     StmtBlock
+}
+
 // --- StmtPos implementations ---
 
 func (s *StructDef) StmtPos() *Pos     { return &s.Pos }
@@ -269,5 +277,6 @@ func (c *ComponentDecl) StmtPos() *Pos { return &c.Pos }
 func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
 func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
 func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
+func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }

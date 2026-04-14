@@ -43,10 +43,10 @@ func Compile(doc *ast.Document, cfg Config) ([]byte, error) {
 // analysis results
 
 type bindInfo struct {
-	name   string
-	ktType string
-	init   string // Kotlin expression for default value
-	isList bool
+	name     string
+	ktType   string
+	init     string // Kotlin expression for default value
+	isList   bool
 	listInit ast.Expr // original init expr for list items extraction
 }
 

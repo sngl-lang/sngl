@@ -16,7 +16,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 )
@@ -251,16 +250,13 @@ func showPackageIndex(dir string, pd *checker.PackageDocs) error {
 	return renderToTerminal(sb.String())
 }
 
-// showPlatformDocs shows the declarations from a platform's PkgSource.
+// showPlatformDocs shows the declarations from a platform's Package.
 func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
-	src := plat.PkgSource()
-	if src == "" {
+	docs := plat.Package()
+	if len(docs) == 0 {
 		return fmt.Errorf("platform %q has no package source", name)
 	}
-	doc, err := parser.Parse(name+".sngl", []byte(src))
-	if err != nil {
-		return fmt.Errorf("parsing %s package: %w", name, err)
-	}
+	doc := docs[0]
 	pd := checker.ExtractPackageDocs(doc)
 
 	var sb strings.Builder

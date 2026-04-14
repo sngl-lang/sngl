@@ -9,6 +9,8 @@
 struct Options {
     preview bool
     testing bool
+    stylesheet string
+    projectDir string
 }
 
 // --- Core Layout ---

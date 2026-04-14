@@ -4,7 +4,10 @@ import (
 	_ "embed"
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 //go:embed preview.css
@@ -13,24 +16,27 @@ var previewCSS string
 //go:embed bubbletea.sngl
 var pkgSource string
 
+var pkgDocs []*ast.Document
+
 func init() {
+	doc, _ := parser.Parse("bubbletea.sngl", []byte(pkgSource))
+	if doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterPlatform(&Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for Bubbletea.
 type Generator struct{}
 
-func (g *Generator) Platform() string         { return "bubbletea" }
-func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) PkgSource() string        { return pkgSource }
+func (g *Generator) Platform() string                            { return "bubbletea" }
+func (g *Generator) Identifier() string                          { return "bubbletea" }
+func (g *Generator) SupportedLangs() []string                    { return []string{"go"} }
+func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
+func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "go" }
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
-
-// ResolveAPI makes any identifier valid as a terminal component.
-// This allows bubbletea.TextInput, bubbletea.Spinner, etc.
-func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
-	return &codegen.NativeDecls{}
-}
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "go" {

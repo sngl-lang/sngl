@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 var (
@@ -14,8 +14,7 @@ var (
 	platforms = map[string]PlatformGenerator{}
 )
 
-// RegisterLang registers a language translator. Panics on duplicate or
-// if the provider's PkgSource fails to parse.
+// RegisterLang registers a language translator. Panics on duplicate.
 func RegisterLang(l LangTranslator) {
 	langMu.Lock()
 	defer langMu.Unlock()
@@ -23,12 +22,10 @@ func RegisterLang(l LangTranslator) {
 	if _, ok := langs[name]; ok {
 		panic("codegen: duplicate lang registration: " + name)
 	}
-	validatePkgSource(l.PkgSource(), name)
 	langs[name] = l
 }
 
-// RegisterPlatform registers a platform generator. Panics on duplicate or
-// if the provider's PkgSource fails to parse.
+// RegisterPlatform registers a platform generator. Panics on duplicate.
 func RegisterPlatform(p PlatformGenerator) {
 	platMu.Lock()
 	defer platMu.Unlock()
@@ -36,19 +33,29 @@ func RegisterPlatform(p PlatformGenerator) {
 	if _, ok := platforms[name]; ok {
 		panic("codegen: duplicate platform registration: " + name)
 	}
-	validatePkgSource(p.PkgSource(), name)
 	platforms[name] = p
 }
 
-// validatePkgSource parses a .sngl package source at registration time
-// and panics if it contains syntax errors.
-func validatePkgSource(src, name string) {
-	if src == "" {
-		return
+// CollectLanguages returns all registered languages as checker.Language slices.
+func CollectLanguages() []checker.Language {
+	langMu.RLock()
+	defer langMu.RUnlock()
+	out := make([]checker.Language, 0, len(langs))
+	for _, l := range langs {
+		out = append(out, l)
 	}
-	// TODO: Re-enable validation once platform .sngl files use v2 syntax.
-	// The v2 parser does not yet support qualified component names (e.g., sngl.vbox).
-	_, _ = parser.Parse(name+".sngl", []byte(src))
+	return out
+}
+
+// CollectPlatforms returns all registered platforms as checker.Platform slices.
+func CollectPlatforms() []checker.Platform {
+	platMu.RLock()
+	defer platMu.RUnlock()
+	out := make([]checker.Platform, 0, len(platforms))
+	for _, p := range platforms {
+		out = append(out, p)
+	}
+	return out
 }
 
 // LookupLang returns the translator for the given language, or nil.

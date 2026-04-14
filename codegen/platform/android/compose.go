@@ -37,6 +37,10 @@ func (cc *composeContext) renderStmt(stmt ast.Stmt) {
 		cc.renderIfStmt(s)
 	case *ast.ForStmt:
 		cc.renderForStmt(s)
+	case *ast.PlatformStmt:
+		for _, bs := range s.Body.Stmts {
+			cc.renderStmt(bs)
+		}
 	}
 }
 

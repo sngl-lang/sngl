@@ -84,6 +84,8 @@ func optimizeStmt(s ast.Stmt, ctx *foldCtx) ast.Stmt {
 	case *ast.ForStmt:
 		n.Body.Stmts = optimizeStmts(n.Body.Stmts, ctx)
 		n.Else.Stmts = optimizeStmts(n.Else.Stmts, ctx)
+	case *ast.PlatformStmt:
+		return optimizePlatformStmt(n, ctx)
 	}
 	return s
 }
@@ -128,6 +130,16 @@ func optimizeIfStmt(s *ast.IfStmt, ctx *foldCtx) ast.Stmt {
 
 	s.Body.Stmts = optimizeStmts(s.Body.Stmts, ctx)
 	s.Else.Stmts = optimizeStmts(s.Else.Stmts, ctx)
+	return s
+}
+
+func optimizePlatformStmt(s *ast.PlatformStmt, ctx *foldCtx) ast.Stmt {
+	if plat, ok := ctx.vars["PLATFORM"]; ok {
+		if plat.(string) != s.Platform {
+			return nil // non-matching platform: eliminate
+		}
+	}
+	s.Body.Stmts = optimizeStmts(s.Body.Stmts, ctx)
 	return s
 }
 

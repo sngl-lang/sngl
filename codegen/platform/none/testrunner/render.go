@@ -47,6 +47,8 @@ func (env *Env) collectByStmts(stmts []ast.Stmt, id string, out *[]map[string]an
 			env.collectIfByID(n, id, out)
 		case *ast.ForStmt:
 			env.collectForByID(n, id, out)
+		case *ast.PlatformStmt:
+			env.collectByStmts(n.Body.Stmts, id, out)
 		case *ast.CallStmt:
 			// In v2, elements without children blocks are CallStmt.
 			// Check if the Func is a SelectExpr with SelectElemRef kind.

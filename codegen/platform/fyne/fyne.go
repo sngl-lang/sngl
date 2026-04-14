@@ -4,7 +4,10 @@ import (
 	_ "embed"
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 //go:embed preview.css
@@ -13,22 +16,26 @@ var previewCSS string
 //go:embed fyne.sngl
 var pkgSource string
 
+var pkgDocs []*ast.Document
+
 func init() {
+	doc, _ := parser.Parse("fyne.sngl", []byte(pkgSource))
+	if doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterPlatform(&Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for Fyne.
 type Generator struct{}
 
-func (g *Generator) Platform() string         { return "fyne" }
-func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) PkgSource() string        { return pkgSource }
-
-// ResolveAPI makes any identifier valid as a Fyne widget/container.
-func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
-	return &codegen.NativeDecls{}
-}
+func (g *Generator) Platform() string                            { return "fyne" }
+func (g *Generator) Identifier() string                          { return "fyne" }
+func (g *Generator) SupportedLangs() []string                    { return []string{"go"} }
+func (g *Generator) PreviewCSS() string                          { return previewCSS }
+func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
+func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "go" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "go" {

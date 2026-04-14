@@ -21,8 +21,8 @@ var (
 // stdlibParseOrder determines the loading order so that types/units are
 // available before functions and components reference them.
 var stdlibParseOrder = []string{
-	"stdlib/types.sngl",
 	"stdlib/units.sngl",
+	"stdlib/types.sngl",
 	"stdlib/functions.sngl",
 	"stdlib/components.sngl",
 }
@@ -64,6 +64,8 @@ func (c *checker) loadStdlib() *Package {
 			switch s := stmt.(type) {
 			case *ast.StructDef:
 				c.registerStdlibStruct(s, stdlibPkg)
+			case *ast.EnumDef:
+				c.registerStdlibEnum(s, stdlibPkg)
 			case *ast.UnitDef:
 				c.registerStdlibUnit(s, stdlibPkg)
 			case *ast.FuncDef:
@@ -92,6 +94,15 @@ func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *Package) {
 	pkg.Structs = append(pkg.Structs, sd)
 	pkg.Symbols.Types[sd.Name] = sd
 	pkg.Symbols.Root.Declare(sd)
+}
+
+func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *Package) {
+	ed := c.buildEnumDef(e)
+	c.symtab.Types[ed.Name] = ed
+	c.scope.Declare(ed)
+	pkg.Enums = append(pkg.Enums, ed)
+	pkg.Symbols.Types[ed.Name] = ed
+	pkg.Symbols.Root.Declare(ed)
 }
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *Package) {

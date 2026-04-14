@@ -16,27 +16,31 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 //go:embed html.sngl
 var pkgSource string
 
+var pkgDocs []*ast.Document
+
 func init() {
+	doc, _ := parser.Parse("html.sngl", []byte(pkgSource))
+	if doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterPlatform(&Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for HTML output.
 type Generator struct{}
 
-func (g *Generator) Platform() string         { return "html" }
-func (g *Generator) SupportedLangs() []string { return []string{"js"} }
-func (g *Generator) PkgSource() string        { return pkgSource }
-
-// ResolveAPI makes any identifier valid as an HTML element.
-// This allows html.div, html.span, html.form, etc. to be used as components.
-func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
-	return &codegen.NativeDecls{}
-}
+func (g *Generator) Platform() string                            { return "html" }
+func (g *Generator) Identifier() string                          { return "html" }
+func (g *Generator) SupportedLangs() []string                    { return []string{"js"} }
+func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
+func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "js" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "js" {
@@ -339,6 +343,10 @@ func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
 		g.renderStaticIf(b, n, depth)
 	case *ast.ForStmt:
 		g.renderStaticFor(b, n, depth)
+	case *ast.PlatformStmt:
+		for _, bs := range n.Body.Stmts {
+			g.renderStaticStmt(b, bs, depth)
+		}
 	}
 }
 

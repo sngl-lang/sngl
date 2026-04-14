@@ -10,7 +10,7 @@ import (
 // from the checker's Package.
 type ExprTranslator interface {
 	Lang() string
-	PkgSource() string
+	checker.Language
 
 	// Expr translates an expression to target language source.
 	Expr(e ast.Expr, ctx *ExprCtx) string

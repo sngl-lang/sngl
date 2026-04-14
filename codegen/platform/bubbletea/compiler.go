@@ -201,6 +201,10 @@ func walkStmtForFocusables(stmt ast.Stmt, info *analysisResult, idx int) int {
 		for _, child := range s.Body.Stmts {
 			idx = walkStmtForFocusables(child, info, idx)
 		}
+	case *ast.PlatformStmt:
+		for _, child := range s.Body.Stmts {
+			idx = walkStmtForFocusables(child, info, idx)
+		}
 	}
 	return idx
 }
@@ -782,6 +786,8 @@ func emitButtonHandlersStmts(b *strings.Builder, stmts []ast.Stmt, info *analysi
 			emitButtonHandlersStmts(b, s.Body.Stmts, info, ec, buttonIdx, checkboxIdx)
 			emitButtonHandlersStmts(b, s.Else.Stmts, info, ec, buttonIdx, checkboxIdx)
 		case *ast.ForStmt:
+			emitButtonHandlersStmts(b, s.Body.Stmts, info, ec, buttonIdx, checkboxIdx)
+		case *ast.PlatformStmt:
 			emitButtonHandlersStmts(b, s.Body.Stmts, info, ec, buttonIdx, checkboxIdx)
 		}
 	}

@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
@@ -316,14 +315,11 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	if plat == nil {
 		return nil
 	}
-	src := plat.PkgSource()
-	if src == "" {
+	pkgDocs := plat.Package()
+	if len(pkgDocs) == 0 {
 		return nil
 	}
-	apiDoc, err := parseSngl(platformName+".sngl", src)
-	if err != nil || apiDoc == nil {
-		return nil
-	}
+	apiDoc := pkgDocs[0]
 
 	var opts *ast.StructDef
 	for _, stmt := range apiDoc.Stmts {
@@ -394,10 +390,6 @@ func extractOutputPlatform(line string) string {
 	return plat
 }
 
-func parseSngl(name, src string) (*ast.Document, error) {
-	return parser.Parse(name, []byte(src))
-}
-
 // NamespaceCompletions returns completions for "namespace." (e.g., "html.").
 // Returns nil if the cursor is not after a namespace dot.
 func NamespaceCompletions(content string, doc *ast.Document, line, col int) []CompletionItem {
@@ -427,16 +419,14 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 	// Check if this is a registered platform or language
 	var pkgDoc *ast.Document
 	if plat := codegen.LookupPlatform(nsName); plat != nil {
-		src := plat.PkgSource()
-		if src != "" {
-			pkgDoc, _ = parseSngl(nsName+".sngl", src)
+		if docs := plat.Package(); len(docs) > 0 {
+			pkgDoc = docs[0]
 		}
 	}
 	if pkgDoc == nil {
 		if lang := codegen.LookupLang(nsName); lang != nil {
-			src := lang.PkgSource()
-			if src != "" {
-				pkgDoc, _ = parseSngl(nsName+".sngl", src)
+			if docs := lang.Package(); len(docs) > 0 {
+				pkgDoc = docs[0]
 			}
 		}
 	}

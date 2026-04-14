@@ -4,7 +4,10 @@ import (
 	_ "embed"
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 //go:embed preview.css
@@ -13,22 +16,28 @@ var previewCSS string
 //go:embed android.sngl
 var pkgSource string
 
+var pkgDocs []*ast.Document
+
 func init() {
+	doc, _ := parser.Parse("android.sngl", []byte(pkgSource))
+	if doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterPlatform(&Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for Android (Jetpack Compose).
 type Generator struct{}
 
-func (g *Generator) Platform() string         { return "android" }
-func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
-func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) PkgSource() string        { return pkgSource }
-
-// ResolveAPI makes any identifier valid as a Compose composable.
-// This allows android.Column, android.Text, android.Button, etc.
-func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
-	return &codegen.NativeDecls{}
+func (g *Generator) Platform() string                         { return "android" }
+func (g *Generator) Identifier() string                       { return "android" }
+func (g *Generator) SupportedLangs() []string                 { return []string{"kotlin", "go"} }
+func (g *Generator) PreviewCSS() string                       { return previewCSS }
+func (g *Generator) Package() []*ast.Document                 { return pkgDocs }
+func (g *Generator) Resolve(identifier string) checker.Symbol { return nil }
+func (g *Generator) IsLanguageSupported(l checker.Language) bool {
+	id := l.Identifier()
+	return id == "kotlin" || id == "go"
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {

@@ -122,6 +122,10 @@ func collectStmtRefs(s ast.Stmt, refs map[string]bool) {
 		for _, bs := range n.Body.Stmts {
 			collectStmtRefs(bs, refs)
 		}
+	case *ast.PlatformStmt:
+		for _, bs := range n.Body.Stmts {
+			collectStmtRefs(bs, refs)
+		}
 	case *ast.AssignStmt:
 		collectExprRefs(n.Value, refs)
 	case *ast.CallStmt:

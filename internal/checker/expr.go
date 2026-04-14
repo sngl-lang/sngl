@@ -713,6 +713,8 @@ func (c *checker) checkStmt(s ast.Stmt) {
 			c.checkBlock(&x.Else)
 		}
 		c.popScope()
+	case *ast.PlatformStmt:
+		c.checkPlatformStmt(x)
 	case *ast.VisualNode:
 		c.checkVisualNode(x)
 	case *ast.ConstDecl:
@@ -728,6 +730,93 @@ func (c *checker) checkStmt(s ast.Stmt) {
 	case *ast.DisabledDecl:
 		// Skip.
 	}
+}
+
+// checkPlatformStmt type-checks a platform statement body, injecting the
+// platform's package scope as a fallback for unresolved identifiers.
+func (c *checker) checkPlatformStmt(s *ast.PlatformStmt) {
+	// Skip body when target platform is known and doesn't match.
+	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+		return
+	}
+
+	// Inject platform package scope as fallback between current scope and its parent.
+	platformScope := c.buildPlatformPkgScope(s.Platform)
+	if platformScope != nil {
+		savedParent := c.scope.parent
+		platformScope.parent = savedParent
+		c.scope.parent = platformScope
+		defer func() { c.scope.parent = savedParent }()
+	}
+
+	c.checkBlock(&s.Body)
+}
+
+// buildPlatformPkgScope builds (and caches) a scope containing declarations
+// from the named platform's Package() docs.
+func (c *checker) buildPlatformPkgScope(platform string) *Scope {
+	if c.platformScopeCache != nil {
+		if s, ok := c.platformScopeCache[platform]; ok {
+			// Clone so each insertion point gets its own parent chain.
+			clone := NewScope(nil)
+			for k, v := range s.symbols {
+				clone.symbols[k] = v
+			}
+			return clone
+		}
+	}
+
+	t := c.lookupTarget(platform)
+	if t == nil {
+		return nil
+	}
+
+	docs := t.Package()
+	if len(docs) == 0 {
+		return nil
+	}
+
+	scope := NewScope(nil)
+	for _, doc := range docs {
+		// Check each doc to get IR, then populate scope from its declarations.
+		pkg, _ := Check(doc, &Config{})
+		if pkg == nil {
+			continue
+		}
+		for _, sd := range pkg.Structs {
+			scope.Declare(sd)
+		}
+		for _, ed := range pkg.Enums {
+			scope.Declare(ed)
+		}
+		for _, ud := range pkg.Units {
+			scope.Declare(ud)
+		}
+		for _, fn := range pkg.Funcs {
+			scope.Declare(fn)
+		}
+		for _, comp := range pkg.Components {
+			scope.Declare(comp)
+		}
+		for _, v := range pkg.Vars {
+			scope.Declare(v)
+		}
+		for _, v := range pkg.Consts {
+			scope.Declare(v)
+		}
+	}
+
+	if c.platformScopeCache == nil {
+		c.platformScopeCache = make(map[string]*Scope)
+	}
+	c.platformScopeCache[platform] = scope
+
+	// Return a clone for this usage.
+	clone := NewScope(nil)
+	for k, v := range scope.symbols {
+		clone.symbols[k] = v
+	}
+	return clone
 }
 
 // checkVisualNode validates a visual node's props, events, and children.
@@ -759,8 +848,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 			return
 		}
-		out := c.buildOutput(vn)
-		c.pkg.Outputs = append(c.pkg.Outputs, out)
+		c.buildOutputs(vn)
 		return
 	}
 

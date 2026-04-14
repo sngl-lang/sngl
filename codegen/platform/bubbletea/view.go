@@ -44,6 +44,10 @@ func (vc *viewContext) renderStmt(stmt ast.Stmt, resultVar string) {
 		vc.renderIfStmt(s, resultVar)
 	case *ast.ForStmt:
 		vc.renderForStmt(s, resultVar)
+	case *ast.PlatformStmt:
+		for _, bs := range s.Body.Stmts {
+			vc.renderStmt(bs, resultVar)
+		}
 	}
 }
 

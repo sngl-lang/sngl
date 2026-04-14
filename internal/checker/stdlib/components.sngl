@@ -2,6 +2,7 @@
 
 // Vertical box layout container. Children are stacked top to bottom.
 component vbox(
+    style Style,
     scroll bool,
     refreshing bool,
     @refresh RefreshEvent,
@@ -9,14 +10,18 @@ component vbox(
 
 // Horizontal box layout container. Children are placed side by side.
 component hbox(
+    style Style,
     scroll bool,
 ) list<component> {}
 
 // Layered container where children overlap.
-component stack() list<component> {}
+component stack(
+    style Style,
+) list<component> {}
 
 // Displays a text string.
 component text(
+    style Style,
     value string,
     selectable bool,
     @click ClickEvent,
@@ -24,6 +29,7 @@ component text(
 
 // Clickable button that triggers an action.
 component button(
+    style Style,
     text string,
     disabled bool,
     @click ClickEvent,
@@ -32,6 +38,7 @@ component button(
 
 // Single-line text input field.
 component input(
+    style Style,
     :value string,
     placeholder string,
     disabled bool,
@@ -47,6 +54,7 @@ component input(
 
 // Displays an image from a URL or asset path.
 component image(
+    style Style,
     src string,
     alt string,
     fit string,
@@ -57,6 +65,7 @@ component image(
 
 // Scrollable viewport.
 component scroll(
+    style Style,
     direction string,
     scrollX float,
     scrollY float,
@@ -67,11 +76,13 @@ component scroll(
 
 // Flexible empty space.
 component spacer(
+    style Style,
     size string,
 ) {}
 
 // Boolean toggle rendered as a checkmark box.
 component checkbox(
+    style Style,
     :checked bool,
     label string,
     disabled bool,
@@ -85,6 +96,7 @@ component slot() {}
 
 // Group of mutually exclusive options.
 component radio(
+    style Style,
     value string,
     options list<string>,
     disabled bool,
@@ -94,6 +106,7 @@ component radio(
 
 // On/off switch control.
 component toggle(
+    style Style,
     :checked bool,
     label string,
     disabled bool,
@@ -102,6 +115,7 @@ component toggle(
 
 // Dropdown selection control.
 component select(
+    style Style,
     :value string,
     options list<string>,
     placeholder string,
@@ -114,6 +128,7 @@ component select(
 
 // Multi-line text input field.
 component textarea(
+    style Style,
     :value string,
     placeholder string,
     disabled bool,
@@ -130,6 +145,7 @@ component textarea(
 
 // Determinate progress indicator.
 component progress(
+    style Style,
     value float,
     max float,
     label string,
@@ -139,6 +155,7 @@ component progress(
 
 // Indeterminate loading indicator.
 component spinner(
+    style Style,
     label string,
     variant string,
     size string,
@@ -146,6 +163,7 @@ component spinner(
 
 // Small status label.
 component badge(
+    style Style,
     value string,
     variant string,
     size string,
@@ -153,6 +171,7 @@ component badge(
 
 // Tabbed navigation.
 component tabs(
+    style Style,
     items list<string>,
     selected int,
     variant string,
@@ -161,6 +180,7 @@ component tabs(
 
 // Navigational hyperlink.
 component link(
+    style Style,
     href string,
     text string,
     target string,
@@ -170,6 +190,7 @@ component link(
 
 // Visual separator line.
 component divider(
+    style Style,
     direction string,
     label string,
 ) {}
@@ -178,6 +199,7 @@ component divider(
 
 // Dialog overlay.
 component modal(
+    style Style,
     open bool,
     title string,
     closable bool,
@@ -187,6 +209,7 @@ component modal(
 
 // Slide-out panel.
 component drawer(
+    style Style,
     open bool,
     side string,
     size string,
@@ -195,6 +218,7 @@ component drawer(
 
 // Informational popup on hover or focus.
 component tooltip(
+    style Style,
     text string,
     position string,
     delay int,
@@ -202,6 +226,7 @@ component tooltip(
 
 // Floating content panel.
 component popover(
+    style Style,
     open bool,
     position string,
     openOn string,
@@ -210,6 +235,7 @@ component popover(
 
 // Expandable/collapsible sections.
 component accordion(
+    style Style,
     items list<string>,
     expanded list<int>,
     multiple bool,
@@ -218,6 +244,7 @@ component accordion(
 
 // Resizable two-pane layout.
 component splitview(
+    style Style,
     direction string,
     position float,
     minPosition float,
@@ -230,6 +257,7 @@ component splitview(
 
 // Tabular data display.
 component table(
+    style Style,
     columns list<string>,
     rows dyn,
     selectable bool,
@@ -243,6 +271,7 @@ component table(
 
 // Hierarchical data display.
 component tree(
+    style Style,
     items list<string>,
     selected string,
     expanded list<int>,
@@ -252,6 +281,7 @@ component tree(
 
 // Context or dropdown menu.
 component menu(
+    style Style,
     items list<string>,
     open bool,
     @select MenuEvent,
@@ -260,12 +290,14 @@ component menu(
 
 // Horizontal menu bar.
 component menubar(
+    style Style,
     items list<string>,
     @select MenuEvent,
 ) {}
 
 // Horizontal bar of action buttons.
 component toolbar(
+    style Style,
     items list<string>,
     @select MenuEvent,
 ) list<component> {}
@@ -274,6 +306,7 @@ component toolbar(
 
 // Calendar-based date selection.
 component datepicker(
+    style Style,
     value date,
     min date,
     max date,
@@ -286,6 +319,7 @@ component datepicker(
 
 // Compact interactive tag.
 component chip(
+    style Style,
     label string,
     variant string,
     removable bool,
@@ -297,6 +331,7 @@ component chip(
 
 // User profile image with fallback.
 component avatar(
+    style Style,
     src string,
     alt string,
     initials string,
@@ -307,6 +342,7 @@ component avatar(
 
 // Styled container for grouping related content.
 component card(
+    style Style,
     variant string,
     clickable bool,
     @click ClickEvent,

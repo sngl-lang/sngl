@@ -7,6 +7,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // errNotPortedV2 is returned by any functionality not yet ported to the v2 AST.
@@ -15,21 +17,25 @@ var errNotPortedV2 = errors.New("http platform not yet ported to v2 AST")
 //go:embed http.sngl
 var pkgSource string
 
+var pkgDocs []*ast.Document
+
 func init() {
+	doc, _ := parser.Parse("http.sngl", []byte(pkgSource))
+	if doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterPlatform(&Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for server-rendered HTTP output.
 type Generator struct{}
 
-func (g *Generator) Platform() string         { return "http" }
-func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) PkgSource() string        { return pkgSource }
-
-// ResolveAPI makes any identifier valid as an HTML element.
-func (g *Generator) ResolveAPI(name string) *codegen.NativeDecls {
-	return &codegen.NativeDecls{}
-}
+func (g *Generator) Platform() string                            { return "http" }
+func (g *Generator) Identifier() string                          { return "http" }
+func (g *Generator) SupportedLangs() []string                    { return []string{"go"} }
+func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
+func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "go" }
 
 // Generate is not yet ported to the v2 AST.
 // TODO: Port to v2 AST — requires Doc.Stmts iteration instead of Doc.App/Data/NativeImports.

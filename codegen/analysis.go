@@ -111,6 +111,8 @@ func collectUsedStmts(stmts []ast.Stmt, used map[string]bool) {
 		case *ast.ForStmt:
 			collectUsedStmts(n.Body.Stmts, used)
 			collectUsedStmts(n.Else.Stmts, used)
+		case *ast.PlatformStmt:
+			collectUsedStmts(n.Body.Stmts, used)
 		}
 	}
 }

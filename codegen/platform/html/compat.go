@@ -43,11 +43,11 @@ type docConst struct {
 	Init ast.Expr
 }
 
-func docFuncs(doc *ast.Document) []*ast.FuncDef       { return codegen.DocFuncDefs(doc) }
-func docStructs(doc *ast.Document) []*ast.StructDef    { return codegen.DocStructDefs(doc) }
-func docComponents(doc *ast.Document) []*ast.ComponentDecl { return codegen.DocComponents(doc) }
-func docEnums(doc *ast.Document) []*ast.EnumDef        { return codegen.DocEnumDefs(doc) }
-func docBodyStmts(doc *ast.Document) []ast.Stmt        { return codegen.DocBodyStmts(doc) }
+func docFuncs(doc *ast.Document) []*ast.FuncDef              { return codegen.DocFuncDefs(doc) }
+func docStructs(doc *ast.Document) []*ast.StructDef          { return codegen.DocStructDefs(doc) }
+func docComponents(doc *ast.Document) []*ast.ComponentDecl   { return codegen.DocComponents(doc) }
+func docEnums(doc *ast.Document) []*ast.EnumDef              { return codegen.DocEnumDefs(doc) }
+func docBodyStmts(doc *ast.Document) []ast.Stmt              { return codegen.DocBodyStmts(doc) }
 func findMainComponent(doc *ast.Document) *ast.ComponentDecl { return codegen.FindMainComponent(doc) }
 
 // docConsts extracts ConstDecl specs from a document's Stmts.
@@ -70,24 +70,24 @@ func docConsts(doc *ast.Document) []docConst {
 
 // --- VisualNode helpers (delegate to codegen) ---
 
-func vnName(vn *ast.VisualNode) string                       { return codegen.VisualNodeName(vn) }
-func vnProps(vn *ast.VisualNode) map[string]ast.Expr          { return codegen.VnProps(vn) }
-func vnProp(vn *ast.VisualNode, name string) ast.Expr         { return codegen.VnProp(vn, name) }
-func vnEvents(vn *ast.VisualNode) map[string]*ast.EventHandler { return codegen.VnEvents(vn) }
+func vnName(vn *ast.VisualNode) string                          { return codegen.VisualNodeName(vn) }
+func vnProps(vn *ast.VisualNode) map[string]ast.Expr            { return codegen.VnProps(vn) }
+func vnProp(vn *ast.VisualNode, name string) ast.Expr           { return codegen.VnProp(vn, name) }
+func vnEvents(vn *ast.VisualNode) map[string]*ast.EventHandler  { return codegen.VnEvents(vn) }
 func vnEvent(vn *ast.VisualNode, name string) *ast.EventHandler { return codegen.VnEvent(vn, name) }
-func vnHasEvents(vn *ast.VisualNode) bool                     { return codegen.VnHasEvents(vn) }
-func vnChildren(vn *ast.VisualNode) []ast.Stmt                { return codegen.VnChildren(vn) }
-func vnChildNodes(vn *ast.VisualNode) []*ast.VisualNode       { return codegen.VnChildNodes(vn) }
+func vnHasEvents(vn *ast.VisualNode) bool                       { return codegen.VnHasEvents(vn) }
+func vnChildren(vn *ast.VisualNode) []ast.Stmt                  { return codegen.VnChildren(vn) }
+func vnChildNodes(vn *ast.VisualNode) []*ast.VisualNode         { return codegen.VnChildNodes(vn) }
 
 // --- Expr helpers (delegate to codegen) ---
 
-func exprIsNonNil(e ast.Expr) bool            { return e != nil }
+func exprIsNonNil(e ast.Expr) bool                { return e != nil }
 func exprLiteralString(e ast.Expr) (string, bool) { return codegen.ExprLiteralString(e) }
-func exprLiteralBool(e ast.Expr) (bool, bool)  { return codegen.ExprLiteralBool(e) }
-func exprLiteralInt(e ast.Expr) (int, bool)    { return codegen.ExprLiteralInt(e) }
-func exprIsLiteral(e ast.Expr) bool            { return codegen.ExprIsLiteral(e) }
-func exprLiteralAny(e ast.Expr) any            { return codegen.ExprLiteralAny(e) }
-func exprIsReactive(e ast.Expr) bool           { return codegen.ExprIsReactive(e) }
+func exprLiteralBool(e ast.Expr) (bool, bool)     { return codegen.ExprLiteralBool(e) }
+func exprLiteralInt(e ast.Expr) (int, bool)       { return codegen.ExprLiteralInt(e) }
+func exprIsLiteral(e ast.Expr) bool               { return codegen.ExprIsLiteral(e) }
+func exprLiteralAny(e ast.Expr) any               { return codegen.ExprLiteralAny(e) }
+func exprIsReactive(e ast.Expr) bool              { return codegen.ExprIsReactive(e) }
 
 // --- CallExpr helpers (delegate to codegen) ---
 
@@ -97,7 +97,7 @@ func callArgCount(c *ast.CallExpr) int    { return codegen.CallArgCount(c) }
 
 // --- ComponentDecl helpers ---
 
-func compParams(comp *ast.ComponentDecl) []ast.Param { return codegen.CompParams(comp) }
+func compParams(comp *ast.ComponentDecl) []ast.Param   { return codegen.CompParams(comp) }
 func compBodyStmts(comp *ast.ComponentDecl) []ast.Stmt { return codegen.CompBodyStmts(comp) }
 
 // compVars extracts VarDecl specs from a component body.

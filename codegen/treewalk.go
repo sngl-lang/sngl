@@ -52,6 +52,8 @@ func (tw *TreeWalker) walkStmt(s ast.Stmt) {
 		tw.Visitor.BeforeFor(n)
 		tw.WalkStmts(n.Body.Stmts)
 		tw.Visitor.AfterFor(n)
+	case *ast.PlatformStmt:
+		tw.WalkStmts(n.Body.Stmts)
 	}
 }
 

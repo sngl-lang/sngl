@@ -65,6 +65,7 @@
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
 # kw_return     0x40  KW_RETURN
+# kw_platform   0x42  KW_PLATFORM
 # slashdash     0x46  SLASHDASH /-
 # str_start     0x49  STR_START     "text{
 # str_end       0x4A  STR_END       }text"
@@ -133,6 +134,7 @@ kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
 kw_return    = `\x40` .
+kw_platform  = `\x42` .
 slashdash    = `\x46` .
 str_start    = `\x49` .
 str_end      = `\x4A` .
@@ -167,6 +169,7 @@ Document = { [ slashdash ] Stmt [ semi ] } .
 #   kw_return     → return statement
 #   kw_if         → IfNode
 #   kw_for        → ForNode
+#   kw_platform   → PlatformNode
 #   everything else → VisualOrStmt (visual nodes, calls, assignments, emits)
 
 Stmt =
@@ -181,6 +184,7 @@ Stmt =
     | kw_return [ Expr ]
     | IfNode
     | ForNode
+    | PlatformNode
     | VisualOrStmt
     .
 
@@ -317,6 +321,8 @@ IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
 
 ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 
+PlatformNode = kw_platform ident StmtBlock .
+
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 
 # ── Expressions ───────────────────────────────────────────────────────────────
@@ -348,8 +354,8 @@ PostfixExpr = PrimaryExpr { ExprPostfixOp } .
 # ── Condition expressions ────────────────────────────────────────────────────
 # Restricted expression chain for contexts where Expr is followed by StmtBlock
 # (if condition, for iterator). Uses StatementPrimary (no bare ident{...} struct
-# lits) to avoid lbrace ambiguity with the following StmtBlock. Qualified struct
-# lits (pkg.Name{...}) remain available via ExprPostfixOp.
+# lits) and CondPostfixOp (no StructLitBody, no StmtBlock) to avoid lbrace
+# ambiguity with the following StmtBlock.
 
 CondExpr        = CondOrExpr [ question Expr colon Expr ] .
 CondOrExpr      = CondAndExpr  { lor  CondAndExpr  } .
@@ -359,7 +365,18 @@ CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
 CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
 CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
 CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr .
-CondPostfixExpr = StatementPrimary { ExprPostfixOp } .
+CondPostfixExpr = StatementPrimary { CondPostfixOp } .
+
+# Condition context: no StructLitBody (lbrace is the following StmtBlock),
+# no StmtBlock (not a statement).
+CondPostfixOp =
+      dot ident
+    | dot at ident
+    | dot elem_ref
+    | elem_ref
+    | lbracket Expr rbracket
+    | lparen [ ArgList ] rparen
+    .
 
 # Expression context: struct lit available via dot-ident, NO StmtBlock.
 # lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]
@@ -381,7 +398,7 @@ StmtPostfixOp =
     | elem_ref
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
-    | StmtBlock
+    | [ lparen [ ArgList ] rparen ] StmtBlock
     .
 
 PrimaryExpr =

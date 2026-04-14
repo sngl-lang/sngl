@@ -134,6 +134,8 @@ func (w *purityWalker) walkStmt(s ast.Stmt) {
 		w.walkExpr(x.Iter)
 		w.walkBlock(&x.Body)
 		w.walkBlock(&x.Else)
+	case *ast.PlatformStmt:
+		w.walkBlock(&x.Body)
 	case *ast.VisualNode:
 		w.walkArgList(x.Args)
 		w.walkBlock(&x.Block)
@@ -252,6 +254,8 @@ func (w *accessWalker) walkStmt(s ast.Stmt) {
 		w.walkExpr(x.Iter)
 		w.walkBlock(&x.Body)
 		w.walkBlock(&x.Else)
+	case *ast.PlatformStmt:
+		w.walkBlock(&x.Body)
 	case *ast.VisualNode:
 		w.walkArgList(x.Args)
 		w.walkBlock(&x.Block)

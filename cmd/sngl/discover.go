@@ -156,10 +156,13 @@ func validateOutputs(pkg *checker.Package) error {
 
 // checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
 func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, error) {
+	langs, plats := collectTargets()
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:     os.DirFS(dir),
-		Dir:    dir,
-		IsMain: isMain,
+		FS:        os.DirFS(dir),
+		Dir:       dir,
+		IsMain:    isMain,
+		Languages: langs,
+		Platforms: plats,
 	})
 	for _, d := range diags {
 		if d.Severity == checker.Error {
@@ -167,4 +170,21 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, err
 		}
 	}
 	return pkg, nil
+}
+
+// collectTargets gathers registered languages and platforms as checker targets.
+func collectTargets() ([]checker.Language, []checker.Platform) {
+	var langs []checker.Language
+	for _, name := range codegen.Langs() {
+		if l := codegen.LookupLang(name); l != nil {
+			langs = append(langs, l)
+		}
+	}
+	var plats []checker.Platform
+	for _, name := range codegen.Platforms() {
+		if p := codegen.LookupPlatform(name); p != nil {
+			plats = append(plats, p)
+		}
+	}
+	return langs, plats
 }
