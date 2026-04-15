@@ -208,8 +208,12 @@ func typeExprString(te ast.TypeExpr) string {
 		if t.Package != "" {
 			s = t.Package + "." + s
 		}
-		if t.TypeArg != nil {
-			s += "<" + typeExprString(t.TypeArg) + ">"
+		if len(t.TypeArgs) > 0 {
+			var parts []string
+			for _, arg := range t.TypeArgs {
+				parts = append(parts, typeExprString(arg))
+			}
+			s += "<" + strings.Join(parts, ", ") + ">"
 		}
 		return s
 	case *ast.FuncType:

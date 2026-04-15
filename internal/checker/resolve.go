@@ -34,7 +34,7 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
 	if t.Package != "" {
-		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArg)
+		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArgs)
 	}
 
 	// Builtin primitives.
@@ -84,10 +84,20 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Generic builtins with type argument.
 	switch t.Name {
 	case "list":
-		elem := c.resolveType(t.TypeArg)
+		var elem *ir.Type
+		if len(t.TypeArgs) > 0 {
+			elem = c.resolveType(t.TypeArgs[0])
+		} else {
+			elem = TypDyn
+		}
 		return ListOf(elem)
 	case "option":
-		inner := c.resolveType(t.TypeArg)
+		var inner *ir.Type
+		if len(t.TypeArgs) > 0 {
+			inner = c.resolveType(t.TypeArgs[0])
+		} else {
+			inner = TypDyn
+		}
 		return OptionOf(inner)
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
@@ -108,7 +118,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 }
 
 // resolveQualifiedType resolves a pkg.Type reference.
-func (c *checker) resolveQualifiedType(pkg, name string, _ ast.TypeExpr) *ir.Type {
+func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)

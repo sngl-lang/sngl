@@ -2057,8 +2057,8 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 				nt.Name = it.shift().Literal
 			case LT:
 				it.skip() // lt
-				if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-					nt.TypeArg = b.buildType(it.enter())
+				if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
+					nt.TypeArgs = b.buildTypeList(it.enter())
 				}
 				if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
 					it.skip() // gt

@@ -111,7 +111,7 @@ type NamedType struct {
 	Pos     Pos
 	Name    string   // type name
 	Package string   // qualifier in pkg.Type (empty if unqualified)
-	TypeArg TypeExpr // generic argument in List<int> (nil if not generic)
+	TypeArgs []TypeExpr // generic arguments: List<int>, Map<string, int> (nil if not generic)
 }
 
 // FuncType is a function type: func(int, string) -> bool.

@@ -490,8 +490,8 @@ func TestParseType(t *testing.T) {
 	if nt.Name != "List" {
 		t.Errorf("expected List, got %q", nt.Name)
 	}
-	if nt.TypeArg == nil {
-		t.Error("expected type arg")
+	if len(nt.TypeArgs) == 0 {
+		t.Error("expected type args")
 	}
 }
 

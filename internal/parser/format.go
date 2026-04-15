@@ -964,9 +964,14 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 			f.write(".")
 		}
 		f.write(t.Name)
-		if t.TypeArg != nil {
+		if len(t.TypeArgs) > 0 {
 			f.write("<")
-			f.writeType(t.TypeArg)
+			for i, arg := range t.TypeArgs {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.writeType(arg)
+			}
 			f.write(">")
 		}
 	case *ast.FuncType:

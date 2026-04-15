@@ -505,7 +505,7 @@ NonIdentPrimary =
 # ── Types ─────────────────────────────────────────────────────────────────────
 
 Type =
-      ident [ dot ident | lt Type gt ]
+      ident [ dot ident | lt TypeList gt ]
     | kw_component
     | kw_func lparen [ TypeList ] rparen [ arrow Type ]
     | EnumDecl
