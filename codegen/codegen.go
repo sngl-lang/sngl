@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // ErrSkip is returned by an OutputFile's WriteTo to indicate the file should
@@ -33,7 +33,7 @@ type ExprScope struct {
 // LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
 	Lang() string
-	checker.Language
+	ir.Language
 	TranslateExpr(e ast.Expr, scope *ExprScope) string
 	TranslateMutation(e ast.Stmt, scope *ExprScope) []string
 	TranslateLiteral(expr ast.Expr) string
@@ -44,7 +44,7 @@ type LangTranslator interface {
 // PlatformGenerator produces output files from a checked SNGL document.
 type PlatformGenerator interface {
 	Platform() string
-	checker.Platform
+	ir.Platform
 	SupportedLangs() []string
 	Generate(req *Request) (*Response, error)
 }
@@ -298,7 +298,7 @@ type FileAsset struct {
 // Request is the input to a platform generator.
 type Request struct {
 	Doc        *ast.Document
-	Pkg        *checker.Package   // v2 checked IR (nil for legacy callers)
+	Pkg        *ir.Package // v2 checked IR (nil for legacy callers)
 	Lang       LangTranslator
 	Opts       Opts
 	Options    map[string]string // key=value from --opt flags

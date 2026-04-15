@@ -4,7 +4,7 @@ import (
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // DepTracker tracks reactive dependencies between state fields, computed
@@ -27,7 +27,7 @@ func NewDepTracker(modelFields, computedFields map[string]bool, computedDeps map
 // NewDepTrackerFromPkg derives a DepTracker from a checker.Package.
 // State fields come from Pkg.Vars, computed fields from zero-param funcs,
 // and computed deps from Func.Reads (purity analysis).
-func NewDepTrackerFromPkg(pkg *checker.Package) *DepTracker {
+func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 	model := make(map[string]bool)
 	computed := make(map[string]bool)
 	computedDeps := make(map[string]map[string]bool)

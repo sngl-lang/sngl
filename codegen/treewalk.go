@@ -2,7 +2,7 @@ package codegen
 
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 const maxComponentDepth = 10
@@ -21,8 +21,8 @@ type NodeVisitor interface {
 
 // TreeWalker holds state for walking a visual tree with a visitor.
 type TreeWalker struct {
-	Doc      *ast.Document    // v1: find components by walking Stmts
-	Pkg      *checker.Package // v2: find components via Package.Components
+	Doc      *ast.Document // v1: find components by walking Stmts
+	Pkg      *ir.Package   // v2: find components via Package.Components
 	Platform string
 	Visitor  NodeVisitor
 

@@ -12,6 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -78,7 +79,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 // CheckOutputs parses and type-checks a .sngl file, returning the checker
 // output targets. In v2 the output directives live in the checker Package, not
 // the AST.
-func CheckOutputs(sourceFile string) ([]*checker.Output, error) {
+func CheckOutputs(sourceFile string) ([]*ir.Output, error) {
 	doc, err := ParseSNGL(sourceFile)
 	if err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func CheckOutputs(sourceFile string) ([]*checker.Output, error) {
 		IsMain: true,
 	})
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			return nil, fmt.Errorf("check: %s", d.Error())
 		}
 	}
@@ -127,7 +128,7 @@ func checkDoc(doc *ast.Document, dir string) error {
 		IsMain: true,
 	})
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			return fmt.Errorf("check: %s", d.Error())
 		}
 	}

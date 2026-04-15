@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func discoverFiles(args []string) ([]string, error) {
@@ -137,7 +138,7 @@ func mergeInto(dst, src *ast.Document) {
 
 // validateOutputs checks that output declarations reference valid lang/platform
 // pairs and that the platform supports the language.
-func validateOutputs(pkg *checker.Package) error {
+func validateOutputs(pkg *ir.Package) error {
 	for _, out := range pkg.Outputs {
 		lang := codegen.LookupLang(out.Lang)
 		if lang == nil {
@@ -155,7 +156,7 @@ func validateOutputs(pkg *checker.Package) error {
 }
 
 // checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
-func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, error) {
+func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 	langs, plats := collectTargets()
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS:        os.DirFS(dir),
@@ -166,7 +167,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, err
 		Platforms: plats,
 	})
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			return pkg, d
 		}
 	}
@@ -200,7 +201,7 @@ func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, e
 	return docs, nil
 }
 
-func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*checker.NativeImport, error) {
+func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error) {
 	imp := codegen.LookupScheme(scheme)
 	if imp == nil {
 		return nil, fmt.Errorf("unknown import scheme %q", scheme)
@@ -213,40 +214,40 @@ func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*checker.NativeImp
 }
 
 // nativeDeclsToImport converts codegen.NativeDecls to checker.NativeImport.
-func nativeDeclsToImport(d *codegen.NativeDecls) *checker.NativeImport {
+func nativeDeclsToImport(d *codegen.NativeDecls) *ir.NativeImport {
 	if d == nil {
 		return nil
 	}
-	ni := &checker.NativeImport{ImportPath: d.ImportPath}
+	ni := &ir.NativeImport{ImportPath: d.ImportPath}
 	for _, f := range d.Funcs {
-		purity := checker.PurityUnknown
+		purity := ir.PurityUnknown
 		if f.Pure {
-			purity = checker.PurityPure
+			purity = ir.PurityPure
 		}
-		fn := &checker.Func{
+		fn := &ir.Func{
 			Name:   f.Name,
 			Purity: purity,
 			Return: checker.TypDyn,
 		}
 		for _, pt := range f.ParamTypes {
-			fn.Params = append(fn.Params, &checker.Param{Name: pt, Type: checker.TypDyn})
+			fn.Params = append(fn.Params, &ir.Param{Name: pt, Type: checker.TypDyn})
 		}
 		ni.Funcs = append(ni.Funcs, fn)
 	}
 	for _, v := range d.Vars {
-		ni.Vars = append(ni.Vars, &checker.Var{Name: v.Name, Type: checker.TypDyn})
+		ni.Vars = append(ni.Vars, &ir.Var{Name: v.Name, Type: checker.TypDyn})
 	}
 	for _, s := range d.Structs {
-		sd := &checker.StructDef{Name: s.Name}
+		sd := &ir.StructDef{Name: s.Name}
 		for _, f := range s.Fields {
-			sd.Fields = append(sd.Fields, &checker.StructField{Name: f.Name, Type: checker.TypDyn})
+			sd.Fields = append(sd.Fields, &ir.StructField{Name: f.Name, Type: checker.TypDyn})
 		}
 		ni.Structs = append(ni.Structs, sd)
 	}
 	for _, e := range d.Enums {
-		ed := &checker.EnumDef{Name: e.Name}
+		ed := &ir.EnumDef{Name: e.Name}
 		for _, v := range e.Values {
-			ed.Members = append(ed.Members, &checker.EnumMember{Name: v})
+			ed.Members = append(ed.Members, &ir.EnumMember{Name: v})
 		}
 		ni.Enums = append(ni.Enums, ed)
 	}
@@ -254,14 +255,14 @@ func nativeDeclsToImport(d *codegen.NativeDecls) *checker.NativeImport {
 }
 
 // collectTargets gathers registered languages and platforms as checker targets.
-func collectTargets() ([]checker.Language, []checker.Platform) {
-	var langs []checker.Language
+func collectTargets() ([]ir.Language, []ir.Platform) {
+	var langs []ir.Language
 	for _, name := range codegen.Langs() {
 		if l := codegen.LookupLang(name); l != nil {
 			langs = append(langs, l)
 		}
 	}
-	var plats []checker.Platform
+	var plats []ir.Platform
 	for _, name := range codegen.Platforms() {
 		if p := codegen.LookupPlatform(name); p != nil {
 			plats = append(plats, p)

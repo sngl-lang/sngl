@@ -348,9 +348,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			for _, s := range stmts {
 				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
 			}
-			for k, v := range codegen.MutatedFields(bodyStmt) {
-				mutated[k] = v
-			}
+			maps.Copy(mutated, codegen.MutatedFields(bodyStmt))
 		}
 		var updBuf strings.Builder
 		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)

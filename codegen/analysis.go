@@ -234,12 +234,7 @@ func parseNumber(raw string) float64 {
 
 // ASTUsesAlert reports whether a document uses Alert.toast/info/warn/error.
 func ASTUsesAlert(doc *ast.Document) bool {
-	for _, stmt := range doc.Stmts {
-		if stmtUsesAlert(stmt) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(doc.Stmts, stmtUsesAlert)
 }
 
 func stmtUsesAlert(s ast.Stmt) bool {
@@ -247,17 +242,13 @@ func stmtUsesAlert(s ast.Stmt) bool {
 	case *ast.VisualNode:
 		for _, a := range n.Args.Args {
 			if eh, ok := a.(ast.EventHandler); ok {
-				for _, bs := range eh.Body.Stmts {
-					if stmtUsesAlert(bs) {
-						return true
-					}
+				if slices.ContainsFunc(eh.Body.Stmts, stmtUsesAlert) {
+					return true
 				}
 			}
 		}
-		for _, bs := range n.Block.Stmts {
-			if stmtUsesAlert(bs) {
-				return true
-			}
+		if slices.ContainsFunc(n.Block.Stmts, stmtUsesAlert) {
+			return true
 		}
 	case *ast.CallStmt:
 		if n.Call != nil {
@@ -271,16 +262,12 @@ func stmtUsesAlert(s ast.Stmt) bool {
 		if n.IsTest() {
 			return false
 		}
-		for _, bs := range n.Block.Stmts {
-			if stmtUsesAlert(bs) {
-				return true
-			}
+		if slices.ContainsFunc(n.Block.Stmts, stmtUsesAlert) {
+			return true
 		}
 	case *ast.ComponentDecl:
-		for _, bs := range n.Body.Stmts {
-			if stmtUsesAlert(bs) {
-				return true
-			}
+		if slices.ContainsFunc(n.Body.Stmts, stmtUsesAlert) {
+			return true
 		}
 	}
 	return false

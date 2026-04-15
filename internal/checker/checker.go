@@ -5,39 +5,18 @@ import (
 	"io/fs"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// Target provides type information for a registered language or platform.
-type Target interface {
-	Identifier() string
-	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
-	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
-}
-
-// Language is a Target for a registered language translator.
-type Language interface{ Target }
-
-// Platform is a Target for a registered platform generator.
-type Platform interface {
-	Target
-	IsLanguageSupported(Language) bool
-}
-
-// StaticTarget identifies the compile target by name.
-type StaticTarget struct {
-	Platform string
-	Language string
-}
 
 // Config holds checker configuration.
 type Config struct {
-	FS        fs.FS          // filesystem for resolving relative imports
-	Dir       string         // OS directory for scheme imports
-	IsMain    bool           // whether output declarations are allowed
-	Resolver  ImportResolver // import resolver (nil = no imports)
-	Languages []Language     // registered languages
-	Platforms []Platform     // registered platforms
-	Target    *StaticTarget  // current compile target (nil = check all)
+	FS        fs.FS            // filesystem for resolving relative imports
+	Dir       string           // OS directory for scheme imports
+	IsMain    bool             // whether output declarations are allowed
+	Resolver  ImportResolver   // import resolver (nil = no imports)
+	Languages []ir.Language    // registered languages
+	Platforms []ir.Platform    // registered platforms
+	Target    *ir.StaticTarget // current compile target (nil = check all)
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -46,12 +25,12 @@ type ImportResolver interface {
 	Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error)
 
 	// ResolveScheme resolves a scheme-based import (go://, git://, etc.).
-	ResolveScheme(scheme, uri, dir string) (*NativeImport, error)
+	ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error)
 }
 
 // Check type-checks a parsed v2 AST Document and returns the IR Package.
 // The Package is populated best-effort even when diagnostics are present.
-func Check(doc *ast.Document, cfg *Config) (*Package, []Diagnostic) {
+func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(doc, cfg)
 	c.pass1()
 	c.pass2()
@@ -64,35 +43,35 @@ type checker struct {
 	doc *ast.Document
 	cfg *Config
 
-	pkg    *Package
-	diags  []Diagnostic
-	scope  *Scope
-	symtab *SymbolTable
+	pkg    *ir.Package
+	diags  []ir.Diagnostic
+	scope  *ir.Scope
+	symtab *ir.SymbolTable
 
 	// Type resolution context.
 	typeParams []string // active generic type params (set during function checking)
 
 	// Unit suffix reverse lookup.
-	unitBySuffix map[string]*UnitDef
+	unitBySuffix map[string]*ir.UnitDef
 
 	// Import cycle detection.
 	visited map[string]bool
 
 	// Current function return type (for return stmt checking).
-	returnType *Type
+	returnType *ir.Type
 
 	// Expected type for the expression currently being checked.
 	// When set to an enum type, bare enum member names resolve automatically.
-	expected *Type
+	expected *ir.Type
 
 	// Current component (for event validation).
-	currentComponent *Component
+	currentComponent *ir.Component
 
 	// Cached Options structs from platform/language packages.
-	optionsCache map[string]*StructDef
+	optionsCache map[string]*ir.StructDef
 
 	// Cached platform scopes built from Platform.Package() docs.
-	platformScopeCache map[string]*Scope
+	platformScopeCache map[string]*ir.Scope
 }
 
 func newChecker(doc *ast.Document, cfg *Config) *checker {
@@ -100,18 +79,18 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c := &checker{
 		doc:          doc,
 		cfg:          cfg,
-		pkg:          &Package{TypeMap: make(map[ast.Expr]*Type)},
+		pkg:          &ir.Package{TypeMap: make(map[ast.Expr]*ir.Type)},
 		symtab:       symtab,
 		scope:        symtab.Root,
-		unitBySuffix: make(map[string]*UnitDef),
+		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
-	stdlibScope := NewScope(symtab.Root.parent) // parent = baseScope
+	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	stdlibPkg := c.loadStdlib()
 	c.pkg.Stdlib = stdlibPkg
-	symtab.Root.parent = stdlibScope
+	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
 	// Inject all registered platform and language names as permissive namespaces
@@ -119,28 +98,28 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// The optimizer shakes off unused platform references; codegen fails if
 	// an unresolvable platform element survives.
 	for _, p := range cfg.Platforms {
-		stdlibScope.Declare(&Namespace{Name: p.Identifier()})
+		stdlibScope.Declare(&ir.Namespace{Name: p.Identifier()})
 	}
 	for _, l := range cfg.Languages {
-		stdlibScope.Declare(&Namespace{Name: l.Identifier()})
+		stdlibScope.Declare(&ir.Namespace{Name: l.Identifier()})
 	}
 
 	return c
 }
 
 func (c *checker) error(pos ast.Pos, format string, args ...any) {
-	c.diags = append(c.diags, Diagnostic{
+	c.diags = append(c.diags, ir.Diagnostic{
 		Pos:      pos,
 		Msg:      fmt.Sprintf(format, args...),
-		Severity: Error,
+		Severity: ir.Error,
 	})
 }
 
 func (c *checker) warn(pos ast.Pos, format string, args ...any) {
-	c.diags = append(c.diags, Diagnostic{
+	c.diags = append(c.diags, ir.Diagnostic{
 		Pos:      pos,
 		Msg:      fmt.Sprintf(format, args...),
-		Severity: Warning,
+		Severity: ir.Warning,
 	})
 }
 
@@ -151,7 +130,7 @@ func (c *checker) pushScope() {
 
 // popScope restores the parent scope.
 func (c *checker) popScope() {
-	c.scope = c.scope.parent
+	c.scope = c.scope.Parent
 }
 
 // --- pass1: declaration registration ---
@@ -196,7 +175,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		alias = namespaceFromPath(imp.Path)
 	}
 
-	irImport := &Import{
+	irImport := &ir.Import{
 		AST:   imp,
 		Alias: alias,
 		Pos:   imp.Pos,
@@ -211,7 +190,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		irImport.Native = native
 		if native != nil {
 			// Register native declarations under the namespace.
-			nsPkg := &Package{
+			nsPkg := &ir.Package{
 				Structs: native.Structs,
 				Enums:   native.Enums,
 				Funcs:   native.Funcs,
@@ -253,7 +232,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	c.pkg.Imports = append(c.pkg.Imports, irImport)
 
 	// Declare namespace in scope.
-	ns := &Namespace{
+	ns := &ir.Namespace{
 		Name: alias,
 		Pkg:  irImport.Pkg,
 		Pos:  imp.Pos,
@@ -295,16 +274,16 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 			}
 			// Type check initializer.
 			initType := c.checkExprExpecting(spec.Default, typ)
-			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
+			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
 			// Infer type from init if not declared.
-			if typ.Kind == TypeDyn {
+			if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
 		for _, name := range spec.Names {
-			v := &Var{
+			v := &ir.Var{
 				AST:     decl,
 				Name:    name,
 				Type:    typ,
@@ -333,14 +312,14 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 			return ""
 		}
 		if sym, ok := c.scope.Lookup(x.Name); ok {
-			if v, ok := sym.(*Var); ok && v.IsConst {
+			if v, ok := sym.(*ir.Var); ok && v.IsConst {
 				return ""
 			}
 			// Enum/struct types are fine as identifiers.
-			if _, ok := sym.(*EnumDef); ok {
+			if _, ok := sym.(*ir.EnumDef); ok {
 				return ""
 			}
-			if _, ok := sym.(*StructDef); ok {
+			if _, ok := sym.(*ir.StructDef); ok {
 				return ""
 			}
 		}
@@ -419,7 +398,7 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 			}
 			// Namespace function calls (e.g., docs.Pages()).
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if _, ok := sym.(*Namespace); ok {
+				if _, ok := sym.(*ir.Namespace); ok {
 					return checkArgs()
 				}
 			}
@@ -438,16 +417,16 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 		// Type check initializer.
 		if spec.Default != nil {
 			initType := c.checkExprExpecting(spec.Default, typ)
-			if typ.Kind != TypeDyn && initType.Kind != TypeDyn && !initType.IsAssignableTo(typ) {
+			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
 			// Infer type from init if not declared.
-			if typ.Kind == TypeDyn {
+			if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
 		for _, name := range spec.Names {
-			v := &Var{
+			v := &ir.Var{
 				AST:  decl,
 				Name: name,
 				Type: typ,
@@ -456,10 +435,10 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			// Build event handlers.
 			for i := range spec.Handlers {
 				h := &spec.Handlers[i]
-				handler := &EventHandler{
+				handler := &ir.EventHandler{
 					AST:  h,
 					Name: h.Name,
-					Func: &Func{
+					Func: &ir.Func{
 						Params:   c.buildParams(h.Params),
 						ASTBlock: &h.Body,
 						Pos:      h.Pos,
@@ -486,18 +465,18 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
-	irComp := &Component{
-		AST:  comp,
-		Name: comp.Name,
-		Body: &comp.Body,
-		Pos:  comp.Pos,
+	irComp := &ir.Component{
+		AST:     comp,
+		Name:    comp.Name,
+		ASTBody: &comp.Body,
+		Pos:     comp.Pos,
 	}
 
 	// Resolve props and events from PropList.
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			prop := &Prop{
+			prop := &ir.Prop{
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
 				Default:       pd.Default,
@@ -505,7 +484,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			}
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
-			evt := &EventDecl{
+			evt := &ir.EventDecl{
 				Name: pd.Name,
 				Type: c.resolveType(pd.Type),
 			}
@@ -525,7 +504,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			for _, spec := range s.Specs {
 				typ := c.resolveType(spec.Type)
 				for _, name := range spec.Names {
-					v := &Var{
+					v := &ir.Var{
 						AST:     s,
 						Name:    name,
 						Type:    typ,
@@ -539,7 +518,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			for _, spec := range s.Specs {
 				typ := c.resolveType(spec.Type)
 				for _, name := range spec.Names {
-					v := &Var{
+					v := &ir.Var{
 						AST:  s,
 						Name: name,
 						Type: typ,
@@ -598,7 +577,7 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 
 	// Flat form: output node itself has lang/platform args.
 	if c.outputHasLangPlatform(vn) {
-		out := &Output{
+		out := &ir.Output{
 			AST:     vn,
 			Options: make(map[string]string),
 			Pos:     vn.Pos,
@@ -645,7 +624,7 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 
 // buildPlatformOutput extracts a platform Output from a statement inside a lang block.
 // Handles both VisualNode (bare `bubbletea`) and CallStmt (`html(entry="app")`).
-func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *Output {
+func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 	switch s := stmt.(type) {
 	case *ast.VisualNode:
 		c.validateOutputArgs(s)
@@ -653,7 +632,7 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *Output {
 		if len(s.Block.Stmts) > 0 {
 			c.error(s.Pos, "platform %q must not contain a body", platform)
 		}
-		out := &Output{
+		out := &ir.Output{
 			AST:      s,
 			Lang:     lang,
 			Platform: platform,
@@ -670,7 +649,7 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *Output {
 		}
 		return out
 	case *ast.CallStmt:
-		out := &Output{
+		out := &ir.Output{
 			Lang:    lang,
 			Options: make(map[string]string),
 			Pos:     s.Pos,
@@ -712,14 +691,13 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *Output {
 // and all option values are constant expressions.
 func (c *checker) validateOutputArgs(vn *ast.VisualNode) {
 	for _, a := range vn.Args.Args {
-		switch a.(type) {
+		switch a := a.(type) {
 		case ast.EventHandler:
 			c.error(vn.Pos, "event handlers not permitted in output declarations")
 		case ast.Arg:
-			arg := a.(ast.Arg)
-			if arg.Value != nil {
-				if name := c.nonConstRef(arg.Value); name != "" {
-					c.error(vn.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
+			if a.Value != nil {
+				if name := c.nonConstRef(a.Value); name != "" {
+					c.error(vn.Pos, "output option %q must be a constant expression (references %q)", a.Name, name)
 				}
 			}
 		}
@@ -737,7 +715,7 @@ func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
 }
 
 // lookupTarget finds a registered platform or language by name.
-func (c *checker) lookupTarget(name string) Target {
+func (c *checker) lookupTarget(name string) ir.Target {
 	if c.cfg == nil {
 		return nil
 	}
@@ -756,7 +734,7 @@ func (c *checker) lookupTarget(name string) Target {
 
 // lookupOptions returns the Options struct for a platform or lang name.
 // Returns nil if no target or no Options struct found.
-func (c *checker) lookupOptions(name string) *StructDef {
+func (c *checker) lookupOptions(name string) *ir.StructDef {
 	if c.optionsCache != nil {
 		if sd, ok := c.optionsCache[name]; ok {
 			return sd
@@ -767,7 +745,7 @@ func (c *checker) lookupOptions(name string) *StructDef {
 		return nil
 	}
 	if c.optionsCache == nil {
-		c.optionsCache = make(map[string]*StructDef)
+		c.optionsCache = make(map[string]*ir.StructDef)
 	}
 	for _, doc := range t.Package() {
 		for _, stmt := range doc.Stmts {
@@ -814,7 +792,7 @@ func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
 
 // validateOptionsAgainst checks that all option names in the args are valid fields
 // of the given Options struct.
-func (c *checker) validateOptionsAgainst(pos ast.Pos, args ast.ArgList, opts *StructDef) {
+func (c *checker) validateOptionsAgainst(pos ast.Pos, args ast.ArgList, opts *ir.StructDef) {
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok || arg.Name == "" {
@@ -833,7 +811,7 @@ func (c *checker) validateOptionsAgainst(pos ast.Pos, args ast.ArgList, opts *St
 	}
 }
 
-func optionFieldNames(sd *StructDef) string {
+func optionFieldNames(sd *ir.StructDef) string {
 	names := make([]string, len(sd.Fields))
 	for i, f := range sd.Fields {
 		names[i] = f.Name
@@ -841,12 +819,12 @@ func optionFieldNames(sd *StructDef) string {
 	return fmt.Sprintf("%v", names)
 }
 
-func (c *checker) buildWindow(vn *ast.VisualNode) *Window {
-	w := &Window{
-		AST:  vn,
-		Name: vn.ID, // window #name
-		Body: &vn.Block,
-		Pos:  vn.Pos,
+func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
+	w := &ir.Window{
+		AST:     vn,
+		Name:    vn.ID, // window #name
+		ASTBody: &vn.Block,
+		Pos:     vn.Pos,
 	}
 	// Extract name from args if ID not set.
 	if w.Name == "" {
@@ -860,10 +838,10 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *Window {
 	return w
 }
 
-func (c *checker) buildTimer(vn *ast.VisualNode) *Timer {
-	return &Timer{
+func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
+	return &ir.Timer{
 		AST: vn,
-		Handler: &Func{
+		Handler: &ir.Func{
 			ASTBlock: &vn.Block,
 			Pos:      vn.Pos,
 		},
@@ -918,15 +896,15 @@ func (c *checker) pass2() {
 	}
 }
 
-func (c *checker) collectVarMap() map[string]*Var {
-	vars := make(map[string]*Var)
+func (c *checker) collectVarMap() map[string]*ir.Var {
+	vars := make(map[string]*ir.Var)
 	for _, v := range c.pkg.Vars {
 		vars[v.Name] = v
 	}
 	return vars
 }
 
-func (c *checker) checkFuncBody(fn *Func) {
+func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 
@@ -946,11 +924,11 @@ func (c *checker) checkFuncBody(fn *Func) {
 	if fn.Body != nil {
 		bodyType := c.checkExpr(fn.Body)
 		// Infer return type from expression body if not declared.
-		if fn.Return.Kind == TypeDyn && bodyType.Kind != TypeDyn {
+		if fn.Return.Kind == ir.TypeDyn && bodyType.Kind != ir.TypeDyn {
 			fn.Return = bodyType
 		}
 		// Expression-body return type check.
-		if fn.Return != nil && fn.Return.Kind != TypeDyn && bodyType.Kind != TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
+		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
 			c.error(fn.Pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
 	}
@@ -959,7 +937,7 @@ func (c *checker) checkFuncBody(fn *Func) {
 	}
 }
 
-func (c *checker) checkComponentBody(comp *Component) {
+func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.pushScope()
 	defer c.popScope()
 
@@ -969,7 +947,7 @@ func (c *checker) checkComponentBody(comp *Component) {
 
 	// Declare props as params.
 	for _, p := range comp.Props {
-		c.scope.Declare(&Param{
+		c.scope.Declare(&ir.Param{
 			Name: p.Name,
 			Type: p.Type,
 			Pos:  comp.Pos,
@@ -992,12 +970,12 @@ func (c *checker) checkComponentBody(comp *Component) {
 	}
 
 	// Check component body statements.
-	if comp.Body != nil {
-		comp.IRBody = c.checkBlockIR(comp.Body)
+	if comp.ASTBody != nil {
+		comp.Body = c.checkBlockIR(comp.ASTBody)
 	}
 }
 
-func (c *checker) checkWindowBody(w *Window) {
+func (c *checker) checkWindowBody(w *ir.Window) {
 	c.pushScope()
 	defer c.popScope()
 
@@ -1011,7 +989,7 @@ func (c *checker) checkWindowBody(w *Window) {
 		c.checkFuncBody(fn)
 	}
 
-	if w.Body != nil {
-		w.IRBody = c.checkBlockIR(w.Body)
+	if w.ASTBody != nil {
+		w.Body = c.checkBlockIR(w.ASTBody)
 	}
 }

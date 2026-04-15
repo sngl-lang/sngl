@@ -1,9 +1,13 @@
 package checker
 
+import "git.duckfam.us/jonathan/sngl/ir"
+
+import "maps"
+
 import "git.duckfam.us/jonathan/sngl/ast"
 
 // checkExpr infers the type of an expression, stores it in TypeMap, and returns it.
-func (c *checker) checkExpr(e ast.Expr) *Type {
+func (c *checker) checkExpr(e ast.Expr) *ir.Type {
 	if e == nil {
 		return TypDyn
 	}
@@ -14,7 +18,7 @@ func (c *checker) checkExpr(e ast.Expr) *Type {
 
 // checkExprExpecting checks an expression with an expected type hint.
 // When the expected type is an enum, bare member names resolve automatically.
-func (c *checker) checkExprExpecting(e ast.Expr, expected *Type) *Type {
+func (c *checker) checkExprExpecting(e ast.Expr, expected *ir.Type) *ir.Type {
 	saved := c.expected
 	c.expected = expected
 	t := c.checkExpr(e)
@@ -23,7 +27,7 @@ func (c *checker) checkExprExpecting(e ast.Expr, expected *Type) *Type {
 }
 
 // inferExpr dispatches on expression type to infer its type.
-func (c *checker) inferExpr(e ast.Expr) *Type {
+func (c *checker) inferExpr(e ast.Expr) *ir.Type {
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
 		return c.inferLiteral(x)
@@ -68,7 +72,7 @@ func (c *checker) inferExpr(e ast.Expr) *Type {
 	}
 }
 
-func (c *checker) inferLiteral(x *ast.LiteralExpr) *Type {
+func (c *checker) inferLiteral(x *ast.LiteralExpr) *ir.Type {
 	switch x.Kind {
 	case ast.LiteralInt:
 		return TypInt
@@ -86,7 +90,7 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) *Type {
+func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) *ir.Type {
 	ud, ok := c.unitBySuffix[x.Suffix]
 	if !ok {
 		c.error(x.Pos, "unknown unit suffix %q", x.Suffix)
@@ -95,7 +99,7 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) *Type {
 	return ud.SymType()
 }
 
-func (c *checker) inferIdent(x *ast.IdentExpr) *Type {
+func (c *checker) inferIdent(x *ast.IdentExpr) *ir.Type {
 	// Builtin constants.
 	switch x.Name {
 	case "PLATFORM", "LANGUAGE":
@@ -109,8 +113,8 @@ func (c *checker) inferIdent(x *ast.IdentExpr) *Type {
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
 		// When expected type is an enum, resolve bare member names.
-		if c.expected != nil && c.expected.Kind == TypeEnum {
-			if ed, ok := c.expected.Decl.(*EnumDef); ok {
+		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
+			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
 				for _, m := range ed.Members {
 					if m.Name == x.Name {
 						return c.expected
@@ -127,15 +131,15 @@ func (c *checker) inferIdent(x *ast.IdentExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferBinary(x *ast.BinaryExpr) *Type {
+func (c *checker) inferBinary(x *ast.BinaryExpr) *ir.Type {
 	left := c.checkExpr(x.Left)
 	right := c.checkExpr(x.Right)
 
-	skip := left.Kind == TypeDyn || right.Kind == TypeDyn
+	skip := left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn
 
 	switch x.Op {
 	case ast.BinAnd, ast.BinOr:
-		if !skip && (left.Kind != TypeBool || right.Kind != TypeBool) {
+		if !skip && (left.Kind != ir.TypeBool || right.Kind != ir.TypeBool) {
 			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
 		}
 		return TypBool
@@ -147,8 +151,8 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) *Type {
 		}
 		return TypBool
 	case ast.BinAdd:
-		if left.Kind == TypeString || right.Kind == TypeString {
-			if !skip && (left.Kind != TypeString || right.Kind != TypeString) {
+		if left.Kind == ir.TypeString || right.Kind == ir.TypeString {
+			if !skip && (left.Kind != ir.TypeString || right.Kind != ir.TypeString) {
 				c.error(x.Pos, "operator + not defined for %s and %s", left, right)
 			}
 			return TypString
@@ -200,28 +204,28 @@ func binOpStr(op ast.BinaryOp) string {
 }
 
 // narrowNumeric returns the wider of two numeric types.
-func (c *checker) narrowNumeric(left, right *Type) *Type {
-	if left.Kind == TypeFloat || right.Kind == TypeFloat {
+func (c *checker) narrowNumeric(left, right *ir.Type) *ir.Type {
+	if left.Kind == ir.TypeFloat || right.Kind == ir.TypeFloat {
 		return TypFloat
 	}
-	if left.Kind == TypeInt || right.Kind == TypeInt {
+	if left.Kind == ir.TypeInt || right.Kind == ir.TypeInt {
 		return TypInt
 	}
-	if left.Kind == TypeUnit {
+	if left.Kind == ir.TypeUnit {
 		return left
 	}
-	if right.Kind == TypeUnit {
+	if right.Kind == ir.TypeUnit {
 		return right
 	}
 	return TypDyn
 }
 
-func (c *checker) inferUnary(x *ast.UnaryExpr) *Type {
+func (c *checker) inferUnary(x *ast.UnaryExpr) *ir.Type {
 	operand := c.checkExpr(x.Operand)
-	skip := operand.Kind == TypeDyn
+	skip := operand.Kind == ir.TypeDyn
 	switch x.Op {
 	case ast.UnaryNot:
-		if !skip && operand.Kind != TypeBool {
+		if !skip && operand.Kind != ir.TypeBool {
 			c.error(x.Pos, "operator ! not defined for %s", operand)
 		}
 		return TypBool
@@ -234,14 +238,14 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferTernary(x *ast.TernaryExpr) *Type {
+func (c *checker) inferTernary(x *ast.TernaryExpr) *ir.Type {
 	c.checkExpr(x.Cond)
 	then := c.checkExpr(x.Then)
 	c.checkExpr(x.Else)
 	return then
 }
 
-func (c *checker) inferCall(x *ast.CallExpr) *Type {
+func (c *checker) inferCall(x *ast.CallExpr) *ir.Type {
 	// Check if it's a method call (callee is SelectExpr).
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
@@ -269,15 +273,15 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 	calleeType := c.checkExpr(x.Func)
 
 	// Component instantiation: text(value="hi")
-	if calleeType.Kind == TypeComponent {
-		if comp, ok := calleeType.Decl.(*Component); ok {
+	if calleeType.Kind == ir.TypeComponent {
+		if comp, ok := calleeType.Decl.(*ir.Component); ok {
 			c.validateComponentCallArgs(x, comp)
 		}
 		return calleeType
 	}
 
-	var sig *FuncSig
-	if calleeType.Kind == TypeFunc && calleeType.Sig != nil {
+	var sig *ir.FuncSig
+	if calleeType.Kind == ir.TypeFunc && calleeType.Sig != nil {
 		sig = calleeType.Sig
 	}
 
@@ -294,13 +298,13 @@ func (c *checker) inferCall(x *ast.CallExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type {
+func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *ir.Type {
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := false
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
 			switch sym.(type) {
-			case *TypeSym, *StructDef, *EnumDef, *UnitDef:
+			case *ir.TypeSym, *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
 				isStatic = true
 			}
 		}
@@ -311,11 +315,11 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 	// Namespace function call: ns.func().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*Namespace); ok && ns.Pkg != nil {
+			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
 					t := fsym.SymType()
-					var sig *FuncSig
-					if t != nil && t.Kind == TypeFunc && t.Sig != nil {
+					var sig *ir.FuncSig
+					if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
 						sig = t.Sig
 					}
 					c.checkArgs(call.Args, sig)
@@ -334,9 +338,9 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 	// Fallback for generic types: list<int> → "list", option<int> → "option".
 	if !ok {
 		switch receiver.Kind {
-		case TypeList:
+		case ir.TypeList:
 			fn, ok = c.symtab.LookupMethod("list", sel.Field)
-		case TypeOption:
+		case ir.TypeOption:
 			fn, ok = c.symtab.LookupMethod("option", sel.Field)
 		}
 	}
@@ -346,7 +350,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 			// For instance calls, bind receiver to param[0] before inferring
 			// from explicit args so that e.g. list<int>.length() binds T=int.
 			if !isStatic && len(sig.Params) > 0 {
-				bindings := make(map[string]*Type)
+				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
 					sig = sig.Substitute(bindings)
@@ -359,7 +363,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 			c.checkArgs(call.Args, sig)
 		} else if len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
 			// Instance call: expr.method(args...) — receiver is implicit first arg.
-			shifted := &FuncSig{
+			shifted := &ir.FuncSig{
 				Params:     sig.Params[1:],
 				Return:     sig.Return,
 				TypeParams: sig.TypeParams,
@@ -379,7 +383,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *Type
 	return TypDyn
 }
 
-func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
+func (c *checker) inferSelect(x *ast.SelectExpr) *ir.Type {
 	operand := c.checkExpr(x.Operand)
 
 	switch x.Kind {
@@ -391,7 +395,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
 		// Namespace member access: ns.field.
 		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if ns, ok := sym.(*Namespace); ok {
+				if ns, ok := sym.(*ir.Namespace); ok {
 					if ns.Pkg == nil {
 						// Permissive namespace (platform raw elements).
 						return TypDyn
@@ -406,8 +410,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
 		}
 
 		// Enum member access: EnumType.member.
-		if operand.Kind == TypeEnum && operand.Decl != nil {
-			if ed, ok := operand.Decl.(*EnumDef); ok {
+		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
+			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
 				for _, m := range ed.Members {
 					if m.Name == x.Field {
 						x.ResolvedType = operand.String()
@@ -419,8 +423,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
 		}
 
 		// Struct field access.
-		if operand.Kind == TypeStruct && operand.Decl != nil {
-			if sd, ok := operand.Decl.(*StructDef); ok {
+		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
+			if sd, ok := operand.Decl.(*ir.StructDef); ok {
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
 						x.ResolvedType = f.Type.String()
@@ -435,11 +439,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferIndex(x *ast.IndexExpr) *Type {
+func (c *checker) inferIndex(x *ast.IndexExpr) *ir.Type {
 	operand := c.checkExpr(x.Operand)
 	c.checkExpr(x.Index)
 
-	if operand.Kind == TypeList && len(operand.Elems) > 0 {
+	if operand.Kind == ir.TypeList && len(operand.Elems) > 0 {
 		t := operand.Elems[0]
 		x.ResolvedType = t.String()
 		return t
@@ -447,15 +451,15 @@ func (c *checker) inferIndex(x *ast.IndexExpr) *Type {
 	return TypDyn
 }
 
-func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
+func (c *checker) inferStructLit(x *ast.StructExpr) *ir.Type {
 	// Look up struct type.
-	var sd *StructDef
+	var sd *ir.StructDef
 	if x.Package != "" {
 		// Qualified: pkg.Struct{...}
 		if sym, ok := c.scope.Lookup(x.Package); ok {
-			if ns, ok := sym.(*Namespace); ok && ns.Pkg != nil {
+			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if tsym, ok := ns.Pkg.Symbols.LookupType(x.Name); ok {
-					if s, ok := tsym.(*StructDef); ok {
+					if s, ok := tsym.(*ir.StructDef); ok {
 						sd = s
 					}
 				}
@@ -463,13 +467,13 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 		}
 	} else if x.Name != "" {
 		if sym, ok := c.symtab.LookupType(x.Name); ok {
-			if s, ok := sym.(*StructDef); ok {
+			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
 			}
 		}
-	} else if c.expected != nil && c.expected.Kind == TypeStruct && c.expected.Decl != nil {
+	} else if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl != nil {
 		// Anonymous struct literal with expected struct type: infer the type.
-		if s, ok := c.expected.Decl.(*StructDef); ok {
+		if s, ok := c.expected.Decl.(*ir.StructDef); ok {
 			sd = s
 		}
 	}
@@ -477,7 +481,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 	// Check field values.
 	for _, f := range x.Fields {
 		if f.Spread {
-			c.ASTBlockExpr(f.Value)
+			c.checkExpr(f.Value)
 			continue
 		}
 		c.checkExpr(f.Value)
@@ -490,10 +494,10 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 	if sd != nil {
 		return sd.SymType()
 	}
-	returnASTBlocke{Kind: TypeStruct}
-}ASTBlock
+	return &ir.Type{Kind: ir.TypeStruct}
+}
 
-func structHasField(sd *StructDef, name string) bool {
+func structHasField(sd *ir.StructDef, name string) bool {
 	for _, f := range sd.Fields {
 		if f.Name == name {
 			return true
@@ -502,7 +506,7 @@ func structHasField(sd *StructDef, name string) bool {
 	return false
 }
 
-func (c *checker) inferListLit(x *ast.ListExpr) *Type {
+func (c *checker) inferListLit(x *ast.ListExpr) *ir.Type {
 	if len(x.Elements) == 0 {
 		return ListOf(TypDyn)
 	}
@@ -513,15 +517,15 @@ func (c *checker) inferListLit(x *ast.ListExpr) *Type {
 	return ListOf(elem)
 }
 
-func (c *checker) inferLambda(x *ast.LambdaExpr) *Type {
-	fn := &Func{
+func (c *checker) inferLambda(x *ast.LambdaExpr) *ir.Type {
+	fn := &ir.Func{
 		Params: c.buildParams(x.Params),
 		Return: c.resolveType(x.ReturnType),
 		Body:   x.Body,
 		Pos:    x.Pos,
 	}
 	if x.Block.IsDefined() {
-		fn.Block = &x.Block
+		fn.ASTBlock = &x.Block
 	}
 
 	// Type-check the lambda body in a child scope.
@@ -534,19 +538,19 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *Type {
 	if fn.Body != nil {
 		c.checkExpr(fn.Body)
 	}
-	if fn.Block != nil {
-		c.checkBlock(fn.Block)
+	if fn.ASTBlock != nil {
+		c.checkBlock(fn.ASTBlock)
 	}
 	c.returnType = prevReturn
 	c.popScope()
 
-	return &Type{Kind: TypeFunc, Sig: fn.FuncSig()}
+	return &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}
 }
 
 // inferTypeParams infers concrete types for generic type params by matching
 // argument types against parameter types, then returns a substituted FuncSig.
-func (c *checker) inferTypeParams(sig *FuncSig, args ast.ArgList) *FuncSig {
-	bindings := make(map[string]*Type)
+func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
+	bindings := make(map[string]*ir.Type)
 	// Match positional args to params.
 	pos := 0
 	for _, a := range args.Args {
@@ -558,7 +562,7 @@ func (c *checker) inferTypeParams(sig *FuncSig, args ast.ArgList) *FuncSig {
 			break
 		}
 		argType := c.checkExpr(arg.Value)
-		if argType.Kind != TypeDyn {
+		if argType.Kind != ir.TypeDyn {
 			bindTypeParams(sig.Params[pos].Type, argType, bindings)
 		}
 		pos++
@@ -571,11 +575,11 @@ func (c *checker) inferTypeParams(sig *FuncSig, args ast.ArgList) *FuncSig {
 
 // bindTypeParams recursively matches a param type pattern against a concrete
 // arg type to extract type parameter bindings. E.g. list<T> vs list<int> → T=int.
-func bindTypeParams(param, arg *Type, bindings map[string]*Type) {
+func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 	if param == nil || arg == nil {
 		return
 	}
-	if param.Kind == TypeTypeParam {
+	if param.Kind == ir.TypeTypeParam {
 		if _, exists := bindings[param.ParamName]; !exists {
 			bindings[param.ParamName] = arg
 		}
@@ -589,7 +593,7 @@ func bindTypeParams(param, arg *Type, bindings map[string]*Type) {
 	}
 }
 
-func (c *checker) inferEventRef(x *ast.EventRefExpr) *Type {
+func (c *checker) inferEventRef(x *ast.EventRefExpr) *ir.Type {
 	if c.currentComponent != nil {
 		for _, evt := range c.currentComponent.Events {
 			if evt.Name == x.Name {
@@ -605,14 +609,14 @@ func (c *checker) inferEventRef(x *ast.EventRefExpr) *Type {
 
 // checkArgs type-checks all arguments in an ArgList.
 // If sig is non-nil, validates positional arg types and arity against it.
-func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
+func (c *checker) checkArgs(args ast.ArgList, sig *ir.FuncSig) {
 	positional := 0
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
 				// Determine expected type from function signature.
-				var expected *Type
+				var expected *ir.Type
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					expected = sig.Params[positional].Type
 				}
@@ -620,7 +624,7 @@ func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
 				// Validate positional arg type against param.
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					paramType := sig.Params[positional].Type
-					if argType.Kind != TypeDyn && paramType.Kind != TypeDyn && !argType.IsAssignableTo(paramType) {
+					if argType.Kind != ir.TypeDyn && paramType.Kind != ir.TypeDyn && !argType.IsAssignableTo(paramType) {
 						c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
 					}
 				}
@@ -632,7 +636,7 @@ func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
 			// Inline event handler — check body.
 			c.pushScope()
 			for _, p := range arg.Params.Params {
-				c.scope.Declare(&Param{
+				c.scope.Declare(&ir.Param{
 					Name: p.Name,
 					Type: c.resolveType(p.Type),
 					Pos:  p.Pos,
@@ -674,13 +678,13 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 }
 
 // checkBlockIR type-checks a StmtBlock and returns typed IR statements.
-func (c *checker) checkBlockIR(block *ast.StmtBlock) []Stmt {
+func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
 	c.pushScope()
 	defer c.popScope()
-	var out []Stmt
+	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if ir := c.checkStmt(stmt); ir != nil {
 			out = append(out, ir)
@@ -691,7 +695,7 @@ func (c *checker) checkBlockIR(block *ast.StmtBlock) []Stmt {
 
 // checkStmt type-checks a single statement and returns its IR form.
 // Returns nil for declarations (registered on scope) and skipped nodes.
-func (c *checker) checkStmt(s ast.Stmt) Stmt {
+func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	switch x := s.(type) {
 	case *ast.AssignStmt:
 		targetType := c.checkExpr(x.Target)
@@ -699,96 +703,96 @@ func (c *checker) checkStmt(s ast.Stmt) Stmt {
 		// Const reassignment check.
 		if ident, ok := x.Target.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if v, ok := sym.(*Var); ok && v.IsConst {
+				if v, ok := sym.(*ir.Var); ok && v.IsConst {
 					c.error(x.Pos, "cannot assign to const %q", ident.Name)
 				}
 			}
 		}
 		// Type checking.
 		if x.Op == ast.AssignSet {
-			if targetType.Kind != TypeDyn && valueType.Kind != TypeDyn && !valueType.IsAssignableTo(targetType) {
+			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
 				c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
 			}
 		} else {
 			// Compound assignment: both sides must be numeric (or string for +=).
-			if targetType.Kind != TypeDyn && valueType.Kind != TypeDyn {
-				if x.Op == ast.AssignAdd && targetType.Kind == TypeString {
+			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn {
+				if x.Op == ast.AssignAdd && targetType.Kind == ir.TypeString {
 					// string += string is fine.
 				} else if !targetType.IsNumeric() || !valueType.IsNumeric() {
 					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
 				}
 			}
 		}
-		return &Assign{AST: x, Pos: x.Pos}
+		return &ir.Assign{AST: x, Pos: x.Pos}
 	case *ast.ToggleStmt:
 		c.checkExpr(x.Target)
-		return &Toggle{AST: x, Pos: x.Pos}
+		return &ir.Toggle{AST: x, Pos: x.Pos}
 	case *ast.EmitStmt:
 		c.checkArgs(x.Args, nil)
-		return &Emit{AST: x, Pos: x.Pos}
+		return &ir.Emit{AST: x, Pos: x.Pos}
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		if x.Init != nil {
 			initType := c.checkExprExpecting(x.Init, typ)
-			if typ.Kind == TypeDyn {
+			if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
-		c.scope.Declare(&Var{
+		c.scope.Declare(&ir.Var{
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
 			Pos:  x.Pos,
 		})
-		return &LocalVar{AST: x, Type: typ, Pos: x.Pos}
+		return &ir.LocalVar{AST: x, Type: typ, Pos: x.Pos}
 	case *ast.ReturnStmt:
 		if x.Value != nil {
 			valType := c.checkExprExpecting(x.Value, c.returnType)
-			if c.returnType != nil && c.returnType.Kind != TypeDyn && valType.Kind != TypeDyn && !valType.IsAssignableTo(c.returnType) {
+			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn && valType.Kind != ir.TypeDyn && !valType.IsAssignableTo(c.returnType) {
 				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
 			}
 		}
-		return &Return{AST: x, Pos: x.Pos}
+		return &ir.Return{AST: x, Pos: x.Pos}
 	case *ast.CallStmt:
 		c.checkExpr(x.Call)
 		return c.resolveCallStmt(x)
 	case *ast.IfStmt:
 		condType := c.checkExpr(x.Cond)
-		if condType.Kind != TypeDyn && condType.Kind != TypeBool {
+		if condType.Kind != ir.TypeDyn && condType.Kind != ir.TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
 		body := c.checkBlockIR(&x.Body)
-		var elseBody []Stmt
+		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
-		return &If{AST: x, Body: body, Else: elseBody, Pos: x.Pos}
+		return &ir.If{AST: x, Body: body, Else: elseBody, Pos: x.Pos}
 	case *ast.ForStmt:
 		iter := c.checkExpr(x.Iter)
-		if iter.Kind != TypeDyn && iter.Kind != TypeList {
+		if iter.Kind != ir.TypeDyn && iter.Kind != ir.TypeList {
 			c.error(x.Pos, "for iterator must be list, got %s", iter)
 		}
 		c.pushScope()
 		// Declare loop variables.
 		elemType := TypDyn
-		if iter.Kind == TypeList && len(iter.Elems) > 0 {
+		if iter.Kind == ir.TypeList && len(iter.Elems) > 0 {
 			elemType = iter.Elems[0]
 		}
 		if x.Value != "" {
 			// for key, value = iter: key is index, value is element.
-			c.scope.Declare(&LoopVar{Name: x.Key, Type: TypInt, Pos: x.Pos})
-			c.scope.Declare(&LoopVar{Name: x.Value, Type: elemType, Pos: x.Pos})
+			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt, Pos: x.Pos})
+			c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType, Pos: x.Pos})
 		} else {
 			// for item = iter: item is element.
-			c.scope.Declare(&LoopVar{Name: x.Key, Type: elemType, Pos: x.Pos})
+			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType, Pos: x.Pos})
 		}
 		body := c.checkBlockIR(&x.Body)
-		var elseBody []Stmt
+		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &For{AST: x, ElemType: elemType, Body: body, Else: elseBody, Pos: x.Pos}
+		return &ir.For{AST: x, ElemType: elemType, Body: body, Else: elseBody, Pos: x.Pos}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
@@ -812,17 +816,14 @@ func (c *checker) checkStmt(s ast.Stmt) Stmt {
 	return nil
 }
 
-
 // buildPlatformPkgScope builds (and caches) a scope containing declarations
 // from the named platform's Package() docs.
-func (c *checker) buildPlatformPkgScope(platform string) *Scope {
+func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[platform]; ok {
 			// Clone so each insertion point gets its own parent chain.
 			clone := NewScope(nil)
-			for k, v := range s.symbols {
-				clone.symbols[k] = v
-			}
+			maps.Copy(clone.Symbols, s.Symbols)
 			return clone
 		}
 	}
@@ -868,27 +869,25 @@ func (c *checker) buildPlatformPkgScope(platform string) *Scope {
 	}
 
 	if c.platformScopeCache == nil {
-		c.platformScopeCache = make(map[string]*Scope)
+		c.platformScopeCache = make(map[string]*ir.Scope)
 	}
 	c.platformScopeCache[platform] = scope
 
 	// Return a clone for this usage.
 	clone := NewScope(nil)
-	for k, v := range scope.symbols {
-		clone.symbols[k] = v
-	}
+	maps.Copy(clone.Symbols, scope.Symbols)
 	return clone
 }
 
 // resolveCallStmt determines whether an ast.CallStmt is a void function call
 // or a component instantiation (when the parser produced CallStmt for Foo()
 // that is actually a component). Returns the appropriate IR statement.
-func (c *checker) resolveCallStmt(x *ast.CallStmt) Stmt {
+func (c *checker) resolveCallStmt(x *ast.CallStmt) ir.Stmt {
 	// Check if the call target is a component name.
 	if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 		if sym, ok := c.symtab.LookupComponent(id.Name); ok {
-			if comp, ok := sym.(*Component); ok {
-				return &NodeInst{
+			if comp, ok := sym.(*ir.Component); ok {
+				return &ir.NodeInst{
 					AST:       x,
 					Name:      id.Name,
 					Component: comp,
@@ -899,19 +898,19 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt) Stmt {
 		}
 	}
 	// Resolve function if possible.
-	var fn *Func
+	var fn *ir.Func
 	if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(id.Name); ok {
-			if f, ok := sym.(*Func); ok {
+			if f, ok := sym.(*ir.Func); ok {
 				fn = f
 			}
 		}
 	}
-	return &CallStmt{AST: x, Call: x.Call, Func: fn, Pos: x.Pos}
+	return &ir.CallStmt{AST: x, Call: x.Call, Func: fn, Pos: x.Pos}
 }
 
 // checkPlatformStmtIR type-checks a platform statement and returns IR.
-func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) Stmt {
+func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 	// Skip body when target platform is known and doesn't match.
 	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
 		return nil
@@ -920,19 +919,19 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) Stmt {
 	// Inject platform package scope as fallback between current scope and its parent.
 	platformScope := c.buildPlatformPkgScope(s.Platform)
 	if platformScope != nil {
-		savedParent := c.scope.parent
-		platformScope.parent = savedParent
-		c.scope.parent = platformScope
-		defer func() { c.scope.parent = savedParent }()
+		savedParent := c.scope.Parent
+		platformScope.Parent = savedParent
+		c.scope.Parent = platformScope
+		defer func() { c.scope.Parent = savedParent }()
 	}
 
 	body := c.checkBlockIR(&s.Body)
-	return &PlatformFilter{AST: s, Body: body, Pos: s.Pos}
+	return &ir.PlatformFilter{AST: s, Body: body, Pos: s.Pos}
 }
 
 // checkVisualNodeIR validates a visual node and returns the appropriate IR statement.
 // Disambiguates components, platform elements, slots, and function calls.
-func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
+func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
 
 	// Special root-ish nodes — registered on package, not returned as IR stmts.
@@ -959,13 +958,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
 		return nil
 	case "slot":
 		children := c.checkBlockIR(&vn.Block)
-		return &SlotInst{AST: vn, Children: children, Pos: vn.Pos}
+		return &ir.SlotInst{AST: vn, Children: children, Pos: vn.Pos}
 	}
 
 	// Look up component.
-	var comp *Component
+	var comp *ir.Component
 	if sym, ok := c.symtab.LookupComponent(name); ok {
-		if co, ok := sym.(*Component); ok {
+		if co, ok := sym.(*ir.Component); ok {
 			comp = co
 		}
 	}
@@ -973,10 +972,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
 	// If not a component, check if it's a function in scope.
 	if comp == nil {
 		if sym, ok := c.scope.Lookup(name); ok {
-			if fn, ok := sym.(*Func); ok {
+			if fn, ok := sym.(*ir.Func); ok {
 				// This is a function call, not a visual node.
 				c.checkVisualNodeArgs(vn.Args, nil)
-				return &CallStmt{AST: vn, Func: fn, Pos: vn.Pos}
+				return &ir.CallStmt{AST: vn, Func: fn, Pos: vn.Pos}
 			}
 		}
 	}
@@ -988,7 +987,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
 	}
 
 	children := c.checkBlockIR(&vn.Block)
-	return &NodeInst{
+	return &ir.NodeInst{
 		AST:       vn,
 		Name:      name,
 		Component: comp,
@@ -1001,17 +1000,17 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
 }
 
 // checkVisualNodeArgs type-checks args, threading expected types from component props.
-func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *Component) {
+func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *ir.Component) {
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
-				var expected *Type
+				var expected *ir.Type
 				if comp != nil && arg.Name != "" {
 					expected = componentPropType(comp, arg.Name)
 				}
 				actual := c.checkExprExpecting(arg.Value, expected)
-				if expected != nil && actual.Kind != TypeDyn && expected.Kind != TypeDyn && !actual.IsAssignableTo(expected) {
+				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
 					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
 				}
 			}
@@ -1022,7 +1021,7 @@ func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *Component) {
 }
 
 // componentPropType returns the type of a named prop on a component, or nil.
-func componentPropType(comp *Component, name string) *Type {
+func componentPropType(comp *ir.Component, name string) *ir.Type {
 	for _, p := range comp.Props {
 		if p.Name == name {
 			return p.Type
@@ -1032,7 +1031,7 @@ func componentPropType(comp *Component, name string) *Type {
 }
 
 // validateVisualNodeProps validates props and events against a component definition.
-func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *Component) {
+func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
 	// Validate args match props/events.
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
@@ -1053,17 +1052,17 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *Component) {
 
 // validateComponentCallArgs validates a component call (text(value="hi"))
 // against the component's prop and event declarations.
-func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *Component) {
+func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *ir.Component) {
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
-				var expected *Type
+				var expected *ir.Type
 				if arg.Name != "" {
 					expected = componentPropType(comp, arg.Name)
 				}
 				actual := c.checkExprExpecting(arg.Value, expected)
-				if expected != nil && actual.Kind != TypeDyn && expected.Kind != TypeDyn && !actual.IsAssignableTo(expected) {
+				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
 					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
 				}
 			}
@@ -1076,7 +1075,7 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *Component)
 		case ast.EventHandler:
 			c.pushScope()
 			for _, p := range arg.Params.Params {
-				c.scope.Declare(&Param{
+				c.scope.Declare(&ir.Param{
 					Name: p.Name,
 					Type: c.resolveType(p.Type),
 					Pos:  p.Pos,
@@ -1091,7 +1090,7 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *Component)
 	}
 }
 
-func componentHasProp(comp *Component, name string) bool {
+func componentHasProp(comp *ir.Component, name string) bool {
 	for _, p := range comp.Props {
 		if p.Name == name {
 			return true
@@ -1100,7 +1099,7 @@ func componentHasProp(comp *Component, name string) bool {
 	return false
 }
 
-func componentHasEvent(comp *Component, name string) bool {
+func componentHasEvent(comp *ir.Component, name string) bool {
 	for _, e := range comp.Events {
 		if e.Name == name {
 			return true

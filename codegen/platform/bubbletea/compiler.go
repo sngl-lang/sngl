@@ -820,9 +820,7 @@ func emitButtonHandlersVN(b *strings.Builder, vn *ast.VisualNode, info *analysis
 					// Collect mutated fields from all body stmts
 					mutatedFields := make(map[string]bool)
 					for _, stmt := range changeEvt.Body.Stmts {
-						for k, v := range codegen.MutatedFields(stmt) {
-							mutatedFields[k] = v
-						}
+						maps.Copy(mutatedFields, codegen.MutatedFields(stmt))
 					}
 					for _, inp := range info.inputs {
 						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
@@ -855,9 +853,7 @@ func emitButtonHandlersVN(b *strings.Builder, vn *ast.VisualNode, info *analysis
 					}
 					mutatedFields := make(map[string]bool)
 					for _, stmt := range clickEvt.Body.Stmts {
-						for k, v := range codegen.MutatedFields(stmt) {
-							mutatedFields[k] = v
-						}
+						maps.Copy(mutatedFields, codegen.MutatedFields(stmt))
 					}
 					for _, inp := range info.inputs {
 						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {

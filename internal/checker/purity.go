@@ -1,9 +1,11 @@
 package checker
 
+import "git.duckfam.us/jonathan/sngl/ir"
+
 import "git.duckfam.us/jonathan/sngl/ast"
 
 // analyzePurity determines the purity level of a function by walking its body.
-func analyzePurity(f *Func, vars map[string]*Var) Purity {
+func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
 	w := &purityWalker{vars: vars}
 	if f.Body != nil {
 		w.walkExpr(f.Body)
@@ -12,16 +14,16 @@ func analyzePurity(f *Func, vars map[string]*Var) Purity {
 		w.walkBlock(f.ASTBlock)
 	}
 	if w.mutates {
-		return PurityMutates
+		return ir.PurityMutates
 	}
 	if w.readsVar {
-		return PurityReadonly
+		return ir.PurityReadonly
 	}
-	return PurityPure
+	return ir.PurityPure
 }
 
 // trackAccess populates Func.Reads/Writes and Var.Refs by walking the function body.
-func trackAccess(f *Func, vars map[string]*Var) {
+func trackAccess(f *ir.Func, vars map[string]*ir.Var) {
 	w := &accessWalker{vars: vars, reads: make(map[string]bool), writes: make(map[string]bool)}
 	if f.Body != nil {
 		w.walkExpr(f.Body)
@@ -44,7 +46,7 @@ func trackAccess(f *Func, vars map[string]*Var) {
 // --- purity walker ---
 
 type purityWalker struct {
-	vars     map[string]*Var
+	vars     map[string]*ir.Var
 	readsVar bool
 	mutates  bool
 }
@@ -156,7 +158,7 @@ func (w *purityWalker) walkArgList(args ast.ArgList) {
 // --- access walker ---
 
 type accessWalker struct {
-	vars   map[string]*Var
+	vars   map[string]*ir.Var
 	reads  map[string]bool
 	writes map[string]bool
 }

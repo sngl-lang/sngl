@@ -23,6 +23,7 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 var (
@@ -57,7 +58,7 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {
@@ -153,7 +154,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {

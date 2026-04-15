@@ -13,8 +13,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -144,7 +144,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func resolveTargets(pkg *checker.Package, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
+func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
 	if cliLang != "" && cliPlat != "" {
 		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Options: cliOpts}}
 	}
@@ -157,7 +157,7 @@ func resolveTargets(pkg *checker.Package, cliLang, cliPlat string, cliOpts map[s
 	return targets
 }
 
-func generateTarget(filename string, doc *ast.Document, pkg *checker.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
+func generateTarget(filename string, doc *ast.Document, pkg *ir.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
 	lang := codegen.LookupLang(target.Lang)
 	if lang == nil {
 		return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
@@ -217,7 +217,7 @@ func generateTarget(filename string, doc *ast.Document, pkg *checker.Package, ta
 
 // collectNativeImports builds a namespace → NativeDecls map from the checked package.
 // Re-resolves scheme imports to get the codegen-level declarations needed by the optimizer.
-func collectNativeImports(pkg *checker.Package) map[string]*codegen.NativeDecls {
+func collectNativeImports(pkg *ir.Package) map[string]*codegen.NativeDecls {
 	if pkg == nil {
 		return nil
 	}

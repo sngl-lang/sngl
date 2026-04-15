@@ -1,5 +1,7 @@
 package docsite
 
+import "git.duckfam.us/jonathan/sngl/ir"
+
 import "git.duckfam.us/jonathan/sngl/internal/checker"
 
 // TierOrder defines the canonical ordering and grouping of component tiers.
@@ -53,7 +55,7 @@ func AssignTiers(registry checker.SchemaRegistry) map[string]string {
 }
 
 // ChildPolicyString returns a human-readable string for a component's children policy.
-func ChildPolicyString(children *checker.Type) string {
+func ChildPolicyString(children *ir.Type) string {
 	if children == nil {
 		return "none"
 	}

@@ -14,9 +14,9 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed html.sngl
@@ -35,12 +35,12 @@ func init() {
 // Generator implements codegen.PlatformGenerator for HTML output.
 type Generator struct{}
 
-func (g *Generator) Platform() string                            { return "html" }
-func (g *Generator) Identifier() string                          { return "html" }
-func (g *Generator) SupportedLangs() []string                    { return []string{"js"} }
-func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
-func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "js" }
+func (g *Generator) Platform() string                       { return "html" }
+func (g *Generator) Identifier() string                     { return "html" }
+func (g *Generator) SupportedLangs() []string               { return []string{"js"} }
+func (g *Generator) Package() []*ast.Document               { return pkgDocs }
+func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "js" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if req.Lang.Lang() != "js" {
@@ -196,7 +196,7 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	// v2: type-checked package and expression context
-	pkg        *checker.Package
+	pkg        *ir.Package
 	translator codegen.ExprTranslator
 	ctx        *codegen.ExprCtx
 
@@ -284,7 +284,7 @@ type timerDef struct {
 	mutated    map[string]bool
 }
 
-func newHTMLGen(doc *ast.Document, pkg *checker.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
 	common := codegen.AnalyzeCommon(doc)
 
 	g := &htmlGen{
@@ -394,23 +394,27 @@ func (g *htmlGen) generate() string {
 }
 
 // renderStaticStmt dispatches a statement to the appropriate renderer.
-// In v2, ForStmt and IfStmt are separate statement types, not fields on VisualNode.
+// Uses checker IR for disambiguation when available, falls back to AST.
 func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
+		if g.isFunction(vnName(n)) {
+			return // void function call, not a visual node
+		}
 		g.renderStaticNode(b, n, depth)
 	case *ast.CallStmt:
-		// Convert CallStmt to VisualNode — in v2, calls without a block
-		// (e.g. html.div(innerHTML="..."), NavSidebar(currentHref=x))
-		// parse as CallStmt instead of VisualNode.
-		if target, ok := n.Call.Func.(ast.TargetExpr); ok {
-			vn := &ast.VisualNode{
-				Pos:    n.Pos,
-				Target: target,
-				Args:   n.Call.Args,
+		if g.isComponent(n.Call) {
+			// Component invocation that parsed as a call (no block).
+			if target, ok := n.Call.Func.(ast.TargetExpr); ok {
+				vn := &ast.VisualNode{
+					Pos:    n.Pos,
+					Target: target,
+					Args:   n.Call.Args,
+				}
+				g.renderStaticNode(b, vn, depth)
 			}
-			g.renderStaticNode(b, vn, depth)
 		}
+		// else: void function call — skip
 	case *ast.IfStmt:
 		g.renderStaticIf(b, n, depth)
 	case *ast.ForStmt:
@@ -420,6 +424,55 @@ func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
 			g.renderStaticStmt(b, bs, depth)
 		}
 	}
+}
+
+// isComponent reports whether a call expression targets a known component.
+func (g *htmlGen) isComponent(call *ast.CallExpr) bool {
+	if g.pkg == nil || g.pkg.Symbols == nil {
+		// No type info — assume component (legacy fallback).
+		if call == nil {
+			return false
+		}
+		_, ok := call.Func.(ast.TargetExpr)
+		return ok
+	}
+	name := callTargetName(call)
+	if name == "" {
+		return false
+	}
+	_, ok := g.pkg.Symbols.LookupComponent(name)
+	return ok
+}
+
+// isFunction reports whether a visual node name resolves to a function (not component).
+func (g *htmlGen) isFunction(name string) bool {
+	if g.pkg == nil || g.pkg.Symbols == nil {
+		return false
+	}
+	if _, ok := g.pkg.Symbols.LookupComponent(name); ok {
+		return false // it's a component
+	}
+	if sym, ok := g.pkg.Symbols.Root.Lookup(name); ok {
+		_, isFunc := sym.(*ir.Func)
+		return isFunc
+	}
+	return false
+}
+
+// callTargetName extracts the identifier name from a call expression target.
+func callTargetName(call *ast.CallExpr) string {
+	if call == nil {
+		return ""
+	}
+	switch t := call.Func.(type) {
+	case *ast.IdentExpr:
+		return t.Name
+	case *ast.SelectExpr:
+		if id, ok := t.Operand.(*ast.IdentExpr); ok {
+			return id.Name + "." + t.Field
+		}
+	}
+	return ""
 }
 
 // renderStaticIf renders a conditional block as a hidden div with an updater.
@@ -2292,9 +2345,7 @@ func (g *htmlGen) addInputHandler(elemID string, body ast.StmtBlock) {
 	mutated := make(map[string]bool)
 	for _, s := range body.Stmts {
 		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		for k, v := range codegen.MutatedFields(s) {
-			mutated[k] = v
-		}
+		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	g.scope.EventVar = savedEvent
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -2318,9 +2369,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body ast.StmtBlock) {
 	mutated := make(map[string]bool)
 	for _, s := range body.Stmts {
 		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		for k, v := range codegen.MutatedFields(s) {
-			mutated[k] = v
-		}
+		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string

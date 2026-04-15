@@ -2,7 +2,7 @@ package codegen
 
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // ExprTranslator translates typed SNGL expressions into target language source.
@@ -10,7 +10,7 @@ import (
 // from the checker's Package.
 type ExprTranslator interface {
 	Lang() string
-	checker.Language
+	ir.Language
 
 	// Expr translates an expression to target language source.
 	Expr(e ast.Expr, ctx *ExprCtx) string
@@ -23,7 +23,7 @@ type ExprTranslator interface {
 	Literal(e ast.Expr) string
 
 	// TypeName maps a checker Type to the target language's type syntax.
-	TypeName(t *checker.Type) string
+	TypeName(t *ir.Type) string
 
 	// ExportName applies the target language's export convention to a name.
 	ExportName(name string) string

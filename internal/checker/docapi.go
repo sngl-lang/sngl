@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // --- Doc API types ---
@@ -14,19 +15,19 @@ type ComponentSchema struct {
 	Doc      string
 	Props    map[string]PropSchema
 	Events   map[string]string
-	Children *Type // nil = no children
+	Children *ir.Type // nil = no children
 }
 
 // PropSchema describes a single component property.
 type PropSchema struct {
-	Type Type
+	Type ir.Type
 	Doc  string
 	Enum []string
 }
 
 // StylePropSchema describes a style property.
 type StylePropSchema struct {
-	Type Type
+	Type ir.Type
 	Enum []string
 }
 
@@ -118,7 +119,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 	return stdlibSchemaRegistry, stdlibStyleProps, stdlibSchemaErr
 }
 
-func buildSchemaRegistry(pkg *Package, docs []*ast.Document) SchemaRegistry {
+func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 	reg := SchemaRegistry{}
 	if pkg == nil {
 		return reg

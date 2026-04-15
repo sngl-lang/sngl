@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func parse(t *testing.T, src string) *checker.Package {
+func parse(t *testing.T, src string) *ir.Package {
 	t.Helper()
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
@@ -21,7 +22,7 @@ func parse(t *testing.T, src string) *checker.Package {
 	}
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			t.Logf("diagnostic: %s", d.Error())
 		}
 	}
@@ -187,7 +188,7 @@ var count int
 func pure(a int, b int) => a + b
 `)
 	for _, f := range pkg.Funcs {
-		if f.Name == "pure" && f.Purity != checker.PurityPure {
+		if f.Name == "pure" && f.Purity != ir.PurityPure {
 			t.Errorf("pure func purity = %d, want PurityPure", f.Purity)
 		}
 	}
@@ -202,7 +203,7 @@ func TestDiagnosticUnknownType(t *testing.T) {
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	found := false
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			found = true
 		}
 	}
@@ -221,7 +222,7 @@ func expectError(t *testing.T, src, substr string) {
 	}
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
-		if d.Severity == checker.Error && contains(d.Msg, substr) {
+		if d.Severity == ir.Error && contains(d.Msg, substr) {
 			return
 		}
 	}
@@ -241,7 +242,7 @@ func expectNoErrors(t *testing.T, src string) {
 	}
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			t.Errorf("unexpected error: %s", d.Error())
 		}
 	}
@@ -649,7 +650,7 @@ func TestStdlibPackageOnPkg(t *testing.T) {
 
 // --- IR statement tests ---
 
-func TestIRBodyDisambiguation(t *testing.T) {
+func TestBodyDisambiguation(t *testing.T) {
 	pkg := parse(t, `
 component greeting() {}
 
@@ -664,7 +665,7 @@ component main {
 }
 `)
 	// Find main component.
-	var main *checker.Component
+	var main *ir.Component
 	for _, c := range pkg.Components {
 		if c.Name == "main" {
 			main = c
@@ -673,14 +674,14 @@ component main {
 	if main == nil {
 		t.Fatal("main component not found")
 	}
-	if len(main.IRBody) == 0 {
-		t.Fatal("IRBody is empty")
+	if len(main.Body) == 0 {
+		t.Fatal("Body is empty")
 	}
 
 	// First statement: greeting() → NodeInst (component instantiation).
-	ni, ok := main.IRBody[0].(*checker.NodeInst)
+	ni, ok := main.Body[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("IRBody[0]: want *NodeInst, got %T", main.IRBody[0])
+		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Body[0])
 	}
 	if ni.Name != "greeting" {
 		t.Errorf("NodeInst.Name = %q, want %q", ni.Name, "greeting")
@@ -690,28 +691,28 @@ component main {
 	}
 
 	// Second statement: sideEffect() → CallStmt (function call).
-	cs, ok := main.IRBody[1].(*checker.CallStmt)
+	cs, ok := main.Body[1].(*ir.CallStmt)
 	if !ok {
-		t.Fatalf("IRBody[1]: want *CallStmt, got %T", main.IRBody[1])
+		t.Fatalf("Body[1]: want *CallStmt, got %T", main.Body[1])
 	}
 	if cs.Func == nil {
 		t.Error("CallStmt.Func is nil, want resolved function")
 	}
 
 	// Third statement: if → If with nested NodeInst.
-	ifStmt, ok := main.IRBody[2].(*checker.If)
+	ifStmt, ok := main.Body[2].(*ir.If)
 	if !ok {
-		t.Fatalf("IRBody[2]: want *If, got %T", main.IRBody[2])
+		t.Fatalf("Body[2]: want *If, got %T", main.Body[2])
 	}
 	if len(ifStmt.Body) != 1 {
 		t.Fatalf("If.Body length = %d, want 1", len(ifStmt.Body))
 	}
-	if _, ok := ifStmt.Body[0].(*checker.NodeInst); !ok {
+	if _, ok := ifStmt.Body[0].(*ir.NodeInst); !ok {
 		t.Errorf("If.Body[0]: want *NodeInst, got %T", ifStmt.Body[0])
 	}
 }
 
-func TestIRBodyForLoop(t *testing.T) {
+func TestBodyForLoop(t *testing.T) {
 	pkg := parse(t, `
 component main {
 	var items = [1, 2, 3]
@@ -720,7 +721,7 @@ component main {
 	}
 }
 `)
-	var main *checker.Component
+	var main *ir.Component
 	for _, c := range pkg.Components {
 		if c.Name == "main" {
 			main = c
@@ -731,15 +732,15 @@ component main {
 	}
 
 	// Find the For statement (skip any non-For stmts).
-	var forStmt *checker.For
-	for _, s := range main.IRBody {
-		if f, ok := s.(*checker.For); ok {
+	var forStmt *ir.For
+	for _, s := range main.Body {
+		if f, ok := s.(*ir.For); ok {
 			forStmt = f
 			break
 		}
 	}
 	if forStmt == nil {
-		t.Fatal("For statement not found in IRBody")
+		t.Fatal("For statement not found in Body")
 	}
 	if forStmt.ElemType == nil {
 		t.Fatal("For.ElemType is nil")
@@ -747,12 +748,12 @@ component main {
 	if len(forStmt.Body) != 1 {
 		t.Fatalf("For.Body length = %d, want 1", len(forStmt.Body))
 	}
-	if _, ok := forStmt.Body[0].(*checker.NodeInst); !ok {
+	if _, ok := forStmt.Body[0].(*ir.NodeInst); !ok {
 		t.Errorf("For.Body[0]: want *NodeInst, got %T", forStmt.Body[0])
 	}
 }
 
-func TestIRBodyBareIdentFunction(t *testing.T) {
+func TestBodyBareIdentFunction(t *testing.T) {
 	// Bare identifier that resolves to a function → CallStmt.
 	pkg := parse(t, `
 func doStuff() {}
@@ -761,7 +762,7 @@ component main {
 	doStuff
 }
 `)
-	var main *checker.Component
+	var main *ir.Component
 	for _, c := range pkg.Components {
 		if c.Name == "main" {
 			main = c
@@ -770,12 +771,12 @@ component main {
 	if main == nil {
 		t.Fatal("main component not found")
 	}
-	if len(main.IRBody) == 0 {
-		t.Fatal("IRBody is empty")
+	if len(main.Body) == 0 {
+		t.Fatal("Body is empty")
 	}
-	cs, ok := main.IRBody[0].(*checker.CallStmt)
+	cs, ok := main.Body[0].(*ir.CallStmt)
 	if !ok {
-		t.Fatalf("IRBody[0]: want *CallStmt, got %T", main.IRBody[0])
+		t.Fatalf("Body[0]: want *CallStmt, got %T", main.Body[0])
 	}
 	if cs.Func == nil {
 		t.Error("CallStmt.Func is nil, want resolved function")
@@ -820,7 +821,7 @@ func TestCheckTestdata(t *testing.T) {
 			if len(expected) == 0 {
 				// No error directives — expect clean check.
 				for _, d := range diags {
-					if d.Severity == checker.Error {
+					if d.Severity == ir.Error {
 						t.Errorf("unexpected error: %s", d.Error())
 					}
 				}
@@ -830,7 +831,7 @@ func TestCheckTestdata(t *testing.T) {
 			for _, exp := range expected {
 				found := false
 				for _, d := range diags {
-					if d.Severity != checker.Error {
+					if d.Severity != ir.Error {
 						continue
 					}
 					// Match by line number and substring.
@@ -868,7 +869,7 @@ func TestCheckProjectTestdata(t *testing.T) {
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
 			// directives which may not match v2 checker messages.
 			for _, d := range diags {
-				if d.Severity == checker.Error {
+				if d.Severity == ir.Error {
 					t.Logf("diagnostic: %s", d.Error())
 				}
 			}

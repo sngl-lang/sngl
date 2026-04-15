@@ -6,7 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func init() {
@@ -16,10 +16,10 @@ func init() {
 // Translator implements codegen.LangTranslator for Go.
 type Translator struct{}
 
-func (t *Translator) Lang() string                             { return "go" }
-func (t *Translator) Identifier() string                       { return "go" }
-func (t *Translator) Package() []*ast.Document                 { return nil }
-func (t *Translator) Resolve(identifier string) checker.Symbol { return nil }
+func (t *Translator) Lang() string                        { return "go" }
+func (t *Translator) Identifier() string                  { return "go" }
+func (t *Translator) Package() []*ast.Document            { return nil }
+func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 
 func (t *Translator) TranslateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

@@ -20,6 +20,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -555,7 +556,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func typeToString(t checker.Type) string {
+func typeToString(t ir.Type) string {
 	return t.String()
 }
 

@@ -69,9 +69,7 @@ func (vc *viewContext) emitEventHandlerBlock(block *ast.StmtBlock) {
 		for _, s := range stmts {
 			vc.line("%s", s)
 		}
-		for k, v := range codegen.MutatedFields(bodyStmt) {
-			mutated[k] = v
-		}
+		maps.Copy(mutated, codegen.MutatedFields(bodyStmt))
 	}
 	if vc.info != nil {
 		affected := codegen.FindAffected(vc.info.depTracker(), vc.updaters, mutated)

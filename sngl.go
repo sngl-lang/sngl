@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Parse reads SNGL source from r and returns the parsed document AST.
@@ -37,7 +38,7 @@ func FormatExpr(e ast.Expr) string {
 
 // Check type-checks a parsed SNGL document. dir is the directory of the source
 // file, used to resolve relative import paths.
-func Check(doc *ast.Document, dir string) (*checker.Package, []checker.Diagnostic) {
+func Check(doc *ast.Document, dir string) (*ir.Package, []ir.Diagnostic) {
 	return checker.Check(doc, &checker.Config{
 		FS:     os.DirFS(dir),
 		Dir:    dir,

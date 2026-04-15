@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // resolveType converts an AST TypeExpr to an IR *Type.
-func (c *checker) resolveType(te ast.TypeExpr) *Type {
+func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	if te == nil {
 		return TypDyn
 	}
@@ -30,7 +31,7 @@ func (c *checker) resolveType(te ast.TypeExpr) *Type {
 }
 
 // resolveNamedType resolves a named type reference to an IR *Type.
-func (c *checker) resolveNamedType(t *ast.NamedType) *Type {
+func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
 	if t.Package != "" {
 		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArg)
@@ -89,7 +90,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *Type {
 		inner := c.resolveType(t.TypeArg)
 		return OptionOf(inner)
 	case "component":
-		return &Type{Kind: TypeComponent}
+		return &ir.Type{Kind: ir.TypeComponent}
 	}
 
 	// User-defined type from symbol table.
@@ -99,7 +100,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *Type {
 
 	// Type parameter.
 	if slices.Contains(c.typeParams, t.Name) {
-		return &Type{Kind: TypeTypeParam, ParamName: t.Name}
+		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
 	}
 
 	c.error(t.Pos, "unknown type %q", t.Name)
@@ -107,13 +108,13 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *Type {
 }
 
 // resolveQualifiedType resolves a pkg.Type reference.
-func (c *checker) resolveQualifiedType(pkg, name string, _ ast.TypeExpr) *Type {
+func (c *checker) resolveQualifiedType(pkg, name string, _ ast.TypeExpr) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
 		return TypDyn
 	}
-	ns, ok := sym.(*Namespace)
+	ns, ok := sym.(*ir.Namespace)
 	if !ok {
 		c.error(ast.Pos{}, "%q is not a namespace", pkg)
 		return TypDyn
@@ -130,18 +131,18 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ ast.TypeExpr) *Type {
 }
 
 // resolveFuncType resolves an AST function type to an IR *Type.
-func (c *checker) resolveFuncType(t *ast.FuncType) *Type {
-	params := make([]*Param, len(t.Params))
+func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
+	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
-		params[i] = &Param{Type: c.resolveType(p)}
+		params[i] = &ir.Param{Type: c.resolveType(p)}
 	}
-	var ret *Type
+	var ret *ir.Type
 	if t.Return != nil {
 		ret = c.resolveType(t.Return)
 	}
-	return &Type{
-		Kind: TypeFunc,
-		Sig: &FuncSig{
+	return &ir.Type{
+		Kind: ir.TypeFunc,
+		Sig: &ir.FuncSig{
 			Params: params,
 			Return: ret,
 		},
@@ -149,34 +150,34 @@ func (c *checker) resolveFuncType(t *ast.FuncType) *Type {
 }
 
 // resolveAnonStruct resolves an anonymous struct type.
-func (c *checker) resolveAnonStruct(s *ast.StructDef) *Type {
+func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 	sd := c.buildStructDef(s)
 	return sd.SymType()
 }
 
 // resolveAnonEnum resolves an anonymous enum type.
-func (c *checker) resolveAnonEnum(e *ast.EnumDef) *Type {
+func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {
 	ed := c.buildEnumDef(e)
 	return ed.SymType()
 }
 
 // resolveAnonUnit resolves an anonymous unit type.
-func (c *checker) resolveAnonUnit(u *ast.UnitDef) *Type {
+func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 	ud := c.buildUnitDef(u)
 	return ud.SymType()
 }
 
 // buildStructDef builds an IR StructDef from an AST StructDef.
-func (c *checker) buildStructDef(s *ast.StructDef) *StructDef {
-	fields := make([]*StructField, len(s.Fields))
+func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
+	fields := make([]*ir.StructField, len(s.Fields))
 	for i, f := range s.Fields {
-		fields[i] = &StructField{
+		fields[i] = &ir.StructField{
 			Name:    f.Name,
 			Type:    c.resolveType(f.Type),
 			Default: f.Default,
 		}
 	}
-	return &StructDef{
+	return &ir.StructDef{
 		AST:    s,
 		Name:   s.Name,
 		Fields: fields,
@@ -185,15 +186,15 @@ func (c *checker) buildStructDef(s *ast.StructDef) *StructDef {
 }
 
 // buildEnumDef builds an IR EnumDef from an AST EnumDef.
-func (c *checker) buildEnumDef(e *ast.EnumDef) *EnumDef {
-	members := make([]*EnumMember, len(e.Members))
+func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
+	members := make([]*ir.EnumMember, len(e.Members))
 	for i, m := range e.Members {
-		members[i] = &EnumMember{
+		members[i] = &ir.EnumMember{
 			Name:  m.Name,
 			Value: m.Value,
 		}
 	}
-	return &EnumDef{
+	return &ir.EnumDef{
 		AST:     e,
 		Name:    e.Name,
 		Members: members,
@@ -203,10 +204,10 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *EnumDef {
 
 // buildUnitDef builds an IR UnitDef from an AST UnitDef,
 // resolving suffix conversion factors.
-func (c *checker) buildUnitDef(u *ast.UnitDef) *UnitDef {
-	suffixes := make([]*UnitSuffix, len(u.Suffixes))
+func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
+	suffixes := make([]*ir.UnitSuffix, len(u.Suffixes))
 	for i, s := range u.Suffixes {
-		us := &UnitSuffix{
+		us := &ir.UnitSuffix{
 			Name:   s.Name,
 			Factor: 1.0,
 			IsBase: s.Factor == nil,
@@ -216,7 +217,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *UnitDef {
 		}
 		suffixes[i] = us
 	}
-	return &UnitDef{
+	return &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
 		Suffixes: suffixes,
@@ -287,10 +288,10 @@ func namespaceFromPath(path string) string {
 }
 
 // buildParams converts AST Params to IR Params.
-func (c *checker) buildParams(pl ast.ParamList) []*Param {
-	params := make([]*Param, len(pl.Params))
+func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
+	params := make([]*ir.Param, len(pl.Params))
 	for i, p := range pl.Params {
-		params[i] = &Param{
+		params[i] = &ir.Param{
 			Name:       p.Name,
 			Type:       c.resolveType(p.Type),
 			HasDefault: p.Default != nil,
@@ -301,13 +302,13 @@ func (c *checker) buildParams(pl ast.ParamList) []*Param {
 }
 
 // buildFunc builds an IR Func from an AST FuncDef.
-func (c *checker) buildFunc(f *ast.FuncDef) *Func {
+func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	typeName, methodName, isMethod := ast.SplitMethodName(f.Name)
 
 	// Set type params so T resolves during param/return type resolution.
 	prevTypeParams := c.typeParams
 	c.typeParams = f.TypeParams
-	fn := &Func{
+	fn := &ir.Func{
 		AST:        f,
 		Name:       f.Name,
 		TypeParams: f.TypeParams,

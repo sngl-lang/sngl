@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed stdlib/*.sngl
@@ -53,9 +54,9 @@ func parseStdlibDocs() []*ast.Document {
 // loadStdlib builds the stdlib Package, registers all stdlib declarations into
 // the checker's scope and symbol table for unqualified access, and declares
 // the "sngl" namespace for qualified access (sngl.text, sngl.Color, etc.).
-func (c *checker) loadStdlib() *Package {
-	stdlibPkg := &Package{
-		TypeMap: make(map[ast.Expr]*Type),
+func (c *checker) loadStdlib() *ir.Package {
+	stdlibPkg := &ir.Package{
+		TypeMap: make(map[ast.Expr]*ir.Type),
 		Symbols: NewSymbolTable(),
 	}
 
@@ -77,7 +78,7 @@ func (c *checker) loadStdlib() *Package {
 	}
 
 	// Register "sngl" namespace for qualified access to stdlib.
-	c.scope.Declare(&Namespace{
+	c.scope.Declare(&ir.Namespace{
 		Name: "sngl",
 		Pkg:  stdlibPkg,
 	})
@@ -85,7 +86,7 @@ func (c *checker) loadStdlib() *Package {
 	return stdlibPkg
 }
 
-func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *Package) {
+func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *ir.Package) {
 	sd := c.buildStructDef(s)
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
@@ -96,7 +97,7 @@ func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *Package) {
 	pkg.Symbols.Root.Declare(sd)
 }
 
-func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *Package) {
+func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
 	c.symtab.Types[ed.Name] = ed
 	c.scope.Declare(ed)
@@ -105,7 +106,7 @@ func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *Package) {
 	pkg.Symbols.Root.Declare(ed)
 }
 
-func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *Package) {
+func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
 	// Main symtab for unqualified access.
 	c.symtab.Types[ud.Name] = ud
@@ -117,7 +118,7 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *Package) {
 	pkg.Symbols.Types[ud.Name] = ud
 }
 
-func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *Package) {
+func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 	fn := c.buildFunc(f)
 	if fn.Receiver != "" {
 		// Type-attached method — registered in main symtab only.
@@ -130,18 +131,18 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *Package) {
 	}
 }
 
-func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *Package) {
-	irComp := &Component{
-		AST:  comp,
-		Name: comp.Name,
-		Body: &comp.Body,
-		Pos:  comp.Pos,
+func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
+	irComp := &ir.Component{
+		AST:     comp,
+		Name:    comp.Name,
+		ASTBody: &comp.Body,
+		Pos:     comp.Pos,
 	}
 
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			prop := &Prop{
+			prop := &ir.Prop{
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
 				Default:       pd.Default,
@@ -149,7 +150,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *Package)
 			}
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
-			evt := &EventDecl{
+			evt := &ir.EventDecl{
 				Name: pd.Name,
 				Type: c.resolveType(pd.Type),
 			}

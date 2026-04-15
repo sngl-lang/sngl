@@ -6,7 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Translator also implements codegen.ExprTranslator.
@@ -27,30 +27,30 @@ func (t *Translator) Literal(e ast.Expr) string {
 	return `""`
 }
 
-func (t *Translator) TypeName(typ *checker.Type) string {
+func (t *Translator) TypeName(typ *ir.Type) string {
 	if typ == nil {
 		return "any"
 	}
 	switch typ.Kind {
-	case checker.TypeInt, checker.TypeFloat:
+	case ir.TypeInt, ir.TypeFloat:
 		return "number"
-	case checker.TypeBool:
+	case ir.TypeBool:
 		return "boolean"
-	case checker.TypeString:
+	case ir.TypeString:
 		return "string"
-	case checker.TypeList:
+	case ir.TypeList:
 		return "Array"
-	case checker.TypeOption:
+	case ir.TypeOption:
 		if len(typ.Elems) > 0 {
 			return t.TypeName(typ.Elems[0])
 		}
 		return "any"
-	case checker.TypeStruct:
+	case ir.TypeStruct:
 		if typ.Decl != nil {
 			return typ.Decl.SymName()
 		}
 		return "Object"
-	case checker.TypeEnum:
+	case ir.TypeEnum:
 		if typ.Decl != nil {
 			return typ.Decl.SymName()
 		}
@@ -313,10 +313,10 @@ func mutationTargetV2(e ast.Expr, ctx *codegen.ExprCtx) string {
 // Uses TypeMap when available, falls back to syntactic heuristic.
 func isIntDiv(n *ast.BinaryExpr, ctx *codegen.ExprCtx) bool {
 	if t := ctx.TypeOf(n); t != nil {
-		return t.Kind == checker.TypeInt
+		return t.Kind == ir.TypeInt
 	}
 	if t := ctx.TypeOf(n.Left); t != nil {
-		return t.Kind == checker.TypeInt
+		return t.Kind == ir.TypeInt
 	}
 	// Fallback to syntactic heuristic when TypeMap unavailable
 	return isIntNode(n.Left) && isIntNode(n.Right)

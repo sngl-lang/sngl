@@ -6,8 +6,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
@@ -29,13 +29,13 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Android (Jetpack Compose).
 type Generator struct{}
 
-func (g *Generator) Platform() string                         { return "android" }
-func (g *Generator) Identifier() string                       { return "android" }
-func (g *Generator) SupportedLangs() []string                 { return []string{"kotlin", "go"} }
-func (g *Generator) PreviewCSS() string                       { return previewCSS }
-func (g *Generator) Package() []*ast.Document                 { return pkgDocs }
-func (g *Generator) Resolve(identifier string) checker.Symbol { return nil }
-func (g *Generator) IsLanguageSupported(l checker.Language) bool {
+func (g *Generator) Platform() string                    { return "android" }
+func (g *Generator) Identifier() string                  { return "android" }
+func (g *Generator) SupportedLangs() []string            { return []string{"kotlin", "go"} }
+func (g *Generator) PreviewCSS() string                  { return previewCSS }
+func (g *Generator) Package() []*ast.Document            { return pkgDocs }
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 	id := l.Identifier()
 	return id == "kotlin" || id == "go"
 }

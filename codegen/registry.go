@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 var (
@@ -37,10 +37,10 @@ func RegisterPlatform(p PlatformGenerator) {
 }
 
 // CollectLanguages returns all registered languages as checker.Language slices.
-func CollectLanguages() []checker.Language {
+func CollectLanguages() []ir.Language {
 	langMu.RLock()
 	defer langMu.RUnlock()
-	out := make([]checker.Language, 0, len(langs))
+	out := make([]ir.Language, 0, len(langs))
 	for _, l := range langs {
 		out = append(out, l)
 	}
@@ -48,10 +48,10 @@ func CollectLanguages() []checker.Language {
 }
 
 // CollectPlatforms returns all registered platforms as checker.Platform slices.
-func CollectPlatforms() []checker.Platform {
+func CollectPlatforms() []ir.Platform {
 	platMu.RLock()
 	defer platMu.RUnlock()
-	out := make([]checker.Platform, 0, len(platforms))
+	out := make([]ir.Platform, 0, len(platforms))
 	for _, p := range platforms {
 		out = append(out, p)
 	}

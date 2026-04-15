@@ -6,8 +6,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
@@ -29,12 +29,12 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Bubbletea.
 type Generator struct{}
 
-func (g *Generator) Platform() string                            { return "bubbletea" }
-func (g *Generator) Identifier() string                          { return "bubbletea" }
-func (g *Generator) SupportedLangs() []string                    { return []string{"go"} }
-func (g *Generator) Package() []*ast.Document                    { return pkgDocs }
-func (g *Generator) Resolve(identifier string) checker.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l checker.Language) bool { return l.Identifier() == "go" }
+func (g *Generator) Platform() string                       { return "bubbletea" }
+func (g *Generator) Identifier() string                     { return "bubbletea" }
+func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
+func (g *Generator) Package() []*ast.Document               { return pkgDocs }
+func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "go" }
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 

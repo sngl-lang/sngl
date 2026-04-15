@@ -4,7 +4,7 @@ import (
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // NameKind classifies what an identifier resolves to.
@@ -26,16 +26,16 @@ const (
 // ExprCtx provides typed context for expression translation.
 // It wraps the checker's Package and replaces ExprScope.
 type ExprCtx struct {
-	Pkg       *checker.Package
-	Component *checker.Component // current component (nil for top-level)
-	Locals    map[string]bool    // for-loop vars, lambda params
-	Renames   map[string]string  // original → unique name (component inlining)
-	EventVar  string             // what "event" maps to (e.g., "e.target")
-	Helpers   map[string]bool    // helper functions needed (populated during codegen)
+	Pkg       *ir.Package
+	Component *ir.Component     // current component (nil for top-level)
+	Locals    map[string]bool   // for-loop vars, lambda params
+	Renames   map[string]string // original → unique name (component inlining)
+	EventVar  string            // what "event" maps to (e.g., "e.target")
+	Helpers   map[string]bool   // helper functions needed (populated during codegen)
 }
 
 // NewExprCtx creates an ExprCtx for a package.
-func NewExprCtx(pkg *checker.Package) *ExprCtx {
+func NewExprCtx(pkg *ir.Package) *ExprCtx {
 	return &ExprCtx{
 		Pkg:     pkg,
 		Locals:  make(map[string]bool),
@@ -45,14 +45,14 @@ func NewExprCtx(pkg *checker.Package) *ExprCtx {
 }
 
 // ForComponent returns a new ExprCtx scoped to a component.
-func (ctx *ExprCtx) ForComponent(comp *checker.Component) *ExprCtx {
+func (ctx *ExprCtx) ForComponent(comp *ir.Component) *ExprCtx {
 	c := ctx.Clone()
 	c.Component = comp
 	return c
 }
 
 // Resolve determines what a name refers to in the current scope.
-func (ctx *ExprCtx) Resolve(name string) (checker.Symbol, NameKind) {
+func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	// Locals and renames first (innermost scope).
 	if ctx.Locals[name] {
 		return nil, NameLocal
@@ -135,7 +135,7 @@ func (ctx *ExprCtx) Resolve(name string) (checker.Symbol, NameKind) {
 }
 
 // TypeOf returns the resolved type for an expression from the TypeMap.
-func (ctx *ExprCtx) TypeOf(e ast.Expr) *checker.Type {
+func (ctx *ExprCtx) TypeOf(e ast.Expr) *ir.Type {
 	if ctx.Pkg == nil || ctx.Pkg.TypeMap == nil {
 		return nil
 	}
@@ -178,6 +178,6 @@ func (ctx *ExprCtx) WithEvent(eventVar string) *ExprCtx {
 
 // IsComputed reports whether a function is a computed field
 // (zero-param, expression body, non-test).
-func IsComputed(f *checker.Func) bool {
+func IsComputed(f *ir.Func) bool {
 	return f.Body != nil && len(f.Params) == 0 && !f.IsTest
 }

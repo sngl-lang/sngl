@@ -11,20 +11,21 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func hasErrors(diags []checker.Diagnostic) bool {
+func hasErrors(diags []ir.Diagnostic) bool {
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			return true
 		}
 	}
 	return false
 }
 
-func firstError(diags []checker.Diagnostic) string {
+func firstError(diags []ir.Diagnostic) string {
 	for _, d := range diags {
-		if d.Severity == checker.Error {
+		if d.Severity == ir.Error {
 			return d.Error()
 		}
 	}
