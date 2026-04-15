@@ -20,6 +20,8 @@ type TargetExpr interface {
 
 // --- Enums ---
 
+//go:generate go tool stringer -type=LiteralKind -trimprefix Literal
+
 // LiteralKind identifies the type of a literal value.
 type LiteralKind int
 
@@ -35,6 +37,8 @@ const (
 	LiteralUnit
 )
 
+//go:generate go tool stringer -type=StringStyle -linecomment
+
 // StringStyle identifies the quoting style of a string literal.
 type StringStyle int
 
@@ -44,32 +48,38 @@ const (
 	StyleRaw                       // `...`
 )
 
+//go:generate go tool stringer -type=BinaryOp -linecomment
+
 // BinaryOp identifies a binary operator.
 type BinaryOp int
 
 const (
-	BinAdd BinaryOp = iota
-	BinSub
-	BinMul
-	BinDiv
-	BinMod
-	BinEq
-	BinNeq
-	BinLt
-	BinLte
-	BinGt
-	BinGte
-	BinAnd
-	BinOr
+	BinAdd BinaryOp = iota // +
+	BinSub                 // -
+	BinMul                 // *
+	BinDiv                 // /
+	BinMod                 // %
+	BinEq                  // ==
+	BinNeq                 // !=
+	BinLt                  // <
+	BinLte                 // <=
+	BinGt                  // >
+	BinGte                 // >=
+	BinAnd                 // &&
+	BinOr                  // ||
 )
+
+//go:generate go tool stringer -type=UnaryOp -linecomment
 
 // UnaryOp identifies a unary operator.
 type UnaryOp int
 
 const (
-	UnaryNot UnaryOp = iota
-	UnaryNeg
+	UnaryNot UnaryOp = iota // !
+	UnaryNeg                // -
 )
+
+//go:generate go tool stringer -type=AssignOp -linecomment
 
 // AssignOp identifies an assignment operator.
 type AssignOp int
@@ -83,13 +93,15 @@ const (
 	AssignMod                 // %=
 )
 
+//go:generate go tool stringer -type=SelectKind -linecomment
+
 // SelectKind identifies the kind of member access in a SelectExpr.
 type SelectKind int
 
 const (
-	SelectField   SelectKind = iota // .field
-	SelectEvent                     // .@event
-	SelectElemRef                   // .#ref or #ref
+	SelectField   SelectKind = iota // field
+	SelectEvent                     // @event
+	SelectElemRef                   // #ref
 )
 
 // --- Type expressions ---
