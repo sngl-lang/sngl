@@ -108,9 +108,9 @@ const (
 
 // NamedType is a type reference: int, pkg.Type, List<int>.
 type NamedType struct {
-	Pos     Pos
-	Name    string   // type name
-	Package string   // qualifier in pkg.Type (empty if unqualified)
+	Pos      Pos
+	Name     string     // type name
+	Package  string     // qualifier in pkg.Type (empty if unqualified)
 	TypeArgs []TypeExpr // generic arguments: List<int>, Map<string, int> (nil if not generic)
 }
 

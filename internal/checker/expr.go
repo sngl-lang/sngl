@@ -240,8 +240,8 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) *ir.Type {
 
 func (c *checker) inferTernary(x *ast.TernaryExpr) *ir.Type {
 	c.checkExpr(x.Cond)
-	then := c.checkExpr(x.Then)
-	c.checkExpr(x.Else)
+	then := c.checkExprExpecting(x.Then, c.expected)
+	c.checkExprExpecting(x.Else, c.expected)
 	return then
 }
 
@@ -484,7 +484,11 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *ir.Type {
 			c.checkExpr(f.Value)
 			continue
 		}
-		c.checkExpr(f.Value)
+		var expected *ir.Type
+		if sd != nil {
+			expected = structFieldType(sd, f.Name)
+		}
+		c.checkExprExpecting(f.Value, expected)
 		// Validate field exists on struct.
 		if sd != nil && !structHasField(sd, f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
@@ -506,13 +510,26 @@ func structHasField(sd *ir.StructDef, name string) bool {
 	return false
 }
 
+func structFieldType(sd *ir.StructDef, name string) *ir.Type {
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f.Type
+		}
+	}
+	return nil
+}
+
 func (c *checker) inferListLit(x *ast.ListExpr) *ir.Type {
 	if len(x.Elements) == 0 {
 		return ListOf(TypDyn)
 	}
-	elem := c.checkExpr(x.Elements[0])
+	var elemExpected *ir.Type
+	if c.expected != nil && c.expected.Kind == ir.TypeList && len(c.expected.Elems) > 0 {
+		elemExpected = c.expected.Elems[0]
+	}
+	elem := c.checkExprExpecting(x.Elements[0], elemExpected)
 	for _, e := range x.Elements[1:] {
-		c.checkExpr(e)
+		c.checkExprExpecting(e, elemExpected)
 	}
 	return ListOf(elem)
 }
@@ -535,7 +552,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *ir.Type {
 	prevReturn := c.returnType
 	c.returnType = fn.Return
 	if fn.Body != nil {
-		c.checkExpr(fn.Body)
+		c.checkExprExpecting(fn.Body, fn.Return)
 	}
 	if fn.ASTBlock != nil {
 		c.checkBlock(fn.ASTBlock)
