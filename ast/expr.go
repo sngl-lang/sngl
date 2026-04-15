@@ -96,7 +96,7 @@ const (
 
 // NamedType is a type reference: int, pkg.Type, List<int>.
 type NamedType struct {
-	Pos
+	Pos     Pos
 	Name    string   // type name
 	Package string   // qualifier in pkg.Type (empty if unqualified)
 	TypeArg TypeExpr // generic argument in List<int> (nil if not generic)
@@ -104,7 +104,7 @@ type NamedType struct {
 
 // FuncType is a function type: func(int, string) -> bool.
 type FuncType struct {
-	Pos
+	Pos    Pos
 	Params []TypeExpr // parameter types
 	Return TypeExpr   // nil for void
 }
@@ -115,33 +115,33 @@ type FuncType struct {
 
 // LiteralExpr is a literal value: int, float, string, bool, nil, color, unit.
 type LiteralExpr struct {
-	Pos
+	Pos  Pos
 	Kind LiteralKind
 	Raw  string // original source text
 }
 
 // UnitLiteral is the value stored in a LiteralExpr with Kind == LiteralUnit.
 type UnitLiteral struct {
-	Pos
+	Pos Pos
 	LiteralExpr
 	Suffix string // "px", "ms", "em"
 }
 
 // IdentExpr is an identifier reference.
 type IdentExpr struct {
-	Pos
+	Pos  Pos
 	Name string
 }
 
 // EventRefExpr references an event by name: @click, @change.
 type EventRefExpr struct {
-	Pos
+	Pos  Pos
 	Name string
 }
 
 // BinaryExpr is a binary operation.
 type BinaryExpr struct {
-	Pos
+	Pos   Pos
 	Op    BinaryOp
 	Left  Expr
 	Right Expr
@@ -149,14 +149,14 @@ type BinaryExpr struct {
 
 // UnaryExpr is a unary operation.
 type UnaryExpr struct {
-	Pos
+	Pos     Pos
 	Op      UnaryOp
 	Operand Expr
 }
 
 // TernaryExpr is a ternary conditional: cond ? then : else.
 type TernaryExpr struct {
-	Pos
+	Pos  Pos
 	Cond Expr
 	Then Expr
 	Else Expr
@@ -164,7 +164,7 @@ type TernaryExpr struct {
 
 // SelectExpr is member access: .field, .@event, .#ref, #ref.
 type SelectExpr struct {
-	Pos
+	Pos          Pos
 	Operand      Expr
 	Field        string
 	Kind         SelectKind
@@ -173,7 +173,7 @@ type SelectExpr struct {
 
 // IndexExpr is index access: operand[index].
 type IndexExpr struct {
-	Pos
+	Pos          Pos
 	Operand      Expr
 	Index        Expr
 	ResolvedType string // populated by checker
@@ -182,7 +182,7 @@ type IndexExpr struct {
 // CallExpr is a call expression: callee(args...).
 // Func is any expression — IdentExpr for plain calls, SelectExpr for method calls.
 type CallExpr struct {
-	Pos
+	Pos  Pos
 	Func Expr
 	Args ArgList
 }
@@ -196,7 +196,7 @@ type StructFieldLit struct {
 
 // StructExpr is a struct literal: Name{field = value, ...expr} or pkg.Name{...}.
 type StructExpr struct {
-	Pos
+	Pos       Pos
 	Package   string // qualifier in pkg.Type (empty if unqualified)
 	Name      string
 	Fields    []StructFieldLit
@@ -205,35 +205,35 @@ type StructExpr struct {
 
 // ListExpr is a list literal: [a, b, ...c].
 type ListExpr struct {
-	Pos
+	Pos         Pos
 	Elements    []Expr
 	IsMultiline bool
 }
 
 // SpreadExpr represents a spread operation: ...expr.
 type SpreadExpr struct {
-	Pos
+	Pos     Pos
 	Operand Expr
 }
 
 // InterpolationExpr is a string with interpolated expressions.
 // Parts alternate between *LiteralExpr (string) and expression nodes.
 type InterpolationExpr struct {
-	Pos
+	Pos   Pos
 	Parts []Expr
 	Style StringStyle
 }
 
 // ElementRefExpr references a visual element by its #id.
 type ElementRefExpr struct {
-	Pos
+	Pos  Pos
 	Name string
 }
 
 // LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.
 // Exactly one of Body or Block is set.
 type LambdaExpr struct {
-	Pos
+	Pos        Pos
 	Params     ParamList
 	ReturnType TypeExpr
 	Body       Expr      // expression form (=> expr)
@@ -242,7 +242,7 @@ type LambdaExpr struct {
 
 // ParenExpr preserves explicit parentheses: (expr).
 type ParenExpr struct {
-	Pos
+	Pos   Pos
 	Inner Expr
 }
 
@@ -255,7 +255,7 @@ type Stmt interface {
 
 // AssignStmt is an assignment: target op= value.
 type AssignStmt struct {
-	Pos
+	Pos    Pos
 	Target TargetExpr
 	Op     AssignOp
 	Value  Expr
@@ -263,27 +263,27 @@ type AssignStmt struct {
 
 // ToggleStmt is a boolean toggle: target!!.
 type ToggleStmt struct {
-	Pos
+	Pos    Pos
 	Target TargetExpr
 }
 
 // EmitStmt is an event emission: @name(args...).
 type EmitStmt struct {
-	Pos
+	Pos  Pos
 	Name string
 	Args ArgList
 }
 
 // StmtBlock is a braced list of statements: { stmt; stmt }.
 type StmtBlock struct {
-	Pos
+	Pos         Pos
 	IsMultiline bool
 	Stmts       []Stmt
 }
 
 // ArgList is an ordered list of arguments (positional, named, binding, event).
 type ArgList struct {
-	Pos
+	Pos         Pos
 	IsMultiline bool
 	Args        []ArgOrEventHandler
 }
@@ -306,7 +306,7 @@ func (x StmtBlock) IsDefined() bool { return x.Pos.IsSet() }
 
 // VarStmt is a local variable declaration inside a function body.
 type VarStmt struct {
-	Pos
+	Pos  Pos
 	Name string
 	Type TypeExpr
 	Init Expr
@@ -314,13 +314,13 @@ type VarStmt struct {
 
 // ReturnStmt is a return statement in a block function.
 type ReturnStmt struct {
-	Pos
+	Pos   Pos
 	Value Expr // nil for bare return
 }
 
 // CallStmt wraps a CallExpr used as a statement.
 type CallStmt struct {
-	Pos
+	Pos  Pos
 	Call *CallExpr
 }
 

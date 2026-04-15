@@ -21,8 +21,6 @@ var dumpSpew = &spew.ConfigState{
 	SortKeys:                true,
 	DisablePointerAddresses: true,
 	DisableCapacities:       true,
-	DisableMethods:          true,
-	DisablePointerMethods:   true,
 }
 
 type dumpFormat string

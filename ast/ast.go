@@ -108,14 +108,14 @@ type VarSpec struct {
 
 // ConstDecl declares one or more constants.
 type ConstDecl struct {
-	Pos
+	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
 }
 
 // VarDecl declares one or more variables.
 type VarDecl struct {
-	Pos
+	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
 }
@@ -133,7 +133,7 @@ type Import struct {
 
 // Param is a parameter in a function, component, or lambda definition.
 type Param struct {
-	Pos
+	Pos           Pos
 	Name          string
 	Type          TypeExpr
 	Default       Expr
@@ -142,7 +142,7 @@ type Param struct {
 
 // ParamList is an ordered list of parameters.
 type ParamList struct {
-	Pos
+	Pos         Pos
 	IsMultiline bool
 	Params      []Param
 }
@@ -196,7 +196,7 @@ type ComponentDecl struct {
 
 // PropList is the parameter list of a component declaration.
 type PropList struct {
-	Pos
+	Pos         Pos
 	IsMultiline bool
 	Props       []ParamOrEventDecl
 }
@@ -218,7 +218,7 @@ type EventDecl struct {
 
 // EventHandler is an event handler: @name[(params)] { body }.
 type EventHandler struct {
-	Pos
+	Pos    Pos
 	Name   string
 	Params ParamList
 	Body   StmtBlock
@@ -228,7 +228,7 @@ type EventHandler struct {
 
 // VisualNode is a visual element instantiation with optional args and body.
 type VisualNode struct {
-	Pos
+	Pos    Pos
 	Target TargetExpr
 	Block  StmtBlock
 	Args   ArgList
