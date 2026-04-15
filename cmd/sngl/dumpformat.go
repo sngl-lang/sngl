@@ -18,7 +18,6 @@ import (
 
 var dumpSpew = &spew.ConfigState{
 	Indent:                  " ",
-	SortKeys:                true,
 	DisablePointerAddresses: true,
 	DisableCapacities:       true,
 }

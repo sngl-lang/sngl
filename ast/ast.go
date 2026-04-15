@@ -230,10 +230,9 @@ type EventHandler struct {
 type VisualNode struct {
 	Pos    Pos
 	Target TargetExpr
-	Block  StmtBlock
 	Args   ArgList
 	ID     string // element ID from #id syntax
-	Ref    *Expr
+	Block  StmtBlock
 }
 
 // --- Control flow ---

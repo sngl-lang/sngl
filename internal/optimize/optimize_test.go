@@ -549,7 +549,6 @@ func TestRefExprFolded(t *testing.T) {
 		App: &ast.App{
 			Children: []*ast.VisualNode{{
 				Component: "div",
-				Ref:       &refExpr,
 			}},
 		},
 	}

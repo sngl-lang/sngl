@@ -990,7 +990,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Args:      vn.Args,
 		Children:  children,
 		ID:        vn.ID,
-		Ref:       vn.Ref,
 	}
 }
 
