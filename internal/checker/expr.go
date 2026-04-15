@@ -1026,7 +1026,21 @@ func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *ir.Component) {
 				}
 			}
 		case ast.EventHandler:
+			c.pushScope()
+			for _, p := range arg.Params.Params {
+				typ := c.resolveType(p.Type)
+				if typ.Kind == ir.TypeDyn && comp != nil {
+					if et := componentEventType(comp, arg.Name); et != nil {
+						typ = et
+					}
+				}
+				c.scope.Declare(&ir.Param{
+					Name: p.Name,
+					Type: typ,
+				})
+			}
 			c.checkBlock(&arg.Body)
+			c.popScope()
 		}
 	}
 }
@@ -1036,6 +1050,16 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 	for _, p := range comp.Props {
 		if p.Name == name {
 			return p.Type
+		}
+	}
+	return nil
+}
+
+// componentEventType returns the payload type of a named event on a component, or nil.
+func componentEventType(comp *ir.Component, name string) *ir.Type {
+	for _, e := range comp.Events {
+		if e.Name == name {
+			return e.Type
 		}
 	}
 	return nil
@@ -1086,9 +1110,15 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *ir.Compone
 		case ast.EventHandler:
 			c.pushScope()
 			for _, p := range arg.Params.Params {
+				typ := c.resolveType(p.Type)
+				if typ.Kind == ir.TypeDyn {
+					if et := componentEventType(comp, arg.Name); et != nil {
+						typ = et
+					}
+				}
 				c.scope.Declare(&ir.Param{
 					Name: p.Name,
-					Type: c.resolveType(p.Type),
+					Type: typ,
 				})
 			}
 			c.checkBlock(&arg.Body)

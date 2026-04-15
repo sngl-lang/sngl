@@ -84,8 +84,12 @@ struct Style {
 
 struct ClickEvent {}
 struct LongPressEvent {}
-struct InputEvent {}
-struct ChangeEvent {}
+struct InputEvent {
+    value string
+}
+struct ChangeEvent {
+    value string
+}
 struct FocusEvent {}
 struct SubmitEvent {}
 struct RefreshEvent {}

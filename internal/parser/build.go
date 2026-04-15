@@ -966,6 +966,10 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 		}
 		if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 			block := b.buildStmtBlock(it.enter())
+			// Preserve EventRefExpr so caller can convert to EventHandler.
+			if _, ok := base.(*ast.EventRefExpr); ok {
+				return base, &block, &call.Args
+			}
 			return call, &block, nil
 		}
 		return call, nil, nil
