@@ -522,7 +522,6 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *ir.Type {
 		Params: c.buildParams(x.Params),
 		Return: c.resolveType(x.ReturnType),
 		Body:   x.Body,
-		Pos:    x.Pos,
 	}
 	if x.Block.IsDefined() {
 		fn.ASTBlock = &x.Block
@@ -639,7 +638,6 @@ func (c *checker) checkArgs(args ast.ArgList, sig *ir.FuncSig) {
 				c.scope.Declare(&ir.Param{
 					Name: p.Name,
 					Type: c.resolveType(p.Type),
-					Pos:  p.Pos,
 				})
 			}
 			c.checkBlock(&arg.Body)
@@ -723,13 +721,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		return &ir.Assign{AST: x, Pos: x.Pos}
+		return &ir.Assign{AST: x}
 	case *ast.ToggleStmt:
 		c.checkExpr(x.Target)
-		return &ir.Toggle{AST: x, Pos: x.Pos}
+		return &ir.Toggle{AST: x}
 	case *ast.EmitStmt:
 		c.checkArgs(x.Args, nil)
-		return &ir.Emit{AST: x, Pos: x.Pos}
+		return &ir.Emit{AST: x}
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		if x.Init != nil {
@@ -742,9 +740,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
-			Pos:  x.Pos,
 		})
-		return &ir.LocalVar{AST: x, Type: typ, Pos: x.Pos}
+		return &ir.LocalVar{AST: x, Type: typ}
 	case *ast.ReturnStmt:
 		if x.Value != nil {
 			valType := c.checkExprExpecting(x.Value, c.returnType)
@@ -752,7 +749,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
 			}
 		}
-		return &ir.Return{AST: x, Pos: x.Pos}
+		return &ir.Return{AST: x}
 	case *ast.CallStmt:
 		c.checkExpr(x.Call)
 		return c.resolveCallStmt(x)
@@ -766,7 +763,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if x.Else.IsDefined() {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
-		return &ir.If{AST: x, Body: body, Else: elseBody, Pos: x.Pos}
+		return &ir.If{AST: x, Body: body, Else: elseBody}
 	case *ast.ForStmt:
 		iter := c.checkExpr(x.Iter)
 		if iter.Kind != ir.TypeDyn && iter.Kind != ir.TypeList {
@@ -780,11 +777,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		if x.Value != "" {
 			// for key, value = iter: key is index, value is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt, Pos: x.Pos})
-			c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType, Pos: x.Pos})
+			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
+			c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
 		} else {
 			// for item = iter: item is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType, Pos: x.Pos})
+			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
 		}
 		body := c.checkBlockIR(&x.Body)
 		var elseBody []ir.Stmt
@@ -792,7 +789,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &ir.For{AST: x, ElemType: elemType, Body: body, Else: elseBody, Pos: x.Pos}
+		return &ir.For{AST: x, ElemType: elemType, Body: body, Else: elseBody}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
@@ -892,7 +889,6 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt) ir.Stmt {
 					Name:      id.Name,
 					Component: comp,
 					Args:      x.Call.Args,
-					Pos:       x.Pos,
 				}
 			}
 		}
@@ -906,7 +902,7 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt) ir.Stmt {
 			}
 		}
 	}
-	return &ir.CallStmt{AST: x, Call: x.Call, Func: fn, Pos: x.Pos}
+	return &ir.CallStmt{AST: x, Call: x.Call, Func: fn}
 }
 
 // checkPlatformStmtIR type-checks a platform statement and returns IR.
@@ -926,7 +922,7 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 	}
 
 	body := c.checkBlockIR(&s.Body)
-	return &ir.PlatformFilter{AST: s, Body: body, Pos: s.Pos}
+	return &ir.PlatformFilter{AST: s, Body: body}
 }
 
 // checkVisualNodeIR validates a visual node and returns the appropriate IR statement.
@@ -958,7 +954,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		return nil
 	case "slot":
 		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children, Pos: vn.Pos}
+		return &ir.SlotInst{AST: vn, Children: children}
 	}
 
 	// Look up component.
@@ -975,7 +971,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			if fn, ok := sym.(*ir.Func); ok {
 				// This is a function call, not a visual node.
 				c.checkVisualNodeArgs(vn.Args, nil)
-				return &ir.CallStmt{AST: vn, Func: fn, Pos: vn.Pos}
+				return &ir.CallStmt{AST: vn, Func: fn}
 			}
 		}
 	}
@@ -995,7 +991,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Children:  children,
 		ID:        vn.ID,
 		Ref:       vn.Ref,
-		Pos:       vn.Pos,
 	}
 }
 
@@ -1078,7 +1073,6 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *ir.Compone
 				c.scope.Declare(&ir.Param{
 					Name: p.Name,
 					Type: c.resolveType(p.Type),
-					Pos:  p.Pos,
 				})
 			}
 			c.checkBlock(&arg.Body)

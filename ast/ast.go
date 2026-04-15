@@ -260,7 +260,7 @@ type ForStmt struct {
 // Conditional on the target platform; also injects the platform's package as a fallback scope.
 type PlatformStmt struct {
 	Pos      Pos
-	Platform string    // "html", "bubbletea", etc.
+	Platform string // "html", "bubbletea", etc.
 	Body     StmtBlock
 }
 

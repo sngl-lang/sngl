@@ -140,16 +140,20 @@ func mergeInto(dst, src *ast.Document) {
 // pairs and that the platform supports the language.
 func validateOutputs(pkg *ir.Package) error {
 	for _, out := range pkg.Outputs {
+		var pos ast.Pos
+		if out.AST != nil {
+			pos = out.AST.Pos
+		}
 		lang := codegen.LookupLang(out.Lang)
 		if lang == nil {
-			return fmt.Errorf("%s: unknown language %q (available: %v)", out.Pos, out.Lang, codegen.Langs())
+			return fmt.Errorf("%s: unknown language %q (available: %v)", pos, out.Lang, codegen.Langs())
 		}
 		plat := codegen.LookupPlatform(out.Platform)
 		if plat == nil {
-			return fmt.Errorf("%s: unknown platform %q (available: %v)", out.Pos, out.Platform, codegen.Platforms())
+			return fmt.Errorf("%s: unknown platform %q (available: %v)", pos, out.Platform, codegen.Platforms())
 		}
 		if !slices.Contains(plat.SupportedLangs(), out.Lang) {
-			return fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", out.Pos, out.Platform, out.Lang, plat.SupportedLangs())
+			return fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", pos, out.Platform, out.Lang, plat.SupportedLangs())
 		}
 	}
 	return nil

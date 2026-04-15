@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"modernc.org/scanner"
 )
 
 // Parse parses SNGL v2 source into an AST Document.
@@ -20,13 +21,35 @@ func Parse(filename string, src []byte) (*ast.Document, error) {
 	p := &Parser{}
 	tree, parseErr := p.Parse(filename, stream)
 	if parseErr != nil {
-		errs = append(errs, parseErr)
+		errs = append(errs, remapErrors(parseErr, filtered))
 	}
 	if tree == nil {
 		return &ast.Document{}, errors.Join(errs...)
 	}
 
+
 	b := newBuilder(filtered, comments)
 	doc := b.buildDocument(body(tree))
 	return doc, errors.Join(errs...)
+}
+
+// remapErrors translates byte-stream positions from the egg parser back to
+// source file line:column using the filtered token array.
+func remapErrors(err error, filtered []Token) error {
+	errList, ok := err.(scanner.ErrList)
+	if !ok {
+		return err
+	}
+	for i := range errList {
+		// Each token is 2 bytes in the stream ([sentinel, 0x20]).
+		// Position.Column is 1-based, so token index = (col-1)/2.
+		idx := (errList[i].Pos.Column - 1) / 2
+		if idx >= 0 && idx < len(filtered) {
+			tok := filtered[idx]
+			errList[i].Pos.Line = tok.Line
+			errList[i].Pos.Column = tok.Column
+			errList[i].Pos.Offset = 0
+		}
+	}
+	return errList
 }

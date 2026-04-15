@@ -350,7 +350,7 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, stmts []ast.Stmt) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s\n\n", comp.Name))
 
-	doc := checker.DeclDoc(stmts, comp.Pos.Line)
+	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
@@ -393,7 +393,7 @@ func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) strin
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# struct %s\n\n", s.Name))
 
-	doc := checker.DeclDoc(stmts, s.Pos.Line)
+	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
@@ -423,7 +423,7 @@ func renderEnumDoc(e *ast.EnumDef, stmts []ast.Stmt) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# enum %s\n\n", e.Name))
 
-	doc := checker.DeclDoc(stmts, e.Pos.Line)
+	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}

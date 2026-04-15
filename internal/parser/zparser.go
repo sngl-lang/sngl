@@ -3872,7 +3872,7 @@ state3:
 
 // ListBody grammar:
 //
-//	ListBody = [ ListElem { comma ListElem } ] .
+//	ListBody = [ ListElem { comma ListElem } [ comma ] ] .
 //
 //	State 0
 //		Accept
@@ -3883,6 +3883,7 @@ state3:
 //		on  comma
 //			shift and goto state 2
 //	State 2
+//		Accept
 //		on  at, bang, color, elem_ref, ellipsis, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ListElem and goto state 1
 //
@@ -3907,7 +3908,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 59
+	accept, errorSet = true, 59
 	switch Symbol(p.tok.Ch) {
 	case at, bang, color, elem_ref, ellipsis, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		r = p.add(r, p.ListElem())

@@ -181,7 +181,6 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		AST:    s,
 		Name:   s.Name,
 		Fields: fields,
-		Pos:    s.Pos,
 	}
 }
 
@@ -198,7 +197,6 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		AST:     e,
 		Name:    e.Name,
 		Members: members,
-		Pos:     e.Pos,
 	}
 }
 
@@ -221,7 +219,6 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 		AST:      u,
 		Name:     u.Name,
 		Suffixes: suffixes,
-		Pos:      u.Pos,
 	}
 }
 
@@ -295,7 +292,6 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			Name:       p.Name,
 			Type:       c.resolveType(p.Type),
 			HasDefault: p.Default != nil,
-			Pos:        p.Pos,
 		}
 	}
 	return params
@@ -316,7 +312,6 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Return:     c.resolveType(f.ReturnType),
 		Body:       f.Body,
 		IsTest:     f.IsTest(),
-		Pos:        f.Pos,
 	}
 	c.typeParams = prevTypeParams
 	if f.Block.IsDefined() {

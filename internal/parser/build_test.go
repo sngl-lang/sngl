@@ -1,10 +1,11 @@
-package parser
+package parser_test
 
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ast"
+	. "git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func mustParse(t *testing.T, src string) *ast.Document {
@@ -73,7 +74,8 @@ func TestParseTernary(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected TernaryExpr, got %T", cd.Specs[0].Default)
 	}
-	if identName(tern.Cond) != "a" {
+
+	if id, ok := tern.Cond.(*ast.IdentExpr); !ok || id.Name != "a" {
 		t.Errorf("expected cond=a, got %v", tern.Cond)
 	}
 }

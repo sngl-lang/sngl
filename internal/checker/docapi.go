@@ -132,7 +132,7 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 
 	for _, comp := range pkg.Components {
 		schema := &ComponentSchema{
-			Doc:      DeclDoc(allStmts, comp.Pos.Line),
+			Doc:      DeclDoc(allStmts),
 			Props:    make(map[string]PropSchema),
 			Events:   make(map[string]string),
 			Children: comp.ChildrenType,
@@ -238,19 +238,19 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 		case *ast.ComponentDecl:
 			pd.Components = append(pd.Components, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+				Doc:  DeclDoc(stmts[:i]),
 				Decl: s,
 			})
 		case *ast.StructDef:
 			pd.Structs = append(pd.Structs, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+				Doc:  DeclDoc(stmts[:i]),
 				Decl: s,
 			})
 		case *ast.EnumDef:
 			pd.Enums = append(pd.Enums, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+				Doc:  DeclDoc(stmts[:i]),
 				Decl: s,
 			})
 		case *ast.ConstDecl:
@@ -258,7 +258,7 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 				for _, name := range spec.Names {
 					pd.Consts = append(pd.Consts, DeclInfo{
 						Name: name,
-						Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+						Doc:  DeclDoc(stmts[:i]),
 						Decl: s,
 					})
 				}
@@ -268,7 +268,7 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 				for _, name := range spec.Names {
 					pd.Data = append(pd.Data, DeclInfo{
 						Name: name,
-						Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+						Doc:  DeclDoc(stmts[:i]),
 						Decl: s,
 					})
 				}
@@ -276,7 +276,7 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 		case *ast.FuncDef:
 			pd.Functions = append(pd.Functions, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i], s.Pos.Line),
+				Doc:  DeclDoc(stmts[:i]),
 				Decl: s,
 			})
 		}
@@ -287,7 +287,7 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // DeclDoc extracts the doc comment text for a declaration at the given line.
 // It searches backward through stmts for consecutive comment lines immediately
 // preceding the declaration.
-func DeclDoc(stmts []ast.Stmt, declLine int) string {
+func DeclDoc(stmts []ast.Stmt) string {
 	// Collect comments immediately preceding declLine.
 	var lines []string
 	for i := len(stmts) - 1; i >= 0; i-- {

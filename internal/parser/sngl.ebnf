@@ -420,7 +420,7 @@ PrimaryExpr =
     | ident [ StructLitBody ]
     .
 
-ListBody = [ ListElem { comma ListElem } ] .
+ListBody = [ ListElem { comma ListElem } [ comma ] ] .
 
 ListElem = ellipsis Expr | Expr .
 

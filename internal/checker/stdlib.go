@@ -136,7 +136,6 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		AST:     comp,
 		Name:    comp.Name,
 		ASTBody: &comp.Body,
-		Pos:     comp.Pos,
 	}
 
 	for _, p := range comp.Props.Props {

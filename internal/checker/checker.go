@@ -178,7 +178,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 	irImport := &ir.Import{
 		AST:   imp,
 		Alias: alias,
-		Pos:   imp.Pos,
 	}
 
 	if scheme != "" && c.cfg.Resolver != nil {
@@ -235,7 +234,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 	ns := &ir.Namespace{
 		Name: alias,
 		Pkg:  irImport.Pkg,
-		Pos:  imp.Pos,
 	}
 	c.scope.Declare(ns)
 }
@@ -288,7 +286,6 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				Name:    name,
 				Type:    typ,
 				IsConst: true,
-				Pos:     decl.Pos,
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.scope.Declare(v)
@@ -430,7 +427,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
-				Pos:  decl.Pos,
 			}
 			// Build event handlers.
 			for i := range spec.Handlers {
@@ -441,7 +437,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 					Func: &ir.Func{
 						Params:   c.buildParams(h.Params),
 						ASTBlock: &h.Body,
-						Pos:      h.Pos,
 					},
 				}
 				v.Handlers = append(v.Handlers, handler)
@@ -469,7 +464,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		AST:     comp,
 		Name:    comp.Name,
 		ASTBody: &comp.Body,
-		Pos:     comp.Pos,
 	}
 
 	// Resolve props and events from PropList.
@@ -509,7 +503,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 						Name:    name,
 						Type:    typ,
 						IsConst: true,
-						Pos:     s.Pos,
 					}
 					irComp.Vars = append(irComp.Vars, v)
 				}
@@ -522,7 +515,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 						AST:  s,
 						Name: name,
 						Type: typ,
-						Pos:  s.Pos,
 					}
 					irComp.Vars = append(irComp.Vars, v)
 				}
@@ -580,7 +572,6 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 		out := &ir.Output{
 			AST:     vn,
 			Options: make(map[string]string),
-			Pos:     vn.Pos,
 		}
 		for _, a := range vn.Args.Args {
 			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
@@ -637,7 +628,6 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 			Lang:     lang,
 			Platform: platform,
 			Options:  make(map[string]string),
-			Pos:      s.Pos,
 		}
 		for _, a := range s.Args.Args {
 			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
@@ -652,7 +642,6 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 		out := &ir.Output{
 			Lang:    lang,
 			Options: make(map[string]string),
-			Pos:     s.Pos,
 		}
 		// Extract platform name from call target.
 		if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
@@ -824,7 +813,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 		AST:     vn,
 		Name:    vn.ID, // window #name
 		ASTBody: &vn.Block,
-		Pos:     vn.Pos,
 	}
 	// Extract name from args if ID not set.
 	if w.Name == "" {
@@ -843,9 +831,7 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 		AST: vn,
 		Handler: &ir.Func{
 			ASTBlock: &vn.Block,
-			Pos:      vn.Pos,
 		},
-		Pos: vn.Pos,
 	}
 }
 
@@ -929,7 +915,13 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 		// Expression-body return type check.
 		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
-			c.error(fn.Pos, "cannot return %s as %s", bodyType, fn.Return)
+			var pos ast.Pos
+			if fn.AST != nil {
+				if p := fn.AST.StmtPos(); p != nil {
+					pos = *p
+				}
+			}
+			c.error(pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
 	}
 	if fn.ASTBlock != nil {
@@ -950,7 +942,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.scope.Declare(&ir.Param{
 			Name: p.Name,
 			Type: p.Type,
-			Pos:  comp.Pos,
 		})
 	}
 
