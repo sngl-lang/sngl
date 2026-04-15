@@ -221,7 +221,7 @@ func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
 		nt := p.Type.Substitute(bindings)
 		if nt != p.Type {
 			changed = true
-			params[i] = &Param{Name: p.Name, Type: nt, HasDefault: p.HasDefault, Pos: p.Pos}
+			params[i] = &Param{Name: p.Name, Type: nt, HasDefault: p.HasDefault}
 		} else {
 			params[i] = p
 		}

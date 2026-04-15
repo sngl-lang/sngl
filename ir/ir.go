@@ -34,12 +34,10 @@ type Import struct {
 	Alias  string        // effective namespace name; only allowed in main file declarations
 	Pkg    *Package      // resolved SNGL package (nil for native)
 	Native *NativeImport // non-nil for scheme imports
-	Pos    ast.Pos
 }
 
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
-func (i *Import) SymPos() ast.Pos { return i.Pos }
 
 // NativeImport holds declarations from a scheme import (go://, ts://, etc.).
 type NativeImport struct {
@@ -65,12 +63,10 @@ type Func struct {
 	IsTest     bool
 	Reads      []*Var // vars read (directly or via called functions)
 	Writes     []*Var // vars mutated (directly or via called functions)
-	Pos        ast.Pos
 }
 
 func (f *Func) SymName() string { return f.Name }
 func (f *Func) SymType() *Type  { return &Type{Kind: TypeFunc, Sig: f.FuncSig()} }
-func (f *Func) SymPos() ast.Pos { return f.Pos }
 
 // FuncSig builds the FuncSig for this function.
 func (f *Func) FuncSig() *FuncSig {
@@ -84,7 +80,6 @@ func (f *Func) FuncSig() *FuncSig {
 
 // VarAccess records a single read or write to a variable.
 type VarAccess struct {
-	Pos   ast.Pos
 	Write bool // true for mutations
 }
 
@@ -96,12 +91,10 @@ type Var struct {
 	IsConst  bool
 	Handlers []*EventHandler
 	Refs     []VarAccess // all access sites
-	Pos      ast.Pos
 }
 
 func (v *Var) SymName() string { return v.Name }
 func (v *Var) SymType() *Type  { return v.Type }
-func (v *Var) SymPos() ast.Pos { return v.Pos }
 
 // Component represents a resolved component declaration.
 type Component struct {
@@ -115,12 +108,10 @@ type Component struct {
 	Timers       []*Timer
 	ASTBody      *ast.StmtBlock // raw AST (kept for formatter and legacy codegen)
 	Body         []Stmt         // type-checked body statements
-	Pos          ast.Pos
 }
 
 func (c *Component) SymName() string { return c.Name }
 func (c *Component) SymType() *Type  { return &Type{Kind: TypeComponent, Decl: c} }
-func (c *Component) SymPos() ast.Pos { return c.Pos }
 
 // Prop is a resolved component property.
 type Prop struct {
@@ -152,20 +143,17 @@ type Window struct {
 	Funcs   []*Func
 	ASTBody *ast.StmtBlock // raw AST (kept for formatter and legacy codegen)
 	Body    []Stmt         // type-checked body statements
-	Pos     ast.Pos
-	Checked bool // true if body was already checked in context (e.g., inside a for-loop)
+	Checked bool           // true if body was already checked in context (e.g., inside a for-loop)
 }
 
 func (w *Window) SymName() string { return w.Name }
 func (w *Window) SymType() *Type  { return nil }
-func (w *Window) SymPos() ast.Pos { return w.Pos }
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
 type Timer struct {
 	AST     *ast.VisualNode
 	Handler *Func
-	Pos     ast.Pos
 }
 
 // Output represents a resolved output directive. Only permitted in the main file.
@@ -174,7 +162,6 @@ type Output struct {
 	Lang     string
 	Platform string
 	Options  map[string]string
-	Pos      ast.Pos
 }
 
 // Param is a resolved function or component parameter.
@@ -182,24 +169,20 @@ type Param struct {
 	Name       string
 	Type       *Type
 	HasDefault bool
-	Pos        ast.Pos
 }
 
 func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
-func (p *Param) SymPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
 	AST    *ast.StructDef
 	Name   string
 	Fields []*StructField
-	Pos    ast.Pos
 }
 
 func (s *StructDef) SymName() string { return s.Name }
 func (s *StructDef) SymType() *Type  { return &Type{Kind: TypeStruct, Decl: s} }
-func (s *StructDef) SymPos() ast.Pos { return s.Pos }
 
 // StructField is a resolved field in a struct.
 type StructField struct {
@@ -213,12 +196,10 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
-	Pos     ast.Pos
 }
 
 func (e *EnumDef) SymName() string { return e.Name }
 func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
-func (e *EnumDef) SymPos() ast.Pos { return e.Pos }
 
 // EnumMember is a single value in an enum.
 type EnumMember struct {
@@ -231,12 +212,10 @@ type UnitDef struct {
 	AST      *ast.UnitDef
 	Name     string
 	Suffixes []*UnitSuffix
-	Pos      ast.Pos
 }
 
 func (u *UnitDef) SymName() string { return u.Name }
 func (u *UnitDef) SymType() *Type  { return &Type{Kind: TypeUnit, Decl: u} }
-func (u *UnitDef) SymPos() ast.Pos { return u.Pos }
 
 // UnitSuffix is a resolved suffix within a unit declaration.
 type UnitSuffix struct {

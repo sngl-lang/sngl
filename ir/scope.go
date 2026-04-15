@@ -1,37 +1,30 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
-
 // Symbol is a named entity in the program. Implemented by all IR
 // declaration types (Func, Var, Component, StructDef, EnumDef, UnitDef,
 // Import, Param) and small helper types (LoopVar, Namespace).
 type Symbol interface {
 	SymName() string
 	SymType() *Type
-	SymPos() ast.Pos
 }
 
 // LoopVar is a for-loop iteration variable.
 type LoopVar struct {
 	Name string
 	Type *Type
-	Pos  ast.Pos
 }
 
 func (v *LoopVar) SymName() string { return v.Name }
 func (v *LoopVar) SymType() *Type  { return v.Type }
-func (v *LoopVar) SymPos() ast.Pos { return v.Pos }
 
 // Namespace is an import namespace alias pointing to a resolved package.
 type Namespace struct {
 	Name string
 	Pkg  *Package
-	Pos  ast.Pos
 }
 
 func (n *Namespace) SymName() string { return n.Name }
 func (n *Namespace) SymType() *Type  { return nil }
-func (n *Namespace) SymPos() ast.Pos { return n.Pos }
 
 // Scope is a lexical scope with parent chain.
 type Scope struct {
@@ -74,7 +67,6 @@ type TypeSym struct {
 
 func (t *TypeSym) SymName() string { return t.Name }
 func (t *TypeSym) SymType() *Type  { return t.Type }
-func (t *TypeSym) SymPos() ast.Pos { return ast.Pos{} }
 
 // NewBaseScope creates a scope pre-populated with builtin type names.
 // Fresh instances are created each call to avoid mutating shared state.

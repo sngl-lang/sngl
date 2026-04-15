@@ -10,7 +10,6 @@ import "git.duckfam.us/jonathan/sngl/ast"
 // Stmt is a type-checked statement node.
 type Stmt interface {
 	stmtNode()
-	StmtPos() ast.Pos
 }
 
 // NodeInst is a resolved component or platform-element instantiation.
@@ -23,89 +22,71 @@ type NodeInst struct {
 	Children  []Stmt      // type-checked body
 	ID        string      // #id binding
 	Ref       *ast.Expr   // ref binding
-	Pos       ast.Pos
 }
 
-func (*NodeInst) stmtNode()          {}
-func (n *NodeInst) StmtPos() ast.Pos { return n.Pos }
+func (*NodeInst) stmtNode() {}
 
 // CallStmt is a void function call — definitively not a component.
 type CallStmt struct {
 	AST  ast.Stmt      // original *ast.CallStmt or *ast.VisualNode
 	Call *ast.CallExpr // the call expression (may be nil for bare-ident visual nodes)
 	Func *Func         // resolved function, if known
-	Pos  ast.Pos
 }
 
-func (*CallStmt) stmtNode()          {}
-func (n *CallStmt) StmtPos() ast.Pos { return n.Pos }
+func (*CallStmt) stmtNode() {}
 
 // SlotInst is the slot pseudo-element.
 type SlotInst struct {
 	AST      *ast.VisualNode
 	Children []Stmt
-	Pos      ast.Pos
 }
 
-func (*SlotInst) stmtNode()          {}
-func (n *SlotInst) StmtPos() ast.Pos { return n.Pos }
+func (*SlotInst) stmtNode() {}
 
 // Assign wraps a type-checked assignment statement.
 type Assign struct {
 	AST *ast.AssignStmt
-	Pos ast.Pos
 }
 
-func (*Assign) stmtNode()          {}
-func (n *Assign) StmtPos() ast.Pos { return n.Pos }
+func (*Assign) stmtNode() {}
 
 // Toggle wraps a type-checked toggle statement.
 type Toggle struct {
 	AST *ast.ToggleStmt
-	Pos ast.Pos
 }
 
-func (*Toggle) stmtNode()          {}
-func (n *Toggle) StmtPos() ast.Pos { return n.Pos }
+func (*Toggle) stmtNode() {}
 
 // Emit wraps a type-checked event emission.
 type Emit struct {
 	AST *ast.EmitStmt
-	Pos ast.Pos
 }
 
-func (*Emit) stmtNode()          {}
-func (n *Emit) StmtPos() ast.Pos { return n.Pos }
+func (*Emit) stmtNode() {}
 
 // LocalVar wraps a local variable declaration with its resolved type.
 type LocalVar struct {
 	AST  *ast.VarStmt
 	Type *Type
-	Pos  ast.Pos
 }
 
-func (*LocalVar) stmtNode()          {}
-func (n *LocalVar) StmtPos() ast.Pos { return n.Pos }
+func (*LocalVar) stmtNode() {}
 
 // Return wraps a type-checked return statement.
 type Return struct {
 	AST *ast.ReturnStmt
-	Pos ast.Pos
 }
 
-func (*Return) stmtNode()          {}
-func (n *Return) StmtPos() ast.Pos { return n.Pos }
+func (*Return) stmtNode() {}
 
 // If is a type-checked if statement with IR bodies.
 type If struct {
 	AST  *ast.IfStmt
 	Body []Stmt
 	Else []Stmt
-	Pos  ast.Pos
 }
 
-func (*If) stmtNode()          {}
-func (n *If) StmtPos() ast.Pos { return n.Pos }
+func (*If) stmtNode() {}
 
 // For is a type-checked for statement with IR bodies and resolved element type.
 type For struct {
@@ -113,18 +94,14 @@ type For struct {
 	ElemType *Type
 	Body     []Stmt
 	Else     []Stmt
-	Pos      ast.Pos
 }
 
-func (*For) stmtNode()          {}
-func (n *For) StmtPos() ast.Pos { return n.Pos }
+func (*For) stmtNode() {}
 
 // PlatformFilter is a type-checked platform statement with IR body.
 type PlatformFilter struct {
 	AST  *ast.PlatformStmt
 	Body []Stmt
-	Pos  ast.Pos
 }
 
-func (*PlatformFilter) stmtNode()          {}
-func (n *PlatformFilter) StmtPos() ast.Pos { return n.Pos }
+func (*PlatformFilter) stmtNode() {}
