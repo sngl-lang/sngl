@@ -10,8 +10,8 @@ import (
 // Target provides type information for a registered language or platform.
 type Target interface {
 	Identifier() string
-	Package() []*ast.Document          // parsed .sngl API docs (includes Options struct)
-	Resolve(identifier string) Symbol  // dynamic identifiers (e.g., html.div); nil if unknown
+	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
+	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 }
 
 // Language is a Target for a registered language translator.
@@ -460,9 +460,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 					AST:  h,
 					Name: h.Name,
 					Func: &Func{
-						Params: c.buildParams(h.Params),
-						Block:  &h.Body,
-						Pos:    h.Pos,
+						Params:   c.buildParams(h.Params),
+						ASTBlock: &h.Body,
+						Pos:      h.Pos,
 					},
 				}
 				v.Handlers = append(v.Handlers, handler)
@@ -864,8 +864,8 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *Timer {
 	return &Timer{
 		AST: vn,
 		Handler: &Func{
-			Block: &vn.Block,
-			Pos:   vn.Pos,
+			ASTBlock: &vn.Block,
+			Pos:      vn.Pos,
 		},
 		Pos: vn.Pos,
 	}
@@ -954,8 +954,8 @@ func (c *checker) checkFuncBody(fn *Func) {
 			c.error(fn.Pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
 	}
-	if fn.Block != nil {
-		c.checkBlock(fn.Block)
+	if fn.ASTBlock != nil {
+		fn.Block = c.checkBlockIR(fn.ASTBlock)
 	}
 }
 
@@ -993,7 +993,7 @@ func (c *checker) checkComponentBody(comp *Component) {
 
 	// Check component body statements.
 	if comp.Body != nil {
-		c.checkBlock(comp.Body)
+		comp.IRBody = c.checkBlockIR(comp.Body)
 	}
 }
 
@@ -1012,6 +1012,6 @@ func (c *checker) checkWindowBody(w *Window) {
 	}
 
 	if w.Body != nil {
-		c.checkBlock(w.Body)
+		w.IRBody = c.checkBlockIR(w.Body)
 	}
 }

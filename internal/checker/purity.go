@@ -8,8 +8,8 @@ func analyzePurity(f *Func, vars map[string]*Var) Purity {
 	if f.Body != nil {
 		w.walkExpr(f.Body)
 	}
-	if f.Block != nil {
-		w.walkBlock(f.Block)
+	if f.ASTBlock != nil {
+		w.walkBlock(f.ASTBlock)
 	}
 	if w.mutates {
 		return PurityMutates
@@ -26,8 +26,8 @@ func trackAccess(f *Func, vars map[string]*Var) {
 	if f.Body != nil {
 		w.walkExpr(f.Body)
 	}
-	if f.Block != nil {
-		w.walkBlock(f.Block)
+	if f.ASTBlock != nil {
+		w.walkBlock(f.ASTBlock)
 	}
 	for name := range w.reads {
 		if v, ok := vars[name]; ok {

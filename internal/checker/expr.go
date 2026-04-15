@@ -477,7 +477,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 	// Check field values.
 	for _, f := range x.Fields {
 		if f.Spread {
-			c.checkExpr(f.Value)
+			c.ASTBlockExpr(f.Value)
 			continue
 		}
 		c.checkExpr(f.Value)
@@ -490,8 +490,8 @@ func (c *checker) inferStructLit(x *ast.StructExpr) *Type {
 	if sd != nil {
 		return sd.SymType()
 	}
-	return &Type{Kind: TypeStruct}
-}
+	returnASTBlocke{Kind: TypeStruct}
+}ASTBlock
 
 func structHasField(sd *StructDef, name string) bool {
 	for _, f := range sd.Fields {
@@ -661,7 +661,7 @@ func (c *checker) checkArgs(args ast.ArgList, sig *FuncSig) {
 
 // --- Statement checking ---
 
-// checkBlock type-checks all statements in a StmtBlock.
+// checkBlock type-checks all statements in a StmtBlock (legacy, does not return IR).
 func (c *checker) checkBlock(block *ast.StmtBlock) {
 	if block == nil || !block.IsDefined() {
 		return
@@ -673,8 +673,25 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 	}
 }
 
-// checkStmt type-checks a single statement.
-func (c *checker) checkStmt(s ast.Stmt) {
+// checkBlockIR type-checks a StmtBlock and returns typed IR statements.
+func (c *checker) checkBlockIR(block *ast.StmtBlock) []Stmt {
+	if block == nil || !block.IsDefined() {
+		return nil
+	}
+	c.pushScope()
+	defer c.popScope()
+	var out []Stmt
+	for _, stmt := range block.Stmts {
+		if ir := c.checkStmt(stmt); ir != nil {
+			out = append(out, ir)
+		}
+	}
+	return out
+}
+
+// checkStmt type-checks a single statement and returns its IR form.
+// Returns nil for declarations (registered on scope) and skipped nodes.
+func (c *checker) checkStmt(s ast.Stmt) Stmt {
 	switch x := s.(type) {
 	case *ast.AssignStmt:
 		targetType := c.checkExpr(x.Target)
@@ -702,10 +719,13 @@ func (c *checker) checkStmt(s ast.Stmt) {
 				}
 			}
 		}
+		return &Assign{AST: x, Pos: x.Pos}
 	case *ast.ToggleStmt:
 		c.checkExpr(x.Target)
+		return &Toggle{AST: x, Pos: x.Pos}
 	case *ast.EmitStmt:
 		c.checkArgs(x.Args, nil)
+		return &Emit{AST: x, Pos: x.Pos}
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		if x.Init != nil {
@@ -720,6 +740,7 @@ func (c *checker) checkStmt(s ast.Stmt) {
 			Type: typ,
 			Pos:  x.Pos,
 		})
+		return &LocalVar{AST: x, Type: typ, Pos: x.Pos}
 	case *ast.ReturnStmt:
 		if x.Value != nil {
 			valType := c.checkExprExpecting(x.Value, c.returnType)
@@ -727,17 +748,21 @@ func (c *checker) checkStmt(s ast.Stmt) {
 				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
 			}
 		}
+		return &Return{AST: x, Pos: x.Pos}
 	case *ast.CallStmt:
 		c.checkExpr(x.Call)
+		return c.resolveCallStmt(x)
 	case *ast.IfStmt:
 		condType := c.checkExpr(x.Cond)
 		if condType.Kind != TypeDyn && condType.Kind != TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
-		c.checkBlock(&x.Body)
+		body := c.checkBlockIR(&x.Body)
+		var elseBody []Stmt
 		if x.Else.IsDefined() {
-			c.checkBlock(&x.Else)
+			elseBody = c.checkBlockIR(&x.Else)
 		}
+		return &If{AST: x, Body: body, Else: elseBody, Pos: x.Pos}
 	case *ast.ForStmt:
 		iter := c.checkExpr(x.Iter)
 		if iter.Kind != TypeDyn && iter.Kind != TypeList {
@@ -757,49 +782,36 @@ func (c *checker) checkStmt(s ast.Stmt) {
 			// for item = iter: item is element.
 			c.scope.Declare(&LoopVar{Name: x.Key, Type: elemType, Pos: x.Pos})
 		}
-		c.checkBlock(&x.Body)
+		body := c.checkBlockIR(&x.Body)
+		var elseBody []Stmt
 		if x.Else.IsDefined() {
-			c.checkBlock(&x.Else)
+			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
+		return &For{AST: x, ElemType: elemType, Body: body, Else: elseBody, Pos: x.Pos}
 	case *ast.PlatformStmt:
-		c.checkPlatformStmt(x)
+		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
-		c.checkVisualNode(x)
+		return c.checkVisualNodeIR(x)
 	case *ast.ConstDecl:
 		c.registerConsts(x)
+		return nil
 	case *ast.VarDecl:
 		c.registerVars(x)
+		return nil
 	case *ast.FuncDef:
 		fn := c.buildFunc(x)
 		c.scope.Declare(fn)
 		c.checkFuncBody(fn)
+		return nil
 	case *ast.Comment:
-		// Skip.
+		return nil
 	case *ast.DisabledDecl:
-		// Skip.
+		return nil
 	}
+	return nil
 }
 
-// checkPlatformStmt type-checks a platform statement body, injecting the
-// platform's package scope as a fallback for unresolved identifiers.
-func (c *checker) checkPlatformStmt(s *ast.PlatformStmt) {
-	// Skip body when target platform is known and doesn't match.
-	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
-		return
-	}
-
-	// Inject platform package scope as fallback between current scope and its parent.
-	platformScope := c.buildPlatformPkgScope(s.Platform)
-	if platformScope != nil {
-		savedParent := c.scope.parent
-		platformScope.parent = savedParent
-		c.scope.parent = platformScope
-		defer func() { c.scope.parent = savedParent }()
-	}
-
-	c.checkBlock(&s.Body)
-}
 
 // buildPlatformPkgScope builds (and caches) a scope containing declarations
 // from the named platform's Package() docs.
@@ -868,21 +880,69 @@ func (c *checker) buildPlatformPkgScope(platform string) *Scope {
 	return clone
 }
 
-// checkVisualNode validates a visual node's props, events, and children.
-func (c *checker) checkVisualNode(vn *ast.VisualNode) {
-	// Resolve target component.
+// resolveCallStmt determines whether an ast.CallStmt is a void function call
+// or a component instantiation (when the parser produced CallStmt for Foo()
+// that is actually a component). Returns the appropriate IR statement.
+func (c *checker) resolveCallStmt(x *ast.CallStmt) Stmt {
+	// Check if the call target is a component name.
+	if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
+		if sym, ok := c.symtab.LookupComponent(id.Name); ok {
+			if comp, ok := sym.(*Component); ok {
+				return &NodeInst{
+					AST:       x,
+					Name:      id.Name,
+					Component: comp,
+					Args:      x.Call.Args,
+					Pos:       x.Pos,
+				}
+			}
+		}
+	}
+	// Resolve function if possible.
+	var fn *Func
+	if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
+		if sym, ok := c.scope.Lookup(id.Name); ok {
+			if f, ok := sym.(*Func); ok {
+				fn = f
+			}
+		}
+	}
+	return &CallStmt{AST: x, Call: x.Call, Func: fn, Pos: x.Pos}
+}
+
+// checkPlatformStmtIR type-checks a platform statement and returns IR.
+func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) Stmt {
+	// Skip body when target platform is known and doesn't match.
+	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+		return nil
+	}
+
+	// Inject platform package scope as fallback between current scope and its parent.
+	platformScope := c.buildPlatformPkgScope(s.Platform)
+	if platformScope != nil {
+		savedParent := c.scope.parent
+		platformScope.parent = savedParent
+		c.scope.parent = platformScope
+		defer func() { c.scope.parent = savedParent }()
+	}
+
+	body := c.checkBlockIR(&s.Body)
+	return &PlatformFilter{AST: s, Body: body, Pos: s.Pos}
+}
+
+// checkVisualNodeIR validates a visual node and returns the appropriate IR statement.
+// Disambiguates components, platform elements, slots, and function calls.
+func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) Stmt {
 	name := visualNodeTarget(vn)
 
-	// Special root-ish nodes that can appear in if/for at top level.
+	// Special root-ish nodes — registered on package, not returned as IR stmts.
 	switch name {
 	case "window":
 		w := c.buildWindow(vn)
-		// Collect all windows at the package level (even from components)
-		// so codegen can generate multi-page output.
 		c.pkg.Windows = append(c.pkg.Windows, w)
 		c.checkWindowBody(w)
-		w.Checked = true // body already checked in current scope context
-		return
+		w.Checked = true
+		return nil
 	case "timer":
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
@@ -890,14 +950,16 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 		} else {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
-		return
+		return nil
 	case "output":
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
-			return
 		}
 		c.buildOutputs(vn)
-		return
+		return nil
+	case "slot":
+		children := c.checkBlockIR(&vn.Block)
+		return &SlotInst{AST: vn, Children: children, Pos: vn.Pos}
 	}
 
 	// Look up component.
@@ -908,21 +970,33 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 		}
 	}
 
-	// Check args with expected types from component props.
-	c.checkVisualNodeArgs(vn.Args, comp)
+	// If not a component, check if it's a function in scope.
+	if comp == nil {
+		if sym, ok := c.scope.Lookup(name); ok {
+			if fn, ok := sym.(*Func); ok {
+				// This is a function call, not a visual node.
+				c.checkVisualNodeArgs(vn.Args, nil)
+				return &CallStmt{AST: vn, Func: fn, Pos: vn.Pos}
+			}
+		}
+	}
 
-	// Validate prop names against component definition.
+	// Component or platform element.
+	c.checkVisualNodeArgs(vn.Args, comp)
 	if comp != nil {
 		c.validateVisualNodeProps(vn, comp)
 	}
 
-	// Check block body (children).
-	if vn.Block.IsDefined() {
-		c.pushScope()
-		for _, stmt := range vn.Block.Stmts {
-			c.checkStmt(stmt)
-		}
-		c.popScope()
+	children := c.checkBlockIR(&vn.Block)
+	return &NodeInst{
+		AST:       vn,
+		Name:      name,
+		Component: comp,
+		Args:      vn.Args,
+		Children:  children,
+		ID:        vn.ID,
+		Ref:       vn.Ref,
+		Pos:       vn.Pos,
 	}
 }
 

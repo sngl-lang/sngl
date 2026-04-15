@@ -319,7 +319,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *Func {
 	}
 	c.typeParams = prevTypeParams
 	if f.Block.IsDefined() {
-		fn.Block = &f.Block
+		fn.ASTBlock = &f.Block
 	}
 	if isMethod {
 		fn.Receiver = typeName

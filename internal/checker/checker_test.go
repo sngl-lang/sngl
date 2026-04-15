@@ -647,6 +647,141 @@ func TestStdlibPackageOnPkg(t *testing.T) {
 	}
 }
 
+// --- IR statement tests ---
+
+func TestIRBodyDisambiguation(t *testing.T) {
+	pkg := parse(t, `
+component greeting() {}
+
+func sideEffect() {}
+
+component main {
+	greeting()
+	sideEffect()
+	if true {
+		greeting()
+	}
+}
+`)
+	// Find main component.
+	var main *checker.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			main = c
+		}
+	}
+	if main == nil {
+		t.Fatal("main component not found")
+	}
+	if len(main.IRBody) == 0 {
+		t.Fatal("IRBody is empty")
+	}
+
+	// First statement: greeting() → NodeInst (component instantiation).
+	ni, ok := main.IRBody[0].(*checker.NodeInst)
+	if !ok {
+		t.Fatalf("IRBody[0]: want *NodeInst, got %T", main.IRBody[0])
+	}
+	if ni.Name != "greeting" {
+		t.Errorf("NodeInst.Name = %q, want %q", ni.Name, "greeting")
+	}
+	if ni.Component == nil {
+		t.Error("NodeInst.Component is nil, want resolved component")
+	}
+
+	// Second statement: sideEffect() → CallStmt (function call).
+	cs, ok := main.IRBody[1].(*checker.CallStmt)
+	if !ok {
+		t.Fatalf("IRBody[1]: want *CallStmt, got %T", main.IRBody[1])
+	}
+	if cs.Func == nil {
+		t.Error("CallStmt.Func is nil, want resolved function")
+	}
+
+	// Third statement: if → If with nested NodeInst.
+	ifStmt, ok := main.IRBody[2].(*checker.If)
+	if !ok {
+		t.Fatalf("IRBody[2]: want *If, got %T", main.IRBody[2])
+	}
+	if len(ifStmt.Body) != 1 {
+		t.Fatalf("If.Body length = %d, want 1", len(ifStmt.Body))
+	}
+	if _, ok := ifStmt.Body[0].(*checker.NodeInst); !ok {
+		t.Errorf("If.Body[0]: want *NodeInst, got %T", ifStmt.Body[0])
+	}
+}
+
+func TestIRBodyForLoop(t *testing.T) {
+	pkg := parse(t, `
+component main {
+	var items = [1, 2, 3]
+	for item = items {
+		text(value="hi")
+	}
+}
+`)
+	var main *checker.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			main = c
+		}
+	}
+	if main == nil {
+		t.Fatal("main component not found")
+	}
+
+	// Find the For statement (skip any non-For stmts).
+	var forStmt *checker.For
+	for _, s := range main.IRBody {
+		if f, ok := s.(*checker.For); ok {
+			forStmt = f
+			break
+		}
+	}
+	if forStmt == nil {
+		t.Fatal("For statement not found in IRBody")
+	}
+	if forStmt.ElemType == nil {
+		t.Fatal("For.ElemType is nil")
+	}
+	if len(forStmt.Body) != 1 {
+		t.Fatalf("For.Body length = %d, want 1", len(forStmt.Body))
+	}
+	if _, ok := forStmt.Body[0].(*checker.NodeInst); !ok {
+		t.Errorf("For.Body[0]: want *NodeInst, got %T", forStmt.Body[0])
+	}
+}
+
+func TestIRBodyBareIdentFunction(t *testing.T) {
+	// Bare identifier that resolves to a function → CallStmt.
+	pkg := parse(t, `
+func doStuff() {}
+
+component main {
+	doStuff
+}
+`)
+	var main *checker.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			main = c
+		}
+	}
+	if main == nil {
+		t.Fatal("main component not found")
+	}
+	if len(main.IRBody) == 0 {
+		t.Fatal("IRBody is empty")
+	}
+	cs, ok := main.IRBody[0].(*checker.CallStmt)
+	if !ok {
+		t.Fatalf("IRBody[0]: want *CallStmt, got %T", main.IRBody[0])
+	}
+	if cs.Func == nil {
+		t.Error("CallStmt.Func is nil, want resolved function")
+	}
+}
+
 // --- Testdata-driven tests ---
 
 func testdataDir() string {
