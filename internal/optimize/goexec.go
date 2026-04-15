@@ -102,6 +102,17 @@ func main() {
 	return result, nil
 }
 
+// lowerFirst lowercases the first letter of a string, matching SNGL field naming convention.
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	if strings.ToUpper(s) == s {
+		return strings.ToLower(s)
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
 // goLiteral converts a SNGL value to a Go literal string for code generation.
 func goLiteral(v any) string {
 	switch val := v.(type) {
@@ -133,10 +144,11 @@ func normalizeJSON(v any) any {
 		}
 		return val
 	case map[string]any:
+		normalized := make(map[string]any, len(val))
 		for k, el := range val {
-			val[k] = normalizeJSON(el)
+			normalized[lowerFirst(k)] = normalizeJSON(el)
 		}
-		return val
+		return normalized
 	default:
 		return v
 	}

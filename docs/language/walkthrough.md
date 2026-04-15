@@ -81,3 +81,15 @@ component main {
 ## External Imports
 
 External imports allow you to use code in other langauges. Non-constant expressions are compiled/translated/linked to the target language and used. Not all conbinations work, for example you can't import JavaScript code and call it in Rust. SNGL doesn't ship with a JavaScript runtime in Rust. :smile: However, constant expressions are evaluated at compile time, so any language that supports constant evaluation will work for any target. For the SNGL website, we use a Go markdown parser to translate our pages to HTML at compile time. The playground is dynamic and the compiler is written in Go, so SNGL imports the compiler and SNGL compiles it to WASM to generate the playground.
+
+## Operations
+
+The following operations can be used for expressions. These look pretty similar to most C-like languages.
+
+## Numeric Operations
+
+- `op1 + op2` - Either adds to numeric (int/float) values or concatenates strings. Strings and numbers cannot be mixed.
+- `op1 - op2` - Subtract numeric values
+- `op1 * op2` - Multiply numeric values
+- `op1 / op2` - Divide numeric values <!-- TODO: What happens on divide by zero? -->
+- `op1 % op2` - Modulo integer values

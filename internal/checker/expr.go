@@ -877,12 +877,11 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) {
 	switch name {
 	case "window":
 		w := c.buildWindow(vn)
-		if c.currentComponent != nil {
-			// Component-level window — collected on the component.
-		} else {
-			c.pkg.Windows = append(c.pkg.Windows, w)
-		}
+		// Collect all windows at the package level (even from components)
+		// so codegen can generate multi-page output.
+		c.pkg.Windows = append(c.pkg.Windows, w)
 		c.checkWindowBody(w)
+		w.Checked = true // body already checked in current scope context
 		return
 	case "timer":
 		t := c.buildTimer(vn)

@@ -38,6 +38,7 @@ struct Style {
 
     // Size
     width measurement
+    minWidth measurement
     height measurement
     maxWidth measurement
     maxHeight measurement
@@ -59,6 +60,7 @@ struct Style {
     // Typography
     color color
     fontSize measurement
+    fontFamily string
     fontWeight FontWeight
     fontStyle FontStyle
     textAlign TextAlign
@@ -69,6 +71,8 @@ struct Style {
     borderRadius measurement
     borderColor color
     borderWidth measurement
+    borderBottom string
+    borderCollapse string
     borderStyle BorderStyle
     opacity float
 

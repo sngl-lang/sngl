@@ -144,12 +144,13 @@ type EventHandler struct {
 
 // Window represents a window declaration at the root or component level.
 type Window struct {
-	AST   *ast.VisualNode
-	Name  string
-	Vars  []*Var
-	Funcs []*Func
-	Body  *ast.StmtBlock
-	Pos   ast.Pos
+	AST     *ast.VisualNode
+	Name    string
+	Vars    []*Var
+	Funcs   []*Func
+	Body    *ast.StmtBlock
+	Pos     ast.Pos
+	Checked bool // true if body was already checked in context (e.g., inside a for-loop)
 }
 
 func (w *Window) SymName() string { return w.Name }

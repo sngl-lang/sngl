@@ -111,7 +111,7 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 			merged.Stmts = append(merged.Stmts, d.Stmts...)
 		}
 
-		pkg, _ := Check(merged, nil)
+		pkg, _ := Check(merged, &Config{})
 		stdlibSchemaRegistry = buildSchemaRegistry(pkg, docs)
 		stdlibStyleProps = map[string]StylePropSchema{}
 	})

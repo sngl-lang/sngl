@@ -289,14 +289,21 @@ type Opts struct {
 	Icon string // path to icon file (SVG or PNG)
 }
 
+// FileAsset records a file that must be copied to the output directory.
+type FileAsset struct {
+	SrcPath string // absolute path on disk
+	OutPath string // relative path in output (e.g. "assets/sngl.svg")
+}
+
 // Request is the input to a platform generator.
 type Request struct {
-	Doc     *ast.Document
-	Pkg     *checker.Package   // v2 checked IR (nil for legacy callers)
-	Lang    LangTranslator
-	Opts    Opts
-	Options map[string]string // key=value from --opt flags
-	Source  string            // source .sngl filename (base name only)
+	Doc        *ast.Document
+	Pkg        *checker.Package   // v2 checked IR (nil for legacy callers)
+	Lang       LangTranslator
+	Opts       Opts
+	Options    map[string]string // key=value from --opt flags
+	Source     string            // source .sngl filename (base name only)
+	FileAssets []FileAsset       // file:// assets to copy to output
 }
 
 // Header returns a generated-file comment for the given platform and comment

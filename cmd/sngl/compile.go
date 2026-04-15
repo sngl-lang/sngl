@@ -117,17 +117,25 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 			targetDoc := doc
 			start = time.Now()
-			if err := optimize.Optimize(targetDoc, optimize.Config{
-				Platform: target.Platform,
-				Language: target.Lang,
-				Dir:      dir,
-			}); err != nil {
+			optCfg := optimize.Config{
+				Platform:      target.Platform,
+				Language:      target.Lang,
+				Dir:           dir,
+				NativeImports: collectNativeImports(pkg),
+			}
+			if err := optimize.Optimize(targetDoc, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
+			// Convert optimizer file assets to codegen file assets.
+			var fileAssets []codegen.FileAsset
+			for _, fa := range optCfg.FileAssets {
+				fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath})
+			}
+
 			start = time.Now()
-			if err := generateTarget(filename, targetDoc, target, outDir, quiet(cmd)); err != nil {
+			if err := generateTarget(filename, targetDoc, pkg, target, outDir, fileAssets, quiet(cmd)); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -149,7 +157,7 @@ func resolveTargets(pkg *checker.Package, cliLang, cliPlat string, cliOpts map[s
 	return targets
 }
 
-func generateTarget(filename string, doc *ast.Document, target outputTarget, outDir string, q bool) error {
+func generateTarget(filename string, doc *ast.Document, pkg *checker.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
 	lang := codegen.LookupLang(target.Lang)
 	if lang == nil {
 		return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
@@ -166,11 +174,13 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 	}
 
 	resp, err := plat.Generate(&codegen.Request{
-		Doc:     doc,
-		Lang:    lang,
-		Opts:    target.Opts,
-		Options: target.Options,
-		Source:  filepath.Base(filename),
+		Doc:        doc,
+		Pkg:        pkg,
+		Lang:       lang,
+		Opts:       target.Opts,
+		Options:    target.Options,
+		Source:     filepath.Base(filename),
+		FileAssets: fileAssets,
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
@@ -203,6 +213,41 @@ func generateTarget(filename string, doc *ast.Document, target outputTarget, out
 		}
 	}
 	return nil
+}
+
+// collectNativeImports builds a namespace → NativeDecls map from the checked package.
+// Re-resolves scheme imports to get the codegen-level declarations needed by the optimizer.
+func collectNativeImports(pkg *checker.Package) map[string]*codegen.NativeDecls {
+	if pkg == nil {
+		return nil
+	}
+	m := make(map[string]*codegen.NativeDecls)
+	for _, imp := range pkg.Imports {
+		if imp.Native == nil {
+			continue
+		}
+		scheme, uri := parseImportScheme(imp.AST.Path)
+		if scheme == "" {
+			continue
+		}
+		si := codegen.LookupScheme(scheme)
+		if si == nil {
+			continue
+		}
+		decls, err := si.Resolve(uri, "")
+		if err != nil {
+			continue
+		}
+		m[imp.Alias] = decls
+	}
+	return m
+}
+
+func parseImportScheme(path string) (scheme, uri string) {
+	if before, after, ok := strings.Cut(path, "://"); ok {
+		return before, after
+	}
+	return "", path
 }
 
 func quiet(cmd *cobra.Command) bool {

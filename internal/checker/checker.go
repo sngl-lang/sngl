@@ -238,9 +238,11 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 			for _, d := range docs {
 				pkg, diags := Check(d, &Config{
-					FS:       c.cfg.FS,
-					Dir:      c.cfg.Dir,
-					Resolver: c.cfg.Resolver,
+					FS:        c.cfg.FS,
+					Dir:       c.cfg.Dir,
+					Resolver:  c.cfg.Resolver,
+					Languages: c.cfg.Languages,
+					Platforms: c.cfg.Platforms,
 				})
 				c.diags = append(c.diags, diags...)
 				irImport.Pkg = pkg
@@ -895,9 +897,11 @@ func (c *checker) pass2() {
 		c.checkComponentBody(comp)
 	}
 
-	// Check window bodies.
+	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
-		c.checkWindowBody(w)
+		if !w.Checked {
+			c.checkWindowBody(w)
+		}
 	}
 
 	// Purity analysis.

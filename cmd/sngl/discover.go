@@ -161,6 +161,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, err
 		FS:        os.DirFS(dir),
 		Dir:       dir,
 		IsMain:    isMain,
+		Resolver:  &cliResolver{},
 		Languages: langs,
 		Platforms: plats,
 	})
@@ -170,6 +171,86 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*checker.Package, err
 		}
 	}
 	return pkg, nil
+}
+
+// cliResolver implements checker.ImportResolver using registered codegen schemes.
+type cliResolver struct{}
+
+func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
+	entries, err := fs.ReadDir(fsys, importPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		path := importPath + "/" + e.Name()
+		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", path, err)
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", path, err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*checker.NativeImport, error) {
+	imp := codegen.LookupScheme(scheme)
+	if imp == nil {
+		return nil, fmt.Errorf("unknown import scheme %q", scheme)
+	}
+	decls, err := imp.Resolve(uri, dir)
+	if err != nil {
+		return nil, err
+	}
+	return nativeDeclsToImport(decls), nil
+}
+
+// nativeDeclsToImport converts codegen.NativeDecls to checker.NativeImport.
+func nativeDeclsToImport(d *codegen.NativeDecls) *checker.NativeImport {
+	if d == nil {
+		return nil
+	}
+	ni := &checker.NativeImport{ImportPath: d.ImportPath}
+	for _, f := range d.Funcs {
+		purity := checker.PurityUnknown
+		if f.Pure {
+			purity = checker.PurityPure
+		}
+		fn := &checker.Func{
+			Name:   f.Name,
+			Purity: purity,
+			Return: checker.TypDyn,
+		}
+		for _, pt := range f.ParamTypes {
+			fn.Params = append(fn.Params, &checker.Param{Name: pt, Type: checker.TypDyn})
+		}
+		ni.Funcs = append(ni.Funcs, fn)
+	}
+	for _, v := range d.Vars {
+		ni.Vars = append(ni.Vars, &checker.Var{Name: v.Name, Type: checker.TypDyn})
+	}
+	for _, s := range d.Structs {
+		sd := &checker.StructDef{Name: s.Name}
+		for _, f := range s.Fields {
+			sd.Fields = append(sd.Fields, &checker.StructField{Name: f.Name, Type: checker.TypDyn})
+		}
+		ni.Structs = append(ni.Structs, sd)
+	}
+	for _, e := range d.Enums {
+		ed := &checker.EnumDef{Name: e.Name}
+		for _, v := range e.Values {
+			ed.Members = append(ed.Members, &checker.EnumMember{Name: v})
+		}
+		ni.Enums = append(ni.Enums, ed)
+	}
+	return ni
 }
 
 // collectTargets gathers registered languages and platforms as checker targets.

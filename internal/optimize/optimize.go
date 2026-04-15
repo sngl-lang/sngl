@@ -4,19 +4,33 @@ import (
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // Config holds compile-time constants for the optimization pass.
 type Config struct {
-	Platform string // "html", "bubbletea"
-	Language string // "js", "go"
-	Dir      string // project directory (for compile-time go run execution)
+	Platform      string // "html", "bubbletea"
+	Language      string // "js", "go"
+	Dir           string // project directory (for compile-time go run execution)
+	NativeImports map[string]*codegen.NativeDecls // namespace → decls (for pure func eval)
+
+	// FileAssets is populated by Optimize with file:// assets that need
+	// copying to the output directory.
+	FileAssets []FileAsset
+}
+
+// FileAsset records a file that must be copied to the output directory.
+type FileAsset struct {
+	SrcPath string // absolute path on disk
+	OutPath string // relative path in output (e.g. "assets/sngl.svg")
 }
 
 // foldCtx carries state needed during constant folding.
 type foldCtx struct {
-	vars map[string]any
-	dir  string
+	vars          map[string]any
+	nativeImports map[string]*codegen.NativeDecls
+	dir           string
+	fileAssets    []FileAsset
 }
 
 // Optimize mutates doc in place: evaluates constant SNGL expressions referencing
@@ -27,7 +41,8 @@ func Optimize(doc *ast.Document, cfg Config) error {
 			"PLATFORM": cfg.Platform,
 			"LANGUAGE": cfg.Language,
 		},
-		dir: cfg.Dir,
+		nativeImports: cfg.NativeImports,
+		dir:           cfg.Dir,
 	}
 
 	// Walk all statements
@@ -40,7 +55,128 @@ func Optimize(doc *ast.Document, cfg Config) error {
 	}
 	doc.Stmts = out
 
+	// Expand for-loop windows in the main component into flat window statements.
+	expandForWindows(doc, ctx)
+
+	cfg.FileAssets = ctx.fileAssets
 	return nil
+}
+
+// expandForWindows walks the main component body and expands for-loops
+// that contain window declarations over const iterables into individual
+// window statements. This enables multi-page HTML generation.
+func expandForWindows(doc *ast.Document, ctx *foldCtx) {
+	var mainComp *ast.ComponentDecl
+	for _, s := range doc.Stmts {
+		if comp, ok := s.(*ast.ComponentDecl); ok && comp.Name == "main" {
+			mainComp = comp
+			break
+		}
+	}
+	if mainComp == nil {
+		return
+	}
+
+	var expanded []ast.Stmt
+	for _, s := range mainComp.Body.Stmts {
+		if fs, ok := s.(*ast.ForStmt); ok {
+			if stmts := expandForStmt(fs, ctx); stmts != nil {
+				expanded = append(expanded, stmts...)
+				continue
+			}
+		}
+		expanded = append(expanded, s)
+	}
+	mainComp.Body.Stmts = expanded
+}
+
+// expandForStmt tries to expand a for-loop over a const iterable.
+// Returns nil if the iterable can't be evaluated.
+func expandForStmt(fs *ast.ForStmt, ctx *foldCtx) []ast.Stmt {
+	// Evaluate the iterable
+	val, ok := evalConst(fs.Iter, ctx)
+	if !ok {
+		return nil
+	}
+	items, ok := val.([]any)
+	if !ok {
+		return nil
+	}
+
+	var result []ast.Stmt
+	for i, item := range items {
+		// Create a new fold context with the loop variable bound
+		loopCtx := &foldCtx{
+			vars:          make(map[string]any, len(ctx.vars)+2),
+			nativeImports: ctx.nativeImports,
+			dir:           ctx.dir,
+		}
+		for k, v := range ctx.vars {
+			loopCtx.vars[k] = v
+		}
+		loopCtx.vars[fs.Key] = item
+		if fs.Value != "" {
+			loopCtx.vars[fs.Value] = i
+		}
+
+		// Clone and optimize the body for this iteration
+		for _, bodyStmt := range fs.Body.Stmts {
+			cloned := cloneStmt(bodyStmt)
+			optimized := optimizeStmt(cloned, loopCtx)
+			if optimized != nil {
+				result = append(result, optimized)
+			}
+		}
+	}
+	return result
+}
+
+// cloneStmt creates a shallow copy of a statement so that in-place optimization
+// of one for-loop iteration doesn't corrupt another. Only handles types common
+// in for-loop bodies; unknown types are returned as-is (shared).
+func cloneStmt(s ast.Stmt) ast.Stmt {
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		cp := *n
+		cp.Args = cloneArgList(n.Args)
+		cp.Block = cloneStmtBlock(n.Block)
+		return &cp
+	case *ast.IfStmt:
+		cp := *n
+		cp.Body = cloneStmtBlock(n.Body)
+		cp.Else = cloneStmtBlock(n.Else)
+		return &cp
+	case *ast.ForStmt:
+		cp := *n
+		cp.Body = cloneStmtBlock(n.Body)
+		cp.Else = cloneStmtBlock(n.Else)
+		return &cp
+	case *ast.PlatformStmt:
+		cp := *n
+		cp.Body = cloneStmtBlock(n.Body)
+		return &cp
+	}
+	return s
+}
+
+func cloneStmtBlock(b ast.StmtBlock) ast.StmtBlock {
+	if len(b.Stmts) == 0 {
+		return b
+	}
+	stmts := make([]ast.Stmt, len(b.Stmts))
+	for i, s := range b.Stmts {
+		stmts[i] = cloneStmt(s)
+	}
+	return ast.StmtBlock{Pos: b.Pos, IsMultiline: b.IsMultiline, Stmts: stmts}
+}
+
+func cloneArgList(al ast.ArgList) ast.ArgList {
+	if len(al.Args) == 0 {
+		return al
+	}
+	args := make([]ast.ArgOrEventHandler, len(al.Args))
+	copy(args, al.Args)
+	return ast.ArgList{Pos: al.Pos, IsMultiline: al.IsMultiline, Args: args}
 }
 
 // optimizeStmt folds constants and eliminates dead branches in a statement.
@@ -50,8 +186,14 @@ func optimizeStmt(s ast.Stmt, ctx *foldCtx) ast.Stmt {
 	case *ast.ConstDecl:
 		for i, spec := range n.Specs {
 			if spec.Default != nil {
+				// Try to evaluate the full expression first (handles complex types like lists/maps).
+				if val, ok := evalConst(spec.Default, ctx); ok {
+					for _, name := range spec.Names {
+						ctx.vars[name] = val
+					}
+				}
 				n.Specs[i].Default = foldExpr(spec.Default, ctx)
-				// Register const values for downstream use
+				// Also register simple literal values.
 				if lit, ok := n.Specs[i].Default.(*ast.LiteralExpr); ok {
 					for _, name := range spec.Names {
 						ctx.vars[name] = parseLiteralValue(lit)
@@ -152,7 +294,10 @@ func foldExpr(expr ast.Expr, ctx *foldCtx) ast.Expr {
 	if !ok {
 		return expr
 	}
-	return valueToLiteral(val)
+	if lit := valueToLiteral(val); lit != nil {
+		return lit
+	}
+	return expr
 }
 
 // valueToLiteral converts a Go value to an AST LiteralExpr.
@@ -220,10 +365,11 @@ func parseLiteralValue(lit *ast.LiteralExpr) any {
 		// Simplified — won't handle all cases
 		return 0.0
 	case ast.LiteralStringQuoted:
-		if len(lit.Raw) >= 2 {
-			return lit.Raw[1 : len(lit.Raw)-1]
+		raw := lit.Raw
+		if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
+			return raw[1 : len(raw)-1]
 		}
-		return lit.Raw
+		return raw
 	}
 	return nil
 }

@@ -49,6 +49,14 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	var files []*codegen.OutputFile
 
+	// Copy file:// assets resolved during optimization.
+	for _, fa := range req.FileAssets {
+		data, err := os.ReadFile(fa.SrcPath)
+		if err == nil {
+			files = append(files, codegen.BytesFile(fa.OutPath, data))
+		}
+	}
+
 	// Resolve stylesheet option: source path relative to project dir.
 	stylesheetURL := ""
 	if ssPath := req.Options["stylesheet"]; ssPath != "" {
@@ -114,13 +122,56 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 				strings.Join(loaderScripts, "\n"))
 		}
 	}
-	_ = stylesheetURL // used by multi-window below
-
-	// Single-page generation (no multi-window support in v2 yet).
-	gen := newHTMLGen(req.Doc, req.Pkg, req.Lang, req.Options)
-	gen.wasmLoader = wasmLoaderHTML
-	src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
-	files = append(files, codegen.BytesFile("index.html", []byte(src)))
+	// Collect windows from the optimized AST (not pkg.Windows, which is pre-optimization).
+	type windowInfo struct {
+		vn   *ast.VisualNode
+		body []ast.Stmt
+	}
+	var windows []windowInfo
+	mainComp := findMainComponent(req.Doc)
+	if mainComp != nil {
+		for _, s := range compBodyStmts(mainComp) {
+			if vn, ok := s.(*ast.VisualNode); ok && vnName(vn) == "window" {
+				windows = append(windows, windowInfo{vn: vn, body: vnChildren(vn)})
+			}
+		}
+	}
+	if len(windows) <= 1 {
+		gen := newHTMLGen(req.Doc, req.Pkg, req.Lang, req.Options)
+		gen.wasmLoader = wasmLoaderHTML
+		if len(windows) == 1 {
+			gen.title = staticPropString(vnProps(windows[0].vn), "title")
+			gen.stylesheet = stylesheetURL
+			gen.favicon = staticPropString(vnProps(windows[0].vn), "favicon")
+			gen.bodyStmts = windows[0].body
+		}
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
+		files = append(files, codegen.BytesFile("index.html", []byte(src)))
+		return &codegen.Response{Files: files}, nil
+	}
+	for _, win := range windows {
+		name := staticPropString(vnProps(win.vn), "href")
+		if name == "" {
+			name = staticPropString(vnProps(win.vn), "title")
+		}
+		if after, ok := strings.CutPrefix(name, "/"); ok {
+			name = after
+		} else if strings.HasSuffix(name, ".html") {
+			// Already has extension, use as-is
+		} else if name == "" || name == "main" || name == "index" {
+			name = "index.html"
+		} else {
+			name = name + ".html"
+		}
+		gen := newHTMLGen(req.Doc, req.Pkg, req.Lang, req.Options)
+		gen.title = staticPropString(vnProps(win.vn), "title")
+		gen.stylesheet = stylesheetURL
+		gen.favicon = staticPropString(vnProps(win.vn), "favicon")
+		gen.wasmLoader = wasmLoaderHTML
+		gen.bodyStmts = win.body
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
+		files = append(files, codegen.BytesFile(name, []byte(src)))
+	}
 	return &codegen.Response{Files: files}, nil
 }
 
@@ -201,6 +252,9 @@ type htmlGen struct {
 
 	// Slot children: caller's children for abstract component body expansion
 	slotChildren []ast.Stmt
+
+	// bodyStmts overrides the main component body when generating per-window pages
+	bodyStmts []ast.Stmt
 }
 
 type componentParam struct {
@@ -288,11 +342,17 @@ func (g *htmlGen) generate() string {
 	}
 	b.WriteString("</head><body>\n\n")
 
-	// Render static HTML body from the main component
-	mainComp := findMainComponent(g.doc)
-	if mainComp != nil {
-		for _, s := range compBodyStmts(mainComp) {
+	// Render static HTML body — from override stmts (per-window) or main component.
+	if len(g.bodyStmts) > 0 {
+		for _, s := range g.bodyStmts {
 			g.renderStaticStmt(&b, s, 0)
+		}
+	} else {
+		mainComp := findMainComponent(g.doc)
+		if mainComp != nil {
+			for _, s := range compBodyStmts(mainComp) {
+				g.renderStaticStmt(&b, s, 0)
+			}
 		}
 	}
 
@@ -339,6 +399,18 @@ func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
 		g.renderStaticNode(b, n, depth)
+	case *ast.CallStmt:
+		// Convert CallStmt to VisualNode — in v2, calls without a block
+		// (e.g. html.div(innerHTML="..."), NavSidebar(currentHref=x))
+		// parse as CallStmt instead of VisualNode.
+		if target, ok := n.Call.Func.(ast.TargetExpr); ok {
+			vn := &ast.VisualNode{
+				Pos:    n.Pos,
+				Target: target,
+				Args:   n.Call.Args,
+			}
+			g.renderStaticNode(b, vn, depth)
+		}
 	case *ast.IfStmt:
 		g.renderStaticIf(b, n, depth)
 	case *ast.ForStmt:
@@ -703,6 +775,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		for _, s := range g.slotChildren {
 			g.renderStaticStmt(b, s, depth)
 		}
+
+	case "window":
+		// Windows are handled at Generate level — skip inline rendering.
 
 	default:
 		// User-defined or abstract component — inline at call site

@@ -2,7 +2,11 @@ package optimize
 
 import (
 	"fmt"
+	"io/fs"
+	"log/slog"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -32,6 +36,24 @@ func isConstExpr(e ast.Expr, ctx *foldCtx) bool {
 			if arg, ok := a.(ast.Arg); ok {
 				if !isConstExpr(arg.Value, ctx) {
 					return false
+				}
+			}
+		}
+		// Check if this is a native import pure function call
+		if sel, ok := x.Func.(*ast.SelectExpr); ok {
+			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+				if ns, exists := ctx.nativeImports[ident.Name]; exists {
+					for _, f := range ns.Funcs {
+						if f.Name == sel.Field && f.Pure {
+							return true
+						}
+					}
+					for _, v := range ns.Vars {
+						if v.Name == sel.Field && v.IsFunc && v.Pure {
+							return true
+						}
+					}
+					return false // namespace function exists but is not pure
 				}
 			}
 		}
@@ -107,7 +129,36 @@ func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
 		if sel, ok := x.Func.(*ast.SelectExpr); ok {
 			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 				qualName := ident.Name + "." + sel.Field
-				return evalQualifiedMethod(qualName, args)
+				if v, ok := evalQualifiedMethod(qualName, args); ok {
+					return v, true
+				}
+				if ns, exists := ctx.nativeImports[ident.Name]; exists {
+					// Try file:// scheme functions (path, contents)
+					for _, v := range ns.Vars {
+						if v.Name == sel.Field && v.IsFunc && v.NativePkg == "file" {
+							if len(args) == 1 {
+								if filename, ok := args[0].(string); ok {
+									return evalFileFunc(v.NativeType, ns.ImportPath, filename, ctx)
+								}
+							}
+						}
+					}
+					// Try pure Go function execution
+					if ctx.dir != "" {
+						for _, f := range ns.Funcs {
+							if f.Name == sel.Field && f.Pure && f.NativePkg != "file" {
+								result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeType, f.ParamTypes, f.ReturnType, args)
+								if err != nil {
+									slog.Debug("pure func eval failed", "func", qualName, "err", err)
+									return nil, false
+								}
+								slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
+								return result, true
+							}
+						}
+					}
+				}
+				return nil, false
 			}
 			recv, ok := evalConst(sel.Operand, ctx)
 			if !ok {
@@ -160,7 +211,7 @@ func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
 }
 
 func collectArgs(call *ast.CallExpr, ctx *foldCtx) []any {
-	var args []any
+	args := make([]any, 0, len(call.Args.Args))
 	for _, a := range call.Args.Args {
 		if arg, ok := a.(ast.Arg); ok {
 			v, ok := evalConst(arg.Value, ctx)
@@ -488,6 +539,33 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if sok && ook && nok {
 			return strings.ReplaceAll(s, old, new_), true
 		}
+	}
+	return nil, false
+}
+
+// evalFileFunc evaluates file:// scheme functions (path, contents).
+func evalFileFunc(funcName, dirPath, filename string, ctx *foldCtx) (any, bool) {
+	fsys := os.DirFS(dirPath)
+
+	switch funcName {
+	case "path":
+		if _, err := fs.Stat(fsys, filename); err != nil {
+			return nil, false
+		}
+		outPath := "assets/" + filename
+		url := "/" + outPath
+		ctx.fileAssets = append(ctx.fileAssets, FileAsset{
+			SrcPath: filepath.Join(dirPath, filename),
+			OutPath: outPath,
+		})
+		return url, true
+
+	case "contents":
+		data, err := fs.ReadFile(fsys, filename)
+		if err != nil {
+			return nil, false
+		}
+		return string(data), true
 	}
 	return nil, false
 }

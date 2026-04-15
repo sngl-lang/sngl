@@ -378,7 +378,20 @@ func CompHasChildren(comp *ast.ComponentDecl) bool {
 }
 
 // CompBodyStmts returns the visual/control-flow statements in a component body.
+// If a PlatformStmt survives optimization (matching the target platform),
+// its contents replace the generic visual body.
 func CompBodyStmts(comp *ast.ComponentDecl) []ast.Stmt {
+	// Check for surviving platform-specific body (optimizer removes non-matching ones).
+	var platformStmts []ast.Stmt
+	for _, s := range comp.Body.Stmts {
+		if ps, ok := s.(*ast.PlatformStmt); ok {
+			platformStmts = append(platformStmts, ps.Body.Stmts...)
+		}
+	}
+	if len(platformStmts) > 0 {
+		return platformStmts
+	}
+
 	var out []ast.Stmt
 	for _, s := range comp.Body.Stmts {
 		switch s.(type) {

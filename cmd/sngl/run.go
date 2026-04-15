@@ -137,7 +137,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	defer os.RemoveAll(tmpDir)
 
 	// Generate
-	if err := generateTarget(file, doc, target, tmpDir, true); err != nil {
+	if err := generateTarget(file, doc, pkg, target, tmpDir, nil, true); err != nil {
 		return err
 	}
 
