@@ -253,15 +253,21 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		s.Name = it.shift().Literal
 	}
+	lbraceLine := 0
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
+		lbraceLine = it.token().Line
+	}
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == StructField {
 			s.Fields = append(s.Fields, b.buildStructField(it.enter()))
 		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				s.IsMultiline = true
+			if !it.isNonTerminal() && it.tokenType() == RBRACE {
+				if it.token().Line > lbraceLine {
+					s.IsMultiline = true
+				}
 			}
-			it.skip() // rbrace or semi
+			it.skip() // rbrace
 		}
 	}
 	return s

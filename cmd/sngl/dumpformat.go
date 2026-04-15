@@ -21,6 +21,8 @@ var dumpSpew = &spew.ConfigState{
 	SortKeys:                true,
 	DisablePointerAddresses: true,
 	DisableCapacities:       true,
+	DisableMethods:          true,
+	DisablePointerMethods:   true,
 }
 
 type dumpFormat string
@@ -49,10 +51,15 @@ func resolveDumpFormat(cmd *cobra.Command) (dumpFormat, error) {
 	}
 }
 
-func dumpDocument(f dumpFormat, doc *ast.Document) error {
+func dumpDocument(f dumpFormat, doc any) error {
 	switch f {
 	case dumpFormatSNGL:
-		fmt.Print(sngl.Format(doc))
+		switch doc := doc.(type) {
+		case *ast.Document:
+			fmt.Print(sngl.Format(doc))
+		default:
+			return fmt.Errorf("unable to format output of type %T as sngl source", doc)
+		}
 	case dumpFormatSpew:
 		dumpSpew.Fdump(os.Stdout, doc)
 	case dumpFormatColor:
@@ -61,22 +68,6 @@ func dumpDocument(f dumpFormat, doc *ast.Document) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(doc)
-	}
-	return nil
-}
-
-func dumpValue(f dumpFormat, v any) error {
-	switch f {
-	case dumpFormatSNGL:
-		return fmt.Errorf("--format=sngl is not supported for dump analysis")
-	case dumpFormatSpew:
-		dumpSpew.Fdump(os.Stdout, v)
-	case dumpFormatColor:
-		fmt.Print(colorSpew(v))
-	case dumpFormatJSON:
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(v)
 	}
 	return nil
 }

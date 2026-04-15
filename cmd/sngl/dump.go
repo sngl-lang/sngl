@@ -97,12 +97,13 @@ func runDumpChecked(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if _, err := checkDoc(doc, dir, true); err != nil {
+	pkg, err := checkDoc(doc, dir, true)
+	if err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
-	return dumpDocument(f, doc)
+	return dumpDocument(f, pkg)
 }
 
 func runDumpOptimized(cmd *cobra.Command, args []string) error {
@@ -170,7 +171,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
 
-	return dumpValue(f, codegen.AnalyzeCommon(doc))
+	return dumpDocument(f, codegen.AnalyzeCommon(doc))
 }
 
 func dumpTargetFlags(cmd *cobra.Command) (lang, platform string, err error) {
