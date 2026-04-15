@@ -14,8 +14,9 @@ type FileAsset struct {
 
 // Pos records the source position of an AST node.
 type Pos struct {
-	Line   int // 1-based line number
-	Column int // 1-based column number
+	File   string // source filename (empty when unknown)
+	Line   int    // 1-based line number
+	Column int    // 1-based column number
 }
 
 func (p Pos) IsSet() bool   { return p != Pos{} }
@@ -24,6 +25,9 @@ func (p Pos) IsValid() bool { return p.Line > 0 }
 func (p Pos) String() string {
 	if p.Line == 0 {
 		return ""
+	}
+	if p.File != "" {
+		return fmt.Sprintf("%s:%d:%d", p.File, p.Line, p.Column)
 	}
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }

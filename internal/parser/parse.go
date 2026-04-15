@@ -28,7 +28,7 @@ func Parse(filename string, src []byte) (*ast.Document, error) {
 	}
 
 
-	b := newBuilder(filtered, comments)
+	b := newBuilder(filename, filtered, comments)
 	doc := b.buildDocument(body(tree))
 	return doc, errors.Join(errs...)
 }

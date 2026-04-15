@@ -8,12 +8,13 @@ import (
 
 // builder converts an egg parse tree ([]int32) into AST nodes.
 type builder struct {
+	file     string
 	filtered []Token
 	comments []Token
 }
 
-func newBuilder(filtered, comments []Token) *builder {
-	return &builder{filtered: filtered, comments: comments}
+func newBuilder(file string, filtered, comments []Token) *builder {
+	return &builder{file: file, filtered: filtered, comments: comments}
 }
 
 // body returns the children portion of a non-terminal parse tree node.
@@ -90,11 +91,11 @@ func (it *nodeIter) childSlice() []int32 {
 
 func (b *builder) pos(idx int32) ast.Pos {
 	tok := tokenAt(b.filtered, idx)
-	return ast.Pos{Line: tok.Line, Column: tok.Column}
+	return ast.Pos{File: b.file, Line: tok.Line, Column: tok.Column}
 }
 
 func (b *builder) posFromToken(tok Token) ast.Pos {
-	return ast.Pos{Line: tok.Line, Column: tok.Column}
+	return ast.Pos{File: b.file, Line: tok.Line, Column: tok.Column}
 }
 
 // --- Document ---
