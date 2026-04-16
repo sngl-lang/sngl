@@ -627,7 +627,7 @@ func (c *checker) inferEventRef(x *ast.EventRefExpr) *ir.Type {
 // If sig is non-nil, validates positional arg types and arity against it.
 func (c *checker) checkArgs(args ast.ArgList, sig *ir.FuncSig) {
 	positional := 0
-	for _, a := range args.Args {
+	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
@@ -641,7 +641,11 @@ func (c *checker) checkArgs(args ast.ArgList, sig *ir.FuncSig) {
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					paramType := sig.Params[positional].Type
 					if argType.Kind != ir.TypeDyn && paramType.Kind != ir.TypeDyn && !argType.IsAssignableTo(paramType) {
-						c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
+						if callExpr, _ := c.implicitCall(arg.Value, argType, paramType); callExpr != nil {
+							args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
+						} else {
+							c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
+						}
 					}
 				}
 			}
@@ -1010,9 +1014,28 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 }
 
+// implicitCall checks whether actual is a zero-arg func whose return type is
+// assignable to expected. If so it wraps expr in a CallExpr, updates TypeMap,
+// and returns (callExpr, returnType). Otherwise returns (nil, actual).
+func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Expr, *ir.Type) {
+	if expected == nil || actual.Kind != ir.TypeFunc || actual.Sig == nil {
+		return nil, actual
+	}
+	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
+		return nil, actual
+	}
+	if !actual.Sig.Return.IsAssignableTo(expected) {
+		return nil, actual
+	}
+	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
+	ret := actual.Sig.Return
+	c.pkg.TypeMap[call] = ret
+	return call, ret
+}
+
 // checkVisualNodeArgs type-checks args, threading expected types from component props.
 func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *ir.Component) {
-	for _, a := range args.Args {
+	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
@@ -1022,7 +1045,12 @@ func (c *checker) checkVisualNodeArgs(args ast.ArgList, comp *ir.Component) {
 				}
 				actual := c.checkExprExpecting(arg.Value, expected)
 				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+					if call, ret := c.implicitCall(arg.Value, actual, expected); call != nil {
+						args.Args[i] = ast.Arg{Name: arg.Name, Value: call}
+						actual = ret
+					} else {
+						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+					}
 				}
 			}
 		case ast.EventHandler:
@@ -1088,7 +1116,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 // validateComponentCallArgs validates a component call (text(value="hi"))
 // against the component's prop and event declarations.
 func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *ir.Component) {
-	for _, a := range call.Args.Args {
+	for i, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Value != nil {
@@ -1098,7 +1126,12 @@ func (c *checker) validateComponentCallArgs(call *ast.CallExpr, comp *ir.Compone
 				}
 				actual := c.checkExprExpecting(arg.Value, expected)
 				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-					c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+					if callExpr, ret := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
+						call.Args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
+						actual = ret
+					} else {
+						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
+					}
 				}
 			}
 			if arg.Name == "" {
