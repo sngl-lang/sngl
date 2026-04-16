@@ -88,8 +88,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
-	stdlibPkg := c.loadStdlib()
-	c.pkg.Stdlib = stdlibPkg
+	c.loadStdlib()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -460,9 +459,8 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	irComp := &ir.Component{
-		AST:     comp,
-		Name:    comp.Name,
-		ASTBody: &comp.Body,
+		AST:  comp,
+		Name: comp.Name,
 	}
 
 	// Resolve props and events from PropList.
@@ -809,9 +807,8 @@ func optionFieldNames(sd *ir.StructDef) string {
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{
-		AST:     vn,
-		Name:    vn.ID, // window #name
-		ASTBody: &vn.Block,
+		AST:  vn,
+		Name: vn.ID, // window #name
 	}
 	// Extract name from args if ID not set.
 	if w.Name == "" {
@@ -827,7 +824,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 	return &ir.Timer{
-		AST: vn,
+		AST:     vn,
 		Handler: &ir.Func{},
 	}
 }
@@ -954,8 +951,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 
 	// Check component body statements.
-	if comp.ASTBody != nil {
-		comp.Body = c.checkBlockIR(comp.ASTBody)
+	if comp.AST != nil && comp.AST.Body.IsDefined() {
+		comp.Body = c.checkBlockIR(&comp.AST.Body)
 	}
 }
 
@@ -973,7 +970,7 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		c.checkFuncBody(fn)
 	}
 
-	if w.ASTBody != nil {
-		w.Body = c.checkBlockIR(w.ASTBody)
+	if w.AST != nil && w.AST.Block.IsDefined() {
+		w.Body = c.checkBlockIR(&w.AST.Block)
 	}
 }

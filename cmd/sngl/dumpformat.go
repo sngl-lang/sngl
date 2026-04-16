@@ -20,6 +20,7 @@ var dumpSpew = &spew.ConfigState{
 	Indent:                  " ",
 	DisablePointerAddresses: true,
 	DisableCapacities:       true,
+	SortKeys:                true,
 }
 
 type dumpFormat string

@@ -618,28 +618,6 @@ component main {
 `)
 }
 
-func TestStdlibPackageOnPkg(t *testing.T) {
-	pkg := parse(t, `var x = 1`)
-	if pkg.Stdlib == nil {
-		t.Fatal("Stdlib package is nil")
-	}
-	if len(pkg.Stdlib.Components) == 0 {
-		t.Fatal("Stdlib has no components")
-	}
-	found := false
-	for _, c := range pkg.Stdlib.Components {
-		if c.Name == "text" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("text component not in stdlib package")
-	}
-}
-
-// --- IR statement tests ---
-
 func TestBodyDisambiguation(t *testing.T) {
 	pkg := parse(t, `
 component greeting() {}

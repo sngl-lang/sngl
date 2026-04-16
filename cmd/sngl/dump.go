@@ -50,6 +50,7 @@ func init() {
 	dumpCmd.PersistentFlags().String("format", "auto", "output format (auto, spew, color, json, sngl)")
 	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
 	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
+	dumpCmd.PersistentFlags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
 
 	dumpOptimizedCmd.Flags().String("lang", "", "target language")
 	dumpOptimizedCmd.Flags().String("platform", "", "target platform")
@@ -70,6 +71,9 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	}
 	if ptrs, _ := cmd.Flags().GetBool("pointers"); ptrs {
 		dumpSpew.DisablePointerAddresses = false
+	}
+	if depth, _ := cmd.Flags().GetInt("depth"); depth > 0 {
+		dumpSpew.MaxDepth = depth
 	}
 	return f, i, nil
 }

@@ -132,9 +132,8 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
 	irComp := &ir.Component{
-		AST:     comp,
-		Name:    comp.Name,
-		ASTBody: &comp.Body,
+		AST:  comp,
+		Name: comp.Name,
 	}
 
 	for _, p := range comp.Props.Props {

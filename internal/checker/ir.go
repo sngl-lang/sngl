@@ -17,9 +17,6 @@ type NativeImport = ir.NativeImport
 type Func = ir.Func
 
 //go:fix inline
-type VarAccess = ir.VarAccess
-
-//go:fix inline
 type Var = ir.Var
 
 //go:fix inline

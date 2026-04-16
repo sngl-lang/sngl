@@ -20,7 +20,6 @@ type Package struct {
 	Timers     []*Timer
 	Outputs    []*Output
 	Symbols    *SymbolTable
-	Stdlib     *Package // stdlib package (nil on the stdlib package itself)
 }
 
 func (p *Package) IsMain() bool {
@@ -54,8 +53,8 @@ type Func struct {
 	Receiver   string       // "int" for int.abs (empty for plain funcs)
 	TypeParams []string
 	Params     []*Param
-	Return *Type
-	Block  []Stmt // type-checked statements (expression bodies become a single Return)
+	Return     *Type
+	Block      []Stmt // type-checked statements (expression bodies become a single Return)
 	Purity     Purity
 	IsTest     bool
 	Reads      []*Var // vars read (directly or via called functions)
@@ -75,11 +74,6 @@ func (f *Func) FuncSig() *FuncSig {
 	}
 }
 
-// VarAccess records a single read or write to a variable.
-type VarAccess struct {
-	Write bool // true for mutations
-}
-
 // Var represents a constant or variable declaration.
 type Var struct {
 	AST      ast.Stmt // original ConstDecl or VarDecl
@@ -87,7 +81,6 @@ type Var struct {
 	Type     *Type
 	IsConst  bool
 	Handlers []*EventHandler
-	Refs     []VarAccess // all access sites
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -103,8 +96,7 @@ type Component struct {
 	Vars         []*Var
 	Funcs        []*Func
 	Timers       []*Timer
-	ASTBody      *ast.StmtBlock // raw AST (kept for formatter and legacy codegen)
-	Body         []Stmt         // type-checked body statements
+	Body []Stmt // type-checked body statements
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -138,8 +130,7 @@ type Window struct {
 	Name    string
 	Vars    []*Var
 	Funcs   []*Func
-	ASTBody *ast.StmtBlock // raw AST (kept for formatter and legacy codegen)
-	Body    []Stmt         // type-checked body statements
+	Body []Stmt // type-checked body statements
 	Checked bool           // true if body was already checked in context (e.g., inside a for-loop)
 }
 

@@ -1,8 +1,9 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
-
-import "git.duckfam.us/jonathan/sngl/ast"
+import (
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // analyzePurity determines the purity level of a function by walking its body.
 func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
@@ -24,7 +25,7 @@ func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
 	return ir.PurityPure
 }
 
-// trackAccess populates Func.Reads/Writes and Var.Refs by walking the function body.
+// trackAccess populates Func.Reads/Writes by walking the function body.
 func trackAccess(f *ir.Func, vars map[string]*ir.Var) {
 	w := &accessWalker{vars: vars, reads: make(map[string]bool), writes: make(map[string]bool)}
 	if f.AST != nil {
