@@ -79,7 +79,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c := &checker{
 		doc:          doc,
 		cfg:          cfg,
-		pkg:          &ir.Package{TypeMap: make(map[ast.Expr]*ir.Type)},
+		pkg:          &ir.Package{},
 		symtab:       symtab,
 		scope:        symtab.Root,
 		unitBySuffix: make(map[string]*ir.UnitDef),
@@ -435,8 +435,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 					AST:  h,
 					Name: h.Name,
 					Func: &ir.Func{
-						Params:   c.buildParams(h.Params),
-						ASTBlock: &h.Body,
+						Params: c.buildParams(h.Params),
 					},
 				}
 				v.Handlers = append(v.Handlers, handler)
@@ -829,9 +828,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 	return &ir.Timer{
 		AST: vn,
-		Handler: &ir.Func{
-			ASTBlock: &vn.Block,
-		},
+		Handler: &ir.Func{},
 	}
 }
 
@@ -907,25 +904,21 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.typeParams = fn.TypeParams
 	defer func() { c.typeParams = prevTypeParams }()
 
-	if fn.Body != nil {
-		bodyType := c.checkExpr(fn.Body)
+	if fn.AST != nil && fn.AST.Body != nil {
+		body := fn.AST.Body
+		bodyType := c.checkExpr(body)
 		// Infer return type from expression body if not declared.
 		if fn.Return.Kind == ir.TypeDyn && bodyType.Kind != ir.TypeDyn {
 			fn.Return = bodyType
 		}
 		// Expression-body return type check.
 		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
-			var pos ast.Pos
-			if fn.AST != nil {
-				if p := fn.AST.StmtPos(); p != nil {
-					pos = *p
-				}
-			}
+			pos := *body.ExprPos()
 			c.error(pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
-	}
-	if fn.ASTBlock != nil {
-		fn.Block = c.checkBlockIR(fn.ASTBlock)
+		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}}}
+	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
+		fn.Block = c.checkBlockIR(&fn.AST.Block)
 	}
 }
 

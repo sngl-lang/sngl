@@ -72,7 +72,7 @@ func exprV2(e ast.Expr, ctx *codegen.ExprCtx) string {
 	case *ast.BinaryExpr:
 		left := exprV2(n.Left, ctx)
 		right := exprV2(n.Right, ctx)
-		if n.Op == ast.BinDiv && isIntDiv(n, ctx) {
+		if n.Op == ast.BinDiv && isIntDiv(n) {
 			return "Math.trunc(" + left + " / " + right + ")"
 		}
 		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
@@ -228,18 +228,14 @@ func methodCallV2(sel *ast.SelectExpr, argList ast.ArgList, ctx *codegen.ExprCtx
 	}
 
 	// Instance method via type-attached function
-	if ctx.Pkg != nil && ctx.Pkg.Symbols != nil {
-		operandType := ctx.TypeOf(sel.Operand)
-		if operandType != nil {
-			typeName := operandType.String()
-			if f, ok := ctx.Pkg.Symbols.LookupMethod(typeName, method); ok {
-				jsName := strings.ReplaceAll(typeName+"."+f.Name, ".", "_")
-				argStrs := []string{exprV2(sel.Operand, ctx)}
-				for _, a := range args {
-					argStrs = append(argStrs, exprV2(a, ctx))
-				}
-				return jsName + "(" + strings.Join(argStrs, ", ") + ")"
+	if ctx.Pkg != nil && ctx.Pkg.Symbols != nil && sel.ResolvedType != "" {
+		if f, ok := ctx.Pkg.Symbols.LookupMethod(sel.ResolvedType, method); ok {
+			jsName := strings.ReplaceAll(sel.ResolvedType+"."+f.Name, ".", "_")
+			argStrs := []string{exprV2(sel.Operand, ctx)}
+			for _, a := range args {
+				argStrs = append(argStrs, exprV2(a, ctx))
 			}
+			return jsName + "(" + strings.Join(argStrs, ", ") + ")"
 		}
 	}
 
@@ -310,15 +306,7 @@ func mutationTargetV2(e ast.Expr, ctx *codegen.ExprCtx) string {
 }
 
 // isIntDiv checks whether a binary division should use integer truncation.
-// Uses TypeMap when available, falls back to syntactic heuristic.
-func isIntDiv(n *ast.BinaryExpr, ctx *codegen.ExprCtx) bool {
-	if t := ctx.TypeOf(n); t != nil {
-		return t.Kind == ir.TypeInt
-	}
-	if t := ctx.TypeOf(n.Left); t != nil {
-		return t.Kind == ir.TypeInt
-	}
-	// Fallback to syntactic heuristic when TypeMap unavailable
+func isIntDiv(n *ast.BinaryExpr) bool {
 	return isIntNode(n.Left) && isIntNode(n.Right)
 }
 
@@ -355,11 +343,8 @@ func jsBuiltinMethodV2(sel *ast.SelectExpr, args []ast.Expr, ctx *codegen.ExprCt
 		for _, a := range args {
 			argExprs = append(argExprs, exprV2(a, ctx))
 		}
-		// Use TypeMap for resolved type name
-		if t := ctx.TypeOf(sel.Operand); t != nil {
-			qualName = t.String() + "." + method
-		} else if sel.ResolvedType != "" {
-			qualName = sel.ResolvedType
+		if sel.ResolvedType != "" {
+			qualName = sel.ResolvedType + "." + method
 		} else {
 			qualName = "*." + method
 		}

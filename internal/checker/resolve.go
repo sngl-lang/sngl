@@ -320,13 +320,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		TypeParams: f.TypeParams,
 		Params:     c.buildParams(f.Params),
 		Return:     c.resolveType(f.ReturnType),
-		Body:       f.Body,
 		IsTest:     f.IsTest(),
 	}
 	c.typeParams = prevTypeParams
-	if f.Block.IsDefined() {
-		fn.ASTBlock = &f.Block
-	}
 	if isMethod {
 		fn.Receiver = typeName
 		fn.Name = methodName

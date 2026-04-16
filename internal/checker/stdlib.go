@@ -56,7 +56,6 @@ func parseStdlibDocs() []*ast.Document {
 // the "sngl" namespace for qualified access (sngl.text, sngl.Color, etc.).
 func (c *checker) loadStdlib() *ir.Package {
 	stdlibPkg := &ir.Package{
-		TypeMap: make(map[ast.Expr]*ir.Type),
 		Symbols: NewSymbolTable(),
 	}
 

@@ -172,16 +172,6 @@ component Counter(label string, :count int, @click) {
 	}
 }
 
-func TestExprTypeMap(t *testing.T) {
-	pkg := parse(t, `
-func add(a int, b int) => a + b
-`)
-	// The function body expression should be in the TypeMap.
-	if len(pkg.TypeMap) == 0 {
-		t.Error("TypeMap is empty")
-	}
-}
-
 func TestPurityAnalysis(t *testing.T) {
 	pkg := parse(t, `
 var count int

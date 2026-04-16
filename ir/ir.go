@@ -19,7 +19,6 @@ type Package struct {
 	Windows    []*Window
 	Timers     []*Timer
 	Outputs    []*Output
-	TypeMap    map[ast.Expr]*Type // every expression → its resolved type
 	Symbols    *SymbolTable
 	Stdlib     *Package // stdlib package (nil on the stdlib package itself)
 }
@@ -55,10 +54,8 @@ type Func struct {
 	Receiver   string       // "int" for int.abs (empty for plain funcs)
 	TypeParams []string
 	Params     []*Param
-	Return     *Type
-	Body       ast.Expr       // expression form (=> expr)
-	ASTBlock   *ast.StmtBlock // block form ({ ... })
-	Block      []Stmt         // type-checked block statements (nil for expression form)
+	Return *Type
+	Block  []Stmt // type-checked statements (expression bodies become a single Return)
 	Purity     Purity
 	IsTest     bool
 	Reads      []*Var // vars read (directly or via called functions)

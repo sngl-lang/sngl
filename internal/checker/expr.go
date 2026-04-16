@@ -6,14 +6,12 @@ import "maps"
 
 import "git.duckfam.us/jonathan/sngl/ast"
 
-// checkExpr infers the type of an expression, stores it in TypeMap, and returns it.
+// checkExpr infers the type of an expression and returns it.
 func (c *checker) checkExpr(e ast.Expr) *ir.Type {
 	if e == nil {
 		return TypDyn
 	}
-	t := c.inferExpr(e)
-	c.pkg.TypeMap[e] = t
-	return t
+	return c.inferExpr(e)
 }
 
 // checkExprExpecting checks an expression with an expected type hint.
@@ -311,6 +309,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) *ir.T
 	}
 
 	receiver := c.checkExpr(sel.Operand)
+	sel.ResolvedType = receiver.String()
 
 	// Namespace function call: ns.func().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
@@ -538,10 +537,6 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *ir.Type {
 	fn := &ir.Func{
 		Params: c.buildParams(x.Params),
 		Return: c.resolveType(x.ReturnType),
-		Body:   x.Body,
-	}
-	if x.Block.IsDefined() {
-		fn.ASTBlock = &x.Block
 	}
 
 	// Type-check the lambda body in a child scope.
@@ -551,11 +546,11 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) *ir.Type {
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
-	if fn.Body != nil {
-		c.checkExprExpecting(fn.Body, fn.Return)
+	if x.Body != nil {
+		c.checkExprExpecting(x.Body, fn.Return)
 	}
-	if fn.ASTBlock != nil {
-		c.checkBlock(fn.ASTBlock)
+	if x.Block.IsDefined() {
+		c.checkBlock(&x.Block)
 	}
 	c.returnType = prevReturn
 	c.popScope()
@@ -1015,7 +1010,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 }
 
 // implicitCall checks whether actual is a zero-arg func whose return type is
-// assignable to expected. If so it wraps expr in a CallExpr, updates TypeMap,
+// assignable to expected. If so it wraps expr in a CallExpr
 // and returns (callExpr, returnType). Otherwise returns (nil, actual).
 func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Expr, *ir.Type) {
 	if expected == nil || actual.Kind != ir.TypeFunc || actual.Sig == nil {
@@ -1028,9 +1023,7 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
-	ret := actual.Sig.Return
-	c.pkg.TypeMap[call] = ret
-	return call, ret
+	return call, actual.Sig.Return
 }
 
 // checkVisualNodeArgs type-checks args, threading expected types from component props.

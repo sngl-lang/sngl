@@ -7,11 +7,13 @@ import "git.duckfam.us/jonathan/sngl/ast"
 // analyzePurity determines the purity level of a function by walking its body.
 func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
 	w := &purityWalker{vars: vars}
-	if f.Body != nil {
-		w.walkExpr(f.Body)
-	}
-	if f.ASTBlock != nil {
-		w.walkBlock(f.ASTBlock)
+	if f.AST != nil {
+		if f.AST.Body != nil {
+			w.walkExpr(f.AST.Body)
+		}
+		if f.AST.Block.IsDefined() {
+			w.walkBlock(&f.AST.Block)
+		}
 	}
 	if w.mutates {
 		return ir.PurityMutates
@@ -25,11 +27,13 @@ func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
 // trackAccess populates Func.Reads/Writes and Var.Refs by walking the function body.
 func trackAccess(f *ir.Func, vars map[string]*ir.Var) {
 	w := &accessWalker{vars: vars, reads: make(map[string]bool), writes: make(map[string]bool)}
-	if f.Body != nil {
-		w.walkExpr(f.Body)
-	}
-	if f.ASTBlock != nil {
-		w.walkBlock(f.ASTBlock)
+	if f.AST != nil {
+		if f.AST.Body != nil {
+			w.walkExpr(f.AST.Body)
+		}
+		if f.AST.Block.IsDefined() {
+			w.walkBlock(&f.AST.Block)
+		}
 	}
 	for name := range w.reads {
 		if v, ok := vars[name]; ok {

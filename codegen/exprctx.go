@@ -3,7 +3,6 @@ package codegen
 import (
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -134,14 +133,6 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	return nil, NameUnknown
 }
 
-// TypeOf returns the resolved type for an expression from the TypeMap.
-func (ctx *ExprCtx) TypeOf(e ast.Expr) *ir.Type {
-	if ctx.Pkg == nil || ctx.Pkg.TypeMap == nil {
-		return nil
-	}
-	return ctx.Pkg.TypeMap[e]
-}
-
 // RenamedName returns the renamed name for a local var, or the original if no rename.
 func (ctx *ExprCtx) RenamedName(name string) string {
 	if r, ok := ctx.Renames[name]; ok {
@@ -179,5 +170,5 @@ func (ctx *ExprCtx) WithEvent(eventVar string) *ExprCtx {
 // IsComputed reports whether a function is a computed field
 // (zero-param, expression body, non-test).
 func IsComputed(f *ir.Func) bool {
-	return f.Body != nil && len(f.Params) == 0 && !f.IsTest
+	return f.AST != nil && f.AST.Body != nil && len(f.Params) == 0 && !f.IsTest
 }
