@@ -51,6 +51,7 @@ func init() {
 	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
 	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
 	dumpCmd.PersistentFlags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
+	dumpCmd.PersistentFlags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos)")
 
 	dumpOptimizedCmd.Flags().String("lang", "", "target language")
 	dumpOptimizedCmd.Flags().String("platform", "", "target platform")
@@ -59,6 +60,8 @@ func init() {
 
 	dumpCmd.AddCommand(dumpParsedCmd, dumpCheckedCmd, dumpOptimizedCmd, dumpAnalysisCmd)
 }
+
+var dumpOmitSet map[string]bool
 
 func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput, error) {
 	f, err := resolveDumpFormat(cmd)
@@ -74,6 +77,12 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	}
 	if depth, _ := cmd.Flags().GetInt("depth"); depth > 0 {
 		dumpSpew.MaxDepth = depth
+	}
+	if names, _ := cmd.Flags().GetStringSlice("omit"); len(names) > 0 {
+		dumpOmitSet = make(map[string]bool, len(names))
+		for _, name := range names {
+			dumpOmitSet[name] = true
+		}
 	}
 	return f, i, nil
 }

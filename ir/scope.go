@@ -108,6 +108,8 @@ type SymbolTable struct {
 	Methods map[string]map[string]*Func // typeName → methodName → Func
 }
 
+func (SymbolTable) String() string { return "omitted" }
+
 // NewSymbolTable creates an empty symbol table.
 func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{

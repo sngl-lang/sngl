@@ -2,6 +2,8 @@ package ir
 
 import "fmt"
 
+//go:generate go tool stringer -type=TypeKind -trimprefix Type
+
 // TypeKind classifies the shape of a type.
 type TypeKind int
 
@@ -347,6 +349,8 @@ func (s *FuncSig) Equal(other *FuncSig) bool {
 	}
 	return s.Return.Equal(other.Return)
 }
+
+//go:generate go tool stringer -type=Purity -trimprefix Purity
 
 // Purity describes the side-effect level of a function.
 type Purity int

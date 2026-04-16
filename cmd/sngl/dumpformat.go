@@ -50,6 +50,9 @@ func resolveDumpFormat(cmd *cobra.Command) (dumpFormat, error) {
 }
 
 func dumpDocument(f dumpFormat, doc any) error {
+	if len(dumpOmitSet) > 0 && f != dumpFormatSNGL {
+		omitFields(doc, dumpOmitSet)
+	}
 	switch f {
 	case dumpFormatSNGL:
 		switch doc := doc.(type) {

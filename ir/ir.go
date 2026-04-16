@@ -96,7 +96,7 @@ type Component struct {
 	Vars         []*Var
 	Funcs        []*Func
 	Timers       []*Timer
-	Body []Stmt // type-checked body statements
+	Body         []Stmt // type-checked body statements
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -130,8 +130,8 @@ type Window struct {
 	Name    string
 	Vars    []*Var
 	Funcs   []*Func
-	Body []Stmt // type-checked body statements
-	Checked bool           // true if body was already checked in context (e.g., inside a for-loop)
+	Body    []Stmt // type-checked body statements
+	Checked bool   // true if body was already checked in context (e.g., inside a for-loop)
 }
 
 func (w *Window) SymName() string { return w.Name }
@@ -225,6 +225,8 @@ func (d Diagnostic) Error() string {
 	}
 	return d.Msg
 }
+
+//go:generate go tool stringer -type=Severity
 
 // Severity classifies a diagnostic.
 type Severity int
