@@ -445,6 +445,61 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 	}
 }
 
+// checkComponentVars type-checks initializers for component-level vars
+// that were pre-registered in pass1, and infers types from initializers.
+func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		if spec.Default != nil {
+			initType := c.checkExprExpecting(spec.Default, typ)
+			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
+				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+			if typ.Kind == ir.TypeDyn {
+				typ = initType
+			}
+		}
+		// Update the pre-registered ir.Var's type.
+		for _, name := range spec.Names {
+			for _, v := range comp.Vars {
+				if v.Name == name {
+					v.Type = typ
+					break
+				}
+			}
+		}
+	}
+}
+
+// checkComponentConsts type-checks initializers for component-level consts
+// that were pre-registered in pass1, and infers types from initializers.
+func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) {
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		if spec.Default != nil {
+			if name := c.nonConstRef(spec.Default); name != "" {
+				c.error(decl.Pos, "const initializer references non-const %q", name)
+			}
+			initType := c.checkExprExpecting(spec.Default, typ)
+			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
+				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+			if typ.Kind == ir.TypeDyn {
+				typ = initType
+			}
+		}
+		// Update the pre-registered ir.Var's type.
+		for _, name := range spec.Names {
+			for _, v := range comp.Vars {
+				if v.Name == name {
+					v.Type = typ
+					break
+				}
+			}
+		}
+	}
+}
+
 func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
@@ -512,6 +567,17 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 						AST:  s,
 						Name: name,
 						Type: typ,
+					}
+					for i := range spec.Handlers {
+						h := &spec.Handlers[i]
+						handler := &ir.EventHandler{
+							AST:  h,
+							Name: h.Name,
+							Func: &ir.Func{
+								Params: c.buildParams(h.Params),
+							},
+						}
+						v.Handlers = append(v.Handlers, handler)
 					}
 					irComp.Vars = append(irComp.Vars, v)
 				}
@@ -951,8 +1017,23 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 
 	// Check component body statements.
+	// Declarations were registered in pass1 but initializers weren't checked
+	// (scope wasn't ready). Check them now and infer types, but don't re-register.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
-		comp.Body = c.checkBlockIR(&comp.AST.Body)
+		for _, stmt := range comp.AST.Body.Stmts {
+			switch s := stmt.(type) {
+			case *ast.ConstDecl:
+				c.checkComponentConsts(s, comp)
+			case *ast.VarDecl:
+				c.checkComponentVars(s, comp)
+			case *ast.FuncDef:
+				continue // already checked above
+			default:
+				if s := c.checkStmt(stmt); s != nil {
+					comp.Body = append(comp.Body, s)
+				}
+			}
+		}
 	}
 }
 
