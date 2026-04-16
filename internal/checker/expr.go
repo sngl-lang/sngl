@@ -856,7 +856,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			Name: x.Name,
 			Type: typ,
 		})
-		return &ir.LocalVar{AST: x, Type: typ, Init: initExpr}
+		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr}
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
 		if x.Value != nil {
@@ -925,7 +925,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &ir.For{AST: x, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody}
+		return &ir.For{AST: x, Key: x.Key, Value: x.Value, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
@@ -1042,7 +1042,7 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 	}
 
 	body := c.checkBlockIR(&s.Body)
-	return &ir.PlatformFilter{AST: s, Body: body}
+	return &ir.PlatformFilter{AST: s, Platform: s.Platform, Body: body}
 }
 
 // checkVisualNodeIR validates a visual node and returns the appropriate IR statement.

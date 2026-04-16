@@ -79,6 +79,7 @@ func (*Emit) stmtNode() {}
 // LocalVar is a local variable declaration with its resolved type.
 type LocalVar struct {
 	AST  *ast.VarStmt
+	Name string
 	Type *Type
 	Init Expr // resolved initializer (nil if none)
 }
@@ -106,7 +107,9 @@ func (*If) stmtNode() {}
 // For is a type-checked for statement with IR bodies and resolved element type.
 type For struct {
 	AST      *ast.ForStmt
-	Iter     Expr // resolved iterator expression
+	Key      string // iterator variable name
+	Value    string // optional second variable (empty for single-var form)
+	Iter     Expr   // resolved iterator expression
 	ElemType *Type
 	Body     []Stmt
 	Else     []Stmt
@@ -116,8 +119,9 @@ func (*For) stmtNode() {}
 
 // PlatformFilter is a type-checked platform statement with IR body.
 type PlatformFilter struct {
-	AST  *ast.PlatformStmt
-	Body []Stmt
+	AST      *ast.PlatformStmt
+	Platform string // "html", "bubbletea", etc.
+	Body     []Stmt
 }
 
 func (*PlatformFilter) stmtNode() {}

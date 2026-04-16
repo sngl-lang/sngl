@@ -36,6 +36,12 @@ func FormatExpr(e ast.Expr) string {
 	return parser.FormatExpr(e)
 }
 
+// Convert builds a fresh AST Document from a type-checked IR Package,
+// without referencing any embedded AST pointers.
+func Convert(pkg *ir.Package) *ast.Document {
+	return ir.Convert(pkg)
+}
+
 // Check type-checks a parsed SNGL document. dir is the directory of the source
 // file, used to resolve relative import paths.
 func Check(doc *ast.Document, dir string) (*ir.Package, []ir.Diagnostic) {

@@ -29,6 +29,7 @@ func (p *Package) IsMain() bool {
 // Import records a resolved import.
 type Import struct {
 	AST    *ast.Import
+	Path   string        // import URI (e.g., "widgets", "go://net/http")
 	Alias  string        // effective namespace name; only allowed in main file declarations
 	Pkg    *Package      // resolved SNGL package (nil for native)
 	Native *NativeImport // non-nil for scheme imports
@@ -79,6 +80,7 @@ type Var struct {
 	AST      ast.Stmt // original ConstDecl or VarDecl
 	Name     string
 	Type     *Type
+	Init     Expr // checked initializer (nil if none)
 	IsConst  bool
 	Handlers []*EventHandler
 }
@@ -140,8 +142,9 @@ func (w *Window) SymType() *Type  { return nil }
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
 type Timer struct {
-	AST     *ast.VisualNode
-	Handler *Func
+	AST      *ast.VisualNode
+	Interval Expr // checked interval expression (e.g., 500ms)
+	Handler  *Func
 }
 
 // Output represents a resolved output directive. Only permitted in the main file.

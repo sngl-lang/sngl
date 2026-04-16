@@ -176,6 +176,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	irImport := &ir.Import{
 		AST:   imp,
+		Path:  imp.Path,
 		Alias: alias,
 	}
 
@@ -264,13 +265,15 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 func (c *checker) registerConsts(decl *ast.ConstDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		var initExpr ir.Expr
 		// Validate const initializer only references consts/literals.
 		if spec.Default != nil {
 			if name := c.nonConstRef(spec.Default); name != "" {
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
 			// Type check initializer.
-			initType := exprType(c.checkExprExpecting(spec.Default, typ))
+			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -284,6 +287,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				AST:     decl,
 				Name:    name,
 				Type:    typ,
+				Init:    initExpr,
 				IsConst: true,
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
@@ -410,9 +414,11 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		var initExpr ir.Expr
 		// Type check initializer.
 		if spec.Default != nil {
-			initType := exprType(c.checkExprExpecting(spec.Default, typ))
+			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -426,6 +432,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
+				Init: initExpr,
 			}
 			// Build event handlers.
 			for i := range spec.Handlers {
@@ -450,8 +457,10 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		var initExpr ir.Expr
 		if spec.Default != nil {
-			initType := exprType(c.checkExprExpecting(spec.Default, typ))
+			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -459,11 +468,12 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				typ = initType
 			}
 		}
-		// Update the pre-registered ir.Var's type.
+		// Update the pre-registered ir.Var's type and init.
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
 				if v.Name == name {
 					v.Type = typ
+					v.Init = initExpr
 					break
 				}
 			}
@@ -476,11 +486,13 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		var initExpr ir.Expr
 		if spec.Default != nil {
 			if name := c.nonConstRef(spec.Default); name != "" {
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
-			initType := exprType(c.checkExprExpecting(spec.Default, typ))
+			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -488,11 +500,12 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 				typ = initType
 			}
 		}
-		// Update the pre-registered ir.Var's type.
+		// Update the pre-registered ir.Var's type and init.
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
 				if v.Name == name {
 					v.Type = typ
+					v.Init = initExpr
 					break
 				}
 			}
@@ -889,10 +902,18 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 }
 
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
-	return &ir.Timer{
+	t := &ir.Timer{
 		AST:     vn,
 		Handler: &ir.Func{},
 	}
+	// Extract and check interval from first positional arg.
+	for _, a := range vn.Args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == "" {
+			t.Interval = c.checkExpr(arg.Value)
+			break
+		}
+	}
+	return t
 }
 
 // literalString extracts the string value from a literal expression.
@@ -926,6 +947,22 @@ func (c *checker) pass2() {
 		if !w.Checked {
 			c.checkWindowBody(w)
 		}
+	}
+
+	// Check timer handler bodies.
+	for _, t := range c.pkg.Timers {
+		c.checkTimerBody(t)
+	}
+	for _, comp := range c.pkg.Components {
+		for _, t := range comp.Timers {
+			c.checkTimerBody(t)
+		}
+	}
+
+	// Check var handler bodies.
+	c.checkVarHandlerBodies(c.pkg.Vars)
+	for _, comp := range c.pkg.Components {
+		c.checkVarHandlerBodies(comp.Vars)
 	}
 
 	// Purity analysis.
@@ -1067,5 +1104,30 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 
 	if w.AST != nil && w.AST.Block.IsDefined() {
 		w.Body = c.checkBlockIR(&w.AST.Block)
+	}
+}
+
+func (c *checker) checkTimerBody(t *ir.Timer) {
+	if t.AST == nil || !t.AST.Block.IsDefined() {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
+}
+
+func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
+	for _, v := range vars {
+		for _, h := range v.Handlers {
+			if h.AST == nil || !h.AST.Body.IsDefined() {
+				continue
+			}
+			c.pushScope()
+			for _, p := range h.Func.Params {
+				c.scope.Declare(p)
+			}
+			h.Func.Block = c.checkBlockIR(&h.AST.Body)
+			c.popScope()
+		}
 	}
 }

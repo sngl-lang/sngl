@@ -14,6 +14,7 @@ import (
 
 	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 var dumpSpew = &spew.ConfigState{
@@ -58,6 +59,8 @@ func dumpDocument(f dumpFormat, doc any) error {
 		switch doc := doc.(type) {
 		case *ast.Document:
 			fmt.Print(sngl.Format(doc))
+		case *ir.Package:
+			fmt.Print(sngl.Format(ir.Convert(doc)))
 		default:
 			return fmt.Errorf("unable to format output of type %T as sngl source", doc)
 		}
