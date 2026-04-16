@@ -270,7 +270,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
 			// Type check initializer.
-			initType := c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(c.checkExprExpecting(spec.Default, typ))
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -412,7 +412,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 		typ := c.resolveType(spec.Type)
 		// Type check initializer.
 		if spec.Default != nil {
-			initType := c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(c.checkExprExpecting(spec.Default, typ))
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -451,7 +451,7 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
 		if spec.Default != nil {
-			initType := c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(c.checkExprExpecting(spec.Default, typ))
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -480,7 +480,7 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 			if name := c.nonConstRef(spec.Default); name != "" {
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
-			initType := c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(c.checkExprExpecting(spec.Default, typ))
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
@@ -525,9 +525,9 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			prop := &ir.Prop{
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
-				Default:       pd.Default,
 				Bidirectional: pd.Bidirectional,
 			}
+			// Default is checked later in checkComponentBody when scope is ready.
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
@@ -969,7 +969,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body
-		bodyType := c.checkExpr(body)
+		bodyExpr := c.checkExpr(body)
+		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body if not declared.
 		if fn.Return.Kind == ir.TypeDyn && bodyType.Kind != ir.TypeDyn {
 			fn.Return = bodyType
@@ -979,7 +980,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 			pos := *body.ExprPos()
 			c.error(pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
-		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}}}
+		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 	}
@@ -999,6 +1000,19 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			Name: p.Name,
 			Type: p.Type,
 		})
+	}
+
+	// Check prop defaults now that scope is ready.
+	if comp.AST != nil {
+		propIdx := 0
+		for _, p := range comp.AST.Props.Props {
+			if pd, ok := p.(ast.Param); ok {
+				if propIdx < len(comp.Props) && pd.Default != nil {
+					comp.Props[propIdx].Default = c.checkExprExpecting(pd.Default, comp.Props[propIdx].Type)
+				}
+				propIdx++
+			}
+		}
 	}
 
 	// Declare component-level vars and funcs.

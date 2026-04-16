@@ -663,8 +663,10 @@ component main {
 	if !ok {
 		t.Fatalf("Body[1]: want *CallStmt, got %T", main.Body[1])
 	}
-	if cs.Func == nil {
-		t.Error("CallStmt.Func is nil, want resolved function")
+	if cs.Call == nil {
+		t.Error("CallStmt.Call is nil, want resolved call")
+	} else if cs.Call.Func == nil {
+		t.Error("CallStmt.Call.Func is nil, want resolved function")
 	}
 
 	// Third statement: if → If with nested NodeInst.
@@ -746,8 +748,10 @@ component main {
 	if !ok {
 		t.Fatalf("Body[0]: want *CallStmt, got %T", main.Body[0])
 	}
-	if cs.Func == nil {
-		t.Error("CallStmt.Func is nil, want resolved function")
+	if cs.Call == nil {
+		t.Error("CallStmt.Call is nil, want resolved call")
+	} else if cs.Call.Func == nil {
+		t.Error("CallStmt.Call.Func is nil, want resolved function")
 	}
 }
 

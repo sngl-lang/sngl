@@ -106,7 +106,7 @@ func (c *Component) SymType() *Type  { return &Type{Kind: TypeComponent, Decl: c
 type Prop struct {
 	Name          string
 	Type          *Type
-	Default       ast.Expr
+	Default       Expr // nil if no default
 	Bidirectional bool
 }
 
@@ -154,9 +154,9 @@ type Output struct {
 
 // Param is a resolved function or component parameter.
 type Param struct {
-	Name       string
-	Type       *Type
-	HasDefault bool
+	Name    string
+	Type    *Type
+	Default Expr // nil if no default
 }
 
 func (p *Param) SymName() string { return p.Name }
@@ -176,7 +176,7 @@ func (s *StructDef) SymType() *Type  { return &Type{Kind: TypeStruct, Decl: s} }
 type StructField struct {
 	Name    string
 	Type    *Type
-	Default ast.Expr
+	Default Expr // nil if no default
 }
 
 // EnumDef is a resolved enum type declaration.
@@ -192,7 +192,7 @@ func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
 // EnumMember is a single value in an enum.
 type EnumMember struct {
 	Name  string
-	Value ast.Expr // nil for bare members
+	Value Expr // nil for bare members
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

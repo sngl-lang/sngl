@@ -181,10 +181,16 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	fields := make([]*ir.StructField, len(s.Fields))
 	for i, f := range s.Fields {
+		typ := c.resolveType(f.Type)
+		var def ir.Expr
+		if f.Default != nil {
+			// Placeholder; actual default checked later when scope is ready.
+			def = &ir.Literal{Type: typ}
+		}
 		fields[i] = &ir.StructField{
 			Name:    f.Name,
-			Type:    c.resolveType(f.Type),
-			Default: f.Default,
+			Type:    typ,
+			Default: def,
 		}
 	}
 	return &ir.StructDef{
@@ -198,9 +204,14 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	members := make([]*ir.EnumMember, len(e.Members))
 	for i, m := range e.Members {
+		var val ir.Expr
+		if m.Value != nil {
+			// Placeholder; actual value checked later when scope is ready.
+			val = &ir.Literal{Type: TypDyn}
+		}
 		members[i] = &ir.EnumMember{
 			Name:  m.Name,
-			Value: m.Value,
+			Value: val,
 		}
 	}
 	return &ir.EnumDef{
@@ -298,10 +309,17 @@ func namespaceFromPath(path string) string {
 func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	params := make([]*ir.Param, len(pl.Params))
 	for i, p := range pl.Params {
+		typ := c.resolveType(p.Type)
+		var def ir.Expr
+		if p.Default != nil {
+			// Use a placeholder to signal "has default" for arity checks.
+			// The actual default is checked later when the scope is ready.
+			def = &ir.Literal{Type: typ}
+		}
 		params[i] = &ir.Param{
-			Name:       p.Name,
-			Type:       c.resolveType(p.Type),
-			HasDefault: p.Default != nil,
+			Name:    p.Name,
+			Type:    typ,
+			Default: def,
 		}
 	}
 	return params

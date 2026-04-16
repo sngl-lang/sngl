@@ -47,7 +47,7 @@ var dumpAnalysisCmd = &cobra.Command{
 }
 
 func init() {
-	dumpCmd.PersistentFlags().String("format", "auto", "output format (auto, spew, color, json, sngl)")
+	dumpCmd.PersistentFlags().String("format", "auto", "output format (auto, spew, color, json, sngl, pp, litter, repr)")
 	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
 	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
 	dumpCmd.PersistentFlags().Int("depth", 0, "maximum depth for spew output (default unlimited)")

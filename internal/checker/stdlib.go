@@ -139,10 +139,16 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
+			typ := c.resolveType(pd.Type)
+			var def ir.Expr
+			if pd.Default != nil {
+				// Placeholder; stdlib prop defaults don't need full checking.
+				def = &ir.Literal{Type: typ}
+			}
 			prop := &ir.Prop{
 				Name:          pd.Name,
-				Type:          c.resolveType(pd.Type),
-				Default:       pd.Default,
+				Type:          typ,
+				Default:       def,
 				Bidirectional: pd.Bidirectional,
 			}
 			irComp.Props = append(irComp.Props, prop)
