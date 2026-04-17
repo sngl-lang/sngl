@@ -125,10 +125,6 @@ func runDumpChecked(cmd *cobra.Command, args []string) error {
 }
 
 func runDumpOptimized(cmd *cobra.Command, args []string) error {
-	lang, platform, err := dumpTargetFlags(cmd)
-	if err != nil {
-		return err
-	}
 	f, inp, err := dumpResolveFlags(cmd, args)
 	if err != nil {
 		return err
@@ -146,25 +142,26 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
+	target, err := dumpResolveTarget(cmd, pkg)
+	if err != nil {
+		return err
+	}
+
 	start = time.Now()
 	if err := optimize.Optimize(pkg, &optimize.Config{
-		Platform: platform,
-		Language: lang,
+		Platform: target.Platform,
+		Language: target.Lang,
 		Dir:      dir,
 	}); err != nil {
 		return err
 	}
-	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
+	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	doc = ir.Convert(pkg)
 	return dumpDocument(f, doc)
 }
 
 func runDumpAnalysis(cmd *cobra.Command, args []string) error {
-	lang, platform, err := dumpTargetFlags(cmd)
-	if err != nil {
-		return err
-	}
 	f, inp, err := dumpResolveFlags(cmd, args)
 	if err != nil {
 		return err
@@ -182,25 +179,34 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
+	target, err := dumpResolveTarget(cmd, pkg)
+	if err != nil {
+		return err
+	}
+
 	start = time.Now()
 	if err := optimize.Optimize(pkg, &optimize.Config{
-		Platform: platform,
-		Language: lang,
+		Platform: target.Platform,
+		Language: target.Lang,
 		Dir:      dir,
 	}); err != nil {
 		return err
 	}
-	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
+	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	doc = ir.Convert(pkg)
 	return dumpDocument(f, codegen.AnalyzeCommon(doc))
 }
 
-func dumpTargetFlags(cmd *cobra.Command) (lang, platform string, err error) {
-	lang, _ = cmd.Flags().GetString("lang")
-	platform, _ = cmd.Flags().GetString("platform")
-	if lang == "" || platform == "" {
-		return "", "", fmt.Errorf("--lang and --platform are required")
+func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {
+	lang, _ := cmd.Flags().GetString("lang")
+	plat, _ := cmd.Flags().GetString("platform")
+	if (lang == "") != (plat == "") {
+		return outputTarget{}, fmt.Errorf("--lang and --platform must both be specified or both omitted")
 	}
-	return lang, platform, nil
+	targets := resolveTargets(pkg, lang, plat, nil)
+	if len(targets) == 0 {
+		return outputTarget{}, fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
+	}
+	return targets[0], nil
 }
