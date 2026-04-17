@@ -112,7 +112,7 @@ func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater,
 	for _, sd := range info.Structs {
 		s := structData{Name: exportName(sd.Name)}
 		for _, f := range sd.Fields {
-			goType := typeHintToGo(exprTypeHint(f.Type))
+			goType := typeHintToGo(irTypeHint(f.Type))
 			s.Fields = append(s.Fields, structFieldData{
 				Name: exportName(f.Name),
 				Type: goType,

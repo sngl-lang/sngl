@@ -7,85 +7,67 @@ import (
 
 const maxComponentDepth = 10
 
-// NodeVisitor is called by WalkTree for each visual node.
+// NodeVisitor is called by WalkTree for each IR node.
 type NodeVisitor interface {
-	VisitNode(vn *ast.VisualNode, comp *ast.ComponentDecl) (handled bool)
-	BeforeIf(stmt *ast.IfStmt)
-	AfterIf(stmt *ast.IfStmt)
-	BeforeFor(stmt *ast.ForStmt)
-	AfterFor(stmt *ast.ForStmt)
-	BeforeComponent(comp *ast.ComponentDecl, vn *ast.VisualNode) bool
-	AfterComponent(comp *ast.ComponentDecl, vn *ast.VisualNode)
-	VisitSlot(vn *ast.VisualNode)
+	VisitNode(n *ir.NodeInst) (handled bool)
+	BeforeIf(stmt *ir.If)
+	AfterIf(stmt *ir.If)
+	BeforeFor(stmt *ir.For)
+	AfterFor(stmt *ir.For)
+	BeforeComponent(comp *ir.Component, inst *ir.NodeInst) bool
+	AfterComponent(comp *ir.Component, inst *ir.NodeInst)
+	VisitSlot(n *ir.SlotInst)
 }
 
 // TreeWalker holds state for walking a visual tree with a visitor.
 type TreeWalker struct {
-	Doc      *ast.Document // v1: find components by walking Stmts
-	Pkg      *ir.Package   // v2: find components via Package.Components
+	Pkg      *ir.Package
 	Platform string
 	Visitor  NodeVisitor
 
 	componentDepth int
-	slotChildren   []ast.Stmt
+	slotChildren   []ir.Stmt
 }
 
-// WalkStmts traverses a list of statements, calling the visitor for visual nodes.
-func (tw *TreeWalker) WalkStmts(stmts []ast.Stmt) {
+// WalkStmts traverses a list of IR statements, calling the visitor for visual nodes.
+func (tw *TreeWalker) WalkStmts(stmts []ir.Stmt) {
 	for _, s := range stmts {
 		tw.walkStmt(s)
 	}
 }
 
-func (tw *TreeWalker) walkStmt(s ast.Stmt) {
+func (tw *TreeWalker) walkStmt(s ir.Stmt) {
 	switch n := s.(type) {
-	case *ast.VisualNode:
-		tw.walkVisualNode(n)
-	case *ast.IfStmt:
+	case *ir.NodeInst:
+		tw.walkNodeInst(n)
+	case *ir.If:
 		tw.Visitor.BeforeIf(n)
-		tw.WalkStmts(n.Body.Stmts)
-		if len(n.Else.Stmts) > 0 {
-			tw.WalkStmts(n.Else.Stmts)
+		tw.WalkStmts(n.Body)
+		if len(n.Else) > 0 {
+			tw.WalkStmts(n.Else)
 		}
 		tw.Visitor.AfterIf(n)
-	case *ast.ForStmt:
+	case *ir.For:
 		tw.Visitor.BeforeFor(n)
-		tw.WalkStmts(n.Body.Stmts)
+		tw.WalkStmts(n.Body)
 		tw.Visitor.AfterFor(n)
-	case *ast.PlatformStmt:
-		tw.WalkStmts(n.Body.Stmts)
+	case *ir.PlatformFilter:
+		tw.WalkStmts(n.Body)
+	case *ir.SlotInst:
+		tw.Visitor.VisitSlot(n)
 	}
 }
 
-func (tw *TreeWalker) walkVisualNode(vn *ast.VisualNode) {
-	name := VisualNodeName(vn)
-	if name == "slot" {
-		tw.Visitor.VisitSlot(vn)
-		return
-	}
+func (tw *TreeWalker) walkNodeInst(n *ir.NodeInst) {
+	// Component already resolved in IR: n.Component is non-nil for user components.
+	handled := tw.Visitor.VisitNode(n)
 
-	comp := tw.findComponent(name)
-	handled := tw.Visitor.VisitNode(vn, comp)
-
-	if comp != nil && !handled {
-		tw.expandComponent(comp, vn)
+	if n.Component != nil && !handled {
+		tw.expandComponent(n.Component, n)
 	}
 }
 
-// findComponent looks up a component by name, preferring Package when available.
-func (tw *TreeWalker) findComponent(name string) *ast.ComponentDecl {
-	if tw.Pkg != nil {
-		for _, c := range tw.Pkg.Components {
-			if c.Name == name {
-				return c.AST
-			}
-		}
-		return nil
-	}
-	return FindComponent(tw.Doc, name)
-}
-
-func (tw *TreeWalker) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNode) {
+func (tw *TreeWalker) expandComponent(comp *ir.Component, inst *ir.NodeInst) {
 	tw.componentDepth++
 	if tw.componentDepth > maxComponentDepth {
 		tw.componentDepth--
@@ -93,25 +75,44 @@ func (tw *TreeWalker) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNod
 	}
 	defer func() { tw.componentDepth-- }()
 
-	if !tw.Visitor.BeforeComponent(comp, vn) {
+	if !tw.Visitor.BeforeComponent(comp, inst) {
 		return
 	}
 
 	savedSlot := tw.slotChildren
-	tw.slotChildren = vn.Block.Stmts
+	tw.slotChildren = inst.Children
 
-	tw.WalkStmts(comp.Body.Stmts)
+	tw.WalkStmts(comp.Body)
 
 	tw.slotChildren = savedSlot
-	tw.Visitor.AfterComponent(comp, vn)
+	tw.Visitor.AfterComponent(comp, inst)
 }
 
 // SlotChildren returns the current slot children.
-func (tw *TreeWalker) SlotChildren() []ast.Stmt {
+func (tw *TreeWalker) SlotChildren() []ir.Stmt {
 	return tw.slotChildren
 }
 
+// VisualNodeName extracts the component/element name from a VisualNode's Target.
+// Kept for backward compatibility with platform compat layers.
+func VisualNodeName(vn *ast.VisualNode) string {
+	if vn.Target == nil {
+		return ""
+	}
+	switch t := vn.Target.(type) {
+	case *ast.IdentExpr:
+		return t.Name
+	case *ast.SelectExpr:
+		// pkg.Component
+		if ident, ok := t.Operand.(*ast.IdentExpr); ok {
+			return ident.Name + "." + t.Field
+		}
+	}
+	return ""
+}
+
 // FindComponent finds a ComponentDecl by name in the document.
+// Kept for backward compatibility.
 func FindComponent(doc *ast.Document, name string) *ast.ComponentDecl {
 	for _, s := range doc.Stmts {
 		if comp, ok := s.(*ast.ComponentDecl); ok && comp.Name == name {

@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // MutationModel is the intermediate representation for platforms that emit
@@ -31,11 +31,11 @@ type RenderModel struct {
 // The platform-specific code body is stored as a string; deps track which
 // root state fields this updater reads.
 type Updater struct {
-	Name string          // e.g., "$u_0_text", "updateLabel0"
-	Kind string          // "text", "attr", "if", "list", "else", "disabled", etc.
-	Node *ast.VisualNode // the node this updater targets
-	Expr ast.Expr        // the reactive expression being watched
-	Body string          // platform-specific code body (filled during emit)
+	Name string       // e.g., "$u_0_text", "updateLabel0"
+	Kind string       // "text", "attr", "if", "list", "else", "disabled", etc.
+	Node *ir.NodeInst // the node this updater targets
+	Expr ir.Expr      // the reactive expression being watched
+	Body string       // platform-specific code body (filled during emit)
 	Deps map[string]bool // root state field dependencies
 }
 
@@ -46,7 +46,7 @@ func (u Updater) DepFields() map[string]bool { return u.Deps }
 type Handler struct {
 	NodeID  string          // element/widget identifier
 	Event   string          // "click", "input", "change"
-	Body    ast.Stmt        // mutation AST (StmtBlock, AssignStmt, etc.)
+	Body    ir.Stmt         // mutation IR (ir.Assign, ir.CallStmt, etc.)
 	Mutated map[string]bool // fields this handler mutates
 }
 

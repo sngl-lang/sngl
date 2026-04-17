@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // viewContext tracks state during BuildUI() code generation.
@@ -14,7 +15,7 @@ type viewContext struct {
 	ec         *exprContext
 	buf        *strings.Builder
 	indent     int
-	components []*ast.ComponentDecl
+	components []*ir.Component
 	entryIndex int             // next entry index for persistent entry fields
 	info       *analysisResult // for dependency tracking (nil for component renders)
 
@@ -59,7 +60,9 @@ func (vc *viewContext) exprDeps(expr ast.Expr) map[string]bool {
 	if vc.info == nil {
 		return nil
 	}
-	return vc.info.depTracker().ExprDeps(expr)
+	dt := vc.info.depTracker()
+	deps := extractDepsAST(expr, dt.ModelFields)
+	return dt.ExpandDeps(deps)
 }
 
 func (vc *viewContext) emitEventHandlerBlock(block *ast.StmtBlock) {
@@ -69,7 +72,7 @@ func (vc *viewContext) emitEventHandlerBlock(block *ast.StmtBlock) {
 		for _, s := range stmts {
 			vc.line("%s", s)
 		}
-		maps.Copy(mutated, codegen.MutatedFields(bodyStmt))
+		maps.Copy(mutated, mutatedFieldsAST(bodyStmt))
 	}
 	if vc.info != nil {
 		affected := codegen.FindAffected(vc.info.depTracker(), vc.updaters, mutated)
@@ -283,8 +286,8 @@ func (vc *viewContext) findComponent(name string) *ast.ComponentDecl {
 		return findComponentInDoc(vc.doc, name)
 	}
 	for _, c := range vc.components {
-		if c.Name == name {
-			return c
+		if c.Name == name && c.AST != nil {
+			return c.AST
 		}
 	}
 	return nil
@@ -492,8 +495,8 @@ func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string)
 	name := vnName(vn)
 	var comp *ast.ComponentDecl
 	for _, c := range vc.components {
-		if c.Name == name {
-			comp = c
+		if c.Name == name && c.AST != nil {
+			comp = c.AST
 			break
 		}
 	}

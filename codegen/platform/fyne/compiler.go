@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Config controls code generation.
@@ -32,9 +33,9 @@ func (c Config) withDefaults() Config {
 }
 
 // Compile generates a Go source file from a checked SNGL document.
-func Compile(doc *ast.Document, cfg Config) ([]byte, error) {
+func Compile(doc *ast.Document, pkg *ir.Package, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
-	info := analyze(doc)
+	info := analyze(doc, pkg)
 	src := emit(info, doc, cfg)
 	formatted, err := format.Source(src)
 	if err != nil {
@@ -111,8 +112,8 @@ func (info *analysisResult) depTracker() *codegen.DepTracker {
 	return info.dt
 }
 
-func analyze(doc *ast.Document) *analysisResult {
-	common := codegen.AnalyzeCommon(doc)
+func analyze(doc *ast.Document, pkg *ir.Package) *analysisResult {
+	common := codegen.AnalyzeCommon(pkg)
 
 	info := &analysisResult{
 		CommonAnalysis: common,
@@ -343,12 +344,14 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, t := range info.Timers {
 		var bodyBuf strings.Builder
 		mutated := make(map[string]bool)
-		for _, bodyStmt := range t.Body.Stmts {
-			stmts := ec.TranslateMutation(bodyStmt)
-			for _, s := range stmts {
-				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
+		for _, irStmt := range t.Body {
+			if astStmt := irStmtToAST(irStmt); astStmt != nil {
+				stmts := ec.TranslateMutation(astStmt)
+				for _, s := range stmts {
+					fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", s)
+				}
 			}
-			maps.Copy(mutated, codegen.MutatedFields(bodyStmt))
+			maps.Copy(mutated, codegen.MutatedFields(irStmt))
 		}
 		var updBuf strings.Builder
 		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
@@ -531,7 +534,7 @@ func emitUpdaters(b *strings.Builder, updaters []widgetUpdater) {
 	}
 }
 
-func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext) {
+func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ir.Component, ec *exprContext) {
 	methodName := "render" + exportName(comp.Name)
 
 	var params []string

@@ -3,6 +3,7 @@ package bubbletea
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // v2 compat helpers — bridge v1-style access patterns to v2 AST.
@@ -69,6 +70,77 @@ func findComponentInDoc(doc *ast.Document, name string) *ast.ComponentDecl {
 // --- Expr helpers ---
 
 func exprTypeHint(t ast.TypeExpr) string { return codegen.ExprTypeHint(t) }
+
+// irTypeHint returns the type hint string from an IR *Type.
+func irTypeHint(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	return t.String()
+}
+
+// astMutatedFields returns the set of field names mutated by an AST statement.
+// This is a local fallback for AST-level event handler bodies that have not
+// been lowered to IR yet.
+func astMutatedFields(s ast.Stmt) map[string]bool {
+	fields := make(map[string]bool)
+	if s == nil {
+		return fields
+	}
+	switch n := s.(type) {
+	case *ast.AssignStmt:
+		if ident, ok := n.Target.(*ast.IdentExpr); ok {
+			fields[ident.Name] = true
+		} else if sel, ok := n.Target.(*ast.SelectExpr); ok {
+			if root, ok := sel.Operand.(*ast.IdentExpr); ok {
+				fields[root.Name] = true
+			}
+		}
+	case *ast.ToggleStmt:
+		if ident, ok := n.Target.(*ast.IdentExpr); ok {
+			fields[ident.Name] = true
+		}
+	case *ast.CallStmt:
+		if n.Call != nil {
+			if me, ok := n.Call.Func.(*ast.SelectExpr); ok {
+				if root, ok := me.Operand.(*ast.IdentExpr); ok {
+					fields[root.Name] = true
+				}
+			}
+		}
+	}
+	return fields
+}
+
+// irStmtAST extracts the underlying ast.Stmt from an IR statement.
+// Returns nil if no AST back-reference is available.
+func irStmtAST(s ir.Stmt) ast.Stmt {
+	switch n := s.(type) {
+	case *ir.Assign:
+		return n.AST
+	case *ir.Toggle:
+		return n.AST
+	case *ir.CallStmt:
+		return n.AST
+	case *ir.NodeInst:
+		return n.AST
+	case *ir.If:
+		return n.AST
+	case *ir.For:
+		return n.AST
+	case *ir.Emit:
+		return n.AST
+	case *ir.LocalVar:
+		return n.AST
+	case *ir.Return:
+		return n.AST
+	case *ir.PlatformFilter:
+		return n.AST
+	case *ir.SlotInst:
+		return n.AST
+	}
+	return nil
+}
 
 // --- FuncDef helpers ---
 

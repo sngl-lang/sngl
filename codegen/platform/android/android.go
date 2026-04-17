@@ -74,7 +74,7 @@ func (g *Generator) configFromRequest(req *codegen.Request) Config {
 func (g *Generator) generateKotlin(req *codegen.Request) (*codegen.Response, error) {
 	cfg := g.configFromRequest(req)
 
-	src, err := Compile(req.Doc, cfg)
+	src, err := Compile(req.Doc, req.Pkg, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}

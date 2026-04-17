@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // composeContext tracks state during Composable code generation.
@@ -15,7 +16,7 @@ type composeContext struct {
 	buf                  *strings.Builder
 	indent               int
 	doc                  *ast.Document
-	components           []*ast.ComponentDecl
+	components           []*ir.Component
 	hasSlot              bool                         // true when rendering inside a component with slot support
 	slotChildren         []ast.Stmt                   // caller's children for slot expansion
 	componentDepth       int                          // recursion guard for component expansion
@@ -129,8 +130,8 @@ func (cc *composeContext) findComponent(name string) *ast.ComponentDecl {
 		}
 	}
 	for _, c := range cc.components {
-		if c.Name == name {
-			return c
+		if c.Name == name && c.AST != nil {
+			return c.AST
 		}
 	}
 	return nil
@@ -206,8 +207,8 @@ func (cc *composeContext) renderUserComponent(vn *ast.VisualNode) {
 
 	var comp *ast.ComponentDecl
 	for _, c := range cc.components {
-		if c.Name == name {
-			comp = c
+		if c.Name == name && c.AST != nil {
+			comp = c.AST
 			break
 		}
 	}

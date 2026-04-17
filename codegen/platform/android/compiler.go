@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Config controls code generation.
@@ -33,9 +34,9 @@ func (c Config) withDefaults() Config {
 }
 
 // Compile generates a Kotlin source file from a checked SNGL document.
-func Compile(doc *ast.Document, cfg Config) ([]byte, error) {
+func Compile(doc *ast.Document, pkg *ir.Package, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
-	info := analyze(doc)
+	info := analyze(doc, pkg)
 	src := emit(info, doc, cfg)
 	return src, nil
 }
@@ -61,8 +62,8 @@ type analysisResult struct {
 	computeds []computedInfo
 }
 
-func analyze(doc *ast.Document) *analysisResult {
-	common := codegen.AnalyzeCommon(doc)
+func analyze(doc *ast.Document, pkg *ir.Package) *analysisResult {
+	common := codegen.AnalyzeCommon(pkg)
 
 	info := &analysisResult{
 		CommonAnalysis: common,
@@ -165,10 +166,10 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
-			ktType := typeHintToKt(codegen.ExprTypeHint(f.Type))
+			ktType := typeHintToKt(irTypeHint(f.Type))
 			def := ""
-			if f.Default != nil && codegen.ExprIsLiteral(f.Default) {
-				def = " = " + literalToKt(f.Default)
+			if f.Default != nil && irIsLiteral(f.Default) {
+				def = " = " + irLiteralToKt(f.Default)
 			}
 			comma := ","
 			if i == len(sd.Fields)-1 {
@@ -301,7 +302,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	return []byte(b.String())
 }
 
-func emitComponentComposable(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext) {
+func emitComponentComposable(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ir.Component, ec *exprContext) {
 	b.WriteString("\n@Composable\n")
 	var params []string
 	for _, p := range compParams(comp) {

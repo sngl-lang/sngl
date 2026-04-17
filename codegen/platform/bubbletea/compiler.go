@@ -11,6 +11,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -55,8 +56,13 @@ func (c Config) withDefaults() Config {
 
 // Compile generates a Go source file from a checked SNGL document.
 func Compile(doc *ast.Document, cfg Config) ([]byte, error) {
+	return CompileWithPkg(doc, nil, cfg)
+}
+
+// CompileWithPkg generates a Go source file using the IR package for analysis.
+func CompileWithPkg(doc *ast.Document, pkg *ir.Package, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
-	info := analyze(doc)
+	info := analyze(doc, pkg)
 	src := emit(info, doc, cfg)
 	formatted, err := format.Source(src)
 	if err != nil {
@@ -113,8 +119,8 @@ type analysisResult struct {
 	needsTime  bool              // emit "time" import
 }
 
-func analyze(doc *ast.Document) *analysisResult {
-	common := codegen.AnalyzeCommon(doc)
+func analyze(doc *ast.Document, pkg *ir.Package) *analysisResult {
+	common := codegen.AnalyzeCommon(pkg)
 
 	info := &analysisResult{
 		CommonAnalysis: common,
@@ -355,7 +361,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", exportName(sd.Name))
 		for _, f := range sd.Fields {
-			goType := typeHintToGo(exprTypeHint(f.Type))
+			goType := typeHintToGo(irTypeHint(f.Type))
 			fmt.Fprintf(&b, "\t%s %s\n", exportName(f.Name), goType)
 		}
 		b.WriteString("}\n\n")
@@ -688,10 +694,12 @@ func emitUpdate(b *strings.Builder, info *analysisResult, doc *ast.Document, ec 
 		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
 		fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
 		// Emit body mutations
-		for _, bodyStmt := range t.Body.Stmts {
-			translated := ec.TranslateMutation(bodyStmt)
-			for _, s := range translated {
-				fmt.Fprintf(b, "\t\t\t%s\n", s)
+		for _, bodyStmt := range t.Body {
+			if astStmt := irStmtAST(bodyStmt); astStmt != nil {
+				translated := ec.TranslateMutation(astStmt)
+				for _, s := range translated {
+					fmt.Fprintf(b, "\t\t\t%s\n", s)
+				}
 			}
 		}
 		// Re-schedule
@@ -820,7 +828,7 @@ func emitButtonHandlersVN(b *strings.Builder, vn *ast.VisualNode, info *analysis
 					// Collect mutated fields from all body stmts
 					mutatedFields := make(map[string]bool)
 					for _, stmt := range changeEvt.Body.Stmts {
-						maps.Copy(mutatedFields, codegen.MutatedFields(stmt))
+						maps.Copy(mutatedFields, astMutatedFields(stmt))
 					}
 					for _, inp := range info.inputs {
 						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
@@ -853,7 +861,7 @@ func emitButtonHandlersVN(b *strings.Builder, vn *ast.VisualNode, info *analysis
 					}
 					mutatedFields := make(map[string]bool)
 					for _, stmt := range clickEvt.Body.Stmts {
-						maps.Copy(mutatedFields, codegen.MutatedFields(stmt))
+						maps.Copy(mutatedFields, astMutatedFields(stmt))
 					}
 					for _, inp := range info.inputs {
 						if inp.bindTarget != "" && mutatedFields[inp.bindTarget] {
@@ -928,7 +936,7 @@ func emitView(b *strings.Builder, info *analysisResult, doc *ast.Document, ec *e
 	b.WriteString("}\n\n")
 }
 
-func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ast.ComponentDecl, ec *exprContext, cfg Config) {
+func emitComponentMethod(b *strings.Builder, comp *ast.ComponentDecl, allComponents []*ir.Component, ec *exprContext, cfg Config) {
 	methodName := "render" + exportName(comp.Name)
 
 	// Build parameter list

@@ -32,9 +32,13 @@ func firstError(diags []ir.Diagnostic) string {
 	return ""
 }
 
-func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
+func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byte {
 	t.Helper()
-	src, err := Compile(doc, Config{})
+	var p *ir.Package
+	if len(pkg) > 0 {
+		p = pkg[0]
+	}
+	src, err := CompileWithPkg(doc, p, Config{})
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}
@@ -57,11 +61,11 @@ func TestFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			_, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
 			}
-			compileAndVerify(t, doc)
+			compileAndVerify(t, doc, pkg)
 		})
 	}
 }
@@ -78,11 +82,11 @@ func TestGettersSetters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
-	out := compileAndVerify(t, doc)
+	out := compileAndVerify(t, doc, pkg)
 	code := string(out)
 
 	checks := map[string]string{
@@ -106,9 +110,9 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	_, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("../../../examples/todo"), IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("../../../examples/todo"), IsMain: true})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
-	compileAndVerify(t, doc)
+	compileAndVerify(t, doc, pkg)
 }

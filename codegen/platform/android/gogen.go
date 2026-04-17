@@ -17,7 +17,7 @@ func (g *Generator) generateGo(req *codegen.Request) (*codegen.Response, error) 
 	cfg.GoLib = true
 
 	// Generate the Kotlin UI (same Compose output, but computeds/funcs call Golib)
-	src, err := Compile(req.Doc, cfg)
+	src, err := Compile(req.Doc, req.Pkg, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}

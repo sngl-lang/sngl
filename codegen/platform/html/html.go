@@ -285,7 +285,7 @@ type timerDef struct {
 }
 
 func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
-	common := codegen.AnalyzeCommon(doc)
+	common := codegen.AnalyzeCommon(pkg)
 
 	g := &htmlGen{
 		doc:            doc,
@@ -297,7 +297,15 @@ func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator,
 	}
 
 	// Build scope from common analysis, adding const names as local vars
-	g.scope = common.Scope()
+	g.scope = &codegen.ExprScope{
+		ModelFields:    common.ModelFields,
+		ComputedFields: common.ComputedFields,
+		FuncNames:      common.FuncNames,
+		ExternFuncs:    common.ExternFuncs,
+		ExternVars:     common.ExternVars,
+		LocalVars:      make(map[string]bool),
+		NeededHelpers:  common.Helpers,
+	}
 	for _, c := range docConsts(doc) {
 		g.scope.LocalVars[c.Name] = true
 	}
@@ -988,7 +996,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, vn *ast.VisualNode, dept
 			// Extract the set() target to determine the JS expression for the bound value
 			if target, ok := extractSetTarget(inputEvt.Body.Stmts[0]); ok {
 				jsExpr := g.lang.TranslateExpr(target, g.scope)
-				root := codegen.FindRootIdent(target)
+				root := findRootIdentAST(target)
 				name := fmt.Sprintf("$u_%s_val", id[1:])
 				g.updates = append(g.updates, updateFunc{
 					funcName: name,
@@ -2223,7 +2231,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 		if changeEvt := vnEvent(vn, "change"); changeEvt != nil {
 			if len(changeEvt.Body.Stmts) > 0 {
 				stmts := g.lang.TranslateMutation(changeEvt.Body.Stmts[0], g.scope)
-				mutated := codegen.MutatedFields(changeEvt.Body.Stmts[0])
+				mutated := mutatedFieldsAST(changeEvt.Body.Stmts[0])
 				var handlerLines []string
 				for _, s := range stmts {
 					handlerLines = append(handlerLines, s+";")
@@ -2284,7 +2292,7 @@ func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
 			added = append(added, orig)
 		}
 	}
-	deps := g.dt.ExprDeps(expr)
+	deps := exprDepsAST(expr, g.dt.ModelFields, g.dt.ComputedFields, g.dt.ComputedDeps)
 	for _, name := range added {
 		delete(g.dt.ModelFields, name)
 	}
@@ -2315,7 +2323,7 @@ func (g *htmlGen) addClickHandler(elemID string, body ast.StmtBlock) {
 	var mutated map[string]bool
 	for _, s := range body.Stmts {
 		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		for k, v := range codegen.MutatedFields(s) {
+		for k, v := range mutatedFieldsAST(s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
 			}
@@ -2345,7 +2353,7 @@ func (g *htmlGen) addInputHandler(elemID string, body ast.StmtBlock) {
 	mutated := make(map[string]bool)
 	for _, s := range body.Stmts {
 		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		maps.Copy(mutated, codegen.MutatedFields(s))
+		maps.Copy(mutated, mutatedFieldsAST(s))
 	}
 	g.scope.EventVar = savedEvent
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -2369,7 +2377,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body ast.StmtBlock) {
 	mutated := make(map[string]bool)
 	for _, s := range body.Stmts {
 		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		maps.Copy(mutated, codegen.MutatedFields(s))
+		maps.Copy(mutated, mutatedFieldsAST(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string

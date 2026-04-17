@@ -3,7 +3,7 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestOptimizeMutation_RemoveStaticUpdaters(t *testing.T) {
@@ -194,7 +194,7 @@ func TestOptimizeRender_RemoveNilHandlers(t *testing.T) {
 		},
 		Handlers: []Handler{
 			{NodeID: "btn0", Event: "click", Body: nil},
-			{NodeID: "btn1", Event: "click", Body: &ast.CallStmt{}},
+			{NodeID: "btn1", Event: "click", Body: &ir.CallStmt{}},
 		},
 	}
 	OptimizeRender(m)

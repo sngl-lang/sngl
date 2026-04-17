@@ -3,10 +3,10 @@ package codegen
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// CommonAnalysis holds platform-independent analysis extracted from a Document.
+// CommonAnalysis holds platform-independent analysis extracted from a Package.
 // Platforms embed this and add their own fields on top.
 type CommonAnalysis struct {
 	ModelFields    map[string]bool            // data fields + computed fields
@@ -16,9 +16,9 @@ type CommonAnalysis struct {
 	ExternFuncs    map[string]bool            // extern func names
 	ExternVars     map[string]bool            // extern var names
 	StructFields   map[string][]string        // struct name → ordered field names
-	Components     []*ast.ComponentDecl
-	Structs        []*ast.StructDef
-	Enums          []*ast.EnumDef
+	Components     []*ir.Component
+	Structs        []*ir.StructDef
+	Enums          []*ir.EnumDef
 	Timers         []TimerInfo
 	NeedsToast     bool
 	Helpers        map[string]bool // needed helper functions (populated during codegen)
@@ -31,12 +31,12 @@ type TimerInfo struct {
 	Index      int
 	IntervalMs int
 	ActiveVar  string
-	Body       *ast.StmtBlock
+	Body       []ir.Stmt
 }
 
-// AnalyzeCommon extracts CommonAnalysis from a Document. Platforms call this
+// AnalyzeCommon extracts CommonAnalysis from a Package. Platforms call this
 // first, then add platform-specific analysis on top.
-func AnalyzeCommon(doc *ast.Document) *CommonAnalysis {
+func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 	a := &CommonAnalysis{
 		ModelFields:    make(map[string]bool),
 		ComputedFields: make(map[string]bool),
@@ -49,109 +49,87 @@ func AnalyzeCommon(doc *ast.Document) *CommonAnalysis {
 		UsedComponents: make(map[string]bool),
 	}
 
-	for _, stmt := range doc.Stmts {
-		switch s := stmt.(type) {
-		case *ast.VarDecl:
-			for _, spec := range s.Specs {
-				for _, name := range spec.Names {
-					a.ModelFields[name] = true
-				}
+	for _, v := range pkg.Vars {
+		a.ModelFields[v.Name] = true
+	}
+
+	for _, f := range pkg.Funcs {
+		a.FuncNames[f.Name] = true
+		if IsComputed(f) {
+			a.ModelFields[f.Name] = true
+			a.ComputedFields[f.Name] = true
+			// Use purity analysis Reads for computed deps.
+			deps := make(map[string]bool)
+			for _, r := range f.Reads {
+				deps[r.Name] = true
 			}
-		case *ast.FuncDef:
-			a.FuncNames[s.Name] = true
-			if s.Body != nil && len(s.Params.Params) == 0 {
-				a.ModelFields[s.Name] = true
-				a.ComputedFields[s.Name] = true
-			}
-		case *ast.StructDef:
-			fields := make([]string, len(s.Fields))
-			for i, f := range s.Fields {
-				fields[i] = f.Name
-			}
-			a.StructFields[s.Name] = fields
-			a.Structs = append(a.Structs, s)
-		case *ast.EnumDef:
-			a.Enums = append(a.Enums, s)
-		case *ast.ComponentDecl:
-			a.Components = append(a.Components, s)
+			a.ComputedDeps[f.Name] = deps
 		}
 	}
 
-	// Computed dependency map
-	for _, stmt := range doc.Stmts {
-		if fn, ok := stmt.(*ast.FuncDef); ok {
-			if fn.Body != nil && len(fn.Params.Params) == 0 {
-				a.ComputedDeps[fn.Name] = ExtractDeps(fn.Body, a.ModelFields)
+	for _, s := range pkg.Structs {
+		fields := make([]string, len(s.Fields))
+		for i, f := range s.Fields {
+			fields[i] = f.Name
+		}
+		a.StructFields[s.Name] = fields
+		a.Structs = append(a.Structs, s)
+	}
+
+	for _, e := range pkg.Enums {
+		a.Enums = append(a.Enums, e)
+	}
+
+	for _, c := range pkg.Components {
+		a.Components = append(a.Components, c)
+	}
+
+	for _, imp := range pkg.Imports {
+		if imp.Native != nil {
+			for _, f := range imp.Native.Funcs {
+				a.ExternFuncs[f.Name] = true
+			}
+			for _, v := range imp.Native.Vars {
+				a.ExternVars[v.Name] = true
 			}
 		}
 	}
 
 	// Walk visual tree to collect used primitive component names.
-	for _, stmt := range doc.Stmts {
-		if comp, ok := stmt.(*ast.ComponentDecl); ok {
-			collectUsedStmts(comp.Body.Stmts, a.UsedComponents)
-		}
+	for _, comp := range pkg.Components {
+		collectUsedIRStmts(comp.Body, a.UsedComponents)
 	}
+
+	// Detect Alert usage.
+	a.NeedsToast = usesAlert(pkg)
 
 	return a
 }
 
-// collectUsedStmts walks statements collecting used visual node names.
-func collectUsedStmts(stmts []ast.Stmt, used map[string]bool) {
+// collectUsedIRStmts walks IR statements collecting used visual node names.
+func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 	for _, s := range stmts {
 		switch n := s.(type) {
-		case *ast.VisualNode:
-			if name := VisualNodeName(n); name != "" {
-				used[name] = true
+		case *ir.NodeInst:
+			if n.Name != "" {
+				used[n.Name] = true
 			}
-			collectUsedStmts(n.Block.Stmts, used)
-		case *ast.IfStmt:
-			collectUsedStmts(n.Body.Stmts, used)
-			collectUsedStmts(n.Else.Stmts, used)
-		case *ast.ForStmt:
-			collectUsedStmts(n.Body.Stmts, used)
-			collectUsedStmts(n.Else.Stmts, used)
-		case *ast.PlatformStmt:
-			collectUsedStmts(n.Body.Stmts, used)
+			collectUsedIRStmts(n.Children, used)
+		case *ir.If:
+			collectUsedIRStmts(n.Body, used)
+			collectUsedIRStmts(n.Else, used)
+		case *ir.For:
+			collectUsedIRStmts(n.Body, used)
+			collectUsedIRStmts(n.Else, used)
+		case *ir.PlatformFilter:
+			collectUsedIRStmts(n.Body, used)
 		}
 	}
-}
-
-// VisualNodeName extracts the component/element name from a VisualNode's Target.
-func VisualNodeName(vn *ast.VisualNode) string {
-	if vn.Target == nil {
-		return ""
-	}
-	switch t := vn.Target.(type) {
-	case *ast.IdentExpr:
-		return t.Name
-	case *ast.SelectExpr:
-		// pkg.Component
-		if ident, ok := t.Operand.(*ast.IdentExpr); ok {
-			return ident.Name + "." + t.Field
-		}
-	}
-	return ""
 }
 
 // DepTracker returns a new DepTracker initialized from this analysis.
 func (a *CommonAnalysis) DepTracker() *DepTracker {
 	return NewDepTracker(a.ModelFields, a.ComputedFields, a.ComputedDeps)
-}
-
-// Scope returns an ExprScope initialized from this analysis. Platforms
-// typically clone and extend this with local variables and renames.
-func (a *CommonAnalysis) Scope() *ExprScope {
-	localVars := make(map[string]bool)
-	return &ExprScope{
-		ModelFields:    a.ModelFields,
-		ComputedFields: a.ComputedFields,
-		FuncNames:      a.FuncNames,
-		ExternFuncs:    a.ExternFuncs,
-		ExternVars:     a.ExternVars,
-		LocalVars:      localVars,
-		NeededHelpers:  a.Helpers,
-	}
 }
 
 // AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
@@ -192,19 +170,20 @@ func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 	}
 }
 
-// IntervalToMs converts a duration expression to milliseconds.
-func IntervalToMs(expr ast.Expr) int {
+// IntervalToMs converts an IR duration expression to milliseconds.
+func IntervalToMs(expr ir.Expr) int {
 	if expr == nil {
 		return 0
 	}
-	ul, ok := expr.(*ast.UnitLiteral)
+	lit, ok := expr.(*ir.Literal)
 	if !ok {
 		return 0
 	}
-	// Parse the numeric part from the raw literal
-	raw := ul.LiteralExpr.Raw
-	num := parseNumber(raw)
-	switch ul.Suffix {
+	if lit.Suffix == "" {
+		return int(parseNumber(lit.Raw))
+	}
+	num := parseNumber(lit.Raw)
+	switch lit.Suffix {
 	case "ms":
 		return int(num)
 	case "s":
@@ -232,41 +211,73 @@ func parseNumber(raw string) float64 {
 	return n
 }
 
-// ASTUsesAlert reports whether a document uses Alert.toast/info/warn/error.
-func ASTUsesAlert(doc *ast.Document) bool {
-	return slices.ContainsFunc(doc.Stmts, stmtUsesAlert)
+// usesAlert reports whether a package uses Alert.toast/info/warn/error.
+func usesAlert(pkg *ir.Package) bool {
+	for _, f := range pkg.Funcs {
+		if irStmtsUseAlert(f.Block) {
+			return true
+		}
+	}
+	for _, c := range pkg.Components {
+		if irStmtsUseAlert(c.Body) {
+			return true
+		}
+		for _, f := range c.Funcs {
+			if irStmtsUseAlert(f.Block) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-func stmtUsesAlert(s ast.Stmt) bool {
+func irStmtsUseAlert(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		if irStmtUsesAlert(s) {
+			return true
+		}
+	}
+	return false
+}
+
+func irStmtUsesAlert(s ir.Stmt) bool {
 	switch n := s.(type) {
-	case *ast.VisualNode:
-		for _, a := range n.Args.Args {
-			if eh, ok := a.(ast.EventHandler); ok {
-				if slices.ContainsFunc(eh.Body.Stmts, stmtUsesAlert) {
-					return true
-				}
+	case *ir.NodeInst:
+		for _, h := range n.Handlers {
+			if irStmtsUseAlert(h.Func.Block) {
+				return true
 			}
 		}
-		if slices.ContainsFunc(n.Block.Stmts, stmtUsesAlert) {
+		if irStmtsUseAlert(n.Children) {
 			return true
 		}
-	case *ast.CallStmt:
-		if n.Call != nil {
-			if sel, ok := n.Call.Func.(*ast.SelectExpr); ok {
-				if ident, ok := sel.Operand.(*ast.IdentExpr); ok && ident.Name == "Alert" {
-					return true
-				}
-			}
-		}
-	case *ast.FuncDef:
-		if n.IsTest() {
-			return false
-		}
-		if slices.ContainsFunc(n.Block.Stmts, stmtUsesAlert) {
+	case *ir.CallStmt:
+		if n.Call != nil && irExprUsesAlert(n.Call) {
 			return true
 		}
-	case *ast.ComponentDecl:
-		if slices.ContainsFunc(n.Body.Stmts, stmtUsesAlert) {
+	case *ir.If:
+		if irStmtsUseAlert(n.Body) || irStmtsUseAlert(n.Else) {
+			return true
+		}
+	case *ir.For:
+		if irStmtsUseAlert(n.Body) || irStmtsUseAlert(n.Else) {
+			return true
+		}
+	}
+	return false
+}
+
+func irExprUsesAlert(e ir.Expr) bool {
+	call, ok := e.(*ir.Call)
+	if !ok {
+		return false
+	}
+	if call.Func != nil && call.Func.Receiver == "Alert" {
+		return true
+	}
+	// Check if receiver is Alert namespace.
+	if call.Receiver != nil {
+		if ident, ok := call.Receiver.(*ir.Ident); ok && ident.Name == "Alert" {
 			return true
 		}
 	}

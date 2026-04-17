@@ -5,6 +5,8 @@ package html
 // the docVar/docConst types used only by this platform.
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
@@ -146,4 +148,128 @@ func compConsts(comp *ast.ComponentDecl) []docConst {
 		}
 	}
 	return out
+}
+
+// --- AST-based dependency helpers ---
+// These mirror the IR-based functions in codegen/deps.go but operate on
+// AST types. The HTML platform still walks AST visual nodes and event
+// handlers internally; these bridge until the platform is fully IR-native.
+
+// findRootIdentAST extracts the root identifier name from an AST expression.
+func findRootIdentAST(e ast.Expr) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findRootIdentAST(n.Operand)
+	case *ast.IndexExpr:
+		return findRootIdentAST(n.Operand)
+	}
+	return ""
+}
+
+// mutatedFieldsAST returns the set of field names mutated by an AST statement.
+func mutatedFieldsAST(s ast.Stmt) map[string]bool {
+	fields := make(map[string]bool)
+	if s == nil {
+		return fields
+	}
+	switch n := s.(type) {
+	case *ast.AssignStmt:
+		if root := findRootIdentAST(n.Target); root != "" {
+			fields[root] = true
+		}
+	case *ast.ToggleStmt:
+		if root := findRootIdentAST(n.Target); root != "" {
+			fields[root] = true
+		}
+	case *ast.CallStmt:
+		if n.Call != nil {
+			maps.Copy(fields, mutatedFieldsExprAST(n.Call))
+		}
+	}
+	return fields
+}
+
+// mutatedFieldsExprAST returns mutated fields from an AST call expression.
+func mutatedFieldsExprAST(e ast.Expr) map[string]bool {
+	fields := make(map[string]bool)
+	if e == nil {
+		return fields
+	}
+	if call, ok := e.(*ast.CallExpr); ok {
+		// Method call — the receiver (Func as SelectExpr) may reference a model field.
+		if sel, ok := call.Func.(*ast.SelectExpr); ok {
+			if root := findRootIdentAST(sel.Operand); root != "" {
+				fields[root] = true
+			}
+		}
+	}
+	return fields
+}
+
+// exprDepsAST walks an AST expression and returns model field dependencies,
+// expanding through computed fields.
+func exprDepsAST(e ast.Expr, modelFields, computedFields map[string]bool, computedDeps map[string]map[string]bool) map[string]bool {
+	if e == nil {
+		return nil
+	}
+	deps := make(map[string]bool)
+	walkExprDepsAST(e, modelFields, deps)
+	// Expand through computed fields.
+	result := make(map[string]bool)
+	for d := range deps {
+		result[d] = true
+		if computedFields[d] {
+			if cd, ok := computedDeps[d]; ok {
+				maps.Copy(result, cd)
+			}
+		}
+	}
+	return result
+}
+
+// walkExprDepsAST recursively finds model field references in an AST expression.
+func walkExprDepsAST(e ast.Expr, modelFields map[string]bool, deps map[string]bool) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if modelFields[n.Name] {
+			deps[n.Name] = true
+		}
+	case *ast.SelectExpr:
+		if root := findRootIdentAST(n.Operand); root != "" && modelFields[root] {
+			deps[root] = true
+		}
+	case *ast.BinaryExpr:
+		walkExprDepsAST(n.Left, modelFields, deps)
+		walkExprDepsAST(n.Right, modelFields, deps)
+	case *ast.UnaryExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+	case *ast.TernaryExpr:
+		walkExprDepsAST(n.Cond, modelFields, deps)
+		walkExprDepsAST(n.Then, modelFields, deps)
+		walkExprDepsAST(n.Else, modelFields, deps)
+	case *ast.CallExpr:
+		walkExprDepsAST(n.Func, modelFields, deps)
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				walkExprDepsAST(arg.Value, modelFields, deps)
+			}
+		}
+	case *ast.IndexExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+		walkExprDepsAST(n.Index, modelFields, deps)
+	case *ast.ListExpr:
+		for _, el := range n.Elements {
+			walkExprDepsAST(el, modelFields, deps)
+		}
+	case *ast.SpreadExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+	}
 }

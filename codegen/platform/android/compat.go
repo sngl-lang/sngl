@@ -5,8 +5,12 @@ package android
 // the docVar type used only by this platform.
 
 import (
+	"fmt"
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // --- Document helpers ---
@@ -71,3 +75,93 @@ func callArgs(c *ast.CallExpr) []ast.Expr { return codegen.CallArgs(c) }
 func compParams(comp *ast.ComponentDecl) []ast.Param   { return codegen.CompParams(comp) }
 func compHasChildren(comp *ast.ComponentDecl) bool     { return codegen.CompHasChildren(comp) }
 func compBodyStmts(comp *ast.ComponentDecl) []ast.Stmt { return codegen.CompBodyStmts(comp) }
+
+// --- IR bridge helpers ---
+
+// irTypeHint maps an *ir.Type to a string type hint compatible with
+// typeHintToKt / zeroValueKt.
+func irTypeHint(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeBool:
+		return "bool"
+	case ir.TypeInt:
+		return "int"
+	case ir.TypeFloat:
+		return "float"
+	case ir.TypeString:
+		return "string"
+	case ir.TypeColor:
+		return "color"
+	case ir.TypeDate:
+		return "date"
+	case ir.TypeTime:
+		return "time"
+	case ir.TypeDateTime:
+		return "dateTime"
+	case ir.TypeDuration:
+		return "duration"
+	case ir.TypeURL:
+		return "url"
+	case ir.TypeList:
+		if len(t.Elems) > 0 {
+			return "list:" + irTypeHint(t.Elems[0])
+		}
+		return "list"
+	case ir.TypeOption:
+		if len(t.Elems) > 0 {
+			return "option:" + irTypeHint(t.Elems[0])
+		}
+		return "option"
+	case ir.TypeStruct:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
+		return "struct"
+	case ir.TypeEnum:
+		if t.Decl != nil {
+			return "enum:" + t.Decl.SymName()
+		}
+		return "enum"
+	default:
+		return strings.ToLower(t.Kind.String())
+	}
+}
+
+// irIsLiteral reports whether an IR expression is a literal constant.
+func irIsLiteral(e ir.Expr) bool {
+	_, ok := e.(*ir.Literal)
+	return ok
+}
+
+// irLiteralToKt converts an IR literal expression to a Kotlin value string.
+func irLiteralToKt(e ir.Expr) string {
+	if e == nil {
+		return `""`
+	}
+	lit, ok := e.(*ir.Literal)
+	if !ok {
+		return `""`
+	}
+	if lit.Type != nil {
+		switch lit.Type.Kind {
+		case ir.TypeString:
+			return fmt.Sprintf("%q", lit.Raw)
+		case ir.TypeInt:
+			return lit.Raw
+		case ir.TypeFloat:
+			s := lit.Raw
+			if !strings.Contains(s, ".") {
+				s += ".0"
+			}
+			return s
+		case ir.TypeBool:
+			return lit.Raw
+		case ir.TypeNull:
+			return "null"
+		}
+	}
+	return fmt.Sprintf("%q", lit.Raw)
+}

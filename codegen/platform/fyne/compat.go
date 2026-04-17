@@ -5,8 +5,11 @@ package fyne
 // the docVar type used only by this platform.
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // --- Document helpers ---
@@ -100,4 +103,183 @@ func funcReturnType(fn *ast.FuncDef) string {
 // findComponentInDoc finds a ComponentDecl by name in the document.
 func findComponentInDoc(doc *ast.Document, name string) *ast.ComponentDecl {
 	return codegen.FindComponent(doc, name)
+}
+
+// --- AST-based dependency helpers ---
+// These mirror the IR-based functions in codegen/deps.go but operate on
+// AST types. The Fyne platform still walks AST visual nodes and event
+// handlers internally; these bridge until the platform is fully IR-native.
+
+// findRootIdentAST extracts the root identifier name from an AST expression.
+func findRootIdentAST(e ast.Expr) string {
+	if e == nil {
+		return ""
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		return n.Name
+	case *ast.SelectExpr:
+		return findRootIdentAST(n.Operand)
+	case *ast.IndexExpr:
+		return findRootIdentAST(n.Operand)
+	}
+	return ""
+}
+
+// mutatedFieldsAST returns the set of field names mutated by an AST statement.
+func mutatedFieldsAST(s ast.Stmt) map[string]bool {
+	fields := make(map[string]bool)
+	if s == nil {
+		return fields
+	}
+	switch n := s.(type) {
+	case *ast.AssignStmt:
+		if root := findRootIdentAST(n.Target); root != "" {
+			fields[root] = true
+		}
+	case *ast.ToggleStmt:
+		if root := findRootIdentAST(n.Target); root != "" {
+			fields[root] = true
+		}
+	case *ast.CallStmt:
+		if n.Call != nil {
+			if sel, ok := n.Call.Func.(*ast.SelectExpr); ok {
+				if root := findRootIdentAST(sel.Operand); root != "" {
+					fields[root] = true
+				}
+			}
+		}
+	}
+	return fields
+}
+
+// walkExprDepsAST recursively finds model field references in an AST expression.
+func walkExprDepsAST(e ast.Expr, modelFields map[string]bool, deps map[string]bool) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ast.IdentExpr:
+		if modelFields[n.Name] {
+			deps[n.Name] = true
+		}
+	case *ast.SelectExpr:
+		if root := findRootIdentAST(n.Operand); root != "" && modelFields[root] {
+			deps[root] = true
+		}
+	case *ast.BinaryExpr:
+		walkExprDepsAST(n.Left, modelFields, deps)
+		walkExprDepsAST(n.Right, modelFields, deps)
+	case *ast.UnaryExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+	case *ast.TernaryExpr:
+		walkExprDepsAST(n.Cond, modelFields, deps)
+		walkExprDepsAST(n.Then, modelFields, deps)
+		walkExprDepsAST(n.Else, modelFields, deps)
+	case *ast.CallExpr:
+		walkExprDepsAST(n.Func, modelFields, deps)
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				walkExprDepsAST(arg.Value, modelFields, deps)
+			}
+		}
+	case *ast.IndexExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+		walkExprDepsAST(n.Index, modelFields, deps)
+	case *ast.ListExpr:
+		for _, el := range n.Elements {
+			walkExprDepsAST(el, modelFields, deps)
+		}
+	case *ast.SpreadExpr:
+		walkExprDepsAST(n.Operand, modelFields, deps)
+	}
+}
+
+// extractDepsAST returns all model field references from an AST expression.
+func extractDepsAST(e ast.Expr, modelFields map[string]bool) map[string]bool {
+	deps := make(map[string]bool)
+	walkExprDepsAST(e, modelFields, deps)
+	return deps
+}
+
+// --- IR bridge helpers ---
+
+// irStmtToAST extracts the AST statement backpointer from an IR statement.
+// Returns nil if no backpointer exists.
+func irStmtToAST(s ir.Stmt) ast.Stmt {
+	switch n := s.(type) {
+	case *ir.Assign:
+		return n.AST
+	case *ir.Toggle:
+		return n.AST
+	case *ir.CallStmt:
+		return n.AST
+	case *ir.Emit:
+		return n.AST
+	case *ir.LocalVar:
+		return n.AST
+	case *ir.Return:
+		return n.AST
+	case *ir.If:
+		return n.AST
+	case *ir.For:
+		return n.AST
+	case *ir.NodeInst:
+		return n.AST
+	case *ir.PlatformFilter:
+		return n.AST
+	}
+	return nil
+}
+
+// irTypeHint maps an *ir.Type to a string type hint compatible with
+// typeHintToGo / zeroValueGo.
+func irTypeHint(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeBool:
+		return "bool"
+	case ir.TypeInt:
+		return "int"
+	case ir.TypeFloat:
+		return "float"
+	case ir.TypeString:
+		return "string"
+	case ir.TypeColor:
+		return "color"
+	case ir.TypeDate:
+		return "date"
+	case ir.TypeTime:
+		return "time"
+	case ir.TypeDateTime:
+		return "dateTime"
+	case ir.TypeDuration:
+		return "duration"
+	case ir.TypeURL:
+		return "url"
+	case ir.TypeList:
+		if len(t.Elems) > 0 {
+			return "list:" + irTypeHint(t.Elems[0])
+		}
+		return "list"
+	case ir.TypeOption:
+		if len(t.Elems) > 0 {
+			return "option:" + irTypeHint(t.Elems[0])
+		}
+		return "option"
+	case ir.TypeStruct:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
+		return "struct"
+	case ir.TypeEnum:
+		if t.Decl != nil {
+			return "enum:" + t.Decl.SymName()
+		}
+		return "enum"
+	default:
+		return strings.ToLower(t.Kind.String())
+	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // viewContext tracks state during View() code generation.
@@ -19,7 +20,7 @@ type viewContext struct {
 	forCursors     []forLoopCursor
 	buf            *strings.Builder
 	indent         int
-	components     []*ast.ComponentDecl         // user-defined components for param lookup
+	components     []*ir.Component               // user-defined components for param lookup
 	inComponent    bool                         // true when rendering inside a component method
 	vertical       bool                         // true when inside a vertical container (vbox)
 	slotVar        string                       // variable holding pre-rendered slot content (for abstract components)
@@ -178,7 +179,7 @@ func (vc *viewContext) findComponent(name string) *ast.ComponentDecl {
 	}
 	for _, c := range vc.components {
 		if c.Name == name {
-			return c
+			return c.AST
 		}
 	}
 	return nil
@@ -312,7 +313,7 @@ func (vc *viewContext) renderUserComponent(vn *ast.VisualNode, resultVar string)
 	var comp *ast.ComponentDecl
 	for _, c := range vc.components {
 		if c.Name == vnName(vn) {
-			comp = c
+			comp = c.AST
 			break
 		}
 	}

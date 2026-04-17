@@ -194,8 +194,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-	doc = ir.Convert(pkg)
-	return dumpDocument(f, codegen.AnalyzeCommon(doc))
+	return dumpDocument(f, codegen.AnalyzeCommon(pkg))
 }
 
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {

@@ -3,6 +3,7 @@ package http
 import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 type analysisResult struct {
@@ -13,8 +14,8 @@ type analysisResult struct {
 
 // analyze returns a stub analysis result.
 // TODO: Port to v2 AST — requires Doc.Stmts iteration instead of Doc.App/Data/NativeImports.
-func analyze(doc *ast.Document) *analysisResult {
-	common := codegen.AnalyzeCommon(doc)
+func analyze(doc *ast.Document, pkg *ir.Package) *analysisResult {
+	common := codegen.AnalyzeCommon(pkg)
 	return &analysisResult{
 		CommonAnalysis: common,
 		serverFields:   make(map[string]bool),

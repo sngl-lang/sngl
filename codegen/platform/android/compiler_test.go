@@ -29,9 +29,9 @@ func firstError(diags []ir.Diagnostic) string {
 	return ""
 }
 
-func compileAndVerify(t *testing.T, doc *ast.Document) []byte {
+func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 	t.Helper()
-	src, err := Compile(doc, Config{})
+	src, err := Compile(doc, pkg, Config{})
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}
@@ -65,11 +65,11 @@ func TestFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			_, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
 			}
-			compileAndVerify(t, doc)
+			compileAndVerify(t, doc, pkg)
 		})
 	}
 }

@@ -6,10 +6,17 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func (ec *exprContext) translateMutation(e any) []string {
 	switch n := e.(type) {
+	case []ir.Stmt:
+		var stmts []string
+		for _, s := range n {
+			stmts = append(stmts, ec.translateMutationIR(s)...)
+		}
+		return stmts
 	case *ast.StmtBlock:
 		var stmts []string
 		for _, s := range n.Stmts {
@@ -162,6 +169,46 @@ func (ec *exprContext) translateAlertCall(method string, call *ast.CallExpr) []s
 		return []string{"// Alert.confirm requires async dialog — not yet supported"}
 	}
 	return []string{ec.translateCall(call)}
+}
+
+// translateMutationIR converts an IR statement to Kotlin by extracting its
+// AST backpointer and delegating to translateMutation.
+func (ec *exprContext) translateMutationIR(s ir.Stmt) []string {
+	switch n := s.(type) {
+	case *ir.Assign:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.Toggle:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.CallStmt:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.Emit:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.LocalVar:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.Return:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.If:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	case *ir.For:
+		if n.AST != nil {
+			return ec.translateMutation(n.AST)
+		}
+	}
+	return []string{"// unsupported IR mutation: " + fmt.Sprintf("%T", s)}
 }
 
 func assignOpToKt(op ast.AssignOp) string {
