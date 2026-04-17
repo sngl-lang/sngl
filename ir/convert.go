@@ -33,14 +33,14 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	for _, u := range pkg.Units {
 		stmts = append(stmts, c.convertUnitDef(u))
 	}
+	for _, f := range pkg.Funcs {
+		stmts = append(stmts, c.convertFuncDef(f))
+	}
 	for _, v := range pkg.Consts {
 		stmts = append(stmts, c.convertConstDecl(v))
 	}
 	for _, v := range pkg.Vars {
 		stmts = append(stmts, c.convertVarDecl(v))
-	}
-	for _, f := range pkg.Funcs {
-		stmts = append(stmts, c.convertFuncDef(f))
 	}
 	for _, comp := range pkg.Components {
 		stmts = append(stmts, c.convertComponent(comp))
@@ -537,6 +537,9 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 }
 
 func (c *converter) convertIdent(id *Ident) ast.Expr {
+	if id.IsElementRef {
+		return &ast.ElementRefExpr{Name: id.Name}
+	}
 	// Bare enum member: Status.active referenced as just "active" in source.
 	if id.Member != "" {
 		if id.Sym != nil {
@@ -548,26 +551,28 @@ func (c *converter) convertIdent(id *Ident) ast.Expr {
 		}
 		return &ast.IdentExpr{Name: id.Member}
 	}
-	name := ""
-	if id.Sym != nil {
-		name = id.Sym.SymName()
-	}
-	return &ast.IdentExpr{Name: name}
+	return &ast.IdentExpr{Name: id.Name}
 }
 
 func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	var funcExpr ast.Expr
-	if call.Receiver != nil {
+	if call.Receiver != nil && call.Func != nil {
 		// Method call: receiver.method(args)
 		funcExpr = &ast.SelectExpr{
 			Operand: c.convertExpr(call.Receiver),
 			Field:   call.Func.Name,
 			Kind:    ast.SelectField,
 		}
+	} else if call.Receiver != nil {
+		// Method call on unknown func.
+		funcExpr = c.convertExpr(call.Receiver)
 	} else if call.Func != nil {
 		funcExpr = &ast.IdentExpr{Name: call.Func.Name}
+	} else if call.AST != nil {
+		// Unresolved call — fall back to AST callee expression.
+		funcExpr = call.AST.Func
 	} else {
-		funcExpr = &ast.IdentExpr{Name: "<unresolved>"}
+		funcExpr = &ast.IdentExpr{Name: "_"}
 	}
 	return &ast.CallExpr{
 		Func: funcExpr,
@@ -656,7 +661,7 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
-		name := t.Kind.String()
+		name := "dyn" // anonymous/unresolved declaration
 		if t.Decl != nil {
 			name = t.Decl.SymName()
 		}

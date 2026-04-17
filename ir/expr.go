@@ -19,10 +19,12 @@ type Literal struct {
 
 // Ident is a resolved identifier reference.
 type Ident struct {
-	AST    *ast.IdentExpr
-	Type   *Type
-	Sym    Symbol // resolved: *Var, *Func, *Param, *LoopVar, etc.
-	Member string // non-empty for bare enum member ("active" → Status.active)
+	AST          *ast.IdentExpr
+	Type         *Type
+	Name         string // original identifier name from source
+	Sym          Symbol // resolved: *Var, *Func, *Param, *LoopVar, etc.
+	Member       string // non-empty for bare enum member ("active" → Status.active)
+	IsElementRef bool   // true when from #id syntax (ElementRefExpr)
 }
 
 // Binary is a binary operation.

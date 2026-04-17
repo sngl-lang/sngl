@@ -70,7 +70,7 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	case *ast.ParenExpr:
 		return c.checkExpr(x.Inner)
 	case *ast.ElementRefExpr:
-		return &ir.Ident{Type: TypDyn}
+		return &ir.Ident{Type: TypDyn, Name: x.Name, IsElementRef: true}
 	case *ast.EventRefExpr:
 		return c.inferEventRef(x)
 	default:
@@ -112,11 +112,11 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	// Builtin constants.
 	switch x.Name {
 	case "PLATFORM", "LANGUAGE":
-		return &ir.Ident{AST: x, Type: TypString}
+		return &ir.Ident{AST: x, Type: TypString, Name: x.Name}
 	case "true", "false":
-		return &ir.Ident{AST: x, Type: TypBool}
+		return &ir.Ident{AST: x, Type: TypBool, Name: x.Name}
 	case "null":
-		return &ir.Ident{AST: x, Type: TypNull}
+		return &ir.Ident{AST: x, Type: TypNull, Name: x.Name}
 	}
 
 	sym, ok := c.scope.Lookup(x.Name)
@@ -126,19 +126,19 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
 				for _, m := range ed.Members {
 					if m.Name == x.Name {
-						return &ir.Ident{AST: x, Type: c.expected, Member: x.Name}
+						return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
 					}
 				}
 			}
 		}
 		c.error(x.Pos, "undefined: %s", x.Name)
-		return &ir.Ident{AST: x, Type: TypDyn}
+		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
 	t := sym.SymType()
 	if t == nil {
 		t = TypDyn
 	}
-	return &ir.Ident{AST: x, Type: t, Sym: sym}
+	return &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
