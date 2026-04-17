@@ -457,11 +457,8 @@ func jsBuiltinMethod(sel *ast.SelectExpr, args []ast.Expr, scope *codegen.ExprSc
 		for _, a := range args {
 			argExprs = append(argExprs, translateExpr(a, scope))
 		}
-		if sel.ResolvedType != "" {
-			qualName = sel.ResolvedType
-		} else {
-			qualName = "*." + method
-		}
+		// TODO: resolve receiver type from IR
+		qualName = "*." + method
 	}
 
 	a := func(i int) string {

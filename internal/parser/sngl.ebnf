@@ -372,7 +372,6 @@ CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 CondPostfixOp =
       dot ident
     | dot at ident
-    | dot elem_ref
     | elem_ref
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
@@ -384,7 +383,6 @@ CondPostfixOp =
 ExprPostfixOp =
       dot ident [ StructLitBody ]
     | dot at ident
-    | dot elem_ref
     | elem_ref
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
@@ -394,7 +392,6 @@ ExprPostfixOp =
 StmtPostfixOp =
       dot ident
     | dot at ident
-    | dot elem_ref
     | elem_ref
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen

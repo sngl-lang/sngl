@@ -360,7 +360,6 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)
-	sel.ResolvedType = receiver.String()
 
 	// Namespace function call: ns.func().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
@@ -459,7 +458,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
 						t := fsym.SymType()
-						x.ResolvedType = t.String()
 						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 					}
 				}
@@ -471,7 +469,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
 				for _, m := range ed.Members {
 					if m.Name == x.Field {
-						x.ResolvedType = operand.String()
 						return &ir.Select{AST: x, Type: operand, Operand: operandExpr, Field: x.Field}
 					}
 				}
@@ -484,7 +481,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
-						x.ResolvedType = f.Type.String()
 						return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
 					}
 				}
@@ -503,7 +499,6 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 
 	if operand.Kind == ir.TypeList && len(operand.Elems) > 0 {
 		t := operand.Elems[0]
-		x.ResolvedType = t.String()
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
 	return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
@@ -795,8 +790,8 @@ func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	defer c.popScope()
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
-		if ir := c.checkStmt(stmt); ir != nil {
-			out = append(out, ir)
+		if s := c.checkStmt(stmt); s != nil {
+			out = append(out, s)
 		}
 	}
 	return out

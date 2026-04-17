@@ -854,6 +854,13 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 				vn.Args = *args
 			}
 		}
+		// Extract #id from target: "name #id(...)" → Target=name, ID=id.
+		if sel, ok := vn.Target.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
+			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+				vn.Target = ident
+				vn.ID = sel.Field
+			}
+		}
 		if lastBlock != nil {
 			vn.Block = *lastBlock
 		}
@@ -874,6 +881,13 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 	}
 	if target, ok := base.(ast.TargetExpr); ok {
 		vn.Target = target
+	}
+	// Split "target.#id" SelectExpr into Target + ID.
+	if sel, ok := vn.Target.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
+		if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+			vn.Target = ident
+			vn.ID = sel.Field
+		}
 	}
 	return vn
 }
@@ -921,14 +935,6 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 					Operand: base,
 					Field:   field.Literal,
 					Kind:    ast.SelectEvent,
-				}, nil, nil
-			case ELEMENT_REF:
-				ref := it.shift()
-				return &ast.SelectExpr{
-					Pos:     b.posFromToken(tok),
-					Operand: base,
-					Field:   ref.Literal,
-					Kind:    ast.SelectElemRef,
 				}, nil, nil
 			}
 		}
@@ -980,7 +986,9 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 			return base, &block, lastArgs
 		}
 	}
-	it.skip()
+	if !it.done() {
+		it.skip()
+	}
 	return base, lastBlock, lastArgs
 }
 
@@ -1471,14 +1479,6 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 					Operand: base,
 					Field:   field.Literal,
 					Kind:    ast.SelectEvent,
-				}
-			case ELEMENT_REF:
-				ref := it.shift()
-				return &ast.SelectExpr{
-					Pos:     b.posFromToken(tok),
-					Operand: base,
-					Field:   ref.Literal,
-					Kind:    ast.SelectElemRef,
 				}
 			}
 		}

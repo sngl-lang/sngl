@@ -176,19 +176,17 @@ type TernaryExpr struct {
 
 // SelectExpr is member access: .field, .@event, .#ref, #ref.
 type SelectExpr struct {
-	Pos          Pos
-	Operand      Expr
-	Field        string
-	Kind         SelectKind
-	ResolvedType string // populated by checker
+	Pos     Pos
+	Operand Expr
+	Field   string
+	Kind    SelectKind
 }
 
 // IndexExpr is index access: operand[index].
 type IndexExpr struct {
-	Pos          Pos
-	Operand      Expr
-	Index        Expr
-	ResolvedType string // populated by checker
+	Pos     Pos
+	Operand Expr
+	Index   Expr
 }
 
 // CallExpr is a call expression: callee(args...).

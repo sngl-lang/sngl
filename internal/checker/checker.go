@@ -637,6 +637,7 @@ func visualNodeTarget(vn *ast.VisualNode) string {
 	return ""
 }
 
+
 // buildOutputs validates and extracts output declarations from an output visual node.
 // Supports flat form: output(lang="js", platform="html", stylesheet="...")
 // and nested form: output { lang { platform(opts...) } }
@@ -885,20 +886,10 @@ func optionFieldNames(sd *ir.StructDef) string {
 }
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{
+	return &ir.Window{
 		AST:  vn,
-		Name: vn.ID, // window #name
+		Name: vn.ID,
 	}
-	// Extract name from args if ID not set.
-	if w.Name == "" {
-		for _, arg := range vn.Args.Args {
-			if a, ok := arg.(ast.Arg); ok && a.Name == "" {
-				w.Name = literalString(a.Value)
-				break
-			}
-		}
-	}
-	return w
 }
 
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
@@ -1062,14 +1053,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		}
 	}
 
-	// Check nested function bodies.
-	for _, fn := range comp.Funcs {
-		c.checkFuncBody(fn)
-	}
-
-	// Check component body statements.
-	// Declarations were registered in pass1 but initializers weren't checked
-	// (scope wasn't ready). Check them now and infer types, but don't re-register.
+	// Check var/const initializers first so types are inferred before function bodies.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		for _, stmt := range comp.AST.Body.Stmts {
 			switch s := stmt.(type) {
@@ -1077,6 +1061,21 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				c.checkComponentConsts(s, comp)
 			case *ast.VarDecl:
 				c.checkComponentVars(s, comp)
+			}
+		}
+	}
+
+	// Check nested function bodies (vars are now fully typed).
+	for _, fn := range comp.Funcs {
+		c.checkFuncBody(fn)
+	}
+
+	// Check remaining component body statements.
+	if comp.AST != nil && comp.AST.Body.IsDefined() {
+		for _, stmt := range comp.AST.Body.Stmts {
+			switch stmt.(type) {
+			case *ast.ConstDecl, *ast.VarDecl:
+				continue // already checked above
 			case *ast.FuncDef:
 				continue // already checked above
 			default:

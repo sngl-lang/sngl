@@ -248,13 +248,9 @@ func SnglNodeGoType(e ast.Expr) string {
 	case *ast.ParenExpr:
 		return SnglNodeGoType(n.Inner)
 	case *ast.SelectExpr:
-		if n.ResolvedType != "" {
-			return TypeHintToGo(n.ResolvedType)
-		}
+		// TODO: resolve from IR once codegen migrates
 	case *ast.IndexExpr:
-		if n.ResolvedType != "" {
-			return TypeHintToGo(n.ResolvedType)
-		}
+		// TODO: resolve from IR once codegen migrates
 	}
 	return "any"
 }

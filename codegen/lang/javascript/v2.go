@@ -227,17 +227,7 @@ func methodCallV2(sel *ast.SelectExpr, argList ast.ArgList, ctx *codegen.ExprCtx
 		}
 	}
 
-	// Instance method via type-attached function
-	if ctx.Pkg != nil && ctx.Pkg.Symbols != nil && sel.ResolvedType != "" {
-		if f, ok := ctx.Pkg.Symbols.LookupMethod(sel.ResolvedType, method); ok {
-			jsName := strings.ReplaceAll(sel.ResolvedType+"."+f.Name, ".", "_")
-			argStrs := []string{exprV2(sel.Operand, ctx)}
-			for _, a := range args {
-				argStrs = append(argStrs, exprV2(a, ctx))
-			}
-			return jsName + "(" + strings.Join(argStrs, ", ") + ")"
-		}
-	}
+	// TODO: instance method dispatch needs IR-based type resolution
 
 	target := exprV2(sel.Operand, ctx)
 	argStrs := make([]string, len(args))
@@ -343,11 +333,8 @@ func jsBuiltinMethodV2(sel *ast.SelectExpr, args []ast.Expr, ctx *codegen.ExprCt
 		for _, a := range args {
 			argExprs = append(argExprs, exprV2(a, ctx))
 		}
-		if sel.ResolvedType != "" {
-			qualName = sel.ResolvedType + "." + method
-		} else {
-			qualName = "*." + method
-		}
+		// TODO: resolve receiver type from IR
+		qualName = "*." + method
 	}
 
 	a := func(i int) string {

@@ -46,6 +46,9 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertComponent(comp))
 	}
 	for _, w := range pkg.Windows {
+		if w.Checked && w.Name == "" && len(w.Body) == 0 {
+			continue // component-scoped stub; content is in the component body
+		}
 		stmts = append(stmts, c.convertWindow(w))
 	}
 	for _, t := range pkg.Timers {
@@ -144,8 +147,12 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 }
 
 func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
+	name := f.Name
+	if f.Receiver != "" {
+		name = f.Receiver + "." + f.Name
+	}
 	fd := &ast.FuncDef{
-		Name:       f.Name,
+		Name:       name,
 		TypeParams: f.TypeParams,
 		Params:     c.convertParamList(f.Params),
 	}
@@ -209,13 +216,15 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	for _, t := range comp.Timers {
 		bodyStmts = append(bodyStmts, c.convertTimer(t))
 	}
-	for _, s := range comp.Body {
-		bodyStmts = append(bodyStmts, c.convertStmt(s))
+	if len(comp.Body) > 0 {
+		bodyBlock := c.convertStmtBlock(comp.Body)
+		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
 	}
 	if len(bodyStmts) > 0 {
 		cd.Body = ast.StmtBlock{
 			IsMultiline: true,
 			Stmts:       bodyStmts,
+			Pos:         ast.Pos{Line: 1},
 		}
 	}
 
@@ -225,13 +234,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	vn := &ast.VisualNode{
 		Target: &ast.IdentExpr{Name: "window"},
-	}
-	if w.Name != "" {
-		vn.Args = ast.ArgList{
-			Args: []ast.ArgOrEventHandler{
-				ast.Arg{Value: stringLit(w.Name)},
-			},
-		}
+		ID:     w.Name,
 	}
 	var bodyStmts []ast.Stmt
 	for _, v := range w.Vars {
@@ -249,8 +252,9 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	}
 	if len(bodyStmts) > 0 {
 		vn.Block = ast.StmtBlock{
-			IsMultiline: true,
+			IsMultiline: len(bodyStmts) > 0,
 			Stmts:       bodyStmts,
+			Pos:         ast.Pos{Line: 1},
 		}
 	}
 	return vn

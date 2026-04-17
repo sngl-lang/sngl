@@ -226,7 +226,7 @@ var errorSets = [...][]Symbol{
 	{kw_platform},
 	{kw_struct},
 	{assign},
-	{ident, elem_ref, at},
+	{ident, at},
 	{NonIdentPrimary, Arg, FuncLit, AnonStructLit, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, rbrace, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, ellipsis, elem_ref, color, colon, bang, at},
 	{NonIdentPrimary, Arg, FuncLit, AnonStructLit, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, ellipsis, elem_ref, color, colon, bang, at},
 	{NonIdentPrimary, FuncLit, AnonStructLit, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, raw_str, minus, lparen, lbracket, lbrace, kw_func, int_lit, ident, float_lit, ellipsis, elem_ref, color, colon, bang, at},
@@ -2378,7 +2378,6 @@ state1:
 //	CondPostfixOp =
 //	      dot ident
 //	    | dot at ident
-//	    | dot elem_ref
 //	    | elem_ref
 //	    | lbracket Expr rbracket
 //	    | lparen [ ArgList ] rparen
@@ -2396,7 +2395,7 @@ state1:
 //	State 1
 //		on  at
 //			shift and goto state 2
-//		on  elem_ref, ident
+//		on  ident
 //			shift and goto state 3
 //	State 2
 //		on  ident
@@ -2445,7 +2444,7 @@ state1:
 	case at:
 		r = append(r, p.shift())
 		goto state2
-	case elem_ref, ident:
+	case ident:
 		r = append(r, p.shift())
 		goto state3
 	}
@@ -2963,7 +2962,6 @@ state1:
 //	ExprPostfixOp =
 //	      dot ident [ StructLitBody ]
 //	    | dot at ident
-//	    | dot elem_ref
 //	    | elem_ref
 //	    | lbracket Expr rbracket
 //	    | lparen [ ArgList ] rparen
@@ -2981,8 +2979,6 @@ state1:
 //	State 1
 //		on  at
 //			shift and goto state 2
-//		on  elem_ref
-//			shift and goto state 3
 //		on  ident
 //			shift and goto state 4
 //	State 2
@@ -3036,9 +3032,6 @@ state1:
 	case at:
 		r = append(r, p.shift())
 		goto state2
-	case elem_ref:
-		r = append(r, p.shift())
-		goto state3
 	case ident:
 		r = append(r, p.shift())
 		goto state4
@@ -4894,7 +4887,6 @@ state4:
 //	StmtPostfixOp =
 //	      dot ident
 //	    | dot at ident
-//	    | dot elem_ref
 //	    | elem_ref
 //	    | lbracket Expr rbracket
 //	    | lparen [ ArgList ] rparen
@@ -4915,7 +4907,7 @@ state4:
 //	State 1
 //		on  at
 //			shift and goto state 2
-//		on  elem_ref, ident
+//		on  ident
 //			shift and goto state 3
 //	State 2
 //		on  ident
@@ -4971,7 +4963,7 @@ state1:
 	case at:
 		r = append(r, p.shift())
 		goto state2
-	case elem_ref, ident:
+	case ident:
 		r = append(r, p.shift())
 		goto state3
 	}
