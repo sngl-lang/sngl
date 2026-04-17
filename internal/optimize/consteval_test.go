@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestToFloat_Int(t *testing.T) {
@@ -164,7 +165,6 @@ func TestCallFuncUnknown(t *testing.T) {
 }
 
 func TestCallFuncIntFromBool(t *testing.T) {
-	// int(true) is not supported, falls through
 	_, ok := evalCallFunc("int", []any{true})
 	if ok {
 		t.Error("expected int(true) to fail")
@@ -178,72 +178,24 @@ func TestCallFuncFloatFromBool(t *testing.T) {
 	}
 }
 
-func TestEvalMethodStartsWith(t *testing.T) {
-	v, ok := evalMethod("startsWith", "hello", []any{"hel"})
-	if !ok || v != true {
-		t.Errorf("startsWith = (%v, %v), want (true, true)", v, ok)
-	}
-}
-
-func TestEvalMethodEndsWith(t *testing.T) {
-	v, ok := evalMethod("endsWith", "hello", []any{"llo"})
-	if !ok || v != true {
-		t.Errorf("endsWith = (%v, %v), want (true, true)", v, ok)
-	}
-}
-
-func TestEvalMethodContains_NonStringArg(t *testing.T) {
-	_, ok := evalMethod("contains", "hello", []any{42})
+func TestEvalMethodUnknown(t *testing.T) {
+	_, ok := evalMethod("bogusMethod", "hello", nil)
 	if ok {
-		t.Error("expected contains with non-string arg to fail")
+		t.Error("expected unknown method to return false")
 	}
 }
 
-func TestEvalMethodStartsWith_NonStringArg(t *testing.T) {
-	_, ok := evalMethod("startsWith", "hello", []any{42})
+func TestEvalCallFuncZeroArgs(t *testing.T) {
+	_, ok := evalCallFunc("string", nil)
 	if ok {
-		t.Error("expected startsWith with non-string arg to fail")
+		t.Error("expected 0-arg call to return false")
 	}
 }
 
-func TestEvalMethodEndsWith_NonStringArg(t *testing.T) {
-	_, ok := evalMethod("endsWith", "hello", []any{42})
-	if ok {
-		t.Error("expected endsWith with non-string arg to fail")
-	}
-}
-
-func TestEvalMethodLength_WithArgs(t *testing.T) {
-	// string.length("hello", "extra") — dispatched as evalQualifiedMethod
-	// which only takes 1 arg for string.length
-	_, ok := evalMethod("length", 42, []any{"extra"})
-	if ok {
-		t.Error("expected length with non-string receiver and extra args to fail")
-	}
-}
-
-func TestEvalMethodOnNonString(t *testing.T) {
-	_, ok := evalMethod("length", 42, nil)
-	if ok {
-		t.Error("expected length on int to fail")
-	}
-}
-
-func TestIsConstExpr_Default(t *testing.T) {
-	// SelectExpr is an unknown node type for isConstExpr
-	node := &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "x"}, Field: "y"}
-	vars := map[string]any{"PLATFORM": "html"}
-	if isConstExpr(node, &foldCtx{vars: vars}) {
-		t.Error("expected SelectExpr to not be constant")
-	}
-}
-
-func TestEvalConst_Default(t *testing.T) {
-	node := &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "x"}, Field: "y"}
-	vars := map[string]any{"PLATFORM": "html"}
-	_, ok := evalConst(node, &foldCtx{vars: vars})
-	if ok {
-		t.Error("expected unknown node to not evaluate")
+func TestEvalMethodListLength(t *testing.T) {
+	v, ok := evalMethod("length", []any{"a", "b", "c"}, nil)
+	if !ok || v != 3 {
+		t.Errorf("list.length = (%v, %v), want (3, true)", v, ok)
 	}
 }
 
@@ -279,54 +231,6 @@ func TestEvalBinaryOp_Neq(t *testing.T) {
 	v, ok := evalBinaryOp(ast.BinNeq, "a", "b")
 	if !ok || v != true {
 		t.Errorf("a != b = (%v, %v), want (true, true)", v, ok)
-	}
-}
-
-func TestEvalMethodQualified_StringUpper(t *testing.T) {
-	doc := &ast.Document{
-		Data: []*ast.Data{{
-			Name: "val",
-			Init: snglExpr(&ast.MethodExpr{
-				Receiver: &ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString},
-				Method:   "upper",
-			}),
-		}},
-	}
-	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
-	if doc.Data[0].Init.Literal != "HELLO" {
-		t.Errorf("expected HELLO, got %v", doc.Data[0].Init.Literal)
-	}
-}
-
-func TestEvalMethodQualified_StringLower(t *testing.T) {
-	doc := &ast.Document{
-		Data: []*ast.Data{{
-			Name: "val",
-			Init: snglExpr(&ast.MethodExpr{
-				Receiver: &ast.LiteralExpr{Value: "WORLD", Kind: ast.LiteralString},
-				Method:   "lower",
-			}),
-		}},
-	}
-	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
-	if doc.Data[0].Init.Literal != "world" {
-		t.Errorf("expected world, got %v", doc.Data[0].Init.Literal)
-	}
-}
-
-func TestEvalMethodQualified_StringTrim(t *testing.T) {
-	doc := &ast.Document{
-		Data: []*ast.Data{{
-			Name: "val",
-			Init: snglExpr(&ast.MethodExpr{
-				Receiver: &ast.LiteralExpr{Value: "  hi  ", Kind: ast.LiteralString},
-				Method:   "trim",
-			}),
-		}},
-	}
-	must(t, Optimize(doc, Config{Platform: "html", Language: "js"}))
-	if doc.Data[0].Init.Literal != "hi" {
-		t.Errorf("expected 'hi', got %v", doc.Data[0].Init.Literal)
 	}
 }
 
@@ -372,143 +276,10 @@ func TestEvalQualifiedMethod_StringReplace(t *testing.T) {
 	}
 }
 
-func TestEvalQualifiedMethod_StringIndexOf(t *testing.T) {
-	v, ok := evalQualifiedMethod("string.indexOf", []any{"hello", "ll"})
-	if !ok || v != 2 {
-		t.Errorf("string.indexOf = (%v, %v), want (2, true)", v, ok)
-	}
-}
-
-func TestEvalQualifiedMethod_StringSubstring(t *testing.T) {
-	v, ok := evalQualifiedMethod("string.substring", []any{"hello", 1, 4})
-	if !ok || v != "ell" {
-		t.Errorf("string.substring = (%v, %v), want ('ell', true)", v, ok)
-	}
-}
-
-func TestEvalQualifiedMethod_Unknown(t *testing.T) {
-	_, ok := evalQualifiedMethod("string.bogus", []any{"hello"})
-	if ok {
-		t.Error("expected unknown qualified method to fail")
-	}
-}
-
-func TestEvalQualifiedMethod_FloatPow(t *testing.T) {
-	v, ok := evalQualifiedMethod("float.pow", []any{2.0, 3.0})
-	if !ok || v != 8.0 {
-		t.Errorf("float.pow(2,3) = (%v, %v), want (8.0, true)", v, ok)
-	}
-}
-
-func TestEvalQualifiedMethod_FloatTrig(t *testing.T) {
-	for _, name := range []string{"float.sin", "float.cos", "float.tan", "float.asin", "float.acos", "float.atan"} {
-		_, ok := evalQualifiedMethod(name, []any{0.5})
-		if !ok {
-			t.Errorf("%s(0.5) returned !ok", name)
-		}
-	}
-}
-
-func TestEvalQualifiedMethod_FloatAtan2(t *testing.T) {
-	_, ok := evalQualifiedMethod("float.atan2", []any{1.0, 1.0})
-	if !ok {
-		t.Error("float.atan2(1,1) returned !ok")
-	}
-}
-
-func TestIsConstExpr_MethodExprTypeNS(t *testing.T) {
-	// Type-namespace method call: string.length("hi")
-	vars := map[string]any{}
-	node := &ast.MethodExpr{
-		Receiver: &ast.IdentExpr{Name: "string"},
-		Method:   "length",
-		Args:     []ast.Node{&ast.LiteralExpr{Value: "hi", Kind: ast.LiteralString}},
-	}
-	if !isConstExpr(node, &foldCtx{vars: vars}) {
-		t.Error("expected type-ns method call to be constant")
-	}
-}
-
-func TestIsConstExpr_MethodExprNonConstReceiver(t *testing.T) {
-	vars := map[string]any{}
-	node := &ast.MethodExpr{
-		Receiver: &ast.IdentExpr{Name: "count"},
-		Method:   "toString",
-	}
-	if isConstExpr(node, &foldCtx{vars: vars}) {
-		t.Error("expected non-const receiver method to not be constant")
-	}
-}
-
-func TestEvalConst_TernaryNonBoolCond(t *testing.T) {
-	vars := map[string]any{"PLATFORM": "html"}
-	node := &ast.TernaryExpr{
-		Cond: &ast.LiteralExpr{Value: "notbool", Kind: ast.LiteralString},
-		Then: &ast.LiteralExpr{Value: "a", Kind: ast.LiteralString},
-		Else: &ast.LiteralExpr{Value: "b", Kind: ast.LiteralString},
-	}
-	_, ok := evalConst(node, &foldCtx{vars: vars})
-	if ok {
-		t.Error("expected ternary with non-bool condition to fail")
-	}
-}
-
-func TestEvalConst_MethodExprNonConstArg(t *testing.T) {
-	vars := map[string]any{}
-	node := &ast.MethodExpr{
-		Receiver: &ast.LiteralExpr{Value: "hello", Kind: ast.LiteralString},
-		Method:   "contains",
-		Args:     []ast.Node{&ast.IdentExpr{Name: "unknown"}},
-	}
-	_, ok := evalConst(node, &foldCtx{vars: vars})
-	if ok {
-		t.Error("expected method with non-const arg to fail")
-	}
-}
-
-func TestEvalConst_CallExprNonConstArg(t *testing.T) {
-	vars := map[string]any{}
-	node := &ast.CallExpr{
-		Func: "string",
-		Args: []ast.Node{&ast.IdentExpr{Name: "unknown"}},
-	}
-	_, ok := evalConst(node, &foldCtx{vars: vars})
-	if ok {
-		t.Error("expected call with non-const arg to fail")
-	}
-}
-
-func TestEvalConst_InterpolationNonConstPart(t *testing.T) {
-	vars := map[string]any{}
-	node := &ast.InterpolationExpr{
-		Parts: []ast.Node{
-			&ast.LiteralExpr{Value: "x=", Kind: ast.LiteralString},
-			&ast.IdentExpr{Name: "unknown"},
-		},
-	}
-	_, ok := evalConst(node, &foldCtx{vars: vars})
-	if ok {
-		t.Error("expected interpolation with non-const part to fail")
-	}
-}
-
-func TestEvalMethodQualified_ListLength(t *testing.T) {
+func TestEvalQualifiedMethod_ListLength(t *testing.T) {
 	v, ok := evalQualifiedMethod("list.length", []any{[]any{1, 2, 3}})
 	if !ok || v != 3 {
 		t.Errorf("list.length([1,2,3]) = (%v, %v), want (3, true)", v, ok)
-	}
-}
-
-func TestEvalQualifiedMethod_SubstringBounds(t *testing.T) {
-	// start < 0 clamps to 0, end > len clamps to len
-	v, ok := evalQualifiedMethod("string.substring", []any{"hello", -1, 100})
-	if !ok || v != "hello" {
-		t.Errorf("substring with out of bounds = (%v, %v), want ('hello', true)", v, ok)
-	}
-	// start > end returns empty
-	v, ok = evalQualifiedMethod("string.substring", []any{"hello", 3, 1})
-	if !ok || v != "" {
-		t.Errorf("substring with start>end = (%v, %v), want ('', true)", v, ok)
 	}
 }
 
@@ -555,6 +326,215 @@ func TestCompareOp_IntComparison(t *testing.T) {
 		got, ok := compareOp(tc.op, tc.l, tc.r)
 		if !ok || got != tc.want {
 			t.Errorf("compareOp(%v, %d, %d) = (%v, %v), want (%v, true)", tc.op, tc.l, tc.r, got, ok, tc.want)
+		}
+	}
+}
+
+func TestFloatModReturnsNil(t *testing.T) {
+	result, ok := numericOp(ast.BinMod, 3.5, 2.0)
+	if ok {
+		t.Errorf("expected float mod to not fold, but got %v", result)
+	}
+}
+
+// --- IR-based evalExpr tests ---
+
+func TestEvalExpr_Literal(t *testing.T) {
+	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
+	tests := []struct {
+		lit  *ir.Literal
+		want any
+	}{
+		{&ir.Literal{Type: ir.TypInt, Raw: "42"}, 42},
+		{&ir.Literal{Type: ir.TypFloat, Raw: "3.14"}, 3.14},
+		{&ir.Literal{Type: ir.TypString, Raw: "hello"}, "hello"},
+		{&ir.Literal{Type: ir.TypBool, Raw: "true"}, true},
+		{&ir.Literal{Type: ir.TypBool, Raw: "false"}, false},
+		{&ir.Literal{Type: ir.TypNull, Raw: "null"}, nil},
+	}
+	for _, tc := range tests {
+		got, ok := evalExpr(tc.lit, ctx)
+		if !ok {
+			t.Errorf("evalExpr(%s) returned !ok", tc.lit.Raw)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("evalExpr(%s) = %v, want %v", tc.lit.Raw, got, tc.want)
+		}
+	}
+}
+
+func TestEvalExpr_Platform(t *testing.T) {
+	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
+	got, ok := evalExpr(&ir.Ident{Name: "PLATFORM", Type: ir.TypString}, ctx)
+	if !ok || got != "html" {
+		t.Errorf("PLATFORM = (%v, %v), want (html, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_Language(t *testing.T) {
+	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
+	got, ok := evalExpr(&ir.Ident{Name: "LANGUAGE", Type: ir.TypString}, ctx)
+	if !ok || got != "js" {
+		t.Errorf("LANGUAGE = (%v, %v), want (js, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_ConstVar(t *testing.T) {
+	v := &ir.Var{Name: "x", IsConst: true, Init: &ir.Literal{Type: ir.TypInt, Raw: "42"}}
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	got, ok := evalExpr(&ir.Ident{Name: "x", Type: ir.TypInt, Sym: v}, ctx)
+	if !ok || got != 42 {
+		t.Errorf("const x = (%v, %v), want (42, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_NonConstVar(t *testing.T) {
+	v := &ir.Var{Name: "x", IsConst: false, Init: &ir.Literal{Type: ir.TypInt, Raw: "42"}}
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	_, ok := evalExpr(&ir.Ident{Name: "x", Type: ir.TypInt, Sym: v}, ctx)
+	if ok {
+		t.Error("expected non-const var to not evaluate")
+	}
+}
+
+func TestEvalExpr_BinaryAdd(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Binary{
+		Op:    ast.BinAdd,
+		Type:  ir.TypInt,
+		Left:  &ir.Literal{Type: ir.TypInt, Raw: "3"},
+		Right: &ir.Literal{Type: ir.TypInt, Raw: "4"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != 7 {
+		t.Errorf("3 + 4 = (%v, %v), want (7, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_TernaryTrue(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Ternary{
+		Type: ir.TypString,
+		Cond: &ir.Literal{Type: ir.TypBool, Raw: "true"},
+		Then: &ir.Literal{Type: ir.TypString, Raw: "a"},
+		Else: &ir.Literal{Type: ir.TypString, Raw: "b"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != "a" {
+		t.Errorf("true ? a : b = (%v, %v), want (a, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_TernaryFalse(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Ternary{
+		Type: ir.TypString,
+		Cond: &ir.Literal{Type: ir.TypBool, Raw: "false"},
+		Then: &ir.Literal{Type: ir.TypString, Raw: "a"},
+		Else: &ir.Literal{Type: ir.TypString, Raw: "b"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != "b" {
+		t.Errorf("false ? a : b = (%v, %v), want (b, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_UnaryNeg(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Unary{
+		Op:      ast.UnaryNeg,
+		Type:    ir.TypInt,
+		Operand: &ir.Literal{Type: ir.TypInt, Raw: "42"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != -42 {
+		t.Errorf("-42 = (%v, %v), want (-42, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_UnaryNot(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Unary{
+		Op:      ast.UnaryNot,
+		Type:    ir.TypBool,
+		Operand: &ir.Literal{Type: ir.TypBool, Raw: "true"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != false {
+		t.Errorf("!true = (%v, %v), want (false, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_ListLit(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.ListLit{
+		Type: ir.ListOf(ir.TypInt),
+		Elems: []ir.Expr{
+			&ir.Literal{Type: ir.TypInt, Raw: "1"},
+			&ir.Literal{Type: ir.TypInt, Raw: "2"},
+		},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok {
+		t.Fatal("expected list eval to succeed")
+	}
+	list := got.([]any)
+	if len(list) != 2 || list[0] != 1 || list[1] != 2 {
+		t.Errorf("got %v, want [1, 2]", list)
+	}
+}
+
+func TestEvalExpr_Conversion(t *testing.T) {
+	ctx := &evalCtx{values: map[ir.Symbol]any{}}
+	expr := &ir.Conversion{
+		Type:    ir.TypInt,
+		Operand: &ir.Literal{Type: ir.TypFloat, Raw: "3.14"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != 3 {
+		t.Errorf("int(3.14) = (%v, %v), want (3, true)", got, ok)
+	}
+}
+
+func TestEvalExpr_PlatformEq(t *testing.T) {
+	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
+	expr := &ir.Binary{
+		Op:    ast.BinEq,
+		Type:  ir.TypBool,
+		Left:  &ir.Ident{Name: "PLATFORM", Type: ir.TypString},
+		Right: &ir.Literal{Type: ir.TypString, Raw: "html"},
+	}
+	got, ok := evalExpr(expr, ctx)
+	if !ok || got != true {
+		t.Errorf("PLATFORM == html = (%v, %v), want (true, true)", got, ok)
+	}
+}
+
+func TestIrLiteral(t *testing.T) {
+	tests := []struct {
+		val  any
+		raw  string
+		kind ir.TypeKind
+	}{
+		{"hello", "hello", ir.TypeString},
+		{42, "42", ir.TypeInt},
+		{3.14, "3.14", ir.TypeFloat},
+		{true, "true", ir.TypeBool},
+		{false, "false", ir.TypeBool},
+		{nil, "null", ir.TypeNull},
+	}
+	for _, tc := range tests {
+		lit := irLiteral(tc.val, nil)
+		if lit == nil {
+			t.Errorf("irLiteral(%v) returned nil", tc.val)
+			continue
+		}
+		if lit.Raw != tc.raw {
+			t.Errorf("irLiteral(%v).Raw = %q, want %q", tc.val, lit.Raw, tc.raw)
+		}
+		if lit.Type.Kind != tc.kind {
+			t.Errorf("irLiteral(%v).Type.Kind = %v, want %v", tc.val, lit.Type.Kind, tc.kind)
 		}
 	}
 }

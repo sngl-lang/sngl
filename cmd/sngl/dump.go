@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -139,13 +140,14 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if _, err := checkDoc(doc, dir, true); err != nil {
+	pkg, err := checkDoc(doc, dir, true)
+	if err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 	start = time.Now()
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: platform,
 		Language: lang,
 		Dir:      dir,
@@ -154,6 +156,7 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
 
+	doc = ir.Convert(pkg)
 	return dumpDocument(f, doc)
 }
 
@@ -173,13 +176,14 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	if _, err := checkDoc(doc, dir, true); err != nil {
+	pkg, err := checkDoc(doc, dir, true)
+	if err != nil {
 		return err
 	}
 	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 	start = time.Now()
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: platform,
 		Language: lang,
 		Dir:      dir,
@@ -188,6 +192,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", lang, "platform", platform, "duration", time.Since(start))
 
+	doc = ir.Convert(pkg)
 	return dumpDocument(f, codegen.AnalyzeCommon(doc))
 }
 

@@ -17,6 +17,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
@@ -76,7 +77,8 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {
@@ -84,13 +86,14 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: "html",
 		Language: "js",
 	}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
+	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform("html")
 	if gen == nil {
@@ -187,7 +190,8 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == checker.Error {
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {
@@ -195,13 +199,14 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: platName,
 		Language: langName,
 	}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
+	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform(platName)
 	if gen == nil {

@@ -11,6 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -120,7 +121,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Optimize
 	start = time.Now()
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,
@@ -128,6 +129,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+	doc = ir.Convert(pkg)
 
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "sngl-run-*")

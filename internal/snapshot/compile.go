@@ -24,21 +24,18 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 
 	dir := filepath.Dir(sourceFile)
-	if err := checkDoc(doc, dir); err != nil {
+	pkg, err := checkAndReturn(doc, dir)
+	if err != nil {
 		return nil, err
 	}
 
-	// Re-parse for a fresh copy to optimize (no Clone in v2).
-	previewDoc, err := ParseSNGL(sourceFile)
-	if err != nil {
-		return nil, fmt.Errorf("parse preview: %w", err)
-	}
-	if err := optimize.Optimize(previewDoc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: platform,
 		Language: lang,
 	}); err != nil {
 		return nil, fmt.Errorf("optimize: %w", err)
 	}
+	previewDoc := ir.Convert(pkg)
 
 	jsLang := codegen.LookupLang("js")
 	htmlPlat := codegen.LookupPlatform("html")
@@ -122,15 +119,21 @@ func ParseSNGL(filename string) (*ast.Document, error) {
 
 // checkDoc type-checks a document and returns the first error diagnostic, if any.
 func checkDoc(doc *ast.Document, dir string) error {
-	_, diags := checker.Check(doc, &checker.Config{
+	_, err := checkAndReturn(doc, dir)
+	return err
+}
+
+// checkAndReturn type-checks a document and returns the package or the first error.
+func checkAndReturn(doc *ast.Document, dir string) (*ir.Package, error) {
+	pkg, diags := checker.Check(doc, &checker.Config{
 		FS:     os.DirFS(dir),
 		Dir:    dir,
 		IsMain: true,
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
-			return fmt.Errorf("check: %s", d.Error())
+			return nil, fmt.Errorf("check: %s", d.Error())
 		}
 	}
-	return nil
+	return pkg, nil
 }

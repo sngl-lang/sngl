@@ -11,78 +11,106 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// isConstExpr reports whether the expression references only compile-time
-// constant identifiers (PLATFORM, LANGUAGE) and literal values.
-func isConstExpr(e ast.Expr, ctx *foldCtx) bool {
+// isConstExpr reports whether the expression can be evaluated at compile time.
+func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	if e == nil {
 		return false
 	}
 	switch x := e.(type) {
-	case *ast.LiteralExpr, *ast.UnitLiteral:
+	case *ir.Literal:
 		return true
-	case *ast.IdentExpr:
-		_, ok := ctx.vars[x.Name]
-		return ok
-	case *ast.BinaryExpr:
+	case *ir.Ident:
+		switch x.Name {
+		case "PLATFORM", "LANGUAGE":
+			return true
+		}
+		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
+			return true
+		}
+		if _, ok := x.Sym.(*ir.LoopVar); ok {
+			if _, found := ctx.values[x.Sym]; found {
+				return true
+			}
+		}
+		return false
+	case *ir.Binary:
 		return isConstExpr(x.Left, ctx) && isConstExpr(x.Right, ctx)
-	case *ast.UnaryExpr:
+	case *ir.Unary:
 		return isConstExpr(x.Operand, ctx)
-	case *ast.TernaryExpr:
+	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
-	case *ast.CallExpr:
-		for _, a := range x.Args.Args {
-			if arg, ok := a.(ast.Arg); ok {
-				if !isConstExpr(arg.Value, ctx) {
-					return false
-				}
-			}
-		}
-		// Check if this is a native import pure function call
-		if sel, ok := x.Func.(*ast.SelectExpr); ok {
-			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-				if ns, exists := ctx.nativeImports[ident.Name]; exists {
-					for _, f := range ns.Funcs {
-						if f.Name == sel.Field && f.Pure {
-							return true
-						}
-					}
-					for _, v := range ns.Vars {
-						if v.Name == sel.Field && v.IsFunc && v.Pure {
-							return true
-						}
-					}
-					return false // namespace function exists but is not pure
-				}
-			}
-		}
-		return true
-	case *ast.InterpolationExpr:
-		for _, p := range x.Parts {
-			if !isConstExpr(p, ctx) {
+	case *ir.Call:
+		for _, a := range x.Args {
+			if !isConstExpr(a.Value, ctx) {
 				return false
 			}
 		}
-		return true
-	case *ast.ListExpr:
-		for _, el := range x.Elements {
+		if x.Receiver != nil && !isConstExpr(x.Receiver, ctx) {
+			return false
+		}
+		if x.Func != nil && x.Func.Purity == ir.PurityPure {
+			return true
+		}
+		// Check native import pure functions.
+		return isNativePureCall(x, ctx)
+	case *ir.Conversion:
+		return isConstExpr(x.Operand, ctx)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
 			if !isConstExpr(el, ctx) {
 				return false
 			}
 		}
 		return true
-	case *ast.SelectExpr:
+	case *ir.Select:
 		return isConstExpr(x.Operand, ctx)
-	case *ast.ParenExpr:
-		return isConstExpr(x.Inner, ctx)
+	case *ir.Index:
+		return isConstExpr(x.Operand, ctx) && isConstExpr(x.Idx, ctx)
 	default:
 		return false
 	}
 }
 
-// evalConst evaluates a constant expression and returns the result.
-func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
+// isNativePureCall checks if an unresolved call is to a pure native function.
+func isNativePureCall(call *ir.Call, ctx *evalCtx) bool {
+	if call.Func != nil {
+		return false // already resolved
+	}
+	// Unresolved calls may be namespace.func() pattern — check via AST fallback.
+	if call.AST == nil {
+		return false
+	}
+	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return false
+	}
+	nativeImports := ctx.getNativeImports()
+	ns, exists := nativeImports[ident.Name]
+	if !exists {
+		return false
+	}
+	for _, f := range ns.Funcs {
+		if f.Name == sel.Field && f.Pure {
+			return true
+		}
+	}
+	for _, v := range ns.Vars {
+		if v.Name == sel.Field && v.IsFunc && v.Pure {
+			return true
+		}
+	}
+	return false
+}
+
+// evalExpr evaluates a constant expression and returns the Go value.
+func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 	if e == nil {
 		return nil, false
 	}
@@ -90,99 +118,51 @@ func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
 		return nil, false
 	}
 	switch x := e.(type) {
-	case *ast.LiteralExpr:
-		return parseLiteralValue(x), true
-	case *ast.IdentExpr:
-		v, ok := ctx.vars[x.Name]
-		return v, ok
-	case *ast.BinaryExpr:
-		left, lok := evalConst(x.Left, ctx)
-		right, rok := evalConst(x.Right, ctx)
+	case *ir.Literal:
+		return parseLiteral(x), true
+	case *ir.Ident:
+		return evalIdent(x, ctx)
+	case *ir.Binary:
+		left, lok := evalExpr(x.Left, ctx)
+		right, rok := evalExpr(x.Right, ctx)
 		if !lok || !rok {
 			return nil, false
 		}
 		return evalBinaryOp(x.Op, left, right)
-	case *ast.UnaryExpr:
-		operand, ok := evalConst(x.Operand, ctx)
+	case *ir.Unary:
+		operand, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
 		return evalUnaryOp(x.Op, operand)
-	case *ast.TernaryExpr:
-		cond, ok := evalConst(x.Cond, ctx)
+	case *ir.Ternary:
+		cond, ok := evalExpr(x.Cond, ctx)
 		if !ok {
 			return nil, false
 		}
 		if b, ok := cond.(bool); ok {
 			if b {
-				return evalConst(x.Then, ctx)
+				return evalExpr(x.Then, ctx)
 			}
-			return evalConst(x.Else, ctx)
+			return evalExpr(x.Else, ctx)
 		}
 		return nil, false
-	case *ast.CallExpr:
-		args := collectArgs(x, ctx)
-		if args == nil {
-			return nil, false
-		}
-		// Check for method-style call (SelectExpr func)
-		if sel, ok := x.Func.(*ast.SelectExpr); ok {
-			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-				qualName := ident.Name + "." + sel.Field
-				if v, ok := evalQualifiedMethod(qualName, args); ok {
-					return v, true
-				}
-				if ns, exists := ctx.nativeImports[ident.Name]; exists {
-					// Try file:// scheme functions (path, contents)
-					for _, v := range ns.Vars {
-						if v.Name == sel.Field && v.IsFunc && v.NativePkg == "file" {
-							if len(args) == 1 {
-								if filename, ok := args[0].(string); ok {
-									return evalFileFunc(v.NativeType, ns.ImportPath, filename, ctx)
-								}
-							}
-						}
-					}
-					// Try pure Go function execution
-					if ctx.dir != "" {
-						for _, f := range ns.Funcs {
-							if f.Name == sel.Field && f.Pure && f.NativePkg != "file" {
-								result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeType, f.ParamTypes, f.ReturnType, args)
-								if err != nil {
-									slog.Debug("pure func eval failed", "func", qualName, "err", err)
-									return nil, false
-								}
-								slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
-								return result, true
-							}
-						}
-					}
-				}
-				return nil, false
-			}
-			recv, ok := evalConst(sel.Operand, ctx)
+	case *ir.Call:
+		return evalCall(x, ctx)
+	case *ir.Conversion:
+		return evalConversion(x, ctx)
+	case *ir.ListLit:
+		result := make([]any, 0, len(x.Elems))
+		for _, el := range x.Elems {
+			v, ok := evalExpr(el, ctx)
 			if !ok {
 				return nil, false
 			}
-			return evalMethod(sel.Field, recv, args)
+			result = append(result, v)
 		}
-		// Simple function call
-		if ident, ok := x.Func.(*ast.IdentExpr); ok {
-			return evalCallFunc(ident.Name, args)
-		}
-		return nil, false
-	case *ast.InterpolationExpr:
-		var result strings.Builder
-		for _, p := range x.Parts {
-			v, ok := evalConst(p, ctx)
-			if !ok {
-				return nil, false
-			}
-			result.WriteString(toStr(v))
-		}
-		return result.String(), true
-	case *ast.SelectExpr:
-		recv, ok := evalConst(x.Operand, ctx)
+		return result, true
+	case *ir.Select:
+		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
@@ -193,36 +173,256 @@ func evalConst(e ast.Expr, ctx *foldCtx) (any, bool) {
 			}
 		}
 		return nil, false
-	case *ast.ListExpr:
-		result := make([]any, 0, len(x.Elements))
-		for _, el := range x.Elements {
-			v, ok := evalConst(el, ctx)
-			if !ok {
-				return nil, false
-			}
-			result = append(result, v)
+	case *ir.Index:
+		operand, ok := evalExpr(x.Operand, ctx)
+		if !ok {
+			return nil, false
 		}
-		return result, true
-	case *ast.ParenExpr:
-		return evalConst(x.Inner, ctx)
+		idx, ok := evalExpr(x.Idx, ctx)
+		if !ok {
+			return nil, false
+		}
+		if list, ok := operand.([]any); ok {
+			if i, ok := toInt(idx); ok && i >= 0 && i < len(list) {
+				return list[i], true
+			}
+		}
+		return nil, false
 	default:
 		return nil, false
 	}
 }
 
-func collectArgs(call *ast.CallExpr, ctx *foldCtx) []any {
-	args := make([]any, 0, len(call.Args.Args))
-	for _, a := range call.Args.Args {
-		if arg, ok := a.(ast.Arg); ok {
-			v, ok := evalConst(arg.Value, ctx)
-			if !ok {
-				return nil
+func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
+	switch x.Name {
+	case "PLATFORM":
+		return ctx.platform, true
+	case "LANGUAGE":
+		return ctx.language, true
+	}
+	// Const variable — evaluate its initializer.
+	if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
+		if val, found := ctx.values[v]; found {
+			return val, true
+		}
+		if v.Init != nil {
+			val, ok := evalExpr(v.Init, ctx)
+			if ok {
+				ctx.values[v] = val
 			}
-			args = append(args, v)
+			return val, ok
 		}
 	}
-	return args
+	// Loop variable during expansion.
+	if val, found := ctx.values[x.Sym]; found {
+		return val, true
+	}
+	return nil, false
 }
+
+func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
+	// Collect argument values.
+	args := make([]any, 0, len(call.Args))
+	for _, a := range call.Args {
+		v, ok := evalExpr(a.Value, ctx)
+		if !ok {
+			return nil, false
+		}
+		args = append(args, v)
+	}
+
+	// Instance method call: receiver.method(args)
+	if call.Receiver != nil {
+		recv, ok := evalExpr(call.Receiver, ctx)
+		if !ok {
+			return nil, false
+		}
+		if call.Func != nil {
+			// Try qualified method: Type.method
+			qualName := call.Func.Receiver + "." + call.Func.Name
+			if v, ok := evalQualifiedMethod(qualName, append([]any{recv}, args...)); ok {
+				return v, true
+			}
+		}
+		// Try by receiver type.
+		return evalMethod(methodForReceiver(call, recv), recv, args)
+	}
+
+	// Resolved function call.
+	if call.Func != nil {
+		// Try qualified method (static call like int.abs(x)).
+		if call.Func.Receiver != "" {
+			qualName := call.Func.Receiver + "." + call.Func.Name
+			if v, ok := evalQualifiedMethod(qualName, args); ok {
+				return v, true
+			}
+		}
+		// Try builtin function.
+		if v, ok := evalCallFunc(call.Func.Name, args); ok {
+			return v, true
+		}
+	}
+
+	// Native import pure function.
+	return evalNativeCall(call, args, ctx)
+}
+
+func methodForReceiver(call *ir.Call, recv any) string {
+	if call.Func != nil {
+		return call.Func.Name
+	}
+	// Fallback: use AST if available.
+	if call.AST != nil {
+		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+			return sel.Field
+		}
+	}
+	_ = recv
+	return ""
+}
+
+func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
+	if call.AST == nil {
+		return nil, false
+	}
+	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return nil, false
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return nil, false
+	}
+	nativeImports := ctx.getNativeImports()
+	ns, exists := nativeImports[ident.Name]
+	if !exists {
+		return nil, false
+	}
+	qualName := ident.Name + "." + sel.Field
+
+	// Try file:// scheme functions.
+	for _, v := range ns.Vars {
+		if v.Name == sel.Field && v.IsFunc && v.NativePkg == "file" {
+			if len(args) == 1 {
+				if filename, ok := args[0].(string); ok {
+					return evalFileFunc(v.NativeType, ns.ImportPath, filename, ctx)
+				}
+			}
+		}
+	}
+
+	// Try pure Go function execution.
+	if ctx.dir != "" {
+		for _, f := range ns.Funcs {
+			if f.Name == sel.Field && f.Pure && f.NativePkg != "file" {
+				result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeType, f.ParamTypes, f.ReturnType, args)
+				if err != nil {
+					slog.Debug("pure func eval failed", "func", qualName, "err", err)
+					return nil, false
+				}
+				slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
+				return result, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
+	operand, ok := evalExpr(conv.Operand, ctx)
+	if !ok {
+		return nil, false
+	}
+	switch conv.Type.Kind {
+	case ir.TypeString:
+		return fmt.Sprintf("%v", operand), true
+	case ir.TypeInt:
+		switch v := operand.(type) {
+		case int:
+			return v, true
+		case float64:
+			return int(v), true
+		case string:
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, false
+			}
+			return i, true
+		}
+	case ir.TypeFloat:
+		switch v := operand.(type) {
+		case float64:
+			return v, true
+		case int:
+			return float64(v), true
+		case string:
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return nil, false
+			}
+			return f, true
+		}
+	case ir.TypeBool:
+		if b, ok := operand.(bool); ok {
+			return b, true
+		}
+	}
+	return nil, false
+}
+
+// parseLiteral converts an IR literal to a Go value.
+func parseLiteral(lit *ir.Literal) any {
+	if lit.Type == nil {
+		return nil
+	}
+	switch lit.Type.Kind {
+	case ir.TypeBool:
+		return lit.Raw == "true"
+	case ir.TypeNull:
+		return nil
+	case ir.TypeInt:
+		n, err := strconv.Atoi(lit.Raw)
+		if err != nil {
+			return nil
+		}
+		return n
+	case ir.TypeFloat:
+		f, err := strconv.ParseFloat(lit.Raw, 64)
+		if err != nil {
+			return 0.0
+		}
+		return f
+	case ir.TypeString:
+		return lit.Raw
+	case ir.TypeColor:
+		return lit.Raw
+	}
+	return nil
+}
+
+// irLiteral converts a Go value back to an IR Literal.
+// For strings, Raw stores the unquoted content (the formatter adds %q quoting).
+func irLiteral(val any, typ *ir.Type) *ir.Literal {
+	switch v := val.(type) {
+	case string:
+		return &ir.Literal{Type: ir.TypString, Raw: v}
+	case int:
+		return &ir.Literal{Type: ir.TypInt, Raw: intToStr(v)}
+	case float64:
+		return &ir.Literal{Type: ir.TypFloat, Raw: floatToStr(v)}
+	case bool:
+		raw := "false"
+		if v {
+			raw = "true"
+		}
+		return &ir.Literal{Type: ir.TypBool, Raw: raw}
+	case nil:
+		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
+	}
+	return nil
+}
+
+// --- Arithmetic and comparison helpers (operate on Go values) ---
 
 func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
 	switch op {
@@ -363,30 +563,6 @@ func evalUnaryOp(op ast.UnaryOp, operand any) (any, bool) {
 	return nil, false
 }
 
-func toInt(v any) (int, bool) {
-	if n, ok := v.(int); ok {
-		return n, true
-	}
-	return 0, false
-}
-
-func toFloat(v any) (float64, bool) {
-	switch n := v.(type) {
-	case float64:
-		return n, true
-	case int:
-		return float64(n), true
-	}
-	return 0, false
-}
-
-func toStr(v any) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return fmt.Sprintf("%v", v)
-}
-
 func evalCallFunc(name string, args []any) (any, bool) {
 	if len(args) != 1 {
 		return nil, false
@@ -436,6 +612,8 @@ func evalMethod(method string, recv any, args []any) (any, bool) {
 		typeName = "string"
 	case bool:
 		typeName = "bool"
+	case []any:
+		typeName = "list"
 	}
 	allArgs := append([]any{recv}, args...)
 	return evalQualifiedMethod(typeName+"."+method, allArgs)
@@ -544,7 +722,7 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 }
 
 // evalFileFunc evaluates file:// scheme functions (path, contents).
-func evalFileFunc(funcName, dirPath, filename string, ctx *foldCtx) (any, bool) {
+func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) {
 	fsys := os.DirFS(dirPath)
 
 	switch funcName {
@@ -568,4 +746,38 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *foldCtx) (any, bool) 
 		return string(data), true
 	}
 	return nil, false
+}
+
+// --- Helper functions ---
+
+func toInt(v any) (int, bool) {
+	if n, ok := v.(int); ok {
+		return n, true
+	}
+	return 0, false
+}
+
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	}
+	return 0, false
+}
+
+func toStr(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+func intToStr(v int) string {
+	return strconv.Itoa(v)
+}
+
+func floatToStr(v float64) string {
+	return fmt.Sprintf("%v", v)
 }

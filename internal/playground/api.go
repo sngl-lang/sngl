@@ -58,7 +58,8 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == ir.Error {
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {
@@ -66,12 +67,13 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: "html", Language: "js",
 	}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
+	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("js")
@@ -154,7 +156,8 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	if _, diags := checker.Check(doc, &checker.Config{IsMain: true}); len(diags) > 0 && diags[0].Severity == ir.Error {
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
 	if err != nil {
@@ -162,12 +165,13 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	if err := optimize.Optimize(doc, optimize.Config{
+	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: platform, Language: lang,
 	}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
+	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform(platform)
 	if gen == nil {

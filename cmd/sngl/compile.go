@@ -115,18 +115,18 @@ func runCompile(cmd *cobra.Command, args []string) error {
 				target.Options["projectDir"] = dir
 			}
 
-			targetDoc := doc
 			start = time.Now()
-			optCfg := optimize.Config{
-				Platform:      target.Platform,
-				Language:      target.Lang,
-				Dir:           dir,
-				NativeImports: collectNativeImports(pkg),
+			optCfg := &optimize.Config{
+				Platform: target.Platform,
+				Language: target.Lang,
+				Dir:      dir,
 			}
-			if err := optimize.Optimize(targetDoc, optCfg); err != nil {
+			if err := optimize.Optimize(pkg, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+			targetDoc := ir.Convert(pkg)
 
 			// Convert optimizer file assets to codegen file assets.
 			var fileAssets []codegen.FileAsset
@@ -215,40 +215,6 @@ func generateTarget(filename string, doc *ast.Document, pkg *ir.Package, target 
 	return nil
 }
 
-// collectNativeImports builds a namespace → NativeDecls map from the checked package.
-// Re-resolves scheme imports to get the codegen-level declarations needed by the optimizer.
-func collectNativeImports(pkg *ir.Package) map[string]*codegen.NativeDecls {
-	if pkg == nil {
-		return nil
-	}
-	m := make(map[string]*codegen.NativeDecls)
-	for _, imp := range pkg.Imports {
-		if imp.Native == nil {
-			continue
-		}
-		scheme, uri := parseImportScheme(imp.AST.Path)
-		if scheme == "" {
-			continue
-		}
-		si := codegen.LookupScheme(scheme)
-		if si == nil {
-			continue
-		}
-		decls, err := si.Resolve(uri, "")
-		if err != nil {
-			continue
-		}
-		m[imp.Alias] = decls
-	}
-	return m
-}
-
-func parseImportScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
-	}
-	return "", path
-}
 
 func quiet(cmd *cobra.Command) bool {
 	q, _ := cmd.Flags().GetBool("quiet")
