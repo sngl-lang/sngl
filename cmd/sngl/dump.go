@@ -47,7 +47,8 @@ var dumpAnalysisCmd = &cobra.Command{
 }
 
 func init() {
-	dumpCmd.PersistentFlags().String("format", "auto", "output format (auto, spew, color, json, sngl, pp, litter, repr)")
+	dumpCmd.PersistentFlags().String("format", "spew", "output format (spew, json, sngl)")
+	dumpCmd.PersistentFlags().String("color", "auto", "colorize output (auto, on, off)")
 	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
 	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
 	dumpCmd.PersistentFlags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
@@ -66,6 +67,9 @@ var dumpOmitSet map[string]bool
 func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput, error) {
 	f, err := resolveDumpFormat(cmd)
 	if err != nil {
+		return "", "", err
+	}
+	if err := resolveColor(cmd); err != nil {
 		return "", "", err
 	}
 	i, err := resolveDumpInput(cmd, args)

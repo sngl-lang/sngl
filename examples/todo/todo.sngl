@@ -16,9 +16,9 @@ component main {
     var (
         newTodo = ""
         todos list<Todo> = [
-            Todo{text = "Buy groceries", done = false},
-            Todo{text = "Walk the dog", done = true},
-            Todo{text = "Write SNGL docs", done = false},
+            {text = "Buy groceries", done = false},
+            {text = "Walk the dog", done = true},
+            {text = "Write SNGL docs", done = false},
         ]
     )
 
