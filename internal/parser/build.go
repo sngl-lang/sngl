@@ -2186,7 +2186,7 @@ func extractUnitSuffix(raw string) string {
 	// Unit literals are like "5px", "1.5em", "100ms"
 	// Extract the non-numeric suffix
 	i := 0
-	for i < len(raw) && (raw[i] >= '0' && raw[i] <= '9' || raw[i] == '.' || raw[i] == '-') {
+	for i < len(raw) && (raw[i] >= '0' && raw[i] <= '9' || raw[i] == '.' || raw[i] == '-' || raw[i] == '_') {
 		i++
 	}
 	return raw[i:]
