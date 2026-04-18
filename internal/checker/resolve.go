@@ -103,9 +103,11 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return &ir.Type{Kind: ir.TypeComponent}
 	}
 
-	// User-defined type from symbol table.
-	if sym, ok := c.symtab.LookupType(t.Name); ok {
-		return sym.SymType()
+	// User-defined type from scope chain.
+	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if typ := sym.SymType(); typ != nil {
+			return typ
+		}
 	}
 
 	// Type parameter.

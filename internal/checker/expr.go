@@ -519,7 +519,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			}
 		}
 	} else if x.Name != "" {
-		if sym, ok := c.symtab.LookupType(x.Name); ok {
+		if sym, ok := c.scope.Lookup(x.Name); ok {
 			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
 			}

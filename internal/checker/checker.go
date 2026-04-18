@@ -256,6 +256,7 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.symtab.Types[ud.Name] = ud
+	c.scope.Declare(ud)
 	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud

@@ -107,8 +107,9 @@ func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
-	// Main symtab for unqualified access.
+	// Main symtab + scope for unqualified access.
 	c.symtab.Types[ud.Name] = ud
+	c.scope.Declare(ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
