@@ -21,17 +21,39 @@ func (s *stripper) stripPackage(pkg *Package) {
 	})
 
 	// Normalize nil slices to empty for DeepEqual.
-	if pkg.Imports == nil { pkg.Imports = []*Import{} }
-	if pkg.Structs == nil { pkg.Structs = []*StructDef{} }
-	if pkg.Enums == nil { pkg.Enums = []*EnumDef{} }
-	if pkg.Units == nil { pkg.Units = []*UnitDef{} }
-	if pkg.Consts == nil { pkg.Consts = []*Var{} }
-	if pkg.Vars == nil { pkg.Vars = []*Var{} }
-	if pkg.Funcs == nil { pkg.Funcs = []*Func{} }
-	if pkg.Components == nil { pkg.Components = []*Component{} }
-	if pkg.Windows == nil { pkg.Windows = []*Window{} }
-	if pkg.Timers == nil { pkg.Timers = []*Timer{} }
-	if pkg.Outputs == nil { pkg.Outputs = []*Output{} }
+	if pkg.Imports == nil {
+		pkg.Imports = []*Import{}
+	}
+	if pkg.Structs == nil {
+		pkg.Structs = []*StructDef{}
+	}
+	if pkg.Enums == nil {
+		pkg.Enums = []*EnumDef{}
+	}
+	if pkg.Units == nil {
+		pkg.Units = []*UnitDef{}
+	}
+	if pkg.Consts == nil {
+		pkg.Consts = []*Var{}
+	}
+	if pkg.Vars == nil {
+		pkg.Vars = []*Var{}
+	}
+	if pkg.Funcs == nil {
+		pkg.Funcs = []*Func{}
+	}
+	if pkg.Components == nil {
+		pkg.Components = []*Component{}
+	}
+	if pkg.Windows == nil {
+		pkg.Windows = []*Window{}
+	}
+	if pkg.Timers == nil {
+		pkg.Timers = []*Timer{}
+	}
+	if pkg.Outputs == nil {
+		pkg.Outputs = []*Output{}
+	}
 
 	for _, imp := range pkg.Imports {
 		imp.AST = nil
@@ -115,12 +137,24 @@ func (s *stripper) stripFunc(f *Func) {
 
 func (s *stripper) stripComponent(c *Component) {
 	c.AST = nil
-	if c.Props == nil { c.Props = []*Prop{} }
-	if c.Events == nil { c.Events = []*EventDecl{} }
-	if c.Vars == nil { c.Vars = []*Var{} }
-	if c.Funcs == nil { c.Funcs = []*Func{} }
-	if c.Timers == nil { c.Timers = []*Timer{} }
-	if c.Body == nil { c.Body = []Stmt{} }
+	if c.Props == nil {
+		c.Props = []*Prop{}
+	}
+	if c.Events == nil {
+		c.Events = []*EventDecl{}
+	}
+	if c.Vars == nil {
+		c.Vars = []*Var{}
+	}
+	if c.Funcs == nil {
+		c.Funcs = []*Func{}
+	}
+	if c.Timers == nil {
+		c.Timers = []*Timer{}
+	}
+	if c.Body == nil {
+		c.Body = []Stmt{}
+	}
 	for _, p := range c.Props {
 		p.Type = nil
 		s.stripExpr(p.Default)
@@ -144,9 +178,15 @@ func (s *stripper) stripComponent(c *Component) {
 func (s *stripper) stripWindow(w *Window) {
 	w.AST = nil
 	w.Checked = false
-	if w.Vars == nil { w.Vars = []*Var{} }
-	if w.Funcs == nil { w.Funcs = []*Func{} }
-	if w.Body == nil { w.Body = []Stmt{} }
+	if w.Vars == nil {
+		w.Vars = []*Var{}
+	}
+	if w.Funcs == nil {
+		w.Funcs = []*Func{}
+	}
+	if w.Body == nil {
+		w.Body = []Stmt{}
+	}
 	for _, v := range w.Vars {
 		s.stripVar(v)
 	}
@@ -159,6 +199,7 @@ func (s *stripper) stripWindow(w *Window) {
 func (s *stripper) stripTimer(t *Timer) {
 	t.AST = nil
 	s.stripExpr(t.Interval)
+	s.stripExpr(t.Enabled)
 	s.stripFunc(t.Handler)
 }
 
@@ -178,9 +219,15 @@ func (s *stripper) stripStmt(st Stmt) {
 	case *NodeInst:
 		st.AST = nil
 		st.Component = nil // cross-reference
-		if st.Props == nil { st.Props = []Arg{} }
-		if st.Handlers == nil { st.Handlers = []EventHandler{} }
-		if st.Children == nil { st.Children = []Stmt{} }
+		if st.Props == nil {
+			st.Props = []Arg{}
+		}
+		if st.Handlers == nil {
+			st.Handlers = []EventHandler{}
+		}
+		if st.Children == nil {
+			st.Children = []Stmt{}
+		}
 		for i := range st.Props {
 			s.stripExpr(st.Props[i].Value)
 		}
@@ -305,4 +352,3 @@ func (s *stripper) stripExpr(e Expr) {
 		s.stripFunc(e.Func)
 	}
 }
-

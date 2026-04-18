@@ -106,3 +106,6 @@ struct MenuEvent {}
 struct LoadEvent {}
 struct ErrorEvent {}
 struct DateEvent {}
+
+struct Alert {}
+struct File {}

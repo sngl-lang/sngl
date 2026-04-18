@@ -1,17 +1,17 @@
-style primary {
-    color = #0000ff
-    fontWeight = "bold"
-    fontSize = 16
+const primary = Style{
+    color = #0000ff,
+    fontWeight = "bold",
+    fontSize = 16,
 }
 
-style secondary {
-    color = #777777
-    fontStyle = "italic"
+const secondary = Style{
+    color = #777777,
+    fontStyle = "italic",
 }
 
 component main {
     vbox {
-        text(value="hello", class="primary")
-        text(value="world", class="secondary")
+        text(value="hello", style=primary)
+        text(value="world", style=secondary)
     }
 }

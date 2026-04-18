@@ -145,6 +145,7 @@ func (w *Window) SymType() *Type  { return nil }
 type Timer struct {
 	AST      *ast.VisualNode
 	Interval Expr // checked interval expression (e.g., 500ms)
+	Enabled  Expr // optional bool expression gating the timer
 	Handler  *Func
 }
 

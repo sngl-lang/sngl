@@ -827,6 +827,11 @@ func TestCheckTestdata(t *testing.T) {
 			}
 			expected := testutil.Filter(dirs, "check")
 
+			if len(testutil.Filter(dirs, "parse")) > 0 && len(expected) == 0 {
+				t.Skip("has ERROR(parse) directive, no ERROR(check)")
+				return
+			}
+
 			doc, parseErr := parser.Parse(filepath.Base(path), src)
 			if parseErr != nil {
 				t.Fatalf("parse: %v", parseErr)

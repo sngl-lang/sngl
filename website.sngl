@@ -41,9 +41,9 @@ component PlatformCarousel() {
 		active = 0
 		rotating = true
 	)
-	timer 5000ms rotating {
+	timer(interval=5000ms, enabled=rotating, @tick {
 		active = (active + 1) % 4
-	}
+	})
 
 	vbox(style={gap=16, alignItems="center", padding="32 0"}) {
 		stack {

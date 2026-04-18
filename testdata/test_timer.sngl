@@ -22,9 +22,9 @@ component main {
         running = true
     )
 
-    timer 100ms running {
+    timer(interval=100ms, enabled=running, @tick {
         progress += 0.1
-    }
+    })
 
     text(value=string(progress))
 }

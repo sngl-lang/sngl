@@ -39,9 +39,9 @@ component main {
         name = "World"
     }
 
-    timer 50ms animating {
+    timer(interval=50ms, enabled=animating, @tick {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
-    }
+    })
 
     vbox(scroll=true, refreshing=false, @refresh { Alert.toast("Refreshed!", "info") }, style={gap=24, maxWidth=900, padding=24}) {
         text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})

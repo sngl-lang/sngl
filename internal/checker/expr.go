@@ -1,10 +1,12 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"strings"
 
-import "maps"
-
-import "git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
+	"maps"
+)
 
 // exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
 func exprType(e ir.Expr) *ir.Type {
@@ -159,27 +161,93 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	case ast.BinEq, ast.BinNeq:
 		typ = TypBool
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
-		if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+		if !skip {
+			switch {
+			case left.IsNumeric() && right.IsNumeric():
+				// int/float comparisons always OK
+			case left.Kind == ir.TypeString && right.Kind == ir.TypeString:
+				// string comparisons OK
+			case left.SameUnitType(right) && left.IsSingleBaseUnit():
+				// single-base unit comparisons OK (e.g. duration)
+			default:
+				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+			}
 		}
 		typ = TypBool
-	case ast.BinAdd:
+	case ast.BinAdd, ast.BinSub:
 		if left.Kind == ir.TypeString || right.Kind == ir.TypeString {
-			if !skip && (left.Kind != ir.TypeString || right.Kind != ir.TypeString) {
-				c.error(x.Pos, "operator + not defined for %s and %s", left, right)
+			if x.Op == ast.BinAdd {
+				if !skip && (left.Kind != ir.TypeString || right.Kind != ir.TypeString) {
+					c.error(x.Pos, "operator + not defined for %s and %s", left, right)
+				}
+				typ = TypString
+			} else {
+				if !skip {
+					c.error(x.Pos, "operator - not defined for %s and %s", left, right)
+				}
+				typ = TypDyn
 			}
-			typ = TypString
+		} else if left.Kind == ir.TypeUnit || right.Kind == ir.TypeUnit {
+			// unit +/- unit: both must be same unit type
+			if !skip && !left.SameUnitType(right) {
+				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+			}
+			typ = left
+			if typ.Kind != ir.TypeUnit {
+				typ = right
+			}
 		} else {
 			if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-				c.error(x.Pos, "operator + not defined for %s and %s", left, right)
+				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
 			}
 			typ = c.narrowNumeric(left, right)
 		}
-	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
-		if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+	case ast.BinMul:
+		if !skip {
+			switch {
+			case left.IsNumeric() && right.IsNumeric():
+				typ = c.narrowNumeric(left, right)
+			case left.Kind == ir.TypeUnit && right.IsNumeric():
+				typ = left // unit * scalar
+			case left.IsNumeric() && right.Kind == ir.TypeUnit:
+				typ = right // scalar * unit
+			default:
+				c.error(x.Pos, "operator * not defined for %s and %s", left, right)
+				typ = TypDyn
+			}
+		} else {
+			typ = c.narrowNumeric(left, right)
 		}
-		typ = c.narrowNumeric(left, right)
+	case ast.BinDiv:
+		if !skip {
+			switch {
+			case left.IsNumeric() && right.IsNumeric():
+				typ = c.narrowNumeric(left, right)
+			case left.Kind == ir.TypeUnit && right.IsNumeric():
+				typ = left // unit / scalar
+			case left.SameUnitType(right):
+				typ = TypFloat // unit / unit → dimensionless ratio
+			default:
+				c.error(x.Pos, "operator / not defined for %s and %s", left, right)
+				typ = TypDyn
+			}
+		} else {
+			typ = c.narrowNumeric(left, right)
+		}
+	case ast.BinMod:
+		if !skip {
+			switch {
+			case left.IsNumeric() && right.IsNumeric():
+				typ = c.narrowNumeric(left, right)
+			case left.Kind == ir.TypeUnit && right.IsNumeric():
+				typ = left // unit % scalar
+			default:
+				c.error(x.Pos, "operator %% not defined for %s and %s", left, right)
+				typ = TypDyn
+			}
+		} else {
+			typ = c.narrowNumeric(left, right)
+		}
 	default:
 		typ = TypDyn
 	}
@@ -243,6 +311,13 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 	var typ *ir.Type
 	switch x.Op {
 	case ast.UnaryNot:
+		// Implicit call: zero-arg func returning bool.
+		if wrapped, ret := c.implicitCall(x.Operand, operand, TypBool); wrapped != nil {
+			x.Operand = wrapped
+			operandExpr = c.checkExpr(x.Operand)
+			operand = ret
+			skip = false
+		}
 		if !skip && operand.Kind != ir.TypeBool {
 			c.error(x.Pos, "operator ! not defined for %s", operand)
 		}
@@ -361,11 +436,23 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)
 
-	// Namespace function call: ns.func().
+	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
+					// Component in namespace — validate visibility and props.
+					if comp, ok := fsym.(*ir.Component); ok {
+						// Private component filter: only for imported user packages (not stdlib/sngl).
+						if ns.Name != "sngl" && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+							c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+						}
+						args := c.checkComponentCallArgs(call, comp)
+						c.validateCallStmtComponentArgs(call, comp)
+						return &ir.Call{AST: call, Type: comp.SymType(), Args: args}
+					}
+					// Regular function in namespace.
 					t := fsym.SymType()
 					var sig *ir.FuncSig
 					if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
@@ -382,6 +469,9 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 					}
 					return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 				}
+				// Nothing found in namespace.
+				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 			}
 		}
 	}
@@ -893,6 +983,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.IfStmt:
 		condExpr := c.checkExpr(x.Cond)
 		condType := exprType(condExpr)
+		// Implicit call: zero-arg func returning bool.
+		if wrapped, ret := c.implicitCall(x.Cond, condType, TypBool); wrapped != nil {
+			x.Cond = wrapped
+			condExpr = c.checkExpr(x.Cond)
+			condType = ret
+		}
 		if condType.Kind != ir.TypeDyn && condType.Kind != ir.TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
@@ -1088,9 +1184,14 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 	}
 
-	// If not a component, check if it's a function in scope.
+	// If not a component, check if it's a function or bare expression.
 	if comp == nil {
 		if sym, ok := c.scope.Lookup(name); ok {
+			// Bare variable used as statement — flag it (no block, no args).
+			if _, isFunc := sym.(*ir.Func); !isFunc && !vn.Block.IsDefined() && len(vn.Args.Args) == 0 {
+				c.error(vn.Pos, "expression must be a statement")
+				return nil
+			}
 			if fn, ok := sym.(*ir.Func); ok {
 				// This is a function call, not a visual node.
 				props, _ := c.checkAndSplitArgs(vn.Args, nil)
@@ -1103,12 +1204,23 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 	}
 
-	// Component or platform element.
+	// Unknown component check — skip if name resolves to a variable
+	// (e.g. timer condition guard like `running { ... }`).
+	if comp == nil && name != "" {
+		if _, inScope := c.scope.Lookup(name); !inScope {
+			c.error(vn.Pos, "unknown component %q", name)
+		}
+	}
+
+	// Validate props on known components.
 	if comp != nil {
 		c.validateVisualNodeProps(vn, comp)
 	}
 
 	children := c.checkBlockIR(&vn.Block)
+	if comp != nil && len(children) > 0 && comp.ChildrenType == nil {
+		c.error(vn.Pos, "component %s does not accept children", comp.Name)
+	}
 	props, handlers := c.checkAndSplitArgs(vn.Args, comp)
 
 	// Extract key= arg for loop diffing.
@@ -1178,7 +1290,12 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			if arg.Name == "" || arg.Name == "key" {
 				continue // positional args and key (handled by loop diffing)
 			}
-			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
+			// Strip : prefix for bidirectional binding lookup.
+			name := arg.Name
+			if strings.HasPrefix(name, ":") {
+				name = name[1:]
+			}
+			if !componentHasProp(comp, name) && !componentHasEvent(comp, name) {
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -1203,11 +1320,24 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			}
 			var expected *ir.Type
 			if comp != nil && arg.Name != "" {
-				expected = componentPropType(comp, arg.Name)
+				propName := arg.Name
+				if strings.HasPrefix(propName, ":") {
+					propName = propName[1:]
+				}
+				expected = componentPropType(comp, propName)
 			}
 			var val ir.Expr
 			if arg.Value != nil {
 				val = c.checkExprExpecting(arg.Value, expected)
+				// Implicit call: func() T used where T is expected.
+				if expected != nil {
+					actual := exprType(val)
+					if actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
+						if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
+							val = c.checkExpr(callExpr)
+						}
+					}
+				}
 			}
 			props = append(props, ir.Arg{Name: arg.Name, Value: val})
 		case ast.EventHandler:
@@ -1267,7 +1397,11 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if arg.Name == "" || arg.Name == "key" {
 				continue // positional args and key (handled by loop diffing)
 			}
-			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
+			propName := arg.Name
+			if strings.HasPrefix(propName, ":") {
+				propName = propName[1:]
+			}
+			if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -1303,7 +1437,11 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			if arg.Name == "" || arg.Name == "key" {
 				continue
 			}
-			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
+			propName := arg.Name
+			if strings.HasPrefix(propName, ":") {
+				propName = propName[1:]
+			}
+			if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:

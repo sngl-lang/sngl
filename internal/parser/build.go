@@ -1828,8 +1828,13 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 					p.Default = b.buildExpr(it.enter())
 				}
 			}
-			// Return as named arg with binding semantics
-			return ast.Arg{Name: ":" + nameTok.Literal, Value: &ast.IdentExpr{Pos: ast.Pos(b.posFromToken(nameTok)), Name: nameTok.Literal}}
+			// Return as named arg with binding semantics.
+			// Use explicit =Expr if provided, otherwise default to same-name ident.
+			var value ast.Expr = &ast.IdentExpr{Pos: ast.Pos(b.posFromToken(nameTok)), Name: nameTok.Literal}
+			if p.Default != nil {
+				value = p.Default
+			}
+			return ast.Arg{Name: ":" + nameTok.Literal, Value: value}
 		case ELLIPSIS:
 			it.skip() // ellipsis
 			var val ast.Expr

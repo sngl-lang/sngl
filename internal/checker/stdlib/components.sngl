@@ -92,6 +92,13 @@ component checkbox(
 // Placeholder for projected content in custom component definitions.
 component slot() {}
 
+// Periodic callback.
+component timer(
+    interval duration,
+    enabled bool,
+    @tick,
+) {}
+
 // --- Input ---
 
 // Group of mutually exclusive options.

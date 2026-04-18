@@ -174,6 +174,35 @@ func (t *Type) IsNumeric() bool {
 	return t.Kind == TypeInt || t.Kind == TypeFloat
 }
 
+// IsNumericOrUnit reports whether the type is int, float, or a unit type.
+func (t *Type) IsNumericOrUnit() bool {
+	return t.Kind == TypeInt || t.Kind == TypeFloat || t.Kind == TypeUnit
+}
+
+// IsSingleBaseUnit reports whether a unit type has exactly one base suffix,
+// meaning all suffixes are convertible to a common base.
+func (t *Type) IsSingleBaseUnit() bool {
+	if t.Kind != TypeUnit || t.Decl == nil {
+		return false
+	}
+	ud, ok := t.Decl.(*UnitDef)
+	if !ok {
+		return false
+	}
+	bases := 0
+	for _, s := range ud.Suffixes {
+		if s.IsBase {
+			bases++
+		}
+	}
+	return bases == 1
+}
+
+// SameUnitType reports whether two unit types refer to the same UnitDef.
+func (t *Type) SameUnitType(other *Type) bool {
+	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && t.Decl == other.Decl
+}
+
 // Substitute replaces TypeTypeParam nodes with concrete types from bindings.
 // Returns t unchanged if no substitution is needed.
 func (t *Type) Substitute(bindings map[string]*Type) *Type {
@@ -281,6 +310,9 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if t.Kind == TypeNull && target.Kind == TypeOption {
+		return true
+	}
+	if t.Kind == TypeNull && target.Kind == TypeFunc {
 		return true
 	}
 	if t.Kind == TypeInt && target.Kind == TypeUnit {

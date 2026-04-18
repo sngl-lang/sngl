@@ -3,6 +3,10 @@ package checker
 import (
 	"fmt"
 	"io/fs"
+	"net"
+	"net/mail"
+	"net/url"
+	"regexp"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -251,6 +255,13 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	c.pkg.Imports = append(c.pkg.Imports, irImport)
 
+	// Check for component main in imported library packages.
+	if irImport.Pkg != nil {
+		if _, hasMain := irImport.Pkg.Symbols.LookupComponent("main"); hasMain {
+			c.error(imp.Pos, "component main can only be defined in the main package")
+		}
+	}
+
 	// Declare namespace in scope.
 	ns := &ir.Namespace{
 		Name: alias,
@@ -444,6 +455,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
+			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
 			// Infer type from init if not declared.
 			if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -486,6 +498,7 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
+			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
 			if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
@@ -561,6 +574,9 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
 				Bidirectional: pd.Bidirectional,
+			}
+			if prop.Type.Kind == ir.TypeDyn && pd.Default == nil {
+				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is ready.
 			irComp.Props = append(irComp.Props, prop)
@@ -658,7 +674,6 @@ func visualNodeTarget(vn *ast.VisualNode) string {
 	}
 	return ""
 }
-
 
 // buildOutputs validates and extracts output declarations from an output visual node.
 // Supports flat form: output(lang="js", platform="html", stylesheet="...")
@@ -919,11 +934,23 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 		AST:     vn,
 		Handler: &ir.Func{},
 	}
-	// Extract and check interval from first positional arg.
 	for _, a := range vn.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name == "" {
-			t.Interval = c.checkExpr(arg.Value)
-			break
+		switch arg := a.(type) {
+		case ast.Arg:
+			switch arg.Name {
+			case "interval":
+				t.Interval = c.checkExpr(arg.Value)
+			case "enabled":
+				t.Enabled = c.checkExpr(arg.Value)
+			}
+		case ast.EventHandler:
+			if arg.Name == "tick" {
+				t.Handler = &ir.Func{
+					Params: c.buildParams(arg.Params),
+				}
+				// Body is checked later in checkTimerBody.
+				vn.Block = arg.Body
+			}
 		}
 	}
 	return t
@@ -972,11 +999,9 @@ func (c *checker) pass2() {
 		}
 	}
 
-	// Check var handler bodies.
+	// Check top-level var handler bodies.
 	c.checkVarHandlerBodies(c.pkg.Vars)
-	for _, comp := range c.pkg.Components {
-		c.checkVarHandlerBodies(comp.Vars)
-	}
+	// Component var handlers are checked inside checkComponentBody.
 
 	// Purity analysis.
 	vars := c.collectVarMap()
@@ -1058,7 +1083,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		for _, p := range comp.AST.Props.Props {
 			if pd, ok := p.(ast.Param); ok {
 				if propIdx < len(comp.Props) && pd.Default != nil {
-					comp.Props[propIdx].Default = c.checkExprExpecting(pd.Default, comp.Props[propIdx].Type)
+					prop := comp.Props[propIdx]
+					prop.Default = c.checkExprExpecting(pd.Default, prop.Type)
+					initType := exprType(prop.Default)
+					if prop.Type.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(prop.Type) {
+						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, prop.Type)
+					}
 				}
 				propIdx++
 			}
@@ -1091,6 +1121,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, fn := range comp.Funcs {
 		c.checkFuncBody(fn)
 	}
+
+	// Check var handler bodies within component scope so handlers can reference component vars.
+	c.checkVarHandlerBodies(comp.Vars)
 
 	// Check remaining component body statements.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
@@ -1135,6 +1168,82 @@ func (c *checker) checkTimerBody(t *ir.Timer) {
 	c.pushScope()
 	defer c.popScope()
 	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
+}
+
+// validateStringDomainLiteral checks whether a string literal is valid for a
+// special type like color, date, email, etc.
+func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExpr ir.Expr) {
+	lit, ok := initExpr.(*ir.Literal)
+	if !ok || lit.Type.Kind != ir.TypeString {
+		return
+	}
+	val := lit.Raw
+
+	switch typ.Kind {
+	case ir.TypeColor:
+		if !isValidColor(val) {
+			c.error(pos, "invalid color literal %q", val)
+		}
+	case ir.TypeDate:
+		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).MatchString(val) {
+			c.error(pos, "invalid date literal %q", val)
+		}
+	case ir.TypeTime:
+		if !regexp.MustCompile(`^\d{2}:\d{2}(:\d{2})?$`).MatchString(val) {
+			c.error(pos, "invalid time literal %q", val)
+		}
+	case ir.TypeDateTime:
+		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}`).MatchString(val) {
+			c.error(pos, "invalid dateTime literal %q", val)
+		}
+	case ir.TypeDuration:
+		if !regexp.MustCompile(`^P`).MatchString(val) {
+			c.error(pos, "invalid duration literal %q", val)
+		}
+	case ir.TypeURL:
+		if u, err := url.Parse(val); err != nil || u.Scheme == "" {
+			c.error(pos, "invalid url literal %q", val)
+		}
+	case ir.TypeEmail:
+		if _, err := mail.ParseAddress(val); err != nil {
+			c.error(pos, "invalid email literal %q", val)
+		}
+	case ir.TypeUUID:
+		if !regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).MatchString(val) {
+			c.error(pos, "invalid uuid literal %q", val)
+		}
+	case ir.TypeIPV4:
+		if ip := net.ParseIP(val); ip == nil || ip.To4() == nil {
+			c.error(pos, "invalid ipv4 literal %q", val)
+		}
+	case ir.TypeIPV6:
+		if ip := net.ParseIP(val); ip == nil || ip.To4() != nil {
+			c.error(pos, "invalid ipv6 literal %q", val)
+		}
+	case ir.TypeHostname:
+		if !regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$`).MatchString(val) {
+			c.error(pos, "invalid hostname literal %q", val)
+		}
+	}
+}
+
+func isValidColor(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	if s[0] == '#' {
+		hex := s[1:]
+		if len(hex) != 3 && len(hex) != 6 && len(hex) != 8 {
+			return false
+		}
+		for _, c := range hex {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {

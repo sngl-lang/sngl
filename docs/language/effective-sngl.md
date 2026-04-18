@@ -738,9 +738,9 @@ component main {
         running = true
     )
 
-    timer 100ms running {
+    timer(interval=100ms, enabled=running, @tick {
         progress += 0.1
-    }
+    })
 
     text(value=string(progress))
     button(text="Stop", @click { running = false })
@@ -985,9 +985,9 @@ component main {
         running = false
     )
 
-    timer 50ms running {
+    timer(interval=50ms, enabled=running, @tick {
         progress += 0.01
-    }
+    })
 
     vbox(style={padding=16, gap=8}) {
         progress(value=progress, max=1.0, showValue=true)
