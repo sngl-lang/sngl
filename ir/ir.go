@@ -60,7 +60,7 @@ type Func struct {
 	IsTest     bool
 	Reads      []*Var // vars read (directly or via called functions)
 	Writes     []*Var // vars mutated (directly or via called functions)
-	Intrinsic string // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
+	Intrinsic  string // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
 }
 
 func (f *Func) SymName() string { return f.Name }

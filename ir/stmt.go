@@ -37,7 +37,7 @@ func (*NodeInst) stmtNode() {}
 // CallStmt is a void function call — definitively not a component.
 type CallStmt struct {
 	AST  ast.Stmt // original *ast.CallStmt or *ast.VisualNode
-	Call *Call     // resolved call expression
+	Call *Call    // resolved call expression
 }
 
 func (*CallStmt) stmtNode() {}
