@@ -25,7 +25,7 @@ component main {
     var ratio float = 1.5
     var items = [1, 2, 3]
     var pt = Point(1.0, 2.0)
-    var status Status = "active"
+    var status Status = active
 
     func total() => count + MAX
     func desc() => label + ": " + string(count)

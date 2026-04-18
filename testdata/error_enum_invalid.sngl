@@ -1,7 +1,7 @@
 enum Status { active, inactive, pending }
 
 component main {
-    var status Status = "unknown" // ERROR(check) "invalid enum value"
+    var status Status = unknown // ERROR(check) "undefined: unknown"
 
     text(value=status)
 }

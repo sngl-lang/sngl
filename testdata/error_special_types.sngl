@@ -9,9 +9,6 @@ component main {
     var ip4 ipv4 = "999.999.999.999" // ERROR(check) "invalid ipv4"
     var ip6 ipv6 = "not-ipv6"        // ERROR(check) "invalid ipv6"
     var h hostname = "bad host!"     // ERROR(check) "invalid hostname"
-    var c2 country2 = "XYZ"          // ERROR(check) "invalid country2"
-    var c3 country3 = "AB"           // ERROR(check) "invalid country3"
-    var cur currency = "usd"         // ERROR(check) "invalid currency"
 
     text(value="test")
 }

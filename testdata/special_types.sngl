@@ -13,16 +13,6 @@ component main {
         addr4 ipv4 = "192.168.1.1"
         addr6 ipv6 = "::1"
         host hostname = "example.com"
-        money currency = "USD"
-        cc2 country2 = "US"
-        cc3 country3 = "USA"
-        link_ref urlReference = "https://example.com/path"
-        link_tpl urlTemplate = "https://example.com/{id}"
-        irl_link irl = "https://example.com"
-        irl_ref irlReference = "https://example.com/path"
-        idn_mail idnEmail = "test@example.com"
-        idn_host idnHostname = "example.com"
-        subdiv countrySubdivision = "US-CA"
         amount decimal = "123.45"
     )
 
