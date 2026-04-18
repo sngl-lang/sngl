@@ -1,4 +1,7 @@
 component main {
+    var count = 0
+    var name = ""
+
     // Single-line props — should stay on one line
     text(value="hello", style={color=#ff0000})
 
@@ -9,7 +12,7 @@ component main {
         type="email",
         disabled=false,
         @input { count = count + 1 },
-        @change(e) { name = e },
+        @change(e) { name = e.value },
     )
 
     // Multi-line with style

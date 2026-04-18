@@ -12,12 +12,12 @@ func testToggleNonBool(t T, c errs) { // ERROR(test) "cannot toggle"
 
 func testToggleUndefined(t T, c errs) { // ERROR(test) "undefined"
     t.assert(c.count == 0)
-    unknown!!
+    unknown!! // ERROR(check) "undefined"
 }
 
 func testUnknownFunction(t T, c errs) { // ERROR(test) "unknown function"
     t.assert(c.count == 0)
-    t.assert(unknownFunc(1) == 0)
+    t.assert(unknownFunc(1) == 0) // ERROR(check) "undefined"
 }
 
 func testSelectOnNonMap(t T, c errs) { // ERROR(test) "cannot select"

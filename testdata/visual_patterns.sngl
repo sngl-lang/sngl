@@ -15,7 +15,7 @@ component main {
 
     vbox {
         input #searchBox(value=searchText, @change(e) { searchText = e })
-        text(ref="searchLabel", value="Search: " + searchText)
+        text #searchLabel(value="Search: " + searchText)
         for item, idx = items {
             Card(subtitle=string(idx), title=item) {
                 text(value="content")

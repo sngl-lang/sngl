@@ -1,3 +1,9 @@
+struct User {
+    name string = ""
+    age int = 0
+    loggedIn bool = false
+}
+
 component Counter(label = "") {
     var count = 0
 

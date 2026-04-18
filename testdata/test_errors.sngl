@@ -5,7 +5,7 @@ component errs {
 }
 
 func testUndefinedVariable(t T, c errs) { // ERROR(test) "undefined"
-    t.assert(unknown == 0)
+    t.assert(unknown == 0) // ERROR(check) "undefined"
 }
 
 func testIndexOutOfBounds(t T, c errs) { // ERROR(test) "out of range"
@@ -13,5 +13,5 @@ func testIndexOutOfBounds(t T, c errs) { // ERROR(test) "out of range"
 }
 
 func testCannotAssignUndefined(t T, c errs) { // ERROR(test) "undefined"
-    nope = 42
+    nope = 42 // ERROR(check) "undefined"
 }
