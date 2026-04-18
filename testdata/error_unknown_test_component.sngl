@@ -3,6 +3,6 @@ component real {
     text(value="{x}")
 }
 
-func testTargetsUnknownComponent(t T, c fake) { // ERROR(check) "unknown component"
+func testTargetsUnknownComponent(t T, c fake) { // ERROR(check) "unknown type"
     t.assert(c.x == 0)
 }

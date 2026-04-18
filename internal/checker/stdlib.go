@@ -62,6 +62,8 @@ func (c *checker) loadStdlib() *ir.Package {
 	for _, doc := range parseStdlibDocs() {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
+			case *ast.Import:
+				c.registerImport(s)
 			case *ast.StructDef:
 				c.registerStdlibStruct(s, stdlibPkg)
 			case *ast.EnumDef:
@@ -120,6 +122,13 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 
 func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 	fn := c.buildFunc(f)
+	// Tag stdlib functions whose body delegates to an intrinsic.
+	if id := detectIntrinsicCall(fn); id != "" {
+		fn.Intrinsic = id
+		if def := ir.LookupIntrinsic(id); def != nil {
+			fn.Native = def.Native
+		}
+	}
 	if fn.Receiver != "" {
 		// Type-attached method — registered in main symtab only.
 		c.symtab.RegisterMethod(fn.Receiver, fn)
@@ -129,6 +138,50 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 		pkg.Funcs = append(pkg.Funcs, fn)
 		pkg.Symbols.Root.Declare(fn)
 	}
+}
+
+// detectIntrinsicCall checks if a function body is a single return of a call
+// to an intrinsic function (e.g., stdlib.StrIndexOf). Returns the intrinsic
+// name or "".
+func detectIntrinsicCall(fn *ir.Func) string {
+	if len(fn.Block) != 1 {
+		return ""
+	}
+	ret, ok := fn.Block[0].(*ir.Return)
+	if !ok {
+		return ""
+	}
+	call, ok := ret.Value.(*ir.Call)
+	if !ok || call.Func == nil {
+		return ""
+	}
+	if call.Func.Intrinsic != "" {
+		return call.Func.Intrinsic
+	}
+	return ""
+}
+
+// buildIntrinsicsPackage creates a synthetic package from the ir.Intrinsics
+// registry. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
+func (c *checker) buildIntrinsicsPackage() *ir.Package {
+	pkg := &ir.Package{Symbols: NewSymbolTable()}
+	for _, def := range ir.Intrinsics {
+		// Clone params so each checker instance has its own copies.
+		params := make([]*ir.Param, len(def.Params))
+		for i, p := range def.Params {
+			params[i] = &ir.Param{Name: p.Name, Type: p.Type}
+		}
+		fn := &ir.Func{
+			Name:      def.Name,
+			Params:    params,
+			Return:    def.Return,
+			Intrinsic: def.Name,
+			Native:    def.Native,
+		}
+		pkg.Funcs = append(pkg.Funcs, fn)
+		pkg.Symbols.Root.Declare(fn)
+	}
+	return pkg
 }
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {

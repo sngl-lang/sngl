@@ -43,30 +43,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertVarDecl(v))
 	}
 	for _, comp := range pkg.Components {
-		if comp.Name == "main" {
-			// Flatten the main component: promote its vars, funcs,
-			// timers, and body stmts to the top level so platform
-			// codegen layers (which walk doc.Stmts) see them.
-			for _, v := range comp.Vars {
-				if v.IsConst {
-					stmts = append(stmts, c.convertConstDecl(v))
-				} else {
-					stmts = append(stmts, c.convertVarDecl(v))
-				}
-			}
-			for _, f := range comp.Funcs {
-				stmts = append(stmts, c.convertFuncDef(f))
-			}
-			for _, t := range comp.Timers {
-				stmts = append(stmts, c.convertTimer(t))
-			}
-			if len(comp.Body) > 0 {
-				block := c.convertStmtBlock(comp.Body)
-				stmts = append(stmts, block.Stmts...)
-			}
-		} else {
-			stmts = append(stmts, c.convertComponent(comp))
-		}
+		stmts = append(stmts, c.convertComponent(comp))
 	}
 	for _, w := range pkg.Windows {
 		if w.Checked && w.Name == "" && len(w.Body) == 0 {
@@ -306,8 +283,8 @@ func (c *converter) convertTimer(t *Timer) *ast.VisualNode {
 func (c *converter) convertOutputs(outputs []*Output) *ast.VisualNode {
 	// Group by language, preserving order.
 	type langGroup struct {
-		lang     string
-		outputs  []*Output
+		lang    string
+		outputs []*Output
 	}
 	var groups []langGroup
 	idx := map[string]int{}

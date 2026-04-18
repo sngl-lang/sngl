@@ -1,3 +1,5 @@
+import "internal://stdlib"
+
 // --- int ---
 
 func int.min(a int, b int) => a < b ? a : b
@@ -12,64 +14,64 @@ func float.max(a float, b float) => a > b ? a : b
 func float.abs(x float) => x < 0.0 ? -x : x
 func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
 
-func float.floor(x float) => x < 0.0 ? int(x) - 1 : int(x)
-func float.ceil(x float) => x == int(x) ? int(x) : float.floor(x) + 1
-func float.round(x float) => float.floor(x + 0.5)
+func float.floor(x float) => stdlib.MathFloor(x)
+func float.ceil(x float) => stdlib.MathCeil(x)
+func float.round(x float) => stdlib.MathRound(x)
 
-func float.pow(base float, exp float) => base * exp * 0.0 + 1.0
-func float.sqrt(x float) => x < 0.0 ? 0.0 : float.pow(x, 0.5)
-func float.sin(x float) => x - float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) / 120.0 - float.pow(x, 7.0) / 5040.0
-func float.cos(x float) => 1.0 - float.pow(x, 2.0) / 2.0 + float.pow(x, 4.0) / 24.0 - float.pow(x, 6.0) / 720.0
-func float.tan(x float) => float.sin(x) / float.cos(x)
-func float.asin(x float) => x + float.pow(x, 3.0) / 6.0 + float.pow(x, 5.0) * 3.0 / 40.0
-func float.acos(x float) => 1.5707963267948966 - float.asin(x)
-func float.atan(x float) => x - float.pow(x, 3.0) / 3.0 + float.pow(x, 5.0) / 5.0
-func float.atan2(y float, x float) => float.atan(y / x)
+func float.pow(base float, exp float) => stdlib.MathPow(base, exp)
+func float.sqrt(x float) => stdlib.MathSqrt(x)
+func float.sin(x float) => stdlib.MathSin(x)
+func float.cos(x float) => stdlib.MathCos(x)
+func float.tan(x float) => stdlib.MathTan(x)
+func float.asin(x float) => stdlib.MathAsin(x)
+func float.acos(x float) => stdlib.MathAcos(x)
+func float.atan(x float) => stdlib.MathAtan(x)
+func float.atan2(y float, x float) => stdlib.MathAtan2(y, x)
 
 // --- string ---
 
-func string.length(s string) => 0
-func string.indexOf(s string, sub string) => -1
-func string.substring(s string, start int, end int) => s
-func string.upper(s string) => s
-func string.lower(s string) => s
-func string.trim(s string) => s
-func string.replace(s string, old string, new string) => s
-func string.split(s string, sep string) => [s]
+func string.length(s string) => stdlib.StrLength(s)
+func string.indexOf(s string, sub string) => stdlib.StrIndexOf(s, sub)
+func string.substring(s string, start int, end int) => stdlib.StrSubstring(s, start, end)
+func string.upper(s string) => stdlib.StrUpper(s)
+func string.lower(s string) => stdlib.StrLower(s)
+func string.trim(s string) => stdlib.StrTrim(s)
+func string.replace(s string, old string, new string) => stdlib.StrReplace(s, old, new)
+func string.split(s string, sep string) => stdlib.StrSplit(s, sep)
 func string.contains(s string, sub string) => string.indexOf(s, sub) >= 0
 func string.startsWith(s string, prefix string) => string.substring(s, 0, string.length(prefix)) == prefix
 func string.endsWith(s string, suffix string) => string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix
 
 // --- list ---
 
-func list.length<T>(l list<T>) => 0
-func list.push<T>(l list<T>, item T) => l
-func list.remove<T>(l list<T>, index int) => l
-func list.indexOf<T>(l list<T>, item T) => -1
-func list.join<T>(l list<T>, sep string) => ""
-func list.reverse<T>(l list<T>) => l
-func list.slice<T>(l list<T>, start int, end int) => l
-func list.filter<T>(l list<T>, pred func(T) -> bool) => l
-func list.map<T, U>(l list<T>, fn func(T) -> U) => l
+func list.length<T>(l list<T>) => stdlib.ListLength(l)
+func list.push<T>(l list<T>, item T) => stdlib.ListPush(l, item)
+func list.remove<T>(l list<T>, index int) => stdlib.ListRemove(l, index)
+func list.indexOf<T>(l list<T>, item T) => stdlib.ListIndexOf(l, item)
+func list.join<T>(l list<T>, sep string) => stdlib.ListJoin(l, sep)
+func list.reverse<T>(l list<T>) => stdlib.ListReverse(l)
+func list.slice<T>(l list<T>, start int, end int) => stdlib.ListSlice(l, start, end)
+func list.filter<T>(l list<T>, pred func(T) -> bool) => stdlib.ListFilter(l, pred)
+func list.map<T, U>(l list<T>, fn func(T) -> U) => stdlib.ListMap(l, fn)
 func list.contains<T>(l list<T>, item T) => list.indexOf(l, item) >= 0
 
 // --- color ---
 
-func color.rgb(r int, g int, b int) => Color{r=r, g=g, b=b, a=255}
-func color.rgba(r int, g int, b int, a int) => Color{r=r, g=g, b=b, a=a}
-func color.opacity(c Color, a int) => Color{r=c.r, g=c.g, b=c.b, a=a}
-func color.hex(c Color) => "#000000"
+func color.rgb(r int, g int, b int) => color{r=r, g=g, b=b, a=255}
+func color.rgba(r int, g int, b int, a int) => color{r=r, g=g, b=b, a=a}
+func color.opacity(c color, a int) => color{r=c.r, g=c.g, b=c.b, a=a}
+func color.hex(c color) => stdlib.ColorHex(c)
 
-func color.lighten(c Color, pct float) Color {
-    var ret = Color{r=c.r, g=c.g, b=c.b, a=c.a}
+func color.lighten(c color, pct float) color {
+    var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = int.min(255, c.r + int(float(255 - c.r) * pct))
     ret.g = int.min(255, c.g + int(float(255 - c.g) * pct))
     ret.b = int.min(255, c.b + int(float(255 - c.b) * pct))
     return ret
 }
 
-func color.darken(c Color, pct float) Color {
-    var ret = Color{r=c.r, g=c.g, b=c.b, a=c.a}
+func color.darken(c color, pct float) color {
+    var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = int(float(c.r) * (1.0 - pct))
     ret.g = int(float(c.g) * (1.0 - pct))
     ret.b = int(float(c.b) * (1.0 - pct))
@@ -78,13 +80,13 @@ func color.darken(c Color, pct float) Color {
 
 // --- Alert ---
 
-func Alert.toast(message string, variant string) => 0
-func Alert.info(message string) => 0
-func Alert.warn(message string) => 0
-func Alert.error(message string) => 0
-func Alert.confirm(message string) => false
+func Alert.toast(message string, variant string) => stdlib.AlertToast(message, variant)
+func Alert.info(message string) => stdlib.AlertInfo(message)
+func Alert.warn(message string) => stdlib.AlertWarn(message)
+func Alert.error(message string) => stdlib.AlertError(message)
+func Alert.confirm(message string) => stdlib.AlertConfirm(message)
 
 // --- File ---
 
-func File.pick() => ""
-func File.pickFolder() => ""
+func File.pick() => stdlib.FilePick()
+func File.pickFolder() => stdlib.FilePickFolder()

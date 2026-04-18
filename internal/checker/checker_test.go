@@ -2,17 +2,60 @@ package checker_test
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// mockResolver provides fake packages for import tests.
+type mockResolver struct {
+	pkgs map[string]string // import path → SNGL source
+}
+
+func (m *mockResolver) Resolve(_ fs.FS, path string) ([]*ast.Document, error) {
+	src, ok := m.pkgs[path]
+	if !ok {
+		return nil, fmt.Errorf("package %q not found", path)
+	}
+	doc, err := parser.Parse(path+".sngl", []byte(src))
+	if err != nil {
+		return nil, err
+	}
+	return []*ast.Document{doc}, nil
+}
+
+func (m *mockResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error) {
+	return nil, fmt.Errorf("scheme imports not supported in tests")
+}
+
+func newTestResolver() *mockResolver {
+	return &mockResolver{pkgs: map[string]string{
+		"widgets": `
+component Counter(label = "") {
+    var count = 0
+    text(value=label)
+}
+
+component helper() {
+    text(value="private")
+}
+`,
+		"badlib": `
+component main {
+    text(value="oops")
+}
+`,
+	}}
+}
 
 func parse(t *testing.T, src string) *ir.Package {
 	t.Helper()
@@ -788,7 +831,14 @@ func TestCheckTestdata(t *testing.T) {
 			if parseErr != nil {
 				t.Fatalf("parse: %v", parseErr)
 			}
-			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			cfg := &checker.Config{IsMain: true}
+			for _, s := range doc.Stmts {
+				if _, ok := s.(*ast.Import); ok {
+					cfg.Resolver = newTestResolver()
+					break
+				}
+			}
+			_, diags := checker.Check(doc, cfg)
 
 			if len(expected) == 0 {
 				// No error directives — expect clean check.

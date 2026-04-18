@@ -22,6 +22,7 @@ type NodeInst struct {
 	Handlers  []EventHandler // inline event handlers
 	Children  []Stmt         // type-checked body
 	ID        string         // #id binding
+	Key       Expr           // key expression for list diffing (nil → implicit index)
 	Ref       Expr           // ref binding (nil if none)
 }
 

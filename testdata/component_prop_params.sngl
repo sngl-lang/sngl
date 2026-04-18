@@ -1,4 +1,6 @@
 component Counter(label = "", start = 0) {
+    var count = start
+
     hbox {
         text(value=label + ": " + string(count))
     }

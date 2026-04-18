@@ -870,12 +870,20 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				if comp, ok := sym.(*ir.Component); ok {
 					c.validateCallStmtComponentArgs(x.Call, comp)
 					props, handlers := c.checkAndSplitArgs(x.Call.Args, comp)
+					var keyExpr ir.Expr
+					for _, a := range x.Call.Args.Args {
+						if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
+							keyExpr = c.checkExpr(arg.Value)
+							break
+						}
+					}
 					return &ir.NodeInst{
 						AST:       x,
 						Name:      id.Name,
 						Component: comp,
 						Props:     props,
 						Handlers:  handlers,
+						Key:       keyExpr,
 					}
 				}
 			}
@@ -1102,6 +1110,16 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	children := c.checkBlockIR(&vn.Block)
 	props, handlers := c.checkAndSplitArgs(vn.Args, comp)
+
+	// Extract key= arg for loop diffing.
+	var keyExpr ir.Expr
+	for _, a := range vn.Args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
+			keyExpr = c.checkExpr(arg.Value)
+			break
+		}
+	}
+
 	return &ir.NodeInst{
 		AST:       vn,
 		Name:      name,
@@ -1110,6 +1128,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Handlers:  handlers,
 		Children:  children,
 		ID:        vn.ID,
+		Key:       keyExpr,
 	}
 }
 
@@ -1156,8 +1175,8 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" {
-				continue // positional args
+			if arg.Name == "" || arg.Name == "key" {
+				continue // positional args and key (handled by loop diffing)
 			}
 			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
@@ -1179,6 +1198,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
+			if arg.Name == "key" {
+				continue // handled separately by checkVisualNodeIR
+			}
 			var expected *ir.Type
 			if comp != nil && arg.Name != "" {
 				expected = componentPropType(comp, arg.Name)
@@ -1242,8 +1264,8 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				}
 				result = append(result, ir.CallArg{Name: arg.Name, Value: argExpr})
 			}
-			if arg.Name == "" {
-				continue // positional args
+			if arg.Name == "" || arg.Name == "key" {
+				continue // positional args and key (handled by loop diffing)
 			}
 			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
@@ -1278,7 +1300,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" {
+			if arg.Name == "" || arg.Name == "key" {
 				continue
 			}
 			if !componentHasProp(comp, arg.Name) && !componentHasEvent(comp, arg.Name) {

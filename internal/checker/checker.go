@@ -135,24 +135,33 @@ func (c *checker) popScope() {
 // --- pass1: declaration registration ---
 
 func (c *checker) pass1() {
+	// Pre-register type declarations so they're visible for forward references
+	// (e.g., test functions that reference types defined later in the file).
 	for _, stmt := range c.doc.Stmts {
 		switch s := stmt.(type) {
-		case *ast.Import:
-			c.registerImport(s)
 		case *ast.EnumDef:
 			c.registerEnum(s)
 		case *ast.StructDef:
 			c.registerStruct(s)
 		case *ast.UnitDef:
 			c.registerUnit(s)
+		case *ast.ComponentDecl:
+			c.registerComponent(s)
+		}
+	}
+
+	for _, stmt := range c.doc.Stmts {
+		switch s := stmt.(type) {
+		case *ast.Import:
+			c.registerImport(s)
+		case *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
+			continue // already registered above
 		case *ast.ConstDecl:
 			c.registerConsts(s)
 		case *ast.VarDecl:
 			c.registerVars(s)
 		case *ast.FuncDef:
 			c.registerFunc(s)
-		case *ast.ComponentDecl:
-			c.registerComponent(s)
 		case *ast.VisualNode:
 			c.registerRootVisualNode(s)
 		case *ast.PlatformStmt:
@@ -180,7 +189,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 		Alias: alias,
 	}
 
-	if scheme != "" && c.cfg.Resolver != nil {
+	if scheme == "internal" {
+		// Built-in internal packages — no resolver needed.
+		switch uri {
+		case "stdlib":
+			irImport.Pkg = c.buildIntrinsicsPackage()
+		default:
+			c.error(imp.Pos, "unknown internal package: %q", uri)
+		}
+	} else if scheme != "" && c.cfg.Resolver != nil {
 		// Scheme import (go://, git://, etc.)
 		native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
 		if err != nil {

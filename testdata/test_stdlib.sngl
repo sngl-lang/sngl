@@ -119,7 +119,7 @@ func testColorOpacity(t T, c main) {
 }
 
 func testColorHex(t T, c main) {
-    t.assert(color.hex(#ff0000) == "#ff0000")
+    t.assert(color.hex(#ff0000) == #ff0000)
     t.assert(color.hex(color.rgb(0, 255, 0)) == "#00ff00")
 }
 

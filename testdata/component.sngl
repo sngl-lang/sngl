@@ -1,4 +1,6 @@
 component Counter(label = "", start = 0, name = "") {
+    var count = start
+
     hbox {
         text(value=label + ": " + string(count))
         button(text="+", @click { count = count + 1 })

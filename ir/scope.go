@@ -81,6 +81,8 @@ func NewBaseScope() *Scope {
 		{"float", TypFloat},
 		{"string", TypString},
 		{"color", TypColor},
+		{"list", ListOf(TypDyn)},
+		{"option", OptionOf(TypDyn)},
 		{"date", TypDate},
 		{"time", TypTime},
 		{"dateTime", TypDateTime},

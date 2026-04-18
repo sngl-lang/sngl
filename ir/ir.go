@@ -47,6 +47,13 @@ type NativeImport struct {
 	Vars       []*Var
 }
 
+// NativeImpl maps an intrinsic function to a target language's native equivalent.
+type NativeImpl struct {
+	Lang       string // target language: "js", "go", "kotlin"
+	ImportPath string // language import path: "strings", "math", "" for builtins
+	Ident      string // native identifier: "strings.Index", "Math.sin", etc.
+}
+
 // Func represents any function: top-level, type-attached method, or lambda.
 type Func struct {
 	AST        *ast.FuncDef // nil for lambdas and event handlers
@@ -60,6 +67,8 @@ type Func struct {
 	IsTest     bool
 	Reads      []*Var // vars read (directly or via called functions)
 	Writes     []*Var // vars mutated (directly or via called functions)
+	Intrinsic  string       // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
+	Native     []NativeImpl // per-language native implementations for intrinsic functions
 }
 
 func (f *Func) SymName() string { return f.Name }

@@ -103,16 +103,16 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return &ir.Type{Kind: ir.TypeComponent}
 	}
 
+	// Type parameter (checked before scope so generic params shadow types like T).
+	if slices.Contains(c.typeParams, t.Name) {
+		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
+	}
+
 	// User-defined type from scope chain.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if typ := sym.SymType(); typ != nil {
 			return typ
 		}
-	}
-
-	// Type parameter.
-	if slices.Contains(c.typeParams, t.Name) {
-		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
 	}
 
 	c.error(t.Pos, "unknown type %q", t.Name)

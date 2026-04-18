@@ -1,4 +1,4 @@
-struct Color {
+struct color {
     r int = 0
     g int = 0
     b int = 0
