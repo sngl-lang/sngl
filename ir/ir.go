@@ -241,19 +241,18 @@ const (
 	Warning
 )
 
-// Target provides type information for a registered language or platform.
-type Target interface {
-	Identifier() string
+// Language is a Target for a registered language translator.
+type Language interface {
+	LanguageIdentifier() string
 	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 }
 
-// Language is a Target for a registered language translator.
-type Language interface{ Target }
-
 // Platform is a Target for a registered platform generator.
 type Platform interface {
-	Target
+	PlatformIdentifier() string
+	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
+	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 	IsLanguageSupported(Language) bool
 }
 

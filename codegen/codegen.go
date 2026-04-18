@@ -32,18 +32,16 @@ type ExprScope struct {
 
 // LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
-	Lang() string
 	ir.Language
-	TranslateExpr(e ast.Expr, scope *ExprScope) string
-	TranslateMutation(e ast.Stmt, scope *ExprScope) []string
-	TranslateLiteral(expr ast.Expr) string
-	TypeToNative(hint string) string // "int" → "int", "float" → "float64", etc.
-	ExportName(name string) string   // capitalize for Go, camelCase for TS, etc.
+	WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error
+	WriteStmt(w io.Writer, expr ir.Stmt, scope *ir.Scope) error
+	WriteType(w io.Writer, t *ir.Type) error
+	GenerateIdentifier(name *ir.Ident) string // capitalize for Go, camelCase for TS, etc.
+	Eval(expr ir.Expr) string
 }
 
 // PlatformGenerator produces output files from a checked SNGL document.
 type PlatformGenerator interface {
-	Platform() string
 	ir.Platform
 	SupportedLangs() []string
 	Generate(req *Request) (*Response, error)
@@ -297,7 +295,6 @@ type FileAsset struct {
 
 // Request is the input to a platform generator.
 type Request struct {
-	Doc        *ast.Document
 	Pkg        *ir.Package // v2 checked IR (nil for legacy callers)
 	Lang       LangTranslator
 	Opts       Opts
