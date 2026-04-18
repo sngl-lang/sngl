@@ -38,7 +38,7 @@ func testUnaryNegation(t T, c conv) {
 }
 
 func testBoolInArithmetic(t T, c conv) {
-    t.assert(c.#out.value == "42")
+    t.assert(c.out.value == "42")
     t.assert(c.active + 0 == 1)
     t.assert(c.active * 2 == 2)
 }

@@ -5,6 +5,10 @@ struct Color {
     a int = 255
 }
 
+struct T {}
+
+func T.assert(b bool) {}
+
 enum FlexDirection { row, column, rowReverse, columnReverse }
 enum Alignment { start, center, end, stretch, baseline }
 enum Justification { start, center, end, spaceBetween, spaceAround, spaceEvenly }

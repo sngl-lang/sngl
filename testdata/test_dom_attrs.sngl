@@ -7,11 +7,11 @@ component styled {
 }
 
 func testStaticClass(t T, c styled) {
-    t.assert(c.#t.class == "header")
+    t.assert(c.t.class == "header")
 }
 
 func testDynamicClass(t T, c styled) {
-    t.assert(c.#d.class == "active")
+    t.assert(c.d.class == "active")
     c.mode = "inactive"
-    t.assert(c.#d.class == "inactive")
+    t.assert(c.d.class == "inactive")
 }

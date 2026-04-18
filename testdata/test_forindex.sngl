@@ -11,9 +11,9 @@ component indexed {
 }
 
 func testForWithIndexVariable(t T, c indexed) {
-    t.assert(c.#item[0].value == "0:a")
-    t.assert(c.#item[1].value == "1:b")
-    t.assert(c.#item[2].value == "2:c")
+    t.assert(c.item[0].value == "0:a")
+    t.assert(c.item[1].value == "1:b")
+    t.assert(c.item[2].value == "2:c")
 }
 
 func testFloatComparisons(t T, c indexed) {

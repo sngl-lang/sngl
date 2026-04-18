@@ -29,21 +29,21 @@ component listcomp {
 
 func testEventTriggering(t T, c counter) {
     t.assert(c.count == 0)
-    c.#inc.@click()
+    c.inc.@click()
     t.assert(c.count == 1)
-    c.#inc.@click()
-    c.#inc.@click()
+    c.inc.@click()
+    c.inc.@click()
     t.assert(c.count == 3)
-    c.#dec.@click()
+    c.dec.@click()
     t.assert(c.count == 2)
-    t.assert(c.#display.value == "Count: 2")
+    t.assert(c.display.value == "Count: 2")
 }
 
 func testDomUpdatesAfterMutation(t T, c counter) {
     c.count += 1
-    t.assert(c.#display.value == "Count: 1")
+    t.assert(c.display.value == "Count: 1")
     c.count += 4
-    t.assert(c.#display.value == "Count: 5")
+    t.assert(c.display.value == "Count: 5")
 }
 
 func testCounter(t T, c counter) {
@@ -51,16 +51,16 @@ func testCounter(t T, c counter) {
 }
 
 func testConditionalRendering(t T, c wrapper) {
-    t.assert(c.#conditional != null)
+    t.assert(c.conditional != null)
     c.visible = false
-    t.assert(c.#conditional == null)
+    t.assert(c.conditional == null)
 }
 
 func testNestedFind(t T, c wrapper) {
-    t.assert(c.#hdr.value == "header")
+    t.assert(c.hdr.value == "header")
 }
 
 func testForLoopRendering(t T, c listcomp) {
-    t.assert(c.#item[0].value == "a")
-    t.assert(c.#item[2].value == "c")
+    t.assert(c.item[0].value == "a")
+    t.assert(c.item[2].value == "c")
 }

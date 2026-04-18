@@ -27,10 +27,10 @@ func testComputedFromParams(t T, c badge) {
 }
 
 func testRendersChildComponent(t T, c dashboard) {
-    t.assert(c.#foot.value == "footer")
-    t.assert(c.#lbl[0] != null)
+    t.assert(c.foot.value == "footer")
+    t.assert(c.lbl[0] != null)
 }
 
 func testComponentReceivesProps(t T, c dashboard) {
-    t.assert(c.#lbl[0].value == "test")
+    t.assert(c.lbl[0].value == "test")
 }

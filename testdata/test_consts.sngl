@@ -10,11 +10,11 @@ component config {
 func testConstValues(t T, c config) {
     t.assert(c.max == 100)
     t.assert(c.label == "limit")
-    t.assert(c.#out.value == "100 remaining")
+    t.assert(c.out.value == "100 remaining")
 }
 
 func testComputedFromConst(t T, c config) {
     c.count = 30
     t.assert(c.remaining == 70)
-    t.assert(c.#out.value == "70 remaining")
+    t.assert(c.out.value == "70 remaining")
 }
