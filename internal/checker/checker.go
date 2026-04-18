@@ -193,7 +193,11 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
 		case "stdlib":
-			irImport.Pkg = c.buildIntrinsicsPackage()
+			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.Intrinsics)
+		case "alert":
+			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.AlertIntrinsics)
+		case "file":
+			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.FileIntrinsics)
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
 		}

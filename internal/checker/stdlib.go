@@ -125,9 +125,6 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 	// Tag stdlib functions whose body delegates to an intrinsic.
 	if id := detectIntrinsicCall(fn); id != "" {
 		fn.Intrinsic = id
-		if def := ir.LookupIntrinsic(id); def != nil {
-			fn.Native = def.Native
-		}
 	}
 	if fn.Receiver != "" {
 		// Type-attached method — registered in main symtab only.
@@ -161,12 +158,11 @@ func detectIntrinsicCall(fn *ir.Func) string {
 	return ""
 }
 
-// buildIntrinsicsPackage creates a synthetic package from the ir.Intrinsics
-// registry. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
-func (c *checker) buildIntrinsicsPackage() *ir.Package {
+// buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic
+// definitions. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
+func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 	pkg := &ir.Package{Symbols: NewSymbolTable()}
-	for _, def := range ir.Intrinsics {
-		// Clone params so each checker instance has its own copies.
+	for _, def := range defs {
 		params := make([]*ir.Param, len(def.Params))
 		for i, p := range def.Params {
 			params[i] = &ir.Param{Name: p.Name, Type: p.Type}
@@ -176,7 +172,6 @@ func (c *checker) buildIntrinsicsPackage() *ir.Package {
 			Params:    params,
 			Return:    def.Return,
 			Intrinsic: def.Name,
-			Native:    def.Native,
 		}
 		pkg.Funcs = append(pkg.Funcs, fn)
 		pkg.Symbols.Root.Declare(fn)

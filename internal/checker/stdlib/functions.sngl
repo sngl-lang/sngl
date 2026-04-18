@@ -1,4 +1,6 @@
 import "internal://stdlib"
+import "internal://alert"
+import "internal://file"
 
 // --- int ---
 
@@ -80,13 +82,13 @@ func color.darken(c color, pct float) color {
 
 // --- Alert ---
 
-func Alert.toast(message string, variant string) => stdlib.AlertToast(message, variant)
-func Alert.info(message string) => stdlib.AlertInfo(message)
-func Alert.warn(message string) => stdlib.AlertWarn(message)
-func Alert.error(message string) => stdlib.AlertError(message)
-func Alert.confirm(message string) => stdlib.AlertConfirm(message)
+func Alert.toast(message string, variant string) => alert.Toast(message, variant)
+func Alert.info(message string) => alert.Info(message)
+func Alert.warn(message string) => alert.Warn(message)
+func Alert.error(message string) => alert.Error(message)
+func Alert.confirm(message string) => alert.Confirm(message)
 
 // --- File ---
 
-func File.pick() => stdlib.FilePick()
-func File.pickFolder() => stdlib.FilePickFolder()
+func File.pick() => file.Pick()
+func File.pickFolder() => file.PickFolder()
