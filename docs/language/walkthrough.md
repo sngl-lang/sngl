@@ -2,7 +2,7 @@
 
 # Basics
 
-## Hello World
+## Packages: Hello World
 
 SNGL packages are a directory with one or more sngl files. Each sngl application must have one main package that defines component main. This serves as the entrypoint to the GUI, although you have you may generate the code, so you may call it directly. This is your most basic main component.
 
@@ -26,7 +26,7 @@ sngl run example.sngl --target android
 
 This will take much longer and will require dependencies on your machine. See [platforms](TODO) for a list of supported platforms, their featuresets, requirements, and limitations. Since this example doesn't use any platform-specific features, it should deploy to any supported platforms.
 
-## Hello Anyone
+## Data Tracking: Hello Anyone
 
 Of course, static data doesn't make much of an interactive application. SNGL supports tracking state for an application as well.
 
@@ -42,7 +42,7 @@ component main {
 
 This example is a little more complicated. We have a variable, which defines state that's tracked with the component. Components can each have their own state to help keep data management tidy. The `:value=name` syntax tells SNGL that the value is bidirectional, so input may update the value in addition to reading it. Note that the value of text doesn't need any annotation to tell it to update when name changes. SNGL tracks uses/assignments at compile time, so it can generate the updating logic directly. We also have string interpolation here. Any sngl expression may exist between braces in a string to interpolate the value.
 
-## Logic
+## Computed Logic
 
 Just replacing strings isn't all that useful. Often you need to do some simple computations for user feedback, validation, and even animations.
 
@@ -62,7 +62,7 @@ component main {
 
 Here we have a function definition serving the role of a computed value. Like node property expressions, they're updated whenever the values they reference change. We also have a conditional component here. Just wrap your node in an if statement. Also note here, that SNGL is strongly typed. See the [language reference](TODO) for a list of types that you can use, but usually SNGL can infer the type you want from the value, so we don't need to define that isLong is a bool.
 
-## Constant expressions
+## Compile-time: Constant expressions
 
 Sometimes things should be evaluted at compile time, especially with limited targets like html. For example, the SNGL documentation site is written in SNGL, but we wanted to write the prose in markdown. We'll look at how to walk the filesystem later at compile time, but for now it's important to know that constant expressions are evaluated at compile time.This is something that happens automatically. SNGL tracks which functions are "pure" in a functional sense and if all arguments are constant, it can run the function at compile time.
 
@@ -78,13 +78,11 @@ component main {
 }
 ```
 
-## External Imports
+## External Imports: Incorporating other langauges
 
 External imports allow you to use code in other langauges. Non-constant expressions are compiled/translated/linked to the target language and used. Not all conbinations work, for example you can't import JavaScript code and call it in Rust. SNGL doesn't ship with a JavaScript runtime in Rust. :smile: However, constant expressions are evaluated at compile time, so any language that supports constant evaluation will work for any target. For the SNGL website, we use a Go markdown parser to translate our pages to HTML at compile time. The playground is dynamic and the compiler is written in Go, so SNGL imports the compiler and SNGL compiles it to WASM to generate the playground.
 
-## Operations
-
-The following operations can be used for expressions. These look pretty similar to most C-like languages.
+# Language Syntax
 
 ## Numeric Operations
 
@@ -93,3 +91,5 @@ The following operations can be used for expressions. These look pretty similar 
 - `op1 * op2` - Multiply numeric values
 - `op1 / op2` - Divide numeric values <!-- TODO: What happens on divide by zero? -->
 - `op1 % op2` - Modulo integer values
+
+
