@@ -67,6 +67,28 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 		}
 	}
 
+	// Include main component's vars and funcs so platform codegen
+	// sees them as model fields (mirrors DepTracker logic).
+	for _, comp := range pkg.Components {
+		if comp.Name == "main" {
+			for _, v := range comp.Vars {
+				a.ModelFields[v.Name] = true
+			}
+			for _, f := range comp.Funcs {
+				a.FuncNames[f.Name] = true
+				if IsComputed(f) {
+					a.ModelFields[f.Name] = true
+					a.ComputedFields[f.Name] = true
+					deps := make(map[string]bool)
+					for _, r := range f.Reads {
+						deps[r.Name] = true
+					}
+					a.ComputedDeps[f.Name] = deps
+				}
+			}
+		}
+	}
+
 	for _, s := range pkg.Structs {
 		fields := make([]string, len(s.Fields))
 		for i, f := range s.Fields {
@@ -232,12 +254,7 @@ func usesAlert(pkg *ir.Package) bool {
 }
 
 func irStmtsUseAlert(stmts []ir.Stmt) bool {
-	for _, s := range stmts {
-		if irStmtUsesAlert(s) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(stmts, irStmtUsesAlert)
 }
 
 func irStmtUsesAlert(s ir.Stmt) bool {

@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"maps"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -62,9 +63,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 			fileAssets:    ctx.fileAssets,
 			values:        make(map[ir.Symbol]any, len(ctx.values)+2),
 		}
-		for k, v := range ctx.values {
-			childCtx.values[k] = v
-		}
+		maps.Copy(childCtx.values, ctx.values)
 		if keyVar != nil {
 			childCtx.values[keyVar] = item
 		}

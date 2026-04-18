@@ -36,6 +36,7 @@ type viewContext struct {
 
 	// Component expansion support
 	doc            *ast.Document
+	platComps      map[string]*ast.ComponentDecl // platform-specific component overrides (fyne.sngl)
 	slotChildren   []ast.Stmt
 	callerEvents   map[string]*ast.EventHandler
 	componentDepth int
@@ -254,13 +255,19 @@ func (vc *viewContext) renderForStmt(s *ast.ForStmt, resultVar string) {
 func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 	name := vnName(vn)
 	if name == "slot" {
-		if len(vc.slotChildren) > 0 {
+		if len(vc.slotChildren) == 1 {
+			vc.renderStmt(vc.slotChildren[0], resultVar)
+		} else if len(vc.slotChildren) > 1 {
+			// Multiple slot children: collect into a VBox.
+			partsVar := resultVar + "SlotParts"
+			vc.line("var %s []fyne.CanvasObject", partsVar)
 			for i, child := range vc.slotChildren {
 				childVar := fmt.Sprintf("%sSlot%d", resultVar, i)
 				vc.line("var %s fyne.CanvasObject", childVar)
 				vc.renderStmt(child, childVar)
-				vc.line("if %s != nil { %s = %s }", childVar, resultVar, childVar)
+				vc.line("if %s != nil { %s = append(%s, %s) }", childVar, partsVar, partsVar, childVar)
 			}
+			vc.line("%s = container.NewVBox(%s...)", resultVar, partsVar)
 		} else if vc.slotVar != "" {
 			vc.line(`%s = %s`, resultVar, vc.slotVar)
 		}
@@ -283,11 +290,19 @@ func (vc *viewContext) renderNodeInner(vn *ast.VisualNode, resultVar string) {
 
 func (vc *viewContext) findComponent(name string) *ast.ComponentDecl {
 	if vc.doc != nil {
-		return findComponentInDoc(vc.doc, name)
+		if c := findComponentInDoc(vc.doc, name); c != nil {
+			return c
+		}
 	}
 	for _, c := range vc.components {
 		if c.Name == name && c.AST != nil {
 			return c.AST
+		}
+	}
+	// Check platform-specific component overrides (from fyne.sngl).
+	if vc.platComps != nil {
+		if c, ok := vc.platComps[name]; ok {
+			return c
 		}
 	}
 	return nil
@@ -311,14 +326,24 @@ func (vc *viewContext) expandComponent(comp *ast.ComponentDecl, vn *ast.VisualNo
 		maps.Copy(overrides, savedOverrides)
 	}
 	props := vnProps(vn)
-	for _, p := range compParams(comp) {
-		vc.ec.LocalVars[p.Name] = true
-		if expr, ok := props[p.Name]; ok {
-			overrides[p.Name] = exprToGoValue(expr, vc.ec)
-		} else if p.Default != nil && exprIsLiteral(p.Default) {
-			overrides[p.Name] = literalToGo(p.Default)
-		} else {
-			overrides[p.Name] = zeroValueGo(exprTypeHint(p.Type))
+	params := compParams(comp)
+	if len(params) > 0 {
+		for _, p := range params {
+			vc.ec.LocalVars[p.Name] = true
+			if expr, ok := props[p.Name]; ok {
+				overrides[p.Name] = exprToGoValue(expr, vc.ec)
+			} else if p.Default != nil && exprIsLiteral(p.Default) {
+				overrides[p.Name] = literalToGo(p.Default)
+			} else {
+				overrides[p.Name] = zeroValueGo(exprTypeHint(p.Type))
+			}
+		}
+	} else {
+		// Platform component with no declared params: map all caller
+		// props as overrides so the body template can reference them.
+		for name, expr := range props {
+			vc.ec.LocalVars[name] = true
+			overrides[name] = exprToGoValue(expr, vc.ec)
 		}
 	}
 	vc.ec.PropOverrides = overrides

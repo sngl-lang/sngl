@@ -48,7 +48,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		AppName:      req.Opts.Name,
 	}
 
-	src, err := Compile(req.Doc, req.Pkg, cfg)
+	src, err := Compile(req.Doc, req.Pkg, cfg, pkgDocs)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}

@@ -91,12 +91,19 @@ func DocImports(doc *ast.Document) []*ast.Import {
 	return out
 }
 
-// DocBodyStmts returns top-level visual statements (VisualNode, IfStmt, ForStmt).
+// DocBodyStmts returns top-level visual statements (VisualNode, IfStmt, ForStmt),
+// excluding configuration nodes like "output" and "window".
 func DocBodyStmts(doc *ast.Document) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range doc.Stmts {
-		switch s.(type) {
-		case *ast.VisualNode, *ast.IfStmt, *ast.ForStmt:
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			name := VisualNodeName(n)
+			if name == "output" || name == "window" || name == "timer" {
+				continue
+			}
+			out = append(out, s)
+		case *ast.IfStmt, *ast.ForStmt:
 			out = append(out, s)
 		}
 	}

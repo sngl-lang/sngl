@@ -22,29 +22,29 @@ struct Options {
 
 // --- Core Layout ---
 
-component sngl.vbox() {
+component vbox() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.hbox() {
+component hbox() {
     HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.stack() {
+component stack() {
     Stack(constructor="container.NewStack", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.spacer() {
+component spacer() {
     Spacer(constructor="layout.NewSpacer", constructorArgs=[]) {}
 }
 
-component sngl.scroll() {
+component scroll() {
     Scroll(constructor="container.NewVScroll", constructorArgs=[]) {
         slot
     }
@@ -52,7 +52,7 @@ component sngl.scroll() {
 
 // --- Core Text & Media ---
 
-component sngl.text() {
+component text() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[value],
@@ -62,7 +62,7 @@ component sngl.text() {
     ) {}
 }
 
-component sngl.button() {
+component button() {
     Button(
         constructor="widget.NewButton",
         constructorArgs=[text, nil],
@@ -72,7 +72,7 @@ component sngl.button() {
     ) {}
 }
 
-component sngl.image() {
+component image() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[alt],
@@ -80,11 +80,11 @@ component sngl.image() {
     ) {}
 }
 
-component sngl.input() {
+component input() {
     Entry(entry=true) {}
 }
 
-component sngl.checkbox() {
+component checkbox() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[label],
@@ -94,13 +94,13 @@ component sngl.checkbox() {
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio() {
+component radio() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.toggle() {
+component toggle() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[label],
@@ -108,7 +108,7 @@ component sngl.toggle() {
     ) {}
 }
 
-component sngl.select() {
+component select() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[value],
@@ -116,11 +116,11 @@ component sngl.select() {
     ) {}
 }
 
-component sngl.textarea() {
+component textarea() {
     Entry(entry=true) {}
 }
 
-component sngl.datepicker() {
+component datepicker() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[value],
@@ -130,15 +130,15 @@ component sngl.datepicker() {
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress() {
+component progress() {
     ProgressBar(constructor="widget.NewProgressBar", constructorArgs=[]) {}
 }
 
-component sngl.spinner() {
+component spinner() {
     Activity(constructor="widget.NewActivity", constructorArgs=[]) {}
 }
 
-component sngl.badge() {
+component badge() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[value],
@@ -148,17 +148,17 @@ component sngl.badge() {
     ) {}
 }
 
-component sngl.divider() {
+component divider() {
     Divider(constructor="widget.NewSeparator", constructorArgs=[]) {}
 }
 
-component sngl.card() {
+component card() {
     Card(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.chip() {
+component chip() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[label],
@@ -166,7 +166,7 @@ component sngl.chip() {
     ) {}
 }
 
-component sngl.link() {
+component link() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[text],
@@ -174,13 +174,13 @@ component sngl.link() {
     ) {}
 }
 
-component sngl.tabs() {
+component tabs() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.modal() {
+component modal() {
     if open {
         VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
             slot
@@ -188,67 +188,67 @@ component sngl.modal() {
     }
 }
 
-component sngl.drawer() {
+component drawer() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.tooltip() {
+component tooltip() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.popover() {
+component popover() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.accordion() {
+component accordion() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.splitview() {
+component splitview() {
     HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.table() {
+component table() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.tree() {
+component tree() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.menu() {
+component menu() {
     VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.menubar() {
+component menubar() {
     HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.toolbar() {
+component toolbar() {
     HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot
     }
 }
 
-component sngl.avatar() {
+component avatar() {
     Label(
         constructor="widget.NewLabel",
         constructorArgs=[initials],

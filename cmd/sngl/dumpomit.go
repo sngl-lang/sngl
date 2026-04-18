@@ -11,7 +11,7 @@ func omitFields(v any, omit map[string]bool) {
 
 func omitWalk(v reflect.Value, omit map[string]bool, visited map[uintptr]bool) {
 	switch v.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			return
 		}
@@ -53,7 +53,7 @@ func omitWalk(v reflect.Value, omit map[string]bool, visited map[uintptr]bool) {
 			val := iter.Value()
 			// Map values aren't addressable. Recurse through
 			// pointers/interfaces to reach settable structs.
-			if val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
+			if val.Kind() == reflect.Pointer || val.Kind() == reflect.Interface {
 				omitWalk(val, omit, visited)
 			}
 		}

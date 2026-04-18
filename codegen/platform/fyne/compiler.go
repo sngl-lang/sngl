@@ -33,15 +33,37 @@ func (c Config) withDefaults() Config {
 }
 
 // Compile generates a Go source file from a checked SNGL document.
-func Compile(doc *ast.Document, pkg *ir.Package, cfg Config) ([]byte, error) {
+// platformDocs contains the parsed platform package (fyne.sngl) with
+// component-to-widget mappings; pass nil when unavailable.
+func Compile(doc *ast.Document, pkg *ir.Package, cfg Config, platformDocs []*ast.Document) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyze(doc, pkg)
-	src := emit(info, doc, cfg)
+
+	// Build a lookup table for platform-specific component overrides
+	// (e.g., sngl.vbox → container.NewVBox).
+	platComps := buildPlatformComponents(platformDocs)
+
+	src := emit(info, doc, cfg, platComps)
 	formatted, err := format.Source(src)
 	if err != nil {
 		return src, fmt.Errorf("generated code formatting error: %w\n%s", err, src)
 	}
 	return formatted, nil
+}
+
+// buildPlatformComponents extracts ComponentDecl entries from the platform
+// package docs so they can be looked up by the names used in user source.
+func buildPlatformComponents(docs []*ast.Document) map[string]*ast.ComponentDecl {
+	m := make(map[string]*ast.ComponentDecl)
+	for _, doc := range docs {
+		for _, s := range doc.Stmts {
+			if c, ok := s.(*ast.ComponentDecl); ok {
+				name := c.Name
+				m[name] = c
+			}
+		}
+	}
+	return m
 }
 
 // analysis types
@@ -255,7 +277,7 @@ func walkStmtsForImports(stmts []ast.Stmt, info *analysisResult) {
 	}
 }
 
-func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
+func emit(info *analysisResult, doc *ast.Document, cfg Config, platComps map[string]*ast.ComponentDecl) []byte {
 	structFields := make(map[string][]string)
 	for _, sd := range info.Structs {
 		var fields []string
@@ -285,6 +307,7 @@ func emit(info *analysisResult, doc *ast.Document, cfg Config) []byte {
 			buf:        &buildBuf,
 			indent:     1,
 			doc:        doc,
+			platComps:  platComps,
 			components: info.Components,
 			info:       info,
 		}
