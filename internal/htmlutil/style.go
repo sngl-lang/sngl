@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // BuildCSSStyle builds a complete inline CSS style string from a visual node's
@@ -27,17 +28,35 @@ func BuildCSSStyle(vn *ast.VisualNode) string {
 	return strings.Join(parts, ";")
 }
 
-// StylePropToCSS converts a SNGL style property and expression to a CSS
-// declaration string. Returns "" if the value cannot be statically resolved.
-// Some properties (paddingX, marginX, maxLines, borderWidth) expand to
-// multiple CSS declarations.
-func StylePropToCSS(prop string, expr ast.Expr) string {
-	val := ExprToStaticValue(expr)
+// BuildCSSStyleIR builds an inline CSS style string from a slice of IR args
+// (typically ir.NodeInst.Props).
+func BuildCSSStyleIR(props []ir.Arg) string {
+	var parts []string
+	for _, p := range props {
+		if p.Name == "" {
+			continue
+		}
+		if css := StylePropToCSSIR(p.Name, p.Value); css != "" {
+			parts = append(parts, css)
+		}
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
+}
+
+// StylePropToCSSIR converts a SNGL style property and IR expression to a CSS
+// declaration string, mirroring StylePropToCSS.
+func StylePropToCSSIR(prop string, expr ir.Expr) string {
+	val := ExprToStaticValueIR(expr)
+	return stylePropCSS(prop, val)
+}
+
+// stylePropCSS is the shared prop→CSS mapping driven by a pre-extracted
+// static value string.
+func stylePropCSS(prop, val string) string {
 	if val == "" {
 		return ""
 	}
-
-	// Handle multi-declaration special cases first.
 	switch prop {
 	case "paddingX":
 		px := addPx(val)
@@ -56,7 +75,6 @@ func StylePropToCSS(prop string, expr ast.Expr) string {
 	case "maxLines":
 		return fmt.Sprintf("-webkit-line-clamp:%s;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical", val)
 	}
-
 	cssProp := PropToCSS(prop)
 	if cssProp == "" {
 		return ""
@@ -65,6 +83,14 @@ func StylePropToCSS(prop string, expr ast.Expr) string {
 		val += "px"
 	}
 	return cssProp + ":" + val
+}
+
+// StylePropToCSS converts a SNGL style property and expression to a CSS
+// declaration string. Returns "" if the value cannot be statically resolved.
+// Some properties (paddingX, marginX, maxLines, borderWidth) expand to
+// multiple CSS declarations.
+func StylePropToCSS(prop string, expr ast.Expr) string {
+	return stylePropCSS(prop, ExprToStaticValue(expr))
 }
 
 // PropToCSS maps a SNGL style property name to its CSS equivalent.

@@ -295,3 +295,32 @@ func IRIsLiteral(e ir.Expr) bool {
 func IRIsReactive(e ir.Expr) bool {
 	return e != nil && !IRIsLiteral(e)
 }
+
+// IRLiteralAny extracts the literal value of an IR expression as any type.
+// Returns nil for non-literals.
+func IRLiteralAny(e ir.Expr) any {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit == nil {
+		return nil
+	}
+	if lit.Type != nil {
+		switch lit.Type.Kind {
+		case ir.TypeString:
+			if s, ok := IRLiteralString(e); ok {
+				return s
+			}
+			return lit.Raw
+		case ir.TypeBool:
+			return lit.Raw == "true"
+		case ir.TypeInt:
+			n, _ := strconv.Atoi(lit.Raw)
+			return n
+		case ir.TypeFloat:
+			f, _ := strconv.ParseFloat(lit.Raw, 64)
+			return f
+		case ir.TypeNull:
+			return nil
+		}
+	}
+	return lit.Raw
+}

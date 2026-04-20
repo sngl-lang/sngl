@@ -40,10 +40,10 @@ func nodePos(n *ir.NodeInst) ast.Pos {
 	return ast.Pos{}
 }
 
-// nodeIsReactiveIR reports whether a NodeInst depends on runtime state
+// nodeIsReactive reports whether a NodeInst depends on runtime state
 // (any prop expression is non-literal, any handler is registered, or an
 // explicit reactive marker is set).
-func (g *htmlGen) nodeIsReactiveIR(n *ir.NodeInst) bool {
+func (g *htmlGen) nodeIsReactive(n *ir.NodeInst) bool {
 	if n == nil {
 		return false
 	}
@@ -58,19 +58,8 @@ func (g *htmlGen) nodeIsReactiveIR(n *ir.NodeInst) bool {
 	return false
 }
 
-// previewAttrsIR returns preview mode data attributes (sngl-line/col) for
-// a NodeInst's source position.
-func (g *htmlGen) previewAttrsIR(n *ir.NodeInst) string {
-	return g.previewAttrs(nodePos(n))
-}
-
 // exprLiteralAnyIR extracts a literal Go value from an IR expression.
-// Returns nil for non-literals or unrepresentable types. Used by
-// renderers that iterate over static list/struct literals (tables,
-// trees, etc.).
+// Thin alias kept for call-site brevity; delegates to codegen.IRLiteralAny.
 func exprLiteralAnyIR(e ir.Expr) any {
-	if e == nil {
-		return nil
-	}
-	return codegen.ExprLiteralAny(ir.ConvertExpr(e))
+	return codegen.IRLiteralAny(e)
 }

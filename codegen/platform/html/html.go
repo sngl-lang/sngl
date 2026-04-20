@@ -657,7 +657,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "spacer":
 		if g.preview {
 			id := g.allocID()
-			fmt.Fprintf(b, "%s<div id=\"%s\" style=\"flex:1\"%s></div>\n", indent, id, g.previewAttrsIR(n))
+			fmt.Fprintf(b, "%s<div id=\"%s\" style=\"flex:1\"%s></div>\n", indent, id, g.previewAttrs(n))
 		} else {
 			fmt.Fprintf(b, "%s<div style=\"flex:1\"></div>\n", indent)
 		}
@@ -665,7 +665,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		id := ""
 		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "overflow", "auto")
-		if g.nodeIsReactiveIR(n) {
+		if g.nodeIsReactive(n) {
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, n, depth)
@@ -701,7 +701,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			maxVal = "1"
 		}
 		id := ""
-		if g.nodeIsReactiveIR(n) || g.preview {
+		if g.nodeIsReactive(n) || g.preview {
 			id = g.allocID()
 		}
 		fmt.Fprintf(b, "%s<progress", indent)
@@ -713,7 +713,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		}
 		fmt.Fprintf(b, " value=\"%s\" max=\"%s\"", value, maxVal)
 		g.writeUserAttrs(b, id, n)
-		b.WriteString(g.previewAttrsIR(n))
+		b.WriteString(g.previewAttrs(n))
 		b.WriteString("></progress>\n")
 		if id != "" {
 			if valExpr := codegen.NodeProp(n, "value"); valExpr != nil {
@@ -739,7 +739,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		style = htmlutil.AppendCSS(style, "font-size", "12px")
 		value := g.evalStaticString(nodeProps(n), "value")
 		id := ""
-		if g.nodeIsReactiveIR(n) || g.preview {
+		if g.nodeIsReactive(n) || g.preview {
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "span", id, style, n, depth)
@@ -755,7 +755,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		href := g.evalStaticString(nodeProps(n), "href")
 		target := g.evalStaticString(nodeProps(n), "target")
 		id := ""
-		if g.nodeIsReactiveIR(n) || g.preview {
+		if g.nodeIsReactive(n) || g.preview {
 			id = g.allocID()
 		}
 		fmt.Fprintf(b, "%s<a", indent)
@@ -770,7 +770,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			b.WriteString(` target="_blank" rel="noopener"`)
 		}
 		g.writeUserAttrs(b, id, n)
-		b.WriteString(g.previewAttrsIR(n))
+		b.WriteString(g.previewAttrs(n))
 		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
 		if h := codegen.NodeHandler(n, "click"); h != nil && h.AST != nil && len(h.AST.Body.Stmts) > 0 {
 			if id == "" {
@@ -802,7 +802,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			if style != "" {
 				fmt.Fprintf(b, " style=\"%s\"", style)
 			}
-			b.WriteString(g.previewAttrsIR(n))
+			b.WriteString(g.previewAttrs(n))
 			b.WriteString(" />\n")
 		}
 
@@ -892,7 +892,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		style = htmlutil.AppendCSS(style, "font-size", "14px")
 		label := g.evalStaticString(nodeProps(n), "label")
 		id := ""
-		if g.nodeIsReactiveIR(n) || g.preview {
+		if g.nodeIsReactive(n) || g.preview {
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "span", id, style, n, depth)
@@ -932,7 +932,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		style = htmlutil.AppendCSS(style, "border-radius", "8px")
 		style = htmlutil.AppendCSS(style, "padding", "16px")
 		id := ""
-		if g.nodeIsReactiveIR(n) || g.preview {
+		if g.nodeIsReactive(n) || g.preview {
 			id = g.allocID()
 		}
 		g.writeOpenTag(b, "div", id, style, n, depth)
@@ -988,7 +988,7 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, n *ir.NodeInst, depth int,
 		}
 	}
 
-	reactive := g.nodeIsReactiveIR(n)
+	reactive := g.nodeIsReactive(n)
 	id := ""
 	if reactive {
 		id = g.allocID()
@@ -1064,7 +1064,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
 	if codegen.IRIsReactive(textExpr) {
@@ -1116,7 +1116,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
 
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	b.WriteString(" />\n")
 
 	// Add value sync updater if the input is bound to state via an
@@ -1163,7 +1163,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 	}
 
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	b.WriteString(">")
 	if checked {
 		b.WriteString("<input type=\"checkbox\" checked />")
@@ -1219,7 +1219,7 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, n *ir.NodeInst, depth in
 
 	g.writeUserAttrs(b, id, n)
 	if g.preview {
-		b.WriteString(g.previewAttrsIR(n))
+		b.WriteString(g.previewAttrs(n))
 	}
 	b.WriteString(" />\n")
 }
@@ -1274,7 +1274,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
@@ -1292,7 +1292,7 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	b.WriteString(">\n")
 	if placeholder != "" {
 		fmt.Fprintf(b, "%s  <option value=\"\" disabled selected>%s</option>\n", indent, html.EscapeString(placeholder))
@@ -1336,7 +1336,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
 	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
 		g.addInputHandler(id, evt.Func.Block)
@@ -1398,7 +1398,7 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, overlayStyle)
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	b.WriteString(">\n")
 	contentStyle := style
 	if contentStyle == "" {
@@ -1486,7 +1486,7 @@ func (g *htmlGen) renderStaticTable(b *strings.Builder, n *ir.NodeInst, depth in
 	style = htmlutil.AppendCSS(style, "border-collapse", "collapse")
 	style = htmlutil.AppendCSS(style, "width", "100%")
 	id := ""
-	if g.nodeIsReactiveIR(n) || g.preview {
+	if g.nodeIsReactive(n) || g.preview {
 		id = g.allocID()
 	}
 	indent := strings.Repeat("  ", depth)
@@ -1557,7 +1557,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
 	g.writeUserAttrs(b, id, n)
-	b.WriteString(g.previewAttrsIR(n))
+	b.WriteString(g.previewAttrs(n))
 	b.WriteString(" />\n")
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
@@ -1580,7 +1580,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	id := ""
-	if g.nodeIsReactiveIR(n) || g.preview || g.testMode {
+	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.allocID()
 	}
 	style := g.buildCSSStyle(n)
@@ -2578,17 +2578,7 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	if n == nil {
 		return ""
 	}
-	var parts []string
-	for _, p := range n.Props {
-		if p.Name == "" {
-			continue
-		}
-		if css := htmlutil.StylePropToCSS(p.Name, ir.ConvertExpr(p.Value)); css != "" {
-			parts = append(parts, css)
-		}
-	}
-	sort.Strings(parts)
-	return strings.Join(parts, ";")
+	return htmlutil.BuildCSSStyleIR(n.Props)
 }
 
 // Expression evaluation helpers
@@ -2867,8 +2857,14 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.No
 	}
 }
 
-func (g *htmlGen) previewAttrs(pos ast.Pos) string {
-	if !g.preview || !pos.IsValid() {
+// previewAttrs returns the preview-mode position data attributes for a
+// node (`data-sngl-line`/`data-sngl-col`), or "" outside preview mode.
+func (g *htmlGen) previewAttrs(n *ir.NodeInst) string {
+	if !g.preview {
+		return ""
+	}
+	pos := nodePos(n)
+	if !pos.IsValid() {
 		return ""
 	}
 	return fmt.Sprintf(" data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)

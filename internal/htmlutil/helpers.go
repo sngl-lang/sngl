@@ -6,7 +6,45 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// ExprToStaticValueIR extracts a static literal value from an IR expression,
+// returning "" for non-literals. Mirrors ExprToStaticValue but consumes ir.Expr.
+func ExprToStaticValueIR(e ir.Expr) string {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit == nil {
+		return ""
+	}
+	return irLiteralStaticValue(lit)
+}
+
+func irLiteralStaticValue(lit *ir.Literal) string {
+	if lit == nil {
+		return ""
+	}
+	// Unit literals carry their suffix separately (e.g. "16"+"px").
+	if lit.Suffix != "" {
+		return lit.Raw
+	}
+	if lit.Type == nil {
+		return lit.Raw
+	}
+	switch lit.Type.Kind {
+	case ir.TypeString:
+		raw := lit.Raw
+		if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) && len(raw) >= 6 {
+			return raw[3 : len(raw)-3]
+		}
+		if len(raw) >= 2 && (raw[0] == '"' || raw[0] == '`') && raw[len(raw)-1] == raw[0] {
+			return raw[1 : len(raw)-1]
+		}
+		return raw
+	case ir.TypeNull:
+		return ""
+	}
+	return lit.Raw
+}
 
 // ExprToStaticValue extracts a static literal value from an expression.
 // Returns "" if the expression is dynamic (not a literal).
