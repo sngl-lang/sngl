@@ -10,7 +10,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -126,10 +125,8 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-			doc = ir.Convert(pkg)
-
 			start = time.Now()
-			if err := generateTarget(filename, doc, pkg, target, outDir, nil, quiet(cmd)); err != nil {
+			if err := generateTarget(filename, pkg, target, outDir, nil, quiet(cmd)); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -132,8 +131,6 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-			targetDoc := ir.Convert(pkg)
-
 			// Convert optimizer file assets to codegen file assets.
 			var fileAssets []codegen.FileAsset
 			for _, fa := range optCfg.FileAssets {
@@ -141,7 +138,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			}
 
 			start = time.Now()
-			if err := generateTarget(filename, targetDoc, pkg, target, outDir, fileAssets, quiet(cmd)); err != nil {
+			if err := generateTarget(filename, pkg, target, outDir, fileAssets, quiet(cmd)); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -163,7 +160,7 @@ func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string
 	return targets
 }
 
-func generateTarget(filename string, doc *ast.Document, pkg *ir.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
+func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
 	lang := codegen.LookupLang(target.Lang)
 	if lang == nil {
 		return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
@@ -180,7 +177,6 @@ func generateTarget(filename string, doc *ast.Document, pkg *ir.Package, target 
 	}
 
 	resp, err := plat.Generate(&codegen.Request{
-		Doc:        doc,
 		Pkg:        pkg,
 		Lang:       lang,
 		Opts:       target.Opts,

@@ -73,8 +73,6 @@ func Compile(source string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	doc = ir.Convert(pkg)
-
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("js")
 	if gen == nil || lang == nil {
@@ -83,7 +81,7 @@ func Compile(source string) string {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc: doc, Lang: lang,
+		Pkg: pkg, Lang: lang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil {
@@ -171,8 +169,6 @@ func Generate(source, platform, lang string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	doc = ir.Convert(pkg)
-
 	gen := codegen.LookupPlatform(platform)
 	if gen == nil {
 		result["error"] = "unknown platform: " + platform
@@ -184,7 +180,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{Doc: doc, Lang: lt})
+	resp, err := gen.Generate(&codegen.Request{Pkg: pkg, Lang: lt})
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)

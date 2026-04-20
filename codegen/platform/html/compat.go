@@ -9,37 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// irStmtToAST extracts the AST statement backpointer from an IR statement.
-func irStmtToAST(s ir.Stmt) ast.Stmt {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		return n.AST
-	case *ir.If:
-		return n.AST
-	case *ir.For:
-		return n.AST
-	case *ir.PlatformFilter:
-		return n.AST
-	case *ir.SlotInst:
-		return n.AST
-	case *ir.Assign:
-		return n.AST
-	case *ir.Toggle:
-		return n.AST
-	case *ir.CallStmt:
-		return n.AST
-	case *ir.Emit:
-		return n.AST
-	case *ir.LocalVar:
-		return n.AST
-	case *ir.Return:
-		return n.AST
-	}
-	return nil
-}
 
 // --- Document helpers ---
 
@@ -113,7 +83,6 @@ func vnChildNodes(vn *ast.VisualNode) []*ast.VisualNode         { return codegen
 
 // --- Expr helpers (delegate to codegen) ---
 
-func exprIsNonNil(e ast.Expr) bool                { return e != nil }
 func exprLiteralString(e ast.Expr) (string, bool) { return codegen.ExprLiteralString(e) }
 func exprLiteralBool(e ast.Expr) (bool, bool)     { return codegen.ExprLiteralBool(e) }
 func exprLiteralInt(e ast.Expr) (int, bool)       { return codegen.ExprLiteralInt(e) }
@@ -157,24 +126,6 @@ func compFuncs(comp *ast.ComponentDecl) []*ast.FuncDef {
 	for _, s := range comp.Body.Stmts {
 		if fn, ok := s.(*ast.FuncDef); ok {
 			out = append(out, fn)
-		}
-	}
-	return out
-}
-
-// compConsts extracts ConstDecl specs from a component body.
-func compConsts(comp *ast.ComponentDecl) []docConst {
-	var out []docConst
-	for _, s := range comp.Body.Stmts {
-		if cd, ok := s.(*ast.ConstDecl); ok {
-			for _, spec := range cd.Specs {
-				for _, name := range spec.Names {
-					out = append(out, docConst{
-						Name: name,
-						Init: spec.Default,
-					})
-				}
-			}
 		}
 	}
 	return out
