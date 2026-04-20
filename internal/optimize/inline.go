@@ -332,6 +332,13 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp := *n
 		cp.Children = cloneStmts(n.Children)
 		return &cp
+	case *ir.Window:
+		cp := *n
+		cp.Href = cloneExpr(n.Href)
+		cp.Title = cloneExpr(n.Title)
+		cp.Favicon = cloneExpr(n.Favicon)
+		cp.Body = cloneStmts(n.Body)
+		return &cp
 	}
 	return s
 }

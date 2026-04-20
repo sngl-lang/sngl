@@ -131,6 +131,9 @@ type EventHandler struct {
 type Window struct {
 	AST     *ast.VisualNode
 	Name    string
+	Href    Expr   // checked href expression (folded during optimization)
+	Title   Expr   // checked title expression
+	Favicon Expr   // checked favicon expression
 	Vars    []*Var
 	Funcs   []*Func
 	Body    []Stmt // type-checked body statements
@@ -139,6 +142,7 @@ type Window struct {
 
 func (w *Window) SymName() string { return w.Name }
 func (w *Window) SymType() *Type  { return nil }
+func (w *Window) stmtNode()       {} // Window can appear as a statement in for-loop bodies
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.

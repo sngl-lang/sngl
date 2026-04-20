@@ -222,6 +222,17 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkStmts(n.Else, used, walk)
 	case *ir.PlatformFilter:
 		walkStmts(n.Body, used, walk)
+	case *ir.Window:
+		walkExpr(n.Href, used, walk)
+		walkExpr(n.Title, used, walk)
+		walkExpr(n.Favicon, used, walk)
+		for _, v := range n.Vars {
+			walk(v)
+		}
+		for _, f := range n.Funcs {
+			walk(f)
+		}
+		walkStmts(n.Body, used, walk)
 	}
 }
 

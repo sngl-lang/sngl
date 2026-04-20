@@ -29,22 +29,42 @@ type ComponentCtx struct {
 }
 
 // Windows returns a WindowCtx for each window in the package.
-// If there are no explicit windows, synthesizes one from the main component.
+// Collects from pkg.Windows (root-level) and from Window statements
+// in the main component body (including those expanded from for-loops).
+// If no windows are found, synthesizes one from the main component.
 func (ctx *CodegenCtx) Windows() []*WindowCtx {
-	if len(ctx.Pkg.Windows) > 0 {
-		out := make([]*WindowCtx, len(ctx.Pkg.Windows))
-		for i, w := range ctx.Pkg.Windows {
-			out[i] = &WindowCtx{
+	var out []*WindowCtx
+
+	// Root-level windows (declared outside any component).
+	for _, w := range ctx.Pkg.Windows {
+		out = append(out, &WindowCtx{
+			Window: w,
+			Vars:   w.Vars,
+			Funcs:  w.Funcs,
+			Body:   w.Body,
+			Name:   w.Name,
+		})
+	}
+
+	// Window statements in main component body.
+	main := ctx.MainComponent()
+	if main != nil {
+		for _, w := range collectWindows(main.Body) {
+			out = append(out, &WindowCtx{
 				Window: w,
 				Vars:   w.Vars,
 				Funcs:  w.Funcs,
 				Body:   w.Body,
 				Name:   w.Name,
-			}
+			})
 		}
+	}
+
+	if len(out) > 0 {
 		return out
 	}
-	main := ctx.MainComponent()
+
+	// No explicit windows — synthesize from main component.
 	if main == nil {
 		return nil
 	}
@@ -56,6 +76,26 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 		Funcs: funcs,
 		Name:  "main",
 	}}
+}
+
+// collectWindows walks a statement tree and returns all Window nodes found
+// at the top level or inside expanded for-loops, if-blocks, and platform filters.
+func collectWindows(stmts []ir.Stmt) []*ir.Window {
+	var windows []*ir.Window
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.Window:
+			windows = append(windows, n)
+		case *ir.If:
+			windows = append(windows, collectWindows(n.Body)...)
+			windows = append(windows, collectWindows(n.Else)...)
+		case *ir.For:
+			windows = append(windows, collectWindows(n.Body)...)
+		case *ir.PlatformFilter:
+			windows = append(windows, collectWindows(n.Body)...)
+		}
+	}
+	return windows
 }
 
 // Components returns a ComponentCtx for each component in the package.

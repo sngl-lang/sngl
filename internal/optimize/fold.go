@@ -124,6 +124,27 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
+	case *ir.Window:
+		if n.Href != nil {
+			n.Href = foldExpr(n.Href, ctx)
+			// Resolve name from folded href literal.
+			if n.Name == "" {
+				if lit, ok := n.Href.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+					if len(lit.Raw) >= 2 && lit.Raw[0] == '"' {
+						n.Name = lit.Raw[1 : len(lit.Raw)-1]
+					} else {
+						n.Name = lit.Raw
+					}
+				}
+			}
+		}
+		if n.Title != nil {
+			n.Title = foldExpr(n.Title, ctx)
+		}
+		if n.Favicon != nil {
+			n.Favicon = foldExpr(n.Favicon, ctx)
+		}
+		n.Body = foldStmts(n.Body, ctx)
 	}
 	return s
 }

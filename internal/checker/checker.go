@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -270,6 +271,12 @@ func (c *checker) registerImport(imp *ast.Import) {
 			for _, e := range native.Enums {
 				nsPkg.Symbols.Types[e.Name] = e
 			}
+			for _, f := range native.Funcs {
+				nsPkg.Symbols.Root.Declare(f)
+			}
+			for _, v := range native.Vars {
+				nsPkg.Symbols.Root.Declare(v)
+			}
 			irImport.Pkg = nsPkg
 		}
 	} else if c.cfg.Resolver != nil {
@@ -282,16 +289,20 @@ func (c *checker) registerImport(imp *ast.Import) {
 			if err != nil {
 				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
-			for _, d := range docs {
-				pkg, diags := Check(d, &Config{
-					FS:        c.cfg.FS,
-					Dir:       c.cfg.Dir,
-					Resolver:  c.cfg.Resolver,
-					Languages: c.cfg.Languages,
-					Platforms: c.cfg.Platforms,
-				})
-				c.diags = append(c.diags, diags...)
-				irImport.Pkg = pkg
+			if len(docs) > 0 {
+				merged := &ir.Package{Symbols: NewSymbolTable()}
+				for _, d := range docs {
+					pkg, diags := Check(d, &Config{
+						FS:        c.cfg.FS,
+						Dir:       c.cfg.Dir,
+						Resolver:  c.cfg.Resolver,
+						Languages: c.cfg.Languages,
+						Platforms: c.cfg.Platforms,
+					})
+					c.diags = append(c.diags, diags...)
+					mergePkgInto(merged, pkg)
+				}
+				irImport.Pkg = merged
 			}
 		}
 	}
@@ -326,43 +337,49 @@ func (c *checker) buildPkgFromDocs(docs []*ast.Document) *ir.Package {
 			Languages: c.cfg.Languages,
 			Platforms: c.cfg.Platforms,
 		})
-		if pkg == nil {
-			continue
-		}
-		merged.Structs = append(merged.Structs, pkg.Structs...)
-		merged.Enums = append(merged.Enums, pkg.Enums...)
-		merged.Units = append(merged.Units, pkg.Units...)
-		merged.Funcs = append(merged.Funcs, pkg.Funcs...)
-		merged.Components = append(merged.Components, pkg.Components...)
-		merged.Vars = append(merged.Vars, pkg.Vars...)
-		merged.Consts = append(merged.Consts, pkg.Consts...)
-		for _, sd := range pkg.Structs {
-			merged.Symbols.Root.Declare(sd)
-			merged.Symbols.Types[sd.Name] = sd
-		}
-		for _, ed := range pkg.Enums {
-			merged.Symbols.Root.Declare(ed)
-			merged.Symbols.Types[ed.Name] = ed
-		}
-		for _, ud := range pkg.Units {
-			merged.Symbols.Root.Declare(ud)
-			merged.Symbols.Types[ud.Name] = ud
-		}
-		for _, fn := range pkg.Funcs {
-			merged.Symbols.Root.Declare(fn)
-		}
-		for _, comp := range pkg.Components {
-			merged.Symbols.Root.Declare(comp)
-			merged.Symbols.Comps[comp.Name] = comp
-		}
-		for _, v := range pkg.Vars {
-			merged.Symbols.Root.Declare(v)
-		}
-		for _, v := range pkg.Consts {
-			merged.Symbols.Root.Declare(v)
-		}
+		mergePkgInto(merged, pkg)
 	}
 	return merged
+}
+
+// mergePkgInto merges all declarations from src into dst, registering symbols.
+func mergePkgInto(dst, src *ir.Package) {
+	if src == nil {
+		return
+	}
+	dst.Structs = append(dst.Structs, src.Structs...)
+	dst.Enums = append(dst.Enums, src.Enums...)
+	dst.Units = append(dst.Units, src.Units...)
+	dst.Funcs = append(dst.Funcs, src.Funcs...)
+	dst.Components = append(dst.Components, src.Components...)
+	dst.Vars = append(dst.Vars, src.Vars...)
+	dst.Consts = append(dst.Consts, src.Consts...)
+	dst.Imports = append(dst.Imports, src.Imports...)
+	for _, sd := range src.Structs {
+		dst.Symbols.Root.Declare(sd)
+		dst.Symbols.Types[sd.Name] = sd
+	}
+	for _, ed := range src.Enums {
+		dst.Symbols.Root.Declare(ed)
+		dst.Symbols.Types[ed.Name] = ed
+	}
+	for _, ud := range src.Units {
+		dst.Symbols.Root.Declare(ud)
+		dst.Symbols.Types[ud.Name] = ud
+	}
+	for _, fn := range src.Funcs {
+		dst.Symbols.Root.Declare(fn)
+	}
+	for _, comp := range src.Components {
+		dst.Symbols.Root.Declare(comp)
+		dst.Symbols.Comps[comp.Name] = comp
+	}
+	for _, v := range src.Vars {
+		dst.Symbols.Root.Declare(v)
+	}
+	for _, v := range src.Consts {
+		dst.Symbols.Root.Declare(v)
+	}
 }
 
 func (c *checker) registerEnum(e *ast.EnumDef) {
@@ -1024,10 +1041,28 @@ func optionFieldNames(sd *ir.StructDef) string {
 }
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	return &ir.Window{
-		AST:  vn,
-		Name: vn.ID,
+	w := &ir.Window{AST: vn, Name: vn.ID}
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok {
+			continue
+		}
+		switch arg.Name {
+		case "href":
+			w.Href = c.checkExpr(arg.Value)
+			// Set static name from literal href.
+			if w.Name == "" {
+				if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
+					w.Name = strings.Trim(lit.Raw, "\"")
+				}
+			}
+		case "title":
+			w.Title = c.checkExpr(arg.Value)
+		case "favicon":
+			w.Favicon = c.checkExpr(arg.Value)
+		}
 	}
+	return w
 }
 
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {

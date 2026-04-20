@@ -35,6 +35,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 				return true
 			}
 		}
+		if _, ok := x.Sym.(*ir.Namespace); ok {
+			return true // namespace refs are compile-time resolvable
+		}
 		return false
 	case *ir.Binary:
 		return isConstExpr(x.Left, ctx) && isConstExpr(x.Right, ctx)
@@ -234,18 +237,20 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// Instance method call: receiver.method(args)
 	if call.Receiver != nil {
 		recv, ok := evalExpr(call.Receiver, ctx)
-		if !ok {
-			return nil, false
-		}
-		if call.Func != nil {
-			// Try qualified method: Type.method
-			qualName := call.Func.Receiver + "." + call.Func.Name
-			if v, ok := evalQualifiedMethod(qualName, append([]any{recv}, args...)); ok {
+		if ok {
+			if call.Func != nil {
+				// Try qualified method: Type.method
+				qualName := call.Func.Receiver + "." + call.Func.Name
+				if v, ok := evalQualifiedMethod(qualName, append([]any{recv}, args...)); ok {
+					return v, true
+				}
+			}
+			// Try by receiver type.
+			if v, ok := evalMethod(methodForReceiver(call, recv), recv, args); ok {
 				return v, true
 			}
 		}
-		// Try by receiver type.
-		return evalMethod(methodForReceiver(call, recv), recv, args)
+		// Receiver eval failed (e.g., namespace ref) — fall through to native call.
 	}
 
 	// Resolved function call.

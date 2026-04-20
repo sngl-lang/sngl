@@ -136,6 +136,11 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		if n.Call != nil {
 			walkAllExprs(n.Call, visit)
 		}
+	case *ir.Window:
+		walkAllExprs(n.Href, visit)
+		walkAllExprs(n.Title, visit)
+		walkAllExprs(n.Favicon, visit)
+		walkForBody(n.Body, visit)
 	}
 }
 

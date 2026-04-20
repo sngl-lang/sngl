@@ -1176,10 +1176,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	switch name {
 	case "window":
 		w := c.buildWindow(vn)
-		c.pkg.Windows = append(c.pkg.Windows, w)
 		c.checkWindowBody(w)
 		w.Checked = true
-		return nil
+		return w
 	case "timer":
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
