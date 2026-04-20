@@ -449,11 +449,17 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer.
 // User components (components with a source AST declaration) inline via
-// their IR body; stdlib and platform-resolved raw elements fall through to
-// the AST-backed per-element helpers.
+// their IR body; stdlib components still go through their AST-backed
+// per-element helpers (port pending); raw/platform-resolved elements
+// (html.div, html.img, arbitrary tags) are rendered IR-native.
 func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if isUserIRComponent(n) {
 		g.renderIRUserComponent(b, n, depth)
+		return
+	}
+	if !isStdlibComponentName(n.Name) {
+		// Raw HTML element / namespace-resolved element (html.div, html.img).
+		g.renderRawElementIR(b, n, depth)
 		return
 	}
 	vn := visualNodeFromIR(n)
@@ -1735,36 +1741,114 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, vn *ast.VisualNode,
 
 const maxComponentDepth = 10
 
-// renderRawElement renders a VisualNode as a raw HTML element.
-// The component name (or its local part for qualified names) is used as the tag.
+// renderRawElement is the AST-path shim invoked by stdlib renderers that
+// iterate vnChildren and may encounter a raw element in their subtree.
+// Constructs a minimal ir.NodeInst from the AST node and forwards to the
+// IR-native implementation.
 func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth int) {
+	g.renderRawElementIR(b, nodeInstFromAST(vn), depth)
+}
+
+// nodeInstFromAST builds a minimal IR NodeInst from an AST VisualNode.
+// Used by the legacy AST-path shims still reachable through per-element
+// stdlib renderers; prop expressions remain ast.Expr so codegen.IRLiteral*
+// helpers — which only accept ir.Expr — must be guarded against them.
+func nodeInstFromAST(vn *ast.VisualNode) *ir.NodeInst {
+	if vn == nil {
+		return nil
+	}
+	n := &ir.NodeInst{
+		AST:  vn,
+		Name: codegen.VisualNodeName(vn),
+	}
+	for _, a := range vn.Args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
+			n.Props = append(n.Props, ir.Arg{Name: arg.Name, Value: astExprToIR(arg.Value)})
+		}
+		if eh, ok := a.(*ast.EventHandler); ok {
+			n.Handlers = append(n.Handlers, ir.EventHandler{AST: eh, Name: eh.Name})
+		}
+	}
+	// Children: AST stmts come through from the original vn.Block; they are
+	// already properly structured — wrap each as a simple synthetic IR
+	// passthrough via NodeInst.AST for nested raw elements.
+	for _, s := range vn.Block.Stmts {
+		if childVN, ok := s.(*ast.VisualNode); ok {
+			n.Children = append(n.Children, nodeInstFromAST(childVN))
+		} else if cs, ok := s.(*ast.CallStmt); ok {
+			if cs.Call != nil {
+				if target, ok := cs.Call.Func.(ast.TargetExpr); ok {
+					synth := &ast.VisualNode{Pos: cs.Pos, Target: target, Args: cs.Call.Args}
+					n.Children = append(n.Children, nodeInstFromAST(synth))
+				}
+			}
+		}
+	}
+	return n
+}
+
+// astExprToIR wraps an ast.Expr as a literal-bearing ir.Literal when it's
+// an ast.LiteralExpr, otherwise returns nil. Sufficient for the shim path,
+// which only inspects literal-ness of props.
+func astExprToIR(e ast.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	if lit, ok := e.(*ast.LiteralExpr); ok {
+		var t *ir.Type
+		switch lit.Kind {
+		case ast.LiteralInt:
+			t = &ir.Type{Kind: ir.TypeInt}
+		case ast.LiteralFloat:
+			t = &ir.Type{Kind: ir.TypeFloat}
+		case ast.LiteralBool:
+			t = &ir.Type{Kind: ir.TypeBool}
+		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+			t = &ir.Type{Kind: ir.TypeString}
+		default:
+			t = &ir.Type{Kind: ir.TypeDyn}
+		}
+		return &ir.Literal{AST: lit, Type: t, Raw: lit.Raw}
+	}
+	// Non-literal AST expressions are opaque to the IR path in the shim.
+	return &ir.Ident{AST: &ast.IdentExpr{}, Type: &ir.Type{Kind: ir.TypeDyn}}
+}
+
+// renderRawElementIR renders an IR NodeInst as a raw HTML element. The
+// component name (or its local part for qualified names like html.div) is
+// used as the tag. Props and children come from IR; a synthesized AST
+// node is built locally for helpers that still accept ast.VisualNode
+// (writeUserAttrs / writeOpenTag / exprDeps).
+func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth int) {
 	indent := strings.Repeat("  ", depth)
 	// Extract tag name: "html.div" → "div", "button" → "button"
-	tag := vnName(vn)
+	tag := n.Name
 	if _, local, ok := strings.Cut(tag, "."); ok {
 		tag = local
 	}
 
 	id := ""
-	if g.nodeIsReactive(vn) || g.preview || g.testMode {
+	if g.nodeIsReactiveIR(n) || g.preview || g.testMode {
 		id = g.allocID()
 	}
+	vn := visualNodeFromIR(n)
 	style := g.buildCSSStyle(vn)
 
 	// Build inline attributes from static props.
 	// innerText and innerHTML are rendered as element content, not attributes.
+	props := nodeProps(n)
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""
-	for name, expr := range vnProps(vn) {
+	for name, expr := range props {
 		// class is emitted separately below to avoid duplicate attrs.
 		if name == "style" || name == "class" {
 			continue
 		}
 		// Try resolving SNGL expressions (e.g. component param references)
 		// to static values for the initial HTML render.
-		if exprIsReactive(expr) {
-			if val := g.evalInitialString(expr); val != "" {
+		if codegen.IRIsReactive(expr) {
+			if val := g.evalInitialStringIR(expr); val != "" {
 				switch name {
 				case "innerHTML":
 					staticInnerHTML = val
@@ -1775,24 +1859,24 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 				}
 				continue
 			}
+			continue
 		}
-		if !exprIsReactive(expr) {
-			val := g.evalStaticString(vnProps(vn), name)
-			switch name {
-			case "innerText":
-				staticInnerText = val
-			case "innerHTML":
-				staticInnerHTML = val
-			default:
-				if bv, ok := exprLiteralBool(expr); ok {
-					if bv {
-						fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
-					}
-				} else if exprIsLiteral(expr) {
-					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
-				} else if val != "" {
-					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+		// Literal / static.
+		val := g.evalStaticStringIR(props, name)
+		switch name {
+		case "innerText":
+			staticInnerText = val
+		case "innerHTML":
+			staticInnerHTML = val
+		default:
+			if bv, ok := codegen.IRLiteralBool(expr); ok {
+				if bv {
+					fmt.Fprintf(&attrs, " %s", html.EscapeString(name))
 				}
+			} else if codegen.IRIsLiteral(expr) {
+				fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
+			} else if val != "" {
+				fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
 			}
 		}
 	}
@@ -1806,8 +1890,8 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, " id=\"%s\"", id)
 	}
 	// Emit static class for raw HTML elements
-	if exprIsLiteral(vnProp(vn, "class")) {
-		if s, ok := exprLiteralString(vnProp(vn, "class")); ok && s != "" {
+	if classExpr := props["class"]; codegen.IRIsLiteral(classExpr) {
+		if s, ok := codegen.IRLiteralString(classExpr); ok && s != "" {
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}
@@ -1815,12 +1899,10 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	b.WriteString(attrs.String())
-	if vn != nil {
-
-		g.writeUserAttrs(b, id, vn)
-	}
-	if g.preview && vn.Pos.IsValid() {
-		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", vn.Pos.Line, vn.Pos.Column)
+	g.writeUserAttrs(b, id, vn)
+	pos := nodePos(n)
+	if g.preview && pos.IsValid() {
+		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
 	}
 
 	// Self-closing tags
@@ -1839,8 +1921,8 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
-			for _, s := range vnChildren(vn) {
-				g.renderStaticStmt(b, s, depth+1)
+			for _, s := range n.Children {
+				g.renderIRStmt(b, s, depth+1)
 			}
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
@@ -1851,18 +1933,17 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 
 	// Reactive props: set via JS updaters
-	for name, expr := range vnProps(vn) {
+	for name, expr := range props {
 		if name == "style" {
 			continue
 		}
-		if exprIsReactive(expr) {
-			jsVal := g.exprToJS(expr)
-			deps := g.exprDeps(expr)
+		if codegen.IRIsReactive(expr) {
+			jsVal := g.exprToJSIR(expr)
+			deps := g.exprDeps(ir.ConvertExpr(expr))
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
 			switch name {
 			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled":
-				// DOM properties — set directly, not via setAttribute
 				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
 			default:
 				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
@@ -1876,16 +1957,20 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 
 	// Wire up events
-	for name, expr := range vnEvents(vn) {
-		switch name {
+	for i := range n.Handlers {
+		h := &n.Handlers[i]
+		if h.AST == nil {
+			continue
+		}
+		switch h.Name {
 		case "click":
-			g.addClickHandler(id, expr.Body)
+			g.addClickHandler(id, h.AST.Body)
 		case "input":
-			g.addInputHandler(id, expr.Body)
+			g.addInputHandler(id, h.AST.Body)
 		case "change":
-			g.addChangeHandler(id, expr.Body)
+			g.addChangeHandler(id, h.AST.Body)
 		default:
-			g.addClickHandler(id, expr.Body) // fallback
+			g.addClickHandler(id, h.AST.Body)
 		}
 	}
 }
@@ -2048,10 +2133,8 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, depth int) {
 	comp := n.Component
 	if comp == nil {
-		// Unresolved — fall through to AST-backed raw element render.
-		if vn := visualNodeFromIR(n); vn != nil {
-			g.renderRawElement(b, vn, depth)
-		}
+		// Unresolved — fall through to raw element render.
+		g.renderRawElementIR(b, n, depth)
 		return
 	}
 
