@@ -1,8 +1,8 @@
 package html
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // wasmPackage describes an imported package that needs WASM compilation.
@@ -16,6 +16,6 @@ type wasmPackage struct {
 // that need WASM compilation. In v2, native imports are resolved at the
 // codegen pipeline level, so this currently returns nil.
 // TODO: re-implement when v2 import resolution is wired through.
-func collectWASMPackages(_ *ast.Document) []wasmPackage {
+func collectWASMPackages(_ *ir.Package) []wasmPackage {
 	return nil
 }

@@ -77,7 +77,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	// Build WASM for imported packages that have runtime-used functions.
 	var wasmLoaderHTML string
-	wasmPkgs := collectWASMPackages(req.Doc)
+	wasmPkgs := collectWASMPackages(req.Pkg)
 	if len(wasmPkgs) > 0 {
 		projectDir := req.Options["projectDir"]
 		wasmExecAdded := false
@@ -126,41 +126,37 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	}
 	ctx := codegen.NewCodegenCtx(req, "html")
 
-	// Use IR windows when available, fall back to AST window extraction.
+	// IR-driven rendering: one file per window. Packages with no main
+	// component and no explicit windows still emit an empty index.html so
+	// callers can verify codegen at least succeeded.
 	irWindows := ctx.Windows()
-	if len(irWindows) <= 1 {
+	if len(irWindows) == 0 {
 		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
-		gen.doc = req.Doc // keep Doc for rendering fallback
 		gen.wasmLoader = wasmLoaderHTML
 		gen.stylesheet = stylesheetURL
-		if len(irWindows) == 1 {
-			win := irWindows[0]
-			gen.irBodyStmts = win.Body
-			// Extract window props from IR
-			if win.Window != nil && win.Window.AST != nil {
-				gen.title = staticPropString(vnProps(win.Window.AST), "title")
-				gen.favicon = staticPropString(vnProps(win.Window.AST), "favicon")
-			}
-		}
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 		files = append(files, codegen.BytesFile("index.html", []byte(src)))
 		return &codegen.Response{Files: files}, nil
 	}
+	singleWindow := len(irWindows) == 1
 	for _, win := range irWindows {
 		name := win.Name
-		if name == "" || name == "main" || name == "index" {
+		if singleWindow || name == "" || name == "main" || name == "index" {
 			name = "index.html"
 		} else if !strings.HasSuffix(name, ".html") {
 			name = name + ".html"
 		}
 		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
-		gen.doc = req.Doc
 		gen.wasmLoader = wasmLoaderHTML
 		gen.stylesheet = stylesheetURL
 		gen.irBodyStmts = win.Body
-		if win.Window != nil && win.Window.AST != nil {
-			gen.title = staticPropString(vnProps(win.Window.AST), "title")
-			gen.favicon = staticPropString(vnProps(win.Window.AST), "favicon")
+		if win.Window != nil {
+			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
+				gen.title = s
+			}
+			if s, ok := codegen.IRLiteralString(win.Window.Favicon); ok {
+				gen.favicon = s
+			}
 		}
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 		files = append(files, codegen.BytesFile(name, []byte(src)))
@@ -168,27 +164,11 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	return &codegen.Response{Files: files}, nil
 }
 
-// staticPropString extracts a static string value from a props map.
-func staticPropString(props map[string]ast.Expr, key string) string {
-	if props == nil {
-		return ""
-	}
-	e, ok := props[key]
-	if !ok {
-		return ""
-	}
-	if s, ok := exprLiteralString(e); ok {
-		return s
-	}
-	return ""
-}
-
 // htmlGen holds all state for generating a single HTML file.
 type htmlGen struct {
-	doc  *ast.Document
 	lang codegen.LangTranslator
 
-	// v2: type-checked package and expression context
+	// Type-checked package and expression context (IR-driven).
 	pkg        *ir.Package
 	translator codegen.ExprTranslator
 	ctx        *codegen.ExprCtx
@@ -250,10 +230,7 @@ type htmlGen struct {
 	// irSlotChildren is the IR equivalent of slotChildren for the IR path.
 	irSlotChildren []ir.Stmt
 
-	// bodyStmts overrides the main component body when generating per-window pages
-	bodyStmts []ast.Stmt
-
-	// irBodyStmts is the IR-based body for rendering (used when Doc is not available)
+	// irBodyStmts is the IR body rendered for the current window.
 	irBodyStmts []ir.Stmt
 }
 
@@ -284,11 +261,10 @@ type timerDef struct {
 	mutated    map[string]bool
 }
 
-func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
 	common := codegen.AnalyzeCommon(pkg)
 
 	g := &htmlGen{
-		doc:            doc,
 		pkg:            pkg,
 		lang:           lang,
 		CommonAnalysis: common,
@@ -296,7 +272,6 @@ func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator,
 		testMode:       opts["test"] == "true",
 	}
 
-	// Build scope from common analysis, adding const names as local vars
 	g.scope = &codegen.ExprScope{
 		ModelFields:    common.ModelFields,
 		ComputedFields: common.ComputedFields,
@@ -306,12 +281,6 @@ func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator,
 		LocalVars:      make(map[string]bool),
 		NeededHelpers:  common.Helpers,
 	}
-	if doc != nil {
-		for _, c := range docConsts(doc) {
-			g.scope.LocalVars[c.Name] = true
-		}
-	}
-	// Also add consts from IR if available
 	if pkg != nil {
 		for _, c := range pkg.Consts {
 			g.scope.LocalVars[c.Name] = true
@@ -326,8 +295,7 @@ func newHTMLGen(doc *ast.Document, pkg *ir.Package, lang codegen.LangTranslator,
 
 // newHTMLGenFromCtx creates an htmlGen from CodegenCtx (IR-first path).
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
-	g := newHTMLGen(nil, ctx.Pkg, lang, opts)
-	// Set up IR body from main component
+	g := newHTMLGen(ctx.Pkg, lang, opts)
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		g.ctx = ctx.ExprCtx.ForComponent(main)
@@ -370,16 +338,9 @@ func (g *htmlGen) generate() string {
 	}
 	b.WriteString("</head><body>\n\n")
 
-	// Render static HTML body — IR-driven when available, AST fallback
-	// only for the deprecated bodyStmts override path (per-window AST docs).
-	if len(g.bodyStmts) > 0 {
-		for _, s := range g.bodyStmts {
-			g.renderStaticStmt(&b, s, 0)
-		}
-	} else if len(g.irBodyStmts) > 0 {
-		for _, s := range g.irBodyStmts {
-			g.renderIRStmt(&b, s, 0)
-		}
+	// Render static HTML body via IR dispatch.
+	for _, s := range g.irBodyStmts {
+		g.renderIRStmt(&b, s, 0)
 	}
 
 	// Emit component-registered CSS (populated during tree rendering above).
@@ -542,6 +503,75 @@ func visualNodeFromIR(n *ir.NodeInst) *ast.VisualNode {
 		}
 	}
 	return nil
+}
+
+// stateVars returns all state (non-const) variables for the compiled
+// package — top-level pkg.Vars merged with the main component's Vars.
+func (g *htmlGen) stateVars() []*ir.Var {
+	var out []*ir.Var
+	if g.pkg != nil {
+		out = append(out, g.pkg.Vars...)
+		if main := mainIRComponent(g.pkg); main != nil {
+			out = append(out, main.Vars...)
+		}
+	}
+	return out
+}
+
+// pkgStructs returns all struct definitions reachable from the main package.
+func (g *htmlGen) pkgStructs() []*ir.StructDef {
+	if g.pkg == nil {
+		return nil
+	}
+	return g.pkg.Structs
+}
+
+// pkgFuncs returns user-defined top-level funcs plus main component funcs.
+func (g *htmlGen) pkgFuncs() []*ir.Func {
+	if g.pkg == nil {
+		return nil
+	}
+	out := append([]*ir.Func{}, g.pkg.Funcs...)
+	if main := mainIRComponent(g.pkg); main != nil {
+		out = append(out, main.Funcs...)
+	}
+	return out
+}
+
+// pkgConsts returns all consts (top-level + main component).
+func (g *htmlGen) pkgConsts() []*ir.Var {
+	if g.pkg == nil {
+		return nil
+	}
+	out := append([]*ir.Var{}, g.pkg.Consts...)
+	if main := mainIRComponent(g.pkg); main != nil {
+		for _, v := range main.Vars {
+			if v.IsConst {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
+}
+
+// mainIRComponent returns the main component of a package, or nil.
+func mainIRComponent(pkg *ir.Package) *ir.Component {
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			return c
+		}
+	}
+	return nil
+}
+
+// irExprToAST reconstructs an AST expression from an IR expression so that
+// existing AST-oriented helpers (literalToJS, exprToJS) can consume it. A
+// thin wrapper over ir.ConvertExpr for readability at call sites.
+func irExprToAST(e ir.Expr) ast.Expr {
+	if e == nil {
+		return nil
+	}
+	return ir.ConvertExpr(e)
 }
 
 // irPlatformBody returns the platform-specific override body if any
@@ -1788,40 +1818,41 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 }
 
 // findUserComponent resolves a component by name, supporting both bare
-// ("Foo") and namespace-qualified ("pkg.Foo") forms. Searches the local AST
-// document first, then the IR package's merged symbol table (which includes
-// imported package components).
+// ("Foo") and namespace-qualified ("pkg.Foo") forms. Backed entirely by the
+// IR package's symbol table so imported-package components are reachable.
 func (g *htmlGen) findUserComponent(name string) *ast.ComponentDecl {
-	if name == "" {
+	c := g.findIRComponent(name)
+	if c == nil || c.AST == nil {
 		return nil
 	}
-	if g.doc != nil {
-		if comp := codegen.FindComponent(g.doc, name); comp != nil {
-			return comp
-		}
-	}
-	if g.pkg == nil {
+	return c.AST
+}
+
+// findIRComponent is the IR-first component lookup used by both the AST
+// fallback (via findUserComponent) and the IR dispatch path.
+func (g *htmlGen) findIRComponent(name string) *ir.Component {
+	if name == "" || g.pkg == nil {
 		return nil
 	}
-	// Qualified lookup via import namespaces.
 	if ns, field, ok := strings.Cut(name, "."); ok {
 		for _, imp := range g.pkg.Imports {
 			if imp.Alias != ns || imp.Pkg == nil {
 				continue
 			}
 			if sym, ok := imp.Pkg.Symbols.LookupComponent(field); ok {
-				if c, ok := sym.(*ir.Component); ok && c.AST != nil {
-					return c.AST
+				if c, ok := sym.(*ir.Component); ok {
+					return c
 				}
 			}
 		}
 		return nil
 	}
-	if g.pkg.Symbols != nil {
-		if sym, ok := g.pkg.Symbols.LookupComponent(name); ok {
-			if c, ok := sym.(*ir.Component); ok && c.AST != nil {
-				return c.AST
-			}
+	if g.pkg.Symbols == nil {
+		return nil
+	}
+	if sym, ok := g.pkg.Symbols.LookupComponent(name); ok {
+		if c, ok := sym.(*ir.Component); ok {
+			return c
 		}
 	}
 	return nil
@@ -2069,15 +2100,17 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// State initialization
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
-	for _, dv := range docVars(g.doc) {
-		val := g.literalToJS(dv.Init)
+	stateVars := g.stateVars()
+	for _, dv := range stateVars {
+		val := g.literalToJS(irExprToAST(dv.Init))
 		stateFields = append(stateFields, dv.Name+": "+val)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n\n")
 
 	// Struct constructors
-	for _, sd := range docStructs(g.doc) {
+	structs := g.pkgStructs()
+	for _, sd := range structs {
 		var params []string
 		var body []string
 		for _, f := range sd.Fields {
@@ -2087,17 +2120,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
 	}
-	if len(docStructs(g.doc)) > 0 {
+	if len(structs) > 0 {
 		b.WriteString("\n")
 	}
 
 	// Computed functions (zero-arg expression-form)
+	funcs := g.pkgFuncs()
 	hasComputed := false
-	for _, fn := range docFuncs(g.doc) {
-		if fn.Body != nil && len(fn.Params.Params) == 0 {
-			body := g.exprToJS(fn.Body)
-			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
-			hasComputed = true
+	for _, fn := range funcs {
+		if len(fn.Params) == 0 && len(fn.Block) == 1 {
+			if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+				body := g.exprToJS(irExprToAST(ret.Value))
+				fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+				hasComputed = true
+			}
 		}
 	}
 	if hasComputed {
@@ -2106,16 +2142,18 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// User-defined functions
 	emittedFuncs := false
-	for _, fn := range docFuncs(g.doc) {
-		g.emitJSFunc(b, fn)
-		emittedFuncs = true
+	for _, fn := range funcs {
+		if fn.AST != nil {
+			g.emitJSFunc(b, fn.AST)
+			emittedFuncs = true
+		}
 	}
 	if emittedFuncs {
 		b.WriteString("\n")
 	}
 
 	// Setters — emit for fields with @change handlers, timer controls, or preview mode
-	for _, dv := range docVars(g.doc) {
+	for _, dv := range stateVars {
 		needsSetter := g.preview
 		for _, h := range dv.Handlers {
 			if h.Name == "change" {
@@ -2141,8 +2179,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			fmt.Fprintf(b, "  %s();\n", u.funcName)
 		}
 		for _, h := range dv.Handlers {
-			if h.Name == "change" {
-				for _, s := range h.Body.Stmts {
+			if h.Name == "change" && h.AST != nil {
+				for _, s := range h.AST.Body.Stmts {
 					stmts := g.lang.TranslateMutation(s, g.scope)
 					for _, js := range stmts {
 						fmt.Fprintf(b, "  %s;\n", js)
@@ -2167,11 +2205,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	b.WriteString("\n")
 
 	// Constants
-	for _, c := range docConsts(g.doc) {
-		val := g.literalToJS(c.Init)
+	consts := g.pkgConsts()
+	for _, c := range consts {
+		val := g.literalToJS(irExprToAST(c.Init))
 		fmt.Fprintf(b, "const %s = %s;\n", c.Name, val)
 	}
-	if len(docConsts(g.doc)) > 0 {
+	if len(consts) > 0 {
 		b.WriteString("\n")
 	}
 
