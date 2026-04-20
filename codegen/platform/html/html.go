@@ -496,23 +496,21 @@ func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
 	}
 }
 
-// renderIRFor emits a for-loop placeholder; updater is registered from the
-// AST back-ref so the existing JS-emission path is reused.
+// renderIRFor emits a for-loop placeholder and registers list/else updaters
+// from the IR body.
 func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
 	indent := strings.Repeat("  ", depth)
 	id := g.allocID()
 	fmt.Fprintf(b, "%s<div id=\"%s\"></div>\n", indent, id)
-	if n.AST != nil {
-		g.addForStmtUpdater(id, n.AST)
-		if len(n.Else) > 0 {
-			elseID := g.allocID()
-			fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-			for _, s := range n.Else {
-				g.renderIRStmt(b, s, depth+1)
-			}
-			fmt.Fprintf(b, "%s</div>\n", indent)
-			g.addForElseStmtUpdater(id, elseID, n.AST)
+	g.addForStmtUpdater(id, n)
+	if len(n.Else) > 0 {
+		elseID := g.allocID()
+		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+		for _, s := range n.Else {
+			g.renderIRStmt(b, s, depth+1)
 		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+		g.addForElseStmtUpdater(id, elseID, n)
 	}
 }
 
@@ -635,16 +633,6 @@ func mainIRComponent(pkg *ir.Package) *ir.Component {
 	return nil
 }
 
-// irExprToAST reconstructs an AST expression from an IR expression so that
-// existing AST-oriented helpers (literalToJS, exprToJS) can consume it. A
-// thin wrapper over ir.ConvertExpr for readability at call sites.
-func irExprToAST(e ir.Expr) ast.Expr {
-	if e == nil {
-		return nil
-	}
-	return ir.ConvertExpr(e)
-}
-
 // irPlatformBody returns the platform-specific override body if any
 // PlatformFilter entries match platform; otherwise returns the original
 // statements (with any non-matching PlatformFilters dropped).
@@ -681,51 +669,6 @@ func isStdlibComponentName(name string) bool {
 	return false
 }
 
-// isComponent reports whether a call expression targets a known component
-// (local, imported, or platform-resolved raw element like html.img).
-func (g *htmlGen) isComponent(call *ast.CallExpr) bool {
-	if g.pkg == nil || g.pkg.Symbols == nil {
-		// No type info — assume component (legacy fallback).
-		if call == nil {
-			return false
-		}
-		_, ok := call.Func.(ast.TargetExpr)
-		return ok
-	}
-	name := callTargetName(call)
-	if name == "" {
-		return false
-	}
-	if _, ok := g.pkg.Symbols.LookupComponent(name); ok {
-		return true
-	}
-	// Qualified call: check imported package component or namespace Resolve()
-	// (platform raw elements like html.img; package-exported components).
-	ns, field, ok := strings.Cut(name, ".")
-	if !ok {
-		return false
-	}
-	for _, imp := range g.pkg.Imports {
-		if imp.Alias != ns {
-			continue
-		}
-		if imp.Pkg != nil {
-			if _, ok := imp.Pkg.Symbols.LookupComponent(field); ok {
-				return true
-			}
-		}
-	}
-	// Platform Resolve (html.div, html.img, etc.).
-	if sym, ok := g.pkg.Symbols.Root.Lookup(ns); ok {
-		if nsSym, ok := sym.(*ir.Namespace); ok && nsSym.Resolve != nil {
-			if nsSym.Resolve(field) != nil {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // isFunction reports whether a visual node name resolves to a function (not component).
 func (g *htmlGen) isFunction(name string) bool {
 	if g.pkg == nil || g.pkg.Symbols == nil {
@@ -739,22 +682,6 @@ func (g *htmlGen) isFunction(name string) bool {
 		return isFunc
 	}
 	return false
-}
-
-// callTargetName extracts the identifier name from a call expression target.
-func callTargetName(call *ast.CallExpr) string {
-	if call == nil {
-		return ""
-	}
-	switch t := call.Func.(type) {
-	case *ast.IdentExpr:
-		return t.Name
-	case *ast.SelectExpr:
-		if id, ok := t.Operand.(*ast.IdentExpr); ok {
-			return id.Name + "." + t.Field
-		}
-	}
-	return ""
 }
 
 
@@ -788,20 +715,20 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		}
 	case "scroll":
 		id := ""
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "overflow", "auto")
 		if g.nodeIsReactiveIR(n) {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "div", id, style, n, depth)
+		g.writeOpenTag(b, "div", id, style, n, depth)
 		for _, s := range n.Children {
 			g.renderIRStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
 	case "stack":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "position", "relative")
-		g.writeOpenTagIR(b, "div", "", style, n, depth)
+		g.writeOpenTag(b, "div", "", style, n, depth)
 		for _, s := range n.Children {
 			g.renderIRStmt(b, s, depth+1)
 		}
@@ -819,9 +746,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 
 	// --- Tier 2: Feedback & Navigation ---
 	case "progress":
-		style := g.buildCSSStyleIR(n)
-		value := g.evalStaticStringIR(nodeProps(n), "value")
-		maxVal := g.evalStaticStringIR(nodeProps(n), "max")
+		style := g.buildCSSStyle(n)
+		value := g.evalStaticString(nodeProps(n), "value")
+		maxVal := g.evalStaticString(nodeProps(n), "max")
 		if maxVal == "" {
 			maxVal = "1"
 		}
@@ -837,7 +764,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			fmt.Fprintf(b, " style=\"%s\"", style)
 		}
 		fmt.Fprintf(b, " value=\"%s\" max=\"%s\"", value, maxVal)
-		g.writeUserAttrsIR(b, id, n)
+		g.writeUserAttrs(b, id, n)
 		b.WriteString(g.previewAttrsIR(n))
 		b.WriteString("></progress>\n")
 		if id != "" {
@@ -848,26 +775,26 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "spinner":
 		g.CommonAnalysis.AddStyle("@keyframes sngl-spin { to { transform: rotate(360deg); } }")
 		g.CommonAnalysis.AddStyle(".sngl-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sngl-spin 0.75s linear infinite; vertical-align: middle; }")
-		style := g.buildCSSStyleIR(n)
-		label := g.evalStaticStringIR(nodeProps(n), "label")
+		style := g.buildCSSStyle(n)
+		label := g.evalStaticString(nodeProps(n), "label")
 		id := ""
 		if g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "span", id, style, n, depth)
+		g.writeOpenTag(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "<span class=\"sngl-spinner\"></span> %s</span>\n", html.EscapeString(label))
 	case "badge":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "inline-block")
 		style = htmlutil.AppendCSS(style, "padding", "2px 8px")
 		style = htmlutil.AppendCSS(style, "border-radius", "12px")
 		style = htmlutil.AppendCSS(style, "font-size", "12px")
-		value := g.evalStaticStringIR(nodeProps(n), "value")
+		value := g.evalStaticString(nodeProps(n), "value")
 		id := ""
 		if g.nodeIsReactiveIR(n) || g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "span", id, style, n, depth)
+		g.writeOpenTag(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
 		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
 			g.addTextUpdater(id, codegen.NodeProp(n, "value"))
@@ -875,10 +802,10 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "tabs":
 		g.renderStaticTabs(b, n, depth)
 	case "link":
-		style := g.buildCSSStyleIR(n)
-		text := g.evalStaticStringIR(nodeProps(n), "text")
-		href := g.evalStaticStringIR(nodeProps(n), "href")
-		target := g.evalStaticStringIR(nodeProps(n), "target")
+		style := g.buildCSSStyle(n)
+		text := g.evalStaticString(nodeProps(n), "text")
+		href := g.evalStaticString(nodeProps(n), "href")
+		target := g.evalStaticString(nodeProps(n), "target")
 		id := ""
 		if g.nodeIsReactiveIR(n) || g.preview {
 			id = g.allocID()
@@ -894,7 +821,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		if target == "blank" {
 			b.WriteString(` target="_blank" rel="noopener"`)
 		}
-		g.writeUserAttrsIR(b, id, n)
+		g.writeUserAttrs(b, id, n)
 		b.WriteString(g.previewAttrsIR(n))
 		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
 		if h := codegen.NodeHandler(n, "click"); h != nil && h.AST != nil && len(h.AST.Body.Stmts) > 0 {
@@ -904,8 +831,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			g.addClickHandler(id, h.Func.Block)
 		}
 	case "divider":
-		style := g.buildCSSStyleIR(n)
-		label := g.evalStaticStringIR(nodeProps(n), "label")
+		style := g.buildCSSStyle(n)
+		label := g.evalStaticString(nodeProps(n), "label")
 		id := ""
 		if g.preview {
 			id = g.allocID()
@@ -914,7 +841,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			style = htmlutil.AppendCSS(style, "display", "flex")
 			style = htmlutil.AppendCSS(style, "align-items", "center")
 			style = htmlutil.AppendCSS(style, "gap", "8px")
-			g.writeOpenTagIR(b, "div", id, style, n, depth)
+			g.writeOpenTag(b, "div", id, style, n, depth)
 			fmt.Fprintf(b, "<hr style=\"flex:1;border:none;border-top:1px solid #ccc\"/>")
 			fmt.Fprintf(b, "<span>%s</span>", html.EscapeString(label))
 			fmt.Fprintf(b, "<hr style=\"flex:1;border:none;border-top:1px solid #ccc\"/>")
@@ -938,7 +865,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		g.renderStaticConditionalContainer(b, n, depth, "div")
 	case "tooltip":
 		// Wrap child with title attribute
-		title := g.evalStaticStringIR(nodeProps(n), "text")
+		title := g.evalStaticString(nodeProps(n), "text")
 		fmt.Fprintf(b, "%s<div title=\"%s\">\n", indent, html.EscapeString(title))
 		for _, s := range n.Children {
 			g.renderIRStmt(b, s, depth+1)
@@ -949,9 +876,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "accordion":
 		g.renderStaticAccordion(b, n, depth)
 	case "splitview":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "flex")
-		direction := g.evalStaticStringIR(nodeProps(n), "direction")
+		direction := g.evalStaticString(nodeProps(n), "direction")
 		if direction == "vertical" {
 			style = htmlutil.AppendCSS(style, "flex-direction", "column")
 		} else {
@@ -961,7 +888,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		if g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "div", id, style, n, depth)
+		g.writeOpenTag(b, "div", id, style, n, depth)
 		for i, s := range n.Children {
 			if i > 0 {
 				fmt.Fprintf(b, "%s  <div style=\"width:4px;background:#ccc;cursor:col-resize\"></div>\n", indent)
@@ -980,17 +907,17 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "menu":
 		g.renderStaticConditionalContainer(b, n, depth, "div")
 	case "menubar":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "flex")
 		style = htmlutil.AppendCSS(style, "gap", "4px")
 		id := ""
 		if g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "nav", id, style, n, depth)
+		g.writeOpenTag(b, "nav", id, style, n, depth)
 		fmt.Fprintf(b, "</nav>\n")
 	case "toolbar":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "flex")
 		style = htmlutil.AppendCSS(style, "gap", "4px")
 		style = htmlutil.AppendCSS(style, "align-items", "center")
@@ -998,7 +925,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		if g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "div", id, style, n, depth)
+		g.writeOpenTag(b, "div", id, style, n, depth)
 		for _, s := range n.Children {
 			g.renderIRStmt(b, s, depth+1)
 		}
@@ -1008,23 +935,23 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "datepicker":
 		g.renderStaticDatepicker(b, n, depth)
 	case "chip":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "inline-flex")
 		style = htmlutil.AppendCSS(style, "align-items", "center")
 		style = htmlutil.AppendCSS(style, "padding", "4px 12px")
 		style = htmlutil.AppendCSS(style, "border-radius", "16px")
 		style = htmlutil.AppendCSS(style, "border", "1px solid #ccc")
 		style = htmlutil.AppendCSS(style, "font-size", "14px")
-		label := g.evalStaticStringIR(nodeProps(n), "label")
+		label := g.evalStaticString(nodeProps(n), "label")
 		id := ""
 		if g.nodeIsReactiveIR(n) || g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "span", id, style, n, depth)
+		g.writeOpenTag(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "%s", html.EscapeString(label))
 		b.WriteString("</span>\n")
 	case "avatar":
-		style := g.buildCSSStyleIR(n)
+		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "inline-flex")
 		style = htmlutil.AppendCSS(style, "align-items", "center")
 		style = htmlutil.AppendCSS(style, "justify-content", "center")
@@ -1033,19 +960,19 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		style = htmlutil.AppendCSS(style, "height", "40px")
 		style = htmlutil.AppendCSS(style, "background", "#ccc")
 		style = htmlutil.AppendCSS(style, "font-weight", "bold")
-		initials := g.evalStaticStringIR(nodeProps(n), "initials")
+		initials := g.evalStaticString(nodeProps(n), "initials")
 		if initials == "" {
-			initials = g.evalStaticStringIR(nodeProps(n), "alt")
+			initials = g.evalStaticString(nodeProps(n), "alt")
 		}
 		id := ""
 		if g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "div", id, style, n, depth)
+		g.writeOpenTag(b, "div", id, style, n, depth)
 		fmt.Fprintf(b, "%s</div>\n", html.EscapeString(initials))
 	case "card":
-		style := g.buildCSSStyleIR(n)
-		variant := g.evalStaticStringIR(nodeProps(n), "variant")
+		style := g.buildCSSStyle(n)
+		variant := g.evalStaticString(nodeProps(n), "variant")
 		switch variant {
 		case "elevated":
 			style = htmlutil.AppendCSS(style, "box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
@@ -1060,7 +987,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		if g.nodeIsReactiveIR(n) || g.preview {
 			id = g.allocID()
 		}
-		g.writeOpenTagIR(b, "div", id, style, n, depth)
+		g.writeOpenTag(b, "div", id, style, n, depth)
 		for _, s := range n.Children {
 			g.renderIRStmt(b, s, depth+1)
 		}
@@ -1095,7 +1022,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 
 func (g *htmlGen) renderStaticBox(b *strings.Builder, n *ir.NodeInst, depth int, vertical bool) {
 	indent := strings.Repeat("  ", depth)
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	style = htmlutil.AppendCSS(style, "display", "flex")
 	if vertical {
 		style = htmlutil.AppendCSS(style, "flex-direction", "column")
@@ -1119,7 +1046,7 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, n *ir.NodeInst, depth int,
 		id = g.allocID()
 	}
 
-	g.writeOpenTagIR(b, "div", id, style, n, depth)
+	g.writeOpenTag(b, "div", id, style, n, depth)
 	for _, s := range n.Children {
 		g.renderIRStmt(b, s, depth+1)
 	}
@@ -1127,8 +1054,8 @@ func (g *htmlGen) renderStaticBox(b *strings.Builder, n *ir.NodeInst, depth int,
 }
 
 func (g *htmlGen) renderStaticText(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
-	val := g.evalStaticStringIR(nodeProps(n), "value")
+	style := g.buildCSSStyle(n)
+	val := g.evalStaticString(nodeProps(n), "value")
 	reactive := codegen.IRIsReactive(codegen.NodeProp(n, "value"))
 	id := ""
 	if reactive {
@@ -1136,11 +1063,11 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, n *ir.NodeInst, depth int
 	}
 
 	// In test mode, id/class need an element ID for updaters
-	if g.testMode && id == "" && g.vnHasUserAttrs(visualNodeFromIR(n)) {
+	if g.testMode && id == "" && g.nodeHasUserAttrs(n) {
 		id = g.allocID()
 	}
 
-	g.writeOpenTagIR(b, "span", id, style, n, depth)
+	g.writeOpenTag(b, "span", id, style, n, depth)
 	b.WriteString(html.EscapeString(val))
 	b.WriteString("</span>\n")
 
@@ -1148,13 +1075,13 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, n *ir.NodeInst, depth int
 		g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 	}
 	if g.testMode && id != "" {
-		g.addUserAttrUpdaters(id, visualNodeFromIR(n))
+		g.addUserAttrUpdaters(id, n)
 	}
 }
 
 func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
-	text := g.evalStaticStringIR(nodeProps(n), "text")
+	style := g.buildCSSStyle(n)
+	text := g.evalStaticString(nodeProps(n), "text")
 	textExpr := codegen.NodeProp(n, "text")
 	disabledExpr := codegen.NodeProp(n, "disabled")
 	reactive := codegen.IRIsReactive(textExpr) || len(n.Handlers) > 0 || codegen.IRIsReactive(disabledExpr)
@@ -1188,7 +1115,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
@@ -1208,7 +1135,7 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 }
 
 func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID() // inputs are always reactive
 
 	placeholder := ""
@@ -1225,7 +1152,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 		}
 	}
 
-	value := g.evalStaticStringIR(nodeProps(n), "value")
+	value := g.evalStaticString(nodeProps(n), "value")
 
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<input id=\"%s\"", indent, id)
@@ -1240,7 +1167,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 	fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
 
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(" />\n")
 
@@ -1270,7 +1197,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 }
 
 func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 
 	checked := false
@@ -1281,7 +1208,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 			checked = true
 		}
 	}
-	label := g.evalStaticStringIR(nodeProps(n), "label")
+	label := g.evalStaticString(nodeProps(n), "label")
 
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<label id=\"%s\"", indent, id)
@@ -1289,7 +1216,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(">")
 	if checked {
@@ -1307,7 +1234,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 }
 
 func (g *htmlGen) renderStaticImage(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	alt := "image"
 	if v := codegen.NodeProp(n, "alt"); v != nil {
 		if s, ok := codegen.IRLiteralString(v); ok {
@@ -1344,7 +1271,7 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, n *ir.NodeInst, depth in
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	if g.preview {
 		b.WriteString(g.previewAttrsIR(n))
 	}
@@ -1354,13 +1281,13 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, n *ir.NodeInst, depth in
 // --- New component renderers ---
 
 func (g *htmlGen) renderStaticRadio(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	g.writeOpenTagIR(b, "fieldset", id, style, n, depth)
+	g.writeOpenTag(b, "fieldset", id, style, n, depth)
 	// Static options rendered if literal
 	if v := codegen.NodeProp(n, "options"); codegen.IRIsLiteral(v) {
-		value := g.evalStaticStringIR(nodeProps(n), "value")
+		value := g.evalStaticString(nodeProps(n), "value")
 		if items, ok := exprLiteralAnyIR(v).([]any); ok {
 			for _, item := range items {
 				s := fmt.Sprint(item)
@@ -1380,7 +1307,7 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, n *ir.NodeInst, depth in
 }
 
 func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	checked := false
 	if v := codegen.NodeProp(n, "checked"); v != nil {
@@ -1390,7 +1317,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 			checked = true
 		}
 	}
-	label := g.evalStaticStringIR(nodeProps(n), "label")
+	label := g.evalStaticString(nodeProps(n), "label")
 	indent := strings.Repeat("  ", depth)
 	checkedAttr := ""
 	if checked {
@@ -1400,7 +1327,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
@@ -1409,16 +1336,16 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 }
 
 func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticStringIR(nodeProps(n), "value")
-	placeholder := g.evalStaticStringIR(nodeProps(n), "placeholder")
+	value := g.evalStaticString(nodeProps(n), "value")
+	placeholder := g.evalStaticString(nodeProps(n), "placeholder")
 	fmt.Fprintf(b, "%s<select id=\"%s\"", indent, id)
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(">\n")
 	if placeholder != "" {
@@ -1443,11 +1370,11 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 }
 
 func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticStringIR(nodeProps(n), "value")
-	placeholder := g.evalStaticStringIR(nodeProps(n), "placeholder")
+	value := g.evalStaticString(nodeProps(n), "value")
+	placeholder := g.evalStaticString(nodeProps(n), "placeholder")
 	rows := "3"
 	if v := codegen.NodeProp(n, "rows"); v != nil {
 		if nv, ok := codegen.IRLiteralInt(v); ok {
@@ -1462,7 +1389,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 	if placeholder != "" {
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
 	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
@@ -1471,10 +1398,10 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 }
 
 func (g *htmlGen) renderStaticTabs(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	g.writeOpenTagIR(b, "div", id, style, n, depth)
+	g.writeOpenTag(b, "div", id, style, n, depth)
 	// Tab bar
 	fmt.Fprintf(b, "%s  <div role=\"tablist\" style=\"display:flex;gap:4px;border-bottom:1px solid #ccc\">\n", indent)
 	if v := codegen.NodeProp(n, "items"); codegen.IRIsLiteral(v) {
@@ -1505,7 +1432,7 @@ func (g *htmlGen) renderStaticTabs(b *strings.Builder, n *ir.NodeInst, depth int
 }
 
 func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
 	open := true
@@ -1518,13 +1445,13 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 	if !open {
 		display = "display:none;"
 	}
-	title := g.evalStaticStringIR(nodeProps(n), "title")
+	title := g.evalStaticString(nodeProps(n), "title")
 	overlayStyle := display + "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000"
 	if !open {
 		overlayStyle = "display:none"
 	}
 	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, overlayStyle)
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(">\n")
 	contentStyle := style
@@ -1550,7 +1477,7 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 }
 
 func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.NodeInst, depth int, tag string) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
 	open := true
@@ -1567,7 +1494,7 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.Nod
 	if !open {
 		style = htmlutil.AppendCSS(style, "display", "none")
 	}
-	g.writeOpenTagIR(b, tag, id, style, n, depth)
+	g.writeOpenTag(b, tag, id, style, n, depth)
 	for _, s := range n.Children {
 		g.renderIRStmt(b, s, depth+1)
 	}
@@ -1578,13 +1505,13 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.Nod
 }
 
 func (g *htmlGen) renderStaticAccordion(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := ""
 	if g.preview {
 		id = g.allocID()
 	}
 	indent := strings.Repeat("  ", depth)
-	g.writeOpenTagIR(b, "div", id, style, n, depth)
+	g.writeOpenTag(b, "div", id, style, n, depth)
 	if v := codegen.NodeProp(n, "items"); codegen.IRIsLiteral(v) {
 		if items, ok := exprLiteralAnyIR(v).([]any); ok {
 			// Extract child NodeInsts (the IR equivalent of vnChildNodes).
@@ -1609,7 +1536,7 @@ func (g *htmlGen) renderStaticAccordion(b *strings.Builder, n *ir.NodeInst, dept
 }
 
 func (g *htmlGen) renderStaticTable(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	style = htmlutil.AppendCSS(style, "border-collapse", "collapse")
 	style = htmlutil.AppendCSS(style, "width", "100%")
 	id := ""
@@ -1617,7 +1544,7 @@ func (g *htmlGen) renderStaticTable(b *strings.Builder, n *ir.NodeInst, depth in
 		id = g.allocID()
 	}
 	indent := strings.Repeat("  ", depth)
-	g.writeOpenTagIR(b, "table", id, style, n, depth)
+	g.writeOpenTag(b, "table", id, style, n, depth)
 	// Header
 	if v := codegen.NodeProp(n, "columns"); codegen.IRIsLiteral(v) {
 		if cols, ok := exprLiteralAnyIR(v).([]any); ok {
@@ -1648,7 +1575,7 @@ func (g *htmlGen) renderStaticTable(b *strings.Builder, n *ir.NodeInst, depth in
 }
 
 func (g *htmlGen) renderStaticTree(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := ""
 	if g.preview {
 		id = g.allocID()
@@ -1656,7 +1583,7 @@ func (g *htmlGen) renderStaticTree(b *strings.Builder, n *ir.NodeInst, depth int
 	indent := strings.Repeat("  ", depth)
 	style = htmlutil.AppendCSS(style, "list-style", "none")
 	style = htmlutil.AppendCSS(style, "padding-left", "16px")
-	g.writeOpenTagIR(b, "ul", id, style, n, depth)
+	g.writeOpenTag(b, "ul", id, style, n, depth)
 	if v := codegen.NodeProp(n, "items"); codegen.IRIsLiteral(v) {
 		if items, ok := exprLiteralAnyIR(v).([]any); ok {
 			for _, item := range items {
@@ -1668,11 +1595,11 @@ func (g *htmlGen) renderStaticTree(b *strings.Builder, n *ir.NodeInst, depth int
 }
 
 func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyleIR(n)
+	style := g.buildCSSStyle(n)
 	id := g.allocID()
 	indent := strings.Repeat("  ", depth)
-	value := g.evalStaticStringIR(nodeProps(n), "value")
-	placeholder := g.evalStaticStringIR(nodeProps(n), "placeholder")
+	value := g.evalStaticString(nodeProps(n), "value")
+	placeholder := g.evalStaticString(nodeProps(n), "placeholder")
 	fmt.Fprintf(b, "%s<input id=\"%s\" type=\"date\"", indent, id)
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1683,7 +1610,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 	if placeholder != "" {
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
-	g.writeUserAttrsIR(b, id, n)
+	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(" />\n")
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
@@ -1710,8 +1637,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if g.nodeIsReactiveIR(n) || g.preview || g.testMode {
 		id = g.allocID()
 	}
-	vn := visualNodeFromIR(n)
-	style := g.buildCSSStyle(vn)
+	style := g.buildCSSStyle(n)
 
 	// Build inline attributes from static props.
 	// innerText and innerHTML are rendered as element content, not attributes.
@@ -1727,7 +1653,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		// Try resolving SNGL expressions (e.g. component param references)
 		// to static values for the initial HTML render.
 		if codegen.IRIsReactive(expr) {
-			if val := g.evalInitialStringIR(expr); val != "" {
+			if val := g.evalInitialString(expr); val != "" {
 				switch name {
 				case "innerHTML":
 					staticInnerHTML = val
@@ -1741,7 +1667,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			continue
 		}
 		// Literal / static.
-		val := g.evalStaticStringIR(props, name)
+		val := g.evalStaticString(props, name)
 		switch name {
 		case "innerText":
 			staticInnerText = val
@@ -1778,7 +1704,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
 	b.WriteString(attrs.String())
-	g.writeUserAttrs(b, id, vn)
+	g.writeUserAttrs(b, id, n)
 	pos := nodePos(n)
 	if g.preview && pos.IsValid() {
 		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
@@ -1817,8 +1743,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
-			jsVal := g.exprToJSIR(expr)
-			deps := g.exprDeps(ir.ConvertExpr(expr))
+			jsVal := g.exprToJS(expr)
+			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
 			switch name {
@@ -1854,19 +1780,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 }
 
-// findUserComponent resolves a component by name, supporting both bare
+// findIRComponent resolves a component by name, supporting both bare
 // ("Foo") and namespace-qualified ("pkg.Foo") forms. Backed entirely by the
 // IR package's symbol table so imported-package components are reachable.
-func (g *htmlGen) findUserComponent(name string) *ast.ComponentDecl {
-	c := g.findIRComponent(name)
-	if c == nil || c.AST == nil {
-		return nil
-	}
-	return c.AST
-}
-
-// findIRComponent is the IR-first component lookup used by both the AST
-// fallback (via findUserComponent) and the IR dispatch path.
 func (g *htmlGen) findIRComponent(name string) *ir.Component {
 	if name == "" || g.pkg == nil {
 		return nil
@@ -1944,7 +1860,7 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		}
 		var jsVal string
 		if valueExpr != nil {
-			jsVal = g.exprToJS(ir.ConvertExpr(valueExpr))
+			jsVal = g.exprToJS(valueExpr)
 		} else {
 			jsVal = `""`
 		}
@@ -1969,7 +1885,7 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		if len(fn.Params) == 0 && len(fn.Block) == 1 {
 			if ret, isRet := fn.Block[0].(*ir.Return); isRet && ret.Value != nil {
 				uniqueName := fn.Name + suffix
-				body := g.exprToJS(ir.ConvertExpr(ret.Value))
+				body := g.exprToJS(ret.Value)
 				g.componentParams = append(g.componentParams, componentParam{
 					name:  uniqueName,
 					value: body,
@@ -2024,7 +1940,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	var stateFields []string
 	stateVars := g.stateVars()
 	for _, dv := range stateVars {
-		val := g.literalToJS(irExprToAST(dv.Init))
+		val := g.literalToJS(dv.Init)
 		stateFields = append(stateFields, dv.Name+": "+val)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
@@ -2052,7 +1968,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	for _, fn := range funcs {
 		if len(fn.Params) == 0 && len(fn.Block) == 1 {
 			if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body := g.exprToJS(irExprToAST(ret.Value))
+				body := g.exprToJS(ret.Value)
 				fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
 				hasComputed = true
 			}
@@ -2129,7 +2045,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Constants
 	consts := g.pkgConsts()
 	for _, c := range consts {
-		val := g.literalToJS(irExprToAST(c.Init))
+		val := g.literalToJS(c.Init)
 		fmt.Fprintf(b, "const %s = %s;\n", c.Name, val)
 	}
 	if len(consts) > 0 {
@@ -2402,7 +2318,7 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 // addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDepsIR(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2413,7 +2329,7 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 
 func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDepsIR(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2424,7 +2340,7 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDepsIR(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2435,7 +2351,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
 
 func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDepsIR(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2446,7 +2362,7 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
 
 func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDepsIR(expr)
+	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2458,7 +2374,7 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 // addElseUpdater adds a display updater for the else branch of an if statement.
 func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(cond, g.scope)
-	deps := g.exprDepsIR(cond)
+	deps := g.exprDeps(cond)
 	name := fmt.Sprintf("$u_%s_else", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2467,8 +2383,8 @@ func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
 	})
 }
 
-// addForStmtUpdater adds a list updater for a v2 ForStmt.
-func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ast.ForStmt) {
+// addForStmtUpdater adds a list updater for an ir.For statement.
+func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ir.For) {
 	iterVar := stmt.Key
 	indexVar := stmt.Value
 	if indexVar == "" {
@@ -2500,7 +2416,7 @@ func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ast.ForStmt) {
 }
 
 // addForElseStmtUpdater adds a display updater for the else branch of a for loop.
-func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ast.ForStmt) {
+func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ir.For) {
 	iterableJS := g.exprToJS(stmt.Iter)
 	deps := g.exprDeps(stmt.Iter)
 
@@ -2515,27 +2431,22 @@ func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ast.
 	})
 }
 
-// emitForStmtBody generates the inner HTML creation code for a v2 ForStmt.
-func (g *htmlGen) emitForStmtBody(b *strings.Builder, stmt *ast.ForStmt, iterVar, indexVar, containerID string) {
+// emitForStmtBody generates the inner HTML creation code for an ir.For body.
+func (g *htmlGen) emitForStmtBody(b *strings.Builder, stmt *ir.For, iterVar, indexVar, containerID string) {
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, g.scope.LocalVars)
 	g.scope.LocalVars[iterVar] = true
 	g.scope.LocalVars[indexVar] = true
 	defer func() { g.scope.LocalVars = savedLocals }()
 
-	listFuncName := fmt.Sprintf("$u_%s_list", containerID[1:])
-	_ = listFuncName
-
-	for _, s := range stmt.Body.Stmts {
-		if vn, ok := s.(*ast.VisualNode); ok {
-			// Delegate to existing emitForLoopBody per-child
-			g.emitForLoopBody(b, vn, iterVar, indexVar, containerID)
+	for _, s := range stmt.Body {
+		if n, ok := s.(*ir.NodeInst); ok {
+			g.emitForLoopBody(b, n, iterVar, indexVar, containerID)
 		}
 	}
 }
 
-func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVar, indexVar, containerID string) {
-	// Save local vars
+func (g *htmlGen) emitForLoopBody(b *strings.Builder, n *ir.NodeInst, iterVar, indexVar, containerID string) {
 	savedLocals := make(map[string]bool)
 	maps.Copy(savedLocals, g.scope.LocalVars)
 	g.scope.LocalVars[iterVar] = true
@@ -2544,49 +2455,44 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 
 	listFuncName := fmt.Sprintf("$u_%s_list", containerID[1:])
 
-	// Generate based on component type
-	switch vnName(vn) {
+	switch n.Name {
 	case "checkbox":
 		checked := "false"
-		if v := vnProp(vn, "checked"); v != nil {
+		if v := codegen.NodeProp(n, "checked"); v != nil {
 			checked = g.exprToJS(v)
 		}
 		label := `""`
-		if v := vnProp(vn, "label"); v != nil {
+		if v := codegen.NodeProp(n, "label"); v != nil {
 			label = g.exprToJS(v)
 		}
-		style := g.buildCSSStyle(vn)
+		style := g.buildCSSStyle(n)
 
 		fmt.Fprintf(b, "    const row = document.createElement(\"label\");\n")
-		g.emitForLoopDataKey(b, "row", vn)
 		style = htmlutil.AppendCSS(style, "display", "block")
 		fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
 		fmt.Fprintf(b, "    const cb = document.createElement(\"input\");\n")
 		fmt.Fprintf(b, "    cb.type = \"checkbox\";\n")
 		fmt.Fprintf(b, "    cb.checked = %s;\n", checked)
 
-		// Change handler
-		if changeEvt := vnEvent(vn, "change"); changeEvt != nil {
-			if len(changeEvt.Body.Stmts) > 0 {
-				stmts := g.lang.TranslateMutation(changeEvt.Body.Stmts[0], g.scope)
-				mutated := mutatedFieldsAST(changeEvt.Body.Stmts[0])
-				var handlerLines []string
-				for _, s := range stmts {
-					handlerLines = append(handlerLines, s+";")
-				}
-				handlerLines = append(handlerLines, listFuncName+"();")
-				// Also call updaters for other fields affected
-				for _, u := range g.findAffectedUpdaters(mutated) {
-					if u.funcName != listFuncName {
-						handlerLines = append(handlerLines, u.funcName+"();")
-					}
-				}
-				fmt.Fprintf(b, "    cb.addEventListener(\"change\", function() {\n")
-				for _, line := range handlerLines {
-					fmt.Fprintf(b, "      %s\n", line)
-				}
-				fmt.Fprintf(b, "    });\n")
+		if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
+			first := changeEvt.Func.Block[0]
+			stmts := g.lang.TranslateIRMutation(first, g.scope)
+			mutated := codegen.MutatedFields(first)
+			var handlerLines []string
+			for _, s := range stmts {
+				handlerLines = append(handlerLines, s+";")
 			}
+			handlerLines = append(handlerLines, listFuncName+"();")
+			for _, u := range g.findAffectedUpdaters(mutated) {
+				if u.funcName != listFuncName {
+					handlerLines = append(handlerLines, u.funcName+"();")
+				}
+			}
+			fmt.Fprintf(b, "    cb.addEventListener(\"change\", function() {\n")
+			for _, line := range handlerLines {
+				fmt.Fprintf(b, "      %s\n", line)
+			}
+			fmt.Fprintf(b, "    });\n")
 		}
 
 		fmt.Fprintf(b, "    row.appendChild(cb);\n")
@@ -2596,31 +2502,23 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, vn *ast.VisualNode, iterVa
 	case "text":
 		tag := "span"
 		fmt.Fprintf(b, "    const el = document.createElement(%q);\n", tag)
-		g.emitForLoopDataKey(b, "el", vn)
 		val := `""`
-		if v := vnProp(vn, "value"); v != nil {
+		if v := codegen.NodeProp(n, "value"); v != nil {
 			val = g.exprToJS(v)
 		}
 		fmt.Fprintf(b, "    el.textContent = %s;\n", val)
 		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
 
 	default:
-		// Generic: create a div for each item
 		fmt.Fprintf(b, "    const el = document.createElement(\"div\");\n")
-		g.emitForLoopDataKey(b, "el", vn)
 		fmt.Fprintf(b, "    el.textContent = String(%s);\n", iterVar)
 		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
 	}
 }
 
-// emitForLoopDataKey emits a data-key attribute for elements inside for loops.
-func (g *htmlGen) emitForLoopDataKey(b *strings.Builder, elVar string, vn *ast.VisualNode) {
-	// TODO: Key is on ForStmt in v2, not on VisualNode — needs refactoring
-}
-
 // exprDeps extracts model field dependencies, remapping through dataRenames
 // when inside a component scope so deps use promoted field names.
-func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
+func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
 	// Temporarily register original names so walkDeps can find them,
 	// then remap to the promoted unique names.
 	var added []string
@@ -2630,7 +2528,7 @@ func (g *htmlGen) exprDeps(expr ast.Expr) map[string]bool {
 			added = append(added, orig)
 		}
 	}
-	deps := exprDepsAST(expr, g.dt.ModelFields, g.dt.ComputedFields, g.dt.ComputedDeps)
+	deps := g.dt.ExprDeps(expr)
 	for _, name := range added {
 		delete(g.dt.ModelFields, name)
 	}
@@ -2732,8 +2630,8 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 
 // CSS building
 
-func (g *htmlGen) buildCSSStyle(vn *ast.VisualNode) string {
-	return htmlutil.BuildCSSStyle(vn)
+func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
+	return htmlutil.BuildCSSStyle(visualNodeFromIR(n))
 }
 
 // Expression evaluation helpers
@@ -2793,38 +2691,35 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 	}
 }
 
-func (g *htmlGen) exprToJS(expr ast.Expr) string {
-	if exprIsReactive(expr) {
-		return g.lang.TranslateExpr(expr, g.scope)
+func (g *htmlGen) exprToJS(expr ir.Expr) string {
+	if codegen.IRIsReactive(expr) {
+		return g.lang.TranslateIRExpr(expr, g.scope)
 	}
-	if exprIsLiteral(expr) {
-		return g.lang.TranslateLiteral(expr)
+	if codegen.IRIsLiteral(expr) {
+		return g.lang.TranslateIRLiteral(expr)
 	}
 	return `""`
 }
 
-func (g *htmlGen) literalToJS(expr ast.Expr) string {
+func (g *htmlGen) literalToJS(expr ir.Expr) string {
 	if expr == nil {
 		return `""`
 	}
-	if lit, ok := expr.(*ast.LiteralExpr); ok {
-		switch lit.Kind {
-		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
-			if s, ok := exprLiteralString(expr); ok {
-				return fmt.Sprintf("%q", s)
+	if lit, ok := expr.(*ir.Literal); ok {
+		if lit.Type != nil {
+			switch lit.Type.Kind {
+			case ir.TypeString:
+				if s, ok := codegen.IRLiteralString(expr); ok {
+					return fmt.Sprintf("%q", s)
+				}
+			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+				return lit.Raw
+			case ir.TypeNull:
+				return "null"
 			}
-		case ast.LiteralInt:
-			return lit.Raw
-		case ast.LiteralFloat:
-			return lit.Raw
-		case ast.LiteralBool:
-			return lit.Raw
-		case ast.LiteralNull:
-			return "null"
 		}
 		return lit.Raw
 	}
-	// Non-literal expression — translate to JS
 	return g.exprToJS(expr)
 }
 
@@ -2837,7 +2732,7 @@ func complexLiteralToJS(v any) string {
 	return string(data)
 }
 
-func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string {
+func (g *htmlGen) evalStaticString(props map[string]ir.Expr, key string) string {
 	if props == nil {
 		return ""
 	}
@@ -2845,21 +2740,21 @@ func (g *htmlGen) evalStaticString(props map[string]ast.Expr, key string) string
 	if !ok {
 		return ""
 	}
-	if exprIsLiteral(v) {
-		if s, ok := exprLiteralString(v); ok {
+	if codegen.IRIsLiteral(v) {
+		if s, ok := codegen.IRLiteralString(v); ok {
 			return s
 		}
-		return fmt.Sprintf("%v", exprLiteralAny(v))
+		return fmt.Sprintf("%v", exprLiteralAnyIR(v))
 	}
 	// For SNGL expressions, evaluate with initial state
-	if exprIsReactive(v) {
+	if codegen.IRIsReactive(v) {
 		return g.evalInitialString(v)
 	}
 	return ""
 }
 
-func (g *htmlGen) evalInitialString(expr ast.Expr) string {
-	if !exprIsReactive(expr) {
+func (g *htmlGen) evalInitialString(expr ir.Expr) string {
+	if !codegen.IRIsReactive(expr) {
 		return ""
 	}
 	// Translate the expression to JS and try to resolve it to a static value.
@@ -2953,7 +2848,7 @@ func extractSetTarget(s ast.Stmt) (ast.Expr, bool) {
 	return nil, false
 }
 
-func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *ast.VisualNode, depth int, pos ...ast.Pos) {
+func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, n *ir.NodeInst, depth int) {
 	if g.preview && id == "" {
 		id = g.allocID()
 	}
@@ -2965,66 +2860,51 @@ func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, vn *as
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
-	if vn != nil {
-
-		g.writeUserAttrs(b, id, vn)
+	if n != nil {
+		g.writeUserAttrs(b, id, n)
 	}
-	if g.preview && len(pos) > 0 && pos[0].IsValid() {
-		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos[0].Line, pos[0].Column)
+	pos := nodePos(n)
+	if g.preview && pos.IsValid() {
+		fmt.Fprintf(b, " data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
 	}
 	b.WriteString(">\n")
 }
 
-// writeDataKey emits a data-key="..." attribute for literal key values.
-// Only emitted in test or preview mode.
-func (g *htmlGen) writeDataKey(b *strings.Builder, key *ast.Expr) {
-	if !g.testMode && !g.preview {
-		return
-	}
-	if key == nil {
-		return
-	}
-	if exprIsLiteral(*key) {
-		if s, ok := exprLiteralString(*key); ok {
-			fmt.Fprintf(b, " data-key=%q", s)
-		}
-	}
+// nodeHasUserAttrs returns true if a NodeInst has a user-specified #id or
+// a static class prop.
+func (g *htmlGen) nodeHasUserAttrs(n *ir.NodeInst) bool {
+	return n.ID != "" || codegen.NodeProp(n, "class") != nil
 }
 
-// vnHasUserAttrs returns true if the visual node has user-specified id or class.
-func (g *htmlGen) vnHasUserAttrs(vn *ast.VisualNode) bool {
-	return vn.ID != "" || vnProp(vn, "class") != nil
-}
-
-// addUserAttrUpdaters adds DOM updaters for user-specified id and class attributes.
-func (g *htmlGen) addUserAttrUpdaters(elemID string, vn *ast.VisualNode) {
-	if vnProp(vn, "class") != nil {
-		jsExpr := g.exprToJS(vnProp(vn, "class"))
-		deps := g.exprDeps(vnProp(vn, "class"))
-		name := fmt.Sprintf("$u_%s_cls", elemID[1:])
-		g.updates = append(g.updates, updateFunc{
-			funcName: name,
-			body:     fmt.Sprintf("%s.className = %s;", elemID, jsExpr),
-			deps:     deps,
-		})
+// addUserAttrUpdaters adds DOM updaters for a user-specified class prop.
+func (g *htmlGen) addUserAttrUpdaters(elemID string, n *ir.NodeInst) {
+	classExpr := codegen.NodeProp(n, "class")
+	if classExpr == nil {
+		return
 	}
+	jsExpr := g.exprToJS(classExpr)
+	deps := g.exprDeps(classExpr)
+	name := fmt.Sprintf("$u_%s_cls", elemID[1:])
+	g.updates = append(g.updates, updateFunc{
+		funcName: name,
+		body:     fmt.Sprintf("%s.className = %s;", elemID, jsExpr),
+		deps:     deps,
+	})
 }
 
 // writeUserAttrs emits user-specified id and class attributes in test mode.
-// When there's an internal id, user id/class are set via updaters instead.
-func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, vn *ast.VisualNode) {
+func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.NodeInst) {
 	if !g.testMode {
 		return
 	}
-	// Static class can always be emitted directly (no conflict with internal attrs)
-	if exprIsLiteral(vnProp(vn, "class")) {
-		if s, ok := exprLiteralString(vnProp(vn, "class")); ok {
+	classExpr := codegen.NodeProp(n, "class")
+	if codegen.IRIsLiteral(classExpr) {
+		if s, ok := codegen.IRLiteralString(classExpr); ok {
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}
-	// Emit data-sngl-id from the #id field for test element lookup
-	if vn.ID != "" {
-		fmt.Fprintf(b, " data-sngl-id=%q", vn.ID)
+	if n.ID != "" {
+		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)
 	}
 }
 

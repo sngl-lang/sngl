@@ -6,8 +6,6 @@ package html
 // these instead of ast.VisualNode accessors.
 
 import (
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -42,58 +40,6 @@ func nodePos(n *ir.NodeInst) ast.Pos {
 	return ast.Pos{}
 }
 
-// nodeEventBody returns the AST event handler body for a named event if
-// present. Used while the handler-emission helpers still accept an AST
-// StmtBlock.
-func nodeEventBody(n *ir.NodeInst, name string) *ast.StmtBlock {
-	h := codegen.NodeHandler(n, name)
-	if h == nil || h.AST == nil {
-		return nil
-	}
-	return &h.AST.Body
-}
-
-// evalStaticStringIR resolves a prop expression to a static string when it
-// is a compile-time string literal. Returns "" if not a literal string.
-func (g *htmlGen) evalStaticStringIR(props map[string]ir.Expr, key string) string {
-	e, ok := props[key]
-	if !ok {
-		return ""
-	}
-	if s, ok := codegen.IRLiteralString(e); ok {
-		return s
-	}
-	return ""
-}
-
-// evalInitialStringIR tries to resolve an IR expression to a static string
-// for the initial HTML render — delegates to the AST path (the JS
-// translator already handles component-param lookup through the scope).
-func (g *htmlGen) evalInitialStringIR(e ir.Expr) string {
-	if e == nil || codegen.IRIsLiteral(e) {
-		return ""
-	}
-	return g.evalInitialString(ir.ConvertExpr(e))
-}
-
-// exprToJSIR translates an IR expression to its JavaScript form through
-// the existing AST-based translator. Eventually superseded by a direct
-// JsIRContext call.
-func (g *htmlGen) exprToJSIR(e ir.Expr) string {
-	if e == nil {
-		return `""`
-	}
-	return g.exprToJS(ir.ConvertExpr(e))
-}
-
-// literalToJSIR translates a literal IR expression to a JS literal.
-func (g *htmlGen) literalToJSIR(e ir.Expr) string {
-	if e == nil {
-		return `""`
-	}
-	return g.literalToJS(ir.ConvertExpr(e))
-}
-
 // nodeIsReactiveIR reports whether a NodeInst depends on runtime state
 // (any prop expression is non-literal, any handler is registered, or an
 // explicit reactive marker is set).
@@ -110,34 +56,6 @@ func (g *htmlGen) nodeIsReactiveIR(n *ir.NodeInst) bool {
 		return true
 	}
 	return false
-}
-
-// buildCSSStyleIR builds a CSS style string from a NodeInst's style
-// properties. Bridges to the existing AST-based CSS builder via a
-// synthesized VisualNode.
-func (g *htmlGen) buildCSSStyleIR(n *ir.NodeInst) string {
-	return g.buildCSSStyle(visualNodeFromIR(n))
-}
-
-// writeOpenTagIR writes an opening HTML tag, delegating to the AST-based
-// writer via a synthesized VisualNode so user-attr emission still works.
-func (g *htmlGen) writeOpenTagIR(b *strings.Builder, tag, id, style string, n *ir.NodeInst, depth int) {
-	pos := nodePos(n)
-	g.writeOpenTag(b, tag, id, style, visualNodeFromIR(n), depth, pos)
-}
-
-// writeUserAttrsIR emits user-specified id/class attributes for a node.
-func (g *htmlGen) writeUserAttrsIR(b *strings.Builder, id string, n *ir.NodeInst) {
-	g.writeUserAttrs(b, id, visualNodeFromIR(n))
-}
-
-// exprDepsIR returns the state field dependencies of an IR expression
-// through the existing AST-based dep tracker.
-func (g *htmlGen) exprDepsIR(e ir.Expr) map[string]bool {
-	if e == nil {
-		return nil
-	}
-	return g.exprDeps(ir.ConvertExpr(e))
 }
 
 // previewAttrsIR returns preview mode data attributes (sngl-line/col) for
