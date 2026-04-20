@@ -30,12 +30,11 @@ func init() {
 // Generator implements codegen.PlatformGenerator for server-rendered HTTP output.
 type Generator struct{}
 
-func (g *Generator) Platform() string                       { return "http" }
-func (g *Generator) Identifier() string                     { return "http" }
+func (g *Generator) PlatformIdentifier() string             { return "http" }
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "go" }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 
 // Generate is not yet ported to the v2 AST.
 // TODO: Port to v2 AST — requires Doc.Stmts iteration instead of Doc.App/Data/NativeImports.

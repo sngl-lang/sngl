@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
@@ -38,7 +39,8 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 	if len(pkg) > 0 {
 		p = pkg[0]
 	}
-	src, err := CompileWithPkg(doc, p, Config{})
+	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: p}, "bubbletea")
+	src, err := CompileIR(ctx, Config{})
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}
@@ -71,7 +73,12 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestGettersSetters(t *testing.T) {
-	src := `component main {
+	src := `struct Todo {
+    text string
+    done bool
+}
+
+component main {
     var (
         count = 0
         todos list<Todo>

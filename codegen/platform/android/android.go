@@ -29,25 +29,24 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Android (Jetpack Compose).
 type Generator struct{}
 
-func (g *Generator) Platform() string                    { return "android" }
-func (g *Generator) Identifier() string                  { return "android" }
+func (g *Generator) PlatformIdentifier() string          { return "android" }
 func (g *Generator) SupportedLangs() []string            { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string                  { return previewCSS }
 func (g *Generator) Package() []*ast.Document            { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool {
-	id := l.Identifier()
+	id := l.LanguageIdentifier()
 	return id == "kotlin" || id == "go"
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	switch req.Lang.Lang() {
+	switch req.Lang.LanguageIdentifier() {
 	case "kotlin":
 		return g.generateKotlin(req)
 	case "go":
 		return g.generateGo(req)
 	default:
-		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", req.Lang.Lang())}, nil
+		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
 	}
 }
 

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -16,10 +17,31 @@ func init() {
 // Translator implements codegen.LangTranslator for Go.
 type Translator struct{}
 
-func (t *Translator) Lang() string                        { return "go" }
-func (t *Translator) Identifier() string                  { return "go" }
+func (t *Translator) LanguageIdentifier() string          { return "go" }
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
+
+// v2 IR-based methods (stubs — will be implemented during platform migration).
+
+func (t *Translator) WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error {
+	return fmt.Errorf("golang: WriteExpr not yet implemented")
+}
+
+func (t *Translator) WriteStmt(w io.Writer, stmt ir.Stmt, scope *ir.Scope) error {
+	return fmt.Errorf("golang: WriteStmt not yet implemented")
+}
+
+func (t *Translator) WriteType(w io.Writer, typ *ir.Type) error {
+	return fmt.Errorf("golang: WriteType not yet implemented")
+}
+
+func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
+	return ExportName(name.Name)
+}
+
+func (t *Translator) Eval(expr ir.Expr) string {
+	return fmt.Sprintf("/* eval not implemented: %T */", expr)
+}
 
 func (t *Translator) TranslateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

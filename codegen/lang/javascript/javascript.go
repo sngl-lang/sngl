@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -16,10 +17,31 @@ func init() {
 // Translator implements codegen.LangTranslator for JavaScript.
 type Translator struct{}
 
-func (t *Translator) Lang() string                        { return "js" }
-func (t *Translator) Identifier() string                  { return "js" }
+func (t *Translator) LanguageIdentifier() string          { return "js" }
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
+
+// v2 IR-based methods (stubs — will be implemented during platform migration).
+
+func (t *Translator) WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error {
+	return fmt.Errorf("javascript: WriteExpr not yet implemented")
+}
+
+func (t *Translator) WriteStmt(w io.Writer, stmt ir.Stmt, scope *ir.Scope) error {
+	return fmt.Errorf("javascript: WriteStmt not yet implemented")
+}
+
+func (t *Translator) WriteType(w io.Writer, typ *ir.Type) error {
+	return fmt.Errorf("javascript: WriteType not yet implemented")
+}
+
+func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
+	return name.Name
+}
+
+func (t *Translator) Eval(expr ir.Expr) string {
+	return fmt.Sprintf("/* eval not implemented: %T */", expr)
+}
 
 func (t *Translator) TranslateExpr(e ast.Expr, scope *codegen.ExprScope) string {
 	return translateExpr(e, scope)

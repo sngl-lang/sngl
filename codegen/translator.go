@@ -9,7 +9,6 @@ import (
 // Each method receives an ExprCtx that provides type info and symbol resolution
 // from the checker's Package.
 type ExprTranslator interface {
-	Lang() string
 	ir.Language
 
 	// Expr translates an expression to target language source.

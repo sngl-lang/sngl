@@ -18,7 +18,7 @@ var (
 func RegisterLang(l LangTranslator) {
 	langMu.Lock()
 	defer langMu.Unlock()
-	name := l.Lang()
+	name := l.LanguageIdentifier()
 	if _, ok := langs[name]; ok {
 		panic("codegen: duplicate lang registration: " + name)
 	}
@@ -29,7 +29,7 @@ func RegisterLang(l LangTranslator) {
 func RegisterPlatform(p PlatformGenerator) {
 	platMu.Lock()
 	defer platMu.Unlock()
-	name := p.Platform()
+	name := p.PlatformIdentifier()
 	if _, ok := platforms[name]; ok {
 		panic("codegen: duplicate platform registration: " + name)
 	}

@@ -45,6 +45,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 
 	resp, err := htmlPlat.Generate(&codegen.Request{
 		Doc:     previewDoc,
+		Pkg:     pkg,
 		Lang:    jsLang,
 		Options: map[string]string{"preview": "true"},
 	})

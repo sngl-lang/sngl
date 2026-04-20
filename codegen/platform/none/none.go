@@ -11,8 +11,7 @@ func init() { codegen.RegisterPlatform(&Generator{}) }
 
 type Generator struct{}
 
-func (g *Generator) Platform() string                       { return "none" }
-func (g *Generator) Identifier() string                     { return "none" }
+func (g *Generator) PlatformIdentifier() string             { return "none" }
 func (g *Generator) SupportedLangs() []string               { return nil }
 func (g *Generator) Package() []*ast.Document               { return nil }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }

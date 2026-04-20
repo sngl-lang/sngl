@@ -29,17 +29,16 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Fyne.
 type Generator struct{}
 
-func (g *Generator) Platform() string                       { return "fyne" }
-func (g *Generator) Identifier() string                     { return "fyne" }
+func (g *Generator) PlatformIdentifier() string             { return "fyne" }
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) PreviewCSS() string                     { return previewCSS }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "go" }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.Lang() != "go" {
-		return &codegen.Response{Error: fmt.Sprintf("fyne: unsupported lang %q", req.Lang.Lang())}, nil
+	if req.Lang.LanguageIdentifier() != "go" {
+		return &codegen.Response{Error: fmt.Sprintf("fyne: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
 	}
 
 	cfg := Config{

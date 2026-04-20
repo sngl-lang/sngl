@@ -29,18 +29,17 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Bubbletea.
 type Generator struct{}
 
-func (g *Generator) Platform() string                       { return "bubbletea" }
-func (g *Generator) Identifier() string                     { return "bubbletea" }
+func (g *Generator) PlatformIdentifier() string             { return "bubbletea" }
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "go" }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.Lang() != "go" {
-		return &codegen.Response{Error: fmt.Sprintf("bubbletea: unsupported lang %q", req.Lang.Lang())}, nil
+	if req.Lang.LanguageIdentifier() != "go" {
+		return &codegen.Response{Error: fmt.Sprintf("bubbletea: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
 	}
 
 	cfg := Config{
@@ -48,7 +47,8 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		GenerateMain: req.Options["main"] == "true",
 	}
 
-	src, err := CompileWithPkg(req.Doc, req.Pkg, cfg)
+	ctx := codegen.NewCodegenCtx(req, "bubbletea")
+	src, err := CompileIR(ctx, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
@@ -64,12 +64,28 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	}
 
 	// Generate test file if tests exist and not disabled
-	if len(req.Doc.TestFuncs()) > 0 && req.Options["tests"] != "false" {
-		testSrc, err := CompileTests(req.Doc, cfg)
+	if req.Pkg != nil && hasTestFuncs(req.Pkg) && req.Options["tests"] != "false" {
+		testSrc, err := CompileTestsIR(ctx, cfg)
 		if err == nil && testSrc != nil {
 			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))
 		}
 	}
 
 	return resp, nil
+}
+
+func hasTestFuncs(pkg *ir.Package) bool {
+	for _, f := range pkg.Funcs {
+		if f.IsTest {
+			return true
+		}
+	}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			if f.IsTest {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -35,16 +35,15 @@ func init() {
 // Generator implements codegen.PlatformGenerator for HTML output.
 type Generator struct{}
 
-func (g *Generator) Platform() string                       { return "html" }
-func (g *Generator) Identifier() string                     { return "html" }
+func (g *Generator) PlatformIdentifier() string             { return "html" }
 func (g *Generator) SupportedLangs() []string               { return []string{"js"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.Identifier() == "js" }
+func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "js" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.Lang() != "js" {
-		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.Lang())}, nil
+	if req.Lang.LanguageIdentifier() != "js" {
+		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
 	}
 
 	var files []*codegen.OutputFile

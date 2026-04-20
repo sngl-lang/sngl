@@ -116,7 +116,7 @@ func TestSnapshotFidelity(t *testing.T) {
 			}
 
 			// 2. HTML-simulated snapshot via CompilePreviewHTML + HTML SnapshotHTML
-			html, err := snapshot.CompilePreviewHTML(sourceFile, name, lang.Lang())
+			html, err := snapshot.CompilePreviewHTML(sourceFile, name, lang.LanguageIdentifier())
 			if err != nil {
 				t.Fatalf("compile preview HTML: %v", err)
 			}

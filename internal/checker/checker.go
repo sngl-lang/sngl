@@ -101,10 +101,10 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// The optimizer shakes off unused platform references; codegen fails if
 	// an unresolvable platform element survives.
 	for _, p := range cfg.Platforms {
-		stdlibScope.Declare(&ir.Namespace{Name: p.Identifier()})
+		stdlibScope.Declare(&ir.Namespace{Name: p.PlatformIdentifier()})
 	}
 	for _, l := range cfg.Languages {
-		stdlibScope.Declare(&ir.Namespace{Name: l.Identifier()})
+		stdlibScope.Declare(&ir.Namespace{Name: l.LanguageIdentifier()})
 	}
 
 	return c
@@ -817,18 +817,24 @@ func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
 	return false
 }
 
+// pkgProvider is satisfied by both ir.Platform and ir.Language.
+type pkgProvider interface {
+	Package() []*ast.Document
+	Resolve(identifier string) ir.Symbol
+}
+
 // lookupTarget finds a registered platform or language by name.
-func (c *checker) lookupTarget(name string) ir.Target {
+func (c *checker) lookupTarget(name string) pkgProvider {
 	if c.cfg == nil {
 		return nil
 	}
 	for _, p := range c.cfg.Platforms {
-		if p.Identifier() == name {
+		if p.PlatformIdentifier() == name {
 			return p
 		}
 	}
 	for _, l := range c.cfg.Languages {
-		if l.Identifier() == name {
+		if l.LanguageIdentifier() == name {
 			return l
 		}
 	}
