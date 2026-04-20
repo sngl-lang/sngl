@@ -99,17 +99,8 @@ func runTest(cmd *cobra.Command, args []string) error {
 			slog.Info("merge", "file", filename, "duration", time.Since(start))
 		}
 
-		if len(doc.TestFuncs()) > 0 {
-			start = time.Now()
-			if _, err := checkDoc(doc, filepath.Dir(filename), true); err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-				totalFail++
-				continue
-			}
-			slog.Info("check", "file", filename, "duration", time.Since(start))
-		}
-
-		// Filter tests by --run pattern
+		// Filter tests by --run pattern before checking so filtered-out
+		// tests don't cause spurious type errors.
 		if runFilter != "" {
 			var filtered []ast.Stmt
 			for _, stmt := range doc.Stmts {
@@ -127,7 +118,20 @@ func runTest(cmd *cobra.Command, args []string) error {
 			doc.Stmts = filtered
 		}
 
-		results, err := runner.RunTests(doc, lang)
+		if len(doc.TestFuncs()) == 0 {
+			continue
+		}
+
+		start = time.Now()
+		pkg, err := checkDoc(doc, filepath.Dir(filename), true)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			totalFail++
+			continue
+		}
+		slog.Info("check", "file", filename, "duration", time.Since(start))
+
+		results, err := runner.RunTests(pkg, lang)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++

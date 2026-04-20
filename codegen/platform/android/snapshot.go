@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // Snapshot implements codegen.Snapshotter. It uses the same flow as sngl run
 // (generate → build → install → launch) then captures a screenshot via ADB.
-func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	adb, err := androidTool("adb")
 	if err != nil {
 		return nil, fmt.Errorf("adb not found — Android SDK required for screenshots")
@@ -24,9 +24,8 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 		return nil, err
 	}
 
-	const pkg = "sngl.snapshot.app"
+	const appPkg = "sngl.snapshot.app"
 
-	// Generate code into a temp directory.
 	tmpDir, err := os.MkdirTemp("", "sngl-android-snapshot-*")
 	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
@@ -35,12 +34,12 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 
 	opts := map[string]string{
 		"main":    "true",
-		"package": pkg,
+		"package": appPkg,
 		"gradle":  "false",
 	}
 
 	resp, err := g.Generate(&codegen.Request{
-		Doc:     doc,
+		Pkg:     irPkg,
 		Lang:    lang,
 		Options: opts,
 	})
@@ -80,17 +79,17 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 		return nil, err
 	}
 	defer func() {
-		exec.Command(adb, "shell", "am", "force-stop", pkg).Run()
-		exec.Command(adb, "uninstall", pkg).Run()
+		exec.Command(adb, "shell", "am", "force-stop", appPkg).Run()
+		exec.Command(adb, "uninstall", appPkg).Run()
 	}()
 
-	if err := adbLaunch(pkg); err != nil {
+	if err := adbLaunch(appPkg); err != nil {
 		return nil, err
 	}
 
 	// Wait for our activity to reach the foreground, then give Compose
 	// a moment to finish its first frame.
-	if err := waitForFocus(pkg, 15*time.Second); err != nil {
+	if err := waitForFocus(appPkg, 15*time.Second); err != nil {
 		return nil, err
 	}
 	time.Sleep(2 * time.Second)

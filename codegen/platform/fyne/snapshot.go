@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // Snapshot generates real Fyne code, builds it with a snapshot harness that
 // renders to a headless test window, and returns the captured PNG.
-func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return nil, fmt.Errorf("go not found in PATH")
@@ -28,7 +28,7 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 	defer os.RemoveAll(tmpDir)
 
 	resp, err := g.Generate(&codegen.Request{
-		Doc:  doc,
+		Pkg:  pkg,
 		Lang: lang,
 		Options: map[string]string{
 			"package": "main",
@@ -119,7 +119,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		return nil, nil
 	}
 	if len(docs) == 1 {
-		png, err := g.Snapshot(docs[0].Doc, docs[0].Lang, width, height)
+		png, err := g.Snapshot(docs[0].Pkg, docs[0].Lang, width, height)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +149,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		pkgDir := filepath.Join(tmpDir, pkgName)
 
 		resp, err := g.Generate(&codegen.Request{
-			Doc:  d.Doc,
+			Pkg:  d.Pkg,
 			Lang: d.Lang,
 			Options: map[string]string{
 				"package": pkgName,

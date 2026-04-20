@@ -1961,10 +1961,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			fmt.Fprintf(b, "  %s();\n", u.funcName)
 		}
 		for _, h := range dv.Handlers {
-			if h.Name == "change" && h.AST != nil {
-				for _, s := range h.AST.Body.Stmts {
-					stmts := g.lang.TranslateMutation(s, g.scope)
-					for _, js := range stmts {
+			if h.Name == "change" && h.Func != nil {
+				for _, s := range h.Func.Block {
+					for _, js := range g.lang.TranslateIRMutation(s, g.scope) {
 						fmt.Fprintf(b, "  %s;\n", js)
 					}
 				}

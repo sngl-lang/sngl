@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Config controls snapshot generation.
@@ -122,14 +122,15 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 			return nil, err
 		}
 		dir := filepath.Dir(sourceFile)
-		if err := checkDoc(doc, dir); err != nil {
+		pkg, err := checkAndReturn(doc, dir)
+		if err != nil {
 			return nil, err
 		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
 		}
-		return snapshotter.Snapshot(doc, langT, width, height)
+		return snapshotter.Snapshot(pkg, langT, width, height)
 	}
 
 	// Platforms without a Snapshotter: compile to HTML preview and screenshot.
@@ -148,14 +149,15 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 		return nil, err
 	}
 	dir := filepath.Dir(sourceFile)
-	if err := checkDoc(doc, dir); err != nil {
+	pkg, err := checkAndReturn(doc, dir)
+	if err != nil {
 		return nil, err
 	}
 	langT := codegen.LookupLang(lang)
 	if langT == nil {
 		return nil, fmt.Errorf("lang %q not registered", lang)
 	}
-	return ts.SnapshotText(doc, langT, width, height)
+	return ts.SnapshotText(pkg, langT, width, height)
 }
 
 // snapshotViaHTML compiles a preview HTML and uses the HTML platform to screenshot it.
@@ -206,7 +208,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	// Parse and check all documents upfront.
 	type parsedDoc struct {
 		entry DocEntry
-		doc   *ast.Document
+		pkg   *ir.Package
 	}
 	var parsed []parsedDoc
 	for _, entry := range cfg.Docs {
@@ -219,10 +221,11 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			return nil, fmt.Errorf("%s: parse: %w", entry.ID, err)
 		}
 		dir := filepath.Dir(sourceFile)
-		if err := checkDoc(doc, dir); err != nil {
+		pkg, err := checkAndReturn(doc, dir)
+		if err != nil {
 			return nil, fmt.Errorf("%s: %w", entry.ID, err)
 		}
-		parsed = append(parsed, parsedDoc{entry: entry, doc: doc})
+		parsed = append(parsed, parsedDoc{entry: entry, pkg: pkg})
 	}
 
 	var results []Result
@@ -241,7 +244,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			for _, p := range parsed {
 				batchDocs = append(batchDocs, codegen.BatchDoc{
 					ID:   p.entry.ID,
-					Doc:  p.doc,
+					Pkg:  p.pkg,
 					Lang: langT,
 				})
 			}
@@ -306,7 +309,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			png, err := snapshotter.Snapshot(p.doc, langT, cfg.Width, cfg.Height)
+			png, err := snapshotter.Snapshot(p.pkg, langT, cfg.Width, cfg.Height)
 			if err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
 			}
@@ -318,7 +321,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 
 			// Text snapshots.
 			if ts, ok := plat.(codegen.TextSnapshotter); ok {
-				text, err := ts.SnapshotText(p.doc, langT, cfg.Width, cfg.Height)
+				text, err := ts.SnapshotText(p.pkg, langT, cfg.Width, cfg.Height)
 				if err == nil && len(text) > 0 {
 					txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
 					os.WriteFile(txtPath, text, 0o644)

@@ -64,7 +64,7 @@ type PlatformGenerator interface {
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
 type TestRunner interface {
-	RunTests(doc *ast.Document, lang LangTranslator) ([]*TestResult, error)
+	RunTests(pkg *ir.Package, lang LangTranslator) ([]*TestResult, error)
 }
 
 // TestResult holds the outcome of a single test.
@@ -88,21 +88,21 @@ type PreviewStyler interface {
 // their own screenshots (e.g., browser screenshots for HTML, terminal
 // screenshots for bubbletea).
 type Snapshotter interface {
-	Snapshot(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
+	Snapshot(pkg *ir.Package, lang LangTranslator, width, height int) ([]byte, error)
 }
 
 // TextSnapshotter is optionally implemented by TUI platforms that can render
 // their output as ANSI text. This provides a .txt alternative to PNG
 // screenshots, useful for terminal-native documentation and diffing.
 type TextSnapshotter interface {
-	SnapshotText(doc *ast.Document, lang LangTranslator, width, height int) ([]byte, error)
+	SnapshotText(pkg *ir.Package, lang LangTranslator, width, height int) ([]byte, error)
 }
 
-// BatchDoc pairs an identifier with a parsed, checked document and its
+// BatchDoc pairs an identifier with a type-checked package and its
 // language translator for batch snapshotting.
 type BatchDoc struct {
 	ID   string // unique identifier, used as result map key
-	Doc  *ast.Document
+	Pkg  *ir.Package
 	Lang LangTranslator
 }
 

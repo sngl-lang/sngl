@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"github.com/charmbracelet/x/cellbuf"
 )
@@ -20,8 +20,8 @@ type htmlSnapshotter interface {
 	SnapshotHTML(html []byte, width, height int) ([]byte, error)
 }
 
-func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	view, err := g.runSnapshot(doc, lang, width, height)
+func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+	view, err := g.runSnapshot(pkg, lang, width, height)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +39,8 @@ func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, wid
 }
 
 // SnapshotText renders the TUI output as ANSI text.
-func (g *Generator) SnapshotText(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	view, err := g.runSnapshot(doc, lang, width, height)
+func (g *Generator) SnapshotText(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+	view, err := g.runSnapshot(pkg, lang, width, height)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (g *Generator) SnapshotText(doc *ast.Document, lang codegen.LangTranslator,
 
 // runSnapshot generates real BubbleTea code, builds it with a snapshot
 // harness, and captures the initial View() output as an ANSI string.
-func (g *Generator) runSnapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) (string, error) {
+func (g *Generator) runSnapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) (string, error) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return "", fmt.Errorf("go not found in PATH")
@@ -62,7 +62,7 @@ func (g *Generator) runSnapshot(doc *ast.Document, lang codegen.LangTranslator, 
 	defer os.RemoveAll(tmpDir)
 
 	resp, err := g.Generate(&codegen.Request{
-		Doc:  doc,
+		Pkg:  pkg,
 		Lang: lang,
 		Options: map[string]string{
 			"package": "main",
@@ -186,7 +186,7 @@ func (g *Generator) runBatchSnapshot(docs []codegen.BatchDoc, width, height int)
 		return nil, nil
 	}
 	if len(docs) == 1 {
-		view, err := g.runSnapshot(docs[0].Doc, docs[0].Lang, width, height)
+		view, err := g.runSnapshot(docs[0].Pkg, docs[0].Lang, width, height)
 		if err != nil {
 			return nil, err
 		}
@@ -215,7 +215,7 @@ func (g *Generator) runBatchSnapshot(docs []codegen.BatchDoc, width, height int)
 		pkgDir := filepath.Join(tmpDir, pkgName)
 
 		resp, err := g.Generate(&codegen.Request{
-			Doc:  d.Doc,
+			Pkg:  d.Pkg,
 			Lang: d.Lang,
 			Options: map[string]string{
 				"package": pkgName,

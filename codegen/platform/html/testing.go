@@ -11,9 +11,19 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
+func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
+	if pkg == nil {
+		return nil, nil
+	}
+
+	// Collect test FuncDef AST nodes — the test runner still walks AST
+	// test-body statements (this is the one place the cdprunner still
+	// needs AST; the codegen side is pure IR).
+	doc := ir.Convert(pkg)
 	testFuncs := doc.TestFuncs()
 	if len(testFuncs) == 0 {
 		return nil, nil
@@ -51,8 +61,15 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator) ([]
 			continue
 		}
 
+		// Re-check the promoted doc so we get an ir.Package for codegen.
+		// The promoted doc restricts the surface to one component so the
+		// test harness can render it in isolation.
+		compPkg := checkPromoted(compDoc)
+		if compPkg == nil {
+			continue
+		}
 		resp, err := g.Generate(&codegen.Request{
-			Doc:     compDoc,
+			Pkg:     compPkg,
 			Lang:    lang,
 			Options: map[string]string{"test": "true"},
 		})
@@ -81,6 +98,18 @@ func (g *Generator) RunTests(doc *ast.Document, lang codegen.LangTranslator) ([]
 		engine.Close()
 	}
 	return results, nil
+}
+
+// checkPromoted re-checks a promoted component doc through the normal
+// checker so CDP test harness codegen gets a full ir.Package.
+func checkPromoted(doc *ast.Document) *ir.Package {
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			return nil
+		}
+	}
+	return pkg
 }
 
 func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, fn *ast.FuncDef) *codegen.TestResult {
@@ -126,10 +155,10 @@ func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document,
 	return result
 }
 
-// Snapshot captures a browser screenshot of the generated HTML for the given document.
-func (g *Generator) Snapshot(doc *ast.Document, lang codegen.LangTranslator, width, height int) ([]byte, error) {
+// Snapshot captures a browser screenshot of the generated HTML for the given package.
+func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	resp, err := g.Generate(&codegen.Request{
-		Doc:     doc,
+		Pkg:     pkg,
 		Lang:    lang,
 		Options: map[string]string{"preview": "true"},
 	})
