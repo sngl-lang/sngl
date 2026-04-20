@@ -596,8 +596,21 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			Kind:    ast.SelectField,
 		}
 	} else if call.Receiver != nil {
-		// Method call on unknown func.
-		funcExpr = c.convertExpr(call.Receiver)
+		// Namespaced component/element (html.div, docui.Foo) resolved via
+		// a namespace's Resolve() — preserve the "ns.Field" select form.
+		if call.AST != nil {
+			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+				funcExpr = &ast.SelectExpr{
+					Operand: c.convertExpr(call.Receiver),
+					Field:   sel.Field,
+					Kind:    ast.SelectField,
+				}
+			}
+		}
+		if funcExpr == nil {
+			// No AST backref — best effort with just the receiver.
+			funcExpr = c.convertExpr(call.Receiver)
+		}
 	} else if call.Func != nil {
 		funcExpr = &ast.IdentExpr{Name: call.Func.Name}
 	} else if call.AST != nil {

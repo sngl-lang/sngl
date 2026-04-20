@@ -405,8 +405,46 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 			g.renderIRStmt(b, child, depth)
 		}
 	case *ir.CallStmt:
-		// Void function call in visual position — nothing to render.
+		if syn := nodeFromIRCallStmt(n); syn != nil {
+			g.renderIRNode(b, syn, depth)
+		}
 	}
+}
+
+// nodeFromIRCallStmt promotes an ir.CallStmt that targets a component
+// (platform-resolved raw element or namespaced user component) into a
+// synthetic ir.NodeInst so it can be rendered like any other visual
+// statement. Returns nil for plain function calls.
+func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
+	if n == nil || n.Call == nil {
+		return nil
+	}
+	var name string
+	switch f := n.Call.AST.Func.(type) {
+	case *ast.IdentExpr:
+		name = f.Name
+	case *ast.SelectExpr:
+		if id, ok := f.Operand.(*ast.IdentExpr); ok {
+			name = id.Name + "." + f.Field
+		}
+	}
+	if name == "" {
+		return nil
+	}
+	props := make([]ir.Arg, 0, len(n.Call.Args))
+	for _, a := range n.Call.Args {
+		props = append(props, ir.Arg{Name: a.Name, Value: a.Value})
+	}
+	syn := &ir.NodeInst{
+		AST:   n.AST,
+		Name:  name,
+		Props: props,
+	}
+	if f := n.Call.Func; f != nil && f.Receiver == "" {
+		// no component resolution via call-side Func (Func is set only for
+		// resolved function calls); Component stays nil → raw/stdlib path.
+	}
+	return syn
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer.
@@ -480,29 +518,64 @@ func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
 	}
 }
 
-// visualNodeFromIR returns the best AST VisualNode representation of a
-// NodeInst for feeding to the legacy per-element renderers. NodeInsts that
-// were parsed as CallStmts (no block) are synthesized into a VisualNode with
-// an empty block so existing helpers can iterate children safely.
+// visualNodeFromIR synthesizes an ast.VisualNode from an ir.NodeInst so
+// legacy AST-based per-element renderers observe post-optimization IR
+// values (constant-folded props, expanded loops, etc.) rather than the
+// raw parsed AST. Target, props, handlers, and children are reconstructed
+// from IR; Pos is inherited from the original parse when available.
 func visualNodeFromIR(n *ir.NodeInst) *ast.VisualNode {
-	switch src := n.AST.(type) {
-	case *ast.VisualNode:
-		return src
-	case *ast.CallStmt:
-		if src.Call == nil {
-			return nil
+	if n == nil {
+		return nil
+	}
+	var target ast.TargetExpr
+	if ns, field, ok := strings.Cut(n.Name, "."); ok {
+		target = &ast.SelectExpr{
+			Operand: &ast.IdentExpr{Name: ns},
+			Field:   field,
+			Kind:    ast.SelectField,
 		}
-		target, ok := src.Call.Func.(ast.TargetExpr)
-		if !ok {
-			return nil
-		}
-		return &ast.VisualNode{
-			Pos:    src.Pos,
-			Target: target,
-			Args:   src.Call.Args,
+	} else {
+		target = &ast.IdentExpr{Name: n.Name}
+	}
+
+	var args []ast.ArgOrEventHandler
+	for _, p := range n.Props {
+		args = append(args, ast.Arg{
+			Name:  p.Name,
+			Value: ir.ConvertExpr(p.Value),
+		})
+	}
+	for i := range n.Handlers {
+		h := &n.Handlers[i]
+		if h.AST != nil {
+			args = append(args, h.AST)
 		}
 	}
-	return nil
+	var block ast.StmtBlock
+	if len(n.Children) > 0 {
+		block.IsMultiline = true
+		block.Pos = ast.Pos{Line: 1}
+		for _, c := range n.Children {
+			if astStmt := ir.ConvertStmt(c); astStmt != nil {
+				block.Stmts = append(block.Stmts, astStmt)
+			}
+		}
+	}
+
+	vn := &ast.VisualNode{
+		Target: target,
+		ID:     n.ID,
+		Block:  block,
+	}
+	if len(args) > 0 {
+		vn.Args = ast.ArgList{Args: args, IsMultiline: len(args) > 3}
+	}
+	if src, ok := n.AST.(*ast.VisualNode); ok {
+		vn.Pos = src.Pos
+	} else if src, ok := n.AST.(*ast.CallStmt); ok {
+		vn.Pos = src.Pos
+	}
+	return vn
 }
 
 // stateVars returns all state (non-const) variables for the compiled
