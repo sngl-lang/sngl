@@ -6,6 +6,8 @@ package html
 // these instead of ast.VisualNode accessors.
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -108,4 +110,49 @@ func (g *htmlGen) nodeIsReactiveIR(n *ir.NodeInst) bool {
 		return true
 	}
 	return false
+}
+
+// buildCSSStyleIR builds a CSS style string from a NodeInst's style
+// properties. Bridges to the existing AST-based CSS builder via a
+// synthesized VisualNode.
+func (g *htmlGen) buildCSSStyleIR(n *ir.NodeInst) string {
+	return g.buildCSSStyle(visualNodeFromIR(n))
+}
+
+// writeOpenTagIR writes an opening HTML tag, delegating to the AST-based
+// writer via a synthesized VisualNode so user-attr emission still works.
+func (g *htmlGen) writeOpenTagIR(b *strings.Builder, tag, id, style string, n *ir.NodeInst, depth int) {
+	pos := nodePos(n)
+	g.writeOpenTag(b, tag, id, style, visualNodeFromIR(n), depth, pos)
+}
+
+// writeUserAttrsIR emits user-specified id/class attributes for a node.
+func (g *htmlGen) writeUserAttrsIR(b *strings.Builder, id string, n *ir.NodeInst) {
+	g.writeUserAttrs(b, id, visualNodeFromIR(n))
+}
+
+// exprDepsIR returns the state field dependencies of an IR expression
+// through the existing AST-based dep tracker.
+func (g *htmlGen) exprDepsIR(e ir.Expr) map[string]bool {
+	if e == nil {
+		return nil
+	}
+	return g.exprDeps(ir.ConvertExpr(e))
+}
+
+// previewAttrsIR returns preview mode data attributes (sngl-line/col) for
+// a NodeInst's source position.
+func (g *htmlGen) previewAttrsIR(n *ir.NodeInst) string {
+	return g.previewAttrs(nodePos(n))
+}
+
+// exprLiteralAnyIR extracts a literal Go value from an IR expression.
+// Returns nil for non-literals or unrepresentable types. Used by
+// renderers that iterate over static list/struct literals (tables,
+// trees, etc.).
+func exprLiteralAnyIR(e ir.Expr) any {
+	if e == nil {
+		return nil
+	}
+	return codegen.ExprLiteralAny(ir.ConvertExpr(e))
 }
