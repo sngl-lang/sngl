@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -425,8 +426,18 @@ func (c *converter) convertStmtBlock(stmts []Stmt) ast.StmtBlock {
 }
 
 func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
+	var target ast.TargetExpr
+	if ns, field, ok := strings.Cut(n.Name, "."); ok {
+		target = &ast.SelectExpr{
+			Operand: &ast.IdentExpr{Name: ns},
+			Field:   field,
+			Kind:    ast.SelectField,
+		}
+	} else {
+		target = &ast.IdentExpr{Name: n.Name}
+	}
 	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: n.Name},
+		Target: target,
 		ID:     n.ID,
 	}
 

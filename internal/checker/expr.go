@@ -1129,6 +1129,35 @@ func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
 	return t.Resolve(name)
 }
 
+// resolveQualifiedIdent reports whether a qualified name "ns.Field" resolves
+// to a namespace member (component, func, or platform-resolved element like
+// html.div) via an in-scope Namespace.
+func (c *checker) resolveQualifiedIdent(name string) bool {
+	ns, field, ok := strings.Cut(name, ".")
+	if !ok {
+		return false
+	}
+	sym, ok := c.scope.Lookup(ns)
+	if !ok {
+		return false
+	}
+	nsSym, ok := sym.(*ir.Namespace)
+	if !ok {
+		return false
+	}
+	if nsSym.Pkg != nil {
+		if _, ok := nsSym.Pkg.Symbols.Root.Lookup(field); ok {
+			return true
+		}
+	}
+	if nsSym.Resolve != nil {
+		if nsSym.Resolve(field) != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveCallStmt converts a checked call expression into a CallStmt.
 // Component instantiations are handled before this is called.
 func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
@@ -1198,9 +1227,21 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		return &ir.SlotInst{AST: vn, Children: children}
 	}
 
-	// Look up component.
+	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
 	var comp *ir.Component
-	if sym, ok := c.symtab.LookupComponent(name); ok {
+	if ns, field, ok := strings.Cut(name, "."); ok {
+		if sym, sok := c.scope.Lookup(ns); sok {
+			if nsSym, nok := sym.(*ir.Namespace); nok {
+				if nsSym.Pkg != nil {
+					if fsym, ok := nsSym.Pkg.Symbols.LookupComponent(field); ok {
+						if co, ok := fsym.(*ir.Component); ok {
+							comp = co
+						}
+					}
+				}
+			}
+		}
+	} else if sym, ok := c.symtab.LookupComponent(name); ok {
 		if co, ok := sym.(*ir.Component); ok {
 			comp = co
 		}
@@ -1228,10 +1269,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	// Unknown component check — skip if name resolves to a variable
 	// (e.g. timer condition guard like `running { ... }`),
-	// or if the platform can resolve it (raw elements inside platform blocks).
+	// or if the platform/namespace can resolve it.
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
-			if c.resolvePlatformIdent(name) == nil {
+			if !c.resolveQualifiedIdent(name) && c.resolvePlatformIdent(name) == nil {
 				c.error(vn.Pos, "unknown component %q", name)
 			}
 		}

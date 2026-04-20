@@ -457,7 +457,8 @@ func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
 	}
 }
 
-// isComponent reports whether a call expression targets a known component.
+// isComponent reports whether a call expression targets a known component
+// (local, imported, or platform-resolved raw element like html.img).
 func (g *htmlGen) isComponent(call *ast.CallExpr) bool {
 	if g.pkg == nil || g.pkg.Symbols == nil {
 		// No type info — assume component (legacy fallback).
@@ -471,8 +472,34 @@ func (g *htmlGen) isComponent(call *ast.CallExpr) bool {
 	if name == "" {
 		return false
 	}
-	_, ok := g.pkg.Symbols.LookupComponent(name)
-	return ok
+	if _, ok := g.pkg.Symbols.LookupComponent(name); ok {
+		return true
+	}
+	// Qualified call: check imported package component or namespace Resolve()
+	// (platform raw elements like html.img; package-exported components).
+	ns, field, ok := strings.Cut(name, ".")
+	if !ok {
+		return false
+	}
+	for _, imp := range g.pkg.Imports {
+		if imp.Alias != ns {
+			continue
+		}
+		if imp.Pkg != nil {
+			if _, ok := imp.Pkg.Symbols.LookupComponent(field); ok {
+				return true
+			}
+		}
+	}
+	// Platform Resolve (html.div, html.img, etc.).
+	if sym, ok := g.pkg.Symbols.Root.Lookup(ns); ok {
+		if nsSym, ok := sym.(*ir.Namespace); ok && nsSym.Resolve != nil {
+			if nsSym.Resolve(field) != nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isFunction reports whether a visual node name resolves to a function (not component).
@@ -1464,7 +1491,8 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	staticInnerText := ""
 	staticInnerHTML := ""
 	for name, expr := range vnProps(vn) {
-		if name == "style" {
+		// class is emitted separately below to avoid duplicate attrs.
+		if name == "style" || name == "class" {
 			continue
 		}
 		// Try resolving SNGL expressions (e.g. component param references)
@@ -1596,9 +1624,49 @@ func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth
 	}
 }
 
+// findUserComponent resolves a component by name, supporting both bare
+// ("Foo") and namespace-qualified ("pkg.Foo") forms. Searches the local AST
+// document first, then the IR package's merged symbol table (which includes
+// imported package components).
+func (g *htmlGen) findUserComponent(name string) *ast.ComponentDecl {
+	if name == "" {
+		return nil
+	}
+	if g.doc != nil {
+		if comp := codegen.FindComponent(g.doc, name); comp != nil {
+			return comp
+		}
+	}
+	if g.pkg == nil {
+		return nil
+	}
+	// Qualified lookup via import namespaces.
+	if ns, field, ok := strings.Cut(name, "."); ok {
+		for _, imp := range g.pkg.Imports {
+			if imp.Alias != ns || imp.Pkg == nil {
+				continue
+			}
+			if sym, ok := imp.Pkg.Symbols.LookupComponent(field); ok {
+				if c, ok := sym.(*ir.Component); ok && c.AST != nil {
+					return c.AST
+				}
+			}
+		}
+		return nil
+	}
+	if g.pkg.Symbols != nil {
+		if sym, ok := g.pkg.Symbols.LookupComponent(name); ok {
+			if c, ok := sym.(*ir.Component); ok && c.AST != nil {
+				return c.AST
+			}
+		}
+	}
+	return nil
+}
+
 func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNode, depth int) {
-	// Find the component definition
-	comp := codegen.FindComponent(g.doc, vnName(vn))
+	// Find the component definition — local doc first, then imported IR pkgs.
+	comp := g.findUserComponent(vnName(vn))
 	if comp == nil {
 		// Not a user/abstract component — render as raw HTML element
 		g.renderRawElement(b, vn, depth)

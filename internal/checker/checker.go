@@ -777,12 +777,19 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.
+// Returns "name" for bare identifiers and "pkg.Name" for qualified targets
+// (e.g. html.div, docui.Sidebar).
 func visualNodeTarget(vn *ast.VisualNode) string {
 	if vn.Target == nil {
 		return ""
 	}
-	if id, ok := vn.Target.(*ast.IdentExpr); ok {
-		return id.Name
+	switch t := vn.Target.(type) {
+	case *ast.IdentExpr:
+		return t.Name
+	case *ast.SelectExpr:
+		if id, ok := t.Operand.(*ast.IdentExpr); ok {
+			return id.Name + "." + t.Field
+		}
 	}
 	return ""
 }
