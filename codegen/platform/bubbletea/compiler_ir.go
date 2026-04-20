@@ -11,6 +11,41 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// Config controls code generation.
+type Config struct {
+	Package      string // Go package name (default: "ui")
+	ScaleFactor  int    // pixels per terminal cell (default: 8)
+	GenerateMain bool   // emit a main() function for standalone apps
+}
+
+func (c Config) withDefaults() Config {
+	if c.Package == "" {
+		if c.GenerateMain {
+			c.Package = "main"
+		} else {
+			c.Package = "ui"
+		}
+	}
+	if c.ScaleFactor == 0 {
+		c.ScaleFactor = 8
+	}
+	return c
+}
+
+type inputInfo struct {
+	fieldName   string
+	bindTarget  string
+	placeholder string
+}
+
+type forLoopCursor struct {
+	cursorField string
+	listField   string
+	focusIdx    int
+	indexVar    string
+	iterVar     string
+}
+
 // CompileIR generates a Go source file from IR using the new CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()

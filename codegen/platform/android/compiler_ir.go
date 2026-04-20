@@ -3,11 +3,47 @@ package android
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// Config controls code generation.
+type Config struct {
+	Package      string // Kotlin package name (default: "test.sngl.app")
+	AppName      string // display name for the app (default: derived from package)
+	GenerateMain bool   // emit MainActivity.kt + project scaffold
+	Gradle       bool   // use Gradle build system (default: true)
+	GoLib        bool   // true when user funcs live in a Go module (gomobile bind)
+	Icon         string // path to icon file (SVG or PNG), relative to project root
+	Color        string // theme/icon background color as hex (#RRGGBB)
+	ProjectDir   string // project root directory (for resolving relative icon paths)
+}
+
+func (c Config) withDefaults() Config {
+	if c.Package == "" {
+		c.Package = "test.sngl.app"
+	}
+	if c.Color == "" {
+		c.Color = "#6750A4"
+	}
+	return c
+}
+
+func exportName(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+func pkgToPath(pkg string) string {
+	return strings.ReplaceAll(pkg, ".", "/")
+}
 
 // CompileIR generates a Kotlin source file from IR using CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {

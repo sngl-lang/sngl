@@ -2,13 +2,28 @@ package fyne
 
 import (
 	"embed"
-	"fmt"
-	"slices"
-	"strings"
-
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
 )
+
+// Config controls code generation.
+type Config struct {
+	Package      string // Go package name (default: "ui")
+	GenerateMain bool   // emit a main() function for standalone apps
+	AppName      string // application display name
+}
+
+func (c Config) withDefaults() Config {
+	if c.Package == "" {
+		if c.GenerateMain {
+			c.Package = "main"
+		} else {
+			c.Package = "ui"
+		}
+	}
+	if c.AppName == "" {
+		c.AppName = "SNGL App"
+	}
+	return c
+}
 
 //go:embed templates/*
 var templateFS embed.FS
@@ -89,125 +104,4 @@ type timerData struct {
 	AffectedUpdaters string // pre-rendered updater calls
 }
 
-func newTemplateData(info *analysisResult, cfg Config, updaters []widgetUpdater, widgetFields []widgetField, functionCode string, ec *exprContext, doc *ast.Document) templateData {
-	td := templateData{
-		Package:      cfg.Package,
-		GenerateMain: cfg.GenerateMain,
-		AppName:      cfg.AppName,
-		NeedsTime:    info.needsTime,
-		NeedsURL:     info.needsURL,
-		NeedsCanvas:  info.needsCanvas,
-		NeedsToast:   info.NeedsToast,
-		HasTimers:    len(info.Timers) > 0,
-		FunctionCode: functionCode,
-	}
-
-	// Native Go imports from Resolved fields
-	for pkg := range info.goImports {
-		td.GoImports = append(td.GoImports, pkg)
-	}
-	slices.Sort(td.GoImports)
-
-	// Structs
-	for _, sd := range info.Structs {
-		s := structData{Name: exportName(sd.Name)}
-		for _, f := range sd.Fields {
-			goType := typeHintToGo(irTypeHint(f.Type))
-			s.Fields = append(s.Fields, structFieldData{
-				Name: exportName(f.Name),
-				Type: goType,
-			})
-		}
-		td.Structs = append(td.Structs, s)
-	}
-
-	// Binds
-	for _, bind := range info.binds {
-		getter := exportName(bind.name)
-		bd := bindData{
-			Name:    bind.name,
-			GoType:  bind.goType,
-			InitVal: bind.initVal,
-			Getter:  getter,
-		}
-		// Build setter extra lines
-		var extra strings.Builder
-		for _, entry := range info.entries {
-			if entry.bindTarget == bind.name && bind.goType == "string" {
-				fmt.Fprintf(&extra, "\tm.%s.SetText(v)\n", entry.fieldName)
-			}
-		}
-		// Pre-render @change event bodies for this data field.
-		if handlers, ok := info.dataEvents[bind.name]; ok {
-			for i := range handlers {
-				if handlers[i].Name == "change" {
-					for _, bodyStmt := range handlers[i].Body.Stmts {
-						stmts := ec.TranslateMutation(bodyStmt)
-						for _, s := range stmts {
-							fmt.Fprintf(&extra, "\t%s\n", s)
-						}
-					}
-				}
-			}
-		}
-		mutated := map[string]bool{bind.name: true}
-		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
-		for _, u := range affected {
-			fmt.Fprintf(&extra, "\tm.%s()\n", u.name)
-		}
-		bd.SetterExtra = extra.String()
-		td.Binds = append(td.Binds, bd)
-	}
-
-	// Externs
-	for _, ext := range info.externs {
-		td.Externs = append(td.Externs, externData{
-			Name:   exportName(ext.name),
-			GoType: ext.goType,
-		})
-	}
-
-	// Widget fields
-	for _, wf := range widgetFields {
-		td.WidgetFields = append(td.WidgetFields, widgetFieldData{
-			Name:   wf.name,
-			GoType: wf.goType,
-		})
-	}
-
-	// Updater names (for doRefresh)
-	for _, u := range updaters {
-		td.UpdaterNames = append(td.UpdaterNames, u.name)
-	}
-
-	// Entries
-	for _, entry := range info.entries {
-		ed := entryData{
-			FieldName:   entry.fieldName,
-			MultiLine:   entry.multiLine,
-			Password:    entry.password,
-			Placeholder: entry.placeholder,
-			BindTarget:  entry.bindTarget,
-			Rows:        entry.rows,
-		}
-		if entry.placeholder != "" {
-			ed.PlaceholderQuoted = fmt.Sprintf("%q", entry.placeholder)
-		}
-		if entry.bindTarget != "" {
-			var body strings.Builder
-			entryMutated := map[string]bool{entry.bindTarget: true}
-			affected := codegen.FindAffected(info.depTracker(), updaters, entryMutated)
-			if len(affected) > 0 {
-				for _, u := range affected {
-					fmt.Fprintf(&body, "\t\tm.%s()\n", u.name)
-				}
-			} else {
-				body.WriteString("\t\tm.doRefresh()\n")
-			}
-			ed.OnChangedBody = body.String()
-		}
-		td.Entries = append(td.Entries, ed)
-	}
-
-	return td
-}
+// newTemplateData is now in compiler_ir.go as newIRTemplateData.

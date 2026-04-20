@@ -579,6 +579,19 @@ func buildIRStyleExpr(styles map[string]ir.Expr, gc *golang.GoIRContext, scaleFa
 	return strings.Join(chain, ".\n")
 }
 
+// scaleVal wraps a numeric value expression with pixel-to-cell scaling.
+func scaleVal(val string, scaleFactor int) string {
+	var n int
+	if _, err := fmt.Sscanf(val, "%d", &n); err == nil {
+		if n == 0 {
+			return "0"
+		}
+		scaled := max(n/scaleFactor, 1)
+		return fmt.Sprintf("%d", scaled)
+	}
+	return fmt.Sprintf("max(1, %s / %d)", val, scaleFactor)
+}
+
 func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
 	val := gc.EvalExpr(expr)
 

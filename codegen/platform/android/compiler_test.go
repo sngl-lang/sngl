@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
@@ -31,7 +32,8 @@ func firstError(diags []ir.Diagnostic) string {
 
 func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 	t.Helper()
-	src, err := Compile(doc, pkg, Config{})
+	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: pkg}, "android")
+	src, err := CompileIR(ctx, Config{})
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}

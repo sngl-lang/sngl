@@ -44,7 +44,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	case "kotlin":
 		return g.generateKotlin(req)
 	case "go":
-		return g.generateGo(req)
+		return g.generateGoIR(req)
 	default:
 		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
 	}
