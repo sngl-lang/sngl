@@ -1171,20 +1171,18 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(" />\n")
 
-	// Add value sync updater if the input is bound to state via set()
-	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.AST != nil {
-		if len(inputEvt.AST.Body.Stmts) > 0 {
-			// Extract the set() target to determine the JS expression for the bound value
-			if target, ok := extractSetTarget(inputEvt.AST.Body.Stmts[0]); ok {
-				jsExpr := g.lang.TranslateExpr(target, g.scope)
-				root := findRootIdentAST(target)
-				name := fmt.Sprintf("$u_%s_val", id[1:])
-				g.updates = append(g.updates, updateFunc{
-					funcName: name,
-					body:     fmt.Sprintf("%s.value = %s;", id, jsExpr),
-					deps:     map[string]bool{root: true},
-				})
-			}
+	// Add value sync updater if the input is bound to state via an
+	// assignment in its input handler.
+	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.Func != nil && len(inputEvt.Func.Block) > 0 {
+		if target, ok := extractSetTarget(inputEvt.Func.Block[0]); ok {
+			jsExpr := g.lang.TranslateIRExpr(target, g.scope)
+			root := codegen.FindRootIdent(target)
+			name := fmt.Sprintf("$u_%s_val", id[1:])
+			g.updates = append(g.updates, updateFunc{
+				funcName: name,
+				body:     fmt.Sprintf("%s.value = %s;", id, jsExpr),
+				deps:     map[string]bool{root: true},
+			})
 		}
 	}
 
@@ -1981,10 +1979,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// User-defined functions
 	emittedFuncs := false
 	for _, fn := range funcs {
-		if fn.AST != nil {
-			g.emitJSFunc(b, fn.AST)
-			emittedFuncs = true
-		}
+		g.emitJSFunc(b, fn)
+		emittedFuncs = true
 	}
 	if emittedFuncs {
 		b.WriteString("\n")
@@ -2636,15 +2632,13 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 
 // Expression evaluation helpers
 
-func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
-	// Build param list
-	params := make([]string, len(fn.Params.Params))
-	for i, p := range fn.Params.Params {
+func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
 		params[i] = p.Name
 	}
 	paramStr := strings.Join(params, ", ")
 
-	// Create a scope with function params as local vars
 	funcScope := &codegen.ExprScope{
 		ModelFields:    g.scope.ModelFields,
 		ComputedFields: g.scope.ComputedFields,
@@ -2654,41 +2648,46 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ast.FuncDef) {
 	for k := range g.scope.LocalVars {
 		funcScope.LocalVars[k] = true
 	}
-	for _, p := range fn.Params.Params {
+	for _, p := range fn.Params {
 		funcScope.LocalVars[p.Name] = true
 	}
 
 	// Mangle dotted names for JS: int.sqrt → int_sqrt
 	jsName := strings.ReplaceAll(fn.Name, ".", "_")
 
-	if fn.Body != nil {
-		// Single-expression function
-		body := g.lang.TranslateExpr(fn.Body, funcScope)
-		fmt.Fprintf(b, "function %s(%s) { return %s; }\n", jsName, paramStr, body)
-	} else if len(fn.Block.Stmts) > 0 {
-		fmt.Fprintf(b, "function %s(%s) {\n", jsName, paramStr)
-		for _, stmt := range fn.Block.Stmts {
-			switch s := stmt.(type) {
-			case *ast.VarStmt:
-				funcScope.LocalVars[s.Name] = true
-				val := g.lang.TranslateExpr(s.Init, funcScope)
-				fmt.Fprintf(b, "  let %s = %s;\n", s.Name, val)
-			case *ast.ReturnStmt:
-				if s.Value != nil {
-					ret := g.lang.TranslateExpr(s.Value, funcScope)
-					fmt.Fprintf(b, "  return %s;\n", ret)
-				} else {
-					b.WriteString("  return;\n")
-				}
-			default:
-				stmts := g.lang.TranslateMutation(stmt, funcScope)
-				for _, line := range stmts {
-					fmt.Fprintf(b, "  %s;\n", line)
-				}
+	// Single-return expression body.
+	if len(fn.Block) == 1 {
+		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+			body := g.lang.TranslateIRExpr(ret.Value, funcScope)
+			fmt.Fprintf(b, "function %s(%s) { return %s; }\n", jsName, paramStr, body)
+			return
+		}
+	}
+	if len(fn.Block) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "function %s(%s) {\n", jsName, paramStr)
+	for _, stmt := range fn.Block {
+		switch s := stmt.(type) {
+		case *ir.LocalVar:
+			funcScope.LocalVars[s.Name] = true
+			val := g.lang.TranslateIRExpr(s.Init, funcScope)
+			fmt.Fprintf(b, "  let %s = %s;\n", s.Name, val)
+		case *ir.Return:
+			if s.Value != nil {
+				ret := g.lang.TranslateIRExpr(s.Value, funcScope)
+				fmt.Fprintf(b, "  return %s;\n", ret)
+			} else {
+				b.WriteString("  return;\n")
+			}
+		default:
+			stmts := g.lang.TranslateIRMutation(stmt, funcScope)
+			for _, line := range stmts {
+				fmt.Fprintf(b, "  %s;\n", line)
 			}
 		}
-		b.WriteString("}\n")
 	}
+	b.WriteString("}\n")
 }
 
 func (g *htmlGen) exprToJS(expr ir.Expr) string {
@@ -2836,13 +2835,12 @@ func splitJSConcat(s string) []string {
 	return parts
 }
 
-// extractSetTarget finds the first argument of an AssignStmt, which is the target being assigned.
-func extractSetTarget(s ast.Stmt) (ast.Expr, bool) {
+// extractSetTarget finds the target expression of an assignment statement.
+func extractSetTarget(s ir.Stmt) (ir.Expr, bool) {
 	if s == nil {
 		return nil, false
 	}
-	switch n := s.(type) {
-	case *ast.AssignStmt:
+	if n, ok := s.(*ir.Assign); ok {
 		return n.Target, true
 	}
 	return nil, false
