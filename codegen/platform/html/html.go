@@ -223,11 +223,8 @@ type htmlGen struct {
 	// Component nesting depth for recursion protection
 	componentDepth int
 
-	// Slot children: caller's children for abstract component body expansion
-	// (AST path — used by the legacy renderStaticUserComponent).
-	slotChildren []ast.Stmt
-
-	// irSlotChildren is the IR equivalent of slotChildren for the IR path.
+	// irSlotChildren holds the caller's children during component inlining;
+	// the body-level `slot` pseudo-element projects them into position.
 	irSlotChildren []ir.Stmt
 
 	// irBodyStmts is the IR body rendered for the current window.
@@ -1143,16 +1140,9 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
 	case "slot":
-		// Project caller's children into this position. The IR path
-		// populates irSlotChildren; the legacy AST path uses slotChildren.
-		if len(g.irSlotChildren) > 0 {
-			for _, s := range g.irSlotChildren {
-				g.renderIRStmt(b, s, depth)
-			}
-		} else {
-			for _, s := range g.slotChildren {
-				g.renderStaticStmt(b, s, depth)
-			}
+		// Project caller's children into this position.
+		for _, s := range g.irSlotChildren {
+			g.renderIRStmt(b, s, depth)
 		}
 
 	case "window":
@@ -2150,16 +2140,13 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	g.dataRenames = dataRenames
 
 	savedSlot := g.irSlotChildren
-	savedASTSlot := g.slotChildren
 	g.irSlotChildren = n.Children
-	g.slotChildren = nil
 
 	for _, s := range irPlatformBody(comp.Body, "html") {
 		g.renderIRStmt(b, s, depth)
 	}
 
 	g.irSlotChildren = savedSlot
-	g.slotChildren = savedASTSlot
 	g.dataRenames = savedDataRenames
 
 	g.scope.LocalVars = savedLocals
