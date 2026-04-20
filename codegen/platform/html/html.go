@@ -244,7 +244,11 @@ type htmlGen struct {
 	componentDepth int
 
 	// Slot children: caller's children for abstract component body expansion
+	// (AST path — used by the legacy renderStaticUserComponent).
 	slotChildren []ast.Stmt
+
+	// irSlotChildren is the IR equivalent of slotChildren for the IR path.
+	irSlotChildren []ir.Stmt
 
 	// bodyStmts overrides the main component body when generating per-window pages
 	bodyStmts []ast.Stmt
@@ -366,24 +370,15 @@ func (g *htmlGen) generate() string {
 	}
 	b.WriteString("</head><body>\n\n")
 
-	// Render static HTML body — from override stmts (per-window) or main component.
+	// Render static HTML body — IR-driven when available, AST fallback
+	// only for the deprecated bodyStmts override path (per-window AST docs).
 	if len(g.bodyStmts) > 0 {
 		for _, s := range g.bodyStmts {
 			g.renderStaticStmt(&b, s, 0)
 		}
 	} else if len(g.irBodyStmts) > 0 {
-		// IR-based rendering: extract AST back-refs for the rendering path
 		for _, s := range g.irBodyStmts {
-			if astStmt := irStmtToAST(s); astStmt != nil {
-				g.renderStaticStmt(&b, astStmt, 0)
-			}
-		}
-	} else if g.doc != nil {
-		mainComp := findMainComponent(g.doc)
-		if mainComp != nil {
-			for _, s := range compBodyStmts(mainComp) {
-				g.renderStaticStmt(&b, s, 0)
-			}
+			g.renderIRStmt(&b, s, 0)
 		}
 	}
 
@@ -422,6 +417,167 @@ func (g *htmlGen) generate() string {
 	}
 
 	return result
+}
+
+// renderIRStmt is the IR-driven top-level dispatch. Structural statements
+// (If/For/PlatformFilter/Slot/user-component inlining) are walked over IR;
+// leaf NodeInst rendering currently delegates to the AST helpers via the
+// original n.AST back-reference. Per-element helpers will be ported to IR
+// incrementally.
+func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		g.renderIRNode(b, n, depth)
+	case *ir.If:
+		g.renderIRIf(b, n, depth)
+	case *ir.For:
+		g.renderIRFor(b, n, depth)
+	case *ir.PlatformFilter:
+		if n.Platform != "html" {
+			return
+		}
+		for _, bs := range n.Body {
+			g.renderIRStmt(b, bs, depth)
+		}
+	case *ir.SlotInst:
+		for _, child := range g.irSlotChildren {
+			g.renderIRStmt(b, child, depth)
+		}
+	case *ir.CallStmt:
+		// Void function call in visual position — nothing to render.
+	}
+}
+
+// renderIRNode dispatches a NodeInst to the appropriate renderer.
+// User components (components with a source AST declaration) inline via
+// their IR body; stdlib and platform-resolved raw elements fall through to
+// the AST-backed per-element helpers.
+func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
+	if isUserIRComponent(n) {
+		g.renderIRUserComponent(b, n, depth)
+		return
+	}
+	vn := visualNodeFromIR(n)
+	if vn == nil {
+		return
+	}
+	g.renderStaticNode(b, vn, depth)
+}
+
+// isUserIRComponent reports whether a NodeInst resolves to a user-defined
+// component (local or imported) as opposed to a stdlib component or a
+// platform-resolved raw element (html.div, html.img, ...).
+func isUserIRComponent(n *ir.NodeInst) bool {
+	if n.Component == nil || n.Component.AST == nil {
+		return false
+	}
+	if isStdlibComponentName(n.Name) {
+		return false
+	}
+	return true
+}
+
+// renderIRIf emits an if block whose branches recurse through IR.
+func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
+	indent := strings.Repeat("  ", depth)
+	id := g.allocID()
+	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"display:none\">\n", indent, id)
+	for _, s := range n.Body {
+		g.renderIRStmt(b, s, depth+1)
+	}
+	fmt.Fprintf(b, "%s</div>\n", indent)
+	cond := ir.ConvertExpr(n.Cond)
+	g.addIfUpdater(id, cond)
+	if len(n.Else) > 0 {
+		elseID := g.allocID()
+		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+		for _, s := range n.Else {
+			g.renderIRStmt(b, s, depth+1)
+		}
+		fmt.Fprintf(b, "%s</div>\n", indent)
+		g.addElseUpdater(elseID, cond)
+	}
+}
+
+// renderIRFor emits a for-loop placeholder; updater is registered from the
+// AST back-ref so the existing JS-emission path is reused.
+func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
+	indent := strings.Repeat("  ", depth)
+	id := g.allocID()
+	fmt.Fprintf(b, "%s<div id=\"%s\"></div>\n", indent, id)
+	if n.AST != nil {
+		g.addForStmtUpdater(id, n.AST)
+		if len(n.Else) > 0 {
+			elseID := g.allocID()
+			fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
+			for _, s := range n.Else {
+				g.renderIRStmt(b, s, depth+1)
+			}
+			fmt.Fprintf(b, "%s</div>\n", indent)
+			g.addForElseStmtUpdater(id, elseID, n.AST)
+		}
+	}
+}
+
+// visualNodeFromIR returns the best AST VisualNode representation of a
+// NodeInst for feeding to the legacy per-element renderers. NodeInsts that
+// were parsed as CallStmts (no block) are synthesized into a VisualNode with
+// an empty block so existing helpers can iterate children safely.
+func visualNodeFromIR(n *ir.NodeInst) *ast.VisualNode {
+	switch src := n.AST.(type) {
+	case *ast.VisualNode:
+		return src
+	case *ast.CallStmt:
+		if src.Call == nil {
+			return nil
+		}
+		target, ok := src.Call.Func.(ast.TargetExpr)
+		if !ok {
+			return nil
+		}
+		return &ast.VisualNode{
+			Pos:    src.Pos,
+			Target: target,
+			Args:   src.Call.Args,
+		}
+	}
+	return nil
+}
+
+// irPlatformBody returns the platform-specific override body if any
+// PlatformFilter entries match platform; otherwise returns the original
+// statements (with any non-matching PlatformFilters dropped).
+func irPlatformBody(stmts []ir.Stmt, platform string) []ir.Stmt {
+	var matches []ir.Stmt
+	hasFilter := false
+	for _, s := range stmts {
+		if pf, ok := s.(*ir.PlatformFilter); ok {
+			hasFilter = true
+			if pf.Platform == platform {
+				matches = append(matches, pf.Body...)
+			}
+		}
+	}
+	if hasFilter {
+		return matches
+	}
+	return stmts
+}
+
+// isStdlibComponentName reports whether a name is a built-in stdlib
+// component that the html platform handles via dedicated renderStaticX
+// helpers rather than inlined user-component expansion.
+func isStdlibComponentName(name string) bool {
+	switch name {
+	case "vbox", "hbox", "stack", "scroll", "spacer", "text", "button", "input",
+		"image", "checkbox", "radio", "toggle", "select", "textarea", "progress",
+		"spinner", "badge", "tabs", "link", "divider", "modal", "drawer",
+		"tooltip", "popover", "accordion", "splitview", "table", "tree", "menu",
+		"menubar", "toolbar", "datepicker", "chip", "avatar", "card", "slot",
+		"window", "timer":
+		return true
+	}
+	return false
 }
 
 // renderStaticStmt dispatches a statement to the appropriate renderer.
@@ -882,9 +1038,16 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, vn *ast.VisualNode, depth
 		fmt.Fprintf(b, "%s</div>\n", indent)
 
 	case "slot":
-		// Project caller's children into this position
-		for _, s := range g.slotChildren {
-			g.renderStaticStmt(b, s, depth)
+		// Project caller's children into this position. The IR path
+		// populates irSlotChildren; the legacy AST path uses slotChildren.
+		if len(g.irSlotChildren) > 0 {
+			for _, s := range g.irSlotChildren {
+				g.renderIRStmt(b, s, depth)
+			}
+		} else {
+			for _, s := range g.slotChildren {
+				g.renderStaticStmt(b, s, depth)
+			}
 		}
 
 	case "window":
@@ -1751,9 +1914,14 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	savedDataRenames := g.dataRenames
 	g.dataRenames = dataRenames
 
-	// Set slot children for abstract component body expansion
+	// Set slot children for abstract component body expansion. Clear the IR
+	// slot list so AST-rendered component bodies don't accidentally pick up
+	// a caller's IR children (the AST path sets slotChildren; IR path sets
+	// irSlotChildren — they must not leak across boundaries).
 	savedSlot := g.slotChildren
+	savedIRSlot := g.irSlotChildren
 	g.slotChildren = vnChildren(vn)
+	g.irSlotChildren = nil
 
 	// Inline the component body at the call site.
 	for _, s := range compBodyStmts(comp) {
@@ -1761,9 +1929,127 @@ func (g *htmlGen) renderStaticUserComponent(b *strings.Builder, vn *ast.VisualNo
 	}
 
 	g.slotChildren = savedSlot
+	g.irSlotChildren = savedIRSlot
 	g.dataRenames = savedDataRenames
 
 	// Restore locals
+	g.scope.LocalVars = savedLocals
+	g.scope.Renames = savedRenames
+}
+
+// renderIRUserComponent inlines a user component at its call site using the
+// IR component definition. Mirrors renderStaticUserComponent but walks the
+// IR body via renderIRStmt and sources params/vars/computed from ir.Component
+// (which includes imported packages the AST doc never sees).
+func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, depth int) {
+	comp := n.Component
+	if comp == nil {
+		// Unresolved — fall through to AST-backed raw element render.
+		if vn := visualNodeFromIR(n); vn != nil {
+			g.renderRawElement(b, vn, depth)
+		}
+		return
+	}
+
+	g.componentDepth++
+	if g.componentDepth > maxComponentDepth {
+		g.componentDepth--
+		return
+	}
+	defer func() { g.componentDepth-- }()
+
+	g.componentInvocations++
+	suffix := fmt.Sprintf("_%d", g.componentInvocations)
+
+	savedLocals := make(map[string]bool)
+	maps.Copy(savedLocals, g.scope.LocalVars)
+	savedRenames := g.scope.Renames
+	renames := make(map[string]string)
+	if savedRenames != nil {
+		maps.Copy(renames, savedRenames)
+	}
+
+	// Component params: bind call-site prop values (IR) or defaults to
+	// uniquely-renamed JS constants so the inlined body references them.
+	for _, p := range comp.Props {
+		uniqueName := p.Name + suffix
+		g.scope.LocalVars[p.Name] = true
+		renames[p.Name] = uniqueName
+
+		var valueExpr ir.Expr
+		for _, pa := range n.Props {
+			if pa.Name == p.Name {
+				valueExpr = pa.Value
+				break
+			}
+		}
+		if valueExpr == nil {
+			valueExpr = p.Default
+		}
+		var jsVal string
+		if valueExpr != nil {
+			jsVal = g.exprToJS(ir.ConvertExpr(valueExpr))
+		} else {
+			jsVal = `""`
+		}
+		g.componentParams = append(g.componentParams, componentParam{
+			name:  uniqueName,
+			value: jsVal,
+		})
+	}
+
+	// Component computed (zero-param) funcs: register renames, then emit bodies.
+	for _, fn := range comp.Funcs {
+		if len(fn.Params) == 0 && len(fn.Block) == 1 {
+			if _, isRet := fn.Block[0].(*ir.Return); isRet {
+				uniqueName := fn.Name + suffix
+				g.scope.LocalVars[fn.Name] = true
+				renames[fn.Name] = uniqueName
+			}
+		}
+	}
+	g.scope.Renames = renames
+	for _, fn := range comp.Funcs {
+		if len(fn.Params) == 0 && len(fn.Block) == 1 {
+			if ret, isRet := fn.Block[0].(*ir.Return); isRet && ret.Value != nil {
+				uniqueName := fn.Name + suffix
+				body := g.exprToJS(ir.ConvertExpr(ret.Value))
+				g.componentParams = append(g.componentParams, componentParam{
+					name:  uniqueName,
+					value: body,
+				})
+			}
+		}
+	}
+
+	// State vars: promote to parent with unique names.
+	dataRenames := make(map[string]string)
+	for _, dv := range comp.Vars {
+		uniqueName := dv.Name + suffix
+		g.scope.ModelFields[uniqueName] = true
+		g.dt.ModelFields[uniqueName] = true
+		g.scope.LocalVars[dv.Name] = true
+		renames[dv.Name] = "state." + uniqueName
+		dataRenames[dv.Name] = uniqueName
+	}
+	g.scope.Renames = renames
+
+	savedDataRenames := g.dataRenames
+	g.dataRenames = dataRenames
+
+	savedSlot := g.irSlotChildren
+	savedASTSlot := g.slotChildren
+	g.irSlotChildren = n.Children
+	g.slotChildren = nil
+
+	for _, s := range irPlatformBody(comp.Body, "html") {
+		g.renderIRStmt(b, s, depth)
+	}
+
+	g.irSlotChildren = savedSlot
+	g.slotChildren = savedASTSlot
+	g.dataRenames = savedDataRenames
+
 	g.scope.LocalVars = savedLocals
 	g.scope.Renames = savedRenames
 }
