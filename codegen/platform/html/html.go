@@ -3087,42 +3087,6 @@ func splitJSConcat(s string) []string {
 	return parts
 }
 
-func (g *htmlGen) evalStaticBool(expr *ast.Expr) bool {
-	if expr == nil {
-		return true
-	}
-	if exprIsLiteral(*expr) {
-		if v, ok := exprLiteralBool(*expr); ok {
-			return v
-		}
-	}
-	// Expression: assume true for initial render
-	return true
-}
-
-func (g *htmlGen) propIsReactive(props map[string]ast.Expr, key string) bool {
-	if props == nil {
-		return false
-	}
-	v, ok := props[key]
-	if !ok {
-		return false
-	}
-	return exprIsReactive(v)
-}
-
-func (g *htmlGen) nodeIsReactive(vn *ast.VisualNode) bool {
-	if vnHasEvents(vn) {
-		return true
-	}
-	for _, v := range vnProps(vn) {
-		if exprIsReactive(v) {
-			return true
-		}
-	}
-	return false
-}
-
 // extractSetTarget finds the first argument of an AssignStmt, which is the target being assigned.
 func extractSetTarget(s ast.Stmt) (ast.Expr, bool) {
 	if s == nil {
