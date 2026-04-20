@@ -484,8 +484,7 @@ func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
 		g.renderIRStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</div>\n", indent)
-	cond := ir.ConvertExpr(n.Cond)
-	g.addIfUpdater(id, cond)
+	g.addIfUpdater(id, n.Cond)
 	if len(n.Else) > 0 {
 		elseID := g.allocID()
 		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
@@ -493,7 +492,7 @@ func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
 			g.renderIRStmt(b, s, depth+1)
 		}
 		fmt.Fprintf(b, "%s</div>\n", indent)
-		g.addElseUpdater(elseID, cond)
+		g.addElseUpdater(elseID, n.Cond)
 	}
 }
 
@@ -682,39 +681,6 @@ func isStdlibComponentName(name string) bool {
 	return false
 }
 
-// renderStaticStmt dispatches a statement to the appropriate renderer.
-// Uses checker IR for disambiguation when available, falls back to AST.
-func (g *htmlGen) renderStaticStmt(b *strings.Builder, s ast.Stmt, depth int) {
-	switch n := s.(type) {
-	case *ast.VisualNode:
-		if g.isFunction(vnName(n)) {
-			return // void function call, not a visual node
-		}
-		g.renderStaticNode(b, nodeInstFromAST(n), depth)
-	case *ast.CallStmt:
-		if g.isComponent(n.Call) {
-			// Component invocation that parsed as a call (no block).
-			if target, ok := n.Call.Func.(ast.TargetExpr); ok {
-				vn := &ast.VisualNode{
-					Pos:    n.Pos,
-					Target: target,
-					Args:   n.Call.Args,
-				}
-				g.renderStaticNode(b, nodeInstFromAST(vn), depth)
-			}
-		}
-		// else: void function call — skip
-	case *ast.IfStmt:
-		g.renderStaticIf(b, n, depth)
-	case *ast.ForStmt:
-		g.renderStaticFor(b, n, depth)
-	case *ast.PlatformStmt:
-		for _, bs := range n.Body.Stmts {
-			g.renderStaticStmt(b, bs, depth)
-		}
-	}
-}
-
 // isComponent reports whether a call expression targets a known component
 // (local, imported, or platform-resolved raw element like html.img).
 func (g *htmlGen) isComponent(call *ast.CallExpr) bool {
@@ -791,45 +757,6 @@ func callTargetName(call *ast.CallExpr) string {
 	return ""
 }
 
-// renderStaticIf renders a conditional block as a hidden div with an updater.
-func (g *htmlGen) renderStaticIf(b *strings.Builder, stmt *ast.IfStmt, depth int) {
-	indent := strings.Repeat("  ", depth)
-	id := g.allocID()
-	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"display:none\">\n", indent, id)
-	for _, s := range stmt.Body.Stmts {
-		g.renderStaticStmt(b, s, depth+1)
-	}
-	fmt.Fprintf(b, "%s</div>\n", indent)
-	g.addIfUpdater(id, stmt.Cond)
-
-	if len(stmt.Else.Stmts) > 0 {
-		elseID := g.allocID()
-		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-		for _, s := range stmt.Else.Stmts {
-			g.renderStaticStmt(b, s, depth+1)
-		}
-		fmt.Fprintf(b, "%s</div>\n", indent)
-		g.addElseUpdater(elseID, stmt.Cond)
-	}
-}
-
-// renderStaticFor renders a for-loop as an empty container with a JS updater.
-func (g *htmlGen) renderStaticFor(b *strings.Builder, stmt *ast.ForStmt, depth int) {
-	indent := strings.Repeat("  ", depth)
-	id := g.allocID()
-	fmt.Fprintf(b, "%s<div id=\"%s\"></div>\n", indent, id)
-	g.addForStmtUpdater(id, stmt)
-
-	if len(stmt.Else.Stmts) > 0 {
-		elseID := g.allocID()
-		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-		for _, s := range stmt.Else.Stmts {
-			g.renderStaticStmt(b, s, depth+1)
-		}
-		fmt.Fprintf(b, "%s</div>\n", indent)
-		g.addForElseStmtUpdater(id, elseID, stmt)
-	}
-}
 
 // renderStaticNode renders a NodeInst as static HTML.
 func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int) {
@@ -915,7 +842,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		b.WriteString("></progress>\n")
 		if id != "" {
 			if valExpr := codegen.NodeProp(n, "value"); valExpr != nil {
-				g.addAttrUpdater(id, "value", ir.ConvertExpr(valExpr))
+				g.addAttrUpdater(id, "value", valExpr)
 			}
 		}
 	case "spinner":
@@ -943,7 +870,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		g.writeOpenTagIR(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
 		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
-			g.addTextUpdater(id, ir.ConvertExpr(codegen.NodeProp(n, "value")))
+			g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 		}
 	case "tabs":
 		g.renderStaticTabs(b, n, depth)
@@ -974,7 +901,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 			if id == "" {
 				id = g.allocID()
 			}
-			g.addClickHandler(id, h.AST.Body)
+			g.addClickHandler(id, h.Func.Block)
 		}
 	case "divider":
 		style := g.buildCSSStyleIR(n)
@@ -1218,7 +1145,7 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, n *ir.NodeInst, depth int
 	b.WriteString("</span>\n")
 
 	if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
-		g.addTextUpdater(id, ir.ConvertExpr(codegen.NodeProp(n, "value")))
+		g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 	}
 	if g.testMode && id != "" {
 		g.addUserAttrUpdaters(id, visualNodeFromIR(n))
@@ -1266,16 +1193,16 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
 	if codegen.IRIsReactive(textExpr) {
-		g.addTextContentUpdater(id, ir.ConvertExpr(textExpr))
+		g.addTextContentUpdater(id, textExpr)
 	}
 	if codegen.IRIsReactive(disabledExpr) {
-		g.addDisabledUpdater(id, ir.ConvertExpr(disabledExpr))
+		g.addDisabledUpdater(id, disabledExpr)
 	}
 
 	// Event handlers
 	if clickEvt := codegen.NodeHandler(n, "click"); clickEvt != nil && clickEvt.AST != nil {
 		if len(clickEvt.AST.Body.Stmts) > 0 {
-			g.addClickHandler(id, clickEvt.AST.Body)
+			g.addClickHandler(id, clickEvt.Func.Block)
 		}
 	}
 }
@@ -1337,7 +1264,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	// Input event handler
 	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.AST != nil {
 		if len(inputEvt.AST.Body.Stmts) > 0 {
-			g.addInputHandler(id, inputEvt.AST.Body)
+			g.addInputHandler(id, inputEvt.Func.Block)
 		}
 	}
 }
@@ -1374,7 +1301,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 
 	if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.AST != nil {
 		if len(changeEvt.AST.Body.Stmts) > 0 {
-			g.addChangeHandler(id, changeEvt.AST.Body)
+			g.addChangeHandler(id, changeEvt.Func.Block)
 		}
 	}
 }
@@ -1448,7 +1375,7 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 	fmt.Fprintf(b, "%s</fieldset>\n", indent)
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addChangeHandler(id, evt.AST.Body)
+		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
 
@@ -1477,7 +1404,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 	b.WriteString(g.previewAttrsIR(n))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addChangeHandler(id, evt.AST.Body)
+		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
 
@@ -1511,7 +1438,7 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s</select>\n", indent)
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addChangeHandler(id, evt.AST.Body)
+		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
 
@@ -1539,7 +1466,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 	b.WriteString(g.previewAttrsIR(n))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
 	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addInputHandler(id, evt.AST.Body)
+		g.addInputHandler(id, evt.Func.Block)
 	}
 }
 
@@ -1618,7 +1545,7 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 	fmt.Fprintf(b, "%s  </div>\n", indent)
 	fmt.Fprintf(b, "%s</div>\n", indent)
 	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) {
-		g.addIfUpdater(id, ir.ConvertExpr(codegen.NodeProp(n, "open")))
+		g.addIfUpdater(id, codegen.NodeProp(n, "open"))
 	}
 }
 
@@ -1646,7 +1573,7 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.Nod
 	}
 	fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) {
-		g.addIfUpdater(id, ir.ConvertExpr(codegen.NodeProp(n, "open")))
+		g.addIfUpdater(id, codegen.NodeProp(n, "open"))
 	}
 }
 
@@ -1760,84 +1687,11 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 	b.WriteString(g.previewAttrsIR(n))
 	b.WriteString(" />\n")
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addChangeHandler(id, evt.AST.Body)
+		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
 
 const maxComponentDepth = 10
-
-// renderRawElement is the AST-path shim invoked by stdlib renderers that
-// iterate vnChildren and may encounter a raw element in their subtree.
-// Constructs a minimal ir.NodeInst from the AST node and forwards to the
-// IR-native implementation.
-func (g *htmlGen) renderRawElement(b *strings.Builder, vn *ast.VisualNode, depth int) {
-	g.renderRawElementIR(b, nodeInstFromAST(vn), depth)
-}
-
-// nodeInstFromAST builds a minimal IR NodeInst from an AST VisualNode.
-// Used by the legacy AST-path shims still reachable through per-element
-// stdlib renderers; prop expressions remain ast.Expr so codegen.IRLiteral*
-// helpers — which only accept ir.Expr — must be guarded against them.
-func nodeInstFromAST(vn *ast.VisualNode) *ir.NodeInst {
-	if vn == nil {
-		return nil
-	}
-	n := &ir.NodeInst{
-		AST:  vn,
-		Name: codegen.VisualNodeName(vn),
-	}
-	for _, a := range vn.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
-			n.Props = append(n.Props, ir.Arg{Name: arg.Name, Value: astExprToIR(arg.Value)})
-		}
-		if eh, ok := a.(*ast.EventHandler); ok {
-			n.Handlers = append(n.Handlers, ir.EventHandler{AST: eh, Name: eh.Name})
-		}
-	}
-	// Children: AST stmts come through from the original vn.Block; they are
-	// already properly structured — wrap each as a simple synthetic IR
-	// passthrough via NodeInst.AST for nested raw elements.
-	for _, s := range vn.Block.Stmts {
-		if childVN, ok := s.(*ast.VisualNode); ok {
-			n.Children = append(n.Children, nodeInstFromAST(childVN))
-		} else if cs, ok := s.(*ast.CallStmt); ok {
-			if cs.Call != nil {
-				if target, ok := cs.Call.Func.(ast.TargetExpr); ok {
-					synth := &ast.VisualNode{Pos: cs.Pos, Target: target, Args: cs.Call.Args}
-					n.Children = append(n.Children, nodeInstFromAST(synth))
-				}
-			}
-		}
-	}
-	return n
-}
-
-// astExprToIR wraps an ast.Expr as a literal-bearing ir.Literal when it's
-// an ast.LiteralExpr, otherwise returns nil. Sufficient for the shim path,
-// which only inspects literal-ness of props.
-func astExprToIR(e ast.Expr) ir.Expr {
-	if e == nil {
-		return nil
-	}
-	if lit, ok := e.(*ast.LiteralExpr); ok {
-		var t *ir.Type
-		switch lit.Kind {
-		case ast.LiteralInt:
-			t = &ir.Type{Kind: ir.TypeInt}
-		case ast.LiteralFloat:
-			t = &ir.Type{Kind: ir.TypeFloat}
-		case ast.LiteralBool:
-			t = &ir.Type{Kind: ir.TypeBool}
-		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
-			t = &ir.Type{Kind: ir.TypeString}
-		default:
-			t = &ir.Type{Kind: ir.TypeDyn}
-		}
-		return &ir.Literal{AST: lit, Type: t, Raw: lit.Raw}
-	}
-	// Non-literal AST expressions are opaque to the IR path in the shim.
-	return &ir.Ident{AST: &ast.IdentExpr{}, Type: &ir.Type{Kind: ir.TypeDyn}}
-}
 
 // renderRawElementIR renders an IR NodeInst as a raw HTML element. The
 // component name (or its local part for qualified names like html.div) is
@@ -1984,18 +1838,18 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// Wire up events
 	for i := range n.Handlers {
 		h := &n.Handlers[i]
-		if h.AST == nil {
+		if h.Func == nil {
 			continue
 		}
 		switch h.Name {
 		case "click":
-			g.addClickHandler(id, h.AST.Body)
+			g.addClickHandler(id, h.Func.Block)
 		case "input":
-			g.addInputHandler(id, h.AST.Body)
+			g.addInputHandler(id, h.Func.Block)
 		case "change":
-			g.addChangeHandler(id, h.AST.Body)
+			g.addChangeHandler(id, h.Func.Block)
 		default:
-			g.addClickHandler(id, h.AST.Body)
+			g.addClickHandler(id, h.Func.Block)
 		}
 	}
 }
@@ -2546,9 +2400,9 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 }
 
 // addTextUpdater adds an updater that sets el.textContent from an expression.
-func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
-	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
+	deps := g.exprDepsIR(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2557,9 +2411,9 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
-	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
+	deps := g.exprDepsIR(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2568,9 +2422,9 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
-	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
+	deps := g.exprDepsIR(expr)
 	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2579,9 +2433,9 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
-	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
+	deps := g.exprDepsIR(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2590,9 +2444,9 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ast.Expr) {
 	})
 }
 
-func (g *htmlGen) addIfUpdater(elemID string, expr ast.Expr) {
-	jsExpr := g.exprToJS(expr)
-	deps := g.exprDeps(expr)
+func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
+	deps := g.exprDepsIR(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2602,9 +2456,9 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ast.Expr) {
 }
 
 // addElseUpdater adds a display updater for the else branch of an if statement.
-func (g *htmlGen) addElseUpdater(elemID string, cond ast.Expr) {
-	jsExpr := g.exprToJS(cond)
-	deps := g.exprDeps(cond)
+func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
+	jsExpr := g.lang.TranslateIRExpr(cond, g.scope)
+	deps := g.exprDepsIR(cond)
 	name := fmt.Sprintf("$u_%s_else", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
@@ -2799,15 +2653,15 @@ func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]strin
 	return remapped
 }
 
-func (g *htmlGen) addClickHandler(elemID string, body ast.StmtBlock) {
-	if len(body.Stmts) == 0 {
+func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
+	if len(body) == 0 {
 		return
 	}
 	var stmts []string
 	var mutated map[string]bool
-	for _, s := range body.Stmts {
-		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		for k, v := range mutatedFieldsAST(s) {
+	for _, s := range body {
+		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		for k, v := range codegen.MutatedFields(s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
 			}
@@ -2827,17 +2681,17 @@ func (g *htmlGen) addClickHandler(elemID string, body ast.StmtBlock) {
 	})
 }
 
-func (g *htmlGen) addInputHandler(elemID string, body ast.StmtBlock) {
-	if len(body.Stmts) == 0 {
+func (g *htmlGen) addInputHandler(elemID string, body []ir.Stmt) {
+	if len(body) == 0 {
 		return
 	}
 	savedEvent := g.scope.EventVar
 	g.scope.EventVar = "e.target"
 	var stmts []string
 	mutated := make(map[string]bool)
-	for _, s := range body.Stmts {
-		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		maps.Copy(mutated, mutatedFieldsAST(s))
+	for _, s := range body {
+		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	g.scope.EventVar = savedEvent
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -2853,15 +2707,15 @@ func (g *htmlGen) addInputHandler(elemID string, body ast.StmtBlock) {
 	})
 }
 
-func (g *htmlGen) addChangeHandler(elemID string, body ast.StmtBlock) {
-	if len(body.Stmts) == 0 {
+func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
+	if len(body) == 0 {
 		return
 	}
 	var stmts []string
 	mutated := make(map[string]bool)
-	for _, s := range body.Stmts {
-		stmts = append(stmts, g.lang.TranslateMutation(s, g.scope)...)
-		maps.Copy(mutated, mutatedFieldsAST(s))
+	for _, s := range body {
+		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string

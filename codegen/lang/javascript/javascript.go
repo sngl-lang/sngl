@@ -58,6 +58,41 @@ func (t *Translator) TranslateLiteral(expr ast.Expr) string {
 	return `""`
 }
 
+// TranslateIRExpr translates an IR expression to its JS form. During the
+// migration this delegates to the AST-based translator via ir.ConvertExpr;
+// a native IR translator path exists in JsIRContext for platforms that
+// carry a full ExprCtx instead of an ExprScope.
+func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
+	if e == nil {
+		return "null"
+	}
+	return translateExpr(ir.ConvertExpr(e), scope)
+}
+
+// TranslateIRMutation translates an IR mutation statement to JS statements.
+func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
+	if s == nil {
+		return nil
+	}
+	astStmt := ir.ConvertStmt(s)
+	if astStmt == nil {
+		return nil
+	}
+	return translateMutation(astStmt, scope)
+}
+
+// TranslateIRLiteral translates an IR literal expression to its JS literal.
+func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
+	if e == nil {
+		return `""`
+	}
+	astExpr := ir.ConvertExpr(e)
+	if lit, ok := astExpr.(*ast.LiteralExpr); ok {
+		return translateLiteral(lit)
+	}
+	return `""`
+}
+
 func (t *Translator) TypeToNative(hint string) string {
 	if strings.HasPrefix(hint, "option:") {
 		return t.TypeToNative(hint[7:]) // JS has no option types; everything is nullable
