@@ -9,7 +9,37 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// irStmtToAST extracts the AST statement backpointer from an IR statement.
+func irStmtToAST(s ir.Stmt) ast.Stmt {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		return n.AST
+	case *ir.If:
+		return n.AST
+	case *ir.For:
+		return n.AST
+	case *ir.PlatformFilter:
+		return n.AST
+	case *ir.SlotInst:
+		return n.AST
+	case *ir.Assign:
+		return n.AST
+	case *ir.Toggle:
+		return n.AST
+	case *ir.CallStmt:
+		return n.AST
+	case *ir.Emit:
+		return n.AST
+	case *ir.LocalVar:
+		return n.AST
+	case *ir.Return:
+		return n.AST
+	}
+	return nil
+}
 
 // --- Document helpers ---
 
