@@ -416,15 +416,7 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 	if n == nil || n.Call == nil {
 		return nil
 	}
-	var name string
-	switch f := n.Call.AST.Func.(type) {
-	case *ast.IdentExpr:
-		name = f.Name
-	case *ast.SelectExpr:
-		if id, ok := f.Operand.(*ast.IdentExpr); ok {
-			name = id.Name + "." + f.Field
-		}
-	}
+	name := irCallName(n.Call)
 	if name == "" {
 		return nil
 	}
@@ -432,16 +424,32 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 	for _, a := range n.Call.Args {
 		props = append(props, ir.Arg{Name: a.Name, Value: a.Value})
 	}
-	syn := &ir.NodeInst{
+	return &ir.NodeInst{
 		AST:   n.AST,
 		Name:  name,
 		Props: props,
 	}
-	if f := n.Call.Func; f != nil && f.Receiver == "" {
-		// no component resolution via call-side Func (Func is set only for
-		// resolved function calls); Component stays nil → raw/stdlib path.
+}
+
+// irCallName extracts the bare or namespace-qualified name from an IR Call
+// expression. Namespace-resolved element calls (ns.Foo where ns is resolved
+// via Resolve()) leave Call.Func nil and Call.Receiver set to the namespace
+// ident — reassemble "ns.Foo" from Receiver + the AST back-reference.
+func irCallName(call *ir.Call) string {
+	if call == nil {
+		return ""
 	}
-	return syn
+	if call.Func != nil {
+		return call.Func.Name
+	}
+	if call.Receiver != nil && call.AST != nil {
+		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+				return id.Name + "." + sel.Field
+			}
+		}
+	}
+	return ""
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer.
@@ -512,66 +520,6 @@ func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
 		fmt.Fprintf(b, "%s</div>\n", indent)
 		g.addForElseStmtUpdater(id, elseID, n)
 	}
-}
-
-// visualNodeFromIR synthesizes an ast.VisualNode from an ir.NodeInst so
-// legacy AST-based per-element renderers observe post-optimization IR
-// values (constant-folded props, expanded loops, etc.) rather than the
-// raw parsed AST. Target, props, handlers, and children are reconstructed
-// from IR; Pos is inherited from the original parse when available.
-func visualNodeFromIR(n *ir.NodeInst) *ast.VisualNode {
-	if n == nil {
-		return nil
-	}
-	var target ast.TargetExpr
-	if ns, field, ok := strings.Cut(n.Name, "."); ok {
-		target = &ast.SelectExpr{
-			Operand: &ast.IdentExpr{Name: ns},
-			Field:   field,
-			Kind:    ast.SelectField,
-		}
-	} else {
-		target = &ast.IdentExpr{Name: n.Name}
-	}
-
-	var args []ast.ArgOrEventHandler
-	for _, p := range n.Props {
-		args = append(args, ast.Arg{
-			Name:  p.Name,
-			Value: ir.ConvertExpr(p.Value),
-		})
-	}
-	for i := range n.Handlers {
-		h := &n.Handlers[i]
-		if h.AST != nil {
-			args = append(args, h.AST)
-		}
-	}
-	var block ast.StmtBlock
-	if len(n.Children) > 0 {
-		block.IsMultiline = true
-		block.Pos = ast.Pos{Line: 1}
-		for _, c := range n.Children {
-			if astStmt := ir.ConvertStmt(c); astStmt != nil {
-				block.Stmts = append(block.Stmts, astStmt)
-			}
-		}
-	}
-
-	vn := &ast.VisualNode{
-		Target: target,
-		ID:     n.ID,
-		Block:  block,
-	}
-	if len(args) > 0 {
-		vn.Args = ast.ArgList{Args: args, IsMultiline: len(args) > 3}
-	}
-	if src, ok := n.AST.(*ast.VisualNode); ok {
-		vn.Pos = src.Pos
-	} else if src, ok := n.AST.(*ast.CallStmt); ok {
-		vn.Pos = src.Pos
-	}
-	return vn
 }
 
 // stateVars returns all state (non-const) variables for the compiled
@@ -2627,7 +2575,20 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 // CSS building
 
 func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
-	return htmlutil.BuildCSSStyle(visualNodeFromIR(n))
+	if n == nil {
+		return ""
+	}
+	var parts []string
+	for _, p := range n.Props {
+		if p.Name == "" {
+			continue
+		}
+		if css := htmlutil.StylePropToCSS(p.Name, ir.ConvertExpr(p.Value)); css != "" {
+			parts = append(parts, css)
+		}
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
 }
 
 // Expression evaluation helpers
