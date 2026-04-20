@@ -27,7 +27,7 @@ stdout '=== RUN'
 sngl test notests.sngl
 stdout 'PASS'
 
-# Parse error.
+# Check error in file with tests.
 ! sngl test bad.sngl
 
 # Unknown platform.
@@ -66,5 +66,11 @@ func testShouldFail(t T, c counter) {
 component main {
 }
 -- bad.sngl --
-not valid sngl
+component broken {
+    var x = unknownFunc()
+}
+
+func testBad(t T, c broken) {
+    t.assert(c.x == 0)
+}
 -- empty/.gitkeep --

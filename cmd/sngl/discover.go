@@ -131,9 +131,15 @@ func mergeDir(doc *ast.Document, filename string) *ast.Document {
 	return doc
 }
 
-// mergeInto merges definitions from src into dst.
+// mergeInto merges definitions from src into dst, excluding imports.
+// Each file's imports are file-scoped and do not leak into siblings.
 func mergeInto(dst, src *ast.Document) {
-	dst.Stmts = append(dst.Stmts, src.Stmts...)
+	for _, stmt := range src.Stmts {
+		if _, isImport := stmt.(*ast.Import); isImport {
+			continue
+		}
+		dst.Stmts = append(dst.Stmts, stmt)
+	}
 }
 
 // validateOutputs checks that output declarations reference valid lang/platform
@@ -256,6 +262,41 @@ func nativeDeclsToImport(d *codegen.NativeDecls) *ir.NativeImport {
 		ni.Enums = append(ni.Enums, ed)
 	}
 	return ni
+}
+
+// explicitFileSet returns the absolute paths of args that are regular files
+// (not directories). Used to skip sibling merging when a specific file is passed.
+func explicitFileSet(args []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, arg := range args {
+		info, err := os.Stat(arg)
+		if err == nil && !info.IsDir() {
+			abs, _ := filepath.Abs(arg)
+			m[abs] = true
+		}
+	}
+	return m
+}
+
+// resolveLangPlat fills in a default language when only --platform is given.
+// When --platform is set and --lang is omitted, the first supported language
+// for that platform is used. --lang without --platform is still an error.
+func resolveLangPlat(cliLang, cliPlat string) (string, string, error) {
+	if cliPlat != "" && cliLang == "" {
+		plat := codegen.LookupPlatform(cliPlat)
+		if plat == nil {
+			return "", "", fmt.Errorf("unknown platform %q (available: %v)", cliPlat, codegen.Platforms())
+		}
+		langs := plat.SupportedLangs()
+		if len(langs) == 0 {
+			return "", "", fmt.Errorf("platform %q has no supported languages", cliPlat)
+		}
+		return langs[0], cliPlat, nil
+	}
+	if cliLang != "" && cliPlat == "" {
+		return "", "", fmt.Errorf("--platform is required when --lang is specified")
+	}
+	return cliLang, cliPlat, nil
 }
 
 // collectTargets gathers registered languages and platforms as checker targets.

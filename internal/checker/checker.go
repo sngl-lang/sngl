@@ -71,6 +71,10 @@ type checker struct {
 	// Current component (for event validation).
 	currentComponent *ir.Component
 
+	// Current platform block name (e.g., "html" inside `platform html { }`).
+	// Used to try platform Resolve() on unknown identifiers.
+	currentPlatform string
+
 	// Cached Options structs from platform/language packages.
 	optionsCache map[string]*ir.StructDef
 
@@ -96,15 +100,21 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
-	// Inject all registered platform and language names as permissive namespaces
-	// so raw element access (e.g., html.div) resolves without error.
-	// The optimizer shakes off unused platform references; codegen fails if
-	// an unresolvable platform element survives.
+	// Inject all registered platform and language names as namespaces with
+	// Resolve fallback so raw element access (e.g., html.div) works.
 	for _, p := range cfg.Platforms {
-		stdlibScope.Declare(&ir.Namespace{Name: p.PlatformIdentifier()})
+		p := p // capture loop var
+		stdlibScope.Declare(&ir.Namespace{
+			Name:    p.PlatformIdentifier(),
+			Resolve: p.Resolve,
+		})
 	}
 	for _, l := range cfg.Languages {
-		stdlibScope.Declare(&ir.Namespace{Name: l.LanguageIdentifier()})
+		l := l
+		stdlibScope.Declare(&ir.Namespace{
+			Name:    l.LanguageIdentifier(),
+			Resolve: l.Resolve,
+		})
 	}
 
 	return c
@@ -193,6 +203,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 		Alias: alias,
 	}
 
+	// Optional Resolve fallback for platform/language namespace imports.
+	var nsResolve func(string) ir.Symbol
+
 	if scheme == "internal" {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
@@ -204,6 +217,36 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.FileIntrinsics)
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
+		}
+	} else if scheme == "platform" {
+		// Platform package import: import "platform://html"
+		var target ir.Platform
+		for _, p := range c.cfg.Platforms {
+			if p.PlatformIdentifier() == uri {
+				target = p
+				break
+			}
+		}
+		if target == nil {
+			c.error(imp.Pos, "unknown platform %q", uri)
+		} else {
+			irImport.Pkg = c.buildPkgFromDocs(target.Package())
+			nsResolve = target.Resolve
+		}
+	} else if scheme == "language" {
+		// Language package import: import "language://js"
+		var target ir.Language
+		for _, l := range c.cfg.Languages {
+			if l.LanguageIdentifier() == uri {
+				target = l
+				break
+			}
+		}
+		if target == nil {
+			c.error(imp.Pos, "unknown language %q", uri)
+		} else {
+			irImport.Pkg = c.buildPkgFromDocs(target.Package())
+			nsResolve = target.Resolve
 		}
 	} else if scheme != "" && c.cfg.Resolver != nil {
 		// Scheme import (go://, git://, etc.)
@@ -264,10 +307,62 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	// Declare namespace in scope.
 	ns := &ir.Namespace{
-		Name: alias,
-		Pkg:  irImport.Pkg,
+		Name:    alias,
+		Pkg:     irImport.Pkg,
+		Resolve: nsResolve,
 	}
 	c.scope.Declare(ns)
+}
+
+// buildPkgFromDocs type-checks a set of .sngl documents (typically from a
+// platform or language Package()) and returns a merged ir.Package.
+func (c *checker) buildPkgFromDocs(docs []*ast.Document) *ir.Package {
+	if len(docs) == 0 {
+		return nil
+	}
+	merged := &ir.Package{Symbols: NewSymbolTable()}
+	for _, doc := range docs {
+		pkg, _ := Check(doc, &Config{
+			Languages: c.cfg.Languages,
+			Platforms: c.cfg.Platforms,
+		})
+		if pkg == nil {
+			continue
+		}
+		merged.Structs = append(merged.Structs, pkg.Structs...)
+		merged.Enums = append(merged.Enums, pkg.Enums...)
+		merged.Units = append(merged.Units, pkg.Units...)
+		merged.Funcs = append(merged.Funcs, pkg.Funcs...)
+		merged.Components = append(merged.Components, pkg.Components...)
+		merged.Vars = append(merged.Vars, pkg.Vars...)
+		merged.Consts = append(merged.Consts, pkg.Consts...)
+		for _, sd := range pkg.Structs {
+			merged.Symbols.Root.Declare(sd)
+			merged.Symbols.Types[sd.Name] = sd
+		}
+		for _, ed := range pkg.Enums {
+			merged.Symbols.Root.Declare(ed)
+			merged.Symbols.Types[ed.Name] = ed
+		}
+		for _, ud := range pkg.Units {
+			merged.Symbols.Root.Declare(ud)
+			merged.Symbols.Types[ud.Name] = ud
+		}
+		for _, fn := range pkg.Funcs {
+			merged.Symbols.Root.Declare(fn)
+		}
+		for _, comp := range pkg.Components {
+			merged.Symbols.Root.Declare(comp)
+			merged.Symbols.Comps[comp.Name] = comp
+		}
+		for _, v := range pkg.Vars {
+			merged.Symbols.Root.Declare(v)
+		}
+		for _, v := range pkg.Consts {
+			merged.Symbols.Root.Declare(v)
+		}
+	}
+	return merged
 }
 
 func (c *checker) registerEnum(e *ast.EnumDef) {

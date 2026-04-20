@@ -45,8 +45,9 @@ func runCompile(cmd *cobra.Command, args []string) error {
 	outDir, _ := cmd.Flags().GetString("out")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 
-	if (cliLang == "") != (cliPlat == "") {
-		return fmt.Errorf("--lang and --platform must both be specified or both omitted")
+	cliLang, cliPlat, err := resolveLangPlat(cliLang, cliPlat)
+	if err != nil {
+		return err
 	}
 
 	cliOpts := make(map[string]string)
@@ -54,6 +55,8 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		k, v, _ := strings.Cut(kv, "=")
 		cliOpts[k] = v
 	}
+
+	explicitFiles := explicitFileSet(args)
 
 	files, err := discoverFiles(args)
 	if err != nil {
@@ -85,9 +88,12 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		}
 		slog.Info("parse", "file", filename, "duration", time.Since(start))
 
-		start = time.Now()
-		doc = mergeDir(doc, filename)
-		slog.Info("merge", "dir", dir, "duration", time.Since(start))
+		absFilename, _ := filepath.Abs(filename)
+		if !explicitFiles[absFilename] {
+			start = time.Now()
+			doc = mergeDir(doc, filename)
+			slog.Info("merge", "dir", dir, "duration", time.Since(start))
+		}
 
 		start = time.Now()
 		pkg, err := checkDoc(doc, dir, true)

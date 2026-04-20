@@ -133,6 +133,13 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				}
 			}
 		}
+		// Try platform Resolve() inside platform blocks.
+		if resolved := c.resolvePlatformIdent(x.Name); resolved != nil {
+			sym = resolved
+			ok = true
+		}
+	}
+	if !ok {
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
@@ -439,35 +446,48 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
-				if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
-					// Component in namespace — validate visibility and props.
-					if comp, ok := fsym.(*ir.Component); ok {
-						// Private component filter: only for imported user packages (not stdlib/sngl).
-						if ns.Name != "sngl" && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
-							c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+			if ns, ok := sym.(*ir.Namespace); ok && (ns.Pkg != nil || ns.Resolve != nil) {
+				if ns.Pkg != nil {
+					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
+						// Component in namespace — validate visibility and props.
+						if comp, ok := fsym.(*ir.Component); ok {
+							// Private component filter: only for imported user packages (not stdlib/sngl).
+							if ns.Name != "sngl" && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+							}
+							args := c.checkComponentCallArgs(call, comp)
+							c.validateCallStmtComponentArgs(call, comp)
+							return &ir.Call{AST: call, Type: comp.SymType(), Args: args}
 						}
-						args := c.checkComponentCallArgs(call, comp)
-						c.validateCallStmtComponentArgs(call, comp)
-						return &ir.Call{AST: call, Type: comp.SymType(), Args: args}
+						// Regular function in namespace.
+						t := fsym.SymType()
+						var sig *ir.FuncSig
+						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
+							sig = t.Sig
+						}
+						args := c.checkCallArgs(call.Args, sig)
+						var resolvedFunc *ir.Func
+						if f, ok := fsym.(*ir.Func); ok {
+							resolvedFunc = f
+						}
+						retType := t
+						if sig != nil && sig.Return != nil {
+							retType = sig.Return
+						}
+						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 					}
-					// Regular function in namespace.
-					t := fsym.SymType()
-					var sig *ir.FuncSig
-					if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
-						sig = t.Sig
+				}
+				// Try Resolve() fallback for dynamic elements (e.g., html.code).
+				if ns.Resolve != nil {
+					if resolved := ns.Resolve(sel.Field); resolved != nil {
+						t := resolved.SymType()
+						if t == nil {
+							t = TypDyn
+						}
+						args := c.checkCallArgs(call.Args, nil)
+						return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
 					}
-					args := c.checkCallArgs(call.Args, sig)
-					var resolvedFunc *ir.Func
-					if f, ok := fsym.(*ir.Func); ok {
-						resolvedFunc = f
-					}
-					retType := t
-					if sig != nil && sig.Return != nil {
-						retType = sig.Return
-					}
-					return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 				}
 				// Nothing found in namespace.
 				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
@@ -542,13 +562,21 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if ns, ok := sym.(*ir.Namespace); ok {
-					if ns.Pkg == nil {
-						// Permissive namespace (platform raw elements).
-						return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+					if ns.Pkg != nil {
+						if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
+							t := fsym.SymType()
+							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
+						}
 					}
-					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
-						t := fsym.SymType()
-						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
+					// Try Resolve() fallback for dynamic members.
+					if ns.Resolve != nil {
+						if resolved := ns.Resolve(x.Field); resolved != nil {
+							t := resolved.SymType()
+							if t == nil {
+								t = TypDyn
+							}
+							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
+						}
 					}
 				}
 			}
@@ -1065,40 +1093,16 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 		return nil
 	}
 
-	docs := t.Package()
-	if len(docs) == 0 {
+	pkg := c.buildPkgFromDocs(t.Package())
+	if pkg == nil {
 		return nil
 	}
 
 	scope := NewScope(nil)
-	for _, doc := range docs {
-		// Check each doc to get IR, then populate scope from its declarations.
-		pkg, _ := Check(doc, &Config{})
-		if pkg == nil {
-			continue
-		}
-		for _, sd := range pkg.Structs {
-			scope.Declare(sd)
-		}
-		for _, ed := range pkg.Enums {
-			scope.Declare(ed)
-		}
-		for _, ud := range pkg.Units {
-			scope.Declare(ud)
-		}
-		for _, fn := range pkg.Funcs {
-			scope.Declare(fn)
-		}
-		for _, comp := range pkg.Components {
-			scope.Declare(comp)
-		}
-		for _, v := range pkg.Vars {
-			scope.Declare(v)
-		}
-		for _, v := range pkg.Consts {
-			scope.Declare(v)
-		}
-	}
+	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
+	// Declare the platform namespace with its package so qualified access
+	// (e.g., html.Options) works inside platform blocks.
+	scope.Declare(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -1109,6 +1113,20 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	clone := NewScope(nil)
 	maps.Copy(clone.Symbols, scope.Symbols)
 	return clone
+}
+
+// resolvePlatformIdent tries the current platform's Resolve() for an unknown
+// identifier. Returns nil when not inside a platform block or when the
+// platform cannot resolve the name.
+func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
+	if c.currentPlatform == "" {
+		return nil
+	}
+	t := c.lookupTarget(c.currentPlatform)
+	if t == nil {
+		return nil
+	}
+	return t.Resolve(name)
 }
 
 // resolveCallStmt converts a checked call expression into a CallStmt.
@@ -1139,6 +1157,11 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 		c.scope.Parent = platformScope
 		defer func() { c.scope.Parent = savedParent }()
 	}
+
+	// Track current platform so Resolve() fallback works on unknown identifiers.
+	savedPlatform := c.currentPlatform
+	c.currentPlatform = s.Platform
+	defer func() { c.currentPlatform = savedPlatform }()
 
 	body := c.checkBlockIR(&s.Body)
 	return &ir.PlatformFilter{AST: s, Platform: s.Platform, Body: body}
@@ -1205,10 +1228,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	// Unknown component check — skip if name resolves to a variable
-	// (e.g. timer condition guard like `running { ... }`).
+	// (e.g. timer condition guard like `running { ... }`),
+	// or if the platform can resolve it (raw elements inside platform blocks).
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
-			c.error(vn.Pos, "unknown component %q", name)
+			if c.resolvePlatformIdent(name) == nil {
+				c.error(vn.Pos, "unknown component %q", name)
+			}
 		}
 	}
 

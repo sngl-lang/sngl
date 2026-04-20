@@ -105,10 +105,6 @@ func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
 	}
 	slog.Info("parse", "file", target, "duration", time.Since(start))
 
-	start = time.Now()
-	doc = mergeDir(doc, target)
-	slog.Info("merge", "file", target, "duration", time.Since(start))
-
 	return doc, filepath.Dir(target), nil
 }
 

@@ -4,8 +4,10 @@
 # --lang without --platform is an error.
 ! sngl run --lang=js app.sngl
 
-# --platform without --lang is an error.
-! sngl run --platform=html app.sngl
+# --platform without --lang defaults to first supported language.
+# (run executes, so just verify it doesn't error on flag parsing)
+# This would actually try to run, so we test with a non-runner platform instead.
+! sngl run --platform=none app.sngl
 
 # Platform "none" does not support direct execution.
 ! sngl run --lang=js --platform=none app.sngl

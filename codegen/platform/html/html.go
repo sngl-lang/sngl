@@ -38,7 +38,10 @@ type Generator struct{}
 func (g *Generator) PlatformIdentifier() string             { return "html" }
 func (g *Generator) SupportedLangs() []string               { return []string{"js"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
-func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
+func (g *Generator) Resolve(identifier string) ir.Symbol {
+	// HTML accepts any tag name as a valid element.
+	return &ir.Component{Name: identifier}
+}
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "js" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {

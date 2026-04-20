@@ -19,8 +19,9 @@ func (v *LoopVar) SymType() *Type  { return v.Type }
 
 // Namespace is an import namespace alias pointing to a resolved package.
 type Namespace struct {
-	Name string
-	Pkg  *Package
+	Name    string
+	Pkg     *Package
+	Resolve func(identifier string) Symbol // optional fallback for unknown members
 }
 
 func (n *Namespace) SymName() string { return n.Name }

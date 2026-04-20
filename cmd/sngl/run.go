@@ -33,8 +33,9 @@ func runRun(cmd *cobra.Command, args []string) error {
 	cliPlat, _ := cmd.Flags().GetString("platform")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 
-	if (cliLang == "") != (cliPlat == "") {
-		return fmt.Errorf("--lang and --platform must both be specified or both omitted")
+	cliLang, cliPlat, err := resolveLangPlat(cliLang, cliPlat)
+	if err != nil {
+		return err
 	}
 
 	cliOpts := make(map[string]string)
@@ -79,7 +80,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		doc = mergeDir(doc, file)
 	}
 	slog.Info("parse", "file", file, "duration", time.Since(start))
 

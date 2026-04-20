@@ -200,8 +200,9 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {
 	lang, _ := cmd.Flags().GetString("lang")
 	plat, _ := cmd.Flags().GetString("platform")
-	if (lang == "") != (plat == "") {
-		return outputTarget{}, fmt.Errorf("--lang and --platform must both be specified or both omitted")
+	lang, plat, err := resolveLangPlat(lang, plat)
+	if err != nil {
+		return outputTarget{}, err
 	}
 	targets := resolveTargets(pkg, lang, plat, nil)
 	if len(targets) == 0 {

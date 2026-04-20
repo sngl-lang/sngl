@@ -6,8 +6,9 @@ exists out/index.html
 # --lang without --platform is an error.
 ! sngl compile --lang=js app.sngl
 
-# --platform without --lang is an error.
-! sngl compile --platform=html app.sngl
+# --platform without --lang defaults to first supported language.
+sngl compile --platform=html --out=outauto app.sngl
+stdout 'outauto/index.html'
 
 # Unknown language.
 ! sngl compile --lang=cobol --platform=html app.sngl

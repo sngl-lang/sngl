@@ -54,6 +54,8 @@ func runTest(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	explicitFiles := explicitFileSet(args)
+
 	files, err := discoverFiles(args)
 	if err != nil {
 		return err
@@ -90,9 +92,12 @@ func runTest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		start = time.Now()
-		doc = mergeDir(doc, filename)
-		slog.Info("merge", "file", filename, "duration", time.Since(start))
+		absFilename, _ := filepath.Abs(filename)
+		if !explicitFiles[absFilename] {
+			start = time.Now()
+			doc = mergeDir(doc, filename)
+			slog.Info("merge", "file", filename, "duration", time.Since(start))
+		}
 
 		if len(doc.TestFuncs()) > 0 {
 			start = time.Now()
