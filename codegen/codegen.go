@@ -41,15 +41,11 @@ type LangTranslator interface {
 	GenerateIdentifier(name *ir.Ident) string
 	Eval(expr ir.Expr) string
 
-	// IR-typed public API used by ported platforms.
+	// IR-typed public API.
 	TranslateIRExpr(e ir.Expr, scope *ExprScope) string
 	TranslateIRMutation(s ir.Stmt, scope *ExprScope) []string
 	TranslateIRLiteral(e ir.Expr) string
 
-	// Deprecated: AST-based API kept during platform migration.
-	TranslateExpr(e ast.Expr, scope *ExprScope) string
-	TranslateMutation(e ast.Stmt, scope *ExprScope) []string
-	TranslateLiteral(expr ast.Expr) string
 	TypeToNative(hint string) string
 	ExportName(name string) string
 }

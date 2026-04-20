@@ -91,13 +91,28 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 		engine := webtest.New(mux)
 
 		for _, fn := range group.funcs {
-			result := g.runSingleTestFunc(engine, compDoc, lang, compName, fn)
+			irFn := lookupIRFunc(compPkg, fn.Name)
+			result := g.runSingleTestFunc(engine, compPkg, lang, compName, fn.Name, irFn)
 			results = append(results, result)
 		}
 
 		engine.Close()
 	}
 	return results, nil
+}
+
+// lookupIRFunc finds a checked function by name in the package's top-level
+// function set, or nil if absent.
+func lookupIRFunc(pkg *ir.Package, name string) *ir.Func {
+	if pkg == nil {
+		return nil
+	}
+	for _, f := range pkg.Funcs {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
 }
 
 // checkPromoted re-checks a promoted component doc through the normal
@@ -112,11 +127,11 @@ func checkPromoted(doc *ast.Document) *ir.Package {
 	return pkg
 }
 
-func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document, lang codegen.LangTranslator, compName string, fn *ast.FuncDef) *codegen.TestResult {
+func (g *Generator) runSingleTestFunc(engine *webtest.Engine, pkg *ir.Package, lang codegen.LangTranslator, compName, fnName string, fn *ir.Func) *codegen.TestResult {
 	start := time.Now()
 	result := &codegen.TestResult{
 		Component: compName,
-		Desc:      fn.Name,
+		Desc:      fnName,
 		Passed:    true,
 	}
 
@@ -136,7 +151,7 @@ func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document,
 		return result
 	}
 
-	runner := NewCDPRunner(browser.Page(), doc, lang)
+	runner := NewCDPRunner(browser.Page(), pkg, lang)
 	if err := runner.InjectHelpers(); err != nil {
 		result.Passed = false
 		result.Error = fmt.Sprintf("inject helpers: %v", err)
@@ -144,8 +159,8 @@ func (g *Generator) runSingleTestFunc(engine *webtest.Engine, doc *ast.Document,
 		return result
 	}
 
-	if fn.Block.IsDefined() {
-		if err := runner.ExecTest(fn.Block.Stmts); err != nil {
+	if fn != nil && len(fn.Block) > 0 {
+		if err := runner.ExecTest(fn.Block); err != nil {
 			result.Passed = false
 			result.Error = err.Error()
 		}

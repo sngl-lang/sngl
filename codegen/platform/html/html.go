@@ -169,9 +169,8 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	// Type-checked package and expression context (IR-driven).
-	pkg        *ir.Package
-	translator codegen.ExprTranslator
-	ctx        *codegen.ExprCtx
+	pkg *ir.Package
+	ctx *codegen.ExprCtx
 
 	// Analysis (shared)
 	*codegen.CommonAnalysis

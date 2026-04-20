@@ -9,42 +9,43 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 )
 
 // CDPRunner executes SNGL test assertions against a live browser page.
-// It walks the same test AST the interpreter walks, but translates each
-// node to JavaScript and evaluates it via Chrome DevTools Protocol.
+// It walks the checked IR test body, translates each node to JavaScript,
+// and evaluates it via Chrome DevTools Protocol.
 type CDPRunner struct {
 	page  *rod.Page
 	scope *codegen.ExprScope
 	lang  codegen.LangTranslator
-
-	// dataFields tracks which names are state data (not computed).
-	dataFields map[string]bool
 }
 
-// NewCDPRunner creates a runner for the given page and promoted document.
-func NewCDPRunner(page *rod.Page, doc *ast.Document, lang codegen.LangTranslator) *CDPRunner {
+// NewCDPRunner creates a runner for the given page and type-checked package.
+func NewCDPRunner(page *rod.Page, pkg *ir.Package, lang codegen.LangTranslator) *CDPRunner {
 	modelFields := make(map[string]bool)
 	computedFields := make(map[string]bool)
-	dataFields := make(map[string]bool)
-
-	for _, d := range docVars(doc) {
-		modelFields[d.Name] = true
-		dataFields[d.Name] = true
-	}
-	for _, fn := range docFuncs(doc) {
-		if fn.Body != nil && len(fn.Params.Params) == 0 {
-			modelFields[fn.Name] = true
-			computedFields[fn.Name] = true
-		}
-	}
-
 	localVars := make(map[string]bool)
-	for _, c := range docConsts(doc) {
-		localVars[c.Name] = true
+
+	if pkg != nil {
+		for _, v := range pkg.Vars {
+			if !v.IsConst {
+				modelFields[v.Name] = true
+			} else {
+				localVars[v.Name] = true
+			}
+		}
+		for _, v := range pkg.Consts {
+			localVars[v.Name] = true
+		}
+		for _, fn := range pkg.Funcs {
+			if len(fn.Params) == 0 {
+				modelFields[fn.Name] = true
+				computedFields[fn.Name] = true
+			}
+		}
 	}
 
 	return &CDPRunner{
@@ -54,13 +55,12 @@ func NewCDPRunner(page *rod.Page, doc *ast.Document, lang codegen.LangTranslator
 			ComputedFields: computedFields,
 			LocalVars:      localVars,
 		},
-		lang:       lang,
-		dataFields: dataFields,
+		lang: lang,
 	}
 }
 
 // ExecTest runs all statements in a test body, returning the first error.
-func (r *CDPRunner) ExecTest(body []ast.Stmt) error {
+func (r *CDPRunner) ExecTest(body []ir.Stmt) error {
 	for _, stmt := range body {
 		if err := r.execStmt(stmt); err != nil {
 			return err
@@ -100,54 +100,53 @@ func (r *CDPRunner) syncAll() error {
 	return r.evalVoid(`window.__sngl_updaters.forEach(function(f) { f(); })`)
 }
 
-func (r *CDPRunner) execStmt(stmt ast.Stmt) error {
+func (r *CDPRunner) execStmt(stmt ir.Stmt) error {
 	switch s := stmt.(type) {
-	case *ast.AssignStmt:
+	case *ir.Assign:
 		return r.execAssign(s)
-	case *ast.ToggleStmt:
+	case *ir.Toggle:
 		return r.execToggle(s)
-	case *ast.CallStmt:
-		name := callFuncName(s.Call)
-		args := callArgs(s.Call)
-		if name == "assert" && len(args) == 1 {
-			return r.execAssert(args[0])
-		}
-		js := r.exprToJS(s.Call)
-		return r.evalVoid(js + ";")
-	case *ast.EmitStmt:
-		return nil
-	default:
-		// Try as expression
-		if expr, ok := stmt.(ast.Expr); ok {
-			// Method call: SelectExpr-based CallExpr
-			if call, ok := expr.(*ast.CallExpr); ok {
-				name := callFuncName(call)
-				args := callArgs(call)
-				if name == "assert" && len(args) == 1 {
-					return r.execAssert(args[0])
-				}
-				if sel, ok := call.Func.(*ast.SelectExpr); ok {
-					if strings.HasPrefix(sel.Field, "@") {
-						return r.triggerEvent(sel.Operand, sel.Field, args)
-					}
-					stmts := r.lang.TranslateMutation(stmt, r.scope)
-					for _, js := range stmts {
-						if err := r.evalVoid(js + ";"); err != nil {
-							return fmt.Errorf("method: %w", err)
-						}
-					}
-					return r.syncAll()
-				}
-			}
-			js := r.exprToJS(expr)
-			return r.evalVoid(js + ";")
-		}
+	case *ir.CallStmt:
+		return r.execCallStmt(s)
+	case *ir.Emit:
 		return nil
 	}
+	return nil
 }
 
-func (r *CDPRunner) execAssign(s *ast.AssignStmt) error {
-	stmts := r.lang.TranslateMutation(s, r.scope)
+func (r *CDPRunner) execCallStmt(s *ir.CallStmt) error {
+	if s.Call == nil {
+		return nil
+	}
+	// assert(x): evaluate x and check truthiness.
+	if s.Call.Func != nil && s.Call.Func.Name == "assert" && len(s.Call.Args) == 1 {
+		return r.execAssert(s.Call.Args[0].Value)
+	}
+	// Event-trigger method calls: recv.@click(args).
+	if s.Call.Receiver != nil {
+		if field, ok := irCallSelectField(s.Call); ok && strings.HasPrefix(field, "@") {
+			args := make([]ir.Expr, len(s.Call.Args))
+			for i, a := range s.Call.Args {
+				args[i] = a.Value
+			}
+			return r.triggerEvent(s.Call.Receiver, field, args)
+		}
+		// Non-event method — emit as a mutation via the IR translator.
+		stmts := r.lang.TranslateIRMutation(s, r.scope)
+		for _, js := range stmts {
+			if err := r.evalVoid(js + ";"); err != nil {
+				return fmt.Errorf("method: %w", err)
+			}
+		}
+		return r.syncAll()
+	}
+	// Plain function call.
+	js := r.exprToJS(s.Call)
+	return r.evalVoid(js + ";")
+}
+
+func (r *CDPRunner) execAssign(s *ir.Assign) error {
+	stmts := r.lang.TranslateIRMutation(s, r.scope)
 	for _, js := range stmts {
 		if err := r.evalVoid(js + ";"); err != nil {
 			return fmt.Errorf("assign: %w", err)
@@ -156,8 +155,8 @@ func (r *CDPRunner) execAssign(s *ast.AssignStmt) error {
 	return r.syncAll()
 }
 
-func (r *CDPRunner) execToggle(s *ast.ToggleStmt) error {
-	stmts := r.lang.TranslateMutation(s, r.scope)
+func (r *CDPRunner) execToggle(s *ir.Toggle) error {
+	stmts := r.lang.TranslateIRMutation(s, r.scope)
 	for _, js := range stmts {
 		if err := r.evalVoid(js + ";"); err != nil {
 			return fmt.Errorf("toggle: %w", err)
@@ -166,7 +165,7 @@ func (r *CDPRunner) execToggle(s *ast.ToggleStmt) error {
 	return r.syncAll()
 }
 
-func (r *CDPRunner) execAssert(expr ast.Expr) error {
+func (r *CDPRunner) execAssert(expr ir.Expr) error {
 	js := r.exprToJS(expr)
 	result, err := r.eval(js)
 	if err != nil {
@@ -178,13 +177,12 @@ func (r *CDPRunner) execAssert(expr ast.Expr) error {
 	return nil
 }
 
-func (r *CDPRunner) triggerEvent(receiver ast.Expr, eventField string, args []ast.Expr) error {
+func (r *CDPRunner) triggerEvent(receiver ir.Expr, eventField string, args []ir.Expr) error {
 	eventName := strings.TrimPrefix(eventField, "@")
 	sel := r.domSelector(receiver)
 	if sel == "" {
 		return fmt.Errorf("cannot determine element selector for %s trigger", eventField)
 	}
-
 	switch eventName {
 	case "click":
 		el, err := r.page.Timeout(5 * time.Second).Element(sel)
@@ -209,59 +207,61 @@ func (r *CDPRunner) triggerEvent(receiver ast.Expr, eventField string, args []as
 	}
 }
 
-func (r *CDPRunner) domSelector(n ast.Expr) string {
+func (r *CDPRunner) domSelector(n ir.Expr) string {
 	switch e := n.(type) {
-	case *ast.ElementRefExpr:
-		return fmt.Sprintf("[data-sngl-id=%q]", e.Name)
-	case *ast.IndexExpr:
-		// #id[0] — element ref with index
-		if ref, ok := e.Operand.(*ast.ElementRefExpr); ok {
-			return fmt.Sprintf("[data-sngl-id=%q]", ref.Name)
+	case *ir.Ident:
+		if e.IsElementRef {
+			return fmt.Sprintf("[data-sngl-id=%q]", e.Name)
+		}
+	case *ir.Index:
+		if id, ok := e.Operand.(*ir.Ident); ok && id.IsElementRef {
+			return fmt.Sprintf("[data-sngl-id=%q]", id.Name)
 		}
 	}
 	return ""
 }
 
-func (r *CDPRunner) exprToJS(n ast.Expr) string {
+// exprToJS translates an IR expression into JS for eval in the browser,
+// adding DOM-specific sugar (element refs resolve to DOM nodes, .value/.text
+// map to textContent, etc.).
+func (r *CDPRunner) exprToJS(n ir.Expr) string {
 	if n == nil {
 		return "null"
 	}
 	switch e := n.(type) {
-	case *ast.ElementRefExpr:
-		// Return null for elements hidden by if= (display:none)
-		return fmt.Sprintf(`(function(){var el=document.querySelector('[data-sngl-id=%q]'); return el && el.style.display!=="none" ? el : null})()`, e.Name)
+	case *ir.Ident:
+		if e.IsElementRef {
+			return fmt.Sprintf(`(function(){var el=document.querySelector('[data-sngl-id=%q]'); return el && el.style.display!=="none" ? el : null})()`, e.Name)
+		}
+		return r.lang.TranslateIRExpr(e, r.scope)
 
-	case *ast.IdentExpr:
-		return r.lang.TranslateExpr(e, r.scope)
-
-	case *ast.CallExpr:
-		// Method calls: SelectExpr-based
-		if sel, ok := e.Func.(*ast.SelectExpr); ok {
-			method := sel.Field
-			args := callArgs(e)
+	case *ir.Call:
+		// Method calls: Receiver-bearing with a resolved Func.
+		if e.Receiver != nil && e.Func != nil {
+			method := e.Func.Name
 			switch method {
 			case "length":
-				recv := r.exprToJS(sel.Operand)
-				if isElementExpr(sel.Operand) {
+				recv := r.exprToJS(e.Receiver)
+				if isIRElementExpr(e.Receiver) {
 					return fmt.Sprintf("Array.from(%s).length", recv)
 				}
 				return recv + ".length"
 			case "contains":
-				recv := r.exprToJS(sel.Operand)
-				if len(args) == 1 {
-					arg := r.exprToJS(args[0])
+				if len(e.Args) == 1 {
+					recv := r.exprToJS(e.Receiver)
+					arg := r.exprToJS(e.Args[0].Value)
 					return recv + ".includes(" + arg + ")"
 				}
 			}
 			if strings.HasPrefix(method, "@") {
 				return "null"
 			}
-			return r.lang.TranslateExpr(e, r.scope)
+			return r.lang.TranslateIRExpr(e, r.scope)
 		}
 		return r.callToJS(e)
 
-	case *ast.SelectExpr:
-		if isElementExpr(e.Operand) {
+	case *ir.Select:
+		if isIRElementExpr(e.Operand) {
 			recv := r.exprToJS(e.Operand)
 			switch e.Field {
 			case "value", "text":
@@ -271,43 +271,38 @@ func (r *CDPRunner) exprToJS(n ast.Expr) string {
 			}
 			return recv + "." + e.Field
 		}
-		return r.lang.TranslateExpr(e, r.scope)
+		return r.lang.TranslateIRExpr(e, r.scope)
 
-	case *ast.IndexExpr:
-		operand := r.exprToJS(e.Operand)
-		index := r.exprToJS(e.Index)
-		return operand + "[" + index + "]"
+	case *ir.Index:
+		return r.exprToJS(e.Operand) + "[" + r.exprToJS(e.Idx) + "]"
 
-	case *ast.BinaryExpr:
-		left := r.exprToJS(e.Left)
-		right := r.exprToJS(e.Right)
-		op := jsBinaryOp(e.Op)
-		return "(" + left + " " + op + " " + right + ")"
+	case *ir.Binary:
+		return "(" + r.exprToJS(e.Left) + " " + jsBinaryOp(e.Op) + " " + r.exprToJS(e.Right) + ")"
 
-	case *ast.UnaryExpr:
+	case *ir.Unary:
 		operand := r.exprToJS(e.Operand)
 		if e.Op == ast.UnaryNot {
 			return "!" + operand
 		}
 		return "-" + operand
 
-	case *ast.TernaryExpr:
-		cond := r.exprToJS(e.Cond)
-		then := r.exprToJS(e.Then)
-		els := r.exprToJS(e.Else)
-		return "(" + cond + " ? " + then + " : " + els + ")"
-
-	case *ast.ParenExpr:
-		return "(" + r.exprToJS(e.Inner) + ")"
+	case *ir.Ternary:
+		return "(" + r.exprToJS(e.Cond) + " ? " + r.exprToJS(e.Then) + " : " + r.exprToJS(e.Else) + ")"
 
 	default:
-		return r.lang.TranslateExpr(n, r.scope)
+		return r.lang.TranslateIRExpr(n, r.scope)
 	}
 }
 
-func (r *CDPRunner) callToJS(e *ast.CallExpr) string {
-	name := callFuncName(e)
-	args := callArgs(e)
+func (r *CDPRunner) callToJS(e *ir.Call) string {
+	name := ""
+	if e.Func != nil {
+		name = e.Func.Name
+	}
+	args := make([]ir.Expr, len(e.Args))
+	for i, a := range e.Args {
+		args[i] = a.Value
+	}
 	switch name {
 	case "string":
 		if len(args) == 1 {
@@ -334,7 +329,6 @@ func (r *CDPRunner) callToJS(e *ast.CallExpr) string {
 }
 
 func (r *CDPRunner) eval(js string) (any, error) {
-	// rod's Eval expects a function expression, not raw JS.
 	wrapped := "() => { return " + js + "; }"
 	result, err := r.page.Timeout(5 * time.Second).Eval(wrapped)
 	if err != nil {
@@ -343,23 +337,36 @@ func (r *CDPRunner) eval(js string) (any, error) {
 	return result.Value.Val(), nil
 }
 
-// evalVoid executes JS statements that don't return a value.
 func (r *CDPRunner) evalVoid(js string) error {
 	wrapped := "() => { " + js + " }"
 	_, err := r.page.Timeout(5 * time.Second).Eval(wrapped)
 	return err
 }
 
-func isElementExpr(n ast.Expr) bool {
+func isIRElementExpr(n ir.Expr) bool {
 	switch e := n.(type) {
-	case *ast.ElementRefExpr:
-		return true
-	case *ast.SelectExpr:
-		return isElementExpr(e.Operand)
-	case *ast.IndexExpr:
-		return isElementExpr(e.Operand)
+	case *ir.Ident:
+		return e.IsElementRef
+	case *ir.Select:
+		return isIRElementExpr(e.Operand)
+	case *ir.Index:
+		return isIRElementExpr(e.Operand)
 	}
 	return false
+}
+
+// irCallSelectField returns the field name of a SelectExpr-backed call,
+// used to recognize `receiver.@event(...)` triggers whose IR form has Func
+// nil but an AST SelectExpr carrying the "@eventName".
+func irCallSelectField(c *ir.Call) (string, bool) {
+	if c == nil || c.AST == nil {
+		return "", false
+	}
+	sel, ok := c.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	return sel.Field, true
 }
 
 func jsBinaryOp(op ast.BinaryOp) string {

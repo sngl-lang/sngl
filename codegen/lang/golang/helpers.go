@@ -18,6 +18,20 @@ func ExportName(s string) string {
 	return string(runes)
 }
 
+// astLiteralToGo renders an ast.LiteralExpr as its Go source form (quoted
+// strings, raw numeric literals). Shared by LiteralToGo; the IR code path
+// uses translateIRLiteral on ir.Literal.
+func astLiteralToGo(n *ast.LiteralExpr) string {
+	switch n.Kind {
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted,
+		ast.LiteralColor, ast.LiteralUnit:
+		return fmt.Sprintf("%q", n.Raw)
+	case ast.LiteralNull:
+		return "nil"
+	}
+	return n.Raw
+}
+
 // UnexportName lowercases the first letter for Go unexported names.
 func UnexportName(s string) string {
 	if s == "" {
@@ -124,7 +138,7 @@ func LiteralToGo(expr ast.Expr) string {
 	}
 	switch n := expr.(type) {
 	case *ast.LiteralExpr:
-		return translateLiteral(n)
+		return astLiteralToGo(n)
 	case *ast.UnitLiteral:
 		return fmt.Sprintf("%q", n.Raw+n.Suffix)
 	case *ast.ListExpr:
@@ -157,7 +171,12 @@ func LiteralToGo(expr ast.Expr) string {
 		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
 	case *ast.CallExpr:
 		// Struct constructor: Todo("text", false) → Todo{Text: "text", Done: false}
-		args := extractArgs(n.Args)
+		var args []ast.Expr
+		for _, a := range n.Args.Args {
+			if arg, ok := a.(ast.Arg); ok {
+				args = append(args, arg.Value)
+			}
+		}
 		parts := make([]string, len(args))
 		for i, a := range args {
 			parts[i] = LiteralToGo(a)
