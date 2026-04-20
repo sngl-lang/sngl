@@ -122,7 +122,13 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 	}
 	switch x := e.(type) {
 	case *ir.Literal:
-		return parseLiteral(x), true
+		val := parseLiteral(x)
+		// parseLiteral returns nil for kinds it can't represent (units, etc.);
+		// signal non-foldable so the original literal is preserved.
+		if val == nil && x.Type != nil && x.Type.Kind != ir.TypeNull {
+			return nil, false
+		}
+		return val, true
 	case *ir.Ident:
 		return evalIdent(x, ctx)
 	case *ir.Binary:

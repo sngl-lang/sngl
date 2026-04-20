@@ -29,12 +29,26 @@ func BuildCSSStyle(vn *ast.VisualNode) string {
 }
 
 // BuildCSSStyleIR builds an inline CSS style string from a slice of IR args
-// (typically ir.NodeInst.Props).
+// (typically ir.NodeInst.Props). A `style={...}` struct prop has its fields
+// flattened into individual CSS declarations.
 func BuildCSSStyleIR(props []ir.Arg) string {
 	var parts []string
 	for _, p := range props {
 		if p.Name == "" {
 			continue
+		}
+		if p.Name == "style" {
+			if sl, ok := p.Value.(*ir.StructLit); ok {
+				for _, f := range sl.Fields {
+					if f.Name == "" || f.Value == nil {
+						continue
+					}
+					if css := StylePropToCSSIR(f.Name, f.Value); css != "" {
+						parts = append(parts, css)
+					}
+				}
+				continue
+			}
 		}
 		if css := StylePropToCSSIR(p.Name, p.Value); css != "" {
 			parts = append(parts, css)

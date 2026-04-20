@@ -71,14 +71,13 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 			childCtx.values[valueVar] = i
 		}
 
-		// Clone and optimize the body for this iteration.
-		for _, bodyStmt := range fs.Body {
-			cloned := cloneStmt(bodyStmt)
-			optimized := foldStmt(cloned, childCtx)
-			if optimized != nil {
-				result = append(result, optimized)
-			}
+		// Clone and optimize the body for this iteration. Using foldStmts so
+		// nested const-iterable fors and const-cond ifs unroll/inline too.
+		cloned := make([]ir.Stmt, len(fs.Body))
+		for i, bodyStmt := range fs.Body {
+			cloned[i] = cloneStmt(bodyStmt)
 		}
+		result = append(result, foldStmts(cloned, childCtx)...)
 
 		// Propagate file assets back.
 		ctx.fileAssets = childCtx.fileAssets

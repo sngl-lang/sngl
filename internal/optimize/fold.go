@@ -74,9 +74,32 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 }
 
 // foldStmts folds a slice of statements, removing nil results.
+// For loops whose iterator evaluates to a const list are unrolled in place
+// so downstream codegen sees static statements instead of runtime iteration.
+// If statements whose condition evaluates to a const bool are inlined
+// (true branch) or dropped (false branch) so downstream codegen sees static
+// structure instead of runtime conditionals.
 func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 	var out []ir.Stmt
 	for _, s := range stmts {
+		if fs, ok := s.(*ir.For); ok {
+			if expanded := expandForStmt(fs, ctx); expanded != nil {
+				out = append(out, expanded...)
+				continue
+			}
+		}
+		if ifs, ok := s.(*ir.If); ok {
+			cond := foldExpr(ifs.Cond, ctx)
+			if lit, ok := cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
+				if lit.Raw == "true" {
+					out = append(out, foldStmts(ifs.Body, ctx)...)
+				} else {
+					out = append(out, foldStmts(ifs.Else, ctx)...)
+				}
+				continue
+			}
+			ifs.Cond = cond
+		}
 		result := foldStmt(s, ctx)
 		if result != nil {
 			out = append(out, result)

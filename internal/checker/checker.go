@@ -1132,14 +1132,10 @@ func (c *checker) pass2() {
 		}
 	}
 
-	// Check timer handler bodies.
+	// Check timer handler bodies (component timers are checked inside
+	// checkComponentBody so they can see component vars in scope).
 	for _, t := range c.pkg.Timers {
 		c.checkTimerBody(t)
-	}
-	for _, comp := range c.pkg.Components {
-		for _, t := range comp.Timers {
-			c.checkTimerBody(t)
-		}
 	}
 
 	// Check top-level var handler bodies.
@@ -1282,6 +1278,14 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				}
 			}
 		}
+	}
+
+	// Check timer handler bodies inside the component scope so they can
+	// reference component-level vars/funcs. Timers themselves were attached
+	// to comp.Timers during the body pass above via the timer visual-node
+	// special case.
+	for _, t := range comp.Timers {
+		c.checkTimerBody(t)
 	}
 }
 

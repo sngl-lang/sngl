@@ -458,7 +458,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							}
 							args := c.checkComponentCallArgs(call, comp)
 							c.validateCallStmtComponentArgs(call, comp)
-							return &ir.Call{AST: call, Type: comp.SymType(), Args: args}
+							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
 						}
 						// Regular function in namespace.
 						t := fsym.SymType()
@@ -981,6 +981,21 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return &ir.Return{AST: x, Value: valExpr}
 	case *ast.CallStmt:
+		// Bodyless forms of root-ish visual nodes (e.g. `timer(...)` with
+		// the tick handler inside the parens) parse as CallStmt but must
+		// dispatch through the VisualNode special-cases so they register
+		// on package/component instead of becoming a generic node instance.
+		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
+			switch id.Name {
+			case "timer", "window", "output":
+				vn := &ast.VisualNode{
+					Pos:    x.Pos,
+					Target: id,
+					Args:   x.Call.Args,
+				}
+				return c.checkVisualNodeIR(vn)
+			}
+		}
 		// Check if the call target is a component — handle directly to avoid
 		// double-checking args through both inferCall and resolveCallStmt.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {

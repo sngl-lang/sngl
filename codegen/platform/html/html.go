@@ -191,6 +191,9 @@ type htmlGen struct {
 	// Component param constants (name → JS expression)
 	componentParams []componentParam
 
+	// Inlined component state fields (unique name → initial JS value)
+	inlinedStateInits []componentParam
+
 	// For building the scope
 	scope *codegen.ExprScope
 
@@ -462,6 +465,15 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		return
 	}
 	if !isStdlibComponentName(n.Name) {
+		// Try resolving a user component by name (covers bodyless calls
+		// promoted from ir.CallStmt that don't carry Component/AST back-refs).
+		if comp := g.findIRComponent(n.Name); comp != nil && comp.AST != nil {
+			if n.Component == nil {
+				n.Component = comp
+			}
+			g.renderIRUserComponent(b, n, depth)
+			return
+		}
 		// Raw HTML element / namespace-resolved element (html.div, html.img).
 		g.renderRawElementIR(b, n, depth)
 		return
@@ -1839,7 +1851,8 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		}
 	}
 
-	// State vars: promote to parent with unique names.
+	// State vars: promote to parent with unique names, and record their
+	// initial values so emitScript can populate the state object.
 	dataRenames := make(map[string]string)
 	for _, dv := range comp.Vars {
 		uniqueName := dv.Name + suffix
@@ -1848,6 +1861,10 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		g.scope.LocalVars[dv.Name] = true
 		renames[dv.Name] = "state." + uniqueName
 		dataRenames[dv.Name] = uniqueName
+		g.inlinedStateInits = append(g.inlinedStateInits, componentParam{
+			name:  uniqueName,
+			value: g.literalToJS(dv.Init),
+		})
 	}
 	g.scope.Renames = renames
 
@@ -1856,6 +1873,12 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 
 	savedSlot := g.irSlotChildren
 	g.irSlotChildren = n.Children
+
+	// Collect timers declared by this component; translation uses the
+	// current scope/renames so state references land on the unique names.
+	for _, t := range comp.Timers {
+		g.addIRTimer(t)
+	}
 
 	for _, s := range irPlatformBody(comp.Body, "html") {
 		g.renderIRStmt(b, s, depth)
@@ -1870,7 +1893,18 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 
 // emitScript writes the <script> block content.
 func (g *htmlGen) emitScript(b *strings.Builder) {
-	// TODO: Collect document-level timers (requires checker.Package)
+	// Collect document-level timers (package + main component). Inlined
+	// component timers were already appended during rendering.
+	if g.pkg != nil {
+		for _, t := range g.pkg.Timers {
+			g.addIRTimer(t)
+		}
+		if main := mainIRComponent(g.pkg); main != nil {
+			for _, t := range main.Timers {
+				g.addIRTimer(t)
+			}
+		}
+	}
 	for i := range g.timers {
 		g.timers[i].index = i
 	}
@@ -1887,6 +1921,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	for _, dv := range stateVars {
 		val := g.literalToJS(dv.Init)
 		stateFields = append(stateFields, dv.Name+": "+val)
+	}
+	for _, s := range g.inlinedStateInits {
+		stateFields = append(stateFields, s.name+": "+s.value)
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n\n")
@@ -2567,6 +2604,40 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 		event:   "change",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
+	})
+}
+
+// addIRTimer collects an IR timer into g.timers, translating the handler
+// body through the current scope so state references resolve to the unique
+// renamed field names.
+func (g *htmlGen) addIRTimer(t *ir.Timer) {
+	if t == nil || t.Handler == nil {
+		return
+	}
+	var stmts []string
+	mutated := make(map[string]bool)
+	for _, s := range t.Handler.Block {
+		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		maps.Copy(mutated, codegen.MutatedFields(s))
+	}
+	mutated = g.remapMutated(mutated, g.dataRenames)
+	var lines []string
+	for _, s := range stmts {
+		lines = append(lines, s)
+	}
+	activeVar := ""
+	if id, ok := t.Enabled.(*ir.Ident); ok {
+		if renamed, ok := g.dataRenames[id.Name]; ok {
+			activeVar = renamed
+		} else {
+			activeVar = id.Name
+		}
+	}
+	g.timers = append(g.timers, timerDef{
+		intervalMs: codegen.IntervalToMs(t.Interval),
+		activeVar:  activeVar,
+		body:       strings.Join(lines, "\n  "),
+		mutated:    mutated,
 	})
 }
 
