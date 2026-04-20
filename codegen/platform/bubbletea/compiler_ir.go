@@ -78,7 +78,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		goType := irVarGoType(v)
 		initVal := irVarInit(v, gc)
-		if golang.NeedsTimeType(goType) {
+		if strings.HasPrefix(goType, "time.") {
 			info.needsTime = true
 		}
 		info.binds = append(info.binds, irBind{
@@ -399,12 +399,12 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.Return != nil {
+	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
 		retType = golang.IRTypeToGo(fn.Return)
 	}
 
 	receiver := "m Model"
-	if fn.Return == nil {
+	if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
 		receiver = "m *Model"
 	}
 
@@ -650,19 +650,34 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	if v.Init == nil {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
 	}
-	// Handle special types that need runtime parsing
-	if lit, ok := v.Init.(*ir.Literal); ok && lit.Type != nil {
-		switch lit.Type.Kind {
-		case ir.TypeDuration:
-			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw+lit.Suffix)
-		case ir.TypeDate:
-			return fmt.Sprintf("mustParseDate(%s)", fmt.Sprintf("%q", lit.Raw))
-		case ir.TypeTime:
-			return fmt.Sprintf("mustParseTime(%s)", fmt.Sprintf("%q", lit.Raw))
-		case ir.TypeDateTime:
-			return fmt.Sprintf("mustParseDateTime(%s)", fmt.Sprintf("%q", lit.Raw))
+
+	// Check var type for special handling (date/time/duration vars may have
+	// string literal inits that need runtime parsing)
+	varGoType := golang.IRTypeToGo(v.Type)
+	if lit, ok := v.Init.(*ir.Literal); ok {
+		switch varGoType {
+		case "time.Duration":
+			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
+		case "time.Time":
+			// Determine which parser based on the var's ir.Type
+			if v.Type != nil {
+				switch v.Type.Kind {
+				case ir.TypeTime:
+					return fmt.Sprintf("mustParseTime(%q)", lit.Raw)
+				case ir.TypeDateTime:
+					return fmt.Sprintf("mustParseDateTime(%q)", lit.Raw)
+				}
+			}
+			return fmt.Sprintf("mustParseDate(%q)", lit.Raw)
+		}
+
+		// Also check literal type for duration unit literals
+		litGoType := golang.IRTypeToGo(lit.Type)
+		if litGoType == "time.Duration" {
+			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
 		}
 	}
+
 	return golang.IRLiteralToGo(v.Init)
 }
 
@@ -670,13 +685,13 @@ func irFuncReturnType(f *ir.Func) string {
 	if f.Return != nil {
 		return golang.IRTypeToGo(f.Return)
 	}
-	// Infer from expression body
+	// Infer from expression body (single-return functions)
 	if len(f.Block) == 1 {
 		if ret, ok := f.Block[0].(*ir.Return); ok && ret.Value != nil {
 			return irExprGoType(ret.Value)
 		}
 	}
-	return "any"
+	return ""
 }
 
 func irExprGoType(e ir.Expr) string {

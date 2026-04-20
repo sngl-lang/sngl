@@ -421,6 +421,17 @@ func IRTypeToGo(t *ir.Type) string {
 		return "any"
 	case ir.TypeEnum:
 		return "string"
+	case ir.TypeUnit:
+		if t.Decl != nil {
+			name := t.Decl.SymName()
+			switch name {
+			case "duration":
+				return "time.Duration"
+			}
+			// Other units map to string (e.g., "12px")
+			return "string"
+		}
+		return "string"
 	case ir.TypeFunc:
 		if t.Sig != nil {
 			return irFuncSigToGo(t.Sig)
