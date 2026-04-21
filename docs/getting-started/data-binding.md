@@ -60,7 +60,7 @@ Use `func` to declare reusable logic alongside your state. Functions can read co
 component main {
     var todos list<Todo> = []
     func done() => todos.filter((t) => t.done)
-    func remaining() => size(todos) - size(done)
+    func remaining() => todos.length() - done.length()
 
     func addTodo(text string) {
         todos.push(Todo{text=text, done=false})
@@ -70,7 +70,7 @@ component main {
         todos = []
     }
 
-    text(value="{size(done)}/{size(todos)} done, {remaining} remaining")
+    text(value="{done.length()}/{todos.length()} done, {remaining} remaining")
     button(text="Add", @click { addTodo("New item") })
     button(text="Reset", @click { reset() })
 }

@@ -21,10 +21,10 @@ component main {
     func status() => "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
-        text(value=status, style={font-weight="bold", font-size=24})
-        hbox(style={gap=8, align-items="center"}) {
+        text(value=status, style={fontWeight="bold", fontSize=24})
+        hbox(style={gap=8, alignItems="center"}) {
             input(@input { newTodo = event.value }, placeholder="Buy eggs",
-                  style={flex-grow=1})
+                  style={flexGrow=1})
             button(@click {
                 todos.push(Todo{text: newTodo, done: false})
                 newTodo = ""
@@ -44,18 +44,18 @@ component main {
 
 - **Declarative** — describe what your interface looks like, not how to build it
 - **Reactive** — state changes automatically propagate to the UI
-- **Cross-platform** — one source targets HTML/JS, BubbleTea, Gio, and native mobile
+- **Cross-platform** — one source targets HTML/JS, BubbleTea, Fyne, and Android
 - **Type-safe** — types, bindings, and dependencies are verified at compile time
 - **Minimal runtime** — subscription-based updates, no virtual DOM
 
 ## Platforms
 
-| Target | Language | Platform | Status |
-| --- | --- | --- | --- |
-| Web | JavaScript | HTML | In progress |
-| TUI | Go | BubbleTea | In progress |
-| Desktop | Go | Gio | Planned |
-| Mobile | Swift/Kotlin | Native | Planned |
+| Target   | Language   | Platform  | Status |
+| -------- | ---------- | --------- | ------ |
+| Web      | JavaScript | html      | Stable |
+| Terminal | Go         | bubbletea | Stable |
+| Desktop  | Go         | fyne      | Stable |
+| Android  | Kotlin     | android   | Stable |
 
 ## Install
 

@@ -104,7 +104,7 @@ A semicolon is automatically inserted after a line's final token if that token i
 
 ### Function Types
 
-`func(ParamType, ...) -> ReturnType` — callable. Omit `-> ReturnType` for void.
+`func(ParamType, ...) ReturnType` — callable. Omit the return type for void.
 
 ### Enum Types
 
@@ -577,13 +577,13 @@ func _d() => "hello".shout()
 
 | Function        | Signature                     | Description                              |
 | --------------- | ----------------------------- | ---------------------------------------- |
-| `string`        | `string(value) -> string`     | Convert any value to string              |
-| `int`           | `int(value) -> int`           | Convert to int (not valid on structs)    |
-| `float`         | `float(value) -> float`       | Convert to float (not valid on structs)  |
-| `embed`         | `embed(path) -> string`       | Compile-time file contents               |
-| `regex`         | `regex(pattern) -> regex`     | Compile-time validated regex constructor |
-| `regex.matches` | `regex.matches(r, s) -> bool` | Test if regex matches string             |
-| `regex.find`    | `regex.find(r, s) -> string`  | First match of regex in string           |
+| `string`        | `string(value) string`     | Convert any value to string              |
+| `int`           | `int(value) int`           | Convert to int (not valid on structs)    |
+| `float`         | `float(value) float`       | Convert to float (not valid on structs)  |
+| `embed`         | `embed(path) string`       | Compile-time file contents               |
+| `regex`         | `regex(pattern) regex`     | Compile-time validated regex constructor |
+| `regex.matches` | `regex.matches(r, s) bool` | Test if regex matches string             |
+| `regex.find`    | `regex.find(r, s) string`  | First match of regex in string           |
 
 Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.
 
@@ -602,13 +602,13 @@ All list functions use generics. Type parameters are inferred at call sites.
 
 | Method      | Signature                                                    | Description                      |
 | ----------- | ------------------------------------------------------------ | -------------------------------- |
-| `.length`   | `list.length<T>(l list<T>) -> int`                           | Length of a list                 |
-| `.push`     | `list.push<T>(l list<T>, item T) -> list<T>`                 | Append to a list                 |
-| `.remove`   | `list.remove<T>(l list<T>, index int) -> list<T>`            | Remove by index                  |
-| `.indexOf`  | `list.indexOf<T>(l list<T>, item T) -> int`                  | Index of item, or -1             |
-| `.join`     | `list.join<T>(l list<T>, sep string) -> string`              | Join elements with separator     |
-| `.reverse`  | `list.reverse<T>(l list<T>) -> list<T>`                      | Reverse a list                   |
-| `.slice`    | `list.slice<T>(l list<T>, start int, end int) -> list<T>`    | Subsequence by index range       |
-| `.contains` | `list.contains<T>(l list<T>, item T) -> bool`                | Check if item is in list         |
-| `.filter`   | `list.filter<T>(l list<T>, pred func(T) -> bool) -> list<T>` | Keep elements matching predicate |
-| `.map`      | `list.map<T, U>(l list<T>, fn func(T) -> U) -> list<U>`      | Transform each element           |
+| `.length`   | `list.length<T>(l list<T>) int`                        | Length of a list                 |
+| `.push`     | `list.push<T>(l list<T>, item T) list<T>`              | Append to a list                 |
+| `.remove`   | `list.remove<T>(l list<T>, index int) list<T>`         | Remove by index                  |
+| `.indexOf`  | `list.indexOf<T>(l list<T>, item T) int`               | Index of item, or -1             |
+| `.join`     | `list.join<T>(l list<T>, sep string) string`           | Join elements with separator     |
+| `.reverse`  | `list.reverse<T>(l list<T>) list<T>`                   | Reverse a list                   |
+| `.slice`    | `list.slice<T>(l list<T>, start int, end int) list<T>` | Subsequence by index range       |
+| `.contains` | `list.contains<T>(l list<T>, item T) bool`             | Check if item is in list         |
+| `.filter`   | `list.filter<T>(l list<T>, pred func(T) bool) list<T>` | Keep elements matching predicate |
+| `.map`      | `list.map<T, U>(l list<T>, fn func(T) U) list<U>`      | Transform each element           |

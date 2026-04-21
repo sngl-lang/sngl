@@ -207,14 +207,14 @@ The rule: if the right side is an empty list, a zero-value struct, an enum strin
 
 ### Function types
 
-Function types use `func(ParamTypes) -> ReturnType` syntax. Omit `-> ReturnType` for void:
+Function types use `func(ParamTypes) ReturnType` syntax. Omit the return type for void:
 
 <!-- SNGL-component -->
 
 ```sngl
 var handler func() = null
-var transform func(string) -> string = null
-var callback func(string) -> int = null
+var transform func(string) string = null
+var callback func(string) int = null
 ```
 
 ## Type Conversions
