@@ -77,9 +77,9 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 
 	// Build WASM for imported packages that have runtime-used functions.
 	var wasmLoaderHTML string
-	wasmPkgs := collectWASMPackages(req.Pkg)
+	projectDir := req.Options["projectDir"]
+	wasmPkgs := collectWASMPackages(req.Pkg, projectDir)
 	if len(wasmPkgs) > 0 {
-		projectDir := req.Options["projectDir"]
 		wasmExecAdded := false
 		var loaderScripts []string
 
@@ -133,6 +133,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	if len(irWindows) == 0 {
 		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
 		gen.wasmLoader = wasmLoaderHTML
+		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
 		files = append(files, codegen.BytesFile("index.html", []byte(src)))
@@ -148,6 +149,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		}
 		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
 		gen.wasmLoader = wasmLoaderHTML
+		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.irBodyStmts = win.Body
 		if win.Window != nil {
@@ -208,6 +210,9 @@ type htmlGen struct {
 
 	// WASM loader HTML to inject in <head> (script tags for wasm_exec.js + instantiation)
 	wasmLoader string
+
+	// WASM packages needing extern bindings at the top of the <script> block.
+	wasmPkgs []wasmPackage
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
@@ -1912,7 +1917,19 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Run IR optimizer on collected updaters, handlers, and timers.
 	g.optimizeIR()
 
-	// TODO: Extern bindings (requires checker.Package for import resolution)
+	// Extern bindings: surface impure native funcs through the shared
+	// __sngl_externs object that WASM instantiation populates at load time.
+	if len(g.wasmPkgs) > 0 {
+		b.WriteString("// Extern bindings\nconst $ext = window.__sngl_externs || {};\n")
+		for _, wp := range g.wasmPkgs {
+			fmt.Fprintf(b, "const %s = {\n", wp.namespace)
+			for _, f := range wp.funcs {
+				fmt.Fprintf(b, "  %s: $ext.%s || function(){},\n", f.Name, f.Name)
+			}
+			b.WriteString("};\n")
+		}
+		b.WriteString("\n")
+	}
 
 	// State initialization
 	b.WriteString("// State\nlet state = {")

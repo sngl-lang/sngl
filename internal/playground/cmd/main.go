@@ -93,7 +93,6 @@ func compile(this js.Value, args []js.Value) any {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform("html")
 	if gen == nil {
@@ -108,7 +107,7 @@ func compile(this js.Value, args []js.Value) any {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc:     doc,
+		Pkg:     pkg,
 		Lang:    lang,
 		Options: map[string]string{"preview": "true"},
 	})
@@ -206,7 +205,6 @@ func generate(this js.Value, args []js.Value) any {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform(platName)
 	if gen == nil {
@@ -220,7 +218,7 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Doc:  doc,
+		Pkg:  pkg,
 		Lang: lang,
 	})
 	if err != nil {
