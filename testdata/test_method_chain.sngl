@@ -1,0 +1,16 @@
+component main {
+    var words = ["hello", "world", "foo"]
+
+    func chain() => words[0].upper().length()
+    func deep() => "  spaces  ".trim().upper().length()
+
+    text(value=string(chain))
+}
+
+func testMethodChainLen(t T, c main) {
+    t.assert(c.chain == 5)
+}
+
+func testMethodChainDeep(t T, c main) {
+    t.assert(c.deep == 6)
+}

@@ -1,0 +1,9 @@
+func pair<A, B>(a A, b B) A {
+    return a
+}
+
+component main {
+    var bad = pair(1) // ERROR(check) "expected 2 arguments"
+
+    text(value="x")
+}

@@ -1,0 +1,7 @@
+component main {
+    var c color = #ff0000
+    var s string = "red"
+    var bad = c == s // ERROR(check) "operator == not defined"
+
+    text(value="x")
+}

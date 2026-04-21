@@ -1,0 +1,37 @@
+struct Config {
+    name string = ""
+    count int = 0
+    enabled bool = false
+}
+
+component main {
+    var list1 = [
+        1,
+        2,
+        3,
+    ]
+
+    var cfg = Config{
+        name="test",
+        count=5,
+        enabled=true,
+    }
+
+    var cfg2 = Config{
+        name="alt";
+        count=7;
+        enabled=false;
+    }
+
+    text(value=string(cfg.count))
+}
+
+func testMultilineCommaList(t T, c main) {
+    t.assert(c.list1.length() == 3)
+    t.assert(c.list1[2] == 3)
+}
+
+func testMultilineStruct(t T, c main) {
+    t.assert(c.cfg.name == "test")
+    t.assert(c.cfg2.count == 7)
+}

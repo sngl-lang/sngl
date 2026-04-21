@@ -2585,9 +2585,9 @@ func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
 	}
 	var savedLocal []string
 	var savedRename []struct {
-		name  string
-		val   string
-		had   bool
+		name string
+		val  string
+		had  bool
 	}
 	for _, p := range fn.Params {
 		if p == nil || p.Name == "" {

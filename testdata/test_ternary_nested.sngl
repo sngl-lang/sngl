@@ -1,0 +1,23 @@
+component main {
+    var a int = 1
+    var b int = 2
+    var c int = 3
+
+    func classify() => a > 0 ? (b > 0 ? "both+" : "aOnly") : "neither"
+    func chained() => a == 1 ? "one" : a == 2 ? "two" : a == 3 ? "three" : "other"
+    func deep() => (a > b) ? (a > c ? "aMax" : "cMax") : (b > c ? "bMax" : "cMax")
+
+    text(value=classify)
+}
+
+func testTernaryGrouped(t T, c main) {
+    t.assert(c.classify == "both+")
+}
+
+func testTernaryChain(t T, c main) {
+    t.assert(c.chained == "one")
+}
+
+func testTernaryDeep(t T, c main) {
+    t.assert(c.deep == "cMax")
+}

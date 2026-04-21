@@ -216,7 +216,9 @@ Type =
     IDENT [ "." IDENT | "<" TypeList ">" ]
     | "component"
     | "func" "(" [ TypeList ] ")" [ "->" Type ]
+    | StructDecl
     | EnumDecl
+    | UnitDecl
 
 TypeList = Type { "," Type }
 

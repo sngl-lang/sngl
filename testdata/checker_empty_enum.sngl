@@ -1,0 +1,6 @@
+enum Empty {
+}
+
+component main {
+    text(value="ok")
+}

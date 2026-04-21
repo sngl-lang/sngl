@@ -1,0 +1,18 @@
+const LIMIT = 100
+
+func compute(LIMIT int) int {
+    var inner = LIMIT * 2
+    return inner
+}
+
+component main {
+    var outer = LIMIT
+    var result = compute(5)
+
+    text(value=string(result))
+}
+
+func testParamShadowsConst(t T, c main) {
+    t.assert(c.outer == 100)
+    t.assert(c.result == 10)
+}

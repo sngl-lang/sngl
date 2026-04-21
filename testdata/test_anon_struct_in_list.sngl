@@ -1,0 +1,25 @@
+struct Item {
+    id int = 0
+    name string = ""
+}
+
+component main {
+    var items list<Item> = [
+        {id=1, name="a"},
+        {id=2, name="b"},
+        {id=3, name="c"},
+    ]
+
+    for i, it = items {
+        text(value=string(it.id) + ":" + it.name)
+    }
+}
+
+func testAnonListLen(t T, c main) {
+    t.assert(c.items.length() == 3)
+}
+
+func testAnonListElem(t T, c main) {
+    t.assert(c.items[1].id == 2)
+    t.assert(c.items[2].name == "c")
+}

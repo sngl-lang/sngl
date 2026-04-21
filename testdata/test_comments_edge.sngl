@@ -1,0 +1,23 @@
+// leading top-level line comment
+
+/* leading top-level block comment */
+
+component main {
+    // before decl
+    var count int = 0
+    var sum = 1 + 2 + count // trailing line
+
+    /* multi
+       line
+       block */
+    func calc() => sum * 2 // trailing on func
+
+    /* block before visual */
+    text(value=string(sum))
+}
+
+func testCommentParse(t T, c main) {
+    t.assert(c.count == 0)
+    t.assert(c.sum == 3)
+    t.assert(c.calc == 6)
+}

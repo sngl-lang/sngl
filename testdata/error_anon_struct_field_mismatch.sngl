@@ -1,0 +1,10 @@
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+component main {
+    var bad Point = {x=1, z=2} // ERROR(check) "unknown field"
+
+    text(value=string(bad.x))
+}

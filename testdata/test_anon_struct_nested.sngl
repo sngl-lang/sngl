@@ -1,0 +1,19 @@
+struct Inner {
+    value int = 0
+}
+
+struct Outer {
+    inner Inner = Inner{value=0}
+    label string = ""
+}
+
+component main {
+    var nested Outer = {inner={value=5}, label="hi"}
+
+    text(value=string(nested.inner.value))
+}
+
+func testNestedAnon(t T, c main) {
+    t.assert(c.nested.inner.value == 5)
+    t.assert(c.nested.label == "hi")
+}

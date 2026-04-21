@@ -1,0 +1,22 @@
+func isEven(n int) bool {
+    return n == 0 ? true : isOdd(n - 1)
+}
+
+func isOdd(n int) bool {
+    return n == 0 ? false : isEven(n - 1)
+}
+
+component main {
+    var e = isEven(4)
+    var o = isOdd(4)
+
+    text(value=string(e))
+}
+
+func testMutualEven(t T, c main) {
+    t.assert(c.e == true)
+}
+
+func testMutualOdd(t T, c main) {
+    t.assert(c.o == false)
+}

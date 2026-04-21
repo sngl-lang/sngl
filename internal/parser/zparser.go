@@ -182,20 +182,20 @@ var errorSets = [...][]Symbol{
 	{question, neq, lte, lt, lor, land, gte, gt, eq},
 	{question, neq, lor, land, eq},
 	{neq, eq},
-	{Type, FuncBodyTail, EnumDecl, StmtBlock, lt, lparen, lbrace, kw_func, kw_enum, kw_component, ident, fat_arrow},
-	{Type, EnumDecl, StmtBlock, lparen, lbrace, kw_func, kw_enum, kw_component, ident, fat_arrow},
-	{Type, FuncBodyTail, EnumDecl, StmtBlock, lparen, lbrace, kw_func, kw_enum, kw_component, ident, fat_arrow},
-	{Type, EnumDecl, StmtBlock, lbrace, kw_func, kw_enum, kw_component, ident, fat_arrow},
-	{EnumDecl, lbrace, kw_func, kw_enum, kw_component, ident, fat_arrow},
+	{Type, FuncBodyTail, UnitDecl, EnumDecl, StructDecl, StmtBlock, lt, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
+	{Type, UnitDecl, EnumDecl, StructDecl, StmtBlock, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
+	{Type, FuncBodyTail, UnitDecl, EnumDecl, StructDecl, StmtBlock, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
+	{Type, UnitDecl, EnumDecl, StructDecl, StmtBlock, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
+	{UnitDecl, EnumDecl, StructDecl, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
 	{fat_arrow},
 	{lte, lt, gte, gt},
 	{gt},
-	{EnumDecl, lparen, lbrace, kw_func, kw_enum, kw_component, ident},
-	{EnumDecl, lbrace, kw_func, kw_enum, kw_component, ident},
-	{Type, EnumDecl, rparen, kw_func, kw_enum, kw_component, ident},
-	{Type, EnumDecl, kw_func, kw_enum, kw_component, ident},
-	{EnumDecl, kw_func, kw_enum, kw_component, ident},
-	{kw_func, kw_enum, kw_component, ident},
+	{UnitDecl, EnumDecl, StructDecl, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
+	{UnitDecl, EnumDecl, StructDecl, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
+	{Type, UnitDecl, EnumDecl, StructDecl, rparen, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
+	{Type, UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
+	{UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
+	{kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
 	{lbrace, ident},
 	{IdentList, lparen, ident},
 	{rbrace, ident},
@@ -206,9 +206,9 @@ var errorSets = [...][]Symbol{
 	{ident},
 	{kw_component},
 	{arrow},
-	{Type, EnumDecl, kw_func, kw_enum, kw_component, ident, assign},
-	{EnumDecl, kw_func, kw_enum, kw_component, ident, assign},
-	{EnumDecl, kw_func, kw_enum, kw_component, ident, at, assign},
+	{Type, UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
+	{UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
+	{UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, at, assign},
 	{at, assign},
 	{star_assign, slash_assign, plus_assign, pct_assign, minus_assign, assign},
 	{StmtBlock, star_assign, slash_assign, plus_assign, pct_assign, minus_assign, lparen, lbracket, lbrace, elem_ref, dot, bangbang, assign},
@@ -1101,7 +1101,7 @@ state3:
 //		Accept
 //		on  assign
 //			shift and goto state 6
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 7
 //	State 6
 //		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
@@ -1178,7 +1178,7 @@ state5:
 	case assign:
 		r = append(r, p.shift())
 		goto state6
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state7
 	}
@@ -1729,7 +1729,7 @@ state1:
 //			shift and goto state 2
 //	State 2
 //		Accept
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 3
 //	State 3
 //		Accept
@@ -1740,7 +1740,7 @@ state1:
 //		Accept
 //		on  assign
 //			shift and goto state 6
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 7
 //	State 6
 //		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
@@ -1751,7 +1751,7 @@ state1:
 //			shift and goto state 6
 //	State 8
 //		Accept
-//		on  assign, ident, kw_component, kw_enum, kw_func
+//		on  assign, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call CompParamTail and goto state 3
 //
 // CompParam is used internally from Parse.
@@ -1783,7 +1783,7 @@ state1:
 state2:
 	accept, errorSet = true, 21
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state3
 	}
@@ -1805,7 +1805,7 @@ state5:
 	case assign:
 		r = append(r, p.shift())
 		goto state6
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state7
 	}
@@ -1829,7 +1829,7 @@ state7:
 state8:
 	accept, errorSet = true, 33
 	switch Symbol(p.tok.Ch) {
-	case assign, ident, kw_component, kw_enum, kw_func:
+	case assign, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.CompParamTail())
 		goto state3
 	}
@@ -1892,7 +1892,7 @@ state2:
 //	State 0
 //		on  assign
 //			shift and goto state 1
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 3
 //	State 1
 //		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
@@ -1914,7 +1914,7 @@ func (p *Parser) CompParamTail() (r []int32) {
 	case assign:
 		r = append(r, p.shift())
 		goto state1
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state3
 	}
@@ -1955,7 +1955,7 @@ state3:
 //	State 2
 //		on  lparen
 //			shift and goto state 3
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 6
 //		on  lbrace
 //			call StmtBlock and goto state 5
@@ -1965,7 +1965,7 @@ state3:
 //		on  at, colon, ident
 //			call CompParamList and goto state 7
 //	State 4
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 6
 //		on  lbrace
 //			call StmtBlock and goto state 5
@@ -2004,7 +2004,7 @@ state2:
 	case lparen:
 		r = append(r, p.shift())
 		goto state3
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state6
 	case lbrace:
@@ -2026,7 +2026,7 @@ state3:
 state4:
 	accept, errorSet = false, 18
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state6
 	case lbrace:
@@ -2639,7 +2639,7 @@ state4:
 //	State 1
 //		on  assign
 //			shift and goto state 2
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 4
 //	State 2
 //		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
@@ -2668,7 +2668,7 @@ state1:
 	case assign:
 		r = append(r, p.shift())
 		goto state2
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state4
 	}
@@ -3224,7 +3224,7 @@ state9:
 //	State 0
 //		on  fat_arrow
 //			shift and goto state 1
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 3
 //		on  lbrace
 //			call StmtBlock and goto state 2
@@ -3247,7 +3247,7 @@ func (p *Parser) FuncBodyTail() (r []int32) {
 	case fat_arrow:
 		r = append(r, p.shift())
 		goto state1
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state3
 	case lbrace:
@@ -3295,14 +3295,14 @@ state3:
 //		on  ident
 //			call FuncName and goto state 2
 //	State 2
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace, lparen
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen
 //			call FuncTail and goto state 3
 //		on  lt
 //			call TypeParamList and goto state 4
 //	State 3
 //		Accept
 //	State 4
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace, lparen
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen
 //			call FuncTail and goto state 3
 //
 // FuncDecl is used internally from Parse.
@@ -3328,7 +3328,7 @@ state1:
 state2:
 	accept, errorSet = false, 9
 	switch Symbol(p.tok.Ch) {
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace, lparen:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen:
 		r = p.add(r, p.FuncTail())
 		goto state3
 	case lt:
@@ -3342,7 +3342,7 @@ state3:
 state4:
 	accept, errorSet = false, 11
 	switch Symbol(p.tok.Ch) {
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace, lparen:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen:
 		r = p.add(r, p.FuncTail())
 		goto state3
 	}
@@ -3360,7 +3360,7 @@ state4:
 //	State 1
 //		on  lparen
 //			shift and goto state 2
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 4
 //	State 2
 //		on  rparen
@@ -3368,7 +3368,7 @@ state4:
 //		on  ident
 //			call ParamList and goto state 5
 //	State 3
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 4
 //	State 4
 //		Accept
@@ -3394,7 +3394,7 @@ state1:
 	case lparen:
 		r = append(r, p.shift())
 		goto state2
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())
 		goto state4
 	}
@@ -3413,7 +3413,7 @@ state2:
 state3:
 	accept, errorSet = false, 12
 	switch Symbol(p.tok.Ch) {
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())
 		goto state4
 	}
@@ -3491,7 +3491,7 @@ state3:
 //	State 0
 //		on  lparen
 //			shift and goto state 1
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 3
 //	State 1
 //		on  rparen
@@ -3499,7 +3499,7 @@ state3:
 //		on  ident
 //			call ParamList and goto state 4
 //	State 2
-//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace
+//		on  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 3
 //	State 3
 //		Accept
@@ -3517,7 +3517,7 @@ func (p *Parser) FuncTail() (r []int32) {
 	case lparen:
 		r = append(r, p.shift())
 		goto state1
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())
 		goto state3
 	}
@@ -3536,7 +3536,7 @@ state1:
 state2:
 	accept, errorSet = false, 12
 	switch Symbol(p.tok.Ch) {
-	case fat_arrow, ident, kw_component, kw_enum, kw_func, lbrace:
+	case fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())
 		goto state3
 	}
@@ -4200,7 +4200,7 @@ state1:
 //		Accept
 //		on  assign
 //			shift and goto state 2
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 4
 //	State 2
 //		on  at, bang, color, elem_ref, float_lit, ident, int_lit, kw_func, lbrace, lbracket, lparen, minus, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
@@ -4230,7 +4230,7 @@ state1:
 	case assign:
 		r = append(r, p.shift())
 		goto state2
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state4
 	}
@@ -5104,7 +5104,7 @@ state4:
 //		on  ident
 //			shift and goto state 1
 //	State 1
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 2
 //	State 2
 //		on  assign
@@ -5135,7 +5135,7 @@ func (p *Parser) StructField() (r []int32) {
 state1:
 	accept, errorSet = false, 21
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state2
 	}
@@ -5367,7 +5367,9 @@ state3:
 //	      ident [ dot ident | lt TypeList gt ]
 //	    | kw_component
 //	    | kw_func lparen [ TypeList ] rparen [ arrow Type ]
+//	    | StructDecl
 //	    | EnumDecl
+//	    | UnitDecl
 //	    .
 //
 //	State 0
@@ -5377,8 +5379,12 @@ state3:
 //			shift and goto state 3
 //		on  kw_func
 //			shift and goto state 6
+//		on  kw_struct
+//			call StructDecl and goto state 3
 //		on  kw_enum
 //			call EnumDecl and goto state 3
+//		on  kw_unit
+//			call UnitDecl and goto state 3
 //	State 1
 //		Accept
 //		on  dot
@@ -5391,7 +5397,7 @@ state3:
 //	State 3
 //		Accept
 //	State 4
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call TypeList and goto state 5
 //	State 5
 //		on  gt
@@ -5402,14 +5408,14 @@ state3:
 //	State 7
 //		on  rparen
 //			shift and goto state 8
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call TypeList and goto state 10
 //	State 8
 //		Accept
 //		on  arrow
 //			shift and goto state 9
 //	State 9
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 3
 //	State 10
 //		on  rparen
@@ -5431,8 +5437,14 @@ func (p *Parser) Type() (r []int32) {
 	case kw_func:
 		r = append(r, p.shift())
 		goto state6
+	case kw_struct:
+		r = p.add(r, p.StructDecl())
+		goto state3
 	case kw_enum:
 		r = p.add(r, p.EnumDecl())
+		goto state3
+	case kw_unit:
+		r = p.add(r, p.UnitDecl())
 		goto state3
 	}
 	return p.stop(r, accept, errorSet)
@@ -5461,7 +5473,7 @@ state3:
 state4:
 	accept, errorSet = false, 20
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.TypeList())
 		goto state5
 	}
@@ -5488,7 +5500,7 @@ state7:
 	case rparen:
 		r = append(r, p.shift())
 		goto state8
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.TypeList())
 		goto state10
 	}
@@ -5504,7 +5516,7 @@ state8:
 state9:
 	accept, errorSet = false, 21
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state3
 	}
@@ -5524,7 +5536,7 @@ state10:
 //	TypeList = Type { comma Type } .
 //
 //	State 0
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 1
 //	State 1
 //		Accept
@@ -5538,7 +5550,7 @@ func (p *Parser) TypeList() (r []int32) {
 state0:
 	accept, errorSet = false, 21
 	switch Symbol(p.tok.Ch) {
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state1
 	}
@@ -5925,7 +5937,7 @@ state6:
 //		Accept
 //		on  assign
 //			shift and goto state 2
-//		on  ident, kw_component, kw_enum, kw_func
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 4
 //		on  at
 //			call VarHandler and goto state 3
@@ -5961,7 +5973,7 @@ state1:
 	case assign:
 		r = append(r, p.shift())
 		goto state2
-	case ident, kw_component, kw_enum, kw_func:
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
 		goto state4
 	case at:

@@ -1,0 +1,8 @@
+struct Empty {
+}
+
+component main {
+    var e Empty = Empty{}
+
+    text(value="ok")
+}

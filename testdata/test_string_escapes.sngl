@@ -1,0 +1,28 @@
+component main {
+    var newline = "line1\nline2"
+    var tab = "col1\tcol2"
+    var quote = "she said \"hi\""
+    var backslash = "path\\to\\file"
+    var rawWithQuote = `say "hi" no\nescape`
+    var tripleEmbed = """
+        literal "quotes" and \n no interp
+    """
+
+    text(value=newline)
+}
+
+func testNewlineEscape(t T, c main) {
+    t.assert(c.newline == "line1\nline2")
+}
+
+func testTabEscape(t T, c main) {
+    t.assert(c.tab == "col1\tcol2")
+}
+
+func testQuoteEscape(t T, c main) {
+    t.assert(c.quote == `she said "hi"`)
+}
+
+func testBackslashEscape(t T, c main) {
+    t.assert(c.backslash == `path\to\file`)
+}
