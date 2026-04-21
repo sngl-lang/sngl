@@ -96,7 +96,7 @@ func runTestFunc(doc *ast.Document, fn *ast.FuncDef) *codegen.TestResult {
 	return r
 }
 
-// testingT is the runtime value for the T parameter in test functions.
+// testingT is the runtime value for the Test parameter in test functions.
 type testingT struct {
 	env      *Env
 	result   *codegen.TestResult

@@ -36,7 +36,7 @@ component methodfold {
     text(value="{imin}")
 }
 
-func testFoldedMethods(t T, c methodfold) {
+func testFoldedMethods(t Test, c methodfold) {
     t.assert(c.imin == 3)
     t.assert(c.imax == 7)
     t.assert(c.iabs == 5)

@@ -3,6 +3,6 @@ component real {
     text(value=string(x))
 }
 
-func testCallsUnknownFunction(t T, c real) { // ERROR(test) "component has no method"
+func testCallsUnknownFunction(t Test, c real) { // ERROR(test) "component has no method"
     c.bogus()
 }

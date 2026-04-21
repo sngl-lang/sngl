@@ -12,7 +12,7 @@ component fold {
     text(value="{s}")
 }
 
-func testConstantFolding(t T, c fold) {
+func testConstantFolding(t Test, c fold) {
     t.assert(c.s == "42")
     t.assert(c.i == 3)
     t.assert(c.sz == 5)

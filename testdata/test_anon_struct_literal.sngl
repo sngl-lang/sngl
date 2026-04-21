@@ -13,12 +13,12 @@ component main {
     text(value=string(named.x + named.y))
 }
 
-func testAnonLiteralAssign(t T, c main) {
+func testAnonLiteralAssign(t Test, c main) {
     t.assert(c.named.x == 3)
     t.assert(c.named.y == 4)
 }
 
-func testAnonLiteralInferred(t T, c main) {
+func testAnonLiteralInferred(t Test, c main) {
     t.assert(c.inline.x == 1)
 }
 

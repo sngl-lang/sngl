@@ -9,12 +9,12 @@ component shapes {
     text(value="{p.x}")
 }
 
-func testStructFieldAccess(t T, c shapes) {
+func testStructFieldAccess(t Test, c shapes) {
     t.assert(c.p.x == 10)
     t.assert(c.p.y == 20)
 }
 
-func testStructFieldMutation(t T, c shapes) {
+func testStructFieldMutation(t Test, c shapes) {
     c.p.x = 99
     t.assert(c.p.x == 99)
     t.assert(c.p.y == 20)

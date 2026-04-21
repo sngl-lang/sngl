@@ -26,12 +26,12 @@ component main {
     text(value=string(cfg.count))
 }
 
-func testMultilineCommaList(t T, c main) {
+func testMultilineCommaList(t Test, c main) {
     t.assert(c.list1.length() == 3)
     t.assert(c.list1[2] == 3)
 }
 
-func testMultilineStruct(t T, c main) {
+func testMultilineStruct(t Test, c main) {
     t.assert(c.cfg.name == "test")
     t.assert(c.cfg2.count == 7)
 }

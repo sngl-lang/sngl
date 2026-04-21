@@ -16,7 +16,7 @@ component main {
     text(value=string(sum))
 }
 
-func testCommentParse(t T, c main) {
+func testCommentParse(t Test, c main) {
     t.assert(c.count == 0)
     t.assert(c.sum == 3)
     t.assert(c.calc == 6)

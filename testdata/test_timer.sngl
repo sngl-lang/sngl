@@ -2,7 +2,7 @@ output {
     js { html }
 }
 
-func testTickIncrementsProgress(t T, c main) {
+func testTickIncrementsProgress(t Test, c main) {
     t.assert(c.progress == 0)
     t.assert(c.running == true)
     t.tick()
@@ -10,7 +10,7 @@ func testTickIncrementsProgress(t T, c main) {
     t.assert(c.running == true)
 }
 
-func testTickRespectsActiveVar(t T, c main) {
+func testTickRespectsActiveVar(t Test, c main) {
     c.running = false
     t.tick()
     t.assert(c.progress == 0)

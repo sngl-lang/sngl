@@ -39,17 +39,17 @@ component math {
     text(value="{x}")
 }
 
-func testAdd(t T, c math) {
+func testAdd(t Test, c math) {
     c.x = 2 + 3
     t.assert(c.x == 5)
 }
 
-func testSub(t T, c math) {
+func testSub(t Test, c math) {
     c.x = 10 - 4
     t.assert(c.x == 6)
 }
 
-func testMul(t T, c math) {
+func testMul(t Test, c math) {
     c.x = 3 * 7
     t.assert(c.x == 21)
 }
@@ -59,7 +59,7 @@ component counter {
     text(value="{n}")
 }
 
-func testShouldFail(t T, c counter) {
+func testShouldFail(t Test, c counter) {
     t.assert(c.n == 999)
 }
 -- notests.sngl --
@@ -70,7 +70,7 @@ component broken {
     var x = unknownFunc()
 }
 
-func testBad(t T, c broken) {
+func testBad(t Test, c broken) {
     t.assert(c.x == 0)
 }
 -- empty/.gitkeep --

@@ -15,7 +15,7 @@ component interpfold {
     text(value=string(chain))
 }
 
-func testValues(t T, c interpfold) {
+func testValues(t Test, c interpfold) {
     t.assert(c.fneg == -3.14)
     t.assert(c.bnot == false)
     t.assert(c.chain == 20)

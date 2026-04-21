@@ -4,34 +4,34 @@ component items {
     text(value="{list}")
 }
 
-func testCreationAndLen(t T, c items) {
+func testCreationAndLen(t Test, c items) {
     t.assert(c.list.length() == 3)
 }
 
-func testIndexing(t T, c items) {
+func testIndexing(t Test, c items) {
     t.assert(c.list[0] == 1)
     t.assert(c.list[1] == 2)
     t.assert(c.list[2] == 3)
 }
 
-func testPush(t T, c items) {
+func testPush(t Test, c items) {
     c.list.push(4)
     t.assert(c.list.length() == 4)
     t.assert(c.list[3] == 4)
 }
 
-func testRemove(t T, c items) {
+func testRemove(t Test, c items) {
     c.list.remove(1)
     t.assert(c.list.length() == 2)
     t.assert(c.list[0] == 1)
     t.assert(c.list[1] == 3)
 }
 
-func testIndexAssign(t T, c items) {
+func testIndexAssign(t Test, c items) {
     c.list[0] = 99
     t.assert(c.list[0] == 99)
 }
 
-func testOutOfBounds(t T, c items) { // ERROR(test) "out of range"
+func testOutOfBounds(t Test, c items) { // ERROR(test) "out of range"
     t.assert(c.list[10] == 0)
 }

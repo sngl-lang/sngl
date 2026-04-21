@@ -15,18 +15,18 @@ line two"
     text(value=regular)
 }
 
-func testRegularString(t T, c main) {
+func testRegularString(t Test, c main) {
     t.assert(c.regular == "hello world")
 }
 
-func testMultilineString(t T, c main) {
+func testMultilineString(t Test, c main) {
     t.assert(c.withNewline == "line one\nline two")
 }
 
-func testTripleQuoteStripsIndent(t T, c main) {
+func testTripleQuoteStripsIndent(t Test, c main) {
     t.assert(c.triple == "indented\ncontent")
 }
 
-func testRawStringNoEscape(t T, c main) {
+func testRawStringNoEscape(t Test, c main) {
     t.assert(c.raw == `no \escapes and no {interpolation}`)
 }

@@ -1,4 +1,4 @@
-func testPureExpressionFunctions(t T, c main) {
+func testPureExpressionFunctions(t Test, c main) {
     t.assert(c.add(2, 3) == 5)
     t.assert(c.add(0, 0) == 0)
     t.assert(c.add(-1, 1) == 0)
@@ -7,13 +7,13 @@ func testPureExpressionFunctions(t T, c main) {
     t.assert(c.greet("World") == "Hello, World!")
 }
 
-func testComponentMethods(t T, c main) {
+func testComponentMethods(t Test, c main) {
     t.assert(c.square(4) == 16)
     t.assert(c.square(0) == 0)
     t.assert(c.label() == "Count: 10")
 }
 
-func testBlockFunctions(t T, c main) {
+func testBlockFunctions(t Test, c main) {
     t.assert(c.clamp(5, 0, 10) == 5)
     t.assert(c.clamp(-5, 0, 10) == 0)
     t.assert(c.clamp(15, 0, 10) == 10)
@@ -21,7 +21,7 @@ func testBlockFunctions(t T, c main) {
     t.assert(c.clamp(10, 0, 10) == 10)
 }
 
-func testVoidActionFunctions(t T, c main) {
+func testVoidActionFunctions(t Test, c main) {
     t.assert(c.count == 10)
     c.reset()
     t.assert(c.count == 0)

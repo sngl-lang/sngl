@@ -1,4 +1,4 @@
-func testCallExpressionAndCallStatementRefs(t T, c main) {
+func testCallExpressionAndCallStatementRefs(t Test, c main) {
     t.assert(c.count == 0)
     c.increment(5)
     t.assert(c.count == 5)
@@ -6,7 +6,7 @@ func testCallExpressionAndCallStatementRefs(t T, c main) {
     t.assert(c.count == 0)
 }
 
-func testSubtestCallRefs(t T, c main) {
+func testSubtestCallRefs(t Test, c main) {
     t.test("nested", func(t, c) {
         c.increment(1)
         t.assert(c.count == 1)

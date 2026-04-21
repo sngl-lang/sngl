@@ -16,13 +16,13 @@ component main {
     text(value="placeholder")
 }
 
-func testTailRecursiveFactorial(t T, c main) {
+func testTailRecursiveFactorial(t Test, c main) {
     t.assert(c.factorial(1, 1) == 1)
     t.assert(c.factorial(5, 1) == 120)
     t.assert(c.factorial(10, 1) == 3628800)
 }
 
-func testTailRecursiveSumProvesTco(t T, c main) {
+func testTailRecursiveSumProvesTco(t Test, c main) {
     t.assert(c.sumTo(0, 0) == 0)
     t.assert(c.sumTo(10, 0) == 55)
     // Depth > 100: would overflow stack without TCO
@@ -30,13 +30,13 @@ func testTailRecursiveSumProvesTco(t T, c main) {
     t.assert(c.sumTo(1000, 0) == 500500)
 }
 
-func testRecursiveFibonacci(t T, c main) {
+func testRecursiveFibonacci(t Test, c main) {
     t.assert(c.fib(0) == 0)
     t.assert(c.fib(1) == 1)
     t.assert(c.fib(10) == 55)
 }
 
-func testRecursiveGcdBlockForm(t T, c main) {
+func testRecursiveGcdBlockForm(t Test, c main) {
     t.assert(c.gcd(12, 8) == 4)
     t.assert(c.gcd(100, 75) == 25)
     t.assert(c.gcd(17, 13) == 1)

@@ -10,19 +10,19 @@ component indexed {
     }
 }
 
-func testForWithIndexVariable(t T, c indexed) {
+func testForWithIndexVariable(t Test, c indexed) {
     t.assert(c.item[0].value == "0:a")
     t.assert(c.item[1].value == "1:b")
     t.assert(c.item[2].value == "2:c")
 }
 
-func testFloatComparisons(t T, c indexed) {
+func testFloatComparisons(t Test, c indexed) {
     t.assert(c.rate == 0.0)
     c.rate = 1.5
     t.assert(c.rate != 0.0)
 }
 
-func testListComparisons(t T, c indexed) {
+func testListComparisons(t Test, c indexed) {
     t.assert(c.items.length() > 0)
     t.assert(c.empty.length() == 0)
 }

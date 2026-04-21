@@ -10,7 +10,7 @@ component units {
     text(value="test")
 }
 
-func testDurationArithmetic(t T, c units) {
+func testDurationArithmetic(t Test, c units) {
     t.assert(1s == 1000ms)
     t.assert(1m == 60000ms)
     t.assert(1h == 3600000ms)
@@ -18,26 +18,26 @@ func testDurationArithmetic(t T, c units) {
     t.assert(1h + 30m == 5400000ms)
 }
 
-func testMeasurementArithmetic(t T, c units) {
+func testMeasurementArithmetic(t Test, c units) {
     t.assert(1rem == 16em)
     t.assert(1rem + 2em == 18em)
     t.assert(3px + 2px == 5px)
 }
 
-func testMixedMeasurementComponents(t T, c units) {
+func testMixedMeasurementComponents(t Test, c units) {
     t.assert(16px + 2em == 2em + 16px)
 }
 
-func testScalarMultiplication(t T, c units) {
+func testScalarMultiplication(t Test, c units) {
     t.assert(2 * 3px == 6px)
     t.assert(3px * 2 == 6px)
 }
 
-func testScalarDivision(t T, c units) {
+func testScalarDivision(t Test, c units) {
     t.assert(6px / 2 == 3px)
 }
 
-func testSubtraction(t T, c units) {
+func testSubtraction(t Test, c units) {
     t.assert(5px - 2px == 3px)
     t.assert(2s - 500ms == 1500ms)
 }

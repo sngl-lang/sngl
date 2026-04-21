@@ -37,7 +37,7 @@ component main {
     }
 }
 
-func testBasic(t T, c main) {
+func testBasic(t Test, c main) {
     t.assert(c.count == 0)
     t.assert(c.flag == true)
     t.assert(c.label == "hello")

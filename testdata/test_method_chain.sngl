@@ -7,10 +7,10 @@ component main {
     text(value=string(chain))
 }
 
-func testMethodChainLen(t T, c main) {
+func testMethodChainLen(t Test, c main) {
     t.assert(c.chain == 5)
 }
 
-func testMethodChainDeep(t T, c main) {
+func testMethodChainDeep(t Test, c main) {
     t.assert(c.deep == 6)
 }

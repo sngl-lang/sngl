@@ -5,19 +5,19 @@ component state {
     text(value="{count}")
 }
 
-func testFirstTestMutates(t T, c state) {
+func testFirstTestMutates(t Test, c state) {
     c.count = 42
     c.name = "changed"
     t.assert(c.count == 42)
     t.assert(c.name == "changed")
 }
 
-func testSecondTestSeesFreshState(t T, c state) {
+func testSecondTestSeesFreshState(t Test, c state) {
     t.assert(c.count == 0)
     t.assert(c.name == "init")
 }
 
-func testSubtestsGetSnapshots(t T, c state) {
+func testSubtestsGetSnapshots(t Test, c state) {
     c.count = 10
     t.assert(c.count == 10)
 

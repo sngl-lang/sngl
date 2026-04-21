@@ -35,21 +35,21 @@ component main {
     text(value=string(treeSum(root)))
 }
 
-func testTreeSum(t T, c main) {
+func testTreeSum(t Test, c main) {
     t.assert(c.treeSum(c.root) == 21)
     t.assert(c.treeSum(null) == 0)
     t.assert(c.treeSum(c.leaf1) == 1)
     t.assert(c.treeSum(c.node3) == 8)
 }
 
-func testTreeDepth(t T, c main) {
+func testTreeDepth(t Test, c main) {
     t.assert(c.treeDepth(null) == 0)
     t.assert(c.treeDepth(c.leaf1) == 1)
     t.assert(c.treeDepth(c.node3) == 2)
     t.assert(c.treeDepth(c.root) == 3)
 }
 
-func testTreeContains(t T, c main) {
+func testTreeContains(t Test, c main) {
     t.assert(c.treeContains(c.root, 5) == true)
     t.assert(c.treeContains(c.root, 1) == true)
     t.assert(c.treeContains(c.root, 8) == true)
@@ -57,7 +57,7 @@ func testTreeContains(t T, c main) {
     t.assert(c.treeContains(null, 1) == false)
 }
 
-func testTreeMutation(t T, c main) {
+func testTreeMutation(t Test, c main) {
     c.node8.left = TreeNode{value=7}
     t.assert(c.treeSum(c.root) == 28)
     t.assert(c.treeDepth(c.root) == 3)

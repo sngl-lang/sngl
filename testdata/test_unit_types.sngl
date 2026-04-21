@@ -12,20 +12,20 @@ component unitTypes {
     text(value="test")
 }
 
-func testUnderscoredDuration(t T, c unitTypes) {
+func testUnderscoredDuration(t Test, c unitTypes) {
     t.assert(c.sep == 1s)
 }
 
-func testUnderscoredMeasurement(t T, c unitTypes) {
+func testUnderscoredMeasurement(t Test, c unitTypes) {
     t.assert(c.sepPx == 1000px)
 }
 
-func testUnitArithmeticWithUnderscore(t T, c unitTypes) {
+func testUnitArithmeticWithUnderscore(t Test, c unitTypes) {
     t.assert(1_000ms + 500ms == 1_500ms)
     t.assert(1_000px * 2 == 2_000px)
 }
 
-func testZeroUnitLiteral(t T, c unitTypes) {
+func testZeroUnitLiteral(t Test, c unitTypes) {
     t.assert(0ms == 0s)
     t.assert(0px == 0em)
 }

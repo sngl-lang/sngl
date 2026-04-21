@@ -3,14 +3,14 @@ struct Todo {
     done bool = false
 }
 
-func testOptionDefaultsToNull(t T, c main) {
+func testOptionDefaultsToNull(t Test, c main) {
     t.assert(c.name == null)
     t.assert(c.count != null)
     t.assert(c.todo == null)
     t.assert(c.flag != null)
 }
 
-func testOptionAcceptsConcreteValues(t T, c main) {
+func testOptionAcceptsConcreteValues(t Test, c main) {
     c.name = "hello"
     t.assert(c.name != null)
     t.assert(c.name == "hello")

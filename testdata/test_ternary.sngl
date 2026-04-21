@@ -17,7 +17,7 @@ component choice {
     text #out(value=bigger)
 }
 
-func testTernaryComputed(t T, c choice) {
+func testTernaryComputed(t Test, c choice) {
     t.assert(c.bigger == "x")
     c.x = 1
     t.assert(c.bigger == "y")
@@ -25,19 +25,19 @@ func testTernaryComputed(t T, c choice) {
     t.assert(c.bigger == "x")
 }
 
-func testTernaryWithConversion(t T, c choice) {
+func testTernaryWithConversion(t Test, c choice) {
     t.assert(c.desc == "10")
     c.x = -1
     t.assert(c.desc == "none")
 }
 
-func testMultiStatementEvent(t T, c choice) {
+func testMultiStatementEvent(t Test, c choice) {
     c.bump.@click()
     t.assert(c.x == 11)
     t.assert(c.y == 6)
 }
 
-func testStringAppend(t T, c choice) {
+func testStringAppend(t Test, c choice) {
     c.label = "hello"
     c.label += " world"
     t.assert(c.label == "hello world")

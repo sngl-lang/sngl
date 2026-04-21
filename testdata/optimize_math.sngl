@@ -19,7 +19,7 @@ component mathfold {
     text(value="{fsin}")
 }
 
-func testTrigAndConversions(t T, c mathfold) {
+func testTrigAndConversions(t Test, c mathfold) {
     t.assert(c.fsin == 0.0)
     t.assert(c.fcos == 1.0)
     t.assert(c.ftan == 0.0)

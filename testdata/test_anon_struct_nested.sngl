@@ -13,7 +13,7 @@ component main {
     text(value=string(nested.inner.value))
 }
 
-func testNestedAnon(t T, c main) {
+func testNestedAnon(t Test, c main) {
     t.assert(c.nested.inner.value == 5)
     t.assert(c.nested.label == "hi")
 }

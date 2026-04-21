@@ -11,18 +11,18 @@ component main {
     text(value=newline)
 }
 
-func testNewlineEscape(t T, c main) {
+func testNewlineEscape(t Test, c main) {
     t.assert(c.newline == "line1\nline2")
 }
 
-func testTabEscape(t T, c main) {
+func testTabEscape(t Test, c main) {
     t.assert(c.tab == "col1\tcol2")
 }
 
-func testQuoteEscape(t T, c main) {
+func testQuoteEscape(t Test, c main) {
     t.assert(c.quote == `she said "hi"`)
 }
 
-func testBackslashEscape(t T, c main) {
+func testBackslashEscape(t Test, c main) {
     t.assert(c.backslash == `path\to\file`)
 }

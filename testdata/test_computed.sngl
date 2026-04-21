@@ -6,11 +6,11 @@ component pricing {
     text(value="{total}")
 }
 
-func testComputedValue(t T, c pricing) {
+func testComputedValue(t Test, c pricing) {
     t.assert(c.total == 200)
 }
 
-func testComputedUpdatesWithVar(t T, c pricing) {
+func testComputedUpdatesWithVar(t Test, c pricing) {
     c.price = 50
     t.assert(c.total == 100)
     c.quantity = 5

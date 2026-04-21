@@ -10,14 +10,14 @@ component main {
     text(value=classify)
 }
 
-func testTernaryGrouped(t T, c main) {
+func testTernaryGrouped(t Test, c main) {
     t.assert(c.classify == "both+")
 }
 
-func testTernaryChain(t T, c main) {
+func testTernaryChain(t Test, c main) {
     t.assert(c.chained == "one")
 }
 
-func testTernaryDeep(t T, c main) {
+func testTernaryDeep(t Test, c main) {
     t.assert(c.deep == "cMax")
 }

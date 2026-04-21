@@ -6,23 +6,23 @@ component conv {
     text #out(value="{count}")
 }
 
-func testStringConversion(t T, c conv) {
+func testStringConversion(t Test, c conv) {
     t.assert(string(c.count) == "42")
     t.assert(string(c.rate) == "3.14")
     t.assert(string(c.active) == "true")
 }
 
-func testIntConversion(t T, c conv) {
+func testIntConversion(t Test, c conv) {
     t.assert(int(c.rate) == 3)
     t.assert(int(c.count) == 42)
 }
 
-func testFloatConversion(t T, c conv) {
+func testFloatConversion(t Test, c conv) {
     t.assert(float(c.count) == 42.0)
     t.assert(float(c.rate) == 3.14)
 }
 
-func testComparisons(t T, c conv) {
+func testComparisons(t Test, c conv) {
     t.assert(c.count > 10)
     t.assert(c.count >= 42)
     t.assert(c.count < 100)
@@ -32,12 +32,12 @@ func testComparisons(t T, c conv) {
     t.assert(c.rate < 4.0)
 }
 
-func testUnaryNegation(t T, c conv) {
+func testUnaryNegation(t Test, c conv) {
     t.assert(-c.count == -42)
     t.assert(-c.rate == -3.14)
 }
 
-func testBoolInArithmetic(t T, c conv) {
+func testBoolInArithmetic(t Test, c conv) {
     t.assert(c.out.value == "42")
     t.assert(c.active + 0 == 1)
     t.assert(c.active * 2 == 2)

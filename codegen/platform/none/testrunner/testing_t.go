@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-// callMethod dispatches method calls on the T value: t.assert(), t.tick(), t.test().
+// callMethod dispatches method calls on the Test value: t.assert(), t.tick(), t.test().
 func (tv *testingT) callMethod(env *Env, method string, args []ast.Expr) (any, error) {
 	switch method {
 	case "assert":
@@ -119,7 +119,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ast.Expr) (any, e
 		return nil, nil
 
 	default:
-		return nil, fmt.Errorf("T has no method %q", method)
+		return nil, fmt.Errorf("Test has no method %q", method)
 	}
 }
 

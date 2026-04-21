@@ -50,14 +50,14 @@ component main {
     }
 }
 
-func testArithmetic(t T, c main) {
+func testArithmetic(t Test, c main) {
     t.assert(c.count == 0)
     c.count = 5
     t.assert(c.count == 5)
     t.assert(c.doubled == 10)
 }
 
-func testConstUsage(t T, c main) {
+func testConstUsage(t Test, c main) {
     t.assert(c.MAX == 100)
     t.assert(c.MIN == 0)
 }

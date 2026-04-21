@@ -1,11 +1,11 @@
-func testTypeQualifiedCalls(t T, c main) {
+func testTypeQualifiedCalls(t Test, c main) {
     t.assert(int.double(5) == 10)
     t.assert(int.abs(-3) == 3)
     t.assert(int.abs(7) == 7)
     t.assert(string.exclaim("hi") == "hi!")
 }
 
-func testMethodSyntaxCalls(t T, c main) {
+func testMethodSyntaxCalls(t Test, c main) {
     t.assert(c.n.double() == 10)
     t.assert((-3).abs() == 3)
     t.assert(c.name.exclaim() == "hello!")

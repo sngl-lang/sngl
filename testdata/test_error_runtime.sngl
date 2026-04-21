@@ -5,32 +5,32 @@ component errs {
     text(value="{count}")
 }
 
-func testToggleNonBool(t T, c errs) { // ERROR(test) "cannot toggle"
+func testToggleNonBool(t Test, c errs) { // ERROR(test) "cannot toggle"
     t.assert(c.count == 0)
     c.count!!
 }
 
-func testToggleUndefined(t T, c errs) { // ERROR(test) "undefined"
+func testToggleUndefined(t Test, c errs) { // ERROR(test) "undefined"
     t.assert(c.count == 0)
     unknown!! // ERROR(check) "undefined"
 }
 
-func testUnknownFunction(t T, c errs) { // ERROR(test) "unknown function"
+func testUnknownFunction(t Test, c errs) { // ERROR(test) "unknown function"
     t.assert(c.count == 0)
     t.assert(unknownFunc(1) == 0) // ERROR(check) "undefined"
 }
 
-func testSelectOnNonMap(t T, c errs) { // ERROR(test) "cannot select"
+func testSelectOnNonMap(t Test, c errs) { // ERROR(test) "cannot select"
     t.assert(c.count == 0)
     t.assert(c.count.field == 0)
 }
 
-func testIndexOnNonList(t T, c errs) { // ERROR(test) "cannot index"
+func testIndexOnNonList(t Test, c errs) { // ERROR(test) "cannot index"
     t.assert(c.count == 0)
     t.assert(c.count[0] == 0)
 }
 
-func testDivisionByZero(t T, c errs) { // ERROR(test) "division by zero"
+func testDivisionByZero(t Test, c errs) { // ERROR(test) "division by zero"
     c.count = 1 / 0
 }
 
@@ -39,6 +39,6 @@ component overflow {
     text(value="x")
 }
 
-func testStackOverflow(t T, c overflow) { // ERROR(test) "stack overflow"
+func testStackOverflow(t Test, c overflow) { // ERROR(test) "stack overflow"
     t.assert(c.boom(0) == 0)
 }

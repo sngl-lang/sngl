@@ -53,7 +53,7 @@ component arithfold {
     text(value="{add}")
 }
 
-func testFoldedValues(t T, c arithfold) {
+func testFoldedValues(t Test, c arithfold) {
     t.assert(c.add == 7)
     t.assert(c.sub == 7)
     t.assert(c.mul == 42)

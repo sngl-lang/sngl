@@ -5,9 +5,9 @@ struct color {
     a int = 255
 }
 
-struct T {}
+struct Test {}
 
-func T.assert(b bool) {}
+func Test.assert(b bool) {}
 
 enum FlexDirection { row, column, rowReverse, columnReverse }
 enum Alignment { start, center, end, stretch, baseline }

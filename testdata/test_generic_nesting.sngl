@@ -13,12 +13,12 @@ component main {
     text(value=string(matrix[0][1]))
 }
 
-func testNestedListGeneric(t T, c main) {
+func testNestedListGeneric(t Test, c main) {
     t.assert(c.matrix[1][0] == 3)
     t.assert(c.matrix.length() == 3)
 }
 
-func testListOfOption(t T, c main) {
+func testListOfOption(t Test, c main) {
     t.assert(c.maybes.length() == 3)
 }
 

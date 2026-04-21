@@ -6,11 +6,11 @@ component counter {
     text(value="Count: {count}")
 }
 
-func testStartsAtZero(t T, c counter) {
+func testStartsAtZero(t Test, c counter) {
     t.assert(c.count == 0)
 }
 
-func testIncrements(t T, c counter) {
+func testIncrements(t Test, c counter) {
     t.assert(c.count == 0)
     c.count += 1
     t.assert(c.count == 1)
@@ -20,7 +20,7 @@ func testIncrements(t T, c counter) {
 })
 }
 
-func testStartsFreshEachTest(t T, c counter) {
+func testStartsFreshEachTest(t Test, c counter) {
     t.assert(c.count == 0)
     t.assert(c.name == "hello")
 }

@@ -15,11 +15,11 @@ component main {
     }
 }
 
-func testAnonListLen(t T, c main) {
+func testAnonListLen(t Test, c main) {
     t.assert(c.items.length() == 3)
 }
 
-func testAnonListElem(t T, c main) {
+func testAnonListElem(t Test, c main) {
     t.assert(c.items[1].id == 2)
     t.assert(c.items[2].name == "c")
 }

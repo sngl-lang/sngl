@@ -10,11 +10,11 @@ component emptylist {
     }
 }
 
-func testShowsElseForEmptyList(t T, c emptylist) {
+func testShowsElseForEmptyList(t Test, c emptylist) {
     t.assert(c.empty.value == "No items yet")
 }
 
-func testHidesElseWhenListHasItems(t T, c emptylist) {
+func testHidesElseWhenListHasItems(t Test, c emptylist) {
     c.items = ["hello"]
     t.assert(c.item.value == "hello")
 }

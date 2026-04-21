@@ -10,22 +10,22 @@ component main {
     text(value=string(hex))
 }
 
-func testHexLiteral(t T, c main) {
+func testHexLiteral(t Test, c main) {
     t.assert(c.hex == 255)
 }
 
-func testOctalLiteral(t T, c main) {
+func testOctalLiteral(t Test, c main) {
     t.assert(c.oct == 63)
 }
 
-func testBinaryLiteral(t T, c main) {
+func testBinaryLiteral(t Test, c main) {
     t.assert(c.bin == 10)
 }
 
-func testUnderscoreSeparator(t T, c main) {
+func testUnderscoreSeparator(t Test, c main) {
     t.assert(c.big == 1000000)
 }
 
-func testHexWithSeparator(t T, c main) {
+func testHexWithSeparator(t Test, c main) {
     t.assert(c.hexSep == 65535)
 }

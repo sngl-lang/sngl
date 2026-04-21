@@ -14,6 +14,6 @@ component main {
     text(value=string(SINGLE_CONST))
 }
 
-func testConstants(t T, c main) {
+func testConstants(t Test, c main) {
     t.assert(c.count == 100)
 }

@@ -739,7 +739,7 @@ component main {
     button(text="Stop", @click { running = false })
 }
 
-func testTimerIncrements(t T, c main) {
+func testTimerIncrements(t Test, c main) {
     t.assert(c.progress == 0)
     t.tick()
     t.assert(c.progress == 0.1)
@@ -818,11 +818,11 @@ component counter {
     text #display(value="Count: {count}")
 }
 
-func testStartsAtZero(t T, c counter) {
+func testStartsAtZero(t Test, c counter) {
     t.assert(c.count == 0)
 }
 
-func testIncrements(t T, c counter) {
+func testIncrements(t Test, c counter) {
     c.#inc.@click()
     t.assert(c.count == 1)
     t.assert(c.#display.value == "Count: 1")
@@ -867,7 +867,7 @@ component app {
     text(value="{x}")
 }
 
-func testNesting(t T, c app) {
+func testNesting(t Test, c app) {
     c.x = 1
     t.test("inner")
     t.assert(c.x == 1)

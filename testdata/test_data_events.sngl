@@ -13,7 +13,7 @@ component main {
 // Basic test that the component parses and checks with data events.
 // Data event execution is platform-specific; the none/testrunner
 // does not currently fire @change handlers.
-func testDataFieldExists(t T, c main) {
+func testDataFieldExists(t Test, c main) {
     t.assert(c.tracked == 0)
     c.inc.@click()
     t.assert(c.tracked == 1)

@@ -15,22 +15,22 @@ component dashboard {
     }
 }
 
-func testParamDefaults(t T, c badge) {
+func testParamDefaults(t Test, c badge) {
     t.assert(c.label == "default")
     t.assert(c.count == 0)
 }
 
-func testComputedFromParams(t T, c badge) {
+func testComputedFromParams(t Test, c badge) {
     t.assert(c.display == "default")
     c.label = "custom"
     t.assert(c.display == "custom")
 }
 
-func testRendersChildComponent(t T, c dashboard) {
+func testRendersChildComponent(t Test, c dashboard) {
     t.assert(c.foot.value == "footer")
     t.assert(c.lbl[0] != null)
 }
 
-func testComponentReceivesProps(t T, c dashboard) {
+func testComponentReceivesProps(t Test, c dashboard) {
     t.assert(c.lbl[0].value == "test")
 }

@@ -13,10 +13,10 @@ component main {
     text(value=string(e))
 }
 
-func testMutualEven(t T, c main) {
+func testMutualEven(t Test, c main) {
     t.assert(c.e == true)
 }
 
-func testMutualOdd(t T, c main) {
+func testMutualOdd(t Test, c main) {
     t.assert(c.o == false)
 }

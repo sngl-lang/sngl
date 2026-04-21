@@ -8,58 +8,58 @@ component math {
     text(value=a)
 }
 
-func testAddition(t T, c math) {
+func testAddition(t Test, c math) {
     t.assert(c.a + c.b == 13)
 }
 
-func testSubtraction(t T, c math) {
+func testSubtraction(t Test, c math) {
     t.assert(c.a - c.b == 7)
 }
 
-func testMultiplication(t T, c math) {
+func testMultiplication(t Test, c math) {
     t.assert(c.a * c.b == 30)
 }
 
-func testDivision(t T, c math) {
+func testDivision(t Test, c math) {
     t.assert(12 / 4 == 3)
     t.assert(c.a / 2 == 5)
 }
 
-func testModulo(t T, c math) {
+func testModulo(t Test, c math) {
     t.assert(c.a % c.b == 1)
     t.assert(10 % 4 == 2)
 }
 
-func testFloatArithmetic(t T, c math) {
+func testFloatArithmetic(t Test, c math) {
     t.assert(1.5 + 2.5 == 4)
     t.assert(3 / 2 == 1.5)
 }
 
-func testCompoundAssignmentAdd(t T, c math) {
+func testCompoundAssignmentAdd(t Test, c math) {
     c.x = 5
     c.x += 3
     t.assert(c.x == 8)
 }
 
-func testCompoundAssignmentSub(t T, c math) {
+func testCompoundAssignmentSub(t Test, c math) {
     c.x = 10
     c.x -= 4
     t.assert(c.x == 6)
 }
 
-func testCompoundAssignmentMul(t T, c math) {
+func testCompoundAssignmentMul(t Test, c math) {
     c.x = 3
     c.x *= 4
     t.assert(c.x == 12)
 }
 
-func testCompoundAssignmentDiv(t T, c math) {
+func testCompoundAssignmentDiv(t Test, c math) {
     c.x = 20
     c.x /= 5
     t.assert(c.x == 4)
 }
 
-func testCompoundAssignmentMod(t T, c math) {
+func testCompoundAssignmentMod(t Test, c math) {
     c.x = 10
     c.x %= 3
     t.assert(c.x == 1)

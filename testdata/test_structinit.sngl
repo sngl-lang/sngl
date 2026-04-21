@@ -10,13 +10,13 @@ component geo {
     text(value="{sum}")
 }
 
-func testStructReassignment(t T, c geo) {
+func testStructReassignment(t Test, c geo) {
     c.pos = Vec{x=100, y=200}
     t.assert(c.pos.x == 100)
     t.assert(c.pos.y == 200)
 }
 
-func testComputedFromStruct(t T, c geo) {
+func testComputedFromStruct(t Test, c geo) {
     t.assert(c.sum == 15)
     c.pos.x = 20
     t.assert(c.sum == 30)

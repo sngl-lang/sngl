@@ -12,7 +12,7 @@ component main {
     text(value=string(result))
 }
 
-func testParamShadowsConst(t T, c main) {
+func testParamShadowsConst(t Test, c main) {
     t.assert(c.outer == 100)
     t.assert(c.result == 10)
 }

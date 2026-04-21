@@ -4,14 +4,14 @@ component errs {
     text(value="{count}")
 }
 
-func testUndefinedVariable(t T, c errs) { // ERROR(test) "undefined"
+func testUndefinedVariable(t Test, c errs) { // ERROR(test) "undefined"
     t.assert(unknown == 0) // ERROR(check) "undefined"
 }
 
-func testIndexOutOfBounds(t T, c errs) { // ERROR(test) "out of range"
+func testIndexOutOfBounds(t Test, c errs) { // ERROR(test) "out of range"
     t.assert(c.items[10] == 0)
 }
 
-func testCannotAssignUndefined(t T, c errs) { // ERROR(test) "undefined"
+func testCannotAssignUndefined(t Test, c errs) { // ERROR(test) "undefined"
     nope = 42 // ERROR(check) "undefined"
 }

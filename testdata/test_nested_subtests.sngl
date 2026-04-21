@@ -4,7 +4,7 @@ component nested {
     text(value="{x}")
 }
 
-func testThreeLevels(t T, c nested) {
+func testThreeLevels(t Test, c nested) {
     c.x = 1
     t.assert(c.x == 1)
 
@@ -23,7 +23,7 @@ func testThreeLevels(t T, c nested) {
     t.assert(c.x == 1)
 }
 
-func testSiblingSubtests(t T, c nested) {
+func testSiblingSubtests(t Test, c nested) {
     c.x = 10
 
     t.test("first sibling", func(t, c) {
