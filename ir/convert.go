@@ -93,8 +93,8 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 	}
 	for _, f := range s.Fields {
 		sf := &ast.StructField{
-			Name: f.Name,
-			Type: c.convertType(f.Type),
+			Names: []string{f.Name},
+			Type:  c.convertType(f.Type),
 		}
 		if f.Default != nil {
 			sf.Default = c.convertExpr(f.Default)

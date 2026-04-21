@@ -197,7 +197,7 @@ ImportDecl = kw_import [ ident fat_arrow ] str_full .
 
 StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
 
-StructField = ident Type [ assign Expr ] semi .
+StructField = IdentList Type [ assign Expr ] semi .
 
 # Enum values use a brace list: enum Color{Red, Green, Blue} or enum Status{ok=0, err=1}
 # The body is a comma-separated ArgList, not a StmtBlock (no semis).

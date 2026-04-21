@@ -377,7 +377,7 @@ func renderDeclDetail(d *declEntry, width int) []string {
 		if len(decl.Fields) > 0 {
 			s = append(s, "", labelStyle.Render("Fields"))
 			for _, f := range decl.Fields {
-				s = append(s, "  "+propNameStyle.Render(f.Name)+" "+propTypeStyle.Render(fmt.Sprint(f.Type)))
+				s = append(s, "  "+propNameStyle.Render(strings.Join(f.Names, ", "))+" "+propTypeStyle.Render(fmt.Sprint(f.Type)))
 			}
 		}
 

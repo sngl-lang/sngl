@@ -107,8 +107,8 @@ func TestParseStructDecl(t *testing.T) {
 	if len(sd.Fields) != 2 {
 		t.Fatalf("expected 2 fields, got %d", len(sd.Fields))
 	}
-	if sd.Fields[0].Name != "x" {
-		t.Errorf("expected field x, got %q", sd.Fields[0].Name)
+	if len(sd.Fields[0].Names) != 1 || sd.Fields[0].Names[0] != "x" {
+		t.Errorf("expected field x, got %v", sd.Fields[0].Names)
 	}
 	if sd.Fields[1].Default == nil {
 		t.Error("expected default on field y")

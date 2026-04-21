@@ -191,7 +191,7 @@ func formatStructHover(s *ast.StructDef) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
 	for _, f := range s.Fields {
-		fmt.Fprintf(&sb, "    %s %s\n", f.Name, typeExprString(f.Type))
+		fmt.Fprintf(&sb, "    %s %s\n", strings.Join(f.Names, ", "), typeExprString(f.Type))
 	}
 	sb.WriteString("}\n```")
 	return sb.String()

@@ -265,7 +265,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.newline()
 	f.indent++
 	for _, field := range s.Fields {
-		f.write(field.Name)
+		f.write(strings.Join(field.Names, ", "))
 		if field.Type != nil {
 			f.write(" ")
 			f.writeType(field.Type)

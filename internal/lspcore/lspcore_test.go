@@ -204,8 +204,8 @@ func TestHoverInfo_Struct(t *testing.T) {
 	doc := &ast.Document{
 		Stmts: []ast.Stmt{
 			&ast.StructDef{Name: "Point", Fields: []*ast.StructField{
-				{Name: "x", Type: &ast.NamedType{Name: "int"}},
-				{Name: "y", Type: &ast.NamedType{Name: "int"}},
+				{Names: []string{"x"}, Type: &ast.NamedType{Name: "int"}},
+				{Names: []string{"y"}, Type: &ast.NamedType{Name: "int"}},
 			}},
 		},
 	}

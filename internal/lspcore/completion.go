@@ -334,12 +334,14 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 
 	var items []CompletionItem
 	for _, f := range opts.Fields {
-		items = append(items, CompletionItem{
-			Label:      f.Name,
-			Kind:       CIKProperty,
-			Detail:     typeExprString(f.Type),
-			InsertText: f.Name + "=",
-		})
+		for _, name := range f.Names {
+			items = append(items, CompletionItem{
+				Label:      name,
+				Kind:       CIKProperty,
+				Detail:     typeExprString(f.Type),
+				InsertText: name + "=",
+			})
+		}
 	}
 	return items
 }

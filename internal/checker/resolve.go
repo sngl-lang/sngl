@@ -181,18 +181,20 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 
 // buildStructDef builds an IR StructDef from an AST StructDef.
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
-	fields := make([]*ir.StructField, len(s.Fields))
-	for i, f := range s.Fields {
+	var fields []*ir.StructField
+	for _, f := range s.Fields {
 		typ := c.resolveType(f.Type)
-		var def ir.Expr
-		if f.Default != nil {
-			// Placeholder; actual default checked later when scope is ready.
-			def = &ir.Literal{Type: typ}
-		}
-		fields[i] = &ir.StructField{
-			Name:    f.Name,
-			Type:    typ,
-			Default: def,
+		for _, name := range f.Names {
+			var def ir.Expr
+			if f.Default != nil {
+				// Placeholder; actual default checked later when scope is ready.
+				def = &ir.Literal{Type: typ}
+			}
+			fields = append(fields, &ir.StructField{
+				Name:    name,
+				Type:    typ,
+				Default: def,
+			})
 		}
 	}
 	return &ir.StructDef{

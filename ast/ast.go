@@ -77,9 +77,11 @@ type StructDef struct {
 }
 
 // StructField is a field in a struct declaration.
+// Names groups comma-separated fields sharing a type (e.g. `a, b int`);
+// a default applies to every name.
 type StructField struct {
 	Pos     Pos
-	Name    string
+	Names   []string
 	Type    TypeExpr
 	Default Expr
 }

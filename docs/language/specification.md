@@ -62,7 +62,7 @@ ImportDecl = "import" [ IDENT "=>" ] STRING
 ```ebnf
 StructDecl = "struct" [ IDENT ] "{" { StructField } "}"
 
-StructField = IDENT Type [ "=" Expr ] ";"
+StructField = IdentList Type [ "=" Expr ] ";"
 
 EnumDecl = "enum" [ IDENT ] "{" [ ArgList ] "}"
 

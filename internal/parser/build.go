@@ -275,11 +275,14 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 }
 
 func (b *builder) buildStructField(it nodeIter) *ast.StructField {
-	// StructField = ident Type [ assign Expr ] semi .
-	nameTok := it.shift()
-	f := &ast.StructField{
-		Pos:  b.posFromToken(nameTok),
-		Name: nameTok.Literal,
+	// StructField = IdentList Type [ assign Expr ] semi .
+	f := &ast.StructField{}
+	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
+		sub := it.enter()
+		if !sub.done() {
+			f.Pos = b.posFromToken(sub.token())
+		}
+		f.Names = b.buildIdentList(sub)
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		f.Type = b.buildType(it.enter())

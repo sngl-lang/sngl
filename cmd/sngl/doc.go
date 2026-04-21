@@ -401,10 +401,12 @@ func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) strin
 	if fieldName != "" {
 		// Show specific field
 		for _, f := range s.Fields {
-			if f.Name == fieldName {
-				sb.WriteString(fmt.Sprintf("## %s.%s\n\n", s.Name, f.Name))
-				sb.WriteString(fmt.Sprintf("Type: %s\n", f.Type))
-				return sb.String()
+			for _, name := range f.Names {
+				if name == fieldName {
+					sb.WriteString(fmt.Sprintf("## %s.%s\n\n", s.Name, name))
+					sb.WriteString(fmt.Sprintf("Type: %s\n", f.Type))
+					return sb.String()
+				}
 			}
 		}
 		sb.WriteString(fmt.Sprintf("field %q not found\n", fieldName))
@@ -413,7 +415,9 @@ func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) strin
 
 	sb.WriteString("## Fields\n\n")
 	for _, f := range s.Fields {
-		sb.WriteString(fmt.Sprintf("  %-16s %s\n", f.Name, f.Type))
+		for _, name := range f.Names {
+			sb.WriteString(fmt.Sprintf("  %-16s %s\n", name, f.Type))
+		}
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -559,7 +563,9 @@ func declDetailHTML(d checker.DeclInfo) string {
 		if len(decl.Fields) > 0 {
 			b.WriteString("<h3>Fields</h3><table>")
 			for _, f := range decl.Fields {
-				fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", f.Name, fmt.Sprint(f.Type))
+				for _, name := range f.Names {
+					fmt.Fprintf(&b, "<tr><td class='pn'>%s</td><td class='pt'>%s</td></tr>", name, fmt.Sprint(f.Type))
+				}
 			}
 			b.WriteString("</table>")
 		}

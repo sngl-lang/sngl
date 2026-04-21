@@ -207,7 +207,7 @@ var errorSets = [...][]Symbol{
 	{kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident},
 	{lbrace, ident},
 	{IdentList, lparen, ident},
-	{rbrace, ident},
+	{IdentList, rbrace, ident},
 	{IdentList, rparen, ident},
 	{Param, rparen, ident},
 	{rparen, ident},
@@ -5089,11 +5089,11 @@ state4:
 
 // StructField grammar:
 //
-//	StructField = ident Type [ assign Expr ] semi .
+//	StructField = IdentList Type [ assign Expr ] semi .
 //
 //	State 0
 //		on  ident
-//			shift and goto state 1
+//			call IdentList and goto state 1
 //	State 1
 //		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 2
@@ -5119,7 +5119,7 @@ func (p *Parser) StructField() (r []int32) {
 	accept, errorSet = false, 40
 	switch Symbol(p.tok.Ch) {
 	case ident:
-		r = append(r, p.shift())
+		r = p.add(r, p.IdentList())
 		goto state1
 	}
 	return p.stop(r, accept, errorSet)
