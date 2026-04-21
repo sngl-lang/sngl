@@ -5,36 +5,42 @@ package html
 import (
 	"fmt"
 	"log/slog"
-	"os/exec"
-	"path/filepath"
-	"runtime"
+	"net"
+	"net/http"
 )
 
-// Run implements codegen.Runner. It opens the generated index.html in the
-// default web browser.
-func (g *Generator) Run(dir string, _ map[string]string, args []string) error {
-	path := filepath.Join(dir, "index.html")
-	slog.Info("exec", "cmd", "open browser", "path", path)
-	return openBrowser(path)
-}
-
-func openBrowser(url string) error {
-	var cmd string
-	var cmdArgs []string
-
-	switch runtime.GOOS {
-	case "linux":
-		cmd = "xdg-open"
-		cmdArgs = []string{url}
-	case "darwin":
-		cmd = "open"
-		cmdArgs = []string{url}
-	case "windows":
-		cmd = "cmd"
-		cmdArgs = []string{"/c", "start", url}
-	default:
-		return fmt.Errorf("unsupported platform %q for opening browser", runtime.GOOS)
+// Run implements codegen.Runner. It serves the generated static assets over
+// HTTP. The listen address comes from the "listen" option (default ":0").
+func (g *Generator) Run(dir string, opts map[string]string, _ []string) error {
+	addr := opts["listen"]
+	if addr == "" {
+		addr = ":0"
 	}
 
-	return exec.Command(cmd, cmdArgs...).Start()
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", addr, err)
+	}
+
+	url := linkURL(ln.Addr())
+	slog.Info("serve", "dir", dir, "addr", ln.Addr().String())
+	fmt.Println(url)
+
+	return http.Serve(ln, http.FileServer(http.Dir(dir)))
+}
+
+// linkURL builds a user-facing URL from the listener address, substituting
+// loopback for the unspecified addresses (0.0.0.0, ::) that :0 binds to.
+func linkURL(a net.Addr) string {
+	tcp, ok := a.(*net.TCPAddr)
+	if !ok {
+		return "http://" + a.String()
+	}
+	host := tcp.IP.String()
+	if tcp.IP == nil || tcp.IP.IsUnspecified() {
+		host = "localhost"
+	} else if tcp.IP.To4() == nil {
+		host = "[" + host + "]"
+	}
+	return fmt.Sprintf("http://%s:%d", host, tcp.Port)
 }
