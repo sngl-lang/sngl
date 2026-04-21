@@ -9,12 +9,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// generateGoIR produces output files for the go+android target using IR.
-func (g *Generator) generateGoIR(req *codegen.Request) (*codegen.Response, error) {
-	cfg := g.configFromRequest(req)
-	cfg.GoLib = true
-
-	ctx := codegen.NewCodegenCtx(req, "android")
+// emitGo produces output files for the go+android target using IR.
+func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
+	cfg := c.cfg
+	ctx := c.ctx
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil

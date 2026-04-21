@@ -38,17 +38,50 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageI
 func (g *Generator) PreviewCSS() string { return previewCSS }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.LanguageIdentifier() != "go" {
-		return &codegen.Response{Error: fmt.Sprintf("bubbletea: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
+	c := &compilation{}
+	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
+	if err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
 	}
+	return c.EmitFromRender(m, req)
+}
 
-	cfg := Config{
+// NewRenderCompiler returns a fresh per-request RenderModelEmitter.
+func (g *Generator) NewRenderCompiler() codegen.RenderModelEmitter {
+	return &compilation{}
+}
+
+// compilation holds per-request build state that flows between
+// BuildRenderModel and EmitFromRender.
+type compilation struct {
+	ctx *codegen.CodegenCtx
+	cfg Config
+}
+
+var (
+	_ codegen.RenderModelEmitter    = (*compilation)(nil)
+	_ codegen.RenderCompilerFactory = (*Generator)(nil)
+)
+
+func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.RenderModel, error) {
+	if req.Lang.LanguageIdentifier() != "go" {
+		return nil, fmt.Errorf("bubbletea: unsupported lang %q", req.Lang.LanguageIdentifier())
+	}
+	c.cfg = Config{
 		Package:      req.Options["package"],
 		GenerateMain: req.Options["main"] == "true",
 	}
+	c.ctx = codegen.NewCodegenCtx(req, "bubbletea")
 
-	ctx := codegen.NewCodegenCtx(req, "bubbletea")
-	src, err := CompileIR(ctx, cfg)
+	var stmts []ir.Stmt
+	if main := c.ctx.MainComponent(); main != nil {
+		stmts = main.Body
+	}
+	return c.ctx.BuildRender(stmts), nil
+}
+
+func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request) (*codegen.Response, error) {
+	src, err := CompileIR(c.ctx, c.cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
@@ -63,9 +96,8 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		},
 	}
 
-	// Generate test file if tests exist and not disabled
 	if req.Pkg != nil && hasTestFuncs(req.Pkg) && req.Options["tests"] != "false" {
-		testSrc, err := CompileTestsIR(ctx, cfg)
+		testSrc, err := CompileTestsIR(c.ctx, c.cfg)
 		if err == nil && testSrc != nil {
 			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))
 		}

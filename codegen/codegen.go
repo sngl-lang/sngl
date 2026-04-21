@@ -209,6 +209,20 @@ type RenderModelEmitter interface {
 	EmitFromRender(m *RenderModel, req *Request) (*Response, error)
 }
 
+// MutationCompilerFactory is optionally implemented by PlatformGenerators that
+// expose a per-request MutationModelEmitter. The singleton Generator stays
+// stateless; each call returns a fresh compilation object that owns per-request
+// build state across BuildMutationModel and EmitFromMutation.
+type MutationCompilerFactory interface {
+	NewMutationCompiler() MutationModelEmitter
+}
+
+// RenderCompilerFactory is the render-loop counterpart to
+// MutationCompilerFactory.
+type RenderCompilerFactory interface {
+	NewRenderCompiler() RenderModelEmitter
+}
+
 // OutputFile represents a single generated file. Its WriteTo function writes
 // the file content lazily, allowing template execution to be deferred to
 // write time.

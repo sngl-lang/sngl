@@ -2,7 +2,6 @@ package fyne
 
 import (
 	"fmt"
-	"go/format"
 	"maps"
 	"slices"
 	"strings"
@@ -11,19 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// CompileIR generates a Go source file from IR using CodegenCtx.
-func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
-	cfg = cfg.withDefaults()
-	info := analyzeIR(ctx)
-
-	src := emitIR(info, ctx, cfg)
-	formatted, err := format.Source(src)
-	if err != nil {
-		return src, fmt.Errorf("generated code formatting error: %w\n%s", err, src)
-	}
-	return formatted, nil
-}
 
 // irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {

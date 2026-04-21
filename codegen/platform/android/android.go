@@ -40,13 +40,57 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	switch req.Lang.LanguageIdentifier() {
+	c := &compilation{}
+	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
+	if err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
+	}
+	return c.EmitFromRender(m, req)
+}
+
+// NewRenderCompiler returns a fresh per-request RenderModelEmitter.
+func (g *Generator) NewRenderCompiler() codegen.RenderModelEmitter {
+	return &compilation{}
+}
+
+// compilation holds per-request build state flowing between
+// BuildRenderModel and EmitFromRender.
+type compilation struct {
+	ctx  *codegen.CodegenCtx
+	cfg  Config
+	lang string
+}
+
+var (
+	_ codegen.RenderModelEmitter    = (*compilation)(nil)
+	_ codegen.RenderCompilerFactory = (*Generator)(nil)
+)
+
+func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.RenderModel, error) {
+	c.lang = req.Lang.LanguageIdentifier()
+	if c.lang != "kotlin" && c.lang != "go" {
+		return nil, fmt.Errorf("android: unsupported lang %q", c.lang)
+	}
+	c.ctx = codegen.NewCodegenCtx(req, "android")
+	c.cfg = (&Generator{}).configFromRequest(req)
+	if c.lang == "go" {
+		c.cfg.GoLib = true
+	}
+	var stmts []ir.Stmt
+	if main := c.ctx.MainComponent(); main != nil {
+		stmts = main.Body
+	}
+	return c.ctx.BuildRender(stmts), nil
+}
+
+func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request) (*codegen.Response, error) {
+	switch c.lang {
 	case "kotlin":
-		return g.generateKotlin(req)
+		return c.emitKotlin(req)
 	case "go":
-		return g.generateGoIR(req)
+		return c.emitGo(req)
 	default:
-		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
+		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", c.lang)}, nil
 	}
 }
 
@@ -70,10 +114,9 @@ func (g *Generator) configFromRequest(req *codegen.Request) Config {
 	}.withDefaults()
 }
 
-func (g *Generator) generateKotlin(req *codegen.Request) (*codegen.Response, error) {
-	cfg := g.configFromRequest(req)
-
-	ctx := codegen.NewCodegenCtx(req, "android")
+func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error) {
+	cfg := c.cfg
+	ctx := c.ctx
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
 		return &codegen.Response{Error: err.Error()}, nil

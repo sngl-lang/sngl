@@ -45,17 +45,46 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "js" }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	if req.Lang.LanguageIdentifier() != "js" {
-		return &codegen.Response{Error: fmt.Sprintf("html: unsupported lang %q", req.Lang.LanguageIdentifier())}, nil
+	c := &compilation{}
+	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
+	if err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
 	}
+	return c.EmitFromMutation(m, req)
+}
 
-	var files []*codegen.OutputFile
+// NewMutationCompiler returns a fresh per-request MutationModelEmitter.
+func (g *Generator) NewMutationCompiler() codegen.MutationModelEmitter {
+	return &compilation{}
+}
+
+// compilation holds per-request build state flowing between
+// BuildMutationModel and EmitFromMutation.
+type compilation struct {
+	assetFiles []*codegen.OutputFile
+	windows    []htmlWindowOutput
+}
+
+type htmlWindowOutput struct {
+	name  string
+	bytes []byte
+}
+
+var (
+	_ codegen.MutationModelEmitter    = (*compilation)(nil)
+	_ codegen.MutationCompilerFactory = (*Generator)(nil)
+)
+
+func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
+	if req.Lang.LanguageIdentifier() != "js" {
+		return nil, fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+	}
 
 	// Copy file:// assets resolved during optimization.
 	for _, fa := range req.FileAssets {
 		data, err := os.ReadFile(fa.SrcPath)
 		if err == nil {
-			files = append(files, codegen.BytesFile(fa.OutPath, data))
+			c.assetFiles = append(c.assetFiles, codegen.BytesFile(fa.OutPath, data))
 		}
 	}
 
@@ -71,7 +100,7 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		stylesheetURL = "/" + outName
 		data, err := os.ReadFile(absPath)
 		if err == nil {
-			files = append(files, codegen.BytesFile(outName, data))
+			c.assetFiles = append(c.assetFiles, codegen.BytesFile(outName, data))
 		}
 	}
 
@@ -102,17 +131,17 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			if !wasmExecAdded {
 				wasmExecData, err := wc.WASMExecJS()
 				if err == nil {
-					files = append(files, codegen.BytesFile("assets/wasm_exec.js", wasmExecData))
+					c.assetFiles = append(c.assetFiles, codegen.BytesFile("assets/wasm_exec.js", wasmExecData))
 					wasmExecAdded = true
 				}
 			}
 
 			wasmBytes, err := wc.BuildWASM(projectDir, wp.importPath, wp.funcs)
 			if err != nil {
-				return &codegen.Response{Error: fmt.Sprintf("wasm build: %v", err)}, nil
+				return nil, fmt.Errorf("wasm build: %v", err)
 			}
 			wasmFile := "assets/" + wp.namespace + ".wasm"
-			files = append(files, codegen.BytesFile(wasmFile, wasmBytes))
+			c.assetFiles = append(c.assetFiles, codegen.BytesFile(wasmFile, wasmBytes))
 			loaderScripts = append(loaderScripts, fmt.Sprintf(
 				`  const _go_%s = new Go();
   WebAssembly.instantiateStreaming(fetch("/%s"), _go_%s.importObject).then(r => { _go_%s.run(r.instance); });`,
@@ -136,10 +165,11 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
-		files = append(files, codegen.BytesFile("index.html", []byte(src)))
-		return &codegen.Response{Files: files}, nil
+		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
+		return ctx.BuildMutation(nil), nil
 	}
 	singleWindow := len(irWindows) == 1
+	var mainStmts []ir.Stmt
 	for _, win := range irWindows {
 		name := win.Name
 		if singleWindow || name == "" || name == "main" || name == "index" {
@@ -161,7 +191,18 @@ func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 			}
 		}
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
-		files = append(files, codegen.BytesFile(name, []byte(src)))
+		c.windows = append(c.windows, htmlWindowOutput{name: name, bytes: []byte(src)})
+		if mainStmts == nil {
+			mainStmts = win.Body
+		}
+	}
+	return ctx.BuildMutation(mainStmts), nil
+}
+
+func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
+	files := append([]*codegen.OutputFile{}, c.assetFiles...)
+	for _, w := range c.windows {
+		files = append(files, codegen.BytesFile(w.name, w.bytes))
 	}
 	return &codegen.Response{Files: files}, nil
 }
