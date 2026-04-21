@@ -286,9 +286,21 @@ func IRLiteralBool(e ir.Expr) (bool, bool) {
 }
 
 // IRIsLiteral reports whether an expression is a compile-time literal.
+// List literals count when every element is itself a literal, so callers
+// that expect static data (accordion items, table columns) keep working.
 func IRIsLiteral(e ir.Expr) bool {
-	_, ok := e.(*ir.Literal)
-	return ok
+	switch x := e.(type) {
+	case *ir.Literal:
+		return true
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			if !IRIsLiteral(el) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // IRIsReactive reports whether an expression references runtime state.
@@ -297,8 +309,15 @@ func IRIsReactive(e ir.Expr) bool {
 }
 
 // IRLiteralAny extracts the literal value of an IR expression as any type.
-// Returns nil for non-literals.
+// Returns nil for non-literals. List literals decode to []any recursively.
 func IRLiteralAny(e ir.Expr) any {
+	if list, ok := e.(*ir.ListLit); ok {
+		out := make([]any, len(list.Elems))
+		for i, el := range list.Elems {
+			out[i] = IRLiteralAny(el)
+		}
+		return out
+	}
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
 		return nil
