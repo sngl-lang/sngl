@@ -31,11 +31,11 @@ type RenderModel struct {
 // The platform-specific code body is stored as a string; deps track which
 // root state fields this updater reads.
 type Updater struct {
-	Name string       // e.g., "$u_0_text", "updateLabel0"
-	Kind string       // "text", "attr", "if", "list", "else", "disabled", etc.
-	Node *ir.NodeInst // the node this updater targets
-	Expr ir.Expr      // the reactive expression being watched
-	Body string       // platform-specific code body (filled during emit)
+	Name string          // e.g., "$u_0_text", "updateLabel0"
+	Kind string          // "text", "attr", "if", "list", "else", "disabled", etc.
+	Node *ir.NodeInst    // the node this updater targets
+	Expr ir.Expr         // the reactive expression being watched
+	Body string          // platform-specific code body (filled during emit)
 	Deps map[string]bool // root state field dependencies
 }
 

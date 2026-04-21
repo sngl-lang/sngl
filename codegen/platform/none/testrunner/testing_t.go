@@ -30,7 +30,31 @@ func (tv *testingT) callMethod(env *Env, method string, args []ast.Expr) (any, e
 		return nil, nil
 
 	case "tick":
-		// No-op in v2: timers are handled differently
+		// Advance every enabled timer in the component body one iteration,
+		// executing its @tick handler against the current env.
+		var cv *componentValue
+		for _, v := range env.vars {
+			if c, ok := v.(*componentValue); ok {
+				cv = c
+				break
+			}
+		}
+		if cv != nil {
+			compEnv := cv.compEnv()
+			if err := fireTimers(compEnv.bodyStmts, compEnv); err != nil {
+				return nil, err
+			}
+			// Sync any mutations the timer body made back onto cv.vars so
+			// subsequent c.<field> reads see them.
+			for k := range cv.vars {
+				if v, ok := compEnv.vars[k]; ok {
+					cv.vars[k] = v
+					if !cv.testParams[k] {
+						cv.env.vars[k] = v
+					}
+				}
+			}
+		}
 		return nil, nil
 
 	case "test":
@@ -116,7 +140,70 @@ func (cv *componentValue) getField(field string) (any, error) {
 			return compEnv.evalUserFunc(fn, nil)
 		}
 	}
+	// Visual node lookup: c.<#id> resolves to the node (or list of nodes for
+	// nodes emitted inside a for-loop). Returns nil for conditionally-hidden
+	// nodes — tests compare against null to assert absence.
+	compEnv := cv.compEnv()
+	if compEnv.hasElementRefID(compEnv.bodyStmts, field, map[string]bool{}) {
+		if v, err := compEnv.resolveElementRef(field); err == nil {
+			return v, nil
+		}
+	}
 	return nil, fmt.Errorf("component has no field %q", field)
+}
+
+// hasElementRefID reports whether any VisualNode or CallStmt in the body tree
+// declares the given #id, descending into user-component calls. Used to
+// distinguish a conditionally-hidden node (returns nil) from a truly
+// undefined field.
+func (env *Env) hasElementRefID(stmts []ast.Stmt, id string, visiting map[string]bool) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			if n.ID == id {
+				return true
+			}
+			// Descend into a user-defined component target.
+			if env.doc != nil {
+				if comp := findComponent(env.doc, codegen.VisualNodeName(n)); comp != nil && !visiting[comp.Name] {
+					visiting[comp.Name] = true
+					if env.hasElementRefID(comp.Body.Stmts, id, visiting) {
+						return true
+					}
+					delete(visiting, comp.Name)
+				}
+			}
+			if env.hasElementRefID(n.Block.Stmts, id, visiting) {
+				return true
+			}
+		case *ast.IfStmt:
+			if env.hasElementRefID(n.Body.Stmts, id, visiting) || env.hasElementRefID(n.Else.Stmts, id, visiting) {
+				return true
+			}
+		case *ast.ForStmt:
+			if env.hasElementRefID(n.Body.Stmts, id, visiting) || env.hasElementRefID(n.Else.Stmts, id, visiting) {
+				return true
+			}
+		case *ast.CallStmt:
+			if sel, ok := n.Call.Func.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef && sel.Field == id {
+				return true
+			}
+			if ident, ok := n.Call.Func.(*ast.IdentExpr); ok && env.doc != nil {
+				if comp := findComponent(env.doc, ident.Name); comp != nil && !visiting[comp.Name] {
+					visiting[comp.Name] = true
+					if env.hasElementRefID(comp.Body.Stmts, id, visiting) {
+						return true
+					}
+					delete(visiting, comp.Name)
+				}
+			}
+		case *ast.PlatformStmt:
+			if env.hasElementRefID(n.Body.Stmts, id, visiting) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // setField handles c.field = value assignment.
@@ -150,6 +237,111 @@ func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
 			}
 		}
 	}
+}
+
+// currentCompVar returns the test's component param name by scanning env.vars
+// for the first componentValue entry. Returns "" if no component is bound.
+func (tv *testingT) currentCompVar() string {
+	for k, v := range tv.env.vars {
+		if _, ok := v.(*componentValue); ok {
+			return k
+		}
+	}
+	return ""
+}
+
+// fireTimers walks body statements, executing @tick handlers for each timer
+// whose enabled/condition arg evaluates truthy (absent → treated as enabled).
+func fireTimers(stmts []ast.Stmt, env *Env) error {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			if codegen.VisualNodeName(n) == "timer" {
+				if err := fireTimer(n, env); err != nil {
+					return err
+				}
+			}
+			if err := fireTimers(n.Block.Stmts, env); err != nil {
+				return err
+			}
+		case *ast.CallStmt:
+			if ident, ok := n.Call.Func.(*ast.IdentExpr); ok && ident.Name == "timer" {
+				if err := fireTimerFromCall(n.Call, env); err != nil {
+					return err
+				}
+			}
+		case *ast.IfStmt:
+			if err := fireTimers(n.Body.Stmts, env); err != nil {
+				return err
+			}
+			if err := fireTimers(n.Else.Stmts, env); err != nil {
+				return err
+			}
+		case *ast.ForStmt:
+			if err := fireTimers(n.Body.Stmts, env); err != nil {
+				return err
+			}
+		case *ast.PlatformStmt:
+			if err := fireTimers(n.Body.Stmts, env); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func fireTimer(vn *ast.VisualNode, env *Env) error {
+	var handler *ast.EventHandler
+	enabled := true
+	for _, a := range vn.Args.Args {
+		switch aa := a.(type) {
+		case ast.Arg:
+			if aa.Name == "enabled" && aa.Value != nil {
+				v, err := env.Eval(aa.Value)
+				if err != nil {
+					return err
+				}
+				b, _ := v.(bool)
+				enabled = b
+			}
+		case ast.EventHandler:
+			if aa.Name == "tick" {
+				h := aa
+				handler = &h
+			}
+		}
+	}
+	if !enabled || handler == nil {
+		return nil
+	}
+	return env.ExecBlock(&handler.Body)
+}
+
+func fireTimerFromCall(call *ast.CallExpr, env *Env) error {
+	var handler *ast.EventHandler
+	enabled := true
+	for _, a := range call.Args.Args {
+		switch aa := a.(type) {
+		case ast.Arg:
+			if aa.Name == "enabled" && aa.Value != nil {
+				v, err := env.Eval(aa.Value)
+				if err != nil {
+					return err
+				}
+				b, _ := v.(bool)
+				enabled = b
+			}
+		case ast.EventHandler:
+			if aa.Name == "tick" {
+				h := aa
+				handler = &h
+			}
+		}
+	}
+	if !enabled || handler == nil {
+		return nil
+	}
+	return env.ExecBlock(&handler.Body)
 }
 
 // callMethod dispatches method calls on componentValue (for c.@event() and c.func() calls).

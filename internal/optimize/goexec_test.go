@@ -96,10 +96,10 @@ func TestExecPureGoFunc_GetItems(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected map[string]any, got %T", items[0])
 	}
-	if first["Name"] != "alpha" {
-		t.Errorf("expected Name=alpha, got %v", first["Name"])
+	if first["name"] != "alpha" {
+		t.Errorf("expected name=alpha, got %v", first["name"])
 	}
-	if first["Value"] != 1 {
-		t.Errorf("expected Value=1, got %v (%T)", first["Value"], first["Value"])
+	if first["value"] != 1 {
+		t.Errorf("expected value=1, got %v (%T)", first["value"], first["value"])
 	}
 }

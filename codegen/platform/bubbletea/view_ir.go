@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -11,18 +12,18 @@ import (
 
 // irViewContext tracks state during IR-based View() code generation.
 type irViewContext struct {
-	gc            *golang.GoIRContext
-	ctx           *codegen.CodegenCtx
-	scaleFactor   int
-	focusIndex    int
-	inputCount    int
-	buf           *strings.Builder
-	indent        int
-	vertical      bool
-	inComponent   bool
-	slotVar       string
-	slotChildren  []ir.Stmt           // caller's children for stdlib component slot expansion
-	propVals      map[string]ir.Expr  // prop overrides during stdlib component expansion
+	gc           *golang.GoIRContext
+	ctx          *codegen.CodegenCtx
+	scaleFactor  int
+	focusIndex   int
+	inputCount   int
+	buf          *strings.Builder
+	indent       int
+	vertical     bool
+	inComponent  bool
+	slotVar      string
+	slotChildren []ir.Stmt          // caller's children for stdlib component slot expansion
+	propVals     map[string]ir.Expr // prop overrides during stdlib component expansion
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
@@ -213,6 +214,9 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	if indexVar != "_" {
 		vc.line("_ = %s", indexVar)
 	}
+	if iterVar != "_" {
+		vc.line("_ = %s", iterVar)
+	}
 
 	innerVar := resultVar + "Item"
 	vc.line("var %s string", innerVar)
@@ -260,12 +264,7 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 }
 
 func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
-	for _, c := range vc.ctx.Pkg.Components {
-		if c == comp {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(vc.ctx.Pkg.Components, comp)
 }
 
 // renderStdlibComponent maps stdlib component names to their bubbletea terminal

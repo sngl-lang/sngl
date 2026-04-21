@@ -207,8 +207,11 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Fallback
+	// Unresolved function (func-typed var, etc.) — evaluate the callee expr.
 	args := gc.evalCallArgs(n.Args)
+	if n.Callee != nil {
+		return gc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
+	}
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
@@ -269,6 +272,11 @@ func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
+	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
+	// and general stringification.
+	if n.Type != nil && n.Type.Kind == ir.TypeString {
+		return "fmt.Sprint(" + operand + ")"
+	}
 	return goType + "(" + operand + ")"
 }
 
@@ -416,7 +424,15 @@ func IRTypeToGo(t *ir.Type) string {
 		return "*any"
 	case ir.TypeStruct:
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
+			if sd.Native != "" {
+				return sd.Native
+			}
 			return ExportName(sd.Name)
+		}
+		return "any"
+	case ir.TypeDyn:
+		if meta, ok := t.Meta.(string); ok && meta != "" {
+			return meta
 		}
 		return "any"
 	case ir.TypeEnum:

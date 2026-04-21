@@ -179,8 +179,8 @@ At runtime, enum values are strings. The compiler validates assignments against 
 Units declare named suffixes with optional conversion factors:
 
 ```sngl
-unit duration { ms, s = 1000ms, m = 60s, h = 60m }
-unit measurement { px, em, rem = 16em, vw, vh, pct }
+unit duration { ms, s = 1000msms, m = 60ss, h = 60mm }
+unit measurement { px, em, rem = 16emem, vw, vh, pct }
 ```
 
 Same-base additions normalize automatically (`1s + 500ms` becomes `1500ms`). Different-base additions produce compound values (`16px + 2em`). Scalar multiplication and division work as expected (`3px * 2` is `6px`).
@@ -311,7 +311,6 @@ const (
     DEFAULT_NAME = "unnamed"
     PI float = 3.14159
 )
-
 const SINGLE = 42
 ```
 
@@ -341,7 +340,6 @@ Data events let you react to variable changes with inline statement blocks:
 var todos list<Todo> @change {
     saveTodos(todos)
 }
-
 var count = 0 @init {
     loadCount()
 }
@@ -473,7 +471,6 @@ A component groups params, state, functions, and visual nodes:
 ```sngl
 component Counter(label = "", start = 0) {
     var count = start
-
     hbox {
         text(value="{label}: {count}")
         button(text="+", @click { count += 1 })
@@ -533,7 +530,7 @@ Visual nodes are component instances rendered as UI elements:
 <!-- SNGL-component -->
 
 ```sngl
-text(value="hello", style={fontSize=24})
+text(value="hello", style={fontSize = 24})
 ```
 
 Both `()` and `{}` are optional:
@@ -579,9 +576,8 @@ var (
     newTodo = ""
     todos list<Todo> = []
 )
-
 button(text="Add", @click {
-    todos.push(Todo{text=newTodo, done=false})
+    todos.push(Todo{text = newTodo, done = false})
     newTodo = ""
 })
 ```
@@ -595,8 +591,8 @@ Apply styles directly on any node:
 <!-- SNGL-component -->
 
 ```sngl
-vbox(style={padding=16, gap=12})
-text(value="hello", style={color=#007700, fontSize=24, fontWeight="bold"})
+vbox(style={padding = 16, gap = 12})
+text(value="hello", style={color = #007700, fontSize = 24, fontWeight = "bold"})
 ```
 
 ### Conditional rendering
@@ -607,13 +603,11 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 
 ```sngl
 var active = true
-
 if active {
-    text(value="Active", style={color=#007700})
+    text(value="Active", style={color = #007700})
 }
-
 if !active {
-    text(value="Inactive", style={color=#CC0000})
+    text(value="Inactive", style={color = #CC0000})
 }
 ```
 
@@ -626,7 +620,6 @@ var items = ["a", "b", "c"]
 for item = items {
     text(value=item)
 }
-
 for item, idx = items {
     text(value="{idx}: {item}", key=idx)
 }
@@ -657,8 +650,8 @@ Tag a node with `#id` to reference it in tests:
 
 ```sngl
 var count = 0
-button #inc(text="+", @click { count += 1 })
-text #display(value="Count: {count}")
+button.#inc(text="+", @click { count += 1 })
+text.#display(value="Count: {count}")
 ```
 
 ## Events and Mutations
@@ -710,8 +703,10 @@ var (
     a = 0
     b = 0
 )
-
-button(text="go", @click { a += 1; b += 2 })
+button(text="go", @click {
+    a += 1
+    b += 2
+})
 ```
 
 ### Emit
@@ -737,11 +732,9 @@ component main {
         progress float = 0
         running = true
     )
-
-    timer(interval=100ms, enabled=running, @tick {
+    timer(interval=100msms, enabled=running, @tick {
         progress += 0.1
     })
-
     text(value=string(progress))
     button(text="Stop", @click { running = false })
 }
@@ -768,9 +761,9 @@ All styles are applied via the `style` param:
 <!-- SNGL-component -->
 
 ```sngl
-vbox(style={gap=12, padding=16})
-text(value="bold", style={fontWeight="bold", color=#007700, fontSize=24})
-button(text="go", style={margin=4, background=#ff0000, padding=8})
+vbox(style={gap = 12, padding = 16})
+text(value="bold", style={fontWeight = "bold", color = #007700, fontSize = 24})
+button(text="go", style={margin = 4, background = #ff0000, padding = 8})
 ```
 
 ### Named styles
@@ -778,13 +771,15 @@ button(text="go", style={margin=4, background=#ff0000, padding=8})
 Declare reusable styles at the top level and apply them with `class`:
 
 ```sngl
-style primary {
+style
+primary {
     color = #0000ff
     fontWeight = "bold"
     fontSize = 16
 }
 
-style secondary {
+style
+secondary {
     color = #777777
     fontStyle = "italic"
 }
@@ -846,8 +841,8 @@ Tag nodes with `#id`, then access props and fire events in tests:
 
 ```sngl
 var count = 0
-button #inc(text="+", @click { count += 1 })
-text #display(value="Count: {count}")
+button.#inc(text="+", @click { count += 1 })
+text.#display(value="Count: {count}")
 ```
 
 In a for loop, refs become indexed: `#item[0].value`, `#item[2].value`.
@@ -874,10 +869,7 @@ component app {
 
 func testNesting(t T, c app) {
     c.x = 1
-    t.test("inner", func(t, c) {
-        c.x = 2
-        t.assert(c.x == 2)
-    })
+    t.test("inner")
     t.assert(c.x == 1)
 }
 ```
@@ -923,17 +915,16 @@ component main {
         newTodo = ""
         todos list<Todo> = []
     )
-
-    vbox(style={padding=16, gap=8}) {
-        hbox(style={gap=8}) {
+    vbox(style={padding = 16, gap = 8}) {
+        hbox(style={gap = 8}) {
             input(value=newTodo, placeholder="New todo", @input { newTodo = event.value })
             button(text="Add", disabled=newTodo == "", @click {
-                todos.push(Todo{text=newTodo, done=false})
+                todos.push(Todo{text = newTodo, done = false})
                 newTodo = ""
             })
         }
         for todo, idx = todos {
-            hbox(key=idx, style={gap=8}) {
+            hbox(key=idx, style={gap = 8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
                 button(text="x", @click { todos.remove(idx) })
@@ -949,11 +940,10 @@ component main {
 component main {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
-
-    vbox(style={padding=16, gap=8}) {
+    vbox(style={padding = 16, gap = 8}) {
         input(value=email, placeholder="Email", type="email", @input { email = event.value })
         if !valid {
-            text(value="Enter a valid email", style={color=#CC0000, fontSize=12})
+            text(value="Enter a valid email", style={color = #CC0000, fontSize = 12})
         }
         button(text="Submit", disabled=!valid)
     }
@@ -965,8 +955,7 @@ component main {
 ```sngl
 component main {
     var showModal = false
-
-    vbox(style={padding=16}) {
+    vbox(style={padding = 16}) {
         button(text="Open", @click { showModal = true })
         modal(open=showModal, title="Settings", @close { showModal = false }) {
             text(value="Content goes here")
@@ -984,15 +973,16 @@ component main {
         progress float = 0.0
         running = false
     )
-
-    timer(interval=50ms, enabled=running, @tick {
+    timer(interval=50msms, enabled=running, @tick {
         progress += 0.01
     })
-
-    vbox(style={padding=16, gap=8}) {
+    vbox(style={padding = 16, gap = 8}) {
         progress(value=progress, max=1.0, showValue=true)
         button(text=running ? "Pause" : "Start", @click { running!! })
-        button(text="Reset", @click { progress = 0.0; running = false })
+        button(text="Reset", @click {
+            progress = 0.0
+            running = false
+        })
     }
 }
 ```

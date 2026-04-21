@@ -255,10 +255,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 
 	// Visual tree
 	cc := &irComposeContext{
-		kc:         kc,
-		ctx:        ctx,
-		buf:        &b,
-		indent:     1,
+		kc:     kc,
+		ctx:    ctx,
+		buf:    &b,
+		indent: 1,
 	}
 
 	wins := ctx.Windows()

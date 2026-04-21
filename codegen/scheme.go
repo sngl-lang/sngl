@@ -40,12 +40,14 @@ type NativeVar struct {
 type NativeStruct struct {
 	Name   string
 	Fields []NativeField
+	Native string // qualified native-language name (e.g. "ast.File")
 }
 
 // NativeField describes a field in a native struct.
 type NativeField struct {
-	Name string
-	Type string
+	Name       string
+	Type       string
+	NativeName string // original source-language field name (e.g. "Decls")
 }
 
 // NativeEnum describes an enum type from a native import.

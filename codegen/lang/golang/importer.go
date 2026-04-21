@@ -67,7 +67,7 @@ func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 		}
 		switch o := obj.(type) {
 		case *types.TypeName:
-			if ns := goTypeToNativeStruct(o); ns != nil {
+			if ns := goTypeToNativeStruct(o, pkgName); ns != nil {
 				decls.Structs = append(decls.Structs, *ns)
 			}
 		case *types.Func:
@@ -90,20 +90,24 @@ func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 }
 
 // goTypeToNativeStruct converts a Go named struct type to a codegen.NativeStruct.
-func goTypeToNativeStruct(tn *types.TypeName) *codegen.NativeStruct {
+func goTypeToNativeStruct(tn *types.TypeName, pkgName string) *codegen.NativeStruct {
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	if !ok {
 		return nil
 	}
-	ns := &codegen.NativeStruct{Name: tn.Name()}
+	ns := &codegen.NativeStruct{
+		Name:   tn.Name(),
+		Native: pkgName + "." + tn.Name(),
+	}
 	for f := range st.Fields() {
 		if !f.Exported() {
 			continue
 		}
 		hint := goTypeToHint(f.Type())
 		ns.Fields = append(ns.Fields, codegen.NativeField{
-			Name: lowerFirst(f.Name()),
-			Type: hint,
+			Name:       lowerFirst(f.Name()),
+			Type:       hint,
+			NativeName: f.Name(),
 		})
 	}
 	return ns

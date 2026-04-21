@@ -648,7 +648,6 @@ func (g *htmlGen) isFunction(name string) bool {
 	return false
 }
 
-
 // renderStaticNode renders a NodeInst as static HTML.
 func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	indent := strings.Repeat("  ", depth)

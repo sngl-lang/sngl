@@ -3,6 +3,7 @@ package bubbletea
 import (
 	"fmt"
 	"go/format"
+	"maps"
 	"sort"
 	"strings"
 
@@ -101,6 +102,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc := golang.NewIRContext(exprCtx)
 	_ = gc // used below for init values
 	pkg := ctx.Pkg
+
+	// Collect Go imports from native (go://) imports so the generated Go file
+	// includes them as real package imports.
+	for _, imp := range pkg.Imports {
+		if imp.Native == nil || imp.Native.ImportPath == "" {
+			continue
+		}
+		info.goImports[imp.Native.ImportPath] = imp.Alias
+	}
 
 	// Collect vars from package + main component
 	allVars := pkg.Vars
@@ -601,39 +611,65 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 }
 
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, buttonIdx *int, checkboxIdx *int) {
-	codegen.WalkVisualTree(stmts, func(n *ir.NodeInst, _ int) bool {
-		switch n.Name {
-		case "checkbox":
-			if h := codegen.NodeHandler(n, "change"); h != nil && h.Func != nil {
-				focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("checkbox%d", *checkboxIdx))
-				if focusIdx >= 0 {
-					fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
-					for _, stmt := range h.Func.Block {
-						for _, line := range gc.EvalStmt(stmt) {
-							fmt.Fprintf(b, "\t\t\t%s\n", line)
-						}
-					}
-					syncMutatedInputs(b, h.Func.Block, info.inputs, gc)
-				}
-			}
-			*checkboxIdx++
-		case "button":
-			if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
-				focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("button%d", *buttonIdx))
-				if focusIdx >= 0 {
-					fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
-					for _, stmt := range h.Func.Block {
-						for _, line := range gc.EvalStmt(stmt) {
-							fmt.Fprintf(b, "\t\t\t%s\n", line)
-						}
-					}
-					syncMutatedInputs(b, h.Func.Block, info.inputs, gc)
-				}
-			}
-			*buttonIdx++
+	emitIRButtonHandlersWalk(b, stmts, info, gc, buttonIdx, checkboxIdx, nil)
+}
+
+// emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
+// button/checkbox handlers. forLoopVars tracks the iter/index variable names
+// of enclosing for-loops so we can stub their declarations inside the case
+// body (the focus→item mapping is not yet dynamic; compile-only fix).
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, buttonIdx *int, checkboxIdx *int, forLoopVars []string) {
+	emitCase := func(focusIdx int, block []ir.Stmt) {
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+		for _, v := range forLoopVars {
+			fmt.Fprintf(b, "\t\t\t%s := 0 // TODO: bind loop index to focus slot\n", v)
+			fmt.Fprintf(b, "\t\t\t_ = %s\n", v)
 		}
-		return false
-	})
+		for _, stmt := range block {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(b, "\t\t\t%s\n", line)
+			}
+		}
+		syncMutatedInputs(b, block, info.inputs, gc)
+	}
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.For:
+			vars := append([]string{}, forLoopVars...)
+			if n.Key != "" && n.Key != "_" {
+				vars = append(vars, n.Key)
+			}
+			if n.Value != "" && n.Value != "_" {
+				vars = append(vars, n.Value)
+			}
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, vars)
+		case *ir.If:
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+		case *ir.PlatformFilter:
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+		case *ir.NodeInst:
+			switch n.Name {
+			case "checkbox":
+				if h := codegen.NodeHandler(n, "change"); h != nil && h.Func != nil {
+					focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("checkbox%d", *checkboxIdx))
+					if focusIdx >= 0 {
+						emitCase(focusIdx, h.Func.Block)
+					}
+				}
+				*checkboxIdx++
+			case "button":
+				if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
+					focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("button%d", *buttonIdx))
+					if focusIdx >= 0 {
+						emitCase(focusIdx, h.Func.Block)
+					}
+				}
+				*buttonIdx++
+			}
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+		}
+	}
 }
 
 func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
@@ -658,9 +694,7 @@ func findFocusIndex(focusables []string, name string) int {
 func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, inputs []inputInfo, gc *golang.GoIRContext) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
-		for k, v := range codegen.MutatedFields(stmt) {
-			mutated[k] = v
-		}
+		maps.Copy(mutated, codegen.MutatedFields(stmt))
 	}
 	for _, inp := range inputs {
 		if inp.bindTarget != "" && mutated[inp.bindTarget] {

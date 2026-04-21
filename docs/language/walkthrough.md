@@ -49,7 +49,7 @@ Just replacing strings isn't all that useful. Often you need to do some simple c
 ```sngl
 component main {
     var name = "world"
-    func isLong => name.length > 3
+    func isLong() => name.length > 3
     vbox {
         text(value="Hello, {world}!")
         input(:value=name)

@@ -295,6 +295,9 @@ func (env *Env) Eval(e ast.Expr) (any, error) {
 	case *ast.ParenExpr:
 		return env.Eval(n.Inner)
 	default:
+		if e == nil {
+			return nil, fmt.Errorf("cannot evaluate <nil> expression")
+		}
 		return nil, fmt.Errorf("cannot evaluate %T", e)
 	}
 }

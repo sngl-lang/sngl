@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -99,12 +100,7 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 }
 
 func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
-	for _, c := range cc.ctx.Pkg.Components {
-		if c == comp {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cc.ctx.Pkg.Components, comp)
 }
 
 func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {

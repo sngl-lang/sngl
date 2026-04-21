@@ -120,12 +120,10 @@ Statements appear in event handler blocks and mutate state directly:
 <!-- SNGL-component -->
 ```sngl
 button(@click { count += 1 })
-
 button(@click {
-    todos.push(Todo{text=newTodo, done=false})
+    todos.push(Todo{text = newTodo, done = false})
     newTodo = ""
 })
-
 checkbox(@change { todos[index].done!! })
 ```
 

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Snapshot implements codegen.Snapshotter. It uses the same flow as sngl run

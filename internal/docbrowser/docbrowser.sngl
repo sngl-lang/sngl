@@ -21,7 +21,7 @@ component main {
         vbox(style={width=200, padding=8}) {
             text(value="SNGL Components", style={fontWeight="bold"})
             text(value="")
-            for comp, index = docs.Components() {
+            for index, comp = docs.Components() {
                 text(value=index == selectedIndex ? "> " + comp.name : "  " + comp.name)
             }
         }
@@ -36,7 +36,7 @@ component main {
     }
 
     // HTTP routes (used by http platform)
-    window index(title="SNGL Documentation", href="/") {
+    window #index(title="SNGL Documentation", href="/") {
         hbox {
             docui.Sidebar {
                 for comp = docs.Components() {
@@ -50,7 +50,7 @@ component main {
         }
     }
 
-    window detail(title="Component — SNGL Docs", href="/{name}") {
+    window #detail(title="Component — SNGL Docs", href="/{name}") {
         hbox {
             docui.Sidebar {
                 for comp = docs.Components() {

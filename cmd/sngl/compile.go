@@ -217,7 +217,6 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 	return nil
 }
 
-
 func quiet(cmd *cobra.Command) bool {
 	q, _ := cmd.Flags().GetBool("quiet")
 	return q

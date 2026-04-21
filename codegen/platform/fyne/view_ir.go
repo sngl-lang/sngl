@@ -3,6 +3,7 @@ package fyne
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -240,12 +241,7 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 }
 
 func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
-	for _, c := range vc.ctx.Pkg.Components {
-		if c == comp {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(vc.ctx.Pkg.Components, comp)
 }
 
 func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {

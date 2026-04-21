@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/imgdiff"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 
@@ -110,7 +111,13 @@ func TestSnapshotFidelity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			native, err := snapshotter.Snapshot(doc, lang, 1280, 720)
+			pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			for _, d := range diags {
+				if d.Severity.String() == "error" {
+					t.Fatalf("check: %s", d.Msg)
+				}
+			}
+			native, err := snapshotter.Snapshot(pkg, lang, 1280, 720)
 			if err != nil {
 				t.Skipf("native snapshot failed (Chrome unavailable?): %v", err)
 			}

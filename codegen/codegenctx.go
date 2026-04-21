@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -56,9 +58,7 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 			mutated := make(map[string]bool)
 			if h.Func != nil {
 				for _, stmt := range h.Func.Block {
-					for k, v := range MutatedFields(stmt) {
-						mutated[k] = v
-					}
+					maps.Copy(mutated, MutatedFields(stmt))
 				}
 			}
 			handlers = append(handlers, Handler{
@@ -82,9 +82,7 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 		mutated := make(map[string]bool)
 		if t.Handler != nil {
 			for _, stmt := range t.Handler.Block {
-				for k, v := range MutatedFields(stmt) {
-					mutated[k] = v
-				}
+				maps.Copy(mutated, MutatedFields(stmt))
 			}
 		}
 		activeVar := ""

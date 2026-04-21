@@ -131,9 +131,9 @@ type EventHandler struct {
 type Window struct {
 	AST     *ast.VisualNode
 	Name    string
-	Href    Expr   // checked href expression (folded during optimization)
-	Title   Expr   // checked title expression
-	Favicon Expr   // checked favicon expression
+	Href    Expr // checked href expression (folded during optimization)
+	Title   Expr // checked title expression
+	Favicon Expr // checked favicon expression
 	Vars    []*Var
 	Funcs   []*Func
 	Body    []Stmt // type-checked body statements
@@ -176,10 +176,17 @@ type StructDef struct {
 	AST    *ast.StructDef
 	Name   string
 	Fields []*StructField
+	Native string // qualified native-language name (e.g. "ast.File"); empty for user-defined
 }
 
 func (s *StructDef) SymName() string { return s.Name }
-func (s *StructDef) SymType() *Type  { return &Type{Kind: TypeStruct, Decl: s} }
+func (s *StructDef) SymType() *Type {
+	t := &Type{Kind: TypeStruct, Decl: s}
+	if s.Native != "" {
+		t.Meta = s.Native
+	}
+	return t
+}
 
 // StructField is a resolved field in a struct.
 type StructField struct {

@@ -150,6 +150,26 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	return &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 }
 
+// comparableEq reports whether two operand types can be compared with == / !=.
+// Strict "like types" rule: same kind, numeric-to-numeric, or one side is null
+// (option/nullable). Cross-kind comparisons like string == color, which used to
+// silently return false at runtime, become check-time errors.
+func comparableEq(left, right *ir.Type) bool {
+	if left == nil || right == nil {
+		return true
+	}
+	if left.Kind == ir.TypeNull || right.Kind == ir.TypeNull {
+		return true
+	}
+	if left.IsNumeric() && right.IsNumeric() {
+		return true
+	}
+	if left.Kind == right.Kind {
+		return true
+	}
+	return false
+}
+
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	leftExpr := c.checkExpr(x.Left)
 	rightExpr := c.checkExpr(x.Right)
@@ -166,6 +186,9 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		}
 		typ = TypBool
 	case ast.BinEq, ast.BinNeq:
+		if !skip && !comparableEq(left, right) {
+			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+		}
 		typ = TypBool
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
 		if !skip {
@@ -425,7 +448,11 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	if sig != nil && sig.Return != nil {
 		retType = sig.Return
 	}
-	return &ir.Call{AST: x, Type: retType, Func: resolvedFunc, Args: args}
+	call := &ir.Call{AST: x, Type: retType, Func: resolvedFunc, Args: args}
+	if resolvedFunc == nil {
+		call.Callee = calleeExpr
+	}
+	return call
 }
 
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
@@ -605,6 +632,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
 			}
 		}
+
+		// Built-in list/string .length yields int.
+		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeString) {
+			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
+		}
 	}
 
 	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
@@ -709,10 +741,26 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
 }
 
+// interpPartAlreadyString reports whether an interpolation part's type can be
+// concatenated into a string chain without an explicit string() conversion.
+func interpPartAlreadyString(t *ir.Type) bool {
+	if t == nil {
+		return true
+	}
+	switch t.Kind {
+	case ir.TypeString, ir.TypeDyn,
+		ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
+		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+		return true
+	}
+	return false
+}
+
 func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 	// Desugar interpolation to a chain of Binary + operations.
-	// Each string literal part becomes an ir.Literal; each expression part is checked.
-	// Chain them left-to-right with Binary Add.
+	// Each string literal part becomes an ir.Literal; each expression part is checked
+	// and coerced to string so codegen can concatenate without type errors.
 	var chain ir.Expr
 	for _, part := range x.Parts {
 		var partExpr ir.Expr
@@ -720,6 +768,9 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 			partExpr = &ir.Literal{AST: lit, Type: TypString, Raw: lit.Raw}
 		} else {
 			partExpr = c.checkExpr(part)
+			if t := exprType(partExpr); !interpPartAlreadyString(t) {
+				partExpr = &ir.Conversion{Type: TypString, Operand: partExpr}
+			}
 		}
 		if chain == nil {
 			chain = partExpr

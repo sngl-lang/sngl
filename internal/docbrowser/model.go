@@ -4,6 +4,7 @@ package docbrowser
 
 import (
 	"fmt"
+	docs "git.duckfam.us/jonathan/sngl/docs"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -43,6 +44,22 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
+func (m Model) currentName() string {
+	return docs.Components()[m.selectedIndex].Name
+}
+
+func (m Model) currentDoc() string {
+	return docs.Components()[m.selectedIndex].Doc
+}
+
+func (m Model) currentTier() string {
+	return docs.Components()[m.selectedIndex].Tier
+}
+
+func (m Model) currentChildren() string {
+	return docs.Components()[m.selectedIndex].Children
+}
+
 func (m Model) SelectedIndex() int {
 	return m.selectedIndex
 }
@@ -80,5 +97,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	return tea.NewView("")
+	var content string
+	var contentChildren []string
+	var content_0 string
+	var content_0Children []string
+	var content_0_0 string
+	var content_0_0Items []string
+	for _, comp := range docs.Components() {
+		_ = comp
+		var content_0_0Item string
+		content_0_0Items = append(content_0_0Items, content_0_0Item)
+	}
+	content_0_0 = strings.Join(content_0_0Items, "")
+	content_0Children = append(content_0Children, content_0_0)
+	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+	contentChildren = append(contentChildren, content_0)
+	var content_1 string
+	var content_1Children []string
+	var content_1_0 string
+	content_1_0 = lipgloss.NewStyle().
+		Bold(true).Render(fmt.Sprint("SNGL Documentation"))
+	content_1Children = append(content_1Children, content_1_0)
+	var content_1_1 string
+	content_1_1 = lipgloss.NewStyle().Render(fmt.Sprint("Select a component from the sidebar."))
+	content_1Children = append(content_1Children, content_1_1)
+	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+	content_1 = lipgloss.NewStyle().
+		Padding(3).Render(content_1)
+	contentChildren = append(contentChildren, content_1)
+	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }

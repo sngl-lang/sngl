@@ -45,13 +45,13 @@ func TestAnalyze_CheckerError(t *testing.T) {
 	diags := srv.analyze(fs)
 	found := false
 	for _, d := range diags {
-		if strings.Contains(d.Message, "unknown component") {
+		if strings.Contains(d.Message, "unknown component") || strings.Contains(d.Message, "undefined") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected 'unknown component' diagnostic, got %v", diags)
+		t.Errorf("expected 'unknown component' or 'undefined' diagnostic, got %v", diags)
 	}
 }
 

@@ -58,7 +58,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func (m Model) status() string {
-	return (("Todo List (" + len(m.todos)) + " items)")
+	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }
 
 func (m Model) NewTodo() string {
@@ -125,13 +125,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.focus == 1:
-			m.todos.push(Todo{Text: m.newTodo})
+			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
 			m.input0.SetValue(m.newTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
+			index := 0 // TODO: bind loop index to focus slot
+			_ = index
+			item := 0 // TODO: bind loop index to focus slot
+			_ = item
 			m.todos[index].Done = !m.todos[index].Done
 		case msg.Code == tea.KeyEnter && m.focus == 3:
-			m.todos.remove((len(m.todos) - 1))
+			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
 		}
 	}
 	if m.focus == 0 {
@@ -146,7 +150,7 @@ func (m Model) View() tea.View {
 	var contentChildren []string
 	var content_0 string
 	content_0 = lipgloss.NewStyle().
-		Bold(true).Render(fmt.Sprint((("Todo List (" + len(m.todos)) + " items)")))
+		Bold(true).Render(fmt.Sprint((("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Children []string
@@ -169,7 +173,8 @@ func (m Model) View() tea.View {
 	var content_2Children []string
 	var content_2_0 string
 	var content_2_0Items []string
-	for item, index := range m.todos {
+	for index, item := range m.todos {
+		_ = index
 		_ = item
 		var content_2_0Item string
 		content_2_0ItemFocused := m.focus == 2

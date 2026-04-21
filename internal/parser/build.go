@@ -1869,6 +1869,12 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 		}
 	}
 
+	// FuncLit (lambda arg: `func(params) { ... }` or `func(params) => expr`).
+	if it.isNonTerminal() && it.symbol() == FuncLit {
+		lam := b.buildFuncLit(it.enter())
+		return ast.Arg{Value: lam}
+	}
+
 	// NonIdentPrimary { StmtPostfixOp } ArgExprCont
 	if it.isNonTerminal() && it.symbol() == NonIdentPrimary {
 		base := b.buildNonIdentPrimary(it.enter())
@@ -2032,8 +2038,10 @@ func (b *builder) buildArgExprCont(it nodeIter, base ast.Expr) ast.Expr {
 }
 
 func (b *builder) buildNonIdentPrimary(it nodeIter) ast.Expr {
-	// NonIdentPrimary = same as PrimaryExpr except no ident, no FuncLit
-	return b.buildPrimaryInner(it, false)
+	// NonIdentPrimary = same as PrimaryExpr except no ident.
+	// Historically this also excluded FuncLit, but `t.test("...", func(t, c) {...})`
+	// parses the lambda arg through here, so we need FuncLit in-scope.
+	return b.buildPrimaryInner(it, true)
 }
 
 // --- Types ---

@@ -870,7 +870,7 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 			return props[i].name < props[j].name
 		})
 		for _, p := range props {
-			line := fmt.Sprintf("%-16s %s", p.name, p.ps.Type)
+			line := fmt.Sprintf("%-16s %s", p.name, (&p.ps.Type).String())
 			if len(p.ps.Enum) > 0 {
 				line += fmt.Sprintf("  (%s)", strings.Join(p.ps.Enum, ", "))
 			}
@@ -931,7 +931,7 @@ func showPropDoc(compName, propName string, schema *checker.ComponentSchema) err
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s.%s\n\n", compName, propName))
-	sb.WriteString(fmt.Sprintf("Type: %s\n\n", ps.Type))
+	sb.WriteString(fmt.Sprintf("Type: %s\n\n", (&ps.Type).String()))
 	if len(ps.Enum) > 0 {
 		sb.WriteString(fmt.Sprintf("Values: %s\n\n", strings.Join(ps.Enum, ", ")))
 	}

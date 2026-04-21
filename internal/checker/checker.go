@@ -104,14 +104,12 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// Inject all registered platform and language names as namespaces with
 	// Resolve fallback so raw element access (e.g., html.div) works.
 	for _, p := range cfg.Platforms {
-		p := p // capture loop var
 		stdlibScope.Declare(&ir.Namespace{
 			Name:    p.PlatformIdentifier(),
 			Resolve: p.Resolve,
 		})
 	}
 	for _, l := range cfg.Languages {
-		l := l
 		stdlibScope.Declare(&ir.Namespace{
 			Name:    l.LanguageIdentifier(),
 			Resolve: l.Resolve,
@@ -150,6 +148,14 @@ func (c *checker) popScope() {
 // --- pass1: declaration registration ---
 
 func (c *checker) pass1() {
+	// Imports must be processed first so their namespaces are in scope before
+	// any resolveType call inside a component, struct, or func declaration.
+	for _, stmt := range c.doc.Stmts {
+		if imp, ok := stmt.(*ast.Import); ok {
+			c.registerImport(imp)
+		}
+	}
+
 	// Pre-register type declarations so they're visible for forward references
 	// (e.g., test functions that reference types defined later in the file).
 	for _, stmt := range c.doc.Stmts {
@@ -167,9 +173,7 @@ func (c *checker) pass1() {
 
 	for _, stmt := range c.doc.Stmts {
 		switch s := stmt.(type) {
-		case *ast.Import:
-			c.registerImport(s)
-		case *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
+		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 			continue // already registered above
 		case *ast.ConstDecl:
 			c.registerConsts(s)
@@ -1049,6 +1053,16 @@ func optionFieldNames(sd *ir.StructDef) string {
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{AST: vn, Name: vn.ID}
+	// URL template params like `{name}` in href become string vars on the
+	// window, in scope for the href literal itself as well as the body.
+	for _, name := range hrefPathParams(vn) {
+		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString})
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, v := range w.Vars {
+		c.scope.Declare(v)
+	}
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok {
@@ -1306,6 +1320,55 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	if w.AST != nil && w.AST.Block.IsDefined() {
 		w.Body = c.checkBlockIR(&w.AST.Block)
 	}
+}
+
+// hrefPathParams extracts URL template placeholders like {name} from a
+// window's href. Both plain literals ("/{name}") and interpolation exprs
+// (parser-lifted "/" + name) are handled. Returns the bare identifier name
+// for each {x} placeholder.
+func hrefPathParams(vn *ast.VisualNode) []string {
+	if vn == nil {
+		return nil
+	}
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name != "href" {
+			continue
+		}
+		switch v := arg.Value.(type) {
+		case *ast.LiteralExpr:
+			return extractBraceParams(strings.Trim(v.Raw, "\""))
+		case *ast.InterpolationExpr:
+			var out []string
+			for _, part := range v.Parts {
+				if id, ok := part.(*ast.IdentExpr); ok {
+					out = append(out, id.Name)
+				}
+			}
+			return out
+		}
+	}
+	return nil
+}
+
+func extractBraceParams(s string) []string {
+	var out []string
+	for {
+		i := strings.Index(s, "{")
+		if i < 0 {
+			break
+		}
+		j := strings.Index(s[i:], "}")
+		if j < 0 {
+			break
+		}
+		name := s[i+1 : i+j]
+		if name != "" {
+			out = append(out, name)
+		}
+		s = s[i+j+1:]
+	}
+	return out
 }
 
 func (c *checker) checkTimerBody(t *ir.Timer) {

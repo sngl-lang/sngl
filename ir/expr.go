@@ -61,6 +61,7 @@ type Call struct {
 	AST      *ast.CallExpr
 	Type     *Type     // return type
 	Func     *Func     // resolved function (nil for unresolved/dynamic)
+	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
 	Receiver Expr      // non-nil for instance method calls
 	Args     []CallArg // resolved arguments
 }

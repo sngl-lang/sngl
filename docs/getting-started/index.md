@@ -33,7 +33,6 @@ Components are the building blocks of SNGL UIs. They encapsulate state, layout, 
 ```sngl
 component Counter(label = "") {
     var count = 0
-
     hbox {
         text(value="{label}: {count}")
         button(text="+", @click { count += 1 })
@@ -50,7 +49,6 @@ State is declared with `var` (mutable) and zero-arg `func` (derived):
 component main {
     var name = "World"
     func greeting() => "Hello, {name}!"
-
     vbox {
         text(value=greeting)
         input(@input { name = event.value })

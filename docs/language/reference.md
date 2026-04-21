@@ -20,8 +20,9 @@ struct Todo {
 }
 
 enum Status { active, inactive, pending }
-unit duration { ms, s = 1000ms, m = 60s, h = 60m }
-style heading {
+unit duration { ms, s = 1000msms, m = 60ss, h = 60mm }
+style
+heading {
     fontSize = 24
 }
 
@@ -232,8 +233,8 @@ Inline enums use `enum<value1 | value2 | ...>` syntax. At runtime, enum values a
 Declares a unit type with named suffixes and optional conversion factors:
 
 ```sngl
-unit duration { ms, s = 1000ms, m = 60s, h = 60m }
-unit measurement { px, em, rem = 16em, vw, vh, pct }
+unit duration { ms, s = 1000msms, m = 60ss, h = 60mm }
+unit measurement { px, em, rem = 16emem, vw, vh, pct }
 ```
 
 A bare suffix (e.g., `ms`, `px`) is an independent base. A suffix with a factor (e.g., `s = 1000ms`) converts to another suffix — meaning 1 `s` equals 1000 `ms`. Conversion factors chain: `m = 60s` means 1 `m` = 60 × 1000 `ms` = 60000 `ms`.
@@ -258,22 +259,15 @@ Unit values support `+`, `-`, `*`, and `/`:
 <!-- SNGL-component -->
 
 ```sngl
-// Same-base addition normalizes automatically
-func _a() => 1s + 500ms // 1500ms
-func _b() => 1h + 30m   // 5400000ms
-func _c() => 1rem + 2em // 18em
-func _d() => 3px + 2px  // 5px
-
-// Different bases produce compound values
-func _e() => 16px + 2em // {px: 16, em: 2}
-
-// Scalar multiplication and division
-func _f() => 2 * 3px    // 6px
-func _g() => 6px / 2    // 3px
-
-// Subtraction
-func _h() => 5px - 2px  // 3px
-func _i() => 2s - 500ms // 1500ms
+func _a() => 1ss + 500msms
+func _b() => 1hh + 30mm
+func _c() => 1remrem + 2emem
+func _d() => 3pxpx + 2pxpx
+func _e() => 16pxpx + 2emem
+func _f() => 2 * 3pxpx
+func _g() => 6pxpx / 2
+func _h() => 5pxpx - 2pxpx
+func _i() => 2ss - 500msms
 ```
 
 Adding values from the same base group normalizes to the base suffix. Adding values from different base groups produces a compound value with multiple components. Arithmetic between different unit types (e.g., `5px + 3s`) is an error.
@@ -285,9 +279,9 @@ Unit values compare by their normalized components. Values that normalize to the
 <!-- SNGL-component -->
 
 ```sngl
-func _a() => 1s == 1000ms             // true
-func _b() => 1rem == 16em             // true
-func _c() => 16px + 2em == 2em + 16px // true (order-independent)
+func _a() => 1ss == 1000msms
+func _b() => 1remrem == 16emem
+func _c() => 16pxpx + 2emem == 2emem + 16pxpx
 ```
 
 #### Usage
@@ -308,7 +302,8 @@ The stdlib provides `duration` and `measurement` unit types. Custom unit types c
 ### style
 
 ```sngl
-style heading {
+style
+heading {
     fontSize = 24
     fontWeight = "bold"
     color = #007700
@@ -322,7 +317,6 @@ style heading {
 ```sngl
 component Counter(label = "", start = 0) {
     var count = start
-
     hbox {
         text(value="{label}: {count}")
         button(text="+", @click { count += 1 })
@@ -380,7 +374,7 @@ Counter(label="Score", start=10)
 <!-- SNGL-component -->
 
 ```sngl
-text(value="hello", style={fontSize=24})
+text(value="hello", style={fontSize = 24})
 ```
 
 Both `()` and `{}` are optional:
@@ -403,7 +397,7 @@ Events use the `@` prefix and contain statement blocks:
 button(@click { count += 1 })
 input(@input { name = event.value })
 button(@click {
-    todos.push(Todo{text=newTodo, done=false})
+    todos.push(Todo{text = newTodo, done = false})
     newTodo = ""
 })
 ```
@@ -413,8 +407,8 @@ button(@click {
 <!-- SNGL-component -->
 
 ```sngl
-vbox(style={gap=12, padding=16})
-text(value="hello", style={color=#007700, fontSize=24})
+vbox(style={gap = 12, padding = 16})
+text(value="hello", style={color = #007700, fontSize = 24})
 ```
 
 ## Control Flow
@@ -425,11 +419,10 @@ text(value="hello", style={color=#007700, fontSize=24})
 
 ```sngl
 if isAdult {
-    text(value="(Adult)", style={color=#007700})
+    text(value="(Adult)", style={color = #007700})
 }
-
 if !isAdult {
-    text(value="(Minor)", style={color=#CC0000})
+    text(value="(Minor)", style={color = #CC0000})
 }
 ```
 
@@ -441,7 +434,6 @@ if !isAdult {
 for item = todos {
     text(value=item.text)
 }
-
 for item, index = todos {
     checkbox(checked=item.done, key=index, label=item.text, @change { todos[index].done!! })
 }
@@ -493,10 +485,8 @@ Functions inside a component can read component state. Zero-arg functions serve 
 ```sngl
 component Counter {
     var count = 10
-
     func square(n int) => n * n
     func label() => "Count: {count}"
-
     text(value=label())
 }
 ```
@@ -508,15 +498,12 @@ Functions with no return type are void. They may mutate component state and can 
 ```sngl
 component Counter {
     var count = 0
-
     func reset() {
         count = 0
     }
-
     func increment(n int) {
         count += n
     }
-
     button(text="Reset", @click { reset() })
     button(text="+5", @click { increment(5) })
 }
@@ -579,14 +566,11 @@ Type methods support two call styles:
 <!-- SNGL-component -->
 
 ```sngl
-// Type-qualified — explicit receiver as first argument
-func _a() => int.double(5)         // 10
-func _b() => string.shout("hello") // "hello!"
-
-// Method syntax — receiver is implicit
+func _a() => int.double(5)
+func _b() => string.shout("hello")
 var n = 5
-func _c() => n.double()      // 10
-func _d() => "hello".shout() // "hello!"
+func _c() => n.double()
+func _d() => "hello".shout()
 ```
 
 ## Built-in Functions

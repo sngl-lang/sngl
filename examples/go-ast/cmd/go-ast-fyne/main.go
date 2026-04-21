@@ -17,7 +17,7 @@ func main() {
 	w := a.NewWindow("Go AST Explorer")
 
 	m := ui.New()
-	m.Parse = func(s string) {
+	m.SetParse(func(s string) {
 		f, err := parser.ParseFile(token.NewFileSet(), "input.go", m.Source(), parser.AllErrors)
 		if err != nil {
 			m.SetParseError(err.Error())
@@ -25,7 +25,7 @@ func main() {
 		}
 		m.SetParseError("")
 		m.SetFile(*f)
-	}
+	})
 
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(600, 800))

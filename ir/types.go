@@ -48,6 +48,7 @@ type Type struct {
 	Sig       *FuncSig // function types
 	ParamName string   // generic type param name ("T")
 	Package   string   // import origin for qualified types
+	Meta      any      // importer-provided side-channel (e.g. Go types.Type) read by language codegen
 }
 
 // Predefined singleton types for primitives.

@@ -743,8 +743,8 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	case *ast.LiteralExpr:
 		f.writeLiteral(x)
 	case *ast.UnitLiteral:
+		// x.Raw already includes the suffix (parser stores "1rem" in Raw).
 		f.write(x.Raw)
-		f.write(x.Suffix)
 	case *ast.IdentExpr:
 		f.write(x.Name)
 	case *ast.EventRefExpr:

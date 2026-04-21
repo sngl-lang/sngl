@@ -6,6 +6,7 @@ package kotlin
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -230,9 +231,7 @@ func translateIRLambda(n *ir.Lambda, scope *codegen.ExprScope) string {
 	}
 	subScope := *scope
 	subScope.LocalVars = make(map[string]bool, len(scope.LocalVars)+len(params))
-	for k, v := range scope.LocalVars {
-		subScope.LocalVars[k] = v
-	}
+	maps.Copy(subScope.LocalVars, scope.LocalVars)
 	for _, p := range params {
 		subScope.LocalVars[p] = true
 	}

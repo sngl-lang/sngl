@@ -91,8 +91,17 @@ func TypeHintToGo(hint string) string {
 	}
 }
 
-// ZeroValueGo returns the Go zero-value expression for a SNGL type hint.
+// ZeroValueGo returns the Go zero-value expression for a SNGL type hint or
+// a Go type string (func(...), []T, pkg.T, etc.).
 func ZeroValueGo(hint string) string {
+	// Fast-path on Go syntax — don't re-run TypeHintToGo which would mangle
+	// `func(...)` into `Func(...)`.
+	if strings.HasPrefix(hint, "func(") || strings.HasPrefix(hint, "func ") {
+		return "nil"
+	}
+	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "*") {
+		return "nil"
+	}
 	goType := TypeHintToGo(hint)
 	switch goType {
 	case "int":
@@ -107,6 +116,8 @@ func ZeroValueGo(hint string) string {
 		return "time.Time{}"
 	case "time.Duration":
 		return "0"
+	case "any":
+		return "nil"
 	default:
 		if strings.HasPrefix(goType, "[]") {
 			return "nil"
@@ -114,7 +125,11 @@ func ZeroValueGo(hint string) string {
 		if strings.HasPrefix(goType, "*") {
 			return "nil"
 		}
-		return `""`
+		if strings.HasPrefix(goType, "func(") || strings.HasPrefix(goType, "func ") {
+			return "nil"
+		}
+		// Named/qualified type → struct literal zero.
+		return goType + "{}"
 	}
 }
 

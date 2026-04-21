@@ -28,16 +28,16 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {
 	*codegen.CommonAnalysis
-	binds      []irBind
-	externs    []irExtern
-	computeds  []irComputed
-	entries    []irEntry
-	dataEvents map[string][]*ir.EventHandler
-	goImports  map[string]bool
-	needsTime  bool
-	needsURL   bool
+	binds       []irBind
+	externs     []irExtern
+	computeds   []irComputed
+	entries     []irEntry
+	dataEvents  map[string][]*ir.EventHandler
+	goImports   map[string]bool
+	needsTime   bool
+	needsURL    bool
 	needsCanvas bool
-	dt         *codegen.DepTracker
+	dt          *codegen.DepTracker
 }
 
 type irBind struct {
@@ -81,6 +81,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
+
+	// Collect Go imports from native (go://) imports so the generated Go file
+	// includes them as real package imports.
+	for _, imp := range pkg.Imports {
+		if imp.Native == nil || imp.Native.ImportPath == "" {
+			continue
+		}
+		info.goImports[imp.Native.ImportPath] = true
+	}
 
 	// Collect vars from package + main component
 	allVars := pkg.Vars
@@ -198,11 +207,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	if len(wins) > 0 && len(wins[0].Body) > 0 {
 		bodyStmts := wins[0].Body
 		vc := &irViewContext{
-			gc:          gc,
-			ctx:         ctx,
-			buf:         &buildBuf,
-			indent:      1,
-			info:        info,
+			gc:     gc,
+			ctx:    ctx,
+			buf:    &buildBuf,
+			indent: 1,
+			info:   info,
 		}
 
 		if len(bodyStmts) == 1 {
