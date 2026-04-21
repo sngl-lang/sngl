@@ -984,7 +984,7 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 		}
 		f.write(")")
 		if t.Return != nil {
-			f.write(" -> ")
+			f.write(" ")
 			f.writeType(t.Return)
 		}
 	case *ast.StructDef:

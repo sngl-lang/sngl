@@ -53,8 +53,8 @@ func list.indexOf<T>(l list<T>, item T) => stdlib.ListIndexOf(l, item)
 func list.join<T>(l list<T>, sep string) => stdlib.ListJoin(l, sep)
 func list.reverse<T>(l list<T>) => stdlib.ListReverse(l)
 func list.slice<T>(l list<T>, start int, end int) => stdlib.ListSlice(l, start, end)
-func list.filter<T>(l list<T>, pred func(T) -> bool) => stdlib.ListFilter(l, pred)
-func list.map<T, U>(l list<T>, fn func(T) -> U) => stdlib.ListMap(l, fn)
+func list.filter<T>(l list<T>, pred func(T) bool) => stdlib.ListFilter(l, pred)
+func list.map<T, U>(l list<T>, fn func(T) U) => stdlib.ListMap(l, fn)
 func list.contains<T>(l list<T>, item T) => list.indexOf(l, item) >= 0
 
 // --- color ---

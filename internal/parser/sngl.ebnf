@@ -98,7 +98,6 @@ dot          = `\x13` .
 colon        = `\x14` .
 assign       = `\x15` .
 at           = `\x16` .
-arrow        = `\x18` .
 fat_arrow    = `\x19` .
 ellipsis     = `\x1A` .
 plus         = `\x1B` .
@@ -504,7 +503,7 @@ NonIdentPrimary =
 Type =
       ident [ dot ident | lt TypeList gt ]
     | kw_component
-    | kw_func lparen [ TypeList ] rparen [ arrow Type ]
+    | kw_func lparen [ TypeList ] rparen [ Type ]
     | StructDecl
     | EnumDecl
     | UnitDecl

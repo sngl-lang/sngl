@@ -1,9 +1,9 @@
 component main {
     var (
         handler func() = null
-        callback func(string) -> int = null
-        factory func() -> func() = null
-        complex func(func(int) -> string) -> func() = null
-        transform func(string) -> string = null
+        callback func(string) int = null
+        factory func() func() = null
+        complex func(func(int) string) func() = null
+        transform func(string) string = null
     )
 }

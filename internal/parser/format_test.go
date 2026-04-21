@@ -237,8 +237,8 @@ func TestFormatTypeAnnotations(t *testing.T) {
 
 func TestFormatFuncType(t *testing.T) {
 	assertFormat(t,
-		`var f func(int, string) -> bool`,
-		`var f func(int, string) -> bool`)
+		`var f func(int, string) bool`,
+		`var f func(int, string) bool`)
 }
 
 func TestFormatGenericFunc(t *testing.T) {

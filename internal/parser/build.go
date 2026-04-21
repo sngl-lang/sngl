@@ -2047,7 +2047,7 @@ func (b *builder) buildNonIdentPrimary(it nodeIter) ast.Expr {
 // --- Types ---
 
 func (b *builder) buildType(it nodeIter) ast.TypeExpr {
-	// Type = ident [ dot ident | lt Type gt ] | kw_component | kw_func lparen [TypeList] rparen [arrow Type] | StructDecl | EnumDecl | UnitDecl .
+	// Type = ident [ dot ident | lt Type gt ] | kw_component | kw_func lparen [TypeList] rparen [Type] | StructDecl | EnumDecl | UnitDecl .
 	if it.done() {
 		return nil
 	}
@@ -2101,11 +2101,8 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 				it.skip() // rparen
 			}
 		}
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == ARROW {
-			it.skip() // arrow
-			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-				ft.Return = b.buildType(it.enter())
-			}
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			ft.Return = b.buildType(it.enter())
 		}
 		return ft
 	}
