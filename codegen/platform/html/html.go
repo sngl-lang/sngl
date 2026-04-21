@@ -1152,7 +1152,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	// Input event handler
 	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.AST != nil {
 		if len(inputEvt.AST.Body.Stmts) > 0 {
-			g.addInputHandler(id, inputEvt.Func.Block)
+			g.addInputHandler(id, inputEvt.Func)
 		}
 	}
 }
@@ -1354,7 +1354,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
 	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
-		g.addInputHandler(id, evt.Func.Block)
+		g.addInputHandler(id, evt.Func)
 	}
 }
 
@@ -1732,7 +1732,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		case "click":
 			g.addClickHandler(id, h.Func.Block)
 		case "input":
-			g.addInputHandler(id, h.Func.Block)
+			g.addInputHandler(id, h.Func)
 		case "change":
 			g.addChangeHandler(id, h.Func.Block)
 		default:
@@ -2574,19 +2574,54 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	})
 }
 
-func (g *htmlGen) addInputHandler(elemID string, body []ir.Stmt) {
-	if len(body) == 0 {
+func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
+	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
 	savedEvent := g.scope.EventVar
 	g.scope.EventVar = "e.target"
+	if g.scope.Renames == nil {
+		g.scope.Renames = make(map[string]string)
+	}
+	var savedLocal []string
+	var savedRename []struct {
+		name  string
+		val   string
+		had   bool
+	}
+	for _, p := range fn.Params {
+		if p == nil || p.Name == "" {
+			continue
+		}
+		if !g.scope.LocalVars[p.Name] {
+			savedLocal = append(savedLocal, p.Name)
+			g.scope.LocalVars[p.Name] = true
+		}
+		prev, had := g.scope.Renames[p.Name]
+		savedRename = append(savedRename, struct {
+			name string
+			val  string
+			had  bool
+		}{p.Name, prev, had})
+		g.scope.Renames[p.Name] = "e.target"
+	}
 	var stmts []string
 	mutated := make(map[string]bool)
-	for _, s := range body {
+	for _, s := range fn.Block {
 		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	g.scope.EventVar = savedEvent
+	for _, n := range savedLocal {
+		delete(g.scope.LocalVars, n)
+	}
+	for _, r := range savedRename {
+		if r.had {
+			g.scope.Renames[r.name] = r.val
+		} else {
+			delete(g.scope.Renames, r.name)
+		}
+	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string
 	for _, s := range stmts {
