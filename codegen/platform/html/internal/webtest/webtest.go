@@ -5,6 +5,7 @@
 package webtest
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -93,15 +94,19 @@ func (e *Engine) ensureStartedLocked() error {
 
 	e.server = httptest.NewServer(e.handler)
 
-	path, found := launcher.LookPath()
-	if !found {
+	// Use launcher.New() so go-rod auto-downloads a bundled Chromium when
+	// no system browser is on PATH; only override Bin when we found one.
+	l := launcher.New().Headless(true).NoSandbox(true)
+	if path, found := launcher.LookPath(); found {
+		l = l.Bin(path)
+	}
+	u, err := l.Launch()
+	if err != nil {
 		e.server.Close()
 		e.server = nil
-		e.startErr = launcher.ErrAlreadyLaunched
+		e.startErr = fmt.Errorf("launching browser: %w", err)
 		return e.startErr
 	}
-
-	u := launcher.New().Bin(path).Headless(true).NoSandbox(true).MustLaunch()
 	browser := rod.New().ControlURL(u)
 	if err := browser.Connect(); err != nil {
 		e.server.Close()

@@ -172,7 +172,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 		FS:        os.DirFS(dir),
 		Dir:       dir,
 		IsMain:    isMain,
-		Resolver:  &cliResolver{},
+		Resolver:  &cliResolver{rootDir: dir},
 		Languages: langs,
 		Platforms: plats,
 	})
@@ -185,9 +185,17 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 }
 
 // cliResolver implements checker.ImportResolver using registered codegen schemes.
-type cliResolver struct{}
+type cliResolver struct {
+	rootDir string
+}
 
 func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
+	// Relative imports that escape the FS root (e.g. `../docui`) can't be
+	// served by io/fs, so fall back to direct filesystem reads.
+	if strings.Contains(importPath, "..") && r.rootDir != "" {
+		abs := filepath.Clean(filepath.Join(r.rootDir, importPath))
+		return resolveImportFromDir(abs)
+	}
 	entries, err := fs.ReadDir(fsys, importPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
@@ -199,6 +207,30 @@ func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, e
 		}
 		path := importPath + "/" + e.Name()
 		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", path, err)
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", path, err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func resolveImportFromDir(dir string) ([]*ast.Document, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading import dir %q: %w", dir, err)
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", path, err)
 		}

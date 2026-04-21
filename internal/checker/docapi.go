@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -167,65 +168,34 @@ func StdlibExamples() (map[string][]string, error) {
 	return result, nil
 }
 
-// PrefixedExamples extracts example source blocks from doc comments in a document.
-// Returns a map from declaration name to example source.
-// Examples are defined as:
-//
-//	// Example:
-//	//
-//	//   component main { ... }
-//	component MyButton(...) { ... }
+// PrefixedExamples extracts `example_<name>` prefixed components from a
+// document. Components named `example_<name>` or `example_<name>_<suffix>`
+// map to <name>; the first example per name wins. Returns formatted source
+// for each example, with the prefix stripped so callers can render the
+// component as the user-facing target.
 func PrefixedExamples(doc *ast.Document) map[string]string {
 	result := make(map[string]string)
-	stmts := doc.Stmts
-
-	for i, stmt := range stmts {
+	for _, stmt := range doc.Stmts {
 		comp, ok := stmt.(*ast.ComponentDecl)
 		if !ok {
 			continue
 		}
-		// Look backward for doc comment with Example: block.
-		example := extractExample(stmts[:i])
-		if example != "" {
-			result[comp.Name] = example
-		}
-	}
-	return result
-}
-
-// extractExample looks backward from a set of stmts for an Example: block in comments.
-func extractExample(stmts []ast.Stmt) string {
-	// Collect trailing comments (reading backward).
-	var comments []*ast.Comment
-	for i := len(stmts) - 1; i >= 0; i-- {
-		c, ok := stmts[i].(*ast.Comment)
+		target, ok := strings.CutPrefix(comp.Name, "example_")
 		if !ok {
-			break
-		}
-		comments = append([]*ast.Comment{c}, comments...)
-	}
-
-	var inExample bool
-	var lines []string
-	for _, c := range comments {
-		text := strings.TrimPrefix(c.Text, "//")
-		text = strings.TrimPrefix(text, " ")
-		if text == "Example:" {
-			inExample = true
 			continue
 		}
-		if inExample {
-			// Dedent by 2 spaces (common example indentation).
-			if strings.HasPrefix(text, "  ") {
-				text = text[2:]
-			}
-			lines = append(lines, text)
+		if i := strings.Index(target, "_"); i >= 0 {
+			target = target[:i]
 		}
+		if _, exists := result[target]; exists {
+			continue
+		}
+		display := *comp
+		display.Name = target
+		exDoc := &ast.Document{Stmts: []ast.Stmt{&display}}
+		result[target] = strings.TrimSpace(parser.Format(exDoc))
 	}
-	if len(lines) == 0 {
-		return ""
-	}
-	return strings.TrimSpace(strings.Join(lines, "\n"))
+	return result
 }
 
 // ExtractPackageDocs walks a document's statements and returns doc info for each declaration.

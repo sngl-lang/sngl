@@ -17,6 +17,8 @@
 struct Options {
     preview bool
     testing bool
+    package string
+    main bool
 }
 
 // --- Core Layout ---

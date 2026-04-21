@@ -17,7 +17,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
@@ -158,6 +157,9 @@ func StdlibComponents() []Component {
 
 	var comps []Component
 	for name, schema := range registry {
+		if strings.HasPrefix(name, "example_") {
+			continue // example_* components are gallery sources, not stdlib API
+		}
 		c := Component{
 			Name:     name,
 			Doc:      schema.Doc,
@@ -394,7 +396,6 @@ func compilePreview(source string) string {
 	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "js"}); err != nil {
 		return ""
 	}
-	doc = ir.Convert(pkg)
 
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("js")
@@ -402,7 +403,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 	resp, err := gen.Generate(&codegen.Request{
-		Doc: doc, Lang: lang,
+		Pkg: pkg, Lang: lang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil || resp.Error != "" {

@@ -27,11 +27,11 @@ component main {
         }
         vbox(style={padding=8}) {
             text(value=currentName, style={fontWeight="bold"})
-            text(value="[" + currentTier + "]")
+            text(value="[" + currentTier() + "]")
             text(value="")
             text(value=currentDoc)
             text(value="")
-            text(value="Children: " + currentChildren)
+            text(value="Children: " + currentChildren())
         }
     }
 

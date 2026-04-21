@@ -1,0 +1,7 @@
+                 
+                 
+  [1mHello, World![m  
+  Regular text   
+  [38;2;0;102;204mColored text[m   
+                 
+                 
