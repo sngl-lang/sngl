@@ -77,7 +77,10 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+	})
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
@@ -189,7 +192,10 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+	})
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}

@@ -444,6 +444,154 @@ component main {
 }
 ```
 
+# Modules & Platforms
+
+## Building a Component Library
+
+As a project grows, group reusable components into their own directory (a "package"). Every `.sngl` file in that directory is merged into a single namespace. From another file, pull the whole directory in with `import "widgets"` (relative to the project root) and refer to components as `widgets.Counter`, `widgets.Card`, and so on.
+
+Inside the library itself, components are just normal declarations. The example below shows the shape of a two-component library file — `Card` wraps content with consistent chrome, and `Stat` renders a single metric. Split them into a file under `widgets/` to make them importable; keep them inline to use them right away.
+
+```sngl
+component Card(title = "") list<component> {
+    vbox(style={gap = 6, padding = 12, background = #ffffff, borderRadius = 8}) {
+        text(value=title, style={fontWeight = "bold", fontSize = 18})
+        slot
+    }
+}
+
+component Stat(label = "", value = 0) {
+    hbox(style={gap = 12, alignItems = "center"}) {
+        text(value=label, style={flex = 1, color = #555555})
+        text(value=string(value), style={fontWeight = "bold"})
+    }
+}
+
+component main {
+    vbox(style={gap = 10, padding = 16, background = #f0f2f5}) {
+        Card(title="Today") {
+            Stat(label="Visitors", value=248)
+            Stat(label="Signups", value=17)
+            Stat(label="Errors", value=2)
+        }
+    }
+}
+```
+
+## Importing External Code
+
+The `import` statement pulls in code from outside the current file. Four schemes cover the common cases:
+
+- `import "widgets"` — another directory inside your project.
+- `import "platform://html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
+- `import "go://go/ast"` — a Go package; its types and pure functions become usable in SNGL. Non-pure calls compile into the Go target.
+- `import "file://public"` — a directory of static files; referenced paths are bundled into the build output.
+
+The playground compiles to HTML, so this lesson imports the `html` platform and reaches for an `<a>` element directly.
+
+```sngl
+import "platform://html"
+
+component main {
+    vbox(style={gap = 6, padding = 16}) {
+        text(value="Hand-rolled link:")
+        html.a(href="https://example.com", innerText="example.com", style={color = "#2196f3"})
+    }
+}
+```
+
+## Import Aliases
+
+When an import path is long or collides with a local name, rebind it with `alias => "path"`. The alias replaces the last path segment everywhere in the file.
+
+Aliases are purely local — the target package still owns its own name. Use them to shorten verbose prefixes (`h.div` instead of `html.div`) or to resolve ambiguity between, say, a local `math` component and an imported `math` package.
+
+```sngl
+import h => "platform://html"
+
+component main {
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Aliased raw HTML access:")
+        h.details(style={padding = "6px", background = "#f5f5f5"}) {
+            h.summary(innerText="Click to expand")
+            h.p(innerText="This paragraph was hidden until you clicked.")
+        }
+    }
+}
+```
+
+## Customising Components Per Platform
+
+A `platform <name> { … }` block inside a component replaces the default body when compiling for that target. This is the escape hatch for "mostly shared, slightly different per target" — a real `<details>` widget on the web, an inline print on a TUI, the default flexbox layout everywhere else. You can stack multiple `platform` blocks inside one component — one per target you want to override.
+
+The default body acts as a fallback: if no `platform` block matches, SNGL uses it.
+
+`Collapsible` below ships three renderings:
+
+- **default** — an always-visible styled card (what Fyne and Android pick up).
+- **`platform html`** — a real `<details>` / `<summary>` pair, so you can click the row to expand. That's what the playground on the right renders.
+- **`platform bubbletea`** — a single inline line for the terminal target.
+
+Click a row to see the HTML block's interactivity. Then swap the `platform html { … }` body for the default by commenting it out — the cards reappear with their non-expandable yellow styling.
+
+```sngl
+import "platform://html"
+
+component Collapsible(title = "", body = "") {
+    vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
+        text(value="▸ " + title, style={fontWeight="bold"})
+        text(value=body, style={color=#555555})
+    }
+
+    platform html {
+        html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
+            html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
+            html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
+        }
+    }
+
+    platform bubbletea {
+        text(value="[" + title + "] " + body)
+    }
+}
+
+component main {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Each row renders differently per platform.", style={color=#555555})
+        text(value="In this HTML playground: click to expand.", style={color=#555555})
+        Collapsible(title="Why platform blocks?", body="One component adapts without forking the whole tree.")
+        Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; Fyne and Android use the default body.")
+    }
+}
+```
+
+## Raw Platform Elements
+
+The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `platform://…` imports expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
+
+Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
+
+```sngl
+import "platform://html"
+
+component main {
+    var volume = 60
+    vbox(style={gap = 10, padding = 16}) {
+        text(value="Native browser widgets:", style={fontWeight = "bold"})
+        html.progress(value=string(volume), max="100", style={width = "100%"})
+        hbox(style={gap = 8}) {
+            button(text="-10", @click { volume = volume - 10 })
+            button(text="+10", @click { volume = volume + 10 })
+            text(value="{volume}%", style={fontFamily = "monospace"})
+        }
+        html.hr
+        html.blockquote(style={borderLeft = "3px solid #2196f3", padding = "4 12", color = "#555555"}) {
+            html.span(innerText="“Everything in the browser is one html.tagname away.”")
+        }
+    }
+}
+```
+
 # Going Deeper
 
 ## Timers

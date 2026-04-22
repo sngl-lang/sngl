@@ -34,7 +34,10 @@ func compileLesson(source string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			return "", lessonErr(d.Msg)
