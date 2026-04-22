@@ -538,27 +538,25 @@ Click a row to see the HTML block's interactivity. Then swap the `platform html 
 import "platform://html"
 
 component Collapsible(title = "", body = "") {
-    vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
-        text(value="▸ " + title, style={fontWeight="bold"})
-        text(value=body, style={color=#555555})
+    vbox(style={gap = 4, padding = 10, background = #fff8dc, borderRadius = 6}) {
+        text(value="▸ " + title, style={fontWeight = "bold"})
+        text(value=body, style={color = #555555})
     }
-
     platform html {
-        html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
-            html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
-            html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
+        html.details(style={padding = "8px", background = "#e0f7fa", borderRadius = "6px"}) {
+            html.summary(innerText=title, style={cursor = "pointer", fontWeight = "bold"})
+            html.p(innerText=body, style={margin = "6px 0 0", color = "#555555"})
         }
     }
-
     platform bubbletea {
         text(value="[" + title + "] " + body)
     }
 }
 
 component main {
-    vbox(style={gap=8, padding=16}) {
-        text(value="Each row renders differently per platform.", style={color=#555555})
-        text(value="In this HTML playground: click to expand.", style={color=#555555})
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Each row renders differently per platform.", style={color = #555555})
+        text(value="In this HTML playground: click to expand.", style={color = #555555})
         Collapsible(title="Why platform blocks?", body="One component adapts without forking the whole tree.")
         Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; Fyne and Android use the default body.")
     }

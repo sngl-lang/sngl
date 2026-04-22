@@ -91,7 +91,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		ktType := kotlin.IRTypeToKt(v.Type)
 		initVal := irVarInitKt(v)
 		isList := v.Type != nil && v.Type.Kind == ir.TypeList
-		if isList && initVal == `""` {
+		if isList && (initVal == `""` || initVal == "emptyList()") {
 			initVal = ""
 		}
 		info.binds = append(info.binds, irAndroidBind{

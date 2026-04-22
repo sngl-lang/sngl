@@ -49,7 +49,7 @@ func New() *Model {
 		source:     "package main",
 		file:       ast.File{},
 		parseError: "",
-		parse:      nil,
+		parse:      func(_ string) {},
 	}
 	m.entry0 = widget.NewMultiLineEntry()
 	m.entry0.SetPlaceHolder("Enter Go code...")

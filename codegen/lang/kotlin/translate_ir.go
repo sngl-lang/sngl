@@ -127,6 +127,8 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	fn := ""
 	if n.Func != nil {
 		fn = n.Func.Name
+	} else if n.Callee != nil {
+		fn = translateIRExpr(n.Callee, scope)
 	}
 	argStrs := make([]string, len(n.Args))
 	for i, a := range n.Args {

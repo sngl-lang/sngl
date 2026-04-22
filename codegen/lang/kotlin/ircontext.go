@@ -182,6 +182,9 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
+	if n.Callee != nil {
+		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
+	}
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
@@ -409,8 +412,32 @@ func IRLiteralToKt(e ir.Expr) string {
 			parts = append(parts, f.Name+" = "+IRLiteralToKt(f.Value))
 		}
 		return name + "(" + strings.Join(parts, ", ") + ")"
+	case *ir.Lambda:
+		return irLambdaLiteralToKt(n)
 	}
 	return `""`
+}
+
+// irLambdaLiteralToKt emits a Kotlin lambda literal for a synthetic zero-value
+// lambda (body is always a single Return of another IR literal).
+func irLambdaLiteralToKt(n *ir.Lambda) string {
+	if n.Func == nil {
+		return "{}"
+	}
+	body := ""
+	if len(n.Func.Block) == 1 {
+		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
+			body = IRLiteralToKt(ret.Value)
+		}
+	}
+	if len(n.Func.Params) == 0 {
+		return "{ " + body + " }"
+	}
+	placeholders := make([]string, len(n.Func.Params))
+	for i := range n.Func.Params {
+		placeholders[i] = "_"
+	}
+	return "{ " + strings.Join(placeholders, ", ") + " -> " + body + " }"
 }
 
 // kotlinBuiltinMethodFromArgs checks for builtin Kotlin methods.

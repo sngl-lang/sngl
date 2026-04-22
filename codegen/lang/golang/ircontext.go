@@ -483,9 +483,6 @@ func IRLiteralToGo(e ir.Expr) string {
 			return n.Raw
 		}
 	case *ir.ListLit:
-		if len(n.Elems) == 0 {
-			return "nil"
-		}
 		parts := make([]string, len(n.Elems))
 		for i, el := range n.Elems {
 			parts[i] = IRLiteralToGo(el)
@@ -498,15 +495,47 @@ func IRLiteralToGo(e ir.Expr) string {
 	case *ir.StructLit:
 		name := "struct{}"
 		if n.Def != nil {
-			name = ExportName(n.Def.Name)
+			name = IRTypeToGo(n.Type)
+			if name == "any" || name == "" {
+				name = ExportName(n.Def.Name)
+			}
 		}
 		var parts []string
 		for _, f := range n.Fields {
 			parts = append(parts, ExportName(f.Name)+": "+IRLiteralToGo(f.Value))
 		}
 		return name + "{" + strings.Join(parts, ", ") + "}"
+	case *ir.Lambda:
+		return irLambdaLiteralToGo(n)
 	}
 	return `""`
+}
+
+// irLambdaLiteralToGo emits a Go function literal for a synthetic zero-value
+// lambda (body is always a single Return of another IR literal).
+func irLambdaLiteralToGo(n *ir.Lambda) string {
+	if n.Func == nil {
+		return "nil"
+	}
+	params := make([]string, len(n.Func.Params))
+	for i, p := range n.Func.Params {
+		goType := "any"
+		if p != nil && p.Type != nil {
+			goType = IRTypeToGo(p.Type)
+		}
+		params[i] = "_ " + goType
+	}
+	retType := ""
+	if n.Func.Return != nil && n.Func.Return.Kind != ir.TypeDyn && n.Func.Return.Kind != ir.TypeInvalid {
+		retType = " " + IRTypeToGo(n.Func.Return)
+	}
+	body := ""
+	if len(n.Func.Block) == 1 {
+		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
+			body = " return " + IRLiteralToGo(ret.Value) + " "
+		}
+	}
+	return "func(" + strings.Join(params, ", ") + ")" + retType + " {" + body + "}"
 }
 
 func irFuncSigToGo(sig *ir.FuncSig) string {

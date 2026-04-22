@@ -183,6 +183,9 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := jc.evalCallArgs(n.Args)
+	if n.Callee != nil {
+		return jc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
+	}
 	return "(" + strings.Join(args, ", ") + ")"
 }
 

@@ -609,12 +609,14 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
-		// Enum member access: EnumType.member.
+		// Enum member access: EnumType.member. Normalize to the same IR shape
+		// as a bare enum member reference so codegen never sees a dangling
+		// EnumType.member select that the target language doesn't define.
 		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
 				for _, m := range ed.Members {
 					if m.Name == x.Field {
-						return &ir.Select{AST: x, Type: operand, Operand: operandExpr, Field: x.Field}
+						return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
 					}
 				}
 				c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
@@ -727,6 +729,10 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 
 func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	if len(x.Elements) == 0 {
+		if c.expected != nil && c.expected.Kind == ir.TypeList {
+			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
+		}
+		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
 		return &ir.ListLit{AST: x, Type: ListOf(TypDyn)}
 	}
 	var elemExpected *ir.Type
@@ -959,8 +965,47 @@ func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	defer c.popScope()
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
+		if vd, ok := stmt.(*ast.VarDecl); ok {
+			out = append(out, c.checkLocalVarDecl(vd)...)
+			continue
+		}
 		if s := c.checkStmt(stmt); s != nil {
 			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// checkLocalVarDecl type-checks a var declaration inside a block and returns
+// its LocalVar IR stmts. Unlike top-level registerVars, this does NOT append
+// to pkg.Vars — local vars live in their enclosing function scope.
+func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
+	var out []ir.Stmt
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		var initExpr ir.Expr
+		if spec.Default != nil {
+			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initType := exprType(initExpr)
+			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
+				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
+			if typ.Kind == ir.TypeDyn {
+				typ = initType
+			}
+		}
+		for _, name := range spec.Names {
+			c.scope.Declare(&ir.Var{
+				AST:  decl,
+				Name: name,
+				Type: typ,
+			})
+			out = append(out, &ir.LocalVar{
+				Name: name,
+				Type: typ,
+				Init: initExpr,
+			})
 		}
 	}
 	return out

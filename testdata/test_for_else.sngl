@@ -1,5 +1,5 @@
 component emptylist {
-    var items = []
+    var items list<string> = []
 
     vbox {
         for item = items {
