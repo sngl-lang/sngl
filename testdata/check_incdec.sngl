@@ -1,0 +1,6 @@
+var count int
+
+component Counter {
+    button(text="+", @click { count++ })
+    button(text="-", @click { count-- })
+}

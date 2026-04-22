@@ -223,6 +223,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
 		f.writeToggleStmt(x)
+	case *ast.IncDecStmt:
+		f.writeIncDecStmt(x)
 	case *ast.EmitStmt:
 		f.writeEmitStmt(x)
 	case *ast.VarStmt:
@@ -540,6 +542,15 @@ func (f *formatter) writeAssignStmt(s *ast.AssignStmt) {
 func (f *formatter) writeToggleStmt(s *ast.ToggleStmt) {
 	f.writeExpr(s.Target)
 	f.write("!!")
+}
+
+func (f *formatter) writeIncDecStmt(s *ast.IncDecStmt) {
+	f.writeExpr(s.Target)
+	if s.IsDec {
+		f.write("--")
+	} else {
+		f.write("++")
+	}
 }
 
 func (f *formatter) writeEmitStmt(s *ast.EmitStmt) {

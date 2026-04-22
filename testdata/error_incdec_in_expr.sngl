@@ -1,0 +1,5 @@
+var count int
+
+func bad {
+    count = count++ + 1 // ERROR(parse) "expected"
+}

@@ -258,3 +258,15 @@ func TestFormatCompoundAssign(t *testing.T) {
 		"func foo() {\n    x += 1\n}",
 		"func foo() {\n    x += 1\n}")
 }
+
+func TestFormatIncrement(t *testing.T) {
+	assertFormat(t,
+		"func foo() {\n    x++\n}",
+		"func foo() {\n    x++\n}")
+}
+
+func TestFormatDecrement(t *testing.T) {
+	assertFormat(t,
+		"func foo() {\n    x--\n}",
+		"func foo() {\n    x--\n}")
+}

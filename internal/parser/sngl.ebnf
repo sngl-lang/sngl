@@ -53,11 +53,12 @@
 # slash_assign  0x2F  SLASH_ASSIGN  /=
 # pct_assign    0x30  PERCENT_ASSIGN %=
 # kw_import     0x31  KW_IMPORT
+# plus_plus     0x32  PLUS_PLUS     ++
 # kw_struct     0x33  KW_STRUCT
 # kw_enum       0x34  KW_ENUM
 # kw_const      0x35  KW_CONST
 # kw_var        0x36  KW_VAR
-# 0x37 freed: style is now a pre-declared identifier
+# minus_minus   0x37  MINUS_MINUS   --
 # kw_component  0x38  KW_COMPONENT
 # kw_if         0x39  KW_IF
 # kw_for        0x3A  KW_FOR
@@ -122,10 +123,12 @@ star_assign  = `\x2E` .
 slash_assign = `\x2F` .
 pct_assign   = `\x30` .
 kw_import    = `\x31` .
+plus_plus    = `\x32` .
 kw_struct    = `\x33` .
 kw_enum      = `\x34` .
 kw_const     = `\x35` .
 kw_var       = `\x36` .
+minus_minus  = `\x37` .
 kw_component = `\x38` .
 kw_if        = `\x39` .
 kw_for       = `\x3A` .
@@ -294,7 +297,9 @@ CompParamTail =
 #
 # kw_func is excluded from StatementPrimary — handled by FuncDecl in Stmt.
 
-VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | bangbang ] .
+VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | bangbang | IncDecOp ] .
+
+IncDecOp = plus_plus | minus_minus .
 
 StatementPrimary =
       int_lit

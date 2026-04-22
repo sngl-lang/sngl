@@ -1047,6 +1047,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ToggleStmt:
 		targetExpr := c.checkExpr(x.Target)
 		return &ir.Toggle{AST: x, Target: targetExpr}
+	case *ast.IncDecStmt:
+		op := ast.BinAdd
+		if x.IsDec {
+			op = ast.BinSub
+		}
+		lowered := &ast.AssignStmt{
+			Pos:    x.Pos,
+			Target: x.Target,
+			Op:     ast.AssignSet,
+			Value: &ast.BinaryExpr{
+				Pos:   x.Pos,
+				Op:    op,
+				Left:  x.Target,
+				Right: &ast.LiteralExpr{Pos: x.Pos, Kind: ast.LiteralInt, Raw: "1"},
+			},
+		}
+		return c.checkStmt(lowered)
 	case *ast.EmitStmt:
 		args := c.checkCallArgs(x.Args, nil)
 		return &ir.Emit{AST: x, Name: x.Name, Args: args}

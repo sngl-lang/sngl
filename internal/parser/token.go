@@ -70,14 +70,16 @@ const (
 	SLASH_ASSIGN   TokenType = 0x2F // /=
 	PERCENT_ASSIGN TokenType = 0x30 // %=
 
+	// Postfix inc/dec (statement-level only)
+	PLUS_PLUS   TokenType = 0x32 // ++
+	MINUS_MINUS TokenType = 0x37 // --
+
 	// Keywords
-	KW_IMPORT TokenType = 0x31
-	// 0x32 freed: output is now a pre-declared identifier
-	KW_STRUCT TokenType = 0x33
-	KW_ENUM   TokenType = 0x34
-	KW_CONST  TokenType = 0x35
-	KW_VAR    TokenType = 0x36
-	// 0x37 freed: style is now a pre-declared identifier
+	KW_IMPORT    TokenType = 0x31
+	KW_STRUCT    TokenType = 0x33
+	KW_ENUM      TokenType = 0x34
+	KW_CONST     TokenType = 0x35
+	KW_VAR       TokenType = 0x36
 	KW_COMPONENT TokenType = 0x38
 	KW_IF        TokenType = 0x39
 	KW_FOR       TokenType = 0x3A
@@ -146,7 +148,7 @@ func insertsSemicolon(t TokenType) bool {
 	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
 		STR_END, TRIPLE_END,
 		KW_RETURN,
-		AT, RPAREN, RBRACKET, RBRACE, BANGBANG:
+		AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:
 		return true
 	}
 	return false

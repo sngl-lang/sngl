@@ -8,21 +8,7 @@ description: "Learn the basics of SNGL"
 
 SNGL projects consist of `.sngl` source files that describe reactive UIs. The `sngl` CLI compiles these files to platform-specific code.
 
-A typical SNGL file contains:
-
-- **Output declarations** — which platforms to target
-- **Type definitions** — structs, enums, and units
-- **Components** — the UI tree with state, layout, and event handlers
-
-## Project Structure
-
-```
-myapp/
-  myapp.sngl          # main UI definition
-  output/             # generated code (per target)
-```
-
-Every SNGL app must have exactly one `component main` — this is the root of the UI tree.
+Every SNGL app must have exactly one `component main` — this is the root of the UI tree. Component main acts as the entrypoint into your GUI. Your app may also contain one or more windows which can serve as alternate entrypoints on some platforms (eg: web URLs)
 
 ## Core Concepts
 
@@ -35,8 +21,8 @@ component Counter(label = "") {
     var count = 0
     hbox {
         text(value="{label}: {count}")
-        button(text="+", @click { count += 1 })
-        button(text="-", @click { count -= 1 })
+        button(text="+", @click { count++ })
+        button(text="-", @click { count-- })
     }
 }
 ```
@@ -51,16 +37,16 @@ component main {
     func greeting() => "Hello, {name}!"
     vbox {
         text(value=greeting)
-        input(@input { name = event.value })
+        input(:value=name)
     }
 }
 ```
 
-Changes to `name` automatically update `greeting` and any UI that references either.
+The `:value` syntax defines a two-way binding, so input may use and update the value name. Changes to `name` automatically update `greeting` and any UI that references either.
 
 ### Visual Nodes
 
-SNGL provides a standard set of primitive components:
+SNGL provides a standard set of common primitive components:
 
 | Component  | Purpose                   |
 | ---------- | ------------------------- |
@@ -76,3 +62,5 @@ SNGL provides a standard set of primitive components:
 | `spacer`   | Flexible space            |
 
 These are the essentials. The standard library ships many more (accordion, avatar, badge, card, drawer, menu, modal, popover, progress, radio, select, spinner, tabs, textarea, toggle, toolbar, tooltip, tree, and others) — see `internal/checker/stdlib/components.sngl` for the full list.
+
+Additionally users may implement their own components, often with a few lines of code, to use platform components not available through the standard library.

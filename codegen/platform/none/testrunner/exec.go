@@ -25,6 +25,17 @@ func (env *Env) Exec(s ast.Stmt) error {
 		return env.execAssign(n)
 	case *ast.ToggleStmt:
 		return env.execToggle(n)
+	case *ast.IncDecStmt:
+		op := ast.AssignAdd
+		if n.IsDec {
+			op = ast.AssignSub
+		}
+		return env.execAssign(&ast.AssignStmt{
+			Pos:    n.Pos,
+			Target: n.Target,
+			Op:     op,
+			Value:  &ast.LiteralExpr{Pos: n.Pos, Kind: ast.LiteralInt, Raw: "1"},
+		})
 	case *ast.EmitStmt:
 		// In headless mode, emissions are no-ops
 		return nil

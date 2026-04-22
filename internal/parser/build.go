@@ -817,6 +817,23 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 				}
 			}
 		}
+		if it.isNonTerminal() && it.symbol() == IncDecOp {
+			inner := it.enter()
+			isDec := false
+			if !inner.done() {
+				tok := inner.shift()
+				if tok.Type == MINUS_MINUS {
+					isDec = true
+				}
+			}
+			if target, ok := base.(ast.TargetExpr); ok {
+				return &ast.IncDecStmt{
+					Pos:    ast.Pos(*base.ExprPos()),
+					Target: target,
+					IsDec:  isDec,
+				}
+			}
+		}
 	}
 
 	// Emit: base is EventRefExpr

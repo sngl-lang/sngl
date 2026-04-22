@@ -221,6 +221,10 @@ func (l *lexer) NextToken() Token {
 				l.advance()
 				return l.tok(PLUS_ASSIGN, "+=", startLine, startCol)
 			}
+			if l.peek() == '+' {
+				l.advance()
+				return l.tok(PLUS_PLUS, "++", startLine, startCol)
+			}
 			return l.tok(PLUS, "+", startLine, startCol)
 		case '-':
 			if l.peek() == '=' {
@@ -230,6 +234,10 @@ func (l *lexer) NextToken() Token {
 			if l.peek() == '>' {
 				l.advance()
 				return l.tok(ARROW, "->", startLine, startCol)
+			}
+			if l.peek() == '-' {
+				l.advance()
+				return l.tok(MINUS_MINUS, "--", startLine, startCol)
 			}
 			return l.tok(MINUS, "-", startLine, startCol)
 		case '*':

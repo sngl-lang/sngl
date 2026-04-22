@@ -334,6 +334,38 @@ func TestParseCompoundAssignment(t *testing.T) {
 	}
 }
 
+func TestParseIncrement(t *testing.T) {
+	doc := mustParse(t, `func f {
+		x++
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	inc, ok := fd.Block.Stmts[0].(*ast.IncDecStmt)
+	if !ok {
+		t.Fatalf("expected IncDecStmt, got %T", fd.Block.Stmts[0])
+	}
+	if inc.IsDec {
+		t.Errorf("expected increment, got decrement")
+	}
+	ident, ok := inc.Target.(*ast.IdentExpr)
+	if !ok || ident.Name != "x" {
+		t.Errorf("expected target x, got %v", inc.Target)
+	}
+}
+
+func TestParseDecrement(t *testing.T) {
+	doc := mustParse(t, `func f {
+		x--
+	}`)
+	fd := doc.Stmts[0].(*ast.FuncDef)
+	inc, ok := fd.Block.Stmts[0].(*ast.IncDecStmt)
+	if !ok {
+		t.Fatalf("expected IncDecStmt, got %T", fd.Block.Stmts[0])
+	}
+	if !inc.IsDec {
+		t.Errorf("expected decrement, got increment")
+	}
+}
+
 func TestParseToggle(t *testing.T) {
 	doc := mustParse(t, `func f {
 		visible!!

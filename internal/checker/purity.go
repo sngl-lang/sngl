@@ -120,6 +120,8 @@ func (w *purityWalker) walkStmt(s ast.Stmt) {
 		w.walkExpr(x.Value)
 	case *ast.ToggleStmt:
 		w.mutates = true
+	case *ast.IncDecStmt:
+		w.mutates = true
 	case *ast.EmitStmt:
 		w.mutates = true
 		w.walkArgList(x.Args)
@@ -238,6 +240,13 @@ func (w *accessWalker) walkStmt(s ast.Stmt) {
 	case *ast.ToggleStmt:
 		if ident, ok := x.Target.(*ast.IdentExpr); ok {
 			if _, ok := w.vars[ident.Name]; ok {
+				w.writes[ident.Name] = true
+			}
+		}
+	case *ast.IncDecStmt:
+		if ident, ok := x.Target.(*ast.IdentExpr); ok {
+			if _, ok := w.vars[ident.Name]; ok {
+				w.reads[ident.Name] = true
 				w.writes[ident.Name] = true
 			}
 		}

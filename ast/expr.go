@@ -277,6 +277,15 @@ type ToggleStmt struct {
 	Target TargetExpr
 }
 
+// IncDecStmt is a postfix increment or decrement: target++ / target--.
+// Statement-only (not an expression). Lowered in the checker to
+// `target = target + 1` or `target = target - 1`.
+type IncDecStmt struct {
+	Pos    Pos
+	Target TargetExpr
+	IsDec  bool // false: ++, true: --
+}
+
 // EmitStmt is an event emission: @name(args...).
 type EmitStmt struct {
 	Pos  Pos
@@ -377,6 +386,7 @@ func (*IndexExpr) targetExpr()  {}
 
 func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
 func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
+func (x *IncDecStmt) StmtPos() *Pos { return &x.Pos }
 func (x *EmitStmt) StmtPos() *Pos   { return &x.Pos }
 func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
 func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
