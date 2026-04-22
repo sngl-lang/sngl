@@ -658,6 +658,49 @@ func irPlatformBody(stmts []ir.Stmt, platform string) []ir.Stmt {
 	return stmts
 }
 
+// preservesWhitespace reports whether a raw HTML tag treats whitespace in
+// its content as significant. For such tags the pretty-printer must not
+// inject indentation/newlines between the open tag and children, because
+// those characters render literally.
+func preservesWhitespace(tag string) bool {
+	switch tag {
+	case "pre", "textarea":
+		return true
+	}
+	return false
+}
+
+// stripInterTagWhitespace collapses whitespace that sits between adjacent
+// HTML tags in s, so children of a <pre> emitted by the pretty-printer do
+// not carry their indentation into the rendered output. Whitespace inside
+// text nodes (i.e. not bounded by `>` and `<`) is preserved.
+func stripInterTagWhitespace(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	n := len(s)
+	i := 0
+	for i < n {
+		c := s[i]
+		if c == '>' {
+			b.WriteByte('>')
+			j := i + 1
+			for j < n && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+				j++
+			}
+			if j < n && s[j] == '<' {
+				i = j
+				continue
+			}
+			i++
+			continue
+		}
+		b.WriteByte(c)
+		i++
+	}
+	out := b.String()
+	return strings.TrimRight(out, " \t\n\r")
+}
+
 // isStdlibComponentName reports whether a name is a built-in stdlib
 // component that the html platform handles via dedicated renderStaticX
 // helpers rather than inlined user-component expansion.
@@ -1719,6 +1762,16 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		} else if staticInnerText != "" {
 			b.WriteString(html.EscapeString(staticInnerText))
+			fmt.Fprintf(b, "</%s>\n", tag)
+		} else if preservesWhitespace(tag) {
+			// For whitespace-sensitive tags (<pre>, <textarea>), render children
+			// inline without inter-tag indentation. Otherwise the pretty-printer
+			// injects visible newlines/spaces between the open tag and children.
+			var sub strings.Builder
+			for _, s := range n.Children {
+				g.renderIRStmt(&sub, s, 0)
+			}
+			b.WriteString(stripInterTagWhitespace(sub.String()))
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
