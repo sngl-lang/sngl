@@ -164,6 +164,8 @@ function loadLesson(slug) {
     document.querySelectorAll('#lesson-nav a[href^="#lesson="]').forEach((a) => {
         a.classList.toggle("active", a.getAttribute("href") === activeHref);
     });
+    errorEl.classList.remove("visible");
+    previewEl.removeAttribute("srcdoc");
     editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: code } });
 }
 
@@ -185,7 +187,8 @@ function doCompile() {
     if (result.error) {
         errorEl.textContent = result.error;
         errorEl.classList.add("visible");
-        previewEl.removeAttribute("srcdoc");
+        // Intentionally keep the previous srcdoc so the preview stays visible
+        // while the user corrects their syntax.
     } else {
         errorEl.classList.remove("visible");
         previewEl.srcdoc = result.html;

@@ -182,9 +182,11 @@ component TutorialContent() {
 				html.div(id="lesson-prose", class="tutorial-prose")
 			}
 			html.div(class="tutorial-playground") {
-				html.div(class="error-banner", id="error")
 				html.div(class="editor-pane", id="editor-pane")
-				html.iframe(id="preview", class="tutorial-preview")
+				html.div(class="tutorial-preview-pane") {
+					html.iframe(id="preview", class="tutorial-preview")
+					html.div(class="error-banner", id="error")
+				}
 				html.span(class="status", id="status", innerText="Loading WASM...")
 			}
 		}
