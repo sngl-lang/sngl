@@ -6,12 +6,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/docs"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
@@ -102,8 +105,8 @@ func buildPlayground(outDir string) error {
 	}
 	os.WriteFile(filepath.Join(playgroundDir, "wasm_exec.js"), wasmExecData, 0o644)
 
-	// Copy playground CSS and JS assets.
-	for _, name := range []string{"playground.css", "playground.js"} {
+	// Copy playground CSS and JS assets (shared by /playground.html and /tutorial.html).
+	for _, name := range []string{"playground.css", "playground.js", "tutorial.js", "tutorial.css"} {
 		src := filepath.Join("internal", "playground", "assets", name)
 		data, err := os.ReadFile(src)
 		if err != nil {
@@ -173,8 +176,57 @@ func buildPlayground(outDir string) error {
 		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">component main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
 	}
 
-	html := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
-	os.WriteFile(pgHTML, []byte(html), 0o644)
+	pgHTMLStr := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
+	os.WriteFile(pgHTML, []byte(pgHTMLStr), 0o644)
 	log.Printf("playground: ready")
+
+	if err := injectTutorialLessons(outDir); err != nil {
+		log.Printf("tutorial: %v", err)
+	}
 	return nil
+}
+
+// injectTutorialLessons rewrites /tutorial.html to embed each lesson's seed
+// source and rendered prose as <script type="text/sngl"> and <template> blocks
+// inside the pre-existing <div id="lesson-sources"> placeholder. tutorial.js
+// reads these by id at runtime.
+func injectTutorialLessons(outDir string) error {
+	tutPath := filepath.Join(outDir, "tutorial.html")
+	data, err := os.ReadFile(tutPath)
+	if err != nil {
+		return fmt.Errorf("reading tutorial.html: %w", err)
+	}
+
+	var b strings.Builder
+	count := 0
+	for _, s := range docs.Tutorial() {
+		for _, l := range s.Lessons {
+			count++
+			fmt.Fprintf(&b,
+				"<script type=\"text/sngl\" id=\"lesson-code-%s\">%s</script>\n",
+				html.EscapeString(l.Slug),
+				escapeScriptContent(l.Code),
+			)
+			fmt.Fprintf(&b,
+				"<template id=\"lesson-prose-%s\">%s</template>\n",
+				html.EscapeString(l.Slug),
+				l.BodyHTML,
+			)
+		}
+	}
+
+	out := strings.Replace(string(data), `<div id="lesson-sources">`, `<div id="lesson-sources">`+b.String(), 1)
+	if err := os.WriteFile(tutPath, []byte(out), 0o644); err != nil {
+		return fmt.Errorf("writing tutorial.html: %w", err)
+	}
+	log.Printf("tutorial: %d lessons injected", count)
+	return nil
+}
+
+// escapeScriptContent keeps SNGL code intact inside a <script> tag. The only
+// sequence the HTML parser treats specially is "</script>", which would end
+// the block early; escape the opening angle bracket so the browser does not
+// terminate the tag.
+func escapeScriptContent(s string) string {
+	return strings.ReplaceAll(s, "</script>", "<\\/script>")
 }

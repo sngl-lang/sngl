@@ -1,10 +1,20 @@
-<!-- This file is intended to become an interactive walkthrough. With top level # sections and secondary level ## sections for the examples. The final sngl code fence should be populated into an interactive playground on one side, with the remainder of the section off to the side, describing what is being learned. The lessons can be walked through with a drop-down to select any particular one. -->
+<!--
+Interactive walkthrough source. Rendered at /tutorial.html.
+
+Structure:
+  #  Heading      → section (groups lessons)
+  ## Heading      → lesson
+  body            → prose shown alongside the playground
+  final ```sngl   → seed loaded into the playground editor
+
+Every lesson must end with one complete, compilable SNGL program.
+-->
 
 # Basics
 
-## Packages: Hello World
+## Hello World
 
-SNGL packages are a directory with one or more sngl files. Each sngl application must have one main package that defines component main. This serves as the entrypoint to the GUI, although you have you may generate the code, so you may call it directly. This is your most basic main component.
+SNGL programs are `.sngl` source files. Every runnable program has one `component main` — the root of the UI tree. A component contains a mix of state declarations and visual nodes. The simplest possible program renders a single piece of text:
 
 ```sngl
 component main {
@@ -12,84 +22,521 @@ component main {
 }
 ```
 
-In this example, you're defining a component named "main" that renders a text node with the value "Hello, world!". The first thing you'll want do to is to run this code. There are a few options for doing that. The easiest is to use thej `sngl run` command to build your app in a temporary directly. 
+Build and run it with the CLI:
 
 ```bash
 sngl run example.sngl --target html
 ```
 
-This will compile your application to HTML, then "launch" it by starting a static web server. You can view the result on http://localhost:8080. SNGL is a multi-platform language. If you'd instead like to launch it as an android app, you just need to change the target.
+That starts a static server on `http://localhost:8080`. Change `--target` to `bubbletea`, `fyne`, or `android` and the same source renders as a terminal UI, a desktop app, or a mobile app. The playground on the right compiles to HTML and shows the live result.
 
-```bash
-sngl run example.sngl --target android
+```sngl
+component main {
+    text(value="Hello, world!")
+}
 ```
 
-This will take much longer and will require dependencies on your machine. See [platforms](TODO) for a list of supported platforms, their featuresets, requirements, and limitations. Since this example doesn't use any platform-specific features, it should deploy to any supported platforms.
+## Reactive State
 
-## Data Tracking: Hello Anyone
+Static text is boring — applications need state that changes. SNGL declares mutable state with `var` inside a component. Every `var` is reactive: when it changes, any UI that reads it updates automatically.
 
-Of course, static data doesn't make much of an interactive application. SNGL supports tracking state for an application as well.
+String interpolation with `{expr}` embeds the current value of `name` into a string. The `:value=name` prefix on `input` is a two-way binding shorthand — the input both reads from and writes to the variable. SNGL synthesises the event wiring for you; no manual handler needed.
 
 ```sngl
 component main {
     var name = "world"
-    vbox {
-        text(value="Hello, {world}!")
-        input(:value=name)
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Hello, {name}!", style={fontSize = 24})
+        input(:value=name, placeholder="Type a name")
     }
 }
 ```
 
-This example is a little more complicated. We have a variable, which defines state that's tracked with the component. Components can each have their own state to help keep data management tidy. The `:value=name` syntax tells SNGL that the value is bidirectional, so input may update the value in addition to reading it. Note that the value of text doesn't need any annotation to tell it to update when name changes. SNGL tracks uses/assignments at compile time, so it can generate the updating logic directly. We also have string interpolation here. Any sngl expression may exist between braces in a string to interpolate the value.
+## Derived State
 
-## Computed Logic
+Often you need to compute something from state — a formatted label, a validation flag, a filtered list. Declare a zero-arg `func` with `=>` for expression-body form. Derived funcs are re-evaluated automatically whenever any state they read changes.
 
-Just replacing strings isn't all that useful. Often you need to do some simple computations for user feedback, validation, and even animations.
+When a zero-arg func is referenced by name (without `()`) in a property expression, SNGL auto-invokes it and wires up the dependency. The `if` below shows a node only when the predicate is true — the block is mounted and unmounted as the condition flips.
 
 ```sngl
 component main {
     var name = "world"
     func isLong() => name.length > 3
-    vbox {
-        text(value="Hello, {world}!")
-        input(:value=name)
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Hello, {name}!")
+        input(:value=name, placeholder="Name")
         if isLong {
-            text(value="Your name is is {name.length - 3} letters longer than Bob.")
+            text(value="That's a long name.", style={color = #667788})
         }
     }
 }
 ```
 
-Here we have a function definition serving the role of a computed value. Like node property expressions, they're updated whenever the values they reference change. We also have a conditional component here. Just wrap your node in an if statement. Also note here, that SNGL is strongly typed. See the [language reference](TODO) for a list of types that you can use, but usually SNGL can infer the type you want from the value, so we don't need to define that isLong is a bool.
+## Constant Expressions
 
-## Compile-time: Constant expressions
+Some values never change. Use `const` instead of `var` and SNGL evaluates the expression at compile time — the result is baked into the generated code. Constant folding also applies to pure functions called with constant arguments, so you can use string helpers, colour constants, and number math in `const` initialisers.
 
-Sometimes things should be evaluted at compile time, especially with limited targets like html. For example, the SNGL documentation site is written in SNGL, but we wanted to write the prose in markdown. We'll look at how to walk the filesystem later at compile time, but for now it's important to know that constant expressions are evaluated at compile time.This is something that happens automatically. SNGL tracks which functions are "pure" in a functional sense and if all arguments are constant, it can run the function at compile time.
+Compile-time evaluation is useful on constrained platforms (HTML doesn't ship the full runtime) and for content pipelines — the docs site itself uses it to run a markdown parser while building.
 
-In this example, name is a constant, so the text value will always be known at compile time. Note that complex types like colors, regex, URL, etc can be parsed and referenced at compile time.
-
-```
-
+```sngl
 component main {
-  const name = "world"
-  vbox {
-    text(value="Hello, {world}! Your name has {name.length} letters.")
-  }
+    const greeting = "Hello, SNGL!"
+    const accent color = #2196f3
+    vbox(style={padding = 16, gap = 8}) {
+        text(value=greeting, style={fontSize = 24, color = accent})
+        text(value="Length: {greeting.length}")
+    }
 }
 ```
 
-## External Imports: Incorporating other langauges
+## Output Targets
 
-External imports allow you to use code in other langauges. Non-constant expressions are compiled/translated/linked to the target language and used. Not all conbinations work, for example you can't import JavaScript code and call it in Rust. SNGL doesn't ship with a JavaScript runtime in Rust. :smile: However, constant expressions are evaluated at compile time, so any language that supports constant evaluation will work for any target. For the SNGL website, we use a Go markdown parser to translate our pages to HTML at compile time. The playground is dynamic and the compiler is written in Go, so SNGL imports the compiler and SNGL compiles it to WASM to generate the playground.
+A real project declares which platforms to generate code for. The `output` block pairs each target language with one or more platform generators. You can declare multiple platforms per language and multiple languages per project — one source, many builds.
+
+This example compiles to HTML via JavaScript, a BubbleTea TUI via Go, and an Android app via Kotlin. The playground always compiles to HTML; the other targets are generated by `sngl compile`.
+
+```sngl
+output {
+    js { html }
+    go { bubbletea(package="main") }
+    kotlin { android }
+}
+
+component main {
+    text(value="One source, many targets.")
+}
+```
 
 # Language Syntax
 
 ## Numeric Operations
 
-- `op1 + op2` - Either adds to numeric (int/float) values or concatenates strings. Strings and numbers cannot be mixed.
-- `op1 - op2` - Subtract numeric values
-- `op1 * op2` - Multiply numeric values
-- `op1 / op2` - Divide numeric values <!-- TODO: What happens on divide by zero? -->
-- `op1 % op2` - Modulo integer values
+SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` requires an explicit conversion.
 
+The `+` operator doubles as string concatenation when both sides are strings. Mixing a number and a string is an error — use interpolation or `string(n)` to make the conversion explicit.
 
+```sngl
+component main {
+    var a = 7
+    var b = 3
+    vbox(style={gap = 4, padding = 16, fontFamily = "monospace"}) {
+        text(value="a + b = {a + b}")
+        text(value="a - b = {a - b}")
+        text(value="a * b = {a * b}")
+        text(value="a / b = {a / b}")
+        text(value="a % b = {a % b}")
+    }
+}
+```
+
+## Comparison and Logical Operators
+
+Comparisons return `bool`: `==`, `!=`, `<`, `<=`, `>`, `>=`. Logical operators are `&&`, `||`, and `!`. They short-circuit the same way they do in Go or JavaScript.
+
+Booleans drive `if` blocks, disabled states, and derived flags. The `!!` postfix is the toggle operator — `done!!` flips a `bool` in place inside event handlers.
+
+```sngl
+component main {
+    var n = 5
+    var enabled = true
+    func positive() => n > 0
+    func inRange() => n >= 0 && n <= 10
+    vbox(style={gap = 4, padding = 16}) {
+        text(value="n = {n}, positive? {positive}, inRange? {inRange}")
+        button(text="Toggle", @click { enabled!! })
+        text(value="enabled: {enabled}")
+    }
+}
+```
+
+## Ternary and Null Coalescing
+
+The ternary `cond ? a : b` picks one of two values. It's the easiest way to choose a colour, label, or class based on state — use it anywhere an expression is allowed.
+
+String interpolation can contain arbitrary expressions, including ternaries. Combine both to produce human-readable status strings from raw values.
+
+```sngl
+component main {
+    var count = 0
+    func label() => count == 0 ? "empty" : (count == 1 ? "one item" : "{count} items")
+    vbox(style={gap = 8, padding = 16}) {
+        text(value=label, style={fontSize = 20})
+        hbox(style={gap = 8}) {
+            button(text="+", @click { count += 1 })
+            button(text="-", @click { count -= 1 }, disabled=count <= 0)
+        }
+    }
+}
+```
+
+## Control Flow: if
+
+Inside a component body, `if` conditionally mounts a subtree. The condition is a plain expression — any `bool`-typed variable or func works. `else` and `else if` chains are supported.
+
+The checker tracks which state each `if` condition reads, so only the flips that actually matter trigger re-evaluation.
+
+```sngl
+component main {
+    var age = 17
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Age: {age}")
+        hbox(style={gap = 8}) {
+            button(text="-", @click { age -= 1 })
+            button(text="+", @click { age += 1 })
+        }
+        if age >= 18 {
+            text(value="Adult", style={color = #228B22})
+        } else {
+            text(value="Minor", style={color = #CC5500})
+        }
+    }
+}
+```
+
+## Control Flow: for
+
+`for item = list { ... }` renders a block for each element of a list. The `else` clause runs when the list is empty — a tidy way to show an empty-state message.
+
+SNGL tracks list mutations (`push`, `remove`, index assignments) and patches the DOM incrementally; you never call a `render()` function yourself.
+
+```sngl
+component main {
+    var items list<string> = ["apples", "bread", "cheese"]
+    var next = ""
+    vbox(style={gap = 8, padding = 16}) {
+        hbox(style={gap = 8}) {
+            input(:value=next, placeholder="Add an item", style={flex = 1})
+            button(text="Add", @click {
+                items.push(next)
+                next = ""
+            })
+        }
+        for item = items {
+            text(value="• {item}")
+        } else {
+            text(value="List is empty", style={color = #888888})
+        }
+    }
+}
+```
+
+## Function Literals
+
+Functions can be stored in variables. Use `func(params) => expr` for expression-body form or `func(params) returnType { ... }` for a block body. These values can be passed around, called later, and composed.
+
+Pair function literals with derived `func()`s to keep transformation logic localised.
+
+```sngl
+component main {
+    var n = 4
+    var doubler = func(x int) => x * 2
+    var clamp = func(x int) int {
+        var lo = x < 0 ? 0 : x
+        return lo > 10 ? 10 : lo
+    }
+    vbox(style={gap = 4, padding = 16, fontFamily = "monospace"}) {
+        text(value="n = {n}")
+        text(value="doubler(n) = {doubler(n)}")
+        text(value="clamp(n * 5) = {clamp(n * 5)}")
+        hbox(style={gap = 8}) {
+            button(text="+", @click { n += 1 })
+            button(text="-", @click { n -= 1 })
+        }
+    }
+}
+```
+
+# Types
+
+## Structs
+
+Structs group related fields into a named value type. Every field has a type and a default — you never have a partially initialised struct. Construct one with `Name{field=value, ...}`; omitted fields fall back to their defaults.
+
+Structs are value types: assigning `null` is a compile error. Mutating a struct field notifies observers the same way assigning a `var` does.
+
+```sngl
+struct User {
+    name string = "anonymous"
+    score int = 0
+}
+
+component main {
+    var u User = User{name = "Ada", score = 42}
+    vbox(style={gap = 4, padding = 16}) {
+        text(value=u.name, style={fontSize = 20})
+        text(value="Score: {u.score}")
+        button(text="+10", @click { u.score += 10 })
+    }
+}
+```
+
+## Enums
+
+Enums declare a fixed set of named string values. Use them as types on `var`, struct fields, and component parameters — the checker rejects any value outside the declared set.
+
+Inline enums (`enum { a, b, c }`) give you the same constrained type without a top-level declaration, which is handy for one-off component props.
+
+```sngl
+enum Status { draft, published, archived }
+
+component main {
+    var status Status = Status.draft
+    func clr() => status == Status.published ? #228B22 : (status == Status.archived ? #888888 : #CC5500)
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="Status: {status}", style={color = clr, fontSize = 20})
+        hbox(style={gap = 8}) {
+            button(text="Draft", @click { status = Status.draft })
+            button(text="Publish", @click { status = Status.published })
+            button(text="Archive", @click { status = Status.archived })
+        }
+    }
+}
+```
+
+## Lists
+
+`list<T>` is an ordered collection. Instances are built with `[...]` literals. Methods — `.length`, `.push`, `.remove`, `.map`, `.filter`, `.contains`, and others — cover the common cases without bolting on external libraries.
+
+Index assignment (`items[i] = value`) and the toggle operator (`items[i].done!!`) work directly on list elements.
+
+```sngl
+struct Task {
+    label string = ""
+    done bool = false
+}
+
+component main {
+    var tasks list<Task> = [Task{label = "Write tests"}, Task{label = "Ship it", done = true}, Task{label = "Celebrate"}]
+    var next = ""
+    vbox(style={gap = 6, padding = 16}) {
+        text(value="{tasks.length} tasks", style={fontWeight = "bold"})
+        for t = tasks {
+            checkbox(label=t.label)
+        }
+        hbox(style={gap = 6}) {
+            input(:value=next, placeholder="New task", style={flex = 1})
+            button(text="Add", @click {
+                tasks.push(Task{label = next})
+                next = ""
+            })
+        }
+    }
+}
+```
+
+## Special Types
+
+SNGL recognises a handful of literal types beyond numbers and strings. Colors (`#rgb`, `#rrggbb`, `#rrggbbaa`), durations (`5s`, `250ms`), and measurements (`16px`, `1.25em`) have dedicated literal syntax and type-aware arithmetic.
+
+The `color`, `duration`, and `measurement` types let you share palette and spacing constants without falling back to untyped strings.
+
+```sngl
+component main {
+    const accent color = #2196f3
+    const padding measurement = 16px
+    vbox(style={gap = 8, padding = padding, background = #f5f5f5}) {
+        text(value="Accent colour", style={color = accent, fontSize = 20, fontWeight = "bold"})
+        text(value="Padded at 16px", style={color = #333333})
+    }
+}
+```
+
+# Components
+
+## Defining Components
+
+Any `component` declaration becomes a reusable visual node. Parameters with defaults become props; callers pass them by name. Reuse keeps markup tidy and localises state — each instance of a component gets its own `var`s.
+
+Naming is Pascal-case for user components, lower-case for stdlib primitives.
+
+```sngl
+component Card(title = "", body = "") {
+    vbox(style={gap = 4, padding = 12, background = #ffffff, borderRadius = 6}) {
+        text(value=title, style={fontWeight = "bold", fontSize = 18})
+        text(value=body, style={color = #555555})
+    }
+}
+
+component main {
+    vbox(style={gap = 8, padding = 16, background = #eeeeee}) {
+        Card(title="One", body="First card")
+        Card(title="Two", body="Second card")
+        Card(title="Three", body="Third card")
+    }
+}
+```
+
+## Component State
+
+Each component instance has independent state. A counter component with its own `var count` can be dropped in multiple times — each copy counts independently. This is how SNGL avoids the global-state problem without extra machinery.
+
+```sngl
+component Counter(label = "") {
+    var count = 0
+    hbox(style={gap = 8, alignItems = "center"}) {
+        text(value="{label}: {count}", style={flex = 1})
+        button(text="+", @click { count += 1 })
+        button(text="-", @click { count -= 1 })
+    }
+}
+
+component main {
+    vbox(style={gap = 6, padding = 16}) {
+        Counter(label="Apples")
+        Counter(label="Oranges")
+        Counter(label="Pears")
+    }
+}
+```
+
+## Slots and Children
+
+Components can accept children with a `list<component>` return annotation (or `component` for exactly one). Inside, `slot` marks where the caller's children are projected. This is how layout primitives like `vbox` and `hbox` work.
+
+Slots let you build reusable shells — dialogs, cards, panels — without coupling the shell to any particular content.
+
+```sngl
+component Panel(title = "") list<component> {
+    vbox(style={gap = 8, padding = 12, background = #ffffff, borderRadius = 8}) {
+        text(value=title, style={fontWeight = "bold", fontSize = 18, color = #333333})
+        slot
+    }
+}
+
+component main {
+    vbox(style={gap = 10, padding = 16, background = #f0f2f5}) {
+        Panel(title="Profile") {
+            text(value="Name: Ada")
+            text(value="Role: Engineer")
+        }
+        Panel(title="Stats") {
+            text(value="Commits: 1024")
+            text(value="PRs open: 3")
+        }
+    }
+}
+```
+
+## Events
+
+Events use the `@name` prefix. On stdlib components, `@click`, `@input`, `@change`, and friends are pre-declared; the callback body is a statement block that can mutate `var`s, call methods, or emit events upward. An event handler that reads `event` picks up the incoming payload (e.g. `event.value` for inputs).
+
+For custom components, declare parameters like `@submit` to emit events that parent components can listen for.
+
+```sngl
+component main {
+    var query = ""
+    var results list<string>
+    vbox(style={gap = 8, padding = 16}) {
+        input(@input(e) { query = e.value }, placeholder="Type to search")
+        button(text="Add match", @click {
+            if query.length > 0 {
+                results.push(query)
+                query = ""
+            }
+        })
+        for r = results {
+            text(value="• {r}")
+        } else {
+            text(value="No results yet", style={color = #888888})
+        }
+    }
+}
+```
+
+# Going Deeper
+
+## Timers
+
+The `timer` component fires an `@tick` event at a fixed interval while `enabled` is true. Use it for clocks, autoplay, polling, or simple animations. Nothing runs while `enabled` is false — flip the flag to pause.
+
+Timers compose with `var`s and `if` blocks cleanly: pause/resume UI falls out of standard state management, not a special timer API.
+
+```sngl
+component main {
+    var seconds = 0
+    var running = false
+    timer(interval=1000ms, enabled=running, @tick {
+        seconds += 1
+    })
+    vbox(style={gap = 8, padding = 16, alignItems = "center"}) {
+        text(value="{seconds} s", style={fontSize = 36, fontFamily = "monospace"})
+        hbox(style={gap = 8}) {
+            button(text=running ? "Pause" : "Start", @click { running!! })
+            button(text="Reset", @click { seconds = 0 })
+        }
+    }
+}
+```
+
+## Composing Components
+
+Custom components compose like any other visual node. You can pass props, nest them inside layout primitives, and mix them with stdlib components freely. Since each instance has isolated state, building up a tree stays predictable no matter how many copies you drop in.
+
+The example below builds a small stats dashboard from a `Stat` component. Adjust the numbers with the plus/minus buttons — each card is independent.
+
+```sngl
+component Stat(label = "", value = 0, accent color = #2196f3) {
+    vbox(style={gap = 4, padding = 12, background = #ffffff, borderRadius = 8}) {
+        text(value=label, style={color = #888888})
+        text(value=string(value), style={fontSize = 28, fontWeight = "bold", color = accent})
+    }
+}
+
+component main {
+    var posts = 12
+    var followers = 348
+    var likes = 1024
+    vbox(style={gap = 8, padding = 16, background = #f0f2f5}) {
+        hbox(style={gap = 8}) {
+            Stat(label="Posts", value=posts, accent=#2196f3)
+            Stat(label="Followers", value=followers, accent=#228B22)
+            Stat(label="Likes", value=likes, accent=#CC5500)
+        }
+        hbox(style={gap = 8}) {
+            button(text="Post", @click { posts += 1 })
+            button(text="Follow", @click { followers += 1 })
+            button(text="Like", @click { likes += 1 })
+        }
+    }
+}
+```
+
+## Two-Way Binding Recap
+
+The `:prop=stateVar` shorthand does two things at once: it reads `stateVar` into the prop, and it writes back to `stateVar` whenever the child component fires its change event. It's the same as writing the read + the `@change` handler by hand, just shorter.
+
+Inputs, selects, textareas, checkboxes, toggles — any stdlib component whose props are declared with a leading `:` supports it.
+
+```sngl
+component main {
+    var first = ""
+    var last = ""
+    var subscribed = false
+    func fullName() => string.trim(first + " " + last)
+    vbox(style={gap = 8, padding = 16}) {
+        input(:value=first, placeholder="First name")
+        input(:value=last, placeholder="Last name")
+        checkbox(:checked=subscribed, label="Subscribe to the newsletter")
+        text(value="Hi, {fullName}!", style={fontSize = 20})
+        text(value=subscribed ? "You're on the list." : "You'll stay off the list.")
+    }
+}
+```
+
+## Where To Next
+
+You've seen the core of SNGL: components, reactive state, derived funcs, lists, events, styles, and multi-target output. From here, the next steps depend on what you're building.
+
+- Read the **Language Reference** for the complete grammar, every built-in, and the full stdlib.
+- Browse the **Component Gallery** for every stdlib component with live previews.
+- Open the free-form **Playground** to paste your own code and inspect the generated output, AST, and per-target code side by side.
+
+```sngl
+component main {
+    vbox(style={gap = 8, padding = 24, alignItems = "center"}) {
+        text(value="Happy building!", style={fontSize = 28, fontWeight = "bold"})
+        text(value="Open the Playground, Component Gallery, or Reference docs.", style={color = #555555})
+    }
+}
+```

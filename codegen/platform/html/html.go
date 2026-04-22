@@ -828,7 +828,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		g.writeUserAttrs(b, id, n)
 		b.WriteString(g.previewAttrs(n))
 		fmt.Fprintf(b, ">%s</a>\n", html.EscapeString(text))
-		if h := codegen.NodeHandler(n, "click"); h != nil && h.AST != nil && len(h.AST.Body.Stmts) > 0 {
+		if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil && len(h.Func.Block) > 0 {
 			if id == "" {
 				id = g.allocID()
 			}
@@ -1131,10 +1131,8 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	// Event handlers
-	if clickEvt := codegen.NodeHandler(n, "click"); clickEvt != nil && clickEvt.AST != nil {
-		if len(clickEvt.AST.Body.Stmts) > 0 {
-			g.addClickHandler(id, clickEvt.Func.Block)
-		}
+	if clickEvt := codegen.NodeHandler(n, "click"); clickEvt != nil && clickEvt.Func != nil && len(clickEvt.Func.Block) > 0 {
+		g.addClickHandler(id, clickEvt.Func.Block)
 	}
 }
 
@@ -1191,10 +1189,8 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 
 	// Input event handler
-	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.AST != nil {
-		if len(inputEvt.AST.Body.Stmts) > 0 {
-			g.addInputHandler(id, inputEvt.Func)
-		}
+	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.Func != nil && len(inputEvt.Func.Block) > 0 {
+		g.addInputHandler(id, inputEvt.Func)
 	}
 }
 
@@ -1228,10 +1224,8 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 	}
 	fmt.Fprintf(b, " %s</label>\n", html.EscapeString(label))
 
-	if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.AST != nil {
-		if len(changeEvt.AST.Body.Stmts) > 0 {
-			g.addChangeHandler(id, changeEvt.Func.Block)
-		}
+	if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
+		g.addChangeHandler(id, changeEvt.Func.Block)
 	}
 }
 
@@ -1303,7 +1297,7 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, n *ir.NodeInst, depth in
 		}
 	}
 	fmt.Fprintf(b, "%s</fieldset>\n", indent)
-	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
+	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
@@ -1332,7 +1326,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
-	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
+	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
@@ -1366,7 +1360,7 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 	}
 	fmt.Fprintf(b, "%s</select>\n", indent)
-	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
+	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
 	}
 }
@@ -1394,7 +1388,7 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, ">%s</textarea>\n", html.EscapeString(value))
-	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
+	if evt := codegen.NodeHandler(n, "input"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
 		g.addInputHandler(id, evt.Func)
 	}
 }
@@ -1615,7 +1609,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
 	b.WriteString(" />\n")
-	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.AST != nil && len(evt.AST.Body.Stmts) > 0 {
+	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
 		g.addChangeHandler(id, evt.Func.Block)
 	}
 }

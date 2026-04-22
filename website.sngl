@@ -11,6 +11,7 @@ import "internal/docui"
 const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
+const lessonSections = docs.Tutorial()
 const logo = public.path("sngl.svg")
 const screenshotWeb = public.path("snapshots/todo/todo_html.png")
 const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
@@ -32,6 +33,7 @@ component NavSidebar(currentHref = "") {
 			docui.NavItem(text="Language Specification", href="/language/specification.html", active=currentHref == "/language/specification.html")
 		}
 		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
+		docui.NavItem(text="Tutorial", href="/tutorial.html", active=currentHref == "/tutorial.html")
 		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
 	}
 }
@@ -154,6 +156,44 @@ component PlaygroundContent() {
 	}
 }
 
+component TutorialContent() {
+	text(value="Interactive tutorial — available in browser only.")
+
+	platform html {
+		html.link(rel="stylesheet", href="/assets/playground/playground.css")
+		html.link(rel="stylesheet", href="/assets/playground/tutorial.css")
+		html.div(class="tutorial-layout") {
+			html.aside(id="lesson-nav", class="tutorial-nav") {
+				for section = lessonSections {
+					html.div(class="tutorial-section") {
+						html.h3(innerText=section.title)
+						html.ul {
+							for lesson = section.lessons {
+								html.li {
+									html.a(innerText=lesson.title, href="#lesson=" + lesson.slug)
+								}
+							}
+						}
+					}
+				}
+			}
+			html.div(class="tutorial-prose-pane") {
+				html.h2(id="lesson-title")
+				html.div(id="lesson-prose", class="tutorial-prose")
+			}
+			html.div(class="tutorial-playground") {
+				html.div(class="error-banner", id="error")
+				html.div(class="editor-pane", id="editor-pane")
+				html.iframe(id="preview", class="tutorial-preview")
+				html.span(class="status", id="status", innerText="Loading WASM...")
+			}
+		}
+		html.div(id="lesson-sources")
+		html.script(src="/assets/playground/wasm_exec.js")
+		html.script(type="module", src="/assets/playground/tutorial.js")
+	}
+}
+
 component main {
 	// Components gallery — grouped by tier
 	window(title="Components", href="/components/index.html", favicon=logo) {
@@ -233,6 +273,13 @@ component main {
 	window(title="Playground", href="/playground.html", favicon=logo) {
 		PageLayout(title="Playground", currentHref="/playground.html") {
 			PlaygroundContent
+		}
+	}
+
+	// Tutorial (Go-tour-style interactive walkthrough)
+	window(title="Tutorial", href="/tutorial.html", favicon=logo) {
+		PageLayout(title="Tutorial", currentHref="/tutorial.html") {
+			TutorialContent
 		}
 	}
 }

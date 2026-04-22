@@ -1498,7 +1498,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			})
 		}
 	}
-	return props, handlers
+	return c.desugarBindings(comp, props, handlers)
 }
 
 // checkComponentCallArgs validates and type-checks a component call (text(value="hi"))
