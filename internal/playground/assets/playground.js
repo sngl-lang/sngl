@@ -279,7 +279,7 @@ function doCompile() {
 
 // --- Code tab ---
 
-const langToprism = { "js": "javascript", "go": "go" };
+const langToprism = { "js": "javascript", "go": "go", "kotlin": "kotlin" };
 
 function renderCode() {
     if (!wasmReady) return;

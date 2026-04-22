@@ -152,6 +152,8 @@ component PlaygroundContent() {
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js")
+		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-kotlin.min.js")
 		html.script(type="module", src="/assets/playground/playground.js")
 	}
 }
