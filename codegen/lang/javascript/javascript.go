@@ -54,9 +54,28 @@ func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []
 }
 
 // TranslateIRLiteral translates an IR literal expression to its JS literal.
+// Handles scalar literals, list literals, and struct literals — anything
+// `codegen.IRIsLiteral` reports true for.
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
-	if lit, ok := e.(*ir.Literal); ok {
-		return translateIRLiteral(lit)
+	switch n := e.(type) {
+	case *ir.Literal:
+		return translateIRLiteral(n)
+	case *ir.ListLit:
+		parts := make([]string, len(n.Elems))
+		for i, el := range n.Elems {
+			parts[i] = t.TranslateIRLiteral(el)
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	case *ir.StructLit:
+		parts := make([]string, 0, len(n.Fields))
+		for _, f := range n.Fields {
+			if f.Spread {
+				parts = append(parts, "..."+t.TranslateIRLiteral(f.Value))
+			} else {
+				parts = append(parts, f.Name+": "+t.TranslateIRLiteral(f.Value))
+			}
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
 	}
 	return `""`
 }

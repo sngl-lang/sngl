@@ -2191,27 +2191,67 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 func (g *htmlGen) collectReferencedIDs() []string {
 	seen := make(map[string]bool)
 	var ids []string
+	addID := func(id string) {
+		if id == "" || seen[id] {
+			return
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
 
 	for _, u := range g.updates {
-		// Extract the element ID from the func name: $u_N_xxx → $N
+		// Extract the owning element ID from the func name: $u_N_xxx → $N.
 		parts := strings.SplitN(u.funcName, "_", 3)
 		if len(parts) >= 2 {
-			elemID := "$" + parts[1]
-			if !seen[elemID] {
-				seen[elemID] = true
-				ids = append(ids, elemID)
-			}
+			addID("$" + parts[1])
+		}
+		// Also scan the body — some updaters (for-else, if-else) manipulate
+		// a *different* element than the one encoded in their name.
+		for _, id := range extractElemIDs(u.body) {
+			addID(id)
 		}
 	}
 	for _, h := range g.handlers {
-		if !seen[h.elemID] {
-			seen[h.elemID] = true
-			ids = append(ids, h.elemID)
-		}
+		addID(h.elemID)
 	}
 
 	sort.Strings(ids)
 	return ids
+}
+
+// extractElemIDs scans a JS snippet for `$N` identifiers (the generated IDs
+// used for DOM element handles) and returns each unique match.
+func extractElemIDs(js string) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for i := 0; i < len(js); i++ {
+		if js[i] != '$' {
+			continue
+		}
+		// Only match $ followed by a digit (our allocID format is $<int>).
+		j := i + 1
+		if j >= len(js) || js[j] < '0' || js[j] > '9' {
+			continue
+		}
+		// $ must not be preceded by an identifier character (avoid matching
+		// inside longer names like $u_0_list).
+		if i > 0 {
+			p := js[i-1]
+			if (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || (p >= '0' && p <= '9') || p == '_' || p == '$' {
+				continue
+			}
+		}
+		for j < len(js) && js[j] >= '0' && js[j] <= '9' {
+			j++
+		}
+		id := js[i:j]
+		if !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+		i = j - 1
+	}
+	return out
 }
 
 // optimizeIR builds a MutationModel from the collected updaters, handlers,
