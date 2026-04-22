@@ -19,6 +19,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
@@ -396,12 +397,12 @@ func compilePreview(source string) string {
 	if len(diags) > 0 {
 		return ""
 	}
-	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "js"}); err != nil {
+	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "none"}); err != nil {
 		return ""
 	}
 
 	gen := codegen.LookupPlatform("html")
-	lang := codegen.LookupLang("js")
+	lang := codegen.LookupLang("none")
 	if gen == nil || lang == nil {
 		return ""
 	}

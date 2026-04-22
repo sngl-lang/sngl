@@ -40,7 +40,7 @@ Stmt =
     | PlatformNode
     | VisualOrStmt
 
-VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" ]
+VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
 
 IfNode = "if" CondExpr StmtBlock [ "else" StmtBlock ]
 

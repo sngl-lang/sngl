@@ -43,11 +43,11 @@ func compileLesson(source string) (string, error) {
 			return "", lessonErr(d.Msg)
 		}
 	}
-	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "js"}); err != nil {
+	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "none"}); err != nil {
 		return "", err
 	}
 	gen := codegen.LookupPlatform("html")
-	lang := codegen.LookupLang("js")
+	lang := codegen.LookupLang("none")
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: map[string]string{"preview": "true"},

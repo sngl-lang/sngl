@@ -11,6 +11,9 @@ struct Options {
     testing bool
     stylesheet string
     projectDir string
+    package string    // route mode: target Go package name (default "ui" / "main" if main=true)
+    main bool         // route mode: emit a main() that calls ListenAndServe
+    framework string  // route mode: HTTP framework (default "net/http")
 }
 
 // --- Core Layout ---

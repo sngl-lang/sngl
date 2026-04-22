@@ -37,7 +37,7 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
 - **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
 - **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, html, http, none), each registers in `init()`
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, html, none), each registers in `init()`
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -53,11 +53,13 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Platform Details
 
-- **html** — generates single `index.html` with inline JS; supports `javascript` lang only. Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
+- **html** — two modes selected by `--lang`:
+  - `--lang none` (default): static site — one `index.html` per window with inline JS.
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go://` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
+  Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
-- **http** — serves a compiled app over HTTP; delegates rendering to the chosen language backend.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages

@@ -129,15 +129,20 @@ type Builder interface {
 }
 
 // HTTPCompiler is optionally implemented by LangTranslators that can generate
-// HTTP server code. The http platform delegates language-specific code generation
-// (handler scaffolding, server main, framework-specific routing) to this interface.
+// HTTP server code. The html platform's route mode delegates all
+// language-specific code generation to this interface: handler scaffolding,
+// framework-specific mux syntax for dynamic route paths, server start
+// (main/ListenAndServe equivalents), and the chosen filenames for the emitted
+// output package. The platform itself stays language- and framework-agnostic.
 type HTTPCompiler interface {
-	CompileHTTP(req *HTTPRequest) ([]byte, error)
+	CompileHTTP(req *HTTPRequest) ([]*OutputFile, error)
 }
 
-// HTTPRequest describes what the http platform needs the language to generate.
+// HTTPRequest describes what the platform needs the language to generate.
+// Route paths are abstract templates (e.g. "/users/{name}"); the language
+// translates {param} placeholders into its framework's routing syntax.
 type HTTPRequest struct {
-	Doc        *ast.Document
+	Pkg        *ir.Package               // v2 checked IR
 	Package    string                    // target package name (e.g., "main", "ui")
 	Main       bool                      // generate standalone server with main()
 	Framework  string                    // HTTP framework: "net/http", "gin", "echo"
@@ -148,17 +153,19 @@ type HTTPRequest struct {
 // HTTPRoute maps a window to an HTTP route.
 type HTTPRoute struct {
 	Name      string       // handler function name (e.g., "handleHome")
-	Path      string       // URL path: "/", "/about", "/{name}"
-	Title     string       // page title (may contain {param} placeholders)
+	Path      string       // URL path template: "/", "/about", "/users/{name}"
+	Title     string       // page title
 	Params    []string     // route parameter names extracted from Path (e.g., ["name"])
-	WindowIdx int          // index into doc.App.EffectiveWindows()
+	WindowIdx int          // index into CodegenCtx.Windows()
 	Actions   []HTTPAction // server-state form actions (POST handlers)
 }
 
-// HTTPAction describes a form-based server action triggered by a button click.
+// HTTPAction describes a form-based server action triggered by an event handler
+// whose mutation crosses the target-language boundary (e.g. invokes a go://
+// function when compiling with --lang go).
 type HTTPAction struct {
-	Name string   // action identifier (e.g., "action0")
-	Expr ast.Expr // the mutation expression to execute
+	Name      string    // action identifier (e.g., "action0")
+	Mutations []ir.Stmt // type-checked handler body to execute server-side
 }
 
 // WASMCompiler is optionally implemented by LangTranslators that can compile
@@ -326,6 +333,15 @@ type Request struct {
 	Options    map[string]string // key=value from --opt flags
 	Source     string            // source .sngl filename (base name only)
 	FileAssets []FileAsset       // file:// assets to copy to output
+}
+
+// SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import
+// path. Returns ("", path) when no scheme is present.
+func SplitScheme(path string) (scheme, uri string) {
+	if before, after, ok := strings.Cut(path, "://"); ok {
+		return before, after
+	}
+	return "", path
 }
 
 // Header returns a generated-file comment for the given platform and comment

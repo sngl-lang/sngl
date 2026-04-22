@@ -12,6 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
@@ -25,9 +26,9 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 		t.Fatalf("check: %v", diags[0])
 	}
 
-	lang := codegen.LookupLang("js")
+	lang := codegen.LookupLang("none")
 	if lang == nil {
-		t.Fatal("js language translator not registered")
+		t.Fatal("none language translator not registered")
 	}
 
 	gen := &Generator{}
@@ -62,9 +63,9 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("check: %v", diags[0])
 	}
 
-	lang := codegen.LookupLang("js")
+	lang := codegen.LookupLang("none")
 	if lang == nil {
-		t.Fatal("js language translator not registered")
+		t.Fatal("none language translator not registered")
 	}
 
 	gen := &Generator{}

@@ -37,16 +37,16 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 	previewDoc := ir.Convert(pkg)
 
-	jsLang := codegen.LookupLang("js")
+	noneLang := codegen.LookupLang("none")
 	htmlPlat := codegen.LookupPlatform("html")
-	if jsLang == nil || htmlPlat == nil {
-		return nil, fmt.Errorf("html/js codegen not registered")
+	if noneLang == nil || htmlPlat == nil {
+		return nil, fmt.Errorf("html/none codegen not registered")
 	}
 
 	resp, err := htmlPlat.Generate(&codegen.Request{
 		Doc:     previewDoc,
 		Pkg:     pkg,
-		Lang:    jsLang,
+		Lang:    noneLang,
 		Options: map[string]string{"preview": "true"},
 	})
 	if err != nil {

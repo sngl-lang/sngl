@@ -6,6 +6,5 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/fyne"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/http"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
 )

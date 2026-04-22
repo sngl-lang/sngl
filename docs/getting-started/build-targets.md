@@ -48,7 +48,8 @@ output {
 
 | Language | Platform | Description |
 | --- | --- | --- |
-| `js` | `html` | Web app with inline JS and DOM rendering |
+| `none` | `html` | Static web app (one HTML file per window with inline JS) |
+| `go` | `html` | Server-rendered web app via `net/http` routes |
 | `go` | `bubbletea` | Terminal UI via Charm's BubbleTea |
 | `go` | `fyne` | Desktop GUI via the Fyne toolkit |
 | `kotlin` | `android` | Android app via Jetpack Compose |
@@ -59,7 +60,8 @@ You can specify the target from the command line instead of using an `output` bl
 
 ```bash
 sngl compile --lang go --platform fyne todo.sngl
-sngl compile --lang js --platform html todo.sngl
+sngl compile --lang none --platform html todo.sngl
+sngl compile --lang go --platform html todo.sngl
 sngl compile --lang kotlin --platform android todo.sngl
 ```
 
@@ -73,7 +75,7 @@ Run an app directly (implies `main=true`):
 
 ```bash
 sngl run --lang go --platform fyne todo.sngl
-sngl run --lang js --platform html todo.sngl
+sngl run --lang none --platform html todo.sngl
 ```
 
 ### Output Directory

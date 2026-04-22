@@ -1,5 +1,5 @@
 output {
-    js { html }
+    none { html }
 }
 
 func testTickIncrementsProgress(t Test, c main) {

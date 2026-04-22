@@ -22,6 +22,7 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
@@ -91,7 +92,7 @@ func compile(this js.Value, args []js.Value) any {
 
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: "html",
-		Language: "js",
+		Language: "none",
 	}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
@@ -103,9 +104,9 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	lang := codegen.LookupLang("js")
+	lang := codegen.LookupLang("none")
 	if lang == nil {
-		result["error"] = "js language not registered"
+		result["error"] = "none language not registered"
 		return toJSObject(result)
 	}
 

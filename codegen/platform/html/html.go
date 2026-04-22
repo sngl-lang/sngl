@@ -36,21 +36,67 @@ func init() {
 type Generator struct{}
 
 func (g *Generator) PlatformIdentifier() string { return "html" }
-func (g *Generator) SupportedLangs() []string   { return []string{"js"} }
 func (g *Generator) Package() []*ast.Document   { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "js" }
+
+// SupportedLangs returns "none" (static-site default) plus any registered
+// language whose translator implements codegen.HTTPCompiler. The first entry
+// is the default when --lang is omitted.
+func (g *Generator) SupportedLangs() []string {
+	out := []string{"none"}
+	var httpLangs []string
+	for _, name := range codegen.Langs() {
+		if _, ok := codegen.LookupLang(name).(codegen.HTTPCompiler); ok {
+			httpLangs = append(httpLangs, name)
+		}
+	}
+	sort.Strings(httpLangs)
+	return append(out, httpLangs...)
+}
+
+func (g *Generator) IsLanguageSupported(l ir.Language) bool {
+	if l.LanguageIdentifier() == "none" {
+		return true
+	}
+	_, ok := l.(codegen.HTTPCompiler)
+	return ok
+}
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	c := &compilation{}
-	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
-	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+	if req.Lang.LanguageIdentifier() == "none" {
+		if err := rejectDynamicHrefs(req); err != nil {
+			return nil, err
+		}
+		c := &compilation{}
+		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
+		if err != nil {
+			return &codegen.Response{Error: err.Error()}, nil
+		}
+		return c.EmitFromMutation(m, req)
 	}
-	return c.EmitFromMutation(m, req)
+	if _, ok := req.Lang.(codegen.HTTPCompiler); ok {
+		return g.generateRoutes(req)
+	}
+	return nil, fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+}
+
+// rejectDynamicHrefs errors when static mode (lang=none) encounters a window
+// whose href isn't a literal string — the build can't resolve {param} routes
+// without a server.
+func rejectDynamicHrefs(req *codegen.Request) error {
+	ctx := codegen.NewCodegenCtx(req, "html")
+	for _, win := range ctx.Windows() {
+		if win.Window == nil || win.Window.Href == nil {
+			continue
+		}
+		if _, ok := codegen.IRLiteralString(win.Window.Href); !ok {
+			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
+		}
+	}
+	return nil
 }
 
 // NewMutationCompiler returns a fresh per-request MutationModelEmitter.
@@ -76,8 +122,9 @@ var (
 )
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
-	if req.Lang.LanguageIdentifier() != "js" {
-		return nil, fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+	jsLang := codegen.LookupLang("js")
+	if jsLang == nil {
+		return nil, fmt.Errorf("html: js translator not registered")
 	}
 
 	// Copy file:// assets resolved during optimization.
@@ -160,7 +207,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// callers can verify codegen at least succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
-		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
+		gen := newHTMLGenFromCtx(ctx, jsLang, req.Options)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
@@ -177,7 +224,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		} else if !strings.HasSuffix(name, ".html") {
 			name = name + ".html"
 		}
-		gen := newHTMLGenFromCtx(ctx, req.Lang, req.Options)
+		gen := newHTMLGenFromCtx(ctx, jsLang, req.Options)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL

@@ -1,8 +1,6 @@
 package html
 
 import (
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -27,7 +25,7 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		if imp == nil || imp.Native == nil || imp.AST == nil {
 			continue
 		}
-		scheme, uri := splitScheme(imp.AST.Path)
+		scheme, uri := codegen.SplitScheme(imp.AST.Path)
 		if scheme == "" {
 			continue
 		}
@@ -66,11 +64,4 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		})
 	}
 	return out
-}
-
-func splitScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
-	}
-	return "", path
 }

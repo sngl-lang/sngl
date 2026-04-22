@@ -1,7 +1,7 @@
 output {
     go {
         bubbletea(package="docbrowser")
-        http(package="docbrowser")
+        html(package="docbrowser")
     }
 }
 

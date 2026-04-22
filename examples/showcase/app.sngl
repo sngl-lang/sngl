@@ -1,5 +1,5 @@
 output {
-    js { html }
+    none { html }
     go {
         bubbletea
         fyne
