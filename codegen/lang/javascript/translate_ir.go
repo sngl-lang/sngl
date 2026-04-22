@@ -196,8 +196,17 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		}
 	}
 
-	// Stdlib method overrides.
-	argsForBuiltin := []string{receiverJS}
+	// Stdlib method overrides. For static type receivers (`string.trim(x)`)
+	// the type ident is a namespace marker, not a value — drop it so the
+	// builtin handlers see a(0) as the first real argument.
+	staticReceiver := false
+	if id, ok := n.Receiver.(*ir.Ident); ok && isStaticTypeReceiver(id) {
+		staticReceiver = true
+	}
+	var argsForBuiltin []string
+	if !staticReceiver {
+		argsForBuiltin = append(argsForBuiltin, receiverJS)
+	}
 	for _, a := range n.Args {
 		argsForBuiltin = append(argsForBuiltin, translateIRExpr(a.Value, scope))
 	}
