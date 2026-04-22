@@ -2861,6 +2861,13 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 				return lit.Raw
 			case ir.TypeNull:
 				return "null"
+			case ir.TypeUnit:
+				return fmt.Sprintf("%q", lit.Raw)
+			case ir.TypeColor,
+				ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+				ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
+				ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+				return fmt.Sprintf("%q", lit.Raw)
 			}
 		}
 		return lit.Raw
