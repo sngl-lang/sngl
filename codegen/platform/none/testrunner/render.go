@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// resolveElementRef finds visual nodes with the given #id, rendering the current
-// component state. Returns a single element map, a list of maps (for-loop),
-// or nil (not visible / if=false).
+// resolveElementRef finds visual nodes with the given #id in the current body.
+// Returns a single element map, a list of maps (for-loops), or nil.
 func (env *Env) resolveElementRef(id string) (any, error) {
 	if env.bodyStmts == nil {
 		return nil, fmt.Errorf("no visual body for element ref #%s", id)
@@ -17,12 +16,11 @@ func (env *Env) resolveElementRef(id string) (any, error) {
 	var matches []map[string]any
 	env.collectByStmts(env.bodyStmts, id, &matches)
 	if len(matches) == 0 {
-		return nil, nil // element hidden or not found
+		return nil, nil
 	}
 	if len(matches) == 1 {
 		return matches[0], nil
 	}
-	// Multiple matches (for-loop): return as []any
 	out := make([]any, len(matches))
 	for i, m := range matches {
 		out[i] = m
@@ -30,285 +28,218 @@ func (env *Env) resolveElementRef(id string) (any, error) {
 	return out, nil
 }
 
-// collectByID walks the visual tree, collecting rendered nodes with matching _id.
-func (env *Env) collectByID(nodes []*ast.VisualNode, id string, out *[]map[string]any) {
-	for _, n := range nodes {
-		env.collectNodeByID(n, id, out)
-	}
-}
-
-// collectByStmts walks statements (body of a component or visual node) for element refs.
-func (env *Env) collectByStmts(stmts []ast.Stmt, id string, out *[]map[string]any) {
+// collectByStmts walks IR statements collecting rendered nodes with matching id.
+func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any) {
 	for _, s := range stmts {
 		switch n := s.(type) {
-		case *ast.VisualNode:
+		case *ir.NodeInst:
 			env.collectNodeByID(n, id, out)
-		case *ast.IfStmt:
-			env.collectIfByID(n, id, out)
-		case *ast.ForStmt:
-			env.collectForByID(n, id, out)
-		case *ast.PlatformStmt:
-			env.collectByStmts(n.Body.Stmts, id, out)
-		case *ast.CallStmt:
-			// In v2, elements without children blocks are CallStmt.
-			// Check if the Func is a SelectExpr with SelectElemRef kind.
-			env.collectCallStmtByID(n.Call, id, out)
+		case *ir.CallStmt:
+			env.collectCallStmtByID(n, id, out)
+		case *ir.If:
+			cond, err := env.Eval(n.Cond)
+			b, _ := cond.(bool)
+			if err != nil || !b {
+				env.collectByStmts(n.Else, id, out)
+				continue
+			}
+			env.collectByStmts(n.Body, id, out)
+		case *ir.For:
+			iterVal, err := env.Eval(n.Iter)
+			if err != nil {
+				continue
+			}
+			list, ok := iterVal.([]any)
+			if !ok || len(list) == 0 {
+				env.collectByStmts(n.Else, id, out)
+				continue
+			}
+			for i, item := range list {
+				child := env.Snapshot()
+				child.vars[n.Key] = item
+				if n.Value != "" {
+					child.vars[n.Value] = i
+				}
+				child.collectByStmts(n.Body, id, out)
+			}
+		case *ir.PlatformFilter:
+			if n.Platform == "" || n.Platform == "none" {
+				env.collectByStmts(n.Body, id, out)
+			}
+		case *ir.SlotInst:
+			env.collectByStmts(n.Children, id, out)
 		}
 	}
 }
 
-func (env *Env) collectNodeByID(node *ast.VisualNode, id string, out *[]map[string]any) {
-	name := codegen.VisualNodeName(node)
-
-	// Check if this is a user-defined component — expand inline
-	if env.doc != nil {
-		if comp := findComponent(env.doc, name); comp != nil {
-			if env.renderDepth >= maxCallDepth {
-				return // prevent infinite component recursion
-			}
-			childEnv := env.componentEnv(comp, node)
-			childEnv.renderDepth = env.renderDepth + 1
-			childEnv.collectByStmts(childEnv.bodyStmts, id, out)
+func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]any) {
+	// User-defined component — expand inline.
+	if node.Component != nil {
+		if env.renderDepth >= maxCallDepth {
 			return
 		}
+		childEnv := env.componentEnv(node.Component, node)
+		childEnv.renderDepth = env.renderDepth + 1
+		childEnv.collectByStmts(childEnv.bodyStmts, id, out)
+		return
 	}
-
-	// Check this node
 	if node.ID == id {
 		m := env.renderNodeProps(node)
 		*out = append(*out, m)
 	}
-
-	// Recurse into children
-	env.collectByStmts(codegen.VnChildren(node), id, out)
+	env.collectByStmts(node.Children, id, out)
 }
 
-func (env *Env) collectIfByID(ifStmt *ast.IfStmt, id string, out *[]map[string]any) {
-	v, err := env.Eval(ifStmt.Cond)
-	b, _ := v.(bool)
-	if err != nil || !b {
-		// Render else block if present
-		if ifStmt.Else.IsDefined() {
-			env.collectByStmts(ifStmt.Else.Stmts, id, out)
+func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
+	child := NewEnv()
+	child.pkg = env.pkg
+	child.units = env.units
+	child.comp = comp
+
+	for _, p := range comp.Props {
+		child.vars[p.Name] = evalInit(child, p.Default)
+	}
+	// Override with instance prop values.
+	for _, arg := range inst.Props {
+		if arg.Name == "" {
+			continue
 		}
-		return
-	}
-	env.collectByStmts(ifStmt.Body.Stmts, id, out)
-}
-
-func (env *Env) collectForByID(forStmt *ast.ForStmt, id string, out *[]map[string]any) {
-	iterVal, err := env.Eval(forStmt.Iter)
-	if err != nil {
-		return
-	}
-	list, ok := iterVal.([]any)
-	if !ok {
-		list = nil
-	}
-	if len(list) == 0 {
-		// Render else block if present
-		if forStmt.Else.IsDefined() {
-			env.collectByStmts(forStmt.Else.Stmts, id, out)
-		}
-		return
-	}
-	for i, item := range list {
-		child := env.Snapshot()
-		child.vars[forStmt.Key] = item
-		if forStmt.Value != "" {
-			child.vars[forStmt.Value] = i
-		}
-		child.collectByStmts(forStmt.Body.Stmts, id, out)
-	}
-}
-
-// componentEnvFromCall creates a child env for expanding a user-defined component from a CallExpr.
-func (env *Env) componentEnvFromCall(comp *ast.ComponentDecl, call *ast.CallExpr) *Env {
-	childEnv := NewEnv()
-	childEnv.doc = env.doc
-	childEnv.units = env.units
-
-	// Set default param values
-	for _, p := range codegen.CompParams(comp) {
-		childEnv.vars[p.Name] = evalInit(childEnv, p.Default)
-	}
-
-	// Override with actual prop values from the call args
-	args := codegen.CallArgs(call)
-	params := codegen.CompParams(comp)
-	// Match positional args to params, or named args
-	for _, a := range call.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name != "" && arg.Value != nil {
-			if v, err := env.Eval(arg.Value); err == nil {
-				childEnv.vars[arg.Name] = v
-			}
-		}
-	}
-	// Positional args (unnamed)
-	paramIdx := 0
-	for _, a := range call.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name == "" && arg.Value != nil {
-			if paramIdx < len(params) {
-				if v, err := env.Eval(arg.Value); err == nil {
-					childEnv.vars[params[paramIdx].Name] = v
-				}
-			}
-			paramIdx++
-		}
-	}
-	_ = args
-
-	// Load component body declarations
-	varDecls, constDecls, funcs := compDeclsFromBody(comp)
-	for _, vd := range varDecls {
-		for _, spec := range vd.Specs {
-			val := evalInit(childEnv, spec.Default)
-			for _, name := range spec.Names {
-				childEnv.vars[name] = val
-			}
-		}
-	}
-	for _, fn := range funcs {
-		childEnv.funcs[fn.Name] = fn
-	}
-	for _, cd := range constDecls {
-		for _, spec := range cd.Specs {
-			val := evalInit(childEnv, spec.Default)
-			for _, name := range spec.Names {
-				childEnv.consts[name] = val
-			}
-		}
-	}
-
-	childEnv.bodyStmts = comp.Body.Stmts
-	return childEnv
-}
-
-// componentEnv creates a child env for expanding a user-defined component from a VisualNode.
-func (env *Env) componentEnv(comp *ast.ComponentDecl, node *ast.VisualNode) *Env {
-	childEnv := NewEnv()
-	childEnv.doc = env.doc
-	childEnv.units = env.units
-
-	// Set default param values
-	for _, p := range codegen.CompParams(comp) {
-		childEnv.vars[p.Name] = evalInit(childEnv, p.Default)
-	}
-
-	// Override with actual prop values from the visual node
-	props := codegen.VnProps(node)
-	for k, expr := range props {
-		v, err := env.Eval(expr)
+		v, err := env.Eval(arg.Value)
 		if err == nil {
-			childEnv.vars[k] = v
+			child.vars[arg.Name] = v
 		}
 	}
-
-	// Load component body declarations
-	varDecls, constDecls, funcs := compDeclsFromBody(comp)
-	for _, vd := range varDecls {
-		for _, spec := range vd.Specs {
-			val := evalInit(childEnv, spec.Default)
-			for _, name := range spec.Names {
-				childEnv.vars[name] = val
-			}
+	for _, v := range comp.Vars {
+		if v.IsConst {
+			child.consts[v.Name] = evalInit(child, v.Init)
+		} else {
+			child.vars[v.Name] = evalInit(child, v.Init)
 		}
 	}
-	for _, fn := range funcs {
-		childEnv.funcs[fn.Name] = fn
+	for _, fn := range comp.Funcs {
+		child.SetFunc(fn)
 	}
-	for _, cd := range constDecls {
-		for _, spec := range cd.Specs {
-			val := evalInit(childEnv, spec.Default)
-			for _, name := range spec.Names {
-				childEnv.consts[name] = val
-			}
-		}
-	}
-
-	childEnv.bodyStmts = comp.Body.Stmts
-	return childEnv
+	child.bodyStmts = comp.Body
+	return child
 }
 
-// collectCallStmtByID checks a CallStmt (element without children) for matching #id.
-func (env *Env) collectCallStmtByID(call *ast.CallExpr, id string, out *[]map[string]any) {
-	var elemName string
-	var elemID string
-
-	switch f := call.Func.(type) {
-	case *ast.SelectExpr:
-		if f.Kind == ast.SelectElemRef {
-			elemID = f.Field
-			if ident, ok := f.Operand.(*ast.IdentExpr); ok {
-				elemName = ident.Name
-			}
-		}
-	case *ast.IdentExpr:
-		elemName = f.Name
+// collectCallStmtByID handles children-less element calls (`text #id(...)`)
+// which the checker emits as CallStmt rather than NodeInst. The element name
+// and #id live on the AST back-reference.
+func (env *Env) collectCallStmtByID(cs *ir.CallStmt, id string, out *[]map[string]any) {
+	elemName, elemID := elemCallInfo(cs)
+	if elemName == "" {
+		return
 	}
-
-	// Check if this is a user-defined component — expand inline
-	if elemName != "" && env.doc != nil {
-		if comp := findComponent(env.doc, elemName); comp != nil {
+	// User-defined component — expand inline.
+	if env.pkg != nil {
+		if comp := findComponent(env.pkg, elemName); comp != nil {
 			if env.renderDepth >= maxCallDepth {
 				return
 			}
-			childEnv := env.componentEnvFromCall(comp, call)
-			childEnv.renderDepth = env.renderDepth + 1
-			childEnv.collectByStmts(childEnv.bodyStmts, id, out)
+			child := env.componentEnvFromCall(comp, cs.Call)
+			child.renderDepth = env.renderDepth + 1
+			child.collectByStmts(child.bodyStmts, id, out)
 			return
 		}
 	}
-
 	if elemID == id {
-		m := env.renderCallProps(call, elemName)
+		m := env.renderCallStmtProps(cs, elemName)
 		*out = append(*out, m)
 	}
 }
 
-// renderCallProps renders a CallStmt-based element's props and events into a map.
-func (env *Env) renderCallProps(call *ast.CallExpr, elemName string) map[string]any {
-	m := map[string]any{
-		"_type": elemName,
+// elemCallInfo extracts (name, id) from an element CallStmt's AST back-ref.
+func elemCallInfo(cs *ir.CallStmt) (string, string) {
+	if cs == nil || cs.Call == nil {
+		return "", ""
 	}
-	for _, a := range call.Args.Args {
-		switch aa := a.(type) {
-		case ast.Arg:
-			if aa.Name != "" && aa.Value != nil {
-				if v, err := env.Eval(aa.Value); err == nil {
-					m[aa.Name] = v
+	name := ""
+	id := ""
+	if call := cs.Call.AST; call != nil {
+		switch f := call.Func.(type) {
+		case *ast.SelectExpr:
+			if f.Kind == ast.SelectElemRef {
+				id = f.Field
+				if ident, ok := f.Operand.(*ast.IdentExpr); ok {
+					name = ident.Name
+				}
+			} else {
+				if ident, ok := f.Operand.(*ast.IdentExpr); ok {
+					name = ident.Name
 				}
 			}
-		case ast.EventHandler:
-			if aa.Body.IsDefined() {
-				body := aa.Body
-				m["@"+aa.Name] = &body
-			}
+		case *ast.IdentExpr:
+			name = f.Name
+		}
+	}
+	return name, id
+}
+
+func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string]any {
+	m := map[string]any{"_type": elemName}
+	if cs.Call == nil {
+		return m
+	}
+	for _, arg := range cs.Call.Args {
+		if arg.Name == "" {
+			continue
+		}
+		if v, err := env.Eval(arg.Value); err == nil {
+			m[arg.Name] = v
 		}
 	}
 	return m
 }
 
-// renderNodeProps renders a visual node's props and events into a map for test access.
-func (env *Env) renderNodeProps(node *ast.VisualNode) map[string]any {
-	m := map[string]any{
-		"_type": codegen.VisualNodeName(node),
-	}
+// componentEnvFromCall creates a child env for expanding a user component
+// invoked as a CallStmt (no children block).
+func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
+	child := NewEnv()
+	child.pkg = env.pkg
+	child.units = env.units
+	child.comp = comp
 
-	props := codegen.VnProps(node)
-	for k, expr := range props {
-		if v, err := env.Eval(expr); err == nil {
-			m[k] = v
+	for _, p := range comp.Props {
+		child.vars[p.Name] = evalInit(child, p.Default)
+	}
+	// Override with named positional args from the call.
+	if call != nil {
+		for _, a := range call.Args {
+			if a.Name == "" {
+				continue
+			}
+			if v, err := env.Eval(a.Value); err == nil {
+				child.vars[a.Name] = v
+			}
 		}
 	}
-
-	events := codegen.VnEvents(node)
-	for name, handler := range events {
-		// Store the event handler body so it can be invoked via @event() calls
-		if handler.Body.IsDefined() {
-			m["@"+name] = &handler.Body
+	for _, v := range comp.Vars {
+		if v.IsConst {
+			child.consts[v.Name] = evalInit(child, v.Init)
+		} else {
+			child.vars[v.Name] = evalInit(child, v.Init)
 		}
 	}
+	for _, fn := range comp.Funcs {
+		child.SetFunc(fn)
+	}
+	child.bodyStmts = comp.Body
+	return child
+}
 
+func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
+	m := map[string]any{"_type": node.Name}
+	for _, p := range node.Props {
+		if p.Name == "" {
+			continue
+		}
+		if v, err := env.Eval(p.Value); err == nil {
+			m[p.Name] = v
+		}
+	}
+	for _, h := range node.Handlers {
+		m["@"+h.Name] = h.Func
+	}
 	return m
 }

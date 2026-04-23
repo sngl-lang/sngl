@@ -6,8 +6,10 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestRunFixtures(t *testing.T) {
@@ -20,10 +22,16 @@ func TestRunFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
+			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			for _, d := range diags {
+				if d.Severity == ir.Error {
+					t.Fatalf("check: %s", d.Error())
+				}
+			}
 
 			testDirs := s.PhaseErrors("test")
 
-			results, err := testrunner.Run(doc)
+			results, err := testrunner.Run(pkg)
 			if err != nil {
 				t.Fatalf("run: %v", err)
 			}

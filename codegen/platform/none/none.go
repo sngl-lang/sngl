@@ -22,9 +22,5 @@ func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
 }
 
 func (g *Generator) RunTests(pkg *ir.Package, _ codegen.LangTranslator) ([]*codegen.TestResult, error) {
-	if pkg == nil {
-		return nil, nil
-	}
-	doc := ir.Convert(pkg)
-	return testrunner.Run(doc)
+	return testrunner.Run(pkg)
 }

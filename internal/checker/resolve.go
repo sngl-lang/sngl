@@ -229,6 +229,9 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 // resolving suffix conversion factors.
 func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	suffixes := make([]*ir.UnitSuffix, len(u.Suffixes))
+	// Stash factor lookups for suffixes defined earlier in this same unit so
+	// expressions like `s = 1000ms` resolve against `ms` before registration.
+	localFactors := map[string]float64{}
 	for i, s := range u.Suffixes {
 		us := &ir.UnitSuffix{
 			Name:   s.Name,
@@ -236,8 +239,9 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 			IsBase: s.Factor == nil,
 		}
 		if s.Factor != nil {
-			us.Factor = c.evalUnitFactor(s.Factor)
+			us.Factor = c.evalUnitFactorWithLocals(s.Factor, localFactors)
 		}
+		localFactors[s.Name] = us.Factor
 		suffixes[i] = us
 	}
 	return &ir.UnitDef{
@@ -245,6 +249,26 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 		Name:     u.Name,
 		Suffixes: suffixes,
 	}
+}
+
+func (c *checker) evalUnitFactorWithLocals(e ast.Expr, local map[string]float64) float64 {
+	if ul, ok := e.(*ast.UnitLiteral); ok {
+		raw := strings.TrimSuffix(ul.Raw, ul.Suffix)
+		raw = strings.ReplaceAll(raw, "_", "")
+		num, _ := strconv.ParseFloat(raw, 64)
+		if f, ok := local[ul.Suffix]; ok {
+			return num * f
+		}
+		if ref, ok := c.unitBySuffix[ul.Suffix]; ok {
+			for _, s := range ref.Suffixes {
+				if s.Name == ul.Suffix {
+					return num * s.Factor
+				}
+			}
+		}
+		return num
+	}
+	return c.evalUnitFactor(e)
 }
 
 // evalUnitFactor evaluates a unit suffix factor expression to a float64.
@@ -261,7 +285,9 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 			return v
 		}
 	case *ast.UnitLiteral:
-		num, _ := strconv.ParseFloat(x.Raw, 64)
+		raw := strings.TrimSuffix(x.Raw, x.Suffix)
+		raw = strings.ReplaceAll(raw, "_", "")
+		num, _ := strconv.ParseFloat(raw, 64)
 		// Look up the referenced suffix to get its factor.
 		if ref, ok := c.unitBySuffix[x.Suffix]; ok {
 			for _, s := range ref.Suffixes {

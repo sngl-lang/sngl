@@ -5,96 +5,78 @@ import (
 	"math"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // AssertError is returned when an assertion fails.
 type AssertError struct {
-	Expr ast.Expr // the expression that was asserted
-	Got  any      // the value it evaluated to
+	Expr ir.Expr // the expression that was asserted
+	Got  any
 }
 
 func (e *AssertError) Error() string {
-	return fmt.Sprintf("assert(%s) failed — got %v", parser.FormatExpr(e.Expr), e.Got)
+	return fmt.Sprintf("assert failed — got %v", e.Got)
 }
 
-// Exec executes a statement node, mutating the environment.
-func (env *Env) Exec(s ast.Stmt) error {
+// Exec executes an IR statement, mutating the environment.
+func (env *Env) Exec(s ir.Stmt) error {
 	switch n := s.(type) {
-	case *ast.AssignStmt:
+	case *ir.Assign:
 		return env.execAssign(n)
-	case *ast.ToggleStmt:
+	case *ir.Toggle:
 		return env.execToggle(n)
-	case *ast.IncDecStmt:
-		op := ast.AssignAdd
-		if n.IsDec {
-			op = ast.AssignSub
+	case *ir.CallStmt:
+		if n.Call == nil {
+			return nil
 		}
-		return env.execAssign(&ast.AssignStmt{
-			Pos:    n.Pos,
-			Target: n.Target,
-			Op:     op,
-			Value:  &ast.LiteralExpr{Pos: n.Pos, Kind: ast.LiteralInt, Raw: "1"},
-		})
-	case *ast.EmitStmt:
-		// In headless mode, emissions are no-ops
-		return nil
-	case *ast.CallStmt:
 		_, err := env.evalCall(n.Call)
 		return err
-	case *ast.VarStmt:
+	case *ir.Emit:
+		return nil // no-op in headless tests
+	case *ir.LocalVar:
+		if n.Init == nil {
+			env.vars[n.Name] = nil
+			return nil
+		}
 		v, err := env.Eval(n.Init)
 		if err != nil {
 			return err
 		}
 		env.vars[n.Name] = v
 		return nil
-	case *ast.VarDecl:
-		for _, spec := range n.Specs {
-			val := evalInit(env, spec.Default)
-			for _, name := range spec.Names {
-				env.vars[name] = val
+	case *ir.If:
+		return env.execIf(n)
+	case *ir.For:
+		return env.execFor(n)
+	case *ir.Return:
+		return nil // caller handles return bodies
+	case *ir.PlatformFilter:
+		if n.Platform == "" || n.Platform == "none" {
+			for _, st := range n.Body {
+				if err := env.Exec(st); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
-	case *ast.ReturnStmt:
-		// ReturnStmt in exec context — should be handled by caller
-		return nil
-	default:
-		// Try as expression
-		if expr, ok := s.(ast.Expr); ok {
-			_, err := env.Eval(expr)
-			return err
-		}
-		return fmt.Errorf("cannot execute %T", s)
 	}
+	return fmt.Errorf("cannot execute %T", s)
 }
 
-// ExecBlock executes all statements in a StmtBlock.
-func (env *Env) ExecBlock(b *ast.StmtBlock) error {
-	for _, stmt := range b.Stmts {
-		if err := env.Exec(stmt); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (env *Env) execAssign(s *ast.AssignStmt) error {
+func (env *Env) execAssign(s *ir.Assign) error {
 	val, err := env.Eval(s.Value)
 	if err != nil {
 		return err
 	}
-
 	switch target := s.Target.(type) {
-	case *ast.IdentExpr:
+	case *ir.Ident:
 		cur, exists := env.vars[target.Name]
 		if !exists {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
 		env.vars[target.Name] = applyOp(s.Op, cur, val)
 		return nil
-	case *ast.SelectExpr:
+	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
 			return err
@@ -107,12 +89,12 @@ func (env *Env) execAssign(s *ast.AssignStmt) error {
 			return nil
 		}
 		return fmt.Errorf("cannot assign to field on %T", obj)
-	case *ast.IndexExpr:
+	case *ir.Index:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
 			return err
 		}
-		idx, err := env.Eval(target.Index)
+		idx, err := env.Eval(target.Idx)
 		if err != nil {
 			return err
 		}
@@ -125,44 +107,98 @@ func (env *Env) execAssign(s *ast.AssignStmt) error {
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
-	default:
-		return fmt.Errorf("invalid assignment target %T", s.Target)
 	}
+	return fmt.Errorf("invalid assignment target %T", s.Target)
 }
 
-func (env *Env) execToggle(s *ast.ToggleStmt) error {
-	if ident, ok := s.Target.(*ast.IdentExpr); ok {
-		cur, exists := env.vars[ident.Name]
+func (env *Env) execToggle(s *ir.Toggle) error {
+	switch target := s.Target.(type) {
+	case *ir.Ident:
+		cur, exists := env.vars[target.Name]
 		if !exists {
-			return fmt.Errorf("cannot toggle undefined variable %q", ident.Name)
+			return fmt.Errorf("cannot toggle undefined variable %q", target.Name)
 		}
-		if b, ok := cur.(bool); ok {
-			env.vars[ident.Name] = !b
-			return nil
+		b, ok := cur.(bool)
+		if !ok {
+			return fmt.Errorf("cannot toggle non-bool variable %q", target.Name)
 		}
-		return fmt.Errorf("cannot toggle non-bool variable %q", ident.Name)
-	}
-	if sel, ok := s.Target.(*ast.SelectExpr); ok {
-		obj, err := env.Eval(sel.Operand)
+		env.vars[target.Name] = !b
+		return nil
+	case *ir.Select:
+		obj, err := env.Eval(target.Operand)
 		if err != nil {
 			return err
 		}
 		if cv, ok := obj.(*componentValue); ok {
-			cur, exists := cv.vars[sel.Field]
+			cur, exists := cv.vars[target.Field]
 			if !exists {
-				return fmt.Errorf("cannot toggle undefined field %q", sel.Field)
+				return fmt.Errorf("cannot toggle undefined field %q", target.Field)
 			}
-			if b, ok := cur.(bool); ok {
-				cv.vars[sel.Field] = !b
-				if !cv.testParams[sel.Field] {
-					cv.env.vars[sel.Field] = !b
-				}
-				return nil
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool field %q", target.Field)
 			}
-			return fmt.Errorf("cannot toggle non-bool field %q", sel.Field)
+			cv.vars[target.Field] = !b
+			if !cv.testParams[target.Field] {
+				cv.env.vars[target.Field] = !b
+			}
+			return nil
 		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)
+}
+
+func (env *Env) execIf(s *ir.If) error {
+	cond, err := env.Eval(s.Cond)
+	if err != nil {
+		return err
+	}
+	b, _ := cond.(bool)
+	body := s.Body
+	if !b {
+		body = s.Else
+	}
+	for _, st := range body {
+		if err := env.Exec(st); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (env *Env) execFor(s *ir.For) error {
+	iter, err := env.Eval(s.Iter)
+	if err != nil {
+		return err
+	}
+	list, ok := iter.([]any)
+	if !ok {
+		return nil
+	}
+	if len(list) == 0 {
+		for _, st := range s.Else {
+			if err := env.Exec(st); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for i, item := range list {
+		env.vars[s.Key] = item
+		if s.Value != "" {
+			env.vars[s.Value] = i
+		}
+		for _, st := range s.Body {
+			if err := env.Exec(st); err != nil {
+				return err
+			}
+		}
+	}
+	delete(env.vars, s.Key)
+	if s.Value != "" {
+		delete(env.vars, s.Value)
+	}
+	return nil
 }
 
 func applyOp(op ast.AssignOp, cur, val any) any {

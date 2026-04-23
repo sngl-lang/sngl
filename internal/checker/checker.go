@@ -1135,6 +1135,7 @@ func (c *checker) pass2() {
 		c.checkFuncBody(fn)
 	}
 
+
 	// Check component bodies.
 	for _, comp := range c.pkg.Components {
 		c.checkComponentBody(comp)

@@ -23,6 +23,65 @@ type nativeFunc func(args []any) (any, error)
 
 var nativeMethods = map[string]nativeFunc{
 	// --- int ---
+	"int.min": func(args []any) (any, error) {
+		a, b := toInt(args[0]), toInt(args[1])
+		if a < b {
+			return a, nil
+		}
+		return b, nil
+	},
+	"int.max": func(args []any) (any, error) {
+		a, b := toInt(args[0]), toInt(args[1])
+		if a > b {
+			return a, nil
+		}
+		return b, nil
+	},
+	"int.abs": func(args []any) (any, error) {
+		x := toInt(args[0])
+		if x < 0 {
+			return -x, nil
+		}
+		return x, nil
+	},
+	"int.clamp": func(args []any) (any, error) {
+		x, lo, hi := toInt(args[0]), toInt(args[1]), toInt(args[2])
+		if x < lo {
+			return lo, nil
+		}
+		if x > hi {
+			return hi, nil
+		}
+		return x, nil
+	},
+	// --- float ---
+	"float.min": func(args []any) (any, error) {
+		a, b := toFloat(args[0]), toFloat(args[1])
+		if a < b {
+			return a, nil
+		}
+		return b, nil
+	},
+	"float.max": func(args []any) (any, error) {
+		a, b := toFloat(args[0]), toFloat(args[1])
+		if a > b {
+			return a, nil
+		}
+		return b, nil
+	},
+	"float.abs": func(args []any) (any, error) {
+		return math.Abs(toFloat(args[0])), nil
+	},
+	"float.clamp": func(args []any) (any, error) {
+		x, lo, hi := toFloat(args[0]), toFloat(args[1]), toFloat(args[2])
+		if x < lo {
+			return lo, nil
+		}
+		if x > hi {
+			return hi, nil
+		}
+		return x, nil
+	},
 	"int.parse": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		base := toInt(args[1])
@@ -91,6 +150,31 @@ var nativeMethods = map[string]nativeFunc{
 		sub := fmt.Sprintf("%v", args[1])
 		return strings.Index(s, sub), nil
 	},
+	"string.contains": func(args []any) (any, error) {
+		s := fmt.Sprintf("%v", args[0])
+		sub := fmt.Sprintf("%v", args[1])
+		return strings.Contains(s, sub), nil
+	},
+	"string.startsWith": func(args []any) (any, error) {
+		s := fmt.Sprintf("%v", args[0])
+		prefix := fmt.Sprintf("%v", args[1])
+		return strings.HasPrefix(s, prefix), nil
+	},
+	"string.endsWith": func(args []any) (any, error) {
+		s := fmt.Sprintf("%v", args[0])
+		suffix := fmt.Sprintf("%v", args[1])
+		return strings.HasSuffix(s, suffix), nil
+	},
+	"string.split": func(args []any) (any, error) {
+		s := fmt.Sprintf("%v", args[0])
+		sep := fmt.Sprintf("%v", args[1])
+		parts := strings.Split(s, sep)
+		out := make([]any, len(parts))
+		for i, p := range parts {
+			out[i] = p
+		}
+		return out, nil
+	},
 	"string.substring": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		start := toInt(args[1])
@@ -137,6 +221,63 @@ var nativeMethods = map[string]nativeFunc{
 	},
 
 	// --- color ---
+	"color.rgb": func(args []any) (any, error) {
+		return map[string]any{
+			"r": clampByte(toInt(args[0])),
+			"g": clampByte(toInt(args[1])),
+			"b": clampByte(toInt(args[2])),
+			"a": 255,
+		}, nil
+	},
+	"color.rgba": func(args []any) (any, error) {
+		return map[string]any{
+			"r": clampByte(toInt(args[0])),
+			"g": clampByte(toInt(args[1])),
+			"b": clampByte(toInt(args[2])),
+			"a": clampByte(toInt(args[3])),
+		}, nil
+	},
+	"color.opacity": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("color.opacity requires a color, got %T", args[0])
+		}
+		return map[string]any{
+			"r": m["r"],
+			"g": m["g"],
+			"b": m["b"],
+			"a": clampByte(toInt(args[1])),
+		}, nil
+	},
+	"color.lighten": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("color.lighten requires a color, got %T", args[0])
+		}
+		pct := toFloat(args[1])
+		r := toInt(m["r"])
+		g := toInt(m["g"])
+		b := toInt(m["b"])
+		return map[string]any{
+			"r": clampByte(r + int(float64(255-r)*pct)),
+			"g": clampByte(g + int(float64(255-g)*pct)),
+			"b": clampByte(b + int(float64(255-b)*pct)),
+			"a": m["a"],
+		}, nil
+	},
+	"color.darken": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("color.darken requires a color, got %T", args[0])
+		}
+		pct := toFloat(args[1])
+		return map[string]any{
+			"r": int(toFloat(m["r"]) * (1.0 - pct)),
+			"g": int(toFloat(m["g"]) * (1.0 - pct)),
+			"b": int(toFloat(m["b"]) * (1.0 - pct)),
+			"a": m["a"],
+		}, nil
+	},
 	"color.hex": func(args []any) (any, error) {
 		if m, ok := args[0].(map[string]any); ok {
 			r := clampByte(toInt(m["r"]))
@@ -152,6 +293,19 @@ var nativeMethods = map[string]nativeFunc{
 	},
 
 	// --- list ---
+	"list.contains": func(args []any) (any, error) {
+		list, ok := args[0].([]any)
+		if !ok {
+			return false, nil
+		}
+		target := args[1]
+		for _, v := range list {
+			if fmt.Sprintf("%v", v) == fmt.Sprintf("%v", target) {
+				return true, nil
+			}
+		}
+		return false, nil
+	},
 	"list.indexOf": func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok {

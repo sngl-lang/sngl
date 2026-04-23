@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // maxCallDepth is the maximum allowed function call depth.
@@ -17,46 +17,35 @@ const maxCallDepth = 100
 
 // lambdaValue is a closure captured by a lambda expression.
 type lambdaValue struct {
-	params []string
-	body   ast.Expr      // expression body (arrow form)
-	block  ast.StmtBlock // block body (func(params) { ... } form)
-	env    *Env
+	fn  *ir.Func
+	env *Env
 }
 
-// call invokes the lambda with the given arguments.
+// call invokes the lambda with the given values.
 func (lv *lambdaValue) call(args []any) (any, error) {
 	child := lv.env.Snapshot()
-	for i, p := range lv.params {
+	for i, p := range lv.fn.Params {
 		if i < len(args) {
-			child.vars[p] = args[i]
+			child.vars[p.Name] = args[i]
 		}
 	}
-	if lv.block.IsDefined() {
-		for _, stmt := range lv.block.Stmts {
-			if ret, ok := stmt.(*ast.ReturnStmt); ok {
-				if ret.Value != nil {
-					return child.Eval(ret.Value)
-				}
-				return nil, nil
-			}
-			if err := child.Exec(stmt); err != nil {
-				return nil, err
-			}
-		}
-		return nil, nil
-	}
-	if lv.body != nil {
-		return child.Eval(lv.body)
-	}
-	return nil, nil
+	return child.execBlockForResult(lv.fn.Block)
 }
 
-// unitValue is the runtime representation of a unit value (e.g. 10px).
-// BaseAmount stores the value normalized to the base unit of the family.
-// Suffix is the display suffix (the one used in the source literal).
+// callWithEnv is like call but uses the provided env directly (no snapshot).
+func (lv *lambdaValue) callWithEnv(env *Env, args []any) (any, error) {
+	for i, p := range lv.fn.Params {
+		if i < len(args) {
+			env.vars[p.Name] = args[i]
+		}
+	}
+	return env.execBlockForResult(lv.fn.Block)
+}
+
+// unitValue is the runtime representation of a unit value.
 type unitValue struct {
-	BaseAmount float64 // amount in base unit
-	Suffix     string  // display suffix
+	BaseAmount float64
+	Suffix     string
 	Table      *unitTable
 }
 
@@ -69,9 +58,8 @@ func (u unitValue) Equal(other unitValue) bool {
 
 func (u unitValue) Add(other unitValue) unitValue {
 	if u.Table != other.Table {
-		return u // incompatible — caller should check
+		return u
 	}
-	// Result uses left operand's suffix
 	return unitValue{BaseAmount: u.BaseAmount + other.BaseAmount, Suffix: u.Suffix, Table: u.Table}
 }
 
@@ -103,29 +91,27 @@ func (u unitValue) String() string {
 	return fmt.Sprintf("%g%s", amt, u.Suffix)
 }
 
-// sameFamily returns true if both unit values belong to the same unit table.
 func (u unitValue) sameFamily(other unitValue) bool {
 	return u.Table != nil && u.Table == other.Table
 }
 
-// unitTable maps suffixes to their conversion factors for a unit family.
-// Conversions maps each suffix to its factor relative to the base unit.
-// The base unit has factor 1.
+// unitTable maps suffixes to conversion factors.
 type unitTable struct {
 	Base        string
-	Conversions map[string]float64 // suffix -> factor in base units
+	Conversions map[string]float64
 }
 
 // Env holds the mutable state for test execution.
 type Env struct {
 	vars        map[string]any
 	consts      map[string]any
-	funcs       map[string]*ast.FuncDef
-	units       map[string]*unitTable // suffix -> unit table
-	doc         *ast.Document
-	bodyStmts   []ast.Stmt // visual body statements (VisualNode, CallStmt, IfStmt, ForStmt)
-	depth       int        // current call stack depth
-	renderDepth int        // current component render depth
+	funcs       map[string]*ir.Func
+	units       map[string]*unitTable
+	pkg         *ir.Package
+	comp        *ir.Component
+	bodyStmts   []ir.Stmt
+	depth       int
+	renderDepth int
 	Log         []string
 }
 
@@ -133,12 +119,16 @@ func NewEnv() *Env {
 	return &Env{
 		vars:   map[string]any{},
 		consts: map[string]any{},
-		funcs:  map[string]*ast.FuncDef{},
+		funcs:  map[string]*ir.Func{},
 	}
 }
 
-// SetFunc registers a user-defined function in the environment.
-func (env *Env) SetFunc(fn *ast.FuncDef) {
+// SetFunc registers a user-defined function.
+func (env *Env) SetFunc(fn *ir.Func) {
+	if fn.Receiver != "" {
+		env.funcs[fn.Receiver+"."+fn.Name] = fn
+		return
+	}
 	env.funcs[fn.Name] = fn
 }
 
@@ -147,14 +137,15 @@ func (env *Env) SetVar(name string, val any) {
 	env.vars[name] = val
 }
 
-// Snapshot returns a shallow copy of the env for subtest isolation.
+// Snapshot returns a shallow copy of the env.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
 		vars:        make(map[string]any, len(env.vars)),
 		consts:      env.consts,
 		funcs:       env.funcs,
 		units:       env.units,
-		doc:         env.doc,
+		pkg:         env.pkg,
+		comp:        env.comp,
 		bodyStmts:   env.bodyStmts,
 		depth:       env.depth,
 		renderDepth: env.renderDepth,
@@ -163,20 +154,18 @@ func (env *Env) Snapshot() *Env {
 	return cp
 }
 
-// Eval evaluates an AST expression and returns its value.
-func (env *Env) Eval(e ast.Expr) (any, error) {
+// Eval evaluates an IR expression and returns its value.
+func (env *Env) Eval(e ir.Expr) (any, error) {
 	switch n := e.(type) {
-	case *ast.UnitLiteral:
-		return env.evalUnitLiteral(n)
-	case *ast.LiteralExpr:
+	case *ir.Literal:
 		return env.evalLiteral(n)
-	case *ast.IdentExpr:
-		return env.lookup(n.Name)
-	case *ast.BinaryExpr:
+	case *ir.Ident:
+		return env.evalIdent(n)
+	case *ir.Binary:
 		return env.evalBinary(n)
-	case *ast.UnaryExpr:
+	case *ir.Unary:
 		return env.evalUnary(n)
-	case *ast.TernaryExpr:
+	case *ir.Ternary:
 		cond, err := env.Eval(n.Cond)
 		if err != nil {
 			return nil, err
@@ -189,157 +178,70 @@ func (env *Env) Eval(e ast.Expr) (any, error) {
 			return env.Eval(n.Then)
 		}
 		return env.Eval(n.Else)
-	case *ast.SelectExpr:
-		obj, err := env.Eval(n.Operand)
-		if err != nil {
-			return nil, err
-		}
-		if cv, ok := obj.(*componentValue); ok {
-			switch n.Kind {
-			case ast.SelectElemRef:
-				return cv.env.resolveElementRef(n.Field)
-			default:
-				return cv.getField(n.Field)
-			}
-		}
-		if m, ok := obj.(map[string]any); ok {
-			switch n.Kind {
-			case ast.SelectEvent:
-				return m["@"+n.Field], nil
-			default:
-				return m[n.Field], nil
-			}
-		}
-		return nil, fmt.Errorf("cannot select field %q on %T", n.Field, obj)
-	case *ast.IndexExpr:
-		obj, err := env.Eval(n.Operand)
-		if err != nil {
-			return nil, err
-		}
-		idx, err := env.Eval(n.Index)
-		if err != nil {
-			return nil, err
-		}
-		if list, ok := obj.([]any); ok {
-			i := toInt(idx)
-			if i < 0 || i >= len(list) {
-				return nil, fmt.Errorf("index %d out of range (len %d)", i, len(list))
-			}
-			return list[i], nil
-		}
-		return nil, fmt.Errorf("cannot index %T", obj)
-	case *ast.ElementRefExpr:
-		return env.resolveElementRef(n.Name)
-	case *ast.CallExpr:
+	case *ir.Select:
+		return env.evalSelect(n)
+	case *ir.Index:
+		return env.evalIndex(n)
+	case *ir.Call:
 		return env.evalCall(n)
-	case *ast.InterpolationExpr:
-		var sb strings.Builder
-		for _, p := range n.Parts {
-			v, err := env.Eval(p)
-			if err != nil {
-				return nil, err
-			}
-			sb.WriteString(fmt.Sprintf("%v", v))
-		}
-		return sb.String(), nil
-	case *ast.ListExpr:
-		var list []any
-		for _, el := range n.Elements {
-			if spread, ok := el.(*ast.SpreadExpr); ok {
-				v, err := env.Eval(spread.Operand)
-				if err != nil {
-					return nil, err
-				}
-				if items, ok := v.([]any); ok {
-					list = append(list, items...)
-				} else {
-					list = append(list, v)
-				}
-			} else {
-				v, err := env.Eval(el)
-				if err != nil {
-					return nil, err
-				}
-				list = append(list, v)
-			}
-		}
-		return list, nil
-	case *ast.StructExpr:
-		m := make(map[string]any, len(n.Fields))
-		for _, f := range n.Fields {
-			if f.Spread {
-				v, err := env.Eval(f.Value)
-				if err != nil {
-					return nil, err
-				}
-				if src, ok := v.(map[string]any); ok {
-					maps.Copy(m, src)
-				}
-			} else {
-				v, err := env.Eval(f.Value)
-				if err != nil {
-					return nil, err
-				}
-				m[f.Name] = v
-			}
-		}
-		return m, nil
-	case *ast.SpreadExpr:
+	case *ir.Conversion:
+		return env.evalConversion(n)
+	case *ir.ListLit:
+		return env.evalListLit(n)
+	case *ir.StructLit:
+		return env.evalStructLit(n)
+	case *ir.Spread:
 		return env.Eval(n.Operand)
-	case *ast.LambdaExpr:
-		params := make([]string, len(n.Params.Params))
-		for i, p := range n.Params.Params {
-			params[i] = p.Name
-		}
-		return &lambdaValue{params: params, body: n.Body, block: n.Block, env: env}, nil
-	case *ast.ParenExpr:
-		return env.Eval(n.Inner)
-	default:
-		if e == nil {
-			return nil, fmt.Errorf("cannot evaluate <nil> expression")
-		}
-		return nil, fmt.Errorf("cannot evaluate %T", e)
+	case *ir.Lambda:
+		return &lambdaValue{fn: n.Func, env: env}, nil
 	}
+	if e == nil {
+		return nil, fmt.Errorf("cannot evaluate <nil> expression")
+	}
+	return nil, fmt.Errorf("cannot evaluate %T", e)
 }
 
-func (env *Env) evalLiteral(e *ast.LiteralExpr) (any, error) {
-	switch e.Kind {
-	case ast.LiteralColor:
-		return colorHexToStruct(e.Raw), nil
-	case ast.LiteralBool:
+func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
+	if e.Suffix != "" {
+		return env.makeUnitValue(e)
+	}
+	if e.Type == nil {
+		return e.Raw, nil
+	}
+	switch e.Type.Kind {
+	case ir.TypeBool:
 		return e.Raw == "true", nil
-	case ast.LiteralNull:
+	case ir.TypeNull:
 		return nil, nil
-	case ast.LiteralInt:
+	case ir.TypeInt:
 		raw := strings.ReplaceAll(e.Raw, "_", "")
-		// Handle hex (0x), octal (0o), binary (0b) prefixes
 		n, err := strconv.ParseInt(raw, 0, 64)
 		if err != nil {
 			return 0, nil
 		}
 		return int(n), nil
-	case ast.LiteralFloat:
+	case ir.TypeFloat:
 		raw := strings.ReplaceAll(e.Raw, "_", "")
 		f, _ := strconv.ParseFloat(raw, 64)
 		return f, nil
-	case ast.LiteralStringQuoted:
-		if s, ok := codegen.ExprLiteralString(e); ok {
-			return s, nil
+	case ir.TypeString:
+		if e.AST != nil {
+			if s, ok := literalString(e.AST); ok {
+				return s, nil
+			}
 		}
-		return e.Raw, nil
-	case ast.LiteralStringBackticked:
-		if s, ok := codegen.ExprLiteralString(e); ok {
-			return s, nil
-		}
-		return e.Raw, nil
-	case ast.LiteralStringTrippleQuoted:
-		if s, ok := codegen.ExprLiteralString(e); ok {
-			return s, nil
-		}
-		return e.Raw, nil
-	default:
-		return e.Raw, nil
+		return unquoteString(e.Raw), nil
+	case ir.TypeColor:
+		return colorHexToStruct(e.Raw), nil
 	}
+	return e.Raw, nil
+}
+
+func (env *Env) evalIdent(e *ir.Ident) (any, error) {
+	if e.Member != "" {
+		return e.Member, nil
+	}
+	return env.lookup(e.Name)
 }
 
 func (env *Env) lookup(name string) (any, error) {
@@ -349,14 +251,124 @@ func (env *Env) lookup(name string) (any, error) {
 	if v, ok := env.consts[name]; ok {
 		return v, nil
 	}
-	// Auto-invoke zero-arg expression-form functions (formerly computed)
-	if fn, ok := env.funcs[name]; ok && len(fn.Params.Params) == 0 && fn.Body != nil {
-		return env.Eval(fn.Body)
+	// Zero-arg functions auto-invoke (computed fields)
+	if fn, ok := env.funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
+		return env.evalUserFunc(fn, nil)
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }
 
-func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
+func (env *Env) evalSelect(e *ir.Select) (any, error) {
+	obj, err := env.Eval(e.Operand)
+	if err != nil {
+		return nil, err
+	}
+	if cv, ok := obj.(*componentValue); ok {
+		return cv.getField(e.Field)
+	}
+	if m, ok := obj.(map[string]any); ok {
+		return m[e.Field], nil
+	}
+	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+func (env *Env) evalIndex(e *ir.Index) (any, error) {
+	obj, err := env.Eval(e.Operand)
+	if err != nil {
+		return nil, err
+	}
+	idx, err := env.Eval(e.Idx)
+	if err != nil {
+		return nil, err
+	}
+	if list, ok := obj.([]any); ok {
+		i := toInt(idx)
+		if i < 0 || i >= len(list) {
+			return nil, fmt.Errorf("index %d out of range (len %d)", i, len(list))
+		}
+		return list[i], nil
+	}
+	if m, ok := obj.(map[string]any); ok {
+		key := fmt.Sprintf("%v", idx)
+		return m[key], nil
+	}
+	return nil, fmt.Errorf("cannot index %T", obj)
+}
+
+func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
+	v, err := env.Eval(e.Operand)
+	if err != nil {
+		return nil, err
+	}
+	if e.Type == nil {
+		return v, nil
+	}
+	switch e.Type.Kind {
+	case ir.TypeInt:
+		return toInt(v), nil
+	case ir.TypeFloat:
+		return toFloat(v), nil
+	case ir.TypeString:
+		return fmt.Sprintf("%v", v), nil
+	case ir.TypeBool:
+		if b, ok := v.(bool); ok {
+			return b, nil
+		}
+		return false, nil
+	}
+	return v, nil
+}
+
+func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
+	var list []any
+	for _, el := range e.Elems {
+		if sp, ok := el.(*ir.Spread); ok {
+			v, err := env.Eval(sp.Operand)
+			if err != nil {
+				return nil, err
+			}
+			if items, ok := v.([]any); ok {
+				list = append(list, items...)
+			} else {
+				list = append(list, v)
+			}
+			continue
+		}
+		v, err := env.Eval(el)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, v)
+	}
+	if list == nil {
+		list = []any{}
+	}
+	return list, nil
+}
+
+func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
+	m := make(map[string]any, len(e.Fields))
+	for _, f := range e.Fields {
+		if f.Spread {
+			v, err := env.Eval(f.Value)
+			if err != nil {
+				return nil, err
+			}
+			if src, ok := v.(map[string]any); ok {
+				maps.Copy(m, src)
+			}
+			continue
+		}
+		v, err := env.Eval(f.Value)
+		if err != nil {
+			return nil, err
+		}
+		m[f.Name] = v
+	}
+	return m, nil
+}
+
+func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	left, err := env.Eval(e.Left)
 	if err != nil {
 		return nil, err
@@ -366,7 +378,6 @@ func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
 		return nil, err
 	}
 
-	// Unit-aware arithmetic
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -447,6 +458,9 @@ func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
 		if ls, ok := left.(string); ok {
 			return ls + fmt.Sprintf("%v", right), nil
 		}
+		if rs, ok := right.(string); ok {
+			return fmt.Sprintf("%v", left) + rs, nil
+		}
 		return numericResult(toFloat(left) + toFloat(right)), nil
 	case ast.BinSub:
 		return numericResult(toFloat(left) - toFloat(right)), nil
@@ -464,7 +478,7 @@ func (env *Env) evalBinary(e *ast.BinaryExpr) (any, error) {
 	return nil, fmt.Errorf("unknown binary op %d", e.Op)
 }
 
-func (env *Env) evalUnary(e *ast.UnaryExpr) (any, error) {
+func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 	v, err := env.Eval(e.Operand)
 	if err != nil {
 		return nil, err
@@ -477,194 +491,312 @@ func (env *Env) evalUnary(e *ast.UnaryExpr) (any, error) {
 		}
 		return !b, nil
 	case ast.UnaryNeg:
-		return -toFloat(v), nil
+		return numericResult(-toFloat(v)), nil
 	}
 	return nil, fmt.Errorf("unknown unary op %d", e.Op)
 }
 
-func (env *Env) evalCall(e *ast.CallExpr) (any, error) {
-	// Check if this is a method call (SelectExpr as Func)
-	if sel, ok := e.Func.(*ast.SelectExpr); ok {
-		return env.evalMethodCall(e, sel)
+func (env *Env) evalCall(call *ir.Call) (any, error) {
+	// Namespace call (ns.foo / html.div) — receiver preserved.
+	if call.Receiver != nil {
+		return env.evalNamespaceCall(call)
 	}
 
-	funcName := codegen.CallFuncName(e)
-	args := codegen.CallArgs(e)
-
-	switch funcName {
-	case "string":
-		if len(args) != 1 {
-			return nil, fmt.Errorf("string() requires 1 argument")
-		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		return fmt.Sprintf("%v", v), nil
-	case "int":
-		if len(args) != 1 {
-			return nil, fmt.Errorf("int() requires 1 argument")
-		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		return toInt(v), nil
-	case "float":
-		if len(args) != 1 {
-			return nil, fmt.Errorf("float() requires 1 argument")
-		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		return toFloat(v), nil
-	case "regex":
-		if len(args) != 1 {
-			return nil, fmt.Errorf("regex() requires 1 argument")
-		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		pattern := fmt.Sprintf("%v", v)
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("invalid regex pattern: %v", err)
-		}
-		return re, nil
-	case "tick":
-		// No-op: timers are handled at the component level in v2
-		return nil, nil
-	case "assert":
-		if len(args) != 1 {
-			return nil, fmt.Errorf("assert() requires 1 argument")
-		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		b, ok := v.(bool)
-		if !ok {
-			return nil, fmt.Errorf("assert() requires bool argument, got %T (%v)", v, v)
-		}
-		if !b {
-			return nil, &AssertError{Expr: args[0], Got: v}
-		}
-		return nil, nil
-	default:
-		if fn, ok := env.funcs[funcName]; ok {
-			return env.evalUserFunc(fn, args)
-		}
-		return nil, fmt.Errorf("unknown function %q", funcName)
+	// Type-attached method call (checker-normalized): Args[0] is the receiver.
+	if call.Func != nil && call.Func.Receiver != "" {
+		return env.evalTypeMethodCall(call)
 	}
+
+	// Plain function call.
+	if call.Func != nil {
+		return env.evalPlainFunc(call)
+	}
+
+	// Callee expression (func-typed var).
+	if call.Callee != nil {
+		v, err := env.Eval(call.Callee)
+		if err != nil {
+			return nil, err
+		}
+		if lv, ok := v.(*lambdaValue); ok {
+			args, err := env.evalCallArgs(call.Args)
+			if err != nil {
+				return nil, err
+			}
+			return lv.call(args)
+		}
+	}
+	return nil, fmt.Errorf("cannot call unresolved expression")
 }
 
-// evalMethodCall handles method calls: receiver.method(args).
-func (env *Env) evalMethodCall(call *ast.CallExpr, sel *ast.SelectExpr) (any, error) {
-	method := sel.Field
-	args := codegen.CallArgs(call)
+func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
+	name := call.Func.Name
+	switch name {
+	case "string":
+		if len(call.Args) == 1 {
+			v, err := env.Eval(call.Args[0].Value)
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("%v", v), nil
+		}
+	case "int":
+		if len(call.Args) == 1 {
+			v, err := env.Eval(call.Args[0].Value)
+			if err != nil {
+				return nil, err
+			}
+			return toInt(v), nil
+		}
+	case "float":
+		if len(call.Args) == 1 {
+			v, err := env.Eval(call.Args[0].Value)
+			if err != nil {
+				return nil, err
+			}
+			return toFloat(v), nil
+		}
+	case "regex":
+		if len(call.Args) == 1 {
+			v, err := env.Eval(call.Args[0].Value)
+			if err != nil {
+				return nil, err
+			}
+			re, err := regexp.Compile(fmt.Sprintf("%v", v))
+			if err != nil {
+				return nil, fmt.Errorf("invalid regex pattern: %v", err)
+			}
+			return re, nil
+		}
+	}
+	return env.evalUserFunc(call.Func, argExprs(call.Args))
+}
 
-	// Type-namespace call: the checker normalizes both "x.method(...)" and
-	// "Type.method(...)" to an AST of the form Type.method(recv, args...) where
-	// Args[0] is the receiver value. Handle static-only namespaces (Alert,
-	// File) up-front; for everything else, evaluate Args[0] as the receiver
-	// and fall through to instance dispatch below.
-	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-		if _, err := env.lookup(ident.Name); err != nil {
-			qualName := ident.Name + "." + method
-			evalArgs, evalErr := env.evalExprs(args)
-			if evalErr == nil {
-				switch qualName {
-				case "Alert.toast":
-					env.Log = append(env.Log, fmt.Sprintf("[toast:%v] %v", evalArgs[1], evalArgs[0]))
-					return nil, nil
-				case "Alert.info":
-					env.Log = append(env.Log, fmt.Sprintf("[info] %v", evalArgs[0]))
-					return nil, nil
-				case "Alert.warn":
-					env.Log = append(env.Log, fmt.Sprintf("[warn] %v", evalArgs[0]))
-					return nil, nil
-				case "Alert.error":
-					env.Log = append(env.Log, fmt.Sprintf("[error] %v", evalArgs[0]))
-					return nil, nil
-				case "Alert.confirm":
-					env.Log = append(env.Log, fmt.Sprintf("[confirm] %v", evalArgs[0]))
-					return true, nil
-				case "File.pick":
-					env.Log = append(env.Log, "[File.pick]")
-					return "/mock/file.txt", nil
-				case "File.pickFolder":
-					env.Log = append(env.Log, "[File.pickFolder]")
-					return "/mock/folder", nil
+func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
+	method := call.Func.Name
+	receiverName := call.Func.Receiver
+	qualName := receiverName + "." + method
+
+	// Alert/File namespaces: static-only, receiver-less logging.
+	switch qualName {
+	case "Alert.toast":
+		return env.logAlertToast(call.Args)
+	case "Alert.info", "Alert.warn", "Alert.error":
+		return env.logAlertSingle(method, call.Args)
+	case "Alert.confirm":
+		return env.logAlertConfirm(call.Args)
+	case "File.pick":
+		env.Log = append(env.Log, "[File.pick]")
+		return "/mock/file.txt", nil
+	case "File.pickFolder":
+		env.Log = append(env.Log, "[File.pickFolder]")
+		return "/mock/folder", nil
+	}
+
+	evalArgs, err := env.evalCallArgs(call.Args)
+	if err != nil {
+		return nil, err
+	}
+
+	// testingT dispatch: t.assert / t.tick / t.test.
+	if len(evalArgs) > 0 {
+		if tv, ok := evalArgs[0].(*testingT); ok {
+			return tv.callMethod(env, method, argExprs(call.Args[1:]))
+		}
+		if cv, ok := evalArgs[0].(*componentValue); ok {
+			if method[0] == '@' {
+				return nil, nil
+			}
+			if fn, ok := cv.funcs[method]; ok {
+				compEnv := cv.compEnv()
+				result, err := compEnv.evalUserFunc(fn, argExprs(call.Args[1:]))
+				for k := range cv.vars {
+					if v, ok := compEnv.vars[k]; ok {
+						cv.vars[k] = v
+						if !cv.testParams[k] {
+							cv.env.vars[k] = v
+						}
+					}
 				}
+				return result, err
+			}
+		}
+	}
+
+	if result, handled, err := nativeMethod(qualName, evalArgs); handled {
+		return result, err
+	}
+	if result, handled, err := nativeMethod("*."+method, evalArgs); handled {
+		return result, err
+	}
+
+	// List mutation (push/remove) needs writeback; evaluate before user funcs
+	// since stdlib push/remove delegate to untranslated intrinsics.
+	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
+		return env.evalBuiltinMethod(call, method, evalArgs)
+	}
+
+	// User-defined type-method.
+	if fn, ok := env.funcs[qualName]; ok {
+		return env.evalUserFunc(fn, argExprs(call.Args))
+	}
+
+	// List/string higher-order and other built-in methods.
+	if len(evalArgs) >= 1 {
+		return env.evalBuiltinMethod(call, method, evalArgs)
+	}
+	return nil, fmt.Errorf("unknown method %q", qualName)
+}
+
+func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
+	// Static-form receiver: Type.method(args) where Type is a type name. The
+	// checker leaves Func nil when the method is a user-defined type method
+	// (component-scoped) the symbol table doesn't see. Dispatch by qualified
+	// name using env.funcs.
+	if ident, ok := call.Receiver.(*ir.Ident); ok {
+		if _, lookupErr := env.lookup(ident.Name); lookupErr != nil {
+			method := methodNameFromCall(call)
+			qualName := ident.Name + "." + method
+			evalArgs, err := env.evalCallArgs(call.Args)
+			if err == nil {
 				if result, handled, err := nativeMethod(qualName, evalArgs); handled {
 					return result, err
 				}
 			}
 			if fn, ok := env.funcs[qualName]; ok {
-				return env.evalUserFunc(fn, args)
+				return env.evalUserFunc(fn, argExprs(call.Args))
 			}
-			// Fall through: synthesize an instance-style call with Args[0]
-			// as the receiver, then reuse the shared instance-dispatch path.
-			if len(args) > 0 {
-				sel = &ast.SelectExpr{
-					Pos:     sel.Pos,
-					Operand: args[0],
-					Field:   sel.Field,
-					Kind:    sel.Kind,
+		}
+	}
+
+	// If the receiver is a value-bearing expression (variable ident, not a
+	// type/namespace marker), treat this as an instance method call on that
+	// value. This covers c.method(...) on component values and t.method(...)
+	// on the Test value where the checker left Func nil (unresolved method).
+	recv, err := env.Eval(call.Receiver)
+	if err == nil {
+		method := methodNameFromCall(call)
+		if method != "" {
+			// Element-ref event invocation: c.btn.@click() → look up the
+			// handler stored at key "@click" on the rendered element map.
+			if strings.HasPrefix(method, "@") {
+				if m, ok := recv.(map[string]any); ok {
+					if h, ok := m[method].(*ir.Func); ok {
+						return env.runEventHandler(h, call.Args)
+					}
 				}
-				args = args[1:]
-			} else {
-				return nil, fmt.Errorf("unknown method %q", qualName)
+				return nil, nil
 			}
-		}
-	}
-
-	recv, err := env.Eval(sel.Operand)
-	if err != nil {
-		return nil, err
-	}
-
-	// testingT method dispatch
-	if tv, ok := recv.(*testingT); ok {
-		return tv.callMethod(env, method, args)
-	}
-
-	// componentValue method dispatch (for c.@event() calls)
-	if cv, ok := recv.(*componentValue); ok {
-		return cv.callMethod(env, method, args)
-	}
-
-	// Instance method call: try native overrides first
-	typeName := runtimeTypeName(recv)
-	qualName := typeName + "." + method
-	if evalArgs, err := env.evalExprs(args); err == nil {
-		allArgs := append([]any{recv}, evalArgs...)
-		if result, handled, err := nativeMethod(qualName, allArgs); handled {
-			return result, err
-		}
-	}
-
-	// Built-in mutating methods (push, remove) and legacy methods
-	switch method {
-	case "filter":
-		if list, ok := recv.([]any); ok && len(args) == 1 {
-			pred, err := env.Eval(args[0])
-			if err != nil {
-				return nil, err
+			switch rv := recv.(type) {
+			case *testingT:
+				return rv.callMethod(env, method, argExprs(call.Args))
+			case *componentValue:
+				if len(method) > 0 && method[0] == '@' {
+					return nil, nil // event emission no-op
+				}
+				if fn, ok := rv.funcs[method]; ok {
+					compEnv := rv.compEnv()
+					result, err := compEnv.evalUserFunc(fn, argExprs(call.Args))
+					for k := range rv.vars {
+						if v, ok := compEnv.vars[k]; ok {
+							rv.vars[k] = v
+							if !rv.testParams[k] {
+								rv.env.vars[k] = v
+							}
+						}
+					}
+					return result, err
+				}
 			}
-			lv, ok := pred.(*lambdaValue)
-			if !ok {
-				return nil, fmt.Errorf("filter requires a lambda, got %T", pred)
-			}
-			var out []any
-			for _, item := range list {
-				result, err := lv.call([]any{item})
+			// Instance method on a primitive value: dispatch by runtime type.
+			qualName := runtimeTypeName(recv) + "." + method
+			evalArgs := make([]any, 0, len(call.Args)+1)
+			evalArgs = append(evalArgs, recv)
+			for _, a := range call.Args {
+				v, err := env.Eval(a.Value)
 				if err != nil {
 					return nil, err
 				}
-				if b, ok := result.(bool); ok && b {
+				evalArgs = append(evalArgs, v)
+			}
+			if result, handled, err := nativeMethod(qualName, evalArgs); handled {
+				return result, err
+			}
+			if result, handled, err := nativeMethod("*."+method, evalArgs); handled {
+				return result, err
+			}
+			// Mutation methods on lists need a writeback; dispatch before
+			// user-defined stdlib bodies that delegate to intrinsics.
+			if method == "push" || method == "remove" || method == "filter" || method == "map" {
+				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
+			}
+			if fn, ok := env.funcs[qualName]; ok {
+				// Prepend receiver expr so evalUserFunc sees normalized form.
+				synth := make([]ir.Expr, 0, len(call.Args)+1)
+				synth = append(synth, call.Receiver)
+				for _, a := range call.Args {
+					synth = append(synth, a.Value)
+				}
+				return env.evalUserFunc(fn, synth)
+			}
+			return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
+		}
+	}
+
+	// Resolved namespace call delegates to the type-method path.
+	if call.Func != nil {
+		return env.evalTypeMethodCall(&ir.Call{
+			AST:  call.AST,
+			Type: call.Type,
+			Func: call.Func,
+			Args: call.Args,
+		})
+	}
+	return nil, fmt.Errorf("unresolved namespace call")
+}
+
+// runEventHandler invokes an event handler function's body using the current env.
+func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg) (any, error) {
+	for i, p := range fn.Params {
+		if i < len(args) {
+			v, err := env.Eval(args[i].Value)
+			if err != nil {
+				return nil, err
+			}
+			env.vars[p.Name] = v
+		}
+	}
+	for _, s := range fn.Block {
+		if ret, ok := s.(*ir.Return); ok {
+			if ret.Value == nil {
+				return nil, nil
+			}
+			return env.Eval(ret.Value)
+		}
+		if err := env.Exec(s); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+// evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
+// receiver expression is known separately from the rest of the args.
+func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv any, rest []any) (any, error) {
+	switch method {
+	case "filter":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*lambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
+			}
+			var out []any
+			for _, item := range list {
+				v, err := lv.call([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				if b, ok := v.(bool); ok && b {
 					out = append(out, item)
 				}
 			}
@@ -674,123 +806,164 @@ func (env *Env) evalMethodCall(call *ast.CallExpr, sel *ast.SelectExpr) (any, er
 			return out, nil
 		}
 	case "map":
-		if list, ok := recv.([]any); ok && len(args) == 1 {
-			fn, err := env.Eval(args[0])
-			if err != nil {
-				return nil, err
-			}
-			lv, ok := fn.(*lambdaValue)
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*lambdaValue)
 			if !ok {
-				return nil, fmt.Errorf("map requires a lambda, got %T", fn)
+				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
 			}
 			out := make([]any, len(list))
 			for i, item := range list {
-				result, err := lv.call([]any{item})
+				v, err := lv.call([]any{item})
 				if err != nil {
 					return nil, err
 				}
-				out[i] = result
+				out[i] = v
 			}
 			return out, nil
 		}
-	case "contains":
-		if s, ok := recv.(string); ok && len(args) == 1 {
-			arg, err := env.Eval(args[0])
-			if err != nil {
-				return nil, err
-			}
-			return strings.Contains(s, fmt.Sprintf("%v", arg)), nil
-		}
 	case "push":
-		if list, ok := recv.([]any); ok && len(args) == 1 {
-			arg, err := env.Eval(args[0])
-			if err != nil {
-				return nil, err
-			}
-			newList := append(list, arg)
-			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-				env.vars[ident.Name] = newList
-			} else if parentSel, ok := sel.Operand.(*ast.SelectExpr); ok {
-				if obj, err := env.Eval(parentSel.Operand); err == nil {
-					if cv, ok := obj.(*componentValue); ok {
-						cv.vars[parentSel.Field] = newList
-						if !cv.testParams[parentSel.Field] {
-							cv.env.vars[parentSel.Field] = newList
-						}
-					}
-				}
-			}
-			return nil, nil
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			newList := append(list, rest[0])
+			return env.writeBackList(recvExpr, newList)
 		}
 	case "remove":
-		if list, ok := recv.([]any); ok && len(args) == 1 {
-			arg, err := env.Eval(args[0])
-			if err != nil {
-				return nil, err
-			}
-			idx := toInt(arg)
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			idx := toInt(rest[0])
 			if idx >= 0 && idx < len(list) {
 				newList := append(list[:idx], list[idx+1:]...)
-				if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-					env.vars[ident.Name] = newList
-				} else if parentSel, ok := sel.Operand.(*ast.SelectExpr); ok {
-					if obj, err := env.Eval(parentSel.Operand); err == nil {
-						if cv, ok := obj.(*componentValue); ok {
-							cv.vars[parentSel.Field] = newList
-							if !cv.testParams[parentSel.Field] {
-								cv.env.vars[parentSel.Field] = newList
-							}
-						}
-					}
-				}
+				return env.writeBackList(recvExpr, newList)
 			}
-			return nil, nil
 		}
-	default:
-		// Handle event method calls (@click, @change, etc.)
-		isEvent := sel.Kind == ast.SelectEvent || strings.HasPrefix(method, "@")
-		if isEvent {
-			eventName := method
-			if !strings.HasPrefix(eventName, "@") {
-				eventName = "@" + eventName
-			}
-			if len(args) != 0 {
-				return nil, fmt.Errorf("%s() takes no arguments", eventName)
-			}
-			if m, ok := recv.(map[string]any); ok {
-				handler, ok := m[eventName]
-				if !ok {
-					return nil, fmt.Errorf("no event %s on element", eventName)
-				}
-				if block, ok := handler.(*ast.StmtBlock); ok {
-					return nil, env.ExecBlock(block)
-				}
-				if stmt, ok := handler.(ast.Stmt); ok {
-					return nil, env.Exec(stmt)
-				}
-				if expr, ok := handler.(ast.Expr); ok {
-					_, err := env.Eval(expr)
-					return nil, err
-				}
-				return nil, fmt.Errorf("%s handler is not executable", eventName)
-			}
-			return nil, fmt.Errorf("%s() not supported on %T", eventName, recv)
+	case "contains":
+		if s, ok := recv.(string); ok && len(rest) == 1 {
+			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
 		}
 	}
-	// Fallback: try user-defined type-attached function
-	if fn, ok := env.funcs[qualName]; ok {
-		allArgs := make([]ast.Expr, 0, 1+len(args))
-		allArgs = append(allArgs, sel.Operand)
-		allArgs = append(allArgs, args...)
-		return env.evalUserFunc(fn, allArgs)
-	}
-	return nil, fmt.Errorf("unknown method %q on %T", method, recv)
+	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
 }
 
-// evalUserFunc evaluates a user-defined function call.
-// Pure functions with tail-recursive self-calls are optimized via a trampoline loop.
-func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) {
-	// Evaluate arguments eagerly
+// methodNameFromCall recovers the method name for a Receiver-bearing call from
+// the AST back-reference (set by the checker when Func couldn't be resolved).
+// For @event access ("c.btn.@click"), the name is prefixed with "@".
+func methodNameFromCall(call *ir.Call) string {
+	if call.Func != nil {
+		return call.Func.Name
+	}
+	if call.AST == nil {
+		return ""
+	}
+	if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+		if sel.Kind == ast.SelectEvent {
+			return "@" + sel.Field
+		}
+		return sel.Field
+	}
+	return ""
+}
+
+func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
+	recv := evalArgs[0]
+	rest := evalArgs[1:]
+	switch method {
+	case "filter":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*lambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
+			}
+			var out []any
+			for _, item := range list {
+				v, err := lv.call([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				if b, ok := v.(bool); ok && b {
+					out = append(out, item)
+				}
+			}
+			if out == nil {
+				out = []any{}
+			}
+			return out, nil
+		}
+	case "map":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*lambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
+			}
+			out := make([]any, len(list))
+			for i, item := range list {
+				v, err := lv.call([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				out[i] = v
+			}
+			return out, nil
+		}
+	case "push":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			newList := append(list, rest[0])
+			return env.writeBackList(call.Args[0].Value, newList)
+		}
+	case "remove":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			idx := toInt(rest[0])
+			if idx >= 0 && idx < len(list) {
+				newList := append(list[:idx], list[idx+1:]...)
+				return env.writeBackList(call.Args[0].Value, newList)
+			}
+		}
+	case "contains":
+		if s, ok := recv.(string); ok && len(rest) == 1 {
+			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
+		}
+	}
+	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+}
+
+// writeBackList applies a mutated list back to its originating variable.
+func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
+	switch t := target.(type) {
+	case *ir.Ident:
+		env.vars[t.Name] = newList
+	case *ir.Select:
+		obj, err := env.Eval(t.Operand)
+		if err != nil {
+			return nil, err
+		}
+		if cv, ok := obj.(*componentValue); ok {
+			cv.vars[t.Field] = newList
+			if !cv.testParams[t.Field] {
+				cv.env.vars[t.Field] = newList
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (env *Env) evalCallArgs(args []ir.CallArg) ([]any, error) {
+	out := make([]any, len(args))
+	for i, a := range args {
+		v, err := env.Eval(a.Value)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = v
+	}
+	return out, nil
+}
+
+func argExprs(args []ir.CallArg) []ir.Expr {
+	out := make([]ir.Expr, len(args))
+	for i, a := range args {
+		out[i] = a.Value
+	}
+	return out
+}
+
+func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 	args := make([]any, len(argExprs))
 	for i, a := range argExprs {
 		v, err := env.Eval(a)
@@ -800,7 +973,6 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 		args[i] = v
 	}
 
-	// Stack depth check — one frame for this call (TCO reuses it).
 	env.depth++
 	if env.depth > maxCallDepth {
 		env.depth--
@@ -808,15 +980,8 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 	}
 	defer func() { env.depth-- }()
 
-	fnParams := fn.Params.Params
-
-	// TCO only applies to pure functions (expression-form or block with ReturnType).
-	canTCO := fn.Body != nil || fn.ReturnType != nil
-
-	for { // trampoline loop (only iterates >1 for tail calls)
-		// Void/action functions execute in the caller's env (they mutate state).
-		// Pure functions (expression-form or block with ReturnType) execute in a snapshot.
-		isPure := fn.Body != nil || fn.ReturnType != nil
+	isPure := fn.Return != nil
+	for {
 		var execEnv *Env
 		if !isPure {
 			execEnv = env
@@ -824,10 +989,9 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 			execEnv = env.Snapshot()
 		}
 
-		// Bind params (save originals for cleanup in void case)
 		savedVars := make(map[string]any)
-		paramNames := make([]string, len(fnParams))
-		for i, p := range fnParams {
+		paramNames := make([]string, len(fn.Params))
+		for i, p := range fn.Params {
 			paramNames[i] = p.Name
 			if v, ok := execEnv.vars[p.Name]; ok {
 				savedVars[p.Name] = v
@@ -837,7 +1001,6 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 			}
 		}
 
-		// restoreVoid cleans up params after void functions so they don't leak.
 		restoreVoid := func() {
 			if !isPure {
 				for _, name := range paramNames {
@@ -850,38 +1013,36 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 			}
 		}
 
-		// Determine the tail expression
-		var tailExpr ast.Expr
+		// Walk block looking for trailing Return. Execute preceding stmts.
+		var tailExpr ir.Expr
 		var localVars []string
-
-		if fn.Body != nil {
-			tailExpr = fn.Body
-		} else if fn.Block.IsDefined() {
-			// Execute block statements; find return value
-			for _, stmt := range fn.Block.Stmts {
-				if ret, ok := stmt.(*ast.ReturnStmt); ok {
+		for i, stmt := range fn.Block {
+			if ret, ok := stmt.(*ir.Return); ok {
+				if i == len(fn.Block)-1 {
 					tailExpr = ret.Value
 					break
 				}
-				switch s := stmt.(type) {
-				case *ast.VarStmt:
-					v, err := execEnv.Eval(s.Init)
+				tailExpr = ret.Value
+				break
+			}
+			if lv, ok := stmt.(*ir.LocalVar); ok {
+				if lv.Init != nil {
+					v, err := execEnv.Eval(lv.Init)
 					if err != nil {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.vars[s.Name] = v
-					localVars = append(localVars, s.Name)
-				default:
-					if err := execEnv.Exec(stmt); err != nil {
-						restoreVoid()
-						return nil, err
-					}
+					execEnv.vars[lv.Name] = v
+					localVars = append(localVars, lv.Name)
 				}
+				continue
+			}
+			if err := execEnv.Exec(stmt); err != nil {
+				restoreVoid()
+				return nil, err
 			}
 		}
 
-		// If no tail expression, return nil
 		if tailExpr == nil {
 			restoreVoid()
 			for _, name := range localVars {
@@ -890,23 +1051,21 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 			return nil, nil
 		}
 
-		// Try tail-call optimization on the tail expression
-		if canTCO {
-			result, newArgs, isTailCall, err := execEnv.evalTailAware(tailExpr, fn.Name)
+		if isPure {
+			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
 			for _, name := range localVars {
 				delete(execEnv.vars, name)
 			}
 			if err != nil {
 				return nil, err
 			}
-			if isTailCall {
+			if isTail {
 				args = newArgs
-				continue // trampoline — reuse this frame
+				continue
 			}
 			return result, nil
 		}
 
-		// No TCO — normal evaluation
 		result, err := execEnv.Eval(tailExpr)
 		restoreVoid()
 		for _, name := range localVars {
@@ -916,24 +1075,37 @@ func (env *Env) evalUserFunc(fn *ast.FuncDef, argExprs []ast.Expr) (any, error) 
 	}
 }
 
-// evalTailAware evaluates a node, detecting tail calls to funcName.
-func (env *Env) evalTailAware(e ast.Expr, funcName string) (any, []any, bool, error) {
+// execBlockForResult runs a block, returning the value of the trailing Return (if any).
+func (env *Env) execBlockForResult(block []ir.Stmt) (any, error) {
+	for i, stmt := range block {
+		if ret, ok := stmt.(*ir.Return); ok {
+			if ret.Value == nil {
+				return nil, nil
+			}
+			return env.Eval(ret.Value)
+		}
+		if err := env.Exec(stmt); err != nil {
+			return nil, err
+		}
+		_ = i
+	}
+	return nil, nil
+}
+
+// evalTailAware detects self-tail calls for trampolining.
+func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) {
 	switch n := e.(type) {
-	case *ast.CallExpr:
-		name := codegen.CallFuncName(n)
-		if name == funcName {
-			// Tail call — evaluate args and signal trampoline
-			newArgs, err := env.evalExprs(codegen.CallArgs(n))
+	case *ir.Call:
+		if n.Func == fn {
+			newArgs, err := env.evalCallArgs(n.Args)
 			if err != nil {
 				return nil, nil, false, err
 			}
 			return nil, newArgs, true, nil
 		}
-		// Not a self-call — evaluate normally
 		result, err := env.Eval(e)
 		return result, nil, false, err
-	case *ast.TernaryExpr:
-		// Unwrap ternary: evaluate condition, then check chosen branch
+	case *ir.Ternary:
 		cond, err := env.Eval(n.Cond)
 		if err != nil {
 			return nil, nil, false, err
@@ -943,26 +1115,26 @@ func (env *Env) evalTailAware(e ast.Expr, funcName string) (any, []any, bool, er
 			return nil, nil, false, fmt.Errorf("ternary condition must be bool, got %T", cond)
 		}
 		if b {
-			return env.evalTailAware(n.Then, funcName)
+			return env.evalTailAware(n.Then, fn)
 		}
-		return env.evalTailAware(n.Else, funcName)
-	case *ast.ParenExpr:
-		return env.evalTailAware(n.Inner, funcName)
+		return env.evalTailAware(n.Else, fn)
 	default:
 		result, err := env.Eval(e)
 		return result, nil, false, err
 	}
 }
 
-// evalUnitLiteral converts a parsed unit literal to a unitValue using the env's unit tables.
-func (env *Env) evalUnitLiteral(ul *ast.UnitLiteral) (unitValue, error) {
-	// The parser may include underscores in the suffix (e.g., "_000ms" for "1_000ms").
-	// Extract the true suffix by finding the first alpha character.
-	suffix := cleanUnitSuffix(ul.Suffix)
-
-	num, err := parseUnitNumber(ul.Raw, suffix)
+// makeUnitValue converts a unit literal to a unitValue.
+func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
+	suffix := lit.Suffix
+	raw := lit.Raw
+	if strings.HasSuffix(raw, suffix) {
+		raw = strings.TrimSuffix(raw, suffix)
+	}
+	raw = strings.ReplaceAll(raw, "_", "")
+	num, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", ul.Raw, err)
+		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Raw, err)
 	}
 	table := env.units[suffix]
 	baseAmount := num
@@ -974,45 +1146,48 @@ func (env *Env) evalUnitLiteral(ul *ast.UnitLiteral) (unitValue, error) {
 	return unitValue{BaseAmount: baseAmount, Suffix: suffix, Table: table}, nil
 }
 
-// cleanUnitSuffix strips leading digits and underscores from a potentially
-// malformed unit suffix (parser may include them for underscored numbers like 1_000ms).
-func cleanUnitSuffix(s string) string {
-	for i, c := range s {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-			return s[i:]
-		}
+func (env *Env) logAlertToast(args []ir.CallArg) (any, error) {
+	if len(args) < 1 {
+		return nil, nil
 	}
-	return s
+	msg, err := env.Eval(args[0].Value)
+	if err != nil {
+		return nil, err
+	}
+	variant := any("info")
+	if len(args) > 1 {
+		v, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, err
+		}
+		variant = v
+	}
+	env.Log = append(env.Log, fmt.Sprintf("[toast:%v] %v", variant, msg))
+	return nil, nil
 }
 
-// parseUnitNumber extracts the numeric part from a unit literal raw text.
-// Handles underscored numbers like "1_000ms".
-func parseUnitNumber(raw, suffix string) (float64, error) {
-	// Strip the suffix from the end of raw. The raw might contain the full
-	// parser suffix (with leading digits/underscores) so strip from the right.
-	numStr := raw
-	if suffix != "" {
-		numStr = strings.TrimSuffix(numStr, suffix)
+func (env *Env) logAlertSingle(method string, args []ir.CallArg) (any, error) {
+	if len(args) < 1 {
+		return nil, nil
 	}
-	// If the suffix wasn't fully removed (e.g., raw="1_000ms" suffix="ms" -> "1_000"),
-	// trim any remaining alpha characters from the right
-	for len(numStr) > 0 {
-		c := numStr[len(numStr)-1]
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-			numStr = numStr[:len(numStr)-1]
-		} else {
-			break
-		}
-	}
-	numStr = strings.ReplaceAll(numStr, "_", "")
-	if numStr == "" {
-		return 0, fmt.Errorf("empty number in unit literal %q", raw)
-	}
-	f, err := strconv.ParseFloat(numStr, 64)
+	v, err := env.Eval(args[0].Value)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return f, nil
+	env.Log = append(env.Log, fmt.Sprintf("[%s] %v", method, v))
+	return nil, nil
+}
+
+func (env *Env) logAlertConfirm(args []ir.CallArg) (any, error) {
+	if len(args) < 1 {
+		return true, nil
+	}
+	v, err := env.Eval(args[0].Value)
+	if err != nil {
+		return nil, err
+	}
+	env.Log = append(env.Log, fmt.Sprintf("[confirm] %v", v))
+	return true, nil
 }
 
 // --- helpers ---
@@ -1040,6 +1215,9 @@ func toFloat(v any) float64 {
 		return 0
 	case unitValue:
 		return val.BaseAmount
+	case string:
+		f, _ := strconv.ParseFloat(val, 64)
+		return f
 	}
 	return 0
 }
@@ -1050,6 +1228,14 @@ func toInt(v any) int {
 		return val
 	case float64:
 		return int(val)
+	case bool:
+		if val {
+			return 1
+		}
+		return 0
+	case string:
+		n, _ := strconv.Atoi(val)
+		return n
 	}
 	return 0
 }
@@ -1065,20 +1251,6 @@ func compareNum(a, b any) int {
 	return 0
 }
 
-// evalExprs evaluates a list of AST expressions into values.
-func (env *Env) evalExprs(exprs []ast.Expr) ([]any, error) {
-	args := make([]any, len(exprs))
-	for i, e := range exprs {
-		v, err := env.Eval(e)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = v
-	}
-	return args, nil
-}
-
-// runtimeTypeName returns the SNGL type name for a Go runtime value.
 func runtimeTypeName(v any) string {
 	switch v.(type) {
 	case int:
@@ -1100,10 +1272,32 @@ func runtimeTypeName(v any) string {
 	}
 }
 
-// numericResult normalizes arithmetic results to int when possible.
 func numericResult(f float64) any {
 	if f == math.Trunc(f) && !math.IsInf(f, 0) && !math.IsNaN(f) {
 		return int(f)
 	}
 	return f
 }
+
+// literalString pulls the cooked string value from an ast literal.
+func literalString(e *ast.LiteralExpr) (string, bool) {
+	if e == nil {
+		return "", false
+	}
+	raw := e.Raw
+	return unquoteString(raw), true
+}
+
+func unquoteString(raw string) string {
+	if len(raw) >= 2 {
+		if (raw[0] == '"' && raw[len(raw)-1] == '"') ||
+			(raw[0] == '`' && raw[len(raw)-1] == '`') {
+			return raw[1 : len(raw)-1]
+		}
+		if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) && len(raw) >= 6 {
+			return raw[3 : len(raw)-3]
+		}
+	}
+	return raw
+}
+
