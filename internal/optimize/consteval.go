@@ -240,28 +240,10 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		args = append(args, v)
 	}
 
-	// Instance method call: receiver.method(args)
-	if call.Receiver != nil {
-		recv, ok := evalExpr(call.Receiver, ctx)
-		if ok {
-			if call.Func != nil {
-				// Try qualified method: Type.method
-				qualName := call.Func.Receiver + "." + call.Func.Name
-				if v, ok := evalQualifiedMethod(qualName, append([]any{recv}, args...)); ok {
-					return v, true
-				}
-			}
-			// Try by receiver type.
-			if v, ok := evalMethod(methodForReceiver(call, recv), recv, args); ok {
-				return v, true
-			}
-		}
-		// Receiver eval failed (e.g., namespace ref) — fall through to native call.
-	}
-
-	// Resolved function call.
+	// Resolved function call. Type-attached methods (including both
+	// "x.upper()" and "string.upper(x)" syntaxes) are normalized so that
+	// Func.Receiver is set and the receiver value is Args[0].
 	if call.Func != nil {
-		// Try qualified method (static call like int.abs(x)).
 		if call.Func.Receiver != "" {
 			qualName := call.Func.Receiver + "." + call.Func.Name
 			if v, ok := evalQualifiedMethod(qualName, args); ok {
@@ -276,20 +258,6 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
-}
-
-func methodForReceiver(call *ir.Call, recv any) string {
-	if call.Func != nil {
-		return call.Func.Name
-	}
-	// Fallback: use AST if available.
-	if call.AST != nil {
-		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
-			return sel.Field
-		}
-	}
-	_ = recv
-	return ""
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {

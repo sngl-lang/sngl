@@ -122,7 +122,10 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if n.Receiver != nil {
-		return translateIRMethodCall(n, scope)
+		return translateIRNamespaceCall(n, scope)
+	}
+	if n.Func != nil && n.Func.Receiver != "" {
+		return translateIRTypeMethodCall(n, scope)
 	}
 	fn := ""
 	if n.Func != nil {
@@ -158,7 +161,7 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if n.Func == nil {
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
@@ -170,17 +173,6 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 	receiverName := n.Func.Receiver
 	qualName := receiverName + "." + method
 	receiverKT := translateIRExpr(n.Receiver, scope)
-
-	if id, ok := n.Receiver.(*ir.Ident); ok && isStaticTypeReceiver(id) {
-		if scope.FuncNames[qualName] {
-			ktName := id.Name + strings.ToUpper(method[:1]) + method[1:]
-			argStrs := make([]string, len(n.Args))
-			for i, a := range n.Args {
-				argStrs[i] = translateIRExpr(a.Value, scope)
-			}
-			return ktName + "(" + strings.Join(argStrs, ", ") + ")"
-		}
-	}
 
 	argsForBuiltin := []string{receiverKT}
 	for _, a := range n.Args {
@@ -203,6 +195,36 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		argStrs[i] = translateIRExpr(a.Value, scope)
 	}
 	return receiverKT + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateIRTypeMethodCall handles checker-normalized type-method calls:
+// Func.Receiver holds the type name and Args[0] holds the receiver value.
+func translateIRTypeMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+
+	if code := kotlinBuiltinMethodFromArgs(qualName, argStrs); code != "" {
+		return code
+	}
+	if code := kotlinBuiltinMethodFromArgs("*."+method, argStrs); code != "" {
+		return code
+	}
+
+	if scope.FuncNames != nil && scope.FuncNames[qualName] {
+		ktName := receiverName + strings.ToUpper(method[:1]) + method[1:]
+		return ktName + "(" + strings.Join(argStrs, ", ") + ")"
+	}
+
+	if len(argStrs) == 0 {
+		return "/* unresolved method " + qualName + " */"
+	}
+	return argStrs[0] + "." + method + "(" + strings.Join(argStrs[1:], ", ") + ")"
 }
 
 func translateIRConversion(n *ir.Conversion, scope *codegen.ExprScope) string {
@@ -285,22 +307,23 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 		if n.Call == nil {
 			return nil
 		}
-		// push / remove mutation short-circuits.
-		if n.Call.Receiver != nil && n.Call.Func != nil {
-			target := translateIRMutTarget(n.Call.Receiver, scope)
+		// push / remove mutation short-circuits. After normalization the
+		// receiver is Args[0] and the explicit argument is Args[1].
+		if n.Call.Func != nil && n.Call.Func.Receiver == "list" && len(n.Call.Args) >= 1 {
+			target := translateIRMutTarget(n.Call.Args[0].Value, scope)
 			method := n.Call.Func.Name
-			argStrs := make([]string, len(n.Call.Args))
-			for i, a := range n.Call.Args {
-				argStrs[i] = translateIRExpr(a.Value, scope)
+			rest := make([]string, len(n.Call.Args)-1)
+			for i, a := range n.Call.Args[1:] {
+				rest[i] = translateIRExpr(a.Value, scope)
 			}
 			switch method {
 			case "push":
-				if len(argStrs) == 1 {
-					return []string{target + ".add(" + argStrs[0] + ")"}
+				if len(rest) == 1 {
+					return []string{target + ".add(" + rest[0] + ")"}
 				}
 			case "remove":
-				if len(argStrs) == 1 {
-					return []string{target + ".removeAt(" + argStrs[0] + ")"}
+				if len(rest) == 1 {
+					return []string{target + ".removeAt(" + rest[0] + ")"}
 				}
 			}
 		}
@@ -336,18 +359,4 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 	default:
 		return translateIRExpr(e, scope)
 	}
-}
-
-func isStaticTypeReceiver(id *ir.Ident) bool {
-	if id == nil {
-		return false
-	}
-	switch id.Name {
-	case "int", "float", "string", "bool", "list", "option",
-		"date", "time", "dateTime", "duration", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6",
-		"hostname", "decimal":
-		return true
-	}
-	return false
 }

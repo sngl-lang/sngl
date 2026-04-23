@@ -552,23 +552,28 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		var args []ir.CallArg
 		if isStatic {
 			// Static call: Type.method(args...) — all args explicit.
+			// Type ident is only a namespace marker; drop it.
 			args = c.checkCallArgs(call.Args, sig)
 		} else if len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
 			// Instance call: expr.method(args...) — receiver is implicit first arg.
+			// Validate remaining args against the shifted sig, then prepend the
+			// receiver so the IR matches the static call shape.
 			shifted := &ir.FuncSig{
 				Params:     sig.Params[1:],
 				Return:     sig.Return,
 				TypeParams: sig.TypeParams,
 			}
-			args = c.checkCallArgs(call.Args, shifted)
+			rest := c.checkCallArgs(call.Args, shifted)
+			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		} else {
-			args = c.checkCallArgs(call.Args, sig)
+			rest := c.checkCallArgs(call.Args, sig)
+			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		}
 		retType := TypDyn
 		if sig.Return != nil {
 			retType = sig.Return
 		}
-		return &ir.Call{AST: call, Type: retType, Func: fn, Receiver: receiverExpr, Args: args}
+		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args}
 	}
 
 	args := c.checkCallArgs(call.Args, nil)

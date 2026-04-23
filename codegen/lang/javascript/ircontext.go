@@ -158,7 +158,10 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 
 func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
-		return jc.evalMethodCall(n)
+		return jc.evalNamespaceCall(n)
+	}
+	if n.Func != nil && n.Func.Receiver != "" {
+		return jc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
 		fname := n.Func.Name
@@ -189,39 +192,55 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
-func (jc *JsIRContext) evalMethodCall(n *ir.Call) string {
+func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := jc.EvalExpr(n.Receiver)
 	args := jc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
-
 		qualName := receiverName + "." + fname
 		allArgs := append([]string{receiver}, args...)
 		if result := jsBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		wildArgs := append([]string{receiver}, args...)
-		if result := jsBuiltinMethodFromArgs("*."+fname, wildArgs); result != "" {
+		if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 			return result
 		}
-
-		// Mutation methods
-		switch fname {
-		case "push":
-			if len(args) == 1 {
-				return receiver + ".push(" + args[0] + ")"
-			}
-		case "remove":
-			if len(args) == 1 {
-				return receiver + ".splice(" + args[0] + ", 1)"
-			}
-		}
-
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	args := jc.evalCallArgs(n.Args)
+	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
+		return result
+	}
+	if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
+		return result
+	}
+
+	if len(args) >= 1 {
+		recv := args[0]
+		rest := args[1:]
+		switch method {
+		case "push":
+			if len(rest) == 1 {
+				return recv + ".push(" + rest[0] + ")"
+			}
+		case "remove":
+			if len(rest) == 1 {
+				return recv + ".splice(" + rest[0] + ", 1)"
+			}
+		}
+		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
+	}
+	return "/* unresolved method " + qualName + " */"
 }
 
 func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {

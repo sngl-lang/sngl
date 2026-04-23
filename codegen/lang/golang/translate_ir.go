@@ -131,7 +131,10 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if n.Receiver != nil {
-		return translateIRMethodCall(n, scope)
+		return translateIRNamespaceCall(n, scope)
+	}
+	if n.Func != nil && n.Func.Receiver != "" {
+		return translateIRTypeMethodCall(n, scope)
 	}
 	fn := ""
 	if n.Func != nil {
@@ -167,7 +170,9 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+// translateIRNamespaceCall handles calls that retain a Receiver expression:
+// namespace function / component calls like `ns.foo(x)` and `html.div(...)`.
+func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if n.Func == nil {
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
@@ -180,19 +185,6 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 	qualName := receiverName + "." + method
 	receiverJS := translateIRExpr(n.Receiver, scope)
 
-	// Static type call: int.abs(x) → IntAbs(x)
-	if id, ok := n.Receiver.(*ir.Ident); ok && isStaticTypeReceiver(id) {
-		if scope.FuncNames[qualName] {
-			goName := ExportName(id.Name) + ExportName(method)
-			argStrs := make([]string, len(n.Args))
-			for i, a := range n.Args {
-				argStrs[i] = translateIRExpr(a.Value, scope)
-			}
-			return goName + "(" + strings.Join(argStrs, ", ") + ")"
-		}
-	}
-
-	// Stdlib builtins.
 	argsForBuiltin := []string{receiverJS}
 	for _, a := range n.Args {
 		argsForBuiltin = append(argsForBuiltin, translateIRExpr(a.Value, scope))
@@ -204,17 +196,43 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		return code
 	}
 
-	// User-declared method surfaced as TypeMethod(recv, ...).
-	if scope.FuncNames != nil && scope.FuncNames[qualName] {
-		goName := ExportName(receiverName) + ExportName(method)
-		return goName + "(" + strings.Join(argsForBuiltin, ", ") + ")"
-	}
-
 	argStrs := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		argStrs[i] = translateIRExpr(a.Value, scope)
 	}
 	return receiverJS + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateIRTypeMethodCall handles type-attached method calls after checker
+// normalization: Func.Receiver is the type name; Args[0] is the receiver value;
+// Args[1:] are the explicit arguments.
+func translateIRTypeMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+
+	if code := goBuiltinMethodFromArgs(qualName, argStrs); code != "" {
+		return code
+	}
+	if code := goBuiltinMethodFromArgs("*."+method, argStrs); code != "" {
+		return code
+	}
+
+	if scope.FuncNames != nil && scope.FuncNames[qualName] {
+		goName := ExportName(receiverName) + ExportName(method)
+		return goName + "(" + strings.Join(argStrs, ", ") + ")"
+	}
+
+	// Best-effort fallback: receiver.method(args).
+	if len(argStrs) == 0 {
+		return "/* unresolved method " + qualName + " */"
+	}
+	return argStrs[0] + "." + method + "(" + strings.Join(argStrs[1:], ", ") + ")"
 }
 
 func translateIRConversion(n *ir.Conversion, scope *codegen.ExprScope) string {
@@ -323,20 +341,4 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 	default:
 		return translateIRExpr(e, scope)
 	}
-}
-
-// isStaticTypeReceiver reports whether an ident is a builtin type name,
-// used to route qualified method calls through Type_Method naming.
-func isStaticTypeReceiver(id *ir.Ident) bool {
-	if id == nil {
-		return false
-	}
-	switch id.Name {
-	case "int", "float", "string", "bool", "list", "option",
-		"date", "time", "dateTime", "duration", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6",
-		"hostname", "decimal":
-		return true
-	}
-	return false
 }

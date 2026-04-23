@@ -160,7 +160,10 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
-		return kc.evalMethodCall(n)
+		return kc.evalNamespaceCall(n)
+	}
+	if n.Func != nil && n.Func.Receiver != "" {
+		return kc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
 		fname := n.Func.Name
@@ -188,28 +191,43 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
-func (kc *KtIRContext) evalMethodCall(n *ir.Call) string {
+func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := kc.EvalExpr(n.Receiver)
 	args := kc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
-
-		// Builtin method check
 		qualName := receiverName + "." + fname
 		allArgs := append([]string{receiver}, args...)
 		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		wildArgs := append([]string{receiver}, args...)
-		if result := kotlinBuiltinMethodFromArgs("*."+fname, wildArgs); result != "" {
+		if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 			return result
 		}
-
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	args := kc.evalCallArgs(n.Args)
+	if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
+		return result
+	}
+	if result := kotlinBuiltinMethodFromArgs("*."+method, args); result != "" {
+		return result
+	}
+
+	if len(args) == 0 {
+		return "/* unresolved method " + qualName + " */"
+	}
+	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 }
 
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {

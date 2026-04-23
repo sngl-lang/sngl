@@ -565,13 +565,16 @@ func (env *Env) evalMethodCall(call *ast.CallExpr, sel *ast.SelectExpr) (any, er
 	method := sel.Field
 	args := codegen.CallArgs(call)
 
-	// Type-namespace call: int.sqrt(x) where receiver is IdentExpr("int")
+	// Type-namespace call: the checker normalizes both "x.method(...)" and
+	// "Type.method(...)" to an AST of the form Type.method(recv, args...) where
+	// Args[0] is the receiver value. Handle static-only namespaces (Alert,
+	// File) up-front; for everything else, evaluate Args[0] as the receiver
+	// and fall through to instance dispatch below.
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if _, err := env.lookup(ident.Name); err != nil {
-			// Not a variable — treat as type namespace
 			qualName := ident.Name + "." + method
-			if evalArgs, err := env.evalExprs(args); err == nil {
-				// Log Alert/File calls for test visibility
+			evalArgs, evalErr := env.evalExprs(args)
+			if evalErr == nil {
 				switch qualName {
 				case "Alert.toast":
 					env.Log = append(env.Log, fmt.Sprintf("[toast:%v] %v", evalArgs[1], evalArgs[0]))
@@ -601,6 +604,19 @@ func (env *Env) evalMethodCall(call *ast.CallExpr, sel *ast.SelectExpr) (any, er
 			}
 			if fn, ok := env.funcs[qualName]; ok {
 				return env.evalUserFunc(fn, args)
+			}
+			// Fall through: synthesize an instance-style call with Args[0]
+			// as the receiver, then reuse the shared instance-dispatch path.
+			if len(args) > 0 {
+				sel = &ast.SelectExpr{
+					Pos:     sel.Pos,
+					Operand: args[0],
+					Field:   sel.Field,
+					Kind:    sel.Kind,
+				}
+				args = args[1:]
+			} else {
+				return nil, fmt.Errorf("unknown method %q", qualName)
 			}
 		}
 	}

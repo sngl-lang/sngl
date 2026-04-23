@@ -124,9 +124,14 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
-	// Method call: receiver.method(args).
+	// Namespace / component call: Receiver expression is preserved.
 	if n.Receiver != nil {
-		return translateIRMethodCall(n, scope)
+		return translateIRNamespaceCall(n, scope)
+	}
+
+	// Type-attached method call (checker-normalized).
+	if n.Func != nil && n.Func.Receiver != "" {
+		return translateIRTypeMethodCall(n, scope)
 	}
 
 	// Plain function call.
@@ -168,9 +173,8 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
 }
 
-func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if n.Func == nil {
-		// Unresolved method on dynamic receiver — emit best-effort call.
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
 			argStrs[i] = translateIRExpr(a.Value, scope)
@@ -179,34 +183,10 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 	}
 	method := n.Func.Name
 	receiverName := n.Func.Receiver
-
 	qualName := receiverName + "." + method
 	receiverJS := translateIRExpr(n.Receiver, scope)
 
-	// Type-qualified static call: int.abs(x) → int_abs(x). Detect via
-	// receiver being a bare type ident (its checker-assigned Sym is *TypeSym).
-	if id, ok := n.Receiver.(*ir.Ident); ok && isStaticTypeReceiver(id) {
-		if scope.FuncNames[qualName] {
-			jsName := strings.ReplaceAll(qualName, ".", "_")
-			argStrs := make([]string, len(n.Args))
-			for i, a := range n.Args {
-				argStrs[i] = translateIRExpr(a.Value, scope)
-			}
-			return jsName + "(" + strings.Join(argStrs, ", ") + ")"
-		}
-	}
-
-	// Stdlib method overrides. For static type receivers (`string.trim(x)`)
-	// the type ident is a namespace marker, not a value — drop it so the
-	// builtin handlers see a(0) as the first real argument.
-	staticReceiver := false
-	if id, ok := n.Receiver.(*ir.Ident); ok && isStaticTypeReceiver(id) {
-		staticReceiver = true
-	}
-	var argsForBuiltin []string
-	if !staticReceiver {
-		argsForBuiltin = append(argsForBuiltin, receiverJS)
-	}
+	argsForBuiltin := []string{receiverJS}
 	for _, a := range n.Args {
 		argsForBuiltin = append(argsForBuiltin, translateIRExpr(a.Value, scope))
 	}
@@ -217,28 +197,59 @@ func translateIRMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		return js
 	}
 
-	// User-defined method looked up as a free function type_method(recv, ...).
 	if scope.FuncNames != nil && scope.FuncNames[qualName] {
 		jsName := strings.ReplaceAll(qualName, ".", "_")
 		return jsName + "(" + strings.Join(argsForBuiltin, ", ") + ")"
 	}
 
-	// Mutation methods: push / remove act as instance-method calls.
 	argStrs := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		argStrs[i] = translateIRExpr(a.Value, scope)
 	}
-	switch method {
-	case "push":
-		if len(argStrs) == 1 {
-			return receiverJS + ".push(" + argStrs[0] + ")"
-		}
-	case "remove":
-		if len(argStrs) == 1 {
-			return receiverJS + ".splice(" + argStrs[0] + ", 1)"
-		}
-	}
 	return receiverJS + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateIRTypeMethodCall handles checker-normalized type-method calls:
+// Func.Receiver holds the type name and Args[0] holds the receiver value.
+func translateIRTypeMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+
+	if js := jsBuiltinMethodFromArgs(qualName, argStrs); js != "" {
+		return js
+	}
+	if js := jsBuiltinMethodFromArgs("*."+method, argStrs); js != "" {
+		return js
+	}
+
+	if scope.FuncNames != nil && scope.FuncNames[qualName] {
+		jsName := strings.ReplaceAll(qualName, ".", "_")
+		return jsName + "(" + strings.Join(argStrs, ", ") + ")"
+	}
+
+	// Mutation methods: push / remove render as native JS method calls.
+	if len(argStrs) >= 1 {
+		recv := argStrs[0]
+		rest := argStrs[1:]
+		switch method {
+		case "push":
+			if len(rest) == 1 {
+				return recv + ".push(" + rest[0] + ")"
+			}
+		case "remove":
+			if len(rest) == 1 {
+				return recv + ".splice(" + rest[0] + ", 1)"
+			}
+		}
+		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
+	}
+	return "/* unresolved method " + qualName + " */"
 }
 
 func translateIRConversion(n *ir.Conversion, scope *codegen.ExprScope) string {
@@ -367,22 +378,6 @@ func isIntIR(e ir.Expr) bool {
 	}
 	t := e.ExprType()
 	if t != nil && t.Kind == ir.TypeInt {
-		return true
-	}
-	return false
-}
-
-// isStaticTypeReceiver reports whether an ident refers to a type name
-// (for qualifying static method calls like int.abs).
-func isStaticTypeReceiver(id *ir.Ident) bool {
-	if id == nil {
-		return false
-	}
-	switch id.Name {
-	case "int", "float", "string", "bool", "list", "option",
-		"date", "time", "dateTime", "duration", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6",
-		"hostname", "decimal":
 		return true
 	}
 	return false

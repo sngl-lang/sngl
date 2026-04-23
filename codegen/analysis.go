@@ -289,14 +289,5 @@ func irExprUsesAlert(e ir.Expr) bool {
 	if !ok {
 		return false
 	}
-	if call.Func != nil && call.Func.Receiver == "Alert" {
-		return true
-	}
-	// Check if receiver is Alert namespace.
-	if call.Receiver != nil {
-		if ident, ok := call.Receiver.(*ir.Ident); ok && ident.Name == "Alert" {
-			return true
-		}
-	}
-	return false
+	return call.Func != nil && call.Func.Receiver == "Alert"
 }

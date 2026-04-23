@@ -612,7 +612,18 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
-		funcExpr = &ast.IdentExpr{Name: call.Func.Name}
+		if call.Func.Receiver != "" {
+			// Type-attached method: render as Type.method(args). After checker
+			// normalization Args[0] is the receiver value; both "x.method(...)"
+			// and "Type.method(...)" syntaxes collapse to this shape.
+			funcExpr = &ast.SelectExpr{
+				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
+				Field:   call.Func.Name,
+				Kind:    ast.SelectField,
+			}
+		} else {
+			funcExpr = &ast.IdentExpr{Name: call.Func.Name}
+		}
 	} else if call.AST != nil {
 		// Unresolved call — fall back to AST callee expression.
 		funcExpr = call.AST.Func

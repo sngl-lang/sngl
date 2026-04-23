@@ -55,15 +55,18 @@ type Ternary struct {
 
 // Call is a resolved function or method call.
 //   - Plain function: Func set, Receiver nil
-//   - Instance method: Func set, Receiver set (expr.method(args))
-//   - Namespace call: Func set, resolved through namespace
+//   - Type-attached method (string.upper, list.push, etc.): Func set with
+//     Func.Receiver != "", Receiver nil. The receiver value is Args[0]; both
+//     "x.upper()" and "string.upper(x)" normalize to this shape.
+//   - Namespace call (ns.foo, html.div): Func optionally set, Receiver set to
+//     the namespace ident.
 type Call struct {
 	AST      *ast.CallExpr
 	Type     *Type     // return type
 	Func     *Func     // resolved function (nil for unresolved/dynamic)
 	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
-	Receiver Expr      // non-nil for instance method calls
-	Args     []CallArg // resolved arguments
+	Receiver Expr      // non-nil only for namespace/component/element-ref calls
+	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
 }
 
 // CallArg is a resolved argument in a function call.

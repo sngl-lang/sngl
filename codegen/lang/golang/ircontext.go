@@ -174,9 +174,15 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 }
 
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
-	// Method call with receiver
+	// Namespace / component call — Receiver expression preserved.
 	if n.Receiver != nil {
-		return gc.evalMethodCall(n)
+		return gc.evalNamespaceCall(n)
+	}
+
+	// Type-attached method call (checker-normalized: Func.Receiver set,
+	// Args[0] is the receiver value).
+	if n.Func != nil && n.Func.Receiver != "" {
+		return gc.evalTypeMethodCall(n)
 	}
 
 	// Resolved function
@@ -215,7 +221,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
-func (gc *GoIRContext) evalMethodCall(n *ir.Call) string {
+func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := gc.EvalExpr(n.Receiver)
 	args := gc.evalCallArgs(n.Args)
 
@@ -223,28 +229,43 @@ func (gc *GoIRContext) evalMethodCall(n *ir.Call) string {
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
 
-		// Alert methods
-		if receiverName == "Alert" || (n.Receiver != nil && isAlertIdent(n.Receiver)) {
-			return gc.evalAlertCall(fname, n.Args)
-		}
-
-		// Builtin method overrides
 		qualName := receiverName + "." + fname
 		allArgs := append([]string{receiver}, args...)
 		if result := goBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		// Try wildcard
-		wildArgs := append([]string{receiver}, args...)
-		if result := goBuiltinMethodFromArgs("*."+fname, wildArgs); result != "" {
+		if result := goBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 			return result
 		}
 
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Unresolved method — best effort
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
+	method := n.Func.Name
+	receiverName := n.Func.Receiver
+	qualName := receiverName + "." + method
+
+	// Alert methods short-circuit to the context's alert emission.
+	if receiverName == "Alert" {
+		return gc.evalAlertCall(method, n.Args)
+	}
+
+	args := gc.evalCallArgs(n.Args)
+	if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
+		return result
+	}
+	if result := goBuiltinMethodFromArgs("*."+method, args); result != "" {
+		return result
+	}
+
+	if len(args) == 0 {
+		return "/* unresolved method " + qualName + " */"
+	}
+	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 }
 
 func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
@@ -548,13 +569,6 @@ func irFuncSigToGo(sig *ir.FuncSig) string {
 		ret = " " + IRTypeToGo(sig.Return)
 	}
 	return "func(" + strings.Join(params, ", ") + ")" + ret
-}
-
-func isAlertIdent(e ir.Expr) bool {
-	if id, ok := e.(*ir.Ident); ok {
-		return id.Name == "Alert"
-	}
-	return false
 }
 
 // --- IR operator helpers ---
