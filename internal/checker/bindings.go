@@ -46,14 +46,12 @@ func (c *checker) desugarBindings(comp *ir.Component, props []ir.Arg, handlers [
 			continue
 		}
 
-		body := buildBindBody(target, propName)
+		eventType := componentEventType(comp, evt)
+		// pickBindEvent only returns names whose event type resolves, so
+		// eventType is guaranteed non-nil here.
+		body := buildBindBody(target, propName, eventType)
 		if body == nil {
 			continue
-		}
-
-		eventType := componentEventType(comp, evt)
-		if eventType == nil {
-			eventType = ir.TypDyn
 		}
 		eParam := &ir.Param{Name: "e", Type: eventType}
 		fn := &ir.Func{
@@ -88,13 +86,13 @@ func pickBindEvent(comp *ir.Component, propName string) string {
 	return ""
 }
 
-func buildBindBody(target ir.Expr, propName string) ir.Stmt {
+func buildBindBody(target ir.Expr, propName string, eventType *ir.Type) ir.Stmt {
 	if propName == "checked" {
 		// Checkbox/toggle: flip the bound bool.
 		return &ir.Toggle{Target: target}
 	}
 	// Default: assign target = e.value.
-	eIdent := &ir.Ident{Name: "e", Type: ir.TypDyn}
+	eIdent := &ir.Ident{Name: "e", Type: eventType}
 	val := &ir.Select{Operand: eIdent, Field: "value", Type: ir.TypString}
 	return &ir.Assign{Target: target, Op: ast.AssignSet, Value: val}
 }

@@ -35,7 +35,9 @@ func testDivisionByZero(t Test, c errs) { // ERROR(test) "division by zero"
 }
 
 component overflow {
-    func boom(n int) => 1 + boom(n + 1)
+    func boom(n int) int {
+        return 1 + boom(n + 1)
+    }
     text(value="x")
 }
 

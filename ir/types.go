@@ -37,6 +37,7 @@ const (
 	TypeDecimal
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
+	TypeVoid      // void — a call that yields no value; not usable as an expression
 )
 
 // Type is the unified representation of all SNGL types.
@@ -73,6 +74,7 @@ var (
 	TypIPV6     = &Type{Kind: TypeIPV6}
 	TypHostname = &Type{Kind: TypeHostname}
 	TypDecimal  = &Type{Kind: TypeDecimal}
+	TypVoid     = &Type{Kind: TypeVoid}
 )
 
 // ListOf returns a list type with the given element type.
@@ -166,6 +168,8 @@ func (t *Type) String() string {
 		return "null"
 	case TypeTypeParam:
 		return t.ParamName
+	case TypeVoid:
+		return "void"
 	}
 	return "<unknown>"
 }

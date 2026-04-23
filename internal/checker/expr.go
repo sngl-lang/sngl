@@ -19,6 +19,18 @@ func exprType(e ir.Expr) *ir.Type {
 	return TypDyn
 }
 
+// requireValueType errors if t is TypeVoid, covering the case where a call to
+// a void function is used where a value is expected. Returns true when an
+// error was emitted so callers can skip further checks against a meaningless
+// type.
+func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
+	if t != nil && t.Kind == ir.TypeVoid {
+		c.error(pos, "expression yields no value")
+		return true
+	}
+	return false
+}
+
 // checkExpr infers the type of an expression and returns its IR form.
 func (c *checker) checkExpr(e ast.Expr) ir.Expr {
 	if e == nil {
@@ -444,10 +456,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		}
 	}
 
-	retType := TypDyn
-	if sig != nil && sig.Return != nil {
-		retType = sig.Return
-	}
+	retType := callRetType(sig)
 	call := &ir.Call{AST: x, Type: retType, Func: resolvedFunc, Args: args}
 	if resolvedFunc == nil {
 		call.Callee = calleeExpr
@@ -498,9 +507,11 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						if f, ok := fsym.(*ir.Func); ok {
 							resolvedFunc = f
 						}
-						retType := t
-						if sig != nil && sig.Return != nil {
-							retType = sig.Return
+						var retType *ir.Type
+						if sig != nil {
+							retType = callRetType(sig)
+						} else {
+							retType = t
 						}
 						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 					}
@@ -569,15 +580,29 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		}
-		retType := TypDyn
-		if sig.Return != nil {
-			retType = sig.Return
-		}
+		retType := callRetType(sig)
 		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args}
 	}
 
 	args := c.checkCallArgs(call.Args, nil)
 	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args}
+}
+
+// callRetType returns the expression type a call through sig should produce.
+// A sig with a nil Return represents a void function; calling one does not
+// yield a usable value, so we tag the call expression TypVoid. Consumer sites
+// that treat the call as an expression surface a normal assignability error
+// against TypVoid — this makes "silent dyn" leakage from missing return
+// annotations impossible. A nil sig (unknown function) stays TypDyn so the
+// surrounding lookup error isn't doubled up.
+func callRetType(sig *ir.FuncSig) *ir.Type {
+	if sig == nil {
+		return TypDyn
+	}
+	if sig.Return == nil {
+		return TypVoid
+	}
+	return sig.Return
 }
 
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
@@ -796,9 +821,24 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 }
 
 func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
+	// Infer unannotated lambda params from the expected function-type context
+	// (e.g. callback passed to `t.test(name, func(t, c) { ... })`). Falling back
+	// to `buildParams` would error on every untyped param; the contextual sig
+	// supplies those types.
+	var expectedSig *ir.FuncSig
+	if c.expected != nil && c.expected.Kind == ir.TypeFunc {
+		expectedSig = c.expected.Sig
+	}
+	params := c.buildLambdaParams(x.Params, expectedSig)
+	var ret *ir.Type
+	if x.ReturnType != nil {
+		ret = c.resolveType(x.ReturnType)
+	} else if expectedSig != nil {
+		ret = expectedSig.Return
+	}
 	fn := &ir.Func{
-		Params: c.buildParams(x.Params),
-		Return: c.resolveType(x.ReturnType),
+		Params: params,
+		Return: ret,
 	}
 
 	// Type-check the lambda body in a child scope.
@@ -898,6 +938,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				}
 				argExpr := c.checkExprExpecting(arg.Value, expected)
 				argType := exprType(argExpr)
+				c.requireValueType(argType, *arg.Value.ExprPos())
 				// Validate positional arg type against param.
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					paramType := sig.Params[positional].Type
@@ -996,7 +1037,9 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, decl.Pos) {
+				// Prevent void propagation into an inferred var type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -1034,6 +1077,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		// Type checking.
+		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
 				c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
@@ -1078,7 +1122,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if x.Init != nil {
 			initExpr = c.checkExprExpecting(x.Init, typ)
 			initType := exprType(initExpr)
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, x.Pos) {
+				// Avoid propagating void into an inferred var type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -1093,6 +1139,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if x.Value != nil {
 			valExpr = c.checkExprExpecting(x.Value, c.returnType)
 			valType := exprType(valExpr)
+			c.requireValueType(valType, x.Pos)
 			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn && valType.Kind != ir.TypeDyn && !valType.IsAssignableTo(c.returnType) {
 				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
 			}
@@ -1565,6 +1612,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			var val ir.Expr
 			if arg.Value != nil {
 				val = c.checkExprExpecting(arg.Value, expected)
+				c.requireValueType(exprType(val), *arg.Value.ExprPos())
 				// Implicit call: func() T used where T is expected.
 				if expected != nil {
 					actual := exprType(val)
@@ -1619,6 +1667,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				}
 				argExpr := c.checkExprExpecting(arg.Value, expected)
 				actual := exprType(argExpr)
+				c.requireValueType(actual, *arg.Value.ExprPos())
 				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
 					if callExpr, ret := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
 						call.Args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}

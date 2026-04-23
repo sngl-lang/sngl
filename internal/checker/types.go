@@ -67,6 +67,8 @@ const (
 	TypeNull = ir.TypeNull
 	//go:fix inline
 	TypeTypeParam = ir.TypeTypeParam
+	//go:fix inline
+	TypeVoid = ir.TypeVoid
 )
 
 //go:fix inline
@@ -148,6 +150,9 @@ var TypHostname = ir.TypHostname
 
 //go:fix inline
 var TypDecimal = ir.TypDecimal
+
+//go:fix inline
+var TypVoid = ir.TypVoid
 
 //go:fix inline
 var ListOf = ir.ListOf

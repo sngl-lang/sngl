@@ -37,11 +37,12 @@ func _() {
 	_ = x[TypeDecimal-26]
 	_ = x[TypeNull-27]
 	_ = x[TypeTypeParam-28]
+	_ = x[TypeVoid-29]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListOptionStructEnumUnitFuncComponentColorDateTimeDateTimeDurationURLEmailUUIDRegexBase64IPV4IPV6HostnameDecimalNullTypeParam"
+const _TypeKind_name = "InvalidDynBoolIntFloatStringListOptionStructEnumUnitFuncComponentColorDateTimeDateTimeDurationURLEmailUUIDRegexBase64IPV4IPV6HostnameDecimalNullTypeParamVoid"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 38, 44, 48, 52, 56, 65, 70, 74, 78, 86, 94, 97, 102, 106, 111, 117, 121, 125, 133, 140, 144, 153}
+var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 38, 44, 48, 52, 56, 65, 70, 74, 78, 86, 94, 97, 102, 106, 111, 117, 121, 125, 133, 140, 144, 153, 157}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

@@ -1,10 +1,12 @@
 package checker_test
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -878,6 +880,156 @@ func TestCheckTestdata(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNoSilentDynInferred guards the "dyn only when explicit" invariant: for
+// fixtures whose source never mentions `dyn`, the checked IR must not contain
+// any TypeDyn. A regression in the checker that silently infers dyn for
+// unannotated params, struct fields, returns, etc. will show up here.
+func TestNoSilentDynInferred(t *testing.T) {
+	dir := testdataDir()
+	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	dynKeyword := regexp.MustCompile(`\bdyn\b`)
+	// Calls through these stdlib receivers produce TypDyn today because the
+	// stdlib's `=>` funcs omit explicit return annotations (see
+	// registerStdlibFunc). Fixtures that use these methods inherit inferred
+	// dyn through no fault of the user-code checker paths, so the backstop
+	// skips them. Tightening this list should come together with adding
+	// return-type annotations to the stdlib.
+	stdlibDynMethod := regexp.MustCompile(`\b(?:int|float|string|list|option|color|Alert|File|stdlib|alert|file)\.[a-zA-Z]|\.(?:length|upper|lower|trim|contains|startsWith|endsWith|indexOf|substring|replace|split|join|push|pop|slice|parse|hex|rgb|rgba|opacity|lighten|darken|abs|min|max|clamp|floor|ceil|round|sqrt|pow|sin|cos|tan|asin|acos|atan|atan2)\(`)
+	for _, path := range matches {
+		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
+		t.Run(name, func(t *testing.T) {
+			src, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read: %v", err)
+			}
+			// Strip comments before scanning so directive mentions like
+			// `// ERROR(check) "dyn..."` don't count as explicit dyn use.
+			stripped := stripLineComments(src)
+			if dynKeyword.Match(stripped) {
+				t.Skip("source contains explicit `dyn` — backstop not applicable")
+			}
+			if stdlibDynMethod.Match(stripped) {
+				t.Skip("source uses stdlib methods whose return types are implicitly dyn")
+			}
+			dirs, err := testutil.ParseDirectives(path)
+			if err != nil {
+				t.Fatalf("directives: %v", err)
+			}
+			if len(testutil.Filter(dirs, "parse")) > 0 {
+				t.Skip("parse-error fixture")
+			}
+			if len(testutil.Filter(dirs, "check")) > 0 {
+				t.Skip("check-error fixture — TypDyn during error recovery is expected")
+			}
+			doc, parseErr := parser.Parse(filepath.Base(path), src)
+			if parseErr != nil {
+				t.Skipf("parse: %v", parseErr)
+			}
+			cfg := &checker.Config{IsMain: true}
+			for _, s := range doc.Stmts {
+				if _, ok := s.(*ast.Import); ok {
+					cfg.Resolver = newTestResolver()
+					break
+				}
+			}
+			pkg, _ := checker.Check(doc, cfg)
+			if pkg == nil {
+				return
+			}
+			report := func(where string, pos ast.Pos) {
+				t.Errorf("inferred TypeDyn at %s (%s:%d:%d) — expected explicit annotation or an error",
+					where, filepath.Base(path), pos.Line, pos.Column)
+			}
+			visit := func(label string, pos ast.Pos, typ *ir.Type) {
+				if typ != nil && typ.Kind == ir.TypeDyn {
+					report(label, pos)
+				}
+			}
+			for _, v := range pkg.Vars {
+				visit("package var "+v.Name, stmtPos(v.AST), v.Type)
+			}
+			for _, v := range pkg.Consts {
+				visit("package const "+v.Name, stmtPos(v.AST), v.Type)
+			}
+			for _, fn := range pkg.Funcs {
+				pos := ast.Pos{}
+				if fn.AST != nil {
+					pos = fn.AST.Pos
+				}
+				for _, p := range fn.Params {
+					visit("func "+fn.Name+" param "+p.Name, pos, p.Type)
+				}
+				visit("func "+fn.Name+" return", pos, fn.Return)
+			}
+			for _, comp := range pkg.Components {
+				pos := ast.Pos{}
+				if comp.AST != nil {
+					pos = comp.AST.Pos
+				}
+				for _, p := range comp.Props {
+					visit("component "+comp.Name+" prop "+p.Name, pos, p.Type)
+				}
+				for _, v := range comp.Vars {
+					vpos := pos
+					if p := stmtPos(v.AST); p.Line != 0 {
+						vpos = p
+					}
+					visit("component "+comp.Name+" var "+v.Name, vpos, v.Type)
+				}
+				for _, fn := range comp.Funcs {
+					for _, p := range fn.Params {
+						visit("component "+comp.Name+" func "+fn.Name+" param "+p.Name, pos, p.Type)
+					}
+					visit("component "+comp.Name+" func "+fn.Name+" return", pos, fn.Return)
+				}
+			}
+			for _, sd := range pkg.Structs {
+				pos := ast.Pos{}
+				if sd.AST != nil {
+					pos = sd.AST.Pos
+				}
+				for _, f := range sd.Fields {
+					visit("struct "+sd.Name+" field "+f.Name, pos, f.Type)
+				}
+			}
+		})
+	}
+}
+
+// stmtPos extracts the Pos from an ast.Stmt that wraps a decl with a Pos field.
+func stmtPos(s ast.Stmt) ast.Pos {
+	switch x := s.(type) {
+	case *ast.VarDecl:
+		return x.Pos
+	case *ast.ConstDecl:
+		return x.Pos
+	}
+	return ast.Pos{}
+}
+
+// stripLineComments removes // line comments from source so they don't pollute
+// the backstop's `dyn` keyword scan.
+func stripLineComments(src []byte) []byte {
+	var out []byte
+	for len(src) > 0 {
+		i := bytes.Index(src, []byte("//"))
+		if i < 0 {
+			out = append(out, src...)
+			break
+		}
+		out = append(out, src[:i]...)
+		eol := bytes.IndexByte(src[i:], '\n')
+		if eol < 0 {
+			break
+		}
+		src = src[i+eol:]
+	}
+	return out
 }
 
 // TestCheckProjectTestdata runs the v2 checker over all project-level testdata

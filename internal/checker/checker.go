@@ -428,7 +428,9 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
 			// Infer type from init if not declared.
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, decl.Pos) {
+				// Don't propagate void into an inferred const type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -574,7 +576,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
 			// Infer type from init if not declared.
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, decl.Pos) {
+				// Don't propagate void into an inferred type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -616,7 +620,9 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, decl.Pos) {
+				// Don't propagate void into an inferred component var type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -648,7 +654,9 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
 			}
-			if typ.Kind == ir.TypeDyn {
+			if c.requireValueType(initType, decl.Pos) {
+				// Don't propagate void into an inferred const type.
+			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
 		}
@@ -1200,8 +1208,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		body := fn.AST.Body
 		bodyExpr := c.checkExpr(body)
 		bodyType := exprType(bodyExpr)
-		// Infer return type from expression body if not declared.
-		if fn.Return.Kind == ir.TypeDyn && bodyType.Kind != ir.TypeDyn {
+		// Infer return type from expression body when there was no annotation.
+		// An explicit `dyn` annotation is kept as-is.
+		if fn.Return == nil {
 			fn.Return = bodyType
 		}
 		// Expression-body return type check.
@@ -1223,15 +1232,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
-	// Declare props as params.
-	for _, p := range comp.Props {
-		c.scope.Declare(&ir.Param{
-			Name: p.Name,
-			Type: p.Type,
-		})
-	}
-
-	// Check prop defaults now that scope is ready.
+	// Check prop defaults first (before declaring props as params in scope) so
+	// that an unannotated prop's type can be inferred from its default and the
+	// param entry we declare below picks up the inferred type.
 	if comp.AST != nil {
 		propIdx := 0
 		for _, p := range comp.AST.Props.Props {
@@ -1243,10 +1246,22 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					if prop.Type.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(prop.Type) {
 						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, prop.Type)
 					}
+					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
+						prop.Type = initType
+					}
 				}
 				propIdx++
 			}
 		}
+	}
+
+	// Declare props as params now that any default-driven type inference has
+	// finalized prop.Type.
+	for _, p := range comp.Props {
+		c.scope.Declare(&ir.Param{
+			Name: p.Name,
+			Type: p.Type,
+		})
 	}
 
 	// Declare component-level vars and funcs.

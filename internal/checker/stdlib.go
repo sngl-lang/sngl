@@ -122,7 +122,15 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 
 func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 	fn := c.buildFunc(f)
-	// Tag stdlib functions whose body delegates to an intrinsic.
+	// Stdlib funcs skip the body-check pass. When a stdlib signature omits a
+	// return annotation (common for the "=>" forms that delegate to an
+	// intrinsic), treat the missing return as an explicit dyn escape hatch
+	// rather than void — the stdlib is trusted to know what it's doing, and
+	// body-level inference would conflict with the primitive/struct aliasing
+	// used internally (e.g. the `color` struct vs the `color` primitive).
+	if fn.Return == nil && f.Body != nil {
+		fn.Return = TypDyn
+	}
 	if id := detectIntrinsicCall(fn); id != "" {
 		fn.Intrinsic = id
 	}

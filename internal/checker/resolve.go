@@ -9,7 +9,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// resolveType converts an AST TypeExpr to an IR *Type.
+// resolveType converts an AST TypeExpr to an IR *Type. A nil TypeExpr yields
+// TypDyn; callers that must not tolerate a missing annotation should use
+// resolveTypeRequired instead.
 func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	if te == nil {
 		return TypDyn
@@ -26,8 +28,19 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	case *ast.UnitDef:
 		return c.resolveAnonUnit(t)
 	default:
+		c.error(ast.Pos{}, "internal: unknown type expression %T", te)
 		return TypDyn
 	}
+}
+
+// resolveTypeRequired resolves a TypeExpr and errors at pos if it is nil.
+// Use this at sites where an explicit type annotation is mandatory.
+func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string) *ir.Type {
+	if te == nil {
+		c.error(pos, "type annotation required for %s", what)
+		return TypDyn
+	}
+	return c.resolveType(te)
 }
 
 // resolveNamedType resolves a named type reference to an IR *Type.
@@ -84,21 +97,17 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Generic builtins with type argument.
 	switch t.Name {
 	case "list":
-		var elem *ir.Type
-		if len(t.TypeArgs) > 0 {
-			elem = c.resolveType(t.TypeArgs[0])
-		} else {
-			elem = TypDyn
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
+			return ListOf(TypDyn)
 		}
-		return ListOf(elem)
+		return ListOf(c.resolveType(t.TypeArgs[0]))
 	case "option":
-		var inner *ir.Type
-		if len(t.TypeArgs) > 0 {
-			inner = c.resolveType(t.TypeArgs[0])
-		} else {
-			inner = TypDyn
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
+			return OptionOf(TypDyn)
 		}
-		return OptionOf(inner)
+		return OptionOf(c.resolveType(t.TypeArgs[0]))
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
 	}
@@ -146,7 +155,7 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
-		params[i] = &ir.Param{Type: c.resolveType(p)}
+		params[i] = &ir.Param{Type: c.resolveTypeRequired(p, ast.Pos{}, "function-type parameter")}
 	}
 	var ret *ir.Type
 	if t.Return != nil {
@@ -183,7 +192,11 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	var fields []*ir.StructField
 	for _, f := range s.Fields {
-		typ := c.resolveType(f.Type)
+		fieldLabel := "struct field"
+		if len(f.Names) > 0 {
+			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
+		}
+		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
 		for _, name := range f.Names {
 			var def ir.Expr
 			if f.Default != nil {
@@ -335,11 +348,42 @@ func namespaceFromPath(path string) string {
 	return uri
 }
 
+// buildLambdaParams mirrors buildParams but accepts a contextual signature so
+// unannotated lambda params can adopt the expected parameter types. With no
+// context available, an unannotated lambda param keeps TypDyn — lambdas are
+// often handed to dynamically-dispatched callers (e.g. the testrunner's
+// `t.test("...", func(t, c) { ... })`) where the surrounding method is
+// resolved at runtime rather than through a typed stdlib signature.
+func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*ir.Param {
+	params := make([]*ir.Param, len(pl.Params))
+	for i, p := range pl.Params {
+		var typ *ir.Type
+		switch {
+		case p.Type != nil:
+			typ = c.resolveType(p.Type)
+		case expected != nil && i < len(expected.Params):
+			typ = expected.Params[i].Type
+		default:
+			typ = TypDyn
+		}
+		var def ir.Expr
+		if p.Default != nil {
+			def = &ir.Literal{Type: typ}
+		}
+		params[i] = &ir.Param{
+			Name:    p.Name,
+			Type:    typ,
+			Default: def,
+		}
+	}
+	return params
+}
+
 // buildParams converts AST Params to IR Params.
 func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	params := make([]*ir.Param, len(pl.Params))
 	for i, p := range pl.Params {
-		typ := c.resolveType(p.Type)
+		typ := c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
 		var def ir.Expr
 		if p.Default != nil {
 			// Use a placeholder to signal "has default" for arity checks.
@@ -362,12 +406,19 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	// Set type params so T resolves during param/return type resolution.
 	prevTypeParams := c.typeParams
 	c.typeParams = f.TypeParams
+	// nil ReturnType means void (block body) or pending-inference (expression body);
+	// leave Return nil here so checkFuncBody can infer from a `=>` body without
+	// conflating it with an explicit `dyn` return annotation.
+	var ret *ir.Type
+	if f.ReturnType != nil {
+		ret = c.resolveType(f.ReturnType)
+	}
 	fn := &ir.Func{
 		AST:        f,
 		Name:       f.Name,
 		TypeParams: f.TypeParams,
 		Params:     c.buildParams(f.Params),
-		Return:     c.resolveType(f.ReturnType),
+		Return:     ret,
 		IsTest:     f.IsTest(),
 	}
 	c.typeParams = prevTypeParams
