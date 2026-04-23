@@ -244,6 +244,9 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 }
 
 func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
+	if isNullToFuncConvJS(n) {
+		return nullFuncStubJS(n.Type)
+	}
 	operand := jc.EvalExpr(n.Operand)
 	if n.Type != nil {
 		switch n.Type.Kind {
@@ -256,6 +259,44 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		}
 	}
 	return operand
+}
+
+func isNullToFuncConvJS(n *ir.Conversion) bool {
+	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
+		return false
+	}
+	lit, ok := n.Operand.(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+}
+
+func nullFuncStubJS(t *ir.Type) string {
+	if t == nil || t.Sig == nil {
+		return "() => null"
+	}
+	arity := len(t.Sig.Params)
+	params := make([]string, arity)
+	for i := range params {
+		params[i] = "_"
+	}
+	zero := jsZeroFor(t.Sig.Return)
+	return "(" + strings.Join(params, ", ") + ") => " + zero
+}
+
+func jsZeroFor(t *ir.Type) string {
+	if t == nil {
+		return "null"
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat:
+		return "0"
+	case ir.TypeBool:
+		return "false"
+	case ir.TypeString:
+		return `""`
+	case ir.TypeList:
+		return "[]"
+	}
+	return "null"
 }
 
 func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {

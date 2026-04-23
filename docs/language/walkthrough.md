@@ -111,7 +111,7 @@ component main {
 
 ## Numeric Operations
 
-SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` requires an explicit conversion.
+SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` is allowed — the narrower operand auto-promotes to `float`. Use `int(x)` or `float(x)` only when you need to change the stored representation.
 
 The `+` operator doubles as string concatenation when both sides are strings. Mixing a number and a string is an error — use interpolation or `string(n)` to make the conversion explicit.
 

@@ -320,9 +320,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeNull && target.Kind == TypeFunc {
 		return true
 	}
-	if t.Kind == TypeInt && target.Kind == TypeUnit {
-		return true
-	}
 	if t.Kind == TypeInt && target.Kind == TypeFloat {
 		return true
 	}

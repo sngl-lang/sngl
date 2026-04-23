@@ -1,0 +1,18 @@
+component box {
+    var maybe option<int> = null
+    var set option<int> = 42
+    text(value="hi")
+}
+
+func testNullIsNullOption(t Test, c box) {
+    t.assert(c.maybe == null)
+}
+
+func testSetOptionNotNull(t Test, c box) {
+    t.assert(c.set != null)
+}
+
+func testAssignNullToOption(t Test, c box) {
+    c.set = null
+    t.assert(c.set == null)
+}

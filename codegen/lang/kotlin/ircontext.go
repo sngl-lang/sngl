@@ -231,6 +231,9 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 }
 
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
+	if isNullToFuncConvKt(n) {
+		return nullFuncStubKt(n.Type)
+	}
 	operand := kc.EvalExpr(n.Operand)
 	if n.Type != nil {
 		switch n.Type.Kind {
@@ -245,6 +248,49 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 		}
 	}
 	return operand
+}
+
+func isNullToFuncConvKt(n *ir.Conversion) bool {
+	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
+		return false
+	}
+	lit, ok := n.Operand.(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+}
+
+func nullFuncStubKt(t *ir.Type) string {
+	if t == nil || t.Sig == nil {
+		return "{ }"
+	}
+	arity := len(t.Sig.Params)
+	params := make([]string, arity)
+	for i := range params {
+		params[i] = "_"
+	}
+	zero := ktZeroFor(t.Sig.Return)
+	if arity == 0 {
+		return "{ " + zero + " }"
+	}
+	return "{ " + strings.Join(params, ", ") + " -> " + zero + " }"
+}
+
+func ktZeroFor(t *ir.Type) string {
+	if t == nil {
+		return "Unit"
+	}
+	switch t.Kind {
+	case ir.TypeInt:
+		return "0"
+	case ir.TypeFloat:
+		return "0.0"
+	case ir.TypeBool:
+		return "false"
+	case ir.TypeString:
+		return `""`
+	case ir.TypeList:
+		return "listOf()"
+	}
+	return "null"
 }
 
 func (kc *KtIRContext) evalStructLit(n *ir.StructLit) string {

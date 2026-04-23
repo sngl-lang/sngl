@@ -37,8 +37,15 @@ func testUnaryNegation(t Test, c conv) {
     t.assert(-c.rate == -3.14)
 }
 
-func testBoolInArithmetic(t Test, c conv) {
-    t.assert(c.out.value == "42")
-    t.assert(c.active + 0 == 1)
-    t.assert(c.active * 2 == 2)
+func testIntFloatPromotion(t Test, c conv) {
+    t.assert(c.count + c.rate == 45.14)
+    t.assert(c.rate * c.count > 131.0)
+    t.assert(c.rate * c.count < 132.0)
+}
+
+func testInterpolationPrimitives(t Test, c conv) {
+    t.assert("{c.count}" == "42")
+    t.assert("{c.rate}" == "3.14")
+    t.assert("{c.active}" == "true")
+    t.assert("{c.label}" == "hello")
 }

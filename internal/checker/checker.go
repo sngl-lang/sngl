@@ -425,7 +425,14 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+					initExpr = adapted
+				} else {
+					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				}
+			}
+			if typ.Kind != ir.TypeDyn {
+				initExpr = wrapIfNeeded(initExpr, typ)
 			}
 			// Infer type from init if not declared.
 			if c.requireValueType(initType, decl.Pos) {
@@ -572,9 +579,16 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+					initExpr = adapted
+				} else {
+					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
+			if typ.Kind != ir.TypeDyn {
+				initExpr = wrapIfNeeded(initExpr, typ)
+			}
 			// Infer type from init if not declared.
 			if c.requireValueType(initType, decl.Pos) {
 				// Don't propagate void into an inferred type.
@@ -617,9 +631,16 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+					initExpr = adapted
+				} else {
+					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
+			if typ.Kind != ir.TypeDyn {
+				initExpr = wrapIfNeeded(initExpr, typ)
+			}
 			if c.requireValueType(initType, decl.Pos) {
 				// Don't propagate void into an inferred component var type.
 			} else if typ.Kind == ir.TypeDyn {
@@ -652,7 +673,14 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+					initExpr = adapted
+				} else {
+					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				}
+			}
+			if typ.Kind != ir.TypeDyn {
+				initExpr = wrapIfNeeded(initExpr, typ)
 			}
 			if c.requireValueType(initType, decl.Pos) {
 				// Don't propagate void into an inferred const type.

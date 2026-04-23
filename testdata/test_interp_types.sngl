@@ -1,0 +1,34 @@
+enum Status { active, inactive, pending }
+
+component view {
+    var n = 42
+    var f = 3.14
+    var b = true
+    var s = "text"
+    var st = Status.active
+    var xs list<int> = [1, 2, 3]
+    var maybe option<int> = null
+    text #out(value="n={n} f={f} b={b} s={s} st={st}")
+}
+
+func testInterpPrimitives(t Test, c view) {
+    t.assert(c.out.value == "n=42 f=3.14 b=true s=text st=active")
+}
+
+func testInterpList(t Test) {
+    var xs list<int> = [1, 2]
+    var out = "{xs}"
+    t.assert(out != "")
+}
+
+func testInterpOption(t Test, c view) {
+    var out = "{c.maybe}"
+    // Null option should render as the null sentinel or empty — just confirm
+    // it stringifies without error and is not the literal "option".
+    t.assert(out != "option")
+}
+
+func testInterpZeroArgFuncCalls(t Test, c view) {
+    var label = func() => "hi"
+    t.assert("{label}" == "hi")
+}

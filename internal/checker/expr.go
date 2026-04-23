@@ -309,6 +309,17 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	default:
 		typ = TypDyn
 	}
+	// Materialize numeric promotion so both operands of ir.Binary share the
+	// result type. Codegen no longer needs to know that int+float promotes to
+	// float — the IR already carries the conversion.
+	if typ != nil && typ.IsNumeric() {
+		if lt := exprType(leftExpr); lt.IsNumeric() && lt.Kind != typ.Kind {
+			leftExpr = &ir.Conversion{Type: typ, Operand: leftExpr}
+		}
+		if rt := exprType(rightExpr); rt.IsNumeric() && rt.Kind != typ.Kind {
+			rightExpr = &ir.Conversion{Type: typ, Operand: rightExpr}
+		}
+	}
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
 
@@ -404,37 +415,20 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		return c.inferMethodCall(sel, x)
 	}
 
-	// Check if it's a builtin conversion.
+	// Check if it's a builtin conversion. Only primitive→primitive conversions
+	// are permitted; struct/func/component/list/option operands must define a
+	// user method and be called as `x.string()` etc. — the cast form never
+	// dispatches to user methods.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
 		switch ident.Name {
 		case "int":
-			args := c.checkCallArgs(x.Args, nil)
-			var operand ir.Expr
-			if len(args) > 0 {
-				operand = args[0].Value
-			}
-			return &ir.Conversion{AST: x, Type: TypInt, Operand: operand}
+			return c.inferBuiltinConversion(x, TypInt, ident.Name)
 		case "float":
-			args := c.checkCallArgs(x.Args, nil)
-			var operand ir.Expr
-			if len(args) > 0 {
-				operand = args[0].Value
-			}
-			return &ir.Conversion{AST: x, Type: TypFloat, Operand: operand}
+			return c.inferBuiltinConversion(x, TypFloat, ident.Name)
 		case "string":
-			args := c.checkCallArgs(x.Args, nil)
-			var operand ir.Expr
-			if len(args) > 0 {
-				operand = args[0].Value
-			}
-			return &ir.Conversion{AST: x, Type: TypString, Operand: operand}
+			return c.inferBuiltinConversion(x, TypString, ident.Name)
 		case "bool":
-			args := c.checkCallArgs(x.Args, nil)
-			var operand ir.Expr
-			if len(args) > 0 {
-				operand = args[0].Value
-			}
-			return &ir.Conversion{AST: x, Type: TypBool, Operand: operand}
+			return c.inferBuiltinConversion(x, TypBool, ident.Name)
 		}
 	}
 
@@ -478,6 +472,41 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		call.Callee = calleeExpr
 	}
 	return call
+}
+
+// inferBuiltinConversion type-checks `T(x)` where T is a builtin primitive
+// target (int/float/string/bool). The operand must be a primitive whose kind
+// appears in the allow-list for the target; other types surface a diagnostic.
+func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name string) ir.Expr {
+	if len(x.Args.Args) != 1 {
+		args := c.checkCallArgs(x.Args, nil)
+		var operand ir.Expr
+		if len(args) > 0 {
+			operand = args[0].Value
+		}
+		c.error(x.Pos, "%s(): expected 1 argument, got %d", name, len(x.Args.Args))
+		return &ir.Conversion{AST: x, Type: target, Operand: operand}
+	}
+	// Implicit func() T collapse: `string(fn)` where fn: func() T becomes
+	// `string(fn())` so zero-arg funcs can flow into a cast like any other
+	// value.
+	arg, _ := x.Args.Args[0].(ast.Arg)
+	if arg.Value != nil {
+		argExpr := c.checkExpr(arg.Value)
+		from := exprType(argExpr)
+		if from != nil && from.Kind == ir.TypeFunc && from.Sig != nil &&
+			len(from.Sig.Params) == 0 && from.Sig.Return != nil {
+			call := &ast.CallExpr{Pos: *arg.Value.ExprPos(), Func: arg.Value}
+			x.Args.Args[0] = ast.Arg{Name: arg.Name, Value: call}
+			argExpr = c.checkExpr(call)
+		}
+		from = exprType(argExpr)
+		if from != nil && from.Kind != target.Kind && !primitiveConvertible(from.Kind, target.Kind) {
+			c.error(x.Pos, "%s(): cannot convert %s", name, from)
+		}
+		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
+	}
+	return &ir.Conversion{AST: x, Type: target}
 }
 
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
@@ -798,13 +827,28 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be
-// concatenated into a string chain without an explicit string() conversion.
+// concatenated into a string chain without any coercion.
 func interpPartAlreadyString(t *ir.Type) bool {
 	if t == nil {
 		return true
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeDyn,
+	case ir.TypeString, ir.TypeDyn:
+		return true
+	}
+	return false
+}
+
+// interpPartPrimitive reports whether a part's type is a stringifiable
+// primitive that can flow into an interpolation via an ir.Conversion — no
+// user-defined `.string()` method required.
+func interpPartPrimitive(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
+		ir.TypeEnum, ir.TypeUnit, ir.TypeNull,
 		ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
 		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
 		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
@@ -813,20 +857,66 @@ func interpPartAlreadyString(t *ir.Type) bool {
 	return false
 }
 
+// interpolateStringify turns an interpolation part into a string-typed ir.Expr.
+// Primitives and dyn flow through (with a wrapping Conversion for primitives);
+// zero-arg funcs get an implicit call; other types must define a `.string()`
+// method. When no path exists an error is emitted and the original expr is
+// returned so chain assembly continues.
+func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.Pos) ir.Expr {
+	t := exprType(expr)
+	// Implicit call: `{fn}` where fn returns T becomes `{fn()}`. Re-check via
+	// the ast layer so Func resolution (plain / method / namespace) runs.
+	if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil &&
+		len(t.Sig.Params) == 0 && t.Sig.Return != nil && partAst != nil {
+		call := &ast.CallExpr{Pos: *partAst.ExprPos(), Func: partAst}
+		expr = c.checkExpr(call)
+		t = exprType(expr)
+	}
+	if interpPartAlreadyString(t) {
+		return expr
+	}
+	if interpPartPrimitive(t) {
+		return &ir.Conversion{Type: TypString, Operand: expr}
+	}
+	// User-defined or stdlib method lookup: `.string()` on the value's type.
+	typeName := t.String()
+	if fn, ok := c.symtab.LookupMethod(typeName, "string"); ok {
+		return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
+	}
+	// Generic-type fallbacks so list/option implementations can register under
+	// their bare name and apply to any instantiation.
+	switch t.Kind {
+	case ir.TypeList:
+		if fn, ok := c.symtab.LookupMethod("list", "string"); ok {
+			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
+		}
+		// No stdlib method yet — fall back to the generic stringify path so
+		// `{myList}` still produces a rendered list at runtime. Platform
+		// codegen for ir.Conversion over a list emits its language-native
+		// formatter (fmt.Sprint / String() / toString()).
+		return &ir.Conversion{Type: TypString, Operand: expr}
+	case ir.TypeOption:
+		if fn, ok := c.symtab.LookupMethod("option", "string"); ok {
+			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
+		}
+		return &ir.Conversion{Type: TypString, Operand: expr}
+	}
+	c.error(pos, "cannot interpolate %s: type has no string() method", t)
+	return expr
+}
+
 func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
-	// Desugar interpolation to a chain of Binary + operations.
-	// Each string literal part becomes an ir.Literal; each expression part is checked
-	// and coerced to string so codegen can concatenate without type errors.
+	// Desugar interpolation to a chain of Binary + operations. Each string
+	// literal part becomes an ir.Literal; each expression part is checked and
+	// stringified via interpolateStringify so the chain is string-typed end to
+	// end.
 	var chain ir.Expr
 	for _, part := range x.Parts {
 		var partExpr ir.Expr
 		if lit, ok := part.(*ast.LiteralExpr); ok {
 			partExpr = &ir.Literal{AST: lit, Type: TypString, Raw: lit.Raw}
 		} else {
-			partExpr = c.checkExpr(part)
-			if t := exprType(partExpr); !interpPartAlreadyString(t) {
-				partExpr = &ir.Conversion{Type: TypString, Operand: partExpr}
-			}
+			partExpr = c.interpolateStringify(part, c.checkExpr(part), *part.ExprPos())
 		}
 		if chain == nil {
 			chain = partExpr
@@ -870,6 +960,12 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	c.returnType = fn.Return
 	if x.Body != nil {
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		if fn.Return == nil {
+			// Expression-body lambda with no annotation and no contextual
+			// return type: take the body's type as the return type.
+			fn.Return = exprType(bodyExpr)
+			c.returnType = fn.Return
+		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
 	}
 	if x.Block.IsDefined() {
@@ -963,7 +1059,9 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
 					paramType := sig.Params[positional].Type
 					if argType.Kind != ir.TypeDyn && paramType.Kind != ir.TypeDyn && !argType.IsAssignableTo(paramType) {
-						if callExpr, _ := c.implicitCall(arg.Value, argType, paramType); callExpr != nil {
+						if adapted, ok := adaptLiteralZero(argExpr, paramType); ok {
+							argExpr = adapted
+						} else if callExpr, _ := c.implicitCall(arg.Value, argType, paramType); callExpr != nil {
 							args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
 							// Re-check the wrapped call to get proper ir.Expr.
 							argExpr = c.checkExpr(callExpr)
@@ -971,6 +1069,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 							c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
 						}
 					}
+					argExpr = wrapIfNeeded(argExpr, paramType)
 				}
 				result = append(result, ir.CallArg{Name: arg.Name, Value: argExpr})
 			}
@@ -1054,13 +1153,19 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+					initExpr = adapted
+				} else {
+					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
 			if c.requireValueType(initType, decl.Pos) {
 				// Prevent void propagation into an inferred var type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
+			} else {
+				initExpr = wrapIfNeeded(initExpr, typ)
 			}
 		}
 		for _, name := range spec.Names {
@@ -1100,7 +1205,14 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
-				c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+				if adapted, ok := adaptLiteralZero(valueExpr, targetType); ok {
+					valueExpr = adapted
+				} else {
+					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+				}
+			}
+			if targetType.Kind != ir.TypeDyn {
+				valueExpr = wrapIfNeeded(valueExpr, targetType)
 			}
 		} else {
 			// Compound assignment: both sides must be numeric (or string for +=).
@@ -1161,7 +1273,14 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			valType := exprType(valExpr)
 			c.requireValueType(valType, x.Pos)
 			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn && valType.Kind != ir.TypeDyn && !valType.IsAssignableTo(c.returnType) {
-				c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
+				if adapted, ok := adaptLiteralZero(valExpr, c.returnType); ok {
+					valExpr = adapted
+				} else {
+					c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
+				}
+			}
+			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn {
+				valExpr = wrapIfNeeded(valExpr, c.returnType)
 			}
 		}
 		return &ir.Return{AST: x, Value: valExpr}
@@ -1637,9 +1756,14 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				if expected != nil {
 					actual := exprType(val)
 					if actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-						if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
+						if adapted, ok := adaptLiteralZero(val, expected); ok {
+							val = adapted
+						} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
 							val = c.checkExpr(callExpr)
 						}
+					}
+					if expected.Kind != ir.TypeDyn {
+						val = wrapIfNeeded(val, expected)
 					}
 				}
 			}
@@ -1689,13 +1813,18 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				actual := exprType(argExpr)
 				c.requireValueType(actual, *arg.Value.ExprPos())
 				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-					if callExpr, ret := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
+					if adapted, ok := adaptLiteralZero(argExpr, expected); ok {
+						argExpr = adapted
+					} else if callExpr, ret := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
 						call.Args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
 						argExpr = c.checkExpr(callExpr)
 						_ = ret
 					} else {
 						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
 					}
+				}
+				if expected != nil && expected.Kind != ir.TypeDyn {
+					argExpr = wrapIfNeeded(argExpr, expected)
 				}
 				result = append(result, ir.CallArg{Name: arg.Name, Value: argExpr})
 			}

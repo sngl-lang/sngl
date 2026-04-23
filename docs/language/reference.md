@@ -78,6 +78,20 @@ func _c() => "{user.name} is {user.age} years old"
 
 Escape literal braces with `\{`.
 
+Interpolation accepts any primitive, string-domain type, enum, unit, list, option, or zero-arg function (auto-called). For struct, component, and other non-primitive types, the compiler looks up a `.string()` method on the type and calls it — if no such method exists the interpolation is a compile error. Define one when you want a struct to render inside strings:
+
+<!-- SNGL-component -->
+
+```sngl
+struct Point {
+    x int = 0
+    y int = 0
+}
+func Point.string(p Point) => "({p.x},{p.y})"
+var origin = Point{x = 0, y = 0}
+func label() => "origin = {origin}"
+```
+
 ### Semicolon Insertion
 
 A semicolon is automatically inserted after a line's final token if that token is an identifier, a literal, or `)`, `]`, `}`. Opening `{` must appear on the same line as its construct (same convention as Go).
@@ -575,17 +589,39 @@ func _d() => "hello".shout()
 
 ## Built-in Functions
 
-| Function        | Signature                     | Description                              |
-| --------------- | ----------------------------- | ---------------------------------------- |
-| `string`        | `string(value) string`     | Convert any value to string              |
-| `int`           | `int(value) int`           | Convert to int (not valid on structs)    |
-| `float`         | `float(value) float`       | Convert to float (not valid on structs)  |
-| `embed`         | `embed(path) string`       | Compile-time file contents               |
-| `regex`         | `regex(pattern) regex`     | Compile-time validated regex constructor |
-| `regex.matches` | `regex.matches(r, s) bool` | Test if regex matches string             |
-| `regex.find`    | `regex.find(r, s) string`  | First match of regex in string           |
+| Function        | Signature                  | Description                                              |
+| --------------- | -------------------------- | -------------------------------------------------------- |
+| `string`        | `string(value) string`     | Convert a primitive value to string                      |
+| `int`           | `int(value) int`           | Convert a primitive numeric/enum/bool value to int       |
+| `float`         | `float(value) float`       | Convert a primitive numeric/enum/bool value to float     |
+| `bool`          | `bool(value) bool`         | No-op for `bool`; rejects other types                    |
+| `embed`         | `embed(path) string`       | Compile-time file contents                               |
+| `regex`         | `regex(pattern) regex`     | Compile-time validated regex constructor                 |
+| `regex.matches` | `regex.matches(r, s) bool` | Test if regex matches string                             |
+| `regex.find`    | `regex.find(r, s) string`  | First match of regex in string                           |
 
-Struct values cannot be directly converted to numeric or boolean types. Use `string()` for a string representation, or access individual fields for typed conversions.
+### Type Conversions
+
+The casts `int(x)`, `float(x)`, `string(x)`, `bool(x)` are the only explicit conversions in the language and accept **primitive operands only**. The allow-list per target:
+
+| Target     | Accepted source kinds                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `int`      | `int`, `float`, `string`, `bool`, `enum`, `unit`                                                     |
+| `float`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                                                     |
+| `string`   | Any primitive or string-domain type (`color`, `date`, `url`, `email`, …), enum, unit                 |
+| `bool`     | `bool`, `string`                                                                                     |
+
+Struct, func, component, list, and option values are rejected. The cast form never dispatches to user-defined methods — if you need a custom serialization, define `func T.string(v T) => ...` and call it explicitly as `x.string()`.
+
+Implicit conversions are limited:
+
+- **`int` → `float`** in numeric contexts (assignment, arithmetic, comparison).
+- **`func() T` → `T`** where `T` is expected (zero-arg funcs auto-call).
+- **`T` → `option<T>`** and `null` → `option<T>` / `null` → `func(...)` at typed slots.
+- **`string` ↔ string-domain** types (`color`, `date`, `url`, …) — validated at literal sites.
+- **Literal `0` → any unit type** — a bare zero stands in for a typed zero. Non-zero integers must be multiplied by a unit suffix literal (`5 * 1s`).
+
+A `null` value assigned into a `func(...)` slot compiles to a callable stub that returns the declared return type's zero value, so calling through a nullable func never panics.
 
 The `regex()` constructor validates the pattern at compile time -- invalid patterns produce a compile error:
 

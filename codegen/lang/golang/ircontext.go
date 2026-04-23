@@ -291,6 +291,9 @@ func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 }
 
 func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
+	if isNullToFuncConv(n) {
+		return nullFuncStubGo(n.Type)
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
@@ -299,6 +302,42 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		return "fmt.Sprint(" + operand + ")"
 	}
 	return goType + "(" + operand + ")"
+}
+
+// isNullToFuncConv reports whether conv wraps a null literal with a func
+// target type. This is the shape the checker emits for `var f func() T = null`
+// and similar null-flowing-into-a-func slots.
+func isNullToFuncConv(n *ir.Conversion) bool {
+	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
+		return false
+	}
+	lit, ok := n.Operand.(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+}
+
+// nullFuncStubGo renders a Go function literal whose body returns the zero
+// value of the declared return type. Callable substitute for a null func.
+func nullFuncStubGo(t *ir.Type) string {
+	if t == nil || t.Sig == nil {
+		return "nil"
+	}
+	sig := t.Sig
+	params := make([]string, len(sig.Params))
+	for i, p := range sig.Params {
+		pt := "any"
+		if p != nil && p.Type != nil {
+			pt = IRTypeToGo(p.Type)
+		}
+		params[i] = "_ " + pt
+	}
+	ret := ""
+	body := ""
+	if sig.Return != nil && sig.Return.Kind != ir.TypeDyn && sig.Return.Kind != ir.TypeInvalid {
+		retGo := IRTypeToGo(sig.Return)
+		ret = " " + retGo
+		body = " return " + ZeroValueGo(retGo) + " "
+	}
+	return "func(" + strings.Join(params, ", ") + ")" + ret + " {" + body + "}"
 }
 
 func (gc *GoIRContext) evalStructLit(n *ir.StructLit) string {
@@ -487,6 +526,14 @@ func IRLiteralToGo(e ir.Expr) string {
 		return `""`
 	}
 	switch n := e.(type) {
+	case *ir.Conversion:
+		// null → func: emit a zero-value callable lambda so calling through
+		// the var at runtime returns the declared return type's zero instead
+		// of panicking on a nil func value.
+		if isNullToFuncConv(n) {
+			return nullFuncStubGo(n.Type)
+		}
+		return IRLiteralToGo(n.Operand)
 	case *ir.Literal:
 		if n.Type == nil {
 			return n.Raw

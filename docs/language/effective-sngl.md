@@ -221,7 +221,7 @@ var callback func(string) int = null
 
 ### Explicit conversions
 
-`string()`, `int()`, and `float()` convert between primitive types:
+`int(x)`, `float(x)`, `string(x)`, and `bool(x)` are the only cast forms. They accept **primitive operands only** — struct, func, component, list, and option values are rejected. The cast syntax never dispatches to user-defined methods; define a method and call it as `x.string()` instead.
 
 <!-- SNGL-component -->
 
@@ -235,28 +235,34 @@ func _f() => float(42)
 func _g() => float("3.14")
 ```
 
-`string()` accepts any type, including structs. `int()` and `float()` accept strings, numbers, and bools, but **not** structs -- `int(myStruct)` is a compile error.
+Allow-lists per target:
+
+| Target     | Accepts                                                                            |
+| ---------- | ---------------------------------------------------------------------------------- |
+| `int`      | `int`, `float`, `string`, `bool`, `enum`, `unit`                                   |
+| `float`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                                   |
+| `string`   | any primitive / string-domain (`color`, `date`, …) / enum / unit                   |
+| `bool`     | `bool`, `string`                                                                   |
 
 ### Implicit conversions
 
-The following conversions happen automatically without an explicit call:
+Narrow list — most type changes are rejected and require an explicit cast.
 
-| From             | To           | When                                                  |
-| ---------------- | ------------ | ----------------------------------------------------- |
-| `int` constant   | `float`      | Constant expressions only: `var x float = 5`          |
-| `float` constant | `int`        | Constant expressions only: `var x int = 3.0`          |
-| `string`         | special type | Assignment: `var d date = "2024-01-15"`               |
-| special type     | `string`     | Assignment: `var s string = myDate`                   |
-| `string` literal | `enum`       | Assignment with validation: `var s Status = "active"` |
-| `T`              | `option<T>`  | Assignment: `var x option<int> = 5`                   |
-| `null`           | `option<T>`  | Default value: `var x option<int>`                    |
-| `bool`           | `int`        | Arithmetic: `true + 0 == 1`, `false * 2 == 0`         |
-| any              | `dyn`        | Always: `dyn` accepts any type                        |
-| `dyn`            | any          | Always: `dyn` is assignable to any type               |
+| From             | To                | When                                                     |
+| ---------------- | ----------------- | -------------------------------------------------------- |
+| `int`            | `float`           | Anywhere a `float` is expected (auto-promotion)          |
+| `int` literal `0`| any unit type     | Typed zero: `var t duration = 0`, `delay(0)`             |
+| `string`         | string-domain     | Assignment: `var d date = "2024-01-15"` (validated)      |
+| string-domain    | `string`          | Assignment: `var s string = myDate`                      |
+| `string` literal | `enum`            | Assignment: `var s Status = "active"` (validated)        |
+| `T`              | `option<T>`       | Assignment: `var x option<int> = 5`                      |
+| `null`           | `option<T>`       | Assignment: `var x option<int> = null`                   |
+| `null`           | `func(...)`       | Compiles to a zero-value-returning callable stub         |
+| `func() T`       | `T`               | Zero-arg function auto-called where `T` is expected      |
+| any              | `dyn`             | `dyn` accepts any type                                   |
+| `dyn`            | any               | Escape hatch; no runtime check                           |
 
-**Constant numeric coercion** only works for compile-time constants -- literals, `const` values, and pure expressions on constants. A `var` of type `int` is NOT assignable to `float` without an explicit `float()` call.
-
-**Special type coercion** means string values flow freely to and from types like `color`, `date`, `url`, `email`, `uuid`, `regex`, etc. The compiler validates the format at compile time when the value is a literal.
+`float` → `int` is **not** implicit — write `int(x)` to discard the fractional part. Non-zero `int` → unit is **not** implicit — use unit literals (`5s`) or multiply (`n * 1s`).
 
 ### Disallowed conversions
 
@@ -265,23 +271,32 @@ These are compile errors:
 | Conversion                   | Error                                                     |
 | ---------------------------- | --------------------------------------------------------- |
 | `null` → struct              | `null is not assignable to struct type`                   |
-| struct → `int()`             | `cannot convert struct to int`                            |
-| struct → `float()`           | `cannot convert struct to float`                          |
+| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead |
+| list/option/func/component → cast | `cannot convert` — define a method instead          |
+| non-zero `int` → unit        | `cannot initialize` / `cannot pass`                       |
 | wrong type → component param | `does not match`                                          |
-| bad string → special type    | format-specific error (e.g., invalid date, invalid email) |
+| bad string literal → string-domain | format-specific error (invalid date, invalid email) |
 | wrong variant → enum         | `is not a valid variant`                                  |
 
 ### String interpolation
 
-String interpolation (`"{expr}"`) implicitly calls `string()` on the embedded expression, so any type can appear inside `{}`:
+Inside `"{expr}"`, a primitive, string-domain type, enum, unit, `null`, list, option, or zero-arg function flows through automatically. For any other type — struct, component, etc. — the compiler looks up a `.string()` method on the value's type and calls it. When no such method exists the interpolation is a compile error:
 
 <!-- SNGL-component -->
 
 ```sngl
+struct Point {
+    x int = 0
+    y int = 0
+}
+func Point.string(p Point) => "({p.x},{p.y})"
 var count = 42
 var active = true
-func label() => "Count: {count}, active: {active}"
+var origin = Point{x = 0, y = 0}
+func label() => "count={count}, active={active}, origin={origin}"
 ```
+
+Removing the `Point.string` method makes the `{origin}` interpolation a compile error, not a silent `{...}` render.
 
 ## State
 
