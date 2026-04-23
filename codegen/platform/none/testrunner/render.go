@@ -73,8 +73,8 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 }
 
 func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]any) {
-	// User-defined component — expand inline.
-	if node.Component != nil {
+	// User-defined component with a real body — expand inline.
+	if node.Component != nil && len(node.Component.Body) > 0 {
 		if env.renderDepth >= maxCallDepth {
 			return
 		}
@@ -187,6 +187,15 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 		}
 		if v, err := env.Eval(arg.Value); err == nil {
 			m[arg.Name] = v
+		}
+	}
+	// Event handlers aren't captured in ir.CallStmt.Args — reach into the
+	// AST back-ref to collect their bodies for later invocation via @event().
+	if cstmt, ok := cs.AST.(*ast.CallStmt); ok {
+		for _, a := range cstmt.Call.Args.Args {
+			if h, ok := a.(ast.EventHandler); ok {
+				m["@"+h.Name] = &h.Body
+			}
 		}
 	}
 	return m

@@ -23,8 +23,15 @@ func TestRunFixtures(t *testing.T) {
 				t.Fatalf("parse: %v", err)
 			}
 			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			// Fixtures with `ERROR(check)` directives intentionally contain
+			// type errors; run the interpreter anyway so test-phase error
+			// directives can be matched against the runtime diagnostics.
+			checkDirs := s.PhaseErrors("check")
 			for _, d := range diags {
-				if d.Severity == ir.Error {
+				if d.Severity != ir.Error {
+					continue
+				}
+				if !hasMatchingErrorDirective(d.Error(), checkDirs) {
 					t.Fatalf("check: %s", d.Error())
 				}
 			}
@@ -41,6 +48,15 @@ func TestRunFixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool {
+	for _, d := range dirs {
+		if strings.Contains(msg, d.Substring) {
+			return true
+		}
+	}
+	return false
 }
 
 func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective) {

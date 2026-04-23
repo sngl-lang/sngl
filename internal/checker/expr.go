@@ -1139,6 +1139,19 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		// Children-less element references (`text #id(...)`, `button(@click)`)
+		// parse as CallStmt but semantically behave like visual nodes — emit
+		// NodeInst so event handlers and the #id are preserved in IR.
+		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
+			props, handlers := c.checkAndSplitArgs(x.Call.Args, nil)
+			return &ir.NodeInst{
+				AST:      x,
+				Name:     name,
+				Props:    props,
+				Handlers: handlers,
+				ID:       id,
+			}
+		}
 		callExpr := c.checkExpr(x.Call)
 		return c.resolveCallStmt(x, callExpr)
 	case *ast.IfStmt:
@@ -1289,6 +1302,30 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		}
 	}
 	return false
+}
+
+// elementRefCallInfo recognizes CallStmts whose callee represents an element
+// tag — either `text #id(...)` (SelectExpr with SelectElemRef kind) or a bare
+// tag ident like `button(...)` that carries event handlers. Returns the tag
+// name, the #id (possibly empty), and whether this looks like an element call.
+func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
+	switch f := call.Func.(type) {
+	case *ast.SelectExpr:
+		if f.Kind == ast.SelectElemRef {
+			if ident, ok := f.Operand.(*ast.IdentExpr); ok {
+				return ident.Name, f.Field, true
+			}
+		}
+	case *ast.IdentExpr:
+		// Bare ident with an event handler — treat as element call so the
+		// handler body lands on an ir.NodeInst rather than disappearing.
+		for _, a := range call.Args.Args {
+			if _, ok := a.(ast.EventHandler); ok {
+				return f.Name, "", true
+			}
+		}
+	}
+	return "", "", false
 }
 
 // resolveCallStmt converts a checked call expression into a CallStmt.

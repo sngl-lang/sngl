@@ -980,7 +980,7 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 	}
 	defer func() { env.depth-- }()
 
-	isPure := fn.Return != nil
+	isPure := fn.Return != nil && fn.Return.Kind != ir.TypeDyn
 	for {
 		var execEnv *Env
 		if !isPure {
@@ -1128,8 +1128,8 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	suffix := lit.Suffix
 	raw := lit.Raw
-	if strings.HasSuffix(raw, suffix) {
-		raw = strings.TrimSuffix(raw, suffix)
+	if before, ok := strings.CutSuffix(raw, suffix); ok {
+		raw = before
 	}
 	raw = strings.ReplaceAll(raw, "_", "")
 	num, err := strconv.ParseFloat(raw, 64)
@@ -1300,4 +1300,3 @@ func unquoteString(raw string) string {
 	}
 	return raw
 }
-

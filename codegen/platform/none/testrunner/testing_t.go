@@ -126,7 +126,9 @@ func (cv *componentValue) getField(field string) (any, error) {
 			return compEnv.evalUserFunc(fn, nil)
 		}
 	}
-	// Element ref lookup in the component body.
+	// Element ref lookup in the component body. Returns nil (not an error)
+	// when the ref exists in the body tree but is currently hidden by an
+	// if/for-else branch — tests assert against null for "not visible".
 	compEnv := cv.compEnv()
 	if v, err := compEnv.resolveElementRef(field); err == nil {
 		return v, nil
