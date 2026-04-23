@@ -100,12 +100,7 @@ func isNativePureCall(call *ir.Call, ctx *evalCtx) bool {
 		return false
 	}
 	for _, f := range ns.Funcs {
-		if f.Name == sel.Field && f.Pure {
-			return true
-		}
-	}
-	for _, v := range ns.Vars {
-		if v.Name == sel.Field && v.IsFunc && v.Pure {
+		if f.Name == sel.Field && f.Purity == ir.PurityPure {
 			return true
 		}
 	}
@@ -280,11 +275,11 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 	qualName := ident.Name + "." + sel.Field
 
 	// Try file:// scheme functions.
-	for _, v := range ns.Vars {
-		if v.Name == sel.Field && v.IsFunc && v.NativePkg == "file" {
+	for _, f := range ns.Funcs {
+		if f.Name == sel.Field && f.NativePkg == "file" {
 			if len(args) == 1 {
 				if filename, ok := args[0].(string); ok {
-					return evalFileFunc(v.NativeType, ns.ImportPath, filename, ctx)
+					return evalFileFunc(f.NativeName, ns.ImportPath, filename, ctx)
 				}
 			}
 		}
@@ -293,8 +288,12 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 	// Try pure Go function execution.
 	if ctx.dir != "" {
 		for _, f := range ns.Funcs {
-			if f.Name == sel.Field && f.Pure && f.NativePkg != "file" {
-				result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeType, f.ParamTypes, f.ReturnType, args)
+			if f.Name == sel.Field && f.Purity == ir.PurityPure && f.NativePkg != "file" {
+				paramTypes := make([]string, len(f.Params))
+				for i, p := range f.Params {
+					paramTypes[i] = goTypeKindString(p.Type)
+				}
+				result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeName, paramTypes, goTypeKindString(f.Return), args)
 				if err != nil {
 					slog.Debug("pure func eval failed", "func", qualName, "err", err)
 					return nil, false
@@ -305,6 +304,25 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+// goTypeKindString reduces an IR type to the primitive hint strings
+// execPureGoFunc understands for marshalling args and return values.
+func goTypeKindString(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeString:
+		return "string"
+	case ir.TypeInt:
+		return "int"
+	case ir.TypeFloat:
+		return "float"
+	case ir.TypeBool:
+		return "bool"
+	}
+	return ""
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {

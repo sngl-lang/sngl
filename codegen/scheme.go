@@ -3,65 +3,16 @@ package codegen
 import (
 	"io/fs"
 	"sync"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// NativeDecls holds native language declarations resolved from a scheme import.
-// Language-specific importers (go://, ts://) populate this so that the
-// checker can type-check references to external symbols.
-type NativeDecls struct {
-	ImportPath string
-	Funcs      []NativeFunc
-	Vars       []NativeVar
-	Structs    []NativeStruct
-	Enums      []NativeEnum
-}
-
-// NativeFunc describes a function from a native import.
-type NativeFunc struct {
-	Name       string
-	ParamTypes []string
-	ReturnType string
-	NativePkg  string // original native package (e.g., "file")
-	NativeType string // original native name
-	Pure       bool
-}
-
-// NativeVar describes a variable or constant from a native import.
-type NativeVar struct {
-	Name       string
-	Type       string
-	NativePkg  string
-	NativeType string
-	IsFunc     bool // extern function (callable)
-	Pure       bool
-}
-
-// NativeStruct describes a struct type from a native import.
-type NativeStruct struct {
-	Name   string
-	Fields []NativeField
-	Native string // qualified native-language name (e.g. "ast.File")
-}
-
-// NativeField describes a field in a native struct.
-type NativeField struct {
-	Name       string
-	Type       string
-	NativeName string // original source-language field name (e.g. "Decls")
-}
-
-// NativeEnum describes an enum type from a native import.
-type NativeEnum struct {
-	Name   string
-	Values []string
-}
-
 // SchemeImporter resolves a scheme-based import URI (e.g., "go://pkg/path")
-// into SNGL-compatible declarations. Language plugins register importers for
-// their native source formats.
+// into fully-typed SNGL IR declarations. Language plugins register importers
+// for their native source formats.
 type SchemeImporter interface {
 	Scheme() string // "go", "ts", "proto", etc.
-	Resolve(uri, dir string) (*NativeDecls, error)
+	Resolve(uri, dir string) (*ir.NativeImport, error)
 }
 
 // FSSchemeImporter resolves a scheme-based import to a filesystem of SNGL sources.

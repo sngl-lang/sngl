@@ -2,91 +2,177 @@ package golang
 
 import (
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestGoImporter_Resolve(t *testing.T) {
 	imp := &GoImporter{}
-	decls, err := imp.Resolve("go://git.duckfam.us/jonathan/sngl/codegen/lang/golang/testdata/testpkg", ".")
+	ni, err := imp.Resolve("go://git.duckfam.us/jonathan/sngl/codegen/lang/golang/testdata/testpkg", ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 
-	// Check structs
-	if len(decls.Structs) != 1 {
-		t.Fatalf("expected 1 struct, got %d", len(decls.Structs))
+	structs := map[string]*ir.StructDef{}
+	for _, s := range ni.Structs {
+		structs[s.Name] = s
 	}
-	s := decls.Structs[0]
-	if s.Name != "Todo" {
-		t.Errorf("struct name = %q, want %q", s.Name, "Todo")
+	funcs := map[string]*ir.Func{}
+	for _, f := range ni.Funcs {
+		funcs[f.Name] = f
 	}
-	if len(s.Fields) != 3 {
-		t.Errorf("struct fields = %d, want 3", len(s.Fields))
-	} else {
-		checks := map[string]string{"id": "int", "title": "string", "done": "bool"}
-		for _, f := range s.Fields {
-			want, ok := checks[f.Name]
-			if !ok {
-				t.Errorf("unexpected field %q", f.Name)
-				continue
-			}
-			if f.Type != want {
-				t.Errorf("field %q type = %q, want %q", f.Name, f.Type, want)
-			}
+	vars := map[string]*ir.Var{}
+	for _, v := range ni.Vars {
+		vars[v.Name] = v
+	}
+
+	// Todo struct checks.
+	todo, ok := structs["Todo"]
+	if !ok {
+		t.Fatal("missing struct Todo")
+	}
+	wantFields := map[string]ir.TypeKind{"id": ir.TypeInt, "title": ir.TypeString, "done": ir.TypeBool}
+	if len(todo.Fields) != len(wantFields) {
+		t.Errorf("Todo fields = %d, want %d", len(todo.Fields), len(wantFields))
+	}
+	for _, f := range todo.Fields {
+		if want := wantFields[f.Name]; f.Type == nil || f.Type.Kind != want {
+			t.Errorf("field %q type = %v, want %v", f.Name, f.Type, want)
+		}
+		if f.Unusable != "" {
+			t.Errorf("field %q unexpectedly unusable: %s", f.Name, f.Unusable)
 		}
 	}
 
-	// Check funcs and vars
-	funcNames := map[string]bool{}
-	for _, f := range decls.Funcs {
-		funcNames[f.Name] = true
+	// Bag: Bad field unusable, struct itself usable.
+	bag, ok := structs["Bag"]
+	if !ok {
+		t.Fatal("missing struct Bag")
 	}
-	varNames := map[string]bool{}
-	for _, v := range decls.Vars {
-		varNames[v.Name] = true
+	bagFields := map[string]*ir.StructField{}
+	for _, f := range bag.Fields {
+		bagFields[f.Name] = f
 	}
-
-	// Should have SaveTodo, FormatDate, FetchAll
-	for _, fn := range []string{"SaveTodo", "FormatDate", "FetchAll"} {
-		if !funcNames[fn] {
-			t.Errorf("missing extern func %q", fn)
-		}
+	if okF := bagFields["ok"]; okF == nil || okF.Unusable != "" {
+		t.Errorf("Bag.ok should be usable, got %+v", okF)
 	}
-
-	// Should have Count var
-	if !varNames["Count"] {
-		t.Error("missing extern var Count")
+	if bad := bagFields["bad"]; bad == nil || bad.Unusable == "" {
+		t.Error("Bag.bad should be unusable")
 	}
 
-	// Should NOT have unexported names
-	if funcNames["privateFn"] {
+	// Unexported should not appear.
+	if _, ok := funcs["privateFn"]; ok {
 		t.Error("unexported function should not be included")
 	}
-	if varNames["hidden"] {
+	if _, ok := vars["hidden"]; ok {
 		t.Error("unexported var should not be included")
 	}
 
-	// Check FormatDate has correct param/return types
-	for _, f := range decls.Funcs {
-		if f.Name == "FormatDate" {
-			if len(f.ParamTypes) != 1 || f.ParamTypes[0] != "string" {
-				t.Errorf("FormatDate params = %v, want [string]", f.ParamTypes)
-			}
-			if f.ReturnType != "string" {
-				t.Errorf("FormatDate return = %q, want string", f.ReturnType)
-			}
-		}
-		if f.Name == "SaveTodo" {
-			if len(f.ParamTypes) != 1 || f.ParamTypes[0] != "testpkg.Todo" {
-				t.Errorf("SaveTodo params = %v, want [testpkg.Todo]", f.ParamTypes)
-			}
-			if f.ReturnType != "" {
-				t.Errorf("SaveTodo return = %q, want empty (void)", f.ReturnType)
-			}
-		}
-		if f.Name == "FetchAll" {
-			if f.ReturnType != "list:testpkg.Todo" {
-				t.Errorf("FetchAll return = %q, want list:testpkg.Todo", f.ReturnType)
-			}
-		}
+	// FormatDate: single-return, string/string, usable, param name preserved.
+	fd, ok := funcs["FormatDate"]
+	if !ok {
+		t.Fatal("missing func FormatDate")
+	}
+	if fd.Unusable != "" {
+		t.Errorf("FormatDate.Unusable = %q, want empty", fd.Unusable)
+	}
+	if len(fd.Params) != 1 || fd.Params[0].Name != "d" || fd.Params[0].Type.Kind != ir.TypeString {
+		t.Errorf("FormatDate.Params = %+v, want [{d string}]", fd.Params)
+	}
+	if fd.Return == nil || fd.Return.Kind != ir.TypeString {
+		t.Errorf("FormatDate.Return = %v, want string", fd.Return)
+	}
+	if fd.NativeName != "testpkg.FormatDate" {
+		t.Errorf("FormatDate.NativeName = %q", fd.NativeName)
+	}
+
+	// SaveTodo: void return, param is the Todo struct (referential).
+	st, ok := funcs["SaveTodo"]
+	if !ok {
+		t.Fatal("missing func SaveTodo")
+	}
+	if st.Return != nil {
+		t.Errorf("SaveTodo.Return = %v, want nil", st.Return)
+	}
+	if len(st.Params) != 1 || st.Params[0].Type == nil || st.Params[0].Type.Decl != todo {
+		t.Errorf("SaveTodo.Params[0] type should point to Todo struct, got %+v", st.Params[0].Type)
+	}
+
+	// FetchAll: list<Todo>.
+	fa, ok := funcs["FetchAll"]
+	if !ok {
+		t.Fatal("missing func FetchAll")
+	}
+	if fa.Return == nil || fa.Return.Kind != ir.TypeList || len(fa.Return.Elems) != 1 || fa.Return.Elems[0].Decl != todo {
+		t.Errorf("FetchAll.Return = %+v, want list of Todo", fa.Return)
+	}
+
+	// WithCtx: ctx stripped, HasContextArg set.
+	wc, ok := funcs["WithCtx"]
+	if !ok {
+		t.Fatal("missing func WithCtx")
+	}
+	if !wc.HasContextArg {
+		t.Error("WithCtx.HasContextArg should be true")
+	}
+	if len(wc.Params) != 1 || wc.Params[0].Name != "msg" || wc.Params[0].Type.Kind != ir.TypeString {
+		t.Errorf("WithCtx.Params = %+v", wc.Params)
+	}
+
+	// MaybeFail: (T, error) unwrapped.
+	mf := funcs["MaybeFail"]
+	if mf == nil || !mf.HasErrorReturn {
+		t.Fatal("MaybeFail.HasErrorReturn should be true")
+	}
+	if mf.Return == nil || mf.Return.Kind != ir.TypeString {
+		t.Errorf("MaybeFail.Return = %v, want string", mf.Return)
+	}
+
+	// WithCtxAndErr: both flags set; return is Todo.
+	both := funcs["WithCtxAndErr"]
+	if both == nil || !both.HasContextArg || !both.HasErrorReturn {
+		t.Fatalf("WithCtxAndErr flags: %+v", both)
+	}
+	if both.Return == nil || both.Return.Decl != todo {
+		t.Errorf("WithCtxAndErr.Return should be Todo, got %+v", both.Return)
+	}
+
+	// MultiReturn and ReturnsMap: unusable.
+	if mr := funcs["MultiReturn"]; mr == nil || mr.Unusable == "" {
+		t.Error("MultiReturn should be unusable")
+	}
+	if rm := funcs["ReturnsMap"]; rm == nil || rm.Unusable == "" {
+		t.Error("ReturnsMap should be unusable")
+	}
+
+	// Count var usable.
+	count, ok := vars["Count"]
+	if !ok {
+		t.Error("missing var Count")
+	} else if count.Unusable != "" {
+		t.Errorf("Count.Unusable = %q, want empty", count.Unusable)
+	}
+
+	// Interface field/param: exposed as dyn, still usable.
+	carrier, ok := structs["Carrier"]
+	if !ok {
+		t.Fatal("missing struct Carrier")
+	}
+	if len(carrier.Fields) != 1 {
+		t.Fatalf("Carrier fields = %d, want 1", len(carrier.Fields))
+	}
+	h := carrier.Fields[0]
+	if h.Type.Kind != ir.TypeDyn || h.Unusable != "" {
+		t.Errorf("Carrier.handler type=%v unusable=%q, want dyn/empty", h.Type, h.Unusable)
+	}
+	wi, ok := funcs["WithIface"]
+	if !ok {
+		t.Fatal("missing func WithIface")
+	}
+	if wi.Unusable != "" {
+		t.Errorf("WithIface.Unusable = %q", wi.Unusable)
+	}
+	if len(wi.Params) != 1 || wi.Params[0].Type.Kind != ir.TypeDyn {
+		t.Errorf("WithIface.Params = %+v, want dyn", wi.Params)
 	}
 }

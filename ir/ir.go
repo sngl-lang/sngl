@@ -48,19 +48,31 @@ type NativeImport struct {
 }
 
 // Func represents any function: top-level, type-attached method, or lambda.
+//
+// NativePkg/NativeName are set when the function originates from a scheme
+// import (e.g. "go://fmt"); codegen reads them to emit the correct import
+// and call. HasContextArg / HasErrorReturn describe shape adapter wrapping
+// applied by the importer (leading context.Context stripped; trailing error
+// unwrapped). Unusable is non-empty when SNGL cannot model the function
+// precisely; the checker rejects any reference to such a Func.
 type Func struct {
-	AST        *ast.FuncDef // nil for lambdas and event handlers
-	Name       string       // empty for lambdas and event handlers
-	Receiver   string       // "int" for int.abs (empty for plain funcs)
-	TypeParams []string
-	Params     []*Param
-	Return     *Type
-	Block      []Stmt // type-checked statements (expression bodies become a single Return)
-	Purity     Purity
-	IsTest     bool
-	Reads      []*Var // vars read (directly or via called functions)
-	Writes     []*Var // vars mutated (directly or via called functions)
-	Intrinsic  string // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
+	AST            *ast.FuncDef // nil for lambdas and event handlers
+	Name           string       // empty for lambdas and event handlers
+	Receiver       string       // "int" for int.abs (empty for plain funcs)
+	TypeParams     []string
+	Params         []*Param
+	Return         *Type
+	Block          []Stmt // type-checked statements (expression bodies become a single Return)
+	Purity         Purity
+	IsTest         bool
+	Reads          []*Var // vars read (directly or via called functions)
+	Writes         []*Var // vars mutated (directly or via called functions)
+	Intrinsic      string // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
+	NativePkg      string // scheme-import package path (e.g. "fmt")
+	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
+	HasContextArg  bool
+	HasErrorReturn bool
+	Unusable       string
 }
 
 func (f *Func) SymName() string { return f.Name }
@@ -77,13 +89,19 @@ func (f *Func) FuncSig() *FuncSig {
 }
 
 // Var represents a constant or variable declaration.
+//
+// NativePkg/NativeName are set when the var originates from a scheme import.
+// Unusable is non-empty when the var's type cannot be modelled precisely.
 type Var struct {
-	AST      ast.Stmt // original ConstDecl or VarDecl
-	Name     string
-	Type     *Type
-	Init     Expr // checked initializer (nil if none)
-	IsConst  bool
-	Handlers []*EventHandler
+	AST        ast.Stmt // original ConstDecl or VarDecl
+	Name       string
+	Type       *Type
+	Init       Expr // checked initializer (nil if none)
+	IsConst    bool
+	Handlers   []*EventHandler
+	NativePkg  string
+	NativeName string
+	Unusable   string
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -189,10 +207,16 @@ func (s *StructDef) SymType() *Type {
 }
 
 // StructField is a resolved field in a struct.
+//
+// NativeName is the source-language field name (e.g. Go's "Decls" for SNGL
+// "decls") when the field comes from a scheme import. Unusable is set when
+// the field's native type cannot be modelled; reads/writes are rejected.
 type StructField struct {
-	Name    string
-	Type    *Type
-	Default Expr // nil if no default
+	Name       string
+	Type       *Type
+	Default    Expr // nil if no default
+	NativeName string
+	Unusable   string
 }
 
 // EnumDef is a resolved enum type declaration.

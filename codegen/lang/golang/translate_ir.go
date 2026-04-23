@@ -180,6 +180,9 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		}
 		return translateIRExpr(n.Receiver, scope) + "(" + strings.Join(argStrs, ", ") + ")"
 	}
+	if n.Func.NativePkg != "" {
+		return translateIRNativeCall(n, scope)
+	}
 	method := n.Func.Name
 	receiverName := n.Func.Receiver
 	qualName := receiverName + "." + method
@@ -201,6 +204,32 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		argStrs[i] = translateIRExpr(a.Value, scope)
 	}
 	return receiverJS + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateIRNativeCall emits a call into a scheme-imported Go function,
+// using the NativeName recorded on the Func and injecting a context argument
+// or wrapping in an error adapter as flagged by the importer.
+func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {
+	argStrs := make([]string, 0, len(n.Args)+1)
+	if n.Func.HasContextArg {
+		ctxVar := scope.ContextVar
+		if ctxVar == "" {
+			ctxVar = "context.Background()"
+		}
+		argStrs = append(argStrs, ctxVar)
+	}
+	for _, a := range n.Args {
+		argStrs = append(argStrs, translateIRExpr(a.Value, scope))
+	}
+	call := n.Func.NativeName + "(" + strings.Join(argStrs, ", ") + ")"
+	if n.Func.HasErrorReturn {
+		if scope.NeededHelpers == nil {
+			scope.NeededHelpers = map[string]bool{}
+		}
+		scope.NeededHelpers["nativeMustOK"] = true
+		return "nativeMustOK(" + call + ")"
+	}
+	return call
 }
 
 // translateIRTypeMethodCall handles type-attached method calls after checker

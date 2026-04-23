@@ -155,11 +155,27 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
+	c.reportUnusable(x.Pos, x.Name, sym)
 	t := sym.SymType()
 	if t == nil {
 		t = TypDyn
 	}
 	return &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
+}
+
+// reportUnusable emits a diagnostic if sym is a scheme-imported declaration
+// that cannot be modelled precisely in SNGL.
+func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
+	var reason string
+	switch s := sym.(type) {
+	case *ir.Func:
+		reason = s.Unusable
+	case *ir.Var:
+		reason = s.Unusable
+	}
+	if reason != "" {
+		c.error(pos, "%s cannot be used: %s", name, reason)
+	}
 }
 
 // comparableEq reports whether two operand types can be compared with == / !=.
@@ -621,6 +637,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				if ns, ok := sym.(*ir.Namespace); ok {
 					if ns.Pkg != nil {
 						if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
+							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
 							t := fsym.SymType()
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
@@ -658,6 +675,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
+						if f.Unusable != "" {
+							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Unusable)
+						}
 						return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
 					}
 				}

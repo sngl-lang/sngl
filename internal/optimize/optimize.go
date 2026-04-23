@@ -2,10 +2,8 @@ package optimize
 
 import (
 	"log/slog"
-	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -32,7 +30,7 @@ type evalCtx struct {
 	language      string
 	dir           string
 	pkg           *ir.Package
-	nativeImports map[string]*codegen.NativeDecls // lazily built from pkg.Imports
+	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	fileAssets    []FileAsset
 	values        map[ir.Symbol]any // const vars and loop vars → evaluated values
 }
@@ -148,11 +146,13 @@ func foldTimer(t *ir.Timer, ctx *evalCtx) {
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.
-func (ctx *evalCtx) getNativeImports() map[string]*codegen.NativeDecls {
+// The *ir.NativeImport was already populated during checking, so we don't
+// re-resolve via the scheme importer — we just index by alias.
+func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 	if ctx.nativeImports != nil {
 		return ctx.nativeImports
 	}
-	ctx.nativeImports = make(map[string]*codegen.NativeDecls)
+	ctx.nativeImports = make(map[string]*ir.NativeImport)
 	if ctx.pkg == nil {
 		return ctx.nativeImports
 	}
@@ -160,26 +160,7 @@ func (ctx *evalCtx) getNativeImports() map[string]*codegen.NativeDecls {
 		if imp.Native == nil {
 			continue
 		}
-		scheme, uri := parseImportScheme(imp.AST.Path)
-		if scheme == "" {
-			continue
-		}
-		si := codegen.LookupScheme(scheme)
-		if si == nil {
-			continue
-		}
-		decls, err := si.Resolve(uri, "")
-		if err != nil {
-			continue
-		}
-		ctx.nativeImports[imp.Alias] = decls
+		ctx.nativeImports[imp.Alias] = imp.Native
 	}
 	return ctx.nativeImports
-}
-
-func parseImportScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
-	}
-	return "", path
 }

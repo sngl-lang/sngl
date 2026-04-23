@@ -13,9 +13,9 @@ type wasmPackage struct {
 }
 
 // collectWASMPackages scans imports for scheme-based packages that expose
-// impure functions (or impure func-typed vars). Such functions cannot be
-// evaluated at compile time, so they are compiled to WASM and exposed to
-// the page via window.__sngl_externs for JS to call at runtime.
+// impure functions. Such functions cannot be evaluated at compile time, so
+// they are compiled to WASM and exposed to the page via window.__sngl_externs
+// for JS to call at runtime.
 func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 	if pkg == nil {
 		return nil
@@ -39,20 +39,18 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		}
 		var funcs []codegen.WASMFunc
 		for _, f := range decls.Funcs {
-			if f.Pure {
+			if f.Purity == ir.PurityPure {
 				continue
+			}
+			paramTypes := make([]string, len(f.Params))
+			for i, p := range f.Params {
+				paramTypes[i] = wasmTypeHint(p.Type)
 			}
 			funcs = append(funcs, codegen.WASMFunc{
 				Name:       f.Name,
-				ParamTypes: f.ParamTypes,
-				ReturnType: f.ReturnType,
+				ParamTypes: paramTypes,
+				ReturnType: wasmTypeHint(f.Return),
 			})
-		}
-		for _, v := range decls.Vars {
-			if !v.IsFunc || v.Pure {
-				continue
-			}
-			funcs = append(funcs, codegen.WASMFunc{Name: v.Name})
 		}
 		if len(funcs) == 0 {
 			continue
@@ -64,4 +62,24 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		})
 	}
 	return out
+}
+
+// wasmTypeHint reduces an IR type to the small set of primitive names the
+// WASM bridge knows how to marshal; anything else becomes empty, which the
+// emitter treats as a raw js.Value.
+func wasmTypeHint(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeString:
+		return "string"
+	case ir.TypeInt:
+		return "int"
+	case ir.TypeFloat:
+		return "float"
+	case ir.TypeBool:
+		return "bool"
+	}
+	return ""
 }

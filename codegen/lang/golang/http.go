@@ -31,13 +31,29 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	fmt.Fprintf(&body, "package %s\n\n", pkgName)
 
 	extraImports := collectGoImports(req)
+	needsErrHelper := anyNativeHasErr(req)
 	fmt.Fprintln(&body, "import (")
 	fmt.Fprintln(&body, `	"net/http"`)
+	if needsErrHelper {
+		fmt.Fprintln(&body, `	"log"`)
+	}
 	for _, imp := range extraImports {
 		fmt.Fprintf(&body, "\t%q\n", imp)
 	}
 	fmt.Fprintln(&body, ")")
 	fmt.Fprintln(&body)
+
+	if needsErrHelper {
+		fmt.Fprintln(&body, `// nativeMustOK adapts a native call of shape (T, error): it logs and`)
+		fmt.Fprintln(&body, `// swallows the error, returning the value (zero T on failure).`)
+		fmt.Fprintln(&body, `func nativeMustOK[T any](v T, err error) T {`)
+		fmt.Fprintln(&body, `	if err != nil {`)
+		body.WriteString("\t\tlog.Printf(\"native call failed: %v\", err)\n")
+		fmt.Fprintln(&body, `	}`)
+		fmt.Fprintln(&body, `	return v`)
+		fmt.Fprintln(&body, `}`)
+		fmt.Fprintln(&body)
+	}
 
 	writeHandler(&body, req)
 	for _, r := range req.Routes {
@@ -81,7 +97,7 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	}
 	fmt.Fprintf(b, "func %sAction(w http.ResponseWriter, r *http.Request) {\n", r.Name)
 	fmt.Fprintln(b, `	switch r.FormValue("action") {`)
-	scope := &codegen.ExprScope{}
+	scope := &codegen.ExprScope{ContextVar: "r.Context()"}
 	for _, act := range r.Actions {
 		fmt.Fprintf(b, "\tcase %q:\n", act.Name)
 		for _, s := range act.Mutations {
@@ -96,30 +112,115 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	fmt.Fprintln(b)
 }
 
+// anyNativeHasErr reports whether any native call reachable from an action
+// has HasErrorReturn set; used to decide whether to emit the error-adapter
+// helper and its "log" import.
+func anyNativeHasErr(req *codegen.HTTPRequest) bool {
+	found := false
+	var visitStmt func(ir.Stmt)
+	var visitExpr func(ir.Expr)
+	visitExpr = func(e ir.Expr) {
+		if found || e == nil {
+			return
+		}
+		switch x := e.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.Func.HasErrorReturn {
+				found = true
+				return
+			}
+			for _, a := range x.Args {
+				visitExpr(a.Value)
+			}
+			visitExpr(x.Receiver)
+			visitExpr(x.Callee)
+		case *ir.Binary:
+			visitExpr(x.Left)
+			visitExpr(x.Right)
+		case *ir.Unary:
+			visitExpr(x.Operand)
+		case *ir.Ternary:
+			visitExpr(x.Cond)
+			visitExpr(x.Then)
+			visitExpr(x.Else)
+		case *ir.Select:
+			visitExpr(x.Operand)
+		case *ir.Index:
+			visitExpr(x.Operand)
+			visitExpr(x.Idx)
+		case *ir.Conversion:
+			visitExpr(x.Operand)
+		case *ir.StructLit:
+			for _, f := range x.Fields {
+				visitExpr(f.Value)
+			}
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				visitExpr(el)
+			}
+		case *ir.Spread:
+			visitExpr(x.Operand)
+		}
+	}
+	visitStmt = func(s ir.Stmt) {
+		if found || s == nil {
+			return
+		}
+		switch x := s.(type) {
+		case *ir.Assign:
+			visitExpr(x.Target)
+			visitExpr(x.Value)
+		case *ir.CallStmt:
+			if x.Call != nil {
+				visitExpr(x.Call)
+			}
+		case *ir.LocalVar:
+			visitExpr(x.Init)
+		case *ir.Return:
+			visitExpr(x.Value)
+		case *ir.If:
+			visitExpr(x.Cond)
+			for _, ss := range x.Body {
+				visitStmt(ss)
+			}
+			for _, ss := range x.Else {
+				visitStmt(ss)
+			}
+		case *ir.For:
+			visitExpr(x.Iter)
+			for _, ss := range x.Body {
+				visitStmt(ss)
+			}
+		case *ir.PlatformFilter:
+			for _, ss := range x.Body {
+				visitStmt(ss)
+			}
+		case *ir.Emit:
+			for _, a := range x.Args {
+				visitExpr(a.Value)
+			}
+		}
+	}
+	for _, route := range req.Routes {
+		for _, act := range route.Actions {
+			for _, s := range act.Mutations {
+				visitStmt(s)
+			}
+		}
+	}
+	return found
+}
+
 // collectGoImports walks every action's mutation tree for calls into go://
-// imports and returns their native ImportPaths, sorted and deduped.
+// imports and returns their native ImportPaths, sorted and deduped. Each
+// *ir.Func carries its own NativePkg, so no cross-referencing against
+// Pkg.Imports is required.
 func collectGoImports(req *codegen.HTTPRequest) []string {
-	if req.Pkg == nil {
-		return nil
-	}
-	funcToPath := map[*ir.Func]string{}
-	for _, imp := range req.Pkg.Imports {
-		if imp == nil || imp.Native == nil || imp.AST == nil {
-			continue
-		}
-		scheme, _ := codegen.SplitScheme(imp.AST.Path)
-		if scheme != "go" {
-			continue
-		}
-		for _, f := range imp.Native.Funcs {
-			funcToPath[f] = imp.Native.ImportPath
-		}
-	}
 	seen := map[string]bool{}
 	for _, route := range req.Routes {
 		for _, act := range route.Actions {
 			for _, s := range act.Mutations {
-				collectFromStmt(s, funcToPath, seen)
+				collectFromStmt(s, seen)
 			}
 		}
 	}
@@ -131,84 +232,82 @@ func collectGoImports(req *codegen.HTTPRequest) []string {
 	return out
 }
 
-func collectFromStmt(s ir.Stmt, funcToPath map[*ir.Func]string, seen map[string]bool) {
+func collectFromStmt(s ir.Stmt, seen map[string]bool) {
 	switch x := s.(type) {
 	case *ir.Assign:
-		collectFromExpr(x.Target, funcToPath, seen)
-		collectFromExpr(x.Value, funcToPath, seen)
+		collectFromExpr(x.Target, seen)
+		collectFromExpr(x.Value, seen)
 	case *ir.CallStmt:
 		if x.Call != nil {
-			collectFromExpr(x.Call, funcToPath, seen)
+			collectFromExpr(x.Call, seen)
 		}
 	case *ir.LocalVar:
-		collectFromExpr(x.Init, funcToPath, seen)
+		collectFromExpr(x.Init, seen)
 	case *ir.Return:
-		collectFromExpr(x.Value, funcToPath, seen)
+		collectFromExpr(x.Value, seen)
 	case *ir.If:
-		collectFromExpr(x.Cond, funcToPath, seen)
+		collectFromExpr(x.Cond, seen)
 		for _, ss := range x.Body {
-			collectFromStmt(ss, funcToPath, seen)
+			collectFromStmt(ss, seen)
 		}
 		for _, ss := range x.Else {
-			collectFromStmt(ss, funcToPath, seen)
+			collectFromStmt(ss, seen)
 		}
 	case *ir.For:
-		collectFromExpr(x.Iter, funcToPath, seen)
+		collectFromExpr(x.Iter, seen)
 		for _, ss := range x.Body {
-			collectFromStmt(ss, funcToPath, seen)
+			collectFromStmt(ss, seen)
 		}
 	case *ir.PlatformFilter:
 		for _, ss := range x.Body {
-			collectFromStmt(ss, funcToPath, seen)
+			collectFromStmt(ss, seen)
 		}
 	case *ir.Emit:
 		for _, a := range x.Args {
-			collectFromExpr(a.Value, funcToPath, seen)
+			collectFromExpr(a.Value, seen)
 		}
 	}
 }
 
-func collectFromExpr(e ir.Expr, funcToPath map[*ir.Func]string, seen map[string]bool) {
+func collectFromExpr(e ir.Expr, seen map[string]bool) {
 	if e == nil {
 		return
 	}
 	switch x := e.(type) {
 	case *ir.Call:
-		if x.Func != nil {
-			if path, ok := funcToPath[x.Func]; ok {
-				seen[path] = true
-			}
+		if x.Func != nil && x.Func.NativePkg != "" {
+			seen[x.Func.NativePkg] = true
 		}
 		for _, a := range x.Args {
-			collectFromExpr(a.Value, funcToPath, seen)
+			collectFromExpr(a.Value, seen)
 		}
-		collectFromExpr(x.Receiver, funcToPath, seen)
-		collectFromExpr(x.Callee, funcToPath, seen)
+		collectFromExpr(x.Receiver, seen)
+		collectFromExpr(x.Callee, seen)
 	case *ir.Binary:
-		collectFromExpr(x.Left, funcToPath, seen)
-		collectFromExpr(x.Right, funcToPath, seen)
+		collectFromExpr(x.Left, seen)
+		collectFromExpr(x.Right, seen)
 	case *ir.Unary:
-		collectFromExpr(x.Operand, funcToPath, seen)
+		collectFromExpr(x.Operand, seen)
 	case *ir.Ternary:
-		collectFromExpr(x.Cond, funcToPath, seen)
-		collectFromExpr(x.Then, funcToPath, seen)
-		collectFromExpr(x.Else, funcToPath, seen)
+		collectFromExpr(x.Cond, seen)
+		collectFromExpr(x.Then, seen)
+		collectFromExpr(x.Else, seen)
 	case *ir.Select:
-		collectFromExpr(x.Operand, funcToPath, seen)
+		collectFromExpr(x.Operand, seen)
 	case *ir.Index:
-		collectFromExpr(x.Operand, funcToPath, seen)
-		collectFromExpr(x.Idx, funcToPath, seen)
+		collectFromExpr(x.Operand, seen)
+		collectFromExpr(x.Idx, seen)
 	case *ir.Conversion:
-		collectFromExpr(x.Operand, funcToPath, seen)
+		collectFromExpr(x.Operand, seen)
 	case *ir.StructLit:
 		for _, f := range x.Fields {
-			collectFromExpr(f.Value, funcToPath, seen)
+			collectFromExpr(f.Value, seen)
 		}
 	case *ir.ListLit:
 		for _, el := range x.Elems {
-			collectFromExpr(el, funcToPath, seen)
+			collectFromExpr(el, seen)
 		}
 	case *ir.Spread:
-		collectFromExpr(x.Operand, funcToPath, seen)
+		collectFromExpr(x.Operand, seen)
 	}
 }

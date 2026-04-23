@@ -27,6 +27,7 @@ type ExprScope struct {
 	LocalVars      map[string]bool   // for-loop vars, params → no prefix
 	Renames        map[string]string // local var renames (original → unique name)
 	EventVar       string            // what "event" maps to in this context
+	ContextVar     string            // expression to supply for native context args (e.g., "r.Context()")
 	NeededHelpers  map[string]bool   // helper functions needed (e.g., "String")
 }
 
@@ -188,12 +189,6 @@ type WASMFunc struct {
 	Name       string
 	ParamTypes []string
 	ReturnType string
-}
-
-// APIResolver is optionally implemented alongside Target.Resolve for legacy
-// dynamic name resolution returning codegen-level declarations.
-type APIResolver interface {
-	ResolveAPI(name string) *NativeDecls
 }
 
 // MutationModelEmitter is optionally implemented by platforms that use the

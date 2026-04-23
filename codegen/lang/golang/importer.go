@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -20,7 +21,7 @@ type GoImporter struct{}
 
 func (g *GoImporter) Scheme() string { return "go" }
 
-func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
+func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	pkgPath := strings.TrimPrefix(uri, "go://")
 
 	cfg := &packages.Config{
@@ -38,9 +39,6 @@ func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 		return nil, fmt.Errorf("loading %q: %s", pkgPath, pkgs[0].Errors[0].Msg)
 	}
 
-	decls := &codegen.NativeDecls{
-		ImportPath: pkgPath,
-	}
 	scope := pkgs[0].Types.Scope()
 	pkgName := pkgs[0].Types.Name()
 
@@ -60,6 +58,30 @@ func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 		}
 	}
 
+	ni := &ir.NativeImport{ImportPath: pkgPath}
+
+	// First pass: register struct declarations so recursive/forward refs on
+	// field and function signatures can resolve to the in-package types.
+	structs := map[string]*ir.StructDef{}
+	for _, name := range scope.Names() {
+		obj := scope.Lookup(name)
+		if !obj.Exported() {
+			continue
+		}
+		tn, ok := obj.(*types.TypeName)
+		if !ok {
+			continue
+		}
+		if _, ok := tn.Type().Underlying().(*types.Struct); !ok {
+			continue
+		}
+		sd := &ir.StructDef{Name: tn.Name(), Native: pkgName + "." + tn.Name()}
+		structs[tn.Name()] = sd
+		ni.Structs = append(ni.Structs, sd)
+	}
+
+	// Second pass: populate struct fields, funcs, and vars with fully
+	// resolved ir.Type references.
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
 		if !obj.Exported() {
@@ -67,93 +89,150 @@ func (g *GoImporter) Resolve(uri, dir string) (*codegen.NativeDecls, error) {
 		}
 		switch o := obj.(type) {
 		case *types.TypeName:
-			if ns := goTypeToNativeStruct(o, pkgName); ns != nil {
-				decls.Structs = append(decls.Structs, *ns)
+			if sd, ok := structs[o.Name()]; ok {
+				populateStructFields(sd, o, pkgPath, structs)
 			}
 		case *types.Func:
-			if nf := goFuncToNativeFunc(o, pkgPath, pkgName); nf != nil {
-				nf.Pure = funcPure[o.Name()]
-				decls.Funcs = append(decls.Funcs, *nf)
+			if fn := goFuncToFunc(o, pkgPath, pkgName, structs); fn != nil {
+				fn.Purity = ir.PurityUnknown
+				if funcPure[o.Name()] {
+					fn.Purity = ir.PurityPure
+				}
+				ni.Funcs = append(ni.Funcs, fn)
 			}
 		case *types.Var:
-			hint := goTypeToHint(o.Type())
-			decls.Vars = append(decls.Vars, codegen.NativeVar{
-				Name:       o.Name(),
-				Type:       hint,
-				NativePkg:  pkgPath,
-				NativeType: pkgName + "." + o.Name(),
-			})
+			ni.Vars = append(ni.Vars, goVarToVar(o, pkgPath, pkgName, structs))
 		}
 	}
 
-	return decls, nil
+	return ni, nil
 }
 
-// goTypeToNativeStruct converts a Go named struct type to a codegen.NativeStruct.
-func goTypeToNativeStruct(tn *types.TypeName, pkgName string) *codegen.NativeStruct {
+// populateStructFields fills sd.Fields from the Go struct type. Fields whose
+// Go type cannot be modelled precisely are still included (with TypDyn), but
+// marked Unusable so the checker rejects direct access.
+func populateStructFields(sd *ir.StructDef, tn *types.TypeName, homePkg string, structs map[string]*ir.StructDef) {
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	if !ok {
-		return nil
-	}
-	ns := &codegen.NativeStruct{
-		Name:   tn.Name(),
-		Native: pkgName + "." + tn.Name(),
+		return
 	}
 	for f := range st.Fields() {
 		if !f.Exported() {
 			continue
 		}
-		hint := goTypeToHint(f.Type())
-		ns.Fields = append(ns.Fields, codegen.NativeField{
+		t, usable := goTypeToIR(f.Type(), homePkg, structs)
+		sf := &ir.StructField{
 			Name:       lowerFirst(f.Name()),
-			Type:       hint,
+			Type:       t,
 			NativeName: f.Name(),
-		})
+		}
+		if !usable {
+			sf.Unusable = fmt.Sprintf("field %s.%s has type not representable in SNGL", tn.Name(), f.Name())
+		}
+		sd.Fields = append(sd.Fields, sf)
 	}
-	return ns
 }
 
-// goFuncToNativeFunc converts a Go function to a codegen.NativeFunc.
-// If the first parameter is *http.Request or context.Context, it is stripped
-// from the SNGL-visible signature.
-func goFuncToNativeFunc(fn *types.Func, pkgPath, pkgName string) *codegen.NativeFunc {
+// goFuncToFunc converts a Go function to an *ir.Func.
+//
+//   - A leading context.Context / *http.Request / http.ResponseWriter param is
+//     stripped and HasContextArg is recorded for codegen to re-inject.
+//   - A trailing error return is stripped and HasErrorReturn is recorded so
+//     codegen can adapt the call (check + unwrap).
+//   - Shapes SNGL cannot model precisely (multi-value returns beyond (T, error),
+//     parameter or return types that would otherwise collapse to dyn) produce
+//     a declaration with Unusable set. The declaration is retained so
+//     namespace lookup succeeds, but the checker rejects references.
+func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*ir.StructDef) *ir.Func {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok {
 		return nil
 	}
 
-	var paramTypes []string
+	f := &ir.Func{
+		Name:       fn.Name(),
+		NativePkg:  pkgPath,
+		NativeName: pkgName + "." + fn.Name(),
+	}
+
 	params := sig.Params()
 	stripping := true
+	i := 0
 	for v := range params.Variables() {
 		if stripping {
 			if hp := detectHiddenParam(v.Type()); hp != "" {
+				if hp == "context.Context" {
+					f.HasContextArg = true
+				}
+				i++
 				continue
 			}
 			stripping = false
 		}
-		paramTypes = append(paramTypes, goTypeToHint(v.Type()))
+		t, usable := goTypeToIR(v.Type(), pkgPath, structs)
+		name := v.Name()
+		if name == "" {
+			name = fmt.Sprintf("arg%d", i)
+		}
+		if !usable && f.Unusable == "" {
+			f.Unusable = fmt.Sprintf("parameter %q has type not representable in SNGL", name)
+		}
+		f.Params = append(f.Params, &ir.Param{Name: name, Type: t})
+		i++
 	}
 
-	var returnType string
 	results := sig.Results()
-	if results.Len() == 1 {
-		returnType = goTypeToHint(results.At(0).Type())
+	switch results.Len() {
+	case 0:
+		// void
+	case 1:
+		t, usable := goTypeToIR(results.At(0).Type(), pkgPath, structs)
+		if !usable && f.Unusable == "" {
+			f.Unusable = "return type not representable in SNGL"
+		}
+		f.Return = t
+	case 2:
+		if isErrorType(results.At(1).Type()) {
+			t, usable := goTypeToIR(results.At(0).Type(), pkgPath, structs)
+			if !usable && f.Unusable == "" {
+				f.Unusable = "return type not representable in SNGL"
+			}
+			f.Return = t
+			f.HasErrorReturn = true
+		} else if f.Unusable == "" {
+			f.Unusable = "functions returning multiple values are not supported"
+		}
+	default:
+		if f.Unusable == "" {
+			f.Unusable = "functions returning multiple values are not supported"
+		}
 	}
 
-	return &codegen.NativeFunc{
-		Name:       fn.Name(),
-		ParamTypes: paramTypes,
-		ReturnType: returnType,
+	return f
+}
+
+func goVarToVar(v *types.Var, pkgPath, pkgName string, structs map[string]*ir.StructDef) *ir.Var {
+	t, usable := goTypeToIR(v.Type(), pkgPath, structs)
+	out := &ir.Var{
+		Name:       v.Name(),
+		Type:       t,
 		NativePkg:  pkgPath,
-		NativeType: pkgName + "." + fn.Name(),
+		NativeName: pkgName + "." + v.Name(),
 	}
+	if !usable {
+		out.Unusable = fmt.Sprintf("variable %s.%s has type not representable in SNGL", pkgName, v.Name())
+	}
+	return out
+}
+
+// isErrorType reports whether t is the builtin error interface.
+func isErrorType(t types.Type) bool {
+	return types.Identical(t, types.Universe.Lookup("error").Type())
 }
 
 // detectHiddenParam checks if a type is http.ResponseWriter, *http.Request,
 // or context.Context, returning the Go type string if so.
 func detectHiddenParam(t types.Type) string {
-	// Check for *http.Request (pointer to named type)
 	if ptr, ok := t.(*types.Pointer); ok {
 		if named, ok := ptr.Elem().(*types.Named); ok {
 			pkg := named.Obj().Pkg()
@@ -162,14 +241,12 @@ func detectHiddenParam(t types.Type) string {
 			}
 		}
 	}
-	// Check for http.ResponseWriter (interface)
 	if named, ok := t.(*types.Named); ok {
 		pkg := named.Obj().Pkg()
 		if pkg != nil && pkg.Path() == "net/http" && named.Obj().Name() == "ResponseWriter" {
 			return "http.ResponseWriter"
 		}
 	}
-	// Check for context.Context (interface)
 	if named, ok := t.(*types.Named); ok {
 		pkg := named.Obj().Pkg()
 		if pkg != nil && pkg.Path() == "context" && named.Obj().Name() == "Context" {
@@ -179,42 +256,57 @@ func detectHiddenParam(t types.Type) string {
 	return ""
 }
 
-// goTypeToHint maps a Go type to a SNGL type hint string.
-func goTypeToHint(t types.Type) string {
+// goTypeToIR maps a Go type to an *ir.Type and reports whether it is usable
+// in SNGL. homePkg is the path of the package currently being imported.
+//
+// Usable results include the primitive scalars, slices of usable elements,
+// named struct types in the home package, the stdlib time.Time → DateTime
+// mapping, and any Go interface (exposed as explicit dyn). All other shapes
+// — maps, channels, functions, cross-package struct refs — return
+// (TypDyn, false); callers use the bool to mark the enclosing declaration
+// Unusable.
+func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) (*ir.Type, bool) {
 	switch u := t.Underlying().(type) {
 	case *types.Basic:
 		switch u.Kind() {
 		case types.String:
-			return "string"
+			return ir.TypString, true
 		case types.Bool:
-			return "bool"
+			return ir.TypBool, true
 		case types.Int, types.Int8, types.Int16, types.Int32, types.Int64,
 			types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64:
-			return "int"
+			return ir.TypInt, true
 		case types.Float32, types.Float64:
-			return "float"
+			return ir.TypFloat, true
 		default:
-			return "dyn"
+			return ir.TypDyn, false
 		}
 	case *types.Slice:
-		elem := goTypeToHint(u.Elem())
-		return "list:" + elem
+		elem, ok := goTypeToIR(u.Elem(), homePkg, structs)
+		if !ok {
+			return ir.TypDyn, false
+		}
+		return ir.ListOf(elem), true
 	case *types.Pointer:
-		return goTypeToHint(u.Elem())
+		return goTypeToIR(u.Elem(), homePkg, structs)
+	case *types.Interface:
+		return ir.TypDyn, true
 	default:
-		// Check if it's a named type
 		if named, ok := t.(*types.Named); ok {
 			name := named.Obj().Name()
 			pkg := named.Obj().Pkg()
 			if pkg != nil {
 				if pkg.Path() == "time" && name == "Time" {
-					return "dateTime"
+					return ir.TypDateTime, true
 				}
-				return pkg.Name() + "." + name // "ast.File" instead of "file"
+				if _, isStruct := named.Underlying().(*types.Struct); isStruct && pkg.Path() == homePkg {
+					if sd, ok := structs[name]; ok {
+						return sd.SymType(), true
+					}
+				}
 			}
-			return lowerFirst(name)
 		}
-		return "dyn"
+		return ir.TypDyn, false
 	}
 }
 
@@ -225,7 +317,6 @@ func lowerFirst(s string) string {
 	if s == "" {
 		return s
 	}
-	// All uppercase → all lowercase (e.g., "ID" → "id", "URL" → "url")
 	if strings.ToUpper(s) == s {
 		return strings.ToLower(s)
 	}
