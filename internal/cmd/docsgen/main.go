@@ -50,10 +50,10 @@ func main() {
 }
 
 func copySnapshots(outDir string) {
-	srcDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	srcDir := filepath.Join("lib", "snapshots")
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
-		log.Printf("gallery: no snapshots in %s (run: go generate ./internal/checker/...)", srcDir)
+		log.Printf("gallery: no snapshots in %s (run: go generate ./lib/...)", srcDir)
 		return
 	}
 	galleryDir := filepath.Join(outDir, "assets", "gallery")

@@ -71,7 +71,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Stdlib
 
-Stdlib is embedded via `//go:embed` in `internal/checker/stdlib.go` from `internal/checker/stdlib/*.sngl`. `LoadStdlib()` parses these at startup and returns components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
+Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). `internal/checker/stdlib.go` reads from that FS and parses the files at startup, returning components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
 
 ### AST
 

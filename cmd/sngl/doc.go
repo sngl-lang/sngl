@@ -923,7 +923,7 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 
 	// Show ANSI snapshot if available
 	// Look for ANSI snapshot relative to the stdlib source
-	snapshotDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	snapshotDir := filepath.Join("lib", "snapshots")
 	if ansi, err := os.ReadFile(filepath.Join(snapshotDir, name+"_bubbletea.txt")); err == nil {
 		sb.WriteString("## Preview\n\n```\n")
 		sb.Write(ansi)

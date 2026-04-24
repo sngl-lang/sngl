@@ -138,7 +138,7 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 		return nil
 	}
 
-	outDir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	outDir := filepath.Join("lib", "snapshots")
 
 	return renderExamples(flat, outDir, platforms, width, height, force)
 }

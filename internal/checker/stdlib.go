@@ -1,17 +1,15 @@
 package checker
 
 import (
-	"embed"
 	"io/fs"
+	"strings"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
-
-//go:embed stdlib/*.sngl
-var stdlibFS embed.FS
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
 var (
@@ -19,29 +17,31 @@ var (
 	stdlibDocs []*ast.Document
 )
 
-// stdlibParseOrder determines the loading order so that types/units are
-// available before functions and components reference them.
-var stdlibParseOrder = []string{
-	"stdlib/units.sngl",
-	"stdlib/types.sngl",
-	"stdlib/functions.sngl",
-	"stdlib/components.sngl",
-}
-
 // StdlibDocs returns the parsed stdlib documents.
 // The results are cached after the first call.
 func StdlibDocs() []*ast.Document {
 	return parseStdlibDocs()
 }
 
+// parseStdlibDocs parses every .sngl file embedded in the lib package. File
+// ordering is not significant: loadStdlib groups declarations by kind before
+// registering them, so new stdlib files can be dropped into lib/ without
+// touching this code.
 func parseStdlibDocs() []*ast.Document {
 	stdlibOnce.Do(func() {
-		for _, name := range stdlibParseOrder {
-			data, err := fs.ReadFile(stdlibFS, name)
+		entries, err := lib.FS.ReadDir(".")
+		if err != nil {
+			return
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+				continue
+			}
+			data, err := fs.ReadFile(lib.FS, e.Name())
 			if err != nil {
 				continue
 			}
-			doc, err := parser.Parse(name, data)
+			doc, err := parser.Parse(e.Name(), data)
 			if err != nil {
 				continue
 			}
@@ -54,28 +54,66 @@ func parseStdlibDocs() []*ast.Document {
 // loadStdlib builds the stdlib Package, registers all stdlib declarations into
 // the checker's scope and symbol table for unqualified access, and declares
 // the "sngl" namespace for qualified access (sngl.text, sngl.Color, etc.).
+//
+// Declarations are grouped by kind across all stdlib files and registered in a
+// fixed order — imports, then types (units, structs, enums), then functions,
+// then components — so the file a declaration lives in does not affect
+// resolution.
 func (c *checker) loadStdlib() *ir.Package {
 	stdlibPkg := &ir.Package{
 		Symbols: NewSymbolTable(),
 	}
 
+	var (
+		imports    []*ast.Import
+		units      []*ast.UnitDef
+		structs    []*ast.StructDef
+		enums      []*ast.EnumDef
+		funcs      []*ast.FuncDef
+		components []*ast.ComponentDecl
+	)
 	for _, doc := range parseStdlibDocs() {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.Import:
-				c.registerImport(s)
-			case *ast.StructDef:
-				c.registerStdlibStruct(s, stdlibPkg)
-			case *ast.EnumDef:
-				c.registerStdlibEnum(s, stdlibPkg)
+				imports = append(imports, s)
 			case *ast.UnitDef:
-				c.registerStdlibUnit(s, stdlibPkg)
+				units = append(units, s)
+			case *ast.StructDef:
+				structs = append(structs, s)
+			case *ast.EnumDef:
+				enums = append(enums, s)
 			case *ast.FuncDef:
-				c.registerStdlibFunc(s, stdlibPkg)
+				funcs = append(funcs, s)
 			case *ast.ComponentDecl:
-				c.registerStdlibComponent(s, stdlibPkg)
+				components = append(components, s)
 			}
 		}
+	}
+
+	for _, s := range imports {
+		c.registerImport(s)
+	}
+	for _, s := range units {
+		c.registerStdlibUnit(s, stdlibPkg)
+	}
+	for _, s := range enums {
+		c.registerStdlibEnum(s, stdlibPkg)
+	}
+	// Structs may reference any type — including other structs — so register
+	// names as empty stubs first, then resolve fields in a second pass.
+	structDefs := make([]*ir.StructDef, len(structs))
+	for i, s := range structs {
+		structDefs[i] = c.declareStdlibStruct(s, stdlibPkg)
+	}
+	for i, s := range structs {
+		c.resolveStdlibStructFields(s, structDefs[i])
+	}
+	for _, s := range funcs {
+		c.registerStdlibFunc(s, stdlibPkg)
+	}
+	for _, s := range components {
+		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
 	// Register "sngl" namespace for qualified access to stdlib.
@@ -87,8 +125,12 @@ func (c *checker) loadStdlib() *ir.Package {
 	return stdlibPkg
 }
 
-func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *ir.Package) {
-	sd := c.buildStructDef(s)
+// declareStdlibStruct registers a struct name (without fields) so other
+// declarations can reference it while we are still processing the stdlib.
+// Fields are filled in by resolveStdlibStructFields once every name is in
+// scope.
+func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
+	sd := &ir.StructDef{AST: s, Name: s.Name}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)
@@ -96,6 +138,15 @@ func (c *checker) registerStdlibStruct(s *ast.StructDef, pkg *ir.Package) {
 	pkg.Structs = append(pkg.Structs, sd)
 	pkg.Symbols.Types[sd.Name] = sd
 	pkg.Symbols.Root.Declare(sd)
+	return sd
+}
+
+// resolveStdlibStructFields populates the fields of an already-declared
+// struct. Safe to run after every stdlib type name is in scope, which allows
+// fields to reference any stdlib type regardless of declaration order.
+func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) {
+	built := c.buildStructDef(s)
+	sd.Fields = built.Fields
 }
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {

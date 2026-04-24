@@ -318,7 +318,7 @@ var platformDisplayName = map[string]string{
 // platforms that have a .png snapshot for the given component name,
 // sorted by platformOrder.
 func detectPlatforms(name string) []string {
-	dir := filepath.Join("internal", "checker", "stdlib", "snapshots")
+	dir := filepath.Join("lib", "snapshots")
 	var platforms []string
 	for _, p := range platformOrder {
 		if _, err := os.Stat(filepath.Join(dir, name+"_"+p+".png")); err == nil {
