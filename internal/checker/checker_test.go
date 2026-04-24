@@ -39,6 +39,10 @@ func (m *mockResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport,
 	return nil, fmt.Errorf("scheme imports not supported in tests")
 }
 
+func (m *mockResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
+	return nil, nil, nil
+}
+
 func newTestResolver() *mockResolver {
 	return &mockResolver{pkgs: map[string]string{
 		"widgets": `
@@ -549,6 +553,54 @@ component main {
 			t.Errorf("unexpected error: %s", d.Error())
 		}
 	}
+}
+
+func TestImportSchemeFSDispatch(t *testing.T) {
+	// Verify registerImport tries ResolveSchemeFS first for scheme imports
+	// (git://, http://, …) and falls back to ResolveScheme only when FS says
+	// "not my scheme" (nil docs).
+	r := &schemeFSResolver{
+		fsPkgs: map[string]string{
+			"git://example.com/widgets@v1#-": `component Counter(label = "") { text(value=label) }`,
+		},
+	}
+	doc, err := parser.Parse("test.sngl", []byte(`
+import "widgets" => "git://example.com/widgets@v1#-"
+
+component main {
+    widgets.Counter(label="x")
+}
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+// schemeFSResolver returns canned SNGL source for specific scheme URIs via
+// ResolveSchemeFS. ResolveScheme never fires for these; falling back to it
+// is a bug the test would catch.
+type schemeFSResolver struct {
+	mockResolver
+	fsPkgs map[string]string // full "scheme://uri" → SNGL source
+}
+
+func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Document, fs.FS, error) {
+	key := scheme + "://" + uri
+	src, ok := r.fsPkgs[key]
+	if !ok {
+		return nil, nil, nil
+	}
+	doc, err := parser.Parse(key, []byte(src))
+	if err != nil {
+		return nil, nil, err
+	}
+	return []*ast.Document{doc}, nil, nil
 }
 
 func TestImportReplaceDuplicate(t *testing.T) {

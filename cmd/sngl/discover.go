@@ -251,6 +251,42 @@ func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, 
 	return imp.Resolve(uri, dir)
 }
 
+// ResolveSchemeFS dispatches to a registered FS scheme importer (e.g., git://),
+// downloads or cache-hits its filesystem, and returns all *.sngl documents at
+// the FS root along with the FS itself so nested imports within the package
+// can be resolved against it. Returns (nil, nil, nil) when scheme has no FS
+// importer registered.
+func (r *cliResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
+	imp := codegen.LookupFSScheme(scheme)
+	if imp == nil {
+		return nil, nil, nil
+	}
+	fsys, err := imp.ResolveFS(uri, dir)
+	if err != nil {
+		return nil, nil, err
+	}
+	entries, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading scheme FS root: %w", err)
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		data, err := fs.ReadFile(fsys, e.Name())
+		if err != nil {
+			return nil, nil, fmt.Errorf("reading %s: %w", e.Name(), err)
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing %s: %w", e.Name(), err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, fsys, nil
+}
+
 // explicitFileSet returns the absolute paths of args that are regular files
 // (not directories). Used to skip sibling merging when a specific file is passed.
 func explicitFileSet(args []string) map[string]bool {

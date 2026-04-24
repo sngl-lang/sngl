@@ -23,6 +23,13 @@ type FSSchemeImporter interface {
 	ResolveFS(uri, dir string) (fs.FS, error)
 }
 
+// FSSchemeUpdater is an optional capability an FSSchemeImporter may implement
+// so `sngl pkg update` can drop the cache entry for a URI, re-fetch, and
+// report the integrity hash suitable for paste back into the `#fragment`.
+type FSSchemeUpdater interface {
+	Refresh(uri, dir string) (newHash string, err error)
+}
+
 var (
 	schemeMu  sync.RWMutex
 	schemes   = map[string]SchemeImporter{}

@@ -34,8 +34,17 @@ type ImportResolver interface {
 	// Resolve resolves a directory import to parsed AST documents.
 	Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error)
 
-	// ResolveScheme resolves a scheme-based import (go://, git://, etc.).
+	// ResolveScheme resolves a scheme-based import to native (language-level)
+	// declarations (e.g. go://pkg/path).
 	ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error)
+
+	// ResolveSchemeFS resolves a scheme-based import to a set of SNGL .sngl
+	// documents plus the filesystem they were read from. Used by FS schemes
+	// like git:// that vend remote SNGL packages. Returns (nil, nil, nil) when
+	// the scheme is not FS-registered — callers should then try ResolveScheme.
+	// The returned subFS is rooted at the package's cache directory so that
+	// transitive imports inside the package resolve against it.
+	ResolveSchemeFS(scheme, uri, dir string) (docs []*ast.Document, subFS fs.FS, err error)
 }
 
 // Check type-checks a parsed v2 AST Document and returns the IR Package.
@@ -304,34 +313,56 @@ func (c *checker) registerImport(imp *ast.Import) {
 			nsResolve = target.Resolve
 		}
 	} else if scheme != "" && c.cfg.Resolver != nil {
-		// Scheme import (go://, git://, etc.)
-		native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
+		// Scheme import. Try FS-backed schemes first (git://, http://, …) so
+		// remote SNGL packages resolve to .sngl docs; fall back to native
+		// scheme importers (go://, ts://, …) for language sources.
+		docs, subFS, err := c.cfg.Resolver.ResolveSchemeFS(scheme, uri, c.cfg.Dir)
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
-		}
-		irImport.Native = native
-		if native != nil {
-			// Register native declarations under the namespace.
-			nsPkg := &ir.Package{
-				Structs: native.Structs,
-				Enums:   native.Enums,
-				Funcs:   native.Funcs,
-				Vars:    native.Vars,
-				Symbols: NewSymbolTable(),
+		} else if len(docs) > 0 {
+			merged := &ir.Package{Symbols: NewSymbolTable()}
+			for _, d := range docs {
+				pkg, diags := Check(d, &Config{
+					FS:        subFS,
+					Dir:       c.cfg.Dir,
+					Resolver:  c.cfg.Resolver,
+					Languages: c.cfg.Languages,
+					Platforms: c.cfg.Platforms,
+					Replaces:  c.replaces,
+				})
+				c.diags = append(c.diags, diags...)
+				mergePkgInto(merged, pkg)
 			}
-			for _, s := range native.Structs {
-				nsPkg.Symbols.Types[s.Name] = s
+			irImport.Pkg = merged
+		} else {
+			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
+			if err != nil {
+				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
-			for _, e := range native.Enums {
-				nsPkg.Symbols.Types[e.Name] = e
+			irImport.Native = native
+			if native != nil {
+				// Register native declarations under the namespace.
+				nsPkg := &ir.Package{
+					Structs: native.Structs,
+					Enums:   native.Enums,
+					Funcs:   native.Funcs,
+					Vars:    native.Vars,
+					Symbols: NewSymbolTable(),
+				}
+				for _, s := range native.Structs {
+					nsPkg.Symbols.Types[s.Name] = s
+				}
+				for _, e := range native.Enums {
+					nsPkg.Symbols.Types[e.Name] = e
+				}
+				for _, f := range native.Funcs {
+					nsPkg.Symbols.Root.Declare(f)
+				}
+				for _, v := range native.Vars {
+					nsPkg.Symbols.Root.Declare(v)
+				}
+				irImport.Pkg = nsPkg
 			}
-			for _, f := range native.Funcs {
-				nsPkg.Symbols.Root.Declare(f)
-			}
-			for _, v := range native.Vars {
-				nsPkg.Symbols.Root.Declare(v)
-			}
-			irImport.Pkg = nsPkg
 		}
 	} else if c.cfg.Resolver != nil {
 		// Directory import.

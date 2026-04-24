@@ -101,8 +101,8 @@ func parseGitURI(uri string) (*gitURI, error) {
 	return nil, fmt.Errorf("git:// URI requires host/path (e.g., git://github.com/user/repo)")
 }
 
-// snglCacheDir returns the base cache directory for SNGL.
-func snglCacheDir() string {
+// SnglCacheDir returns the base cache directory for SNGL.
+func SnglCacheDir() string {
 	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
 		return filepath.Join(dir, "sngl")
 	}
@@ -114,7 +114,7 @@ func snglCacheDir() string {
 }
 
 func gitCacheDir(host, repoPath, ref string) string {
-	return filepath.Join(snglCacheDir(), "git", host, repoPath, ref)
+	return filepath.Join(SnglCacheDir(), "git", host, repoPath, ref)
 }
 
 func gitClone(parsed *gitURI, destDir string) error {
@@ -132,13 +132,27 @@ func gitClone(parsed *gitURI, destDir string) error {
 // verifyHash computes a sha256 hash of all .sngl files in the directory
 // (sorted by name) and compares it to the expected hash.
 func verifyHash(dir string, expected string) error {
+	got, err := computeDirHash(dir)
+	if err != nil {
+		return err
+	}
+	if got != expected {
+		return fmt.Errorf("expected %s, got %s", expected, got)
+	}
+	return nil
+}
+
+// computeDirHash returns the git-scheme content hash for a cached directory:
+// sha256 over the concatenation of (relative path, file bytes) for every
+// .sngl file below dir, in sorted order. Used both for integrity verification
+// and for the value `sngl pkg update` prints after re-cloning.
+func computeDirHash(dir string) (string, error) {
 	h := sha256.New()
 	var names []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		// Skip .git directory
 		if d.IsDir() && d.Name() == ".git" {
 			return filepath.SkipDir
 		}
@@ -149,20 +163,33 @@ func verifyHash(dir string, expected string) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	sort.Strings(names)
 	for _, name := range names {
 		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
-			return err
+			return "", err
 		}
 		h.Write([]byte(name))
 		h.Write(data)
 	}
-	got := fmt.Sprintf("%x", h.Sum(nil))
-	if got != expected {
-		return fmt.Errorf("expected %s, got %s", expected, got)
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+// Refresh drops the cached clone, re-clones at the specified ref, and returns
+// the recomputed content hash.
+func (g *GitImporter) Refresh(uri, _ string) (string, error) {
+	parsed, err := parseGitURI(uri)
+	if err != nil {
+		return "", err
 	}
-	return nil
+	cacheDir := gitCacheDir(parsed.host, parsed.path, parsed.ref)
+	if err := os.RemoveAll(cacheDir); err != nil {
+		return "", fmt.Errorf("clear cache: %w", err)
+	}
+	if err := gitClone(parsed, cacheDir); err != nil {
+		return "", fmt.Errorf("git clone: %w", err)
+	}
+	return computeDirHash(cacheDir)
 }
