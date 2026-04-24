@@ -123,6 +123,7 @@ component PlaygroundContent() {
 				html.option(value="", innerText="Examples...")
 				html.option(value="default", innerText="Hello")
 			}
+			html.button(id="format-btn", type="button", title="Format (Shift+Alt+F)", innerText="Format")
 			html.span(class="status", id="status", innerText="Loading WASM...")
 		}
 		html.div(class="error-banner", id="error")

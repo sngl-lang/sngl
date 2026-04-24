@@ -108,6 +108,19 @@ func Compile(source string) string {
 	return jsonStr(result)
 }
 
+// Format parses SNGL source and returns formatted source.
+// Returns JSON: {"source": "...", "error": "..."}
+func Format(source string) string {
+	result := map[string]any{"source": "", "error": ""}
+	doc, err := parser.Parse("playground.sngl", []byte(source))
+	if err != nil {
+		result["error"] = err.Error()
+		return jsonStr(result)
+	}
+	result["source"] = parser.Format(doc)
+	return jsonStr(result)
+}
+
 // ASTDump parses SNGL source and returns the AST as JSON.
 // Returns JSON: {"ast": "...", "error": "..."}
 func ASTDump(source string) string {

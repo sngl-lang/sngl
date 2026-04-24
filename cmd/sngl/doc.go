@@ -16,6 +16,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 )
@@ -208,7 +209,8 @@ func parsePackage(dir string) (*ast.Document, error) {
 
 // showPackageIndex displays all declarations in a user package.
 // Platform overrides (sngl.*) and platform-specific types (Options) are
-// separated into their own sections at the bottom.
+// separated into their own sections at the bottom. Unexported decls
+// are filtered out upstream by ExtractPackageDocs.
 func showPackageIndex(dir string, pd *checker.PackageDocs) error {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# Package %s\n\n", dir))
@@ -301,17 +303,20 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 
 // showDeclDoc displays documentation for a specific declaration.
 func showDeclDoc(pd *checker.PackageDocs, name string, stmts []ast.Stmt) error {
-	// Support "decl.field" syntax
+	// Try the full name first — this resolves dotted decls like `int.min`
+	// (function) or `Alert.toast` (receiver method) before we fall back to
+	// treating the dot as a struct field / component prop selector.
 	declName := name
 	fieldName := ""
-	if before, after, ok := strings.Cut(name, "."); ok {
-		declName = before
-		fieldName = after
-	}
-
 	info := pd.FindDecl(declName)
 	if info == nil {
-		// Try stdlib fallback
+		if before, after, ok := strings.Cut(name, "."); ok {
+			declName = before
+			fieldName = after
+			info = pd.FindDecl(declName)
+		}
+	}
+	if info == nil {
 		return showComponentDoc(name)
 	}
 
@@ -328,13 +333,19 @@ func showDeclDoc(pd *checker.PackageDocs, name string, stmts []ast.Stmt) error {
 			}
 		}
 		// User component — render manually
-		return renderToTerminal(renderUserComponentDoc(decl, stmts))
+		return renderToTerminal(renderUserComponentDoc(decl, info.Doc))
 
 	case *ast.StructDef:
-		return renderToTerminal(renderStructDoc(decl, fieldName, stmts))
+		return renderToTerminal(renderStructDoc(decl, fieldName, info.Doc))
 
 	case *ast.EnumDef:
-		return renderToTerminal(renderEnumDoc(decl, stmts))
+		return renderToTerminal(renderEnumDoc(decl, info.Doc))
+
+	case *ast.FuncDef:
+		return renderToTerminal(renderFuncDoc(decl, info.Doc))
+
+	case *ast.ConstDecl, *ast.VarDecl:
+		return renderToTerminal(renderValueDoc(info))
 
 	default:
 		var sb strings.Builder
@@ -346,11 +357,10 @@ func showDeclDoc(pd *checker.PackageDocs, name string, stmts []ast.Stmt) error {
 	}
 }
 
-func renderUserComponentDoc(comp *ast.ComponentDecl, stmts []ast.Stmt) string {
+func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s\n\n", comp.Name))
 
-	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
@@ -367,33 +377,33 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, stmts []ast.Stmt) string {
 	}
 
 	if len(params) > 0 {
-		sb.WriteString("## Parameters\n\n")
+		sb.WriteString("## Parameters\n\n```\n")
 		for _, p := range params {
-			pType := "any"
-			if p.Type != nil {
-				pType = fmt.Sprint(p.Type)
+			pType := parser.FormatType(p.Type)
+			if pType == "" {
+				pType = "any"
 			}
-			sb.WriteString(fmt.Sprintf("  %-16s %s\n", p.Name, pType))
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, pType))
 		}
-		sb.WriteString("\n")
+		sb.WriteString("```\n\n")
 	}
 
 	if len(events) > 0 {
-		sb.WriteString("## Events\n\n")
+		sb.WriteString("## Events\n\n```\n")
 		for _, e := range events {
-			sb.WriteString(fmt.Sprintf("  @%s\n", e.Name))
+			payload := parser.FormatType(e.Type)
+			sb.WriteString(fmt.Sprintf("@%-15s %s\n", e.Name, payload))
 		}
-		sb.WriteString("\n")
+		sb.WriteString("```\n\n")
 	}
 
 	return sb.String()
 }
 
-func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) string {
+func renderStructDoc(s *ast.StructDef, fieldName, doc string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# struct %s\n\n", s.Name))
 
-	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
@@ -404,7 +414,7 @@ func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) strin
 			for _, name := range f.Names {
 				if name == fieldName {
 					sb.WriteString(fmt.Sprintf("## %s.%s\n\n", s.Name, name))
-					sb.WriteString(fmt.Sprintf("Type: %s\n", f.Type))
+					sb.WriteString(fmt.Sprintf("Type: `%s`\n", parser.FormatType(f.Type)))
 					return sb.String()
 				}
 			}
@@ -413,30 +423,96 @@ func renderStructDoc(s *ast.StructDef, fieldName string, stmts []ast.Stmt) strin
 		return sb.String()
 	}
 
-	sb.WriteString("## Fields\n\n")
+	if len(s.Fields) == 0 {
+		return sb.String()
+	}
+
+	sb.WriteString("## Fields\n\n```\n")
 	for _, f := range s.Fields {
+		tstr := parser.FormatType(f.Type)
 		for _, name := range f.Names {
-			sb.WriteString(fmt.Sprintf("  %-16s %s\n", name, f.Type))
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", name, tstr))
 		}
 	}
-	sb.WriteString("\n")
+	sb.WriteString("```\n")
 	return sb.String()
 }
 
-func renderEnumDoc(e *ast.EnumDef, stmts []ast.Stmt) string {
+func renderEnumDoc(e *ast.EnumDef, doc string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# enum %s\n\n", e.Name))
 
-	doc := checker.DeclDoc(stmts)
 	if doc != "" {
 		sb.WriteString(doc + "\n\n")
 	}
 
-	sb.WriteString("## Values\n\n")
+	sb.WriteString("## Values\n\n```\n")
 	for _, m := range e.Members {
-		sb.WriteString(fmt.Sprintf("  %s\n", m.Name))
+		sb.WriteString(m.Name + "\n")
 	}
-	sb.WriteString("\n")
+	sb.WriteString("```\n")
+	return sb.String()
+}
+
+func renderFuncDoc(f *ast.FuncDef, doc string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# func %s\n\n", f.Name))
+
+	// Signature on one line in a code block
+	var sig strings.Builder
+	sig.WriteString("func " + f.Name)
+	if len(f.TypeParams) > 0 {
+		sig.WriteString("<" + strings.Join(f.TypeParams, ", ") + ">")
+	}
+	sig.WriteString("(")
+	for i, p := range f.Params.Params {
+		if i > 0 {
+			sig.WriteString(", ")
+		}
+		sig.WriteString(p.Name)
+		if p.Type != nil {
+			sig.WriteString(" " + parser.FormatType(p.Type))
+		}
+	}
+	sig.WriteString(")")
+	if f.ReturnType != nil {
+		sig.WriteString(" " + parser.FormatType(f.ReturnType))
+	}
+	sb.WriteString("```\n" + sig.String() + "\n```\n\n")
+
+	if doc != "" {
+		sb.WriteString(doc + "\n\n")
+	}
+
+	if len(f.Params.Params) > 0 {
+		sb.WriteString("## Parameters\n\n```\n")
+		for _, p := range f.Params.Params {
+			ptype := parser.FormatType(p.Type)
+			if ptype == "" {
+				ptype = "any"
+			}
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, ptype))
+		}
+		sb.WriteString("```\n\n")
+	}
+
+	if f.ReturnType != nil {
+		sb.WriteString(fmt.Sprintf("**Returns:** `%s`\n", parser.FormatType(f.ReturnType)))
+	}
+
+	return sb.String()
+}
+
+func renderValueDoc(info *checker.DeclInfo) string {
+	var sb strings.Builder
+	kind := "var"
+	if _, ok := info.Decl.(*ast.ConstDecl); ok {
+		kind = "const"
+	}
+	sb.WriteString(fmt.Sprintf("# %s %s\n\n", kind, info.Name))
+	if info.Doc != "" {
+		sb.WriteString(info.Doc + "\n")
+	}
 	return sb.String()
 }
 

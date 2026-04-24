@@ -119,6 +119,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 
 	// User-defined type from scope chain.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if c.rejectUnexported(t.Pos, sym) {
+			return TypDyn
+		}
 		if typ := sym.SymType(); typ != nil {
 			return typ
 		}
@@ -145,6 +148,9 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 		return TypDyn
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupType(name); ok {
+		if c.rejectUnexported(ast.Pos{}, tsym) {
+			return TypDyn
+		}
 		return tsym.SymType()
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)

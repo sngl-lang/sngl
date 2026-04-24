@@ -30,6 +30,7 @@ import (
 
 func main() {
 	js.Global().Set("snglCompile", js.FuncOf(compile))
+	js.Global().Set("snglFormat", js.FuncOf(format))
 	js.Global().Set("snglAST", js.FuncOf(astDump))
 	js.Global().Set("snglTargets", js.FuncOf(targets))
 	js.Global().Set("snglGenerate", js.FuncOf(generate))
@@ -132,6 +133,22 @@ func compile(this js.Value, args []js.Value) any {
 			break
 		}
 	}
+	return toJSObject(result)
+}
+
+func format(this js.Value, args []js.Value) any {
+	result := map[string]any{"source": "", "error": ""}
+	if len(args) == 0 {
+		result["error"] = "no source provided"
+		return toJSObject(result)
+	}
+	source := args[0].String()
+	doc, err := parser.Parse("playground.sngl", []byte(source))
+	if err != nil {
+		result["error"] = err.Error()
+		return toJSObject(result)
+	}
+	result["source"] = parser.Format(doc)
 	return toJSObject(result)
 }
 

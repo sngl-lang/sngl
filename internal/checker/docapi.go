@@ -12,6 +12,7 @@ import (
 // --- Doc API types ---
 
 // ComponentSchema describes a stdlib component for documentation.
+// Only exported components appear in the schema registry.
 type ComponentSchema struct {
 	Doc      string
 	Props    map[string]PropSchema
@@ -80,7 +81,8 @@ func (pd *PackageDocs) FindDecl(name string) *DeclInfo {
 	return nil
 }
 
-// DeclInfo holds metadata for a single declaration.
+// DeclInfo holds metadata for a single declaration. ExtractPackageDocs
+// only returns DeclInfos for exported decls.
 type DeclInfo struct {
 	Name string
 	Doc  string
@@ -125,15 +127,29 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 	if pkg == nil {
 		return reg
 	}
-	// Collect all comments from stdlib docs for DeclDoc lookups.
-	var allStmts []ast.Stmt
+
+	// Index per-component doc strings by walking each source doc independently
+	// so `stmts[:i]` bounds the comment search to what precedes each decl.
+	compDocs := map[string]string{}
 	for _, d := range docs {
-		allStmts = append(allStmts, d.Stmts...)
+		for i, stmt := range d.Stmts {
+			cd, ok := stmt.(*ast.ComponentDecl)
+			if !ok {
+				continue
+			}
+			if _, seen := compDocs[cd.Name]; seen {
+				continue
+			}
+			compDocs[cd.Name] = DeclDoc(d.Stmts[:i], cd.Pos.Line)
+		}
 	}
 
 	for _, comp := range pkg.Components {
+		if !comp.IsExported() {
+			continue
+		}
 		schema := &ComponentSchema{
-			Doc:      DeclDoc(allStmts),
+			Doc:      compDocs[comp.Name],
 			Props:    make(map[string]PropSchema),
 			Events:   make(map[string]string),
 			Children: comp.ChildrenType,
@@ -168,11 +184,13 @@ func StdlibExamples() (map[string][]string, error) {
 	return result, nil
 }
 
-// PrefixedExamples extracts `example_<name>` prefixed components from a
-// document. Components named `example_<name>` or `example_<name>_<suffix>`
+// PrefixedExamples extracts `_example_<name>` prefixed components from a
+// document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
 // for each example, with the wrapper renamed to `main` so the snippet is a
-// complete, runnable app.
+// complete, runnable app. The leading underscore marks examples as
+// unexported — they are not part of the public API but the doc tooling
+// still extracts them from the AST for gallery rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {
 	result := make(map[string]string)
 	for _, stmt := range doc.Stmts {
@@ -180,7 +198,7 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 		if !ok {
 			continue
 		}
-		target, ok := strings.CutPrefix(comp.Name, "example_")
+		target, ok := strings.CutPrefix(comp.Name, "_example_")
 		if !ok {
 			continue
 		}
@@ -198,37 +216,56 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 	return result
 }
 
-// ExtractPackageDocs walks a document's statements and returns doc info for each declaration.
+// ExtractPackageDocs walks a document's statements and returns doc info
+// for each exported declaration. Unexported decls are dropped so that
+// callers never have to know or enforce the export rule themselves — it
+// lives on the IR decl types' IsExported methods.
 func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 	pd := &PackageDocs{}
 	stmts := doc.Stmts
 
 	for i, stmt := range stmts {
+		line := 0
+		if p := stmt.StmtPos(); p != nil {
+			line = p.Line
+		}
 		switch s := stmt.(type) {
 		case *ast.ComponentDecl:
+			if !(&ir.Component{Name: s.Name}).IsExported() {
+				continue
+			}
 			pd.Components = append(pd.Components, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i]),
+				Doc:  DeclDoc(stmts[:i], line),
 				Decl: s,
 			})
 		case *ast.StructDef:
+			if !(&ir.StructDef{Name: s.Name}).IsExported() {
+				continue
+			}
 			pd.Structs = append(pd.Structs, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i]),
+				Doc:  DeclDoc(stmts[:i], line),
 				Decl: s,
 			})
 		case *ast.EnumDef:
+			if !(&ir.EnumDef{Name: s.Name}).IsExported() {
+				continue
+			}
 			pd.Enums = append(pd.Enums, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i]),
+				Doc:  DeclDoc(stmts[:i], line),
 				Decl: s,
 			})
 		case *ast.ConstDecl:
 			for _, spec := range s.Specs {
 				for _, name := range spec.Names {
+					if !(&ir.Var{Name: name, IsConst: true}).IsExported() {
+						continue
+					}
 					pd.Consts = append(pd.Consts, DeclInfo{
 						Name: name,
-						Doc:  DeclDoc(stmts[:i]),
+						Doc:  DeclDoc(stmts[:i], line),
 						Decl: s,
 					})
 				}
@@ -236,17 +273,24 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 		case *ast.VarDecl:
 			for _, spec := range s.Specs {
 				for _, name := range spec.Names {
+					if !(&ir.Var{Name: name}).IsExported() {
+						continue
+					}
 					pd.Data = append(pd.Data, DeclInfo{
 						Name: name,
-						Doc:  DeclDoc(stmts[:i]),
+						Doc:  DeclDoc(stmts[:i], line),
 						Decl: s,
 					})
 				}
 			}
 		case *ast.FuncDef:
+			recv, method, _ := ast.SplitMethodName(s.Name)
+			if !(&ir.Func{Receiver: recv, Name: method}).IsExported() {
+				continue
+			}
 			pd.Functions = append(pd.Functions, DeclInfo{
 				Name: s.Name,
-				Doc:  DeclDoc(stmts[:i]),
+				Doc:  DeclDoc(stmts[:i], line),
 				Decl: s,
 			})
 		}
@@ -254,12 +298,15 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 	return pd
 }
 
-// DeclDoc extracts the doc comment text for a declaration at the given line.
+// DeclDoc extracts the doc comment text for a declaration at declLine.
 // It searches backward through stmts for consecutive comment lines immediately
-// preceding the declaration.
-func DeclDoc(stmts []ast.Stmt) string {
-	// Collect comments immediately preceding declLine.
+// preceding the declaration. A blank line (non-adjacent Pos.Line) breaks the
+// group — so section headers like `// --- Core ---` or inner-struct comments
+// separated from a decl by a blank line are not folded into the decl's doc.
+// A declLine of 0 disables the adjacency check against the decl itself.
+func DeclDoc(stmts []ast.Stmt, declLine int) string {
 	var lines []string
+	nextLine := declLine
 	for i := len(stmts) - 1; i >= 0; i-- {
 		c, ok := stmts[i].(*ast.Comment)
 		if !ok {
@@ -268,6 +315,10 @@ func DeclDoc(stmts []ast.Stmt) string {
 		if c.Block || c.Inline {
 			break
 		}
+		if nextLine != 0 && c.Pos.Line+1 < nextLine {
+			break
+		}
+		nextLine = c.Pos.Line
 		text := strings.TrimPrefix(c.Text, "//")
 		text = strings.TrimPrefix(text, " ")
 		lines = append([]string{text}, lines...)

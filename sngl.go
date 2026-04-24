@@ -36,6 +36,11 @@ func FormatExpr(e ast.Expr) string {
 	return parser.FormatExpr(e)
 }
 
+// FormatType returns the formatted SNGL source for a single type expression.
+func FormatType(te ast.TypeExpr) string {
+	return parser.FormatType(te)
+}
+
 // Convert builds a fresh AST Document from a type-checked IR Package,
 // without referencing any embedded AST pointers.
 func Convert(pkg *ir.Package) *ast.Document {

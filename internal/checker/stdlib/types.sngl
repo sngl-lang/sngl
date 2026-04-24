@@ -1,3 +1,10 @@
+// RGBA color with 8-bit channels. Component values range 0-255; alpha
+// defaults to fully opaque (255). Colors can be constructed in three
+// equivalent ways: a `#RRGGBB` / `#RRGGBBAA` literal in place of a
+// color expression, the `color.rgb(r, g, b)` and `color.rgba(r, g, b, a)`
+// helpers, or a struct literal `color{r=..., g=..., b=..., a=...}`.
+// Derived colors (lighten, darken, opacity-adjust) are available via
+// the functions on the `color` receiver.
 struct color {
     r int = 0
     g int = 0
@@ -5,23 +12,89 @@ struct color {
     a int = 255
 }
 
+// Receiver type for test-only helpers. Used by the stdlib test runner:
+// each test function declares `t Test` as its first parameter and the
+// runner injects a value that carries the assertion facility. Tests
+// are top-level functions whose name starts with "test" and that call
+// `t.assert(cond)` to declare expected conditions.
 struct Test {}
 
+// Asserts that b is true; fails the enclosing test otherwise. The
+// assertion records a failure on the test and continues executing
+// so that multiple failures can be reported from a single run.
 func Test.assert(b bool) {}
 
+// Main-axis direction for flex containers such as `vbox` and `hbox`.
+// `row` and `column` are the common cases; the `Reverse` variants
+// lay children out in the opposite order (useful for right-to-left
+// layouts or stacks that grow from the bottom).
 enum FlexDirection { row, column, rowReverse, columnReverse }
+
+// Cross-axis alignment of children inside a flex container.
+// `start`/`center`/`end` anchor children to the corresponding edge;
+// `stretch` expands children to fill the cross axis; `baseline`
+// aligns text children along their typographic baseline.
 enum Alignment { start, center, end, stretch, baseline }
+
+// Main-axis distribution of children inside a flex container.
+// `spaceBetween` puts all free space between children; `spaceAround`
+// adds half-sized margins on the ends; `spaceEvenly` makes the
+// margins and inter-child gaps equal.
 enum Justification { start, center, end, spaceBetween, spaceAround, spaceEvenly }
+
+// Horizontal alignment of inline text content. `justify` distributes
+// whitespace so each line (except the last) fills the available
+// width.
 enum TextAlign { left, center, right, justify }
+
+// Numeric weight for fonts. `lighter`/`bolder` are relative — each
+// steps one weight from the inherited value. `normal` and `bold`
+// are absolute.
 enum FontWeight { normal, bold, lighter, bolder }
+
+// Slant applied to fonts. `italic` uses the italic face when one
+// is available in the font family; `oblique` synthesizes a slant
+// from the upright face.
 enum FontStyle { normal, italic, oblique }
+
+// Positioning scheme for a component within its parent's layout flow.
+// `static` is the default (flow layout). `relative` lays out in flow
+// but offsets the element from that position via `top`/`left`/etc.
+// `absolute` and `fixed` remove the element from flow; `sticky`
+// toggles between relative and fixed based on scroll position.
 enum Position { static, relative, absolute, fixed, sticky }
+
+// Intrinsic layout mode. Overrides a component's default display
+// behavior. `none` hides the component without reserving space.
+// `inlineBlock` / `inlineFlex` behave as inline content whose
+// inside is block or flex.
 enum Display { flex, block, inline, inlineBlock, inlineFlex, none, grid }
+
+// Behavior when content exceeds its container's bounds. `auto` adds
+// scrollbars only when needed; `scroll` always reserves them;
+// `hidden` clips without scrolling; `visible` lets content spill out.
 enum Overflow { visible, hidden, scroll, auto }
+
+// How an `image`'s contents are sized to fit its frame. `contain`
+// letterboxes, `cover` fills and crops, `fill` stretches,
+// `scaleDown` is `contain` except the image is never scaled up.
 enum ObjectFit { contain, cover, fill, none, scaleDown }
+
+// Line style drawn along a component's border. `double` draws two
+// parallel lines separated by a gap — the total visual thickness
+// is the declared border width.
 enum BorderStyle { none, solid, dashed, dotted, double }
+
+// Marker style for list-rendered containers. Applied via
+// `style.listStyleType` on list-flavored components.
 enum ListStyle { none, disc, circle, square, decimal }
 
+// Declarative style properties applied via the `style` prop on any
+// visual component. Fields are grouped below by category; platform
+// codegen maps each property to the closest native equivalent.
+// Unset fields inherit the platform default. Length-typed fields
+// accept any `measurement` literal (`px`, `em`, `rem`, `vw`, `vh`,
+// `pct`); color-typed fields accept any `color` value.
 struct Style {
     // Spacing
     padding measurement
@@ -86,30 +159,103 @@ struct Style {
     listStyleType ListStyle
 }
 
+// Payload emitted by `@click` when a component is activated. Fires on
+// tap, mouse click, Enter-on-focused-button, or the platform's
+// activation gesture. Currently carries no fields — consult the
+// component's own props (e.g. `checked`, `value`) for state.
 struct ClickEvent {}
+
+// Payload emitted by `@longPress` after a sustained press on pointer
+// or touch platforms. The activation duration is platform-defined
+// (typically ~500ms).
 struct LongPressEvent {}
+
+// Payload emitted by `@input` on every keystroke. `value` carries
+// the full current editor text after the keystroke, which is the
+// easiest way to drive state updates from uncontrolled inputs.
 struct InputEvent {
     value string
 }
+
+// Payload emitted by `@change` when a control commits a new value
+// — typically on blur, Enter, or an explicit selection change.
+// `value` is the committed value as a string.
 struct ChangeEvent {
     value string
 }
+
+// Payload emitted by `@focus` and `@blur` as focus moves in and out
+// of a control.
 struct FocusEvent {}
+
+// Payload emitted by `@submit` on form-style input submission,
+// typically triggered by pressing Enter inside a single-line input.
 struct SubmitEvent {}
+
+// Payload emitted by `@refresh` when a scrollable container requests
+// pull-to-refresh. The handler is expected to kick off the refresh
+// work and toggle the `refreshing` prop off when complete.
 struct RefreshEvent {}
+
+// Payload emitted by `@scroll` / `@scrollEnd` as the viewport
+// scrolls. Inspect the component's `scrollX`/`scrollY` props for
+// the current offset.
 struct ScrollEvent {}
+
+// Payload emitted by `@close` for overlay components (modal, drawer,
+// popover, chip remove). The handler should typically flip the
+// owning `open` state to false.
 struct DismissEvent {}
+
+// Payload emitted by `@select` from list-like components (tabs,
+// tree, table row selection). Inspect the component's `selected`
+// prop for the new selection.
 struct SelectEvent {}
+
+// Payload emitted by `@expand` in hierarchical views such as `tree`
+// when the user opens or collapses a node.
 struct ExpandEvent {}
+
+// Payload emitted by `@resize` when a split or resizable container
+// changes geometry. Inspect the component's own `position` prop
+// for the new split location.
 struct ResizeEvent {}
+
+// Payload emitted by `@select` / `@close` on menu and menubar items.
 struct MenuEvent {}
+
+// Payload emitted by `@load` after an asynchronous resource (image,
+// document) finishes loading.
 struct LoadEvent {}
+
+// Payload emitted by `@error` when an operation fails. `message` is
+// human-readable; `kind` tags the category so handlers can dispatch
+// programmatically (e.g. "network", "decode", "auth").
 struct ErrorEvent {
     message string
     kind string
 }
+
+// Payload emitted by `@change` from `datepicker` when the selected
+// date changes. Inspect the picker's `value` prop for the new date.
 struct DateEvent {}
 
+// Receiver type for transient user notifications. Access methods
+// via `Alert.toast(...)`, `Alert.info(...)`, `Alert.warn(...)`,
+// `Alert.error(...)`, and `Alert.confirm(...)`. Each call routes
+// to the platform's native notification mechanism (toast, snackbar,
+// dialog) with an appropriate severity.
 struct Alert {}
+
+// Receiver type for file-system interactions. Access methods via
+// `File.pick()` to prompt for a single file and `File.pickFolder()`
+// to prompt for a directory. Both return the selected path or
+// empty string on cancellation. Availability and dialog style are
+// platform-defined.
 struct File {}
+
+// Receiver type for raising runtime errors caught by an
+// `errorBoundary` ancestor. Call `error.raise(message, kind)` to
+// throw; the nearest boundary's `@error` handler receives an
+// `ErrorEvent` with the message and kind.
 struct error {}

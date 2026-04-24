@@ -26,13 +26,23 @@
     flex-shrink: 0;
 }
 
-.playground-toolbar select {
+.playground-toolbar select,
+.playground-toolbar button {
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 13px;
+}
+
+.playground-toolbar button {
+    cursor: pointer;
+}
+
+.playground-toolbar button:hover {
+    background: var(--bg-sidebar);
+    color: var(--accent);
 }
 
 .playground-toolbar .status {

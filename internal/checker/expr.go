@@ -171,12 +171,35 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
+	c.rejectUnexported(x.Pos, sym)
 	c.reportUnusable(x.Pos, x.Name, sym)
 	t := sym.SymType()
 	if t == nil {
 		t = TypDyn
 	}
 	return &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
+}
+
+// exported reports whether a looked-up symbol is exported. Symbols that
+// don't implement the Exported interface (namespaces, type parameters,
+// etc.) are treated as exported.
+func exported(sym ir.Symbol) bool {
+	type exportable interface{ IsExported() bool }
+	if e, ok := sym.(exportable); ok {
+		return e.IsExported()
+	}
+	return true
+}
+
+// rejectUnexported emits an error if sym is an unexported declaration.
+// Returns true when it emitted an error, so callers can fall through to
+// a diagnostic-friendly default.
+func (c *checker) rejectUnexported(pos ast.Pos, sym ir.Symbol) bool {
+	if exported(sym) {
+		return false
+	}
+	c.error(pos, "cannot refer to unexported identifier %q", sym.SymName())
+	return true
 }
 
 // reportUnusable emits a diagnostic if sym is a scheme-imported declaration
@@ -546,6 +569,9 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			if ns, ok := sym.(*ir.Namespace); ok && (ns.Pkg != nil || ns.Resolve != nil) {
 				if ns.Pkg != nil {
 					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
+						if c.rejectUnexported(sel.Pos, fsym) {
+							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+						}
 						// Component in namespace — validate visibility and props.
 						if comp, ok := fsym.(*ir.Component); ok {
 							// Private component filter: only for imported user packages (not stdlib/sngl).
@@ -682,6 +708,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				if ns, ok := sym.(*ir.Namespace); ok {
 					if ns.Pkg != nil {
 						if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
+							if c.rejectUnexported(x.Pos, fsym) {
+								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+							}
 							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
 							t := fsym.SymType()
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
@@ -759,6 +788,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if sym, ok := c.scope.Lookup(x.Package); ok {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if tsym, ok := ns.Pkg.Symbols.LookupType(x.Name); ok {
+					if c.rejectUnexported(x.Pos, tsym) {
+						return &ir.Literal{Type: TypDyn}
+					}
 					if s, ok := tsym.(*ir.StructDef); ok {
 						sd = s
 					}
@@ -1325,6 +1357,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// double-checking args through both inferCall and resolveCallStmt.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.symtab.LookupComponent(id.Name); ok {
+				if c.rejectUnexported(x.Pos, sym) {
+					return nil
+				}
 				if comp, ok := sym.(*ir.Component); ok {
 					c.validateCallStmtComponentArgs(x.Call, comp)
 					props, handlers := c.checkAndSplitArgs(x.Call.Args, comp)
@@ -1679,6 +1714,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			if nsSym, nok := sym.(*ir.Namespace); nok {
 				if nsSym.Pkg != nil {
 					if fsym, ok := nsSym.Pkg.Symbols.LookupComponent(field); ok {
+						if c.rejectUnexported(vn.Pos, fsym) {
+							return nil
+						}
 						if co, ok := fsym.(*ir.Component); ok {
 							comp = co
 						}
@@ -1687,6 +1725,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			}
 		}
 	} else if sym, ok := c.symtab.LookupComponent(name); ok {
+		if c.rejectUnexported(vn.Pos, sym) {
+			return nil
+		}
 		if co, ok := sym.(*ir.Component); ok {
 			comp = co
 		}

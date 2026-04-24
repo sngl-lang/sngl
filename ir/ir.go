@@ -2,9 +2,31 @@ package ir
 
 import (
 	"slices"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
+
+// isExportedName reports whether name refers to an exported identifier
+// under the current export rule. Callers outside this package should use
+// the IsExported method on the concrete decl instead — the rule may
+// grow beyond a pure name check (e.g. visibility annotations) and
+// callers should not bake the current rule into their own logic.
+//
+// Today: a name is unexported if any dotted segment begins with an
+// underscore. "vbox" and "color.rgb" are exported; "_example_vbox",
+// "_Test.assert", and "Foo._helper" are not.
+func isExportedName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for part := range strings.SplitSeq(name, ".") {
+		if part == "" || part[0] == '_' {
+			return false
+		}
+	}
+	return true
+}
 
 // Package is the top-level IR for a checked .sngl package.
 type Package struct {
@@ -80,6 +102,15 @@ type Func struct {
 func (f *Func) SymName() string { return f.Name }
 func (f *Func) SymType() *Type  { return &Type{Kind: TypeFunc, Sig: f.FuncSig()} }
 
+// IsExported reports whether the function is part of its package's public
+// API. Both the receiver (if any) and the method name must be exported.
+func (f *Func) IsExported() bool {
+	if f.Receiver != "" && !isExportedName(f.Receiver) {
+		return false
+	}
+	return isExportedName(f.Name)
+}
+
 // FuncSig builds the FuncSig for this function.
 func (f *Func) FuncSig() *FuncSig {
 	return &FuncSig{
@@ -109,6 +140,10 @@ type Var struct {
 func (v *Var) SymName() string { return v.Name }
 func (v *Var) SymType() *Type  { return v.Type }
 
+// IsExported reports whether the var/const is part of its package's
+// public API.
+func (v *Var) IsExported() bool { return isExportedName(v.Name) }
+
 // Component represents a resolved component declaration.
 type Component struct {
 	AST          *ast.ComponentDecl
@@ -124,6 +159,10 @@ type Component struct {
 
 func (c *Component) SymName() string { return c.Name }
 func (c *Component) SymType() *Type  { return &Type{Kind: TypeComponent, Decl: c} }
+
+// IsExported reports whether the component is part of its package's
+// public API.
+func (c *Component) IsExported() bool { return isExportedName(c.Name) }
 
 // Prop is a resolved component property.
 type Prop struct {
@@ -205,6 +244,10 @@ type StructDef struct {
 }
 
 func (s *StructDef) SymName() string { return s.Name }
+
+// IsExported reports whether the struct is part of its package's public API.
+func (s *StructDef) IsExported() bool { return isExportedName(s.Name) }
+
 func (s *StructDef) SymType() *Type {
 	t := &Type{Kind: TypeStruct, Decl: s}
 	if s.Native != "" {
@@ -236,6 +279,9 @@ type EnumDef struct {
 func (e *EnumDef) SymName() string { return e.Name }
 func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
 
+// IsExported reports whether the enum is part of its package's public API.
+func (e *EnumDef) IsExported() bool { return isExportedName(e.Name) }
+
 // EnumMember is a single value in an enum.
 type EnumMember struct {
 	Name  string
@@ -251,6 +297,9 @@ type UnitDef struct {
 
 func (u *UnitDef) SymName() string { return u.Name }
 func (u *UnitDef) SymType() *Type  { return &Type{Kind: TypeUnit, Decl: u} }
+
+// IsExported reports whether the unit is part of its package's public API.
+func (u *UnitDef) IsExported() bool { return isExportedName(u.Name) }
 
 // UnitSuffix is a resolved suffix within a unit declaration.
 type UnitSuffix struct {

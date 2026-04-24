@@ -1,2 +1,7 @@
+// Time quantity used by `timer.interval` and animation APIs. Unit
+// literals: `ms`, `s`, `m`, `h`.
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+
+// Layout length used throughout `Style`. Unit literals: `px`, `em`,
+// `rem` (= 16em), `vw`, `vh`, `pct`.
 unit measurement { px, em, rem = 16em, vw, vh, pct }

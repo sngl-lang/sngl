@@ -205,7 +205,11 @@ editor = new EditorView({
             highlightActiveLine(),
             highlightActiveLineGutter(),
             history(),
-            keymap.of([...defaultKeymap, ...historyKeymap]),
+            keymap.of([
+                ...defaultKeymap,
+                ...historyKeymap,
+                { key: "Shift-Alt-f", run: () => { formatSource(); return true; } },
+            ]),
             StreamLanguage.define(snglMode),
             oneDark,
             snglLinter,
@@ -250,6 +254,23 @@ document.getElementById("examples").addEventListener("change", (e) => {
 targetSelect.addEventListener("change", () => {
     renderCode();
 });
+
+// Format button
+function formatSource() {
+    if (!wasmReady) return;
+    const src = editor.state.doc.toString();
+    const result = window.snglFormat(src);
+    if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.add("visible");
+        return;
+    }
+    if (result.source === src) return;
+    editor.dispatch({
+        changes: { from: 0, to: editor.state.doc.length, insert: result.source },
+    });
+}
+document.getElementById("format-btn").addEventListener("click", formatSource);
 
 function scheduleCompile() {
     clearTimeout(debounceTimer);

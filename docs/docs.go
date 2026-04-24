@@ -161,9 +161,6 @@ func StdlibComponents() []Component {
 
 	var comps []Component
 	for name, schema := range registry {
-		if strings.HasPrefix(name, "example_") {
-			continue // example_* components are gallery sources, not stdlib API
-		}
 		c := Component{
 			Name:     name,
 			Doc:      schema.Doc,

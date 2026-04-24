@@ -32,6 +32,17 @@ func FormatExpr(e ast.Expr) string {
 	return buf.String()
 }
 
+// FormatType formats a single type expression.
+func FormatType(te ast.TypeExpr) string {
+	if te == nil {
+		return ""
+	}
+	var buf strings.Builder
+	f := newFormatter(&buf)
+	f.writeType(te)
+	return buf.String()
+}
+
 // --- formatter ---
 
 const indentStr = "    " // 4 spaces
