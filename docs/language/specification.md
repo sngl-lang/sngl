@@ -53,7 +53,7 @@ AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 ### Imports
 
 ```ebnf
-ImportDecl = "import" [ IDENT "=>" ] STRING
+ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
 
 ```
 

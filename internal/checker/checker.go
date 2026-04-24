@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"net"
 	"net/mail"
 	"net/url"
@@ -22,6 +23,10 @@ type Config struct {
 	Languages []ir.Language    // registered languages
 	Platforms []ir.Platform    // registered platforms
 	Target    *ir.StaticTarget // current compile target (nil = check all)
+	// Replaces maps local import paths to replacement URLs, supplied by an
+	// outer (main) package. Entries here override any `=>` mapping declared
+	// in the package being checked.
+	Replaces map[string]string
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -62,6 +67,11 @@ type checker struct {
 
 	// Import cycle detection.
 	visited map[string]bool
+
+	// Effective replace map for this package: outer overrides layered over
+	// this package's own `import "p" => "url"` declarations. Populated at the
+	// start of pass1 before any import is resolved.
+	replaces map[string]string
 
 	// Current function return type (for return stmt checking).
 	returnType *ir.Type
@@ -161,6 +171,23 @@ func (c *checker) popScope() {
 // --- pass1: declaration registration ---
 
 func (c *checker) pass1() {
+	// Collect replace map for this package before any import is resolved, so
+	// declaration order of `import "p" => "url"` relative to bare `import "p"`
+	// does not matter. Outer (cfg.Replaces) wins over this package's own.
+	c.replaces = map[string]string{}
+	for _, stmt := range c.doc.Stmts {
+		imp, ok := stmt.(*ast.Import)
+		if !ok || imp.Replace == "" {
+			continue
+		}
+		if _, dup := c.replaces[imp.Path]; dup {
+			c.error(imp.Pos, "duplicate import replace for %q", imp.Path)
+			continue
+		}
+		c.replaces[imp.Path] = imp.Replace
+	}
+	maps.Copy(c.replaces, c.cfg.Replaces)
+
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
 	for _, stmt := range c.doc.Stmts {
@@ -209,16 +236,26 @@ func (c *checker) pass1() {
 }
 
 func (c *checker) registerImport(imp *ast.Import) {
-	scheme, uri := parseScheme(imp.Path)
+	// Resolve the effective target URL: the import's own Replace wins, else
+	// look the local path up in the replace map, else use the path as-is.
+	target := imp.Path
+	if imp.Replace != "" {
+		target = imp.Replace
+	} else if mapped, ok := c.replaces[imp.Path]; ok {
+		target = mapped
+	}
+
+	scheme, uri := parseScheme(target)
 	alias := imp.Alias
 	if alias == "" {
 		alias = namespaceFromPath(imp.Path)
 	}
 
 	irImport := &ir.Import{
-		AST:   imp,
-		Path:  imp.Path,
-		Alias: alias,
+		AST:     imp,
+		Path:    imp.Path,
+		Alias:   alias,
+		Replace: imp.Replace,
 	}
 
 	// Optional Resolve fallback for platform/language namespace imports.
@@ -315,6 +352,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 						Resolver:  c.cfg.Resolver,
 						Languages: c.cfg.Languages,
 						Platforms: c.cfg.Platforms,
+						Replaces:  c.replaces,
 					})
 					c.diags = append(c.diags, diags...)
 					mergePkgInto(merged, pkg)

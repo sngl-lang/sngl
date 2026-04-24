@@ -3755,7 +3755,7 @@ state5:
 //
 //	# ── Imports ───────────────────────────────────────────────────────────────────
 //
-//	ImportDecl = kw_import [ ident fat_arrow ] str_full .
+//	ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 //
 //	State 0
 //		on  kw_import
@@ -3764,14 +3764,18 @@ state5:
 //		on  ident
 //			shift and goto state 2
 //		on  str_full
-//			shift and goto state 4
+//			shift and goto state 3
 //	State 2
-//		on  fat_arrow
+//		on  str_full
 //			shift and goto state 3
 //	State 3
-//		on  str_full
+//		Accept
+//		on  fat_arrow
 //			shift and goto state 4
 //	State 4
+//		on  str_full
+//			shift and goto state 5
+//	State 5
 //		Accept
 //
 // ImportDecl is used internally from Parse.
@@ -3794,26 +3798,34 @@ state1:
 		goto state2
 	case str_full:
 		r = append(r, p.shift())
-		goto state4
+		goto state3
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 24
+	accept, errorSet = false, 112
 	switch Symbol(p.tok.Ch) {
-	case fat_arrow:
+	case str_full:
 		r = append(r, p.shift())
 		goto state3
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 112
+	accept, errorSet = true, 24
 	switch Symbol(p.tok.Ch) {
-	case str_full:
+	case fat_arrow:
 		r = append(r, p.shift())
 		goto state4
 	}
 	return p.stop(r, accept, errorSet)
 state4:
+	accept, errorSet = false, 112
+	switch Symbol(p.tok.Ch) {
+	case str_full:
+		r = append(r, p.shift())
+		goto state5
+	}
+	return p.stop(r, accept, errorSet)
+state5:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 }

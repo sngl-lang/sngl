@@ -41,8 +41,16 @@ func TestFormatImport(t *testing.T) {
 		`import "widgets/counter"`)
 
 	assertFormat(t,
-		`import c => "widgets/counter"`,
-		`import c => "widgets/counter"`)
+		`import c "widgets/counter"`,
+		`import c "widgets/counter"`)
+
+	assertFormat(t,
+		`import "widgets" => "git://example.com/widgets@v1#-"`,
+		`import "widgets" => "git://example.com/widgets@v1#-"`)
+
+	assertFormat(t,
+		`import w "widgets" => "git://example.com/widgets@v1#-"`,
+		`import w "widgets" => "git://example.com/widgets@v1#-"`)
 }
 
 func TestFormatVar(t *testing.T) {

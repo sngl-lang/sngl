@@ -1,0 +1,5 @@
+import w "widgets"
+
+component main {
+    w.Counter(label="Clicks")
+}

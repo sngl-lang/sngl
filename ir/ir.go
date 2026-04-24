@@ -28,11 +28,12 @@ func (p *Package) IsMain() bool {
 
 // Import records a resolved import.
 type Import struct {
-	AST    *ast.Import
-	Path   string        // import URI (e.g., "widgets", "go://net/http")
-	Alias  string        // effective namespace name; only allowed in main file declarations
-	Pkg    *Package      // resolved SNGL package (nil for native)
-	Native *NativeImport // non-nil for scheme imports
+	AST     *ast.Import
+	Path    string        // local import path (e.g., "widgets", "go://net/http")
+	Alias   string        // effective namespace name
+	Replace string        // replacement URL (RHS of =>), empty if not a replace
+	Pkg     *Package      // resolved SNGL package (nil for native)
+	Native  *NativeImport // non-nil for scheme imports
 }
 
 func (i *Import) SymName() string { return i.Alias }

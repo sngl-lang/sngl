@@ -502,12 +502,12 @@ component main {
 
 ## Import Aliases
 
-When an import path is long or collides with a local name, rebind it with `alias => "path"`. The alias replaces the last path segment everywhere in the file.
+When an import path is long or collides with a local name, rebind it with `alias "path"`. The alias replaces the last path segment everywhere in the file.
 
 Aliases are purely local — the target package still owns its own name. Use them to shorten verbose prefixes (`h.div` instead of `html.div`) or to resolve ambiguity between, say, a local `math` component and an imported `math` package.
 
 ```sngl
-import h => "platform://html"
+import h "platform://html"
 
 component main {
     vbox(style={gap = 8, padding = 16}) {

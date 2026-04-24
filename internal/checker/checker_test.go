@@ -443,7 +443,7 @@ func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 
 func TestConstExprImportedPureFunc(t *testing.T) {
 	src := `
-import math => "go://math"
+import math "go://math"
 var y = const math.Square(4)
 `
 	diags := checkWithImports(src, nativeMath(ir.PurityPure))
@@ -456,7 +456,7 @@ var y = const math.Square(4)
 
 func TestConstExprImportedImpureFuncRejected(t *testing.T) {
 	src := `
-import math => "go://math"
+import math "go://math"
 var y = const math.Square(4)
 `
 	diags := checkWithImports(src, nativeMath(ir.PurityUnknown))
@@ -468,6 +468,110 @@ var y = const math.Square(4)
 	}
 	if !found {
 		t.Error("expected 'not a constant expression' error for impure import")
+	}
+}
+
+// --- Import aliases / replaces ---
+
+func TestImportIdentAlias(t *testing.T) {
+	r := &mockResolver{pkgs: map[string]string{
+		"widgets": `component Counter(label = "") { text(value=label) }`,
+	}}
+	doc, err := parser.Parse("test.sngl", []byte(`
+import w "widgets"
+
+component main {
+    w.Counter(label="Clicks")
+}
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+func TestImportReplaceRoutesToReplacementURL(t *testing.T) {
+	// Replace routes resolution to the replacement path. Original path "widgets"
+	// resolves via "widgets_v2" (no scheme so the directory resolver is used).
+	r := &mockResolver{pkgs: map[string]string{
+		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
+	}}
+	doc, err := parser.Parse("test.sngl", []byte(`
+import "widgets" => "widgets_v2"
+
+component main {
+    widgets.Counter(label="x")
+}
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+func TestImportReplacePropagatesToLibrary(t *testing.T) {
+	// Main declares a replace; a library it imports has a bare `import "widgets"`
+	// which must be redirected via the main's replace map.
+	r := &mockResolver{pkgs: map[string]string{
+		"shim": `
+import "widgets"
+
+component Wrapped(label = "") {
+    widgets.Counter(label=label)
+}
+`,
+		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
+	}}
+	doc, err := parser.Parse("test.sngl", []byte(`
+import "shim"
+import "widgets" => "widgets_v2"
+
+component main {
+    shim.Wrapped(label="x")
+}
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+func TestImportReplaceDuplicate(t *testing.T) {
+	r := &mockResolver{pkgs: map[string]string{
+		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
+		"widgets_v3": `component Counter(label = "") { text(value=label) }`,
+	}}
+	doc, err := parser.Parse("test.sngl", []byte(`
+import "widgets" => "widgets_v2"
+import "widgets" => "widgets_v3"
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error && contains(d.Msg, "duplicate import replace") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected duplicate import replace error; diags: %v", diags)
 	}
 }
 

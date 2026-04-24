@@ -81,8 +81,9 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 
 func (c *converter) convertImport(imp *Import) *ast.Import {
 	return &ast.Import{
-		Path:  imp.Path,
-		Alias: imp.Alias,
+		Path:    imp.Path,
+		Alias:   imp.Alias,
+		Replace: imp.Replace,
 	}
 }
 

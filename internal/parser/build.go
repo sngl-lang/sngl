@@ -232,15 +232,20 @@ func (e exprStmt) StmtPos() *ast.Pos { return e.Expr.ExprPos() }
 // --- Imports ---
 
 func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
-	// ImportDecl = kw_import [ ident fat_arrow ] str_full .
+	// ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 	pos := b.posFromToken(it.shift()) // kw_import
 	imp := &ast.Import{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		imp.Alias = it.shift().Literal
-		it.skip() // fat_arrow
 	}
-	if !it.done() && !it.isNonTerminal() {
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == STR_FULL {
 		imp.Path = stripQuotes(it.shift().Literal)
+	}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == FAT_ARROW {
+		it.skip() // fat_arrow
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == STR_FULL {
+			imp.Replace = stripQuotes(it.shift().Literal)
+		}
 	}
 	return imp
 }

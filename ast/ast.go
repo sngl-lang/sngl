@@ -128,11 +128,12 @@ type VarDecl struct {
 
 // --- Imports ---
 
-// Import declares a module import, optionally aliased.
+// Import declares a module import, optionally aliased and/or replaced.
 type Import struct {
-	Pos   Pos
-	Path  string // import URI (right side of => if aliased)
-	Alias string // explicit alias (left side of =>), empty if none
+	Pos     Pos
+	Path    string // local import path (LHS of =>, or the bare string)
+	Alias   string // explicit ident alias, "" if none
+	Replace string // replacement URL (RHS of =>), "" if no replace
 }
 
 // --- Parameters ---

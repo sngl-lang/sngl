@@ -243,9 +243,14 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 // --- imports ---
 
 func (f *formatter) writeImport(imp *ast.Import) {
-	if imp.Alias != "" {
-		f.writef("import %s => %q", imp.Alias, imp.Path)
-	} else {
+	switch {
+	case imp.Replace != "" && imp.Alias != "":
+		f.writef("import %s %q => %q", imp.Alias, imp.Path, imp.Replace)
+	case imp.Replace != "":
+		f.writef("import %q => %q", imp.Path, imp.Replace)
+	case imp.Alias != "":
+		f.writef("import %s %q", imp.Alias, imp.Path)
+	default:
 		f.writef("import %q", imp.Path)
 	}
 }

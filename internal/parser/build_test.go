@@ -144,10 +144,26 @@ func TestParseImport(t *testing.T) {
 }
 
 func TestParseImportAliased(t *testing.T) {
-	doc := mustParse(t, `import m => "math"`)
+	doc := mustParse(t, `import m "math"`)
 	imp := doc.Stmts[0].(*ast.Import)
-	if imp.Alias != "m" || imp.Path != "math" {
-		t.Errorf("expected alias=m path=math, got %q %q", imp.Alias, imp.Path)
+	if imp.Alias != "m" || imp.Path != "math" || imp.Replace != "" {
+		t.Errorf("expected alias=m path=math replace=\"\", got %q %q %q", imp.Alias, imp.Path, imp.Replace)
+	}
+}
+
+func TestParseImportReplace(t *testing.T) {
+	doc := mustParse(t, `import "math" => "git://example.com/math@v1#-"`)
+	imp := doc.Stmts[0].(*ast.Import)
+	if imp.Alias != "" || imp.Path != "math" || imp.Replace != "git://example.com/math@v1#-" {
+		t.Errorf("replace form: got alias=%q path=%q replace=%q", imp.Alias, imp.Path, imp.Replace)
+	}
+}
+
+func TestParseImportAliasAndReplace(t *testing.T) {
+	doc := mustParse(t, `import m "math" => "git://example.com/math@v1#-"`)
+	imp := doc.Stmts[0].(*ast.Import)
+	if imp.Alias != "m" || imp.Path != "math" || imp.Replace != "git://example.com/math@v1#-" {
+		t.Errorf("alias+replace: got alias=%q path=%q replace=%q", imp.Alias, imp.Path, imp.Replace)
 	}
 }
 
