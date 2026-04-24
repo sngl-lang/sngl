@@ -17,7 +17,10 @@ func init() {
 // Translator implements codegen.LangTranslator for Kotlin.
 type Translator struct{}
 
-func (t *Translator) LanguageIdentifier() string          { return "kotlin" }
+func (t *Translator) LanguageIdentifier() string { return "kotlin" }
+func (t *Translator) Description() string {
+	return "Generate Kotlin source (used with the Android platform)."
+}
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 

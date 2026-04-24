@@ -18,6 +18,7 @@ func init() {
 type Translator struct{}
 
 func (t *Translator) LanguageIdentifier() string          { return "js" }
+func (t *Translator) Description() string                 { return "Generate JavaScript source." }
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 

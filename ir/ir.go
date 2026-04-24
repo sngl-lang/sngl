@@ -286,6 +286,7 @@ const (
 // Language is a Target for a registered language translator.
 type Language interface {
 	LanguageIdentifier() string
+	Description() string              // short one-line summary for reference docs
 	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 }
@@ -293,6 +294,7 @@ type Language interface {
 // Platform is a Target for a registered platform generator.
 type Platform interface {
 	PlatformIdentifier() string
+	Description() string              // short one-line summary for reference docs
 	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 	IsLanguageSupported(Language) bool

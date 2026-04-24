@@ -30,7 +30,10 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Fyne.
 type Generator struct{}
 
-func (g *Generator) PlatformIdentifier() string             { return "fyne" }
+func (g *Generator) PlatformIdentifier() string { return "fyne" }
+func (g *Generator) Description() string {
+	return "Cross-platform desktop GUI, written in Go using Fyne."
+}
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) PreviewCSS() string                     { return previewCSS }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }

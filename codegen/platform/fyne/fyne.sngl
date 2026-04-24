@@ -16,7 +16,9 @@ struct VariadicChildren {
 }
 
 struct Options {
+    // Go package name for the generated files.
     package string
+    // Emit a standalone main() or a library-style module.
     main bool
 }
 

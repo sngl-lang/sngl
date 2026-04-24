@@ -29,7 +29,10 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Bubbletea.
 type Generator struct{}
 
-func (g *Generator) PlatformIdentifier() string             { return "bubbletea" }
+func (g *Generator) PlatformIdentifier() string { return "bubbletea" }
+func (g *Generator) Description() string {
+	return "Terminal UI, written in Go using the Bubble Tea framework."
+}
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }

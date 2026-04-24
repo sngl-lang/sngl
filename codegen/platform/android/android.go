@@ -29,7 +29,10 @@ func init() {
 // Generator implements codegen.PlatformGenerator for Android (Jetpack Compose).
 type Generator struct{}
 
-func (g *Generator) PlatformIdentifier() string          { return "android" }
+func (g *Generator) PlatformIdentifier() string { return "android" }
+func (g *Generator) Description() string {
+	return "Android app. Emits Jetpack Compose; can mix in Go via gomobile when --lang go is used."
+}
 func (g *Generator) SupportedLangs() []string            { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string                  { return previewCSS }
 func (g *Generator) Package() []*ast.Document            { return pkgDocs }

@@ -36,7 +36,10 @@ func init() {
 type Generator struct{}
 
 func (g *Generator) PlatformIdentifier() string { return "html" }
-func (g *Generator) Package() []*ast.Document   { return pkgDocs }
+func (g *Generator) Description() string {
+	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
+}
+func (g *Generator) Package() []*ast.Document { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}

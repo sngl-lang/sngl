@@ -11,6 +11,7 @@ import "internal/docui"
 const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
+const targets = docs.Targets()
 const lessonSections = docs.Tutorial()
 const logo = public.path("sngl.svg")
 const screenshotWeb = public.path("snapshots/todo/todo_html.png")
@@ -33,6 +34,7 @@ component NavSidebar(currentHref = "") {
 			docui.NavItem(text="Language Specification", href="/language/specification.html", active=currentHref == "/language/specification.html")
 		}
 		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
+		docui.NavItem(text="Targets", href="/targets/index.html", active=currentHref == "/targets/index.html")
 		docui.NavItem(text="Tutorial", href="/tutorial.html", active=currentHref == "/tutorial.html")
 		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
 	}
@@ -257,6 +259,93 @@ component main {
 					}
 				}
 				text(value="Children: " + comp.children)
+			}
+		}
+	}
+
+	// Targets reference — matrix of built-in platforms & languages
+	window(title="Targets", href="/targets/index.html", favicon=logo) {
+		PageLayout(title="Built-in Targets", currentHref="/targets/index.html") {
+			text(value="SNGL ships several platforms (what to render) and languages (what to generate). The matrices below show which optional capabilities each target implements; each section documents recognized `--opt key=value` options.")
+
+			text(value="Platforms", style={fontSize=22, fontWeight="bold"})
+			docui.Table {
+				docui.HeaderRow {
+					docui.HeaderCell(value="Platform")
+					for col = targets.platformCapabilities {
+						docui.HeaderCell(value=col)
+					}
+				}
+				for p = targets.platforms {
+					docui.Row {
+						docui.CodeCell(value=p.name)
+						for c = p.capabilities {
+							docui.Cell(value=c.value == "" ? "—" : c.value)
+						}
+					}
+				}
+			}
+
+			for p = targets.platforms {
+				text(value=p.name, style={fontSize=20, fontWeight="bold"})
+				text(value=p.doc)
+				text(value="Supported languages:")
+				for lname = p.languages {
+					text(value="• " + lname, style={fontFamily="monospace"})
+				}
+				text(value="Options", style={fontSize=16, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Type")
+						docui.HeaderCell(value="Description")
+					}
+					for opt = p.options {
+						docui.Row {
+							docui.CodeCell(value=opt.name)
+							docui.Cell(value=opt.type)
+							docui.Cell(value=opt.doc)
+						}
+					}
+				}
+			}
+
+			text(value="Languages", style={fontSize=22, fontWeight="bold"})
+			docui.Table {
+				docui.HeaderRow {
+					docui.HeaderCell(value="Language")
+					for col = targets.languageCapabilities {
+						docui.HeaderCell(value=col)
+					}
+				}
+				for l = targets.languages {
+					docui.Row {
+						docui.CodeCell(value=l.name)
+						for c = l.capabilities {
+							docui.Cell(value=c.value == "" ? "—" : c.value)
+						}
+					}
+				}
+			}
+
+			for l = targets.languages {
+				text(value=l.name, style={fontSize=20, fontWeight="bold"})
+				text(value=l.doc)
+				text(value="Options", style={fontSize=16, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Type")
+						docui.HeaderCell(value="Description")
+					}
+					for opt = l.options {
+						docui.Row {
+							docui.CodeCell(value=opt.name)
+							docui.Cell(value=opt.type)
+							docui.Cell(value=opt.doc)
+						}
+					}
+				}
 			}
 		}
 	}

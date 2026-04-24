@@ -17,7 +17,10 @@ func init() {
 // Translator implements codegen.LangTranslator for Go.
 type Translator struct{}
 
-func (t *Translator) LanguageIdentifier() string          { return "go" }
+func (t *Translator) LanguageIdentifier() string { return "go" }
+func (t *Translator) Description() string {
+	return "Generate Go source. Supports HTTP route mode and WASM bindings."
+}
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 

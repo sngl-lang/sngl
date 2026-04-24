@@ -18,7 +18,10 @@ func init() {
 
 type Translator struct{}
 
-func (t *Translator) LanguageIdentifier() string          { return "none" }
+func (t *Translator) LanguageIdentifier() string { return "none" }
+func (t *Translator) Description() string {
+	return "Sentinel language for static output modes that need no backing code."
+}
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 

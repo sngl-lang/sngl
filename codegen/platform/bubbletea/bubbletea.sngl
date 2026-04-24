@@ -11,8 +11,11 @@
 //   modelView=".View()"         — view method call pattern
 
 struct Options {
+    // Go package name for the generated files.
     package string
+    // Emit a standalone main() or a library-style module.
     main bool
+    // Emit companion test files (default: true; set "false" to skip).
     tests bool
 }
 
