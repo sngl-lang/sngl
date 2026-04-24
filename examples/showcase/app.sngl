@@ -137,12 +137,6 @@ component main {
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
         }
-        text(value="Accordion", style={fontSize=20, fontWeight="bold"})
-        accordion(items=["Section 1", "Section 2", "Section 3"]) {
-            text(value="Content for section 1")
-            text(value="Content for section 2")
-            text(value="Content for section 3")
-        }
         text(value="Split View", style={fontSize=20, fontWeight="bold"})
         splitview(direction="horizontal", style={height=120}) {
             vbox(style={padding=12}) {

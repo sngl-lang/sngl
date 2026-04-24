@@ -166,12 +166,6 @@ component sngl.popover() {
     }
 }
 
-component sngl.accordion() {
-    div {
-        slot
-    }
-}
-
 component sngl.splitview() {
     div(style={display="flex"}) {
         slot

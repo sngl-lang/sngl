@@ -206,12 +206,6 @@ component popover() {
     }
 }
 
-component accordion() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
 component splitview() {
     HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
         slot

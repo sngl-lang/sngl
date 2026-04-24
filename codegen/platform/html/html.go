@@ -760,7 +760,7 @@ func isStdlibComponentName(name string) bool {
 	case "vbox", "hbox", "stack", "scroll", "spacer", "text", "button", "input",
 		"image", "checkbox", "radio", "toggle", "select", "textarea", "progress",
 		"spinner", "badge", "tabs", "link", "divider", "modal", "drawer",
-		"tooltip", "popover", "accordion", "splitview", "table", "tree", "menu",
+		"tooltip", "popover", "splitview", "table", "tree", "menu",
 		"menubar", "toolbar", "datepicker", "chip", "avatar", "card", "slot",
 		"window", "timer":
 		return true
@@ -971,8 +971,6 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		fmt.Fprintf(b, "%s</div>\n", indent)
 	case "popover":
 		g.renderStaticConditionalContainer(b, n, depth, "div")
-	case "accordion":
-		g.renderStaticAccordion(b, n, depth)
 	case "splitview":
 		style := g.buildCSSStyle(n)
 		style = htmlutil.AppendCSS(style, "display", "flex")
@@ -1592,37 +1590,6 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.Nod
 	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) {
 		g.addIfUpdater(id, codegen.NodeProp(n, "open"))
 	}
-}
-
-func (g *htmlGen) renderStaticAccordion(b *strings.Builder, n *ir.NodeInst, depth int) {
-	style := g.buildCSSStyle(n)
-	id := ""
-	if g.preview {
-		id = g.allocID()
-	}
-	indent := strings.Repeat("  ", depth)
-	g.writeOpenTag(b, "div", id, style, n, depth)
-	if v := codegen.NodeProp(n, "items"); codegen.IRIsLiteral(v) {
-		if items, ok := exprLiteralAnyIR(v).([]any); ok {
-			// Extract child NodeInsts (the IR equivalent of vnChildNodes).
-			var children []*ir.NodeInst
-			for _, c := range n.Children {
-				if cn, ok := c.(*ir.NodeInst); ok {
-					children = append(children, cn)
-				}
-			}
-			for i, item := range items {
-				s := fmt.Sprint(item)
-				fmt.Fprintf(b, "%s  <details>\n", indent)
-				fmt.Fprintf(b, "%s    <summary>%s</summary>\n", indent, html.EscapeString(s))
-				if i < len(children) {
-					g.renderStaticNode(b, children[i], depth+2)
-				}
-				fmt.Fprintf(b, "%s  </details>\n", indent)
-			}
-		}
-	}
-	fmt.Fprintf(b, "%s</div>\n", indent)
 }
 
 func (g *htmlGen) renderStaticTable(b *strings.Builder, n *ir.NodeInst, depth int) {

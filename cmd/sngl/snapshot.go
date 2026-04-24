@@ -138,10 +138,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 			continue
 		}
 
-		// Rename to "component main" and wrap with an output block.
-		if i := strings.Index(src, "{"); i > 0 {
-			src = "component main " + src[i:]
-		}
+		// Wrap with an output block if the example doesn't include one.
 		if !strings.Contains(src, "output {") {
 			var wrapped strings.Builder
 			wrapped.WriteString("output {\n")

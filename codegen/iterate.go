@@ -289,7 +289,7 @@ func IRLiteralBool(e ir.Expr) (bool, bool) {
 
 // IRIsLiteral reports whether an expression is a compile-time literal.
 // List literals count when every element is itself a literal, so callers
-// that expect static data (accordion items, table columns) keep working.
+// that expect static data (table columns, tabs items) keep working.
 func IRIsLiteral(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.Literal:

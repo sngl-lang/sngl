@@ -246,15 +246,6 @@ component popover(
     @close DismissEvent,
 ) list<component> {}
 
-// Expandable/collapsible sections.
-component accordion(
-    style Style,
-    items list<string>,
-    expanded list<int>,
-    multiple bool,
-    @change ExpandEvent,
-) list<component> {}
-
 // Resizable two-pane layout.
 component splitview(
     style Style,
@@ -572,16 +563,6 @@ component example_popover {
     vbox(style={padding=16}) {
         popover(open=showPop, position="bottom", openOn="click") {
             button(text="Toggle", @click { showPop!! })
-        }
-    }
-}
-
-component example_accordion {
-    vbox(style={padding=16}) {
-        accordion(items=["Section 1", "Section 2", "Section 3"]) {
-            text(value="Content for section 1")
-            text(value="Content for section 2")
-            text(value="Content for section 3")
         }
     }
 }

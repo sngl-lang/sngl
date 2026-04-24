@@ -162,12 +162,6 @@ component sngl.popover() {
     }
 }
 
-component sngl.accordion() {
-    VJoin(join="vertical") {
-        slot
-    }
-}
-
 component sngl.splitview() {
     HJoin(join="horizontal") {
         slot

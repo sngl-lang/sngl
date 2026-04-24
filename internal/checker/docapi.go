@@ -171,8 +171,8 @@ func StdlibExamples() (map[string][]string, error) {
 // PrefixedExamples extracts `example_<name>` prefixed components from a
 // document. Components named `example_<name>` or `example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
-// for each example, with the prefix stripped so callers can render the
-// component as the user-facing target.
+// for each example, with the wrapper renamed to `main` so the snippet is a
+// complete, runnable app.
 func PrefixedExamples(doc *ast.Document) map[string]string {
 	result := make(map[string]string)
 	for _, stmt := range doc.Stmts {
@@ -191,7 +191,7 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 			continue
 		}
 		display := *comp
-		display.Name = target
+		display.Name = "main"
 		exDoc := &ast.Document{Stmts: []ast.Stmt{&display}}
 		result[target] = strings.TrimSpace(parser.Format(exDoc))
 	}

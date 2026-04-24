@@ -61,6 +61,6 @@ SNGL provides a standard set of common primitive components:
 | `scroll`   | Scrollable container      |
 | `spacer`   | Flexible space            |
 
-These are the essentials. The standard library ships many more (accordion, avatar, badge, card, drawer, menu, modal, popover, progress, radio, select, spinner, tabs, textarea, toggle, toolbar, tooltip, tree, and others) — see `internal/checker/stdlib/components.sngl` for the full list.
+These are the essentials. The standard library ships many more (avatar, badge, card, drawer, menu, modal, popover, progress, radio, select, spinner, tabs, textarea, toggle, toolbar, tooltip, tree, and others) — see `internal/checker/stdlib/components.sngl` for the full list.
 
 Additionally users may implement their own components, often with a few lines of code, to use platform components not available through the standard library.

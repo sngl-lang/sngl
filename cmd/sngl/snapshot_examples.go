@@ -173,11 +173,6 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 			}
 		}
 
-		// Rename "component <name>" to "component main" for compilation.
-		if i := strings.Index(src, "{"); i > 0 {
-			src = "component main " + src[i:]
-		}
-
 		// Wrap in output block if needed.
 		if !strings.Contains(src, "output {") {
 			var wrapped strings.Builder

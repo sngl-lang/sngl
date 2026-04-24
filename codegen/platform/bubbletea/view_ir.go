@@ -279,7 +279,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	switch n.Name {
-	case "vbox", "stack", "scroll", "card", "radio", "accordion",
+	case "vbox", "stack", "scroll", "card", "radio",
 		"drawer", "tooltip", "popover", "table", "tree", "menu":
 		// Vertical join layout
 		childrenVar := resultVar + "Children"

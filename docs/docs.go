@@ -381,15 +381,10 @@ func buildPreviewSection(name, source string, platforms []string) string {
 }
 
 // compilePreview compiles a .sngl example to HTML for iframe preview.
-// The source is a "component <name> { ... }" block; we re-parse it with
-// the component renamed to "main" so the parser creates an App.
+// The source is a full `component main { ... }` block (as returned by
+// checker.PrefixedExamples).
 func compilePreview(source string) string {
-	// Replace the first "component <name>" with "component main".
-	rewritten := source
-	if i := strings.Index(source, "{"); i > 0 {
-		rewritten = "component main " + source[i:]
-	}
-	doc, err := parser.Parse("example.sngl", []byte(rewritten))
+	doc, err := parser.Parse("example.sngl", []byte(source))
 	if err != nil {
 		return ""
 	}

@@ -195,12 +195,6 @@ component sngl.popover() {
     }
 }
 
-component sngl.accordion() {
-    Column {
-        slot
-    }
-}
-
 component sngl.splitview() {
     Row {
         slot

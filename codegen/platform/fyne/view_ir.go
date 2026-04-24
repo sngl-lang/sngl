@@ -250,7 +250,7 @@ func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
 
 func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
 	switch n.Name {
-	case "vbox", "stack", "scroll", "card", "radio", "accordion",
+	case "vbox", "stack", "scroll", "card", "radio",
 		"drawer", "tooltip", "popover", "table", "tree", "menu":
 		vc.renderContainerVBox(n, resultVar)
 	case "hbox", "tabs", "splitview", "menubar", "toolbar":
