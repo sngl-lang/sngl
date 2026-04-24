@@ -1,4 +1,5 @@
-package codegen
+// Package git registers the git:// import scheme.
+package git
 
 import (
 	"crypto/sha256"
@@ -10,24 +11,26 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 func init() {
-	RegisterFSScheme(&GitImporter{})
+	codegen.RegisterFSScheme(&Importer{})
 }
 
-// GitImporter resolves git:// scheme imports by cloning repositories into
+// Importer resolves git:// scheme imports by cloning repositories into
 // a local cache directory. The URI format is:
 //
 //	git://host/path@ref#hash
 //
 // where ref is a git ref (tag, branch, commit) and hash is a sha256 content
 // hash for integrity verification. Use "#-" to skip hash verification.
-type GitImporter struct{}
+type Importer struct{}
 
-func (g *GitImporter) Scheme() string { return "git" }
+func (g *Importer) Scheme() string { return "git" }
 
-func (g *GitImporter) ResolveFS(uri, dir string) (fs.FS, error) {
+func (g *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
 	parsed, err := parseGitURI(uri)
 	if err != nil {
 		return nil, err
@@ -101,20 +104,8 @@ func parseGitURI(uri string) (*gitURI, error) {
 	return nil, fmt.Errorf("git:// URI requires host/path (e.g., git://github.com/user/repo)")
 }
 
-// SnglCacheDir returns the base cache directory for SNGL.
-func SnglCacheDir() string {
-	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
-		return filepath.Join(dir, "sngl")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return filepath.Join(os.TempDir(), "sngl-cache")
-	}
-	return filepath.Join(home, ".cache", "sngl")
-}
-
 func gitCacheDir(host, repoPath, ref string) string {
-	return filepath.Join(SnglCacheDir(), "git", host, repoPath, ref)
+	return filepath.Join(codegen.SnglCacheDir(), "git", host, repoPath, ref)
 }
 
 func gitClone(parsed *gitURI, destDir string) error {
@@ -179,7 +170,7 @@ func computeDirHash(dir string) (string, error) {
 
 // Refresh drops the cached clone, re-clones at the specified ref, and returns
 // the recomputed content hash.
-func (g *GitImporter) Refresh(uri, _ string) (string, error) {
+func (g *Importer) Refresh(uri, _ string) (string, error) {
 	parsed, err := parseGitURI(uri)
 	if err != nil {
 		return "", err

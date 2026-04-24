@@ -1,4 +1,4 @@
-package codegen
+package http
 
 import (
 	"archive/tar"
@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
-	"net/http"
+	nethttp "net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -47,7 +47,7 @@ func TestHTTPImporterFetchesAndCaches(t *testing.T) {
 	expectHash := fmt.Sprintf("%x", sha256.Sum256(archive))
 
 	var hits int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		hits++
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Write(archive)
@@ -59,7 +59,7 @@ func TestHTTPImporterFetchesAndCaches(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", tmp)
 	t.Setenv("HOME", tmp) // fallback path if XDG_CACHE_HOME gets cleared elsewhere
 
-	imp := &HTTPImporter{scheme: "http"}
+	imp := &Importer{scheme: "http"}
 	trimmed := strings.TrimPrefix(srv.URL, "http://")
 	uri := trimmed + "/widgets.tar.gz#" + expectHash
 
@@ -91,13 +91,13 @@ func TestHTTPImporterFetchesAndCaches(t *testing.T) {
 
 func TestHTTPImporterHashMismatch(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{"pkg/a.sngl": ""})
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.Write(archive)
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	imp := &HTTPImporter{scheme: "http"}
+	imp := &Importer{scheme: "http"}
 	uri := strings.TrimPrefix(srv.URL, "http://") + "/a.tar.gz#deadbeef"
 	_, err := imp.ResolveFS(uri, "")
 	if err == nil || !strings.Contains(err.Error(), "hash mismatch") {
@@ -107,13 +107,13 @@ func TestHTTPImporterHashMismatch(t *testing.T) {
 
 func TestHTTPImporterSkipsHashWithDash(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{"pkg/a.sngl": ""})
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.Write(archive)
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	imp := &HTTPImporter{scheme: "http"}
+	imp := &Importer{scheme: "http"}
 	uri := strings.TrimPrefix(srv.URL, "http://") + "/a.tar.gz#-"
 	if _, err := imp.ResolveFS(uri, ""); err != nil {
 		t.Fatalf("expected success with #-, got %v", err)
@@ -121,7 +121,7 @@ func TestHTTPImporterSkipsHashWithDash(t *testing.T) {
 }
 
 func TestHTTPImporterRejectsNonArchive(t *testing.T) {
-	imp := &HTTPImporter{scheme: "http"}
+	imp := &Importer{scheme: "http"}
 	_, err := imp.ResolveFS("example.com/not-an-archive.txt#-", "")
 	if err == nil || !strings.Contains(err.Error(), "unsupported archive extension") {
 		t.Errorf("expected unsupported-extension error, got %v", err)

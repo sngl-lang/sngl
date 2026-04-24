@@ -1,4 +1,6 @@
-package codegen
+// Package file registers the file:// import scheme for directory-based
+// static assets.
+package file
 
 import (
 	"fmt"
@@ -6,19 +8,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func init() {
-	RegisterScheme(&FileImporter{})
+	codegen.RegisterScheme(&Importer{})
 }
 
-// FileImporter resolves file:// scheme imports for directory-based static assets.
-type FileImporter struct{}
+// Importer resolves file:// scheme imports for directory-based static assets.
+type Importer struct{}
 
-func (f *FileImporter) Scheme() string { return "file" }
+func (f *Importer) Scheme() string { return "file" }
 
-func (f *FileImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
+func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	relPath := strings.TrimPrefix(uri, "file://")
 	absDir := filepath.Join(dir, relPath)
 

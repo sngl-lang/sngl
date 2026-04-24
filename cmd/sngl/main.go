@@ -13,6 +13,7 @@ import (
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
 )
 
 var rootCmd = &cobra.Command{

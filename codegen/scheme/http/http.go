@@ -1,4 +1,5 @@
-package codegen
+// Package http registers the http:// and https:// import schemes.
+package http
 
 import (
 	"archive/tar"
@@ -10,19 +11,21 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
-	"net/http"
+	nethttp "net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 func init() {
-	RegisterFSScheme(&HTTPImporter{scheme: "http"})
-	RegisterFSScheme(&HTTPImporter{scheme: "https"})
+	codegen.RegisterFSScheme(&Importer{scheme: "http"})
+	codegen.RegisterFSScheme(&Importer{scheme: "https"})
 }
 
-// HTTPImporter resolves http:// and https:// scheme imports by fetching a
+// Importer resolves http:// and https:// scheme imports by fetching a
 // remote archive (tar.gz, tgz, or zip) and extracting it into the shared
 // SNGL cache directory. The URI format is:
 //
@@ -34,13 +37,13 @@ func init() {
 // This is a deliberately narrow implementation: direct archive URLs only.
 // Browsing WebDAV / apache / nginx index pages is not supported — write a
 // tarball and serve it statically.
-type HTTPImporter struct {
+type Importer struct {
 	scheme string // "http" or "https"
 }
 
-func (h *HTTPImporter) Scheme() string { return h.scheme }
+func (h *Importer) Scheme() string { return h.scheme }
 
-func (h *HTTPImporter) ResolveFS(uri, _ string) (fs.FS, error) {
+func (h *Importer) ResolveFS(uri, _ string) (fs.FS, error) {
 	rawURL := h.scheme + "://" + uri
 	hash, cleanURL := splitHashFragment(rawURL)
 	kind, err := archiveKind(cleanURL)
@@ -102,7 +105,7 @@ func (h *HTTPImporter) ResolveFS(uri, _ string) (fs.FS, error) {
 
 // Refresh clears the cached extraction for the URL, re-fetches the archive,
 // and returns the sha256 of the compressed archive bytes.
-func (h *HTTPImporter) Refresh(uri, _ string) (string, error) {
+func (h *Importer) Refresh(uri, _ string) (string, error) {
 	rawURL := h.scheme + "://" + uri
 	_, cleanURL := splitHashFragment(rawURL)
 	if _, err := archiveKind(cleanURL); err != nil {
@@ -177,17 +180,17 @@ func httpCacheDir(cleanURL string) string {
 	if err == nil {
 		host = u.Host
 	}
-	return filepath.Join(SnglCacheDir(), "http", host, key)
+	return filepath.Join(codegen.SnglCacheDir(), "http", host, key)
 }
 
 func httpGetBytes(rawURL string) ([]byte, error) {
 	slog.Info("exec", "cmd", "http GET", "url", rawURL)
-	resp, err := http.Get(rawURL)
+	resp, err := nethttp.Get(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("http get %q: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != nethttp.StatusOK {
 		return nil, fmt.Errorf("http get %q: status %d", rawURL, resp.StatusCode)
 	}
 	return io.ReadAll(resp.Body)

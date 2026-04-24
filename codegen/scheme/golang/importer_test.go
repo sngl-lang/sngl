@@ -8,7 +8,7 @@ import (
 
 func TestGoImporter_Resolve(t *testing.T) {
 	imp := &GoImporter{}
-	ni, err := imp.Resolve("go://git.duckfam.us/jonathan/sngl/codegen/lang/golang/testdata/testpkg", ".")
+	ni, err := imp.Resolve("go://git.duckfam.us/jonathan/sngl/codegen/scheme/golang/testdata/testpkg", ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
