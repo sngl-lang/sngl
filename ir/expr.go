@@ -163,3 +163,74 @@ func (x *StructLit) ExprType() *Type  { return x.Type }
 func (x *ListLit) ExprType() *Type    { return x.Type }
 func (x *Spread) ExprType() *Type     { return x.Type }
 func (x *Lambda) ExprType() *Type     { return x.Type }
+
+// IsConst reports whether e can, in principle, be evaluated at compile time.
+// This mirrors the optimizer's isConstExpr but without evalCtx: loop vars and
+// native-import purity are not considered const here, since those determinations
+// belong to later phases. Suitable for check-time assertions like const(expr).
+func IsConst(e Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *Literal:
+		return true
+	case *Ident:
+		switch x.Name {
+		case "PLATFORM", "LANGUAGE", "true", "false", "null":
+			return true
+		}
+		if v, ok := x.Sym.(*Var); ok && v.IsConst {
+			return true
+		}
+		if _, ok := x.Sym.(*Namespace); ok {
+			return true
+		}
+		if _, ok := x.Sym.(*EnumDef); ok {
+			return true
+		}
+		if _, ok := x.Sym.(*StructDef); ok {
+			return true
+		}
+		return false
+	case *Binary:
+		return IsConst(x.Left) && IsConst(x.Right)
+	case *Unary:
+		return IsConst(x.Operand)
+	case *Ternary:
+		return IsConst(x.Cond) && IsConst(x.Then) && IsConst(x.Else)
+	case *Call:
+		for _, a := range x.Args {
+			if !IsConst(a.Value) {
+				return false
+			}
+		}
+		if x.Receiver != nil && !IsConst(x.Receiver) {
+			return false
+		}
+		return x.Func != nil && x.Func.Purity == PurityPure
+	case *Conversion:
+		return IsConst(x.Operand)
+	case *Select:
+		return IsConst(x.Operand)
+	case *Index:
+		return IsConst(x.Operand) && IsConst(x.Idx)
+	case *ListLit:
+		for _, el := range x.Elems {
+			if !IsConst(el) {
+				return false
+			}
+		}
+		return true
+	case *StructLit:
+		for _, f := range x.Fields {
+			if !IsConst(f.Value) {
+				return false
+			}
+		}
+		return true
+	case *Spread:
+		return IsConst(x.Operand)
+	}
+	return false
+}

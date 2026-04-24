@@ -806,6 +806,9 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.write("(")
 		f.writeExpr(x.Inner)
 		f.write(")")
+	case *ast.ConstExpr:
+		f.write("const ")
+		f.writeExpr(x.Operand)
 	}
 }
 

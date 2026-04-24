@@ -556,6 +556,57 @@ func identNameTest(e ast.Expr) string {
 	return ""
 }
 
+func TestParseConstExpr(t *testing.T) {
+	// `const` is a unary-precedence prefix; paren groups the operand.
+	doc := mustParse(t, `const x = const (1 + 2)`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	ce, ok := cd.Specs[0].Default.(*ast.ConstExpr)
+	if !ok {
+		t.Fatalf("expected ConstExpr, got %T", cd.Specs[0].Default)
+	}
+	paren, ok := ce.Operand.(*ast.ParenExpr)
+	if !ok {
+		t.Fatalf("expected ParenExpr inside const, got %T", ce.Operand)
+	}
+	bin, ok := paren.Inner.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected BinaryExpr operand, got %T", paren.Inner)
+	}
+	if bin.Op != ast.BinAdd {
+		t.Errorf("expected BinAdd, got %v", bin.Op)
+	}
+}
+
+func TestParseConstExprUnaryPrecedence(t *testing.T) {
+	// Without parens, `const` binds like a unary op: `const 1 + 2` → (const 1) + 2.
+	doc := mustParse(t, `const x = const 1 + 2`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	bin, ok := cd.Specs[0].Default.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected BinaryExpr at top, got %T", cd.Specs[0].Default)
+	}
+	if _, ok := bin.Left.(*ast.ConstExpr); !ok {
+		t.Errorf("expected ConstExpr on left, got %T", bin.Left)
+	}
+}
+
+func TestParseConstExprInArg(t *testing.T) {
+	// `const` as arg prefix must route through Arg's kw_const branch.
+	doc := mustParse(t, `const x = foo(const 1)`)
+	cd := doc.Stmts[0].(*ast.ConstDecl)
+	call, ok := cd.Specs[0].Default.(*ast.CallExpr)
+	if !ok {
+		t.Fatalf("expected CallExpr, got %T", cd.Specs[0].Default)
+	}
+	if len(call.Args.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(call.Args.Args))
+	}
+	arg := call.Args.Args[0].(ast.Arg)
+	if _, ok := arg.Value.(*ast.ConstExpr); !ok {
+		t.Errorf("expected ConstExpr arg, got %T", arg.Value)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

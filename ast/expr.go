@@ -256,6 +256,14 @@ type ParenExpr struct {
 	Inner Expr
 }
 
+// ConstExpr asserts at check time that its operand is a constant expression.
+// The wrapper has no runtime representation; the checker validates constness
+// and then the optimizer folds the operand to a literal.
+type ConstExpr struct {
+	Pos     Pos
+	Operand Expr
+}
+
 // --- Statements ---
 
 // Stmt is any node valid inside a StmtBlock: declarations, statements, expressions.
@@ -361,6 +369,7 @@ func (x *InterpolationExpr) ExprPos() *Pos { return &x.Pos }
 func (x *ElementRefExpr) ExprPos() *Pos    { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *ConstExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *NamedType) ExprPos() *Pos         { return &x.Pos }
 func (x *FuncType) ExprPos() *Pos          { return &x.Pos }
 func (x *StructDef) ExprPos() *Pos         { return &x.Pos }

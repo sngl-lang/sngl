@@ -83,6 +83,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return &ir.Spread{AST: x, Type: exprType(operand), Operand: operand}
 	case *ast.ParenExpr:
 		return c.checkExpr(x.Inner)
+	case *ast.ConstExpr:
+		return c.inferConstExpr(x)
 	case *ast.ElementRefExpr:
 		return &ir.Ident{Type: TypDyn, Name: x.Name, IsElementRef: true}
 	case *ast.EventRefExpr:
@@ -90,6 +92,20 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	default:
 		return &ir.Ident{Type: TypDyn}
 	}
+}
+
+// inferConstExpr checks the operand of a const(expr) assertion. The operand
+// must be a constant-foldable expression; the wrapper is erased after the
+// assertion so downstream phases see the operand directly. The const-ness
+// check is deferred to after purity analysis, since whether a call is
+// foldable depends on the callee's purity.
+func (c *checker) inferConstExpr(x *ast.ConstExpr) ir.Expr {
+	operand := c.checkExpr(x.Operand)
+	if operand == nil {
+		return nil
+	}
+	c.constAsserts = append(c.constAsserts, constAssertion{pos: x.Pos, operand: operand})
+	return operand
 }
 
 func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {

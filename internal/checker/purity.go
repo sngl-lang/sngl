@@ -101,6 +101,8 @@ func (w *purityWalker) walkExpr(e ast.Expr) {
 		w.walkExpr(x.Operand)
 	case *ast.ParenExpr:
 		w.walkExpr(x.Inner)
+	case *ast.ConstExpr:
+		w.walkExpr(x.Operand)
 	}
 }
 
@@ -215,6 +217,8 @@ func (w *accessWalker) walkExpr(e ast.Expr) {
 		w.walkExpr(x.Operand)
 	case *ast.ParenExpr:
 		w.walkExpr(x.Inner)
+	case *ast.ConstExpr:
+		w.walkExpr(x.Operand)
 	}
 }
 

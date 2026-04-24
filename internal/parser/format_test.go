@@ -67,6 +67,12 @@ func TestFormatConstGrouped(t *testing.T) {
 		"const (\n    a = 1\n    b = 2\n)")
 }
 
+func TestFormatConstExpr(t *testing.T) {
+	assertFormat(t,
+		`const x = const (1 + 2)`,
+		`const x = const (1 + 2)`)
+}
+
 func TestFormatStruct(t *testing.T) {
 	assertFormat(t,
 		"struct Todo {\n    title string\n    done bool\n}",

@@ -1395,6 +1395,10 @@ func (b *builder) buildUnaryExpr(it nodeIter) ast.Expr {
 		pos := b.posFromToken(it.shift())
 		operand := b.buildAnyExpr(&it)
 		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryNot, Operand: operand}
+	case KW_CONST:
+		pos := b.posFromToken(it.shift())
+		operand := b.buildAnyExpr(&it)
+		return &ast.ConstExpr{Pos: ast.Pos(pos), Operand: operand}
 	case MINUS:
 		pos := b.posFromToken(it.shift())
 		operand := b.buildAnyExpr(&it)
@@ -1884,6 +1888,15 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 				operand = b.buildExprNonTerminal(&it)
 			}
 			base := &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryNeg, Operand: operand}
+			expr := b.applyArgExprCont(&it, base)
+			return ast.Arg{Value: expr}
+		case KW_CONST:
+			pos := b.posFromToken(it.shift())
+			var operand ast.Expr
+			if !it.done() && it.isNonTerminal() {
+				operand = b.buildExprNonTerminal(&it)
+			}
+			base := &ast.ConstExpr{Pos: ast.Pos(pos), Operand: operand}
 			expr := b.applyArgExprCont(&it, base)
 			return ast.Arg{Value: expr}
 		}

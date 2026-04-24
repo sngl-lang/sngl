@@ -82,6 +82,18 @@ type checker struct {
 
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
+
+	// Deferred const(expr) assertions. Const-ness can depend on function
+	// purity, which is only assigned after all bodies are checked, so the
+	// assertions are run in a final pass.
+	constAsserts []constAssertion
+}
+
+// constAssertion captures a const(expr) use site and the IR expression to
+// validate once purity analysis has populated func purities.
+type constAssertion struct {
+	pos     ast.Pos
+	operand ir.Expr
 }
 
 func newChecker(doc *ast.Document, cfg *Config) *checker {
@@ -492,6 +504,10 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 		return c.nonConstRef(x.Operand)
 	case *ast.ParenExpr:
 		return c.nonConstRef(x.Inner)
+	case *ast.ConstExpr:
+		// Trust the const() assertion; the post-purity check emits the
+		// precise diagnostic if the operand turns out to be non-const.
+		return ""
 	case *ast.TernaryExpr:
 		if name := c.nonConstRef(x.Cond); name != "" {
 			return name
@@ -1203,6 +1219,14 @@ func (c *checker) pass2() {
 		for _, fn := range comp.Funcs {
 			fn.Purity = analyzePurity(fn, vars)
 			trackAccess(fn, vars)
+		}
+	}
+
+	// Validate deferred const(expr) assertions now that function purities
+	// are known.
+	for _, a := range c.constAsserts {
+		if !ir.IsConst(a.operand) {
+			c.error(a.pos, "const() operand is not a constant expression")
 		}
 	}
 }

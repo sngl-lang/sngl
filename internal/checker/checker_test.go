@@ -325,6 +325,152 @@ func TestUnaryOpValid(t *testing.T) {
 	expectNoErrors(t, `const x = -1.5`)
 }
 
+// --- const(expr) assertion ---
+
+func TestConstExprLiteral(t *testing.T) {
+	expectNoErrors(t, `const x = const 42`)
+	expectNoErrors(t, `const x = const (1 + 2)`)
+	expectNoErrors(t, `const x = const ("a" + "b")`)
+	expectNoErrors(t, `
+const base = 10
+const x = const (base * 2)
+`)
+}
+
+func TestConstExprNonConstVarRejected(t *testing.T) {
+	expectError(t, `
+var y int = 3
+const x = const (y + 1)
+`, "not a constant expression")
+}
+
+func TestConstExprInsideComponent(t *testing.T) {
+	expectError(t, `
+component main {
+	var count = 0
+	text(value=const count)
+}
+`, "not a constant expression")
+}
+
+// TestConstExprErasedFromIR guards the invariant that the checker flattens
+// ConstExpr away: the operand is returned directly so downstream phases
+// (optimizer, codegen) never encounter a wrapper.
+func TestConstExprErasedFromIR(t *testing.T) {
+	pkg := parse(t, `const x = const (1 + 2)`)
+	if len(pkg.Consts) != 1 {
+		t.Fatalf("got %d consts, want 1", len(pkg.Consts))
+	}
+	init := pkg.Consts[0].Init
+	if _, ok := init.(*ir.Binary); !ok {
+		t.Fatalf("expected unwrapped *ir.Binary, got %T", init)
+	}
+}
+
+// --- const(expr) locks function purity ---
+//
+// The primary motivation for `const` is to force compile-time evaluation of
+// pure function calls. If a user refactors a function from pure → impure,
+// every `const fn(...)` call site surfaces the regression as a check error.
+
+func TestConstExprUserPureFunc(t *testing.T) {
+	// Pure user funcs are eligible for const-folding; refactoring away
+	// their purity (e.g. by reading a var) should flip this test.
+	expectNoErrors(t, `
+func double(x int) int { return x * 2 }
+var y int = const double(21)
+`)
+}
+
+func TestConstExprUserImpureFuncRejected(t *testing.T) {
+	// Mutating a module-level var makes the func impure.
+	expectError(t, `
+var counter int
+func bump(x int) int {
+	counter = counter + 1
+	return x + counter
+}
+var y int = const bump(1)
+`, "not a constant expression")
+}
+
+// importResolver is a mock ResolveScheme that hands back a pre-built
+// NativeImport so tests can exercise imported-func purity without running
+// the real go:// importer.
+type importResolver struct {
+	mockResolver
+	native map[string]*ir.NativeImport
+}
+
+func (r *importResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
+	key := scheme + "://" + uri
+	if ni, ok := r.native[key]; ok {
+		return ni, nil
+	}
+	return nil, fmt.Errorf("unknown scheme import %q", key)
+}
+
+// checkWithImports runs the checker with a resolver that supplies native
+// imports keyed by "scheme://uri".
+func checkWithImports(src string, native map[string]*ir.NativeImport) []ir.Diagnostic {
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		return []ir.Diagnostic{{Severity: ir.Error, Msg: err.Error()}}
+	}
+	r := &importResolver{native: native}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Resolver: r})
+	return diags
+}
+
+func intType() *ir.Type { return &ir.Type{Kind: ir.TypeInt} }
+
+func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
+	fn := &ir.Func{
+		Name:       "Square",
+		Params:     []*ir.Param{{Name: "x", Type: intType()}},
+		Return:     intType(),
+		Purity:     purity,
+		NativePkg:  "math",
+		NativeName: "math.Square",
+	}
+	return map[string]*ir.NativeImport{
+		"go://math": {
+			ImportPath: "math",
+			Funcs:      []*ir.Func{fn},
+		},
+	}
+}
+
+func TestConstExprImportedPureFunc(t *testing.T) {
+	src := `
+import math => "go://math"
+var y = const math.Square(4)
+`
+	diags := checkWithImports(src, nativeMath(ir.PurityPure))
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+func TestConstExprImportedImpureFuncRejected(t *testing.T) {
+	src := `
+import math => "go://math"
+var y = const math.Square(4)
+`
+	diags := checkWithImports(src, nativeMath(ir.PurityUnknown))
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error && contains(d.Msg, "not a constant expression") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected 'not a constant expression' error for impure import")
+	}
+}
+
 // --- If condition / for iterator ---
 
 func TestIfConditionMustBeBool(t *testing.T) {

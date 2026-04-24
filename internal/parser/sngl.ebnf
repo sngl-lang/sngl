@@ -319,6 +319,7 @@ StatementPrimary =
     | ident
     .
 
+
 # ── Control flow ──────────────────────────────────────────────────────────────
 
 IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
@@ -351,6 +352,7 @@ UnaryExpr =
       PostfixExpr
     | bang  UnaryExpr
     | minus UnaryExpr
+    | kw_const UnaryExpr
     .
 
 PostfixExpr = PrimaryExpr { ExprPostfixOp } .
@@ -368,7 +370,7 @@ CondEqExpr      = CondCmpExpr  { EqOp  CondCmpExpr  } .
 CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
 CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
 CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
-CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr .
+CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr | kw_const CondUnaryExpr .
 CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 
 # Condition context: no StructLitBody (lbrace is the following StmtBlock),
@@ -458,6 +460,7 @@ Arg =
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
     | minus UnaryExpr ArgExprCont
+    | kw_const UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
     .
 

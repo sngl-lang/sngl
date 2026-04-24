@@ -55,6 +55,44 @@ component main {
 	}
 }
 
+func TestOptimize_ConstExprFolds(t *testing.T) {
+	// const(expr) operand is unwrapped by the checker, so the optimizer
+	// folds it just like any other constant. The literal "7" must appear
+	// in the output.
+	src := `
+const x = const (3 + 4)
+component main {
+	text(value=string(x))
+}
+`
+	_, doc := checkAndOptimize(t, src, "html", "js")
+	out := formatDoc(doc)
+	if !strings.Contains(out, `"7"`) {
+		t.Errorf("expected folded value \"7\" in output:\n%s", out)
+	}
+}
+
+func TestOptimize_ConstExprFoldsPureCall(t *testing.T) {
+	// Primary use case: `const pure_fn(args)` must fold to a literal at
+	// compile time. Inlining + folding turns double(21) into 42.
+	src := `
+func double(x int) int { return x * 2 }
+const x int = const double(21)
+component main {
+	text(value=string(x))
+}
+`
+	_, doc := checkAndOptimize(t, src, "html", "js")
+	out := formatDoc(doc)
+	if !strings.Contains(out, `"42"`) {
+		t.Errorf("expected folded value \"42\" in output:\n%s", out)
+	}
+	// The call site must not survive as a runtime call.
+	if strings.Contains(out, "double(") {
+		t.Errorf("call to double() leaked past optimizer:\n%s", out)
+	}
+}
+
 func TestOptimize_PlatformElimination(t *testing.T) {
 	src := `
 component main {
