@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/docs"
+	"git.duckfam.us/jonathan/sngl/docs/lookup"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
@@ -35,7 +36,7 @@ var docCmd = &cobra.Command{
   sngl doc sngl button     Show a stdlib declaration
   sngl doc button          Show stdlib component reference
   sngl doc build           Build the HTML documentation site`,
-	Args: cobra.MaximumNArgs(2),
+	Args: cobra.MaximumNArgs(3),
 	RunE: runDoc,
 }
 
@@ -62,6 +63,11 @@ func init() {
 
 	docCmd.AddCommand(docBuildCmd)
 	docCmd.AddCommand(docServeCmd)
+
+	// Let docs/lookup resolve scheme imports via the CLI's codegen-aware resolver.
+	lookup.RegisterResolver(func(cwd string) checker.ImportResolver {
+		return &cliResolver{rootDir: cwd}
+	})
 }
 
 func runDoc(cmd *cobra.Command, args []string) error {
@@ -83,70 +89,86 @@ func runDoc(cmd *cobra.Command, args []string) error {
 
 	first := args[0]
 
-	// Try to resolve the target as if it were an `import` path (stdlib keyword,
-	// scheme URI, directory, or an alias defined in the CWD's imports).
-	dt, err := resolveDocTarget(first, ".")
-	if err != nil && !errors.Is(err, errDocTargetNotFound) {
+	// Preserve the `sngl doc <pkg> <platform>` shortcut before Lookup burns a
+	// miss on the second arg.
+	if len(args) >= 2 {
+		if plat := codegen.LookupPlatform(args[1]); plat != nil {
+			return showPlatformDocs(args[1], plat)
+		}
+	}
+
+	// Primary: shared Lookup handles stdlib, dirs, scheme URIs, aliases, and
+	// the ident chain (type.field, component.prop, etc.).
+	res, err := lookup.Lookup(first, args[1:]...)
+	if err == nil {
+		return renderResult(res)
+	}
+	if !errors.Is(err, lookup.ErrNotFound) {
 		return err
 	}
-	if dt != nil {
-		if len(args) >= 2 {
-			// Preserve the pre-existing `sngl doc <dir> <platform>` shortcut.
-			if plat := codegen.LookupPlatform(args[1]); plat != nil {
-				return showPlatformDocs(args[1], plat)
+
+	// CLI-only fallbacks for single-arg queries that aren't import paths.
+	if len(args) == 1 {
+		// path.Decl form: "examples/todo.Todo"
+		if dotIdx := strings.LastIndex(first, "."); dotIdx > 0 {
+			pkgPath := first[:dotIdx]
+			declName := first[dotIdx+1:]
+			if resolvePackageDir(pkgPath) != "" {
+				r, err := lookup.Lookup(pkgPath, declName)
+				if err == nil {
+					return renderResult(r)
+				}
 			}
-			if dt.Native != nil {
-				return showNativeDecl(dt.Title, args[1], dt.Native)
+		}
+
+		// Platform name shortcut: "android"
+		if plat := codegen.LookupPlatform(first); plat != nil {
+			return showPlatformDocs(first, plat)
+		}
+
+		// Decl in the current directory
+		if r, err := lookup.Lookup(".", first); err == nil {
+			return renderResult(r)
+		}
+
+		// Documentation markdown topic
+		docsDir, _ := findDocsDir()
+		if docsDir != "" {
+			if err := showTopic(docsDir, first); err == nil {
+				return nil
 			}
-			return showDeclDoc(dt.Docs, args[1], dt.Stmts)
 		}
-		if dt.Native != nil {
-			return showNativeImportIndex(dt.Title, dt.Native)
-		}
-		if dt.IsStdlib {
-			return showStdlibIndex(dt.Docs)
-		}
-		return showPackageIndex(dt.Title, dt.Docs)
+
+		// Stdlib component reference (fuzzy match)
+		return showComponentDoc(first)
 	}
 
-	// Fall back chain for names that aren't importable targets.
+	return err
+}
 
-	// 1. path.Decl syntax: "examples/todo.Todo" → package=examples/todo, decl=Todo
-	if dotIdx := strings.LastIndex(first, "."); dotIdx > 0 {
-		pkgPath := first[:dotIdx]
-		declName := first[dotIdx+1:]
-		if dir := resolvePackageDir(pkgPath); dir != "" {
-			doc, err := parsePackage(dir)
-			if err != nil {
-				return err
-			}
-			return showDeclDoc(checker.ExtractPackageDocs(doc), declName, doc.Stmts)
-		}
+// renderResult dispatches a lookup.Result to the matching CLI renderer.
+func renderResult(res lookup.Result) error {
+	switch res.Kind {
+	case lookup.KindIndex:
+		return renderToTerminal(renderIndexMD(res.Index))
+	case lookup.KindComponent:
+		return renderToTerminal(renderComponentMD(res.Component))
+	case lookup.KindType:
+		return renderToTerminal(renderTypeMD(res.Type))
+	case lookup.KindEnum:
+		return renderToTerminal(renderEnumMD(res.Enum))
+	case lookup.KindFunc:
+		return renderToTerminal(renderFuncMD(res.Func))
+	case lookup.KindValue:
+		return renderToTerminal(renderValueMD(res.Value))
+	case lookup.KindProp:
+		return renderToTerminal(renderPropMD(res.Prop))
+	case lookup.KindField:
+		return renderToTerminal(renderFieldMD(res.Field))
+	case lookup.KindMember:
+		return renderToTerminal(renderMemberMD(res.Member))
 	}
-
-	// 2. Platform name: "android" → show platform docs
-	if plat := codegen.LookupPlatform(first); plat != nil {
-		return showPlatformDocs(first, plat)
-	}
-
-	// 3. Try as a declaration in the current directory
-	if doc, err := parsePackage("."); err == nil {
-		pd := checker.ExtractPackageDocs(doc)
-		if info := pd.FindDecl(first); info != nil {
-			return showDeclDoc(pd, first, doc.Stmts)
-		}
-	}
-
-	// 4. Documentation file lookup
-	docsDir, _ := findDocsDir()
-	if docsDir != "" {
-		if err := showTopic(docsDir, first); err == nil {
-			return nil
-		}
-	}
-
-	// 5. Stdlib component reference
-	return showComponentDoc(first)
+	return fmt.Errorf("unknown lookup result kind: %d", res.Kind)
 }
 
 // resolvePackageDir resolves a path to a package directory.
@@ -208,194 +230,6 @@ func parsePackage(dir string) (*ast.Document, error) {
 	return doc, nil
 }
 
-// docTarget bundles everything `sngl doc` needs to render an import-style
-// target: either SNGL-sourced decls (stdlib, local dir, FS-scheme package) or
-// a native scheme import (go://, etc.).
-type docTarget struct {
-	Title    string
-	Docs     *checker.PackageDocs // non-nil for SNGL-sourced targets
-	Stmts    []ast.Stmt           // statements backing Docs (needed by showDeclDoc)
-	Native   *ir.NativeImport     // non-nil for native-scheme targets
-	IsStdlib bool
-}
-
-// errDocTargetNotFound signals that the input doesn't name an importable
-// target. Callers use it to fall back to the legacy resolution chain
-// (platform name, docs topic, stdlib-component fuzzy match).
-var errDocTargetNotFound = errors.New("doc target not found")
-
-// resolveDocTarget reuses the import-resolution machinery to map a doc query
-// to a renderable package. Handles the stdlib keyword, scheme URIs, local
-// directories, and aliases declared in cwd's imports.
-func resolveDocTarget(target, cwd string) (*docTarget, error) {
-	// The stdlib is declared by the checker rather than imported, but we route
-	// it through the same mechanism so `sngl doc sngl` shares the code path.
-	if target == "sngl" {
-		target = "internal://stdlib"
-	}
-
-	scheme, uri := checker.ParseScheme(target)
-
-	if scheme == "internal" && uri == "stdlib" {
-		pd, stmts := stdlibPackageDocs()
-		return &docTarget{Title: "sngl", Docs: pd, Stmts: stmts, IsStdlib: true}, nil
-	}
-
-	if scheme != "" {
-		resolver := &cliResolver{rootDir: cwd}
-		docs, _, err := resolver.ResolveSchemeFS(scheme, uri, cwd)
-		if err != nil {
-			return nil, err
-		}
-		if len(docs) > 0 {
-			merged := &checker.PackageDocs{}
-			var stmts []ast.Stmt
-			for _, d := range docs {
-				pd := checker.ExtractPackageDocs(d)
-				merged.Components = append(merged.Components, pd.Components...)
-				merged.Structs = append(merged.Structs, pd.Structs...)
-				merged.Enums = append(merged.Enums, pd.Enums...)
-				merged.Consts = append(merged.Consts, pd.Consts...)
-				merged.Data = append(merged.Data, pd.Data...)
-				merged.Functions = append(merged.Functions, pd.Functions...)
-				stmts = append(stmts, d.Stmts...)
-			}
-			return &docTarget{Title: target, Docs: merged, Stmts: stmts}, nil
-		}
-		native, err := resolver.ResolveScheme(scheme, uri, cwd)
-		if err != nil {
-			return nil, err
-		}
-		if native != nil {
-			return &docTarget{Title: target, Native: native}, nil
-		}
-		return nil, fmt.Errorf("scheme %q could not resolve %q", scheme, uri)
-	}
-
-	if dir := resolvePackageDir(target); dir != "" {
-		doc, err := parsePackage(dir)
-		if err != nil {
-			return nil, err
-		}
-		return &docTarget{Title: dir, Docs: checker.ExtractPackageDocs(doc), Stmts: doc.Stmts}, nil
-	}
-
-	// Alias lookup: try to resolve `target` as an alias declared in cwd's imports.
-	if cwd != "" {
-		if doc, err := parsePackage(cwd); err == nil {
-			for _, stmt := range doc.Stmts {
-				imp, ok := stmt.(*ast.Import)
-				if !ok {
-					continue
-				}
-				alias := imp.Alias
-				if alias == "" {
-					alias = checker.NamespaceFromPath(imp.Path)
-				}
-				if alias != target {
-					continue
-				}
-				resolved := imp.Path
-				if imp.Replace != "" {
-					resolved = imp.Replace
-				}
-				// Prevent self-loop if alias happens to equal the path.
-				if resolved == target {
-					break
-				}
-				return resolveDocTarget(resolved, cwd)
-			}
-		}
-	}
-
-	return nil, errDocTargetNotFound
-}
-
-// stdlibPackageDocs merges every embedded stdlib document into a single
-// PackageDocs and returns the concatenated statements alongside it.
-func stdlibPackageDocs() (*checker.PackageDocs, []ast.Stmt) {
-	merged := &checker.PackageDocs{}
-	var stmts []ast.Stmt
-	for _, doc := range checker.StdlibDocs() {
-		pd := checker.ExtractPackageDocs(doc)
-		merged.Components = append(merged.Components, pd.Components...)
-		merged.Structs = append(merged.Structs, pd.Structs...)
-		merged.Enums = append(merged.Enums, pd.Enums...)
-		merged.Consts = append(merged.Consts, pd.Consts...)
-		merged.Data = append(merged.Data, pd.Data...)
-		merged.Functions = append(merged.Functions, pd.Functions...)
-		stmts = append(stmts, doc.Stmts...)
-	}
-	sortDecls := func(items []checker.DeclInfo) {
-		sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
-	}
-	sortDecls(merged.Components)
-	sortDecls(merged.Structs)
-	sortDecls(merged.Enums)
-	sortDecls(merged.Consts)
-	sortDecls(merged.Data)
-	sortDecls(merged.Functions)
-	return merged, stmts
-}
-
-// showStdlibIndex renders the stdlib as a package-style index.
-func showStdlibIndex(pd *checker.PackageDocs) error {
-	var sb strings.Builder
-	sb.WriteString("# Standard Library (sngl)\n\n")
-	sb.WriteString("Built-in components, types, and functions available without import.\n\n")
-	writeDeclSection(&sb, "Components", pd.Components)
-	writeDeclSection(&sb, "Types", pd.Structs)
-	writeDeclSection(&sb, "Enums", pd.Enums)
-	writeDeclSection(&sb, "Constants", pd.Consts)
-	writeDeclSection(&sb, "Functions", pd.Functions)
-	return renderToTerminal(sb.String())
-}
-
-// showPackageIndex displays all declarations in a user package.
-// Platform overrides (sngl.*) and platform-specific types (Options) are
-// separated into their own sections at the bottom. Unexported decls
-// are filtered out upstream by ExtractPackageDocs.
-func showPackageIndex(dir string, pd *checker.PackageDocs) error {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# Package %s\n\n", dir))
-
-	// Separate user declarations from platform overrides
-	var userComps, overrideComps []checker.DeclInfo
-	for _, d := range pd.Components {
-		if strings.HasPrefix(d.Name, "sngl.") {
-			overrideComps = append(overrideComps, d)
-		} else {
-			userComps = append(userComps, d)
-		}
-	}
-
-	// User-specific types vs platform types (Options is typically a platform type)
-	var userStructs, platformStructs []checker.DeclInfo
-	for _, d := range pd.Structs {
-		if d.Name == "Options" {
-			platformStructs = append(platformStructs, d)
-		} else {
-			userStructs = append(userStructs, d)
-		}
-	}
-
-	writeDeclSection(&sb, "Components", userComps)
-	writeDeclSection(&sb, "Types", userStructs)
-	writeDeclSection(&sb, "Enums", pd.Enums)
-	writeDeclSection(&sb, "Constants", pd.Consts)
-	writeDeclSection(&sb, "Data", pd.Data)
-	writeDeclSection(&sb, "Functions", pd.Functions)
-
-	// Platform sections at the bottom
-	if len(overrideComps) > 0 || len(platformStructs) > 0 {
-		sb.WriteString("---\n\n")
-		writeDeclSection(&sb, "Platform Overrides", overrideComps)
-		writeDeclSection(&sb, "Platform Types", platformStructs)
-	}
-
-	return renderToTerminal(sb.String())
-}
-
 // showPlatformDocs shows the declarations from a platform's Package.
 func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	docs := plat.Package()
@@ -424,82 +258,6 @@ func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	writeDeclSection(&sb, "Stdlib Overrides", overrides)
 
 	return renderToTerminal(sb.String())
-}
-
-// showNativeImportIndex renders an index for a scheme import whose decls come
-// from a foreign language (e.g. go://). Each section lists names and the
-// first sentence of the imported doc comment when available.
-func showNativeImportIndex(title string, ni *ir.NativeImport) error {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# %s\n\n", title))
-	if ni.ImportPath != "" && ni.ImportPath != title {
-		sb.WriteString(fmt.Sprintf("Import path: `%s`\n\n", ni.ImportPath))
-	}
-
-	writeNativeSection(&sb, "Types", len(ni.Structs), func(i int) (string, string) {
-		return ni.Structs[i].Name, ni.Structs[i].Doc
-	})
-	writeNativeSection(&sb, "Enums", len(ni.Enums), func(i int) (string, string) {
-		return ni.Enums[i].Name, ni.Enums[i].Doc
-	})
-	writeNativeSection(&sb, "Functions", len(ni.Funcs), func(i int) (string, string) {
-		return ni.Funcs[i].Name, ni.Funcs[i].Doc
-	})
-	writeNativeSection(&sb, "Variables", len(ni.Vars), func(i int) (string, string) {
-		return ni.Vars[i].Name, ni.Vars[i].Doc
-	})
-
-	return renderToTerminal(sb.String())
-}
-
-// writeNativeSection writes a bulleted section of native decls using name +
-// leading-sentence blurb, matching the layout of writeDeclSection.
-func writeNativeSection(sb *strings.Builder, title string, n int, at func(int) (name, doc string)) {
-	if n == 0 {
-		return
-	}
-	type entry struct{ name, doc string }
-	items := make([]entry, n)
-	for i := range n {
-		name, doc := at(i)
-		items[i] = entry{name: name, doc: doc}
-	}
-	sort.Slice(items, func(i, j int) bool { return items[i].name < items[j].name })
-	sb.WriteString(fmt.Sprintf("## %s\n\n", title))
-	for _, it := range items {
-		blurb := firstSentence(it.doc)
-		if blurb != "" {
-			sb.WriteString(fmt.Sprintf("- **%s** — %s\n", it.name, blurb))
-		} else {
-			sb.WriteString(fmt.Sprintf("- **%s**\n", it.name))
-		}
-	}
-	sb.WriteString("\n")
-}
-
-// showNativeDecl renders a single named declaration from a native import.
-func showNativeDecl(title, name string, ni *ir.NativeImport) error {
-	for _, s := range ni.Structs {
-		if s.Name == name {
-			return renderToTerminal(renderNativeStruct(s))
-		}
-	}
-	for _, e := range ni.Enums {
-		if e.Name == name {
-			return renderToTerminal(renderNativeEnum(e))
-		}
-	}
-	for _, f := range ni.Funcs {
-		if f.Name == name {
-			return renderToTerminal(renderNativeFunc(f))
-		}
-	}
-	for _, v := range ni.Vars {
-		if v.Name == name {
-			return renderToTerminal(renderNativeVar(v))
-		}
-	}
-	return fmt.Errorf("%q not found in %s", name, title)
 }
 
 func renderNativeStruct(s *ir.StructDef) string {
@@ -597,23 +355,6 @@ func nativeFuncSignature(f *ir.Func) string {
 	return sig
 }
 
-// firstSentence trims a doc string to the first sentence (ending with ". ", a
-// trailing period, or the first newline), matching how writeDeclSection
-// summarizes PackageDocs entries.
-func firstSentence(doc string) string {
-	doc = strings.TrimSpace(doc)
-	if doc == "" {
-		return ""
-	}
-	if i := strings.Index(doc, ". "); i > 0 {
-		return doc[:i+1]
-	}
-	if i := strings.IndexByte(doc, '\n'); i > 0 {
-		return strings.TrimSpace(doc[:i])
-	}
-	return doc
-}
-
 func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInfo) {
 	if len(items) == 0 {
 		return
@@ -633,60 +374,182 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 	sb.WriteString("\n")
 }
 
-// showDeclDoc displays documentation for a specific declaration.
-func showDeclDoc(pd *checker.PackageDocs, name string, stmts []ast.Stmt) error {
-	// Try the full name first — this resolves dotted decls like `int.min`
-	// (function) or `Alert.toast` (receiver method) before we fall back to
-	// treating the dot as a struct field / component prop selector.
-	declName := name
-	fieldName := ""
-	info := pd.FindDecl(declName)
-	if info == nil {
-		if before, after, ok := strings.Cut(name, "."); ok {
-			declName = before
-			fieldName = after
-			info = pd.FindDecl(declName)
+// renderIndexMD renders a lookup.DeclIndex as CLI markdown.
+func renderIndexMD(idx *lookup.DeclIndex) string {
+	var sb strings.Builder
+	if idx.IsStdlib {
+		sb.WriteString("# Standard Library (sngl)\n\n")
+	} else if idx.Native != nil {
+		sb.WriteString(fmt.Sprintf("# %s\n\n", idx.Title))
+		if idx.Native.ImportPath != "" && idx.Native.ImportPath != idx.Title {
+			sb.WriteString(fmt.Sprintf("Import path: `%s`\n\n", idx.Native.ImportPath))
+		}
+	} else {
+		sb.WriteString(fmt.Sprintf("# Package %s\n\n", idx.Title))
+	}
+	if idx.Description != "" {
+		sb.WriteString(idx.Description + "\n\n")
+	}
+	writeSummarySection(&sb, "Components", idx.Components)
+	writeTypeEntrySection(&sb, "Types", idx.Types)
+	writeSummarySection(&sb, "Enums", idx.Enums)
+	writeSummarySection(&sb, "Constants", idx.Constants)
+	writeSummarySection(&sb, "Data", idx.Data)
+	writeSummarySection(&sb, "Functions", idx.Functions)
+	if len(idx.Overrides) > 0 || len(idx.PlatformTypes) > 0 {
+		sb.WriteString("---\n\n")
+		writeSummarySection(&sb, "Platform Overrides", idx.Overrides)
+		writeSummarySection(&sb, "Platform Types", idx.PlatformTypes)
+	}
+	return sb.String()
+}
+
+func writeSummarySection(sb *strings.Builder, title string, items []lookup.DeclSummary) {
+	if len(items) == 0 {
+		return
+	}
+	sb.WriteString(fmt.Sprintf("## %s\n\n", title))
+	for _, d := range items {
+		blurb := lookup.FirstSentence(d.Doc)
+		if blurb != "" {
+			sb.WriteString(fmt.Sprintf("- **%s** — %s\n", d.Name, blurb))
+		} else {
+			sb.WriteString(fmt.Sprintf("- **%s**\n", d.Name))
 		}
 	}
-	if info == nil {
-		return showComponentDoc(name)
-	}
+	sb.WriteString("\n")
+}
 
-	switch decl := info.Decl.(type) {
-	case *ast.ComponentDecl:
-		// Reuse stdlib component doc rendering via schema
-		registry, _, err := checker.LoadStdlib()
-		if err == nil {
-			if schema, ok := registry[declName]; ok {
-				if fieldName != "" {
-					return showPropDoc(declName, fieldName, schema)
-				}
-				return renderToTerminal(renderComponentDoc(declName, schema))
+func writeTypeEntrySection(sb *strings.Builder, title string, items []lookup.TypeEntry) {
+	if len(items) == 0 {
+		return
+	}
+	sb.WriteString(fmt.Sprintf("## %s\n\n", title))
+	for _, t := range items {
+		if blurb := lookup.FirstSentence(t.Doc); blurb != "" {
+			sb.WriteString(fmt.Sprintf("- **%s** — %s\n", t.Name, blurb))
+		} else {
+			sb.WriteString(fmt.Sprintf("- **%s**\n", t.Name))
+		}
+		for _, m := range t.Methods {
+			if blurb := lookup.FirstSentence(m.Doc); blurb != "" {
+				sb.WriteString(fmt.Sprintf("  - **%s** — %s\n", m.ShortName, blurb))
+			} else {
+				sb.WriteString(fmt.Sprintf("  - **%s**\n", m.ShortName))
 			}
 		}
-		// User component — render manually
-		return renderToTerminal(renderUserComponentDoc(decl, info.Doc))
-
-	case *ast.StructDef:
-		return renderToTerminal(renderStructDoc(decl, fieldName, info.Doc))
-
-	case *ast.EnumDef:
-		return renderToTerminal(renderEnumDoc(decl, info.Doc))
-
-	case *ast.FuncDef:
-		return renderToTerminal(renderFuncDoc(decl, info.Doc))
-
-	case *ast.ConstDecl, *ast.VarDecl:
-		return renderToTerminal(renderValueDoc(info))
-
-	default:
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("# %s\n\n", info.Name))
-		if info.Doc != "" {
-			sb.WriteString(info.Doc + "\n")
-		}
-		return renderToTerminal(sb.String())
 	}
+	sb.WriteString("\n")
+}
+
+func renderComponentMD(c *lookup.ComponentDetail) string {
+	if c.Schema != nil {
+		return renderComponentDoc(c.Name, c.Schema)
+	}
+	if c.AST != nil {
+		return renderUserComponentDoc(c.AST, c.Doc)
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", c.Name))
+	if c.Doc != "" {
+		sb.WriteString(c.Doc + "\n")
+	}
+	return sb.String()
+}
+
+func renderTypeMD(t *lookup.TypeDetail) string {
+	if t.Native != nil {
+		return renderNativeStruct(t.Native)
+	}
+	if t.Struct != nil {
+		return renderStructDoc(t.Struct, "", t.Doc)
+	}
+	// Primitive receiver (int/float/string/list) — no struct body, just list methods.
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", t.Name))
+	if t.Doc != "" {
+		sb.WriteString(t.Doc + "\n\n")
+	}
+	if len(t.Methods) > 0 {
+		sb.WriteString("## Methods\n\n")
+		for _, m := range t.Methods {
+			if blurb := lookup.FirstSentence(m.Doc); blurb != "" {
+				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", m.ShortName, blurb))
+			} else {
+				sb.WriteString(fmt.Sprintf("- **%s**\n", m.ShortName))
+			}
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
+}
+
+func renderEnumMD(e *lookup.EnumDetail) string {
+	if e.Native != nil {
+		return renderNativeEnum(e.Native)
+	}
+	return renderEnumDoc(e.AST, e.Doc)
+}
+
+func renderFuncMD(f *lookup.FuncDetail) string {
+	if f.Native != nil {
+		return renderNativeFunc(f.Native)
+	}
+	return renderFuncDoc(f.AST, f.Doc)
+}
+
+func renderValueMD(v *lookup.ValueDetail) string {
+	if v.Native != nil {
+		return renderNativeVar(v.Native)
+	}
+	kind := "var"
+	if v.IsConst {
+		kind = "const"
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s %s\n\n", kind, v.Name))
+	if v.Doc != "" {
+		sb.WriteString(v.Doc + "\n")
+	}
+	return sb.String()
+}
+
+func renderPropMD(p *lookup.PropDetail) string {
+	var sb strings.Builder
+	if p.Schema != nil {
+		sb.WriteString(fmt.Sprintf("# %s.%s\n\n", p.Component, p.Name))
+		sb.WriteString(fmt.Sprintf("Type: %s\n\n", (&p.Schema.Type).String()))
+		if len(p.Schema.Enum) > 0 {
+			sb.WriteString(fmt.Sprintf("Values: %s\n\n", strings.Join(p.Schema.Enum, ", ")))
+		}
+		if p.Schema.Doc != "" {
+			sb.WriteString(p.Schema.Doc + "\n")
+		}
+		return sb.String()
+	}
+	sb.WriteString(fmt.Sprintf("# %s.%s (event)\n\n", p.Component, p.Name))
+	if p.Event != "" {
+		sb.WriteString(fmt.Sprintf("Payload type: %s\n", p.Event))
+	}
+	return sb.String()
+}
+
+func renderFieldMD(f *lookup.FieldDetail) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s.%s\n\n", f.Type, f.Name))
+	if f.Expr != nil {
+		sb.WriteString(fmt.Sprintf("Type: `%s`\n", parser.FormatType(f.Expr)))
+	}
+	return sb.String()
+}
+
+func renderMemberMD(m *lookup.MemberDetail) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s.%s\n\n", m.Enum, m.Name))
+	if m.Doc != "" {
+		sb.WriteString(m.Doc + "\n")
+	}
+	return sb.String()
 }
 
 func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
