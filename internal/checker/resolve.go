@@ -335,19 +335,19 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 	return 1.0
 }
 
-// parseScheme extracts the scheme and URI from an import path.
+// ParseScheme extracts the scheme and URI from an import path.
 // Returns ("go", "pkg/path") for "go://pkg/path", or ("", path) for directory imports.
-func parseScheme(path string) (scheme, uri string) {
+func ParseScheme(path string) (scheme, uri string) {
 	if before, after, ok := strings.Cut(path, "://"); ok {
 		return before, after
 	}
 	return "", path
 }
 
-// namespaceFromPath derives a namespace alias from an import path.
+// NamespaceFromPath derives a namespace alias from an import path.
 // Uses the last path segment: "widgets/counter" → "counter".
-func namespaceFromPath(path string) string {
-	_, uri := parseScheme(path)
+func NamespaceFromPath(path string) string {
+	_, uri := ParseScheme(path)
 	if i := strings.LastIndex(uri, "/"); i >= 0 {
 		return uri[i+1:]
 	}

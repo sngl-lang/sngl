@@ -1,0 +1,29 @@
+# Stdlib keyword resolves through the import pipeline.
+sngl doc sngl
+stdout 'Standard Library'
+stdout 'button'
+
+# Stdlib decl lookup.
+sngl doc sngl button
+stdout '# button'
+
+# An alias declared in the CWD's package resolves to the imported directory.
+sngl doc w
+stdout 'Counter'
+
+# Local directory still indexes as before.
+sngl doc ./widgets
+stdout 'Counter'
+
+# Unknown scheme surfaces an error (nonzero exit).
+! sngl doc bogus://nope
+
+-- app.sngl --
+import w "./widgets"
+component main {
+    w.Counter(count = 1)
+}
+-- widgets/widgets.sngl --
+component Counter(count int) {
+    text { value = "count: ${count}" }
+}

@@ -42,17 +42,51 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	scope := pkgs[0].Types.Scope()
 	pkgName := pkgs[0].Types.Name()
 
-	// Scan syntax for //sngl:pure annotations on function declarations.
+	// Scan syntax for //sngl:pure annotations and doc comments. Go doc strings
+	// are attached either to the enclosing GenDecl (single-spec declarations) or
+	// to the individual Spec (grouped declarations); we fall back accordingly.
 	funcPure := map[string]bool{}
+	funcDoc := map[string]string{}
+	typeDoc := map[string]string{}
+	varDoc := map[string]string{}
 	for _, file := range pkgs[0].Syntax {
 		for _, decl := range file.Decls {
-			fd, ok := decl.(*goast.FuncDecl)
-			if !ok || fd.Doc == nil {
-				continue
-			}
-			for _, comment := range fd.Doc.List {
-				if strings.Contains(comment.Text, "sngl:pure") {
-					funcPure[fd.Name.Name] = true
+			switch d := decl.(type) {
+			case *goast.FuncDecl:
+				if d.Recv != nil {
+					continue
+				}
+				if d.Doc != nil {
+					for _, c := range d.Doc.List {
+						if strings.Contains(c.Text, "sngl:pure") {
+							funcPure[d.Name.Name] = true
+						}
+					}
+					funcDoc[d.Name.Name] = d.Doc.Text()
+				}
+			case *goast.GenDecl:
+				for _, spec := range d.Specs {
+					switch s := spec.(type) {
+					case *goast.TypeSpec:
+						doc := s.Doc.Text()
+						if doc == "" {
+							doc = d.Doc.Text()
+						}
+						if doc != "" {
+							typeDoc[s.Name.Name] = doc
+						}
+					case *goast.ValueSpec:
+						doc := s.Doc.Text()
+						if doc == "" {
+							doc = d.Doc.Text()
+						}
+						if doc == "" {
+							continue
+						}
+						for _, n := range s.Names {
+							varDoc[n.Name] = doc
+						}
+					}
 				}
 			}
 		}
@@ -75,7 +109,11 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		if _, ok := tn.Type().Underlying().(*types.Struct); !ok {
 			continue
 		}
-		sd := &ir.StructDef{Name: tn.Name(), Native: pkgName + "." + tn.Name()}
+		sd := &ir.StructDef{
+			Name:   tn.Name(),
+			Native: pkgName + "." + tn.Name(),
+			Doc:    typeDoc[tn.Name()],
+		}
 		structs[tn.Name()] = sd
 		ni.Structs = append(ni.Structs, sd)
 	}
@@ -98,10 +136,13 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 				if funcPure[o.Name()] {
 					fn.Purity = ir.PurityPure
 				}
+				fn.Doc = funcDoc[o.Name()]
 				ni.Funcs = append(ni.Funcs, fn)
 			}
 		case *types.Var:
-			ni.Vars = append(ni.Vars, goVarToVar(o, pkgPath, pkgName, structs))
+			v := goVarToVar(o, pkgPath, pkgName, structs)
+			v.Doc = varDoc[o.Name()]
+			ni.Vars = append(ni.Vars, v)
 		}
 	}
 

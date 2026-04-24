@@ -97,6 +97,7 @@ type Func struct {
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
 	Unusable       string
+	Doc            string // doc comment for scheme-imported decls
 }
 
 func (f *Func) SymName() string { return f.Name }
@@ -135,6 +136,7 @@ type Var struct {
 	NativePkg  string
 	NativeName string
 	Unusable   string
+	Doc        string // doc comment for scheme-imported decls
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -241,6 +243,7 @@ type StructDef struct {
 	Name   string
 	Fields []*StructField
 	Native string // qualified native-language name (e.g. "ast.File"); empty for user-defined
+	Doc    string // doc comment for scheme-imported decls; empty for SNGL-sourced
 }
 
 func (s *StructDef) SymName() string { return s.Name }
@@ -274,6 +277,7 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
+	Doc     string // doc comment for scheme-imported decls
 }
 
 func (e *EnumDef) SymName() string { return e.Name }

@@ -255,10 +255,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 		target = mapped
 	}
 
-	scheme, uri := parseScheme(target)
+	scheme, uri := ParseScheme(target)
 	alias := imp.Alias
 	if alias == "" {
-		alias = namespaceFromPath(imp.Path)
+		alias = NamespaceFromPath(imp.Path)
 	}
 
 	irImport := &ir.Import{
