@@ -53,6 +53,7 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(doc, cfg)
 	c.pass1()
 	c.pass2()
+	c.analyzeErrors()
 	c.pkg.Symbols = c.symtab
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
@@ -1186,26 +1187,48 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 		c.scope.Declare(v)
 	}
 	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok {
-			continue
-		}
-		switch arg.Name {
-		case "href":
-			w.Href = c.checkExpr(arg.Value)
-			// Set static name from literal href.
-			if w.Name == "" {
-				if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
-					w.Name = strings.Trim(lit.Raw, "\"")
+		switch arg := a.(type) {
+		case ast.Arg:
+			switch arg.Name {
+			case "href":
+				w.Href = c.checkExpr(arg.Value)
+				// Set static name from literal href.
+				if w.Name == "" {
+					if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
+						w.Name = strings.Trim(lit.Raw, "\"")
+					}
 				}
+			case "title":
+				w.Title = c.checkExpr(arg.Value)
+			case "favicon":
+				w.Favicon = c.checkExpr(arg.Value)
 			}
-		case "title":
-			w.Title = c.checkExpr(arg.Value)
-		case "favicon":
-			w.Favicon = c.checkExpr(arg.Value)
+		case ast.EventHandler:
+			if arg.Name == "error" {
+				w.ErrorHandler = c.buildErrorHandler(&arg)
+			}
 		}
 	}
 	return w
+}
+
+// buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
+// node. The @error handler is required and is type-checked with ErrorEvent
+// defaulted on its parameter. Children are type-checked as a sub-block.
+func (c *checker) buildErrorBoundary(vn *ast.VisualNode) *ir.ErrorBoundary {
+	eb := &ir.ErrorBoundary{AST: vn}
+	for _, a := range vn.Args.Args {
+		eh, ok := a.(ast.EventHandler)
+		if !ok || eh.Name != "error" {
+			continue
+		}
+		eb.Handler = c.buildErrorHandler(&eh)
+	}
+	if eb.Handler == nil {
+		c.error(vn.Pos, "errorBoundary requires an @error handler")
+	}
+	eb.Children = c.checkBlockIR(&vn.Block)
+	return eb
 }
 
 func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {

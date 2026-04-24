@@ -18,6 +18,74 @@ func (e *AssertError) Error() string {
 	return fmt.Sprintf("assert failed — got %v", e.Got)
 }
 
+// RaisedError is returned up the Go error chain by evalTypeMethodCall when
+// a user calls error.raise. Callers that find a RaisedError in the return
+// chain consult the originating ir.Call's ErrorMode to decide whether to
+// invoke a resolved handler or propagate further up.
+type RaisedError struct {
+	Event map[string]any
+}
+
+func (e *RaisedError) Error() string {
+	if e == nil {
+		return "raised error"
+	}
+	msg, _ := e.Event["message"].(string)
+	kind, _ := e.Event["kind"].(string)
+	if kind != "" {
+		return fmt.Sprintf("raised: %s (%s)", msg, kind)
+	}
+	return fmt.Sprintf("raised: %s", msg)
+}
+
+// dispatchRaise routes a RaisedError through the error-handling modes set
+// by the checker's effect analysis. Returns nil to consume the error
+// (handler was invoked); returns the error to propagate upward.
+func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
+	if raised == nil || call == nil {
+		return nil
+	}
+	switch call.ErrorMode {
+	case ir.ErrorPerCall:
+		if call.ErrorHandler != nil {
+			return env.invokeHandler(call.ErrorHandler, raised.Event)
+		}
+	case ir.ErrorInvokeAndTerminate:
+		if call.ResolvedHandler != nil {
+			return env.invokeHandler(call.ResolvedHandler, raised.Event)
+		}
+	}
+	return raised
+}
+
+// invokeHandler executes the handler body with the ErrorEvent bound to the
+// handler's param (or "e" if unnamed). Propagates any error raised by the
+// handler body itself to the caller.
+func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	paramName := "e"
+	if len(handler.Func.Params) > 0 {
+		paramName = handler.Func.Params[0].Name
+	}
+	saved, existed := env.vars[paramName]
+	env.vars[paramName] = event
+	defer func() {
+		if existed {
+			env.vars[paramName] = saved
+		} else {
+			delete(env.vars, paramName)
+		}
+	}()
+	for _, stmt := range handler.Func.Block {
+		if err := env.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Exec executes an IR statement, mutating the environment.
 func (env *Env) Exec(s ir.Stmt) error {
 	switch n := s.(type) {
@@ -30,6 +98,9 @@ func (env *Env) Exec(s ir.Stmt) error {
 			return nil
 		}
 		_, err := env.evalCall(n.Call)
+		if raised, ok := err.(*RaisedError); ok {
+			return env.dispatchRaise(n.Call, raised)
+		}
 		return err
 	case *ir.Emit:
 		return nil // no-op in headless tests
@@ -58,6 +129,16 @@ func (env *Env) Exec(s ir.Stmt) error {
 				}
 			}
 		}
+		return nil
+	case *ir.NodeInst:
+		// Visual nodes don't execute in statement position in the headless
+		// interpreter (they're rendered elsewhere). Skipping preserves
+		// forward-compat with boundary/window structures appearing as
+		// statements inside handler-adjacent scopes.
+		return nil
+	case *ir.ErrorBoundary:
+		return nil
+	case *ir.SlotInst:
 		return nil
 	}
 	return fmt.Errorf("cannot execute %T", s)

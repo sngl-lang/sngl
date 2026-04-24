@@ -92,6 +92,12 @@ component checkbox(
 // Placeholder for projected content in custom component definitions.
 component slot() {}
 
+// Catches errors raised in children's event handlers and expressions.
+// The @error handler receives the ErrorEvent.
+component errorBoundary(
+    @error ErrorEvent,
+) list<component> {}
+
 // Periodic callback.
 component timer(
     interval duration,

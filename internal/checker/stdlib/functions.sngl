@@ -92,3 +92,7 @@ func Alert.confirm(message string) => alert.Confirm(message)
 
 func File.pick() => file.Pick()
 func File.pickFolder() => file.PickFolder()
+
+// --- error ---
+
+func error.raise(message string, kind string) => stdlib.ErrorRaise(message, kind)

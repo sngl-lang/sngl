@@ -327,6 +327,11 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 		if n.Call == nil {
 			return nil
 		}
+		if n.Call.ErrorMode != ir.ErrorNone {
+			if lines := translateErrorAwareCall(n.Call, scope); lines != nil {
+				return lines
+			}
+		}
 		return []string{translateIRCall(n.Call, scope)}
 	case *ir.Emit:
 		argStrs := make([]string, len(n.Args))
@@ -347,6 +352,67 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 	default:
 		return []string{"// unsupported ir mutation: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+// translateErrorAwareCall emits JS statements for a fallible call whose
+// error handler was resolved by effect analysis. Scope-based analogue of
+// JsIRContext.evalErrorAwareCall used by platforms that go through
+// translateIRMutation (e.g., html-static).
+func translateErrorAwareCall(call *ir.Call, scope *codegen.ExprScope) []string {
+	if call == nil || call.Func == nil {
+		return nil
+	}
+	if !jsIsRaiseFunc(call.Func) {
+		return nil
+	}
+	msg := `""`
+	kind := `""`
+	if len(call.Args) >= 1 {
+		msg = translateIRExpr(call.Args[0].Value, scope)
+	}
+	if len(call.Args) >= 2 {
+		kind = translateIRExpr(call.Args[1].Value, scope)
+	}
+	evt := fmt.Sprintf("{message: %s, kind: %s}", msg, kind)
+
+	switch call.ErrorMode {
+	case ir.ErrorPropagateNative, ir.ErrorBubble:
+		return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+	case ir.ErrorInvokeAndTerminate:
+		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
+			return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+		}
+		return translateHandlerInvoke(evt, call.ResolvedHandler, scope)
+	case ir.ErrorPerCall:
+		if call.ErrorHandler == nil || call.ErrorHandler.Func == nil {
+			return []string{"void " + evt}
+		}
+		return translateHandlerInvoke(evt, call.ErrorHandler, scope)
+	}
+	return nil
+}
+
+func translateHandlerInvoke(evt string, handler *ir.EventHandler, scope *codegen.ExprScope) []string {
+	paramName := "e"
+	if handler.Func != nil && len(handler.Func.Params) > 0 {
+		paramName = handler.Func.Params[0].Name
+	}
+	subScope := *scope
+	subScope.LocalVars = make(map[string]bool, len(scope.LocalVars)+1)
+	maps.Copy(subScope.LocalVars, scope.LocalVars)
+	subScope.LocalVars[paramName] = true
+	lines := []string{
+		"{",
+		fmt.Sprintf("\tlet %s = %s", paramName, evt),
+		fmt.Sprintf("\tvoid %s", paramName),
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range translateIRMutation(stmt, &subScope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {

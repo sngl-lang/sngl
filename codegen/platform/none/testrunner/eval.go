@@ -577,6 +577,24 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	receiverName := call.Func.Receiver
 	qualName := receiverName + "." + method
 
+	// error.raise: construct an ErrorEvent payload and bubble a RaisedError
+	// up the Go error chain. The originating CallStmt's ErrorMode then
+	// routes it into the resolved handler (or propagates).
+	if qualName == "error.raise" {
+		evt := map[string]any{"message": "", "kind": ""}
+		if len(call.Args) >= 1 {
+			if v, err := env.Eval(call.Args[0].Value); err == nil {
+				evt["message"] = v
+			}
+		}
+		if len(call.Args) >= 2 {
+			if v, err := env.Eval(call.Args[1].Value); err == nil {
+				evt["kind"] = v
+			}
+		}
+		return nil, &RaisedError{Event: evt}
+	}
+
 	// Alert/File namespaces: static-only, receiver-less logging.
 	switch qualName {
 	case "Alert.toast":

@@ -85,6 +85,11 @@ func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string {
 		target := kc.evalMutTarget(n.Target)
 		return []string{target + " = !" + target}
 	case *ir.CallStmt:
+		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+			if lines := kc.evalErrorAwareCall(n.Call); lines != nil {
+				return lines
+			}
+		}
 		return []string{kc.EvalExpr(n.Call)}
 	case *ir.Emit:
 		name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
@@ -209,6 +214,72 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// evalErrorAwareCall emits Kotlin statements for a fallible call whose
+// error handler was resolved by effect analysis. Only error.raise is
+// recognised in MVP; returns nil otherwise (callers fall back to normal
+// expression emission).
+func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
+	if call == nil || call.Func == nil {
+		return nil
+	}
+	if !ktIsRaiseFunc(call.Func) {
+		return nil
+	}
+	msg := `""`
+	kind := `""`
+	if len(call.Args) >= 1 {
+		msg = kc.EvalExpr(call.Args[0].Value)
+	}
+	if len(call.Args) >= 2 {
+		kind = kc.EvalExpr(call.Args[1].Value)
+	}
+	evt := fmt.Sprintf("ErrorEvent(%s, %s)", msg, kind)
+
+	switch call.ErrorMode {
+	case ir.ErrorPropagateNative, ir.ErrorBubble:
+		return []string{"throw RuntimeException(" + msg + ")"}
+	case ir.ErrorInvokeAndTerminate:
+		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
+			return []string{"throw RuntimeException(" + msg + ")"}
+		}
+		return kc.emitHandlerInvoke(evt, call.ResolvedHandler)
+	case ir.ErrorPerCall:
+		if call.ErrorHandler == nil || call.ErrorHandler.Func == nil {
+			return []string{"val _e = " + evt}
+		}
+		return kc.emitHandlerInvoke(evt, call.ErrorHandler)
+	}
+	return nil
+}
+
+func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
+	paramName := "e"
+	if handler.Func != nil && len(handler.Func.Params) > 0 {
+		paramName = handler.Func.Params[0].Name
+	}
+	lines := []string{
+		"run {",
+		fmt.Sprintf("\tval %s = %s", paramName, evt),
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range kc.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+func ktIsRaiseFunc(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	if fn.Intrinsic == "ErrorRaise" {
+		return true
+	}
+	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
 func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {

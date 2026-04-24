@@ -67,7 +67,38 @@ type Call struct {
 	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
 	Receiver Expr      // non-nil only for namespace/component/element-ref calls
 	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
+
+	// Error handling. These are set by the checker + effect analysis.
+	// ErrorHandler is an inline `@error(e) { ... }` attached to this call
+	// site. ResolvedHandler is the handler this call's errors route to —
+	// either ErrorHandler (per-call), or the nearest enclosing
+	// errorBoundary, or the enclosing window's @error. Mode selects the
+	// callsite lowering form.
+	ErrorHandler    *EventHandler
+	ResolvedHandler *EventHandler
+	ErrorMode       ErrorMode
 }
+
+// ErrorMode describes how a fallible call's error is lowered at the callsite.
+type ErrorMode int
+
+const (
+	// ErrorNone means the call cannot raise — no wrapping needed.
+	ErrorNone ErrorMode = iota
+	// ErrorPerCall means an inline @error handler absorbs the error and
+	// execution continues after the handler body.
+	ErrorPerCall
+	// ErrorBubble means the enclosing function is itself fallible; the
+	// error bubbles up its return channel unchanged.
+	ErrorBubble
+	// ErrorInvokeAndTerminate means a boundary or window handler was
+	// resolved as the target; codegen invokes that handler and terminates
+	// the current event-handler scope.
+	ErrorInvokeAndTerminate
+	// ErrorPropagateNative means no handler is reachable — codegen emits
+	// the target language's native throw (panic / throw).
+	ErrorPropagateNative
+)
 
 // CallArg is a resolved argument in a function call.
 type CallArg struct {

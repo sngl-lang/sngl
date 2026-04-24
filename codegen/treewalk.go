@@ -55,6 +55,8 @@ func (tw *TreeWalker) walkStmt(s ir.Stmt) {
 		tw.WalkStmts(n.Body)
 	case *ir.SlotInst:
 		tw.Visitor.VisitSlot(n)
+	case *ir.ErrorBoundary:
+		tw.WalkStmts(n.Children)
 	}
 }
 

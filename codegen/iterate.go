@@ -169,6 +169,8 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Body, fn, depth)
 		case *ir.SlotInst:
 			walkVisual(n.Children, fn, depth)
+		case *ir.ErrorBoundary:
+			walkVisual(n.Children, fn, depth)
 		}
 	}
 }

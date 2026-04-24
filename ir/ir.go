@@ -73,6 +73,7 @@ type Func struct {
 	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
 	HasContextArg  bool
 	HasErrorReturn bool
+	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
 	Unusable       string
 }
 
@@ -144,19 +145,24 @@ type EventHandler struct {
 	AST  *ast.EventHandler
 	Name string
 	Func *Func
+	// CanError is set by effect analysis when the handler body may raise
+	// or calls a function that may raise. Codegen uses this to decide
+	// whether to emit error-propagation scaffolding for this handler.
+	CanError bool
 }
 
 // Window represents a window declaration at the root or component level.
 type Window struct {
-	AST     *ast.VisualNode
-	Name    string
-	Href    Expr // checked href expression (folded during optimization)
-	Title   Expr // checked title expression
-	Favicon Expr // checked favicon expression
-	Vars    []*Var
-	Funcs   []*Func
-	Body    []Stmt // type-checked body statements
-	Checked bool   // true if body was already checked in context (e.g., inside a for-loop)
+	AST          *ast.VisualNode
+	Name         string
+	Href         Expr // checked href expression (folded during optimization)
+	Title        Expr // checked title expression
+	Favicon      Expr // checked favicon expression
+	Vars         []*Var
+	Funcs        []*Func
+	Body         []Stmt        // type-checked body statements
+	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
+	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window
 }
 
 func (w *Window) SymName() string { return w.Name }

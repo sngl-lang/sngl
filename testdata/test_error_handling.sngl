@@ -1,0 +1,43 @@
+// Fixtures for the error-handling feature: error.raise routes to the
+// nearest boundary or window handler, with per-call @error able to
+// absorb inline. Tests drive the `none` interpreter.
+
+component boundaryCatches {
+    var caught = ""
+    errorBoundary(@error(e) { caught = e.message }) {
+        button #go(text="Go", @click { error.raise("boom", "") })
+    }
+}
+
+func testBoundaryCatchesBubblesUp(t Test, c boundaryCatches) {
+    c.go.@click()
+    t.assert(c.caught == "boom")
+}
+
+component innerWinsOverOuter {
+    var innerCaught = ""
+    var outerCaught = ""
+    errorBoundary(@error(e) { outerCaught = e.message }) {
+        errorBoundary(@error(e) { innerCaught = e.message }) {
+            button #go(text="Go", @click { error.raise("pick-me", "classify") })
+        }
+    }
+}
+
+func testInnerBoundaryWins(t Test, c innerWinsOverOuter) {
+    c.go.@click()
+    t.assert(c.innerCaught == "pick-me")
+    t.assert(c.outerCaught == "")
+}
+
+component kindPropagates {
+    var k = ""
+    errorBoundary(@error(e) { k = e.kind }) {
+        button #go(text="Go", @click { error.raise("m", "validation") })
+    }
+}
+
+func testKindPropagates(t Test, c kindPropagates) {
+    c.go.@click()
+    t.assert(c.k == "validation")
+}

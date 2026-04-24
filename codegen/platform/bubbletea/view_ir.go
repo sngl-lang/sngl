@@ -169,6 +169,10 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		} else if vc.slotVar != "" {
 			vc.line(`%s = %s`, resultVar, vc.slotVar)
 		}
+	case *ir.ErrorBoundary:
+		for _, child := range s.Children {
+			vc.renderStmt(child, resultVar)
+		}
 	}
 }
 

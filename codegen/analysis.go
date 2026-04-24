@@ -128,6 +128,80 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 	return a
 }
 
+// PackageUsesErrorHandling reports whether the package contains any
+// error-handling construct (window/boundary @error, per-call handler,
+// raise or fallible call). Platforms use this to conditionally emit the
+// ErrorEvent type into their output since stdlib types aren't otherwise
+// materialised into user code.
+func PackageUsesErrorHandling(pkg *ir.Package) bool {
+	for _, w := range pkg.Windows {
+		if w.ErrorHandler != nil {
+			return true
+		}
+		if stmtsUseErrorHandling(w.Body) {
+			return true
+		}
+	}
+	for _, comp := range pkg.Components {
+		if stmtsUseErrorHandling(comp.Body) {
+			return true
+		}
+		for _, f := range comp.Funcs {
+			if f.CanError || stmtsUseErrorHandling(f.Block) {
+				return true
+			}
+		}
+	}
+	for _, f := range pkg.Funcs {
+		if f.CanError || stmtsUseErrorHandling(f.Block) {
+			return true
+		}
+	}
+	return false
+}
+
+func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		switch x := s.(type) {
+		case *ir.ErrorBoundary:
+			return true
+		case *ir.NodeInst:
+			for i := range x.Handlers {
+				if x.Handlers[i].CanError {
+					return true
+				}
+				if x.Handlers[i].Func != nil && stmtsUseErrorHandling(x.Handlers[i].Func.Block) {
+					return true
+				}
+			}
+			if stmtsUseErrorHandling(x.Children) {
+				return true
+			}
+		case *ir.CallStmt:
+			if x.Call != nil && x.Call.ErrorMode != ir.ErrorNone {
+				return true
+			}
+		case *ir.If:
+			if stmtsUseErrorHandling(x.Body) || stmtsUseErrorHandling(x.Else) {
+				return true
+			}
+		case *ir.For:
+			if stmtsUseErrorHandling(x.Body) || stmtsUseErrorHandling(x.Else) {
+				return true
+			}
+		case *ir.PlatformFilter:
+			if stmtsUseErrorHandling(x.Body) {
+				return true
+			}
+		case *ir.SlotInst:
+			if stmtsUseErrorHandling(x.Children) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // collectUsedIRStmts walks IR statements collecting used visual node names.
 func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 	for _, s := range stmts {
@@ -145,6 +219,8 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 			collectUsedIRStmts(n.Else, used)
 		case *ir.PlatformFilter:
 			collectUsedIRStmts(n.Body, used)
+		case *ir.ErrorBoundary:
+			collectUsedIRStmts(n.Children, used)
 		}
 	}
 }
@@ -278,6 +354,13 @@ func irStmtUsesAlert(s ir.Stmt) bool {
 		}
 	case *ir.For:
 		if irStmtsUseAlert(n.Body) || irStmtsUseAlert(n.Else) {
+			return true
+		}
+	case *ir.ErrorBoundary:
+		if irStmtsUseAlert(n.Children) {
+			return true
+		}
+		if n.Handler != nil && n.Handler.Func != nil && irStmtsUseAlert(n.Handler.Func.Block) {
 			return true
 		}
 	}

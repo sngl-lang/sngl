@@ -1093,6 +1093,11 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				positional++
 			}
 		case ast.EventHandler:
+			// Per-call @error handlers are extracted (with proper ErrorEvent
+			// defaulting on the param) by resolveCallStmt. Skip here.
+			if arg.Name == "error" {
+				continue
+			}
 			// Inline event handler — check body.
 			c.pushScope()
 			for _, p := range arg.Params.Params {
@@ -1307,7 +1312,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// on package/component instead of becoming a generic node instance.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			switch id.Name {
-			case "timer", "window", "output":
+			case "timer", "window", "output", "errorBoundary":
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
 					Target: id,
@@ -1521,10 +1526,21 @@ func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
 	case *ast.IdentExpr:
 		// Bare ident with an event handler — treat as element call so the
 		// handler body lands on an ir.NodeInst rather than disappearing.
+		// @error is the exception: it's a per-call error handler on a
+		// function call, not an element event. Skip the element-ref path
+		// when every handler is @error.
+		hasNonError := false
+		hasHandler := false
 		for _, a := range call.Args.Args {
-			if _, ok := a.(ast.EventHandler); ok {
-				return f.Name, "", true
+			if eh, ok := a.(ast.EventHandler); ok {
+				hasHandler = true
+				if eh.Name != "error" {
+					hasNonError = true
+				}
 			}
+		}
+		if hasHandler && hasNonError {
+			return f.Name, "", true
 		}
 	}
 	return "", "", false
@@ -1540,7 +1556,62 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 		// For conversions or other expression types, wrap in a Call.
 		call = &ir.Call{AST: x.Call, Type: exprType(callExpr)}
 	}
+	if x.Call != nil {
+		call.ErrorHandler = c.extractCallErrorHandler(x.Call)
+	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// extractCallErrorHandler finds an inline @error handler in a CallExpr's args
+// and returns it as a typed ir.EventHandler (param defaulted to ErrorEvent
+// when no annotation was given). Returns nil if no @error is attached.
+func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
+	for i := range call.Args.Args {
+		eh, ok := call.Args.Args[i].(ast.EventHandler)
+		if !ok || eh.Name != "error" {
+			continue
+		}
+		return c.buildErrorHandler(&eh)
+	}
+	return nil
+}
+
+// buildErrorHandler type-checks the body of an @error handler with the param
+// defaulted to the stdlib ErrorEvent struct when no explicit type was given.
+// Reports a diagnostic if the handler has more than one param or if the
+// declared type is not ErrorEvent.
+func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
+	errEvtType := c.errorEventType()
+	params := make([]*ir.Param, len(eh.Params.Params))
+	for i, p := range eh.Params.Params {
+		typ := c.resolveType(p.Type)
+		if typ == nil || typ.Kind == ir.TypeDyn {
+			typ = errEvtType
+		}
+		params[i] = &ir.Param{Name: p.Name, Type: typ}
+	}
+	if len(params) > 1 {
+		c.error(eh.Pos, "@error handler accepts at most one ErrorEvent parameter")
+	}
+	if len(params) == 1 && errEvtType != nil && !params[0].Type.IsAssignableTo(errEvtType) {
+		c.error(eh.Pos, "@error handler parameter must be ErrorEvent, got %s", params[0].Type)
+	}
+	fn := &ir.Func{Params: params}
+	c.pushScope()
+	for _, p := range params {
+		c.scope.Declare(p)
+	}
+	fn.Block = c.checkBlockIR(&eh.Body)
+	c.popScope()
+	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
+}
+
+// errorEventType returns the resolved stdlib ErrorEvent type, or nil if unavailable.
+func (c *checker) errorEventType() *ir.Type {
+	if sd, ok := c.symtab.Types["ErrorEvent"].(*ir.StructDef); ok {
+		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
+	}
+	return nil
 }
 
 // checkPlatformStmtIR type-checks a platform statement and returns IR.
@@ -1597,6 +1668,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	case "slot":
 		children := c.checkBlockIR(&vn.Block)
 		return &ir.SlotInst{AST: vn, Children: children}
+	case "errorBoundary":
+		return c.buildErrorBoundary(vn)
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.

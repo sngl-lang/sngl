@@ -500,6 +500,10 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		if syn := nodeFromIRCallStmt(n); syn != nil {
 			g.renderIRNode(b, syn, depth)
 		}
+	case *ir.ErrorBoundary:
+		for _, child := range n.Children {
+			g.renderIRStmt(b, child, depth)
+		}
 	}
 }
 

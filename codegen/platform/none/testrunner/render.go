@@ -68,6 +68,8 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 			}
 		case *ir.SlotInst:
 			env.collectByStmts(n.Children, id, out)
+		case *ir.ErrorBoundary:
+			env.collectByStmts(n.Children, id, out)
 		}
 	}
 }

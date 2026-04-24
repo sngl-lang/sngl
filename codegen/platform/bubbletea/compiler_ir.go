@@ -284,6 +284,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
+	// ErrorEvent is emitted when any error-handling construct is present.
+	// The stdlib defines the struct but codegen doesn't flow stdlib types
+	// into user output, so it needs to materialise here.
+	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
+		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
+	}
+
 	// Timer tick messages
 	for _, t := range info.Timers {
 		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
@@ -648,6 +655,8 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			emitIRButtonHandlersWalk(b, n.Else, info, gc, buttonIdx, checkboxIdx, forLoopVars)
 		case *ir.PlatformFilter:
 			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+		case *ir.ErrorBoundary:
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, buttonIdx, checkboxIdx, forLoopVars)
 		case *ir.NodeInst:
 			switch n.Name {
 			case "checkbox":

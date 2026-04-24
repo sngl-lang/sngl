@@ -37,6 +37,10 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		}
 	case *ir.SlotInst:
 		cc.line("slotContent()")
+	case *ir.ErrorBoundary:
+		for _, child := range s.Children {
+			cc.renderStmt(child)
+		}
 	}
 }
 

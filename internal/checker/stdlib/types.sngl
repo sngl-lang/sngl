@@ -104,8 +104,12 @@ struct ExpandEvent {}
 struct ResizeEvent {}
 struct MenuEvent {}
 struct LoadEvent {}
-struct ErrorEvent {}
+struct ErrorEvent {
+    message string
+    kind string
+}
 struct DateEvent {}
 
 struct Alert {}
 struct File {}
+struct error {}

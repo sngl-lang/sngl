@@ -264,6 +264,8 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			walkInstances(n.Body, fn)
 		case *ir.SlotInst:
 			walkInstances(n.Children, fn)
+		case *ir.ErrorBoundary:
+			walkInstances(n.Children, fn)
 		}
 	}
 }

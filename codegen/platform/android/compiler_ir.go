@@ -183,6 +183,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 		b.WriteString(")\n\n")
 	}
 
+	// ErrorEvent is emitted when any error-handling construct is present
+	// (see bubbletea comment). The stdlib struct is not flowed through
+	// user output, so materialise it here.
+	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
+		b.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
+	}
+
 	// Enum classes
 	for _, ed := range info.Enums {
 		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))

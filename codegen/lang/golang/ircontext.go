@@ -96,6 +96,11 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 		target := gc.evalMutTarget(n.Target)
 		return []string{target + " = !" + target}
 	case *ir.CallStmt:
+		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+			if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
+				return lines
+			}
+		}
 		return []string{gc.EvalExpr(n.Call)}
 	case *ir.Emit:
 		argStrs := make([]string, len(n.Args))
@@ -266,6 +271,96 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// evalErrorAwareCall emits Go statements for a fallible call whose error
+// handler was resolved by effect analysis. Returns nil when the call is not
+// specially handled (MVP: only error.raise is recognised) — the caller
+// falls back to the normal expression path.
+//
+// Output per mode, for error.raise(msg, kind):
+//   - ErrorPropagateNative: panic(ErrorEvent{...})
+//   - ErrorInvokeAndTerminate: create ErrorEvent, inline handler body, return
+//   - ErrorBubble: not yet supported (requires fallible-signature lowering)
+func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
+	if call == nil || call.Func == nil {
+		return nil
+	}
+	if !isGoRaiseFunc(call.Func) {
+		return nil
+	}
+	msg := `""`
+	kind := `""`
+	if len(call.Args) >= 1 {
+		msg = gc.EvalExpr(call.Args[0].Value)
+	}
+	if len(call.Args) >= 2 {
+		kind = gc.EvalExpr(call.Args[1].Value)
+	}
+	evt := fmt.Sprintf("ErrorEvent{Message: %s, Kind: %s}", msg, kind)
+
+	switch call.ErrorMode {
+	case ir.ErrorPropagateNative, ir.ErrorBubble:
+		// ErrorBubble would ideally thread the error up a fallible-signature
+		// return channel so a caller-provided handler can catch it. MVP has
+		// no fallible-signature lowering yet, so we conservatively emit a
+		// panic — any enclosing recover-based boundary would catch it, but
+		// since we don't emit recover either this effectively aborts. Users
+		// should put error.raise directly inside the handler where the
+		// boundary/window resolution can inline the handler body.
+		return []string{"panic(" + evt + ")"}
+	case ir.ErrorInvokeAndTerminate:
+		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
+			return []string{"panic(" + evt + ")"}
+		}
+		return gc.emitHandlerInvoke(evt, call.ResolvedHandler)
+	case ir.ErrorPerCall:
+		if call.ErrorHandler == nil || call.ErrorHandler.Func == nil {
+			return []string{"_ = " + evt}
+		}
+		return gc.emitHandlerInvoke(evt, call.ErrorHandler)
+	}
+	return nil
+}
+
+// emitHandlerInvoke produces the block that declares the event variable
+// (name from handler param) and inlines the handler body.
+//
+// The block is wrapped in a Go lexical block `{ ... }` so the variable
+// does not leak into the surrounding scope. Note: this does not currently
+// emit a `return` / `goto end` to terminate the enclosing handler scope —
+// statements following a raise still execute. Users should place
+// error.raise at the end of a handler body. Phase 2 will add a labeled
+// exit so terminate semantics are honoured.
+func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
+	paramName := "e"
+	if handler.Func != nil && len(handler.Func.Params) > 0 {
+		paramName = handler.Func.Params[0].Name
+	}
+	lines := []string{
+		"{",
+		fmt.Sprintf("\t%s := %s", paramName, evt),
+		fmt.Sprintf("\t_ = %s", paramName),
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range gc.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+// isGoRaiseFunc recognises the stdlib error.raise function as the special
+// user-raise primitive. Kept in sync with checker.isRaiseFunc.
+func isGoRaiseFunc(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	if fn.Intrinsic == "ErrorRaise" {
+		return true
+	}
+	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
 func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {

@@ -53,6 +53,14 @@ var Intrinsics = []IntrinsicDef{
 	// --- regex ---
 	{Name: "RegexMatches", Params: []*Param{{Name: "re", Type: TypRegex}, {Name: "s", Type: TypString}}, Return: TypBool},
 	{Name: "RegexFind", Params: []*Param{{Name: "re", Type: TypRegex}, {Name: "s", Type: TypString}}, Return: TypString},
+
+	// --- error ---
+	// ErrorRaise is recognised by effect analysis as the user-facing raise
+	// primitive. Codegen emits a target-appropriate error-propagation (never
+	// a normal function call) — the intrinsic name is the sentinel. Returns
+	// int purely to satisfy the expression-body forwarding in stdlib; the
+	// value is never used because every target lowers the call to an abort.
+	{Name: "ErrorRaise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}, Return: TypInt},
 }
 
 // AlertIntrinsics are platform-level intrinsics for dialog/toast operations.

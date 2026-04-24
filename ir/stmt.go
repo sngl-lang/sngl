@@ -50,6 +50,18 @@ type SlotInst struct {
 
 func (*SlotInst) stmtNode() {}
 
+// ErrorBoundary is a special-cased component that catches errors raised
+// in the event handlers and expressions of its children. Effect analysis
+// resolves each fallible call site beneath this node to Handler unless
+// an inner boundary or per-call handler takes precedence.
+type ErrorBoundary struct {
+	AST      *ast.VisualNode
+	Handler  *EventHandler // the @error handler; required
+	Children []Stmt
+}
+
+func (*ErrorBoundary) stmtNode() {}
+
 // Assign is a type-checked assignment statement.
 type Assign struct {
 	AST    *ast.AssignStmt

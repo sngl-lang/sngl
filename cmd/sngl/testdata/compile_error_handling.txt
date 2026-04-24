@@ -1,0 +1,48 @@
+# error.raise inside an @click handler under an errorBoundary lowers to an
+# inlined handler body in the bubbletea output; the ErrorEvent struct is
+# emitted because the package uses error handling.
+sngl compile --lang=go --platform=bubbletea --out=bb boundary.sngl
+stdout 'bb/model.go'
+exists bb/model.go
+grep 'type ErrorEvent struct' bb/model.go
+grep 'Message: "boom"' bb/model.go
+
+# error.raise with no enclosing handler lowers to a panic.
+sngl compile --lang=go --platform=bubbletea --out=unhandled unhandled.sngl
+grep 'panic\(ErrorEvent\{' unhandled/model.go
+
+# html-static target: the inlined handler body appears inside a try/throw-less
+# block-scope in the emitted JS. Propagate-native uses throw.
+sngl compile --lang=none --platform=html --out=htmlout unhandled.sngl
+grep 'throw Object.assign' htmlout/index.html
+
+-- boundary.sngl --
+output {
+    go() {
+        bubbletea
+    }
+}
+
+var lastErr = ""
+
+component main {
+    vbox {
+        errorBoundary(@error(e) { lastErr = e.message }) {
+            button(text="Go", @click { error.raise("boom", "") })
+        }
+        text(value=("Last: " + lastErr))
+    }
+}
+-- unhandled.sngl --
+output {
+    go() {
+        bubbletea
+    }
+    none() {
+        html
+    }
+}
+
+component main {
+    button(text="Go", @click { error.raise("unhandled", "") })
+}

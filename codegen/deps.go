@@ -277,6 +277,11 @@ func walkStmtDeps(s ir.Stmt, modelFields map[string]bool, deps map[string]bool) 
 			walkExprDeps(p.Value, modelFields, deps)
 		}
 		collectUsedIRStmtsDeps(n.Children, modelFields, deps)
+	case *ir.ErrorBoundary:
+		collectUsedIRStmtsDeps(n.Children, modelFields, deps)
+		if n.Handler != nil && n.Handler.Func != nil {
+			walkStmtsDeps(n.Handler.Func.Block, modelFields, deps)
+		}
 	}
 }
 

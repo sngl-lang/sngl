@@ -87,6 +87,11 @@ func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
 		target := jc.evalMutTarget(n.Target)
 		return []string{target + " = !" + target}
 	case *ir.CallStmt:
+		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+			if lines := jc.evalErrorAwareCall(n.Call); lines != nil {
+				return lines
+			}
+		}
 		return []string{jc.EvalExpr(n.Call)}
 	case *ir.Emit:
 		argStrs := make([]string, len(n.Args))
@@ -107,6 +112,77 @@ func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
 	default:
 		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+// evalErrorAwareCall emits JS statements for a fallible call whose error
+// handler was resolved by effect analysis. Mirrors the Go translator;
+// only error.raise is recognised in MVP. Returns nil to signal no
+// specialised emission (fallback to normal call path).
+func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
+	if call == nil || call.Func == nil {
+		return nil
+	}
+	if !jsIsRaiseFunc(call.Func) {
+		return nil
+	}
+	msg := `""`
+	kind := `""`
+	if len(call.Args) >= 1 {
+		msg = jc.EvalExpr(call.Args[0].Value)
+	}
+	if len(call.Args) >= 2 {
+		kind = jc.EvalExpr(call.Args[1].Value)
+	}
+	evt := fmt.Sprintf("{message: %s, kind: %s}", msg, kind)
+
+	switch call.ErrorMode {
+	case ir.ErrorPropagateNative, ir.ErrorBubble:
+		// ErrorBubble: no fallible-signature lowering in MVP. Throw so the
+		// enclosing scope (if any) surfaces the error natively.
+		return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+	case ir.ErrorInvokeAndTerminate:
+		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
+			return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+		}
+		return jc.emitHandlerInvoke(evt, call.ResolvedHandler)
+	case ir.ErrorPerCall:
+		if call.ErrorHandler == nil || call.ErrorHandler.Func == nil {
+			return []string{"void " + evt}
+		}
+		return jc.emitHandlerInvoke(evt, call.ErrorHandler)
+	}
+	return nil
+}
+
+// emitHandlerInvoke inlines the handler body in a JS block scope.
+// See Go emitHandlerInvoke docs — same MVP limitation on terminate.
+func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
+	paramName := "e"
+	if handler.Func != nil && len(handler.Func.Params) > 0 {
+		paramName = handler.Func.Params[0].Name
+	}
+	lines := []string{
+		"{",
+		fmt.Sprintf("\tlet %s = %s", paramName, evt),
+		fmt.Sprintf("\tvoid %s", paramName),
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range jc.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+func jsIsRaiseFunc(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	if fn.Intrinsic == "ErrorRaise" {
+		return true
+	}
+	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
 func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
