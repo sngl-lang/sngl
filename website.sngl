@@ -376,4 +376,13 @@ component main {
 			TutorialContent
 		}
 	}
+
+	// Stdlib package index — decl outline with links (links resolve to the
+	// existing per-component pages under /components/; type/enum/func pages
+	// would require runtime HTTP routes, not available in static build mode).
+	window(title="Stdlib — SNGL Docs", href="/docs/sngl/index.html", favicon=logo) {
+		PageLayout(title="Stdlib (sngl)", currentHref="/docs/sngl/index.html") {
+			docui.PackageIndex(path="sngl", hrefPrefix="/components/")
+		}
+	}
 }

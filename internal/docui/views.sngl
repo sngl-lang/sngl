@@ -1,0 +1,333 @@
+// View components for SNGL documentation. Each takes a plain-struct prop from
+// the lookup façade and renders it across bubbletea/html — no data fetching
+// inside the components themselves.
+import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
+
+// SummaryRow is one entry in a decl list: name + one-line doc. Renders as a
+// link in html when `href` is set; `active` highlights the current row.
+component SummaryRow(name = "", doc = "", href = "", active = false) {
+    hbox(style={gap=8, padding=4}) {
+        text(value=active ? "> " + name : "  " + name,
+             style={fontWeight=active ? "bold" : "normal", minWidth=140})
+        text(value=doc, style={color="#888"})
+    }
+
+    platform html {
+        html.li(class=active ? "doc-row active" : "doc-row") {
+            html.a(href=href, innerText=name, class="doc-row-name")
+            html.span(innerText=doc, class="doc-row-doc")
+        }
+    }
+}
+
+// PackageIndex renders the decl outline of a package: each group
+// (Components, Types, Enums, Constants, Data, Functions, Overrides, Platform
+// Types) becomes a header + list of SummaryRows. `hrefPrefix` lets callers
+// build per-decl links like "/p/sngl/" + name. `activeName` highlights the
+// current selection in the sidebar.
+component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
+    PackageIndexView(view=lookup.PackageIndex(path), hrefPrefix=hrefPrefix, activeName=activeName)
+}
+
+// PackageIndexView renders a prebuilt PackageView. Internal to docui — used by
+// PackageIndex and by EntryView when entry.kind == "index".
+component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName = "") {
+    vbox(style={gap=4, padding=8}) {
+        if view.title != "" {
+            text(value=view.title, style={fontSize=20, fontWeight="bold"})
+        }
+        if view.description != "" {
+            text(value=view.description, style={color="#888"})
+        }
+        if view.isNative && view.nativeImportPath != "" {
+            text(value="Import path: " + view.nativeImportPath,
+                 style={color="#888", fontFamily="monospace"})
+        }
+
+        if list.length(view.components) > 0 {
+            text(value="Components", style={fontWeight="bold", paddingTop=8})
+            for c = view.components {
+                SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
+            }
+        }
+        if list.length(view.types) > 0 {
+            text(value="Types", style={fontWeight="bold", paddingTop=8})
+            for t = view.types {
+                SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
+                for m = t.methods {
+                    SummaryRow(name="  ." + m.short, doc=m.doc, href=hrefPrefix + t.name + "/" + m.short)
+                }
+            }
+        }
+        if list.length(view.enums) > 0 {
+            text(value="Enums", style={fontWeight="bold", paddingTop=8})
+            for e = view.enums {
+                SummaryRow(name=e.name, doc=e.doc, href=hrefPrefix + e.name, active=e.name == activeName)
+            }
+        }
+        if list.length(view.constants) > 0 {
+            text(value="Constants", style={fontWeight="bold", paddingTop=8})
+            for c = view.constants {
+                SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
+            }
+        }
+        if list.length(view.data) > 0 {
+            text(value="Data", style={fontWeight="bold", paddingTop=8})
+            for d = view.data {
+                SummaryRow(name=d.name, doc=d.doc, href=hrefPrefix + d.name, active=d.name == activeName)
+            }
+        }
+        if list.length(view.functions) > 0 {
+            text(value="Functions", style={fontWeight="bold", paddingTop=8})
+            for f = view.functions {
+                SummaryRow(name=f.name, doc=f.doc, href=hrefPrefix + f.name, active=f.name == activeName)
+            }
+        }
+        if list.length(view.overrides) > 0 {
+            text(value="Platform Overrides", style={fontWeight="bold", paddingTop=8, color="#888"})
+            for o = view.overrides {
+                SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
+            }
+        }
+        if list.length(view.platformTypes) > 0 {
+            text(value="Platform Types", style={fontWeight="bold", paddingTop=8, color="#888"})
+            for t = view.platformTypes {
+                SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
+            }
+        }
+    }
+}
+
+// ComponentView renders a stdlib or user component's full page: header, doc,
+// props + events tables, children policy, and example source.
+component ComponentView(detail lookup.ComponentDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+        if detail.children != "" && detail.children != "none" {
+            text(value="Children: " + detail.children, style={color="#888"})
+        }
+        if list.length(detail.props) > 0 {
+            text(value="Properties", style={fontWeight="bold", paddingTop=8})
+            for p = detail.props {
+                hbox(style={gap=12, padding=2}) {
+                    text(value=p.name, style={fontFamily="monospace", minWidth=120})
+                    text(value=p.type, style={color="#58a6ff", minWidth=100})
+                    text(value=p.doc, style={color="#aaa"})
+                }
+            }
+        }
+        if list.length(detail.events) > 0 {
+            text(value="Events", style={fontWeight="bold", paddingTop=8})
+            for e = detail.events {
+                hbox(style={gap=12, padding=2}) {
+                    text(value="@" + e.name, style={fontFamily="monospace", minWidth=120})
+                    text(value=e.payload, style={color="#58a6ff"})
+                }
+            }
+        }
+        if list.length(detail.examples) > 0 {
+            text(value="Example", style={fontWeight="bold", paddingTop=8})
+            for src = detail.examples {
+                text(value=src, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
+                platform html {
+                    html.pre { html.code(class="language-sngl", innerText=src) }
+                }
+            }
+        }
+    }
+}
+
+// TypeView renders a struct type (fields + methods) or a primitive receiver
+// (methods only).
+component TypeView(detail lookup.TypeDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        if detail.isNative && detail.nativeName != "" {
+            text(value="Native: " + detail.nativeName,
+                 style={color="#888", fontFamily="monospace"})
+        }
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+        if list.length(detail.fields) > 0 {
+            text(value="Fields", style={fontWeight="bold", paddingTop=8})
+            for f = detail.fields {
+                hbox(style={gap=12, padding=2}) {
+                    text(value=f.name, style={fontFamily="monospace", minWidth=120})
+                    text(value=f.type, style={color="#58a6ff"})
+                }
+            }
+        }
+        if list.length(detail.methods) > 0 {
+            text(value="Methods", style={fontWeight="bold", paddingTop=8})
+            for m = detail.methods {
+                hbox(style={gap=12, padding=2}) {
+                    text(value=m.short, style={fontFamily="monospace", minWidth=120})
+                    text(value=m.doc, style={color="#aaa"})
+                }
+            }
+        }
+    }
+}
+
+// EnumView renders an enum's members.
+component EnumView(detail lookup.EnumDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+        if list.length(detail.members) > 0 {
+            text(value="Members", style={fontWeight="bold", paddingTop=8})
+            for m = detail.members {
+                text(value="• " + m.name, style={fontFamily="monospace"})
+            }
+        }
+    }
+}
+
+// FuncView renders a function's signature, params, and return type.
+component FuncView(detail lookup.FuncDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        if detail.signature != "" {
+            text(value=detail.signature, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
+        }
+        if detail.isNative && detail.nativeName != "" {
+            text(value="Native: " + detail.nativeName,
+                 style={color="#888", fontFamily="monospace"})
+        }
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+        if list.length(detail.params) > 0 {
+            text(value="Parameters", style={fontWeight="bold", paddingTop=8})
+            for p = detail.params {
+                hbox(style={gap=12, padding=2}) {
+                    text(value=p.name, style={fontFamily="monospace", minWidth=120})
+                    text(value=p.type, style={color="#58a6ff"})
+                }
+            }
+        }
+        if detail.returnType != "" {
+            text(value="Returns: " + detail.returnType, style={color="#888", paddingTop=4})
+        }
+    }
+}
+
+// ValueView renders a const or var declaration.
+component ValueView(detail lookup.ValueDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=(detail.isConst ? "const " : "var ") + detail.name,
+             style={fontSize=22, fontWeight="bold"})
+        if detail.type != "" {
+            text(value="Type: " + detail.type, style={color="#888", fontFamily="monospace"})
+        }
+        if detail.isNative && detail.nativeName != "" {
+            text(value="Native: " + detail.nativeName,
+                 style={color="#888", fontFamily="monospace"})
+        }
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+    }
+}
+
+// PropView renders a single component prop or event.
+component PropDocView(detail lookup.PropDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.componentName + "." + detail.name + (detail.isEvent ? " (event)" : ""),
+             style={fontSize=22, fontWeight="bold"})
+        if detail.type != "" {
+            text(value="Type: " + detail.type, style={color="#58a6ff"})
+        }
+        if detail.isEvent && detail.payload != "" {
+            text(value="Payload: " + detail.payload, style={color="#58a6ff"})
+        }
+        if list.length(detail.enumValues) > 0 {
+            text(value="Values:", style={fontWeight="bold", paddingTop=8})
+            for v = detail.enumValues {
+                text(value="• " + v, style={fontFamily="monospace"})
+            }
+        }
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+    }
+}
+
+// FieldDocView renders a single struct field.
+component FieldDocView(detail lookup.FieldDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.type + "." + detail.name,
+             style={fontSize=22, fontWeight="bold"})
+        if detail.expr != "" {
+            text(value="Type: " + detail.expr, style={color="#58a6ff"})
+        }
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+    }
+}
+
+// MemberDocView renders a single enum member.
+component MemberDocView(detail lookup.MemberDetailView) {
+    vbox(style={gap=8, padding=8}) {
+        text(value=detail.enumName + "." + detail.name,
+             style={fontSize=22, fontWeight="bold"})
+        if detail.doc != "" {
+            text(value=detail.doc)
+        }
+    }
+}
+
+// EntryView looks up the doc target by path + idents and dispatches on the
+// resulting kind. Callers pass strings only so no struct-typed arguments cross
+// the package boundary (sngl's checker resolves native Go types per import —
+// struct identity doesn't survive nested checker invocations).
+component EntryView(path = "", ident1 = "", ident2 = "",
+                    hrefPrefix = "", activeName = "") {
+    EntryViewInner(entry=lookup.Resolve(path, ident1, ident2),
+                   hrefPrefix=hrefPrefix, activeName=activeName)
+}
+
+// EntryViewInner is the dispatch body. Internal to docui — keeps struct args
+// inside a single .sngl file where native-type Decls are shared.
+component EntryViewInner(entry lookup.Entry, hrefPrefix = "", activeName = "") {
+    if !entry.found && entry.error != "" {
+        vbox(style={padding=8, gap=8}) {
+            text(value="Not found", style={fontWeight="bold"})
+            text(value=entry.error, style={color="#888"})
+        }
+    }
+    if entry.kind == "index" {
+        PackageIndexView(view=entry.index, hrefPrefix=hrefPrefix, activeName=activeName)
+    }
+    if entry.kind == "component" {
+        ComponentView(detail=entry.componentDoc)
+    }
+    if entry.kind == "type" {
+        TypeView(detail=entry.typeDoc)
+    }
+    if entry.kind == "enum" {
+        EnumView(detail=entry.enumDoc)
+    }
+    if entry.kind == "func" {
+        FuncView(detail=entry.funcDoc)
+    }
+    if entry.kind == "value" {
+        ValueView(detail=entry.valueDoc)
+    }
+    if entry.kind == "prop" {
+        PropDocView(detail=entry.propDoc)
+    }
+    if entry.kind == "field" {
+        FieldDocView(detail=entry.fieldDoc)
+    }
+    if entry.kind == "member" {
+        MemberDocView(detail=entry.memberDoc)
+    }
+}

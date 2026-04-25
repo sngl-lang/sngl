@@ -22,23 +22,34 @@ type GoImporter struct{}
 func (g *GoImporter) Scheme() string { return "go" }
 
 func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
-	pkgPath := strings.TrimPrefix(uri, "go://")
+	userPath := strings.TrimSpace(strings.TrimPrefix(uri, "go://"))
+	if userPath == "" {
+		return nil, fmt.Errorf("go scheme requires a package path (e.g. go://github.com/foo/bar)")
+	}
 
 	cfg := &packages.Config{
 		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
 		Dir:  dir,
 	}
-	pkgs, err := packages.Load(cfg, pkgPath)
+	pkgs, err := packages.Load(cfg, userPath)
 	if err != nil {
-		return nil, fmt.Errorf("loading Go package %q: %w", pkgPath, err)
+		return nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
 	}
 	if len(pkgs) == 0 {
-		return nil, fmt.Errorf("no Go package found for %q", pkgPath)
+		return nil, fmt.Errorf("no Go package found for %q", userPath)
 	}
 	if len(pkgs[0].Errors) > 0 {
-		return nil, fmt.Errorf("loading %q: %s", pkgPath, pkgs[0].Errors[0].Msg)
+		return nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
 	}
 
+	// Canonical import path — the loader resolves "./foo" or module-relative
+	// inputs to the full path. Field/return-type resolution compares against
+	// named.Obj().Pkg().Path() which uses the canonical form, so homePkg
+	// must too.
+	pkgPath := pkgs[0].Types.Path()
+	if pkgPath == "" {
+		pkgPath = userPath
+	}
 	scope := pkgs[0].Types.Scope()
 	pkgName := pkgs[0].Types.Name()
 

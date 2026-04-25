@@ -42,6 +42,12 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 			if f.Purity == ir.PurityPure {
 				continue
 			}
+			// Skip funcs the checker already flagged as unusable — variadic
+			// params, function-typed params, multi-value returns, etc. The
+			// WASM bridge would emit malformed Go for these.
+			if f.Unusable != "" {
+				continue
+			}
 			paramTypes := make([]string, len(f.Params))
 			for i, p := range f.Params {
 				paramTypes[i] = wasmTypeHint(p.Type)

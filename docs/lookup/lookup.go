@@ -178,6 +178,8 @@ type PackageRef struct {
 // The CLI typically calls this once at startup with its own cliResolver
 // constructor. Subsequent LookupIn(cwd, …) calls build a fresh resolver per
 // cwd via the factory.
+//
+//sngl:pure
 func RegisterResolver(f func(cwd string) checker.ImportResolver) { resolverFactory = f }
 
 var resolverFactory func(cwd string) checker.ImportResolver
@@ -186,6 +188,8 @@ var resolverFactory func(cwd string) checker.ImportResolver
 var ErrNotFound = errors.New("doc target not found")
 
 // Lookup is LookupIn scoped to the process cwd.
+//
+//sngl:pure
 func Lookup(path string, idents ...string) (Result, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -194,8 +198,21 @@ func Lookup(path string, idents ...string) (Result, error) {
 	return LookupIn(cwd, path, idents...)
 }
 
-// LookupIn resolves a doc path + ident chain against a specific cwd.
+// LookupIn resolves a doc path + ident chain against a specific cwd. Results
+// are memoized by (cwd, path, idents); call InvalidateCache after editing any
+// .sngl file the lookup may have read.
+//
+//sngl:pure
 func LookupIn(cwd, path string, idents ...string) (Result, error) {
+	if res, err, ok := cachedLookup(cwd, path, idents); ok {
+		return res, err
+	}
+	res, err := lookupInUncached(cwd, path, idents)
+	storeLookup(cwd, path, idents, res, err)
+	return res, err
+}
+
+func lookupInUncached(cwd, path string, idents []string) (Result, error) {
 	tgt, err := resolveTarget(cwd, path)
 	if err != nil {
 		return Result{}, err
@@ -210,6 +227,8 @@ func LookupIn(cwd, path string, idents ...string) (Result, error) {
 }
 
 // Index is IndexIn scoped to the process cwd.
+//
+//sngl:pure
 func Index() []PackageRef {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -219,8 +238,20 @@ func Index() []PackageRef {
 }
 
 // IndexIn enumerates the stdlib, the cwd's own package, and each aliased
-// import declared in the cwd's .sngl files.
+// import declared in the cwd's .sngl files. Results are memoized per cwd;
+// call InvalidateCache after editing imports or .sngl files in cwd.
+//
+//sngl:pure
 func IndexIn(cwd string) []PackageRef {
+	if v, ok := cachedIndex(cwd); ok {
+		return v
+	}
+	refs := indexInUncached(cwd)
+	storeIndex(cwd, refs)
+	return refs
+}
+
+func indexInUncached(cwd string) []PackageRef {
 	refs := []PackageRef{
 		{Title: filepath.Base(mustAbs(cwd)), Path: ".", Kind: PackageCurrent},
 		{Title: "sngl", Path: "sngl", Kind: PackageStdlib},

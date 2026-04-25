@@ -100,8 +100,106 @@ func collectWindows(stmts []ir.Stmt) []*ir.Window {
 
 // Components returns a ComponentCtx for each component in the package.
 func (ctx *CodegenCtx) Components() []*ComponentCtx {
-	out := make([]*ComponentCtx, 0, len(ctx.Pkg.Components))
-	for _, c := range ctx.Pkg.Components {
+	return componentsFor(ctx.Pkg.Components)
+}
+
+// AllComponents returns ComponentCtx entries for every user component that
+// is referenced from the main package's visual tree, including components
+// contributed by imported SNGL packages. Stdlib components and unreferenced
+// imports are excluded — codegen platforms render stdlib directly rather
+// than via generated methods.
+func (ctx *CodegenCtx) AllComponents() []*ComponentCtx {
+	reachable := collectReachableComponents(ctx.Pkg, ctx.Platform)
+	// Stable order: main package first (preserving declaration order), then
+	// imports reachable, each in declaration order.
+	var ordered []*ir.Component
+	seenOrdered := map[*ir.Component]bool{}
+	var walk func(pkg *ir.Package)
+	walk = func(pkg *ir.Package) {
+		if pkg == nil {
+			return
+		}
+		for _, c := range pkg.Components {
+			if reachable[c] && !seenOrdered[c] {
+				seenOrdered[c] = true
+				ordered = append(ordered, c)
+			}
+		}
+		for _, imp := range pkg.Imports {
+			if imp.Pkg != nil {
+				walk(imp.Pkg)
+			}
+		}
+	}
+	walk(ctx.Pkg)
+	return componentsFor(ordered)
+}
+
+// collectReachableComponents walks the main package's visual tree and returns
+// every user component reachable through NodeInst references — skipping
+// `platform X { … }` blocks whose guard doesn't match the target platform so
+// codegen doesn't emit methods for components that won't render (and may
+// pull in imports the target doesn't provide).
+func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Component]bool {
+	reachable := map[*ir.Component]bool{}
+	if pkg == nil {
+		return reachable
+	}
+	var walkStmts func(stmts []ir.Stmt)
+	walkStmts = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if n.Component != nil && !isStdlibComponentName(n.Component.Name) {
+					if !reachable[n.Component] {
+						reachable[n.Component] = true
+						walkStmts(n.Component.Body)
+					}
+				}
+				walkStmts(n.Children)
+			case *ir.If:
+				walkStmts(n.Body)
+				walkStmts(n.Else)
+			case *ir.For:
+				walkStmts(n.Body)
+			case *ir.PlatformFilter:
+				if platform == "" || n.Platform == "" || n.Platform == platform {
+					walkStmts(n.Body)
+				}
+			case *ir.Window:
+				walkStmts(n.Body)
+			}
+		}
+	}
+	for _, c := range pkg.Components {
+		if isStdlibComponentName(c.Name) {
+			continue
+		}
+		walkStmts(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		walkStmts(w.Body)
+	}
+	return reachable
+}
+
+// isStdlibComponentName reports names handled natively by each platform's
+// stdlib-component renderer rather than via user-component method emission.
+func isStdlibComponentName(name string) bool {
+	if name == "" {
+		return true
+	}
+	if len(name) > 5 && name[:5] == "sngl." {
+		return true
+	}
+	// Lowercase bare names are stdlib (vbox, hbox, text, input, …).
+	first := name[0]
+	return first >= 'a' && first <= 'z'
+}
+
+func componentsFor(comps []*ir.Component) []*ComponentCtx {
+	out := make([]*ComponentCtx, 0, len(comps))
+	for _, c := range comps {
 		cc := &ComponentCtx{
 			Component: c,
 			Props:     c.Props,
@@ -138,6 +236,19 @@ func (ctx *CodegenCtx) MainComponent() *ir.Component {
 func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
 	var out []*ComponentCtx
 	for _, cc := range ctx.Components() {
+		if cc.Component.Name != "main" {
+			out = append(out, cc)
+		}
+	}
+	return out
+}
+
+// AllNonMainComponents returns every reachable non-main component including
+// imported packages. Use in platforms that emit render methods per user
+// component (bubbletea).
+func (ctx *CodegenCtx) AllNonMainComponents() []*ComponentCtx {
+	var out []*ComponentCtx
+	for _, cc := range ctx.AllComponents() {
 		if cc.Component.Name != "main" {
 			out = append(out, cc)
 		}

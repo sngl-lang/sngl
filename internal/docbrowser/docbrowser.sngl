@@ -1,3 +1,7 @@
+// docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
+// renders the top-level main body; html route mode compiles the window
+// declarations inside the `platform html` guard. State (path + up to two
+// idents) is local to main — lookup re-runs on every render.
 output {
     go {
         bubbletea(package="docbrowser")
@@ -5,60 +9,206 @@ output {
     }
 }
 
-import "go://git.duckfam.us/jonathan/sngl/docs"
+import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
 
 component main {
-    var selectedIndex = 0
+    var path = "sngl"
+    var ident1 = ""
+    var ident2 = ""
 
-    func currentName() => docs.Components()[selectedIndex].name
-    func currentDoc() => docs.Components()[selectedIndex].doc
-    func currentTier() => docs.Components()[selectedIndex].tier
-    func currentChildren() => docs.Components()[selectedIndex].children
+    func entry() => lookup.Resolve(path, ident1, ident2)
 
-    // TUI layout (used by bubbletea)
-    hbox {
-        vbox(style={width=200, padding=8}) {
-            text(value="SNGL Components", style={fontWeight="bold"})
-            text(value="")
-            for index, comp = docs.Components() {
-                text(value=index == selectedIndex ? "> " + comp.name : "  " + comp.name)
+    // TUI body — single full-width page. The top row is the navigation bar
+    // (three bound inputs); below it we render whatever the current Entry
+    // resolves to. No sidebar.
+    vbox(style={padding=1}) {
+        hbox(style={gap=1}) {
+            input(:value=path, placeholder="import path")
+            input(:value=ident1, placeholder="decl")
+            input(:value=ident2, placeholder="field/prop")
+        }
+
+        if !entry().found && entry().error != "" {
+            vbox {
+                text(value="Not found", style={fontWeight="bold"})
+                text(value=entry().error, style={color="#888"})
             }
         }
-        vbox(style={padding=8}) {
-            text(value=currentName, style={fontWeight="bold"})
-            text(value="[" + currentTier() + "]")
-            text(value="")
-            text(value=currentDoc)
-            text(value="")
-            text(value="Children: " + currentChildren())
+
+        if entry().kind == "index" {
+            vbox {
+                text(value=entry().index.title, style={fontWeight="bold"})
+                text(value=entry().index.description, style={color="#aaa"})
+                if entry().index.isNative && entry().index.nativeImportPath != "" {
+                    text(value="Import: " + entry().index.nativeImportPath,
+                         style={color="#888", fontFamily="monospace"})
+                }
+                text(value="")
+
+                text(value="COMPONENTS", style={fontWeight="bold", color="#888"})
+                for c = entry().index.components {
+                    text(value="  " + c.name + " — " + c.doc)
+                }
+
+                text(value="")
+                text(value="TYPES", style={fontWeight="bold", color="#888"})
+                for t = entry().index.types {
+                    text(value="  " + t.name + " — " + t.doc)
+                }
+
+                text(value="")
+                text(value="ENUMS", style={fontWeight="bold", color="#888"})
+                for e = entry().index.enums {
+                    text(value="  " + e.name + " — " + e.doc)
+                }
+
+                text(value="")
+                text(value="FUNCTIONS", style={fontWeight="bold", color="#888"})
+                for f = entry().index.functions {
+                    text(value="  " + f.name + " — " + f.doc)
+                }
+
+                text(value="")
+                text(value="CONSTANTS", style={fontWeight="bold", color="#888"})
+                for c = entry().index.constants {
+                    text(value="  " + c.name + " — " + c.doc)
+                }
+
+                text(value="")
+                text(value="DATA", style={fontWeight="bold", color="#888"})
+                for d = entry().index.data {
+                    text(value="  " + d.name + " — " + d.doc)
+                }
+            }
+        }
+
+        if entry().kind == "component" {
+            vbox {
+                text(value=entry().componentDoc.name, style={fontWeight="bold"})
+                text(value=entry().componentDoc.doc)
+                text(value="PROPS", style={fontWeight="bold", color="#888"})
+                for p = entry().componentDoc.props {
+                    text(value="  " + p.name + "  " + p.type + "  " + p.doc)
+                }
+                text(value="EVENTS", style={fontWeight="bold", color="#888"})
+                for e = entry().componentDoc.events {
+                    text(value="  @" + e.name + "  " + e.payload)
+                }
+            }
+        }
+
+        if entry().kind == "type" {
+            vbox {
+                text(value=entry().typeDoc.name, style={fontWeight="bold"})
+                text(value=entry().typeDoc.doc)
+                text(value="FIELDS", style={fontWeight="bold", color="#888"})
+                for f = entry().typeDoc.fields {
+                    text(value="  " + f.name + "  " + f.type)
+                }
+                text(value="METHODS", style={fontWeight="bold", color="#888"})
+                for m = entry().typeDoc.methods {
+                    text(value="  ." + m.short + "  " + m.doc)
+                }
+            }
+        }
+
+        if entry().kind == "enum" {
+            vbox {
+                text(value=entry().enumDoc.name, style={fontWeight="bold"})
+                text(value=entry().enumDoc.doc)
+                for m = entry().enumDoc.members {
+                    text(value="  • " + m.name)
+                }
+            }
+        }
+
+        if entry().kind == "func" {
+            vbox {
+                text(value=entry().funcDoc.name, style={fontWeight="bold"})
+                text(value=entry().funcDoc.signature, style={fontFamily="monospace"})
+                text(value=entry().funcDoc.doc)
+            }
+        }
+
+        if entry().kind == "value" {
+            vbox {
+                text(value=entry().valueDoc.name, style={fontWeight="bold"})
+                text(value=entry().valueDoc.type, style={color="#888"})
+                text(value=entry().valueDoc.doc)
+            }
+        }
+
+        if entry().kind == "prop" {
+            vbox {
+                text(value=entry().propDoc.componentName + "." + entry().propDoc.name,
+                     style={fontWeight="bold"})
+                text(value=entry().propDoc.type)
+                text(value=entry().propDoc.doc)
+            }
+        }
+
+        if entry().kind == "field" {
+            vbox {
+                text(value=entry().fieldDoc.type + "." + entry().fieldDoc.name,
+                     style={fontWeight="bold"})
+                text(value=entry().fieldDoc.expr)
+            }
+        }
+
+        if entry().kind == "member" {
+            vbox {
+                text(value=entry().memberDoc.enumName + "." + entry().memberDoc.name,
+                     style={fontWeight="bold"})
+                text(value=entry().memberDoc.doc)
+            }
         }
     }
 
-    // HTTP routes (used by http platform)
-    window #index(title="SNGL Documentation", href="/") {
-        hbox {
-            docui.Sidebar {
-                for comp = docs.Components() {
-                    docui.NavItem(text=comp.name, href="/" + comp.name)
+    // HTTP route mode (sngl doc --http). docui.EntryView + Sidebar handle
+    // cross-platform styling for the web surface.
+    platform html {
+        window #home(title="SNGL Docs", href="/") {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for p = lookup.Packages() {
+                        docui.NavItem(text=p.title, href="/p/" + p.path)
+                    }
                 }
-            }
-            vbox(style={padding=24, gap=16}) {
-                text(value="SNGL Documentation", style={fontSize=24, fontWeight="bold"})
-                text(value="Select a component from the sidebar.")
+                vbox(style={padding=24, flex=1}) {
+                    text(value="SNGL Documentation",
+                         style={fontSize=28, fontWeight="bold"})
+                    docui.EntryView(path="sngl")
+                }
             }
         }
-    }
 
-    window #detail(title="Component — SNGL Docs", href="/{name}") {
-        hbox {
-            docui.Sidebar {
-                for comp = docs.Components() {
-                    docui.NavItem(text=comp.name, href="/" + comp.name, active=comp.name == name)
+        window #pkg(title="Package — SNGL Docs", href="/p/{pkg}") {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for p = lookup.Packages() {
+                        docui.NavItem(text=p.title, href="/p/" + p.path,
+                                      active=p.path == pkg)
+                    }
+                }
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(path=pkg, hrefPrefix="/p/" + pkg + "/")
                 }
             }
-            vbox(style={padding=24}) {
-                docui.Detail(name=name)
+        }
+
+        window #decl(title="Decl — SNGL Docs", href="/p/{pkg}/{name}") {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for p = lookup.Packages() {
+                        docui.NavItem(text=p.title, href="/p/" + p.path,
+                                      active=p.path == pkg)
+                    }
+                }
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(path=pkg, ident1=name,
+                                    hrefPrefix="/p/" + pkg + "/")
+                }
             }
         }
     }
