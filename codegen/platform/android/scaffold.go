@@ -19,6 +19,17 @@ type templateData struct {
 	Color           string // e.g. "#6750A4" (empty if not set)
 	Gradle          bool   // true for Gradle scaffold
 	HasGoLib        bool   // true when Go module (golib.aar) is included
+	// Activities, when non-empty, replaces the default MainActivity
+	// declaration in AndroidManifest.xml with one entry per element.
+	// Used by batch snapshot to declare N activities in a single APK.
+	Activities []ManifestActivity
+}
+
+// ManifestActivity describes one <activity> entry to emit into the manifest
+// when batch-snapshotting. Exactly one entry should have IsLauncher=true.
+type ManifestActivity struct {
+	Name       string
+	IsLauncher bool
 }
 
 func newTemplateData(cfg Config) templateData {
@@ -80,6 +91,25 @@ func directBuildFiles(cfg Config) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.Gradle = false
 	return codegen.RenderTemplates(templateFS, "templates", data)
+}
+
+// directBuildFilesWithActivities is the batch-snapshot variant of
+// directBuildFiles: the manifest declares the given Activities (instead of a
+// single default MainActivity) and the canonical MainActivity.kt is omitted —
+// callers emit per-doc Activity sources separately.
+func directBuildFilesWithActivities(cfg Config, activities []ManifestActivity) []*codegen.OutputFile {
+	data := newTemplateData(cfg)
+	data.Gradle = false
+	data.Activities = activities
+	files := codegen.RenderTemplates(templateFS, "templates", data)
+	out := files[:0]
+	for _, f := range files {
+		if f.Name == "MainActivity.kt" {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 func appLabel(cfg Config) string {

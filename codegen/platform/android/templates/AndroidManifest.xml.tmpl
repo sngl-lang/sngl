@@ -13,6 +13,20 @@
 {{- end}}
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+{{- if .Activities}}
+{{- range .Activities}}
+        <activity
+            android:name=".{{.Name}}"
+            android:exported="true">
+{{- if .IsLauncher}}
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+{{- end}}
+        </activity>
+{{- end}}
+{{- else}}
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -21,5 +35,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+{{- end}}
     </application>
 </manifest>

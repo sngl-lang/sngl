@@ -264,18 +264,46 @@ func hasDevice() bool {
 
 // waitForFocus polls until the given package's activity holds window focus,
 // or the timeout elapses. This guards against screenshots taken before the
-// app has fully launched (e.g. on a cold-booted emulator).
-func waitForFocus(pkg string, timeout time.Duration) error {
+// app has fully launched (e.g. on a cold-booted emulator). When activityHint
+// is non-empty, it also requires the focused window's name to contain the
+// hint — used by batch snapshot to distinguish successive activities in the
+// same package, since the previous activity's window can linger in dumpsys
+// for a tick after force-stop.
+func waitForFocus(pkg, activityHint string, timeout time.Duration) error {
 	adb, _ := androidTool("adb")
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		out, err := exec.Command(adb, "shell", "dumpsys", "window").Output()
-		if err == nil && strings.Contains(string(out), "mCurrentFocus=Window{") && strings.Contains(string(out), pkg) {
-			return nil
+		if err == nil {
+			s := string(out)
+			if focused := extractFocusWindow(s); strings.Contains(focused, pkg) {
+				if activityHint == "" || strings.Contains(focused, activityHint) {
+					return nil
+				}
+			}
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
+	}
+	if activityHint != "" {
+		return fmt.Errorf("timed out waiting for %s/%s to gain focus", pkg, activityHint)
 	}
 	return fmt.Errorf("timed out waiting for %s to gain focus", pkg)
+}
+
+// extractFocusWindow returns the contents of the first
+// `mCurrentFocus=Window{...}` line in dumpsys window output. Returns "" if
+// no such line is found.
+func extractFocusWindow(s string) string {
+	const marker = "mCurrentFocus=Window{"
+	i := strings.Index(s, marker)
+	if i < 0 {
+		return ""
+	}
+	rest := s[i+len(marker):]
+	if j := strings.Index(rest, "}"); j >= 0 {
+		return rest[:j]
+	}
+	return rest
 }
 
 func pickAVD() (string, error) {

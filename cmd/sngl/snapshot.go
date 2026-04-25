@@ -158,7 +158,10 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 	}
 
 	// Main app: if the file has an output {} block, snapshot it too.
-	if len(platforms) > 0 {
+	// Without this guard, stdlib-style files (lib/components.sngl, etc.) that
+	// hold only component definitions would be added as a main doc and fail
+	// to type-check.
+	if len(platforms) > 0 && strings.Contains(string(data), "output {") {
 		basename := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if !force && snapshotAllExist(effectiveOutDir, basename, platforms) {
 			for _, plat := range platforms {

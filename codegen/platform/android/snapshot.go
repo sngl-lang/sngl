@@ -3,6 +3,7 @@ package android
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,37 +85,65 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		exec.Command(adb, "uninstall", appPkg).Run()
 	}()
 
+	return launchAndCapture(adb, appPkg, appPkg+"/.MainActivity")
+}
+
+// activityHintFromFQCN extracts the activity short name from "pkg/.Activity"
+// or "pkg/pkg.Activity" forms so it can be matched against dumpsys focus.
+func activityHintFromFQCN(fqcn string) string {
+	if i := strings.Index(fqcn, "/"); i >= 0 {
+		rest := fqcn[i+1:]
+		if strings.HasPrefix(rest, ".") {
+			return rest[1:]
+		}
+		if j := strings.LastIndex(rest, "."); j >= 0 {
+			return rest[j+1:]
+		}
+		return rest
+	}
+	return ""
+}
+
+// launchAndCapture starts the activity at activityFQCN, waits for the package
+// to gain window focus, sanity-checks that the app process didn't crash, then
+// captures a PNG via screencap. Used by both single Snapshot and BatchSnapshot.
+func launchAndCapture(adb, pkg, activityFQCN string) ([]byte, error) {
 	// Clear logcat so any crash we surface below is from this run.
 	exec.Command(adb, "logcat", "-c").Run()
 
-	if err := adbLaunch(appPkg); err != nil {
-		return nil, err
+	slog.Info("exec", "cmd", "adb launch", "activity", activityFQCN)
+	launch := exec.Command(adb, "shell", "am", "start", "-n", activityFQCN)
+	launch.Stdout = os.Stdout
+	launch.Stderr = os.Stderr
+	if err := launch.Run(); err != nil {
+		return nil, fmt.Errorf("am start %s: %w", activityFQCN, err)
 	}
 
 	// Wait for our activity to reach the foreground, then give Compose
-	// a moment to finish its first frame.
-	focusErr := waitForFocus(appPkg, 15*time.Second)
+	// a moment to finish its first frame. The activity hint disambiguates
+	// successive same-package launches in batch mode (the previous
+	// activity's window can linger in dumpsys for a tick).
+	hint := activityHintFromFQCN(activityFQCN)
+	focusErr := waitForFocus(pkg, hint, 15*time.Second)
 
 	// Verify the app process is still alive — without this, a crashed app
 	// would screenshot the home screen and we'd silently capture garbage.
-	if !isProcessAlive(adb, appPkg) {
-		trace := fetchCrashLog(adb, appPkg)
+	if !isProcessAlive(adb, pkg) {
+		trace := fetchCrashLog(adb, pkg)
 		if trace == "" {
 			trace = "(no AndroidRuntime crash trace found in logcat)"
 		}
-		return nil, fmt.Errorf("app %s crashed before snapshot:\n%s", appPkg, trace)
+		return nil, fmt.Errorf("app %s crashed before snapshot:\n%s", pkg, trace)
 	}
 	if focusErr != nil {
 		return nil, focusErr
 	}
 	time.Sleep(2 * time.Second)
 
-	// Capture screenshot.
 	png, err := exec.Command(adb, "exec-out", "screencap", "-p").Output()
 	if err != nil {
 		return nil, fmt.Errorf("capturing screenshot: %w", err)
 	}
-
 	return png, nil
 }
 
