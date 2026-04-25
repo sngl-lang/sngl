@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -83,14 +84,28 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		exec.Command(adb, "uninstall", appPkg).Run()
 	}()
 
+	// Clear logcat so any crash we surface below is from this run.
+	exec.Command(adb, "logcat", "-c").Run()
+
 	if err := adbLaunch(appPkg); err != nil {
 		return nil, err
 	}
 
 	// Wait for our activity to reach the foreground, then give Compose
 	// a moment to finish its first frame.
-	if err := waitForFocus(appPkg, 15*time.Second); err != nil {
-		return nil, err
+	focusErr := waitForFocus(appPkg, 15*time.Second)
+
+	// Verify the app process is still alive — without this, a crashed app
+	// would screenshot the home screen and we'd silently capture garbage.
+	if !isProcessAlive(adb, appPkg) {
+		trace := fetchCrashLog(adb, appPkg)
+		if trace == "" {
+			trace = "(no AndroidRuntime crash trace found in logcat)"
+		}
+		return nil, fmt.Errorf("app %s crashed before snapshot:\n%s", appPkg, trace)
+	}
+	if focusErr != nil {
+		return nil, focusErr
 	}
 	time.Sleep(2 * time.Second)
 
@@ -101,4 +116,41 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 	}
 
 	return png, nil
+}
+
+// isProcessAlive reports whether the given package's process is currently
+// running on the connected device.
+func isProcessAlive(adb, pkg string) bool {
+	out, err := exec.Command(adb, "shell", "pidof", pkg).Output()
+	if err != nil {
+		return false
+	}
+	return len(strings.TrimSpace(string(out))) > 0
+}
+
+// fetchCrashLog returns the most recent AndroidRuntime FATAL EXCEPTION block
+// from logcat. Caller should clear logcat before launch so this returns only
+// crashes from the current run.
+func fetchCrashLog(adb, pkg string) string {
+	out, err := exec.Command(adb, "logcat", "-d", "-v", "time").Output()
+	if err != nil {
+		return ""
+	}
+	var trace []string
+	capture := false
+	for _, line := range strings.Split(string(out), "\n") {
+		isRuntime := strings.Contains(line, "AndroidRuntime")
+		if isRuntime && strings.Contains(line, "FATAL EXCEPTION") {
+			capture = true
+			trace = trace[:0]
+		}
+		if !capture {
+			continue
+		}
+		if !isRuntime {
+			break
+		}
+		trace = append(trace, line)
+	}
+	return strings.Join(trace, "\n")
 }

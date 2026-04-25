@@ -178,7 +178,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 			if i == len(sd.Fields)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&b, "    val %s: %s%s%s\n", f.Name, ktType, def, comma)
+			fmt.Fprintf(&b, "    var %s: %s%s%s\n", f.Name, ktType, def, comma)
 		}
 		b.WriteString(")\n\n")
 	}
@@ -216,8 +216,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 	for _, bind := range info.binds {
 		if bind.isList {
 			elemType := listElementTypeKt(bind.ktType)
-			if bind.init != "" {
-				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, bind.init)
+			elems := bind.init
+			if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
+				elems = elems[len("listOf(") : len(elems)-1]
+			}
+			if elems != "" {
+				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
 			} else {
 				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
 			}

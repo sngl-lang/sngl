@@ -212,28 +212,27 @@ func (tc *toolchain) findComposePlugin() error {
 
 func (tc *toolchain) findComposeJars() error {
 	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	if dirExists(cacheDir) {
-		jars := findJars(cacheDir, "")
-		// Check if we also have AARs (needed for resource extraction).
-		// If only JARs exist (from Gradle cache extraction), re-download.
-		aars, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-		if len(jars) > 0 && len(aars) > 0 {
-			tc.ComposeJars = jars
-			return nil
-		}
-	}
-
-	// Try to extract JARs from the Gradle module cache first — this
-	// captures the full transitive dependency tree from a prior Gradle build.
-	if extracted := extractFromGradleCache(cacheDir); len(extracted) > 0 {
-		// Also download AARs for resource extraction if not present
-		tc.ComposeJars = extracted
-		tc.ensureAARs(cacheDir)
-		return nil
-	}
-
-	fmt.Fprintf(os.Stderr, "sngl: downloading Compose libraries...\n")
 	os.MkdirAll(cacheDir, 0o755)
+
+	// Seed from Gradle cache if available — captures the transitive
+	// dependency tree from a prior Gradle build.
+	extractFromGradleCache(cacheDir)
+	tc.ensureAARs(cacheDir)
+
+	// Always run the explicit artifact download list to fill gaps. Each
+	// download is a no-op if the JAR/AAR is already cached.
+	if err := tc.downloadComposeArtifacts(cacheDir); err != nil {
+		return err
+	}
+
+	tc.ComposeJars = findJars(cacheDir, "")
+	if len(tc.ComposeJars) == 0 {
+		return fmt.Errorf("no Compose libraries found after download")
+	}
+	return nil
+}
+
+func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
 
 	// Compose KMP artifacts use "-android" suffix for the Android variant.
 	// The base artifact (e.g. "runtime") is a near-empty stub; the real
@@ -247,6 +246,7 @@ func (tc *toolchain) findComposeJars() error {
 	arts := []artifact{
 		// Compose runtime & UI (KMP — need -android suffix)
 		{"androidx.compose.runtime", "runtime", composeVersion, true, false},
+		{"androidx.compose.runtime", "runtime-saveable", composeVersion, true, false},
 		{"androidx.compose.ui", "ui", composeVersion, true, false},
 		{"androidx.compose.ui", "ui-geometry", composeVersion, true, false},
 		{"androidx.compose.ui", "ui-graphics", composeVersion, true, false},
@@ -257,6 +257,7 @@ func (tc *toolchain) findComposeJars() error {
 		{"androidx.compose.foundation", "foundation-layout", composeVersion, true, false},
 		{"androidx.compose.animation", "animation", composeVersion, true, false},
 		{"androidx.compose.animation", "animation-core", composeVersion, true, false},
+		{"androidx.compose.material", "material-ripple", composeVersion, true, false},
 		{"androidx.compose.material3", "material3", "1.3.1", true, false},
 		// AndroidX (not KMP — no -android suffix, but still AAR)
 		{"androidx.activity", "activity-compose", "1.9.3", false, false},
@@ -264,22 +265,31 @@ func (tc *toolchain) findComposeJars() error {
 		{"androidx.activity", "activity", "1.9.3", false, false},
 		{"androidx.core", "core", "1.15.0", false, false},
 		{"androidx.core", "core-ktx", "1.15.0", false, false},
-		{"androidx.lifecycle", "lifecycle-common", "2.8.7", false, true},
+		{"androidx.lifecycle", "lifecycle-common-jvm", "2.8.7", false, true},
 		{"androidx.lifecycle", "lifecycle-runtime", "2.8.7", true, false},
 		{"androidx.lifecycle", "lifecycle-runtime-ktx", "2.8.7", true, false},
+		{"androidx.lifecycle", "lifecycle-runtime-compose", "2.8.7", true, false},
 		{"androidx.lifecycle", "lifecycle-viewmodel", "2.8.7", true, false},
 		{"androidx.lifecycle", "lifecycle-viewmodel-compose", "2.8.7", true, false},
-		{"androidx.savedstate", "savedstate", "1.2.1", true, false},
-		{"androidx.savedstate", "savedstate-ktx", "1.2.1", true, false},
+		{"androidx.lifecycle", "lifecycle-viewmodel-savedstate", "2.8.7", false, false},
+		{"androidx.savedstate", "savedstate", "1.2.1", false, false},
+		{"androidx.savedstate", "savedstate-ktx", "1.2.1", false, false},
 		{"androidx.startup", "startup-runtime", "1.2.0", false, false},
+		{"androidx.emoji2", "emoji2", "1.4.0", false, false},
+		{"androidx.emoji2", "emoji2-views-helper", "1.4.0", false, false},
+		{"androidx.tracing", "tracing", "1.2.0", false, false},
+		{"androidx.tracing", "tracing-ktx", "1.2.0", false, false},
+		{"androidx.versionedparcelable", "versionedparcelable", "1.2.0", false, false},
 		{"androidx.profileinstaller", "profileinstaller", "1.4.1", false, false},
 		{"androidx.customview", "customview-poolingcontainer", "1.0.0", false, false},
 		{"androidx.annotation", "annotation", "1.9.1", false, true},
 		{"androidx.annotation", "annotation-jvm", "1.9.1", false, true},
 		{"androidx.collection", "collection-jvm", "1.4.5", false, true},
+		{"androidx.arch.core", "core-common", "2.2.0", false, true},
+		{"androidx.arch.core", "core-runtime", "2.2.0", false, false},
 		// Kotlinx
 		{"org.jetbrains.kotlinx", "kotlinx-coroutines-core-jvm", "1.9.0", false, true},
-		{"org.jetbrains.kotlinx", "kotlinx-coroutines-android", "1.9.0", false, false},
+		{"org.jetbrains.kotlinx", "kotlinx-coroutines-android", "1.9.0", false, true},
 	}
 
 	for _, a := range arts {
@@ -331,10 +341,6 @@ func (tc *toolchain) findComposeJars() error {
 		}
 	}
 
-	tc.ComposeJars = findJars(cacheDir, "")
-	if len(tc.ComposeJars) == 0 {
-		return fmt.Errorf("no Compose libraries found after download")
-	}
 	return nil
 }
 

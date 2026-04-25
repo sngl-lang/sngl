@@ -47,7 +47,13 @@ func (kc *KtIRContext) EvalExpr(e ir.Expr) string {
 		return "(if (" + cond + ") " + a + " else " + b + ")"
 	case *ir.Select:
 		operand := kc.EvalExpr(n.Operand)
-		return operand + "." + n.Field
+		field := n.Field
+		if field == "length" {
+			if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+				field = "size"
+			}
+		}
+		return operand + "." + field
 	case *ir.Index:
 		operand := kc.EvalExpr(n.Operand)
 		idx := kc.EvalExpr(n.Idx)
@@ -607,6 +613,10 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".contains(" + a(1) + ")"
 	case "list.length":
 		return a(0) + ".size"
+	case "list.push":
+		return a(0) + ".add(" + a(1) + ")"
+	case "list.remove":
+		return a(0) + ".removeAt(" + a(1) + ")"
 	case "list.join", "*.join":
 		return a(0) + ".joinToString(" + a(1) + ")"
 	case "list.filter", "*.filter":

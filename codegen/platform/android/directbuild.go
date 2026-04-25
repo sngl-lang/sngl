@@ -14,6 +14,14 @@ import (
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.
 // Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly → sign
 func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
+	// Ensure java/keytool/jarsigner are reachable for kotlinc, d8, signers.
+	if javaBin := javaPath(); javaBin != "java" {
+		jdkBin := filepath.Dir(javaBin)
+		if !strings.Contains(os.Getenv("PATH"), jdkBin) {
+			os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		}
+	}
+
 	outDir := filepath.Join(dir, "out")
 	os.MkdirAll(outDir, 0o755)
 
@@ -197,17 +205,8 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		return "", fmt.Errorf("no DEX files produced")
 	}
 
-	// Use zip to add dex files (aapt2 produced an APK without dex)
-	for _, dex := range dexFiles {
-		dexName := filepath.Base(dex)
-		addDex := exec.Command("zip", "-j", baseApk, dex)
-		addDex.Dir = dexDir
-		addDex.Stdout = os.Stderr
-		addDex.Stderr = os.Stderr
-		_ = dexName
-		if err := addDex.Run(); err != nil {
-			return "", fmt.Errorf("adding %s to APK: %w", dexName, err)
-		}
+	if err := addFilesToZip(baseApk, dexFiles); err != nil {
+		return "", fmt.Errorf("adding dex files to APK: %w", err)
 	}
 
 	// Step 4: Zipalign
@@ -689,12 +688,74 @@ func preDexLibraries(tc *toolchain, cacheDir string) []string {
 	return dexDirs
 }
 
+// addFilesToZip appends the given files (flattened, no path) to an existing zip archive.
+func addFilesToZip(zipPath string, files []string) error {
+	src, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	tmp := zipPath + ".tmp"
+	out, err := os.Create(tmp)
+	if err != nil {
+		src.Close()
+		return err
+	}
+	w := zip.NewWriter(out)
+	for _, f := range src.File {
+		fw, err := w.CreateHeader(&zip.FileHeader{Name: f.Name, Method: f.Method})
+		if err != nil {
+			src.Close()
+			out.Close()
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			src.Close()
+			out.Close()
+			return err
+		}
+		if _, err := io.Copy(fw, rc); err != nil {
+			rc.Close()
+			src.Close()
+			out.Close()
+			return err
+		}
+		rc.Close()
+	}
+	src.Close()
+	for _, fp := range files {
+		data, err := os.ReadFile(fp)
+		if err != nil {
+			out.Close()
+			return err
+		}
+		fw, err := w.Create(filepath.Base(fp))
+		if err != nil {
+			out.Close()
+			return err
+		}
+		if _, err := fw.Write(data); err != nil {
+			out.Close()
+			return err
+		}
+	}
+	if err := w.Close(); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, zipPath)
+}
+
 func runD8(tc *toolchain, args []string) error {
 	slog.Info("exec", "cmd", "d8")
+	javaBin := javaPath()
 	// d8 can be a jar or a wrapper script
 	if strings.HasSuffix(tc.D8, ".jar") {
 		javaArgs := append([]string{"-jar", tc.D8}, args...)
-		cmd := exec.Command("java", javaArgs...)
+		cmd := exec.Command(javaBin, javaArgs...)
 		cmd.Stdout = os.Stderr
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
@@ -702,7 +763,22 @@ func runD8(tc *toolchain, args []string) error {
 	cmd := exec.Command(tc.D8, args...)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(javaBin)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return cmd.Run()
+}
+
+// javaPath returns the path to the java binary, preferring JAVA_HOME, then PATH.
+func javaPath() string {
+	if home := os.Getenv("JAVA_HOME"); home != "" {
+		candidate := filepath.Join(home, "bin", "java")
+		if fileExists(candidate) {
+			return candidate
+		}
+	}
+	if p, err := exec.LookPath("java"); err == nil {
+		return p
+	}
+	return "java"
 }
 
 func copyFile(src, dst string) error {

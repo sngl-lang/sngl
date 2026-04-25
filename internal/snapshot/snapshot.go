@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -126,6 +127,13 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if err != nil {
 			return nil, err
 		}
+		if err := optimize.Optimize(pkg, &optimize.Config{
+			Platform: platform,
+			Language: lang,
+			Dir:      dir,
+		}); err != nil {
+			return nil, fmt.Errorf("optimize: %w", err)
+		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
@@ -152,6 +160,13 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	pkg, err := checkAndReturn(doc, dir)
 	if err != nil {
 		return nil, err
+	}
+	if err := optimize.Optimize(pkg, &optimize.Config{
+		Platform: platform,
+		Language: lang,
+		Dir:      dir,
+	}); err != nil {
+		return nil, fmt.Errorf("optimize: %w", err)
 	}
 	langT := codegen.LookupLang(lang)
 	if langT == nil {
@@ -309,6 +324,13 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
+			if err := optimize.Optimize(p.pkg, &optimize.Config{
+				Platform: platform,
+				Language: lang,
+				Dir:      filepath.Dir(p.entry.SourceFile),
+			}); err != nil {
+				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
+			}
 			png, err := snapshotter.Snapshot(p.pkg, langT, cfg.Width, cfg.Height)
 			if err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)

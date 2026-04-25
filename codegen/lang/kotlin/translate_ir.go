@@ -40,7 +40,13 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		return "(if (" + cond + ") " + a + " else " + b + ")"
 	case *ir.Select:
 		operand := translateIRExpr(n.Operand, scope)
-		return operand + "." + n.Field
+		field := n.Field
+		if field == "length" {
+			if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+				field = "size"
+			}
+		}
+		return operand + "." + field
 	case *ir.Index:
 		operand := translateIRExpr(n.Operand, scope)
 		idx := translateIRExpr(n.Idx, scope)
