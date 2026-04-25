@@ -36,7 +36,10 @@ func expandForWindows(pkg *ir.Package, ctx *evalCtx) {
 }
 
 // expandForStmt tries to expand a for-loop over a const iterable.
-// Returns nil if the iterable can't be evaluated.
+// Returns nil if the iterable can't be evaluated. A successful expansion to
+// zero items returns a non-nil empty slice — distinct from "couldn't
+// evaluate" — so the caller can drop the for-loop instead of leaving it for
+// codegen to choke on.
 func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	val, ok := evalExpr(fs.Iter, ctx)
 	if !ok {
@@ -51,7 +54,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	keyVar := findLoopVar(fs, fs.Key)
 	valueVar := findLoopVar(fs, fs.Value)
 
-	var result []ir.Stmt
+	result := make([]ir.Stmt, 0, len(items))
 	for i, item := range items {
 		// Create a child context with loop variables bound.
 		childCtx := &evalCtx{

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
@@ -51,12 +52,24 @@ type PackageView struct {
 	NativeImportPath string
 	Components       []Summary
 	Types            []TypeListEntry
+	TypeSummaries    []Summary // flat name+doc projection of Types, for plain-list renderers
 	Enums            []Summary
 	Constants        []Summary
 	Data             []Summary
 	Functions        []Summary
 	Overrides        []Summary
 	PlatformTypes    []Summary
+	// Has* booleans precomputed for SNGL `if` guards — lets the optimizer
+	// fold the section wrapper without needing to evaluate `list.length(…) > 0`
+	// against a struct-field list.
+	HasComponents    bool
+	HasTypes         bool
+	HasEnums         bool
+	HasConstants     bool
+	HasData          bool
+	HasFunctions     bool
+	HasOverrides    bool
+	HasPlatformTypes bool
 }
 
 // PropView is a component prop or event in list form.
@@ -179,6 +192,29 @@ type Entry struct {
 	MemberDoc    MemberDetailView
 }
 
+// PackageEntry names one package surfaced by the docs site (the stdlib plus
+// any platform/language with a non-empty Package()). Each entry's Path is a
+// valid first argument to Lookup / PackageIndex.
+type PackageEntry struct {
+	Path  string // "sngl", "android", "html", ...
+	Title string // display title, e.g. "Standard Library", "android"
+	Kind  string // "stdlib" | "platform" | "language"
+}
+
+// DeclPage is one generated documentation page for a decl. Pkg + Kind + Name
+// (+ optional Ident2) identify the lookup target; Href is the URL the website
+// uses to host the page; Body is the rendered HTML body to drop into the
+// page's article element.
+type DeclPage struct {
+	Pkg    string // "sngl", "android", ...
+	Kind   string // "components" | "types" | "enums" | "functions" | "constants" | "data" | "overrides" | "platform-types"
+	Name   string
+	Ident2 string // method name (for types) / member name (for enums); empty for top-level
+	Href   string // generated URL, e.g. "/docs/sngl/types/color/darken.html"
+	Title  string // page title
+	Body   string // rendered HTML body (already markdown-converted)
+}
+
 // --- Public sngl entry points ---
 
 // Packages lists every package reachable from the current working directory
@@ -197,6 +233,150 @@ func Packages() []PackageRefView {
 		}
 	}
 	return out
+}
+
+// StdlibPackages enumerates every package the docs site generates pages for:
+// the SNGL standard library plus each registered platform/language whose
+// Package() returns at least one document.
+//
+//sngl:pure
+func StdlibPackages() []PackageEntry {
+	out := []PackageEntry{{Path: "sngl", Title: "Standard Library", Kind: "stdlib"}}
+	plats := codegen.Platforms()
+	sort.Strings(plats)
+	for _, name := range plats {
+		p := codegen.LookupPlatform(name)
+		if p == nil || len(p.Package()) == 0 {
+			continue
+		}
+		out = append(out, PackageEntry{Path: name, Title: name, Kind: "platform"})
+	}
+	langs := codegen.Langs()
+	sort.Strings(langs)
+	for _, name := range langs {
+		l := codegen.LookupLang(name)
+		if l == nil || len(l.Package()) == 0 {
+			continue
+		}
+		out = append(out, PackageEntry{Path: name, Title: name, Kind: "language"})
+	}
+	return out
+}
+
+// NonStdlibPackages returns StdlibPackages minus the "sngl" entry — the
+// platforms and languages whose package indexes are generated alongside the
+// stdlib's rich landing page.
+//
+//sngl:pure
+func NonStdlibPackages() []PackageEntry {
+	all := StdlibPackages()
+	out := make([]PackageEntry, 0, len(all))
+	for _, p := range all {
+		if p.Path == "sngl" {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// AllDeclPages returns one DeclPage per documentation page the site should
+// generate, flattened across StdlibPackages. Top-level decls (components,
+// types, enums, functions, constants, data, overrides, platform-types) plus
+// per-method pages for types and per-member pages for enums.
+//
+//sngl:pure
+func AllDeclPages() []DeclPage {
+	var out []DeclPage
+	for _, pkg := range StdlibPackages() {
+		res, err := Lookup(pkg.Path)
+		if err != nil || res.Kind != KindIndex || res.Index == nil {
+			continue
+		}
+		idx := res.Index
+		add := func(kind, name, ident2 string) {
+			body := ""
+			idents := []string{name}
+			if ident2 != "" {
+				idents = append(idents, ident2)
+			}
+			if r, err := Lookup(pkg.Path, idents...); err == nil {
+				body = renderDeclBody(pkg.Path, r)
+			}
+			out = append(out, DeclPage{
+				Pkg:    pkg.Path,
+				Kind:   kind,
+				Name:   name,
+				Ident2: ident2,
+				Href:   declPageHref(pkg.Path, kind, name, ident2),
+				Title:  declPageTitle(name, ident2),
+				Body:   body,
+			})
+		}
+		for _, c := range idx.Components {
+			// Stdlib components have rich, hand-rolled pages on the website
+			// (live preview, highlighted code, props/events tables). Skip
+			// them here so the generic per-decl loop doesn't double-emit
+			// them with a thinner EntryView render.
+			if pkg.Path == "sngl" {
+				continue
+			}
+			add("components", c.Name, "")
+		}
+		for _, t := range idx.Types {
+			add("types", t.Name, "")
+			for _, m := range t.Methods {
+				add("types", t.Name, m.ShortName)
+			}
+		}
+		for _, e := range idx.Enums {
+			add("enums", e.Name, "")
+			// Resolve the enum to enumerate its members.
+			if er, err := Lookup(pkg.Path, e.Name); err == nil && er.Kind == KindEnum && er.Enum != nil {
+				if er.Enum.AST != nil {
+					for _, m := range er.Enum.AST.Members {
+						add("enums", e.Name, m.Name)
+					}
+				}
+				if er.Enum.Native != nil {
+					for _, m := range er.Enum.Native.Members {
+						add("enums", e.Name, m.Name)
+					}
+				}
+			}
+		}
+		for _, f := range idx.Functions {
+			add("functions", f.Name, "")
+		}
+		for _, c := range idx.Constants {
+			add("constants", c.Name, "")
+		}
+		for _, d := range idx.Data {
+			add("data", d.Name, "")
+		}
+		for _, o := range idx.Overrides {
+			add("overrides", o.Name, "")
+		}
+		for _, t := range idx.PlatformTypes {
+			add("platform-types", t.Name, "")
+		}
+	}
+	return out
+}
+
+func declPageHref(pkg, kind, name, ident2 string) string {
+	base := "/docs/" + pkg + "/" + kind + "/" + name
+	if ident2 != "" {
+		return base + "/" + ident2 + ".html"
+	}
+	return base + ".html"
+}
+
+func declPageTitle(name, ident2 string) string {
+	if ident2 != "" {
+		return name + "." + ident2
+	}
+	return name
 }
 
 // PackageIndex returns a package outline for the given path, or an empty
@@ -316,14 +496,23 @@ func mapIndex(idx *DeclIndex) PackageView {
 			})
 		}
 		v.Types = append(v.Types, entry)
+		v.TypeSummaries = append(v.TypeSummaries, Summary{Name: t.Name, Doc: FirstSentence(t.Doc)})
 	}
+	v.HasComponents = len(v.Components) > 0
+	v.HasTypes = len(v.TypeSummaries) > 0
+	v.HasEnums = len(v.Enums) > 0
+	v.HasConstants = len(v.Constants) > 0
+	v.HasData = len(v.Data) > 0
+	v.HasFunctions = len(v.Functions) > 0
+	v.HasOverrides = len(v.Overrides) > 0
+	v.HasPlatformTypes = len(v.PlatformTypes) > 0
 	return v
 }
 
 func mapSummaries(in []DeclSummary) []Summary {
 	out := make([]Summary, len(in))
 	for i, s := range in {
-		out[i] = Summary{Name: s.Name, Doc: s.Doc}
+		out[i] = Summary{Name: s.Name, Doc: FirstSentence(s.Doc)}
 	}
 	return out
 }

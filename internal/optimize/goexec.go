@@ -35,13 +35,19 @@ func execPureGoFunc(dir, importPath, nativeType string, paramTypes []string, ret
 		goArgs = append(goArgs, goLiteral(arg))
 	}
 
-	// Generate temporary Go source
+	// Generate temporary Go source. Blank-import the codegen platform/language
+	// registries so any pure func that reaches into codegen.Platforms() /
+	// codegen.LookupPlatform() (e.g. lookup.StdlibPackages) sees the same
+	// registrations the host process has.
 	src := fmt.Sprintf(`package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 
 	pkg %q
 )

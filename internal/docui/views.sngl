@@ -29,6 +29,72 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
     PackageIndexView(view=lookup.PackageIndex(path), hrefPrefix=hrefPrefix, activeName=activeName)
 }
 
+// KindSection emits one decl-group: a header plus SummaryRow links. The
+// caller passes a per-kind hrefPrefix so links can use kind-namespaced URLs
+// (e.g. "/docs/sngl/types/"). Internal helper — not callable across .sngl
+// files because struct identity (lookup.Summary) doesn't cross checker
+// boundaries; use PackageSections / StdlibSections as the public entry.
+component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") {
+    if list.length(items) > 0 {
+        text(value=title, style={fontWeight="bold", paddingTop=8})
+        for it = items {
+            SummaryRow(name=it.name, doc=it.doc, href=hrefPrefix + it.name + ".html")
+        }
+    }
+}
+
+// PackagePage renders a package's full index with kind-namespaced URLs by
+// path. Use this for non-stdlib packages (platforms, languages); the stdlib
+// is rendered by website.sngl with a tier gallery on top followed by
+// StdlibSections.
+component PackagePage(path = "", baseHref = "") {
+    PackagePageView(view=lookup.PackageIndex(path), baseHref=baseHref)
+}
+
+// PackagePageView is the inner renderer — kept in this file so the
+// lookup.PackageView type identity matches the import in this scope.
+component PackagePageView(view lookup.PackageView, baseHref = "") {
+    vbox(style={gap=4, padding=8}) {
+        if view.title != "" {
+            text(value=view.title, style={fontSize=20, fontWeight="bold"})
+        }
+        if view.description != "" {
+            text(value=view.description, style={color="#888"})
+        }
+        if view.isNative && view.nativeImportPath != "" {
+            text(value="Import path: " + view.nativeImportPath,
+                 style={color="#888", fontFamily="monospace"})
+        }
+        KindSection(title="Components", items=view.components, hrefPrefix=baseHref + "components/")
+        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref + "types/")
+        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref + "enums/")
+        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref + "functions/")
+        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref + "constants/")
+        KindSection(title="Data", items=view.data, hrefPrefix=baseHref + "data/")
+        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref + "overrides/")
+        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref + "platform-types/")
+    }
+}
+
+// StdlibSections renders only the non-component groups (types, enums, funcs,
+// constants, data, overrides, platform types) for a package. Used by the
+// stdlib landing page, where Components are surfaced via the tier gallery.
+component StdlibSections(path = "", baseHref = "") {
+    StdlibSectionsView(view=lookup.PackageIndex(path), baseHref=baseHref)
+}
+
+component StdlibSectionsView(view lookup.PackageView, baseHref = "") {
+    vbox(style={gap=4, padding=8}) {
+        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref + "types/")
+        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref + "enums/")
+        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref + "functions/")
+        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref + "constants/")
+        KindSection(title="Data", items=view.data, hrefPrefix=baseHref + "data/")
+        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref + "overrides/")
+        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref + "platform-types/")
+    }
+}
+
 // PackageIndexView renders a prebuilt PackageView. Internal to docui — used by
 // PackageIndex and by EntryView when entry.kind == "index".
 component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName = "") {

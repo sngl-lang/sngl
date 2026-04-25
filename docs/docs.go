@@ -119,7 +119,8 @@ func Pages() []Page {
 // Component holds metadata for a single stdlib component.
 type Component struct {
 	Name            string
-	Doc             string
+	Doc             string // full doc string
+	Blurb           string // first sentence of Doc, for index/card listings
 	Tier            string
 	Children        string // "none", "one", "many"
 	Props           []ComponentProp
@@ -164,6 +165,7 @@ func StdlibComponents() []Component {
 		c := Component{
 			Name:     name,
 			Doc:      schema.Doc,
+			Blurb:    firstSentence(schema.Doc),
 			Tier:     tiers[name],
 			Children: docsite.ChildPolicyString(schema.Children),
 		}
@@ -413,6 +415,22 @@ func compilePreview(source string) string {
 		}
 	}
 	return ""
+}
+
+// firstSentence trims a doc to its first sentence (". " boundary) or first
+// line. Used for one-line blurbs on index/card lists.
+func firstSentence(doc string) string {
+	doc = strings.TrimSpace(doc)
+	if doc == "" {
+		return ""
+	}
+	if i := strings.Index(doc, ". "); i > 0 {
+		return doc[:i+1]
+	}
+	if i := strings.IndexByte(doc, '\n'); i > 0 {
+		return strings.TrimSpace(doc[:i])
+	}
+	return doc
 }
 
 func autoTitle(name string) string {

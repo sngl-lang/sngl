@@ -1,3 +1,27 @@
+// 64-bit signed integer. Arithmetic operators produce `int` when both
+// operands are `int`; division truncates. Methods on the `int` receiver
+// (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
+// `float` with `float(x)` before doing fractional math.
+struct int {}
+
+// 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
+// trailing `.0` distinguishes it from `int`). Methods on the `float`
+// receiver expose the standard math library (`floor`, `round`, `pow`,
+// trigonometric functions, etc.).
+struct float {}
+
+// UTF-8 string. Strings are immutable; methods on the `string` receiver
+// return new values rather than mutating in place. Use `+` for
+// concatenation and the `string.*` helpers (`length`, `upper`, `split`,
+// `replace`, …) for everything else.
+struct string {}
+
+// Heterogeneous list. `list<T>` is the parameterized form; element type
+// is inferred from literals. Methods on the `list` receiver
+// (`length`, `push`, `filter`, `map`, …) cover the common operations and
+// are all pure — they return new lists rather than mutating in place.
+struct list {}
+
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
 // defaults to fully opaque (255). Colors can be constructed in three
 // equivalent ways: a `#RRGGBB` / `#RRGGBBAA` literal in place of a

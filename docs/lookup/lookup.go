@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -320,19 +321,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 			return nil, err
 		}
 		if len(docs) > 0 {
-			merged := &checker.PackageDocs{}
-			var stmts []ast.Stmt
-			for _, d := range docs {
-				pd := checker.ExtractPackageDocs(d)
-				merged.Components = append(merged.Components, pd.Components...)
-				merged.Structs = append(merged.Structs, pd.Structs...)
-				merged.Enums = append(merged.Enums, pd.Enums...)
-				merged.Consts = append(merged.Consts, pd.Consts...)
-				merged.Data = append(merged.Data, pd.Data...)
-				merged.Functions = append(merged.Functions, pd.Functions...)
-				stmts = append(stmts, d.Stmts...)
-			}
-			return &target{title: path, pd: merged, stmts: stmts}, nil
+			return mergeDocsTarget(path, docs), nil
 		}
 		native, err := resolver.ResolveScheme(scheme, uri, cwd)
 		if err != nil {
@@ -358,6 +347,20 @@ func resolveTarget(cwd, path string) (*target, error) {
 			title = filepath.Base(mustAbs(dir))
 		}
 		return &target{title: title, pd: checker.ExtractPackageDocs(doc), stmts: doc.Stmts}, nil
+	}
+
+	// Built-in platform / language names (android, html, fyne, bubbletea, go,
+	// kotlin, ...) — resolve via the codegen registry so they share the same
+	// Lookup code paths as the stdlib and scheme imports.
+	if plat := codegen.LookupPlatform(path); plat != nil {
+		if docs := plat.Package(); len(docs) > 0 {
+			return mergeDocsTarget(path, docs), nil
+		}
+	}
+	if lang := codegen.LookupLang(path); lang != nil {
+		if docs := lang.Package(); len(docs) > 0 {
+			return mergeDocsTarget(path, docs), nil
+		}
 	}
 
 	// Alias lookup against cwd's imports.
@@ -388,6 +391,24 @@ func resolveTarget(cwd, path string) (*target, error) {
 	}
 
 	return nil, ErrNotFound
+}
+
+// mergeDocsTarget merges a slice of parsed Documents (e.g. all .sngl files for
+// a scheme import or a platform's API package) into a single resolved target.
+func mergeDocsTarget(title string, docs []*ast.Document) *target {
+	merged := &checker.PackageDocs{}
+	var stmts []ast.Stmt
+	for _, d := range docs {
+		pd := checker.ExtractPackageDocs(d)
+		merged.Components = append(merged.Components, pd.Components...)
+		merged.Structs = append(merged.Structs, pd.Structs...)
+		merged.Enums = append(merged.Enums, pd.Enums...)
+		merged.Consts = append(merged.Consts, pd.Consts...)
+		merged.Data = append(merged.Data, pd.Data...)
+		merged.Functions = append(merged.Functions, pd.Functions...)
+		stmts = append(stmts, d.Stmts...)
+	}
+	return &target{title: title, pd: merged, stmts: stmts}
 }
 
 // --- Index building ---

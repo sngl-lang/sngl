@@ -5,6 +5,7 @@ output {
 }
 
 import "go://git.duckfam.us/jonathan/sngl/docs"
+import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
 import "file://public"
 import "internal/docui"
 
@@ -13,6 +14,9 @@ const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
 const targets = docs.Targets()
 const lessonSections = docs.Tutorial()
+const stdlib = lookup.PackageIndex("sngl")
+const otherPackages = lookup.NonStdlibPackages()
+const allDeclPages = lookup.AllDeclPages()
 const logo = public.path("sngl.svg")
 const screenshotWeb = public.path("snapshots/todo/todo_html.png")
 const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
@@ -34,6 +38,7 @@ component NavSidebar(currentHref = "") {
 			docui.NavItem(text="Language Specification", href="/language/specification.html", active=currentHref == "/language/specification.html")
 		}
 		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
+		docui.NavItem(text="Standard Library", href="/docs/sngl/index.html", active=currentHref == "/docs/sngl/index.html")
 		docui.NavItem(text="Targets", href="/targets/index.html", active=currentHref == "/targets/index.html")
 		docui.NavItem(text="Tutorial", href="/tutorial.html", active=currentHref == "/tutorial.html")
 		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
@@ -202,18 +207,18 @@ component TutorialContent() {
 }
 
 component main {
-	// Components gallery — grouped by tier
+	// Components — tier-grouped card gallery (no other stdlib sections).
 	window(title="Components", href="/components/index.html", favicon=logo) {
-		PageLayout(title="Component Gallery", currentHref="/components/index.html") {
+		PageLayout(title="Components", currentHref="/components/index.html") {
 			html.p(innerText="Browse all built-in components with API reference and live previews.")
 			for tier = tiers {
 				html.div(class="tier") {
 					html.h2(innerText=tier.name)
 					html.div(class="component-list") {
 						for comp = tier.components {
-							html.a(class="component-card", href="/components/" + comp.name + ".html") {
+							html.a(class="component-card", href="/docs/sngl/components/" + comp.name + ".html") {
 								html.h3(innerText=comp.name)
-								html.p(innerText=comp.doc)
+								html.p(innerText=comp.blurb)
 							}
 						}
 					}
@@ -222,11 +227,109 @@ component main {
 		}
 	}
 
-	// Individual component pages
+	// Standard Library — sngl-doc style flat package index (components, types,
+	// enums, functions, constants, data, overrides, platform types). Inlined
+	// instead of routed through docui.PackagePage so the optimizer sees the
+	// const `stdlib` directly and can unroll the per-kind for-loops.
+	window(title="Standard Library", href="/docs/sngl/index.html", favicon=logo) {
+		PageLayout(title="Standard Library", currentHref="/docs/sngl/index.html") {
+			html.p(innerText="The SNGL standard library: components for building UIs, plus the types, enums, and functions used by them.")
+			if stdlib.hasComponents {
+				html.h2(innerText="Components")
+				html.ul(class="decl-list") {
+					for c = stdlib.components {
+						html.li {
+							html.a(href="/docs/sngl/components/" + c.name + ".html", innerText=c.name)
+							html.span(innerText=c.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasTypes {
+				html.h2(innerText="Types")
+				html.ul(class="decl-list") {
+					for t = stdlib.typeSummaries {
+						html.li {
+							html.a(href="/docs/sngl/types/" + t.name + ".html", innerText=t.name)
+							html.span(innerText=t.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasEnums {
+				html.h2(innerText="Enums")
+				html.ul(class="decl-list") {
+					for e = stdlib.enums {
+						html.li {
+							html.a(href="/docs/sngl/enums/" + e.name + ".html", innerText=e.name)
+							html.span(innerText=e.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasFunctions {
+				html.h2(innerText="Functions")
+				html.ul(class="decl-list") {
+					for f = stdlib.functions {
+						html.li {
+							html.a(href="/docs/sngl/functions/" + f.name + ".html", innerText=f.name)
+							html.span(innerText=f.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasConstants {
+				html.h2(innerText="Constants")
+				html.ul(class="decl-list") {
+					for c = stdlib.constants {
+						html.li {
+							html.a(href="/docs/sngl/constants/" + c.name + ".html", innerText=c.name)
+							html.span(innerText=c.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasData {
+				html.h2(innerText="Data")
+				html.ul(class="decl-list") {
+					for d = stdlib.data {
+						html.li {
+							html.a(href="/docs/sngl/data/" + d.name + ".html", innerText=d.name)
+							html.span(innerText=d.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasOverrides {
+				html.h2(innerText="Platform Overrides")
+				html.ul(class="decl-list") {
+					for o = stdlib.overrides {
+						html.li {
+							html.a(href="/docs/sngl/overrides/" + o.name + ".html", innerText=o.name)
+							html.span(innerText=o.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+			if stdlib.hasPlatformTypes {
+				html.h2(innerText="Platform Types")
+				html.ul(class="decl-list") {
+					for pt = stdlib.platformTypes {
+						html.li {
+							html.a(href="/docs/sngl/platform-types/" + pt.name + ".html", innerText=pt.name)
+							html.span(innerText=pt.doc, style={color="#888", marginLeft=8})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Rich per-component pages (preview + highlighted code + props/events tables)
 	for comp = components {
-		window(title=comp.name, href="/components/" + comp.name + ".html", favicon=logo) {
-			PageLayout(title=comp.name, currentHref="/components/" + comp.name + ".html") {
-				docui.Detail(name=comp.name)
+		window(title=comp.name, href="/docs/sngl/components/" + comp.name + ".html", favicon=logo) {
+			PageLayout(title=comp.name, currentHref="/docs/sngl/components/" + comp.name + ".html") {
+				html.p(innerText=comp.doc, style={fontSize=16, color="#444"})
 
 				docui.Markdown(src=comp.previewHTML)
 				docui.Markdown(src=comp.highlightedCode)
@@ -260,6 +363,27 @@ component main {
 					}
 				}
 				text(value="Children: " + comp.children)
+			}
+		}
+	}
+
+	// Per-package index pages for platforms/languages (sngl is handled above
+	// with the rich gallery + StdlibSections).
+	for pkg = otherPackages {
+		window(title=pkg.title, href="/docs/" + pkg.path + "/index.html", favicon=logo) {
+			PageLayout(title=pkg.title, currentHref="/docs/" + pkg.path + "/index.html") {
+				docui.PackagePage(path=pkg.path, baseHref="/docs/" + pkg.path + "/")
+			}
+		}
+	}
+
+	// Per-decl detail pages across every package (top-level decls + type
+	// methods + enum members). Stdlib components are skipped by AllDeclPages
+	// itself — they're rendered above as rich pages.
+	for d = allDeclPages {
+		window(title=d.title, href=d.href, favicon=logo) {
+			PageLayout(title=d.title, currentHref=d.href) {
+				docui.Markdown(src=d.body)
 			}
 		}
 	}
@@ -377,12 +501,4 @@ component main {
 		}
 	}
 
-	// Stdlib package index — decl outline with links (links resolve to the
-	// existing per-component pages under /components/; type/enum/func pages
-	// would require runtime HTTP routes, not available in static build mode).
-	window(title="Stdlib — SNGL Docs", href="/docs/sngl/index.html", favicon=logo) {
-		PageLayout(title="Stdlib (sngl)", currentHref="/docs/sngl/index.html") {
-			docui.PackageIndex(path="sngl", hrefPrefix="/components/")
-		}
-	}
 }

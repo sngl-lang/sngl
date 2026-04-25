@@ -96,6 +96,7 @@ var (
 	stdlibSchemaRegistry SchemaRegistry
 	stdlibStyleProps     map[string]StylePropSchema
 	stdlibSchemaErr      error
+	stdlibIRPackage      *ir.Package
 )
 
 // LoadStdlib returns the stdlib component schemas and style property schemas.
@@ -116,10 +117,19 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 		}
 
 		pkg, _ := Check(merged, &Config{})
+		stdlibIRPackage = pkg
 		stdlibSchemaRegistry = buildSchemaRegistry(pkg, docs)
 		stdlibStyleProps = map[string]StylePropSchema{}
 	})
 	return stdlibSchemaRegistry, stdlibStyleProps, stdlibSchemaErr
+}
+
+// StdlibIRPackage returns the type-checked IR package for the stdlib. Useful
+// when callers need resolved types (e.g. function return types) that aren't
+// preserved in the parsed AST.
+func StdlibIRPackage() *ir.Package {
+	_, _, _ = LoadStdlib()
+	return stdlibIRPackage
 }
 
 func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {

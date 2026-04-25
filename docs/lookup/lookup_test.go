@@ -165,7 +165,9 @@ func TestLookupStdlibEvent(t *testing.T) {
 }
 
 func TestLookupPrimitiveReceiver(t *testing.T) {
-	// string / int / float / list aren't structs — only method receivers.
+	// string / int / float / list each have an empty struct declaration in
+	// the stdlib (so doc comments have a home), and method funcs hang off
+	// the same receiver.
 	res, err := lookup.Lookup("sngl", "string")
 	if err != nil {
 		t.Fatal(err)
@@ -173,8 +175,11 @@ func TestLookupPrimitiveReceiver(t *testing.T) {
 	if res.Kind != lookup.KindType {
 		t.Fatalf("kind: got %v, want KindType", res.Kind)
 	}
-	if res.Type.Name != "string" || res.Type.Struct != nil {
-		t.Errorf("expected synthesized string type, got %+v", res.Type)
+	if res.Type.Name != "string" {
+		t.Errorf("Name: got %q", res.Type.Name)
+	}
+	if res.Type.Doc == "" {
+		t.Error("string should carry doc from its empty struct decl")
 	}
 	if len(res.Type.Methods) == 0 {
 		t.Error("string should carry methods")

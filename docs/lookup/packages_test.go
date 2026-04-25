@@ -1,0 +1,110 @@
+package lookup_test
+
+import (
+	"strings"
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/docs/lookup"
+
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+)
+
+func TestLookupPlatformAndroid(t *testing.T) {
+	res, err := lookup.Lookup("android")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Kind != lookup.KindIndex || res.Index == nil {
+		t.Fatalf("kind: got %v, want KindIndex", res.Kind)
+	}
+	if res.Index.Title != "android" {
+		t.Errorf("Title: got %q", res.Index.Title)
+	}
+	// Android platform exposes some Components and at minimum an Options struct.
+	if len(res.Index.Components) == 0 && len(res.Index.PlatformTypes) == 0 && len(res.Index.Overrides) == 0 {
+		t.Error("android index has no Components, Overrides, or PlatformTypes — expected at least one")
+	}
+}
+
+func TestLookupPlatformBubbletea(t *testing.T) {
+	res, err := lookup.Lookup("bubbletea")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Kind != lookup.KindIndex {
+		t.Fatalf("kind: got %v", res.Kind)
+	}
+}
+
+func TestStdlibPackages(t *testing.T) {
+	pkgs := lookup.StdlibPackages()
+	if len(pkgs) == 0 {
+		t.Fatal("StdlibPackages returned empty list")
+	}
+	if pkgs[0].Path != "sngl" || pkgs[0].Kind != "stdlib" {
+		t.Errorf("first entry: got %+v, want sngl/stdlib", pkgs[0])
+	}
+	var seenAndroid bool
+	for _, p := range pkgs {
+		if p.Path == "android" {
+			seenAndroid = true
+			if p.Kind != "platform" {
+				t.Errorf("android Kind: got %q, want platform", p.Kind)
+			}
+		}
+	}
+	if !seenAndroid {
+		t.Error("android missing from StdlibPackages")
+	}
+}
+
+func TestAllDeclPages(t *testing.T) {
+	pages := lookup.AllDeclPages()
+	if len(pages) == 0 {
+		t.Fatal("AllDeclPages returned no pages")
+	}
+	var (
+		sawSnglType       bool
+		sawSnglTypeMethod bool
+		sawAndroid        bool
+	)
+	for _, p := range pages {
+		if p.Href == "" {
+			t.Errorf("DeclPage missing Href: %+v", p)
+		}
+		if !strings.HasPrefix(p.Href, "/docs/"+p.Pkg+"/") {
+			t.Errorf("Href doesn't match pkg prefix: %+v", p)
+		}
+		// Stdlib components are skipped by AllDeclPages — the website renders
+		// them via a hand-rolled rich loop so the generic per-decl path would
+		// double-emit identical hrefs.
+		if p.Pkg == "sngl" && p.Kind == "components" {
+			t.Errorf("sngl/components page leaked into AllDeclPages: %+v", p)
+		}
+		if p.Pkg == "sngl" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "" {
+			sawSnglType = true
+			if p.Href != "/docs/sngl/types/color.html" {
+				t.Errorf("color href: got %q", p.Href)
+			}
+		}
+		if p.Pkg == "sngl" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "darken" {
+			sawSnglTypeMethod = true
+			if p.Href != "/docs/sngl/types/color/darken.html" {
+				t.Errorf("color.darken href: got %q", p.Href)
+			}
+		}
+		if p.Pkg == "android" {
+			sawAndroid = true
+		}
+	}
+	if !sawSnglType {
+		t.Error("missing sngl/types/color page")
+	}
+	if !sawSnglTypeMethod {
+		t.Error("missing sngl/types/color/darken page")
+	}
+	if !sawAndroid {
+		t.Error("no android pages emitted")
+	}
+}
