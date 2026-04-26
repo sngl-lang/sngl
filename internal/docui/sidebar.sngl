@@ -14,9 +14,7 @@ component Sidebar(homeHref = "/", logo = "") list<component> {
                 }
                 html.button(id="theme-toggle", class="theme-toggle", type="button", title="Toggle theme", innerHTML="&#9788;")
             }
-            html.ul {
-                slot
-            }
+            slot
         }
     }
 }

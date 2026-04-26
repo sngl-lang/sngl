@@ -69,6 +69,6 @@ component main {
 
 ## Next Steps
 
-- [Getting Started](getting-started/index.html) — learn the basics
-- [Language Reference](language/reference.html) — complete language guide
-- [Language Specification](language/specification.html) — formal grammar
+- [Getting Started](learn/getting-started.html) — learn the basics
+- [Tour](tutorial.html) — interactive, lesson-by-lesson walkthrough
+- [Language Specification](reference/specification.html) — formal grammar

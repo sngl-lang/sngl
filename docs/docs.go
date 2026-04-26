@@ -56,6 +56,9 @@ func Pages() []Page {
 		if path == "learn/tour.md" {
 			return nil // rendered separately as the interactive tutorial
 		}
+		if path == "learn/getting-started.md" {
+			return nil // rendered separately by getting_started.sngl
+		}
 		data, err := content.ReadFile(path)
 		if err != nil {
 			return nil
@@ -145,6 +148,7 @@ var navExtras = []struct {
 	Link    NavLink
 }{
 	{"", NavLink{Title: "Home", Href: "/index.html", Order: 0}},
+	{"learn", NavLink{Title: "Getting Started", Href: "/learn/getting-started.html", Order: 20}},
 	{"learn", NavLink{Title: "Tour", Href: "/tutorial.html", Order: 30}},
 	{"reference", NavLink{Title: "Components", Href: "/components/index.html", Order: 1}},
 	{"reference", NavLink{Title: "Standard Library", Href: "/docs/sngl/index.html", Order: 2}},
@@ -587,3 +591,9 @@ func autoTitle(name string) string {
 	}
 	return strings.ToUpper(name[:1]) + name[1:]
 }
+
+// Highlight runs Chroma over a SNGL source string and returns the resulting
+// HTML. Pure so SNGL components can call it inline.
+//
+//sngl:pure
+func Highlight(src string) string { return docsite.HighlightSNGL(src) }

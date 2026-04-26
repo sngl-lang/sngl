@@ -27,7 +27,7 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 		goSrc = append([]byte(h), goSrc...)
 	}
 
-	goMod := []byte(fmt.Sprintf("module golib\n\ngo %s\n", cfg.GoVersion))
+	goMod := fmt.Appendf(nil, "module golib\n\ngo %s\n", cfg.GoVersion)
 	resp := &codegen.Response{}
 
 	if !cfg.Main {

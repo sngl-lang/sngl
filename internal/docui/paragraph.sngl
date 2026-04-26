@@ -1,0 +1,10 @@
+// Paragraph renders a block of prose. Generic platforms get a styled text
+// node; html emits a real <p> so default browser typography (margins, line
+// height) applies.
+component Paragraph(value = "") {
+    text(value=value, style={paddingTop=4, paddingBottom=4})
+
+    platform html {
+        html.p(innerText=value)
+    }
+}

@@ -1,0 +1,27 @@
+// Heading renders a section header. Three flavors are exposed as separate
+// components so the html platform can emit the correct semantic tag without
+// the codegen having to evaluate a reactive `level` param at compile time.
+
+component Heading1(value = "") {
+    text(value=value, style={fontWeight="bold", fontSize=28, paddingBottom=8})
+
+    platform html {
+        html.h1(innerText=value)
+    }
+}
+
+component Heading2(value = "") {
+    text(value=value, style={fontWeight="bold", fontSize=22, paddingTop=16, paddingBottom=8})
+
+    platform html {
+        html.h2(innerText=value)
+    }
+}
+
+component Heading3(value = "") {
+    text(value=value, style={fontWeight="bold", fontSize=18, paddingTop=12, paddingBottom=6})
+
+    platform html {
+        html.h3(innerText=value)
+    }
+}

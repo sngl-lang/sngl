@@ -1,3 +1,6 @@
+// CodeBlock renders a fenced-code-block-style snippet. Generic platforms get
+// a monospace text node; html emits a semantic <pre><code class="language-…">
+// so client-side highlighters / our Chroma CSS can target it.
 component CodeBlock(code = "", language = "") {
     text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
 
@@ -11,5 +14,17 @@ component CodeBlock(code = "", language = "") {
         html.pre(style={padding="12px", background="#1e1e1e", color="#d4d4d4", borderRadius="4px", overflow="auto"}) {
             html.code(innerText=code)
         }
+    }
+}
+
+// HighlightedCode renders a snippet whose syntax has already been turned into
+// HTML (e.g. by docsite.HighlightSNGL). Generic platforms still get the plain
+// monospace text fallback so non-html targets remain readable; html drops the
+// raw rendered markup in via innerHTML.
+component HighlightedCode(code = "", highlightedHTML = "") {
+    text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
+
+    platform html {
+        html.div(innerHTML=highlightedHTML, class="hl-code")
     }
 }
