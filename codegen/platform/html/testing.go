@@ -71,7 +71,7 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 		resp, err := g.Generate(&codegen.Request{
 			Pkg:     compPkg,
 			Lang:    lang,
-			Options: map[string]string{"test": "true"},
+			Options: codegen.OptionsFromMap(map[string]any{"test": true}),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generate %q: %w", compName, err)
@@ -175,7 +175,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
-		Options: map[string]string{"preview": "true"},
+		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	})
 	if err != nil {
 		return nil, err

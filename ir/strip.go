@@ -89,6 +89,9 @@ func (s *stripper) stripPackage(pkg *Package) {
 	}
 	for _, o := range pkg.Outputs {
 		o.AST = nil
+		if o.Options != nil {
+			s.stripExpr(o.Options)
+		}
 	}
 }
 

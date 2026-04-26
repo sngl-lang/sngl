@@ -12,16 +12,26 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Config controls code generation.
+// Config controls code generation. Field names mirror bubbletea.sngl options.
 type Config struct {
-	Package      string // Go package name (default: "ui")
-	ScaleFactor  int    // pixels per terminal cell (default: 8)
-	GenerateMain bool   // emit a main() function for standalone apps
+	Package     string // Go package name (default: "ui")
+	ScaleFactor int    // pixels per terminal cell (default: 8); not source-exposed
+	Main        bool   // emit a main() function for standalone apps
+	Tests       *bool  // emit companion test files (default: true)
+
+	// Stdlib globals (lib/options.sngl).
+	Name        string
+	Icon        string
+	Description string
+	Version     string
+
+	// Lang globals (codegen/lang/golang/golang.sngl).
+	GoVersion string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
 }
 
 func (c Config) withDefaults() Config {
 	if c.Package == "" {
-		if c.GenerateMain {
+		if c.Main {
 			c.Package = "main"
 		} else {
 			c.Package = "ui"
@@ -30,7 +40,19 @@ func (c Config) withDefaults() Config {
 	if c.ScaleFactor == 0 {
 		c.ScaleFactor = 8
 	}
+	if c.GoVersion == "" {
+		c.GoVersion = "1.23"
+	}
 	return c
+}
+
+// EmitTests reports whether companion test files should be generated. Defaults
+// to true when the option is unset.
+func (c Config) EmitTests() bool {
+	if c.Tests == nil {
+		return true
+	}
+	return *c.Tests
 }
 
 type inputInfo struct {
@@ -213,7 +235,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	// Imports
 	b.WriteString("import (\n")
 	b.WriteString("\t\"fmt\"\n")
-	if cfg.GenerateMain {
+	if cfg.Main {
 		b.WriteString("\t\"os\"\n")
 	}
 	b.WriteString("\t\"strings\"\n")
@@ -429,7 +451,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 
 	// main()
-	if cfg.GenerateMain {
+	if cfg.Main {
 		b.WriteString("func main() {\n")
 		b.WriteString("\tp := tea.NewProgram(New())\n")
 		b.WriteString("\tif _, err := p.Run(); err != nil {\n")

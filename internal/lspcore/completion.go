@@ -5,6 +5,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
@@ -297,7 +298,8 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 }
 
 // OutputOptsCompletions returns completion items for output option keys
-// inside the parenthesized options of an output declaration.
+// inside the parenthesized options of an output declaration. The candidate
+// set is the union of stdlib, language, and platform Options structs.
 func OutputOptsCompletions(content string, line int) []CompletionItem {
 	lines := strings.Split(content, "\n")
 	if line < 1 || line > len(lines) {
@@ -305,45 +307,67 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	}
 	l := strings.TrimSpace(lines[line-1])
 
-	// Extract platform name: "output lang platform(...)" -> platform is 2nd word after "output"
 	platformName := extractOutputPlatform(l)
-	if platformName == "" {
-		return nil
-	}
+	langName := extractOutputLang(l)
 
-	plat := codegen.LookupPlatform(platformName)
-	if plat == nil {
-		return nil
+	var sources []*ast.Document
+	for _, doc := range checker.StdlibDocs() {
+		sources = append(sources, doc)
 	}
-	pkgDocs := plat.Package()
-	if len(pkgDocs) == 0 {
-		return nil
-	}
-	apiDoc := pkgDocs[0]
-
-	var opts *ast.StructDef
-	for _, stmt := range apiDoc.Stmts {
-		if s, ok := stmt.(*ast.StructDef); ok && s.Name == "Options" {
-			opts = s
-			break
+	if langName != "" {
+		if lang := codegen.LookupLang(langName); lang != nil {
+			sources = append(sources, lang.Package()...)
 		}
 	}
-	if opts == nil {
-		return nil
+	if platformName != "" {
+		if plat := codegen.LookupPlatform(platformName); plat != nil {
+			sources = append(sources, plat.Package()...)
+		}
 	}
 
+	seen := map[string]bool{}
 	var items []CompletionItem
-	for _, f := range opts.Fields {
-		for _, name := range f.Names {
-			items = append(items, CompletionItem{
-				Label:      name,
-				Kind:       CIKProperty,
-				Detail:     typeExprString(f.Type),
-				InsertText: name + "=",
-			})
+	for _, doc := range sources {
+		if doc == nil {
+			continue
+		}
+		for _, stmt := range doc.Stmts {
+			s, ok := stmt.(*ast.StructDef)
+			if !ok || s.Name != "Options" {
+				continue
+			}
+			for _, f := range s.Fields {
+				for _, name := range f.Names {
+					if seen[name] {
+						continue
+					}
+					seen[name] = true
+					items = append(items, CompletionItem{
+						Label:      name,
+						Kind:       CIKProperty,
+						Detail:     typeExprString(f.Type),
+						InsertText: name + "=",
+					})
+				}
+			}
 		}
 	}
 	return items
+}
+
+// extractOutputLang returns the language identifier from an output line,
+// e.g., "output js html(...)" -> "js". Returns "" if not present.
+func extractOutputLang(line string) string {
+	words := strings.Fields(line)
+	if len(words) < 2 {
+		return ""
+	}
+	lang := words[1]
+	// Trim trailing parens or operators
+	if idx := strings.IndexAny(lang, "({"); idx >= 0 {
+		lang = lang[:idx]
+	}
+	return lang
 }
 
 // OutputTargetCompletions returns completion items for lang/platform names

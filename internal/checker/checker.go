@@ -97,8 +97,17 @@ type checker struct {
 	// Used to try platform Resolve() on unknown identifiers.
 	currentPlatform string
 
-	// Cached Options structs from platform/language packages.
+	// Cached Options structs from platform/language packages, keyed by target
+	// identifier (e.g. "html", "kotlin").
 	optionsCache map[string]*ir.StructDef
+
+	// Cached merged Options structs (stdlib ∪ lang ∪ platform), keyed by
+	// "lang|platform". A nil value means we resolved and cached "no options".
+	mergedOptionsCache map[string]*ir.StructDef
+
+	// Cached stdlib Options struct. Built lazily.
+	stdlibOptions    *ir.StructDef
+	stdlibOptionsSet bool
 
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
@@ -929,10 +938,7 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 
 	// Flat form: output node itself has lang/platform args.
 	if c.outputHasLangPlatform(vn) {
-		out := &ir.Output{
-			AST:     vn,
-			Options: make(map[string]string),
-		}
+		out := &ir.Output{AST: vn}
 		for _, a := range vn.Args.Args {
 			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
 				switch arg.Name {
@@ -940,11 +946,11 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 					out.Lang = literalString(arg.Value)
 				case "platform":
 					out.Platform = literalString(arg.Value)
-				default:
-					out.Options[arg.Name] = literalString(arg.Value)
 				}
 			}
 		}
+		merged := c.mergedOptions(vn.Pos, out.Lang, out.Platform)
+		out.Options = c.buildOptionsStructLit(vn.Pos, filterOptionArgs(vn.Args, "lang", "platform"), merged)
 		c.pkg.Outputs = append(c.pkg.Outputs, out)
 		return
 	}
@@ -983,26 +989,12 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 		if len(s.Block.Stmts) > 0 {
 			c.error(s.Pos, "platform %q must not contain a body", platform)
 		}
-		out := &ir.Output{
-			AST:      s,
-			Lang:     lang,
-			Platform: platform,
-			Options:  make(map[string]string),
-		}
-		for _, a := range s.Args.Args {
-			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
-				out.Options[arg.Name] = literalString(arg.Value)
-			}
-		}
-		if opts := c.lookupOptions(platform); opts != nil {
-			c.validateOptionsAgainst(s.Pos, s.Args, opts)
-		}
+		out := &ir.Output{AST: s, Lang: lang, Platform: platform}
+		merged := c.mergedOptions(s.Pos, lang, platform)
+		out.Options = c.buildOptionsStructLit(s.Pos, s.Args, merged)
 		return out
 	case *ast.CallStmt:
-		out := &ir.Output{
-			Lang:    lang,
-			Options: make(map[string]string),
-		}
+		out := &ir.Output{Lang: lang}
 		// Extract platform name from call target.
 		if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
 			out.Platform = ident.Name
@@ -1010,30 +1002,43 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 			c.error(s.Pos, "platform target must be a simple name")
 			return nil
 		}
-		// Extract and validate options from call args.
 		for _, a := range s.Call.Args.Args {
-			switch arg := a.(type) {
-			case ast.EventHandler:
+			if eh, ok := a.(ast.EventHandler); ok {
 				c.error(s.Pos, "event handlers not permitted in output declarations")
-			case ast.Arg:
-				if arg.Value != nil {
-					if name := c.nonConstRef(arg.Value); name != "" {
-						c.error(s.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
-					}
-				}
-				if arg.Name != "" {
-					out.Options[arg.Name] = literalString(arg.Value)
+				_ = eh
+				continue
+			}
+			if arg, ok := a.(ast.Arg); ok && arg.Value != nil {
+				if name := c.nonConstRef(arg.Value); name != "" {
+					c.error(s.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
 				}
 			}
 		}
-		if opts := c.lookupOptions(out.Platform); opts != nil {
-			c.validateOptionsAgainst(s.Pos, s.Call.Args, opts)
-		}
+		merged := c.mergedOptions(s.Pos, lang, out.Platform)
+		out.Options = c.buildOptionsStructLit(s.Pos, s.Call.Args, merged)
 		return out
 	default:
 		c.error(*stmt.StmtPos(), "language block may only contain platform targets")
 		return nil
 	}
+}
+
+// filterOptionArgs returns args without entries whose Name is in the exclude
+// set. Used for the flat output(lang=..., platform=..., opt=...) form so the
+// discriminator args don't leak into the options struct lit.
+func filterOptionArgs(args ast.ArgList, exclude ...string) ast.ArgList {
+	excluded := make(map[string]bool, len(exclude))
+	for _, n := range exclude {
+		excluded[n] = true
+	}
+	out := ast.ArgList{IsMultiline: args.IsMultiline}
+	for _, a := range args.Args {
+		if arg, ok := a.(ast.Arg); ok && excluded[arg.Name] {
+			continue
+		}
+		out.Args = append(out.Args, a)
+	}
+	return out
 }
 
 // validateOutputArgs checks that an output-level node has no event handlers
@@ -1115,6 +1120,93 @@ func (c *checker) lookupOptions(name string) *ir.StructDef {
 	return nil
 }
 
+// lookupStdlibOptions returns the stdlib's top-level Options struct, or nil
+// if the stdlib does not declare one.
+func (c *checker) lookupStdlibOptions() *ir.StructDef {
+	if c.stdlibOptionsSet {
+		return c.stdlibOptions
+	}
+	c.stdlibOptionsSet = true
+	for _, doc := range parseStdlibDocs() {
+		for _, stmt := range doc.Stmts {
+			if sd, ok := stmt.(*ast.StructDef); ok && sd.Name == "Options" {
+				c.stdlibOptions = c.buildStructDef(sd)
+				return c.stdlibOptions
+			}
+		}
+	}
+	return nil
+}
+
+// mergedOptions returns the synthetic Options struct that unions stdlib,
+// language, and platform Options for the given (lang, platform) target. Field
+// collisions are allowed only when types match; mismatched-type collisions are
+// reported once at the position pos and the offending field is dropped from
+// the merged schema.
+//
+// Returns nil when the named lang/platform is not registered with the checker
+// (e.g. a test driver running without targets) — callers must treat that as
+// "skip validation" since we can't tell if an arg is valid.
+//
+// The synthetic struct is not registered in any scope — it's used purely for
+// validating output() arg names and types.
+func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDef {
+	// If the user named a target that isn't registered, we have no schema for
+	// its options. Returning nil tells the caller to skip validation rather
+	// than reject options the platform itself would have accepted.
+	if lang != "" && c.lookupTarget(lang) == nil {
+		return nil
+	}
+	if platform != "" && c.lookupTarget(platform) == nil {
+		return nil
+	}
+
+	key := lang + "|" + platform
+	if c.mergedOptionsCache == nil {
+		c.mergedOptionsCache = make(map[string]*ir.StructDef)
+	}
+	if sd, ok := c.mergedOptionsCache[key]; ok {
+		return sd
+	}
+
+	merged := &ir.StructDef{Name: "Options"}
+	add := func(source string, sd *ir.StructDef) {
+		if sd == nil {
+			return
+		}
+		for _, f := range sd.Fields {
+			existing := findField(merged, f.Name)
+			if existing == nil {
+				merged.Fields = append(merged.Fields, f)
+				continue
+			}
+			if !existing.Type.Equal(f.Type) {
+				c.error(pos, "option %q declared with conflicting types: %s vs %s.%s", f.Name, existing.Type, source, f.Name)
+			}
+			// Same-type collision: keep the first-seen field.
+		}
+	}
+	add("stdlib", c.lookupStdlibOptions())
+	if lang != "" {
+		add(lang, c.lookupOptions(lang))
+	}
+	if platform != "" {
+		add(platform, c.lookupOptions(platform))
+	}
+
+	c.mergedOptionsCache[key] = merged
+	return merged
+}
+
+func findField(sd *ir.StructDef, name string) *ir.StructField {
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
 // pass1PlatformStmt registers declarations inside a platform block.
 // Skipped when the target platform is known and doesn't match.
 func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
@@ -1145,25 +1237,66 @@ func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
 	}
 }
 
-// validateOptionsAgainst checks that all option names in the args are valid fields
-// of the given Options struct.
-func (c *checker) validateOptionsAgainst(pos ast.Pos, args ast.ArgList, opts *ir.StructDef) {
+// buildOptionsStructLit type-checks each named arg against the merged options
+// schema and returns an *ir.StructLit suitable for storing on ir.Output.Options.
+// Unknown option names are reported as diagnostics. Args that don't fit the
+// arg.Name+arg.Value shape (event handlers, positional args) are silently
+// skipped — those are checked elsewhere.
+//
+// When opts is nil (target not registered with the checker), validation is
+// skipped and arg values are checked without an expected-type hint.
+func (c *checker) buildOptionsStructLit(pos ast.Pos, args ast.ArgList, opts *ir.StructDef) *ir.StructLit {
+	lit := &ir.StructLit{Def: opts}
+	if opts != nil {
+		lit.Type = &ir.Type{Kind: ir.TypeStruct, Decl: opts}
+	}
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok || arg.Name == "" {
 			continue
 		}
-		found := false
-		for _, f := range opts.Fields {
-			if f.Name == arg.Name {
-				found = true
-				break
+		var field *ir.StructField
+		if opts != nil {
+			field = findField(opts, arg.Name)
+			if field == nil {
+				c.error(pos, "unknown option %q (available: %s)", arg.Name, optionFieldNames(opts))
+				continue
 			}
 		}
-		if !found {
-			c.error(pos, "unknown option %q (available: %s)", arg.Name, optionFieldNames(opts))
+		var value ir.Expr
+		if arg.Value != nil {
+			prev := c.expected
+			if field != nil {
+				c.expected = field.Type
+			}
+			value = c.checkExpr(arg.Value)
+			c.expected = prev
+			if field != nil && value != nil && value.ExprType() != nil && !typeAssignable(value.ExprType(), field.Type) {
+				c.error(pos, "option %q: expected %s, got %s", arg.Name, field.Type, value.ExprType())
+			}
 		}
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: arg.Name, Value: value})
 	}
+	return lit
+}
+
+// typeAssignable reports whether src is assignable to dst, allowing the same
+// implicit conversions the rest of the checker permits at boundary positions
+// (numeric widening, dyn pass-through, exact match).
+func typeAssignable(src, dst *ir.Type) bool {
+	if src == nil || dst == nil {
+		return true
+	}
+	if src.Equal(dst) {
+		return true
+	}
+	if src.Kind == ir.TypeDyn || dst.Kind == ir.TypeDyn {
+		return true
+	}
+	if src.Kind == ir.TypeInt && dst.Kind == ir.TypeFloat {
+		return true
+	}
+	return false
 }
 
 func optionFieldNames(sd *ir.StructDef) string {

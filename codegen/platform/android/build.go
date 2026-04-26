@@ -4,17 +4,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Build implements codegen.Builder. It compiles generated sources into a
 // signed debug APK, optionally running gomobile bind first if a Go module
 // is present.
-func (g *Generator) Build(dir string, opts map[string]string) (string, error) {
-	useGradle := opts["gradle"] != "false"
-	pkg := opts["package"]
-	if pkg == "" {
-		pkg = "test.sngl.app"
+func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
+	var cfg Config
+	if err := codegen.ApplyOptions(&cfg, opts); err != nil {
+		return "", fmt.Errorf("android: %w", err)
 	}
+	cfg = cfg.withDefaults()
+	useGradle := cfg.UseGradle()
+	pkg := cfg.Package
 
 	// If a Go module is present (go+android), run gomobile bind first.
 	goLibDir := filepath.Join(dir, "golib")

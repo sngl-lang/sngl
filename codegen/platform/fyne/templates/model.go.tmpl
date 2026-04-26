@@ -2,7 +2,7 @@ package {{.Package}}
 
 import (
 	"fmt"
-{{- if .GenerateMain}}
+{{- if .Main}}
 	"os"
 {{- end}}
 {{- if .NeedsURL}}
@@ -16,7 +16,7 @@ import (
 {{- end}}
 
 	"fyne.io/fyne/v2"
-{{- if .GenerateMain}}
+{{- if .Main}}
 	"fyne.io/fyne/v2/app"
 {{- end}}
 {{- if .NeedsCanvas}}

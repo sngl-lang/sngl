@@ -325,10 +325,10 @@ func (c *converter) convertOutputs(outputs []*Output) *ast.VisualNode {
 				platNode := &ast.VisualNode{
 					Target: &ast.IdentExpr{Name: o.Platform},
 				}
-				if len(o.Options) > 0 {
-					var args []ast.ArgOrEventHandler
-					for k, v := range o.Options {
-						args = append(args, ast.Arg{Name: k, Value: stringLit(v)})
+				if o.Options != nil && len(o.Options.Fields) > 0 {
+					args := make([]ast.ArgOrEventHandler, 0, len(o.Options.Fields))
+					for _, f := range o.Options.Fields {
+						args = append(args, ast.Arg{Name: f.Name, Value: c.convertExpr(f.Value)})
 					}
 					platNode.Args = ast.ArgList{
 						IsMultiline: len(args) > 3,

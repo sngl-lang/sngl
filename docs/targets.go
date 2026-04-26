@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 
 	// Blank-import the aggregator packages so Targets() observes every
 	// registered platform and language, not just the subset the rest of
@@ -55,8 +56,11 @@ type TargetCatalog struct {
 	// to emit matrix headers without peeking into a row.
 	PlatformCapabilities []string
 	LanguageCapabilities []string
-	Platforms            []PlatformTarget
-	Languages            []LanguageTarget
+	// GlobalOptions are options declared by the stdlib's Options struct that
+	// every target accepts (e.g. name, icon, description, version).
+	GlobalOptions []OptionDoc
+	Platforms     []PlatformTarget
+	Languages     []LanguageTarget
 }
 
 // Targets enumerates built-in platforms and languages, probing each for the
@@ -68,6 +72,7 @@ func Targets() TargetCatalog {
 	cat := TargetCatalog{
 		PlatformCapabilities: platformCapNames(),
 		LanguageCapabilities: languageCapNames(),
+		GlobalOptions:        optionsFromPackage(checker.StdlibDocs()),
 	}
 
 	plats := codegen.Platforms()

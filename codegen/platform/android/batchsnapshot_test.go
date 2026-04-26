@@ -136,7 +136,8 @@ func TestBatchCodegen(t *testing.T) {
 		{Name: plans[0].activityName, IsLauncher: true},
 		{Name: plans[1].activityName, IsLauncher: false},
 	}
-	files := directBuildFilesWithActivities(Config{Package: batchSnapshotPackage, Gradle: false}.withDefaults(), acts)
+	noGradle := false
+	files := directBuildFilesWithActivities(Config{Package: batchSnapshotPackage, Gradle: &noGradle}.withDefaults(), acts)
 
 	var manifestBody string
 	var sawMainActivityKt bool
@@ -174,7 +175,8 @@ func TestBatchCodegen(t *testing.T) {
 // the non-batch code path: directBuildFiles should still produce the
 // canonical single-MainActivity manifest.
 func TestSingleActivityManifestUnchanged(t *testing.T) {
-	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: false}.withDefaults())
+	noGradle2 := false
+	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults())
 	var manifest string
 	var sawMainActivity bool
 	for _, f := range files {

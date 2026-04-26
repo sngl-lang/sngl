@@ -84,7 +84,8 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	}
 
 	// Base scaffold: Theme.kt + manifest with all activities + values resources.
-	baseCfg := Config{Package: batchSnapshotPackage, Gradle: false}.withDefaults()
+	noGradle := false
+	baseCfg := Config{Package: batchSnapshotPackage, Gradle: &noGradle}.withDefaults()
 	for _, f := range directBuildFilesWithActivities(baseCfg, manifestActs) {
 		path := filepath.Join(tmpDir, f.Name)
 		os.MkdirAll(filepath.Dir(path), 0o755)
@@ -103,10 +104,10 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		}
 	}
 
-	apk, err := g.Build(tmpDir, map[string]string{
+	apk, err := g.Build(tmpDir, codegen.OptionsFromMap(map[string]any{
 		"package": batchSnapshotPackage,
-		"gradle":  "false",
-	})
+		"gradle":  false,
+	}))
 	if err != nil {
 		return nil, fmt.Errorf("building APK: %w", err)
 	}
@@ -186,11 +187,11 @@ func generateDocMainScreen(g *Generator, p docPlan) ([]byte, error) {
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:  p.doc.Pkg,
 		Lang: p.doc.Lang,
-		Options: map[string]string{
-			"main":    "false",
+		Options: codegen.OptionsFromMap(map[string]any{
+			"main":    false,
 			"package": p.subPackage,
-			"gradle":  "false",
-		},
+			"gradle":  false,
+		}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("generating android code: %w", err)

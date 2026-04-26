@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,8 +19,7 @@ import (
 type outputTarget struct {
 	Lang     string
 	Platform string
-	Opts     codegen.Opts
-	Options  map[string]string
+	Options  *ir.StructLit
 }
 
 var compileCmd = &cobra.Command{
@@ -49,11 +47,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cliOpts := make(map[string]string)
-	for _, kv := range optSlice {
-		k, v, _ := strings.Cut(kv, "=")
-		cliOpts[k] = v
-	}
+	cliOpts := parseCLIOpts(optSlice)
 
 	explicitFiles := explicitFileSet(args)
 
@@ -112,12 +106,12 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 		for _, target := range targets {
 			if target.Options == nil {
-				target.Options = make(map[string]string)
+				target.Options = &ir.StructLit{}
 			}
 			// Set projectDir for resolving relative paths in output options
 			// (icon paths from output declarations are relative to the .sngl dir)
-			if target.Options["projectDir"] == "" {
-				target.Options["projectDir"] = dir
+			if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
+				codegen.SetOptionField(target.Options, "projectDir", dir)
 			}
 
 			start = time.Now()
@@ -147,17 +141,110 @@ func runCompile(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// parseCLIOpts converts a --opt key=value slice into a map. Empty entries and
+// the cobra-default sentinel "[]" (left over from flag reset between
+// in-process test invocations) are filtered.
+func parseCLIOpts(optSlice []string) map[string]string {
+	out := make(map[string]string)
+	for _, kv := range optSlice {
+		if kv == "" || kv == "[]" {
+			continue
+		}
+		k, v, _ := strings.Cut(kv, "=")
+		if k == "" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
 func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
 	if cliLang != "" && cliPlat != "" {
-		return []outputTarget{{Lang: cliLang, Platform: cliPlat, Options: cliOpts}}
+		t := outputTarget{Lang: cliLang, Platform: cliPlat, Options: &ir.StructLit{}}
+		applyCLIOpts(t.Options, cliOpts)
+		return []outputTarget{t}
 	}
 	var targets []outputTarget
 	for _, o := range pkg.Outputs {
-		perTarget := make(map[string]string)
-		maps.Copy(perTarget, o.Options)
-		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: perTarget})
+		opts := cloneStructLit(o.Options)
+		applyCLIOpts(opts, cliOpts)
+		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: opts})
 	}
 	return targets
+}
+
+// cloneStructLit returns a shallow copy of the StructLit fields slice so that
+// per-target option mutations (CLI overlay, projectDir injection) don't
+// mutate the IR shared across targets.
+func cloneStructLit(src *ir.StructLit) *ir.StructLit {
+	if src == nil {
+		return &ir.StructLit{}
+	}
+	out := &ir.StructLit{Type: src.Type, Def: src.Def}
+	out.Fields = append(out.Fields, src.Fields...)
+	return out
+}
+
+// applyCLIOpts overlays --opt key=value pairs onto opts. For string-typed
+// fields the value is taken verbatim. For other fields the value is parsed as
+// a SNGL const expression and type-checked against the field's declared type.
+//
+// When the field's type is unknown (no Def, or field absent from Def),
+// the value is wrapped as a raw string literal — keeps simple cases working
+// without a checker pass.
+func applyCLIOpts(opts *ir.StructLit, kv map[string]string) {
+	if len(kv) == 0 {
+		return
+	}
+	for k, v := range kv {
+		ft := optionFieldType(opts, k)
+		if ft != nil && ft.Kind != ir.TypeString {
+			parsed, err := parseConstOption(v, ft)
+			if err == nil {
+				codegen.SetOptionField(opts, k, parsed)
+				continue
+			}
+			// Fall back to string-as-raw on parse failure; the platform
+			// will surface a clearer error from ApplyOptions.
+		}
+		codegen.SetOptionField(opts, k, v)
+	}
+}
+
+// optionFieldType returns the declared type of a field on opts, or nil if the
+// StructLit has no Def or the field isn't declared.
+func optionFieldType(opts *ir.StructLit, name string) *ir.Type {
+	if opts == nil || opts.Def == nil {
+		return nil
+	}
+	for _, f := range opts.Def.Fields {
+		if f.Name == name {
+			return f.Type
+		}
+	}
+	return nil
+}
+
+// parseConstOption parses a CLI --opt value as a SNGL constant expression of
+// the given type. Returns an *ir.Literal with Raw set so codegen.ApplyOptions
+// reads the same shape as a source-declared option.
+func parseConstOption(raw string, t *ir.Type) (*ir.Literal, error) {
+	switch t.Kind {
+	case ir.TypeBool:
+		switch raw {
+		case "true", "false":
+			return &ir.Literal{Type: ir.TypBool, Raw: raw}, nil
+		}
+		return nil, fmt.Errorf("expected bool, got %q", raw)
+	case ir.TypeInt:
+		return &ir.Literal{Type: ir.TypInt, Raw: raw}, nil
+	case ir.TypeFloat:
+		return &ir.Literal{Type: ir.TypFloat, Raw: raw}, nil
+	case ir.TypeColor:
+		return &ir.Literal{Type: ir.TypColor, Raw: raw}, nil
+	}
+	return &ir.Literal{Type: t, Raw: raw}, nil
 }
 
 func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {
@@ -179,7 +266,6 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 	resp, err := plat.Generate(&codegen.Request{
 		Pkg:        pkg,
 		Lang:       lang,
-		Opts:       target.Opts,
 		Options:    target.Options,
 		Source:     filepath.Base(filename),
 		FileAssets: fileAssets,

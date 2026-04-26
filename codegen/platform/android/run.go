@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // androidTool locates an Android SDK tool by name. It checks PATH first,
@@ -87,7 +90,7 @@ func setEnv(env []string, key, value string) []string {
 // Run implements codegen.Runner. It builds the Android project, ensures an
 // ADB device is available (starting an emulator if needed), installs the
 // APK, and launches the main activity.
-func (g *Generator) Run(dir string, opts map[string]string, args []string) error {
+func (g *Generator) Run(dir string, opts *ir.StructLit, args []string) error {
 	if _, err := androidTool("adb"); err != nil {
 		return err
 	}
@@ -101,11 +104,13 @@ func (g *Generator) Run(dir string, opts map[string]string, args []string) error
 		return err
 	}
 
-	pkg := opts["package"]
-	if pkg == "" {
-		pkg = "test.sngl.app"
+	var cfg Config
+	if err := codegen.ApplyOptions(&cfg, opts); err != nil {
+		return fmt.Errorf("android: %w", err)
 	}
-	if opts["gradle"] != "false" {
+	cfg = cfg.withDefaults()
+	pkg := cfg.Package
+	if cfg.UseGradle() {
 		if p, err := readPackage(dir); err == nil {
 			pkg = p
 		}
@@ -295,13 +300,13 @@ func waitForFocus(pkg, activityHint string, timeout time.Duration) error {
 // no such line is found.
 func extractFocusWindow(s string) string {
 	const marker = "mCurrentFocus=Window{"
-	i := strings.Index(s, marker)
-	if i < 0 {
+	_, after, ok := strings.Cut(s, marker)
+	if !ok {
 		return ""
 	}
-	rest := s[i+len(marker):]
-	if j := strings.Index(rest, "}"); j >= 0 {
-		return rest[:j]
+	rest := after
+	if before, _, ok := strings.Cut(rest, "}"); ok {
+		return before
 	}
 	return rest
 }

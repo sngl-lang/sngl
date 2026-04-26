@@ -402,7 +402,7 @@ func compilePreview(source string) string {
 	}
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
-		Options: map[string]string{"preview": "true"},
+		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	})
 	if err != nil || resp.Error != "" {
 		return ""

@@ -224,7 +224,7 @@ type Output struct {
 	AST      *ast.VisualNode
 	Lang     string
 	Platform string
-	Options  map[string]string
+	Options  *StructLit
 }
 
 // Param is a resolved function or component parameter.

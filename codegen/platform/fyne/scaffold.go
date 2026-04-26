@@ -4,23 +4,39 @@ import (
 	"embed"
 )
 
-// Config controls code generation.
+// Config controls code generation. Field names mirror fyne.sngl options.
 type Config struct {
-	Package      string // Go package name (default: "ui")
-	GenerateMain bool   // emit a main() function for standalone apps
-	AppName      string // application display name
+	Package string // Go package name (default: "ui")
+	Main    bool   // emit a main() function for standalone apps
+	AppName string // application display name; empty falls back to stdlib Name
+
+	// Stdlib globals (lib/options.sngl).
+	Name        string
+	Icon        string
+	Description string
+	Version     string
+
+	// Lang globals (codegen/lang/golang/golang.sngl).
+	GoVersion string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
 }
 
 func (c Config) withDefaults() Config {
 	if c.Package == "" {
-		if c.GenerateMain {
+		if c.Main {
 			c.Package = "main"
 		} else {
 			c.Package = "ui"
 		}
 	}
 	if c.AppName == "" {
-		c.AppName = "SNGL App"
+		if c.Name != "" {
+			c.AppName = c.Name
+		} else {
+			c.AppName = "SNGL App"
+		}
+	}
+	if c.GoVersion == "" {
+		c.GoVersion = "1.23"
 	}
 	return c
 }
@@ -30,14 +46,14 @@ var templateFS embed.FS
 
 // templateData is the data passed to the model.go.tmpl template.
 type templateData struct {
-	Package      string
-	GenerateMain bool
-	AppName      string
-	NeedsTime    bool
-	NeedsURL     bool
-	NeedsCanvas  bool
-	NeedsToast   bool
-	HasTimers    bool
+	Package     string
+	Main        bool
+	AppName     string
+	NeedsTime   bool
+	NeedsURL    bool
+	NeedsCanvas bool
+	NeedsToast  bool
+	HasTimers   bool
 
 	Structs      []structData
 	Binds        []bindData

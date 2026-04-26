@@ -34,11 +34,11 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 	}
 	defer os.RemoveAll(tmpDir)
 
-	opts := map[string]string{
-		"main":    "true",
+	opts := codegen.OptionsFromMap(map[string]any{
+		"main":    true,
 		"package": appPkg,
-		"gradle":  "false",
-	}
+		"gradle":  false,
+	})
 
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:     irPkg,
@@ -91,8 +91,8 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 // activityHintFromFQCN extracts the activity short name from "pkg/.Activity"
 // or "pkg/pkg.Activity" forms so it can be matched against dumpsys focus.
 func activityHintFromFQCN(fqcn string) string {
-	if i := strings.Index(fqcn, "/"); i >= 0 {
-		rest := fqcn[i+1:]
+	if _, after, ok := strings.Cut(fqcn, "/"); ok {
+		rest := after
 		if strings.HasPrefix(rest, ".") {
 			return rest[1:]
 		}
@@ -167,7 +167,7 @@ func fetchCrashLog(adb, pkg string) string {
 	}
 	var trace []string
 	capture := false
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		isRuntime := strings.Contains(line, "AndroidRuntime")
 		if isRuntime && strings.Contains(line, "FATAL EXCEPTION") {
 			capture = true

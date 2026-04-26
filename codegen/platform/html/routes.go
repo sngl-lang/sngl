@@ -55,16 +55,19 @@ func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, err
 		})
 	}
 
-	pkgName := req.Options["package"]
-	mainFlag := req.Options["main"] == "true"
+	var opts htmlConfig
+	if err := codegen.ApplyOptions(&opts, req.Options); err != nil {
+		return nil, fmt.Errorf("html: %w", err)
+	}
+	pkgName := opts.Package
 	if pkgName == "" {
-		if mainFlag {
+		if opts.Main {
 			pkgName = "main"
 		} else {
 			pkgName = "ui"
 		}
 	}
-	framework := req.Options["framework"]
+	framework := opts.Framework
 	if framework == "" {
 		framework = "net/http"
 	}
@@ -72,7 +75,7 @@ func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, err
 	httpReq := &codegen.HTTPRequest{
 		Pkg:       req.Pkg,
 		Package:   pkgName,
-		Main:      mainFlag,
+		Main:      opts.Main,
 		Framework: framework,
 		Routes:    routes,
 		RenderHTML: func(idx int) string {

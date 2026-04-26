@@ -114,6 +114,25 @@ type compilation struct {
 	windows    []htmlWindowOutput
 }
 
+// htmlConfig captures the html platform's options. Field names mirror
+// html.sngl options (camelCase → PascalCase via codegen.ApplyOptions).
+type htmlConfig struct {
+	Preview    bool
+	Test       bool
+	Stylesheet string
+	ProjectDir string
+	Package    string
+	Main       bool
+	Framework  string
+	Listen     string
+
+	// Stdlib globals (lib/options.sngl).
+	Name        string
+	Icon        string
+	Description string
+	Version     string
+}
+
 type htmlWindowOutput struct {
 	name  string
 	bytes []byte
@@ -130,6 +149,11 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return nil, fmt.Errorf("html: js translator not registered")
 	}
 
+	var opts htmlConfig
+	if err := codegen.ApplyOptions(&opts, req.Options); err != nil {
+		return nil, fmt.Errorf("html: %w", err)
+	}
+
 	// Copy file:// assets resolved during optimization.
 	for _, fa := range req.FileAssets {
 		data, err := os.ReadFile(fa.SrcPath)
@@ -140,13 +164,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	// Resolve stylesheet option: source path relative to project dir.
 	stylesheetURL := ""
-	if ssPath := req.Options["stylesheet"]; ssPath != "" {
-		projectDir := req.Options["projectDir"]
-		absPath := ssPath
-		if projectDir != "" && !filepath.IsAbs(ssPath) {
-			absPath = filepath.Join(projectDir, ssPath)
+	if opts.Stylesheet != "" {
+		absPath := opts.Stylesheet
+		if opts.ProjectDir != "" && !filepath.IsAbs(opts.Stylesheet) {
+			absPath = filepath.Join(opts.ProjectDir, opts.Stylesheet)
 		}
-		outName := "assets/" + filepath.Base(ssPath)
+		outName := "assets/" + filepath.Base(opts.Stylesheet)
 		stylesheetURL = "/" + outName
 		data, err := os.ReadFile(absPath)
 		if err == nil {
@@ -156,7 +179,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	// Build WASM for imported packages that have runtime-used functions.
 	var wasmLoaderHTML string
-	projectDir := req.Options["projectDir"]
+	projectDir := opts.ProjectDir
 	wasmPkgs := collectWASMPackages(req.Pkg, projectDir)
 	if len(wasmPkgs) > 0 {
 		wasmExecAdded := false
@@ -210,7 +233,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// callers can verify codegen at least succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
-		gen := newHTMLGenFromCtx(ctx, jsLang, req.Options)
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
@@ -227,7 +250,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		} else if !strings.HasSuffix(name, ".html") {
 			name = name + ".html"
 		}
-		gen := newHTMLGenFromCtx(ctx, jsLang, req.Options)
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
@@ -356,15 +379,15 @@ type timerDef struct {
 	mutated    map[string]bool
 }
 
-func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
 	common := codegen.AnalyzeCommon(pkg)
 
 	g := &htmlGen{
 		pkg:            pkg,
 		lang:           lang,
 		CommonAnalysis: common,
-		preview:        opts["preview"] == "true",
-		testMode:       opts["test"] == "true",
+		preview:        opts.Preview,
+		testMode:       opts.Test,
 	}
 
 	g.scope = &codegen.ExprScope{
@@ -389,7 +412,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts map[string]st
 }
 
 // newHTMLGenFromCtx creates an htmlGen from CodegenCtx (IR-first path).
-func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts map[string]string) *htmlGen {
+func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
 	g := newHTMLGen(ctx.Pkg, lang, opts)
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body

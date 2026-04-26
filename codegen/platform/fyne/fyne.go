@@ -71,11 +71,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	if req.Lang.LanguageIdentifier() != "go" {
 		return nil, fmt.Errorf("fyne: unsupported lang %q", req.Lang.LanguageIdentifier())
 	}
-	c.cfg = Config{
-		Package:      req.Options["package"],
-		GenerateMain: req.Options["main"] == "true",
-		AppName:      req.Opts.Name,
-	}.withDefaults()
+	if err := codegen.ApplyOptions(&c.cfg, req.Options); err != nil {
+		return nil, fmt.Errorf("fyne: %w", err)
+	}
+	c.cfg = c.cfg.withDefaults()
 	c.ctx = codegen.NewCodegenCtx(req, "fyne")
 	c.info = analyzeIR(c.ctx)
 

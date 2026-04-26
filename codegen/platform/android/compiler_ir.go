@@ -10,16 +10,29 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Config controls code generation.
+// Config controls code generation. Field names match the SNGL option names
+// in android.sngl and lib/options.sngl (camelCase → PascalCase via
+// codegen.ApplyOptions).
 type Config struct {
-	Package      string // Kotlin package name (default: "test.sngl.app")
-	AppName      string // display name for the app (default: derived from package)
-	GenerateMain bool   // emit MainActivity.kt + project scaffold
-	Gradle       bool   // use Gradle build system (default: true)
-	GoLib        bool   // true when user funcs live in a Go module (gomobile bind)
-	Icon         string // path to icon file (SVG or PNG), relative to project root
-	Color        string // theme/icon background color as hex (#RRGGBB)
-	ProjectDir   string // project root directory (for resolving relative icon paths)
+	// Source-declared options (android.sngl).
+	Package    string // Kotlin package name (default: "test.sngl.app")
+	AppName    string // display name override; empty falls back to stdlib Name
+	Main       bool   // emit MainActivity.kt + project scaffold
+	Gradle     *bool  // use Gradle build system (default: true; nil = use default)
+	Icon       string // path to icon file (SVG or PNG); empty falls back to stdlib Icon
+	Color      string // theme/icon background color as hex (#RRGGBB)
+	ProjectDir string // project root directory (for resolving relative icon paths)
+
+	// Stdlib globals (lib/options.sngl).
+	Name        string
+	Description string
+	Version     string
+
+	// Lang globals (codegen/lang/golang/golang.sngl).
+	GoVersion string // Go toolchain version for generated go.mod (default: "1.23")
+
+	// Internal — set by Generate(), not from source.
+	GoLib bool // true when user funcs live in a Go module (gomobile bind)
 }
 
 func (c Config) withDefaults() Config {
@@ -29,7 +42,22 @@ func (c Config) withDefaults() Config {
 	if c.Color == "" {
 		c.Color = "#6750A4"
 	}
+	if c.AppName == "" {
+		c.AppName = c.Name
+	}
+	if c.GoVersion == "" {
+		c.GoVersion = "1.23"
+	}
 	return c
+}
+
+// UseGradle reports whether the gradle build system should be used. Defaults
+// to true when the gradle option is unset.
+func (c Config) UseGradle() bool {
+	if c.Gradle == nil {
+		return true
+	}
+	return *c.Gradle
 }
 
 func exportName(s string) string {

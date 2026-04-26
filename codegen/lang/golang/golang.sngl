@@ -1,0 +1,7 @@
+// Go language package. Declarations here are visible at every output target
+// that selects --lang go.
+
+struct Options {
+    // Go toolchain version emitted in generated go.mod files (default: 1.23).
+    goVersion string
+}

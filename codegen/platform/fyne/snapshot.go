@@ -30,10 +30,10 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
-		Options: map[string]string{
+		Options: codegen.OptionsFromMap(map[string]any{
 			"package": "main",
-			"main":    "false",
-		},
+			"main":    false,
+		}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("generating fyne code: %w", err)
@@ -151,10 +151,10 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		resp, err := g.Generate(&codegen.Request{
 			Pkg:  d.Pkg,
 			Lang: d.Lang,
-			Options: map[string]string{
+			Options: codegen.OptionsFromMap(map[string]any{
 				"package": pkgName,
-				"main":    "false",
-			},
+				"main":    false,
+			}),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating fyne code for %s: %w", d.ID, err)

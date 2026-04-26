@@ -68,7 +68,7 @@ type PackageView struct {
 	HasConstants     bool
 	HasData          bool
 	HasFunctions     bool
-	HasOverrides    bool
+	HasOverrides     bool
 	HasPlatformTypes bool
 }
 

@@ -373,10 +373,21 @@ func TestOutputTargetCompletions_Platform(t *testing.T) {
 }
 
 func TestOutputOptsCompletions_NoPlatform(t *testing.T) {
+	// With no platform on the line, stdlib globals are still offered (name,
+	// icon, description, version).
 	content := "output js ("
 	items := lspcore.OutputOptsCompletions(content, 1)
-	if items != nil {
-		t.Errorf("expected nil for incomplete output line, got %v", items)
+	if len(items) == 0 {
+		t.Fatal("expected stdlib option items even without platform")
+	}
+	have := map[string]bool{}
+	for _, it := range items {
+		have[it.Label] = true
+	}
+	for _, want := range []string{"name", "icon", "description", "version"} {
+		if !have[want] {
+			t.Errorf("missing stdlib option %q in %v", want, items)
+		}
 	}
 }
 

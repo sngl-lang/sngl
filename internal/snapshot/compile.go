@@ -47,7 +47,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		Doc:     previewDoc,
 		Pkg:     pkg,
 		Lang:    noneLang,
-		Options: map[string]string{"preview": "true"},
+		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("generate: %w", err)

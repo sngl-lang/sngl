@@ -98,23 +98,11 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 }
 
 func (g *Generator) configFromRequest(req *codegen.Request) Config {
-	appName := req.Opts.Name
-	if v := req.Options["appName"]; v != "" {
-		appName = v
+	var cfg Config
+	if err := codegen.ApplyOptions(&cfg, req.Options); err != nil {
+		panic(fmt.Errorf("android: configFromRequest: %w", err))
 	}
-	icon := req.Opts.Icon
-	if v := req.Options["icon"]; v != "" {
-		icon = v
-	}
-	return Config{
-		Package:      req.Options["package"],
-		AppName:      appName,
-		GenerateMain: req.Options["main"] == "true",
-		Gradle:       req.Options["gradle"] != "false",
-		Icon:         icon,
-		Color:        req.Options["color"],
-		ProjectDir:   req.Options["projectDir"],
-	}.withDefaults()
+	return cfg.withDefaults()
 }
 
 func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error) {
@@ -131,11 +119,11 @@ func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error
 
 	resp := &codegen.Response{}
 
-	if !cfg.GenerateMain {
+	if !cfg.Main {
 		resp.Files = []*codegen.OutputFile{
 			codegen.BytesFile("MainScreen.kt", src),
 		}
-	} else if cfg.Gradle {
+	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		resp.Files = append(resp.Files, codegen.BytesFile(
 			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,

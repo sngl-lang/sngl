@@ -27,21 +27,22 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 		goSrc = append([]byte(h), goSrc...)
 	}
 
+	goMod := []byte(fmt.Sprintf("module golib\n\ngo %s\n", cfg.GoVersion))
 	resp := &codegen.Response{}
 
-	if !cfg.GenerateMain {
+	if !cfg.Main {
 		resp.Files = []*codegen.OutputFile{
 			codegen.BytesFile("MainScreen.kt", src),
 			codegen.BytesFile("golib/golib.go", goSrc),
-			codegen.BytesFile("golib/go.mod", []byte("module golib\n\ngo 1.23\n")),
+			codegen.BytesFile("golib/go.mod", goMod),
 		}
-	} else if cfg.Gradle {
+	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		resp.Files = append(resp.Files, codegen.BytesFile(
 			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
 		))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", []byte("module golib\n\ngo 1.23\n")))
+		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
 		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
@@ -52,7 +53,7 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 	} else {
 		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", []byte("module golib\n\ngo 1.23\n")))
+		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
 		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			resp.Files = append(resp.Files, iconRes...)

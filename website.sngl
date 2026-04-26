@@ -393,6 +393,23 @@ component main {
 		PageLayout(title="Built-in Targets", currentHref="/targets/index.html") {
 			text(value="SNGL ships several platforms (what to render) and languages (what to generate). The matrices below show which optional capabilities each target implements; each section documents recognized `--opt key=value` options.")
 
+			text(value="Global Options", style={fontSize=22, fontWeight="bold"})
+			text(value="Declared by the standard library; accepted by every output target.")
+			docui.Table {
+				docui.HeaderRow {
+					docui.HeaderCell(value="Name")
+					docui.HeaderCell(value="Type")
+					docui.HeaderCell(value="Description")
+				}
+				for opt = targets.globalOptions {
+					docui.Row {
+						docui.CodeCell(value=opt.name)
+						docui.Cell(value=opt.type)
+						docui.Cell(value=opt.doc)
+					}
+				}
+			}
+
 			text(value="Platforms", style={fontSize=22, fontWeight="bold"})
 			docui.Table {
 				docui.HeaderRow {

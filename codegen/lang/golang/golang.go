@@ -1,16 +1,26 @@
 package golang
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+//go:embed golang.sngl
+var pkgSource string
+
+var pkgDocs []*ast.Document
+
 func init() {
+	if doc, _ := parser.Parse("golang.sngl", []byte(pkgSource)); doc != nil {
+		pkgDocs = []*ast.Document{doc}
+	}
 	codegen.RegisterLang(&Translator{})
 }
 
@@ -21,7 +31,7 @@ func (t *Translator) LanguageIdentifier() string { return "go" }
 func (t *Translator) Description() string {
 	return "Generate Go source. Supports HTTP route mode and WASM bindings."
 }
-func (t *Translator) Package() []*ast.Document            { return nil }
+func (t *Translator) Package() []*ast.Document            { return pkgDocs }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 
 // v2 IR-based methods (stubs — will be implemented during platform migration).

@@ -70,9 +70,8 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	if req.Lang.LanguageIdentifier() != "go" {
 		return nil, fmt.Errorf("bubbletea: unsupported lang %q", req.Lang.LanguageIdentifier())
 	}
-	c.cfg = Config{
-		Package:      req.Options["package"],
-		GenerateMain: req.Options["main"] == "true",
+	if err := codegen.ApplyOptions(&c.cfg, req.Options); err != nil {
+		return nil, fmt.Errorf("bubbletea: %w", err)
 	}
 	c.ctx = codegen.NewCodegenCtx(req, "bubbletea")
 
@@ -99,7 +98,7 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 		},
 	}
 
-	if req.Pkg != nil && hasTestFuncs(req.Pkg) && req.Options["tests"] != "false" {
+	if req.Pkg != nil && hasTestFuncs(req.Pkg) && c.cfg.EmitTests() {
 		testSrc, err := CompileTestsIR(c.ctx, c.cfg)
 		if err == nil && testSrc != nil {
 			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))

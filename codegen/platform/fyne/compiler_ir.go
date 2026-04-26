@@ -302,7 +302,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		emitIRComponentMethod(&b, cc, ctx, gc)
 	}
 
-	if cfg.GenerateMain {
+	if cfg.Main {
 		emitIRMain(&b, cfg, info)
 	}
 
@@ -312,7 +312,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx) templateData {
 	td := templateData{
 		Package:      cfg.Package,
-		GenerateMain: cfg.GenerateMain,
+		Main:         cfg.Main,
 		AppName:      cfg.AppName,
 		NeedsTime:    info.needsTime,
 		NeedsURL:     info.needsURL,

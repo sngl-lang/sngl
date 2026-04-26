@@ -50,7 +50,7 @@ func compileLesson(source string) (string, error) {
 	lang := codegen.LookupLang("none")
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
-		Options: map[string]string{"preview": "true"},
+		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	})
 	if err != nil {
 		return "", err

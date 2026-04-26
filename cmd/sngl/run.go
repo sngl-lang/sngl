@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -37,11 +37,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cliOpts := make(map[string]string)
-	for _, kv := range optSlice {
-		k, v, _ := strings.Cut(kv, "=")
-		cliOpts[k] = v
-	}
+	cliOpts := parseCLIOpts(optSlice)
 
 	// Split args at "--" to separate sngl args from program args
 	file := args[0]
@@ -113,10 +109,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Force main-package options
 	if target.Options == nil {
-		target.Options = make(map[string]string)
+		target.Options = &ir.StructLit{}
 	}
-	target.Options["main"] = "true"
-	target.Options["projectDir"] = dir
+	codegen.SetOptionField(target.Options, "main", true)
+	codegen.SetOptionField(target.Options, "projectDir", dir)
 
 	// Optimize
 	start = time.Now()

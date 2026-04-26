@@ -39,7 +39,7 @@ func newTemplateData(cfg Config) templateData {
 		HasIcon:         cfg.Icon != "",
 		HasAdaptiveIcon: cfg.Icon != "" && strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg"),
 		Color:           cfg.Color,
-		Gradle:          cfg.Gradle,
+		Gradle:          cfg.UseGradle(),
 		HasGoLib:        cfg.GoLib,
 	}
 }

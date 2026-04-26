@@ -64,10 +64,10 @@ func (g *Generator) runSnapshot(pkg *ir.Package, lang codegen.LangTranslator, wi
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
-		Options: map[string]string{
+		Options: codegen.OptionsFromMap(map[string]any{
 			"package": "main",
-			"main":    "false",
-		},
+			"main":    false,
+		}),
 	})
 	if err != nil {
 		return "", fmt.Errorf("generating bubbletea code: %w", err)
@@ -217,10 +217,10 @@ func (g *Generator) runBatchSnapshot(docs []codegen.BatchDoc, width, height int)
 		resp, err := g.Generate(&codegen.Request{
 			Pkg:  d.Pkg,
 			Lang: d.Lang,
-			Options: map[string]string{
+			Options: codegen.OptionsFromMap(map[string]any{
 				"package": pkgName,
-				"main":    "false",
-			},
+				"main":    false,
+			}),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating bubbletea code for %s: %w", d.ID, err)

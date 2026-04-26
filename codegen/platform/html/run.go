@@ -7,12 +7,19 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Run implements codegen.Runner. It serves the generated static assets over
 // HTTP. The listen address comes from the "listen" option (default ":0").
-func (g *Generator) Run(dir string, opts map[string]string, _ []string) error {
-	addr := opts["listen"]
+func (g *Generator) Run(dir string, opts *ir.StructLit, _ []string) error {
+	var cfg htmlConfig
+	if err := codegen.ApplyOptions(&cfg, opts); err != nil {
+		return fmt.Errorf("html: %w", err)
+	}
+	addr := cfg.Listen
 	if addr == "" {
 		addr = ":0"
 	}

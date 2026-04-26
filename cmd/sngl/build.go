@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
 
@@ -38,11 +38,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cliOpts := make(map[string]string)
-	for _, kv := range optSlice {
-		k, v, _ := strings.Cut(kv, "=")
-		cliOpts[k] = v
-	}
+	cliOpts := parseCLIOpts(optSlice)
 
 	explicitFiles := explicitFileSet(args)
 
@@ -99,11 +95,11 @@ func runBuild(cmd *cobra.Command, args []string) error {
 
 		for _, target := range targets {
 			if target.Options == nil {
-				target.Options = make(map[string]string)
+				target.Options = &ir.StructLit{}
 			}
-			target.Options["main"] = "true"
-			if target.Options["projectDir"] == "" {
-				target.Options["projectDir"] = dir
+			codegen.SetOptionField(target.Options, "main", true)
+			if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
+				codegen.SetOptionField(target.Options, "projectDir", dir)
 			}
 
 			plat := codegen.LookupPlatform(target.Platform)

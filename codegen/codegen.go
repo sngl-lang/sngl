@@ -120,13 +120,13 @@ type BatchTextSnapshotter interface {
 // their generated output directly (e.g., "go run" for bubbletea, open
 // browser for HTML, adb install for Android).
 type Runner interface {
-	Run(dir string, opts map[string]string, args []string) error
+	Run(dir string, opts *ir.StructLit, args []string) error
 }
 
 // Builder is optionally implemented by PlatformGenerators that have a build
 // step between code generation and execution (e.g., compiling an APK).
 type Builder interface {
-	Build(dir string, opts map[string]string) (artifact string, err error)
+	Build(dir string, opts *ir.StructLit) (artifact string, err error)
 }
 
 // HTTPCompiler is optionally implemented by LangTranslators that can generate
@@ -307,12 +307,6 @@ func (cw *countWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// Opts are globally-applicable generator options set at the output level.
-type Opts struct {
-	Name string // display name for the app
-	Icon string // path to icon file (SVG or PNG)
-}
-
 // FileAsset records a file that must be copied to the output directory.
 type FileAsset struct {
 	SrcPath string // absolute path on disk
@@ -324,10 +318,9 @@ type Request struct {
 	Doc        *ast.Document // Deprecated: use Pkg. Will be removed when all platforms are ported.
 	Pkg        *ir.Package   // v2 checked IR
 	Lang       LangTranslator
-	Opts       Opts
-	Options    map[string]string // key=value from --opt flags
-	Source     string            // source .sngl filename (base name only)
-	FileAssets []FileAsset       // file:// assets to copy to output
+	Options    *ir.StructLit // merged stdlib+lang+platform options for this output target
+	Source     string        // source .sngl filename (base name only)
+	FileAssets []FileAsset   // file:// assets to copy to output
 }
 
 // SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import
