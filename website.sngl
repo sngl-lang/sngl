@@ -14,6 +14,7 @@ const tiers = docs.ComponentsByTier()
 const components = docs.StdlibComponents()
 const targets = docs.Targets()
 const lessonSections = docs.Tutorial()
+const navTree = docs.NavTree()
 const stdlib = lookup.PackageIndex("sngl")
 const otherPackages = lookup.NonStdlibPackages()
 const allDeclPages = lookup.AllDeclPages()
@@ -25,23 +26,20 @@ const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
 
 component NavSidebar(currentHref = "") {
 	docui.Sidebar(homeHref="/index.html", logo=logo) {
-		docui.NavItem(text="SNGL", href="/index.html", active=currentHref == "/index.html")
-		docui.NavGroup(title="Getting Started", href="/getting-started.html") {
-			docui.NavItem(text="Installation", href="/getting-started/installation.html", active=currentHref == "/getting-started/installation.html")
-			docui.NavItem(text="Your First App", href="/getting-started/first-app-web.html", active=currentHref == "/getting-started/first-app-web.html")
-			docui.NavItem(text="Build Targets", href="/getting-started/build-targets.html", active=currentHref == "/getting-started/build-targets.html")
-			docui.NavItem(text="Data Binding", href="/getting-started/data-binding.html", active=currentHref == "/getting-started/data-binding.html")
+		for group = navTree {
+			if group.title == "" {
+				for item = group.items {
+					docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
+				}
+			}
+			if group.title != "" {
+				docui.NavGroup(title=group.title, href=group.href) {
+					for item = group.items {
+						docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
+					}
+				}
+			}
 		}
-		docui.NavGroup(title="Language", href="#") {
-			docui.NavItem(text="Effective SNGL", href="/language/effective-sngl.html", active=currentHref == "/language/effective-sngl.html")
-			docui.NavItem(text="Language Reference", href="/language/reference.html", active=currentHref == "/language/reference.html")
-			docui.NavItem(text="Language Specification", href="/language/specification.html", active=currentHref == "/language/specification.html")
-		}
-		docui.NavItem(text="Components", href="/components/index.html", active=currentHref == "/components/index.html")
-		docui.NavItem(text="Standard Library", href="/docs/sngl/index.html", active=currentHref == "/docs/sngl/index.html")
-		docui.NavItem(text="Targets", href="/targets/index.html", active=currentHref == "/targets/index.html")
-		docui.NavItem(text="Tutorial", href="/tutorial.html", active=currentHref == "/tutorial.html")
-		docui.NavItem(text="Playground", href="/playground.html", active=currentHref == "/playground.html")
 	}
 }
 
@@ -240,7 +238,7 @@ component main {
 					for c = stdlib.components {
 						html.li {
 							html.a(href="/docs/sngl/components/" + c.name + ".html", innerText=c.name)
-							html.span(innerText=c.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=c.doc, class="decl-doc")
 						}
 					}
 				}
@@ -251,7 +249,7 @@ component main {
 					for t = stdlib.typeSummaries {
 						html.li {
 							html.a(href="/docs/sngl/types/" + t.name + ".html", innerText=t.name)
-							html.span(innerText=t.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=t.doc, class="decl-doc")
 						}
 					}
 				}
@@ -262,7 +260,7 @@ component main {
 					for e = stdlib.enums {
 						html.li {
 							html.a(href="/docs/sngl/enums/" + e.name + ".html", innerText=e.name)
-							html.span(innerText=e.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=e.doc, class="decl-doc")
 						}
 					}
 				}
@@ -273,7 +271,7 @@ component main {
 					for f = stdlib.functions {
 						html.li {
 							html.a(href="/docs/sngl/functions/" + f.name + ".html", innerText=f.name)
-							html.span(innerText=f.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=f.doc, class="decl-doc")
 						}
 					}
 				}
@@ -284,7 +282,7 @@ component main {
 					for c = stdlib.constants {
 						html.li {
 							html.a(href="/docs/sngl/constants/" + c.name + ".html", innerText=c.name)
-							html.span(innerText=c.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=c.doc, class="decl-doc")
 						}
 					}
 				}
@@ -295,7 +293,7 @@ component main {
 					for d = stdlib.data {
 						html.li {
 							html.a(href="/docs/sngl/data/" + d.name + ".html", innerText=d.name)
-							html.span(innerText=d.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=d.doc, class="decl-doc")
 						}
 					}
 				}
@@ -306,7 +304,7 @@ component main {
 					for o = stdlib.overrides {
 						html.li {
 							html.a(href="/docs/sngl/overrides/" + o.name + ".html", innerText=o.name)
-							html.span(innerText=o.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=o.doc, class="decl-doc")
 						}
 					}
 				}
@@ -317,7 +315,7 @@ component main {
 					for pt = stdlib.platformTypes {
 						html.li {
 							html.a(href="/docs/sngl/platform-types/" + pt.name + ".html", innerText=pt.name)
-							html.span(innerText=pt.doc, style={color="#888", marginLeft=8})
+							html.span(innerText=pt.doc, class="decl-doc")
 						}
 					}
 				}
@@ -329,7 +327,7 @@ component main {
 	for comp = components {
 		window(title=comp.name, href="/docs/sngl/components/" + comp.name + ".html", favicon=logo) {
 			PageLayout(title=comp.name, currentHref="/docs/sngl/components/" + comp.name + ".html") {
-				html.p(innerText=comp.doc, style={fontSize=16, color="#444"})
+				html.p(innerText=comp.doc, class="component-blurb")
 
 				docui.Markdown(src=comp.previewHTML)
 				docui.Markdown(src=comp.highlightedCode)
@@ -388,10 +386,10 @@ component main {
 		}
 	}
 
-	// Targets reference — matrix of built-in platforms & languages
-	window(title="Targets", href="/targets/index.html", favicon=logo) {
-		PageLayout(title="Built-in Targets", currentHref="/targets/index.html") {
-			text(value="SNGL ships several platforms (what to render) and languages (what to generate). The matrices below show which optional capabilities each target implements; each section documents recognized `--opt key=value` options.")
+	// Platforms reference — capability matrix and per-platform options
+	window(title="Platforms", href="/platforms/index.html", favicon=logo) {
+		PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
+			text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents the recognized `--opt key=value` options.")
 
 			text(value="Global Options", style={fontSize=22, fontWeight="bold"})
 			text(value="Declared by the standard library; accepted by every output target.")
@@ -410,7 +408,7 @@ component main {
 				}
 			}
 
-			text(value="Platforms", style={fontSize=22, fontWeight="bold"})
+			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Platform")
@@ -451,8 +449,15 @@ component main {
 					}
 				}
 			}
+		}
+	}
 
-			text(value="Languages", style={fontSize=22, fontWeight="bold"})
+	// Languages reference — capability matrix and per-language options
+	window(title="Languages", href="/languages/index.html", favicon=logo) {
+		PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
+			text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents the recognized `--opt key=value` options.")
+
+			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Language")

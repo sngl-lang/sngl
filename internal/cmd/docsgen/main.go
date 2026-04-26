@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"html"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -39,6 +40,12 @@ func main() {
 	// Build playground (WASM + static assets).
 	if err := buildPlayground(*outDir); err != nil {
 		log.Printf("playground: %v", err)
+	}
+
+	// Inject the theme-toggle bootstrap into every page. Must run after
+	// any other post-processing that rewrites HTML (playground, tutorial).
+	if err := injectThemeBootstrap(*outDir); err != nil {
+		log.Printf("theme bootstrap: %v", err)
 	}
 
 	fmt.Printf("Site built in %s/\n", *outDir)
@@ -229,4 +236,46 @@ func injectTutorialLessons(outDir string) error {
 // terminate the tag.
 func escapeScriptContent(s string) string {
 	return strings.ReplaceAll(s, "</script>", "<\\/script>")
+}
+
+// themeBootstrap runs synchronously in <head> before any paint. It applies
+// a previously-saved manual theme so dark-mode users don't see a white flash
+// when they've forced light, and vice versa.
+const themeBootstrap = `<script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>`
+
+// themeToggle wires the sidebar toggle button (delegated so it survives nav
+// re-renders) and persists the choice to localStorage.
+const themeToggle = `<script>document.addEventListener('click',function(e){var t=e.target&&e.target.closest&&e.target.closest('#theme-toggle');if(!t)return;var c=document.documentElement.getAttribute('data-theme');var n=c==='dark'?'light':'dark';if(!c){n=window.matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',n);localStorage.setItem('theme',n);});</script>`
+
+// injectThemeBootstrap walks the output directory and patches every HTML
+// page so the manual light/dark toggle works site-wide without requiring
+// SNGL to render <head>.
+func injectThemeBootstrap(outDir string) error {
+	count := 0
+	err := filepath.WalkDir(outDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		s := string(data)
+		// Idempotent — skip if we've already injected.
+		if strings.Contains(s, "data-theme") && strings.Contains(s, "#theme-toggle") {
+			return nil
+		}
+		s = strings.Replace(s, "<head>", "<head>"+themeBootstrap, 1)
+		s = strings.Replace(s, "</body>", themeToggle+"</body>", 1)
+		if err := os.WriteFile(path, []byte(s), 0o644); err != nil {
+			return err
+		}
+		count++
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	log.Printf("theme: bootstrap injected into %d pages", count)
+	return nil
 }

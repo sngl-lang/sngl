@@ -1,4 +1,4 @@
-// Command specgen generates docs/language/specification.md from the v2 EBNF grammar.
+// Command specgen generates docs/reference/specification.md from the v2 EBNF grammar.
 //
 // Usage: go run ./internal/cmd/specgen
 package main
@@ -17,14 +17,14 @@ func main() {
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
 	ebnfPath := filepath.Join(root, "internal", "parser", "sngl.ebnf")
-	outPath := filepath.Join(root, "docs", "language", "specification.md")
+	outPath := filepath.Join(root, "docs", "reference", "specification.md")
 
 	prods := parseEBNF(ebnfPath)
 
 	var b strings.Builder
 	b.WriteString(`---
 title: "Language Specification"
-order: 3
+order: 50
 description: "Formal grammar and semantics of the SNGL language"
 ---
 

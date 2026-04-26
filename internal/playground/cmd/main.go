@@ -114,7 +114,7 @@ func compile(this js.Value, args []js.Value) any {
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
-		Options: map[string]string{"preview": "true"},
+		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	})
 	if err != nil {
 		result["error"] = err.Error()

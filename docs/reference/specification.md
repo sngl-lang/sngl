@@ -1,6 +1,6 @@
 ---
 title: "Language Specification"
-order: 3
+order: 50
 description: "Formal grammar and semantics of the SNGL language"
 ---
 

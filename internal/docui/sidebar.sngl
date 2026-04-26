@@ -7,9 +7,12 @@ component Sidebar(homeHref = "/", logo = "") list<component> {
 
     platform html {
         html.nav {
-            html.a(href=homeHref, class="nav-brand") {
-                html.img(src=logo, alt="SNGL")
-                html.span(innerText="SNGL")
+            html.div(class="sidebar-header") {
+                html.a(href=homeHref, class="nav-brand") {
+                    html.img(src=logo, alt="SNGL")
+                    html.span(innerText="SNGL")
+                }
+                html.button(id="theme-toggle", class="theme-toggle", type="button", title="Toggle theme", innerHTML="&#9788;")
             }
             html.ul {
                 slot

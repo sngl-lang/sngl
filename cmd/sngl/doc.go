@@ -726,8 +726,8 @@ func showTopic(docsDir, topic string) error {
 	candidates := []string{
 		filepath.Join(docsDir, topic+".md"),
 		filepath.Join(docsDir, topic, "index.md"),
-		filepath.Join(docsDir, "language", topic+".md"),
-		filepath.Join(docsDir, "getting-started", topic+".md"),
+		filepath.Join(docsDir, "reference", topic+".md"),
+		filepath.Join(docsDir, "learn", topic+".md"),
 	}
 
 	for _, path := range candidates {

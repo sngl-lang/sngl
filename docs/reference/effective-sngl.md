@@ -1,6 +1,6 @@
 ---
 title: "Effective SNGL"
-order: 1
+order: 60
 description: "Comprehensive guide to writing idiomatic SNGL"
 ---
 

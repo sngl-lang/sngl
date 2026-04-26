@@ -21,7 +21,7 @@ component NavGroup(title = "", href = "") list<component> {
 
     platform html {
         html.li {
-            html.a(href=href, innerText=title)
+            html.a(href=href, class="nav-group-title", innerText=title)
             html.ul {
                 slot
             }

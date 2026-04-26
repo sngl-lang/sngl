@@ -29,18 +29,19 @@ var workspaceDir string
 // When set, Components() includes workspace component declarations before stdlib.
 func SetWorkspaceDir(dir string) { workspaceDir = dir }
 
-//go:embed *.md getting-started language
+//go:embed *.md learn reference
 var content embed.FS
 
 // Page holds the data for a single documentation page.
 type Page struct {
 	Title       string
-	Slug        string // URL slug, e.g. "getting-started/installation"
-	Href        string // URL path, e.g. "/getting-started/installation.html"
+	Slug        string // URL slug, e.g. "learn/installation"
+	Href        string // URL path, e.g. "/learn/installation.html"
 	Description string
 	Body        string // rendered HTML from markdown
 	Order       int
-	Section     string // "getting-started", "language", "" for root
+	Section     string // parent directory, e.g. "learn", "reference"; "" for root-level files
+	IsIndex     bool   // true if this page is the section's index.md (or root index.md)
 }
 
 // Pages returns all documentation pages with rendered HTML bodies.
@@ -52,7 +53,7 @@ func Pages() []Page {
 		if err != nil || d.IsDir() || filepath.Ext(path) != ".md" {
 			return nil
 		}
-		if path == "language/walkthrough.md" {
+		if path == "learn/tour.md" {
 			return nil // rendered separately as the interactive tutorial
 		}
 		data, err := content.ReadFile(path)
@@ -69,11 +70,14 @@ func Pages() []Page {
 		}
 
 		slug := strings.TrimSuffix(path, ".md")
+		isIndex := false
 		if before, ok := strings.CutSuffix(slug, "/index"); ok {
 			slug = before
+			isIndex = true
 		}
 		if slug == "index" {
 			slug = ""
+			isIndex = true
 		}
 
 		section := ""
@@ -99,6 +103,7 @@ func Pages() []Page {
 			Body:        string(html),
 			Order:       fm.Order,
 			Section:     section,
+			IsIndex:     isIndex,
 		})
 		return nil
 	})
@@ -114,6 +119,148 @@ func Pages() []Page {
 	})
 
 	return pages
+}
+
+// NavLink is a single sidebar entry.
+type NavLink struct {
+	Title string
+	Href  string
+	Order int
+}
+
+// NavGroup is a section in the sidebar. Title "" renders flat (one item, no
+// heading) — used for top-level entries like Home and Playground. A non-empty
+// Title renders as a section heading; Href links to the section's landing page.
+type NavGroup struct {
+	Title string
+	Href  string
+	Items []NavLink
+}
+
+// navExtras lists sidebar entries that have no markdown source — virtual
+// generated pages (Components, Standard Library, etc.) and top-level entries
+// like Home / Playground. Section "" places the entry at the sidebar root.
+var navExtras = []struct {
+	Section string
+	Link    NavLink
+}{
+	{"", NavLink{Title: "Home", Href: "/index.html", Order: 0}},
+	{"learn", NavLink{Title: "Tour", Href: "/tutorial.html", Order: 30}},
+	{"reference", NavLink{Title: "Components", Href: "/components/index.html", Order: 1}},
+	{"reference", NavLink{Title: "Standard Library", Href: "/docs/sngl/index.html", Order: 2}},
+	{"reference", NavLink{Title: "Platforms", Href: "/platforms/index.html", Order: 3}},
+	{"reference", NavLink{Title: "Languages", Href: "/languages/index.html", Order: 4}},
+	{"", NavLink{Title: "Playground", Href: "/playground.html", Order: 1000}},
+}
+
+// NavTree returns the resolved sidebar tree. The structure mirrors the docs
+// directory: each subdirectory with an index.md becomes a section heading,
+// other markdown files in that subdirectory become items under it. Top-level
+// entries (Home, Playground) come from navExtras with Section "".
+//
+// Pages with no parent index.md (e.g. docs/index.md) are still emitted but
+// stay out of the sidebar — link to them explicitly from another page if you
+// want them reachable.
+//
+//sngl:pure
+func NavTree() []NavGroup {
+	type sec struct {
+		title string
+		href  string
+		order int
+		items []NavLink
+		seen  bool
+	}
+	sections := map[string]*sec{}
+	getSec := func(name string) *sec {
+		s, ok := sections[name]
+		if !ok {
+			s = &sec{}
+			sections[name] = s
+		}
+		return s
+	}
+
+	for _, p := range Pages() {
+		if p.Section == "" {
+			continue // root-level pages don't appear in the sidebar
+		}
+		s := getSec(p.Section)
+		if p.IsIndex {
+			s.title = p.Title
+			s.href = p.Href
+			s.order = p.Order
+			s.seen = true
+			continue
+		}
+		s.items = append(s.items, NavLink{
+			Title: p.Title,
+			Href:  p.Href,
+			Order: p.Order,
+		})
+	}
+
+	// navExtras: top-level entries go straight to the output; section
+	// extras attach to an existing section.
+	type topEntry struct {
+		isSection bool
+		order     int
+		group     NavGroup
+	}
+	var top []topEntry
+	for _, e := range navExtras {
+		if e.Section == "" {
+			top = append(top, topEntry{
+				order: e.Link.Order,
+				group: NavGroup{Items: []NavLink{e.Link}},
+			})
+			continue
+		}
+		s := getSec(e.Section)
+		s.items = append(s.items, e.Link)
+	}
+
+	// Skip sections that have no index.md — they're considered hidden.
+	for name, s := range sections {
+		if !s.seen {
+			delete(sections, name)
+		}
+	}
+
+	for _, s := range sections {
+		sort.Slice(s.items, func(i, j int) bool {
+			if s.items[i].Order != s.items[j].Order {
+				return s.items[i].Order < s.items[j].Order
+			}
+			return s.items[i].Title < s.items[j].Title
+		})
+		top = append(top, topEntry{
+			isSection: true,
+			order:     s.order,
+			group:     NavGroup{Title: s.title, Href: s.href, Items: s.items},
+		})
+	}
+
+	sort.SliceStable(top, func(i, j int) bool {
+		if top[i].order != top[j].order {
+			return top[i].order < top[j].order
+		}
+		// Stable tiebreak: sections by title, links by their single item title.
+		ti, tj := top[i].group.Title, top[j].group.Title
+		if ti == "" && len(top[i].group.Items) > 0 {
+			ti = top[i].group.Items[0].Title
+		}
+		if tj == "" && len(top[j].group.Items) > 0 {
+			tj = top[j].group.Items[0].Title
+		}
+		return ti < tj
+	})
+
+	groups := make([]NavGroup, len(top))
+	for i, e := range top {
+		groups[i] = e.group
+	}
+	return groups
 }
 
 // Component holds metadata for a single stdlib component.

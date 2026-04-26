@@ -16,8 +16,11 @@
   --link: #2563eb;
 }
 
+/* Dark theme: applies when OS prefers dark and user hasn't forced light,
+   or when user has manually selected dark via the toggle. The two blocks
+   share identical vars; the manual data-theme attribute always wins. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1a1a2e;
     --fg: #e0e0e0;
     --fg-muted: #999;
@@ -28,6 +31,17 @@
     --accent-hover: #93c5fd;
     --link: #60a5fa;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a2e;
+  --fg: #e0e0e0;
+  --fg-muted: #999;
+  --bg-sidebar: #16213e;
+  --bg-code: #0f1729;
+  --border: #2a2a4a;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --link: #60a5fa;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -60,6 +74,15 @@ body {
   z-index: 10;
 }
 
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
 .nav-brand {
   display: flex;
   align-items: center;
@@ -69,9 +92,6 @@ body {
   color: var(--accent);
   text-decoration: none;
   letter-spacing: 0.05em;
-  padding: 0 1.25rem 1rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0.75rem;
 }
 
 .nav-brand img {
@@ -79,6 +99,19 @@ body {
   height: 28px;
   border-radius: 4px;
 }
+
+.theme-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.theme-toggle:hover { background: var(--bg-code); }
 
 .site > nav ul {
   list-style: none;
@@ -106,6 +139,13 @@ body {
 
 .site > nav ul ul {
   padding-left: 0.75rem;
+}
+
+.nav-group-title {
+  font-weight: bold;
+  font-size: 0.875rem;
+  color: var(--fg-muted) !important;
+  margin-top: 0.75rem;
 }
 
 /* Main content */
@@ -190,6 +230,16 @@ ul, ol { padding-left: 1.5em; }
 li { margin: 0.25em 0; }
 article ul, article ol { padding-left: 2em; }
 
+/* Stdlib & component-page utility classes */
+.decl-doc {
+  margin-left: 8px;
+  color: var(--fg-muted);
+}
+.component-blurb {
+  font-size: 1rem;
+  color: var(--fg-muted);
+}
+
 /* Carousel */
 .platform-carousel { text-align: center; margin: 32px 0; }
 .carousel-slides { position: relative; max-width: 800px; height: 500px; margin: 0 auto; }
@@ -197,10 +247,19 @@ article ul, article ol { padding-left: 2em; }
 .slide.active { display: flex; align-items: center; justify-content: center; }
 .slide img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); object-fit: contain; }
 .carousel-tabs { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
-.carousel-tabs button { padding: 8px 20px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
-.carousel-tabs button.active { background: #2196f3; color: #fff; border-color: #2196f3; }
-.carousel-tabs button:hover { background: #e0e0e0; }
-.carousel-tabs button.active:hover { background: #1976d2; }
+.carousel-tabs button {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  color: var(--fg);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.carousel-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.carousel-tabs button:hover { background: var(--bg-code); }
+.carousel-tabs button.active:hover { background: var(--accent-hover); }
 
 /* Component Gallery */
 .tier { margin-bottom: 32px; }
@@ -212,9 +271,15 @@ article ul, article ol { padding-left: 2em; }
 .component-card p { margin: 0; font-size: 0.9em; color: var(--fg-muted); }
 
 /* Component Page */
-.type-badge { background: #e8f0fe; color: #1967d2; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+.type-badge {
+  background: var(--bg-code);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
 .platform-tabs { display: flex; gap: 4px; margin-bottom: 0; }
-.platform-tabs button { padding: 8px 16px; border: 1px solid var(--border); background: var(--bg-sidebar); cursor: pointer; border-radius: 4px 4px 0 0; font-size: 0.9em; }
+.platform-tabs button { padding: 8px 16px; border: 1px solid var(--border); background: var(--bg-sidebar); color: var(--fg); cursor: pointer; border-radius: 4px 4px 0 0; font-size: 0.9em; }
 .platform-tabs button.active { background: var(--bg); border-bottom-color: var(--bg); font-weight: bold; }
 .preview-frame { border: 1px solid var(--border); border-radius: 0 4px 4px 4px; min-height: 200px; overflow: hidden; }
 .preview-frame iframe { width: 100%; height: 300px; border: none; }
@@ -260,8 +325,8 @@ article ul, article ol { padding-left: 2em; }
   }
 }
 
-/* Chroma syntax highlighting */
-.hl-chroma { background-color: #ffffff; }
+/* Chroma syntax highlighting — light */
+.hl-chroma { background-color: var(--bg-code); }
 .hl-chroma .hl-err { color: #a61717; background-color: #e3d2d2 }
 .hl-chroma .hl-lnlinks { outline: none; text-decoration: none; color: inherit }
 .hl-chroma .hl-line { display: flex; }
@@ -292,23 +357,64 @@ article ul, article ol { padding-left: 2em; }
 .hl-chroma .hl-p { color: #000000 }
 .hl-chroma .hl-w { color: #bbbbbb }
 
+/* Chroma syntax highlighting — dark (GitHub dark palette).
+   Mirrored for both prefers-color-scheme and the manual data-theme="dark"
+   override; the user toggle wins via :not([data-theme="light"]). */
 @media (prefers-color-scheme: dark) {
-  .hl-chroma { color: #e6edf3; background-color: #0d1117; }
-  .hl-chroma .hl-err { color: #f85149 }
-  .hl-chroma .hl-k { color: #ff7b72 }
-  .hl-chroma .hl-kc { color: #79c0ff }
-  .hl-chroma .hl-kd { color: #ff7b72 }
-  .hl-chroma .hl-kt { color: #ff7b72 }
-  .hl-chroma .hl-nc { color: #f0883e; font-weight: bold }
-  .hl-chroma .hl-nf { color: #d2a8ff; font-weight: bold }
-  .hl-chroma .hl-nt { color: #7ee787 }
-  .hl-chroma .hl-nv { color: #79c0ff }
-  .hl-chroma .hl-s { color: #a5d6ff }
-  .hl-chroma .hl-s2 { color: #a5d6ff }
-  .hl-chroma .hl-si { color: #a5d6ff }
-  .hl-chroma .hl-m { color: #a5d6ff }
-  .hl-chroma .hl-mi { color: #a5d6ff }
-  .hl-chroma .hl-o { color: #ff7b72; font-weight: bold }
-  .hl-chroma .hl-c { color: #8b949e; font-style: italic }
-  .hl-chroma .hl-c1 { color: #8b949e; font-style: italic }
+  :root:not([data-theme="light"]) .hl-chroma { color: #c9d1d9; background-color: #0d1117; }
+  :root:not([data-theme="light"]) .hl-chroma .hl-err { color: #f85149 }
+  :root:not([data-theme="light"]) .hl-chroma .hl-k { color: #ff7b72; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-kc { color: #79c0ff; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-kd { color: #ff7b72; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-kt { color: #ff7b72 }
+  :root:not([data-theme="light"]) .hl-chroma .hl-na { color: #79c0ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nb { color: #79c0ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nc { color: #f0883e; font-weight: bold }
+  :root:not([data-theme="light"]) .hl-chroma .hl-no { color: #79c0ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nd { color: #d2a8ff; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-ne { color: #f0883e; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nf { color: #d2a8ff; font-weight: bold }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nn { color: #c9d1d9 }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nt { color: #7ee787 }
+  :root:not([data-theme="light"]) .hl-chroma .hl-nv { color: #79c0ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-s { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-s2 { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-si { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-m { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-mi { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-mf { color: #a5d6ff }
+  :root:not([data-theme="light"]) .hl-chroma .hl-o { color: #ff7b72; font-weight: normal }
+  :root:not([data-theme="light"]) .hl-chroma .hl-c { color: #8b949e; font-style: italic }
+  :root:not([data-theme="light"]) .hl-chroma .hl-c1 { color: #8b949e; font-style: italic }
+  :root:not([data-theme="light"]) .hl-chroma .hl-cm { color: #8b949e; font-style: italic }
+  :root:not([data-theme="light"]) .hl-chroma .hl-p { color: #c9d1d9 }
+  :root:not([data-theme="light"]) .hl-chroma .hl-w { color: transparent }
 }
+:root[data-theme="dark"] .hl-chroma { color: #c9d1d9; background-color: #0d1117; }
+:root[data-theme="dark"] .hl-chroma .hl-err { color: #f85149 }
+:root[data-theme="dark"] .hl-chroma .hl-k { color: #ff7b72; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-kc { color: #79c0ff; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-kd { color: #ff7b72; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-kt { color: #ff7b72 }
+:root[data-theme="dark"] .hl-chroma .hl-na { color: #79c0ff }
+:root[data-theme="dark"] .hl-chroma .hl-nb { color: #79c0ff }
+:root[data-theme="dark"] .hl-chroma .hl-nc { color: #f0883e; font-weight: bold }
+:root[data-theme="dark"] .hl-chroma .hl-no { color: #79c0ff }
+:root[data-theme="dark"] .hl-chroma .hl-nd { color: #d2a8ff; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-ne { color: #f0883e; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-nf { color: #d2a8ff; font-weight: bold }
+:root[data-theme="dark"] .hl-chroma .hl-nn { color: #c9d1d9 }
+:root[data-theme="dark"] .hl-chroma .hl-nt { color: #7ee787 }
+:root[data-theme="dark"] .hl-chroma .hl-nv { color: #79c0ff }
+:root[data-theme="dark"] .hl-chroma .hl-s { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-s2 { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-si { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-m { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-mi { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-mf { color: #a5d6ff }
+:root[data-theme="dark"] .hl-chroma .hl-o { color: #ff7b72; font-weight: normal }
+:root[data-theme="dark"] .hl-chroma .hl-c { color: #8b949e; font-style: italic }
+:root[data-theme="dark"] .hl-chroma .hl-c1 { color: #8b949e; font-style: italic }
+:root[data-theme="dark"] .hl-chroma .hl-cm { color: #8b949e; font-style: italic }
+:root[data-theme="dark"] .hl-chroma .hl-p { color: #c9d1d9 }
+:root[data-theme="dark"] .hl-chroma .hl-w { color: transparent }
