@@ -48,6 +48,11 @@ struct Test {}
 // so that multiple failures can be reported from a single run.
 func Test.assert(b bool) {}
 
+// Like assert, but stops the test immediately when b is false. Use
+// must when subsequent statements would crash or be meaningless if
+// the condition fails (e.g. checking a value before dereferencing it).
+func Test.must(b bool) {}
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left

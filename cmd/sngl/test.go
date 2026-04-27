@@ -178,7 +178,9 @@ func printResult(r *codegen.TestResult, prefix string, verbose bool) {
 	} else {
 		fmt.Printf("--- FAIL: %s (%.2fs)\n", name, r.Duration.Seconds())
 		if r.Error != "" {
-			fmt.Printf("    %s\n", r.Error)
+			for line := range strings.SplitSeq(r.Error, "\n") {
+				fmt.Printf("    %s\n", line)
+			}
 		}
 	}
 	if verbose {

@@ -69,10 +69,27 @@ type TestResult struct {
 	Component string
 	Desc      string
 	Passed    bool
-	Error     string
-	Log       []string
-	Children  []*TestResult
-	Duration  time.Duration
+	// Error is the human-readable failure text. When multiple soft
+	// (`t.assert`) failures occurred their messages are joined with
+	// newlines; a fatal failure (`t.must` or runtime error) appears as
+	// the last entry.
+	Error string
+	// ErrorLine is the 1-based source line of the first failure. Zero
+	// when not available.
+	ErrorLine int
+	// Failures is the structured list of every recorded failure, in the
+	// order they happened. Empty on success.
+	Failures []TestFailure
+	Log      []string
+	Children []*TestResult
+	Duration time.Duration
+}
+
+// TestFailure describes a single recorded failure on a test result.
+type TestFailure struct {
+	Line    int    // 1-based source line of the failing expression
+	Message string // structured message, same shape as TestResult.Error
+	Fatal   bool   // true for must() / runtime errors that halted the test
 }
 
 // PreviewStyler is optionally implemented by PlatformGenerators that want

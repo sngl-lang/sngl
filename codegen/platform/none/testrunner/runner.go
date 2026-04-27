@@ -3,6 +3,7 @@ package testrunner
 import (
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -75,19 +76,38 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 
 	for _, stmt := range fn.Block {
 		if err := env.Exec(stmt); err != nil {
-			r.Error = err.Error()
-			r.Duration = time.Since(start)
-			return r
+			r.Failures = append(r.Failures, codegen.TestFailure{
+				Line:    errorLine(err, stmt),
+				Message: err.Error(),
+				Fatal:   true,
+			})
+			break
 		}
 		if cVal != nil {
 			cVal.syncFromEnv(testParams)
 		}
 	}
 
+	composeFailures(r)
 	r.Log = env.Log
-	r.Passed = r.Error == "" && allPassed(r.Children)
+	r.Passed = len(r.Failures) == 0 && allPassed(r.Children)
 	r.Duration = time.Since(start)
 	return r
+}
+
+// composeFailures derives the legacy Error / ErrorLine fields from the
+// structured Failures list so existing consumers (CLI printer, JSON
+// output) keep working unchanged.
+func composeFailures(r *codegen.TestResult) {
+	if len(r.Failures) == 0 {
+		return
+	}
+	parts := make([]string, len(r.Failures))
+	for i, f := range r.Failures {
+		parts[i] = f.Message
+	}
+	r.Error = strings.Join(parts, "\n")
+	r.ErrorLine = r.Failures[0].Line
 }
 
 // testingT is the runtime value for the Test parameter in test functions.
@@ -215,6 +235,21 @@ func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
 		t.Conversions[s.Name] = s.Factor
 	}
 	return t
+}
+
+// errorLine returns the 1-based source line of the failing expression. For
+// AssertError it uses the asserted expression's AST position; for other
+// errors it falls back to the enclosing statement's position when known.
+func errorLine(err error, stmt ir.Stmt) int {
+	if ae, ok := err.(*AssertError); ok && ae != nil {
+		if a := irASTOf(ae.Expr); a != nil {
+			return a.ExprPos().Line
+		}
+	}
+	if cs, ok := stmt.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.AST != nil {
+		return cs.Call.AST.Pos.Line
+	}
+	return 0
 }
 
 func allPassed(results []*codegen.TestResult) bool {

@@ -9,16 +9,17 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// runAssert evaluates the expression passed to t.assert and, on failure,
-// returns an *AssertError whose message reads as a complete statement of
-// what the assertion expected vs what it observed.
+// runAssert evaluates the expression passed to t.assert/t.must and, on
+// failure, returns an *AssertError whose message reads as a complete
+// statement of what the assertion expected vs what it observed. A second
+// return value carries any runtime-evaluation error (always fatal).
 //
 // Operand rendering rule: each operand is shown as its evaluated value;
 // when the operand is a non-literal, non-multiline expression, the source
 // form follows in parens — e.g. "0 (c.count)". Literals and multiline
 // expressions don't include the source form, since the value already
 // stands for itself or wouldn't fit cleanly on the line.
-func (env *Env) runAssert(expr ir.Expr) error {
+func (env *Env) runAssert(expr ir.Expr) (*AssertError, error) {
 	switch e := expr.(type) {
 	case *ir.Binary:
 		switch e.Op {
@@ -37,21 +38,21 @@ func (env *Env) runAssert(expr ir.Expr) error {
 	return env.assertDefault(expr)
 }
 
-func (env *Env) assertCompare(top ir.Expr, e *ir.Binary) error {
+func (env *Env) assertCompare(top ir.Expr, e *ir.Binary) (*AssertError, error) {
 	left, err := env.Eval(e.Left)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	right, err := env.Eval(e.Right)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pass, err := compareOp(e.Op, left, right)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if pass {
-		return nil
+		return nil, nil
 	}
 
 	var msg string
@@ -63,7 +64,7 @@ func (env *Env) assertCompare(top ir.Expr, e *ir.Binary) error {
 	default:
 		msg = "wanted " + operandRepr(e.Left, left) + " " + binOpSym(e.Op) + " " + operandRepr(e.Right, right)
 	}
-	return &AssertError{Expr: top, Got: false, Msg: msg}
+	return &AssertError{Expr: top, Got: false, Msg: msg}, nil
 }
 
 // formatEqFailure: equality failed, so left != right. The literal side
@@ -104,29 +105,29 @@ func formatNeqFailure(le, re ir.Expr, lv, rv any) string {
 	}
 }
 
-func (env *Env) assertNot(top ir.Expr, e *ir.Unary) error {
+func (env *Env) assertNot(top ir.Expr, e *ir.Unary) (*AssertError, error) {
 	v, err := env.Eval(e.Operand)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	b, ok := v.(bool)
 	if !ok {
-		return fmt.Errorf("! requires bool operand, got %T", v)
+		return nil, fmt.Errorf("! requires bool operand, got %T", v)
 	}
 	if !b {
-		return nil
+		return nil, nil
 	}
 	msg := "didn't want true"
 	if src := includableSrc(e.Operand); src != "" {
 		msg += " (" + src + ")"
 	}
-	return &AssertError{Expr: top, Got: true, Msg: msg}
+	return &AssertError{Expr: top, Got: true, Msg: msg}, nil
 }
 
-func (env *Env) assertContains(top ir.Expr, containerExpr, needleExpr ir.Expr) error {
+func (env *Env) assertContains(top ir.Expr, containerExpr, needleExpr ir.Expr) (*AssertError, error) {
 	container, err := env.Eval(containerExpr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	switch container.(type) {
 	case []any, string:
@@ -135,33 +136,33 @@ func (env *Env) assertContains(top ir.Expr, containerExpr, needleExpr ir.Expr) e
 	}
 	needle, err := env.Eval(needleExpr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if containsValue(container, needle) {
-		return nil
+		return nil, nil
 	}
 	msg := "wanted " + operandRepr(containerExpr, container) +
 		" to contain " + operandRepr(needleExpr, needle)
-	return &AssertError{Expr: top, Got: false, Msg: msg}
+	return &AssertError{Expr: top, Got: false, Msg: msg}, nil
 }
 
-func (env *Env) assertDefault(expr ir.Expr) error {
+func (env *Env) assertDefault(expr ir.Expr) (*AssertError, error) {
 	v, err := env.Eval(expr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	b, ok := v.(bool)
 	if !ok {
-		return fmt.Errorf("t.assert() requires bool argument, got %T (%v)", v, v)
+		return nil, fmt.Errorf("t.assert() requires bool argument, got %T (%v)", v, v)
 	}
 	if b {
-		return nil
+		return nil, nil
 	}
 	msg := "wanted true, got false"
 	if src := includableSrc(expr); src != "" {
 		msg += " (" + src + ")"
 	}
-	return &AssertError{Expr: expr, Got: v, Msg: msg}
+	return &AssertError{Expr: expr, Got: v, Msg: msg}, nil
 }
 
 // operandRepr renders an operand as "<value>" or "<value> (<source>)"

@@ -62,19 +62,65 @@ func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool 
 func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective) {
 	t.Helper()
 
-	// Check if this result matches an expected-failure directive.
-	for _, d := range dirs {
-		if r.Error != "" && strings.Contains(r.Error, d.Substring) {
-			return
+	// Match each recorded failure against a directive at its line (or the
+	// line directly above for standalone-comment placement). A precise
+	// line-tied directive that doesn't substring-match is reported as a
+	// targeted mismatch — easier to debug than a file-wide fallthrough.
+	unmatched := make([]codegen.TestFailure, 0)
+	for _, f := range r.Failures {
+		matched := false
+		anyAtLine := false
+		if f.Line > 0 {
+			for _, d := range dirs {
+				if d.Line == f.Line || d.Line == f.Line-1 {
+					anyAtLine = true
+					if strings.Contains(f.Message, d.Substring) {
+						matched = true
+						break
+					}
+				}
+			}
+		}
+		if matched {
+			continue
+		}
+		if anyAtLine {
+			desc := r.Desc
+			if r.Component != "" {
+				desc = r.Component + ": " + desc
+			}
+			t.Errorf("test %q: failure at line %d not matched by directive at that line: %s", desc, f.Line, f.Message)
+			continue
+		}
+		unmatched = append(unmatched, f)
+	}
+
+	// Legacy fallback: any unmatched failure is OK if some directive in
+	// the file substring-matches it. Keeps fixtures with func-line
+	// directives (test_errors.sngl, test_error_runtime.sngl, …) green.
+	for _, f := range unmatched {
+		matched := false
+		for _, d := range dirs {
+			if strings.Contains(f.Message, d.Substring) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			desc := r.Desc
+			if r.Component != "" {
+				desc = r.Component + ": " + desc
+			}
+			t.Errorf("test %q failed: %s", desc, f.Message)
 		}
 	}
 
-	if !r.Passed {
+	if !r.Passed && len(r.Failures) == 0 {
 		desc := r.Desc
 		if r.Component != "" {
 			desc = r.Component + ": " + desc
 		}
-		t.Errorf("test %q failed: %s", desc, r.Error)
+		t.Errorf("test %q did not pass but had no failures recorded", desc)
 	}
 
 	for _, child := range r.Children {

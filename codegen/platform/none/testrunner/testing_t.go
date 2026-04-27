@@ -17,7 +17,27 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.assert() requires 1 argument")
 		}
-		return nil, env.runAssert(args[0])
+		ae, err := env.runAssert(args[0])
+		if err != nil {
+			return nil, err
+		}
+		if ae != nil {
+			tv.recordFailure(ae, false)
+		}
+		return nil, nil
+
+	case "must":
+		if len(args) != 1 {
+			return nil, fmt.Errorf("t.must() requires 1 argument")
+		}
+		ae, err := env.runAssert(args[0])
+		if err != nil {
+			return nil, err
+		}
+		if ae != nil {
+			return nil, ae
+		}
+		return nil, nil
 
 	case "tick":
 		var cv *componentValue
@@ -99,6 +119,24 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		return nil, nil
 	}
 	return nil, fmt.Errorf("Test has no method %q", method)
+}
+
+// recordFailure appends a soft assertion failure to the enclosing test
+// result. fatal=true is used by must() / runtime errors so the runner can
+// stop execution after appending.
+func (tv *testingT) recordFailure(ae *AssertError, fatal bool) {
+	if tv == nil || tv.result == nil || ae == nil {
+		return
+	}
+	line := 0
+	if a := irASTOf(ae.Expr); a != nil {
+		line = a.ExprPos().Line
+	}
+	tv.result.Failures = append(tv.result.Failures, codegen.TestFailure{
+		Line:    line,
+		Message: ae.Msg,
+		Fatal:   fatal,
+	})
 }
 
 // getField resolves c.field on a componentValue.
