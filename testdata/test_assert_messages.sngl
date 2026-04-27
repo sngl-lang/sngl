@@ -1,0 +1,49 @@
+// Fixtures for t.assert failure messages. Each test fails on purpose so
+// the runner produces a structured message; the // ERROR(test) directive
+// pins a substring of that message. Backslash-escaped quotes inside the
+// directive are honored (the substring is decoded with strconv.Unquote).
+
+component box {
+    var count = 0
+    var name = "hello"
+    var items = [1, 2, 3]
+    var flag = false
+    text(value="{count}")
+}
+
+func testEq(t Test, c box) { // ERROR(test) "wanted 5, got 0 (c.count)"
+    t.assert(5 == c.count)
+}
+
+func testNeq(t Test, c box) { // ERROR(test) "didn't want 0 (c.count)"
+    t.assert(0 != c.count)
+}
+
+func testLt(t Test, c box) { // ERROR(test) "wanted 5 < 0 (c.count)"
+    t.assert(5 < c.count)
+}
+
+func testGte(t Test, c box) { // ERROR(test) "wanted 0 (c.count) >= 5"
+    t.assert(c.count >= 5)
+}
+
+func testStringEq(t Test, c box) { // ERROR(test) "wanted \"world\", got \"hello\" (c.name)"
+    t.assert(c.name == "world")
+}
+
+func testListContains(t Test, c box) { // ERROR(test) "wanted [1, 2, 3] (c.items) to contain 7"
+    t.assert(c.items.contains(7))
+}
+
+func testStringContains(t Test, c box) { // ERROR(test) "wanted \"hello\" (c.name) to contain \"xyz\""
+    t.assert(c.name.contains("xyz"))
+}
+
+func testNegate(t Test, c box) { // ERROR(test) "didn't want true (c.flag)"
+    c.flag = true
+    t.assert(!c.flag)
+}
+
+func testDefault(t Test, c box) { // ERROR(test) "wanted true, got false (c.flag)"
+    t.assert(c.flag)
+}

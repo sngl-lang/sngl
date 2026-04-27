@@ -17,18 +17,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.assert() requires 1 argument")
 		}
-		v, err := env.Eval(args[0])
-		if err != nil {
-			return nil, err
-		}
-		b, ok := v.(bool)
-		if !ok {
-			return nil, fmt.Errorf("t.assert() requires bool argument, got %T (%v)", v, v)
-		}
-		if !b {
-			return nil, &AssertError{Expr: args[0], Got: v}
-		}
-		return nil, nil
+		return nil, env.runAssert(args[0])
 
 	case "tick":
 		var cv *componentValue

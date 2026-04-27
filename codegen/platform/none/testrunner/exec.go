@@ -8,13 +8,19 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// AssertError is returned when an assertion fails.
+// AssertError is returned when an assertion fails. Msg is the structured
+// failure message produced by runAssert (named operands and their values
+// for binary comparisons, list/string contains, etc.).
 type AssertError struct {
 	Expr ir.Expr // the expression that was asserted
 	Got  any
+	Msg  string
 }
 
 func (e *AssertError) Error() string {
+	if e.Msg != "" {
+		return e.Msg
+	}
 	return fmt.Sprintf("assert failed — got %v", e.Got)
 }
 

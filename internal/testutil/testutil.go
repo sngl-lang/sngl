@@ -14,7 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
-var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+"([^"]+)"`)
+var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+("(?:[^"\\]|\\.)*")`)
 var foldRE = regexp.MustCompile(`//\s*FOLD\s+(.+)`)
 var posLineRE = regexp.MustCompile(`^\d+:\d+:`)
 
@@ -191,7 +191,11 @@ func ParseDirectives(path string) ([]ErrorDirective, error) {
 	for s.Scan() {
 		lineNum++
 		if m := directiveRE.FindStringSubmatch(s.Text()); m != nil {
-			dirs = append(dirs, ErrorDirective{Phase: m[1], Substring: m[2], Line: lineNum})
+			sub, err := strconv.Unquote(m[2])
+			if err != nil {
+				return nil, fmt.Errorf("%s:%d: ERROR directive: %w", path, lineNum, err)
+			}
+			dirs = append(dirs, ErrorDirective{Phase: m[1], Substring: sub, Line: lineNum})
 		}
 	}
 	return dirs, s.Err()
