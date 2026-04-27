@@ -96,6 +96,7 @@ type Func struct {
 	HasContextArg  bool
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
+	IsAsync        bool // for native imports: declared async (e.g. TS Promise<T>). For SNGL funcs: set by effect analysis when body transitively calls an IsAsync func.
 	Unusable       string
 	Doc            string // doc comment for scheme-imported decls
 }

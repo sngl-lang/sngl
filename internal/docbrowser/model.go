@@ -238,8 +238,8 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_3)
 		var content_2_4 string
 		content_2_4 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("COMPONENTS"))
+			Bold(true).
+			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint("COMPONENTS"))
 		content_2Children = append(content_2Children, content_2_4)
 		var content_2_5 string
 		var content_2_5Items []string
@@ -292,8 +292,8 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_12)
 		var content_2_13 string
 		content_2_13 = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint("FUNCTIONS"))
+			Foreground(lipgloss.Color("#888")).
+			Bold(true).Render(fmt.Sprint("FUNCTIONS"))
 		content_2Children = append(content_2Children, content_2_13)
 		var content_2_14 string
 		var content_2_14Items []string
@@ -371,8 +371,8 @@ func (m Model) View() tea.View {
 		content_3Children = append(content_3Children, content_3_3)
 		var content_3_4 string
 		content_3_4 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("EVENTS"))
+			Bold(true).
+			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint("EVENTS"))
 		content_3Children = append(content_3Children, content_3_4)
 		var content_3_5 string
 		var content_3_5Items []string

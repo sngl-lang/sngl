@@ -124,6 +124,13 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
+	// Native scheme-import call (e.g. node://): emit the imported name
+	// directly and record the module → name binding for top-level
+	// `import { ... } from "module"` emission by the platform.
+	if n.Func != nil && n.Func.NativePkg != "" {
+		return translateIRNativeCall(n, scope)
+	}
+
 	// Namespace / component call: Receiver expression is preserved.
 	if n.Receiver != nil {
 		return translateIRNamespaceCall(n, scope)
@@ -171,6 +178,35 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 		fn = "/* unresolved call */"
 	}
 	return fn + "(" + strings.Join(argStrs, ", ") + ")"
+}
+
+// translateIRNativeCall emits a call to a function imported via a scheme
+// (e.g. node://). Records the module → name binding on scope.NativeImports
+// so the platform can emit a top-level ES import. Wraps with `await` when
+// the imported func is declared async.
+func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {
+	mod := n.Func.NativePkg
+	name := n.Func.NativeName
+	if name == "" {
+		name = n.Func.Name
+	}
+	if scope.NativeImports == nil {
+		scope.NativeImports = map[string]map[string]bool{}
+	}
+	if scope.NativeImports[mod] == nil {
+		scope.NativeImports[mod] = map[string]bool{}
+	}
+	scope.NativeImports[mod][name] = true
+
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+	call := name + "(" + strings.Join(argStrs, ", ") + ")"
+	if n.Func.IsAsync {
+		call = "await " + call
+	}
+	return call
 }
 
 func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {

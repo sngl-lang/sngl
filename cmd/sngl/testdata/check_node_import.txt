@@ -1,0 +1,19 @@
+# node:// imports for JS/TS modules. Smoke-test the checker accepts a SNGL
+# file that imports a TypeScript module and calls one of its exports.
+sngl check app.sngl
+stdout 'app.sngl: ok'
+
+-- app.sngl --
+output { js { html } }
+
+import lib "node://./lib"
+
+func wrap(a int, b int) => lib.add(a, b)
+
+component main {
+    text(value=string(wrap(1, 2)))
+}
+-- lib/index.ts --
+export function add(a: number, b: number): number {
+    return a + b;
+}

@@ -19,16 +19,17 @@ var ErrSkip = errors.New("skip")
 // ExprScope provides context for expression translation (which names are model
 // fields vs local vars vs computeds).
 type ExprScope struct {
-	ModelFields    map[string]bool   // data fields → prefix with model accessor
-	ComputedFields map[string]bool   // computed names → call as methods
-	FuncNames      map[string]bool   // user-defined function names
-	ExternFuncs    map[string]bool   // extern func names from native imports
-	ExternVars     map[string]bool   // extern var names from native imports
-	LocalVars      map[string]bool   // for-loop vars, params → no prefix
-	Renames        map[string]string // local var renames (original → unique name)
-	EventVar       string            // what "event" maps to in this context
-	ContextVar     string            // expression to supply for native context args (e.g., "r.Context()")
-	NeededHelpers  map[string]bool   // helper functions needed (e.g., "String")
+	ModelFields    map[string]bool            // data fields → prefix with model accessor
+	ComputedFields map[string]bool            // computed names → call as methods
+	FuncNames      map[string]bool            // user-defined function names
+	ExternFuncs    map[string]bool            // extern func names from native imports
+	ExternVars     map[string]bool            // extern var names from native imports
+	LocalVars      map[string]bool            // for-loop vars, params → no prefix
+	Renames        map[string]string          // local var renames (original → unique name)
+	EventVar       string                     // what "event" maps to in this context
+	ContextVar     string                     // expression to supply for native context args (e.g., "r.Context()")
+	NeededHelpers  map[string]bool            // helper functions needed (e.g., "String")
+	NativeImports  map[string]map[string]bool // module path → set of imported names; populated as native calls are emitted
 }
 
 // LangTranslator translates SNGL expressions into a target language's syntax.
