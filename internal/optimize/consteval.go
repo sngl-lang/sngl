@@ -30,13 +30,16 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
-		if _, ok := x.Sym.(*ir.LoopVar); ok {
+		if _, ok := x.Sym.(*ir.Namespace); ok {
+			return true // namespace refs are compile-time resolvable
+		}
+		// Any symbol bound by a parent context (loop vars during expansion,
+		// component params during call-site inlining) becomes a const for
+		// the duration of that scope.
+		if x.Sym != nil {
 			if _, found := ctx.values[x.Sym]; found {
 				return true
 			}
-		}
-		if _, ok := x.Sym.(*ir.Namespace); ok {
-			return true // namespace refs are compile-time resolvable
 		}
 		return false
 	case *ir.Binary:
@@ -285,7 +288,6 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 
-	// Try pure Go function execution.
 	if ctx.dir != "" {
 		for _, f := range ns.Funcs {
 			if f.Name == sel.Field && f.Purity == ir.PurityPure && f.NativePkg != "file" {
@@ -363,6 +365,10 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 		if b, ok := operand.(bool); ok {
 			return b, true
 		}
+	case ir.TypeList, ir.TypeStruct, ir.TypeDyn, ir.TypeOption:
+		// Compound-type conversions are widening or narrowing within a
+		// compatible Go shape ([]any / map[string]any). Pass through.
+		return operand, true
 	}
 	return nil, false
 }

@@ -143,6 +143,10 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		walkAllExprs(n.Title, visit)
 		walkAllExprs(n.Favicon, visit)
 		walkForBody(n.Body, visit)
+	case *ir.PlatformFilter:
+		walkForBody(n.Body, visit)
+	case *ir.SlotInst:
+		walkForBody(n.Children, visit)
 	}
 }
 

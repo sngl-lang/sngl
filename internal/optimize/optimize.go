@@ -32,17 +32,80 @@ type evalCtx struct {
 	pkg           *ir.Package
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	fileAssets    []FileAsset
-	values        map[ir.Symbol]any // const vars and loop vars → evaluated values
+	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining      map[*ir.Component]int // recursion guard for component call inlining
+}
+
+// optimizerRun threads cross-package state across a single Optimize call so
+// that imports are folded once even when reached via diamond import paths.
+type optimizerRun struct {
+	cfg        *Config
+	done       map[*ir.Package]bool
+	fileAssets []FileAsset
 }
 
 // Optimize mutates pkg in place: evaluates constant expressions, inlines pure
 // functions, eliminates dead branches and platform mismatches, and removes
-// unreferenced declarations.
+// unreferenced declarations. Imported packages are folded recursively
+// (Phases 1+2 only) so that for-loops inside imported components can unroll
+// against their own package consts. Phases 3+4 run only on the root package.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	run := &optimizerRun{
+		cfg:  cfg,
+		done: map[*ir.Package]bool{},
+	}
+
+	// Phases 1+2 on root and all imports (depth-first, memoized).
+	rootCtx := run.foldPkg(pkg)
+	if rootCtx == nil {
+		return nil
+	}
+
+	// Phase 3: Expand for-loop windows in main component (root only).
+	start := time.Now()
+	expandForWindows(pkg, rootCtx)
+	slog.Debug("optimize: expand", "duration", time.Since(start))
+
+	// Phase 4: Dead code elimination (root only).
+	start = time.Now()
+	shakeUnused(pkg)
+	slog.Debug("optimize: shake", "duration", time.Since(start))
+
+	cfg.FileAssets = append(run.fileAssets, rootCtx.fileAssets...)
+	return nil
+}
+
+// foldPkg runs Phases 1+2 on pkg and recursively on its imports. Returns the
+// pkg's evalCtx (so the caller can run downstream phases against it), or nil
+// when pkg has already been folded by this run.
+func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
+	if pkg == nil || r.done[pkg] {
+		return nil
+	}
+	r.done[pkg] = true
+
+	// Recurse imports first so their consts/components are folded by the
+	// time we fold this pkg's bodies (which may inline component calls
+	// targeting imported components).
+	for _, imp := range pkg.Imports {
+		if imp.Pkg == nil {
+			continue
+		}
+		// Skip native-scheme shells: they hold no SNGL bodies that the
+		// optimizer can act on.
+		if imp.Native != nil && len(imp.Pkg.Components) == 0 &&
+			len(imp.Pkg.Windows) == 0 && len(imp.Pkg.Timers) == 0 {
+			continue
+		}
+		if subCtx := r.foldPkg(imp.Pkg); subCtx != nil {
+			r.fileAssets = append(r.fileAssets, subCtx.fileAssets...)
+		}
+	}
+
 	ctx := &evalCtx{
-		platform: cfg.Platform,
-		language: cfg.Language,
-		dir:      cfg.Dir,
+		platform: r.cfg.Platform,
+		language: r.cfg.Language,
+		dir:      r.cfg.Dir,
 		pkg:      pkg,
 		values:   make(map[ir.Symbol]any),
 	}
@@ -85,18 +148,7 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
-	// Phase 3: Expand for-loop windows in main component.
-	start = time.Now()
-	expandForWindows(pkg, ctx)
-	slog.Debug("optimize: expand", "duration", time.Since(start))
-
-	// Phase 4: Dead code elimination.
-	start = time.Now()
-	shakeUnused(pkg)
-	slog.Debug("optimize: shake", "duration", time.Since(start))
-
-	cfg.FileAssets = ctx.fileAssets
-	return nil
+	return ctx
 }
 
 func foldVar(v *ir.Var, ctx *evalCtx) {

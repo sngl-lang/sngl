@@ -1355,30 +1355,55 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		// Check if the call target is a component — handle directly to avoid
 		// double-checking args through both inferCall and resolveCallStmt.
+		// Bare `Foo(...)` resolves via the symbol table; qualified
+		// `pkg.Foo(...)` resolves through the namespace's package.
+		var comp *ir.Component
+		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.symtab.LookupComponent(id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
 					return nil
 				}
-				if comp, ok := sym.(*ir.Component); ok {
-					c.validateCallStmtComponentArgs(x.Call, comp)
-					props, handlers := c.checkAndSplitArgs(x.Call.Args, comp)
-					var keyExpr ir.Expr
-					for _, a := range x.Call.Args.Args {
-						if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
-							keyExpr = c.checkExpr(arg.Value)
-							break
+				if co, ok := sym.(*ir.Component); ok {
+					comp = co
+					compName = id.Name
+				}
+			}
+		} else if sel, ok := x.Call.Func.(*ast.SelectExpr); ok {
+			if nsIdent, ok := sel.Operand.(*ast.IdentExpr); ok {
+				if sym, ok := c.scope.Lookup(nsIdent.Name); ok {
+					if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
+						// Skip unexported component names — existing diagnostic
+						// path emits "unknown component" for these.
+						if len(sel.Field) > 0 && (sel.Field[0] < 'A' || sel.Field[0] > 'Z') {
+							// fall through to default call-expr handling
+						} else if fsym, ok := ns.Pkg.Symbols.LookupComponent(sel.Field); ok {
+							if co, ok := fsym.(*ir.Component); ok {
+								comp = co
+								compName = nsIdent.Name + "." + sel.Field
+							}
 						}
 					}
-					return &ir.NodeInst{
-						AST:       x,
-						Name:      id.Name,
-						Component: comp,
-						Props:     props,
-						Handlers:  handlers,
-						Key:       keyExpr,
-					}
 				}
+			}
+		}
+		if comp != nil {
+			c.validateCallStmtComponentArgs(x.Call, comp)
+			props, handlers := c.checkAndSplitArgs(x.Call.Args, comp)
+			var keyExpr ir.Expr
+			for _, a := range x.Call.Args.Args {
+				if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
+					keyExpr = c.checkExpr(arg.Value)
+					break
+				}
+			}
+			return &ir.NodeInst{
+				AST:       x,
+				Name:      compName,
+				Component: comp,
+				Props:     props,
+				Handlers:  handlers,
+				Key:       keyExpr,
 			}
 		}
 		// Children-less element references (`text #id(...)`, `button(@click)`)

@@ -592,8 +592,10 @@ func autoTitle(name string) string {
 	return strings.ToUpper(name[:1]) + name[1:]
 }
 
-// Highlight runs Chroma over a SNGL source string and returns the resulting
-// HTML. Pure so SNGL components can call it inline.
+// Highlight runs Chroma over a source string for the given lexer name and
+// returns the resulting HTML. Pure so SNGL components can call it inline;
+// the optimizer folds it to a literal at compile time when both args are
+// const.
 //
 //sngl:pure
-func Highlight(src string) string { return docsite.HighlightSNGL(src) }
+func Highlight(src, language string) string { return docsite.Highlight(src, language) }

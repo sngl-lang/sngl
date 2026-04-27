@@ -1,30 +1,21 @@
-// CodeBlock renders a fenced-code-block-style snippet. Generic platforms get
-// a monospace text node; html emits a semantic <pre><code class="language-…">
-// so client-side highlighters / our Chroma CSS can target it.
+import "go://git.duckfam.us/jonathan/sngl/docs"
+
+// CodeBlock renders a fenced-code-block-style snippet. Source is run through
+// chroma at compile time using the named lexer (sngl, go, kotlin, bash, js,
+// …); unknown languages fall back to plain-text rendering. The optimizer
+// folds docs.Highlight(code, language) to a literal HTML string when both
+// args are const, so the page ships pre-rendered markup with no runtime
+// highlighting work.
 component CodeBlock(code = "", language = "") {
     text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
 
     platform html {
-        html.pre {
-            html.code(class="language-" + language, innerText=code)
-        }
+        html.div(innerHTML=docs.Highlight(code, language), class="hl-code")
     }
 
     platform http {
         html.pre(style={padding="12px", background="#1e1e1e", color="#d4d4d4", borderRadius="4px", overflow="auto"}) {
             html.code(innerText=code)
         }
-    }
-}
-
-// HighlightedCode renders a snippet whose syntax has already been turned into
-// HTML (e.g. by docsite.HighlightSNGL). Generic platforms still get the plain
-// monospace text fallback so non-html targets remain readable; html drops the
-// raw rendered markup in via innerHTML.
-component HighlightedCode(code = "", highlightedHTML = "") {
-    text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
-
-    platform html {
-        html.div(innerHTML=highlightedHTML, class="hl-code")
     }
 }

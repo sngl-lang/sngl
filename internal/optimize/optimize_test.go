@@ -1,9 +1,11 @@
 package optimize
 
 import (
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -268,5 +270,201 @@ func TestOptimize_EmptyPkg(t *testing.T) {
 	pkg := &ir.Package{}
 	if err := Optimize(pkg, &Config{Platform: "html", Language: "js"}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestOptimize_PropPropagatesAsConst exercises bug #1: a top-level const
+// passed as a prop into a child component must let that child's for-loop
+// unroll at compile time.
+func TestOptimize_PropPropagatesAsConst(t *testing.T) {
+	src := `
+const items = ["a", "b"]
+component Row(entries list<string> = []) {
+	for x = entries {
+		text(value=x)
+	}
+}
+component main {
+	Row(entries=items)
+}
+`
+	pkg, doc := checkAndOptimize(t, src, "html", "js")
+	out := formatDoc(doc)
+
+	// The call-site Row(entries=items) must inline + unroll into static
+	// text nodes. The Row component's *declaration* may still hold the
+	// for-loop (it's a generic template); only main matters.
+	var mainComp *ir.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			mainComp = c
+		}
+	}
+	if mainComp == nil {
+		t.Fatal("expected component main")
+	}
+	assertNoFor(t, "main", mainComp.Body)
+
+	if !strings.Contains(out, `"a"`) || !strings.Contains(out, `"b"`) {
+		t.Errorf("expected literal \"a\" and \"b\" in output:\n%s", out)
+	}
+
+	// Confirm both unrolled text nodes show up directly in main.
+	var values []string
+	for _, s := range mainComp.Body {
+		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
+			for _, p := range ni.Props {
+				if p.Name == "value" {
+					if lit, ok := p.Value.(*ir.Literal); ok {
+						values = append(values, lit.Raw)
+					}
+				}
+			}
+		}
+	}
+	if len(values) != 2 || values[0] != "a" || values[1] != "b" {
+		t.Errorf("expected unrolled text values [a, b] in main, got %v", values)
+	}
+}
+
+// fsResolver is a minimal checker.ImportResolver that reads .sngl files
+// from an fs.FS for directory imports. Scheme imports are unsupported.
+type fsResolver struct{}
+
+func (fsResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
+	entries, err := fs.ReadDir(fsys, importPath)
+	if err != nil {
+		return nil, err
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		path := importPath + "/" + e.Name()
+		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return nil, err
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func (fsResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error) {
+	return nil, nil
+}
+
+func (fsResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
+	return nil, nil, nil
+}
+
+// checkAndOptimizeFS lets a test ship multiple files via fstest.MapFS, then
+// parses+checks+optimizes the named entrypoint and returns the root package.
+func checkAndOptimizeFS(t *testing.T, fsys fs.FS, entry, platform, lang string) *ir.Package {
+	t.Helper()
+	data, err := fs.ReadFile(fsys, entry)
+	if err != nil {
+		t.Fatalf("read %s: %v", entry, err)
+	}
+	doc, err := parser.Parse(entry, data)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS:       fsys,
+		Dir:      ".",
+		IsMain:   true,
+		Resolver: fsResolver{},
+	})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Error())
+		}
+	}
+	if err := Optimize(pkg, &Config{Platform: platform, Language: lang}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	return pkg
+}
+
+// TestOptimize_ImportedComponentForUnrolls exercises bug #2: a for-loop
+// inside an imported component, iterating over a const declared in that
+// imported package, must unroll at compile time. Today the optimizer
+// never visits imports' Components, so the for-loop survives.
+func TestOptimize_ImportedComponentForUnrolls(t *testing.T) {
+	fsys := fstest.MapFS{
+		"main.sngl": &fstest.MapFile{Data: []byte(`
+import "lib"
+component main {
+	lib.List()
+}
+`)},
+		"lib/widgets.sngl": &fstest.MapFile{Data: []byte(`
+const tags = ["x", "y"]
+component List() {
+	for t = tags {
+		text(value=t)
+	}
+}
+`)},
+	}
+	pkg := checkAndOptimizeFS(t, fsys, "main.sngl", "html", "js")
+
+	// Find the imported lib package and assert its List component body has
+	// no surviving *ir.For.
+	var list *ir.Component
+	for _, imp := range pkg.Imports {
+		if imp.Pkg == nil {
+			continue
+		}
+		for _, c := range imp.Pkg.Components {
+			if c.Name == "List" {
+				list = c
+				break
+			}
+		}
+	}
+	if list == nil {
+		t.Fatal("expected to find imported component List")
+	}
+	assertNoFor(t, "lib.List", list.Body)
+
+	// And the unrolled NodeInsts should be plain text(value="x")/text(value="y").
+	var values []string
+	for _, s := range list.Body {
+		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
+			for _, p := range ni.Props {
+				if p.Name == "value" {
+					if lit, ok := p.Value.(*ir.Literal); ok {
+						values = append(values, lit.Raw)
+					}
+				}
+			}
+		}
+	}
+	if len(values) != 2 || values[0] != "x" || values[1] != "y" {
+		t.Errorf("expected text values [x, y], got %v", values)
+	}
+}
+
+func assertNoFor(t *testing.T, where string, stmts []ir.Stmt) {
+	t.Helper()
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.For:
+			t.Errorf("%s: unexpected *ir.For after Optimize", where)
+		case *ir.NodeInst:
+			assertNoFor(t, where, n.Children)
+		case *ir.If:
+			assertNoFor(t, where, n.Body)
+			assertNoFor(t, where, n.Else)
+		case *ir.PlatformFilter:
+			assertNoFor(t, where, n.Body)
+		}
 	}
 }

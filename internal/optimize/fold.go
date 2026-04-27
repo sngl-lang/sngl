@@ -82,6 +82,12 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 	var out []ir.Stmt
 	for _, s := range stmts {
+		if ni, ok := s.(*ir.NodeInst); ok && ni.Component != nil {
+			if inlined := inlineComponentCall(ni, ctx); inlined != nil {
+				out = append(out, inlined...)
+				continue
+			}
+		}
 		if fs, ok := s.(*ir.For); ok {
 			if expanded := expandForStmt(fs, ctx); expanded != nil {
 				out = append(out, expanded...)
