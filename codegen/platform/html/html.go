@@ -237,7 +237,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
-		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
+		gen.projectDir = projectDir
+		body, err := gen.generate()
+		if err != nil {
+			return nil, err
+		}
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + body
 		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
 		return ctx.BuildMutation(nil), nil
 	}
@@ -254,6 +259,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
+		gen.projectDir = projectDir
 		gen.irBodyStmts = win.Body
 		if win.Window != nil {
 			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
@@ -263,7 +269,11 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				gen.favicon = s
 			}
 		}
-		src := codegen.Header("html", req.Source, "<!-- ", " -->") + gen.generate()
+		body, err := gen.generate()
+		if err != nil {
+			return nil, err
+		}
+		src := codegen.Header("html", req.Source, "<!-- ", " -->") + body
 		c.windows = append(c.windows, htmlWindowOutput{name: name, bytes: []byte(src)})
 		if mainStmts == nil {
 			mainStmts = win.Body
@@ -328,6 +338,10 @@ type htmlGen struct {
 	// WASM packages needing extern bindings at the top of the <script> block.
 	wasmPkgs []wasmPackage
 
+	// Project root for resolving native module specifiers (`./lib`, etc.)
+	// when bundling the inline <script> through esbuild.
+	projectDir string
+
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
 
@@ -391,13 +405,14 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 	}
 
 	g.scope = &codegen.ExprScope{
-		ModelFields:    common.ModelFields,
-		ComputedFields: common.ComputedFields,
-		FuncNames:      common.FuncNames,
-		ExternFuncs:    common.ExternFuncs,
-		ExternVars:     common.ExternVars,
-		LocalVars:      make(map[string]bool),
-		NeededHelpers:  common.Helpers,
+		ModelFields:       common.ModelFields,
+		ComputedFields:    common.ComputedFields,
+		FuncNames:         common.FuncNames,
+		ExternFuncs:       common.ExternFuncs,
+		ExternVars:        common.ExternVars,
+		LocalVars:         make(map[string]bool),
+		NeededHelpers:     common.Helpers,
+		BundledNativePkgs: collectBundledNativePkgs(pkg),
 	}
 	if pkg != nil {
 		for _, c := range pkg.Consts {
@@ -427,7 +442,7 @@ func (g *htmlGen) allocID() string {
 	return id
 }
 
-func (g *htmlGen) generate() string {
+func (g *htmlGen) generate() (string, error) {
 	var b strings.Builder
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
@@ -470,11 +485,31 @@ func (g *htmlGen) generate() string {
 		b.WriteString("</style>\n")
 	}
 
-	// Only emit <script> if there's actual runtime JS to execute.
+	// Only emit <script> if there's actual runtime JS to execute. When the
+	// script references node:// imports, prepend ES `import * as` lines for
+	// each module and send the whole script through esbuild so module
+	// bodies are inlined and tree-shaken.
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
 	script := scriptBuf.String()
 	if strings.TrimSpace(script) != "" {
+		if len(g.scope.NativeImports) > 0 {
+			var preludeBuf strings.Builder
+			mods := make([]string, 0, len(g.scope.NativeImports))
+			for m := range g.scope.NativeImports {
+				mods = append(mods, m)
+			}
+			sort.Strings(mods)
+			for _, m := range mods {
+				fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
+			}
+			preludeBuf.WriteString("\n")
+			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectDir)
+			if err != nil {
+				return "", err
+			}
+			script = bundled
+		}
 		b.WriteString("\n<script>\n")
 		b.WriteString(script)
 		b.WriteString("</script>\n")
@@ -495,7 +530,7 @@ func (g *htmlGen) generate() string {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // renderIRStmt is the IR-driven top-level dispatch. Structural statements

@@ -190,19 +190,27 @@ func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if name == "" {
 		name = n.Func.Name
 	}
-	if scope.NativeImports == nil {
-		scope.NativeImports = map[string]map[string]bool{}
+	bundled := scope.BundledNativePkgs[mod]
+	if bundled {
+		if scope.NativeImports == nil {
+			scope.NativeImports = map[string]map[string]bool{}
+		}
+		if scope.NativeImports[mod] == nil {
+			scope.NativeImports[mod] = map[string]bool{}
+		}
+		scope.NativeImports[mod][name] = true
 	}
-	if scope.NativeImports[mod] == nil {
-		scope.NativeImports[mod] = map[string]bool{}
-	}
-	scope.NativeImports[mod][name] = true
 
 	argStrs := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		argStrs[i] = translateIRExpr(a.Value, scope)
 	}
-	call := name + "(" + strings.Join(argStrs, ", ") + ")"
+	var call string
+	if bundled {
+		call = codegen.NativeAlias(mod) + "." + name + "(" + strings.Join(argStrs, ", ") + ")"
+	} else {
+		call = name + "(" + strings.Join(argStrs, ", ") + ")"
+	}
 	if n.Func.IsAsync {
 		call = "await " + call
 	}

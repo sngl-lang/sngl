@@ -30,6 +30,44 @@ type ExprScope struct {
 	ContextVar     string                     // expression to supply for native context args (e.g., "r.Context()")
 	NeededHelpers  map[string]bool            // helper functions needed (e.g., "String")
 	NativeImports  map[string]map[string]bool // module path → set of imported names; populated as native calls are emitted
+	// BundledNativePkgs marks native module paths that the platform will
+	// post-process through a JS bundler (e.g. esbuild for node:// imports).
+	// Calls to funcs whose NativePkg is in this set are emitted as
+	// `<NativeAlias(pkg)>.name(...)` so the platform can prepend
+	// `import * as <NativeAlias(pkg)> from "<pkg>"` and let the bundler
+	// inline + tree-shake. Unset (or false): the call is emitted with a
+	// bare name as before, matching the WASM-extern bridge convention.
+	BundledNativePkgs map[string]bool
+}
+
+// NativeAlias produces a deterministic JS identifier for a native module
+// import path. Used at both the call site (codegen/lang/javascript) and the
+// import-prelude emission (codegen/platform/html) so they agree on the name.
+//
+//	"./lib"     → "__sngl_n_lib"
+//	"../foo/x"  → "__sngl_n_foo_x"
+//	"lodash"    → "__sngl_n_lodash"
+//	"@scope/x"  → "__sngl_n_scope_x"
+func NativeAlias(importPath string) string {
+	var b strings.Builder
+	b.WriteString("__sngl_n")
+	prevSep := true
+	for _, r := range importPath {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			if prevSep {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r)
+			prevSep = false
+		default:
+			prevSep = true
+		}
+	}
+	if prevSep && b.Len() == len("__sngl_n") {
+		b.WriteString("_anon")
+	}
+	return b.String()
 }
 
 // LangTranslator translates SNGL expressions into a target language's syntax.
