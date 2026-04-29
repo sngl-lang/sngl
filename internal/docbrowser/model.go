@@ -292,8 +292,8 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_12)
 		var content_2_13 string
 		content_2_13 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("FUNCTIONS"))
+			Bold(true).
+			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint("FUNCTIONS"))
 		content_2Children = append(content_2Children, content_2_13)
 		var content_2_14 string
 		var content_2_14Items []string

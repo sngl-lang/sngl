@@ -1,5 +1,3 @@
-//go:build !js
-
 package html
 
 import (
@@ -42,8 +40,9 @@ func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
 // `import * as ... from "..."` statements at the top — through esbuild and
 // returns a single IIFE suitable for inlining inside <script>. Every import
 // flows through the plugin against js.VirtualRoot mounted on fsys, so the
-// same path serves CLI (os.DirFS) and any in-memory FS.
-func bundleNativeScript(entry string, fsys fs.FS, _ string) (string, error) {
+// same path serves CLI (os.DirFS) and any in-memory FS. When minify is true,
+// esbuild's whitespace/identifier/syntax minification is enabled.
+func bundleNativeScript(entry string, fsys fs.FS, minify bool) (string, error) {
 	res := api.Build(api.BuildOptions{
 		Stdin: &api.StdinOptions{
 			Contents:   entry,
@@ -61,26 +60,72 @@ func bundleNativeScript(entry string, fsys fs.FS, _ string) (string, error) {
 			".tsx":  api.LoaderTSX,
 			".json": api.LoaderJSON,
 		},
-		Plugins:  []api.Plugin{virtFSPlugin(fsys, js.VirtualRoot)},
-		LogLevel: api.LogLevelWarning,
+		MinifyWhitespace:  minify,
+		MinifyIdentifiers: minify,
+		MinifySyntax:      minify,
+		// Without minify, keep unused state/helpers in place so the emitted
+		// script matches the SNGL source. Tree-shake only under minify.
+		TreeShaking: ternaryTreeShaking(minify),
+		Plugins:     []api.Plugin{virtFSPlugin(fsys, js.VirtualRoot)},
+		LogLevel:    api.LogLevelWarning,
 	})
-	if len(res.Errors) > 0 {
-		var b strings.Builder
-		b.WriteString("esbuild: ")
-		e := res.Errors[0]
-		if e.Location != nil {
-			fmt.Fprintf(&b, "%s:%d:%d: ", e.Location.File, e.Location.Line, e.Location.Column)
-		}
-		b.WriteString(e.Text)
-		if len(res.Errors) > 1 {
-			fmt.Fprintf(&b, " (+%d more)", len(res.Errors)-1)
-		}
-		return "", fmt.Errorf("%s", b.String())
+	if err := esbuildBuildErr(res.Errors); err != nil {
+		return "", err
 	}
 	if len(res.OutputFiles) == 0 {
 		return "", fmt.Errorf("esbuild: no output")
 	}
 	return string(res.OutputFiles[0].Contents), nil
+}
+
+// maybeMinifyCSS returns src verbatim when minify is false, or the esbuild-
+// minified form otherwise. Used at <style> block call sites so the branching
+// stays out of the renderer.
+func maybeMinifyCSS(src string, minify bool) (string, error) {
+	if !minify {
+		return src, nil
+	}
+	return minifyCSS(src)
+}
+
+// minifyCSS runs a CSS string through esbuild's Transform with minify flags
+// enabled. Used for inline <style> block bodies under minify=true.
+func minifyCSS(src string) (string, error) {
+	res := api.Transform(src, api.TransformOptions{
+		Loader:            api.LoaderCSS,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		LogLevel:          api.LogLevelWarning,
+	})
+	if err := esbuildBuildErr(res.Errors); err != nil {
+		return "", err
+	}
+	return string(res.Code), nil
+}
+
+func ternaryTreeShaking(on bool) api.TreeShaking {
+	if on {
+		return api.TreeShakingTrue
+	}
+	return api.TreeShakingFalse
+}
+
+func esbuildBuildErr(errs []api.Message) error {
+	if len(errs) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	b.WriteString("esbuild: ")
+	e := errs[0]
+	if e.Location != nil {
+		fmt.Fprintf(&b, "%s:%d:%d: ", e.Location.File, e.Location.Line, e.Location.Column)
+	}
+	b.WriteString(e.Text)
+	if len(errs) > 1 {
+		fmt.Fprintf(&b, " (+%d more)", len(errs)-1)
+	}
+	return fmt.Errorf("%s", b.String())
 }
 
 // virtFSPlugin builds an esbuild plugin that resolves every import against

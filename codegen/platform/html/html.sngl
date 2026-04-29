@@ -23,6 +23,8 @@ struct Options {
     framework string
     // Route mode: host:port for `sngl run` to listen on.
     listen string
+    // Minify emitted HTML and inline JS via esbuild.
+    minify bool
 }
 
 // --- Core Layout ---

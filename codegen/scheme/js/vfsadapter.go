@@ -52,7 +52,7 @@ type host struct {
 	cwd  string
 }
 
-func (h *host) FS() snglts.FS              { return h.fsys }
+func (h *host) FS() snglts.FS               { return h.fsys }
 func (h *host) GetCurrentDirectory() string { return h.cwd }
 
 // vfs.FS implementation.
@@ -155,9 +155,9 @@ func (a *vfsAdapter) Realpath(p string) string { return p }
 
 // Write methods are unused by module.Resolver (verified by inspection).
 // Return ENOTSUP to make accidental writes loud.
-func (a *vfsAdapter) WriteFile(_, _ string) error                  { return errReadOnly }
-func (a *vfsAdapter) AppendFile(_, _ string) error                 { return errReadOnly }
-func (a *vfsAdapter) Remove(_ string) error                        { return errReadOnly }
+func (a *vfsAdapter) WriteFile(_, _ string) error                      { return errReadOnly }
+func (a *vfsAdapter) AppendFile(_, _ string) error                     { return errReadOnly }
+func (a *vfsAdapter) Remove(_ string) error                            { return errReadOnly }
 func (a *vfsAdapter) Chtimes(_ string, _ time.Time, _ time.Time) error { return errReadOnly }
 
 var errReadOnly = errors.New("vfsAdapter: read-only")

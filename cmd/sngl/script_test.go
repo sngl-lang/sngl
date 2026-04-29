@@ -113,9 +113,15 @@ func snglCmd() script.Cmd {
 }
 
 // resetFlags resets all flags on cmd and its subcommands to their default values.
+// pflag's slice values append on Set, so use the SliceValue.Replace path when
+// available; otherwise fall through to a plain Set against DefValue.
 func resetFlags(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		f.Value.Set(f.DefValue)
+		if sv, ok := f.Value.(pflag.SliceValue); ok {
+			sv.Replace(nil)
+		} else {
+			f.Value.Set(f.DefValue)
+		}
 		f.Changed = false
 	})
 	for _, sub := range cmd.Commands() {

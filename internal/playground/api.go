@@ -37,6 +37,25 @@ var (
 	cacheDoc  *ast.Document
 )
 
+// optionsForTarget returns a clone of the platform options the user declared
+// in their `output { ... <plat>(...) ... }` block, or an empty StructLit if
+// no matching target was declared. Lets the playground honor flags like
+// `minify=true` from the source.
+func optionsForTarget(pkg *ir.Package, platform string) *ir.StructLit {
+	if pkg == nil {
+		return &ir.StructLit{}
+	}
+	for _, o := range pkg.Outputs {
+		if o.Platform != platform || o.Options == nil {
+			continue
+		}
+		out := &ir.StructLit{Type: o.Options.Type, Def: o.Options.Def}
+		out.Fields = append(out.Fields, o.Options.Fields...)
+		return out
+	}
+	return &ir.StructLit{}
+}
+
 // playgroundDir is the synthetic OS directory the playground reports
 // for diagnostics and ProjectDir-keyed plumbing. Resolution itself
 // only consults the in-memory FS, so the value is mostly cosmetic.
@@ -158,9 +177,11 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
+	opts := optionsForTarget(pkg, "html")
+	codegen.SetOptionField(opts, "preview", true)
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
-		Options:   codegen.OptionsFromMap(map[string]any{"preview": true}),
+		Options:   opts,
 		ProjectFS: fsys,
 	})
 	if err != nil {
@@ -275,7 +296,11 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{Pkg: pkg, Lang: lt, ProjectFS: fsys})
+	resp, err := gen.Generate(&codegen.Request{
+		Pkg: pkg, Lang: lt,
+		Options:   optionsForTarget(pkg, platform),
+		ProjectFS: fsys,
+	})
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)

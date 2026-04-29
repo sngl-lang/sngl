@@ -1,0 +1,42 @@
+# --opt minify=true runs the inline JS through esbuild minify flags and
+# strips whitespace+comments from the surrounding HTML. We compile the same
+# source twice (baseline + minified) and check the minified output is smaller
+# and lacks indentation/comments while still containing the bundled JS body.
+
+sngl compile --lang=none --platform=html --out=base app.sngl
+sngl compile --lang=none --platform=html --opt minify=true --out=min app.sngl
+
+exists base/index.html
+exists min/index.html
+
+# Baseline keeps the SNGL header comment and indented markup.
+grep '<!-- ' base/index.html
+grep '  <meta' base/index.html
+
+# Minified output drops the SNGL header comment.
+! grep '<!-- ' min/index.html
+
+# Minified output has no leading indent before <meta>.
+! grep '  <meta' min/index.html
+
+# Baseline preserves source identifiers `a` and `b` and the IIFE arrow has spaces.
+grep 'a \+ b' base/index.html
+grep '\(\(\) => \{' base/index.html
+
+# Minified output: identifiers are renamed and IIFE arrow has no spaces.
+grep '\(\(\)=>\{' min/index.html
+# A function with two single-letter params returning their sum survives.
+grep 'function [a-z]\([a-z],[a-z]\)\{return [a-z]\+[a-z]\}' min/index.html
+
+-- app.sngl --
+import lib "js://./lib"
+
+component main {
+    var n = 0.0
+    button(text="add", @click { n = lib.add(2.0, 3.0) })
+    text(value=string(n))
+}
+-- lib/index.ts --
+export function add(a: number, b: number): number {
+    return a + b;
+}

@@ -126,6 +126,7 @@ type htmlConfig struct {
 	Main       bool
 	Framework  string
 	Listen     string
+	Minify     bool
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -249,6 +250,13 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			return nil, err
 		}
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + body
+		if opts.Minify {
+			min, err := minifyHTML(src)
+			if err != nil {
+				return nil, err
+			}
+			src = min
+		}
 		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
 		return ctx.BuildMutation(nil), nil
 	}
@@ -281,6 +289,13 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			return nil, err
 		}
 		src := codegen.Header("html", req.Source, "<!-- ", " -->") + body
+		if opts.Minify {
+			min, err := minifyHTML(src)
+			if err != nil {
+				return nil, err
+			}
+			src = min
+		}
 		c.windows = append(c.windows, htmlWindowOutput{name: name, bytes: []byte(src)})
 		if mainStmts == nil {
 			mainStmts = win.Body
@@ -358,6 +373,9 @@ type htmlGen struct {
 	// Test mode: emit data-key, id, class attributes for test element lookup
 	testMode bool
 
+	// Minify inline JS via esbuild (and HTML in BuildMutationModel).
+	minify bool
+
 	// Component invocation counter for unique param names
 	componentInvocations int
 
@@ -412,6 +430,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		CommonAnalysis: common,
 		preview:        opts.Preview,
 		testMode:       opts.Test,
+		minify:         opts.Minify,
 	}
 
 	g.scope = &codegen.ExprScope{
@@ -471,9 +490,14 @@ func (g *htmlGen) generate() (string, error) {
 		// Only emit default inline styles when no external stylesheet is specified.
 		// Component-specific CSS is registered via CommonAnalysis.AddStyle()
 		// during tree rendering and emitted here.
+		const defaultCSS = "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
+			"body { font-family: system-ui, sans-serif; }\n"
+		css, err := maybeMinifyCSS(defaultCSS, g.minify)
+		if err != nil {
+			return "", err
+		}
 		b.WriteString("  <style>\n")
-		b.WriteString("    * { margin: 0; padding: 0; box-sizing: border-box; }\n")
-		b.WriteString("    body { font-family: system-ui, sans-serif; }\n")
+		b.WriteString(css)
 		b.WriteString("  </style>\n")
 	}
 	if g.wasmLoader != "" {
@@ -488,10 +512,17 @@ func (g *htmlGen) generate() (string, error) {
 
 	// Emit component-registered CSS (populated during tree rendering above).
 	if len(g.Styles) > 0 {
-		b.WriteString("<style>\n")
+		var cssBuf strings.Builder
 		for _, css := range g.Styles {
-			fmt.Fprintf(&b, "  %s\n", css)
+			cssBuf.WriteString(css)
+			cssBuf.WriteByte('\n')
 		}
+		css, err := maybeMinifyCSS(cssBuf.String(), g.minify)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString("<style>\n")
+		b.WriteString(css)
 		b.WriteString("</style>\n")
 	}
 
@@ -503,18 +534,24 @@ func (g *htmlGen) generate() (string, error) {
 	g.emitScript(&scriptBuf)
 	script := scriptBuf.String()
 	if strings.TrimSpace(script) != "" {
-		if len(g.scope.NativeImports) > 0 {
+		// Run through esbuild when there are real imports to resolve, or when
+		// minify is on. Otherwise emit the script verbatim — esbuild surfaces
+		// errors on a few pre-existing codegen quirks (e.g. `5.clamp(...)` in
+		// test-mode output) that don't matter for the SNGL test runner.
+		if len(g.scope.NativeImports) > 0 || g.minify {
 			var preludeBuf strings.Builder
-			mods := make([]string, 0, len(g.scope.NativeImports))
-			for m := range g.scope.NativeImports {
-				mods = append(mods, m)
+			if len(g.scope.NativeImports) > 0 {
+				mods := make([]string, 0, len(g.scope.NativeImports))
+				for m := range g.scope.NativeImports {
+					mods = append(mods, m)
+				}
+				sort.Strings(mods)
+				for _, m := range mods {
+					fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
+				}
+				preludeBuf.WriteString("\n")
 			}
-			sort.Strings(mods)
-			for _, m := range mods {
-				fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
-			}
-			preludeBuf.WriteString("\n")
-			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.projectDir)
+			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify)
 			if err != nil {
 				return "", err
 			}

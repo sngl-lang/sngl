@@ -111,10 +111,12 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
+	opts := optionsForTarget(pkg, "html")
+	codegen.SetOptionField(opts, "preview", true)
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
-		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
+		Options: opts,
 	})
 	if err != nil {
 		result["error"] = err.Error()
@@ -242,8 +244,9 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	resp, err := gen.Generate(&codegen.Request{
-		Pkg:  pkg,
-		Lang: lang,
+		Pkg:     pkg,
+		Lang:    lang,
+		Options: optionsForTarget(pkg, platName),
 	})
 	if err != nil {
 		result["error"] = err.Error()
@@ -333,6 +336,24 @@ func hover(this js.Value, args []js.Value) any {
 	content := lspcore.Hover(source, doc, line, col)
 
 	return toJSObject(map[string]any{"content": content})
+}
+
+// optionsForTarget clones the user's `output { ... <plat>(...) ... }` options
+// for the given platform, or returns an empty StructLit if no matching target
+// was declared. Lets the playground honor flags like `minify=true`.
+func optionsForTarget(pkg *ir.Package, platform string) *ir.StructLit {
+	if pkg == nil {
+		return &ir.StructLit{}
+	}
+	for _, o := range pkg.Outputs {
+		if o.Platform != platform || o.Options == nil {
+			continue
+		}
+		out := &ir.StructLit{Type: o.Options.Type, Def: o.Options.Def}
+		out.Fields = append(out.Fields, o.Options.Fields...)
+		return out
+	}
+	return &ir.StructLit{}
 }
 
 // --- helpers ---
