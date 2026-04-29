@@ -112,3 +112,5 @@ tool (
 	golang.org/x/tools/cmd/stringer
 	modernc.org/egg
 )
+
+replace github.com/sngl-lang/typescript-go => /home/jonathan/src/github.com/sngl-lang/typescript-go

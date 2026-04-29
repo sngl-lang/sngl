@@ -2,7 +2,7 @@ package js
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -13,25 +13,28 @@ import (
 
 // loadTypeScript parses a .ts/.d.ts/.js file and walks its top-level
 // exports, mapping each to an ir.Func, ir.StructDef, ir.EnumDef, or ir.Var.
-func loadTypeScript(spec string, r *resolved) (*ir.NativeImport, error) {
-	src, err := os.ReadFile(r.path)
+// abs is the resolved virtual absolute path (used by typescript-go's
+// parser, which requires absolute filenames); rel is the matching
+// io/fs.FS path used to read bytes; spec is the original js:// spec.
+func loadTypeScript(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error) {
+	src, err := fs.ReadFile(fsys, rel)
 	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", r.path, err)
+		return nil, fmt.Errorf("reading %s: %w", rel, err)
 	}
-	kind := pickScriptKind(r.path)
+	kind := pickScriptKind(abs)
 	opts := snglts.SourceFileParseOptions{
-		FileName: r.path,
-		Path:     snglts.ToPath(r.path, "", false),
+		FileName: abs,
+		Path:     snglts.ToPath(abs, "", false),
 	}
 	sf := snglts.ParseSourceFile(opts, string(src), kind)
 	if sf == nil {
-		return nil, fmt.Errorf("parsing %s: nil SourceFile", r.path)
+		return nil, fmt.Errorf("parsing %s: nil SourceFile", abs)
 	}
 
 	w := &walker{
 		sf:         sf,
-		filePath:   r.path,
-		importPath: r.importPath,
+		filePath:   abs,
+		importPath: spec,
 		structs:    map[string]*ir.StructDef{},
 		enums:      map[string]*ir.EnumDef{},
 		aliases:    map[string]*ir.Type{},
@@ -39,7 +42,7 @@ func loadTypeScript(spec string, r *resolved) (*ir.NativeImport, error) {
 	w.walk()
 
 	return &ir.NativeImport{
-		ImportPath: r.importPath,
+		ImportPath: spec,
 		Structs:    w.outStructs,
 		Enums:      w.outEnums,
 		Funcs:      w.outFuncs,

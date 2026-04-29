@@ -7,8 +7,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"strings"
 	"sync"
+	"testing/fstest"
+
+	"golang.org/x/tools/txtar"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -33,19 +37,91 @@ var (
 	cacheDoc  *ast.Document
 )
 
-func cachedParse(source string) (*ast.Document, error) {
-	h := sha256.Sum256([]byte(source))
-	cacheMu.Lock()
-	defer cacheMu.Unlock()
-	if h == cacheHash && cacheDoc != nil {
-		return cacheDoc, nil
+// playgroundDir is the synthetic OS directory the playground reports
+// for diagnostics and ProjectDir-keyed plumbing. Resolution itself
+// only consults the in-memory FS, so the value is mostly cosmetic.
+const playgroundDir = "/playground"
+
+// parseSource interprets the editor buffer as a txtar archive. The
+// archive's comment is treated as the main `playground.sngl` file; any
+// `-- name --` sections become sibling files in an in-memory FS so
+// `js://./lib`-style imports can resolve. Bare source (no `-- name --`
+// markers) is the degenerate single-file case.
+func parseSource(source string) (mainSrc []byte, fsys fs.FS) {
+	arc := txtar.Parse([]byte(source))
+	main := arc.Comment
+	if len(main) == 0 && len(arc.Files) == 0 {
+		main = []byte(source)
 	}
-	doc, err := parser.Parse("playground.sngl", []byte(source))
-	if doc != nil {
-		cacheHash = h
-		cacheDoc = doc
+	mfs := fstest.MapFS{
+		"playground.sngl": &fstest.MapFile{Data: main},
 	}
-	return doc, err
+	for _, f := range arc.Files {
+		mfs[f.Name] = &fstest.MapFile{Data: f.Data}
+	}
+	return main, mfs
+}
+
+// playgroundResolver is the in-memory analogue of cmd/sngl.cliResolver.
+// It serves directory-style imports out of fsys and dispatches scheme
+// imports through registered FSAwareScheme implementations.
+type playgroundResolver struct {
+	fsys fs.FS
+}
+
+func (r *playgroundResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
+	entries, err := fs.ReadDir(fsys, importPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		path := importPath + "/" + e.Name()
+		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", path, err)
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", path, err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func (r *playgroundResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error) {
+	imp := codegen.LookupScheme(scheme)
+	if imp == nil {
+		return nil, fmt.Errorf("scheme %q not supported in playground", scheme)
+	}
+	if fsa, ok := imp.(codegen.FSAwareScheme); ok && r.fsys != nil {
+		return fsa.ResolveFS(uri, r.fsys, dir)
+	}
+	return nil, fmt.Errorf("scheme %q requires the OS filesystem; not supported in playground", scheme)
+}
+
+func (r *playgroundResolver) ResolveSchemeFS(scheme, _, _ string) ([]*ast.Document, fs.FS, error) {
+	// FS-only schemes (git://, http://) need network/disk access we
+	// don't provide in-browser. Return nil, nil, nil so the checker
+	// falls through to ResolveScheme.
+	if codegen.LookupFSScheme(scheme) == nil {
+		return nil, nil, nil
+	}
+	return nil, nil, fmt.Errorf("scheme %q not supported in playground", scheme)
+}
+
+func newCheckerConfig(fsys fs.FS, isMain bool) *checker.Config {
+	return &checker.Config{
+		FS:        fsys,
+		Dir:       playgroundDir,
+		IsMain:    isMain,
+		Resolver:  &playgroundResolver{fsys: fsys},
+		Platforms: codegen.CollectPlatforms(),
+	}
 }
 
 // Compile parses, checks, optimizes, and generates HTML from SNGL source.
@@ -53,16 +129,14 @@ func cachedParse(source string) (*ast.Document, error) {
 func Compile(source string) string {
 	result := map[string]any{"html": "", "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", []byte(source))
+	main, fsys := parseSource(source)
+	doc, err := parser.Parse("playground.sngl", main)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: codegen.CollectPlatforms(),
-	})
+	pkg, diags := checker.Check(doc, newCheckerConfig(fsys, true))
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
@@ -86,7 +160,8 @@ func Compile(source string) string {
 
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
-		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
+		Options:   codegen.OptionsFromMap(map[string]any{"preview": true}),
+		ProjectFS: fsys,
 	})
 	if err != nil {
 		result["error"] = err.Error()
@@ -112,7 +187,8 @@ func Compile(source string) string {
 // Returns JSON: {"source": "...", "error": "..."}
 func Format(source string) string {
 	result := map[string]any{"source": "", "error": ""}
-	doc, err := parser.Parse("playground.sngl", []byte(source))
+	main, _ := parseSource(source)
+	doc, err := parser.Parse("playground.sngl", main)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
@@ -126,7 +202,8 @@ func Format(source string) string {
 func ASTDump(source string) string {
 	result := map[string]any{"ast": "", "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", []byte(source))
+	main, _ := parseSource(source)
+	doc, err := parser.Parse("playground.sngl", main)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
@@ -165,16 +242,14 @@ func Targets() string {
 func Generate(source, platform, lang string) string {
 	result := map[string]any{"files": nil, "error": ""}
 
-	doc, err := parser.Parse("playground.sngl", []byte(source))
+	main, fsys := parseSource(source)
+	doc, err := parser.Parse("playground.sngl", main)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: codegen.CollectPlatforms(),
-	})
+	pkg, diags := checker.Check(doc, newCheckerConfig(fsys, true))
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
@@ -200,7 +275,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{Pkg: pkg, Lang: lt})
+	resp, err := gen.Generate(&codegen.Request{Pkg: pkg, Lang: lt, ProjectFS: fsys})
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
@@ -225,9 +300,10 @@ func Generate(source, platform, lang string) string {
 
 // Diagnostics returns LSP diagnostics for SNGL source as JSON.
 func Diagnostics(source string) string {
-	doc, diags := lspcore.Analyze(source, "playground.sngl", nil, "", nil)
+	main, _ := parseSource(source)
+	doc, diags := lspcore.Analyze(string(main), "playground.sngl", nil, "", nil)
 	if doc != nil {
-		h := sha256.Sum256([]byte(source))
+		h := sha256.Sum256(main)
 		cacheMu.Lock()
 		cacheHash = h
 		cacheDoc = doc
@@ -251,8 +327,9 @@ func Diagnostics(source string) string {
 
 // Complete returns LSP completions at the given position as JSON.
 func Complete(source string, line, col int) string {
-	doc, _ := cachedParse(source)
-	items := lspcore.Complete(source, doc, line, col)
+	main, _ := parseSource(source)
+	doc, _ := cachedParse(string(main))
+	items := lspcore.Complete(string(main), doc, line, col)
 
 	var out []any
 	for _, item := range items {
@@ -269,10 +346,26 @@ func Complete(source string, line, col int) string {
 
 // Hover returns LSP hover content at the given position as JSON.
 func Hover(source string, line, col int) string {
-	doc, _ := cachedParse(source)
-	content := lspcore.Hover(source, doc, line, col)
+	main, _ := parseSource(source)
+	doc, _ := cachedParse(string(main))
+	content := lspcore.Hover(string(main), doc, line, col)
 	result := map[string]any{"content": content}
 	return jsonStr(result)
+}
+
+func cachedParse(source string) (*ast.Document, error) {
+	h := sha256.Sum256([]byte(source))
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if h == cacheHash && cacheDoc != nil {
+		return cacheDoc, nil
+	}
+	doc, err := parser.Parse("playground.sngl", []byte(source))
+	if doc != nil {
+		cacheHash = h
+		cacheDoc = doc
+	}
+	return doc, err
 }
 
 func jsonStr(m map[string]any) string {

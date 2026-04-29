@@ -4,11 +4,15 @@ package html
 
 import (
 	"fmt"
+	"io/fs"
+	"path"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/evanw/esbuild/pkg/api"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // collectBundledNativePkgs returns the set of native package paths whose
@@ -36,18 +40,14 @@ func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
 
 // bundleNativeScript runs the rendered <script> body — which contains real
 // `import * as ... from "..."` statements at the top — through esbuild and
-// returns a single IIFE suitable for inlining inside <script>. Tree-shaking
-// follows the namespace member access in the script body, so unused exports
-// from imported `js://` modules are dropped.
-//
-// projectDir is used as esbuild's resolve dir for the synthesized stdin
-// entry, so relative specifiers (`./lib`) resolve against the user's
-// project root.
-func bundleNativeScript(entry, projectDir string) (string, error) {
+// returns a single IIFE suitable for inlining inside <script>. Every import
+// flows through the plugin against js.VirtualRoot mounted on fsys, so the
+// same path serves CLI (os.DirFS) and any in-memory FS.
+func bundleNativeScript(entry string, fsys fs.FS, _ string) (string, error) {
 	res := api.Build(api.BuildOptions{
 		Stdin: &api.StdinOptions{
 			Contents:   entry,
-			ResolveDir: projectDir,
+			ResolveDir: js.VirtualRoot,
 			Sourcefile: "sngl-entry.js",
 			Loader:     api.LoaderJS,
 		},
@@ -61,6 +61,7 @@ func bundleNativeScript(entry, projectDir string) (string, error) {
 			".tsx":  api.LoaderTSX,
 			".json": api.LoaderJSON,
 		},
+		Plugins:  []api.Plugin{virtFSPlugin(fsys, js.VirtualRoot)},
 		LogLevel: api.LogLevelWarning,
 	})
 	if len(res.Errors) > 0 {
@@ -80,4 +81,60 @@ func bundleNativeScript(entry, projectDir string) (string, error) {
 		return "", fmt.Errorf("esbuild: no output")
 	}
 	return string(res.OutputFiles[0].Contents), nil
+}
+
+// virtFSPlugin builds an esbuild plugin that resolves every import against
+// fsys instead of the OS. virtRoot is the synthetic absolute path under
+// which fsys is mounted; resolved paths returned to esbuild are all under
+// it so the runtime cache and Importer chains stay self-consistent.
+func virtFSPlugin(fsys fs.FS, virtRoot string) api.Plugin {
+	const namespace = "sngl-virt"
+	return api.Plugin{
+		Name: "sngl-virtfs",
+		Setup: func(pb api.PluginBuild) {
+			pb.OnResolve(api.OnResolveOptions{Filter: ".*"},
+				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+					// Importer carries the resolved virtual path of the
+					// file doing the import. Stdin entry has no importer;
+					// anchor against virtRoot's synthesized entry.
+					containing := args.Importer
+					if containing == "" || args.Namespace == "" {
+						containing = path.Join(virtRoot, "sngl-entry.js")
+					}
+					resolved, err := js.ResolveSpec(fsys, virtRoot, args.Path, containing)
+					if err != nil {
+						return api.OnResolveResult{}, err
+					}
+					return api.OnResolveResult{Path: resolved, Namespace: namespace}, nil
+				})
+			pb.OnLoad(api.OnLoadOptions{Filter: ".*", Namespace: namespace},
+				func(args api.OnLoadArgs) (api.OnLoadResult, error) {
+					rel, ok := js.StripVirtRoot(args.Path, virtRoot)
+					if !ok {
+						return api.OnLoadResult{}, fmt.Errorf("virtFS: path outside root: %s", args.Path)
+					}
+					data, err := fs.ReadFile(fsys, rel)
+					if err != nil {
+						return api.OnLoadResult{}, err
+					}
+					contents := string(data)
+					loader := loaderFor(args.Path)
+					return api.OnLoadResult{Contents: &contents, Loader: loader}, nil
+				})
+		},
+	}
+}
+
+func loaderFor(p string) api.Loader {
+	switch {
+	case strings.HasSuffix(p, ".ts"), strings.HasSuffix(p, ".d.ts"):
+		return api.LoaderTS
+	case strings.HasSuffix(p, ".tsx"):
+		return api.LoaderTSX
+	case strings.HasSuffix(p, ".jsx"):
+		return api.LoaderJSX
+	case strings.HasSuffix(p, ".json"):
+		return api.LoaderJSON
+	}
+	return api.LoaderJS
 }

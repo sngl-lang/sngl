@@ -2,13 +2,16 @@
 
 package html
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"io/fs"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // bundleNativeScript stub for WASM builds (internal/playground). The
-// playground doesn't run js:// scenarios, so passing the entry through
-// untouched is acceptable — and keeps esbuild out of the JS/WASM build
-// graph.
-func bundleNativeScript(entry, _ string) (string, error) {
+// playground doesn't run a JS bundler in-browser yet — pass the entry
+// through untouched so esbuild stays out of the JS/WASM build graph.
+func bundleNativeScript(entry string, _ fs.FS, _ string) (string, error) {
 	return entry, nil
 }
 

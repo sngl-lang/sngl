@@ -1,6 +1,8 @@
 package html
 
 import (
+	"io/fs"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -16,7 +18,7 @@ type wasmPackage struct {
 // impure functions. Such functions cannot be evaluated at compile time, so
 // they are compiled to WASM and exposed to the page via window.__sngl_externs
 // for JS to call at runtime.
-func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
+func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmPackage {
 	if pkg == nil {
 		return nil
 	}
@@ -38,7 +40,15 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		if si == nil {
 			continue
 		}
-		decls, err := si.Resolve(uri, projectDir)
+		var (
+			decls *ir.NativeImport
+			err   error
+		)
+		if fsa, ok := si.(codegen.FSAwareScheme); ok && fsys != nil {
+			decls, err = fsa.ResolveFS(uri, fsys, projectDir)
+		} else {
+			decls, err = si.Resolve(uri, projectDir)
+		}
 		if err != nil || decls == nil {
 			continue
 		}

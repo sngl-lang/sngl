@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -180,7 +181,11 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// Build WASM for imported packages that have runtime-used functions.
 	var wasmLoaderHTML string
 	projectDir := opts.ProjectDir
-	wasmPkgs := collectWASMPackages(req.Pkg, projectDir)
+	projectFS := req.ProjectFS
+	if projectFS == nil && projectDir != "" {
+		projectFS = os.DirFS(projectDir)
+	}
+	wasmPkgs := collectWASMPackages(req.Pkg, projectFS, projectDir)
 	if len(wasmPkgs) > 0 {
 		wasmExecAdded := false
 		var loaderScripts []string
@@ -238,6 +243,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
+		gen.projectFS = projectFS
 		body, err := gen.generate()
 		if err != nil {
 			return nil, err
@@ -260,6 +266,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
+		gen.projectFS = projectFS
 		gen.irBodyStmts = win.Body
 		if win.Window != nil {
 			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
@@ -339,8 +346,11 @@ type htmlGen struct {
 	wasmPkgs []wasmPackage
 
 	// Project root for resolving native module specifiers (`./lib`, etc.)
-	// when bundling the inline <script> through esbuild.
+	// when bundling the inline <script> through esbuild. projectFS is the
+	// matching filesystem; both are used together so the same code path
+	// works for CLI (os.DirFS) and the in-memory playground.
 	projectDir string
+	projectFS  fs.FS
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
@@ -504,7 +514,7 @@ func (g *htmlGen) generate() (string, error) {
 				fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
 			}
 			preludeBuf.WriteString("\n")
-			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectDir)
+			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.projectDir)
 			if err != nil {
 				return "", err
 			}

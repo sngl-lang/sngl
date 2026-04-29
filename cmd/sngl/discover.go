@@ -168,11 +168,12 @@ func validateOutputs(pkg *ir.Package) error {
 // checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
 func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 	langs, plats := collectTargets()
+	fsys := os.DirFS(dir)
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:        os.DirFS(dir),
+		FS:        fsys,
 		Dir:       dir,
 		IsMain:    isMain,
-		Resolver:  &cliResolver{rootDir: dir},
+		Resolver:  &cliResolver{rootDir: dir, fsys: fsys},
 		Languages: langs,
 		Platforms: plats,
 	})
@@ -187,6 +188,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 // cliResolver implements checker.ImportResolver using registered codegen schemes.
 type cliResolver struct {
 	rootDir string
+	fsys    fs.FS
 }
 
 func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
@@ -247,6 +249,9 @@ func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, 
 	imp := codegen.LookupScheme(scheme)
 	if imp == nil {
 		return nil, fmt.Errorf("unknown import scheme %q", scheme)
+	}
+	if fsa, ok := imp.(codegen.FSAwareScheme); ok && r.fsys != nil {
+		return fsa.ResolveFS(uri, r.fsys, dir)
 	}
 	return imp.Resolve(uri, dir)
 }

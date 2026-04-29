@@ -377,6 +377,12 @@ type Request struct {
 	Options    *ir.StructLit // merged stdlib+lang+platform options for this output target
 	Source     string        // source .sngl filename (base name only)
 	FileAssets []FileAsset   // file:// assets to copy to output
+	// ProjectFS is the filesystem the project sources were read from. Used
+	// by platforms that resolve native imports (`js://`, `go://`) at codegen
+	// time so the same code path serves CLI (os.DirFS) and the in-memory
+	// playground. May be nil; callers that need it must fall back to
+	// os.DirFS(projectDir) from the options struct.
+	ProjectFS fs.FS
 }
 
 // SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import

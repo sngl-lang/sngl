@@ -15,6 +15,17 @@ type SchemeImporter interface {
 	Resolve(uri, dir string) (*ir.NativeImport, error)
 }
 
+// FSAwareScheme is implemented by SchemeImporters that can resolve against
+// an arbitrary io/fs.FS instead of the OS filesystem rooted at dir. Callers
+// should prefer ResolveFS via type assertion when an FS is available; the
+// classic Resolve(uri, dir) path remains for schemes that haven't migrated.
+//
+// TODO: collapse SchemeImporter.Resolve once all native schemes adopt this.
+type FSAwareScheme interface {
+	SchemeImporter
+	ResolveFS(uri string, fsys fs.FS, dir string) (*ir.NativeImport, error)
+}
+
 // FSSchemeImporter resolves a scheme-based import to a filesystem of SNGL sources.
 // Used for remote SNGL libraries (git://, http://) that provide .sngl files
 // rather than native language declarations.

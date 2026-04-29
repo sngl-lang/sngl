@@ -3,7 +3,7 @@ package js
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -13,25 +13,26 @@ import (
 
 // loadJSON reads a .json file and synthesises a SNGL IR var named after
 // the file's basename, typed as a struct (object), list, or primitive
-// matching the JSON shape.
-func loadJSON(spec, path string) (*ir.NativeImport, error) {
-	data, err := os.ReadFile(path)
+// matching the JSON shape. abs is the resolved virtual path (used in
+// diagnostics + ast.Pos); rel is the io/fs.FS path used for reading.
+func loadJSON(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error) {
+	data, err := fs.ReadFile(fsys, rel)
 	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", path, err)
+		return nil, fmt.Errorf("reading %s: %w", rel, err)
 	}
 	var raw any
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, fmt.Errorf("parsing %s: %w", path, err)
+		return nil, fmt.Errorf("parsing %s: %w", rel, err)
 	}
 
-	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	base := strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel))
 	rootName := upperFirst(sanitizeIdent(base))
 	if rootName == "" {
 		rootName = "JSON"
 	}
 
-	pos := ast.Pos{File: path, Line: 1, Column: 1}
-	g := jsonGen{path: path, pos: pos, used: map[string]int{}}
+	pos := ast.Pos{File: abs, Line: 1, Column: 1}
+	g := jsonGen{path: abs, pos: pos, used: map[string]int{}}
 	t, structs := g.infer(raw, rootName)
 
 	v := &ir.Var{

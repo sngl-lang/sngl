@@ -75,7 +75,7 @@ type schemeRef struct {
 
 func newCapturingResolver(dir string) *capturingResolver {
 	return &capturingResolver{
-		cliResolver: &cliResolver{rootDir: dir},
+		cliResolver: &cliResolver{rootDir: dir, fsys: os.DirFS(dir)},
 		seen:        map[string]bool{},
 	}
 }
