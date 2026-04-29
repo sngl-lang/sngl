@@ -7,5 +7,5 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/git"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/http"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/node"
+	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 )

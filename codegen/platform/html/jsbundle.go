@@ -13,7 +13,7 @@ import (
 
 // collectBundledNativePkgs returns the set of native package paths whose
 // calls should be routed through the esbuild bundle (instead of the
-// WASM-extern bridge). Today: every `node://` import.
+// WASM-extern bridge). Today: every `js://` import.
 func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
 	if pkg == nil {
 		return nil
@@ -24,7 +24,7 @@ func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
 			continue
 		}
 		scheme, _ := codegen.SplitScheme(imp.AST.Path)
-		if scheme != "node" {
+		if scheme != "js" {
 			continue
 		}
 		if imp.Native.ImportPath != "" {
@@ -38,7 +38,7 @@ func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
 // `import * as ... from "..."` statements at the top — through esbuild and
 // returns a single IIFE suitable for inlining inside <script>. Tree-shaking
 // follows the namespace member access in the script body, so unused exports
-// from imported `node://` modules are dropped.
+// from imported `js://` modules are dropped.
 //
 // projectDir is used as esbuild's resolve dir for the synthesized stdin
 // entry, so relative specifiers (`./lib`) resolve against the user's

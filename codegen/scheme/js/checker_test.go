@@ -1,4 +1,4 @@
-package node_test
+package js_test
 
 import (
 	"fmt"
@@ -9,41 +9,41 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen/scheme/node"
+	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// nodeResolver delegates ResolveScheme to the real NodeImporter, anchoring
+// jsResolver delegates ResolveScheme to the real JSImporter, anchoring
 // imports against a fixed dir so testdata fixtures resolve.
-type nodeResolver struct {
+type jsResolver struct {
 	dir      string
-	importer node.NodeImporter
+	importer js.JSImporter
 }
 
-func (r *nodeResolver) Resolve(srcFS fs.FS, path string) ([]*ast.Document, error) {
-	return nil, fmt.Errorf("not used in node tests: %s", path)
+func (r *jsResolver) Resolve(srcFS fs.FS, path string) ([]*ast.Document, error) {
+	return nil, fmt.Errorf("not used in js tests: %s", path)
 }
 
-func (r *nodeResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
-	if scheme != "node" {
+func (r *jsResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
+	if scheme != "js" {
 		return nil, fmt.Errorf("unknown scheme %q", scheme)
 	}
 	return r.importer.Resolve(scheme+"://"+uri, r.dir)
 }
 
-func (r *nodeResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
+func (r *jsResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
 	return nil, nil, nil
 }
 
-func TestCheckerAcceptsNodeImport(t *testing.T) {
+func TestCheckerAcceptsJSImport(t *testing.T) {
 	dir, err := filepath.Abs("testdata")
 	if err != nil {
 		t.Fatal(err)
 	}
 	src := `
-import lib "node://./simple"
+import lib "js://./simple"
 
 func wrap(a int, b int) => lib.add(a, b)
 `
@@ -51,7 +51,7 @@ func wrap(a int, b int) => lib.add(a, b)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	r := &nodeResolver{dir: dir}
+	r := &jsResolver{dir: dir}
 	pkg, diags := checker.Check(doc, &checker.Config{Resolver: r, Dir: dir})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -80,7 +80,7 @@ func TestAsyncPropagatesThroughCall(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := `
-import lib "node://./simple"
+import lib "js://./simple"
 
 func getTitle(url string) => lib.fetchTitle(url)
 `
@@ -88,7 +88,7 @@ func getTitle(url string) => lib.fetchTitle(url)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	r := &nodeResolver{dir: dir}
+	r := &jsResolver{dir: dir}
 	pkg, diags := checker.Check(doc, &checker.Config{Resolver: r, Dir: dir})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -116,7 +116,7 @@ func TestUnusableSymbolRejected(t *testing.T) {
 	if err := os.WriteFile(tsPath, []byte(`export function tup(): [string, number] { return ["x", 1]; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	imp, err := (&node.NodeImporter{}).Resolve("node://./weird.ts", dir)
+	imp, err := (&js.JSImporter{}).Resolve("js://./weird.ts", dir)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

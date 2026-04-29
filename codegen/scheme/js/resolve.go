@@ -1,4 +1,4 @@
-package node
+package js
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// resolved is the result of resolving a node:// spec to a concrete file.
+// resolved is the result of resolving a js:// spec to a concrete file.
 // importPath is the bare specifier as it should appear in the emitted JS
 // `import ... from "<importPath>"` (e.g. "lodash", "./foo"). path is the
 // absolute filesystem path of the entry file.
@@ -19,14 +19,14 @@ type resolved struct {
 
 var sourceExts = []string{".ts", ".tsx", ".d.ts", ".js", ".mjs", ".cjs"}
 
-// resolveNodeSpec turns a `node://` spec (without the scheme prefix) into a
+// resolveJSSpec turns a `js://` spec (without the scheme prefix) into a
 // concrete file path on disk and the bare specifier to emit in JS imports.
 //
 //	"./foo.json"   → {importPath:"./foo.json", path:"<dir>/foo.json"}
 //	"./foo"        → {importPath:"./foo",      path:"<dir>/foo/index.ts"}
 //	"lodash"       → {importPath:"lodash",     path:"<.../node_modules/lodash/index.d.ts>"}
 //	"foo/bar"      → {importPath:"foo/bar",    path:"<.../node_modules/foo/bar.ts>"} (subpath import)
-func resolveNodeSpec(spec, dir string) (*resolved, error) {
+func resolveJSSpec(spec, dir string) (*resolved, error) {
 	if dir == "" {
 		var err error
 		dir, err = os.Getwd()

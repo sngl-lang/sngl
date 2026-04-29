@@ -1,4 +1,4 @@
-package node
+package js
 
 import (
 	"git.duckfam.us/jonathan/sngl/ir"

@@ -31,7 +31,7 @@ type ExprScope struct {
 	NeededHelpers  map[string]bool            // helper functions needed (e.g., "String")
 	NativeImports  map[string]map[string]bool // module path → set of imported names; populated as native calls are emitted
 	// BundledNativePkgs marks native module paths that the platform will
-	// post-process through a JS bundler (e.g. esbuild for node:// imports).
+	// post-process through a JS bundler (e.g. esbuild for js:// imports).
 	// Calls to funcs whose NativePkg is in this set are emitted as
 	// `<NativeAlias(pkg)>.name(...)` so the platform can prepend
 	// `import * as <NativeAlias(pkg)> from "<pkg>"` and let the bundler

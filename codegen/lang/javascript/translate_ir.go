@@ -124,7 +124,7 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
-	// Native scheme-import call (e.g. node://): emit the imported name
+	// Native scheme-import call (e.g. js://): emit the imported name
 	// directly and record the module → name binding for top-level
 	// `import { ... } from "module"` emission by the platform.
 	if n.Func != nil && n.Func.NativePkg != "" {
@@ -181,7 +181,7 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 }
 
 // translateIRNativeCall emits a call to a function imported via a scheme
-// (e.g. node://). Records the module → name binding on scope.NativeImports
+// (e.g. js://). Records the module → name binding on scope.NativeImports
 // so the platform can emit a top-level ES import. Wraps with `await` when
 // the imported func is declared async.
 func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {

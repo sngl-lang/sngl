@@ -29,9 +29,9 @@ func collectWASMPackages(pkg *ir.Package, projectDir string) []wasmPackage {
 		if scheme == "" {
 			continue
 		}
-		// node:// modules run as JS in the browser via the esbuild bundle
-		// (see nodebundle.go). They never need a WASM extern bridge.
-		if scheme == "node" {
+		// js:// modules run as JS in the browser via the esbuild bundle
+		// (see jsbundle.go). They never need a WASM extern bridge.
+		if scheme == "js" {
 			continue
 		}
 		si := codegen.LookupScheme(scheme)

@@ -1,4 +1,4 @@
-package node
+package js
 
 import (
 	"path/filepath"
@@ -18,7 +18,7 @@ func testdataDir(t *testing.T) string {
 
 func resolveOrFail(t *testing.T, uri, dir string) *ir.NativeImport {
 	t.Helper()
-	imp, err := (&NodeImporter{}).Resolve(uri, dir)
+	imp, err := (&JSImporter{}).Resolve(uri, dir)
 	if err != nil {
 		t.Fatalf("Resolve(%q, %q): %v", uri, dir, err)
 	}
@@ -45,7 +45,7 @@ func findStruct(imp *ir.NativeImport, name string) *ir.StructDef {
 
 func TestSimpleFunctions(t *testing.T) {
 	dir := testdataDir(t)
-	imp := resolveOrFail(t, "node://./simple", dir)
+	imp := resolveOrFail(t, "js://./simple", dir)
 
 	add := findFunc(imp, "add")
 	if add == nil {
@@ -86,7 +86,7 @@ func TestSimpleFunctions(t *testing.T) {
 
 func TestInterface(t *testing.T) {
 	dir := testdataDir(t)
-	imp := resolveOrFail(t, "node://./iface", dir)
+	imp := resolveOrFail(t, "js://./iface", dir)
 
 	user := findStruct(imp, "User")
 	if user == nil {
@@ -118,7 +118,7 @@ func TestInterface(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 	dir := testdataDir(t)
-	imp := resolveOrFail(t, "node://./json/data.json", dir)
+	imp := resolveOrFail(t, "js://./json/data.json", dir)
 	if len(imp.Vars) != 1 {
 		t.Fatalf("Vars: %d, want 1", len(imp.Vars))
 	}
@@ -157,7 +157,7 @@ func TestJSON(t *testing.T) {
 
 func TestNodeModulesResolution(t *testing.T) {
 	dir := testdataDir(t)
-	imp := resolveOrFail(t, "node://foo", dir)
+	imp := resolveOrFail(t, "js://foo", dir)
 	pluck := findFunc(imp, "pluck")
 	if pluck == nil {
 		t.Fatalf("pluck not found")

@@ -486,7 +486,7 @@ func (g *htmlGen) generate() (string, error) {
 	}
 
 	// Only emit <script> if there's actual runtime JS to execute. When the
-	// script references node:// imports, prepend ES `import * as` lines for
+	// script references js:// imports, prepend ES `import * as` lines for
 	// each module and send the whole script through esbuild so module
 	// bodies are inlined and tree-shaken.
 	var scriptBuf strings.Builder
