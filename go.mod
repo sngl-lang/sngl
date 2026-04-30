@@ -14,7 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-rod/rod v0.116.2
 	github.com/mattn/go-isatty v0.0.20
-	github.com/sngl-lang/typescript-go v0.0.0-20260427154407-2f308df0a248
+	github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	github.com/yuin/goldmark v1.7.8
@@ -112,5 +112,3 @@ tool (
 	golang.org/x/tools/cmd/stringer
 	modernc.org/egg
 )
-
-replace github.com/sngl-lang/typescript-go => /home/jonathan/src/github.com/sngl-lang/typescript-go

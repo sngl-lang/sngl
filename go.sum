@@ -157,6 +157,8 @@ github.com/sngl-lang/typescript-go v0.0.0-20260427153801-9939122cca95 h1:yjrJ5ho
 github.com/sngl-lang/typescript-go v0.0.0-20260427153801-9939122cca95/go.mod h1:W5b9saujOGsCrNcys4vJlDDtdWEPbY+JG6EsiBpsVsI=
 github.com/sngl-lang/typescript-go v0.0.0-20260427154407-2f308df0a248 h1:12g7xxB3p6j+0fJAN5Z95gW2dArB1C9YBznnBMaoanQ=
 github.com/sngl-lang/typescript-go v0.0.0-20260427154407-2f308df0a248/go.mod h1:W5b9saujOGsCrNcys4vJlDDtdWEPbY+JG6EsiBpsVsI=
+github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555 h1:geqiOSKqMZYD2JrLLO1pvx7i+LMpjLP6CzEoJ6AkeJM=
+github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555/go.mod h1:W5b9saujOGsCrNcys4vJlDDtdWEPbY+JG6EsiBpsVsI=
 github.com/spf13/cobra v1.10.2 h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=
 github.com/spf13/cobra v1.10.2/go.mod h1:7C1pvHqHw5A4vrJfjNwvOdzYu0Gml16OCs2GRiTUUS4=
 github.com/spf13/pflag v1.0.9 h1:9exaQaMOCwffKiiiYk6/BndUBv+iRViNW+4lEMi0PvY=
