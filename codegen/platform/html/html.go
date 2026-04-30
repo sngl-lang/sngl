@@ -9,6 +9,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1832,7 +1833,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""
-	for name, expr := range props {
+	for _, name := range slices.Sorted(maps.Keys(props)) {
+		expr := props[name]
 		// class is emitted separately below to avoid duplicate attrs.
 		if name == "style" || name == "class" {
 			continue
@@ -1935,7 +1937,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	// Reactive props: set via JS updaters
-	for name, expr := range props {
+	for _, name := range slices.Sorted(maps.Keys(props)) {
+		expr := props[name]
 		if name == "style" {
 			continue
 		}

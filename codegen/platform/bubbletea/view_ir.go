@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -573,8 +574,8 @@ func buildIRStyleExpr(styles map[string]ir.Expr, gc *golang.GoIRContext, scaleFa
 		return chain[0]
 	}
 
-	for prop, expr := range styles {
-		if call := irStyleCall(prop, expr, gc, scaleFactor); call != "" {
+	for _, prop := range slices.Sorted(maps.Keys(styles)) {
+		if call := irStyleCall(prop, styles[prop], gc, scaleFactor); call != "" {
 			chain = append(chain, call)
 		}
 	}
