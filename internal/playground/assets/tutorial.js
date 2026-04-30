@@ -211,7 +211,7 @@ editor = createEditor(document.getElementById("editor-pane"), "");
 async function initWasm() {
     const go = new Go();
     const result = await WebAssembly.instantiateStreaming(
-        fetch("assets/playground/sngl.wasm"),
+        fetch(window.__sngl_wasm_url),
         go.importObject,
     );
     go.run(result.instance);

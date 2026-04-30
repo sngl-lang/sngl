@@ -15,6 +15,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -118,15 +119,16 @@ type compilation struct {
 // htmlConfig captures the html platform's options. Field names mirror
 // html.sngl options (camelCase → PascalCase via codegen.ApplyOptions).
 type htmlConfig struct {
-	Preview    bool
-	Test       bool
-	Stylesheet string
-	ProjectDir string
-	Package    string
-	Main       bool
-	Framework  string
-	Listen     string
-	Minify     bool
+	Preview     bool
+	Test        bool
+	Stylesheet  string
+	ProjectDir  string
+	Package     string
+	Main        bool
+	Framework   string
+	Listen      string
+	Minify      bool
+	NoCacheBust bool
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -156,12 +158,19 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return nil, fmt.Errorf("html: %w", err)
 	}
 
-	// Copy file:// assets resolved during optimization.
+	// Copy file:// assets resolved during optimization. The optimizer has
+	// already chosen the OutPath (with cache-bust hash if enabled) and may
+	// have stashed the file bytes; fall back to a fresh read when absent.
 	for _, fa := range req.FileAssets {
-		data, err := os.ReadFile(fa.SrcPath)
-		if err == nil {
-			c.assetFiles = append(c.assetFiles, codegen.BytesFile(fa.OutPath, data))
+		data := fa.Data
+		if data == nil {
+			d, err := os.ReadFile(fa.SrcPath)
+			if err != nil {
+				continue
+			}
+			data = d
 		}
+		c.assetFiles = append(c.assetFiles, codegen.BytesFile(fa.OutPath, data))
 	}
 
 	// Resolve stylesheet option: source path relative to project dir.
@@ -171,10 +180,14 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if opts.ProjectDir != "" && !filepath.IsAbs(opts.Stylesheet) {
 			absPath = filepath.Join(opts.ProjectDir, opts.Stylesheet)
 		}
-		outName := "assets/" + filepath.Base(opts.Stylesheet)
-		stylesheetURL = "/" + outName
 		data, err := os.ReadFile(absPath)
 		if err == nil {
+			base := filepath.Base(opts.Stylesheet)
+			if !opts.NoCacheBust {
+				base = asset.HashedName(base, data)
+			}
+			outName := "assets/" + base
+			stylesheetURL = "/" + outName
 			c.assetFiles = append(c.assetFiles, codegen.BytesFile(outName, data))
 		}
 	}
@@ -188,7 +201,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	}
 	wasmPkgs := collectWASMPackages(req.Pkg, projectFS, projectDir)
 	if len(wasmPkgs) > 0 {
-		wasmExecAdded := false
+		wasmExecURL := ""
 		var loaderScripts []string
 
 		for _, wp := range wasmPkgs {
@@ -207,11 +220,16 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				continue
 			}
 
-			if !wasmExecAdded {
+			if wasmExecURL == "" {
 				wasmExecData, err := wc.WASMExecJS()
 				if err == nil {
-					c.assetFiles = append(c.assetFiles, codegen.BytesFile("assets/wasm_exec.js", wasmExecData))
-					wasmExecAdded = true
+					name := "wasm_exec.js"
+					if !opts.NoCacheBust {
+						name = asset.HashedName(name, wasmExecData)
+					}
+					outPath := "assets/" + name
+					c.assetFiles = append(c.assetFiles, codegen.BytesFile(outPath, wasmExecData))
+					wasmExecURL = "/" + outPath
 				}
 			}
 
@@ -219,7 +237,11 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			if err != nil {
 				return nil, fmt.Errorf("wasm build: %v", err)
 			}
-			wasmFile := "assets/" + wp.namespace + ".wasm"
+			wasmName := wp.namespace + ".wasm"
+			if !opts.NoCacheBust {
+				wasmName = asset.HashedName(wasmName, wasmBytes)
+			}
+			wasmFile := "assets/" + wasmName
 			c.assetFiles = append(c.assetFiles, codegen.BytesFile(wasmFile, wasmBytes))
 			loaderScripts = append(loaderScripts, fmt.Sprintf(
 				`  const _go_%s = new Go();
@@ -228,8 +250,8 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		}
 		if len(loaderScripts) > 0 {
 			wasmLoaderHTML = fmt.Sprintf(
-				"  <script src=\"/assets/wasm_exec.js\"></script>\n  <script>\n  window.__sngl_externs = window.__sngl_externs || {};\n%s\n  </script>\n",
-				strings.Join(loaderScripts, "\n"))
+				"  <script src=\"%s\"></script>\n  <script>\n  window.__sngl_externs = window.__sngl_externs || {};\n%s\n  </script>\n",
+				wasmExecURL, strings.Join(loaderScripts, "\n"))
 		}
 	}
 	ctx := codegen.NewCodegenCtx(req, "html")

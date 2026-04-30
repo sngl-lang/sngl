@@ -61,6 +61,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 			platform:      ctx.platform,
 			language:      ctx.language,
 			dir:           ctx.dir,
+			noCacheBust:   ctx.noCacheBust,
 			pkg:           ctx.pkg,
 			nativeImports: ctx.nativeImports,
 			fileAssets:    ctx.fileAssets,

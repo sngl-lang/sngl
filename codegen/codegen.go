@@ -367,6 +367,7 @@ func (cw *countWriter) Write(p []byte) (int, error) {
 type FileAsset struct {
 	SrcPath string // absolute path on disk
 	OutPath string // relative path in output (e.g. "assets/sngl.svg")
+	Data    []byte // optional: contents already read by the optimizer
 }
 
 // Request is the input to a platform generator.

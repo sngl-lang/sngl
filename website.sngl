@@ -7,6 +7,7 @@ output {
 import "go://git.duckfam.us/jonathan/sngl/docs"
 import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
 import "file://public"
+import pgAssets "file://internal/playground/assets"
 import "internal/docui"
 import "internal/learn"
 
@@ -124,7 +125,7 @@ component PlaygroundContent() {
 	text(value="Interactive playground — available in browser only.")
 
 	platform html {
-		html.link(rel="stylesheet", href="/assets/playground/playground.css")
+		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
 		html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
 		html.div(class="playground-toolbar") {
 			html.select(id="examples") {
@@ -158,14 +159,15 @@ component PlaygroundContent() {
 			}
 		}
 		html.div(id="playground-sources")
-		html.script(src="/assets/playground/wasm_exec.js")
+		html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+		html.script(src=pgAssets.path("wasm_exec.js"))
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-kotlin.min.js")
-		html.script(type="module", src="/assets/playground/playground.js")
+		html.script(type="module", src=pgAssets.path("playground.js"))
 	}
 }
 
@@ -173,8 +175,8 @@ component TutorialContent() {
 	text(value="Interactive tutorial — available in browser only.")
 
 	platform html {
-		html.link(rel="stylesheet", href="/assets/playground/playground.css")
-		html.link(rel="stylesheet", href="/assets/playground/tutorial.css")
+		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
+		html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
 		html.div(class="tutorial-layout") {
 			html.aside(id="lesson-nav", class="tutorial-nav") {
 				for section = lessonSections {
@@ -204,8 +206,9 @@ component TutorialContent() {
 			}
 		}
 		html.div(id="lesson-sources")
-		html.script(src="/assets/playground/wasm_exec.js")
-		html.script(type="module", src="/assets/playground/tutorial.js")
+		html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+		html.script(src=pgAssets.path("wasm_exec.js"))
+		html.script(type="module", src=pgAssets.path("tutorial.js"))
 	}
 }
 

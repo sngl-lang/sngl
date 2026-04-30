@@ -8,3 +8,4 @@ _site/
 /todo
 /_examples/todo/todo
 *.wasm
+/internal/playground/assets/wasm_exec.js

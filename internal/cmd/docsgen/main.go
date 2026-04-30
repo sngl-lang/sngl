@@ -29,6 +29,13 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("docsgen: ")
 
+	// Build playground WASM + stage wasm_exec.js into the project tree so
+	// website.sngl's file:// import resolves them. Must precede compileSNGL
+	// so the SNGL compiler picks up content-hashed filenames.
+	if err := prebuildPlaygroundAssets(); err != nil {
+		log.Fatalf("playground prebuild: %v", err)
+	}
+
 	// Compile website.sngl → output files.
 	if err := compileSNGL("website.sngl", *outDir); err != nil {
 		log.Fatal(err)
@@ -37,9 +44,12 @@ func main() {
 	// Copy pre-generated stdlib example snapshots to gallery.
 	copySnapshots(*outDir)
 
-	// Build playground (WASM + static assets).
-	if err := buildPlayground(*outDir); err != nil {
+	// Inject runtime example/lesson sources into the SNGL-generated pages.
+	if err := injectExamples(*outDir); err != nil {
 		log.Printf("playground: %v", err)
+	}
+	if err := injectTutorialLessons(*outDir); err != nil {
+		log.Printf("tutorial: %v", err)
 	}
 
 	// Inject the theme-toggle bootstrap into every page. Must run after
@@ -85,12 +95,15 @@ func compileSNGL(filename, outDir string) error {
 	return cmd.Run()
 }
 
-func buildPlayground(outDir string) error {
-	playgroundDir := filepath.Join(outDir, "assets", "playground")
-	os.MkdirAll(playgroundDir, 0o755)
+// prebuildPlaygroundAssets builds the playground WASM and copies wasm_exec.js
+// into internal/playground/assets/ so website.sngl can reference them via its
+// file:// import. Both targets are gitignored build artifacts. Sibling
+// playground.css / playground.js / tutorial.* files already live in that
+// directory.
+func prebuildPlaygroundAssets() error {
+	stageDir := filepath.Join("internal", "playground", "assets")
 
-	// Build WASM binary.
-	wasmOut := filepath.Join(playgroundDir, "sngl.wasm")
+	wasmOut := filepath.Join(stageDir, "sngl.wasm")
 	cmd := exec.Command("go", "build", "-o", wasmOut, "./internal/playground/cmd")
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout = os.Stdout
@@ -100,7 +113,6 @@ func buildPlayground(outDir string) error {
 	}
 	log.Printf("playground: built %s", wasmOut)
 
-	// Copy wasm_exec.js from GOROOT.
 	gorootOut, err := exec.Command("go", "env", "GOROOT").Output()
 	if err != nil {
 		return fmt.Errorf("finding GOROOT: %w", err)
@@ -110,19 +122,13 @@ func buildPlayground(outDir string) error {
 	if err != nil {
 		return fmt.Errorf("reading wasm_exec.js: %w", err)
 	}
-	os.WriteFile(filepath.Join(playgroundDir, "wasm_exec.js"), wasmExecData, 0o644)
-
-	// Copy playground CSS and JS assets (shared by /playground.html and /tutorial.html).
-	for _, name := range []string{"playground.css", "playground.js", "tutorial.js", "tutorial.css"} {
-		src := filepath.Join("internal", "playground", "assets", name)
-		data, err := os.ReadFile(src)
-		if err != nil {
-			continue
-		}
-		os.WriteFile(filepath.Join(playgroundDir, name), data, 0o644)
+	if err := os.WriteFile(filepath.Join(stageDir, "wasm_exec.js"), wasmExecData, 0o644); err != nil {
+		return fmt.Errorf("writing wasm_exec.js: %w", err)
 	}
+	return nil
+}
 
-	// Inject examples into the SNGL-generated playground.html.
+func injectExamples(outDir string) error {
 	pgHTML := filepath.Join(outDir, "playground.html")
 	htmlData, err := os.ReadFile(pgHTML)
 	if err != nil {
@@ -186,10 +192,6 @@ func buildPlayground(outDir string) error {
 	pgHTMLStr := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
 	os.WriteFile(pgHTML, []byte(pgHTMLStr), 0o644)
 	log.Printf("playground: ready")
-
-	if err := injectTutorialLessons(outDir); err != nil {
-		log.Printf("tutorial: %v", err)
-	}
 	return nil
 }
 

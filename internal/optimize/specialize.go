@@ -105,13 +105,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 
 	childCtx := &evalCtx{
-		platform:   ctx.platform,
-		language:   ctx.language,
-		dir:        ctx.dir,
-		pkg:        bodyPkg,
-		fileAssets: ctx.fileAssets,
-		values:     make(map[ir.Symbol]any, len(ctx.values)+len(propValues)),
-		inlining:   make(map[*ir.Component]int, len(ctx.inlining)+1),
+		platform:    ctx.platform,
+		language:    ctx.language,
+		dir:         ctx.dir,
+		noCacheBust: ctx.noCacheBust,
+		pkg:         bodyPkg,
+		fileAssets:  ctx.fileAssets,
+		values:      make(map[ir.Symbol]any, len(ctx.values)+len(propValues)),
+		inlining:    make(map[*ir.Component]int, len(ctx.inlining)+1),
 	}
 	maps.Copy(childCtx.values, ctx.values)
 	maps.Copy(childCtx.inlining, ctx.inlining)

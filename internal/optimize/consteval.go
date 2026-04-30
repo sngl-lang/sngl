@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -730,14 +732,21 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 
 	switch funcName {
 	case "path":
-		if _, err := fs.Stat(fsys, filename); err != nil {
+		data, err := fs.ReadFile(fsys, filename)
+		if err != nil {
 			return nil, false
 		}
-		outPath := "assets/" + filename
+		outRel := filename
+		if !ctx.noCacheBust {
+			dir, base := path.Split(filename)
+			outRel = dir + asset.HashedName(base, data)
+		}
+		outPath := "assets/" + outRel
 		url := "/" + outPath
 		ctx.fileAssets = append(ctx.fileAssets, FileAsset{
 			SrcPath: filepath.Join(dirPath, filename),
 			OutPath: outPath,
+			Data:    data,
 		})
 		return url, true
 

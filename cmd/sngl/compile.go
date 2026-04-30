@@ -116,9 +116,10 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 			start = time.Now()
 			optCfg := &optimize.Config{
-				Platform: target.Platform,
-				Language: target.Lang,
-				Dir:      dir,
+				Platform:    target.Platform,
+				Language:    target.Lang,
+				Dir:         dir,
+				NoCacheBust: optionBool(target.Options, "noCacheBust"),
 			}
 			if err := optimize.Optimize(pkg, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
@@ -128,7 +129,7 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			// Convert optimizer file assets to codegen file assets.
 			var fileAssets []codegen.FileAsset
 			for _, fa := range optCfg.FileAssets {
-				fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath})
+				fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
 			}
 
 			start = time.Now()
@@ -210,6 +211,21 @@ func applyCLIOpts(opts *ir.StructLit, kv map[string]string) {
 		}
 		codegen.SetOptionField(opts, k, v)
 	}
+}
+
+// optionBool reads a bool-valued option from opts, returning false when absent
+// or non-bool. Mirrors the semantics codegen.ApplyOptions would apply, but the
+// optimizer needs the flag *before* any platform Config struct is populated.
+func optionBool(opts *ir.StructLit, name string) bool {
+	v, ok := codegen.OptionField(opts, name)
+	if !ok {
+		return false
+	}
+	lit, ok := v.(*ir.Literal)
+	if !ok {
+		return false
+	}
+	return lit.Raw == "true"
 }
 
 // optionFieldType returns the declared type of a field on opts, or nil if the

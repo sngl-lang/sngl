@@ -1,0 +1,44 @@
+# Static --lang none --platform html builds emit content-hashed asset names by
+# default so browsers and CDNs cache-bust on any byte change. The
+# noCacheBust=true option opts back into stable filenames.
+
+sngl compile --out=hashed app.sngl
+sngl compile --opt noCacheBust=true --out=plain app.sngl
+
+exists hashed/index.html
+exists plain/index.html
+
+# Default: stylesheet basename gets an 8-hex hash segment before the extension.
+grep 'href="/assets/site\.[0-9a-f]{8}\.css"' hashed/index.html
+exec ls hashed/assets/
+stdout 'site\.[0-9a-f]{8}\.css'
+
+# Default: file.path() image gets a hash segment too, and the IMG src matches.
+grep 'src="/assets/logo\.[0-9a-f]{8}\.svg"' hashed/index.html
+stdout 'logo\.[0-9a-f]{8}\.svg'
+
+# noCacheBust: filenames stay plain.
+grep 'href="/assets/site\.css"' plain/index.html
+grep 'src="/assets/logo\.svg"' plain/index.html
+exec ls plain/assets/
+stdout '^logo\.svg$'
+stdout '^site\.css$'
+
+-- app.sngl --
+output {
+    none {
+        html(stylesheet="site.css")
+    }
+}
+
+import here "file://."
+
+const logo = here.path("logo.svg")
+
+component main {
+    image(src=logo)
+}
+-- site.css --
+body { background: #fff; }
+-- logo.svg --
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="red"/></svg>

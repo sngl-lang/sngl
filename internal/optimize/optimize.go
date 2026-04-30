@@ -13,6 +13,10 @@ type Config struct {
 	Language string // "js", "go"
 	Dir      string // project directory (for compile-time go run execution)
 
+	// NoCacheBust disables content-hash filename mangling for file:// assets
+	// resolved during folding. Default false (cache-busting enabled).
+	NoCacheBust bool
+
 	// FileAssets is populated by Optimize with file:// assets that need
 	// copying to the output directory.
 	FileAssets []FileAsset
@@ -22,6 +26,7 @@ type Config struct {
 type FileAsset struct {
 	SrcPath string // absolute path on disk
 	OutPath string // relative path in output (e.g. "assets/sngl.svg")
+	Data    []byte // file contents read at fold time; pass-through to codegen
 }
 
 // evalCtx carries state needed during optimization.
@@ -29,6 +34,7 @@ type evalCtx struct {
 	platform      string
 	language      string
 	dir           string
+	noCacheBust   bool
 	pkg           *ir.Package
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	fileAssets    []FileAsset
@@ -103,11 +109,12 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
-		platform: r.cfg.Platform,
-		language: r.cfg.Language,
-		dir:      r.cfg.Dir,
-		pkg:      pkg,
-		values:   make(map[ir.Symbol]any),
+		platform:    r.cfg.Platform,
+		language:    r.cfg.Language,
+		dir:         r.cfg.Dir,
+		noCacheBust: r.cfg.NoCacheBust,
+		pkg:         pkg,
+		values:      make(map[ir.Symbol]any),
 	}
 
 	// Phase 1: Evaluate all top-level consts.
