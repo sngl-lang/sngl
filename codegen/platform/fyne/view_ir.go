@@ -382,7 +382,27 @@ func (vc *irViewContext) renderButton(n *ir.NodeInst, resultVar string) {
 func (vc *irViewContext) renderEntry(n *ir.NodeInst, resultVar string) {
 	idx := vc.entryIndex
 	vc.entryIndex++
-	vc.line("%s = m.entry%d", resultVar, idx)
+	fieldName := fmt.Sprintf("entry%d", idx)
+	vc.line("%s = m.%s", resultVar, fieldName)
+
+	// `value` attribute drives an init-time SetText and a reactive updater so
+	// that the entry's text stays in sync when the source expression changes
+	// (e.g. textarea(value=jira.IssuesPretty(issues))). Without this, the
+	// constructor only writes SetText for input/textarea via the bind-target
+	// shortcut — read-only textareas and inputs whose value is a non-bind
+	// expression render empty.
+	contentExpr := vc.resolveContentIRExpr(n)
+	if contentExpr == nil {
+		return
+	}
+	content := vc.gc.EvalExpr(contentExpr)
+	vc.line("m.%s.SetText(fmt.Sprint(%s))", fieldName, content)
+	deps := vc.exprDeps(contentExpr)
+	if len(deps) > 0 {
+		updaterName := fmt.Sprintf("updateEntry%d", idx)
+		body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, content)
+		vc.addUpdater(updaterName, body, deps)
+	}
 }
 
 func (vc *irViewContext) renderCheck(n *ir.NodeInst, resultVar string) {
