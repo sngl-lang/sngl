@@ -133,8 +133,25 @@ func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 
 	innerVar := resultVar + "Inner"
 	vc.line("var %s fyne.CanvasObject", innerVar)
-	for _, child := range s.Body {
-		vc.renderStmt(child, innerVar)
+	switch len(s.Body) {
+	case 0:
+		// Empty body — nothing to render; downstream nil-guard will fall back.
+	case 1:
+		vc.renderStmt(s.Body[0], innerVar)
+	default:
+		// Multiple children share one slot. Each must get a uniquely-named
+		// child variable so prior rendering output isn't clobbered (and so
+		// nested nodes don't collide on `<innerVar>Children` etc.). Wrap the
+		// pieces in a VBox so the slot still holds a single CanvasObject.
+		childrenVar := innerVar + "Children"
+		vc.line("var %s []fyne.CanvasObject", childrenVar)
+		for i, child := range s.Body {
+			childVar := fmt.Sprintf("%sC%d", innerVar, i)
+			vc.line("var %s fyne.CanvasObject", childVar)
+			vc.renderStmt(child, childVar)
+			vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
+		}
+		vc.line("%s = container.NewVBox(%s...)", innerVar, childrenVar)
 	}
 	vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", innerVar, innerVar)
 	vc.line("m.%s = container.NewStack(%s)", fieldName, innerVar)
