@@ -714,4 +714,3 @@ func (vc *irViewContext) emitEventHandlerBlock(stmts []ir.Stmt) {
 		vc.line("m.doRefresh()")
 	}
 }
-

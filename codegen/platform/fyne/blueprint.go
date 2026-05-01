@@ -83,7 +83,7 @@ type bindMeta struct {
 }
 
 var (
-	blueprintsOnce   sync.Once
+	blueprintsOnce  sync.Once
 	blueprintByName map[string]*fyneBlueprint
 )
 
