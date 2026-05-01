@@ -1,42 +1,17 @@
 package {{.Package}}
 
 import (
-	"fmt"
-{{- if .Main}}
-	"os"
-{{- end}}
-{{- if .NeedsURL}}
-	"net/url"
-{{- end}}
-{{- if .NeedsTime}}
-	"time"
-{{- end}}
-{{- range .GoImports}}
+{{- range .Imports}}
 	"{{.}}"
 {{- end}}
-
-	"fyne.io/fyne/v2"
-{{- if .Main}}
-	"fyne.io/fyne/v2/app"
-{{- end}}
-{{- if .NeedsCanvas}}
-	"fyne.io/fyne/v2/canvas"
-{{- end}}
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 )
 
 var _ = fmt.Sprint
 var _ fyne.CanvasObject
 var _ = container.NewVBox
-var _ = layout.NewSpacer
 var _ = widget.NewLabel
-{{- if .NeedsURL}}
-var _ = url.Parse
-{{- end}}
-{{- if .NeedsCanvas}}
-var _ = canvas.NewImageFromResource
+{{- if .HasLayout}}
+var _ = layout.NewSpacer
 {{- end}}
 
 func ternary[T any](cond bool, a, b T) T {
@@ -98,11 +73,6 @@ type Model struct {
 {{- end}}
 {{- if .Binds}}
 {{end}}
-{{- range .Entries}}
-	{{.FieldName}} *widget.Entry
-{{- end}}
-{{- if .Entries}}
-{{end}}
 {{- range .WidgetFields}}
 	{{.Name}} {{.GoType}}
 {{- end}}
@@ -125,21 +95,7 @@ func New() *Model {
 		{{.Name}}: {{.InitVal}},
 {{- end}}
 	}
-{{range .Entries}}
-{{- if .MultiLine}}	m.{{.FieldName}} = widget.NewMultiLineEntry()
-{{else if .Password}}	m.{{.FieldName}} = widget.NewPasswordEntry()
-{{else}}	m.{{.FieldName}} = widget.NewEntry()
-{{end}}
-{{- if .Placeholder}}	m.{{.FieldName}}.SetPlaceHolder({{.PlaceholderQuoted}})
-{{end}}
-{{- if .BindTarget}}	m.{{.FieldName}}.SetText(fmt.Sprint(m.{{.BindTarget}}))
-	m.{{.FieldName}}.OnChanged = func(s string) {
-		m.{{.BindTarget}} = s
-{{.OnChangedBody}}	}
-{{end}}
-{{- if .Rows}}	m.{{.FieldName}}.SetMinRowsVisible({{.Rows}})
-{{end}}
-{{- end}}	return m
+	return m
 }
 
 func (m *Model) doRefresh() {

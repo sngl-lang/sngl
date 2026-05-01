@@ -14,16 +14,13 @@ import (
 // irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {
 	*codegen.CommonAnalysis
-	binds       []irBind
-	externs     []irExtern
-	computeds   []irComputed
-	entries     []irEntry
-	dataEvents  map[string][]*ir.EventHandler
-	goImports   map[string]bool
-	needsTime   bool
-	needsURL    bool
-	needsCanvas bool
-	dt          *codegen.DepTracker
+	binds      []irBind
+	externs    []irExtern
+	computeds  []irComputed
+	dataEvents map[string][]*ir.EventHandler
+	goImports  map[string]bool
+	needsTime  bool
+	dt         *codegen.DepTracker
 }
 
 type irBind struct {
@@ -41,15 +38,6 @@ type irComputed struct {
 	name   string
 	goType string
 	fn     *ir.Func
-}
-
-type irEntry struct {
-	fieldName   string
-	bindTarget  string
-	placeholder string
-	multiLine   bool
-	password    bool
-	rows        int
 }
 
 func (info *irAnalysis) depTracker() *codegen.DepTracker {
@@ -123,51 +111,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Walk visual tree for entries + import needs
-	wins := ctx.Windows()
-	for _, win := range wins {
-		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			switch n.Name {
-			case "input":
-				entry := irEntry{
-					fieldName: ctx.Namer.Next("entry"),
-				}
-				if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
-					entry.placeholder = s
-				}
-				if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "type")); ok && s == "password" {
-					entry.password = true
-				}
-				if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
-					entry.bindTarget = extractIRAssignTarget(h.Func.Block)
-				}
-				info.entries = append(info.entries, entry)
-			case "textarea":
-				entry := irEntry{
-					fieldName: ctx.Namer.Next("entry"),
-					multiLine: true,
-				}
-				if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
-					entry.placeholder = s
-				}
-				if rows, ok := codegen.IRLiteralInt(codegen.NodeProp(n, "rows")); ok {
-					entry.rows = rows
-				}
-				if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
-					entry.bindTarget = extractIRAssignTarget(h.Func.Block)
-				}
-				info.entries = append(info.entries, entry)
-			case "link":
-				info.needsURL = true
-			case "image":
-				if codegen.NodeProp(n, "src") != nil {
-					info.needsCanvas = true
-				}
-			}
-			return false
-		})
-	}
-
 	if info.NeedsToast {
 		info.needsTime = true
 	}
@@ -187,6 +130,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var updaters []irWidgetUpdater
+	var entrySync []entrySyncRec
+	var blueprintImports map[string]bool
 	singleRoot := true
 
 	wins := ctx.Windows()
@@ -217,6 +162,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 
 		widgetFields = vc.widgetFields
 		updaters = vc.updaters
+		entrySync = vc.entrySync
+		blueprintImports = vc.imports
 	}
 
 	// --- Phase 2: Pre-render dynamic parts ---
@@ -283,7 +230,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 
 	// --- Phase 3: Build template data and render ---
-	td := newIRTemplateData(info, cfg, updaters, widgetFields, funcBuf.String(), gc, ctx)
+	td := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx)
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
@@ -309,23 +256,45 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	return []byte(b.String())
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx) templateData {
+func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx) templateData {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
 		AppName:      cfg.AppName,
 		NeedsTime:    info.needsTime,
-		NeedsURL:     info.needsURL,
-		NeedsCanvas:  info.needsCanvas,
 		NeedsToast:   info.NeedsToast,
 		HasTimers:    len(info.Timers) > 0,
 		FunctionCode: functionCode,
 	}
 
-	for pkg := range info.goImports {
-		td.GoImports = append(td.GoImports, pkg)
+	// Collect every import the generated code needs into one deduped set:
+	// always-on imports, conditional Main/time additions, native go://
+	// imports from user code, and blueprint-declared imports collected by
+	// the renderer.
+	imports := map[string]bool{
+		"fmt":                           true,
+		"fyne.io/fyne/v2":               true,
+		"fyne.io/fyne/v2/widget":        true, // widget.NewLabel fallback
+		"fyne.io/fyne/v2/container":     true, // container.NewVBox multi-root + unknown fallback
 	}
-	slices.Sort(td.GoImports)
+	if cfg.Main {
+		imports["os"] = true
+		imports["fyne.io/fyne/v2/app"] = true
+	}
+	if info.needsTime {
+		imports["time"] = true
+	}
+	for p := range info.goImports {
+		imports[p] = true
+	}
+	for p := range blueprintImports {
+		imports[p] = true
+	}
+	for p := range imports {
+		td.Imports = append(td.Imports, p)
+	}
+	slices.Sort(td.Imports)
+	td.HasLayout = imports["fyne.io/fyne/v2/layout"]
 
 	// Structs
 	for _, sd := range info.Structs {
@@ -350,10 +319,10 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 		}
 
 		var extra strings.Builder
-		// Entry sync
-		for _, entry := range info.entries {
-			if entry.bindTarget == bind.name && bind.goType == "string" {
-				fmt.Fprintf(&extra, "\tm.%s.SetText(v)\n", entry.fieldName)
+		// Entry sync — populated during render walk via vc.entrySync.
+		for _, sync := range entrySync {
+			if sync.varName == bind.name && bind.goType == "string" {
+				fmt.Fprintf(&extra, "\tm.%s%s(v)\n", sync.fieldName, sync.target)
 			}
 		}
 		// @change handlers
@@ -397,35 +366,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 	// Updater names
 	for _, u := range updaters {
 		td.UpdaterNames = append(td.UpdaterNames, u.name)
-	}
-
-	// Entries
-	for _, entry := range info.entries {
-		ed := entryData{
-			FieldName:   entry.fieldName,
-			MultiLine:   entry.multiLine,
-			Password:    entry.password,
-			Placeholder: entry.placeholder,
-			BindTarget:  entry.bindTarget,
-			Rows:        entry.rows,
-		}
-		if entry.placeholder != "" {
-			ed.PlaceholderQuoted = fmt.Sprintf("%q", entry.placeholder)
-		}
-		if entry.bindTarget != "" {
-			var body strings.Builder
-			entryMutated := map[string]bool{entry.bindTarget: true}
-			affected := codegen.FindAffected(info.depTracker(), updaters, entryMutated)
-			if len(affected) > 0 {
-				for _, u := range affected {
-					fmt.Fprintf(&body, "\t\tm.%s()\n", u.name)
-				}
-			} else {
-				body.WriteString("\t\tm.doRefresh()\n")
-			}
-			ed.OnChangedBody = body.String()
-		}
-		td.Entries = append(td.Entries, ed)
 	}
 
 	return td

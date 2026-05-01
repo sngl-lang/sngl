@@ -46,25 +46,23 @@ var templateFS embed.FS
 
 // templateData is the data passed to the model.go.tmpl template.
 type templateData struct {
-	Package     string
-	Main        bool
-	AppName     string
-	NeedsTime   bool
-	NeedsURL    bool
-	NeedsCanvas bool
-	NeedsToast  bool
-	HasTimers   bool
+	Package    string
+	Main       bool
+	AppName    string
+	NeedsTime  bool
+	NeedsToast bool
+	HasTimers  bool
+	HasLayout  bool // imports include fyne.io/fyne/v2/layout — emit suppressor
 
 	Structs      []structData
 	Binds        []bindData
 	Externs      []externData
 	Computeds    []computedData
-	Entries      []entryData
 	WidgetFields []widgetFieldData
 	Timers       []timerData
 	UpdaterNames []string
 	FunctionCode string   // pre-rendered user functions
-	GoImports    []string // native Go import paths from Resolved fields
+	Imports      []string // sorted deduped import set (stdlib + fyne + native)
 }
 
 type structData struct {
@@ -94,17 +92,6 @@ type computedData struct {
 	Name   string
 	GoType string
 	Body   string // pre-rendered expression
-}
-
-type entryData struct {
-	FieldName         string
-	MultiLine         bool
-	Password          bool
-	Placeholder       string
-	PlaceholderQuoted string
-	BindTarget        string
-	OnChangedBody     string // pre-rendered updater calls
-	Rows              int
 }
 
 type widgetFieldData struct {
