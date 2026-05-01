@@ -49,10 +49,8 @@ type templateData struct {
 	Package    string
 	Main       bool
 	AppName    string
-	NeedsTime  bool
 	NeedsToast bool
 	HasTimers  bool
-	HasLayout  bool // imports include fyne.io/fyne/v2/layout — emit suppressor
 
 	Structs      []structData
 	Binds        []bindData
@@ -61,8 +59,8 @@ type templateData struct {
 	WidgetFields []widgetFieldData
 	Timers       []timerData
 	UpdaterNames []string
-	FunctionCode string   // pre-rendered user functions
-	Imports      []string // sorted deduped import set (stdlib + fyne + native)
+	FunctionCode string          // pre-rendered user functions
+	Imports      map[string]bool // import set; template iterates in sorted key order and uses `index .Imports "path"` for lookups
 }
 
 type structData struct {

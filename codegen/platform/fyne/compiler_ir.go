@@ -3,7 +3,6 @@ package fyne
 import (
 	"fmt"
 	"maps"
-	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -19,7 +18,6 @@ type irAnalysis struct {
 	computeds  []irComputed
 	dataEvents map[string][]*ir.EventHandler
 	goImports  map[string]bool
-	needsTime  bool
 	dt         *codegen.DepTracker
 }
 
@@ -77,7 +75,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		goType := irVarGoType(v)
 		initVal := irVarInit(v)
 		if strings.HasPrefix(goType, "time.") {
-			info.needsTime = true
+			info.goImports["time"] = true
 		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
@@ -107,12 +105,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Timer analysis
 	for _, t := range info.Timers {
 		if t.IntervalMs > 0 {
-			info.needsTime = true
+			info.goImports["time"] = true
 		}
 	}
 
 	if info.NeedsToast {
-		info.needsTime = true
+		info.goImports["time"] = true
 	}
 
 	return info
@@ -261,40 +259,32 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 		Package:      cfg.Package,
 		Main:         cfg.Main,
 		AppName:      cfg.AppName,
-		NeedsTime:    info.needsTime,
 		NeedsToast:   info.NeedsToast,
 		HasTimers:    len(info.Timers) > 0,
 		FunctionCode: functionCode,
 	}
 
 	// Collect every import the generated code needs into one deduped set:
-	// always-on imports, conditional Main/time additions, native go://
-	// imports from user code, and blueprint-declared imports collected by
-	// the renderer.
-	imports := map[string]bool{
-		"fmt":                           true,
-		"fyne.io/fyne/v2":               true,
-		"fyne.io/fyne/v2/widget":        true, // widget.NewLabel fallback
-		"fyne.io/fyne/v2/container":     true, // container.NewVBox multi-root + unknown fallback
+	// always-on imports, conditional Main additions, native go:// imports
+	// from user code, and blueprint-declared imports collected by the
+	// renderer. analyzeIR has already added "time" via goImports when any
+	// time-typed var, timer, or toast is in scope.
+	td.Imports = map[string]bool{
+		"fmt":                       true,
+		"fyne.io/fyne/v2":           true,
+		"fyne.io/fyne/v2/widget":    true, // widget.NewLabel fallback
+		"fyne.io/fyne/v2/container": true, // container.NewVBox multi-root + unknown fallback
 	}
 	if cfg.Main {
-		imports["os"] = true
-		imports["fyne.io/fyne/v2/app"] = true
-	}
-	if info.needsTime {
-		imports["time"] = true
+		td.Imports["os"] = true
+		td.Imports["fyne.io/fyne/v2/app"] = true
 	}
 	for p := range info.goImports {
-		imports[p] = true
+		td.Imports[p] = true
 	}
 	for p := range blueprintImports {
-		imports[p] = true
+		td.Imports[p] = true
 	}
-	for p := range imports {
-		td.Imports = append(td.Imports, p)
-	}
-	slices.Sort(td.Imports)
-	td.HasLayout = imports["fyne.io/fyne/v2/layout"]
 
 	// Structs
 	for _, sd := range info.Structs {

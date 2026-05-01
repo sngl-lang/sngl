@@ -1,8 +1,8 @@
 package {{.Package}}
 
 import (
-{{- range .Imports}}
-	"{{.}}"
+{{- range $path, $_ := .Imports}}
+	"{{$path}}"
 {{- end}}
 )
 
@@ -10,7 +10,7 @@ var _ = fmt.Sprint
 var _ fyne.CanvasObject
 var _ = container.NewVBox
 var _ = widget.NewLabel
-{{- if .HasLayout}}
+{{- if index .Imports "fyne.io/fyne/v2/layout"}}
 var _ = layout.NewSpacer
 {{- end}}
 
@@ -20,7 +20,7 @@ func ternary[T any](cond bool, a, b T) T {
 	}
 	return b
 }
-{{if .NeedsTime}}
+{{if index .Imports "time"}}
 func mustParseDuration(s string) time.Duration {
 	d, err := time.ParseDuration(s)
 	if err != nil { panic(err) }
