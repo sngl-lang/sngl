@@ -1,0 +1,35 @@
+# Regression test for the if-multi-child variable collision.
+#
+# When an `if` body contains more than one statement under a single parent
+# slot, every child rendered into the *same* `<innerVar>` and prior children
+# would be clobbered. Worse, any child that itself emitted
+# `<innerVar>Children` (every container does) collided with its sibling and
+# the generated Go failed to compile with "redeclared in this block".
+
+sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
+exists out/model.go
+
+# Each child of the if-body must get its own indexed slot variable.
+grep 'contentC0InnerC0 fyne\.CanvasObject' out/model.go
+grep 'contentC0InnerC1 fyne\.CanvasObject' out/model.go
+grep 'contentC0InnerC2 fyne\.CanvasObject' out/model.go
+
+# The pieces are bundled into a VBox so the if-slot stays single-CanvasObject.
+grep 'contentC0Inner = container\.NewVBox' out/model.go
+
+-- app.sngl --
+output { go { fyne } }
+
+component main {
+    var visible = true
+
+    window #app(title="t") {
+        vbox {
+            if visible {
+                text(value="A")
+                text(value="B")
+                text(value="C")
+            }
+        }
+    }
+}
