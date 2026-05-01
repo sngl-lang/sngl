@@ -4,18 +4,15 @@ package ui
 
 import (
 	"fmt"
-	"go/ast"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"go/ast"
 )
 
 var _ = fmt.Sprint
 var _ fyne.CanvasObject
 var _ = container.NewVBox
-var _ = layout.NewSpacer
 var _ = widget.NewLabel
 
 func ternary[T any](cond bool, a, b T) T {
@@ -32,15 +29,14 @@ type Model struct {
 	parseError string
 	parse      func(string)
 
-	entry0 *widget.Entry
-
 	label0  *widget.Label
 	label1  *widget.Label
-	btn2    *widget.Button
+	entry2  *widget.Entry
+	btn3    *widget.Button
 	ifBox0  *fyne.Container
-	label3  *widget.Label
-	forBox1 *fyne.Container
 	label4  *widget.Label
+	forBox1 *fyne.Container
+	label5  *widget.Label
 }
 
 // New creates a Model with default values.
@@ -51,19 +47,12 @@ func New() *Model {
 		parseError: "",
 		parse:      func(_ string) {},
 	}
-	m.entry0 = widget.NewMultiLineEntry()
-	m.entry0.SetPlaceHolder("Enter Go code...")
-	m.entry0.SetText(fmt.Sprint(m.source))
-	m.entry0.OnChanged = func(s string) {
-		m.source = s
-		m.doRefresh()
-	}
-	m.entry0.SetMinRowsVisible(10)
 	return m
 }
 
 func (m *Model) doRefresh() {
-	m.updateLabel3()
+	m.updateEntry2()
+	m.updateLabel4()
 	m.updateIf0()
 	m.updateFor1()
 }
@@ -74,7 +63,8 @@ func (m *Model) Source() string {
 
 func (m *Model) SetSource(v string) {
 	m.source = v
-	m.entry0.SetText(v)
+	m.entry2.SetText(v)
+	m.updateEntry2()
 }
 
 func (m *Model) File() ast.File {
@@ -92,7 +82,7 @@ func (m *Model) ParseError() string {
 
 func (m *Model) SetParseError(v string) {
 	m.parseError = v
-	m.updateLabel3()
+	m.updateLabel4()
 	m.updateIf0()
 }
 
@@ -121,23 +111,34 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		contentChildren = append(contentChildren, contentC1)
 	}
 	var contentC2 fyne.CanvasObject
-	contentC2 = m.entry0
+	m.entry2 = widget.NewMultiLineEntry()
+	m.entry2.SetPlaceHolder("Enter Go code...")
+	m.entry2.SetMinRowsVisible(10)
+	m.entry2.SetText(fmt.Sprint(m.source))
+	m.entry2.OnChanged = func(s string) {
+		m.source = s
+		m.updateEntry2()
+	}
+	contentC2 = m.entry2
 	if contentC2 != nil {
 		contentChildren = append(contentChildren, contentC2)
 	}
 	var contentC3 fyne.CanvasObject
-	m.btn2 = widget.NewButton(fmt.Sprint("Parse AST"), func() {
-		m.parse(m.source)
-		m.doRefresh()
-	})
-	contentC3 = m.btn2
+	m.btn3 = widget.NewButton(
+		fmt.Sprint("Parse AST"),
+		func() {
+			m.parse(m.source)
+			m.doRefresh()
+		},
+	)
+	contentC3 = m.btn3
 	if contentC3 != nil {
 		contentChildren = append(contentChildren, contentC3)
 	}
 	var contentC4 fyne.CanvasObject
 	var contentC4Inner fyne.CanvasObject
-	m.label3 = widget.NewLabel(fmt.Sprint(m.parseError))
-	contentC4Inner = m.label3
+	m.label4 = widget.NewLabel(fmt.Sprint(m.parseError))
+	contentC4Inner = m.label4
 	if contentC4Inner == nil {
 		contentC4Inner = widget.NewLabel("")
 	}
@@ -155,8 +156,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	var contentC5C0Items []fyne.CanvasObject
 	for _, decl := range m.file.Decls {
 		var contentC5C0Item fyne.CanvasObject
-		m.label4 = widget.NewLabel(fmt.Sprint(decl))
-		contentC5C0Item = m.label4
+		m.label5 = widget.NewLabel(fmt.Sprint(decl))
+		contentC5C0Item = m.label5
 		if contentC5C0Item != nil {
 			contentC5C0Items = append(contentC5C0Items, contentC5C0Item)
 		}
@@ -177,8 +178,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	return content
 }
 
-func (m *Model) updateLabel3() {
-	m.label3.SetText(fmt.Sprint(m.parseError))
+func (m *Model) updateEntry2() {
+	m.entry2.SetText(fmt.Sprint(m.source))
+}
+
+func (m *Model) updateLabel4() {
+	m.label4.SetText(fmt.Sprint(m.parseError))
 }
 
 func (m *Model) updateIf0() {
