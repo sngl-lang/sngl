@@ -81,7 +81,7 @@ Runs before NoTimer and NoDeclarative.
 
 3. **Mutation injection.** Walk every mutation site (`*ir.Assign`, after Phase 2's NoToggle has converted any toggles). After each, insert `*ir.Assign` stmts of the form `__nN.<key> = <propExpr>` for every (node, prop) pair affected by the mutation. Computed deps (resolved by NoComputed before NoReactivity runs) flow through naturally because NoComputed inlined them.
 
-4. Timer-Enabled handling: when an Assign mutates a Var that's wired to a `Timer.Enabled`, emit `lower.scheduleTimer(N, ...)` or `lower.cancelTimer(N)` immediately after the Assign, choosing based on the new Enabled value. Implementation note: this requires NoReactivity to know the timer→Enabled-var mapping, which is built once at the top of the pass.
+NoReactivity is timer-agnostic. Timer-Enabled mutation handling is NoTimer's job (next section).
 
 ### NoTimer
 
@@ -93,6 +93,9 @@ Runs after NoReactivity.
    - Synthesize `*ir.Func{Name: "__timerN_handler", Block: Timer.Handler.Block}` and append to the owning Funcs list.
    - Emit a schedule call as a `*ir.CallStmt` wrapping `lower.scheduleTimer(id, intervalMsLiteral, __timerN_handler)` at the top of the owning body. When `Enabled` is set, wrap in `*ir.If{Cond: Enabled, Body: [scheduleCall]}`.
 3. Clear the `Timers` slice from each owner.
+4. **Enabled-gating mutation handling.** When `Enabled` was set, walk every `*ir.Assign` whose Target identifier resolves to the Enabled Var. Inject after each:
+   - `if newValue { lower.scheduleTimer(id, intervalMs, __timerN_handler) } else { lower.cancelTimer(id) }`
+   This runs after NoReactivity has already injected its node-update Assigns, so the timer fires/stops at the correct point in the mutation sequence.
 
 The intervalMs literal is computed at this pass: NoUnit (which ran in Phase 2) already collapsed `500ms` to `500`. No further conversion needed.
 
@@ -117,7 +120,7 @@ For-loops driving repeated nodes need keying so NoReactivity's updaters target t
 Within Phase 3:
 
 1. **Phase 3b — NoReactivity.** Standalone-testable: output uses only existing IR shapes. No `lib/lower.sngl` required yet.
-2. **Phase 3c — NoTimer.** Adds first two intrinsics. Goldens verify rewrite; no codegen platform turns Cap on yet.
+2. **Phase 3c — NoTimer.** Adds the first two intrinsics (`scheduleTimer`, `cancelTimer`) to `lib/lower.sngl`. Walks `Timer.Enabled` mutation sites to inject schedule/cancel pairs. Goldens verify rewrite; no codegen platform turns Cap on yet.
 3. **Phase 3d — NoDeclarative.** Adds four more intrinsics. Largest scope. Coordinates `__nN` ID allocation with what NoReactivity assigned.
 
 After Phase 3d, all 9 lowering passes have working implementations. Phases 4–6 of the master spec then port HTML / Fyne / etc. onto lowered IR and delete the legacy MutationModel.
