@@ -1,4 +1,5 @@
 .claude/
+.worktrees/
 tmp/
 _site/
 /model.go
