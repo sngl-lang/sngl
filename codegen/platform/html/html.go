@@ -526,25 +526,6 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	return id
 }
 
-// writeReactiveIDAttrs writes id="..." plus data-sngl-id="..." for ids
-// originating from NoReactivity (the `__n*` form). For an alloc'd `$N`
-// id only the legacy `id="..."` attr is emitted — JS lang's IsElementRef
-// path uses `data-sngl-id`, and `$N` ids are never targets of
-// reactive-update Assigns (NoReactivity doesn't assign `$`-prefixed
-// ids).
-//
-// Deleted in Task 3 Step 3.5 — Task 3 inlines these writes at every
-// open-tag site directly so the helper never gains real callers.
-func (g *htmlGen) writeReactiveIDAttrs(b *strings.Builder, id string) {
-	if id == "" {
-		return
-	}
-	fmt.Fprintf(b, " id=%q", id)
-	if strings.HasPrefix(id, "__n") {
-		fmt.Fprintf(b, " data-sngl-id=%q", id)
-	}
-}
-
 func (g *htmlGen) generate() (string, error) {
 	var b strings.Builder
 
@@ -989,7 +970,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 	case "spacer":
 		if g.preview {
 			id := g.allocID()
-			fmt.Fprintf(b, "%s<div id=\"%s\" style=\"flex:1\"%s></div>\n", indent, id, g.previewAttrs(n))
+			fmt.Fprintf(b, "%s<div id=%q style=\"flex:1\"%s></div>\n", indent, id, g.previewAttrs(n))
 		} else {
 			fmt.Fprintf(b, "%s<div style=\"flex:1\"></div>\n", indent)
 		}
@@ -1038,7 +1019,10 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		}
 		fmt.Fprintf(b, "%s<progress", indent)
 		if id != "" {
-			fmt.Fprintf(b, " id=\"%s\"", id)
+			fmt.Fprintf(b, " id=%q", id)
+			if strings.HasPrefix(id, "__n") {
+				fmt.Fprintf(b, " data-sngl-id=%q", id)
+			}
 		}
 		if style != "" {
 			fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1092,7 +1076,10 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		}
 		fmt.Fprintf(b, "%s<a", indent)
 		if id != "" {
-			fmt.Fprintf(b, " id=\"%s\"", id)
+			fmt.Fprintf(b, " id=%q", id)
+			if strings.HasPrefix(id, "__n") {
+				fmt.Fprintf(b, " data-sngl-id=%q", id)
+			}
 		}
 		if style != "" {
 			fmt.Fprintf(b, " style=\"%s\"", style)
@@ -1385,7 +1372,10 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	indent := strings.Repeat("  ", depth)
 	if id != "" {
-		fmt.Fprintf(b, "%s<button id=\"%s\"", indent, id)
+		fmt.Fprintf(b, "%s<button id=%q", indent, id)
+		if strings.HasPrefix(id, "__n") {
+			fmt.Fprintf(b, " data-sngl-id=%q", id)
+		}
 	} else {
 		fmt.Fprintf(b, "%s<button", indent)
 	}
@@ -1431,7 +1421,10 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	value := g.evalStaticString(nodeProps(n), "value")
 
 	indent := strings.Repeat("  ", depth)
-	fmt.Fprintf(b, "%s<input id=\"%s\"", indent, id)
+	fmt.Fprintf(b, "%s<input id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1483,7 +1476,10 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 	label := g.evalStaticString(nodeProps(n), "label")
 
 	indent := strings.Repeat("  ", depth)
-	fmt.Fprintf(b, "%s<label id=\"%s\"", indent, id)
+	fmt.Fprintf(b, "%s<label id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1531,7 +1527,7 @@ func (g *htmlGen) renderStaticImage(b *strings.Builder, n *ir.NodeInst, depth in
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<img", indent)
 	if id != "" {
-		fmt.Fprintf(b, " id=\"%s\"", id)
+		fmt.Fprintf(b, " id=%q", id)
 	}
 	if src != "" {
 		fmt.Fprintf(b, " src=\"%s\"", html.EscapeString(src))
@@ -1593,7 +1589,10 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 	if checked {
 		checkedAttr = " checked"
 	}
-	fmt.Fprintf(b, "%s<label id=\"%s\"", indent, id)
+	fmt.Fprintf(b, "%s<label id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1611,7 +1610,10 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 	indent := strings.Repeat("  ", depth)
 	value := g.evalStaticString(nodeProps(n), "value")
 	placeholder := g.evalStaticString(nodeProps(n), "placeholder")
-	fmt.Fprintf(b, "%s<select id=\"%s\"", indent, id)
+	fmt.Fprintf(b, "%s<select id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1651,7 +1653,10 @@ func (g *htmlGen) renderStaticTextarea(b *strings.Builder, n *ir.NodeInst, depth
 			rows = fmt.Sprint(nv)
 		}
 	}
-	fmt.Fprintf(b, "%s<textarea id=\"%s\"", indent, id)
+	fmt.Fprintf(b, "%s<textarea id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1720,7 +1725,10 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 	if !open {
 		overlayStyle = "display:none"
 	}
-	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"%s\"", indent, id, overlayStyle)
+	fmt.Fprintf(b, "%s<div id=%q style=\"%s\"", indent, id, overlayStyle)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
 	b.WriteString(">\n")
@@ -1839,7 +1847,10 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 	indent := strings.Repeat("  ", depth)
 	value := g.evalStaticString(nodeProps(n), "value")
 	placeholder := g.evalStaticString(nodeProps(n), "placeholder")
-	fmt.Fprintf(b, "%s<input id=\"%s\" type=\"date\"", indent, id)
+	fmt.Fprintf(b, "%s<input id=%q type=\"date\"", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
 	}
@@ -1932,7 +1943,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
-		fmt.Fprintf(b, " id=\"%s\"", id)
+		fmt.Fprintf(b, " id=%q", id)
+		if strings.HasPrefix(id, "__n") {
+			fmt.Fprintf(b, " data-sngl-id=%q", id)
+		}
 	}
 	// Emit static class for raw HTML elements
 	if classExpr := props["class"]; codegen.IRIsLiteral(classExpr) {
@@ -3265,7 +3279,10 @@ func (g *htmlGen) writeOpenTag(b *strings.Builder, tag, id, style string, n *ir.
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
-		fmt.Fprintf(b, " id=\"%s\"", id)
+		fmt.Fprintf(b, " id=%q", id)
+		if strings.HasPrefix(id, "__n") {
+			fmt.Fprintf(b, " data-sngl-id=%q", id)
+		}
 	}
 	if style != "" {
 		fmt.Fprintf(b, " style=\"%s\"", style)
@@ -3313,7 +3330,7 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.No
 			fmt.Fprintf(b, " class=%q", s)
 		}
 	}
-	if n.ID != "" {
+	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)
 	}
 }
