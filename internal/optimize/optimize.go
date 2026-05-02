@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"log/slog"
+	"slices"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -77,7 +78,24 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	shakeUnused(pkg)
 	slog.Debug("optimize: shake", "duration", time.Since(start))
 
-	cfg.FileAssets = append(run.fileAssets, rootCtx.fileAssets...)
+	// Accumulate file assets across multiple Optimize calls on the same
+	// Config. The lowering pipeline runs Optimize twice (pre/post lower);
+	// the second pass sees file:// consts already folded to string
+	// literals and produces no FileAssets, but the resolved assets from
+	// the first pass must survive. Dedup by OutPath; new assets from this
+	// run win on collision.
+	newAssets := append(run.fileAssets, rootCtx.fileAssets...)
+	seen := make(map[string]bool, len(newAssets))
+	for _, fa := range newAssets {
+		seen[fa.OutPath] = true
+	}
+	merged := slices.Clone(newAssets)
+	for _, fa := range cfg.FileAssets {
+		if !seen[fa.OutPath] {
+			merged = append(merged, fa)
+		}
+	}
+	cfg.FileAssets = merged
 	return nil
 }
 

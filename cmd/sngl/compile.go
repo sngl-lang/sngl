@@ -147,29 +147,16 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 			// Second optimize pass cleans up artifacts of lowering
 			// (folded toggles, dead branches, etc.). Skipped when no
-			// lowering ran — re-running the optimizer on already-folded IR
-			// re-derives file assets and overwrites optCfg.FileAssets.
-			// Preserve file assets from the first pass: the second pass
-			// won't re-derive file:// assets whose consts were already
-			// folded to string literals.
+			// lowering ran. Optimize accumulates FileAssets across calls
+			// (see internal/optimize/optimize.go), so first-pass file://
+			// assets survive even though the second pass sees folded
+			// string literals.
 			if caps != (lower.Caps{}) {
-				prevAssets := slices.Clone(optCfg.FileAssets)
 				start = time.Now()
 				if err := optimize.Optimize(pkg, optCfg); err != nil {
 					return fmt.Errorf("%s: %w", dir, err)
 				}
 				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
-				// Merge: union first-pass assets with any newly derived
-				// ones from the second pass (keyed by OutPath).
-				seen := make(map[string]bool, len(optCfg.FileAssets))
-				for _, fa := range optCfg.FileAssets {
-					seen[fa.OutPath] = true
-				}
-				for _, fa := range prevAssets {
-					if !seen[fa.OutPath] {
-						optCfg.FileAssets = append(optCfg.FileAssets, fa)
-					}
-				}
 			}
 
 			// Convert optimizer file assets to codegen file assets.
