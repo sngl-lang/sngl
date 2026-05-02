@@ -99,7 +99,7 @@ func runGolden(t *testing.T, path string) {
 
 func parseCapsHeader(comment string) (Caps, error) {
 	var c Caps
-	for _, line := range strings.Split(comment, "\n") {
+	for line := range strings.SplitSeq(comment, "\n") {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "#")
 		line = strings.TrimSpace(line)
