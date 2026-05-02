@@ -1,0 +1,19 @@
+caps: NoComputed
+-- input.sngl --
+component main {
+    var first string = "Hello"
+    var last string = "World"
+
+    func full() => first + " " + last
+
+    text(value=full())
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var first string = "Hello"
+    var last string = "World"
+    text(value=first + " " + last)
+}

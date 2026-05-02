@@ -509,8 +509,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Binary:
 		return &ast.BinaryExpr{
 			Op:    e.Op,
-			Left:  c.convertExpr(e.Left),
-			Right: c.convertExpr(e.Right),
+			Left:  parenIfLowerPrec(c.convertExpr(e.Left), e.Op, false),
+			Right: parenIfLowerPrec(c.convertExpr(e.Right), e.Op, true),
 		}
 	case *Unary:
 		return &ast.UnaryExpr{
@@ -830,4 +830,45 @@ func formatFloat(f float64) string {
 		return fmt.Sprintf("%d", int64(f))
 	}
 	return fmt.Sprintf("%g", f)
+}
+
+// binaryPrec returns the operator precedence used for paren insertion when
+// converting back to AST. Higher = binds tighter. Mirrors common arithmetic
+// precedence; the formatter never reads this — only the relative ordering
+// matters.
+func binaryPrec(op ast.BinaryOp) int {
+	switch op {
+	case ast.BinMul, ast.BinDiv, ast.BinMod:
+		return 5
+	case ast.BinAdd, ast.BinSub:
+		return 4
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		return 3
+	case ast.BinEq, ast.BinNeq:
+		return 2
+	case ast.BinAnd:
+		return 1
+	case ast.BinOr:
+		return 0
+	}
+	return 0
+}
+
+// parenIfLowerPrec wraps child in a ParenExpr when its binary operator
+// would group differently than the parent's without parens. Left children
+// need parens only when their precedence is strictly lower than the
+// parent's; right children also need parens at equal precedence to
+// preserve left-associativity (`a - (b - c)` would otherwise lose its
+// parens and become `a - b - c`).
+func parenIfLowerPrec(child ast.Expr, parentOp ast.BinaryOp, isRight bool) ast.Expr {
+	cb, ok := child.(*ast.BinaryExpr)
+	if !ok {
+		return child
+	}
+	cp := binaryPrec(cb.Op)
+	pp := binaryPrec(parentOp)
+	if cp < pp || (cp == pp && isRight) {
+		return &ast.ParenExpr{Inner: child}
+	}
+	return child
 }
