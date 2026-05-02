@@ -9,6 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -24,6 +25,7 @@ func (t *Translator) Description() string {
 }
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
+func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
 
 func (t *Translator) WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error { return nil }
 func (t *Translator) WriteStmt(w io.Writer, stmt ir.Stmt, scope *ir.Scope) error { return nil }

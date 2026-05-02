@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -39,6 +40,7 @@ func (g *Generator) PreviewCSS() string                     { return previewCSS 
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
+func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	c := &compilation{}

@@ -18,6 +18,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -47,6 +48,7 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}
 }
+func (g *Generator) Capabilities() lower.Caps { return lower.Caps{} }
 
 // SupportedLangs returns "none" (static-site default) plus any registered
 // language whose translator implements codegen.HTTPCompiler. The first entry

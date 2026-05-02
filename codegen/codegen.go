@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -74,6 +75,11 @@ func NativeAlias(importPath string) string {
 type LangTranslator interface {
 	ir.Language
 
+	// Capabilities declares which high-level SNGL constructs this language's
+	// translator cannot consume. Drives lowering passes; return lower.Caps{}
+	// when no lowering is needed.
+	Capabilities() lower.Caps
+
 	// New IR-based API (v2).
 	WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error
 	WriteStmt(w io.Writer, expr ir.Stmt, scope *ir.Scope) error
@@ -94,6 +100,12 @@ type LangTranslator interface {
 type PlatformGenerator interface {
 	ir.Platform
 	SupportedLangs() []string
+
+	// Capabilities declares which high-level SNGL constructs this platform
+	// cannot consume. Drives lowering passes; return lower.Caps{} when no
+	// lowering is needed.
+	Capabilities() lower.Caps
+
 	Generate(req *Request) (*Response, error)
 }
 

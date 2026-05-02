@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -41,6 +42,7 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 	id := l.LanguageIdentifier()
 	return id == "kotlin" || id == "go"
 }
+func (g *Generator) Capabilities() lower.Caps { return lower.Caps{} }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	c := &compilation{}
