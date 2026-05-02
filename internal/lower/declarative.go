@@ -192,10 +192,15 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 
 	var stmts []ir.Stmt
 
+	varType := ir.TypDyn
+	if n.Component != nil {
+		varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
+	}
+
 	// 1. createNode
 	stmts = append(stmts, &ir.LocalVar{
 		Name: id,
-		Type: ir.TypDyn,
+		Type: varType,
 		Init: &ir.Call{
 			Type: ir.TypDyn,
 			Func: st.createFunc(),

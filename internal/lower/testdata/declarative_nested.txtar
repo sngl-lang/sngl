@@ -11,11 +11,11 @@ import stdlib "internal://stdlib"
 import alert "internal://alert"
 import file "internal://file"
 component main {
-    var __n0 dyn = lower.createNode("vbox")
-    var __n1 dyn = lower.createNode("text")
+    var __n0 vbox = lower.createNode("vbox")
+    var __n1 text = lower.createNode("text")
     #__n1.value = "a"
     lower.appendChild(#__n0, #__n1)
-    var __n2 dyn = lower.createNode("text")
+    var __n2 text = lower.createNode("text")
     #__n2.value = "b"
     lower.appendChild(#__n0, #__n2)
 }
