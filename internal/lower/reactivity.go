@@ -3,6 +3,7 @@ package lower
 import (
 	"strconv"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -32,8 +33,9 @@ func (st *reactivityState) freshNodeID() string {
 	return id
 }
 
-// lowerReactivity is the top-level pass entry. Phase 3b Task 1 implements
-// only the analysis + ID assignment side; mutation injection lands in Task 2.
+// lowerReactivity runs two passes over the package: first collects reverse
+// deps and assigns synthetic IDs, then walks every Stmt slice splicing
+// updater Assigns after every mutation that touches a tracked Var.
 func lowerReactivity(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
@@ -46,6 +48,11 @@ func lowerReactivity(pkg *ir.Package) error {
 		stmts: func(stmts []ir.Stmt) []ir.Stmt {
 			st.collectFromStmts(stmts)
 			return stmts
+		},
+	})
+	walkPackage(pkg, walkFuncs{
+		stmts: func(stmts []ir.Stmt) []ir.Stmt {
+			return st.injectIntoStmts(stmts)
 		},
 	})
 	return nil
@@ -171,4 +178,87 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	case *ir.Spread:
 		st.gatherDeps(x.Operand, out)
 	}
+}
+
+// injectIntoStmts walks stmts, splicing updater Assigns after every Assign
+// that mutates a tracked Var. Recurses into nested blocks.
+func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
+	var out []ir.Stmt
+	for _, s := range stmts {
+		out = append(out, s)
+		switch n := s.(type) {
+		case *ir.If:
+			n.Body = st.injectIntoStmts(n.Body)
+			n.Else = st.injectIntoStmts(n.Else)
+		case *ir.For:
+			n.Body = st.injectIntoStmts(n.Body)
+			n.Else = st.injectIntoStmts(n.Else)
+		case *ir.PlatformFilter:
+			n.Body = st.injectIntoStmts(n.Body)
+		case *ir.NodeInst:
+			n.Children = st.injectIntoStmts(n.Children)
+			for i := range n.Handlers {
+				if n.Handlers[i].Func != nil {
+					n.Handlers[i].Func.Block = st.injectIntoStmts(n.Handlers[i].Func.Block)
+				}
+			}
+		case *ir.SlotInst:
+			n.Children = st.injectIntoStmts(n.Children)
+		case *ir.ErrorBoundary:
+			n.Children = st.injectIntoStmts(n.Children)
+			if n.Handler != nil && n.Handler.Func != nil {
+				n.Handler.Func.Block = st.injectIntoStmts(n.Handler.Func.Block)
+			}
+		case *ir.Window:
+			n.Body = st.injectIntoStmts(n.Body)
+			for _, fn := range n.Funcs {
+				fn.Block = st.injectIntoStmts(fn.Block)
+			}
+			for _, v := range n.Vars {
+				for _, h := range v.Handlers {
+					if h.Func != nil {
+						h.Func.Block = st.injectIntoStmts(h.Func.Block)
+					}
+				}
+			}
+		}
+		if updaters := st.updatersFor(s); len(updaters) > 0 {
+			out = append(out, updaters...)
+		}
+	}
+	return out
+}
+
+// updatersFor returns the list of *ir.Assign updaters to splice after s.
+// Empty for stmts that don't mutate a tracked Var.
+func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
+	a, ok := s.(*ir.Assign)
+	if !ok {
+		return nil
+	}
+	id, ok := a.Target.(*ir.Ident)
+	if !ok {
+		return nil
+	}
+	v, ok := id.Sym.(*ir.Var)
+	if !ok {
+		return nil
+	}
+	props, ok := st.reverseDeps[v]
+	if !ok {
+		return nil
+	}
+	var out []ir.Stmt
+	for _, p := range props {
+		out = append(out, &ir.Assign{
+			Target: &ir.Select{
+				Type:    ir.TypDyn,
+				Operand: &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true},
+				Field:   p.Key,
+			},
+			Op:    ast.AssignSet,
+			Value: p.Expr,
+		})
+	}
+	return out
 }
