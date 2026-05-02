@@ -1889,6 +1889,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.Arg, []ir.EventHandler) {
 	var props []ir.Arg
 	var handlers []ir.EventHandler
+	seen := make(map[string]ast.Pos)
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
@@ -1924,6 +1925,11 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			}
 			props = append(props, ir.Arg{Name: arg.Name, Value: val})
 		case ast.EventHandler:
+			if prevPos, exists := seen[arg.Name]; exists {
+				c.error(arg.Pos, "duplicate event handler %q (first at %v)", arg.Name, prevPos)
+				continue
+			}
+			seen[arg.Name] = arg.Pos
 			params := make([]*ir.Param, len(arg.Params.Params))
 			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)

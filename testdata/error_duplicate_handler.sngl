@@ -1,0 +1,6 @@
+component main {
+    button(@click { foo() }, @click { bar() }) // ERROR(check) "duplicate event handler"
+}
+
+func foo() {}
+func bar() {}
