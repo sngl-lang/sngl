@@ -62,12 +62,13 @@ caps: NoReactivity
 component main {
     var n int = 0
     text(value=string(n))
+    badge(value=string(n))
     button(text="+", @click { n = n + 1 })
 }
 -- expected.sngl --
 ```
 
-(The `caps:` line matches HTML's about-to-flip `Capabilities()`. The `expected.sngl` block is intentionally empty; Step 2 fills it via `-update`.)
+(The `caps:` line matches HTML's about-to-flip `Capabilities()`. The `expected.sngl` block is intentionally empty; Step 2 fills it via `-update`. Two reactive nodes — `text` and `badge` — share the same expr so the fixture exercises NoReactivity assigning multiple `__n*` IDs and injecting multiple updater Assigns per mutation, distinguishing this fixture from the single-node `reactivity_counter.txtar`.)
 
 - [ ] **Step 2: Generate the golden**
 
@@ -87,16 +88,18 @@ import file "internal://file"
 component main {
     var n int = 0
     text #__n0(value=string(n))
+    badge #__n1(value=string(n))
     button(text="+", @click {
         n = n + 1
         #__n0.value = string(n)
+        #__n1.value = string(n)
     })
 }
 ```
 
 This is the IR HTML will receive once `Capabilities()` flips. Note:
-- `text` NodeInst has `ID = "__n0"`; `button` has no ID (its `text` prop is a literal, not reactive).
-- `@click` handler's block now contains an extra `#__n0.value = string(n)` Assign after `n = n + 1`.
+- `text` NodeInst has `ID = "__n0"`; `badge` has `ID = "__n1"`; `button` has no ID (its `text` prop is a literal, not reactive).
+- `@click` handler's block now contains two extra Assigns after `n = n + 1` — one per reactive prop dependency.
 
 - [ ] **Step 4: Run all lower tests**
 
