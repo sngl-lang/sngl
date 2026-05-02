@@ -1,6 +1,12 @@
 package lower
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 	expectedOrder := []string{
@@ -39,6 +45,122 @@ func TestPassRegistry_StubsAreNoOps(t *testing.T) {
 	for _, p := range passes {
 		if err := p.apply(nil); err != nil {
 			t.Errorf("pass %s stub returned error: %v", p.name, err)
+		}
+	}
+}
+
+func TestLower_NoCapsIsNoop(t *testing.T) {
+	pkg := &ir.Package{}
+	if err := Lower(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("Lower: %v", err)
+	}
+}
+
+func TestLower_RunsEnabledPassesInOrder(t *testing.T) {
+	var ran []string
+	orig := passes
+	t.Cleanup(func() { passes = orig })
+	passes = []pass{
+		{name: "NoUnit", enabled: func(c Caps) bool { return c.NoUnit }, apply: func(*ir.Package) error { ran = append(ran, "NoUnit"); return nil }},
+		{name: "NoEnum", enabled: func(c Caps) bool { return c.NoEnum }, apply: func(*ir.Package) error { ran = append(ran, "NoEnum"); return nil }},
+		{name: "NoToggle", enabled: func(c Caps) bool { return c.NoToggle }, apply: func(*ir.Package) error { ran = append(ran, "NoToggle"); return nil }},
+	}
+	if err := Lower(&ir.Package{}, Caps{NoUnit: true, NoToggle: true}, Options{}); err != nil {
+		t.Fatalf("Lower: %v", err)
+	}
+	want := []string{"NoUnit", "NoToggle"}
+	if len(ran) != len(want) {
+		t.Fatalf("ran = %v; want %v", ran, want)
+	}
+	for i, n := range want {
+		if ran[i] != n {
+			t.Errorf("ran[%d] = %q; want %q", i, ran[i], n)
+		}
+	}
+}
+
+func TestLower_StopAfter(t *testing.T) {
+	var ran []string
+	orig := passes
+	t.Cleanup(func() { passes = orig })
+	passes = []pass{
+		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package) error { ran = append(ran, "NoUnit"); return nil }},
+		{name: "NoEnum", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package) error { ran = append(ran, "NoEnum"); return nil }},
+		{name: "NoToggle", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package) error { ran = append(ran, "NoToggle"); return nil }},
+	}
+	if err := Lower(&ir.Package{}, Caps{}, Options{StopAfter: "NoEnum"}); err != nil {
+		t.Fatalf("Lower: %v", err)
+	}
+	want := []string{"NoUnit", "NoEnum"}
+	if len(ran) != len(want) {
+		t.Fatalf("ran = %v; want %v", ran, want)
+	}
+	for i, n := range want {
+		if ran[i] != n {
+			t.Errorf("ran[%d] = %q; want %q", i, ran[i], n)
+		}
+	}
+}
+
+func TestLower_StopAfterNone(t *testing.T) {
+	var ran []string
+	orig := passes
+	t.Cleanup(func() { passes = orig })
+	passes = []pass{
+		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package) error { ran = append(ran, "NoUnit"); return nil }},
+	}
+	if err := Lower(&ir.Package{}, Caps{NoUnit: true}, Options{StopAfter: "none"}); err != nil {
+		t.Fatalf("Lower: %v", err)
+	}
+	if len(ran) != 0 {
+		t.Errorf("ran = %v; want []", ran)
+	}
+}
+
+func TestLower_StopAfterUnknown(t *testing.T) {
+	err := Lower(&ir.Package{}, Caps{}, Options{StopAfter: "NoBogus"})
+	if err == nil {
+		t.Fatal("Lower: want error for unknown StopAfter, got nil")
+	}
+	if !strings.Contains(err.Error(), "NoBogus") {
+		t.Errorf("err = %v; want mention of NoBogus", err)
+	}
+}
+
+func TestLower_PropagatesPassError(t *testing.T) {
+	orig := passes
+	t.Cleanup(func() { passes = orig })
+	wantErr := fmt.Errorf("kaboom")
+	passes = []pass{
+		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package) error { return wantErr }},
+	}
+	err := Lower(&ir.Package{}, Caps{NoUnit: true}, Options{})
+	if err == nil || !strings.Contains(err.Error(), "kaboom") {
+		t.Fatalf("Lower err = %v; want wrapped %q", err, wantErr)
+	}
+}
+
+func TestPassNames(t *testing.T) {
+	names := PassNames()
+	if len(names) != len(passes) {
+		t.Fatalf("PassNames len = %d; want %d", len(names), len(passes))
+	}
+	for i, p := range passes {
+		if names[i] != p.name {
+			t.Errorf("PassNames[%d] = %q; want %q", i, names[i], p.name)
+		}
+	}
+}
+
+func TestEnabledPasses(t *testing.T) {
+	got := EnabledPasses(Caps{NoToggle: true, NoReactivity: true})
+	want := []string{"NoToggle", "NoReactivity"}
+	if len(got) != len(want) {
+		t.Fatalf("got = %v; want %v", got, want)
+	}
+	for i, n := range want {
+		if got[i] != n {
+			t.Errorf("got[%d] = %q; want %q", i, got[i], n)
 		}
 	}
 }

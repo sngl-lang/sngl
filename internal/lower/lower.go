@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -33,4 +35,71 @@ var passes = []pass{
 	passReactivity,
 	passTimer,
 	passDeclarative,
+}
+
+// Options controls a single Lower invocation.
+type Options struct {
+	// StopAfter, when non-empty, stops the pipeline after the named pass
+	// runs (matching pass.name, e.g. "NoToggle"). Special value "none"
+	// runs no passes — useful for the dump command's "show pre-lowering
+	// state" mode. Empty string runs all enabled passes.
+	StopAfter string
+}
+
+// Lower applies all enabled lowering passes to pkg in execution order,
+// mutating pkg in place. caps determines which passes run; opts.StopAfter
+// optionally short-circuits the pipeline after a named pass.
+//
+// Returns an error wrapping the failing pass's name when any pass fails or
+// when opts.StopAfter names a pass that does not exist.
+func Lower(pkg *ir.Package, caps Caps, opts Options) error {
+	if opts.StopAfter == "none" {
+		return nil
+	}
+	if opts.StopAfter != "" {
+		known := false
+		for _, p := range passes {
+			if p.name == opts.StopAfter {
+				known = true
+				break
+			}
+		}
+		if !known {
+			return fmt.Errorf("lower: unknown StopAfter %q (valid: %v)", opts.StopAfter, PassNames())
+		}
+	}
+	for _, p := range passes {
+		if !p.enabled(caps) {
+			continue
+		}
+		if err := p.apply(pkg); err != nil {
+			return fmt.Errorf("lower: pass %s: %w", p.name, err)
+		}
+		if opts.StopAfter != "" && p.name == opts.StopAfter {
+			break
+		}
+	}
+	return nil
+}
+
+// PassNames returns the ordered list of pass names. Used for help text and
+// error messages.
+func PassNames() []string {
+	names := make([]string, len(passes))
+	for i, p := range passes {
+		names[i] = p.name
+	}
+	return names
+}
+
+// EnabledPasses returns the ordered list of pass names that would run for
+// the given caps. Used by `dump lowered --list`.
+func EnabledPasses(caps Caps) []string {
+	var out []string
+	for _, p := range passes {
+		if p.enabled(caps) {
+			out = append(out, p.name)
+		}
+	}
+	return out
 }
