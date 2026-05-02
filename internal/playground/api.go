@@ -17,6 +17,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -164,9 +165,10 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	compileOptCfg := &optimize.Config{
 		Platform: "html", Language: "none",
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
@@ -175,6 +177,17 @@ func Compile(source string) string {
 	if gen == nil || lang == nil {
 		result["error"] = "html/none codegen not registered"
 		return jsonStr(result)
+	}
+	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, compileCaps, lower.Options{}); err != nil {
+		result["error"] = err.Error()
+		return jsonStr(result)
+	}
+	if compileCaps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
+			result["error"] = err.Error()
+			return jsonStr(result)
+		}
 	}
 
 	opts := optionsForTarget(pkg, "html")
@@ -279,9 +292,10 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	genOptCfg := &optimize.Config{
 		Platform: platform, Language: lang,
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
@@ -294,6 +308,17 @@ func Generate(source, platform, lang string) string {
 	if lt == nil {
 		result["error"] = "unknown lang: " + lang
 		return jsonStr(result)
+	}
+	genCaps := gen.Capabilities().Merge(lt.Capabilities())
+	if err := lower.Lower(pkg, genCaps, lower.Options{}); err != nil {
+		result["error"] = err.Error()
+		return jsonStr(result)
+	}
+	if genCaps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
+			result["error"] = err.Error()
+			return jsonStr(result)
+		}
 	}
 
 	resp, err := gen.Generate(&codegen.Request{

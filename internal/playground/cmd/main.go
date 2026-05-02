@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -91,10 +92,11 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	compileOptCfg := &optimize.Config{
 		Platform: "html",
 		Language: "none",
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -109,6 +111,18 @@ func compile(this js.Value, args []js.Value) any {
 	if lang == nil {
 		result["error"] = "none language not registered"
 		return toJSObject(result)
+	}
+
+	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, compileCaps, lower.Options{}); err != nil {
+		result["error"] = err.Error()
+		return toJSObject(result)
+	}
+	if compileCaps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
+			result["error"] = err.Error()
+			return toJSObject(result)
+		}
 	}
 
 	opts := optionsForTarget(pkg, "html")
@@ -224,10 +238,11 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	genOptCfg := &optimize.Config{
 		Platform: platName,
 		Language: langName,
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -241,6 +256,18 @@ func generate(this js.Value, args []js.Value) any {
 	if lang == nil {
 		result["error"] = "unknown lang: " + langName
 		return toJSObject(result)
+	}
+
+	genCaps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, genCaps, lower.Options{}); err != nil {
+		result["error"] = err.Error()
+		return toJSObject(result)
+	}
+	if genCaps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
+			result["error"] = err.Error()
+			return toJSObject(result)
+		}
 	}
 
 	resp, err := gen.Generate(&codegen.Request{

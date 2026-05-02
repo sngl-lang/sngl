@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -127,16 +128,26 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if err != nil {
 			return nil, err
 		}
-		if err := optimize.Optimize(pkg, &optimize.Config{
+		optCfg := &optimize.Config{
 			Platform: platform,
 			Language: lang,
 			Dir:      dir,
-		}); err != nil {
+		}
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
 			return nil, fmt.Errorf("optimize: %w", err)
 		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
+		}
+		caps := plat.Capabilities().Merge(langT.Capabilities())
+		if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+			return nil, fmt.Errorf("lower: %w", err)
+		}
+		if caps != (lower.Caps{}) {
+			if err := optimize.Optimize(pkg, optCfg); err != nil {
+				return nil, fmt.Errorf("optimize2: %w", err)
+			}
 		}
 		return snapshotter.Snapshot(pkg, langT, width, height)
 	}
@@ -161,16 +172,26 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	if err != nil {
 		return nil, err
 	}
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
 		Dir:      dir,
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize: %w", err)
 	}
 	langT := codegen.LookupLang(lang)
 	if langT == nil {
 		return nil, fmt.Errorf("lang %q not registered", lang)
+	}
+	caps := plat.Capabilities().Merge(langT.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		return nil, fmt.Errorf("lower: %w", err)
+	}
+	if caps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return nil, fmt.Errorf("optimize2: %w", err)
+		}
 	}
 	return ts.SnapshotText(pkg, langT, width, height)
 }
@@ -324,12 +345,22 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			if err := optimize.Optimize(p.pkg, &optimize.Config{
+			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,
 				Dir:      filepath.Dir(p.entry.SourceFile),
-			}); err != nil {
+			}
+			if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
+			}
+			batchCaps := plat.Capabilities().Merge(langT.Capabilities())
+			if err := lower.Lower(p.pkg, batchCaps, lower.Options{}); err != nil {
+				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
+			}
+			if batchCaps != (lower.Caps{}) {
+				if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
+					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
+				}
 			}
 			png, err := snapshotter.Snapshot(p.pkg, langT, cfg.Width, cfg.Height)
 			if err != nil {

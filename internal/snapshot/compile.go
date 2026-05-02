@@ -10,6 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -29,19 +30,28 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize: %w", err)
 	}
-	previewDoc := ir.Convert(pkg)
-
 	noneLang := codegen.LookupLang("none")
 	htmlPlat := codegen.LookupPlatform("html")
 	if noneLang == nil || htmlPlat == nil {
 		return nil, fmt.Errorf("html/none codegen not registered")
 	}
+	caps := htmlPlat.Capabilities().Merge(noneLang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		return nil, fmt.Errorf("lower: %w", err)
+	}
+	if caps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return nil, fmt.Errorf("optimize2: %w", err)
+		}
+	}
+	previewDoc := ir.Convert(pkg)
 
 	resp, err := htmlPlat.Generate(&codegen.Request{
 		Doc:     previewDoc,
