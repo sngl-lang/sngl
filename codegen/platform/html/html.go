@@ -417,6 +417,15 @@ type htmlGen struct {
 
 	// irBodyStmts is the IR body rendered for the current window.
 	irBodyStmts []ir.Stmt
+
+	// idToNode maps each emitted element id (either an alloc'd "$N" or a
+	// pre-assigned "__nN" from internal/lower NoReactivity) back to its
+	// originating NodeInst. Task 4 reads this when translating
+	// reactive-update Assigns inside handler / timer / change-setter
+	// bodies, where the only context is the id string. $N entries are
+	// harmless noise: NoReactivity never produces IsElementRef Assigns
+	// against $-prefixed names, so Task 4's lookup never targets them.
+	idToNode map[string]*ir.NodeInst
 }
 
 type componentParam struct {
@@ -456,6 +465,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		preview:        opts.Preview,
 		testMode:       opts.Test,
 		minify:         opts.Minify,
+		idToNode:       make(map[string]*ir.NodeInst),
 	}
 
 	g.scope = &codegen.ExprScope{
@@ -494,6 +504,45 @@ func (g *htmlGen) allocID() string {
 	id := fmt.Sprintf("$%d", g.nextID)
 	g.nextID++
 	return id
+}
+
+// nodeID returns n.ID when NoReactivity has pre-assigned one (`__n*`),
+// otherwise allocates a fresh `$N`. Records the chosen id in g.idToNode
+// so reactive-update Assigns inside handler bodies can be translated
+// against the originating NodeInst (see translateHandlerStmt). When n
+// is nil the id is allocated but not recorded — Task 4's lookup falls
+// through to the JS-default write for that id; callers passing a real
+// NodeInst always get an idToNode entry.
+func (g *htmlGen) nodeID(n *ir.NodeInst) string {
+	var id string
+	if n != nil && strings.HasPrefix(n.ID, "__n") {
+		id = n.ID
+	} else {
+		id = g.allocID()
+	}
+	if n != nil {
+		g.idToNode[id] = n
+	}
+	return id
+}
+
+// writeReactiveIDAttrs writes id="..." plus data-sngl-id="..." for ids
+// originating from NoReactivity (the `__n*` form). For an alloc'd `$N`
+// id only the legacy `id="..."` attr is emitted — JS lang's IsElementRef
+// path uses `data-sngl-id`, and `$N` ids are never targets of
+// reactive-update Assigns (NoReactivity doesn't assign `$`-prefixed
+// ids).
+//
+// Deleted in Task 3 Step 3.5 — Task 3 inlines these writes at every
+// open-tag site directly so the helper never gains real callers.
+func (g *htmlGen) writeReactiveIDAttrs(b *strings.Builder, id string) {
+	if id == "" {
+		return
+	}
+	fmt.Fprintf(b, " id=%q", id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
 }
 
 func (g *htmlGen) generate() (string, error) {
@@ -1023,11 +1072,11 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		value := g.evalStaticString(nodeProps(n), "value")
 		id := ""
 		if g.nodeIsReactive(n) || g.preview {
-			id = g.allocID()
+			id = g.nodeID(n)
 		}
 		g.writeOpenTag(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
-		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
+		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) && !strings.HasPrefix(id, "__n") {
 			g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 		}
 	case "tabs":
