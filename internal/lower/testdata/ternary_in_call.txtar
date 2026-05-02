@@ -1,0 +1,21 @@
+caps: NoTernary
+-- input.sngl --
+component main {
+    var on bool = true
+
+    text(value=on ? "ON" : "OFF")
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var on bool = true
+    var __lt0 string
+    if on {
+        __lt0 = "ON"
+    } else {
+        __lt0 = "OFF"
+    }
+    text(value=__lt0)
+}

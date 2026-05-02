@@ -1,0 +1,27 @@
+caps: NoTernary
+-- input.sngl --
+component main {
+    var label string = ""
+    var on bool = true
+
+    button(@click {
+        label = on ? "yes" : "no"
+    })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var label string = ""
+    var on bool = true
+    button(@click {
+        var __lt0 string
+        if on {
+            __lt0 = "yes"
+        } else {
+            __lt0 = "no"
+        }
+        label = __lt0
+    })
+}

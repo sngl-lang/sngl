@@ -1,0 +1,35 @@
+caps: NoTernary
+-- input.sngl --
+component main {
+    var a bool = true
+    var b bool = false
+    var label string = ""
+
+    button(@click {
+        label = a ? (b ? "ab" : "a") : "neither"
+    })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var a bool = true
+    var b bool = false
+    var label string = ""
+    button(@click {
+        var __lt1 string
+        if a {
+            var __lt0 string
+            if b {
+                __lt0 = "ab"
+            } else {
+                __lt0 = "a"
+            }
+            __lt1 = __lt0
+        } else {
+            __lt1 = "neither"
+        }
+        label = __lt1
+    })
+}
