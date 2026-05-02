@@ -2323,7 +2323,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, h := range dv.Handlers {
 			if h.Name == "change" && h.Func != nil {
 				for _, s := range h.Func.Block {
-					for _, js := range g.lang.TranslateIRMutation(s, g.scope) {
+					for _, js := range g.translateHandlerStmt(s, g.scope) {
 						fmt.Fprintf(b, "  %s;\n", js)
 					}
 				}
@@ -2819,7 +2819,7 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, n *ir.NodeInst, iterVar, i
 
 		if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
 			first := changeEvt.Func.Block[0]
-			stmts := g.lang.TranslateIRMutation(first, g.scope)
+			stmts := g.translateHandlerStmt(first, g.scope)
 			mutated := codegen.MutatedFields(first)
 			var handlerLines []string
 			for _, s := range stmts {
@@ -2894,6 +2894,84 @@ func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]strin
 	return remapped
 }
 
+// domWriteFor maps a (SNGL component name, prop key) pair to the JS
+// expression that writes that prop on the rendered DOM element.
+// el is the JS expression yielding the element (e.g.
+// document.querySelector('[data-sngl-id="__n0"]') or a cached const);
+// value is the JS expression to write. Returns the full statement
+// without trailing semicolon.
+//
+// Only props that NoReactivity may inject as #__nN.<key> Assigns are
+// listed. Unknown (componentName, key) pairs fall through to a generic
+// property assignment el.<key> = value, matching JS lang's default —
+// surface a TODO if a real test produces a wrong write so the table
+// can be extended.
+func domWriteFor(componentName, key, el, value string) string {
+	switch componentName {
+	case "text", "badge":
+		if key == "value" {
+			return fmt.Sprintf("%s.textContent = %s", el, value)
+		}
+	case "button":
+		if key == "text" {
+			return fmt.Sprintf("%s.textContent = %s", el, value)
+		}
+		if key == "disabled" {
+			return fmt.Sprintf("%s.disabled = %s", el, value)
+		}
+	case "input":
+		if key == "value" {
+			return fmt.Sprintf("%s.value = %s", el, value)
+		}
+		if key == "disabled" {
+			return fmt.Sprintf("%s.disabled = %s", el, value)
+		}
+	case "progress":
+		if key == "value" {
+			return fmt.Sprintf("%s.setAttribute(\"value\", %s)", el, value)
+		}
+	case "modal", "drawer", "popover", "menu":
+		if key == "open" {
+			// Reactive open toggles visibility. Match the legacy
+			// addIfUpdater body shape so test-mode and styling stay
+			// consistent.
+			return fmt.Sprintf("%s.style.display = (%s) ? \"\" : \"none\"", el, value)
+		}
+	}
+	return fmt.Sprintf("%s.%s = %s", el, key, value)
+}
+
+// translateHandlerStmt translates one handler-block IR stmt to a JS
+// snippet (no trailing semicolon). Reactive-update Assigns of the form
+// *ir.Assign{Target: *ir.Select{Operand: *ir.Ident{IsElementRef:true}, Field:F}}
+// are routed through domWriteFor using g.idToNode[id] to choose the
+// DOM-correct write. Everything else falls through to
+// lang.TranslateIRMutation with the provided scope.
+func (g *htmlGen) translateHandlerStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
+	a, ok := s.(*ir.Assign)
+	if !ok {
+		return g.lang.TranslateIRMutation(s, scope)
+	}
+	sel, ok := a.Target.(*ir.Select)
+	if !ok {
+		return g.lang.TranslateIRMutation(s, scope)
+	}
+	idn, ok := sel.Operand.(*ir.Ident)
+	if !ok || !idn.IsElementRef {
+		return g.lang.TranslateIRMutation(s, scope)
+	}
+	node, ok := g.idToNode[idn.Name]
+	if !ok || node == nil {
+		// Pre-assigned __n* id but renderer never seeded the map — fall
+		// through to JS default (querySelector + .field = …) and rely
+		// on the generic write to be correct enough.
+		return g.lang.TranslateIRMutation(s, scope)
+	}
+	el := fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", idn.Name)
+	value := g.lang.TranslateIRExpr(a.Value, scope)
+	return []string{domWriteFor(node.Name, sel.Field, el, value)}
+}
+
 func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	if len(body) == 0 {
 		return
@@ -2901,7 +2979,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	var stmts []string
 	var mutated map[string]bool
 	for _, s := range body {
-		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		for k, v := range codegen.MutatedFields(s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
@@ -2956,7 +3034,7 @@ func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
 	var stmts []string
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
-		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	g.scope.EventVar = savedEvent
@@ -2990,7 +3068,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 	var stmts []string
 	mutated := make(map[string]bool)
 	for _, s := range body {
-		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -3016,7 +3094,7 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 	var stmts []string
 	mutated := make(map[string]bool)
 	for _, s := range t.Handler.Block {
-		stmts = append(stmts, g.lang.TranslateIRMutation(s, g.scope)...)
+		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -3100,7 +3178,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 				b.WriteString("  return;\n")
 			}
 		default:
-			stmts := g.lang.TranslateIRMutation(stmt, funcScope)
+			stmts := g.translateHandlerStmt(stmt, funcScope)
 			for _, line := range stmts {
 				fmt.Fprintf(b, "  %s;\n", line)
 			}
