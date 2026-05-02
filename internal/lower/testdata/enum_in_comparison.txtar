@@ -1,0 +1,34 @@
+caps: NoEnum
+-- input.sngl --
+enum Color {
+    red
+    green
+    blue
+}
+
+component main {
+    var c Color = Color.red
+
+    if c == Color.green {
+        text(value="is green")
+    } else {
+        text(value="other")
+    }
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+enum Color {
+    red
+    green
+    blue
+}
+component main {
+    var c Color = 0
+    if c == 1 {
+        text(value="is green")
+    } else {
+        text(value="other")
+    }
+}

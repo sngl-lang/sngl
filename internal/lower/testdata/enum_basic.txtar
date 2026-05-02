@@ -1,0 +1,25 @@
+caps: NoEnum
+-- input.sngl --
+enum Status {
+    active
+    inactive
+    archived
+}
+
+component main {
+    var s Status = Status.inactive
+    text(value=string(s))
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+enum Status {
+    active
+    inactive
+    archived
+}
+component main {
+    var s Status = 1
+    text(value=string(s))
+}
