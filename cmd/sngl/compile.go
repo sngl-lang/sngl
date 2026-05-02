@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
@@ -125,6 +126,36 @@ func runCompile(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+			// Lowering: rewrite high-level constructs into primitives the
+			// platform/language can consume. Capabilities come from both
+			// sides via field-wise OR.
+			plat := codegen.LookupPlatform(target.Platform)
+			lang := codegen.LookupLang(target.Lang)
+			if plat == nil {
+				return fmt.Errorf("%s: unknown platform %q (available: %v)", filename, target.Platform, codegen.Platforms())
+			}
+			if lang == nil {
+				return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
+			}
+			caps := plat.Capabilities().Merge(lang.Capabilities())
+			start = time.Now()
+			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+				return fmt.Errorf("%s: %w", dir, err)
+			}
+			slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+
+			// Second optimize pass cleans up artifacts of lowering
+			// (folded toggles, dead branches, etc.). Skipped when no
+			// lowering ran — re-running the optimizer on already-folded IR
+			// re-derives file assets and overwrites optCfg.FileAssets.
+			if caps != (lower.Caps{}) {
+				start = time.Now()
+				if err := optimize.Optimize(pkg, optCfg); err != nil {
+					return fmt.Errorf("%s: %w", dir, err)
+				}
+				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+			}
 
 			// Convert optimizer file assets to codegen file assets.
 			var fileAssets []codegen.FileAsset
