@@ -9,6 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
@@ -107,6 +108,11 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("platform %q does not support direct execution", target.Platform)
 	}
 
+	lang := codegen.LookupLang(target.Lang)
+	if lang == nil {
+		return fmt.Errorf("unknown language %q (available: %v)", target.Lang, codegen.Langs())
+	}
+
 	// Force main-package options
 	if target.Options == nil {
 		target.Options = &ir.StructLit{}
@@ -116,14 +122,31 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Optimize
 	start = time.Now()
-	if err := optimize.Optimize(pkg, &optimize.Config{
+	optCfg := &optimize.Config{
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,
-	}); err != nil {
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return err
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+	// Lower
+	caps := plat.Capabilities().Merge(lang.Capabilities())
+	start = time.Now()
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		return err
+	}
+	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+
+	if caps != (lower.Caps{}) {
+		start = time.Now()
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return err
+		}
+		slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+	}
 
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "sngl-run-*")

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
@@ -110,16 +111,36 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			if !ok {
 				return fmt.Errorf("platform %q does not support building", target.Platform)
 			}
+			lang := codegen.LookupLang(target.Lang)
+			if lang == nil {
+				return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
+			}
 
 			start = time.Now()
-			if err := optimize.Optimize(pkg, &optimize.Config{
+			optCfg := &optimize.Config{
 				Platform: target.Platform,
 				Language: target.Lang,
 				Dir:      dir,
-			}); err != nil {
+			}
+			if err := optimize.Optimize(pkg, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+			caps := plat.Capabilities().Merge(lang.Capabilities())
+			start = time.Now()
+			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+				return fmt.Errorf("%s: %w", dir, err)
+			}
+			slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+
+			if caps != (lower.Caps{}) {
+				start = time.Now()
+				if err := optimize.Optimize(pkg, optCfg); err != nil {
+					return fmt.Errorf("%s: %w", dir, err)
+				}
+				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+			}
 
 			start = time.Now()
 			if err := generateTarget(filename, pkg, target, outDir, nil, quiet(cmd)); err != nil {

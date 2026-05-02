@@ -15,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 
@@ -542,15 +543,28 @@ func compilePreview(source string) string {
 	if len(diags) > 0 {
 		return ""
 	}
-	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "none"}); err != nil {
-		return ""
-	}
-
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("none")
 	if gen == nil || lang == nil {
 		return ""
 	}
+
+	optCfg := &optimize.Config{Platform: "html", Language: "none"}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		return ""
+	}
+
+	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		return ""
+	}
+
+	if caps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return ""
+		}
+	}
+
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
