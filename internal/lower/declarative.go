@@ -166,6 +166,9 @@ func (st *declarativeState) processStmts(stmts []ir.Stmt, funcs *[]*ir.Func) []i
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmts(n.Children, funcs)
 			out = append(out, n)
+		case *ir.Window:
+			n.Body = st.processStmts(n.Body, &n.Funcs)
+			out = append(out, n)
 		default:
 			out = append(out, s)
 		}
