@@ -1,5 +1,6 @@
-# Verifies `dump lowered --list` succeeds for every shipping platform
-# in Phase 1 (all caps zero so pass list is empty).
+# Verifies `dump lowered --list` succeeds for every shipping platform.
+# Non-HTML platforms have all caps zero (pass list empty).
+# HTML opted into NoReactivity in Phase 4 Task 5.
 
 sngl dump lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps:'
@@ -10,12 +11,12 @@ stdout 'caps:'
 stdout 'passes: \(none\)'
 
 sngl dump lowered --lang go --platform html --list main.sngl
-stdout 'caps:'
-stdout 'passes: \(none\)'
+stdout 'caps: NoReactivity'
+stdout 'passes: NoReactivity'
 
 sngl dump lowered --lang none --platform html --list main.sngl
-stdout 'caps:'
-stdout 'passes: \(none\)'
+stdout 'caps: NoReactivity'
+stdout 'passes: NoReactivity'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps:'

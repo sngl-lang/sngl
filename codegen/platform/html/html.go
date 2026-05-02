@@ -48,7 +48,7 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) Capabilities() lower.Caps { return lower.Caps{} }
+func (g *Generator) Capabilities() lower.Caps { return lower.Caps{NoReactivity: true} }
 
 // SupportedLangs returns "none" (static-site default) plus any registered
 // language whose translator implements codegen.HTTPCompiler. The first entry

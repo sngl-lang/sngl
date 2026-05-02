@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
@@ -185,5 +186,58 @@ func TestFullFixture(t *testing.T) {
 		if !strings.Contains(html, check) {
 			t.Errorf("missing expected content: %q\n\ngenerated:\n%s", check, html)
 		}
+	}
+}
+
+func TestLoweredReactivityWiring(t *testing.T) {
+	const src = `component main {
+    var n int = 0
+    text(value=string(n))
+    button(text="+", @click { n = n + 1 })
+}`
+	doc, err := parser.Parse("counter.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 {
+		t.Fatalf("check: %v", diags[0])
+	}
+
+	lang := codegen.LookupLang("none")
+	gen := &Generator{}
+	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+
+	resp, err := gen.Generate(&codegen.Request{
+		Doc:  doc,
+		Pkg:  pkg,
+		Lang: lang,
+	})
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	var buf bytes.Buffer
+	resp.Files[0].WriteTo(&buf)
+	out := buf.String()
+
+	// Static render must carry the data-sngl-id attribute for the
+	// reactive text node so JS lang's IsElementRef path resolves it.
+	if !strings.Contains(out, `data-sngl-id="__n0"`) {
+		t.Errorf("missing data-sngl-id=\"__n0\" attr; output:\n%s", out)
+	}
+	// The click handler body must contain the prop-remapped DOM write
+	// for the text node (textContent, not value).
+	if !strings.Contains(out, `.textContent = String(state.n)`) &&
+		!strings.Contains(out, `.textContent = String((state.n))`) {
+		t.Errorf("missing .textContent = String(state.n) DOM write; output:\n%s", out)
+	}
+	// addTextUpdater must NOT have fired for __n0 — no $u_*_text
+	// updater function should target it. (Match the legacy naming
+	// pattern $u_<idsuffix>_text and rule it out.)
+	if strings.Contains(out, "function $u___n0_text(") {
+		t.Errorf("legacy $u___n0_text updater registered despite NoReactivity; output:\n%s", out)
 	}
 }
