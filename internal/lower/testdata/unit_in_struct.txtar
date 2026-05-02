@@ -1,0 +1,30 @@
+caps: NoUnit
+-- input.sngl --
+unit length { px, em = 16px }
+
+struct Box {
+    width length
+    height length
+}
+
+component main {
+    var b Box = Box{width=100px, height=50px}
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+struct Box {
+    width length = 0
+    height length = 0
+}
+unit length {
+    px
+    em = 16
+}
+component main {
+    var b Box = Box{
+        width = 100,
+        height = 50,
+    }
+}

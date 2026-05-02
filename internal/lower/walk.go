@@ -27,6 +27,13 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 			c.Init = fns.expr(c.Init)
 		}
 	}
+	for _, s := range pkg.Structs {
+		for _, f := range s.Fields {
+			if fns.expr != nil && f.Default != nil {
+				f.Default = fns.expr(f.Default)
+			}
+		}
+	}
 	for _, v := range pkg.Vars {
 		walkVar(v, fns)
 	}

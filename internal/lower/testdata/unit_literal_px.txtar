@@ -1,0 +1,20 @@
+caps: NoUnit
+-- input.sngl --
+unit length { px, em = 16px }
+
+component main {
+    var w length = 32px
+    var pad length = 2em
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+unit length {
+    px
+    em = 16
+}
+component main {
+    var w length = 32
+    var pad length = 32
+}
