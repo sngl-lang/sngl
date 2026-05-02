@@ -1,0 +1,35 @@
+caps: NoToggle, NoEnum
+-- input.sngl --
+enum Mode {
+    off
+    on
+}
+
+component main {
+    var m Mode = Mode.off
+    var ready bool = false
+
+    func tick() {
+        ready!!
+    }
+
+    button(@click { tick() })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+enum Mode {
+    off
+    on
+}
+component main {
+    var m Mode = 0
+    var ready bool = false
+    func tick() {
+        ready = !ready
+    }
+    button(@click {
+        tick()
+    })
+}
