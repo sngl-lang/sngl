@@ -1,0 +1,22 @@
+caps: NoReactivity
+-- input.sngl --
+component main {
+    var n int = 0
+    text(value=string(n))
+    badge(value=string(n))
+    button(text="+", @click { n = n + 1 })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var n int = 0
+    text #__n0(value=string(n))
+    badge #__n1(value=string(n))
+    button(text="+", @click {
+        n = n + 1
+        #__n0.value = string(n)
+        #__n1.value = string(n)
+    })
+}
