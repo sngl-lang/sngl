@@ -1,0 +1,23 @@
+caps: NoTimer, NoUnit
+-- input.sngl --
+component main {
+    var n int = 0
+
+    timer(interval=1s) {
+        n = n + 1
+    }
+
+    text(value=string(n))
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var n int = 0
+    func __timer0_handler() void {
+        n = n + 1
+    }
+    lower.scheduleTimer(0, 1000, __timer0_handler)
+    text(value=string(n))
+}
