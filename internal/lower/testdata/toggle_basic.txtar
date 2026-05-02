@@ -1,0 +1,16 @@
+caps: NoToggle
+-- input.sngl --
+component main {
+    var on bool = false
+    button(@click { on!! })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var on bool = false
+    button(@click {
+        on = !on
+    })
+}
