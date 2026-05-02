@@ -200,7 +200,7 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 			Type: ir.TypDyn,
 			Func: st.createFunc(),
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Raw: strconv.Quote(n.Name)}},
+				{Value: &ir.Literal{Type: ir.TypString, Raw: n.Name}},
 			},
 		},
 	})
@@ -234,7 +234,7 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 				Func: st.attachHandlerFunc(),
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
-					{Value: &ir.Literal{Type: ir.TypString, Raw: strconv.Quote(h.Name)}},
+					{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
 					{Value: &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}},
 				},
 			},
