@@ -1,0 +1,24 @@
+caps: NoDeclarative
+-- input.sngl --
+component main {
+    var n int = 0
+    if n > 0 {
+        text(value="big")
+    } else {
+        text(value="small")
+    }
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var n int = 0
+    if n > 0 {
+        var __n0 dyn = lower.createNode("text")
+        #__n0.value = "big"
+    } else {
+        var __n1 dyn = lower.createNode("text")
+        #__n1.value = "small"
+    }
+}
