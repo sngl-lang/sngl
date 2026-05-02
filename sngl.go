@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -55,4 +56,15 @@ func Check(doc *ast.Document, dir string) (*ir.Package, []ir.Diagnostic) {
 		Dir:    dir,
 		IsMain: true,
 	})
+}
+
+// Caps is the capability struct used by Lower. Re-exported so callers don't
+// need to import internal/lower directly.
+type Caps = lower.Caps
+
+// Lower runs the lowering pipeline on a checked + optimized IR Package.
+// caps comes from merging the target platform's and language's
+// Capabilities(). Mutates pkg in place.
+func Lower(pkg *ir.Package, caps Caps) error {
+	return lower.Lower(pkg, caps, lower.Options{})
 }
