@@ -1,7 +1,5 @@
 output {
-    js() {
-        html
-    }
+    none { html }
 }
 
 component main {
