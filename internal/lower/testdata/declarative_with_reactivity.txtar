@@ -1,0 +1,23 @@
+caps: NoDeclarative, NoReactivity
+-- input.sngl --
+component main {
+    var n int = 0
+    text(value=string(n))
+    button(text="+", @click { n = n + 1 })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var n int = 0
+    func __n1_click_handler() {
+        n = n + 1
+        #__n0.value = string(n)
+    }
+    var __n0 dyn = lower.createNode("text")
+    #__n0.value = string(n)
+    var __n1 dyn = lower.createNode("button")
+    #__n1.text = "+"
+    lower.attachHandler(#__n1, "click", __n1_click_handler)
+}

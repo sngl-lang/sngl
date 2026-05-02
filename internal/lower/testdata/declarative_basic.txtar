@@ -1,0 +1,16 @@
+caps: NoDeclarative
+-- input.sngl --
+component main {
+    text(value="hello")
+    button(text="+")
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+component main {
+    var __n0 dyn = lower.createNode("text")
+    #__n0.value = "hello"
+    var __n1 dyn = lower.createNode("button")
+    #__n1.text = "+"
+}
