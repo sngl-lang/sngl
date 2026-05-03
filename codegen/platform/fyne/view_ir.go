@@ -41,6 +41,14 @@ type irViewContext struct {
 	slotVar        string
 	slotChildren   []ir.Stmt
 	propVals       map[string]ir.Expr
+
+	// localMode disables Model-field registration: render* helpers emit a
+	// local var declaration and return the bare name, so the same renderStmt
+	// machinery can be used inside for-loop bodies (init + updater) without
+	// allocating Model fields that would only retain the last iteration's
+	// widget. Updater registration is also suppressed: the parent updater
+	// re-renders the whole loop body each refresh.
+	localMode bool
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
@@ -48,7 +56,52 @@ func (vc *irViewContext) line(format string, args ...any) {
 }
 
 func (vc *irViewContext) addField(name, goType string) {
+	if vc.localMode {
+		// Whole loop body re-renders into local vars per iteration; nothing
+		// to persist on the Model.
+		return
+	}
 	vc.widgetFields = append(vc.widgetFields, irWidgetField{name, goType})
+}
+
+// allocWidget reserves a widget slot and returns (id, ref, declaredType).
+//   - normal mode: registers a Model field; ref is "m.<prefix><id>".
+//   - local mode: emits "var <prefix><id> <goType>" so the caller can write
+//     "<ref> = NewXxx(...)" with the same syntax used for Model fields.
+func (vc *irViewContext) allocWidget(prefix, goType string) (int, string) {
+	id := vc.labelCount
+	vc.labelCount++
+	name := fmt.Sprintf("%s%d", prefix, id)
+	if vc.localMode {
+		vc.line("var %s %s", name, goType)
+		return id, name
+	}
+	vc.addField(name, goType)
+	return id, "m." + name
+}
+
+// counterSnapshot captures the rolling per-kind counters so a block of code
+// can be re-rendered in a separate scope (init body vs updater body of a
+// for-loop) and produce identical local variable names.
+type counterSnapshot struct {
+	label, container, entry int
+}
+
+func (vc *irViewContext) snapshotCounters() counterSnapshot {
+	return counterSnapshot{vc.labelCount, vc.containerCount, vc.entryIndex}
+}
+
+func (vc *irViewContext) restoreCounters(s counterSnapshot) {
+	vc.labelCount, vc.containerCount, vc.entryIndex = s.label, s.container, s.entry
+}
+
+// withLocalMode runs fn inside a localMode scope, ensuring the flag is
+// restored even if a render path returns early.
+func (vc *irViewContext) withLocalMode(fn func()) {
+	prev := vc.localMode
+	vc.localMode = true
+	fn()
+	vc.localMode = prev
 }
 
 func (vc *irViewContext) addUpdater(name, body string, deps map[string]bool) {
@@ -129,6 +182,30 @@ func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 	id := vc.containerCount
 	vc.containerCount++
 	bodyField := fmt.Sprintf("ifBox%d", id)
+	if vc.localMode {
+		// Conditionals nested inside a for-loop body collapse to a runtime
+		// re-render, not a Show/Hide updater — the parent loop updater
+		// rebuilds everything. Emit a plain Go if/else with locals.
+		innerVar := resultVar + "Inner"
+		vc.line("var %s fyne.CanvasObject", innerVar)
+		vc.line("if %s {", vc.gc.EvalExpr(s.Cond))
+		vc.indent++
+		for _, child := range s.Body {
+			vc.renderStmt(child, innerVar)
+		}
+		vc.indent--
+		if len(s.Else) > 0 {
+			vc.line("} else {")
+			vc.indent++
+			for _, child := range s.Else {
+				vc.renderStmt(child, innerVar)
+			}
+			vc.indent--
+		}
+		vc.line("}")
+		vc.line("%s = %s", resultVar, innerVar)
+		return
+	}
 	vc.addField(bodyField, "*fyne.Container")
 
 	innerVar := resultVar + "Inner"
@@ -201,36 +278,68 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 		fieldName := fmt.Sprintf("forBox%d", id)
 		vc.addField(fieldName, "*fyne.Container")
 
+		// Render the loop body once into a reusable Go-source snippet that
+		// emits one CanvasObject per iteration into a target slice. Used for
+		// both the init path and the updater body so a state change re-runs
+		// the same widget construction logic instead of a placeholder.
+		emitBody := func(target string) string {
+			var subBuf strings.Builder
+			savedBuf := vc.buf
+			savedIndent := vc.indent
+			savedCounters := vc.snapshotCounters()
+
+			vc.buf = &subBuf
+			vc.indent = 0
+			vc.withLocalMode(func() {
+				vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
+				vc.indent++
+				if indexVar != "_" {
+					vc.line("_ = %s", indexVar)
+				}
+				vc.line("_ = %s", iterVar)
+				innerVar := "item"
+				vc.line("var %s fyne.CanvasObject", innerVar)
+				for _, child := range s.Body {
+					vc.renderStmt(child, innerVar)
+				}
+				vc.line("if %s != nil { %s = append(%s, %s) }", innerVar, target, target, innerVar)
+				vc.indent--
+				vc.line("}")
+			})
+
+			vc.buf = savedBuf
+			vc.indent = savedIndent
+			// Both renders must produce identical local var names. Restoring
+			// counters here means the second emission (updater) sees the same
+			// starting state the first one (init) did.
+			vc.restoreCounters(savedCounters)
+			return subBuf.String()
+		}
+
 		loopItems := resultVar + "Items"
 		vc.line("var %s []fyne.CanvasObject", loopItems)
-		vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
-		vc.indent++
-		if indexVar != "_" {
-			vc.line("_ = %s", indexVar)
+		// Init: emit the loop directly into the current buffer at the current
+		// indent so it slots into BuildUI naturally.
+		initBody := emitBody(loopItems)
+		for _, ln := range strings.Split(strings.TrimRight(initBody, "\n"), "\n") {
+			vc.line("%s", ln)
 		}
-		innerVar := resultVar + "Item"
-		vc.line("var %s fyne.CanvasObject", innerVar)
-		for _, child := range s.Body {
-			vc.renderStmt(child, innerVar)
-		}
-		vc.line("if %s != nil { %s = append(%s, %s) }", innerVar, loopItems, loopItems, innerVar)
-		vc.indent--
-		vc.line("}")
 		vc.line("m.%s = container.NewVBox(%s...)", fieldName, loopItems)
 		vc.line("%s = m.%s", resultVar, fieldName)
 
 		deps := vc.exprDeps(s.Iter)
 		if len(deps) > 0 {
 			updaterName := fmt.Sprintf("updateFor%d", id)
+			updateBody := emitBody("items")
 			var bodyBuf strings.Builder
 			fmt.Fprintf(&bodyBuf, "var items []fyne.CanvasObject\n")
-			fmt.Fprintf(&bodyBuf, "\tfor %s, %s := range %s {\n", indexVar, iterVar, iterExpr)
-			if indexVar != "_" {
-				fmt.Fprintf(&bodyBuf, "\t\t_ = %s\n", indexVar)
+			// Reindent the body one tab for inclusion inside the updater's
+			// function block.
+			for _, ln := range strings.Split(strings.TrimRight(updateBody, "\n"), "\n") {
+				bodyBuf.WriteByte('\t')
+				bodyBuf.WriteString(ln)
+				bodyBuf.WriteByte('\n')
 			}
-			fmt.Fprintf(&bodyBuf, "\t\t_ = %s\n", iterVar)
-			fmt.Fprintf(&bodyBuf, "\t\titems = append(items, widget.NewLabel(fmt.Sprint(%s)))\n", iterVar)
-			fmt.Fprintf(&bodyBuf, "\t}\n")
 			fmt.Fprintf(&bodyBuf, "\tm.%s.Objects = items\n", fieldName)
 			fmt.Fprintf(&bodyBuf, "\tm.%s.Refresh()", fieldName)
 			vc.addUpdater(updaterName, bodyBuf.String(), deps)
@@ -342,21 +451,23 @@ func (vc *irViewContext) renderContainerHBox(n *ir.NodeInst, resultVar string) {
 
 func (vc *irViewContext) renderLabel(n *ir.NodeInst, resultVar string) {
 	content := vc.resolveContentExpr(n)
-	id := vc.labelCount
-	vc.labelCount++
-	fieldName := fmt.Sprintf("label%d", id)
-	vc.addField(fieldName, "*widget.Label")
+	id, ref := vc.allocWidget("label", "*widget.Label")
 
-	vc.line("m.%s = widget.NewLabel(fmt.Sprint(%s))", fieldName, content)
-	vc.line("%s = m.%s", resultVar, fieldName)
+	vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", ref, content)
+	vc.line("%s = %s", resultVar, ref)
 
-	// Register updater if content is reactive
+	if vc.localMode {
+		// Updater would target a Model field that doesn't exist for locals.
+		// The enclosing for-loop's updater rebuilds the whole body anyway.
+		return
+	}
+
 	contentExpr := vc.resolveContentIRExpr(n)
 	if contentExpr != nil {
 		deps := vc.exprDeps(contentExpr)
 		if len(deps) > 0 {
 			updaterName := fmt.Sprintf("updateLabel%d", id)
-			body := fmt.Sprintf("m.%s.SetText(fmt.Sprint(%s))", fieldName, content)
+			body := fmt.Sprintf("%s.SetText(fmt.Sprint(%s))", ref, content)
 			vc.addUpdater(updaterName, body, deps)
 		}
 	}
@@ -373,12 +484,9 @@ func (vc *irViewContext) renderLink(n *ir.NodeInst, resultVar string) {
 	if v := codegen.NodeProp(n, "href"); v != nil {
 		href = vc.gc.EvalExpr(v)
 	}
-	id := vc.labelCount
-	vc.labelCount++
-	fieldName := fmt.Sprintf("link%d", id)
-	vc.addField(fieldName, "*widget.Hyperlink")
-	vc.line("{ linkURL%d, _ := url.Parse(%s); m.%s = widget.NewHyperlink(%s, linkURL%d) }", id, href, fieldName, text, id)
-	vc.line("%s = m.%s", resultVar, fieldName)
+	id, ref := vc.allocWidget("link", "*widget.Hyperlink")
+	vc.line("{ linkURL%d, _ := url.Parse(%s); %s = widget.NewHyperlink(%s, linkURL%d) }", id, href, ref, text, id)
+	vc.line("%s = %s", resultVar, ref)
 }
 
 func (vc *irViewContext) renderButton(n *ir.NodeInst, resultVar string) {
@@ -389,22 +497,19 @@ func (vc *irViewContext) renderButton(n *ir.NodeInst, resultVar string) {
 		text = vc.gc.EvalExpr(v)
 	}
 
-	id := vc.labelCount
-	vc.labelCount++
-	fieldName := fmt.Sprintf("btn%d", id)
-	vc.addField(fieldName, "*widget.Button")
+	_, ref := vc.allocWidget("btn", "*widget.Button")
 
 	clickHandler := codegen.NodeHandler(n, "click")
 	if clickHandler != nil && clickHandler.Func != nil {
-		vc.line("m.%s = widget.NewButton(fmt.Sprint(%s), func() {", fieldName, text)
+		vc.line("%s = widget.NewButton(fmt.Sprint(%s), func() {", ref, text)
 		vc.indent++
 		vc.emitEventHandlerBlock(clickHandler.Func.Block)
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("m.%s = widget.NewButton(fmt.Sprint(%s), nil)", fieldName, text)
+		vc.line("%s = widget.NewButton(fmt.Sprint(%s), nil)", ref, text)
 	}
-	vc.line("%s = m.%s", resultVar, fieldName)
+	vc.line("%s = %s", resultVar, ref)
 }
 
 func (vc *irViewContext) renderEntry(n *ir.NodeInst, resultVar string) {
@@ -419,41 +524,35 @@ func (vc *irViewContext) renderCheck(n *ir.NodeInst, resultVar string) {
 		label = vc.gc.EvalExpr(v)
 	}
 
-	id := vc.labelCount
-	vc.labelCount++
-	fieldName := fmt.Sprintf("check%d", id)
-	vc.addField(fieldName, "*widget.Check")
+	_, ref := vc.allocWidget("check", "*widget.Check")
 
 	changeHandler := codegen.NodeHandler(n, "change")
 	if changeHandler != nil && changeHandler.Func != nil {
-		vc.line("m.%s = widget.NewCheck(fmt.Sprint(%s), func(b bool) {", fieldName, label)
+		vc.line("%s = widget.NewCheck(fmt.Sprint(%s), func(b bool) {", ref, label)
 		vc.indent++
 		vc.emitEventHandlerBlock(changeHandler.Func.Block)
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("m.%s = widget.NewCheck(fmt.Sprint(%s), nil)", fieldName, label)
+		vc.line("%s = widget.NewCheck(fmt.Sprint(%s), nil)", ref, label)
 	}
-	vc.line("%s = m.%s", resultVar, fieldName)
+	vc.line("%s = %s", resultVar, ref)
 }
 
 func (vc *irViewContext) renderSelect(n *ir.NodeInst, resultVar string) {
-	id := vc.labelCount
-	vc.labelCount++
-	fieldName := fmt.Sprintf("sel%d", id)
-	vc.addField(fieldName, "*widget.Select")
+	_, ref := vc.allocWidget("sel", "*widget.Select")
 
 	changeHandler := codegen.NodeHandler(n, "change")
 	if changeHandler != nil && changeHandler.Func != nil {
-		vc.line("m.%s = widget.NewSelect(nil, func(s string) {", fieldName)
+		vc.line("%s = widget.NewSelect(nil, func(s string) {", ref)
 		vc.indent++
 		vc.emitEventHandlerBlock(changeHandler.Func.Block)
 		vc.indent--
 		vc.line("})")
 	} else {
-		vc.line("m.%s = widget.NewSelect(nil, nil)", fieldName)
+		vc.line("%s = widget.NewSelect(nil, nil)", ref)
 	}
-	vc.line("%s = m.%s", resultVar, fieldName)
+	vc.line("%s = %s", resultVar, ref)
 }
 
 func (vc *irViewContext) renderImage(n *ir.NodeInst, resultVar string) {
