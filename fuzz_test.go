@@ -714,45 +714,97 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 
 // valuesEqual compares two interpreter values, allowing a small ULP tolerance
 // on floats and treating NaN==NaN so divisions like `0/0` don't surface as
-// bogus diffs. Recurses into lists and maps so the same handling applies to
-// composite values produced by list/struct expressions.
+// bogus diffs. Recurses through reflection so the same handling applies to
+// composite values (lists, maps, and the testrunner's private unit/struct
+// wrapper types).
 func valuesEqual(a, b any) bool {
-	if af, ok := a.(float64); ok {
-		if bf, ok := b.(float64); ok {
-			if math.IsNaN(af) && math.IsNaN(bf) {
-				return true
-			}
-			if af == bf {
-				return true
-			}
-			eps := 1e-12 * math.Max(1, math.Max(math.Abs(af), math.Abs(bf)))
-			return math.Abs(af-bf) <= eps
-		}
+	return reflectEqual(reflect.ValueOf(a), reflect.ValueOf(b))
+}
+
+func reflectEqual(av, bv reflect.Value) bool {
+	if !av.IsValid() || !bv.IsValid() {
+		return av.IsValid() == bv.IsValid()
 	}
-	if al, ok := a.([]any); ok {
-		bl, ok := b.([]any)
-		if !ok || len(al) != len(bl) {
+	// Unwrap interface so concrete kinds drive the comparison.
+	for av.Kind() == reflect.Interface {
+		av = av.Elem()
+	}
+	for bv.Kind() == reflect.Interface {
+		bv = bv.Elem()
+	}
+	if !av.IsValid() || !bv.IsValid() {
+		return av.IsValid() == bv.IsValid()
+	}
+	if av.Type() != bv.Type() {
+		return false
+	}
+	switch av.Kind() {
+	case reflect.Float32, reflect.Float64:
+		af, bf := av.Float(), bv.Float()
+		if math.IsNaN(af) && math.IsNaN(bf) {
+			return true
+		}
+		if af == bf {
+			return true
+		}
+		eps := 1e-12 * math.Max(1, math.Max(math.Abs(af), math.Abs(bf)))
+		return math.Abs(af-bf) <= eps
+	case reflect.Slice, reflect.Array:
+		if av.Len() != bv.Len() {
 			return false
 		}
-		for i := range al {
-			if !valuesEqual(al[i], bl[i]) {
+		for i := 0; i < av.Len(); i++ {
+			if !reflectEqual(av.Index(i), bv.Index(i)) {
 				return false
 			}
 		}
 		return true
-	}
-	if am, ok := a.(map[string]any); ok {
-		bm, ok := b.(map[string]any)
-		if !ok || len(am) != len(bm) {
+	case reflect.Map:
+		if av.Len() != bv.Len() {
 			return false
 		}
-		for k, av := range am {
-			bv, present := bm[k]
-			if !present || !valuesEqual(av, bv) {
+		iter := av.MapRange()
+		for iter.Next() {
+			bvv := bv.MapIndex(iter.Key())
+			if !bvv.IsValid() || !reflectEqual(iter.Value(), bvv) {
 				return false
 			}
 		}
 		return true
+	case reflect.Struct:
+		for i := 0; i < av.NumField(); i++ {
+			// Skip pointer fields used as identity handles (e.g. unit
+			// table pointers); compare by referenced contents only when
+			// both nil/non-nil shape match.
+			fa, fb := av.Field(i), bv.Field(i)
+			if fa.Kind() == reflect.Pointer {
+				if fa.IsNil() != fb.IsNil() {
+					return false
+				}
+				if fa.IsNil() {
+					continue
+				}
+				if !reflectEqual(fa.Elem(), fb.Elem()) {
+					return false
+				}
+				continue
+			}
+			if !reflectEqual(fa, fb) {
+				return false
+			}
+		}
+		return true
+	case reflect.Pointer:
+		if av.IsNil() != bv.IsNil() {
+			return false
+		}
+		if av.IsNil() {
+			return true
+		}
+		return reflectEqual(av.Elem(), bv.Elem())
 	}
-	return reflect.DeepEqual(a, b)
+	if av.CanInterface() && bv.CanInterface() {
+		return reflect.DeepEqual(av.Interface(), bv.Interface())
+	}
+	return false
 }
