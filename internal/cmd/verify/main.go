@@ -5,7 +5,12 @@
 //  2. go fmt ./...
 //  3. go fix ./...
 //  4. go vet ./...
-//  5. go test -cover ./...
+//  5. go test -coverpkg=./... -coverprofile=... ./...
+//
+// Step 5 collects cross-package coverage so packages exercised by integration
+// tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
+// statements they execute, not just statements covered by their own package's
+// tests.
 //
 // The -dry flag skips file-mutating steps: generate is skipped entirely,
 // fmt and fix run in check-only mode (reporting differences without writing),
@@ -22,18 +27,28 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-var coverRE = regexp.MustCompile(`^ok\s+(\S+)\s+\S+\s+coverage:\s+([\d.]+)%\s+of\s+statements`)
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 
 type pkgResult struct {
 	name     string
-	coverage float64
+	stmts    int
+	covered  int
 	failed   bool
+	hadTests bool
+}
+
+func (r pkgResult) coverage() float64 {
+	if r.stmts == 0 {
+		return 0
+	}
+	return 100 * float64(r.covered) / float64(r.stmts)
 }
 
 func main() {
@@ -115,7 +130,14 @@ func runCheckStep(name string, command string, args ...string) bool {
 }
 
 func runTests(verbose, fmtDocs bool) {
-	args := []string{"test", "-cover"}
+	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
+	if err != nil {
+		log.Fatalf("create coverprofile: %v", err)
+	}
+	profile.Close()
+	defer os.Remove(profile.Name())
+
+	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
 	if verbose {
 		args = append(args, "-v")
 	}
@@ -137,45 +159,165 @@ func runTests(verbose, fmtDocs bool) {
 		log.Fatal(err)
 	}
 
-	var results []pkgResult
+	failed := map[string]bool{}
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Println(line)
-
-		if m := coverRE.FindStringSubmatch(line); m != nil {
-			pct, _ := strconv.ParseFloat(m[2], 64)
-			results = append(results, pkgResult{name: m[1], coverage: pct})
-		} else if m := failRE.FindStringSubmatch(line); m != nil {
-			results = append(results, pkgResult{name: m[1], failed: true})
+		if m := failRE.FindStringSubmatch(line); m != nil {
+			failed[m[1]] = true
 		}
 	}
 
 	cmdErr := cmd.Wait()
 
+	results, err := readProfile(profile.Name())
+	if err != nil {
+		log.Printf("coverage profile: %v", err)
+	}
+	for name := range failed {
+		found := false
+		for i := range results {
+			if results[i].name == name {
+				results[i].failed = true
+				found = true
+			}
+		}
+		if !found {
+			results = append(results, pkgResult{name: name, failed: true})
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool { return results[i].name < results[j].name })
+
 	fmt.Println()
 	fmt.Println("=== Coverage Summary ===")
 
-	var totalPct float64
+	var totalStmts, totalCovered int
 	var count int
 	for _, r := range results {
-		if r.failed {
+		switch {
+		case r.failed:
 			fmt.Printf("  %-60s FAIL\n", shortPkg(r.name))
-		} else if r.coverage > 0 {
-			fmt.Printf("  %-60s %5.1f%%\n", shortPkg(r.name), r.coverage)
-			totalPct += r.coverage
+		case r.stmts == 0:
+			// No statements counted (e.g. interface-only or empty package).
+			continue
+		default:
+			fmt.Printf("  %-60s %5.1f%%  (%d/%d)\n", shortPkg(r.name), r.coverage(), r.covered, r.stmts)
+			totalStmts += r.stmts
+			totalCovered += r.covered
 			count++
 		}
 	}
 
-	if count > 0 {
+	if totalStmts > 0 {
 		fmt.Println()
-		fmt.Printf("average coverage: %.1f%% across %d packages\n", totalPct/float64(count), count)
+		fmt.Printf("overall coverage: %.1f%% (%d/%d statements across %d packages)\n",
+			100*float64(totalCovered)/float64(totalStmts), totalCovered, totalStmts, count)
 	}
 
 	if cmdErr != nil {
 		os.Exit(1)
 	}
+}
+
+// readProfile parses a Go coverage profile and returns per-package totals.
+// Each profile line has the form
+//
+//	<pkg>/<file>:<startLine>.<startCol>,<endLine>.<endCol> <numStatements> <count>
+//
+// With `-coverpkg=./... -coverprofile=p ./...`, every test binary appends a
+// view of every covered block, so the same block appears multiple times.
+// Dedup keyed by `<pkg>/<file>:<range>` and OR the counts: a block counts as
+// covered if any test binary executed it.
+func readProfile(path string) ([]pkgResult, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	type block struct {
+		stmts   int
+		covered bool
+	}
+	blocks := map[string]*block{}
+
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	first := true
+	for scanner.Scan() {
+		line := scanner.Text()
+		if first {
+			// Mode line, e.g. "mode: set".
+			first = false
+			continue
+		}
+		if line == "" {
+			continue
+		}
+		// Split off the trailing " <stmts> <count>".
+		sp := strings.LastIndex(line, " ")
+		if sp < 0 {
+			continue
+		}
+		count, err := strconv.Atoi(line[sp+1:])
+		if err != nil {
+			continue
+		}
+		head := line[:sp]
+		sp2 := strings.LastIndex(head, " ")
+		if sp2 < 0 {
+			continue
+		}
+		stmts, err := strconv.Atoi(head[sp2+1:])
+		if err != nil {
+			continue
+		}
+		key := head[:sp2] // "<pkg>/<file>:<range>"
+		b := blocks[key]
+		if b == nil {
+			b = &block{stmts: stmts}
+			blocks[key] = b
+		}
+		if count > 0 {
+			b.covered = true
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	type agg struct{ stmts, covered int }
+	pkgs := map[string]*agg{}
+	for key, b := range blocks {
+		before, _, ok := strings.Cut(key, ":")
+		if !ok {
+			continue
+		}
+		pkgDir := pkgPathDir(before)
+		a := pkgs[pkgDir]
+		if a == nil {
+			a = &agg{}
+			pkgs[pkgDir] = a
+		}
+		a.stmts += b.stmts
+		if b.covered {
+			a.covered += b.stmts
+		}
+	}
+
+	out := make([]pkgResult, 0, len(pkgs))
+	for name, a := range pkgs {
+		out = append(out, pkgResult{name: name, stmts: a.stmts, covered: a.covered, hadTests: true})
+	}
+	return out, nil
+}
+
+// pkgPathDir returns the package import path for a profile entry. Profile
+// lines start with the full file path like "git.duckfam.us/jonathan/sngl/foo/bar.go".
+func pkgPathDir(p string) string {
+	return path.Dir(p)
 }
 
 func shortPkg(full string) string {
