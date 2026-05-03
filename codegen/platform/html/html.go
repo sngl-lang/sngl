@@ -2930,6 +2930,12 @@ func domWriteFor(componentName, key, el, value string) string {
 		if key == "value" {
 			return fmt.Sprintf("%s.setAttribute(\"value\", %s)", el, value)
 		}
+	case "checkbox", "toggle":
+		if key == "checked" {
+			// The __n* id is on the wrapping <label>, not the inner <input>;
+			// descend to the input to actually flip the checked state.
+			return fmt.Sprintf("%s.querySelector('input').checked = %s", el, value)
+		}
 	case "modal", "drawer", "popover", "menu":
 		if key == "open" {
 			// Reactive open toggles visibility. Match the legacy
