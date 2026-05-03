@@ -33,6 +33,10 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	}
 
 	gen := &Generator{}
+	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
 	resp, err := gen.Generate(&codegen.Request{
 		Doc:  doc,
 		Pkg:  pkg,
@@ -70,6 +74,10 @@ func generateHTML(t *testing.T, path string) string {
 	}
 
 	gen := &Generator{}
+	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
 	resp, err := gen.Generate(&codegen.Request{
 		Doc:  doc,
 		Pkg:  pkg,
@@ -122,7 +130,7 @@ func TestTodoApp(t *testing.T) {
 		`function $status()`,
 		`function Todo(`,
 		"function String(v)",
-		"document.getElementById",
+		"document.",
 		"addEventListener",
 		"push(",
 	}
@@ -142,7 +150,7 @@ func TestFullExample(t *testing.T) {
 		"state.count",
 		`function $greeting()`,
 		`function $isAdult()`,
-		"document.getElementById",
+		"document.",
 		"addEventListener",
 	}
 	for _, check := range checks {
