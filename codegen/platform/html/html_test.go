@@ -248,4 +248,14 @@ func TestLoweredReactivityWiring(t *testing.T) {
 	if strings.Contains(out, "function $u___n0_text(") {
 		t.Errorf("legacy $u___n0_text updater registered despite NoReactivity; output:\n%s", out)
 	}
+	// The __n* id should be cached as a top-level const, not
+	// re-resolved per update.
+	if !strings.Contains(out, `const __n0 = document.querySelector('[data-sngl-id="__n0"]')`) {
+		t.Errorf("missing cached __n0 const; output:\n%s", out)
+	}
+	// The handler body should reference __n0 as a bare identifier,
+	// not via inline document.querySelector.
+	if strings.Contains(out, `document.querySelector('[data-sngl-id="__n0"]').textContent`) {
+		t.Errorf("handler body still inlines querySelector instead of using cached const; output:\n%s", out)
+	}
 }

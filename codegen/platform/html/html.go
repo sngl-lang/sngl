@@ -426,6 +426,13 @@ type htmlGen struct {
 	// harmless noise: NoReactivity never produces IsElementRef Assigns
 	// against $-prefixed names, so Task 4's lookup never targets them.
 	idToNode map[string]*ir.NodeInst
+
+	// loweredRefs collects every __n* id that appears as the target of a
+	// reactive-update Assign translated by translateHandlerStmt. Each
+	// unique id gets a top-level `const __nN = document.querySelector(...)`
+	// declaration in emitScript's element-references block, so handlers
+	// emit a bare identifier rather than a fresh querySelector per write.
+	loweredRefs map[string]bool
 }
 
 type componentParam struct {
@@ -466,6 +473,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		testMode:       opts.Test,
 		minify:         opts.Minify,
 		idToNode:       make(map[string]*ir.NodeInst),
+		loweredRefs:    make(map[string]bool),
 	}
 
 	g.scope = &codegen.ExprScope{
@@ -2376,7 +2384,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	for _, id := range refs {
 		fmt.Fprintf(b, "const %s = document.getElementById(\"%s\");\n", id, id)
 	}
-	if len(refs) > 0 {
+	loweredRefs := make([]string, 0, len(g.loweredRefs))
+	for id := range g.loweredRefs {
+		loweredRefs = append(loweredRefs, id)
+	}
+	sort.Strings(loweredRefs)
+	for _, id := range loweredRefs {
+		fmt.Fprintf(b, "const %s = document.querySelector('[data-sngl-id=%q]');\n", id, id)
+	}
+	if len(refs) > 0 || len(loweredRefs) > 0 {
 		b.WriteString("\n")
 	}
 
@@ -2973,7 +2989,8 @@ func (g *htmlGen) translateHandlerStmt(s ir.Stmt, scope *codegen.ExprScope) []st
 		// on the generic write to be correct enough.
 		return g.lang.TranslateIRMutation(s, scope)
 	}
-	el := fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", idn.Name)
+	g.loweredRefs[idn.Name] = true
+	el := idn.Name
 	value := g.lang.TranslateIRExpr(a.Value, scope)
 	return []string{domWriteFor(node.Name, sel.Field, el, value)}
 }
