@@ -1,0 +1,10 @@
+// Windows without `#id` or string-literal `href` get a synthetic
+// position-derived name so each one is uniquely identifiable.
+
+window(title="A") {
+	text(value="a")
+}
+
+window(title="B") {
+	text(value="b")
+}

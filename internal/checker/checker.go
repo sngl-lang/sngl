@@ -1358,6 +1358,13 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 			}
 		}
 	}
+	// Fall back to a position-derived synthetic name so every window has a
+	// stable, unique Name. Required by downstream consumers (router targets,
+	// IR validators, dump readability) — the alternative is empty, which then
+	// collides across multiple anonymous windows.
+	if w.Name == "" {
+		w.Name = fmt.Sprintf("window_L%d", vn.Pos.Line)
+	}
 	return w
 }
 
