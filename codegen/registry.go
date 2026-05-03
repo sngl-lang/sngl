@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"slices"
+	"sort"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -36,24 +37,36 @@ func RegisterPlatform(p PlatformGenerator) {
 	platforms[name] = p
 }
 
-// CollectLanguages returns all registered languages as checker.Language slices.
+// CollectLanguages returns all registered languages as checker.Language slices,
+// ordered by language identifier.
 func CollectLanguages() []ir.Language {
 	langMu.RLock()
 	defer langMu.RUnlock()
+	names := make([]string, 0, len(langs))
+	for name := range langs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
 	out := make([]ir.Language, 0, len(langs))
-	for _, l := range langs {
-		out = append(out, l)
+	for _, name := range names {
+		out = append(out, langs[name])
 	}
 	return out
 }
 
-// CollectPlatforms returns all registered platforms as checker.Platform slices.
+// CollectPlatforms returns all registered platforms as checker.Platform slices,
+// ordered by platform identifier.
 func CollectPlatforms() []ir.Platform {
 	platMu.RLock()
 	defer platMu.RUnlock()
+	names := make([]string, 0, len(platforms))
+	for name := range platforms {
+		names = append(names, name)
+	}
+	sort.Strings(names)
 	out := make([]ir.Platform, 0, len(platforms))
-	for _, p := range platforms {
-		out = append(out, p)
+	for _, name := range names {
+		out = append(out, platforms[name])
 	}
 	return out
 }
@@ -72,7 +85,7 @@ func LookupPlatform(platform string) PlatformGenerator {
 	return platforms[platform]
 }
 
-// Langs returns the names of all registered languages.
+// Langs returns the names of all registered languages, sorted.
 func Langs() []string {
 	langMu.RLock()
 	defer langMu.RUnlock()
@@ -80,10 +93,11 @@ func Langs() []string {
 	for name := range langs {
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
 }
 
-// Platforms returns the names of all registered platforms.
+// Platforms returns the names of all registered platforms, sorted.
 func Platforms() []string {
 	platMu.RLock()
 	defer platMu.RUnlock()
@@ -91,10 +105,11 @@ func Platforms() []string {
 	for name := range platforms {
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
 }
 
-// PlatformsForLang returns the platform names that support the given language.
+// PlatformsForLang returns the platform names that support the given language, sorted.
 func PlatformsForLang(lang string) []string {
 	platMu.RLock()
 	defer platMu.RUnlock()
@@ -104,5 +119,6 @@ func PlatformsForLang(lang string) []string {
 			names = append(names, name)
 		}
 	}
+	sort.Strings(names)
 	return names
 }
