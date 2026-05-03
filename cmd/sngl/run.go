@@ -156,7 +156,11 @@ func runRun(cmd *cobra.Command, args []string) error {
 	defer os.RemoveAll(tmpDir)
 
 	// Generate
-	if err := generateTarget(file, pkg, target, tmpDir, nil, true); err != nil {
+	var fileAssets []codegen.FileAsset
+	for _, fa := range optCfg.FileAssets {
+		fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
+	}
+	if err := generateTarget(file, pkg, target, tmpDir, fileAssets, true); err != nil {
 		return err
 	}
 

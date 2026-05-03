@@ -142,8 +142,13 @@ func runBuild(cmd *cobra.Command, args []string) error {
 				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 			}
 
+			var fileAssets []codegen.FileAsset
+			for _, fa := range optCfg.FileAssets {
+				fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
+			}
+
 			start = time.Now()
-			if err := generateTarget(filename, pkg, target, outDir, nil, quiet(cmd)); err != nil {
+			if err := generateTarget(filename, pkg, target, outDir, fileAssets, quiet(cmd)); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
