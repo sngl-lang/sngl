@@ -1,0 +1,16 @@
+// Bug: struct literal spread `...x` skips type compatibility check.
+// Per audit (internal/checker/expr.go:815-820): spread fields are added
+// without verifying the source type matches the target struct's fields.
+struct Pair {
+    a int = 0
+    b int = 0
+}
+struct Other {
+    x string = ""
+}
+
+component main {
+    var o = Other{x="hi"}
+    var p = Pair{...o, a=1} // ERROR(check) "spread"
+    text(value="x")
+}

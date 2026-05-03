@@ -831,7 +831,11 @@ func (f *formatter) writeExpr(e ast.Expr) {
 func (f *formatter) writeLiteral(lit *ast.LiteralExpr) {
 	switch lit.Kind {
 	case ast.LiteralStringQuoted:
-		f.writef("%q", lit.Raw)
+		// Re-escape via the interpolation rules so that bare `{`/`}` in the
+		// decoded literal don't reparse as the start of an interpolation.
+		f.write(`"`)
+		f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
+		f.write(`"`)
 	case ast.LiteralStringBackticked:
 		f.write("`")
 		f.write(lit.Raw)
@@ -947,7 +951,7 @@ func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
 	}
 	for _, part := range x.Parts {
 		if lit, ok := part.(*ast.LiteralExpr); ok {
-			f.write(lit.Raw)
+			f.write(escapeInterpLiteral(lit.Raw, x.Style))
 		} else {
 			f.write("{")
 			f.writeExpr(part)
@@ -962,6 +966,37 @@ func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
 	default:
 		f.write(`"`)
 	}
+}
+
+// escapeInterpLiteral re-escapes a literal segment of an interpolated string
+// so that round-tripping through Format → Parse preserves meaning. Brace
+// escapes (`\{`, `\}`) get added back: lexed segments hold the decoded
+// content, so a literal `{` in the segment would otherwise be re-parsed as
+// the start of an interpolation and a `\` as a stray escape.
+func escapeInterpLiteral(s string, style ast.StringStyle) string {
+	if style == ast.StyleRaw {
+		return s
+	}
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '{':
+			b.WriteString(`\{`)
+		case '}':
+			b.WriteString(`\}`)
+		case '"':
+			if style == ast.StyleTriple {
+				b.WriteRune(r)
+			} else {
+				b.WriteString(`\"`)
+			}
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func (f *formatter) writeLambda(x *ast.LambdaExpr) {

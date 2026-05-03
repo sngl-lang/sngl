@@ -267,10 +267,50 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
+	// User-attached method on a primitive type — emit as a free function call
+	// because Go doesn't allow methods on int/float/string/bool/etc. The
+	// function lifts to TypeNameMethodName (e.g. `int.double` → `IntDouble`).
+	if isPrimitiveTypeName(receiverName) && gc.userMethodKnown(receiverName, method) {
+		goName := ExportName(receiverName) + ExportName(method)
+		return goName + "(" + strings.Join(args, ", ") + ")"
+	}
+
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// userMethodKnown reports whether a method qualName has a user-defined
+// implementation in the package or in any component. Used to decide whether
+// to emit a primitive-receiver call as a free function.
+func (gc *GoIRContext) userMethodKnown(receiver, method string) bool {
+	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
+		return false
+	}
+	for _, f := range gc.Ctx.Pkg.Funcs {
+		if f.Receiver == receiver && f.Name == method {
+			return true
+		}
+	}
+	for _, comp := range gc.Ctx.Pkg.Components {
+		for _, f := range comp.Funcs {
+			if f.Receiver == receiver && f.Name == method {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isPrimitiveTypeName reports whether a SNGL receiver type name refers to a
+// primitive type whose Go representation cannot host methods directly.
+func isPrimitiveTypeName(name string) bool {
+	switch name {
+	case "int", "float", "bool", "string", "list", "option":
+		return true
+	}
+	return false
 }
 
 // evalErrorAwareCall emits Go statements for a fallible call whose error

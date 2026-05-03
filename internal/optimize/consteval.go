@@ -427,14 +427,27 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	return nil
 }
 
+// numericOrNativeEq compares two folded constants. When both sides are
+// numeric, comparison happens after promotion to float so that
+// `1 == 1.0` folds to true (matching the language's mixed-numeric == rule).
+// For non-numeric pairs, it falls back to Go's native ==.
+func numericOrNativeEq(left, right any) bool {
+	lf, lok := toFloat(left)
+	rf, rok := toFloat(right)
+	if lok && rok {
+		return lf == rf
+	}
+	return left == right
+}
+
 // --- Arithmetic and comparison helpers (operate on Go values) ---
 
 func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
 	switch op {
 	case ast.BinEq:
-		return left == right, true
+		return numericOrNativeEq(left, right), true
 	case ast.BinNeq:
-		return left != right, true
+		return !numericOrNativeEq(left, right), true
 	case ast.BinAnd:
 		lb, lok := left.(bool)
 		rb, rok := right.(bool)
@@ -689,6 +702,48 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if ok {
 			return math.Sqrt(x), true
 		}
+	case "float.sin":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Sin(x), true
+		}
+	case "float.cos":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Cos(x), true
+		}
+	case "float.tan":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Tan(x), true
+		}
+	case "float.asin":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Asin(x), true
+		}
+	case "float.acos":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Acos(x), true
+		}
+	case "float.atan":
+		x, ok := toFloat(args[0])
+		if ok {
+			return math.Atan(x), true
+		}
+	case "float.atan2":
+		y, yok := toFloat(args[0])
+		x, xok := toFloat(args[1])
+		if yok && xok {
+			return math.Atan2(y, x), true
+		}
+	case "float.pow":
+		x, xok := toFloat(args[0])
+		y, yok := toFloat(args[1])
+		if xok && yok {
+			return math.Pow(x, y), true
+		}
 	case "string.length":
 		if s, ok := args[0].(string); ok {
 			return len(s), true
@@ -721,6 +776,31 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		new_, nok := args[2].(string)
 		if sok && ook && nok {
 			return strings.ReplaceAll(s, old, new_), true
+		}
+	case "string.indexOf":
+		s, sok := args[0].(string)
+		sub, subok := args[1].(string)
+		if sok && subok {
+			return strings.Index(s, sub), true
+		}
+	case "string.substring":
+		s, sok := args[0].(string)
+		start, stok := toInt(args[1])
+		end, eok := toInt(args[2])
+		if sok && stok && eok && start >= 0 && end <= len(s) && start <= end {
+			return s[start:end], true
+		}
+	case "string.startsWith":
+		s, sok := args[0].(string)
+		pre, pok := args[1].(string)
+		if sok && pok {
+			return strings.HasPrefix(s, pre), true
+		}
+	case "string.endsWith":
+		s, sok := args[0].(string)
+		suf, sufok := args[1].(string)
+		if sok && sufok {
+			return strings.HasSuffix(s, suf), true
 		}
 	}
 	return nil, false

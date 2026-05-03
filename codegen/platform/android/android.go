@@ -77,7 +77,11 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 		return nil, fmt.Errorf("android: unsupported lang %q", c.lang)
 	}
 	c.ctx = codegen.NewCodegenCtx(req, "android")
-	c.cfg = (&Generator{}).configFromRequest(req)
+	cfg, err := (&Generator{}).configFromRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	c.cfg = cfg
 	if c.lang == "go" {
 		c.cfg.GoLib = true
 	}
@@ -99,12 +103,12 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 	}
 }
 
-func (g *Generator) configFromRequest(req *codegen.Request) Config {
+func (g *Generator) configFromRequest(req *codegen.Request) (Config, error) {
 	var cfg Config
 	if err := codegen.ApplyOptions(&cfg, req.Options); err != nil {
-		panic(fmt.Errorf("android: configFromRequest: %w", err))
+		return Config{}, fmt.Errorf("android: configFromRequest: %w", err)
 	}
-	return cfg.withDefaults()
+	return cfg.withDefaults(), nil
 }
 
 func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error) {

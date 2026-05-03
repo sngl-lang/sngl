@@ -1,0 +1,11 @@
+// Bug: const forward references work in backward order but not forward order.
+// Per audit (internal/checker/checker.go:213-255): pass1 walks decls in source
+// order so const A = B fails before B is registered, even when B is itself a
+// const. Backward order works. The diagnostic also misleads — it labels B as
+// "non-const" when the real reason is that B is unregistered at this point.
+// Compare: swap the two const lines and the file typechecks clean.
+const A = B + 1 // ERROR(check) "forward"
+const B = 10
+component main {
+    text(value="{A}")
+}

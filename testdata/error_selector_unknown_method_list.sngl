@@ -1,0 +1,6 @@
+// Bug: unknown method on list typechecks silently.
+component main {
+    var L = [1, 2, 3]
+    var bad = L.notReal() // ERROR(check) "no method"
+    text(value="x")
+}

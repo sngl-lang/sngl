@@ -1,0 +1,6 @@
+// Bug: unknown field on bool typechecks silently.
+component main {
+    var b = true
+    var bad = b.fakeField // ERROR(check) "no field"
+    text(value="x")
+}

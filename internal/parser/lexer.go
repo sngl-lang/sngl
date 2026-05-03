@@ -295,6 +295,7 @@ func (l *lexer) NextToken() Token {
 				l.advance()
 				return l.tok(AND, "&&", startLine, startCol)
 			}
+			l.errors = append(l.errors, fmt.Sprintf("%d:%d: unexpected character %q", startLine, startCol, "&"))
 			return l.tok(ILLEGAL, "&", startLine, startCol)
 		case '|':
 			if l.peek() == '|' {
@@ -303,6 +304,7 @@ func (l *lexer) NextToken() Token {
 			}
 			return l.tok(PIPE, "|", startLine, startCol)
 		default:
+			l.errors = append(l.errors, fmt.Sprintf("%d:%d: unexpected character %q", startLine, startCol, string(ch)))
 			return l.tok(ILLEGAL, string(ch), startLine, startCol)
 		}
 	}
@@ -433,6 +435,8 @@ func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) 
 					sb.WriteRune('\\')
 				case '{':
 					sb.WriteRune('{')
+				case '}':
+					sb.WriteRune('}')
 				case '0':
 					sb.WriteRune(0)
 				case 'x':

@@ -4,10 +4,32 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/spf13/cobra"
 )
+
+// atomicWrite replaces filename with data via a sibling temp file +
+// rename, so a partial write never leaves the destination corrupted.
+func atomicWrite(filename string, data []byte) error {
+	dir := filepath.Dir(filename)
+	tmp, err := os.CreateTemp(dir, ".sngl-fmt-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	return os.Rename(tmpName, filename)
+}
 
 var fmtCmd = &cobra.Command{
 	Use:   "fmt [file|dir...]",
@@ -62,15 +84,16 @@ func runFmt(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		f, err := os.Create(filename)
-		if err != nil {
+		// Atomic write: format into a buffer, then replace the original via
+		// rename. Truncating the source before writing risks corrupting it
+		// if FormatTo errors mid-write.
+		var buf bytes.Buffer
+		if _, err := parser.FormatTo(doc, &buf); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			unformatted = true
 			continue
 		}
-		_, err = parser.FormatTo(doc, f)
-		f.Close()
-		if err != nil {
+		if err := atomicWrite(filename, buf.Bytes()); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			unformatted = true
 			continue

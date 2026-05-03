@@ -1,0 +1,6 @@
+// Bug: unknown field on float typechecks silently.
+component main {
+    var f = 3.14
+    var bad = f.junkField // ERROR(check) "no field"
+    text(value="x")
+}

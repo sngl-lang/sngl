@@ -25,6 +25,21 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	relPath := strings.TrimPrefix(uri, "file://")
 	absDir := filepath.Join(dir, relPath)
 
+	// Guard against path traversal: the resolved path must stay under the
+	// importing project's directory. Anything escaping (e.g. `../../etc`)
+	// is rejected up front.
+	cleanDir, derr := filepath.Abs(filepath.Clean(dir))
+	if derr != nil {
+		return nil, fmt.Errorf("file:// resolve: %w", derr)
+	}
+	cleanAbs, aerr := filepath.Abs(filepath.Clean(absDir))
+	if aerr != nil {
+		return nil, fmt.Errorf("file:// resolve: %w", aerr)
+	}
+	if cleanAbs != cleanDir && !strings.HasPrefix(cleanAbs, cleanDir+string(filepath.Separator)) {
+		return nil, fmt.Errorf("file:// import %q escapes project directory", relPath)
+	}
+
 	info, err := os.Stat(absDir)
 	if err != nil {
 		return nil, fmt.Errorf("file asset directory %q not found: %w", relPath, err)

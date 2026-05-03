@@ -85,7 +85,23 @@ func (t *Translator) TypeToNative(hint string) string {
 }
 
 func (t *Translator) ExportName(name string) string {
+	if kotlinHardKeywords[name] {
+		return "`" + name + "`"
+	}
 	return name
+}
+
+// kotlinHardKeywords lists Kotlin hard keywords that cannot be used as bare
+// identifiers. Colliding SNGL identifiers are wrapped in backticks (Kotlin's
+// escape syntax).
+var kotlinHardKeywords = map[string]bool{
+	"as": true, "break": true, "class": true, "continue": true,
+	"do": true, "else": true, "false": true, "for": true,
+	"fun": true, "if": true, "in": true, "interface": true,
+	"is": true, "null": true, "object": true, "package": true,
+	"return": true, "super": true, "this": true, "throw": true,
+	"true": true, "try": true, "typealias": true, "typeof": true,
+	"val": true, "var": true, "when": true, "while": true,
 }
 
 func binaryOpStr(op ast.BinaryOp) string {

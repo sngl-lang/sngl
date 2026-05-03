@@ -8,8 +8,11 @@ import (
 	"modernc.org/scanner"
 )
 
-// Parse parses SNGL v2 source into an AST Document.
-func Parse(filename string, src []byte) (*ast.Document, error) {
+// Parse parses SNGL v2 source into an AST Document. Panics in the parser or
+// AST builder are converted into errors so callers don't crash on malformed
+// input (e.g. the `->` arrow form which the lexer accepts but the grammar
+// has no rule for).
+func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 	tokens, lexErrs := Tokenize(string(src))
 	var errs []error
 	for _, e := range lexErrs {
@@ -27,8 +30,16 @@ func Parse(filename string, src []byte) (*ast.Document, error) {
 		return &ast.Document{}, errors.Join(errs...)
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			doc = &ast.Document{}
+			errs = append(errs, fmt.Errorf("%s: parser panic: %v", filename, r))
+			err = errors.Join(errs...)
+		}
+	}()
+
 	b := newBuilder(filename, filtered, comments)
-	doc := b.buildDocument(body(tree))
+	doc = b.buildDocument(body(tree))
 	return doc, errors.Join(errs...)
 }
 

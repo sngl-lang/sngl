@@ -175,6 +175,16 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
+	// Also run lowering so the dump matches what codegen actually consumes.
+	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
+		if lang := codegen.LookupLang(target.Lang); lang != nil {
+			caps := plat.Capabilities().Merge(lang.Capabilities())
+			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+				return err
+			}
+		}
+	}
+
 	doc = ir.Convert(pkg)
 	return dumpDocument(f, doc)
 }
@@ -211,6 +221,16 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+	// Lower as well so analysis reflects post-lowering shape.
+	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
+		if lang := codegen.LookupLang(target.Lang); lang != nil {
+			caps := plat.Capabilities().Merge(lang.Capabilities())
+			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+				return err
+			}
+		}
+	}
 
 	return dumpDocument(f, codegen.AnalyzeCommon(pkg))
 }

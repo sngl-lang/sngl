@@ -55,6 +55,9 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 
 	for _, f := range pkg.Funcs {
 		a.FuncNames[f.Name] = true
+		if f.Receiver != "" {
+			a.FuncNames[f.Receiver+"."+f.Name] = true
+		}
 		if IsComputed(f) {
 			a.ModelFields[f.Name] = true
 			a.ComputedFields[f.Name] = true
@@ -76,6 +79,9 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 			}
 			for _, f := range comp.Funcs {
 				a.FuncNames[f.Name] = true
+				if f.Receiver != "" {
+					a.FuncNames[f.Receiver+"."+f.Name] = true
+				}
 				if IsComputed(f) {
 					a.ModelFields[f.Name] = true
 					a.ComputedFields[f.Name] = true

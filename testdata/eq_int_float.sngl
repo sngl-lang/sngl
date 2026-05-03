@@ -1,0 +1,9 @@
+// Documents that mixed numeric `==` typechecks AND folds correctly.
+// Earlier the optimizer (consteval.go) compared Go-native values with `==`,
+// so `1 == 1.0` folded to false (int vs float64 mismatch) and the wrong
+// branch survived dead-code elimination. The fix promotes both sides to
+// float for the comparison, matching the language's mixed-numeric semantics.
+component main {
+    var ok = 1 == 1.0
+    text(value="{ok}")
+}

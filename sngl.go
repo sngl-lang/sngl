@@ -3,6 +3,7 @@
 package sngl
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -14,11 +15,20 @@ import (
 )
 
 // Parse reads SNGL source from r and returns the parsed document AST.
-func Parse(filename string, r io.Reader) (*ast.Document, error) {
-	src, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
+//
+// Parser panics (e.g. unhandled grammar paths) are converted to errors so
+// callers — CLI, LSP, playground — never crash on malformed input.
+func Parse(filename string, r io.Reader) (doc *ast.Document, err error) {
+	src, rerr := io.ReadAll(r)
+	if rerr != nil {
+		return nil, rerr
 	}
+	defer func() {
+		if p := recover(); p != nil {
+			doc = nil
+			err = fmt.Errorf("parser panic on %s: %v", filename, p)
+		}
+	}()
 	return parser.Parse(filename, src)
 }
 

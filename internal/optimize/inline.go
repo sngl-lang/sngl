@@ -115,6 +115,47 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 				return true
 			}
 		}
+	case *ir.For:
+		if callsFunc(n.Iter, target) {
+			return true
+		}
+		for _, s := range n.Body {
+			if callsFuncStmt(s, target) {
+				return true
+			}
+		}
+	case *ir.PlatformFilter:
+		for _, s := range n.Body {
+			if callsFuncStmt(s, target) {
+				return true
+			}
+		}
+	case *ir.NodeInst:
+		for _, p := range n.Props {
+			if callsFunc(p.Value, target) {
+				return true
+			}
+		}
+		for _, child := range n.Children {
+			if callsFuncStmt(child, target) {
+				return true
+			}
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil {
+				for _, s := range h.Func.Block {
+					if callsFuncStmt(s, target) {
+						return true
+					}
+				}
+			}
+		}
+	case *ir.Window:
+		for _, s := range n.Body {
+			if callsFuncStmt(s, target) {
+				return true
+			}
+		}
 	case *ir.Assign:
 		return callsFunc(n.Value, target)
 	case *ir.CallStmt:
@@ -125,6 +166,8 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 		return callsFunc(n.Init, target)
 	case *ir.Emit:
 		return callsFuncInArgs(n.Args, target)
+	case *ir.Toggle:
+		return callsFunc(n.Target, target)
 	}
 	return false
 }

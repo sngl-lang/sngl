@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
@@ -34,9 +35,13 @@ func Analyze(content, filename string, fsys fs.FS, dir string, resolve checker.I
 			if d.Pos.IsValid() {
 				rng = AstPosToRange(d.Pos)
 			}
+			sev := SeverityError
+			if d.Severity == ir.Warning {
+				sev = SeverityWarning
+			}
 			diags = append(diags, Diagnostic{
 				Range:    rng,
-				Severity: SeverityError,
+				Severity: sev,
 				Source:   "sngl",
 				Message:  d.Msg,
 			})

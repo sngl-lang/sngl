@@ -672,7 +672,45 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 
 	args := c.checkCallArgs(call.Args, nil)
+	if isPrimitiveMethodReceiver(receiver) {
+		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
+	}
 	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args}
+}
+
+// isPrimitiveMethodReceiver reports whether a method-call receiver type's full
+// method set is known statically — only stdlib + user-attached methods, no
+// dynamic dispatch. When LookupMethod misses on such a receiver the
+// missing method is a real bug, not a possibility we have to leave open.
+func isPrimitiveMethodReceiver(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
+		ir.TypeList, ir.TypeOption:
+		return true
+	}
+	return false
+}
+
+// hasNoLegitimateFields reports whether a scalar primitive type cannot have
+// any selector fields. Used to surface "no field X on type Y" diagnostics that
+// would otherwise silently degrade to TypDyn. Kept conservative: only the
+// pure-scalar primitives (int/float/bool) qualify because every other type
+// kind in the language has at least one legitimate field-style accessor
+// (color.r, list.length, struct fields, component vars/props, enum
+// members, etc.) or carries no shape information at all (dyn, generic
+// params, anonymous structs).
+func hasNoLegitimateFields(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		return true
+	}
+	return false
 }
 
 // callRetType returns the expression type a call through sig should produce.
@@ -763,6 +801,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeString) {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
+		if hasNoLegitimateFields(operand) {
+			c.error(x.Pos, "no field %q on type %s", x.Field, operand)
+		}
 	}
 
 	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
@@ -815,6 +856,18 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	for _, f := range x.Fields {
 		if f.Spread {
 			val := c.checkExpr(f.Value)
+			// Spread source must be the same struct type as the literal target,
+			// otherwise the field merge is meaningless and would mis-shape the
+			// resulting value at codegen time.
+			if sd != nil {
+				srcType := exprType(val)
+				if srcType != nil && srcType.Kind != ir.TypeDyn && srcType.Kind != ir.TypeInvalid {
+					srcDecl, _ := srcType.Decl.(*ir.StructDef)
+					if srcType.Kind != ir.TypeStruct || srcDecl != sd {
+						c.error(x.Pos, "cannot spread %s into struct %s", srcType, sd.Name)
+					}
+				}
+			}
 			fields = append(fields, ir.FieldInit{Value: val, Spread: true})
 			continue
 		}
@@ -1269,17 +1322,27 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		} else {
 			// Compound assignment: both sides must be numeric (or string for +=).
+			// The value type must be assignable to the target type so that any
+			// implicit numeric widening is materialized as ir.Conversion.
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn {
 				if x.Op == ast.AssignAdd && targetType.Kind == ir.TypeString {
 					// string += string is fine.
 				} else if !targetType.IsNumeric() || !valueType.IsNumeric() {
 					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+				} else if !valueType.IsAssignableTo(targetType) {
+					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
+				} else {
+					valueExpr = wrapIfNeeded(valueExpr, targetType)
 				}
 			}
 		}
 		return &ir.Assign{AST: x, Target: targetExpr, Op: x.Op, Value: valueExpr}
 	case *ast.ToggleStmt:
 		targetExpr := c.checkExpr(x.Target)
+		t := exprType(targetExpr)
+		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
+			c.error(x.Pos, "toggle target must be bool, got %s", t)
+		}
 		return &ir.Toggle{AST: x, Target: targetExpr}
 	case *ast.IncDecStmt:
 		op := ast.BinAdd

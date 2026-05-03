@@ -511,7 +511,18 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 		// Validate const initializer only references consts/literals.
 		if spec.Default != nil {
 			if name := c.nonConstRef(spec.Default); name != "" {
-				c.error(decl.Pos, "const initializer references non-const %q", name)
+				// Forward-reference: a plain identifier that isn't yet in scope.
+				// Sentinel names like "<function call>" come from non-ident
+				// non-const refs and stay in the original "non-const" wording.
+				if !strings.HasPrefix(name, "<") {
+					if _, declared := c.scope.Lookup(name); !declared {
+						c.error(decl.Pos, "const initializer forward-references %q (declare it earlier)", name)
+					} else {
+						c.error(decl.Pos, "const initializer references non-const %q", name)
+					}
+				} else {
+					c.error(decl.Pos, "const initializer references non-const %q", name)
+				}
 			}
 			// Type check initializer.
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -693,6 +704,10 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			}
 		}
 		for _, name := range spec.Names {
+			if _, exists := c.scope.LookupLocal(name); exists {
+				c.error(decl.Pos, "duplicate declaration of %q", name)
+				continue
+			}
 			v := &ir.Var{
 				AST:  decl,
 				Name: name,
@@ -1549,6 +1564,11 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
 			c.scope.Declare(fn)
+		} else {
+			// Component-internal type-attached method (e.g. `func int.double`
+			// inside a component): register on the symbol table so method
+			// lookup at call sites finds it.
+			c.symtab.RegisterMethod(fn.Receiver, fn)
 		}
 	}
 
