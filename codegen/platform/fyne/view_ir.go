@@ -128,8 +128,8 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 	id := vc.containerCount
 	vc.containerCount++
-	fieldName := fmt.Sprintf("ifBox%d", id)
-	vc.addField(fieldName, "*fyne.Container")
+	bodyField := fmt.Sprintf("ifBox%d", id)
+	vc.addField(bodyField, "*fyne.Container")
 
 	innerVar := resultVar + "Inner"
 	vc.line("var %s fyne.CanvasObject", innerVar)
@@ -137,16 +137,44 @@ func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 		vc.renderStmt(child, innerVar)
 	}
 	vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", innerVar, innerVar)
-	vc.line("m.%s = container.NewStack(%s)", fieldName, innerVar)
+	vc.line("m.%s = container.NewStack(%s)", bodyField, innerVar)
+
+	var elseField string
+	if len(s.Else) > 0 {
+		elseField = fmt.Sprintf("elseBox%d", id)
+		vc.addField(elseField, "*fyne.Container")
+		elseInnerVar := resultVar + "ElseInner"
+		vc.line("var %s fyne.CanvasObject", elseInnerVar)
+		for _, child := range s.Else {
+			vc.renderStmt(child, elseInnerVar)
+		}
+		vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", elseInnerVar, elseInnerVar)
+		vc.line("m.%s = container.NewStack(%s)", elseField, elseInnerVar)
+	}
 
 	cond := vc.gc.EvalExpr(s.Cond)
-	vc.line("if !(%s) { m.%s.Hide() }", cond, fieldName)
-	vc.line("%s = m.%s", resultVar, fieldName)
+	vc.line("if !(%s) { m.%s.Hide() }", cond, bodyField)
+	if elseField != "" {
+		vc.line("if %s { m.%s.Hide() }", cond, elseField)
+	}
+	if elseField != "" {
+		// Group the two sub-stacks into a single result so the parent layout
+		// sees one slot. Ordering matches the source: body first, else second.
+		vc.line("%s = container.NewStack(m.%s, m.%s)", resultVar, bodyField, elseField)
+	} else {
+		vc.line("%s = m.%s", resultVar, bodyField)
+	}
 
 	deps := vc.exprDeps(s.Cond)
 	if len(deps) > 0 {
 		updaterName := fmt.Sprintf("updateIf%d", id)
-		body := fmt.Sprintf("if %s { m.%s.Show() } else { m.%s.Hide() }", cond, fieldName, fieldName)
+		var body string
+		if elseField != "" {
+			body = fmt.Sprintf("if %s { m.%s.Show(); m.%s.Hide() } else { m.%s.Hide(); m.%s.Show() }",
+				cond, bodyField, elseField, bodyField, elseField)
+		} else {
+			body = fmt.Sprintf("if %s { m.%s.Show() } else { m.%s.Hide() }", cond, bodyField, bodyField)
+		}
 		vc.addUpdater(updaterName, body, deps)
 	}
 }
