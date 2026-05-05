@@ -63,6 +63,7 @@ func (c *checker) loadStdlib() *ir.Package {
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
 	}
 
 	var (
@@ -230,7 +231,7 @@ func detectIntrinsicCall(fn *ir.Func) string {
 // buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic
 // definitions. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
 func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
-	pkg := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
+	pkg := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 	for _, def := range defs {
 		params := make([]*ir.Param, len(def.Params))
 		for i, p := range def.Params {

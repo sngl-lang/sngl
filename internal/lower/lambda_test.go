@@ -87,6 +87,7 @@ func TestAnalyzeCapturesOrderStable(t *testing.T) {
 func TestLifterBasicReadOnlyCapture(t *testing.T) {
 	pkg := &ir.Package{
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
 	}
 	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
 	pkg.Vars = []*ir.Var{outerN}
@@ -125,6 +126,7 @@ func TestLifterBasicReadOnlyCapture(t *testing.T) {
 func TestLifterMutableCaptureUsesRefType(t *testing.T) {
 	pkg := &ir.Package{
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
 	}
 	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
 	pkg.Vars = []*ir.Var{outerN}
@@ -157,6 +159,7 @@ func TestLifterFreshNameCollision(t *testing.T) {
 	// pkg already has a struct named __lambda0_caps; lifter must skip past it.
 	pkg := &ir.Package{
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
 		Structs: []*ir.StructDef{
 			{Name: "__lambda0_caps"},
 		},
@@ -214,6 +217,7 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 	// from the outer frame), not &n directly.
 	pkg := &ir.Package{
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
 	}
 	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
 	pkg.Vars = []*ir.Var{outerN}

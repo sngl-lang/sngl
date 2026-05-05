@@ -479,6 +479,12 @@ func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast
 		} else {
 			ident := &ir.Ident{Name: c.Sym.SymName(), Sym: c.Sym, Type: c.Sym.SymType()}
 			if c.Mutable {
+				if v, ok := c.Sym.(*ir.Var); ok {
+					if l.pkg.AddressedVars == nil {
+						l.pkg.AddressedVars = map[*ir.Var]bool{}
+					}
+					l.pkg.AddressedVars[v] = true
+				}
 				fieldValue = &ir.Unary{
 					Op:      ast.UnaryAddr,
 					Operand: ident,

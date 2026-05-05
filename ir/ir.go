@@ -50,6 +50,11 @@ type Package struct {
 	// underlying captured Var. Empty map (not nil) when no lifts have
 	// happened.
 	LiftedCaptures map[*Func]map[Symbol]string
+
+	// AddressedVars records every Var whose address is taken anywhere in the
+	// package — by user code via `&v`, or by NoLambda's lifter when emitting
+	// mutable-capture init. NoRef reads this set to decide which Vars to box.
+	AddressedVars map[*Var]bool
 }
 
 func (p *Package) IsMain() bool {
