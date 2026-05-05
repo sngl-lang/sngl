@@ -269,6 +269,35 @@ func TestFormatRefType(t *testing.T) {
 		"func makeCounter() ref<int> {\n    return null\n}")
 }
 
+func TestFormatUnaryAddrDeref(t *testing.T) {
+	// & (UnaryAddr) and * (UnaryDeref) should round-trip identically.
+	// Checker support for these ops lands in later NoLambda Phase A tasks;
+	// this test exercises parse -> format only.
+	assertFormat(t,
+		`const a = &x`,
+		`const a = &x`)
+
+	assertFormat(t,
+		`const a = *p`,
+		`const a = *p`)
+
+	assertFormat(t,
+		`const a = **q`,
+		`const a = **q`)
+
+	assertFormat(t,
+		`const a = &list[i]`,
+		`const a = &list[i]`)
+
+	assertFormat(t,
+		`const a = f(&x, *p)`,
+		`const a = f(&x, *p)`)
+
+	assertFormat(t,
+		`func bump(r ref<int>) => &r`,
+		`func bump(r ref<int>) => &r`)
+}
+
 func TestFormatFuncType(t *testing.T) {
 	assertFormat(t,
 		`var f func(int, string) bool`,
