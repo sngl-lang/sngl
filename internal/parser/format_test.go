@@ -249,6 +249,26 @@ func TestFormatTypeAnnotations(t *testing.T) {
 		`var items list<int>`)
 }
 
+func TestFormatRefType(t *testing.T) {
+	// ref<T> reuses the generic-type grammar (NamedType{Name:"ref", TypeArgs:...}),
+	// so it should round-trip identically to list<T> / option<T>.
+	assertFormat(t,
+		`var counter ref<int>`,
+		`var counter ref<int>`)
+
+	assertFormat(t,
+		`var label ref<string>`,
+		`var label ref<string>`)
+
+	assertFormat(t,
+		`func bump(r ref<int>) => r`,
+		`func bump(r ref<int>) => r`)
+
+	assertFormat(t,
+		"func makeCounter() ref<int> {\n    return null\n}",
+		"func makeCounter() ref<int> {\n    return null\n}")
+}
+
 func TestFormatFuncType(t *testing.T) {
 	assertFormat(t,
 		`var f func(int, string) bool`,
