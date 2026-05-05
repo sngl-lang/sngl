@@ -435,10 +435,43 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			c.error(x.Pos, "operator - not defined for %s", operand)
 		}
 		typ = operand
+	case ast.UnaryAddr:
+		if !skip && !c.isAddressable(operandExpr) {
+			c.error(x.Pos, "cannot take address of non-lvalue expression")
+		}
+		typ = ir.RefOf(operand)
+	case ast.UnaryDeref:
+		if skip {
+			typ = TypDyn
+		} else if operand.Kind != ir.TypeRef {
+			c.error(x.Pos, "cannot dereference non-ref type %s", operand)
+			typ = TypDyn
+		} else {
+			typ = operand.Elems[0]
+		}
 	default:
 		typ = TypDyn
 	}
 	return &ir.Unary{AST: x, Type: typ, Op: x.Op, Operand: operandExpr}
+}
+
+// isAddressable reports whether e is an lvalue suitable as the operand of `&`.
+// Per the NoLambda spec: Idents resolving to *Var or *Param, Selects bottoming
+// out at one of those, and Index against an addressable list operand.
+func (c *checker) isAddressable(e ir.Expr) bool {
+	switch x := e.(type) {
+	case *ir.Ident:
+		switch x.Sym.(type) {
+		case *ir.Var, *ir.Param:
+			return true
+		}
+		return false
+	case *ir.Select:
+		return c.isAddressable(x.Operand)
+	case *ir.Index:
+		return c.isAddressable(x.Operand)
+	}
+	return false
 }
 
 func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {

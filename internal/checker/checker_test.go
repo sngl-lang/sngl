@@ -329,6 +329,30 @@ func TestUnaryOpValid(t *testing.T) {
 	expectNoErrors(t, `const x = -1.5`)
 }
 
+func TestCheckRefAndDeref(t *testing.T) {
+	expectNoErrors(t, `
+component main {
+    var x int = 0
+    var p ref<int> = &x
+    var y int = *p
+}`)
+}
+
+func TestCheckAddrOfNonLvalue(t *testing.T) {
+	expectError(t, `
+component main {
+    var p ref<int> = &(1 + 2)
+}`, "non-lvalue")
+}
+
+func TestCheckDerefNonRef(t *testing.T) {
+	expectError(t, `
+component main {
+    var x int = 0
+    var y int = *x
+}`, "cannot dereference")
+}
+
 // --- const(expr) assertion ---
 
 func TestConstExprLiteral(t *testing.T) {
