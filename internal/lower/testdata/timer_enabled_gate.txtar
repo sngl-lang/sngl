@@ -11,9 +11,6 @@ component main {
     button(@click { running = true })
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var running bool = false
     var n int = 0

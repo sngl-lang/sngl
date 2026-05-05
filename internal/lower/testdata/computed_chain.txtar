@@ -9,9 +9,6 @@ component main {
     text(value=string(b()))
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var n int = 3
     text(value=string((n + 1) * 2))

@@ -9,9 +9,6 @@ component main {
     text(value=full())
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var first string = "Hello"
     var last string = "World"

@@ -85,6 +85,7 @@ func runGolden(t *testing.T, path string) {
 	}
 
 	got := parser.Format(ir.Convert(pkg))
+	got = stripAutoImports(got)
 	gotBytes := []byte(got)
 
 	if *update {
@@ -95,6 +96,35 @@ func runGolden(t *testing.T, path string) {
 	if !reflect.DeepEqual(gotBytes, expected) {
 		t.Errorf("lowered output mismatch\n--- want ---\n%s\n--- got ---\n%s", expected, gotBytes)
 	}
+}
+
+// stripAutoImports removes leading auto-injected stdlib imports from the
+// formatted output. The lower-pass goldens never reference these imports
+// in their inputs and never need them in their expected outputs; they're
+// noise from the checker's auto-import behavior. Removing them here keeps
+// fixtures focused on the actual lowered output.
+func stripAutoImports(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	skipping := true
+	for _, line := range lines {
+		if skipping {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" {
+				continue
+			}
+			if strings.HasPrefix(trimmed, "import ") &&
+				(strings.Contains(trimmed, `"internal://stdlib"`) ||
+					strings.Contains(trimmed, `"internal://alert"`) ||
+					strings.Contains(trimmed, `"internal://file"`)) {
+				continue
+			}
+			// First non-import, non-blank line ends the skip phase.
+			skipping = false
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
 }
 
 func parseCapsHeader(comment string) (Caps, error) {

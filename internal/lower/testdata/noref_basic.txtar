@@ -11,9 +11,6 @@ component main {
     }
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 struct __ref_int {
     value int
 }

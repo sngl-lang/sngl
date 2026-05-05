@@ -8,9 +8,6 @@ component main {
     text(value=string(double()))
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var n int = 5
     text(value=string(n * 2))

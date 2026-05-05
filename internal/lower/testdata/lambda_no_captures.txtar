@@ -4,9 +4,6 @@ component main {
     var doubler func(int) int = func(x int) => x * 2
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 struct __lambda0_caps {}
 func __lambda0(state __lambda0_caps, x int) int {
     return x * 2

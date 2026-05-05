@@ -5,9 +5,6 @@ component main {
     button(text="+")
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var __n0 text = lower.createNode("text")
     #__n0.value = "hello"

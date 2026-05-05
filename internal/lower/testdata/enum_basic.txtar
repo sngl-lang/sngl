@@ -11,9 +11,6 @@ component main {
     text(value=string(s))
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 enum Status {
     active
     inactive

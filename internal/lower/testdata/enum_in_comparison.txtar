@@ -16,9 +16,6 @@ component main {
     }
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 enum Color {
     red
     green

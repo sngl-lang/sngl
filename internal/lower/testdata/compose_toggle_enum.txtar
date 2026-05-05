@@ -16,9 +16,6 @@ component main {
     button(@click { tick() })
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 enum Mode {
     off
     on

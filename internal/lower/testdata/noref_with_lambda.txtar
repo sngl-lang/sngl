@@ -5,9 +5,6 @@ component main {
     var inc func() = func() { count = count + 1 }
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 struct __lambda0_caps {
     count __ref_int
 }

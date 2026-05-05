@@ -7,9 +7,6 @@ component counter {
     })
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 struct __lambda0_caps {
     count __ref_int
 }

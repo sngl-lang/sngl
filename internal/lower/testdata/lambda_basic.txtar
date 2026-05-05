@@ -5,9 +5,6 @@ component main {
     var addK func(int) int = func(x int) => x + k
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 struct __lambda0_caps {
     k int
 }

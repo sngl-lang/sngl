@@ -7,9 +7,6 @@ component main {
     }
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 component main {
     var __n0 vbox = lower.createNode("vbox")
     var __n1 text = lower.createNode("text")

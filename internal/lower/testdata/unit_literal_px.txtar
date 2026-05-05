@@ -7,9 +7,6 @@ component main {
     var pad length = 2em
 }
 -- expected.sngl --
-import stdlib "internal://stdlib"
-import alert "internal://alert"
-import file "internal://file"
 unit length {
     px
     em = 16
