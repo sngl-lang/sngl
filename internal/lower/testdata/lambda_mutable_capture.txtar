@@ -1,0 +1,20 @@
+caps: NoLambda
+-- input.sngl --
+component main {
+    var n int = 0
+    var inc func() = func() { n = n + 1 }
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+struct __lambda0_caps {
+    n ref<int>
+}
+func __lambda0(state __lambda0_caps) {
+    *state.n = *state.n + 1
+}
+component main {
+    var n int = 0
+    var inc func() = __closure(__lambda0, __lambda0_caps{n = &n})
+}
