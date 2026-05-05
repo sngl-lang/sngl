@@ -1,0 +1,34 @@
+caps: NoLambda
+-- input.sngl --
+component main {
+    var sum int = 0
+    func run() {
+        for x = [1, 2, 3] {
+            var f func() = func() { sum = sum + x }
+            f()
+        }
+    }
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+struct __lambda0_caps {
+    sum ref<int>
+    x int
+}
+func __lambda0(state __lambda0_caps) {
+    *state.sum = *state.sum + state.x
+}
+component main {
+    var sum int = 0
+    func run() {
+        for x = [1, 2, 3] {
+            var f func() = __closure(__lambda0, __lambda0_caps{
+                sum = &sum,
+                x = x,
+            })
+            f()
+        }
+    }
+}

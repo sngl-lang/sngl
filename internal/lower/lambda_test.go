@@ -50,6 +50,23 @@ func TestAnalyzeCapturesParamNotCaptured(t *testing.T) {
 	}
 }
 
+func TestAnalyzeCapturesLoopVar(t *testing.T) {
+	// Lambda body reads outer for-loop variable `x`. LoopVar is a Sym kind
+	// that should be captured (read-only — loop vars are immutable per
+	// iteration in SNGL).
+	loopX := &ir.LoopVar{Name: "x", Type: ir.TypInt}
+	body := []ir.Stmt{
+		&ir.Return{Value: &ir.Ident{Name: "x", Sym: loopX, Type: ir.TypInt}},
+	}
+	caps := analyzeCaptures(body, nil)
+	if len(caps) != 1 || caps[0].Sym != loopX {
+		t.Fatalf("expected LoopVar to be captured; got %+v", caps)
+	}
+	if caps[0].Mutable {
+		t.Errorf("LoopVar should be read-only, not mutable")
+	}
+}
+
 func TestAnalyzeCapturesOrderStable(t *testing.T) {
 	a := &ir.Var{Name: "a", Type: ir.TypInt}
 	b := &ir.Var{Name: "b", Type: ir.TypInt}

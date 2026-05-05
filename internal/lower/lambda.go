@@ -38,7 +38,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			return
 		}
 		switch sym.(type) {
-		case *ir.Var, *ir.Param:
+		case *ir.Var, *ir.Param, *ir.LoopVar:
 			// OK
 		default:
 			return
