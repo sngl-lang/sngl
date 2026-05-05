@@ -126,6 +126,8 @@ func setCapByName(c *Caps, name string) error {
 		c.NoTernary = true
 	case "NoLambda":
 		c.NoLambda = true
+	case "NoRef":
+		c.NoRef = true
 	case "NoUnit":
 		c.NoUnit = true
 	case "NoEnum":

@@ -54,6 +54,15 @@ func lowerNoRef(pkg *ir.Package, _ Caps) error {
 		}
 	}
 
+	// Step 1.5: rewrite Var.Type for ALL Vars, not just addressed ones.
+	// Catches non-addressed Vars whose declared type is ref<T> (e.g.,
+	// `var p ref<int> = &n` — p is not itself addressed but holds a ref),
+	// and composite types like `list<ref<int>>`. rewriteType is idempotent,
+	// so this is a no-op for Vars whose Type contains no TypeRef.
+	for _, v := range collectAllVars(pkg) {
+		v.Type = rw.rewriteType(v.Type)
+	}
+
 	// Step 2: rewrite every Expr and Stmt — reads, writes, & and *, ref<T> types.
 	walkPackage(pkg, walkFuncs{
 		expr:  func(e ir.Expr) ir.Expr { return rw.rewriteExpr(e) },

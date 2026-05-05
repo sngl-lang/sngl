@@ -1,0 +1,29 @@
+caps: NoRef
+-- input.sngl --
+component main {
+    var n int = 0
+    var p ref<int> = &n
+    func get() int {
+        return *p
+    }
+    func set(x int) {
+        n = x + *p
+    }
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+struct __ref_int {
+    value int
+}
+component main {
+    var n __ref_int = __ref_int{value = 0}
+    var p __ref_int = n
+    func get() int {
+        return p.value
+    }
+    func set(x int) {
+        n.value = x + p.value
+    }
+}
