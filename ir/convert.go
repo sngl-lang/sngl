@@ -548,6 +548,23 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		}
 	case *Lambda:
 		return c.convertLambda(e)
+	case *Closure:
+		// Render as a synthetic call: __closure(funcRef, structLit). Debug-only —
+		// not parseable as user syntax; provides readability for `dump lowered`.
+		funcName := "_"
+		if e.Func != nil {
+			funcName = e.Func.Name
+		}
+		args := []ast.ArgOrEventHandler{
+			ast.Arg{Value: &ast.IdentExpr{Name: funcName}},
+		}
+		if e.State != nil {
+			args = append(args, ast.Arg{Value: c.convertExpr(e.State)})
+		}
+		return &ast.CallExpr{
+			Func: &ast.IdentExpr{Name: "__closure"},
+			Args: ast.ArgList{Args: args},
+		}
 	default:
 		return nil
 	}
@@ -713,6 +730,12 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		return nt
 	case TypeOption:
 		nt := &ast.NamedType{Name: "option"}
+		if len(t.Elems) > 0 {
+			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
+		}
+		return nt
+	case TypeRef:
+		nt := &ast.NamedType{Name: "ref"}
 		if len(t.Elems) > 0 {
 			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
 		}
