@@ -188,3 +188,77 @@ func addressLeafVar(e ir.Expr) *ir.Var {
 		}
 	}
 }
+
+// boxRegistry deduplicates synthesized box structs by element-type identity.
+// Element types are compared via canonical type-name strings.
+type boxRegistry struct {
+	pkg    *ir.Package
+	byElem map[string]*ir.StructDef // elem-typename → box StructDef
+}
+
+func newBoxRegistry(pkg *ir.Package) *boxRegistry {
+	return &boxRegistry{pkg: pkg, byElem: map[string]*ir.StructDef{}}
+}
+
+// boxFor returns the synthesized one-field struct definition that boxes elem.
+// Reuses an existing __ref_<elem> if one was already synthesized this pass.
+func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
+	key := canonicalTypeName(elem)
+	if def, ok := r.byElem[key]; ok {
+		return def
+	}
+	def := &ir.StructDef{
+		Name: "__ref_" + key,
+		Fields: []*ir.StructField{
+			{Name: "value", Type: elem},
+		},
+	}
+	r.byElem[key] = def
+	r.pkg.Structs = append(r.pkg.Structs, def)
+	return def
+}
+
+// canonicalTypeName produces a stable, identifier-safe name for elem suitable
+// as a suffix of __ref_. Collisions are avoided by structural-name encoding.
+func canonicalTypeName(t *ir.Type) string {
+	if t == nil {
+		return "dyn"
+	}
+	switch t.Kind {
+	case ir.TypeInt:
+		return "int"
+	case ir.TypeFloat:
+		return "float"
+	case ir.TypeString:
+		return "string"
+	case ir.TypeBool:
+		return "bool"
+	case ir.TypeStruct:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
+		return "anon_struct"
+	case ir.TypeComponent:
+		if t.Decl != nil {
+			if c, ok := t.Decl.(interface{ SymName() string }); ok {
+				return c.SymName()
+			}
+		}
+		return "component"
+	case ir.TypeList:
+		var elem *ir.Type
+		if len(t.Elems) > 0 {
+			elem = t.Elems[0]
+		}
+		return "list_" + canonicalTypeName(elem)
+	case ir.TypeOption:
+		var elem *ir.Type
+		if len(t.Elems) > 0 {
+			elem = t.Elems[0]
+		}
+		return "option_" + canonicalTypeName(elem)
+	case ir.TypeFunc:
+		return "func"
+	}
+	return t.Kind.String()
+}

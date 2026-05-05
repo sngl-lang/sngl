@@ -35,3 +35,27 @@ func TestSeedAddressedVarsFromUnaryAddr(t *testing.T) {
 		t.Errorf("n should be marked addressed")
 	}
 }
+
+func TestBoxRegistryDedupesByElemType(t *testing.T) {
+	pkg := &ir.Package{}
+	r := newBoxRegistry(pkg)
+
+	a := r.boxFor(ir.TypInt)
+	b := r.boxFor(ir.TypInt)
+	if a != b {
+		t.Errorf("same elem type should share box def")
+	}
+
+	c := r.boxFor(ir.TypString)
+	if c == a {
+		t.Errorf("different elem types should not share box def")
+	}
+
+	if a.Name != "__ref_int" || c.Name != "__ref_string" {
+		t.Errorf("wrong canonical names: %q %q", a.Name, c.Name)
+	}
+
+	if len(pkg.Structs) != 2 {
+		t.Errorf("expected 2 box structs in pkg, got %d", len(pkg.Structs))
+	}
+}
