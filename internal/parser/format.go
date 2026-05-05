@@ -118,8 +118,10 @@ var binOpStr = [...]string{
 }
 
 var unaryOpStr = [...]string{
-	ast.UnaryNot: "!",
-	ast.UnaryNeg: "-",
+	ast.UnaryNot:   "!",
+	ast.UnaryNeg:   "-",
+	ast.UnaryAddr:  "&",
+	ast.UnaryDeref: "*",
 }
 
 var assignOpStr = [...]string{

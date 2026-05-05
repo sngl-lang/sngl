@@ -73,6 +73,7 @@
 # str_resume    0x4B  STR_RESUME    }text{
 # triple_start  0x4C  TRIPLE_START  """text{
 # triple_end    0x4D  TRIPLE_END    }text"""
+# amp           0x4E  AMP           &
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -143,6 +144,7 @@ str_end      = `\x4A` .
 str_resume   = `\x4B` .
 triple_start = `\x4C` .
 triple_end   = `\x4D` .
+amp          = `\x4E` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
@@ -352,6 +354,8 @@ UnaryExpr =
       PostfixExpr
     | bang  UnaryExpr
     | minus UnaryExpr
+    | amp   UnaryExpr
+    | star  UnaryExpr
     | kw_const UnaryExpr
     .
 
@@ -370,7 +374,7 @@ CondEqExpr      = CondCmpExpr  { EqOp  CondCmpExpr  } .
 CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
 CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
 CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
-CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr | kw_const CondUnaryExpr .
+CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr | amp CondUnaryExpr | star CondUnaryExpr | kw_const CondUnaryExpr .
 CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 
 # Condition context: no StructLitBody (lbrace is the following StmtBlock),
@@ -460,6 +464,8 @@ Arg =
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
     | minus UnaryExpr ArgExprCont
+    | amp UnaryExpr ArgExprCont
+    | star UnaryExpr ArgExprCont
     | kw_const UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
     .

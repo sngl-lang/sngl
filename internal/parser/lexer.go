@@ -295,8 +295,7 @@ func (l *lexer) NextToken() Token {
 				l.advance()
 				return l.tok(AND, "&&", startLine, startCol)
 			}
-			l.errors = append(l.errors, fmt.Sprintf("%d:%d: unexpected character %q", startLine, startCol, "&"))
-			return l.tok(ILLEGAL, "&", startLine, startCol)
+			return l.tok(AMP, "&", startLine, startCol)
 		case '|':
 			if l.peek() == '|' {
 				l.advance()

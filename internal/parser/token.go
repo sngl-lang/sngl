@@ -62,6 +62,7 @@ const (
 	GTE      TokenType = 0x29 // >=
 	AND      TokenType = 0x2A // &&
 	OR       TokenType = 0x2B // ||
+	AMP      TokenType = 0x4E // & (single ampersand — address-of)
 
 	// Compound assignment
 	PLUS_ASSIGN    TokenType = 0x2C // +=

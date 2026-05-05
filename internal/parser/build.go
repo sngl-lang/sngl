@@ -1387,7 +1387,8 @@ func tokenToBinaryOp(t TokenType) ast.BinaryOp {
 }
 
 func (b *builder) buildUnaryExpr(it nodeIter) ast.Expr {
-	// UnaryExpr = PostfixExpr | bang UnaryExpr | minus UnaryExpr .
+	// UnaryExpr = PostfixExpr | bang UnaryExpr | minus UnaryExpr
+	//           | amp UnaryExpr | star UnaryExpr | kw_const UnaryExpr .
 	if it.done() {
 		return nil
 	}
@@ -1408,6 +1409,14 @@ func (b *builder) buildUnaryExpr(it nodeIter) ast.Expr {
 		pos := b.posFromToken(it.shift())
 		operand := b.buildAnyExpr(&it)
 		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryNeg, Operand: operand}
+	case AMP:
+		pos := b.posFromToken(it.shift())
+		operand := b.buildAnyExpr(&it)
+		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryAddr, Operand: operand}
+	case STAR:
+		pos := b.posFromToken(it.shift())
+		operand := b.buildAnyExpr(&it)
+		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryDeref, Operand: operand}
 	}
 	return b.buildTerminalExpr(&it)
 }
@@ -1893,6 +1902,24 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 				operand = b.buildExprNonTerminal(&it)
 			}
 			base := &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryNeg, Operand: operand}
+			expr := b.applyArgExprCont(&it, base)
+			return ast.Arg{Value: expr}
+		case AMP:
+			pos := b.posFromToken(it.shift())
+			var operand ast.Expr
+			if !it.done() && it.isNonTerminal() {
+				operand = b.buildExprNonTerminal(&it)
+			}
+			base := &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryAddr, Operand: operand}
+			expr := b.applyArgExprCont(&it, base)
+			return ast.Arg{Value: expr}
+		case STAR:
+			pos := b.posFromToken(it.shift())
+			var operand ast.Expr
+			if !it.done() && it.isNonTerminal() {
+				operand = b.buildExprNonTerminal(&it)
+			}
+			base := &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryDeref, Operand: operand}
 			expr := b.applyArgExprCont(&it, base)
 			return ast.Arg{Value: expr}
 		case KW_CONST:
