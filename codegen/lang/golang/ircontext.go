@@ -60,7 +60,7 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 		idx := gc.EvalExpr(n.Idx)
 		return operand + "[" + idx + "]"
 	case *ir.Call:
-		return gc.evalCall(n)
+		return gc.maybeWrapErrorReturn(n, gc.evalCall(n))
 	case *ir.Conversion:
 		return gc.evalConversion(n)
 	case *ir.StructLit:
@@ -176,6 +176,27 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return name
 	}
+}
+
+// maybeWrapErrorReturn wraps a native call whose imported signature is
+// (T, error) so the value can be used as a single Go expression. Without this,
+// calls like `m.issues = jira.Search(...)` lower to `m.issues = jira.Search(...)`
+// — a 2-value RHS against a 1-value LHS — and fail to compile. The Go importer
+// already strips the trailing `error` and records `HasErrorReturn` on
+// `ir.Func`; we honor that here for all eval paths (namespace calls, type
+// methods, plain resolved funcs).
+//
+// The wrap is an IIFE — `func() T { v, _ := f(args); return v }()` — chosen
+// over a top-level helper to keep this fix local to ircontext.go and avoid
+// threading "needs helper" plumbing through every platform's emit pipeline.
+// Errors are silently discarded; the http.go path emits a logging
+// `nativeMustOK` helper for HTTP-action handlers, which is unchanged.
+func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
+	if n.Func == nil || !n.Func.HasErrorReturn || n.Func.Return == nil {
+		return raw
+	}
+	rt := IRTypeToGo(n.Func.Return)
+	return fmt.Sprintf("func() %s { v, _ := %s; return v }()", rt, raw)
 }
 
 func (gc *GoIRContext) evalCall(n *ir.Call) string {

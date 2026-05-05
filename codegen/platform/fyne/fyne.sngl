@@ -1,253 +1,486 @@
 // Fyne platform package.
-// Raw Fyne widgets and containers are implicitly available via APIResolver.
 //
-// Components use metadata props to tell the generator how to produce Go code:
-//   constructor="widget.NewLabel"          — Go constructor function
-//   constructorArgs=[value]                — ordered args; use VariadicChildren{} for variadic
-//   importPath="fyne.io/fyne/v2/widget"    — import path for the constructor's package
-//   updater=".SetText"                     — updater method for reactive arg
-//   updaterProp="value"                    — which prop to watch for updates
-//   entry=true                             — use existing entry infrastructure (input/textarea)
-
-// VariadicChildren is a sentinel: when present in constructorArgs, the codegen
-// renders all child nodes into a []fyne.CanvasObject slice and spreads them.
-struct VariadicChildren {
-    values list<dyn>
-}
+// Each component declares a Blueprint — structured render directives the
+// codegen reads at platform load. The renderer walks each component body, picks
+// the first VisualNode (or the node inside a top-level `if`), and reads its
+// `constructor=Constructor{...}` and `bindings=[...]` args. No platform Go
+// code branches on component name.
+//
+// Imports:
+//   The renderer always emits "fmt", "fyne.io/fyne/v2", "fyne.io/fyne/v2/widget",
+//   "fyne.io/fyne/v2/container" — these baselines cover the BuildUI fallbacks
+//   and the multi-root path. Components that need anything else (canvas, layout,
+//   net/url, etc.) declare it via the Constructor.imports field; the renderer
+//   collects the union across rendered components.
+//
+// Blueprint:
+//   Constructor{goFn, goType, args, prelude, switches, imports}
+//     - args items: Prop{name, transform} | Event{name, signature} |
+//                   Raw{value}  (template tokens: ${prop}, ${id}, ${children})
+//     - prelude: list of raw Go statements emitted in a scope before ctor
+//     - switches: Switch{prop, value, goFn} picks alternate goFn at codegen time
+//   Init{prop, target, transform, quoted}      one-shot setter
+//   Reactive{prop, target, transform}          setter + dep-tracked updater
+//   Event{prop, target, signature, bindParam}  closure assigned after ctor
+//
+// Top-level args on the inner VisualNode:
+//   constructor       Constructor{...}
+//   bindings          list of Init/Reactive/Event records
+//   fieldPrefix       Model field prefix (e.g. "label", "btn")
+//   updaterPrefix     reactive updater name prefix (e.g. "updateLabel")
+//   condProp          wrap render in `if <prop> { ... }` (modal)
+//   transient=true    skip Model storage; assign to caller's resultVar inline
 
 struct Options {
-    // Go package name for the generated files.
     package string
-    // Emit a standalone main() or a library-style module.
     main bool
 }
 
-// --- Core Layout ---
+// --- VBox-style containers ---
 
 component vbox() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component hbox() {
-    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 component stack() {
-    Stack(constructor="container.NewStack", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component spacer() {
-    Spacer(constructor="layout.NewSpacer", constructorArgs=[]) {}
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 component scroll() {
-    Scroll(constructor="container.NewVScroll", constructorArgs=[]) {
-        slot
-    }
-}
-
-// --- Core Text & Media ---
-
-component text() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[value],
-        updater=".SetText",
-        updaterProp="value",
-        value=value
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVScroll",
+            goType="*container.Scroll",
+            args=[Raw{value=`container.NewVBox(${children}...)`}],
+        },
+        transient=true,
     ) {}
-}
-
-component button() {
-    Button(
-        constructor="widget.NewButton",
-        constructorArgs=[text, nil],
-        updater=".SetText",
-        updaterProp="text",
-        text=text
-    ) {}
-}
-
-component image() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[alt],
-        alt=alt
-    ) {}
-}
-
-component input() {
-    Entry(entry=true) {}
-}
-
-component checkbox() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[label],
-        label=label
-    ) {}
-}
-
-// --- Tier 1: Core Input ---
-
-component radio() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component toggle() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[label],
-        label=label
-    ) {}
-}
-
-component select() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[value],
-        value=value
-    ) {}
-}
-
-component textarea() {
-    Entry(entry=true) {}
-}
-
-component datepicker() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[value],
-        value=value
-    ) {}
-}
-
-// --- Tier 2: Feedback & Navigation ---
-
-component progress() {
-    ProgressBar(constructor="widget.NewProgressBar", constructorArgs=[]) {}
-}
-
-component spinner() {
-    Activity(constructor="widget.NewActivity", constructorArgs=[]) {}
-}
-
-component badge() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[value],
-        updater=".SetText",
-        updaterProp="value",
-        value=value
-    ) {}
-}
-
-component divider() {
-    Divider(constructor="widget.NewSeparator", constructorArgs=[]) {}
 }
 
 component card() {
-    Card(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component chip() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[label],
-        label=label
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
     ) {}
 }
 
-component link() {
-    Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[text],
-        text=text
+component radio() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component drawer() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component tooltip() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component popover() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component table() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component tree() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component menu() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+// --- HBox-style containers ---
+
+component hbox() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
     ) {}
 }
 
 component tabs() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component modal() {
-    if open {
-        VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-            slot
-        }
-    }
-}
-
-component drawer() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component tooltip() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component popover() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 component splitview() {
-    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component table() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component tree() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
-}
-
-component menu() {
-    VBox(constructor="container.NewVBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 component menubar() {
-    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 component toolbar() {
-    HBox(constructor="container.NewHBox", constructorArgs=[VariadicChildren{}]) {
-        slot
-    }
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
+}
+
+// --- Spacer ---
+
+component spacer() {
+    Spacer(
+        constructor=Constructor{
+            goFn="layout.NewSpacer",
+            goType="fyne.CanvasObject",
+            imports=["fyne.io/fyne/v2/layout"],
+            args=[],
+        },
+        transient=true,
+    ) {}
+}
+
+// --- Label-rendered widgets ---
+
+component text() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
+}
+
+component badge() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
+}
+
+component divider() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="label", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="label", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
+}
+
+component progress() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
+}
+
+component spinner() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`fmt.Sprint("")`}],
+        },
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
 component avatar() {
     Label(
-        constructor="widget.NewLabel",
-        constructorArgs=[initials],
-        initials=initials
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`fmt.Sprint("")`}],
+        },
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
+}
+
+component chip() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`""`}],
+        },
+        transient=true,
+    ) {}
+}
+
+component datepicker() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`""`}],
+        },
+        transient=true,
+    ) {}
+}
+
+// --- Button ---
+
+component button() {
+    Button(
+        constructor=Constructor{
+            goFn="widget.NewButton",
+            goType="*widget.Button",
+            args=[
+                Prop{name="text", transform="fmt.Sprint"},
+                Event{name="click", signature="func()"},
+            ],
+        },
+        fieldPrefix="btn",
+    ) {}
+}
+
+// --- Hyperlink ---
+
+component link() {
+    Hyperlink(
+        constructor=Constructor{
+            goFn="widget.NewHyperlink",
+            goType="*widget.Hyperlink",
+            imports=["net/url"],
+            prelude=[`linkURL${id}, _ := url.Parse(${href})`],
+            args=[
+                Prop{name="text"},
+                Raw{value=`linkURL${id}`},
+            ],
+        },
+        fieldPrefix="link",
+    ) {}
+}
+
+// --- Image ---
+
+component image() {
+    Image(
+        constructor=Constructor{
+            goFn="canvas.NewImageFromURI",
+            goType="*canvas.Image",
+            imports=["fyne.io/fyne/v2/canvas"],
+            args=[Raw{value=`nil /* TODO: ${src} */`}],
+        },
+        transient=true,
+    ) {}
+}
+
+// --- Checkbox / Toggle ---
+
+component checkbox() {
+    Check(
+        constructor=Constructor{
+            goFn="widget.NewCheck",
+            goType="*widget.Check",
+            args=[
+                Prop{name="label", transform="fmt.Sprint"},
+                Event{name="change", signature="func(b bool)"},
+            ],
+        },
+        fieldPrefix="check",
+    ) {}
+}
+
+component toggle() {
+    Check(
+        constructor=Constructor{
+            goFn="widget.NewCheck",
+            goType="*widget.Check",
+            args=[
+                Prop{name="label", transform="fmt.Sprint"},
+                Event{name="change", signature="func(b bool)"},
+            ],
+        },
+        fieldPrefix="check",
+    ) {}
+}
+
+// --- Select ---
+
+component select() {
+    Select(
+        constructor=Constructor{
+            goFn="widget.NewSelect",
+            goType="*widget.Select",
+            args=[
+                Raw{value="nil"},
+                Event{name="change", signature="func(s string)"},
+            ],
+        },
+        fieldPrefix="sel",
+    ) {}
+}
+
+// --- Modal ---
+
+component modal() {
+    if open {
+        Container(
+            constructor=Constructor{
+                goFn="container.NewVBox",
+                goType="*fyne.Container",
+                args=[Raw{value=`${children}...`}],
+            },
+            transient=true,
+        ) {}
+    }
+}
+
+// --- Entry inputs ---
+
+component input() {
+    Entry(
+        constructor=Constructor{
+            goFn="widget.NewEntry",
+            goType="*widget.Entry",
+            switches=[Switch{prop="type", value="password", goFn="widget.NewPasswordEntry"}],
+        },
+        bindings=[
+            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
+            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
+        ],
+        fieldPrefix="entry",
+        updaterPrefix="updateEntry",
+    ) {}
+}
+
+component textarea() {
+    Entry(
+        constructor=Constructor{
+            goFn="widget.NewMultiLineEntry",
+            goType="*widget.Entry",
+        },
+        bindings=[
+            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
+            Init{prop="rows", target=".SetMinRowsVisible"},
+            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
+        ],
+        fieldPrefix="entry",
+        updaterPrefix="updateEntry",
     ) {}
 }

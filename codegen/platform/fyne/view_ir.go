@@ -33,7 +33,6 @@ type irViewContext struct {
 	buf            *strings.Builder
 	indent         int
 	info           *irAnalysis // for dep tracking (nil in component renders)
-	entryIndex     int
 	widgetFields   []irWidgetField
 	updaters       []irWidgetUpdater
 	labelCount     int
@@ -41,6 +40,15 @@ type irViewContext struct {
 	slotVar        string
 	slotChildren   []ir.Stmt
 	propVals       map[string]ir.Expr
+	// entrySync records (varName → fieldName,target) pairs discovered while
+	// walking blueprint-driven components whose Event bindParam handlers do a
+	// `var = bindParam` assignment. Drives bindData.SetterExtra so SetVar()
+	// keeps the underlying widget in sync.
+	entrySync []entrySyncRec
+	// imports collects Go import paths declared by blueprint-driven
+	// components that were actually rendered into the BuildUI tree. The
+	// emitter unions these with always-on imports for the import block.
+	imports map[string]bool
 
 	// localMode disables Model-field registration: render* helpers emit a
 	// local var declaration and return the bare name, so the same renderStmt
@@ -49,6 +57,26 @@ type irViewContext struct {
 	// widget. Updater registration is also suppressed: the parent updater
 	// re-renders the whole loop body each refresh.
 	localMode bool
+}
+
+func (vc *irViewContext) addImports(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+	if vc.imports == nil {
+		vc.imports = make(map[string]bool)
+	}
+	for _, p := range paths {
+		if p != "" {
+			vc.imports[p] = true
+		}
+	}
+}
+
+type entrySyncRec struct {
+	varName   string // sngl var to sync from
+	fieldName string // Model field of the widget
+	target    string // method to call, e.g. ".SetText"
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
@@ -64,35 +92,31 @@ func (vc *irViewContext) addField(name, goType string) {
 	vc.widgetFields = append(vc.widgetFields, irWidgetField{name, goType})
 }
 
-// allocWidget reserves a widget slot and returns (id, ref, declaredType).
-//   - normal mode: registers a Model field; ref is "m.<prefix><id>".
-//   - local mode: emits "var <prefix><id> <goType>" so the caller can write
-//     "<ref> = NewXxx(...)" with the same syntax used for Model fields.
-func (vc *irViewContext) allocWidget(prefix, goType string) (int, string) {
-	id := vc.labelCount
-	vc.labelCount++
-	name := fmt.Sprintf("%s%d", prefix, id)
+func (vc *irViewContext) addUpdater(name, body string, deps map[string]bool) {
 	if vc.localMode {
-		vc.line("var %s %s", name, goType)
-		return id, name
+		// Loop-body locals can't be referenced from a Model-level updater;
+		// the enclosing for-loop's updater rebuilds the whole body anyway.
+		return
 	}
-	vc.addField(name, goType)
-	return id, "m." + name
+	if len(deps) == 0 {
+		return
+	}
+	vc.updaters = append(vc.updaters, irWidgetUpdater{name: name, body: body, deps: deps})
 }
 
 // counterSnapshot captures the rolling per-kind counters so a block of code
 // can be re-rendered in a separate scope (init body vs updater body of a
 // for-loop) and produce identical local variable names.
 type counterSnapshot struct {
-	label, container, entry int
+	label, container int
 }
 
 func (vc *irViewContext) snapshotCounters() counterSnapshot {
-	return counterSnapshot{vc.labelCount, vc.containerCount, vc.entryIndex}
+	return counterSnapshot{vc.labelCount, vc.containerCount}
 }
 
 func (vc *irViewContext) restoreCounters(s counterSnapshot) {
-	vc.labelCount, vc.containerCount, vc.entryIndex = s.label, s.container, s.entry
+	vc.labelCount, vc.containerCount = s.label, s.container
 }
 
 // withLocalMode runs fn inside a localMode scope, ensuring the flag is
@@ -102,13 +126,6 @@ func (vc *irViewContext) withLocalMode(fn func()) {
 	vc.localMode = true
 	fn()
 	vc.localMode = prev
-}
-
-func (vc *irViewContext) addUpdater(name, body string, deps map[string]bool) {
-	if len(deps) == 0 {
-		return
-	}
-	vc.updaters = append(vc.updaters, irWidgetUpdater{name: name, body: body, deps: deps})
 }
 
 func (vc *irViewContext) exprDeps(expr ir.Expr) map[string]bool {
@@ -210,8 +227,25 @@ func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 
 	innerVar := resultVar + "Inner"
 	vc.line("var %s fyne.CanvasObject", innerVar)
-	for _, child := range s.Body {
-		vc.renderStmt(child, innerVar)
+	switch len(s.Body) {
+	case 0:
+		// Empty body — nothing to render; downstream nil-guard will fall back.
+	case 1:
+		vc.renderStmt(s.Body[0], innerVar)
+	default:
+		// Multiple children share one slot. Each must get a uniquely-named
+		// child variable so prior rendering output isn't clobbered (and so
+		// nested nodes don't collide on `<innerVar>Children` etc.). Wrap the
+		// pieces in a VBox so the slot still holds a single CanvasObject.
+		childrenVar := innerVar + "Children"
+		vc.line("var %s []fyne.CanvasObject", childrenVar)
+		for i, child := range s.Body {
+			childVar := fmt.Sprintf("%sC%d", innerVar, i)
+			vc.line("var %s fyne.CanvasObject", childVar)
+			vc.renderStmt(child, childVar)
+			vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
+		}
+		vc.line("%s = container.NewVBox(%s...)", innerVar, childrenVar)
 	}
 	vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", innerVar, innerVar)
 	vc.line("m.%s = container.NewStack(%s)", bodyField, innerVar)
@@ -222,8 +256,19 @@ func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
 		vc.addField(elseField, "*fyne.Container")
 		elseInnerVar := resultVar + "ElseInner"
 		vc.line("var %s fyne.CanvasObject", elseInnerVar)
-		for _, child := range s.Else {
-			vc.renderStmt(child, elseInnerVar)
+		switch len(s.Else) {
+		case 1:
+			vc.renderStmt(s.Else[0], elseInnerVar)
+		default:
+			elseChildrenVar := elseInnerVar + "Children"
+			vc.line("var %s []fyne.CanvasObject", elseChildrenVar)
+			for i, child := range s.Else {
+				childVar := fmt.Sprintf("%sC%d", elseInnerVar, i)
+				vc.line("var %s fyne.CanvasObject", childVar)
+				vc.renderStmt(child, childVar)
+				vc.line("if %s != nil { %s = append(%s, %s) }", childVar, elseChildrenVar, elseChildrenVar, childVar)
+			}
+			vc.line("%s = container.NewVBox(%s...)", elseInnerVar, elseChildrenVar)
 		}
 		vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", elseInnerVar, elseInnerVar)
 		vc.line("m.%s = container.NewStack(%s)", elseField, elseInnerVar)
@@ -386,194 +431,377 @@ func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
 }
 
 func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
-	switch n.Name {
-	case "vbox", "stack", "scroll", "card", "radio",
-		"drawer", "tooltip", "popover", "table", "tree", "menu":
-		vc.renderContainerVBox(n, resultVar)
-	case "hbox", "tabs", "splitview", "menubar", "toolbar":
-		vc.renderContainerHBox(n, resultVar)
-	case "text", "badge", "divider", "avatar", "progress", "spinner":
-		vc.renderLabel(n, resultVar)
-	case "link":
-		vc.renderLink(n, resultVar)
-	case "button":
-		vc.renderButton(n, resultVar)
-	case "input", "textarea":
-		vc.renderEntry(n, resultVar)
-	case "checkbox":
-		vc.renderCheck(n, resultVar)
-	case "toggle":
-		vc.renderCheck(n, resultVar)
-	case "select":
-		vc.renderSelect(n, resultVar)
-	case "image":
-		vc.renderImage(n, resultVar)
-	case "spacer":
-		vc.line("%s = layout.NewSpacer()", resultVar)
-	case "modal":
-		vc.renderModal(n, resultVar)
-	default:
-		if len(n.Children) > 0 {
-			vc.renderContainerVBox(n, resultVar)
-		} else {
-			vc.line("%s = widget.NewLabel(\"\")", resultVar)
-		}
-	}
-}
-
-func (vc *irViewContext) renderContainerVBox(n *ir.NodeInst, resultVar string) {
-	childrenVar := resultVar + "Children"
-	vc.line("var %s []fyne.CanvasObject", childrenVar)
-	for i, child := range n.Children {
-		childVar := fmt.Sprintf("%sC%d", resultVar, i)
-		vc.line("var %s fyne.CanvasObject", childVar)
-		vc.renderStmt(child, childVar)
-		vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
-	}
-	if n.Name == "scroll" {
-		vc.line("%s = container.NewVScroll(container.NewVBox(%s...))", resultVar, childrenVar)
-	} else {
-		vc.line("%s = container.NewVBox(%s...)", resultVar, childrenVar)
-	}
-}
-
-func (vc *irViewContext) renderContainerHBox(n *ir.NodeInst, resultVar string) {
-	childrenVar := resultVar + "Children"
-	vc.line("var %s []fyne.CanvasObject", childrenVar)
-	for i, child := range n.Children {
-		childVar := fmt.Sprintf("%sC%d", resultVar, i)
-		vc.line("var %s fyne.CanvasObject", childVar)
-		vc.renderStmt(child, childVar)
-		vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
-	}
-	vc.line("%s = container.NewHBox(%s...)", resultVar, childrenVar)
-}
-
-func (vc *irViewContext) renderLabel(n *ir.NodeInst, resultVar string) {
-	content := vc.resolveContentExpr(n)
-	id, ref := vc.allocWidget("label", "*widget.Label")
-
-	vc.line("%s = widget.NewLabel(fmt.Sprint(%s))", ref, content)
-	vc.line("%s = %s", resultVar, ref)
-
-	if vc.localMode {
-		// Updater would target a Model field that doesn't exist for locals.
-		// The enclosing for-loop's updater rebuilds the whole body anyway.
+	if bp := loadBlueprints()[n.Name]; bp != nil {
+		vc.renderFromBlueprint(n, resultVar, bp)
 		return
 	}
+	// Unknown component: best-effort render as a vbox of children or empty label.
+	if len(n.Children) > 0 {
+		vc.renderUnknownContainer(n, resultVar)
+	} else {
+		vc.line("%s = widget.NewLabel(\"\")", resultVar)
+	}
+}
 
-	contentExpr := vc.resolveContentIRExpr(n)
-	if contentExpr != nil {
-		deps := vc.exprDeps(contentExpr)
-		if len(deps) > 0 {
-			updaterName := fmt.Sprintf("updateLabel%d", id)
-			body := fmt.Sprintf("%s.SetText(fmt.Sprint(%s))", ref, content)
-			vc.addUpdater(updaterName, body, deps)
+func (vc *irViewContext) renderUnknownContainer(n *ir.NodeInst, resultVar string) {
+	childrenVar := resultVar + "Children"
+	vc.line("var %s []fyne.CanvasObject", childrenVar)
+	for i, child := range n.Children {
+		childVar := fmt.Sprintf("%sC%d", resultVar, i)
+		vc.line("var %s fyne.CanvasObject", childVar)
+		vc.renderStmt(child, childVar)
+		vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
+	}
+	vc.line("%s = container.NewVBox(%s...)", resultVar, childrenVar)
+}
+
+// renderFromBlueprint emits Go code for a stdlib component using blueprint loaded
+// from fyne.sngl. Replaces the per-component renderXxx methods.
+func (vc *irViewContext) renderFromBlueprint(n *ir.NodeInst, resultVar string, bp *fyneBlueprint) {
+	if bp.CondProp != "" {
+		condExpr := codegen.NodeProp(n, bp.CondProp)
+		if condExpr == nil {
+			return
 		}
-	}
-}
-
-func (vc *irViewContext) renderLink(n *ir.NodeInst, resultVar string) {
-	text := `""`
-	if v := codegen.NodeProp(n, "text"); v != nil {
-		text = vc.gc.EvalExpr(v)
-	} else if v := codegen.NodeProp(n, "value"); v != nil {
-		text = vc.gc.EvalExpr(v)
-	}
-	href := `""`
-	if v := codegen.NodeProp(n, "href"); v != nil {
-		href = vc.gc.EvalExpr(v)
-	}
-	id, ref := vc.allocWidget("link", "*widget.Hyperlink")
-	vc.line("{ linkURL%d, _ := url.Parse(%s); %s = widget.NewHyperlink(%s, linkURL%d) }", id, href, ref, text, id)
-	vc.line("%s = %s", resultVar, ref)
-}
-
-func (vc *irViewContext) renderButton(n *ir.NodeInst, resultVar string) {
-	text := `""`
-	if v := codegen.NodeProp(n, "text"); v != nil {
-		text = vc.gc.EvalExpr(v)
-	} else if v := codegen.NodeProp(n, "label"); v != nil {
-		text = vc.gc.EvalExpr(v)
-	}
-
-	_, ref := vc.allocWidget("btn", "*widget.Button")
-
-	clickHandler := codegen.NodeHandler(n, "click")
-	if clickHandler != nil && clickHandler.Func != nil {
-		vc.line("%s = widget.NewButton(fmt.Sprint(%s), func() {", ref, text)
-		vc.indent++
-		vc.emitEventHandlerBlock(clickHandler.Func.Block)
-		vc.indent--
-		vc.line("})")
-	} else {
-		vc.line("%s = widget.NewButton(fmt.Sprint(%s), nil)", ref, text)
-	}
-	vc.line("%s = %s", resultVar, ref)
-}
-
-func (vc *irViewContext) renderEntry(n *ir.NodeInst, resultVar string) {
-	idx := vc.entryIndex
-	vc.entryIndex++
-	vc.line("%s = m.entry%d", resultVar, idx)
-}
-
-func (vc *irViewContext) renderCheck(n *ir.NodeInst, resultVar string) {
-	label := `""`
-	if v := codegen.NodeProp(n, "label"); v != nil {
-		label = vc.gc.EvalExpr(v)
-	}
-
-	_, ref := vc.allocWidget("check", "*widget.Check")
-
-	changeHandler := codegen.NodeHandler(n, "change")
-	if changeHandler != nil && changeHandler.Func != nil {
-		vc.line("%s = widget.NewCheck(fmt.Sprint(%s), func(b bool) {", ref, label)
-		vc.indent++
-		vc.emitEventHandlerBlock(changeHandler.Func.Block)
-		vc.indent--
-		vc.line("})")
-	} else {
-		vc.line("%s = widget.NewCheck(fmt.Sprint(%s), nil)", ref, label)
-	}
-	vc.line("%s = %s", resultVar, ref)
-}
-
-func (vc *irViewContext) renderSelect(n *ir.NodeInst, resultVar string) {
-	_, ref := vc.allocWidget("sel", "*widget.Select")
-
-	changeHandler := codegen.NodeHandler(n, "change")
-	if changeHandler != nil && changeHandler.Func != nil {
-		vc.line("%s = widget.NewSelect(nil, func(s string) {", ref)
-		vc.indent++
-		vc.emitEventHandlerBlock(changeHandler.Func.Block)
-		vc.indent--
-		vc.line("})")
-	} else {
-		vc.line("%s = widget.NewSelect(nil, nil)", ref)
-	}
-	vc.line("%s = %s", resultVar, ref)
-}
-
-func (vc *irViewContext) renderImage(n *ir.NodeInst, resultVar string) {
-	src := codegen.NodeProp(n, "src")
-	if src != nil {
-		vc.line("%s = canvas.NewImageFromURI(nil) // TODO: resolve %s", resultVar, vc.gc.EvalExpr(src))
-	} else {
-		vc.line("%s = widget.NewLabel(\"[image]\")", resultVar)
-	}
-}
-
-func (vc *irViewContext) renderModal(n *ir.NodeInst, resultVar string) {
-	openExpr := codegen.NodeProp(n, "open")
-	if openExpr != nil {
-		cond := vc.gc.EvalExpr(openExpr)
+		cond := vc.gc.EvalExpr(condExpr)
 		vc.line("if %s {", cond)
 		vc.indent++
-		vc.renderContainerVBox(n, resultVar)
+		vc.renderFromBlueprintBody(n, resultVar, bp)
+		vc.indent--
+		vc.line("}")
+		return
+	}
+	vc.renderFromBlueprintBody(n, resultVar, bp)
+}
+
+func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar string, bp *fyneBlueprint) {
+	if bp.Constructor == nil {
+		vc.line("%s = widget.NewLabel(\"\")", resultVar)
+		return
+	}
+	vc.addImports(bp.Constructor.Imports)
+	prefix := bp.FieldPrefix
+	if prefix == "" {
+		prefix = "w"
+	}
+	id := vc.labelCount
+	fieldName := fmt.Sprintf("%s%d", prefix, id)
+	// target is the expression for the widget reference. Three modes:
+	//   - Transient: not stored, doesn't consume an id; assign to resultVar.
+	//   - localMode (in for-loop body): emit a local var; no Model field.
+	//   - default: store as Model field; reference as m.<fieldName>.
+	var target string
+	switch {
+	case bp.Transient:
+		target = resultVar
+	case vc.localMode:
+		vc.labelCount++
+		vc.line("var %s %s", fieldName, bp.Constructor.GoType)
+		target = fieldName
+	default:
+		vc.labelCount++
+		vc.addField(fieldName, bp.Constructor.GoType)
+		target = "m." + fieldName
+	}
+
+	// If any arg or prelude line references ${children}, emit the children
+	// slice ahead of the ctor so substituteTemplate can splice it in.
+	var childrenVar string
+	if blueprintUsesChildren(bp.Constructor) {
+		childrenVar = resultVar + "Children"
+		vc.line("var %s []fyne.CanvasObject", childrenVar)
+		for i, child := range n.Children {
+			childVar := fmt.Sprintf("%sC%d", resultVar, i)
+			vc.line("var %s fyne.CanvasObject", childVar)
+			vc.renderStmt(child, childVar)
+			vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
+		}
+	}
+
+	// Prelude wraps ctor in a scope so locals (e.g. linkURL%d) don't leak.
+	scoped := len(bp.Constructor.Prelude) > 0
+	if scoped {
+		vc.line("{")
+		vc.indent++
+		for _, line := range bp.Constructor.Prelude {
+			vc.line("%s", substituteTemplate(line, n, vc.gc, id, childrenVar))
+		}
+	}
+
+	// Decide single-line vs multi-line ctor based on whether any arg is an event.
+	hasEvent := false
+	for _, a := range bp.Constructor.Args {
+		if a.Event != "" {
+			hasEvent = true
+			break
+		}
+	}
+
+	goFn := resolveGoFn(bp.Constructor, n)
+	if !hasEvent {
+		args := make([]string, 0, len(bp.Constructor.Args))
+		for _, a := range bp.Constructor.Args {
+			args = append(args, vc.resolveCtorArg(a, n, childrenVar, id))
+		}
+		vc.line("%s = %s(%s)", target, goFn, strings.Join(args, ", "))
+	} else {
+		vc.line("%s = %s(", target, goFn)
+		vc.indent++
+		for _, a := range bp.Constructor.Args {
+			if a.Event != "" {
+				h := codegen.NodeHandler(n, a.Event)
+				if h == nil || h.Func == nil {
+					vc.line("nil,")
+					continue
+				}
+				sig := a.EventSig
+				if sig == "" {
+					sig = "func()"
+				}
+				vc.line("%s {", sig)
+				vc.indent++
+				vc.emitEventHandlerBlock(h.Func.Block)
+				vc.indent--
+				vc.line("},")
+				continue
+			}
+			vc.line("%s,", vc.resolveCtorArg(a, n, childrenVar, id))
+		}
+		vc.indent--
+		vc.line(")")
+	}
+
+	// Init bindings — one-shot setters at construction.
+	for _, b := range bp.Bindings {
+		if b.Kind != bindInit {
+			continue
+		}
+		propExpr := codegen.NodeProp(n, b.Prop)
+		if propExpr == nil {
+			continue
+		}
+		rhs := vc.gc.EvalExpr(propExpr)
+		if b.Quoted {
+			if s, ok := codegen.IRLiteralString(propExpr); ok {
+				rhs = fmt.Sprintf("%q", s)
+			}
+		}
+		if b.Transform != "" {
+			rhs = b.Transform + "(" + rhs + ")"
+		}
+		vc.line("%s%s(%s)", target, b.Target, rhs)
+	}
+
+	// Reactive bindings — emit init setter (unless an Init binding already
+	// did) and register a dep-tracked updater.
+	updaterPrefix := bp.UpdaterPrefix
+	if updaterPrefix == "" {
+		updaterPrefix = "update_" + fieldName
+	}
+	reactiveCount := 0
+	for _, b := range bp.Bindings {
+		if b.Kind != bindReactive {
+			continue
+		}
+		propExpr := codegen.NodeProp(n, b.Prop)
+		if propExpr == nil {
+			continue
+		}
+		rhs := vc.gc.EvalExpr(propExpr)
+		if b.Transform != "" {
+			rhs = b.Transform + "(" + rhs + ")"
+		}
+		body := fmt.Sprintf("%s%s(%s)", target, b.Target, rhs)
+		// Skip inline init when the prop is already wired through the
+		// constructor (the ctor call already sets the value), or when an
+		// explicit Init binding handles it.
+		if !hasInit(bp.Bindings, b.Prop) && !ctorHasProp(bp.Constructor, b.Prop) {
+			vc.line("%s", body)
+		}
+		deps := vc.exprDeps(propExpr)
+		if len(deps) > 0 {
+			updaterName := fmt.Sprintf("%s%d", updaterPrefix, id)
+			if reactiveCount > 0 {
+				updaterName = fmt.Sprintf("%s%d_%d", updaterPrefix, id, reactiveCount)
+			}
+			vc.addUpdater(updaterName, body, deps)
+		}
+		reactiveCount++
+	}
+
+	// Event bindings — assign closure to a field after construction.
+	for _, b := range bp.Bindings {
+		if b.Kind != bindEvent {
+			continue
+		}
+		h := codegen.NodeHandler(n, b.Prop)
+		if h == nil || h.Func == nil {
+			continue
+		}
+		sig := b.Signature
+		if sig == "" {
+			sig = "func()"
+		}
+		// Two-way bind: handler body of `var = bindParam` records entrySync.
+		var bindVar string
+		if b.BindParam != "" {
+			bindVar = extractIRAssignTarget(h.Func.Block)
+			if bindVar != "" && b.SyncTarget != "" && !vc.localMode {
+				vc.entrySync = append(vc.entrySync, entrySyncRec{
+					varName:   bindVar,
+					fieldName: fieldName,
+					target:    b.SyncTarget,
+				})
+			}
+		}
+		vc.line("%s%s = %s {", target, b.Target, sig)
+		vc.indent++
+		if bindVar != "" {
+			// Match the legacy template's behavior: discard the synthesized
+			// handler body (which references `e.value`) and assign the closure
+			// param directly. Then fire affected updaters.
+			vc.line("m.%s = %s", bindVar, b.BindParam)
+			if vc.info != nil {
+				mutated := map[string]bool{bindVar: true}
+				affected := codegen.FindAffected(vc.info.depTracker(), vc.updaters, mutated)
+				if len(affected) > 0 {
+					for _, u := range affected {
+						vc.line("m.%s()", u.name)
+					}
+				} else {
+					vc.line("m.doRefresh()")
+				}
+			} else {
+				vc.line("m.doRefresh()")
+			}
+		} else {
+			vc.emitEventHandlerBlock(h.Func.Block)
+		}
 		vc.indent--
 		vc.line("}")
 	}
+
+	if !bp.Transient {
+		vc.line("%s = %s", resultVar, target)
+	}
+	if scoped {
+		vc.indent--
+		vc.line("}")
+	}
+}
+
+// resolveCtorArg renders one constructor argument. Event args are handled by
+// the caller because they need surrounding lines.
+func (vc *irViewContext) resolveCtorArg(a ctorArg, n *ir.NodeInst, childrenVar string, id int) string {
+	switch {
+	case a.Prop != "":
+		propExpr := codegen.NodeProp(n, a.Prop)
+		if propExpr == nil {
+			if a.Transform != "" {
+				return a.Transform + `("")`
+			}
+			return `""`
+		}
+		s := vc.gc.EvalExpr(propExpr)
+		if a.Transform != "" {
+			s = a.Transform + "(" + s + ")"
+		}
+		return s
+	case a.Raw != "":
+		return substituteTemplate(a.Raw, n, vc.gc, id, childrenVar)
+	}
+	return "nil"
+}
+
+// substituteTemplate replaces `${propname}` with the user's prop expression,
+// `${id}` with the numeric widget id, and `${children}` with the children-slice
+// variable name. Used for prelude lines and Raw args.
+func substituteTemplate(tmpl string, n *ir.NodeInst, gc *golang.GoIRContext, id int, childrenVar string) string {
+	out := tmpl
+	for {
+		i := strings.Index(out, "${")
+		if i < 0 {
+			break
+		}
+		j := strings.Index(out[i:], "}")
+		if j < 0 {
+			break
+		}
+		key := out[i+2 : i+j]
+		var repl string
+		switch key {
+		case "id":
+			repl = fmt.Sprintf("%d", id)
+		case "children":
+			repl = childrenVar
+		default:
+			if propExpr := codegen.NodeProp(n, key); propExpr != nil {
+				repl = gc.EvalExpr(propExpr)
+			}
+		}
+		out = out[:i] + repl + out[i+j+1:]
+	}
+	return out
+}
+
+func blueprintUsesChildren(c *ctorMeta) bool {
+	if c == nil {
+		return false
+	}
+	if containsChildrenToken(c.Args) {
+		return true
+	}
+	for _, line := range c.Prelude {
+		if strings.Contains(line, "${children}") {
+			return true
+		}
+	}
+	return false
+}
+
+func containsChildrenToken(args []ctorArg) bool {
+	for _, a := range args {
+		if strings.Contains(a.Raw, "${children}") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasInit(bindings []bindMeta, prop string) bool {
+	for _, b := range bindings {
+		if b.Kind == bindInit && b.Prop == prop {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveGoFn applies ctorMeta.Switches: for each switch, if the user passed
+// a literal string prop matching the switch value, use the switch's goFn.
+func resolveGoFn(c *ctorMeta, n *ir.NodeInst) string {
+	for _, s := range c.Switches {
+		propExpr := codegen.NodeProp(n, s.Prop)
+		if propExpr == nil {
+			continue
+		}
+		if v, ok := codegen.IRLiteralString(propExpr); ok && v == s.Value {
+			return s.GoFn
+		}
+	}
+	return c.GoFn
+}
+
+func ctorHasProp(c *ctorMeta, prop string) bool {
+	if c == nil {
+		return false
+	}
+	for _, a := range c.Args {
+		if a.Prop == prop {
+			return true
+		}
+	}
+	return false
 }
 
 func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
@@ -647,31 +875,4 @@ func (vc *irViewContext) emitEventHandlerBlock(stmts []ir.Stmt) {
 	} else {
 		vc.line("m.doRefresh()")
 	}
-}
-
-// --- Content resolution helpers ---
-
-func (vc *irViewContext) resolveContentExpr(n *ir.NodeInst) string {
-	if v := codegen.NodeProp(n, "value"); v != nil {
-		return vc.gc.EvalExpr(v)
-	}
-	if v := codegen.NodeProp(n, "text"); v != nil {
-		return vc.gc.EvalExpr(v)
-	}
-	if v := codegen.NodeProp(n, "label"); v != nil {
-		return vc.gc.EvalExpr(v)
-	}
-	if v := codegen.NodeProp(n, "content"); v != nil {
-		return vc.gc.EvalExpr(v)
-	}
-	return `""`
-}
-
-func (vc *irViewContext) resolveContentIRExpr(n *ir.NodeInst) ir.Expr {
-	for _, name := range []string{"value", "text", "label", "content"} {
-		if v := codegen.NodeProp(n, name); v != nil {
-			return v
-		}
-	}
-	return nil
 }
