@@ -14,9 +14,338 @@ var passNoRef = pass{
 // lowerNoRef boxes every addressed binding into a synthesized one-field
 // reference-semantic struct. After this pass no *ir.TypeRef remains.
 //
-// Phase C — body lands in subsequent tasks.
+// The pass runs in three steps:
+//
+//  1. seedAddressedVars walks every Expr/Stmt and records any *ir.Var whose
+//     address is taken (via *ir.Unary{UnaryAddr}). Entries already populated
+//     by NoLambda's lifter persist.
+//  2. Each addressed Var has its declared type rewritten from T to a
+//     synthesized __ref_T struct, and its initializer wrapped in a StructLit
+//     containing the original init under field "value".
+//  3. Every Expr and Stmt is rewritten via refRewriter: &v collapses to
+//     plain v; *p becomes p.value; reads of an addressed Var route through
+//     a Select on .value; ref<T> types appearing in struct fields and func
+//     params/returns are replaced with the corresponding box-struct type.
 func lowerNoRef(pkg *ir.Package, _ Caps) error {
+	if pkg == nil {
+		return nil
+	}
+	seedAddressedVars(pkg)
+
+	reg := newBoxRegistry(pkg)
+	rw := &refRewriter{pkg: pkg, reg: reg}
+
+	// Step 1: rewrite addressed Var declarations and their initializers.
+	for _, v := range collectAllVars(pkg) {
+		if !pkg.AddressedVars[v] {
+			continue
+		}
+		elem := v.Type
+		boxDef := reg.boxFor(elem)
+		boxType := &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}
+		oldInit := v.Init
+		v.Type = boxType
+		v.Init = &ir.StructLit{
+			Type: boxType,
+			Def:  boxDef,
+			Fields: []ir.FieldInit{
+				{Name: "value", Value: orNullLiteral(oldInit, elem)},
+			},
+		}
+	}
+
+	// Step 2: rewrite every Expr and Stmt — reads, writes, & and *, ref<T> types.
+	walkPackage(pkg, walkFuncs{
+		expr:  func(e ir.Expr) ir.Expr { return rw.rewriteExpr(e) },
+		stmts: func(stmts []ir.Stmt) []ir.Stmt { rw.rewriteStmts(stmts); return stmts },
+	})
+
+	// Step 3: rewrite ref<T> appearances in struct fields and func params/returns.
+	for _, s := range pkg.Structs {
+		for _, f := range s.Fields {
+			f.Type = rw.rewriteType(f.Type)
+		}
+	}
+	for _, f := range pkg.Funcs {
+		rewriteFuncSignature(f, rw)
+	}
+	for _, comp := range pkg.Components {
+		for _, f := range comp.Funcs {
+			rewriteFuncSignature(f, rw)
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, f := range w.Funcs {
+			rewriteFuncSignature(f, rw)
+		}
+	}
 	return nil
+}
+
+// rewriteFuncSignature rewrites every Param's Type and the Return type of f
+// through rw, replacing any ref<T> shape with the corresponding box struct.
+func rewriteFuncSignature(f *ir.Func, rw *refRewriter) {
+	if f == nil {
+		return
+	}
+	for _, p := range f.Params {
+		p.Type = rw.rewriteType(p.Type)
+	}
+	f.Return = rw.rewriteType(f.Return)
+}
+
+// orNullLiteral returns init if non-nil, else a null literal of elem's type.
+func orNullLiteral(init ir.Expr, elem *ir.Type) ir.Expr {
+	if init != nil {
+		return init
+	}
+	return &ir.Literal{Type: elem, Raw: "null"}
+}
+
+// collectAllVars returns every *ir.Var declared in pkg (top-level, components,
+// windows). Local vars inside func bodies are handled by the rewriteStmt walker.
+func collectAllVars(pkg *ir.Package) []*ir.Var {
+	var out []*ir.Var
+	out = append(out, pkg.Vars...)
+	for _, c := range pkg.Components {
+		out = append(out, c.Vars...)
+	}
+	for _, w := range pkg.Windows {
+		out = append(out, w.Vars...)
+	}
+	return out
+}
+
+// refRewriter rewrites every Expr/Stmt to eliminate ref<T> shapes:
+//   - &v → v (the box itself is the reference).
+//   - *p → p.value.
+//   - read of an addressed Var → Select{ident, "value"}.
+//   - ref<T> Type → corresponding __ref_T struct Type.
+type refRewriter struct {
+	pkg *ir.Package
+	reg *boxRegistry
+}
+
+// rewriteType replaces ref<T> with the corresponding __ref_T struct type.
+// Recurses into Elems so nested types (list<ref<int>>) are handled.
+func (r *refRewriter) rewriteType(t *ir.Type) *ir.Type {
+	if t == nil {
+		return nil
+	}
+	if t.Kind == ir.TypeRef {
+		var elem *ir.Type
+		if len(t.Elems) > 0 {
+			elem = r.rewriteType(t.Elems[0])
+		}
+		boxDef := r.reg.boxFor(elem)
+		return &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}
+	}
+	if len(t.Elems) > 0 {
+		newElems := make([]*ir.Type, len(t.Elems))
+		changed := false
+		for i, e := range t.Elems {
+			ne := r.rewriteType(e)
+			newElems[i] = ne
+			if ne != e {
+				changed = true
+			}
+		}
+		if !changed {
+			return t
+		}
+		return &ir.Type{
+			Kind:      t.Kind,
+			Elems:     newElems,
+			Decl:      t.Decl,
+			Sig:       t.Sig,
+			ParamName: t.ParamName,
+			Package:   t.Package,
+			Meta:      t.Meta,
+		}
+	}
+	return t
+}
+
+func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	switch x := e.(type) {
+	case *ir.Unary:
+		switch x.Op {
+		case ast.UnaryAddr:
+			// &v becomes plain v (the box is the reference). Critically, if
+			// the operand is an Ident to an addressed Var, we MUST NOT route
+			// it through the Ident arm below — that would emit `v.value`,
+			// which yields the boxed elem rather than the box itself.
+			if id, ok := x.Operand.(*ir.Ident); ok {
+				if v, isVar := id.Sym.(*ir.Var); isVar && r.pkg.AddressedVars[v] {
+					return id
+				}
+			}
+			return r.rewriteExpr(x.Operand)
+		case ast.UnaryDeref:
+			// *p becomes p.value.
+			inner := r.rewriteExpr(x.Operand)
+			return &ir.Select{
+				Operand: inner,
+				Field:   "value",
+				Type:    x.Type,
+			}
+		}
+		x.Operand = r.rewriteExpr(x.Operand)
+		return x
+	case *ir.Ident:
+		if v, ok := x.Sym.(*ir.Var); ok && r.pkg.AddressedVars[v] {
+			// Reads of an addressed Var go through .value. The Ident's Type
+			// has already been swapped to the box type by step 1; the read
+			// result is the original elem type, recoverable from the box's
+			// "value" field.
+			elem := v.Type
+			if v.Type != nil && v.Type.Kind == ir.TypeStruct {
+				if def, ok := v.Type.Decl.(*ir.StructDef); ok && len(def.Fields) > 0 {
+					elem = def.Fields[0].Type
+				}
+			}
+			return &ir.Select{
+				Operand: x,
+				Field:   "value",
+				Type:    elem,
+			}
+		}
+		return x
+	case *ir.Binary:
+		x.Left = r.rewriteExpr(x.Left)
+		x.Right = r.rewriteExpr(x.Right)
+		return x
+	case *ir.Ternary:
+		x.Cond = r.rewriteExpr(x.Cond)
+		x.Then = r.rewriteExpr(x.Then)
+		x.Else = r.rewriteExpr(x.Else)
+		return x
+	case *ir.Call:
+		x.Receiver = r.rewriteExpr(x.Receiver)
+		for i := range x.Args {
+			x.Args[i].Value = r.rewriteExpr(x.Args[i].Value)
+		}
+		return x
+	case *ir.Conversion:
+		x.Operand = r.rewriteExpr(x.Operand)
+		x.Type = r.rewriteType(x.Type)
+		return x
+	case *ir.Select:
+		x.Operand = r.rewriteExpr(x.Operand)
+		return x
+	case *ir.Index:
+		x.Operand = r.rewriteExpr(x.Operand)
+		x.Idx = r.rewriteExpr(x.Idx)
+		return x
+	case *ir.ListLit:
+		for i := range x.Elems {
+			x.Elems[i] = r.rewriteExpr(x.Elems[i])
+		}
+		x.Type = r.rewriteType(x.Type)
+		return x
+	case *ir.StructLit:
+		for i := range x.Fields {
+			x.Fields[i].Value = r.rewriteExpr(x.Fields[i].Value)
+		}
+		if x.Type != nil && x.Type.Kind == ir.TypeRef {
+			x.Type = r.rewriteType(x.Type)
+		}
+		return x
+	case *ir.Spread:
+		x.Operand = r.rewriteExpr(x.Operand)
+		return x
+	case *ir.Closure:
+		if x.State != nil {
+			for i := range x.State.Fields {
+				x.State.Fields[i].Value = r.rewriteExpr(x.State.Fields[i].Value)
+			}
+			if x.State.Type != nil {
+				x.State.Type = r.rewriteType(x.State.Type)
+			}
+		}
+		if x.Func != nil {
+			rewriteFuncSignature(x.Func, r)
+			r.rewriteStmts(x.Func.Block)
+		}
+		if x.Type != nil {
+			x.Type = r.rewriteType(x.Type)
+		}
+		return x
+	}
+	return e
+}
+
+func (r *refRewriter) rewriteStmts(stmts []ir.Stmt) {
+	for _, s := range stmts {
+		r.rewriteStmt(s)
+	}
+}
+
+func (r *refRewriter) rewriteStmt(s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.Assign:
+		n.Target = r.rewriteAssignTarget(n.Target)
+		n.Value = r.rewriteExpr(n.Value)
+	case *ir.LocalVar:
+		n.Init = r.rewriteExpr(n.Init)
+		n.Type = r.rewriteType(n.Type)
+	case *ir.Return:
+		n.Value = r.rewriteExpr(n.Value)
+	case *ir.If:
+		n.Cond = r.rewriteExpr(n.Cond)
+		r.rewriteStmts(n.Body)
+		r.rewriteStmts(n.Else)
+	case *ir.For:
+		n.Iter = r.rewriteExpr(n.Iter)
+		n.ElemType = r.rewriteType(n.ElemType)
+		r.rewriteStmts(n.Body)
+		r.rewriteStmts(n.Else)
+	case *ir.PlatformFilter:
+		r.rewriteStmts(n.Body)
+	case *ir.NodeInst:
+		for i := range n.Props {
+			n.Props[i].Value = r.rewriteExpr(n.Props[i].Value)
+		}
+		n.Key = r.rewriteExpr(n.Key)
+		n.Ref = r.rewriteExpr(n.Ref)
+		r.rewriteStmts(n.Children)
+		for i := range n.Handlers {
+			if n.Handlers[i].Func != nil {
+				rewriteFuncSignature(n.Handlers[i].Func, r)
+				r.rewriteStmts(n.Handlers[i].Func.Block)
+			}
+		}
+	case *ir.SlotInst:
+		r.rewriteStmts(n.Children)
+	case *ir.ErrorBoundary:
+		r.rewriteStmts(n.Children)
+		if n.Handler != nil && n.Handler.Func != nil {
+			rewriteFuncSignature(n.Handler.Func, r)
+			r.rewriteStmts(n.Handler.Func.Block)
+		}
+	case *ir.Emit:
+		for i := range n.Args {
+			n.Args[i].Value = r.rewriteExpr(n.Args[i].Value)
+		}
+	case *ir.CallStmt:
+		if n.Call != nil {
+			if rewritten, ok := r.rewriteExpr(n.Call).(*ir.Call); ok {
+				n.Call = rewritten
+			}
+		}
+	case *ir.Toggle:
+		n.Target = r.rewriteAssignTarget(n.Target)
+	}
+}
+
+// rewriteAssignTarget handles the LHS of an assignment. Idents to addressed
+// Vars become Select{ident, "value"}; *p becomes p.value; otherwise normal
+// rewriteExpr applies.
+func (r *refRewriter) rewriteAssignTarget(t ir.Expr) ir.Expr {
+	return r.rewriteExpr(t)
 }
 
 // seedAddressedVars walks pkg recording every *ir.Var whose address is
