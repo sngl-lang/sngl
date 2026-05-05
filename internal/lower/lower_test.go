@@ -15,11 +15,11 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoTernary",
 		"NoComputed",
 		"NoLambda",
-		"NoRef",
 		"NoToggle",
 		"NoReactivity",
 		"NoTimer",
 		"NoDeclarative",
+		"NoRef",
 	}
 	if len(passes) != len(expectedOrder) {
 		t.Fatalf("passes length = %d; want %d", len(passes), len(expectedOrder))
