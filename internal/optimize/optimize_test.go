@@ -269,7 +269,7 @@ component main {
 }
 
 func TestOptimize_EmptyPkg(t *testing.T) {
-	pkg := &ir.Package{}
+	pkg := &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
 	if err := Optimize(pkg, &Config{Platform: "html", Language: "js"}); err != nil {
 		t.Fatal(err)
 	}

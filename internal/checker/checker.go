@@ -131,7 +131,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c := &checker{
 		doc:          doc,
 		cfg:          cfg,
-		pkg:          &ir.Package{},
+		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}},
 		symtab:       symtab,
 		scope:        symtab.Root,
 		unitBySuffix: make(map[string]*ir.UnitDef),
@@ -331,7 +331,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
 		} else if len(docs) > 0 {
-			merged := &ir.Package{Symbols: NewSymbolTable()}
+			merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
 			for _, d := range docs {
 				pkg, diags := Check(d, &Config{
 					FS:        subFS,
@@ -354,11 +354,12 @@ func (c *checker) registerImport(imp *ast.Import) {
 			if native != nil {
 				// Register native declarations under the namespace.
 				nsPkg := &ir.Package{
-					Structs: native.Structs,
-					Enums:   native.Enums,
-					Funcs:   native.Funcs,
-					Vars:    native.Vars,
-					Symbols: NewSymbolTable(),
+					Structs:        native.Structs,
+					Enums:          native.Enums,
+					Funcs:          native.Funcs,
+					Vars:           native.Vars,
+					Symbols:        NewSymbolTable(),
+					LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 				}
 				for _, s := range native.Structs {
 					nsPkg.Symbols.Types[s.Name] = s
@@ -386,7 +387,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
 			if len(docs) > 0 {
-				merged := &ir.Package{Symbols: NewSymbolTable()}
+				merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
 				for _, d := range docs {
 					pkg, diags := Check(d, &Config{
 						FS:        c.cfg.FS,
@@ -428,7 +429,7 @@ func (c *checker) buildPkgFromDocs(docs []*ast.Document) *ir.Package {
 	if len(docs) == 0 {
 		return nil
 	}
-	merged := &ir.Package{Symbols: NewSymbolTable()}
+	merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
 	for _, doc := range docs {
 		pkg, _ := Check(doc, &Config{
 			Languages: c.cfg.Languages,

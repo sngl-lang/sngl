@@ -61,7 +61,8 @@ func parseStdlibDocs() []*ast.Document {
 // resolution.
 func (c *checker) loadStdlib() *ir.Package {
 	stdlibPkg := &ir.Package{
-		Symbols: NewSymbolTable(),
+		Symbols:        NewSymbolTable(),
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 	}
 
 	var (
@@ -229,7 +230,7 @@ func detectIntrinsicCall(fn *ir.Func) string {
 // buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic
 // definitions. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
 func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
-	pkg := &ir.Package{Symbols: NewSymbolTable()}
+	pkg := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}}
 	for _, def := range defs {
 		params := make([]*ir.Param, len(def.Params))
 		for i, p := range def.Params {

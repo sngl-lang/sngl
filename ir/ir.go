@@ -42,6 +42,14 @@ type Package struct {
 	Timers     []*Timer
 	Outputs    []*Output
 	Symbols    *SymbolTable
+
+	// LiftedCaptures records, for every lifted closure Func produced by
+	// NoLambda, the mapping from each captured Symbol to the synthesized
+	// state-struct field name that aliases it. NoReactivity reads this
+	// map to resolve `*state.fieldName` mutation sites back to the
+	// underlying captured Var. Empty map (not nil) when no lifts have
+	// happened.
+	LiftedCaptures map[*Func]map[Symbol]string
 }
 
 func (p *Package) IsMain() bool {
