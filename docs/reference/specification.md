@@ -163,6 +163,8 @@ UnaryExpr =
     PostfixExpr
     | "!"  UnaryExpr
     | "-" UnaryExpr
+    | amp   UnaryExpr
+    | "*"  UnaryExpr
     | "const" UnaryExpr
 
 ```
@@ -178,6 +180,8 @@ Arg =
     | IDENT IdentArgCont
     | "!" UnaryExpr ArgExprCont
     | "-" UnaryExpr ArgExprCont
+    | amp UnaryExpr ArgExprCont
+    | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
