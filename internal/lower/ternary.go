@@ -223,6 +223,21 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		p, op := st.transformExpr(x.Operand)
 		x.Operand = op
 		return p, x
+	case *ir.Closure:
+		var pre []ir.Stmt
+		if x.State != nil {
+			for i := range x.State.Fields {
+				if x.State.Fields[i].Value != nil {
+					p, v := st.transformExpr(x.State.Fields[i].Value)
+					pre = append(pre, p...)
+					x.State.Fields[i].Value = v
+				}
+			}
+		}
+		if x.Func != nil {
+			x.Func.Block = st.transformBlock(x.Func.Block)
+		}
+		return pre, x
 	}
 	return nil, e
 }
