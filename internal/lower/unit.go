@@ -17,7 +17,7 @@ var passUnit = pass{
 // its suffix Factor. Identifiers and computed expressions retain their
 // original Type *Type values; downstream consumers should treat the
 // rewritten Literal's TypInt as authoritative.
-func lowerUnit(pkg *ir.Package) error {
+func lowerUnit(pkg *ir.Package, _ Caps) error {
 	if pkg == nil {
 		return nil
 	}

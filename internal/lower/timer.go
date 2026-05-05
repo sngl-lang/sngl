@@ -15,7 +15,7 @@ var passTimer = pass{
 // lowerTimer walks every *ir.Timer decl, replaces it with a synthesized
 // handler *ir.Func plus a lower.scheduleTimer call, and injects
 // schedule/cancel pairs after Assigns that mutate the Enabled Var.
-func lowerTimer(pkg *ir.Package) error {
+func lowerTimer(pkg *ir.Package, _ Caps) error {
 	if pkg == nil {
 		return nil
 	}

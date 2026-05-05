@@ -37,7 +37,7 @@ func (st *reactivityState) freshNodeID() string {
 // lowerReactivity runs two passes over the package: first collects reverse
 // deps and assigns synthetic IDs, then walks every Stmt slice splicing
 // updater Assigns after every mutation that touches a tracked Var.
-func lowerReactivity(pkg *ir.Package) error {
+func lowerReactivity(pkg *ir.Package, _ Caps) error {
 	if pkg == nil {
 		return nil
 	}

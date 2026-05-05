@@ -20,7 +20,7 @@ var passTernary = pass{
 // Sub-ternaries inside Cond surface before the synthesized If; sub-ternaries
 // inside Then/Else are hoisted into the matching branch body (preserving
 // the short-circuit semantics of the source).
-func lowerTernary(pkg *ir.Package) error {
+func lowerTernary(pkg *ir.Package, _ Caps) error {
 	if pkg == nil {
 		return nil
 	}

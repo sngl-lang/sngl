@@ -8,11 +8,12 @@ import (
 
 // pass is one lowering pass: a name (matching its Caps field), a predicate
 // over Caps for whether it runs, and the apply function that mutates pkg in
-// place.
+// place. apply receives the full Caps so cross-cap-aware passes can branch
+// (e.g. NoDeclarative checks NoLambda before lifting promoted handlers).
 type pass struct {
 	name    string
 	enabled func(Caps) bool
-	apply   func(*ir.Package) error
+	apply   func(*ir.Package, Caps) error
 }
 
 // passes is the fixed execution order. Earlier passes may not depend on
@@ -72,7 +73,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 		if !p.enabled(caps) {
 			continue
 		}
-		if err := p.apply(pkg); err != nil {
+		if err := p.apply(pkg, caps); err != nil {
 			return fmt.Errorf("lower: pass %s: %w", p.name, err)
 		}
 		if opts.StopAfter != "" && p.name == opts.StopAfter {

@@ -18,11 +18,18 @@ var passDeclarative = pass{
 // sequence of LocalVar (createNode) + Assign (props) + CallStmt (handlers,
 // appendChild). Last pass because it destroys the tree shape earlier
 // passes rely on.
-func lowerDeclarative(pkg *ir.Package) error {
+//
+// When NoLambda is also on and a promoted handler body references
+// outer-scope vars (the common case for `@click { count = count + 1 }`),
+// the handler is lifted into a state-carrying *ir.Closure via the shared
+// lifter. With NoLambda off the body's free vars stay free — which is fine
+// for closure-supporting targets (e.g. Go) that emit the handler as a
+// nested closure under its owning component/window.
+func lowerDeclarative(pkg *ir.Package, caps Caps) error {
 	if pkg == nil {
 		return nil
 	}
-	st := newDeclarativeState()
+	st := newDeclarativeState(pkg, caps)
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
@@ -38,9 +45,17 @@ type declarativeState struct {
 	appendChild   *ir.Func
 	attachHandler *ir.Func
 	nextID        int
+	lifter        *lifter
+	liftHandlers  bool // true when NoLambda is on alongside NoDeclarative
 }
 
-func newDeclarativeState() *declarativeState { return &declarativeState{} }
+func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
+	st := &declarativeState{liftHandlers: caps.NoLambda}
+	if st.liftHandlers {
+		st.lifter = &lifter{pkg: pkg}
+	}
+	return st
+}
 
 // seedCounter scans every NodeInst.ID matching __n<digits> and starts the
 // counter past the max. Lets NoDeclarative coexist with NoReactivity's
@@ -223,16 +238,33 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 		})
 	}
 
-	// 3. handlers — lift each into a named Func owned by the surrounding
-	// component/window, then emit attachHandler.
+	// 3. handlers — promote each into a named Func owned by the surrounding
+	// component/window, or (when the body captures outer-scope vars) lift it
+	// into a state-carrying *ir.Closure via the shared lifter. Emit
+	// attachHandler with either a Func ident or the Closure as the third arg.
 	for i := range n.Handlers {
 		h := &n.Handlers[i]
 		if h.Func == nil {
 			continue
 		}
-		handlerName := id + "_" + h.Name + "_handler"
-		h.Func.Name = handlerName
-		*funcs = append(*funcs, h.Func)
+
+		var handlerArg ir.Expr
+		if st.liftHandlers && len(analyzeCaptures(h.Func.Block, h.Func.Params)) > 0 {
+			// NoLambda is on and the body has free vars → lift the handler
+			// into a top-level Func + state struct. lifter.Lift appends the
+			// synthesized struct + Func to pkg, so we don't push h.Func into
+			// *funcs ourselves.
+			handlerArg = st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+		} else {
+			// Either NoLambda is off (closure-supporting target — keep free
+			// vars free) or the body has no captures (no lift needed).
+			// Simple promote to a named top-level Func.
+			handlerName := id + "_" + h.Name + "_handler"
+			h.Func.Name = handlerName
+			*funcs = append(*funcs, h.Func)
+			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
+		}
+
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
 				Type: ir.TypVoid,
@@ -240,7 +272,7 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
 					{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
-					{Value: &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}},
+					{Value: handlerArg},
 				},
 			},
 		})

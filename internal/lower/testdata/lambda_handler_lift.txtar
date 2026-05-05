@@ -1,0 +1,23 @@
+caps: NoLambda, NoDeclarative
+-- input.sngl --
+component counter {
+    var count int = 0
+    button(@click {
+        count = count + 1
+    })
+}
+-- expected.sngl --
+import stdlib "internal://stdlib"
+import alert "internal://alert"
+import file "internal://file"
+struct __lambda0_caps {
+    count ref<int>
+}
+func __lambda0(state __lambda0_caps) {
+    *state.count = *state.count + 1
+}
+component counter {
+    var count int = 0
+    var __n0 button = lower.createNode("button")
+    lower.attachHandler(#__n0, "click", __closure(__lambda0, __lambda0_caps{count = &count}))
+}
