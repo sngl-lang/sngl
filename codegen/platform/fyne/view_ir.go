@@ -321,7 +321,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 		// Init: emit the loop directly into the current buffer at the current
 		// indent so it slots into BuildUI naturally.
 		initBody := emitBody(loopItems)
-		for _, ln := range strings.Split(strings.TrimRight(initBody, "\n"), "\n") {
+		for ln := range strings.SplitSeq(strings.TrimRight(initBody, "\n"), "\n") {
 			vc.line("%s", ln)
 		}
 		vc.line("m.%s = container.NewVBox(%s...)", fieldName, loopItems)
@@ -335,7 +335,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 			fmt.Fprintf(&bodyBuf, "var items []fyne.CanvasObject\n")
 			// Reindent the body one tab for inclusion inside the updater's
 			// function block.
-			for _, ln := range strings.Split(strings.TrimRight(updateBody, "\n"), "\n") {
+			for ln := range strings.SplitSeq(strings.TrimRight(updateBody, "\n"), "\n") {
 				bodyBuf.WriteByte('\t')
 				bodyBuf.WriteString(ln)
 				bodyBuf.WriteByte('\n')

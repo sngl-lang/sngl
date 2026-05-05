@@ -40,7 +40,6 @@ type Model struct {
 	ifBox0  *fyne.Container
 	label3  *widget.Label
 	forBox1 *fyne.Container
-	label4  *widget.Label
 }
 
 // New creates a Model with default values.
@@ -154,11 +153,13 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	var contentC5C0 fyne.CanvasObject
 	var contentC5C0Items []fyne.CanvasObject
 	for _, decl := range m.file.Decls {
-		var contentC5C0Item fyne.CanvasObject
-		m.label4 = widget.NewLabel(fmt.Sprint(decl))
-		contentC5C0Item = m.label4
-		if contentC5C0Item != nil {
-			contentC5C0Items = append(contentC5C0Items, contentC5C0Item)
+		_ = decl
+		var item fyne.CanvasObject
+		var label4 *widget.Label
+		label4 = widget.NewLabel(fmt.Sprint(decl))
+		item = label4
+		if item != nil {
+			contentC5C0Items = append(contentC5C0Items, item)
 		}
 	}
 	m.forBox1 = container.NewVBox(contentC5C0Items...)
@@ -193,7 +194,13 @@ func (m *Model) updateFor1() {
 	var items []fyne.CanvasObject
 	for _, decl := range m.file.Decls {
 		_ = decl
-		items = append(items, widget.NewLabel(fmt.Sprint(decl)))
+		var item fyne.CanvasObject
+		var label4 *widget.Label
+		label4 = widget.NewLabel(fmt.Sprint(decl))
+		item = label4
+		if item != nil {
+			items = append(items, item)
+		}
 	}
 	m.forBox1.Objects = items
 	m.forBox1.Refresh()
