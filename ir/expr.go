@@ -165,6 +165,17 @@ type Lambda struct {
 	Func *Func // resolved params, return type, checked body
 }
 
+// Closure is a lifted lambda: a top-level Func plus a captured-state struct
+// literal. NoLambda emits Closures in place of every Lambda. Codegen for
+// closure-supporting target languages never sees a Closure (their cap is
+// off); closure-free targets translate Closure into a (state, fn-ref) pair.
+type Closure struct {
+	AST   *ast.LambdaExpr // original lambda position; nil for synthesized handler lifts
+	Type  *Type           // user-visible TypeFunc — without the synthesized leading state param
+	Func  *Func           // lifted top-level Func; first Param is the state struct
+	State *StructLit      // captured-state struct construction at this site
+}
+
 // --- Expr interface implementations ---
 
 func (*Literal) exprNode()    {}
@@ -180,6 +191,7 @@ func (*StructLit) exprNode()  {}
 func (*ListLit) exprNode()    {}
 func (*Spread) exprNode()     {}
 func (*Lambda) exprNode()     {}
+func (*Closure) exprNode()    {}
 
 func (x *Literal) ExprType() *Type    { return x.Type }
 func (x *Ident) ExprType() *Type      { return x.Type }
@@ -194,6 +206,7 @@ func (x *StructLit) ExprType() *Type  { return x.Type }
 func (x *ListLit) ExprType() *Type    { return x.Type }
 func (x *Spread) ExprType() *Type     { return x.Type }
 func (x *Lambda) ExprType() *Type     { return x.Type }
+func (x *Closure) ExprType() *Type    { return x.Type }
 
 // IsConst reports whether e can, in principle, be evaluated at compile time.
 // This mirrors the optimizer's isConstExpr but without evalCtx: loop vars and
@@ -262,6 +275,8 @@ func IsConst(e Expr) bool {
 		return true
 	case *Spread:
 		return IsConst(x.Operand)
+	case *Closure:
+		return false
 	}
 	return false
 }
