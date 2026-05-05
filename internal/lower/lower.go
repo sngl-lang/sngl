@@ -22,16 +22,20 @@ type pass struct {
 //  2. NoTernary — rewrites expressions, no deps on visual model.
 //  3. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
 //  4. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
-//  5. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
-//  6. NoReactivity — analyzes dataflow, injects updaters.
-//  7. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
-//  8. NoDeclarative — last; flattens the visual tree, destroying shape earlier passes used.
+//  5. NoRef — runs immediately after NoLambda; boxes any ref<T> shapes
+//     NoLambda emitted into one-field reference-semantic structs. Must
+//     precede NoToggle/NoReactivity so they see plain field accesses.
+//  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
+//  7. NoReactivity — analyzes dataflow, injects updaters.
+//  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
+//  9. NoDeclarative — last; flattens the visual tree, destroying shape earlier passes used.
 var passes = []pass{
 	passUnit,
 	passEnum,
 	passTernary,
 	passComputed,
 	passLambda,
+	passNoRef,
 	passToggle,
 	passReactivity,
 	passTimer,

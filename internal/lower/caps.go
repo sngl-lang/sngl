@@ -15,6 +15,7 @@ type Caps struct {
 	NoToggle      bool // x!! → x = !x
 	NoTernary     bool // a ? b : c → if/else stmt with temp var
 	NoLambda      bool // closures → top-level funcs + captured-state struct
+	NoRef         bool // ref<T> → synthesized one-field reference-semantic struct
 	NoUnit        bool // unit values → underlying int
 	NoEnum        bool // enum members → int constants
 	NoComputed    bool // computed vars → inlined exprs or memoized funcs
@@ -30,6 +31,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoToggle:      c.NoToggle || other.NoToggle,
 		NoTernary:     c.NoTernary || other.NoTernary,
 		NoLambda:      c.NoLambda || other.NoLambda,
+		NoRef:         c.NoRef || other.NoRef,
 		NoUnit:        c.NoUnit || other.NoUnit,
 		NoEnum:        c.NoEnum || other.NoEnum,
 		NoComputed:    c.NoComputed || other.NoComputed,
@@ -57,6 +59,9 @@ func (c Caps) String() string {
 	}
 	if c.NoLambda {
 		parts = append(parts, "NoLambda")
+	}
+	if c.NoRef {
+		parts = append(parts, "NoRef")
 	}
 	if c.NoToggle {
 		parts = append(parts, "NoToggle")
