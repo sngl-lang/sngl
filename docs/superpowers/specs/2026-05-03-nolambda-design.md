@@ -312,6 +312,69 @@ Add to the existing `dump lowered --list` regression script: every `examples/*.s
 
 5. **Nested-capture bookkeeping.** The `enclosingScopes` stack is small but easy to get subtly wrong. Fixture `lambda_nested.txtar` is the explicit guard. A bug here produces silently wrong runtime output (inner closure mutating its own copy of the captured Var, not the outer's storage cell).
 
+## Companion pass: `NoRef` (ref-elimination via boxing)
+
+Some target languages have neither first-class closures (so `NoLambda` is on) nor first-class pointers / references (so the `ref<T>` shape produced by `NoLambda` is itself unrenderable). For those targets a follow-on `NoRef` cap eliminates `ref<T>` by **boxing** every addressed binding into a one-field reference-semantic struct.
+
+### Cap
+
+```go
+NoRef bool // ref<T> → __ref_T struct boxing; & → identity; * → .value
+```
+
+Pass position: immediately after `NoLambda`, before `NoToggle` (slot 5.5 in the master pipeline). Reactivity, timer, and declarative passes see only boxed access patterns — no `TypeRef` survives this pass.
+
+### Rewrite
+
+For every `*ir.Var` (top-level, component-scoped, window-scoped, or `LocalVar`) whose address is taken anywhere in the package:
+
+1. Its declared type `T` becomes `__ref_T` — a synthesized one-field reference-semantic struct with field `value: T`.
+2. Its initializer `init` becomes `__ref_T{value: init}` (`null` if it had no initializer).
+3. Every read of the var (`Ident{v}`) becomes `Ident{v}.value` (a `Select`).
+4. Every write to the var (`Assign{Target: Ident{v}, Value: x}`) becomes `Assign{Target: Select{Ident{v}, "value"}, Value: x}`.
+5. Every `&v` becomes plain `Ident{v}` — the box itself is the reference.
+6. Every `*p` becomes `Select{p, "value"}`.
+7. Every `ref<T>` type appearance becomes the synthesized `__ref_T` struct type.
+
+The synthesized box structs are one per *unique element type encountered*, named `__ref_int`, `__ref_string`, `__ref_<componentName>`, etc. Allocation by the consuming codegen target relies on the language's natural reference semantics for structs / objects (JS object, Python class, Lua table, Smalltalk-style object). This pass therefore only makes sense as a cap for targets whose struct semantics are reference-equal — value-struct-only languages without pointers genuinely cannot model shared mutation, and `NoRef` will not save them.
+
+### What gets boxed
+
+Only Vars that are *actually addressed* in the package. `NoLambda`'s lifter records every `&v` it emits in `pkg.AddressedVars map[*ir.Var]bool`; `NoRef` reads that set rather than re-scanning the IR. (Vars whose address is taken by hand-written user code outside lowering also get boxed via the same set — `NoRef`'s pre-walk seeds it from `*ir.Unary{UnaryAddr}` operands.)
+
+### Example
+
+`NoLambda` + `NoRef` applied to the worked counter example above:
+
+```sngl
+struct __ref_int { value: int }
+
+struct __lambda0_caps {
+    count: __ref_int
+    __n1: text                      // not addressed, stays unboxed
+}
+
+func __lambda0(state: __lambda0_caps) {
+    state.count.value = state.count.value + 1
+    state.__n1.value = "Count: " + string(state.count.value)
+}
+
+component counter {
+    var count: __ref_int = __ref_int{value: 0}
+    var __n0 = lower.createNode("button")
+    var __n1 = lower.createNode("text")
+    __n1.value = "Count: 0"
+    var __c0 = __lambda0_caps{count: count, __n1: __n1}
+    lower.attachHandler(__n0, "click", __closure(__lambda0, __c0))
+}
+```
+
+The `state.count.value` accesses replaced what was `*state.count` in the post-NoLambda IR. `count: count` (rather than `count: &count`) at the StructLit reflects the `&` → identity rewrite.
+
+### Limits
+
+`NoRef` only works for targets where struct values themselves carry reference semantics (an object passed to a function shares storage with the caller). Value-struct languages without explicit pointers are out of scope; that combination has no general lowering and any such target would need to ship its own escape analysis or single-call-site promotion, separate from this pass.
+
 ## Open items resolved during brainstorm
 
 - **Scope** — full pass + impl, ship goldens now, C-target consumer follows.
@@ -320,6 +383,7 @@ Add to the existing `dump lowered --list` regression script: every `examples/*.s
 - **Lifted func signature** — ordinary leading `*Param` of state-struct type (rather than a new `Func.Context` field).
 - **Auto-deref** — applies to `Select` only; standalone reads use explicit `*`.
 - **Pass ordering** — NoLambda stays at step 5; NoDeclarative invokes the same lift routine when promoting handler blocks (single source of truth).
+- **Ref-elimination** — added as companion `NoRef` cap (slot 5.5), boxing every addressed Var into a one-field reference-semantic struct. Targets without closures *and* without pointers (e.g. JS-flavored interpreters that have neither first-class closures nor explicit references) opt into `NoLambda + NoRef`.
 
 ## File-level changes (preview)
 
@@ -331,7 +395,7 @@ Add to the existing `dump lowered --list` regression script: every `examples/*.s
 - `ir/expr.go` — add `*ir.Closure` type, `exprNode`, `ExprType`, `IsConst` arm (always false for Closure).
 - `ir/types.go` — add `TypeRef` Kind constant; extend equality and printing to handle it.
 - `ast/expr.go` — add `UnaryAddr`, `UnaryDeref` constants to `UnaryOp`; regenerate stringer.
-- `ast/expr.go` and `ast/ast.go` — AST nodes corresponding to the new surface (an `ast.RefType` type expression; `ast.UnaryExpr` already covers `&`/`*` once the `UnaryOp` constants are added).
+- `ast/expr.go` — add `UnaryAddr`, `UnaryDeref` constants. `ref<T>` reuses the existing `ast.NamedType{Name: "ref", TypeArgs: [T]}` shape, parallel to `list<T>` / `option<T>` — no new type expression node needed.
 - `ir/convert.go` — `Closure` → renders as `__closure(funcRef, structLit)`; `TypeRef` → renders as `ref<T>`; `UnaryAddr`/`UnaryDeref` → `&x`/`*x`.
 - `internal/parser/parse.go` — accept `ref<T>` in type position; accept `&` / `*` in unary position (precedence as documented).
 - `internal/parser/format.go` — print the new shapes.
