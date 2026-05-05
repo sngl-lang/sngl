@@ -38,6 +38,7 @@ const (
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
+	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
 )
 
 // Type is the unified representation of all SNGL types.
@@ -87,6 +88,11 @@ func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
 }
 
+// RefOf builds a ref<elem> Type.
+func RefOf(elem *Type) *Type {
+	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
+}
+
 func (t *Type) String() string {
 	if t == nil {
 		return "<nil>"
@@ -114,6 +120,11 @@ func (t *Type) String() string {
 			return fmt.Sprintf("option<%s>", t.Elems[0])
 		}
 		return "option"
+	case TypeRef:
+		if len(t.Elems) > 0 {
+			return fmt.Sprintf("ref<%s>", t.Elems[0])
+		}
+		return "ref"
 	case TypeStruct:
 		if t.Decl != nil {
 			return t.Decl.SymName()
@@ -220,7 +231,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return bound
 		}
 		return t
-	case TypeList, TypeOption:
+	case TypeList, TypeOption, TypeRef:
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -284,7 +295,7 @@ func (t *Type) Equal(other *Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case TypeList, TypeOption:
+	case TypeList, TypeOption, TypeRef:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
