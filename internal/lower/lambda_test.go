@@ -151,3 +151,140 @@ func TestLifterFreshNameCollision(t *testing.T) {
 		t.Errorf("lifter did not skip existing name")
 	}
 }
+
+func TestAnalyzeCapturesNestedLambda(t *testing.T) {
+	// Outer lambda's body contains an inner lambda that mutates `n`.
+	// analyzeCaptures on the outer body must see `n` as a capture marked
+	// Mutable (so the outer lifts it as ref<int> and the mutation can
+	// propagate through both frames).
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	innerBody := []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+			Value: &ir.Binary{
+				Left:  &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+				Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
+				Type:  ir.TypInt,
+			},
+		},
+	}
+	innerLambda := &ir.Lambda{
+		Func: &ir.Func{
+			Block: innerBody,
+		},
+	}
+	outerBody := []ir.Stmt{
+		&ir.Return{Value: innerLambda},
+	}
+	caps := analyzeCaptures(outerBody, nil)
+	if len(caps) != 1 {
+		t.Fatalf("outer should capture n via inner; got %d caps: %+v", len(caps), caps)
+	}
+	if caps[0].Sym != outerN {
+		t.Errorf("captured wrong sym: %v", caps[0].Sym)
+	}
+	if !caps[0].Mutable {
+		t.Errorf("inner mutates n; outer's capture must be Mutable=true")
+	}
+}
+
+func TestLifterNestedClosureSharesRef(t *testing.T) {
+	// Equivalent to fixture lambda_nested.txtar:
+	//   var n int = 0
+	//   var outer = func() { return func() { n = n + 1 } }
+	// After lifting, both frames' caps fields for n must be ref<int>, and
+	// the inner closure's caps init must reference state.n (the bare Select
+	// from the outer frame), not &n directly.
+	pkg := &ir.Package{
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+	}
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	pkg.Vars = []*ir.Var{outerN}
+
+	innerBody := []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+			Value: &ir.Binary{
+				Left:  &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+				Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
+				Type:  ir.TypInt,
+			},
+		},
+	}
+	innerLambda := &ir.Lambda{
+		Func: &ir.Func{
+			Block: innerBody,
+		},
+	}
+	outerBody := []ir.Stmt{
+		&ir.Return{Value: innerLambda},
+	}
+
+	l := &lifter{pkg: pkg}
+	outerCl := l.Lift(outerBody, nil, nil, nil)
+
+	// Outer's caps: must have one field, n, of type ref<int>.
+	if len(outerCl.State.Def.Fields) != 1 {
+		t.Fatalf("outer caps: want 1 field, got %d", len(outerCl.State.Def.Fields))
+	}
+	outerField := outerCl.State.Def.Fields[0]
+	if outerField.Name != "n" || outerField.Type.Kind != ir.TypeRef {
+		t.Errorf("outer caps n: want ref<int>, got %s %v", outerField.Name, outerField.Type)
+	}
+
+	// Outer's caps init for n: &n (Unary{Addr, Ident{outerN}}).
+	outerInit := outerCl.State.Fields[0].Value
+	uOuter, ok := outerInit.(*ir.Unary)
+	if !ok || uOuter.Op != ast.UnaryAddr {
+		t.Fatalf("outer caps init: want &n; got %T", outerInit)
+	}
+
+	// Outer's lifted body should be: return __closure(innerFunc, innerCaps{n = state.n})
+	if len(outerCl.Func.Block) != 1 {
+		t.Fatalf("outer body: want 1 stmt, got %d", len(outerCl.Func.Block))
+	}
+	ret, ok := outerCl.Func.Block[0].(*ir.Return)
+	if !ok {
+		t.Fatalf("outer body[0]: want Return, got %T", outerCl.Func.Block[0])
+	}
+	innerCl, ok := ret.Value.(*ir.Closure)
+	if !ok {
+		t.Fatalf("outer Return.Value: want Closure (inner lifted), got %T", ret.Value)
+	}
+
+	// Inner's caps: one field, n, ref<int>.
+	if len(innerCl.State.Def.Fields) != 1 {
+		t.Fatalf("inner caps: want 1 field, got %d", len(innerCl.State.Def.Fields))
+	}
+	innerField := innerCl.State.Def.Fields[0]
+	if innerField.Name != "n" || innerField.Type.Kind != ir.TypeRef {
+		t.Errorf("inner caps n: want ref<int>, got %s %v", innerField.Name, innerField.Type)
+	}
+
+	// Inner's caps init for n: bare Select{state, n} (typed ref<int>),
+	// NOT &n and NOT *state.n.
+	innerInit := innerCl.State.Fields[0].Value
+	sel, ok := innerInit.(*ir.Select)
+	if !ok {
+		t.Fatalf("inner caps init: want bare Select{state, n}; got %T (%v)", innerInit, innerInit)
+	}
+	if sel.Field != "n" {
+		t.Errorf("inner caps init Select.Field: want n, got %s", sel.Field)
+	}
+	if sel.Type == nil || sel.Type.Kind != ir.TypeRef {
+		t.Errorf("inner caps init Select.Type: want ref<int>, got %v", sel.Type)
+	}
+
+	// Inner's body assignments must deref state.n: *state.n = *state.n + 1.
+	if len(innerCl.Func.Block) != 1 {
+		t.Fatalf("inner body: want 1 stmt, got %d", len(innerCl.Func.Block))
+	}
+	asg, ok := innerCl.Func.Block[0].(*ir.Assign)
+	if !ok {
+		t.Fatalf("inner body[0]: want Assign, got %T", innerCl.Func.Block[0])
+	}
+	target, ok := asg.Target.(*ir.Unary)
+	if !ok || target.Op != ast.UnaryDeref {
+		t.Errorf("inner body assign target: want *state.n, got %T", asg.Target)
+	}
+}

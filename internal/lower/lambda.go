@@ -102,10 +102,21 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 		case *ir.Spread:
 			walkExpr(x.Operand)
 		case *ir.Lambda:
-			// Nested lambdas: their own captures are the responsibility of
-			// their own Lift call. Do not descend (the outer lambda's
-			// captures are only the Idents directly visible at this level).
-			return
+			// The inner lambda's free variables (other than its own params)
+			// are also captures of this outer body. Descend with the inner's
+			// params added to paramSet so they don't get treated as captures
+			// of the outer.
+			saved := paramSet
+			inner := make(map[ir.Symbol]bool, len(saved)+len(x.Func.Params))
+			for s := range saved {
+				inner[s] = true
+			}
+			for _, p := range x.Func.Params {
+				inner[p] = true
+			}
+			paramSet = inner
+			walkStmts(x.Func.Block)
+			paramSet = saved
 		case *ir.Closure:
 			// Already-lifted; do not descend.
 			return
@@ -238,10 +249,11 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 	case nil:
 		return nil
 	case *ir.Lambda:
-		// Recurse into the lambda's body first so nested lambdas are
-		// lifted in inner-most order; their captures may reach outer
-		// bindings via l.enclosing once Lift establishes its frame.
-		x.Func.Block = liftLambdasInStmts(x.Func.Block, l)
+		// Lift directly. l.Lift pushes its frame and rewrites the body via
+		// rewriteStmts/rewriteExpr — those encounter nested *ir.Lambda nodes
+		// and lift them inline (with the outer frame on the stack), so that
+		// nested closures can reuse the outer's already-ref-typed capture
+		// fields.
 		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
 	case *ir.Binary:
 		x.Left = liftLambdas(x.Left, l)
@@ -376,11 +388,16 @@ type lifter struct {
 }
 
 type scopeFrame struct {
-	// captureField maps a captured outer Symbol to the access expression
-	// that reaches it from this frame's lifted body — typically
-	// Select{Ident{state}, fieldName}, or Unary{Deref, Select{...}} for
-	// mutable captures.
+	// captureField maps a captured outer Symbol to the bare Select expression
+	// reaching it from this frame's lifted body: Select{Ident{state},
+	// fieldName, type=ref<T>} for mutable captures, or
+	// Select{Ident{state}, fieldName, type=T} for read-only captures.
+	// Reads/writes inside the body wrap mutable captures in Unary{Deref};
+	// inner-lambda caps-init reads the bare Select so the ref<T> threads
+	// through unchanged.
 	captureField map[ir.Symbol]ir.Expr
+	// captureMutable[sym] is true iff the captured field is ref<T>.
+	captureMutable map[ir.Symbol]bool
 }
 
 // Lift converts a closure-shaped (body, params, return) into a top-level Func
@@ -418,31 +435,34 @@ func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast
 		Return: ret,
 	}
 
-	// Build the rewrite map: captured Sym → expression accessing it inside
-	// the lifted body. State is value-typed; mutable fields are ref<T>.
+	// Build the rewrite maps. captureField stores the bare Select for each
+	// captured Sym (typed ref<T> if the body mutates it, T otherwise).
+	// captureMutable flags which captures are ref-typed so rewriteExpr knows
+	// to wrap with Unary{Deref} on reads.
 	captureField := make(map[ir.Symbol]ir.Expr, len(caps))
+	captureMutable := make(map[ir.Symbol]bool, len(caps))
 	for _, c := range caps {
+		fieldType := c.Sym.SymType()
+		if c.Mutable {
+			fieldType = ir.RefOf(c.Sym.SymType())
+		}
 		sel := &ir.Select{
 			Operand: &ir.Ident{Name: "state", Sym: stateParam, Type: capsType},
 			Field:   c.Sym.SymName(),
-			Type:    c.Sym.SymType(),
+			Type:    fieldType,
 		}
-		var access ir.Expr = sel
-		if c.Mutable {
-			// Field type is ref<T>; reads/writes go through Unary{Deref}.
-			sel.Type = ir.RefOf(c.Sym.SymType())
-			access = &ir.Unary{
-				Op:      ast.UnaryDeref,
-				Operand: sel,
-				Type:    c.Sym.SymType(),
-			}
-		}
-		captureField[c.Sym] = access
+		captureField[c.Sym] = sel
+		captureMutable[c.Sym] = c.Mutable
 	}
 
-	// Push frame and rewrite body.
-	l.enclosing = append(l.enclosing, scopeFrame{captureField: captureField})
-	lifted.Block = l.rewriteStmts(body, captureField)
+	// Push frame and rewrite body. Nested *ir.Lambda nodes encountered during
+	// rewrite are lifted inline by rewriteExpr — they see this frame on the
+	// stack and reuse its capture access expressions.
+	l.enclosing = append(l.enclosing, scopeFrame{
+		captureField:   captureField,
+		captureMutable: captureMutable,
+	})
+	lifted.Block = l.rewriteStmts(body, captureField, captureMutable)
 	l.enclosing = l.enclosing[:len(l.enclosing)-1]
 
 	l.pkg.Funcs = append(l.pkg.Funcs, lifted)
@@ -538,126 +558,134 @@ func itoa(n int) string {
 }
 
 // rewriteStmts replaces every Ident.Sym appearing in stmts that is in
-// captureField with the field's access expression. It does not descend into
-// nested *ir.Lambda nodes — those will be lifted by their own Lift call,
-// which establishes its own frame and inherits the current frame via
-// l.enclosing.
-func (l *lifter) rewriteStmts(stmts []ir.Stmt, captureField map[ir.Symbol]ir.Expr) []ir.Stmt {
+// captureField with the field's access expression (wrapping mutable
+// captures with Unary{Deref}). Nested *ir.Lambda nodes are lifted inline
+// via l.Lift; the active frame stays on l.enclosing while the inner runs
+// so the inner's caps-init can pull access expressions through
+// outerCaptureAccess.
+func (l *lifter) rewriteStmts(stmts []ir.Stmt, captureField map[ir.Symbol]ir.Expr, captureMutable map[ir.Symbol]bool) []ir.Stmt {
 	for _, s := range stmts {
-		l.rewriteStmt(s, captureField)
+		l.rewriteStmt(s, captureField, captureMutable)
 	}
 	return stmts
 }
 
-func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr) {
+func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, captureMutable map[ir.Symbol]bool) {
 	switch n := s.(type) {
 	case *ir.Assign:
-		n.Target = l.rewriteExpr(n.Target, captureField)
-		n.Value = l.rewriteExpr(n.Value, captureField)
+		n.Target = l.rewriteExpr(n.Target, captureField, captureMutable)
+		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)
 	case *ir.LocalVar:
-		n.Init = l.rewriteExpr(n.Init, captureField)
+		n.Init = l.rewriteExpr(n.Init, captureField, captureMutable)
 	case *ir.Return:
-		n.Value = l.rewriteExpr(n.Value, captureField)
+		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)
 	case *ir.If:
-		n.Cond = l.rewriteExpr(n.Cond, captureField)
-		l.rewriteStmts(n.Body, captureField)
-		l.rewriteStmts(n.Else, captureField)
+		n.Cond = l.rewriteExpr(n.Cond, captureField, captureMutable)
+		l.rewriteStmts(n.Body, captureField, captureMutable)
+		l.rewriteStmts(n.Else, captureField, captureMutable)
 	case *ir.For:
-		n.Iter = l.rewriteExpr(n.Iter, captureField)
-		l.rewriteStmts(n.Body, captureField)
-		l.rewriteStmts(n.Else, captureField)
+		n.Iter = l.rewriteExpr(n.Iter, captureField, captureMutable)
+		l.rewriteStmts(n.Body, captureField, captureMutable)
+		l.rewriteStmts(n.Else, captureField, captureMutable)
 	case *ir.PlatformFilter:
-		l.rewriteStmts(n.Body, captureField)
+		l.rewriteStmts(n.Body, captureField, captureMutable)
 	case *ir.Emit:
 		for i := range n.Args {
-			n.Args[i].Value = l.rewriteExpr(n.Args[i].Value, captureField)
+			n.Args[i].Value = l.rewriteExpr(n.Args[i].Value, captureField, captureMutable)
 		}
 	case *ir.CallStmt:
 		if n.Call != nil {
-			n.Call = l.rewriteExpr(n.Call, captureField).(*ir.Call)
+			n.Call = l.rewriteExpr(n.Call, captureField, captureMutable).(*ir.Call)
 		}
 	case *ir.Toggle:
-		n.Target = l.rewriteExpr(n.Target, captureField)
+		n.Target = l.rewriteExpr(n.Target, captureField, captureMutable)
 	case *ir.NodeInst:
 		for i := range n.Props {
-			n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField)
+			n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField, captureMutable)
 		}
-		n.Key = l.rewriteExpr(n.Key, captureField)
-		n.Ref = l.rewriteExpr(n.Ref, captureField)
-		l.rewriteStmts(n.Children, captureField)
+		n.Key = l.rewriteExpr(n.Key, captureField, captureMutable)
+		n.Ref = l.rewriteExpr(n.Ref, captureField, captureMutable)
+		l.rewriteStmts(n.Children, captureField, captureMutable)
 		for i := range n.Handlers {
 			if n.Handlers[i].Func != nil {
-				l.rewriteStmts(n.Handlers[i].Func.Block, captureField)
+				l.rewriteStmts(n.Handlers[i].Func.Block, captureField, captureMutable)
 			}
 		}
 	case *ir.SlotInst:
-		l.rewriteStmts(n.Children, captureField)
+		l.rewriteStmts(n.Children, captureField, captureMutable)
 	case *ir.ErrorBoundary:
-		l.rewriteStmts(n.Children, captureField)
+		l.rewriteStmts(n.Children, captureField, captureMutable)
 		if n.Handler != nil && n.Handler.Func != nil {
-			l.rewriteStmts(n.Handler.Func.Block, captureField)
+			l.rewriteStmts(n.Handler.Func.Block, captureField, captureMutable)
 		}
 	}
 }
 
-func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr) ir.Expr {
+func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, captureMutable map[ir.Symbol]bool) ir.Expr {
 	switch x := e.(type) {
 	case nil:
 		return nil
 	case *ir.Ident:
 		if x.Sym != nil {
 			if access, ok := captureField[x.Sym]; ok {
-				return cloneExpr(access)
+				cloned := cloneExpr(access)
+				if captureMutable[x.Sym] {
+					cloned = &ir.Unary{
+						Op:      ast.UnaryDeref,
+						Operand: cloned,
+						Type:    x.Sym.SymType(),
+					}
+				}
+				return cloned
 			}
 		}
 		return x
 	case *ir.Binary:
-		x.Left = l.rewriteExpr(x.Left, captureField)
-		x.Right = l.rewriteExpr(x.Right, captureField)
+		x.Left = l.rewriteExpr(x.Left, captureField, captureMutable)
+		x.Right = l.rewriteExpr(x.Right, captureField, captureMutable)
 		return x
 	case *ir.Unary:
-		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Ternary:
-		x.Cond = l.rewriteExpr(x.Cond, captureField)
-		x.Then = l.rewriteExpr(x.Then, captureField)
-		x.Else = l.rewriteExpr(x.Else, captureField)
+		x.Cond = l.rewriteExpr(x.Cond, captureField, captureMutable)
+		x.Then = l.rewriteExpr(x.Then, captureField, captureMutable)
+		x.Else = l.rewriteExpr(x.Else, captureField, captureMutable)
 		return x
 	case *ir.Call:
-		x.Receiver = l.rewriteExpr(x.Receiver, captureField)
+		x.Receiver = l.rewriteExpr(x.Receiver, captureField, captureMutable)
 		for i := range x.Args {
-			x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField)
+			x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField, captureMutable)
 		}
 		return x
 	case *ir.Conversion:
-		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Select:
-		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Index:
-		x.Operand = l.rewriteExpr(x.Operand, captureField)
-		x.Idx = l.rewriteExpr(x.Idx, captureField)
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
+		x.Idx = l.rewriteExpr(x.Idx, captureField, captureMutable)
 		return x
 	case *ir.ListLit:
 		for i := range x.Elems {
-			x.Elems[i] = l.rewriteExpr(x.Elems[i], captureField)
+			x.Elems[i] = l.rewriteExpr(x.Elems[i], captureField, captureMutable)
 		}
 		return x
 	case *ir.StructLit:
 		for i := range x.Fields {
-			x.Fields[i].Value = l.rewriteExpr(x.Fields[i].Value, captureField)
+			x.Fields[i].Value = l.rewriteExpr(x.Fields[i].Value, captureField, captureMutable)
 		}
 		return x
 	case *ir.Spread:
-		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Lambda:
-		// Nested lambda inside this body. The outer pass's walker will
-		// reach it as part of normal traversal (after the outer Lift
-		// returns) and call Lift on it. Do not rewrite into the lambda
-		// body here — that would conflate scope frames.
-		return x
+		// Inner lambda. Lift inline so its caps-init runs while the enclosing
+		// frame is still on l.enclosing; outerCaptureAccess can then return
+		// the outer's bare Select for any Sym both lambdas capture.
+		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
 	case *ir.Closure:
 		// Already lifted; do not descend.
 		return x
