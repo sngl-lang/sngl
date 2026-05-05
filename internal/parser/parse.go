@@ -26,6 +26,15 @@ func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 	if parseErr != nil {
 		errs = append(errs, remapErrors(parseErr, filtered))
 	}
+	if !p.AtEOF() {
+		idx := p.TrailingTokenIndex()
+		if idx >= 0 && idx < len(filtered) {
+			tok := filtered[idx]
+			errs = append(errs, fmt.Errorf("%s:%d:%d: unexpected trailing input near %q", filename, tok.Line, tok.Column, tok.Literal))
+		} else {
+			errs = append(errs, fmt.Errorf("%s: unexpected trailing input", filename))
+		}
+	}
 	if tree == nil {
 		return &ast.Document{}, errors.Join(errs...)
 	}

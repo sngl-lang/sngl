@@ -623,6 +623,27 @@ func TestParseConstExprInArg(t *testing.T) {
 	}
 }
 
+func TestParseTrailingInputErrors(t *testing.T) {
+	// Inputs that contain a valid prefix followed by a token the grammar
+	// can't continue from must error rather than silently truncate.
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{"trailing_amp", "var b = 5 & 3"},
+		{"trailing_bang", "var b = 5 ! 3"},
+		{"trailing_garbage_after_decl", "const x = 1\n) extra"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Parse("test.sngl", []byte(c.src))
+			if err == nil {
+				t.Fatalf("expected error for %q; got none", c.src)
+			}
+		})
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
