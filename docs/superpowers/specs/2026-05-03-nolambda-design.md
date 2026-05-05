@@ -69,7 +69,7 @@ UnaryDeref // *x
 
 Encoded in IR as `*ir.Unary{Op: UnaryAddr | UnaryDeref, Operand, Type}`.
 
-- `&` requires its operand to be an addressable lvalue. Permitted: `Ident` resolving to a `*Var` or `*Param`, and `Select` whose chain bottoms out at one of those. Forbidden: literals, list-index targets, call results. Checker enforces.
+- `&` requires its operand to be an addressable lvalue. Permitted: `Ident` resolving to a `*Var` or `*Param`; `Select` whose chain bottoms out at one of those; `Index` against an addressable list operand. (List-index targets are already lvalues in SNGL — `list[i]!!` and `list[i]++` are valid — so `&list[i]` falls out naturally and produces `ref<ElemType>`.) Forbidden: literals, call results. Checker enforces.
 - `*` requires its operand to have type `ref<T>`. Result type is `T`.
 
 Both ops appear *only* in lowered output. The parser accepts them anywhere a unary expression is valid; pre-lower SNGL programs that use them are legal but rare in practice.
