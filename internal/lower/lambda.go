@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -201,9 +202,167 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 }
 
 // lowerLambda lifts closures to top-level functions plus captured-state
-// structs. Phase B Task 3: capture analysis and the lifter are in place; the
-// pass body is still a placeholder until Task 4 (apply wiring).
-func lowerLambda(pkg *ir.Package) error { return nil }
+// structs. Walks every *ir.Lambda in the package and replaces it with an
+// *ir.Closure produced by lifter.Lift. Asserts no Lambda survives the pass.
+func lowerLambda(pkg *ir.Package) error {
+	if pkg == nil {
+		return nil
+	}
+	if pkg.LiftedCaptures == nil {
+		pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
+	}
+
+	l := &lifter{pkg: pkg}
+
+	rewrite := func(e ir.Expr) ir.Expr {
+		return liftLambdas(e, l)
+	}
+
+	walkPackage(pkg, walkFuncs{
+		expr: rewrite,
+		stmts: func(stmts []ir.Stmt) []ir.Stmt {
+			return liftLambdasInStmts(stmts, l)
+		},
+	})
+
+	if err := assertNoLambdaSurvives(pkg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// liftLambdas replaces every *ir.Lambda found in e (recursively) with a
+// *ir.Closure produced by l.Lift.
+func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
+	switch x := e.(type) {
+	case nil:
+		return nil
+	case *ir.Lambda:
+		// Recurse into the lambda's body first so nested lambdas are
+		// lifted in inner-most order; their captures may reach outer
+		// bindings via l.enclosing once Lift establishes its frame.
+		x.Func.Block = liftLambdasInStmts(x.Func.Block, l)
+		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
+	case *ir.Binary:
+		x.Left = liftLambdas(x.Left, l)
+		x.Right = liftLambdas(x.Right, l)
+		return x
+	case *ir.Unary:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Ternary:
+		x.Cond = liftLambdas(x.Cond, l)
+		x.Then = liftLambdas(x.Then, l)
+		x.Else = liftLambdas(x.Else, l)
+		return x
+	case *ir.Call:
+		x.Receiver = liftLambdas(x.Receiver, l)
+		for i := range x.Args {
+			x.Args[i].Value = liftLambdas(x.Args[i].Value, l)
+		}
+		return x
+	case *ir.Conversion:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Select:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Index:
+		x.Operand = liftLambdas(x.Operand, l)
+		x.Idx = liftLambdas(x.Idx, l)
+		return x
+	case *ir.ListLit:
+		for i := range x.Elems {
+			x.Elems[i] = liftLambdas(x.Elems[i], l)
+		}
+		return x
+	case *ir.StructLit:
+		for i := range x.Fields {
+			x.Fields[i].Value = liftLambdas(x.Fields[i].Value, l)
+		}
+		return x
+	case *ir.Spread:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	}
+	return e
+}
+
+func liftLambdasInStmts(stmts []ir.Stmt, l *lifter) []ir.Stmt {
+	for _, s := range stmts {
+		liftLambdasInStmt(s, l)
+	}
+	return stmts
+}
+
+func liftLambdasInStmt(s ir.Stmt, l *lifter) {
+	switch n := s.(type) {
+	case *ir.Assign:
+		n.Target = liftLambdas(n.Target, l)
+		n.Value = liftLambdas(n.Value, l)
+	case *ir.LocalVar:
+		n.Init = liftLambdas(n.Init, l)
+	case *ir.Return:
+		n.Value = liftLambdas(n.Value, l)
+	case *ir.If:
+		n.Cond = liftLambdas(n.Cond, l)
+		liftLambdasInStmts(n.Body, l)
+		liftLambdasInStmts(n.Else, l)
+	case *ir.For:
+		n.Iter = liftLambdas(n.Iter, l)
+		liftLambdasInStmts(n.Body, l)
+		liftLambdasInStmts(n.Else, l)
+	case *ir.PlatformFilter:
+		liftLambdasInStmts(n.Body, l)
+	case *ir.Emit:
+		for i := range n.Args {
+			n.Args[i].Value = liftLambdas(n.Args[i].Value, l)
+		}
+	case *ir.CallStmt:
+		if n.Call != nil {
+			n.Call = liftLambdas(n.Call, l).(*ir.Call)
+		}
+	case *ir.Toggle:
+		n.Target = liftLambdas(n.Target, l)
+	case *ir.NodeInst:
+		for i := range n.Props {
+			n.Props[i].Value = liftLambdas(n.Props[i].Value, l)
+		}
+		n.Key = liftLambdas(n.Key, l)
+		n.Ref = liftLambdas(n.Ref, l)
+		liftLambdasInStmts(n.Children, l)
+		for i := range n.Handlers {
+			if n.Handlers[i].Func != nil {
+				liftLambdasInStmts(n.Handlers[i].Func.Block, l)
+			}
+		}
+	case *ir.SlotInst:
+		liftLambdasInStmts(n.Children, l)
+	case *ir.ErrorBoundary:
+		liftLambdasInStmts(n.Children, l)
+		if n.Handler != nil && n.Handler.Func != nil {
+			liftLambdasInStmts(n.Handler.Func.Block, l)
+		}
+	}
+}
+
+// assertNoLambdaSurvives walks pkg verifying that no *ir.Lambda remains.
+// Cheap (one extra walk); failure here means the pass missed a position.
+func assertNoLambdaSurvives(pkg *ir.Package) error {
+	var found bool
+	walkPackage(pkg, walkFuncs{
+		expr: func(e ir.Expr) ir.Expr {
+			if _, ok := e.(*ir.Lambda); ok {
+				found = true
+			}
+			return e
+		},
+	})
+	if found {
+		return fmt.Errorf("lower: NoLambda invariant violated — *ir.Lambda survived the pass")
+	}
+	return nil
+}
 
 // lifter owns NoLambda's package-scoped state. The same lifter is shared
 // between the main pass and NoDeclarative's handler-promote step.
