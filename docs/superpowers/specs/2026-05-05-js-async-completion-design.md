@@ -25,7 +25,8 @@ read from a reactive computed expression).
 - Monomorphization of mixed-color callees (#48).
 - Auto-parallelization of consecutive pure async calls (#49).
 - C# target (#50).
-- Any reactive context other than zero-arg computed funcs.
+- Parameterized reactive computed funcs (would require keying the
+  synthetic settle-state per call instance — out of scope).
 - Any platform other than `html` with `--lang js`.
 
 ## Current state
@@ -59,16 +60,36 @@ in `ir/async.go`, exported as `BlockHasAsyncCall(stmts []ir.Stmt) bool`
 and friends. The checker pass and the html codegen both consume it,
 so there is one definition of "this body contains an async call."
 
-### 2. Lowering: async-in-computed
+### 2. Lowering: async-in-reactive
 
 New pass `internal/lower/async_reactive.go`, registered in
 `internal/lower/lower.go` after existing computed/reactivity passes.
 
-Scope: zero-arg, expression-body computed functions whose return
-expression transitively contains an async call. Anything else
-(parameterized funcs that are reactive, async inside a visual node
-expression tree, etc.) is **not** lowered by this pass; the checker
-must continue to accept them only inside event-handler-shaped contexts.
+Scope: every reactive context where an async call appears. A reactive
+context is anything the existing reactivity pass already classifies as
+"re-runs when its dependencies change" — zero-arg expression-body
+computed funcs, plus reactive subexpressions inside visual nodes
+(text interpolation, attribute bindings, conditional/loop guards).
+
+Two sub-cases, handled uniformly via a single hoist-then-lower trick:
+
+**(a) Named computed:** the reactive context is already a named
+zero-arg computed func `fn greeting() => …`. Lower in place.
+
+**(b) Inline reactive expr:** the reactive context is an anonymous
+subexpression in a visual tree, e.g.
+`Text("Hello, " + await fetchHello())`. Hoist the maximal async
+subexpression into a synthetic anonymous zero-arg computed
+`__hoist_<n>`, replace the original site with a call to it, then fall
+into case (a). "Maximal" = the largest containing subtree whose free
+variables are all reactive dependencies (no enclosing-scope locals,
+no non-reactive params); the existing reactivity dependency-set
+machinery already computes this.
+
+Out of scope (still a checker error): parameterized reactive computed
+funcs containing async. Settling state would need to be keyed per
+parameter tuple, which is a different lowering and lives outside this
+spec.
 
 Transformation:
 
@@ -140,9 +161,9 @@ predictable mutation order. Pure-async fan-out is #49.
 
 ### 5. Checker rules
 
-- Async-in-reactive other than the lowered case (zero-arg expression
-  computed) is a checker error: "async expression not allowed in
-  reactive context here."
+- Async inside a parameterized reactive computed is a checker error:
+  "async expression not allowed in parameterized reactive context."
+  Other reactive contexts are handled by lowering (§2).
 - Async function passed where a sync function type is expected is a
   checker error. (Closure points-to that would otherwise color the
   callee site is #47.)
@@ -160,11 +181,14 @@ Txtar fixtures under `cmd/sngl/testdata/`:
 - `async_setter.txt` — `@change` handler is async; `$set_X` becomes
   `async function`.
 - `async_timer.txt` — timer tick is async.
-- `async_computed_lowered.txt` — computed expr with async; check
-  presence of synthetic state field, kicker, sync wrapper, and
+- `async_computed_lowered.txt` — named computed expr with async;
+  check presence of synthetic state field, kicker, sync wrapper, and
   read-site rewrite.
+- `async_inline_reactive_lowered.txt` — async inside a Text/attribute
+  binding inside a visual node; check that an anonymous `__hoist_N`
+  computed is synthesized and lowered.
 - `async_in_computed_with_param.txt` — checker error (parameterized
-  computed not in lowering scope).
+  reactive computed).
 
 Lowering golden tests in `internal/lower/testdata/` for the
 async_reactive pass.
