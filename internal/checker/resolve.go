@@ -108,6 +108,12 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			return OptionOf(TypDyn)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
+	case "ref":
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
+			return ir.RefOf(TypDyn)
+		}
+		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
 	}

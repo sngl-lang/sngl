@@ -659,7 +659,7 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 		if ident, ok := fn.Operand.(*ast.IdentExpr); ok {
 			// Type-namespace methods (e.g., string.length("hi")).
 			switch ident.Name {
-			case "int", "float", "string", "bool", "list", "color":
+			case "int", "float", "string", "bool", "list", "color", "ref":
 				return checkArgs()
 			}
 			// Namespace function calls (e.g., docs.Pages()).
