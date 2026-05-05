@@ -392,6 +392,7 @@ func (*UnitDef) typeExpr()   {}
 func (*IdentExpr) targetExpr()  {}
 func (*SelectExpr) targetExpr() {}
 func (*IndexExpr) targetExpr()  {}
+func (*UnaryExpr) targetExpr()  {}
 
 // --- StmtPos implementations ---
 
