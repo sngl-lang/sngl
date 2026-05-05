@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -87,6 +89,69 @@ func lowerNoRef(pkg *ir.Package, _ Caps) error {
 		for _, f := range w.Funcs {
 			rewriteFuncSignature(f, rw)
 		}
+	}
+	if err := assertNoRefSurvives(pkg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// assertNoRefSurvives walks every type position in pkg and reports an error
+// if any *ir.Type with Kind == TypeRef remains. Run as a post-pass invariant
+// of lowerNoRef so a future change that misses a position fails loudly rather
+// than producing silently-broken IR.
+func assertNoRefSurvives(pkg *ir.Package) error {
+	var found bool
+	var check func(t *ir.Type)
+	check = func(t *ir.Type) {
+		if t == nil || found {
+			return
+		}
+		if t.Kind == ir.TypeRef {
+			found = true
+			return
+		}
+		for _, e := range t.Elems {
+			check(e)
+		}
+	}
+	walkPackage(pkg, walkFuncs{
+		expr: func(e ir.Expr) ir.Expr {
+			if e != nil {
+				check(e.ExprType())
+			}
+			return e
+		},
+	})
+	for _, s := range pkg.Structs {
+		for _, f := range s.Fields {
+			check(f.Type)
+		}
+	}
+	for _, f := range pkg.Funcs {
+		for _, p := range f.Params {
+			check(p.Type)
+		}
+		check(f.Return)
+	}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			for _, p := range f.Params {
+				check(p.Type)
+			}
+			check(f.Return)
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, f := range w.Funcs {
+			for _, p := range f.Params {
+				check(p.Type)
+			}
+			check(f.Return)
+		}
+	}
+	if found {
+		return fmt.Errorf("lower: NoRef invariant violated — TypeRef survived the pass")
 	}
 	return nil
 }
