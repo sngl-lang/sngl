@@ -353,6 +353,19 @@ component main {
 }`, "cannot dereference")
 }
 
+func TestCheckAutoDerefSelect(t *testing.T) {
+	expectNoErrors(t, `
+struct Node {
+    value int
+}
+component main {
+    var n Node = Node{value=0}
+    var p ref<Node> = &n
+    var v int = p.value
+    func bump() { p.value = p.value + 1 }
+}`)
+}
+
 // --- const(expr) assertion ---
 
 func TestConstExprLiteral(t *testing.T) {

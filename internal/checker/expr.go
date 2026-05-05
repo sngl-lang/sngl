@@ -767,6 +767,19 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
 
+	// Auto-deref through Select: if the operand is `ref<T>`, treat the field
+	// access as if the operand were dereferenced first. The IR carries an
+	// explicit Unary{Deref} so downstream passes never need a special case.
+	if operand != nil && operand.Kind == ir.TypeRef && len(operand.Elems) > 0 {
+		operandExpr = &ir.Unary{
+			AST:     nil, // synthesized — no source position
+			Type:    operand.Elems[0],
+			Op:      ast.UnaryDeref,
+			Operand: operandExpr,
+		}
+		operand = operand.Elems[0]
+	}
+
 	switch x.Kind {
 	case ast.SelectEvent:
 		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
