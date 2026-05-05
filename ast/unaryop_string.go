@@ -10,11 +10,13 @@ func _() {
 	var x [1]struct{}
 	_ = x[UnaryNot-0]
 	_ = x[UnaryNeg-1]
+	_ = x[UnaryAddr-2]
+	_ = x[UnaryDeref-3]
 }
 
-const _UnaryOp_name = "!-"
+const _UnaryOp_name = "!-&*"
 
-var _UnaryOp_index = [...]uint8{0, 1, 2}
+var _UnaryOp_index = [...]uint8{0, 1, 2, 3, 4}
 
 func (i UnaryOp) String() string {
 	idx := int(i) - 0

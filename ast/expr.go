@@ -75,8 +75,10 @@ const (
 type UnaryOp int
 
 const (
-	UnaryNot UnaryOp = iota // !
-	UnaryNeg                // -
+	UnaryNot   UnaryOp = iota // !
+	UnaryNeg                  // -
+	UnaryAddr                 // &
+	UnaryDeref                // *
 )
 
 //go:generate go tool stringer -type=AssignOp -linecomment
