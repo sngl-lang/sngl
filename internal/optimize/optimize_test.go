@@ -329,6 +329,76 @@ component main {
 	}
 }
 
+// TestFoldDoesNotCollapseDerefOfAddrOfConst ensures the const folder leaves
+// reference operations alone. `&k` is not const (storage may be aliased), and
+// folding the operand of `&` to a literal would produce `&5`, which is not a
+// valid lvalue. Likewise `*p` must remain a runtime load even when p was
+// initialized from a const's address.
+func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
+	src := `
+const k int = 5
+component main {
+    var p ref<int> = &k
+    var v int = *p
+}
+`
+	pkg, _ := checkAndOptimize(t, src, "html", "js")
+
+	if len(pkg.Components) == 0 {
+		t.Fatal("expected at least one component")
+	}
+	var mainComp *ir.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			mainComp = c
+		}
+	}
+	if mainComp == nil {
+		t.Fatal("expected component main")
+	}
+
+	var pVar, vVar *ir.Var
+	for _, v := range mainComp.Vars {
+		switch v.Name {
+		case "p":
+			pVar = v
+		case "v":
+			vVar = v
+		}
+	}
+	if pVar == nil {
+		t.Fatal("expected component var p in main")
+	}
+	if vVar == nil {
+		t.Fatal("expected component var v in main")
+	}
+
+	// p's initializer must remain a Unary(&...) — not folded into a literal.
+	pInit, ok := pVar.Init.(*ir.Unary)
+	if !ok {
+		t.Fatalf("expected p.Init to remain *ir.Unary, got %T", pVar.Init)
+	}
+	if pInit.Op != ast.UnaryAddr {
+		t.Fatalf("expected p.Init op UnaryAddr, got %v", pInit.Op)
+	}
+	// The operand of & must still be the ident k (an lvalue) — NOT a literal.
+	if _, ok := pInit.Operand.(*ir.Literal); ok {
+		t.Errorf("operand of & was folded to a literal; & must take an lvalue")
+	}
+	if _, ok := pInit.Operand.(*ir.Ident); !ok {
+		t.Errorf("expected & operand to remain *ir.Ident, got %T", pInit.Operand)
+	}
+
+	// v's initializer must remain a Unary(*p) — not folded into a literal.
+	vInit, ok := vVar.Init.(*ir.Unary)
+	if !ok {
+		t.Fatalf("expected v.Init to remain *ir.Unary, got %T", vVar.Init)
+	}
+	if vInit.Op != ast.UnaryDeref {
+		t.Fatalf("expected v.Init op UnaryDeref, got %v", vInit.Op)
+	}
+}
+
 // fsResolver is a minimal checker.ImportResolver that reads .sngl files
 // from an fs.FS for directory imports. Scheme imports are unsupported.
 type fsResolver struct{}

@@ -47,6 +47,12 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Binary:
 		return isConstExpr(x.Left, ctx) && isConstExpr(x.Right, ctx)
 	case *ir.Unary:
+		// Reference operations (&x, *p) are never const: the underlying
+		// storage is mutable and may be aliased, so the value at any
+		// given moment is not knowable at compile time.
+		if x.Op == ast.UnaryAddr || x.Op == ast.UnaryDeref {
+			return false
+		}
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)

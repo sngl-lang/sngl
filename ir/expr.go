@@ -240,6 +240,11 @@ func IsConst(e Expr) bool {
 	case *Binary:
 		return IsConst(x.Left) && IsConst(x.Right)
 	case *Unary:
+		// Reference operations (&x, *p) are never const: storage may be
+		// mutated through aliases, and `&` of a literal is not legal.
+		if x.Op == ast.UnaryAddr || x.Op == ast.UnaryDeref {
+			return false
+		}
 		return IsConst(x.Operand)
 	case *Ternary:
 		return IsConst(x.Cond) && IsConst(x.Then) && IsConst(x.Else)

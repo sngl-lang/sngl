@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -31,6 +32,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Left = foldExpr(x.Left, ctx)
 		x.Right = foldExpr(x.Right, ctx)
 	case *ir.Unary:
+		// Reference operations (&x, *p) are never const — the underlying
+		// storage may be mutated through aliases, and `&literal` is not a
+		// valid emission. Leave the operand untouched so the codegen still
+		// sees the original lvalue identifier.
+		if x.Op == ast.UnaryAddr || x.Op == ast.UnaryDeref {
+			return e
+		}
 		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.Ternary:
 		x.Cond = foldExpr(x.Cond, ctx)
