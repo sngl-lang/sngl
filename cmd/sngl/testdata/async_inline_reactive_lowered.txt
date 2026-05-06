@@ -1,0 +1,28 @@
+# An async call inside a visual-node prop expression (inline reactive context)
+# is hoisted into a synthetic __hoist_N computed and then lowered by
+# NoAsyncReactive into a settled-state field + async kicker pattern.
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# Synthetic settled-state field produced by hoist + lower.
+grep '__async___hoist_0' out/index.html
+
+# Async kicker function that populates the settled-state field.
+grep 'async function \$compute___hoist_0' out/index.html
+
+# The kicker fires at startup.
+grep '\$compute___hoist_0()' out/index.html
+
+# The original async call is awaited inside the kicker.
+grep 'await fetchHello' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+component main {
+    text(value="got " + api.fetchHello("world"))
+}
+
+-- api/index.ts --
+export async function fetchHello(name: string): Promise<string> { return "hi " + name; }

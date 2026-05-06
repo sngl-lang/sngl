@@ -1,0 +1,18 @@
+# A parameterized function that transitively calls an async native,
+# when referenced from a visual prop (reactive context), is a checker error.
+# The NoAsyncReactive lowering cannot key a per-call-argument settled state field.
+
+! sngl check app.sngl
+stderr 'async expression not allowed in parameterized reactive context'
+
+-- app.sngl --
+import api "js://./api"
+
+func greet(name string) => api.fetchHello(name)
+
+window #main(title="Main") {
+    text(value=greet("World"))
+}
+
+-- api/index.ts --
+export async function fetchHello(name: string): Promise<string> { return "hi " + name; }

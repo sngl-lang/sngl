@@ -1,0 +1,25 @@
+# An @click handler that calls an async native must be wrapped in an async function.
+# The generated JS addEventListener call must use "async function".
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# Event handler wrapper is async because its body awaits fetchHello.
+grep 'addEventListener.*async function' out/index.html
+
+# The state assignment uses await.
+grep 'await fetchHello' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+component main {
+    var greeting = ""
+    button(text="Go", @click {
+        greeting = api.fetchHello("world")
+    })
+    text(value=greeting)
+}
+
+-- api/index.ts --
+export async function fetchHello(name: string): Promise<string> { return "Hello " + name; }

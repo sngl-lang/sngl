@@ -1,0 +1,25 @@
+# A state var with a @change handler that calls an async native produces
+# an async $set_X setter in the generated JS.
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The setter for the state var with an async @change handler is async.
+grep 'async function \$set_count' out/index.html
+
+# The async native is awaited inside the setter body.
+grep 'await fetchHello' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+component main {
+    var count = 0 @change {
+        api.fetchHello("updated")
+    }
+    button(text="Go", @click { count = count + 1 })
+    text(value=string(count))
+}
+
+-- api/index.ts --
+export async function fetchHello(msg: string): Promise<string> { return msg; }

@@ -1,0 +1,8 @@
+# User-defined names starting with __async_ or __hoist_ are rejected by the
+# checker because those prefixes are reserved for the lowering pass.
+
+! sngl check app.sngl
+stderr 'uses reserved prefix'
+
+-- app.sngl --
+func __async_foo() => "hello"

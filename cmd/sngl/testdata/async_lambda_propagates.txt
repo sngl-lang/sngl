@@ -1,0 +1,26 @@
+# A function whose body contains a lambda that calls an async native is
+# itself colored async.  The generated JS must emit "async function outer".
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The enclosing function is async because its lambda body calls async.
+grep 'async function outer' out/index.html
+
+# The async call inside the lambda is awaited.
+grep 'await fetchHello' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+func outer() {
+    var f = func() { api.fetchHello("x") }
+    f()
+}
+
+component main {
+    button(text="Go", @click { outer() })
+}
+
+-- api/index.ts --
+export async function fetchHello(url: string): Promise<string> { return "hi"; }

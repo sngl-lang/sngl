@@ -1,0 +1,25 @@
+# A SNGL function that calls an async native becomes async itself.
+# The generated JS must use the async keyword and await at the call site.
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The SNGL wrapper function is emitted as an async function.
+grep 'async function loadAll' out/index.html
+
+# The async native call is awaited inside loadAll.
+grep 'await fetchHello' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+func loadAll() {
+    api.fetchHello("test")
+}
+
+component main {
+    button(text="Go", @click { loadAll() })
+}
+
+-- api/index.ts --
+export async function fetchHello(url: string): Promise<string> { return "hi"; }
