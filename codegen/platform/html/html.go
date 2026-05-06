@@ -461,6 +461,7 @@ type timerDef struct {
 	activeVar  string
 	body       string
 	mutated    map[string]bool
+	bodyAsync  bool
 }
 
 func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
@@ -2386,27 +2387,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	g.emitHandlers(b)
 
 	// Timers
-	for _, t := range g.timers {
-		updaters := g.findAffectedUpdaters(t.mutated)
-		var tickLines []string
-		tickLines = append(tickLines, t.body)
-		for _, u := range updaters {
-			tickLines = append(tickLines, u.funcName+"();")
-		}
-		if g.preview {
-			tickLines = append(tickLines, "__sngl_sync_state();")
-		}
-		tickBody := strings.Join(tickLines, "\n  ")
-		fmt.Fprintf(b, "\nlet $timer_%d = null;\n", t.index)
-		fmt.Fprintf(b, "function $timer_%d_tick() {\n  %s\n}\n", t.index, tickBody)
-		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
-		fmt.Fprintf(b, "  if (state.%s && !$timer_%d) {\n", t.activeVar, t.index)
-		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
-		fmt.Fprintf(b, "  } else if (!state.%s && $timer_%d) {\n", t.activeVar, t.index)
-		fmt.Fprintf(b, "    clearInterval($timer_%d);\n", t.index)
-		fmt.Fprintf(b, "    $timer_%d = null;\n", t.index)
-		b.WriteString("  }\n}\n")
-	}
+	g.emitTimers(b)
 
 	// Initial sync: call all update functions once to set DOM from initial state
 	if len(g.updates) > 0 || len(g.timers) > 0 {
@@ -2459,6 +2440,34 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 		} else {
 			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n", h.elemID, h.event, keyword, body)
 		}
+	}
+}
+
+func (g *htmlGen) emitTimers(b *strings.Builder) {
+	for _, t := range g.timers {
+		updaters := g.findAffectedUpdaters(t.mutated)
+		var tickLines []string
+		tickLines = append(tickLines, t.body)
+		for _, u := range updaters {
+			tickLines = append(tickLines, u.funcName+"();")
+		}
+		if g.preview {
+			tickLines = append(tickLines, "__sngl_sync_state();")
+		}
+		tickBody := strings.Join(tickLines, "\n  ")
+		tickKw := "function"
+		if t.bodyAsync {
+			tickKw = "async function"
+		}
+		fmt.Fprintf(b, "\nlet $timer_%d = null;\n", t.index)
+		fmt.Fprintf(b, "%s $timer_%d_tick() {\n  %s\n}\n", tickKw, t.index, tickBody)
+		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
+		fmt.Fprintf(b, "  if (state.%s && !$timer_%d) {\n", t.activeVar, t.index)
+		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
+		fmt.Fprintf(b, "  } else if (!state.%s && $timer_%d) {\n", t.activeVar, t.index)
+		fmt.Fprintf(b, "    clearInterval($timer_%d);\n", t.index)
+		fmt.Fprintf(b, "    $timer_%d = null;\n", t.index)
+		b.WriteString("  }\n}\n")
 	}
 }
 
@@ -3169,6 +3178,7 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 		activeVar:  activeVar,
 		body:       strings.Join(lines, "\n  "),
 		mutated:    mutated,
+		bodyAsync:  ir.BlockHasAsyncCall(t.Handler.Block),
 	})
 }
 
