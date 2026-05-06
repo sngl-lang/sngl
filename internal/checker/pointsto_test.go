@@ -214,3 +214,70 @@ func TestCollectConstraints_ReturnFuncvar(t *testing.T) {
 	}
 	t.Fatalf("expected constraint %+v in %+v", want, cs)
 }
+
+// --- analyzePointsTo tests ---
+
+func TestPointsTo_DirectStore_SyncSlot(t *testing.T) {
+	syncFn := &ir.Func{Name: "syncFn"}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(syncFn)}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{syncFn}}
+
+	info := analyzePointsTo(pkg)
+	key := ir.SlotVarKey(v)
+	if info.SlotColor[key] != ir.ColorSync {
+		t.Fatalf("want SlotColor Sync, got %v", info.SlotColor[key])
+	}
+	cs := info.Candidates(key)
+	if len(cs) != 1 || cs[0] != syncFn {
+		t.Fatalf("want [syncFn], got %+v", cs)
+	}
+}
+
+func TestPointsTo_DirectStore_AsyncSlot(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn}}
+
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
+		t.Fatalf("want SlotColor Async, got %v", info.SlotColor[ir.SlotVarKey(v)])
+	}
+}
+
+func TestPointsTo_MixedStore_PromotesAsync(t *testing.T) {
+	syncFn := &ir.Func{Name: "syncFn"}
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType()}
+	fn := &ir.Func{
+		Name: "main",
+		Block: []ir.Stmt{
+			&ir.Assign{Target: identTo(v), Value: identTo(syncFn)},
+			&ir.Assign{Target: identTo(v), Value: identTo(asyncFn)},
+		},
+	}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{fn, syncFn, asyncFn}}
+
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
+		t.Fatalf("mixed candidates should promote to Async; got %v", info.SlotColor[ir.SlotVarKey(v)])
+	}
+	if len(info.Candidates(ir.SlotVarKey(v))) != 2 {
+		t.Fatalf("expected 2 candidates, got %d", len(info.Candidates(ir.SlotVarKey(v))))
+	}
+}
+
+func TestPointsTo_TransitiveSubset(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	w := &ir.Var{Name: "w", Type: funcType(), Init: identTo(v)}
+	pkg := &ir.Package{Vars: []*ir.Var{v, w}, Funcs: []*ir.Func{asyncFn}}
+
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(w)] != ir.ColorAsync {
+		t.Fatalf("transitive flow should color w Async; got %v", info.SlotColor[ir.SlotVarKey(w)])
+	}
+	cs := info.Candidates(ir.SlotVarKey(w))
+	if len(cs) != 1 || cs[0] != asyncFn {
+		t.Fatalf("transitive candidates want [asyncFn], got %v", cs)
+	}
+}

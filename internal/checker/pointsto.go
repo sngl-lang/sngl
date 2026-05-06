@@ -314,3 +314,52 @@ func slotListElemKeyForListType(t *ir.Type) (ir.PointsToKey, bool) {
 func localVarSlotKey(lv *ir.LocalVar) ir.PointsToKey {
 	return ir.SlotLocalKey(lv)
 }
+
+// analyzePointsTo runs the constraint walker, solves to fixpoint, and
+// computes per-slot colors. Mutates pkg.PointsTo in place and returns it.
+func analyzePointsTo(pkg *ir.Package) *ir.PointsToInfo {
+	info := ir.NewPointsToInfo()
+	pkg.PointsTo = info
+
+	cs := collectConstraints(pkg)
+
+	for {
+		changed := false
+		for _, c := range cs {
+			for _, fn := range c.funcs {
+				if info.AddCandidate(c.dst, fn) {
+					changed = true
+				}
+			}
+			for _, src := range c.srcs {
+				for _, fn := range info.Candidates(src) {
+					if info.AddCandidate(c.dst, fn) {
+						changed = true
+					}
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+
+	// Compute slot color for storage slots only.
+	// SlotParam and SlotReturn are left uncolored; consumers fall back to
+	// candidate inspection.
+	for key, fns := range info.Sites {
+		switch key.Kind {
+		case ir.SlotVar, ir.SlotLocal, ir.SlotField, ir.SlotListElem:
+			color := ir.ColorSync
+			for _, fn := range fns {
+				if fn.IsAsync {
+					color = ir.ColorAsync
+					break
+				}
+			}
+			info.SlotColor[key] = color
+		}
+	}
+
+	return info
+}
