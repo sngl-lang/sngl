@@ -280,7 +280,7 @@ func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
 	if !changed {
 		return s
 	}
-	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, Purity: s.Purity}
+	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
 }
 
 // Equal reports structural type equality.
@@ -368,6 +368,14 @@ type FuncSig struct {
 	Return     *Type // nil for void/action
 	TypeParams []string
 	Purity     Purity
+	Color      Color // Sync (default), Async, or Param.
+	PolyParam  int   // when Color == ColorParam: index of the funcvar param the color depends on.
+}
+
+// IsPoly reports whether this signature's color depends on a funcvar
+// parameter. False for concrete Sync/Async sigs.
+func (s *FuncSig) IsPoly() bool {
+	return s != nil && s.Color == ColorParam
 }
 
 // Equal reports structural signature equality (ignoring parameter names).
