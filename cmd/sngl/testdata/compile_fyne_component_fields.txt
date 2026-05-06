@@ -1,0 +1,46 @@
+# Regression test for #35: sub-component widget fields must be declared on
+# the Model struct. Previously the generated model.go used m.label1..m.label4
+# inside renderDetailPanel but those fields were not declared → compile error.
+
+sngl compile --platform=fyne --lang=go --out=out app.sngl
+exists out/model.go
+
+# renderDetailPanel render method must be emitted
+grep 'func \(m \*Model\) renderDetailPanel' out/model.go
+
+# label0 from main window's text("header"), labels 1–4 from detailPanel.
+# With continued counters the component fields must not restart at 0.
+grep 'label1 \*widget\.Label' out/model.go
+grep 'label2 \*widget\.Label' out/model.go
+grep 'label3 \*widget\.Label' out/model.go
+grep 'label4 \*widget\.Label' out/model.go
+
+-- app.sngl --
+output { go { fyne } }
+
+struct Issue {
+    key string
+    summary string
+    status string
+    assignee string
+}
+
+component main {
+    var current = Issue{}
+
+    window #app(title="t") {
+        vbox {
+            text(value="header")
+            detailPanel(it=current)
+        }
+    }
+}
+
+component detailPanel(it Issue) {
+    vbox {
+        text(value=it.key)
+        text(value=it.summary)
+        text(value=it.status)
+        text(value=it.assignee)
+    }
+}

@@ -131,16 +131,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	var entrySync []entrySyncRec
 	var blueprintImports map[string]bool
 	singleRoot := true
+	var endLabel, endContainer int
 
+	// Window name set for link-interception in multi-window apps.
 	wins := ctx.Windows()
+	windowNames := make(map[string]bool)
+	for _, w := range wins {
+		windowNames[w.Name] = true
+	}
+
 	if len(wins) > 0 && len(wins[0].Body) > 0 {
 		bodyStmts := wins[0].Body
 		vc := &irViewContext{
-			gc:     gc,
-			ctx:    ctx,
-			buf:    &buildBuf,
-			indent: 1,
-			info:   info,
+			gc:          gc,
+			ctx:         ctx,
+			buf:         &buildBuf,
+			indent:      1,
+			info:        info,
+			windowNames: windowNames,
 		}
 
 		if len(bodyStmts) == 1 {
@@ -162,6 +170,23 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		updaters = vc.updaters
 		entrySync = vc.entrySync
 		blueprintImports = vc.imports
+		endLabel = vc.labelCount
+		endContainer = vc.containerCount
+	}
+
+	// --- Phase 1b: Pre-render component methods with continued counters ---
+	// Collect widget fields and updaters from sub-components BEFORE building
+	// template data so the Model struct declares every field they reference.
+	var componentCodes []string
+	for _, cc := range ctx.NonMainComponents() {
+		code, compFields, compUpdaters, nextLabel, nextContainer := renderIRComponentMethod(
+			cc, ctx, gc, info, windowNames, endLabel, endContainer,
+		)
+		componentCodes = append(componentCodes, code)
+		widgetFields = append(widgetFields, compFields...)
+		updaters = append(updaters, compUpdaters...)
+		endLabel = nextLabel
+		endContainer = nextContainer
 	}
 
 	// --- Phase 2: Pre-render dynamic parts ---
@@ -243,8 +268,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	emitIRBuildUI(&b, info, &buildBuf, singleRoot)
 	emitIRUpdaters(&b, updaters)
 
-	for _, cc := range ctx.NonMainComponents() {
-		emitIRComponentMethod(&b, cc, ctx, gc)
+	for _, code := range componentCodes {
+		b.WriteString(code)
 	}
 
 	if cfg.Main {
@@ -436,7 +461,19 @@ func emitIRUpdaters(b *strings.Builder, updaters []irWidgetUpdater) {
 	}
 }
 
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext) {
+// renderIRComponentMethod pre-renders one user-defined component to a string,
+// returning the generated code, any widget fields it allocated, any updaters
+// it registered, and the updated rolling counters. Counters continue from
+// startLabel/startContainer so that m.fieldN names in component methods never
+// collide with fields in the main BuildUI or earlier component methods.
+func renderIRComponentMethod(
+	cc *codegen.ComponentCtx,
+	ctx *codegen.CodegenCtx,
+	gc *golang.GoIRContext,
+	info *irAnalysis,
+	windowNames map[string]bool,
+	startLabel, startContainer int,
+) (code string, fields []irWidgetField, updaters []irWidgetUpdater, nextLabel, nextContainer int) {
 	methodName := "render" + golang.ExportName(cc.Component.Name)
 
 	var params []string
@@ -448,26 +485,30 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 	if hasSlot {
 		params = append(params, "slotContent fyne.CanvasObject")
 	}
-
-	fmt.Fprintf(b, "func (m *Model) %s(%s) fyne.CanvasObject {\n", methodName, strings.Join(params, ", "))
+	var slotVar string
+	if hasSlot {
+		slotVar = "slotContent"
+	}
 
 	compGC := gc.ForComponent(cc.Component)
 	for _, p := range cc.Props {
 		compGC = compGC.WithLocal(p.Name)
 	}
 
-	var slotVar string
-	if hasSlot {
-		slotVar = "slotContent"
+	vc := &irViewContext{
+		gc:             compGC,
+		ctx:            ctx,
+		buf:            &strings.Builder{},
+		indent:         1,
+		info:           info,
+		slotVar:        slotVar,
+		windowNames:    windowNames,
+		labelCount:     startLabel,
+		containerCount: startContainer,
 	}
 
-	vc := &irViewContext{
-		gc:      compGC,
-		ctx:     ctx,
-		buf:     &strings.Builder{},
-		indent:  1,
-		slotVar: slotVar,
-	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "func (m *Model) %s(%s) fyne.CanvasObject {\n", methodName, strings.Join(params, ", "))
 
 	if len(cc.Body) == 1 {
 		vc.line("var result fyne.CanvasObject")
@@ -486,8 +527,9 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		b.WriteString(vc.buf.String())
 		b.WriteString("\treturn container.NewVBox(parts...)\n")
 	}
-
 	b.WriteString("}\n\n")
+
+	return b.String(), vc.widgetFields, vc.updaters, vc.labelCount, vc.containerCount
 }
 
 func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {

@@ -57,6 +57,12 @@ type irViewContext struct {
 	// widget. Updater registration is also suppressed: the parent updater
 	// re-renders the whole loop body each refresh.
 	localMode bool
+
+	// windowNames is the set of window Name values in this package. When
+	// non-nil and len > 1 (multi-window app), internal link hrefs that match
+	// a window name are rendered as navigate() calls instead of OS-browser
+	// Hyperlink taps.
+	windowNames map[string]bool
 }
 
 func (vc *irViewContext) addImports(paths []string) {
