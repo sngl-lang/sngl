@@ -164,6 +164,48 @@ func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
 		for _, f := range x.Fields {
 			collectCalleesInExpr(out, f.Value)
 		}
+	case *ir.Spread:
+		collectCalleesInExpr(out, x.Operand)
+	case *ir.Lambda:
+		if x.Func != nil {
+			collectCalleesInFuncBlock(out, x.Func.Block)
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			collectCalleesInFuncBlock(out, x.Func.Block)
+		}
+	}
+}
+
+// collectCalleesInFuncBlock walks a regular function body (not a visual-node
+// body) and records every directly-called *ir.Func.  This differs from
+// collectCalleesInStmts which only descends into visual-node statement types
+// (NodeInst, If, For, …).  Lambda and Closure bodies are regular function
+// blocks whose statements are Return, Assign, CallStmt, LocalVar, etc.
+func collectCalleesInFuncBlock(out map[*ir.Func]bool, stmts []ir.Stmt) {
+	for _, s := range stmts {
+		collectCalleesInFuncStmt(out, s)
+	}
+}
+
+func collectCalleesInFuncStmt(out map[*ir.Func]bool, s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.Return:
+		collectCalleesInExpr(out, n.Value)
+	case *ir.Assign:
+		collectCalleesInExpr(out, n.Value)
+	case *ir.LocalVar:
+		collectCalleesInExpr(out, n.Init)
+	case *ir.CallStmt:
+		collectCalleesInExpr(out, n.Call)
+	case *ir.If:
+		collectCalleesInExpr(out, n.Cond)
+		collectCalleesInFuncBlock(out, n.Body)
+		collectCalleesInFuncBlock(out, n.Else)
+	case *ir.For:
+		collectCalleesInExpr(out, n.Iter)
+		collectCalleesInFuncBlock(out, n.Body)
+		collectCalleesInFuncBlock(out, n.Else)
 	}
 }
 

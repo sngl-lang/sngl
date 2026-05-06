@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -72,10 +73,10 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 	if !ir.ExprHasAsyncCall(ret.Value) {
 		return false
 	}
-	// Accept if: (a) it's a synthetic hoist (no AST), or (b) it has AST.Body.
+	// Accept if: (a) it's a synthetic hoist (no AST, name starts with "__hoist_"),
+	// or (b) it has AST.Body.
 	if fn.AST == nil {
-		// Synthetic hoist: fn.Name starts with "__hoist_" — accept.
-		return true
+		return strings.HasPrefix(fn.Name, "__hoist_")
 	}
 	return fn.AST.Body != nil
 }

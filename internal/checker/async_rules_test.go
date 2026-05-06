@@ -101,6 +101,31 @@ window #main(title="Main") {
 	}
 }
 
+// TestCheckAsync_ParameterizedAsyncInLambdaInProp verifies that Rule 2 fires
+// when a parameterized async func is called inside a lambda that appears as a
+// prop value (reactive context). This exercises the *ir.Lambda branch added to
+// collectCalleesInExpr.
+func TestCheckAsync_ParameterizedAsyncInLambdaInProp(t *testing.T) {
+	// greet is parameterized and async (calls api.fetchHello).
+	// It is called inside a lambda passed to list.map in a reactive prop,
+	// so Rule 2 must fire even though the call is inside a lambda body.
+	src := `
+import api "js://app/api"
+
+func greet(name string) => api.fetchHello(name)
+
+var names list<string> = []
+
+window #main(title="Main") {
+    text(value=list.map(names, func(x string) => greet(x))[0])
+}
+`
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	if !hasError(diags, "async expression not allowed in parameterized reactive context") {
+		t.Errorf("expected parameterized-async error for async call inside lambda in prop; got: %v", diags)
+	}
+}
+
 func TestCheckAsync_ParameterizedAsync_NotInVisual_OK(t *testing.T) {
 	// A parameterized async func that is declared but never referenced from any
 	// visual prop should NOT trigger Rule 2.  It may be used elsewhere (e.g.,
