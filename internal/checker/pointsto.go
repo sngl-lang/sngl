@@ -40,6 +40,7 @@ func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
 		for _, fn := range c.Funcs {
 			w.walkFunc(fn)
 		}
+		w.walkStmts(c.Body)
 	}
 	for _, win := range pkg.Windows {
 		for _, v := range win.Vars {
@@ -48,6 +49,7 @@ func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
 		for _, fn := range win.Funcs {
 			w.walkFunc(fn)
 		}
+		w.walkStmts(win.Body)
 	}
 }
 
@@ -241,8 +243,21 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotReturnKey(x.Func)}})
 		}
 	case *ir.Select:
-		// Reading a struct field: subset of the field slot.
+		// Namespace field select (e.g. api.fetchHello): resolve to the
+		// concrete *ir.Func in the namespace's package and treat it as a
+		// direct candidate.
 		if x.Operand != nil {
+			if ident, ok := x.Operand.(*ir.Ident); ok {
+				if ns, ok := ident.Sym.(*ir.Namespace); ok && ns.Pkg != nil {
+					for _, fn := range ns.Pkg.Funcs {
+						if fn.Name == x.Field {
+							*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{fn}})
+							return
+						}
+					}
+				}
+			}
+			// Struct field read: subset of the field slot.
 			if k, ok := structFieldKey(exprType(x.Operand), x.Field); ok {
 				*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})
 			}

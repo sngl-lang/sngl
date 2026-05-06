@@ -807,6 +807,15 @@ func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
 }
 
 // stateVars returns all state (non-const) variables for the compiled
+// pts returns the funcvar points-to analysis results for the package, or nil
+// if not yet computed. Callers use this with ir.BlockHasFuncvarAsyncCall.
+func (g *htmlGen) pts() *ir.PointsToInfo {
+	if g.pkg == nil {
+		return nil
+	}
+	return g.pkg.PointsTo
+}
+
 // package — top-level pkg.Vars merged with the main component's Vars.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
@@ -2503,7 +2512,7 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 	setterAsync := false
 	for _, h := range dv.Handlers {
-		if h.Name == "change" && h.Func != nil && ir.BlockHasAsyncCall(h.Func.Block) {
+		if h.Name == "change" && h.Func != nil && ir.BlockHasFuncvarAsyncCall(h.Func.Block, g.pts()) {
 			setterAsync = true
 			break
 		}
@@ -3094,7 +3103,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 		event:   "click",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
-		isAsync: ir.BlockHasAsyncCall(body),
+		isAsync: ir.BlockHasFuncvarAsyncCall(body, g.pts()),
 	})
 }
 
@@ -3156,7 +3165,7 @@ func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
 		event:   "input",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
-		isAsync: ir.BlockHasAsyncCall(fn.Block),
+		isAsync: ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
 	})
 }
 
@@ -3180,7 +3189,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 		event:   "change",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
-		isAsync: ir.BlockHasAsyncCall(body),
+		isAsync: ir.BlockHasFuncvarAsyncCall(body, g.pts()),
 	})
 }
 
@@ -3215,7 +3224,7 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 		activeVar:  activeVar,
 		body:       strings.Join(lines, "\n  "),
 		mutated:    mutated,
-		bodyAsync:  ir.BlockHasAsyncCall(t.Handler.Block),
+		bodyAsync:  ir.BlockHasFuncvarAsyncCall(t.Handler.Block, g.pts()),
 	})
 }
 

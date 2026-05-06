@@ -704,6 +704,32 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args}
 	}
 
+	// Struct field funcvar call: h.run() where h is a struct and run is a
+	// func-typed field. Set Callee to the *ir.Select so the funcvar call path
+	// in the JS codegen (translateIRFuncvarCall) and points-to analysis can
+	// identify it as a SlotField slot.
+	if receiver.Kind == ir.TypeStruct {
+		if sd, ok := receiver.Decl.(*ir.StructDef); ok {
+			for _, sf := range sd.Fields {
+				if sf.Name == sel.Field && sf.Type != nil && sf.Type.Kind == ir.TypeFunc {
+					var sig *ir.FuncSig
+					if sf.Type.Sig != nil {
+						sig = sf.Type.Sig
+					}
+					args := c.checkCallArgs(call.Args, sig)
+					callee := &ir.Select{
+						AST:     sel,
+						Type:    sf.Type,
+						Operand: receiverExpr,
+						Field:   sel.Field,
+					}
+					retType := callRetType(sig)
+					return &ir.Call{AST: call, Type: retType, Callee: callee, Args: args}
+				}
+			}
+		}
+	}
+
 	args := c.checkCallArgs(call.Args, nil)
 	if isPrimitiveMethodReceiver(receiver) {
 		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)

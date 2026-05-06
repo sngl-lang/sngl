@@ -1,0 +1,30 @@
+# A component var of funcvar type that receives both a sync and an async
+# candidate at different call sites. The slot is auto-promoted to Async (g3)
+# so the invocation handler awaits unconditionally.
+
+sngl compile --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The "Run" handler wrapper is async because the handler slot may hold async.
+grep 'addEventListener.*async function' out/index.html
+
+# The funcvar call site on the promoted-async slot is awaited.
+grep 'await state\.handler()' out/index.html
+
+-- app.sngl --
+import api "js://./api"
+
+func syncFetch() string {
+    return "sync"
+}
+
+component main {
+    var handler func() string = api.fetchHello
+    button(text="UseSync", @click { handler = syncFetch })
+    button(text="UseAsync", @click { handler = api.fetchHello })
+    button(text="Run", @click { handler() })
+    text(value="hi")
+}
+
+-- api/index.ts --
+export async function fetchHello(): Promise<string> { return "hi"; }
