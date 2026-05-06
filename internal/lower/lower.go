@@ -31,7 +31,7 @@ type pass struct {
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
 //     handlers promoted from inline blocks.
-// 10. NoRef — runs last so it catches every ref<T> shape any earlier pass may have
+//  10. NoRef — runs last so it catches every ref<T> shape any earlier pass may have
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{

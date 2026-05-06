@@ -48,7 +48,9 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) Capabilities() lower.Caps { return lower.Caps{NoReactivity: true} }
+func (g *Generator) Capabilities() lower.Caps {
+	return lower.Caps{NoReactivity: true, NoAsyncReactive: true}
+}
 
 // SupportedLangs returns "none" (static-site default) plus any registered
 // language whose translator implements codegen.HTTPCompiler. The first entry
@@ -2304,7 +2306,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Setters — emit for fields with @change handlers, timer controls, or preview mode
+	// Async kickers from NoAsyncReactive lowering.
+	if g.pkg != nil && len(g.pkg.AsyncKickers) > 0 {
+		for _, k := range g.pkg.AsyncKickers {
+			g.emitJSFunc(b, k.Func)
+		}
+		b.WriteString("\n")
+	}
+
+	// Setters — emit for fields with @change handlers, timer controls, async kicker deps, or preview mode
 	for _, dv := range stateVars {
 		needsSetter := g.preview
 		for _, h := range dv.Handlers {
@@ -2316,6 +2326,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if !needsSetter {
 			for _, t := range g.timers {
 				if t.activeVar == dv.Name {
+					needsSetter = true
+					break
+				}
+			}
+		}
+		if !needsSetter && g.pkg != nil {
+			for _, k := range g.pkg.AsyncKickers {
+				if slices.Contains(k.Deps, dv.Name) {
 					needsSetter = true
 					break
 				}
@@ -2397,6 +2415,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 		for _, t := range g.timers {
 			fmt.Fprintf(b, "$timer_%d_sync();\n", t.index)
+		}
+	}
+
+	// Async kicker startup: fire-and-forget each kicker once so initial values
+	// are fetched. Runs after DOM updaters are wired so kicker bodies can call
+	// setters and trigger updates.
+	if g.pkg != nil && len(g.pkg.AsyncKickers) > 0 {
+		b.WriteString("\n// Async kicker startup\n")
+		for _, k := range g.pkg.AsyncKickers {
+			fmt.Fprintf(b, "%s();\n", k.Func.Name)
 		}
 	}
 
@@ -2501,6 +2529,14 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 	for _, t := range g.timers {
 		if t.activeVar == dv.Name {
 			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
+		}
+	}
+	// Fire-and-forget any async kickers that depend on this state var.
+	if g.pkg != nil {
+		for _, k := range g.pkg.AsyncKickers {
+			if slices.Contains(k.Deps, dv.Name) {
+				fmt.Fprintf(b, "  %s();\n", k.Func.Name)
+			}
 		}
 	}
 	if g.preview {
