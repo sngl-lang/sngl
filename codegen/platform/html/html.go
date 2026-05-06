@@ -3175,18 +3175,23 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// Mangle dotted names for JS: int.sqrt → int_sqrt
 	jsName := strings.ReplaceAll(fn.Name, ".", "_")
 
+	keyword := "function"
+	if fn.IsAsync {
+		keyword = "async function"
+	}
+
 	// Single-return expression body.
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := g.lang.TranslateIRExpr(ret.Value, funcScope)
-			fmt.Fprintf(b, "function %s(%s) { return %s; }\n", jsName, paramStr, body)
+			fmt.Fprintf(b, "%s %s(%s) { return %s; }\n", keyword, jsName, paramStr, body)
 			return
 		}
 	}
 	if len(fn.Block) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "function %s(%s) {\n", jsName, paramStr)
+	fmt.Fprintf(b, "%s %s(%s) {\n", keyword, jsName, paramStr)
 	for _, stmt := range fn.Block {
 		switch s := stmt.(type) {
 		case *ir.LocalVar:
