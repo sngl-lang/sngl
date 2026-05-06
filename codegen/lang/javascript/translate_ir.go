@@ -41,6 +41,17 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			translateIRExpr(n.Then, scope) + " : " +
 			translateIRExpr(n.Else, scope) + ")"
 	case *ir.Select:
+		// When the operand is a native namespace ident and the module is
+		// bundled (js://), emit the esbuild-compatible alias and register the
+		// module so the platform emits the corresponding `import * as` prelude.
+		if ident, ok := n.Operand.(*ir.Ident); ok {
+			if _, ok := ident.Sym.(*ir.Namespace); ok {
+				if jsAlias, importPath := nativeBundledNamespaceAlias(ident.Name, scope); jsAlias != "" {
+					registerNativeImport(scope, importPath, n.Field)
+					return jsAlias + "." + n.Field
+				}
+			}
+		}
 		return translateIRExpr(n.Operand, scope) + "." + n.Field
 	case *ir.Index:
 		return translateIRExpr(n.Operand, scope) + "[" + translateIRExpr(n.Idx, scope) + "]"
@@ -276,13 +287,7 @@ func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {
 	}
 	bundled := scope.BundledNativePkgs[mod]
 	if bundled {
-		if scope.NativeImports == nil {
-			scope.NativeImports = map[string]map[string]bool{}
-		}
-		if scope.NativeImports[mod] == nil {
-			scope.NativeImports[mod] = map[string]bool{}
-		}
-		scope.NativeImports[mod][name] = true
+		registerNativeImport(scope, mod, name)
 	}
 
 	argStrs := make([]string, len(n.Args))
@@ -567,6 +572,39 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 	default:
 		return translateIRExpr(e, scope)
 	}
+}
+
+// nativeBundledNamespaceAlias resolves a namespace alias name (e.g. "api") to
+// the esbuild-compatible JS identifier (NativeAlias(importPath)) when the
+// namespace maps to a bundled js:// native import. Returns ("", "") when not
+// applicable.
+func nativeBundledNamespaceAlias(nsName string, scope *codegen.ExprScope) (jsAlias, importPath string) {
+	if scope == nil || scope.Pkg == nil || scope.BundledNativePkgs == nil {
+		return "", ""
+	}
+	for _, imp := range scope.Pkg.Imports {
+		if imp == nil || imp.Alias != nsName || imp.Native == nil {
+			continue
+		}
+		path := imp.Native.ImportPath
+		if !scope.BundledNativePkgs[path] {
+			continue
+		}
+		return codegen.NativeAlias(path), path
+	}
+	return "", ""
+}
+
+// registerNativeImport records a module → name binding on scope.NativeImports
+// so the platform can emit a top-level ES `import * as` prelude for the module.
+func registerNativeImport(scope *codegen.ExprScope, mod, name string) {
+	if scope.NativeImports == nil {
+		scope.NativeImports = map[string]map[string]bool{}
+	}
+	if scope.NativeImports[mod] == nil {
+		scope.NativeImports[mod] = map[string]bool{}
+	}
+	scope.NativeImports[mod][name] = true
 }
 
 // isIntIR reports whether an IR expression is typed as int (for integer
