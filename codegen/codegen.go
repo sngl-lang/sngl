@@ -262,6 +262,10 @@ type WASMFunc struct {
 	Name       string
 	ParamTypes []string
 	ReturnType string
+	// HasErrorReturn reports whether the underlying Go function has a
+	// trailing error result (already stripped from ReturnType). The bridge
+	// must consume it from the call and surface failures to JS.
+	HasErrorReturn bool
 }
 
 // MutationModelEmitter is optionally implemented by platforms that use the

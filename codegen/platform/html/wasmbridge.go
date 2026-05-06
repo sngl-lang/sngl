@@ -63,14 +63,32 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 			if f.Unusable != "" {
 				continue
 			}
+			// ref<T> is a SNGL-internal mutable-capture handle; it has no
+			// stable JSON representation and the bridge has no way to keep
+			// the Go and JS sides aliased to the same backing storage.
+			// Refuse to expose any func whose signature touches one.
+			if containsRef(f.Return) {
+				continue
+			}
+			skip := false
+			for _, p := range f.Params {
+				if containsRef(p.Type) {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
 			paramTypes := make([]string, len(f.Params))
 			for i, p := range f.Params {
 				paramTypes[i] = wasmTypeHint(p.Type)
 			}
 			funcs = append(funcs, codegen.WASMFunc{
-				Name:       f.Name,
-				ParamTypes: paramTypes,
-				ReturnType: wasmTypeHint(f.Return),
+				Name:           f.Name,
+				ParamTypes:     paramTypes,
+				ReturnType:     wasmTypeHint(f.Return),
+				HasErrorReturn: f.HasErrorReturn,
 			})
 		}
 		if len(funcs) == 0 {
@@ -85,9 +103,32 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 	return out
 }
 
-// wasmTypeHint reduces an IR type to the small set of primitive names the
-// WASM bridge knows how to marshal; anything else becomes empty, which the
-// emitter treats as a raw js.Value.
+// containsRef reports whether t is, or transitively contains, a ref<T>.
+func containsRef(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Kind == ir.TypeRef {
+		return true
+	}
+	for _, e := range t.Elems {
+		if containsRef(e) {
+			return true
+		}
+	}
+	return false
+}
+
+// wasmTypeHint translates an IR type to the Go type expression the WASM
+// bridge should declare for it. Imported-package structs are qualified with
+// the bridge's "pkg" alias (the import path is aliased in generated code).
+//
+// Values returned by this function are interpreted by the bridge emitter:
+//   - "string" / "int" / "float" / "bool" use direct js.Value accessors;
+//   - any other non-empty value is a typed declaration that the bridge
+//     marshals through JSON;
+//   - "" means dyn / unrepresentable, and the bridge passes the raw js.Value
+//     through unchanged (matching prior behavior for unknown types).
 func wasmTypeHint(t *ir.Type) string {
 	if t == nil {
 		return ""
@@ -101,6 +142,20 @@ func wasmTypeHint(t *ir.Type) string {
 		return "float"
 	case ir.TypeBool:
 		return "bool"
+	case ir.TypeList:
+		if len(t.Elems) != 1 {
+			return ""
+		}
+		elem := wasmTypeHint(t.Elems[0])
+		if elem == "" {
+			return ""
+		}
+		return "[]" + elem
+	case ir.TypeStruct:
+		if t.Decl == nil {
+			return ""
+		}
+		return "pkg." + t.Decl.SymName()
 	}
 	return ""
 }
