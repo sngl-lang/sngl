@@ -142,6 +142,12 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	}
 
 	// Plain function call.
+	return translateIRPlainCall(n, scope)
+}
+
+// translateIRPlainCall emits a plain (non-native, non-namespace) function call.
+// Wraps with `await` when the resolved SNGL callee is declared async.
+func translateIRPlainCall(n *ir.Call, scope *codegen.ExprScope) string {
 	fn := ""
 	if n.Func != nil {
 		fn = n.Func.Name
@@ -177,7 +183,11 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if fn == "" {
 		fn = "/* unresolved call */"
 	}
-	return fn + "(" + strings.Join(argStrs, ", ") + ")"
+	call := fn + "(" + strings.Join(argStrs, ", ") + ")"
+	if n.Func != nil && n.Func.IsAsync {
+		call = "await " + call
+	}
+	return call
 }
 
 // translateIRNativeCall emits a call to a function imported via a scheme
@@ -241,16 +251,21 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		return js
 	}
 
+	var call string
 	if scope.FuncNames != nil && scope.FuncNames[qualName] {
 		jsName := strings.ReplaceAll(qualName, ".", "_")
-		return jsName + "(" + strings.Join(argsForBuiltin, ", ") + ")"
+		call = jsName + "(" + strings.Join(argsForBuiltin, ", ") + ")"
+	} else {
+		argStrs := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			argStrs[i] = translateIRExpr(a.Value, scope)
+		}
+		call = receiverJS + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
 	}
-
-	argStrs := make([]string, len(n.Args))
-	for i, a := range n.Args {
-		argStrs[i] = translateIRExpr(a.Value, scope)
+	if n.Func.IsAsync {
+		call = "await " + call
 	}
-	return receiverJS + "." + method + "(" + strings.Join(argStrs, ", ") + ")"
+	return call
 }
 
 // translateIRTypeMethodCall handles checker-normalized type-method calls:
