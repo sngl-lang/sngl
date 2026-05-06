@@ -1,6 +1,3 @@
-// async.go: shared "does this body transitively contain an async call"
-// helpers. Used by the checker's color-propagation pass and by the
-// html platform's codegen to decide async-keyword placement.
 package ir
 
 import "slices"
