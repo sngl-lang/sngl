@@ -315,6 +315,37 @@ func localVarSlotKey(lv *ir.LocalVar) ir.PointsToKey {
 	return ir.SlotLocalKey(lv)
 }
 
+// receiverSlotKey resolves a call's callee expression to a points-to slot key.
+// Used when a *ir.Call has Func == nil (funcvar invocation via Callee).
+func receiverSlotKey(e ir.Expr) (ir.PointsToKey, bool) {
+	switch x := e.(type) {
+	case *ir.Ident:
+		switch sym := x.Sym.(type) {
+		case *ir.Var:
+			return ir.SlotVarKey(sym), true
+		case *ir.Param:
+			return ir.SlotParamKey(sym), true
+		}
+	case *ir.Select:
+		if x.Operand != nil {
+			if k, ok := structFieldKey(exprType(x.Operand), x.Field); ok {
+				return k, true
+			}
+		}
+	case *ir.Index:
+		if x.Operand != nil {
+			if k, ok := slotListElemKeyForListType(exprType(x.Operand)); ok {
+				return k, true
+			}
+		}
+	case *ir.Call:
+		if x.Func != nil {
+			return ir.SlotReturnKey(x.Func), true
+		}
+	}
+	return ir.PointsToKey{}, false
+}
+
 // analyzePointsTo runs the constraint walker, solves to fixpoint, and
 // computes per-slot colors. Mutates pkg.PointsTo in place and returns it.
 func analyzePointsTo(pkg *ir.Package) *ir.PointsToInfo {

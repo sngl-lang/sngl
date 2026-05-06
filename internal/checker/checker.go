@@ -55,6 +55,8 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c.pass2()
 	c.analyzeErrors()
 	c.analyzeAsync()
+	analyzePointsTo(c.pkg)
+	c.analyzeAsyncWithPointsTo()
 	c.checkAsyncRules()
 	c.pkg.Symbols = c.symtab
 	ir.Normalize(c.pkg)

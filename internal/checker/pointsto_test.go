@@ -266,6 +266,42 @@ func TestPointsTo_MixedStore_PromotesAsync(t *testing.T) {
 	}
 }
 
+// --- analyzeAsyncWithPointsTo tests ---
+
+// TestAnalyzeAsyncWithPointsTo_FuncvarCallColorsCaller: a caller that invokes a
+// funcvar slot pointing to an async function should itself become async after
+// analyzeAsyncWithPointsTo runs.
+func TestAnalyzeAsyncWithPointsTo_FuncvarCallColorsCaller(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	caller := &ir.Func{
+		Name: "caller",
+		Block: []ir.Stmt{
+			&ir.CallStmt{Call: &ir.Call{Callee: identTo(v), Type: ir.TypVoid}},
+		},
+	}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn, caller}}
+
+	runAsyncPipeline(t, pkg)
+
+	if !caller.IsAsync {
+		t.Fatalf("caller should be Async after points-to refinement; got IsAsync=false")
+	}
+}
+
+// runAsyncPipeline simulates the production sequence:
+//
+//	analyzeAsync → analyzePointsTo → analyzeAsyncWithPointsTo
+//
+// without going through Check().
+func runAsyncPipeline(t *testing.T, pkg *ir.Package) {
+	t.Helper()
+	c := &checker{pkg: pkg}
+	c.analyzeAsync()
+	analyzePointsTo(pkg)
+	c.analyzeAsyncWithPointsTo()
+}
+
 func TestPointsTo_TransitiveSubset(t *testing.T) {
 	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
 	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
