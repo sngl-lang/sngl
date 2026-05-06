@@ -7,6 +7,26 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// findFunc returns the first *ir.Func in pkg.Funcs with the given name, or nil.
+func findFunc(pkg *ir.Package, name string) *ir.Func {
+	for _, fn := range pkg.Funcs {
+		if fn.Name == name {
+			return fn
+		}
+	}
+	return nil
+}
+
+// findStateField returns true if pkg.Vars contains a Var with the given name.
+func findStateField(pkg *ir.Package, name string) bool {
+	for _, v := range pkg.Vars {
+		if v.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // makeAsyncComputedPkg builds a minimal *ir.Package representing:
 //
 //	fn fetchHello(): string  // async native
@@ -373,4 +393,162 @@ func TestLowerAsyncReactive_MultipleComputeds(t *testing.T) {
 	if g2.IsAsync {
 		t.Error("g2.IsAsync = true after lowering; want false")
 	}
+}
+
+// TestLowerAsyncReactive_InlineHoist tests that an async call inside a visual
+// node prop expression is hoisted into a synthetic __hoist_0 computed, which is
+// then lowered to a state-var + kicker just like a named computed.
+//
+// IR shape:
+//
+//	fn fetchHello(): string  // async native
+//	window Main {
+//	  div { text: "Hello, " + await fetchHello() }
+//	}
+func TestLowerAsyncReactive_InlineHoist(t *testing.T) {
+	fetchHello := &ir.Func{
+		Name:    "fetchHello",
+		IsAsync: true,
+		Return:  ir.TypString,
+	}
+	// The async call: fetchHello()
+	asyncCall := &ir.Call{
+		Type: ir.TypString,
+		Func: fetchHello,
+	}
+	// The text prop value: "Hello, " + await fetchHello()
+	textExpr := &ir.Binary{
+		Type:  ir.TypString,
+		Op:    ast.BinAdd,
+		Left:  &ir.Literal{Type: ir.TypString, Raw: `"Hello, "`},
+		Right: asyncCall,
+	}
+	// A NodeInst (e.g. div) with a text prop containing the async expression.
+	node := &ir.NodeInst{
+		Name: "div",
+		Props: []ir.Arg{
+			{Name: "text", Value: textExpr},
+		},
+	}
+	win := &ir.Window{
+		Name: "Main",
+		Body: []ir.Stmt{node},
+	}
+	pkg := &ir.Package{
+		Funcs:          []*ir.Func{fetchHello},
+		Windows:        []*ir.Window{win},
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
+	}
+
+	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
+		t.Fatalf("lowerAsyncReactive: %v", err)
+	}
+
+	// A synthetic __hoist_0 computed must have been created.
+	hoist := findFunc(pkg, "__hoist_0")
+	if hoist == nil {
+		t.Fatalf("expected synthetic __hoist_0 computed in pkg.Funcs; not found.\nFuncs: %v", funcNames(pkg))
+	}
+
+	// __hoist_0 must have been lowered to a settle-state-var __async___hoist_0.
+	if !findStateField(pkg, "__async___hoist_0") {
+		t.Fatalf("expected state var __async___hoist_0 in pkg.Vars; not found.\nVars: %v", varNames(pkg))
+	}
+
+	// The kicker $compute___hoist_0 must exist.
+	kicker := findFunc(pkg, "$compute___hoist_0")
+	if kicker == nil {
+		t.Fatalf("expected kicker $compute___hoist_0 in pkg.Funcs; not found.\nFuncs: %v", funcNames(pkg))
+	}
+
+	// An AsyncKickers entry for __hoist_0 must exist.
+	found := false
+	for _, k := range pkg.AsyncKickers {
+		if k.OrigComputed == "__hoist_0" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected AsyncKickers entry with OrigComputed=__hoist_0; entries: %v", pkg.AsyncKickers)
+	}
+
+	// The text prop value must now be a sync call (not an async call directly).
+	propVal := node.Props[0].Value
+	if ir.ExprHasAsyncCall(propVal) {
+		t.Errorf("after hoisting, node.Props[0].Value still contains an async call: %T", propVal)
+	}
+}
+
+// TestLowerAsyncReactive_HoistSkipsLocalCapture verifies that when an async
+// subexpression references a local (Param or LoopVar), it is NOT hoisted —
+// those cases are deferred to the checker (Task 10).
+func TestLowerAsyncReactive_HoistSkipsLocalCapture(t *testing.T) {
+	fetchUser := &ir.Func{
+		Name:    "fetchUser",
+		IsAsync: true,
+		Params:  []*ir.Param{{Name: "id", Type: ir.TypString}},
+		Return:  ir.TypString,
+	}
+	// A local param (not a package-level reactive var).
+	localParam := &ir.Param{Name: "id", Type: ir.TypString}
+	// The async call: fetchUser(id) — references a local.
+	asyncCall := &ir.Call{
+		Type: ir.TypString,
+		Func: fetchUser,
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "id", Sym: localParam, Type: ir.TypString}},
+		},
+	}
+	node := &ir.NodeInst{
+		Name: "div",
+		Props: []ir.Arg{
+			{Name: "text", Value: asyncCall},
+		},
+	}
+	win := &ir.Window{
+		Name: "Main",
+		Body: []ir.Stmt{node},
+	}
+	pkg := &ir.Package{
+		Funcs:          []*ir.Func{fetchUser},
+		Windows:        []*ir.Window{win},
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
+	}
+
+	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
+		t.Fatalf("lowerAsyncReactive: %v", err)
+	}
+
+	// No hoist should have been created.
+	if hoist := findFunc(pkg, "__hoist_0"); hoist != nil {
+		t.Errorf("expected no __hoist_0 when local var is captured; got one")
+	}
+	if len(pkg.AsyncKickers) != 0 {
+		t.Errorf("expected no AsyncKickers for local-capture case; got %v", pkg.AsyncKickers)
+	}
+	// The prop value must be left alone (still the original async call).
+	if !ir.ExprHasAsyncCall(node.Props[0].Value) {
+		t.Errorf("expected prop value to remain async (unhoisted); it was modified")
+	}
+}
+
+// funcNames returns a slice of Func names for diagnostic messages.
+func funcNames(pkg *ir.Package) []string {
+	names := make([]string, len(pkg.Funcs))
+	for i, f := range pkg.Funcs {
+		names[i] = f.Name
+	}
+	return names
+}
+
+// varNames returns a slice of Var names for diagnostic messages.
+func varNames(pkg *ir.Package) []string {
+	names := make([]string, len(pkg.Vars))
+	for i, v := range pkg.Vars {
+		names[i] = v.Name
+	}
+	return names
 }

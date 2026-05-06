@@ -2,7 +2,9 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"sort"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -14,26 +16,28 @@ var passAsyncReactive = pass{
 	apply:   lowerAsyncReactive,
 }
 
-// lowerAsyncReactive rewrites every named zero-arg computed whose body
-// transitively calls an async function. For each such computed "foo":
+// lowerAsyncReactive runs two phases:
 //
-//  1. A synthetic state var __async_foo of the same return type is appended to
-//     pkg.Vars (with zero initializer).
-//  2. A synthetic async kicker func $compute_foo is appended to pkg.Funcs.
-//     Its body is a single assignment: __async_foo = <original body expr>.
-//  3. The original computed is rewritten to be a synchronous read of
-//     __async_foo.
-//  4. An AsyncKicker record is appended to pkg.AsyncKickers so Tasks 8b/8c
-//     can find and wire the kickers.
+//  1. Hoist inline async subexpressions inside visual-node props into
+//     synthetic anonymous zero-arg computed funcs (__hoist_N).
+//  2. Lower every reactive async computed (named + just-hoisted) to a
+//     settle-state-var (__async_X) + kicker ($compute_X).
 func lowerAsyncReactive(pkg *ir.Package, _ Caps) error {
 	if pkg == nil {
 		return nil
 	}
-	return lowerAsyncReactiveInFuncs(pkg, pkg.Funcs)
-}
 
-func lowerAsyncReactiveInFuncs(pkg *ir.Package, funcs []*ir.Func) error {
-	for _, fn := range funcs {
+	// Phase 1: hoist inline async subexpressions into synthetic computeds.
+	if err := hoistInlineAsyncReactive(pkg); err != nil {
+		return err
+	}
+
+	// Phase 2: lower every reactive async computed (named + just-hoisted).
+	// Snapshot pkg.Funcs length before to avoid iterating over funcs we add
+	// as kickers (kickers are not computeds themselves).
+	snapshot := make([]*ir.Func, len(pkg.Funcs))
+	copy(snapshot, pkg.Funcs)
+	for _, fn := range snapshot {
 		if !isReactiveAsyncComputed(fn) {
 			continue
 		}
@@ -46,15 +50,14 @@ func lowerAsyncReactiveInFuncs(pkg *ir.Package, funcs []*ir.Func) error {
 
 // isReactiveAsyncComputed reports whether fn is a named zero-arg computed
 // whose single-statement body transitively calls an async function.
+// Uses a structural test: a single Return statement with an async-calling value.
+// Synthetic hoisted funcs (no AST) are also matched by this structural test.
 func isReactiveAsyncComputed(fn *ir.Func) bool {
 	if fn == nil || fn.IsTest || len(fn.Params) != 0 || fn.Name == "" {
 		return false
 	}
-	// Must be an expression-body computed: AST body non-nil.
-	if fn.AST == nil || fn.AST.Body == nil {
-		return false
-	}
 	// Checker stores expression bodies as a single Return statement.
+	// Synthetic hoisted funcs are also shaped this way.
 	if len(fn.Block) != 1 {
 		return false
 	}
@@ -62,7 +65,239 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 	if !ok || ret.Value == nil {
 		return false
 	}
-	return ir.ExprHasAsyncCall(ret.Value)
+	// Must be an async expression body — either from user AST or synthetic hoist.
+	// For user-defined computed funcs, additionally require AST body to be set
+	// (distinguishes a computed from a regular function with a coincidental
+	// single-return body).
+	if !ir.ExprHasAsyncCall(ret.Value) {
+		return false
+	}
+	// Accept if: (a) it's a synthetic hoist (no AST), or (b) it has AST.Body.
+	if fn.AST == nil {
+		// Synthetic hoist: fn.Name starts with "__hoist_" — accept.
+		return true
+	}
+	return fn.AST.Body != nil
+}
+
+// hoistInlineAsyncReactive walks every reactive expression context in the
+// package's visual nodes (NodeInst props in windows and components) and hoists
+// maximal async-bearing subexpressions into synthetic __hoist_N zero-arg
+// computed funcs appended to pkg.Funcs.
+//
+// A subexpression is hoistable if none of its free identifiers are locals
+// (*ir.Param or *ir.LoopVar). When a local is captured, the subexpression is
+// left alone (Task 10's checker rule will reject it).
+//
+// Hoisting is done depth-first with a maximality rule: the largest valid
+// async-bearing subtree is hoisted; its interior is not separately hoisted.
+func hoistInlineAsyncReactive(pkg *ir.Package) error {
+	h := &hoister{pkg: pkg}
+	// Walk windows.
+	for _, w := range pkg.Windows {
+		hoistInStmts(h, w.Body)
+	}
+	// Walk components.
+	for _, comp := range pkg.Components {
+		hoistInStmts(h, comp.Body)
+	}
+	return nil
+}
+
+// hoister holds the counter and package reference for the hoisting phase.
+type hoister struct {
+	pkg     *ir.Package
+	counter int
+}
+
+// freshHoistName returns the next synthetic hoist name (__hoist_0, __hoist_1, …).
+func (h *hoister) freshHoistName() string {
+	name := "__hoist_" + strconv.Itoa(h.counter)
+	h.counter++
+	return name
+}
+
+// hoistInStmts walks statement slices looking for NodeInst prop expressions.
+func hoistInStmts(h *hoister, stmts []ir.Stmt) {
+	for _, s := range stmts {
+		hoistInStmt(h, s)
+	}
+}
+
+func hoistInStmt(h *hoister, s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		// Hoist each prop value.
+		for i := range n.Props {
+			n.Props[i].Value = hoistExpr(h, n.Props[i].Value)
+		}
+		hoistInStmts(h, n.Children)
+	case *ir.If:
+		hoistInStmts(h, n.Body)
+		hoistInStmts(h, n.Else)
+	case *ir.For:
+		hoistInStmts(h, n.Body)
+		hoistInStmts(h, n.Else)
+	case *ir.PlatformFilter:
+		hoistInStmts(h, n.Body)
+	case *ir.SlotInst:
+		hoistInStmts(h, n.Children)
+	case *ir.ErrorBoundary:
+		hoistInStmts(h, n.Children)
+	case *ir.Window:
+		hoistInStmts(h, n.Body)
+	}
+}
+
+// hoistExpr attempts to hoist async subexpressions in e. Returns the
+// (possibly rewritten) expression. When e itself is hoistable (async and no
+// locals), it returns a Call to a new __hoist_N func. Otherwise it recurses
+// into children that contain async subexpressions, replacing those.
+func hoistExpr(h *hoister, e ir.Expr) ir.Expr {
+	if !ir.ExprHasAsyncCall(e) {
+		return e
+	}
+	// If this entire expression is hoistable, hoist it.
+	if !exprHasLocals(e) {
+		return synthesizeHoist(h, e)
+	}
+	// Cannot hoist the whole expression — recurse into async-bearing children.
+	return hoistChildren(h, e)
+}
+
+// synthesizeHoist creates a __hoist_N func whose body returns e, appends it
+// to pkg.Funcs, and returns a Call to it.
+func synthesizeHoist(h *hoister, e ir.Expr) ir.Expr {
+	name := h.freshHoistName()
+	retType := e.ExprType()
+	fn := &ir.Func{
+		Name:    name,
+		IsAsync: true,
+		Return:  retType,
+		Block: []ir.Stmt{
+			&ir.Return{Value: e},
+		},
+		// AST intentionally nil — isReactiveAsyncComputed accepts nil AST for synthetic hoists.
+	}
+	h.pkg.Funcs = append(h.pkg.Funcs, fn)
+	return &ir.Call{
+		Type: retType,
+		Func: fn,
+	}
+}
+
+// hoistChildren recurses into the children of e that contain async calls,
+// hoisting valid subtrees within them. Returns a structurally-equivalent
+// expression with those subtrees replaced.
+func hoistChildren(h *hoister, e ir.Expr) ir.Expr {
+	switch x := e.(type) {
+	case *ir.Binary:
+		cp := *x
+		cp.Left = hoistExpr(h, x.Left)
+		cp.Right = hoistExpr(h, x.Right)
+		return &cp
+	case *ir.Unary:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		return &cp
+	case *ir.Ternary:
+		cp := *x
+		cp.Cond = hoistExpr(h, x.Cond)
+		cp.Then = hoistExpr(h, x.Then)
+		cp.Else = hoistExpr(h, x.Else)
+		return &cp
+	case *ir.Call:
+		cp := *x
+		if cp.Receiver != nil {
+			cp.Receiver = hoistExpr(h, x.Receiver)
+		}
+		cp.Args = make([]ir.CallArg, len(x.Args))
+		for i, a := range x.Args {
+			cp.Args[i] = a
+			cp.Args[i].Value = hoistExpr(h, a.Value)
+		}
+		return &cp
+	case *ir.Conversion:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		return &cp
+	case *ir.Select:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		return &cp
+	case *ir.Index:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		cp.Idx = hoistExpr(h, x.Idx)
+		return &cp
+	case *ir.ListLit:
+		cp := *x
+		cp.Elems = make([]ir.Expr, len(x.Elems))
+		for i, el := range x.Elems {
+			cp.Elems[i] = hoistExpr(h, el)
+		}
+		return &cp
+	case *ir.StructLit:
+		cp := *x
+		cp.Fields = make([]ir.FieldInit, len(x.Fields))
+		for i, f := range x.Fields {
+			cp.Fields[i] = f
+			cp.Fields[i].Value = hoistExpr(h, f.Value)
+		}
+		return &cp
+	}
+	return e
+}
+
+// exprHasLocals reports whether e references any local-scoped identifier
+// (*ir.Param or *ir.LoopVar). If it does, the expression cannot be hoisted
+// into a package-level zero-arg computed.
+func exprHasLocals(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *ir.Ident:
+		switch x.Sym.(type) {
+		case *ir.Param, *ir.LoopVar:
+			return true
+		}
+		return false
+	case *ir.Binary:
+		return exprHasLocals(x.Left) || exprHasLocals(x.Right)
+	case *ir.Unary:
+		return exprHasLocals(x.Operand)
+	case *ir.Ternary:
+		return exprHasLocals(x.Cond) || exprHasLocals(x.Then) || exprHasLocals(x.Else)
+	case *ir.Call:
+		if x.Receiver != nil && exprHasLocals(x.Receiver) {
+			return true
+		}
+		for _, a := range x.Args {
+			if exprHasLocals(a.Value) {
+				return true
+			}
+		}
+		return false
+	case *ir.Conversion:
+		return exprHasLocals(x.Operand)
+	case *ir.Select:
+		return exprHasLocals(x.Operand)
+	case *ir.Index:
+		return exprHasLocals(x.Operand) || exprHasLocals(x.Idx)
+	case *ir.ListLit:
+		return slices.ContainsFunc(x.Elems, exprHasLocals)
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if exprHasLocals(f.Value) {
+				return true
+			}
+		}
+		return false
+	case *ir.Spread:
+		return exprHasLocals(x.Operand)
+	}
+	return false
 }
 
 func lowerNamedAsyncComputed(pkg *ir.Package, fn *ir.Func) error {
