@@ -249,6 +249,84 @@ func TestIsReactiveAsyncComputed(t *testing.T) {
 	}
 }
 
+// makeAsyncComputedWithStatePkg builds a package with:
+//
+//	var userId: string = "alice"     (reactive state var)
+//	fn fetchUser(id: string): string  // async native
+//	fn greeting(): string => await fetchUser(userId)  // computed reading userId
+func makeAsyncComputedWithStatePkg() (*ir.Package, *ir.Var, *ir.Func) {
+	userIdVar := &ir.Var{
+		Name: "userId",
+		Type: ir.TypString,
+		Init: &ir.Literal{Type: ir.TypString, Raw: "alice"},
+	}
+	fetchUser := &ir.Func{
+		Name:    "fetchUser",
+		IsAsync: true,
+		Params:  []*ir.Param{{Name: "id", Type: ir.TypString}},
+		Return:  ir.TypString,
+	}
+	callExpr := &ir.Call{
+		Type: ir.TypString,
+		Func: fetchUser,
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "userId", Sym: userIdVar, Type: ir.TypString}},
+		},
+	}
+	greeting := &ir.Func{
+		AST:    &ast.FuncDef{Body: &ast.LiteralExpr{}},
+		Name:   "greeting",
+		Return: ir.TypString,
+		Block: []ir.Stmt{
+			&ir.Return{Value: callExpr},
+		},
+		IsAsync: true,
+	}
+	pkg := &ir.Package{
+		Vars:           []*ir.Var{userIdVar},
+		Funcs:          []*ir.Func{fetchUser, greeting},
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
+	}
+	return pkg, userIdVar, greeting
+}
+
+func TestLowerAsyncReactive_KickerDeps(t *testing.T) {
+	pkg, _, _ := makeAsyncComputedWithStatePkg()
+
+	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
+		t.Fatalf("lowerAsyncReactive: %v", err)
+	}
+
+	if len(pkg.AsyncKickers) != 1 {
+		t.Fatalf("AsyncKickers len = %d; want 1", len(pkg.AsyncKickers))
+	}
+	entry := pkg.AsyncKickers[0]
+	if entry.OrigComputed != "greeting" {
+		t.Errorf("OrigComputed = %q; want greeting", entry.OrigComputed)
+	}
+	if len(entry.Deps) != 1 || entry.Deps[0] != "userId" {
+		t.Fatalf("Deps = %v; want [userId]", entry.Deps)
+	}
+}
+
+func TestLowerAsyncReactive_KickerNoDeps(t *testing.T) {
+	// greeting() has no state-var reads — just await fetchHello() with no args.
+	pkg, _, _ := makeAsyncComputedPkg()
+
+	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
+		t.Fatalf("lowerAsyncReactive: %v", err)
+	}
+
+	if len(pkg.AsyncKickers) != 1 {
+		t.Fatalf("AsyncKickers len = %d; want 1", len(pkg.AsyncKickers))
+	}
+	entry := pkg.AsyncKickers[0]
+	if len(entry.Deps) != 0 {
+		t.Fatalf("Deps = %v; want empty (no reactive state-var reads)", entry.Deps)
+	}
+}
+
 func TestLowerAsyncReactive_MultipleComputeds(t *testing.T) {
 	asyncFn := &ir.Func{Name: "fetch", IsAsync: true, Return: ir.TypString}
 

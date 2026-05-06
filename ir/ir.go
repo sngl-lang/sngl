@@ -66,9 +66,10 @@ type Package struct {
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
 type AsyncKickerEntry struct {
-	Func         *Func  // the $compute_X kicker func (async, void)
-	OrigComputed string // name of the original computed func (e.g. "greeting")
-	StateVarName string // name of the synthetic state var (e.g. "__async_greeting")
+	Func         *Func    // the $compute_X kicker func (async, void)
+	OrigComputed string   // name of the original computed func (e.g. "greeting")
+	StateVarName string   // name of the synthetic state var (e.g. "__async_greeting")
+	Deps         []string // sorted names of reactive state vars whose mutation should re-fire the kicker
 }
 
 func (p *Package) IsMain() bool {

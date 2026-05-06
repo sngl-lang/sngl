@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"sort"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -97,11 +98,15 @@ func lowerNamedAsyncComputed(pkg *ir.Package, fn *ir.Func) error {
 	}
 	pkg.Funcs = append(pkg.Funcs, kicker)
 
+	// Compute reactive deps of the kicker body using the reactivity walker.
+	deps := kickerDeps(pkg, origRet.Value)
+
 	// Track the kicker for Tasks 8b/8c.
 	pkg.AsyncKickers = append(pkg.AsyncKickers, ir.AsyncKickerEntry{
 		Func:         kicker,
 		OrigComputed: fn.Name,
 		StateVarName: stateVarName,
+		Deps:         deps,
 	})
 
 	// Rewrite the original computed to a synchronous read.
@@ -113,4 +118,21 @@ func lowerNamedAsyncComputed(pkg *ir.Package, fn *ir.Func) error {
 	fn.IsAsync = false
 
 	return nil
+}
+
+// kickerDeps returns a sorted slice of reactive var names that expr reads.
+// It reuses the reactivityState.exprDeps walker from reactivity.go.
+func kickerDeps(pkg *ir.Package, expr ir.Expr) []string {
+	st := &reactivityState{
+		pkg:          pkg,
+		reactiveVars: collectReactiveVars(pkg),
+		reverseDeps:  make(map[*ir.Var][]reactiveProp),
+	}
+	depsMap := st.exprDeps(expr)
+	names := make([]string, 0, len(depsMap))
+	for v := range depsMap {
+		names = append(names, v.Name)
+	}
+	sort.Strings(names)
+	return names
 }
