@@ -11,17 +11,19 @@ const (
 	SlotField                    // struct field of funcvar type, field-insensitive across instances
 	SlotListElem                 // element of a list of funcvar type
 	SlotReturn                   // function return slot when result is a funcvar
+	SlotLocal                    // local variable (ir.LocalVar) holding a funcvar
 )
 
 // PointsToKey identifies a single slot in the points-to graph. Equal
 // keys mean the same slot (the struct is value-comparable).
 type PointsToKey struct {
-	Kind  SlotKind
-	Var   *Var   // SlotVar
-	Param *Param // SlotParam
-	Func  *Func  // SlotReturn
-	Type  *Type  // SlotField, SlotListElem
-	Field string // SlotField
+	Kind     SlotKind
+	Var      *Var      // SlotVar
+	Param    *Param    // SlotParam
+	Func     *Func     // SlotReturn
+	Type     *Type     // SlotField, SlotListElem
+	Field    string    // SlotField
+	LocalVar *LocalVar // SlotLocal
 }
 
 func SlotVarKey(v *Var) PointsToKey     { return PointsToKey{Kind: SlotVar, Var: v} }
@@ -30,7 +32,8 @@ func SlotReturnKey(f *Func) PointsToKey { return PointsToKey{Kind: SlotReturn, F
 func SlotFieldKey(t *Type, name string) PointsToKey {
 	return PointsToKey{Kind: SlotField, Type: t, Field: name}
 }
-func SlotListElemKey(t *Type) PointsToKey { return PointsToKey{Kind: SlotListElem, Type: t} }
+func SlotListElemKey(t *Type) PointsToKey   { return PointsToKey{Kind: SlotListElem, Type: t} }
+func SlotLocalKey(lv *LocalVar) PointsToKey { return PointsToKey{Kind: SlotLocal, LocalVar: lv} }
 
 // PointsToInfo is the analysis result attached to a Package via Package.PointsTo.
 type PointsToInfo struct {
