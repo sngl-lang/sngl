@@ -62,6 +62,10 @@ type Package struct {
 	// to reactivity deps and startup calls.
 	// Nil (not set) when NoAsyncReactive has not run or found no candidates.
 	AsyncKickers []AsyncKickerEntry
+
+	// PointsTo holds funcvar points-to analysis results from
+	// analyzePointsTo. Nil before that pass runs; populated afterward.
+	PointsTo *PointsToInfo
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
