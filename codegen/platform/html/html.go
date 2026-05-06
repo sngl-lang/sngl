@@ -452,6 +452,7 @@ type eventHandler struct {
 	event   string // "click", "input", "change"
 	body    string // JS statements
 	mutated map[string]bool
+	isAsync bool
 }
 
 type timerDef struct {
@@ -2405,24 +2406,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 
 	// Event handlers with static dispatch
-	for _, h := range g.handlers {
-		// Build the list of update functions to call based on mutated fields
-		updaters := g.findAffectedUpdaters(h.mutated)
-		var lines []string
-		lines = append(lines, h.body)
-		for _, u := range updaters {
-			lines = append(lines, u.funcName+"();")
-		}
-		if g.preview {
-			lines = append(lines, "__sngl_sync_state();")
-		}
-		body := strings.Join(lines, "\n  ")
-		if h.event == "input" {
-			fmt.Fprintf(b, "%s.addEventListener(\"%s\", function(e) {\n  %s\n});\n", h.elemID, h.event, body)
-		} else {
-			fmt.Fprintf(b, "%s.addEventListener(\"%s\", function() {\n  %s\n});\n", h.elemID, h.event, body)
-		}
-	}
+	g.emitHandlers(b)
 
 	// Timers
 	for _, t := range g.timers {
@@ -2474,6 +2458,30 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			b.WriteString(u.funcName)
 		}
 		b.WriteString("];\n")
+	}
+}
+
+func (g *htmlGen) emitHandlers(b *strings.Builder) {
+	for _, h := range g.handlers {
+		updaters := g.findAffectedUpdaters(h.mutated)
+		var lines []string
+		lines = append(lines, h.body)
+		for _, u := range updaters {
+			lines = append(lines, u.funcName+"();")
+		}
+		if g.preview {
+			lines = append(lines, "__sngl_sync_state();")
+		}
+		body := strings.Join(lines, "\n  ")
+		keyword := "function"
+		if h.isAsync {
+			keyword = "async function"
+		}
+		if h.event == "input" {
+			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(e) {\n  %s\n});\n", h.elemID, h.event, keyword, body)
+		} else {
+			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n", h.elemID, h.event, keyword, body)
+		}
 	}
 }
 
@@ -2558,9 +2566,12 @@ func (g *htmlGen) optimizeIR() {
 	// Keep handler body strings keyed by elemID+event (IR uses ast.Node,
 	// but HTML has already translated to JS strings).
 	handlerBodyMap := make(map[string]string)
+	handlerAsyncMap := make(map[string]bool)
 	handlers := make([]codegen.Handler, len(g.handlers))
 	for i, h := range g.handlers {
-		handlerBodyMap[h.elemID+":"+h.event] = h.body
+		key := h.elemID + ":" + h.event
+		handlerBodyMap[key] = h.body
+		handlerAsyncMap[key] = h.isAsync
 		handlers[i] = codegen.Handler{
 			NodeID:  h.elemID,
 			Event:   h.event,
@@ -2602,11 +2613,13 @@ func (g *htmlGen) optimizeIR() {
 	// Write back optimized handlers, restoring body strings.
 	g.handlers = make([]eventHandler, len(m.Handlers))
 	for i, h := range m.Handlers {
+		key := h.NodeID + ":" + h.Event
 		g.handlers[i] = eventHandler{
 			elemID:  h.NodeID,
 			event:   h.Event,
-			body:    handlerBodyMap[h.NodeID+":"+h.Event],
+			body:    handlerBodyMap[key],
 			mutated: h.Mutated,
+			isAsync: handlerAsyncMap[key],
 		}
 	}
 
@@ -3020,6 +3033,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 		event:   "click",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
+		isAsync: ir.BlockHasAsyncCall(body),
 	})
 }
 
@@ -3081,6 +3095,7 @@ func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
 		event:   "input",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
+		isAsync: ir.BlockHasAsyncCall(fn.Block),
 	})
 }
 
@@ -3104,6 +3119,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 		event:   "change",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
+		isAsync: ir.BlockHasAsyncCall(body),
 	})
 }
 
