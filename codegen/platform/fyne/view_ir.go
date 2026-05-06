@@ -687,6 +687,19 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 		vc.line("}")
 	}
 
+	// Internal link navigation: when the href is a string literal matching a
+	// known window name in a multi-window app, override OnTapped to call
+	// navigate() instead of letting Fyne open the URL in the OS browser.
+	if n.Name == "link" && len(vc.windowNames) > 1 && !bp.Transient {
+		if hrefExpr := codegen.NodeProp(n, "href"); hrefExpr != nil {
+			if hrefStr, ok := codegen.IRLiteralString(hrefExpr); ok {
+				if vc.windowNames[hrefStr] {
+					vc.line("%s.OnTapped = func() { m.navigate(%q) }", target, hrefStr)
+				}
+			}
+		}
+	}
+
 	if !bp.Transient {
 		vc.line("%s = %s", resultVar, target)
 	}

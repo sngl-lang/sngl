@@ -140,38 +140,99 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		windowNames[w.Name] = true
 	}
 
-	if len(wins) > 0 && len(wins[0].Body) > 0 {
-		bodyStmts := wins[0].Body
-		vc := &irViewContext{
-			gc:          gc,
-			ctx:         ctx,
-			buf:         &buildBuf,
-			indent:      1,
-			info:        info,
-			windowNames: windowNames,
-		}
+	// windowCodes holds pre-rendered per-window build methods for multi-window.
+	var windowCodes []string
 
-		if len(bodyStmts) == 1 {
-			vc.line("var content fyne.CanvasObject")
-			vc.renderStmt(bodyStmts[0], "content")
-			vc.line("if content == nil { content = widget.NewLabel(\"\") }")
-		} else {
-			singleRoot = false
-			vc.line("var parts []fyne.CanvasObject")
-			for i, child := range bodyStmts {
-				childVar := fmt.Sprintf("part%d", i)
-				vc.line("var %s fyne.CanvasObject", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
+	if len(wins) <= 1 {
+		// Single-window: render wins[0] body into BuildUI buffer directly.
+		if len(wins) > 0 && len(wins[0].Body) > 0 {
+			bodyStmts := wins[0].Body
+			vc := &irViewContext{
+				gc:          gc,
+				ctx:         ctx,
+				buf:         &buildBuf,
+				indent:      1,
+				info:        info,
+				windowNames: windowNames,
 			}
+
+			if len(bodyStmts) == 1 {
+				vc.line("var content fyne.CanvasObject")
+				vc.renderStmt(bodyStmts[0], "content")
+				vc.line("if content == nil { content = widget.NewLabel(\"\") }")
+			} else {
+				singleRoot = false
+				vc.line("var parts []fyne.CanvasObject")
+				for i, child := range bodyStmts {
+					childVar := fmt.Sprintf("part%d", i)
+					vc.line("var %s fyne.CanvasObject", childVar)
+					vc.renderStmt(child, childVar)
+					vc.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
+				}
+			}
+
+			widgetFields = vc.widgetFields
+			updaters = vc.updaters
+			entrySync = vc.entrySync
+			blueprintImports = vc.imports
+			endLabel = vc.labelCount
+			endContainer = vc.containerCount
+		}
+	} else {
+		// Multi-window: add navigation fields and pre-render each window into
+		// its own buildWindowX() method. BuildUI and navigate() are emitted
+		// later by emitIRMultiWindowCode.
+		widgetFields = append(widgetFields, irWidgetField{"activeWindow", "string"})
+		for _, w := range wins {
+			widgetFields = append(widgetFields, irWidgetField{windowBoxField(w.Name), "*fyne.Container"})
 		}
 
-		widgetFields = vc.widgetFields
-		updaters = vc.updaters
-		entrySync = vc.entrySync
-		blueprintImports = vc.imports
-		endLabel = vc.labelCount
-		endContainer = vc.containerCount
+		for _, w := range wins {
+			buildFn := windowBuildFunc(w.Name)
+			var winBuf strings.Builder
+			winVC := &irViewContext{
+				gc:             gc,
+				ctx:            ctx,
+				buf:            &winBuf,
+				indent:         1,
+				info:           info,
+				windowNames:    windowNames,
+				labelCount:     endLabel,
+				containerCount: endContainer,
+			}
+			var winCode strings.Builder
+			fmt.Fprintf(&winCode, "func (m *Model) %s() fyne.CanvasObject {\n", buildFn)
+			if len(w.Body) == 1 {
+				winVC.line("var content fyne.CanvasObject")
+				winVC.renderStmt(w.Body[0], "content")
+				winVC.line("if content == nil { content = widget.NewLabel(\"\") }")
+				winCode.WriteString(winBuf.String())
+				winCode.WriteString("\treturn content\n")
+			} else if len(w.Body) > 1 {
+				winVC.line("var parts []fyne.CanvasObject")
+				for i, child := range w.Body {
+					childVar := fmt.Sprintf("part%d", i)
+					winVC.line("var %s fyne.CanvasObject", childVar)
+					winVC.renderStmt(child, childVar)
+					winVC.line("if %s != nil { parts = append(parts, %s) }", childVar, childVar)
+				}
+				winCode.WriteString(winBuf.String())
+				winCode.WriteString("\treturn container.NewVBox(parts...)\n")
+			} else {
+				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
+			}
+			winCode.WriteString("}\n\n")
+			windowCodes = append(windowCodes, winCode.String())
+			widgetFields = append(widgetFields, winVC.widgetFields...)
+			updaters = append(updaters, winVC.updaters...)
+			if blueprintImports == nil {
+				blueprintImports = winVC.imports
+			} else if winVC.imports != nil {
+				maps.Copy(blueprintImports, winVC.imports)
+			}
+			endLabel = winVC.labelCount
+			endContainer = winVC.containerCount
+		}
 	}
 
 	// --- Phase 1b: Pre-render component methods with continued counters ---
@@ -265,7 +326,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 
 	// --- Phase 4: Append dynamic code ---
-	emitIRBuildUI(&b, info, &buildBuf, singleRoot)
+	if len(wins) <= 1 {
+		emitIRBuildUI(&b, info, &buildBuf, singleRoot)
+	} else {
+		emitIRMultiWindowCode(&b, wins, windowCodes)
+	}
 	emitIRUpdaters(&b, updaters)
 
 	for _, code := range componentCodes {
@@ -636,4 +701,67 @@ func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) [
 		return []string{"// Alert.confirm not supported in Fyne"}
 	}
 	return []string{"// unsupported Alert." + method}
+}
+
+// --- Multi-window helpers ---
+
+// windowPascal converts a window Name (e.g. "app", "/foo", "window_L42") to
+// a PascalCase identifier fragment for function/field names.
+func windowPascal(name string) string {
+	clean := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, name)
+	parts := strings.FieldsFunc(clean, func(r rune) bool { return r == '_' })
+	var b strings.Builder
+	for _, p := range parts {
+		if len(p) > 0 {
+			b.WriteString(strings.ToUpper(p[:1]) + p[1:])
+		}
+	}
+	return b.String()
+}
+
+func windowBuildFunc(name string) string { return "buildWindow" + windowPascal(name) }
+func windowBoxField(name string) string  { return "window" + windowPascal(name) + "Box" }
+
+// emitIRMultiWindowCode emits BuildUI, navigate, and per-window build methods
+// for a multi-window application. Called only when len(wins) > 1.
+// widgetFields already includes the windowXxxBox fields added by emitIR.
+func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, windowCodes []string) {
+	b.WriteString("// BuildUI creates the widget tree. Call once.\n")
+	b.WriteString("func (m *Model) BuildUI() fyne.CanvasObject {\n")
+	b.WriteString("\tif m.activeWindow == \"\" {\n")
+	fmt.Fprintf(b, "\t\tm.activeWindow = %q\n", wins[0].Name)
+	b.WriteString("\t}\n")
+	for _, w := range wins {
+		fmt.Fprintf(b, "\tm.%s = container.NewStack(m.%s())\n", windowBoxField(w.Name), windowBuildFunc(w.Name))
+	}
+	for _, w := range wins {
+		fmt.Fprintf(b, "\tif m.activeWindow != %q { m.%s.Hide() }\n", w.Name, windowBoxField(w.Name))
+	}
+	b.WriteString("\tvar windowObjects []fyne.CanvasObject\n")
+	for _, w := range wins {
+		fmt.Fprintf(b, "\twindowObjects = append(windowObjects, m.%s)\n", windowBoxField(w.Name))
+	}
+	b.WriteString("\treturn container.NewStack(windowObjects...)\n")
+	b.WriteString("}\n\n")
+
+	b.WriteString("func (m *Model) navigate(name string) {\n")
+	b.WriteString("\tm.activeWindow = name\n")
+	for _, w := range wins {
+		fmt.Fprintf(b, "\tm.%s.Hide()\n", windowBoxField(w.Name))
+	}
+	b.WriteString("\tswitch name {\n")
+	for _, w := range wins {
+		fmt.Fprintf(b, "\tcase %q:\n\t\tm.%s.Show()\n", w.Name, windowBoxField(w.Name))
+	}
+	b.WriteString("\t}\n")
+	b.WriteString("}\n\n")
+
+	for _, code := range windowCodes {
+		b.WriteString(code)
+	}
 }

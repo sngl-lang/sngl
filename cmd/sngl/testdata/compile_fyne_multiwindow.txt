@@ -1,0 +1,41 @@
+# Regression test for #36: multiple window blocks + link navigation.
+# All windows must be emitted; navigate() must exist; link with internal
+# href must call navigate instead of opening the OS browser.
+
+sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
+exists out/model.go
+
+# Per-window build methods
+grep 'func \(m \*Model\) buildWindowApp' out/model.go
+grep 'func \(m \*Model\) buildWindowSettings' out/model.go
+
+# Navigation method
+grep 'func \(m \*Model\) navigate' out/model.go
+
+# Window container fields on Model (use \s+ for alignment spaces)
+grep 'windowAppBox\s+\*fyne\.Container' out/model.go
+grep 'windowSettingsBox\s+\*fyne\.Container' out/model.go
+
+# BuildUI hides inactive window on startup; navigate shows/hides containers
+grep 'windowAppBox\.Hide' out/model.go
+grep 'windowSettingsBox\.Hide' out/model.go
+
+# Internal link must call navigate, not open a URL in the OS browser.
+grep 'm\.navigate\("settings"\)' out/model.go
+
+-- app.sngl --
+output { go { fyne } }
+
+component main {
+    window #app(title="App") {
+        vbox {
+            text(value="App page")
+            link(href="settings", text="Go to Settings")
+        }
+    }
+    window #settings(title="Settings") {
+        vbox {
+            text(value="Settings page")
+        }
+    }
+}
