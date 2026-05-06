@@ -79,13 +79,15 @@ func TestAsyncPropagatesThroughCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Use a zero-param function to avoid the parameterized-async-reactive
-	// checker rule, which rejects async funcs with parameters (the settled-state
-	// lowering cannot key per-argument).
+	// fetchTitle is async (returns a Promise in the TS fixture). A SNGL wrapper
+	// that calls it — even with a param — must propagate IsAsync. Rule 2 only
+	// fires when the func is called from a reactive prop expression; a bare
+	// top-level func declaration that is never referenced from a visual node is
+	// not a reactive context, so no error is expected here.
 	src := `
 import lib "js://./simple"
 
-func getTitle() => lib.fetchTitle("https://example.com")
+func getTitle(url string) => lib.fetchTitle(url)
 `
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {

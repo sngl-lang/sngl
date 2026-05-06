@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // checkAsyncRules runs post-analyzeAsync validation rules that reject code
@@ -15,17 +16,14 @@ import (
 //     with "__async_" or "__hoist_" is rejected.  Those prefixes are reserved
 //     for the lowering pass.
 //
-//  2. Parameterized async: any non-zero-param func that is async (i.e.
-//     IsAsync=true after the fixed-point propagation) is rejected.  The
-//     settled-state lowering (NoAsyncReactive) emits a single state var per
-//     computed func; it cannot key per-call-argument.
-//
-//     Note: the spec calls for a tighter definition ("async called from a
-//     reactive context"), but detecting reactive context requires a full
-//     visual-tree walk that is out of scope here.  We conservatively reject
-//     all parameterized async funcs, which is safe: the lowering would fail
-//     on them anyway, and the user can always restructure by separating the
-//     async call from the parameterization.
+//  2. Parameterized async in reactive context: a non-zero-param func that is
+//     async (IsAsync=true) is rejected ONLY IF it is directly called from a
+//     reactive expression — i.e., a visual-node prop value in a window or
+//     component body.  The settled-state lowering (NoAsyncReactive) emits a
+//     single state var per computed func and cannot key per-call-argument.
+//     Event handlers, timer bodies, and regular function bodies are NOT
+//     reactive contexts; they run as async wrappers and can freely call
+//     parameterized async functions.
 //
 //  3. Async function into sync slot: deferred.  The ir.FuncSig / ir.Type for
 //     TypeFunc carries no IsAsync/color field, so there is no way to inspect
@@ -64,10 +62,107 @@ func (c *checker) checkAsyncRules() {
 		}
 	}
 
-	// Rule 2: parameterized async functions.
+	// Rule 2: parameterized async functions called from a reactive context.
+	// Collect all funcs directly referenced inside reactive prop expressions.
+	reactive := collectReactiveCallees(pkg)
 	for _, fn := range allFuncs(pkg) {
 		if fn.IsAsync && len(fn.Params) > 0 && fn.AST != nil {
-			c.error(fn.AST.Pos, "async expression not allowed in parameterized reactive context")
+			if reactive[fn] {
+				c.error(fn.AST.Pos, "async expression not allowed in parameterized reactive context")
+			}
+		}
+	}
+}
+
+// collectReactiveCallees returns the set of *ir.Func directly called from
+// reactive prop expressions.  Reactive expressions are the Value fields of
+// NodeInst.Props inside window and component bodies.  Event handlers, timer
+// bodies, and function bodies are NOT reactive contexts.
+//
+// Only direct calls are collected (i.e., *ir.Call.Func).  Indirect calls
+// through func-typed vars are conservatively excluded (they will be addressed
+// when FuncSig gains IsAsync; see Rule 3 / Task 47).
+func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
+	out := make(map[*ir.Func]bool)
+	for _, w := range pkg.Windows {
+		collectCalleesInStmts(out, w.Body)
+	}
+	for _, comp := range pkg.Components {
+		collectCalleesInStmts(out, comp.Body)
+	}
+	return out
+}
+
+// collectCalleesInStmts walks a statement slice looking for NodeInst prop
+// expressions and recurses into nested visual nodes.  It does NOT descend
+// into event handler bodies or function bodies.
+func collectCalleesInStmts(out map[*ir.Func]bool, stmts []ir.Stmt) {
+	for _, s := range stmts {
+		collectCalleesInStmt(out, s)
+	}
+}
+
+func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		for _, prop := range n.Props {
+			collectCalleesInExpr(out, prop.Value)
+		}
+		collectCalleesInStmts(out, n.Children)
+	case *ir.If:
+		collectCalleesInStmts(out, n.Body)
+		collectCalleesInStmts(out, n.Else)
+	case *ir.For:
+		collectCalleesInStmts(out, n.Body)
+		collectCalleesInStmts(out, n.Else)
+	case *ir.PlatformFilter:
+		collectCalleesInStmts(out, n.Body)
+	case *ir.SlotInst:
+		collectCalleesInStmts(out, n.Children)
+	case *ir.ErrorBoundary:
+		collectCalleesInStmts(out, n.Children)
+	case *ir.Window:
+		collectCalleesInStmts(out, n.Body)
+	}
+}
+
+// collectCalleesInExpr walks expr and records every directly-called *ir.Func.
+func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
+	if e == nil {
+		return
+	}
+	switch x := e.(type) {
+	case *ir.Call:
+		if x.Func != nil {
+			out[x.Func] = true
+		}
+		collectCalleesInExpr(out, x.Receiver)
+		for _, a := range x.Args {
+			collectCalleesInExpr(out, a.Value)
+		}
+	case *ir.Binary:
+		collectCalleesInExpr(out, x.Left)
+		collectCalleesInExpr(out, x.Right)
+	case *ir.Unary:
+		collectCalleesInExpr(out, x.Operand)
+	case *ir.Ternary:
+		collectCalleesInExpr(out, x.Cond)
+		collectCalleesInExpr(out, x.Then)
+		collectCalleesInExpr(out, x.Else)
+	case *ir.Conversion:
+		collectCalleesInExpr(out, x.Operand)
+	case *ir.Select:
+		collectCalleesInExpr(out, x.Operand)
+	case *ir.Index:
+		collectCalleesInExpr(out, x.Operand)
+		collectCalleesInExpr(out, x.Idx)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			collectCalleesInExpr(out, el)
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			collectCalleesInExpr(out, f.Value)
 		}
 	}
 }
@@ -89,4 +184,3 @@ func varDeclPos(stmt ast.Stmt) ast.Pos {
 	}
 	return ast.Pos{}
 }
-
