@@ -2323,30 +2323,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if !needsSetter {
 			continue
 		}
-		fmt.Fprintf(b, "function $set_%s(v) {\n", dv.Name)
-		fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
-		mutated := map[string]bool{dv.Name: true}
-		for _, u := range g.findAffectedUpdaters(mutated) {
-			fmt.Fprintf(b, "  %s();\n", u.funcName)
-		}
-		for _, h := range dv.Handlers {
-			if h.Name == "change" && h.Func != nil {
-				for _, s := range h.Func.Block {
-					for _, js := range g.translateHandlerStmt(s, g.scope) {
-						fmt.Fprintf(b, "  %s;\n", js)
-					}
-				}
-			}
-		}
-		for _, t := range g.timers {
-			if t.activeVar == dv.Name {
-				fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
-			}
-		}
-		if g.preview {
-			b.WriteString("  __sngl_sync_state();\n")
-		}
-		b.WriteString("}\n")
+		g.emitSetter(b, dv)
 	}
 	if len(stateFields) > 0 {
 		b.WriteString("\n")
@@ -2483,6 +2460,44 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n", h.elemID, h.event, keyword, body)
 		}
 	}
+}
+
+func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
+	setterAsync := false
+	for _, h := range dv.Handlers {
+		if h.Name == "change" && h.Func != nil && ir.BlockHasAsyncCall(h.Func.Block) {
+			setterAsync = true
+			break
+		}
+	}
+	keyword := "function"
+	if setterAsync {
+		keyword = "async function"
+	}
+	fmt.Fprintf(b, "%s $set_%s(v) {\n", keyword, dv.Name)
+	fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
+	mutated := map[string]bool{dv.Name: true}
+	for _, u := range g.findAffectedUpdaters(mutated) {
+		fmt.Fprintf(b, "  %s();\n", u.funcName)
+	}
+	for _, h := range dv.Handlers {
+		if h.Name == "change" && h.Func != nil {
+			for _, s := range h.Func.Block {
+				for _, js := range g.translateHandlerStmt(s, g.scope) {
+					fmt.Fprintf(b, "  %s;\n", js)
+				}
+			}
+		}
+	}
+	for _, t := range g.timers {
+		if t.activeVar == dv.Name {
+			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
+		}
+	}
+	if g.preview {
+		b.WriteString("  __sngl_sync_state();\n")
+	}
+	b.WriteString("}\n")
 }
 
 func (g *htmlGen) collectReferencedIDs() []string {
