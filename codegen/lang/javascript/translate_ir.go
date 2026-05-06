@@ -145,8 +145,6 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	return translateIRPlainCall(n, scope)
 }
 
-// translateIRPlainCall emits a plain (non-native, non-namespace) function call.
-// Wraps with `await` when the resolved SNGL callee is declared async.
 func translateIRPlainCall(n *ir.Call, scope *codegen.ExprScope) string {
 	fn := ""
 	if n.Func != nil {
