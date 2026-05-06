@@ -12,32 +12,34 @@ import "strings"
 // Caps values come from the platform's and language's Capabilities() methods
 // and are merged field-wise via OR before lower.Lower runs.
 type Caps struct {
-	NoToggle      bool // x!! → x = !x
-	NoTernary     bool // a ? b : c → if/else stmt with temp var
-	NoLambda      bool // closures → top-level funcs + captured-state struct
-	NoRef         bool // ref<T> → synthesized one-field reference-semantic struct
-	NoUnit        bool // unit values → underlying int
-	NoEnum        bool // enum members → int constants
-	NoComputed    bool // computed vars → inlined exprs or memoized funcs
-	NoTimer       bool // timer decls → explicit scheduler.At()/cancel() calls
-	NoReactivity  bool // reactive deps → explicit updater stmts after each mutation
-	NoDeclarative bool // visual node tree → flat stream of create/update/delete IR calls
+	NoToggle        bool // x!! → x = !x
+	NoTernary       bool // a ? b : c → if/else stmt with temp var
+	NoLambda        bool // closures → top-level funcs + captured-state struct
+	NoRef           bool // ref<T> → synthesized one-field reference-semantic struct
+	NoUnit          bool // unit values → underlying int
+	NoEnum          bool // enum members → int constants
+	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
+	NoComputed      bool // computed vars → inlined exprs or memoized funcs
+	NoTimer         bool // timer decls → explicit scheduler.At()/cancel() calls
+	NoReactivity    bool // reactive deps → explicit updater stmts after each mutation
+	NoDeclarative   bool // visual node tree → flat stream of create/update/delete IR calls
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
 // feature requests the corresponding lowering pass.
 func (c Caps) Merge(other Caps) Caps {
 	return Caps{
-		NoToggle:      c.NoToggle || other.NoToggle,
-		NoTernary:     c.NoTernary || other.NoTernary,
-		NoLambda:      c.NoLambda || other.NoLambda,
-		NoRef:         c.NoRef || other.NoRef,
-		NoUnit:        c.NoUnit || other.NoUnit,
-		NoEnum:        c.NoEnum || other.NoEnum,
-		NoComputed:    c.NoComputed || other.NoComputed,
-		NoTimer:       c.NoTimer || other.NoTimer,
-		NoReactivity:  c.NoReactivity || other.NoReactivity,
-		NoDeclarative: c.NoDeclarative || other.NoDeclarative,
+		NoToggle:        c.NoToggle || other.NoToggle,
+		NoTernary:       c.NoTernary || other.NoTernary,
+		NoLambda:        c.NoLambda || other.NoLambda,
+		NoRef:           c.NoRef || other.NoRef,
+		NoUnit:          c.NoUnit || other.NoUnit,
+		NoEnum:          c.NoEnum || other.NoEnum,
+		NoAsyncReactive: c.NoAsyncReactive || other.NoAsyncReactive,
+		NoComputed:      c.NoComputed || other.NoComputed,
+		NoTimer:         c.NoTimer || other.NoTimer,
+		NoReactivity:    c.NoReactivity || other.NoReactivity,
+		NoDeclarative:   c.NoDeclarative || other.NoDeclarative,
 	}
 }
 
@@ -53,6 +55,9 @@ func (c Caps) String() string {
 	}
 	if c.NoTernary {
 		parts = append(parts, "NoTernary")
+	}
+	if c.NoAsyncReactive {
+		parts = append(parts, "NoAsyncReactive")
 	}
 	if c.NoComputed {
 		parts = append(parts, "NoComputed")

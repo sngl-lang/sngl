@@ -20,21 +20,25 @@ type pass struct {
 // transformations performed by later ones; later passes may. Order rationale:
 //  1. NoUnit, NoEnum — collapse types, no deps.
 //  2. NoTernary — rewrites expressions, no deps on visual model.
-//  3. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
-//  4. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
-//  5. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
-//  6. NoReactivity — analyzes dataflow, injects updaters.
-//  7. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
-//  8. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
+//  3. NoAsyncReactive — must run before NoComputed (introduces sync state vars
+//     that NoComputed would otherwise inline away) and before NoReactivity
+//     (synthetic vars must be visible as reactive deps).
+//  4. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
+//  5. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
+//  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
+//  7. NoReactivity — analyzes dataflow, injects updaters.
+//  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
+//  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
 //     handlers promoted from inline blocks.
-//  9. NoRef — runs last so it catches every ref<T> shape any earlier pass may have
+// 10. NoRef — runs last so it catches every ref<T> shape any earlier pass may have
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
 	passUnit,
 	passEnum,
 	passTernary,
+	passAsyncReactive,
 	passComputed,
 	passLambda,
 	passToggle,

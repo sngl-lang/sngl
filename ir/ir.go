@@ -55,6 +55,20 @@ type Package struct {
 	// package — by user code via `&v`, or by NoLambda's lifter when emitting
 	// mutable-capture init. NoRef reads this set to decide which Vars to box.
 	AddressedVars map[*Var]bool
+
+	// AsyncKickers is populated by the NoAsyncReactive lowering pass. Each
+	// entry records a synthetic async kicker func and the original computed
+	// name it fires on behalf of. Tasks 8b and 8c use this to wire kickers
+	// to reactivity deps and startup calls.
+	// Nil (not set) when NoAsyncReactive has not run or found no candidates.
+	AsyncKickers []AsyncKickerEntry
+}
+
+// AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
+type AsyncKickerEntry struct {
+	Func         *Func  // the $compute_X kicker func (async, void)
+	OrigComputed string // name of the original computed func (e.g. "greeting")
+	StateVarName string // name of the synthetic state var (e.g. "__async_greeting")
 }
 
 func (p *Package) IsMain() bool {

@@ -13,6 +13,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoUnit",
 		"NoEnum",
 		"NoTernary",
+		"NoAsyncReactive",
 		"NoComputed",
 		"NoLambda",
 		"NoToggle",
