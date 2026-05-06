@@ -23,7 +23,7 @@ func stmtHasFuncvarAsyncCall(s Stmt, pts *PointsToInfo) bool {
 	case *CallStmt:
 		return exprHasFuncvarAsyncCall(x.Call, pts)
 	case *Assign:
-		return exprHasFuncvarAsyncCall(x.Value, pts)
+		return exprHasFuncvarAsyncCall(x.Target, pts) || exprHasFuncvarAsyncCall(x.Value, pts)
 	case *LocalVar:
 		return exprHasFuncvarAsyncCall(x.Init, pts)
 	case *Return:
@@ -42,9 +42,10 @@ func stmtHasFuncvarAsyncCall(s Stmt, pts *PointsToInfo) bool {
 	return false
 }
 
-// calleeSlotKey resolves a funcvar callee expression to its PointsToKey.
-// Mirrors jsCalleeSlotKey and checker.receiverSlotKey.
-func calleeSlotKey(e Expr) (PointsToKey, bool) {
+// CalleeSlotKey resolves a funcvar callee expression to its PointsToKey.
+// Used by any pass that needs to look up the points-to slot for a funcvar
+// invocation (checker async analysis, JS codegen, etc.).
+func CalleeSlotKey(e Expr) (PointsToKey, bool) {
 	switch x := e.(type) {
 	case *Ident:
 		switch sym := x.Sym.(type) {
@@ -87,7 +88,7 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 		}
 		// Funcvar call: Func is nil, Callee carries the funcvar expression.
 		if x.Func == nil && x.Callee != nil {
-			if k, ok := calleeSlotKey(x.Callee); ok {
+			if k, ok := CalleeSlotKey(x.Callee); ok {
 				if color, present := pts.SlotColor[k]; present {
 					if color == ColorAsync {
 						return true

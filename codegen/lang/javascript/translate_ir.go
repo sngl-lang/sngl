@@ -221,7 +221,7 @@ func translateIRFuncvarCall(n *ir.Call, scope *codegen.ExprScope) string {
 	call := calleeJS + "(" + strings.Join(argStrs, ", ") + ")"
 
 	if scope.Pkg != nil && scope.Pkg.PointsTo != nil {
-		if k, ok := jsCalleeSlotKey(n.Callee); ok {
+		if k, ok := ir.CalleeSlotKey(n.Callee); ok {
 			pts := scope.Pkg.PointsTo
 			if color, present := pts.SlotColor[k]; present {
 				if color == ir.ColorAsync {
@@ -240,39 +240,6 @@ func translateIRFuncvarCall(n *ir.Call, scope *codegen.ExprScope) string {
 		}
 	}
 	return call
-}
-
-// jsCalleeSlotKey maps a funcvar callee expression to its PointsToKey.
-// Returns (zero, false) for expressions that don't correspond to a slot.
-func jsCalleeSlotKey(e ir.Expr) (ir.PointsToKey, bool) {
-	switch x := e.(type) {
-	case *ir.Ident:
-		if v, ok := x.Sym.(*ir.Var); ok {
-			return ir.SlotVarKey(v), true
-		}
-		if p, ok := x.Sym.(*ir.Param); ok {
-			return ir.SlotParamKey(p), true
-		}
-	case *ir.Select:
-		if x.Operand != nil {
-			t := x.Operand.ExprType()
-			if t != nil && t.Kind == ir.TypeStruct {
-				return ir.SlotFieldKey(t, x.Field), true
-			}
-		}
-	case *ir.Index:
-		if x.Operand != nil {
-			t := x.Operand.ExprType()
-			if t != nil && t.Kind == ir.TypeList {
-				return ir.SlotListElemKey(t), true
-			}
-		}
-	case *ir.Call:
-		if x.Func != nil {
-			return ir.SlotReturnKey(x.Func), true
-		}
-	}
-	return ir.PointsToKey{}, false
 }
 
 // translateIRNativeCall emits a call to a function imported via a scheme
