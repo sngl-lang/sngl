@@ -79,10 +79,13 @@ func TestAsyncPropagatesThroughCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Use a zero-param function to avoid the parameterized-async-reactive
+	// checker rule, which rejects async funcs with parameters (the settled-state
+	// lowering cannot key per-argument).
 	src := `
 import lib "js://./simple"
 
-func getTitle(url string) => lib.fetchTitle(url)
+func getTitle() => lib.fetchTitle("https://example.com")
 `
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
