@@ -39,6 +39,11 @@ type ExprScope struct {
 	// inline + tree-shake. Unset (or false): the call is emitted with a
 	// bare name as before, matching the WASM-extern bridge convention.
 	BundledNativePkgs map[string]bool
+	// Pkg is the IR package being translated. Used by translators that need
+	// package-level analysis results (e.g. points-to / slot-color for funcvar
+	// await inference). May be nil when the scope is constructed without a
+	// package (tests, incomplete compilation paths).
+	Pkg *ir.Package
 }
 
 // NativeAlias produces a deterministic JS identifier for a native module

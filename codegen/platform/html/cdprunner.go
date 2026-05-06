@@ -54,6 +54,7 @@ func NewCDPRunner(page *rod.Page, pkg *ir.Package, lang codegen.LangTranslator) 
 			ModelFields:    modelFields,
 			ComputedFields: computedFields,
 			LocalVars:      localVars,
+			Pkg:            pkg,
 		},
 		lang: lang,
 	}

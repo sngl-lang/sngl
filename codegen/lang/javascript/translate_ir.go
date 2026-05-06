@@ -141,6 +141,14 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 		return translateIRTypeMethodCall(n, scope)
 	}
 
+	// Funcvar invocation: Func is nil, Callee holds the funcvar expression.
+	// Prepend `await` when the slot's color is Async; for slots without a
+	// color entry (SlotParam / SlotReturn), use the conservative fallback:
+	// any async candidate ⇒ await.
+	if n.Func == nil && n.Callee != nil {
+		return translateIRFuncvarCall(n, scope)
+	}
+
 	// Plain function call.
 	return translateIRPlainCall(n, scope)
 }
@@ -186,6 +194,74 @@ func translateIRPlainCall(n *ir.Call, scope *codegen.ExprScope) string {
 		call = "await " + call
 	}
 	return call
+}
+
+// translateIRFuncvarCall handles funcvar invocations where Func is nil and
+// Callee holds the funcvar expression. It prepends `await` when the slot's
+// points-to color is ColorAsync. For slots with no color entry (e.g.
+// SlotParam, SlotReturn), it uses the conservative g3 rule: any async
+// candidate ⇒ await.
+func translateIRFuncvarCall(n *ir.Call, scope *codegen.ExprScope) string {
+	calleeJS := translateIRExpr(n.Callee, scope)
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+	call := calleeJS + "(" + strings.Join(argStrs, ", ") + ")"
+
+	if scope.Pkg != nil && scope.Pkg.PointsTo != nil {
+		if k, ok := jsCalleeSlotKey(n.Callee); ok {
+			pts := scope.Pkg.PointsTo
+			if color, present := pts.SlotColor[k]; present {
+				if color == ir.ColorAsync {
+					call = "await " + call
+				}
+			} else {
+				// No color entry: conservative fallback — await if any
+				// candidate is async.
+				for _, fn := range pts.Candidates(k) {
+					if fn.IsAsync {
+						call = "await " + call
+						break
+					}
+				}
+			}
+		}
+	}
+	return call
+}
+
+// jsCalleeSlotKey maps a funcvar callee expression to its PointsToKey.
+// Returns (zero, false) for expressions that don't correspond to a slot.
+func jsCalleeSlotKey(e ir.Expr) (ir.PointsToKey, bool) {
+	switch x := e.(type) {
+	case *ir.Ident:
+		if v, ok := x.Sym.(*ir.Var); ok {
+			return ir.SlotVarKey(v), true
+		}
+		if p, ok := x.Sym.(*ir.Param); ok {
+			return ir.SlotParamKey(p), true
+		}
+	case *ir.Select:
+		if x.Operand != nil {
+			t := x.Operand.ExprType()
+			if t != nil && t.Kind == ir.TypeStruct {
+				return ir.SlotFieldKey(t, x.Field), true
+			}
+		}
+	case *ir.Index:
+		if x.Operand != nil {
+			t := x.Operand.ExprType()
+			if t != nil && t.Kind == ir.TypeList {
+				return ir.SlotListElemKey(t), true
+			}
+		}
+	case *ir.Call:
+		if x.Func != nil {
+			return ir.SlotReturnKey(x.Func), true
+		}
+	}
+	return ir.PointsToKey{}, false
 }
 
 // translateIRNativeCall emits a call to a function imported via a scheme

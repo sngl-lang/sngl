@@ -7,6 +7,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// funcTypeNoArgs returns a minimal func-typed ir.Type with no params/return.
+func funcTypeNoArgs() *ir.Type {
+	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{}}
+}
+
+// identToVar builds an *ir.Ident whose Sym is v.
+func identToVar(v *ir.Var) *ir.Ident {
+	return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}
+}
+
 func TestTranslateIRPlainCall_AwaitsAsyncSNGLCallee(t *testing.T) {
 	asyncFn := &ir.Func{Name: "loadUser", IsAsync: true}
 	call := &ir.Call{Func: asyncFn}
@@ -44,6 +54,65 @@ func TestTranslateIRNamespaceCall_NoAwaitForSyncCallee(t *testing.T) {
 	call := &ir.Call{Func: fn, Receiver: receiverExpr}
 	got := translateIRNamespaceCall(call, &codegen.ExprScope{})
 	want := "store.get()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestTranslateIRCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{asyncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorAsync},
+		},
+	}
+	call := &ir.Call{Func: nil, Callee: identToVar(v)}
+	scope := &codegen.ExprScope{Pkg: pkg, LocalVars: map[string]bool{"handler": true}}
+	got := translateIRCall(call, scope)
+	want := "await handler()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestTranslateIRCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
+	syncFn := &ir.Func{Name: "syncFn"}
+	v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{syncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorSync},
+		},
+	}
+	call := &ir.Call{Func: nil, Callee: identToVar(v)}
+	scope := &codegen.ExprScope{Pkg: pkg, LocalVars: map[string]bool{"handler": true}}
+	got := translateIRCall(call, scope)
+	want := "handler()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestTranslateIRCall_FuncvarParamSlot_AnyAsync_Awaits(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	p := &ir.Param{Name: "cb"}
+	// SlotParam slot has no SlotColor entry → conservative fallback.
+	pkg := &ir.Package{
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotParamKey(p): {asyncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{},
+		},
+	}
+	call := &ir.Call{Func: nil, Callee: &ir.Ident{Name: "cb", Sym: p}}
+	scope := &codegen.ExprScope{Pkg: pkg, LocalVars: map[string]bool{"cb": true}}
+	got := translateIRCall(call, scope)
+	want := "await cb()"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}

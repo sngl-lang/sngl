@@ -489,6 +489,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		LocalVars:         make(map[string]bool),
 		NeededHelpers:     common.Helpers,
 		BundledNativePkgs: collectBundledNativePkgs(pkg),
+		Pkg:               pkg,
 	}
 	if pkg != nil {
 		for _, c := range pkg.Consts {
@@ -3241,6 +3242,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		ComputedFields: g.scope.ComputedFields,
 		FuncNames:      g.scope.FuncNames,
 		LocalVars:      make(map[string]bool),
+		Pkg:            g.scope.Pkg,
 	}
 	for k := range g.scope.LocalVars {
 		funcScope.LocalVars[k] = true
