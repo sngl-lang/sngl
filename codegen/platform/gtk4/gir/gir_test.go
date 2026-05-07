@@ -1,0 +1,124 @@
+package gir_test
+
+import (
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+const minimalGIR = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="Button" c:type="GtkButton">
+      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="clicked">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Label" c:type="GtkLabel">
+      <constructor name="new" c:identifier="gtk_label_new">
+        <parameters>
+          <parameter name="str" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+
+func TestParseGIR_Button(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(minimalGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	info, ok := reg.Classes["Button"]
+	if !ok {
+		t.Fatal("Button not found")
+	}
+	if info.CType != "GtkButton" {
+		t.Errorf("CType = %q, want GtkButton", info.CType)
+	}
+	if info.Constructor.Name != "gtk_button_new_with_label" {
+		t.Errorf("Constructor.Name = %q, want gtk_button_new_with_label", info.Constructor.Name)
+	}
+	if len(info.Constructor.Params) != 1 || info.Constructor.Params[0].Name != "label" {
+		t.Errorf("Constructor.Params = %v", info.Constructor.Params)
+	}
+	if len(info.Props) != 1 || info.Props[0].Name != "label" {
+		t.Errorf("Props = %v", info.Props)
+	}
+	if info.Props[0].IRType.Kind != ir.TypeString {
+		t.Errorf("Props[0].IRType.Kind = %v, want TypeString", info.Props[0].IRType.Kind)
+	}
+	if len(info.Signals) != 1 || info.Signals[0].Name != "clicked" {
+		t.Errorf("Signals = %v", info.Signals)
+	}
+}
+
+func TestParseGIR_Label(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(minimalGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	info, ok := reg.Classes["Label"]
+	if !ok {
+		t.Fatal("Label not found")
+	}
+	if info.Constructor.Name != "gtk_label_new" {
+		t.Errorf("Constructor.Name = %q, want gtk_label_new", info.Constructor.Name)
+	}
+}
+
+func TestParseGIR_Unknown(t *testing.T) {
+	reg, _ := gir.ParseGIRBytes([]byte(minimalGIR))
+	if _, ok := reg.Classes["Nonexistent"]; ok {
+		t.Error("unexpected class found")
+	}
+}
+
+func TestParseGIR_UnmappableType(t *testing.T) {
+	const src = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="Weird" c:type="GtkWeird">
+      <constructor name="new" c:identifier="gtk_weird_new"/>
+      <property name="custom" writable="1">
+        <type name="SomeUnknownType"/>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+	reg, err := gir.ParseGIRBytes([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	info := reg.Classes["Weird"]
+	if info == nil {
+		t.Fatal("Weird not found")
+	}
+	if len(info.Props) != 1 || info.Props[0].IRType.Kind != ir.TypeDyn {
+		t.Errorf("expected TypeDyn fallback, got %v", info.Props)
+	}
+}
