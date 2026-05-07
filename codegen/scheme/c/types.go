@@ -28,7 +28,7 @@ func mapCType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type
 	case cc.Ptr:
 		return mapPointerType(t, ast, structs)
 	case cc.Struct:
-		return mapStructType(t, structs)
+		return mapStructType(t, ast, structs)
 	case cc.Enum:
 		return mapEnumType(t)
 	case cc.Array:
@@ -66,7 +66,7 @@ func mapPointerType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *i
 		// char* → string (cgo handles the C.GoString / C.CString conversion)
 		return &ir.Type{Kind: ir.TypeString}
 	case cc.Struct:
-		inner := mapStructType(elem, structs)
+		inner := mapStructType(elem, ast, structs)
 		if inner == nil {
 			return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
 		}
@@ -88,7 +88,7 @@ func mapPointerType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *i
 	}
 }
 
-func mapStructType(t cc.Type, structs map[string]*ir.StructDef) *ir.Type {
+func mapStructType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type {
 	st, ok := t.(*cc.StructType)
 	if !ok {
 		return nil
@@ -116,7 +116,7 @@ func mapStructType(t cc.Type, structs map[string]*ir.StructDef) *ir.Type {
 		if f == nil || f.Name() == "" || f.IsBitfield() {
 			continue
 		}
-		ft := mapCType(f.Type(), nil, structs)
+		ft := mapCType(f.Type(), ast, structs)
 		if ft == nil {
 			continue
 		}

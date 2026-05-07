@@ -41,8 +41,8 @@ func (c *CImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		return nil, fmt.Errorf("c scheme requires a path (e.g. c:///usr/include/SDL2/SDL.h or c://pkg:sdl2)")
 	}
 
-	if strings.HasPrefix(path, "pkg:") {
-		return c.resolvePkgConfig(strings.TrimPrefix(path, "pkg:"), dir)
+	if after, ok := strings.CutPrefix(path, "pkg:"); ok {
+		return c.resolvePkgConfig(after, dir)
 	}
 	return c.resolveHeader(path, nil, uri)
 }
@@ -151,7 +151,7 @@ func extractDeclarations(ast *cc.AST, importPath string) (*ir.NativeImport, erro
 						ni.Funcs = append(ni.Funcs, fn)
 					}
 				case cc.Struct:
-					sd := extractStruct(t, name, structs)
+					sd := extractStruct(t, name, ast, structs)
 					if sd != nil {
 						ni.Structs = appendIfNew(ni.Structs, sd)
 					}
@@ -172,7 +172,7 @@ func extractDeclarations(ast *cc.AST, importPath string) (*ir.NativeImport, erro
 				if t == nil || t.Kind() != cc.Struct {
 					continue
 				}
-				sd := extractStruct(t, name, structs)
+				sd := extractStruct(t, name, ast, structs)
 				if sd != nil {
 					ni.Structs = appendIfNew(ni.Structs, sd)
 				}
@@ -222,8 +222,8 @@ func extractFunc(d *cc.Declarator, name string, ft *cc.FunctionType, ast *cc.AST
 	return fn
 }
 
-func extractStruct(t cc.Type, name string, structs map[string]*ir.StructDef) *ir.StructDef {
-	mapStructType(t, structs)
+func extractStruct(t cc.Type, name string, ast *cc.AST, structs map[string]*ir.StructDef) *ir.StructDef {
+	mapStructType(t, ast, structs)
 	return structs[name]
 }
 
@@ -253,9 +253,9 @@ func appendIfNew(slice []*ir.StructDef, sd *ir.StructDef) []*ir.StructDef {
 
 func parsePkgConfigCflags(cflags string) []string {
 	var paths []string
-	for _, field := range strings.Fields(cflags) {
-		if strings.HasPrefix(field, "-I") {
-			paths = append(paths, strings.TrimPrefix(field, "-I"))
+	for field := range strings.FieldsSeq(cflags) {
+		if after, ok := strings.CutPrefix(field, "-I"); ok {
+			paths = append(paths, after)
 		}
 	}
 	return paths

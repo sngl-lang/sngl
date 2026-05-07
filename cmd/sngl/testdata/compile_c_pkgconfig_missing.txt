@@ -3,6 +3,7 @@
 
 ! sngl compile --platform=fyne --lang=go --out=out .
 ! exists out/model.go
+stderr pkg-config
 
 -- go.mod --
 module example.com/ctest

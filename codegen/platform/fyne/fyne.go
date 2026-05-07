@@ -90,7 +90,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
-	src := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	src, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	if err != nil {
+		return nil, err
+	}
 	formatted, err := format.Source(src)
 	if err != nil {
 		return &codegen.Response{Error: fmt.Sprintf("generated code formatting error: %v\n%s", err, src)}, nil

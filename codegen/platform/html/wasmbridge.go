@@ -2,6 +2,7 @@ package html
 
 import (
 	"io/fs"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -111,12 +112,7 @@ func containsRef(t *ir.Type) bool {
 	if t.Kind == ir.TypeRef {
 		return true
 	}
-	for _, e := range t.Elems {
-		if containsRef(e) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(t.Elems, containsRef)
 }
 
 // wasmTypeHint translates an IR type to the Go type expression the WASM

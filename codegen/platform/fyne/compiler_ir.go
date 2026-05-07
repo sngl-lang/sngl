@@ -119,7 +119,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	return info
 }
 
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) []byte {
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) ([]byte, error) {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -317,7 +317,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	// --- Phase 3: Build template data and render ---
-	td := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
+	if err != nil {
+		return nil, err
+	}
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
@@ -344,10 +347,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	return []byte(b.String())
+	return []byte(b.String()), nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) templateData {
+func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -467,10 +470,12 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 	if len(cNativeImports) > 0 {
 		if cc, ok := lang.(codegen.CCompiler); ok {
 			td.CgoPreamble = cc.EmitCHeader(cNativeImports)
+		} else {
+			return templateData{}, fmt.Errorf("platform fyne with lang %T does not support C imports", lang)
 		}
 	}
 
-	return td
+	return td, nil
 }
 
 func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -97,6 +98,11 @@ func snglCmd() script.Cmd {
 
 			// Restore state.
 			os.Chdir(oldDir)
+			// Mirror main(): print the command error to stderr so script
+			// assertions like `stderr some-text` can match it.
+			if cmdErr != nil {
+				fmt.Fprintln(wErr, cmdErr)
+			}
 			wOut.Close()
 			wErr.Close()
 			os.Stdout = oldOut

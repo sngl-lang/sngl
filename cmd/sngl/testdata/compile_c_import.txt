@@ -10,6 +10,9 @@ grep '#include' out/model.go
 # cgo preamble: import "C" line
 grep 'import "C"' out/model.go
 
+# call-site: the C function call must appear in generated code
+grep 'C\.add\(' out/model.go
+
 -- lib/math.h --
 int add(int a, int b);
 int sub(int a, int b);
@@ -18,7 +21,8 @@ int sub(int a, int b);
 import clib "c://lib/math.h"
 
 component main {
+  var result int
   window #app {
-    text "hello"
+    button(text="compute", @click { result = clib.add(1, 2) })
   }
 }

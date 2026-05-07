@@ -252,6 +252,12 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
+		// Native (e.g. C/cgo) call: emit NativeName(args) directly, ignoring the
+		// SNGL import alias that ended up as the receiver.
+		if n.Func.NativePkg != "" {
+			return n.Func.NativeName + "(" + strings.Join(args, ", ") + ")"
+		}
+
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
 
