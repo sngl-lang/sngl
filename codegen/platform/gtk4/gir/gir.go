@@ -3,6 +3,7 @@ package gir
 import (
 	"bytes"
 	"encoding/xml"
+	"io"
 	"os"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -80,8 +81,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 
 	for {
 		tok, err := dec.Token()
-		if err != nil {
+		if err == io.EOF {
 			break
+		}
+		if err != nil {
+			return nil, err
 		}
 		switch t := tok.(type) {
 		case xml.StartElement:
@@ -153,6 +157,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inCtorParams = false
 
 			case local == "parameter" && inParam:
+				// Invariant: inParam is only ever set to true when acceptCtor is
+				// also true (see StartElement "parameter" case above), so this
+				// append always targets the accepted (first) constructor.  The
+				// guard is omitted here intentionally — the symmetric guard lives
+				// at the start element.
 				inParam = false
 				currentClass.Constructor.Params = append(currentClass.Constructor.Params, ConstructorParam{
 					Name:   paramName,

@@ -95,6 +95,52 @@ func TestParseGIR_Unknown(t *testing.T) {
 	}
 }
 
+func TestParseGIR_MultipleConstructors(t *testing.T) {
+	// Second constructor must be ignored; first one wins.
+	const src = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="Button" c:type="GtkButton">
+      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new" c:identifier="gtk_button_new">
+        <parameters>
+          <parameter name="ignored_param" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+  </namespace>
+</repository>`
+	reg, err := gir.ParseGIRBytes([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	info, ok := reg.Classes["Button"]
+	if !ok {
+		t.Fatal("Button not found")
+	}
+	// First constructor must be kept.
+	if info.Constructor.Name != "gtk_button_new_with_label" {
+		t.Errorf("Constructor.Name = %q, want gtk_button_new_with_label", info.Constructor.Name)
+	}
+	// Params from second constructor must not bleed into first.
+	if len(info.Constructor.Params) != 1 {
+		t.Errorf("Constructor.Params len = %d, want 1; params = %v", len(info.Constructor.Params), info.Constructor.Params)
+	} else if info.Constructor.Params[0].Name != "label" {
+		t.Errorf("Constructor.Params[0].Name = %q, want label", info.Constructor.Params[0].Name)
+	}
+}
+
 func TestParseGIR_UnmappableType(t *testing.T) {
 	const src = `<?xml version="1.0"?>
 <repository version="1.2"
