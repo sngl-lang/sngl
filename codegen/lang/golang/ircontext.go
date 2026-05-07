@@ -633,6 +633,11 @@ func IRTypeToGo(t *ir.Type) string {
 			return "[]" + IRTypeToGo(t.Elems[0])
 		}
 		return "[]any"
+	case ir.TypeRef:
+		if len(t.Elems) > 0 {
+			return "*" + IRTypeToGo(t.Elems[0])
+		}
+		return "unsafe.Pointer"
 	case ir.TypeOption:
 		if len(t.Elems) > 0 {
 			return "*" + IRTypeToGo(t.Elems[0])
