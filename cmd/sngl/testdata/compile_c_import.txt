@@ -1,0 +1,24 @@
+# Verify that c:// imports produce a cgo preamble in fyne codegen.
+# The generated model.go must contain import "C" and a #include directive.
+
+sngl compile --platform=fyne --lang=go --out=out main.sngl
+exists out/model.go
+
+# cgo preamble: include directive for the header
+grep '#include' out/model.go
+
+# cgo preamble: import "C" line
+grep 'import "C"' out/model.go
+
+-- lib/math.h --
+int add(int a, int b);
+int sub(int a, int b);
+
+-- main.sngl --
+import clib "c://lib/math.h"
+
+component main {
+  window #app {
+    text "hello"
+  }
+}
