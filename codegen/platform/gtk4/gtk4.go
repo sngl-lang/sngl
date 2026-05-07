@@ -40,6 +40,7 @@ func init() {
 type Generator struct {
 	once     sync.Once
 	registry *gir.TypeRegistry
+	initErr  error // set if autodetect GIR load fails
 }
 
 func (g *Generator) PlatformIdentifier() string { return "gtk4" }
@@ -56,18 +57,15 @@ func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{
 // not available on this machine or the identifier is not a known widget.
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	g.once.Do(func() {
-		path, err := resolveGIRPath("")
+		p, err := resolveGIRPath("")
 		if err != nil {
-			// GIR not available — leave registry nil.
+			g.initErr = err
 			return
 		}
-		reg, err := gir.ParseGIR(path)
-		if err != nil {
-			return
-		}
-		g.registry = reg
+		g.registry, g.initErr = gir.ParseGIR(p)
 	})
-	if g.registry == nil {
+	if g.initErr != nil {
+		// GIR unavailable — caller gets nil, checker will report unknown identifier.
 		return nil
 	}
 	name := stripGtkPrefix(identifier)
