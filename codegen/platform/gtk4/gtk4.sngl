@@ -21,11 +21,11 @@ component button() {
     GtkButton(label=text, @clicked { @click() }) {}
 }
 
-component text() {
+component label() {
     GtkLabel(label=value) {}
 }
 
-component input() {
+component entry() {
     GtkEntry(text=value, @changed { @input(event) }) {}
 }
 
