@@ -62,6 +62,7 @@ type compilation struct {
 	ctx  *codegen.CodegenCtx
 	info *irAnalysis
 	cfg  Config
+	lang codegen.LangTranslator
 }
 
 var (
@@ -78,6 +79,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	}
 	c.cfg = c.cfg.withDefaults()
 	c.ctx = codegen.NewCodegenCtx(req, "fyne")
+	c.lang = req.Lang
 	c.info = analyzeIR(c.ctx)
 
 	var stmts []ir.Stmt
@@ -88,7 +90,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
-	src := emitIR(c.info, c.ctx, c.cfg)
+	src := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	formatted, err := format.Source(src)
 	if err != nil {
 		return &codegen.Response{Error: fmt.Sprintf("generated code formatting error: %v\n%s", err, src)}, nil

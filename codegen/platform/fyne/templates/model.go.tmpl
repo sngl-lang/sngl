@@ -1,5 +1,7 @@
 package {{.Package}}
-
+{{if .CgoPreamble}}
+{{.CgoPreamble}}
+{{end}}
 import (
 {{- range $path, $_ := .Imports}}
 	"{{$path}}"

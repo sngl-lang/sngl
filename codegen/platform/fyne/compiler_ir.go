@@ -116,7 +116,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	return info
 }
 
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) []byte {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -314,7 +314,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 
 	// --- Phase 3: Build template data and render ---
-	td := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx)
+	td := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
@@ -344,7 +344,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	return []byte(b.String())
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx) templateData {
+func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) templateData {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -446,6 +446,25 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 	// Updater names
 	for _, u := range updaters {
 		td.UpdaterNames = append(td.UpdaterNames, u.name)
+	}
+
+	// Detect C native imports and emit the cgo preamble.
+	var cNativeImports []*ir.NativeImport
+	for _, imp := range ctx.Pkg.Imports {
+		if imp.Native == nil {
+			continue
+		}
+		for _, fn := range imp.Native.Funcs {
+			if fn.NativePkg == "C" {
+				cNativeImports = append(cNativeImports, imp.Native)
+				break
+			}
+		}
+	}
+	if len(cNativeImports) > 0 {
+		if cc, ok := lang.(codegen.CCompiler); ok {
+			td.CgoPreamble = cc.EmitCHeader(cNativeImports)
+		}
 	}
 
 	return td

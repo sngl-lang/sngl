@@ -61,6 +61,10 @@ type templateData struct {
 	UpdaterNames []string
 	FunctionCode string          // pre-rendered user functions
 	Imports      map[string]bool // import set; template iterates in sorted key order and uses `index .Imports "path"` for lookups
+
+	// CgoPreamble holds the cgo comment block + `import "C"` line.
+	// Non-empty only when any native import uses NativePkg == "C".
+	CgoPreamble string
 }
 
 type structData struct {
