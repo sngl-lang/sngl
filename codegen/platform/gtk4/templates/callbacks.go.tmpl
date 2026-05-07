@@ -1,0 +1,29 @@
+package {{.Package}}
+
+/*
+#include <gtk/gtk.h>
+*/
+import "C"
+
+import "unsafe"
+
+// snglCallbacks holds registered Go signal handlers indexed by int.
+var snglCallbacks []func()
+
+//export snglGoDispatch
+func snglGoDispatch(idx C.int) {
+	if int(idx) < len(snglCallbacks) {
+		snglCallbacks[int(idx)]()
+	}
+}
+
+//export snglIdleCallback
+func snglIdleCallback(ptr unsafe.Pointer) {
+	fn := *(*func())(ptr)
+	fn()
+}
+
+func gtkPost(fn func()) {
+	f := fn
+	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
+}

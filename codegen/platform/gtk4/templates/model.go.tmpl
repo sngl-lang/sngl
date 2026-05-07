@@ -1,0 +1,96 @@
+package {{.Package}}
+
+/*
+#cgo pkg-config: gtk4
+#include <gtk/gtk.h>
+#include <stdlib.h>
+
+extern void snglGoDispatch(int idx);
+static void sngl_cb(gpointer data) {
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+static void sngl_connect(gpointer widget, const char* signal, int idx) {
+    g_signal_connect(widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+}
+
+extern void snglIdleCallback(void* fn);
+static gboolean sngl_idle_tramp(gpointer data) {
+    snglIdleCallback(data);
+    return G_SOURCE_REMOVE;
+}
+static void sngl_gtk_idle_add(void* fn) {
+    g_idle_add(sngl_idle_tramp, fn);
+}
+*/
+import "C"
+
+import (
+{{- if .Main}}
+	"runtime"
+	"fmt"
+{{- end}}
+	"unsafe"
+{{- range $path, $_ := .Imports}}
+	"{{$path}}"
+{{- end}}
+)
+
+func ternary[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
+}
+
+{{- range .Structs}}
+type {{.Name}} struct {
+{{- range .Fields}}
+	{{.Name}} {{.Type}}
+{{- end}}
+}
+
+{{end}}
+// Model holds the state and widget references for this SNGL UI.
+type Model struct {
+{{- range .Binds}}
+	{{.Name}} {{.GoType}}
+{{- end}}
+{{- range .WidgetFields}}
+	{{.Name}} {{.GoType}}
+{{- end}}
+}
+
+// New creates a Model with default values.
+func New() *Model {
+	m := &Model{
+{{- range .Binds}}
+		{{.Name}}: {{.InitVal}},
+{{- end}}
+	}
+	return m
+}
+
+func (m *Model) doRefresh() {
+{{- range .UpdaterNames}}
+	m.{{.}}()
+{{- end}}
+}
+
+{{- range .Computeds}}
+func (m *Model) {{.Name}}() {{.GoType}} {
+	return {{.Body}}
+}
+
+{{end}}
+{{- .FunctionCode}}
+{{- range .Binds}}
+func (m *Model) {{.Getter}}() {{.GoType}} {
+	return m.{{.Name}}
+}
+
+func (m *Model) Set{{.Getter}}(v {{.GoType}}) {
+	m.{{.Name}} = v
+{{ .SetterExtra -}}
+}
+
+{{end}}

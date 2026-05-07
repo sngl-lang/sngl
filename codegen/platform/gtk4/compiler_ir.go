@@ -4,14 +4,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-// Config holds per-output configuration options for the gtk4 platform.
-// Fields mirror the Options struct in gtk4.sngl.
-type Config struct {
-	Package string `sngl:"package"`
-	Main    bool   `sngl:"main"`
-	GIR     string `sngl:"gir"`
-}
-
 type compilation struct {
 	gen *Generator
 	cfg Config
