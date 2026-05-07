@@ -1,7 +1,10 @@
 package c
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -129,4 +132,73 @@ func TestMapCType_Union(t *testing.T) {
 		}
 	}
 	t.Fatal("no 'p' declarator found")
+}
+
+func TestCImporter_ResolveFile(t *testing.T) {
+	dir := t.TempDir()
+	headerPath := filepath.Join(dir, "test.h")
+	if err := os.WriteFile(headerPath, []byte(`
+int add(int a, int b);
+struct Point { int x; int y; };
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	imp := &CImporter{}
+	ni, err := imp.Resolve("c://"+headerPath, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should have one function: add
+	var addFn *ir.Func
+	for _, fn := range ni.Funcs {
+		if fn.Name == "add" {
+			addFn = fn
+			break
+		}
+	}
+	if addFn == nil {
+		t.Fatalf("func 'add' not found; got funcs: %v", funcNames(ni.Funcs))
+	}
+	if addFn.NativePkg != "C" {
+		t.Errorf("NativePkg = %q, want %q", addFn.NativePkg, "C")
+	}
+	if addFn.NativeName != "C.add" {
+		t.Errorf("NativeName = %q, want %q", addFn.NativeName, "C.add")
+	}
+
+	// Should have the Point struct
+	var pointSd *ir.StructDef
+	for _, sd := range ni.Structs {
+		if sd.Name == "Point" {
+			pointSd = sd
+			break
+		}
+	}
+	if pointSd == nil {
+		t.Fatal("Point struct not found in NativeImport")
+	}
+	if pointSd.Native != "C.Point" {
+		t.Errorf("Point.Native = %q, want %q", pointSd.Native, "C.Point")
+	}
+}
+
+func TestCImporter_PkgconfigMissing(t *testing.T) {
+	imp := &CImporter{}
+	_, err := imp.Resolve("c://pkg:nonexistent-lib-xyz", ".")
+	if err == nil {
+		t.Fatal("expected error for missing pkg-config lib, got nil")
+	}
+	if !strings.Contains(err.Error(), "pkg-config") {
+		t.Errorf("error = %q; want it to mention pkg-config", err.Error())
+	}
+}
+
+func funcNames(fns []*ir.Func) []string {
+	names := make([]string, len(fns))
+	for i, f := range fns {
+		names[i] = f.Name
+	}
+	return names
 }
