@@ -60,6 +60,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if imp.Native == nil || imp.Native.ImportPath == "" {
 			continue
 		}
+		if strings.HasPrefix(imp.Native.ImportPath, "c://") {
+			continue // C imports handled via CgoPreamble, not regular Go imports
+		}
 		info.goImports[imp.Native.ImportPath] = true
 	}
 
