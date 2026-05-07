@@ -100,6 +100,9 @@ type NativeImport struct {
 	Enums      []*EnumDef
 	Funcs      []*Func
 	Vars       []*Var
+	// LinkFlags holds linker flags for C imports (e.g. pkg-config --libs output).
+	// Empty for non-C imports.
+	LinkFlags []string
 }
 
 // Func represents any function: top-level, type-attached method, or lambda.

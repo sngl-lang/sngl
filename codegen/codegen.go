@@ -268,6 +268,15 @@ type WASMFunc struct {
 	HasErrorReturn bool
 }
 
+// CCompiler is optionally implemented by LangTranslators that can emit C FFI
+// call sites via cgo. Checked via type assertion at codegen time.
+type CCompiler interface {
+	// EmitCHeader returns the cgo preamble comment block and `import "C"` line
+	// for the given C native imports. Called once per output file.
+	// Returns empty string when imports is empty.
+	EmitCHeader(imports []*ir.NativeImport) string
+}
+
 // MutationModelEmitter is optionally implemented by platforms that use the
 // Document+Mutations model: emit a static tree once, then generate targeted
 // updater functions to patch specific parts when state changes.
