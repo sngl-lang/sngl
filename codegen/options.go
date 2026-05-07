@@ -90,17 +90,31 @@ func SetOptionField(opts *ir.StructLit, name string, value any) {
 // given Go Config only declares the subset it cares about. Source-level
 // option-name validation happens upstream in the checker.
 func applyStructLit(dst reflect.Value, lit *ir.StructLit) error {
+	// Build a tag→fieldIndex map so structs can rename their option keys via
+	// `option:"<name>"` tags. The fallback path below uses exportName(f.Name).
+	t := dst.Type()
+	tagMap := make(map[string]int, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		if tag := t.Field(i).Tag.Get("option"); tag != "" {
+			tagMap[tag] = i
+		}
+	}
 	for _, f := range lit.Fields {
 		if f.Spread {
 			return fmt.Errorf("ApplyOptions: spread not supported for field %q", f.Name)
 		}
-		goName := exportName(f.Name)
-		field := dst.FieldByName(goName)
+		var field reflect.Value
+		if idx, ok := tagMap[f.Name]; ok {
+			field = dst.Field(idx)
+		} else {
+			goName := exportName(f.Name)
+			field = dst.FieldByName(goName)
+		}
 		if !field.IsValid() {
 			continue
 		}
 		if !field.CanSet() {
-			return fmt.Errorf("ApplyOptions: Go field %q is not settable", goName)
+			return fmt.Errorf("ApplyOptions: Go field for %q is not settable", f.Name)
 		}
 		if err := assignValue(field, f.Value); err != nil {
 			return fmt.Errorf("option %q: %w", f.Name, err)

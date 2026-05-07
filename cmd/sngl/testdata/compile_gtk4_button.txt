@@ -1,0 +1,116 @@
+# End-to-end gtk4 platform compile test.
+#
+# Uses an inline minimal GIR fixture (Button, Label, Box, ApplicationWindow)
+# passed via --opt gir= so the test runs deterministically without requiring
+# system GTK4 dev files.
+
+sngl compile --platform=gtk4 --lang=go --opt=main=true --opt=gir=Gtk-4.0-test.gir --out=out main.sngl
+exists out/model.go
+exists out/callbacks.go
+
+# cgo preamble: GTK header include
+grep '#include <gtk/gtk.h>' out/model.go
+
+# cgo enabled
+grep 'import "C"' out/model.go
+
+# Button constructor from the inline GIR (gtk_button_new_with_label is the
+# first/only constructor in the fixture, exercising the GIR-driven ctor path).
+grep 'gtk_button_new_with_label' out/model.go
+
+# Box and ApplicationWindow constructors should also flow through.
+grep 'gtk_box_new' out/model.go
+grep 'gtk_application_window_new' out/model.go
+
+# GTK app entrypoint emitted in callbacks.go (snglActivate is the //export'd
+# activate handler hooked to the GApplication).
+grep 'snglActivate' out/callbacks.go
+
+-- Gtk-4.0-test.gir --
+<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="Button" c:type="GtkButton">
+      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="clicked">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Label" c:type="GtkLabel">
+      <constructor name="new" c:identifier="gtk_label_new">
+        <parameters>
+          <parameter name="str" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="Box" c:type="GtkBox">
+      <constructor name="new" c:identifier="gtk_box_new">
+        <parameters>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="orientation" writable="1">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+      <property name="spacing" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+    <class name="ApplicationWindow" c:type="GtkApplicationWindow">
+      <constructor name="new" c:identifier="gtk_application_window_new">
+        <parameters>
+          <parameter name="application">
+            <type name="Application" c:type="GtkApplication*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="title" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="default-width" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+      <property name="default-height" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+  </namespace>
+</repository>
+
+-- main.sngl --
+component main {
+    var count int
+
+    platform gtk4 {
+        GtkApplicationWindow(title="Test") {
+            GtkBox(orientation="vertical") {
+                GtkLabel(label="hello") {}
+                GtkButton(label="click me", @clicked { count = count + 1 }) {}
+            }
+        }
+    }
+}

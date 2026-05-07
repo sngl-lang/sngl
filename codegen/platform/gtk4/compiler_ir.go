@@ -60,8 +60,18 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.Common
 	}
 	c.cfg = c.cfg.withDefaults()
 
-	// Load GIR registry (use generator's cached registry if available).
-	if c.gen != nil && c.gen.registry != nil {
+	// Load GIR registry. An explicit --opt gir= always overrides the
+	// generator's cached (autodetected) registry so tests with inline GIR
+	// fixtures work deterministically regardless of the host system.
+	if c.cfg.GIRPath != "" {
+		reg, perr := gir.ParseGIR(c.cfg.GIRPath)
+		if perr == nil {
+			c.registry = reg
+			if c.gen != nil {
+				c.gen.registry = reg
+			}
+		}
+	} else if c.gen != nil && c.gen.registry != nil {
 		c.registry = c.gen.registry
 	} else {
 		path, err := resolveGIRPath(c.cfg.GIRPath)
