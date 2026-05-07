@@ -1,6 +1,66 @@
 // GTK4 platform package.
+//
+// Each component overrides the corresponding stdlib abstract component with a
+// GTK4-native implementation. GIR-resolved widget types (GtkButton, GtkLabel,
+// etc.) are available as VisualNode identifiers inside component bodies; the
+// platform's Resolve() maps them from the Gtk-4.0.gir type registry.
+//
+// The view renderer (Task 5) walks each component body, finds the root
+// VisualNode, reads its widget type and prop/event bindings, and emits the
+// corresponding GTK4 Go code.
+
 struct Options {
     package string
     main bool
     gir string
+}
+
+// --- Leaf widgets ---
+
+component button() {
+    GtkButton(label=text, @clicked { @click() }) {}
+}
+
+component text() {
+    GtkLabel(label=value) {}
+}
+
+component input() {
+    GtkEntry(text=value, @changed { @input(event) }) {}
+}
+
+component checkbox() {
+    GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
+}
+
+component image() {
+    GtkImage(file=src) {}
+}
+
+// --- Container widgets ---
+
+component vbox() {
+    GtkBox(orientation="vertical", spacing=6) {
+        slot
+    }
+}
+
+component hbox() {
+    GtkBox(orientation="horizontal", spacing=6) {
+        slot
+    }
+}
+
+component scroll() {
+    GtkScrolledWindow {
+        slot
+    }
+}
+
+// --- Window ---
+
+component window() {
+    GtkApplicationWindow(title=title, defaultWidth=width, defaultHeight=height) {
+        slot
+    }
 }
