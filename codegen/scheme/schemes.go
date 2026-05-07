@@ -3,6 +3,7 @@
 package scheme
 
 import (
+	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/c"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/file"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/git"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
