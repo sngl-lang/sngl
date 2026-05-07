@@ -1,0 +1,6 @@
+// GTK4 platform package.
+struct Options {
+    package string
+    main bool
+    gir string
+}
