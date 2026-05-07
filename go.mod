@@ -93,11 +93,12 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
+	modernc.org/cc/v4 v4.28.2 // indirect
 	modernc.org/egg v1.2.3 // indirect
 	modernc.org/fsm v1.3.2 // indirect
 	modernc.org/gc/v3 v3.1.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/opt v0.1.4 // indirect
+	modernc.org/opt v0.2.0 // indirect
 	modernc.org/rec v0.3.7 // indirect
 	modernc.org/regexp v1.7.10 // indirect
 	modernc.org/sortutil v1.2.1 // indirect
