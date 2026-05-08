@@ -153,6 +153,101 @@ func TestLexNonTranslatableTripleStillWorks(t *testing.T) {
 	}
 }
 
+func TestLexI18nPluralLiteralCases(t *testing.T) {
+	// $"You have {count, plural, one{message} other{messages}}"
+	src := `$"You have {count, plural, one{message} other{messages}}"`
+	l := newLexer(src)
+	var types []TokenType
+	var literals []string
+	for {
+		tok := l.NextToken()
+		if tok.Type == EOF || tok.Type == SEMICOLON {
+			break
+		}
+		types = append(types, tok.Type)
+		literals = append(literals, tok.Literal)
+	}
+	want := []TokenType{
+		I18N_STR_START,             // "You have "
+		IDENT, COMMA, IDENT, COMMA, // count, plural,
+		IDENT, I18N_CASE_FULL,      // one{message}
+		IDENT, I18N_CASE_FULL,      // other{messages}
+		I18N_STR_END,               // ""
+	}
+	if !sameTokenTypes(types, want) {
+		t.Errorf("got types %v\nwant     %v", types, want)
+	}
+	// Check literals for the interesting tokens.
+	if len(types) == len(want) {
+		if literals[0] != "You have " {
+			t.Errorf("I18N_STR_START literal = %q, want \"You have \"", literals[0])
+		}
+		if literals[5] != "one" {
+			t.Errorf("first case ident = %q, want \"one\"", literals[5])
+		}
+		if literals[6] != "message" {
+			t.Errorf("first I18N_CASE_FULL literal = %q, want \"message\"", literals[6])
+		}
+		if literals[7] != "other" {
+			t.Errorf("second case ident = %q, want \"other\"", literals[7])
+		}
+		if literals[8] != "messages" {
+			t.Errorf("second I18N_CASE_FULL literal = %q, want \"messages\"", literals[8])
+		}
+	}
+}
+
+func TestLexI18nPluralEqualNSelector(t *testing.T) {
+	// $"{count, plural, =0{none} other{some}}"
+	src := `$"{count, plural, =0{none} other{some}}"`
+	l := newLexer(src)
+	var types []TokenType
+	for {
+		tok := l.NextToken()
+		if tok.Type == EOF || tok.Type == SEMICOLON {
+			break
+		}
+		types = append(types, tok.Type)
+	}
+	want := []TokenType{
+		I18N_STR_START,
+		IDENT, COMMA, IDENT, COMMA,
+		ASSIGN, INT, I18N_CASE_FULL, // =0{none}
+		IDENT, I18N_CASE_FULL,       // other{some}
+		I18N_STR_END,
+	}
+	if !sameTokenTypes(types, want) {
+		t.Errorf("got  %v\nwant %v", types, want)
+	}
+}
+
+func TestLexI18nNestedPlaceholderInCase(t *testing.T) {
+	// $"{count, plural, one{1 file} other{# files}}"
+	// '#' inside a case body is literal text (ICU number placeholder), not a SNGL token.
+	src := `$"{count, plural, one{1 file} other{# files}}"`
+	l := newLexer(src)
+	var types []TokenType
+	var literals []string
+	for {
+		tok := l.NextToken()
+		if tok.Type == EOF || tok.Type == SEMICOLON {
+			break
+		}
+		types = append(types, tok.Type)
+		literals = append(literals, tok.Literal)
+	}
+	// Find an I18N_CASE_FULL whose literal is "# files".
+	found := false
+	for i, ty := range types {
+		if ty == I18N_CASE_FULL && literals[i] == "# files" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected I18N_CASE_FULL with '# files'; got types=%v literals=%v", types, literals)
+	}
+}
+
 func sameTokenTypes(a, b []TokenType) bool {
 	if len(a) != len(b) {
 		return false

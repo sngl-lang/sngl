@@ -7,9 +7,10 @@ import (
 
 // interpFrame tracks one level of string interpolation nesting.
 type interpFrame struct {
-	triple bool // true for triple-quoted string
-	i18n   bool // true for $"..." / $"""...""" frames
-	depth  int  // brace nesting within this interpolation expression
+	triple   bool // true for triple-quoted string
+	i18n     bool // true for $"..." / $"""...""" frames
+	depth    int  // brace nesting within this interpolation expression
+	caseBody bool // true when this frame is inside an i18n case body (plural/select selector)
 }
 
 // lexer scans SNGL v2 source text into tokens.
@@ -22,6 +23,7 @@ type lexer struct {
 	line        int
 	col         int
 	prevTok     TokenType
+	prevPrevTok TokenType
 	errors      []string
 	interpStack []interpFrame // active string interpolation nesting
 }
@@ -61,6 +63,7 @@ func (l *lexer) advance() rune {
 }
 
 func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
+	l.prevPrevTok = l.prevTok
 	l.prevTok = typ
 	return Token{Type: typ, Literal: lit, Line: line, Column: col}
 }
@@ -190,8 +193,23 @@ func (l *lexer) NextToken() Token {
 		case ')':
 			return l.tok(RPAREN, ")", startLine, startCol)
 		case '{':
+			// Check if this opens an i18n case body (plural/select selector pattern).
+			// Inside an i18n placeholder body, COMMA IDENT { or ASSIGN INT { signals a case body.
 			if len(l.interpStack) > 0 {
-				l.interpStack[len(l.interpStack)-1].depth++
+				top := &l.interpStack[len(l.interpStack)-1]
+				if top.i18n && top.depth == 0 {
+					// Detect case body selectors in ICU plural/select/selectordinal messages.
+					// Pattern 1: COMMA IDENT { — first case selector after the keyword args
+					// Pattern 2: I18N_CASE_{FULL,END} IDENT { — subsequent case selectors
+					// Pattern 3: ASSIGN INT { — numeric case selector (=0, =1, etc.)
+					afterCase := l.prevPrevTok == I18N_CASE_FULL || l.prevPrevTok == I18N_CASE_END
+					isCaseSelector := (l.prevTok == IDENT && (l.prevPrevTok == COMMA || afterCase)) ||
+						(l.prevTok == INT && l.prevPrevTok == ASSIGN)
+					if isCaseSelector {
+						return l.scanCaseBodyContent(startLine, startCol)
+					}
+				}
+				top.depth++
 			}
 			return l.tok(LBRACE, "{", startLine, startCol)
 		case '}':
@@ -200,7 +218,12 @@ func (l *lexer) NextToken() Token {
 				if top.depth == 0 {
 					triple := top.triple
 					i18n := top.i18n
+					caseBody := top.caseBody
 					l.interpStack = l.interpStack[:len(l.interpStack)-1]
+					if caseBody {
+						// Resuming inside a case body after a nested placeholder.
+						return l.scanCaseBodyContentResume(true, startLine, startCol)
+					}
 					return l.scanStringContent(true, triple, i18n, startLine, startCol)
 				}
 				top.depth--
@@ -501,6 +524,49 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 		return l.tok(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
 	}
 	return l.tok(ILLEGAL, "unterminated string", startLine, startCol)
+}
+
+// scanCaseBodyContent scans a case body in an i18n plural/select placeholder.
+// Called after the opening '{' of a case body has been consumed (initial call),
+// or after a nested placeholder's closing '}' (resume call).
+// The body is treated as literal text; inner '{...}' pairs open nested i18n
+// placeholder expressions.
+//
+// Token sequence for a body with no nested placeholders:
+//
+//	I18N_CASE_FULL("body text")
+//
+// Token sequence for a body with nested placeholders:
+//
+//	I18N_CASE_START("prefix") … I18N_STR_RESUME("middle") … I18N_CASE_END("suffix")
+func (l *lexer) scanCaseBodyContent(startLine, startCol int) Token {
+	return l.scanCaseBodyContentResume(false, startLine, startCol)
+}
+
+func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) Token {
+	var sb strings.Builder
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		if ch == '}' {
+			l.advance()
+			if resume {
+				return l.tok(I18N_CASE_END, sb.String(), startLine, startCol)
+			}
+			return l.tok(I18N_CASE_FULL, sb.String(), startLine, startCol)
+		}
+		if ch == '{' {
+			l.advance()
+			// Push a fresh i18n frame for the nested placeholder.
+			l.interpStack = append(l.interpStack, interpFrame{i18n: true, caseBody: true})
+			if resume {
+				return l.tok(I18N_STR_RESUME, sb.String(), startLine, startCol)
+			}
+			return l.tok(I18N_CASE_START, sb.String(), startLine, startCol)
+		}
+		sb.WriteRune(ch)
+		l.advance()
+	}
+	return l.tok(ILLEGAL, "unterminated i18n case body", startLine, startCol)
 }
 
 func (l *lexer) scanTripleString(startLine, startCol int, i18n bool) Token {
