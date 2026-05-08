@@ -367,26 +367,52 @@ type CallStmt struct {
 	Call *CallExpr
 }
 
+// I18nInterpExpr is a translatable string: $"text {placeholder} more".
+// Parts alternate between *LiteralExpr (string segment) and *I18nPlaceholderExpr.
+type I18nInterpExpr struct {
+	Pos   Pos
+	Parts []Expr
+	Style StringStyle
+}
+
+// I18nPlaceholderExpr is a single placeholder inside an I18nInterpExpr:
+// {expr} or {expr, type} or {expr, type, case1{...} case2{...}}.
+type I18nPlaceholderExpr struct {
+	Pos   Pos
+	Value Expr
+	Type  string    // e.g. "plural", "select", "number" — empty for simple {expr}
+	Cases []I18nCase // non-nil only when Type is set
+}
+
+// I18nCase is one branch of a plural/select formatter: selector{body}.
+type I18nCase struct {
+	Pos      Pos
+	Selector string // "one", "other", "=0", etc.
+	Body     []Expr // literal segments and nested *I18nPlaceholderExpr
+}
+
 // --- ExprPos implementations ---
 
-func (x *LiteralExpr) ExprPos() *Pos       { return &x.Pos }
-func (x *IdentExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *EventRefExpr) ExprPos() *Pos      { return &x.Pos }
-func (x *BinaryExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *UnaryExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *TernaryExpr) ExprPos() *Pos       { return &x.Pos }
-func (x *SelectExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *IndexExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *CallExpr) ExprPos() *Pos          { return &x.Pos }
-func (x *StructExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *ListExpr) ExprPos() *Pos          { return &x.Pos }
-func (x *MapLit) ExprPos() *Pos            { return &x.Pos }
-func (x *SpreadExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *InterpolationExpr) ExprPos() *Pos { return &x.Pos }
-func (x *ElementRefExpr) ExprPos() *Pos    { return &x.Pos }
-func (x *LambdaExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *ParenExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *ConstExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *LiteralExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *IdentExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *EventRefExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *BinaryExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *UnaryExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *TernaryExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *SelectExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *IndexExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *CallExpr) ExprPos() *Pos             { return &x.Pos }
+func (x *StructExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *ListExpr) ExprPos() *Pos             { return &x.Pos }
+func (x *MapLit) ExprPos() *Pos               { return &x.Pos }
+func (x *SpreadExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *InterpolationExpr) ExprPos() *Pos    { return &x.Pos }
+func (x *ElementRefExpr) ExprPos() *Pos       { return &x.Pos }
+func (x *LambdaExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *ParenExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *ConstExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *I18nInterpExpr) ExprPos() *Pos       { return &x.Pos }
+func (x *I18nPlaceholderExpr) ExprPos() *Pos  { return &x.Pos }
 func (x *NamedType) ExprPos() *Pos         { return &x.Pos }
 func (x *FuncType) ExprPos() *Pos          { return &x.Pos }
 func (x *StructDef) ExprPos() *Pos         { return &x.Pos }

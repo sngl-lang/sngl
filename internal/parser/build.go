@@ -1179,6 +1179,10 @@ func (b *builder) buildExprBySymbol(sym Symbol, it nodeIter) ast.Expr {
 		return b.buildInterpStr(it)
 	case TripleInterp:
 		return b.buildTripleInterp(it)
+	case I18nInterpStr:
+		return b.buildI18nInterpStr(it)
+	case I18nTriple:
+		return b.buildI18nTriple(it)
 	case AnonStructLit:
 		return b.buildAnonStructLit(it)
 	case FuncLit:
@@ -1217,6 +1221,12 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
 	case TRIPLE_FULL:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
+	case I18N_STR_FULL:
+		lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
+		return &ast.I18nInterpExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleDouble}
+	case I18N_TRIPLE_FULL:
+		lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
+		return &ast.I18nInterpExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleTriple}
 	case RAW_STRING:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringBackticked, Raw: tok.Literal}
 	case COLOR:
@@ -1571,6 +1581,10 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return b.buildInterpStr(it.enter())
 		case TripleInterp:
 			return b.buildTripleInterp(it.enter())
+		case I18nInterpStr:
+			return b.buildI18nInterpStr(it.enter())
+		case I18nTriple:
+			return b.buildI18nTriple(it.enter())
 		case AnonStructLit:
 			return b.buildAnonStructLit(it.enter())
 		case FuncLit:
@@ -1836,6 +1850,185 @@ func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 		}
 	}
 	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+}
+
+func (b *builder) buildI18nInterpStr(it nodeIter) ast.Expr {
+	// I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
+	var parts []ast.Expr
+	pos := ast.Pos{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			if !pos.IsSet() {
+				pos = b.posFromToken(tok)
+			}
+			switch tok.Type {
+			case I18N_STR_START, I18N_STR_RESUME, I18N_STR_END:
+				if tok.Literal != "" {
+					parts = append(parts, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		} else if it.symbol() == I18nPlaceholder {
+			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+		} else {
+			it.skip()
+		}
+	}
+	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
+}
+
+func (b *builder) buildI18nTriple(it nodeIter) ast.Expr {
+	// I18nTriple = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
+	var parts []ast.Expr
+	pos := ast.Pos{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			if !pos.IsSet() {
+				pos = b.posFromToken(tok)
+			}
+			switch tok.Type {
+			case I18N_TRIPLE_START, I18N_STR_RESUME, I18N_TRIPLE_END:
+				if tok.Literal != "" {
+					parts = append(parts, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringTrippleQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		} else if it.symbol() == I18nPlaceholder {
+			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+		} else {
+			it.skip()
+		}
+	}
+	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+}
+
+func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
+	// I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+	ph := &ast.I18nPlaceholderExpr{}
+	// First child: Expr non-terminal.
+	if !it.done() && it.isNonTerminal() {
+		ph.Value = b.buildExpr(it.enter())
+		if ph.Value != nil {
+			ph.Pos = *ph.Value.ExprPos()
+		}
+	}
+	// Optional: comma ident [ comma MsgFormatBody ]
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == MsgFormatBody {
+				ph.Cases = b.buildMsgFormatBody(it.enter())
+			} else {
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case IDENT:
+				ph.Type = tok.Literal
+			case COMMA:
+				// separator, ignore
+			}
+		}
+	}
+	return ph
+}
+
+func (b *builder) buildMsgFormatBody(it nodeIter) []ast.I18nCase {
+	// MsgFormatBody = MsgCase { MsgCase } .
+	var cases []ast.I18nCase
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == MsgCase {
+			cases = append(cases, b.buildMsgCase(it.enter()))
+		} else {
+			it.skip()
+		}
+	}
+	return cases
+}
+
+func (b *builder) buildMsgCase(it nodeIter) ast.I18nCase {
+	// MsgCase = Selector MsgBody .
+	// Selector = ident | eq int_lit .
+	// MsgBody = i18n_case_full | i18n_case_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_case_end .
+	var c ast.I18nCase
+	// Parse Selector non-terminal
+	if !it.done() && it.isNonTerminal() && it.symbol() == Selector {
+		sel := it.enter()
+		if !sel.done() && !sel.isNonTerminal() {
+			tok := sel.shift()
+			c.Pos = b.posFromToken(tok)
+			switch tok.Type {
+			case IDENT:
+				c.Selector = tok.Literal
+			case ASSIGN:
+				if !sel.done() && !sel.isNonTerminal() {
+					n := sel.shift()
+					c.Selector = "=" + n.Literal
+				}
+			}
+		}
+	}
+	// Parse MsgBody: either wrapped non-terminal or inline tokens
+	for !it.done() {
+		if it.isNonTerminal() {
+			sym := it.symbol()
+			switch sym {
+			case MsgBody:
+				sub := it.enter()
+				b.buildMsgBodyInto(&c, sub)
+			case I18nPlaceholder:
+				c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
+			default:
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case I18N_CASE_FULL, I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
+				if tok.Literal != "" {
+					c.Body = append(c.Body, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		}
+	}
+	return c
+}
+
+// buildMsgBodyInto appends literal segments and nested placeholders from a MsgBody sub-iter into c.
+func (b *builder) buildMsgBodyInto(c *ast.I18nCase, it nodeIter) {
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == I18nPlaceholder {
+				c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
+			} else {
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case I18N_CASE_FULL, I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
+				if tok.Literal != "" {
+					c.Body = append(c.Body, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		}
+	}
 }
 
 // --- Argument lists ---
