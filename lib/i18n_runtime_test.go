@@ -92,3 +92,80 @@ func TestLoadManifestFromFileMalformed(t *testing.T) {
 		t.Error("expected error for malformed JSON")
 	}
 }
+
+func TestTrSimple(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	got := tr.Tr("Hello {name}!", "Hello {name}!", map[string]any{"name": "world"})
+	if got != "Hello world!" {
+		t.Errorf("got %q, want Hello world!", got)
+	}
+}
+
+func TestTrManifestHit(t *testing.T) {
+	m := Manifest{
+		"Login": {Translations: map[string]string{"es": "Iniciar"}},
+	}
+	tr := NewTranslator(m, "es")
+	got := tr.Tr("Login", "Login", nil)
+	if got != "Iniciar" {
+		t.Errorf("got %q, want Iniciar", got)
+	}
+}
+
+func TestTrPluralOther(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	tmpl := "{count, plural, =0{no files} one{1 file} other{# files}}"
+	got := tr.Tr(tmpl, tmpl, map[string]any{"count": 5})
+	if got != "5 files" {
+		t.Errorf("got %q, want 5 files", got)
+	}
+}
+
+func TestTrPluralExactZero(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	tmpl := "{count, plural, =0{no files} one{1 file} other{# files}}"
+	got := tr.Tr(tmpl, tmpl, map[string]any{"count": 0})
+	if got != "no files" {
+		t.Errorf("got %q, want no files", got)
+	}
+}
+
+func TestTrPluralOne(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	tmpl := "{count, plural, =0{no files} one{1 file} other{# files}}"
+	got := tr.Tr(tmpl, tmpl, map[string]any{"count": 1})
+	if got != "1 file" {
+		t.Errorf("got %q, want 1 file", got)
+	}
+}
+
+func TestTrSelect(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	tmpl := "{gender, select, male{he} female{she} other{they}}"
+	cases := []struct {
+		gender string
+		want   string
+	}{
+		{"male", "he"},
+		{"female", "she"},
+		{"nonbinary", "they"},
+	}
+	for _, c := range cases {
+		got := tr.Tr(tmpl, tmpl, map[string]any{"gender": c.gender})
+		if got != c.want {
+			t.Errorf("Select(%q) = %q, want %q", c.gender, got, c.want)
+		}
+	}
+}
+
+func TestFormatNoManifestLookup(t *testing.T) {
+	tr := NewTranslator(Manifest{
+		"Hello": {Translations: map[string]string{"es": "Hola"}},
+	}, "es")
+	// Format does NOT consult the manifest.
+	got := tr.Format("Hello", nil)
+	if got != "Hello" {
+		t.Errorf("Format should not consult manifest; got %q", got)
+	}
+}
+
