@@ -88,7 +88,7 @@ Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib
 
 Notable stdlib packages:
 
-- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation (`lib.Translator`); runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.dateStr`, `i18n.timeStr`, `i18n.datetimeStr`, `i18n.selectStr`.
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtime lives in `pkg/go/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
 
 ### Built-in Generic Types
 
