@@ -440,7 +440,7 @@ AnonStructLit = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi
 
 AnonField =
       ellipsis Expr
-    | ident assign Expr
+    | Expr ( assign | colon ) Expr
     .
 
 # Inline function literal: func(params) => Expr  or  func(params) [ReturnType] { … }

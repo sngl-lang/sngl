@@ -1647,7 +1647,11 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 	var fields []ast.StructFieldLit
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
-			fields = append(fields, b.buildAnonField(it.enter()))
+			r := b.buildAnonField(it.enter())
+			if r.IsMap {
+				panic("map literal syntax ':' not allowed in named struct literal")
+			}
+			fields = append(fields, r.StructField)
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
 				*multiline = true
@@ -1658,33 +1662,58 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 	return fields
 }
 
-func (b *builder) buildAnonStructLit(it nodeIter) *ast.StructExpr {
+// anonFieldResult holds the parsed result of one AnonField node.
+// Exactly one of StructField or MapEntry is valid; IsMap distinguishes them.
+type anonFieldResult struct {
+	IsMap       bool
+	StructField ast.StructFieldLit
+	MapEntry    ast.MapEntry
+}
+
+func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 	// AnonStructLit = lbrace [ AnonField { (comma | semi) AnonField } ] rbrace .
-	s := &ast.StructExpr{}
+	var pos ast.Pos
 	var fields []ast.StructFieldLit
+	var entries []ast.MapEntry
+	sawAssign, sawColon, sawSemi := false, false, false
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
-			f := b.buildAnonField(it.enter())
-			fields = append(fields, f)
+			r := b.buildAnonField(it.enter())
+			if r.IsMap {
+				sawColon = true
+				entries = append(entries, r.MapEntry)
+				if !pos.IsSet() {
+					pos = r.MapEntry.Pos
+				}
+			} else {
+				sawAssign = true
+				fields = append(fields, r.StructField)
+			}
 		} else {
 			tok := it.token()
-			if tok.Type == LBRACE && !s.Pos.IsSet() {
-				s.Pos = ast.Pos(b.posFromToken(tok))
+			if tok.Type == LBRACE && !pos.IsSet() {
+				pos = ast.Pos(b.posFromToken(tok))
 			}
 			if tok.Type == SEMICOLON {
-				s.Multiline = true
+				sawSemi = true
 			}
 			it.skip() // lbrace, rbrace, comma, semi
 		}
 	}
-	s.Fields = fields
+	if sawAssign && sawColon {
+		panic("cannot mix '=' and ':' in literal; use one separator consistently")
+	}
+	if sawColon {
+		return &ast.MapLit{Pos: pos, Entries: entries}
+	}
+	s := &ast.StructExpr{Pos: pos, Fields: fields, Multiline: sawSemi}
 	return s
 }
 
-func (b *builder) buildAnonField(it nodeIter) ast.StructFieldLit {
-	// AnonField = ellipsis Expr | ident assign Expr .
+func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
+	// AnonField = ellipsis Expr | Expr ( assign | colon ) Expr .
 	if it.done() {
-		return ast.StructFieldLit{}
+		return anonFieldResult{}
 	}
 	if !it.isNonTerminal() && it.tokenType() == ELLIPSIS {
 		it.skip() // ellipsis
@@ -1692,21 +1721,39 @@ func (b *builder) buildAnonField(it nodeIter) ast.StructFieldLit {
 		if !it.done() && it.isNonTerminal() {
 			val = b.buildExpr(it.enter())
 		}
-		return ast.StructFieldLit{Spread: true, Value: val}
+		return anonFieldResult{StructField: ast.StructFieldLit{Spread: true, Value: val}}
 	}
-	// ident assign Expr
-	name := ""
-	if !it.isNonTerminal() && it.tokenType() == IDENT {
-		name = it.shift().Literal
+	// Expr ( assign | colon ) Expr
+	var key ast.Expr
+	if !it.done() && it.isNonTerminal() {
+		key = b.buildExpr(it.enter())
 	}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
-		it.skip() // assign
+	// Next is the separator token: assign or colon.
+	useColon := false
+	if !it.done() && !it.isNonTerminal() {
+		tok := it.shift()
+		if tok.Type == COLON {
+			useColon = true
+		}
+		// else ASSIGN — consume and continue
 	}
 	var val ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		val = b.buildExpr(it.enter())
 	}
-	return ast.StructFieldLit{Name: name, Value: val}
+	if useColon {
+		keyPos := ast.Pos{}
+		if key != nil {
+			keyPos = *key.ExprPos()
+		}
+		return anonFieldResult{IsMap: true, MapEntry: ast.MapEntry{Pos: keyPos, Key: key, Value: val}}
+	}
+	// struct field: key must be an ident
+	name := ""
+	if ident, ok := key.(*ast.IdentExpr); ok {
+		name = ident.Name
+	}
+	return anonFieldResult{StructField: ast.StructFieldLit{Name: name, Value: val}}
 }
 
 func (b *builder) buildListBody(it nodeIter, multiline *bool) []ast.Expr {

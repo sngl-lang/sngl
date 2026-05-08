@@ -222,6 +222,20 @@ type ListExpr struct {
 	IsMultiline bool
 }
 
+// MapLit is a map literal: {<keyExpr>: <valueExpr>, ...}.
+// The colon separator distinguishes from struct literals (which use =).
+type MapLit struct {
+	Pos     Pos
+	Entries []MapEntry
+}
+
+// MapEntry is one key-value pair in a MapLit.
+type MapEntry struct {
+	Pos   Pos
+	Key   Expr
+	Value Expr
+}
+
 // SpreadExpr represents a spread operation: ...expr.
 type SpreadExpr struct {
 	Pos     Pos
@@ -366,6 +380,7 @@ func (x *IndexExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *CallExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *StructExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ListExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *MapLit) ExprPos() *Pos            { return &x.Pos }
 func (x *SpreadExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *InterpolationExpr) ExprPos() *Pos { return &x.Pos }
 func (x *ElementRefExpr) ExprPos() *Pos    { return &x.Pos }

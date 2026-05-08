@@ -811,6 +811,8 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.write(")")
 	case *ast.StructExpr:
 		f.writeStructExpr(x)
+	case *ast.MapLit:
+		f.writeMapLit(x)
 	case *ast.ListExpr:
 		f.writeListExpr(x)
 	case *ast.SpreadExpr:
@@ -911,6 +913,19 @@ func (f *formatter) writeStructFieldLit(field ast.StructFieldLit) {
 		f.write(" = ")
 		f.writeExpr(field.Value)
 	}
+}
+
+func (f *formatter) writeMapLit(x *ast.MapLit) {
+	f.write("{")
+	for i, e := range x.Entries {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.writeExpr(e.Key)
+		f.write(": ")
+		f.writeExpr(e.Value)
+	}
+	f.write("}")
 }
 
 func (f *formatter) writeListExpr(x *ast.ListExpr) {
