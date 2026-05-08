@@ -150,6 +150,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		info.goImports[imp.Native.ImportPath] = true
 	}
+	if golang.PackageUsesI18n(pkg) {
+		info.goImports[golang.SnglLibImportPath] = true
+	}
 
 	allVars := pkg.Vars
 	if main := ctx.MainComponent(); main != nil {

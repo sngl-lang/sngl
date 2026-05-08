@@ -66,6 +66,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[imp.Native.ImportPath] = true
 	}
 
+	// If any i18n stdlib calls are present, the generated code will call
+	// lib.GetTranslator() and must import the SNGL runtime lib package.
+	if golang.PackageUsesI18n(pkg) {
+		info.goImports[golang.SnglLibImportPath] = true
+	}
+
 	// Collect vars from package + main component
 	allVars := pkg.Vars
 	if main := ctx.MainComponent(); main != nil {

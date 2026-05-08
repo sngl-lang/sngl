@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/text/currency"
@@ -567,4 +568,43 @@ func keywordToPluralKey(cat plural.Form) PluralKey {
 		return PluralMany
 	}
 	return PluralOther
+}
+
+// --- Process-wide default Translator ---
+
+var (
+	translatorOnce      sync.Once
+	defaultTranslator   *Translator
+)
+
+// GetTranslator returns the process-wide Translator, lazily initialised
+// from i18n.manifest.json (working directory) and the LC_ALL/LC_MESSAGES/LANG
+// env vars. The first call may incur file I/O; subsequent calls are cheap.
+func GetTranslator() *Translator {
+	translatorOnce.Do(func() {
+		locale := pickLocale()
+		m, _ := LoadManifestFromFile("i18n.manifest.json")
+		defaultTranslator = NewTranslator(m, locale)
+	})
+	return defaultTranslator
+}
+
+// pickLocale extracts the active locale from LC_ALL / LC_MESSAGES / LANG
+// in priority order. Falls back to "en" if none are set.
+// Trims charset suffixes (".UTF-8") and modifier suffixes ("@euro");
+// converts "_" separators to "-" so Go BCP-47 parsers accept the result.
+func pickLocale() string {
+	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		if v := os.Getenv(k); v != "" {
+			// Strip .codeset and @modifier
+			for _, sep := range []string{".", "@"} {
+				if i := strings.Index(v, sep); i >= 0 {
+					v = v[:i]
+				}
+			}
+			v = strings.ReplaceAll(v, "_", "-")
+			return v
+		}
+	}
+	return "en"
 }

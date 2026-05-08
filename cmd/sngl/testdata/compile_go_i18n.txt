@@ -1,0 +1,28 @@
+# Go codegen for $"..." translatable strings: lib.GetTranslator() wiring.
+
+sngl compile --platform=bubbletea --lang=go --out=out app.sngl
+exists out/model.go
+
+# lib package is imported with the alias "lib".
+grep 'lib "git.duckfam.us/jonathan/sngl/lib"' out/model.go
+
+# Static string $"Login" compiles to lib.GetTranslator().Tr with key == inlinedTemplate.
+grep 'GetTranslator\(\)\.Tr\("Login", "Login",' out/model.go
+
+# Empty args map is emitted for static strings with no placeholders.
+grep 'map\[string\]any{}' out/model.go
+
+# Translatable string with placeholder: args map contains the placeholder binding.
+grep '"Hello, \{user\}!"' out/model.go
+grep '"user":' out/model.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var greeting = $"Login"
+    var user = "alice"
+    var hello = $"Hello, {user}!"
+    text(value=greeting)
+    text(value=hello)
+}

@@ -189,10 +189,12 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	}
 
 	// Build the args map<string, dyn>: placeholder name → checked value expression.
+	// Raw stores the unquoted value; language codegen (e.g. evalLiteral) applies
+	// target-language quoting.
 	var entries []ir.MapEntry
 	for _, a := range b.args {
 		entries = append(entries, ir.MapEntry{
-			Key:   &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", a.name)},
+			Key:   &ir.Literal{Type: TypString, Raw: a.name},
 			Value: c.checkExpr(a.expr),
 		})
 	}
@@ -205,7 +207,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		Type: TypString,
 		Func: trFn,
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", template)}},
+			{Value: &ir.Literal{Type: TypString, Raw: template}},
 			{Value: argsMap},
 		},
 	}

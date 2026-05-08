@@ -259,6 +259,202 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `""`
 	case "File.pickFolder":
 		return `""`
+	// i18n — all calls delegate to lib.GetTranslator() runtime.
+	// For type-attached method dispatch, args are positional (no receiver value).
+	case "i18n.tr":
+		// Args: key string, args map[string]any
+		return "lib.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.format":
+		// Args: template string, args map[string]any
+		return "lib.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberInt":
+		// Args: n int, style string
+		return "lib.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberFloat":
+		// Args: n float, style string
+		return "lib.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
+	case "i18n.dateStr":
+		// Args: d date, style string
+		return "lib.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
+	case "i18n.timeStr":
+		// Args: t time, style string
+		return "lib.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
+	case "i18n.datetimeStr":
+		// Args: dt dateTime, dateStyle string, timeStyle string
+		return "lib.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+	case "i18n.selectStr":
+		// Args: value string, cases map[string]string
+		return "lib.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
 	}
 	return ""
+}
+
+// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
+// Used by platform codegens to detect when the generated code needs to import
+// git.duckfam.us/jonathan/sngl/lib.
+func IsI18nCall(qualName string) bool {
+	switch qualName {
+	case "i18n.tr", "i18n.format",
+		"i18n.numberInt", "i18n.numberFloat",
+		"i18n.dateStr", "i18n.timeStr", "i18n.datetimeStr",
+		"i18n.selectStr":
+		return true
+	}
+	return false
+}
+
+// SnglLibImportPath is the Go import path of git.duckfam.us/jonathan/sngl/lib.
+// Platform generators should add this import when PackageUsesI18n returns true.
+const SnglLibImportPath = "git.duckfam.us/jonathan/sngl/lib"
+
+// PackageUsesI18n reports whether any function or component in pkg contains an
+// i18n stdlib call. Platform generators use this to decide whether to add a
+// lib import to the generated Go file.
+func PackageUsesI18n(pkg *ir.Package) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, f := range pkg.Funcs {
+		if funcUsesI18n(f) {
+			return true
+		}
+	}
+	for _, comp := range pkg.Components {
+		for _, f := range comp.Funcs {
+			if funcUsesI18n(f) {
+				return true
+			}
+		}
+		for _, v := range comp.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil && funcUsesI18n(h.Func) {
+					return true
+				}
+			}
+			if exprUsesI18n(v.Init) {
+				return true
+			}
+		}
+	}
+	for _, v := range pkg.Vars {
+		for _, h := range v.Handlers {
+			if h.Func != nil && funcUsesI18n(h.Func) {
+				return true
+			}
+		}
+		if exprUsesI18n(v.Init) {
+			return true
+		}
+	}
+	return false
+}
+
+func funcUsesI18n(f *ir.Func) bool {
+	if f == nil {
+		return false
+	}
+	for _, s := range f.Block {
+		if stmtUsesI18n(s) {
+			return true
+		}
+	}
+	return false
+}
+
+func stmtUsesI18n(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.Return:
+		return exprUsesI18n(n.Value)
+	case *ir.Assign:
+		return exprUsesI18n(n.Value)
+	case *ir.LocalVar:
+		return exprUsesI18n(n.Init)
+	case *ir.CallStmt:
+		return exprUsesI18n(n.Call)
+	case *ir.If:
+		if exprUsesI18n(n.Cond) {
+			return true
+		}
+		for _, s2 := range n.Body {
+			if stmtUsesI18n(s2) {
+				return true
+			}
+		}
+		for _, s2 := range n.Else {
+			if stmtUsesI18n(s2) {
+				return true
+			}
+		}
+	case *ir.For:
+		if exprUsesI18n(n.Iter) {
+			return true
+		}
+		for _, s2 := range n.Body {
+			if stmtUsesI18n(s2) {
+				return true
+			}
+		}
+	case *ir.NodeInst:
+		for _, prop := range n.Props {
+			if exprUsesI18n(prop.Value) {
+				return true
+			}
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil && funcUsesI18n(h.Func) {
+				return true
+			}
+		}
+		for _, child := range n.Children {
+			if stmtUsesI18n(child) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func exprUsesI18n(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch n := e.(type) {
+	case *ir.Call:
+		if n.Func != nil && n.Func.Receiver == "i18n" {
+			return true
+		}
+		if exprUsesI18n(n.Receiver) {
+			return true
+		}
+		for _, a := range n.Args {
+			if exprUsesI18n(a.Value) {
+				return true
+			}
+		}
+	case *ir.Binary:
+		return exprUsesI18n(n.Left) || exprUsesI18n(n.Right)
+	case *ir.Unary:
+		return exprUsesI18n(n.Operand)
+	case *ir.Ternary:
+		return exprUsesI18n(n.Cond) || exprUsesI18n(n.Then) || exprUsesI18n(n.Else)
+	case *ir.MapLitIR:
+		for _, entry := range n.Entries {
+			if exprUsesI18n(entry.Key) || exprUsesI18n(entry.Value) {
+				return true
+			}
+		}
+	case *ir.ListLit:
+		for _, el := range n.Elems {
+			if exprUsesI18n(el) {
+				return true
+			}
+		}
+	case *ir.Index:
+		return exprUsesI18n(n.Operand) || exprUsesI18n(n.Idx)
+	case *ir.Conversion:
+		return exprUsesI18n(n.Operand)
+	case *ir.Lambda:
+		return funcUsesI18n(n.Func)
+	}
+	return false
 }
