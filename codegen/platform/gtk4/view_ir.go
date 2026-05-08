@@ -3,6 +3,7 @@ package gtk4
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -46,12 +47,7 @@ func (vc *viewContext) isUserComponent(comp *ir.Component) bool {
 	if vc.ctx == nil {
 		return false
 	}
-	for _, c := range vc.ctx.Pkg.Components {
-		if c == comp {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(vc.ctx.Pkg.Components, comp)
 }
 
 func (vc *viewContext) line(format string, args ...any) {

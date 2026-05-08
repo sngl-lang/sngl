@@ -1394,4 +1394,3 @@ func TestCheckProjectTestdata(t *testing.T) {
 		})
 	}
 }
-
