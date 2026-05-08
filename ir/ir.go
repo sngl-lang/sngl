@@ -275,11 +275,12 @@ func (p *Param) SymType() *Type  { return p.Type }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	AST    *ast.StructDef
-	Name   string
-	Fields []*StructField
-	Native string // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	Doc    string // doc comment for scheme-imported decls; empty for SNGL-sourced
+	AST        *ast.StructDef
+	Name       string
+	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
+	Fields     []*StructField
+	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
+	Doc        string // doc comment for scheme-imported decls; empty for SNGL-sourced
 }
 
 func (s *StructDef) SymName() string { return s.Name }

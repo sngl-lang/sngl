@@ -20,7 +20,8 @@ struct string {}
 // is inferred from literals. Methods on the `list` receiver
 // (`length`, `push`, `filter`, `map`, …) cover the common operations and
 // are all pure — they return new lists rather than mutating in place.
-struct list {}
+// T is the element type.
+struct list<T> {}
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
 // defaults to fully opaque (255). Colors can be constructed in three
@@ -297,4 +298,5 @@ struct error {}
 // Generic map<K, V>. Methods are pure — they do not mutate the receiver.
 // Equality on K determines membership; non-comparable key types are
 // rejected at type-check time.
-struct map {}
+// K is the key type (must be comparable); V is the value type.
+struct map<K, V> {}
