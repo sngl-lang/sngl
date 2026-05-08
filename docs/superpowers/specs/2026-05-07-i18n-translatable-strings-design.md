@@ -74,7 +74,7 @@ ast.I18nInterpExpr{Parts:[LiteralExpr|I18nPlaceholderExpr{Value, Type, Cases}]}
 warns no-static-text; type-checks Value; validates Type keyword + Cases against ICU shape
   │
   ▼ (IR conversion)
-desugars to ir.Call{Func: i18n.tr, Args: [keyLit, structLit{name_N: expr_N, ...}]}
+desugars to ir.Call{Func: i18n.tr, Args: [keyLit, mapLit{"name_N": expr_N, ...}]}
   │
   ▼ (codegen — unchanged)
 emits ordinary call expression in the target language
@@ -194,8 +194,8 @@ Lower `*I18nInterpExpr` to a single `ir.Call` to `i18n.tr`:
 2. **Synthesize the ICU template string** by walking `Parts` and recursing through cases, emitting strict ICU-spec form (whitespace between cases). Concretely:
    - `*LiteralExpr` parts: appended verbatim.
    - `*I18nPlaceholderExpr` parts: emit `{ <name> [ , <type> [ , <case1> { <body1> } <case2> { <body2> } … ] ] }` where `<name>` is either the bare ident name (when `Value` is `*IdentExpr`) or a synthetic `argN` (otherwise). Recurse on each case body.
-3. **Build the args struct** as an `ir.StructLit` mapping each name → its value expression: bare-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`.
-4. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{key}, structLit]}`.
+3. **Build the args map** as an `ir.MapLit` of type `map<string, dyn>` mapping each name → its value expression: bare-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`. Map literals are expressions like `{"name": <expr>, "argN": <expr>}`.
+4. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{key}, mapLit]}`.
 
 The IR has no translatable concept. Downstream phases (optimizer, codegen) see only an ordinary call.
 
@@ -214,6 +214,22 @@ Examples:
 - `component login { Text(text = $"Hello, {user.name}!") }` → `login.hello_user_name`
 - top-level `var x = $"Welcome"` → `welcome`
 
+### New Type: `map<K, V>`
+
+The `select` family wants a key→value mapping with static types. Time to add the long-pending `map<K, V>` generic type. Minimal scope for #21:
+
+- New `ir.TypeMap` kind with two `Elems` (key and value types).
+- Type-expression parsing: `map<string, string>` slots into the existing generic-type-args path (parallel to `list<T>`).
+- Map literal syntax: `{"k": v, "k2": v2}` — the `:` separator distinguishes from struct literals (which use `=`). Empty literal `{}` parses as either depending on expected type; the checker disambiguates from context.
+- Lookup: `m["key"]` reuses `IndexExpr`, returning `V`. Missing-key returns the zero value (Go-map semantics). Tightening to `option<V>` lookup is deferred to a follow-up — out of scope here.
+- Methods on `map.*`: `length`, `keys`, `values`, `contains(k)`, `get(k, default)`. Just enough for stdlib and i18n.
+- No iteration syntax in `for` yet — defer to a later issue.
+- Codegen: Go `map[K]V`, JS plain object, Kotlin `Map<K, V>`, Android same. Each codegen lang adds map-literal emission.
+
+This is a non-trivial expansion of #21 but the user explicitly scoped it in. If implementation cost balloons, candidates to defer to a follow-up:
+- Map methods beyond `length` and indexing
+- Tightening lookup return to `option<V>`
+
 ### Stdlib (`lib/i18n.sngl`)
 
 ```sngl
@@ -221,40 +237,40 @@ package i18n
 
 // --- Translation entry points ---
 
-// Translate `key` against the loaded manifest, formatting via ICU. `args` is
-// a struct literal binding ICU placeholder names to values. Returns the
-// translated string for the active locale, falling back to the manifest's
-// `original` template, then to the key itself. This is the lowering target
-// for $"..." literals.
-func tr(key string, args = {}) -> string
+// Translate `key` against the loaded manifest, formatting via ICU. `args`
+// maps ICU placeholder names to values. Returns the translated string for
+// the active locale, falling back to the manifest's `original` template,
+// then to the key itself. Lowering target for $"..." literals.
+func tr(key string, args map<string, dyn> = {}) -> string
 
-// Format a literal ICU template with `args`. No manifest lookup — useful for
-// one-off locale-aware formatting where translation isn't needed.
-func format(template string, args = {}) -> string
+// Format a literal ICU template. No manifest lookup.
+func format(template string, args map<string, dyn> = {}) -> string
 
-// --- Direct formatters (for code paths that don't need ICU template syntax) ---
+// --- Direct formatters ---
 
-// `style`: "decimal" (default), "percent", "currency", "scientific".
-func number(n any, style = "decimal") -> string
+// Style values for numbers: "decimal" (default), "percent", "currency",
+// "scientific".
+func numberInt(n int, style string = "decimal") -> string
+func numberFloat(n float, style string = "decimal") -> string
 
-// `style`: "short", "medium" (default), "long", "full".
-func date(d any, style = "medium") -> string
-func time(t any, style = "medium") -> string
-func datetime(dt any, dateStyle = "medium", timeStyle = "medium") -> string
+// Style values for date/time: "short", "medium" (default), "long", "full".
+func date(d date, style string = "medium") -> string
+func time(t time, style string = "medium") -> string
+func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") -> string
 
-// --- Direct selectors (for ICU-style branching outside a $"..." literal) ---
+// --- Direct selectors ---
 
-// `forms` is a struct literal with selector keys. Plural forms accept CLDR
-// keywords (zero/one/two/few/many/other) and explicit `=N` matches.
-// Example: i18n.plural(n, {one: "1 file", other: "{n} files"})
-func plural(count int, forms = {}) -> string
+// Keys: CLDR keywords ("zero" / "one" / "two" / "few" / "many" / "other")
+// or explicit "=N" matches. Example:
+//     i18n.plural(n, {"one": "1 file", "other": "{n} files"})
+func plural(count int, forms map<string, string>) -> string
 
-// `cases` is a struct literal mapping selector values to messages.
-// Example: i18n.select(gender, {male: "he", female: "she", other: "they"})
-func select(value string, cases = {}) -> string
+// Keys: arbitrary selector values. Example:
+//     i18n.select(gender, {"male": "he", "female": "she", "other": "they"})
+func select(value string, cases map<string, string>) -> string
 
 // Ordinal plural rules (1st, 2nd, 3rd, …).
-func selectordinal(count int, forms = {}) -> string
+func selectordinal(count int, forms map<string, string>) -> string
 ```
 
 Default Go implementation injected via `PkgSource` override:
@@ -317,7 +333,8 @@ The unilateral implementation in commit history covers parser flag + checker war
 | AST builders | ❌ missing | add `buildI18n*` in `internal/parser/build.go` |
 | IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` |
 | Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
-| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `number`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` |
+| `map<K, V>` generic type | ❌ missing | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax, `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen |
+| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` — all statically typed using existing primitives + `map<K, V>` |
 | Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`) |
 | `sngl extract` | ✅ multi-format | replace with manifest-only writer + merge logic |
 
@@ -329,7 +346,8 @@ The unilateral implementation in commit history covers parser flag + checker war
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
 - **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
 - **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
-- **Stdlib runtime** (Go): unit tests for each entry point — `tr` (manifest hit + miss + plural template across locales), `format` (literal template), `number`/`date`/`time`/`datetime` (style variants in en + at least one non-en locale), `plural`/`select`/`selectordinal` (form selection).
+- **`map<K, V>` unit tests**: type-expr parsing, literal construction, indexing, method calls, codegen round-trip per language.
+- **Stdlib runtime** (Go): unit tests for each entry point — `tr` (manifest hit + miss + plural template across locales), `format` (literal template), `numberInt`/`numberFloat`/`date`/`time`/`datetime` (style variants in en + at least one non-en locale), `plural`/`select`/`selectordinal` (form selection across locales).
 
 ## Open questions
 
