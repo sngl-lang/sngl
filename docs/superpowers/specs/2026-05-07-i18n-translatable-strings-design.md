@@ -35,19 +35,27 @@ Out of scope (deferred to #22):
 let label = $"Login"                                          // plain
 let welcome = $"Welcome back, {user.name}!"                   // single SNGL expr
 let unread = $"You have {count, plural,
-    one{message},
+    one{message}
     other{messages}}"                                         // plural with cases
 let formatted = $"Created on {date, date, short}"             // ICU formatter
-let combined = $"{count} new {count, plural, one{msg}, other{msgs}}"
+let combined = $"{count} new {count, plural, one{msg} other{msgs}}"
 ```
 
-The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."`, every `{...}` is an **i18n placeholder** (not a generic SNGL interpolation). A placeholder body is a comma-separated list of items. Each item is one of:
+The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."`, every `{...}` is an **i18n placeholder** with the fixed shape:
 
-- **SNGL expression** — `count`, `user.name`, `now() + 1d`. Resolved against the local scope and bound by name (synthetic name if not a bare ident).
-- **Identifier** — bare names in non-leading positions are ICU type/style keywords: `plural`, `select`, `selectordinal`, `date`, `time`, `number`, `short`, `medium`, `long`, `full`, `currency`, `percent`, etc.
-- **Message expression** — `<selector>{<message>}` where selector is an identifier (`one`, `other`, `male`, …) or `=N` for explicit numeric match. The message body is itself an i18n message: literal text plus nested `{...}` placeholders.
+```
+{ <expr> [ , <type> [ , <body> ] ] }
+```
 
-Note: SNGL deviates from strict ICU by requiring commas **between** message-expression cases (where strict ICU uses whitespace). The runtime emits whitespace-separated form when handing the template to native ICU libraries.
+- **`<expr>`** — required. Any SNGL expression. Resolved against the local scope and bound by name (synthetic name if not a bare ident). For `{user.name}` this is the only field.
+- **`<type>`** — optional, plain identifier. ICU type/style keyword: `plural`, `select`, `selectordinal`, `date`, `time`, `number`, `short`, `medium`, `long`, `full`, `currency`, `percent`, `decimal`, `scientific`, …
+- **`<body>`** — optional, only when `<type>` is `plural`/`select`/`selectordinal`. A space-separated sequence of message cases:
+  ```
+  <selector> { <message> }
+  ```
+  Selector is an identifier (`one`, `two`, `few`, `many`, `other`, `zero`, plus `male`/`female`/etc. for `select`) or `=N` for an explicit numeric match. The message body is recursively an i18n message — literal text plus nested `{...}` placeholders.
+
+The ICU spec uses whitespace between cases (`one{a} other{b}`); SNGL follows the spec — no commas between cases.
 
 `$"""..."""` (triple-quoted) is supported with the same rules.
 
@@ -56,14 +64,14 @@ Note: SNGL deviates from strict ICU by requiring commas **between** message-expr
 ```
 .sngl source
   │
-  ▼ (lexer — ICU-aware inside $"..." frames)
-tokens: STR_START with Translatable=true, ICU_PLACEHOLDER tokens for ICU bodies, normal expr tokens otherwise
+  ▼ (lexer — emits I18N_STR_* tokens inside $"...")
+i18n_str_start, i18n_str_resume, i18n_str_end, i18n_str_full, …
   │
   ▼ (parser → AST)
-ast.InterpolationExpr{Translatable:true, Parts:[LiteralExpr|I18nPlaceholderExpr]}
+ast.I18nInterpExpr{Parts:[LiteralExpr|I18nPlaceholderExpr{Value, Type, Cases}]}
   │
   ▼ (checker)
-warns no-static-text; validates ICU placeholder names resolve in scope; validates ICU template parses
+warns no-static-text; type-checks Value; validates Type keyword + Cases against ICU shape
   │
   ▼ (IR conversion)
 desugars to ir.Call{Func: i18n.tr, Args: [keyLit, structLit{name_N: expr_N, ...}]}
@@ -78,93 +86,115 @@ The AST node carries the translatable marker through formatting (so `$"..."` rou
 
 ### Lexer (`internal/parser/lexer.go`)
 
-- `Token.Translatable bool` — set on `STR_FULL`, `TRIPLE_FULL`, `STR_START`, `TRIPLE_START` when the literal opens with `$`.
-- `interpFrame.translatable bool` — propagates the flag through resume tokens so the lexer knows it's still inside a translatable string.
-- New token type `ICU_PLACEHOLDER` (sentinel byte to be allocated; literal is the verbatim placeholder body without the outer braces).
-- When `{` is encountered while scanning translatable string content, the lexer slurps to the matching `}` (counting nested braces from message expressions) and emits a single `ICU_PLACEHOLDER` token. No SNGL expression mode is entered. The `$` prefix is the only signal needed — no lookahead, no per-`{` decision.
-- For non-translatable strings, `{` continues to work as today (push interp frame, parse SNGL expression).
+The lexer emits **distinct token types** for `$"..."` strings rather than flagging existing string tokens. This lets the grammar stay disjoint between regular and translatable interpolations, with no conditional behavior on a `Translatable` flag:
+
+| Regular | Translatable |
+|---|---|
+| `STR_START` | `I18N_STR_START` |
+| `STR_RESUME` | `I18N_STR_RESUME` |
+| `STR_END` | `I18N_STR_END` |
+| `TRIPLE_START` | `I18N_TRIPLE_START` |
+| `TRIPLE_END` | `I18N_TRIPLE_END` |
+| `STR_FULL` | `I18N_STR_FULL` |
+| `TRIPLE_FULL` | `I18N_TRIPLE_FULL` |
+
+Plus three new tokens for case bodies: `I18N_CASE_FULL` (literal-only `{text}` body), `I18N_CASE_START` (`{text` opening of a body with nested placeholders), `I18N_CASE_END` (`text}` closing). These let the grammar treat case bodies symmetrically to outer i18n strings.
+
+`interpFrame` gains an `i18n bool` so resume tokens know which token type to emit.
+
+Inside an i18n string segment, the lexer scans literal text exactly as today; on `{` it pushes an interp frame and emits the segment-end token (`I18N_STR_START` / `I18N_STR_RESUME`). Inside the placeholder, normal SNGL tokens apply — the user-typed grammar `<expr>, <type>, <body>` parses with existing `Expr`, `comma`, `ident`, plus the new MsgFormatBody productions.
+
+For message-case bodies (`one { ... }`), the lexer treats the inner `{` `}` as a fresh i18n string segment frame: literal text + nested placeholders, terminating at the matching `}` (which becomes `I18N_STR_END`-style for case bodies — see grammar below for the exact terminal).
+
+The original `Token.Translatable` flag added in the unilateral implementation goes away.
 
 ### AST (`ast/expr.go`)
 
-- `InterpolationExpr.Translatable bool` (already added).
-- New nodes for the placeholder body items:
-  ```go
-  // I18nPlaceholderExpr is an i18n placeholder body: a comma-separated list
-  // of items written inside {...} in a $"..." string.
-  type I18nPlaceholderExpr struct {
-      Pos  Pos
-      Args []I18nArg  // alternation: I18nValueArg | I18nMessageArg
-  }
+A separate top-level node for translatable interpolations (no `Translatable` flag on `InterpolationExpr` — drop that from the unilateral implementation). The placeholder shape mirrors the syntax: at most three fields, no slice.
 
-  // Covers both arbitrary SNGL exprs (e.g. count, user.name, now()+1d) AND
-  // bare-ident ICU keywords (plural, short, currency, …). The checker
-  // decides which based on position — no AST-level distinction needed since
-  // a bare keyword is just an IdentExpr.
-  type I18nValueArg struct { Pos Pos; Value Expr }
+```go
+// I18nInterpExpr is a $"..." or $"""..."""  string. Parts alternate between
+// *LiteralExpr (string segments) and *I18nPlaceholderExpr (one per {...}).
+type I18nInterpExpr struct {
+    Pos   Pos
+    Parts []Expr        // alternation of *LiteralExpr | *I18nPlaceholderExpr
+    Style StringStyle   // StyleDouble or StyleTriple
+}
 
-  // <selector>{<body>} where selector is an ident ("one") or "=N" form.
-  type I18nMessageArg struct {
-      Pos      Pos
-      Selector string
-      Body     []Expr  // alternation: *LiteralExpr | *I18nPlaceholderExpr
-  }
-  ```
-- The `Body` of an `I18nMessageArg` is recursive: literal text plus nested placeholders. Bare `#` (ICU "current value") becomes a `LiteralExpr` with a sentinel kind, expanded during template synthesis.
+// I18nPlaceholderExpr is the {<expr>, <type>, <body>} form.
+type I18nPlaceholderExpr struct {
+    Pos   Pos
+    Value Expr           // required
+    Type  string         // "" if absent (no comma-ident)
+    Cases []I18nCase     // nil if no body; else one or more cases
+}
+
+// One case in a plural/select/selectordinal body: <selector> { <message> }.
+type I18nCase struct {
+    Pos      Pos
+    Selector string       // "one", "other", "=0", "male", …
+    Body     []Expr       // alternation of *LiteralExpr | *I18nPlaceholderExpr
+}
+```
+
+Bare `#` (ICU "current value" inside a plural case) becomes a `LiteralExpr` with a sentinel kind, expanded during template synthesis.
+
+Existing `InterpolationExpr` is untouched — it stays for non-translatable strings only. The `Translatable bool` field is removed.
 
 ### Grammar (`internal/parser/sngl.ebnf` + regenerated `zparser.go`)
 
-The existing `InterpStr` grammar:
-```
-InterpStr = str_start Expr { str_resume Expr } str_end .
-```
-extends to allow `ICU_PLACEHOLDER` where `Expr` appears:
-```
-InterpStr = str_start InterpPart { str_resume InterpPart } str_end .
-InterpPart = Expr | icu_placeholder .
-```
+New productions for translatable strings, parallel to existing `InterpStr` / `TripleInterp`:
 
-Same for `TripleInterp`. Requires regenerating `zparser.go` via the `egg` tool.
-
-**Implementation note:** the `egg` tool is not currently in the repo's `go tool` registry. Either add it as a tool dependency or hand-edit `zparser.go` (reviewable since the change is mechanical: one new alternative in two productions).
-
-### Placeholder Body Parser (`internal/parser/i18n.go`)
-
-A small recursive parser invoked at AST-build time on each `ICU_PLACEHOLDER` token literal. Produces an `I18nPlaceholderExpr` from the body text.
-
-Grammar:
 ```
-placeholder = arg ("," arg)*
-arg         = msg_expr
-            | sngl_expr                           // includes bare idents
-msg_expr    = (ident | "=" int) "{" message "}"
-message     = (literal_text | "#" | "{" placeholder "}")*
+I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
+I18nTriple    = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
+
+# Also a non-interpolated form for $"text" / $"""text""" with no placeholders:
+I18nFull      = i18n_str_full | i18n_triple_full .
+
+# {<expr>, <type>, <body>}
+I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+
+# Space-separated cases per ICU spec (no commas between).
+MsgFormatBody = MsgCase { MsgCase } .
+MsgCase       = Selector MsgBody .
+Selector      = ident | eq int_lit .
+
+# Case body: literal text + nested placeholders. Lexer emits the same shape
+# as outer i18n strings — full when no placeholders, start/resume/end otherwise.
+# The opening "{" and closing "}" of the case body are consumed by these tokens.
+MsgBody       = i18n_case_full
+              | i18n_case_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_case_end .
 ```
 
-Algorithm:
-1. Tokenize the body, splitting on top-level commas (brace-depth aware).
-2. For each item, peek for the `<sel>{...}` msg-expr shape — bare identifier or `=N` followed immediately by `{`. If matched, recurse into the message body. Otherwise feed the item text back into the SNGL expression parser via a re-entry point (`parser.ParseExpr(string) (ast.Expr, error)`) — added as a new public-internal helper. This means SNGL exprs and bare idents share the existing expression machinery; no duplicate parser logic.
-3. Recursively, message bodies allow literal text + nested placeholders (same lexer rules as `$"..."` content).
+Wired into the existing `PrimaryExpr` alternative list alongside `InterpStr` / `TripleInterp` / `str_full` / `triple_full`. Requires regenerating `zparser.go`.
 
-Single file, <300 LOC, no external dep. Errors reported with byte offsets so the checker can produce diagnostics anchored in the source.
+**Implementation note:** the `egg` tool is not currently in the repo's `go tool` registry. Either add it as a tool dependency or hand-edit `zparser.go` (the changes are mechanical and reviewable: a few new terminals, one new alternative in `PrimaryExpr`, the new productions above).
+
+### AST builders (`internal/parser/build.go`)
+
+`buildI18nInterpStr`, `buildI18nTriple`, `buildI18nFull`, `buildI18nPlaceholder`, `buildMsgFormatBody`, `buildMsgCase` — straightforward AST construction from the parse tree. Recursive case-body construction reuses `buildI18nInterpStr`'s loop logic for `MsgBody` since both produce the same `[]Expr` alternating shape.
+
+No standalone "ICU body parser" — the SNGL grammar covers the entire syntax, including message cases.
 
 ### Checker (`internal/checker/expr.go`)
 
-`inferInterpolation` extends:
-- Existing: warn if `Translatable` and no literal parts.
-- New: for each `I18nPlaceholderExpr`, type-check each `I18nValueArg.Value` as a regular SNGL expression. Validate that the leading argument's type matches the ICU type keyword that follows (e.g. `plural`/`selectordinal` require numeric; `select` requires string-like). Walk message bodies recursively.
+New `inferI18nInterp` dispatch for `*I18nInterpExpr`:
+- Warn if no `*LiteralExpr` part has any non-whitespace text (the "no static text" warning, applied to the entire i18n string including all case bodies).
+- For each `*I18nPlaceholderExpr`:
+  - Type-check `Value` as a regular SNGL expression.
+  - Validate `Type` against the known ICU keyword set; if `plural`/`selectordinal`, require `Value`'s inferred type to be numeric; if `select`, string-like; if `date`/`time`/`datetime`, a date/time type; etc.
+  - For each `Cases[*]`: validate the selector matches the type (`one`/`other` for plural, `=N` numeric, free idents for `select`); recurse into the body.
 
-### IR Conversion (`internal/checker/expr.go` `inferInterpolation`)
+### IR Conversion (`internal/checker/expr.go`)
 
-When `x.Translatable`, replace the current `Binary +` chain with a single `ir.Call`:
+Lower `*I18nInterpExpr` to a single `ir.Call` to `i18n.tr`:
 
 1. **Derive key** (see Key Derivation below).
-2. **Synthesize the ICU template string** by walking parts and emitting an ICU-spec form (whitespace between message-expr cases) regardless of the SNGL source's comma-separated form. Concretely:
-   - `LiteralExpr` parts: appended verbatim.
-   - `I18nPlaceholderExpr` parts: emit `{`, then for each `I18nArg`, comma-separated:
-     - `I18nValueArg{Value: *IdentExpr}`: emit the ident name (covers both bound vars and ICU keywords like `plural` / `short`).
-     - `I18nValueArg{Value: complexExpr}`: emit a synthetic name `argN` (and bind the expression in step 3).
-     - `I18nMessageArg`: emit `<selector>{<recursively-built-body>}` with whitespace separators between sibling message args (per ICU spec).
-3. **Build the args struct** as an `ir.StructLit` mapping each name → its value expression: real-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`.
+2. **Synthesize the ICU template string** by walking `Parts` and recursing through cases, emitting strict ICU-spec form (whitespace between cases). Concretely:
+   - `*LiteralExpr` parts: appended verbatim.
+   - `*I18nPlaceholderExpr` parts: emit `{ <name> [ , <type> [ , <case1> { <body1> } <case2> { <body2> } … ] ] }` where `<name>` is either the bare ident name (when `Value` is `*IdentExpr`) or a synthetic `argN` (otherwise). Recurse on each case body.
+3. **Build the args struct** as an `ir.StructLit` mapping each name → its value expression: bare-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`.
 4. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{key}, structLit]}`.
 
 The IR has no translatable concept. Downstream phases (optimizer, codegen) see only an ordinary call.
@@ -277,15 +307,15 @@ The unilateral implementation in commit history covers parser flag + checker war
 
 | Component | Current state | Needs |
 |---|---|---|
-| `Token.Translatable` | ✅ added | keep |
-| `InterpolationExpr.Translatable` | ✅ added | keep |
-| Lexer `$"..."` recognition | ✅ basic case | extend: in translatable strings, slurp `{...}` as opaque `ICU_PLACEHOLDER` token (no lookahead); propagate `translatable` through `interpFrame` |
-| Formatter `$` round-trip | ✅ works | extend to format `I18nPlaceholderExpr` |
-| Checker no-static-text warning | ✅ works | keep, add placeholder validation (type-check value args, validate ICU keyword shape) |
-| `ast.I18nPlaceholderExpr` + arg variants | ❌ missing | add (`I18nValueArg`, `I18nMessageArg`) |
-| Grammar | ❌ unchanged | one new terminal `icu_placeholder`; one new alternative in `InterpPart` for both `InterpStr` and `TripleInterp`; regenerate `zparser.go` |
-| Placeholder body parser | ❌ missing | add `internal/parser/i18n.go` with `parser.ParseExpr` re-entry helper |
-| IR conversion to `ir.Call` | ❌ still emits `Binary +` chain | rewrite to emit `ir.Call` to `i18n.tr` |
+| `Token.Translatable` flag | ✅ added | **remove** — replaced by distinct `I18N_*` token types |
+| `InterpolationExpr.Translatable` flag | ✅ added | **remove** — replaced by separate `I18nInterpExpr` node |
+| Lexer `$"..."` recognition | ✅ basic case | rewrite: emit `I18N_STR_*` tokens with i18n-aware frame state including case-body sub-frames |
+| Formatter `$` round-trip | ✅ basic case | rewrite to format `I18nInterpExpr`/`I18nPlaceholderExpr`/`I18nCase` |
+| Checker no-static-text warning | ✅ works | port to `inferI18nInterp`; add placeholder type/case validation against ICU keyword set |
+| `ast.I18nInterpExpr`, `I18nPlaceholderExpr`, `I18nCase` | ❌ missing | add |
+| Grammar | ❌ unchanged | new terminals (i18n string boundaries); new productions `I18nInterpStr`, `I18nTriple`, `I18nFull`, `I18nPlaceholder`, `MsgFormatBody`, `MsgCase`, `Selector`; new alternative in `PrimaryExpr`; regenerate `zparser.go` |
+| AST builders | ❌ missing | add `buildI18n*` in `internal/parser/build.go` |
+| IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` |
 | Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
 | Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `number`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` |
 | Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`) |
@@ -295,7 +325,7 @@ The unilateral implementation in commit history covers parser flag + checker war
 
 - **Lexer**: golden tokens for `$"x"`, `$"x{name}"`, `$"x{count, plural, one{a} other{b}}"`, `$"""multi-line {n}"""`, mixed translatable + non.
 - **Parser/format round-trip**: extend `format_test.go` cases.
-- **Placeholder body parser unit tests**: valid/invalid forms (plural, select, selectordinal, date/time/number formatters), nested message bodies, `=N` selectors, recursion into messages with nested placeholders, error positions.
+- **Grammar/parser unit tests**: round-trip for plain `$"..."`, single-arg placeholder, two-arg formatter (`{date, date, short}`), three-arg plural/select/selectordinal with multiple cases including `=N` selectors, nested placeholders inside case bodies, triple-quoted form.
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
 - **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
 - **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
