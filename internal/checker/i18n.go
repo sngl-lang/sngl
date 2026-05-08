@@ -76,7 +76,23 @@ func (b *templateBuilder) writePlaceholder(ph *ast.I18nPlaceholderExpr) {
 // icuTypeKeywords lists valid second-position identifiers in placeholders.
 var icuTypeKeywords = map[string]struct{}{
 	"plural": {}, "selectordinal": {}, "select": {},
-	"date": {}, "time": {}, "number": {},
+	"date": {}, "time": {}, "dateTime": {}, "number": {},
+}
+
+// dateStyles enumerates the valid styles for date/time/dateTime placeholders.
+var dateStyles = map[string]struct{}{
+	"short":  {},
+	"medium": {},
+	"long":   {},
+	"full":   {},
+}
+
+// numberStyles enumerates the valid styles for number placeholders.
+var numberStyles = map[string]struct{}{
+	"decimal":    {},
+	"percent":    {},
+	"currency":   {},
+	"scientific": {},
 }
 
 // pluralSelectors are the valid CLDR keyword selectors for plural/selectordinal.
@@ -113,6 +129,9 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 	}
 	switch ph.Type {
 	case "plural", "selectordinal":
+		if ph.Style != "" {
+			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
+		}
 		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
 			c.error(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
 		}
@@ -127,6 +146,9 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 			}
 		}
 	case "select":
+		if ph.Style != "" {
+			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
+		}
 		if vT != nil && vT.Kind != ir.TypeString && vT.Kind != ir.TypeDyn {
 			c.error(ph.Pos, "select placeholder requires string value, got %s", vT)
 		}
@@ -140,7 +162,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 				}
 			}
 		}
-	case "date", "time":
+	case "date", "time", "dateTime":
 		if vT != nil {
 			ok := false
 			switch vT.Kind {
@@ -151,9 +173,19 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 				c.error(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
 			}
 		}
+		if ph.Style != "" {
+			if _, ok := dateStyles[ph.Style]; !ok {
+				c.error(ph.Pos, "invalid date/time style %q (expected short, medium, long, or full)", ph.Style)
+			}
+		}
 	case "number":
 		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
 			c.error(ph.Pos, "number placeholder requires numeric value, got %s", vT)
+		}
+		if ph.Style != "" {
+			if _, ok := numberStyles[ph.Style]; !ok {
+				c.error(ph.Pos, "invalid number style %q (expected decimal, percent, currency, or scientific)", ph.Style)
+			}
 		}
 	}
 }

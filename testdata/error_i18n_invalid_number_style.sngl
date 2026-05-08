@@ -1,0 +1,4 @@
+// Number placeholders accept decimal/percent/currency/scientific.
+
+var n int = 5
+var bad = $"Score: {n, number, frobble}" // ERROR(check) "invalid number style"
