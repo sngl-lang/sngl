@@ -8,6 +8,7 @@ import (
 // interpFrame tracks one level of string interpolation nesting.
 type interpFrame struct {
 	triple bool // true for triple-quoted string
+	i18n   bool // true for $"..." / $"""...""" frames
 	depth  int  // brace nesting within this interpolation expression
 }
 
@@ -156,12 +157,21 @@ func (l *lexer) NextToken() Token {
 			return l.scanNumber(startLine, startCol)
 		}
 
+		// Translatable string literal: $"..." or $"""..."""
+		if ch == '$' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '"' {
+			l.advance() // consume $
+			if l.pos+2 < len(l.input) && l.input[l.pos] == '"' && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+				return l.scanTripleString(startLine, startCol, true)
+			}
+			return l.scanString(startLine, startCol, true)
+		}
+
 		// Strings
 		if ch == '"' {
 			if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
-				return l.scanTripleString(startLine, startCol)
+				return l.scanTripleString(startLine, startCol, false)
 			}
-			return l.scanString(startLine, startCol)
+			return l.scanString(startLine, startCol, false)
 		}
 		if ch == '`' {
 			return l.scanRawString(startLine, startCol)
@@ -189,8 +199,9 @@ func (l *lexer) NextToken() Token {
 				top := &l.interpStack[len(l.interpStack)-1]
 				if top.depth == 0 {
 					triple := top.triple
+					i18n := top.i18n
 					l.interpStack = l.interpStack[:len(l.interpStack)-1]
-					return l.scanStringContent(true, triple, startLine, startCol)
+					return l.scanStringContent(true, triple, i18n, startLine, startCol)
 				}
 				top.depth--
 			}
@@ -367,15 +378,16 @@ func (l *lexer) scanUnitSuffix(sb *strings.Builder, startLine, startCol int) Tok
 	return l.tok(UNIT_LITERAL, sb.String(), startLine, startCol)
 }
 
-func (l *lexer) scanString(startLine, startCol int) Token {
+func (l *lexer) scanString(startLine, startCol int, i18n bool) Token {
 	l.advance() // opening "
-	return l.scanStringContent(false, false, startLine, startCol)
+	return l.scanStringContent(false, false, i18n, startLine, startCol)
 }
 
 // scanStringContent scans string text until a closing quote or interpolation {.
 // resume: true when resuming after } closes an interpolation.
 // triple: true for triple-quoted strings.
-func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) Token {
+// i18n: true for $"..." / $"""...""" translatable strings.
+func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol int) Token {
 	var sb strings.Builder
 	for l.pos < len(l.input) {
 		ch := l.input[l.pos]
@@ -384,7 +396,13 @@ func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) 
 		if !triple && ch == '"' {
 			l.advance()
 			if resume {
+				if i18n {
+					return l.tok(I18N_STR_END, sb.String(), startLine, startCol)
+				}
 				return l.tok(STR_END, sb.String(), startLine, startCol)
+			}
+			if i18n {
+				return l.tok(I18N_STR_FULL, sb.String(), startLine, startCol)
 			}
 			return l.tok(STR_FULL, sb.String(), startLine, startCol)
 		}
@@ -397,7 +415,13 @@ func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) 
 				text = dedent(text)
 			}
 			if resume {
+				if i18n {
+					return l.tok(I18N_TRIPLE_END, text, startLine, startCol)
+				}
 				return l.tok(TRIPLE_END, text, startLine, startCol)
+			}
+			if i18n {
+				return l.tok(I18N_TRIPLE_FULL, text, startLine, startCol)
 			}
 			return l.tok(TRIPLE_FULL, text, startLine, startCol)
 		}
@@ -405,12 +429,21 @@ func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) 
 		// Interpolation start
 		if ch == '{' {
 			l.advance()
-			l.interpStack = append(l.interpStack, interpFrame{triple: triple})
+			l.interpStack = append(l.interpStack, interpFrame{triple: triple, i18n: i18n})
 			if resume {
+				if i18n {
+					return l.tok(I18N_STR_RESUME, sb.String(), startLine, startCol)
+				}
 				return l.tok(STR_RESUME, sb.String(), startLine, startCol)
 			}
 			if triple {
+				if i18n {
+					return l.tok(I18N_TRIPLE_START, sb.String(), startLine, startCol)
+				}
 				return l.tok(TRIPLE_START, sb.String(), startLine, startCol)
+			}
+			if i18n {
+				return l.tok(I18N_STR_START, sb.String(), startLine, startCol)
 			}
 			return l.tok(STR_START, sb.String(), startLine, startCol)
 		}
@@ -470,11 +503,11 @@ func (l *lexer) scanStringContent(resume, triple bool, startLine, startCol int) 
 	return l.tok(ILLEGAL, "unterminated string", startLine, startCol)
 }
 
-func (l *lexer) scanTripleString(startLine, startCol int) Token {
+func (l *lexer) scanTripleString(startLine, startCol int, i18n bool) Token {
 	l.advance() // "
 	l.advance() // "
 	l.advance() // "
-	return l.scanStringContent(false, true, startLine, startCol)
+	return l.scanStringContent(false, true, i18n, startLine, startCol)
 }
 
 func (l *lexer) scanRawString(startLine, startCol int) Token {

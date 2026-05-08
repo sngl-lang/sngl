@@ -105,6 +105,15 @@ const (
 	STR_RESUME   TokenType = 0x4B // }text{ — middle segment (both " and """)
 	TRIPLE_START TokenType = 0x4C // """text{ — opening segment
 	TRIPLE_END   TokenType = 0x4D // }text""" — closing segment
+
+	// Translatable string tokens ($"..." / $"""...""")
+	I18N_STR_FULL    TokenType = 0x50 // $"text" — complete, no interpolation
+	I18N_STR_START   TokenType = 0x51 // $"text{ — opening segment
+	I18N_STR_END     TokenType = 0x52 // }text" — closing segment of $"..."
+	I18N_STR_RESUME  TokenType = 0x53 // }text{ — middle segment of $"..."
+	I18N_TRIPLE_FULL TokenType = 0x54 // $"""text""" — complete, no interpolation
+	I18N_TRIPLE_START TokenType = 0x55 // $"""text{ — opening segment
+	I18N_TRIPLE_END  TokenType = 0x56 // }text""" — closing segment of $"""..."""
 )
 
 var keywords = map[string]TokenType{
@@ -147,7 +156,7 @@ type Token struct {
 func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
-		STR_END, TRIPLE_END,
+		STR_END, TRIPLE_END, I18N_STR_FULL, I18N_TRIPLE_FULL, I18N_STR_END, I18N_TRIPLE_END,
 		KW_RETURN,
 		AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:
 		return true
