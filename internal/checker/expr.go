@@ -1741,22 +1741,58 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ForStmt:
 		iterExpr := c.checkExpr(x.Iter)
 		iter := exprType(iterExpr)
-		if iter.Kind != ir.TypeDyn && iter.Kind != ir.TypeList {
-			c.error(x.Pos, "for iterator must be list, got %s", iter)
-		}
 		c.pushScope()
-		// Declare loop variables.
+		// Declare loop variables based on iterator type.
 		elemType := TypDyn
-		if iter.Kind == ir.TypeList && len(iter.Elems) > 0 {
-			elemType = iter.Elems[0]
-		}
-		if x.Value != "" {
-			// for key, value = iter: key is index, value is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-			c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
-		} else {
-			// for item = iter: item is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+		switch iter.Kind {
+		case ir.TypeList:
+			if len(iter.Elems) > 0 {
+				elemType = iter.Elems[0]
+			}
+			if x.Value != "" {
+				// for key, value = list: key is index (int), value is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+			} else {
+				// for item = list: item is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+			}
+		case ir.TypeIter:
+			if len(iter.Elems) > 0 {
+				elemType = iter.Elems[0]
+			}
+			if x.Value != "" {
+				// for key, value = iter: key is index (int), value is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+			} else {
+				// for item = iter: item is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+			}
+		case ir.TypeMap:
+			if x.Value == "" {
+				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
+			} else if len(iter.Elems) == 2 {
+				// for k, v = map: k is key type, v is value type.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				elemType = iter.Elems[1]
+			}
+		case ir.TypeDyn:
+			if x.Value != "" {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+			} else {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+			}
+		default:
+			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
+			if x.Value != "" {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+			} else {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+			}
 		}
 		body := c.checkBlockIR(&x.Body)
 		var elseBody []ir.Stmt

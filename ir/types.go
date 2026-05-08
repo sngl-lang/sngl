@@ -382,6 +382,10 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
+	// list<T> implicitly converts to iter<T>.
+	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
+		return t.Elems[0].IsAssignableTo(target.Elems[0])
+	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
