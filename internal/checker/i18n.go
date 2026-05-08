@@ -1,9 +1,77 @@
 package checker
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// templateBuilder walks an I18nInterpExpr to produce the canonical ICU
+// MessageFormat string used at runtime, alongside the (name, expr) bindings
+// for the placeholder values. SNGL exprs that are not bare identifiers
+// become synthetic argN names; the args slice tracks bindings.
+type templateBuilder struct {
+	sb   []byte
+	args []bindArg
+	next int
+}
+
+type bindArg struct {
+	name string
+	expr ast.Expr
+}
+
+func (b *templateBuilder) addBareName(name string, expr ast.Expr) string {
+	b.args = append(b.args, bindArg{name: name, expr: expr})
+	return name
+}
+
+func (b *templateBuilder) addSynth(expr ast.Expr) string {
+	name := fmt.Sprintf("arg%d", b.next)
+	b.next++
+	b.args = append(b.args, bindArg{name: name, expr: expr})
+	return name
+}
+
+func (b *templateBuilder) writeParts(parts []ast.Expr) {
+	for _, p := range parts {
+		switch v := p.(type) {
+		case *ast.LiteralExpr:
+			b.sb = append(b.sb, v.Raw...)
+		case *ast.I18nPlaceholderExpr:
+			b.writePlaceholder(v)
+		}
+	}
+}
+
+func (b *templateBuilder) writePlaceholder(ph *ast.I18nPlaceholderExpr) {
+	b.sb = append(b.sb, '{')
+	var name string
+	if id, ok := ph.Value.(*ast.IdentExpr); ok {
+		name = b.addBareName(id.Name, ph.Value)
+	} else {
+		name = b.addSynth(ph.Value)
+	}
+	b.sb = append(b.sb, name...)
+	if ph.Type != "" {
+		b.sb = append(b.sb, ',', ' ')
+		b.sb = append(b.sb, ph.Type...)
+	}
+	if len(ph.Cases) > 0 {
+		b.sb = append(b.sb, ',', ' ')
+		for i, c := range ph.Cases {
+			if i > 0 {
+				b.sb = append(b.sb, ' ')
+			}
+			b.sb = append(b.sb, c.Selector...)
+			b.sb = append(b.sb, '{')
+			b.writeParts(c.Body)
+			b.sb = append(b.sb, '}')
+		}
+	}
+	b.sb = append(b.sb, '}')
+}
 
 // icuTypeKeywords lists valid second-position identifiers in placeholders.
 var icuTypeKeywords = map[string]struct{}{
