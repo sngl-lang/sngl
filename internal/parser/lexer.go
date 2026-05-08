@@ -63,8 +63,10 @@ func (l *lexer) advance() rune {
 }
 
 func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
-	l.prevPrevTok = l.prevTok
-	l.prevTok = typ
+	if typ != LINE_COMMENT && typ != BLOCK_COMMENT {
+		l.prevPrevTok = l.prevTok
+		l.prevTok = typ
+	}
 	return Token{Type: typ, Literal: lit, Line: line, Column: col}
 }
 
