@@ -93,6 +93,9 @@ Notable stdlib packages:
 ### Built-in Generic Types
 
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
+- **`iter<T>`** — opaque generic iterator type. `list<T>` and `map<K, V>` implicitly convert to `iter<T>` (list elements; map yields key-value pairs). For-loops bind elements via `for x = iter`; map iteration uses two variables `for k, v = m`. No methods, no fields.
+
+Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 ### AST
 
