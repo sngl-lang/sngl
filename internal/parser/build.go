@@ -253,11 +253,14 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 // --- Struct declaration ---
 
 func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
-	// StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
+	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_struct
 	s := &ast.StructDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		s.Name = it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		s.TypeParams = b.buildTypeParamList(it.enter())
 	}
 	lbraceLine := 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {

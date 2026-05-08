@@ -274,6 +274,11 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("struct ")
 	if s.Name != "" {
 		f.write(s.Name)
+		if len(s.TypeParams) > 0 {
+			f.write("<")
+			f.write(strings.Join(s.TypeParams, ", "))
+			f.write(">")
+		}
 		f.write(" ")
 	}
 	if len(s.Fields) == 0 {

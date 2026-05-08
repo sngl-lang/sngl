@@ -644,6 +644,45 @@ func TestParseTrailingInputErrors(t *testing.T) {
 	}
 }
 
+func TestParseGenericStruct(t *testing.T) {
+	src := "struct list<T> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	s := doc.Stmts[0].(*ast.StructDef)
+	if s.Name != "list" {
+		t.Errorf("Name = %q, want list", s.Name)
+	}
+	if len(s.TypeParams) != 1 || s.TypeParams[0] != "T" {
+		t.Errorf("TypeParams = %v, want [T]", s.TypeParams)
+	}
+}
+
+func TestParseGenericStructTwoParams(t *testing.T) {
+	src := "struct map<K, V> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	s := doc.Stmts[0].(*ast.StructDef)
+	if len(s.TypeParams) != 2 || s.TypeParams[0] != "K" || s.TypeParams[1] != "V" {
+		t.Errorf("TypeParams = %v, want [K V]", s.TypeParams)
+	}
+}
+
+func TestParseStructNoTypeParamsStillWorks(t *testing.T) {
+	src := "struct Color {\n\tr int\n\tg int\n\tb int\n}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	s := doc.Stmts[0].(*ast.StructDef)
+	if len(s.TypeParams) != 0 {
+		t.Errorf("TypeParams should be empty for non-generic struct, got %v", s.TypeParams)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

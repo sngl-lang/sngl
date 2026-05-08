@@ -72,6 +72,7 @@ type EnumDef struct {
 type StructDef struct {
 	Pos         Pos
 	Name        string
+	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
 	Fields      []*StructField
 	IsMultiline bool
 }

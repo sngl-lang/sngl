@@ -245,7 +245,7 @@ ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
+StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
 
 StructField = IdentList Type [ assign Expr ] semi .
 
