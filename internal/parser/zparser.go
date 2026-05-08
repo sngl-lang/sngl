@@ -106,87 +106,88 @@ const (
 	I18nInterpStr = Symbol(80) // I18nInterpStr
 	I18nTriple = Symbol(81) // I18nTriple
 	I18nPlaceholder = Symbol(82) // I18nPlaceholder
-	MsgFormatBody = Symbol(83) // MsgFormatBody
-	MsgCase = Symbol(84) // MsgCase
-	Selector = Symbol(85) // Selector
-	MsgBody = Symbol(86) // MsgBody
-	Document = Symbol(87) // Document
-	Stmt = Symbol(88) // Stmt
-	StmtBlock = Symbol(89) // StmtBlock
-	ImportDecl = Symbol(90) // ImportDecl
-	StructDecl = Symbol(91) // StructDecl
-	StructField = Symbol(92) // StructField
-	EnumDecl = Symbol(93) // EnumDecl
-	UnitDecl = Symbol(94) // UnitDecl
-	ConstDecl = Symbol(95) // ConstDecl
-	ConstSpec = Symbol(96) // ConstSpec
-	IdentList = Symbol(97) // IdentList
-	VarDecl = Symbol(98) // VarDecl
-	VarSpec = Symbol(99) // VarSpec
-	VarHandler = Symbol(100) // VarHandler
-	FuncDecl = Symbol(101) // FuncDecl
-	FuncTail = Symbol(102) // FuncTail
-	FuncBodyTail = Symbol(103) // FuncBodyTail
-	FuncName = Symbol(104) // FuncName
-	TypeParamList = Symbol(105) // TypeParamList
-	ParamList = Symbol(106) // ParamList
-	Param = Symbol(107) // Param
-	ComponentDecl = Symbol(108) // ComponentDecl
-	CompParamList = Symbol(109) // CompParamList
-	CompParam = Symbol(110) // CompParam
-	CompParamTail = Symbol(111) // CompParamTail
-	VisualOrStmt = Symbol(112) // VisualOrStmt
-	IncDecOp = Symbol(113) // IncDecOp
-	StatementPrimary = Symbol(114) // StatementPrimary
-	IfNode = Symbol(115) // IfNode
-	ForNode = Symbol(116) // ForNode
-	PlatformNode = Symbol(117) // PlatformNode
-	AssignOp = Symbol(118) // AssignOp
-	Expr = Symbol(119) // Expr
-	TernaryExpr = Symbol(120) // TernaryExpr
-	OrExpr = Symbol(121) // OrExpr
-	AndExpr = Symbol(122) // AndExpr
-	EqExpr = Symbol(123) // EqExpr
-	CmpExpr = Symbol(124) // CmpExpr
-	AddExpr = Symbol(125) // AddExpr
-	MulExpr = Symbol(126) // MulExpr
-	EqOp = Symbol(127) // EqOp
-	CmpOp = Symbol(128) // CmpOp
-	AddOp = Symbol(129) // AddOp
-	MulOp = Symbol(130) // MulOp
-	UnaryExpr = Symbol(131) // UnaryExpr
-	PostfixExpr = Symbol(132) // PostfixExpr
-	CondExpr = Symbol(133) // CondExpr
-	CondOrExpr = Symbol(134) // CondOrExpr
-	CondAndExpr = Symbol(135) // CondAndExpr
-	CondEqExpr = Symbol(136) // CondEqExpr
-	CondCmpExpr = Symbol(137) // CondCmpExpr
-	CondAddExpr = Symbol(138) // CondAddExpr
-	CondMulExpr = Symbol(139) // CondMulExpr
-	CondUnaryExpr = Symbol(140) // CondUnaryExpr
-	CondPostfixExpr = Symbol(141) // CondPostfixExpr
-	CondPostfixOp = Symbol(142) // CondPostfixOp
-	ExprPostfixOp = Symbol(143) // ExprPostfixOp
-	StmtPostfixOp = Symbol(144) // StmtPostfixOp
-	PrimaryExpr = Symbol(145) // PrimaryExpr
-	ListBody = Symbol(146) // ListBody
-	ListElem = Symbol(147) // ListElem
-	StructLitBody = Symbol(148) // StructLitBody
-	AnonStructLit = Symbol(149) // AnonStructLit
-	AnonField = Symbol(150) // AnonField
-	FuncLit = Symbol(151) // FuncLit
-	ArgList = Symbol(152) // ArgList
-	Arg = Symbol(153) // Arg
-	IdentArgCont = Symbol(154) // IdentArgCont
-	ArgExprCont = Symbol(155) // ArgExprCont
-	NonIdentPrimary = Symbol(156) // NonIdentPrimary
-	Type = Symbol(157) // Type
-	TypeList = Symbol(158) // TypeList
+	I18nThirdArg = Symbol(83) // I18nThirdArg
+	MsgBodyTail = Symbol(84) // MsgBodyTail
+	MsgCase = Symbol(85) // MsgCase
+	Selector = Symbol(86) // Selector
+	MsgBody = Symbol(87) // MsgBody
+	Document = Symbol(88) // Document
+	Stmt = Symbol(89) // Stmt
+	StmtBlock = Symbol(90) // StmtBlock
+	ImportDecl = Symbol(91) // ImportDecl
+	StructDecl = Symbol(92) // StructDecl
+	StructField = Symbol(93) // StructField
+	EnumDecl = Symbol(94) // EnumDecl
+	UnitDecl = Symbol(95) // UnitDecl
+	ConstDecl = Symbol(96) // ConstDecl
+	ConstSpec = Symbol(97) // ConstSpec
+	IdentList = Symbol(98) // IdentList
+	VarDecl = Symbol(99) // VarDecl
+	VarSpec = Symbol(100) // VarSpec
+	VarHandler = Symbol(101) // VarHandler
+	FuncDecl = Symbol(102) // FuncDecl
+	FuncTail = Symbol(103) // FuncTail
+	FuncBodyTail = Symbol(104) // FuncBodyTail
+	FuncName = Symbol(105) // FuncName
+	TypeParamList = Symbol(106) // TypeParamList
+	ParamList = Symbol(107) // ParamList
+	Param = Symbol(108) // Param
+	ComponentDecl = Symbol(109) // ComponentDecl
+	CompParamList = Symbol(110) // CompParamList
+	CompParam = Symbol(111) // CompParam
+	CompParamTail = Symbol(112) // CompParamTail
+	VisualOrStmt = Symbol(113) // VisualOrStmt
+	IncDecOp = Symbol(114) // IncDecOp
+	StatementPrimary = Symbol(115) // StatementPrimary
+	IfNode = Symbol(116) // IfNode
+	ForNode = Symbol(117) // ForNode
+	PlatformNode = Symbol(118) // PlatformNode
+	AssignOp = Symbol(119) // AssignOp
+	Expr = Symbol(120) // Expr
+	TernaryExpr = Symbol(121) // TernaryExpr
+	OrExpr = Symbol(122) // OrExpr
+	AndExpr = Symbol(123) // AndExpr
+	EqExpr = Symbol(124) // EqExpr
+	CmpExpr = Symbol(125) // CmpExpr
+	AddExpr = Symbol(126) // AddExpr
+	MulExpr = Symbol(127) // MulExpr
+	EqOp = Symbol(128) // EqOp
+	CmpOp = Symbol(129) // CmpOp
+	AddOp = Symbol(130) // AddOp
+	MulOp = Symbol(131) // MulOp
+	UnaryExpr = Symbol(132) // UnaryExpr
+	PostfixExpr = Symbol(133) // PostfixExpr
+	CondExpr = Symbol(134) // CondExpr
+	CondOrExpr = Symbol(135) // CondOrExpr
+	CondAndExpr = Symbol(136) // CondAndExpr
+	CondEqExpr = Symbol(137) // CondEqExpr
+	CondCmpExpr = Symbol(138) // CondCmpExpr
+	CondAddExpr = Symbol(139) // CondAddExpr
+	CondMulExpr = Symbol(140) // CondMulExpr
+	CondUnaryExpr = Symbol(141) // CondUnaryExpr
+	CondPostfixExpr = Symbol(142) // CondPostfixExpr
+	CondPostfixOp = Symbol(143) // CondPostfixOp
+	ExprPostfixOp = Symbol(144) // ExprPostfixOp
+	StmtPostfixOp = Symbol(145) // StmtPostfixOp
+	PrimaryExpr = Symbol(146) // PrimaryExpr
+	ListBody = Symbol(147) // ListBody
+	ListElem = Symbol(148) // ListElem
+	StructLitBody = Symbol(149) // StructLitBody
+	AnonStructLit = Symbol(150) // AnonStructLit
+	AnonField = Symbol(151) // AnonField
+	FuncLit = Symbol(152) // FuncLit
+	ArgList = Symbol(153) // ArgList
+	Arg = Symbol(154) // Arg
+	IdentArgCont = Symbol(155) // IdentArgCont
+	ArgExprCont = Symbol(156) // ArgExprCont
+	NonIdentPrimary = Symbol(157) // NonIdentPrimary
+	Type = Symbol(158) // Type
+	TypeList = Symbol(159) // TypeList
 )
 
-const SymbolNames = "EOFampassignatbangbangbangcoloncolorcommadotelem_refellipsiseqfat_arrowfloat_litgtgtei18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_platformkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderMsgFormatBodyMsgCaseSelectorMsgBodyDocumentStmtStmtBlockImportDeclStructDeclStructFieldEnumDeclUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclFuncTailFuncBodyTailFuncNameTypeParamListParamListParamComponentDeclCompParamListCompParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodePlatformNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeList"
+const SymbolNames = "EOFampassignatbangbangbangcoloncolorcommadotelem_refellipsiseqfat_arrowfloat_litgtgtei18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_platformkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyDocumentStmtStmtBlockImportDeclStructDeclStructFieldEnumDeclUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclFuncTailFuncBodyTailFuncNameTypeParamListParamListParamComponentDeclCompParamListCompParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodePlatformNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeList"
 
-var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 18, 26, 31, 36, 41, 44, 52, 60, 62, 71, 80, 82, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 253, 261, 268, 275, 281, 288, 293, 302, 313, 322, 331, 338, 344, 348, 354, 362, 365, 371, 373, 376, 381, 393, 404, 407, 417, 424, 428, 439, 448, 456, 463, 469, 477, 483, 487, 492, 504, 513, 517, 528, 535, 543, 553, 562, 572, 583, 595, 603, 614, 623, 635, 648, 658, 673, 686, 693, 701, 708, 716, 720, 729, 739, 749, 760, 768, 776, 785, 794, 803, 810, 817, 827, 835, 843, 855, 863, 876, 885, 890, 903, 916, 925, 938, 950, 958, 974, 980, 987, 999, 1007, 1011, 1022, 1028, 1035, 1041, 1048, 1055, 1062, 1066, 1071, 1076, 1081, 1090, 1101, 1109, 1119, 1130, 1140, 1151, 1162, 1173, 1186, 1201, 1214, 1227, 1240, 1251, 1259, 1267, 1280, 1293, 1302, 1309, 1316, 1319, 1331, 1342, 1357, 1361, 1369, }
+var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 18, 26, 31, 36, 41, 44, 52, 60, 62, 71, 80, 82, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 253, 261, 268, 275, 281, 288, 293, 302, 313, 322, 331, 338, 344, 348, 354, 362, 365, 371, 373, 376, 381, 393, 404, 407, 417, 424, 428, 439, 448, 456, 463, 469, 477, 483, 487, 492, 504, 513, 517, 528, 535, 543, 553, 562, 572, 583, 595, 603, 614, 623, 635, 648, 658, 673, 685, 696, 703, 711, 718, 726, 730, 739, 749, 759, 770, 778, 786, 795, 804, 813, 820, 827, 837, 845, 853, 865, 873, 886, 895, 900, 913, 926, 935, 948, 960, 968, 984, 990, 997, 1009, 1017, 1021, 1032, 1038, 1045, 1051, 1058, 1065, 1072, 1076, 1081, 1086, 1091, 1100, 1111, 1119, 1129, 1140, 1150, 1161, 1172, 1183, 1196, 1211, 1224, 1237, 1250, 1261, 1269, 1277, 1290, 1303, 1312, 1319, 1326, 1329, 1341, 1352, 1367, 1371, 1379, }
 
 
 func (s Symbol) String() string {
@@ -242,10 +243,10 @@ var errorSets = [...][]Symbol{
 {lte, lt, gte, gt},
 {gt},
 {i18n_str_resume, i18n_case_end},
+{MsgBody, i18n_case_start, i18n_case_full},
 {i18n_case_start, i18n_case_full},
 {Type, UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
 {UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
-{Selector, MsgCase, ident, assign},
 {Selector, ident, assign},
 {ident, assign},
 {UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, at, assign},
@@ -1125,7 +1126,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state5:
-accept, errorSet = true, 46
+accept, errorSet = true, 47
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -1762,7 +1763,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state5:
-accept, errorSet = true, 46
+accept, errorSet = true, 47
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -1789,7 +1790,7 @@ goto state6
 }
 return p.stop(r, accept, errorSet)
 state8:
-accept, errorSet = true, 45
+accept, errorSet = true, 46
 switch Symbol(p.tok.Ch) {
 	case  assign, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 r = p.add(r, p.CompParamTail())
@@ -1875,7 +1876,7 @@ func (p *Parser) CompParamTail() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(CompParamTail), 0)
 // state0:
-accept, errorSet = false, 46
+accept, errorSet = false, 47
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -2647,7 +2648,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = false, 46
+accept, errorSet = false, 47
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -3625,7 +3626,7 @@ return p.stop(r, accept, errorSet)
 //	
 //	
 //	# The 1-3 fields inside a {...} placeholder.
-//	I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+//	I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
 //
 //	State 0
 //		on  amp, at, bang, color, elem_ref, float_lit, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
@@ -3643,7 +3644,7 @@ return p.stop(r, accept, errorSet)
 //			shift and goto state 4
 //	State 4
 //		on  assign, ident
-//			call MsgFormatBody and goto state 5
+//			call I18nThirdArg and goto state 5
 //	State 5
 //		Accept
 // I18nPlaceholder is used internally from Parse.
@@ -3683,10 +3684,96 @@ goto state4
 }
 return p.stop(r, accept, errorSet)
 state4:
-accept, errorSet = false, 47
+accept, errorSet = false, 49
 switch Symbol(p.tok.Ch) {
 	case  assign, ident:
-r = p.add(r, p.MsgFormatBody())
+r = p.add(r, p.I18nThirdArg())
+goto state5
+}
+return p.stop(r, accept, errorSet)
+state5:
+accept, errorSet = true, 0
+return p.stop(r, accept, errorSet)
+}
+
+
+// I18nThirdArg grammar:
+//
+//	
+//	
+//	# Third arg: either a bare style ident (e.g. short, medium, currency)
+//	# or a MsgFormatBody (one or more selector{body} cases).
+//	# Left-factored on the leading ident to resolve LL(1) ambiguity:
+//	#   ident MsgBody ...  → the ident is a Selector; MsgBodyTail consumes the rest
+//	#   ident              → the ident is a Style (no body follows)
+//	#   assign int_lit ... → numeric selector, must be followed by MsgBody
+//	I18nThirdArg = ident [ MsgBodyTail ] | assign int_lit MsgBody { MsgCase } .
+//
+//	State 0
+//		on  assign
+//			shift and goto state 1
+//		on  ident
+//			shift and goto state 4
+//	State 1
+//		on  int_lit
+//			shift and goto state 2
+//	State 2
+//		on  i18n_case_full, i18n_case_start
+//			call MsgBody and goto state 3
+//	State 3
+//		Accept
+//		on  assign, ident
+//			call MsgCase and goto state 3
+//	State 4
+//		Accept
+//		on  i18n_case_full, i18n_case_start
+//			call MsgBodyTail and goto state 5
+//	State 5
+//		Accept
+// I18nThirdArg is used internally from Parse.
+func (p *Parser) I18nThirdArg() (r []int32) {
+		accept, errorSet := false, 0
+		r = append(p.get(), -int32(I18nThirdArg), 0)
+// state0:
+accept, errorSet = false, 49
+switch Symbol(p.tok.Ch) {
+	case  assign:
+r = append(r, p.shift())
+goto state1
+	case  ident:
+r = append(r, p.shift())
+goto state4
+}
+return p.stop(r, accept, errorSet)
+state1:
+accept, errorSet = false, 76
+switch Symbol(p.tok.Ch) {
+	case  int_lit:
+r = append(r, p.shift())
+goto state2
+}
+return p.stop(r, accept, errorSet)
+state2:
+accept, errorSet = false, 45
+switch Symbol(p.tok.Ch) {
+	case  i18n_case_full, i18n_case_start:
+r = p.add(r, p.MsgBody())
+goto state3
+}
+return p.stop(r, accept, errorSet)
+state3:
+accept, errorSet = true, 48
+switch Symbol(p.tok.Ch) {
+	case  assign, ident:
+r = p.add(r, p.MsgCase())
+goto state3
+}
+return p.stop(r, accept, errorSet)
+state4:
+accept, errorSet = true, 44
+switch Symbol(p.tok.Ch) {
+	case  i18n_case_full, i18n_case_start:
+r = p.add(r, p.MsgBodyTail())
 goto state5
 }
 return p.stop(r, accept, errorSet)
@@ -4235,7 +4322,7 @@ func (p *Parser) MsgBody() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(MsgBody), 0)
 // state0:
-accept, errorSet = false, 44
+accept, errorSet = false, 45
 switch Symbol(p.tok.Ch) {
 	case  i18n_case_full:
 r = append(r, p.shift())
@@ -4270,10 +4357,47 @@ return p.stop(r, accept, errorSet)
 }
 
 
+// MsgBodyTail grammar:
+//
+//	
+//	MsgBodyTail  = MsgBody { MsgCase } .
+//
+//	State 0
+//		on  i18n_case_full, i18n_case_start
+//			call MsgBody and goto state 1
+//	State 1
+//		Accept
+//		on  assign, ident
+//			call MsgCase and goto state 1
+// MsgBodyTail is used internally from Parse.
+func (p *Parser) MsgBodyTail() (r []int32) {
+		accept, errorSet := false, 0
+		r = append(p.get(), -int32(MsgBodyTail), 0)
+// state0:
+accept, errorSet = false, 45
+switch Symbol(p.tok.Ch) {
+	case  i18n_case_full, i18n_case_start:
+r = p.add(r, p.MsgBody())
+goto state1
+}
+return p.stop(r, accept, errorSet)
+state1:
+accept, errorSet = true, 48
+switch Symbol(p.tok.Ch) {
+	case  assign, ident:
+r = p.add(r, p.MsgCase())
+goto state1
+}
+return p.stop(r, accept, errorSet)
+}
+
+
 // MsgCase grammar:
 //
 //	
-//	MsgCase       = Selector MsgBody .
+//	
+//	# Plural / select / selectordinal cases (space-separated per ICU spec).
+//	MsgCase   = Selector MsgBody .
 //
 //	State 0
 //		on  assign, ident
@@ -4296,7 +4420,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = false, 44
+accept, errorSet = false, 45
 switch Symbol(p.tok.Ch) {
 	case  i18n_case_full, i18n_case_start:
 r = p.add(r, p.MsgBody())
@@ -4305,43 +4429,6 @@ goto state2
 return p.stop(r, accept, errorSet)
 state2:
 accept, errorSet = true, 0
-return p.stop(r, accept, errorSet)
-}
-
-
-// MsgFormatBody grammar:
-//
-//	
-//	
-//	# Plural / select / selectordinal cases (space-separated per ICU spec).
-//	MsgFormatBody = MsgCase { MsgCase } .
-//
-//	State 0
-//		on  assign, ident
-//			call MsgCase and goto state 1
-//	State 1
-//		Accept
-//		on  assign, ident
-//			call MsgCase and goto state 1
-// MsgFormatBody is used internally from Parse.
-func (p *Parser) MsgFormatBody() (r []int32) {
-		accept, errorSet := false, 0
-		r = append(p.get(), -int32(MsgFormatBody), 0)
-// state0:
-accept, errorSet = false, 48
-switch Symbol(p.tok.Ch) {
-	case  assign, ident:
-r = p.add(r, p.MsgCase())
-goto state1
-}
-return p.stop(r, accept, errorSet)
-state1:
-accept, errorSet = true, 48
-switch Symbol(p.tok.Ch) {
-	case  assign, ident:
-r = p.add(r, p.MsgCase())
-goto state1
-}
 return p.stop(r, accept, errorSet)
 }
 
@@ -4638,7 +4725,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 46
+accept, errorSet = true, 47
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -4968,7 +5055,7 @@ return p.stop(r, accept, errorSet)
 // Selector grammar:
 //
 //	
-//	Selector      = ident | assign int_lit .
+//	Selector  = ident | assign int_lit .
 //
 //	State 0
 //		on  assign

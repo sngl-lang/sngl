@@ -1020,6 +1020,10 @@ func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
 		f.write(", ")
 		f.write(x.Type)
 	}
+	if x.Style != "" {
+		f.write(", ")
+		f.write(x.Style)
+	}
 	if len(x.Cases) > 0 {
 		f.write(", ")
 		for i, c := range x.Cases {

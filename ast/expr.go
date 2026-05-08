@@ -376,12 +376,13 @@ type I18nInterpExpr struct {
 }
 
 // I18nPlaceholderExpr is a single placeholder inside an I18nInterpExpr:
-// {expr} or {expr, type} or {expr, type, case1{...} case2{...}}.
+// {expr} or {expr, type} or {expr, type, case1{...} case2{...}} or {expr, type, style}.
 type I18nPlaceholderExpr struct {
 	Pos   Pos
 	Value Expr
-	Type  string     // e.g. "plural", "select", "number" — empty for simple {expr}
-	Cases []I18nCase // non-nil only when Type is set
+	Type  string     // e.g. "plural", "select", "number", "date" — empty for simple {expr}
+	Style string     // bare style ident e.g. "short", "medium", "currency" — mutually exclusive with Cases
+	Cases []I18nCase // non-nil only when Type is set and cases are present
 }
 
 // I18nCase is one branch of a plural/select formatter: selector{body}.

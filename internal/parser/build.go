@@ -1911,7 +1911,7 @@ func (b *builder) buildI18nTriple(it nodeIter) ast.Expr {
 }
 
 func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
-	// I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+	// I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
 	ph := &ast.I18nPlaceholderExpr{}
 	// First child: Expr non-terminal.
 	if !it.done() && it.isNonTerminal() {
@@ -1920,11 +1920,11 @@ func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
 			ph.Pos = *ph.Value.ExprPos()
 		}
 	}
-	// Optional: comma ident [ comma MsgFormatBody ]
+	// Optional: comma ident [ comma I18nThirdArg ]
 	for !it.done() {
 		if it.isNonTerminal() {
-			if it.symbol() == MsgFormatBody {
-				ph.Cases = b.buildMsgFormatBody(it.enter())
+			if it.symbol() == I18nThirdArg {
+				b.buildI18nThirdArg(ph, it.enter())
 			} else {
 				it.skip()
 			}
@@ -1941,17 +1941,74 @@ func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
 	return ph
 }
 
-func (b *builder) buildMsgFormatBody(it nodeIter) []ast.I18nCase {
-	// MsgFormatBody = MsgCase { MsgCase } .
-	var cases []ast.I18nCase
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == MsgCase {
-			cases = append(cases, b.buildMsgCase(it.enter()))
-		} else {
-			it.skip()
-		}
+// buildI18nThirdArg populates ph.Style or ph.Cases from an I18nThirdArg node.
+// I18nThirdArg = ident [ MsgBodyTail ] | assign int_lit MsgBody { MsgCase } .
+// If the ident is followed by a MsgBodyTail, it is a Selector (first case).
+// If the ident stands alone (no MsgBodyTail), it is a Style.
+func (b *builder) buildI18nThirdArg(ph *ast.I18nPlaceholderExpr, it nodeIter) {
+	// Peek at the first token to determine which alternative we're in.
+	if it.done() {
+		return
 	}
-	return cases
+	if it.isNonTerminal() {
+		// Starts with a non-terminal — shouldn't happen per grammar, skip.
+		it.skip()
+		return
+	}
+	tok := it.shift()
+	switch tok.Type {
+	case IDENT:
+		// Check if a MsgBodyTail follows (making this ident a Selector).
+		if !it.done() && it.isNonTerminal() && it.symbol() == MsgBodyTail {
+			// ident is a Selector — build as cases.
+			// MsgBodyTail = MsgBody { MsgCase } .
+			var c ast.I18nCase
+			c.Pos = b.posFromToken(tok)
+			c.Selector = tok.Literal
+			tail := it.enter()
+			for !tail.done() {
+				if tail.isNonTerminal() {
+					switch tail.symbol() {
+					case MsgBody:
+						b.buildMsgBodyInto(&c, tail.enter())
+					case MsgCase:
+						ph.Cases = append(ph.Cases, b.buildMsgCase(tail.enter()))
+					default:
+						tail.skip()
+					}
+				} else {
+					tail.skip()
+				}
+			}
+			ph.Cases = append([]ast.I18nCase{c}, ph.Cases...)
+		} else {
+			// Bare ident — it's a Style.
+			ph.Style = tok.Literal
+		}
+	case ASSIGN:
+		// assign int_lit MsgBody { MsgCase } — numeric selector first case.
+		var c ast.I18nCase
+		c.Pos = b.posFromToken(tok)
+		if !it.done() && !it.isNonTerminal() {
+			n := it.shift()
+			c.Selector = "=" + n.Literal
+		}
+		for !it.done() {
+			if it.isNonTerminal() {
+				switch it.symbol() {
+				case MsgBody:
+					b.buildMsgBodyInto(&c, it.enter())
+				case MsgCase:
+					ph.Cases = append(ph.Cases, b.buildMsgCase(it.enter()))
+				default:
+					it.skip()
+				}
+			} else {
+				it.skip()
+			}
+		}
+		ph.Cases = append([]ast.I18nCase{c}, ph.Cases...)
+	}
 }
 
 func (b *builder) buildMsgCase(it nodeIter) ast.I18nCase {

@@ -177,12 +177,20 @@ I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder
 I18nTriple    = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
 
 # The 1-3 fields inside a {...} placeholder.
-I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
+
+# Third arg: either a bare style ident (e.g. short, medium, currency)
+# or a MsgFormatBody (one or more selector{body} cases).
+# Left-factored on the leading ident to resolve LL(1) ambiguity:
+#   ident MsgBody ...  → the ident is a Selector; MsgBodyTail consumes the rest
+#   ident              → the ident is a Style (no body follows)
+#   assign int_lit ... → numeric selector, must be followed by MsgBody
+I18nThirdArg = ident [ MsgBodyTail ] | assign int_lit MsgBody { MsgCase } .
+MsgBodyTail  = MsgBody { MsgCase } .
 
 # Plural / select / selectordinal cases (space-separated per ICU spec).
-MsgFormatBody = MsgCase { MsgCase } .
-MsgCase       = Selector MsgBody .
-Selector      = ident | assign int_lit .
+MsgCase   = Selector MsgBody .
+Selector  = ident | assign int_lit .
 
 # Case body: literal text only, or text + nested placeholders.
 MsgBody = i18n_case_full

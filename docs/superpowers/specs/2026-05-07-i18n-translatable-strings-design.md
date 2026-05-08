@@ -34,13 +34,21 @@ Out of scope (deferred to #22 or later):
 ## Syntax
 
 ```sngl
-let label = $"Login"                                          // plain
-let welcome = $"Welcome back, {user.name}!"                   // single SNGL expr
-let unread = $"You have {count, plural,
-    one{message}
-    other{messages}}"                                         // plural with cases
-let formatted = $"Created on {date, date, short}"             // ICU formatter
-let combined = $"{count} new {count, plural, one{msg} other{msgs}}"
+let
+label = $"Login"
+// plain
+let
+welcome = $"Welcome back, {user.name}!"
+// single SNGL expr
+let
+unread = $"You have {count, plural, one{message} other{messages}}"
+
+// plural with cases
+let
+formatted = $"Created on {date, date, short}"
+// ICU formatter
+let
+combined = $"{count} new {count, plural, one{msg} other{msgs}}"
 ```
 
 The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."`, every `{...}` is an **i18n placeholder** with the fixed shape:
