@@ -1,0 +1,17 @@
+// Nested placeholders inside case bodies.
+var name = "Alice"
+var count = 5
+
+// Placeholder inside a plural case body.
+var msg = $"{count, plural,
+    =0{No messages for {name}}
+    one{One message for {name}}
+    other{# messages for {name}}
+}"
+
+// Select inside a plural case.
+var gender = "female"
+var msg2 = $"{count, plural,
+    one{1 reply from {gender, select, male{him} female{her} other{them}}}
+    other{# replies}
+}"

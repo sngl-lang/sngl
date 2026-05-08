@@ -1,0 +1,4 @@
+// Select requires a string-typed value.
+
+var n = 5
+var bad = $"{n, select, a{x} other{y}}" // ERROR(check) "string"

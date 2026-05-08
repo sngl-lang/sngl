@@ -1,0 +1,5 @@
+// Second-position identifier must be a known ICU type keyword
+// (plural / select / selectordinal / date / time / dateTime / number).
+
+var n = 5
+var bad = $"{n, frobble, one{x} other{y}}" // ERROR(check) "unknown ICU type"

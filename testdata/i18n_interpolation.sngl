@@ -1,0 +1,16 @@
+// Simple identifier interpolation.
+var nm = "world"
+var greeting = $"Hello, {nm}!"
+
+// SNGL expression (member access) in interpolation.
+struct User {
+    name string
+    age int
+}
+var user = User{name="Alice", age=30}
+var welcome = $"Welcome back, {user.name}!"
+
+// Multiple placeholders.
+var a = 1
+var b = 2
+var sum = $"{a} + {b} = {a + b}"

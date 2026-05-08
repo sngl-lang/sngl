@@ -1,0 +1,16 @@
+// String-keyed map. Bare-ident keys become string literals when the
+// expected type's K is string.
+var prices map<string, int> = {
+    apple = 1,
+    pear  = 2,
+    cherry = 5,
+}
+
+// String-literal keys also work.
+var translations map<string, string> = {
+    "hello"   = "hola",
+    "goodbye" = "adios",
+}
+
+// Empty map literal — needs the type annotation for context.
+var empty map<string, int> = {}

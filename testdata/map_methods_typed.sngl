@@ -1,0 +1,22 @@
+// map.length() returns int.
+// map.keys() returns list<K>, NOT list<dyn>.
+// map.values() returns list<V>, NOT list<dyn>.
+// map.contains(k) returns bool, with k type-checked against K.
+// map.get(k, default) returns V, with k type-checked against K and default against V.
+
+var scores map<string, int> = {alice = 10, bob = 20}
+
+// length is int.
+var n int = scores.length()
+
+// keys is list<string>.
+var names list<string> = scores.keys()
+
+// values is list<int>.
+var nums list<int> = scores.values()
+
+// contains takes a string and returns bool.
+var hasAlice bool = scores.contains("alice")
+
+// get takes a string and an int default, returns int.
+var aliceScore int = scores.get("alice", 0)

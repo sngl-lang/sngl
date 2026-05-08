@@ -1,0 +1,7 @@
+// Plain translatable string with no interpolation.
+var label = $"Login"
+
+// Triple-quoted form.
+var paragraph = $"""
+    Welcome back. Please sign in to continue.
+"""

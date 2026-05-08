@@ -1,0 +1,15 @@
+// String-keyed selection.
+var gender = "female"
+var pronoun = $"{gender, select,
+    male{he}
+    female{she}
+    other{they}
+}"
+
+// Select with surrounding text.
+var status = "online"
+var indicator = $"User is {status, select,
+    online{available now}
+    away{idle}
+    other{offline}
+}"

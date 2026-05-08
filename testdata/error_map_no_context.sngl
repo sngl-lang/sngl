@@ -1,0 +1,5 @@
+// A map literal with non-ident keys cannot be a struct, so the parser
+// builds a MapLit. Without an expected type from context, the checker
+// errors — there's no way to know K and V.
+
+var bad = {1 = "one", 2 = "two"} // ERROR(check) "expected type"
