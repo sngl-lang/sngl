@@ -419,10 +419,22 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	// Declare namespace in scope.
+	// If the new namespace is inert (nil pkg and no resolver) and a namespace
+	// with the same alias already exists in scope with a non-nil package (e.g.
+	// the predeclared "i18n" stdlib namespace), skip re-declaration so the
+	// existing, richer namespace stays accessible. This prevents `import "i18n"`
+	// from shadowing the predeclared i18n namespace with a no-op nil-pkg entry.
 	ns := &ir.Namespace{
 		Name:    alias,
 		Pkg:     irImport.Pkg,
 		Resolve: nsResolve,
+	}
+	if ns.Pkg == nil && ns.Resolve == nil {
+		if existing, ok := c.scope.Lookup(alias); ok {
+			if existingNS, ok := existing.(*ir.Namespace); ok && existingNS.Pkg != nil {
+				return // keep the existing richer namespace; don't shadow it
+			}
+		}
 	}
 	c.scope.Declare(ns)
 }

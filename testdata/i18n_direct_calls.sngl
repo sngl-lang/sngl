@@ -1,12 +1,12 @@
 // Direct calls to the i18n stdlib package, with the canonical names
 // (date/time/dateTime/select — not the dateStr/timeStr/etc workarounds).
-
-import "i18n"
+// Note: the "i18n" namespace is predeclared; no import statement needed.
 
 func test() {
     // Translation entry points.
     var hello = i18n.tr("Hello, world!", {})
-    var formatted = i18n.format("Hello, {name}!", {name = "Alice"})
+    var name = "Alice"
+    var formatted = i18n.format("Hello, {name}!", {name = name})
 
     // Direct number formatters.
     var n int = 1234
