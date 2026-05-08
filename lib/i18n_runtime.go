@@ -573,8 +573,8 @@ func keywordToPluralKey(cat plural.Form) PluralKey {
 // --- Process-wide default Translator ---
 
 var (
-	translatorOnce      sync.Once
-	defaultTranslator   *Translator
+	translatorOnce    sync.Once
+	defaultTranslator *Translator
 )
 
 // GetTranslator returns the process-wide Translator, lazily initialised

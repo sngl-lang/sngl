@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -314,16 +315,12 @@ func PackageUsesI18n(pkg *ir.Package) bool {
 	if pkg == nil {
 		return false
 	}
-	for _, f := range pkg.Funcs {
-		if funcUsesI18n(f) {
-			return true
-		}
+	if slices.ContainsFunc(pkg.Funcs, funcUsesI18n) {
+		return true
 	}
 	for _, comp := range pkg.Components {
-		for _, f := range comp.Funcs {
-			if funcUsesI18n(f) {
-				return true
-			}
+		if slices.ContainsFunc(comp.Funcs, funcUsesI18n) {
+			return true
 		}
 		for _, v := range comp.Vars {
 			for _, h := range v.Handlers {
@@ -353,12 +350,7 @@ func funcUsesI18n(f *ir.Func) bool {
 	if f == nil {
 		return false
 	}
-	for _, s := range f.Block {
-		if stmtUsesI18n(s) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(f.Block, stmtUsesI18n)
 }
 
 func stmtUsesI18n(s ir.Stmt) bool {
@@ -375,24 +367,18 @@ func stmtUsesI18n(s ir.Stmt) bool {
 		if exprUsesI18n(n.Cond) {
 			return true
 		}
-		for _, s2 := range n.Body {
-			if stmtUsesI18n(s2) {
-				return true
-			}
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
 		}
-		for _, s2 := range n.Else {
-			if stmtUsesI18n(s2) {
-				return true
-			}
+		if slices.ContainsFunc(n.Else, stmtUsesI18n) {
+			return true
 		}
 	case *ir.For:
 		if exprUsesI18n(n.Iter) {
 			return true
 		}
-		for _, s2 := range n.Body {
-			if stmtUsesI18n(s2) {
-				return true
-			}
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
 		}
 	case *ir.NodeInst:
 		for _, prop := range n.Props {
@@ -405,10 +391,8 @@ func stmtUsesI18n(s ir.Stmt) bool {
 				return true
 			}
 		}
-		for _, child := range n.Children {
-			if stmtUsesI18n(child) {
-				return true
-			}
+		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
+			return true
 		}
 	}
 	return false
@@ -444,10 +428,8 @@ func exprUsesI18n(e ir.Expr) bool {
 			}
 		}
 	case *ir.ListLit:
-		for _, el := range n.Elems {
-			if exprUsesI18n(el) {
-				return true
-			}
+		if slices.ContainsFunc(n.Elems, exprUsesI18n) {
+			return true
 		}
 	case *ir.Index:
 		return exprUsesI18n(n.Operand) || exprUsesI18n(n.Idx)

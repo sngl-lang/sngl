@@ -170,9 +170,9 @@ func TestLexI18nPluralLiteralCases(t *testing.T) {
 	want := []TokenType{
 		I18N_STR_START,             // "You have "
 		IDENT, COMMA, IDENT, COMMA, // count, plural,
-		IDENT, I18N_CASE_FULL,      // one{message}
-		IDENT, I18N_CASE_FULL,      // other{messages}
-		I18N_STR_END,               // ""
+		IDENT, I18N_CASE_FULL, // one{message}
+		IDENT, I18N_CASE_FULL, // other{messages}
+		I18N_STR_END, // ""
 	}
 	if !sameTokenTypes(types, want) {
 		t.Errorf("got types %v\nwant     %v", types, want)
@@ -213,7 +213,7 @@ func TestLexI18nPluralEqualNSelector(t *testing.T) {
 		I18N_STR_START,
 		IDENT, COMMA, IDENT, COMMA,
 		ASSIGN, INT, I18N_CASE_FULL, // =0{none}
-		IDENT, I18N_CASE_FULL,       // other{some}
+		IDENT, I18N_CASE_FULL, // other{some}
 		I18N_STR_END,
 	}
 	if !sameTokenTypes(types, want) {

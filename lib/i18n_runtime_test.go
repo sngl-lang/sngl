@@ -228,4 +228,3 @@ func TestDatetimeShort(t *testing.T) {
 		t.Errorf("got %q, want 5/7/26 12:30 PM", got)
 	}
 }
-
