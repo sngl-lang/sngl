@@ -45,7 +45,12 @@ func (jc *JsIRContext) EvalExpr(e ir.Expr) string {
 	case *ir.Select:
 		return jc.EvalExpr(n.Operand) + "." + n.Field
 	case *ir.Index:
-		return jc.EvalExpr(n.Operand) + "[" + jc.EvalExpr(n.Idx) + "]"
+		operand := jc.EvalExpr(n.Operand)
+		idx := jc.EvalExpr(n.Idx)
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			return operand + ".get(" + idx + ")"
+		}
+		return operand + "[" + idx + "]"
 	case *ir.Call:
 		return jc.evalCall(n)
 	case *ir.Conversion:
@@ -66,6 +71,21 @@ func (jc *JsIRContext) EvalExpr(e ir.Expr) string {
 			parts[i] = jc.EvalExpr(el)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *ir.MapLitIR:
+		var b strings.Builder
+		b.WriteString("new Map([")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString("[")
+			b.WriteString(jc.EvalExpr(e.Key))
+			b.WriteString(", ")
+			b.WriteString(jc.EvalExpr(e.Value))
+			b.WriteString("]")
+		}
+		b.WriteString("])")
+		return b.String()
 	case *ir.Spread:
 		return "..." + jc.EvalExpr(n.Operand)
 	case *ir.Lambda:
@@ -509,6 +529,17 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "Math.round(" + a(0) + ")"
 	case "float.sqrt", "*.sqrt":
 		return "Math.sqrt(" + a(0) + ")"
+	// map
+	case "map.length":
+		return a(0) + ".size"
+	case "map.keys":
+		return "Array.from(" + a(0) + ".keys())"
+	case "map.values":
+		return "Array.from(" + a(0) + ".values())"
+	case "map.contains":
+		return a(0) + ".has(" + a(1) + ")"
+	case "map.get":
+		return "(" + a(0) + ".has(" + a(1) + ") ? " + a(0) + ".get(" + a(1) + ") : " + a(2) + ")"
 	case "Alert.toast":
 		return `(function(){var d=document.createElement("div");d.textContent=` + a(0) + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
 	case "Alert.info":

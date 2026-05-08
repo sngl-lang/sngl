@@ -54,7 +54,12 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		}
 		return translateIRExpr(n.Operand, scope) + "." + n.Field
 	case *ir.Index:
-		return translateIRExpr(n.Operand, scope) + "[" + translateIRExpr(n.Idx, scope) + "]"
+		operand := translateIRExpr(n.Operand, scope)
+		idx := translateIRExpr(n.Idx, scope)
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			return operand + ".get(" + idx + ")"
+		}
+		return operand + "[" + idx + "]"
 	case *ir.Call:
 		return translateIRCall(n, scope)
 	case *ir.Conversion:
@@ -75,6 +80,21 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			parts[i] = translateIRExpr(el, scope)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *ir.MapLitIR:
+		var b strings.Builder
+		b.WriteString("new Map([")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString("[")
+			b.WriteString(translateIRExpr(e.Key, scope))
+			b.WriteString(", ")
+			b.WriteString(translateIRExpr(e.Value, scope))
+			b.WriteString("]")
+		}
+		b.WriteString("])")
+		return b.String()
 	case *ir.Spread:
 		return "..." + translateIRExpr(n.Operand, scope)
 	case *ir.Lambda:
