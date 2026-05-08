@@ -1,4 +1,4 @@
-package lib
+package i18n
 
 import (
 	"os"

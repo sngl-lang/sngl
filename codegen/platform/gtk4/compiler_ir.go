@@ -151,7 +151,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[imp.Native.ImportPath] = true
 	}
 	if golang.PackageUsesI18n(pkg) {
-		info.goImports[golang.SnglLibImportPath] = true
+		info.goImports[golang.SnglI18nImportPath] = true
 	}
 
 	// Build a GoIRContext so irVarInit can evaluate i18n.tr init calls.
@@ -454,7 +454,7 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
 	}
 	// For i18n.tr calls emitted by the $"..." lowering, use full expression
-	// evaluation via the GoIRContext to emit lib.GetTranslator().Tr(...).
+	// evaluation via the GoIRContext to emit i18n.GetTranslator().Tr(...).
 	if call, isCall := v.Init.(*ir.Call); isCall && gc != nil &&
 		call.Func != nil && call.Func.Receiver == "i18n" {
 		return gc.EvalExpr(v.Init)

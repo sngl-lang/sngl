@@ -260,39 +260,39 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `""`
 	case "File.pickFolder":
 		return `""`
-	// i18n — all calls delegate to lib.GetTranslator() runtime.
+	// i18n — all calls delegate to i18n.GetTranslator() runtime.
 	// For type-attached method dispatch, args are positional (no receiver value).
 	case "i18n.tr":
 		// Args: key string, args map[string]any
-		return "lib.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
 	case "i18n.format":
 		// Args: template string, args map[string]any
-		return "lib.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberInt":
 		// Args: n int, style string
-		return "lib.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberFloat":
 		// Args: n float, style string
-		return "lib.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
 	case "i18n.dateStr":
 		// Args: d date, style string
-		return "lib.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
 	case "i18n.timeStr":
 		// Args: t time, style string
-		return "lib.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
 	case "i18n.datetimeStr":
 		// Args: dt dateTime, dateStyle string, timeStyle string
-		return "lib.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.selectStr":
 		// Args: value string, cases map[string]string
-		return "lib.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
+		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
 	}
 	return ""
 }
 
 // IsI18nCall reports whether a qualified method name is an i18n stdlib call.
 // Used by platform codegens to detect when the generated code needs to import
-// git.duckfam.us/jonathan/sngl/lib.
+// git.duckfam.us/jonathan/sngl/pkg/go/i18n.
 func IsI18nCall(qualName string) bool {
 	switch qualName {
 	case "i18n.tr", "i18n.format",
@@ -304,13 +304,13 @@ func IsI18nCall(qualName string) bool {
 	return false
 }
 
-// SnglLibImportPath is the Go import path of git.duckfam.us/jonathan/sngl/lib.
+// SnglI18nImportPath is the Go import path of git.duckfam.us/jonathan/sngl/pkg/go/i18n.
 // Platform generators should add this import when PackageUsesI18n returns true.
-const SnglLibImportPath = "git.duckfam.us/jonathan/sngl/lib"
+const SnglI18nImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 
 // PackageUsesI18n reports whether any function or component in pkg contains an
-// i18n stdlib call. Platform generators use this to decide whether to add a
-// lib import to the generated Go file.
+// i18n stdlib call. Platform generators use this to decide whether to add an
+// i18n import to the generated Go file.
 func PackageUsesI18n(pkg *ir.Package) bool {
 	if pkg == nil {
 		return false
