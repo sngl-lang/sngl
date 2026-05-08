@@ -78,6 +78,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.inferMapLit(x)
 	case *ast.InterpolationExpr:
 		return c.inferInterpolation(x)
+	case *ast.I18nInterpExpr:
+		return c.inferI18nInterp(x)
 	case *ast.LambdaExpr:
 		return c.inferLambda(x)
 	case *ast.SpreadExpr:
