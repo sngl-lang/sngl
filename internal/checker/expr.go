@@ -888,6 +888,16 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	indexExpr := c.checkExpr(x.Index)
 	operand := exprType(operandExpr)
 
+	if operand.Kind == ir.TypeMap {
+		if len(operand.Elems) != 2 {
+			return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+		}
+		keyT, valT := operand.Elems[0], operand.Elems[1]
+		if !keyT.Equal(exprType(indexExpr)) {
+			c.error(x.Pos, "map index type %s does not match key type %s", exprType(indexExpr), keyT)
+		}
+		return &ir.Index{AST: x, Type: valT, Operand: operandExpr, Idx: indexExpr}
+	}
 	if operand.Kind == ir.TypeList && len(operand.Elems) > 0 {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
