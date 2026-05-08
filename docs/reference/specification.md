@@ -200,7 +200,7 @@ AnonStructLit = "{" [ AnonField { ( "," | ";" ) AnonField } [ "," | ";" ] ] "}"
 
 AnonField = 
     "..." Expr
-    | IDENT "=" Expr
+    | Expr ( "=" | ":" ) Expr
 
 FuncLit = "func" [ "(" [ ParamList ] ")" ] FuncBodyTail
 

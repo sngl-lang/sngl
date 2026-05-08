@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/x/cellbuf v0.0.15
 	github.com/davecgh/go-spew v1.1.1
+	github.com/evanw/esbuild v0.28.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-rod/rod v0.116.2
 	github.com/mattn/go-isatty v0.0.20
@@ -22,6 +23,7 @@ require (
 	golang.org/x/image v0.38.0
 	golang.org/x/tools v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/cc/v4 v4.28.2
 	modernc.org/scanner v1.3.0
 	rsc.io/script v0.0.2
 )
@@ -43,7 +45,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/evanw/esbuild v0.28.0 // indirect
 	github.com/fredbi/uri v1.1.1 // indirect
 	github.com/fyne-io/gl-js v0.2.0 // indirect
 	github.com/fyne-io/glfw-js v0.3.0 // indirect
@@ -93,7 +94,6 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	modernc.org/cc/v4 v4.28.2 // indirect
 	modernc.org/egg v1.2.3 // indirect
 	modernc.org/fsm v1.3.2 // indirect
 	modernc.org/gc/v3 v3.1.2 // indirect
