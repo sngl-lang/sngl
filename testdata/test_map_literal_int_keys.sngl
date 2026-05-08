@@ -1,0 +1,29 @@
+// Int-keyed map. Non-ident keys force the literal to be a map literal.
+
+component mapIntKeys {
+    var grades map<int, string> = {
+        1 = "one",
+        2 = "two",
+        3 = "three",
+    }
+
+    var flags map<bool, string> = {
+        true = "yes",
+        false = "no",
+    }
+
+    text(value=grades[1])
+}
+
+func testMapIntKeyedLookup(t Test, c mapIntKeys) {
+    t.assert(c.grades.length() == 3)
+    t.assert(c.grades[1] == "one")
+    t.assert(c.grades[2] == "two")
+    t.assert(c.grades[3] == "three")
+}
+
+func testMapBoolKeyedLookup(t Test, c mapIntKeys) {
+    t.assert(c.flags.length() == 2)
+    t.assert(c.flags[true] == "yes")
+    t.assert(c.flags[false] == "no")
+}

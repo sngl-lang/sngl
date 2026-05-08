@@ -1,0 +1,41 @@
+// Map methods preserve K and V through their signatures, not list<dyn>.
+
+component mapMethods {
+    var scores map<string, int> = {alice = 10, bob = 20, charlie = 30}
+    text(value="{scores.length()}")
+}
+
+func testMapLength(t Test, c mapMethods) {
+    t.assert(c.scores.length() == 3)
+}
+
+func testMapContains(t Test, c mapMethods) {
+    t.assert(c.scores.contains("alice"))
+    t.assert(c.scores.contains("bob"))
+    t.assert(c.scores.contains("nobody") == false)
+}
+
+func testMapGet(t Test, c mapMethods) {
+    t.assert(c.scores.get("alice", 0) == 10)
+    t.assert(c.scores.get("bob", 0) == 20)
+    // Missing key returns the default.
+    t.assert(c.scores.get("nobody", 99) == 99)
+    t.assert(c.scores.get("absent", -1) == -1)
+}
+
+func testMapKeysContainsAll(t Test, c mapMethods) {
+    var ks list<string> = c.scores.keys()
+    t.assert(ks.length() == 3)
+    // Order is unspecified; contains-style assertions only.
+    t.assert(ks.contains("alice"))
+    t.assert(ks.contains("bob"))
+    t.assert(ks.contains("charlie"))
+}
+
+func testMapValuesContainsAll(t Test, c mapMethods) {
+    var vs list<int> = c.scores.values()
+    t.assert(vs.length() == 3)
+    t.assert(vs.contains(10))
+    t.assert(vs.contains(20))
+    t.assert(vs.contains(30))
+}

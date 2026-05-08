@@ -538,7 +538,19 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 	}
 	if m, ok := obj.(map[string]any); ok {
 		key := fmt.Sprintf("%v", idx)
-		return m[key], nil
+		if v, ok := m[key]; ok {
+			return v, nil
+		}
+		// Miss → zero value. Use the Index node's result type when it is
+		// concrete; fall back to sampling an existing map value when the type
+		// was inferred as Dyn (e.g. c.scores["x"] through a component Select).
+		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
+			return zeroValueFor(e.Type), nil
+		}
+		for _, sample := range m {
+			return zeroValueForValue(sample), nil
+		}
+		return nil, nil
 	}
 	return nil, fmt.Errorf("cannot index %T", obj)
 }
@@ -1140,6 +1152,10 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
 		}
 	}
+	// --- Map methods ---
+	if m, ok := recv.(map[string]any); ok {
+		return mapMethodResult(method, m, rest)
+	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
 }
 
@@ -1221,6 +1237,10 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
 		}
 	}
+	// --- Map methods ---
+	if m, ok := recv.(map[string]any); ok {
+		return mapMethodResult(method, m, rest)
+	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
 }
 
@@ -1241,7 +1261,46 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 			}
 		}
 	}
-	return nil, nil
+	return newList, nil
+}
+
+// mapMethodResult dispatches map built-in methods. All runtime maps use
+// map[string]any regardless of the declared K type (keys are stringified in
+// evalMapLitIR), so a single helper suffices.
+func mapMethodResult(method string, m map[string]any, rest []any) (any, error) {
+	switch method {
+	case "length":
+		return len(m), nil
+	case "keys":
+		out := make([]any, 0, len(m))
+		for k := range m {
+			out = append(out, k)
+		}
+		return out, nil
+	case "values":
+		out := make([]any, 0, len(m))
+		for _, v := range m {
+			out = append(out, v)
+		}
+		return out, nil
+	case "contains":
+		if len(rest) != 1 {
+			return nil, fmt.Errorf("contains requires 1 argument")
+		}
+		k := fmt.Sprintf("%v", rest[0])
+		_, ok := m[k]
+		return ok, nil
+	case "get":
+		if len(rest) != 2 {
+			return nil, fmt.Errorf("get requires 2 arguments")
+		}
+		k := fmt.Sprintf("%v", rest[0])
+		if v, ok := m[k]; ok {
+			return v, nil
+		}
+		return rest[1], nil // default
+	}
+	return nil, fmt.Errorf("unsupported method %q on map", method)
 }
 
 func (env *Env) evalCallArgs(args []ir.CallArg) ([]any, error) {
@@ -1571,6 +1630,40 @@ func runtimeTypeName(v any) string {
 	default:
 		return "dyn"
 	}
+}
+
+// zeroValueFor returns the runtime zero value for an IR type.
+func zeroValueFor(t *ir.Type) any {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case ir.TypeInt:
+		return 0
+	case ir.TypeFloat:
+		return 0.0
+	case ir.TypeBool:
+		return false
+	case ir.TypeString:
+		return ""
+	}
+	return nil
+}
+
+// zeroValueForValue returns the zero value of the same runtime type as v.
+// Used when the static type is unknown (TypeDyn) but we can sample a value.
+func zeroValueForValue(v any) any {
+	switch v.(type) {
+	case int:
+		return 0
+	case float64:
+		return 0.0
+	case bool:
+		return false
+	case string:
+		return ""
+	}
+	return nil
 }
 
 func numericResult(f float64) any {
