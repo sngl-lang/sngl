@@ -922,7 +922,7 @@ func (f *formatter) writeMapLit(x *ast.MapLit) {
 			f.write(", ")
 		}
 		f.writeExpr(e.Key)
-		f.write(": ")
+		f.write(" = ")
 		f.writeExpr(e.Value)
 	}
 	f.write("}")

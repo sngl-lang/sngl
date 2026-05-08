@@ -1648,9 +1648,6 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
-			if r.IsMap {
-				panic("map literal syntax ':' not allowed in named struct literal")
-			}
 			fields = append(fields, r.StructField)
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
@@ -1663,7 +1660,8 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 }
 
 // anonFieldResult holds the parsed result of one AnonField node.
-// Exactly one of StructField or MapEntry is valid; IsMap distinguishes them.
+// When IsMap is true, the MapEntry field is valid; otherwise StructField is valid.
+// IsMap is set when the key is a non-identifier expression (forces MapLit at parse time).
 type anonFieldResult struct {
 	IsMap       bool
 	StructField ast.StructFieldLit
@@ -1675,18 +1673,17 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 	var pos ast.Pos
 	var fields []ast.StructFieldLit
 	var entries []ast.MapEntry
-	sawAssign, sawColon, sawSemi := false, false, false
+	anyNonIdent, sawSemi := false, false
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
 			if r.IsMap {
-				sawColon = true
+				anyNonIdent = true
 				entries = append(entries, r.MapEntry)
 				if !pos.IsSet() {
 					pos = r.MapEntry.Pos
 				}
 			} else {
-				sawAssign = true
 				fields = append(fields, r.StructField)
 			}
 		} else {
@@ -1700,18 +1697,23 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 			it.skip() // lbrace, rbrace, comma, semi
 		}
 	}
-	if sawAssign && sawColon {
-		panic("cannot mix '=' and ':' in literal; use one separator consistently")
-	}
-	if sawColon {
-		return &ast.MapLit{Pos: pos, Entries: entries}
+	// If ANY key is non-ident, produce a MapLit. Convert any already-collected
+	// ident struct fields (parsed before the first non-ident was seen) into
+	// MapEntry values, then append the non-ident entries.
+	if anyNonIdent {
+		var allEntries []ast.MapEntry
+		for _, f := range fields {
+			allEntries = append(allEntries, ast.MapEntry{Key: &ast.IdentExpr{Name: f.Name}, Value: f.Value})
+		}
+		allEntries = append(allEntries, entries...)
+		return &ast.MapLit{Pos: pos, Entries: allEntries}
 	}
 	s := &ast.StructExpr{Pos: pos, Fields: fields, Multiline: sawSemi}
 	return s
 }
 
 func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
-	// AnonField = ellipsis Expr | Expr ( assign | colon ) Expr .
+	// AnonField = ellipsis Expr | Expr assign Expr .
 	if it.done() {
 		return anonFieldResult{}
 	}
@@ -1723,37 +1725,29 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 		}
 		return anonFieldResult{StructField: ast.StructFieldLit{Spread: true, Value: val}}
 	}
-	// Expr ( assign | colon ) Expr
+	// Expr assign Expr
 	var key ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		key = b.buildExpr(it.enter())
 	}
-	// Next is the separator token: assign or colon.
-	useColon := false
+	// Consume the assign token.
 	if !it.done() && !it.isNonTerminal() {
-		tok := it.shift()
-		if tok.Type == COLON {
-			useColon = true
-		}
-		// else ASSIGN — consume and continue
+		it.shift() // ASSIGN
 	}
 	var val ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		val = b.buildExpr(it.enter())
 	}
-	if useColon {
-		keyPos := ast.Pos{}
-		if key != nil {
-			keyPos = *key.ExprPos()
-		}
-		return anonFieldResult{IsMap: true, MapEntry: ast.MapEntry{Pos: keyPos, Key: key, Value: val}}
-	}
-	// struct field: key must be an ident
-	name := ""
+	// If key is a bare ident → struct field; otherwise → map entry (MapLit).
 	if ident, ok := key.(*ast.IdentExpr); ok {
-		name = ident.Name
+		return anonFieldResult{StructField: ast.StructFieldLit{Name: ident.Name, Value: val}}
 	}
-	return anonFieldResult{StructField: ast.StructFieldLit{Name: name, Value: val}}
+	// Non-ident key: force MapLit.
+	keyPos := ast.Pos{}
+	if key != nil {
+		keyPos = *key.ExprPos()
+	}
+	return anonFieldResult{IsMap: true, MapEntry: ast.MapEntry{Pos: keyPos, Key: key, Value: val}}
 }
 
 func (b *builder) buildListBody(it nodeIter, multiline *bool) []ast.Expr {

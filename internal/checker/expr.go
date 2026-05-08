@@ -928,6 +928,11 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				sd = s
 			}
 		}
+	} else if c.expected != nil && c.expected.Kind == ir.TypeMap {
+		// Anonymous struct literal (all-ident keys) with expected map type:
+		// reinterpret as a map literal. Only string-keyed maps are supported
+		// for ident keys (the ident name becomes the string key).
+		return c.reinterpretStructAsMap(x, c.expected)
 	} else if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl != nil {
 		// Anonymous struct literal with expected struct type: infer the type.
 		if s, ok := c.expected.Decl.(*ir.StructDef); ok {
@@ -973,6 +978,37 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 }
 
+// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
+// when the expected type is map<K,V>. Only map<string,V> is supported; ident
+// names become string literal keys. For any other K, a check error is emitted.
+// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
+// when the expected type is map<K,V>. Only map<string,V> is supported; ident
+// names become string literal keys. For any other K, a check error is emitted.
+func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir.Expr {
+	if len(mapType.Elems) != 2 {
+		c.error(x.Pos, "internal: map type missing key/value elements")
+		return &ir.MapLitIR{Type: mapType, Entries: nil}
+	}
+	keyT := mapType.Elems[0]
+	valT := mapType.Elems[1]
+	if keyT.Kind != ir.TypeString {
+		c.error(x.Pos, "ident-keyed literal does not match map<%s, ...> with non-string key type", keyT)
+		return &ir.MapLitIR{Type: mapType, Entries: nil}
+	}
+	var entries []ir.MapEntry
+	for _, f := range x.Fields {
+		if f.Spread {
+			c.error(x.Pos, "spread not supported in map literal")
+			continue
+		}
+		keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
+		keyIR := &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		val := c.checkExprExpecting(f.Value, valT)
+		entries = append(entries, ir.MapEntry{Key: keyIR, Value: val})
+	}
+	return &ir.MapLitIR{Type: mapType, Entries: entries}
+}
+
 func structHasField(sd *ir.StructDef, name string) bool {
 	for _, f := range sd.Fields {
 		if f.Name == name {
@@ -1012,17 +1048,29 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 }
 
 func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
-	if len(x.Entries) == 0 {
-		if c.expected != nil && c.expected.Kind == ir.TypeMap {
-			return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
-		}
+	// MapLit (non-ident keys) requires either a map expected type or inference
+	// from its own entries. A struct expected type is always wrong.
+	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
+		c.error(x.Pos, "map literal cannot be used where a struct is expected")
 		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+	}
+	if c.expected == nil || c.expected.Kind != ir.TypeMap {
+		c.error(x.Pos, "anonymous map literal requires an expected type from context")
+		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+	}
+	if len(x.Entries) == 0 {
+		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
+	}
+	var keyExpected, valExpected *ir.Type
+	if len(c.expected.Elems) == 2 {
+		keyExpected = c.expected.Elems[0]
+		valExpected = c.expected.Elems[1]
 	}
 	var keyT, valT *ir.Type
 	var entries []ir.MapEntry
 	for _, e := range x.Entries {
-		k := c.checkExpr(e.Key)
-		v := c.checkExpr(e.Value)
+		k := c.checkExprExpecting(e.Key, keyExpected)
+		v := c.checkExprExpecting(e.Value, valExpected)
 		kT := exprType(k)
 		vT := exprType(v)
 		if keyT == nil {

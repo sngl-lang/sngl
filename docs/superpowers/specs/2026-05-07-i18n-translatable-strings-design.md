@@ -207,7 +207,7 @@ The `select` family wants a key→value mapping with static types. Time to add t
 - New `ir.TypeMap` kind with two `Elems` (key and value types).
 - Type-expression parsing: `map<string, string>`, `map<PluralKey, string>` slot into the existing generic-type-args path (parallel to `list<T>`).
 - **Key types**: any type with structural equality. Primitives (string, int, bool) and structs whose fields are themselves comparable. The checker rejects non-comparable key types (e.g. `map<func, string>`).
-- Map literal syntax: `{<keyExpr>: <valueExpr>, ...}`. Keys are expressions — string literals, ints, struct-valued constants like `i18n.one`, function calls like `i18n.exactly(0)`. The `:` separator distinguishes from struct literals (which use `=`). Empty literal `{}` parses as either depending on expected type; the checker disambiguates from context.
+- Map literal syntax: Same `=` separator as struct literals; checker disambiguates struct vs map by expected type. If all keys are bare identifiers the parser produces a `StructExpr`; any non-identifier key (string literal, int, enum member, etc.) forces a `MapLit` at parse time. Anonymous literals with no expected type are a check error.
 - Lookup: `m[k]` reuses `IndexExpr`, returning `V`. Missing-key returns the zero value (Go-map semantics). Tightening to `option<V>` lookup is deferred to a follow-up — out of scope here.
 - Methods on `map.*`: `length`, `keys`, `values`, `contains(k)`, `get(k, default)`. Just enough for stdlib and i18n.
 - No iteration syntax in `for` yet — defer to a later issue.
