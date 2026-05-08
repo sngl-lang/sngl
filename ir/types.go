@@ -15,6 +15,7 @@ const (
 	TypeFloat
 	TypeString
 	TypeList      // Elem set
+	TypeMap       // Elems = [K, V]
 	TypeOption    // Elem set
 	TypeStruct    // Decl set
 	TypeEnum      // Decl set
@@ -83,6 +84,11 @@ func ListOf(elem *Type) *Type {
 	return &Type{Kind: TypeList, Elems: []*Type{elem}}
 }
 
+// MapOf returns a map<K, V> type.
+func MapOf(k, v *Type) *Type {
+	return &Type{Kind: TypeMap, Elems: []*Type{k, v}}
+}
+
 // OptionOf returns an option type wrapping the given type.
 func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
@@ -115,6 +121,11 @@ func (t *Type) String() string {
 			return fmt.Sprintf("list<%s>", t.Elems[0])
 		}
 		return "list"
+	case TypeMap:
+		if len(t.Elems) == 2 {
+			return fmt.Sprintf("map<%s, %s>", t.Elems[0], t.Elems[1])
+		}
+		return "map<?>"
 	case TypeOption:
 		if len(t.Elems) > 0 {
 			return fmt.Sprintf("option<%s>", t.Elems[0])
@@ -231,7 +242,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return bound
 		}
 		return t
-	case TypeList, TypeOption, TypeRef:
+	case TypeList, TypeMap, TypeOption, TypeRef:
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -295,7 +306,7 @@ func (t *Type) Equal(other *Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case TypeList, TypeOption, TypeRef:
+	case TypeList, TypeMap, TypeOption, TypeRef:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
