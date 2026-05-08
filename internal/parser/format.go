@@ -820,6 +820,10 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.writeExpr(x.Operand)
 	case *ast.InterpolationExpr:
 		f.writeInterpolation(x)
+	case *ast.I18nInterpExpr:
+		f.writeI18nInterp(x)
+	case *ast.I18nPlaceholderExpr:
+		f.writeI18nPlaceholder(x)
 	case *ast.LambdaExpr:
 		f.writeLambda(x)
 	case *ast.ParenExpr:
@@ -982,6 +986,59 @@ func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
 		f.write("`")
 	default:
 		f.write(`"`)
+	}
+}
+
+func (f *formatter) writeI18nInterp(x *ast.I18nInterpExpr) {
+	f.write("$")
+	switch x.Style {
+	case ast.StyleTriple:
+		f.write(`"""`)
+	default:
+		f.write(`"`)
+	}
+	for _, part := range x.Parts {
+		if lit, ok := part.(*ast.LiteralExpr); ok {
+			f.write(escapeInterpLiteral(lit.Raw, x.Style))
+		} else {
+			f.write("{")
+			f.writeExpr(part)
+			f.write("}")
+		}
+	}
+	switch x.Style {
+	case ast.StyleTriple:
+		f.write(`"""`)
+	default:
+		f.write(`"`)
+	}
+}
+
+func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
+	f.writeExpr(x.Value)
+	if x.Type != "" {
+		f.write(", ")
+		f.write(x.Type)
+	}
+	if len(x.Cases) > 0 {
+		f.write(", ")
+		for i, c := range x.Cases {
+			if i > 0 {
+				f.write(" ")
+			}
+			f.write(c.Selector)
+			f.write("{")
+			for _, p := range c.Body {
+				if lit, ok := p.(*ast.LiteralExpr); ok {
+					f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
+				} else {
+					f.write("{")
+					f.writeExpr(p)
+					f.write("}")
+				}
+			}
+			f.write("}")
+		}
 	}
 }
 
