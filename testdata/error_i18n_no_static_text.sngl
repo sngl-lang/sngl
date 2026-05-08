@@ -2,4 +2,4 @@
 // to work with. Should produce a check-time warning, not an error.
 
 var n = 5
-var s = $"{n}" // ERROR(check) "no static text"
+var s = $"{n}" // ERROR(lint) "no static text"

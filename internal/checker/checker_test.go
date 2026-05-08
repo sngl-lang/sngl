@@ -1167,9 +1167,10 @@ func TestCheckTestdata(t *testing.T) {
 				t.Fatalf("directives: %v", err)
 			}
 			expected := testutil.Filter(dirs, "check")
+			lintExpected := testutil.Filter(dirs, "lint")
 
-			if len(testutil.Filter(dirs, "parse")) > 0 && len(expected) == 0 {
-				t.Skip("has ERROR(parse) directive, no ERROR(check)")
+			if len(testutil.Filter(dirs, "parse")) > 0 && len(expected) == 0 && len(lintExpected) == 0 {
+				t.Skip("has ERROR(parse) directive, no ERROR(check) or ERROR(lint)")
 				return
 			}
 
@@ -1186,7 +1187,7 @@ func TestCheckTestdata(t *testing.T) {
 			}
 			_, diags := checker.Check(doc, cfg)
 
-			if len(expected) == 0 {
+			if len(expected) == 0 && len(lintExpected) == 0 {
 				// No error directives — expect clean check.
 				for _, d := range diags {
 					if d.Severity == ir.Error {
@@ -1195,7 +1196,7 @@ func TestCheckTestdata(t *testing.T) {
 				}
 				return
 			}
-			// Match each directive against diagnostics.
+			// Match each ERROR(check) directive against error-severity diagnostics.
 			for _, exp := range expected {
 				found := false
 				for _, d := range diags {
@@ -1217,6 +1218,8 @@ func TestCheckTestdata(t *testing.T) {
 						exp.Line, exp.Substring, got.String())
 				}
 			}
+			// Match each ERROR(lint) directive against warning-severity diagnostics.
+			testutil.AssertDiagnostics(t, diags, dirs, "lint")
 		})
 	}
 }
@@ -1391,6 +1394,8 @@ func TestCheckProjectTestdata(t *testing.T) {
 					t.Logf("diagnostic: %s", d.Error())
 				}
 			}
+			// Assert ERROR(lint) directives against warning-severity diagnostics.
+			testutil.AssertDiagnostics(t, diags, s.Errors, "lint")
 		})
 	}
 }

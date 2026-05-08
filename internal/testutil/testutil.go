@@ -12,6 +12,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+("(?:[^"\\]|\\.)*")`)
@@ -257,6 +258,43 @@ func assertErrors(t testing.TB, err error, expected []ErrorDirective) {
 		}
 		if !found {
 			t.Errorf("expected error at line %d containing %q, got:\n%s", exp.Line, exp.Substring, msg)
+		}
+	}
+}
+
+// AssertDiagnostics matches directives against the diagnostic stream.
+// Phase "lint" filters to warning-severity; all other phases filter to errors.
+// Only directives matching the supplied phase are checked.
+func AssertDiagnostics(t testing.TB, diags []ir.Diagnostic, dirs []ErrorDirective, phase string) {
+	t.Helper()
+	targetSeverity := ir.Error
+	if phase == "lint" {
+		targetSeverity = ir.Warning
+	}
+	relevant := Filter(dirs, phase)
+	if len(relevant) == 0 {
+		return
+	}
+	for _, exp := range relevant {
+		found := false
+		for _, d := range diags {
+			if d.Severity != targetSeverity {
+				continue
+			}
+			if d.Pos.Line == exp.Line && strings.Contains(d.Msg, exp.Substring) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var got strings.Builder
+			for _, d := range diags {
+				if d.Severity == targetSeverity {
+					fmt.Fprintf(&got, "\n  %s", d.Error())
+				}
+			}
+			t.Errorf("line %d: expected %s diagnostic containing %q, got:%s",
+				exp.Line, phase, exp.Substring, got.String())
 		}
 	}
 }
