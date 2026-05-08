@@ -7,11 +7,20 @@ type Config struct {
 	Package string `option:"package"` // default: "main"
 	Main    bool   `option:"main"`    // default: true — emit main() entrypoint
 	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
+
+	// Lang globals (codegen/lang/golang/golang.sngl).
+	GoVersion string `option:"goVersion"` // Go toolchain version for go.mod (default: "1.23")
+
+	// Internal (set by CLI, not exposed in .sngl).
+	Lang string `option:"lang"` // language identifier used to select the executor
 }
 
 func (c Config) withDefaults() Config {
 	if c.Package == "" {
 		c.Package = "main"
+	}
+	if c.GoVersion == "" {
+		c.GoVersion = "1.23"
 	}
 	return c
 }

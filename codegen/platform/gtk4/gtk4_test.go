@@ -3,8 +3,8 @@ package gtk4_test
 import (
 	"testing"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 

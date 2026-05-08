@@ -64,8 +64,8 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	var (
 		inNamespace  bool
 		inClass      bool
-		inCtor       bool   // inside a <constructor> element
-		acceptCtor   bool   // whether this is the first (accepted) constructor
+		inCtor       bool // inside a <constructor> element
+		acceptCtor   bool // whether this is the first (accepted) constructor
 		inCtorParams bool
 		inParam      bool
 		inProp       bool

@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -29,6 +30,7 @@ func (u widgetUpdater) DepFields() map[string]bool { return u.deps }
 type viewContext struct {
 	gc          *golang.GoIRContext
 	registry    *gir.TypeRegistry // may be nil when GIR unavailable
+	ctx         *codegen.CodegenCtx
 	buf         *strings.Builder
 	indent      int
 	widgetCount int
@@ -36,6 +38,20 @@ type viewContext struct {
 	updaters    []widgetUpdater
 	propScope   map[string]ir.Expr // for inline stdlib expansion
 	depTracker  *codegen.DepTracker
+}
+
+// isUserComponent reports whether comp is defined in the user's source package
+// (as opposed to stdlib or platform packages).
+func (vc *viewContext) isUserComponent(comp *ir.Component) bool {
+	if vc.ctx == nil {
+		return false
+	}
+	for _, c := range vc.ctx.Pkg.Components {
+		if c == comp {
+			return true
+		}
+	}
+	return false
 }
 
 func (vc *viewContext) line(format string, args ...any) {
@@ -65,9 +81,9 @@ func (vc *viewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 
 func (vc *viewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	// GIR widgets: name starts with "Gtk"
-	if strings.HasPrefix(n.Name, "Gtk") {
+	if after, ok := strings.CutPrefix(n.Name, "Gtk"); ok {
 		if vc.registry != nil {
-			name := strings.TrimPrefix(n.Name, "Gtk")
+			name := after
 			if info, ok := vc.registry.Classes[name]; ok {
 				vc.renderGtkWidget(n, info, resultVar)
 				return
@@ -78,15 +94,22 @@ func (vc *viewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
-	// Stdlib component with a body (e.g. button, label from gtk4.sngl)
+	// User-defined component: call generated render method
+	if n.Component != nil && vc.isUserComponent(n.Component) {
+		vc.renderUserComponent(n, resultVar)
+		return
+	}
+
+	// Platform-overridden stdlib component (resolved inside a platform block)
+	// has a non-empty body from the platform's .sngl package.
 	if n.Component != nil && len(n.Component.Body) > 0 {
 		vc.renderStdlibInline(n, resultVar)
 		return
 	}
 
-	// User-defined component: call generated render method
+	// Abstract stdlib component: use built-in GTK4 mapping.
 	if n.Component != nil {
-		vc.renderUserComponent(n, resultVar)
+		vc.renderStdlibComponent(n, resultVar)
 		return
 	}
 
@@ -166,13 +189,17 @@ func (vc *viewContext) buildCtorArgs(n *ir.NodeInst, info *gir.ClassInfo) []stri
 }
 
 // connectSignal emits a sngl_connect call for one signal.
-func (vc *viewContext) connectSignal(fieldName, signal string, h *ir.EventHandler, n *ir.NodeInst) {
+// synthLines are emitted inside the callback closure before the handler body;
+// use them to synthesize event variables (e.g. the input text from a GtkEntry).
+func (vc *viewContext) connectSignal(fieldName, signal string, h *ir.EventHandler, n *ir.NodeInst, synthLines ...string) {
 	vc.line("{")
 	vc.indent++
 	vc.line("_idx := len(snglCallbacks)")
-	// Emit handler closure.
 	vc.line("snglCallbacks = append(snglCallbacks, func() {")
 	vc.indent++
+	for _, sl := range synthLines {
+		vc.line("%s", sl)
+	}
 	if h.Func != nil {
 		for _, stmt := range h.Func.Block {
 			for _, line := range vc.gc.EvalStmt(stmt) {
@@ -204,6 +231,200 @@ func (vc *viewContext) addChildToWidget(parentField, cType, childVar string) {
 	vc.line("}")
 }
 
+// --- Abstract stdlib component fallback ---
+
+// renderStdlibComponent handles abstract stdlib components (vbox, hbox, text,
+// label, input, etc.) that are used outside a platform block. It maps them to
+// their GTK4 equivalents directly without relying on the platform IR body.
+func (vc *viewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
+	if vc.registry == nil {
+		vc.line("// TODO: GIR unavailable — cannot render stdlib component %s", n.Name)
+		return
+	}
+	switch n.Name {
+	case "vbox":
+		vc.renderStdlibBox(n, resultVar, "vertical")
+	case "hbox":
+		vc.renderStdlibBox(n, resultVar, "horizontal")
+	case "scroll":
+		vc.renderStdlibScroll(n, resultVar)
+	case "text", "label":
+		vc.renderStdlibLabel(n, resultVar)
+	case "input", "entry":
+		vc.renderStdlibEntry(n, resultVar)
+	case "button":
+		vc.renderStdlibButton(n, resultVar)
+	case "window":
+		vc.renderStdlibWindow(n, resultVar)
+	default:
+		vc.line("// TODO: unhandled stdlib component %s", n.Name)
+	}
+}
+
+func (vc *viewContext) renderStdlibBox(n *ir.NodeInst, resultVar, orientation string) {
+	info, ok := vc.registry.Classes["Box"]
+	if !ok {
+		vc.line("// TODO: GtkBox not in GIR")
+		return
+	}
+	spacing := 6
+	prefix := girFieldPrefix(info.CType)
+	fieldName := fmt.Sprintf("%s%d", prefix, vc.widgetCount)
+	vc.widgetCount++
+	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: "*C.GtkBox"})
+	vc.line("m.%s = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_%s, %d)))", fieldName, strings.ToUpper(orientation), spacing)
+	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
+	for i, child := range n.Children {
+		childVar := fmt.Sprintf("%sChild%d", resultVar, i)
+		vc.line("var %s *C.GtkWidget", childVar)
+		vc.renderStmt(child, childVar)
+		vc.line("if %s != nil { C.gtk_box_append(m.%s, %s) }", childVar, fieldName, childVar)
+	}
+}
+
+func (vc *viewContext) renderStdlibScroll(n *ir.NodeInst, resultVar string) {
+	info, ok := vc.registry.Classes["ScrolledWindow"]
+	if !ok {
+		vc.line("// TODO: GtkScrolledWindow not in GIR")
+		return
+	}
+	prefix := girFieldPrefix(info.CType)
+	fieldName := fmt.Sprintf("%s%d", prefix, vc.widgetCount)
+	vc.widgetCount++
+	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: "*C.GtkScrolledWindow"})
+	vc.line("m.%s = C.gtk_scrolled_window_new()", fieldName)
+	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
+	for i, child := range n.Children {
+		childVar := fmt.Sprintf("%sChild%d", resultVar, i)
+		vc.line("var %s *C.GtkWidget", childVar)
+		vc.renderStmt(child, childVar)
+		vc.line("if %s != nil { C.gtk_scrolled_window_set_child(m.%s, %s) }", childVar, fieldName, childVar)
+	}
+}
+
+func (vc *viewContext) renderStdlibLabel(n *ir.NodeInst, resultVar string) {
+	info, ok := vc.registry.Classes["Label"]
+	if !ok {
+		vc.line("// TODO: GtkLabel not in GIR")
+		return
+	}
+	prefix := girFieldPrefix(info.CType)
+	fieldName := fmt.Sprintf("%s%d", prefix, vc.widgetCount)
+	vc.widgetCount++
+	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: fmt.Sprintf("*C.%s", info.CType)})
+
+	// Find label/value prop.
+	valExpr := codegen.NodeProp(n, "value")
+	if valExpr == nil {
+		valExpr = codegen.NodeProp(n, "label")
+	}
+	var initVal string
+	if valExpr != nil {
+		initVal = vc.irExprToC(valExpr, &ir.Type{Kind: ir.TypeString})
+	} else {
+		initVal = `C.CString("")`
+	}
+	if info.Constructor.Name != "" {
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.%s(%s)))", fieldName, info.CType, info.Constructor.Name, initVal)
+	} else {
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.gtk_label_new(%s)))", fieldName, info.CType, initVal)
+	}
+	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
+
+	// Reactive updater if value has deps.
+	if valExpr != nil {
+		deps := vc.exprDeps(valExpr)
+		if len(deps) > 0 {
+			updName := fmt.Sprintf("update%sValue", golang.ExportName(fieldName))
+			rhs := vc.irExprToC(valExpr, &ir.Type{Kind: ir.TypeString})
+			body := fmt.Sprintf("C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.%s)), %s)", fieldName, rhs)
+			vc.updaters = append(vc.updaters, widgetUpdater{name: updName, body: body, deps: deps})
+		}
+	}
+}
+
+func (vc *viewContext) renderStdlibEntry(n *ir.NodeInst, resultVar string) {
+	info, ok := vc.registry.Classes["Entry"]
+	if !ok {
+		vc.line("// TODO: GtkEntry not in GIR")
+		return
+	}
+	prefix := girFieldPrefix(info.CType)
+	fieldName := fmt.Sprintf("%s%d", prefix, vc.widgetCount)
+	vc.widgetCount++
+	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: fmt.Sprintf("*C.%s", info.CType)})
+	vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.gtk_entry_new()))", fieldName, info.CType)
+	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
+
+	// Placeholder prop.
+	if ph := codegen.NodeProp(n, "placeholder"); ph != nil {
+		phStr := vc.irExprToC(ph, &ir.Type{Kind: ir.TypeString})
+		vc.line("C.gtk_entry_set_placeholder_text(m.%s, %s)", fieldName, phStr)
+	}
+
+	// @input event handler: synthesize event variable from entry text.
+	for i := range n.Handlers {
+		h := &n.Handlers[i]
+		if h.Name == "input" || h.Name == "change" || h.Name == "changed" {
+			var synth []string
+			if h.Func != nil && len(h.Func.Params) > 0 {
+				param := h.Func.Params[0]
+				synth = append(synth,
+					fmt.Sprintf("%s := struct{ Value string }{Value: C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.%s))))}", param.Name, fieldName),
+				)
+			}
+			vc.connectSignal(fieldName, "changed", h, n, synth...)
+			break
+		}
+	}
+}
+
+func (vc *viewContext) renderStdlibButton(n *ir.NodeInst, resultVar string) {
+	info, ok := vc.registry.Classes["Button"]
+	if !ok {
+		vc.line("// TODO: GtkButton not in GIR")
+		return
+	}
+	prefix := girFieldPrefix(info.CType)
+	fieldName := fmt.Sprintf("%s%d", prefix, vc.widgetCount)
+	vc.widgetCount++
+	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: fmt.Sprintf("*C.%s", info.CType)})
+
+	textExpr := codegen.NodeProp(n, "text")
+	if textExpr == nil {
+		textExpr = codegen.NodeProp(n, "label")
+	}
+	var labelArg string
+	if textExpr != nil {
+		labelArg = vc.irExprToC(textExpr, &ir.Type{Kind: ir.TypeString})
+	} else {
+		labelArg = `C.CString("")`
+	}
+	if info.Constructor.Name != "" {
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.%s(%s)))", fieldName, info.CType, info.Constructor.Name, labelArg)
+	} else {
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.gtk_button_new_with_label(%s)))", fieldName, info.CType, labelArg)
+	}
+	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
+
+	for i := range n.Handlers {
+		h := &n.Handlers[i]
+		if h.Name == "click" || h.Name == "clicked" {
+			vc.connectSignal(fieldName, "clicked", h, n)
+			break
+		}
+	}
+}
+
+func (vc *viewContext) renderStdlibWindow(n *ir.NodeInst, resultVar string) {
+	info, ok := vc.registry.Classes["ApplicationWindow"]
+	if !ok {
+		vc.line("// TODO: GtkApplicationWindow not in GIR")
+		return
+	}
+	vc.renderGtkWidget(n, info, resultVar)
+}
+
 // --- Stdlib inline expansion ---
 
 // renderStdlibInline inline-expands a gtk4.sngl stdlib component (e.g. button)
@@ -212,9 +433,7 @@ func (vc *viewContext) renderStdlibInline(n *ir.NodeInst, resultVar string) {
 	// Save and merge propScope.
 	savedScope := vc.propScope
 	newScope := make(map[string]ir.Expr)
-	for k, v := range savedScope {
-		newScope[k] = v
-	}
+	maps.Copy(newScope, savedScope)
 	for _, arg := range n.Props {
 		newScope[arg.Name] = arg.Value
 	}

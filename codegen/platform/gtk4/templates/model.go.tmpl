@@ -9,8 +9,8 @@ extern void snglGoDispatch(int idx);
 static void sngl_cb(gpointer data) {
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
-static void sngl_connect(gpointer widget, const char* signal, int idx) {
-    g_signal_connect(widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+static void sngl_connect(void* widget, const char* signal, int idx) {
+    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -18,17 +18,13 @@ static gboolean sngl_idle_tramp(gpointer data) {
     snglIdleCallback(data);
     return G_SOURCE_REMOVE;
 }
-static void sngl_gtk_idle_add(void* fn) {
+void sngl_gtk_idle_add(void* fn) {
     g_idle_add(sngl_idle_tramp, fn);
 }
 */
 import "C"
 
 import (
-{{- if .Main}}
-	"runtime"
-	"fmt"
-{{- end}}
 	"unsafe"
 {{- range $path, $_ := .Imports}}
 	"{{$path}}"

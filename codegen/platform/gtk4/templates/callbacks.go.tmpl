@@ -2,10 +2,19 @@ package {{.Package}}
 
 /*
 #include <gtk/gtk.h>
+
+extern void sngl_gtk_idle_add(void* fn);
+extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
 
-import "unsafe"
+import (
+	"unsafe"
+{{- if .Main}}
+	"runtime"
+	"fmt"
+{{- end}}
+)
 
 // snglCallbacks holds registered Go signal handlers indexed by int.
 var snglCallbacks []func()

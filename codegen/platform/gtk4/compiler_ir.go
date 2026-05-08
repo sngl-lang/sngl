@@ -198,6 +198,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	vc := &viewContext{
 		gc:         gc,
 		registry:   c.registry,
+		ctx:        c.ctx,
 		buf:        &buildBuf,
 		indent:     1,
 		depTracker: c.info.depTracker(),
@@ -411,12 +412,12 @@ func emitGTK4Main(b *strings.Builder, cfg Config) {
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\twin := m.BuildUI(app)\n")
-	b.WriteString("\tC.gtk_widget_show(win)\n")
+	b.WriteString("\tC.gtk_widget_set_visible(win, 1)\n")
 	b.WriteString("}\n\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("\truntime.LockOSThread()\n")
-	fmt.Fprintf(b, "\tapp := C.gtk_application_new(C.CString(%q), C.G_APPLICATION_DEFAULT_FLAGS)\n", cfg.Package)
-	b.WriteString("\tC.g_signal_connect_data((*C.GObject)(unsafe.Pointer(app)),\n")
+	b.WriteString("\tapp := C.gtk_application_new(nil, C.G_APPLICATION_DEFAULT_FLAGS)\n")
+	b.WriteString("\tC.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),\n")
 	b.WriteString("\t\tC.CString(\"activate\"),\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
 	b.WriteString("\tC.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
