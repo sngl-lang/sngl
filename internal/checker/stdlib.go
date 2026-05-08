@@ -111,6 +111,17 @@ func (c *checker) loadStdlib() *ir.Package {
 	for i, s := range structs {
 		c.resolveStdlibStructFields(s, structDefs[i])
 	}
+	// Annotate stdlib structs that have known Go-runtime native type names.
+	// These annotations ensure that IRTypeToGo emits the qualified Go type
+	// (e.g. "i18n.PluralKey") rather than the plain SNGL name ("PluralKey").
+	for _, sd := range structDefs {
+		if sd.Native == "" {
+			switch sd.Name {
+			case "PluralKey":
+				sd.Native = "i18n.PluralKey"
+			}
+		}
+	}
 	for _, s := range funcs {
 		c.registerStdlibFunc(s, stdlibPkg)
 	}
@@ -124,7 +135,57 @@ func (c *checker) loadStdlib() *ir.Package {
 		Pkg:  stdlibPkg,
 	})
 
+	// Register "i18n" namespace so that i18n.plural(...), i18n.one, etc.
+	// resolve without requiring an explicit import statement. The package
+	// exposes every i18n.* receiver method as a free function, plus the
+	// predeclared PluralKey constants (zero, one, two, few, many, other).
+	c.scope.Declare(&ir.Namespace{
+		Name: "i18n",
+		Pkg:  c.buildI18nNamespacePkg(structDefs),
+	})
+
 	return stdlibPkg
+}
+
+// buildI18nNamespacePkg constructs a synthetic ir.Package for the "i18n"
+// namespace, exposing i18n.* receiver methods as free functions and
+// predeclaring the CLDR PluralKey constants (zero/one/two/few/many/other).
+func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package {
+	pkg := &ir.Package{
+		Symbols:        NewSymbolTable(),
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
+	}
+
+	// Expose all i18n.* receiver methods as free functions in the namespace.
+	for _, fn := range c.symtab.Methods["i18n"] {
+		pkg.Funcs = append(pkg.Funcs, fn)
+		pkg.Symbols.Root.Declare(fn)
+	}
+
+	// Locate the PluralKey struct so we can type the predeclared vars.
+	var pluralKeyType *ir.Type
+	for _, sd := range structDefs {
+		if sd.Name == "PluralKey" {
+			pluralKeyType = sd.SymType()
+			break
+		}
+	}
+	if pluralKeyType == nil {
+		// PluralKey not found; skip constant registration.
+		return pkg
+	}
+
+	// Register predeclared CLDR plural-category vars: zero, one, two, few,
+	// many, other. These are opaque sentinel values; their actual runtime
+	// values are supplied by the Go i18n runtime (PluralZero, PluralOne, …).
+	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
+		v := &ir.Var{Name: name, Type: pluralKeyType, IsConst: true}
+		pkg.Vars = append(pkg.Vars, v)
+		pkg.Symbols.Root.Declare(v)
+	}
+
+	return pkg
 }
 
 // declareStdlibStruct registers a struct name (without fields) so other

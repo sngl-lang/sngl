@@ -54,6 +54,13 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 		if n.Field == "length" {
 			return "len(" + operand + ")"
 		}
+		// i18n plural-category constants: map SNGL names (zero/one/…/other) to
+		// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
+		if operand == "i18n" {
+			if goName := i18nPluralKeyGoName(n.Field); goName != "" {
+				return "i18n." + goName
+			}
+		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
 		operand := gc.EvalExpr(n.Operand)

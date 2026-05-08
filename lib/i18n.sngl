@@ -28,3 +28,24 @@ func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) string {}
 
 // Free-form value-based selection.
 func i18n.select(value string, cases map<string, string>) string {}
+
+// --- Plural/ordinal selectors ---
+
+// PluralKey identifies a CLDR plural category or an exact numeric match.
+// Use the predeclared constants (i18n.zero, i18n.one, …, i18n.other) for
+// CLDR keyword categories, or i18n.exactly(n) for an exact match.
+struct PluralKey {
+    n int
+    exact bool
+}
+
+// Construct a PluralKey that matches exactly n.
+func i18n.exactly(n int) PluralKey {}
+
+// Plural selects a message by CLDR cardinal plural rule for count.
+// forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
+func i18n.plural(count int, forms map<PluralKey, string>) string {}
+
+// Selectordinal selects a message by CLDR ordinal plural rule for count.
+// forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
+func i18n.selectordinal(count int, forms map<PluralKey, string>) string {}
