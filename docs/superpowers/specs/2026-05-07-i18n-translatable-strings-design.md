@@ -231,22 +231,22 @@ package i18n
 // maps ICU placeholder names to values. Returns the translated string for
 // the active locale, falling back to the manifest's `original` template,
 // then to the key itself. Lowering target for $"..." literals.
-func tr(key string, args map<string, dyn> = {}) -> string
+func tr(key string, args map<string, dyn> = {}) string
 
 // Format a literal ICU template. No manifest lookup.
-func format(template string, args map<string, dyn> = {}) -> string
+func format(template string, args map<string, dyn> = {}) string
 
 // --- Direct formatters ---
 
 // Style values for numbers: "decimal" (default), "percent", "currency",
 // "scientific".
-func numberInt(n int, style string = "decimal") -> string
-func numberFloat(n float, style string = "decimal") -> string
+func numberInt(n int, style string = "decimal") string
+func numberFloat(n float, style string = "decimal") string
 
 // Style values for date/time: "short", "medium" (default), "long", "full".
-func date(d date, style string = "medium") -> string
-func time(t time, style string = "medium") -> string
-func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") -> string
+func date(d date, style string = "medium") string
+func time(t time, style string = "medium") string
+func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") string
 
 // --- Direct selectors ---
 
@@ -268,7 +268,7 @@ const other PluralKey = PluralKey{n: 5, exact: false}
 
 // Construct an exact-match key (=N form). Example: i18n.exactly(0) is the
 // key matching exactly zero, distinct from i18n.zero (the CLDR "zero" rule).
-func exactly(n int) -> PluralKey
+func exactly(n int) PluralKey
 
 // Cardinal plural selection. Example:
 //     i18n.plural(n, {
@@ -276,14 +276,14 @@ func exactly(n int) -> PluralKey
 //         i18n.one:        "1 file",
 //         i18n.other:      "{n} files",
 //     })
-func plural(count int, forms map<PluralKey, string>) -> string
+func plural(count int, forms map<PluralKey, string>) string
 
 // Ordinal plural selection (1st, 2nd, 3rd, …). Same key shape as plural.
-func selectordinal(count int, forms map<PluralKey, string>) -> string
+func selectordinal(count int, forms map<PluralKey, string>) string
 
 // Free-form value-based selection. Keys are arbitrary strings.
 //     i18n.select(gender, {"male": "he", "female": "she", "other": "they"})
-func select(value string, cases map<string, string>) -> string
+func select(value string, cases map<string, string>) string
 ```
 
 Default Go implementation injected via `PkgSource` override:
