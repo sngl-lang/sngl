@@ -462,8 +462,14 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	typeName, methodName, isMethod := ast.SplitMethodName(f.Name)
 
 	// Set type params so T resolves during param/return type resolution.
+	// Include both method-level TypeParams and receiver-level RecvTypeParams so
+	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
 	prevTypeParams := c.typeParams
-	c.typeParams = f.TypeParams
+	combined := f.TypeParams
+	if len(f.RecvTypeParams) > 0 {
+		combined = append(append([]string(nil), f.RecvTypeParams...), f.TypeParams...)
+	}
+	c.typeParams = combined
 	// nil ReturnType means void (block body) or pending-inference (expression body);
 	// leave Return nil here so checkFuncBody can infer from a `=>` body without
 	// conflating it with an explicit `dyn` return annotation.
@@ -472,12 +478,13 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		ret = c.resolveType(f.ReturnType)
 	}
 	fn := &ir.Func{
-		AST:        f,
-		Name:       f.Name,
-		TypeParams: f.TypeParams,
-		Params:     c.buildParams(f.Params),
-		Return:     ret,
-		IsTest:     f.IsTest(),
+		AST:            f,
+		Name:           f.Name,
+		TypeParams:     f.TypeParams,
+		RecvTypeParams: f.RecvTypeParams,
+		Params:         c.buildParams(f.Params),
+		Return:         ret,
+		IsTest:         f.IsTest(),
 	}
 	c.typeParams = prevTypeParams
 	if isMethod {

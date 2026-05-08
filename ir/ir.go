@@ -118,6 +118,7 @@ type Func struct {
 	Name           string       // empty for lambdas and event handlers
 	Receiver       string       // "int" for int.abs (empty for plain funcs)
 	TypeParams     []string
+	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
@@ -151,10 +152,11 @@ func (f *Func) IsExported() bool {
 // FuncSig builds the FuncSig for this function.
 func (f *Func) FuncSig() *FuncSig {
 	return &FuncSig{
-		Params:     f.Params,
-		Return:     f.Return,
-		TypeParams: f.TypeParams,
-		Purity:     f.Purity,
+		Params:         f.Params,
+		Return:         f.Return,
+		TypeParams:     f.TypeParams,
+		RecvTypeParams: f.RecvTypeParams,
+		Purity:         f.Purity,
 	}
 }
 

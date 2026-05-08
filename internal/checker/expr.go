@@ -675,10 +675,47 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 	if ok {
 		sig := fn.FuncSig()
+		// recvParamStyle tracks whether the receiver is passed as the first
+		// explicit param (old-style "dyn receiver" convention) vs. a new-style
+		// RecvTypeParams method where the receiver is implicit (not a param).
+		recvParamStyle := len(sig.RecvTypeParams) == 0
+
+		// If the method was declared with receiver-level type params
+		// (e.g. func list<T>.filter(...)), bind them from the receiver's concrete
+		// type arguments before any other type-param work.
+		if !recvParamStyle && !isStatic {
+			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
+			if len(receiver.Elems) == len(sig.RecvTypeParams) {
+				for i, name := range sig.RecvTypeParams {
+					bindings[name] = receiver.Elems[i]
+				}
+			} else {
+				// Receiver kind matches but no concrete elems (e.g. bare "list" in
+				// stdlib lookup). Fall back to binding against Params[0] if present.
+				if len(sig.Params) > 0 {
+					bindTypeParams(sig.Params[0].Type, receiver, bindings)
+				}
+			}
+			if len(bindings) > 0 {
+				// Substitute the recv bindings and clear RecvTypeParams so the
+				// shifted-sig path below doesn't re-examine them.
+				substituted := sig.Substitute(bindings)
+				sig = &ir.FuncSig{
+					Params:     substituted.Params,
+					Return:     substituted.Return,
+					TypeParams: substituted.TypeParams,
+					// RecvTypeParams intentionally omitted: consumed by substitution.
+					Purity:    substituted.Purity,
+					Color:     substituted.Color,
+					PolyParam: substituted.PolyParam,
+				}
+			}
+		}
 		if len(sig.TypeParams) > 0 {
-			// For instance calls, bind receiver to param[0] before inferring
-			// from explicit args so that e.g. list<int>.length() binds T=int.
-			if !isStatic && len(sig.Params) > 0 {
+			// For instance calls using the old-style receiver-as-param convention,
+			// bind receiver to param[0] before inferring from explicit args so
+			// that e.g. list<int>.length() binds T=int.
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
 				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
@@ -692,8 +729,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// Static call: Type.method(args...) — all args explicit.
 			// Type ident is only a namespace marker; drop it.
 			args = c.checkCallArgs(call.Args, sig)
-		} else if len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
-			// Instance call: expr.method(args...) — receiver is implicit first arg.
+		} else if recvParamStyle && len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
+			// Old-style instance call: receiver is the implicit first arg.
 			// Validate remaining args against the shifted sig, then prepend the
 			// receiver so the IR matches the static call shape.
 			shifted := &ir.FuncSig{
@@ -702,6 +739,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				TypeParams: sig.TypeParams,
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
+			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+		} else if !recvParamStyle {
+			// New-style RecvTypeParams method: receiver is NOT a param.
+			// Check all call args against the full (substituted) sig.
+			// Prepend receiver so IR shape is consistent with static call convention.
+			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		} else {
 			rest := c.checkCallArgs(call.Args, sig)
@@ -864,12 +907,25 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// Struct field access.
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
+				// Build type-arg substitution bindings if the struct is generic and
+				// the operand carries concrete type arguments (e.g. Box<int>.value).
+				var typeArgBindings map[string]*ir.Type
+				if len(sd.TypeParams) > 0 && len(operand.Elems) == len(sd.TypeParams) {
+					typeArgBindings = make(map[string]*ir.Type, len(sd.TypeParams))
+					for i, name := range sd.TypeParams {
+						typeArgBindings[name] = operand.Elems[i]
+					}
+				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
 						if f.Unusable != "" {
 							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Unusable)
 						}
-						return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
+						fieldType := f.Type
+						if typeArgBindings != nil {
+							fieldType = fieldType.Substitute(typeArgBindings)
+						}
+						return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
