@@ -53,6 +53,11 @@ func Test.assert(b bool) {}
 // the condition fails (e.g. checking a value before dereferencing it).
 func Test.must(b bool) {}
 
+// Override the active locale for the duration of this test. Subsequent
+// i18n calls (i18n.tr, i18n.format, i18n.date, etc.) use this locale
+// until the test returns. Useful for asserting on locale-specific output.
+func Test.setLocale(loc string) {}
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left

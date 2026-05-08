@@ -1,20 +1,34 @@
 // Plural form with =N exact match, CLDR keyword, and # for the bound count.
-var count = 5
-var unread = $"You have {count, plural,
-    =0{no messages}
-    one{1 message}
-    other{# messages}
-}"
+component i18nPlural {
+    var count = 5
+    var unread = $"You have {count, plural,
+        =0{no messages}
+        one{1 message}
+        other{# messages}
+    }"
 
-// Plural with text around it.
-var n = 3
-var status = $"{n, plural, one{One file} other{# files}} selected"
+    // Plural with text around it.
+    var n = 3
+    var status = $"{n, plural, one{One file} other{# files}} selected"
 
-// Selectordinal — ordinal plural rules (1st, 2nd, 3rd, 4th).
-var place = 21
-var ranking = $"You finished {place, selectordinal,
-    one{#st}
-    two{#nd}
-    few{#rd}
-    other{#th}
-}"
+    // Selectordinal — ordinal plural rules (1st, 2nd, 3rd, 4th).
+    var place = 21
+    var ranking = $"You finished {place, selectordinal,
+        one{#st}
+        two{#nd}
+        few{#rd}
+        other{#th}
+    }"
+
+    text(value=unread)
+}
+
+func testPluralOther(t Test, c i18nPlural) {
+    t.setLocale("en")
+    // count=5: English plural rule gives "other"
+    t.assert(c.unread == "You have 5 messages")
+    // n=3: English plural rule gives "other"
+    t.assert(c.status == "3 files selected")
+    // place=21: English ordinal rule gives "one" (21st)
+    t.assert(c.ranking == "You finished 21st")
+}
