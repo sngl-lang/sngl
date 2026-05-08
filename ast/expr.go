@@ -250,6 +250,32 @@ type InterpolationExpr struct {
 	Style StringStyle
 }
 
+// I18nInterpExpr is a translatable string: $"..." or $"""...""".
+// Parts alternate between *LiteralExpr (string segments) and
+// *I18nPlaceholderExpr (one per {...}).
+type I18nInterpExpr struct {
+	Pos   Pos
+	Parts []Expr
+	Style StringStyle
+}
+
+// I18nPlaceholderExpr is the {<value>, <type>, <body>} form.
+// Type is "" when the comma-ident form is absent.
+// Cases is nil unless a MsgFormatBody is present.
+type I18nPlaceholderExpr struct {
+	Pos   Pos
+	Value Expr
+	Type  string
+	Cases []I18nCase
+}
+
+// I18nCase is one <selector>{<body>} pair within a plural/select/selectordinal body.
+type I18nCase struct {
+	Pos      Pos
+	Selector string // "one", "other", "=0", "male", …
+	Body     []Expr // alternation: *LiteralExpr | *I18nPlaceholderExpr
+}
+
 // ElementRefExpr references a visual element by its #id.
 type ElementRefExpr struct {
 	Pos  Pos
@@ -382,8 +408,10 @@ func (x *StructExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ListExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *MapLit) ExprPos() *Pos            { return &x.Pos }
 func (x *SpreadExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *InterpolationExpr) ExprPos() *Pos { return &x.Pos }
-func (x *ElementRefExpr) ExprPos() *Pos    { return &x.Pos }
+func (x *InterpolationExpr) ExprPos() *Pos      { return &x.Pos }
+func (x *I18nInterpExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *I18nPlaceholderExpr) ExprPos() *Pos    { return &x.Pos }
+func (x *ElementRefExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *ConstExpr) ExprPos() *Pos         { return &x.Pos }
