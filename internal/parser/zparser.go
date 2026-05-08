@@ -231,9 +231,6 @@ var errorSets = [...][]Symbol{
 {star, slash, question, plus, percent, neq, minus, lte, lt, lor, land, gte, gt, eq},
 {question, plus, neq, minus, lte, lt, lor, land, gte, gt, eq},
 {question, neq, lte, lt, lor, land, gte, gt, eq},
-{Selector, MsgCase, ident, eq},
-{Selector, ident, eq},
-{ident, eq},
 {question, neq, lor, land, eq},
 {neq, eq},
 {Type, FuncBodyTail, UnitDecl, EnumDecl, StructDecl, StmtBlock, lt, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, fat_arrow},
@@ -248,6 +245,9 @@ var errorSets = [...][]Symbol{
 {i18n_case_start, i18n_case_full},
 {Type, UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
 {UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, assign},
+{Selector, MsgCase, ident, assign},
+{Selector, ident, assign},
+{ident, assign},
 {UnitDecl, EnumDecl, StructDecl, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, at, assign},
 {at, assign},
 {StmtBlock, star_assign, slash_assign, plus_plus, plus_assign, pct_assign, minus_minus, minus_assign, lparen, lbracket, lbrace, elem_ref, dot, bangbang, assign},
@@ -1125,7 +1125,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state5:
-accept, errorSet = true, 49
+accept, errorSet = true, 46
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -1407,7 +1407,7 @@ goto state10
 }
 return p.stop(r, accept, errorSet)
 state10:
-accept, errorSet = true, 36
+accept, errorSet = true, 33
 switch Symbol(p.tok.Ch) {
 	case  land:
 r = append(r, p.shift())
@@ -1631,7 +1631,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 44
+accept, errorSet = true, 41
 switch Symbol(p.tok.Ch) {
 	case  gt, gte, lt, lte:
 r = p.add(r, p.CmpOp())
@@ -1656,7 +1656,7 @@ func (p *Parser) CmpOp() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(CmpOp), 0)
 // state0:
-accept, errorSet = false, 44
+accept, errorSet = false, 41
 switch Symbol(p.tok.Ch) {
 	case  gt, gte, lt, lte:
 r = append(r, p.shift())
@@ -1762,7 +1762,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state5:
-accept, errorSet = true, 49
+accept, errorSet = true, 46
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -1789,7 +1789,7 @@ goto state6
 }
 return p.stop(r, accept, errorSet)
 state8:
-accept, errorSet = true, 48
+accept, errorSet = true, 45
 switch Symbol(p.tok.Ch) {
 	case  assign, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 r = p.add(r, p.CompParamTail())
@@ -1875,7 +1875,7 @@ func (p *Parser) CompParamTail() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(CompParamTail), 0)
 // state0:
-accept, errorSet = false, 49
+accept, errorSet = false, 46
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -2119,7 +2119,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 44
+accept, errorSet = true, 41
 switch Symbol(p.tok.Ch) {
 	case  gt, gte, lt, lte:
 r = p.add(r, p.CmpOp())
@@ -2154,7 +2154,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 37
+accept, errorSet = true, 34
 switch Symbol(p.tok.Ch) {
 	case  eq, neq:
 r = p.add(r, p.EqOp())
@@ -2647,7 +2647,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = false, 49
+accept, errorSet = false, 46
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -2878,7 +2878,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 37
+accept, errorSet = true, 34
 switch Symbol(p.tok.Ch) {
 	case  eq, neq:
 r = p.add(r, p.EqOp())
@@ -2904,7 +2904,7 @@ func (p *Parser) EqOp() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(EqOp), 0)
 // state0:
-accept, errorSet = false, 37
+accept, errorSet = false, 34
 switch Symbol(p.tok.Ch) {
 	case  eq, neq:
 r = append(r, p.shift())
@@ -3241,7 +3241,7 @@ func (p *Parser) FuncBodyTail() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(FuncBodyTail), 0)
 // state0:
-accept, errorSet = false, 42
+accept, errorSet = false, 39
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow:
 r = append(r, p.shift())
@@ -3327,7 +3327,7 @@ goto state2
 }
 return p.stop(r, accept, errorSet)
 state2:
-accept, errorSet = false, 38
+accept, errorSet = false, 35
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen:
 r = p.add(r, p.FuncTail())
@@ -3341,7 +3341,7 @@ state3:
 accept, errorSet = true, 0
 return p.stop(r, accept, errorSet)
 state4:
-accept, errorSet = false, 39
+accept, errorSet = false, 36
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen:
 r = p.add(r, p.FuncTail())
@@ -3392,7 +3392,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = false, 40
+accept, errorSet = false, 37
 switch Symbol(p.tok.Ch) {
 	case  lparen:
 r = append(r, p.shift())
@@ -3414,7 +3414,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state3:
-accept, errorSet = false, 41
+accept, errorSet = false, 38
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 r = p.add(r, p.FuncBodyTail())
@@ -3519,7 +3519,7 @@ func (p *Parser) FuncTail() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(FuncTail), 0)
 // state0:
-accept, errorSet = false, 40
+accept, errorSet = false, 37
 switch Symbol(p.tok.Ch) {
 	case  lparen:
 r = append(r, p.shift())
@@ -3541,7 +3541,7 @@ goto state4
 }
 return p.stop(r, accept, errorSet)
 state2:
-accept, errorSet = false, 41
+accept, errorSet = false, 38
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 r = p.add(r, p.FuncBodyTail())
@@ -3642,7 +3642,7 @@ return p.stop(r, accept, errorSet)
 //		on  comma
 //			shift and goto state 4
 //	State 4
-//		on  eq, ident
+//		on  assign, ident
 //			call MsgFormatBody and goto state 5
 //	State 5
 //		Accept
@@ -3683,9 +3683,9 @@ goto state4
 }
 return p.stop(r, accept, errorSet)
 state4:
-accept, errorSet = false, 33
+accept, errorSet = false, 47
 switch Symbol(p.tok.Ch) {
-	case  eq, ident:
+	case  assign, ident:
 r = p.add(r, p.MsgFormatBody())
 goto state5
 }
@@ -4005,7 +4005,7 @@ goto state3
 }
 return p.stop(r, accept, errorSet)
 state3:
-accept, errorSet = true, 43
+accept, errorSet = true, 40
 switch Symbol(p.tok.Ch) {
 	case  fat_arrow:
 r = append(r, p.shift())
@@ -4235,7 +4235,7 @@ func (p *Parser) MsgBody() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(MsgBody), 0)
 // state0:
-accept, errorSet = false, 47
+accept, errorSet = false, 44
 switch Symbol(p.tok.Ch) {
 	case  i18n_case_full:
 r = append(r, p.shift())
@@ -4257,7 +4257,7 @@ goto state3
 }
 return p.stop(r, accept, errorSet)
 state3:
-accept, errorSet = false, 46
+accept, errorSet = false, 43
 switch Symbol(p.tok.Ch) {
 	case  i18n_case_end:
 r = append(r, p.shift())
@@ -4276,7 +4276,7 @@ return p.stop(r, accept, errorSet)
 //	MsgCase       = Selector MsgBody .
 //
 //	State 0
-//		on  eq, ident
+//		on  assign, ident
 //			call Selector and goto state 1
 //	State 1
 //		on  i18n_case_full, i18n_case_start
@@ -4288,15 +4288,15 @@ func (p *Parser) MsgCase() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(MsgCase), 0)
 // state0:
-accept, errorSet = false, 35
+accept, errorSet = false, 49
 switch Symbol(p.tok.Ch) {
-	case  eq, ident:
+	case  assign, ident:
 r = p.add(r, p.Selector())
 goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = false, 47
+accept, errorSet = false, 44
 switch Symbol(p.tok.Ch) {
 	case  i18n_case_full, i18n_case_start:
 r = p.add(r, p.MsgBody())
@@ -4317,28 +4317,28 @@ return p.stop(r, accept, errorSet)
 //	MsgFormatBody = MsgCase { MsgCase } .
 //
 //	State 0
-//		on  eq, ident
+//		on  assign, ident
 //			call MsgCase and goto state 1
 //	State 1
 //		Accept
-//		on  eq, ident
+//		on  assign, ident
 //			call MsgCase and goto state 1
 // MsgFormatBody is used internally from Parse.
 func (p *Parser) MsgFormatBody() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(MsgFormatBody), 0)
 // state0:
-accept, errorSet = false, 34
+accept, errorSet = false, 48
 switch Symbol(p.tok.Ch) {
-	case  eq, ident:
+	case  assign, ident:
 r = p.add(r, p.MsgCase())
 goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 34
+accept, errorSet = true, 48
 switch Symbol(p.tok.Ch) {
-	case  eq, ident:
+	case  assign, ident:
 r = p.add(r, p.MsgCase())
 goto state1
 }
@@ -4638,7 +4638,7 @@ goto state1
 }
 return p.stop(r, accept, errorSet)
 state1:
-accept, errorSet = true, 49
+accept, errorSet = true, 46
 switch Symbol(p.tok.Ch) {
 	case  assign:
 r = append(r, p.shift())
@@ -4968,10 +4968,10 @@ return p.stop(r, accept, errorSet)
 // Selector grammar:
 //
 //	
-//	Selector      = ident | eq int_lit .
+//	Selector      = ident | assign int_lit .
 //
 //	State 0
-//		on  eq
+//		on  assign
 //			shift and goto state 1
 //		on  ident
 //			shift and goto state 2
@@ -4985,9 +4985,9 @@ func (p *Parser) Selector() (r []int32) {
 		accept, errorSet := false, 0
 		r = append(p.get(), -int32(Selector), 0)
 // state0:
-accept, errorSet = false, 35
+accept, errorSet = false, 49
 switch Symbol(p.tok.Ch) {
-	case  eq:
+	case  assign:
 r = append(r, p.shift())
 goto state1
 	case  ident:
@@ -5988,7 +5988,7 @@ goto state5
 }
 return p.stop(r, accept, errorSet)
 state5:
-accept, errorSet = false, 45
+accept, errorSet = false, 42
 switch Symbol(p.tok.Ch) {
 	case  gt:
 r = append(r, p.shift())

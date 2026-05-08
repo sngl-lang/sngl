@@ -182,7 +182,7 @@ I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
 # Plural / select / selectordinal cases (space-separated per ICU spec).
 MsgFormatBody = MsgCase { MsgCase } .
 MsgCase       = Selector MsgBody .
-Selector      = ident | eq int_lit .
+Selector      = ident | assign int_lit .
 
 # Case body: literal text only, or text + nested placeholders.
 MsgBody = i18n_case_full

@@ -122,10 +122,40 @@ func TestParseI18nTriple(t *testing.T) {
 }
 
 func TestParseI18nEqSelector(t *testing.T) {
-	// NOTE: The grammar's Selector production uses "eq" (0x24 = ==) for the =N form,
-	// but ICU uses a single "=" (0x15 = assign). This is a known D1 grammar issue;
-	// the =N selector form is not yet supported. Skip until D1 is corrected.
-	t.Skip("=N selector not yet supported (D1 grammar uses eq==, needs assign=)")
+	src := `var x = $"{count, plural, =0{no messages} =1{one message} other{many messages}}"`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	vd := doc.Stmts[0].(*ast.VarDecl)
+	ie, ok := vd.Specs[0].Default.(*ast.I18nInterpExpr)
+	if !ok {
+		t.Fatalf("got %T, want *I18nInterpExpr", vd.Specs[0].Default)
+	}
+	var ph *ast.I18nPlaceholderExpr
+	for _, p := range ie.Parts {
+		if e, ok := p.(*ast.I18nPlaceholderExpr); ok {
+			ph = e
+		}
+	}
+	if ph == nil {
+		t.Fatal("expected a placeholder with cases")
+	}
+	if ph.Type != "plural" {
+		t.Errorf("Type = %q, want plural", ph.Type)
+	}
+	if len(ph.Cases) != 3 {
+		t.Fatalf("Cases len = %d, want 3", len(ph.Cases))
+	}
+	if ph.Cases[0].Selector != "=0" {
+		t.Errorf("Cases[0].Selector = %q, want =0", ph.Cases[0].Selector)
+	}
+	if ph.Cases[1].Selector != "=1" {
+		t.Errorf("Cases[1].Selector = %q, want =1", ph.Cases[1].Selector)
+	}
+	if ph.Cases[2].Selector != "other" {
+		t.Errorf("Cases[2].Selector = %q, want other", ph.Cases[2].Selector)
+	}
 }
 
 func TestParseI18nTripleInterpolation(t *testing.T) {
