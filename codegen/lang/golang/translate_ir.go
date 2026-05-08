@@ -72,6 +72,18 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			parts[i] = translateIRExpr(el, scope)
 		}
 		return "[]any{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, translateIRExpr(e.Key, scope)+": "+translateIRExpr(e.Value, scope))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.Spread:
 		return translateIRExpr(n.Operand, scope) + "..."
 	case *ir.Lambda:

@@ -158,6 +158,11 @@ func anyNativeHasErr(req *codegen.HTTPRequest) bool {
 			for _, el := range x.Elems {
 				visitExpr(el)
 			}
+		case *ir.MapLitIR:
+			for _, e := range x.Entries {
+				visitExpr(e.Key)
+				visitExpr(e.Value)
+			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
 		}
@@ -306,6 +311,11 @@ func collectFromExpr(e ir.Expr, seen map[string]bool) {
 	case *ir.ListLit:
 		for _, el := range x.Elems {
 			collectFromExpr(el, seen)
+		}
+	case *ir.MapLitIR:
+		for _, e := range x.Entries {
+			collectFromExpr(e.Key, seen)
+			collectFromExpr(e.Value, seen)
 		}
 	case *ir.Spread:
 		collectFromExpr(x.Operand, seen)

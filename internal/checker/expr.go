@@ -659,13 +659,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// Type-attached method call.
 	typeName := receiver.String()
 	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
-	// Fallback for generic types: list<int> → "list", option<int> → "option".
+	// Fallback for generic types: list<int> → "list", option<int> → "option",
+	// map<K,V> → "map".
 	if !ok {
 		switch receiver.Kind {
 		case ir.TypeList:
 			fn, ok = c.symtab.LookupMethod("list", sel.Field)
 		case ir.TypeOption:
 			fn, ok = c.symtab.LookupMethod("option", sel.Field)
+		case ir.TypeMap:
+			fn, ok = c.symtab.LookupMethod("map", sel.Field)
 		}
 	}
 	if ok {
@@ -749,7 +752,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption:
+		ir.TypeList, ir.TypeOption, ir.TypeMap:
 		return true
 	}
 	return false

@@ -75,6 +75,18 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 			elemType = IRTypeToGo(n.Type.Elems[0])
 		}
 		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, gc.EvalExpr(e.Key)+": "+gc.EvalExpr(e.Value))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.Spread:
 		return gc.EvalExpr(n.Operand) + "..."
 	case *ir.Lambda:
@@ -639,6 +651,11 @@ func IRTypeToGo(t *ir.Type) string {
 			return "[]" + IRTypeToGo(t.Elems[0])
 		}
 		return "[]any"
+	case ir.TypeMap:
+		if len(t.Elems) == 2 {
+			return "map[" + IRTypeToGo(t.Elems[0]) + "]" + IRTypeToGo(t.Elems[1])
+		}
+		return "map[any]any"
 	case ir.TypeRef:
 		if len(t.Elems) > 0 {
 			return "*" + IRTypeToGo(t.Elems[0])
@@ -727,6 +744,18 @@ func IRLiteralToGo(e ir.Expr) string {
 			elemType = IRTypeToGo(n.Type.Elems[0])
 		}
 		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, IRLiteralToGo(e.Key)+": "+IRLiteralToGo(e.Value))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.StructLit:
 		name := "struct{}"
 		if n.Def != nil {

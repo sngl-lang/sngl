@@ -227,6 +227,17 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "func() []any { var out []any; for _, item := range " + a(0) + " { if " + a(1) + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
 	case "list.map", "*.map":
 		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
+	// map
+	case "map.length":
+		return "len(" + a(0) + ")"
+	case "map.keys":
+		return "func() []any { ks := make([]any, 0, len(" + a(0) + ")); for k := range " + a(0) + " { ks = append(ks, k) }; return ks }()"
+	case "map.values":
+		return "func() []any { vs := make([]any, 0, len(" + a(0) + ")); for _, v := range " + a(0) + " { vs = append(vs, v) }; return vs }()"
+	case "map.contains":
+		return "func() bool { _, ok := " + a(0) + "[" + a(1) + "]; return ok }()"
+	case "map.get":
+		return "func() any { if v, ok := " + a(0) + "[" + a(1) + "]; ok { return v }; return " + a(2) + " }()"
 	// regex
 	case "regex.matches":
 		return a(0) + ".MatchString(" + a(1) + ")"
