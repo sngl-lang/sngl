@@ -171,6 +171,23 @@ i18n_case_end     = `\x59` .
 InterpStr    = str_start Expr { str_resume Expr } str_end .
 TripleInterp = triple_start Expr { str_resume Expr } triple_end .
 
+# ── Translatable strings ─────────────────────────────────────────────────────
+
+I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
+I18nTriple    = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
+
+# The 1-3 fields inside a {...} placeholder.
+I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ] .
+
+# Plural / select / selectordinal cases (space-separated per ICU spec).
+MsgFormatBody = MsgCase { MsgCase } .
+MsgCase       = Selector MsgBody .
+Selector      = ident | eq int_lit .
+
+# Case body: literal text only, or text + nested placeholders.
+MsgBody = i18n_case_full
+        | i18n_case_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_case_end .
+
 # ── Document ─────────────────────────────────────────────────────────────────
 
 Document = { [ slashdash ] Stmt [ semi ] } .
@@ -332,6 +349,10 @@ StatementPrimary =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen
@@ -437,6 +458,10 @@ PrimaryExpr =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen
@@ -523,6 +548,10 @@ NonIdentPrimary =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen
