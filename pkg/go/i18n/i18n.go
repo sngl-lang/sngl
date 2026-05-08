@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/goodsign/monday"
 	"golang.org/x/text/currency"
 	"golang.org/x/text/feature/plural"
 	"golang.org/x/text/language"
@@ -559,18 +560,18 @@ func renderNumber(out *strings.Builder, tag language.Tag, cur currency.Unit, val
 }
 
 // renderDate writes a locale-aware date to out.
-func renderDate(out *strings.Builder, _ language.Tag, val any, style string) {
+func renderDate(out *strings.Builder, tag language.Tag, val any, style string) {
 	if t, ok := val.(time.Time); ok {
-		out.WriteString(t.Format(layoutFor(style, true, false)))
+		out.WriteString(monday.Format(t, dateLayout(style), localeFor(tag)))
 		return
 	}
 	fmt.Fprintf(out, "%v", val)
 }
 
 // renderTime writes a locale-aware time-of-day to out.
-func renderTime(out *strings.Builder, _ language.Tag, val any, style string) {
+func renderTime(out *strings.Builder, tag language.Tag, val any, style string) {
 	if t, ok := val.(time.Time); ok {
-		out.WriteString(t.Format(layoutFor(style, false, true)))
+		out.WriteString(monday.Format(t, timeLayout(style), localeFor(tag)))
 		return
 	}
 	fmt.Fprintf(out, "%v", val)
@@ -578,9 +579,10 @@ func renderTime(out *strings.Builder, _ language.Tag, val any, style string) {
 
 // renderDateTime writes a locale-aware date+time to out using a single style
 // for both parts. Used by the {x, dateTime, style} ICU placeholder form.
-func renderDateTime(out *strings.Builder, _ language.Tag, val any, style string) {
+func renderDateTime(out *strings.Builder, tag language.Tag, val any, style string) {
 	if t, ok := val.(time.Time); ok {
-		out.WriteString(t.Format(layoutFor(style, true, false) + " " + layoutFor(style, false, true)))
+		layout := dateLayout(style) + " " + timeLayout(style)
+		out.WriteString(monday.Format(t, layout, localeFor(tag)))
 		return
 	}
 	fmt.Fprintf(out, "%v", val)
@@ -588,46 +590,196 @@ func renderDateTime(out *strings.Builder, _ language.Tag, val any, style string)
 
 // renderDateTime2 writes a locale-aware date+time using separate styles for
 // date and time. Used by Translator.Datetime which accepts two style params.
-func renderDateTime2(out *strings.Builder, _ language.Tag, d time.Time, dateStyle, timeStyle string) {
-	out.WriteString(d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true)))
+func renderDateTime2(out *strings.Builder, tag language.Tag, d time.Time, dateStyle, timeStyle string) {
+	layout := dateLayout(dateStyle) + " " + timeLayout(timeStyle)
+	out.WriteString(monday.Format(d, layout, localeFor(tag)))
 }
 
-// layoutFor picks a Go time layout for the given ICU-style identifier.
-// Locale-aware variants (full month names in non-en) require x/text date
-// formatting which isn't implemented here yet; this returns en-style
-// layouts as a baseline that callers can override later.
-func layoutFor(style string, dateOnly, timeOnly bool) string {
+// dateLayout maps an ICU style name to a Go time-layout string. Locale
+// substitutions for month/day names are handled by monday.Format.
+func dateLayout(style string) string {
 	switch style {
 	case "short":
-		if dateOnly {
-			return "1/2/06"
-		}
-		if timeOnly {
-			return "3:04 PM"
-		}
+		return "1/2/06"
 	case "long":
-		if dateOnly {
-			return "January 2, 2006"
-		}
-		if timeOnly {
-			return "3:04:05 PM MST"
-		}
+		return "January 2, 2006"
 	case "full":
-		if dateOnly {
-			return "Monday, January 2, 2006"
-		}
-		if timeOnly {
-			return "3:04:05 PM MST"
-		}
+		return "Monday, January 2, 2006"
 	}
-	// medium (default)
-	if dateOnly {
-		return "Jan 2, 2006"
+	return "Jan 2, 2006" // medium
+}
+
+// timeLayout maps an ICU style name to a Go time-layout string.
+func timeLayout(style string) string {
+	switch style {
+	case "short":
+		return "3:04 PM"
+	case "long", "full":
+		return "3:04:05 PM MST"
 	}
-	if timeOnly {
-		return "3:04:05 PM"
+	return "3:04:05 PM" // medium
+}
+
+// localeFor maps a language.Tag to a monday.Locale. Unknown tags fall
+// back to en_US.
+func localeFor(tag language.Tag) monday.Locale {
+	base, _ := tag.Base()
+	region, _ := tag.Region()
+	composite := base.String() + "_" + region.String()
+	switch composite {
+	case "en_GB":
+		return monday.LocaleEnGB
+	case "fr_CA":
+		return monday.LocaleFrCA
+	case "fr_FR":
+		return monday.LocaleFrFR
+	case "de_DE":
+		return monday.LocaleDeDE
+	case "ja_JP":
+		return monday.LocaleJaJP
+	case "es_ES":
+		return monday.LocaleEsES
+	case "it_IT":
+		return monday.LocaleItIT
+	case "pt_PT":
+		return monday.LocalePtPT
+	case "pt_BR":
+		return monday.LocalePtBR
+	case "zh_CN":
+		return monday.LocaleZhCN
+	case "zh_TW":
+		return monday.LocaleZhTW
+	case "zh_HK":
+		return monday.LocaleZhHK
+	case "ko_KR":
+		return monday.LocaleKoKR
+	case "ru_RU":
+		return monday.LocaleRuRU
+	case "nl_NL":
+		return monday.LocaleNlNL
+	case "nl_BE":
+		return monday.LocaleNlBE
+	case "pl_PL":
+		return monday.LocalePlPL
+	case "sv_SE":
+		return monday.LocaleSvSE
+	case "da_DK":
+		return monday.LocaleDaDK
+	case "fi_FI":
+		return monday.LocaleFiFI
+	case "tr_TR":
+		return monday.LocaleTrTR
+	case "el_GR":
+		return monday.LocaleElGR
+	case "hu_HU":
+		return monday.LocaleHuHU
+	case "ro_RO":
+		return monday.LocaleRoRO
+	case "uk_UA":
+		return monday.LocaleUkUA
+	case "bg_BG":
+		return monday.LocaleBgBG
+	case "id_ID":
+		return monday.LocaleIdID
+	case "cs_CZ":
+		return monday.LocaleCsCZ
+	case "sk_SK":
+		return monday.LocaleSkSK
+	case "hr_HR":
+		return monday.LocaleHrHR
+	case "sl_SI":
+		return monday.LocaleSlSI
+	case "lt_LT":
+		return monday.LocaleLtLT
+	case "lv_LV":
+		return monday.LocaleLvLV
+	case "et_EE":
+		return monday.LocaleEtEE
+	case "th_TH":
+		return monday.LocaleThTH
+	case "nb_NO":
+		return monday.LocaleNbNO
+	case "nn_NO":
+		return monday.LocaleNnNO
+	case "ca_ES":
+		return monday.LocaleCaES
+	case "kk_KZ":
+		return monday.LocaleKkKZ
+	case "uz_UZ":
+		return monday.LocaleUzUZ
 	}
-	return time.RFC3339
+	// Fall back by base language alone.
+	switch base.String() {
+	case "fr":
+		return monday.LocaleFrFR
+	case "de":
+		return monday.LocaleDeDE
+	case "ja":
+		return monday.LocaleJaJP
+	case "es":
+		return monday.LocaleEsES
+	case "it":
+		return monday.LocaleItIT
+	case "pt":
+		return monday.LocalePtPT
+	case "zh":
+		return monday.LocaleZhCN
+	case "ko":
+		return monday.LocaleKoKR
+	case "ru":
+		return monday.LocaleRuRU
+	case "nl":
+		return monday.LocaleNlNL
+	case "pl":
+		return monday.LocalePlPL
+	case "sv":
+		return monday.LocaleSvSE
+	case "da":
+		return monday.LocaleDaDK
+	case "fi":
+		return monday.LocaleFiFI
+	case "tr":
+		return monday.LocaleTrTR
+	case "el":
+		return monday.LocaleElGR
+	case "hu":
+		return monday.LocaleHuHU
+	case "ro":
+		return monday.LocaleRoRO
+	case "uk":
+		return monday.LocaleUkUA
+	case "bg":
+		return monday.LocaleBgBG
+	case "id":
+		return monday.LocaleIdID
+	case "cs":
+		return monday.LocaleCsCZ
+	case "sk":
+		return monday.LocaleSkSK
+	case "hr":
+		return monday.LocaleHrHR
+	case "sl":
+		return monday.LocaleSlSI
+	case "lt":
+		return monday.LocaleLtLT
+	case "lv":
+		return monday.LocaleLvLV
+	case "et":
+		return monday.LocaleEtEE
+	case "th":
+		return monday.LocaleThTH
+	case "nb":
+		return monday.LocaleNbNO
+	case "nn":
+		return monday.LocaleNnNO
+	case "ca":
+		return monday.LocaleCaES
+	case "kk":
+		return monday.LocaleKkKZ
+	case "uz":
+		return monday.LocaleUzUZ
+	}
+	return monday.LocaleEnUS
 }
 
 // --- Direct selectors ---

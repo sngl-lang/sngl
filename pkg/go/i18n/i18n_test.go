@@ -330,3 +330,42 @@ func TestNumberCurrencyInTemplate(t *testing.T) {
 		t.Errorf("expected EUR-formatted output in template, got %q", got)
 	}
 }
+
+func TestDateFrenchMedium(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "fr-FR")
+	d := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+	got := tr.Date(d, "medium")
+	// monday emits French month abbreviations; "May" → "mai".
+	if !strings.Contains(got, "mai") {
+		t.Errorf("got %q, expected French month name 'mai'", got)
+	}
+}
+
+func TestDateGermanFull(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "de-DE")
+	d := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+	got := tr.Date(d, "full")
+	// "Friday" → "Freitag", "May" → "Mai".
+	if !strings.Contains(got, "Freitag") || !strings.Contains(got, "Mai") {
+		t.Errorf("got %q, expected German names Freitag/Mai", got)
+	}
+}
+
+func TestDateJapaneseLong(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "ja-JP")
+	d := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+	got := tr.Date(d, "long")
+	// monday's Japanese locale renders month name in Japanese.
+	if !strings.Contains(got, "5月") {
+		t.Errorf("got %q, expected Japanese month '5月'", got)
+	}
+}
+
+func TestDateEnglishUnchanged(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en-US")
+	d := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+	got := tr.Date(d, "medium")
+	if got != "May 8, 2026" {
+		t.Errorf("got %q, want May 8, 2026", got)
+	}
+}
