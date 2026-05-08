@@ -207,3 +207,17 @@ func TestMapIntKeysWithExpectedType(t *testing.T) {
 		}
 	}
 }
+
+func TestMapLengthMethod(t *testing.T) {
+	src := `var m map<string, int> = {a = 1}; var n = m.length()`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
+}

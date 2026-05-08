@@ -252,6 +252,25 @@ func File.pick() => file.Pick()
 // empty string if cancelled. Same platform caveats as `File.pick`.
 func File.pickFolder() => file.PickFolder()
 
+// --- map ---
+
+// Number of entries currently in m.
+func map.length(m dyn) => stdlib.MapLength(m)
+
+// List of keys in m in unspecified order.
+func map.keys(m dyn) => stdlib.MapKeys(m)
+
+// List of values in m in unspecified order.
+func map.values(m dyn) => stdlib.MapValues(m)
+
+// True iff key exists in m.
+func map.contains(m dyn, key dyn) => stdlib.MapContains(m, key)
+
+// Lookup with default — returns the value if key is present in m,
+// otherwise returns the default value. Both are coerced to match the
+// declared value type.
+func map.get(m dyn, key dyn, default dyn) => stdlib.MapGet(m, key, default)
+
 // --- error ---
 
 // Raises a runtime error. The error propagates to the nearest
