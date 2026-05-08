@@ -57,6 +57,10 @@ func (kc *KtIRContext) EvalExpr(e ir.Expr) string {
 	case *ir.Index:
 		operand := kc.EvalExpr(n.Operand)
 		idx := kc.EvalExpr(n.Idx)
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			valZero := ktMapValZero(t)
+			return "(" + operand + "[" + idx + "] ?: " + valZero + ")"
+		}
 		return operand + "[" + idx + "]"
 	case *ir.Call:
 		return kc.evalCall(n)
@@ -70,6 +74,19 @@ func (kc *KtIRContext) EvalExpr(e ir.Expr) string {
 			parts[i] = kc.EvalExpr(el)
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
+	case *ir.MapLitIR:
+		var b strings.Builder
+		b.WriteString("mapOf(")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(kc.EvalExpr(e.Key))
+			b.WriteString(" to ")
+			b.WriteString(kc.EvalExpr(e.Value))
+		}
+		b.WriteString(")")
+		return b.String()
 	case *ir.Spread:
 		return "*" + kc.EvalExpr(n.Operand)
 	case *ir.Lambda:
@@ -475,6 +492,11 @@ func IRTypeToKt(t *ir.Type) string {
 			return "List<" + IRTypeToKt(t.Elems[0]) + ">"
 		}
 		return "List<Any>"
+	case ir.TypeMap:
+		if len(t.Elems) == 2 {
+			return "Map<" + IRTypeToKt(t.Elems[0]) + ", " + IRTypeToKt(t.Elems[1]) + ">"
+		}
+		return "Map<Any, Any>"
 	case ir.TypeOption:
 		if len(t.Elems) > 0 {
 			return IRTypeToKt(t.Elems[0]) + "?"
@@ -543,6 +565,22 @@ func IRLiteralToKt(e ir.Expr) string {
 			parts[i] = IRLiteralToKt(el)
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
+	case *ir.MapLitIR:
+		if len(n.Entries) == 0 {
+			return "emptyMap()"
+		}
+		var b strings.Builder
+		b.WriteString("mapOf(")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(IRLiteralToKt(e.Key))
+			b.WriteString(" to ")
+			b.WriteString(IRLiteralToKt(e.Value))
+		}
+		b.WriteString(")")
+		return b.String()
 	case *ir.StructLit:
 		name := "Any"
 		if n.Def != nil {
@@ -623,6 +661,25 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".filter(" + a(1) + ")"
 	case "list.map", "*.map":
 		return a(0) + ".map(" + a(1) + ")"
+	// map
+	case "map.length":
+		return a(0) + ".size"
+	case "map.keys":
+		return a(0) + ".keys.toList()"
+	case "map.values":
+		return a(0) + ".values.toList()"
+	case "map.contains":
+		return a(0) + ".containsKey(" + a(1) + ")"
+	case "map.get":
+		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
 	}
 	return ""
+}
+
+// ktMapValZero returns the Kotlin zero value for the value type of a map IR type.
+func ktMapValZero(t *ir.Type) string {
+	if t == nil || len(t.Elems) < 2 {
+		return "null"
+	}
+	return ktZeroFor(t.Elems[1])
 }
