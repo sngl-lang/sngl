@@ -229,6 +229,30 @@ func renderPlaceholder(out *strings.Builder, tag language.Tag, body string, args
 		renderPlural(out, tag, val, parts[2:], typ == "selectordinal", args)
 	case "select":
 		renderSelect(out, tag, val, parts[2:], args)
+	case "number":
+		style := "decimal"
+		if len(parts) >= 3 {
+			style = strings.TrimSpace(parts[2])
+		}
+		renderNumber(out, tag, val, style)
+	case "date":
+		style := "medium"
+		if len(parts) >= 3 {
+			style = strings.TrimSpace(parts[2])
+		}
+		renderDate(out, tag, val, style)
+	case "time":
+		style := "medium"
+		if len(parts) >= 3 {
+			style = strings.TrimSpace(parts[2])
+		}
+		renderTime(out, tag, val, style)
+	case "dateTime":
+		style := "medium"
+		if len(parts) >= 3 {
+			style = strings.TrimSpace(parts[2])
+		}
+		renderDateTime(out, tag, val, style)
 	default:
 		// Unknown type; emit raw value.
 		fmt.Fprintf(out, "%v", val)
@@ -404,48 +428,115 @@ func pluralFormKeyword(f plural.Form) string {
 // NumberInt formats an integer for the translator's locale.
 // Style: "decimal" (default), "percent", "currency", "scientific".
 func (t *Translator) NumberInt(n int, style string) string {
-	p := message.NewPrinter(t.Locale)
-	switch style {
-	case "percent":
-		return p.Sprint(number.Percent(float64(n) / 100.0))
-	case "currency":
-		return p.Sprint(currency.USD.Amount(int64(n)))
-	case "scientific":
-		return p.Sprintf("%e", float64(n))
-	default:
-		return p.Sprintf("%d", n)
-	}
+	var b strings.Builder
+	renderNumber(&b, t.Locale, n, style)
+	return b.String()
 }
 
 // NumberFloat formats a float for the translator's locale.
 func (t *Translator) NumberFloat(n float64, style string) string {
-	p := message.NewPrinter(t.Locale)
-	switch style {
-	case "percent":
-		return p.Sprint(number.Percent(n))
-	case "currency":
-		return p.Sprint(currency.USD.Amount(n))
-	case "scientific":
-		return p.Sprintf("%e", n)
-	default:
-		return p.Sprintf("%g", n)
-	}
+	var b strings.Builder
+	renderNumber(&b, t.Locale, n, style)
+	return b.String()
 }
 
 // Date formats a time.Time as a date.
 // Style: "short", "medium" (default), "long", "full".
 func (t *Translator) Date(d time.Time, style string) string {
-	return d.Format(layoutFor(style, true, false))
+	var b strings.Builder
+	renderDate(&b, t.Locale, d, style)
+	return b.String()
 }
 
 // Time formats a time.Time as a time-of-day.
 func (t *Translator) Time(d time.Time, style string) string {
-	return d.Format(layoutFor(style, false, true))
+	var b strings.Builder
+	renderTime(&b, t.Locale, d, style)
+	return b.String()
 }
 
 // Datetime formats a time.Time as date + time.
 func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string) string {
-	return d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true))
+	var b strings.Builder
+	renderDateTime2(&b, t.Locale, d, dateStyle, timeStyle)
+	return b.String()
+}
+
+// renderNumber writes a locale-aware number to out.
+func renderNumber(out *strings.Builder, tag language.Tag, val any, style string) {
+	p := message.NewPrinter(tag)
+	switch v := val.(type) {
+	case int:
+		switch style {
+		case "percent":
+			out.WriteString(p.Sprint(number.Percent(float64(v) / 100.0)))
+		case "currency":
+			out.WriteString(p.Sprint(currency.USD.Amount(int64(v))))
+		case "scientific":
+			out.WriteString(p.Sprintf("%e", float64(v)))
+		default:
+			out.WriteString(p.Sprintf("%d", v))
+		}
+	case float64:
+		switch style {
+		case "percent":
+			out.WriteString(p.Sprint(number.Percent(v)))
+		case "currency":
+			out.WriteString(p.Sprint(currency.USD.Amount(v)))
+		case "scientific":
+			out.WriteString(p.Sprintf("%e", v))
+		default:
+			out.WriteString(p.Sprintf("%g", v))
+		}
+	case float32:
+		f := float64(v)
+		switch style {
+		case "percent":
+			out.WriteString(p.Sprint(number.Percent(f)))
+		case "currency":
+			out.WriteString(p.Sprint(currency.USD.Amount(f)))
+		case "scientific":
+			out.WriteString(p.Sprintf("%e", f))
+		default:
+			out.WriteString(p.Sprintf("%g", f))
+		}
+	default:
+		fmt.Fprintf(out, "%v", val)
+	}
+}
+
+// renderDate writes a locale-aware date to out.
+func renderDate(out *strings.Builder, _ language.Tag, val any, style string) {
+	if t, ok := val.(time.Time); ok {
+		out.WriteString(t.Format(layoutFor(style, true, false)))
+		return
+	}
+	fmt.Fprintf(out, "%v", val)
+}
+
+// renderTime writes a locale-aware time-of-day to out.
+func renderTime(out *strings.Builder, _ language.Tag, val any, style string) {
+	if t, ok := val.(time.Time); ok {
+		out.WriteString(t.Format(layoutFor(style, false, true)))
+		return
+	}
+	fmt.Fprintf(out, "%v", val)
+}
+
+// renderDateTime writes a locale-aware date+time to out using a single style
+// for both parts. Used by the {x, dateTime, style} ICU placeholder form.
+func renderDateTime(out *strings.Builder, _ language.Tag, val any, style string) {
+	if t, ok := val.(time.Time); ok {
+		out.WriteString(t.Format(layoutFor(style, true, false) + " " + layoutFor(style, false, true)))
+		return
+	}
+	fmt.Fprintf(out, "%v", val)
+}
+
+// renderDateTime2 writes a locale-aware date+time using separate styles for
+// date and time. Used by Translator.Datetime which accepts two style params.
+func renderDateTime2(out *strings.Builder, _ language.Tag, d time.Time, dateStyle, timeStyle string) {
+	out.WriteString(d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true)))
 }
 
 // layoutFor picks a Go time layout for the given ICU-style identifier.

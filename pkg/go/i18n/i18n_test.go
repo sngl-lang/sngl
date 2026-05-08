@@ -3,6 +3,7 @@ package i18n
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -226,5 +227,50 @@ func TestDatetimeShort(t *testing.T) {
 	// "5/7/26 12:30 PM"
 	if got != "5/7/26 12:30 PM" {
 		t.Errorf("got %q, want 5/7/26 12:30 PM", got)
+	}
+}
+
+func TestTrTemplateNumberDecimal(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	got := tr.Tr("Score: {n, number, decimal}", "Score: {n, number, decimal}", map[string]any{"n": 1234})
+	if !strings.Contains(got, "1234") && !strings.Contains(got, "1,234") {
+		t.Errorf("got %q, expected formatted score containing 1234", got)
+	}
+}
+
+func TestTrTemplateNumberPercent(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	got := tr.Tr("Coverage: {n, number, percent}", "Coverage: {n, number, percent}", map[string]any{"n": 0.42})
+	if !strings.Contains(got, "42") {
+		t.Errorf("got %q, expected percentage containing 42", got)
+	}
+}
+
+func TestTrTemplateDateShort(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	d := time.Date(2026, 5, 8, 12, 0, 0, 0, time.UTC)
+	got := tr.Tr("On {d, date, short}", "On {d, date, short}", map[string]any{"d": d})
+	if got != "On 5/8/26" {
+		t.Errorf("got %q, want %q", got, "On 5/8/26")
+	}
+}
+
+func TestTrTemplateTimeShort(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	d := time.Date(2026, 5, 8, 14, 30, 0, 0, time.UTC)
+	got := tr.Tr("At {t, time, short}", "At {t, time, short}", map[string]any{"t": d})
+	// "2:30 PM" expected
+	if !strings.Contains(got, "2:30") || !strings.Contains(got, "PM") {
+		t.Errorf("got %q, expected 2:30 PM", got)
+	}
+}
+
+func TestTrTemplateDateTimeSingle(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	d := time.Date(2026, 5, 8, 14, 30, 0, 0, time.UTC)
+	got := tr.Tr("Meeting: {dt, dateTime, short}", "Meeting: {dt, dateTime, short}", map[string]any{"dt": d})
+	// expects both date portion "5/8/26" and time portion "2:30 PM"
+	if !strings.Contains(got, "5/8/26") || !strings.Contains(got, "2:30") {
+		t.Errorf("got %q, expected date+time with 5/8/26 and 2:30", got)
 	}
 }
