@@ -169,19 +169,53 @@ Examples:
 ```sngl
 package i18n
 
-// Translate `key` against the loaded manifest. `args` is a struct literal
-// binding ICU placeholder names to values. Returns the translated string for
-// the active locale, falling back to the manifest's `original` template, then
-// to the key itself.
+// --- Translation entry points ---
+
+// Translate `key` against the loaded manifest, formatting via ICU. `args` is
+// a struct literal binding ICU placeholder names to values. Returns the
+// translated string for the active locale, falling back to the manifest's
+// `original` template, then to the key itself. This is the lowering target
+// for $"..." literals.
 func tr(key string, args = {}) -> string
+
+// Format a literal ICU template with `args`. No manifest lookup — useful for
+// one-off locale-aware formatting where translation isn't needed.
+func format(template string, args = {}) -> string
+
+// --- Direct formatters (for code paths that don't need ICU template syntax) ---
+
+// `style`: "decimal" (default), "percent", "currency", "scientific".
+func number(n any, style = "decimal") -> string
+
+// `style`: "short", "medium" (default), "long", "full".
+func date(d any, style = "medium") -> string
+func time(t any, style = "medium") -> string
+func datetime(dt any, dateStyle = "medium", timeStyle = "medium") -> string
+
+// --- Direct selectors (for ICU-style branching outside a $"..." literal) ---
+
+// `forms` is a struct literal with selector keys. Plural forms accept CLDR
+// keywords (zero/one/two/few/many/other) and explicit `=N` matches.
+// Example: i18n.plural(n, {one: "1 file", other: "{n} files"})
+func plural(count int, forms = {}) -> string
+
+// `cases` is a struct literal mapping selector values to messages.
+// Example: i18n.select(gender, {male: "he", female: "she", other: "they"})
+func select(value string, cases = {}) -> string
+
+// Ordinal plural rules (1st, 2nd, 3rd, …).
+func selectordinal(count int, forms = {}) -> string
 ```
 
 Default Go implementation injected via `PkgSource` override:
 - Loads `i18n.manifest.json` at process start (path configurable, default: working dir or embedded asset).
 - Detects locale via `LC_ALL`, `LC_MESSAGES`, `LANG` (in order; falls back to `en`).
-- Uses `golang.org/x/text/feature/plural` + `golang.org/x/text/message` to format the ICU template with the args struct.
+- All ICU formatting (template substitution, plural/select dispatch, number/date formatting) goes through `golang.org/x/text` (`message`, `feature/plural`, `number`, `currency`).
+- Direct formatters (`number`, `date`, `plural`, etc.) are thin wrappers that build a one-shot ICU template internally and dispatch to the same formatter.
 
-HTML and Android per-platform stdlib overrides not implemented in #21 (framework supports them, follow-up issue).
+HTML and Android per-platform stdlib overrides not implemented in #21 (framework supports them, follow-up issue). For HTML the natural backend is `Intl.NumberFormat` / `Intl.DateTimeFormat` / `Intl.PluralRules` plus a small ICU MessageFormat shim; for Android, `android.icu.text.MessageFormat` and friends.
+
+**Locale management** is deferred: there's no `setLocale`/`locale` getter in #21. Each platform's stdlib impl reads from its conventional source (env vars on Go, `navigator.language` on HTML, `Locale.getDefault()` on Android). Per-request or test-time locale override can be added as a follow-up without breaking the API surface above.
 
 ### `sngl extract` Command (`cmd/sngl/extract.go`)
 
@@ -233,8 +267,8 @@ The unilateral implementation in commit history covers parser flag + checker war
 | Minimal ICU parser | ❌ missing | add |
 | IR conversion to `ir.Call` | ❌ still emits `Binary +` chain | rewrite to emit `ir.Call` to `i18n.tr` |
 | Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
-| Stdlib `i18n.tr` decl | ❌ missing | add `lib/i18n.sngl` |
-| Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text`) |
+| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `number`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` |
+| Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`) |
 | `sngl extract` | ✅ multi-format | replace with manifest-only writer + merge logic |
 
 ## Testing
@@ -245,7 +279,7 @@ The unilateral implementation in commit history covers parser flag + checker war
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
 - **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
 - **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
-- **Stdlib runtime** (Go): unit test loading a manifest, invoking `tr` with various plural forms across locales.
+- **Stdlib runtime** (Go): unit tests for each entry point — `tr` (manifest hit + miss + plural template across locales), `format` (literal template), `number`/`date`/`time`/`datetime` (style variants in en + at least one non-en locale), `plural`/`select`/`selectordinal` (form selection).
 
 ## Open questions
 
