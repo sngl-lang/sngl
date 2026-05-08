@@ -35,7 +35,7 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
 // files because struct identity (lookup.Summary) doesn't cross checker
 // boundaries; use PackageSections / StdlibSections as the public entry.
 component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") {
-    if list.length(items) > 0 {
+    if items.length() > 0 {
         text(value=title, style={fontWeight="bold", paddingTop=8})
         for it = items {
             SummaryRow(name=it.name, doc=it.doc, href=hrefPrefix + it.name + ".html")
@@ -110,13 +110,13 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
                  style={color="#888", fontFamily="monospace"})
         }
 
-        if list.length(view.components) > 0 {
+        if view.components.length() > 0 {
             text(value="Components", style={fontWeight="bold", paddingTop=8})
             for c = view.components {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
-        if list.length(view.types) > 0 {
+        if view.types.length() > 0 {
             text(value="Types", style={fontWeight="bold", paddingTop=8})
             for t = view.types {
                 SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
@@ -125,37 +125,37 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
                 }
             }
         }
-        if list.length(view.enums) > 0 {
+        if view.enums.length() > 0 {
             text(value="Enums", style={fontWeight="bold", paddingTop=8})
             for e = view.enums {
                 SummaryRow(name=e.name, doc=e.doc, href=hrefPrefix + e.name, active=e.name == activeName)
             }
         }
-        if list.length(view.constants) > 0 {
+        if view.constants.length() > 0 {
             text(value="Constants", style={fontWeight="bold", paddingTop=8})
             for c = view.constants {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
-        if list.length(view.data) > 0 {
+        if view.data.length() > 0 {
             text(value="Data", style={fontWeight="bold", paddingTop=8})
             for d = view.data {
                 SummaryRow(name=d.name, doc=d.doc, href=hrefPrefix + d.name, active=d.name == activeName)
             }
         }
-        if list.length(view.functions) > 0 {
+        if view.functions.length() > 0 {
             text(value="Functions", style={fontWeight="bold", paddingTop=8})
             for f = view.functions {
                 SummaryRow(name=f.name, doc=f.doc, href=hrefPrefix + f.name, active=f.name == activeName)
             }
         }
-        if list.length(view.overrides) > 0 {
+        if view.overrides.length() > 0 {
             text(value="Platform Overrides", style={fontWeight="bold", paddingTop=8, color="#888"})
             for o = view.overrides {
                 SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
             }
         }
-        if list.length(view.platformTypes) > 0 {
+        if view.platformTypes.length() > 0 {
             text(value="Platform Types", style={fontWeight="bold", paddingTop=8, color="#888"})
             for t = view.platformTypes {
                 SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
@@ -175,7 +175,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
         if detail.children != "" && detail.children != "none" {
             text(value="Children: " + detail.children, style={color="#888"})
         }
-        if list.length(detail.props) > 0 {
+        if detail.props.length() > 0 {
             text(value="Properties", style={fontWeight="bold", paddingTop=8})
             for p = detail.props {
                 hbox(style={gap=12, padding=2}) {
@@ -185,7 +185,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
                 }
             }
         }
-        if list.length(detail.events) > 0 {
+        if detail.events.length() > 0 {
             text(value="Events", style={fontWeight="bold", paddingTop=8})
             for e = detail.events {
                 hbox(style={gap=12, padding=2}) {
@@ -194,7 +194,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
                 }
             }
         }
-        if list.length(detail.examples) > 0 {
+        if detail.examples.length() > 0 {
             text(value="Example", style={fontWeight="bold", paddingTop=8})
             for src = detail.examples {
                 text(value=src, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
@@ -218,7 +218,7 @@ component TypeView(detail lookup.TypeDetailView) {
         if detail.doc != "" {
             text(value=detail.doc)
         }
-        if list.length(detail.fields) > 0 {
+        if detail.fields.length() > 0 {
             text(value="Fields", style={fontWeight="bold", paddingTop=8})
             for f = detail.fields {
                 hbox(style={gap=12, padding=2}) {
@@ -227,7 +227,7 @@ component TypeView(detail lookup.TypeDetailView) {
                 }
             }
         }
-        if list.length(detail.methods) > 0 {
+        if detail.methods.length() > 0 {
             text(value="Methods", style={fontWeight="bold", paddingTop=8})
             for m = detail.methods {
                 hbox(style={gap=12, padding=2}) {
@@ -246,7 +246,7 @@ component EnumView(detail lookup.EnumDetailView) {
         if detail.doc != "" {
             text(value=detail.doc)
         }
-        if list.length(detail.members) > 0 {
+        if detail.members.length() > 0 {
             text(value="Members", style={fontWeight="bold", paddingTop=8})
             for m = detail.members {
                 text(value="• " + m.name, style={fontFamily="monospace"})
@@ -269,7 +269,7 @@ component FuncView(detail lookup.FuncDetailView) {
         if detail.doc != "" {
             text(value=detail.doc)
         }
-        if list.length(detail.params) > 0 {
+        if detail.params.length() > 0 {
             text(value="Parameters", style={fontWeight="bold", paddingTop=8})
             for p = detail.params {
                 hbox(style={gap=12, padding=2}) {
@@ -313,7 +313,7 @@ component PropDocView(detail lookup.PropDetailView) {
         if detail.isEvent && detail.payload != "" {
             text(value="Payload: " + detail.payload, style={color="#58a6ff"})
         }
-        if list.length(detail.enumValues) > 0 {
+        if detail.enumValues.length() > 0 {
             text(value="Values:", style={fontWeight="bold", paddingTop=8})
             for v = detail.enumValues {
                 text(value="• " + v, style={fontFamily="monospace"})

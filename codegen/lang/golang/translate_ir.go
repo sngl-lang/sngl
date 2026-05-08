@@ -369,9 +369,7 @@ func translateIRForGo(n *ir.For, scope *codegen.ExprScope) []string {
 	iterExpr := translateIRExpr(n.Iter, scope)
 	loopScope := *scope
 	locals := make(map[string]bool, len(scope.LocalVars)+2)
-	for k, v := range scope.LocalVars {
-		locals[k] = v
-	}
+	maps.Copy(locals, scope.LocalVars)
 	locals[n.Key] = true
 	if n.Value != "" {
 		locals[n.Value] = true
