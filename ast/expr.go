@@ -261,12 +261,14 @@ type I18nInterpExpr struct {
 
 // I18nPlaceholderExpr is the {<value>, <type>, <body>} form.
 // Type is "" when the comma-ident form is absent.
+// Style is optional bare-ident style for date/time/number; "" if absent.
 // Cases is nil unless a MsgFormatBody is present.
 type I18nPlaceholderExpr struct {
 	Pos   Pos
 	Value Expr
 	Type  string
-	Cases []I18nCase
+	Style string      // optional bare-ident style for date/time/number; "" if absent
+	Cases []I18nCase  // for plural/select/selectordinal; nil otherwise
 }
 
 // I18nCase is one <selector>{<body>} pair within a plural/select/selectordinal body.
