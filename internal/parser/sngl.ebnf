@@ -74,6 +74,16 @@
 # triple_start  0x4C  TRIPLE_START  """text{
 # triple_end    0x4D  TRIPLE_END    }text"""
 # amp           0x4E  AMP           &
+# i18n_str_full     0x4F  I18N_STR_FULL     $"text"
+# i18n_str_start    0x50  I18N_STR_START    $"text{
+# i18n_str_resume   0x51  I18N_STR_RESUME   }text{
+# i18n_str_end      0x52  I18N_STR_END      }text"
+# i18n_triple_full  0x53  I18N_TRIPLE_FULL  $"""text"""
+# i18n_triple_start 0x54  I18N_TRIPLE_START $"""text{
+# i18n_triple_end   0x55  I18N_TRIPLE_END   }text"""
+# i18n_case_full    0x56  I18N_CASE_FULL    (msg case boundary)
+# i18n_case_start   0x57  I18N_CASE_START   (msg case boundary)
+# i18n_case_end     0x58  I18N_CASE_END     (msg case boundary)
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -145,6 +155,16 @@ str_resume   = `\x4B` .
 triple_start = `\x4C` .
 triple_end   = `\x4D` .
 amp          = `\x4E` .
+i18n_str_full     = `\x4F` .
+i18n_str_start    = `\x50` .
+i18n_str_resume   = `\x51` .
+i18n_str_end      = `\x52` .
+i18n_triple_full  = `\x53` .
+i18n_triple_start = `\x54` .
+i18n_triple_end   = `\x55` .
+i18n_case_full    = `\x56` .
+i18n_case_start   = `\x57` .
+i18n_case_end     = `\x58` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
