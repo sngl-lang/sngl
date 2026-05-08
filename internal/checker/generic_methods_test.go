@@ -128,6 +128,67 @@ var q Pair<string, int> = p.swap()
 	}
 }
 
+// TestListMapSameType verifies that list<T>.map<U> infers U=T when the lambda
+// returns the same type as the input.
+func TestListMapSameType(t *testing.T) {
+	src := `struct list<T> {}
+func list<T>.map<U>(f func(T) U) list<U> {}
+var xs list<int> = [1, 2, 3]
+var ys list<int> = xs.map(func(x int) => x * 2)`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+// TestListMapDifferentType verifies that list<T>.map<U> correctly infers U
+// when the lambda returns a different type than the input.
+func TestListMapDifferentType(t *testing.T) {
+	src := `struct list<T> {}
+func list<T>.map<U>(f func(T) U) list<U> {}
+var xs list<int> = [1, 2, 3]
+var ys list<string> = xs.map(func(x int) => "{x}")`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected error: %s", d.Error())
+		}
+	}
+}
+
+// TestListMapTypeMismatch verifies that list<T>.map<U> produces a type error
+// when the inferred result type doesn't match the declared variable type.
+func TestListMapTypeMismatch(t *testing.T) {
+	src := `struct list<T> {}
+func list<T>.map<U>(f func(T) U) list<U> {}
+var xs list<int> = [1, 2, 3]
+var ys list<int> = xs.map(func(x int) => "{x}")`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected error: list<string> not assignable to list<int>")
+	}
+}
+
 // TestRecvTypeParamFieldDirectAccess verifies that accessing a field directly
 // on a generic struct instance resolves to the concrete field type.
 func TestRecvTypeParamFieldDirectAccess(t *testing.T) {

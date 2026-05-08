@@ -750,6 +750,30 @@ func TestParseGenericFunctionStillWorks(t *testing.T) {
 	}
 }
 
+func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
+	src := "struct list<T> {}\nfunc list<T>.map<U>(f func(T) U) list<U> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var fn *ast.FuncDef
+	for _, s := range doc.Stmts {
+		if f, ok := s.(*ast.FuncDef); ok {
+			fn = f
+			break
+		}
+	}
+	if fn == nil {
+		t.Fatal("no FuncDef")
+	}
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
+	}
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "U" {
+		t.Errorf("TypeParams = %v, want [U]", fn.TypeParams)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

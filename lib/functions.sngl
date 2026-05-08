@@ -164,7 +164,7 @@ func list<T>.filter(pred func(T) bool) list<T> {}
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
-func list.map<T, U>(l list<T>, fn func(T) U) => stdlib.ListMap(l, fn)
+func list<T>.map<U>(fn func(T) U) list<U> {}
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.

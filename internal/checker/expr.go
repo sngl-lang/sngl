@@ -1342,6 +1342,17 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 		}
 		return
 	}
+	// Recurse into func signatures: func(T) U vs func(int) string → T=int, U=string.
+	if param.Kind == ir.TypeFunc && arg.Kind == ir.TypeFunc &&
+		param.Sig != nil && arg.Sig != nil {
+		if len(param.Sig.Params) == len(arg.Sig.Params) {
+			for i := range param.Sig.Params {
+				bindTypeParams(param.Sig.Params[i].Type, arg.Sig.Params[i].Type, bindings)
+			}
+		}
+		bindTypeParams(param.Sig.Return, arg.Sig.Return, bindings)
+		return
+	}
 	// Recurse into type arguments (list<T>, option<T>, etc.).
 	if param.Kind == arg.Kind && len(param.Elems) == len(arg.Elems) {
 		for i := range param.Elems {
