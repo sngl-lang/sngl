@@ -230,12 +230,10 @@ type SpreadExpr struct {
 
 // InterpolationExpr is a string with interpolated expressions.
 // Parts alternate between *LiteralExpr (string) and expression nodes.
-// When Translatable is true the literal was written with the $ prefix (e.g. $"Login").
 type InterpolationExpr struct {
-	Pos          Pos
-	Parts        []Expr
-	Style        StringStyle
-	Translatable bool
+	Pos   Pos
+	Parts []Expr
+	Style StringStyle
 }
 
 // ElementRefExpr references a visual element by its #id.

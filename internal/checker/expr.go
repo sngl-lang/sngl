@@ -1083,18 +1083,6 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 	// literal part becomes an ir.Literal; each expression part is checked and
 	// stringified via interpolateStringify so the chain is string-typed end to
 	// end.
-	if x.Translatable {
-		hasStatic := false
-		for _, part := range x.Parts {
-			if _, ok := part.(*ast.LiteralExpr); ok {
-				hasStatic = true
-				break
-			}
-		}
-		if !hasStatic {
-			c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
-		}
-	}
 	var chain ir.Expr
 	for _, part := range x.Parts {
 		var partExpr ir.Expr

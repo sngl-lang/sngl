@@ -137,11 +137,10 @@ func LookupIdent(s string) TokenType {
 
 // Token is a lexical token with source location.
 type Token struct {
-	Type         TokenType
-	Literal      string
-	Line         int
-	Column       int
-	Translatable bool // true when this token opens a $"..." or $"""...""" string
+	Type    TokenType
+	Literal string
+	Line    int
+	Column  int
 }
 
 // insertsSemicolon reports whether a token at end-of-line triggers ASI.
