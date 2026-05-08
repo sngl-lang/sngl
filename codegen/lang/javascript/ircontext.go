@@ -129,9 +129,41 @@ func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
 			return []string{"return " + jc.EvalExpr(n.Value)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return jc.evalFor(n)
 	default:
 		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+// evalFor emits a JS for-loop. Maps use Map.entries(); lists/iter<T> use for-of.
+func (jc *JsIRContext) evalFor(n *ir.For) []string {
+	iterExpr := jc.EvalExpr(n.Iter)
+	loopJC := jc.WithLocal(n.Key)
+	if n.Value != "" {
+		loopJC = loopJC.WithLocal(n.Value)
+	}
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		// Map iteration: for (const [k, v] of m.entries()) { ... }
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iterExpr))
+	} else {
+		// List / iter<T> iteration: for (const x of list) { ... }
+		lines = append(lines, fmt.Sprintf("for (const %s of %s) {", n.Key, iterExpr))
+	}
+	for _, stmt := range n.Body {
+		for _, l := range loopJC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 // evalErrorAwareCall emits JS statements for a fallible call whose error

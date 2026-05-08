@@ -474,9 +474,44 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 			return []string{"return " + translateIRExpr(n.Value, scope)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return translateIRForJS(n, scope)
 	default:
 		return []string{"// unsupported ir mutation: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+func translateIRForJS(n *ir.For, scope *codegen.ExprScope) []string {
+	iterExpr := translateIRExpr(n.Iter, scope)
+	loopScope := *scope
+	locals := make(map[string]bool, len(scope.LocalVars)+2)
+	for k, v := range scope.LocalVars {
+		locals[k] = v
+	}
+	locals[n.Key] = true
+	if n.Value != "" {
+		locals[n.Value] = true
+	}
+	loopScope.LocalVars = locals
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iterExpr))
+	} else {
+		lines = append(lines, fmt.Sprintf("for (const %s of %s) {", n.Key, iterExpr))
+	}
+	for _, stmt := range n.Body {
+		for _, l := range translateIRMutation(stmt, &loopScope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 // translateErrorAwareCall emits JS statements for a fallible call whose

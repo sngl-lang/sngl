@@ -1,0 +1,21 @@
+# Go codegen for map<K,V> for-loop: emits for k, v := range m { ... }
+
+sngl compile --platform=bubbletea --lang=go --out=out app.sngl
+exists out/model.go
+
+# Handler contains a range-over-map loop.
+grep 'for .* := range' out/model.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    var total = 0
+    button(text="sum", @click {
+        for k, v = scores {
+            total = total + v
+        }
+    })
+    text(value=string(total))
+}

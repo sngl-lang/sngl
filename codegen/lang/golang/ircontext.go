@@ -141,9 +141,47 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 			return []string{"return " + gc.EvalExpr(n.Value)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return gc.evalFor(n)
 	default:
 		return []string{fmt.Sprintf("// unsupported IR stmt: %T", s)}
 	}
+}
+
+// evalFor emits a Go for-loop. Maps use the two-variable range form;
+// lists and iter<T> use the single-variable form (index suppressed).
+func (gc *GoIRContext) evalFor(n *ir.For) []string {
+	iterExpr := gc.EvalExpr(n.Iter)
+	loopGC := gc.WithLocal(n.Key)
+	if n.Value != "" {
+		loopGC = loopGC.WithLocal(n.Value)
+	}
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		// Map iteration: for k, v := range m { ... }
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iterExpr))
+	} else {
+		// List / iter<T> iteration: for _, x := range list { ... }
+		indexVar := "_"
+		if n.Value != "" {
+			indexVar = n.Value
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iterExpr))
+	}
+
+	for _, stmt := range n.Body {
+		for _, l := range loopGC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {

@@ -138,9 +138,41 @@ func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string {
 			return []string{"return " + kc.EvalExpr(n.Value)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return kc.evalFor(n)
 	default:
 		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+// evalFor emits a Kotlin for-loop. Maps use destructuring; lists/iter<T> use for-in.
+func (kc *KtIRContext) evalFor(n *ir.For) []string {
+	iterExpr := kc.EvalExpr(n.Iter)
+	loopKC := kc.WithLocal(n.Key)
+	if n.Value != "" {
+		loopKC = loopKC.WithLocal(n.Value)
+	}
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		// Map iteration: for ((k, v) in m) { ... }
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iterExpr))
+	} else {
+		// List / iter<T> iteration: for (x in list) { ... }
+		lines = append(lines, fmt.Sprintf("for (%s in %s) {", n.Key, iterExpr))
+	}
+	for _, stmt := range n.Body {
+		for _, l := range loopKC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
