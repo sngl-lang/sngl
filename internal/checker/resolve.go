@@ -108,6 +108,18 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			return OptionOf(TypDyn)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
+	case "map":
+		if len(t.TypeArgs) != 2 {
+			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
+			return TypDyn
+		}
+		k := c.resolveType(t.TypeArgs[0])
+		v := c.resolveType(t.TypeArgs[1])
+		if !isComparable(k) {
+			c.error(t.Pos, "map key type %s is not comparable", k)
+			return TypDyn
+		}
+		return MapOf(k, v)
 	case "ref":
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
@@ -439,4 +451,28 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		fn.Name = methodName
 	}
 	return fn
+}
+
+// isComparable reports whether values of t can be used as map keys.
+// Primitives and structs of comparable fields qualify; lists, maps,
+// and functions do not.
+func isComparable(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
+		ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+		ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
+		ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
+		ir.TypeHostname, ir.TypeDecimal:
+		return true
+	case ir.TypeStruct:
+		// Conservative: accept any named struct as comparable. Refine
+		// in a follow-up if we want to actually check field types.
+		return t.Decl != nil
+	case ir.TypeEnum, ir.TypeUnit:
+		return true
+	}
+	return false
 }
