@@ -158,21 +158,68 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 	}
 }
 
-// inferI18nInterp checks a translatable string. F1 scope: emit the
-// no-static-text warning. F2 adds ICU placeholder validation.
-// Subsequent tasks (G1, G2) lower to ir.Call(i18n.tr, ...).
+// inferI18nInterp checks a translatable string and lowers it to an
+// ir.Call to i18n.tr. F1 emits the no-static-text warning. F2 validates
+// ICU placeholder types/cases. G1 synthesizes the ICU template. G2
+// (this code) emits the call.
 func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
+	// F1: static-text warning.
 	if !hasStaticText(x.Parts) {
 		c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
 	}
+
+	// F2: validate ICU placeholder types and cases.
 	for _, p := range x.Parts {
 		if ph, ok := p.(*ast.I18nPlaceholderExpr); ok {
 			c.checkI18nPlaceholder(ph)
 		}
 	}
-	// F2 placeholder return: a string-typed empty literal. G1/G2 will
-	// replace this with proper lowering.
-	return &ir.Literal{Type: TypString, Raw: `""`}
+
+	// G1: synthesize ICU template and collect arg bindings.
+	b := &templateBuilder{}
+	b.writeParts(x.Parts)
+	template := string(b.sb)
+
+	// G2: resolve i18n.tr and emit ir.Call.
+	trFn := c.lookupI18nTr(x.Pos)
+	if trFn == nil {
+		// Already errored; return a string-typed placeholder so type-checking
+		// can continue without cascading failures.
+		return &ir.Literal{Type: TypString, Raw: `""`}
+	}
+
+	// Build the args map<string, dyn>: placeholder name → checked value expression.
+	var entries []ir.MapEntry
+	for _, a := range b.args {
+		entries = append(entries, ir.MapEntry{
+			Key:   &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", a.name)},
+			Value: c.checkExpr(a.expr),
+		})
+	}
+	argsMap := &ir.MapLitIR{
+		Type:    MapOf(TypString, TypDyn),
+		Entries: entries,
+	}
+
+	return &ir.Call{
+		Type: TypString,
+		Func: trFn,
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", template)}},
+			{Value: argsMap},
+		},
+	}
+}
+
+// lookupI18nTr resolves the i18n.tr stdlib function from the symbol table.
+// Returns nil and emits an error diagnostic if not found.
+func (c *checker) lookupI18nTr(pos ast.Pos) *ir.Func {
+	fn, ok := c.symtab.LookupMethod("i18n", "tr")
+	if !ok {
+		c.error(pos, "i18n.tr is not in scope; ensure lib/i18n.sngl is loaded")
+		return nil
+	}
+	return fn
 }
 
 // hasStaticText reports whether any part contains literal non-whitespace text,

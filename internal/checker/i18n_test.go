@@ -109,3 +109,19 @@ func TestI18nEqSelectorValid(t *testing.T) {
 		}
 	}
 }
+
+func TestI18nLowersToTrCall(t *testing.T) {
+	src := `var name = "world"; var x = $"Hello {name}!"`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected error: %s", d.Error())
+		}
+	}
+	// No errors means the lowering to i18n.tr succeeded without crashing.
+	// Phase I integration tests will add tighter IR-walk assertions.
+}

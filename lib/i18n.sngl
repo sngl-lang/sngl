@@ -1,0 +1,30 @@
+// i18n provides translation and locale-aware formatting.
+//
+// The lowering of $"..." literals targets `tr`. Other entry points are
+// direct formatters callable from regular SNGL code.
+
+// --- Translation entry points ---
+
+// Translate `key` against the loaded manifest, formatting via ICU.
+// The lowering of $"..." passes the synthesized ICU template as `key`
+// and the placeholder values as `args`.
+func i18n.tr(key string, args map<string, dyn>) string {}
+
+// Format an ICU template directly, no manifest lookup.
+func i18n.format(template string, args map<string, dyn>) string {}
+
+// --- Direct formatters ---
+
+// Style: "decimal" (default), "percent", "currency", "scientific".
+func i18n.numberInt(n int, style string) string {}
+func i18n.numberFloat(n float, style string) string {}
+
+// Style: "short", "medium" (default), "long", "full".
+func i18n.dateStr(d date, style string) string {}
+func i18n.timeStr(t time, style string) string {}
+func i18n.datetimeStr(dt dateTime, dateStyle string, timeStyle string) string {}
+
+// --- Direct selectors ---
+
+// Free-form value-based selection.
+func i18n.selectStr(value string, cases map<string, string>) string {}
