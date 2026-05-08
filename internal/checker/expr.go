@@ -74,6 +74,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.inferStructLit(x)
 	case *ast.ListExpr:
 		return c.inferListLit(x)
+	case *ast.MapLit:
+		return c.inferMapLit(x)
 	case *ast.InterpolationExpr:
 		return c.inferInterpolation(x)
 	case *ast.LambdaExpr:
@@ -997,6 +999,38 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		elems[i+1] = c.checkExprExpecting(e, elemExpected)
 	}
 	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
+}
+
+func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
+	if len(x.Entries) == 0 {
+		if c.expected != nil && c.expected.Kind == ir.TypeMap {
+			return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
+		}
+		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+	}
+	var keyT, valT *ir.Type
+	var entries []ir.MapEntry
+	for _, e := range x.Entries {
+		k := c.checkExpr(e.Key)
+		v := c.checkExpr(e.Value)
+		kT := exprType(k)
+		vT := exprType(v)
+		if keyT == nil {
+			keyT = kT
+		} else if !keyT.Equal(kT) {
+			c.error(e.Pos, "map key type %s does not match earlier %s", kT, keyT)
+		}
+		if valT == nil {
+			valT = vT
+		} else if !valT.Equal(vT) {
+			c.error(e.Pos, "map value type %s does not match earlier %s", vT, valT)
+		}
+		entries = append(entries, ir.MapEntry{Key: k, Value: v})
+	}
+	if !isComparable(keyT) {
+		c.error(x.Pos, "map key type %s is not comparable", keyT)
+	}
+	return &ir.MapLitIR{AST: x, Type: MapOf(keyT, valT), Entries: entries}
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be

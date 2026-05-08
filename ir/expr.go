@@ -151,6 +151,19 @@ type ListLit struct {
 	Elems []Expr
 }
 
+// MapEntry is one key-value pair in a MapLitIR.
+type MapEntry struct {
+	Key   Expr
+	Value Expr
+}
+
+// MapLitIR is a resolved map literal.
+type MapLitIR struct {
+	AST     *ast.MapLit
+	Type    *Type
+	Entries []MapEntry
+}
+
 // Spread is a spread operation: ...expr.
 type Spread struct {
 	AST     *ast.SpreadExpr
@@ -189,6 +202,7 @@ func (*Select) exprNode()     {}
 func (*Index) exprNode()      {}
 func (*StructLit) exprNode()  {}
 func (*ListLit) exprNode()    {}
+func (*MapLitIR) exprNode()   {}
 func (*Spread) exprNode()     {}
 func (*Lambda) exprNode()     {}
 func (*Closure) exprNode()    {}
@@ -204,6 +218,7 @@ func (x *Select) ExprType() *Type     { return x.Type }
 func (x *Index) ExprType() *Type      { return x.Type }
 func (x *StructLit) ExprType() *Type  { return x.Type }
 func (x *ListLit) ExprType() *Type    { return x.Type }
+func (x *MapLitIR) ExprType() *Type   { return x.Type }
 func (x *Spread) ExprType() *Type     { return x.Type }
 func (x *Lambda) ExprType() *Type     { return x.Type }
 func (x *Closure) ExprType() *Type    { return x.Type }
