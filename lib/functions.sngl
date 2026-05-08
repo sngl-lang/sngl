@@ -133,34 +133,34 @@ func string.endsWith(s string, suffix string) => string.substring(s, string.leng
 // --- list ---
 
 // Number of items in l.
-func list.length<T>(l list<T>) => stdlib.ListLength(l)
+func list<T>.length() int {}
 
 // Returns a new list with item appended to the end of l. Lists are
 // immutable values — the original l is unchanged.
-func list.push<T>(l list<T>, item T) => stdlib.ListPush(l, item)
+func list<T>.push(item T) list<T> {}
 
 // Returns a new list with the item at index removed from l.
 // Out-of-range indices leave the list unchanged.
-func list.remove<T>(l list<T>, index int) => stdlib.ListRemove(l, index)
+func list<T>.remove(index int) list<T> {}
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
-func list.indexOf<T>(l list<T>, item T) => stdlib.ListIndexOf(l, item)
+func list<T>.indexOf(item T) int {}
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
-func list.join<T>(l list<T>, sep string) => stdlib.ListJoin(l, sep)
+func list<T>.join(sep string) string {}
 
 // Returns a copy of l with items in reverse order.
-func list.reverse<T>(l list<T>) => stdlib.ListReverse(l)
+func list<T>.reverse() list<T> {}
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
-func list.slice<T>(l list<T>, start int, end int) => stdlib.ListSlice(l, start, end)
+func list<T>.slice(start int, end int) list<T> {}
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
-func list.filter<T>(l list<T>, pred func(T) bool) => stdlib.ListFilter(l, pred)
+func list<T>.filter(pred func(T) bool) list<T> {}
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
@@ -168,7 +168,7 @@ func list.map<T, U>(l list<T>, fn func(T) U) => stdlib.ListMap(l, fn)
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
-func list.contains<T>(l list<T>, item T) => list.indexOf(l, item) >= 0
+func list<T>.contains(item T) bool {}
 
 // --- color ---
 
@@ -255,21 +255,21 @@ func File.pickFolder() => file.PickFolder()
 // --- map ---
 
 // Number of entries currently in m.
-func map.length(m dyn) => stdlib.MapLength(m)
+func map<K, V>.length() int {}
 
 // List of keys in m in unspecified order.
-func map.keys(m dyn) => stdlib.MapKeys(m)
+func map<K, V>.keys() list<K> {}
 
 // List of values in m in unspecified order.
-func map.values(m dyn) => stdlib.MapValues(m)
+func map<K, V>.values() list<V> {}
 
 // True iff key exists in m.
-func map.contains(m dyn, key dyn) => stdlib.MapContains(m, key)
+func map<K, V>.contains(key K) bool {}
 
 // Lookup with default — returns the value if key is present in m,
 // otherwise returns the default value. Both are coerced to match the
 // declared value type.
-func map.get(m dyn, key dyn, default dyn) => stdlib.MapGet(m, key, default)
+func map<K, V>.get(key K, default V) V {}
 
 // --- error ---
 
