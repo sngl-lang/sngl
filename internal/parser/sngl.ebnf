@@ -291,7 +291,7 @@ VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName [ TypeParamList ] FuncTail .
+FuncDecl = kw_func FuncName FuncTail .
 
 FuncTail =
       lparen [ ParamList ] rparen FuncBodyTail
@@ -303,7 +303,23 @@ FuncBodyTail =
     | [ Type ] StmtBlock
     .
 
-FuncName = ident [ dot ident ] .
+# FuncName encodes all name/type-param combinations inside a single non-terminal.
+# Moving all TypeParamLists inside FuncName ensures `lt` is never in FOLLOW(FuncName),
+# keeping the grammar LL(1).
+#
+# Supported forms:
+#   func name(...)                  → ident
+#   func name<T>(...)               → ident TypeParamList
+#   func recv.method(...)           → ident dot ident
+#   func recv.method<T>(...)        → ident dot ident TypeParamList
+#   func recv<T>.method(...)        → ident TypeParamList dot ident
+#   func recv<T>.method<U>(...)     → ident TypeParamList dot ident TypeParamList
+#
+# LL(1) disambiguation after leading ident:
+#   lt  → TypeParamList branch; if dot follows it is receiver-level, else function-level
+#   dot → method branch; trailing TypeParamList (if lt present) is method-level
+#   else → bare function name
+FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
 
 TypeParamList = lt ident { comma ident } gt .
 

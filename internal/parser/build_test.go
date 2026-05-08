@@ -683,6 +683,73 @@ func TestParseStructNoTypeParamsStillWorks(t *testing.T) {
 	}
 }
 
+// --- Generic receiver method tests (B1+B2) ---
+
+func firstFuncDef(t *testing.T, doc *ast.Document) *ast.FuncDef {
+	t.Helper()
+	for _, s := range doc.Stmts {
+		if f, ok := s.(*ast.FuncDef); ok {
+			return f
+		}
+	}
+	t.Fatal("no FuncDef in document")
+	return nil
+}
+
+func TestParseGenericReceiverMethod(t *testing.T) {
+	src := "struct list<T> {}\nfunc list<T>.length() int {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := firstFuncDef(t, doc)
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
+	}
+	if len(fn.TypeParams) != 0 {
+		t.Errorf("TypeParams should be empty (no method-level params), got %v", fn.TypeParams)
+	}
+}
+
+func TestParseGenericReceiverWithTwoParams(t *testing.T) {
+	src := "struct map<K, V> {}\nfunc map<K, V>.keys() list<K> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := firstFuncDef(t, doc)
+	if len(fn.RecvTypeParams) != 2 || fn.RecvTypeParams[0] != "K" || fn.RecvTypeParams[1] != "V" {
+		t.Errorf("RecvTypeParams = %v, want [K V]", fn.RecvTypeParams)
+	}
+}
+
+func TestParsePlainMethodStillWorks(t *testing.T) {
+	src := "struct Color {\n\tr int\n}\nfunc Color.lighten() int { return 0 }"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := firstFuncDef(t, doc)
+	if len(fn.RecvTypeParams) != 0 {
+		t.Errorf("RecvTypeParams should be empty for plain receiver, got %v", fn.RecvTypeParams)
+	}
+}
+
+func TestParseGenericFunctionStillWorks(t *testing.T) {
+	src := "func id<T>(x T) T { return x }"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := doc.Stmts[0].(*ast.FuncDef)
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "T" {
+		t.Errorf("TypeParams = %v, want [T]", fn.TypeParams)
+	}
+	if len(fn.RecvTypeParams) != 0 {
+		t.Errorf("RecvTypeParams should be empty, got %v", fn.RecvTypeParams)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

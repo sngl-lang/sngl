@@ -454,7 +454,17 @@ func (f *formatter) writeVarSpec(spec ast.VarSpec) {
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	f.write("func ")
-	f.write(fn.Name)
+	if len(fn.RecvTypeParams) > 0 {
+		// recv<T>.method form: Name is "recv.method", split and insert type params.
+		dot := strings.IndexByte(fn.Name, '.')
+		f.write(fn.Name[:dot])
+		f.write("<")
+		f.write(strings.Join(fn.RecvTypeParams, ", "))
+		f.write(">")
+		f.write(fn.Name[dot:]) // ".method"
+	} else {
+		f.write(fn.Name)
+	}
 	if len(fn.TypeParams) > 0 {
 		f.write("<")
 		f.write(strings.Join(fn.TypeParams, ", "))
