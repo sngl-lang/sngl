@@ -258,32 +258,58 @@ func (env *Env) execFor(s *ir.For) error {
 	if err != nil {
 		return err
 	}
-	list, ok := iter.([]any)
-	if !ok {
-		return nil
-	}
-	if len(list) == 0 {
-		for _, st := range s.Else {
-			if err := env.Exec(st); err != nil {
-				return err
+	switch v := iter.(type) {
+	case map[string]any:
+		if len(v) == 0 {
+			for _, st := range s.Else {
+				if err := env.Exec(st); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		for k, val := range v {
+			env.vars[s.Key] = k
+			if s.Value != "" {
+				env.vars[s.Value] = val
+			}
+			for _, st := range s.Body {
+				if err := env.Exec(st); err != nil {
+					return err
+				}
 			}
 		}
-		return nil
-	}
-	for i, item := range list {
-		env.vars[s.Key] = item
+		delete(env.vars, s.Key)
 		if s.Value != "" {
-			env.vars[s.Value] = i
+			delete(env.vars, s.Value)
 		}
-		for _, st := range s.Body {
-			if err := env.Exec(st); err != nil {
-				return err
+	case []any:
+		// iter<T> at runtime is also []any (list passed as iter has no runtime wrapper).
+		if len(v) == 0 {
+			for _, st := range s.Else {
+				if err := env.Exec(st); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		for i, item := range v {
+			env.vars[s.Key] = item
+			if s.Value != "" {
+				env.vars[s.Value] = i
+			}
+			for _, st := range s.Body {
+				if err := env.Exec(st); err != nil {
+					return err
+				}
 			}
 		}
-	}
-	delete(env.vars, s.Key)
-	if s.Value != "" {
-		delete(env.vars, s.Value)
+		delete(env.vars, s.Key)
+		if s.Value != "" {
+			delete(env.vars, s.Value)
+		}
+	default:
+		return fmt.Errorf("for iterator must be list or map, got %T", iter)
 	}
 	return nil
 }
