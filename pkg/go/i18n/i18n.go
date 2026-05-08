@@ -149,16 +149,42 @@ func formatICUInto(out *strings.Builder, tag language.Tag, tmpl string, args map
 	for i < len(tmpl) {
 		c := tmpl[i]
 		if c == '\'' {
-			// ICU escape: '...' suppresses metacharacter interpretation.
-			// Consume up to the next closing quote, emitting the interior literally.
+			// ICU apostrophe quoting rules:
+			//   ''        → literal ' (always)
+			//   'X' where X starts with {, }, #, or | → literal run X
+			//   bare '    → literal '
+			if i+1 < len(tmpl) && tmpl[i+1] == '\'' {
+				// Doubled '' → single literal apostrophe.
+				out.WriteByte('\'')
+				i += 2
+				continue
+			}
+			var next byte
+			if i+1 < len(tmpl) {
+				next = tmpl[i+1]
+			}
+			if next == '{' || next == '}' || next == '#' || next == '|' {
+				// 'X' quoted run — consume interior literally until closing '.
+				i++ // consume opening '
+				for i < len(tmpl) {
+					if tmpl[i] == '\'' {
+						if i+1 < len(tmpl) && tmpl[i+1] == '\'' {
+							// '' inside quoted run → literal '
+							out.WriteByte('\'')
+							i += 2
+							continue
+						}
+						i++ // consume closing '
+						break
+					}
+					out.WriteByte(tmpl[i])
+					i++
+				}
+				continue
+			}
+			// Bare ' not before metachar — literal apostrophe.
+			out.WriteByte('\'')
 			i++
-			for i < len(tmpl) && tmpl[i] != '\'' {
-				out.WriteByte(tmpl[i])
-				i++
-			}
-			if i < len(tmpl) {
-				i++ // consume closing '
-			}
 			continue
 		}
 		if c == '#' && current != "" {
@@ -200,10 +226,31 @@ func splitPlaceholder(tmpl string, start int) (end int, body string, ok bool) {
 				return i + 1, tmpl[start+1 : i], true
 			}
 		case '\'':
-			// Skip until next '.
-			i++
-			for i < len(tmpl) && tmpl[i] != '\'' {
-				i++
+			// Skip ICU-quoted run: '' stays in place (not a run), 'X' where X
+			// starts with a metachar opens a quoted run — skip to closing '.
+			// For brace-depth counting we only need to skip the interior so
+			// braces inside quoted runs don't affect depth.
+			if i+1 < len(tmpl) && tmpl[i+1] == '\'' {
+				i++ // just skip the doubled ' (second ' will be seen next iter)
+			} else {
+				var next byte
+				if i+1 < len(tmpl) {
+					next = tmpl[i+1]
+				}
+				if next == '{' || next == '}' || next == '#' || next == '|' {
+					i++ // skip opening '
+					for i < len(tmpl) {
+						if tmpl[i] == '\'' {
+							if i+1 < len(tmpl) && tmpl[i+1] == '\'' {
+								i += 2
+								continue
+							}
+							break // closing '
+						}
+						i++
+					}
+				}
+				// bare ' — nothing extra to skip
 			}
 		}
 	}

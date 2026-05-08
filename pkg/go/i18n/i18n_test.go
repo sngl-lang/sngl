@@ -274,3 +274,19 @@ func TestTrTemplateDateTimeSingle(t *testing.T) {
 		t.Errorf("got %q, expected date+time with 5/8/26 and 2:30", got)
 	}
 }
+
+func TestTrApostrophe(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	cases := []struct{ in, want string }{
+		{"It's a fine day", "It's a fine day"},
+		{"Don''t do that", "Don't do that"},
+		{"Use '{' to interpolate", "Use { to interpolate"},
+		{"Quote '{' and '}' literally", "Quote { and } literally"},
+	}
+	for _, c := range cases {
+		got := tr.Tr(c.in, c.in, nil)
+		if got != c.want {
+			t.Errorf("Tr(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

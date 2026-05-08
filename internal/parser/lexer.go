@@ -471,6 +471,46 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 			return l.tok(STR_START, sb.String(), startLine, startCol)
 		}
 
+		// ICU apostrophe quoting (i18n mode only).
+		// '' → literal '; 'X' where X starts with a metachar → literal run; bare ' → literal '.
+		if i18n && ch == '\'' {
+			if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+				// Doubled '' — emit single literal apostrophe.
+				sb.WriteByte('\'')
+				l.advance()
+				l.advance()
+				continue
+			}
+			var next rune
+			if l.pos+1 < len(l.input) {
+				next = l.input[l.pos+1]
+			}
+			if next == '{' || next == '}' || next == '#' || next == '|' {
+				// 'X' quoted run — X starts with a metachar; consume interior literally.
+				l.advance() // consume opening '
+				for l.pos < len(l.input) {
+					if l.input[l.pos] == '\'' {
+						if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+							// '' inside a quoted run → literal '
+							sb.WriteByte('\'')
+							l.advance()
+							l.advance()
+							continue
+						}
+						l.advance() // consume closing '
+						break
+					}
+					sb.WriteRune(l.input[l.pos])
+					l.advance()
+				}
+				continue
+			}
+			// Bare ' not followed by a metachar — literal apostrophe.
+			sb.WriteByte('\'')
+			l.advance()
+			continue
+		}
+
 		// Escape sequences
 		if ch == '\\' {
 			l.advance()
@@ -562,6 +602,43 @@ func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) 
 				return l.tok(I18N_STR_RESUME, sb.String(), startLine, startCol)
 			}
 			return l.tok(I18N_CASE_START, sb.String(), startLine, startCol)
+		}
+		// ICU apostrophe quoting inside case bodies.
+		if ch == '\'' {
+			if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+				// Doubled '' → literal '.
+				sb.WriteByte('\'')
+				l.advance()
+				l.advance()
+				continue
+			}
+			var next rune
+			if l.pos+1 < len(l.input) {
+				next = l.input[l.pos+1]
+			}
+			if next == '{' || next == '}' || next == '#' || next == '|' {
+				// 'X' quoted run.
+				l.advance() // consume opening '
+				for l.pos < len(l.input) {
+					if l.input[l.pos] == '\'' {
+						if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+							sb.WriteByte('\'')
+							l.advance()
+							l.advance()
+							continue
+						}
+						l.advance() // consume closing '
+						break
+					}
+					sb.WriteRune(l.input[l.pos])
+					l.advance()
+				}
+				continue
+			}
+			// Bare ' — literal apostrophe.
+			sb.WriteByte('\'')
+			l.advance()
+			continue
 		}
 		sb.WriteRune(ch)
 		l.advance()
