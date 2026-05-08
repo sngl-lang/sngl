@@ -105,29 +105,35 @@ func (m Manifest) Lookup(key, inlinedTemplate, locale string) string {
 type Translator struct {
 	Manifest Manifest
 	Locale   language.Tag
+	Currency currency.Unit // currency for "currency" style; defaults from locale, USD fallback
 }
 
 // NewTranslator constructs a Translator from a manifest and a locale
 // string (BCP 47, e.g. "en", "es-MX"). On parse failure, falls back to
-// English.
+// English. Currency defaults to the conventional currency for the locale
+// via currency.FromTag, with USD as fallback.
 func NewTranslator(m Manifest, locale string) *Translator {
 	tag, err := language.Parse(locale)
 	if err != nil {
 		tag = language.English
 	}
-	return &Translator{Manifest: m, Locale: tag}
+	cur, _ := currency.FromTag(tag)
+	if cur == (currency.Unit{}) {
+		cur = currency.USD
+	}
+	return &Translator{Manifest: m, Locale: tag, Currency: cur}
 }
 
 // Tr looks up `key` in the manifest, falls back to `inlinedTemplate`,
 // formats it via ICU using `args`.
 func (t *Translator) Tr(key, inlinedTemplate string, args map[string]any) string {
 	tmpl := t.Manifest.Lookup(key, inlinedTemplate, t.Locale.String())
-	return formatICU(t.Locale, tmpl, args)
+	return formatICU(t.Locale, t.Currency, tmpl, args)
 }
 
 // Format runs ICU MessageFormat on `template` with `args`, no manifest lookup.
 func (t *Translator) Format(template string, args map[string]any) string {
-	return formatICU(t.Locale, template, args)
+	return formatICU(t.Locale, t.Currency, template, args)
 }
 
 // formatICU walks an ICU MessageFormat template, substituting placeholders
@@ -135,16 +141,16 @@ func (t *Translator) Format(template string, args map[string]any) string {
 // {n, plural, =N{...} other{...}} forms; other ICU constructs (select,
 // date, number formatters) are not yet implemented and emit the literal
 // template.
-func formatICU(tag language.Tag, tmpl string, args map[string]any) string {
+func formatICU(tag language.Tag, cur currency.Unit, tmpl string, args map[string]any) string {
 	var out strings.Builder
-	formatICUInto(&out, tag, tmpl, args, "")
+	formatICUInto(&out, tag, cur, tmpl, args, "")
 	return out.String()
 }
 
 // formatICUInto writes the formatted template to out. `current` is the
 // currently-bound numeric value used by '#' inside plural/selectordinal
 // case bodies.
-func formatICUInto(out *strings.Builder, tag language.Tag, tmpl string, args map[string]any, current string) {
+func formatICUInto(out *strings.Builder, tag language.Tag, cur currency.Unit, tmpl string, args map[string]any, current string) {
 	i := 0
 	for i < len(tmpl) {
 		c := tmpl[i]
@@ -199,7 +205,7 @@ func formatICUInto(out *strings.Builder, tag language.Tag, tmpl string, args map
 				out.WriteString(tmpl[i:])
 				return
 			}
-			renderPlaceholder(out, tag, ph, args, current)
+			renderPlaceholder(out, tag, cur, ph, args, current)
 			i = end
 			continue
 		}
@@ -258,7 +264,7 @@ func splitPlaceholder(tmpl string, start int) (end int, body string, ok bool) {
 }
 
 // renderPlaceholder dispatches one ICU placeholder.
-func renderPlaceholder(out *strings.Builder, tag language.Tag, body string, args map[string]any, _ string) {
+func renderPlaceholder(out *strings.Builder, tag language.Tag, cur currency.Unit, body string, args map[string]any, _ string) {
 	parts := splitPlaceholderArgs(body)
 	if len(parts) == 0 {
 		return
@@ -273,15 +279,15 @@ func renderPlaceholder(out *strings.Builder, tag language.Tag, body string, args
 	typ := strings.TrimSpace(parts[1])
 	switch typ {
 	case "plural", "selectordinal":
-		renderPlural(out, tag, val, parts[2:], typ == "selectordinal", args)
+		renderPlural(out, tag, cur, val, parts[2:], typ == "selectordinal", args)
 	case "select":
-		renderSelect(out, tag, val, parts[2:], args)
+		renderSelect(out, tag, cur, val, parts[2:], args)
 	case "number":
 		style := "decimal"
 		if len(parts) >= 3 {
 			style = strings.TrimSpace(parts[2])
 		}
-		renderNumber(out, tag, val, style)
+		renderNumber(out, tag, cur, val, style)
 	case "date":
 		style := "medium"
 		if len(parts) >= 3 {
@@ -332,7 +338,7 @@ func splitPlaceholderArgs(body string) []string {
 // renderPlural handles {n, plural, =0{...} one{...} other{...}}.
 // cases is the body after the type (everything from "=0{...}" onward),
 // which may be a single comma-merged string. We re-join and splitCases.
-func renderPlural(out *strings.Builder, tag language.Tag, val any, cases []string, ordinal bool, args map[string]any) {
+func renderPlural(out *strings.Builder, tag language.Tag, cur currency.Unit, val any, cases []string, ordinal bool, args map[string]any) {
 	raw := strings.TrimSpace(strings.Join(cases, ","))
 	pairs := splitCases(raw)
 	n, _ := toInt(val)
@@ -341,7 +347,7 @@ func renderPlural(out *strings.Builder, tag language.Tag, val any, cases []strin
 	for _, p := range pairs {
 		if strings.HasPrefix(p.selector, "=") {
 			if p.selector[1:] == nStr {
-				formatICUInto(out, tag, p.body, args, nStr)
+				formatICUInto(out, tag, cur, p.body, args, nStr)
 				return
 			}
 		}
@@ -356,32 +362,32 @@ func renderPlural(out *strings.Builder, tag language.Tag, val any, cases []strin
 	keyword := pluralFormKeyword(form)
 	for _, p := range pairs {
 		if p.selector == keyword {
-			formatICUInto(out, tag, p.body, args, nStr)
+			formatICUInto(out, tag, cur, p.body, args, nStr)
 			return
 		}
 	}
 	// Fall back to "other".
 	for _, p := range pairs {
 		if p.selector == "other" {
-			formatICUInto(out, tag, p.body, args, nStr)
+			formatICUInto(out, tag, cur, p.body, args, nStr)
 			return
 		}
 	}
 }
 
-func renderSelect(out *strings.Builder, tag language.Tag, val any, cases []string, args map[string]any) {
+func renderSelect(out *strings.Builder, tag language.Tag, cur currency.Unit, val any, cases []string, args map[string]any) {
 	raw := strings.TrimSpace(strings.Join(cases, ","))
 	pairs := splitCases(raw)
 	sel := fmt.Sprintf("%v", val)
 	for _, p := range pairs {
 		if p.selector == sel {
-			formatICUInto(out, tag, p.body, args, "")
+			formatICUInto(out, tag, cur, p.body, args, "")
 			return
 		}
 	}
 	for _, p := range pairs {
 		if p.selector == "other" {
-			formatICUInto(out, tag, p.body, args, "")
+			formatICUInto(out, tag, cur, p.body, args, "")
 			return
 		}
 	}
@@ -476,14 +482,14 @@ func pluralFormKeyword(f plural.Form) string {
 // Style: "decimal" (default), "percent", "currency", "scientific".
 func (t *Translator) NumberInt(n int, style string) string {
 	var b strings.Builder
-	renderNumber(&b, t.Locale, n, style)
+	renderNumber(&b, t.Locale, t.Currency, n, style)
 	return b.String()
 }
 
 // NumberFloat formats a float for the translator's locale.
 func (t *Translator) NumberFloat(n float64, style string) string {
 	var b strings.Builder
-	renderNumber(&b, t.Locale, n, style)
+	renderNumber(&b, t.Locale, t.Currency, n, style)
 	return b.String()
 }
 
@@ -510,7 +516,7 @@ func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string) string {
 }
 
 // renderNumber writes a locale-aware number to out.
-func renderNumber(out *strings.Builder, tag language.Tag, val any, style string) {
+func renderNumber(out *strings.Builder, tag language.Tag, cur currency.Unit, val any, style string) {
 	p := message.NewPrinter(tag)
 	switch v := val.(type) {
 	case int:
@@ -518,7 +524,7 @@ func renderNumber(out *strings.Builder, tag language.Tag, val any, style string)
 		case "percent":
 			out.WriteString(p.Sprint(number.Percent(float64(v) / 100.0)))
 		case "currency":
-			out.WriteString(p.Sprint(currency.USD.Amount(int64(v))))
+			out.WriteString(p.Sprint(cur.Amount(int64(v))))
 		case "scientific":
 			out.WriteString(p.Sprintf("%e", float64(v)))
 		default:
@@ -529,7 +535,7 @@ func renderNumber(out *strings.Builder, tag language.Tag, val any, style string)
 		case "percent":
 			out.WriteString(p.Sprint(number.Percent(v)))
 		case "currency":
-			out.WriteString(p.Sprint(currency.USD.Amount(v)))
+			out.WriteString(p.Sprint(cur.Amount(v)))
 		case "scientific":
 			out.WriteString(p.Sprintf("%e", v))
 		default:
@@ -541,7 +547,7 @@ func renderNumber(out *strings.Builder, tag language.Tag, val any, style string)
 		case "percent":
 			out.WriteString(p.Sprint(number.Percent(f)))
 		case "currency":
-			out.WriteString(p.Sprint(currency.USD.Amount(f)))
+			out.WriteString(p.Sprint(cur.Amount(f)))
 		case "scientific":
 			out.WriteString(p.Sprintf("%e", f))
 		default:
@@ -657,14 +663,14 @@ func Exactly(n int) PluralKey {
 // last as final fallback.
 func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
 	if msg, ok := forms[Exactly(count)]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	cat := plural.Cardinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
 	if msg, ok := forms[keywordToPluralKey(cat)]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	if msg, ok := forms[PluralOther]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	return ""
 }
@@ -672,14 +678,14 @@ func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
 // Selectordinal is like Plural but uses ordinal CLDR rules.
 func (t *Translator) Selectordinal(count int, forms map[PluralKey]string) string {
 	if msg, ok := forms[Exactly(count)]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	cat := plural.Ordinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
 	if msg, ok := forms[keywordToPluralKey(cat)]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	if msg, ok := forms[PluralOther]; ok {
-		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
 	return ""
 }

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/text/currency"
 )
 
 func TestManifestLookupHit(t *testing.T) {
@@ -288,5 +290,43 @@ func TestTrApostrophe(t *testing.T) {
 		if got != c.want {
 			t.Errorf("Tr(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+func TestNumberCurrencyDefaultsByLocale(t *testing.T) {
+	tests := []struct {
+		locale   string
+		wantCode string
+	}{
+		{"en-US", "USD"},
+		{"fr-FR", "EUR"},
+		{"ja-JP", "JPY"},
+	}
+	for _, tt := range tests {
+		tr := NewTranslator(Manifest{}, tt.locale)
+		if got := tr.Currency.String(); got != tt.wantCode {
+			t.Errorf("NewTranslator(%q).Currency = %s, want %s", tt.locale, got, tt.wantCode)
+		}
+	}
+}
+
+func TestNumberCurrencyExplicit(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en-US")
+	// Override with Japanese Yen
+	tr.Currency = currency.JPY
+	got := tr.NumberInt(1234, "currency")
+	// Should contain yen symbol or code
+	if !strings.Contains(got, "¥") && !strings.Contains(got, "JPY") {
+		t.Errorf("expected JPY-formatted output, got %q", got)
+	}
+}
+
+func TestNumberCurrencyInTemplate(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en-US")
+	tr.Currency = currency.EUR
+	got := tr.Format("{n, number, currency}", map[string]any{"n": 100})
+	// Should contain euro symbol or code
+	if !strings.Contains(got, "€") && !strings.Contains(got, "EUR") {
+		t.Errorf("expected EUR-formatted output in template, got %q", got)
 	}
 }
