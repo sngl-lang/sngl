@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestManifestLookupHit(t *testing.T) {
@@ -166,6 +167,65 @@ func TestFormatNoManifestLookup(t *testing.T) {
 	got := tr.Format("Hello", nil)
 	if got != "Hello" {
 		t.Errorf("Format should not consult manifest; got %q", got)
+	}
+}
+
+func TestPluralEnglish(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	forms := map[PluralKey]string{
+		Exactly(0):  "no files",
+		PluralOne:   "1 file",
+		PluralOther: "{n} files",
+	}
+	cases := []struct {
+		n    int
+		want string
+	}{
+		{0, "no files"},
+		{1, "1 file"},
+		{5, "5 files"},
+	}
+	for _, c := range cases {
+		got := tr.Plural(c.n, forms)
+		if got != c.want {
+			t.Errorf("Plural(%d) = %q, want %q", c.n, got, c.want)
+		}
+	}
+}
+
+func TestSelectFallsBackToOther(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	cases := map[string]string{"male": "he", "female": "she", "other": "they"}
+	if got := tr.Select("nonbinary", cases); got != "they" {
+		t.Errorf("got %q, want they", got)
+	}
+}
+
+func TestNumberInt(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	got := tr.NumberInt(1234, "decimal")
+	// x/text emits "1,234" for en-US.
+	if got != "1234" && got != "1,234" {
+		t.Errorf("got %q, want 1234 or 1,234", got)
+	}
+}
+
+func TestDateMedium(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	d := time.Date(2026, 5, 7, 12, 30, 0, 0, time.UTC)
+	got := tr.Date(d, "medium")
+	if got != "May 7, 2026" {
+		t.Errorf("got %q, want May 7, 2026", got)
+	}
+}
+
+func TestDatetimeShort(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	d := time.Date(2026, 5, 7, 12, 30, 0, 0, time.UTC)
+	got := tr.Datetime(d, "short", "short")
+	// "5/7/26 12:30 PM"
+	if got != "5/7/26 12:30 PM" {
+		t.Errorf("got %q, want 5/7/26 12:30 PM", got)
 	}
 }
 

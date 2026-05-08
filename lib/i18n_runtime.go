@@ -8,9 +8,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"golang.org/x/text/currency"
 	"golang.org/x/text/feature/plural"
 	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 )
 
 // ManifestEntry mirrors one entry in i18n.manifest.json.
@@ -389,4 +393,178 @@ func pluralFormKeyword(f plural.Form) string {
 		return "many"
 	}
 	return "other"
+}
+
+// --- Direct formatters ---
+
+// NumberInt formats an integer for the translator's locale.
+// Style: "decimal" (default), "percent", "currency", "scientific".
+func (t *Translator) NumberInt(n int, style string) string {
+	p := message.NewPrinter(t.Locale)
+	switch style {
+	case "percent":
+		return p.Sprint(number.Percent(float64(n) / 100.0))
+	case "currency":
+		return p.Sprint(currency.USD.Amount(int64(n)))
+	case "scientific":
+		return p.Sprintf("%e", float64(n))
+	default:
+		return p.Sprintf("%d", n)
+	}
+}
+
+// NumberFloat formats a float for the translator's locale.
+func (t *Translator) NumberFloat(n float64, style string) string {
+	p := message.NewPrinter(t.Locale)
+	switch style {
+	case "percent":
+		return p.Sprint(number.Percent(n))
+	case "currency":
+		return p.Sprint(currency.USD.Amount(n))
+	case "scientific":
+		return p.Sprintf("%e", n)
+	default:
+		return p.Sprintf("%g", n)
+	}
+}
+
+// Date formats a time.Time as a date.
+// Style: "short", "medium" (default), "long", "full".
+func (t *Translator) Date(d time.Time, style string) string {
+	return d.Format(layoutFor(style, true, false))
+}
+
+// Time formats a time.Time as a time-of-day.
+func (t *Translator) Time(d time.Time, style string) string {
+	return d.Format(layoutFor(style, false, true))
+}
+
+// Datetime formats a time.Time as date + time.
+func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string) string {
+	return d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true))
+}
+
+// layoutFor picks a Go time layout for the given ICU-style identifier.
+// Locale-aware variants (full month names in non-en) require x/text date
+// formatting which isn't implemented here yet; this returns en-style
+// layouts as a baseline that callers can override later.
+func layoutFor(style string, dateOnly, timeOnly bool) string {
+	switch style {
+	case "short":
+		if dateOnly {
+			return "1/2/06"
+		}
+		if timeOnly {
+			return "3:04 PM"
+		}
+	case "long":
+		if dateOnly {
+			return "January 2, 2006"
+		}
+		if timeOnly {
+			return "3:04:05 PM MST"
+		}
+	case "full":
+		if dateOnly {
+			return "Monday, January 2, 2006"
+		}
+		if timeOnly {
+			return "3:04:05 PM MST"
+		}
+	}
+	// medium (default)
+	if dateOnly {
+		return "Jan 2, 2006"
+	}
+	if timeOnly {
+		return "3:04:05 PM"
+	}
+	return time.RFC3339
+}
+
+// --- Direct selectors ---
+
+// PluralKey is the runtime form of i18n.PluralKey from lib/i18n.sngl.
+// When Exact is true, N is the literal integer matched by =N. When Exact
+// is false, N is a sentinel index into the CLDR keyword list (matching
+// the SNGL constants i18n.zero=0 / one=1 / two=2 / few=3 / many=4 /
+// other=5).
+type PluralKey struct {
+	N     int
+	Exact bool
+}
+
+// Sentinel CLDR keyword keys. The N values match the predeclared SNGL
+// constants in lib/i18n.sngl.
+var (
+	PluralZero  = PluralKey{N: 0, Exact: false}
+	PluralOne   = PluralKey{N: 1, Exact: false}
+	PluralTwo   = PluralKey{N: 2, Exact: false}
+	PluralFew   = PluralKey{N: 3, Exact: false}
+	PluralMany  = PluralKey{N: 4, Exact: false}
+	PluralOther = PluralKey{N: 5, Exact: false}
+)
+
+// Exactly constructs an =N exact-match key.
+func Exactly(n int) PluralKey {
+	return PluralKey{N: n, Exact: true}
+}
+
+// Plural selects a form by CLDR rule. Forms maps PluralKey to a message
+// template. Exact matches win first; CLDR keywords second; PluralOther
+// last as final fallback.
+func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
+	if msg, ok := forms[Exactly(count)]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	cat := plural.Cardinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
+	if msg, ok := forms[keywordToPluralKey(cat)]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	if msg, ok := forms[PluralOther]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	return ""
+}
+
+// Selectordinal is like Plural but uses ordinal CLDR rules.
+func (t *Translator) Selectordinal(count int, forms map[PluralKey]string) string {
+	if msg, ok := forms[Exactly(count)]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	cat := plural.Ordinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
+	if msg, ok := forms[keywordToPluralKey(cat)]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	if msg, ok := forms[PluralOther]; ok {
+		return formatICU(t.Locale, msg, map[string]any{"#": count, "n": count})
+	}
+	return ""
+}
+
+// Select dispatches by string value. Falls back to "other" on miss.
+func (t *Translator) Select(value string, cases map[string]string) string {
+	if msg, ok := cases[value]; ok {
+		return msg
+	}
+	if msg, ok := cases["other"]; ok {
+		return msg
+	}
+	return ""
+}
+
+func keywordToPluralKey(cat plural.Form) PluralKey {
+	switch cat {
+	case plural.Zero:
+		return PluralZero
+	case plural.One:
+		return PluralOne
+	case plural.Two:
+		return PluralTwo
+	case plural.Few:
+		return PluralFew
+	case plural.Many:
+		return PluralMany
+	}
+	return PluralOther
 }
