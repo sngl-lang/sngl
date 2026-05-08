@@ -17,16 +17,18 @@ SNGL targets multiple GUI platforms but has no native way to mark UI text as tra
 
 In scope for #21:
 - Parser and AST support for `$"..."` and `$"""..."""`, including ICU placeholder syntax
-- Type-checker validation (no-static-text warning, ICU placeholder name resolution)
-- IR-conversion lowering to `i18n.tr(key, args)` calls — no IR-level translatable concept
-- `sngl extract` command that produces `i18n.manifest.json`
-- Stdlib `i18n.tr` declaration and Go reference implementation (covers bubbletea/fyne/gtk4)
+- Type-checker validation (no-static-text warning, ICU placeholder type/case validation)
+- IR-conversion lowering to `i18n.tr(template, args)` calls — no IR-level translatable concept
+- New `map<K, V>` generic type
+- Stdlib `i18n` package declaration and Go reference implementation (covers bubbletea/fyne/gtk4) — manifest **lookup** only, populated externally
 
-Out of scope (deferred to #22):
+Out of scope (deferred to #22 or later):
+- `sngl extract` — manifest generation tooling
 - `$identifier` source form (e.g. `$btn_submit`)
 - `sngl i18n-sync` (source-to-ID rewrite)
 - `sngl i18n-rename`
 - Compile-time validation that keys exist in the manifest ("type-safe identifiers")
+- Semantic key derivation (component name + node id + slug). Without extract there's no need; #21 uses the ICU template as the key.
 - HTML and Android stdlib overrides (framework supports them; impls land later)
 
 ## Syntax
@@ -74,7 +76,7 @@ ast.I18nInterpExpr{Parts:[LiteralExpr|I18nPlaceholderExpr{Value, Type, Cases}]}
 warns no-static-text; type-checks Value; validates Type keyword + Cases against ICU shape
   │
   ▼ (IR conversion)
-desugars to ir.Call{Func: i18n.tr, Args: [keyLit, mapLit{"name_N": expr_N, ...}]}
+desugars to ir.Call{Func: i18n.tr, Args: [templateLit, mapLit{"name_N": expr_N, ...}]}
   │
   ▼ (codegen — unchanged)
 emits ordinary call expression in the target language
@@ -190,29 +192,13 @@ New `inferI18nInterp` dispatch for `*I18nInterpExpr`:
 
 Lower `*I18nInterpExpr` to a single `ir.Call` to `i18n.tr`:
 
-1. **Derive key** (see Key Derivation below).
-2. **Synthesize the ICU template string** by walking `Parts` and recursing through cases, emitting strict ICU-spec form (whitespace between cases). Concretely:
+1. **Synthesize the ICU template string** by walking `Parts` and recursing through cases, emitting strict ICU-spec form (whitespace between cases). Concretely:
    - `*LiteralExpr` parts: appended verbatim.
    - `*I18nPlaceholderExpr` parts: emit `{ <name> [ , <type> [ , <case1> { <body1> } <case2> { <body2> } … ] ] }` where `<name>` is either the bare ident name (when `Value` is `*IdentExpr`) or a synthetic `argN` (otherwise). Recurse on each case body.
-3. **Build the args map** as an `ir.MapLit` of type `map<string, dyn>` mapping each name → its value expression: bare-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`. Map literals are expressions like `{"name": <expr>, "argN": <expr>}`.
-4. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{key}, mapLit]}`.
+2. **Build the args map** as an `ir.MapLit` of type `map<string, dyn>` mapping each name → its value expression: bare-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`. Map literals are expressions like `{"name": <expr>, "argN": <expr>}`.
+3. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{template}, mapLit]}`. The template string serves as both the lookup key into the manifest and the inline fallback when the manifest has no entry.
 
 The IR has no translatable concept. Downstream phases (optimizer, codegen) see only an ordinary call.
-
-### Key Derivation
-
-Walked during IR conversion since the AST visitor already tracks enclosing scopes:
-
-1. Collect from the path to the literal: the nearest `ComponentDecl.Name` and the nearest `VisualNode.ID` (if set).
-2. If both present: `<component>.<node_id>` (e.g. `login.submit`).
-3. If only component: `<component>.<slug-of-template>` where slug is lowercase-alphanum-underscore truncated to ~30 chars.
-4. If neither: just the slug.
-5. On collision within a single extract pass, append `_2`, `_3`, ….
-
-Examples:
-- `component login { Button #submit (text = $"Submit Query") }` → `login.submit`
-- `component login { Text(text = $"Hello, {user.name}!") }` → `login.hello_user_name`
-- top-level `var x = $"Welcome"` → `welcome`
 
 ### New Type: `map<K, V>`
 
@@ -310,39 +296,29 @@ HTML and Android per-platform stdlib overrides not implemented in #21 (framework
 
 **Locale management** is deferred: there's no `setLocale`/`locale` getter in #21. Each platform's stdlib impl reads from its conventional source (env vars on Go, `navigator.language` on HTML, `Locale.getDefault()` on Android). Per-request or test-time locale override can be added as a follow-up without breaking the API surface above.
 
-### `sngl extract` Command (`cmd/sngl/extract.go`)
+### Manifest schema (read-only in #21)
 
-Behavior change from current implementation:
-- Walks AST, derives keys via the rule above, computes the ICU template per literal.
-- Reads existing `i18n.manifest.json` at the project root if present; merges:
-  - **New keys** added with empty `translations: {}`.
-  - **Existing keys** preserve their `translations` map; `original`/`template`/`context` updated from current source.
-  - **Orphaned keys** (in manifest but not in source) flagged `"orphaned": true` (kept, not deleted).
-- Writes to `i18n.manifest.json` (or `--out` override).
-
-Manifest schema:
+The runtime loads `i18n.manifest.json` at startup if present. Keys are ICU template strings (matching what the lowering passes to `i18n.tr`). Schema:
 
 ```json
 {
-  "login.submit": {
-    "original": "Submit Query",
-    "template": "Submit Query",
-    "context": "src/main.sngl:42",
+  "Submit Query": {
     "translations": {
       "es": "Enviar consulta",
       "fr": "Soumettre la requête"
     }
   },
-  "inbox.unread": {
-    "original": "You have {count} new {count, plural, one{message} other{messages}}",
-    "template": "You have {count} new {count, plural, one{message} other{messages}}",
-    "context": "src/inbox.sngl:17",
-    "translations": {}
+  "You have {count, plural, one{message} other{messages}}": {
+    "translations": {
+      "es": "Tienes {count, plural, one{mensaje} other{mensajes}}"
+    }
   }
 }
 ```
 
-Drop the `--out-format json|pot|arb` flag from the current implementation. Manifest is the only format.
+#21 only **loads and looks up** this file — generation is deferred to #22's `i18n-sync` (or to hand-authoring). When the manifest is missing or has no entry for a key, the runtime falls back to the inlined template that lowering passes as the first arg to `i18n.tr`. Apps without translations work transparently.
+
+The schema is intentionally minimal. #22 may extend it (e.g. add `original`, `context`, switch to stable IDs as keys); the runtime can stay forward-compatible by ignoring unknown fields and using the key directly when no schema-rich entry is found.
 
 ## What changes from the current implementation
 
@@ -358,12 +334,11 @@ The unilateral implementation in commit history covers parser flag + checker war
 | `ast.I18nInterpExpr`, `I18nPlaceholderExpr`, `I18nCase` | ❌ missing | add |
 | Grammar | ❌ unchanged | new terminals (i18n string boundaries); new productions `I18nInterpStr`, `I18nTriple`, `I18nFull`, `I18nPlaceholder`, `MsgFormatBody`, `MsgCase`, `Selector`; new alternative in `PrimaryExpr`; regenerate `zparser.go` |
 | AST builders | ❌ missing | add `buildI18n*` in `internal/parser/build.go` |
-| IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` |
-| Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
-| `map<K, V>` generic type | ❌ missing | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax, `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen |
-| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `selectordinal`, `select`, the `PluralKey` struct, the `zero`/`one`/`two`/`few`/`many`/`other` constants, and `exactly(n)` constructor — all statically typed |
-| Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`) |
-| `sngl extract` | ✅ multi-format | replace with manifest-only writer + merge logic |
+| IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` with synthesized ICU template as first arg |
+| `map<K, V>` generic type | ❌ missing | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax (struct keys supported), `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen |
+| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `selectordinal`, `select`, `PluralKey` struct, `zero`/`one`/`two`/`few`/`many`/`other` constants, `exactly(n)` constructor |
+| Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`); manifest loader reads `i18n.manifest.json` if present |
+| `sngl extract` | ✅ multi-format | **delete** — extraction is out of scope for #21 |
 
 ## Testing
 
@@ -371,14 +346,15 @@ The unilateral implementation in commit history covers parser flag + checker war
 - **Parser/format round-trip**: extend `format_test.go` cases.
 - **Grammar/parser unit tests**: round-trip for plain `$"..."`, single-arg placeholder, two-arg formatter (`{date, date, short}`), three-arg plural/select/selectordinal with multiple cases including `=N` selectors, nested placeholders inside case bodies, triple-quoted form.
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
-- **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
-- **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
+- **IR conversion**: assert `*I18nInterpExpr` produces an `ir.Call` to `i18n.tr` with the synthesized ICU template as the first arg and the correct map-typed args bundle.
+- **Manifest loading** (Go runtime): runtime resolves manifest hits, manifest misses (falls back to inlined template), and missing-manifest case (uses inlined template directly).
 - **`map<K, V>` unit tests**: type-expr parsing, literal construction (string keys, int keys, struct keys), indexing, methods, rejection of non-comparable key types, codegen round-trip per language including struct-keyed maps with `i18n.PluralKey`.
 - **Stdlib runtime** (Go): unit tests for each entry point — `tr` (manifest hit + miss + plural template across locales), `format` (literal template), `numberInt`/`numberFloat`/`date`/`time`/`datetime` (style variants in en + at least one non-en locale), `plural`/`select`/`selectordinal` (form selection across locales).
 
 ## Open questions
 
 None blocking. Documented for follow-up:
-- HTML and Android stdlib overrides — schedule under #22 or a separate issue.
+- HTML and Android stdlib overrides — follow-up issues.
 - Manifest path / discovery convention — default to `i18n.manifest.json` at project root for now; revisit if multi-package projects need per-package manifests.
+- Manifest population — until #22's `i18n-sync` lands, manifests are hand-authored. Without one, the runtime uses the inlined ICU template as the displayed string (i.e. apps without translations Just Work).
 - Compile-time key validation — out of scope (#22's "type-safe identifiers" objective).
