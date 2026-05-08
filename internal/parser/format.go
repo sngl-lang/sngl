@@ -943,6 +943,9 @@ func (f *formatter) writeListExpr(x *ast.ListExpr) {
 }
 
 func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
+	if x.Translatable {
+		f.write("$")
+	}
 	switch x.Style {
 	case ast.StyleTriple:
 		f.write(`"""`)

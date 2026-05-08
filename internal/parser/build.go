@@ -1214,8 +1214,16 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 	case FLOAT:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralFloat, Raw: tok.Literal}
 	case STR_FULL:
+		if tok.Translatable {
+			lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
+			return &ast.InterpolationExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleDouble, Translatable: true}
+		}
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
 	case TRIPLE_FULL:
+		if tok.Translatable {
+			lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
+			return &ast.InterpolationExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleTriple, Translatable: true}
+		}
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
 	case RAW_STRING:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringBackticked, Raw: tok.Literal}
@@ -1747,11 +1755,13 @@ func (b *builder) buildInterpStr(it nodeIter) ast.Expr {
 	// InterpStr = str_start Expr { str_resume Expr } str_end .
 	var parts []ast.Expr
 	pos := ast.Pos{}
+	translatable := false
 	for !it.done() {
 		if !it.isNonTerminal() {
 			tok := it.shift()
 			if !pos.IsSet() {
 				pos = b.posFromToken(tok)
+				translatable = tok.Translatable
 			}
 			switch tok.Type {
 			case STR_START, STR_RESUME, STR_END:
@@ -1767,18 +1777,20 @@ func (b *builder) buildInterpStr(it nodeIter) ast.Expr {
 			parts = append(parts, b.buildExpr(it.enter()))
 		}
 	}
-	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
+	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble, Translatable: translatable}
 }
 
 func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 	// TripleInterp = triple_start Expr { str_resume Expr } triple_end .
 	var parts []ast.Expr
 	pos := ast.Pos{}
+	translatable := false
 	for !it.done() {
 		if !it.isNonTerminal() {
 			tok := it.shift()
 			if !pos.IsSet() {
 				pos = b.posFromToken(tok)
+				translatable = tok.Translatable
 			}
 			switch tok.Type {
 			case TRIPLE_START, STR_RESUME, TRIPLE_END:
@@ -1794,7 +1806,7 @@ func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 			parts = append(parts, b.buildExpr(it.enter()))
 		}
 	}
-	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple, Translatable: translatable}
 }
 
 // --- Argument lists ---

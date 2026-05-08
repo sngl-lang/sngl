@@ -196,6 +196,13 @@ type Runner interface {
 	Run(dir string, opts *ir.StructLit, args []string) error
 }
 
+// LangRunner is optionally implemented by LangTranslators that know how to
+// execute generated code in a temp directory. Platforms delegate to this
+// interface so execution logic lives in the language, not each platform.
+type LangRunner interface {
+	RunDir(dir, goVersion string, args []string) error
+}
+
 // Builder is optionally implemented by PlatformGenerators that have a build
 // step between code generation and execution (e.g., compiling an APK).
 type Builder interface {

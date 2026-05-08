@@ -70,6 +70,7 @@ func init() {
 	rootCmd.AddCommand(docCmd)
 	rootCmd.AddCommand(snapshotCmd)
 	rootCmd.AddCommand(dumpCmd)
+	rootCmd.AddCommand(extractCmd)
 }
 
 // hasPathPrefix reports whether p is under the directory prefix.

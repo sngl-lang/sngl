@@ -1394,3 +1394,28 @@ func TestCheckProjectTestdata(t *testing.T) {
 		})
 	}
 }
+
+func TestTranslatableStringValid(t *testing.T) {
+	// Valid: $"Login" — has static text.
+	expectNoErrors(t, `var x = $"Login"`)
+	// Valid: $"Hello {name}!" — has static text with interpolation.
+	expectNoErrors(t, `var name = "world"; var x = $"Hello {name}!"`)
+}
+
+func TestTranslatableStringNoStaticTextWarning(t *testing.T) {
+	src := `var n = 5; var x = $"{n}"`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Warning && contains(d.Msg, "no static text") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected warning for translatable string with no static text")
+	}
+}

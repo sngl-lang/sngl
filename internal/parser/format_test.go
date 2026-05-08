@@ -333,3 +333,15 @@ func TestFormatDecrement(t *testing.T) {
 		"func foo() {\n    x--\n}",
 		"func foo() {\n    x--\n}")
 }
+
+func TestFormatTranslatableString(t *testing.T) {
+	assertFormat(t,
+		`var x = $"Login"`,
+		`var x = $"Login"`)
+}
+
+func TestFormatTranslatableInterpolation(t *testing.T) {
+	assertFormat(t,
+		`var x = $"Hello {name}!"`,
+		`var x = $"Hello {name}!"`)
+}

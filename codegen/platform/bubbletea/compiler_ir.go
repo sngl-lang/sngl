@@ -27,6 +27,9 @@ type Config struct {
 
 	// Lang globals (codegen/lang/golang/golang.sngl).
 	GoVersion string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
+
+	// Internal (set by CLI, not exposed in .sngl).
+	Lang string `option:"lang"` // language identifier used to select the executor
 }
 
 func (c Config) withDefaults() Config {

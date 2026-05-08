@@ -119,6 +119,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 	codegen.SetOptionField(target.Options, "main", true)
 	codegen.SetOptionField(target.Options, "projectDir", dir)
+	codegen.SetOptionField(target.Options, "lang", target.Lang)
 
 	// Optimize
 	start = time.Now()

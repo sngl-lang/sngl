@@ -156,6 +156,19 @@ func (l *lexer) NextToken() Token {
 			return l.scanNumber(startLine, startCol)
 		}
 
+		// Translatable string literal: $"..." or $"""..."""
+		if ch == '$' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '"' {
+			l.advance() // consume $
+			if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+				tok := l.scanTripleString(startLine, startCol)
+				tok.Translatable = true
+				return tok
+			}
+			tok := l.scanString(startLine, startCol)
+			tok.Translatable = true
+			return tok
+		}
+
 		// Strings
 		if ch == '"' {
 			if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
