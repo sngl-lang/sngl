@@ -219,12 +219,16 @@ Examples:
 The `select` family wants a key→value mapping with static types. Time to add the long-pending `map<K, V>` generic type. Minimal scope for #21:
 
 - New `ir.TypeMap` kind with two `Elems` (key and value types).
-- Type-expression parsing: `map<string, string>` slots into the existing generic-type-args path (parallel to `list<T>`).
-- Map literal syntax: `{"k": v, "k2": v2}` — the `:` separator distinguishes from struct literals (which use `=`). Empty literal `{}` parses as either depending on expected type; the checker disambiguates from context.
-- Lookup: `m["key"]` reuses `IndexExpr`, returning `V`. Missing-key returns the zero value (Go-map semantics). Tightening to `option<V>` lookup is deferred to a follow-up — out of scope here.
+- Type-expression parsing: `map<string, string>`, `map<PluralKey, string>` slot into the existing generic-type-args path (parallel to `list<T>`).
+- **Key types**: any type with structural equality. Primitives (string, int, bool) and structs whose fields are themselves comparable. The checker rejects non-comparable key types (e.g. `map<func, string>`).
+- Map literal syntax: `{<keyExpr>: <valueExpr>, ...}`. Keys are expressions — string literals, ints, struct-valued constants like `i18n.one`, function calls like `i18n.exactly(0)`. The `:` separator distinguishes from struct literals (which use `=`). Empty literal `{}` parses as either depending on expected type; the checker disambiguates from context.
+- Lookup: `m[k]` reuses `IndexExpr`, returning `V`. Missing-key returns the zero value (Go-map semantics). Tightening to `option<V>` lookup is deferred to a follow-up — out of scope here.
 - Methods on `map.*`: `length`, `keys`, `values`, `contains(k)`, `get(k, default)`. Just enough for stdlib and i18n.
 - No iteration syntax in `for` yet — defer to a later issue.
-- Codegen: Go `map[K]V`, JS plain object, Kotlin `Map<K, V>`, Android same. Each codegen lang adds map-literal emission.
+- **Codegen** by target language:
+  - **Go**: `map[K]V` natively; struct keys work because Go composites of comparable fields are comparable.
+  - **JS**: emit a `Map` (not a plain object) so non-string keys are honored. Map literals lower to `new Map([[k, v], ...])`. Equality for struct keys requires either a stable serialization strategy or wrapping struct keys in a primitive token — defer the choice to JS codegen impl, but pick one.
+  - **Kotlin**: `Map<K, V>` with data-class structural equality; SNGL structs already lower to data classes so keys work.
 
 This is a non-trivial expansion of #21 but the user explicitly scoped it in. If implementation cost balloons, candidates to defer to a follow-up:
 - Map methods beyond `length` and indexing
@@ -260,17 +264,40 @@ func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medi
 
 // --- Direct selectors ---
 
-// Keys: CLDR keywords ("zero" / "one" / "two" / "few" / "many" / "other")
-// or explicit "=N" matches. Example:
-//     i18n.plural(n, {"one": "1 file", "other": "{n} files"})
-func plural(count int, forms map<string, string>) -> string
+// Key for plural / selectordinal cases. When `exact` is true, `n` is the
+// literal integer matched by the =N form. When `exact` is false, `n` is a
+// sentinel index identifying a CLDR keyword (zero/one/two/few/many/other);
+// callers reach these via the predeclared `i18n.zero` / `i18n.one` / … /
+// `i18n.other` constants below rather than constructing the struct directly.
+struct PluralKey { n int; exact bool }
 
-// Keys: arbitrary selector values. Example:
+// CLDR keyword constants. Sentinel `n` values are an implementation detail
+// (matched by the runtime against CLDR rules). Treat these as opaque keys.
+const zero  PluralKey = PluralKey{n: 0, exact: false}
+const one   PluralKey = PluralKey{n: 1, exact: false}
+const two   PluralKey = PluralKey{n: 2, exact: false}
+const few   PluralKey = PluralKey{n: 3, exact: false}
+const many  PluralKey = PluralKey{n: 4, exact: false}
+const other PluralKey = PluralKey{n: 5, exact: false}
+
+// Construct an exact-match key (=N form). Example: i18n.exactly(0) is the
+// key matching exactly zero, distinct from i18n.zero (the CLDR "zero" rule).
+func exactly(n int) -> PluralKey
+
+// Cardinal plural selection. Example:
+//     i18n.plural(n, {
+//         i18n.exactly(0): "no files",
+//         i18n.one:        "1 file",
+//         i18n.other:      "{n} files",
+//     })
+func plural(count int, forms map<PluralKey, string>) -> string
+
+// Ordinal plural selection (1st, 2nd, 3rd, …). Same key shape as plural.
+func selectordinal(count int, forms map<PluralKey, string>) -> string
+
+// Free-form value-based selection. Keys are arbitrary strings.
 //     i18n.select(gender, {"male": "he", "female": "she", "other": "they"})
 func select(value string, cases map<string, string>) -> string
-
-// Ordinal plural rules (1st, 2nd, 3rd, …).
-func selectordinal(count int, forms map<string, string>) -> string
 ```
 
 Default Go implementation injected via `PkgSource` override:
@@ -334,7 +361,7 @@ The unilateral implementation in commit history covers parser flag + checker war
 | IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` |
 | Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
 | `map<K, V>` generic type | ❌ missing | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax, `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen |
-| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` — all statically typed using existing primitives + `map<K, V>` |
+| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `selectordinal`, `select`, the `PluralKey` struct, the `zero`/`one`/`two`/`few`/`many`/`other` constants, and `exactly(n)` constructor — all statically typed |
 | Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`) |
 | `sngl extract` | ✅ multi-format | replace with manifest-only writer + merge logic |
 
@@ -346,7 +373,7 @@ The unilateral implementation in commit history covers parser flag + checker war
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
 - **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
 - **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
-- **`map<K, V>` unit tests**: type-expr parsing, literal construction, indexing, method calls, codegen round-trip per language.
+- **`map<K, V>` unit tests**: type-expr parsing, literal construction (string keys, int keys, struct keys), indexing, methods, rejection of non-comparable key types, codegen round-trip per language including struct-keyed maps with `i18n.PluralKey`.
 - **Stdlib runtime** (Go): unit tests for each entry point — `tr` (manifest hit + miss + plural template across locales), `format` (literal template), `numberInt`/`numberFloat`/`date`/`time`/`datetime` (style variants in en + at least one non-en locale), `plural`/`select`/`selectordinal` (form selection across locales).
 
 ## Open questions
