@@ -20,11 +20,11 @@ func i18n.numberInt(n int, style string) string {}
 func i18n.numberFloat(n float, style string) string {}
 
 // Style: "short", "medium" (default), "long", "full".
-func i18n.dateStr(d date, style string) string {}
-func i18n.timeStr(t time, style string) string {}
-func i18n.datetimeStr(dt dateTime, dateStyle string, timeStyle string) string {}
+func i18n.date(d date, style string) string {}
+func i18n.time(t time, style string) string {}
+func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) string {}
 
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-func i18n.selectStr(value string, cases map<string, string>) string {}
+func i18n.select(value string, cases map<string, string>) string {}

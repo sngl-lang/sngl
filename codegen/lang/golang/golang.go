@@ -274,16 +274,16 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.numberFloat":
 		// Args: n float, style string
 		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
-	case "i18n.dateStr":
+	case "i18n.date":
 		// Args: d date, style string
 		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
-	case "i18n.timeStr":
+	case "i18n.time":
 		// Args: t time, style string
 		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
-	case "i18n.datetimeStr":
+	case "i18n.datetime":
 		// Args: dt dateTime, dateStyle string, timeStyle string
 		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
-	case "i18n.selectStr":
+	case "i18n.select":
 		// Args: value string, cases map[string]string
 		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
 	}
@@ -297,8 +297,8 @@ func IsI18nCall(qualName string) bool {
 	switch qualName {
 	case "i18n.tr", "i18n.format",
 		"i18n.numberInt", "i18n.numberFloat",
-		"i18n.dateStr", "i18n.timeStr", "i18n.datetimeStr",
-		"i18n.selectStr":
+		"i18n.date", "i18n.time", "i18n.datetime",
+		"i18n.select":
 		return true
 	}
 	return false
