@@ -120,6 +120,12 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			return TypDyn
 		}
 		return MapOf(k, v)
+	case "iter":
+		if len(t.TypeArgs) != 1 {
+			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
+			return TypDyn
+		}
+		return IterOf(c.resolveType(t.TypeArgs[0]))
 	case "ref":
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
