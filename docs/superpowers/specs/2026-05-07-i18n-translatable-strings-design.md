@@ -32,19 +32,22 @@ Out of scope (deferred to #22):
 ## Syntax
 
 ```sngl
-let label = $"Login"                                  // plain
-let welcome = $"Welcome back, {user.name}!"           // SNGL expr placeholder
-let unread = $"You have {count} new {count, plural,
-    one{message}
-    other{messages}}"                                 // ICU plural
-let formatted = $"Created on {date, date, short}"     // ICU formatter
+let label = $"Login"                                          // plain
+let welcome = $"Welcome back, {user.name}!"                   // single SNGL expr
+let unread = $"You have {count, plural,
+    one{message},
+    other{messages}}"                                         // plural with cases
+let formatted = $"Created on {date, date, short}"             // ICU formatter
+let combined = $"{count} new {count, plural, one{msg}, other{msgs}}"
 ```
 
-Inside `$"..."`, `{...}` is one of:
-- A bare identifier or SNGL expression (existing interpolation behavior, preserved)
-- An ICU placeholder: detected by lookahead — if the content begins with `<ident>,` (identifier followed by comma), it's parsed as opaque ICU until balanced `}`
+The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."`, every `{...}` is an **i18n placeholder** (not a generic SNGL interpolation). A placeholder body is a comma-separated list of items. Each item is one of:
 
-Disambiguation rule is the comma after the first identifier — unambiguous because SNGL expressions never have a top-level comma in this position.
+- **SNGL expression** — `count`, `user.name`, `now() + 1d`. Resolved against the local scope and bound by name (synthetic name if not a bare ident).
+- **Identifier** — bare names in non-leading positions are ICU type/style keywords: `plural`, `select`, `selectordinal`, `date`, `time`, `number`, `short`, `medium`, `long`, `full`, `currency`, `percent`, etc.
+- **Message expression** — `<selector>{<message>}` where selector is an identifier (`one`, `other`, `male`, …) or `=N` for explicit numeric match. The message body is itself an i18n message: literal text plus nested `{...}` placeholders.
+
+Note: SNGL deviates from strict ICU by requiring commas **between** message-expression cases (where strict ICU uses whitespace). The runtime emits whitespace-separated form when handing the template to native ICU libraries.
 
 `$"""..."""` (triple-quoted) is supported with the same rules.
 
@@ -57,7 +60,7 @@ Disambiguation rule is the comma after the first identifier — unambiguous beca
 tokens: STR_START with Translatable=true, ICU_PLACEHOLDER tokens for ICU bodies, normal expr tokens otherwise
   │
   ▼ (parser → AST)
-ast.InterpolationExpr{Translatable:true, Parts:[LiteralExpr|Expr|ICUPlaceholderExpr]}
+ast.InterpolationExpr{Translatable:true, Parts:[LiteralExpr|I18nPlaceholderExpr]}
   │
   ▼ (checker)
 warns no-static-text; validates ICU placeholder names resolve in scope; validates ICU template parses
@@ -77,20 +80,36 @@ The AST node carries the translatable marker through formatting (so `$"..."` rou
 
 - `Token.Translatable bool` — set on `STR_FULL`, `TRIPLE_FULL`, `STR_START`, `TRIPLE_START` when the literal opens with `$`.
 - `interpFrame.translatable bool` — propagates the flag through resume tokens so the lexer knows it's still inside a translatable string.
-- New token type `ICU_PLACEHOLDER` (sentinel byte to be allocated; literal is the verbatim ICU body without the outer braces).
-- New routine `scanInterpolationOpening`: when `{` is encountered inside a translatable string content, peek for `<ident> WS* ,`. If matched, slurp until balanced `}` and emit `ICU_PLACEHOLDER`. Otherwise emit `LBRACE` and let the existing expression scanner take over.
+- New token type `ICU_PLACEHOLDER` (sentinel byte to be allocated; literal is the verbatim placeholder body without the outer braces).
+- When `{` is encountered while scanning translatable string content, the lexer slurps to the matching `}` (counting nested braces from message expressions) and emits a single `ICU_PLACEHOLDER` token. No SNGL expression mode is entered. The `$` prefix is the only signal needed — no lookahead, no per-`{` decision.
+- For non-translatable strings, `{` continues to work as today (push interp frame, parse SNGL expression).
 
 ### AST (`ast/expr.go`)
 
 - `InterpolationExpr.Translatable bool` (already added).
-- New `ICUPlaceholderExpr` node:
+- New nodes for the placeholder body items:
   ```go
-  type ICUPlaceholderExpr struct {
-      Pos   Pos
-      Body  string   // verbatim text between { and }, e.g. "count, plural, one{...} other{...}"
-      Names []string // identifier names referenced (extracted by minimal ICU parser)
+  // I18nPlaceholderExpr is an i18n placeholder body: a comma-separated list
+  // of items written inside {...} in a $"..." string.
+  type I18nPlaceholderExpr struct {
+      Pos  Pos
+      Args []I18nArg  // alternation: I18nValueArg | I18nMessageArg
+  }
+
+  // Covers both arbitrary SNGL exprs (e.g. count, user.name, now()+1d) AND
+  // bare-ident ICU keywords (plural, short, currency, …). The checker
+  // decides which based on position — no AST-level distinction needed since
+  // a bare keyword is just an IdentExpr.
+  type I18nValueArg struct { Pos Pos; Value Expr }
+
+  // <selector>{<body>} where selector is an ident ("one") or "=N" form.
+  type I18nMessageArg struct {
+      Pos      Pos
+      Selector string
+      Body     []Expr  // alternation: *LiteralExpr | *I18nPlaceholderExpr
   }
   ```
+- The `Body` of an `I18nMessageArg` is recursive: literal text plus nested placeholders. Bare `#` (ICU "current value") becomes a `LiteralExpr` with a sentinel kind, expanded during template synthesis.
 
 ### Grammar (`internal/parser/sngl.ebnf` + regenerated `zparser.go`)
 
@@ -108,43 +127,44 @@ Same for `TripleInterp`. Requires regenerating `zparser.go` via the `egg` tool.
 
 **Implementation note:** the `egg` tool is not currently in the repo's `go tool` registry. Either add it as a tool dependency or hand-edit `zparser.go` (reviewable since the change is mechanical: one new alternative in two productions).
 
-### Minimal ICU Parser (`internal/parser/icu.go`)
+### Placeholder Body Parser (`internal/parser/i18n.go`)
 
-A small recursive parser. Just enough to:
-- Validate the body parses as ICU MessageFormat (placeholder, plural, select, formatter)
-- Extract the set of identifier names referenced (top-level and nested)
-- Surface syntax errors with positions
+A small recursive parser invoked at AST-build time on each `ICU_PLACEHOLDER` token literal. Produces an `I18nPlaceholderExpr` from the body text.
 
-Grammar handled (subset of full ICU):
+Grammar:
 ```
-placeholder = ident                                    // {name}
-            | ident "," type                           // {date, date}
-            | ident "," type "," style                 // {date, date, short}
-            | ident "," ("plural"|"selectordinal"|"select") "," cases
-cases       = case+
-case        = (selector | "=" int) "{" message "}"
-selector    = "zero" | "one" | "two" | "few" | "many" | "other" | ident
-message     = (literal | "#" | "{" placeholder "}")*
+placeholder = arg ("," arg)*
+arg         = msg_expr
+            | sngl_expr                           // includes bare idents
+msg_expr    = (ident | "=" int) "{" message "}"
+message     = (literal_text | "#" | "{" placeholder "}")*
 ```
 
-Single file, <300 LOC, no external dep. Errors reported with byte offsets so the checker can produce diagnostics.
+Algorithm:
+1. Tokenize the body, splitting on top-level commas (brace-depth aware).
+2. For each item, peek for the `<sel>{...}` msg-expr shape — bare identifier or `=N` followed immediately by `{`. If matched, recurse into the message body. Otherwise feed the item text back into the SNGL expression parser via a re-entry point (`parser.ParseExpr(string) (ast.Expr, error)`) — added as a new public-internal helper. This means SNGL exprs and bare idents share the existing expression machinery; no duplicate parser logic.
+3. Recursively, message bodies allow literal text + nested placeholders (same lexer rules as `$"..."` content).
+
+Single file, <300 LOC, no external dep. Errors reported with byte offsets so the checker can produce diagnostics anchored in the source.
 
 ### Checker (`internal/checker/expr.go`)
 
 `inferInterpolation` extends:
 - Existing: warn if `Translatable` and no literal parts.
-- New: for each `ICUPlaceholderExpr`, parse the body; if invalid, emit error diagnostic. For each extracted name, look up in the local scope and validate as a SNGL identifier with appropriate type (string for plain placeholders, int for plural/select-ordinal selectors, anything for `select`).
+- New: for each `I18nPlaceholderExpr`, type-check each `I18nValueArg.Value` as a regular SNGL expression. Validate that the leading argument's type matches the ICU type keyword that follows (e.g. `plural`/`selectordinal` require numeric; `select` requires string-like). Walk message bodies recursively.
 
 ### IR Conversion (`internal/checker/expr.go` `inferInterpolation`)
 
 When `x.Translatable`, replace the current `Binary +` chain with a single `ir.Call`:
 
 1. **Derive key** (see Key Derivation below).
-2. **Build ICU template** (`template`) by concatenating parts:
-   - `LiteralExpr` parts: appended verbatim
-   - SNGL expression parts (e.g. `{user.name}`): replaced with `{argN}` (synthetic name); the value expression bound to that name in the args struct
-   - `ICUPlaceholderExpr` parts: appended as `{` + body + `}`; their names contributed directly to the args struct
-3. **Build args struct** as an `ir.StructLit` mapping each name → its value expression. For ICU placeholder names, the value is an `ir.Ident` resolved against the local scope. For synthetic names from SNGL exprs, the value is the IR'd expression.
+2. **Synthesize the ICU template string** by walking parts and emitting an ICU-spec form (whitespace between message-expr cases) regardless of the SNGL source's comma-separated form. Concretely:
+   - `LiteralExpr` parts: appended verbatim.
+   - `I18nPlaceholderExpr` parts: emit `{`, then for each `I18nArg`, comma-separated:
+     - `I18nValueArg{Value: *IdentExpr}`: emit the ident name (covers both bound vars and ICU keywords like `plural` / `short`).
+     - `I18nValueArg{Value: complexExpr}`: emit a synthetic name `argN` (and bind the expression in step 3).
+     - `I18nMessageArg`: emit `<selector>{<recursively-built-body>}` with whitespace separators between sibling message args (per ICU spec).
+3. **Build the args struct** as an `ir.StructLit` mapping each name → its value expression: real-ident value args bind by their name; complex-expr value args bind by their synthetic `argN`.
 4. **Emit** `ir.Call{Func: <i18n.tr resolved>, Args: [ir.Literal{key}, structLit]}`.
 
 The IR has no translatable concept. Downstream phases (optimizer, codegen) see only an ordinary call.
@@ -259,12 +279,12 @@ The unilateral implementation in commit history covers parser flag + checker war
 |---|---|---|
 | `Token.Translatable` | ✅ added | keep |
 | `InterpolationExpr.Translatable` | ✅ added | keep |
-| Lexer `$"..."` recognition | ✅ basic case | extend with ICU-aware `{` handling and `interpFrame.translatable` propagation |
-| Formatter `$` round-trip | ✅ works | keep |
-| Checker no-static-text warning | ✅ works | keep, add ICU placeholder validation |
-| `ast.ICUPlaceholderExpr` | ❌ missing | add |
-| Grammar | ❌ unchanged | extend `InterpPart`; regenerate zparser |
-| Minimal ICU parser | ❌ missing | add |
+| Lexer `$"..."` recognition | ✅ basic case | extend: in translatable strings, slurp `{...}` as opaque `ICU_PLACEHOLDER` token (no lookahead); propagate `translatable` through `interpFrame` |
+| Formatter `$` round-trip | ✅ works | extend to format `I18nPlaceholderExpr` |
+| Checker no-static-text warning | ✅ works | keep, add placeholder validation (type-check value args, validate ICU keyword shape) |
+| `ast.I18nPlaceholderExpr` + arg variants | ❌ missing | add (`I18nValueArg`, `I18nMessageArg`) |
+| Grammar | ❌ unchanged | one new terminal `icu_placeholder`; one new alternative in `InterpPart` for both `InterpStr` and `TripleInterp`; regenerate `zparser.go` |
+| Placeholder body parser | ❌ missing | add `internal/parser/i18n.go` with `parser.ParseExpr` re-entry helper |
 | IR conversion to `ir.Call` | ❌ still emits `Binary +` chain | rewrite to emit `ir.Call` to `i18n.tr` |
 | Key derivation | ❌ uses content hash via `{0}` numbering | replace with semantic-key derivation |
 | Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `number`, `date`, `time`, `datetime`, `plural`, `select`, `selectordinal` |
@@ -275,7 +295,7 @@ The unilateral implementation in commit history covers parser flag + checker war
 
 - **Lexer**: golden tokens for `$"x"`, `$"x{name}"`, `$"x{count, plural, one{a} other{b}}"`, `$"""multi-line {n}"""`, mixed translatable + non.
 - **Parser/format round-trip**: extend `format_test.go` cases.
-- **ICU parser unit tests**: valid/invalid forms, name extraction.
+- **Placeholder body parser unit tests**: valid/invalid forms (plural, select, selectordinal, date/time/number formatters), nested message bodies, `=N` selectors, recursion into messages with nested placeholders, error positions.
 - **Checker**: no-static-text warning, undefined ICU name → error, valid ICU with in-scope names → no diag.
 - **IR conversion**: assert `Translatable` interpolation produces an `ir.Call` to `i18n.tr` with correct key and struct args.
 - **Extract command** (txtar): runs against multi-file fixture, asserts manifest content; second run preserves a hand-added translation; orphaned keys flagged.
