@@ -288,3 +288,8 @@ struct File {}
 // throw; the nearest boundary's `@error` handler receives an
 // `ErrorEvent` with the message and kind.
 struct error {}
+
+// Generic map<K, V>. Methods are pure — they do not mutate the receiver.
+// Equality on K determines membership; non-comparable key types are
+// rejected at type-check time.
+struct map {}
