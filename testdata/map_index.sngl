@@ -1,4 +1,0 @@
-// m[k] returns V (zero on miss, Go-map semantics).
-var scores map<string, int> = {alice = 10, bob = 20}
-var alice int = scores["alice"]
-var missing int = scores["nobody"] // returns 0, the int zero
