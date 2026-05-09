@@ -1,6 +1,6 @@
 output {
     go {
-        html(main="true")
+        html(main=true)
     }
 }
 
