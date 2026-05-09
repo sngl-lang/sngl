@@ -153,3 +153,21 @@ test("Translator.select returns case body literally (no ICU expansion)", () => {
     "fallback={n}"
   );
 });
+
+test("tr: works when args is a Map (codegen-emitted shape)", () => {
+  const t = new Translator({}, "en");
+  const args = new Map([["name", "Alice"]]);
+  assert.strictEqual(t.tr("Hello, {name}!", "Hello, {name}!", args), "Hello, Alice!");
+});
+
+test("plural: works when args inside template uses Map", () => {
+  const t = new Translator({}, "en");
+  // _plural always builds its own args object internally — but if user
+  // passes a Map directly to format with a plural placeholder, the
+  // formatICU recursion needs to handle Map args too.
+  const args = new Map([["count", 5]]);
+  assert.strictEqual(
+    t.format("{count, plural, one{# item} other{# items}}", args),
+    "5 items"
+  );
+});
