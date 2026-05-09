@@ -62,6 +62,20 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
+		if id, ok := x.Operand.(*ir.Ident); ok {
+			if win, ok := id.Sym.(*ir.Window); ok {
+				switch x.Field {
+				case "href":
+					if win.Href != nil {
+						return win.Href
+					}
+				case "title":
+					if win.Title != nil {
+						return win.Title
+					}
+				}
+			}
+		}
 	case *ir.Index:
 		x.Operand = foldExpr(x.Operand, ctx)
 		x.Idx = foldExpr(x.Idx, ctx)

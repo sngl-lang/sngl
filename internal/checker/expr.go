@@ -2043,6 +2043,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	switch name {
 	case "window":
 		w := c.buildWindow(vn)
+		if w.Name != "" {
+			c.scope.Declare(w)
+		}
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w

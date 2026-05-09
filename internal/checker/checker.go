@@ -116,6 +116,10 @@ type checker struct {
 	stdlibOptions    *ir.StructDef
 	stdlibOptionsSet bool
 
+	// Stdlib Window struct type, used to type window symbols so `home.href`
+	// resolves through the regular struct-field machinery.
+	windowType *ir.Type
+
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
 
@@ -148,6 +152,9 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.loadStdlib()
+	if sd, ok := c.symtab.Types["Window"].(*ir.StructDef); ok {
+		c.windowType = sd.SymType()
+	}
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -942,6 +949,9 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		w := c.buildWindow(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
+		if w.Name != "" {
+			c.scope.Declare(w)
+		}
 	case "timer":
 		t := c.buildTimer(vn)
 		c.pkg.Timers = append(c.pkg.Timers, t)
@@ -1360,7 +1370,7 @@ func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
 }
 
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{AST: vn, Name: vn.ID}
+	w := &ir.Window{AST: vn, Name: vn.ID, Typ: c.windowType}
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body.
 	for _, name := range hrefPathParams(vn) {
