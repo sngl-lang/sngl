@@ -1,10 +1,10 @@
-// Windows without `#id` or string-literal `href` get a synthetic
-// position-derived name so each one is uniquely identifiable.
+// Anonymous windows distinguish themselves via their literal href —
+// the html platform derives the output filename from the folded href.
 
-window(title="A") {
+window(title="A", href="/") {
 	text(value="a")
 }
 
-window(title="B") {
+window(title="B", href="/b.html") {
 	text(value="b")
 }

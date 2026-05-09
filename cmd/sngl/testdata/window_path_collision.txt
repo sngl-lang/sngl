@@ -1,0 +1,12 @@
+# Two windows resolving to the same output path must error out.
+
+! sngl compile --lang=none --platform=html --out=out site.sngl
+stderr 'window output path collision'
+
+-- site.sngl --
+output { none { html } }
+
+component main {
+    window #a(title="A", href="/dup.html") { text(value="a") }
+    window #b(title="B", href="/dup.html") { text(value="b") }
+}

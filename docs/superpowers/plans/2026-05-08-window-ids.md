@@ -23,11 +23,11 @@ The parser already extracts `#id` from any visual node into `VisualNode.ID` (`in
 
 ```sngl
 window #home(title="Home", href="/") {
-	text(value="Home")
+    text(value="Home")
 }
 
 window #about(title="About", href="/about.html") {
-	text(value="About")
+    text(value="About")
 }
 ```
 
@@ -64,7 +64,7 @@ The checker currently overwrites `Name` from a literal href and synthesizes `win
 // An anonymous window must not get a "window_L<line>" name. The checker
 // should leave Name empty; the platform decides what to do.
 window(title="A", href="/a.html") {
-	text(value="a")
+    text(value="a")
 }
 ```
 
@@ -434,12 +434,13 @@ Two windows with the same `#id` at the package root, or within the same componen
 
 ```sngl
 window #home(title="A", href="/a.html") {
-	text(value="A")
+    text(value="A")
 }
 
-window #home(title="B", href="/b.html") { // ERROR(check) "duplicate window id \"home\""
-	text(value="B")
+window #home(title="B", href="/b.html") {
+    text(value="B")
 }
+// ERROR(check) "duplicate window id \"home\""
 ```
 
 - [ ] **Step 2: Locate the insertion points**
@@ -573,12 +574,12 @@ Create `testdata/window_id_href_ref.sngl`:
 
 ```sngl
 window #home(title="Home", href="/index.html") {
-	text(value="Home")
+    text(value="Home")
 }
 
 window #about(title="About", href="/about.html") {
-	link(text="Home", href=home.href)
-	link(text="Self", href=about.href)
+    link(text="Home", href=home.href)
+    link(text="Self", href=about.href)
 }
 ```
 
