@@ -1,0 +1,7 @@
+window #home(title="A", href="/a.html") {
+	text(value="A")
+}
+
+window #home(title="B", href="/b.html") { // ERROR(check) "duplicate window id \"home\""
+	text(value="B")
+}

@@ -97,6 +97,9 @@ type checker struct {
 	// Current component (for event validation).
 	currentComponent *ir.Component
 
+	// Tracks window #id collisions at package scope.
+	pkgWindowIDs map[string]bool
+
 	// Current platform block name (e.g., "html" inside `platform html { }`).
 	// Used to try platform Resolve() on unknown identifiers.
 	currentPlatform string
@@ -139,6 +142,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		scope:        symtab.Root,
 		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
+		pkgWindowIDs: make(map[string]bool),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
@@ -936,6 +940,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.buildOutputs(vn)
 	case "window":
 		w := c.buildWindow(vn)
+		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
 	case "timer":
 		t := c.buildTimer(vn)
@@ -1340,6 +1345,20 @@ func optionFieldNames(sd *ir.StructDef) string {
 	return fmt.Sprintf("%v", names)
 }
 
+// checkDuplicateWindowID reports an error if w.Name is non-empty and another
+// window with the same Name already exists in seen. Otherwise records w in
+// seen and returns.
+func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
+	if w == nil || w.Name == "" || seen == nil {
+		return
+	}
+	if seen[w.Name] {
+		c.error(w.AST.Pos, "duplicate window id %q", w.Name)
+		return
+	}
+	seen[w.Name] = true
+}
+
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{AST: vn, Name: vn.ID}
 	// URL template params like `{name}` in href become string vars on the
@@ -1605,6 +1624,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Check remaining component body statements.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
+		seenWindowIDs := map[string]bool{}
 		for _, stmt := range comp.AST.Body.Stmts {
 			switch stmt.(type) {
 			case *ast.ConstDecl, *ast.VarDecl:
@@ -1613,6 +1633,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // already checked above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
+					if w, ok := s.(*ir.Window); ok {
+						c.checkDuplicateWindowID(w, seenWindowIDs)
+					}
 					comp.Body = append(comp.Body, s)
 				}
 			}
