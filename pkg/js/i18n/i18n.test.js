@@ -118,3 +118,18 @@ test("Translator.plural direct with string keys", () => {
   assert.strictEqual(t.plural(1, forms), "1 item");
   assert.strictEqual(t.plural(7, forms), "7 items");
 });
+
+test("number: currency picks EUR for fr-FR", () => {
+  const t = new Translator({}, "fr-FR");
+  const got = t.format("{x, number, currency}", { x: 1234 });
+  // Intl may render "1 234,00 €" or "1 234,00 EUR" depending on engine; accept either.
+  assert.match(got, /€|EUR/);
+});
+
+test("date: long en-US", () => {
+  const t = new Translator({}, "en-US");
+  const d = new Date(Date.UTC(2026, 4, 8, 12, 0, 0));
+  const got = t.format("On {d, date, long}", { d });
+  // Long date style in en-US is "May 8, 2026".
+  assert.match(got, /On May 8, 2026/);
+});
