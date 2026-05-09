@@ -441,6 +441,11 @@ type htmlGen struct {
 	// Component nesting depth for recursion protection
 	componentDepth int
 
+	// usesI18n is true when the IR package contains i18n intrinsic calls.
+	// The bundle entry will include the i18n runtime import and optional
+	// manifest initializer.
+	usesI18n bool
+
 	// irSlotChildren holds the caller's children during component inlining;
 	// the body-level `slot` pseudo-element projects them into position.
 	irSlotChildren []ir.Stmt
@@ -507,6 +512,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		minify:         opts.Minify,
 		idToNode:       make(map[string]*ir.NodeInst),
 		loweredRefs:    make(map[string]bool),
+		usesI18n:       hasI18nCalls(pkg),
 	}
 
 	g.scope = &codegen.ExprScope{
@@ -630,6 +636,27 @@ func (g *htmlGen) generate() (string, error) {
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
 	script := scriptBuf.String()
+
+	// i18n runtime preamble: when i18n intrinsics are used, prepend the
+	// bundled runtime as a `var i18n = (()=>{...})()` IIFE so that the
+	// generated `i18n.getTranslator().tr(...)` calls resolve without forcing
+	// the main script through a separate esbuild pass (which would reject
+	// pre-existing codegen quirks in test fixtures).
+	if g.usesI18n && strings.TrimSpace(script) != "" {
+		snippet, err := i18nRuntimeSnippet()
+		if err != nil {
+			return "", fmt.Errorf("i18n runtime bundle: %w", err)
+		}
+		var preamble strings.Builder
+		// Manifest init runs before getTranslator() is first called.
+		if manifestJS := i18nManifestJS(g.projectDir, g.projectFS); manifestJS != "" {
+			preamble.WriteString(manifestJS)
+		}
+		preamble.WriteString(snippet)
+		preamble.WriteString("\n")
+		script = preamble.String() + script
+	}
+
 	if strings.TrimSpace(script) != "" {
 		// Run through esbuild when there are real imports to resolve, or when
 		// minify is on. Otherwise emit the script verbatim — esbuild surfaces
