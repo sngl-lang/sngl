@@ -2652,11 +2652,22 @@ func (g *htmlGen) collectReferencedIDs() []string {
 
 	for _, u := range g.updates {
 		// Extract the owning element ID from the func name: $u_N_xxx → $N.
-		// Skip lowered ids ($u__nN_xxx) — those reference data-sngl-id'd
-		// elements and are emitted via loweredRefs, not getElementById.
+		// Lowered ids ($u__nN_xxx) reference data-sngl-id'd elements; mark
+		// them so the loweredRefs emitter declares the const for them.
 		parts := strings.SplitN(u.funcName, "_", 3)
 		if len(parts) >= 2 && parts[1] != "" && allDigits(parts[1]) {
 			addID("$" + parts[1])
+		} else if len(parts) >= 3 && parts[1] == "" && strings.HasPrefix(parts[2], "n") {
+			// $u__nN_text → __nN
+			rest := parts[2]
+			tail := strings.IndexByte(rest, '_')
+			if tail < 0 {
+				tail = len(rest)
+			}
+			suffix := rest[1:tail]
+			if allDigits(suffix) {
+				g.loweredRefs["__n"+suffix] = true
+			}
 		}
 		// Also scan the body — some updaters (for-else, if-else) manipulate
 		// a *different* element than the one encoded in their name.
