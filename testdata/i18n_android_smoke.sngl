@@ -1,0 +1,13 @@
+// Android smoke test fixture for $"..." plural rendering via the Kotlin i18n runtime.
+// Exercises: i18n plural forms, state mutation, Compose update on click.
+// Used by cmd/sngl/testdata/compile_android_i18n.txt.
+
+component main {
+    var count int = 1
+    var label = $"You have {count, plural, one{# item} other{# items}}"
+    text(value=label)
+    button(text="Add", @click {
+        count = count + 1
+        label = $"You have {count, plural, one{# item} other{# items}}"
+    })
+}

@@ -91,7 +91,8 @@ type irAndroidAnalysis struct {
 type irAndroidBind struct {
 	name   string
 	ktType string
-	init   string
+	init   string   // pre-computed literal init (used for simple values)
+	initEx ir.Expr  // raw IR expression when init needs EvalExpr (e.g. i18n calls)
 	isList bool
 }
 
@@ -122,10 +123,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		if isList && (initVal == `""` || initVal == "emptyList()") {
 			initVal = ""
 		}
+		// When the init is a non-literal expression (e.g. an i18n.tr call),
+		// IRLiteralToKt returns "" — store the raw expr so emitIR can
+		// re-evaluate it via kc.EvalExpr.
+		var initEx ir.Expr
+		if initVal == `""` && v.Init != nil {
+			if _, isLit := v.Init.(*ir.Literal); !isLit {
+				initEx = v.Init
+			}
+		}
 		info.binds = append(info.binds, irAndroidBind{
 			name:   v.Name,
 			ktType: ktType,
 			init:   initVal,
+			initEx: initEx,
 			isList: isList,
 		})
 	}
@@ -189,6 +200,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 	if cfg.GoLib {
 		b.WriteString("import golib.Golib\n")
 	}
+	if hasI18nCalls(ctx.Pkg) {
+		fmt.Fprintf(&b, "import %s.I18n\n", kotlin.SnglI18nKotlinPackage)
+	}
 	b.WriteString("\n")
 
 	// Data classes
@@ -242,9 +256,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 
 	// State declarations
 	for _, bind := range info.binds {
+		initVal := bind.init
+		if bind.initEx != nil {
+			// Non-literal init (e.g. i18n.tr call): evaluate via the full IR context.
+			initVal = kc.EvalExpr(bind.initEx)
+		}
 		if bind.isList {
 			elemType := listElementTypeKt(bind.ktType)
-			elems := bind.init
+			elems := initVal
 			if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
 				elems = elems[len("listOf(") : len(elems)-1]
 			}
@@ -254,7 +273,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
 			}
 		} else {
-			fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, bind.init)
+			fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
 		}
 	}
 

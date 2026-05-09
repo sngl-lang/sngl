@@ -23,6 +23,10 @@ type templateData struct {
 	// declaration in AndroidManifest.xml with one entry per element.
 	// Used by batch snapshot to declare N activities in a single APK.
 	Activities []ManifestActivity
+	// HasI18n is true when the source package uses i18n intrinsics. When set,
+	// MainActivity.kt.tmpl emits I18n.init(this) in onCreate so the runtime
+	// is initialised before Compose content is set.
+	HasI18n bool
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -46,8 +50,10 @@ func newTemplateData(cfg Config) templateData {
 
 // scaffoldFiles generates all scaffold files for a full Gradle project.
 // Templates that call {{skip}} are automatically omitted.
-func scaffoldFiles(cfg Config) []*codegen.OutputFile {
+// hasI18n causes the MainActivity template to emit I18n.init(this).
+func scaffoldFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
+	data.HasI18n = hasI18n
 	pkgPath := pkgToPath(cfg.Package)
 
 	files := codegen.RenderTemplates(templateFS, "templates", data)
@@ -87,9 +93,11 @@ func scaffoldFiles(cfg Config) []*codegen.OutputFile {
 
 // directBuildFiles returns the minimal files for a gradle-free build.
 // Uses the same templates but with Gradle=false so gradle files are skipped.
-func directBuildFiles(cfg Config) []*codegen.OutputFile {
+// hasI18n causes the MainActivity template to emit I18n.init(this).
+func directBuildFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.Gradle = false
+	data.HasI18n = hasI18n
 	return codegen.RenderTemplates(templateFS, "templates", data)
 }
 

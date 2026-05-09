@@ -124,6 +124,8 @@ func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error
 		src = append([]byte(h), src...)
 	}
 
+	usesI18n := hasI18nCalls(req.Pkg)
+
 	resp := &codegen.Response{}
 
 	if !cfg.Main {
@@ -135,7 +137,7 @@ func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error
 		resp.Files = append(resp.Files, codegen.BytesFile(
 			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
 		))
-		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
+		resp.Files = append(resp.Files, scaffoldFiles(cfg, usesI18n)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
 				f.Name = "app/src/main/" + f.Name
@@ -144,9 +146,17 @@ func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error
 		}
 	} else {
 		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
-		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
+		resp.Files = append(resp.Files, directBuildFiles(cfg, usesI18n)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			resp.Files = append(resp.Files, iconRes...)
+		}
+	}
+
+	// When i18n is in use, inject the Kotlin runtime and manifest.
+	if usesI18n && cfg.Main {
+		resp.Files = append(resp.Files, i18nRuntimeFile())
+		if mf := i18nManifestFile(cfg, req.ProjectFS); mf != nil {
+			resp.Files = append(resp.Files, mf)
 		}
 	}
 

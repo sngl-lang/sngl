@@ -43,7 +43,7 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 		))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
-		resp.Files = append(resp.Files, scaffoldFiles(cfg)...)
+		resp.Files = append(resp.Files, scaffoldFiles(cfg, false)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
 				f.Name = "app/src/main/" + f.Name
@@ -54,7 +54,7 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
 		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
-		resp.Files = append(resp.Files, directBuildFiles(cfg)...)
+		resp.Files = append(resp.Files, directBuildFiles(cfg, false)...)
 		if iconRes, err := iconFiles(cfg); err == nil {
 			resp.Files = append(resp.Files, iconRes...)
 		}
