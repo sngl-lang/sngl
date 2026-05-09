@@ -54,6 +54,10 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	keyVar := findLoopVar(fs, fs.Key)
 	valueVar := findLoopVar(fs, fs.Value)
 
+	// Collect window struct values per #id across iterations so hoisted
+	// list<Window> symbols can be bound after expansion.
+	windowsByID := map[string][]any{}
+
 	result := make([]ir.Stmt, 0, len(items))
 	for i, item := range items {
 		// Create a child context with loop variables bound.
@@ -81,12 +85,67 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		for i, bodyStmt := range fs.Body {
 			cloned[i] = cloneStmt(bodyStmt)
 		}
-		result = append(result, foldStmts(cloned, childCtx)...)
+		folded := foldStmts(cloned, childCtx)
+		collectWindowStructValues(folded, windowsByID)
+		result = append(result, folded...)
 
 		// Propagate file assets back.
 		ctx.fileAssets = childCtx.fileAssets
 	}
+
+	// Bind each hoisted list<Window> symbol to the accumulated values.
+	for _, v := range fs.HoistedWindowIDs {
+		if vals, ok := windowsByID[v.Name]; ok {
+			ctx.values[v] = vals
+		}
+	}
 	return result
+}
+
+// collectWindowStructValues recursively walks unrolled statements looking for
+// *ir.Window declarations with a non-empty Name, and appends a const-eval
+// struct value (map[string]any with href/title/favicon) into result keyed by
+// the window's Name.
+func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.Window:
+			if n.Name != "" {
+				result[n.Name] = append(result[n.Name], windowStructValue(n))
+			}
+		case *ir.If:
+			collectWindowStructValues(n.Body, result)
+			collectWindowStructValues(n.Else, result)
+		case *ir.For:
+			collectWindowStructValues(n.Body, result)
+			collectWindowStructValues(n.Else, result)
+		case *ir.PlatformFilter:
+			collectWindowStructValues(n.Body, result)
+		}
+	}
+}
+
+// windowStructValue produces the const-eval shape (map[string]any) for an
+// unrolled window: href/title/favicon literal-folded to Go values, when
+// available. Non-foldable expressions are omitted.
+func windowStructValue(w *ir.Window) any {
+	m := map[string]any{}
+	if lit, ok := w.Href.(*ir.Literal); ok {
+		if v := parseLiteral(lit); v != nil {
+			m["href"] = v
+		}
+	}
+	if lit, ok := w.Title.(*ir.Literal); ok {
+		if v := parseLiteral(lit); v != nil {
+			m["title"] = v
+		}
+	}
+	if lit, ok := w.Favicon.(*ir.Literal); ok {
+		if v := parseLiteral(lit); v != nil {
+			m["favicon"] = v
+		}
+	}
+	return m
 }
 
 // findLoopVar searches the for-loop's body for a LoopVar with the given name.

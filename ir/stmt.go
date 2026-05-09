@@ -126,6 +126,10 @@ type For struct {
 	ElemType *Type
 	Body     []Stmt
 	Else     []Stmt
+	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
+	// declared inside this loop's body. After optimizer expansion, the
+	// optimizer binds each symbol's value to the unrolled list of windows.
+	HoistedWindowIDs []*Var
 }
 
 func (*For) stmtNode() {}

@@ -79,6 +79,13 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 			}
 		}
 		return true
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if f.Value == nil || !isConstExpr(f.Value, ctx) {
+				return false
+			}
+		}
+		return true
 	case *ir.Select:
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Index:
@@ -174,6 +181,19 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 				return nil, false
 			}
 			result = append(result, v)
+		}
+		return result, true
+	case *ir.StructLit:
+		result := make(map[string]any, len(x.Fields))
+		for _, f := range x.Fields {
+			if f.Spread || f.Name == "" || f.Value == nil {
+				return nil, false
+			}
+			v, ok := evalExpr(f.Value, ctx)
+			if !ok {
+				return nil, false
+			}
+			result[f.Name] = v
 		}
 		return result, true
 	case *ir.Select:
