@@ -46,6 +46,13 @@ export class Translator {
   datetime(dt, ds, ts)  { return formatDateTime(this.locale, dt, ds, ts); }
 
   select(value, cases) {
+    // cases may be a JS Map (from SNGL map<string, string>) or a plain
+    // object (e.g. when called from user JS). Handle both.
+    if (cases instanceof Map) {
+      if (cases.has(value)) return cases.get(value);
+      if (cases.has("other")) return cases.get("other");
+      return "";
+    }
     if (cases[value] !== undefined) return cases[value];
     if (cases.other !== undefined) return cases.other;
     return "";

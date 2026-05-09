@@ -111,6 +111,13 @@ test("Translator.select direct", () => {
   assert.strictEqual(t.select("nope", { yes: "Y", other: "?" }), "?");
 });
 
+test("Translator.select accepts Map for cases", () => {
+  const t = new Translator({}, "en");
+  const cases = new Map([["yes", "Y"], ["other", "?"]]);
+  assert.strictEqual(t.select("yes", cases), "Y");
+  assert.strictEqual(t.select("nope", cases), "?");
+});
+
 test("Translator.plural direct with string keys", () => {
   const t = new Translator({}, "en");
   const forms = { "=0": "none", "one": "{n} item", "other": "{n} items" };
