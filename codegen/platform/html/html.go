@@ -554,6 +554,71 @@ func (g *htmlGen) allocID() string {
 	return id
 }
 
+// prewalkNodes seeds g.idToNode with every NodeInst in the package that
+// carries an `__n*` id from the NoReactivity lowering. See generate().
+func (g *htmlGen) prewalkNodes() {
+	if g.pkg == nil {
+		return
+	}
+	var visit func(s ir.Stmt)
+	visitStmts := func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			visit(s)
+		}
+	}
+	visit = func(s ir.Stmt) {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n == nil {
+				return
+			}
+			if strings.HasPrefix(n.ID, "__n") {
+				g.idToNode[n.ID] = n
+			}
+			visitStmts(n.Children)
+			for _, h := range n.Handlers {
+				if h.Func != nil {
+					visitStmts(h.Func.Block)
+				}
+			}
+		case *ir.If:
+			visitStmts(n.Body)
+			visitStmts(n.Else)
+		case *ir.For:
+			visitStmts(n.Body)
+			visitStmts(n.Else)
+		case *ir.Window:
+			visitStmts(n.Body)
+		case *ir.SlotInst:
+			visitStmts(n.Children)
+		case *ir.ErrorBoundary:
+			visitStmts(n.Children)
+		}
+	}
+	for _, c := range g.pkg.Components {
+		if c == nil {
+			continue
+		}
+		visitStmts(c.Body)
+		for _, fn := range c.Funcs {
+			if fn != nil {
+				visitStmts(fn.Block)
+			}
+		}
+	}
+	for _, w := range g.pkg.Windows {
+		if w == nil {
+			continue
+		}
+		visitStmts(w.Body)
+	}
+	for _, fn := range g.pkg.Funcs {
+		if fn != nil {
+			visitStmts(fn.Block)
+		}
+	}
+}
+
 // nodeID returns n.ID when NoReactivity has pre-assigned one (`__n*`),
 // otherwise allocates a fresh `$N`. Records the chosen id in g.idToNode
 // so reactive-update Assigns inside handler bodies can be translated
@@ -575,6 +640,14 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 }
 
 func (g *htmlGen) generate() (string, error) {
+	// Prewalk every NodeInst with a NoReactivity-assigned __n* id so
+	// idToNode is fully populated before any handler translates a
+	// reactive-update Assign. Without this, handlers emitted earlier in
+	// the static walk than the destination text node fall through to the
+	// JS-default `el.value = …` path — wrong for spans, which need
+	// `el.textContent = …`.
+	g.prewalkNodes()
+
 	var b strings.Builder
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
@@ -1573,7 +1646,7 @@ func (g *htmlGen) renderStaticCheckbox(b *strings.Builder, n *ir.NodeInst, depth
 	fmt.Fprintf(b, " %s</label>\n", html.EscapeString(label))
 
 	if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
-		g.addChangeHandler(id, changeEvt.Func.Block)
+		g.addChangeHandler(id, changeEvt.Func)
 	}
 }
 
@@ -1646,7 +1719,7 @@ func (g *htmlGen) renderStaticRadio(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 	fmt.Fprintf(b, "%s</fieldset>\n", indent)
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
-		g.addChangeHandler(id, evt.Func.Block)
+		g.addChangeHandler(id, evt.Func)
 	}
 }
 
@@ -1678,7 +1751,7 @@ func (g *htmlGen) renderStaticToggle(b *strings.Builder, n *ir.NodeInst, depth i
 	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, "><input type=\"checkbox\" role=\"switch\"%s /> %s</label>\n", checkedAttr, html.EscapeString(label))
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
-		g.addChangeHandler(id, evt.Func.Block)
+		g.addChangeHandler(id, evt.Func)
 	}
 }
 
@@ -1715,7 +1788,7 @@ func (g *htmlGen) renderStaticSelect(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s</select>\n", indent)
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
-		g.addChangeHandler(id, evt.Func.Block)
+		g.addChangeHandler(id, evt.Func)
 	}
 }
 
@@ -1942,7 +2015,7 @@ func (g *htmlGen) renderStaticDatepicker(b *strings.Builder, n *ir.NodeInst, dep
 	b.WriteString(g.previewAttrs(n))
 	b.WriteString(" />\n")
 	if evt := codegen.NodeHandler(n, "change"); evt != nil && evt.Func != nil && len(evt.Func.Block) > 0 {
-		g.addChangeHandler(id, evt.Func.Block)
+		g.addChangeHandler(id, evt.Func)
 	}
 }
 
@@ -2123,7 +2196,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		case "input":
 			g.addInputHandler(id, h.Func)
 		case "change":
-			g.addChangeHandler(id, h.Func.Block)
+			g.addChangeHandler(id, h.Func)
 		default:
 			g.addClickHandler(id, h.Func.Block)
 		}
@@ -2557,7 +2630,7 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 		if h.isAsync {
 			keyword = "async function"
 		}
-		if h.event == "input" {
+		if h.event == "input" || h.event == "change" {
 			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(e) {\n  %s\n});\n", h.elemID, h.event, keyword, body)
 		} else {
 			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n", h.elemID, h.event, keyword, body)
@@ -3293,15 +3366,56 @@ func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
 	})
 }
 
-func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
-	if len(body) == 0 {
+func (g *htmlGen) addChangeHandler(elemID string, fn *ir.Func) {
+	if fn == nil || len(fn.Block) == 0 {
 		return
+	}
+	// Rename any declared param (typically `e`) so references like
+	// `e.value` translate to `e.target.value` in the emitted JS — same
+	// shape addInputHandler uses for input events.
+	savedEvent := g.scope.EventVar
+	g.scope.EventVar = "e.target"
+	if g.scope.Renames == nil {
+		g.scope.Renames = make(map[string]string)
+	}
+	var savedLocal []string
+	var savedRename []struct {
+		name string
+		val  string
+		had  bool
+	}
+	for _, p := range fn.Params {
+		if p == nil || p.Name == "" {
+			continue
+		}
+		if !g.scope.LocalVars[p.Name] {
+			savedLocal = append(savedLocal, p.Name)
+			g.scope.LocalVars[p.Name] = true
+		}
+		prev, had := g.scope.Renames[p.Name]
+		savedRename = append(savedRename, struct {
+			name string
+			val  string
+			had  bool
+		}{p.Name, prev, had})
+		g.scope.Renames[p.Name] = "e.target"
 	}
 	var stmts []string
 	mutated := make(map[string]bool)
-	for _, s := range body {
+	for _, s := range fn.Block {
 		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
+	}
+	g.scope.EventVar = savedEvent
+	for _, n := range savedLocal {
+		delete(g.scope.LocalVars, n)
+	}
+	for _, r := range savedRename {
+		if r.had {
+			g.scope.Renames[r.name] = r.val
+		} else {
+			delete(g.scope.Renames, r.name)
+		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	var lines []string
@@ -3313,7 +3427,7 @@ func (g *htmlGen) addChangeHandler(elemID string, body []ir.Stmt) {
 		event:   "change",
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
-		isAsync: ir.BlockHasFuncvarAsyncCall(body, g.pts()),
+		isAsync: ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
 	})
 }
 
