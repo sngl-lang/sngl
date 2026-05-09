@@ -542,6 +542,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return c.convertStructLit(e)
 	case *ListLit:
 		return c.convertListLit(e)
+	case *MapLitIR:
+		return c.convertMapLit(e)
 	case *Spread:
 		return &ast.SpreadExpr{
 			Operand: c.convertExpr(e.Operand),
@@ -690,6 +692,17 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 		se.Fields = append(se.Fields, sf)
 	}
 	return se
+}
+
+func (c *converter) convertMapLit(ml *MapLitIR) *ast.MapLit {
+	out := &ast.MapLit{}
+	for _, en := range ml.Entries {
+		out.Entries = append(out.Entries, ast.MapEntry{
+			Key:   c.convertExpr(en.Key),
+			Value: c.convertExpr(en.Value),
+		})
+	}
+	return out
 }
 
 func (c *converter) convertListLit(ll *ListLit) *ast.ListExpr {
