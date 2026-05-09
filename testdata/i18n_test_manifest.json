@@ -1,0 +1,13 @@
+{
+  "Hello, {name}!": {
+    "translations": {
+      "fr": "Bonjour, {name} !",
+      "es": "¡Hola, {name}!"
+    }
+  },
+  "{count, plural, one{# item} other{# items}}": {
+    "translations": {
+      "fr": "{count, plural, one{# article} other{# articles}}"
+    }
+  }
+}
