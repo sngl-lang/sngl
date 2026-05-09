@@ -173,6 +173,11 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		for _, el := range x.Elems {
 			st.gatherDeps(el, out)
 		}
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			st.gatherDeps(en.Key, out)
+			st.gatherDeps(en.Value, out)
+		}
 	case *ir.StructLit:
 		for _, f := range x.Fields {
 			st.gatherDeps(f.Value, out)
@@ -409,6 +414,16 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		cp.Elems = make([]ir.Expr, len(x.Elems))
 		for i, el := range x.Elems {
 			cp.Elems[i] = rewriteIdentsToCaptures(el, rewrite)
+		}
+		return &cp
+	case *ir.MapLitIR:
+		cp := *x
+		cp.Entries = make([]ir.MapEntry, len(x.Entries))
+		for i, en := range x.Entries {
+			cp.Entries[i] = ir.MapEntry{
+				Key:   rewriteIdentsToCaptures(en.Key, rewrite),
+				Value: rewriteIdentsToCaptures(en.Value, rewrite),
+			}
 		}
 		return &cp
 	case *ir.StructLit:
