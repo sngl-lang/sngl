@@ -1,6 +1,7 @@
 package javascript
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -96,6 +97,65 @@ func TestTranslateIRCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
 	want := "handler()"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestEmitI18nTr(t *testing.T) {
+	// Build an IR namespace call: i18n.tr("Hello, {name}!", {"name": "Alice"})
+	// The namespace receiver is an *ir.Ident("i18n"), the func has Receiver="i18n",Name="tr".
+	fn := &ir.Func{Name: "tr", Receiver: "i18n"}
+	receiverExpr := &ir.Ident{Name: "i18n"}
+	keyLit := &ir.Literal{Raw: "Hello, {name}!", Type: ir.TypString}
+	argsMap := &ir.MapLitIR{} // empty map arg for simplicity
+	call := &ir.Call{
+		Func:     fn,
+		Receiver: receiverExpr,
+		Args: []ir.CallArg{
+			{Value: keyLit},
+			{Value: argsMap},
+		},
+	}
+	got := translateIRNamespaceCall(call, &codegen.ExprScope{})
+	if !strings.Contains(got, "i18n.getTranslator().tr(") {
+		t.Errorf("i18n.tr: got %q, want call containing i18n.getTranslator().tr(", got)
+	}
+}
+
+func TestEmitI18nPlural(t *testing.T) {
+	// i18n.plural is a namespace call: i18n.plural(count, forms)
+	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
+	receiverExpr := &ir.Ident{Name: "i18n"}
+	countLit := &ir.Literal{Raw: "3", Type: ir.TypInt}
+	formsMap := &ir.MapLitIR{}
+	call := &ir.Call{
+		Func:     fn,
+		Receiver: receiverExpr,
+		Args: []ir.CallArg{
+			{Value: countLit},
+			{Value: formsMap},
+		},
+	}
+	got := translateIRNamespaceCall(call, &codegen.ExprScope{})
+	if !strings.Contains(got, "i18n.getTranslator().plural(") {
+		t.Errorf("i18n.plural: got %q, want call containing i18n.getTranslator().plural(", got)
+	}
+}
+
+func TestEmitI18nExactly(t *testing.T) {
+	// i18n.exactly is a namespace call: i18n.exactly(n) → ("=" + (n))
+	fn := &ir.Func{Name: "exactly", Receiver: "i18n"}
+	receiverExpr := &ir.Ident{Name: "i18n"}
+	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
+	call := &ir.Call{
+		Func:     fn,
+		Receiver: receiverExpr,
+		Args: []ir.CallArg{
+			{Value: nLit},
+		},
+	}
+	got := translateIRNamespaceCall(call, &codegen.ExprScope{})
+	if !strings.Contains(got, `"=" + `) {
+		t.Errorf("i18n.exactly: got %q, want string concat with \"=\"", got)
 	}
 }
 

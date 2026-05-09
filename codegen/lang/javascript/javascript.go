@@ -98,6 +98,27 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	return `""`
 }
 
+// SnglI18nImportPath is the JS module specifier the generated bundle uses
+// to import the i18n runtime. The html platform copies pkg/js/i18n/ into
+// the output as a sibling of the entry bundle so this relative path
+// resolves at runtime.
+const SnglI18nImportPath = "./i18n/i18n.js"
+
+// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
+// Mirrors the Go translator's helper of the same name. Platform codegens use
+// this to decide whether to inject the i18n runtime import.
+func IsI18nCall(qualName string) bool {
+	switch qualName {
+	case "i18n.tr", "i18n.format",
+		"i18n.numberInt", "i18n.numberFloat",
+		"i18n.date", "i18n.time", "i18n.datetime",
+		"i18n.select",
+		"i18n.plural", "i18n.selectordinal", "i18n.exactly":
+		return true
+	}
+	return false
+}
+
 func (t *Translator) TypeToNative(hint string) string {
 	if strings.HasPrefix(hint, "option:") {
 		return t.TypeToNative(hint[7:]) // JS has no option types; everything is nullable

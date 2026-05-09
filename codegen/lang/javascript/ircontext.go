@@ -582,6 +582,60 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `alert("Error: " + ` + a(0) + `)`
 	case "Alert.confirm":
 		return `confirm(` + a(0) + `)`
+	// i18n — all calls delegate to i18n.getTranslator() from the JS runtime.
+	case "i18n.tr":
+		// Args: key string, args map — pass key twice (key + inlinedTemplate).
+		return "i18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.format":
+		// Args: template string, args map.
+		return "i18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberInt":
+		// Args: n int, style string.
+		return "i18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberFloat":
+		// Args: n float, style string.
+		return "i18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
+	case "i18n.date":
+		// Args: d date, style string.
+		return "i18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
+	case "i18n.time":
+		// Args: t time, style string.
+		return "i18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+	case "i18n.datetime":
+		// Args: dt dateTime, dateStyle string, timeStyle string.
+		return "i18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+	case "i18n.select":
+		// Args: value string, cases map.
+		return "i18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
+	case "i18n.plural":
+		// Namespace-call shape: a(0) is the "i18n" receiver; real args at a(1), a(2).
+		return "i18n.getTranslator().plural(" + a(1) + ", " + a(2) + ")"
+	case "i18n.selectordinal":
+		// Namespace-call shape: a(0) is the "i18n" receiver; real args at a(1), a(2).
+		return "i18n.getTranslator().selectordinal(" + a(1) + ", " + a(2) + ")"
+	case "i18n.exactly":
+		// Namespace-call shape: a(0) is the "i18n" receiver; real arg is a(1).
+		return "(\"=\" + (" + a(1) + "))"
+	}
+	return ""
+}
+
+// jsI18nConstString returns the JS string literal for a predeclared
+// i18n.PluralKey constant. Returns "" for non-matches.
+func jsI18nConstString(qual string) string {
+	switch qual {
+	case "i18n.zero":
+		return `"zero"`
+	case "i18n.one":
+		return `"one"`
+	case "i18n.two":
+		return `"two"`
+	case "i18n.few":
+		return `"few"`
+	case "i18n.many":
+		return `"many"`
+	case "i18n.other":
+		return `"other"`
 	}
 	return ""
 }
