@@ -46,12 +46,8 @@ export class Translator {
   datetime(dt, ds, ts)  { return formatDateTime(this.locale, dt, ds, ts); }
 
   select(value, cases) {
-    if (cases[value] !== undefined) {
-      return formatICU(this.locale, this.currency, cases[value], {});
-    }
-    if (cases.other !== undefined) {
-      return formatICU(this.locale, this.currency, cases.other, {});
-    }
+    if (cases[value] !== undefined) return cases[value];
+    if (cases.other !== undefined) return cases.other;
     return "";
   }
 

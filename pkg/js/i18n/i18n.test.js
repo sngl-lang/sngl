@@ -133,3 +133,16 @@ test("date: long en-US", () => {
   // Long date style in en-US is "May 8, 2026".
   assert.match(got, /On May 8, 2026/);
 });
+
+test("Translator.select returns case body literally (no ICU expansion)", () => {
+  const t = new Translator({}, "en");
+  // Placeholder {n} stays literal — matches Go's Translator.Select semantics.
+  assert.strictEqual(
+    t.select("yes", { yes: "value={n}", other: "fallback={n}" }),
+    "value={n}"
+  );
+  assert.strictEqual(
+    t.select("nope", { yes: "value={n}", other: "fallback={n}" }),
+    "fallback={n}"
+  );
+});
