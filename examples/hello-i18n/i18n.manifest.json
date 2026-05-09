@@ -1,0 +1,47 @@
+{
+  "Party RSVP": {
+    "translations": {
+      "fr": "Confirmation de présence",
+      "es": "Confirmación de asistencia"
+    }
+  },
+  "Name": {
+    "translations": {
+      "fr": "Nom",
+      "es": "Nombre"
+    }
+  },
+  "Enter your name": {
+    "translations": {
+      "fr": "Entrez votre nom",
+      "es": "Introduce tu nombre"
+    }
+  },
+  "Honorific": {
+    "translations": {
+      "fr": "Civilité",
+      "es": "Tratamiento"
+    }
+  },
+  "Guests": {
+    "translations": {
+      "fr": "Invités",
+      "es": "Invitados"
+    }
+  },
+  "{guests, number}": {
+    "translations": {}
+  },
+  "{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party.": {
+    "translations": {
+      "fr": "{gender, select, female{Mme} male{M.} other{Mx}} {name} amène {guests, plural, =0{aucun invité} one{# invité} other{# invités}} à la fête.",
+      "es": "{gender, select, female{Sra.} male{Sr.} other{Mx.}} {name} trae {guests, plural, =0{ningún invitado} one{# invitado} other{# invitados}} a la fiesta."
+    }
+  },
+  "Ticket price: {price, number, currency}": {
+    "translations": {
+      "fr": "Prix du billet : {price, number, currency}",
+      "es": "Precio de la entrada: {price, number, currency}"
+    }
+  }
+}
