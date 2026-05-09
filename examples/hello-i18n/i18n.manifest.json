@@ -29,6 +29,24 @@
       "es": "Invitados"
     }
   },
+  "female": {
+    "translations": {
+      "fr": "femme",
+      "es": "mujer"
+    }
+  },
+  "male": {
+    "translations": {
+      "fr": "homme",
+      "es": "hombre"
+    }
+  },
+  "other": {
+    "translations": {
+      "fr": "autre",
+      "es": "otro"
+    }
+  },
   "{guests, number}": {
     "translations": {}
   },

@@ -35,6 +35,9 @@ component main {
     var honorificLabel = i18n.tr("Honorific", {})
     var guestsLabel = i18n.tr("Guests", {})
     var namePlaceholder = i18n.tr("Enter your name", {})
+    var femaleLabel = i18n.tr("female", {})
+    var maleLabel = i18n.tr("male", {})
+    var otherLabel = i18n.tr("other", {})
 
     // Dynamic strings — recomputed from event handlers.
     var guestsDisplay = $"{guests, number}"
@@ -58,15 +61,20 @@ component main {
 
         vbox(style={gap=8}) {
             text(value=honorificLabel)
-            radio(
-                options=["female", "male", "other"],
-                value=gender,
-                direction="horizontal",
-                @change(e) {
-                    gender = e.value
+            hbox(style={gap=8}) {
+                button(text=femaleLabel, @click {
+                    gender = "female"
                     sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                },
-            )
+                })
+                button(text=maleLabel, @click {
+                    gender = "male"
+                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
+                })
+                button(text=otherLabel, @click {
+                    gender = "other"
+                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
+                })
+            }
         }
 
         vbox(style={gap=8}) {
