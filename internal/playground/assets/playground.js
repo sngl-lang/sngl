@@ -261,8 +261,9 @@ function formatSource() {
     const src = editor.state.doc.toString();
     const result = window.snglFormat(src);
     if (result.error) {
-        errorEl.textContent = result.error;
-        errorEl.classList.add("visible");
+        // Parse errors surface inline as CodeMirror diagnostics; the linter
+        // pass already drew the squigglies. Just signal in the status bar.
+        statusEl.textContent = "Format failed";
         return;
     }
     if (result.source === src) return;
@@ -271,6 +272,14 @@ function formatSource() {
     });
 }
 document.getElementById("format-btn").addEventListener("click", formatSource);
+
+function buildErrorDoc(msg) {
+    const escaped = String(msg)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    return `<!DOCTYPE html><html><body style="margin:0;font-family:system-ui,sans-serif;color:#888;padding:24px;background:#fff"><div style="font-weight:600;margin-bottom:8px;color:#c33">Build failed</div><div>See editor for inline diagnostics.</div><pre style="margin-top:16px;font-size:12px;white-space:pre-wrap;color:#666">${escaped}</pre></body></html>`;
+}
 
 function scheduleCompile() {
     clearTimeout(debounceTimer);
@@ -286,11 +295,14 @@ function doCompile() {
 
     const result = window.snglCompile(src);
     if (result.error) {
-        errorEl.textContent = result.error;
-        errorEl.classList.add("visible");
-        previewEl.removeAttribute("srcdoc");
+        // The same source already produced LSP diagnostics via the linter
+        // pass — those render as inline squigglies with hover messages.
+        // Don't duplicate the message in a banner overlay; just blank the
+        // preview and signal failure on the status bar.
+        statusEl.textContent = "Build failed";
+        previewEl.srcdoc = buildErrorDoc(result.error);
     } else {
-        errorEl.classList.remove("visible");
+        statusEl.textContent = "Ready";
         previewEl.srcdoc = result.html;
     }
 
