@@ -705,6 +705,11 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
 	c.Name = it.shift().Literal // ident
+	// Optional .ident for qualified component decls (e.g. component sngl.vbox).
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+		it.skip() // dot
+		c.Name = c.Name + "." + it.shift().Literal
+	}
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		it.skip() // lparen

@@ -29,10 +29,11 @@ var pkgSource string
 var pkgDocs []*ast.Document
 
 func init() {
-	doc, _ := parser.Parse("html.sngl", []byte(pkgSource))
-	if doc != nil {
-		pkgDocs = []*ast.Document{doc}
+	doc, err := parser.Parse("html.sngl", []byte(pkgSource))
+	if err != nil {
+		panic(fmt.Errorf("platform html init: parsing html.sngl: %w", err))
 	}
+	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -288,13 +289,40 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return ctx.BuildMutation(nil), nil
 	}
 	singleWindow := len(irWindows) == 1
+	staticMode := req.Lang.LanguageIdentifier() == "none"
 	var mainStmts []ir.Stmt
-	for _, win := range irWindows {
-		name := win.Name
-		if singleWindow || name == "" || name == "main" || name == "index" {
+	seenPaths := map[string]ast.Pos{}
+	for i, win := range irWindows {
+		var name string
+		switch {
+		case !staticMode:
+			// Route mode: file paths aren't used by the language compiler
+			// (it indexes by WindowIdx and reads bytes directly). Skip
+			// literal-href + collision checks; dynamic /{param} routes are
+			// expected here.
+			name = fmt.Sprintf("window_%d", i)
+		case singleWindow && (win.Window == nil || win.Window.Href == nil):
 			name = "index.html"
-		} else if !strings.HasSuffix(name, ".html") {
-			name = name + ".html"
+		default:
+			href, ok := codegen.IRLiteralString(win.Window.Href)
+			if !ok {
+				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
+			}
+			name = pathFromHref(href)
+		}
+		if staticMode {
+			if prev, dup := seenPaths[name]; dup {
+				pos := ast.Pos{}
+				if win.Window != nil && win.Window.AST != nil {
+					pos = win.Window.AST.Pos
+				}
+				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, pos)
+			}
+			if win.Window != nil && win.Window.AST != nil {
+				seenPaths[name] = win.Window.AST.Pos
+			} else {
+				seenPaths[name] = ast.Pos{}
+			}
 		}
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
 		gen.wasmLoader = wasmLoaderHTML

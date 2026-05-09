@@ -1,7 +1,7 @@
-window #home(title="Home") {
+window #home(title="Home", href="/") {
 	text(value="Welcome")
 }
 
-window #settings(title="Settings") {
+window #settings(title="Settings", href="/settings.html") {
 	text(value="Config")
 }

@@ -4,6 +4,7 @@ package gtk4
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -29,10 +30,11 @@ var girAutoPaths = []string{
 }
 
 func init() {
-	doc, _ := parser.Parse("gtk4.sngl", []byte(pkgSource))
-	if doc != nil {
-		pkgDocs = []*ast.Document{doc}
+	doc, err := parser.Parse("gtk4.sngl", []byte(pkgSource))
+	if err != nil {
+		panic(fmt.Errorf("platform gtk4 init: parsing gtk4.sngl: %w", err))
 	}
+	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 

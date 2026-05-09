@@ -1,0 +1,7 @@
+window #home(title="Home", href="/") {
+	text(value="Home")
+}
+
+window #about(title="About", href="/about.html") {
+	text(value="About")
+}

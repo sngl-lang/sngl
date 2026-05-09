@@ -333,8 +333,8 @@ component main {
 
 	// Rich per-component pages (preview + highlighted code + props/events tables)
 	for comp = components {
-		window(title=comp.name, href="/docs/sngl/components/" + comp.name + ".html", favicon=logo) {
-			PageLayout(title=comp.name, currentHref="/docs/sngl/components/" + comp.name + ".html") {
+		window #componentPage(title=comp.name, href="/docs/sngl/components/" + comp.name + ".html", favicon=logo) {
+			PageLayout(title=comp.name, currentHref=componentPage.href) {
 				html.p(innerText=comp.doc, class="component-blurb")
 
 				docui.Markdown(src=comp.previewHTML)
@@ -376,8 +376,8 @@ component main {
 	// Per-package index pages for platforms/languages (sngl is handled above
 	// with the rich gallery + StdlibSections).
 	for pkg = otherPackages {
-		window(title=pkg.title, href="/docs/" + pkg.path + "/index.html", favicon=logo) {
-			PageLayout(title=pkg.title, currentHref="/docs/" + pkg.path + "/index.html") {
+		window #packagePage(title=pkg.title, href="/docs/" + pkg.path + "/index.html", favicon=logo) {
+			PageLayout(title=pkg.title, currentHref=packagePage.href) {
 				docui.PackagePage(path=pkg.path, baseHref="/docs/" + pkg.path + "/")
 			}
 		}
@@ -387,7 +387,7 @@ component main {
 	// methods + enum members). Stdlib components are skipped by AllDeclPages
 	// itself — they're rendered above as rich pages.
 	for d = allDeclPages {
-		window(title=d.title, href=d.href, favicon=logo) {
+		window #declPage(title=d.title, href=d.href, favicon=logo) {
 			PageLayout(title=d.title, currentHref=d.href) {
 				docui.Markdown(src=d.body)
 			}
@@ -507,7 +507,7 @@ component main {
 
 	// Documentation pages
 	for page = pages {
-		window(title=page.title, href=page.href, favicon=logo) {
+		window #docPage(title=page.title, href=page.href, favicon=logo) {
 			PageLayout(title=page.title, currentHref=page.href) {
 				if page.href == "/index.html" {
 					PlatformCarousel

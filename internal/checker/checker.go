@@ -97,6 +97,9 @@ type checker struct {
 	// Current component (for event validation).
 	currentComponent *ir.Component
 
+	// Tracks window #id collisions at package scope.
+	pkgWindowIDs map[string]bool
+
 	// Current platform block name (e.g., "html" inside `platform html { }`).
 	// Used to try platform Resolve() on unknown identifiers.
 	currentPlatform string
@@ -112,6 +115,10 @@ type checker struct {
 	// Cached stdlib Options struct. Built lazily.
 	stdlibOptions    *ir.StructDef
 	stdlibOptionsSet bool
+
+	// Stdlib Window struct type, used to type window symbols so `home.href`
+	// resolves through the regular struct-field machinery.
+	windowType *ir.Type
 
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
@@ -139,11 +146,15 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		scope:        symtab.Root,
 		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
+		pkgWindowIDs: make(map[string]bool),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.loadStdlib()
+	if sd, ok := c.symtab.Types["Window"].(*ir.StructDef); ok {
+		c.windowType = sd.SymType()
+	}
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -936,7 +947,11 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.buildOutputs(vn)
 	case "window":
 		w := c.buildWindow(vn)
+		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
+		if w.Name != "" {
+			c.scope.Declare(w)
+		}
 	case "timer":
 		t := c.buildTimer(vn)
 		c.pkg.Timers = append(c.pkg.Timers, t)
@@ -1340,8 +1355,22 @@ func optionFieldNames(sd *ir.StructDef) string {
 	return fmt.Sprintf("%v", names)
 }
 
+// checkDuplicateWindowID reports an error if w.Name is non-empty and another
+// window with the same Name already exists in seen. Otherwise records w in
+// seen and returns.
+func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
+	if w == nil || w.Name == "" || seen == nil {
+		return
+	}
+	if seen[w.Name] {
+		c.error(w.AST.Pos, "duplicate window id %q", w.Name)
+		return
+	}
+	seen[w.Name] = true
+}
+
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{AST: vn, Name: vn.ID}
+	w := &ir.Window{AST: vn, Name: vn.ID, Typ: c.windowType}
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body.
 	for _, name := range hrefPathParams(vn) {
@@ -1358,12 +1387,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 			switch arg.Name {
 			case "href":
 				w.Href = c.checkExpr(arg.Value)
-				// Set static name from literal href.
-				if w.Name == "" {
-					if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
-						w.Name = strings.Trim(lit.Raw, "\"")
-					}
-				}
 			case "title":
 				w.Title = c.checkExpr(arg.Value)
 			case "favicon":
@@ -1374,13 +1397,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 				w.ErrorHandler = c.buildErrorHandler(&arg)
 			}
 		}
-	}
-	// Fall back to a position-derived synthetic name so every window has a
-	// stable, unique Name. Required by downstream consumers (router targets,
-	// IR validators, dump readability) — the alternative is empty, which then
-	// collides across multiple anonymous windows.
-	if w.Name == "" {
-		w.Name = fmt.Sprintf("window_L%d", vn.Pos.Line)
 	}
 	return w
 }
@@ -1618,6 +1634,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Check remaining component body statements.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
+		seenWindowIDs := map[string]bool{}
 		for _, stmt := range comp.AST.Body.Stmts {
 			switch stmt.(type) {
 			case *ast.ConstDecl, *ast.VarDecl:
@@ -1626,6 +1643,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // already checked above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
+					if w, ok := s.(*ir.Window); ok {
+						c.checkDuplicateWindowID(w, seenWindowIDs)
+					}
 					comp.Body = append(comp.Body, s)
 				}
 			}

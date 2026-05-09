@@ -1,0 +1,8 @@
+window #home(title="Home", href="/index.html") {
+	text(value="Home")
+}
+
+window #about(title="About", href="/about.html") {
+	link(text="Home", href=home.href)
+	link(text="Self", href=about.href)
+}

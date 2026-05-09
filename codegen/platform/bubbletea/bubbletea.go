@@ -20,10 +20,11 @@ var pkgSource string
 var pkgDocs []*ast.Document
 
 func init() {
-	doc, _ := parser.Parse("bubbletea.sngl", []byte(pkgSource))
-	if doc != nil {
-		pkgDocs = []*ast.Document{doc}
+	doc, err := parser.Parse("bubbletea.sngl", []byte(pkgSource))
+	if err != nil {
+		panic(fmt.Errorf("platform bubbletea init: parsing bubbletea.sngl: %w", err))
 	}
+	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 

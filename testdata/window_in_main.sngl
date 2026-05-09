@@ -1,12 +1,12 @@
 component main {
 	var count = 0
 
-	window #home(title="Home") {
+	window #home(title="Home", href="/") {
 		text(value="Count: {count}")
 		button(text="+", @click { count += 1 })
 	}
 
-	window #settings(title="Settings") {
+	window #settings(title="Settings", href="/settings.html") {
 		text(value="Config")
 	}
 }

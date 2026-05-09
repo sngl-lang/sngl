@@ -1399,3 +1399,26 @@ func TestCheckProjectTestdata(t *testing.T) {
 		})
 	}
 }
+
+func TestAnonymousWindowHasEmptyName(t *testing.T) {
+	src, err := os.ReadFile("../../testdata/window_anonymous_no_synthetic.sngl")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	doc, err := parser.Parse("window_anonymous_no_synthetic.sngl", src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diagnostic: %s", d.Error())
+		}
+	}
+	if len(pkg.Windows) != 1 {
+		t.Fatalf("got %d windows, want 1", len(pkg.Windows))
+	}
+	if got := pkg.Windows[0].Name; got != "" {
+		t.Fatalf("want empty Name, got %q", got)
+	}
+}
