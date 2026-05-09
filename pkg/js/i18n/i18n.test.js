@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { Translator } from "./i18n.js";
+import { Translator, getTranslator, _resetTranslator } from "./i18n.js";
 
 test("manifest lookup: exact locale", () => {
   const m = {
@@ -90,4 +90,31 @@ test("plural: fr cardinal (1.5 → many in some locales; en stays one)", () => {
   // French: 0 and 1 are 'one'; 2+ are 'other'
   assert.strictEqual(t.format(tmpl, { n: 0 }), "0 article");
   assert.strictEqual(t.format(tmpl, { n: 2 }), "2 articles");
+});
+
+test("getTranslator: returns same instance", () => {
+  _resetTranslator();
+  globalThis.__SNGL_I18N_MANIFEST__ = {};
+  const a = getTranslator();
+  const b = getTranslator();
+  assert.strictEqual(a, b);
+});
+
+test("Translator.numberInt direct", () => {
+  const t = new Translator({}, "en-US");
+  assert.strictEqual(t.numberInt(1234, "decimal"), "1,234");
+});
+
+test("Translator.select direct", () => {
+  const t = new Translator({}, "en");
+  assert.strictEqual(t.select("yes", { yes: "Y", other: "?" }), "Y");
+  assert.strictEqual(t.select("nope", { yes: "Y", other: "?" }), "?");
+});
+
+test("Translator.plural direct with string keys", () => {
+  const t = new Translator({}, "en");
+  const forms = { "=0": "none", "one": "{n} item", "other": "{n} items" };
+  assert.strictEqual(t.plural(0, forms), "none");
+  assert.strictEqual(t.plural(1, forms), "1 item");
+  assert.strictEqual(t.plural(7, forms), "7 items");
 });
