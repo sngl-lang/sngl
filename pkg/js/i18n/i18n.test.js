@@ -40,3 +40,54 @@ test("apostrophe: bare ' is literal", () => {
   const t = new Translator({}, "en");
   assert.strictEqual(t.format("It's a fine day", {}), "It's a fine day");
 });
+
+test("number: decimal en-US", () => {
+  const t = new Translator({}, "en-US");
+  assert.strictEqual(t.format("Score: {n, number, decimal}", { n: 1234 }),
+    "Score: 1,234");
+});
+
+test("number: percent", () => {
+  const t = new Translator({}, "en-US");
+  // 0.25 → "25%". Intl may emit "25%" or "25 %" depending on engine; accept both.
+  const got = t.format("{p, number, percent}", { p: 0.25 });
+  assert.match(got, /25\s?%/);
+});
+
+test("number: currency picks USD for en-US", () => {
+  const t = new Translator({}, "en-US");
+  const got = t.format("{x, number, currency}", { x: 1234 });
+  assert.match(got, /\$1,234/);
+});
+
+test("date: short en-US", () => {
+  const t = new Translator({}, "en-US");
+  const d = new Date(Date.UTC(2026, 4, 8, 12, 0, 0));
+  const got = t.format("On {d, date, short}", { d });
+  // "5/8/26" or similar — accept any month/day/year combo.
+  assert.match(got, /\d/);
+  assert.ok(got.startsWith("On "));
+});
+
+test("select: dispatches by string value", () => {
+  const t = new Translator({}, "en");
+  const tmpl = "{gender, select, female{She} male{He} other{They}}";
+  assert.strictEqual(t.format(tmpl, { gender: "female" }), "She");
+  assert.strictEqual(t.format(tmpl, { gender: "x" }), "They");
+});
+
+test("plural: en cardinal", () => {
+  const t = new Translator({}, "en");
+  const tmpl = "{n, plural, =0{none} one{# item} other{# items}}";
+  assert.strictEqual(t.format(tmpl, { n: 0 }), "none");
+  assert.strictEqual(t.format(tmpl, { n: 1 }), "1 item");
+  assert.strictEqual(t.format(tmpl, { n: 5 }), "5 items");
+});
+
+test("plural: fr cardinal (1.5 → many in some locales; en stays one)", () => {
+  const t = new Translator({}, "fr");
+  const tmpl = "{n, plural, one{# article} other{# articles}}";
+  // French: 0 and 1 are 'one'; 2+ are 'other'
+  assert.strictEqual(t.format(tmpl, { n: 0 }), "0 article");
+  assert.strictEqual(t.format(tmpl, { n: 2 }), "2 articles");
+});
