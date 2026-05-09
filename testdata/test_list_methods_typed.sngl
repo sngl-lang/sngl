@@ -1,0 +1,38 @@
+// list<T> methods preserve T through their signatures, returning concrete
+// list<T> / list<U> rather than list<dyn>.
+
+component listMethods {
+    var xs list<int> = [1, 2, 3, 4, 5]
+    text(value="{xs.length()}")
+}
+
+func testListLength(t Test, c listMethods) {
+    t.assert(c.xs.length() == 5)
+}
+
+func testListFilter(t Test, c listMethods) {
+    var evens list<int> = c.xs.filter(func(x int) => x % 2 == 0)
+    t.assert(evens.length() == 2)
+    t.assert(evens[0] == 2)
+    t.assert(evens[1] == 4)
+}
+
+func testListMapSameType(t Test, c listMethods) {
+    var doubled list<int> = c.xs.map(func(x int) => x * 2)
+    t.assert(doubled.length() == 5)
+    t.assert(doubled[0] == 2)
+    t.assert(doubled[4] == 10)
+}
+
+func testListMapDifferentType(t Test, c listMethods) {
+    var labels list<string> = c.xs.map(func(x int) => "{x}")
+    t.assert(labels.length() == 5)
+    t.assert(labels[0] == "1")
+    t.assert(labels[4] == "5")
+}
+
+func testListPush(t Test, c listMethods) {
+    var more list<int> = c.xs.push(6)
+    t.assert(more.length() == 6)
+    t.assert(more[5] == 6)
+}

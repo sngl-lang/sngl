@@ -54,6 +54,13 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 		if n.Field == "length" {
 			return "len(" + operand + ")"
 		}
+		// i18n plural-category constants: map SNGL names (zero/one/…/other) to
+		// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
+		if operand == "i18n" {
+			if goName := i18nPluralKeyGoName(n.Field); goName != "" {
+				return "i18n." + goName
+			}
+		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
 		operand := gc.EvalExpr(n.Operand)
@@ -75,6 +82,18 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 			elemType = IRTypeToGo(n.Type.Elems[0])
 		}
 		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, gc.EvalExpr(e.Key)+": "+gc.EvalExpr(e.Value))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.Spread:
 		return gc.EvalExpr(n.Operand) + "..."
 	case *ir.Lambda:
@@ -122,9 +141,47 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 			return []string{"return " + gc.EvalExpr(n.Value)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return gc.evalFor(n)
 	default:
 		return []string{fmt.Sprintf("// unsupported IR stmt: %T", s)}
 	}
+}
+
+// evalFor emits a Go for-loop. Maps use the two-variable range form;
+// lists and iter<T> use the single-variable form (index suppressed).
+func (gc *GoIRContext) evalFor(n *ir.For) []string {
+	iterExpr := gc.EvalExpr(n.Iter)
+	loopGC := gc.WithLocal(n.Key)
+	if n.Value != "" {
+		loopGC = loopGC.WithLocal(n.Value)
+	}
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		// Map iteration: for k, v := range m { ... }
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iterExpr))
+	} else {
+		// List / iter<T> iteration: for _, x := range list { ... }
+		indexVar := "_"
+		if n.Value != "" {
+			indexVar = n.Value
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iterExpr))
+	}
+
+	for _, stmt := range n.Body {
+		for _, l := range loopGC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
@@ -639,6 +696,11 @@ func IRTypeToGo(t *ir.Type) string {
 			return "[]" + IRTypeToGo(t.Elems[0])
 		}
 		return "[]any"
+	case ir.TypeMap:
+		if len(t.Elems) == 2 {
+			return "map[" + IRTypeToGo(t.Elems[0]) + "]" + IRTypeToGo(t.Elems[1])
+		}
+		return "map[any]any"
 	case ir.TypeRef:
 		if len(t.Elems) > 0 {
 			return "*" + IRTypeToGo(t.Elems[0])
@@ -727,6 +789,18 @@ func IRLiteralToGo(e ir.Expr) string {
 			elemType = IRTypeToGo(n.Type.Elems[0])
 		}
 		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, IRLiteralToGo(e.Key)+": "+IRLiteralToGo(e.Value))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.StructLit:
 		name := "struct{}"
 		if n.Def != nil {

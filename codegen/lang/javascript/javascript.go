@@ -69,6 +69,21 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 			parts[i] = t.TranslateIRLiteral(el)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *ir.MapLitIR:
+		var b strings.Builder
+		b.WriteString("new Map([")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString("[")
+			b.WriteString(t.TranslateIRLiteral(e.Key))
+			b.WriteString(", ")
+			b.WriteString(t.TranslateIRLiteral(e.Value))
+			b.WriteString("]")
+		}
+		b.WriteString("])")
+		return b.String()
 	case *ir.StructLit:
 		parts := make([]string, 0, len(n.Fields))
 		for _, f := range n.Fields {

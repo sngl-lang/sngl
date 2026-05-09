@@ -150,6 +150,16 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		info.goImports[imp.Native.ImportPath] = true
 	}
+	if golang.PackageUsesI18n(pkg) {
+		info.goImports[golang.SnglI18nImportPath] = true
+	}
+
+	// Build a GoIRContext so irVarInit can evaluate i18n.tr init calls.
+	exprCtx := ctx.ExprCtx
+	if main := ctx.MainComponent(); main != nil {
+		exprCtx = exprCtx.ForComponent(main)
+	}
+	gc := golang.NewIRContext(exprCtx)
 
 	allVars := pkg.Vars
 	if main := ctx.MainComponent(); main != nil {
@@ -160,7 +170,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v)
+		initVal := irVarInit(v, gc)
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
 			goType: goType,
@@ -439,9 +449,15 @@ func irVarGoType(v *ir.Var) string {
 	return "any"
 }
 
-func irVarInit(v *ir.Var) string {
+func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	if v.Init == nil {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
+	}
+	// For i18n.tr calls emitted by the $"..." lowering, use full expression
+	// evaluation via the GoIRContext to emit i18n.GetTranslator().Tr(...).
+	if call, isCall := v.Init.(*ir.Call); isCall && gc != nil &&
+		call.Func != nil && call.Func.Receiver == "i18n" {
+		return gc.EvalExpr(v.Init)
 	}
 	return golang.IRLiteralToGo(v.Init)
 }

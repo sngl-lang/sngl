@@ -118,6 +118,7 @@ type Func struct {
 	Name           string       // empty for lambdas and event handlers
 	Receiver       string       // "int" for int.abs (empty for plain funcs)
 	TypeParams     []string
+	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
@@ -151,10 +152,11 @@ func (f *Func) IsExported() bool {
 // FuncSig builds the FuncSig for this function.
 func (f *Func) FuncSig() *FuncSig {
 	return &FuncSig{
-		Params:     f.Params,
-		Return:     f.Return,
-		TypeParams: f.TypeParams,
-		Purity:     f.Purity,
+		Params:         f.Params,
+		Return:         f.Return,
+		TypeParams:     f.TypeParams,
+		RecvTypeParams: f.RecvTypeParams,
+		Purity:         f.Purity,
 	}
 }
 
@@ -275,11 +277,12 @@ func (p *Param) SymType() *Type  { return p.Type }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	AST    *ast.StructDef
-	Name   string
-	Fields []*StructField
-	Native string // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	Doc    string // doc comment for scheme-imported decls; empty for SNGL-sourced
+	AST        *ast.StructDef
+	Name       string
+	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
+	Fields     []*StructField
+	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
+	Doc        string // doc comment for scheme-imported decls; empty for SNGL-sourced
 }
 
 func (s *StructDef) SymName() string { return s.Name }

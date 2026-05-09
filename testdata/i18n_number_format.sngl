@@ -1,0 +1,9 @@
+// Number placeholder with style argument.
+var amount = 1234
+var price = $"Total: {amount, number, currency}"
+var ratio = 0.42
+var pct = $"Coverage: {ratio, number, percent}"
+var decimal = 9876
+var formatted = $"Score: {decimal, number, decimal}"
+var sci = 1234567.89
+var scientific = $"Distance: {sci, number, scientific}"

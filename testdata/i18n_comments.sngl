@@ -1,0 +1,22 @@
+// Comments inside i18n placeholders should not break case-body detection.
+
+var count = 5
+
+var msg1 = $"{count, plural,
+    /* zero case */
+    =0{none}
+    // singular
+    one{1 item}
+    /* fallback */
+    other{# items}
+}"
+
+var gender = "they"
+
+var msg2 = $"{gender, select,
+    // canonical pronouns
+    male{he}
+    female{she}
+    /* default */
+    other{they}
+}"

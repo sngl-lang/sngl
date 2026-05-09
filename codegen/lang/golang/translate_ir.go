@@ -72,6 +72,18 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			parts[i] = translateIRExpr(el, scope)
 		}
 		return "[]any{" + strings.Join(parts, ", ") + "}"
+	case *ir.MapLitIR:
+		keyType := "any"
+		valType := "any"
+		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+			keyType = IRTypeToGo(n.Type.Elems[0])
+			valType = IRTypeToGo(n.Type.Elems[1])
+		}
+		var parts []string
+		for _, e := range n.Entries {
+			parts = append(parts, translateIRExpr(e.Key, scope)+": "+translateIRExpr(e.Value, scope))
+		}
+		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.Spread:
 		return translateIRExpr(n.Operand, scope) + "..."
 	case *ir.Lambda:
@@ -346,9 +358,46 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 			return []string{"return " + translateIRExpr(n.Value, scope)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return translateIRForGo(n, scope)
 	default:
 		return []string{"// unsupported ir mutation: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+func translateIRForGo(n *ir.For, scope *codegen.ExprScope) []string {
+	iterExpr := translateIRExpr(n.Iter, scope)
+	loopScope := *scope
+	locals := make(map[string]bool, len(scope.LocalVars)+2)
+	maps.Copy(locals, scope.LocalVars)
+	locals[n.Key] = true
+	if n.Value != "" {
+		locals[n.Value] = true
+	}
+	loopScope.LocalVars = locals
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iterExpr))
+	} else {
+		indexVar := "_"
+		if n.Value != "" {
+			indexVar = n.Value
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iterExpr))
+	}
+	for _, stmt := range n.Body {
+		for _, l := range translateIRMutation(stmt, &loopScope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {

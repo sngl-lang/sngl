@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -227,6 +228,17 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "func() []any { var out []any; for _, item := range " + a(0) + " { if " + a(1) + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
 	case "list.map", "*.map":
 		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
+	// map
+	case "map.length":
+		return "len(" + a(0) + ")"
+	case "map.keys":
+		return "func() []any { ks := make([]any, 0, len(" + a(0) + ")); for k := range " + a(0) + " { ks = append(ks, k) }; return ks }()"
+	case "map.values":
+		return "func() []any { vs := make([]any, 0, len(" + a(0) + ")); for _, v := range " + a(0) + " { vs = append(vs, v) }; return vs }()"
+	case "map.contains":
+		return "func() bool { _, ok := " + a(0) + "[" + a(1) + "]; return ok }()"
+	case "map.get":
+		return "func() any { if v, ok := " + a(0) + "[" + a(1) + "]; ok { return v }; return " + a(2) + " }()"
 	// regex
 	case "regex.matches":
 		return a(0) + ".MatchString(" + a(1) + ")"
@@ -248,6 +260,223 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `""`
 	case "File.pickFolder":
 		return `""`
+	// i18n — all calls delegate to i18n.GetTranslator() runtime.
+	// For type-attached method dispatch, args are positional (no receiver value).
+	case "i18n.tr":
+		// Args: key string, args map[string]any
+		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.format":
+		// Args: template string, args map[string]any
+		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberInt":
+		// Args: n int, style string
+		return "i18n.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberFloat":
+		// Args: n float, style string
+		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
+	case "i18n.date":
+		// Args: d date, style string
+		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
+	case "i18n.time":
+		// Args: t time, style string
+		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
+	case "i18n.datetime":
+		// Args: dt dateTime, dateStyle string, timeStyle string
+		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+	case "i18n.select":
+		// Args: value string, cases map[string]string
+		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
+	case "i18n.plural":
+		// Called via namespace: allArgs = [receiver, count, forms].
+		// a(0) is the namespace receiver ("i18n"); real args start at a(1).
+		return "i18n.GetTranslator().Plural(" + a(1) + ", " + a(2) + ")"
+	case "i18n.selectordinal":
+		// Called via namespace: allArgs = [receiver, count, forms].
+		return "i18n.GetTranslator().Selectordinal(" + a(1) + ", " + a(2) + ")"
+	case "i18n.exactly":
+		// Called via namespace: allArgs = [receiver, n].
+		return "i18n.Exactly(" + a(1) + ")"
 	}
 	return ""
+}
+
+// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
+// Used by platform codegens to detect when the generated code needs to import
+// git.duckfam.us/jonathan/sngl/pkg/go/i18n.
+func IsI18nCall(qualName string) bool {
+	switch qualName {
+	case "i18n.tr", "i18n.format",
+		"i18n.numberInt", "i18n.numberFloat",
+		"i18n.date", "i18n.time", "i18n.datetime",
+		"i18n.select",
+		"i18n.plural", "i18n.selectordinal", "i18n.exactly":
+		return true
+	}
+	return false
+}
+
+// i18nPluralKeyGoName maps a SNGL plural-category name (zero, one, …, other) to
+// the unqualified Go runtime constant name (PluralZero, PluralOne, …,
+// PluralOther). Returns "" for unknown names.
+func i18nPluralKeyGoName(snglName string) string {
+	switch snglName {
+	case "zero":
+		return "PluralZero"
+	case "one":
+		return "PluralOne"
+	case "two":
+		return "PluralTwo"
+	case "few":
+		return "PluralFew"
+	case "many":
+		return "PluralMany"
+	case "other":
+		return "PluralOther"
+	}
+	return ""
+}
+
+// SnglI18nImportPath is the Go import path of git.duckfam.us/jonathan/sngl/pkg/go/i18n.
+// Platform generators should add this import when PackageUsesI18n returns true.
+const SnglI18nImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
+
+// PackageUsesI18n reports whether any function or component in pkg contains an
+// i18n stdlib call. Platform generators use this to decide whether to add an
+// i18n import to the generated Go file.
+func PackageUsesI18n(pkg *ir.Package) bool {
+	if pkg == nil {
+		return false
+	}
+	if slices.ContainsFunc(pkg.Funcs, funcUsesI18n) {
+		return true
+	}
+	for _, comp := range pkg.Components {
+		if slices.ContainsFunc(comp.Funcs, funcUsesI18n) {
+			return true
+		}
+		for _, v := range comp.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil && funcUsesI18n(h.Func) {
+					return true
+				}
+			}
+			if exprUsesI18n(v.Init) {
+				return true
+			}
+		}
+	}
+	for _, v := range pkg.Vars {
+		for _, h := range v.Handlers {
+			if h.Func != nil && funcUsesI18n(h.Func) {
+				return true
+			}
+		}
+		if exprUsesI18n(v.Init) {
+			return true
+		}
+	}
+	return false
+}
+
+func funcUsesI18n(f *ir.Func) bool {
+	if f == nil {
+		return false
+	}
+	return slices.ContainsFunc(f.Block, stmtUsesI18n)
+}
+
+func stmtUsesI18n(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.Return:
+		return exprUsesI18n(n.Value)
+	case *ir.Assign:
+		return exprUsesI18n(n.Value)
+	case *ir.LocalVar:
+		return exprUsesI18n(n.Init)
+	case *ir.CallStmt:
+		return exprUsesI18n(n.Call)
+	case *ir.If:
+		if exprUsesI18n(n.Cond) {
+			return true
+		}
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
+		}
+		if slices.ContainsFunc(n.Else, stmtUsesI18n) {
+			return true
+		}
+	case *ir.For:
+		if exprUsesI18n(n.Iter) {
+			return true
+		}
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
+		}
+	case *ir.NodeInst:
+		for _, prop := range n.Props {
+			if exprUsesI18n(prop.Value) {
+				return true
+			}
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil && funcUsesI18n(h.Func) {
+				return true
+			}
+		}
+		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
+			return true
+		}
+	}
+	return false
+}
+
+func exprUsesI18n(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch n := e.(type) {
+	case *ir.Call:
+		if n.Func != nil && n.Func.Receiver == "i18n" {
+			return true
+		}
+		if exprUsesI18n(n.Receiver) {
+			return true
+		}
+		for _, a := range n.Args {
+			if exprUsesI18n(a.Value) {
+				return true
+			}
+		}
+	case *ir.Binary:
+		return exprUsesI18n(n.Left) || exprUsesI18n(n.Right)
+	case *ir.Unary:
+		return exprUsesI18n(n.Operand)
+	case *ir.Ternary:
+		return exprUsesI18n(n.Cond) || exprUsesI18n(n.Then) || exprUsesI18n(n.Else)
+	case *ir.Select:
+		// Detect i18n.zero / i18n.one / … / i18n.other as keys in plural maps.
+		if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+			if i18nPluralKeyGoName(n.Field) != "" {
+				return true
+			}
+		}
+		return exprUsesI18n(n.Operand)
+	case *ir.MapLitIR:
+		for _, entry := range n.Entries {
+			if exprUsesI18n(entry.Key) || exprUsesI18n(entry.Value) {
+				return true
+			}
+		}
+	case *ir.ListLit:
+		if slices.ContainsFunc(n.Elems, exprUsesI18n) {
+			return true
+		}
+	case *ir.Index:
+		return exprUsesI18n(n.Operand) || exprUsesI18n(n.Idx)
+	case *ir.Conversion:
+		return exprUsesI18n(n.Operand)
+	case *ir.Lambda:
+		return funcUsesI18n(n.Func)
+	}
+	return false
 }

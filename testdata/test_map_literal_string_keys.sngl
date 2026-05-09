@@ -1,0 +1,36 @@
+// String-keyed map. Bare-ident keys become string literals when the
+// expected type's K is string. String-literal keys also work.
+
+component mapStringKeys {
+    var prices map<string, int> = {
+        apple = 1,
+        pear = 2,
+        cherry = 5,
+    }
+
+    var translations map<string, string> = {
+        "hello" = "hola",
+        "goodbye" = "adios",
+    }
+
+    var empty map<string, int> = {}
+
+    text(value="{prices.length()}")
+}
+
+func testMapStringKeysContents(t Test, c mapStringKeys) {
+    t.assert(c.prices.length() == 3)
+    t.assert(c.prices["apple"] == 1)
+    t.assert(c.prices["pear"] == 2)
+    t.assert(c.prices["cherry"] == 5)
+}
+
+func testMapStringLiteralKeys(t Test, c mapStringKeys) {
+    t.assert(c.translations.length() == 2)
+    t.assert(c.translations["hello"] == "hola")
+    t.assert(c.translations["goodbye"] == "adios")
+}
+
+func testMapEmpty(t Test, c mapStringKeys) {
+    t.assert(c.empty.length() == 0)
+}

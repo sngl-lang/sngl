@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Reviewing changes
+
+**Start with `testdata/`.** Every language feature in SNGL has at least one fixture in `testdata/*.sngl` that exercises it. Reading those fixtures is the fastest way to understand what a change is meant to do and to spot gaps. When proposing a feature, write the fixture first and let the test framework drive the implementation. Fixtures use directives like `// ERROR(check) "msg"` and `// FOLD(...)` to assert behavior at specific compiler phases — see `internal/testutil/sample.go` for the framework.
+
+## Function syntax
+
+Two valid forms — no third:
+
+- `func name(params) [Type] { ... }` — block-bodied function (return type is optional only when there's no return value)
+- `func name(params) => expr` — expression-bodied function
+
+`func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
+
 ## Build & Test Commands
 
 ```bash
@@ -73,6 +86,10 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). `internal/checker/stdlib.go` reads from that FS and parses the files at startup, returning components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
 
+Notable stdlib packages:
+
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtime lives in `pkg/go/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+
 ### Runtime packages for generated code
 
 SNGL ships per-target-language runtime packages under `pkg/<lang>/<name>/`. These contain Go/Kotlin/JS code that generated programs import. Examples:
@@ -85,6 +102,13 @@ When adding a new stdlib package that needs runtime support:
 1. Declare the SNGL surface in `lib/<name>.sngl`.
 2. For each target language that needs runtime support, create `pkg/<lang>/<name>/`.
 3. The codegen for that language emits `import "git.duckfam.us/jonathan/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
+
+### Built-in Generic Types
+
+- **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
+- **`iter<T>`** — opaque generic iterator type. `list<T>` and `map<K, V>` implicitly convert to `iter<T>` (list elements; map yields key-value pairs). For-loops bind elements via `for x = iter`; map iteration uses two variables `for k, v = m`. No methods, no fields.
+
+Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 ### AST
 

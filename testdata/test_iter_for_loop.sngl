@@ -1,0 +1,44 @@
+// for ... = expr binds to an iter<T>; list<T> implicitly converts.
+// Map iteration yields iter<(K, V)> with key+value loop variables.
+
+component iterLoop {
+    var nums list<int> = [1, 2, 3, 4, 5]
+    var scores map<string, int> = {alice = 10, bob = 20}
+    text(value="{nums.length()}")
+}
+
+// Sum a list via for-loop iteration.
+func testListForLoopSum(t Test, c iterLoop) {
+    var total = 0
+    for x = c.nums {
+        total = total + x
+    }
+    t.assert(total == 15)
+}
+
+// Map iteration yields key-value pairs.
+func testMapForLoopKeysAndValues(t Test, c iterLoop) {
+    var keyCount = 0
+    var valueSum = 0
+    for k, v = c.scores {
+        keyCount = keyCount + 1
+        valueSum = valueSum + v
+        // Witness that the key is a string by using it.
+        t.assert(k.length() > 0)
+    }
+    t.assert(keyCount == 2)
+    t.assert(valueSum == 30)
+}
+
+// A function taking iter<T> directly. Passing a list<T> implicitly converts.
+func count(xs iter<int>) int {
+    var n = 0
+    for _ = xs {
+        n = n + 1
+    }
+    return n
+}
+
+func testListImplicitlyConvertsToIter(t Test, c iterLoop) {
+    t.assert(count(c.nums) == 5)
+}

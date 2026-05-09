@@ -913,19 +913,19 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   struct map {}
 
   // Number of entries currently in the map.
-  func map.length() -> int
+  func map.length() int
 
   // List of keys in unspecified order.
-  func map.keys() -> list
+  func map.keys() list
 
   // List of values in unspecified order.
-  func map.values() -> list
+  func map.values() list
 
   // True iff the given key exists.
-  func map.contains(key dyn) -> bool
+  func map.contains(key dyn) bool
 
   // Lookup with default — returns the value if present, otherwise default.
-  func map.get(key dyn, default dyn) -> dyn
+  func map.get(key dyn, default dyn) dyn
   ```
 
   Note: the parameter types are `dyn` because the stdlib decl can't see the parameterised K/V. Codegen substitutes them at the call site.
@@ -2495,7 +2495,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```sngl
   package i18n
 
-  func tr(key string, args map<string, dyn> = {}) -> string
+  func tr(key string, args map<string, dyn> = {}) string
   ```
 
   Verify `lib/lib.go` embeds it: `grep "go:embed" lib/lib.go` should show a pattern like `//go:embed *.sngl`.
@@ -2557,21 +2557,21 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   // Translate `key` against the loaded manifest, formatting via ICU.
   // The lowering of $"..." passes the synthesized ICU template as `key`
   // and the placeholder values as `args`.
-  func tr(key string, args map<string, dyn> = {}) -> string
+  func tr(key string, args map<string, dyn> = {}) string
 
   // Format an ICU template directly, no manifest lookup.
-  func format(template string, args map<string, dyn> = {}) -> string
+  func format(template string, args map<string, dyn> = {}) string
 
   // --- Direct formatters ---
 
   // Style: "decimal" (default), "percent", "currency", "scientific".
-  func numberInt(n int, style string = "decimal") -> string
-  func numberFloat(n float, style string = "decimal") -> string
+  func numberInt(n int, style string = "decimal") string
+  func numberFloat(n float, style string = "decimal") string
 
   // Style: "short", "medium" (default), "long", "full".
-  func date(d date, style string = "medium") -> string
-  func time(t time, style string = "medium") -> string
-  func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") -> string
+  func date(d date, style string = "medium") string
+  func time(t time, style string = "medium") string
+  func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") string
 
   // --- Direct selectors ---
 
@@ -2589,16 +2589,16 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   const other PluralKey = PluralKey{n: 5, exact: false}
 
   // Construct an =N exact-match key.
-  func exactly(n int) -> PluralKey
+  func exactly(n int) PluralKey
 
   // Cardinal plural selection.
-  func plural(count int, forms map<PluralKey, string>) -> string
+  func plural(count int, forms map<PluralKey, string>) string
 
   // Ordinal plural selection (1st, 2nd, …).
-  func selectordinal(count int, forms map<PluralKey, string>) -> string
+  func selectordinal(count int, forms map<PluralKey, string>) string
 
   // Free-form value-based selection.
-  func select(value string, cases map<string, string>) -> string
+  func select(value string, cases map<string, string>) string
   ```
 
 - [ ] **Step 2: Verify the stdlib parses**

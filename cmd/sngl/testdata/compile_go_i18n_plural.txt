@@ -1,0 +1,45 @@
+# Go codegen for i18n.plural/selectordinal/exactly: runtime wiring.
+
+sngl compile --platform=bubbletea --lang=go --out=out app.sngl
+exists out/model.go
+
+# i18n runtime package is imported.
+grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' out/model.go
+
+# i18n.plural emits GetTranslator().Plural with map[i18n.PluralKey]string.
+grep 'GetTranslator\(\)\.Plural' out/model.go
+grep 'map\[i18n\.PluralKey\]string' out/model.go
+
+# i18n.exactly(0) emits i18n.Exactly(0).
+grep 'i18n\.Exactly\(0\)' out/model.go
+
+# CLDR keyword constants emit i18n.PluralOne, i18n.PluralOther, etc.
+grep 'i18n\.PluralOne' out/model.go
+grep 'i18n\.PluralOther' out/model.go
+
+# i18n.selectordinal emits GetTranslator().Selectordinal.
+grep 'GetTranslator\(\)\.Selectordinal' out/model.go
+grep 'i18n\.PluralFew' out/model.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var count = 5
+    var msg = i18n.plural(count, {
+        i18n.exactly(0) = "no items",
+        i18n.one        = "1 item",
+        i18n.other      = "many items",
+    })
+
+    var place = 21
+    var ordinal = i18n.selectordinal(place, {
+        i18n.one   = "1st",
+        i18n.two   = "2nd",
+        i18n.few   = "3rd",
+        i18n.other = "nth",
+    })
+
+    text(value=msg)
+    text(value=ordinal)
+}

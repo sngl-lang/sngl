@@ -250,34 +250,6 @@ type InterpolationExpr struct {
 	Style StringStyle
 }
 
-// I18nInterpExpr is a translatable string: $"..." or $"""...""".
-// Parts alternate between *LiteralExpr (string segments) and
-// *I18nPlaceholderExpr (one per {...}).
-type I18nInterpExpr struct {
-	Pos   Pos
-	Parts []Expr
-	Style StringStyle
-}
-
-// I18nPlaceholderExpr is the {<value>, <type>, <body>} form.
-// Type is "" when the comma-ident form is absent.
-// Style is optional bare-ident style for date/time/number; "" if absent.
-// Cases is nil unless a MsgFormatBody is present.
-type I18nPlaceholderExpr struct {
-	Pos   Pos
-	Value Expr
-	Type  string
-	Style string      // optional bare-ident style for date/time/number; "" if absent
-	Cases []I18nCase  // for plural/select/selectordinal; nil otherwise
-}
-
-// I18nCase is one <selector>{<body>} pair within a plural/select/selectordinal body.
-type I18nCase struct {
-	Pos      Pos
-	Selector string // "one", "other", "=0", "male", …
-	Body     []Expr // alternation: *LiteralExpr | *I18nPlaceholderExpr
-}
-
 // ElementRefExpr references a visual element by its #id.
 type ElementRefExpr struct {
 	Pos  Pos
@@ -395,34 +367,59 @@ type CallStmt struct {
 	Call *CallExpr
 }
 
+// I18nInterpExpr is a translatable string: $"text {placeholder} more".
+// Parts alternate between *LiteralExpr (string segment) and *I18nPlaceholderExpr.
+type I18nInterpExpr struct {
+	Pos   Pos
+	Parts []Expr
+	Style StringStyle
+}
+
+// I18nPlaceholderExpr is a single placeholder inside an I18nInterpExpr:
+// {expr} or {expr, type} or {expr, type, case1{...} case2{...}} or {expr, type, style}.
+type I18nPlaceholderExpr struct {
+	Pos   Pos
+	Value Expr
+	Type  string     // e.g. "plural", "select", "number", "date" — empty for simple {expr}
+	Style string     // bare style ident e.g. "short", "medium", "currency" — mutually exclusive with Cases
+	Cases []I18nCase // non-nil only when Type is set and cases are present
+}
+
+// I18nCase is one branch of a plural/select formatter: selector{body}.
+type I18nCase struct {
+	Pos      Pos
+	Selector string // "one", "other", "=0", etc.
+	Body     []Expr // literal segments and nested *I18nPlaceholderExpr
+}
+
 // --- ExprPos implementations ---
 
-func (x *LiteralExpr) ExprPos() *Pos       { return &x.Pos }
-func (x *IdentExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *EventRefExpr) ExprPos() *Pos      { return &x.Pos }
-func (x *BinaryExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *UnaryExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *TernaryExpr) ExprPos() *Pos       { return &x.Pos }
-func (x *SelectExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *IndexExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *CallExpr) ExprPos() *Pos          { return &x.Pos }
-func (x *StructExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *ListExpr) ExprPos() *Pos          { return &x.Pos }
-func (x *MapLit) ExprPos() *Pos            { return &x.Pos }
-func (x *SpreadExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *InterpolationExpr) ExprPos() *Pos      { return &x.Pos }
-func (x *I18nInterpExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *I18nPlaceholderExpr) ExprPos() *Pos    { return &x.Pos }
-func (x *ElementRefExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *LambdaExpr) ExprPos() *Pos        { return &x.Pos }
-func (x *ParenExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *ConstExpr) ExprPos() *Pos         { return &x.Pos }
-func (x *NamedType) ExprPos() *Pos         { return &x.Pos }
-func (x *FuncType) ExprPos() *Pos          { return &x.Pos }
-func (x *StructDef) ExprPos() *Pos         { return &x.Pos }
-func (x *EnumDef) ExprPos() *Pos           { return &x.Pos }
-func (x *UnitDef) ExprPos() *Pos           { return &x.Pos }
-func (x *StmtBlock) ExprPos() *Pos         { return &x.Pos }
+func (x *LiteralExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *IdentExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *EventRefExpr) ExprPos() *Pos        { return &x.Pos }
+func (x *BinaryExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *UnaryExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *TernaryExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *SelectExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *IndexExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *CallExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *StructExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *ListExpr) ExprPos() *Pos            { return &x.Pos }
+func (x *MapLit) ExprPos() *Pos              { return &x.Pos }
+func (x *SpreadExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *InterpolationExpr) ExprPos() *Pos   { return &x.Pos }
+func (x *ElementRefExpr) ExprPos() *Pos      { return &x.Pos }
+func (x *LambdaExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *ParenExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *ConstExpr) ExprPos() *Pos           { return &x.Pos }
+func (x *I18nInterpExpr) ExprPos() *Pos      { return &x.Pos }
+func (x *I18nPlaceholderExpr) ExprPos() *Pos { return &x.Pos }
+func (x *NamedType) ExprPos() *Pos           { return &x.Pos }
+func (x *FuncType) ExprPos() *Pos            { return &x.Pos }
+func (x *StructDef) ExprPos() *Pos           { return &x.Pos }
+func (x *EnumDef) ExprPos() *Pos             { return &x.Pos }
+func (x *UnitDef) ExprPos() *Pos             { return &x.Pos }
+func (x *StmtBlock) ExprPos() *Pos           { return &x.Pos }
 
 // --- typeExpr implementations ---
 

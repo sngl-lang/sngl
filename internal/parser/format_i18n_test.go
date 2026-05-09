@@ -15,8 +15,8 @@ func TestFormatI18nPlural(t *testing.T) {
 	assertFormat(t, src, src)
 }
 
-func TestFormatI18nFormatter(t *testing.T) {
-	src := `var x = $"Created on {d, date, short}"`
+func TestFormatI18nDate(t *testing.T) {
+	src := `var x = $"Created on {d, date}"`
 	assertFormat(t, src, src)
 }
 
@@ -27,5 +27,15 @@ func TestFormatI18nTriple(t *testing.T) {
 
 func TestFormatI18nEqSelector(t *testing.T) {
 	src := `var x = $"{count, plural, =0{none} other{some}}"`
+	assertFormat(t, src, src)
+}
+
+func TestFormatI18nSelect(t *testing.T) {
+	src := `var x = $"{gender, select, male{he} female{she} other{they}}"`
+	assertFormat(t, src, src)
+}
+
+func TestFormatI18nNested(t *testing.T) {
+	src := `var x = $"{count, plural, one{You have {n} message} other{You have {n} messages}}"`
 	assertFormat(t, src, src)
 }

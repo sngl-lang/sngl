@@ -116,6 +116,9 @@ type testingT struct {
 	result   *codegen.TestResult
 	pkg      *ir.Package
 	compName string
+	// locale is the BCP-47 locale set by t.setLocale(). It overrides the env's
+	// default locale for i18n calls made within this test.
+	locale string
 }
 
 // componentValue wraps the test environment so that c.field accesses

@@ -20,7 +20,8 @@ struct string {}
 // is inferred from literals. Methods on the `list` receiver
 // (`length`, `push`, `filter`, `map`, …) cover the common operations and
 // are all pure — they return new lists rather than mutating in place.
-struct list {}
+// T is the element type.
+struct list<T> {}
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
 // defaults to fully opaque (255). Colors can be constructed in three
@@ -52,6 +53,11 @@ func Test.assert(b bool) {}
 // must when subsequent statements would crash or be meaningless if
 // the condition fails (e.g. checking a value before dereferencing it).
 func Test.must(b bool) {}
+
+// Override the active locale for the duration of this test. Subsequent
+// i18n calls (i18n.tr, i18n.format, i18n.date, etc.) use this locale
+// until the test returns. Useful for asserting on locale-specific output.
+func Test.setLocale(loc string) {}
 
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
@@ -292,4 +298,11 @@ struct error {}
 // Generic map<K, V>. Methods are pure — they do not mutate the receiver.
 // Equality on K determines membership; non-comparable key types are
 // rejected at type-check time.
-struct map {}
+// K is the key type (must be comparable); V is the value type.
+struct map<K, V> {}
+
+// Generic iterator. list<T> and map<K, V> implicitly convert when passed
+// to a context expecting iter<T> (or iter<(K, V)> for map). For-loops
+// bind elements when iterating over an iter<T>. The type is opaque —
+// no methods, no fields.
+struct iter<T> {}

@@ -60,7 +60,7 @@ ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
 ### Type Declarations
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] "{" { StructField } "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructField } "}"
 
 StructField = IdentList Type [ "=" Expr ] ";"
 
@@ -94,7 +94,7 @@ VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 ### Functions
 
 ```ebnf
-FuncDecl = "func" FuncName [ TypeParamList ] FuncTail
+FuncDecl = "func" FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -104,7 +104,7 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] StmtBlock
 
-FuncName = IDENT [ "." IDENT ]
+FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
 
 TypeParamList = "<" IDENT { "," IDENT } ">"
 
@@ -200,7 +200,7 @@ AnonStructLit = "{" [ AnonField { ( "," | ";" ) AnonField } [ "," | ";" ] ] "}"
 
 AnonField = 
     "..." Expr
-    | Expr ( "=" | ":" ) Expr
+    | Expr "=" Expr
 
 FuncLit = "func" [ "(" [ ParamList ] ")" ] FuncBodyTail
 

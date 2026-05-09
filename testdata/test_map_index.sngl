@@ -1,0 +1,17 @@
+// m[k] returns V (zero value on miss, Go-map semantics).
+
+component mapIndex {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    var aliceScore = scores["alice"]
+    text(value="{aliceScore}")
+}
+
+func testMapIndexHit(t Test, c mapIndex) {
+    t.assert(c.scores["alice"] == 10)
+    t.assert(c.scores["bob"] == 20)
+}
+
+func testMapIndexMissReturnsZero(t Test, c mapIndex) {
+    // Missing key returns int's zero value.
+    t.assert(c.scores["nobody"] == 0)
+}

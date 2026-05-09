@@ -253,11 +253,14 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 // --- Struct declaration ---
 
 func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
-	// StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
+	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_struct
 	s := &ast.StructDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		s.Name = it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		s.TypeParams = b.buildTypeParamList(it.enter())
 	}
 	lbraceLine := 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -549,14 +552,11 @@ func (b *builder) buildIdentList(it nodeIter) []string {
 // --- Functions ---
 
 func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
-	// FuncDecl = kw_func FuncName [ TypeParamList ] FuncTail .
+	// FuncDecl = kw_func FuncName FuncTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	f := &ast.FuncDef{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncName {
-		f.Name = b.buildFuncName(it.enter())
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-		f.TypeParams = b.buildTypeParamList(it.enter())
+		b.buildFuncName(it.enter(), f)
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncTail {
 		b.buildFuncTail(it.enter(), f)
@@ -564,14 +564,52 @@ func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
 	return f
 }
 
-func (b *builder) buildFuncName(it nodeIter) string {
-	// FuncName = ident [ dot ident ] .
-	name := it.shift().Literal
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
-		it.skip() // dot
-		name += "." + it.shift().Literal
+func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
+	// FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
+	//
+	// All cases after the leading ident:
+	//   TypeParamList dot ident [TypeParamList] → recv<T>.method[<U>]
+	//     RecvTypeParams=[T], TypeParams=[U], Name="recv.method"
+	//   TypeParamList (no dot)                  → name<T>
+	//     TypeParams=[T], Name="name"
+	//   dot ident [TypeParamList]               → recv.method[<T>]
+	//     TypeParams=[T], Name="recv.method"
+	//   (nothing)                               → name
+	//     Name="name"
+	first := it.shift().Literal
+	if it.done() {
+		f.Name = first
+		return
 	}
-	return name
+	if it.isNonTerminal() && it.symbol() == TypeParamList {
+		params := b.buildTypeParamList(it.enter())
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+			// recv<T>.method[<U>] — receiver-level type params
+			it.skip() // dot
+			f.RecvTypeParams = params
+			f.Name = first + "." + it.shift().Literal
+			// optional method-level type params after the method name
+			if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+				f.TypeParams = b.buildTypeParamList(it.enter())
+			}
+		} else {
+			// name<T> — function-level type params only
+			f.TypeParams = params
+			f.Name = first
+		}
+		return
+	}
+	if !it.isNonTerminal() && it.tokenType() == DOT {
+		it.skip() // dot
+		f.Name = first + "." + it.shift().Literal
+		// optional method-level type params after the method name
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+			f.TypeParams = b.buildTypeParamList(it.enter())
+		}
+		return
+	}
+	// plain function name, no type params, no dot
+	f.Name = first
 }
 
 func (b *builder) buildFuncTail(it nodeIter, f *ast.FuncDef) {
@@ -1179,6 +1217,10 @@ func (b *builder) buildExprBySymbol(sym Symbol, it nodeIter) ast.Expr {
 		return b.buildInterpStr(it)
 	case TripleInterp:
 		return b.buildTripleInterp(it)
+	case I18nInterpStr:
+		return b.buildI18nInterpStr(it)
+	case I18nTriple:
+		return b.buildI18nTriple(it)
 	case AnonStructLit:
 		return b.buildAnonStructLit(it)
 	case FuncLit:
@@ -1217,6 +1259,12 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
 	case TRIPLE_FULL:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
+	case I18N_STR_FULL:
+		lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
+		return &ast.I18nInterpExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleDouble}
+	case I18N_TRIPLE_FULL:
+		lit := &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringTrippleQuoted, Raw: tok.Literal}
+		return &ast.I18nInterpExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleTriple}
 	case RAW_STRING:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringBackticked, Raw: tok.Literal}
 	case COLOR:
@@ -1571,6 +1619,10 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return b.buildInterpStr(it.enter())
 		case TripleInterp:
 			return b.buildTripleInterp(it.enter())
+		case I18nInterpStr:
+			return b.buildI18nInterpStr(it.enter())
+		case I18nTriple:
+			return b.buildI18nTriple(it.enter())
 		case AnonStructLit:
 			return b.buildAnonStructLit(it.enter())
 		case FuncLit:
@@ -1648,9 +1700,6 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
-			if r.IsMap {
-				panic("map literal syntax ':' not allowed in named struct literal")
-			}
 			fields = append(fields, r.StructField)
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
@@ -1663,7 +1712,8 @@ func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.Struc
 }
 
 // anonFieldResult holds the parsed result of one AnonField node.
-// Exactly one of StructField or MapEntry is valid; IsMap distinguishes them.
+// When IsMap is true, the MapEntry field is valid; otherwise StructField is valid.
+// IsMap is set when the key is a non-identifier expression (forces MapLit at parse time).
 type anonFieldResult struct {
 	IsMap       bool
 	StructField ast.StructFieldLit
@@ -1675,18 +1725,17 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 	var pos ast.Pos
 	var fields []ast.StructFieldLit
 	var entries []ast.MapEntry
-	sawAssign, sawColon, sawSemi := false, false, false
+	anyNonIdent, sawSemi := false, false
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
 			if r.IsMap {
-				sawColon = true
+				anyNonIdent = true
 				entries = append(entries, r.MapEntry)
 				if !pos.IsSet() {
 					pos = r.MapEntry.Pos
 				}
 			} else {
-				sawAssign = true
 				fields = append(fields, r.StructField)
 			}
 		} else {
@@ -1700,18 +1749,23 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 			it.skip() // lbrace, rbrace, comma, semi
 		}
 	}
-	if sawAssign && sawColon {
-		panic("cannot mix '=' and ':' in literal; use one separator consistently")
-	}
-	if sawColon {
-		return &ast.MapLit{Pos: pos, Entries: entries}
+	// If ANY key is non-ident, produce a MapLit. Convert any already-collected
+	// ident struct fields (parsed before the first non-ident was seen) into
+	// MapEntry values, then append the non-ident entries.
+	if anyNonIdent {
+		var allEntries []ast.MapEntry
+		for _, f := range fields {
+			allEntries = append(allEntries, ast.MapEntry{Key: &ast.IdentExpr{Name: f.Name}, Value: f.Value})
+		}
+		allEntries = append(allEntries, entries...)
+		return &ast.MapLit{Pos: pos, Entries: allEntries}
 	}
 	s := &ast.StructExpr{Pos: pos, Fields: fields, Multiline: sawSemi}
 	return s
 }
 
 func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
-	// AnonField = ellipsis Expr | Expr ( assign | colon ) Expr .
+	// AnonField = ellipsis Expr | Expr assign Expr .
 	if it.done() {
 		return anonFieldResult{}
 	}
@@ -1723,37 +1777,29 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 		}
 		return anonFieldResult{StructField: ast.StructFieldLit{Spread: true, Value: val}}
 	}
-	// Expr ( assign | colon ) Expr
+	// Expr assign Expr
 	var key ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		key = b.buildExpr(it.enter())
 	}
-	// Next is the separator token: assign or colon.
-	useColon := false
+	// Consume the assign token.
 	if !it.done() && !it.isNonTerminal() {
-		tok := it.shift()
-		if tok.Type == COLON {
-			useColon = true
-		}
-		// else ASSIGN — consume and continue
+		it.shift() // ASSIGN
 	}
 	var val ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		val = b.buildExpr(it.enter())
 	}
-	if useColon {
-		keyPos := ast.Pos{}
-		if key != nil {
-			keyPos = *key.ExprPos()
-		}
-		return anonFieldResult{IsMap: true, MapEntry: ast.MapEntry{Pos: keyPos, Key: key, Value: val}}
-	}
-	// struct field: key must be an ident
-	name := ""
+	// If key is a bare ident → struct field; otherwise → map entry (MapLit).
 	if ident, ok := key.(*ast.IdentExpr); ok {
-		name = ident.Name
+		return anonFieldResult{StructField: ast.StructFieldLit{Name: ident.Name, Value: val}}
 	}
-	return anonFieldResult{StructField: ast.StructFieldLit{Name: name, Value: val}}
+	// Non-ident key: force MapLit.
+	keyPos := ast.Pos{}
+	if key != nil {
+		keyPos = *key.ExprPos()
+	}
+	return anonFieldResult{IsMap: true, MapEntry: ast.MapEntry{Pos: keyPos, Key: key, Value: val}}
 }
 
 func (b *builder) buildListBody(it nodeIter, multiline *bool) []ast.Expr {
@@ -1842,6 +1888,242 @@ func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 		}
 	}
 	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+}
+
+func (b *builder) buildI18nInterpStr(it nodeIter) ast.Expr {
+	// I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
+	var parts []ast.Expr
+	pos := ast.Pos{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			if !pos.IsSet() {
+				pos = b.posFromToken(tok)
+			}
+			switch tok.Type {
+			case I18N_STR_START, I18N_STR_RESUME, I18N_STR_END:
+				if tok.Literal != "" {
+					parts = append(parts, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		} else if it.symbol() == I18nPlaceholder {
+			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+		} else {
+			it.skip()
+		}
+	}
+	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
+}
+
+func (b *builder) buildI18nTriple(it nodeIter) ast.Expr {
+	// I18nTriple = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
+	var parts []ast.Expr
+	pos := ast.Pos{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			if !pos.IsSet() {
+				pos = b.posFromToken(tok)
+			}
+			switch tok.Type {
+			case I18N_TRIPLE_START, I18N_STR_RESUME, I18N_TRIPLE_END:
+				if tok.Literal != "" {
+					parts = append(parts, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringTrippleQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		} else if it.symbol() == I18nPlaceholder {
+			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+		} else {
+			it.skip()
+		}
+	}
+	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+}
+
+func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
+	// I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
+	ph := &ast.I18nPlaceholderExpr{}
+	// First child: Expr non-terminal.
+	if !it.done() && it.isNonTerminal() {
+		ph.Value = b.buildExpr(it.enter())
+		if ph.Value != nil {
+			ph.Pos = *ph.Value.ExprPos()
+		}
+	}
+	// Optional: comma ident [ comma I18nThirdArg ]
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == I18nThirdArg {
+				b.buildI18nThirdArg(ph, it.enter())
+			} else {
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case IDENT:
+				ph.Type = tok.Literal
+			case COMMA:
+				// separator, ignore
+			}
+		}
+	}
+	return ph
+}
+
+// buildI18nThirdArg populates ph.Style or ph.Cases from an I18nThirdArg node.
+// I18nThirdArg = ident [ MsgBodyTail ] | assign int_lit MsgBody { MsgCase } .
+// If the ident is followed by a MsgBodyTail, it is a Selector (first case).
+// If the ident stands alone (no MsgBodyTail), it is a Style.
+func (b *builder) buildI18nThirdArg(ph *ast.I18nPlaceholderExpr, it nodeIter) {
+	// Peek at the first token to determine which alternative we're in.
+	if it.done() {
+		return
+	}
+	if it.isNonTerminal() {
+		// Starts with a non-terminal — shouldn't happen per grammar, skip.
+		it.skip()
+		return
+	}
+	tok := it.shift()
+	switch tok.Type {
+	case IDENT:
+		// Check if a MsgBodyTail follows (making this ident a Selector).
+		if !it.done() && it.isNonTerminal() && it.symbol() == MsgBodyTail {
+			// ident is a Selector — build as cases.
+			// MsgBodyTail = MsgBody { MsgCase } .
+			var c ast.I18nCase
+			c.Pos = b.posFromToken(tok)
+			c.Selector = tok.Literal
+			tail := it.enter()
+			for !tail.done() {
+				if tail.isNonTerminal() {
+					switch tail.symbol() {
+					case MsgBody:
+						b.buildMsgBodyInto(&c, tail.enter())
+					case MsgCase:
+						ph.Cases = append(ph.Cases, b.buildMsgCase(tail.enter()))
+					default:
+						tail.skip()
+					}
+				} else {
+					tail.skip()
+				}
+			}
+			ph.Cases = append([]ast.I18nCase{c}, ph.Cases...)
+		} else {
+			// Bare ident — it's a Style.
+			ph.Style = tok.Literal
+		}
+	case ASSIGN:
+		// assign int_lit MsgBody { MsgCase } — numeric selector first case.
+		var c ast.I18nCase
+		c.Pos = b.posFromToken(tok)
+		if !it.done() && !it.isNonTerminal() {
+			n := it.shift()
+			c.Selector = "=" + n.Literal
+		}
+		for !it.done() {
+			if it.isNonTerminal() {
+				switch it.symbol() {
+				case MsgBody:
+					b.buildMsgBodyInto(&c, it.enter())
+				case MsgCase:
+					ph.Cases = append(ph.Cases, b.buildMsgCase(it.enter()))
+				default:
+					it.skip()
+				}
+			} else {
+				it.skip()
+			}
+		}
+		ph.Cases = append([]ast.I18nCase{c}, ph.Cases...)
+	}
+}
+
+func (b *builder) buildMsgCase(it nodeIter) ast.I18nCase {
+	// MsgCase = Selector MsgBody .
+	// Selector = ident | eq int_lit .
+	// MsgBody = i18n_case_full | i18n_case_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_case_end .
+	var c ast.I18nCase
+	// Parse Selector non-terminal
+	if !it.done() && it.isNonTerminal() && it.symbol() == Selector {
+		sel := it.enter()
+		if !sel.done() && !sel.isNonTerminal() {
+			tok := sel.shift()
+			c.Pos = b.posFromToken(tok)
+			switch tok.Type {
+			case IDENT:
+				c.Selector = tok.Literal
+			case ASSIGN:
+				if !sel.done() && !sel.isNonTerminal() {
+					n := sel.shift()
+					c.Selector = "=" + n.Literal
+				}
+			}
+		}
+	}
+	// Parse MsgBody: either wrapped non-terminal or inline tokens
+	for !it.done() {
+		if it.isNonTerminal() {
+			sym := it.symbol()
+			switch sym {
+			case MsgBody:
+				sub := it.enter()
+				b.buildMsgBodyInto(&c, sub)
+			case I18nPlaceholder:
+				c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
+			default:
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case I18N_CASE_FULL, I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
+				if tok.Literal != "" {
+					c.Body = append(c.Body, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		}
+	}
+	return c
+}
+
+// buildMsgBodyInto appends literal segments and nested placeholders from a MsgBody sub-iter into c.
+func (b *builder) buildMsgBodyInto(c *ast.I18nCase, it nodeIter) {
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == I18nPlaceholder {
+				c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
+			} else {
+				it.skip()
+			}
+		} else {
+			tok := it.shift()
+			switch tok.Type {
+			case I18N_CASE_FULL, I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
+				if tok.Literal != "" {
+					c.Body = append(c.Body, &ast.LiteralExpr{
+						Pos:  ast.Pos(b.posFromToken(tok)),
+						Kind: ast.LiteralStringQuoted,
+						Raw:  tok.Literal,
+					})
+				}
+			}
+		}
+	}
 }
 
 // --- Argument lists ---

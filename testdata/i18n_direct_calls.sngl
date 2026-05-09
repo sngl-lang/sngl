@@ -1,0 +1,48 @@
+// Direct calls to the i18n stdlib package, with the canonical names
+// (date/time/dateTime/select — not the dateStr/timeStr/etc workarounds).
+// Note: the "i18n" namespace is predeclared; no import statement needed.
+
+func test() {
+    // Translation entry points.
+    var hello = i18n.tr("Hello, world!", {})
+    var name = "Alice"
+    var formatted = i18n.format("Hello, {name}!", {name = name})
+
+    // Direct number formatters.
+    var n int = 1234
+    var price = i18n.numberInt(n, "currency")
+    var pct = i18n.numberFloat(0.42, "percent")
+    var decimal = i18n.numberInt(n, "decimal")
+
+    // Direct date/time formatters — using the clean names, not dateStr/timeStr.
+    var d date
+    var dateLabel = i18n.date(d, "short")
+    var t time
+    var timeLabel = i18n.time(t, "medium")
+    var dt dateTime
+    var dtLabel = i18n.datetime(dt, "short", "short")
+
+    // Direct selectors.
+    var count = 3
+    var pluralized = i18n.plural(count, {
+        i18n.exactly(0) = "no items",
+        i18n.one        = "1 item",
+        i18n.other      = "{count} items",
+    })
+
+    var place = 21
+    var ordinal = i18n.selectordinal(place, {
+        i18n.one   = "{place}st",
+        i18n.two   = "{place}nd",
+        i18n.few   = "{place}rd",
+        i18n.other = "{place}th",
+    })
+
+    // Free-form select. Note: no 'Str' suffix.
+    var gender = "female"
+    var pronoun = i18n.select(gender, {
+        male   = "he",
+        female = "she",
+        other  = "they",
+    })
+}

@@ -40,6 +40,7 @@ const (
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
 	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
+	TypeIter      // Elems = [T] for iter<T>
 )
 
 // Type is the unified representation of all SNGL types.
@@ -99,6 +100,11 @@ func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
 }
 
+// IterOf returns an iter<T> type.
+func IterOf(elem *Type) *Type {
+	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
+}
+
 func (t *Type) String() string {
 	if t == nil {
 		return "<nil>"
@@ -136,6 +142,11 @@ func (t *Type) String() string {
 			return fmt.Sprintf("ref<%s>", t.Elems[0])
 		}
 		return "ref"
+	case TypeIter:
+		if len(t.Elems) == 1 {
+			return fmt.Sprintf("iter<%s>", t.Elems[0])
+		}
+		return "iter<?>"
 	case TypeStruct:
 		if t.Decl != nil {
 			return t.Decl.SymName()
@@ -242,7 +253,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -291,7 +302,7 @@ func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
 	if !changed {
 		return s
 	}
-	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
+	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, RecvTypeParams: s.RecvTypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
 }
 
 // Equal reports structural type equality.
@@ -306,7 +317,7 @@ func (t *Type) Equal(other *Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case TypeList, TypeMap, TypeOption, TypeRef:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
@@ -316,7 +327,24 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
+	case TypeStruct:
+		// Two struct types are equal when they share the same declaration AND
+		// their type arguments (if any) are pairwise equal. This covers both
+		// non-generic structs (no Elems) and generic instantiations like Box<int>
+		// vs Box<string>.
+		if t.Decl != other.Decl {
+			return false
+		}
+		if len(t.Elems) != len(other.Elems) {
+			return false
+		}
+		for i, e := range t.Elems {
+			if !e.Equal(other.Elems[i]) {
+				return false
+			}
+		}
+		return true
+	case TypeEnum, TypeUnit, TypeComponent:
 		return t.Decl == other.Decl
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)
@@ -354,6 +382,10 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
+	// list<T> implicitly converts to iter<T>.
+	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
+		return t.Elems[0].IsAssignableTo(target.Elems[0])
+	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
@@ -375,12 +407,13 @@ func isStringDomain(k TypeKind) bool {
 
 // FuncSig describes a function signature.
 type FuncSig struct {
-	Params     []*Param
-	Return     *Type // nil for void/action
-	TypeParams []string
-	Purity     Purity
-	Color      Color // Sync (default), Async, or Param.
-	PolyParam  int   // when Color == ColorParam: index of the funcvar param the color depends on.
+	Params         []*Param
+	Return         *Type // nil for void/action
+	TypeParams     []string
+	RecvTypeParams []string // receiver-level type parameters; consumed (set to nil) after substitution
+	Purity         Purity
+	Color          Color // Sync (default), Async, or Param.
+	PolyParam      int   // when Color == ColorParam: index of the funcvar param the color depends on.
 }
 
 // IsPoly reports whether this signature's color depends on a funcvar

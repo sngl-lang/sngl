@@ -1,0 +1,16 @@
+// ICU MessageFormat apostrophe handling. In ICU, '...' quotes a literal
+// run of characters that would otherwise be interpreted as metachars.
+// '' (two single quotes) emits one literal apostrophe.
+
+// Bare apostrophe in a literal run (no metachars after).
+var msg1 = $"It's a fine day"
+
+// Doubled apostrophe — emits a single literal apostrophe.
+var msg2 = $"Don''t do that"
+
+// Apostrophe-quoted span around a literal '{' that should not start a placeholder.
+var msg3 = $"Use '{'curly braces'}' to interpolate"
+
+// Apostrophe with interpolation nearby.
+var name = "Alice"
+var msg4 = $"It's {name}'s turn"

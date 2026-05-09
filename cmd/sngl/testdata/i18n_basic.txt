@@ -1,0 +1,12 @@
+# $"..." compiles successfully and produces a working program.
+
+sngl check app.sngl
+stdout 'app.sngl: ok'
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var greeting = $"Login"
+    text(value=greeting)
+}

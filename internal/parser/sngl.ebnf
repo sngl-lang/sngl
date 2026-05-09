@@ -68,22 +68,22 @@
 # kw_return     0x40  KW_RETURN
 # kw_platform   0x42  KW_PLATFORM
 # slashdash     0x46  SLASHDASH /-
-# str_start     0x49  STR_START     "text{
-# str_end       0x4A  STR_END       }text"
-# str_resume    0x4B  STR_RESUME    }text{
-# triple_start  0x4C  TRIPLE_START  """text{
-# triple_end    0x4D  TRIPLE_END    }text"""
-# amp           0x4E  AMP           &
-# i18n_str_full     0x4F  I18N_STR_FULL     $"text"
-# i18n_str_start    0x50  I18N_STR_START    $"text{
-# i18n_str_resume   0x51  I18N_STR_RESUME   }text{
-# i18n_str_end      0x52  I18N_STR_END      }text"
-# i18n_triple_full  0x53  I18N_TRIPLE_FULL  $"""text"""
-# i18n_triple_start 0x54  I18N_TRIPLE_START $"""text{
-# i18n_triple_end   0x55  I18N_TRIPLE_END   }text"""
-# i18n_case_full    0x56  I18N_CASE_FULL    (msg case boundary)
-# i18n_case_start   0x57  I18N_CASE_START   (msg case boundary)
-# i18n_case_end     0x58  I18N_CASE_END     (msg case boundary)
+# str_start        0x49  STR_START         "text{
+# str_end          0x4A  STR_END           }text"
+# str_resume       0x4B  STR_RESUME        }text{
+# triple_start     0x4C  TRIPLE_START      """text{
+# triple_end       0x4D  TRIPLE_END        }text"""
+# amp              0x4E  AMP               &
+# i18n_str_full    0x50  I18N_STR_FULL     $"text"
+# i18n_str_start   0x51  I18N_STR_START    $"text{
+# i18n_str_end     0x52  I18N_STR_END      }text"   (i18n)
+# i18n_str_resume  0x53  I18N_STR_RESUME   }text{   (i18n)
+# i18n_triple_full 0x54  I18N_TRIPLE_FULL  $"""text"""
+# i18n_triple_start 0x55 I18N_TRIPLE_START $"""text{
+# i18n_triple_end  0x56  I18N_TRIPLE_END   }text"""  (i18n)
+# i18n_case_full   0x57  I18N_CASE_FULL    {body}    (no nested placeholders)
+# i18n_case_start  0x58  I18N_CASE_START   {body{    (opening segment with nested placeholder)
+# i18n_case_end    0x59  I18N_CASE_END     }body}    (closing segment of case body)
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -154,22 +154,47 @@ str_end      = `\x4A` .
 str_resume   = `\x4B` .
 triple_start = `\x4C` .
 triple_end   = `\x4D` .
-amp          = `\x4E` .
-i18n_str_full     = `\x4F` .
-i18n_str_start    = `\x50` .
-i18n_str_resume   = `\x51` .
+amp               = `\x4E` .
+i18n_str_full     = `\x50` .
+i18n_str_start    = `\x51` .
 i18n_str_end      = `\x52` .
-i18n_triple_full  = `\x53` .
-i18n_triple_start = `\x54` .
-i18n_triple_end   = `\x55` .
-i18n_case_full    = `\x56` .
-i18n_case_start   = `\x57` .
-i18n_case_end     = `\x58` .
+i18n_str_resume   = `\x53` .
+i18n_triple_full  = `\x54` .
+i18n_triple_start = `\x55` .
+i18n_triple_end   = `\x56` .
+i18n_case_full    = `\x57` .
+i18n_case_start   = `\x58` .
+i18n_case_end     = `\x59` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
 InterpStr    = str_start Expr { str_resume Expr } str_end .
 TripleInterp = triple_start Expr { str_resume Expr } triple_end .
+
+# ── Translatable strings ─────────────────────────────────────────────────────
+
+I18nInterpStr = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
+I18nTriple    = i18n_triple_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_triple_end .
+
+# The 1-3 fields inside a {...} placeholder.
+I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
+
+# Third arg: either a bare style ident (e.g. short, medium, currency)
+# or a MsgFormatBody (one or more selector{body} cases).
+# Left-factored on the leading ident to resolve LL(1) ambiguity:
+#   ident MsgBody ...  → the ident is a Selector; MsgBodyTail consumes the rest
+#   ident              → the ident is a Style (no body follows)
+#   assign int_lit ... → numeric selector, must be followed by MsgBody
+I18nThirdArg = ident [ MsgBodyTail ] | assign int_lit MsgBody { MsgCase } .
+MsgBodyTail  = MsgBody { MsgCase } .
+
+# Plural / select / selectordinal cases (space-separated per ICU spec).
+MsgCase   = Selector MsgBody .
+Selector  = ident | assign int_lit .
+
+# Case body: literal text only, or text + nested placeholders.
+MsgBody = i18n_case_full
+        | i18n_case_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_case_end .
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
@@ -220,7 +245,7 @@ ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct [ ident ] lbrace { StructField } rbrace .
+StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
 
 StructField = IdentList Type [ assign Expr ] semi .
 
@@ -266,7 +291,7 @@ VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName [ TypeParamList ] FuncTail .
+FuncDecl = kw_func FuncName FuncTail .
 
 FuncTail =
       lparen [ ParamList ] rparen FuncBodyTail
@@ -278,7 +303,23 @@ FuncBodyTail =
     | [ Type ] StmtBlock
     .
 
-FuncName = ident [ dot ident ] .
+# FuncName encodes all name/type-param combinations inside a single non-terminal.
+# Moving all TypeParamLists inside FuncName ensures `lt` is never in FOLLOW(FuncName),
+# keeping the grammar LL(1).
+#
+# Supported forms:
+#   func name(...)                  → ident
+#   func name<T>(...)               → ident TypeParamList
+#   func recv.method(...)           → ident dot ident
+#   func recv.method<T>(...)        → ident dot ident TypeParamList
+#   func recv<T>.method(...)        → ident TypeParamList dot ident
+#   func recv<T>.method<U>(...)     → ident TypeParamList dot ident TypeParamList
+#
+# LL(1) disambiguation after leading ident:
+#   lt  → TypeParamList branch; if dot follows it is receiver-level, else function-level
+#   dot → method branch; trailing TypeParamList (if lt present) is method-level
+#   else → bare function name
+FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
 
 TypeParamList = lt ident { comma ident } gt .
 
@@ -332,6 +373,10 @@ StatementPrimary =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen
@@ -437,6 +482,10 @@ PrimaryExpr =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen
@@ -460,7 +509,7 @@ AnonStructLit = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi
 
 AnonField =
       ellipsis Expr
-    | Expr ( assign | colon ) Expr
+    | Expr assign Expr
     .
 
 # Inline function literal: func(params) => Expr  or  func(params) [ReturnType] { … }
@@ -523,6 +572,10 @@ NonIdentPrimary =
     | raw_str
     | InterpStr
     | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
     | color
     | elem_ref
     | lparen Expr rparen

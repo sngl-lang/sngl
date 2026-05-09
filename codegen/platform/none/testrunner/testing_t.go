@@ -63,6 +63,22 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		}
 		return nil, nil
 
+	case "setLocale":
+		if len(args) != 1 {
+			return nil, fmt.Errorf("t.setLocale() requires 1 argument")
+		}
+		locVal, err := env.Eval(args[0])
+		if err != nil {
+			return nil, err
+		}
+		loc, ok := locVal.(string)
+		if !ok {
+			return nil, fmt.Errorf("t.setLocale() argument must be a string, got %T", locVal)
+		}
+		tv.locale = loc
+		env.locale = loc
+		return nil, nil
+
 	case "test":
 		if len(args) < 2 {
 			return nil, fmt.Errorf("t.test() requires a description and a function")
@@ -83,7 +99,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		start := time.Now()
 		childResult := &codegen.TestResult{Desc: fmt.Sprintf("%v", desc)}
 		childEnv := env.Snapshot()
-		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName}
+		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale}
 
 		callArgs := []any{childT}
 		if tv.compName != "" {

@@ -274,6 +274,11 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("struct ")
 	if s.Name != "" {
 		f.write(s.Name)
+		if len(s.TypeParams) > 0 {
+			f.write("<")
+			f.write(strings.Join(s.TypeParams, ", "))
+			f.write(">")
+		}
 		f.write(" ")
 	}
 	if len(s.Fields) == 0 {
@@ -449,7 +454,17 @@ func (f *formatter) writeVarSpec(spec ast.VarSpec) {
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	f.write("func ")
-	f.write(fn.Name)
+	if len(fn.RecvTypeParams) > 0 {
+		// recv<T>.method form: Name is "recv.method", split and insert type params.
+		dot := strings.IndexByte(fn.Name, '.')
+		f.write(fn.Name[:dot])
+		f.write("<")
+		f.write(strings.Join(fn.RecvTypeParams, ", "))
+		f.write(">")
+		f.write(fn.Name[dot:]) // ".method"
+	} else {
+		f.write(fn.Name)
+	}
 	if len(fn.TypeParams) > 0 {
 		f.write("<")
 		f.write(strings.Join(fn.TypeParams, ", "))
@@ -926,7 +941,7 @@ func (f *formatter) writeMapLit(x *ast.MapLit) {
 			f.write(", ")
 		}
 		f.writeExpr(e.Key)
-		f.write(": ")
+		f.write(" = ")
 		f.writeExpr(e.Value)
 	}
 	f.write("}")
@@ -1019,6 +1034,10 @@ func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
 	if x.Type != "" {
 		f.write(", ")
 		f.write(x.Type)
+	}
+	if x.Style != "" {
+		f.write(", ")
+		f.write(x.Style)
 	}
 	if len(x.Cases) > 0 {
 		f.write(", ")

@@ -78,6 +78,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.inferMapLit(x)
 	case *ast.InterpolationExpr:
 		return c.inferInterpolation(x)
+	case *ast.I18nInterpExpr:
+		return c.inferI18nInterp(x)
 	case *ast.LambdaExpr:
 		return c.inferLambda(x)
 	case *ast.SpreadExpr:
@@ -659,21 +661,61 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// Type-attached method call.
 	typeName := receiver.String()
 	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
-	// Fallback for generic types: list<int> → "list", option<int> → "option".
+	// Fallback for generic types: list<int> → "list", option<int> → "option",
+	// map<K,V> → "map".
 	if !ok {
 		switch receiver.Kind {
 		case ir.TypeList:
 			fn, ok = c.symtab.LookupMethod("list", sel.Field)
 		case ir.TypeOption:
 			fn, ok = c.symtab.LookupMethod("option", sel.Field)
+		case ir.TypeMap:
+			fn, ok = c.symtab.LookupMethod("map", sel.Field)
 		}
 	}
 	if ok {
 		sig := fn.FuncSig()
+		// recvParamStyle tracks whether the receiver is passed as the first
+		// explicit param (old-style "dyn receiver" convention) vs. a new-style
+		// RecvTypeParams method where the receiver is implicit (not a param).
+		recvParamStyle := len(sig.RecvTypeParams) == 0
+
+		// If the method was declared with receiver-level type params
+		// (e.g. func list<T>.filter(...)), bind them from the receiver's concrete
+		// type arguments before any other type-param work.
+		if !recvParamStyle && !isStatic {
+			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
+			if len(receiver.Elems) == len(sig.RecvTypeParams) {
+				for i, name := range sig.RecvTypeParams {
+					bindings[name] = receiver.Elems[i]
+				}
+			} else {
+				// Receiver kind matches but no concrete elems (e.g. bare "list" in
+				// stdlib lookup). Fall back to binding against Params[0] if present.
+				if len(sig.Params) > 0 {
+					bindTypeParams(sig.Params[0].Type, receiver, bindings)
+				}
+			}
+			if len(bindings) > 0 {
+				// Substitute the recv bindings and clear RecvTypeParams so the
+				// shifted-sig path below doesn't re-examine them.
+				substituted := sig.Substitute(bindings)
+				sig = &ir.FuncSig{
+					Params:     substituted.Params,
+					Return:     substituted.Return,
+					TypeParams: substituted.TypeParams,
+					// RecvTypeParams intentionally omitted: consumed by substitution.
+					Purity:    substituted.Purity,
+					Color:     substituted.Color,
+					PolyParam: substituted.PolyParam,
+				}
+			}
+		}
 		if len(sig.TypeParams) > 0 {
-			// For instance calls, bind receiver to param[0] before inferring
-			// from explicit args so that e.g. list<int>.length() binds T=int.
-			if !isStatic && len(sig.Params) > 0 {
+			// For instance calls using the old-style receiver-as-param convention,
+			// bind receiver to param[0] before inferring from explicit args so
+			// that e.g. list<int>.length() binds T=int.
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
 				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
@@ -687,8 +729,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// Static call: Type.method(args...) — all args explicit.
 			// Type ident is only a namespace marker; drop it.
 			args = c.checkCallArgs(call.Args, sig)
-		} else if len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
-			// Instance call: expr.method(args...) — receiver is implicit first arg.
+		} else if recvParamStyle && len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
+			// Old-style instance call: receiver is the implicit first arg.
 			// Validate remaining args against the shifted sig, then prepend the
 			// receiver so the IR matches the static call shape.
 			shifted := &ir.FuncSig{
@@ -697,6 +739,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				TypeParams: sig.TypeParams,
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
+			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+		} else if !recvParamStyle {
+			// New-style RecvTypeParams method: receiver is NOT a param.
+			// Check all call args against the full (substituted) sig.
+			// Prepend receiver so IR shape is consistent with static call convention.
+			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		} else {
 			rest := c.checkCallArgs(call.Args, sig)
@@ -749,7 +797,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption:
+		ir.TypeList, ir.TypeOption, ir.TypeMap:
 		return true
 	}
 	return false
@@ -859,12 +907,25 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// Struct field access.
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
+				// Build type-arg substitution bindings if the struct is generic and
+				// the operand carries concrete type arguments (e.g. Box<int>.value).
+				var typeArgBindings map[string]*ir.Type
+				if len(sd.TypeParams) > 0 && len(operand.Elems) == len(sd.TypeParams) {
+					typeArgBindings = make(map[string]*ir.Type, len(sd.TypeParams))
+					for i, name := range sd.TypeParams {
+						typeArgBindings[name] = operand.Elems[i]
+					}
+				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
 						if f.Unusable != "" {
 							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Unusable)
 						}
-						return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
+						fieldType := f.Type
+						if typeArgBindings != nil {
+							fieldType = fieldType.Substitute(typeArgBindings)
+						}
+						return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
@@ -928,6 +989,11 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				sd = s
 			}
 		}
+	} else if c.expected != nil && c.expected.Kind == ir.TypeMap {
+		// Anonymous struct literal (all-ident keys) with expected map type:
+		// reinterpret as a map literal. Only string-keyed maps are supported
+		// for ident keys (the ident name becomes the string key).
+		return c.reinterpretStructAsMap(x, c.expected)
 	} else if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl != nil {
 		// Anonymous struct literal with expected struct type: infer the type.
 		if s, ok := c.expected.Decl.(*ir.StructDef); ok {
@@ -973,6 +1039,37 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 }
 
+// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
+// when the expected type is map<K,V>. Only map<string,V> is supported; ident
+// names become string literal keys. For any other K, a check error is emitted.
+// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
+// when the expected type is map<K,V>. Only map<string,V> is supported; ident
+// names become string literal keys. For any other K, a check error is emitted.
+func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir.Expr {
+	if len(mapType.Elems) != 2 {
+		c.error(x.Pos, "internal: map type missing key/value elements")
+		return &ir.MapLitIR{Type: mapType, Entries: nil}
+	}
+	keyT := mapType.Elems[0]
+	valT := mapType.Elems[1]
+	if keyT.Kind != ir.TypeString {
+		c.error(x.Pos, "ident-keyed literal does not match map<%s, ...> with non-string key type", keyT)
+		return &ir.MapLitIR{Type: mapType, Entries: nil}
+	}
+	var entries []ir.MapEntry
+	for _, f := range x.Fields {
+		if f.Spread {
+			c.error(x.Pos, "spread not supported in map literal")
+			continue
+		}
+		keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
+		keyIR := &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		val := c.checkExprExpecting(f.Value, valT)
+		entries = append(entries, ir.MapEntry{Key: keyIR, Value: val})
+	}
+	return &ir.MapLitIR{Type: mapType, Entries: entries}
+}
+
 func structHasField(sd *ir.StructDef, name string) bool {
 	for _, f := range sd.Fields {
 		if f.Name == name {
@@ -1012,17 +1109,29 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 }
 
 func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
-	if len(x.Entries) == 0 {
-		if c.expected != nil && c.expected.Kind == ir.TypeMap {
-			return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
-		}
+	// MapLit (non-ident keys) requires either a map expected type or inference
+	// from its own entries. A struct expected type is always wrong.
+	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
+		c.error(x.Pos, "map literal cannot be used where a struct is expected")
 		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+	}
+	if c.expected == nil || c.expected.Kind != ir.TypeMap {
+		c.error(x.Pos, "anonymous map literal requires an expected type from context")
+		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+	}
+	if len(x.Entries) == 0 {
+		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
+	}
+	var keyExpected, valExpected *ir.Type
+	if len(c.expected.Elems) == 2 {
+		keyExpected = c.expected.Elems[0]
+		valExpected = c.expected.Elems[1]
 	}
 	var keyT, valT *ir.Type
 	var entries []ir.MapEntry
 	for _, e := range x.Entries {
-		k := c.checkExpr(e.Key)
-		v := c.checkExpr(e.Value)
+		k := c.checkExprExpecting(e.Key, keyExpected)
+		v := c.checkExprExpecting(e.Value, valExpected)
 		kT := exprType(k)
 		vT := exprType(v)
 		if keyT == nil {
@@ -1231,6 +1340,17 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 		if _, exists := bindings[param.ParamName]; !exists {
 			bindings[param.ParamName] = arg
 		}
+		return
+	}
+	// Recurse into func signatures: func(T) U vs func(int) string → T=int, U=string.
+	if param.Kind == ir.TypeFunc && arg.Kind == ir.TypeFunc &&
+		param.Sig != nil && arg.Sig != nil {
+		if len(param.Sig.Params) == len(arg.Sig.Params) {
+			for i := range param.Sig.Params {
+				bindTypeParams(param.Sig.Params[i].Type, arg.Sig.Params[i].Type, bindings)
+			}
+		}
+		bindTypeParams(param.Sig.Return, arg.Sig.Return, bindings)
 		return
 	}
 	// Recurse into type arguments (list<T>, option<T>, etc.).
@@ -1621,22 +1741,58 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ForStmt:
 		iterExpr := c.checkExpr(x.Iter)
 		iter := exprType(iterExpr)
-		if iter.Kind != ir.TypeDyn && iter.Kind != ir.TypeList {
-			c.error(x.Pos, "for iterator must be list, got %s", iter)
-		}
 		c.pushScope()
-		// Declare loop variables.
+		// Declare loop variables based on iterator type.
 		elemType := TypDyn
-		if iter.Kind == ir.TypeList && len(iter.Elems) > 0 {
-			elemType = iter.Elems[0]
-		}
-		if x.Value != "" {
-			// for key, value = iter: key is index, value is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-			c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
-		} else {
-			// for item = iter: item is element.
-			c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+		switch iter.Kind {
+		case ir.TypeList:
+			if len(iter.Elems) > 0 {
+				elemType = iter.Elems[0]
+			}
+			if x.Value != "" {
+				// for key, value = list: key is index (int), value is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+			} else {
+				// for item = list: item is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+			}
+		case ir.TypeIter:
+			if len(iter.Elems) > 0 {
+				elemType = iter.Elems[0]
+			}
+			if x.Value != "" {
+				// for key, value = iter: key is index (int), value is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+			} else {
+				// for item = iter: item is element.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+			}
+		case ir.TypeMap:
+			if x.Value == "" {
+				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
+			} else if len(iter.Elems) == 2 {
+				// for k, v = map: k is key type, v is value type.
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				elemType = iter.Elems[1]
+			}
+		case ir.TypeDyn:
+			if x.Value != "" {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+			} else {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+			}
+		default:
+			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
+			if x.Value != "" {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+			} else {
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+			}
 		}
 		body := c.checkBlockIR(&x.Body)
 		var elseBody []ir.Stmt

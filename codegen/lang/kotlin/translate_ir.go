@@ -50,6 +50,10 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 	case *ir.Index:
 		operand := translateIRExpr(n.Operand, scope)
 		idx := translateIRExpr(n.Idx, scope)
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			valZero := ktMapValZero(t)
+			return "(" + operand + "[" + idx + "] ?: " + valZero + ")"
+		}
 		return operand + "[" + idx + "]"
 	case *ir.Call:
 		return translateIRCall(n, scope)
@@ -75,6 +79,19 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			parts[i] = translateIRExpr(el, scope)
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
+	case *ir.MapLitIR:
+		var b strings.Builder
+		b.WriteString("mapOf(")
+		for i, e := range n.Entries {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(translateIRExpr(e.Key, scope))
+			b.WriteString(" to ")
+			b.WriteString(translateIRExpr(e.Value, scope))
+		}
+		b.WriteString(")")
+		return b.String()
 	case *ir.Spread:
 		return "*" + translateIRExpr(n.Operand, scope)
 	case *ir.Lambda:
@@ -344,9 +361,42 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 			return []string{"return " + translateIRExpr(n.Value, scope)}
 		}
 		return []string{"return"}
+	case *ir.For:
+		return translateIRForKt(n, scope)
 	default:
 		return []string{"// unsupported ir mutation: " + fmt.Sprintf("%T", s)}
 	}
+}
+
+func translateIRForKt(n *ir.For, scope *codegen.ExprScope) []string {
+	iterExpr := translateIRExpr(n.Iter, scope)
+	loopScope := *scope
+	locals := make(map[string]bool, len(scope.LocalVars)+2)
+	maps.Copy(locals, scope.LocalVars)
+	locals[n.Key] = true
+	if n.Value != "" {
+		locals[n.Value] = true
+	}
+	loopScope.LocalVars = locals
+
+	var lines []string
+	iterType := n.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		valueVar := n.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iterExpr))
+	} else {
+		lines = append(lines, fmt.Sprintf("for (%s in %s) {", n.Key, iterExpr))
+	}
+	for _, stmt := range n.Body {
+		for _, l := range translateIRMutation(stmt, &loopScope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {

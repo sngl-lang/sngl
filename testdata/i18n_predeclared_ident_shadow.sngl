@@ -1,0 +1,21 @@
+// Methods on a non-built-in receiver may use any identifier name,
+// including names that match predeclared identifiers like `date` or
+// `select`. The parser must not panic.
+
+struct widget {}
+
+func widget.date() string {
+    return "today"
+}
+
+func widget.select() bool {
+    return true
+}
+
+func widget.time() string {
+    return "now"
+}
+
+func widget.dateTime() string {
+    return "now"
+}

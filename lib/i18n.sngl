@@ -1,0 +1,51 @@
+// i18n provides translation and locale-aware formatting.
+//
+// The lowering of $"..." literals targets `tr`. Other entry points are
+// direct formatters callable from regular SNGL code.
+
+// --- Translation entry points ---
+
+// Translate `key` against the loaded manifest, formatting via ICU.
+// The lowering of $"..." passes the synthesized ICU template as `key`
+// and the placeholder values as `args`.
+func i18n.tr(key string, args map<string, dyn>) string {}
+
+// Format an ICU template directly, no manifest lookup.
+func i18n.format(template string, args map<string, dyn>) string {}
+
+// --- Direct formatters ---
+
+// Style: "decimal" (default), "percent", "currency", "scientific".
+func i18n.numberInt(n int, style string) string {}
+func i18n.numberFloat(n float, style string) string {}
+
+// Style: "short", "medium" (default), "long", "full".
+func i18n.date(d date, style string) string {}
+func i18n.time(t time, style string) string {}
+func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) string {}
+
+// --- Direct selectors ---
+
+// Free-form value-based selection.
+func i18n.select(value string, cases map<string, string>) string {}
+
+// --- Plural/ordinal selectors ---
+
+// PluralKey identifies a CLDR plural category or an exact numeric match.
+// Use the predeclared constants (i18n.zero, i18n.one, …, i18n.other) for
+// CLDR keyword categories, or i18n.exactly(n) for an exact match.
+struct PluralKey {
+    n int
+    exact bool
+}
+
+// Construct a PluralKey that matches exactly n.
+func i18n.exactly(n int) PluralKey {}
+
+// Plural selects a message by CLDR cardinal plural rule for count.
+// forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
+func i18n.plural(count int, forms map<PluralKey, string>) string {}
+
+// Selectordinal selects a message by CLDR ordinal plural rule for count.
+// forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
+func i18n.selectordinal(count int, forms map<PluralKey, string>) string {}

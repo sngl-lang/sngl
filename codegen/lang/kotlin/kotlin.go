@@ -57,8 +57,13 @@ func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []
 }
 
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
-	if lit, ok := e.(*ir.Literal); ok {
-		return translateIRLiteral(lit)
+	switch n := e.(type) {
+	case *ir.Literal:
+		return translateIRLiteral(n)
+	case *ir.MapLitIR:
+		return IRLiteralToKt(n)
+	case *ir.ListLit:
+		return IRLiteralToKt(n)
 	}
 	return `""`
 }

@@ -72,6 +72,7 @@ type EnumDef struct {
 type StructDef struct {
 	Pos         Pos
 	Name        string
+	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
 	Fields      []*StructField
 	IsMultiline bool
 }
@@ -159,13 +160,14 @@ type ParamList struct {
 // FuncDef declares a named function.
 // Exactly one of Body or Block is set.
 type FuncDef struct {
-	Pos        Pos
-	Name       string
-	TypeParams []string // generic type parameters, e.g., ["T", "U"]
-	Params     ParamList
-	ReturnType TypeExpr  // nil for void/action functions
-	Body       Expr      // single-expression form (=> expr)
-	Block      StmtBlock // block form ({ ... })
+	Pos            Pos
+	Name           string
+	TypeParams     []string // method-level generic type parameters, e.g., ["T", "U"]
+	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
+	Params         ParamList
+	ReturnType     TypeExpr  // nil for void/action functions
+	Body           Expr      // single-expression form (=> expr)
+	Block          StmtBlock // block form ({ ... })
 }
 
 // IsTest returns true if this function is a test function.

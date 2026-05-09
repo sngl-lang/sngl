@@ -1,0 +1,13 @@
+# Plural form parses, type-checks, and compiles.
+
+sngl check app.sngl
+stdout 'app.sngl: ok'
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var count = 5
+    var msg = $"You have {count, plural, one{message} other{messages}}"
+    text(value=msg)
+}

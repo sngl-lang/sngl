@@ -1,0 +1,16 @@
+// Date placeholder with style argument.
+// Demonstrates the {<expr>, <type>, <style>} 3-arg form where the third
+// position is a style identifier (short/medium/long/full), not a body.
+var d date
+var created = $"Created on {d, date, short}"
+var createdMedium = $"Last edit: {d, date, medium}"
+var createdLong = $"Published: {d, date, long}"
+var createdFull = $"Date: {d, date, full}"
+
+// Time placeholder with style argument.
+var t time
+var startedAt = $"Started at {t, time, short}"
+
+// dateTime placeholder.
+var dt dateTime
+var stamp = $"Timestamp: {dt, dateTime, medium}"

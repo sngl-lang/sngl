@@ -47,6 +47,13 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "ListFilter", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "pred", Type: TypDyn}}, Return: ListOf(TypDyn)},
 	{Name: "ListMap", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "fn", Type: TypDyn}}, Return: ListOf(TypDyn)},
 
+	// --- map ---
+	{Name: "MapLength", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: TypInt},
+	{Name: "MapKeys", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
+	{Name: "MapValues", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
+	{Name: "MapContains", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}}, Return: TypBool},
+	{Name: "MapGet", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}, {Name: "def", Type: TypDyn}}, Return: TypDyn},
+
 	// --- color ---
 	{Name: "ColorHex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 

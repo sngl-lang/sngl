@@ -10,6 +10,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
+	goi18n "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 )
 
 // maxCallDepth is the maximum allowed function call depth.
@@ -113,6 +114,8 @@ type Env struct {
 	depth       int
 	renderDepth int
 	Log         []string
+	// locale is the active BCP-47 locale for i18n calls (default "en").
+	locale string
 }
 
 func NewEnv() *Env {
@@ -149,9 +152,223 @@ func (env *Env) Snapshot() *Env {
 		bodyStmts:   env.bodyStmts,
 		depth:       env.depth,
 		renderDepth: env.renderDepth,
+		locale:      env.locale,
 	}
 	maps.Copy(cp.vars, env.vars)
 	return cp
+}
+
+// translatorFor returns a Translator for the env's current locale.
+func (env *Env) translatorFor() *goi18n.Translator {
+	loc := env.locale
+	if loc == "" {
+		loc = "en"
+	}
+	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+}
+
+// evalI18nCall dispatches a call to an i18n.* function using the env's locale.
+// Returns (result, handled, error). handled is false when the function name is
+// not a recognised i18n intrinsic, allowing the caller to fall through.
+func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, error) {
+	tr := env.translatorFor()
+	switch funcName {
+	case "tr":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.tr requires 2 arguments")
+		}
+		keyVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		argsVal, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		key := fmt.Sprintf("%v", keyVal)
+		argsMap := toStringAnyMap(argsVal)
+		return tr.Tr(key, key, argsMap), true, nil
+
+	case "format":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.format requires 2 arguments")
+		}
+		tmplVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		argsVal, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		tmpl := fmt.Sprintf("%v", tmplVal)
+		argsMap := toStringAnyMap(argsVal)
+		return tr.Format(tmpl, argsMap), true, nil
+
+	case "numberInt":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.numberInt requires 2 arguments")
+		}
+		nVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		styleVal, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.NumberInt(toInt(nVal), fmt.Sprintf("%v", styleVal)), true, nil
+
+	case "numberFloat":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.numberFloat requires 2 arguments")
+		}
+		nVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		styleVal, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.NumberFloat(toFloat(nVal), fmt.Sprintf("%v", styleVal)), true, nil
+
+	case "select":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.select requires 2 arguments")
+		}
+		valArg, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		casesArg, err := env.Eval(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		value := fmt.Sprintf("%v", valArg)
+		cases := toStringStringMap(casesArg)
+		return tr.Select(value, cases), true, nil
+
+	case "exactly":
+		if len(args) < 1 {
+			return nil, true, fmt.Errorf("i18n.exactly requires 1 argument")
+		}
+		nVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return goi18n.Exactly(toInt(nVal)), true, nil
+
+	case "plural":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.plural requires 2 arguments")
+		}
+		countVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		forms, err := env.evalPluralKeyMap(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Plural(toInt(countVal), forms), true, nil
+
+	case "selectordinal":
+		if len(args) < 2 {
+			return nil, true, fmt.Errorf("i18n.selectordinal requires 2 arguments")
+		}
+		countVal, err := env.Eval(args[0].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		forms, err := env.evalPluralKeyMap(args[1].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Selectordinal(toInt(countVal), forms), true, nil
+	}
+	return nil, false, nil
+}
+
+// toStringAnyMap coerces a runtime value to map[string]any.
+func toStringAnyMap(v any) map[string]any {
+	if m, ok := v.(map[string]any); ok {
+		return m
+	}
+	return map[string]any{}
+}
+
+// toStringStringMap coerces a runtime value to map[string]string.
+func toStringStringMap(v any) map[string]string {
+	m := map[string]string{}
+	if src, ok := v.(map[string]any); ok {
+		for k, val := range src {
+			m[k] = fmt.Sprintf("%v", val)
+		}
+	}
+	return m
+}
+
+// evalPluralKeyMap evaluates a map<PluralKey, string> literal expr, converting
+// keys to goi18n.PluralKey values. It handles ir.MapLitIR (the normal form after
+// checking) and falls back to a generic eval for other expr kinds.
+func (env *Env) evalPluralKeyMap(expr ir.Expr) (map[goi18n.PluralKey]string, error) {
+	m := make(map[goi18n.PluralKey]string)
+	if ml, ok := expr.(*ir.MapLitIR); ok {
+		for _, entry := range ml.Entries {
+			kv, err := env.Eval(entry.Key)
+			if err != nil {
+				return nil, err
+			}
+			vv, err := env.Eval(entry.Value)
+			if err != nil {
+				return nil, err
+			}
+			// Key is either a goi18n.PluralKey (from i18n.zero/one/etc. or
+			// i18n.exactly(n)) or something else we can't handle.
+			pk, ok := kv.(goi18n.PluralKey)
+			if !ok {
+				continue
+			}
+			m[pk] = fmt.Sprintf("%v", vv)
+		}
+		return m, nil
+	}
+	// Generic fallback: evaluate the entire map literal.
+	v, err := env.Eval(expr)
+	if err != nil {
+		return nil, err
+	}
+	return toPluralKeyStringMap(v), nil
+}
+
+// toPluralKeyStringMap coerces a runtime value to map[goi18n.PluralKey]string.
+// Keys that are goi18n.PluralKey values pass through; nil keys (from unresolved
+// i18n.zero/one/etc. constants that were registered with nil Init) are mapped
+// to PluralKey sentinel values based on their position in the i18n var list.
+func toPluralKeyStringMap(v any) map[goi18n.PluralKey]string {
+	m := map[goi18n.PluralKey]string{}
+	if src, ok := v.(map[string]any); ok {
+		for k, val := range src {
+			var pk goi18n.PluralKey
+			switch k {
+			case "0", "zero":
+				pk = goi18n.PluralZero
+			case "1", "one":
+				pk = goi18n.PluralOne
+			case "2", "two":
+				pk = goi18n.PluralTwo
+			case "3", "few":
+				pk = goi18n.PluralFew
+			case "4", "many":
+				pk = goi18n.PluralMany
+			default:
+				pk = goi18n.PluralOther
+			}
+			m[pk] = fmt.Sprintf("%v", val)
+		}
+	}
+	return m
 }
 
 // Eval evaluates an IR expression and returns its value.
@@ -190,6 +407,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalListLit(n)
 	case *ir.StructLit:
 		return env.evalStructLit(n)
+	case *ir.MapLitIR:
+		return env.evalMapLitIR(n)
 	case *ir.Spread:
 		return env.Eval(n.Operand)
 	case *ir.Lambda:
@@ -259,6 +478,15 @@ func (env *Env) lookup(name string) (any, error) {
 }
 
 func (env *Env) evalSelect(e *ir.Select) (any, error) {
+	// i18n namespace field access: i18n.zero, i18n.one, etc.
+	// These are predeclared PluralKey constants; resolve them before
+	// attempting a general object lookup.
+	if ident, ok := e.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+		if pk, ok := i18nPluralConst(e.Field); ok {
+			return pk, nil
+		}
+	}
+
 	obj, err := env.Eval(e.Operand)
 	if err != nil {
 		return nil, err
@@ -270,6 +498,26 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return m[e.Field], nil
 	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+// i18nPluralConst maps the predeclared i18n PluralKey field names to their
+// Go runtime values. Returns (PluralKey, true) if found; (nil, false) otherwise.
+func i18nPluralConst(field string) (goi18n.PluralKey, bool) {
+	switch field {
+	case "zero":
+		return goi18n.PluralZero, true
+	case "one":
+		return goi18n.PluralOne, true
+	case "two":
+		return goi18n.PluralTwo, true
+	case "few":
+		return goi18n.PluralFew, true
+	case "many":
+		return goi18n.PluralMany, true
+	case "other":
+		return goi18n.PluralOther, true
+	}
+	return goi18n.PluralKey{}, false
 }
 
 func (env *Env) evalIndex(e *ir.Index) (any, error) {
@@ -290,7 +538,19 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 	}
 	if m, ok := obj.(map[string]any); ok {
 		key := fmt.Sprintf("%v", idx)
-		return m[key], nil
+		if v, ok := m[key]; ok {
+			return v, nil
+		}
+		// Miss → zero value. Use the Index node's result type when it is
+		// concrete; fall back to sampling an existing map value when the type
+		// was inferred as Dyn (e.g. c.scores["x"] through a component Select).
+		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
+			return zeroValueFor(e.Type), nil
+		}
+		for _, sample := range m {
+			return zeroValueForValue(sample), nil
+		}
+		return nil, nil
 	}
 	return nil, fmt.Errorf("cannot index %T", obj)
 }
@@ -364,6 +624,25 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 			return nil, err
 		}
 		m[f.Name] = v
+	}
+	return m, nil
+}
+
+func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
+	m := make(map[string]any, len(e.Entries))
+	for _, entry := range e.Entries {
+		k, err := env.Eval(entry.Key)
+		if err != nil {
+			return nil, err
+		}
+		v, err := env.Eval(entry.Value)
+		if err != nil {
+			return nil, err
+		}
+		// Keys may be PluralKey values (from i18n.exactly/i18n.one etc.) or
+		// plain strings. Store them as formatted strings so the map is
+		// map[string]any; toPluralKeyStringMap will re-interpret them.
+		m[fmt.Sprintf("%v", k)] = v
 	}
 	return m, nil
 }
@@ -648,6 +927,13 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return result, err
 	}
 
+	// i18n namespace: dispatch via locale-aware translator.
+	if receiverName == "i18n" {
+		if result, handled, err := env.evalI18nCall(method, call.Args); handled {
+			return result, err
+		}
+	}
+
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
 	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
@@ -674,6 +960,15 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	if ident, ok := call.Receiver.(*ir.Ident); ok {
 		if _, lookupErr := env.lookup(ident.Name); lookupErr != nil {
 			method := methodNameFromCall(call)
+
+			// i18n namespace: dispatch via locale-aware translator before
+			// falling through to the empty-body user func.
+			if ident.Name == "i18n" {
+				if result, handled, err := env.evalI18nCall(method, call.Args); handled {
+					return result, err
+				}
+			}
+
 			qualName := ident.Name + "." + method
 			evalArgs, err := env.evalCallArgs(call.Args)
 			if err == nil {
@@ -857,6 +1152,10 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
 		}
 	}
+	// --- Map methods ---
+	if m, ok := recv.(map[string]any); ok {
+		return mapMethodResult(method, m, rest)
+	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
 }
 
@@ -938,6 +1237,10 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
 		}
 	}
+	// --- Map methods ---
+	if m, ok := recv.(map[string]any); ok {
+		return mapMethodResult(method, m, rest)
+	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
 }
 
@@ -958,7 +1261,46 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 			}
 		}
 	}
-	return nil, nil
+	return newList, nil
+}
+
+// mapMethodResult dispatches map built-in methods. All runtime maps use
+// map[string]any regardless of the declared K type (keys are stringified in
+// evalMapLitIR), so a single helper suffices.
+func mapMethodResult(method string, m map[string]any, rest []any) (any, error) {
+	switch method {
+	case "length":
+		return len(m), nil
+	case "keys":
+		out := make([]any, 0, len(m))
+		for k := range m {
+			out = append(out, k)
+		}
+		return out, nil
+	case "values":
+		out := make([]any, 0, len(m))
+		for _, v := range m {
+			out = append(out, v)
+		}
+		return out, nil
+	case "contains":
+		if len(rest) != 1 {
+			return nil, fmt.Errorf("contains requires 1 argument")
+		}
+		k := fmt.Sprintf("%v", rest[0])
+		_, ok := m[k]
+		return ok, nil
+	case "get":
+		if len(rest) != 2 {
+			return nil, fmt.Errorf("get requires 2 arguments")
+		}
+		k := fmt.Sprintf("%v", rest[0])
+		if v, ok := m[k]; ok {
+			return v, nil
+		}
+		return rest[1], nil // default
+	}
+	return nil, fmt.Errorf("unsupported method %q on map", method)
 }
 
 func (env *Env) evalCallArgs(args []ir.CallArg) ([]any, error) {
@@ -1288,6 +1630,40 @@ func runtimeTypeName(v any) string {
 	default:
 		return "dyn"
 	}
+}
+
+// zeroValueFor returns the runtime zero value for an IR type.
+func zeroValueFor(t *ir.Type) any {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case ir.TypeInt:
+		return 0
+	case ir.TypeFloat:
+		return 0.0
+	case ir.TypeBool:
+		return false
+	case ir.TypeString:
+		return ""
+	}
+	return nil
+}
+
+// zeroValueForValue returns the zero value of the same runtime type as v.
+// Used when the static type is unknown (TypeDyn) but we can sample a value.
+func zeroValueForValue(v any) any {
+	switch v.(type) {
+	case int:
+		return 0
+	case float64:
+		return 0.0
+	case bool:
+		return false
+	case string:
+		return ""
+	}
+	return nil
 }
 
 func numericResult(f float64) any {

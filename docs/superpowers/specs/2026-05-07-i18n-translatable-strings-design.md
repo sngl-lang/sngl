@@ -34,13 +34,21 @@ Out of scope (deferred to #22 or later):
 ## Syntax
 
 ```sngl
-let label = $"Login"                                          // plain
-let welcome = $"Welcome back, {user.name}!"                   // single SNGL expr
-let unread = $"You have {count, plural,
-    one{message}
-    other{messages}}"                                         // plural with cases
-let formatted = $"Created on {date, date, short}"             // ICU formatter
-let combined = $"{count} new {count, plural, one{msg} other{msgs}}"
+let
+label = $"Login"
+// plain
+let
+welcome = $"Welcome back, {user.name}!"
+// single SNGL expr
+let
+unread = $"You have {count, plural, one{message} other{messages}}"
+
+// plural with cases
+let
+formatted = $"Created on {date, date, short}"
+// ICU formatter
+let
+combined = $"{count} new {count, plural, one{msg} other{msgs}}"
 ```
 
 The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."`, every `{...}` is an **i18n placeholder** with the fixed shape:
@@ -207,7 +215,7 @@ The `select` family wants a key→value mapping with static types. Time to add t
 - New `ir.TypeMap` kind with two `Elems` (key and value types).
 - Type-expression parsing: `map<string, string>`, `map<PluralKey, string>` slot into the existing generic-type-args path (parallel to `list<T>`).
 - **Key types**: any type with structural equality. Primitives (string, int, bool) and structs whose fields are themselves comparable. The checker rejects non-comparable key types (e.g. `map<func, string>`).
-- Map literal syntax: `{<keyExpr>: <valueExpr>, ...}`. Keys are expressions — string literals, ints, struct-valued constants like `i18n.one`, function calls like `i18n.exactly(0)`. The `:` separator distinguishes from struct literals (which use `=`). Empty literal `{}` parses as either depending on expected type; the checker disambiguates from context.
+- Map literal syntax: Same `=` separator as struct literals; checker disambiguates struct vs map by expected type. If all keys are bare identifiers the parser produces a `StructExpr`; any non-identifier key (string literal, int, enum member, etc.) forces a `MapLit` at parse time. Anonymous literals with no expected type are a check error.
 - Lookup: `m[k]` reuses `IndexExpr`, returning `V`. Missing-key returns the zero value (Go-map semantics). Tightening to `option<V>` lookup is deferred to a follow-up — out of scope here.
 - Methods on `map.*`: `length`, `keys`, `values`, `contains(k)`, `get(k, default)`. Just enough for stdlib and i18n.
 - No iteration syntax in `for` yet — defer to a later issue.
@@ -231,22 +239,22 @@ package i18n
 // maps ICU placeholder names to values. Returns the translated string for
 // the active locale, falling back to the manifest's `original` template,
 // then to the key itself. Lowering target for $"..." literals.
-func tr(key string, args map<string, dyn> = {}) -> string
+func tr(key string, args map<string, dyn> = {}) string
 
 // Format a literal ICU template. No manifest lookup.
-func format(template string, args map<string, dyn> = {}) -> string
+func format(template string, args map<string, dyn> = {}) string
 
 // --- Direct formatters ---
 
 // Style values for numbers: "decimal" (default), "percent", "currency",
 // "scientific".
-func numberInt(n int, style string = "decimal") -> string
-func numberFloat(n float, style string = "decimal") -> string
+func numberInt(n int, style string = "decimal") string
+func numberFloat(n float, style string = "decimal") string
 
 // Style values for date/time: "short", "medium" (default), "long", "full".
-func date(d date, style string = "medium") -> string
-func time(t time, style string = "medium") -> string
-func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") -> string
+func date(d date, style string = "medium") string
+func time(t time, style string = "medium") string
+func datetime(dt dateTime, dateStyle string = "medium", timeStyle string = "medium") string
 
 // --- Direct selectors ---
 
@@ -268,7 +276,7 @@ const other PluralKey = PluralKey{n: 5, exact: false}
 
 // Construct an exact-match key (=N form). Example: i18n.exactly(0) is the
 // key matching exactly zero, distinct from i18n.zero (the CLDR "zero" rule).
-func exactly(n int) -> PluralKey
+func exactly(n int) PluralKey
 
 // Cardinal plural selection. Example:
 //     i18n.plural(n, {
@@ -276,14 +284,14 @@ func exactly(n int) -> PluralKey
 //         i18n.one:        "1 file",
 //         i18n.other:      "{n} files",
 //     })
-func plural(count int, forms map<PluralKey, string>) -> string
+func plural(count int, forms map<PluralKey, string>) string
 
 // Ordinal plural selection (1st, 2nd, 3rd, …). Same key shape as plural.
-func selectordinal(count int, forms map<PluralKey, string>) -> string
+func selectordinal(count int, forms map<PluralKey, string>) string
 
 // Free-form value-based selection. Keys are arbitrary strings.
 //     i18n.select(gender, {"male": "he", "female": "she", "other": "they"})
-func select(value string, cases map<string, string>) -> string
+func select(value string, cases map<string, string>) string
 ```
 
 Default Go implementation injected via `PkgSource` override:
