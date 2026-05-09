@@ -313,12 +313,6 @@ func AllDeclPages() []DeclPage {
 				Body:   body,
 			})
 		}
-		// Components named after the package itself (e.g. "sngl" inside the
-		// android package) come from `component sngl.X` override decls that
-		// the parser truncates to bare `sngl` because qualified component
-		// names aren't supported by the grammar. Skip them — once that
-		// parser gap is closed they'll route to Overrides instead.
-		seenComponent := map[string]bool{}
 		for _, c := range idx.Components {
 			// Stdlib components have rich, hand-rolled pages on the website
 			// (live preview, highlighted code, props/events tables). Skip
@@ -327,10 +321,6 @@ func AllDeclPages() []DeclPage {
 			if pkg.Path == "sngl" {
 				continue
 			}
-			if c.Name == pkg.Path || seenComponent[c.Name] {
-				continue
-			}
-			seenComponent[c.Name] = true
 			add("components", c.Name, "")
 		}
 		for _, t := range idx.Types {
