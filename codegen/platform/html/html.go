@@ -16,6 +16,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
@@ -2954,11 +2955,15 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
+	// An i18n.tr-rooted value with no state dependencies still varies by
+	// locale and must run at least once on initial render. Mark such
+	// updaters initOnly so OptimizeMutation's empty-deps prune keeps them.
+	initOnly := loweredID(elemID) || (len(deps) == 0 && exprUsesI18n(expr))
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
 		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
 		deps:     deps,
-		initOnly: loweredID(elemID),
+		initOnly: initOnly,
 	})
 }
 
@@ -2966,12 +2971,73 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
+	initOnly := loweredID(elemID) || (len(deps) == 0 && exprUsesI18n(expr))
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
 		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
 		deps:     deps,
-		initOnly: loweredID(elemID),
+		initOnly: initOnly,
 	})
+}
+
+// exprUsesI18n reports whether expr (or any sub-expression) is a call to
+// an i18n.* intrinsic. Used to keep init-time text updaters that have no
+// state-var dependencies but still depend on the active locale.
+func exprUsesI18n(expr ir.Expr) bool {
+	found := false
+	var walk func(e ir.Expr)
+	walk = func(e ir.Expr) {
+		if found || e == nil {
+			return
+		}
+		if c, ok := e.(*ir.Call); ok && c.Func != nil {
+			qual := c.Func.Receiver + "." + c.Func.Name
+			if javascript.IsI18nCall(qual) {
+				found = true
+				return
+			}
+			for _, a := range c.Args {
+				walk(a.Value)
+			}
+			walk(c.Receiver)
+			return
+		}
+		switch x := e.(type) {
+		case *ir.Binary:
+			walk(x.Left)
+			walk(x.Right)
+		case *ir.Unary:
+			walk(x.Operand)
+		case *ir.Ternary:
+			walk(x.Cond)
+			walk(x.Then)
+			walk(x.Else)
+		case *ir.Conversion:
+			walk(x.Operand)
+		case *ir.Select:
+			walk(x.Operand)
+		case *ir.Index:
+			walk(x.Operand)
+			walk(x.Idx)
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				walk(el)
+			}
+		case *ir.MapLitIR:
+			for _, en := range x.Entries {
+				walk(en.Key)
+				walk(en.Value)
+			}
+		case *ir.StructLit:
+			for _, f := range x.Fields {
+				walk(f.Value)
+			}
+		case *ir.Spread:
+			walk(x.Operand)
+		}
+	}
+	walk(expr)
+	return found
 }
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {

@@ -1,6 +1,6 @@
 // Hello, world — internationalised.
 //
-// Exercises the three i18n MessageFormat features that need different
+// Exercises the i18n MessageFormat features that need different
 // translations to look right:
 //
 //   * select  — gendered honorific (Mr./Ms./Mx.) where many languages
@@ -8,14 +8,10 @@
 //   * plural  — guest count, where French/Russian/Polish each split the
 //               cases differently from English's "one / other" pair.
 //   * number  — ticket price, locale-formatted as currency.
+//   * date    — party date, locale-formatted long form.
 //
 // Manifest: i18n.manifest.json next to this file. Translations included
 // for English (manifest fallback), French, and Spanish.
-//
-// Note on shape: every translatable string is wrapped in a `var` and
-// reassigned from event handlers. Direct `text(value=$"...")` is not
-// yet wired through the html platform's reactive-text path, so the
-// var-binding pattern is the working idiom today.
 
 output {
     none { html }
@@ -31,85 +27,48 @@ component main {
     var price = 1234
     var partyDate date = "2026-05-09"
 
-    // Static labels — wrapped in vars so the html platform binds the
-    // i18n.tr result to the DOM.
-    var heading = i18n.tr("Party RSVP", {})
-    var nameLabel = i18n.tr("Name", {})
-    var honorificLabel = i18n.tr("Honorific", {})
-    var guestsLabel = i18n.tr("Guests", {})
-    var namePlaceholder = i18n.tr("Enter your name", {})
-    var femaleLabel = i18n.tr("female", {})
-    var maleLabel = i18n.tr("male", {})
-    var otherLabel = i18n.tr("other", {})
-
-    // Dynamic strings — recomputed from event handlers.
-    var guestsDisplay = $"{guests, number}"
-    var sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-    var priceLabel = $"Ticket price: {price, number, currency}"
-    var dateLabel = $"Party date: {partyDate, date, long}"
-
     vbox(style={gap=16, padding=24, maxWidth=480}) {
-        text(value=heading, style={fontSize=24, fontWeight=bold})
+        text(value=$"Party RSVP", style={fontSize=24, fontWeight=bold})
 
         vbox(style={gap=8}) {
-            text(value=nameLabel)
+            text(value=$"Name")
             input(
                 value=name,
-                placeholder=namePlaceholder,
-                @input(e) {
-                    name = e.value
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                },
+                placeholder=$"Enter your name",
+                @input(e) { name = e.value },
             )
         }
 
         vbox(style={gap=8}) {
-            text(value=honorificLabel)
+            text(value=$"Honorific")
             hbox(style={gap=8}) {
-                button(text=femaleLabel, @click {
-                    gender = Gender.female
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                })
-                button(text=maleLabel, @click {
-                    gender = Gender.male
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                })
-                button(text=otherLabel, @click {
-                    gender = Gender.other
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                })
+                button(text=$"female", @click { gender = Gender.female })
+                button(text=$"male",   @click { gender = Gender.male })
+                button(text=$"other",  @click { gender = Gender.other })
             }
         }
 
         vbox(style={gap=8}) {
-            text(value=guestsLabel)
+            text(value=$"Guests")
             hbox(style={gap=8, alignItems=center}) {
-                button(text="-", @click {
-                    guests = guests - 1
-                    guestsDisplay = $"{guests, number}"
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                })
-                text(value=guestsDisplay, style={minWidth=24, textAlign=center})
-                button(text="+", @click {
-                    guests = guests + 1
-                    guestsDisplay = $"{guests, number}"
-                    sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
-                })
+                button(text="-", @click { guests = guests - 1 })
+                text(value=$"{guests, number}", style={minWidth=24, textAlign=center})
+                button(text="+", @click { guests = guests + 1 })
             }
         }
 
         text(
-            value=sentence,
+            value=$"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party.",
             style={fontSize=18, padding=12, background="#f5f5f5", borderRadius=8},
         )
 
         text(
-            value=priceLabel,
+            value=$"Ticket price: {price, number, currency}",
             style={fontSize=14, color="#555"},
         )
 
         text(
-            value=dateLabel,
+            value=$"Party date: {partyDate, date, long}",
             style={fontSize=14, color="#555"},
         )
     }

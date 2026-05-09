@@ -14,8 +14,12 @@ import (
 //   - Prune helpers not actually referenced in generated code
 func OptimizeMutation(m *MutationModel) {
 	// Pass 1: Remove updaters with no deps (static content).
+	// Exception: initOnly updaters with empty deps stay — they're meant
+	// to run once at initial sync to populate the DOM from a value the
+	// static-render pass couldn't pre-compute (e.g. an i18n.tr call
+	// whose result depends on the active locale).
 	m.Updaters = filterUpdaters(m.Updaters, func(u Updater) bool {
-		return len(u.Deps) > 0
+		return len(u.Deps) > 0 || u.InitOnly
 	})
 
 	// Pass 2: Deduplicate updaters by name (last wins).
