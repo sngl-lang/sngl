@@ -101,21 +101,22 @@ func TestTranslateIRCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
 }
 
 func TestEmitI18nTr(t *testing.T) {
-	// Build an IR namespace call: i18n.tr("Hello, {name}!", {"name": "Alice"})
-	// The namespace receiver is an *ir.Ident("i18n"), the func has Receiver="i18n",Name="tr".
+	// Mirror the real IR shape produced by inferI18nInterp in internal/checker/i18n.go:
+	// the checker emits an ir.Call with no Receiver expression — only Func.Receiver="i18n".
+	// That routes through translateIRTypeMethodCall (not translateIRNamespaceCall).
+	// Args are [keyLit, argsMap]; jsBuiltinMethodFromArgs("i18n.tr", args) passes key
+	// as both the manifest-key and the inlined-template positions.
 	fn := &ir.Func{Name: "tr", Receiver: "i18n"}
-	receiverExpr := &ir.Ident{Name: "i18n"}
 	keyLit := &ir.Literal{Raw: "Hello, {name}!", Type: ir.TypString}
 	argsMap := &ir.MapLitIR{} // empty map arg for simplicity
 	call := &ir.Call{
-		Func:     fn,
-		Receiver: receiverExpr,
+		Func: fn,
 		Args: []ir.CallArg{
 			{Value: keyLit},
 			{Value: argsMap},
 		},
 	}
-	got := translateIRNamespaceCall(call, &codegen.ExprScope{})
+	got := translateIRCall(call, &codegen.ExprScope{})
 	if !strings.Contains(got, "i18n.getTranslator().tr(") {
 		t.Errorf("i18n.tr: got %q, want call containing i18n.getTranslator().tr(", got)
 	}

@@ -584,7 +584,12 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `confirm(` + a(0) + `)`
 	// i18n — all calls delegate to i18n.getTranslator() from the JS runtime.
 	case "i18n.tr":
-		// Args: key string, args map — pass key twice (key + inlinedTemplate).
+		// Args from translateIRTypeMethodCall: a(0)=key, a(1)=argsMap.
+		// The JS runtime's Translator.tr(key, inlinedTemplate, args) takes three
+		// arguments. The compiler holds no separate manifest key — the template
+		// string doubles as both the lookup key and the inline fallback, so it is
+		// passed twice. A future manifest-backed build can replace a(0) with the
+		// manifest key without changing the call shape.
 		return "i18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
 	case "i18n.format":
 		// Args: template string, args map.
