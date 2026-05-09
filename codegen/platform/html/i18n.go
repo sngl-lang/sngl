@@ -276,8 +276,8 @@ func walkPkgExprs(pkg *ir.Package, fn func(ir.Expr) bool) {
 func i18nRuntimeSnippet() (string, error) {
 	i18nSnippetOnce.Do(func() {
 		runtimeFS := fstest.MapFS{
-			"i18n.js":             &fstest.MapFile{Data: []byte(i18nruntime.I18nJS)},
-			"locale_currency.js":  &fstest.MapFile{Data: []byte(i18nruntime.LocaleCurrencyJS)},
+			"i18n.js":            &fstest.MapFile{Data: []byte(i18nruntime.I18nJS)},
+			"locale_currency.js": &fstest.MapFile{Data: []byte(i18nruntime.LocaleCurrencyJS)},
 		}
 		res := api.Build(api.BuildOptions{
 			Stdin: &api.StdinOptions{
@@ -355,4 +355,3 @@ func i18nManifestJS(projectDir string, projectFS fs.FS) string {
 	}
 	return fmt.Sprintf("globalThis.__SNGL_I18N_MANIFEST__ = %s;\n", compact)
 }
-

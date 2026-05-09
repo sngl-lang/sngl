@@ -58,6 +58,10 @@ func (b *templateBuilder) writePlaceholder(ph *ast.I18nPlaceholderExpr) {
 		b.sb = append(b.sb, ',', ' ')
 		b.sb = append(b.sb, ph.Type...)
 	}
+	if ph.Style != "" {
+		b.sb = append(b.sb, ',', ' ')
+		b.sb = append(b.sb, ph.Style...)
+	}
 	if len(ph.Cases) > 0 {
 		b.sb = append(b.sb, ',', ' ')
 		for i, c := range ph.Cases {

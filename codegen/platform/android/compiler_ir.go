@@ -91,8 +91,8 @@ type irAndroidAnalysis struct {
 type irAndroidBind struct {
 	name   string
 	ktType string
-	init   string   // pre-computed literal init (used for simple values)
-	initEx ir.Expr  // raw IR expression when init needs EvalExpr (e.g. i18n calls)
+	init   string  // pre-computed literal init (used for simple values)
+	initEx ir.Expr // raw IR expression when init needs EvalExpr (e.g. i18n calls)
 	isList bool
 }
 

@@ -2319,19 +2319,37 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// State initialization
+	// State initialization. Vars whose initializer is a pure literal go
+	// into the object literal directly; vars whose initializer references
+	// other state (e.g. an i18n.tr call reading a sibling field) are
+	// emitted as separate `state.X = ...;` statements after the object
+	// literal, so they can read those siblings without hitting a
+	// temporal-dead-zone reference.
 	b.WriteString("// State\nlet state = {")
 	var stateFields []string
+	var deferredInits []struct{ name, value string }
 	stateVars := g.stateVars()
 	for _, dv := range stateVars {
 		val := g.literalToJS(dv.Init)
-		stateFields = append(stateFields, dv.Name+": "+val)
+		if codegen.IRIsLiteral(dv.Init) {
+			stateFields = append(stateFields, dv.Name+": "+val)
+		} else {
+			// Seed the field with `null` so the object shape is correct
+			// for any code that walks the keys before init completes.
+			stateFields = append(stateFields, dv.Name+": null")
+			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name, val})
+		}
 	}
 	for _, s := range g.inlinedStateInits {
-		stateFields = append(stateFields, s.name+": "+s.value)
+		stateFields = append(stateFields, s.name+": null")
+		deferredInits = append(deferredInits, struct{ name, value string }{s.name, s.value})
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
-	b.WriteString("};\n\n")
+	b.WriteString("};\n")
+	for _, di := range deferredInits {
+		fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
+	}
+	b.WriteString("\n")
 
 	// Struct constructors
 	structs := g.pkgStructs()
