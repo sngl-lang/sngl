@@ -61,5 +61,11 @@
       "fr": "Prix du billet : {price, number, currency}",
       "es": "Precio de la entrada: {price, number, currency}"
     }
+  },
+  "Party date: {partyDate, date, long}": {
+    "translations": {
+      "fr": "Date de la fête : {partyDate, date, long}",
+      "es": "Fecha de la fiesta: {partyDate, date, long}"
+    }
   }
 }

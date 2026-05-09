@@ -29,6 +29,7 @@ component main {
     var gender Gender = Gender.female
     var guests = 1
     var price = 1234
+    var partyDate date = "2026-05-09"
 
     // Static labels — wrapped in vars so the html platform binds the
     // i18n.tr result to the DOM.
@@ -45,6 +46,7 @@ component main {
     var guestsDisplay = $"{guests, number}"
     var sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
     var priceLabel = $"Ticket price: {price, number, currency}"
+    var dateLabel = $"Party date: {partyDate, date, long}"
 
     vbox(style={gap=16, padding=24, maxWidth=480}) {
         text(value=heading, style={fontSize=24, fontWeight=bold})
@@ -103,6 +105,11 @@ component main {
 
         text(
             value=priceLabel,
+            style={fontSize=14, color="#555"},
+        )
+
+        text(
+            value=dateLabel,
             style={fontSize=14, color="#555"},
         )
     }
