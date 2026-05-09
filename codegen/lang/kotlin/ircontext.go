@@ -546,6 +546,11 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Any?"
 	case ir.TypeStruct:
 		if t.Decl != nil {
+			// i18n.PluralKey is represented as String in Kotlin — the Kotlin i18n
+			// runtime uses string plural categories exclusively.
+			if t.Decl.SymName() == "PluralKey" {
+				return "String"
+			}
 			return exportName(t.Decl.SymName())
 		}
 		return "Any"
@@ -753,6 +758,40 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "(\"=\" + (" + a(0) + "))"
 	}
 	return ""
+}
+
+// kotlinI18nConstString returns the Kotlin string literal for a predeclared
+// i18n.PluralKey constant. Returns "" for non-matches.
+func kotlinI18nConstString(qual string) string {
+	switch qual {
+	case "i18n.zero":
+		return `"zero"`
+	case "i18n.one":
+		return `"one"`
+	case "i18n.two":
+		return `"two"`
+	case "i18n.few":
+		return `"few"`
+	case "i18n.many":
+		return `"many"`
+	case "i18n.other":
+		return `"other"`
+	}
+	return ""
+}
+
+// isPluralKeyMapType reports whether t is map<i18n.PluralKey, V>.
+// The Kotlin translator lowers such maps to mapOf() with string keys,
+// because the Kotlin i18n runtime uses string plural categories exclusively.
+func isPluralKeyMapType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeMap || len(t.Elems) < 1 {
+		return false
+	}
+	k := t.Elems[0]
+	if k == nil || k.Kind != ir.TypeStruct || k.Decl == nil {
+		return false
+	}
+	return k.Decl.SymName() == "PluralKey"
 }
 
 // ktMapValZero returns the Kotlin zero value for the value type of a map IR type.

@@ -39,6 +39,13 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		b := translateIRExpr(n.Else, scope)
 		return "(if (" + cond + ") " + a + " else " + b + ")"
 	case *ir.Select:
+		// Predeclared i18n.PluralKey constants (zero/one/two/few/many/other)
+		// lower to Kotlin string literals — the Kotlin runtime uses string keys exclusively.
+		if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+			if s := kotlinI18nConstString("i18n." + n.Field); s != "" {
+				return s
+			}
+		}
 		operand := translateIRExpr(n.Operand, scope)
 		field := n.Field
 		if field == "length" {
@@ -80,6 +87,25 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		}
 		return "listOf(" + strings.Join(parts, ", ") + ")"
 	case *ir.MapLitIR:
+		// Special case: map<i18n.PluralKey, V> lowers to a plain mapOf() with
+		// string keys. The Kotlin i18n runtime uses string plural categories
+		// exclusively; PluralKey constants are lowered to string literals by the
+		// *ir.Select case above, and i18n.exactly(n) emits ("=" + n).
+		if isPluralKeyMapType(n.Type) {
+			var b strings.Builder
+			b.WriteString("mapOf(")
+			for i, e := range n.Entries {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				// Keys are already string-typed expressions at this point.
+				b.WriteString(translateIRExpr(e.Key, scope))
+				b.WriteString(" to ")
+				b.WriteString(translateIRExpr(e.Value, scope))
+			}
+			b.WriteString(")")
+			return b.String()
+		}
 		var b strings.Builder
 		b.WriteString("mapOf(")
 		for i, e := range n.Entries {
