@@ -1,0 +1,16 @@
+// Browser smoke test fixture for $"..." plural rendering via the JS i18n runtime.
+// Exercises: i18n plural forms, state mutation, DOM update on click.
+// Used by codegen/platform/html/i18n_browser_test.go.
+//
+// Initial label is a literal to avoid state-initializer self-reference; the
+// click handler re-computes it via $"..." so the i18n runtime is exercised.
+
+component main {
+    var count int = 1
+    var label string = "You have 1 item"
+    text(value=label)
+    button(text="Add", @click {
+        count = count + 1
+        label = $"You have {count, plural, one{# item} other{# items}}"
+    })
+}
