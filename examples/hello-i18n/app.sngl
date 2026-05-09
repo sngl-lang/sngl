@@ -22,9 +22,11 @@ output {
     kotlin { android }
 }
 
+enum Gender { female, male, other }
+
 component main {
     var name = "Alice"
-    var gender = "female"
+    var gender Gender = Gender.female
     var guests = 1
     var price = 1234
 
@@ -63,15 +65,15 @@ component main {
             text(value=honorificLabel)
             hbox(style={gap=8}) {
                 button(text=femaleLabel, @click {
-                    gender = "female"
+                    gender = Gender.female
                     sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
                 })
                 button(text=maleLabel, @click {
-                    gender = "male"
+                    gender = Gender.male
                     sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
                 })
                 button(text=otherLabel, @click {
-                    gender = "other"
+                    gender = Gender.other
                     sentence = $"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party."
                 })
             }

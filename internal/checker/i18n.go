@@ -153,17 +153,58 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		if vT != nil && vT.Kind != ir.TypeString && vT.Kind != ir.TypeDyn {
-			c.error(ph.Pos, "select placeholder requires string value, got %s", vT)
+		// Allow string, dyn, or any enum type. For enums we also validate
+		// that case selectors correspond to declared members and that the
+		// match is exhaustive (or carries an `other` fallback).
+		var enumDecl *ir.EnumDef
+		if vT != nil {
+			switch vT.Kind {
+			case ir.TypeString, ir.TypeDyn:
+				// ok
+			case ir.TypeEnum:
+				if d, ok := vT.Decl.(*ir.EnumDef); ok {
+					enumDecl = d
+				}
+			default:
+				c.error(ph.Pos, "select placeholder requires string or enum value, got %s", vT)
+			}
 		}
+		seen := make(map[string]bool)
+		hasOther := false
 		for _, ca := range ph.Cases {
 			if ca.Selector == "" {
 				c.error(ca.Pos, "select case has empty selector")
 			}
+			if ca.Selector == "other" {
+				hasOther = true
+			} else if enumDecl != nil {
+				known := false
+				for _, m := range enumDecl.Members {
+					if m.Name == ca.Selector {
+						known = true
+						break
+					}
+				}
+				if !known {
+					c.error(ca.Pos, "select case %q is not a member of enum %s", ca.Selector, enumDecl.Name)
+				}
+			}
+			seen[ca.Selector] = true
 			for _, p := range ca.Body {
 				if pp, ok := p.(*ast.I18nPlaceholderExpr); ok {
 					c.checkI18nPlaceholder(pp)
 				}
+			}
+		}
+		if enumDecl != nil && !hasOther {
+			var missing []string
+			for _, m := range enumDecl.Members {
+				if !seen[m.Name] {
+					missing = append(missing, m.Name)
+				}
+			}
+			if len(missing) > 0 {
+				c.error(ph.Pos, "non-exhaustive select on enum %s: missing case(s) %v (or add `other`)", enumDecl.Name, missing)
 			}
 		}
 	case "date", "time", "dateTime":
