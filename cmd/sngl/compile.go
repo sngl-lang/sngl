@@ -111,7 +111,10 @@ func runCompile(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		targets := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+		targets, err := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+		if err != nil {
+			return fmt.Errorf("%s: %w", dir, err)
+		}
 		if len(targets) == 0 {
 			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}
@@ -204,19 +207,73 @@ func parseCLIOpts(optSlice []string) map[string]string {
 	return out
 }
 
-func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) []outputTarget {
+func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) ([]outputTarget, error) {
 	if cliLang != "" && cliPlat != "" {
 		t := outputTarget{Lang: cliLang, Platform: cliPlat, Options: &ir.StructLit{}}
-		applyCLIOpts(t.Options, cliOpts)
-		return []outputTarget{t}
+		if err := applyCLIOpts(t.Options, cliOpts); err != nil {
+			return nil, err
+		}
+		return []outputTarget{t}, nil
 	}
 	var targets []outputTarget
 	for _, o := range pkg.Outputs {
 		opts := cloneStructLit(o.Options)
-		applyCLIOpts(opts, cliOpts)
+		// Errors from per-target validation are deferred — an opt may be
+		// valid for one target's schema and unknown to another. Below we
+		// only error if no target accepts the key.
+		_ = applyCLIOpts(opts, cliOpts)
 		targets = append(targets, outputTarget{Lang: o.Lang, Platform: o.Platform, Options: opts})
 	}
-	return targets
+	if err := validateCLIOptsAcrossTargets(cliOpts, targets); err != nil {
+		return nil, err
+	}
+	return targets, nil
+}
+
+// validateCLIOptsAcrossTargets reports an error for any --opt key that no
+// resolved target's options schema declares. Keys valid for at least one
+// target pass; per-target ApplyOptions silently drops the key on targets that
+// don't declare it (intentional — same opt name often varies by platform).
+func validateCLIOptsAcrossTargets(kv map[string]string, targets []outputTarget) error {
+	if len(kv) == 0 {
+		return nil
+	}
+	var anySchema bool
+	for _, t := range targets {
+		if t.Options != nil && t.Options.Def != nil {
+			anySchema = true
+			break
+		}
+	}
+	if !anySchema {
+		return nil
+	}
+	for k := range kv {
+		matched := false
+		for _, t := range targets {
+			if t.Options != nil && optionFieldType(t.Options, k) != nil {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			var available []string
+			seen := make(map[string]bool)
+			for _, t := range targets {
+				if t.Options == nil || t.Options.Def == nil {
+					continue
+				}
+				for _, f := range t.Options.Def.Fields {
+					if !seen[f.Name] {
+						seen[f.Name] = true
+						available = append(available, f.Name)
+					}
+				}
+			}
+			return fmt.Errorf("unknown --opt %q (available: %v)", k, available)
+		}
+	}
+	return nil
 }
 
 // cloneStructLit returns a shallow copy of the StructLit fields slice so that
@@ -238,12 +295,19 @@ func cloneStructLit(src *ir.StructLit) *ir.StructLit {
 // When the field's type is unknown (no Def, or field absent from Def),
 // the value is wrapped as a raw string literal — keeps simple cases working
 // without a checker pass.
-func applyCLIOpts(opts *ir.StructLit, kv map[string]string) {
+func applyCLIOpts(opts *ir.StructLit, kv map[string]string) error {
 	if len(kv) == 0 {
-		return
+		return nil
 	}
 	for k, v := range kv {
 		ft := optionFieldType(opts, k)
+		// When opts has a schema (Def populated from a source `output()`
+		// declaration), skip keys this target doesn't declare; cross-target
+		// validation happens in resolveTargets so the same --opt key can be
+		// scoped to whichever output declares it.
+		if opts != nil && opts.Def != nil && ft == nil {
+			continue
+		}
 		if ft != nil && ft.Kind != ir.TypeString {
 			parsed, err := parseConstOption(v, ft)
 			if err == nil {
@@ -255,6 +319,7 @@ func applyCLIOpts(opts *ir.StructLit, kv map[string]string) {
 		}
 		codegen.SetOptionField(opts, k, v)
 	}
+	return nil
 }
 
 // optionBool reads a bool-valued option from opts, returning false when absent

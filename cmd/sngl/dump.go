@@ -307,7 +307,10 @@ func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error
 	if err != nil {
 		return outputTarget{}, err
 	}
-	targets := resolveTargets(pkg, lang, plat, nil)
+	targets, err := resolveTargets(pkg, lang, plat, nil)
+	if err != nil {
+		return outputTarget{}, err
+	}
 	if len(targets) == 0 {
 		return outputTarget{}, fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
 	}

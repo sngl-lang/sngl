@@ -91,7 +91,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Resolve target
-	targets := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+	targets, err := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+	if err != nil {
+		return err
+	}
 	if len(targets) == 0 {
 		return fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
 	}

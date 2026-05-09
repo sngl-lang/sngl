@@ -89,7 +89,10 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		targets := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+		targets, err := resolveTargets(pkg, cliLang, cliPlat, cliOpts)
+		if err != nil {
+			return fmt.Errorf("%s: %w", dir, err)
+		}
 		if len(targets) == 0 {
 			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}

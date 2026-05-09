@@ -25,6 +25,8 @@ struct Options {
     listen string
     // Minify emitted HTML and inline JS via esbuild.
     minify bool
+    // Disable content-hash filenames for emitted assets; produce stable paths.
+    noCacheBust bool
 }
 
 // --- Core Layout ---
