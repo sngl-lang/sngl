@@ -331,6 +331,7 @@ var errorSets = [...][]Symbol{
 	{MulOp, AddOp, CmpOp, EqOp, star, slash, question, plus, percent, neq, minus, lte, lt, lparen, lor, lbracket, land, gte, gt, eq, elem_ref, dot},
 	{lparen, lbracket, lbrace, elem_ref, dot},
 	{lparen, lbracket, elem_ref, dot},
+	{UnitDecl, EnumDecl, StructDecl, lparen, lbrace, kw_unit, kw_struct, kw_func, kw_enum, kw_component, ident, dot},
 	{lt, dot},
 	{dot},
 }
@@ -2063,7 +2064,7 @@ state3:
 //
 //	# ── Components ────────────────────────────────────────────────────────────────
 //
-//	ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+//	ComponentDecl = kw_component ident [ dot ident ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 //
 //	State 0
 //		on  kw_component
@@ -2072,30 +2073,42 @@ state3:
 //		on  ident
 //			shift and goto state 2
 //	State 2
-//		on  lparen
+//		on  dot
 //			shift and goto state 3
+//		on  lparen
+//			shift and goto state 5
 //		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
-//			call Type and goto state 6
+//			call Type and goto state 8
 //		on  lbrace
-//			call StmtBlock and goto state 5
+//			call StmtBlock and goto state 7
 //	State 3
-//		on  rparen
+//		on  ident
 //			shift and goto state 4
-//		on  at, colon, ident
-//			call CompParamList and goto state 7
 //	State 4
+//		on  lparen
+//			shift and goto state 5
 //		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
-//			call Type and goto state 6
+//			call Type and goto state 8
 //		on  lbrace
-//			call StmtBlock and goto state 5
+//			call StmtBlock and goto state 7
 //	State 5
-//		Accept
-//	State 6
-//		on  lbrace
-//			call StmtBlock and goto state 5
-//	State 7
 //		on  rparen
-//			shift and goto state 4
+//			shift and goto state 6
+//		on  at, colon, ident
+//			call CompParamList and goto state 9
+//	State 6
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
+//			call Type and goto state 8
+//		on  lbrace
+//			call StmtBlock and goto state 7
+//	State 7
+//		Accept
+//	State 8
+//		on  lbrace
+//			call StmtBlock and goto state 7
+//	State 9
+//		on  rparen
+//			shift and goto state 6
 //
 // ComponentDecl is used internally from Parse.
 func (p *Parser) ComponentDecl() (r []int32) {
@@ -2118,58 +2131,83 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
+	accept, errorSet = false, 137
+	switch Symbol(p.tok.Ch) {
+	case dot:
+		r = append(r, p.shift())
+		goto state3
+	case lparen:
+		r = append(r, p.shift())
+		goto state5
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
+		r = p.add(r, p.Type())
+		goto state8
+	case lbrace:
+		r = p.add(r, p.StmtBlock())
+		goto state7
+	}
+	return p.stop(r, accept, errorSet)
+state3:
+	accept, errorSet = false, 75
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		r = append(r, p.shift())
+		goto state4
+	}
+	return p.stop(r, accept, errorSet)
+state4:
 	accept, errorSet = false, 61
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
-		goto state3
+		goto state5
 	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
-		goto state6
+		goto state8
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
-		goto state5
+		goto state7
 	}
 	return p.stop(r, accept, errorSet)
-state3:
+state5:
 	accept, errorSet = false, 80
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
-		goto state4
+		goto state6
 	case at, colon, ident:
 		r = p.add(r, p.CompParamList())
-		goto state7
+		goto state9
 	}
 	return p.stop(r, accept, errorSet)
-state4:
+state6:
 	accept, errorSet = false, 62
 	switch Symbol(p.tok.Ch) {
 	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
-		goto state6
+		goto state8
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
-		goto state5
+		goto state7
 	}
 	return p.stop(r, accept, errorSet)
-state5:
+state7:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
-state6:
+state8:
 	accept, errorSet = false, 109
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
-		goto state5
+		goto state7
 	}
 	return p.stop(r, accept, errorSet)
-state7:
+state9:
 	accept, errorSet = false, 120
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
-		goto state4
+		goto state6
 	}
 	return p.stop(r, accept, errorSet)
 }
@@ -3590,7 +3628,7 @@ func (p *Parser) FuncName() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 137
+	accept, errorSet = true, 138
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -3620,7 +3658,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state5:
-	accept, errorSet = true, 138
+	accept, errorSet = true, 139
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -6141,7 +6179,7 @@ func (p *Parser) Type() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = true, 137
+	accept, errorSet = true, 138
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())

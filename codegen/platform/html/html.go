@@ -29,10 +29,11 @@ var pkgSource string
 var pkgDocs []*ast.Document
 
 func init() {
-	doc, _ := parser.Parse("html.sngl", []byte(pkgSource))
-	if doc != nil {
-		pkgDocs = []*ast.Document{doc}
+	doc, err := parser.Parse("html.sngl", []byte(pkgSource))
+	if err != nil {
+		panic(fmt.Errorf("platform html init: parsing html.sngl: %w", err))
 	}
+	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 

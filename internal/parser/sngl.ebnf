@@ -329,7 +329,7 @@ Param = ident [ Type ] [ assign Expr ] .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
-ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+ComponentDecl = kw_component ident [ dot ident ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 
 CompParamList = CompParam { comma CompParam } [ comma ] .
 

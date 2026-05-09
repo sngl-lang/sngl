@@ -20,10 +20,11 @@ var pkgSource string
 var pkgDocs []*ast.Document
 
 func init() {
-	doc, _ := parser.Parse("android.sngl", []byte(pkgSource))
-	if doc != nil {
-		pkgDocs = []*ast.Document{doc}
+	doc, err := parser.Parse("android.sngl", []byte(pkgSource))
+	if err != nil {
+		panic(fmt.Errorf("platform android init: parsing android.sngl: %w", err))
 	}
+	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
