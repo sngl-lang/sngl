@@ -12,7 +12,7 @@
 //   kotlinc -cp robolectric.jar:android-all.jar I18n.kt I18nTest.kt -d out/
 //   java -cp out/:robolectric.jar:android-all.jar org.junit.runner.JUnitCore I18nTest
 
-package git.duckfam.us.jonathan.sngl.i18n
+package us.duckfam.git.jonathan.sngl.i18n
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

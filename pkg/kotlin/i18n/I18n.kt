@@ -14,7 +14,7 @@
 // select() returns the matched case body raw — no ICU formatting applied
 // (matches Go and JS behaviour for the direct Translator.select() method).
 
-package git.duckfam.us.jonathan.sngl.i18n
+package us.duckfam.git.jonathan.sngl.i18n
 
 import android.content.Context
 import android.icu.text.DateFormat

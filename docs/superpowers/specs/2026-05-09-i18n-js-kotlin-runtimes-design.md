@@ -91,7 +91,7 @@ If no `i18n.manifest.json` is present in the project root, the prefix is omitted
 
 ### Kotlin runtime: `pkg/kotlin/i18n/I18n.kt`
 
-Single Kotlin file. Package `git.duckfam.us.jonathan.sngl.i18n`. Exports:
+Single Kotlin file. Package `us.duckfam.git.jonathan.sngl.i18n` (Java reverse-DNS of `git.duckfam.us`). Exports:
 
 ```kotlin
 // Plural keys are strings on Kotlin too — android.icu.text.PluralRules.select
