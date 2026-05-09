@@ -259,6 +259,16 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
 		qualName := receiverName + "." + fname
+
+		// For i18n.* calls the namespace receiver is the module object, not a
+		// value argument. Pass only the real call args to the builtin dispatcher
+		// so that a(0) is the first semantic argument (matches type-method path).
+		if receiverName == "i18n" {
+			if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
+				return result
+			}
+		}
+
 		allArgs := append([]string{receiver}, args...)
 		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
@@ -704,6 +714,43 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".containsKey(" + a(1) + ")"
 	case "map.get":
 		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
+	// i18n — all calls delegate to I18n.getTranslator() from the Kotlin runtime.
+	case "i18n.tr":
+		// Args: a(0)=key/template, a(1)=argsMap. The Kotlin runtime's
+		// Translator.tr(key, inlinedTemplate, args) takes three arguments.
+		// The template string doubles as both the lookup key and the inline
+		// fallback, so it is passed twice.
+		return "I18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.format":
+		// Args: template string, args map.
+		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberInt":
+		// Args: n int, style string.
+		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberFloat":
+		// Args: n float (Double), style string.
+		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
+	case "i18n.date":
+		// Args: d date, style string.
+		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
+	case "i18n.time":
+		// Args: t time, style string.
+		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+	case "i18n.datetime":
+		// Args: dt dateTime, dateStyle string, timeStyle string.
+		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+	case "i18n.select":
+		// Args: value string, cases map.
+		return "I18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
+	case "i18n.plural":
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "I18n.getTranslator().plural(" + a(0) + ", " + a(1) + ")"
+	case "i18n.selectordinal":
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
+	case "i18n.exactly":
+		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
+		return "(\"=\" + (" + a(0) + "))"
 	}
 	return ""
 }

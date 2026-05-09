@@ -22,6 +22,26 @@ func (t *Translator) LanguageIdentifier() string { return "kotlin" }
 func (t *Translator) Description() string {
 	return "Generate Kotlin source (used with the Android platform)."
 }
+
+// SnglI18nKotlinPackage is the fully-qualified Kotlin package name for the
+// SNGL i18n runtime shipped in pkg/kotlin/i18n/.
+const SnglI18nKotlinPackage = "us.duckfam.git.jonathan.sngl.i18n"
+
+// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
+// Mirrors the JS and Go translators' helper of the same name. Platform
+// codegens use this to decide whether to inject the i18n runtime import.
+func IsI18nCall(qualName string) bool {
+	switch qualName {
+	case "i18n.tr", "i18n.format",
+		"i18n.numberInt", "i18n.numberFloat",
+		"i18n.date", "i18n.time", "i18n.datetime",
+		"i18n.select",
+		"i18n.plural", "i18n.selectordinal", "i18n.exactly":
+		return true
+	}
+	return false
+}
+
 func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
