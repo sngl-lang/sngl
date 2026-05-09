@@ -9,7 +9,7 @@ import "go://git.duckfam.us/jonathan/sngl/examples/http-session/session"
 component main {
     var sidebarOpen = false
 
-    window home(title="Dashboard", href="/") {
+    window #home(title="Dashboard", href="/") {
         hbox {
             if sidebarOpen {
                 vbox(style={padding=16, gap=8, background="#f0f0f0", width=200}) {
@@ -28,7 +28,7 @@ component main {
         }
     }
 
-    window about(title="About", href="/about") {
+    window #about(title="About", href="/about") {
         vbox(style={padding=24, gap=12}) {
             text(value="About", style={fontSize=24, fontWeight="bold"})
             text(value="This is a server-rendered SNGL app.")
