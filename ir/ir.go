@@ -235,9 +235,9 @@ type Window struct {
 	AST          *ast.VisualNode
 	Name         string
 	Typ          *Type // *Type{Kind:TypeStruct, Decl: stdlib's Window struct}; nil if unresolved
-	Href         Expr // checked href expression (folded during optimization)
-	Title        Expr // checked title expression
-	Favicon      Expr // checked favicon expression
+	Href         Expr  // checked href expression (folded during optimization)
+	Title        Expr  // checked title expression
+	Favicon      Expr  // checked favicon expression
 	Vars         []*Var
 	Funcs        []*Func
 	Body         []Stmt        // type-checked body statements

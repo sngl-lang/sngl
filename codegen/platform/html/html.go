@@ -288,30 +288,40 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return ctx.BuildMutation(nil), nil
 	}
 	singleWindow := len(irWindows) == 1
+	staticMode := req.Lang.LanguageIdentifier() == "none"
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
-	for _, win := range irWindows {
+	for i, win := range irWindows {
 		var name string
-		if singleWindow && (win.Window == nil || win.Window.Href == nil) {
+		switch {
+		case !staticMode:
+			// Route mode: file paths aren't used by the language compiler
+			// (it indexes by WindowIdx and reads bytes directly). Skip
+			// literal-href + collision checks; dynamic /{param} routes are
+			// expected here.
+			name = fmt.Sprintf("window_%d", i)
+		case singleWindow && (win.Window == nil || win.Window.Href == nil):
 			name = "index.html"
-		} else {
+		default:
 			href, ok := codegen.IRLiteralString(win.Window.Href)
 			if !ok {
 				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
 			}
 			name = pathFromHref(href)
 		}
-		if prev, dup := seenPaths[name]; dup {
-			pos := ast.Pos{}
-			if win.Window != nil && win.Window.AST != nil {
-				pos = win.Window.AST.Pos
+		if staticMode {
+			if prev, dup := seenPaths[name]; dup {
+				pos := ast.Pos{}
+				if win.Window != nil && win.Window.AST != nil {
+					pos = win.Window.AST.Pos
+				}
+				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, pos)
 			}
-			return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, pos)
-		}
-		if win.Window != nil && win.Window.AST != nil {
-			seenPaths[name] = win.Window.AST.Pos
-		} else {
-			seenPaths[name] = ast.Pos{}
+			if win.Window != nil && win.Window.AST != nil {
+				seenPaths[name] = win.Window.AST.Pos
+			} else {
+				seenPaths[name] = ast.Pos{}
+			}
 		}
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
 		gen.wasmLoader = wasmLoaderHTML
