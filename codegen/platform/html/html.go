@@ -2463,9 +2463,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Element references
+	// Element references. An id may appear in both the regular `refs`
+	// set (collected from updater bodies) and the `loweredRefs` set
+	// (lowered __nN ids reached via data-sngl-id). Prefer the
+	// querySelector form for those — emitting both produces a duplicate
+	// `const __nN` declaration that throws at parse time.
 	refs := g.collectReferencedIDs()
 	for _, id := range refs {
+		if _, lowered := g.loweredRefs[id]; lowered {
+			continue
+		}
 		fmt.Fprintf(b, "const %s = document.getElementById(\"%s\");\n", id, id)
 	}
 	loweredRefs := make([]string, 0, len(g.loweredRefs))
