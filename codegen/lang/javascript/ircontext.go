@@ -328,6 +328,16 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		fname := n.Func.Name
 		receiverName := n.Func.Receiver
 		qualName := receiverName + "." + fname
+
+		// For i18n.* calls the namespace receiver is the module object, not a
+		// value argument. Pass only the real call args to the builtin dispatcher
+		// so that a(0) is the first semantic argument (matches type-method path).
+		if receiverName == "i18n" {
+			if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
+				return result
+			}
+		}
+
 		allArgs := append([]string{receiver}, args...)
 		if result := jsBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
@@ -613,14 +623,14 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		// Args: value string, cases map.
 		return "i18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
 	case "i18n.plural":
-		// Namespace-call shape: a(0) is the "i18n" receiver; real args at a(1), a(2).
-		return "i18n.getTranslator().plural(" + a(1) + ", " + a(2) + ")"
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "i18n.getTranslator().plural(" + a(0) + ", " + a(1) + ")"
 	case "i18n.selectordinal":
-		// Namespace-call shape: a(0) is the "i18n" receiver; real args at a(1), a(2).
-		return "i18n.getTranslator().selectordinal(" + a(1) + ", " + a(2) + ")"
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "i18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
 	case "i18n.exactly":
-		// Namespace-call shape: a(0) is the "i18n" receiver; real arg is a(1).
-		return "(\"=\" + (" + a(1) + "))"
+		// Args: n. a(0)=n.
+		return "(\"=\" + (" + a(0) + "))"
 	}
 	return ""
 }

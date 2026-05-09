@@ -319,6 +319,16 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		receiverName := n.Func.Receiver
 
 		qualName := receiverName + "." + fname
+
+		// For i18n.* calls the namespace receiver is the module object, not a
+		// value argument. Pass only the real call args to the builtin dispatcher
+		// so that a(0) is the first semantic argument (matches type-method path).
+		if receiverName == "i18n" {
+			if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
+				return result
+			}
+		}
+
 		allArgs := append([]string{receiver}, args...)
 		if result := goBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result

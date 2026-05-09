@@ -334,6 +334,19 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 	qualName := receiverName + "." + method
 	receiverJS := translateIRExpr(n.Receiver, scope)
 
+	// For i18n.* calls the namespace receiver is the module object, not a
+	// value argument. Pass only the real call args to the builtin dispatcher
+	// so that a(0) is the first semantic argument (matches type-method path).
+	if receiverName == "i18n" {
+		argStrs := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			argStrs[i] = translateIRExpr(a.Value, scope)
+		}
+		if js := jsBuiltinMethodFromArgs(qualName, argStrs); js != "" {
+			return js
+		}
+	}
+
 	argsForBuiltin := []string{receiverJS}
 	for _, a := range n.Args {
 		argsForBuiltin = append(argsForBuiltin, translateIRExpr(a.Value, scope))

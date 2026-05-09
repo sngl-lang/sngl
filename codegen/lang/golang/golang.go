@@ -287,15 +287,14 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		// Args: value string, cases map[string]string
 		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
 	case "i18n.plural":
-		// Called via namespace: allArgs = [receiver, count, forms].
-		// a(0) is the namespace receiver ("i18n"); real args start at a(1).
-		return "i18n.GetTranslator().Plural(" + a(1) + ", " + a(2) + ")"
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "i18n.GetTranslator().Plural(" + a(0) + ", " + a(1) + ")"
 	case "i18n.selectordinal":
-		// Called via namespace: allArgs = [receiver, count, forms].
-		return "i18n.GetTranslator().Selectordinal(" + a(1) + ", " + a(2) + ")"
+		// Args: count, forms. a(0)=count, a(1)=forms.
+		return "i18n.GetTranslator().Selectordinal(" + a(0) + ", " + a(1) + ")"
 	case "i18n.exactly":
-		// Called via namespace: allArgs = [receiver, n].
-		return "i18n.Exactly(" + a(1) + ")"
+		// Args: n. a(0)=n.
+		return "i18n.Exactly(" + a(0) + ")"
 	}
 	return ""
 }
