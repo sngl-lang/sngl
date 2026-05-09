@@ -50,6 +50,17 @@ func runCompile(cmd *cobra.Command, args []string) error {
 
 	cliOpts := parseCLIOpts(optSlice)
 
+	// Some platforms accept --opt values that affect type-checking (e.g. gtk4
+	// gir path). Push the opts down before any checkDoc call.
+	for _, name := range codegen.Platforms() {
+		p := codegen.LookupPlatform(name)
+		if cfg, ok := p.(codegen.OptionConfigurable); ok {
+			if err := cfg.Configure(cliOpts); err != nil {
+				return fmt.Errorf("configure platform %s: %w", name, err)
+			}
+		}
+	}
+
 	explicitFiles := explicitFileSet(args)
 
 	files, err := discoverFiles(args)

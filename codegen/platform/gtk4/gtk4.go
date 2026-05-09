@@ -43,6 +43,19 @@ type Generator struct {
 	once     sync.Once
 	registry *gir.TypeRegistry
 	initErr  error // set if autodetect GIR load fails
+	girOpt   string
+}
+
+// Configure implements codegen.OptionConfigurable. Reads the "gir" option so
+// Resolve (called during type-check, before code generation) can honor the
+// CLI-supplied GIR path. Resets cached registry state so subsequent Resolve
+// calls re-load against the new path.
+func (g *Generator) Configure(opts map[string]string) error {
+	g.girOpt = opts["gir"]
+	g.once = sync.Once{}
+	g.registry = nil
+	g.initErr = nil
+	return nil
 }
 
 func (g *Generator) PlatformIdentifier() string { return "gtk4" }
@@ -59,7 +72,7 @@ func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{
 // not available on this machine or the identifier is not a known widget.
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	g.once.Do(func() {
-		p, err := resolveGIRPath("")
+		p, err := resolveGIRPath(g.girOpt)
 		if err != nil {
 			g.initErr = err
 			return

@@ -114,6 +114,14 @@ type PlatformGenerator interface {
 	Generate(req *Request) (*Response, error)
 }
 
+// OptionConfigurable is optionally implemented by PlatformGenerators that
+// accept CLI options affecting the type-check phase (not just code generation).
+// The CLI calls Configure with the parsed --opt key=value map before checkDoc
+// so platform Resolve() can honor the supplied options.
+type OptionConfigurable interface {
+	Configure(opts map[string]string) error
+}
+
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
 type TestRunner interface {
