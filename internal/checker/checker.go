@@ -1358,12 +1358,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 			switch arg.Name {
 			case "href":
 				w.Href = c.checkExpr(arg.Value)
-				// Set static name from literal href.
-				if w.Name == "" {
-					if lit, ok := arg.Value.(*ast.LiteralExpr); ok && lit.Kind == ast.LiteralStringQuoted {
-						w.Name = strings.Trim(lit.Raw, "\"")
-					}
-				}
 			case "title":
 				w.Title = c.checkExpr(arg.Value)
 			case "favicon":
@@ -1374,13 +1368,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 				w.ErrorHandler = c.buildErrorHandler(&arg)
 			}
 		}
-	}
-	// Fall back to a position-derived synthetic name so every window has a
-	// stable, unique Name. Required by downstream consumers (router targets,
-	// IR validators, dump readability) — the alternative is empty, which then
-	// collides across multiple anonymous windows.
-	if w.Name == "" {
-		w.Name = fmt.Sprintf("window_L%d", vn.Pos.Line)
 	}
 	return w
 }
