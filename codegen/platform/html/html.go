@@ -475,6 +475,7 @@ type updateFunc struct {
 	funcName string // e.g., "$u_0_text"
 	body     string // JS function body
 	deps     map[string]bool
+	initOnly bool // run only on initial sync; lowering already injects mutation-side updates inline
 }
 
 type eventHandler struct {
@@ -1081,8 +1082,8 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		g.writeUserAttrs(b, id, n)
 		b.WriteString(g.previewAttrs(n))
 		b.WriteString("></progress>\n")
-		if id != "" && !strings.HasPrefix(id, "__n") {
-			if valExpr := codegen.NodeProp(n, "value"); valExpr != nil {
+		if id != "" {
+			if valExpr := codegen.NodeProp(n, "value"); valExpr != nil && codegen.IRIsReactive(valExpr) {
 				g.addAttrUpdater(id, "value", valExpr)
 			}
 		}
@@ -1110,7 +1111,7 @@ func (g *htmlGen) renderStaticNode(b *strings.Builder, n *ir.NodeInst, depth int
 		}
 		g.writeOpenTag(b, "span", id, style, n, depth)
 		fmt.Fprintf(b, "%s</span>\n", html.EscapeString(value))
-		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) && !strings.HasPrefix(id, "__n") {
+		if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
 			g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 		}
 	case "tabs":
@@ -1386,7 +1387,7 @@ func (g *htmlGen) renderStaticText(b *strings.Builder, n *ir.NodeInst, depth int
 	b.WriteString(html.EscapeString(val))
 	b.WriteString("</span>\n")
 
-	if codegen.IRIsReactive(codegen.NodeProp(n, "value")) && !strings.HasPrefix(id, "__n") {
+	if codegen.IRIsReactive(codegen.NodeProp(n, "value")) {
 		g.addTextUpdater(id, codegen.NodeProp(n, "value"))
 	}
 	if g.testMode && id != "" && !strings.HasPrefix(id, "__n") {
@@ -1437,10 +1438,10 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 	b.WriteString(g.previewAttrs(n))
 	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
 
-	if codegen.IRIsReactive(textExpr) && !strings.HasPrefix(id, "__n") {
+	if codegen.IRIsReactive(textExpr) {
 		g.addTextContentUpdater(id, textExpr)
 	}
-	if codegen.IRIsReactive(disabledExpr) && !strings.HasPrefix(id, "__n") {
+	if codegen.IRIsReactive(disabledExpr) {
 		g.addDisabledUpdater(id, disabledExpr)
 	}
 
@@ -1799,7 +1800,7 @@ func (g *htmlGen) renderStaticModal(b *strings.Builder, n *ir.NodeInst, depth in
 	}
 	fmt.Fprintf(b, "%s  </div>\n", indent)
 	fmt.Fprintf(b, "%s</div>\n", indent)
-	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) && !strings.HasPrefix(id, "__n") {
+	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) {
 		g.addIfUpdater(id, codegen.NodeProp(n, "open"))
 	}
 }
@@ -1827,7 +1828,7 @@ func (g *htmlGen) renderStaticConditionalContainer(b *strings.Builder, n *ir.Nod
 		g.renderIRStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</%s>\n", indent, tag)
-	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) && !strings.HasPrefix(id, "__n") {
+	if codegen.IRIsReactive(codegen.NodeProp(n, "open")) {
 		g.addIfUpdater(id, codegen.NodeProp(n, "open"))
 	}
 }
@@ -2052,31 +2053,34 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	// Reactive props: set via JS updaters.
-	// Skip when id is a NoReactivity-assigned __nN id — the lowered IR already
-	// injected the equivalent #__nN.<key> = expr Assign inside handler/timer/setter bodies.
-	if !strings.HasPrefix(id, "__n") {
-		for _, name := range slices.Sorted(maps.Keys(props)) {
-			expr := props[name]
-			if name == "style" {
-				continue
+	// For NoReactivity-assigned __nN ids, lowering already injected
+	// `#__nN.<key> = expr` Assigns inside handler/timer/setter bodies, so
+	// the updater is registered as initOnly: it runs once at initial sync
+	// to populate the DOM from initial state, but is skipped by
+	// findAffectedUpdaters so mutations don't double-fire.
+	lowered := loweredID(id)
+	for _, name := range slices.Sorted(maps.Keys(props)) {
+		expr := props[name]
+		if name == "style" {
+			continue
+		}
+		if codegen.IRIsReactive(expr) {
+			jsVal := g.exprToJS(expr)
+			deps := g.exprDeps(expr)
+			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
+			var body string
+			switch name {
+			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled":
+				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
+			default:
+				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
 			}
-			if codegen.IRIsReactive(expr) {
-				jsVal := g.exprToJS(expr)
-				deps := g.exprDeps(expr)
-				uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
-				var body string
-				switch name {
-				case "innerHTML", "innerText", "textContent", "value", "checked", "disabled":
-					body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
-				default:
-					body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
-				}
-				g.updates = append(g.updates, updateFunc{
-					funcName: uname,
-					body:     body,
-					deps:     deps,
-				})
-			}
+			g.updates = append(g.updates, updateFunc{
+				funcName: uname,
+				body:     body,
+				deps:     deps,
+				initOnly: lowered,
+			})
 		}
 	}
 
@@ -2596,8 +2600,10 @@ func (g *htmlGen) collectReferencedIDs() []string {
 
 	for _, u := range g.updates {
 		// Extract the owning element ID from the func name: $u_N_xxx → $N.
+		// Skip lowered ids ($u__nN_xxx) — those reference data-sngl-id'd
+		// elements and are emitted via loweredRefs, not getElementById.
 		parts := strings.SplitN(u.funcName, "_", 3)
-		if len(parts) >= 2 {
+		if len(parts) >= 2 && parts[1] != "" && allDigits(parts[1]) {
 			addID("$" + parts[1])
 		}
 		// Also scan the body — some updaters (for-else, if-else) manipulate
@@ -2612,6 +2618,18 @@ func (g *htmlGen) collectReferencedIDs() []string {
 
 	sort.Strings(ids)
 	return ids
+}
+
+func allDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // extractElemIDs scans a JS snippet for `$N` identifiers (the generated IDs
@@ -2656,9 +2674,10 @@ func (g *htmlGen) optimizeIR() {
 	updaters := make([]codegen.Updater, len(g.updates))
 	for i, u := range g.updates {
 		updaters[i] = codegen.Updater{
-			Name: u.funcName,
-			Body: u.body,
-			Deps: u.deps,
+			Name:     u.funcName,
+			Body:     u.body,
+			Deps:     u.deps,
+			InitOnly: u.initOnly,
 		}
 	}
 	// Keep handler body strings keyed by elemID+event (IR uses ast.Node,
@@ -2705,6 +2724,7 @@ func (g *htmlGen) optimizeIR() {
 			funcName: u.Name,
 			body:     u.Body,
 			deps:     u.Deps,
+			initOnly: u.InitOnly,
 		}
 	}
 
@@ -2775,6 +2795,9 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 
 	var result []updateFunc
 	for _, u := range g.updates {
+		if u.initOnly {
+			continue
+		}
 		for dep := range u.deps {
 			if expanded[dep] {
 				result = append(result, u)
@@ -2785,6 +2808,11 @@ func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFu
 	return result
 }
 
+// loweredID reports whether id was assigned by NoReactivity lowering. Such
+// ids already have inline mutation updates injected into handler/timer/setter
+// bodies; updaters registered for them are init-only.
+func loweredID(id string) bool { return strings.HasPrefix(id, "__n") }
+
 // addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
@@ -2794,6 +2822,7 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 		funcName: name,
 		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
 		deps:     deps,
+		initOnly: loweredID(elemID),
 	})
 }
 
@@ -2805,6 +2834,7 @@ func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
 		funcName: name,
 		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
 		deps:     deps,
+		initOnly: loweredID(elemID),
 	})
 }
 
@@ -2816,6 +2846,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
 		funcName: name,
 		body:     fmt.Sprintf("%s.setAttribute(%q, %s);", elemID, attr, jsExpr),
 		deps:     deps,
+		initOnly: loweredID(elemID),
 	})
 }
 
@@ -2827,6 +2858,7 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
 		funcName: name,
 		body:     fmt.Sprintf("%s.disabled = %s;", elemID, jsExpr),
 		deps:     deps,
+		initOnly: loweredID(elemID),
 	})
 }
 
@@ -2838,6 +2870,7 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 		funcName: name,
 		body:     fmt.Sprintf("%s.style.display = %s ? \"\" : \"none\";", elemID, jsExpr),
 		deps:     deps,
+		initOnly: loweredID(elemID),
 	})
 }
 

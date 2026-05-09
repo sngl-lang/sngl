@@ -118,8 +118,9 @@ func deduplicateUpdaters(us []Updater) []Updater {
 // "$u_0_text" → "0", "updateLabel3" → "3").
 func mergeUpdaters(us []Updater) []Updater {
 	type groupKey struct {
-		target string
-		deps   string // sorted dep names joined
+		target   string
+		deps     string // sorted dep names joined
+		initOnly bool
 	}
 
 	targetOf := func(u Updater) string {
@@ -160,7 +161,7 @@ func mergeUpdaters(us []Updater) []Updater {
 	groups := make(map[groupKey][]int)
 	var order []groupKey
 	for i, u := range us {
-		key := groupKey{target: targetOf(u), deps: depsKey(u.Deps)}
+		key := groupKey{target: targetOf(u), deps: depsKey(u.Deps), initOnly: u.InitOnly}
 		if _, exists := groups[key]; !exists {
 			order = append(order, key)
 		}
@@ -184,12 +185,13 @@ func mergeUpdaters(us []Updater) []Updater {
 			}
 		}
 		merged := Updater{
-			Name: first.Name,
-			Kind: "merged",
-			Node: first.Node,
-			Expr: first.Expr,
-			Body: strings.Join(bodies, "\n"),
-			Deps: first.Deps,
+			Name:     first.Name,
+			Kind:     "merged",
+			Node:     first.Node,
+			Expr:     first.Expr,
+			Body:     strings.Join(bodies, "\n"),
+			Deps:     first.Deps,
+			InitOnly: first.InitOnly,
 		}
 		out = append(out, merged)
 	}
