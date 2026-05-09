@@ -117,7 +117,7 @@ Param = IDENT [ Type ] [ "=" Expr ]
 ### Components
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
