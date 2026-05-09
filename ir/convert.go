@@ -424,7 +424,7 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 	case *Window:
 		return c.convertWindow(s)
 	default:
-		return nil
+		panic(fmt.Sprintf("ir.Convert: no AST conversion for stmt type %T", s))
 	}
 }
 
@@ -568,7 +568,7 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 			Args: ast.ArgList{Args: args},
 		}
 	default:
-		return nil
+		panic(fmt.Sprintf("ir.Convert: no AST conversion for expr type %T", e))
 	}
 }
 
