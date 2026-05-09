@@ -41,6 +41,13 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			translateIRExpr(n.Then, scope) + " : " +
 			translateIRExpr(n.Else, scope) + ")"
 	case *ir.Select:
+		// Predeclared i18n.PluralKey constants (zero/one/two/few/many/other)
+		// lower to JS string literals — the JS runtime uses string keys exclusively.
+		if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+			if s := jsI18nConstString("i18n." + n.Field); s != "" {
+				return s
+			}
+		}
 		// When the operand is a native namespace ident and the module is
 		// bundled (js://), emit the esbuild-compatible alias and register the
 		// module so the platform emits the corresponding `import * as` prelude.
@@ -81,6 +88,27 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 	case *ir.MapLitIR:
+		// Special case: map<i18n.PluralKey, V> lowers to a plain JS object with
+		// string keys. The JS runtime accepts string keys exclusively; PluralKey
+		// only exists in the Go runtime where map keys need value equality.
+		if isPluralKeyMapType(n.Type) {
+			var b strings.Builder
+			b.WriteString("{")
+			for i, e := range n.Entries {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				// Keys are already string-typed expressions at this point:
+				// predeclared constants were lowered to string literals by the
+				// *ir.Select case above, and i18n.exactly(n) emits ("=" + n).
+				b.WriteString("[")
+				b.WriteString(translateIRExpr(e.Key, scope))
+				b.WriteString("]: ")
+				b.WriteString(translateIRExpr(e.Value, scope))
+			}
+			b.WriteString("}")
+			return b.String()
+		}
 		var b strings.Builder
 		b.WriteString("new Map([")
 		for i, e := range n.Entries {
@@ -638,4 +666,18 @@ func isIntIR(e ir.Expr) bool {
 		return true
 	}
 	return false
+}
+
+// isPluralKeyMapType reports whether t is map<i18n.PluralKey, V>.
+// The JS translator lowers such maps to plain objects with string keys,
+// because the JS i18n runtime uses string plural categories exclusively.
+func isPluralKeyMapType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeMap || len(t.Elems) < 1 {
+		return false
+	}
+	k := t.Elems[0]
+	if k == nil || k.Kind != ir.TypeStruct || k.Decl == nil {
+		return false
+	}
+	return k.Decl.SymName() == "PluralKey"
 }

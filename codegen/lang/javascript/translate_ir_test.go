@@ -159,6 +159,63 @@ func TestEmitI18nExactly(t *testing.T) {
 	}
 }
 
+func TestPluralKeyMapLitLowersToPlainObject(t *testing.T) {
+	// Build map<i18n.PluralKey, string> with one entry: i18n.one → "one item"
+	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
+	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
+	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+
+	// Key: *ir.Select{Operand: *ir.Ident{Name:"i18n"}, Field:"one"}
+	// translateIRExpr for this Select will emit `"one"` via jsI18nConstString.
+	keyExpr := &ir.Select{
+		Operand: &ir.Ident{Name: "i18n"},
+		Field:   "one",
+	}
+	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
+
+	m := &ir.MapLitIR{
+		Type: mapType,
+		Entries: []ir.MapEntry{
+			{Key: keyExpr, Value: valExpr},
+		},
+	}
+	got := translateIRExpr(m, &codegen.ExprScope{})
+	// Should emit a plain object, not `new Map(...)`.
+	if strings.Contains(got, "new Map") {
+		t.Errorf("PluralKey map: got %q, should not use new Map", got)
+	}
+	if !strings.Contains(got, `"one"`) {
+		t.Errorf("PluralKey map: got %q, want key to be string \"one\"", got)
+	}
+	if !strings.HasPrefix(got, "{") {
+		t.Errorf("PluralKey map: got %q, want plain object literal starting with {", got)
+	}
+}
+
+func TestI18nPluralKeyConstantsLowerToStringLiterals(t *testing.T) {
+	cases := []struct {
+		field string
+		want  string
+	}{
+		{"zero", `"zero"`},
+		{"one", `"one"`},
+		{"two", `"two"`},
+		{"few", `"few"`},
+		{"many", `"many"`},
+		{"other", `"other"`},
+	}
+	for _, tc := range cases {
+		sel := &ir.Select{
+			Operand: &ir.Ident{Name: "i18n"},
+			Field:   tc.field,
+		}
+		got := translateIRExpr(sel, &codegen.ExprScope{})
+		if got != tc.want {
+			t.Errorf("i18n.%s: got %q, want %q", tc.field, got, tc.want)
+		}
+	}
+}
+
 func TestTranslateIRCall_FuncvarParamSlot_AnyAsync_Awaits(t *testing.T) {
 	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
 	p := &ir.Param{Name: "cb"}
