@@ -59,6 +59,39 @@ func Test.must(b bool) {}
 // until the test returns. Useful for asserting on locale-specific output.
 func Test.setLocale(loc string) {}
 
+// Synthesize a click on the given element. The argument is normally an
+// element-ref expression (e.g. `c.btn`); each platform's test runner
+// dispatches the click through its native event path, firing any
+// `@click` handler on the node and settling reactivity before the next
+// statement runs.
+func Test.click(node dyn) {}
+
+// Type the given string into the focused element. Pass an explicit node
+// to focus it first (equivalent to `t.focus(node)` followed by typing).
+// Each character is delivered via the platform's native key-input path
+// so component handlers and bindings observe per-character updates.
+func Test.type(node dyn, s string) {}
+
+// Send a single key press to the currently-focused element. Name must
+// be a member of the canonical key set: `Enter`, `Tab`, `Escape`,
+// `Space`, `Backspace`, `Delete`, `ArrowUp`/`Down`/`Left`/`Right`,
+// `Home`, `End`, `PageUp`, `PageDown`, single uppercase letters
+// `A`..`Z`, or single digits `0`..`9`.
+func Test.key(name string) {}
+
+// Move keyboard focus to the given element. The platform runner ensures
+// any focus/blur side effects fire before returning.
+func Test.focus(node dyn) {}
+
+// Remove keyboard focus from the given element.
+func Test.blur(node dyn) {}
+
+// Pump the platform main loop until either the predicate returns true
+// or the timeout (in milliseconds) elapses. Used to gate assertions on
+// asynchronous reactivity (timers, debounced handlers). The predicate
+// is evaluated repeatedly between settle steps.
+func Test.wait(predicate func() bool, timeout_ms int) {}
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left
