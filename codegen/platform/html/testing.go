@@ -13,7 +13,18 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"github.com/go-rod/rod/lib/launcher"
 )
+
+// ProbeTest reports whether a Chrome/Chromium binary is on PATH. Returns
+// false rather than triggering go-rod's auto-download — keeping `go tool
+// verify` predictable on a clean host.
+func (g *Generator) ProbeTest() (bool, string) {
+	if _, found := launcher.LookPath(); found {
+		return true, ""
+	}
+	return false, "no chrome/chromium found on PATH"
+}
 
 func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
 	if pkg == nil {

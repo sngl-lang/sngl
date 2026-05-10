@@ -29,3 +29,7 @@ func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
 func (g *Generator) RunTests(pkg *ir.Package, _ codegen.LangTranslator) ([]*codegen.TestResult, error) {
 	return testrunner.Run(pkg)
 }
+
+// ProbeTest reports the headless interpreter as always available; it is
+// pure Go and has no system dependencies.
+func (g *Generator) ProbeTest() (bool, string) { return true, "" }

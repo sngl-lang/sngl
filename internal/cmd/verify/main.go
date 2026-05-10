@@ -94,6 +94,13 @@ func main() {
 
 	// Step 5: go test with coverage
 	runTests(*verbose, !*dry)
+
+	// Step 6: SNGL test matrix across every TestRunner-capable platform
+	// whose probe says it can run on this host. Unavailable platforms are
+	// skipped, not failed.
+	if !runStep("sngl-test", "go", "tool", "sngl", "test", "--platform=all", "./...") {
+		os.Exit(1)
+	}
 }
 
 func runStep(name string, command string, args ...string) bool {

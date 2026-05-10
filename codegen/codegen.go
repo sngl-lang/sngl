@@ -128,6 +128,15 @@ type TestRunner interface {
 	RunTests(pkg *ir.Package, lang LangTranslator) ([]*TestResult, error)
 }
 
+// TestProber is optionally implemented by TestRunners that can detect
+// whether their headless harness can run on the current host. When absent,
+// callers assume the runner is always available. The Probe call must be
+// cheap (no spawning processes, no network); reuse cached results across a
+// single CLI invocation.
+type TestProber interface {
+	ProbeTest() (ok bool, reason string)
+}
+
 // TestResult holds the outcome of a single test.
 type TestResult struct {
 	Component string

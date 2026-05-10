@@ -23,6 +23,27 @@ func discoverFiles(args []string) ([]string, error) {
 	}
 	var files []string
 	for _, arg := range args {
+		// `path/...` is a recursive walk anchored at path (Go-style).
+		// Bare `...` and `./...` walk the current directory.
+		if strings.HasSuffix(arg, "/...") || arg == "..." || arg == "./..." {
+			root := strings.TrimSuffix(arg, "/...")
+			if root == "" || root == "." {
+				root = "."
+			}
+			err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if !d.IsDir() && isSNGLFile(path) {
+					files = append(files, path)
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", arg, err)
+			}
+			continue
+		}
 		info, err := os.Stat(arg)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", arg, err)
@@ -293,7 +314,10 @@ func (r *cliResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document,
 }
 
 // explicitFileSet returns the absolute paths of args that are regular files
-// (not directories). Used to skip sibling merging when a specific file is passed.
+// (not directories). Used to skip sibling merging when a specific file is
+// passed. Directory and `...` glob args are NOT marked here — the caller
+// decides whether to treat walked descendants as standalone (test mode) or
+// as a merged package (build/compile mode).
 func explicitFileSet(args []string) map[string]bool {
 	m := make(map[string]bool)
 	for _, arg := range args {
