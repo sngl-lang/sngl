@@ -11,6 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/go-rod/rod/lib/launcher"
@@ -41,28 +42,11 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 	}
 
 	// Group tests by component (from second param type)
-	type testGroup struct {
-		compName string
-		funcs    []*ast.FuncDef
-	}
-	groups := map[string]*testGroup{}
-	for _, fn := range testFuncs {
-		compName := ""
-		if len(fn.Params.Params) >= 2 {
-			if nt, ok := fn.Params.Params[1].Type.(*ast.NamedType); ok {
-				compName = nt.Name
-			}
-		}
-		g, ok := groups[compName]
-		if !ok {
-			g = &testGroup{compName: compName}
-			groups[compName] = g
-		}
-		g.funcs = append(g.funcs, fn)
-	}
+	groups := testharness.Group(testFuncs)
 
 	var results []*codegen.TestResult
-	for compName, group := range groups {
+	for _, group := range groups {
+		compName := group.Component
 		if compName == "" {
 			// Standalone tests — skip browser for now, use headless
 			continue
@@ -101,9 +85,9 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 		})
 		engine := webtest.New(mux)
 
-		for _, fn := range group.funcs {
-			irFn := lookupIRFunc(compPkg, fn.Name)
-			result := g.runSingleTestFunc(engine, compPkg, lang, compName, fn.Name, irFn)
+		for _, tf := range group.Funcs {
+			irFn := lookupIRFunc(compPkg, tf.Name)
+			result := g.runSingleTestFunc(engine, compPkg, lang, compName, tf.Name, irFn)
 			results = append(results, result)
 		}
 
