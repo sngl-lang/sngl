@@ -37,6 +37,12 @@ struct color {
     a int = 255
 }
 
+// Opaque handle to a rendered visual element, returned by `#id` element
+// refs (e.g. `c.btn`). Used as the target parameter for UI-primitive
+// test helpers (`t.click`, `t.focus`, etc.). Has no fields or methods —
+// platforms resolve it to their native widget/DOM handle internally.
+struct Node {}
+
 // Receiver type for test-only helpers. Used by the stdlib test runner:
 // each test function declares `t Test` as its first parameter and the
 // runner injects a value that carries the assertion facility. Tests
@@ -64,13 +70,13 @@ func Test.setLocale(loc string) {}
 // dispatches the click through its native event path, firing any
 // `@click` handler on the node and settling reactivity before the next
 // statement runs.
-func Test.click(node dyn) {}
+func Test.click(node Node) {}
 
 // Type the given string into the focused element. Pass an explicit node
 // to focus it first (equivalent to `t.focus(node)` followed by typing).
 // Each character is delivered via the platform's native key-input path
 // so component handlers and bindings observe per-character updates.
-func Test.type(node dyn, s string) {}
+func Test.type(node Node, s string) {}
 
 // Send a single key press to the currently-focused element. Name must
 // be a member of the canonical key set: `Enter`, `Tab`, `Escape`,
@@ -81,10 +87,10 @@ func Test.key(name string) {}
 
 // Move keyboard focus to the given element. The platform runner ensures
 // any focus/blur side effects fire before returning.
-func Test.focus(node dyn) {}
+func Test.focus(node Node) {}
 
 // Remove keyboard focus from the given element.
-func Test.blur(node dyn) {}
+func Test.blur(node Node) {}
 
 // Pump the platform main loop until either the predicate returns true
 // or the timeout (in milliseconds) elapses. Used to gate assertions on
