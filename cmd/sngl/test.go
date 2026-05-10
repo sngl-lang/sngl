@@ -54,20 +54,13 @@ func runTest(cmd *cobra.Command, args []string) error {
 		abs, _ := filepath.Abs(f)
 		explicitFiles[abs] = true
 	}
-	// userNamed tracks files the user named directly on the command line
-	// (vs walked from a directory or `...` glob). Parse/check failures on
-	// user-named files are real errors; failures on walked files that are
-	// clearly not test files (no `test*` function) are silently skipped
-	// because such files are typically `error_*.sngl` checker fixtures
-	// that intentionally fail to check.
-	userNamed := explicitFileSet(args)
 
 	runFilter, _ := cmd.Flags().GetString("run")
 	verbose, _ := cmd.Flags().GetBool("verbose")
 	format, _ := cmd.Flags().GetString("format")
 
 	if platform == "all" {
-		return runTestAll(language, files, explicitFiles, userNamed, runFilter, verbose, format)
+		return runTestAll(language, files, explicitFiles, runFilter, verbose, format)
 	}
 
 	plat := codegen.LookupPlatform(platform)
@@ -84,7 +77,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	totalTests, totalFail, allResults := runOnPlatform(runner, lang, files, explicitFiles, userNamed, runFilter)
+	totalTests, totalFail, allResults := runOnPlatform(runner, lang, files, explicitFiles, runFilter)
 
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
@@ -93,7 +86,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 // TestRunner. Platforms whose TestProber reports unavailable are skipped
 // with a SKIP banner; available platforms run the full file set and their
 // results are aggregated.
-func runTestAll(language string, files []string, explicitFiles, userNamed map[string]bool, runFilter string, verbose bool, format string) error {
+func runTestAll(language string, files []string, explicitFiles map[string]bool, runFilter string, verbose bool, format string) error {
 	names := codegen.Platforms()
 	var ran, skipped, failedPlats int
 	var grandTests, grandFail int
@@ -119,7 +112,7 @@ func runTestAll(language string, files []string, explicitFiles, userNamed map[st
 			continue
 		}
 		fmt.Printf("=== platform=%s\n", name)
-		tests, fails, results := runOnPlatform(runner, lang, files, explicitFiles, userNamed, runFilter)
+		tests, fails, results := runOnPlatform(runner, lang, files, explicitFiles, runFilter)
 		ran++
 		grandTests += tests
 		grandFail += fails
@@ -165,33 +158,28 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 }
 
 // runOnPlatform executes all test files against a single platform runner
-// and returns aggregated counts plus the per-test results. Files in
-// userNamed are required to parse/check successfully; failures on
-// non-userNamed files (walked from a directory or glob) are silently
-// skipped when the file has no top-level test functions.
-func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles, userNamed map[string]bool, runFilter string) (int, int, []*codegen.TestResult) {
+// and returns aggregated counts plus the per-test results. Parse and
+// check failures count as test failures — `./...` already skips
+// `testdata/` and `.`/`_`-prefixed directories, so walked files are
+// expected to be valid SNGL.
+func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string) (int, int, []*codegen.TestResult) {
 	var totalTests, totalFail int
 	var allResults []*codegen.TestResult
 
 	for _, filename := range files {
 		absFilename, _ := filepath.Abs(filename)
-		named := userNamed[absFilename]
 		tf, err := os.Open(filename)
 		if err != nil {
-			if named {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-				totalFail++
-			}
+			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			totalFail++
 			continue
 		}
 		start := time.Now()
 		doc, err := parseSNGL(filename, tf)
 		tf.Close()
 		if err != nil {
-			if named {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-				totalFail++
-			}
+			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			totalFail++
 			continue
 		}
 		slog.Info("parse", "file", filename, "duration", time.Since(start))
@@ -232,9 +220,6 @@ func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files
 		start = time.Now()
 		pkg, err := checkDoc(doc, filepath.Dir(filename), true)
 		if err != nil {
-			if !named {
-				continue
-			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
 			continue
