@@ -692,8 +692,8 @@ git commit -m "feat(stdlib): declare Test.click/type/key/focus/blur/wait"
 ```sngl
 component focusbox {
     var focused = ""
-    text_input #a(value="", @focus { focused = "a" }, @blur { focused = "" })
-    text_input #b(value="", @focus { focused = "b" })
+    text_input.#a(value="", @focus { focused = "a" }, @blur { focused = "" })
+    text_input.#b(value="", @focus { focused = "b" })
 }
 
 func testFocusFires(t Test, c focusbox) {
@@ -853,7 +853,7 @@ git commit -m "feat(testrunner/none): implement t.focus and t.blur"
 ```sngl
 component clickcounter {
     var count = 0
-    button #btn(text="+", @click { count = count + 1 })
+    button.#btn(text="+", @click { count = count + 1 })
 }
 
 func testClickIncrements(t Test, c clickcounter) {
@@ -918,7 +918,7 @@ git commit -m "feat(testrunner/none): implement t.click"
 component greeter {
     var name = ""
     var submitted = ""
-    text_input #field(value=name, @input { name = event.value }, @key { if event.key == "Enter" { submitted = name } })
+    text_input.#field(value=name, @input { name = event.value }, @key { if event.key == "Enter" { submitted = name } })
 }
 
 func testTypeUpdatesValue(t Test, c greeter) {

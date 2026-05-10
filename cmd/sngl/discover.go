@@ -24,7 +24,9 @@ func discoverFiles(args []string) ([]string, error) {
 	var files []string
 	for _, arg := range args {
 		// `path/...` is a recursive walk anchored at path (Go-style).
-		// Bare `...` and `./...` walk the current directory.
+		// Bare `...` and `./...` walk the current directory. Mirrors
+		// `go test ./...`: skip `testdata` directories and any directory
+		// whose base name starts with `.` or `_`.
 		if strings.HasSuffix(arg, "/...") || arg == "..." || arg == "./..." {
 			root := strings.TrimSuffix(arg, "/...")
 			if root == "" || root == "." {
@@ -34,7 +36,16 @@ func discoverFiles(args []string) ([]string, error) {
 				if err != nil {
 					return err
 				}
-				if !d.IsDir() && isSNGLFile(path) {
+				if d.IsDir() {
+					if path == root {
+						return nil
+					}
+					if shouldSkipWalkDir(d.Name()) {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+				if isSNGLFile(path) {
 					files = append(files, path)
 				}
 				return nil
@@ -83,6 +94,21 @@ func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
 
 func isSNGLFile(path string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ".sngl")
+}
+
+// shouldSkipWalkDir reports whether a `...` recursive walk should descend
+// into the given directory base name. Mirrors `go test ./...`: skip
+// `testdata`, plus any directory beginning with `.` or `_` (vendor caches,
+// hidden VCS state, scratch dirs).
+func shouldSkipWalkDir(name string) bool {
+	if name == "testdata" {
+		return true
+	}
+	if name == "" {
+		return false
+	}
+	c := name[0]
+	return c == '.' || c == '_'
 }
 
 // parseDir parses all .sngl files in a directory and merges them into a single
