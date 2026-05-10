@@ -1,0 +1,19 @@
+output {
+    none { html }
+}
+
+func testWaitSettlesTimer(t Test, c main) {
+    t.assert(c.count == 0)
+    t.wait(func() => c.count >= 3, 1000)
+    t.assert(c.count >= 3)
+}
+
+component main {
+    var count int = 0
+
+    timer(interval=10ms, @tick {
+        count += 1
+    })
+
+    text(value=string(count))
+}
