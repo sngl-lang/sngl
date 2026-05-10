@@ -82,8 +82,6 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		timeoutMs := toInt(timeoutVal)
 		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
-		// Locate the active componentValue in env.vars (same discovery
-		// pattern as case "tick").
 		var cv *componentValue
 		for _, v := range env.vars {
 			if c, ok := v.(*componentValue); ok {
@@ -93,6 +91,8 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		}
 
 		for {
+			// Predicate runs in its captured env so c reads observe in-place
+			// component-var updates from fireTimers.
 			out, callErr := lv.call(nil)
 			if callErr != nil {
 				return nil, callErr
@@ -100,20 +100,21 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			if b, ok := out.(bool); ok && b {
 				return nil, nil
 			}
+			if cv == nil {
+				return nil, nil
+			}
 			if !time.Now().Before(deadline) {
 				return nil, nil
 			}
-			if cv != nil {
-				compEnv := cv.compEnv()
-				if err := fireTimers(tv.pkg, compEnv); err != nil {
-					return nil, err
-				}
-				for k := range cv.vars {
-					if v, ok := compEnv.vars[k]; ok {
-						cv.vars[k] = v
-						if !cv.testParams[k] {
-							cv.env.vars[k] = v
-						}
+			compEnv := cv.compEnv()
+			if err := fireTimers(tv.pkg, compEnv); err != nil {
+				return nil, err
+			}
+			for k := range cv.vars {
+				if v, ok := compEnv.vars[k]; ok {
+					cv.vars[k] = v
+					if !cv.testParams[k] {
+						cv.env.vars[k] = v
 					}
 				}
 			}
