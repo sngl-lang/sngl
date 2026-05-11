@@ -1,3 +1,7 @@
+// Component is named `main` (not `counter`) because fyne's analyzeIR only
+// collects state vars into Model.Binds — and therefore only emits getter
+// methods (`Count()`) — for a literal `main` component. Renaming would
+// silently drop the getter, breaking the lowered Go test's `c.Count() == 0`.
 component main {
     var count = 0
     text(value=string(count))
