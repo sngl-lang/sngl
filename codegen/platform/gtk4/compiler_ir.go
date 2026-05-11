@@ -153,6 +153,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	if golang.PackageUsesI18n(pkg) {
 		info.goImports[golang.SnglI18nImportPath] = true
 	}
+	// Alert.* calls lower to fmt.Fprintf(os.Stderr, ...) (see
+	// gtk4IRAlertFunc) — pull in fmt + os when the package uses them.
+	if info.NeedsToast {
+		info.goImports["fmt"] = true
+		info.goImports["os"] = true
+	}
 
 	// Build a GoIRContext so irVarInit can evaluate i18n.tr init calls.
 	exprCtx := ctx.ExprCtx
@@ -160,17 +166,38 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	gc := golang.NewIRContext(exprCtx)
+	gc.AlertFunc = gtk4IRAlertFunc
 
-	allVars := pkg.Vars
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
+	// Collect vars from package + every component (mirrors fyne /
+	// bubbletea). Non-main components with state would otherwise have
+	// `m.<var>` references in render code with no declared Model field.
+	type taggedVar struct {
+		v    *ir.Var
+		comp *ir.Component
 	}
-	for _, v := range allVars {
+	var allVars []taggedVar
+	for _, v := range pkg.Vars {
+		allVars = append(allVars, taggedVar{v: v})
+	}
+	for _, comp := range pkg.Components {
+		for _, v := range comp.Vars {
+			allVars = append(allVars, taggedVar{v: v, comp: comp})
+		}
+	}
+	for _, tv := range allVars {
+		v := tv.v
 		if v.IsConst {
 			continue
 		}
+		varGC := gc
+		if tv.comp != nil {
+			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v, gc)
+		initVal := irVarInit(v, varGC)
+		if strings.HasPrefix(goType, "time.") {
+			info.goImports["time"] = true
+		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
 			goType: goType,
@@ -202,6 +229,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	gc := golang.NewIRContext(exprCtx)
+	gc.AlertFunc = gtk4IRAlertFunc
 
 	// --- Phase 1: Render BuildUI body into a buffer ---
 	var buildBuf strings.Builder
@@ -290,6 +318,16 @@ func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []w
 		td.Imports[p] = true
 	}
 
+	// Lang-tracked helpers + their imports.
+	helpers := golang.HelpersNeeded(c.ctx.Pkg)
+	for _, imp := range helpers.Imports() {
+		td.Imports[imp] = true
+	}
+	td.LangHelpers = helpers.Emit()
+
+	// Units (excluding the special-cased `duration`).
+	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units)
+
 	// Structs
 	for _, sd := range c.info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
@@ -368,7 +406,9 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
 		retType = golang.IRTypeToGo(fn.Return)
 	}
-	goName := golang.ExportName(fn.Name)
+	// Lowercase name to match computed-method convention so tests can
+	// invoke c.<name>(...) uniformly across platforms.
+	goName := fn.Name
 	localGC := gc
 	for _, p := range fn.Params {
 		localGC = localGC.WithLocal(p.Name)
@@ -453,11 +493,30 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	if v.Init == nil {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
 	}
-	// For i18n.tr calls emitted by the $"..." lowering, use full expression
-	// evaluation via the GoIRContext to emit i18n.GetTranslator().Tr(...).
-	if call, isCall := v.Init.(*ir.Call); isCall && gc != nil &&
-		call.Func != nil && call.Func.Receiver == "i18n" {
-		return gc.EvalExpr(v.Init)
+	// Unwrap any ir.Conversion the checker added for implicit coercions
+	// (string → date, etc.) so the typed-literal helpers in the lang
+	// layer see the underlying ir.Literal.
+	initExpr := v.Init
+	if conv, ok := initExpr.(*ir.Conversion); ok {
+		initExpr = conv.Operand
+	}
+	if lit, ok := initExpr.(*ir.Literal); ok {
+		if out, ok := golang.LowerTypedLiteralGo(lit, v.Type); ok {
+			return out
+		}
+		if out, ok := golang.LowerUnitLiteralGo(lit); ok {
+			return out
+		}
+	}
+	// Non-literal initializers (calls, idents, binaries) need full
+	// context-aware eval so model-field reads route through `m.<field>`.
+	if gc != nil {
+		switch v.Init.(type) {
+		case *ir.Literal, *ir.ListLit, *ir.MapLitIR, *ir.StructLit, *ir.Lambda:
+			// fall through to IRLiteralToGo
+		default:
+			return gc.EvalExpr(v.Init)
+		}
 	}
 	return golang.IRLiteralToGo(v.Init)
 }
@@ -474,4 +533,29 @@ func irFuncReturnType(f *ir.Func) string {
 		}
 	}
 	return ""
+}
+
+// gtk4IRAlertFunc lowers Alert.* calls on gtk4. The platform has no
+// dedicated toast widget yet, so notifications print to stderr; this
+// keeps Alert.toast / info / warn / error usage compilable on gtk4
+// without requiring a Model.toasts field. Alert.confirm returns true
+// (no blocking dialog wired up).
+func gtk4IRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) []string {
+	if len(args) == 0 {
+		return []string{"// unsupported Alert." + method + " (no args)"}
+	}
+	msg := gc.EvalExpr(args[0].Value)
+	switch method {
+	case "toast":
+		variant := `"info"`
+		if len(args) > 1 {
+			variant = gc.EvalExpr(args[1].Value)
+		}
+		return []string{fmt.Sprintf(`fmt.Fprintf(os.Stderr, "[%%s] %%s\n", %s, %s)`, variant, msg)}
+	case "info", "warn", "error":
+		return []string{fmt.Sprintf(`fmt.Fprintf(os.Stderr, "[%s] %%s\n", %s)`, method, msg)}
+	case "confirm":
+		return []string{"true"}
+	}
+	return []string{"// unsupported Alert." + method}
 }

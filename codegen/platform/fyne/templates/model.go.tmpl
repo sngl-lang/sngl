@@ -22,34 +22,7 @@ func ternary[T any](cond bool, a, b T) T {
 	}
 	return b
 }
-{{if index .Imports "time"}}
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil { panic(err) }
-	return d
-}
-
-func mustParseDate(s string) time.Time {
-	t, err := time.Parse("2006-01-02", s)
-	if err != nil { panic(err) }
-	return t
-}
-
-func mustParseTime(s string) time.Time {
-	t, err := time.Parse("15:04:05", s)
-	if err != nil {
-		t, err = time.Parse("15:04", s)
-		if err != nil { panic(err) }
-	}
-	return t
-}
-
-func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil { panic(err) }
-	return t
-}
-{{end}}
+{{.LangHelpers}}
 {{.UnitDecls}}
 {{- range .Structs}}
 type {{.Name}} struct {

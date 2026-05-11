@@ -58,6 +58,7 @@ type templateData struct {
 
 	Structs      []structData
 	UnitDecls    string // pre-rendered `type X float64 / struct {...}` decls
+	LangHelpers  string // pre-rendered must-parse / runtime helpers
 	Binds        []bindData
 	Externs      []externData
 	Computeds    []computedData

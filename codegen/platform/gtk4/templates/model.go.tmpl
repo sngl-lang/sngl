@@ -31,6 +31,11 @@ import (
 {{- end}}
 )
 
+// Reference `unsafe` so the import isn't flagged unused on UIs that
+// don't reach into pointer territory directly.
+var _ unsafe.Pointer
+
+{{.LangHelpers}}
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
 		return a
@@ -38,6 +43,7 @@ func ternary[T any](cond bool, a, b T) T {
 	return b
 }
 
+{{.UnitDecls}}
 {{- range .Structs}}
 type {{.Name}} struct {
 {{- range .Fields}}
@@ -56,13 +62,13 @@ type Model struct {
 {{- end}}
 }
 
-// New creates a Model with default values.
+// New creates a Model with default values. Binds initialize
+// sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
-	m := &Model{
+	m := &Model{}
 {{- range .Binds}}
-		{{.Name}}: {{.InitVal}},
+	m.{{.Name}} = {{.InitVal}}
 {{- end}}
-	}
 	return m
 }
 

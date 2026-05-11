@@ -95,7 +95,6 @@ type irAnalysis struct {
 	focusables []string
 	forCursors []forLoopCursor
 	goImports  map[string]string
-	needsTime  bool
 }
 
 type irBind struct {
@@ -172,7 +171,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		goType := irVarGoType(v)
 		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
-			info.needsTime = true
+			info.goImports["time"] = ""
 		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
@@ -200,7 +199,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Timer analysis
 	for _, t := range info.Timers {
 		if t.IntervalMs > 0 {
-			info.needsTime = true
+			info.goImports["time"] = ""
 		}
 	}
 
@@ -241,7 +240,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	if info.NeedsToast {
-		info.needsTime = true
+		info.goImports["time"] = ""
 	}
 
 	return info
@@ -265,9 +264,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("\t\"os\"\n")
 	}
 	b.WriteString("\t\"strings\"\n")
-	if info.needsTime {
-		b.WriteString("\t\"time\"\n")
-	}
 	if len(info.goImports) > 0 {
 		var pkgs []string
 		for pkg := range info.goImports {
@@ -296,31 +292,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
 	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
 
-	// Time helpers
-	if info.needsTime {
-		b.WriteString("func mustParseDuration(s string) time.Duration {\n")
-		b.WriteString("\td, err := time.ParseDuration(s)\n")
-		b.WriteString("\tif err != nil { panic(err) }\n")
-		b.WriteString("\treturn d\n}\n\n")
-
-		b.WriteString("func mustParseDate(s string) time.Time {\n")
-		b.WriteString("\tt, err := time.Parse(\"2006-01-02\", s)\n")
-		b.WriteString("\tif err != nil { panic(err) }\n")
-		b.WriteString("\treturn t\n}\n\n")
-
-		b.WriteString("func mustParseTime(s string) time.Time {\n")
-		b.WriteString("\tt, err := time.Parse(\"15:04:05\", s)\n")
-		b.WriteString("\tif err != nil {\n")
-		b.WriteString("\t\tt, err = time.Parse(\"15:04\", s)\n")
-		b.WriteString("\t\tif err != nil { panic(err) }\n")
-		b.WriteString("\t}\n")
-		b.WriteString("\treturn t\n}\n\n")
-
-		b.WriteString("func mustParseDateTime(s string) time.Time {\n")
-		b.WriteString("\tt, err := time.Parse(time.RFC3339, s)\n")
-		b.WriteString("\tif err != nil { panic(err) }\n")
-		b.WriteString("\treturn t\n}\n\n")
+	// Lang-tracked helpers (mustParse*) — picked up via HelpersNeeded.
+	helpers := golang.HelpersNeeded(ctx.Pkg)
+	for _, imp := range helpers.Imports() {
+		info.goImports[imp] = ""
 	}
+	b.WriteString(helpers.Emit())
 
 	// Unit types (excluding the special-cased `duration`).
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))

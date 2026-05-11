@@ -9,7 +9,8 @@ type Config struct {
 	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
 
 	// Lang globals (codegen/lang/golang/golang.sngl).
-	GoVersion string `option:"goVersion"` // Go toolchain version for go.mod (default: "1.23")
+	GoVersion  string `option:"goVersion"`  // Go toolchain version for go.mod (default: "1.23")
+	GoModExtra string `option:"goModExtra"` // Extra text appended to temp test-module go.mod (e.g. replace directive)
 
 	// Internal (set by CLI, not exposed in .sngl).
 	Lang string `option:"lang"` // language identifier used to select the executor
@@ -32,6 +33,8 @@ var templateFS embed.FS
 type templateData struct {
 	Package      string
 	Main         bool
+	UnitDecls    string // pre-rendered `type X float64 / struct {...}` decls
+	LangHelpers  string // pre-rendered must-parse / runtime helpers
 	Structs      []structData
 	Binds        []bindData
 	Computeds    []computedData

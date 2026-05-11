@@ -423,6 +423,13 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 	// multi-base units become `type X struct { Base1, Base2 float64 }`.
 	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units)
 
+	// Lang-tracked helpers + their imports.
+	helpers := golang.HelpersNeeded(ctx.Pkg)
+	for _, imp := range helpers.Imports() {
+		td.Imports[imp] = true
+	}
+	td.LangHelpers = helpers.Emit()
+
 	// Structs
 	for _, sd := range info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}

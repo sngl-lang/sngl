@@ -390,16 +390,29 @@ func (vc *viewContext) renderStdlibButton(n *ir.NodeInst, resultVar string) {
 	if textExpr == nil {
 		textExpr = codegen.NodeProp(n, "label")
 	}
-	var labelArg string
+	supplied := map[string]bool{}
 	if textExpr != nil {
-		labelArg = vc.irExprToC(textExpr, &ir.Type{Kind: ir.TypeString})
-	} else {
-		labelArg = `C.CString("")`
+		supplied["label"] = true
 	}
-	if info.Constructor.Name != "" {
-		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.%s(%s)))", fieldName, info.CType, info.Constructor.Name, labelArg)
-	} else {
-		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.gtk_button_new_with_label(%s)))", fieldName, info.CType, labelArg)
+	ctor := info.ConstructorFor(supplied)
+	switch len(ctor.Params) {
+	case 0:
+		// Zero-arg constructor (e.g. gtk_button_new) — set the label
+		// afterwards via the writable property when supplied.
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.%s()))", fieldName, info.CType, ctor.Name)
+		if textExpr != nil {
+			labelArg := vc.irExprToC(textExpr, &ir.Type{Kind: ir.TypeString})
+			vc.line("C.gtk_button_set_label(m.%s, %s)", fieldName, labelArg)
+		}
+	default:
+		// Constructor takes the label directly (e.g. gtk_button_new_with_label).
+		var labelArg string
+		if textExpr != nil {
+			labelArg = vc.irExprToC(textExpr, &ir.Type{Kind: ir.TypeString})
+		} else {
+			labelArg = `C.CString("")`
+		}
+		vc.line("m.%s = (*C.%s)(unsafe.Pointer(C.%s(%s)))", fieldName, info.CType, ctor.Name, labelArg)
 	}
 	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
 

@@ -34,10 +34,55 @@ type Signal struct {
 
 // ClassInfo holds resolved metadata for one GTK widget class.
 type ClassInfo struct {
-	CType       string          // e.g. "GtkButton"
-	Constructor ConstructorInfo // first constructor found
-	Props       []Prop          // writable properties
-	Signals     []Signal
+	CType        string            // e.g. "GtkButton"
+	Constructor  ConstructorInfo   // first constructor found (kept for legacy callers)
+	Constructors []ConstructorInfo // every constructor found, in declaration order
+	Props        []Prop            // writable properties
+	Signals      []Signal
+}
+
+// ConstructorFor returns the constructor that matches the supplied
+// prop set most closely. Preference order:
+//
+//  1. A constructor whose param names match a supplied prop one-for-one.
+//  2. The zero-arg constructor when no props are supplied.
+//  3. The first constructor (Constructor) as the last-resort fallback.
+//
+// supplied is the set of prop names the caller will pass to the
+// constructor (e.g. {"label"} for `button(text=...)`).
+func (c *ClassInfo) ConstructorFor(supplied map[string]bool) ConstructorInfo {
+	if c == nil {
+		return ConstructorInfo{}
+	}
+	ctors := c.Constructors
+	if len(ctors) == 0 {
+		return c.Constructor
+	}
+	// Best match: every param maps to a supplied prop.
+	for _, ctor := range ctors {
+		if len(ctor.Params) == 0 {
+			continue
+		}
+		ok := true
+		for _, p := range ctor.Params {
+			if !supplied[p.Name] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return ctor
+		}
+	}
+	// No-arg form when caller has nothing to bind.
+	if len(supplied) == 0 {
+		for _, ctor := range ctors {
+			if len(ctor.Params) == 0 {
+				return ctor
+			}
+		}
+	}
+	return ctors[0]
 }
 
 // TypeRegistry maps GIR class name (e.g. "Button") to ClassInfo.
@@ -105,13 +150,14 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "constructor" && inClass && !inCtor:
 				inCtor = true
 				ident := attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")
+				// Open a fresh ctor slot at the end of Constructors;
+				// param StartElements below append into the last entry.
+				currentClass.Constructors = append(currentClass.Constructors, ConstructorInfo{Name: ident})
 				if currentClass.Constructor.Name == "" {
-					// First constructor — accept it.
+					// First constructor — record on the legacy field too.
 					currentClass.Constructor.Name = ident
-					acceptCtor = true
-				} else {
-					acceptCtor = false
 				}
+				acceptCtor = true
 
 			case local == "parameters" && inCtor:
 				inCtorParams = true
@@ -157,16 +203,20 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inCtorParams = false
 
 			case local == "parameter" && inParam:
-				// Invariant: inParam is only ever set to true when acceptCtor is
-				// also true (see StartElement "parameter" case above), so this
-				// append always targets the accepted (first) constructor.  The
-				// guard is omitted here intentionally — the symmetric guard lives
-				// at the start element.
 				inParam = false
-				currentClass.Constructor.Params = append(currentClass.Constructor.Params, ConstructorParam{
+				cp := ConstructorParam{
 					Name:   paramName,
 					IRType: girTypeToIR(paramTypeName),
-				})
+				}
+				// Append to the in-progress (last) Constructors entry.
+				if n := len(currentClass.Constructors); n > 0 {
+					currentClass.Constructors[n-1].Params = append(currentClass.Constructors[n-1].Params, cp)
+				}
+				// Mirror onto the legacy first-ctor slot only while the
+				// first constructor is still being parsed.
+				if len(currentClass.Constructors) == 1 {
+					currentClass.Constructor.Params = append(currentClass.Constructor.Params, cp)
+				}
 
 			case local == "property" && inProp:
 				inProp = false
