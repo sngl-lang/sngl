@@ -682,7 +682,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	b.WriteString("\tw.SetContent(m.BuildUI())\n")
+	// Fyne can render an empty canvas on first show when widgets are
+	// created in BuildUI before SetContent; an explicit Refresh on the
+	// content tree forces layout up-front.
+	b.WriteString("\tcontent := m.BuildUI()\n")
+	b.WriteString("\tw.SetContent(content)\n")
+	b.WriteString("\tcontent.Refresh()\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")
 	}

@@ -228,6 +228,11 @@ func walkExprDeps(e ir.Expr, modelFields map[string]bool, deps map[string]bool) 
 		for _, field := range n.Fields {
 			walkExprDeps(field.Value, modelFields, deps)
 		}
+	case *ir.MapLitIR:
+		for _, en := range n.Entries {
+			walkExprDeps(en.Key, modelFields, deps)
+			walkExprDeps(en.Value, modelFields, deps)
+		}
 	case *ir.Spread:
 		walkExprDeps(n.Operand, modelFields, deps)
 	case *ir.Lambda:
