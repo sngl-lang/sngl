@@ -181,6 +181,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	// windowCodes holds pre-rendered per-window build methods for multi-window.
 	var windowCodes []string
+	var mainVC *irViewContext
 
 	if len(wins) <= 1 {
 		// Single-window: render wins[0] body into BuildUI buffer directly.
@@ -194,6 +195,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				info:        info,
 				windowNames: windowNames,
 			}
+			mainVC = vc
 
 			if len(bodyStmts) == 1 {
 				vc.line("var content fyne.CanvasObject")
@@ -383,7 +385,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	return []byte(b.String()), nil
+	// Resolve /*SNGLREACT:i*/ placeholders emitted by recordLateReactive
+	// once every visual node's bindings have been recorded.
+	src := b.String()
+	if mainVC != nil {
+		src = mainVC.resolveReactiveTokens(src)
+	}
+	return []byte(src), nil
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {

@@ -7,8 +7,8 @@ stdout 'caps:'
 stdout 'passes: \(none\)'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
-stdout 'caps:'
-stdout 'passes: \(none\)'
+stdout 'caps: NoReactivity'
+stdout 'passes: NoReactivity'
 
 sngl dump lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity'

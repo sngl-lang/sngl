@@ -41,7 +41,15 @@ func (g *Generator) PreviewCSS() string                     { return previewCSS 
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
-func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
+func (g *Generator) Capabilities() lower.Caps {
+	// NoReactivity: the lowering pass injects explicit
+	// `nX.<prop> = <expr>` Assigns after every mutation of a tracked
+	// Var. The fyne renderer translates those Select-target-on-
+	// IsElementRef assigns into widget setter calls — one mechanism
+	// for "value depends on var" instead of the ad-hoc per-platform
+	// FindAffected dispatch.
+	return lower.Caps{NoReactivity: true}
+}
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	c := &compilation{}

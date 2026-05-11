@@ -52,8 +52,6 @@ func New() *Model {
 }
 
 func (m *Model) doRefresh() {
-	m.updateEntry2()
-	m.updateLabel4()
 	m.updateIf0()
 	m.updateFor1()
 }
@@ -65,7 +63,6 @@ func (m *Model) Source() string {
 func (m *Model) SetSource(v string) {
 	m.source = v
 	m.entry2.SetText(v)
-	m.updateEntry2()
 }
 
 func (m *Model) File() ast.File {
@@ -83,7 +80,6 @@ func (m *Model) ParseError() string {
 
 func (m *Model) SetParseError(v string) {
 	m.parseError = v
-	m.updateLabel4()
 	m.updateIf0()
 }
 
@@ -118,7 +114,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.entry2.SetText(fmt.Sprint(m.source))
 	m.entry2.OnChanged = func(s string) {
 		m.source = s
-		m.updateEntry2()
+		m.entry2.SetText(fmt.Sprint(m.source))
 	}
 	contentC2 = m.entry2
 	if contentC2 != nil {
@@ -129,7 +125,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		fmt.Sprint("Parse AST"),
 		func() {
 			m.parse(m.source)
-			m.doRefresh()
 		},
 	)
 	contentC3 = m.btn3
@@ -179,14 +174,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		content = widget.NewLabel("")
 	}
 	return content
-}
-
-func (m *Model) updateEntry2() {
-	m.entry2.SetText(fmt.Sprint(m.source))
-}
-
-func (m *Model) updateLabel4() {
-	m.label4.SetText(fmt.Sprint(m.parseError))
 }
 
 func (m *Model) updateIf0() {

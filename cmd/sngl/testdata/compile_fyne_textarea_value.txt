@@ -1,14 +1,13 @@
-# Regression test for the textarea value-update fix.
+# Regression test for the textarea value-update path.
 #
 # textarea(value=expr) and input(value=expr) must:
-#   1. SetText with the value at BuildUI time (not just for bindTarget binds)
-#   2. Register a reactive updater so doRefresh() re-syncs the entry text
-#      when any var the value depends on changes
+#   1. SetText with the value at BuildUI time (not just for bindTarget binds).
+#   2. Re-sync the entry text whenever any var the value depends on changes.
 #
-# Before the fix, the constructor allocated `widget.NewMultiLineEntry()` and
-# stopped — read-only textareas rendered empty and never updated when the
-# source var changed. See DESIGN/08-sngl-gaps.md [SNGL-TEXTAREA-NO-VALUE-UPDATE]
-# in the jira-ui repo for the original repro.
+# Reactivity flows through the shared NoReactivity lowering pass: every
+# Assign that mutates a tracked Var has explicit `m.entry0.SetText(...)`
+# updates spliced after it, so we look for that inline form rather than
+# the older per-widget updateEntry0 method.
 
 sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
@@ -16,11 +15,10 @@ exists out/model.go
 # Init: SetText is emitted at BuildUI time for the textarea's value.
 grep 'm\.entry0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 
-# Reactive updater is registered.
-grep 'func \(m \*Model\) updateEntry0\(\)' out/model.go
-
-# updateEntry0 is wired into doRefresh.
-grep 'm\.updateEntry0\(\)' out/model.go
+# Reactive update spliced into the button's @click handler by the
+# NoReactivity lowering pass.
+grep 'm\.content = "after click"' out/model.go
+grep 'm\.entry0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 
 -- app.sngl --
 output {
