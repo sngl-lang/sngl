@@ -27,7 +27,7 @@ func (g *Generator) ProbeTest() (bool, string) {
 	return false, "no chrome/chromium found on PATH"
 }
 
-func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
+func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, _ *ir.StructLit) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}

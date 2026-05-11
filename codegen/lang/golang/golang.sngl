@@ -4,4 +4,11 @@
 struct Options {
     // Go toolchain version emitted in generated go.mod files (default: 1.23).
     goVersion string
+
+    // Extra text appended verbatim to temp module go.mod files written by
+    // platform test runners. Typical use: a `replace
+    // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
+    // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
+    // locally instead of via the public proxy.
+    goModExtra string
 }

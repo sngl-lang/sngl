@@ -28,6 +28,26 @@ func init() {
 	testCmd.Flags().String("format", "text", "output format: text or json")
 	testCmd.Flags().String("platform", "", "target platform (e.g. html)")
 	testCmd.Flags().String("language", "", "target language (e.g. js)")
+	testCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
+}
+
+// parseTestOpts converts the --opt key=value slice into a SNGL StructLit
+// suitable for codegen.ApplyOptions. Unlike compile, test does not
+// validate against per-target option schemas — unknown keys are passed
+// through and individual platforms ignore what they don't recognize.
+func parseTestOpts(raw []string) *ir.StructLit {
+	if len(raw) == 0 {
+		return nil
+	}
+	m := make(map[string]any, len(raw))
+	for _, entry := range raw {
+		k, v, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		m[k] = v
+	}
+	return codegen.OptionsFromMap(m)
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
@@ -58,9 +78,11 @@ func runTest(cmd *cobra.Command, args []string) error {
 	runFilter, _ := cmd.Flags().GetString("run")
 	verbose, _ := cmd.Flags().GetBool("verbose")
 	format, _ := cmd.Flags().GetString("format")
+	optSlice, _ := cmd.Flags().GetStringSlice("opt")
+	opts := parseTestOpts(optSlice)
 
 	if platform == "all" {
-		return runTestAll(language, files, explicitFiles, runFilter, verbose, format)
+		return runTestAll(language, files, explicitFiles, runFilter, verbose, format, opts)
 	}
 
 	plat := codegen.LookupPlatform(platform)
@@ -77,7 +99,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	totalTests, totalFail, allResults := runOnPlatform(runner, lang, files, explicitFiles, runFilter)
+	totalTests, totalFail, allResults := runOnPlatform(runner, lang, files, explicitFiles, runFilter, opts)
 
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
@@ -86,7 +108,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 // TestRunner. Platforms whose TestProber reports unavailable are skipped
 // with a SKIP banner; available platforms run the full file set and their
 // results are aggregated.
-func runTestAll(language string, files []string, explicitFiles map[string]bool, runFilter string, verbose bool, format string) error {
+func runTestAll(language string, files []string, explicitFiles map[string]bool, runFilter string, verbose bool, format string, opts *ir.StructLit) error {
 	names := codegen.Platforms()
 	var ran, skipped, failedPlats int
 	var grandTests, grandFail int
@@ -112,7 +134,7 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 			continue
 		}
 		fmt.Printf("=== platform=%s\n", name)
-		tests, fails, results := runOnPlatform(runner, lang, files, explicitFiles, runFilter)
+		tests, fails, results := runOnPlatform(runner, lang, files, explicitFiles, runFilter, opts)
 		ran++
 		grandTests += tests
 		grandFail += fails
@@ -162,7 +184,7 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 // check failures count as test failures — `./...` already skips
 // `testdata/` and `.`/`_`-prefixed directories, so walked files are
 // expected to be valid SNGL.
-func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string) (int, int, []*codegen.TestResult) {
+func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
 	var totalTests, totalFail int
 	var allResults []*codegen.TestResult
 
@@ -226,7 +248,7 @@ func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files
 		}
 		slog.Info("check", "file", filename, "duration", time.Since(start))
 
-		results, err := safeRunTests(runner, pkg, lang)
+		results, err := safeRunTests(runner, pkg, lang, opts)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
@@ -248,13 +270,13 @@ func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files
 // safeRunTests calls runner.RunTests and converts a panic into an error so
 // a single buggy fixture on one platform doesn't take down the whole
 // matrix. Useful when running --platform=all across many fixtures.
-func safeRunTests(runner codegen.TestRunner, pkg *ir.Package, lang codegen.LangTranslator) (results []*codegen.TestResult, err error) {
+func safeRunTests(runner codegen.TestRunner, pkg *ir.Package, lang codegen.LangTranslator, opts *ir.StructLit) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test runner: %v", r)
 		}
 	}()
-	return runner.RunTests(pkg, lang)
+	return runner.RunTests(pkg, lang, opts)
 }
 
 // reportResults prints aggregated test output in either text or JSON form

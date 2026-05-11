@@ -17,7 +17,8 @@ type Config struct {
 	Version     string
 
 	// Lang globals (codegen/lang/golang/golang.sngl).
-	GoVersion string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
+	GoVersion  string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
+	GoModExtra string // Extra text appended to temp test-module go.mod (e.g. replace directive)
 
 	// Internal (set by CLI, not exposed in .sngl).
 	Lang string `option:"lang"` // language identifier used to select the executor

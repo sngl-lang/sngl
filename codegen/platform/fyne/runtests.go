@@ -28,9 +28,13 @@ import (
 // type directly. We therefore run Generate against the original (already-
 // checked) pkg and collect all outputs into a single temp module, then
 // write one _test.go per component group.
-func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*codegen.TestResult, error) {
+func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts *ir.StructLit) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
+	}
+	var cfg Config
+	if err := codegen.ApplyOptions(&cfg, opts); err != nil {
+		return nil, fmt.Errorf("fyne RunTests options: %w", err)
 	}
 	doc := ir.Convert(pkg)
 	astTestFuncs := doc.TestFuncs()
@@ -64,7 +68,7 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 
 	var results []*codegen.TestResult
 	for _, group := range compGroups {
-		grpResults, err := runFyneTestGroup(pkg, group, resp.Files)
+		grpResults, err := runFyneTestGroup(pkg, group, resp.Files, cfg.GoModExtra)
 		if err != nil {
 			return nil, err
 		}
@@ -80,14 +84,14 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator) ([]*c
 // origPkg is the *un-promoted* IR package: the test funcs themselves
 // live there (testharness.Promote drops *ast.FuncDef decls so the
 // promoted pkg.Funcs is empty for our tests).
-func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile) ([]*codegen.TestResult, error) {
+func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile, goModExtra string) ([]*codegen.TestResult, error) {
 	dir, err := os.MkdirTemp("", "sngl-fyne-test-")
 	if err != nil {
 		return nil, fmt.Errorf("mktemp: %w", err)
 	}
 	defer os.RemoveAll(dir)
 
-	if err := writeGoMod(dir); err != nil {
+	if err := writeGoMod(dir, goModExtra); err != nil {
 		return nil, err
 	}
 
@@ -126,21 +130,19 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 }
 
 // writeGoMod writes a minimal go.mod that pulls in fyne v2. The Go
-// toolchain resolves fyne from the module cache.
-//
-// SNGL_GO_MOD_EXTRA, if set, is appended verbatim to the go.mod. Used by
-// `go tool verify` to inject a `replace git.duckfam.us/jonathan/sngl =>
-// <project-root>` directive so generated code that imports SNGL runtime
-// packages (e.g. pkg/go/i18n) resolves locally instead of via the proxy.
-func writeGoMod(dir string) error {
+// toolchain resolves fyne from the module cache. If `goModExtra` is
+// non-empty (sourced from the lang option of the same name) it is
+// appended verbatim — typically a `replace` directive pointing SNGL
+// runtime imports at a local checkout.
+func writeGoMod(dir, goModExtra string) error {
 	mod := `module sngltest
 
 go 1.23
 
 require fyne.io/fyne/v2 v2.5.0
 `
-	if extra := os.Getenv("SNGL_GO_MOD_EXTRA"); extra != "" {
-		mod += "\n" + extra
+	if goModExtra != "" {
+		mod += "\n" + goModExtra
 		if !strings.HasSuffix(mod, "\n") {
 			mod += "\n"
 		}

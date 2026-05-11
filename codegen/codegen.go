@@ -129,8 +129,12 @@ type OptionConfigurable interface {
 
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
+//
+// opts carries the same merged stdlib+lang+platform options struct that
+// Generate receives via Request.Options. Platform implementations
+// typically forward it to codegen.ApplyOptions to populate their Config.
 type TestRunner interface {
-	RunTests(pkg *ir.Package, lang LangTranslator) ([]*TestResult, error)
+	RunTests(pkg *ir.Package, lang LangTranslator, opts *ir.StructLit) ([]*TestResult, error)
 }
 
 // TestProber is optionally implemented by TestRunners that can detect

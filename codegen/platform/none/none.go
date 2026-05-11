@@ -26,7 +26,7 @@ func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
 	return &codegen.Response{Error: "none platform does not generate code"}, nil
 }
 
-func (g *Generator) RunTests(pkg *ir.Package, _ codegen.LangTranslator) ([]*codegen.TestResult, error) {
+func (g *Generator) RunTests(pkg *ir.Package, _ codegen.LangTranslator, _ *ir.StructLit) ([]*codegen.TestResult, error) {
 	return testrunner.Run(pkg)
 }
 

@@ -79,10 +79,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	gc := golang.NewIRContext(exprCtx)
 
-	// Collect vars from package + main component
+	// Collect vars from package + every component. The render methods for
+	// non-main components already reference state as `m.<var>` (see
+	// renderIRComponentMethod's compGC.ForComponent), so those fields must
+	// be declared on Model. Limiting to main left non-main components
+	// referencing undeclared fields, breaking compile.
 	allVars := pkg.Vars
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
+	for _, comp := range pkg.Components {
+		allVars = append(allVars, comp.Vars...)
 	}
 	for _, v := range allVars {
 		if v.IsConst {
