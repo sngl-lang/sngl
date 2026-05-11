@@ -19,9 +19,15 @@ func LowerTestFunc(fn *ir.Func, suffix string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "func Test%s(t *testing.T) {\n", suffix)
 	b.WriteString("\tc := newTestComponent()\n")
-	scope := &codegen.ExprScope{LocalVars: map[string]bool{}}
+	scope := &codegen.ExprScope{
+		LocalVars:      map[string]bool{},
+		MethodOnSelect: map[string]bool{},
+	}
 	for _, p := range fn.Params {
 		scope.LocalVars[p.Name] = true
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			scope.MethodOnSelect[p.Name] = true
+		}
 	}
 	for _, s := range fn.Block {
 		for _, line := range lowerTestStmt(s, scope) {

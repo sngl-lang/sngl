@@ -1,8 +1,8 @@
-component counter {
+component main {
     var count = 0
     text(value=string(count))
 }
 
-func testCountStartsZero(t Test, c counter) {
+func testCountStartsZero(t Test, c main) {
     t.assert(c.count == 0)
 }

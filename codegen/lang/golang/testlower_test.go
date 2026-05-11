@@ -51,7 +51,7 @@ func testCountStartsZero(t Test, c box) {
 	if !strings.Contains(out, "t.Errorf") {
 		t.Errorf("assert should lower to t.Errorf:\n%s", out)
 	}
-	if !strings.Contains(out, "c.Count == 0") && !strings.Contains(out, "c.count == 0") {
-		t.Errorf("assert expression body missing or mistranslated:\n%s", out)
+	if !strings.Contains(out, "c.Count() == 0") {
+		t.Errorf("expected getter-call rendering of c.count:\n%s", out)
 	}
 }

@@ -90,6 +90,7 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 	if err := writeGoMod(dir); err != nil {
 		return nil, err
 	}
+
 	for _, f := range files {
 		var buf bytes.Buffer
 		if _, err := f.WriteTo(&buf); err != nil {
@@ -103,6 +104,15 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 
 	if _, err := writeTestFile(dir, origPkg, group); err != nil {
 		return nil, err
+	}
+
+	tidy := exec.Command("go", "mod", "tidy")
+	tidy.Dir = dir
+	var tidyOut bytes.Buffer
+	tidy.Stdout = &tidyOut
+	tidy.Stderr = &tidyOut
+	if err := tidy.Run(); err != nil {
+		return nil, fmt.Errorf("go mod tidy: %w\n%s", err, tidyOut.String())
 	}
 
 	cmd := exec.Command("go", "test", "-json", "-count=1", "./...")
@@ -138,9 +148,7 @@ func writeTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup)
 	b.WriteString("package ui\n\n")
 	b.WriteString("import \"testing\"\n\n")
 
-	// Helper used by every lowered test. Task 5 will wire a real
-	// constructor; for now return nil so the file compiles.
-	b.WriteString("func newTestComponent() *Model { return nil }\n\n")
+	b.WriteString("func newTestComponent() *Model { return New() }\n\n")
 
 	for _, tf := range group.Funcs {
 		var fn *ir.Func
