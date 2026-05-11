@@ -801,6 +801,12 @@ func IRLiteralToGo(e ir.Expr) string {
 			return "nil"
 		case ir.TypeColor:
 			return fmt.Sprintf("%q", n.Raw)
+		case ir.TypeUnit:
+			// Unit literals like "10px" / "1s" lower to a quoted Go
+			// string. Duration units are intercepted earlier in
+			// irVarInit (mustParseDuration); anything reaching here is a
+			// non-duration unit whose Go representation is `string`.
+			return fmt.Sprintf("%q", n.Raw)
 		default:
 			return n.Raw
 		}

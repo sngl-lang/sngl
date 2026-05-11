@@ -26,7 +26,8 @@ type Config struct {
 	Version     string
 
 	// Lang globals (codegen/lang/golang/golang.sngl).
-	GoVersion string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
+	GoVersion  string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
+	GoModExtra string // Extra text appended to temp test-module go.mod (e.g. replace directive)
 
 	// Internal (set by CLI, not exposed in .sngl).
 	Lang string `option:"lang"` // language identifier used to select the executor
@@ -143,17 +144,33 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[golang.SnglI18nImportPath] = ""
 	}
 
-	// Collect vars from package + main component
-	allVars := pkg.Vars
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
+	// Collect vars from package + every component. Render methods for
+	// non-main components emit `m.<var>` references, so those fields
+	// must be declared on Model. (Same one-flat-Model design as fyne.)
+	type taggedVar struct {
+		v    *ir.Var
+		comp *ir.Component
 	}
-	for _, v := range allVars {
+	var allVars []taggedVar
+	for _, v := range pkg.Vars {
+		allVars = append(allVars, taggedVar{v: v})
+	}
+	for _, comp := range pkg.Components {
+		for _, v := range comp.Vars {
+			allVars = append(allVars, taggedVar{v: v, comp: comp})
+		}
+	}
+	for _, tv := range allVars {
+		v := tv.v
 		if v.IsConst {
 			continue
 		}
+		varGC := gc
+		if tv.comp != nil {
+			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v, gc)
+		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
 			info.needsTime = true
 		}
@@ -367,14 +384,16 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	b.WriteString("\twidth, height int\n")
 	b.WriteString("}\n\n")
 
-	// New()
+	// New(). Binds are initialized sequentially so later inits can
+	// reference earlier fields via `m.<name>` (e.g. interpolated
+	// `$"Hello, {nm}!"` reading `m.nm`). A pre-fix struct-literal init
+	// left `m` undefined inside the literal.
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
-	b.WriteString("\tm := Model{\n")
+	b.WriteString("\tm := Model{}\n")
 	for _, bind := range info.binds {
-		fmt.Fprintf(&b, "\t\t%s: %s,\n", bind.name, bind.init)
+		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
-	b.WriteString("\t}\n")
 	for i, inp := range info.inputs {
 		fmt.Fprintf(&b, "\tm.%s = textinput.New()\n", inp.fieldName)
 		if inp.placeholder != "" {
@@ -491,7 +510,10 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		receiver = "m *Model"
 	}
 
-	goName := golang.ExportName(fn.Name)
+	// Emit user funcs as lowercase Model methods so they line up with
+	// the computed-method naming convention. Tests can then uniformly
+	// invoke `c.<name>(...)` against the Model.
+	goName := fn.Name
 
 	// Add params as locals
 	localGC := gc
@@ -761,9 +783,15 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	}
 
 	// Check var type for special handling (date/time/duration vars may have
-	// string literal inits that need runtime parsing)
+	// string literal inits that need runtime parsing). The checker wraps
+	// implicit type coercions (e.g. string → date) in ir.Conversion;
+	// unwrap so the time-aware fast paths still fire.
 	varGoType := golang.IRTypeToGo(v.Type)
-	if lit, ok := v.Init.(*ir.Literal); ok {
+	initExpr := v.Init
+	if conv, ok := initExpr.(*ir.Conversion); ok {
+		initExpr = conv.Operand
+	}
+	if lit, ok := initExpr.(*ir.Literal); ok {
 		switch varGoType {
 		case "time.Duration":
 			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)

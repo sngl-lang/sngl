@@ -39,11 +39,10 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{
-		path:   "sngl",
-		ident1: "",
-		ident2: "",
-	}
+	m := Model{}
+	m.path = "sngl"
+	m.ident1 = ""
+	m.ident2 = ""
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "import path"
 	m.input0.SetValue(m.path)

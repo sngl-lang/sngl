@@ -40,10 +40,9 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{
-		newTodo: "",
-		todos:   []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}},
-	}
+	m := Model{}
+	m.newTodo = ""
+	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "Buy eggs"
 	m.input0.SetValue(m.newTodo)

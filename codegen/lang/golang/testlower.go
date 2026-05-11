@@ -45,14 +45,20 @@ func LowerTestFunc(fn *ir.Func, suffix string) string {
 }
 
 // lowerTestStmt translates one statement of a SNGL test body to Go.
-// `t.assert(expr)` becomes an `if !(expr)` failure check; every other
-// shape falls through to the generic Go mutation translator (assigns,
-// toggles, void method calls). That lets test bodies mutate component
-// state and call component methods, not just assert.
+// `t.assert(expr)` becomes an `if !(expr)` failure check; other Test-
+// namespace calls (setLocale, tick, test, wait, …) are stubbed as
+// comments so the lowered file still compiles while the runner's
+// support for them is incrementally filled in. Everything else falls
+// through to the generic Go mutation translator (assigns, toggles,
+// component-method calls), which lets test bodies exercise component
+// state and methods.
 func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 	if call, ok := s.(*ir.CallStmt); ok {
 		if line, ok := lowerTestAssert(call, scope); ok {
 			return []string{line}
+		}
+		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
 	return translateIRMutation(s, scope)
