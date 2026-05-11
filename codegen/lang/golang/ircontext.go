@@ -99,7 +99,7 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 	case *ir.Lambda:
 		return gc.evalLambda(n)
 	default:
-		return fmt.Sprintf("/* unsupported IR node %T */nil", e)
+		panic(fmt.Sprintf("GoIRContext.EvalExpr: unhandled ir.Expr %T", e))
 	}
 }
 
@@ -144,7 +144,7 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 	case *ir.For:
 		return gc.evalFor(n)
 	default:
-		return []string{fmt.Sprintf("// unsupported IR stmt: %T", s)}
+		panic(fmt.Sprintf("GoIRContext.EvalStmt: unhandled ir.Stmt %T", s))
 	}
 }
 
@@ -763,8 +763,14 @@ func IRTypeToGo(t *ir.Type) string {
 		return "func()"
 	case ir.TypeNull:
 		return "any"
-	default:
+	case ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
+		// Iter/component/typeparam/invalid have no first-class Go
+		// representation in emitted code; falling back to `any` matches
+		// the previous behavior. Listed explicitly so the default arm
+		// can catch genuinely new TypeKinds.
 		return "any"
+	default:
+		panic(fmt.Sprintf("IRTypeToGo: unhandled ir.TypeKind %v", t.Kind))
 	}
 }
 
@@ -836,6 +842,10 @@ func IRLiteralToGo(e ir.Expr) string {
 	case *ir.Lambda:
 		return irLambdaLiteralToGo(n)
 	}
+	// IRLiteralToGo is called from places that may pass non-literal
+	// exprs (e.g. component prop defaults that aren't literals). Returning
+	// "" here is a deliberate best-effort fallback rather than an
+	// exhaustive-case-missing bug, so we don't panic.
 	return `""`
 }
 
