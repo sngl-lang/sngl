@@ -98,6 +98,18 @@ func main() {
 	// Step 6: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
 	// skipped, not failed.
+	//
+	// SNGL_GO_MOD_EXTRA points temp Go modules built by platform test
+	// runners (today: fyne) at the project root via a `replace`
+	// directive, so generated code that imports `git.duckfam.us/jonathan/
+	// sngl/pkg/go/*` resolves locally instead of failing on the public
+	// proxy.
+	root, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("getwd: %v", err)
+	}
+	os.Setenv("SNGL_GO_MOD_EXTRA",
+		fmt.Sprintf("replace git.duckfam.us/jonathan/sngl => %s\n", root))
 	if !runStep("sngl-test", "go", "tool", "sngl", "test", "--platform=all", "./...") {
 		os.Exit(1)
 	}

@@ -127,6 +127,11 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 
 // writeGoMod writes a minimal go.mod that pulls in fyne v2. The Go
 // toolchain resolves fyne from the module cache.
+//
+// SNGL_GO_MOD_EXTRA, if set, is appended verbatim to the go.mod. Used by
+// `go tool verify` to inject a `replace git.duckfam.us/jonathan/sngl =>
+// <project-root>` directive so generated code that imports SNGL runtime
+// packages (e.g. pkg/go/i18n) resolves locally instead of via the proxy.
 func writeGoMod(dir string) error {
 	mod := `module sngltest
 
@@ -134,6 +139,12 @@ go 1.23
 
 require fyne.io/fyne/v2 v2.5.0
 `
+	if extra := os.Getenv("SNGL_GO_MOD_EXTRA"); extra != "" {
+		mod += "\n" + extra
+		if !strings.HasSuffix(mod, "\n") {
+			mod += "\n"
+		}
+	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0644); err != nil {
 		return fmt.Errorf("go.mod: %w", err)
 	}
