@@ -116,6 +116,8 @@ func checkPromoted(doc *ast.Document) *ir.Package {
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
+			// Known: i18n.tr map-arg coercion bug on re-check, see #62.
+			// Silent skip until fixed.
 			return nil
 		}
 	}
