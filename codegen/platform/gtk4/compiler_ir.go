@@ -426,7 +426,10 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 }
 
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget.
-// It expects the body buffer to set up `content *C.GtkWidget`.
+// It expects the body buffer to set up `content *C.GtkWidget`. The
+// emitted function always wraps `content` in a GtkApplicationWindow
+// (creating a synthetic one when the user didn't author an explicit
+// window) so the activate handler has a top-level widget to present.
 func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder) {
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
@@ -437,12 +440,18 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder) {
 		return
 	}
 	b.WriteString(buildBuf.String())
-	// If `content` is itself a window (GtkApplicationWindow), return it as-is.
-	// Otherwise wrap it in a new application window.
+	// For the synthesized-window path content is whatever the body
+	// produced (typically a GtkBox). Wrap it in a GtkApplicationWindow
+	// so the activate handler has a presentable top-level. Explicit
+	// `window {…}` sources route through a different path (not wired
+	// up yet on gtk4) and would set content directly.
 	b.WriteString("\tif content == nil {\n")
-	b.WriteString("\t\tcontent = (*C.GtkWidget)(unsafe.Pointer(C.gtk_application_window_new(app)))\n")
+	b.WriteString("\t\treturn C.gtk_application_window_new(app)\n")
 	b.WriteString("\t}\n")
-	b.WriteString("\treturn content\n")
+	b.WriteString("\twin := C.gtk_application_window_new(app)\n")
+	b.WriteString("\tC.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)\n")
+	b.WriteString("\tC.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), content)\n")
+	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
 }
 
@@ -462,15 +471,22 @@ func emitGTK4Main(b *strings.Builder, cfg Config) {
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\twin := m.BuildUI(app)\n")
-	b.WriteString("\tC.gtk_widget_set_visible(win, 1)\n")
+	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")
 	b.WriteString("}\n\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("\truntime.LockOSThread()\n")
-	b.WriteString("\tapp := C.gtk_application_new(nil, C.G_APPLICATION_DEFAULT_FLAGS)\n")
+	// G_APPLICATION_NON_UNIQUE skips the single-instance enforcement
+	// so we don't need to register an app-id (which gtk_application_new
+	// otherwise requires to be non-NULL and reverse-DNS-valid).
+	b.WriteString("\tapp := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)\n")
 	b.WriteString("\tC.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),\n")
 	b.WriteString("\t\tC.CString(\"activate\"),\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
-	b.WriteString("\tC.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
+	b.WriteString("\tstatus := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
+	b.WriteString("\tif status != 0 {\n")
+	b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"gtk: application exited with status %d\\n\", status)\n")
+	b.WriteString("\t\tos.Exit(int(status))\n")
+	b.WriteString("\t}\n")
 	b.WriteString("\t_ = fmt.Sprint\n")
 	b.WriteString("}\n")
 }
