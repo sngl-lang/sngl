@@ -67,11 +67,7 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 				parts = append(parts, ExportName(f.Name)+": "+translateIRExpr(f.Value, scope))
 			}
 		}
-		typeName := ""
-		if n.Def != nil {
-			typeName = ExportName(n.Def.Name)
-		}
-		return typeName + "{" + strings.Join(parts, ", ") + "}"
+		return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.ListLit:
 		parts := make([]string, len(n.Elems))
 		for i, el := range n.Elems {

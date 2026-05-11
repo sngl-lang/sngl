@@ -490,35 +490,7 @@ func irVarGoType(v *ir.Var) string {
 }
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	if v.Init == nil {
-		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
-	}
-	// Unwrap any ir.Conversion the checker added for implicit coercions
-	// (string → date, etc.) so the typed-literal helpers in the lang
-	// layer see the underlying ir.Literal.
-	initExpr := v.Init
-	if conv, ok := initExpr.(*ir.Conversion); ok {
-		initExpr = conv.Operand
-	}
-	if lit, ok := initExpr.(*ir.Literal); ok {
-		if out, ok := golang.LowerTypedLiteralGo(lit, v.Type); ok {
-			return out
-		}
-		if out, ok := golang.LowerUnitLiteralGo(lit); ok {
-			return out
-		}
-	}
-	// Non-literal initializers (calls, idents, binaries) need full
-	// context-aware eval so model-field reads route through `m.<field>`.
-	if gc != nil {
-		switch v.Init.(type) {
-		case *ir.Literal, *ir.ListLit, *ir.MapLitIR, *ir.StructLit, *ir.Lambda:
-			// fall through to IRLiteralToGo
-		default:
-			return gc.EvalExpr(v.Init)
-		}
-	}
-	return golang.IRLiteralToGo(v.Init)
+	return golang.LowerVarInit(v, gc)
 }
 
 func irFuncReturnType(f *ir.Func) string {

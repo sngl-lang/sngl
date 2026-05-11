@@ -586,10 +586,6 @@ func nullFuncStubGo(t *ir.Type) string {
 }
 
 func (gc *GoIRContext) evalStructLit(n *ir.StructLit) string {
-	name := "struct{}"
-	if n.Def != nil {
-		name = ExportName(n.Def.Name)
-	}
 	var parts []string
 	for _, f := range n.Fields {
 		if f.Spread {
@@ -598,7 +594,35 @@ func (gc *GoIRContext) evalStructLit(n *ir.StructLit) string {
 			parts = append(parts, ExportName(f.Name)+": "+gc.EvalExpr(f.Value))
 		}
 	}
-	return name + "{" + strings.Join(parts, ", ") + "}"
+	return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
+}
+
+// structLitTypeName picks the Go type prefix for a struct literal. Named
+// structs lower to ExportName(sd.Name); anonymous structs (no name on
+// the StructDef) materialize an inline `struct { Field Type; ... }` so
+// the literal parses where Go would otherwise reject a bare `{…}`.
+func structLitTypeName(n *ir.StructLit) string {
+	if n == nil || n.Def == nil {
+		return "struct{}"
+	}
+	if name := ExportName(n.Def.Name); name != "" {
+		return name
+	}
+	if len(n.Def.Fields) == 0 {
+		return "struct{}"
+	}
+	var fb strings.Builder
+	fb.WriteString("struct{ ")
+	for i, f := range n.Def.Fields {
+		if i > 0 {
+			fb.WriteString("; ")
+		}
+		fb.WriteString(ExportName(f.Name))
+		fb.WriteString(" ")
+		fb.WriteString(IRTypeToGo(f.Type))
+	}
+	fb.WriteString(" }")
+	return fb.String()
 }
 
 func (gc *GoIRContext) evalStructConstructor(sd *ir.StructDef, args []ir.CallArg) string {

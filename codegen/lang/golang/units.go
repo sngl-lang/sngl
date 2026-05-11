@@ -207,3 +207,47 @@ func LowerTypedLiteralGo(lit *ir.Literal, target *ir.Type) (string, bool) {
 	}
 	return "", false
 }
+
+// LowerVarInit emits the Go expression for a state-var initializer.
+// Routes Literal inits through typed/unit helpers first; falls back to
+// the full context-aware GoIRContext.EvalExpr for non-literal exprs
+// (calls, idents, binary ops) so enum members, computed-into-init
+// references, and i18n.tr expressions all resolve correctly. Used by
+// every Go-emitting platform (fyne / bubbletea / gtk4).
+func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
+	if v == nil {
+		return ""
+	}
+	if v.Init == nil {
+		return ZeroValueGo(IRTypeToGo(v.Type))
+	}
+	// The checker wraps implicit type coercions (string → date, etc.)
+	// in ir.Conversion; peel so typed-literal fast paths see the
+	// underlying ir.Literal.
+	initExpr := v.Init
+	if conv, ok := initExpr.(*ir.Conversion); ok {
+		initExpr = conv.Operand
+	}
+	if lit, ok := initExpr.(*ir.Literal); ok {
+		if out, ok := LowerTypedLiteralGo(lit, v.Type); ok {
+			return out
+		}
+		if out, ok := LowerUnitLiteralGo(lit); ok {
+			return out
+		}
+	}
+	// Non-literal initializers (idents resolving to enums, calls to
+	// i18n.tr, binary ops, ternaries, etc.) need context-aware eval so
+	// model-field reads route through `m.<field>` and enum members
+	// emit as quoted strings.
+	if gc != nil {
+		switch v.Init.(type) {
+		case *ir.Literal, *ir.ListLit, *ir.MapLitIR, *ir.StructLit, *ir.Lambda:
+			// Fall through to IRLiteralToGo for these literal-shaped
+			// inits — they don't need context.
+		default:
+			return gc.EvalExpr(v.Init)
+		}
+	}
+	return IRLiteralToGo(v.Init)
+}

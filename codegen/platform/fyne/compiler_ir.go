@@ -689,13 +689,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tm := New()\n")
+	// fyne 2.7 lays out SetContent's tree against the *current* window
+	// size, so set content before resizing — otherwise the canvas
+	// reports its default 0×0 dimensions at first paint and the user
+	// sees a blank window until they manually resize.
+	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	// Fyne can render an empty canvas on first show when widgets are
-	// created in BuildUI before SetContent; an explicit Refresh on the
-	// content tree forces layout up-front.
-	b.WriteString("\tcontent := m.BuildUI()\n")
-	b.WriteString("\tw.SetContent(content)\n")
-	b.WriteString("\tcontent.Refresh()\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")
 	}
@@ -722,36 +721,7 @@ func irVarGoType(v *ir.Var) string {
 }
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	if v.Init == nil {
-		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
-	}
-
-	// The checker wraps implicit type coercions (e.g. string → date) in
-	// ir.Conversion; unwrap so the typed-literal fast paths in
-	// LowerTimeLiteralGo / LowerUnitLiteralGo see the underlying
-	// ir.Literal's Type.Kind. The actual mustParse* / time.Duration /
-	// unit-struct emission lives in the lang layer.
-	initExpr := v.Init
-	if conv, ok := initExpr.(*ir.Conversion); ok {
-		initExpr = conv.Operand
-	}
-	if lit, ok := initExpr.(*ir.Literal); ok {
-		if out, ok := golang.LowerTypedLiteralGo(lit, v.Type); ok {
-			return out
-		}
-		if out, ok := golang.LowerUnitLiteralGo(lit); ok {
-			return out
-		}
-	}
-
-	// For i18n.tr calls emitted by the $"..." lowering, use full expression
-	// evaluation via the GoIRContext to emit i18n.GetTranslator().Tr(...).
-	if call, isCall := v.Init.(*ir.Call); isCall && gc != nil &&
-		call.Func != nil && call.Func.Receiver == "i18n" {
-		return gc.EvalExpr(v.Init)
-	}
-
-	return golang.IRLiteralToGo(v.Init)
+	return golang.LowerVarInit(v, gc)
 }
 
 func irFuncReturnType(f *ir.Func) string {
