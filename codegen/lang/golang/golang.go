@@ -363,6 +363,16 @@ func PackageUsesI18n(pkg *ir.Package) bool {
 				return true
 			}
 		}
+		// Visual tree: i18n.tr calls live inside prop values of
+		// `text(value=$"...")`, `button(text=$"...")`, etc.
+		if slices.ContainsFunc(comp.Body, stmtUsesI18n) {
+			return true
+		}
+	}
+	for _, w := range pkg.Windows {
+		if slices.ContainsFunc(w.Body, stmtUsesI18n) {
+			return true
+		}
 	}
 	for _, v := range pkg.Vars {
 		for _, h := range v.Handlers {

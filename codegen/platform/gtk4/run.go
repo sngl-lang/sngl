@@ -23,5 +23,5 @@ func (g *Generator) Run(dir string, opts *ir.StructLit, args []string) error {
 	if !ok {
 		return fmt.Errorf("gtk4: language %q does not support direct execution", cfg.Lang)
 	}
-	return lr.RunDir(dir, cfg.GoVersion, args)
+	return lr.RunDir(dir, cfg.GoVersion, cfg.GoModExtra, args)
 }

@@ -227,7 +227,11 @@ type Runner interface {
 // execute generated code in a temp directory. Platforms delegate to this
 // interface so execution logic lives in the language, not each platform.
 type LangRunner interface {
-	RunDir(dir, goVersion string, args []string) error
+	// RunDir bootstraps a module in dir and runs the generated code.
+	// goVersion sets the toolchain version emitted in go.mod (Go lang).
+	// goModExtra is appended verbatim — typically a `replace …` directive
+	// pointing SNGL runtime imports at a local checkout when developing.
+	RunDir(dir, goVersion, goModExtra string, args []string) error
 }
 
 // Builder is optionally implemented by PlatformGenerators that have a build
