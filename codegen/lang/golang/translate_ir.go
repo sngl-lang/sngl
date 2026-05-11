@@ -43,8 +43,8 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		if n.Field == "length" {
 			return "len(" + operand + ")"
 		}
-		if id, ok := n.Operand.(*ir.Ident); ok && scope.MethodOnSelect != nil && scope.MethodOnSelect[id.Name] {
-			return operand + "." + ExportName(n.Field) + "()"
+		if id, ok := n.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
+			return operand + "." + n.Field
 		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
@@ -192,6 +192,17 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		argStrs := make([]string, len(n.Args))
 		for i, a := range n.Args {
 			argStrs[i] = translateIRExpr(a.Value, scope)
+		}
+		// Unresolved Func with a Receiver typically means a component- or
+		// struct-method call the checker didn't normalize (e.g.
+		// `c.greet()` where greet is defined inside component main).
+		// Recover the method name from the AST callee's SelectExpr so we
+		// emit `c.greet()` instead of `c()` — which would attempt to
+		// invoke the receiver itself.
+		if n.AST != nil {
+			if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
+				return translateIRExpr(n.Receiver, scope) + "." + sel.Field + "(" + strings.Join(argStrs, ", ") + ")"
+			}
 		}
 		return translateIRExpr(n.Receiver, scope) + "(" + strings.Join(argStrs, ", ") + ")"
 	}
@@ -416,7 +427,11 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 		}
 		return n.Name
 	case *ir.Select:
-		return translateIRMutTarget(n.Operand, scope) + "." + ExportName(n.Field)
+		operand := translateIRMutTarget(n.Operand, scope)
+		if id, ok := n.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
+			return operand + "." + n.Field
+		}
+		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
 		return translateIRMutTarget(n.Operand, scope) + "[" + translateIRExpr(n.Idx, scope) + "]"
 	default:

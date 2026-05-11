@@ -293,6 +293,15 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			}
 		}
 
+		// Component-scope funcs (including computeds) live as methods on
+		// Model — call via the model receiver. Without this, an implicit
+		// zero-arg call like `text(value=greeting)` lowered to a bare
+		// `greeting()` referencing an undefined package-level identifier.
+		_, kind := gc.Ctx.Resolve(fname)
+		if kind == codegen.NameComputed || kind == codegen.NameFunc {
+			return "m." + fname + "(" + strings.Join(args, ", ") + ")"
+		}
+
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 

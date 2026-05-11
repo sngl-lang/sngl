@@ -527,7 +527,11 @@ func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		retType = golang.IRTypeToGo(fn.Return)
 	}
 
-	goName := golang.ExportName(fn.Name)
+	// Emit user funcs as lowercase methods on Model so they line up with
+	// computed-method naming (template uses raw {{.Name}}). Tests then
+	// uniformly invoke `c.<name>(...)` against the Model in the same Go
+	// package without needing case translation.
+	goName := fn.Name
 	receiver := "m *Model"
 
 	localGC := gc
@@ -698,7 +702,14 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	}
 
 	varGoType := golang.IRTypeToGo(v.Type)
-	if lit, ok := v.Init.(*ir.Literal); ok {
+	// The checker wraps implicit type coercions (e.g. string → date) in
+	// ir.Conversion; unwrap to find the underlying literal so the
+	// time-aware paths below can fire.
+	initExpr := v.Init
+	if conv, ok := initExpr.(*ir.Conversion); ok {
+		initExpr = conv.Operand
+	}
+	if lit, ok := initExpr.(*ir.Literal); ok {
 		switch varGoType {
 		case "time.Duration":
 			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)

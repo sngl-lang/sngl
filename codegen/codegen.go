@@ -31,11 +31,12 @@ type ExprScope struct {
 	ContextVar     string                     // expression to supply for native context args (e.g., "r.Context()")
 	NeededHelpers  map[string]bool            // helper functions needed (e.g., "String")
 	NativeImports  map[string]map[string]bool // module path → set of imported names; populated as native calls are emitted
-	// MethodOnSelect names identifiers whose Select-field accesses must be
-	// emitted as method calls (`x.Y()`) rather than field accesses (`x.Y`).
-	// Used by test runners that bind a component-typed param to a value
-	// whose state is exposed via getters (e.g. fyne's Model).
-	MethodOnSelect map[string]bool
+	// RawFieldAccess names identifiers whose Select-field accesses bypass
+	// the usual Export-name capitalization — used by test runners that
+	// emit `_test.go` into the same Go package as the generated Model, so
+	// they can read and write unexported fields directly (`c.count` for
+	// reads, `c.count = …` for writes) instead of going through getters.
+	RawFieldAccess map[string]bool
 	// BundledNativePkgs marks native module paths that the platform will
 	// post-process through a JS bundler (e.g. esbuild for js:// imports).
 	// Calls to funcs whose NativePkg is in this set are emitted as

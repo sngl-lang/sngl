@@ -14,6 +14,7 @@ import (
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )

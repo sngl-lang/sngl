@@ -89,7 +89,11 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 	if err != nil {
 		return nil, fmt.Errorf("mktemp: %w", err)
 	}
-	defer os.RemoveAll(dir)
+	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
+		defer os.RemoveAll(dir)
+	} else {
+		fmt.Fprintln(os.Stderr, "sngl-fyne-test temp dir:", dir)
+	}
 
 	if err := writeGoMod(dir, goModExtra); err != nil {
 		return nil, err
@@ -139,7 +143,7 @@ func writeGoMod(dir, goModExtra string) error {
 
 go 1.23
 
-require fyne.io/fyne/v2 v2.5.0
+require fyne.io/fyne/v2 v2.7.3
 `
 	if goModExtra != "" {
 		mod += "\n" + goModExtra

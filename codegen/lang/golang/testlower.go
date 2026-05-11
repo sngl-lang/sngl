@@ -15,18 +15,24 @@ import (
 //
 // The caller is responsible for declaring a `newTestComponent()` helper
 // in the same file; the lowered body references `c := newTestComponent()`.
+//
+// Component-typed params (e.g. `c counter`) are marked for raw-field
+// access on the scope so reads and writes to component state lower as
+// direct unexported field access (`c.count`, `c.count = 1`) — valid
+// because the lowered test lives in the same Go package as the
+// generated Model.
 func LowerTestFunc(fn *ir.Func, suffix string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "func Test%s(t *testing.T) {\n", suffix)
 	b.WriteString("\tc := newTestComponent()\n")
 	scope := &codegen.ExprScope{
 		LocalVars:      map[string]bool{},
-		MethodOnSelect: map[string]bool{},
+		RawFieldAccess: map[string]bool{},
 	}
 	for _, p := range fn.Params {
 		scope.LocalVars[p.Name] = true
 		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			scope.MethodOnSelect[p.Name] = true
+			scope.RawFieldAccess[p.Name] = true
 		}
 	}
 	for _, s := range fn.Block {
@@ -38,13 +44,18 @@ func LowerTestFunc(fn *ir.Func, suffix string) string {
 	return b.String()
 }
 
+// lowerTestStmt translates one statement of a SNGL test body to Go.
+// `t.assert(expr)` becomes an `if !(expr)` failure check; every other
+// shape falls through to the generic Go mutation translator (assigns,
+// toggles, void method calls). That lets test bodies mutate component
+// state and call component methods, not just assert.
 func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 	if call, ok := s.(*ir.CallStmt); ok {
 		if line, ok := lowerTestAssert(call, scope); ok {
 			return []string{line}
 		}
 	}
-	return []string{fmt.Sprintf("// unsupported test stmt: %T", s)}
+	return translateIRMutation(s, scope)
 }
 
 func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {
