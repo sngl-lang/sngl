@@ -170,3 +170,126 @@ component main {
         divider(label="End of Showcase")
     }
 }
+
+// --- Tests ---------------------------------------------------------
+// Initial-state asserts work on every TestRunner (fyne Phase 2a only
+// supports the t.assert path). Mutation tests rely on `none`'s
+// interpreter.
+
+func testInitialCount(t Test, c main) {
+    t.assert(c.count == 0)
+}
+
+func testInitialName(t Test, c main) {
+    t.assert(c.name == "World")
+}
+
+func testInitialDarkMode(t Test, c main) {
+    t.assert(c.darkMode == false)
+}
+
+func testInitialModalDrawerClosed(t Test, c main) {
+    t.assert(c.showModal == false)
+    t.assert(c.showDrawer == false)
+}
+
+func testInitialSelectedTab(t Test, c main) {
+    t.assert(c.selectedTab == 0)
+}
+
+func testInitialSelectedRadio(t Test, c main) {
+    t.assert(c.selectedRadio == "medium")
+}
+
+func testInitialToggleOn(t Test, c main) {
+    t.assert(c.toggleOn == false)
+}
+
+func testInitialSelectedOption(t Test, c main) {
+    t.assert(c.selectedOption == "")
+}
+
+func testInitialNotes(t Test, c main) {
+    t.assert(c.notes == "")
+}
+
+func testInitialSliderVal(t Test, c main) {
+    t.assert(c.sliderVal == 0)
+}
+
+func testInitialAnimating(t Test, c main) {
+    t.assert(c.animating == true)
+}
+
+func testGreetingDefault(t Test, c main) {
+    t.assert(c.greeting() == "Hello, World!")
+}
+
+func testGreetingAfterRename(t Test, c main) {
+    c.name = "Alice"
+    t.assert(c.greeting() == "Hello, Alice!")
+}
+
+func testIncrement(t Test, c main) {
+    c.increment()
+    t.assert(c.count == 1)
+    c.increment()
+    c.increment()
+    t.assert(c.count == 3)
+}
+
+func testReset(t Test, c main) {
+    c.count = 42
+    c.name = "Bob"
+    c.reset()
+    t.assert(c.count == 0)
+    t.assert(c.name == "World")
+}
+
+func testDarkModeToggle(t Test, c main) {
+    c.darkMode = true
+    t.assert(c.darkMode == true)
+    c.darkMode!!
+    t.assert(c.darkMode == false)
+}
+
+func testModalOpen(t Test, c main) {
+    c.showModal = true
+    t.assert(c.showModal == true)
+}
+
+func testDrawerOpen(t Test, c main) {
+    c.showDrawer = true
+    t.assert(c.showDrawer == true)
+}
+
+func testTabSelection(t Test, c main) {
+    c.selectedTab = 2
+    t.assert(c.selectedTab == 2)
+}
+
+func testRadioSelection(t Test, c main) {
+    c.selectedRadio = "large"
+    t.assert(c.selectedRadio == "large")
+}
+
+func testToggleFlip(t Test, c main) {
+    c.toggleOn!!
+    t.assert(c.toggleOn == true)
+}
+
+func testNotesEdit(t Test, c main) {
+    c.notes = "remember the milk"
+    t.assert(c.notes == "remember the milk")
+}
+
+func testSliderRange(t Test, c main) {
+    c.sliderVal = 0.5
+    t.assert(c.sliderVal >= 0)
+    t.assert(c.sliderVal <= 1)
+}
+
+func testSelectFruit(t Test, c main) {
+    c.selectedOption = "Cherry"
+    t.assert(c.selectedOption == "Cherry")
+}
