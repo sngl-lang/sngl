@@ -347,9 +347,15 @@ func (u *UnitDef) IsExported() bool { return isExportedName(u.Name) }
 
 // UnitSuffix is a resolved suffix within a unit declaration.
 type UnitSuffix struct {
-	Name   string
-	Factor float64 // multiplier to base (1.0 for base suffix)
-	IsBase bool
+	Name     string
+	Factor   float64 // multiplier reducing this suffix into BaseName (1.0 for bases)
+	BaseName string  // the base suffix this one reduces to (== Name when this *is* a base)
+}
+
+// IsBase reports whether this suffix is itself a base of its unit
+// (i.e. has no `= factor` clause).
+func (s *UnitSuffix) IsBase() bool {
+	return s != nil && s.BaseName == s.Name
 }
 
 // Diagnostic is a structured error or warning with position.

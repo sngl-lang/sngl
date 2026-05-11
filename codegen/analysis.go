@@ -19,6 +19,7 @@ type CommonAnalysis struct {
 	Components     []*ir.Component
 	Structs        []*ir.StructDef
 	Enums          []*ir.EnumDef
+	Units          []*ir.UnitDef
 	Timers         []TimerInfo
 	NeedsToast     bool
 	Helpers        map[string]bool // needed helper functions (populated during codegen)
@@ -106,6 +107,10 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 
 	for _, e := range pkg.Enums {
 		a.Enums = append(a.Enums, e)
+	}
+
+	for _, u := range pkg.Units {
+		a.Units = append(a.Units, u)
 	}
 
 	for _, c := range pkg.Components {

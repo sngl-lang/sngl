@@ -322,6 +322,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("\treturn t\n}\n\n")
 	}
 
+	// Unit types (excluding the special-cased `duration`).
+	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
+
 	// Struct types
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", golang.ExportName(sd.Name))
@@ -782,36 +785,21 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
 	}
 
-	// Check var type for special handling (date/time/duration vars may have
-	// string literal inits that need runtime parsing). The checker wraps
-	// implicit type coercions (e.g. string → date) in ir.Conversion;
-	// unwrap so the time-aware fast paths still fire.
-	varGoType := golang.IRTypeToGo(v.Type)
+	// The checker wraps implicit type coercions (e.g. string → date) in
+	// ir.Conversion; unwrap so the typed-literal fast paths in
+	// LowerTimeLiteralGo / LowerUnitLiteralGo see the underlying
+	// ir.Literal's Type.Kind. The actual mustParse* / time.Duration /
+	// unit-struct emission lives in the lang layer.
 	initExpr := v.Init
 	if conv, ok := initExpr.(*ir.Conversion); ok {
 		initExpr = conv.Operand
 	}
 	if lit, ok := initExpr.(*ir.Literal); ok {
-		switch varGoType {
-		case "time.Duration":
-			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
-		case "time.Time":
-			// Determine which parser based on the var's ir.Type
-			if v.Type != nil {
-				switch v.Type.Kind {
-				case ir.TypeTime:
-					return fmt.Sprintf("mustParseTime(%q)", lit.Raw)
-				case ir.TypeDateTime:
-					return fmt.Sprintf("mustParseDateTime(%q)", lit.Raw)
-				}
-			}
-			return fmt.Sprintf("mustParseDate(%q)", lit.Raw)
+		if out, ok := golang.LowerTypedLiteralGo(lit, v.Type); ok {
+			return out
 		}
-
-		// Also check literal type for duration unit literals
-		litGoType := golang.IRTypeToGo(lit.Type)
-		if litGoType == "time.Duration" {
-			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
+		if out, ok := golang.LowerUnitLiteralGo(lit); ok {
+			return out
 		}
 	}
 

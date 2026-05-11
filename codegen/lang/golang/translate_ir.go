@@ -24,6 +24,9 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 	case *ir.Ident:
 		return translateIRIdent(n, scope)
 	case *ir.Binary:
+		if out, ok := translateMultiBaseUnitBinary(n, scope); ok {
+			return out
+		}
 		left := translateIRExpr(n.Left, scope)
 		right := translateIRExpr(n.Right, scope)
 		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
@@ -101,7 +104,12 @@ func translateIRLiteral(n *ir.Literal) string {
 		return "nil"
 	}
 	if n.Suffix != "" {
-		return fmt.Sprintf("%q", n.Raw+n.Suffix)
+		if out, ok := LowerUnitLiteralGo(n); ok {
+			return out
+		}
+		// Non-unit literal that carries a suffix (shouldn't normally
+		// happen) — fall back to a quoted "raw+suffix" string.
+		return fmt.Sprintf("%q", n.Raw)
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
@@ -111,6 +119,10 @@ func translateIRLiteral(n *ir.Literal) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "nil"
+		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+			if out, ok := LowerTimeLiteralGo(n); ok {
+				return out
+			}
 		}
 	}
 	return n.Raw
@@ -437,4 +449,65 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 	default:
 		return translateIRExpr(e, scope)
 	}
+}
+
+// translateMultiBaseUnitBinary handles binary ops whose result type is a
+// multi-base unit struct (e.g. `Measurement * 2`, `Measurement + Measurement`)
+// by expanding the operation component-wise over each base field. Returns
+// the lowered Go expression or ("", false) when the op doesn't involve a
+// multi-base unit operand.
+func translateMultiBaseUnitBinary(n *ir.Binary, scope *codegen.ExprScope) (string, bool) {
+	ud, ok := multiBaseUnitOperand(n.Left, n.Right)
+	if !ok {
+		return "", false
+	}
+	left := translateIRExpr(n.Left, scope)
+	right := translateIRExpr(n.Right, scope)
+	leftIsStruct := isMultiBaseUnitType(n.Left.ExprType())
+	rightIsStruct := isMultiBaseUnitType(n.Right.ExprType())
+	op := binaryOpStr(n.Op)
+
+	// Equality on two unit structs is fine via Go struct equality.
+	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+		return "(" + left + " " + op + " " + right + ")", true
+	}
+
+	bases := UnitBases(ud)
+	parts := make([]string, 0, len(bases))
+	for _, base := range bases {
+		field := ExportName(base.Name)
+		lhs := left + "." + field
+		rhs := right + "." + field
+		if !leftIsStruct {
+			lhs = left
+		}
+		if !rightIsStruct {
+			rhs = right
+		}
+		parts = append(parts, fmt.Sprintf("%s: %s %s %s", field, lhs, op, rhs))
+	}
+	return fmt.Sprintf("%s{%s}", ExportName(ud.Name), strings.Join(parts, ", ")), true
+}
+
+func multiBaseUnitOperand(l, r ir.Expr) (*ir.UnitDef, bool) {
+	if ud := unitDeclOf(l.ExprType()); ud != nil && ClassifyUnit(ud) == UnitMultiBase {
+		return ud, true
+	}
+	if ud := unitDeclOf(r.ExprType()); ud != nil && ClassifyUnit(ud) == UnitMultiBase {
+		return ud, true
+	}
+	return nil, false
+}
+
+func unitDeclOf(t *ir.Type) *ir.UnitDef {
+	if t == nil || t.Kind != ir.TypeUnit {
+		return nil
+	}
+	ud, _ := t.Decl.(*ir.UnitDef)
+	return ud
+}
+
+func isMultiBaseUnitType(t *ir.Type) bool {
+	ud := unitDeclOf(t)
+	return ud != nil && ClassifyUnit(ud) == UnitMultiBase
 }

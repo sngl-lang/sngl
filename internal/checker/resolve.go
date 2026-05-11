@@ -309,16 +309,21 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	// Stash factor lookups for suffixes defined earlier in this same unit so
 	// expressions like `s = 1000ms` resolve against `ms` before registration.
 	localFactors := map[string]float64{}
+	localBaseNames := map[string]string{}
 	for i, s := range u.Suffixes {
 		us := &ir.UnitSuffix{
-			Name:   s.Name,
-			Factor: 1.0,
-			IsBase: s.Factor == nil,
+			Name:     s.Name,
+			Factor:   1.0,
+			BaseName: s.Name,
 		}
 		if s.Factor != nil {
 			us.Factor = c.evalUnitFactorWithLocals(s.Factor, localFactors)
+			if base, ok := unitFactorBaseName(s.Factor, localBaseNames); ok {
+				us.BaseName = base
+			}
 		}
 		localFactors[s.Name] = us.Factor
+		localBaseNames[s.Name] = us.BaseName
 		suffixes[i] = us
 	}
 	return &ir.UnitDef{
@@ -326,6 +331,31 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 		Name:     u.Name,
 		Suffixes: suffixes,
 	}
+}
+
+// unitFactorBaseName walks a suffix's factor expression to find which base
+// suffix it ultimately reduces to. For `rem = 16em` where em is a base,
+// returns ("em", true). For `m = 60s` where s = 1000ms and ms is the base,
+// recurses through localBaseNames["s"] = "ms" and returns ("ms", true).
+// Returns ("", false) when no source unit literal is found.
+func unitFactorBaseName(e ast.Expr, localBaseNames map[string]string) (string, bool) {
+	switch n := e.(type) {
+	case *ast.UnitLiteral:
+		if base, ok := localBaseNames[n.Suffix]; ok {
+			return base, true
+		}
+		return n.Suffix, true
+	case *ast.BinaryExpr:
+		if base, ok := unitFactorBaseName(n.Left, localBaseNames); ok {
+			return base, true
+		}
+		return unitFactorBaseName(n.Right, localBaseNames)
+	case *ast.UnaryExpr:
+		return unitFactorBaseName(n.Operand, localBaseNames)
+	case *ast.ParenExpr:
+		return unitFactorBaseName(n.Inner, localBaseNames)
+	}
+	return "", false
 }
 
 func (c *checker) evalUnitFactorWithLocals(e ast.Expr, local map[string]float64) float64 {

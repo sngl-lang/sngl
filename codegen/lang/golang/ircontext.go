@@ -197,10 +197,17 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 		return "nil"
 	case ir.TypeColor:
 		return fmt.Sprintf("%q", n.Raw)
-	default:
-		if n.Suffix != "" {
-			return fmt.Sprintf("%q", n.Raw+n.Suffix)
+	case ir.TypeUnit:
+		if out, ok := LowerUnitLiteralGo(n); ok {
+			return out
 		}
+		return n.Raw
+	case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+		if out, ok := LowerTimeLiteralGo(n); ok {
+			return out
+		}
+		return fmt.Sprintf("%q", n.Raw)
+	default:
 		return n.Raw
 	}
 }
@@ -748,14 +755,12 @@ func IRTypeToGo(t *ir.Type) string {
 	case ir.TypeUnit:
 		if t.Decl != nil {
 			name := t.Decl.SymName()
-			switch name {
-			case "duration":
+			if name == "duration" {
 				return "time.Duration"
 			}
-			// Other units map to string (e.g., "12px")
-			return "string"
+			return ExportName(name)
 		}
-		return "string"
+		return "any"
 	case ir.TypeFunc:
 		if t.Sig != nil {
 			return irFuncSigToGo(t.Sig)
@@ -802,10 +807,14 @@ func IRLiteralToGo(e ir.Expr) string {
 		case ir.TypeColor:
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeUnit:
-			// Unit literals like "10px" / "1s" lower to a quoted Go
-			// string. Duration units are intercepted earlier in
-			// irVarInit (mustParseDuration); anything reaching here is a
-			// non-duration unit whose Go representation is `string`.
+			if out, ok := LowerUnitLiteralGo(n); ok {
+				return out
+			}
+			return n.Raw
+		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+			if out, ok := LowerTimeLiteralGo(n); ok {
+				return out
+			}
 			return fmt.Sprintf("%q", n.Raw)
 		default:
 			return n.Raw

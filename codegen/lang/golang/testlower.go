@@ -25,6 +25,9 @@ func LowerTestFunc(fn *ir.Func, suffix string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "func Test%s(t *testing.T) {\n", suffix)
 	b.WriteString("\tc := newTestComponent()\n")
+	// Tests that exercise pure literal arithmetic don't reference `c`;
+	// `_ = c` keeps the local valid under Go's unused-variable rule.
+	b.WriteString("\t_ = c\n")
 	scope := &codegen.ExprScope{
 		LocalVars:      map[string]bool{},
 		RawFieldAccess: map[string]bool{},

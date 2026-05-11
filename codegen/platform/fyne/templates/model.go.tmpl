@@ -50,6 +50,7 @@ func mustParseDateTime(s string) time.Time {
 	return t
 }
 {{end}}
+{{.UnitDecls}}
 {{- range .Structs}}
 type {{.Name}} struct {
 {{- range .Fields}}

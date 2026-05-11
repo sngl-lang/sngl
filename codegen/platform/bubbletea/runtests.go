@@ -149,7 +149,8 @@ require (
 func writeBubbleteaTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup) (string, error) {
 	var b bytes.Buffer
 	b.WriteString("package ui\n\n")
-	b.WriteString("import \"testing\"\n\n")
+	b.WriteString("import (\n\t\"testing\"\n\t\"time\"\n)\n\n")
+	b.WriteString("var _ = time.Duration(0)\n\n")
 
 	// bubbletea's Model is a value type (not a pointer), so the helper
 	// returns Model directly. Lowered tests bind `c` to this value and

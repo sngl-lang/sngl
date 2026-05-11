@@ -46,7 +46,7 @@ func ZeroExpr(t *Type) Expr {
 		suffix := ""
 		if ud != nil {
 			for _, s := range ud.Suffixes {
-				if s.IsBase {
+				if s.IsBase() {
 					suffix = s.Name
 					break
 				}

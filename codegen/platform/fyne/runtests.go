@@ -163,8 +163,10 @@ require fyne.io/fyne/v2 v2.7.3
 func writeTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup) (string, error) {
 	var b bytes.Buffer
 	b.WriteString("package ui\n\n")
-	b.WriteString("import \"testing\"\n\n")
-
+	b.WriteString("import (\n\t\"testing\"\n\t\"time\"\n)\n\n")
+	// Reference `time` so the import isn't flagged unused when a given
+	// test happens not to compare time.Duration values directly.
+	b.WriteString("var _ = time.Duration(0)\n\n")
 	b.WriteString("func newTestComponent() *Model { return New() }\n\n")
 
 	for _, tf := range group.Funcs {

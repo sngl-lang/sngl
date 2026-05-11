@@ -229,7 +229,7 @@ func (t *Type) IsSingleBaseUnit() bool {
 	}
 	bases := 0
 	for _, s := range ud.Suffixes {
-		if s.IsBase {
+		if s.IsBase() {
 			bases++
 		}
 	}

@@ -418,6 +418,11 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 		td.Imports[p] = true
 	}
 
+	// Units (excluding the special-cased `duration` which maps to
+	// time.Duration). Single-base units become `type X float64`,
+	// multi-base units become `type X struct { Base1, Base2 float64 }`.
+	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units)
+
 	// Structs
 	for _, sd := range info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
@@ -701,32 +706,21 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 		return golang.ZeroValueGo(golang.IRTypeToGo(v.Type))
 	}
 
-	varGoType := golang.IRTypeToGo(v.Type)
 	// The checker wraps implicit type coercions (e.g. string → date) in
-	// ir.Conversion; unwrap to find the underlying literal so the
-	// time-aware paths below can fire.
+	// ir.Conversion; unwrap so the typed-literal fast paths in
+	// LowerTimeLiteralGo / LowerUnitLiteralGo see the underlying
+	// ir.Literal's Type.Kind. The actual mustParse* / time.Duration /
+	// unit-struct emission lives in the lang layer.
 	initExpr := v.Init
 	if conv, ok := initExpr.(*ir.Conversion); ok {
 		initExpr = conv.Operand
 	}
 	if lit, ok := initExpr.(*ir.Literal); ok {
-		switch varGoType {
-		case "time.Duration":
-			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
-		case "time.Time":
-			if v.Type != nil {
-				switch v.Type.Kind {
-				case ir.TypeTime:
-					return fmt.Sprintf("mustParseTime(%q)", lit.Raw)
-				case ir.TypeDateTime:
-					return fmt.Sprintf("mustParseDateTime(%q)", lit.Raw)
-				}
-			}
-			return fmt.Sprintf("mustParseDate(%q)", lit.Raw)
+		if out, ok := golang.LowerTypedLiteralGo(lit, v.Type); ok {
+			return out
 		}
-		litGoType := golang.IRTypeToGo(lit.Type)
-		if litGoType == "time.Duration" {
-			return fmt.Sprintf("mustParseDuration(%q)", lit.Raw)
+		if out, ok := golang.LowerUnitLiteralGo(lit); ok {
+			return out
 		}
 	}
 

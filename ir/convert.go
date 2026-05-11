@@ -127,7 +127,7 @@ func (c *converter) convertUnitDef(u *UnitDef) *ast.UnitDef {
 	}
 	for _, s := range u.Suffixes {
 		us := &ast.UnitSuffix{Name: s.Name}
-		if !s.IsBase {
+		if !s.IsBase() {
 			us.Factor = &ast.LiteralExpr{
 				Kind: ast.LiteralFloat,
 				Raw:  formatFloat(s.Factor),

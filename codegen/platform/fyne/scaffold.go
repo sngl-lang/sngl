@@ -57,6 +57,7 @@ type templateData struct {
 	HasTimers  bool
 
 	Structs      []structData
+	UnitDecls    string // pre-rendered `type X float64 / struct {...}` decls
 	Binds        []bindData
 	Externs      []externData
 	Computeds    []computedData
