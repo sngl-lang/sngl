@@ -59,6 +59,12 @@ func Test.must(b bool) {}
 // until the test returns. Useful for asserting on locale-specific output.
 func Test.setLocale(loc string) {}
 
+// Pump the platform main loop until either the predicate returns true
+// or the timeout (in milliseconds) elapses. Used to gate assertions on
+// asynchronous reactivity (timers, debounced handlers). The predicate
+// is evaluated repeatedly between settle steps.
+func Test.wait(predicate func() bool, timeout_ms int) {}
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left

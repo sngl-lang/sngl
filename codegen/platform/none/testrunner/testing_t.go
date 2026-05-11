@@ -63,6 +63,63 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		}
 		return nil, nil
 
+	case "wait":
+		if len(args) != 2 {
+			return nil, fmt.Errorf("t.wait() requires 2 arguments")
+		}
+		predVal, err := env.Eval(args[0])
+		if err != nil {
+			return nil, err
+		}
+		lv, ok := predVal.(*lambdaValue)
+		if !ok {
+			return nil, fmt.Errorf("t.wait() first argument must be a function, got %T", predVal)
+		}
+		timeoutVal, err := env.Eval(args[1])
+		if err != nil {
+			return nil, err
+		}
+		timeoutMs := toInt(timeoutVal)
+		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+
+		var cv *componentValue
+		for _, v := range env.vars {
+			if c, ok := v.(*componentValue); ok {
+				cv = c
+				break
+			}
+		}
+
+		for {
+			// Predicate runs in its captured env so c reads observe in-place
+			// component-var updates from fireTimers.
+			out, callErr := lv.call(nil)
+			if callErr != nil {
+				return nil, callErr
+			}
+			if b, ok := out.(bool); ok && b {
+				return nil, nil
+			}
+			if cv == nil {
+				return nil, nil
+			}
+			if !time.Now().Before(deadline) {
+				return nil, nil
+			}
+			compEnv := cv.compEnv()
+			if err := fireTimers(tv.pkg, compEnv); err != nil {
+				return nil, err
+			}
+			for k := range cv.vars {
+				if v, ok := compEnv.vars[k]; ok {
+					cv.vars[k] = v
+					if !cv.testParams[k] {
+						cv.env.vars[k] = v
+					}
+				}
+			}
+		}
+
 	case "setLocale":
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.setLocale() requires 1 argument")

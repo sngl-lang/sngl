@@ -43,6 +43,9 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		if n.Field == "length" {
 			return "len(" + operand + ")"
 		}
+		if id, ok := n.Operand.(*ir.Ident); ok && scope.MethodOnSelect != nil && scope.MethodOnSelect[id.Name] {
+			return operand + "." + ExportName(n.Field) + "()"
+		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
 		operand := translateIRExpr(n.Operand, scope)
