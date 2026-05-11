@@ -886,9 +886,17 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	// Walk component body for nested declarations.
+	// Walk component body for nested declarations. Struct/enum/unit
+	// decls inside a component body are hoisted to package scope at the
+	// IR level (Go and other targets have no per-component type scope).
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
+		case *ast.StructDef:
+			c.registerStruct(s)
+		case *ast.EnumDef:
+			c.registerEnum(s)
+		case *ast.UnitDef:
+			c.registerUnit(s)
 		case *ast.ConstDecl:
 			for _, spec := range s.Specs {
 				typ := c.resolveType(spec.Type)

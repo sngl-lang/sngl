@@ -38,14 +38,16 @@ type Model struct {
 	forBox1 *fyne.Container
 }
 
-// New creates a Model with default values.
+// New creates a Model with default values. Binds are initialized
+// sequentially (not via a struct literal) so later init expressions can
+// reference earlier fields via `m.<name>` — e.g. an interpolated
+// `$"Hello, {nm}!"` reading `m.nm`.
 func New() *Model {
-	m := &Model{
-		source:     "package main",
-		file:       ast.File{},
-		parseError: "",
-		parse:      func(_ string) {},
-	}
+	m := &Model{}
+	m.source = "package main"
+	m.file = ast.File{}
+	m.parseError = ""
+	m.parse = func(_ string) {}
 	return m
 }
 

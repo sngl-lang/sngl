@@ -72,28 +72,47 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[golang.SnglI18nImportPath] = true
 	}
 
-	// Build a GoIRContext so irVarInit can evaluate i18n.tr init calls.
-	exprCtx := ctx.ExprCtx
+	// Build GoIRContexts: one rooted at the main component (or package
+	// scope when no main exists) for package-level vars, plus per-component
+	// contexts for vars declared inside non-main components — so init
+	// expressions that reference sibling vars (e.g. `greeting = $"Hello,
+	// {nm}!"` reading `nm`) resolve through Component.Vars and emit `m.nm`
+	// rather than a bare `nm` identifier.
+	baseCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
+		baseCtx = baseCtx.ForComponent(main)
 	}
-	gc := golang.NewIRContext(exprCtx)
+	gc := golang.NewIRContext(baseCtx)
 
 	// Collect vars from package + every component. The render methods for
 	// non-main components already reference state as `m.<var>` (see
 	// renderIRComponentMethod's compGC.ForComponent), so those fields must
 	// be declared on Model. Limiting to main left non-main components
 	// referencing undeclared fields, breaking compile.
-	allVars := pkg.Vars
-	for _, comp := range pkg.Components {
-		allVars = append(allVars, comp.Vars...)
+	type taggedVar struct {
+		v    *ir.Var
+		comp *ir.Component // nil for package-level
 	}
-	for _, v := range allVars {
+	var allVars []taggedVar
+	for _, v := range pkg.Vars {
+		allVars = append(allVars, taggedVar{v: v})
+	}
+	for _, comp := range pkg.Components {
+		for _, v := range comp.Vars {
+			allVars = append(allVars, taggedVar{v: v, comp: comp})
+		}
+	}
+	for _, tv := range allVars {
+		v := tv.v
 		if v.IsConst {
 			continue
 		}
+		varGC := gc
+		if tv.comp != nil {
+			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v, gc)
+		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
 			info.goImports["time"] = true
 		}

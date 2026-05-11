@@ -90,13 +90,15 @@ type Model struct {
 {{- end}}
 }
 
-// New creates a Model with default values.
+// New creates a Model with default values. Binds are initialized
+// sequentially (not via a struct literal) so later init expressions can
+// reference earlier fields via `m.<name>` — e.g. an interpolated
+// `$"Hello, {nm}!"` reading `m.nm`.
 func New() *Model {
-	m := &Model{
+	m := &Model{}
 {{- range .Binds}}
-		{{.Name}}: {{.InitVal}},
+	m.{{.Name}} = {{.InitVal}}
 {{- end}}
-	}
 	return m
 }
 
