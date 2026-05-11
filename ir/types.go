@@ -386,6 +386,11 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
+	// map<K, V> → map<K, V'> where V is assignable to V'. Key must
+	// match exactly (Go maps have no covariance on the key side).
+	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
+		return t.Elems[0].Equal(target.Elems[0]) && t.Elems[1].IsAssignableTo(target.Elems[1])
+	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
