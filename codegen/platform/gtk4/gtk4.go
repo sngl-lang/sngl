@@ -65,7 +65,14 @@ func (g *Generator) Description() string {
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
-func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
+func (g *Generator) Capabilities() lower.Caps {
+	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
+	// mutation of a tracked Var. The gtk4 renderer translates those
+	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne
+	// uses, just emitting C setter invocations instead of Go method
+	// calls.
+	return lower.Caps{NoReactivity: true}
+}
 
 // Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
 // It lazy-loads the GIR file on first call. Returns nil if the GIR file is

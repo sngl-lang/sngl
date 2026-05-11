@@ -304,7 +304,10 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		emitGTK4Main(&callbacksBuf, c.cfg)
 	}
 
-	return []byte(modelBuf.String()), []byte(callbacksBuf.String()), nil
+	// Resolve /*SNGLREACT:i*/ placeholders recorded during the visual
+	// walk once every node's bindings have been registered.
+	modelSrc = []byte(vc.resolveReactiveTokens(modelBuf.String()))
+	return modelSrc, []byte(callbacksBuf.String()), nil
 }
 
 func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {

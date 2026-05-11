@@ -39,6 +39,63 @@ type viewContext struct {
 	updaters    []widgetUpdater
 	propScope   map[string]ir.Expr // for inline stdlib expansion
 	depTracker  *codegen.DepTracker
+
+	// nodeBindings maps each NodeID (assigned by internal/lower's
+	// passReactivity) → reactive-prop name → C setter info. Populated
+	// during renderGtkWidget's reactive-prop loop; consulted by
+	// resolveReactiveTokens after the full walk to substitute
+	// /*SNGLREACT:i*/ placeholders with `C.<setter>(widget, c_value)`.
+	nodeBindings map[string]map[string]gtkBinding
+	lateReactive []gtkLateReactiveAssign
+
+	// outerNodeID is the NodeID assigned by passReactivity to the
+	// outer SNGL stdlib node currently being inline-expanded (e.g.
+	// the `text` in `text(value=…)`). The inner GtkLabel's reactive
+	// props are registered under this id too, mapping outer SNGL prop
+	// names → inner C setters.
+	outerNodeID string
+}
+
+// gtkBinding describes how to push a new value of one reactive prop
+// onto its underlying GTK widget at runtime.
+type gtkBinding struct {
+	Setter      string // C function, e.g. "gtk_label_set_text"
+	Field       string // Model field name, e.g. "lbl15"
+	CType       string // widget C type for the cast, e.g. "GtkLabel"
+	ValueIRType *ir.Type
+}
+
+type gtkLateReactiveAssign struct {
+	NodeID  string
+	Prop    string
+	ValueIR ir.Expr // captured for re-eval to a C-bridged expression at resolve time
+}
+
+func (vc *viewContext) recordNodeBinding(nodeID, prop string, b gtkBinding) {
+	if nodeID == "" {
+		return
+	}
+	if vc.nodeBindings == nil {
+		vc.nodeBindings = make(map[string]map[string]gtkBinding)
+	}
+	bag, ok := vc.nodeBindings[nodeID]
+	if !ok {
+		bag = make(map[string]gtkBinding)
+		vc.nodeBindings[nodeID] = bag
+	}
+	bag[prop] = b
+}
+
+func (vc *viewContext) nodeBinding(nodeID, prop string) (gtkBinding, bool) {
+	if vc.nodeBindings == nil {
+		return gtkBinding{}, false
+	}
+	bag, ok := vc.nodeBindings[nodeID]
+	if !ok {
+		return gtkBinding{}, false
+	}
+	b, ok := bag[prop]
+	return b, ok
 }
 
 // isUserComponent reports whether comp is defined in the user's source package
@@ -52,6 +109,62 @@ func (vc *viewContext) isUserComponent(comp *ir.Component) bool {
 
 func (vc *viewContext) line(format string, args ...any) {
 	fmt.Fprintf(vc.buf, "%s"+format+"\n", append([]any{strings.Repeat("\t", vc.indent)}, args...)...)
+}
+
+// emitStmt renders one IR statement. For lowering-injected reactive
+// Assigns (Target = Select{IsElementRef nID, propName}) the renderer
+// records the assignment and emits a /*SNGLREACT:i*/ placeholder;
+// resolveReactiveTokens substitutes the recorded C setter call once
+// the full visual-tree walk has populated nodeBindings.
+func (vc *viewContext) emitStmt(stmt ir.Stmt) {
+	if a, ok := stmt.(*ir.Assign); ok {
+		if vc.recordLateReactive(a) {
+			return
+		}
+	}
+	for _, line := range vc.gc.EvalStmt(stmt) {
+		vc.line("%s", line)
+	}
+}
+
+func (vc *viewContext) recordLateReactive(a *ir.Assign) bool {
+	sel, ok := a.Target.(*ir.Select)
+	if !ok {
+		return false
+	}
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok || !id.IsElementRef {
+		return false
+	}
+	idx := len(vc.lateReactive)
+	vc.lateReactive = append(vc.lateReactive, gtkLateReactiveAssign{
+		NodeID:  id.Name,
+		Prop:    sel.Field,
+		ValueIR: a.Value,
+	})
+	vc.line("/*SNGLREACT:%d*/", idx)
+	return true
+}
+
+// resolveReactiveTokens replaces every /*SNGLREACT:i*/ placeholder
+// emitted by recordLateReactive with a `C.<setter>(widget, c_value)`
+// call drawn from nodeBindings. Run after the full visual-tree walk
+// so handler bodies referencing widgets registered later in the tree
+// still get the correct setter.
+func (vc *viewContext) resolveReactiveTokens(src string) string {
+	for i, late := range vc.lateReactive {
+		token := fmt.Sprintf("/*SNGLREACT:%d*/", i)
+		var replacement string
+		if b, ok := vc.nodeBinding(late.NodeID, late.Prop); ok {
+			rhs := vc.irExprToC(late.ValueIR, b.ValueIRType)
+			// Cast through unsafe.Pointer to the widget's concrete C
+			// type — most setter signatures want the typed pointer
+			// (e.g. gtk_label_set_text wants *C.GtkLabel).
+			replacement = fmt.Sprintf("C.%s((*C.%s)(unsafe.Pointer(m.%s)), %s)", b.Setter, b.CType, b.Field, rhs)
+		}
+		src = strings.Replace(src, token, replacement, 1)
+	}
+	return src
 }
 
 // --- Statement rendering ---
@@ -144,7 +257,10 @@ func (vc *viewContext) renderGtkWidget(n *ir.NodeInst, info *gir.ClassInfo, resu
 		vc.connectSignal(fieldName, signal, &h, n)
 	}
 
-	// Register reactive updaters for props that reference model state.
+	// Register reactive bindings for props that reference model state.
+	// passReactivity injects Assign{Target: Select{IsElementRef nID,
+	// Field: propName}} after every mutation; the binding tells the
+	// resolver which C setter to emit.
 	for _, arg := range n.Props {
 		setter := gtkSetter(info.CType, arg.Name)
 		if setter == "" {
@@ -154,10 +270,26 @@ func (vc *viewContext) renderGtkWidget(n *ir.NodeInst, info *gir.ClassInfo, resu
 		if len(deps) == 0 {
 			continue
 		}
-		updName := fmt.Sprintf("update%s%s", golang.ExportName(fieldName), golang.ExportName(arg.Name))
-		rhs := vc.irExprToC(arg.Value, nil)
-		body := fmt.Sprintf("C.%s((*C.GtkWidget)(unsafe.Pointer(m.%s)), %s)", setter, fieldName, rhs)
-		vc.updaters = append(vc.updaters, widgetUpdater{name: updName, body: body, deps: deps})
+		binding := gtkBinding{
+			Setter:      setter,
+			Field:       fieldName,
+			CType:       info.CType,
+			ValueIRType: arg.Value.ExprType(),
+		}
+		// Inner-node id + C prop name (e.g. GtkLabel.label).
+		vc.recordNodeBinding(n.ID, arg.Name, binding)
+		// When this widget is inside a stdlib inline expansion (e.g.
+		// `text(value=…)` → `GtkLabel(label=value)`), also alias the
+		// binding under the outer SNGL node's id + outer prop name so
+		// passReactivity-injected Assigns (which reference the outer
+		// id) resolve correctly.
+		if vc.outerNodeID != "" {
+			if id, ok := arg.Value.(*ir.Ident); ok {
+				if _, inScope := vc.propScope[id.Name]; inScope {
+					vc.recordNodeBinding(vc.outerNodeID, id.Name, binding)
+				}
+			}
+		}
 	}
 
 	// Add children.
@@ -198,9 +330,7 @@ func (vc *viewContext) connectSignal(fieldName, signal string, h *ir.EventHandle
 	}
 	if h.Func != nil {
 		for _, stmt := range h.Func.Block {
-			for _, line := range vc.gc.EvalStmt(stmt) {
-				vc.line("%s", line)
-			}
+			vc.emitStmt(stmt)
 		}
 	}
 	vc.indent--
@@ -327,15 +457,20 @@ func (vc *viewContext) renderStdlibLabel(n *ir.NodeInst, resultVar string) {
 	}
 	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
 
-	// Reactive updater if value has deps.
-	if valExpr != nil {
-		deps := vc.exprDeps(valExpr)
-		if len(deps) > 0 {
-			updName := fmt.Sprintf("update%sValue", golang.ExportName(fieldName))
-			rhs := vc.irExprToC(valExpr, &ir.Type{Kind: ir.TypeString})
-			body := fmt.Sprintf("C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.%s)), %s)", fieldName, rhs)
-			vc.updaters = append(vc.updaters, widgetUpdater{name: updName, body: body, deps: deps})
+	// Reactive binding for resolveReactiveTokens to consume. text()
+	// in SNGL exposes the textual content as `value`; the LabelLike
+	// stdlib (used by badge, etc.) uses `value` too — register under
+	// both `value` and `label` so passReactivity-injected Assigns
+	// reference either name and still resolve.
+	if valExpr != nil && len(vc.exprDeps(valExpr)) > 0 {
+		binding := gtkBinding{
+			Setter:      "gtk_label_set_text",
+			Field:       fieldName,
+			CType:       info.CType,
+			ValueIRType: &ir.Type{Kind: ir.TypeString},
 		}
+		vc.recordNodeBinding(n.ID, "value", binding)
+		vc.recordNodeBinding(n.ID, "label", binding)
 	}
 }
 
@@ -356,6 +491,21 @@ func (vc *viewContext) renderStdlibEntry(n *ir.NodeInst, resultVar string) {
 	if ph := codegen.NodeProp(n, "placeholder"); ph != nil {
 		phStr := vc.irExprToC(ph, &ir.Type{Kind: ir.TypeString})
 		vc.line("C.gtk_entry_set_placeholder_text(m.%s, %s)", fieldName, phStr)
+	}
+
+	// Value prop: init the entry text and register a binding so
+	// passReactivity-injected updates fire gtk_editable_set_text.
+	if valExpr := codegen.NodeProp(n, "value"); valExpr != nil {
+		valStr := vc.irExprToC(valExpr, &ir.Type{Kind: ir.TypeString})
+		vc.line("C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.%s)), %s)", fieldName, valStr)
+		if len(vc.exprDeps(valExpr)) > 0 {
+			vc.recordNodeBinding(n.ID, "value", gtkBinding{
+				Setter:      "gtk_editable_set_text",
+				Field:       fieldName,
+				CType:       "GtkEditable",
+				ValueIRType: &ir.Type{Kind: ir.TypeString},
+			})
+		}
 	}
 
 	// @input event handler: synthesize event variable from entry text.
@@ -450,6 +600,14 @@ func (vc *viewContext) renderStdlibInline(n *ir.NodeInst, resultVar string) {
 	savedChildren := n.Component.Body
 	vc.propScope = newScope
 
+	// Preserve the outer NodeID so the inner GtkWidget registers its
+	// reactive bindings under it too — passReactivity injected
+	// Assigns reference the outer SNGL node's ID and prop names.
+	savedOuter := vc.outerNodeID
+	if n.ID != "" {
+		vc.outerNodeID = n.ID
+	}
+
 	// Walk the component body. We need a fake NodeInst for each body stmt
 	// to thread the slot children. Simpler: just render each body stmt
 	// with the slot children attached via a temporary mechanism.
@@ -458,6 +616,7 @@ func (vc *viewContext) renderStdlibInline(n *ir.NodeInst, resultVar string) {
 		vc.renderStmtWithSlot(stmt, resultVar, n.Children)
 	}
 
+	vc.outerNodeID = savedOuter
 	vc.propScope = savedScope
 }
 
