@@ -187,7 +187,7 @@ func parseGoTestJSON(stdoutRaw, stderrRaw []byte, group testharness.TestGroup) [
 	var out []*codegen.TestResult
 	logs := map[string][]string{}
 	sawTestEvent := false
-	for _, line := range bytes.Split(stdoutRaw, []byte("\n")) {
+	for line := range bytes.SplitSeq(stdoutRaw, []byte("\n")) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
 		}
