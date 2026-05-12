@@ -6,7 +6,14 @@ package {{.Package}}
 #include <stdlib.h>
 
 extern void snglGoDispatch(int idx);
-static void sngl_cb(gpointer data) {
+// g_signal_connect callbacks are invoked with the signal's signature
+// (self, ...args, user_data). For the simple signals SNGL connects to
+// — clicked / changed / toggled / activated — that's (instance,
+// user_data); declare sngl_cb to match so the idx pointer arrives
+// unmangled. Without the correct arity GTK would pass `instance` into
+// `data` and snglGoDispatch would fire a wildly wrong callback.
+static void sngl_cb(gpointer instance, gpointer data) {
+    (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
 static void sngl_connect(void* widget, const char* signal, int idx) {
