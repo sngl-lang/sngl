@@ -992,10 +992,10 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 		if method != "" {
 			// Element-ref event invocation: c.btn.@click() → look up the
 			// handler stored at key "@click" on the rendered element map.
-			if strings.HasPrefix(method, "@") {
+			if after, ok := strings.CutPrefix(method, "@"); ok {
 				if m, ok := recv.(map[string]any); ok {
 					if h, ok := m[method].(*ir.Func); ok {
-						return env.runEventHandler(h, call.Args, strings.TrimPrefix(method, "@"))
+						return env.runEventHandler(h, call.Args, after)
 					}
 				}
 				return nil, nil

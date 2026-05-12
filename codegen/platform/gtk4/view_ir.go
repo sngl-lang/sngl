@@ -94,7 +94,7 @@ type viewContext struct {
 	// collide on a single `m.lblN` field. While set, recordNodeBinding
 	// is bypassed; widget info is collected into localWidgets instead
 	// for the caller (renderFor) to materialize per-id ref structs.
-	localMode bool
+	localMode    bool
 	localWidgets []localWidgetInfo
 	localCount   int
 }
@@ -105,24 +105,24 @@ type viewContext struct {
 // the field-mode path uses — keeping the type/getter info out of
 // renderFor and in step with the rest of view_ir.go.
 type localWidgetInfo struct {
-	NodeID    string
-	VarName   string             // Go local var of widget pointer
-	CType     string             // widget C type, e.g. "GtkLabel"
-	Props     map[string]gtkBinding // prop name → binding (Getter/Setter/etc.)
+	NodeID  string
+	VarName string                // Go local var of widget pointer
+	CType   string                // widget C type, e.g. "GtkLabel"
+	Props   map[string]gtkBinding // prop name → binding (Getter/Setter/etc.)
 }
 
 // forBlockInfo carries everything needed to emit one refreshForN
 // method post-walk: the iter expression, the per-iteration body
 // (Go source), and the (id → listField, refType) bookkeeping.
 type forBlockInfo struct {
-	Idx          int
-	MethodName   string // e.g. "refreshFor0"
-	ParentField  string
-	IterExpr     ir.Expr
-	KeyVar       string // Go loop key var, "" when not used
-	ValueVar     string // Go loop value var (the `item` in `for item = items`)
-	Body         string // pre-rendered Go for the loop body (per iteration)
-	IDs          []forIDInfo
+	Idx         int
+	MethodName  string // e.g. "refreshFor0"
+	ParentField string
+	IterExpr    ir.Expr
+	KeyVar      string // Go loop key var, "" when not used
+	ValueVar    string // Go loop value var (the `item` in `for item = items`)
+	Body        string // pre-rendered Go for the loop body (per iteration)
+	IDs         []forIDInfo
 }
 
 type forIDInfo struct {
@@ -437,9 +437,7 @@ func (vc *viewContext) renderIf(n *ir.If, _ string) {
 	prevIndent := vc.indent
 	prevCondIDs := vc.conditionalIDs
 	vc.conditionalIDs = make(map[string]conditionalRef)
-	for id, r := range prevCondIDs {
-		vc.conditionalIDs[id] = r
-	}
+	maps.Copy(vc.conditionalIDs, prevCondIDs)
 
 	var body strings.Builder
 	vc.buf = &body
@@ -540,9 +538,7 @@ func (vc *viewContext) renderFor(n *ir.For, _ string) {
 			orderedIDs = append(orderedIDs, lw.NodeID)
 		}
 		g.Vars = append(g.Vars, lw.VarName)
-		for k, v := range lw.Props {
-			g.Props[k] = v
-		}
+		maps.Copy(g.Props, lw.Props)
 	}
 	// Append the per-id `m.<id>List = append(...)` lines to the body.
 	for _, id := range orderedIDs {

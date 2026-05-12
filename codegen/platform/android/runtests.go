@@ -356,14 +356,14 @@ func parseAndroidTestResults(dir string, group testharness.TestGroup) ([]*codege
 }
 
 type junitTestSuite struct {
-	XMLName xml.Name       `xml:"testsuite"`
+	XMLName xml.Name        `xml:"testsuite"`
 	Cases   []junitTestCase `xml:"testcase"`
 }
 
 type junitTestCase struct {
-	Name    string         `xml:"name,attr"`
-	Failure *junitFailure  `xml:"failure"`
-	Error   *junitFailure  `xml:"error"`
+	Name    string        `xml:"name,attr"`
+	Failure *junitFailure `xml:"failure"`
+	Error   *junitFailure `xml:"error"`
 }
 
 type junitFailure struct {
