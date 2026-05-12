@@ -77,7 +77,23 @@ func pkgToPath(pkg string) string {
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
-	src := emitIR(info, ctx, cfg)
+	src := emitIR(info, ctx, cfg, false)
+	return src, nil
+}
+
+// CompileTestIR is the test-runner variant of CompileIR. It emits the
+// same Compose source plus a hoisted `MainScreenState` class that
+// owns every reactive var as `var x by mutableStateOf(...)`. The
+// composable becomes `MainScreen(state: MainScreenState = remember
+// { MainScreenState() })`; in-tree references to those vars route
+// through `state.<name>`. Tests construct a state instance directly
+// (`val state = MainScreenState(); composeTestRule.setContent
+// { MainScreen(state) }`) and assert / mutate from outside the
+// composition.
+func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
+	cfg = cfg.withDefaults()
+	info := analyzeIR(ctx)
+	src := emitIR(info, ctx, cfg, true)
 	return src, nil
 }
 
@@ -158,12 +174,25 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	return info
 }
 
-func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
+func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) []byte {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	kc := kotlin.NewIRContext(exprCtx)
+	if testMode {
+		// Route every reactive var through the hoisted state object
+		// so handler bodies, computed expressions, and view-tree
+		// reads all produce `state.<name>` references.
+		rewrites := map[string]string{}
+		for _, bind := range info.binds {
+			rewrites[bind.name] = "state." + bind.name
+		}
+		for _, comp := range info.computeds {
+			rewrites[comp.name] = "state." + comp.name
+		}
+		kc.IdentRewrites = rewrites
+	}
 
 	var b strings.Builder
 
@@ -181,6 +210,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 	b.WriteString("import androidx.compose.runtime.*\n")
 	b.WriteString("import androidx.compose.ui.Alignment\n")
 	b.WriteString("import androidx.compose.ui.Modifier\n")
+	b.WriteString("import androidx.compose.ui.platform.testTag\n")
 	b.WriteString("import androidx.compose.ui.draw.alpha\n")
 	b.WriteString("import androidx.compose.ui.draw.clip\n")
 	b.WriteString("import androidx.compose.ui.graphics.Color\n")
@@ -232,6 +262,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 		b.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 	}
 
+	// Stdlib InputEvent / ChangeEvent payload — emitInputHandlerCall
+	// in compose_ir.go materializes the handler's event param as
+	// `val e = SnglInputEvent(newValue)` so user code reading
+	// `e.value` resolves without flowing the stdlib struct through
+	// user output.
+	b.WriteString("data class SnglInputEvent(val value: String)\n\n")
+
 	// Enum classes
 	for _, ed := range info.Enums {
 		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))
@@ -245,35 +282,72 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 		b.WriteString("}\n\n")
 	}
 
+	// State hoisting (test mode): emit a MainScreenState class
+	// with the binds as `var x by mutableStateOf(...)`. The
+	// composable takes one as a parameter so tests can hold a
+	// reference for assertions/mutations from outside the
+	// composition.
+	if testMode {
+		b.WriteString("class MainScreenState {\n")
+		for _, bind := range info.binds {
+			initVal := bind.init
+			if bind.initEx != nil {
+				initVal = kc.EvalExpr(bind.initEx)
+			}
+			if bind.isList {
+				elemType := listElementTypeKt(bind.ktType)
+				elems := initVal
+				if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
+					elems = elems[len("listOf(") : len(elems)-1]
+				}
+				if elems != "" {
+					fmt.Fprintf(&b, "    val %s = mutableStateListOf(%s)\n", bind.name, elems)
+				} else {
+					fmt.Fprintf(&b, "    val %s = mutableStateListOf<%s>()\n", bind.name, elemType)
+				}
+			} else {
+				fmt.Fprintf(&b, "    var %s by mutableStateOf(%s)\n", bind.name, initVal)
+			}
+		}
+		b.WriteString("}\n\n")
+	}
+
 	// Main composable
 	b.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
 	b.WriteString("@Composable\n")
-	b.WriteString("fun MainScreen() {\n")
+	if testMode {
+		b.WriteString("fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {\n")
+	} else {
+		b.WriteString("fun MainScreen() {\n")
+	}
 
 	if info.NeedsToast {
 		b.WriteString("    val context = LocalContext.current\n")
 	}
 
-	// State declarations
-	for _, bind := range info.binds {
-		initVal := bind.init
-		if bind.initEx != nil {
-			// Non-literal init (e.g. i18n.tr call): evaluate via the full IR context.
-			initVal = kc.EvalExpr(bind.initEx)
-		}
-		if bind.isList {
-			elemType := listElementTypeKt(bind.ktType)
-			elems := initVal
-			if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
-				elems = elems[len("listOf(") : len(elems)-1]
+	// State declarations (skipped in test mode — state lives on
+	// the hoisted MainScreenState class).
+	if !testMode {
+		for _, bind := range info.binds {
+			initVal := bind.init
+			if bind.initEx != nil {
+				// Non-literal init (e.g. i18n.tr call): evaluate via the full IR context.
+				initVal = kc.EvalExpr(bind.initEx)
 			}
-			if elems != "" {
-				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
+			if bind.isList {
+				elemType := listElementTypeKt(bind.ktType)
+				elems := initVal
+				if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
+					elems = elems[len("listOf(") : len(elems)-1]
+				}
+				if elems != "" {
+					fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
+				} else {
+					fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
+				}
 			} else {
-				fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
+				fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
 			}
-		} else {
-			fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
 		}
 	}
 
@@ -290,7 +364,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte
 		if body == "" {
 			body = `""`
 		}
-		fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
+		if testMode {
+			// In test mode the IdentRewrites map already covers
+			// reads of `<name>` → `state.<name>` inside `body`.
+			// Computed values are derived inside the composable,
+			// not on the state object, so tests should drive them
+			// via inputs rather than read them directly.
+			fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
+		} else {
+			fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
+		}
 	}
 
 	if len(info.binds) > 0 || len(info.computeds) > 0 {

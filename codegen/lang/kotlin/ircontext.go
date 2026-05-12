@@ -13,6 +13,10 @@ import (
 type KtIRContext struct {
 	Ctx      *codegen.ExprCtx
 	EventVar string // what "event" maps to in current handler scope
+	// IdentRewrites remaps bare identifiers regardless of scope kind.
+	// Used by the Android test-mode emit to route every component-level
+	// var through a hoisted state object (`count` → `state.count`).
+	IdentRewrites map[string]string
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
@@ -206,6 +210,11 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return fmt.Sprintf("%q", n.Member)
 	}
 	name := n.Name
+	if kc.IdentRewrites != nil {
+		if rewritten, ok := kc.IdentRewrites[name]; ok {
+			return rewritten
+		}
+	}
 	if n.Type != nil && n.Type.Kind == ir.TypeEnum {
 		return fmt.Sprintf("%q", name)
 	}
@@ -481,6 +490,11 @@ func (kc *KtIRContext) evalCallArgs(args []ir.CallArg) []string {
 func (kc *KtIRContext) evalMutTarget(e ir.Expr) string {
 	switch n := e.(type) {
 	case *ir.Ident:
+		if kc.IdentRewrites != nil {
+			if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
+				return rewritten
+			}
+		}
 		return n.Name
 	case *ir.Select:
 		operand := kc.evalMutTarget(n.Operand)
@@ -497,16 +511,18 @@ func (kc *KtIRContext) evalMutTarget(e ir.Expr) string {
 // WithLocal returns a new context with an additional local variable.
 func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 	return &KtIRContext{
-		Ctx:      kc.Ctx.WithLocal(name),
-		EventVar: kc.EventVar,
+		Ctx:           kc.Ctx.WithLocal(name),
+		EventVar:      kc.EventVar,
+		IdentRewrites: kc.IdentRewrites,
 	}
 }
 
 // ForComponent returns a new context scoped to a component.
 func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 	return &KtIRContext{
-		Ctx:      kc.Ctx.ForComponent(comp),
-		EventVar: kc.EventVar,
+		Ctx:           kc.Ctx.ForComponent(comp),
+		EventVar:      kc.EventVar,
+		IdentRewrites: kc.IdentRewrites,
 	}
 }
 

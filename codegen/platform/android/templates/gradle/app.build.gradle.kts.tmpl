@@ -29,6 +29,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+{{- if .TestMode}}
+
+    // Robolectric needs real Android resources packaged into the
+    // unit-test classpath; otherwise Compose tests fail at
+    // Resources.NotFound on the first inflate.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+{{- end}}
 }
 
 dependencies {
@@ -41,5 +50,16 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 {{- if .HasGoLib}}
     implementation(files("golib.aar"))
+{{- end}}
+{{- if .TestMode}}
+
+    // Compose UI tests run via Robolectric on the JVM — no emulator
+    // needed. ui-test-manifest is debug-scoped because it injects a
+    // ComponentActivity into the test manifest; ui-test-junit4 brings
+    // createComposeRule() and the finder/asserter DSL.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 {{- end}}
 }

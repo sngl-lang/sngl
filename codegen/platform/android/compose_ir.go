@@ -103,6 +103,35 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 	cc.line("Text(\"[unknown: %s]\")", n.Name)
 }
 
+// emitInputHandlerCall lowers one @input/@change handler attached to
+// an input/entry composable. The handler body runs inside Compose's
+// onValueChange lambda with the new text bound to `newValueVar`; the
+// handler's event param (if any) is materialized as a tiny data
+// holder so `e.value` reads return the same Kotlin string. Handlers
+// with no event param (e.g. `@input { count += 1 }`) drop the alias.
+func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
+	h := codegen.NodeHandler(n, eventName)
+	if h == nil || h.Func == nil {
+		return
+	}
+	// Each handler body runs in its own block so two handlers with
+	// the same event-param name (e.g. both `@input(e)` and
+	// `@change(e)`) don't collide on a single Kotlin scope.
+	cc.line("run {")
+	cc.indent++
+	if len(h.Func.Params) > 0 {
+		param := h.Func.Params[0]
+		cc.line("val %s = SnglInputEvent(%s)", param.Name, newValueVar)
+	}
+	for _, stmt := range h.Func.Block {
+		for _, line := range cc.kc.EvalStmt(stmt) {
+			cc.line("%s", line)
+		}
+	}
+	cc.indent--
+	cc.line("}")
+}
+
 func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(cc.ctx.Pkg.Components, comp)
 }
@@ -140,7 +169,16 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 
 	case "text":
 		content := cc.resolveContent(n)
-		cc.line("Text(text = %s, %s)", content, cc.textStyle(n))
+		// Text takes a `modifier` param even though our style helper
+		// folds visual styling into TextStyle; the modifier carries
+		// the testTag, which is the only thing finders rely on.
+		mod := cc.buildModifier(n)
+		ts := cc.textStyle(n)
+		args := []string{"text = " + content, mod}
+		if ts != "" {
+			args = append(args, ts)
+		}
+		cc.line("Text(%s)", strings.Join(args, ", "))
 
 	case "button":
 		text := cc.resolveTextProp(n)
@@ -164,35 +202,37 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		}
 
 	case "input":
-		bindTarget := ""
-		if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
-			if len(h.Func.Block) > 0 {
-				if assign, ok := h.Func.Block[0].(*ir.Assign); ok {
-					if ident, ok := assign.Target.(*ir.Ident); ok {
-						bindTarget = ident.Name
-					}
-				}
-			}
+		// Resolve `value=...` for the controlled-input expression.
+		valueExpr := "\"\""
+		if v := codegen.NodeProp(n, "value"); v != nil {
+			valueExpr = cc.kc.EvalExpr(v)
 		}
 		placeholder := ""
 		if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
 			placeholder = s
 		}
-		if bindTarget != "" {
-			mod := cc.buildModifierRaw(n)
-			cc.line("OutlinedTextField(")
-			cc.indent++
-			cc.line("value = %s,", bindTarget)
-			cc.line("onValueChange = { %s = it },", bindTarget)
-			if placeholder != "" {
-				cc.line("label = { Text(%q) },", placeholder)
-			}
-			cc.line("modifier = %s", mod)
-			cc.indent--
-			cc.line(")")
-		} else {
-			cc.line("OutlinedTextField(value = \"\", onValueChange = {}, %s)", style)
+		// Collect @input and @change handlers — Compose has no
+		// commit event distinct from per-keystroke change, so both
+		// fire on onValueChange. The synthetic event is built per
+		// handler using its first param's name, aliased to a
+		// data-class holder so `e.value` resolves naturally.
+		mod := cc.buildModifierRaw(n)
+		cc.line("OutlinedTextField(")
+		cc.indent++
+		cc.line("value = %s,", valueExpr)
+		cc.line("onValueChange = { newValue ->")
+		cc.indent++
+		emitInputHandlerCall(cc, n, "input", "newValue")
+		emitInputHandlerCall(cc, n, "change", "newValue")
+		emitInputHandlerCall(cc, n, "changed", "newValue")
+		cc.indent--
+		cc.line("},")
+		if placeholder != "" {
+			cc.line("label = { Text(%q) },", placeholder)
 		}
+		cc.line("modifier = %s", mod)
+		cc.indent--
+		cc.line(")")
 
 	case "textarea":
 		cc.line("OutlinedTextField(value = \"\", onValueChange = {}, %s, minLines = 3)", style)
@@ -377,14 +417,15 @@ func (cc *irComposeContext) resolveTextProp(n *ir.NodeInst) string {
 }
 
 // buildModifierRaw returns just the modifier expression (e.g., "Modifier.padding(16.dp)")
-// without the "modifier = " prefix.
+// without the "modifier = " prefix. A user-authored #id (not the
+// synthetic __nN ids from passReactivity) attaches a `.testTag("<id>")`
+// so Compose UI tests can locate the node via `onNodeWithTag`.
 func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
-	styleFields := codegen.NodeStyleFields(n)
-	if styleFields == nil {
-		return "Modifier"
-	}
 	parts := []string{"Modifier"}
-	for prop, expr := range styleFields {
+	if id := userTestTag(n); id != "" {
+		parts = append(parts, fmt.Sprintf("testTag(%q)", id))
+	}
+	for prop, expr := range codegen.NodeStyleFields(n) {
 		if mod := composeModifier(prop, cc.kc.EvalExpr(expr)); mod != "" {
 			parts = append(parts, mod)
 		}
@@ -393,17 +434,21 @@ func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
 }
 
 func (cc *irComposeContext) buildModifier(n *ir.NodeInst) string {
-	styleFields := codegen.NodeStyleFields(n)
-	if styleFields == nil {
-		return "modifier = Modifier"
+	return "modifier = " + cc.buildModifierRaw(n)
+}
+
+// userTestTag returns n.ID when it's a user-authored #id and worth
+// surfacing as a Compose testTag. Synthetic __nN ids assigned by
+// passReactivity are skipped — they aren't addressable from test
+// source anyway.
+func userTestTag(n *ir.NodeInst) string {
+	if n == nil || n.ID == "" {
+		return ""
 	}
-	parts := []string{"Modifier"}
-	for prop, expr := range styleFields {
-		if mod := composeModifier(prop, cc.kc.EvalExpr(expr)); mod != "" {
-			parts = append(parts, mod)
-		}
+	if strings.HasPrefix(n.ID, "__n") {
+		return ""
 	}
-	return "modifier = " + strings.Join(parts, ".")
+	return n.ID
 }
 
 func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {

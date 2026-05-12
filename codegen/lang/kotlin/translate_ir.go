@@ -161,6 +161,11 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	if scope.IdentRewrites != nil {
+		if rewritten, ok := scope.IdentRewrites[name]; ok {
+			return rewritten
+		}
+	}
 	if scope.LocalVars[name] && scope.Renames != nil {
 		if renamed, ok := scope.Renames[name]; ok {
 			return renamed
@@ -435,6 +440,11 @@ func translateIRForKt(n *ir.For, scope *codegen.ExprScope) []string {
 func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 	switch n := e.(type) {
 	case *ir.Ident:
+		if scope.IdentRewrites != nil {
+			if rewritten, ok := scope.IdentRewrites[n.Name]; ok {
+				return rewritten
+			}
+		}
 		if scope.LocalVars[n.Name] && scope.Renames != nil {
 			if renamed, ok := scope.Renames[n.Name]; ok {
 				return renamed

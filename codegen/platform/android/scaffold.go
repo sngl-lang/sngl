@@ -27,6 +27,10 @@ type templateData struct {
 	// MainActivity.kt.tmpl emits I18n.init(this) in onCreate so the runtime
 	// is initialised before Compose content is set.
 	HasI18n bool
+	// TestMode is true when generating the project for the test
+	// runner. Adds Robolectric + Compose UI test deps and the
+	// testOptions block to app/build.gradle.kts.
+	TestMode bool
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -88,6 +92,44 @@ func scaffoldFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
 		}
 	}
 
+	return files
+}
+
+// scaffoldTestFiles is the test-runner variant of scaffoldFiles —
+// produces the same Gradle Android project plus the test-mode tweaks
+// (Robolectric + Compose UI Test deps, testOptions block).
+// Per-group test sources are written separately by the runner under
+// app/src/test/kotlin/.
+func scaffoldTestFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
+	data := newTemplateData(cfg)
+	data.HasI18n = hasI18n
+	data.Gradle = true
+	data.TestMode = true
+	pkgPath := pkgToPath(cfg.Package)
+
+	files := codegen.RenderTemplates(templateFS, "templates", data)
+	for _, f := range files {
+		switch {
+		case f.Name == "MainActivity.kt":
+			f.Name = "app/src/main/java/" + pkgPath + "/MainActivity.kt"
+		case f.Name == "Theme.kt":
+			f.Name = "app/src/main/java/" + pkgPath + "/ui/theme/Theme.kt"
+		case f.Name == "AndroidManifest.xml":
+			f.Name = "app/src/main/" + f.Name
+		case strings.HasPrefix(f.Name, "res/"):
+			f.Name = "app/src/main/" + f.Name
+		case f.Name == "gradle/app.build.gradle.kts":
+			f.Name = "app/build.gradle.kts"
+		case f.Name == "gradle/build.gradle.kts":
+			f.Name = "build.gradle.kts"
+		case f.Name == "gradle/settings.gradle.kts":
+			f.Name = "settings.gradle.kts"
+		case f.Name == "gradle/gradle.properties":
+			f.Name = "gradle.properties"
+		case f.Name == "gradle/gradlew":
+			f.Name = "gradlew"
+		}
+	}
 	return files
 }
 
