@@ -169,7 +169,7 @@ func writeBubbleteaTestFile(dir string, origPkg *ir.Package, group testharness.T
 			continue
 		}
 		suffix := strings.TrimPrefix(fn.Name, "test")
-		b.WriteString(golang.LowerTestFunc(fn, suffix))
+		b.WriteString(golang.LowerTestFunc(fn, suffix, nil))
 		b.WriteString("\n")
 	}
 

@@ -44,7 +44,7 @@ func testCountStartsZero(t Test, c box) {
 		t.Fatal("test func not found in pkg.Funcs")
 	}
 
-	out := LowerTestFunc(fn, "counterTest")
+	out := LowerTestFunc(fn, "counterTest", nil)
 	if !strings.Contains(out, "func TestcounterTest(t *testing.T)") {
 		t.Errorf("missing Go test func header in:\n%s", out)
 	}

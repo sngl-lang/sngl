@@ -182,7 +182,7 @@ func writeTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup)
 		}
 		// Strip the leading "test" so the Go test name is `TestFooBar`.
 		suffix := strings.TrimPrefix(fn.Name, "test")
-		b.WriteString(golang.LowerTestFunc(fn, suffix))
+		b.WriteString(golang.LowerTestFunc(fn, suffix, nil))
 		b.WriteString("\n")
 	}
 

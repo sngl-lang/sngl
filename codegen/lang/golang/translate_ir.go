@@ -47,7 +47,33 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 			return "len(" + operand + ")"
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
+			if scope.MethodFields != nil && scope.MethodFields[n.Field] {
+				return operand + "." + n.Field + "()"
+			}
 			return operand + "." + n.Field
+		}
+		// Test-scope property read on an id'd child node:
+		// `c.<id>.<prop>` → `c.<id><Prop>()`. Platforms emit one
+		// getter method per (id, prop) reactive binding; the test
+		// runner consumes them to read widget state. The trigger is
+		// the outer Select's Operand being a Select on a
+		// RawFieldAccess Ident — i.e. `c.<id>` after testlower set
+		// RawFieldAccess for `c`.
+		if inner, ok := n.Operand.(*ir.Select); ok {
+			if id, ok := inner.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
+				return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
+			}
+		}
+		// Test-scope list-ref prop read: `c.<id>[idx].<prop>` →
+		// `c.<id>()[idx].<Prop>()`. Used when <id> sits inside a
+		// `for` loop; gtk4 surfaces the per-iteration widgets as
+		// a `[]*<id>Ref` returned by the `<id>()` method.
+		if idxExpr, ok := n.Operand.(*ir.Index); ok {
+			if inner, ok := idxExpr.Operand.(*ir.Select); ok {
+				if id, ok := inner.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] && scope.MethodFields != nil && scope.MethodFields[inner.Field] {
+					return fmt.Sprintf("%s.%s()[%s].%s()", id.Name, inner.Field, translateIRExpr(idxExpr.Idx, scope), ExportName(n.Field))
+				}
+			}
 		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
@@ -352,6 +378,22 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 	}
 	switch n := s.(type) {
 	case *ir.Assign:
+		// Test-scope writes to `c.<field>` must go through SetField so the
+		// platform's doRefresh fires; direct field assignment skips
+		// reactivity injection.
+		if sel, ok := n.Target.(*ir.Select); ok {
+			if id, ok := sel.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
+				setter := fmt.Sprintf("%s.Set%s", id.Name, ExportName(sel.Field))
+				value := translateIRExpr(n.Value, scope)
+				if n.Op == ast.AssignSet {
+					return []string{setter + "(" + value + ")"}
+				}
+				// Compound op (e.g. +=): expand to setter(getter() <op> value).
+				op := strings.TrimSuffix(assignOpStr(n.Op), "=")
+				get := fmt.Sprintf("%s.%s", id.Name, sel.Field)
+				return []string{setter + "(" + get + " " + op + " " + value + ")"}
+			}
+		}
 		target := translateIRMutTarget(n.Target, scope)
 		value := translateIRExpr(n.Value, scope)
 		op := assignOpStr(n.Op)

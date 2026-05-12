@@ -15,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -67,6 +68,10 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		if hasErr || compPkg == nil {
 			continue
 		}
+		caps := g.Capabilities().Merge(lang.Capabilities())
+		if err := lower.Lower(compPkg, caps, lower.Options{}); err != nil {
+			return nil, fmt.Errorf("gtk4 lower %q: %w", group.Component, err)
+		}
 		resp, err := g.Generate(&codegen.Request{
 			Pkg:  compPkg,
 			Lang: lang,
@@ -80,7 +85,8 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 
 		// IR func lookup uses the *original* pkg because Promote drops
 		// *ast.FuncDef decls; the test funcs live on pkg.Funcs only.
-		grpResults, err := runGtk4TestGroup(pkg, group, resp.Files, cfg.GoModExtra)
+		methodFields := testharness.CollectConditionalIDs(compPkg)
+		grpResults, err := runGtk4TestGroup(pkg, group, resp.Files, cfg.GoModExtra, methodFields)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +95,7 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 	return results, nil
 }
 
-func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile, goModExtra string) ([]*codegen.TestResult, error) {
+func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile, goModExtra string, methodFields map[string]bool) ([]*codegen.TestResult, error) {
 	dir, err := os.MkdirTemp("", "sngl-gtk4-test-")
 	if err != nil {
 		return nil, fmt.Errorf("mktemp: %w", err)
@@ -113,7 +119,7 @@ func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 			return nil, fmt.Errorf("write %s: %w", out, err)
 		}
 	}
-	if _, err := writeGtk4TestFile(dir, origPkg, group); err != nil {
+	if _, err := writeGtk4TestFile(dir, origPkg, group, methodFields); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +159,7 @@ func writeGtk4GoMod(dir, goModExtra string) error {
 	return nil
 }
 
-func writeGtk4TestFile(dir string, origPkg *ir.Package, group testharness.TestGroup) (string, error) {
+func writeGtk4TestFile(dir string, origPkg *ir.Package, group testharness.TestGroup, methodFields map[string]bool) (string, error) {
 	// Go forbids cgo in *_test.go files, so the GTK bootstrap lives
 	// in a sibling test_helpers.go that's compiled into the package
 	// proper. The _test.go file only contains pure-Go test funcs.
@@ -185,6 +191,14 @@ func newTestComponent() *Model {
 	m.BuildUI(app)
 	return m
 }
+
+// Stdlib event payload structs — surfaced for test bodies that
+// construct InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
+// The main codegen never references them so they don't appear in
+// model.go; declaring them here keeps the test source self-contained.
+type InputEvent struct{ Value string }
+type ChangeEvent struct{ Value string }
+type SubmitEvent struct{ Value string }
 `
 	if err := os.WriteFile(filepath.Join(dir, "test_helpers.go"), []byte(helpers), 0644); err != nil {
 		return "", fmt.Errorf("write test helpers: %w", err)
@@ -207,7 +221,7 @@ func newTestComponent() *Model {
 			continue
 		}
 		suffix := strings.TrimPrefix(fn.Name, "test")
-		b.WriteString(golang.LowerTestFunc(fn, suffix))
+		b.WriteString(golang.LowerTestFunc(fn, suffix, methodFields))
 		b.WriteString("\n")
 	}
 

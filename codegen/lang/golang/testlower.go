@@ -22,7 +22,7 @@ import (
 // direct unexported field access (`c.count`, `c.count = 1`) — valid
 // because the lowered test lives in the same Go package as the
 // generated Model.
-func LowerTestFunc(fn *ir.Func, suffix string) string {
+func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "func Test%s(t *testing.T) {\n", suffix)
 	b.WriteString("\tc := newTestComponent()\n")
@@ -32,6 +32,7 @@ func LowerTestFunc(fn *ir.Func, suffix string) string {
 	scope := &codegen.ExprScope{
 		LocalVars:      map[string]bool{},
 		RawFieldAccess: map[string]bool{},
+		MethodFields:   methodFields,
 	}
 	for _, p := range fn.Params {
 		scope.LocalVars[p.Name] = true
@@ -100,7 +101,11 @@ func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, boo
 		return "", false
 	}
 	methodName := innerSel.Field + ExportName(event)
-	return fmt.Sprintf("%s.%s()", recvIdent.Name, methodName), true
+	args := make([]string, len(c.Args))
+	for i, a := range c.Args {
+		args[i] = translateIRExpr(a.Value, scope)
+	}
+	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
 }
 
 func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {

@@ -62,10 +62,17 @@ func Promote(doc *ast.Document, name string) *ast.Document {
 		})
 	}
 
+	// Pos must be non-zero so StmtBlock.IsDefined() returns true and
+	// the checker walks the body. Convert'd ASTs drop position info;
+	// any synthetic non-zero line works.
+	synthPos := comp.Pos
+	if !synthPos.IsSet() {
+		synthPos = ast.Pos{Line: 1}
+	}
 	stmts = append(stmts, &ast.VisualNode{
-		Pos:    comp.Pos,
+		Pos:    synthPos,
 		Target: &ast.IdentExpr{Name: "window"},
-		Block:  ast.StmtBlock{Stmts: windowBody},
+		Block:  ast.StmtBlock{Pos: synthPos, Stmts: windowBody},
 	})
 
 	return &ast.Document{Stmts: stmts}

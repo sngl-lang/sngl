@@ -37,6 +37,18 @@ type ExprScope struct {
 	// they can read and write unexported fields directly (`c.count` for
 	// reads, `c.count = …` for writes) instead of going through getters.
 	RawFieldAccess map[string]bool
+	// MethodFields names identifiers whose bare `recv.<field>` Select
+	// access should lower to a method call `recv.<field>()` instead
+	// of a raw field read. Used by test runners for #id refs that
+	// platform codegen surfaces as methods (e.g. gtk4's nilable
+	// conditional/loop refs).
+	MethodFields map[string]bool
+	// IdentRewrites remaps bare identifiers regardless of scope
+	// (LocalVars / ModelFields). Applied first in identifier
+	// translation. Used by the Android test path to route every
+	// component-level var through a hoisted state object
+	// (`count` → `state.count`).
+	IdentRewrites map[string]string
 	// BundledNativePkgs marks native module paths that the platform will
 	// post-process through a JS bundler (e.g. esbuild for js:// imports).
 	// Calls to funcs whose NativePkg is in this set are emitted as
