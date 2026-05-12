@@ -54,6 +54,34 @@ type viewContext struct {
 	// props are registered under this id too, mapping outer SNGL prop
 	// names → inner C setters.
 	outerNodeID string
+
+	// eventInvokers collects (id, sngl-event, field, gtk-signal, cType)
+	// tuples for every signal connected during the walk. After emit
+	// we generate one method per tuple: `func (m *Model) <id><Event>()`
+	// that fires the GTK signal — used by the Go test runner to drive
+	// `c.<id>.@<event>()` test syntax through the real bridge.
+	eventInvokers []gtkEventInvoker
+}
+
+type gtkEventInvoker struct {
+	IDLabel    string // SNGL #id (must be user-set; synthetic __n* ids skipped)
+	SnglEvent  string // SNGL event name, e.g. "click"
+	FieldName  string // Model widget field, e.g. "btn3"
+	GTKSignal  string // GTK signal name, e.g. "clicked"
+	WidgetType string // C type for the gpointer cast, e.g. "GtkButton"
+}
+
+// userNodeID returns n.ID when it looks like a user-authored #id
+// rather than a synthetic passReactivity id ("__nN"). Empty return
+// means "no addressable id".
+func userNodeID(n *ir.NodeInst) string {
+	if n == nil {
+		return ""
+	}
+	if n.ID == "" || strings.HasPrefix(n.ID, "__n") {
+		return ""
+	}
+	return n.ID
 }
 
 // gtkBinding describes how to push a new value of one reactive prop
@@ -320,6 +348,26 @@ func (vc *viewContext) buildCtorArgs(n *ir.NodeInst, info *gir.ClassInfo) []stri
 // synthLines are emitted inside the callback closure before the handler body;
 // use them to synthesize event variables (e.g. the input text from a GtkEntry).
 func (vc *viewContext) connectSignal(fieldName, signal string, h *ir.EventHandler, n *ir.NodeInst, synthLines ...string) {
+	// Record an invoker for user-id'd nodes so tests can drive
+	// `c.<id>.@<event>()` through the real GTK signal bridge. Skip
+	// passReactivity's synthetic __nN ids — those aren't reachable
+	// from test syntax.
+	if id := userNodeID(n); id != "" && h != nil {
+		cType := ""
+		for _, wf := range vc.fields {
+			if wf.name == fieldName {
+				cType = strings.TrimPrefix(strings.TrimPrefix(wf.goType, "*"), "C.")
+				break
+			}
+		}
+		vc.eventInvokers = append(vc.eventInvokers, gtkEventInvoker{
+			IDLabel:    id,
+			SnglEvent:  h.Name,
+			FieldName:  fieldName,
+			GTKSignal:  signal,
+			WidgetType: cType,
+		})
+	}
 	vc.line("{")
 	vc.indent++
 	vc.line("_idx := len(snglCallbacks)")

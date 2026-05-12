@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -60,11 +61,46 @@ func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 		if line, ok := lowerTestAssert(call, scope); ok {
 			return []string{line}
 		}
+		if line, ok := lowerEventTrigger(call, scope); ok {
+			return []string{line}
+		}
 		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
 	return translateIRMutation(s, scope)
+}
+
+// lowerEventTrigger matches the IR shape produced by an SNGL test body
+// line like `c.inc.@click()` — a CallStmt whose AST callee is a chain
+// of SelectExprs ending in a field that starts with "@". Lowers to
+// `<receiver>.<id><Event>()`, which platform codegen (gtk4 today)
+// surfaces as a method on *Model that fires the matching widget
+// signal / event so the test exercises the real bridge.
+func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {
+	c := call.Call
+	if c == nil || c.AST == nil {
+		return "", false
+	}
+	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	if !ok || outerSel.Kind != ast.SelectEvent {
+		return "", false
+	}
+	// outerSel.Operand is `c.inc` — another SelectExpr Operand:Ident{c},Field:"inc".
+	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	recvIdent, ok := innerSel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return "", false
+	}
+	event := outerSel.Field
+	if event == "" {
+		return "", false
+	}
+	methodName := innerSel.Field + ExportName(event)
+	return fmt.Sprintf("%s.%s()", recvIdent.Name, methodName), true
 }
 
 func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {

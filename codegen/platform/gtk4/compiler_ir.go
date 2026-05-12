@@ -297,6 +297,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	// --- Phase 5: Append dynamic code to model.go ---
 	emitBuildUI(&modelBuf, &buildBuf)
 	emitUpdaters(&modelBuf, updaters)
+	emitEventInvokers(&modelBuf, vc.eventInvokers)
 
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
@@ -456,6 +457,29 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder) {
 	b.WriteString("\tC.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), content)\n")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
+}
+
+// emitEventInvokers emits one Model method per (#id, @event) pair the
+// visual walk connected via sngl_connect. Each method fires the GTK
+// signal so the platform's test runner can drive
+// `c.<id>.@<event>()` syntax through the real signal trampoline +
+// Go-callback bridge — catching wiring bugs (e.g. callback arity
+// mismatches in sngl_cb) that handler-rerun shims would miss.
+func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
+	seen := map[string]bool{}
+	for _, inv := range invokers {
+		methodName := inv.IDLabel + golang.ExportName(inv.SnglEvent)
+		if seen[methodName] {
+			continue // duplicate id+event — keep the first
+		}
+		seen[methodName] = true
+		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
+			methodName, inv.GTKSignal, inv.IDLabel)
+		fmt.Fprintf(b, "func (m *Model) %s() {\n", methodName)
+		fmt.Fprintf(b, "\tC.g_signal_emit_by_name(C.gpointer(unsafe.Pointer(m.%s)), C.CString(%q))\n",
+			inv.FieldName, inv.GTKSignal)
+		b.WriteString("}\n\n")
+	}
 }
 
 func emitUpdaters(b *strings.Builder, updaters []widgetUpdater) {

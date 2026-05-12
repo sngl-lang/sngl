@@ -46,8 +46,15 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		return nil, nil
 	}
 
-	// Generate once for the whole package; per-test temp module copies
-	// the same files and writes its own _test.go.
+	// Generate once for the whole package. Test fixtures whose
+	// component-under-test is the package's `main` component render
+	// fully; fixtures that target a non-main component currently
+	// produce empty widget trees because Windows() needs main or an
+	// explicit `window` decl. Promote+re-check would solve this but
+	// trips a Convert→re-parse loss of type-conversion semantics
+	// (`var birthday date = "2000-01-01"` re-parses as a raw call to
+	// `date` instead of an ir.Conversion). Stick with the simpler
+	// path until that round-trip is fixed.
 	resp, err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
@@ -135,11 +142,46 @@ func writeGtk4GoMod(dir, goModExtra string) error {
 }
 
 func writeGtk4TestFile(dir string, origPkg *ir.Package, group testharness.TestGroup) (string, error) {
+	// Go forbids cgo in *_test.go files, so the GTK bootstrap lives
+	// in a sibling test_helpers.go that's compiled into the package
+	// proper. The _test.go file only contains pure-Go test funcs.
+	helpers := `package main
+
+/*
+#include <gtk/gtk.h>
+*/
+import "C"
+
+import (
+	"sync"
+	"unsafe"
+)
+
+var gtkInit sync.Once
+
+// newTestComponent boots GTK in headless mode (gtk_init pulls the
+// display from $DISPLAY / $WAYLAND_DISPLAY), constructs a non-unique
+// GtkApplication, registers it without running the main loop, and
+// invokes BuildUI to materialize the widget tree. Tests then drive
+// the model via direct field access and fire UI events through the
+// per-id invoker methods emitted by emitEventInvokers.
+func newTestComponent() *Model {
+	gtkInit.Do(func() { C.gtk_init() })
+	app := C.gtk_application_new(C.CString("dev.sngl.test"), C.G_APPLICATION_NON_UNIQUE)
+	C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, nil)
+	m := New()
+	m.BuildUI(app)
+	return m
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "test_helpers.go"), []byte(helpers), 0644); err != nil {
+		return "", fmt.Errorf("write test helpers: %w", err)
+	}
+
 	var b bytes.Buffer
 	b.WriteString("package main\n\n")
 	b.WriteString("import (\n\t\"testing\"\n\t\"time\"\n)\n\n")
 	b.WriteString("var _ = time.Duration(0)\n\n")
-	b.WriteString("func newTestComponent() *Model { return New() }\n\n")
 
 	for _, tf := range group.Funcs {
 		var fn *ir.Func
