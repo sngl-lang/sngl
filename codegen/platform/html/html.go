@@ -1570,7 +1570,12 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 		}
 	}
 
-	value := g.evalStaticString(nodeProps(n), "value")
+	props := nodeProps(n)
+	valueExpr := props["value"]
+	var staticValue string
+	if valueExpr != nil && !codegen.IRIsReactive(valueExpr) {
+		staticValue = g.evalStaticString(props, "value")
+	}
 
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(b, "%s<input id=%q", indent, id)
@@ -1586,25 +1591,25 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	if placeholder != "" {
 		fmt.Fprintf(b, " placeholder=\"%s\"", html.EscapeString(placeholder))
 	}
-	fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(value))
+	if staticValue != "" {
+		fmt.Fprintf(b, " value=\"%s\"", html.EscapeString(staticValue))
+	}
 
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
 	b.WriteString(" />\n")
 
-	// Add value sync updater if the input is bound to state via an
-	// assignment in its input handler.
-	if inputEvt := codegen.NodeHandler(n, "input"); inputEvt != nil && inputEvt.Func != nil && len(inputEvt.Func.Block) > 0 {
-		if target, ok := extractSetTarget(inputEvt.Func.Block[0]); ok && !strings.HasPrefix(id, "__n") {
-			jsExpr := g.lang.TranslateIRExpr(target, g.scope)
-			root := codegen.FindRootIdent(target)
-			name := fmt.Sprintf("$u_%s_val", id[1:])
-			g.updates = append(g.updates, updateFunc{
-				funcName: name,
-				body:     fmt.Sprintf("%s.value = %s;", id, jsExpr),
-				deps:     map[string]bool{root: true},
-			})
-		}
+	// Reactive value prop: register an initOnly updater so the DOM gets
+	// seeded from initial state. NoReactivity lowering handles subsequent
+	// mutations by splicing updater Assigns after each write to the dep.
+	if valueExpr != nil && codegen.IRIsReactive(valueExpr) {
+		jsVal := g.exprToJS(valueExpr)
+		g.updates = append(g.updates, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_value", id[1:]),
+			body:     fmt.Sprintf("%s.value = %s;", id, jsVal),
+			deps:     g.exprDeps(valueExpr),
+			initOnly: loweredID(id),
+		})
 	}
 
 	// Input event handler
