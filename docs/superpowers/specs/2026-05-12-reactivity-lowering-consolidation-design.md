@@ -371,6 +371,43 @@ it localizes to that step.
   that the reactivity-bearing fixtures evaluate to the same final state
   regardless of which platform emits them.
 
+## Next steps
+
+Follow-up work to take on after this spec lands, each its own design /
+plan cycle:
+
+1. **Two-way binding syntax (`:value=name`).** Prefixed-prop sugar that
+   expands during parsing or checking into an `Assign #node.value = name`
+   plus an `@input` (or platform-equivalent) handler that writes back into
+   `name`. Both halves then ride the standard `passReactivity` pipeline
+   landed here. Replaces the implicit `@input → value` inference removed in
+   commit `18208e8`.
+
+2. **Keyed `for`-loop diffing.** The slot abstraction in this spec tears
+   down and rebuilds all children when an iter dep changes — same as
+   today's `updateFor<N>` machinery. Add a key-extractor expression (e.g.
+   `for item = items key item.id { ... }`) and extend `__renderSlot<N>`
+   to diff the prior `__slot<N>` entries against the new iter by key,
+   emitting `lower.removeChild` / `lower.appendChild` only for the
+   actually-changed positions. Property updates on surviving children
+   continue to flow through `passReactivity`'s prop path.
+
+3. **Audit other lowering passes for platform under-use.** android and
+   bubbletea currently return `Caps{}` and handle ternaries, toggles,
+   refs, enums, units, computed vars, etc. directly in codegen. Some of
+   that is correct (RenderModel platforms genuinely don't need
+   `NoReactivity` / `NoDeclarative`) but several other passes likely
+   ought to be enabled on those platforms. Build a per-cap-per-platform
+   matrix, find duplication analogous to what this spec removes, and
+   migrate platforms onto the lowering pipeline.
+
+4. **Fix any remaining `Convert(Lower(checked))` round-trip breaks.**
+   `FuzzLoweredDocument` landed in step 1 may surface other passes whose
+   output `ir.Convert` cannot express in valid AST (lifted closures from
+   `NoLambda`, kicker patterns from `NoAsyncReactive`, etc.). Each
+   finding gets its own surgical fix; ideally every enabled pass
+   round-trips.
+
 ## Risks and rollback
 
 - **html JS-update regression.** Highest blast-radius step (6) because
