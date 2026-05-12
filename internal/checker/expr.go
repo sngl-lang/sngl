@@ -796,11 +796,133 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
-	args := c.checkCallArgs(call.Args, nil)
+	// Element-ref event invocation: `c.<id>.@<event>(payload)`. Look
+	// up the event's declared payload type on the addressed component
+	// so anonymous struct literals in the arg position get their
+	// expected type (and InputEvent{value="x"} can be written {value="x"}).
+	var argSig *ir.FuncSig
+	if sel.Kind == ast.SelectEvent {
+		argSig = c.eventArgSig(sel.Operand, sel.Field)
+	}
+	args := c.checkCallArgs(call.Args, argSig)
 	if isPrimitiveMethodReceiver(receiver) {
 		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
 	}
 	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args}
+}
+
+// eventArgSig synthesises a one-param FuncSig matching the payload
+// type of `<event>` declared on the component referenced by
+// `operand` — either `c.<id>` (look up #id inside c's component) or a
+// bare element ref. Returns nil when the event can't be resolved,
+// letting the call fall back to untyped arg checking.
+func (c *checker) eventArgSig(operand ast.Expr, event string) *ir.FuncSig {
+	comp := c.elementHostComponent(operand)
+	if comp == nil {
+		return nil
+	}
+	for _, e := range comp.Events {
+		if e.Name == event && e.Type != nil {
+			// Mark the param optional via a placeholder Default so
+			// `c.btn.@click()` (zero args) and `c.entry.@input({…})`
+			// (one struct arg) both pass arity, while the single
+			// positional arg still gets the payload's expected type.
+			return &ir.FuncSig{Params: []*ir.Param{{
+				Type:    e.Type,
+				Default: &ir.Literal{Type: e.Type},
+			}}}
+		}
+	}
+	return nil
+}
+
+// elementHostComponent resolves `operand` to the component instance
+// hosting the addressed widget. Handles `c.<id>` where c is a
+// component-typed param/var and <id> matches a NodeInst inside c's
+// body. Returns nil for shapes the resolver doesn't recognise.
+func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
+	sel, ok := operand.(*ast.SelectExpr)
+	if !ok {
+		return nil
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return nil
+	}
+	sym, ok := c.scope.Lookup(ident.Name)
+	if !ok {
+		return nil
+	}
+	var compType *ir.Type
+	switch v := sym.(type) {
+	case *ir.Param:
+		compType = v.Type
+	case *ir.Var:
+		compType = v.Type
+	}
+	if compType == nil || compType.Kind != ir.TypeComponent || compType.Decl == nil {
+		return nil
+	}
+	comp, ok := compType.Decl.(*ir.Component)
+	if !ok {
+		return nil
+	}
+	// Walk the component's AST (its IR body may not be checked yet
+	// at this point in pass2) looking for a visual node with id =
+	// sel.Field. The target's tag identifies the host component
+	// (stdlib `input` → InputEvent on @input, etc.).
+	if comp.AST == nil {
+		return nil
+	}
+	return c.findHostComponentAST(comp.AST.Body.Stmts, sel.Field)
+}
+
+func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Component {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			if n.ID == id {
+				name := visualNodeTarget(n)
+				if name == "" {
+					return nil
+				}
+				if sym, ok := c.scope.Lookup(name); ok {
+					if comp, ok := sym.(*ir.Component); ok {
+						return comp
+					}
+				}
+				return nil
+			}
+			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
+				return comp
+			}
+		case *ast.CallStmt:
+			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
+				if sym, ok := c.scope.Lookup(name); ok {
+					if comp, ok := sym.(*ir.Component); ok {
+						return comp
+					}
+				}
+				return nil
+			}
+		case *ast.IfStmt:
+			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
+				return comp
+			}
+			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
+				return comp
+			}
+		case *ast.ForStmt:
+			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
+				return comp
+			}
+		case *ast.PlatformStmt:
+			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
+				return comp
+			}
+		}
+	}
+	return nil
 }
 
 // isPrimitiveMethodReceiver reports whether a method-call receiver type's full
@@ -1726,12 +1848,22 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// NodeInst so event handlers and the #id are preserved in IR.
 		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
 			props, handlers := c.checkAndSplitArgs(x.Call.Args, nil)
+			// Resolve the addressed component (stdlib `input`, user
+			// component, …) so later passes — including the test-side
+			// event-arg typer — can see what payload `@<event>` takes.
+			var comp *ir.Component
+			if sym, ok := c.scope.Lookup(name); ok {
+				if sd, ok := sym.(*ir.Component); ok {
+					comp = sd
+				}
+			}
 			return &ir.NodeInst{
-				AST:      x,
-				Name:     name,
-				Props:    props,
-				Handlers: handlers,
-				ID:       id,
+				AST:       x,
+				Name:      name,
+				Component: comp,
+				Props:     props,
+				Handlers:  handlers,
+				ID:        id,
 			}
 		}
 		callExpr := c.checkExpr(x.Call)

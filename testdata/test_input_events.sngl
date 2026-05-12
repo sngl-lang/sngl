@@ -1,0 +1,29 @@
+component editor {
+    var name = ""
+    var lastCommit = ""
+
+    input #field(
+        value=name,
+        @input(e) { name = e.value },
+        @change(e) { lastCommit = e.value }
+    )
+    text #display(value=name)
+}
+
+func testInputFiresOnEachKeystroke(t Test, c editor) {
+    t.assert(c.name == "")
+    c.field.@input({value="h"})
+    t.assert(c.name == "h")
+    c.field.@input({value="hello"})
+    t.assert(c.name == "hello")
+}
+
+func testInputUpdatesBoundText(t Test, c editor) {
+    c.field.@input({value="world"})
+    t.assert(c.display.value == "world")
+}
+
+func testChangeFiresOnCommit(t Test, c editor) {
+    c.field.@change({value="committed"})
+    t.assert(c.lastCommit == "committed")
+}

@@ -602,18 +602,30 @@ func (gc *GoIRContext) evalStructLit(n *ir.StructLit) string {
 // the StructDef) materialize an inline `struct { Field Type; ... }` so
 // the literal parses where Go would otherwise reject a bare `{…}`.
 func structLitTypeName(n *ir.StructLit) string {
-	if n == nil || n.Def == nil {
+	if n == nil {
 		return "struct{}"
 	}
-	if name := ExportName(n.Def.Name); name != "" {
+	// Anonymous literals (`{value="x"}`) keep Def nil but carry the
+	// target type via n.Type — extract the StructDef from there so
+	// the emitted Go uses the named type the call expects.
+	def := n.Def
+	if def == nil && n.Type != nil {
+		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
+			def = sd
+		}
+	}
+	if def == nil {
+		return "struct{}"
+	}
+	if name := ExportName(def.Name); name != "" {
 		return name
 	}
-	if len(n.Def.Fields) == 0 {
+	if len(def.Fields) == 0 {
 		return "struct{}"
 	}
 	var fb strings.Builder
 	fb.WriteString("struct{ ")
-	for i, f := range n.Def.Fields {
+	for i, f := range def.Fields {
 		if i > 0 {
 			fb.WriteString("; ")
 		}

@@ -995,7 +995,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if strings.HasPrefix(method, "@") {
 				if m, ok := recv.(map[string]any); ok {
 					if h, ok := m[method].(*ir.Func); ok {
-						return env.runEventHandler(h, call.Args)
+						return env.runEventHandler(h, call.Args, strings.TrimPrefix(method, "@"))
 					}
 				}
 				return nil, nil
@@ -1068,8 +1068,13 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	return nil, fmt.Errorf("unresolved namespace call")
 }
 
-// runEventHandler invokes an event handler function's body using the current env.
-func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg) (any, error) {
+// runEventHandler invokes an event handler function's body using the current
+// env. Args are evaluated and bound positionally to params; the caller is
+// expected to pass the event payload as a literal struct (e.g.
+// `c.entry.@input(InputEvent{value="hello"})`) so the body's `e.value`
+// resolves through the regular struct-field path.
+func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string) (any, error) {
+	_ = eventName // reserved for future per-event semantics
 	for i, p := range fn.Params {
 		if i < len(args) {
 			v, err := env.Eval(args[i].Value)
