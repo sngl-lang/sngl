@@ -505,6 +505,22 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, TypString, ident.Name)
 		case "bool":
 			return c.inferBuiltinConversion(x, TypBool, ident.Name)
+		case "date":
+			return c.inferBuiltinConversion(x, TypDate, ident.Name)
+		case "time":
+			return c.inferBuiltinConversion(x, TypTime, ident.Name)
+		case "datetime":
+			return c.inferBuiltinConversion(x, TypDateTime, ident.Name)
+		case "duration":
+			return c.inferBuiltinConversion(x, TypDuration, ident.Name)
+		case "color":
+			return c.inferBuiltinConversion(x, TypColor, ident.Name)
+		case "url":
+			return c.inferBuiltinConversion(x, TypURL, ident.Name)
+		case "email":
+			return c.inferBuiltinConversion(x, TypEmail, ident.Name)
+		case "uuid":
+			return c.inferBuiltinConversion(x, TypUUID, ident.Name)
 		}
 	}
 

@@ -79,6 +79,18 @@ func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
 		case ir.TypeBool, ir.TypeString:
 			return true
 		}
+	case ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+		ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
+		ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
+		ir.TypeHostname, ir.TypeDecimal:
+		// String-domain types accept a string operand (the literal /
+		// expression that holds the canonical form). They also accept
+		// themselves — `date(d)` is identity. The runtime parse/
+		// validate happens at platform-codegen time.
+		switch fromKind {
+		case ir.TypeString, targetKind:
+			return true
+		}
 	}
 	return false
 }

@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -46,28 +47,39 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		return nil, nil
 	}
 
-	// Generate once for the whole package. Test fixtures whose
-	// component-under-test is the package's `main` component render
-	// fully; fixtures that target a non-main component currently
-	// produce empty widget trees because Windows() needs main or an
-	// explicit `window` decl. Promote+re-check would solve this but
-	// trips a Convert→re-parse loss of type-conversion semantics
-	// (`var birthday date = "2000-01-01"` re-parses as a raw call to
-	// `date` instead of an ir.Conversion). Stick with the simpler
-	// path until that round-trip is fixed.
-	resp, err := g.Generate(&codegen.Request{
-		Pkg:  pkg,
-		Lang: lang,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("gtk4 generate: %w", err)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("gtk4 generate: %s", resp.Error)
-	}
-
 	var results []*codegen.TestResult
 	for _, group := range compGroups {
+		// Promote the component under test into a synthetic window so
+		// BuildUI actually renders its widgets — Windows() needs either
+		// an explicit window or a `main` component.
+		compDoc := testharness.Promote(doc, group.Component)
+		if compDoc == nil {
+			continue
+		}
+		compPkg, diags := checker.Check(compDoc, &checker.Config{IsMain: true})
+		hasErr := false
+		for _, d := range diags {
+			if d.Severity == ir.Error {
+				hasErr = true
+				break
+			}
+		}
+		if hasErr || compPkg == nil {
+			continue
+		}
+		resp, err := g.Generate(&codegen.Request{
+			Pkg:  compPkg,
+			Lang: lang,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("gtk4 generate %q: %w", group.Component, err)
+		}
+		if resp.Error != "" {
+			return nil, fmt.Errorf("gtk4 generate %q: %s", group.Component, resp.Error)
+		}
+
+		// IR func lookup uses the *original* pkg because Promote drops
+		// *ast.FuncDef decls; the test funcs live on pkg.Funcs only.
 		grpResults, err := runGtk4TestGroup(pkg, group, resp.Files, cfg.GoModExtra)
 		if err != nil {
 			return nil, err
