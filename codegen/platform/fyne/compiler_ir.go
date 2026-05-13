@@ -109,6 +109,17 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		if v.Synthesized {
+			if v.Name == "__root" {
+				// Plan B's __root sentinel: a stable *fyne.Container the
+				// renderSlot updaters operate on, and which BuildUI returns.
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "*fyne.Container",
+					init:        "container.NewVBox()",
+					noAccessors: true,
+				})
+				continue
+			}
 			// Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
 			// Emit as []fyne.CanvasObject so the renderSlot teardown loop
 			// (range over the slice, container.Remove each entry) compiles.
@@ -602,6 +613,14 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 
 	b.WriteString(buildBuf.String())
 
+	hasRoot := false
+	for _, bind := range info.binds {
+		if bind.name == "__root" {
+			hasRoot = true
+			break
+		}
+	}
+
 	if singleRoot {
 		if info.NeedsToast {
 			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
@@ -612,7 +631,20 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 			b.WriteString("\treturn content\n")
 		}
 	} else {
-		if info.NeedsToast {
+		// Multi-part body: when __root is synthesized (component has
+		// reactive slots), reuse it as the returned container so slot
+		// updaters operating on m.__root mutate the displayed tree.
+		if hasRoot {
+			b.WriteString("\tm.__root.Objects = parts\n")
+			if info.NeedsToast {
+				b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+				b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+				b.WriteString("\tm.toastBox.Hide()\n")
+				b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, m.__root)\n")
+			} else {
+				b.WriteString("\treturn m.__root\n")
+			}
+		} else if info.NeedsToast {
 			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
 			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
 			b.WriteString("\tm.toastBox.Hide()\n")
