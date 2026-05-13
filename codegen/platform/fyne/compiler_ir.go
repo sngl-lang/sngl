@@ -857,7 +857,7 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	})
 
 	body := codegen.WalkLowered(fn.Block, tr)
-	for l := range strings.SplitSeq(strings.TrimRight(body, "\n"), "\n") {
+	for _, l := range body {
 		b.WriteString("\t")
 		b.WriteString(l)
 		b.WriteString("\n")

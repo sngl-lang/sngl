@@ -46,29 +46,29 @@ func platformBlueprints() map[string]*fyneBlueprint {
 	return loadBlueprints()
 }
 
-func (t *fyneTranslator) OnCreateNode(id, tag string) string {
+func (t *fyneTranslator) OnCreateNode(id, tag string) []string {
 	bp, ok := t.blueprints[tag]
 	if !ok {
-		return ""
+		return nil
 	}
 	if bp.Constructor == nil {
-		return ""
+		return nil
 	}
 	goType := bp.Constructor.GoType
 	if goType == "" {
-		return ""
+		return nil
 	}
 	t.fieldSink(id, goType)
 	t.idTags[id] = tag
-	return "m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")\n"
+	return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
 }
 
-func (t *fyneTranslator) OnAppendChild(parent, child string) string {
-	return t.qualifyParent(parent) + ".Add(" + t.qualifyChild(child) + ")\n"
+func (t *fyneTranslator) OnAppendChild(parent, child string) []string {
+	return []string{t.qualifyParent(parent) + ".Add(" + t.qualifyChild(child) + ")"}
 }
 
-func (t *fyneTranslator) OnRemoveChild(parent, child string) string {
-	return t.qualifyParent(parent) + ".Remove(" + t.qualifyChild(child) + ")\n"
+func (t *fyneTranslator) OnRemoveChild(parent, child string) []string {
+	return []string{t.qualifyParent(parent) + ".Remove(" + t.qualifyChild(child) + ")"}
 }
 
 // qualifyParent maps the bare IR ident name for a slot-function's parent
@@ -101,18 +101,18 @@ func (t *fyneTranslator) qualifyChild(c string) string {
 	return c
 }
 
-func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string {
+func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) []string {
 	// `node` may arrive pre-qualified ("m.<id>") from the translator's
 	// own qualification helpers; idTags is keyed by the bare id stored
 	// at OnCreateNode time.
 	bareID := strings.TrimPrefix(node, "m.")
 	tag, ok := t.idTags[bareID]
 	if !ok {
-		return ""
+		return nil
 	}
 	bp, ok := t.blueprints[tag]
 	if !ok {
-		return ""
+		return nil
 	}
 	target := ""
 	for _, b := range bp.Bindings {
@@ -122,7 +122,7 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string 
 		}
 	}
 	if target == "" {
-		return ""
+		return nil
 	}
 	qNode := node
 	if !strings.HasPrefix(qNode, "m.") {
@@ -132,16 +132,16 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string 
 	if !strings.HasPrefix(qHandler, "m.") && strings.HasPrefix(qHandler, "__") {
 		qHandler = "m." + qHandler
 	}
-	return qNode + target + " = " + qHandler + "\n"
+	return []string{qNode + target + " = " + qHandler}
 }
-func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
+func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) []string {
 	tag, ok := t.idTags[nodeID]
 	if !ok {
-		return ""
+		return nil
 	}
 	bp, ok := t.blueprints[tag]
 	if !ok {
-		return ""
+		return nil
 	}
 	var (
 		target    string
@@ -157,25 +157,25 @@ func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) st
 		}
 	}
 	if !found || target == "" {
-		return ""
+		return nil
 	}
 	val := t.gc.EvalExpr(valueExpr)
 	if transform != "" {
 		val = transform + "(" + val + ")"
 	}
-	return "m." + nodeID + target + "(" + val + ")\n"
+	return []string{"m." + nodeID + target + "(" + val + ")"}
 }
 
 func (t *fyneTranslator) OnDefault(stmt ir.Stmt) []string {
 	return t.gc.EvalStmt(stmt)
 }
 
-func (t *fyneTranslator) OnSlotReset(slotID string) string {
-	return "m." + slotID + " = nil\n"
+func (t *fyneTranslator) OnSlotReset(slotID string) []string {
+	return []string{"m." + slotID + " = nil"}
 }
 
-func (t *fyneTranslator) OnSlotAppend(slotID, childID string) string {
-	return "m." + slotID + " = append(m." + slotID + ", m." + childID + ")\n"
+func (t *fyneTranslator) OnSlotAppend(slotID, childID string) []string {
+	return []string{"m." + slotID + " = append(m." + slotID + ", m." + childID + ")"}
 }
 
 func (t *fyneTranslator) OnIter(iter ir.Expr) string {

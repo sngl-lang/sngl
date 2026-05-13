@@ -12,28 +12,28 @@ import (
 // dispatch order without comparing source-language output.
 type trace struct{ lines []string }
 
-func (t *trace) OnCreateNode(id, tag string) string { t.add("create %s %s", id, tag); return "" }
-func (t *trace) OnAppendChild(p, c string) string   { t.add("append %s %s", p, c); return "" }
-func (t *trace) OnRemoveChild(p, c string) string   { t.add("remove %s %s", p, c); return "" }
-func (t *trace) OnAttachHandler(n, e, h string) string {
+func (t *trace) OnCreateNode(id, tag string) []string { t.add("create %s %s", id, tag); return nil }
+func (t *trace) OnAppendChild(p, c string) []string   { t.add("append %s %s", p, c); return nil }
+func (t *trace) OnRemoveChild(p, c string) []string   { t.add("remove %s %s", p, c); return nil }
+func (t *trace) OnAttachHandler(n, e, h string) []string {
 	t.add("attach %s %s %s", n, e, h)
-	return ""
+	return nil
 }
-func (t *trace) OnPropAssign(n, p string, _ ir.Expr) string {
+func (t *trace) OnPropAssign(n, p string, _ ir.Expr) []string {
 	t.add("prop %s %s", n, p)
-	return ""
+	return nil
 }
 func (t *trace) OnDefault(stmt ir.Stmt) []string {
 	t.add("default %T", stmt)
 	return nil
 }
-func (t *trace) OnSlotReset(slotID string) string {
+func (t *trace) OnSlotReset(slotID string) []string {
 	t.add("reset %s", slotID)
-	return ""
+	return nil
 }
-func (t *trace) OnSlotAppend(slotID, childID string) string {
+func (t *trace) OnSlotAppend(slotID, childID string) []string {
 	t.add("append-slot %s %s", slotID, childID)
-	return ""
+	return nil
 }
 func (t *trace) OnIter(iter ir.Expr) string {
 	if id, ok := iter.(*ir.Ident); ok {
