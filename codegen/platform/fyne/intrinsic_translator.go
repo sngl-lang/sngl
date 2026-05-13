@@ -1,21 +1,20 @@
 package fyne
 
 import (
+	"context"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// fyneTranslator implements codegen.IntrinsicTranslator for fyne. It
-// emits Go source that mutates an enclosing *Model receiver — the
-// generated functions all sit on Model so widget refs (e.g. `m.n0`)
-// resolve as struct fields.
-//
-// One translator instance is constructed per __renderSlot<N> Func
-// emission; widget-field registrations performed during that emission
-// flow back into the enclosing *compilation via fieldSink.
+// fyneTranslator implements codegen.IntrinsicTranslator for fyne.
+// Produces ir.Stmt fragments; the platform emitter feeds them through
+// gc.EvalStmt to produce Go source. One instance per __renderSlot<N>
+// (or promoted handler) emission; widget-field registrations flow back
+// into the enclosing compilation via fieldSink.
 type fyneTranslator struct {
 	gc         *golang.GoIRContext
 	blueprints map[string]*fyneBlueprint
@@ -23,10 +22,6 @@ type fyneTranslator struct {
 	idTags     map[string]string
 }
 
-// newFyneTranslator constructs a translator. `blueprints` is the
-// platform-wide blueprint table loaded once in init(); `fieldSink`
-// receives every (widget-name, go-type) pair so the enclosing emitter
-// can declare the field on Model.
 func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string)) *fyneTranslator {
 	return &fyneTranslator{
 		gc:         gc,
@@ -36,76 +31,134 @@ func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBluepr
 	}
 }
 
-// Compile-time interface check.
 var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
 
 // platformBlueprints returns the blueprint table loaded at init().
-// Used by intrinsic translators to look up widget constructors and
-// binding records by component tag.
 func platformBlueprints() map[string]*fyneBlueprint {
 	return loadBlueprints()
 }
 
-func (t *fyneTranslator) OnCreateNode(id, tag string) []string {
+// modelFieldRef returns an *ir.Select that gc.EvalExpr renders as
+// `m.<name>` — a reference to a Model struct field. Widget fields
+// aren't registered in the type-checker scope, so we synthesize the
+// `m.` qualifier here rather than relying on Resolve.
+func modelFieldRef(name string) ir.Expr {
+	return &ir.Select{
+		Operand: &ir.Ident{Name: "m"},
+		Field:   name,
+		Type:    ir.TypDyn,
+	}
+}
+
+// nativeCall builds a Call that gc.EvalExpr renders verbatim. For a
+// dotted name (e.g. "widget.NewLabel"), uses the namespace path with
+// NativePkg/NativeName so the Go renderer emits the qualified name
+// directly. For a bare name (e.g. "append"), sets only Func.Name.
+func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
+	callArgs := make([]ir.CallArg, len(args))
+	for i, a := range args {
+		callArgs[i] = ir.CallArg{Value: a}
+	}
+	if dot := strings.Index(nativeName, "."); dot > 0 {
+		pkg := nativeName[:dot]
+		return &ir.Call{
+			Type:     retType,
+			Receiver: &ir.Ident{Name: pkg},
+			Func:     &ir.Func{NativePkg: pkg, NativeName: nativeName},
+			Args:     callArgs,
+		}
+	}
+	return &ir.Call{
+		Type: retType,
+		Func: &ir.Func{Name: nativeName},
+		Args: callArgs,
+	}
+}
+
+// methodCall builds an ir.Call shaped as `receiver.Method(args...)`.
+func methodCall(receiver ir.Expr, method string, args []ir.Expr, retType *ir.Type) *ir.Call {
+	callArgs := make([]ir.CallArg, len(args))
+	for i, a := range args {
+		callArgs[i] = ir.CallArg{Value: a}
+	}
+	return &ir.Call{
+		Type:     retType,
+		Receiver: receiver,
+		Func:     &ir.Func{Name: method},
+		Args:     callArgs,
+	}
+}
+
+func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	bp, ok := t.blueprints[tag]
-	if !ok {
+	if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
 		return nil
 	}
-	if bp.Constructor == nil {
-		return nil
-	}
-	goType := bp.Constructor.GoType
-	if goType == "" {
-		return nil
-	}
-	t.fieldSink(id, goType)
+	t.fieldSink(id, bp.Constructor.GoType)
 	t.idTags[id] = tag
-	return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
+
+	args := zeroArgsToExprs(bp.Constructor.ZeroArgs)
+	ctor := nativeCall(bp.Constructor.GoFn, args, ir.TypDyn)
+	return []ir.Stmt{&ir.Assign{
+		Target: modelFieldRef(id),
+		Op:     ast.AssignSet,
+		Value:  ctor,
+	}}
 }
 
-func (t *fyneTranslator) OnAppendChild(parent, child string) []string {
-	return []string{t.qualifyParent(parent) + ".Add(" + t.qualifyChild(child) + ")"}
-}
-
-func (t *fyneTranslator) OnRemoveChild(parent, child string) []string {
-	return []string{t.qualifyParent(parent) + ".Remove(" + t.qualifyChild(child) + ")"}
-}
-
-// qualifyParent maps the bare IR ident name for a slot-function's parent
-// param ("parent") onto the type-asserted local ("container") emitted in
-// emitIRSlotFunc's prologue. Pre-qualified inputs (those starting with
-// "m." or already "container") are returned untouched so existing direct
-// callers of OnAppendChild still work.
-func (t *fyneTranslator) qualifyParent(p string) string {
-	if p == "parent" {
-		return "container"
+// zeroArgsToExprs parses a blueprint's ZeroArgs string into IR exprs.
+// Recognises the small handful of forms blueprints actually use.
+func zeroArgsToExprs(zeroArgs string) []ir.Expr {
+	switch zeroArgs {
+	case "":
+		return nil
+	case `""`:
+		return []ir.Expr{&ir.Literal{Type: ir.TypString, Raw: ""}}
+	case `"", nil`:
+		return []ir.Expr{
+			&ir.Literal{Type: ir.TypString, Raw: ""},
+			&ir.Literal{Type: ir.TypNull},
+		}
 	}
-	return p
+	return nil
 }
 
-// qualifyChild prefixes a bare synthesized ref (e.g. "__n0", "__entry") with
-// "m." so the emitted Go resolves through the Model receiver. Names
-// starting with "m." or "_" loop-locals (like "__entry" — but slot
-// teardown still wants the loop var bare) are tricky. Convention from
-// the lower pass: synthesized node refs use "__n<N>"; teardown's loop
-// var is bound as "__entry" without Synthesized=true. We approximate by
-// prepending "m." only for "__n"-prefixed names; the loop-key case
-// remains bare.
-func (t *fyneTranslator) qualifyChild(c string) string {
-	if strings.HasPrefix(c, "m.") {
-		return c
-	}
-	if strings.HasPrefix(c, "__n") {
-		return "m." + c
-	}
-	return c
+func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent = t.qualifyParentExpr(parent)
+	child = t.qualifyChildExpr(child)
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Add", []ir.Expr{child}, ir.TypVoid)}}
 }
 
-func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) []string {
-	// `node` may arrive pre-qualified ("m.<id>") from the translator's
-	// own qualification helpers; idTags is keyed by the bare id stored
-	// at OnCreateNode time.
-	bareID := strings.TrimPrefix(node, "m.")
+func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent = t.qualifyParentExpr(parent)
+	child = t.qualifyChildExpr(child)
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
+}
+
+// qualifyParentExpr renames the slot-function parameter `parent` to the
+// type-asserted `container` local — mirrors the typed-slot signature
+// emitted by emitIRSlotFunc.
+func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
+	if id, ok := e.(*ir.Ident); ok && id.Name == "parent" {
+		return &ir.Ident{Name: "container", Type: ir.TypDyn}
+	}
+	return e
+}
+
+// qualifyChildExpr re-qualifies a synthesized widget ident (e.g.
+// "__n0") to a Model field reference. Non-synth idents (loop-key
+// "__entry", etc.) and already-qualified expressions pass through.
+func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
+	if id, ok := e.(*ir.Ident); ok {
+		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
+			return modelFieldRef(id.Name)
+		}
+	}
+	return e
+}
+
+func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	bareID := identBareName(node)
 	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
@@ -114,7 +167,7 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) []strin
 	if !ok {
 		return nil
 	}
-	target := ""
+	var target string
 	for _, b := range bp.Bindings {
 		if b.Kind == bindEvent && b.Prop == event {
 			target = b.Target
@@ -124,18 +177,47 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) []strin
 	if target == "" {
 		return nil
 	}
-	qNode := node
-	if !strings.HasPrefix(qNode, "m.") {
-		qNode = "m." + qNode
-	}
-	qHandler := handlerRef
-	if !strings.HasPrefix(qHandler, "m.") && strings.HasPrefix(qHandler, "__") {
-		qHandler = "m." + qHandler
-	}
-	return []string{qNode + target + " = " + qHandler}
+	fieldName := strings.TrimPrefix(target, ".")
+	// Qualify node + handler to Model references when synthesized/promoted.
+	nodeRef := t.qualifyHandlerNode(node, bareID)
+	handlerRef := t.qualifyHandlerFunc(handler)
+	return []ir.Stmt{&ir.Assign{
+		Target: &ir.Select{
+			Operand: nodeRef,
+			Field:   fieldName,
+			Type:    ir.TypDyn,
+		},
+		Op:    ast.AssignSet,
+		Value: handlerRef,
+	}}
 }
-func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) []string {
-	tag, ok := t.idTags[nodeID]
+
+// qualifyHandlerNode produces a Model-field ref for a node id.
+func (t *fyneTranslator) qualifyHandlerNode(e ir.Expr, bareID string) ir.Expr {
+	if bareID != "" {
+		return modelFieldRef(bareID)
+	}
+	return e
+}
+
+// qualifyHandlerFunc qualifies a promoted-handler ident (e.g.
+// "handleClick" with "__" prefix) to a Model method ref.
+func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
+	if id, ok := e.(*ir.Ident); ok {
+		name := id.Name
+		if strings.HasPrefix(name, "m.") {
+			return e
+		}
+		if strings.HasPrefix(name, "__") {
+			return modelFieldRef(name)
+		}
+	}
+	return e
+}
+
+func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	bareID := identBareName(node)
+	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
 	}
@@ -143,48 +225,64 @@ func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) []
 	if !ok {
 		return nil
 	}
-	var (
-		target    string
-		transform string
-		found     bool
-	)
+	var target, transform string
 	for _, b := range bp.Bindings {
 		if (b.Kind == bindReactive || b.Kind == bindInit) && b.Prop == prop {
 			target = b.Target
 			transform = b.Transform
-			found = true
 			break
 		}
 	}
-	if !found || target == "" {
+	if target == "" {
 		return nil
 	}
-	val := t.gc.EvalExpr(valueExpr)
+	methodName := strings.TrimPrefix(target, ".")
 	if transform != "" {
-		val = transform + "(" + val + ")"
+		value = nativeCall(transform, []ir.Expr{value}, ir.TypString)
 	}
-	return []string{"m." + nodeID + target + "(" + val + ")"}
+	nodeRef := modelFieldRef(bareID)
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}
 }
 
-func (t *fyneTranslator) OnDefault(stmt ir.Stmt) []string {
-	return t.gc.EvalStmt(stmt)
+// identBareName returns the unqualified name of an Ident, stripping
+// any "m." prefix that came pre-qualified.
+func identBareName(e ir.Expr) string {
+	if id, ok := e.(*ir.Ident); ok {
+		return strings.TrimPrefix(id.Name, "m.")
+	}
+	return ""
 }
 
-func (t *fyneTranslator) OnSlotReset(slotID string) []string {
-	return []string{"m." + slotID + " = nil"}
+func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
+	return []ir.Stmt{&ir.Assign{
+		Target: modelFieldRef(slot.Name),
+		Op:     ast.AssignSet,
+		Value:  &ir.Literal{Type: ir.TypNull},
+	}}
 }
 
-func (t *fyneTranslator) OnSlotAppend(slotID, childID string) []string {
-	return []string{"m." + slotID + " = append(m." + slotID + ", m." + childID + ")"}
+func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
+	slotRef := modelFieldRef(slot.Name)
+	child = t.qualifyChildExpr(child)
+	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
+	return []ir.Stmt{&ir.Assign{
+		Target: modelFieldRef(slot.Name),
+		Op:     ast.AssignSet,
+		Value:  appendExpr,
+	}}
 }
 
-func (t *fyneTranslator) OnIter(iter ir.Expr) string {
+func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return "m." + id.Name
+		return modelFieldRef(id.Name)
 	}
-	return t.gc.EvalExpr(iter)
+	return iter
 }
 
-func (t *fyneTranslator) OnCond(cond ir.Expr) string {
-	return t.gc.EvalExpr(cond)
+func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
+	return cond
+}
+
+func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	return []ir.Stmt{stmt}
 }

@@ -106,11 +106,15 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 }
 
 // resolveSlotVar returns the *ir.Var pointed to by a Synthesized slot
-// ident. Falls back to nil when the Sym isn't populated — caller should
-// no-op in that case.
+// ident. The lower pass historically left Sym unset on synthesized
+// slot idents; when that's the case we synthesize a Var carrying the
+// ident's Name/Type so the translator still has the data it needs.
 func resolveSlotVar(id *ir.Ident) *ir.Var {
 	if v, ok := id.Sym.(*ir.Var); ok {
 		return v
+	}
+	if id.Synthesized {
+		return &ir.Var{Name: id.Name, Type: id.Type, Synthesized: true}
 	}
 	return nil
 }

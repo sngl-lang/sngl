@@ -1,6 +1,7 @@
 package fyne
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"strings"
@@ -908,11 +909,13 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		}
 	}
 
-	body := codegen.WalkLowered(stmts, tr)
-	for _, l := range body {
-		b.WriteString("\t")
-		b.WriteString(l)
-		b.WriteString("\n")
+	body := codegen.WalkLowered(context.Background(), stmts, tr)
+	for _, stmt := range body {
+		for _, line := range gc.EvalStmt(stmt) {
+			b.WriteString("\t")
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
 	}
 	b.WriteString("}\n\n")
 }
@@ -921,7 +924,8 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 // Func as a Model method. The body is a mix of plain Go statements
 // (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
 // codegen.WalkLowered routes intrinsic shapes through fyneTranslator
-// and falls back to OnDefault (gc.EvalStmt) for everything else.
+// into ir.Stmt fragments; we then feed them through gc.EvalStmt at
+// the source-emission boundary.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
 	fmt.Fprintf(b, "func (m *Model) %s(container *fyne.Container) {\n", fn.Name)
 
@@ -929,11 +933,13 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	})
 
-	body := codegen.WalkLowered(fn.Block, tr)
-	for _, l := range body {
-		b.WriteString("\t")
-		b.WriteString(l)
-		b.WriteString("\n")
+	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	for _, stmt := range body {
+		for _, line := range gc.EvalStmt(stmt) {
+			b.WriteString("\t")
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
 	}
 	b.WriteString("}\n\n")
 }
