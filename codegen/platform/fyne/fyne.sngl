@@ -350,6 +350,10 @@ component button() {
                 Event{name="click", signature="func()"},
             ],
         },
+        bindings=[
+            Reactive{prop="text", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="click", target=".OnTapped", signature="func()"},
+        ],
         fieldPrefix="btn",
     ) {}
 }
