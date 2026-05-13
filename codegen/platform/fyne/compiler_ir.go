@@ -865,6 +865,9 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 			}
 		}
 	case *ir.Assign:
+		if isSlotReset(n) {
+			return []string{"m." + n.Target.(*ir.Ident).Name + " = nil"}
+		}
 		if isSlotListPush(n) {
 			target := "m." + n.Target.(*ir.Ident).Name
 			call := n.Value.(*ir.Call)
@@ -878,6 +881,20 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 		}
 	}
 	return gc.EvalStmt(s)
+}
+
+// isSlotReset detects '__slotN = []' emitted by passReactivity at
+// the head of every __renderSlot<N> body before re-rendering.
+func isSlotReset(a *ir.Assign) bool {
+	id, ok := a.Target.(*ir.Ident)
+	if !ok || !strings.HasPrefix(id.Name, "__slot") {
+		return false
+	}
+	ll, ok := a.Value.(*ir.ListLit)
+	if !ok {
+		return false
+	}
+	return len(ll.Elems) == 0
 }
 
 // isSlotListPush detects the slot-tracking pattern

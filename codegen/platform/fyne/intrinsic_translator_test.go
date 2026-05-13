@@ -95,6 +95,20 @@ func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 	}
 }
 
+func TestFyneStmtDispatch_SlotReset(t *testing.T) {
+	stmt := &ir.Assign{
+		Target: &ir.Ident{Name: "__slot0"},
+		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+	}
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	lines := fyneStmtDispatch(stmt, tr, stubGC())
+	got := strings.Join(lines, "\n")
+	want := "m.__slot0 = nil"
+	if got != want {
+		t.Errorf("slot reset dispatch:\ngot:  %q\nwant: %q", got, want)
+	}
+}
+
 func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
 	stmt := &ir.Assign{
