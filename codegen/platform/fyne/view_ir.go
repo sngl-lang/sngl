@@ -16,15 +16,6 @@ type irWidgetField struct {
 	goType string
 }
 
-// irWidgetUpdater tracks a function that updates one widget property.
-type irWidgetUpdater struct {
-	name string
-	body string
-	deps map[string]bool
-}
-
-func (u irWidgetUpdater) DepFields() map[string]bool { return u.deps }
-
 // irViewContext tracks state during IR-based BuildUI() code generation.
 type irViewContext struct {
 	gc             *golang.GoIRContext
@@ -33,7 +24,6 @@ type irViewContext struct {
 	indent         int
 	info           *irAnalysis // for dep tracking (nil in component renders)
 	widgetFields   []irWidgetField
-	updaters       []irWidgetUpdater
 	labelCount     int
 	containerCount int
 	slotVar        string
@@ -150,18 +140,6 @@ func (vc *irViewContext) addField(name, goType string) {
 		return
 	}
 	vc.widgetFields = append(vc.widgetFields, irWidgetField{name, goType})
-}
-
-func (vc *irViewContext) addUpdater(name, body string, deps map[string]bool) {
-	if vc.localMode {
-		// Loop-body locals can't be referenced from a Model-level updater;
-		// the enclosing for-loop's updater rebuilds the whole body anyway.
-		return
-	}
-	if len(deps) == 0 {
-		return
-	}
-	vc.updaters = append(vc.updaters, irWidgetUpdater{name: name, body: body, deps: deps})
 }
 
 // counterSnapshot captures the rolling per-kind counters so a block of code

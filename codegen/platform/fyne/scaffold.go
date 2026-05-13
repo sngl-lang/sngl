@@ -64,7 +64,6 @@ type templateData struct {
 	Computeds    []computedData
 	WidgetFields []widgetFieldData
 	Timers       []timerData
-	UpdaterNames []string
 	FunctionCode string          // pre-rendered user functions
 	Imports      map[string]bool // import set; template iterates in sorted key order and uses `index .Imports "path"` for lookups
 
@@ -109,11 +108,10 @@ type widgetFieldData struct {
 }
 
 type timerData struct {
-	Index            int
-	IntervalMs       int
-	ActiveVar        string
-	Body             string // pre-rendered mutation statements
-	AffectedUpdaters string // pre-rendered updater calls
+	Index      int
+	IntervalMs int
+	ActiveVar  string
+	Body       string // pre-rendered mutation statements
 }
 
 // newTemplateData is now in compiler_ir.go as newIRTemplateData.

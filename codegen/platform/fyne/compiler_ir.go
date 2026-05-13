@@ -189,10 +189,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
 
-	// --- Phase 1: Render BuildUI into buffer, collecting widget fields + updaters ---
+	// --- Phase 1: Render BuildUI into buffer, collecting widget fields ---
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
-	var updaters []irWidgetUpdater
 	var entrySync []entrySyncRec
 	var blueprintImports map[string]bool
 	singleRoot := true
@@ -239,7 +238,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			}
 
 			widgetFields = vc.widgetFields
-			updaters = vc.updaters
 			entrySync = vc.entrySync
 			blueprintImports = vc.imports
 			endLabel = vc.labelCount
@@ -291,7 +289,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			winCode.WriteString("}\n\n")
 			windowCodes = append(windowCodes, winCode.String())
 			widgetFields = append(widgetFields, winVC.widgetFields...)
-			updaters = append(updaters, winVC.updaters...)
 			if blueprintImports == nil {
 				blueprintImports = winVC.imports
 			} else if winVC.imports != nil {
@@ -303,16 +300,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	// --- Phase 1b: Pre-render component methods with continued counters ---
-	// Collect widget fields and updaters from sub-components BEFORE building
-	// template data so the Model struct declares every field they reference.
+	// Collect widget fields from sub-components BEFORE building template
+	// data so the Model struct declares every field they reference.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
-		code, compFields, compUpdaters, nextLabel, nextContainer := renderIRComponentMethod(
+		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
 			cc, ctx, gc, info, windowNames, endLabel, endContainer,
 		)
 		componentCodes = append(componentCodes, code)
 		widgetFields = append(widgetFields, compFields...)
-		updaters = append(updaters, compUpdaters...)
 		endLabel = nextLabel
 		endContainer = nextContainer
 	}
@@ -378,26 +374,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			}
 			maps.Copy(mutated, codegen.MutatedFields(stmt))
 		}
-		var updBuf strings.Builder
-		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
-		if len(affected) > 0 {
-			for _, u := range affected {
-				fmt.Fprintf(&updBuf, "\t\t\t\t\tm.%s()\n", u.name)
-			}
-		} else {
-			updBuf.WriteString("\t\t\t\t\tm.doRefresh()\n")
-		}
+		_ = mutated
 		timerDatas = append(timerDatas, timerData{
-			Index:            t.Index,
-			IntervalMs:       t.IntervalMs,
-			ActiveVar:        t.ActiveVar,
-			Body:             bodyBuf.String(),
-			AffectedUpdaters: updBuf.String(),
+			Index:      t.Index,
+			IntervalMs: t.IntervalMs,
+			ActiveVar:  t.ActiveVar,
+			Body:       bodyBuf.String(),
 		})
 	}
 
 	// --- Phase 3: Build template data and render ---
-	td, err := newIRTemplateData(info, cfg, updaters, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -417,8 +404,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	} else {
 		emitIRMultiWindowCode(&b, wins, windowCodes)
 	}
-	emitIRUpdaters(&b, updaters)
-
 	for _, code := range componentCodes {
 		b.WriteString(code)
 	}
@@ -436,7 +421,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	return []byte(src), nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
+func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -522,12 +507,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 				}
 			}
 		}
-		// Affected updaters
-		mutated := map[string]bool{bind.name: true}
-		affected := codegen.FindAffected(info.depTracker(), updaters, mutated)
-		for _, u := range affected {
-			fmt.Fprintf(&extra, "\tm.%s()\n", u.name)
-		}
 		bd.SetterExtra = extra.String()
 		td.Binds = append(td.Binds, bd)
 	}
@@ -546,11 +525,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 			Name:   wf.name,
 			GoType: wf.goType,
 		})
-	}
-
-	// Updater names
-	for _, u := range updaters {
-		td.UpdaterNames = append(td.UpdaterNames, u.name)
 	}
 
 	// Detect C native imports and emit the cgo preamble.
@@ -669,19 +643,11 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 	b.WriteString("}\n\n")
 }
 
-func emitIRUpdaters(b *strings.Builder, updaters []irWidgetUpdater) {
-	for _, u := range updaters {
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", u.name)
-		fmt.Fprintf(b, "\t%s\n", u.body)
-		b.WriteString("}\n\n")
-	}
-}
-
 // renderIRComponentMethod pre-renders one user-defined component to a string,
-// returning the generated code, any widget fields it allocated, any updaters
-// it registered, and the updated rolling counters. Counters continue from
-// startLabel/startContainer so that m.fieldN names in component methods never
-// collide with fields in the main BuildUI or earlier component methods.
+// returning the generated code, any widget fields it allocated, and the
+// updated rolling counters. Counters continue from startLabel/startContainer
+// so that m.fieldN names in component methods never collide with fields in
+// the main BuildUI or earlier component methods.
 func renderIRComponentMethod(
 	cc *codegen.ComponentCtx,
 	ctx *codegen.CodegenCtx,
@@ -689,7 +655,7 @@ func renderIRComponentMethod(
 	info *irAnalysis,
 	windowNames map[string]bool,
 	startLabel, startContainer int,
-) (code string, fields []irWidgetField, updaters []irWidgetUpdater, nextLabel, nextContainer int) {
+) (code string, fields []irWidgetField, nextLabel, nextContainer int) {
 	methodName := "render" + golang.ExportName(cc.Component.Name)
 
 	var params []string
@@ -745,7 +711,7 @@ func renderIRComponentMethod(
 	}
 	b.WriteString("}\n\n")
 
-	return b.String(), vc.widgetFields, vc.updaters, vc.labelCount, vc.containerCount
+	return b.String(), vc.widgetFields, vc.labelCount, vc.containerCount
 }
 
 func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {

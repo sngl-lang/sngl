@@ -76,11 +76,6 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) doRefresh() {
-{{- range .UpdaterNames}}
-	m.{{.}}()
-{{- end}}
-}
 {{if .NeedsToast}}
 func (m *Model) showToast(msg, variant string) {
 	m.toasts = append(m.toasts, snglToast{msg, variant})
@@ -133,7 +128,7 @@ func (m *Model) StartTimers() {
 			for range m.timer{{.Index}}Ticker.C {
 				fyne.Do(func() {
 {{.Body}}
-{{.AffectedUpdaters}}				})
+				})
 			}
 		}()
 	}
