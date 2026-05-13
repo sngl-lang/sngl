@@ -31,6 +31,11 @@ type reactivityState struct {
 	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
 	idCounter    int
 	slotCounter  int
+	// slotDeclSt is the shared declarative state used to lower every
+	// reactive-slot body. Sharing keeps the __nN counter monotonic
+	// across slots so two slot Funcs in the same package don't
+	// collide on `m.__n0` widget fields.
+	slotDeclSt *declarativeState
 	// slot synthesis owner: the *ir.Component or *ir.Window whose stmt body
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
@@ -247,7 +252,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.ID == "" && childrenContainReactiveSlot(n.Children) {
 				n.ID = st.freshNodeID()
 			}
-			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}
+			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 			n.Children = st.rewriteReactiveStructures(n.Children, pref)
 			for _, h := range n.Handlers {
 				if h.Func != nil {
@@ -853,9 +858,25 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
 
-	// 3. Re-evaluate and re-render.
-	declSt := newDeclarativeStateForSlot(st.pkg)
-	body := st.renderSlotBody(declSt, parentParam.Name, slotID, cond, iter, key, value, origBody, origElse)
+	// 3. Re-evaluate and re-render. Reuse one declarative state across
+	// every reactive slot in the package so `__nN` widget ids stay
+	// monotonic and don't collide between sibling slot Funcs.
+	if st.slotDeclSt == nil {
+		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg)
+	}
+	// Seed slot's counter past any IDs reactivity has assigned so far
+	// (collectFromNode in pass-1 may have set NodeInst.IDs that the
+	// initial seedCounter didn't see if they came from later passes).
+	if st.idCounter > st.slotDeclSt.nextID {
+		st.slotDeclSt.nextID = st.idCounter
+	}
+	body := st.renderSlotBody(st.slotDeclSt, parentParam.Name, slotID, cond, iter, key, value, origBody, origElse)
+	// Propagate the slot's advanced counter back so subsequent
+	// reactivity freshNodeID calls (line 253, line 446) don't reuse
+	// __nN values the slot just claimed.
+	if st.slotDeclSt.nextID > st.idCounter {
+		st.idCounter = st.slotDeclSt.nextID
+	}
 
 	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	return fn
