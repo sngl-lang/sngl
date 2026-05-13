@@ -23,6 +23,7 @@ type Caps struct {
 	NoTimer         bool // timer decls → explicit scheduler.At()/cancel() calls
 	NoReactivity    bool // reactive deps → explicit updater stmts after each mutation
 	NoDeclarative   bool // visual node tree → flat stream of create/update/delete IR calls
+	NoStdlibWrappers bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -40,6 +41,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoTimer:         c.NoTimer || other.NoTimer,
 		NoReactivity:    c.NoReactivity || other.NoReactivity,
 		NoDeclarative:   c.NoDeclarative || other.NoDeclarative,
+		NoStdlibWrappers: c.NoStdlibWrappers || other.NoStdlibWrappers,
 	}
 }
 
@@ -73,6 +75,9 @@ func (c Caps) String() string {
 	}
 	if c.NoReactivity {
 		parts = append(parts, "NoReactivity")
+	}
+	if c.NoStdlibWrappers {
+		parts = append(parts, "NoStdlibWrappers")
 	}
 	if c.NoTimer {
 		parts = append(parts, "NoTimer")
