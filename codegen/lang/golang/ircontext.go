@@ -143,6 +143,8 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 		return []string{"return"}
 	case *ir.For:
 		return gc.evalFor(n)
+	case *ir.If:
+		return gc.evalIf(n)
 	default:
 		panic(fmt.Sprintf("GoIRContext.EvalStmt: unhandled ir.Stmt %T", s))
 	}
@@ -178,6 +180,28 @@ func (gc *GoIRContext) evalFor(n *ir.For) []string {
 	for _, stmt := range n.Body {
 		for _, l := range loopGC.EvalStmt(stmt) {
 			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+// evalIf emits a Go if-then-else. Else may be empty.
+func (gc *GoIRContext) evalIf(n *ir.If) []string {
+	cond := gc.EvalExpr(n.Cond)
+	var lines []string
+	lines = append(lines, "if "+cond+" {")
+	for _, s := range n.Body {
+		for _, l := range gc.EvalStmt(s) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	if len(n.Else) > 0 {
+		lines = append(lines, "} else {")
+		for _, s := range n.Else {
+			for _, l := range gc.EvalStmt(s) {
+				lines = append(lines, "\t"+l)
+			}
 		}
 	}
 	lines = append(lines, "}")
