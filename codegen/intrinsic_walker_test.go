@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,40 +13,39 @@ import (
 // dispatch order without comparing source-language output.
 type trace struct{ lines []string }
 
-func (t *trace) OnCreateNode(id, tag string) []string { t.add("create %s %s", id, tag); return nil }
-func (t *trace) OnAppendChild(p, c string) []string   { t.add("append %s %s", p, c); return nil }
-func (t *trace) OnRemoveChild(p, c string) []string   { t.add("remove %s %s", p, c); return nil }
-func (t *trace) OnAttachHandler(n, e, h string) []string {
-	t.add("attach %s %s %s", n, e, h)
+func (t *trace) OnCreateNode(_ context.Context, id, tag string) []ir.Stmt {
+	t.add("create %s %s", id, tag)
 	return nil
 }
-func (t *trace) OnPropAssign(n, p string, _ ir.Expr) []string {
-	t.add("prop %s %s", n, p)
+func (t *trace) OnAppendChild(_ context.Context, p, c ir.Expr) []ir.Stmt {
+	t.add("append %s %s", identName(p), identName(c))
 	return nil
 }
-func (t *trace) OnDefault(stmt ir.Stmt) []string {
-	t.add("default %T", stmt)
+func (t *trace) OnRemoveChild(_ context.Context, p, c ir.Expr) []ir.Stmt {
+	t.add("remove %s %s", identName(p), identName(c))
 	return nil
 }
-func (t *trace) OnSlotReset(slotID string) []string {
-	t.add("reset %s", slotID)
+func (t *trace) OnAttachHandler(_ context.Context, n ir.Expr, e string, h ir.Expr) []ir.Stmt {
+	t.add("attach %s %s %s", identName(n), e, identName(h))
 	return nil
 }
-func (t *trace) OnSlotAppend(slotID, childID string) []string {
-	t.add("append-slot %s %s", slotID, childID)
+func (t *trace) OnPropAssign(_ context.Context, n ir.Expr, p string, v ir.Expr) []ir.Stmt {
+	t.add("prop %s %s", identName(n), p)
 	return nil
 }
-func (t *trace) OnIter(iter ir.Expr) string {
-	if id, ok := iter.(*ir.Ident); ok {
-		return id.Name
-	}
-	return "?"
+func (t *trace) OnSlotReset(_ context.Context, s *ir.Var) []ir.Stmt {
+	t.add("reset %s", s.Name)
+	return nil
 }
-func (t *trace) OnCond(cond ir.Expr) string {
-	if id, ok := cond.(*ir.Ident); ok {
-		return id.Name
-	}
-	return "?"
+func (t *trace) OnSlotAppend(_ context.Context, s *ir.Var, c ir.Expr) []ir.Stmt {
+	t.add("append-slot %s %s", s.Name, identName(c))
+	return nil
+}
+func (t *trace) OnIter(_ context.Context, e ir.Expr) ir.Expr { return e }
+func (t *trace) OnCond(_ context.Context, e ir.Expr) ir.Expr { return e }
+func (t *trace) OnDefault(_ context.Context, s ir.Stmt) []ir.Stmt {
+	t.add("default %T", s)
+	return nil
 }
 func (t *trace) add(f string, args ...any) { t.lines = append(t.lines, fmt.Sprintf(f, args...)) }
 
@@ -63,7 +63,7 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 		},
 	}
 	tr := &trace{}
-	WalkLowered(stmts, tr)
+	WalkLowered(context.Background(), stmts, tr)
 	got := strings.Join(tr.lines, "\n")
 	if got != "create __n0 vbox" {
 		t.Errorf("dispatch mismatch:\ngot:  %q\nwant: %q", got, "create __n0 vbox")
@@ -112,7 +112,7 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 		}},
 	}
 	tr := &trace{}
-	WalkLowered(stmts, tr)
+	WalkLowered(context.Background(), stmts, tr)
 	want := []string{
 		"create __n0 vbox",
 		"prop __n0 text",
@@ -126,31 +126,33 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 }
 
 func TestWalkLowered_SlotReset(t *testing.T) {
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true}
 	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
 	tr := &trace{}
-	WalkLowered([]ir.Stmt{stmt}, tr)
+	WalkLowered(context.Background(), []ir.Stmt{stmt}, tr)
 	if len(tr.lines) != 1 || tr.lines[0] != "reset __slot0" {
 		t.Errorf("dispatch mismatch: %v", tr.lines)
 	}
 }
 
 func TestWalkLowered_SlotAppend(t *testing.T) {
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true}
 	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
 	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
 		Value: &ir.Call{
 			Func: listPush,
 			Args: []ir.CallArg{
-				{Value: &ir.Ident{Name: "__slot0", Synthesized: true}},
+				{Value: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar}},
 				{Value: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true}},
 			},
 		},
 	}
 	tr := &trace{}
-	WalkLowered([]ir.Stmt{stmt}, tr)
+	WalkLowered(context.Background(), []ir.Stmt{stmt}, tr)
 	if len(tr.lines) != 1 || tr.lines[0] != "append-slot __slot0 __n0" {
 		t.Errorf("dispatch mismatch: %v", tr.lines)
 	}
@@ -177,7 +179,7 @@ func TestWalkLowered_ForIfRecursion(t *testing.T) {
 		},
 	}
 	tr := &trace{}
-	WalkLowered([]ir.Stmt{stmt}, tr)
+	WalkLowered(context.Background(), []ir.Stmt{stmt}, tr)
 	got := strings.Join(tr.lines, "\n")
 	if !strings.Contains(got, "append p c") {
 		t.Errorf("structural recursion missed AppendChild; trace: %v", tr.lines)
