@@ -47,3 +47,20 @@ func test() => lower.CreateNode("text")
 		t.Errorf("internal://lower import not present in checked pkg")
 	}
 }
+
+func TestLowerNamespaceAutoImported(t *testing.T) {
+	// User source that DOES NOT explicitly import internal://lower
+	// should still resolve `lower.CreateNode` because the stdlib
+	// brings the import in transitively via lib/lower.sngl.
+	src := `func test() => lower.CreateNode("text")`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := Check(doc, &Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected diag: %s", d.Msg)
+		}
+	}
+}
