@@ -117,9 +117,9 @@ func (t *fyneTranslator) qualifyChild(c string) string {
 }
 
 func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string {
-	// `node` may arrive pre-qualified ("m.<id>") from dispatch's
-	// identRef() helper; idTags is keyed by the bare id stored at
-	// OnCreateNode time.
+	// `node` may arrive pre-qualified ("m.<id>") from the translator's
+	// own qualification helpers; idTags is keyed by the bare id stored
+	// at OnCreateNode time.
 	bareID := strings.TrimPrefix(node, "m.")
 	tag, ok := t.idTags[bareID]
 	if !ok {
