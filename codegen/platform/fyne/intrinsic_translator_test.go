@@ -41,7 +41,7 @@ func TestFyneTranslator_OnCreateNode_UnknownTag(t *testing.T) {
 
 func TestFyneTranslator_OnAppendChild(t *testing.T) {
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	got := tr.OnAppendChild("parent", "__n0")
+	got := tr.OnAppendChild("parent", "m.__n0")
 	want := "parent.Add(m.__n0)\n"
 	if got != want {
 		t.Errorf("OnAppendChild: got %q, want %q", got, want)
@@ -60,7 +60,7 @@ func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 func TestFyneTranslator_OnAttachHandler_InputChanged(t *testing.T) {
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
 	_ = tr.OnCreateNode("__n0", "input")
-	got := tr.OnAttachHandler("__n0", "input", "m.handleInput")
+	got := tr.OnAttachHandler("m.__n0", "input", "m.handleInput")
 	if !strings.Contains(got, "m.__n0.OnChanged = m.handleInput") {
 		t.Errorf("expected OnChanged assignment; got: %s", got)
 	}
@@ -69,7 +69,7 @@ func TestFyneTranslator_OnAttachHandler_InputChanged(t *testing.T) {
 func TestFyneTranslator_OnAttachHandler_UnknownEvent(t *testing.T) {
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
 	_ = tr.OnCreateNode("__n0", "input")
-	got := tr.OnAttachHandler("__n0", "wibble", "m.h")
+	got := tr.OnAttachHandler("m.__n0", "wibble", "m.h")
 	if got != "" {
 		t.Errorf("expected empty emission for unknown event; got: %s", got)
 	}
@@ -101,7 +101,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 	removeChild := &ir.Func{Name: "RemoveChild", Intrinsic: "RemoveChild"}
 	stmt := &ir.For{
 		Key:  "__entry",
-		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(ir.TypDyn)},
+		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(ir.TypDyn), Synthesized: true},
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
 				Receiver: &ir.Ident{Name: "lower"},
@@ -130,13 +130,13 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 		Cond: &ir.Ident{Name: "visible"},
 		Body: []ir.Stmt{
 			&ir.Assign{
-				Target: &ir.Ident{Name: "__slot0"},
+				Target: &ir.Ident{Name: "__slot0", Synthesized: true},
 				Value: &ir.Call{
 					Receiver: &ir.Ident{Name: "stdlib"},
 					Func:     listPush,
 					Args: []ir.CallArg{
-						{Value: &ir.Ident{Name: "__slot0"}},
-						{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
+						{Value: &ir.Ident{Name: "__slot0", Synthesized: true}},
+						{Value: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true}},
 					},
 				},
 			},
@@ -155,7 +155,7 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 
 func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0"},
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
@@ -170,13 +170,13 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
 	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0"},
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
 		Value: &ir.Call{
 			Receiver: &ir.Ident{Name: "stdlib"},
 			Func:     listPush,
 			Args: []ir.CallArg{
-				{Value: &ir.Ident{Name: "__slot0"}},
-				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
+				{Value: &ir.Ident{Name: "__slot0", Synthesized: true}},
+				{Value: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true}},
 			},
 		},
 	}
@@ -216,7 +216,7 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 				Func:     appendChild,
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
-					{Value: &ir.Ident{Name: "__n5", IsElementRef: true}},
+					{Value: &ir.Ident{Name: "__n5", IsElementRef: true, Synthesized: true}},
 				},
 			}},
 		},

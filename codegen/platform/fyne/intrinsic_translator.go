@@ -79,24 +79,19 @@ func zeroArgsFor(tag string) string {
 }
 
 func (t *fyneTranslator) OnAppendChild(parent, child string) string {
-	return parent + ".Add(" + modelRef(child) + ")\n"
+	return parent + ".Add(" + child + ")\n"
 }
 
 func (t *fyneTranslator) OnRemoveChild(parent, child string) string {
-	return parent + ".Remove(" + modelRef(child) + ")\n"
-}
-
-// modelRef qualifies a node id with "m." when it's a Plan A synthetic
-// widget ref (`__nN`). Loop-local and parameter refs stay bare.
-func modelRef(name string) string {
-	if strings.HasPrefix(name, "__n") {
-		return "m." + name
-	}
-	return name
+	return parent + ".Remove(" + child + ")\n"
 }
 
 func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string {
-	tag, ok := t.idTags[node]
+	// `node` may arrive pre-qualified ("m.<id>") from dispatch's
+	// identRef() helper; idTags is keyed by the bare id stored at
+	// OnCreateNode time.
+	bareID := strings.TrimPrefix(node, "m.")
+	tag, ok := t.idTags[bareID]
 	if !ok {
 		return ""
 	}
@@ -114,7 +109,7 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string 
 	if target == "" {
 		return ""
 	}
-	return modelRef(node) + target + " = " + handlerRef + "\n"
+	return node + target + " = " + handlerRef + "\n"
 }
 func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
 	tag, ok := t.idTags[nodeID]
@@ -145,5 +140,5 @@ func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) st
 	if transform != "" {
 		val = transform + "(" + val + ")"
 	}
-	return modelRef(nodeID) + target + "(" + val + ")\n"
+	return "m." + nodeID + target + "(" + val + ")\n"
 }

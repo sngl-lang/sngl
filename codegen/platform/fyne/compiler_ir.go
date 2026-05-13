@@ -852,15 +852,15 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 		if n.Call != nil {
 			switch {
 			case isLowerIntrinsic(n.Call, "AppendChild"):
-				c := lowerIdentArg(n.Call, 1)
-				return splitTrLines(tr.OnAppendChild("container", c))
+				child := identRef(n.Call.Args[1].Value)
+				return splitTrLines(tr.OnAppendChild("container", child))
 			case isLowerIntrinsic(n.Call, "RemoveChild"):
-				c := lowerIdentArg(n.Call, 1)
-				return splitTrLines(tr.OnRemoveChild("container", c))
+				child := identRef(n.Call.Args[1].Value)
+				return splitTrLines(tr.OnRemoveChild("container", child))
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
-				node := lowerIdentArg(n.Call, 0)
+				node := identRef(n.Call.Args[0].Value)
 				evt, _ := lowerStringArg(n.Call, 1)
-				h := lowerIdentArg(n.Call, 2)
+				h := identRef(n.Call.Args[2].Value)
 				return splitTrLines(tr.OnAttachHandler(node, evt, h))
 			}
 		}
@@ -869,7 +869,7 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 		// (CreateNode/AppendChild/etc.) translate, regardless of whether
 		// this For is a slot teardown loop or a reactive-for body.
 		iterExpr := ""
-		if id, ok := n.Iter.(*ir.Ident); ok && strings.HasPrefix(id.Name, "__slot") {
+		if id, ok := n.Iter.(*ir.Ident); ok && id.Synthesized {
 			// Slot teardown: iterate the Model-side slot field.
 			iterExpr = "m." + id.Name
 		} else {
@@ -923,8 +923,8 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 		if isSlotListPush(n) {
 			target := "m." + n.Target.(*ir.Ident).Name
 			call := n.Value.(*ir.Call)
-			elem := lowerIdentArg(call, 1)
-			return []string{target + " = append(" + target + ", " + modelRef(elem) + ")"}
+			elem := identRef(call.Args[1].Value)
+			return []string{target + " = append(" + target + ", " + elem + ")"}
 		}
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && id.IsElementRef {
@@ -935,11 +935,10 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 	return gc.EvalStmt(s)
 }
 
-// isSlotReset detects '__slotN = []' emitted by passReactivity at
-// the head of every __renderSlot<N> body before re-rendering.
+// isSlotReset detects '__slotN = []' via the Synthesized flag.
 func isSlotReset(a *ir.Assign) bool {
 	id, ok := a.Target.(*ir.Ident)
-	if !ok || !strings.HasPrefix(id.Name, "__slot") {
+	if !ok || !id.Synthesized {
 		return false
 	}
 	ll, ok := a.Value.(*ir.ListLit)
@@ -949,22 +948,18 @@ func isSlotReset(a *ir.Assign) bool {
 	return len(ll.Elems) == 0
 }
 
-// isSlotListPush detects the slot-tracking pattern
-// `__slotN = stdlib.ListPush(__slotN, #__nN)` emitted by
-// passReactivity's __renderSlot<N> generators.
+// isSlotListPush detects the slot-tracking pattern via the
+// Synthesized flag on the assignment target.
 func isSlotListPush(a *ir.Assign) bool {
 	id, ok := a.Target.(*ir.Ident)
-	if !ok || !strings.HasPrefix(id.Name, "__slot") {
+	if !ok || !id.Synthesized {
 		return false
 	}
 	call, ok := a.Value.(*ir.Call)
 	if !ok || call.Func == nil || call.Func.Intrinsic != "ListPush" {
 		return false
 	}
-	if len(call.Args) != 2 {
-		return false
-	}
-	return true
+	return len(call.Args) == 2
 }
 
 // isLowerIntrinsic — true when call resolves to a lower.* intrinsic
@@ -984,14 +979,18 @@ func lowerStringArg(call *ir.Call, i int) (string, bool) {
 	return "", false
 }
 
-func lowerIdentArg(call *ir.Call, i int) string {
-	if i >= len(call.Args) {
+// identRef returns "m.<name>" when the Ident references a synthesized
+// symbol (a passReactivity-emitted ref), or the bare name otherwise.
+// Used to decide whether a name resolves through the Model receiver.
+func identRef(e ir.Expr) string {
+	id, ok := e.(*ir.Ident)
+	if !ok {
 		return ""
 	}
-	if id, ok := call.Args[i].Value.(*ir.Ident); ok {
-		return id.Name
+	if id.Synthesized {
+		return "m." + id.Name
 	}
-	return ""
+	return id.Name
 }
 
 func splitTrLines(s string) []string {
