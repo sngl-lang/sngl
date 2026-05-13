@@ -1,6 +1,8 @@
 package fyne
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -69,8 +71,23 @@ func zeroArgsFor(tag string) string {
 	}
 }
 
-func (t *fyneTranslator) OnAppendChild(parent, child string) string  { return "" }
-func (t *fyneTranslator) OnRemoveChild(parent, child string) string  { return "" }
+func (t *fyneTranslator) OnAppendChild(parent, child string) string {
+	return parent + ".Add(" + modelRef(child) + ")\n"
+}
+
+func (t *fyneTranslator) OnRemoveChild(parent, child string) string {
+	return parent + ".Remove(" + modelRef(child) + ")\n"
+}
+
+// modelRef qualifies a node id with "m." when it's a Plan A synthetic
+// widget ref (`__nN`). Loop-local and parameter refs stay bare.
+func modelRef(name string) string {
+	if strings.HasPrefix(name, "__n") {
+		return "m." + name
+	}
+	return name
+}
+
 func (t *fyneTranslator) OnAttachHandler(node, event, h string) string {
 	return ""
 }

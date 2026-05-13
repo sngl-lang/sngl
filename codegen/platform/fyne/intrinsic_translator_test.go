@@ -35,3 +35,21 @@ func TestFyneTranslator_OnCreateNode_UnknownTag(t *testing.T) {
 		t.Errorf("expected empty emission for unknown tag; got: %s", got)
 	}
 }
+
+func TestFyneTranslator_OnAppendChild(t *testing.T) {
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	got := tr.OnAppendChild("parent", "__n0")
+	want := "parent.Add(m.__n0)\n"
+	if got != want {
+		t.Errorf("OnAppendChild: got %q, want %q", got, want)
+	}
+}
+
+func TestFyneTranslator_OnRemoveChild(t *testing.T) {
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	got := tr.OnRemoveChild("parent", "__entry")
+	want := "parent.Remove(__entry)\n"
+	if got != want {
+		t.Errorf("OnRemoveChild: got %q, want %q", got, want)
+	}
+}
