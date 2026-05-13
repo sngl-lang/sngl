@@ -1,0 +1,31 @@
+caps: NoReactivity
+-- input.sngl --
+component main {
+    var items list<int> = [1, 2, 3]
+    button(text="add", @click { items = items.push(4) })
+    for item = items {
+        text(value=string(item))
+    }
+}
+-- expected.sngl --
+component main {
+    var items list<int> = [1, 2, 3]
+    var __slot0 list<dyn> = []
+    func __renderSlot0(parent dyn) void {
+        for __entry = __slot0 {
+            lower.RemoveChild(parent, __entry)
+        }
+        __slot0 = []
+        for item = items {
+            var __n0 text = lower.CreateNode("text")
+            #__n0.value = string(item)
+            lower.AppendChild(#parent, #__n0)
+            __slot0 = stdlib.ListPush(__slot0, #__n0)
+        }
+    }
+    button(text="add", @click {
+        items = list.push(items, 4)
+        __renderSlot0(#__root)
+    })
+    __renderSlot0(#__root)
+}
