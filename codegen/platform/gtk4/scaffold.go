@@ -60,6 +60,7 @@ type bindData struct {
 	InitVal     string
 	Getter      string
 	SetterExtra string
+	NoAccessors bool // skip emitting getter/setter (e.g. synthesized __slot<N>, __root)
 }
 
 type computedData struct {

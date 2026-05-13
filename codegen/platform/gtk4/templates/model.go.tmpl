@@ -112,7 +112,7 @@ func (m *Model) {{.Name}}() {{.GoType}} {
 
 {{end}}
 {{- .FunctionCode}}
-{{- range .Binds}}
+{{- range .Binds}}{{if not .NoAccessors}}
 func (m *Model) {{.Getter}}() {{.GoType}} {
 	return m.{{.Name}}
 }
@@ -122,4 +122,4 @@ func (m *Model) Set{{.Getter}}(v {{.GoType}}) {
 {{ .SetterExtra -}}
 }
 
-{{end}}
+{{end}}{{end}}

@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"context"
 	"fmt"
 	"go/format"
 	"sort"
@@ -22,9 +23,10 @@ type irAnalysis struct {
 }
 
 type irBind struct {
-	name   string
-	goType string
-	init   string
+	name        string
+	goType      string
+	init        string
+	noAccessors bool // skip getter/setter generation (synthesized __slot/__root)
 }
 
 type irComputed struct {
@@ -190,6 +192,31 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if v.IsConst {
 			continue
 		}
+		if v.Synthesized {
+			if v.Name == "__root" {
+				// Plan C's __root sentinel: stable *C.GtkBox that
+				// BuildUI populates and returns. Initialized lazily
+				// inside BuildUI (cgo calls aren't valid in struct init).
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "*C.GtkBox",
+					init:        "nil",
+					noAccessors: true,
+				})
+				continue
+			}
+			// Plan A's __slot<N> vars hold widget refs for reactive
+			// if/for teardown. Emit as []*C.GtkWidget so the renderSlot
+			// loop (range, gtk_widget_unparent each, nil the slice)
+			// compiles.
+			info.binds = append(info.binds, irBind{
+				name:        v.Name,
+				goType:      "[]*C.GtkWidget",
+				init:        "nil",
+				noAccessors: true,
+			})
+			continue
+		}
 		varGC := gc
 		if tv.comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
@@ -272,6 +299,10 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			continue
+		}
+		if fn.Synthesized {
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
 			continue
 		}
 		emitGTK4Func(&funcBuf, fn, gc)
@@ -364,10 +395,11 @@ func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []w
 	// Binds: collect setter side-effects for affected updaters.
 	for _, bind := range c.info.binds {
 		bd := bindData{
-			Name:    bind.name,
-			GoType:  bind.goType,
-			InitVal: bind.init,
-			Getter:  golang.ExportName(bind.name),
+			Name:        bind.name,
+			GoType:      bind.goType,
+			InitVal:     bind.init,
+			Getter:      golang.ExportName(bind.name),
+			NoAccessors: bind.noAccessors,
 		}
 		var extra strings.Builder
 		mutated := map[string]bool{bind.name: true}
@@ -415,6 +447,28 @@ func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []w
 	}
 
 	return td, nil
+}
+
+// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
+// Func as a Model method. The body is a mix of plain Go statements
+// (for-teardown, Assign reset, If gate) and lower.* intrinsic calls.
+// codegen.WalkLowered routes intrinsic shapes through gtk4Translator
+// into ir.Stmt fragments; we then feed them through gc.EvalStmt at
+// the source-emission boundary.
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField) {
+	fmt.Fprintf(b, "func (m *Model) %s(container *C.GtkBox) {\n", fn.Name)
+	tr := newGtk4Translator(gc, func(name, cType string) {
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
+	})
+	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	for _, stmt := range body {
+		for _, line := range gc.EvalStmt(stmt) {
+			b.WriteString("\t")
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("}\n\n")
 }
 
 // emitGTK4Func emits a top-level user function as a method on *Model.
