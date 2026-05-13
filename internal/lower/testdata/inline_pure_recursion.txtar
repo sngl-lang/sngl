@@ -1,5 +1,4 @@
 caps:
-expected_error: inline cycle: foo → foo
 -- input.sngl --
 component foo() {
     foo()
@@ -7,4 +6,11 @@ component foo() {
 
 component main {
     foo()
+}
+-- expected.sngl --
+component foo {
+    foo
+}
+component main {
+    foo
 }

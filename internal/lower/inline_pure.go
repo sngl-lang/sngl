@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -173,11 +174,14 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
 	}
 
-	// Cycle check. A pure-component recursion has no terminating shape
-	// (no Vars/Funcs/Timers means no base case), so we treat any cycle
-	// as a hard error regardless of mode.
-	if st.inFlight[comp] {
-		return nil, fmt.Errorf("inline cycle: %s at %s", st.cycleChain(comp), posOf(n.AST))
+	// Recursive pure components (self-call directly or transitively) can't
+	// be inlined to a finite body. In strict mode that's fatal; in
+	// optimization mode the user's recursion is legitimate, leave as-is.
+	if st.inFlight[comp] || containsSelfRef(comp) {
+		if strictApplies {
+			return nil, fmt.Errorf("inline cycle: %s at %s", st.cycleChain(comp), posOf(n.AST))
+		}
+		return []ir.Stmt{n}, nil
 	}
 	st.inFlight[comp] = true
 	st.stack = append(st.stack, comp)
@@ -246,6 +250,49 @@ func impurityReason(comp *ir.Component) string {
 	return strings.Join(parts, ", ")
 }
 
+// containsSelfRef reports whether comp's body invokes comp anywhere
+// (direct self-reference). Mutual recursion isn't detected here — the
+// in-flight check catches that during substitution.
+func containsSelfRef(comp *ir.Component) bool {
+	var visit func(stmts []ir.Stmt) bool
+	visit = func(stmts []ir.Stmt) bool {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if n.Component == comp {
+					return true
+				}
+				if visit(n.Children) {
+					return true
+				}
+				for _, h := range n.Handlers {
+					if h.Func != nil && visit(h.Func.Block) {
+						return true
+					}
+				}
+			case *ir.If:
+				if visit(n.Body) || visit(n.Else) {
+					return true
+				}
+			case *ir.For:
+				if visit(n.Body) || visit(n.Else) {
+					return true
+				}
+			case *ir.PlatformFilter:
+				if visit(n.Body) {
+					return true
+				}
+			case *ir.SlotInst:
+				if visit(n.Children) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return visit(comp.Body)
+}
+
 // isPlatformStdlibComponent reports whether comp came from one of the
 // package's platform:// imports.
 func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
@@ -256,10 +303,8 @@ func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 		if imp.Pkg == nil {
 			continue
 		}
-		for _, c := range imp.Pkg.Components {
-			if c == comp {
-				return true
-			}
+		if slices.Contains(imp.Pkg.Components, comp) {
+			return true
 		}
 	}
 	return false
