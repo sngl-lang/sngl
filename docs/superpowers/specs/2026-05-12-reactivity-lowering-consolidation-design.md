@@ -370,6 +370,25 @@ it localizes to that step.
 > related script tests assert specific output from the old pipeline (e.g.
 > `m.entry0.SetText(...)` versus the new `m.__n0.SetText(...)` synthetic-
 > id form). These need rewriting or deletion in a follow-up.
+>
+> **Plan C** (`docs/superpowers/plans/2026-05-13-gtk4-intrinsic-conversion.md`)
+> revised the IntrinsicTranslator interface to return []ir.Stmt + take
+> context.Context (decoupling platforms from target-language syntax),
+> back-ported fyne to match, and applied the conversion to gtk4:
+> gtk4Translator emits IR with `*ir.Func.NativePkg="C"` /
+> `NativeName="C.gtk_*"` so `gc.EvalExpr` renders the cgo source. gtk4 now
+> has NoDeclarative enabled, BuildUI routed through WalkLowered, and the
+> parallel-reactive pipeline (renderConditional / renderFor / updaters /
+> FindAffected / lateReactive / localMode / scaffold updater fields)
+> removed.
+>
+> Known Plan C fallout: one new `cmd/sngl/TestScript/compile_gtk4_button`
+> failure because gtk4Translator's `gtk4TagToCType` only knows SNGL stdlib
+> tags (`button`, `text`, etc.) — GIR-resolved direct identifiers
+> (`GtkButton`, etc.) need a follow-up mapping. The 6 pre-existing Plan
+> B.2 script-test failures remain.
+>
+> Plan D covers html. Plan E is the final audit.
 
 ## Testing
 
