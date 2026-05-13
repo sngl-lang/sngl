@@ -1,6 +1,7 @@
 package fyne
 
 import (
+	"strings"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -101,7 +102,8 @@ func loadBlueprints() map[string]*fyneBlueprint {
 					continue
 				}
 				if m := buildBlueprintFromComponent(cd); m != nil {
-					blueprintByName[cd.Name] = m
+					name := strings.TrimPrefix(cd.Name, "sngl.")
+					blueprintByName[name] = m
 				}
 			}
 		}
@@ -121,6 +123,12 @@ func loadBlueprints() map[string]*fyneBlueprint {
 
 func buildBlueprintFromComponent(cd *ast.ComponentDecl) *fyneBlueprint {
 	stmts := cd.Body.Stmts
+	// Extension form: unwrap the `platform fyne { ... }` block.
+	if len(stmts) > 0 {
+		if pl, ok := stmts[0].(*ast.PlatformStmt); ok && pl.Platform == "fyne" {
+			stmts = pl.Body.Stmts
+		}
+	}
 	if len(stmts) == 0 {
 		return nil
 	}
