@@ -341,6 +341,67 @@ component main {
 	}
 }
 
+func TestSlotParentRefMatchesEnclosingNode(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    vbox(style={gap=4}) {
+        button(@click { visible = !visible })
+        if visible {
+            text(value="hi")
+        }
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	// Find the initial slot call inside the vbox and the splice in @click.
+	// Both should carry the same parent identifier.
+	var initialParent, spliceParent string
+	var walk func(stmts []ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.CallStmt:
+				if n.Call == nil || n.Call.Func == nil || n.Call.Func.Name != "__renderSlot0" {
+					continue
+				}
+				if len(n.Call.Args) == 0 {
+					continue
+				}
+				if id, ok := n.Call.Args[0].Value.(*ir.Ident); ok {
+					if initialParent == "" {
+						initialParent = id.Name
+					} else if spliceParent == "" {
+						spliceParent = id.Name
+					}
+				}
+			case *ir.NodeInst:
+				walk(n.Children)
+				for _, h := range n.Handlers {
+					if h.Func != nil {
+						walk(h.Func.Block)
+					}
+				}
+			}
+		}
+	}
+	walk(comp.Body)
+	if initialParent == "" || spliceParent == "" {
+		t.Fatalf("expected two __renderSlot0 call sites; found initial=%q splice=%q", initialParent, spliceParent)
+	}
+	if initialParent != spliceParent {
+		t.Errorf("parent ref mismatch: initial=%q, splice=%q (splice should use the same parent as initial)", initialParent, spliceParent)
+	}
+	if initialParent == "__root" {
+		t.Errorf("expected non-root parent for slot nested inside a vbox; got __root")
+	}
+}
+
 func TestNonReactiveIfPreserved(t *testing.T) {
 	src := `
 component main {

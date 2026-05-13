@@ -41,8 +41,21 @@ type reactivityState struct {
 // synthetic __slot<N>; GenFunc is the synthesized __renderSlot<N> Func
 // (populated in a later task).
 type reactiveSlot struct {
-	SlotID  string
-	GenFunc *ir.Func
+	SlotID    string
+	GenFunc   *ir.Func
+	ParentRef ir.Expr // ident the source-position CallStmt uses; same ref re-used for splice updaters
+}
+
+// cloneIdent shallow-copies an *ir.Ident so two splices do not alias the
+// same pointer. Non-Ident expressions pass through unchanged (parent refs
+// are always Idents today).
+func cloneIdent(e ir.Expr) ir.Expr {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return e
+	}
+	cp := *id
+	return &cp
 }
 
 // reactivityOwner is the closest enclosing scope that owns synthesized
@@ -198,19 +211,34 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 		switch n := s.(type) {
 		case *ir.If:
 			if n.LoweredSlotID != "" {
-				out = append(out, st.slotCall(n.LoweredSlotID, parentRef))
+				ref := parentRef
+				if ref == nil {
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+				}
+				st.recordSlotParent(n.LoweredSlotID, ref)
+				out = append(out, st.slotCall(n.LoweredSlotID, ref))
 				continue
 			}
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
 		case *ir.For:
 			if n.LoweredSlotID != "" {
-				out = append(out, st.slotCall(n.LoweredSlotID, parentRef))
+				ref := parentRef
+				if ref == nil {
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+				}
+				st.recordSlotParent(n.LoweredSlotID, ref)
+				out = append(out, st.slotCall(n.LoweredSlotID, ref))
 				continue
 			}
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
 		case *ir.NodeInst:
+			// If any direct child is a reactive If/For we need a stable
+			// element ref for it to thread through to the slot updater.
+			if n.ID == "" && childrenContainReactiveSlot(n.Children) {
+				n.ID = st.freshNodeID()
+			}
 			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}
 			n.Children = st.rewriteReactiveStructures(n.Children, pref)
 			for _, h := range n.Handlers {
@@ -222,6 +250,40 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 		out = append(out, s)
 	}
 	return out
+}
+
+// childrenContainReactiveSlot reports whether any direct child of a
+// NodeInst is a reactive If/For (i.e. carries a LoweredSlotID). Used to
+// force an enclosing element ref so slot updaters have a stable parent.
+func childrenContainReactiveSlot(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.If:
+			if n.LoweredSlotID != "" {
+				return true
+			}
+		case *ir.For:
+			if n.LoweredSlotID != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// recordSlotParent stamps the parent ref onto every reactiveSlot record
+// with this SlotID. The same ref is reused by updatersFor when splicing
+// re-renders so structurally-reactive children re-attach to the correct
+// parent on mutation.
+func (st *reactivityState) recordSlotParent(slotID string, parentRef ir.Expr) {
+	for v, slots := range st.reverseSlots {
+		for i := range slots {
+			if slots[i].SlotID == slotID {
+				slots[i].ParentRef = cloneIdent(parentRef)
+			}
+		}
+		st.reverseSlots[v] = slots
+	}
 }
 
 // slotCall emits CallStmt __renderSlotN(parentRef).
@@ -265,9 +327,10 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 		return existing
 	}
 	v := &ir.Var{
-		Name: slotID,
-		Type: ir.ListOf(ir.TypDyn),
-		Init: &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Name:        slotID,
+		Type:        ir.ListOf(ir.TypDyn),
+		Init:        &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Synthesized: true,
 	}
 	st.owner.addVar(v)
 	return v
@@ -541,10 +604,14 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		if slot.GenFunc == nil {
 			continue
 		}
+		parentRef := slot.ParentRef
+		if parentRef == nil {
+			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,
 			Func: slot.GenFunc,
-			Args: []ir.CallArg{{Value: &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}}},
+			Args: []ir.CallArg{{Value: cloneIdent(parentRef)}},
 		}})
 	}
 	return out
@@ -730,9 +797,10 @@ func renderFuncName(slotID string) string {
 func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) *ir.Func {
 	parentParam := &ir.Param{Name: "parent", Type: ir.TypDyn}
 	fn := &ir.Func{
-		Name:   renderFuncName(slotID),
-		Params: []*ir.Param{parentParam},
-		Return: ir.TypVoid,
+		Name:        renderFuncName(slotID),
+		Params:      []*ir.Param{parentParam},
+		Return:      ir.TypVoid,
+		Synthesized: true,
 	}
 
 	// 1. Teardown: for __entry = __slotN { lower.RemoveChild(parent, __entry) }
@@ -884,4 +952,3 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 	walk(stmts)
 	return fn
 }
-
