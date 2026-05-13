@@ -1,0 +1,52 @@
+# Verifies a user-defined func that mutates state from outside a direct
+# event handler still triggers DOM updates. Tests legacy g.updates
+# findAffectedUpdaters dispatch from emitSetter.
+#
+# Legacy pipeline emits:
+#   - emitted user func body inlines per-assignment DOM patches:
+#       function update(newName, newCount) {
+#         state.name = newName;
+#         __n0.textContent = state.name;
+#         state.count = newCount;
+#         __n1.textContent = String(state.count);
+#       }
+#   - g.updates also emits the per-node updaters $u__n0_text / $u__n1_text
+#     and a click handler that calls update("Hello", 5).
+#
+# NOTE: legacy does NOT emit a separate $set_name(v) function — mutations
+# are inlined at each assignment site within the user func. Plan D Task
+# 10+ needs to preserve this inlined-dispatch semantics.
+
+sngl compile --platform=html --out=out app.sngl
+exists out/index.html
+
+# User func is emitted with both state mutations and inlined DOM patches.
+grep 'function update' out/index.html
+grep 'state.name = newName' out/index.html
+grep 'state.count = newCount' out/index.html
+grep '__n0.textContent = state.name' out/index.html
+grep '__n1.textContent = String\(state.count\)' out/index.html
+
+# Per-node updaters still emitted for initial sync.
+grep '\$u__n0_text' out/index.html
+grep '\$u__n1_text' out/index.html
+
+# Button click handler calls user func.
+grep 'update\("Hello", 5\)' out/index.html
+
+-- app.sngl --
+output { none { html } }
+
+component main {
+    var name = "World"
+    var count int = 0
+
+    func update(newName string, newCount int) {
+        name = newName
+        count = newCount
+    }
+
+    text(value=name)
+    text(value=string(count))
+    button(text="Update", @click { update("Hello", 5) })
+}
