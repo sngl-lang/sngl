@@ -1,26 +1,25 @@
 # Verifies `dump lowered --list` succeeds for every shipping platform.
-# Non-HTML platforms have all caps zero (pass list empty).
-# HTML opted into NoReactivity in Phase 4 Task 5 and NoAsyncReactive in Task 8c.
+# InlinePure runs always-on (Plan G); fyne also opts into NoStdlibWrappers.
 
 sngl dump lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps:'
-stdout 'passes: \(none\)'
+stdout 'passes: InlinePure'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoReactivity'
-stdout 'passes: NoReactivity'
+stdout 'caps: NoReactivity,NoStdlibWrappers,NoDeclarative'
+stdout 'passes: NoReactivity . InlinePure . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: NoAsyncReactive'
+stdout 'passes: NoAsyncReactive . NoReactivity . InlinePure'
 
 sngl dump lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: NoAsyncReactive'
+stdout 'passes: NoAsyncReactive . NoReactivity . InlinePure'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps:'
-stdout 'passes: \(none\)'
+stdout 'passes: InlinePure'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump lowered --lang go --platform bubbletea --after NoBogus main.sngl

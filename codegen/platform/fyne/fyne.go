@@ -47,7 +47,11 @@ func (g *Generator) Capabilities() lower.Caps {
 	// NoDeclarative: lowering flattens the entire visual tree into
 	// create/append/attachHandler intrinsic-call sequences. fyne
 	// consumes the flat output via WalkLowered + fyneTranslator.
-	return lower.Caps{NoReactivity: true, NoDeclarative: true}
+	// NoStdlibWrappers: inline fyne.sngl wrapper components at lowering
+	// time. fyne wrappers are already pure blueprint-bearing NodeInsts,
+	// so behavior is unchanged — the translator still reads the same
+	// Constructor/bindings props after inlining.
+	return lower.Caps{NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true}
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
