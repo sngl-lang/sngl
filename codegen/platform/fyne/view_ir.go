@@ -52,61 +52,6 @@ type irViewContext struct {
 	// a window name are rendered as navigate() calls instead of OS-browser
 	// Hyperlink taps.
 	windowNames map[string]bool
-
-	// nodeBindings maps the synthetic NodeID assigned by
-	// internal/lower's passReactivity (`__nX`) to the widget setter
-	// info for each of that node's reactive props. The visual-tree
-	// walk emits a /*SNGLREACT:i*/ token in place of each reactive
-	// Assign and resolveReactiveTokens substitutes the recorded
-	// nodeBinding once the full walk has populated this map.
-	nodeBindings map[string]map[string]nodeBindingInfo
-	// lateReactive accumulates each lowering-injected reactive Assign
-	// in emission order. After the full visual-tree walk completes,
-	// resolveReactiveTokens replaces /*SNGLREACT:i*/ placeholders in
-	// the buffer with `target.Setter(transform(rhs))` lines drawn
-	// from nodeBindings.
-	lateReactive []lateReactiveAssign
-}
-
-type lateReactiveAssign struct {
-	NodeID string
-	Prop   string
-	RHS    string // pre-evaluated Go expression for the new value
-}
-
-// nodeBindingInfo describes how to push a new value of one reactive
-// prop onto its underlying widget at runtime.
-type nodeBindingInfo struct {
-	Target    string // widget receiver, e.g. "m.label0"
-	Setter    string // method, e.g. ".SetText"
-	Transform string // optional wrap, e.g. "fmt.Sprint"
-}
-
-func (vc *irViewContext) recordNodeBinding(nodeID, prop string, info nodeBindingInfo) {
-	if nodeID == "" {
-		return
-	}
-	if vc.nodeBindings == nil {
-		vc.nodeBindings = make(map[string]map[string]nodeBindingInfo)
-	}
-	props, ok := vc.nodeBindings[nodeID]
-	if !ok {
-		props = make(map[string]nodeBindingInfo)
-		vc.nodeBindings[nodeID] = props
-	}
-	props[prop] = info
-}
-
-func (vc *irViewContext) nodeBinding(nodeID, prop string) (nodeBindingInfo, bool) {
-	if vc.nodeBindings == nil {
-		return nodeBindingInfo{}, false
-	}
-	props, ok := vc.nodeBindings[nodeID]
-	if !ok {
-		return nodeBindingInfo{}, false
-	}
-	b, ok := props[prop]
-	return b, ok
 }
 
 func (vc *irViewContext) addImports(paths []string) {
@@ -446,11 +391,6 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 
 	// Reactive bindings — emit init setter (unless an Init binding already
 	// did) and register a dep-tracked updater.
-	updaterPrefix := bp.UpdaterPrefix
-	if updaterPrefix == "" {
-		updaterPrefix = "update_" + fieldName
-	}
-	reactiveCount := 0
 	for _, b := range bp.Bindings {
 		if b.Kind != bindReactive {
 			continue
@@ -470,16 +410,6 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 		if !hasInit(bp.Bindings, b.Prop) && !ctorHasProp(bp.Constructor, b.Prop) {
 			vc.line("%s", body)
 		}
-		// Register this prop's setter so emitEventHandlerBlock can
-		// translate the lowering-injected `nID.<prop> = <expr>` Assign
-		// into `target.Setter(transform(expr))`. n.ID is populated by
-		// internal/lower's passReactivity.
-		vc.recordNodeBinding(n.ID, b.Prop, nodeBindingInfo{
-			Target:    target,
-			Setter:    b.Target,
-			Transform: b.Transform,
-		})
-		reactiveCount++
 	}
 
 	// Event bindings — assign closure to a field after construction.
@@ -721,66 +651,9 @@ func (vc *irViewContext) emitEventHandlerBlock(stmts []ir.Stmt) {
 	}
 }
 
-// emitStmt renders one IR statement to Go. For lowering-injected
-// reactive updates (Assigns whose target is `nX.<prop>`) the renderer
-// defers the emit as a /*SNGLREACT:i*/ token; resolveReactiveTokens
-// substitutes the widget-setter call once the whole walk has
-// populated nodeBindings. Everything else flows through the generic
-// GoIRContext.
+// emitStmt renders one IR statement to Go via the generic GoIRContext.
 func (vc *irViewContext) emitStmt(stmt ir.Stmt) {
-	if a, ok := stmt.(*ir.Assign); ok {
-		if vc.recordLateReactive(a) {
-			return
-		}
-	}
 	for _, line := range vc.gc.EvalStmt(stmt) {
 		vc.line("%s", line)
 	}
-}
-
-// recordLateReactive captures the shape produced by internal/lower's
-// passReactivity (Assign on Select{IsElementRef ident, propName}) and
-// emits a placeholder token. resolveReactiveTokens replaces the token
-// with the recorded widget setter call once the full walk completes.
-// Returns true when stmt matched the reactive-Assign shape (so the
-// caller skips the fallback EvalStmt path).
-func (vc *irViewContext) recordLateReactive(a *ir.Assign) bool {
-	sel, ok := a.Target.(*ir.Select)
-	if !ok {
-		return false
-	}
-	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || !id.IsElementRef {
-		return false
-	}
-	idx := len(vc.lateReactive)
-	vc.lateReactive = append(vc.lateReactive, lateReactiveAssign{
-		NodeID: id.Name,
-		Prop:   sel.Field,
-		RHS:    vc.gc.EvalExpr(a.Value),
-	})
-	vc.line("/*SNGLREACT:%d*/", idx)
-	return true
-}
-
-// resolveReactiveTokens runs after the full visual-tree walk. It
-// scans `src` for /*SNGLREACT:i*/ placeholders, looks up the (NodeID,
-// Prop) recorded for index i, and replaces each token with the widget
-// setter call from nodeBindings. Tokens whose binding never registered
-// (dead node, malformed lowering) are replaced with an empty line so
-// the generated source still compiles.
-func (vc *irViewContext) resolveReactiveTokens(src string) string {
-	for i, late := range vc.lateReactive {
-		token := fmt.Sprintf("/*SNGLREACT:%d*/", i)
-		var replacement string
-		if bi, ok := vc.nodeBinding(late.NodeID, late.Prop); ok {
-			rhs := late.RHS
-			if bi.Transform != "" {
-				rhs = bi.Transform + "(" + rhs + ")"
-			}
-			replacement = fmt.Sprintf("%s%s(%s)", bi.Target, bi.Setter, rhs)
-		}
-		src = strings.Replace(src, token, replacement, 1)
-	}
-	return src
 }

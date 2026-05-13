@@ -412,13 +412,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	// Resolve /*SNGLREACT:i*/ placeholders emitted by recordLateReactive
-	// once every visual node's bindings have been recorded.
-	src := b.String()
-	if mainVC != nil {
-		src = mainVC.resolveReactiveTokens(src)
-	}
-	return []byte(src), nil
+	_ = mainVC
+	return []byte(b.String()), nil
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
