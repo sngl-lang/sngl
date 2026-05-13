@@ -1,0 +1,35 @@
+caps: NoReactivity
+-- input.sngl --
+component main {
+    var visible bool = true
+    var name string = "World"
+    button(text="toggle", @click { visible = !visible })
+    text(value="Hello, {name}!")
+    if visible {
+        text(value="bye")
+    }
+}
+-- expected.sngl --
+component main {
+    var visible bool = true
+    var name string = "World"
+    var __slot0 list<dyn> = []
+    func __renderSlot0(parent dyn) void {
+        for __entry = __slot0 {
+            lower.RemoveChild(parent, __entry)
+        }
+        __slot0 = []
+        if visible {
+            var __n0 text = lower.CreateNode("text")
+            #__n0.value = "bye"
+            lower.AppendChild(#parent, #__n0)
+            __slot0 = stdlib.ListPush(__slot0, #__n0)
+        }
+    }
+    button(text="toggle", @click {
+        visible = !visible
+        __renderSlot0(#__root)
+    })
+    text #__n0(value="Hello, " + name + "!")
+    __renderSlot0(#__root)
+}
