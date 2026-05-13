@@ -2,6 +2,9 @@ package fyne
 
 import (
 	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -85,5 +88,30 @@ component main {
 		if strings.Contains(out, leak) {
 			t.Errorf("untranslated intrinsic %q leaked into emitted Go", leak)
 		}
+	}
+
+	// Compile-check: write the emitted source to a temp module and try
+	// to `go build`. Catches __root-style "undefined ident" failures the
+	// snippet matcher misses.
+	tmp, err := os.MkdirTemp("", "fyne-emit-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	goMod := "module integration\n\ngo 1.22\n\nrequire fyne.io/fyne/v2 v2.7.3\n"
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte("package integration\n\n"+out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = tmp
+	cmd.Env = append(os.Environ(), "GOPROXY=off")
+	combined, buildErr := cmd.CombinedOutput()
+	if buildErr != nil {
+		t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- source ---\n%s", buildErr, combined, out)
 	}
 }
