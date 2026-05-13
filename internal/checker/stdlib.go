@@ -310,6 +310,102 @@ func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 	return pkg
 }
 
+// mergePlatformExtensions walks the active platform's Package() docs for
+// `component sngl.X` declarations, locates the corresponding stdlib component,
+// and writes the matching `platform <name>` body into the stdlib
+// *ir.Component.AST.Body. The component is processed later by the normal
+// checker passes (its body is now non-empty).
+//
+// Pre-flight: extension merge requires exactly one registered platform. Zero
+// platforms is a no-op (test/tooling mode). More than one is a checker error
+// — tooling that reasons across platforms should run the checker per-platform.
+//
+// Note: this pass intentionally only acts on the new form (`HasParens=false`).
+// Legacy `component sngl.X() { body }` declarations in platform .sngl files
+// (html, bubbletea) continue to be ignored until Phase C rewrites them.
+func (c *checker) mergePlatformExtensions() {
+	if len(c.cfg.Platforms) == 0 {
+		return
+	}
+	// Pre-flight: only one platform may be registered when any platform ships
+	// new-form extension declarations. Walk every registered platform's docs
+	// looking for new-form `sngl.X` decls; if any exist and len > 1, error.
+	// (Pre-Phase-C this is essentially a no-op because platform .sngl files
+	// still use the legacy `component sngl.X() { body }` form.)
+	if len(c.cfg.Platforms) > 1 {
+		hasExtension := false
+	scan:
+		for _, p := range c.cfg.Platforms {
+			for _, doc := range p.Package() {
+				for _, stmt := range doc.Stmts {
+					decl, ok := stmt.(*ast.ComponentDecl)
+					if !ok || decl.HasParens {
+						continue
+					}
+					if strings.HasPrefix(decl.Name, "sngl.") {
+						hasExtension = true
+						break scan
+					}
+				}
+			}
+		}
+		if hasExtension {
+			c.error(ast.Pos{}, "component extensions require exactly one registered platform (got %d)", len(c.cfg.Platforms))
+		}
+		return
+	}
+	p := c.cfg.Platforms[0]
+	platformName := p.PlatformIdentifier()
+	for _, doc := range p.Package() {
+		for _, stmt := range doc.Stmts {
+			decl, ok := stmt.(*ast.ComponentDecl)
+			if !ok {
+				continue
+			}
+			if decl.HasParens {
+				// Legacy form — skip until Phase C rewrites.
+				continue
+			}
+			if !strings.HasPrefix(decl.Name, "sngl.") {
+				continue
+			}
+			local := strings.TrimPrefix(decl.Name, "sngl.")
+			stdSym, ok := c.symtab.Comps[local]
+			if !ok {
+				c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
+				continue
+			}
+			stdComp, ok := stdSym.(*ir.Component)
+			if !ok {
+				continue
+			}
+			// Find the matching platform block within the extension body.
+			var matched *ast.StmtBlock
+			for i := range decl.Body.Stmts {
+				pl, ok := decl.Body.Stmts[i].(*ast.PlatformStmt)
+				if !ok {
+					continue
+				}
+				if pl.Platform == platformName {
+					matched = &pl.Body
+					break
+				}
+			}
+			if matched == nil {
+				continue // no implementation for this platform; component stays abstract
+			}
+			// Splice the platform body into the stdlib component's AST. The
+			// IR Body itself is populated when checkComponentBody runs on this
+			// component (which happens at pass2 time via the dedicated stdlib
+			// extension-check loop in Check()).
+			if stdComp.AST != nil {
+				stdComp.AST.Body = *matched
+			}
+			c.mergedExtensions = append(c.mergedExtensions, stdComp)
+		}
+	}
+}
+
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
 	irComp := &ir.Component{
 		AST:  comp,
