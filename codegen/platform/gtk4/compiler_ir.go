@@ -124,6 +124,23 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	}, nil
 }
 
+// flattenPlatformFilters expands `platform <target> { ... }` blocks: when
+// target matches the wanted platform, the body's statements are inlined;
+// non-matching blocks are dropped. Non-filter statements pass through.
+func flattenPlatformFilters(stmts []ir.Stmt, platform string) []ir.Stmt {
+	var out []ir.Stmt
+	for _, s := range stmts {
+		if pf, ok := s.(*ir.PlatformFilter); ok {
+			if pf.Platform == platform {
+				out = append(out, flattenPlatformFilters(pf.Body, platform)...)
+			}
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
 // mainBodyStmts returns the body statements to render: prefer the first
 // window's body, otherwise fall back to the main component body.
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
@@ -260,6 +277,10 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	gc.AlertFunc = gtk4IRAlertFunc
 
 	// --- Phase 1: Render BuildUI body into a buffer ---
+	// vc is still constructed so eventInvokers / nodeBindings / etc.
+	// emitted by later phases keep their (currently empty) accumulators
+	// — those phases run off WalkLowered output too in subsequent work,
+	// but for now they need the receiver.
 	var buildBuf strings.Builder
 	vc := &viewContext{
 		gc:         gc,
@@ -270,25 +291,22 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		depTracker: c.info.depTracker(),
 	}
 
-	bodyStmts := mainBodyStmts(c.ctx)
+	var widgetFields []widgetField
+	bodyStmts := flattenPlatformFilters(mainBodyStmts(c.ctx), "gtk4")
+	var topLevelRefs []string
 	if len(bodyStmts) > 0 {
-		vc.line("var content *C.GtkWidget")
-		if len(bodyStmts) == 1 {
-			vc.renderStmt(bodyStmts[0], "content")
-		} else {
-			// Multi-root: wrap in a vertical box.
-			vc.line("box := C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 0)")
-			for i, child := range bodyStmts {
-				childVar := fmt.Sprintf("child%d", i)
-				vc.line("var %s *C.GtkWidget", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("if %s != nil { C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(box)), %s) }", childVar, childVar)
+		tr := newGtk4Translator(gc, func(name, cType string) {
+			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
+		})
+		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
+		for _, stmt := range body {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(&buildBuf, "\t%s\n", line)
 			}
-			vc.line("content = box")
 		}
+		topLevelRefs = tr.topLevel
 	}
 
-	widgetFields := vc.fields
 	updaters := vc.updaters
 
 	// --- Phase 2: User functions (non-computed, non-test, non-method) ---
@@ -332,7 +350,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	}
 
 	// --- Phase 5: Append dynamic code to model.go ---
-	emitBuildUI(&modelBuf, &buildBuf)
+	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs)
 	emitUpdaters(&modelBuf, updaters)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
 	emitPropertyReaders(&modelBuf, vc.nodeBindings)
@@ -501,31 +519,32 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 }
 
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget.
-// It expects the body buffer to set up `content *C.GtkWidget`. The
-// emitted function always wraps `content` in a GtkApplicationWindow
-// (creating a synthetic one when the user didn't author an explicit
-// window) so the activate handler has a top-level widget to present.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder) {
+// With NoDeclarative on, the body buffer is a flat stream of intrinsic
+// calls (CreateNode → m.<id> = ctor; AppendChild → gtk_box_append; etc.)
+// translated by gtk4Translator. Top-level widget refs that weren't
+// consumed by an AppendChild get parented into m.__root, which BuildUI
+// initializes lazily and embeds in a GtkApplicationWindow.
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string) {
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
-	if buildBuf.Len() == 0 {
+	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
 		b.WriteString("\twin := C.gtk_application_window_new(app)\n")
 		b.WriteString("\treturn win\n")
 		b.WriteString("}\n\n")
 		return
 	}
-	b.WriteString(buildBuf.String())
-	// For the synthesized-window path content is whatever the body
-	// produced (typically a GtkBox). Wrap it in a GtkApplicationWindow
-	// so the activate handler has a presentable top-level. Explicit
-	// `window {…}` sources route through a different path (not wired
-	// up yet on gtk4) and would set content directly.
-	b.WriteString("\tif content == nil {\n")
-	b.WriteString("\t\treturn C.gtk_application_window_new(app)\n")
+	// Lazy-init __root — cgo calls aren't valid in field initializers,
+	// so the binds-loop in New() puts nil there and BuildUI promotes it.
+	b.WriteString("\tif m.__root == nil {\n")
+	b.WriteString("\t\tm.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))\n")
 	b.WriteString("\t}\n")
+	b.WriteString(buildBuf.String())
+	for _, ref := range topLevelRefs {
+		fmt.Fprintf(b, "\tC.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.%s)))\n", ref)
+	}
 	b.WriteString("\twin := C.gtk_application_window_new(app)\n")
 	b.WriteString("\tC.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)\n")
-	b.WriteString("\tC.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), content)\n")
+	b.WriteString("\tC.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))\n")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
 }
