@@ -1009,3 +1009,44 @@ func irBinaryOp(op ast.BinaryOp) string {
 func irAssignOp(op ast.AssignOp) string {
 	return assignOpStr(op)
 }
+
+// EmitFuncDef renders a complete Go function definition from an *ir.Func.
+// Includes the receiver clause (for Model methods), param list, return
+// type, and body. Body statements flow through EvalStmt — Synthesized
+// idents resolve to m.<name>, native funcs to C.<NativeName>, etc.
+//
+// Returns the source as a slice of lines (each line WITHOUT trailing
+// newline). The caller joins with "\n" or writes each line followed by
+// its own newline.
+func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
+	var lines []string
+
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		params[i] = p.Name + " " + IRTypeToGo(p.Type)
+	}
+	retType := ""
+	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn {
+		retType = " " + IRTypeToGo(fn.Return)
+	}
+
+	sig := "func "
+	if fn.Receiver != "" {
+		sig += "(m *" + fn.Receiver + ") "
+	}
+	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
+	lines = append(lines, sig)
+
+	bodyGC := gc
+	for _, p := range fn.Params {
+		bodyGC = bodyGC.WithLocal(p.Name)
+	}
+	for _, stmt := range fn.Block {
+		for _, line := range bodyGC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
+
+	lines = append(lines, "}")
+	return lines
+}

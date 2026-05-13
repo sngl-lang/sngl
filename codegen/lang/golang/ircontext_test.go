@@ -102,3 +102,49 @@ func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
 		t.Errorf("EvalExpr legacy cgo call = %q; want %q", got, want)
 	}
 }
+
+func TestEmitFuncDef_PlainFunc(t *testing.T) {
+	gc := newMinimalIRCtx()
+	fn := &ir.Func{
+		Name:   "greet",
+		Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
+		Return: ir.TypString,
+		Block: []ir.Stmt{
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
+		},
+	}
+	got := strings.Join(gc.EmitFuncDef(fn), "\n")
+	want := "func greet(name string) string {\n\treturn \"hi\"\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef plain func mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestEmitFuncDef_ModelMethod(t *testing.T) {
+	gc := newMinimalIRCtx()
+	fn := &ir.Func{
+		Name:     "Click",
+		Receiver: "Model",
+		Block:    []ir.Stmt{},
+	}
+	got := strings.Join(gc.EmitFuncDef(fn), "\n")
+	want := "func (m *Model) Click() {\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef Model method mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestEmitFuncDef_NativeParam(t *testing.T) {
+	gc := newMinimalIRCtx()
+	fn := &ir.Func{
+		Name:     "__renderSlot0",
+		Receiver: "Model",
+		Params:   []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
+		Return:   ir.TypVoid,
+	}
+	got := strings.Join(gc.EmitFuncDef(fn), "\n")
+	want := "func (m *Model) __renderSlot0(container *C.GtkBox) {\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef native param mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
