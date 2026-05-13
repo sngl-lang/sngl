@@ -357,13 +357,19 @@ it localizes to that step.
 
 > **Plan A** (`docs/superpowers/plans/2026-05-12-reactivity-lowering-foundation.md`)
 > lands steps 1–3. **Plan B**
-> (`docs/superpowers/plans/2026-05-12-fyne-intrinsic-translator.md`) lands
-> the fyne intrinsic translator + slot-Func consumption (validates the
-> pipeline on fyne; old tree walker still in place). **Plan B.2** enables
-> NoDeclarative on fyne, switches BuildUI to walk lowered IR, and rips
-> the parallel updater pipeline (also resolves the `__root` sentinel
-> binding that Plan B left as a Plan B.2 dependency). Plans C/D cover
-> gtk4 / html. Plan E is the final audit.
+> (`docs/superpowers/plans/2026-05-12-fyne-intrinsic-translator.md`) landed
+> the fyne intrinsic translator + slot-Func consumption. **Plan B.2**
+> (`docs/superpowers/plans/2026-05-12-fyne-nodeclarative-conversion.md`)
+> enabled NoDeclarative on fyne, switched BuildUI to walk lowered IR via
+> WalkLowered, resolved the `__root` sentinel as a real Model field, and
+> ripped the parallel-reactive pipeline (~400 lines: renderConditional /
+> renderFor / updaters / FindAffected / lateReactive / localMode / scaffold
+> updater fields). Plans C/D cover gtk4 / html. Plan E is the final audit.
+>
+> Known Plan B.2 fallout: six `cmd/sngl/TestScript/compile_fyne_*` and
+> related script tests assert specific output from the old pipeline (e.g.
+> `m.entry0.SetText(...)` versus the new `m.__n0.SetText(...)` synthetic-
+> id form). These need rewriting or deletion in a follow-up.
 
 ## Testing
 
