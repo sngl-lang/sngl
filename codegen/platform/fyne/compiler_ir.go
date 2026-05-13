@@ -107,6 +107,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if v.IsConst {
 			continue
 		}
+		// Skip synthesized __slot<N> Vars (passReactivity scratch state for
+		// structural reactivity). fyne doesn't yet consume them — Plan B
+		// will. Until then, ignore them so existing fyne builds stay green.
+		if strings.HasPrefix(v.Name, "__slot") {
+			continue
+		}
 		varGC := gc
 		if tv.comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
@@ -320,6 +326,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			continue
+		}
+		// Skip synthesized __renderSlot<N> Funcs emitted by passReactivity
+		// for reactive if/for structural updates. fyne does not yet consume
+		// these — Plan B will add proper translation. Until then, ignore
+		// them so existing fyne tests stay green.
+		if strings.HasPrefix(fn.Name, "__renderSlot") {
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)

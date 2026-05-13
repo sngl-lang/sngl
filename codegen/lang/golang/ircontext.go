@@ -804,6 +804,11 @@ func IRTypeToGo(t *ir.Type) string {
 		return "func()"
 	case ir.TypeNull:
 		return "any"
+	case ir.TypeVoid:
+		// Used as the return slot of intrinsic-call Funcs (e.g.
+		// __renderSlot<N>) emitted by passReactivity. Render as empty so
+		// callers building `func name(params) <T>` get `func name(params)`.
+		return ""
 	case ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// Iter/component/typeparam/invalid have no first-class Go
 		// representation in emitted code; falling back to `any` matches
