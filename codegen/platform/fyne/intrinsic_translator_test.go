@@ -94,3 +94,25 @@ func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 		t.Errorf("expected empty emission for unknown prop; got %q", got)
 	}
 }
+
+func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
+	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
+	stmt := &ir.Assign{
+		Target: &ir.Ident{Name: "__slot0"},
+		Value: &ir.Call{
+			Receiver: &ir.Ident{Name: "stdlib"},
+			Func:     listPush,
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: "__slot0"}},
+				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
+			},
+		},
+	}
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	lines := fyneStmtDispatch(stmt, tr, stubGC())
+	got := strings.Join(lines, "\n")
+	want := "m.__slot0 = append(m.__slot0, m.__n0)"
+	if got != want {
+		t.Errorf("slot ListPush dispatch:\ngot:  %q\nwant: %q", got, want)
+	}
+}

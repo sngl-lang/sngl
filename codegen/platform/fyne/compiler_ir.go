@@ -865,6 +865,12 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 			}
 		}
 	case *ir.Assign:
+		if isSlotListPush(n) {
+			target := "m." + n.Target.(*ir.Ident).Name
+			call := n.Value.(*ir.Call)
+			elem := lowerIdentArg(call, 1)
+			return []string{target + " = append(" + target + ", " + modelRef(elem) + ")"}
+		}
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && id.IsElementRef {
 				return splitTrLines(tr.OnPropAssign(id.Name, sel.Field, n.Value))
@@ -872,6 +878,24 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 		}
 	}
 	return gc.EvalStmt(s)
+}
+
+// isSlotListPush detects the slot-tracking pattern
+// `__slotN = stdlib.ListPush(__slotN, #__nN)` emitted by
+// passReactivity's __renderSlot<N> generators.
+func isSlotListPush(a *ir.Assign) bool {
+	id, ok := a.Target.(*ir.Ident)
+	if !ok || !strings.HasPrefix(id.Name, "__slot") {
+		return false
+	}
+	call, ok := a.Value.(*ir.Call)
+	if !ok || call.Func == nil || call.Func.Intrinsic != "ListPush" {
+		return false
+	}
+	if len(call.Args) != 2 {
+		return false
+	}
+	return true
 }
 
 // isLowerIntrinsic — true when call resolves to a lower.* intrinsic
