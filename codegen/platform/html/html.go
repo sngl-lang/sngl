@@ -1,6 +1,7 @@
 package html
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -947,12 +948,65 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 }
 
 // package — top-level pkg.Vars merged with the main component's Vars.
+// Synthesized vars (e.g. __slotN accumulators from passReactivity) are
+// excluded; emitScript handles them separately as top-level `let` bindings.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
 	if g.pkg != nil {
-		out = append(out, g.pkg.Vars...)
+		for _, v := range g.pkg.Vars {
+			if !v.Synthesized {
+				out = append(out, v)
+			}
+		}
 		if main := mainIRComponent(g.pkg); main != nil {
-			out = append(out, main.Vars...)
+			for _, v := range main.Vars {
+				if !v.Synthesized {
+					out = append(out, v)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// synthesizedVars returns Synthesized=true vars (e.g. __slotN accumulators
+// from passReactivity) from the package and main component. These are
+// emitted as top-level `let` bindings in the bootstrap script.
+func (g *htmlGen) synthesizedVars() []*ir.Var {
+	var out []*ir.Var
+	if g.pkg != nil {
+		for _, v := range g.pkg.Vars {
+			if v.Synthesized {
+				out = append(out, v)
+			}
+		}
+		if main := mainIRComponent(g.pkg); main != nil {
+			for _, v := range main.Vars {
+				if v.Synthesized {
+					out = append(out, v)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// synthesizedFuncs returns Synthesized=true funcs (e.g. __renderSlotN funcs
+// from passReactivity) from the package and main component.
+func (g *htmlGen) synthesizedFuncs() []*ir.Func {
+	var out []*ir.Func
+	if g.pkg != nil {
+		for _, f := range g.pkg.Funcs {
+			if f.Synthesized {
+				out = append(out, f)
+			}
+		}
+		if main := mainIRComponent(g.pkg); main != nil {
+			for _, f := range main.Funcs {
+				if f.Synthesized {
+					out = append(out, f)
+				}
+			}
 		}
 	}
 	return out
@@ -967,13 +1021,24 @@ func (g *htmlGen) pkgStructs() []*ir.StructDef {
 }
 
 // pkgFuncs returns user-defined top-level funcs plus main component funcs.
+// Synthesized funcs (e.g. __renderSlotN from passReactivity) are excluded;
+// emitScript routes them through htmlTranslator + WalkLowered separately.
 func (g *htmlGen) pkgFuncs() []*ir.Func {
 	if g.pkg == nil {
 		return nil
 	}
-	out := append([]*ir.Func{}, g.pkg.Funcs...)
+	var out []*ir.Func
+	for _, f := range g.pkg.Funcs {
+		if !f.Synthesized {
+			out = append(out, f)
+		}
+	}
 	if main := mainIRComponent(g.pkg); main != nil {
-		out = append(out, main.Funcs...)
+		for _, f := range main.Funcs {
+			if !f.Synthesized {
+				out = append(out, f)
+			}
+		}
 	}
 	return out
 }
@@ -2480,6 +2545,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Synthesized slot accumulators + renderSlot funcs from passReactivity.
+	// Emit __slotN as top-level `let` bindings, then route each __renderSlotN
+	// body through htmlTranslator + WalkLowered. Initial-render call sites
+	// appear as top-level CallStmts in the component body and are emitted
+	// here as one JS statement each.
+	g.emitSynthesizedSlots(b)
+
 	// Setters — emit for fields with @change handlers, timer controls, async kicker deps, or preview mode
 	for _, dv := range stateVars {
 		needsSetter := g.preview
@@ -2617,6 +2689,68 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			b.WriteString(u.funcName)
 		}
 		b.WriteString("];\n")
+	}
+}
+
+// emitSynthesizedSlots writes the slot vars (__slotN), slot render funcs
+// (__renderSlotN), and initial render call sites for synthesized
+// declarative-structural lowering output. Slot funcs are routed through
+// htmlTranslator + WalkLowered so intrinsic statements become DOM
+// mutations in JavaScript form.
+func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
+	if g.pkg == nil {
+		return
+	}
+	synthVars := g.synthesizedVars()
+	synthFuncs := g.synthesizedFuncs()
+	if len(synthVars) == 0 && len(synthFuncs) == 0 {
+		return
+	}
+	jc := javascript.NewIRContext(g.ctx)
+
+	for _, v := range synthVars {
+		b.WriteString("let " + v.Name + " = ")
+		if v.Init != nil {
+			b.WriteString(jc.EvalExpr(v.Init))
+		} else {
+			b.WriteString("null")
+		}
+		b.WriteString(";\n")
+	}
+	if len(synthVars) > 0 {
+		b.WriteString("\n")
+	}
+
+	for _, fn := range synthFuncs {
+		tr := newHTMLTranslator(jc)
+		body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+		synthesized := &ir.Func{
+			Name:   fn.Name,
+			Params: fn.Params,
+			Block:  body,
+		}
+		for _, line := range jc.EmitFuncDef(synthesized) {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
+	}
+
+	// Initial-render calls: walk main component body for top-level CallStmts
+	// to __renderSlot* and emit each as a JS statement.
+	if main := mainIRComponent(g.pkg); main != nil {
+		for _, s := range main.Body {
+			cs, ok := s.(*ir.CallStmt)
+			if !ok || cs.Call == nil || cs.Call.Func == nil {
+				continue
+			}
+			if !strings.HasPrefix(cs.Call.Func.Name, "__renderSlot") {
+				continue
+			}
+			for _, line := range jc.EvalStmt(cs) {
+				b.WriteString(line + ";\n")
+			}
+		}
 	}
 }
 
