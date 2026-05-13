@@ -359,7 +359,16 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		// Native (e.g. C/cgo) call: emit NativeName(args) directly, ignoring the
 		// SNGL import alias that ended up as the receiver.
 		if n.Func.NativePkg != "" {
-			return n.Func.NativeName + "(" + strings.Join(args, ", ") + ")"
+			name := n.Func.NativeName
+			// Cgo C-API call: NativeName carries the bare C identifier
+			// (e.g. "gtk_label_new"); renderer adds "C." prefix. Backwards-
+			// compat: if NativeName already starts with "C." (legacy
+			// callers), leave untouched so existing pre-baked NativeNames
+			// continue to work during the migration.
+			if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
+				name = "C." + name
+			}
+			return name + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		fname := n.Func.Name

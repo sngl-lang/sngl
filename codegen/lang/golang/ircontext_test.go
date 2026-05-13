@@ -73,3 +73,32 @@ func TestEvalConversion_NativeCgoPointerCast(t *testing.T) {
 		t.Errorf("EvalExpr cgo cast = %q; want %q", got, want)
 	}
 }
+
+func TestEvalCall_CgoNativePrefix(t *testing.T) {
+	gc := newMinimalIRCtx()
+	call := &ir.Call{
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     &ir.Func{NativePkg: "C", NativeName: "gtk_label_new"},
+		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull}}},
+	}
+	got := gc.EvalExpr(call)
+	want := "C.gtk_label_new(nil)"
+	if got != want {
+		t.Errorf("EvalExpr cgo call = %q; want %q", got, want)
+	}
+}
+
+func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
+	// Existing callers may still pass "C.foo" in NativeName.
+	// Renderer must not double up the prefix.
+	gc := newMinimalIRCtx()
+	call := &ir.Call{
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     &ir.Func{NativePkg: "C", NativeName: "C.gtk_label_new"},
+	}
+	got := gc.EvalExpr(call)
+	want := "C.gtk_label_new()"
+	if got != want {
+		t.Errorf("EvalExpr legacy cgo call = %q; want %q", got, want)
+	}
+}
