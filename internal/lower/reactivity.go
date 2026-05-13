@@ -151,11 +151,51 @@ func lowerReactivity(pkg *ir.Package, _ Caps) error {
 	return nil
 }
 
-// rewriteAndInject is the unified pass-2 walk. Scaffolding only — for now
-// it delegates to injectIntoStmts so prop-only reactivity behavior is
-// unchanged. Future tasks add slot synthesis and structural rewrites.
+// rewriteAndInject is the unified pass-2 walk. Synthesizes slot Vars for
+// every reactive If/For collected in pass-1, then delegates to
+// injectIntoStmts for prop-updater injection. Future tasks add slot
+// generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	for _, slots := range st.reverseSlots {
+		for _, slot := range slots {
+			st.synthesizeSlotVar(slot.SlotID)
+		}
+	}
 	return st.injectIntoStmts(stmts)
+}
+
+// synthesizeSlotVar creates the per-slot `__slotN list<dyn>` Var and
+// attaches it to the current owner. Idempotent — returns the existing
+// Var if one was already created.
+func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
+	if existing := st.findSlotVar(slotID); existing != nil {
+		return existing
+	}
+	v := &ir.Var{
+		Name: slotID,
+		Type: ir.ListOf(ir.TypDyn),
+		Init: &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+	}
+	st.owner.addVar(v)
+	return v
+}
+
+func (st *reactivityState) findSlotVar(name string) *ir.Var {
+	switch o := st.owner.(type) {
+	case compOwner:
+		for _, v := range o.c.Vars {
+			if v.Name == name {
+				return v
+			}
+		}
+	case windowOwner:
+		for _, v := range o.w.Vars {
+			if v.Name == name {
+				return v
+			}
+		}
+	}
+	return nil
 }
 
 func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {

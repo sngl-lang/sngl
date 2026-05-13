@@ -92,3 +92,42 @@ component main {
 		}
 	}
 }
+
+func TestSynthesizeSlotVar(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Var
+	for _, v := range comp.Vars {
+		if v.Name == "__slot0" {
+			found = v
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected synthesized __slot0 var on component; got vars: %v", varSliceNames(comp.Vars))
+	}
+	// Verify the type is list<dyn>.
+	if found.Type == nil {
+		t.Errorf("__slot0 has nil Type")
+	}
+}
+
+func varSliceNames(vs []*ir.Var) []string {
+	out := make([]string, len(vs))
+	for i, v := range vs {
+		out[i] = v.Name
+	}
+	return out
+}
