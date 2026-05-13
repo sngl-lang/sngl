@@ -46,3 +46,30 @@ func TestEvalStmt_IfElse(t *testing.T) {
 		t.Errorf("expected else body 'x = 2', got: %s", joined)
 	}
 }
+
+func TestIRTypeToGo_NativeCgoPointer(t *testing.T) {
+	typ := ir.NativePointerOf("GtkLabel")
+	got := IRTypeToGo(typ)
+	if got != "*C.GtkLabel" {
+		t.Errorf("IRTypeToGo(NativePointer GtkLabel) = %q; want %q", got, "*C.GtkLabel")
+	}
+}
+
+func TestIRTypeToGo_NativeGoPointer(t *testing.T) {
+	typ := ir.NativeGoPointerOf("fyne.Container")
+	got := IRTypeToGo(typ)
+	if got != "*fyne.Container" {
+		t.Errorf("IRTypeToGo(NativeGoPointer fyne.Container) = %q; want %q", got, "*fyne.Container")
+	}
+}
+
+func TestEvalConversion_NativeCgoPointerCast(t *testing.T) {
+	gc := newMinimalIRCtx()
+	operand := &ir.Ident{Name: "raw"}
+	conv := &ir.Conversion{Type: ir.NativePointerOf("GtkLabel"), Operand: operand}
+	got := gc.EvalExpr(conv)
+	want := "(*C.GtkLabel)(unsafe.Pointer(raw))"
+	if got != want {
+		t.Errorf("EvalExpr cgo cast = %q; want %q", got, want)
+	}
+}

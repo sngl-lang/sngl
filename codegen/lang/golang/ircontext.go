@@ -243,6 +243,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	}
 
 	name := n.Name
+	// Synthesized element refs (e.g. `__n3` for a widget the lowering
+	// passes created) are stored as Model struct fields. Qualify them
+	// here so the slot-Func call sites emit `m.__n3` rather than a
+	// bare `__n3` that won't resolve in the generated method scope.
+	if n.IsElementRef && n.Synthesized && strings.HasPrefix(name, "__n") {
+		return "m." + name
+	}
 	_, kind := gc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
@@ -563,6 +570,14 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if isNullToFuncConv(n) {
 		return nullFuncStubGo(n.Type)
 	}
+	if n.Type != nil && n.Type.Kind == ir.TypeNative {
+		if ref, ok := n.Type.Meta.(ir.NativeTypeRef); ok && ref.CgoC {
+			// Cgo pointer cast: (*C.X)(unsafe.Pointer(y))
+			return "(" + IRTypeToGo(n.Type) + ")(unsafe.Pointer(" + gc.EvalExpr(n.Operand) + "))"
+		}
+		// Go-package native cast: plain type conversion.
+		return IRTypeToGo(n.Type) + "(" + gc.EvalExpr(n.Operand) + ")"
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
@@ -839,6 +854,14 @@ func IRTypeToGo(t *ir.Type) string {
 		// the previous behavior. Listed explicitly so the default arm
 		// can catch genuinely new TypeKinds.
 		return "any"
+	case ir.TypeNative:
+		if ref, ok := t.Meta.(ir.NativeTypeRef); ok {
+			if ref.CgoC {
+				return "*C." + ref.Name
+			}
+			return "*" + ref.Name
+		}
+		return "unsafe.Pointer"
 	default:
 		panic(fmt.Sprintf("IRTypeToGo: unhandled ir.TypeKind %v", t.Kind))
 	}

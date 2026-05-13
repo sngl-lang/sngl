@@ -41,6 +41,7 @@ const (
 	TypeVoid      // void — a call that yields no value; not usable as an expression
 	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
 	TypeIter      // Elems = [T] for iter<T>
+	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 )
 
 // Type is the unified representation of all SNGL types.
@@ -463,3 +464,25 @@ const (
 	PurityReadonly        // reads mutable state but doesn't modify
 	PurityMutates         // modifies mutable state
 )
+
+// NativeTypeRef describes a foreign-language type referenced by a
+// platform translator. The CgoC flag selects the rendering style:
+// true → cgo C type (*C.X with unsafe.Pointer casts); false → plain
+// Go-package type (*pkg.X with regular type-conversion casts).
+type NativeTypeRef struct {
+	CgoC bool   // true → cgo type, false → Go-package type
+	Name string // "GtkLabel" or "fyne.Container"
+}
+
+// NativePointerOf returns an *ir.Type representing *C.<name>.
+// Cgo-only — use NativeGoPointerOf for Go-package types.
+func NativePointerOf(name string) *Type {
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: true, Name: name}}
+}
+
+// NativeGoPointerOf returns an *ir.Type representing *<name>
+// where name is a fully-qualified Go-package type
+// (e.g. "fyne.Container", "widget.Label").
+func NativeGoPointerOf(name string) *Type {
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
+}
