@@ -304,6 +304,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.AlertIntrinsics)
 		case "file":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.FileIntrinsics)
+		case "lower":
+			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
 		}
