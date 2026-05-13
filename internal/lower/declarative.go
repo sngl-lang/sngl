@@ -116,7 +116,7 @@ func (st *declarativeState) createFunc() *ir.Func {
 	if st.create == nil {
 		st.create = &ir.Func{
 			Name:      "lower.createNode",
-			Intrinsic: "LowerCreateNode",
+			Intrinsic: "CreateNode",
 			Params:    []*ir.Param{{Name: "tag", Type: ir.TypString}},
 			Return:    ir.TypDyn,
 		}
@@ -128,7 +128,7 @@ func (st *declarativeState) appendChildFunc() *ir.Func {
 	if st.appendChild == nil {
 		st.appendChild = &ir.Func{
 			Name:      "lower.appendChild",
-			Intrinsic: "LowerAppendChild",
+			Intrinsic: "AppendChild",
 			Params: []*ir.Param{
 				{Name: "parent", Type: ir.TypDyn},
 				{Name: "child", Type: ir.TypDyn},
@@ -143,7 +143,7 @@ func (st *declarativeState) attachHandlerFunc() *ir.Func {
 	if st.attachHandler == nil {
 		st.attachHandler = &ir.Func{
 			Name:      "lower.attachHandler",
-			Intrinsic: "LowerAttachHandler",
+			Intrinsic: "AttachHandler",
 			Params: []*ir.Param{
 				{Name: "node", Type: ir.TypDyn},
 				{Name: "event", Type: ir.TypString},
