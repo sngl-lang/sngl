@@ -356,7 +356,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	}
 
 	// --- Phase 5: Append dynamic code to model.go ---
-	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs, topLevelCType)
+	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs, topLevelCType, gc)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
@@ -710,7 +710,7 @@ func isWindowClass(cType string) bool {
 // GtkApplicationWindow/GtkWindow at the root so there's no need for the
 // synthetic m.__root wrapper or a freshly-constructed
 // gtk_application_window_new.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext) {
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -725,22 +725,59 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
 		ref := topLevelRefs[0]
 		b.WriteString(buildBuf.String())
-		fmt.Fprintf(b, "\treturn (*C.GtkWidget)(unsafe.Pointer(m.%s))\n", ref)
+		retIdent := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: retIdent}
+		fmt.Fprintf(b, "\treturn %s\n", gc.EvalExpr(retExpr))
 		b.WriteString("}\n\n")
 		return
 	}
 	// Lazy-init __root — cgo calls aren't valid in field initializers,
 	// so the binds-loop in New() puts nil there and BuildUI promotes it.
+	rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
+	rootCtorCall := &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_box_new"),
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
+			{Value: &ir.Literal{Type: ir.TypInt, Raw: "6"}},
+		},
+	}
+	rootInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootCtorCall}
 	b.WriteString("\tif m.__root == nil {\n")
-	b.WriteString("\t\tm.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))\n")
+	fmt.Fprintf(b, "\t\tm.__root = %s\n", gc.EvalExpr(rootInit))
 	b.WriteString("\t}\n")
 	b.WriteString(buildBuf.String())
 	for _, ref := range topLevelRefs {
-		fmt.Fprintf(b, "\tC.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.%s)))\n", ref)
+		childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+		appendCall := &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("gtk_box_append"),
+			Args: []ir.CallArg{
+				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootRef}},
+				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: childRef}},
+			},
+		}
+		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: appendCall}) {
+			fmt.Fprintf(b, "\t%s\n", line)
+		}
 	}
 	b.WriteString("\twin := C.gtk_application_window_new(app)\n")
 	b.WriteString("\tC.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)\n")
-	b.WriteString("\tC.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))\n")
+	winRef := &ir.Ident{Name: "win"}
+	setChildCall := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_window_set_child"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWindow"), Operand: winRef}},
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: rootRef}},
+		},
+	}
+	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setChildCall}) {
+		fmt.Fprintf(b, "\t%s\n", line)
+	}
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
 }
