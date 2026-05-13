@@ -32,6 +32,22 @@ type IntrinsicTranslator interface {
 	// `valueExpr`'s translation. The translator knows how to render
 	// expressions in its target language.
 	OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string
+
+	// OnDefault handles statements the walker doesn't recognize as lower
+	// intrinsics. The translator delegates to its target language's stmt
+	// emitter (e.g. fyne uses golang.GoIRContext.EvalStmt). Returning nil
+	// means "no emission" — preserves the current silent-skip semantics
+	// for unrecognized shapes during build-out.
+	OnDefault(stmt ir.Stmt) []string
+
+	// OnSlotReset emits the "clear slot accumulator" code for a Plan A
+	// __slot<N> = [] assignment. slotID is the slot's symbol name; the
+	// translator decides whether to prefix with the Model receiver.
+	OnSlotReset(slotID string) string
+
+	// OnSlotAppend emits the "push child ref into accumulator" code for
+	// the Plan A __slot<N> = stdlib.ListPush(__slot<N>, child) pattern.
+	OnSlotAppend(slotID, childID string) string
 }
 
 // WalkLowered iterates the lowered IR statement sequence and dispatches
@@ -72,13 +88,29 @@ func walkOne(s ir.Stmt, t IntrinsicTranslator) string {
 			return t.OnAttachHandler(node, evt, hRef)
 		}
 	case *ir.Assign:
+		if id, ok := n.Target.(*ir.Ident); ok && id.Synthesized {
+			// Slot reset: __slotN = []
+			if ll, ok := n.Value.(*ir.ListLit); ok && len(ll.Elems) == 0 {
+				return t.OnSlotReset(id.Name)
+			}
+			// Slot append: __slotN = stdlib.ListPush(__slotN, #childID)
+			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "ListPush" && len(call.Args) == 2 {
+				if childArg, ok := call.Args[1].Value.(*ir.Ident); ok {
+					return t.OnSlotAppend(id.Name, childArg.Name)
+				}
+			}
+		}
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && id.IsElementRef {
 				return t.OnPropAssign(id.Name, sel.Field, n.Value)
 			}
 		}
 	}
-	return ""
+	lines := t.OnDefault(s)
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func isLowerIntrinsic(call *ir.Call, name string) bool {

@@ -23,6 +23,18 @@ func (t *trace) OnPropAssign(n, p string, _ ir.Expr) string {
 	t.add("prop %s %s", n, p)
 	return ""
 }
+func (t *trace) OnDefault(stmt ir.Stmt) []string {
+	t.add("default %T", stmt)
+	return nil
+}
+func (t *trace) OnSlotReset(slotID string) string {
+	t.add("reset %s", slotID)
+	return ""
+}
+func (t *trace) OnSlotAppend(slotID, childID string) string {
+	t.add("append-slot %s %s", slotID, childID)
+	return ""
+}
 func (t *trace) add(f string, args ...any) { t.lines = append(t.lines, fmt.Sprintf(f, args...)) }
 
 func TestWalkLoweredDispatchesCreate(t *testing.T) {
@@ -98,5 +110,36 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 	}
 	if strings.Join(tr.lines, "\n") != strings.Join(want, "\n") {
 		t.Errorf("dispatch order mismatch:\ngot:\n%s\nwant:\n%s", strings.Join(tr.lines, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+func TestWalkLowered_SlotReset(t *testing.T) {
+	stmt := &ir.Assign{
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
+		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+	}
+	tr := &trace{}
+	WalkLowered([]ir.Stmt{stmt}, tr)
+	if len(tr.lines) != 1 || tr.lines[0] != "reset __slot0" {
+		t.Errorf("dispatch mismatch: %v", tr.lines)
+	}
+}
+
+func TestWalkLowered_SlotAppend(t *testing.T) {
+	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
+	stmt := &ir.Assign{
+		Target: &ir.Ident{Name: "__slot0", Synthesized: true},
+		Value: &ir.Call{
+			Func: listPush,
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: "__slot0", Synthesized: true}},
+				{Value: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true}},
+			},
+		},
+	}
+	tr := &trace{}
+	WalkLowered([]ir.Stmt{stmt}, tr)
+	if len(tr.lines) != 1 || tr.lines[0] != "append-slot __slot0 __n0" {
+		t.Errorf("dispatch mismatch: %v", tr.lines)
 	}
 }

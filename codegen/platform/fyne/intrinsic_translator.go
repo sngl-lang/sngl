@@ -142,3 +142,15 @@ func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) st
 	}
 	return "m." + nodeID + target + "(" + val + ")\n"
 }
+
+func (t *fyneTranslator) OnDefault(stmt ir.Stmt) []string {
+	return t.gc.EvalStmt(stmt)
+}
+
+func (t *fyneTranslator) OnSlotReset(slotID string) string {
+	return "m." + slotID + " = nil\n"
+}
+
+func (t *fyneTranslator) OnSlotAppend(slotID, childID string) string {
+	return "m." + slotID + " = append(m." + slotID + ", m." + childID + ")\n"
+}
