@@ -25,8 +25,40 @@ type reactivityState struct {
 	pkg          *ir.Package
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
+	reverseSlots map[*ir.Var][]reactiveSlot
+	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
 	idCounter    int
+	slotCounter  int
+	// slot synthesis owner: the *ir.Component or *ir.Window whose stmt body
+	// we're currently walking, so synthesized slot Vars/Funcs get attached
+	// to the right scope.
+	owner reactivityOwner
 }
+
+// reactiveSlot records a per-If/per-For reactive dep. SlotID names the
+// synthetic __slot<N>; GenFunc is the synthesized __renderSlot<N> Func
+// (populated in a later task).
+type reactiveSlot struct {
+	SlotID  string
+	GenFunc *ir.Func
+}
+
+// reactivityOwner is the closest enclosing scope that owns synthesized
+// Vars/Funcs. Either a *ir.Component or *ir.Window.
+type reactivityOwner interface {
+	addVar(v *ir.Var)
+	addFunc(f *ir.Func)
+}
+
+type compOwner struct{ c *ir.Component }
+
+func (o compOwner) addVar(v *ir.Var)   { o.c.Vars = append(o.c.Vars, v) }
+func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
+
+type windowOwner struct{ w *ir.Window }
+
+func (o windowOwner) addVar(v *ir.Var)   { o.w.Vars = append(o.w.Vars, v) }
+func (o windowOwner) addFunc(f *ir.Func) { o.w.Funcs = append(o.w.Funcs, f) }
 
 func (st *reactivityState) freshNodeID() string {
 	id := "__n" + strconv.Itoa(st.idCounter)
@@ -45,19 +77,85 @@ func lowerReactivity(pkg *ir.Package, _ Caps) error {
 		pkg:          pkg,
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
+		reverseSlots: make(map[*ir.Var][]reactiveSlot),
+		intrinsics:   make(map[string]*ir.Func),
 	}
-	walkPackage(pkg, walkFuncs{
-		stmts: func(stmts []ir.Stmt) []ir.Stmt {
-			st.collectFromStmts(stmts)
-			return stmts
-		},
-	})
-	walkPackage(pkg, walkFuncs{
-		stmts: func(stmts []ir.Stmt) []ir.Stmt {
-			return st.injectIntoStmts(stmts)
-		},
-	})
+	for _, def := range ir.LowerIntrinsics {
+		st.intrinsics[def.Name] = &ir.Func{
+			Name:      def.Name,
+			Intrinsic: def.Name,
+			Params:    def.Params,
+			Return:    def.Return,
+		}
+	}
+	// Pass 1: collect reverse deps per owner scope.
+	for _, comp := range pkg.Components {
+		st.owner = compOwner{comp}
+		st.collectFromStmts(comp.Body)
+	}
+	for _, w := range pkg.Windows {
+		st.owner = windowOwner{w}
+		st.collectFromStmts(w.Body)
+	}
+	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
+	// future tasks add slot synthesis here.
+
+	// Package-level funcs (e.g. lifted lambdas) are not owned by a
+	// component or window; process them without an owner.
+	for _, f := range pkg.Funcs {
+		f.Block = st.injectIntoStmts(f.Block)
+	}
+	for _, v := range pkg.Vars {
+		for _, h := range v.Handlers {
+			if h.Func != nil {
+				h.Func.Block = st.injectIntoStmts(h.Func.Block)
+			}
+		}
+	}
+	for _, comp := range pkg.Components {
+		st.owner = compOwner{comp}
+		comp.Body = st.rewriteAndInject(comp.Body)
+		for _, f := range comp.Funcs {
+			f.Block = st.rewriteAndInject(f.Block)
+		}
+		for _, v := range comp.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					h.Func.Block = st.rewriteAndInject(h.Func.Block)
+				}
+			}
+		}
+		for _, t := range comp.Timers {
+			if t.Handler != nil {
+				t.Handler.Block = st.rewriteAndInject(t.Handler.Block)
+			}
+		}
+	}
+	for _, w := range pkg.Windows {
+		st.owner = windowOwner{w}
+		w.Body = st.rewriteAndInject(w.Body)
+		for _, f := range w.Funcs {
+			f.Block = st.rewriteAndInject(f.Block)
+		}
+		for _, v := range w.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					h.Func.Block = st.rewriteAndInject(h.Func.Block)
+				}
+			}
+		}
+		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
+			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
+		}
+	}
 	return nil
+}
+
+// rewriteAndInject is the unified pass-2 walk. Scaffolding only — for now
+// it delegates to injectIntoStmts so prop-only reactivity behavior is
+// unchanged. Future tasks add slot synthesis and structural rewrites.
+func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	return st.injectIntoStmts(stmts)
 }
 
 func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
@@ -107,7 +205,7 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	case *ir.ErrorBoundary:
 		st.collectFromStmts(n.Children)
 	case *ir.Window:
-		st.collectFromStmts(n.Body)
+		// handled by top-level loop in lowerReactivity
 	}
 }
 
