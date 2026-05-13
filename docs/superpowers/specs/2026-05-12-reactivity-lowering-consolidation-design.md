@@ -356,8 +356,14 @@ Each step is independently verifiable. If a regression appears in step N,
 it localizes to that step.
 
 > **Plan A** (`docs/superpowers/plans/2026-05-12-reactivity-lowering-foundation.md`)
-> lands steps 1–3. Plans B/C/D cover per-platform conversion (fyne, gtk4,
-> html); Plan E covers the final audit.
+> lands steps 1–3. **Plan B**
+> (`docs/superpowers/plans/2026-05-12-fyne-intrinsic-translator.md`) lands
+> the fyne intrinsic translator + slot-Func consumption (validates the
+> pipeline on fyne; old tree walker still in place). **Plan B.2** enables
+> NoDeclarative on fyne, switches BuildUI to walk lowered IR, and rips
+> the parallel updater pipeline (also resolves the `__root` sentinel
+> binding that Plan B left as a Plan B.2 dependency). Plans C/D cover
+> gtk4 / html. Plan E is the final audit.
 
 ## Testing
 
