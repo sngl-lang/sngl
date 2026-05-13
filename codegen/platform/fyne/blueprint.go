@@ -40,6 +40,10 @@ type ctorMeta struct {
 	// value at codegen time (e.g. input(type="password") → widget.NewPasswordEntry).
 	// First match wins; falls back to GoFn.
 	Switches []ctorSwitch
+	// ZeroArgs is the Go argument list used when constructing the widget
+	// at slot time (before real prop values are available). E.g. `""` for
+	// label/text, `"", nil` for button. Empty string means no args.
+	ZeroArgs string
 }
 
 type ctorSwitch struct {
@@ -99,6 +103,16 @@ func loadBlueprints() map[string]*fyneBlueprint {
 				if m := buildBlueprintFromComponent(cd); m != nil {
 					blueprintByName[cd.Name] = m
 				}
+			}
+		}
+		zeroArgs := map[string]string{
+			"text":   `""`,
+			"label":  `""`,
+			"button": `"", nil`,
+		}
+		for name, args := range zeroArgs {
+			if bp, ok := blueprintByName[name]; ok && bp.Constructor != nil {
+				bp.Constructor.ZeroArgs = args
 			}
 		}
 	})

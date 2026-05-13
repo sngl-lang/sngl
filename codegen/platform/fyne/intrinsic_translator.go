@@ -60,22 +60,7 @@ func (t *fyneTranslator) OnCreateNode(id, tag string) string {
 	}
 	t.fieldSink(id, goType)
 	t.idTags[id] = tag
-	args := zeroArgsFor(tag)
-	return "m." + id + " = " + bp.Constructor.GoFn + "(" + args + ")\n"
-}
-
-// zeroArgsFor returns the constructor-arg string used when a slot-time
-// CreateNode emits a widget; the slot's subsequent OnPropAssign calls
-// fill the real values.
-func zeroArgsFor(tag string) string {
-	switch tag {
-	case "text", "label":
-		return `""`
-	case "button":
-		return `"", nil`
-	default:
-		return ""
-	}
+	return "m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")\n"
 }
 
 func (t *fyneTranslator) OnAppendChild(parent, child string) string {
