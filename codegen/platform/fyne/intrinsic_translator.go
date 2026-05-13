@@ -117,5 +117,33 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string 
 	return modelRef(node) + target + " = " + handlerRef + "\n"
 }
 func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
-	return ""
+	tag, ok := t.idTags[nodeID]
+	if !ok {
+		return ""
+	}
+	bp, ok := t.blueprints[tag]
+	if !ok {
+		return ""
+	}
+	var (
+		target    string
+		transform string
+		found     bool
+	)
+	for _, b := range bp.Bindings {
+		if (b.Kind == bindReactive || b.Kind == bindInit) && b.Prop == prop {
+			target = b.Target
+			transform = b.Transform
+			found = true
+			break
+		}
+	}
+	if !found || target == "" {
+		return ""
+	}
+	val := t.gc.EvalExpr(valueExpr)
+	if transform != "" {
+		val = transform + "(" + val + ")"
+	}
+	return modelRef(nodeID) + target + "(" + val + ")\n"
 }
