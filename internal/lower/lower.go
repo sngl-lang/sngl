@@ -27,6 +27,9 @@ type pass struct {
 //  5. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
 //  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
 //  7. NoReactivity — analyzes dataflow, injects updaters.
+//  7a. InlinePure — always on; inlines pure user components and (under
+//      NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
+//      wires user-level deps and before declarative flattening.
 //  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
@@ -43,6 +46,7 @@ var passes = []pass{
 	passLambda,
 	passToggle,
 	passReactivity,
+	passInlinePure,
 	passTimer,
 	passDeclarative,
 	passNoRef,
