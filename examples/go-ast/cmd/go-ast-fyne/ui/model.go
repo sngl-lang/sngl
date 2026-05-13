@@ -28,14 +28,12 @@ type Model struct {
 	file       ast.File
 	parseError string
 	parse      func(string)
+	__root     *fyne.Container
+	__slot0    []fyne.CanvasObject
+	__slot1    []fyne.CanvasObject
 
-	label0  *widget.Label
-	label1  *widget.Label
-	entry2  *widget.Entry
-	btn3    *widget.Button
-	ifBox0  *fyne.Container
-	label4  *widget.Label
-	forBox1 *fyne.Container
+	__n1 *widget.Label
+	__n0 *widget.Label
 }
 
 // New creates a Model with default values. Binds are initialized
@@ -48,12 +46,47 @@ func New() *Model {
 	m.file = ast.File{}
 	m.parseError = ""
 	m.parse = func(_ string) {}
+	m.__root = container.NewVBox()
+	m.__slot0 = nil
+	m.__slot1 = nil
 	return m
 }
 
 func (m *Model) doRefresh() {
-	m.updateIf0()
-	m.updateFor1()
+}
+func (m *Model) __renderSlot0(container *fyne.Container) {
+	for _, __entry := range m.__slot0 {
+		container.Remove(__entry)
+	}
+	m.__slot0 = nil
+	if m.parseError != "" {
+		m.__n1 = widget.NewLabel("")
+		m.__n1.SetText(fmt.Sprint(m.parseError))
+		container.Add(m.__n1)
+		m.__slot0 = append(m.__slot0, m.__n1)
+	}
+}
+
+func (m *Model) __renderSlot1(container *fyne.Container) {
+	for _, __entry := range m.__slot1 {
+		container.Remove(__entry)
+	}
+	m.__slot1 = nil
+	for _, decl := range m.file.Decls {
+		m.__n0 = widget.NewLabel("")
+		m.__n0.SetText(fmt.Sprint(decl))
+		container.Add(m.__n0)
+		m.__slot1 = append(m.__slot1, m.__n0)
+	}
+}
+
+func (m *Model) __n0_input_handler(s string) {
+	m.source = s
+	m.__n0.SetText(fmt.Sprint(m.source))
+}
+
+func (m *Model) __n6_click_handler() {
+	m.parse(m.source)
 }
 
 func (m *Model) Source() string {
@@ -62,7 +95,6 @@ func (m *Model) Source() string {
 
 func (m *Model) SetSource(v string) {
 	m.source = v
-	m.entry2.SetText(v)
 }
 
 func (m *Model) File() ast.File {
@@ -71,7 +103,6 @@ func (m *Model) File() ast.File {
 
 func (m *Model) SetFile(v ast.File) {
 	m.file = v
-	m.updateFor1()
 }
 
 func (m *Model) ParseError() string {
@@ -80,7 +111,6 @@ func (m *Model) ParseError() string {
 
 func (m *Model) SetParseError(v string) {
 	m.parseError = v
-	m.updateIf0()
 }
 
 func (m *Model) Parse() func(string) {
@@ -93,109 +123,103 @@ func (m *Model) SetParse(v func(string)) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	var content fyne.CanvasObject
-	var contentChildren []fyne.CanvasObject
-	var contentC0 fyne.CanvasObject
-	m.label0 = widget.NewLabel(fmt.Sprint("Go AST Explorer"))
-	contentC0 = m.label0
-	if contentC0 != nil {
-		contentChildren = append(contentChildren, contentC0)
+	var parts []fyne.CanvasObject
+	var part0 fyne.CanvasObject
+	if part0 != nil {
+		parts = append(parts, part0)
 	}
-	var contentC1 fyne.CanvasObject
-	m.label1 = widget.NewLabel(fmt.Sprint("Enter Go source code and click Parse to see the AST."))
-	contentC1 = m.label1
-	if contentC1 != nil {
-		contentChildren = append(contentChildren, contentC1)
+	var part1 fyne.CanvasObject
+	if part1 != nil {
+		parts = append(parts, part1)
 	}
-	var contentC2 fyne.CanvasObject
-	m.entry2 = widget.NewMultiLineEntry()
-	m.entry2.SetPlaceHolder("Enter Go code...")
-	m.entry2.SetMinRowsVisible(10)
-	m.entry2.SetText(fmt.Sprint(m.source))
-	m.entry2.OnChanged = func(s string) {
-		m.source = s
-		m.entry2.SetText(fmt.Sprint(m.source))
+	var part2 fyne.CanvasObject
+	if part2 != nil {
+		parts = append(parts, part2)
 	}
-	contentC2 = m.entry2
-	if contentC2 != nil {
-		contentChildren = append(contentChildren, contentC2)
+	var part3 fyne.CanvasObject
+	if part3 != nil {
+		parts = append(parts, part3)
 	}
-	var contentC3 fyne.CanvasObject
-	m.btn3 = widget.NewButton(
-		fmt.Sprint("Parse AST"),
-		func() {
-			m.parse(m.source)
-		},
-	)
-	contentC3 = m.btn3
-	if contentC3 != nil {
-		contentChildren = append(contentChildren, contentC3)
+	var part4 fyne.CanvasObject
+	if part4 != nil {
+		parts = append(parts, part4)
 	}
-	var contentC4 fyne.CanvasObject
-	var contentC4Inner fyne.CanvasObject
-	m.label4 = widget.NewLabel(fmt.Sprint(m.parseError))
-	contentC4Inner = m.label4
-	if contentC4Inner == nil {
-		contentC4Inner = widget.NewLabel("")
+	var part5 fyne.CanvasObject
+	if part5 != nil {
+		parts = append(parts, part5)
 	}
-	m.ifBox0 = container.NewStack(contentC4Inner)
-	if !(m.parseError != "") {
-		m.ifBox0.Hide()
+	var part6 fyne.CanvasObject
+	if part6 != nil {
+		parts = append(parts, part6)
 	}
-	contentC4 = m.ifBox0
-	if contentC4 != nil {
-		contentChildren = append(contentChildren, contentC4)
+	var part7 fyne.CanvasObject
+	if part7 != nil {
+		parts = append(parts, part7)
 	}
-	var contentC5 fyne.CanvasObject
-	var contentC5Children []fyne.CanvasObject
-	var contentC5C0 fyne.CanvasObject
-	var contentC5C0Items []fyne.CanvasObject
-	for _, decl := range m.file.Decls {
-		_ = decl
-		var item fyne.CanvasObject
-		var label5 *widget.Label
-		label5 = widget.NewLabel(fmt.Sprint(decl))
-		item = label5
-		if item != nil {
-			contentC5C0Items = append(contentC5C0Items, item)
-		}
+	var part8 fyne.CanvasObject
+	if part8 != nil {
+		parts = append(parts, part8)
 	}
-	m.forBox1 = container.NewVBox(contentC5C0Items...)
-	contentC5C0 = m.forBox1
-	if contentC5C0 != nil {
-		contentC5Children = append(contentC5Children, contentC5C0)
+	var part9 fyne.CanvasObject
+	if part9 != nil {
+		parts = append(parts, part9)
 	}
-	contentC5 = container.NewVBox(contentC5Children...)
-	if contentC5 != nil {
-		contentChildren = append(contentChildren, contentC5)
+	var part10 fyne.CanvasObject
+	if part10 != nil {
+		parts = append(parts, part10)
 	}
-	content = container.NewVBox(contentChildren...)
-	if content == nil {
-		content = widget.NewLabel("")
+	var part11 fyne.CanvasObject
+	if part11 != nil {
+		parts = append(parts, part11)
 	}
-	return content
-}
-
-func (m *Model) updateIf0() {
-	if m.parseError != "" {
-		m.ifBox0.Show()
-	} else {
-		m.ifBox0.Hide()
+	var part12 fyne.CanvasObject
+	if part12 != nil {
+		parts = append(parts, part12)
 	}
-}
-
-func (m *Model) updateFor1() {
-	var items []fyne.CanvasObject
-	for _, decl := range m.file.Decls {
-		_ = decl
-		var item fyne.CanvasObject
-		var label5 *widget.Label
-		label5 = widget.NewLabel(fmt.Sprint(decl))
-		item = label5
-		if item != nil {
-			items = append(items, item)
-		}
+	var part13 fyne.CanvasObject
+	if part13 != nil {
+		parts = append(parts, part13)
 	}
-	m.forBox1.Objects = items
-	m.forBox1.Refresh()
+	var part14 fyne.CanvasObject
+	if part14 != nil {
+		parts = append(parts, part14)
+	}
+	var part15 fyne.CanvasObject
+	if part15 != nil {
+		parts = append(parts, part15)
+	}
+	var part16 fyne.CanvasObject
+	if part16 != nil {
+		parts = append(parts, part16)
+	}
+	var part17 fyne.CanvasObject
+	if part17 != nil {
+		parts = append(parts, part17)
+	}
+	var part18 fyne.CanvasObject
+	if part18 != nil {
+		parts = append(parts, part18)
+	}
+	var part19 fyne.CanvasObject
+	if part19 != nil {
+		parts = append(parts, part19)
+	}
+	var part20 fyne.CanvasObject
+	if part20 != nil {
+		parts = append(parts, part20)
+	}
+	var part21 fyne.CanvasObject
+	if part21 != nil {
+		parts = append(parts, part21)
+	}
+	var part22 fyne.CanvasObject
+	if part22 != nil {
+		parts = append(parts, part22)
+	}
+	var part23 fyne.CanvasObject
+	if part23 != nil {
+		parts = append(parts, part23)
+	}
+	m.__root.Objects = parts
+	return m.__root
 }

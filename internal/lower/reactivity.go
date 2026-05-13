@@ -615,7 +615,7 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		out = append(out, &ir.Assign{
 			Target: &ir.Select{
 				Type:    ir.TypDyn,
-				Operand: &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true},
+				Operand: &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true},
 				Field:   p.Key,
 			},
 			Op:    ast.AssignSet,

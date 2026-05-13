@@ -343,6 +343,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
 	}
+
+	// Pre-scan: harvest (nodeID → tag) from every CreateNode call across
+	// synthesized slot Funcs. Promoted handlers reference nodes created
+	// in slot Funcs (e.g. an @input on __n0 created in __renderSlot0), so
+	// the handler's translator needs the full map up-front rather than
+	// the per-Func discovery that OnCreateNode does for slot bodies.
+	nodeTags := collectNodeTags(allFuncs)
+
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
@@ -350,6 +358,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		}
 		if fn.Synthesized {
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
+			continue
+		}
+		if fn.LoweredFromTag != "" {
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeTags)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -843,6 +855,106 @@ func windowPascal(name string) string {
 
 func windowBuildFunc(name string) string { return "buildWindow" + windowPascal(name) }
 func windowBoxField(name string) string  { return "window" + windowPascal(name) + "Box" }
+
+// collectNodeTags walks every Func looking for `LocalVar __nX = lower.CreateNode("tag")`
+// pairs and returns a node-id → tag map. The lower pass emits these
+// inside __renderSlotN bodies; promoted node-attached handlers need
+// the map to resolve element refs in reactivity splices to their
+// blueprint binding even though those handlers live in separate Funcs.
+func collectNodeTags(funcs []*ir.Func) map[string]string {
+	out := map[string]string{}
+	var walk func([]ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.LocalVar:
+				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
+					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
+						out[n.Name] = lit.Raw
+					}
+				}
+			case *ir.If:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				walk(n.Body)
+				walk(n.Else)
+			}
+		}
+	}
+	for _, fn := range funcs {
+		if fn == nil {
+			continue
+		}
+		walk(fn.Block)
+	}
+	return out
+}
+
+// emitIRPromotedHandler emits a node-attached event handler that the
+// lower pass promoted to a top-level Func. The blueprint binding for
+// (LoweredFromTag, LoweredFromEvent) dictates the Go signature (e.g.
+// fyne's Entry.OnChanged is `func(s string)`, not `func(e InputEvent)`).
+// The first stmt of the handler body — the user's `var = e.<field>`
+// two-way bind — is rewritten to `m.<var> = <bindParam>`; subsequent
+// stmts (reactive splices injected by passReactivity) flow through
+// the same WalkLowered + translator pipeline as slot bodies so they
+// pick up widget-setter rewrites via OnPropAssign.
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeTags map[string]string) {
+	bp := platformBlueprints()[fn.LoweredFromTag]
+	var binding *bindMeta
+	if bp != nil {
+		for i := range bp.Bindings {
+			if bp.Bindings[i].Kind == bindEvent && bp.Bindings[i].Prop == fn.LoweredFromEvent {
+				binding = &bp.Bindings[i]
+				break
+			}
+		}
+	}
+
+	sig := ""
+	if binding != nil && binding.Signature != "" {
+		// Strip the leading "func" so we can format as "<name>(params) ret".
+		sig = strings.TrimPrefix(binding.Signature, "func")
+	} else {
+		// Fall back to the original IR-derived signature.
+		params := make([]string, len(fn.Params))
+		for i, p := range fn.Params {
+			params[i] = p.Name + " " + golang.IRTypeToGo(p.Type)
+		}
+		sig = "(" + strings.Join(params, ", ") + ")"
+	}
+
+	fmt.Fprintf(b, "func (m *Model) %s%s {\n", fn.Name, sig)
+
+	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
+	})
+	// Pre-populate idTags so OnPropAssign in reactivity splices can find
+	// the binding for nodes created in sibling slot Funcs.
+	maps.Copy(tr.idTags, nodeTags)
+
+	stmts := fn.Block
+	if binding != nil && binding.BindParam != "" {
+		// Match view_ir.go's old declarative path: the first stmt is the
+		// synthesized `var = e.<field>` two-way bind — re-emit as a direct
+		// `m.<var> = <bindParam>` since the closure exposes the unwrapped
+		// fyne value.
+		bindVar := extractIRAssignTarget(stmts)
+		if bindVar != "" {
+			fmt.Fprintf(b, "\tm.%s = %s\n", bindVar, binding.BindParam)
+			stmts = stmts[1:]
+		}
+	}
+
+	body := codegen.WalkLowered(stmts, tr)
+	for _, l := range body {
+		b.WriteString("\t")
+		b.WriteString(l)
+		b.WriteString("\n")
+	}
+	b.WriteString("}\n\n")
+}
 
 // emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
 // Func as a Model method. The body is a mix of plain Go statements

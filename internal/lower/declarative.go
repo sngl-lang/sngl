@@ -237,6 +237,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// Simple promote to a named top-level Func.
 			handlerName := id + "_" + h.Name + "_handler"
 			h.Func.Name = handlerName
+			h.Func.LoweredFromTag = n.Name
+			h.Func.LoweredFromEvent = h.Name
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
 		}
