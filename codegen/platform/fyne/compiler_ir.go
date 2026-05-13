@@ -22,9 +22,10 @@ type irAnalysis struct {
 }
 
 type irBind struct {
-	name   string
-	goType string
-	init   string
+	name        string
+	goType      string
+	init        string
+	noAccessors bool // skip getter/setter generation (e.g. synthesized slot vars)
 }
 
 type irExtern struct {
@@ -107,8 +108,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if v.IsConst {
 			continue
 		}
-		// Synthesized by passReactivity; fyne does not yet consume these (Plan B).
 		if v.Synthesized {
+			// Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
+			// Emit as []fyne.CanvasObject so the renderSlot teardown loop
+			// (range over the slice, container.Remove each entry) compiles.
+			// noAccessors=true: getter/setter would conflict with the field name
+			// since ExportName("__slot0") == "__slot0" (unchanged).
+			info.binds = append(info.binds, irBind{
+				name:        v.Name,
+				goType:      "[]fyne.CanvasObject",
+				init:        "nil",
+				noAccessors: true,
+			})
 			continue
 		}
 		varGC := gc
@@ -462,10 +473,11 @@ func newIRTemplateData(info *irAnalysis, cfg Config, updaters []irWidgetUpdater,
 	for _, bind := range info.binds {
 		getter := golang.ExportName(bind.name)
 		bd := bindData{
-			Name:    bind.name,
-			GoType:  bind.goType,
-			InitVal: bind.init,
-			Getter:  getter,
+			Name:        bind.name,
+			GoType:      bind.goType,
+			InitVal:     bind.init,
+			Getter:      getter,
+			NoAccessors: bind.noAccessors,
 		}
 
 		var extra strings.Builder

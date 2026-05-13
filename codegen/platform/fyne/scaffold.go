@@ -89,6 +89,7 @@ type bindData struct {
 	InitVal     string
 	Getter      string
 	SetterExtra string // pre-rendered extra setter lines (entry sync, trigger, updaters)
+	NoAccessors bool   // skip getter/setter (e.g. synthesized __slot<N> vars)
 }
 
 type externData struct {
