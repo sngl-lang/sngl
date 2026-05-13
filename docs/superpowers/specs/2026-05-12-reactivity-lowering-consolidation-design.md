@@ -355,6 +355,10 @@ Within one development branch, in this order, each step keeping
 Each step is independently verifiable. If a regression appears in step N,
 it localizes to that step.
 
+> **Plan A** (`docs/superpowers/plans/2026-05-12-reactivity-lowering-foundation.md`)
+> lands steps 1–3. Plans B/C/D cover per-platform conversion (fyne, gtk4,
+> html); Plan E covers the final audit.
+
 ## Testing
 
 - `internal/lower/reactivity_test.go` gains golden tests for the new slot
