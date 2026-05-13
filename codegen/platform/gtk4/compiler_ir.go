@@ -293,6 +293,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	var widgetFields []widgetField
 	bodyStmts := flattenPlatformFilters(mainBodyStmts(c.ctx), "gtk4")
 	var topLevelRefs []string
+	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, func(name, cType string) {
 			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
@@ -305,6 +306,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			}
 		}
 		topLevelRefs = tr.topLevel
+		topLevelCType = tr.idCTypes
 	}
 
 	// --- Phase 2: User functions (non-computed, non-test, non-method) ---
@@ -348,7 +350,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	}
 
 	// --- Phase 5: Append dynamic code to model.go ---
-	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs)
+	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs, topLevelCType)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
@@ -487,18 +489,44 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	b.WriteString("}\n\n")
 }
 
+// isWindowClass reports whether cType is a top-level window widget
+// that should not be wrapped in a synthetic m.__root.
+func isWindowClass(cType string) bool {
+	switch cType {
+	case "GtkWindow", "GtkApplicationWindow", "GtkDialog":
+		return true
+	}
+	return false
+}
+
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget.
 // With NoDeclarative on, the body buffer is a flat stream of intrinsic
 // calls (CreateNode → m.<id> = ctor; AppendChild → gtk_box_append; etc.)
 // translated by gtk4Translator. Top-level widget refs that weren't
 // consumed by an AppendChild get parented into m.__root, which BuildUI
 // initializes lazily and embeds in a GtkApplicationWindow.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string) {
+//
+// When the (single) top-level ref is itself a window-class widget,
+// BuildUI returns it directly: the user explicitly placed a
+// GtkApplicationWindow/GtkWindow at the root so there's no need for the
+// synthetic m.__root wrapper or a freshly-constructed
+// gtk_application_window_new.
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) {
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
 		b.WriteString("\twin := C.gtk_application_window_new(app)\n")
 		b.WriteString("\treturn win\n")
+		b.WriteString("}\n\n")
+		return
+	}
+	// Window-class passthrough: when the sole top-level is a window
+	// widget (e.g. user wrote GtkApplicationWindow at the root), skip
+	// the __root wrapper and return it directly.
+	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+		ref := topLevelRefs[0]
+		b.WriteString(buildBuf.String())
+		fmt.Fprintf(b, "\treturn (*C.GtkWidget)(unsafe.Pointer(m.%s))\n", ref)
 		b.WriteString("}\n\n")
 		return
 	}
