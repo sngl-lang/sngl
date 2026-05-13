@@ -818,16 +818,14 @@ func windowBoxField(name string) string  { return "window" + windowPascal(name) 
 // codegen.WalkLowered routes intrinsic shapes through fyneTranslator
 // and falls back to OnDefault (gc.EvalStmt) for everything else.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
-	fmt.Fprintf(b, "func (m *Model) %s(parent fyne.CanvasObject) {\n", fn.Name)
-	b.WriteString("\tcontainer, _ := parent.(*fyne.Container)\n")
-	b.WriteString("\tif container == nil { return }\n")
+	fmt.Fprintf(b, "func (m *Model) %s(container *fyne.Container) {\n", fn.Name)
 
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	})
 
 	body := codegen.WalkLowered(fn.Block, tr)
-	for _, l := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(body, "\n"), "\n") {
 		b.WriteString("\t")
 		b.WriteString(l)
 		b.WriteString("\n")

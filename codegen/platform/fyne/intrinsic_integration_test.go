@@ -60,8 +60,7 @@ component main {
 	out := buf.String()
 
 	for _, snippet := range []string{
-		"func (m *Model) __renderSlot0(parent fyne.CanvasObject)",
-		"container, _ := parent.(*fyne.Container)",
+		"func (m *Model) __renderSlot0(container *fyne.Container)",
 		"for _, __entry := range m.__slot0",
 		"container.Remove(__entry)",
 		"m.__slot0 = nil",
