@@ -1,8 +1,6 @@
 package fyne
 
 import (
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -33,16 +31,49 @@ func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBluepr
 // Compile-time interface check.
 var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
 
-func (t *fyneTranslator) OnCreateNode(id, tag string) string       { return "" }
-func (t *fyneTranslator) OnAppendChild(parent, child string) string { return "" }
-func (t *fyneTranslator) OnRemoveChild(parent, child string) string { return "" }
+// platformBlueprints returns the blueprint table loaded at init().
+// Used by intrinsic translators to look up widget constructors and
+// binding records by component tag.
+func platformBlueprints() map[string]*fyneBlueprint {
+	return loadBlueprints()
+}
+
+func (t *fyneTranslator) OnCreateNode(id, tag string) string {
+	bp, ok := t.blueprints[tag]
+	if !ok {
+		return ""
+	}
+	if bp.Constructor == nil {
+		return ""
+	}
+	goType := bp.Constructor.GoType
+	if goType == "" {
+		return ""
+	}
+	t.fieldSink(id, goType)
+	args := zeroArgsFor(tag)
+	return "m." + id + " = " + bp.Constructor.GoFn + "(" + args + ")\n"
+}
+
+// zeroArgsFor returns the constructor-arg string used when a slot-time
+// CreateNode emits a widget; the slot's subsequent OnPropAssign calls
+// fill the real values.
+func zeroArgsFor(tag string) string {
+	switch tag {
+	case "text", "label":
+		return `""`
+	case "button":
+		return `"", nil`
+	default:
+		return ""
+	}
+}
+
+func (t *fyneTranslator) OnAppendChild(parent, child string) string  { return "" }
+func (t *fyneTranslator) OnRemoveChild(parent, child string) string  { return "" }
 func (t *fyneTranslator) OnAttachHandler(node, event, h string) string {
 	return ""
 }
 func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
 	return ""
 }
-
-// dummy use of strings so the import isn't unused before later tasks
-// flesh out the method bodies. Removed by Task 2.
-var _ = strings.Builder{}
