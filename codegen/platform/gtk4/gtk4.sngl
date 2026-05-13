@@ -17,50 +17,68 @@ struct Options {
 
 // --- Leaf widgets ---
 
-component button() {
-    GtkButton(label=text, @clicked { @click() }) {}
+component sngl.button {
+    platform gtk4 {
+        GtkButton(label=text, @clicked { @click() }) {}
+    }
 }
 
-component label() {
-    GtkLabel(label=value) {}
+component sngl.label {
+    platform gtk4 {
+        GtkLabel(label=value) {}
+    }
 }
 
-component entry() {
-    GtkEntry(text=value, @changed { @input(event) }) {}
+component sngl.entry {
+    platform gtk4 {
+        GtkEntry(text=value, @changed { @input(event) }) {}
+    }
 }
 
-component checkbox() {
-    GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
+component sngl.checkbox {
+    platform gtk4 {
+        GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
+    }
 }
 
-component image() {
-    GtkImage(file=src) {}
+component sngl.image {
+    platform gtk4 {
+        GtkImage(file=src) {}
+    }
 }
 
 // --- Container widgets ---
 
-component vbox() {
-    GtkBox(orientation="vertical", spacing=6) {
-        slot
+component sngl.vbox {
+    platform gtk4 {
+        GtkBox(orientation="vertical", spacing=6) {
+            slot
+        }
     }
 }
 
-component hbox() {
-    GtkBox(orientation="horizontal", spacing=6) {
-        slot
+component sngl.hbox {
+    platform gtk4 {
+        GtkBox(orientation="horizontal", spacing=6) {
+            slot
+        }
     }
 }
 
-component scroll() {
-    GtkScrolledWindow {
-        slot
+component sngl.scroll {
+    platform gtk4 {
+        GtkScrolledWindow {
+            slot
+        }
     }
 }
 
 // --- Window ---
 
-component window() {
-    GtkApplicationWindow(title=title, defaultWidth=width, defaultHeight=height) {
-        slot
+component sngl.window {
+    platform gtk4 {
+        GtkApplicationWindow(title=title, defaultWidth=width, defaultHeight=height) {
+            slot
+        }
     }
 }
