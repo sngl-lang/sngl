@@ -6,25 +6,24 @@
 # `<innerVar>Children` (every container does) collided with its sibling and
 # the generated Go failed to compile with "redeclared in this block".
 
-# Post-Plan-C the fyne emitter's window-body path doesn't synthesize the
-# reactive-if slot scaffolding (no `__renderSlotN`, no per-child inner
-# vars). Lowering produces the right CreateNode/If shapes, but the legacy
-# renderStmt() in compiler_ir.go drops them on the floor.
-#
-# Tracked alongside compile_fyne_component_fields: rewrite renderStmt to
-# consume lowered IR via WalkLowered.
-skip 'fyne reactive-if inside window emits no slot scaffolding post-Plan-C'
+# Post-Plan-C the window body flows through WalkLowered and the
+# declarative lowering pass emits AppendChild for every NodeInst
+# declared inside conditional/loop bodies, threaded back to the
+# surrounding parent. Verify each `text(...)` widget inside the `if`
+# is constructed AND added to the surrounding vbox.
 
 sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
 
-# Each child of the if-body must get its own indexed slot variable.
-grep 'contentC0InnerC0 fyne\.CanvasObject' out/model.go
-grep 'contentC0InnerC1 fyne\.CanvasObject' out/model.go
-grep 'contentC0InnerC2 fyne\.CanvasObject' out/model.go
+# The vbox is the first node (__n0); the three text children are __n1..__n3.
+grep 'm\.__n1 = widget\.NewLabel' out/model.go
+grep 'm\.__n2 = widget\.NewLabel' out/model.go
+grep 'm\.__n3 = widget\.NewLabel' out/model.go
 
-# The pieces are bundled into a VBox so the if-slot stays single-CanvasObject.
-grep 'contentC0Inner = container\.NewVBox' out/model.go
+# Each label inside the if-body is appended to the parent vbox (__n0).
+grep 'm\.__n0\.Add\(m\.__n1\)' out/model.go
+grep 'm\.__n0\.Add\(m\.__n2\)' out/model.go
+grep 'm\.__n0\.Add\(m\.__n3\)' out/model.go
 
 -- app.sngl --
 output { go { fyne } }

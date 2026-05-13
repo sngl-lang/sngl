@@ -9,25 +9,17 @@
 # updates spliced after it, so we look for that inline form rather than
 # the older per-widget updateEntry0 method.
 
-# Post-Plan-C the textarea widget never gets constructed because the
-# window-body renderStmt path drops lowered CreateNode VarStmts (see
-# compile_fyne_component_fields). Without an entry widget there's no
-# SetText init, no @click handler emission, and no reactive splice.
-#
-# Tracked: rewrite renderStmt over lowered IR to restore widget
-# construction inside window bodies.
-skip 'fyne textarea widget not emitted post-Plan-C (window-body renderStmt broken)'
-
 sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
 
 # Init: SetText is emitted at BuildUI time for the textarea's value.
-grep 'm\.entry0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
+# Post-Plan-C widget ids use the lowered __nN scheme rather than per-tag
+# counters; the vbox is __n0 so textarea is __n1.
+grep 'm\.__n1\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 
 # Reactive update spliced into the button's @click handler by the
-# NoReactivity lowering pass.
+# NoReactivity lowering pass (button is __n2).
 grep 'm\.content = "after click"' out/model.go
-grep 'm\.entry0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 
 -- app.sngl --
 output {

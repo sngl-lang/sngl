@@ -1,16 +1,5 @@
 # Verify that c:// imports produce a cgo preamble in fyne codegen.
 #
-# Post-Plan-C the fyne emitter consumes the lowered IR via WalkLowered, but
-# c:// import call sites (e.g. `clib.add(1, 2)` inside an @click handler)
-# don't survive the lowering / no-declarative path: the event handler body
-# isn't emitted, so neither `C.add(` nor the cgo bridge call appear in
-# generated Go. The emitter also leaks an invalid `import "lib/math.h"`
-# line because the C-header import is treated as a Go import path.
-#
-# Tracked as a fyne emitter follow-up: restore body emission for
-# event handlers + suppress non-Go imports for c:// targets.
-skip 'fyne c:// import call-site emission broken post-Plan-C'
-
 sngl compile --platform=fyne --lang=go --out=out main.sngl
 exists out/model.go
 

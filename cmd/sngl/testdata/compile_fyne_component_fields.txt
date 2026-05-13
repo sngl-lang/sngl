@@ -2,30 +2,20 @@
 # the Model struct. Previously the generated model.go used m.label1..m.label4
 # inside renderDetailPanel but those fields were not declared → compile error.
 
-# Post-Plan-C the fyne emitter's window-body rendering uses the legacy
-# renderStmt() path (compiler_ir.go), which doesn't recognize the
-# lower.CreateNode VarStmt shape produced by NoDeclarative lowering.
-# Result: the body of each `window` block emits empty `part0..partN`
-# placeholders with no widget construction. renderDetailPanel is still
-# emitted but its inner body has the same problem, so labels never
-# materialize on the Model struct.
-#
-# Tracked: rewrite renderStmt to consume lowered IR via WalkLowered,
-# matching the slot-Func emission path.
-skip 'fyne window-body emission empty post-Plan-C (Issue: rewrite renderStmt over lowered IR)'
-
 sngl compile --platform=fyne --lang=go --out=out app.sngl
 exists out/model.go
 
 # renderDetailPanel render method must be emitted
-grep 'func \(m \*Model\) renderDetailPanel' out/model.go
+grep 'func \(m \*Model\) renderDetailPanel\(it Issue\) fyne\.CanvasObject' out/model.go
 
-# label0 from main window's text("header"), labels 1–4 from detailPanel.
-# With continued counters the component fields must not restart at 0.
-grep 'label1 \*widget\.Label' out/model.go
-grep 'label2 \*widget\.Label' out/model.go
-grep 'label3 \*widget\.Label' out/model.go
-grep 'label4 \*widget\.Label' out/model.go
+# Post-Plan-C widget fields are named __nN by the lowering pass
+# (rather than the legacy label1..label4 per-tag counters). The four
+# detail-panel text() nodes get distinct fields so the Model struct
+# declares each one.
+grep '__n4 \*widget\.Label' out/model.go
+grep '__n5 \*widget\.Label' out/model.go
+grep '__n6 \*widget\.Label' out/model.go
+grep '__n7 \*widget\.Label' out/model.go
 
 -- app.sngl --
 output { go { fyne } }

@@ -9,15 +9,6 @@
 # (a 2-value RHS against a 1-value LHS) and refused to compile. After the fix,
 # the call wraps in an IIFE that captures + discards the error.
 
-# Post-Plan-C the click handler that invokes api.Fetch is never emitted:
-# the window-body renderStmt path drops lowered button-NodeInst CreateNode
-# + AttachHandler chains, so the (T, error)-unwrap IIFE has nowhere to
-# land. The underlying unwrap logic (in the go translator) is still
-# present and will fire once the handler body is re-emitted.
-#
-# Tracked alongside the other fyne window-body skips.
-skip 'fyne @click handler body not emitted post-Plan-C; native-err unwrap untestable'
-
 sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
 
