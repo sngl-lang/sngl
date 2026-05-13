@@ -326,8 +326,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
-		// Synthesized by passReactivity; fyne does not yet consume these (Plan B).
 		if fn.Synthesized {
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -799,6 +799,103 @@ func windowPascal(name string) string {
 
 func windowBuildFunc(name string) string { return "buildWindow" + windowPascal(name) }
 func windowBoxField(name string) string  { return "window" + windowPascal(name) + "Box" }
+
+// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
+// Func as a Model method. The body is a mix of plain Go statements
+// (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
+// Each stmt goes through fyneStmtDispatch, which routes intrinsics
+// through fyneTranslator and falls back to gc.EvalStmt for everything
+// else.
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
+	fmt.Fprintf(b, "func (m *Model) %s(parent fyne.CanvasObject) {\n", fn.Name)
+	b.WriteString("\tcontainer, _ := parent.(*fyne.Container)\n")
+	b.WriteString("\tif container == nil { return }\n")
+
+	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
+	})
+
+	for _, stmt := range fn.Block {
+		lines := fyneStmtDispatch(stmt, tr, gc)
+		for _, l := range lines {
+			b.WriteString("\t")
+			b.WriteString(l)
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("}\n\n")
+}
+
+// fyneStmtDispatch routes one statement either through the intrinsic
+// translator (for lower.* calls, element-ref Assigns, CreateNode
+// LocalVars) or through the language's generic Go translator.
+func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []string {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "CreateNode") {
+			tag, _ := lowerStringArg(call, 0)
+			return splitTrLines(tr.OnCreateNode(n.Name, tag))
+		}
+	case *ir.CallStmt:
+		if n.Call != nil {
+			switch {
+			case isLowerIntrinsic(n.Call, "AppendChild"):
+				c := lowerIdentArg(n.Call, 1)
+				return splitTrLines(tr.OnAppendChild("container", c))
+			case isLowerIntrinsic(n.Call, "RemoveChild"):
+				c := lowerIdentArg(n.Call, 1)
+				return splitTrLines(tr.OnRemoveChild("container", c))
+			case isLowerIntrinsic(n.Call, "AttachHandler"):
+				node := lowerIdentArg(n.Call, 0)
+				evt, _ := lowerStringArg(n.Call, 1)
+				h := lowerIdentArg(n.Call, 2)
+				return splitTrLines(tr.OnAttachHandler(node, evt, h))
+			}
+		}
+	case *ir.Assign:
+		if sel, ok := n.Target.(*ir.Select); ok {
+			if id, ok := sel.Operand.(*ir.Ident); ok && id.IsElementRef {
+				return splitTrLines(tr.OnPropAssign(id.Name, sel.Field, n.Value))
+			}
+		}
+	}
+	return gc.EvalStmt(s)
+}
+
+// isLowerIntrinsic — true when call resolves to a lower.* intrinsic
+// with the given short name (CreateNode, AppendChild, RemoveChild,
+// AttachHandler).
+func isLowerIntrinsic(call *ir.Call, name string) bool {
+	return call != nil && call.Func != nil && call.Func.Intrinsic == name
+}
+
+func lowerStringArg(call *ir.Call, i int) (string, bool) {
+	if i >= len(call.Args) {
+		return "", false
+	}
+	if l, ok := call.Args[i].Value.(*ir.Literal); ok && l.Type != nil && l.Type.Kind == ir.TypeString {
+		return l.Raw, true
+	}
+	return "", false
+}
+
+func lowerIdentArg(call *ir.Call, i int) string {
+	if i >= len(call.Args) {
+		return ""
+	}
+	if id, ok := call.Args[i].Value.(*ir.Ident); ok {
+		return id.Name
+	}
+	return ""
+}
+
+func splitTrLines(s string) []string {
+	s = strings.TrimRight(s, "\n")
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, "\n")
+}
 
 // emitIRMultiWindowCode emits BuildUI, navigate, and per-window build methods
 // for a multi-window application. Called only when len(wins) > 1.
