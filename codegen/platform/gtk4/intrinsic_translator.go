@@ -328,7 +328,7 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 // or "parent") pass through.
 func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
-		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
+		if strings.HasPrefix(id.Name, "__n") {
 			return modelFieldRef(id.Name)
 		}
 		if id.IsElementRef && id.Synthesized {
@@ -444,7 +444,8 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Value:  appendCall,
 	}
 	// C.sngl_connect(widget, "<signal>", C.int(len(snglCallbacks)-1))
-	widget := cgoCast("GtkWidget", t.qualifyNodeExpr(node))
+	// C signature is `void *widget`, so cgo expects unsafe.Pointer.
+	widget := cgoCast("", t.qualifyNodeExpr(node))
 	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: signal})
 	lenCall := &ir.Call{
 		Type: ir.TypInt,

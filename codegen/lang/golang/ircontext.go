@@ -583,6 +583,10 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeNative {
 		if ref, ok := n.Type.Meta.(ir.NativeTypeRef); ok && ref.CgoC {
 			// Cgo pointer cast: (*C.X)(unsafe.Pointer(y))
+			// Empty Name → bare unsafe.Pointer(y) (used for void* args).
+			if ref.Name == "" {
+				return "unsafe.Pointer(" + gc.EvalExpr(n.Operand) + ")"
+			}
 			return "(" + IRTypeToGo(n.Type) + ")(unsafe.Pointer(" + gc.EvalExpr(n.Operand) + "))"
 		}
 		// Go-package native cast: plain type conversion.
