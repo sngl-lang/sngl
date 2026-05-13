@@ -1026,8 +1026,18 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		params[i] = p.Name + " " + IRTypeToGo(p.Type)
 	}
 	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn {
-		retType = " " + IRTypeToGo(fn.Return)
+	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+		// TypeDyn without a raw-type hint (Meta) has no first-class Go
+		// representation — skip emission so the signature reads "func foo()"
+		// rather than "func foo() any". TypeDyn WITH Meta is a raw Go
+		// type ref (e.g. "fyne.CanvasObject") and must round-trip.
+		if fn.Return.Kind == ir.TypeDyn {
+			if meta, ok := fn.Return.Meta.(string); ok && meta != "" {
+				retType = " " + meta
+			}
+		} else {
+			retType = " " + IRTypeToGo(fn.Return)
+		}
 	}
 
 	sig := "func "

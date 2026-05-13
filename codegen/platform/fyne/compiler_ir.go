@@ -6,6 +6,7 @@ import (
 	"maps"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -574,39 +575,18 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 }
 
 func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		goType := golang.IRTypeToGo(p.Type)
-		params[i] = p.Name + " " + goType
+	if len(fn.Block) == 0 {
+		return
 	}
-	paramStr := strings.Join(params, ", ")
-
-	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
-		retType = golang.IRTypeToGo(fn.Return)
+	fnCopy := *fn
+	if fnCopy.Receiver == "" {
+		fnCopy.Receiver = "Model"
 	}
-
-	// Emit user funcs as lowercase methods on Model so they line up with
-	// computed-method naming (template uses raw {{.Name}}). Tests then
-	// uniformly invoke `c.<name>(...)` against the Model in the same Go
-	// package without needing case translation.
-	goName := fn.Name
-	receiver := "m *Model"
-
-	localGC := gc
-	for _, p := range fn.Params {
-		localGC = localGC.WithLocal(p.Name)
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
 	}
-
-	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
-		for _, stmt := range fn.Block {
-			for _, line := range localGC.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t%s\n", line)
-			}
-		}
-		b.WriteString("}\n\n")
-	}
+	b.WriteByte('\n')
 }
 
 func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Builder, singleRoot bool) {
@@ -680,14 +660,16 @@ func renderIRComponentMethod(
 ) (code string, fields []irWidgetField, nextLabel, nextContainer int) {
 	methodName := "render" + golang.ExportName(cc.Component.Name)
 
-	var params []string
+	var params []*ir.Param
 	for _, p := range cc.Props {
-		goType := golang.IRTypeToGo(p.Type)
-		params = append(params, p.Name+" "+goType)
+		params = append(params, &ir.Param{Name: p.Name, Type: p.Type})
 	}
 	hasSlot := cc.Component.ChildrenType != nil
 	if hasSlot {
-		params = append(params, "slotContent fyne.CanvasObject")
+		params = append(params, &ir.Param{
+			Name: "slotContent",
+			Type: &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+		})
 	}
 
 	compGC := gc.ForComponent(cc.Component)
@@ -700,34 +682,47 @@ func renderIRComponentMethod(
 		compFields = append(compFields, irWidgetField{name: name, goType: goType})
 	})
 
-	var body strings.Builder
-	lowered := codegen.WalkLowered(context.Background(), cc.Body, tr)
-	for _, stmt := range lowered {
-		for _, line := range compGC.EvalStmt(stmt) {
-			fmt.Fprintf(&body, "\t%s\n", line)
-		}
-	}
+	bodyStmts := codegen.WalkLowered(context.Background(), cc.Body, tr)
 
-	var b strings.Builder
-	fmt.Fprintf(&b, "func (m *Model) %s(%s) fyne.CanvasObject {\n", methodName, strings.Join(params, ", "))
-	b.WriteString(body.String())
 	tops := tr.topLevel
+	var trailer string
 	switch len(tops) {
 	case 0:
-		b.WriteString("\treturn widget.NewLabel(\"\")\n")
+		trailer = "\treturn widget.NewLabel(\"\")\n"
 	case 1:
-		fmt.Fprintf(&b, "\treturn m.%s\n", tops[0])
+		trailer = fmt.Sprintf("\treturn m.%s\n", tops[0])
 	default:
-		b.WriteString("\treturn container.NewVBox(")
+		var tb strings.Builder
+		tb.WriteString("\treturn container.NewVBox(")
 		for i, ref := range tops {
 			if i > 0 {
-				b.WriteString(", ")
+				tb.WriteString(", ")
 			}
-			fmt.Fprintf(&b, "m.%s", ref)
+			fmt.Fprintf(&tb, "m.%s", ref)
 		}
-		b.WriteString(")\n")
+		tb.WriteString(")\n")
+		trailer = tb.String()
 	}
-	b.WriteString("}\n\n")
+
+	synthesized := &ir.Func{
+		Name:     methodName,
+		Receiver: "Model",
+		Params:   params,
+		Return:   &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+		Block:    bodyStmts,
+	}
+	lines := compGC.EmitFuncDef(synthesized)
+	// EmitFuncDef emits "<sig> {", body lines, then "}". Inject the
+	// return-form trailer before the closing brace.
+	var b strings.Builder
+	for i, line := range lines {
+		if i == len(lines)-1 {
+			b.WriteString(trailer)
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 
 	return b.String(), compFields, startLabel, startContainer
 }
@@ -900,20 +895,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		}
 	}
 
-	sig := ""
+	var params []*ir.Param
 	if binding != nil && binding.Signature != "" {
-		// Strip the leading "func" so we can format as "<name>(params) ret".
-		sig = strings.TrimPrefix(binding.Signature, "func")
+		params = parseSignatureParams(binding.Signature)
 	} else {
-		// Fall back to the original IR-derived signature.
-		params := make([]string, len(fn.Params))
-		for i, p := range fn.Params {
-			params[i] = p.Name + " " + golang.IRTypeToGo(p.Type)
-		}
-		sig = "(" + strings.Join(params, ", ") + ")"
+		params = fn.Params
 	}
-
-	fmt.Fprintf(b, "func (m *Model) %s%s {\n", fn.Name, sig)
 
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
@@ -923,6 +910,8 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	maps.Copy(tr.idTags, nodeTags)
 
 	stmts := fn.Block
+
+	var prelude []ir.Stmt
 	if binding != nil && binding.BindParam != "" {
 		// Match view_ir.go's old declarative path: the first stmt is the
 		// synthesized `var = e.<field>` two-way bind — re-emit as a direct
@@ -930,20 +919,56 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		// fyne value.
 		bindVar := extractIRAssignTarget(stmts)
 		if bindVar != "" {
-			fmt.Fprintf(b, "\tm.%s = %s\n", bindVar, binding.BindParam)
+			prelude = []ir.Stmt{&ir.Assign{
+				Target: &ir.Ident{Name: bindVar},
+				Op:     ast.AssignSet,
+				Value:  &ir.Ident{Name: binding.BindParam},
+			}}
 			stmts = stmts[1:]
 		}
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	for _, stmt := range body {
-		for _, line := range gc.EvalStmt(stmt) {
-			b.WriteString("\t")
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
+
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   params,
+		Return:   ir.TypVoid,
+		Block:    append(prelude, body...),
 	}
-	b.WriteString("}\n\n")
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// parseSignatureParams converts a binding signature like "func(s string)"
+// into IR params. Each comma-separated token is split on the first space
+// into "name" / "type"; the type is preserved as a TypeDyn with Meta set
+// so IRTypeToGo round-trips it as a raw Go type. Returns nil for an
+// empty parameter list.
+func parseSignatureParams(sig string) []*ir.Param {
+	sig = strings.TrimPrefix(sig, "func")
+	sig = strings.TrimPrefix(strings.TrimSuffix(sig, ")"), "(")
+	if strings.TrimSpace(sig) == "" {
+		return nil
+	}
+	parts := strings.Split(sig, ",")
+	out := make([]*ir.Param, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		tokens := strings.SplitN(p, " ", 2)
+		if len(tokens) != 2 {
+			continue
+		}
+		out = append(out, &ir.Param{
+			Name: strings.TrimSpace(tokens[0]),
+			Type: &ir.Type{Kind: ir.TypeDyn, Meta: strings.TrimSpace(tokens[1])},
+		})
+	}
+	return out
 }
 
 // emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
@@ -953,21 +978,23 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 // into ir.Stmt fragments; we then feed them through gc.EvalStmt at
 // the source-emission boundary.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
-	fmt.Fprintf(b, "func (m *Model) %s(container *fyne.Container) {\n", fn.Name)
-
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	})
+	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
-	for _, stmt := range body {
-		for _, line := range gc.EvalStmt(stmt) {
-			b.WriteString("\t")
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}},
+		Return:   ir.TypVoid,
+		Block:    bodyStmts,
 	}
-	b.WriteString("}\n\n")
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 // emitIRMultiWindowCode emits BuildUI, navigate, and per-window build methods
