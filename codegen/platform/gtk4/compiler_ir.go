@@ -337,6 +337,23 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		c.info.goImports["fmt"] = true
 	}
 
+	// If emitBuildUI will emit the synthetic __root wrapper, ensure
+	// the field exists on the Model struct. The wrapper path triggers
+	// when there is body content and the sole top-level isn't a window
+	// class — see emitBuildUI for the matching conditions.
+	if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
+		hasRoot := false
+		for _, wf := range widgetFields {
+			if wf.name == "__root" {
+				hasRoot = true
+				break
+			}
+		}
+		if !hasRoot {
+			widgetFields = append(widgetFields, widgetField{name: "__root", goType: "*C.GtkBox"})
+		}
+	}
+
 	// --- Phase 3: Build template data ---
 	td, err := c.newTemplateData(widgetFields, funcBuf.String(), gc)
 	if err != nil {
@@ -686,6 +703,19 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
+}
+
+// needsRootWrapper mirrors the conditions inside emitBuildUI that
+// trigger the synthetic m.__root *C.GtkBox wrapper emission. Kept in
+// sync so the Model struct gets the matching field declared.
+func needsRootWrapper(buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) bool {
+	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
+		return false
+	}
+	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+		return false
+	}
+	return true
 }
 
 // isWindowClass reports whether cType is a top-level window widget
