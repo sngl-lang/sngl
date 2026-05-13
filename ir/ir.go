@@ -205,6 +205,14 @@ type Component struct {
 	Funcs        []*Func
 	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
+	// PlatformBodies holds checked IR bodies for `component sngl.X`
+	// extensions, keyed by platform name (the identifier from
+	// PlatformGenerator.PlatformIdentifier). Populated by the checker's
+	// mergePlatformExtensions across *all* registered platforms; consumed
+	// by lower's passPlatformExtensionBody, which swaps the active
+	// platform's body into Component.Body before remaining lowering
+	// passes run. nil for components with no extension declarations.
+	PlatformBodies map[string][]Stmt `json:"-"`
 	// Native carries platform-provided metadata for components that
 	// resolve through a platform's Resolve() (e.g. GIR-loaded GTK
 	// widgets). nil for user-defined and stdlib components. Opaque to
