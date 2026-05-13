@@ -50,7 +50,7 @@ package ir
 import "testing"
 
 func TestLookupLowerIntrinsic(t *testing.T) {
-	for _, name := range []string{"LowerCreateNode", "LowerAppendChild", "LowerRemoveChild", "LowerAttachHandler"} {
+	for _, name := range []string{"CreateNode", "AppendChild", "RemoveChild", "AttachHandler"} {
 		if def := LookupIntrinsic(name); def == nil {
 			t.Errorf("LookupIntrinsic(%q) returned nil; expected definition", name)
 		}
@@ -61,7 +61,7 @@ func TestLookupLowerIntrinsic(t *testing.T) {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `go test ./ir/ -run TestLookupLowerIntrinsic -v`
-Expected: FAIL with `LookupIntrinsic("LowerCreateNode") returned nil`.
+Expected: FAIL with `LookupIntrinsic("CreateNode") returned nil`.
 
 - [ ] **Step 3: Add `LowerIntrinsics` list**
 
@@ -73,10 +73,10 @@ Append to `ir/intrinsics.go` before the `LookupIntrinsic` definition:
 // package). Every codegen backend that consumes lowered output must
 // provide native translations.
 var LowerIntrinsics = []IntrinsicDef{
-	{Name: "LowerCreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
-	{Name: "LowerAppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "LowerRemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "LowerAttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
+	{Name: "CreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
+	{Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
 }
 ```
 
@@ -144,7 +144,7 @@ func TestInternalLowerNamespace(t *testing.T) {
 	src := `
 import "internal://lower"
 
-func test() => lower.LowerCreateNode("text")
+func test() => lower.CreateNode("text")
 `
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
@@ -163,8 +163,8 @@ func test() => lower.LowerCreateNode("text")
 	for _, imp := range pkg.Imports {
 		if strings.HasSuffix(imp.Path, "lower") && imp.Pkg != nil {
 			found = true
-			if imp.Pkg.LookupFunc("LowerCreateNode") == nil {
-				t.Errorf("lower.LowerCreateNode not registered on imported pkg")
+			if imp.Pkg.LookupFunc("CreateNode") == nil {
+				t.Errorf("lower.CreateNode not registered on imported pkg")
 			}
 		}
 	}
@@ -212,7 +212,7 @@ git add internal/checker/checker.go internal/checker/checker_lower_test.go
 git commit -m "checker: register internal://lower intrinsic namespace
 
 Source that imports \"internal://lower\" can now reference
-lower.LowerCreateNode etc. as resolvable symbols. Used by ir.Convert
+lower.CreateNode etc. as resolvable symbols. Used by ir.Convert
 round-trip after lowering: lowered IR formats back to SNGL source that
 re-parses and re-checks cleanly.
 
@@ -234,9 +234,9 @@ Append to `internal/checker/checker_lower_test.go`:
 ```go
 func TestLowerNamespaceAutoImported(t *testing.T) {
 	// User source that DOES NOT explicitly import internal://lower
-	// should still resolve `lower.LowerCreateNode` because the stdlib
+	// should still resolve `lower.CreateNode` because the stdlib
 	// brings the import in transitively via lib/lower.sngl.
-	src := `func test() => lower.LowerCreateNode("text")`
+	src := `func test() => lower.CreateNode("text")`
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -300,7 +300,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Modify: `internal/lower/testdata/declarative_with_if.txtar`
 - Modify: `internal/lower/testdata/declarative_with_reactivity.txtar`
 
-Background: today `declarative.go` builds the intrinsic funcs ad-hoc with names like `"lower.createNode"`. That makes the `*ir.Func` non-resolvable. We're swapping them for the `LowerIntrinsics`-backed funcs which carry PascalCase names (`LowerCreateNode`) and live on the synthetic `internal://lower` package — so the `Call.Receiver` is the `lower` namespace ident.
+Background: today `declarative.go` builds the intrinsic funcs ad-hoc with names like `"lower.createNode"`. That makes the `*ir.Func` non-resolvable. We're swapping them for the `LowerIntrinsics`-backed funcs which carry PascalCase names (`CreateNode`) and live on the synthetic `internal://lower` package — so the `Call.Receiver` is the `lower` namespace ident.
 
 - [ ] **Step 1: Read the current implementation**
 
@@ -359,7 +359,7 @@ stmts = append(stmts, &ir.LocalVar{
 	Init: &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics["LowerCreateNode"],
+		Func:     st.intrinsics["CreateNode"],
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: ir.TypString, Raw: n.Name}},
 		},
@@ -373,7 +373,7 @@ stmts = append(stmts, &ir.CallStmt{
 	Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics["LowerAttachHandler"],
+		Func:     st.intrinsics["AttachHandler"],
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
 			{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
@@ -389,7 +389,7 @@ stmts = append(stmts, &ir.CallStmt{
 	Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics["LowerAppendChild"],
+		Func:     st.intrinsics["AppendChild"],
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
 			{Value: &ir.Ident{Name: cn.ID, Type: ir.TypDyn, IsElementRef: true}},
@@ -403,12 +403,12 @@ Delete the now-unused `createFunc`, `appendChildFunc`, `attachHandlerFunc` metho
 - [ ] **Step 5: Run the golden tests; expect failures so we can update expected outputs**
 
 Run: `go test ./internal/lower/ -run TestLower/declarative -v`
-Expected: failures on `declarative_basic`, `declarative_nested`, `declarative_with_if`, `declarative_with_reactivity` — the formatted output now prints the call as `lower.LowerCreateNode(...)` (capitalized).
+Expected: failures on `declarative_basic`, `declarative_nested`, `declarative_with_if`, `declarative_with_reactivity` — the formatted output now prints the call as `lower.CreateNode(...)` (capitalized).
 
 - [ ] **Step 6: Regenerate goldens**
 
 Run: `go test ./internal/lower/ -run TestLower/declarative -update`
-Inspect the diff with `git diff internal/lower/testdata/declarative_*.txtar`. The only changes should be `lower.createNode` → `lower.LowerCreateNode` (and the other three intrinsic names) inside the `expected.sngl` sections. Verify no semantic shifts.
+Inspect the diff with `git diff internal/lower/testdata/declarative_*.txtar`. The only changes should be `lower.createNode` → `lower.CreateNode` (and the other three intrinsic names) inside the `expected.sngl` sections. Verify no semantic shifts.
 
 - [ ] **Step 7: Re-run goldens**
 
@@ -538,7 +538,7 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
-	intrinsics   map[string]*ir.Func // LowerCreateNode, LowerAppendChild, LowerRemoveChild
+	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild
 	idCounter    int
 	slotCounter  int
 	// slot synthesis owner: the *ir.Component or *ir.Window whose stmt body we're
@@ -975,7 +975,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Modify: `internal/lower/reactivity.go`
 
 **Background.** Each `__renderSlot<N>(parent dyn)` Func must:
-1. Walk current `__slot<N>` entries and emit `lower.LowerRemoveChild(parent, entry)` per entry.
+1. Walk current `__slot<N>` entries and emit `lower.RemoveChild(parent, entry)` per entry.
 2. Reset `__slot<N>` to empty.
 3. Re-evaluate Cond (for If) or iterate Iter (for For).
 4. For each child NodeInst in the body, emit the same create/setProp/attachHandler/appendChild sequence `passDeclarative.lowerNode` produces. Append the new child ref into `__slot<N>`.
@@ -1000,7 +1000,7 @@ func LowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, fun
 			Call: &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["LowerAppendChild"],
+				Func:     st.intrinsics["AppendChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true}},
 					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}},
@@ -1033,7 +1033,7 @@ func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
 ```go
 // synthesizeRenderSlotFunc generates the __renderSlotN(parent dyn) Func.
 // Body:
-//   for _, entry := __slotN { lower.LowerRemoveChild(parent, entry) }
+//   for _, entry := __slotN { lower.RemoveChild(parent, entry) }
 //   __slotN = []
 //   <re-evaluate cond/iter and emit child create+append, pushing into __slotN>
 //
@@ -1057,7 +1057,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 			&ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["LowerRemoveChild"],
+				Func:     st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam}},
 					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn}},
@@ -1285,7 +1285,7 @@ git add internal/lower/declarative.go internal/lower/reactivity.go internal/lowe
 git commit -m "lower(reactivity): synthesize __renderSlotN generator Funcs
 
 Builds a __renderSlotN(parent dyn) Func per reactive If/For. Body
-tears down current __slotN entries via lower.LowerRemoveChild,
+tears down current __slotN entries via lower.RemoveChild,
 re-evaluates the cond/iter, and emits the same create/append
 sequence passDeclarative would emit — with each created child ref
 pushed back into __slotN.
@@ -1882,8 +1882,8 @@ func (t *trace) OnPropAssign(n, p string, _ ir.Expr) string {
 func (t *trace) add(f string, args ...any) { t.lines = append(t.lines, fmt.Sprintf(f, args...)) }
 
 func TestWalkLoweredDispatchesCreate(t *testing.T) {
-	// Hand-build the IR for: var __n0 dyn = lower.LowerCreateNode("vbox")
-	createFunc := &ir.Func{Name: "LowerCreateNode", Intrinsic: "LowerCreateNode"}
+	// Hand-build the IR for: var __n0 dyn = lower.CreateNode("vbox")
+	createFunc := &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"}
 	stmts := []ir.Stmt{
 		&ir.LocalVar{
 			Name: "__n0",
@@ -1932,7 +1932,7 @@ func WalkLowered(stmts []ir.Stmt, t IntrinsicTranslator) string {
 func walkOne(s ir.Stmt, t IntrinsicTranslator) string {
 	switch n := s.(type) {
 	case *ir.LocalVar:
-		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "LowerCreateNode") {
+		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "CreateNode") {
 			tag, _ := extractStringLit(call.Args[0].Value)
 			return t.OnCreateNode(n.Name, tag)
 		}
@@ -1941,13 +1941,13 @@ func walkOne(s ir.Stmt, t IntrinsicTranslator) string {
 			return ""
 		}
 		switch {
-		case isLowerIntrinsic(n.Call, "LowerAppendChild"):
+		case isLowerIntrinsic(n.Call, "AppendChild"):
 			p, c := identName(n.Call.Args[0].Value), identName(n.Call.Args[1].Value)
 			return t.OnAppendChild(p, c)
-		case isLowerIntrinsic(n.Call, "LowerRemoveChild"):
+		case isLowerIntrinsic(n.Call, "RemoveChild"):
 			p, c := identName(n.Call.Args[0].Value), identName(n.Call.Args[1].Value)
 			return t.OnRemoveChild(p, c)
-		case isLowerIntrinsic(n.Call, "LowerAttachHandler"):
+		case isLowerIntrinsic(n.Call, "AttachHandler"):
 			node := identName(n.Call.Args[0].Value)
 			evt, _ := extractStringLit(n.Call.Args[1].Value)
 			hRef := identName(n.Call.Args[2].Value)
@@ -1994,9 +1994,9 @@ Append to `codegen/intrinsic_walker_test.go`:
 ```go
 func TestWalkLoweredDispatchesAll(t *testing.T) {
 	stmts := []ir.Stmt{
-		// var __n0 dyn = lower.LowerCreateNode("vbox")
+		// var __n0 dyn = lower.CreateNode("vbox")
 		&ir.LocalVar{Name: "__n0", Type: ir.TypDyn, Init: &ir.Call{
-			Func: &ir.Func{Name: "LowerCreateNode", Intrinsic: "LowerCreateNode"},
+			Func: &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"},
 			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "vbox"}}},
 		}},
 		// #__n0.text = "hi"
@@ -2007,26 +2007,26 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 			},
 			Value: &ir.Literal{Type: ir.TypString, Raw: "hi"},
 		},
-		// lower.LowerAttachHandler(#__n0, "click", h)
+		// lower.AttachHandler(#__n0, "click", h)
 		&ir.CallStmt{Call: &ir.Call{
-			Func: &ir.Func{Name: "LowerAttachHandler", Intrinsic: "LowerAttachHandler"},
+			Func: &ir.Func{Name: "AttachHandler", Intrinsic: "AttachHandler"},
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
 				{Value: &ir.Literal{Type: ir.TypString, Raw: "click"}},
 				{Value: &ir.Ident{Name: "h"}},
 			},
 		}},
-		// lower.LowerAppendChild(#__parent, #__n0)
+		// lower.AppendChild(#__parent, #__n0)
 		&ir.CallStmt{Call: &ir.Call{
-			Func: &ir.Func{Name: "LowerAppendChild", Intrinsic: "LowerAppendChild"},
+			Func: &ir.Func{Name: "AppendChild", Intrinsic: "AppendChild"},
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "__parent", IsElementRef: true}},
 				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
 			},
 		}},
-		// lower.LowerRemoveChild(#__parent, #__n0)
+		// lower.RemoveChild(#__parent, #__n0)
 		&ir.CallStmt{Call: &ir.Call{
-			Func: &ir.Func{Name: "LowerRemoveChild", Intrinsic: "LowerRemoveChild"},
+			Func: &ir.Func{Name: "RemoveChild", Intrinsic: "RemoveChild"},
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "__parent", IsElementRef: true}},
 				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
