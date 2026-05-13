@@ -357,7 +357,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// in slot Funcs (e.g. an @input on __n0 created in __renderSlot0), so
 	// the handler's translator needs the full map up-front rather than
 	// the per-Func discovery that OnCreateNode does for slot bodies.
-	nodeTags := collectNodeTags(allFuncs)
+	nodeTags := collectNodeTags(ctx.Pkg, allFuncs)
 
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
@@ -829,7 +829,7 @@ func windowBoxField(name string) string  { return "window" + windowPascal(name) 
 // inside __renderSlotN bodies; promoted node-attached handlers need
 // the map to resolve element refs in reactivity splices to their
 // blueprint binding even though those handlers live in separate Funcs.
-func collectNodeTags(funcs []*ir.Func) map[string]string {
+func collectNodeTags(pkg *ir.Package, funcs []*ir.Func) map[string]string {
 	out := map[string]string{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
@@ -855,6 +855,14 @@ func collectNodeTags(funcs []*ir.Func) map[string]string {
 			continue
 		}
 		walk(fn.Block)
+	}
+	if pkg != nil {
+		for _, comp := range pkg.Components {
+			walk(comp.Body)
+		}
+		for _, w := range pkg.Windows {
+			walk(w.Body)
+		}
 	}
 	return out
 }
