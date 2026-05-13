@@ -7,6 +7,7 @@ import (
 	"maps"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
@@ -446,23 +447,27 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // Func as a Model method. The body is a mix of plain Go statements
 // (for-teardown, Assign reset, If gate) and lower.* intrinsic calls.
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
-// into ir.Stmt fragments; we then feed them through gc.EvalStmt at
-// the source-emission boundary.
+// into ir.Stmt fragments; we then synthesize a new *ir.Func and feed
+// it through gc.EmitFuncDef.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
-	fmt.Fprintf(b, "func (m *Model) %s(container *C.GtkBox) {\n", fn.Name)
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
 	}).withPkg(pkg)
 	tr.collectTagComponents(fn.Block)
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
-	for _, stmt := range body {
-		for _, line := range gc.EvalStmt(stmt) {
-			b.WriteString("\t")
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
+	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
+
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
+		Return:   ir.TypVoid,
+		Block:    bodyStmts,
 	}
-	b.WriteString("}\n\n")
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 // gtk4PromotedHandlerSig declares how a SNGL @event handler on a given
@@ -502,18 +507,42 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 	return gtk4PromotedHandlerSig{}
 }
 
-// gtk4EventGetter returns the Go expression that reads the equivalent
-// of `e.<field>` directly from a widget of cType.
-func gtk4EventGetter(cType, nodeID string) string {
+// gtk4EventGetterExpr returns the IR expression that reads `e.<field>`
+// directly from the source widget of cType. Used to replace the
+// SNGL `var = e.<field>` two-way-bind assignment when promoting a
+// node-attached handler into a top-level Func: the trampoline calls
+// the handler with no args, so any reference to `e` must be replaced
+// with a direct widget getter.
+func gtk4EventGetterExpr(cType, nodeID string) ir.Expr {
+	widgetRef := &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true}
 	switch cType {
 	case "GtkEntry":
 		// GTK4: GtkEntry implements GtkEditable; text accessor moved
 		// from gtk_entry_get_text (GTK3) to gtk_editable_get_text.
-		return fmt.Sprintf("C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.%s))))", nodeID)
+		cast := &ir.Conversion{Type: ir.NativePointerOf("GtkEditable"), Operand: widgetRef}
+		getText := &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("gtk_editable_get_text"),
+			Args:     []ir.CallArg{{Value: cast}},
+		}
+		return &ir.Call{
+			Type:     ir.TypString,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("GoString"),
+			Args:     []ir.CallArg{{Value: getText}},
+		}
 	case "GtkCheckButton":
-		return fmt.Sprintf("bool(C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.%s))))", nodeID)
+		cast := &ir.Conversion{Type: ir.NativePointerOf("GtkCheckButton"), Operand: widgetRef}
+		getActive := &ir.Call{
+			Type:     ir.TypBool,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("gtk_check_button_get_active"),
+			Args:     []ir.CallArg{{Value: cast}},
+		}
+		return &ir.Conversion{Type: ir.TypBool, Operand: getActive}
 	}
-	return ""
+	return nil
 }
 
 // collectNodeCTypes walks every component / window / func body looking
@@ -586,9 +615,6 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
-	// Uniform GCallback trampoline → no Go-side params.
-	fmt.Fprintf(b, "func (m *Model) %s() {\n", fn.Name)
-
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
 	}).withPkg(pkg)
@@ -599,10 +625,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	tr.collectTagComponents(fn.Block)
 
 	stmts := fn.Block
+	var prelude []ir.Stmt
 
 	// Strip the synthesized leading `var = e.<field>` two-way bind and
-	// re-emit as `m.<var> = <gettercall>` since the closure exposes no
-	// event param.
+	// re-emit as `m.<var> = <gettercall>` since the trampoline exposes
+	// no event param. Built as IR so the cgo cast goes through the
+	// standard ir.Conversion → renderer path.
 	if sig.EventVar != "" && sig.Field != "" && len(stmts) > 0 {
 		if assign, ok := stmts[0].(*ir.Assign); ok {
 			target, _ := assign.Target.(*ir.Ident)
@@ -611,9 +639,17 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name == sig.EventVar && sel.Field == sig.Field {
 					// nodeID = handler-name minus the "_<event>_handler" suffix.
 					nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-					getter := gtk4EventGetter(sig.CType, nodeID)
-					if getter != "" {
-						fmt.Fprintf(b, "\tm.%s = %s\n", target.Name, getter)
+					cType := tr.idCTypes[nodeID]
+					if cType == "" {
+						cType = sig.CType
+					}
+					getter := gtk4EventGetterExpr(cType, nodeID)
+					if getter != nil {
+						prelude = []ir.Stmt{&ir.Assign{
+							Target: &ir.Ident{Name: target.Name},
+							Op:     ast.AssignSet,
+							Value:  getter,
+						}}
 						stmts = stmts[1:]
 					}
 				}
@@ -622,43 +658,34 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	for _, stmt := range body {
-		for _, line := range gc.EvalStmt(stmt) {
-			b.WriteString("\t")
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   nil, // GTK trampoline calls handlers with no args.
+		Return:   ir.TypVoid,
+		Block:    append(prelude, body...),
 	}
-	b.WriteString("}\n\n")
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 // emitGTK4Func emits a top-level user function as a method on *Model.
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		params[i] = p.Name + " " + golang.IRTypeToGo(p.Type)
-	}
-	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
-		retType = golang.IRTypeToGo(fn.Return)
-	}
-	// Lowercase name to match computed-method convention so tests can
-	// invoke c.<name>(...) uniformly across platforms.
-	goName := fn.Name
-	localGC := gc
-	for _, p := range fn.Params {
-		localGC = localGC.WithLocal(p.Name)
-	}
 	if len(fn.Block) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "func (m *Model) %s(%s) %s {\n", goName, strings.Join(params, ", "), retType)
-	for _, stmt := range fn.Block {
-		for _, line := range localGC.EvalStmt(stmt) {
-			fmt.Fprintf(b, "\t%s\n", line)
-		}
+	fnCopy := *fn
+	if fnCopy.Receiver == "" {
+		fnCopy.Receiver = "Model"
 	}
-	b.WriteString("}\n\n")
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 // isWindowClass reports whether cType is a top-level window widget
