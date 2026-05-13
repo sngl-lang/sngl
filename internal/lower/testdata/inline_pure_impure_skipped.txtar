@@ -1,0 +1,20 @@
+caps:
+-- input.sngl --
+component counter() {
+    var count int = 0
+    button(text=string(count), @click { count = count + 1 })
+}
+
+component main {
+    counter()
+}
+-- expected.sngl --
+component counter {
+    var count int = 0
+    button(text=string(count), @click {
+        count = count + 1
+    })
+}
+component main {
+    counter
+}

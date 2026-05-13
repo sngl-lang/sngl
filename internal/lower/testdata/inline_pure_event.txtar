@@ -1,0 +1,22 @@
+caps:
+-- input.sngl --
+component clicker(@click) {
+    button(text="click", @click { @click() })
+}
+
+component main {
+    var count int = 0
+    clicker(@click { count = count + 1 })
+}
+-- expected.sngl --
+component clicker(@click dyn) {
+    button(text="click", @click {
+        @click()
+    })
+}
+component main {
+    var count int = 0
+    button(text="click", @click {
+        count = count + 1
+    })
+}

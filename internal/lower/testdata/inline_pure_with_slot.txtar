@@ -1,0 +1,24 @@
+caps:
+-- input.sngl --
+component card() list<component> {
+    vbox(style={padding=16}) {
+        slot
+    }
+}
+
+component main {
+    card() {
+        text(value="hello")
+    }
+}
+-- expected.sngl --
+component card list<dyn> {
+    vbox(style=Style{padding = 16}) {
+        slot
+    }
+}
+component main {
+    vbox(style=Style{padding = 16}) {
+        text(value="hello")
+    }
+}
