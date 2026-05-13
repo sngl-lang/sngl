@@ -251,12 +251,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				// an empty label otherwise.
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
 			case 1:
-				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(m.%s)\n", tops[0])
+				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(elementRef(tops[0])))
 			default:
 				singleRoot = false
 				buildBuf.WriteString("\tvar parts []fyne.CanvasObject\n")
 				for _, ref := range tops {
-					fmt.Fprintf(&buildBuf, "\tparts = append(parts, m.%s)\n", ref)
+					fmt.Fprintf(&buildBuf, "\tparts = append(parts, %s)\n", gc.EvalExpr(elementRef(ref)))
 				}
 			}
 		}
@@ -289,14 +289,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			case 0:
 				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
 			case 1:
-				fmt.Fprintf(&winCode, "\treturn m.%s\n", tops[0])
+				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(elementRef(tops[0])))
 			default:
 				winCode.WriteString("\treturn container.NewVBox(")
 				for i, ref := range tops {
 					if i > 0 {
 						winCode.WriteString(", ")
 					}
-					fmt.Fprintf(&winCode, "m.%s", ref)
+					winCode.WriteString(gc.EvalExpr(elementRef(ref)))
 				}
 				winCode.WriteString(")\n")
 			}
@@ -690,7 +690,7 @@ func renderIRComponentMethod(
 	case 0:
 		trailer = "\treturn widget.NewLabel(\"\")\n"
 	case 1:
-		trailer = fmt.Sprintf("\treturn m.%s\n", tops[0])
+		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(elementRef(tops[0])))
 	default:
 		var tb strings.Builder
 		tb.WriteString("\treturn container.NewVBox(")
@@ -698,7 +698,7 @@ func renderIRComponentMethod(
 			if i > 0 {
 				tb.WriteString(", ")
 			}
-			fmt.Fprintf(&tb, "m.%s", ref)
+			tb.WriteString(compGC.EvalExpr(elementRef(ref)))
 		}
 		tb.WriteString(")\n")
 		trailer = tb.String()
@@ -775,6 +775,13 @@ func irFuncReturnType(f *ir.Func) string {
 		}
 	}
 	return ""
+}
+
+// elementRef builds an ir.Ident for a widget field name. The
+// IsElementRef+Synthesized flags route through evalIdent's m.<name>
+// qualification path, so callers don't hand-emit the "m." prefix.
+func elementRef(name string) *ir.Ident {
+	return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
 }
 
 func extractIRAssignTarget(stmts []ir.Stmt) string {

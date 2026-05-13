@@ -244,10 +244,11 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 
 	name := n.Name
 	// Synthesized element refs (e.g. `__n3` for a widget the lowering
-	// passes created) are stored as Model struct fields. Qualify them
-	// here so the slot-Func call sites emit `m.__n3` rather than a
-	// bare `__n3` that won't resolve in the generated method scope.
-	if n.IsElementRef && n.Synthesized && strings.HasPrefix(name, "__n") {
+	// passes created, or platform-emitted widget field names like
+	// `label0`) are stored as Model struct fields. Qualify them here
+	// so call sites emit `m.<name>` rather than a bare ident that
+	// won't resolve in the generated method scope.
+	if n.IsElementRef && n.Synthesized {
 		return "m." + name
 	}
 	_, kind := gc.Ctx.Resolve(name)
