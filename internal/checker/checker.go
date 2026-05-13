@@ -856,11 +856,11 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Component extensions: `component sngl.X { platform <name> { ... } }`.
-	// The new body-only form (no parens) is reserved for platform extensions
-	// of stdlib components. The old form `component sngl.X() { body }` (with
-	// parens, even empty) is still tolerated here for backward compatibility
-	// until platform .sngl files are rewritten (Plan H Phase C).
-	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !comp.HasParens {
+	// Validate qualified names. Tolerate the legacy `component sngl.X() { body }`
+	// form (parens, no props, no children type) used in html.sngl and
+	// bubbletea.sngl until those files are rewritten in Phase C.
+	legacyForm := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !legacyForm {
 		namespace := comp.Name[:dot]
 		if namespace != "sngl" {
 			c.error(comp.Pos, "extension namespace %q not supported (only \"sngl\" is valid)", namespace)

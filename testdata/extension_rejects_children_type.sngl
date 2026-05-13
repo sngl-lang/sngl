@@ -1,0 +1,9 @@
+component sngl.text list<dyn> { // ERROR(check) "may not declare children type"
+    platform html {
+        span(textContent=value) {}
+    }
+}
+
+component main {
+    text(value="hi")
+}

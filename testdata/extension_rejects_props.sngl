@@ -1,0 +1,9 @@
+component sngl.text(extra string) { // ERROR(check) "may not declare props"
+    platform html {
+        span(textContent=value) {}
+    }
+}
+
+component main {
+    text(value="hi")
+}

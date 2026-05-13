@@ -1,0 +1,7 @@
+component sngl.text {
+    span(textContent=value) {} // ERROR(check) "body must contain only platform blocks"
+}
+
+component main {
+    text(value="hi")
+}

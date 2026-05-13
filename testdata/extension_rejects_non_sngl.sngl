@@ -1,0 +1,9 @@
+component foo.bar { // ERROR(check) "extension namespace \"foo\" not supported"
+    platform html {
+        span() {}
+    }
+}
+
+component main {
+    text(value="hi")
+}
