@@ -22,14 +22,92 @@ import (
 // syntax we need. This is a documented abuse of NativeName; a follow-up
 // plan should introduce a dedicated ir.Cast node.
 type gtk4Translator struct {
-	gc        *golang.GoIRContext
-	fieldSink func(name, cType string)
-	idCTypes  map[string]string // id ("__n0") → GTK C type ("GtkLabel")
-	topLevel  []string
+	gc           *golang.GoIRContext
+	pkg          *ir.Package // optional; used to consult GIR-resolved native metadata
+	fieldSink    func(name, cType string)
+	idCTypes     map[string]string // id ("__n0") → GTK C type ("GtkLabel")
+	topLevel     []string
+	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
-	return &gtk4Translator{gc: gc, fieldSink: fieldSink, idCTypes: map[string]string{}}
+	return &gtk4Translator{
+		gc:           gc,
+		fieldSink:    fieldSink,
+		idCTypes:     map[string]string{},
+		tagComponent: map[string]*ir.Component{},
+	}
+}
+
+// withPkg attaches a package whose imports may carry GIR-resolved
+// components; the translator consults their Native metadata when a
+// tag isn't matched by the static SNGL-stdlib switch.
+func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
+	t.pkg = pkg
+	return t
+}
+
+// collectTagComponents pre-walks lowered body stmts and records each
+// CreateNode tag's resolved ir.Component (carried on LocalVar.Type for
+// component-typed nodes). Lets OnCreateNode reach the Native metadata
+// without re-querying GIR.
+func (t *gtk4Translator) collectTagComponents(stmts []ir.Stmt) {
+	for _, s := range stmts {
+		t.collectFromStmt(s)
+	}
+}
+
+func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		if n.Type != nil && n.Type.Kind == ir.TypeComponent {
+			if comp, ok := n.Type.Decl.(*ir.Component); ok && comp != nil {
+				if call, ok := n.Init.(*ir.Call); ok && len(call.Args) >= 1 {
+					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
+						t.tagComponent[lit.Raw] = comp
+					}
+				}
+			}
+		}
+	case *ir.For:
+		for _, c := range n.Body {
+			t.collectFromStmt(c)
+		}
+		for _, c := range n.Else {
+			t.collectFromStmt(c)
+		}
+	case *ir.If:
+		for _, c := range n.Body {
+			t.collectFromStmt(c)
+		}
+		for _, c := range n.Else {
+			t.collectFromStmt(c)
+		}
+	}
+}
+
+// lookupNativeByTag finds an ir.Component by name (tag) using the
+// pre-collected tag→Component map. Returns the gtk4 metadata when
+// present.
+func (t *gtk4Translator) lookupNativeByTag(tag string) (*ir.Component, *gtk4NativeComponent) {
+	c, ok := t.tagComponent[tag]
+	if !ok || c == nil {
+		return nil, nil
+	}
+	if nm, ok := c.Native.(*gtk4NativeComponent); ok {
+		return c, nm
+	}
+	return c, nil
+}
+
+// lookupNativeByCType finds an ir.Component whose native CType matches.
+func (t *gtk4Translator) lookupNativeByCType(cType string) (*ir.Component, *gtk4NativeComponent) {
+	for _, c := range t.tagComponent {
+		if nm, ok := c.Native.(*gtk4NativeComponent); ok && nm.CType == cType {
+			return c, nm
+		}
+	}
+	return nil, nil
 }
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
@@ -134,19 +212,39 @@ func gtk4Constructor(tag string) *ir.Call {
 }
 
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
-	cType := gtk4TagToCType(tag)
-	if cType == "" {
-		return nil
+	// 1. SNGL stdlib tag fast path.
+	if cType := gtk4TagToCType(tag); cType != "" {
+		ctor := gtk4Constructor(tag)
+		if ctor == nil {
+			return nil
+		}
+		return t.emitConstructorAssign(id, cType, ctor)
 	}
-	ctor := gtk4Constructor(tag)
-	if ctor == nil {
-		return nil
+	// 2. GIR-resolved native component (e.g. "GtkButton" used directly).
+	if _, nm := t.lookupNativeByTag(tag); nm != nil {
+		// Constructors with required non-null pointer args (e.g.
+		// gtk_button_new_with_label takes a const gchar*) accept NULL
+		// for nullable params; pass nil for everything to keep this
+		// generic. Constructors that strictly require non-null args
+		// will need a follow-up to pick a no-arg variant.
+		ctor := nativeCall("C." + nm.Constructor)
+		// gtk_application_window_new requires the GtkApplication;
+		// special-case so it gets the `app` parameter passed into
+		// BuildUI rather than nil.
+		if nm.Constructor == "gtk_application_window_new" {
+			ctor = nativeCall("C.gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
+		}
+		return t.emitConstructorAssign(id, nm.CType, ctor)
 	}
+	return nil
+}
+
+// emitConstructorAssign records the new widget's id↔cType mapping and
+// emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
+func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
 	t.fieldSink(id, cType)
 	t.idCTypes[id] = cType
 	t.topLevel = append(t.topLevel, id)
-
-	// m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))
 	return []ir.Stmt{&ir.Assign{
 		Target: modelFieldRef(id),
 		Op:     ast.AssignSet,
@@ -255,6 +353,17 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 	}
 	if setter == "" {
+		// GIR-resolved native metadata fallback.
+		if comp, _ := t.lookupNativeByCType(cType); comp != nil {
+			for _, p := range comp.Props {
+				if p.Name == prop && p.NativeSetter != "" {
+					setter = p.NativeSetter
+					break
+				}
+			}
+		}
+	}
+	if setter == "" {
 		return nil
 	}
 	// Most GTK setters take char*; wrap value in C.CString. Boolean-only
@@ -304,6 +413,17 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	bare := identBareName(node)
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
+	if signal == "" {
+		// GIR-resolved native metadata fallback.
+		if comp, _ := t.lookupNativeByCType(cType); comp != nil {
+			for _, e := range comp.Events {
+				if e.Name == event && e.NativeSignal != "" {
+					signal = e.NativeSignal
+					break
+				}
+			}
+		}
+	}
 	if signal == "" {
 		return nil
 	}

@@ -2271,10 +2271,19 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	// Unknown component check — skip if name resolves to a variable
 	// (e.g. timer condition guard like `running { ... }`),
-	// or if the platform/namespace can resolve it.
+	// or if the platform/namespace can resolve it. Platform-resolved
+	// names (e.g. GtkButton via GIR) bind into `comp` so the NodeInst
+	// carries the resolved Component (including any platform-provided
+	// Native metadata) downstream.
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
-			if !c.resolveQualifiedIdent(name) && c.resolvePlatformIdent(name) == nil {
+			if c.resolveQualifiedIdent(name) {
+				// namespace member — leave comp nil.
+			} else if resolved := c.resolvePlatformIdent(name); resolved != nil {
+				if co, ok := resolved.(*ir.Component); ok {
+					comp = co
+				}
+			} else {
 				c.error(vn.Pos, "unknown component %q", name)
 			}
 		}

@@ -296,7 +296,8 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, func(name, cType string) {
 			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
-		})
+		}).withPkg(c.ctx.Pkg)
+		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
 			for _, line := range gc.EvalStmt(stmt) {
@@ -317,7 +318,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg)
 			continue
 		}
 		emitGTK4Func(&funcBuf, fn, gc)
@@ -440,11 +441,12 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
 // into ir.Stmt fragments; we then feed them through gc.EvalStmt at
 // the source-emission boundary.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
 	fmt.Fprintf(b, "func (m *Model) %s(container *C.GtkBox) {\n", fn.Name)
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	})
+	}).withPkg(pkg)
+	tr.collectTagComponents(fn.Block)
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, stmt := range body {
 		for _, line := range gc.EvalStmt(stmt) {

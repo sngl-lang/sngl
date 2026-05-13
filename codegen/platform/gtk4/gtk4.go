@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -16,6 +17,36 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// gtk4NativeComponent is the gtk4-specific metadata attached to an
+// ir.Component resolved from GIR. Read by gtk4Translator at codegen
+// time; nil for non-GIR components.
+type gtk4NativeComponent struct {
+	CType       string // "GtkButton"
+	Constructor string // "gtk_button_new_with_label"
+}
+
+// pickPrimaryConstructor returns the C identifier of the first
+// constructor in the class, falling back to a synthesized "gtk_<lower>_new".
+func pickPrimaryConstructor(info *gir.ClassInfo) string {
+	if len(info.Constructors) == 0 {
+		return "gtk_" + lowerCType(info.CType) + "_new"
+	}
+	return info.Constructors[0].Name
+}
+
+// lowerCType maps "GtkLabel" → "label", "GtkApplicationWindow" → "application_window".
+func lowerCType(cType string) string {
+	bare := strings.TrimPrefix(cType, "Gtk")
+	var out strings.Builder
+	for i, r := range bare {
+		if i > 0 && unicode.IsUpper(r) {
+			out.WriteByte('_')
+		}
+		out.WriteRune(unicode.ToLower(r))
+	}
+	return out.String()
+}
 
 //go:embed gtk4.sngl
 var pkgSource string
@@ -140,20 +171,36 @@ func stripGtkPrefix(identifier string) string {
 func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 	comp := &ir.Component{
 		Name: info.CType,
+		// GIR doesn't model "accepts children" — but every GTK
+		// container widget can take children, and rejecting children
+		// at the checker level would block GtkBox/GtkWindow/etc.
+		// Allow any children at the IR level; the gtk4 codegen knows
+		// which parent types actually have child-append APIs.
+		ChildrenType: &ir.Type{Kind: ir.TypeDyn},
+		Native: &gtk4NativeComponent{
+			CType:       info.CType,
+			Constructor: pickPrimaryConstructor(info),
+		},
 	}
+	lower := lowerCType(info.CType)
 	for _, p := range info.Props {
 		t := p.IRType
 		if t == nil {
 			t = &ir.Type{Kind: ir.TypeDyn}
 		}
+		// Property names like "default-width" become C setter
+		// "gtk_<class>_set_default_width" (hyphens → underscores).
+		setterProp := strings.ReplaceAll(p.Name, "-", "_")
 		comp.Props = append(comp.Props, &ir.Prop{
-			Name: p.Name,
-			Type: t,
+			Name:         p.Name,
+			Type:         t,
+			NativeSetter: "gtk_" + lower + "_set_" + setterProp,
 		})
 	}
 	for _, s := range info.Signals {
 		comp.Events = append(comp.Events, &ir.EventDecl{
-			Name: s.Name,
+			Name:         s.Name,
+			NativeSignal: s.Name,
 		})
 	}
 	return comp

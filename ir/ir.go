@@ -205,6 +205,11 @@ type Component struct {
 	Funcs        []*Func
 	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
+	// Native carries platform-provided metadata for components that
+	// resolve through a platform's Resolve() (e.g. GIR-loaded GTK
+	// widgets). nil for user-defined and stdlib components. Opaque to
+	// the checker — consumers cast to a platform-specific shape.
+	Native any `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -220,12 +225,20 @@ type Prop struct {
 	Type          *Type
 	Default       Expr // nil if no default
 	Bidirectional bool
+	// NativeSetter is the platform-provided setter for this prop
+	// (e.g. "gtk_label_set_text" for GtkLabel.label). Empty for props
+	// without a platform binding. Opaque to the checker.
+	NativeSetter string `json:"-"`
 }
 
 // EventDecl is a resolved event declaration on a component.
 type EventDecl struct {
 	Name string
 	Type *Type // payload type; nil for void events
+	// NativeSignal is the platform-provided signal name (e.g.
+	// "clicked" for GtkButton's click event). Empty for events
+	// without a platform binding.
+	NativeSignal string `json:"-"`
 }
 
 // EventHandler is a resolved event handler. The handler body is represented
