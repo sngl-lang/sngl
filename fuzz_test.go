@@ -712,6 +712,52 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 	return nil, fmt.Errorf("function block has no return")
 }
 
+// FuzzLoweredDocument extends FuzzDocument with a lowering step. It
+// asserts that for every input which parses+checks cleanly:
+//
+//	Convert(Lower(checked)) → format → reparse → recheck → strip-compare
+//
+// produces source that re-parses and re-checks. This pins the round-trip
+// invariant for lowered output: every IR shape any pass produces must be
+// expressible in valid AST.
+func FuzzLoweredDocument(f *testing.F) {
+	for _, src := range loadTestdataSeeds() {
+		f.Add(src)
+	}
+	caps := lower.Caps{
+		NoReactivity:  true,
+		NoDeclarative: true,
+	}
+	f.Fuzz(func(t *testing.T, src string) {
+		doc1, ok := safeParseDoc(src)
+		if !ok {
+			t.Skip("parse failed")
+		}
+		pkg1, diags := checker.Check(doc1, &checker.Config{IsMain: true})
+		if hasError(diags) {
+			t.Skip("check failed")
+		}
+		if len(pkg1.Imports) > 0 {
+			// Imports require a resolver; skip per the FuzzDocument convention.
+			t.Skip("imports require resolver")
+		}
+		if err := lower.Lower(pkg1, caps, lower.Options{}); err != nil {
+			t.Fatalf("lower: %v", err)
+		}
+		convDoc := ir.Convert(pkg1)
+		convSrc := parser.Format(convDoc)
+		convReparsed, err := parser.Parse("fuzz.lower.sngl", []byte(convSrc))
+		if err != nil {
+			t.Fatalf("lowered ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
+		}
+		_, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true})
+		if hasError(convDiags) {
+			t.Fatalf("lowered ir.Convert output failed to type-check:\n--- generated ---\n%s\n--- diags ---\n%s",
+				convSrc, joinDiags(convDiags))
+		}
+	})
+}
+
 // valuesEqual compares two interpreter values, allowing a small ULP tolerance
 // on floats and treating NaN==NaN so divisions like `0/0` don't surface as
 // bogus diffs. Recurses through reflection so the same handling applies to
