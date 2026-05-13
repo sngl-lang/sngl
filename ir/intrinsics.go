@@ -87,10 +87,21 @@ var FileIntrinsics = []IntrinsicDef{
 	{Name: "PickFolder", Params: []*Param{}, Return: TypString},
 }
 
+// LowerIntrinsics are intrinsics emitted by lowering passes. They live in
+// the `lower` namespace (imported by the synthetic internal://lower
+// package). Every codegen backend that consumes lowered output must
+// provide native translations.
+var LowerIntrinsics = []IntrinsicDef{
+	{Name: "LowerCreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
+	{Name: "LowerAppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "LowerRemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "LowerAttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
+}
+
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {
-	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics} {
+	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, LowerIntrinsics} {
 		for i := range list {
 			if list[i].Name == name {
 				return &list[i]
