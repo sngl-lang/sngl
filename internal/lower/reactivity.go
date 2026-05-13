@@ -510,8 +510,9 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	props, ok := st.reverseDeps[v]
-	if !ok {
+	props := st.reverseDeps[v]
+	slots := st.reverseSlots[v]
+	if len(props) == 0 && len(slots) == 0 {
 		return nil
 	}
 	var out []ir.Stmt
@@ -533,6 +534,18 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 			Op:    ast.AssignSet,
 			Value: value,
 		})
+	}
+	// Structural updaters: re-fire __renderSlotN for every reactive If/For
+	// dependent on this Var.
+	for _, slot := range slots {
+		if slot.GenFunc == nil {
+			continue
+		}
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type: ir.TypVoid,
+			Func: slot.GenFunc,
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}}},
+		}})
 	}
 	return out
 }

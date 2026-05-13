@@ -260,6 +260,87 @@ component main {
 	}
 }
 
+func TestSlotUpdaterSplicedAfterMutation(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    button(text="toggle", @click { visible = !visible })
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	// Walk the button's @click handler body and find a CallStmt __renderSlot0
+	// spliced after the visible = !visible assignment.
+	var found bool
+	for _, s := range comp.Body {
+		nodeInst, ok := s.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, h := range nodeInst.Handlers {
+			if h.Name != "click" || h.Func == nil {
+				continue
+			}
+			for _, b := range h.Func.Block {
+				if cs, ok := b.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Name == "__renderSlot0" {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected CallStmt __renderSlot0 spliced after visible mutation")
+	}
+}
+
+// A Var that affects ONLY a slot (no prop deps) still gets a slot
+// updater spliced after its mutations. Regression guard: ensure the
+// early-return-on-empty-reverseDeps path doesn't skip slot deps.
+func TestSlotOnlyVarStillSplicesSlot(t *testing.T) {
+	src := `
+component main {
+    var show bool = true
+    button(@click { show = !show })
+    if show {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found bool
+	for _, s := range comp.Body {
+		nodeInst, ok := s.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, h := range nodeInst.Handlers {
+			if h.Name != "click" || h.Func == nil {
+				continue
+			}
+			for _, b := range h.Func.Block {
+				if cs, ok := b.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Name == "__renderSlot0" {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected __renderSlot0 splice for slot-only-dep var")
+	}
+}
+
 func TestNonReactiveIfPreserved(t *testing.T) {
 	src := `
 component main {
