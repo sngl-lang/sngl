@@ -8,64 +8,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func TestCollectSlotForReactiveIf(t *testing.T) {
-	src := `
-component main {
-    var visible bool = true
-    if visible {
-        text(value="hi")
-    }
-}
-`
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
-		t.Fatal(err)
-	}
-	comp := pkg.Components[0]
-	for _, s := range comp.Body {
-		if ifNode, ok := s.(*ir.If); ok {
-			if ifNode.LoweredSlotID == "" {
-				t.Errorf("expected reactive If to have LoweredSlotID set")
-			}
-			return
-		}
-	}
-	t.Errorf("no If found in lowered body")
-}
-
-func TestCollectSlotForReactiveFor(t *testing.T) {
-	src := `
-component main {
-    var items list<int> = [1, 2, 3]
-    for item = items {
-        text(value=string(item))
-    }
-}
-`
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
-		t.Fatal(err)
-	}
-	comp := pkg.Components[0]
-	for _, s := range comp.Body {
-		if forNode, ok := s.(*ir.For); ok {
-			if forNode.LoweredSlotID == "" {
-				t.Errorf("expected reactive For to have LoweredSlotID set")
-			}
-			return
-		}
-	}
-	t.Errorf("no For found in lowered body")
-}
-
 func TestCollectSlotNotSetForNonReactiveIf(t *testing.T) {
 	src := `
 component main {
@@ -261,4 +203,84 @@ component main {
 		}
 	}()
 	_ = lowerReactivity(pkg, Caps{NoReactivity: true})
+}
+
+func TestReactiveIfReplacedByCallStmt(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	for _, s := range comp.Body {
+		if _, ok := s.(*ir.If); ok {
+			t.Errorf("reactive If was not rewritten out of component body")
+			return
+		}
+	}
+	var found bool
+	for _, s := range comp.Body {
+		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Name == "__renderSlot0" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected CallStmt __renderSlot0 in component body; got %d stmts", len(comp.Body))
+	}
+}
+
+func TestReactiveForReplacedByCallStmt(t *testing.T) {
+	src := `
+component main {
+    var items list<int> = [1, 2, 3]
+    for item = items {
+        text(value=string(item))
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	for _, s := range comp.Body {
+		if _, ok := s.(*ir.For); ok {
+			t.Errorf("reactive For was not rewritten out of component body")
+			return
+		}
+	}
+}
+
+func TestNonReactiveIfPreserved(t *testing.T) {
+	src := `
+component main {
+    if true {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found bool
+	for _, s := range comp.Body {
+		if _, ok := s.(*ir.If); ok {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected non-reactive If to be preserved in component body")
+	}
 }

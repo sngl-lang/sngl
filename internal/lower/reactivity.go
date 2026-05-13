@@ -183,7 +183,78 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 		}
 		st.reverseSlots[v] = slots
 	}
+	// Replace reactive If/For at source position with renderSlot CallStmt.
+	stmts = st.rewriteReactiveStructures(stmts, nil)
 	return st.injectIntoStmts(stmts)
+}
+
+// rewriteReactiveStructures replaces every *ir.If/*ir.For carrying a
+// LoweredSlotID with a CallStmt to its slot generator. The parent
+// reference is the synthetic ident for the enclosing NodeInst — passed
+// in via the recursion stack.
+func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef ir.Expr) []ir.Stmt {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.If:
+			if n.LoweredSlotID != "" {
+				out = append(out, st.slotCall(n.LoweredSlotID, parentRef))
+				continue
+			}
+			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
+			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
+		case *ir.For:
+			if n.LoweredSlotID != "" {
+				out = append(out, st.slotCall(n.LoweredSlotID, parentRef))
+				continue
+			}
+			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
+			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
+		case *ir.NodeInst:
+			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}
+			n.Children = st.rewriteReactiveStructures(n.Children, pref)
+			for _, h := range n.Handlers {
+				if h.Func != nil {
+					h.Func.Block = st.rewriteReactiveStructures(h.Func.Block, parentRef)
+				}
+			}
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// slotCall emits CallStmt __renderSlotN(parentRef).
+func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallStmt {
+	if parentRef == nil {
+		// Top-level reactive If/For: use the "__root" sentinel. Platforms
+		// translate this to their root container reference.
+		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+	}
+	// Find the synthesized Func on the current owner.
+	want := renderFuncName(slotID)
+	var fn *ir.Func
+	switch o := st.owner.(type) {
+	case compOwner:
+		for _, f := range o.c.Funcs {
+			if f.Name == want {
+				fn = f
+				break
+			}
+		}
+	case windowOwner:
+		for _, f := range o.w.Funcs {
+			if f.Name == want {
+				fn = f
+				break
+			}
+		}
+	}
+	return &ir.CallStmt{Call: &ir.Call{
+		Type: ir.TypVoid,
+		Func: fn,
+		Args: []ir.CallArg{{Value: parentRef}},
+	}}
 }
 
 // synthesizeSlotVar creates the per-slot `__slotN list<dyn>` Var and
