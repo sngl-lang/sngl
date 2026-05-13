@@ -864,6 +864,46 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 				return splitTrLines(tr.OnAttachHandler(node, evt, h))
 			}
 		}
+	case *ir.For:
+		// Slot teardown: `for __entry = __slot0 { ... }` iterates a Model
+		// field. Recurse into the body via fyneStmtDispatch so RemoveChild
+		// (and any other intrinsics) route through tr; rewrite the Iter
+		// ident so the emitted Go ranges over m.__slot0.
+		if id, ok := n.Iter.(*ir.Ident); ok && strings.HasPrefix(id.Name, "__slot") {
+			var bodyLines []string
+			for _, s := range n.Body {
+				for _, l := range fyneStmtDispatch(s, tr, gc) {
+					bodyLines = append(bodyLines, "\t"+l)
+				}
+			}
+			lines := []string{"for _, " + n.Key + " := range m." + id.Name + " {"}
+			lines = append(lines, bodyLines...)
+			lines = append(lines, "}")
+			return lines
+		}
+	case *ir.If:
+		// Slot gate: recurse body + else through fyneStmtDispatch so any
+		// nested CreateNode/AppendChild/ListPush translate. Otherwise
+		// gc.EvalStmt would recurse with its own dispatcher, which doesn't
+		// know about lower.* intrinsics.
+		cond := gc.EvalExpr(n.Cond)
+		var lines []string
+		lines = append(lines, "if "+cond+" {")
+		for _, s := range n.Body {
+			for _, l := range fyneStmtDispatch(s, tr, gc) {
+				lines = append(lines, "\t"+l)
+			}
+		}
+		if len(n.Else) > 0 {
+			lines = append(lines, "} else {")
+			for _, s := range n.Else {
+				for _, l := range fyneStmtDispatch(s, tr, gc) {
+					lines = append(lines, "\t"+l)
+				}
+			}
+		}
+		lines = append(lines, "}")
+		return lines
 	case *ir.Assign:
 		if isSlotReset(n) {
 			return []string{"m." + n.Target.(*ir.Ident).Name + " = nil"}

@@ -4,14 +4,16 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // stubGC builds a GoIRContext suitable for translator unit tests —
-// no real package context, just enough machinery to emit Go strings.
+// minimal ExprCtx over an empty Package so EvalExpr can resolve
+// idents (falling through to the bare name when no symbol matches).
 func stubGC() *golang.GoIRContext {
-	return golang.NewIRContext(nil)
+	return golang.NewIRContext(codegen.NewExprCtx(&ir.Package{}))
 }
 
 func TestFyneTranslator_OnCreateNode_Text(t *testing.T) {
@@ -92,6 +94,62 @@ func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 	got := tr.OnPropAssign("__n0", "wibble", val)
 	if got != "" {
 		t.Errorf("expected empty emission for unknown prop; got %q", got)
+	}
+}
+
+func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
+	removeChild := &ir.Func{Name: "RemoveChild", Intrinsic: "RemoveChild"}
+	stmt := &ir.For{
+		Key:  "__entry",
+		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(ir.TypDyn)},
+		Body: []ir.Stmt{
+			&ir.CallStmt{Call: &ir.Call{
+				Receiver: &ir.Ident{Name: "lower"},
+				Func:     removeChild,
+				Args: []ir.CallArg{
+					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
+					{Value: &ir.Ident{Name: "__entry"}},
+				},
+			}},
+		},
+	}
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	lines := fyneStmtDispatch(stmt, tr, stubGC())
+	got := strings.Join(lines, "\n")
+	if !strings.Contains(got, "for _, __entry := range m.__slot0") {
+		t.Errorf("expected range over m.__slot0; got:\n%s", got)
+	}
+	if !strings.Contains(got, "container.Remove(__entry)") {
+		t.Errorf("expected container.Remove(__entry); got:\n%s", got)
+	}
+}
+
+func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
+	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
+	stmt := &ir.If{
+		Cond: &ir.Ident{Name: "visible"},
+		Body: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: "__slot0"},
+				Value: &ir.Call{
+					Receiver: &ir.Ident{Name: "stdlib"},
+					Func:     listPush,
+					Args: []ir.CallArg{
+						{Value: &ir.Ident{Name: "__slot0"}},
+						{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
+					},
+				},
+			},
+		},
+	}
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	lines := fyneStmtDispatch(stmt, tr, stubGC())
+	got := strings.Join(lines, "\n")
+	if !strings.Contains(got, "if ") || !strings.Contains(got, "visible") {
+		t.Errorf("expected 'if visible' shape; got: %s", got)
+	}
+	if !strings.Contains(got, "m.__slot0 = append(m.__slot0, m.__n0)") {
+		t.Errorf("expected ListPush translated inside body; got:\n%s", got)
 	}
 }
 
