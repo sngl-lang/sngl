@@ -354,10 +354,6 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	emitUpdaters(&modelBuf, updaters)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
 	emitPropertyReaders(&modelBuf, vc.nodeBindings)
-	emitConditionalRefs(&modelBuf, vc.conditionalIDs)
-	emitIfRefreshMethods(&modelBuf, vc.ifBlocks, gc)
-	emitForRefreshMethods(&modelBuf, vc.forBlocks, gc)
-
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
 	if c.cfg.Main {
@@ -580,37 +576,6 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
 	}
 }
 
-// emitIfRefreshMethods emits one `(m *Model) refreshIfN()` per
-// recorded `if` block. The method evaluates the cond, mounts when
-// it flipped true (running the captured body), unmounts when it
-// flipped false (unparenting top-level children + nulling the
-// conditional refs they own). Idempotent — safe to call from both
-// BuildUI's initial pass and doRefresh after every mutation.
-func emitIfRefreshMethods(b *strings.Builder, blocks []ifBlockInfo, gc *golang.GoIRContext) {
-	for _, blk := range blocks {
-		cond := gc.EvalExpr(blk.Cond)
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", blk.MethodName)
-		fmt.Fprintf(b, "\t_cond := %s\n", cond)
-		fmt.Fprintf(b, "\tif _cond && !m.%s {\n", blk.MountedField)
-		b.WriteString(blk.MountBody)
-		b.WriteString("\t} else if !_cond && m.")
-		b.WriteString(blk.MountedField)
-		b.WriteString(" {\n")
-		// Unparent every model field that received a widget pointer
-		// during this block's body. We use UnmountNulls which lists
-		// conditional-ref fields (label, etc.) — same set we null below.
-		for _, fld := range blk.UnmountNulls {
-			fmt.Fprintf(b, "\t\tif m.%s != nil { C.gtk_widget_unparent((*C.GtkWidget)(unsafe.Pointer(m.%s))) }\n", fld, fld)
-		}
-		for _, fld := range blk.UnmountNulls {
-			fmt.Fprintf(b, "\t\tm.%s = nil\n", fld)
-		}
-		fmt.Fprintf(b, "\t\tm.%s = false\n", blk.MountedField)
-		b.WriteString("\t}\n")
-		b.WriteString("}\n\n")
-	}
-}
-
 func sortedPropNames(m map[string]gtkBinding) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
@@ -618,112 +583,6 @@ func sortedPropNames(m map[string]gtkBinding) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// emitForRefreshMethods emits one `(m *Model) refreshForN()` per
-// recorded `for` block plus the ref struct (`<id>Ref` with widget
-// pointer + per-prop Value() getter) and a `(m *Model) <id>()
-// []*<id>Ref` list reader. Each refresh tears down the prior
-// iteration widgets (unparent + clear list) and re-builds from the
-// current iter expression — wired into the reactive refresh body so
-// mutations of the underlying list propagate.
-func emitForRefreshMethods(b *strings.Builder, blocks []forBlockInfo, gc *golang.GoIRContext) {
-	for _, blk := range blocks {
-		// Ref struct + per-prop getter methods per id. The set of
-		// methods mirrors the bindings captured by the (refactored)
-		// renderStdlib* code in local mode — same getter info the
-		// field-mode property readers consume, so coverage stays in
-		// step across widget types.
-		for _, info := range blk.IDs {
-			fmt.Fprintf(b, "type %s struct { w *C.%s }\n", info.RefType, info.CType)
-			seen := map[string]bool{}
-			for _, prop := range sortedPropNames(info.Props) {
-				bnd := info.Props[prop]
-				if bnd.Getter == "" {
-					continue
-				}
-				methodName := golang.ExportName(prop)
-				if seen[methodName] {
-					continue
-				}
-				seen[methodName] = true
-				retType := "string"
-				conv := "C.GoString"
-				if bnd.ValueIRType != nil && bnd.ValueIRType.Kind == ir.TypeBool {
-					retType = "bool"
-					conv = ""
-				}
-				cast := bnd.GetterCType
-				if cast == "" {
-					cast = bnd.CType
-				}
-				fmt.Fprintf(b, "func (r *%s) %s() %s {\n", info.RefType, methodName, retType)
-				call := fmt.Sprintf("C.%s((*C.%s)(unsafe.Pointer(r.w)))", bnd.Getter, cast)
-				if conv != "" {
-					fmt.Fprintf(b, "\treturn %s(%s)\n", conv, call)
-				} else if retType == "bool" {
-					fmt.Fprintf(b, "\treturn %s != 0\n", call)
-				} else {
-					fmt.Fprintf(b, "\treturn %s\n", call)
-				}
-				b.WriteString("}\n\n")
-			}
-			fmt.Fprintf(b, "// %s returns the current per-iteration refs for #%s; for tests.\n", info.ID, info.ID)
-			fmt.Fprintf(b, "func (m *Model) %s() []*%s {\n\treturn m.%s\n}\n\n",
-				info.ID, info.RefType, info.ListField)
-		}
-		// Refresh method: unparent + clear list, then for-range iter.
-		iterStr := gc.EvalExpr(blk.IterExpr)
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", blk.MethodName)
-		for _, info := range blk.IDs {
-			fmt.Fprintf(b, "\tfor _, r := range m.%s {\n", info.ListField)
-			b.WriteString("\t\tif r.w != nil { C.gtk_widget_unparent((*C.GtkWidget)(unsafe.Pointer(r.w))) }\n")
-			b.WriteString("\t}\n")
-			fmt.Fprintf(b, "\tm.%s = nil\n", info.ListField)
-		}
-		// IR For on a list: Key holds the value var, Value holds the
-		// optional index var. Mirrors translateIRForGo's mapping.
-		indexVar := "_"
-		valueVar := blk.KeyVar
-		if blk.ValueVar != "" {
-			indexVar = blk.ValueVar
-		}
-		if valueVar == "" {
-			valueVar = "_"
-		}
-		fmt.Fprintf(b, "\tfor %s, %s := range %s {\n", indexVar, valueVar, iterStr)
-		if indexVar != "_" {
-			fmt.Fprintf(b, "\t\t_ = %s\n", indexVar)
-		}
-		if valueVar != "_" {
-			fmt.Fprintf(b, "\t\t_ = %s\n", valueVar)
-		}
-		b.WriteString(blk.Body)
-		b.WriteString("\t}\n")
-		b.WriteString("}\n\n")
-	}
-}
-
-// emitConditionalRefs emits a `(m *Model) <id>() *C.<CType>` reader
-// for every user-id'd widget materialized inside an `if` branch.
-// Returns the widget pointer (nil when the branch hasn't run). Tests
-// drive `c.<id> == null` / `!= null` through these methods. Widget
-// teardown when the if-cond flips false is out of scope for now —
-// the pointer stays non-nil until the branch is re-walked, which the
-// gtk4 platform doesn't do yet.
-func emitConditionalRefs(b *strings.Builder, refs map[string]conditionalRef) {
-	ids := make([]string, 0, len(refs))
-	for id := range refs {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		r := refs[id]
-		fmt.Fprintf(b, "// %s returns the #%s widget when its `if` branch is mounted; for tests.\n", id, id)
-		fmt.Fprintf(b, "func (m *Model) %s() *C.%s {\n", id, r.CType)
-		fmt.Fprintf(b, "\treturn m.%s\n", r.Field)
-		b.WriteString("}\n\n")
-	}
 }
 
 // emitPropertyReaders emits one Model method per (#id, propName) that

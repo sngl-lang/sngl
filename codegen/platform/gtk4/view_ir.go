@@ -62,33 +62,6 @@ type viewContext struct {
 	// `c.<id>.@<event>()` test syntax through the real bridge.
 	eventInvokers []gtkEventInvoker
 
-	// conditionalIDs records each user-id'd node materialized inside an
-	// `if` branch. Drives emission of `(m *Model) <id>() *<id>Ref` test
-	// readers that return nil when the branch isn't mounted. Populated
-	// during renderStmt's If case.
-	conditionalIDs map[string]conditionalRef
-
-	// inConditional tracks the closest enclosing `if`-branch depth.
-	// When nonzero, renderNode flags the node id as conditional.
-	inConditional int
-
-	// ifBlocks records every `if` statement encountered in the visual
-	// tree so emitIR can generate one `refreshIfN()` method per block.
-	// Each block carries the mount/unmount code; reactive refresh
-	// invokes the method whenever the cond's deps change.
-	ifBlocks []ifBlockInfo
-
-	// forBlocks records every `for` statement. Each block emits a
-	// `refreshForN()` method that tears down its prior list refs and
-	// rebuilds from the current iter expression.
-	forBlocks []forBlockInfo
-
-	// parentBoxField names the enclosing GtkBox model field for the
-	// current children loop. Used by renderIf to capture the append
-	// target so refreshIfN knows where to mount/unmount. Empty outside
-	// a box's children loop.
-	parentBoxField string
-
 	// localMode switches widget creation from Model-field storage to
 	// Go-local storage. Used by renderFor so multiple iterations don't
 	// collide on a single `m.lblN` field. While set, recordNodeBinding
@@ -109,50 +82,6 @@ type localWidgetInfo struct {
 	VarName string                // Go local var of widget pointer
 	CType   string                // widget C type, e.g. "GtkLabel"
 	Props   map[string]gtkBinding // prop name → binding (Getter/Setter/etc.)
-}
-
-// forBlockInfo carries everything needed to emit one refreshForN
-// method post-walk: the iter expression, the per-iteration body
-// (Go source), and the (id → listField, refType) bookkeeping.
-type forBlockInfo struct {
-	Idx         int
-	MethodName  string // e.g. "refreshFor0"
-	ParentField string
-	IterExpr    ir.Expr
-	KeyVar      string // Go loop key var, "" when not used
-	ValueVar    string // Go loop value var (the `item` in `for item = items`)
-	Body        string // pre-rendered Go for the loop body (per iteration)
-	IDs         []forIDInfo
-}
-
-type forIDInfo struct {
-	ID        string                // user-set #id, e.g. "item"
-	ListField string                // model field holding the per-iteration refs, e.g. "itemList"
-	RefType   string                // generated Go ref struct name, e.g. "itemRef"
-	CType     string                // widget C type, e.g. "GtkLabel"
-	Props     map[string]gtkBinding // prop name → binding (used to generate ref struct getters)
-}
-
-// ifBlockInfo carries everything needed to emit one refreshIfN
-// method post-walk: the cond IR, mount/unmount source, and the
-// model-field bookkeeping for the conditional refs it owns.
-type ifBlockInfo struct {
-	Idx          int
-	MethodName   string   // e.g. "refreshIf0"
-	MountedField string   // e.g. "ifMounted0"
-	ParentField  string   // enclosing GtkBox model field
-	Cond         ir.Expr  // cond expression to re-evaluate
-	MountBody    string   // pre-rendered Go for the cond=true branch (creates widgets, appends)
-	TopChildren  []string // local var names of top-level body widgets (for unparent)
-	UnmountNulls []string // model field names to set to nil on unmount (conditional refs)
-}
-
-// conditionalRef carries enough to emit an `<id>Ref` Go struct with
-// per-prop getters. CType is the GTK class C type ("GtkLabel" etc.);
-// Field is the Model widget field assigned during the walk.
-type conditionalRef struct {
-	Field string
-	CType string
 }
 
 type gtkEventInvoker struct {
@@ -357,12 +286,6 @@ func (vc *viewContext) buildReactiveRefresh() string {
 		fmt.Fprintf(&b, "\tC.%s((*C.%s)(unsafe.Pointer(m.%s)), %s)\n",
 			bnd.Setter, bnd.CType, bnd.Field, rhs)
 	}
-	for _, blk := range vc.ifBlocks {
-		fmt.Fprintf(&b, "\tm.%s()\n", blk.MethodName)
-	}
-	for _, blk := range vc.forBlocks {
-		fmt.Fprintf(&b, "\tm.%s()\n", blk.MethodName)
-	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
@@ -403,200 +326,7 @@ func (vc *viewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		for _, child := range s.Children {
 			vc.renderStmt(child, resultVar)
 		}
-	case *ir.If:
-		vc.renderIf(s, resultVar)
-	case *ir.For:
-		vc.renderFor(s, resultVar)
 	}
-}
-
-// renderIf captures an `if` block for deferred emission as a
-// refreshIfN() method. At BuildUI it emits one call to that method
-// which performs the initial mount/unmount; the reactive refresh
-// dispatch calls it again whenever the cond's deps change so the
-// branch's widgets are parented/unparented in step with state.
-//
-// Body widgets are rendered into a side buffer rooted in a fresh
-// viewContext that shares mutable state (fields, bindings, etc.)
-// with the outer walk so test getters and reactive bindings still
-// resolve. The captured body source is then attached to the
-// refreshIfN method as its mount clause.
-//
-// Else-branches are not yet supported.
-func (vc *viewContext) renderIf(n *ir.If, _ string) {
-	if len(n.Else) > 0 {
-		vc.line("// TODO: gtk4 renderIf else branch not implemented")
-	}
-	idx := len(vc.ifBlocks)
-	methodName := fmt.Sprintf("refreshIf%d", idx)
-	mountedField := fmt.Sprintf("ifMounted%d", idx)
-	parent := vc.parentBoxField
-	vc.fields = append(vc.fields, widgetField{name: mountedField, goType: "bool"})
-
-	prevBuf := vc.buf
-	prevIndent := vc.indent
-	prevCondIDs := vc.conditionalIDs
-	vc.conditionalIDs = make(map[string]conditionalRef)
-	maps.Copy(vc.conditionalIDs, prevCondIDs)
-
-	var body strings.Builder
-	vc.buf = &body
-	vc.indent = 1
-	vc.inConditional++
-
-	var topChildren []string
-	for i, child := range n.Body {
-		childVar := fmt.Sprintf("ifChild%d_%d", idx, i)
-		vc.line("var %s *C.GtkWidget", childVar)
-		vc.renderStmt(child, childVar)
-		if parent != "" {
-			vc.line("if %s != nil { C.gtk_box_append(m.%s, %s) }", childVar, parent, childVar)
-		}
-		topChildren = append(topChildren, childVar)
-	}
-	vc.line("m.%s = true", mountedField)
-
-	vc.inConditional--
-	vc.buf = prevBuf
-	vc.indent = prevIndent
-
-	// Diff new conditional ids (only those introduced inside this block).
-	var unmountNulls []string
-	for id, r := range vc.conditionalIDs {
-		if _, was := prevCondIDs[id]; !was {
-			unmountNulls = append(unmountNulls, r.Field)
-		}
-	}
-
-	vc.ifBlocks = append(vc.ifBlocks, ifBlockInfo{
-		Idx:          idx,
-		MethodName:   methodName,
-		MountedField: mountedField,
-		ParentField:  parent,
-		Cond:         n.Cond,
-		MountBody:    body.String(),
-		TopChildren:  topChildren,
-		UnmountNulls: unmountNulls,
-	})
-
-	vc.line("m.%s()", methodName)
-}
-
-// renderFor captures a `for` block for deferred emission as a
-// refreshForN() method. The body is rendered through the normal
-// stdlib dispatch with localMode=true so widget storage falls into
-// Go locals (not Model fields), and binding records accumulate on
-// vc.localWidgets. Each user-id'd widget surfaces as
-// `(m *Model) <id>() []*<id>Ref` test reader; the ref struct gets
-// one method per recorded prop (Value, Placeholder, …), with the
-// real C type + getter pulled from the binding — same source the
-// field path uses, so widget-type coverage stays uniform.
-func (vc *viewContext) renderFor(n *ir.For, _ string) {
-	idx := len(vc.forBlocks)
-	methodName := fmt.Sprintf("refreshFor%d", idx)
-	parent := vc.parentBoxField
-
-	// Render body into a side buffer in local mode.
-	prevBuf := vc.buf
-	prevIndent := vc.indent
-	prevLocalMode := vc.localMode
-	prevLocalWidgets := vc.localWidgets
-	prevLocalCount := vc.localCount
-	var body strings.Builder
-	vc.buf = &body
-	vc.indent = 2
-	vc.localMode = true
-	vc.localWidgets = nil
-	vc.localCount = 0
-
-	for i, child := range n.Body {
-		childVar := fmt.Sprintf("ifor%d_%d", idx, i)
-		vc.line("var %s *C.GtkWidget", childVar)
-		vc.renderStmt(child, childVar)
-		if parent != "" {
-			vc.line("if %s != nil { C.gtk_box_append(m.%s, %s) }", childVar, parent, childVar)
-		}
-	}
-
-	// Group localWidgets by NodeID → one ref struct per id.
-	type idGroup struct {
-		ID    string
-		CType string
-		Props map[string]gtkBinding
-		Vars  []string // local var names per iteration body entry
-	}
-	groups := map[string]*idGroup{}
-	var orderedIDs []string
-	for _, lw := range vc.localWidgets {
-		if lw.NodeID == "" {
-			continue
-		}
-		g, ok := groups[lw.NodeID]
-		if !ok {
-			g = &idGroup{ID: lw.NodeID, CType: lw.CType, Props: map[string]gtkBinding{}}
-			groups[lw.NodeID] = g
-			orderedIDs = append(orderedIDs, lw.NodeID)
-		}
-		g.Vars = append(g.Vars, lw.VarName)
-		maps.Copy(g.Props, lw.Props)
-	}
-	// Append the per-id `m.<id>List = append(...)` lines to the body.
-	for _, id := range orderedIDs {
-		g := groups[id]
-		// Pick the most-recent local var (last entry) — for the
-		// single-widget-per-iteration case that's the right one.
-		// Multi-widget-per-iteration bodies would need richer tracking.
-		varName := g.Vars[len(g.Vars)-1]
-		fmt.Fprintf(&body, "\t\tm.%sList = append(m.%sList, &%sRef{w: %s})\n", id, id, id, varName)
-	}
-
-	vc.buf = prevBuf
-	vc.indent = prevIndent
-	vc.localMode = prevLocalMode
-	capturedLocals := vc.localWidgets
-	vc.localWidgets = prevLocalWidgets
-	vc.localCount = prevLocalCount
-
-	// Build forIDInfo per id from the recorded bindings.
-	var ids []forIDInfo
-	for _, id := range orderedIDs {
-		g := groups[id]
-		ids = append(ids, forIDInfo{
-			ID:        id,
-			ListField: id + "List",
-			RefType:   id + "Ref",
-			CType:     g.CType,
-			Props:     g.Props,
-		})
-		vc.fields = append(vc.fields, widgetField{
-			name:   id + "List",
-			goType: "[]*" + id + "Ref",
-		})
-	}
-	_ = capturedLocals // reserved for future use (per-iter unparent of all locals, not just refs)
-
-	vc.forBlocks = append(vc.forBlocks, forBlockInfo{
-		Idx:         idx,
-		MethodName:  methodName,
-		ParentField: parent,
-		IterExpr:    n.Iter,
-		KeyVar:      n.Key,
-		ValueVar:    n.Value,
-		Body:        body.String(),
-		IDs:         ids,
-	})
-
-	vc.line("m.%s()", methodName)
-}
-
-func (vc *viewContext) recordConditionalID(id, field, cType string) {
-	if id == "" {
-		return
-	}
-	if vc.conditionalIDs == nil {
-		vc.conditionalIDs = make(map[string]conditionalRef)
-	}
-	vc.conditionalIDs[id] = conditionalRef{Field: field, CType: cType}
 }
 
 // --- Node dispatch ---
@@ -863,23 +593,12 @@ func (vc *viewContext) renderStdlibBox(n *ir.NodeInst, resultVar, orientation st
 	vc.fields = append(vc.fields, widgetField{name: fieldName, goType: "*C.GtkBox"})
 	vc.line("m.%s = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_%s, %d)))", fieldName, strings.ToUpper(orientation), spacing)
 	vc.line("%s = (*C.GtkWidget)(unsafe.Pointer(m.%s))", resultVar, fieldName)
-	prevParent := vc.parentBoxField
-	vc.parentBoxField = fieldName
 	for i, child := range n.Children {
-		if ifs, ok := child.(*ir.If); ok {
-			vc.renderIf(ifs, "")
-			continue
-		}
-		if forStmt, ok := child.(*ir.For); ok {
-			vc.renderFor(forStmt, "")
-			continue
-		}
 		childVar := fmt.Sprintf("%sChild%d", resultVar, i)
 		vc.line("var %s *C.GtkWidget", childVar)
 		vc.renderStmt(child, childVar)
 		vc.line("if %s != nil { C.gtk_box_append(m.%s, %s) }", childVar, fieldName, childVar)
 	}
-	vc.parentBoxField = prevParent
 }
 
 func (vc *viewContext) renderStdlibScroll(n *ir.NodeInst, resultVar string) {
@@ -948,9 +667,6 @@ func (vc *viewContext) renderStdlibLabel(n *ir.NodeInst, resultVar string) {
 		}
 		vc.recordWidgetBinding(n.ID, "value", binding)
 		vc.recordWidgetBinding(n.ID, "label", binding)
-		if id := userNodeID(n); id != "" && vc.inConditional > 0 && !vc.localMode {
-			vc.recordConditionalID(id, name, info.CType)
-		}
 	}
 }
 
