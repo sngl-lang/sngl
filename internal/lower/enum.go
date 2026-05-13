@@ -15,7 +15,7 @@ var passEnum = pass{
 // lowerEnum rewrites enum-member references to int literals (ordinal in
 // declaration order). Does not delete enum declarations from pkg.Enums —
 // that is DCE's job.
-func lowerEnum(pkg *ir.Package, _ Caps) error {
+func lowerEnum(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

@@ -27,7 +27,7 @@ var passInlinePure = pass{
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps) error {
+func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

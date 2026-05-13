@@ -18,7 +18,7 @@ var passComputed = pass{
 // Return statement: Func.Block = []ir.Stmt{*ir.Return{Value: expr}}.
 //
 // Multi-statement computeds are not inlined.
-func lowerComputed(pkg *ir.Package, _ Caps) error {
+func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

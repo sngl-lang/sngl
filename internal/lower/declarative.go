@@ -25,7 +25,7 @@ var passDeclarative = pass{
 // lifter. With NoLambda off the body's free vars stay free — which is fine
 // for closure-supporting targets (e.g. Go) that emit the handler as a
 // nested closure under its owning component/window.
-func lowerDeclarative(pkg *ir.Package, caps Caps) error {
+func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

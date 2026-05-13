@@ -13,7 +13,7 @@ import (
 type pass struct {
 	name    string
 	enabled func(Caps) bool
-	apply   func(*ir.Package, Caps) error
+	apply   func(*ir.Package, Caps, Options) error
 }
 
 // passes is the fixed execution order. Earlier passes may not depend on
@@ -27,9 +27,9 @@ type pass struct {
 //  5. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
 //  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
 //  7. NoReactivity — analyzes dataflow, injects updaters.
-//  7a. InlinePure — always on; inlines pure user components and (under
-//      NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
-//      wires user-level deps and before declarative flattening.
+//     7a. InlinePure — always on; inlines pure user components and (under
+//     NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
+//     wires user-level deps and before declarative flattening.
 //  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
@@ -38,6 +38,7 @@ type pass struct {
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
+	passPlatformExtensionBody,
 	passUnit,
 	passEnum,
 	passTernary,
@@ -59,6 +60,14 @@ type Options struct {
 	// runs no passes — useful for the dump command's "show pre-lowering
 	// state" mode. Empty string runs all enabled passes.
 	StopAfter string
+
+	// Platform is the active build target's platform identifier (e.g.
+	// "html", "gtk4", "fyne"). passPlatformExtensionBody uses it to
+	// swap each *ir.Component's matching PlatformBodies entry into
+	// Component.Body. Empty string disables the swap — appropriate for
+	// platform-agnostic tools (LSP, format) that should leave abstract
+	// stdlib components abstract.
+	Platform string
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,
@@ -87,7 +96,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 		if !p.enabled(caps) {
 			continue
 		}
-		if err := p.apply(pkg, caps); err != nil {
+		if err := p.apply(pkg, caps, opts); err != nil {
 			return fmt.Errorf("lower: pass %s: %w", p.name, err)
 		}
 		if opts.StopAfter != "" && p.name == opts.StopAfter {

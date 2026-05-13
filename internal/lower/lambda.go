@@ -215,7 +215,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 // lowerLambda lifts closures to top-level functions plus captured-state
 // structs. Walks every *ir.Lambda in the package and replaces it with an
 // *ir.Closure produced by lifter.Lift. Asserts no Lambda survives the pass.
-func lowerLambda(pkg *ir.Package, _ Caps) error {
+func lowerLambda(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

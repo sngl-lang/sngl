@@ -16,7 +16,7 @@ var passToggle = pass{
 // Target and Value; this is safe because Toggle targets are path
 // expressions (Ident / Select / Index) the rest of the pipeline already
 // treats as immutable.
-func lowerToggle(pkg *ir.Package, _ Caps) error {
+func lowerToggle(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
