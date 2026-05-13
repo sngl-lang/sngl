@@ -116,7 +116,8 @@ func stripAutoImports(s string) string {
 			if strings.HasPrefix(trimmed, "import ") &&
 				(strings.Contains(trimmed, `"internal://stdlib"`) ||
 					strings.Contains(trimmed, `"internal://alert"`) ||
-					strings.Contains(trimmed, `"internal://file"`)) {
+					strings.Contains(trimmed, `"internal://file"`) ||
+					strings.Contains(trimmed, `"internal://lower"`)) {
 				continue
 			}
 			// First non-import, non-blank line ends the skip phase.

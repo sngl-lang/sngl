@@ -12,10 +12,10 @@ component main {
 component main {
     var n int = 0
     if n > 0 {
-        var __n0 text = lower.createNode("text")
+        var __n0 text = lower.CreateNode("text")
         #__n0.value = "big"
     } else {
-        var __n1 text = lower.createNode("text")
+        var __n1 text = lower.CreateNode("text")
         #__n1.value = "small"
     }
 }

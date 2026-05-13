@@ -12,9 +12,9 @@ component main {
         n = n + 1
         #__n0.value = string(n)
     }
-    var __n0 text = lower.createNode("text")
+    var __n0 text = lower.CreateNode("text")
     #__n0.value = string(n)
-    var __n1 button = lower.createNode("button")
+    var __n1 button = lower.CreateNode("button")
     #__n1.text = "+"
-    lower.attachHandler(#__n1, "click", __n1_click_handler)
+    lower.AttachHandler(#__n1, "click", __n1_click_handler)
 }

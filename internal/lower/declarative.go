@@ -41,20 +41,38 @@ func lowerDeclarative(pkg *ir.Package, caps Caps) error {
 }
 
 type declarativeState struct {
-	create        *ir.Func
-	appendChild   *ir.Func
-	attachHandler *ir.Func
-	nextID        int
-	lifter        *lifter
-	liftHandlers  bool // true when NoLambda is on alongside NoDeclarative
+	intrinsics   map[string]*ir.Func
+	nextID       int
+	lifter       *lifter
+	liftHandlers bool // true when NoLambda is on alongside NoDeclarative
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
-	st := &declarativeState{liftHandlers: caps.NoLambda}
+	st := &declarativeState{liftHandlers: caps.NoLambda, intrinsics: map[string]*ir.Func{}}
+	for _, def := range ir.LowerIntrinsics {
+		st.intrinsics[def.Name] = intrinsicFunc(def)
+	}
 	if st.liftHandlers {
 		st.lifter = &lifter{pkg: pkg}
 	}
 	return st
+}
+
+// intrinsicFunc materializes an IntrinsicDef into the *ir.Func form
+// lowering uses when emitting calls.
+func intrinsicFunc(def ir.IntrinsicDef) *ir.Func {
+	return &ir.Func{
+		Name:      def.Name,
+		Intrinsic: def.Name,
+		Params:    def.Params,
+		Return:    def.Return,
+	}
+}
+
+// lowerNSIdent returns a fresh Ident referring to the `lower` namespace.
+// Used as Call.Receiver so ir.Convert emits SelectExpr{Operand: Ident("lower"), Field: name}.
+func lowerNSIdent() *ir.Ident {
+	return &ir.Ident{Name: "lower", Type: ir.TypDyn}
 }
 
 // seedCounter scans every NodeInst.ID matching __n<digits> and starts the
@@ -110,49 +128,6 @@ func (st *declarativeState) freshID() string {
 	id := "__n" + strconv.Itoa(st.nextID)
 	st.nextID++
 	return id
-}
-
-func (st *declarativeState) createFunc() *ir.Func {
-	if st.create == nil {
-		st.create = &ir.Func{
-			Name:      "lower.createNode",
-			Intrinsic: "CreateNode",
-			Params:    []*ir.Param{{Name: "tag", Type: ir.TypString}},
-			Return:    ir.TypDyn,
-		}
-	}
-	return st.create
-}
-
-func (st *declarativeState) appendChildFunc() *ir.Func {
-	if st.appendChild == nil {
-		st.appendChild = &ir.Func{
-			Name:      "lower.appendChild",
-			Intrinsic: "AppendChild",
-			Params: []*ir.Param{
-				{Name: "parent", Type: ir.TypDyn},
-				{Name: "child", Type: ir.TypDyn},
-			},
-			Return: ir.TypVoid,
-		}
-	}
-	return st.appendChild
-}
-
-func (st *declarativeState) attachHandlerFunc() *ir.Func {
-	if st.attachHandler == nil {
-		st.attachHandler = &ir.Func{
-			Name:      "lower.attachHandler",
-			Intrinsic: "AttachHandler",
-			Params: []*ir.Param{
-				{Name: "node", Type: ir.TypDyn},
-				{Name: "event", Type: ir.TypString},
-				{Name: "handler", Type: ir.TypDyn},
-			},
-			Return: ir.TypVoid,
-		}
-	}
-	return st.attachHandler
 }
 
 // processStmts walks stmts, replacing each *ir.NodeInst with its flat
@@ -217,8 +192,9 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 		Name: id,
 		Type: varType,
 		Init: &ir.Call{
-			Type: ir.TypDyn,
-			Func: st.createFunc(),
+			Type:     ir.TypDyn,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics["CreateNode"],
 			Args: []ir.CallArg{
 				{Value: &ir.Literal{Type: ir.TypString, Raw: n.Name}},
 			},
@@ -267,8 +243,9 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
-				Type: ir.TypVoid,
-				Func: st.attachHandlerFunc(),
+				Type:     ir.TypVoid,
+				Receiver: lowerNSIdent(),
+				Func:     st.intrinsics["AttachHandler"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
 					{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
@@ -285,8 +262,9 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 			stmts = append(stmts, st.lowerNode(cn, funcs)...)
 			stmts = append(stmts, &ir.CallStmt{
 				Call: &ir.Call{
-					Type: ir.TypVoid,
-					Func: st.appendChildFunc(),
+					Type:     ir.TypVoid,
+					Receiver: lowerNSIdent(),
+					Func:     st.intrinsics["AppendChild"],
 					Args: []ir.CallArg{
 						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
 						{Value: &ir.Ident{Name: cn.ID, Type: ir.TypDyn, IsElementRef: true}},
