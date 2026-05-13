@@ -26,11 +26,11 @@ component main {
             __slot0 = stdlib.ListPush(__slot0, #__n0)
         }
     }
-    vbox #__n0(style=Style{gap = 4}) {
+    vbox #__n1(style=Style{gap = 4}) {
         button(@click {
             visible = !visible
-            __renderSlot0(#__n0)
+            __renderSlot0(#__n1)
         })
-        __renderSlot0(#__n0)
+        __renderSlot0(#__n1)
     }
 }

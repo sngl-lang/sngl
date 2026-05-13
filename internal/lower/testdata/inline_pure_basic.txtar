@@ -1,0 +1,16 @@
+caps:
+-- input.sngl --
+component greet(name string) {
+    text(value=$"Hello, {name}!")
+}
+
+component main {
+    greet(name="Alice")
+}
+-- expected.sngl --
+component greet(name string = "") {
+    text(value=i18n.tr("Hello, \{name\}!", {"name" = name}))
+}
+component main {
+    text(value=i18n.tr("Hello, \{name\}!", {"name" = "Alice"}))
+}
