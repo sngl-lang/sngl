@@ -92,10 +92,10 @@ var FileIntrinsics = []IntrinsicDef{
 // package). Every codegen backend that consumes lowered output must
 // provide native translations.
 var LowerIntrinsics = []IntrinsicDef{
-	{Name: "LowerCreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
-	{Name: "LowerAppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "LowerRemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "LowerAttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
+	{Name: "CreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
+	{Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+	{Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
 }
 
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
