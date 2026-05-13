@@ -188,3 +188,52 @@ func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 		t.Errorf("slot ListPush dispatch:\ngot:  %q\nwant: %q", got, want)
 	}
 }
+
+func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
+	// Simulates the inner For inside a reactive-for slot Func body:
+	// the loop iterates a regular Model field, and the body creates
+	// widgets via lower.CreateNode + appendChild.
+	createNode := &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"}
+	appendChild := &ir.Func{Name: "AppendChild", Intrinsic: "AppendChild"}
+	stmt := &ir.For{
+		Key: "item",
+		Iter: &ir.Ident{
+			Name: "items",
+			Type: ir.ListOf(ir.TypString),
+		},
+		Body: []ir.Stmt{
+			&ir.LocalVar{
+				Name: "__n5",
+				Type: ir.TypDyn,
+				Init: &ir.Call{
+					Receiver: &ir.Ident{Name: "lower"},
+					Func:     createNode,
+					Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "text"}}},
+				},
+			},
+			&ir.CallStmt{Call: &ir.Call{
+				Receiver: &ir.Ident{Name: "lower"},
+				Func:     appendChild,
+				Args: []ir.CallArg{
+					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
+					{Value: &ir.Ident{Name: "__n5", IsElementRef: true}},
+				},
+			}},
+		},
+	}
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	lines := fyneStmtDispatch(stmt, tr, stubGC())
+	got := strings.Join(lines, "\n")
+	if !strings.Contains(got, "for _, item := range") {
+		t.Errorf("expected 'for _, item := range'; got:\n%s", got)
+	}
+	if !strings.Contains(got, "m.__n5 = widget.NewLabel") {
+		t.Errorf("expected widget.NewLabel inside For body; got:\n%s", got)
+	}
+	if !strings.Contains(got, "container.Add(m.__n5)") {
+		t.Errorf("expected container.Add inside For body; got:\n%s", got)
+	}
+	if strings.Contains(got, "lower.CreateNode") {
+		t.Errorf("expected intrinsic call NOT to leak through verbatim; got:\n%s", got)
+	}
+}

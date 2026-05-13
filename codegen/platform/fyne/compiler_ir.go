@@ -865,22 +865,34 @@ func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []s
 			}
 		}
 	case *ir.For:
-		// Slot teardown: `for __entry = __slot0 { ... }` iterates a Model
-		// field. Recurse into the body via fyneStmtDispatch so RemoveChild
-		// (and any other intrinsics) route through tr; rewrite the Iter
-		// ident so the emitted Go ranges over m.__slot0.
+		// Recurse body through fyneStmtDispatch so any intrinsic calls
+		// (CreateNode/AppendChild/etc.) translate, regardless of whether
+		// this For is a slot teardown loop or a reactive-for body.
+		iterExpr := ""
 		if id, ok := n.Iter.(*ir.Ident); ok && strings.HasPrefix(id.Name, "__slot") {
-			var bodyLines []string
-			for _, s := range n.Body {
-				for _, l := range fyneStmtDispatch(s, tr, gc) {
-					bodyLines = append(bodyLines, "\t"+l)
-				}
-			}
-			lines := []string{"for _, " + n.Key + " := range m." + id.Name + " {"}
-			lines = append(lines, bodyLines...)
-			lines = append(lines, "}")
-			return lines
+			// Slot teardown: iterate the Model-side slot field.
+			iterExpr = "m." + id.Name
+		} else {
+			// General case: defer to the language translator for the iter
+			// expression (handles ranges over Model fields, computed lists,
+			// etc.). This is what gc.evalFor would do internally.
+			iterExpr = gc.EvalExpr(n.Iter)
 		}
+
+		var bodyLines []string
+		for _, s := range n.Body {
+			for _, l := range fyneStmtDispatch(s, tr, gc) {
+				bodyLines = append(bodyLines, "\t"+l)
+			}
+		}
+
+		// Range form mirrors gc.evalFor: single-var iteration over a list
+		// uses `for _, key := range expr`. Map iteration with .Value would
+		// need the two-var form, but slot bodies don't iterate maps.
+		lines := []string{"for _, " + n.Key + " := range " + iterExpr + " {"}
+		lines = append(lines, bodyLines...)
+		lines = append(lines, "}")
+		return lines
 	case *ir.If:
 		// Slot gate: recurse body + else through fyneStmtDispatch so any
 		// nested CreateNode/AppendChild/ListPush translate. Otherwise
