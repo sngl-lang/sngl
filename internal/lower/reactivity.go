@@ -213,7 +213,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -225,7 +225,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -291,7 +291,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -606,7 +606,7 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true}
+			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,
@@ -807,7 +807,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	entryVar := "__entry"
 	teardown := &ir.For{
 		Key:  entryVar,
-		Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn)},
+		Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
@@ -815,7 +815,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 				Func:     st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
-					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn}},
+					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Synthesized: true}},
 				},
 			}},
 		},
@@ -823,7 +823,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 2. Reset: __slotN = []
 	reset := &ir.Assign{
-		Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn)},
+		Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
 		Op:     ast.AssignSet,
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
@@ -849,15 +849,15 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 	}
 	pushToSlot := func(nodeID string) ir.Stmt {
 		return &ir.Assign{
-			Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn)},
+			Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
 			Op:     ast.AssignSet,
 			Value: &ir.Call{
 				Type:     ir.ListOf(ir.TypDyn),
 				Receiver: &ir.Ident{Name: "stdlib"},
 				Func:     listPushFn,
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn)}},
-					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true}},
+					{Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true}},
+					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},
 		}

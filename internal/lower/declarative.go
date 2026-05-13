@@ -247,7 +247,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 				Receiver: lowerNSIdent(),
 				Func:     st.intrinsics["AttachHandler"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
+					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 					{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
 					{Value: handlerArg},
 				},
@@ -266,8 +266,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 					Receiver: lowerNSIdent(),
 					Func:     st.intrinsics["AppendChild"],
 					Args: []ir.CallArg{
-						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true}},
-						{Value: &ir.Ident{Name: cn.ID, Type: ir.TypDyn, IsElementRef: true}},
+						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+						{Value: &ir.Ident{Name: cn.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 					},
 				},
 			})
@@ -295,8 +295,8 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, fun
 				Receiver: lowerNSIdent(),
 				Func:     st.intrinsics["AppendChild"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true}},
-					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}},
+					{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},
 		})

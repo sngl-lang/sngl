@@ -25,6 +25,12 @@ type Ident struct {
 	Sym          Symbol // resolved: *Var, *Func, *Param, *LoopVar, etc.
 	Member       string // non-empty for bare enum member ("active" → Status.active)
 	IsElementRef bool   // true when from #id syntax (ElementRefExpr)
+	// Synthesized marks Idents emitted by a lowering pass for refs to
+	// pass-introduced Vars or Funcs (e.g. __slot<N>, __renderSlot<N>,
+	// __n<N> widget refs). Codegen consumers use this to distinguish
+	// pass-synthesized refs from user-named identifiers without string
+	// prefix matching.
+	Synthesized bool `json:"-"`
 }
 
 // Binary is a binary operation.

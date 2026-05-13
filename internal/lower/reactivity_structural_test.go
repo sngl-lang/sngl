@@ -426,3 +426,42 @@ component main {
 		t.Errorf("expected non-reactive If to be preserved in component body")
 	}
 }
+
+func TestSlotIdentsAreSynthesized(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    button(@click { visible = !visible })
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var checked bool
+	for _, s := range comp.Body {
+		cs, ok := s.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Name != "__renderSlot0" {
+			continue
+		}
+		if len(cs.Call.Args) != 1 {
+			t.Fatalf("expected 1 arg on __renderSlot0 call, got %d", len(cs.Call.Args))
+		}
+		id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+		if !ok {
+			t.Fatalf("expected *ir.Ident arg, got %T", cs.Call.Args[0].Value)
+		}
+		if !id.Synthesized {
+			t.Errorf("expected __root Ident to have Synthesized=true; got false")
+		}
+		checked = true
+	}
+	if !checked {
+		t.Fatal("did not find __renderSlot0 CallStmt at top level")
+	}
+}
