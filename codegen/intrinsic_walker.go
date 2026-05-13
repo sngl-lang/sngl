@@ -48,6 +48,16 @@ type IntrinsicTranslator interface {
 	// OnSlotAppend emits the "push child ref into accumulator" code for
 	// the Plan A __slot<N> = stdlib.ListPush(__slot<N>, child) pattern.
 	OnSlotAppend(slotID, childID string) string
+
+	// OnIter returns the platform-side expression for a For loop's
+	// Iter. For synthesized slot accumulators, this typically
+	// qualifies through the Model receiver. Otherwise the translator
+	// delegates to its language expression emitter.
+	OnIter(iter ir.Expr) string
+
+	// OnCond returns the platform-side expression for an If condition.
+	// Almost always delegates to the language expression emitter.
+	OnCond(cond ir.Expr) string
 }
 
 // WalkLowered iterates the lowered IR statement sequence and dispatches
@@ -65,6 +75,18 @@ func WalkLowered(stmts []ir.Stmt, t IntrinsicTranslator) string {
 
 func walkOne(s ir.Stmt, t IntrinsicTranslator) string {
 	switch n := s.(type) {
+	case *ir.For:
+		iter := t.OnIter(n.Iter)
+		body := WalkLowered(n.Body, t)
+		return "for _, " + n.Key + " := range " + iter + " {\n" + indentLines(body) + "}\n"
+	case *ir.If:
+		cond := t.OnCond(n.Cond)
+		body := WalkLowered(n.Body, t)
+		out := "if " + cond + " {\n" + indentLines(body) + "}"
+		if len(n.Else) > 0 {
+			out += " else {\n" + indentLines(WalkLowered(n.Else, t)) + "}"
+		}
+		return out + "\n"
 	case *ir.LocalVar:
 		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "CreateNode") {
 			tag, _ := extractStringLit(call.Args[0].Value)
@@ -122,6 +144,20 @@ func extractStringLit(e ir.Expr) (string, bool) {
 		return l.Raw, true
 	}
 	return "", false
+}
+
+func indentLines(s string) string {
+	if s == "" {
+		return ""
+	}
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	for i, l := range lines {
+		if l == "" {
+			continue
+		}
+		lines[i] = "\t" + l
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func identName(e ir.Expr) string {

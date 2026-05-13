@@ -815,9 +815,8 @@ func windowBoxField(name string) string  { return "window" + windowPascal(name) 
 // emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
 // Func as a Model method. The body is a mix of plain Go statements
 // (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
-// Each stmt goes through fyneStmtDispatch, which routes intrinsics
-// through fyneTranslator and falls back to gc.EvalStmt for everything
-// else.
+// codegen.WalkLowered routes intrinsic shapes through fyneTranslator
+// and falls back to OnDefault (gc.EvalStmt) for everything else.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
 	fmt.Fprintf(b, "func (m *Model) %s(parent fyne.CanvasObject) {\n", fn.Name)
 	b.WriteString("\tcontainer, _ := parent.(*fyne.Container)\n")
@@ -827,178 +826,13 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	})
 
-	for _, stmt := range fn.Block {
-		lines := fyneStmtDispatch(stmt, tr, gc)
-		for _, l := range lines {
-			b.WriteString("\t")
-			b.WriteString(l)
-			b.WriteString("\n")
-		}
+	body := codegen.WalkLowered(fn.Block, tr)
+	for _, l := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
+		b.WriteString("\t")
+		b.WriteString(l)
+		b.WriteString("\n")
 	}
 	b.WriteString("}\n\n")
-}
-
-// fyneStmtDispatch routes one statement either through the intrinsic
-// translator (for lower.* calls, element-ref Assigns, CreateNode
-// LocalVars) or through the language's generic Go translator.
-func fyneStmtDispatch(s ir.Stmt, tr *fyneTranslator, gc *golang.GoIRContext) []string {
-	switch n := s.(type) {
-	case *ir.LocalVar:
-		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "CreateNode") {
-			tag, _ := lowerStringArg(call, 0)
-			return splitTrLines(tr.OnCreateNode(n.Name, tag))
-		}
-	case *ir.CallStmt:
-		if n.Call != nil {
-			switch {
-			case isLowerIntrinsic(n.Call, "AppendChild"):
-				child := identRef(n.Call.Args[1].Value)
-				return splitTrLines(tr.OnAppendChild("container", child))
-			case isLowerIntrinsic(n.Call, "RemoveChild"):
-				child := identRef(n.Call.Args[1].Value)
-				return splitTrLines(tr.OnRemoveChild("container", child))
-			case isLowerIntrinsic(n.Call, "AttachHandler"):
-				node := identRef(n.Call.Args[0].Value)
-				evt, _ := lowerStringArg(n.Call, 1)
-				h := identRef(n.Call.Args[2].Value)
-				return splitTrLines(tr.OnAttachHandler(node, evt, h))
-			}
-		}
-	case *ir.For:
-		// Recurse body through fyneStmtDispatch so any intrinsic calls
-		// (CreateNode/AppendChild/etc.) translate, regardless of whether
-		// this For is a slot teardown loop or a reactive-for body.
-		iterExpr := ""
-		if id, ok := n.Iter.(*ir.Ident); ok && id.Synthesized {
-			// Slot teardown: iterate the Model-side slot field.
-			iterExpr = "m." + id.Name
-		} else {
-			// General case: defer to the language translator for the iter
-			// expression (handles ranges over Model fields, computed lists,
-			// etc.). This is what gc.evalFor would do internally.
-			iterExpr = gc.EvalExpr(n.Iter)
-		}
-
-		var bodyLines []string
-		for _, s := range n.Body {
-			for _, l := range fyneStmtDispatch(s, tr, gc) {
-				bodyLines = append(bodyLines, "\t"+l)
-			}
-		}
-
-		// Range form mirrors gc.evalFor: single-var iteration over a list
-		// uses `for _, key := range expr`. Map iteration with .Value would
-		// need the two-var form, but slot bodies don't iterate maps.
-		lines := []string{"for _, " + n.Key + " := range " + iterExpr + " {"}
-		lines = append(lines, bodyLines...)
-		lines = append(lines, "}")
-		return lines
-	case *ir.If:
-		// Slot gate: recurse body + else through fyneStmtDispatch so any
-		// nested CreateNode/AppendChild/ListPush translate. Otherwise
-		// gc.EvalStmt would recurse with its own dispatcher, which doesn't
-		// know about lower.* intrinsics.
-		cond := gc.EvalExpr(n.Cond)
-		var lines []string
-		lines = append(lines, "if "+cond+" {")
-		for _, s := range n.Body {
-			for _, l := range fyneStmtDispatch(s, tr, gc) {
-				lines = append(lines, "\t"+l)
-			}
-		}
-		if len(n.Else) > 0 {
-			lines = append(lines, "} else {")
-			for _, s := range n.Else {
-				for _, l := range fyneStmtDispatch(s, tr, gc) {
-					lines = append(lines, "\t"+l)
-				}
-			}
-		}
-		lines = append(lines, "}")
-		return lines
-	case *ir.Assign:
-		if isSlotReset(n) {
-			return []string{"m." + n.Target.(*ir.Ident).Name + " = nil"}
-		}
-		if isSlotListPush(n) {
-			target := "m." + n.Target.(*ir.Ident).Name
-			call := n.Value.(*ir.Call)
-			elem := identRef(call.Args[1].Value)
-			return []string{target + " = append(" + target + ", " + elem + ")"}
-		}
-		if sel, ok := n.Target.(*ir.Select); ok {
-			if id, ok := sel.Operand.(*ir.Ident); ok && id.IsElementRef {
-				return splitTrLines(tr.OnPropAssign(id.Name, sel.Field, n.Value))
-			}
-		}
-	}
-	return gc.EvalStmt(s)
-}
-
-// isSlotReset detects '__slotN = []' via the Synthesized flag.
-func isSlotReset(a *ir.Assign) bool {
-	id, ok := a.Target.(*ir.Ident)
-	if !ok || !id.Synthesized {
-		return false
-	}
-	ll, ok := a.Value.(*ir.ListLit)
-	if !ok {
-		return false
-	}
-	return len(ll.Elems) == 0
-}
-
-// isSlotListPush detects the slot-tracking pattern via the
-// Synthesized flag on the assignment target.
-func isSlotListPush(a *ir.Assign) bool {
-	id, ok := a.Target.(*ir.Ident)
-	if !ok || !id.Synthesized {
-		return false
-	}
-	call, ok := a.Value.(*ir.Call)
-	if !ok || call.Func == nil || call.Func.Intrinsic != "ListPush" {
-		return false
-	}
-	return len(call.Args) == 2
-}
-
-// isLowerIntrinsic — true when call resolves to a lower.* intrinsic
-// with the given short name (CreateNode, AppendChild, RemoveChild,
-// AttachHandler).
-func isLowerIntrinsic(call *ir.Call, name string) bool {
-	return call != nil && call.Func != nil && call.Func.Intrinsic == name
-}
-
-func lowerStringArg(call *ir.Call, i int) (string, bool) {
-	if i >= len(call.Args) {
-		return "", false
-	}
-	if l, ok := call.Args[i].Value.(*ir.Literal); ok && l.Type != nil && l.Type.Kind == ir.TypeString {
-		return l.Raw, true
-	}
-	return "", false
-}
-
-// identRef returns "m.<name>" when the Ident references a synthesized
-// symbol (a passReactivity-emitted ref), or the bare name otherwise.
-// Used to decide whether a name resolves through the Model receiver.
-func identRef(e ir.Expr) string {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return ""
-	}
-	if id.Synthesized {
-		return "m." + id.Name
-	}
-	return id.Name
-}
-
-func splitTrLines(s string) []string {
-	s = strings.TrimRight(s, "\n")
-	if s == "" {
-		return nil
-	}
-	return strings.Split(s, "\n")
 }
 
 // emitIRMultiWindowCode emits BuildUI, navigate, and per-window build methods

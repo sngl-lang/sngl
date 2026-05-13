@@ -79,11 +79,41 @@ func zeroArgsFor(tag string) string {
 }
 
 func (t *fyneTranslator) OnAppendChild(parent, child string) string {
-	return parent + ".Add(" + child + ")\n"
+	return t.qualifyParent(parent) + ".Add(" + t.qualifyChild(child) + ")\n"
 }
 
 func (t *fyneTranslator) OnRemoveChild(parent, child string) string {
-	return parent + ".Remove(" + child + ")\n"
+	return t.qualifyParent(parent) + ".Remove(" + t.qualifyChild(child) + ")\n"
+}
+
+// qualifyParent maps the bare IR ident name for a slot-function's parent
+// param ("parent") onto the type-asserted local ("container") emitted in
+// emitIRSlotFunc's prologue. Pre-qualified inputs (those starting with
+// "m." or already "container") are returned untouched so existing direct
+// callers of OnAppendChild still work.
+func (t *fyneTranslator) qualifyParent(p string) string {
+	if p == "parent" {
+		return "container"
+	}
+	return p
+}
+
+// qualifyChild prefixes a bare synthesized ref (e.g. "__n0", "__entry") with
+// "m." so the emitted Go resolves through the Model receiver. Names
+// starting with "m." or "_" loop-locals (like "__entry" — but slot
+// teardown still wants the loop var bare) are tricky. Convention from
+// the lower pass: synthesized node refs use "__n<N>"; teardown's loop
+// var is bound as "__entry" without Synthesized=true. We approximate by
+// prepending "m." only for "__n"-prefixed names; the loop-key case
+// remains bare.
+func (t *fyneTranslator) qualifyChild(c string) string {
+	if strings.HasPrefix(c, "m.") {
+		return c
+	}
+	if strings.HasPrefix(c, "__n") {
+		return "m." + c
+	}
+	return c
 }
 
 func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string {
@@ -109,7 +139,15 @@ func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string 
 	if target == "" {
 		return ""
 	}
-	return node + target + " = " + handlerRef + "\n"
+	qNode := node
+	if !strings.HasPrefix(qNode, "m.") {
+		qNode = "m." + qNode
+	}
+	qHandler := handlerRef
+	if !strings.HasPrefix(qHandler, "m.") && strings.HasPrefix(qHandler, "__") {
+		qHandler = "m." + qHandler
+	}
+	return qNode + target + " = " + qHandler + "\n"
 }
 func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
 	tag, ok := t.idTags[nodeID]
@@ -153,4 +191,15 @@ func (t *fyneTranslator) OnSlotReset(slotID string) string {
 
 func (t *fyneTranslator) OnSlotAppend(slotID, childID string) string {
 	return "m." + slotID + " = append(m." + slotID + ", m." + childID + ")\n"
+}
+
+func (t *fyneTranslator) OnIter(iter ir.Expr) string {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+		return "m." + id.Name
+	}
+	return t.gc.EvalExpr(iter)
+}
+
+func (t *fyneTranslator) OnCond(cond ir.Expr) string {
+	return t.gc.EvalExpr(cond)
 }

@@ -41,8 +41,10 @@ func TestFyneTranslator_OnCreateNode_UnknownTag(t *testing.T) {
 
 func TestFyneTranslator_OnAppendChild(t *testing.T) {
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	got := tr.OnAppendChild("parent", "m.__n0")
-	want := "parent.Add(m.__n0)\n"
+	// Walker passes bare IR ident names; "parent" is the slot-func param,
+	// translated to the type-asserted "container" local in emitIRSlotFunc.
+	got := tr.OnAppendChild("parent", "__n0")
+	want := "container.Add(m.__n0)\n"
 	if got != want {
 		t.Errorf("OnAppendChild: got %q, want %q", got, want)
 	}
@@ -50,8 +52,9 @@ func TestFyneTranslator_OnAppendChild(t *testing.T) {
 
 func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	// "__entry" is the For loop-key (non-synthesized) so stays bare.
 	got := tr.OnRemoveChild("parent", "__entry")
-	want := "parent.Remove(__entry)\n"
+	want := "container.Remove(__entry)\n"
 	if got != want {
 		t.Errorf("OnRemoveChild: got %q, want %q", got, want)
 	}
@@ -114,8 +117,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 		},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	lines := fyneStmtDispatch(stmt, tr, stubGC())
-	got := strings.Join(lines, "\n")
+	got := codegen.WalkLowered([]ir.Stmt{stmt}, tr)
 	if !strings.Contains(got, "for _, __entry := range m.__slot0") {
 		t.Errorf("expected range over m.__slot0; got:\n%s", got)
 	}
@@ -143,8 +145,7 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 		},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	lines := fyneStmtDispatch(stmt, tr, stubGC())
-	got := strings.Join(lines, "\n")
+	got := codegen.WalkLowered([]ir.Stmt{stmt}, tr)
 	if !strings.Contains(got, "if ") || !strings.Contains(got, "visible") {
 		t.Errorf("expected 'if visible' shape; got: %s", got)
 	}
@@ -159,10 +160,9 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	lines := fyneStmtDispatch(stmt, tr, stubGC())
-	got := strings.Join(lines, "\n")
+	got := codegen.WalkLowered([]ir.Stmt{stmt}, tr)
 	want := "m.__slot0 = nil"
-	if got != want {
+	if strings.TrimSpace(got) != want {
 		t.Errorf("slot reset dispatch:\ngot:  %q\nwant: %q", got, want)
 	}
 }
@@ -181,10 +181,9 @@ func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 		},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	lines := fyneStmtDispatch(stmt, tr, stubGC())
-	got := strings.Join(lines, "\n")
+	got := codegen.WalkLowered([]ir.Stmt{stmt}, tr)
 	want := "m.__slot0 = append(m.__slot0, m.__n0)"
-	if got != want {
+	if strings.TrimSpace(got) != want {
 		t.Errorf("slot ListPush dispatch:\ngot:  %q\nwant: %q", got, want)
 	}
 }
@@ -222,8 +221,7 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 		},
 	}
 	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
-	lines := fyneStmtDispatch(stmt, tr, stubGC())
-	got := strings.Join(lines, "\n")
+	got := codegen.WalkLowered([]ir.Stmt{stmt}, tr)
 	if !strings.Contains(got, "for _, item := range") {
 		t.Errorf("expected 'for _, item := range'; got:\n%s", got)
 	}

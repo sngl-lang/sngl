@@ -35,6 +35,18 @@ func (t *trace) OnSlotAppend(slotID, childID string) string {
 	t.add("append-slot %s %s", slotID, childID)
 	return ""
 }
+func (t *trace) OnIter(iter ir.Expr) string {
+	if id, ok := iter.(*ir.Ident); ok {
+		return id.Name
+	}
+	return "?"
+}
+func (t *trace) OnCond(cond ir.Expr) string {
+	if id, ok := cond.(*ir.Ident); ok {
+		return id.Name
+	}
+	return "?"
+}
 func (t *trace) add(f string, args ...any) { t.lines = append(t.lines, fmt.Sprintf(f, args...)) }
 
 func TestWalkLoweredDispatchesCreate(t *testing.T) {
@@ -141,5 +153,33 @@ func TestWalkLowered_SlotAppend(t *testing.T) {
 	WalkLowered([]ir.Stmt{stmt}, tr)
 	if len(tr.lines) != 1 || tr.lines[0] != "append-slot __slot0 __n0" {
 		t.Errorf("dispatch mismatch: %v", tr.lines)
+	}
+}
+
+func TestWalkLowered_ForIfRecursion(t *testing.T) {
+	appendChild := &ir.Func{Name: "AppendChild", Intrinsic: "AppendChild"}
+	stmt := &ir.For{
+		Key:  "x",
+		Iter: &ir.Ident{Name: "items"},
+		Body: []ir.Stmt{
+			&ir.If{
+				Cond: &ir.Ident{Name: "x"},
+				Body: []ir.Stmt{
+					&ir.CallStmt{Call: &ir.Call{
+						Func: appendChild,
+						Args: []ir.CallArg{
+							{Value: &ir.Ident{Name: "p", IsElementRef: true}},
+							{Value: &ir.Ident{Name: "c", IsElementRef: true}},
+						},
+					}},
+				},
+			},
+		},
+	}
+	tr := &trace{}
+	WalkLowered([]ir.Stmt{stmt}, tr)
+	got := strings.Join(tr.lines, "\n")
+	if !strings.Contains(got, "append p c") {
+		t.Errorf("structural recursion missed AppendChild; trace: %v", tr.lines)
 	}
 }
