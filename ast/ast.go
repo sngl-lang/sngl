@@ -199,6 +199,7 @@ type ComponentDecl struct {
 	Pos          Pos
 	Name         string
 	Props        PropList
+	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr
 	Body         StmtBlock
 }

@@ -712,6 +712,7 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	}
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
+		c.HasParens = true
 		it.skip() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == CompParamList {
 			c.Props = b.buildCompParamList(it.enter())

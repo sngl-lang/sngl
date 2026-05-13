@@ -855,6 +855,48 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
+	// Component extensions: `component sngl.X { platform <name> { ... } }`.
+	// The new body-only form (no parens) is reserved for platform extensions
+	// of stdlib components. The old form `component sngl.X() { body }` (with
+	// parens, even empty) is still tolerated here for backward compatibility
+	// until platform .sngl files are rewritten (Plan H Phase C).
+	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !comp.HasParens {
+		namespace := comp.Name[:dot]
+		if namespace != "sngl" {
+			c.error(comp.Pos, "extension namespace %q not supported (only \"sngl\" is valid)", namespace)
+			return
+		}
+		if len(comp.Props.Props) > 0 {
+			pos := comp.Pos
+			switch p := comp.Props.Props[0].(type) {
+			case ast.Param:
+				pos = p.Pos
+			case ast.EventDecl:
+				pos = p.Pos
+			}
+			c.error(pos, "component extension %q may not declare props (inherited from stdlib)", comp.Name)
+			return
+		}
+		if comp.ChildrenType != nil {
+			c.error(comp.Pos, "component extension %q may not declare children type (inherited from stdlib)", comp.Name)
+			return
+		}
+		for _, s := range comp.Body.Stmts {
+			switch s.(type) {
+			case *ast.PlatformStmt, *ast.Comment:
+				continue
+			}
+			pos := comp.Pos
+			if sp := s.StmtPos(); sp != nil {
+				pos = *sp
+			}
+			c.error(pos, "component extension %q body must contain only platform blocks", comp.Name)
+			return
+		}
+		// Suppress normal registration — extension merge (Phase B) handles it.
+		return
+	}
+
 	irComp := &ir.Component{
 		AST:  comp,
 		Name: comp.Name,
