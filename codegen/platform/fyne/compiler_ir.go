@@ -25,8 +25,9 @@ type irAnalysis struct {
 type irBind struct {
 	name        string
 	goType      string
-	init        string
-	noAccessors bool // skip getter/setter generation (e.g. synthesized slot vars)
+	init        ir.Expr              // nil → rendered as "nil" (or ZeroValueGo) at template-build time
+	initGC      *golang.GoIRContext  // optional: per-component GC for init rendering (nil → use top-level)
+	noAccessors bool                 // skip getter/setter generation (e.g. synthesized slot vars)
 }
 
 type irExtern struct {
@@ -123,10 +124,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if v.Name == "__root" {
 				// Plan B's __root sentinel: a stable *fyne.Container the
 				// renderSlot updaters operate on, and which BuildUI returns.
+				initCall := &ir.Call{
+					Type:     ir.TypDyn,
+					Receiver: &ir.Ident{Name: "container"},
+					Func:     &ir.Func{Name: "NewVBox"},
+				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
 					goType:      "*fyne.Container",
-					init:        "container.NewVBox()",
+					init:        initCall,
 					noAccessors: true,
 				})
 				continue
@@ -139,7 +145,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			info.binds = append(info.binds, irBind{
 				name:        v.Name,
 				goType:      "[]fyne.CanvasObject",
-				init:        "nil",
+				init:        &ir.Literal{Type: ir.TypNull},
 				noAccessors: true,
 			})
 			continue
@@ -149,14 +155,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
 		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
 			info.goImports["time"] = true
 		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
 			goType: goType,
-			init:   initVal,
+			init:   v.Init,
+			initGC: varGC,
 		})
 		if len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers
@@ -486,10 +492,20 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	// Binds
 	for _, bind := range info.binds {
 		getter := golang.ExportName(bind.name)
+		initStr := "nil"
+		if bind.init != nil {
+			renderGC := bind.initGC
+			if renderGC == nil {
+				renderGC = gc
+			}
+			initStr = renderGC.EvalExpr(bind.init)
+		} else if !bind.noAccessors {
+			initStr = golang.ZeroValueGo(bind.goType)
+		}
 		bd := bindData{
 			Name:        bind.name,
 			GoType:      bind.goType,
-			InitVal:     bind.init,
+			InitVal:     initStr,
 			Getter:      getter,
 			NoAccessors: bind.noAccessors,
 		}
@@ -750,10 +766,6 @@ func irVarGoType(v *ir.Var) string {
 		}
 	}
 	return "any"
-}
-
-func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	return golang.LowerVarInit(v, gc)
 }
 
 func irFuncReturnType(f *ir.Func) string {
