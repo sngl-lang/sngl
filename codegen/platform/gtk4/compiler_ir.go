@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go/format"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -323,6 +324,10 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg)
 			continue
 		}
+		if fn.LoweredFromTag != "" {
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg)
+			continue
+		}
 		emitGTK4Func(&funcBuf, fn, gc)
 	}
 
@@ -450,6 +455,171 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	}).withPkg(pkg)
 	tr.collectTagComponents(fn.Block)
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	for _, stmt := range body {
+		for _, line := range gc.EvalStmt(stmt) {
+			b.WriteString("\t")
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("}\n\n")
+}
+
+// gtk4PromotedHandlerSig declares how a SNGL @event handler on a given
+// tag/event lowers into Go for gtk4's signal-trampoline pattern. The
+// SNGL handler may capture an event parameter (e.g. `@input(e)`) and
+// reference fields like `e.value`. After lowering, the Go-side handler
+// has no event param (the uniform GCallback trampoline carries no args);
+// any `e.<field>` reference is replaced with a direct widget-getter call
+// against the node the handler was attached to.
+type gtk4PromotedHandlerSig struct {
+	// EventVar is the SNGL event param name being replaced (e.g. "e").
+	// Empty when the SNGL event has no value param (click, change-on-button).
+	EventVar string
+	// Field is the SNGL event field accessed (e.g. "value"). Empty when
+	// no rewrite is needed.
+	Field string
+	// CType is the GTK widget C type the handler is attached to; informs
+	// which getter to splice. Empty when no getter is needed.
+	CType string
+}
+
+// gtk4HandlerSig returns the promoted-handler descriptor for
+// (LoweredFromTag, LoweredFromEvent). Tags here include both the SNGL
+// stdlib aliases (input, button, checkbox, switch) and the GIR class
+// names that hello-world / GIR-driven components emit.
+func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
+	switch tag {
+	case "input", "entry", "GtkEntry":
+		if event == "input" || event == "change" {
+			return gtk4PromotedHandlerSig{EventVar: "e", Field: "value", CType: "GtkEntry"}
+		}
+	case "checkbox", "switch", "GtkCheckButton", "GtkSwitch":
+		if event == "change" {
+			return gtk4PromotedHandlerSig{EventVar: "e", Field: "value", CType: "GtkCheckButton"}
+		}
+	}
+	return gtk4PromotedHandlerSig{}
+}
+
+// gtk4EventGetter returns the Go expression that reads the equivalent
+// of `e.<field>` directly from a widget of cType.
+func gtk4EventGetter(cType, nodeID string) string {
+	switch cType {
+	case "GtkEntry":
+		return fmt.Sprintf("C.GoString(C.gtk_entry_get_text((*C.GtkEntry)(unsafe.Pointer(m.%s))))", nodeID)
+	case "GtkCheckButton":
+		return fmt.Sprintf("bool(C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.%s))))", nodeID)
+	}
+	return ""
+}
+
+// collectNodeCTypes walks every component / window / func body looking
+// for `LocalVar __nX = lower.CreateNode("tag")` pairs and returns a
+// node-id → GTK C type map. The lower pass emits these inside
+// __renderSlotN bodies and component bodies; promoted node-attached
+// handlers need the map to resolve element refs in reactivity splices
+// to their setter even though those handlers live in separate Funcs.
+func collectNodeCTypes(pkg *ir.Package) map[string]string {
+	out := map[string]string{}
+	var walk func([]ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.LocalVar:
+				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
+					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
+						tag := lit.Raw
+						if ct := gtk4TagToCType(tag); ct != "" {
+							out[n.Name] = ct
+						} else if strings.HasPrefix(tag, "Gtk") {
+							out[n.Name] = tag
+						}
+					}
+				}
+			case *ir.If:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				walk(n.Body)
+				walk(n.Else)
+			}
+		}
+	}
+	if pkg == nil {
+		return out
+	}
+	for _, comp := range pkg.Components {
+		walk(comp.Body)
+		for _, fn := range comp.Funcs {
+			if fn != nil {
+				walk(fn.Block)
+			}
+		}
+	}
+	for _, w := range pkg.Windows {
+		walk(w.Body)
+		for _, fn := range w.Funcs {
+			if fn != nil {
+				walk(fn.Block)
+			}
+		}
+	}
+	for _, fn := range pkg.Funcs {
+		if fn != nil {
+			walk(fn.Block)
+		}
+	}
+	return out
+}
+
+// emitIRPromotedHandler emits a gtk4 node-attached event handler that
+// the lower pass promoted to a top-level Func. The signal trampoline
+// calls Go handlers with no args, so any SNGL `@input(e)` param is
+// dropped; an `e.<field>` reference in the body's leading two-way-bind
+// assignment is rewritten to a direct widget-getter call. Reactive
+// splices that follow flow through codegen.WalkLowered into the gtk4
+// translator so `__nN.value = expr` shapes get rewritten via
+// OnPropAssign into `C.gtk_*_set_*(...)` calls.
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
+	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
+
+	// Uniform GCallback trampoline → no Go-side params.
+	fmt.Fprintf(b, "func (m *Model) %s() {\n", fn.Name)
+
+	tr := newGtk4Translator(gc, func(name, cType string) {
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
+	}).withPkg(pkg)
+	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
+	// the C type for nodes created in sibling slot Funcs or the component
+	// body — those CreateNode sites aren't in this handler's own Block.
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
+	tr.collectTagComponents(fn.Block)
+
+	stmts := fn.Block
+
+	// Strip the synthesized leading `var = e.<field>` two-way bind and
+	// re-emit as `m.<var> = <gettercall>` since the closure exposes no
+	// event param.
+	if sig.EventVar != "" && sig.Field != "" && len(stmts) > 0 {
+		if assign, ok := stmts[0].(*ir.Assign); ok {
+			target, _ := assign.Target.(*ir.Ident)
+			sel, _ := assign.Value.(*ir.Select)
+			if target != nil && sel != nil {
+				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name == sig.EventVar && sel.Field == sig.Field {
+					// nodeID = handler-name minus the "_<event>_handler" suffix.
+					nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+					getter := gtk4EventGetter(sig.CType, nodeID)
+					if getter != "" {
+						fmt.Fprintf(b, "\tm.%s = %s\n", target.Name, getter)
+						stmts = stmts[1:]
+					}
+				}
+			}
+		}
+	}
+
+	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	for _, stmt := range body {
 		for _, line := range gc.EvalStmt(stmt) {
 			b.WriteString("\t")
