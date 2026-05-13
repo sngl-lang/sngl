@@ -13,6 +13,7 @@ component main {
 component main {
     var visible bool = true
     var name string = "World"
+    var __root dyn
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
         for __entry = __slot0 {

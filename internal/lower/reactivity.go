@@ -171,6 +171,12 @@ func lowerReactivity(pkg *ir.Package, _ Caps) error {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	// If any reactive slots exist on this owner, synthesize a __root Var
+	// of type dyn. Platforms bind this to their root-container reference
+	// at codegen time.
+	if len(st.reverseSlots) > 0 {
+		st.synthesizeRootVar()
+	}
 	// Collect unique slot IDs from reverseSlots so each Func is built once.
 	uniqueSlots := map[string]bool{}
 	for _, slots := range st.reverseSlots {
@@ -213,7 +219,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+					rootVar := st.findSlotVar("__root")
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -225,7 +232,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+					rootVar := st.findSlotVar("__root")
+					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -291,7 +299,8 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+		rootVar := st.findSlotVar("__root")
+		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -334,6 +343,21 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 	}
 	st.owner.addVar(v)
 	return v
+}
+
+// synthesizeRootVar creates the `__root dyn` Var on the current owner
+// if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
+// can detect it.
+func (st *reactivityState) synthesizeRootVar() {
+	if existing := st.findSlotVar("__root"); existing != nil {
+		return
+	}
+	v := &ir.Var{
+		Name:        "__root",
+		Type:        ir.TypDyn,
+		Synthesized: true,
+	}
+	st.owner.addVar(v)
 }
 
 func (st *reactivityState) findSlotVar(name string) *ir.Var {
@@ -606,7 +630,8 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+			rootVar := st.findSlotVar("__root")
+			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,

@@ -10,6 +10,7 @@ component main {
 -- expected.sngl --
 component main {
     var items list<int> = [1, 2, 3]
+    var __root dyn
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
         for __entry = __slot0 {

@@ -465,3 +465,53 @@ component main {
 		t.Fatal("did not find __renderSlot0 CallStmt at top level")
 	}
 }
+
+func TestRootVarSynthesizedWhenSlotExists(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Var
+	for _, v := range comp.Vars {
+		if v.Name == "__root" {
+			found = v
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("__root Var not synthesized")
+	}
+	if !found.Synthesized {
+		t.Error("__root Var not marked Synthesized")
+	}
+}
+
+func TestRootVarOmittedWhenNoSlots(t *testing.T) {
+	src := `
+component main {
+    var count int = 0
+    button(text=string(count), @click { count = count + 1 })
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	for _, v := range comp.Vars {
+		if v.Name == "__root" {
+			t.Error("__root unexpectedly synthesized for component with no reactive slots")
+		}
+	}
+}
