@@ -746,7 +746,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 				Receiver: lowerNSIdent(),
 				Func:     st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam}},
+					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
 					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn}},
 				},
 			}},
