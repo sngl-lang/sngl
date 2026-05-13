@@ -233,10 +233,6 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 }
 
 func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
-	if vc.info != nil {
-		vc.renderConditional(s, resultVar)
-		return
-	}
 	cond := vc.gc.EvalExpr(s.Cond)
 	vc.line("if %s {", cond)
 	vc.indent++
@@ -255,112 +251,6 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 	vc.line("}")
 }
 
-func (vc *irViewContext) renderConditional(s *ir.If, resultVar string) {
-	id := vc.containerCount
-	vc.containerCount++
-	bodyField := fmt.Sprintf("ifBox%d", id)
-	if vc.localMode {
-		// Conditionals nested inside a for-loop body collapse to a runtime
-		// re-render, not a Show/Hide updater — the parent loop updater
-		// rebuilds everything. Emit a plain Go if/else with locals.
-		innerVar := resultVar + "Inner"
-		vc.line("var %s fyne.CanvasObject", innerVar)
-		vc.line("if %s {", vc.gc.EvalExpr(s.Cond))
-		vc.indent++
-		for _, child := range s.Body {
-			vc.renderStmt(child, innerVar)
-		}
-		vc.indent--
-		if len(s.Else) > 0 {
-			vc.line("} else {")
-			vc.indent++
-			for _, child := range s.Else {
-				vc.renderStmt(child, innerVar)
-			}
-			vc.indent--
-		}
-		vc.line("}")
-		vc.line("%s = %s", resultVar, innerVar)
-		return
-	}
-	vc.addField(bodyField, "*fyne.Container")
-
-	innerVar := resultVar + "Inner"
-	vc.line("var %s fyne.CanvasObject", innerVar)
-	switch len(s.Body) {
-	case 0:
-		// Empty body — nothing to render; downstream nil-guard will fall back.
-	case 1:
-		vc.renderStmt(s.Body[0], innerVar)
-	default:
-		// Multiple children share one slot. Each must get a uniquely-named
-		// child variable so prior rendering output isn't clobbered (and so
-		// nested nodes don't collide on `<innerVar>Children` etc.). Wrap the
-		// pieces in a VBox so the slot still holds a single CanvasObject.
-		childrenVar := innerVar + "Children"
-		vc.line("var %s []fyne.CanvasObject", childrenVar)
-		for i, child := range s.Body {
-			childVar := fmt.Sprintf("%sC%d", innerVar, i)
-			vc.line("var %s fyne.CanvasObject", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("if %s != nil { %s = append(%s, %s) }", childVar, childrenVar, childrenVar, childVar)
-		}
-		vc.line("%s = container.NewVBox(%s...)", innerVar, childrenVar)
-	}
-	vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", innerVar, innerVar)
-	vc.line("m.%s = container.NewStack(%s)", bodyField, innerVar)
-
-	var elseField string
-	if len(s.Else) > 0 {
-		elseField = fmt.Sprintf("elseBox%d", id)
-		vc.addField(elseField, "*fyne.Container")
-		elseInnerVar := resultVar + "ElseInner"
-		vc.line("var %s fyne.CanvasObject", elseInnerVar)
-		switch len(s.Else) {
-		case 1:
-			vc.renderStmt(s.Else[0], elseInnerVar)
-		default:
-			elseChildrenVar := elseInnerVar + "Children"
-			vc.line("var %s []fyne.CanvasObject", elseChildrenVar)
-			for i, child := range s.Else {
-				childVar := fmt.Sprintf("%sC%d", elseInnerVar, i)
-				vc.line("var %s fyne.CanvasObject", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("if %s != nil { %s = append(%s, %s) }", childVar, elseChildrenVar, elseChildrenVar, childVar)
-			}
-			vc.line("%s = container.NewVBox(%s...)", elseInnerVar, elseChildrenVar)
-		}
-		vc.line("if %s == nil { %s = widget.NewLabel(\"\") }", elseInnerVar, elseInnerVar)
-		vc.line("m.%s = container.NewStack(%s)", elseField, elseInnerVar)
-	}
-
-	cond := vc.gc.EvalExpr(s.Cond)
-	vc.line("if !(%s) { m.%s.Hide() }", cond, bodyField)
-	if elseField != "" {
-		vc.line("if %s { m.%s.Hide() }", cond, elseField)
-	}
-	if elseField != "" {
-		// Group the two sub-stacks into a single result so the parent layout
-		// sees one slot. Ordering matches the source: body first, else second.
-		vc.line("%s = container.NewStack(m.%s, m.%s)", resultVar, bodyField, elseField)
-	} else {
-		vc.line("%s = m.%s", resultVar, bodyField)
-	}
-
-	deps := vc.exprDeps(s.Cond)
-	if len(deps) > 0 {
-		updaterName := fmt.Sprintf("updateIf%d", id)
-		var body string
-		if elseField != "" {
-			body = fmt.Sprintf("if %s { m.%s.Show(); m.%s.Hide() } else { m.%s.Hide(); m.%s.Show() }",
-				cond, bodyField, elseField, bodyField, elseField)
-		} else {
-			body = fmt.Sprintf("if %s { m.%s.Show() } else { m.%s.Hide() }", cond, bodyField, bodyField)
-		}
-		vc.addUpdater(updaterName, body, deps)
-	}
-}
-
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	iterVar := s.Key
 	iterExpr := vc.gc.EvalExpr(s.Iter)
@@ -376,82 +266,6 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 	savedGC := vc.gc
 	vc.gc = loopGC
-
-	if vc.info != nil {
-		id := vc.containerCount
-		vc.containerCount++
-		fieldName := fmt.Sprintf("forBox%d", id)
-		vc.addField(fieldName, "*fyne.Container")
-
-		// Render the loop body once into a reusable Go-source snippet that
-		// emits one CanvasObject per iteration into a target slice. Used for
-		// both the init path and the updater body so a state change re-runs
-		// the same widget construction logic instead of a placeholder.
-		emitBody := func(target string) string {
-			var subBuf strings.Builder
-			savedBuf := vc.buf
-			savedIndent := vc.indent
-			savedCounters := vc.snapshotCounters()
-
-			vc.buf = &subBuf
-			vc.indent = 0
-			vc.withLocalMode(func() {
-				vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
-				vc.indent++
-				if indexVar != "_" {
-					vc.line("_ = %s", indexVar)
-				}
-				vc.line("_ = %s", iterVar)
-				innerVar := "item"
-				vc.line("var %s fyne.CanvasObject", innerVar)
-				for _, child := range s.Body {
-					vc.renderStmt(child, innerVar)
-				}
-				vc.line("if %s != nil { %s = append(%s, %s) }", innerVar, target, target, innerVar)
-				vc.indent--
-				vc.line("}")
-			})
-
-			vc.buf = savedBuf
-			vc.indent = savedIndent
-			// Both renders must produce identical local var names. Restoring
-			// counters here means the second emission (updater) sees the same
-			// starting state the first one (init) did.
-			vc.restoreCounters(savedCounters)
-			return subBuf.String()
-		}
-
-		loopItems := resultVar + "Items"
-		vc.line("var %s []fyne.CanvasObject", loopItems)
-		// Init: emit the loop directly into the current buffer at the current
-		// indent so it slots into BuildUI naturally.
-		initBody := emitBody(loopItems)
-		for ln := range strings.SplitSeq(strings.TrimRight(initBody, "\n"), "\n") {
-			vc.line("%s", ln)
-		}
-		vc.line("m.%s = container.NewVBox(%s...)", fieldName, loopItems)
-		vc.line("%s = m.%s", resultVar, fieldName)
-
-		deps := vc.exprDeps(s.Iter)
-		if len(deps) > 0 {
-			updaterName := fmt.Sprintf("updateFor%d", id)
-			updateBody := emitBody("items")
-			var bodyBuf strings.Builder
-			fmt.Fprintf(&bodyBuf, "var items []fyne.CanvasObject\n")
-			// Reindent the body one tab for inclusion inside the updater's
-			// function block.
-			for ln := range strings.SplitSeq(strings.TrimRight(updateBody, "\n"), "\n") {
-				bodyBuf.WriteByte('\t')
-				bodyBuf.WriteString(ln)
-				bodyBuf.WriteByte('\n')
-			}
-			fmt.Fprintf(&bodyBuf, "\tm.%s.Objects = items\n", fieldName)
-			fmt.Fprintf(&bodyBuf, "\tm.%s.Refresh()", fieldName)
-			vc.addUpdater(updaterName, bodyBuf.String(), deps)
-		}
-		vc.gc = savedGC
-		return
-	}
 
 	loopItems := resultVar + "Items"
 	vc.line("var %s []fyne.CanvasObject", loopItems)
