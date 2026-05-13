@@ -138,7 +138,7 @@ func (st *declarativeState) processStmts(stmts []ir.Stmt, funcs *[]*ir.Func) []i
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			out = append(out, st.lowerNode(n, funcs)...)
+			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 		case *ir.If:
 			n.Body = st.processStmts(n.Body, funcs)
 			n.Else = st.processStmts(n.Else, funcs)
@@ -166,14 +166,14 @@ func (st *declarativeState) processStmts(stmts []ir.Stmt, funcs *[]*ir.Func) []i
 	return out
 }
 
-// lowerNode emits the flat sequence for a single NodeInst:
+// lowerNodeIntoStmts emits the flat sequence for a single NodeInst:
 //
 //  1. var __nM dyn = lower.createNode("name")
 //  2. #__nM.<key> = <propExpr>            (per prop)
 //  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
 //  4. for each child: emit child's full subtree, then
 //     lower.appendChild(#__nM, #__nC)
-func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.Stmt {
+func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func) []ir.Stmt {
 	id := n.ID
 	if id == "" {
 		id = st.freshID()
@@ -259,7 +259,7 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 	for _, c := range n.Children {
 		switch cn := c.(type) {
 		case *ir.NodeInst:
-			stmts = append(stmts, st.lowerNode(cn, funcs)...)
+			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)
 			stmts = append(stmts, &ir.CallStmt{
 				Call: &ir.Call{
 					Type:     ir.TypVoid,
@@ -279,4 +279,35 @@ func (st *declarativeState) lowerNode(n *ir.NodeInst, funcs *[]*ir.Func) []ir.St
 	}
 
 	return stmts
+}
+
+// LowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
+// sequence passDeclarative produces for one NodeInst's subtree, then
+// appends the resulting top-level node to `parentID` (rather than the
+// source-position parent). funcs is the owning Funcs slice for handler
+// promotion. Returns the LocalVar name bound to the new top-level node ref.
+func LowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, funcs *[]*ir.Func) (string, []ir.Stmt) {
+	stmts := st.lowerNodeIntoStmts(n, funcs)
+	if parentID != "" {
+		stmts = append(stmts, &ir.CallStmt{
+			Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: lowerNSIdent(),
+				Func:     st.intrinsics["AppendChild"],
+				Args: []ir.CallArg{
+					{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true}},
+					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true}},
+				},
+			},
+		})
+	}
+	return n.ID, stmts
+}
+
+// newDeclarativeStateForSlot constructs a declarativeState for use by
+// passReactivity slot generators. liftHandlers=false because the slot
+// re-render attaches handlers fresh each call; no separate closure
+// capture state is needed.
+func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
+	return newDeclarativeState(pkg, Caps{NoLambda: false})
 }

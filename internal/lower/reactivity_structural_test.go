@@ -131,3 +131,45 @@ func varSliceNames(vs []*ir.Var) []string {
 	}
 	return out
 }
+
+func TestSynthesizeRenderSlotFunc(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    if visible {
+        text(value="hi")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Func
+	for _, f := range comp.Funcs {
+		if f.Name == "__renderSlot0" {
+			found = f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected __renderSlot0 Func on component; got: %v", funcSliceNames(comp.Funcs))
+	}
+	if len(found.Params) != 1 || found.Params[0].Name != "parent" {
+		t.Errorf("expected __renderSlot0(parent dyn); got params %v", found.Params)
+	}
+	// Body should contain at least teardown For + reset Assign + If with body.
+	if len(found.Block) < 3 {
+		t.Errorf("expected at least 3 stmts in __renderSlot0 body, got %d", len(found.Block))
+	}
+}
+
+func funcSliceNames(fs []*ir.Func) []string {
+	out := make([]string, len(fs))
+	for i, f := range fs {
+		out[i] = f.Name
+	}
+	return out
+}
