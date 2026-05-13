@@ -31,212 +31,280 @@ struct Options {
 
 // --- Core Layout ---
 
-component sngl.vbox() {
-    div(style={display="flex", flexDirection="column"}) {
-        slot
+component sngl.vbox {
+    platform html {
+        div(style={display="flex", flexDirection="column"}) {
+            slot
+        }
     }
 }
 
-component sngl.hbox() {
-    div(style={display="flex", flexDirection="row"}) {
-        slot
+component sngl.hbox {
+    platform html {
+        div(style={display="flex", flexDirection="row"}) {
+            slot
+        }
     }
 }
 
-component sngl.stack() {
-    div(style={position="relative"}) {
-        slot
+component sngl.stack {
+    platform html {
+        div(style={position="relative"}) {
+            slot
+        }
     }
 }
 
-component sngl.spacer() {
-    div(style={flex=1}) {}
+component sngl.spacer {
+    platform html {
+        div(style={flex=1}) {}
+    }
 }
 
-component sngl.scroll() {
-    div(style={overflow="auto"}) {
-        slot
+component sngl.scroll {
+    platform html {
+        div(style={overflow="auto"}) {
+            slot
+        }
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text() {
-    span(textContent=value) {}
-}
-
-component sngl.button() {
-    button(disabled=disabled, @click { @click() }) {
-        span(textContent=text) {}
-        slot
+component sngl.text {
+    platform html {
+        span(textContent=value) {}
     }
 }
 
-component sngl.image() {
-    img(src=src, alt=alt) {}
+component sngl.button {
+    platform html {
+        button(disabled=disabled, @click { @click() }) {
+            span(textContent=text) {}
+            slot
+        }
+    }
 }
 
-component sngl.input() {
-    input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
+component sngl.image {
+    platform html {
+        img(src=src, alt=alt) {}
+    }
 }
 
-component sngl.checkbox() {
-    label(style={display="inline-flex", alignItems="center", gap=4}) {
-        input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
-        span(textContent=label) {}
+component sngl.input {
+    platform html {
+        input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
+    }
+}
+
+component sngl.checkbox {
+    platform html {
+        label(style={display="inline-flex", alignItems="center", gap=4}) {
+            input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
+            span(textContent=label) {}
+        }
     }
 }
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio() {
-    fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
-        slot
+component sngl.radio {
+    platform html {
+        fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
+            slot
+        }
     }
 }
 
-component sngl.toggle() {
-    label(style={display="inline-flex", alignItems="center", gap=8}) {
-        input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
-        span(textContent=label) {}
+component sngl.toggle {
+    platform html {
+        label(style={display="inline-flex", alignItems="center", gap=8}) {
+            input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
+            span(textContent=label) {}
+        }
     }
 }
 
-component sngl.select() {
-    select(disabled=disabled, @change { @change() }) {
-        slot
+component sngl.select {
+    platform html {
+        select(disabled=disabled, @change { @change() }) {
+            slot
+        }
     }
 }
 
-component sngl.textarea() {
-    textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
-        slot
+component sngl.textarea {
+    platform html {
+        textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
+            slot
+        }
     }
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress() {
-    progress(value=value, max=max) {}
-}
-
-component sngl.spinner() {
-    span(style={display="inline-flex", alignItems="center", gap=8}) {
-        span(class="sngl-spinner") {}
-        span(textContent=label) {}
+component sngl.progress {
+    platform html {
+        progress(value=value, max=max) {}
     }
 }
 
-component sngl.badge() {
-    span(style={display="inline-block", padding="2px 8px", borderRadius=12}) {
-        span(textContent=value) {}
-    }
-}
-
-component sngl.tabs() {
-    div(style={display="flex", flexDirection="column"}) {
-        div(role="tablist", style={display="flex", gap=4}) {
-            slot
+component sngl.spinner {
+    platform html {
+        span(style={display="inline-flex", alignItems="center", gap=8}) {
+            span(class="sngl-spinner") {}
+            span(textContent=label) {}
         }
     }
 }
 
-component sngl.link() {
-    a(href=href, @click { @click() }) {
-        span(textContent=text) {}
+component sngl.badge {
+    platform html {
+        span(style={display="inline-block", padding="2px 8px", borderRadius=12}) {
+            span(textContent=value) {}
+        }
     }
 }
 
-component sngl.divider() {
-    hr {}
+component sngl.tabs {
+    platform html {
+        div(style={display="flex", flexDirection="column"}) {
+            div(role="tablist", style={display="flex", gap=4}) {
+                slot
+            }
+        }
+    }
+}
+
+component sngl.link {
+    platform html {
+        a(href=href, @click { @click() }) {
+            span(textContent=text) {}
+        }
+    }
+}
+
+component sngl.divider {
+    platform html {
+        hr {}
+    }
 }
 
 // --- Tier 3: Overlays & Layout ---
 
-component sngl.modal() {
-    div(style={position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
-        div(style={background="#fff", borderRadius=8, padding=24}) {
+component sngl.modal {
+    platform html {
+        div(style={position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
+            div(style={background="#fff", borderRadius=8, padding=24}) {
+                slot
+            }
+        }
+    }
+}
+
+component sngl.drawer {
+    platform html {
+        div(style={position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
             slot
         }
     }
 }
 
-component sngl.drawer() {
-    div(style={position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
-        slot
+component sngl.tooltip {
+    platform html {
+        div(title=text) {
+            slot
+        }
     }
 }
 
-component sngl.tooltip() {
-    div(title=text) {
-        slot
+component sngl.popover {
+    platform html {
+        div(style={position="relative"}) {
+            slot
+        }
     }
 }
 
-component sngl.popover() {
-    div(style={position="relative"}) {
-        slot
-    }
-}
-
-component sngl.splitview() {
-    div(style={display="flex"}) {
-        slot
+component sngl.splitview {
+    platform html {
+        div(style={display="flex"}) {
+            slot
+        }
     }
 }
 
 // --- Tier 4: Data & Desktop ---
 
-component sngl.table() {
-    table(style={width="100%", borderCollapse="collapse"}) {
-        slot
+component sngl.table {
+    platform html {
+        table(style={width="100%", borderCollapse="collapse"}) {
+            slot
+        }
     }
 }
 
-component sngl.tree() {
-    ul(style={listStyleType="none", paddingLeft=16}) {
-        slot
+component sngl.tree {
+    platform html {
+        ul(style={listStyleType="none", paddingLeft=16}) {
+            slot
+        }
     }
 }
 
-component sngl.menu() {
-    div(style={position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
-        slot
+component sngl.menu {
+    platform html {
+        div(style={position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+            slot
+        }
     }
 }
 
-component sngl.menubar() {
-    nav(style={display="flex", gap=4}) {
-        slot
+component sngl.menubar {
+    platform html {
+        nav(style={display="flex", gap=4}) {
+            slot
+        }
     }
 }
 
-component sngl.toolbar() {
-    div(style={display="flex", gap=4, alignItems="center"}) {
-        slot
+component sngl.toolbar {
+    platform html {
+        div(style={display="flex", gap=4, alignItems="center"}) {
+            slot
+        }
     }
 }
 
 // --- Tier 5: Mobile & Specialized ---
 
-component sngl.datepicker() {
-    input(type="date", value=value, disabled=disabled, @change { @change() }) {}
-}
-
-component sngl.chip() {
-    span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc"}) {
-        span(textContent=label) {}
+component sngl.datepicker {
+    platform html {
+        input(type="date", value=value, disabled=disabled, @change { @change() }) {}
     }
 }
 
-component sngl.avatar() {
-    div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden"}) {
-        span(textContent=initials) {}
+component sngl.chip {
+    platform html {
+        span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc"}) {
+            span(textContent=label) {}
+        }
     }
 }
 
-component sngl.card() {
-    div(style={borderRadius=8, padding=16}) {
-        slot
+component sngl.avatar {
+    platform html {
+        div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden"}) {
+            span(textContent=initials) {}
+        }
+    }
+}
+
+component sngl.card {
+    platform html {
+        div(style={borderRadius=8, padding=16}) {
+            slot
+        }
     }
 }
