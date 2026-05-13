@@ -1,0 +1,31 @@
+caps: NoReactivity
+-- input.sngl --
+component main {
+    var visible bool = true
+    button(text="toggle", @click { visible = !visible })
+    if visible {
+        text(value="hi")
+    }
+}
+-- expected.sngl --
+component main {
+    var visible bool = true
+    var __slot0 list<dyn> = []
+    func __renderSlot0(parent dyn) void {
+        for __entry = __slot0 {
+            lower.RemoveChild(parent, __entry)
+        }
+        __slot0 = []
+        if visible {
+            var __n0 text = lower.CreateNode("text")
+            #__n0.value = "hi"
+            lower.AppendChild(#parent, #__n0)
+            __slot0 = stdlib.ListPush(__slot0, #__n0)
+        }
+    }
+    button(text="toggle", @click {
+        visible = !visible
+        __renderSlot0(#__root)
+    })
+    __renderSlot0(#__root)
+}
