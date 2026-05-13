@@ -193,9 +193,11 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	case *ir.NodeInst:
 		st.collectFromNode(n)
 	case *ir.If:
+		st.collectFromIf(n)
 		st.collectFromStmts(n.Body)
 		st.collectFromStmts(n.Else)
 	case *ir.For:
+		st.collectFromFor(n)
 		st.collectFromStmts(n.Body)
 		st.collectFromStmts(n.Else)
 	case *ir.PlatformFilter:
@@ -227,6 +229,36 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 		}
 	}
 	st.collectFromStmts(n.Children)
+}
+
+func (st *reactivityState) collectFromIf(n *ir.If) {
+	deps := st.exprDeps(n.Cond)
+	if len(deps) == 0 {
+		return
+	}
+	slot := reactiveSlot{SlotID: st.freshSlotID()}
+	for v := range deps {
+		st.reverseSlots[v] = append(st.reverseSlots[v], slot)
+	}
+	n.LoweredSlotID = slot.SlotID
+}
+
+func (st *reactivityState) collectFromFor(n *ir.For) {
+	deps := st.exprDeps(n.Iter)
+	if len(deps) == 0 {
+		return
+	}
+	slot := reactiveSlot{SlotID: st.freshSlotID()}
+	for v := range deps {
+		st.reverseSlots[v] = append(st.reverseSlots[v], slot)
+	}
+	n.LoweredSlotID = slot.SlotID
+}
+
+func (st *reactivityState) freshSlotID() string {
+	id := "__slot" + strconv.Itoa(st.slotCounter)
+	st.slotCounter++
+	return id
 }
 
 func (st *reactivityState) exprDeps(e ir.Expr) map[*ir.Var]bool {

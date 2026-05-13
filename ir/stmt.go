@@ -113,6 +113,11 @@ type If struct {
 	Cond Expr
 	Body []Stmt
 	Else []Stmt
+	// LoweredSlotID is set by passReactivity to the slot ID assigned when
+	// the If's Cond depends on a reactive Var. "" when the construct is not
+	// reactive. Pass-2 of passReactivity rewrites these into CallStmt
+	// __renderSlot<N>() invocations.
+	LoweredSlotID string `json:"-"`
 }
 
 func (*If) stmtNode() {}
@@ -130,6 +135,11 @@ type For struct {
 	// declared inside this loop's body. After optimizer expansion, the
 	// optimizer binds each symbol's value to the unrolled list of windows.
 	HoistedWindowIDs []*Var
+	// LoweredSlotID is set by passReactivity to the slot ID assigned when
+	// the For's Iter depends on a reactive Var. "" when the construct is not
+	// reactive. Pass-2 of passReactivity rewrites these into CallStmt
+	// __renderSlot<N>() invocations.
+	LoweredSlotID string `json:"-"`
 }
 
 func (*For) stmtNode() {}
