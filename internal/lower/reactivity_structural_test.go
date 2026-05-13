@@ -173,3 +173,92 @@ func funcSliceNames(fs []*ir.Func) []string {
 	}
 	return out
 }
+
+func TestSynthesizeRenderSlotFunc_ForVariant(t *testing.T) {
+	src := `
+component main {
+    var items list<int> = [1, 2, 3]
+    for item = items {
+        text(value=string(item))
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Func
+	for _, f := range comp.Funcs {
+		if f.Name == "__renderSlot0" {
+			found = f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected __renderSlot0 Func for reactive For; got: %v", funcSliceNames(comp.Funcs))
+	}
+}
+
+func TestSynthesizeRenderSlotFunc_ElseBranch(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    if visible {
+        text(value="on")
+    } else {
+        text(value="off")
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Func
+	for _, f := range comp.Funcs {
+		if f.Name == "__renderSlot0" {
+			found = f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("expected __renderSlot0 Func with else branch")
+	}
+	// Body shape: teardown For + reset Assign + If with non-empty Body and Else.
+	if len(found.Block) < 3 {
+		t.Fatalf("expected ≥3 stmts in __renderSlot0 body, got %d", len(found.Block))
+	}
+	ifStmt, ok := found.Block[2].(*ir.If)
+	if !ok {
+		t.Fatalf("expected stmt 3 to be *ir.If, got %T", found.Block[2])
+	}
+	if len(ifStmt.Body) == 0 || len(ifStmt.Else) == 0 {
+		t.Errorf("expected both Body and Else populated; got Body=%d Else=%d", len(ifStmt.Body), len(ifStmt.Else))
+	}
+}
+
+func TestSynthesizeRenderSlotFunc_PanicsOnNested(t *testing.T) {
+	src := `
+component main {
+    var outer bool = true
+    var inner bool = true
+    if outer {
+        if inner {
+            text(value="x")
+        }
+    }
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic on nested reactive If; none occurred")
+		}
+	}()
+	_ = lowerReactivity(pkg, Caps{NoReactivity: true})
+}

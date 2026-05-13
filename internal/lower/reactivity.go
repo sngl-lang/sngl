@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -30,10 +31,6 @@ type reactivityState struct {
 	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
 	idCounter    int
 	slotCounter  int
-	// slotFuncsBuilt tracks slotIDs whose __renderSlotN Func has already
-	// been synthesized in rewriteAndInject; needed because the same slot
-	// may appear under multiple reactive Vars in reverseSlots.
-	slotFuncsBuilt map[string]bool
 	// slot synthesis owner: the *ir.Component or *ir.Window whose stmt body
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
@@ -79,12 +76,11 @@ func lowerReactivity(pkg *ir.Package, _ Caps) error {
 		return nil
 	}
 	st := &reactivityState{
-		pkg:            pkg,
-		reactiveVars:   collectReactiveVars(pkg),
-		reverseDeps:    make(map[*ir.Var][]reactiveProp),
-		reverseSlots:   make(map[*ir.Var][]reactiveSlot),
-		intrinsics:     make(map[string]*ir.Func),
-		slotFuncsBuilt: make(map[string]bool),
+		pkg:          pkg,
+		reactiveVars: collectReactiveVars(pkg),
+		reverseDeps:  make(map[*ir.Var][]reactiveProp),
+		reverseSlots: make(map[*ir.Var][]reactiveSlot),
+		intrinsics:   make(map[string]*ir.Func),
 	}
 	for _, def := range ir.LowerIntrinsics {
 		st.intrinsics[def.Name] = &ir.Func{
@@ -162,21 +158,28 @@ func lowerReactivity(pkg *ir.Package, _ Caps) error {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	// Collect unique slot IDs from reverseSlots so each Func is built once.
+	uniqueSlots := map[string]bool{}
+	for _, slots := range st.reverseSlots {
+		for _, slot := range slots {
+			uniqueSlots[slot.SlotID] = true
+		}
+	}
+	// Build one slot var + Func per unique ID.
+	built := map[string]*ir.Func{}
+	for slotID := range uniqueSlots {
+		st.synthesizeSlotVar(slotID)
+		fn := st.buildRenderSlotFor(slotID, stmts)
+		if fn != nil {
+			st.owner.addFunc(fn)
+			built[slotID] = fn
+		}
+	}
+	// Wire GenFunc on every reactiveSlot record so downstream Task 11 can
+	// reach the Func through the reverseSlots map.
 	for v, slots := range st.reverseSlots {
-		for i, slot := range slots {
-			st.synthesizeSlotVar(slot.SlotID)
-			if st.slotFuncsBuilt[slot.SlotID] {
-				// Already built on a previous reverseSlots iteration; just
-				// wire GenFunc on this record by looking up the Func.
-				slots[i].GenFunc = st.lookupSlotFunc(slot.SlotID)
-				continue
-			}
-			fn := st.buildRenderSlotFor(slot.SlotID, stmts)
-			if fn != nil {
-				st.owner.addFunc(fn)
-				slots[i].GenFunc = fn
-				st.slotFuncsBuilt[slot.SlotID] = true
-			}
+		for i := range slots {
+			slots[i].GenFunc = built[slots[i].SlotID]
 		}
 		st.reverseSlots[v] = slots
 	}
@@ -631,10 +634,10 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 	return e
 }
 
-// renderFuncName maps a slot ID ("__slot0") to its generator-Func name
-// ("__renderSlot0"). Centralized so collection and rewrite agree.
+// renderFuncName: "__slot<N>" → "__renderSlot<N>".
 func renderFuncName(slotID string) string {
-	return "__renderS" + strings.TrimPrefix(slotID, "__s")
+	n := strings.TrimPrefix(slotID, "__slot")
+	return "__renderSlot" + n
 }
 
 // synthesizeRenderSlotFunc generates the __renderSlotN(parent dyn) Func.
@@ -677,8 +680,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	declSt := newDeclarativeStateForSlot(st.pkg)
 	body := st.renderSlotBody(declSt, parentParam.Name, slotID, cond, iter, key, value, origBody, origElse)
 
-	fn.Block = []ir.Stmt{teardown, reset}
-	fn.Block = append(fn.Block, body...)
+	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	return fn
 }
 
@@ -716,21 +718,18 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 		ownerFuncs = &o.w.Funcs
 	}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
-		_, sub := LowerNodeForSlot(declSt, n, parentName, ownerFuncs)
+		_, sub := lowerNodeForSlot(declSt, n, parentName, ownerFuncs)
 		sub = append(sub, pushToSlot(n.ID))
 		return sub
 	}
 	emitStmts := func(stmts []ir.Stmt) []ir.Stmt {
 		var out []ir.Stmt
 		for _, s := range stmts {
-			if nodeInst, ok := s.(*ir.NodeInst); ok {
-				out = append(out, emitNodeAt(nodeInst)...)
-			} else {
-				// Non-NodeInst stmts inside the slot body (nested If, etc.)
-				// — copy through. Nested-reactive structures will be
-				// handled by future improvements; not in scope for this task.
-				out = append(out, s)
+			nodeInst, ok := s.(*ir.NodeInst)
+			if !ok {
+				panic(fmt.Sprintf("lower(reactivity): non-NodeInst stmt %T in reactive slot body — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)", s))
 			}
+			out = append(out, emitNodeAt(nodeInst)...)
 		}
 		return out
 	}
@@ -797,23 +796,3 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 	return fn
 }
 
-// lookupSlotFunc finds the synthesized __renderSlot<N> Func attached to
-// the current owner.
-func (st *reactivityState) lookupSlotFunc(slotID string) *ir.Func {
-	want := renderFuncName(slotID)
-	switch o := st.owner.(type) {
-	case compOwner:
-		for _, f := range o.c.Funcs {
-			if f.Name == want {
-				return f
-			}
-		}
-	case windowOwner:
-		for _, f := range o.w.Funcs {
-			if f.Name == want {
-				return f
-			}
-		}
-	}
-	return nil
-}

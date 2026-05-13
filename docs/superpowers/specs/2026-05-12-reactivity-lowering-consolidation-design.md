@@ -408,6 +408,13 @@ plan cycle:
    finding gets its own surgical fix; ideally every enabled pass
    round-trips.
 
+5. **Nested reactivity in slot bodies.** The Plan A `passReactivity`
+   extension panics if a reactive `If`/`For` body contains a nested
+   `If`/`For`. Single-level reactivity is supported; nesting requires
+   a separate design that addresses shared-parent teardown semantics,
+   prop reactivity on rebuilt-node IDs, and DOM ordering between
+   peers and slot-rendered children.
+
 ## Risks and rollback
 
 - **html JS-update regression.** Highest blast-radius step (6) because

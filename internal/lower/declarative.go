@@ -281,12 +281,12 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	return stmts
 }
 
-// LowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
+// lowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
 // sequence passDeclarative produces for one NodeInst's subtree, then
 // appends the resulting top-level node to `parentID` (rather than the
 // source-position parent). funcs is the owning Funcs slice for handler
 // promotion. Returns the LocalVar name bound to the new top-level node ref.
-func LowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, funcs *[]*ir.Func) (string, []ir.Stmt) {
+func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, funcs *[]*ir.Func) (string, []ir.Stmt) {
 	stmts := st.lowerNodeIntoStmts(n, funcs)
 	if parentID != "" {
 		stmts = append(stmts, &ir.CallStmt{
