@@ -389,6 +389,21 @@ it localizes to that step.
 > B.2 script-test failures remain.
 >
 > Plan D covers html. Plan E is the final audit.
+>
+> **Plan F** (`docs/superpowers/plans/2026-05-13-platform-go-syntax-extraction.md`)
+> moved remaining Go-cgo/Go-syntax leaks out of fyne and gtk4 platform
+> packages into the Go language renderer (codegen/lang/golang).
+> Platforms now produce IR fragments (`*ir.Func`, `*ir.Call` with bare
+> `NativeName`, `*ir.Conversion` to `NativePointer` types); the Go
+> renderer owns `C.` prefixing, cgo cast patterns, and function-definition
+> syntax. Enables future C/Rust/Python frontends to reuse platform
+> translators with their own language renderers. Plan F also fixed a
+> pre-existing bug where gtk4 emitted bare `__nN` identifiers for
+> non-`Synthesized` element-ref idents flowing into `OnPropAssign` and
+> added the missing `m.__root` field declaration when the synthetic
+> wrapper path is taken; `sngl_connect`'s `void*` arg now routes through
+> a renderer-handled `unsafe.Pointer(...)` conversion. After these fixes,
+> `examples/hello-i18n` compiles and runs end-to-end on the gtk4 target.
 
 ## Testing
 
