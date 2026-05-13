@@ -307,8 +307,6 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		topLevelRefs = tr.topLevel
 	}
 
-	updaters := vc.updaters
-
 	// --- Phase 2: User functions (non-computed, non-test, non-method) ---
 	allFuncs := c.ctx.Pkg.Funcs
 	if main := c.ctx.MainComponent(); main != nil {
@@ -332,7 +330,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	}
 
 	// --- Phase 3: Build template data ---
-	td, err := c.newTemplateData(updaters, widgetFields, funcBuf.String(), gc)
+	td, err := c.newTemplateData(widgetFields, funcBuf.String(), gc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -351,7 +349,6 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 
 	// --- Phase 5: Append dynamic code to model.go ---
 	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs)
-	emitUpdaters(&modelBuf, updaters)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
 	emitPropertyReaders(&modelBuf, vc.nodeBindings)
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
@@ -360,20 +357,13 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		emitGTK4Main(&callbacksBuf, c.cfg)
 	}
 
-	// Build a refresh body that re-applies every recorded
-	// reactive (nodeID, prop) binding from current state — used by
-	// SetX setters (via doRefresh) so direct field mutation in tests
-	// triggers the same widget updates that lowered handler bodies do.
-	refreshBody := vc.buildReactiveRefresh()
-	out := strings.Replace(modelBuf.String(), "/*REACTIVE_REFRESH*/", refreshBody, 1)
-
 	// Resolve /*SNGLREACT:i*/ placeholders recorded during the visual
 	// walk once every node's bindings have been registered.
-	modelSrc = []byte(vc.resolveReactiveTokens(out))
+	modelSrc = []byte(vc.resolveReactiveTokens(modelBuf.String()))
 	return modelSrc, []byte(callbacksBuf.String()), nil
 }
 
-func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
+func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
 	td := templateData{
 		Package:      c.cfg.Package,
 		Main:         c.cfg.Main,
@@ -406,27 +396,17 @@ func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []w
 		td.Structs = append(td.Structs, s)
 	}
 
-	// Binds: collect setter side-effects for affected updaters.
+	// Binds: emit getter/setter for each. Reactive widget updates are
+	// already injected into handler bodies as ir.Assign by passReactivity
+	// and lowered through WalkLowered — setters don't need extra dispatch.
 	for _, bind := range c.info.binds {
-		bd := bindData{
+		td.Binds = append(td.Binds, bindData{
 			Name:        bind.name,
 			GoType:      bind.goType,
 			InitVal:     bind.init,
 			Getter:      golang.ExportName(bind.name),
 			NoAccessors: bind.noAccessors,
-		}
-		var extra strings.Builder
-		mutated := map[string]bool{bind.name: true}
-		affected := codegen.FindAffected(c.info.depTracker(), updaters, mutated)
-		if len(affected) > 0 {
-			for _, u := range affected {
-				fmt.Fprintf(&extra, "\tm.%s()\n", u.name)
-			}
-		} else {
-			extra.WriteString("\tm.doRefresh()\n")
-		}
-		bd.SetterExtra = extra.String()
-		td.Binds = append(td.Binds, bd)
+		})
 	}
 
 	// Computeds
@@ -453,11 +433,6 @@ func (c *compilation) newTemplateData(updaters []widgetUpdater, widgetFields []w
 			Name:   wf.name,
 			GoType: wf.goType,
 		})
-	}
-
-	// Updater names — used by doRefresh().
-	for _, u := range updaters {
-		td.UpdaterNames = append(td.UpdaterNames, u.name)
 	}
 
 	return td, nil
@@ -642,14 +617,6 @@ func emitPropertyReaders(b *strings.Builder, bindings map[string]map[string]gtkB
 			}
 			b.WriteString("}\n\n")
 		}
-	}
-}
-
-func emitUpdaters(b *strings.Builder, updaters []widgetUpdater) {
-	for _, u := range updaters {
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", u.name)
-		fmt.Fprintf(b, "\t%s\n", u.body)
-		b.WriteString("}\n\n")
 	}
 }
 

@@ -18,15 +18,6 @@ type widgetField struct {
 	goType string // e.g. "*C.GtkButton"
 }
 
-// widgetUpdater is a reactive method that patches one widget property.
-type widgetUpdater struct {
-	name string // method name, e.g. "updateBtn0Label"
-	body string // method body line(s)
-	deps map[string]bool
-}
-
-func (u widgetUpdater) DepFields() map[string]bool { return u.deps }
-
 // viewContext tracks state while generating BuildUI code strings.
 type viewContext struct {
 	gc          *golang.GoIRContext
@@ -36,7 +27,6 @@ type viewContext struct {
 	indent      int
 	widgetCount int
 	fields      []widgetField
-	updaters    []widgetUpdater
 	propScope   map[string]ir.Expr // for inline stdlib expansion
 	depTracker  *codegen.DepTracker
 
@@ -259,34 +249,6 @@ func (vc *viewContext) recordLateReactive(a *ir.Assign) bool {
 	})
 	vc.line("/*SNGLREACT:%d*/", idx)
 	return true
-}
-
-// buildReactiveRefresh returns Go statements that re-apply every
-// (nodeID, prop) reactive binding from current state plus invoke
-// each `if`-block refresh method. Used inside doRefresh so SetX
-// setters fire the same widget updates that lower-injected reactive
-// Assigns do inside handler bodies, and so cond-driven branches
-// mount/unmount on state change.
-func (vc *viewContext) buildReactiveRefresh() string {
-	type key struct{ nodeID, prop string }
-	seen := map[key]bool{}
-	var b strings.Builder
-	for i := len(vc.lateReactive) - 1; i >= 0; i-- {
-		late := vc.lateReactive[i]
-		k := key{late.NodeID, late.Prop}
-		if seen[k] {
-			continue
-		}
-		seen[k] = true
-		bnd, ok := vc.nodeBinding(late.NodeID, late.Prop)
-		if !ok {
-			continue
-		}
-		rhs := vc.irExprToC(late.ValueIR, bnd.ValueIRType)
-		fmt.Fprintf(&b, "\tC.%s((*C.%s)(unsafe.Pointer(m.%s)), %s)\n",
-			bnd.Setter, bnd.CType, bnd.Field, rhs)
-	}
-	return strings.TrimSuffix(b.String(), "\n")
 }
 
 // resolveReactiveTokens replaces every /*SNGLREACT:i*/ placeholder
