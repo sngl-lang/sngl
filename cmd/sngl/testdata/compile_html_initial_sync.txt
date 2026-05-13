@@ -1,0 +1,30 @@
+# Verifies initial-sync of declarative bindings: text(value=name) where
+# name="World" produces a span whose textContent is seeded by the script
+# without user interaction. Tests the legacy g.updates initOnly path.
+#
+# Legacy pipeline emits:
+#   - state object: let state = {name: "World"};
+#   - per-node updater: function $u__n0_text() { __n0.textContent = state.name; }
+#   - "Initial sync" comment + call: $u__n0_text();
+# These are the g.updates registry's job; Plan D Task 10+ migrates them.
+
+sngl compile --platform=html --out=out app.sngl
+exists out/index.html
+
+# State initialization with the var's initial value.
+grep 'state = {name: "World"}' out/index.html
+
+# Per-node updater function emitted from g.updates.
+grep '\$u__n0_text' out/index.html
+grep '__n0.textContent = state.name' out/index.html
+
+# Initial sync section calls each updater once at script load.
+grep 'Initial sync' out/index.html
+
+-- app.sngl --
+output { none { html } }
+
+component main {
+    var name = "World"
+    text(value=name)
+}
