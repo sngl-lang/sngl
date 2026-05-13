@@ -1,0 +1,12 @@
+caps: NoStdlibWrappers
+-- input.sngl --
+import "platform://teststub"
+
+component main {
+    teststub.Cleanwrap(value="hi")
+}
+-- expected.sngl --
+import teststub "platform://teststub"
+component main {
+    text(value="hi")
+}

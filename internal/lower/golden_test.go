@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/tools/txtar"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -71,9 +72,10 @@ func runGolden(t *testing.T, path string) {
 		t.Fatalf("parse: %v", err)
 	}
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:     os.DirFS("."),
-		Dir:    ".",
-		IsMain: true,
+		FS:        os.DirFS("."),
+		Dir:       ".",
+		IsMain:    true,
+		Platforms: []ir.Platform{&testStubPlatform{}},
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -198,6 +200,8 @@ func setCapByName(c *Caps, name string) error {
 		c.NoReactivity = true
 	case "NoDeclarative":
 		c.NoDeclarative = true
+	case "NoStdlibWrappers":
+		c.NoStdlibWrappers = true
 	default:
 		return errCapsName(name)
 	}
@@ -208,6 +212,37 @@ type errCapsName string
 
 func (e errCapsName) Error() string {
 	return "unknown caps flag " + string(e) + " (valid: " + strings.Join(PassNames(), ", ") + ")"
+}
+
+// testStubPlatform is a minimal in-test ir.Platform registration so
+// golden fixtures can use `import "platform://teststub"` to exercise the
+// strict-mode (Caps.NoStdlibWrappers) branch of passInlinePure. The
+// platform exposes two wrapper components — one pure, one impure — and
+// nothing else.
+type testStubPlatform struct{}
+
+func (testStubPlatform) PlatformIdentifier() string         { return "teststub" }
+func (testStubPlatform) Description() string                { return "in-test platform stub" }
+func (testStubPlatform) IsLanguageSupported(ir.Language) bool { return true }
+func (testStubPlatform) Resolve(string) ir.Symbol           { return nil }
+
+const testStubSource = `
+component Cleanwrap(value string) {
+    text(value=value)
+}
+
+component Statefulwrap() {
+    var count int = 0
+    text(value=string(count))
+}
+`
+
+func (testStubPlatform) Package() []*ast.Document {
+	doc, err := parser.Parse("teststub.sngl", []byte(testStubSource))
+	if err != nil {
+		panic("teststub parse: " + err.Error())
+	}
+	return []*ast.Document{doc}
 }
 
 func writeUpdatedExpected(t *testing.T, path string, arc *txtar.Archive, got []byte) {
