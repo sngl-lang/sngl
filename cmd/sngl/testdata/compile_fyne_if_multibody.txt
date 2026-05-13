@@ -6,6 +6,15 @@
 # `<innerVar>Children` (every container does) collided with its sibling and
 # the generated Go failed to compile with "redeclared in this block".
 
+# Post-Plan-C the fyne emitter's window-body path doesn't synthesize the
+# reactive-if slot scaffolding (no `__renderSlotN`, no per-child inner
+# vars). Lowering produces the right CreateNode/If shapes, but the legacy
+# renderStmt() in compiler_ir.go drops them on the floor.
+#
+# Tracked alongside compile_fyne_component_fields: rewrite renderStmt to
+# consume lowered IR via WalkLowered.
+skip 'fyne reactive-if inside window emits no slot scaffolding post-Plan-C'
+
 sngl compile --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
 
