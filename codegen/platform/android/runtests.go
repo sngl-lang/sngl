@@ -103,7 +103,7 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 			continue
 		}
 		caps := g.Capabilities().Merge(lang.Capabilities())
-		if err := lower.Lower(compPkg, caps, lower.Options{}); err != nil {
+		if err := lower.Lower(compPkg, caps, lower.Options{Platform: g.PlatformIdentifier()}); err != nil {
 			return nil, fmt.Errorf("android lower %q: %w", group.Component, err)
 		}
 

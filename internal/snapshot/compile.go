@@ -43,7 +43,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, fmt.Errorf("html/none codegen not registered")
 	}
 	caps := htmlPlat.Capabilities().Merge(noneLang.Capabilities())
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	if caps != (lower.Caps{}) {

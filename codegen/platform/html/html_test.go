@@ -34,7 +34,7 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	resp, err := gen.Generate(&codegen.Request{
@@ -75,7 +75,7 @@ func generateHTML(t *testing.T, path string) string {
 
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	resp, err := gen.Generate(&codegen.Request{
@@ -215,7 +215,7 @@ func TestLoweredReactivityWiring(t *testing.T) {
 	lang := codegen.LookupLang("none")
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

@@ -114,7 +114,7 @@ func compile(this js.Value, args []js.Value) any {
 	}
 
 	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, compileCaps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
@@ -259,7 +259,7 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	genCaps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, genCaps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platName}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}

@@ -179,7 +179,7 @@ func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 		if lang := codegen.LookupLang(target.Lang); lang != nil {
 			caps := plat.Capabilities().Merge(lang.Capabilities())
-			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
 				return err
 			}
 		}
@@ -226,7 +226,7 @@ func runDumpAnalysis(cmd *cobra.Command, args []string) error {
 	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 		if lang := codegen.LookupLang(target.Lang); lang != nil {
 			caps := plat.Capabilities().Merge(lang.Capabilities())
-			if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
 				return err
 			}
 		}
@@ -291,7 +291,7 @@ func runDumpLowered(cmd *cobra.Command, args []string) error {
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "stopAfter", stopAfter, "duration", time.Since(start))

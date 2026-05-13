@@ -36,7 +36,7 @@ component main {
 			t.Fatalf("check diag: %s", d.Msg)
 		}
 	}
-	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true, NoDeclarative: true}, lower.Options{Platform: "fyne"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

@@ -139,7 +139,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	// Lower
 	caps := plat.Capabilities().Merge(lang.Capabilities())
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))

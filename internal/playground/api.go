@@ -179,7 +179,7 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, compileCaps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
@@ -310,7 +310,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 	genCaps := gen.Capabilities().Merge(lt.Capabilities())
-	if err := lower.Lower(pkg, genCaps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platform}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}

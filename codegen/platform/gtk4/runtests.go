@@ -69,7 +69,7 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 			continue
 		}
 		caps := g.Capabilities().Merge(lang.Capabilities())
-		if err := lower.Lower(compPkg, caps, lower.Options{}); err != nil {
+		if err := lower.Lower(compPkg, caps, lower.Options{Platform: g.PlatformIdentifier()}); err != nil {
 			return nil, fmt.Errorf("gtk4 lower %q: %w", group.Component, err)
 		}
 		resp, err := g.Generate(&codegen.Request{
