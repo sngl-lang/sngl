@@ -262,6 +262,12 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	// Synthesized refs from lowering passes (__nN widget refs,
+	// __slotN slot accumulators, __root sentinel, __entry loop var):
+	// emit as bare identifier — JS has no Model receiver.
+	if n.Synthesized {
+		return n.Name
+	}
 	name := n.Name
 	if name == "event" && jc.EventVar != "" {
 		return jc.EventVar
@@ -653,4 +659,33 @@ func jsI18nConstString(qual string) string {
 		return `"other"`
 	}
 	return ""
+}
+
+// EmitFuncDef renders a complete JavaScript function definition from
+// an *ir.Func. JS has no method receivers — emits as a top-level
+// declaration:
+//
+//	function <name>(params...) { body... }
+//
+// Returns lines without trailing newlines. Caller joins with "\n".
+func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
+	var lines []string
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		params[i] = p.Name
+	}
+	lines = append(lines, "function "+fn.Name+"("+strings.Join(params, ", ")+") {")
+
+	bodyJC := jc
+	for _, p := range fn.Params {
+		bodyJC = bodyJC.WithLocal(p.Name)
+	}
+	for _, stmt := range fn.Block {
+		for _, line := range bodyJC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
+
+	lines = append(lines, "}")
+	return lines
 }
