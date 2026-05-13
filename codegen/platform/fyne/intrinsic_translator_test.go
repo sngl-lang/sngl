@@ -53,3 +53,21 @@ func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 		t.Errorf("OnRemoveChild: got %q, want %q", got, want)
 	}
 }
+
+func TestFyneTranslator_OnAttachHandler_InputChanged(t *testing.T) {
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	_ = tr.OnCreateNode("__n0", "input")
+	got := tr.OnAttachHandler("__n0", "input", "m.handleInput")
+	if !strings.Contains(got, "m.__n0.OnChanged = m.handleInput") {
+		t.Errorf("expected OnChanged assignment; got: %s", got)
+	}
+}
+
+func TestFyneTranslator_OnAttachHandler_UnknownEvent(t *testing.T) {
+	tr := newFyneTranslator(stubGC(), platformBlueprints(), func(_, _ string) {})
+	_ = tr.OnCreateNode("__n0", "input")
+	got := tr.OnAttachHandler("__n0", "wibble", "m.h")
+	if got != "" {
+		t.Errorf("expected empty emission for unknown event; got: %s", got)
+	}
+}

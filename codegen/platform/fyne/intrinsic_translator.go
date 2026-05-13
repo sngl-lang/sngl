@@ -20,6 +20,7 @@ type fyneTranslator struct {
 	gc         *golang.GoIRContext
 	blueprints map[string]*fyneBlueprint
 	fieldSink  func(name, goType string)
+	idTags     map[string]string
 }
 
 // newFyneTranslator constructs a translator. `blueprints` is the
@@ -27,7 +28,12 @@ type fyneTranslator struct {
 // receives every (widget-name, go-type) pair so the enclosing emitter
 // can declare the field on Model.
 func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string)) *fyneTranslator {
-	return &fyneTranslator{gc: gc, blueprints: blueprints, fieldSink: fieldSink}
+	return &fyneTranslator{
+		gc:         gc,
+		blueprints: blueprints,
+		fieldSink:  fieldSink,
+		idTags:     map[string]string{},
+	}
 }
 
 // Compile-time interface check.
@@ -53,6 +59,7 @@ func (t *fyneTranslator) OnCreateNode(id, tag string) string {
 		return ""
 	}
 	t.fieldSink(id, goType)
+	t.idTags[id] = tag
 	args := zeroArgsFor(tag)
 	return "m." + id + " = " + bp.Constructor.GoFn + "(" + args + ")\n"
 }
@@ -88,8 +95,26 @@ func modelRef(name string) string {
 	return name
 }
 
-func (t *fyneTranslator) OnAttachHandler(node, event, h string) string {
-	return ""
+func (t *fyneTranslator) OnAttachHandler(node, event, handlerRef string) string {
+	tag, ok := t.idTags[node]
+	if !ok {
+		return ""
+	}
+	bp, ok := t.blueprints[tag]
+	if !ok {
+		return ""
+	}
+	target := ""
+	for _, b := range bp.Bindings {
+		if b.Kind == bindEvent && b.Prop == event {
+			target = b.Target
+			break
+		}
+	}
+	if target == "" {
+		return ""
+	}
+	return modelRef(node) + target + " = " + handlerRef + "\n"
 }
 func (t *fyneTranslator) OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string {
 	return ""
