@@ -12,15 +12,13 @@ import (
 
 // gtk4Translator implements codegen.IntrinsicTranslator for gtk4.
 // Emits IR fragments whose Call.Func values carry NativePkg="C" /
-// NativeName="C.gtk_*" so gc.EvalExpr (via the namespace-call path)
-// renders the cgo source verbatim.
+// NativeName="<bare C ident>" so gc.EvalExpr (via the namespace-call
+// path) renders the cgo source verbatim — the renderer prepends the
+// "C." prefix.
 //
-// NativeName-cast shorthand: where the Plan C IR needs a Go type cast
-// like (*C.GtkLabel)(p), we synthesize an ir.Call whose Func.NativeName
-// is literally "(*C.GtkLabel)". The Go renderer's namespace-call branch
-// just emits NativeName + "(" + args + ")" — which is exactly the cast
-// syntax we need. This is a documented abuse of NativeName; a follow-up
-// plan should introduce a dedicated ir.Cast node.
+// Cgo type casts of the shape (*C.X)(unsafe.Pointer(y)) are produced
+// via ir.Conversion to an ir.NativePointerOf("X") type (see cgoCast);
+// the Go renderer's evalConversion path emits the cgo cast pattern.
 type gtk4Translator struct {
 	gc           *golang.GoIRContext
 	pkg          *ir.Package // optional; used to consult GIR-resolved native metadata
@@ -124,42 +122,44 @@ func modelFieldRef(name string) ir.Expr {
 	}
 }
 
-// nativeFunc constructs an *ir.Func with NativePkg/NativeName set so
-// gc.EvalExpr renders it as a fully-qualified Go expression via the
-// namespace-call branch (evalNamespaceCall).
+// nativeFunc constructs an *ir.Func with NativePkg="C" /
+// NativeName=<bare-C-identifier> so gc.EvalExpr's namespace-call branch
+// emits the cgo source `C.<NativeName>` (the renderer adds the "C."
+// prefix). Callers pass bare names like "gtk_label_new" — never
+// pre-prefix with "C." (the renderer would still strip-and-add it via
+// the backwards-compat HasPrefix check, but new code should be clean).
 func nativeFunc(nativeName string) *ir.Func {
-	pkg := nativeName
-	if i := strings.Index(nativeName, "."); i > 0 {
-		pkg = nativeName[:i]
-	}
-	return &ir.Func{NativePkg: pkg, NativeName: nativeName, Name: nativeName}
+	return &ir.Func{NativePkg: "C", NativeName: nativeName, Name: nativeName}
 }
 
-// nativeCall builds a single-level native call. Sets Receiver so the
-// Go renderer enters evalNamespaceCall and emits NativeName(args).
+// nativeCall builds a single-level cgo C-API call. The receiver
+// (`C`) drives the renderer into evalNamespaceCall, which emits
+// `C.<NativeName>(args)`.
 func nativeCall(nativeName string, args ...ir.Expr) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		callArgs[i] = ir.CallArg{Value: a}
 	}
-	pkg := nativeName
-	if i := strings.Index(nativeName, "."); i > 0 {
-		pkg = nativeName[:i]
-	}
 	return &ir.Call{
 		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: pkg},
+		Receiver: &ir.Ident{Name: "C"},
 		Func:     nativeFunc(nativeName),
 		Args:     callArgs,
 	}
 }
 
-// cgoCast wraps an expression in the cgo cast pattern:
+// cgoCast wraps an expression in a cgo pointer cast:
 //
 //	(*C.<typeName>)(unsafe.Pointer(expr))
+//
+// Implemented as an ir.Conversion to a NativePointer type; the Go
+// renderer (lang/golang) recognises the shape and emits the cgo
+// cast pattern via evalConversion.
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
-	unsafePtr := nativeCall("unsafe.Pointer", expr)
-	return nativeCall("(*C."+typeName+")", unsafePtr)
+	return &ir.Conversion{
+		Type:    ir.NativePointerOf(typeName),
+		Operand: expr,
+	}
 }
 
 // gtk4TagToCType maps a SNGL stdlib tag to its GTK C type.
@@ -189,24 +189,24 @@ func gtk4Constructor(tag string) *ir.Call {
 	nullLit := &ir.Literal{Type: ir.TypNull}
 	switch tag {
 	case "text", "label":
-		return nativeCall("C.gtk_label_new", nullLit)
+		return nativeCall("gtk_label_new", nullLit)
 	case "button":
-		emptyCStr := nativeCall("C.CString", &ir.Literal{Type: ir.TypString, Raw: ""})
-		return nativeCall("C.gtk_button_new_with_label", emptyCStr)
+		emptyCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: ""})
+		return nativeCall("gtk_button_new_with_label", emptyCStr)
 	case "input", "entry":
-		return nativeCall("C.gtk_entry_new")
+		return nativeCall("gtk_entry_new")
 	case "vbox":
 		orient := &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}
 		spacing := &ir.Literal{Type: ir.TypInt, Raw: "6"}
-		return nativeCall("C.gtk_box_new", orient, spacing)
+		return nativeCall("gtk_box_new", orient, spacing)
 	case "hbox":
 		orient := &ir.Ident{Name: "C.GTK_ORIENTATION_HORIZONTAL", Type: ir.TypDyn}
 		spacing := &ir.Literal{Type: ir.TypInt, Raw: "6"}
-		return nativeCall("C.gtk_box_new", orient, spacing)
+		return nativeCall("gtk_box_new", orient, spacing)
 	case "checkbox":
-		return nativeCall("C.gtk_check_button_new")
+		return nativeCall("gtk_check_button_new")
 	case "scroll":
-		return nativeCall("C.gtk_scrolled_window_new")
+		return nativeCall("gtk_scrolled_window_new")
 	}
 	return nil
 }
@@ -227,12 +227,12 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// for nullable params; pass nil for everything to keep this
 		// generic. Constructors that strictly require non-null args
 		// will need a follow-up to pick a no-arg variant.
-		ctor := nativeCall("C." + nm.Constructor)
+		ctor := nativeCall(nm.Constructor)
 		// gtk_application_window_new requires the GtkApplication;
 		// special-case so it gets the `app` parameter passed into
 		// BuildUI rather than nil.
 		if nm.Constructor == "gtk_application_window_new" {
-			ctor = nativeCall("C.gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
+			ctor = nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
 		}
 		return t.emitConstructorAssign(id, nm.CType, ctor)
 	}
@@ -252,16 +252,17 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}}
 }
 
-// gtk4ChildAppendFn returns the C function name (with C. prefix) for
-// adding a child to a container of the given C type.
+// gtk4ChildAppendFn returns the bare C function name for adding a
+// child to a container of the given C type. Callers pass the result
+// to nativeCall, which prepends the "C." prefix at render time.
 func gtk4ChildAppendFn(parentCType string) string {
 	switch parentCType {
 	case "GtkBox":
-		return "C.gtk_box_append"
+		return "gtk_box_append"
 	case "GtkScrolledWindow":
-		return "C.gtk_scrolled_window_set_child"
+		return "gtk_scrolled_window_set_child"
 	case "GtkWindow", "GtkApplicationWindow":
-		return "C.gtk_window_set_child"
+		return "gtk_window_set_child"
 	}
 	return ""
 }
@@ -269,7 +270,7 @@ func gtk4ChildAppendFn(parentCType string) string {
 func gtk4ChildRemoveFn(parentCType string) string {
 	switch parentCType {
 	case "GtkBox":
-		return "C.gtk_box_remove"
+		return "gtk_box_remove"
 	}
 	return ""
 }
@@ -372,12 +373,12 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	var valArg ir.Expr
 	switch setter {
 	case "gtk_check_button_set_active":
-		valArg = nativeCall("C.gboolean", value)
+		valArg = nativeCall("gboolean", value)
 	default:
-		valArg = nativeCall("C.CString", value)
+		valArg = nativeCall("CString", value)
 	}
 	cast := cgoCast(cType, t.qualifyNodeExpr(node))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("C."+setter, cast, valArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, cast, valArg)}}
 }
 
 // identBareName returns the unqualified name of an Ident, stripping any
@@ -444,7 +445,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	// C.sngl_connect(widget, "<signal>", C.int(len(snglCallbacks)-1))
 	widget := cgoCast("GtkWidget", t.qualifyNodeExpr(node))
-	signalCStr := nativeCall("C.CString", &ir.Literal{Type: ir.TypString, Raw: signal})
+	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: signal})
 	lenCall := &ir.Call{
 		Type: ir.TypInt,
 		Func: &ir.Func{Name: "len"},
@@ -455,9 +456,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Left:  lenCall,
 		Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
 	}
-	idxArg := nativeCall("C.int", idxExpr)
+	idxArg := nativeCall("int", idxExpr)
 	connectStmt := &ir.CallStmt{
-		Call: nativeCall("C.sngl_connect", widget, signalCStr, idxArg),
+		Call: nativeCall("sngl_connect", widget, signalCStr, idxArg),
 	}
 	return []ir.Stmt{registerStmt, connectStmt}
 }

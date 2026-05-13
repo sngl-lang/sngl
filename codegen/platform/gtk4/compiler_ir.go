@@ -507,7 +507,9 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 func gtk4EventGetter(cType, nodeID string) string {
 	switch cType {
 	case "GtkEntry":
-		return fmt.Sprintf("C.GoString(C.gtk_entry_get_text((*C.GtkEntry)(unsafe.Pointer(m.%s))))", nodeID)
+		// GTK4: GtkEntry implements GtkEditable; text accessor moved
+		// from gtk_entry_get_text (GTK3) to gtk_editable_get_text.
+		return fmt.Sprintf("C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.%s))))", nodeID)
 	case "GtkCheckButton":
 		return fmt.Sprintf("bool(C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.%s))))", nodeID)
 	}
