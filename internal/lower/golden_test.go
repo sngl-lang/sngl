@@ -46,6 +46,7 @@ func runGolden(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("caps header: %v", err)
 	}
+	wantErr := parseExpectedErrorHeader(string(arc.Comment))
 
 	var input, expected []byte
 	for _, f := range arc.Files {
@@ -61,7 +62,7 @@ func runGolden(t *testing.T, path string) {
 	if input == nil {
 		t.Fatal("missing input.sngl section")
 	}
-	if expected == nil && !*update {
+	if expected == nil && !*update && wantErr == "" {
 		t.Fatal("missing expected.sngl section (run with -update to seed)")
 	}
 
@@ -80,8 +81,18 @@ func runGolden(t *testing.T, path string) {
 		}
 	}
 
-	if err := Lower(pkg, caps, Options{}); err != nil {
-		t.Fatalf("lower: %v", err)
+	lowerErr := Lower(pkg, caps, Options{})
+	if wantErr != "" {
+		if lowerErr == nil {
+			t.Fatalf("expected lower error containing %q; got nil", wantErr)
+		}
+		if !strings.Contains(lowerErr.Error(), wantErr) {
+			t.Fatalf("expected lower error containing %q; got: %v", wantErr, lowerErr)
+		}
+		return
+	}
+	if lowerErr != nil {
+		t.Fatalf("lower: %v", lowerErr)
 	}
 
 	got := parser.Format(ir.Convert(pkg))
@@ -126,6 +137,22 @@ func stripAutoImports(s string) string {
 		out = append(out, line)
 	}
 	return strings.Join(out, "\n")
+}
+
+// parseExpectedErrorHeader reads an "expected_error:" line from the txtar
+// comment and returns the trimmed substring the test asserts is contained
+// in the lower error. Empty string means no error is expected.
+func parseExpectedErrorHeader(comment string) string {
+	for line := range strings.SplitSeq(comment, "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.TrimPrefix(line, "#")
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "expected_error:") {
+			continue
+		}
+		return strings.TrimSpace(strings.TrimPrefix(line, "expected_error:"))
+	}
+	return ""
 }
 
 func parseCapsHeader(comment string) (Caps, error) {

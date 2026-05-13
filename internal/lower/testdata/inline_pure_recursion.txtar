@@ -1,0 +1,10 @@
+caps:
+expected_error: inline cycle: foo → foo
+-- input.sngl --
+component foo() {
+    foo()
+}
+
+component main {
+    foo()
+}

@@ -34,6 +34,7 @@ func lowerInlinePure(pkg *ir.Package, caps Caps) error {
 		pkg:        pkg,
 		strictMode: caps.NoStdlibWrappers,
 		inFlight:   map[*ir.Component]bool{},
+		stack:      nil,
 	}
 	for _, comp := range pkg.Components {
 		body, err := st.inlineStmts(comp.Body)
@@ -56,6 +57,7 @@ type inlinePureState struct {
 	pkg        *ir.Package
 	strictMode bool
 	inFlight   map[*ir.Component]bool
+	stack      []*ir.Component // active inline chain, for cycle-error messages
 }
 
 // isPure reports whether a component is structurally pure (no internal
@@ -168,21 +170,21 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 	if strictApplies && !pure {
-		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s)", comp.Name, impurityReason(comp))
+		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
 	}
 
-	// Cycle check. In strict mode, an inline cycle is a hard error
-	// (platform-stdlib wrappers must not be recursive). In optimization
-	// mode, recursive pure user components are valid — we just leave the
-	// recursive callsite un-inlined.
+	// Cycle check. A pure-component recursion has no terminating shape
+	// (no Vars/Funcs/Timers means no base case), so we treat any cycle
+	// as a hard error regardless of mode.
 	if st.inFlight[comp] {
-		if strictApplies {
-			return nil, fmt.Errorf("inline cycle in component %q", comp.Name)
-		}
-		return []ir.Stmt{n}, nil
+		return nil, fmt.Errorf("inline cycle: %s at %s", st.cycleChain(comp), posOf(n.AST))
 	}
 	st.inFlight[comp] = true
-	defer delete(st.inFlight, comp)
+	st.stack = append(st.stack, comp)
+	defer func() {
+		delete(st.inFlight, comp)
+		st.stack = st.stack[:len(st.stack)-1]
+	}()
 
 	// Substitute.
 	body, err := st.substitute(comp, n)
@@ -192,6 +194,40 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Recurse on substituted body (the wrapper's body may itself contain
 	// pure-component calls that need inlining).
 	return st.inlineStmts(body)
+}
+
+// cycleChain renders the active inline stack joined with " → ", appending
+// the offending re-entry component to close the loop. Example: "Foo → Bar → Foo".
+func (st *inlinePureState) cycleChain(reentry *ir.Component) string {
+	parts := make([]string, 0, len(st.stack)+1)
+	for _, c := range st.stack {
+		parts = append(parts, c.Name)
+	}
+	parts = append(parts, reentry.Name)
+	return strings.Join(parts, " → ")
+}
+
+// posOf extracts a printable *ast.Pos from an ast.Stmt, or "<unknown>" if
+// the stmt is nil or has no position.
+func posOf(s ast.Stmt) string {
+	if s == nil {
+		return "<unknown>"
+	}
+	if p := s.StmtPos(); p != nil && p.IsValid() {
+		return p.String()
+	}
+	return "<unknown>"
+}
+
+// compPos returns a printable position for a component's declaration.
+func compPos(c *ir.Component) string {
+	if c == nil || c.AST == nil {
+		return "<unknown>"
+	}
+	if p := c.AST.StmtPos(); p != nil && p.IsValid() {
+		return p.String()
+	}
+	return "<unknown>"
 }
 
 // impurityReason returns a short string describing why comp is impure.
