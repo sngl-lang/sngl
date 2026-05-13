@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"go/format"
-	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -350,16 +349,13 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	// --- Phase 5: Append dynamic code to model.go ---
 	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs)
 	emitEventInvokers(&modelBuf, vc.eventInvokers)
-	emitPropertyReaders(&modelBuf, vc.nodeBindings)
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
 	if c.cfg.Main {
 		emitGTK4Main(&callbacksBuf, c.cfg)
 	}
 
-	// Resolve /*SNGLREACT:i*/ placeholders recorded during the visual
-	// walk once every node's bindings have been registered.
-	modelSrc = []byte(vc.resolveReactiveTokens(modelBuf.String()))
+	modelSrc = []byte(modelBuf.String())
 	return modelSrc, []byte(callbacksBuf.String()), nil
 }
 
@@ -548,75 +544,6 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
 		b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")
 		fmt.Fprintf(b, "\tC.sngl_emit(C.gpointer(unsafe.Pointer(m.%s)), sig)\n", inv.FieldName)
 		b.WriteString("}\n\n")
-	}
-}
-
-func sortedPropNames(m map[string]gtkBinding) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
-
-// emitPropertyReaders emits one Model method per (#id, propName) that
-// reads the underlying widget's current value via gtk_<widget>_get_<prop>.
-// Tests use them to inspect state after firing events: testlower
-// translates `c.<id>.<prop>` into `c.<id><Prop>()`. Only user-set ids
-// (synthetic __nN ids skipped) produce readers, and only props with a
-// registered getter in gtkGetterTable.
-func emitPropertyReaders(b *strings.Builder, bindings map[string]map[string]gtkBinding) {
-	// Stable iteration: sort by id, then prop, so repeated compiles
-	// produce identical output.
-	ids := make([]string, 0, len(bindings))
-	for id := range bindings {
-		if strings.HasPrefix(id, "__n") || id == "" {
-			continue
-		}
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	seen := map[string]bool{}
-	for _, id := range ids {
-		props := bindings[id]
-		names := make([]string, 0, len(props))
-		for p := range props {
-			names = append(names, p)
-		}
-		sort.Strings(names)
-		for _, prop := range names {
-			binding := props[prop]
-			if binding.Getter == "" {
-				continue
-			}
-			methodName := id + golang.ExportName(prop)
-			if seen[methodName] {
-				continue
-			}
-			seen[methodName] = true
-			retType := "string"
-			conv := "C.GoString"
-			if binding.ValueIRType != nil && binding.ValueIRType.Kind == ir.TypeBool {
-				retType = "bool"
-				conv = "" // gtk_*_get_active returns gboolean (C.int) — handle below
-			}
-			fmt.Fprintf(b, "// %s reads %q on #%s; for tests.\n", methodName, binding.Getter, id)
-			fmt.Fprintf(b, "func (m *Model) %s() %s {\n", methodName, retType)
-			cast := binding.GetterCType
-			if cast == "" {
-				cast = binding.CType
-			}
-			call := fmt.Sprintf("C.%s((*C.%s)(unsafe.Pointer(m.%s)))", binding.Getter, cast, binding.Field)
-			if conv != "" {
-				fmt.Fprintf(b, "\treturn %s(%s)\n", conv, call)
-			} else if retType == "bool" {
-				fmt.Fprintf(b, "\treturn %s != 0\n", call)
-			} else {
-				fmt.Fprintf(b, "\treturn %s\n", call)
-			}
-			b.WriteString("}\n\n")
-		}
 	}
 }
 
