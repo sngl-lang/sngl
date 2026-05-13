@@ -809,11 +809,16 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 	emitStmts := func(stmts []ir.Stmt) []ir.Stmt {
 		var out []ir.Stmt
 		for _, s := range stmts {
-			nodeInst, ok := s.(*ir.NodeInst)
-			if !ok {
-				panic(fmt.Sprintf("lower(reactivity): non-NodeInst stmt %T in reactive slot body — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)", s))
+			switch sx := s.(type) {
+			case *ir.NodeInst:
+				out = append(out, emitNodeAt(sx)...)
+			case *ir.If, *ir.For:
+				panic(fmt.Sprintf("lower(reactivity): nested %T in reactive slot body — nested structural reactivity is not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)", s))
+			default:
+				// Non-structural stmt (LocalVar/Assign/CallStmt/etc.) — pass through.
+				_ = sx
+				out = append(out, s)
 			}
-			out = append(out, emitNodeAt(nodeInst)...)
 		}
 		return out
 	}
