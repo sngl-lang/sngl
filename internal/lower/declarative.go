@@ -93,6 +93,14 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		case *ir.NodeInst:
 			st.observeID(n.ID)
 			st.scanStmts(n.Children)
+		case *ir.LocalVar:
+			// LocalVar __nN = lower.CreateNode(...) — already-lowered
+			// node from a sibling pass (e.g. reactivity's slot synth).
+			// Counted so a later declarative pass on comp/window bodies
+			// doesn't restart the counter and collide on field names.
+			if strings.HasPrefix(n.Name, "__n") {
+				st.observeID(n.Name)
+			}
 		case *ir.If:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
@@ -134,27 +142,49 @@ func (st *declarativeState) freshID() string {
 // emission and recursing into nested control-flow / handler bodies.
 // funcs is the owning Funcs slice for handler lifting.
 func (st *declarativeState) processStmts(stmts []ir.Stmt, funcs *[]*ir.Func) []ir.Stmt {
+	return st.processStmtsForParent(stmts, funcs, "")
+}
+
+// processStmtsForParent is the general form of processStmts: when parentID is
+// non-empty, NodeInsts encountered (directly or recursively in control-flow
+// bodies) emit an AppendChild call back to parentID after their own subtree
+// is emitted. This keeps if/for-nested children attached to the surrounding
+// container rather than orphaned as top-level widgets.
+func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.Func, parentID string) []ir.Stmt {
 	var out []ir.Stmt
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
+			if parentID != "" {
+				out = append(out, &ir.CallStmt{
+					Call: &ir.Call{
+						Type:     ir.TypVoid,
+						Receiver: lowerNSIdent(),
+						Func:     st.intrinsics["AppendChild"],
+						Args: []ir.CallArg{
+							{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+							{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+						},
+					},
+				})
+			}
 		case *ir.If:
-			n.Body = st.processStmts(n.Body, funcs)
-			n.Else = st.processStmts(n.Else, funcs)
+			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
+			n.Else = st.processStmtsForParent(n.Else, funcs, parentID)
 			out = append(out, n)
 		case *ir.For:
-			n.Body = st.processStmts(n.Body, funcs)
-			n.Else = st.processStmts(n.Else, funcs)
+			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
+			n.Else = st.processStmtsForParent(n.Else, funcs, parentID)
 			out = append(out, n)
 		case *ir.PlatformFilter:
-			n.Body = st.processStmts(n.Body, funcs)
+			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
 			out = append(out, n)
 		case *ir.SlotInst:
-			n.Children = st.processStmts(n.Children, funcs)
+			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
 			out = append(out, n)
 		case *ir.ErrorBoundary:
-			n.Children = st.processStmts(n.Children, funcs)
+			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
 			out = append(out, n)
 		case *ir.Window:
 			n.Body = st.processStmts(n.Body, &n.Funcs)
@@ -274,9 +304,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 				},
 			})
 		default:
-			// Non-NodeInst child (If/For/etc.): recurse via processStmts on
-			// a one-element slice. Result inherits parent's child position.
-			stmts = append(stmts, st.processStmts([]ir.Stmt{c}, funcs)...)
+			// Non-NodeInst child (If/For/etc.): recurse, but thread the
+			// surrounding parent id so any NodeInsts inside the body get
+			// appended back to this parent rather than orphaned.
+			stmts = append(stmts, st.processStmtsForParent([]ir.Stmt{c}, funcs, id)...)
 		}
 	}
 
@@ -311,5 +342,12 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, fun
 // re-render attaches handlers fresh each call; no separate closure
 // capture state is needed.
 func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
-	return newDeclarativeState(pkg, Caps{NoLambda: false})
+	st := newDeclarativeState(pkg, Caps{NoLambda: false})
+	// Seed the counter past every __nN already allocated package-wide
+	// — including those inside sibling slot Funcs created by earlier
+	// reactivity-pass invocations — so widget ids stay unique across
+	// the slot's body, the enclosing window/component body, and every
+	// other slot in the package.
+	st.seedCounter(pkg)
+	return st
 }
