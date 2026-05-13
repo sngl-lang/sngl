@@ -39,14 +39,6 @@ type irViewContext struct {
 	// emitter unions these with always-on imports for the import block.
 	imports map[string]bool
 
-	// localMode disables Model-field registration: render* helpers emit a
-	// local var declaration and return the bare name, so the same renderStmt
-	// machinery can be used inside for-loop bodies (init + updater) without
-	// allocating Model fields that would only retain the last iteration's
-	// widget. Updater registration is also suppressed: the parent updater
-	// re-renders the whole loop body each refresh.
-	localMode bool
-
 	// windowNames is the set of window Name values in this package. When
 	// non-nil and len > 1 (multi-window app), internal link hrefs that match
 	// a window name are rendered as navigate() calls instead of OS-browser
@@ -79,36 +71,7 @@ func (vc *irViewContext) line(format string, args ...any) {
 }
 
 func (vc *irViewContext) addField(name, goType string) {
-	if vc.localMode {
-		// Whole loop body re-renders into local vars per iteration; nothing
-		// to persist on the Model.
-		return
-	}
 	vc.widgetFields = append(vc.widgetFields, irWidgetField{name, goType})
-}
-
-// counterSnapshot captures the rolling per-kind counters so a block of code
-// can be re-rendered in a separate scope (init body vs updater body of a
-// for-loop) and produce identical local variable names.
-type counterSnapshot struct {
-	label, container int
-}
-
-func (vc *irViewContext) snapshotCounters() counterSnapshot {
-	return counterSnapshot{vc.labelCount, vc.containerCount}
-}
-
-func (vc *irViewContext) restoreCounters(s counterSnapshot) {
-	vc.labelCount, vc.containerCount = s.label, s.container
-}
-
-// withLocalMode runs fn inside a localMode scope, ensuring the flag is
-// restored even if a render path returns early.
-func (vc *irViewContext) withLocalMode(fn func()) {
-	prev := vc.localMode
-	vc.localMode = true
-	fn()
-	vc.localMode = prev
 }
 
 func (vc *irViewContext) exprDeps(expr ir.Expr) map[string]bool {
@@ -283,18 +246,13 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 	}
 	id := vc.labelCount
 	fieldName := fmt.Sprintf("%s%d", prefix, id)
-	// target is the expression for the widget reference. Three modes:
+	// target is the expression for the widget reference. Two modes:
 	//   - Transient: not stored, doesn't consume an id; assign to resultVar.
-	//   - localMode (in for-loop body): emit a local var; no Model field.
 	//   - default: store as Model field; reference as m.<fieldName>.
 	var target string
 	switch {
 	case bp.Transient:
 		target = resultVar
-	case vc.localMode:
-		vc.labelCount++
-		vc.line("var %s %s", fieldName, bp.Constructor.GoType)
-		target = fieldName
 	default:
 		vc.labelCount++
 		vc.addField(fieldName, bp.Constructor.GoType)
@@ -429,7 +387,7 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 		var bindVar string
 		if b.BindParam != "" {
 			bindVar = extractIRAssignTarget(h.Func.Block)
-			if bindVar != "" && b.SyncTarget != "" && !vc.localMode {
+			if bindVar != "" && b.SyncTarget != "" {
 				vc.entrySync = append(vc.entrySync, entrySyncRec{
 					varName:   bindVar,
 					fieldName: fieldName,
