@@ -98,13 +98,6 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) doRefresh() {
-{{- range .UpdaterNames}}
-	m.{{.}}()
-{{- end}}
-	/*REACTIVE_REFRESH*/
-}
-
 {{range .Computeds}}
 func (m *Model) {{.Name}}() {{.GoType}} {
 	return {{.Body}}
@@ -119,7 +112,6 @@ func (m *Model) {{.Getter}}() {{.GoType}} {
 
 func (m *Model) Set{{.Getter}}(v {{.GoType}}) {
 	m.{{.Name}} = v
-{{ .SetterExtra -}}
 }
 
 {{end}}{{end}}

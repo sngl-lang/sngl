@@ -39,7 +39,6 @@ type templateData struct {
 	Binds        []bindData
 	Computeds    []computedData
 	WidgetFields []widgetFieldData
-	UpdaterNames []string
 	FunctionCode string
 	Imports      map[string]bool
 }
@@ -59,7 +58,6 @@ type bindData struct {
 	GoType      string
 	InitVal     string
 	Getter      string
-	SetterExtra string
 	NoAccessors bool // skip emitting getter/setter (e.g. synthesized __slot<N>, __root)
 }
 
