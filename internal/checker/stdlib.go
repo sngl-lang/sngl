@@ -310,15 +310,19 @@ func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 	return pkg
 }
 
-// mergePlatformExtensions walks the active platform's Package() docs for
-// `component sngl.X` declarations, locates the corresponding stdlib component,
-// and writes the matching `platform <name>` body into the stdlib
-// *ir.Component.AST.Body. The component is processed later by the normal
-// checker passes (its body is now non-empty).
+// mergePlatformExtensions walks every registered platform's Package() docs
+// for `component sngl.X` declarations and collects the checked IR body of
+// each `platform <name> { ... }` block into the stdlib *ir.Component's
+// PlatformBodies map (keyed by platform name).
 //
-// Pre-flight: extension merge requires exactly one registered platform. Zero
-// platforms is a no-op (test/tooling mode). More than one is a checker error
-// — tooling that reasons across platforms should run the checker per-platform.
+// The checker is platform-agnostic: it does not know or care which platform
+// will be the active build target. The lowering pass passPlatformExtensionBody
+// reads PlatformBodies[opts.Platform] and swaps it into Component.Body before
+// any other pass runs.
+//
+// Duplicate platform entries for the same stdlib X (e.g., two registered
+// platforms both shipping `component sngl.text { platform foo { ... } }`)
+// are an error.
 //
 // Note: this pass intentionally only acts on the new form (`HasParens=false`).
 // Legacy `component sngl.X() { body }` declarations in platform .sngl files
@@ -327,82 +331,89 @@ func (c *checker) mergePlatformExtensions() {
 	if len(c.cfg.Platforms) == 0 {
 		return
 	}
-	// Pre-flight: only one platform may be registered when any platform ships
-	// new-form extension declarations. Walk every registered platform's docs
-	// looking for new-form `sngl.X` decls; if any exist and len > 1, error.
-	// (Pre-Phase-C this is essentially a no-op because platform .sngl files
-	// still use the legacy `component sngl.X() { body }` form.)
-	if len(c.cfg.Platforms) > 1 {
-		hasExtension := false
-	scan:
-		for _, p := range c.cfg.Platforms {
-			for _, doc := range p.Package() {
-				for _, stmt := range doc.Stmts {
-					decl, ok := stmt.(*ast.ComponentDecl)
-					if !ok || decl.HasParens {
-						continue
-					}
-					if strings.HasPrefix(decl.Name, "sngl.") {
-						hasExtension = true
-						break scan
-					}
-				}
-			}
-		}
-		if hasExtension {
-			c.error(ast.Pos{}, "component extensions require exactly one registered platform (got %d)", len(c.cfg.Platforms))
-		}
-		return
-	}
-	p := c.cfg.Platforms[0]
-	platformName := p.PlatformIdentifier()
-	for _, doc := range p.Package() {
-		for _, stmt := range doc.Stmts {
-			decl, ok := stmt.(*ast.ComponentDecl)
-			if !ok {
-				continue
-			}
-			if decl.HasParens {
-				// Legacy form — skip until Phase C rewrites.
-				continue
-			}
-			if !strings.HasPrefix(decl.Name, "sngl.") {
-				continue
-			}
-			local := strings.TrimPrefix(decl.Name, "sngl.")
-			stdSym, ok := c.symtab.Comps[local]
-			if !ok {
-				c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
-				continue
-			}
-			stdComp, ok := stdSym.(*ir.Component)
-			if !ok {
-				continue
-			}
-			// Find the matching platform block within the extension body.
-			var matched *ast.StmtBlock
-			for i := range decl.Body.Stmts {
-				pl, ok := decl.Body.Stmts[i].(*ast.PlatformStmt)
+	for _, p := range c.cfg.Platforms {
+		for _, doc := range p.Package() {
+			for _, stmt := range doc.Stmts {
+				decl, ok := stmt.(*ast.ComponentDecl)
 				if !ok {
 					continue
 				}
-				if pl.Platform == platformName {
-					matched = &pl.Body
-					break
+				if decl.HasParens {
+					// Legacy form — skip until Phase C rewrites.
+					continue
+				}
+				if !strings.HasPrefix(decl.Name, "sngl.") {
+					continue
+				}
+				local := strings.TrimPrefix(decl.Name, "sngl.")
+				stdSym, ok := c.symtab.Comps[local]
+				if !ok {
+					c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
+					continue
+				}
+				stdComp, ok := stdSym.(*ir.Component)
+				if !ok {
+					continue
+				}
+				// Walk each platform block; collect every (platformName → body)
+				// pairing this decl declares. Duplicate keys across all
+				// registered platforms for the same stdlib component error.
+				for i := range decl.Body.Stmts {
+					pl, ok := decl.Body.Stmts[i].(*ast.PlatformStmt)
+					if !ok {
+						continue
+					}
+					if stdComp.PlatformBodies == nil {
+						stdComp.PlatformBodies = map[string][]ir.Stmt{}
+					}
+					if _, dup := stdComp.PlatformBodies[pl.Platform]; dup {
+						c.error(pl.Pos, "component sngl.%s has duplicate platform block for %q", local, pl.Platform)
+						continue
+					}
+					// Reserve the key first so duplicate-detection works even
+					// when the body check appends nothing (e.g., empty body).
+					stdComp.PlatformBodies[pl.Platform] = nil
+					c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
+						comp:     stdComp,
+						platform: pl.Platform,
+						body:     pl.Body,
+					})
 				}
 			}
-			if matched == nil {
-				continue // no implementation for this platform; component stays abstract
-			}
-			// Splice the platform body into the stdlib component's AST. The
-			// IR Body itself is populated when checkComponentBody runs on this
-			// component (which happens at pass2 time via the dedicated stdlib
-			// extension-check loop in Check()).
-			if stdComp.AST != nil {
-				stdComp.AST.Body = *matched
-			}
-			c.mergedExtensions = append(c.mergedExtensions, stdComp)
 		}
+	}
+}
+
+// pendingExtension records a single `platform <name> { ... }` body that
+// needs to be checked into IR and stashed under stdComp.PlatformBodies.
+// Body-checking is deferred until after user pass1 so user-declared symbols
+// are in scope when the platform body resolves identifiers.
+type pendingExtension struct {
+	comp     *ir.Component
+	platform string
+	body     ast.StmtBlock
+}
+
+// checkPendingExtensions runs after user pass1. For each pending extension,
+// temporarily install the platform block as the stdlib component's AST.Body,
+// invoke checkComponentBody, capture the resulting IR Body into the
+// PlatformBodies map, and restore the component's Body slot for the next
+// extension (or the final pass2). The stdlib component's AST.Body and Body
+// are left empty after this routine — the active platform's IR body is
+// swapped in by lower's passPlatformExtensionBody.
+func (c *checker) checkPendingExtensions() {
+	if len(c.pendingExtensions) == 0 {
+		return
+	}
+	for _, pe := range c.pendingExtensions {
+		savedAST := pe.comp.AST.Body
+		savedBody := pe.comp.Body
+		pe.comp.AST.Body = pe.body
+		pe.comp.Body = nil
+		c.checkComponentBody(pe.comp)
+		pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+		pe.comp.AST.Body = savedAST
+		pe.comp.Body = savedBody
 	}
 }
 

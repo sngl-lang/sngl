@@ -52,12 +52,12 @@ type ImportResolver interface {
 func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(doc, cfg)
 	c.pass1()
-	// Body-check merged stdlib extensions after user pass1 so that
+	// Body-check pending stdlib platform extensions after user pass1 so that
 	// user-declared symbols are in scope when the platform body resolves
-	// identifiers. The merge itself (AST splicing) happened in newChecker.
-	for _, comp := range c.mergedExtensions {
-		c.checkComponentBody(comp)
-	}
+	// identifiers. Collection (the AST walk that enumerates pending bodies)
+	// happened in newChecker; checkPendingExtensions populates each stdlib
+	// Component's PlatformBodies map.
+	c.checkPendingExtensions()
 	c.pass2()
 	c.analyzeErrors()
 	c.analyzeAsync()
@@ -129,10 +129,11 @@ type checker struct {
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
 
-	// Stdlib components whose AST.Body was spliced by mergePlatformExtensions.
-	// Their IR Body is populated after user pass1 (so platform-body identifiers
-	// resolve against the full scope chain) and before user pass2.
-	mergedExtensions []*ir.Component
+	// Platform extension bodies enqueued by mergePlatformExtensions for IR
+	// check after user pass1 (so platform-body identifiers can resolve against
+	// the full user scope chain). Each entry produces one
+	// stdComp.PlatformBodies[platformName] = checkedIRBody mapping.
+	pendingExtensions []pendingExtension
 
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the
