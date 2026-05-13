@@ -53,12 +53,14 @@ This spec defines the real mechanism behind `component sngl.X { ... }`.
   the same treatment.
 - Allowing extension components to add new props/events/children types.
   Reject at the checker; tracked separately if a use case emerges.
-- Multi-active-platform builds. Exactly one platform must be
-  registered in `cfg.Platforms` at extension-merge time. Zero or
-  more-than-one is a checker error: `component extensions require
-  exactly one registered platform (got %d)`. Tooling that needs to
-  reason across platforms without merging should run the checker
-  per-platform.
+- Multi-active-platform builds at checker level. The checker is
+  platform-agnostic: it walks **all** registered platforms'
+  `Package()` docs and collects `sngl.X` extension bodies onto each
+  stdlib component as `map[platformName]→body`. Duplicate platform
+  entries for the same stdlib X across two different platform packages
+  is an error. The lowering pass (which already operates per-platform)
+  picks the active platform's body from the map and swaps it into the
+  component before the rest of lowering runs.
 - Cross-package extensions: only `sngl.X` (stdlib namespace) extensions
   are supported. `othernamespace.X` is rejected.
 
@@ -78,36 +80,64 @@ is already parsed:
 What's missing is *validation* (props/children must be omitted; body
 must consist of platform blocks). That lives in the checker (Section 3).
 
-### 2. Extension merge
+### 2. Extension collection + lowering swap
 
-In `loadStdlib`, after `registerStdlibComponent` populates the abstract
-stdlib component with props/events/ChildrenType, the loader processes
-**platform packages** (currently consumed only for `Options` lookup and
-namespace `Resolve`). Add an extension-merge pass:
+Split into two phases — checker collects, lower swaps.
 
-For each platform `p` in `cfg.Platforms`:
+#### Checker-side collection
+
+Add to `*ir.Component`:
+
+```go
+// PlatformBodies maps platformName → checked body stmts for sngl.X
+// extensions. Populated by mergePlatformExtensions; consumed by the
+// lowering pass `passPlatformExtensionBody` which swaps the active
+// platform's body into Component.Body at lower start.
+PlatformBodies map[string][]ir.Stmt
+```
+
+In `mergePlatformExtensions`, walk **every** registered platform:
 
 1. Parse `p.Package()` documents.
 2. For every top-level `*ast.ComponentDecl` whose Name has the form
-   `sngl.X`:
+   `sngl.X` and `HasParens == false` (new-form only):
    - Look up `c.symtab.Comps["X"]`. Must exist; otherwise checker error
      `extension "sngl.X" references unknown stdlib component`.
-   - Validate `decl.Props` empty + `decl.ChildrenType` nil (Section 3).
-   - Walk `decl.Body.Stmts` for `*ast.PlatformStmt` entries. For the
-     entry where `platStmt.Platform == p.PlatformIdentifier()`, take
-     `platStmt.Body` and **assign it as the stdlib component's
-     AST.Body**, then re-run `checkComponentBody` for that component
-     under the platform's resolution scope.
-   - Skip non-matching platform blocks (the `passPlatform` lowering
-     would drop them anyway, but doing it here keeps the IR clean).
-3. If no `platform <p>` block matches, the stdlib component keeps its
-   original (empty) body. This is fine: components a platform doesn't
-   implement remain abstract; calling them errors at lower time
-   (`component "X" has no platform implementation for "<p>"`).
+   - Walk `decl.Body.Stmts` for `*ast.PlatformStmt` entries:
+     - For each `platStmt`:
+       - If `stdComp.PlatformBodies[platStmt.Platform]` already set,
+         error: `component sngl.X has duplicate platform block for %q`.
+       - Otherwise temporarily set `stdComp.AST.Body = platStmt.Body`,
+         run `checkComponentBody(stdComp)`, capture the resulting IR
+         body into `stdComp.PlatformBodies[platStmt.Platform]`.
+   - Validation of "body must contain only platform blocks" already
+     happens in `registerComponent` per Section 3; merge can assume
+     well-formed.
 
-The extension merge runs **before** user-package processing, so user
-code's bare-name resolution lands on the now-body-bearing stdlib
-component.
+The collection step is idempotent and platform-agnostic. Checker
+output (the `*ir.Package`) carries `PlatformBodies` for every stdlib
+component that has at least one extension.
+
+#### Lower-side swap
+
+Add a new pass `passPlatformExtensionBody`, registered first in the
+lowering order (before any pass that walks component bodies). The pass
+reads `Options.Platform` (a new field — the active platform name) and
+for each `*ir.Component` with a non-nil `PlatformBodies`, sets
+`comp.Body = comp.PlatformBodies[opts.Platform]`. If no entry exists
+for the active platform, leaves `comp.Body` empty — the original
+behavior for "platform doesn't implement this stdlib component."
+
+`Options.Platform` is set by the build driver from
+`PlatformGenerator.PlatformIdentifier()`. CLI tools (LSP, format,
+multi-platform discovery) that don't have a specific active platform
+either:
+- pass `Options.Platform == ""` (pass becomes a no-op, components keep
+  empty bodies — same as pre-Plan-H behavior), or
+- run Lower per-platform with the relevant identifier each time.
+
+This keeps the checker call platform-agnostic and avoids any
+multi-platform-registration error.
 
 #### Resolution scope for platform bodies
 
