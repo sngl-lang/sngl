@@ -2225,6 +2225,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
 	var comp *ir.Component
+	// qualifiedLocal is the local part of a qualified name, used as the IR
+	// NodeInst.Name (e.g. "html.input" → "input") so downstream codegen sees
+	// the native tag, not the namespace-qualified form.
+	var qualifiedLocal string
 	if ns, field, ok := strings.Cut(name, "."); ok {
 		if sym, sok := c.scope.Lookup(ns); sok {
 			if nsSym, nok := sym.(*ir.Namespace); nok {
@@ -2235,6 +2239,19 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 						}
 						if co, ok := fsym.(*ir.Component); ok {
 							comp = co
+							qualifiedLocal = field
+						}
+					}
+				}
+				// Fall back to the namespace's platform Resolve (e.g.
+				// html.input → raw HTML <input> component; gtk4.GtkBox →
+				// GIR-resolved component). Lets platform-extension bodies
+				// reference native tags qualified by platform name.
+				if comp == nil && nsSym.Resolve != nil {
+					if resolved := nsSym.Resolve(field); resolved != nil {
+						if co, ok := resolved.(*ir.Component); ok {
+							comp = co
+							qualifiedLocal = field
 						}
 					}
 				}
@@ -2309,9 +2326,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 	}
 
+	emitName := name
+	if qualifiedLocal != "" {
+		emitName = qualifiedLocal
+	}
 	return &ir.NodeInst{
 		AST:       vn,
-		Name:      name,
+		Name:      emitName,
 		Component: comp,
 		Props:     props,
 		Handlers:  handlers,
