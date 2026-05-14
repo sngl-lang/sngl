@@ -21,254 +21,186 @@ struct Options {
 
 // --- Core Layout ---
 
-component sngl.vbox {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.vbox() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.hbox {
-    platform bubbletea {
-        HJoin(join="horizontal") {
-            slot
-        }
+component sngl.hbox() {
+    HJoin(join="horizontal") {
+        slot
     }
 }
 
-component sngl.stack {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.stack() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.spacer {
-    platform bubbletea {
-        Styled(content="") {}
-    }
+component sngl.spacer() {
+    Styled(content="") {}
 }
 
-component sngl.scroll {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.scroll() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text {
-    platform bubbletea {
-        Styled(content=value) {}
-    }
+component sngl.text() {
+    Styled(content=value) {}
 }
 
-component sngl.button {
-    platform bubbletea {
-        Styled(content=text, focusable=true) {}
-    }
+component sngl.button() {
+    Styled(content=text, focusable=true) {}
 }
 
-component sngl.image {
-    platform bubbletea {
-        Styled(content="[image]") {}
-    }
+component sngl.image() {
+    Styled(content="[image]") {}
 }
 
-component sngl.input {
-    platform bubbletea {
-        TextInput(
-            pkg="charm.land/bubbles/v2/textinput",
-            modelType="textinput.Model",
-            modelNew="textinput.New()",
-            modelView=".View()",
-            placeholder=placeholder
-        ) {}
-    }
+component sngl.input() {
+    TextInput(
+        pkg="charm.land/bubbles/v2/textinput",
+        modelType="textinput.Model",
+        modelNew="textinput.New()",
+        modelView=".View()",
+        placeholder=placeholder
+    ) {}
 }
 
-component sngl.checkbox {
-    platform bubbletea {
-        Styled(content=label, focusable=true) {}
-    }
+component sngl.checkbox() {
+    Styled(content=label, focusable=true) {}
 }
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.radio() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.toggle {
-    platform bubbletea {
-        Styled(content=label, focusable=true) {}
-    }
+component sngl.toggle() {
+    Styled(content=label, focusable=true) {}
 }
 
-component sngl.select {
-    platform bubbletea {
-        Styled(content=value, focusable=true) {}
-    }
+component sngl.select() {
+    Styled(content=value, focusable=true) {}
 }
 
-component sngl.textarea {
-    platform bubbletea {
-        Styled(content=value, focusable=true) {}
-    }
+component sngl.textarea() {
+    Styled(content=value, focusable=true) {}
 }
 
-component sngl.datepicker {
-    platform bubbletea {
-        Styled(content=value) {}
-    }
+component sngl.datepicker() {
+    Styled(content=value) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress {
-    platform bubbletea {
-        Styled(content="") {}
+component sngl.progress() {
+    Styled(content="") {}
+}
+
+component sngl.spinner() {
+    Styled(content="⣾") {}
+}
+
+component sngl.badge() {
+    Styled(content=value) {}
+}
+
+component sngl.divider() {
+    Styled(content="─") {}
+}
+
+component sngl.card() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.spinner {
-    platform bubbletea {
-        Styled(content="⣾") {}
+component sngl.chip() {
+    Styled(content=label, focusable=true) {}
+}
+
+component sngl.link() {
+    Styled(content=text) {}
+}
+
+component sngl.tabs() {
+    HJoin(join="horizontal") {
+        slot
     }
 }
 
-component sngl.badge {
-    platform bubbletea {
-        Styled(content=value) {}
-    }
-}
-
-component sngl.divider {
-    platform bubbletea {
-        Styled(content="─") {}
-    }
-}
-
-component sngl.card {
-    platform bubbletea {
+component sngl.modal() {
+    if open {
         VJoin(join="vertical") {
             slot
         }
     }
 }
 
-component sngl.chip {
-    platform bubbletea {
-        Styled(content=label, focusable=true) {}
+component sngl.drawer() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.link {
-    platform bubbletea {
-        Styled(content=text) {}
+component sngl.tooltip() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.tabs {
-    platform bubbletea {
-        HJoin(join="horizontal") {
-            slot
-        }
+component sngl.popover() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.modal {
-    platform bubbletea {
-        if open {
-            VJoin(join="vertical") {
-                slot
-            }
-        }
+component sngl.splitview() {
+    HJoin(join="horizontal") {
+        slot
     }
 }
 
-component sngl.drawer {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.table() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.tooltip {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.tree() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.popover {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.menu() {
+    VJoin(join="vertical") {
+        slot
     }
 }
 
-component sngl.splitview {
-    platform bubbletea {
-        HJoin(join="horizontal") {
-            slot
-        }
+component sngl.menubar() {
+    HJoin(join="horizontal") {
+        slot
     }
 }
 
-component sngl.table {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
+component sngl.toolbar() {
+    HJoin(join="horizontal") {
+        slot
     }
 }
 
-component sngl.tree {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
-    }
-}
-
-component sngl.menu {
-    platform bubbletea {
-        VJoin(join="vertical") {
-            slot
-        }
-    }
-}
-
-component sngl.menubar {
-    platform bubbletea {
-        HJoin(join="horizontal") {
-            slot
-        }
-    }
-}
-
-component sngl.toolbar {
-    platform bubbletea {
-        HJoin(join="horizontal") {
-            slot
-        }
-    }
-}
-
-component sngl.avatar {
-    platform bubbletea {
-        Styled(content=initials) {}
-    }
+component sngl.avatar() {
+    Styled(content=initials) {}
 }

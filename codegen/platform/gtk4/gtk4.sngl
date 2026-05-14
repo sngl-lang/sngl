@@ -23,18 +23,6 @@ component sngl.button {
     }
 }
 
-component sngl.label {
-    platform gtk4 {
-        GtkLabel(label=value) {}
-    }
-}
-
-component sngl.entry {
-    platform gtk4 {
-        GtkEntry(text=value, @changed { @input(event) }) {}
-    }
-}
-
 component sngl.checkbox {
     platform gtk4 {
         GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
@@ -73,12 +61,3 @@ component sngl.scroll {
     }
 }
 
-// --- Window ---
-
-component sngl.window {
-    platform gtk4 {
-        GtkApplicationWindow(title=title, defaultWidth=width, defaultHeight=height) {
-            slot
-        }
-    }
-}

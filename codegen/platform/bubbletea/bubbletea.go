@@ -35,9 +35,13 @@ func (g *Generator) PlatformIdentifier() string { return "bubbletea" }
 func (g *Generator) Description() string {
 	return "Terminal UI, written in Go using the Bubble Tea framework."
 }
-func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
-func (g *Generator) Package() []*ast.Document               { return pkgDocs }
-func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
+func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) Package() []*ast.Document { return pkgDocs }
+func (g *Generator) Resolve(identifier string) ir.Symbol {
+	// Bubbletea accepts any tag name; its codegen reads metadata directly
+	// from blueprint .sngl bodies (VJoin/HJoin/Styled/TextInput).
+	return &ir.Component{Name: identifier}
+}
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
 

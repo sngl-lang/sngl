@@ -3,23 +3,23 @@
 
 sngl dump lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps:'
-stdout 'passes: InlinePure'
+stdout 'passes: PlatformExtensionBody . InlinePure'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoReactivity,NoStdlibWrappers,NoDeclarative'
-stdout 'passes: NoReactivity . InlinePure . NoDeclarative'
+stdout 'passes: PlatformExtensionBody . NoReactivity . InlinePure . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: NoAsyncReactive . NoReactivity . InlinePure'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoReactivity . InlinePure'
 
 sngl dump lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: NoAsyncReactive . NoReactivity . InlinePure'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoReactivity . InlinePure'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps:'
-stdout 'passes: InlinePure'
+stdout 'passes: PlatformExtensionBody . InlinePure'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump lowered --lang go --platform bubbletea --after NoBogus main.sngl

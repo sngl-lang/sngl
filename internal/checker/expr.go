@@ -2295,7 +2295,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	children := c.checkBlockIR(&vn.Block)
-	if comp != nil && len(children) > 0 && comp.ChildrenType == nil {
+	if comp != nil && len(children) > 0 && comp.ChildrenType == nil && comp.AST != nil {
 		c.error(vn.Pos, "component %s does not accept children", comp.Name)
 	}
 	props, handlers := c.checkAndSplitArgs(vn.Args, comp)
@@ -2360,6 +2360,13 @@ func componentEventType(comp *ir.Component, name string) *ir.Type {
 
 // validateVisualNodeProps validates props and events against a component definition.
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
+	// Skip validation for platform-synthesized components (e.g. raw HTML tags
+	// or bubbletea/fyne blueprint marker tags). These are created on the fly
+	// by Platform.Resolve and have no declared Props/Events — the platform
+	// codegen reads their args directly.
+	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
+		return
+	}
 	// Validate args match props/events.
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {

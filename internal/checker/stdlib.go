@@ -408,10 +408,29 @@ func (c *checker) checkPendingExtensions() {
 	for _, pe := range c.pendingExtensions {
 		savedAST := pe.comp.AST.Body
 		savedBody := pe.comp.Body
+		savedPlatform := c.currentPlatform
+		// Snapshot diagnostics so errors from non-active platform bodies
+		// (e.g. fyne/bubbletea blueprint-DSL shapes that aren't real SNGL
+		// code) don't bubble out as user-visible compile errors. The body
+		// is only stored on PlatformBodies if its check produced no new
+		// errors — otherwise we drop it so passInlinePure won't substitute
+		// a half-checked body. The active platform's translator falls
+		// back to its legacy code path (gtk4 tag tables, fyne blueprint
+		// loader) when the body is absent.
+		savedDiags := c.diags
 		pe.comp.AST.Body = pe.body
 		pe.comp.Body = nil
+		c.currentPlatform = pe.platform
 		c.checkComponentBody(pe.comp)
-		pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+		c.currentPlatform = savedPlatform
+		bodyOK := len(c.diags) == len(savedDiags)
+		// Discard any diagnostics produced while checking this body.
+		c.diags = savedDiags
+		if bodyOK {
+			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+		} else {
+			delete(pe.comp.PlatformBodies, pe.platform)
+		}
 		pe.comp.AST.Body = savedAST
 		pe.comp.Body = savedBody
 	}

@@ -38,521 +38,453 @@ struct Options {
 
 // --- VBox-style containers ---
 
-component sngl.vbox {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component vbox() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.stack {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component stack() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.scroll {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVScroll",
-                goType="*container.Scroll",
-                args=[Raw{value=`container.NewVBox(${children}...)`}],
-            },
-            transient=true,
-        ) {}
-    }
+component scroll() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVScroll",
+            goType="*container.Scroll",
+            args=[Raw{value=`container.NewVBox(${children}...)`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.card {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component card() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.radio {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component radio() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.drawer {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component drawer() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.tooltip {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component tooltip() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.popover {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component popover() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.table {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component table() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.tree {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component tree() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.menu {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component menu() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewVBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 // --- HBox-style containers ---
 
-component sngl.hbox {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewHBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component hbox() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.tabs {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewHBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component tabs() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.splitview {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewHBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component splitview() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.menubar {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewHBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component menubar() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.toolbar {
-    platform fyne {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewHBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-        ) {}
-    }
+component toolbar() {
+    Container(
+        constructor=Constructor{
+            goFn="container.NewHBox",
+            goType="*fyne.Container",
+            args=[Raw{value=`${children}...`}],
+        },
+        transient=true,
+    ) {}
 }
 
 // --- Spacer ---
 
-component sngl.spacer {
-    platform fyne {
-        Spacer(
-            constructor=Constructor{
-                goFn="layout.NewSpacer",
-                goType="fyne.CanvasObject",
-                imports=["fyne.io/fyne/v2/layout"],
-                args=[],
-            },
-            transient=true,
-        ) {}
-    }
+component spacer() {
+    Spacer(
+        constructor=Constructor{
+            goFn="layout.NewSpacer",
+            goType="fyne.CanvasObject",
+            imports=["fyne.io/fyne/v2/layout"],
+            args=[],
+        },
+        transient=true,
+    ) {}
 }
 
 // --- Label-rendered widgets ---
 
-component sngl.text {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Prop{name="value", transform="fmt.Sprint"}],
-            },
-            bindings=[
-                Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-            ],
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component text() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.badge {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Prop{name="value", transform="fmt.Sprint"}],
-            },
-            bindings=[
-                Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-            ],
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component badge() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.divider {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Prop{name="label", transform="fmt.Sprint"}],
-            },
-            bindings=[
-                Reactive{prop="label", target=".SetText", transform="fmt.Sprint"},
-            ],
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component divider() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="label", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="label", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.progress {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Prop{name="value", transform="fmt.Sprint"}],
-            },
-            bindings=[
-                Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-            ],
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component progress() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Prop{name="value", transform="fmt.Sprint"}],
+        },
+        bindings=[
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+        ],
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.spinner {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Raw{value=`fmt.Sprint("")`}],
-            },
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component spinner() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`fmt.Sprint("")`}],
+        },
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.avatar {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Raw{value=`fmt.Sprint("")`}],
-            },
-            fieldPrefix="label",
-            updaterPrefix="updateLabel",
-        ) {}
-    }
+component avatar() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`fmt.Sprint("")`}],
+        },
+        fieldPrefix="label",
+        updaterPrefix="updateLabel",
+    ) {}
 }
 
-component sngl.chip {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Raw{value=`""`}],
-            },
-            transient=true,
-        ) {}
-    }
+component chip() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`""`}],
+        },
+        transient=true,
+    ) {}
 }
 
-component sngl.datepicker {
-    platform fyne {
-        Label(
-            constructor=Constructor{
-                goFn="widget.NewLabel",
-                goType="*widget.Label",
-                args=[Raw{value=`""`}],
-            },
-            transient=true,
-        ) {}
-    }
+component datepicker() {
+    Label(
+        constructor=Constructor{
+            goFn="widget.NewLabel",
+            goType="*widget.Label",
+            args=[Raw{value=`""`}],
+        },
+        transient=true,
+    ) {}
 }
 
 // --- Button ---
 
-component sngl.button {
-    platform fyne {
-        Button(
-            constructor=Constructor{
-                goFn="widget.NewButton",
-                goType="*widget.Button",
-                args=[
-                    Prop{name="text", transform="fmt.Sprint"},
-                    Event{name="click", signature="func()"},
-                ],
-            },
-            bindings=[
-                Reactive{prop="text", target=".SetText", transform="fmt.Sprint"},
-                Event{prop="click", target=".OnTapped", signature="func()"},
+component button() {
+    Button(
+        constructor=Constructor{
+            goFn="widget.NewButton",
+            goType="*widget.Button",
+            args=[
+                Prop{name="text", transform="fmt.Sprint"},
+                Event{name="click", signature="func()"},
             ],
-            fieldPrefix="btn",
-        ) {}
-    }
+        },
+        bindings=[
+            Reactive{prop="text", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="click", target=".OnTapped", signature="func()"},
+        ],
+        fieldPrefix="btn",
+    ) {}
 }
 
 // --- Hyperlink ---
 
-component sngl.link {
-    platform fyne {
-        Hyperlink(
-            constructor=Constructor{
-                goFn="widget.NewHyperlink",
-                goType="*widget.Hyperlink",
-                imports=["net/url"],
-                prelude=[`linkURL${id}, _ := url.Parse(${href})`],
-                args=[
-                    Prop{name="text"},
-                    Raw{value=`linkURL${id}`},
-                ],
-            },
-            fieldPrefix="link",
-        ) {}
-    }
+component link() {
+    Hyperlink(
+        constructor=Constructor{
+            goFn="widget.NewHyperlink",
+            goType="*widget.Hyperlink",
+            imports=["net/url"],
+            prelude=[`linkURL${id}, _ := url.Parse(${href})`],
+            args=[
+                Prop{name="text"},
+                Raw{value=`linkURL${id}`},
+            ],
+        },
+        fieldPrefix="link",
+    ) {}
 }
 
 // --- Image ---
 
-component sngl.image {
-    platform fyne {
-        Image(
-            constructor=Constructor{
-                goFn="canvas.NewImageFromURI",
-                goType="*canvas.Image",
-                imports=["fyne.io/fyne/v2/canvas"],
-                args=[Raw{value=`nil /* TODO: ${src} */`}],
-            },
-            transient=true,
-        ) {}
-    }
+component image() {
+    Image(
+        constructor=Constructor{
+            goFn="canvas.NewImageFromURI",
+            goType="*canvas.Image",
+            imports=["fyne.io/fyne/v2/canvas"],
+            args=[Raw{value=`nil /* TODO: ${src} */`}],
+        },
+        transient=true,
+    ) {}
 }
 
 // --- Checkbox / Toggle ---
 
-component sngl.checkbox {
-    platform fyne {
-        Check(
-            constructor=Constructor{
-                goFn="widget.NewCheck",
-                goType="*widget.Check",
-                args=[
-                    Prop{name="label", transform="fmt.Sprint"},
-                    Event{name="change", signature="func(b bool)"},
-                ],
-            },
-            fieldPrefix="check",
-        ) {}
-    }
+component checkbox() {
+    Check(
+        constructor=Constructor{
+            goFn="widget.NewCheck",
+            goType="*widget.Check",
+            args=[
+                Prop{name="label", transform="fmt.Sprint"},
+                Event{name="change", signature="func(b bool)"},
+            ],
+        },
+        fieldPrefix="check",
+    ) {}
 }
 
-component sngl.toggle {
-    platform fyne {
-        Check(
-            constructor=Constructor{
-                goFn="widget.NewCheck",
-                goType="*widget.Check",
-                args=[
-                    Prop{name="label", transform="fmt.Sprint"},
-                    Event{name="change", signature="func(b bool)"},
-                ],
-            },
-            fieldPrefix="check",
-        ) {}
-    }
+component toggle() {
+    Check(
+        constructor=Constructor{
+            goFn="widget.NewCheck",
+            goType="*widget.Check",
+            args=[
+                Prop{name="label", transform="fmt.Sprint"},
+                Event{name="change", signature="func(b bool)"},
+            ],
+        },
+        fieldPrefix="check",
+    ) {}
 }
 
 // --- Select ---
 
-component sngl.select {
-    platform fyne {
-        Select(
-            constructor=Constructor{
-                goFn="widget.NewSelect",
-                goType="*widget.Select",
-                args=[
-                    Raw{value="nil"},
-                    Event{name="change", signature="func(s string)"},
-                ],
-            },
-            fieldPrefix="sel",
-        ) {}
-    }
+component select() {
+    Select(
+        constructor=Constructor{
+            goFn="widget.NewSelect",
+            goType="*widget.Select",
+            args=[
+                Raw{value="nil"},
+                Event{name="change", signature="func(s string)"},
+            ],
+        },
+        fieldPrefix="sel",
+    ) {}
 }
 
 // --- Modal ---
 
-component sngl.modal {
-    platform fyne {
-        if open {
-            Container(
-                constructor=Constructor{
-                    goFn="container.NewVBox",
-                    goType="*fyne.Container",
-                    args=[Raw{value=`${children}...`}],
-                },
-                transient=true,
-            ) {}
-        }
+component modal() {
+    if open {
+        Container(
+            constructor=Constructor{
+                goFn="container.NewVBox",
+                goType="*fyne.Container",
+                args=[Raw{value=`${children}...`}],
+            },
+            transient=true,
+        ) {}
     }
 }
 
 // --- Entry inputs ---
 
-component sngl.input {
-    platform fyne {
-        Entry(
-            constructor=Constructor{
-                goFn="widget.NewEntry",
-                goType="*widget.Entry",
-                switches=[Switch{prop="type", value="password", goFn="widget.NewPasswordEntry"}],
-            },
-            bindings=[
-                Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
-                Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-                Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-                Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
-            ],
-            fieldPrefix="entry",
-            updaterPrefix="updateEntry",
-        ) {}
-    }
+component input() {
+    Entry(
+        constructor=Constructor{
+            goFn="widget.NewEntry",
+            goType="*widget.Entry",
+            switches=[Switch{prop="type", value="password", goFn="widget.NewPasswordEntry"}],
+        },
+        bindings=[
+            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
+            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
+        ],
+        fieldPrefix="entry",
+        updaterPrefix="updateEntry",
+    ) {}
 }
 
-component sngl.textarea {
-    platform fyne {
-        Entry(
-            constructor=Constructor{
-                goFn="widget.NewMultiLineEntry",
-                goType="*widget.Entry",
-            },
-            bindings=[
-                Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
-                Init{prop="rows", target=".SetMinRowsVisible"},
-                Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-                Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-                Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
-            ],
-            fieldPrefix="entry",
-            updaterPrefix="updateEntry",
-        ) {}
-    }
+component textarea() {
+    Entry(
+        constructor=Constructor{
+            goFn="widget.NewMultiLineEntry",
+            goType="*widget.Entry",
+        },
+        bindings=[
+            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
+            Init{prop="rows", target=".SetMinRowsVisible"},
+            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
+            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", syncTarget=".SetText"},
+        ],
+        fieldPrefix="entry",
+        updaterPrefix="updateEntry",
+    ) {}
 }

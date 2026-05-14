@@ -36,10 +36,14 @@ func (g *Generator) PlatformIdentifier() string { return "fyne" }
 func (g *Generator) Description() string {
 	return "Cross-platform desktop GUI, written in Go using Fyne."
 }
-func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
-func (g *Generator) PreviewCSS() string                     { return previewCSS }
-func (g *Generator) Package() []*ast.Document               { return pkgDocs }
-func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
+func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) PreviewCSS() string       { return previewCSS }
+func (g *Generator) Package() []*ast.Document { return pkgDocs }
+func (g *Generator) Resolve(identifier string) ir.Symbol {
+	// Fyne accepts any tag name; codegen reads metadata from blueprint
+	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
+	return &ir.Component{Name: identifier}
+}
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 func (g *Generator) Capabilities() lower.Caps {
 	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>`
