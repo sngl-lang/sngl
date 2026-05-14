@@ -190,11 +190,18 @@ func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 		}
 		// Property names like "default-width" become C setter
 		// "gtk_<class>_set_default_width" (hyphens → underscores).
+		// Interface-inherited props (e.g. `orientation` on GtkBox via
+		// GtkOrientable) bind to the interface's namespaced setter
+		// (`gtk_orientable_set_orientation`), not the class's.
 		setterProp := strings.ReplaceAll(p.Name, "-", "_")
+		setterNS := lower
+		if p.InterfaceName != "" {
+			setterNS = lowerCType(p.InterfaceName)
+		}
 		comp.Props = append(comp.Props, &ir.Prop{
 			Name:         p.Name,
 			Type:         t,
-			NativeSetter: "gtk_" + lower + "_set_" + setterProp,
+			NativeSetter: "gtk_" + setterNS + "_set_" + setterProp,
 		})
 	}
 	for _, s := range info.Signals {

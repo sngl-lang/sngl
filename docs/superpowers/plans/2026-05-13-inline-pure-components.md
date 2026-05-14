@@ -47,7 +47,7 @@
 **Files:**
 - Modify: `internal/lower/caps.go`
 
-- [ ] **Step 1: Add field**
+- [x] **Step 1: Add field**
 
 In `internal/lower/caps.go`, find the `Caps` struct. Add:
 
@@ -57,12 +57,12 @@ NoStdlibWrappers bool // Inline platform-stdlib wrapper components; fail if any 
 
 Update `Caps.Merge` to OR the new flag, and `Caps.String` to include it.
 
-- [ ] **Step 2: Build**
+- [x] **Step 2: Build**
 
 Run: `go build ./...`
 Expected: clean.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add internal/lower/caps.go
@@ -82,7 +82,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Create: `internal/lower/inline_pure.go`
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 Create `internal/lower/inline_pure.go`:
 
@@ -318,7 +318,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 }
 ```
 
-- [ ] **Step 2: Register the pass**
+- [x] **Step 2: Register the pass**
 
 In `internal/lower/lower.go`, find the `passes` slice. Insert `passInlinePure` between `passReactivity` and `passTimer`:
 
@@ -341,7 +341,7 @@ var passes = []pass{
 
 Update the comment block above `passes` to mention `InlinePure` between Reactivity and Timer.
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `go build ./...`
 Expected: clean.
@@ -351,7 +351,7 @@ Expected: PASS — pass is registered but its substitute() returns an error only
 
 If a fixture happens to contain a pure component call, `substitute: not implemented` fires. Investigate and update the fixture to either (a) skip its inlining by ensuring components have state, or (b) wait for Task 3 to complete.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add internal/lower/inline_pure.go internal/lower/lower.go
@@ -375,7 +375,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Modify: `internal/lower/inline_pure.go`
 - Test: `internal/lower/testdata/inline_pure_basic.txtar` (create)
 
-- [ ] **Step 1: Create golden fixture**
+- [x] **Step 1: Create golden fixture**
 
 Create `internal/lower/testdata/inline_pure_basic.txtar`:
 
@@ -415,7 +415,7 @@ where `name` resolves at runtime to "Alice" via param substitution producing a s
 
 Use the form the implementation actually produces — run the golden in `-update` mode to populate after Step 3-4 complete.
 
-- [ ] **Step 2: Implement substitute()**
+- [x] **Step 2: Implement substitute()**
 
 In `internal/lower/inline_pure.go`, replace the `substitute` stub with:
 
@@ -763,7 +763,7 @@ func (w *exprWalker) stmt(s ir.Stmt) {
 
 Note the substituteParams approach: it matches by NAME (id.Name == param.Name AND id.Sym is *ir.Param) rather than pointer identity. This is robust against cloning (each clone has its own Ident pointers but the Names match).
 
-- [ ] **Step 3: Generate golden fixtures**
+- [x] **Step 3: Generate golden fixtures**
 
 Run: `go test ./internal/lower/ -run TestLower/inline_pure_basic -update`
 
@@ -771,12 +771,12 @@ Inspect the produced `expected.sngl`. The body of `main` should show the substit
 
 If the format isn't what you'd expect (e.g. interpolation didn't collapse), accept the current output. The pass's job is structural substitution, not constant folding.
 
-- [ ] **Step 4: Run all lower tests**
+- [x] **Step 4: Run all lower tests**
 
 Run: `go test ./internal/lower/...`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/lower/inline_pure.go internal/lower/testdata/inline_pure_basic.txtar
@@ -804,7 +804,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 Three fixtures exercising the substitution engine's edge cases.
 
-- [ ] **Step 1: Slot fixture**
+- [x] **Step 1: Slot fixture**
 
 Create `internal/lower/testdata/inline_pure_with_slot.txtar`:
 
@@ -827,7 +827,7 @@ component main {
 
 Run: `go test ./internal/lower/ -run TestLower/inline_pure_with_slot -update`. Verify the expected output shows the user's `text` inlined into the vbox where `slot` was.
 
-- [ ] **Step 2: Event fixture**
+- [x] **Step 2: Event fixture**
 
 Create `internal/lower/testdata/inline_pure_event.txtar`:
 
@@ -851,7 +851,7 @@ Note: the user's `clicker` declares an event param via `@click func()` syntax. I
 
 If SNGL's event-declaration syntax is unclear in the source, check existing user-defined-component fixtures in `testdata/` for the right shape.
 
-- [ ] **Step 3: Impure-skipped fixture**
+- [x] **Step 3: Impure-skipped fixture**
 
 Create `internal/lower/testdata/inline_pure_impure_skipped.txtar`:
 
@@ -876,12 +876,12 @@ component main {
 
 Run -update; inspect.
 
-- [ ] **Step 4: Run all three fixtures**
+- [x] **Step 4: Run all three fixtures**
 
 Run: `go test ./internal/lower/ -run TestLower/inline_pure -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/lower/testdata/inline_pure_with_slot.txtar internal/lower/testdata/inline_pure_event.txtar internal/lower/testdata/inline_pure_impure_skipped.txtar
@@ -897,7 +897,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Create: `internal/lower/testdata/inline_pure_recursion.txtar`
 
-- [ ] **Step 1: Fixture**
+- [x] **Step 1: Fixture**
 
 ```
 caps: ""
@@ -914,7 +914,7 @@ component main {
 
 The `expected_error:` header is a new fixture convention — if the test framework doesn't support it, adapt: the test runner asserts that `lower.Lower(...)` returns an error containing the substring.
 
-- [ ] **Step 2: Test runner support**
+- [x] **Step 2: Test runner support**
 
 Check `internal/lower/golden_test.go` for how it asserts errors. If it doesn't have an `expected_error:` shape, add one:
 
@@ -931,12 +931,12 @@ if errPattern != "" {
 }
 ```
 
-- [ ] **Step 3: Run**
+- [x] **Step 3: Run**
 
 Run: `go test ./internal/lower/ -run TestLower/inline_pure_recursion -v`
 Expected: PASS — the test asserts the cycle error.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add internal/lower/testdata/inline_pure_recursion.txtar internal/lower/golden_test.go
@@ -957,7 +957,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 Strict mode requires platform-stdlib components to be pure. Test both cases.
 
-- [ ] **Step 1: Impure-error fixture**
+- [x] **Step 1: Impure-error fixture**
 
 Create `internal/lower/testdata/inline_strict_impure_errors.txtar`:
 
@@ -1008,7 +1008,7 @@ func TestStrictModeImpureError(t *testing.T) {
 
 Pick whichever path works.
 
-- [ ] **Step 2: Clean fixture**
+- [x] **Step 2: Clean fixture**
 
 Create `internal/lower/testdata/inline_strict_clean.txtar`:
 
@@ -1063,7 +1063,7 @@ func TestStrictModeCleanInlines(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run + commit**
+- [x] **Step 3: Run + commit**
 
 ```bash
 go test ./internal/lower/...
@@ -1079,7 +1079,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ### Task 7: Audit fyne.sngl for purity
 
-- [ ] **Step 1: Read every component definition in fyne.sngl**
+- [x] **Step 1: Read every component definition in fyne.sngl**
 
 ```bash
 grep -n "^component " codegen/platform/fyne/fyne.sngl
@@ -1089,7 +1089,7 @@ For each, verify the body contains only NodeInsts + nested NodeInsts. No `var` d
 
 Expected: all clean. fyne's wrapper components are blueprint declarations with no internal state.
 
-- [ ] **Step 2: No commit if no changes needed**
+- [x] **Step 2: No commit if no changes needed**
 
 If fyne.sngl is already clean, skip to Task 8.
 
@@ -1100,7 +1100,7 @@ If fyne.sngl is already clean, skip to Task 8.
 **Files:**
 - Modify: `codegen/platform/fyne/fyne.go`
 
-- [ ] **Step 1: Update Capabilities**
+- [x] **Step 1: Update Capabilities**
 
 ```go
 func (g *Generator) Capabilities() lower.Caps {
@@ -1112,7 +1112,7 @@ func (g *Generator) Capabilities() lower.Caps {
 }
 ```
 
-- [ ] **Step 2: Run full fyne tests + integration test + compile-check**
+- [x] **Step 2: Run full fyne tests + integration test + compile-check**
 
 Run: `go test ./codegen/platform/fyne/...`
 Expected: PASS. fyne's wrapper bodies (containing blueprint-bearing `Label`/`Button` NodeInsts) inline cleanly; fyne's translator already reads NodeInst.Props for blueprint records, so post-inline behavior is identical to pre-inline.
@@ -1123,7 +1123,7 @@ Run: `go tool sngl run examples/hello-i18n --platform fyne --opt goModExtra="rep
 
 Expected: runs.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add codegen/platform/fyne/fyne.go
@@ -1143,7 +1143,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ### Task 9: Audit gtk4.sngl + enable NoStdlibWrappers
 
-- [ ] **Step 1: Audit purity**
+- [x] **Step 1: Audit purity**
 
 ```bash
 grep -n "^component " codegen/platform/gtk4/gtk4.sngl
@@ -1152,7 +1152,7 @@ grep -A 10 "^component " codegen/platform/gtk4/gtk4.sngl | grep -E "    var |   
 
 The second grep should return nothing. If it returns something, that wrapper needs fixing.
 
-- [ ] **Step 2: Enable capability**
+- [x] **Step 2: Enable capability**
 
 In `codegen/platform/gtk4/gtk4.go`:
 
@@ -1166,14 +1166,14 @@ func (g *Generator) Capabilities() lower.Caps {
 }
 ```
 
-- [ ] **Step 3: Run gtk4 tests**
+- [x] **Step 3: Run gtk4 tests**
 
 Run: `go test ./codegen/platform/gtk4/...`
 Expected: PASS — wrapper bodies inline to native GIR-resolved widget calls (`GtkLabel`, `GtkBox`, etc.); translator already handles those (Plan C added GIR metadata flow).
 
 If anything fails, capture pattern. Most likely a fixture using SNGL stdlib tag (`button`) that the test expects to land at the translator — but now the translator only sees `GtkButton`. Adapt the test or the integration.
 
-- [ ] **Step 4: Run integration**
+- [x] **Step 4: Run integration**
 
 ```bash
 go install ./cmd/sngl
@@ -1182,7 +1182,7 @@ go tool sngl run examples/hello-i18n --platform gtk4 --opt goModExtra="replace g
 
 Expected: runs.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add codegen/platform/gtk4/gtk4.go
@@ -1200,7 +1200,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 After Task 9 inlines wrapper components, gtk4Translator's OnCreateNode never receives SNGL stdlib tags like "button" or "text" — only GIR-resolved names like "GtkButton" or "GtkLabel". The `gtk4TagToCType` and `gtk4Constructor` switches are dead.
 
-- [ ] **Step 1: Audit usage**
+- [x] **Step 1: Audit usage**
 
 ```bash
 grep -n "gtk4TagToCType\|gtk4Constructor" codegen/platform/gtk4/
@@ -1208,7 +1208,7 @@ grep -n "gtk4TagToCType\|gtk4Constructor" codegen/platform/gtk4/
 
 Note every reference. They should all be in OnCreateNode (the entry path) plus tests.
 
-- [ ] **Step 2: Refactor OnCreateNode to use only GIR metadata**
+- [x] **Step 2: Refactor OnCreateNode to use only GIR metadata**
 
 The new OnCreateNode:
 
@@ -1272,7 +1272,7 @@ if nm.Constructor == "gtk_application_window_new" {
 
 Adapt to actual code shape.
 
-- [ ] **Step 3: Update translator tests**
+- [x] **Step 3: Update translator tests**
 
 Some `intrinsic_translator_test.go` tests use SNGL stdlib tags like "text"/"button". These need to either:
 - Switch to using GIR-resolved tags like "GtkLabel"/"GtkButton".
@@ -1280,14 +1280,14 @@ Some `intrinsic_translator_test.go` tests use SNGL stdlib tags like "text"/"butt
 
 Simplest: switch test args to GIR names directly. The unit tests are testing the translator's behavior on what it actually receives post-Plan-G.
 
-- [ ] **Step 4: Run + verify**
+- [x] **Step 4: Run + verify**
 
 ```bash
 go build ./...
 go test ./codegen/platform/gtk4/...
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add codegen/platform/gtk4/intrinsic_translator.go codegen/platform/gtk4/intrinsic_translator_test.go
@@ -1307,7 +1307,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ### Task 11: Audit html.sngl + enable NoStdlibWrappers
 
-- [ ] **Step 1: Audit purity**
+- [x] **Step 1: Audit purity**
 
 ```bash
 grep -n "^component " codegen/platform/html/html.sngl
@@ -1316,7 +1316,7 @@ grep -A 10 "^component " codegen/platform/html/html.sngl | grep -E "    var |   
 
 Expected: nothing. html.sngl wrappers are pure DOM-element wrappers.
 
-- [ ] **Step 2: Enable capability**
+- [x] **Step 2: Enable capability**
 
 In `codegen/platform/html/html.go`:
 
@@ -1332,7 +1332,7 @@ func (g *Generator) Capabilities() lower.Caps {
 
 (Note: html does NOT enable NoDeclarative — static-site path.)
 
-- [ ] **Step 3: Run html tests + browser smoke**
+- [x] **Step 3: Run html tests + browser smoke**
 
 ```bash
 go test ./codegen/platform/html/...
@@ -1349,7 +1349,7 @@ grep -c "<span\|<button\|<input\|<div" out/index.html
 
 Expected: >0 native HTML elements emitted.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add codegen/platform/html/html.go
@@ -1368,7 +1368,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Modify: `codegen/platform/html/intrinsic_translator.go`
 
-- [ ] **Step 1: Refactor OnCreateNode**
+- [x] **Step 1: Refactor OnCreateNode**
 
 After Task 11, OnCreateNode receives only native HTML tags. The current mapping reduces to passthrough:
 
@@ -1389,7 +1389,7 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 
 Delete `htmlTagToDOM` function entirely.
 
-- [ ] **Step 2: Simplify htmlPropSetter**
+- [x] **Step 2: Simplify htmlPropSetter**
 
 `htmlPropSetter(tag, prop)` was a mapping table for SNGL-stdlib-tag-prop → DOM-property. With native tags now reaching the translator, the map becomes simpler — most native DOM property names match SNGL prop names directly (`value`, `placeholder`, `disabled`, `checked`, `type`). Audit:
 
@@ -1408,11 +1408,11 @@ func htmlPropSetter(tag, prop string) string {
 
 (Adapt as needed based on what props actually appear in html.sngl wrapper bodies.)
 
-- [ ] **Step 3: Update tests**
+- [x] **Step 3: Update tests**
 
 Translator tests using "text"/"button" SNGL tags should now use "span"/"button" DOM tags. Update assertions.
 
-- [ ] **Step 4: Run + commit**
+- [x] **Step 4: Run + commit**
 
 ```bash
 go test ./codegen/platform/html/...

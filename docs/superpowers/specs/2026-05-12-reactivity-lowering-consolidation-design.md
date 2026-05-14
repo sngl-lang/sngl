@@ -405,6 +405,24 @@ it localizes to that step.
 > a renderer-handled `unsafe.Pointer(...)` conversion. After these fixes,
 > `examples/hello-i18n` compiles and runs end-to-end on the gtk4 target.
 
+> **Plan G** (`docs/superpowers/plans/2026-05-13-inline-pure-components.md`)
+> added `passInlinePure` to inline pure-component calls at lowering time.
+> All three platforms enabled `NoStdlibWrappers`; `gtk4TagToCType`,
+> `gtk4Constructor`, and `htmlTagToDOM` switches deleted. Translators
+> now only see native widget shapes (GIR-resolved for gtk4, native DOM
+> tags for html, blueprint-bearing for fyne). Pass ordering moved
+> InlinePure to run *before* passReactivity so wrapper substitution
+> happens before reactivity's eager declarative lowering of renderSlot
+> bodies. Side fixes: GIR parser merges interface signals (`changed`
+> from GtkEditable) and tags interface-inherited props so their native
+> setters bind to `gtk_<interface>_set_<prop>` (e.g.
+> `gtk_orientable_set_orientation`) instead of the wrong
+> `gtk_<class>_set_<prop>` shape. Event-param rebinding in
+> substituteEvents renames unbound user handler params to the canonical
+> `event` ident so the JS emitter's EventVar swap continues to work
+> through the wrapper inline. Unblocks Plan D resume (Tasks 10-17:
+> remove htmlGen.updates registry, finish hello-i18n integration).
+
 ## Testing
 
 - `internal/lower/reactivity_test.go` gains golden tests for the new slot

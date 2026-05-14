@@ -23,8 +23,13 @@ type ConstructorInfo struct {
 
 // Prop is a writable property on a GIR class.
 type Prop struct {
-	Name   string
-	IRType *ir.Type
+	Name string
+	// InterfaceName, when non-empty, identifies the interface this prop
+	// was inherited from (e.g. "Orientable"). Lets the codegen pick the
+	// `gtk_<interface>_set_<prop>` C setter instead of building a (wrong)
+	// `gtk_<class>_set_<prop>` name. Empty for direct class properties.
+	InterfaceName string
+	IRType        *ir.Type
 }
 
 // Signal is a GLib signal on a GIR class.
@@ -287,7 +292,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 					}
 				}
 				if !dup {
-					cls.Props = append(cls.Props, ip)
+					tagged := ip
+					if tagged.InterfaceName == "" {
+						tagged.InterfaceName = ifaceName
+					}
+					cls.Props = append(cls.Props, tagged)
 				}
 			}
 			for _, is := range iface.Signals {
