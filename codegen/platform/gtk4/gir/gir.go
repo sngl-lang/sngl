@@ -37,8 +37,14 @@ type ClassInfo struct {
 	CType        string            // e.g. "GtkButton"
 	Constructor  ConstructorInfo   // first constructor found (kept for legacy callers)
 	Constructors []ConstructorInfo // every constructor found, in declaration order
-	Props        []Prop            // writable properties
+	Props        []Prop            // writable properties (after interface merge)
 	Signals      []Signal
+	Implements   []string // names of interfaces declared via <implements>
+}
+
+// InterfaceInfo holds resolved metadata for one GIR interface.
+type InterfaceInfo struct {
+	Props []Prop // writable properties
 }
 
 // ConstructorFor returns the constructor that matches the supplied
@@ -87,7 +93,8 @@ func (c *ClassInfo) ConstructorFor(supplied map[string]bool) ConstructorInfo {
 
 // TypeRegistry maps GIR class name (e.g. "Button") to ClassInfo.
 type TypeRegistry struct {
-	Classes map[string]*ClassInfo
+	Classes    map[string]*ClassInfo
+	Interfaces map[string]*InterfaceInfo
 }
 
 // ParseGIR reads and parses a GIR file at path.
@@ -103,19 +110,24 @@ func ParseGIR(path string) (*TypeRegistry, error) {
 // It uses a token-based decoder so that namespace-prefixed elements
 // like <glib:signal> are matched by local name only.
 func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
-	reg := &TypeRegistry{Classes: make(map[string]*ClassInfo)}
+	reg := &TypeRegistry{
+		Classes:    make(map[string]*ClassInfo),
+		Interfaces: make(map[string]*InterfaceInfo),
+	}
 	dec := xml.NewDecoder(bytes.NewReader(data))
 
 	var (
 		inNamespace  bool
 		inClass      bool
+		inInterface  bool
 		inCtor       bool // inside a <constructor> element
 		acceptCtor   bool // whether this is the first (accepted) constructor
 		inCtorParams bool
 		inParam      bool
 		inProp       bool
 
-		currentClass *ClassInfo
+		currentClass     *ClassInfo
+		currentInterface *InterfaceInfo
 
 		paramName     string
 		paramTypeName string
@@ -147,6 +159,19 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				currentClass = info
 				reg.Classes[name] = info
 
+			case local == "interface" && inNamespace && !inInterface:
+				inInterface = true
+				info := &InterfaceInfo{}
+				name := attrVal(t.Attr, "", "name")
+				currentInterface = info
+				reg.Interfaces[name] = info
+
+			case local == "implements" && inClass:
+				name := attrVal(t.Attr, "", "name")
+				if name != "" {
+					currentClass.Implements = append(currentClass.Implements, name)
+				}
+
 			case local == "constructor" && inClass && !inCtor:
 				inCtor = true
 				ident := attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")
@@ -173,7 +198,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "type" && inProp:
 				propTypeName = attrVal(t.Attr, "", "name")
 
-			case local == "property" && inClass && !inProp:
+			case local == "property" && (inClass || inInterface) && !inProp:
 				inProp = true
 				propName = attrVal(t.Attr, "", "name")
 				propWritable = attrVal(t.Attr, "", "writable")
@@ -193,6 +218,10 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "class" && inClass:
 				inClass = false
 				currentClass = nil
+
+			case local == "interface" && inInterface:
+				inInterface = false
+				currentInterface = nil
 
 			case local == "constructor" && inCtor:
 				inCtor = false
@@ -221,14 +250,44 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "property" && inProp:
 				inProp = false
 				if propWritable == "1" {
-					currentClass.Props = append(currentClass.Props, Prop{
+					p := Prop{
 						Name:   propName,
 						IRType: girTypeToIR(propTypeName),
-					})
+					}
+					switch {
+					case currentClass != nil:
+						currentClass.Props = append(currentClass.Props, p)
+					case currentInterface != nil:
+						currentInterface.Props = append(currentInterface.Props, p)
+					}
 				}
 			}
 		}
 	}
+
+	// Post-pass: merge interface properties into each implementing class.
+	// Skip names that already exist on the class so direct declarations win.
+	for _, cls := range reg.Classes {
+		for _, ifaceName := range cls.Implements {
+			iface, ok := reg.Interfaces[ifaceName]
+			if !ok {
+				continue
+			}
+			for _, ip := range iface.Props {
+				dup := false
+				for _, existing := range cls.Props {
+					if existing.Name == ip.Name {
+						dup = true
+						break
+					}
+				}
+				if !dup {
+					cls.Props = append(cls.Props, ip)
+				}
+			}
+		}
+	}
+
 	return reg, nil
 }
 

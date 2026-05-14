@@ -141,6 +141,109 @@ func TestParseGIR_MultipleConstructors(t *testing.T) {
 	}
 }
 
+func TestParseGIR_InterfaceMerge(t *testing.T) {
+	const src = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <interface name="Orientable">
+      <property name="orientation" writable="1">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+    </interface>
+    <class name="Box" c:type="GtkBox">
+      <implements name="Orientable"/>
+      <property name="spacing" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+    <class name="Plain" c:type="GtkPlain">
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+	reg, err := gir.ParseGIRBytes([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	iface, ok := reg.Interfaces["Orientable"]
+	if !ok {
+		t.Fatal("Orientable interface not captured")
+	}
+	if len(iface.Props) != 1 || iface.Props[0].Name != "orientation" {
+		t.Errorf("Orientable.Props = %v", iface.Props)
+	}
+	box := reg.Classes["Box"]
+	if box == nil {
+		t.Fatal("Box class not found")
+	}
+	if len(box.Implements) != 1 || box.Implements[0] != "Orientable" {
+		t.Errorf("Box.Implements = %v", box.Implements)
+	}
+	names := map[string]bool{}
+	for _, p := range box.Props {
+		names[p.Name] = true
+	}
+	if !names["spacing"] {
+		t.Error("Box missing direct prop spacing")
+	}
+	if !names["orientation"] {
+		t.Error("Box missing merged interface prop orientation")
+	}
+	// Plain class without implements must not gain interface props.
+	plain := reg.Classes["Plain"]
+	if plain == nil {
+		t.Fatal("Plain class not found")
+	}
+	for _, p := range plain.Props {
+		if p.Name == "orientation" {
+			t.Error("Plain unexpectedly received orientation from interface")
+		}
+	}
+}
+
+func TestParseGIR_InterfaceMergeDirectWins(t *testing.T) {
+	// When a class declares the same property as its interface, the class's
+	// declaration must not be duplicated.
+	const src = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <interface name="Orientable">
+      <property name="orientation" writable="1">
+        <type name="Orientation"/>
+      </property>
+    </interface>
+    <class name="Box" c:type="GtkBox">
+      <implements name="Orientable"/>
+      <property name="orientation" writable="1">
+        <type name="Orientation"/>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+	reg, err := gir.ParseGIRBytes([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	box := reg.Classes["Box"]
+	count := 0
+	for _, p := range box.Props {
+		if p.Name == "orientation" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("orientation appears %d times, want 1", count)
+	}
+}
+
 func TestParseGIR_UnmappableType(t *testing.T) {
 	const src = `<?xml version="1.0"?>
 <repository version="1.2"
