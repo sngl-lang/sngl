@@ -7,15 +7,15 @@ stdout 'passes: PlatformExtensionBody . InlinePure'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoReactivity,NoStdlibWrappers,NoDeclarative'
-stdout 'passes: PlatformExtensionBody . NoReactivity . InlinePure . NoDeclarative'
+stdout 'passes: PlatformExtensionBody . InlinePure . NoReactivity . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoReactivity . InlinePure'
+stdout 'caps: NoAsyncReactive,NoReactivity,NoStdlibWrappers'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . InlinePure . NoReactivity'
 
 sngl dump lowered --lang none --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,NoReactivity'
-stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoReactivity . InlinePure'
+stdout 'caps: NoAsyncReactive,NoReactivity,NoStdlibWrappers'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . InlinePure . NoReactivity'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps:'

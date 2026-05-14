@@ -38,6 +38,20 @@ grep 'snglActivate' out/callbacks.go
         <type name="Orientation" c:type="GtkOrientation"/>
       </property>
     </interface>
+    <interface name="Editable">
+      <property name="text" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="changed">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </interface>
+    <class name="Entry" c:type="GtkEntry">
+      <implements name="Editable"/>
+      <constructor name="new" c:identifier="gtk_entry_new"/>
+    </class>
     <class name="Button" c:type="GtkButton">
       <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
         <parameters>

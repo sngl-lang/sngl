@@ -431,7 +431,7 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 	for _, s := range stmts {
 		if emit, isEmit := s.(*ir.Emit); isEmit {
 			if h, ok := byName[emit.Name]; ok && h != nil && h.Func != nil {
-				out = append(out, deepCloneStmts(h.Func.Block)...)
+				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args)...)
 				continue
 			}
 			out = append(out, s)
@@ -443,7 +443,7 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.AST != nil {
 			if evRef, ok := cs.Call.AST.Func.(*ast.EventRefExpr); ok {
 				if h, ok := byName[evRef.Name]; ok && h != nil && h.Func != nil {
-					out = append(out, deepCloneStmts(h.Func.Block)...)
+					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args)...)
 					continue
 				}
 			}
@@ -468,6 +468,50 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 		out = append(out, s)
 	}
 	return out
+}
+
+// bindEventParams rebinds references to a user event handler's declared
+// params inside `stmts` to the arg expressions the wrapper passed. When
+// the wrapper passes zero args but the user handler declared params (the
+// common `@input { @input() }` shape in platform .sngl wrappers), the
+// params are renamed to "event" so the JS emitter's EventVar swap maps
+// `myEvent.value` → `e.target.value` the same way it did before the
+// wrapper was inlined.
+func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg) []ir.Stmt {
+	if len(params) == 0 {
+		return stmts
+	}
+	bindings := map[string]ir.Expr{}
+	for i, p := range params {
+		if p == nil || p.Name == "" {
+			continue
+		}
+		if i < len(args) {
+			bindings[p.Name] = args[i].Value
+			continue
+		}
+		// No matching arg — wrapper invoked @event() with fewer args
+		// than the user handler declared. Rename the param to the
+		// canonical `event` ident so JS EventVar swap picks it up.
+		bindings[p.Name] = &ir.Ident{Name: "event", Type: p.Type, Sym: p}
+	}
+	if len(bindings) == 0 {
+		return stmts
+	}
+	walker := newExprWalker(func(e ir.Expr) ir.Expr {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return e
+		}
+		if _, isParam := id.Sym.(*ir.Param); !isParam {
+			return e
+		}
+		if bound, ok := bindings[id.Name]; ok {
+			return deepCloneExpr(bound)
+		}
+		return e
+	})
+	return walker.stmts(stmts)
 }
 
 // deepCloneStmts produces a deep copy of stmts so substitution mutations

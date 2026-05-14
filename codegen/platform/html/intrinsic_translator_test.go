@@ -37,7 +37,9 @@ func synthNodeRef(name string) ir.Expr {
 func TestHTMLTranslator_OnCreateNode_Text(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newHTMLTranslator(jc)
-	got := renderStmts(jc, tr.OnCreateNode(context.Background(), "__n0", "text"))
+	// passInlinePure substitutes stdlib `text` → html.sngl's `html.span`,
+	// so the translator receives the native DOM tag.
+	got := renderStmts(jc, tr.OnCreateNode(context.Background(), "__n0", "span"))
 	if !strings.Contains(got, `document.createElement("span")`) {
 		t.Errorf("expected createElement(\"span\"); got: %s", got)
 	}
@@ -55,12 +57,15 @@ func TestHTMLTranslator_OnCreateNode_Button(t *testing.T) {
 	}
 }
 
-func TestHTMLTranslator_OnCreateNode_UnknownTag(t *testing.T) {
+func TestHTMLTranslator_OnCreateNode_ArbitraryTag(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newHTMLTranslator(jc)
-	stmts := tr.OnCreateNode(context.Background(), "__n0", "mystery")
-	if stmts != nil {
-		t.Errorf("expected nil for unknown tag; got: %v", stmts)
+	// html accepts any tag as a valid DOM element name (post-Plan-G the
+	// translator passes the tag through verbatim to document.createElement;
+	// validation lives in the checker via the html platform's Resolver).
+	got := renderStmts(jc, tr.OnCreateNode(context.Background(), "__n0", "mystery"))
+	if !strings.Contains(got, `document.createElement("mystery")`) {
+		t.Errorf("expected createElement(\"mystery\"); got: %s", got)
 	}
 }
 
@@ -89,10 +94,12 @@ func TestHTMLTranslator_OnRemoveChild(t *testing.T) {
 func TestHTMLTranslator_OnPropAssign_TextValue(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newHTMLTranslator(jc)
-	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
+	// html.sngl's sngl.text body uses html.span(textContent=value), so
+	// post-inline the prop landing here is "textContent" directly.
+	_ = tr.OnCreateNode(context.Background(), "__n0", "span")
 	node := synthNodeRef("__n0")
 	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
-	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "value", val))
+	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "textContent", val))
 	if !strings.Contains(got, `__n0.textContent = "hi"`) {
 		t.Errorf("expected __n0.textContent = \"hi\"; got: %s", got)
 	}

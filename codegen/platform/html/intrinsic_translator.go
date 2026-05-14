@@ -29,63 +29,30 @@ func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
 
-// htmlTagToDOM maps a SNGL tag to its equivalent HTML element name.
-// Returns "" for unknown tags (translator returns nil emission).
-func htmlTagToDOM(tag string) string {
-	switch tag {
-	case "text", "label":
-		return "span"
-	case "button":
-		return "button"
-	case "input":
-		return "input"
-	case "checkbox":
-		return "input" // type="checkbox" assigned via OnPropAssign
-	case "vbox", "hbox":
-		return "div" // flex direction via style props
-	case "scroll":
-		return "div"
-	case "link":
-		return "a"
-	case "image":
-		return "img"
-	}
-	return ""
-}
-
-// htmlPropSetter returns the DOM property name for a SNGL prop on a
-// tag. Empty string means "no known property — fall back to
-// setAttribute()."
-func htmlPropSetter(tag, prop string) string {
-	switch tag {
-	case "text", "label":
-		if prop == "value" {
-			return "textContent"
-		}
-	case "button":
-		switch prop {
-		case "text":
-			return "textContent"
-		case "disabled":
-			return "disabled"
-		}
-	case "input":
-		switch prop {
-		case "value":
-			return "value"
-		case "placeholder":
-			return "placeholder"
-		case "disabled":
-			return "disabled"
-		case "type":
-			return "type"
-		}
-	case "checkbox":
-		if prop == "checked" {
-			return "checked"
-		}
-	}
-	return ""
+// htmlNativeDOMProps is the set of DOM property names that html.sngl's
+// platform-extension bodies write to directly. Any prop not in this
+// set falls back to element.setAttribute(name, value).
+//
+// passInlinePure substitutes stdlib wrapper components with their
+// html.sngl-defined native element bodies at lowering time, so every
+// prop name landing here is a native DOM attribute/property name.
+var htmlNativeDOMProps = map[string]bool{
+	"textContent": true,
+	"innerHTML":   true,
+	"value":       true,
+	"placeholder": true,
+	"disabled":    true,
+	"readonly":    true,
+	"checked":     true,
+	"type":        true,
+	"className":   true,
+	"src":         true,
+	"alt":         true,
+	"href":        true,
+	"title":       true,
+	"role":        true,
+	"rows":        true,
+	"max":         true,
 }
 
 // htmlEventName maps a SNGL event name to its DOM counterpart.
@@ -106,19 +73,19 @@ func identBareName(e ir.Expr) string {
 }
 
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
-	domTag := htmlTagToDOM(tag)
-	if domTag == "" {
-		return nil
-	}
+	// passInlinePure substitutes stdlib wrapper components (vbox, text,
+	// button, ...) with html.sngl's native element bodies before this
+	// translator runs, so every tag landing here is a native HTML
+	// element name (span, button, input, div, ...).
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
 
-	// const <id> = document.createElement("<domTag>")
+	// const <id> = document.createElement("<tag>")
 	createCall := &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: &ir.Ident{Name: "document"},
 		Func:     &ir.Func{Name: "createElement"},
-		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: domTag}}},
+		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: tag}}},
 	}
 	return []ir.Stmt{&ir.LocalVar{
 		Name: id,
@@ -171,10 +138,7 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 }
 
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	bareID := identBareName(node)
-	tag := t.idTags[bareID]
-	setter := htmlPropSetter(tag, prop)
-	if setter == "" {
+	if !htmlNativeDOMProps[prop] {
 		// Unknown prop: emit node.setAttribute("prop", value).
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
@@ -186,9 +150,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			},
 		}}}
 	}
-	// node.<setter> = value
+	// node.<prop> = value
 	return []ir.Stmt{&ir.Assign{
-		Target: &ir.Select{Operand: node, Field: setter, Type: ir.TypDyn},
+		Target: &ir.Select{Operand: node, Field: prop, Type: ir.TypDyn},
 		Op:     ast.AssignSet,
 		Value:  value,
 	}}
