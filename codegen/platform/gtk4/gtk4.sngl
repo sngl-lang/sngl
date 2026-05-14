@@ -17,6 +17,12 @@ struct Options {
 
 // --- Leaf widgets ---
 
+component sngl.text {
+    platform gtk4 {
+        GtkLabel(label=value) {}
+    }
+}
+
 component sngl.button {
     platform gtk4 {
         GtkButton(label=text, @clicked { @click() }) {}
