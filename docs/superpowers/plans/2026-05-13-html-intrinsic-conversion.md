@@ -693,6 +693,16 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ### Task 10: Route handler bodies through htmlTranslator
 
+**Status (2026-05-13):** DEFERRED. Tasks 10–13 require a careful migration of a deeply entrenched legacy emission path (`g.updates` registry + `translateHandlerStmt` + `findAffectedUpdaters` + `addTextUpdater` + `loweredID` + the per-handler string-based body assembly in `emitHandlers`/`emitTimers`/`emitSetter`), with the four ground-truth txtar fixtures from Task 9b (`compile_html_initial_sync.txt`, `compile_html_setter_callback.txt`, `compile_html_renamed_event_param.txt`, `compile_html_reactive_for.txt`) locking in the **legacy** output verbatim — including the `$u__nN_text` updater names and the `Initial sync` block. A clean swap to translator output produces structurally-equivalent but textually-different JS and would require rewriting each fixture in lockstep.
+
+The Task 9 path (synthesized __slotN + __renderSlotN through htmlTranslator + WalkLowered + JsIRContext) is live and exercised by the new `intrinsic_integration_test.go`. Reactive `if` and reactive `for` route through the new translator path end-to-end. The remaining legacy registry continues to drive non-structural reactive updates (textContent patches, input.value patches) and the initial-sync init-only updater calls.
+
+Recommended next step for whoever picks this up: rewrite the four fixtures to assert the *new* output shape that handler-body translator routing should produce, then incrementally migrate `addClickHandler` / `addInputHandler` / `addChangeHandler` / `emitSetter` to consume `WalkLowered` output via `htmlTranslator`. The replacement of `$u__nN_text()` for initial sync needs a parallel mechanism (e.g. emit an `init()` function that calls the same translator-emitted property writes once at script load).
+
+---
+
+### Task 10 (original, deferred): Route handler bodies through htmlTranslator
+
 Currently handler bodies in html are emitted via `g.exprToJS` + raw string concat (search for `addEventListener` and handler-body emission in html.go). Each spliced reactive Assign in a handler body needs to flow through OnPropAssign.
 
 - [ ] **Step 1: Find handler-body emission**

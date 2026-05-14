@@ -286,6 +286,20 @@ Enable `NoReactivity + NoDeclarative` in gtk4's `Capabilities()`.
 
 #### 2.4 html conversion
 
+**Status (2026-05-13):** Plan D Tasks 1–9 + 14–17 complete. The
+`htmlTranslator` (codegen/platform/html/intrinsic_translator.go) lives
+behind `IntrinsicTranslator` and drives the synthesized `__slotN` /
+`__renderSlotN` emission via `WalkLowered` + `JsIRContext.EvalStmt`
+(including a new `*ir.If` case in the JS renderer). Reactive `if` and
+reactive `for` end-to-end on html now route through the translator;
+verified by `intrinsic_integration_test.go`. The legacy `g.updates`
+registry + `findAffectedUpdaters` + `addTextUpdater` + `loweredID`
+continue to drive non-structural reactive textContent / input.value
+patches and `Initial sync`. Tasks 10–13 (rip the registry) are
+deferred — see Plan D Task 10 deferral note for migration guidance.
+
+
+
 **Keep (the static-site path):**
 
 - The tree-walking initial-HTML emitter: `renderIR*`, `renderStaticInput`,
