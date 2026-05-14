@@ -131,6 +131,8 @@ func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
 		return []string{"return"}
 	case *ir.For:
 		return jc.evalFor(n)
+	case *ir.If:
+		return jc.evalIf(n)
 	default:
 		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
 	}
@@ -160,6 +162,28 @@ func (jc *JsIRContext) evalFor(n *ir.For) []string {
 	for _, stmt := range n.Body {
 		for _, l := range loopJC.EvalStmt(stmt) {
 			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+// evalIf emits a JS if-then-else. Else may be empty.
+func (jc *JsIRContext) evalIf(n *ir.If) []string {
+	cond := jc.EvalExpr(n.Cond)
+	var lines []string
+	lines = append(lines, "if ("+cond+") {")
+	for _, s := range n.Body {
+		for _, l := range jc.EvalStmt(s) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	if len(n.Else) > 0 {
+		lines = append(lines, "} else {")
+		for _, s := range n.Else {
+			for _, l := range jc.EvalStmt(s) {
+				lines = append(lines, "\t"+l)
+			}
 		}
 	}
 	lines = append(lines, "}")
