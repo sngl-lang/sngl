@@ -5,6 +5,11 @@
 // etc.) are available as VisualNode identifiers inside component bodies; the
 // platform's Resolve() maps them from the Gtk-4.0.gir type registry.
 //
+// Inside `platform gtk4 { ... }` extension bodies, native widget tags must be
+// qualified with `gtk4.` (e.g. `gtk4.GtkBox`) to disambiguate them from the
+// stdlib abstract components that they override (which are themselves
+// body-bearing under Plan H).
+//
 // The view renderer (Task 5) walks each component body, finds the root
 // VisualNode, reads its widget type and prop/event bindings, and emits the
 // corresponding GTK4 Go code.
@@ -19,25 +24,25 @@ struct Options {
 
 component sngl.text {
     platform gtk4 {
-        GtkLabel(label=value) {}
+        gtk4.GtkLabel(label=value) {}
     }
 }
 
 component sngl.button {
     platform gtk4 {
-        GtkButton(label=text, @clicked { @click() }) {}
+        gtk4.GtkButton(label=text, @clicked { @click() }) {}
     }
 }
 
 component sngl.checkbox {
     platform gtk4 {
-        GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
+        gtk4.GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
     }
 }
 
 component sngl.image {
     platform gtk4 {
-        GtkImage(file=src) {}
+        gtk4.GtkImage(file=src) {}
     }
 }
 
@@ -45,7 +50,7 @@ component sngl.image {
 
 component sngl.vbox {
     platform gtk4 {
-        GtkBox(orientation="vertical", spacing=6) {
+        gtk4.GtkBox(orientation="vertical", spacing=6) {
             slot
         }
     }
@@ -53,7 +58,7 @@ component sngl.vbox {
 
 component sngl.hbox {
     platform gtk4 {
-        GtkBox(orientation="horizontal", spacing=6) {
+        gtk4.GtkBox(orientation="horizontal", spacing=6) {
             slot
         }
     }
@@ -61,7 +66,7 @@ component sngl.hbox {
 
 component sngl.scroll {
     platform gtk4 {
-        GtkScrolledWindow {
+        gtk4.GtkScrolledWindow {
             slot
         }
     }
