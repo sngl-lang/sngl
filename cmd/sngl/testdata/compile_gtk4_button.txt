@@ -33,6 +33,11 @@ grep 'snglActivate' out/callbacks.go
   xmlns:c="http://www.gtk.org/introspection/c/1.0"
   xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <namespace name="Gtk" version="4.0">
+    <interface name="Orientable">
+      <property name="orientation" writable="1">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+    </interface>
     <class name="Button" c:type="GtkButton">
       <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
         <parameters>
@@ -63,6 +68,7 @@ grep 'snglActivate' out/callbacks.go
       </property>
     </class>
     <class name="Box" c:type="GtkBox">
+      <implements name="Orientable"/>
       <constructor name="new" c:identifier="gtk_box_new">
         <parameters>
           <parameter name="orientation">
@@ -73,12 +79,39 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="orientation" writable="1">
-        <type name="Orientation" c:type="GtkOrientation"/>
-      </property>
       <property name="spacing" writable="1">
         <type name="gint" c:type="int"/>
       </property>
+    </class>
+    <class name="CheckButton" c:type="GtkCheckButton">
+      <constructor name="new" c:identifier="gtk_check_button_new"/>
+      <constructor name="new_with_label" c:identifier="gtk_check_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="active" writable="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="toggled">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Image" c:type="GtkImage">
+      <constructor name="new" c:identifier="gtk_image_new"/>
+      <property name="file" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="ScrolledWindow" c:type="GtkScrolledWindow">
+      <constructor name="new" c:identifier="gtk_scrolled_window_new"/>
     </class>
     <class name="ApplicationWindow" c:type="GtkApplicationWindow">
       <constructor name="new" c:identifier="gtk_application_window_new">
