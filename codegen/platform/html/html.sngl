@@ -5,6 +5,11 @@
 // Each component sngl.X() overrides the stdlib abstract component with an
 // HTML-native implementation. Props are inherited from the stdlib definition
 // and available as local variables in the body.
+//
+// Inside `platform html { ... }` extension bodies, native HTML elements must
+// be qualified with `html.` (e.g. `html.input`) to disambiguate them from the
+// stdlib abstract components of the same name (which are themselves
+// body-bearing under Plan H).
 
 struct Options {
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
@@ -33,7 +38,7 @@ struct Options {
 
 component sngl.vbox {
     platform html {
-        div(style={display="flex", flexDirection="column"}) {
+        html.div(style={display="flex", flexDirection="column"}) {
             slot
         }
     }
@@ -41,7 +46,7 @@ component sngl.vbox {
 
 component sngl.hbox {
     platform html {
-        div(style={display="flex", flexDirection="row"}) {
+        html.div(style={display="flex", flexDirection="row"}) {
             slot
         }
     }
@@ -49,7 +54,7 @@ component sngl.hbox {
 
 component sngl.stack {
     platform html {
-        div(style={position="relative"}) {
+        html.div(style={position="relative"}) {
             slot
         }
     }
@@ -57,13 +62,13 @@ component sngl.stack {
 
 component sngl.spacer {
     platform html {
-        div(style={flex=1}) {}
+        html.div(style={flex=1}) {}
     }
 }
 
 component sngl.scroll {
     platform html {
-        div(style={overflow="auto"}) {
+        html.div(style={overflow="auto"}) {
             slot
         }
     }
@@ -73,14 +78,14 @@ component sngl.scroll {
 
 component sngl.text {
     platform html {
-        span(textContent=value) {}
+        html.span(textContent=value) {}
     }
 }
 
 component sngl.button {
     platform html {
-        button(disabled=disabled, @click { @click() }) {
-            span(textContent=text) {}
+        html.button(disabled=disabled, @click { @click() }) {
+            html.span(textContent=text) {}
             slot
         }
     }
@@ -88,21 +93,21 @@ component sngl.button {
 
 component sngl.image {
     platform html {
-        img(src=src, alt=alt) {}
+        html.img(src=src, alt=alt) {}
     }
 }
 
 component sngl.input {
     platform html {
-        input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
+        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
     }
 }
 
 component sngl.checkbox {
     platform html {
-        label(style={display="inline-flex", alignItems="center", gap=4}) {
-            input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
-            span(textContent=label) {}
+        html.label(style={display="inline-flex", alignItems="center", gap=4}) {
+            html.input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
+            html.span(textContent=label) {}
         }
     }
 }
@@ -111,7 +116,7 @@ component sngl.checkbox {
 
 component sngl.radio {
     platform html {
-        fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
+        html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
             slot
         }
     }
@@ -119,16 +124,16 @@ component sngl.radio {
 
 component sngl.toggle {
     platform html {
-        label(style={display="inline-flex", alignItems="center", gap=8}) {
-            input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
-            span(textContent=label) {}
+        html.label(style={display="inline-flex", alignItems="center", gap=8}) {
+            html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
+            html.span(textContent=label) {}
         }
     }
 }
 
 component sngl.select {
     platform html {
-        select(disabled=disabled, @change { @change() }) {
+        html.select(disabled=disabled, @change { @change() }) {
             slot
         }
     }
@@ -136,7 +141,7 @@ component sngl.select {
 
 component sngl.textarea {
     platform html {
-        textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
+        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
             slot
         }
     }
@@ -146,31 +151,31 @@ component sngl.textarea {
 
 component sngl.progress {
     platform html {
-        progress(value=value, max=max) {}
+        html.progress(value=value, max=max) {}
     }
 }
 
 component sngl.spinner {
     platform html {
-        span(style={display="inline-flex", alignItems="center", gap=8}) {
-            span(class="sngl-spinner") {}
-            span(textContent=label) {}
+        html.span(style={display="inline-flex", alignItems="center", gap=8}) {
+            html.span(class="sngl-spinner") {}
+            html.span(textContent=label) {}
         }
     }
 }
 
 component sngl.badge {
     platform html {
-        span(style={display="inline-block", padding="2px 8px", borderRadius=12}) {
-            span(textContent=value) {}
+        html.span(style={display="inline-block", padding="2px 8px", borderRadius=12}) {
+            html.span(textContent=value) {}
         }
     }
 }
 
 component sngl.tabs {
     platform html {
-        div(style={display="flex", flexDirection="column"}) {
-            div(role="tablist", style={display="flex", gap=4}) {
+        html.div(style={display="flex", flexDirection="column"}) {
+            html.div(role="tablist", style={display="flex", gap=4}) {
                 slot
             }
         }
@@ -179,15 +184,15 @@ component sngl.tabs {
 
 component sngl.link {
     platform html {
-        a(href=href, @click { @click() }) {
-            span(textContent=text) {}
+        html.a(href=href, @click { @click() }) {
+            html.span(textContent=text) {}
         }
     }
 }
 
 component sngl.divider {
     platform html {
-        hr {}
+        html.hr {}
     }
 }
 
@@ -195,8 +200,8 @@ component sngl.divider {
 
 component sngl.modal {
     platform html {
-        div(style={position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
-            div(style={background="#fff", borderRadius=8, padding=24}) {
+        html.div(style={position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
+            html.div(style={background="#fff", borderRadius=8, padding=24}) {
                 slot
             }
         }
@@ -205,7 +210,7 @@ component sngl.modal {
 
 component sngl.drawer {
     platform html {
-        div(style={position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
+        html.div(style={position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
             slot
         }
     }
@@ -213,7 +218,7 @@ component sngl.drawer {
 
 component sngl.tooltip {
     platform html {
-        div(title=text) {
+        html.div(title=text) {
             slot
         }
     }
@@ -221,7 +226,7 @@ component sngl.tooltip {
 
 component sngl.popover {
     platform html {
-        div(style={position="relative"}) {
+        html.div(style={position="relative"}) {
             slot
         }
     }
@@ -229,7 +234,7 @@ component sngl.popover {
 
 component sngl.splitview {
     platform html {
-        div(style={display="flex"}) {
+        html.div(style={display="flex"}) {
             slot
         }
     }
@@ -239,7 +244,7 @@ component sngl.splitview {
 
 component sngl.table {
     platform html {
-        table(style={width="100%", borderCollapse="collapse"}) {
+        html.table(style={width="100%", borderCollapse="collapse"}) {
             slot
         }
     }
@@ -247,7 +252,7 @@ component sngl.table {
 
 component sngl.tree {
     platform html {
-        ul(style={listStyleType="none", paddingLeft=16}) {
+        html.ul(style={listStyleType="none", paddingLeft=16}) {
             slot
         }
     }
@@ -255,7 +260,7 @@ component sngl.tree {
 
 component sngl.menu {
     platform html {
-        div(style={position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+        html.div(style={position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
             slot
         }
     }
@@ -263,7 +268,7 @@ component sngl.menu {
 
 component sngl.menubar {
     platform html {
-        nav(style={display="flex", gap=4}) {
+        html.nav(style={display="flex", gap=4}) {
             slot
         }
     }
@@ -271,7 +276,7 @@ component sngl.menubar {
 
 component sngl.toolbar {
     platform html {
-        div(style={display="flex", gap=4, alignItems="center"}) {
+        html.div(style={display="flex", gap=4, alignItems="center"}) {
             slot
         }
     }
@@ -281,29 +286,29 @@ component sngl.toolbar {
 
 component sngl.datepicker {
     platform html {
-        input(type="date", value=value, disabled=disabled, @change { @change() }) {}
+        html.input(type="date", value=value, disabled=disabled, @change { @change() }) {}
     }
 }
 
 component sngl.chip {
     platform html {
-        span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc"}) {
-            span(textContent=label) {}
+        html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc"}) {
+            html.span(textContent=label) {}
         }
     }
 }
 
 component sngl.avatar {
     platform html {
-        div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden"}) {
-            span(textContent=initials) {}
+        html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden"}) {
+            html.span(textContent=initials) {}
         }
     }
 }
 
 component sngl.card {
     platform html {
-        div(style={borderRadius=8, padding=16}) {
+        html.div(style={borderRadius=8, padding=16}) {
             slot
         }
     }
