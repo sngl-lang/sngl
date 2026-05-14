@@ -44,7 +44,8 @@ type ClassInfo struct {
 
 // InterfaceInfo holds resolved metadata for one GIR interface.
 type InterfaceInfo struct {
-	Props []Prop // writable properties
+	Props   []Prop // writable properties
+	Signals []Signal
 }
 
 // ConstructorFor returns the constructor that matches the supplied
@@ -207,6 +208,10 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "signal" && inClass:
 				sigName := attrVal(t.Attr, "", "name")
 				currentClass.Signals = append(currentClass.Signals, Signal{Name: sigName})
+
+			case local == "signal" && inInterface && currentInterface != nil:
+				sigName := attrVal(t.Attr, "", "name")
+				currentInterface.Signals = append(currentInterface.Signals, Signal{Name: sigName})
 			}
 
 		case xml.EndElement:
@@ -283,6 +288,18 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				}
 				if !dup {
 					cls.Props = append(cls.Props, ip)
+				}
+			}
+			for _, is := range iface.Signals {
+				dup := false
+				for _, existing := range cls.Signals {
+					if existing.Name == is.Name {
+						dup = true
+						break
+					}
+				}
+				if !dup {
+					cls.Signals = append(cls.Signals, is)
 				}
 			}
 		}

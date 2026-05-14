@@ -27,17 +27,16 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms()})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check diag: %s", d.Msg)
 		}
 	}
-	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true, NoDeclarative: true}, lower.Options{Platform: "gtk4"}); err != nil {
+	g := &Generator{}
+	if err := lower.Lower(pkg, g.Capabilities(), lower.Options{Platform: "gtk4"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
-
-	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	if lang == nil {
 		t.Fatal("go lang not registered")

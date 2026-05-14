@@ -46,6 +46,12 @@ component sngl.image {
     }
 }
 
+component sngl.input {
+    platform gtk4 {
+        gtk4.GtkEntry(text=value, @changed { @input() }) {}
+    }
+}
+
 // --- Container widgets ---
 
 component sngl.vbox {

@@ -16,6 +16,18 @@ func stubGC() *golang.GoIRContext {
 	return golang.NewIRContext(ctx)
 }
 
+// seedNative registers a fake GIR-resolved native component on the
+// translator's tagComponent map so OnCreateNode and friends can resolve
+// the tag without a real GIR registry. Mirrors what collectTagComponents
+// would produce from a lowered package.
+func seedNative(tr *gtk4Translator, tag, cType, constructor string) {
+	c := &ir.Component{
+		Name:   tag,
+		Native: &gtk4NativeComponent{CType: cType, Constructor: constructor},
+	}
+	tr.tagComponent[tag] = c
+}
+
 func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {
 	var lines []string
 	for _, s := range stmts {
@@ -30,7 +42,8 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		fields = append(fields, name+" "+cType)
 	})
-	stmts := tr.OnCreateNode(context.Background(), "__n0", "text")
+	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	stmts := tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	got := renderStmts(gc, stmts)
 	if !strings.Contains(got, "C.gtk_label_new") {
 		t.Errorf("expected C.gtk_label_new; got: %s", got)
@@ -58,8 +71,10 @@ func TestGtk4Translator_OnCreateNode_UnknownTag(t *testing.T) {
 func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	_ = tr.OnCreateNode(context.Background(), "__n0", "vbox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "text")
+	seedNative(tr, "GtkBox", "GtkBox", "gtk_box_new")
+	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
+	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnAppendChild(context.Background(), parent, child))
@@ -71,8 +86,10 @@ func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	_ = tr.OnCreateNode(context.Background(), "__n0", "vbox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "text")
+	seedNative(tr, "GtkBox", "GtkBox", "gtk_box_new")
+	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
+	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnRemoveChild(context.Background(), parent, child))
@@ -84,9 +101,12 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
+	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
+	// gtk4.sngl maps stdlib `value` prop onto `label` for GtkLabel; the
+	// translator's value/text → label fallback covers that.
 	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", val))
 	if !strings.Contains(got, "C.gtk_label_set_") {
 		t.Errorf("expected gtk_label_set_*; got: %s", got)
@@ -99,7 +119,8 @@ func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	_ = tr.OnCreateNode(context.Background(), "__n0", "button")
+	seedNative(tr, "GtkButton", "GtkButton", "gtk_button_new")
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkButton")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "handleClick", Synthesized: true}
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "click", handler))

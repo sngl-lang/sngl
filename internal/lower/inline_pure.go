@@ -17,10 +17,13 @@ import (
 //   - Strict (Caps.NoStdlibWrappers): inlines platform-stdlib wrappers
 //     and errors if any platform-stdlib component is impure.
 //
-// Runs between passReactivity and passTimer. After passReactivity so
-// reactive deps wire against user-level props before inlining flattens
-// them; before passDeclarative so the inlined native NodeInsts get
-// flattened along with everything else.
+// Runs between passToggle and passReactivity. Must run BEFORE
+// passReactivity because passReactivity eagerly invokes the declarative
+// lowering for renderSlot bodies — once a NodeInst has been flattened
+// into LocalVar(CreateNode("<tag>")) + Assigns + CallStmts, this pass
+// can no longer recognise the wrapper call and substitute its body.
+// Runs after passToggle/passLambda/etc. so the wrapper body the pass
+// sees has already had high-level shapes (toggles, ternaries) lowered.
 var passInlinePure = pass{
 	name:    "InlinePure",
 	enabled: func(c Caps) bool { return true }, // always on (strict path gated internally)
@@ -43,6 +46,19 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 			return err
 		}
 		comp.Body = body
+		// passReactivity synthesizes __renderSlotN Funcs whose bodies still
+		// contain NodeInsts referencing stdlib wrapper components; inline
+		// those too so the platform translator only ever sees native tags.
+		for _, fn := range comp.Funcs {
+			if fn == nil {
+				continue
+			}
+			fnBody, err := st.inlineStmts(fn.Block)
+			if err != nil {
+				return err
+			}
+			fn.Block = fnBody
+		}
 	}
 	for _, w := range pkg.Windows {
 		body, err := st.inlineStmts(w.Body)

@@ -578,9 +578,9 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
 						tag := lit.Raw
-						if ct := gtk4TagToCType(tag); ct != "" {
-							out[n.Name] = ct
-						} else if strings.HasPrefix(tag, "Gtk") {
+						// After passInlinePure (Plan G), every tag landing here
+						// is a GIR-resolved native widget name (GtkButton, ...).
+						if strings.HasPrefix(tag, "Gtk") {
 							out[n.Name] = tag
 						}
 					}

@@ -162,81 +162,28 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	}
 }
 
-// gtk4TagToCType maps a SNGL stdlib tag to its GTK C type.
-func gtk4TagToCType(tag string) string {
-	switch tag {
-	case "text", "label":
-		return "GtkLabel"
-	case "button":
-		return "GtkButton"
-	case "input", "entry":
-		return "GtkEntry"
-	case "vbox":
-		return "GtkBox"
-	case "hbox":
-		return "GtkBox"
-	case "checkbox":
-		return "GtkCheckButton"
-	case "scroll":
-		return "GtkScrolledWindow"
-	}
-	return ""
-}
-
-// gtk4Constructor returns the cgo Call ir.Expr for a tag's
-// constructor. Returns nil for unsupported tags.
-func gtk4Constructor(tag string) *ir.Call {
-	nullLit := &ir.Literal{Type: ir.TypNull}
-	switch tag {
-	case "text", "label":
-		return nativeCall("gtk_label_new", nullLit)
-	case "button":
-		emptyCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: ""})
-		return nativeCall("gtk_button_new_with_label", emptyCStr)
-	case "input", "entry":
-		return nativeCall("gtk_entry_new")
-	case "vbox":
-		orient := &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}
-		spacing := &ir.Literal{Type: ir.TypInt, Raw: "6"}
-		return nativeCall("gtk_box_new", orient, spacing)
-	case "hbox":
-		orient := &ir.Ident{Name: "C.GTK_ORIENTATION_HORIZONTAL", Type: ir.TypDyn}
-		spacing := &ir.Literal{Type: ir.TypInt, Raw: "6"}
-		return nativeCall("gtk_box_new", orient, spacing)
-	case "checkbox":
-		return nativeCall("gtk_check_button_new")
-	case "scroll":
-		return nativeCall("gtk_scrolled_window_new")
-	}
-	return nil
-}
-
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
-	// 1. SNGL stdlib tag fast path.
-	if cType := gtk4TagToCType(tag); cType != "" {
-		ctor := gtk4Constructor(tag)
-		if ctor == nil {
-			return nil
-		}
-		return t.emitConstructorAssign(id, cType, ctor)
+	// passInlinePure substitutes stdlib wrapper components (vbox, text,
+	// button, ...) with their gtk4.sngl-defined native widget bodies
+	// before this translator runs, so every tag landing here is a
+	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
+	_, nm := t.lookupNativeByTag(tag)
+	if nm == nil {
+		return nil
 	}
-	// 2. GIR-resolved native component (e.g. "GtkButton" used directly).
-	if _, nm := t.lookupNativeByTag(tag); nm != nil {
-		// Constructors with required non-null pointer args (e.g.
-		// gtk_button_new_with_label takes a const gchar*) accept NULL
-		// for nullable params; pass nil for everything to keep this
-		// generic. Constructors that strictly require non-null args
-		// will need a follow-up to pick a no-arg variant.
-		ctor := nativeCall(nm.Constructor)
-		// gtk_application_window_new requires the GtkApplication;
-		// special-case so it gets the `app` parameter passed into
-		// BuildUI rather than nil.
-		if nm.Constructor == "gtk_application_window_new" {
-			ctor = nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
-		}
-		return t.emitConstructorAssign(id, nm.CType, ctor)
+	// Constructors with required non-null pointer args (e.g.
+	// gtk_button_new_with_label takes a const gchar*) accept NULL
+	// for nullable params; pass nil for everything to keep this
+	// generic. Constructors that strictly require non-null args
+	// will need a follow-up to pick a no-arg variant.
+	ctor := nativeCall(nm.Constructor)
+	// gtk_application_window_new requires the GtkApplication;
+	// special-case so it gets the `app` parameter passed into
+	// BuildUI rather than nil.
+	if nm.Constructor == "gtk_application_window_new" {
+		ctor = nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
 	}
-	return nil
+	return t.emitConstructorAssign(id, nm.CType, ctor)
 }
 
 // emitConstructorAssign records the new widget's id↔cType mapping and
