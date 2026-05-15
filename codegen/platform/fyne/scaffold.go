@@ -39,9 +39,6 @@ func (c Config) withDefaults() Config {
 			c.AppName = "SNGL App"
 		}
 	}
-	if c.GoVersion == "" {
-		c.GoVersion = "1.23"
-	}
 	return c
 }
 

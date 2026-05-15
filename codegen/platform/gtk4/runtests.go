@@ -146,6 +146,9 @@ func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 // deps (it's pure cgo against the system gtk4 lib), so this is just
 // `module sngltest` plus the optional `goModExtra` injection.
 func writeGtk4GoMod(dir, goModExtra string) error {
+	if goModExtra == "" {
+		_, goModExtra = codegen.DetectHostGoMod()
+	}
 	mod := "module sngltest\n\ngo 1.23\n"
 	if goModExtra != "" {
 		mod += "\n" + goModExtra

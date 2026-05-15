@@ -125,6 +125,9 @@ func runBubbleteaTestGroup(origPkg *ir.Package, group testharness.TestGroup, fil
 // build option) is appended verbatim — typically a replace directive
 // pointing SNGL runtime imports at a local checkout.
 func writeBubbleteaGoMod(dir, goModExtra string) error {
+	if goModExtra == "" {
+		_, goModExtra = codegen.DetectHostGoMod()
+	}
 	mod := `module sngltest
 
 go 1.23

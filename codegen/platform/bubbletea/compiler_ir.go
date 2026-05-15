@@ -44,9 +44,6 @@ func (c Config) withDefaults() Config {
 	if c.ScaleFactor == 0 {
 		c.ScaleFactor = 8
 	}
-	if c.GoVersion == "" {
-		c.GoVersion = "1.23"
-	}
 	return c
 }
 

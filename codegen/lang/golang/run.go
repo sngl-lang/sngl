@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
 // RunDir implements codegen.LangRunner. It bootstraps a Go module in dir and
@@ -14,6 +16,16 @@ func (t *Translator) RunDir(dir, goVersion, goModExtra string, args []string) er
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return fmt.Errorf("go not found in PATH")
+	}
+
+	if goVersion == "" || goModExtra == "" {
+		detVer, detExtra := codegen.DetectHostGoMod()
+		if goVersion == "" {
+			goVersion = detVer
+		}
+		if goModExtra == "" {
+			goModExtra = detExtra
+		}
 	}
 
 	if goVersion == "" {

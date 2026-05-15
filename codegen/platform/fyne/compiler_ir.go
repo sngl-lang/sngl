@@ -26,9 +26,9 @@ type irAnalysis struct {
 type irBind struct {
 	name        string
 	goType      string
-	init        ir.Expr              // nil → rendered as "nil" (or ZeroValueGo) at template-build time
-	initGC      *golang.GoIRContext  // optional: per-component GC for init rendering (nil → use top-level)
-	noAccessors bool                 // skip getter/setter generation (e.g. synthesized slot vars)
+	init        ir.Expr             // nil → rendered as "nil" (or ZeroValueGo) at template-build time
+	initGC      *golang.GoIRContext // optional: per-component GC for init rendering (nil → use top-level)
+	noAccessors bool                // skip getter/setter generation (e.g. synthesized slot vars)
 }
 
 type irExtern struct {

@@ -139,6 +139,9 @@ func runFyneTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []
 // appended verbatim — typically a `replace` directive pointing SNGL
 // runtime imports at a local checkout.
 func writeGoMod(dir, goModExtra string) error {
+	if goModExtra == "" {
+		_, goModExtra = codegen.DetectHostGoMod()
+	}
 	mod := `module sngltest
 
 go 1.23

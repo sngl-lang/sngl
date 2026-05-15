@@ -32,8 +32,14 @@ type Model struct {
 	__slot0    []fyne.CanvasObject
 	__slot1    []fyne.CanvasObject
 
+	__n3 *fyne.Container
+	__n5 *widget.Label
+	__n6 *widget.Label
+	__n0 *widget.Entry
+	__n7 *widget.Button
+	__n4 *fyne.Container
 	__n1 *widget.Label
-	__n0 *widget.Label
+	__n2 *widget.Label
 }
 
 // New creates a Model with default values. Binds are initialized
@@ -43,17 +49,16 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.source = "package main"
-	m.file = ast.File{}
+	m.file = File{}
 	m.parseError = ""
-	m.parse = func(_ string) {}
+	m.parse = func(_ string) any {
+	}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot1 = nil
 	return m
 }
 
-func (m *Model) doRefresh() {
-}
 func (m *Model) __renderSlot0(container *fyne.Container) {
 	for _, __entry := range m.__slot0 {
 		container.Remove(__entry)
@@ -73,10 +78,10 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 	}
 	m.__slot1 = nil
 	for _, decl := range m.file.Decls {
-		m.__n0 = widget.NewLabel("")
-		m.__n0.SetText(fmt.Sprint(decl))
-		container.Add(m.__n0)
-		m.__slot1 = append(m.__slot1, m.__n0)
+		m.__n2 = widget.NewLabel("")
+		m.__n2.SetText(fmt.Sprint(decl))
+		container.Add(m.__n2)
+		m.__slot1 = append(m.__slot1, m.__n2)
 	}
 }
 
@@ -85,7 +90,7 @@ func (m *Model) __n0_input_handler(s string) {
 	m.__n0.SetText(fmt.Sprint(m.source))
 }
 
-func (m *Model) __n6_click_handler() {
+func (m *Model) __n7_click_handler() {
 	m.parse(m.source)
 }
 
@@ -123,103 +128,27 @@ func (m *Model) SetParse(v func(string)) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	var parts []fyne.CanvasObject
-	var part0 fyne.CanvasObject
-	if part0 != nil {
-		parts = append(parts, part0)
-	}
-	var part1 fyne.CanvasObject
-	if part1 != nil {
-		parts = append(parts, part1)
-	}
-	var part2 fyne.CanvasObject
-	if part2 != nil {
-		parts = append(parts, part2)
-	}
-	var part3 fyne.CanvasObject
-	if part3 != nil {
-		parts = append(parts, part3)
-	}
-	var part4 fyne.CanvasObject
-	if part4 != nil {
-		parts = append(parts, part4)
-	}
-	var part5 fyne.CanvasObject
-	if part5 != nil {
-		parts = append(parts, part5)
-	}
-	var part6 fyne.CanvasObject
-	if part6 != nil {
-		parts = append(parts, part6)
-	}
-	var part7 fyne.CanvasObject
-	if part7 != nil {
-		parts = append(parts, part7)
-	}
-	var part8 fyne.CanvasObject
-	if part8 != nil {
-		parts = append(parts, part8)
-	}
-	var part9 fyne.CanvasObject
-	if part9 != nil {
-		parts = append(parts, part9)
-	}
-	var part10 fyne.CanvasObject
-	if part10 != nil {
-		parts = append(parts, part10)
-	}
-	var part11 fyne.CanvasObject
-	if part11 != nil {
-		parts = append(parts, part11)
-	}
-	var part12 fyne.CanvasObject
-	if part12 != nil {
-		parts = append(parts, part12)
-	}
-	var part13 fyne.CanvasObject
-	if part13 != nil {
-		parts = append(parts, part13)
-	}
-	var part14 fyne.CanvasObject
-	if part14 != nil {
-		parts = append(parts, part14)
-	}
-	var part15 fyne.CanvasObject
-	if part15 != nil {
-		parts = append(parts, part15)
-	}
-	var part16 fyne.CanvasObject
-	if part16 != nil {
-		parts = append(parts, part16)
-	}
-	var part17 fyne.CanvasObject
-	if part17 != nil {
-		parts = append(parts, part17)
-	}
-	var part18 fyne.CanvasObject
-	if part18 != nil {
-		parts = append(parts, part18)
-	}
-	var part19 fyne.CanvasObject
-	if part19 != nil {
-		parts = append(parts, part19)
-	}
-	var part20 fyne.CanvasObject
-	if part20 != nil {
-		parts = append(parts, part20)
-	}
-	var part21 fyne.CanvasObject
-	if part21 != nil {
-		parts = append(parts, part21)
-	}
-	var part22 fyne.CanvasObject
-	if part22 != nil {
-		parts = append(parts, part22)
-	}
-	var part23 fyne.CanvasObject
-	if part23 != nil {
-		parts = append(parts, part23)
-	}
-	m.__root.Objects = parts
-	return m.__root
+	m.__n3 = container.NewVBox()
+	m.__n5 = widget.NewLabel("")
+	m.__n5.SetText(fmt.Sprint("Go AST Explorer"))
+	m.__n3.Add(m.__n5)
+	m.__n6 = widget.NewLabel("")
+	m.__n6.SetText(fmt.Sprint("Enter Go source code and click Parse to see the AST."))
+	m.__n3.Add(m.__n6)
+	m.__n0 = widget.NewMultiLineEntry()
+	m.__n0.SetPlaceHolder("Enter Go code...")
+	m.__n0.SetMinRowsVisible(10)
+	m.__n0.SetText(fmt.Sprint(m.source))
+	m.__n0.OnChanged = m.__n0_input_handler
+	m.__n3.Add(m.__n0)
+	m.__n7 = widget.NewButton("", nil)
+	m.__n7.SetText(fmt.Sprint("Parse AST"))
+	m.__n7.OnTapped = m.__n7_click_handler
+	m.__n3.Add(m.__n7)
+	m.__renderSlot0(m.__n3)
+	m.__n4 = container.NewVBox()
+	m.__renderSlot1(m.__n4)
+	m.__n3.Add(m.__n4)
+	content := fyne.CanvasObject(m.__n3)
+	return content
 }

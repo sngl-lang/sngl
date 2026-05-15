@@ -20,6 +20,11 @@ type fyneTranslator struct {
 	blueprints map[string]*fyneBlueprint
 	fieldSink  func(name, goType string)
 	idTags     map[string]string
+	// topLevel tracks widget ids created via OnCreateNode that have not
+	// (yet) been consumed by an AppendChild. Window-body/component-method
+	// emission uses this to discover the topmost widget(s) to return as
+	// the fyne.CanvasObject result. Slot-Func emission ignores it.
+	topLevel []string
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string)) *fyneTranslator {
@@ -96,6 +101,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}
 	t.fieldSink(id, bp.Constructor.GoType)
 	t.idTags[id] = tag
+	t.topLevel = append(t.topLevel, id)
 
 	args := zeroArgsToExprs(bp.Constructor.ZeroArgs)
 	ctor := nativeCall(bp.Constructor.GoFn, args, ir.TypDyn)
@@ -124,6 +130,17 @@ func zeroArgsToExprs(zeroArgs string) []ir.Expr {
 }
 
 func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	// A child that's been appended to a parent is no longer a top-level
+	// candidate. Window/component emitters consult topLevel to decide
+	// what to return.
+	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
+		for i, name := range t.topLevel {
+			if name == id.Name {
+				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
+				break
+			}
+		}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Add", []ir.Expr{child}, ir.TypVoid)}}
@@ -139,8 +156,16 @@ func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 // type-asserted `container` local — mirrors the typed-slot signature
 // emitted by emitIRSlotFunc.
 func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
-	if id, ok := e.(*ir.Ident); ok && id.Name == "parent" {
-		return &ir.Ident{Name: "container", Type: ir.TypDyn}
+	if id, ok := e.(*ir.Ident); ok {
+		if id.Name == "parent" {
+			return &ir.Ident{Name: "container", Type: ir.TypDyn}
+		}
+		// Synthesized __nN parents from inline AppendChild calls in
+		// window/component bodies need an `m.` qualifier; slot Funcs use
+		// the typed `container` param instead.
+		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
+			return modelFieldRef(id.Name)
+		}
 	}
 	return e
 }
