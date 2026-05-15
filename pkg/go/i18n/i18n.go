@@ -353,12 +353,18 @@ func renderPlural(out *strings.Builder, tag language.Tag, cur currency.Unit, val
 			}
 		}
 	}
-	// Try CLDR keyword.
+	// Try CLDR keyword. golang.org/x/text/feature/plural panics on
+	// negative n; CLDR categories are defined on the absolute value
+	// (a -1 guest still reads as "1 guest" in the "one" form, etc.).
+	absN := n
+	if absN < 0 {
+		absN = -absN
+	}
 	var form plural.Form
 	if ordinal {
-		form = plural.Ordinal.MatchPlural(tag, n, 0, 0, 0, 0)
+		form = plural.Ordinal.MatchPlural(tag, absN, 0, 0, 0, 0)
 	} else {
-		form = plural.Cardinal.MatchPlural(tag, n, 0, 0, 0, 0)
+		form = plural.Cardinal.MatchPlural(tag, absN, 0, 0, 0, 0)
 	}
 	keyword := pluralFormKeyword(form)
 	for _, p := range pairs {

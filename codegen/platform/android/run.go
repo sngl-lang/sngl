@@ -120,7 +120,69 @@ func (g *Generator) Run(dir string, opts *ir.StructLit, args []string) error {
 		return err
 	}
 
-	return adbLaunch(pkg)
+	adb, _ := androidTool("adb")
+	// Clear logcat so any FATAL EXCEPTION we surface is from this run.
+	exec.Command(adb, "logcat", "-c").Run()
+
+	if err := adbLaunch(pkg); err != nil {
+		return err
+	}
+
+	return tailAppLogcat(adb, pkg)
+}
+
+// tailAppLogcat streams logcat output for the package's process to stdout
+// until the process exits. If the process never starts (or dies before we
+// observe it), the most recent AndroidRuntime crash trace is printed.
+// Returns an error when the app crashes; nil when the user kills the
+// streaming session (Ctrl-C) or the app exits cleanly.
+func tailAppLogcat(adb, pkg string) error {
+	// Wait briefly for the app's PID to show up. A crash during onCreate
+	// is fast enough that pidof never sees it — in that case we fall
+	// through to fetchCrashLog.
+	var pid string
+	for range 30 {
+		if out, err := exec.Command(adb, "shell", "pidof", pkg).Output(); err == nil {
+			if p := strings.TrimSpace(string(out)); p != "" {
+				pid = p
+				break
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if pid == "" {
+		if trace := fetchCrashLog(adb, pkg); trace != "" {
+			fmt.Fprintln(os.Stderr, trace)
+		}
+		return fmt.Errorf("app %s did not start (no pid)", pkg)
+	}
+	fmt.Fprintf(os.Stderr, "[sngl] tailing logcat for %s (pid %s) — Ctrl-C to stop\n", pkg, pid)
+	// Stream logcat filtered to the app's pid until the process exits.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	tail := exec.CommandContext(ctx, adb, "logcat", "--pid="+pid, "-v", "time")
+	tail.Stdout = os.Stdout
+	tail.Stderr = os.Stderr
+	tailDone := make(chan error, 1)
+	go func() { tailDone <- tail.Run() }()
+	// Poll process liveness; cancel the logcat stream once the app dies
+	// so the function returns instead of blocking forever.
+	for {
+		select {
+		case err := <-tailDone:
+			return err
+		case <-time.After(1 * time.Second):
+			if !isProcessAlive(adb, pkg) {
+				cancel()
+				<-tailDone
+				if trace := fetchCrashLog(adb, pkg); trace != "" {
+					fmt.Fprintln(os.Stderr, trace)
+					return fmt.Errorf("app %s crashed", pkg)
+				}
+				return nil
+			}
+		}
+	}
 }
 
 func readPackage(dir string) (string, error) {

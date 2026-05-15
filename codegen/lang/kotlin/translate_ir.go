@@ -159,6 +159,10 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 		return scope.EventVar
 	}
 	if n.Member != "" {
+		// Enum member: emit qualified Kotlin enum value (Gender.female).
+		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
+			return exportName(n.Type.Decl.SymName()) + "." + n.Member
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	if scope.IdentRewrites != nil {

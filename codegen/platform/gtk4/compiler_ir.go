@@ -678,6 +678,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
+	// Drop self-setter splices: writing the entry's text from inside
+	// its own "changed" handler re-fires the signal and recurses.
+	// nodeID = handler-name minus the "_<event>_handler" suffix.
+	selfNode := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+	body = dropSelfSetterCalls(body, selfNode)
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
@@ -690,6 +695,50 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
+}
+
+// dropSelfSetterCalls filters CallStmt's that invoke a GTK setter
+// (first arg is a cgo cast wrapping m.<selfNode>) so that two-way
+// bound widgets don't recurse into their own changed-signal handlers.
+// Stmts other than self-targeting setter calls pass through unchanged.
+func dropSelfSetterCalls(stmts []ir.Stmt, selfNode string) []ir.Stmt {
+	if selfNode == "" {
+		return stmts
+	}
+	out := stmts[:0:0]
+	for _, s := range stmts {
+		if cs, ok := s.(*ir.CallStmt); ok && cs != nil && isSetterOn(cs.Call, selfNode) {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// isSetterOn reports whether a Call is a C.gtk_*_set_* invocation whose
+// first argument resolves to m.<selfNode>.
+func isSetterOn(call *ir.Call, selfNode string) bool {
+	if call == nil || call.Func == nil || len(call.Args) == 0 {
+		return false
+	}
+	if call.Func.NativePkg != "C" || !strings.Contains(call.Func.NativeName, "_set_") {
+		return false
+	}
+	first := call.Args[0].Value
+	// Unwrap one or more ir.Conversion layers (the cgo cast pattern).
+	for {
+		conv, ok := first.(*ir.Conversion)
+		if !ok {
+			break
+		}
+		first = conv.Operand
+	}
+	if sel, ok := first.(*ir.Select); ok {
+		if op, ok := sel.Operand.(*ir.Ident); ok && op.Name == "m" && sel.Field == selfNode {
+			return true
+		}
+	}
+	return false
 }
 
 // emitGTK4Func emits a top-level user function as a method on *Model.

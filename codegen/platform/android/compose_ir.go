@@ -474,13 +474,35 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 				styleParts = append(styleParts, "textAlign = TextAlign.End")
 			}
 		case "color":
-			styleParts = append(styleParts, fmt.Sprintf("color = Color(android.graphics.Color.parseColor(%s))", val))
+			styleParts = append(styleParts, fmt.Sprintf("color = Color(android.graphics.Color.parseColor(%s))", normalizeHexColor(val)))
 		}
 	}
 	if len(styleParts) == 0 {
 		return ""
 	}
 	return "style = TextStyle(" + strings.Join(styleParts, ", ") + ")"
+}
+
+// normalizeHexColor expands a 3-digit hex color literal ("#abc") to its
+// 6-digit equivalent ("#aabbcc") since android.graphics.Color.parseColor
+// rejects 3-digit shorthand. val is a Kotlin string-literal expression
+// (e.g. `"#555"`), surrounding quotes preserved; non-literal expressions
+// and already-normalized colors pass through unchanged.
+func normalizeHexColor(val string) string {
+	if len(val) < 2 || val[0] != '"' || val[len(val)-1] != '"' {
+		return val
+	}
+	inner := val[1 : len(val)-1]
+	if len(inner) != 4 || inner[0] != '#' {
+		return val
+	}
+	for i := 1; i < 4; i++ {
+		c := inner[i]
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
+			return val
+		}
+	}
+	return fmt.Sprintf(`"#%c%c%c%c%c%c"`, inner[1], inner[1], inner[2], inner[2], inner[3], inner[3])
 }
 
 func composeModifier(prop, val string) string {
@@ -500,7 +522,7 @@ func composeModifier(prop, val string) string {
 	case "height":
 		return fmt.Sprintf("height(%s.dp)", val)
 	case "background":
-		return fmt.Sprintf("background(Color(android.graphics.Color.parseColor(%s)))", val)
+		return fmt.Sprintf("background(Color(android.graphics.Color.parseColor(%s)))", normalizeHexColor(val))
 	case "opacity":
 		return fmt.Sprintf("alpha(%s)", val)
 	case "gap":

@@ -207,6 +207,11 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 
 func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
+		// Enum member: emit qualified Kotlin enum value (Gender.female)
+		// so the value matches the declared enum type at the use site.
+		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
+			return exportName(n.Type.Decl.SymName()) + "." + n.Member
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	name := n.Name
@@ -214,9 +219,6 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
 			return rewritten
 		}
-	}
-	if n.Type != nil && n.Type.Kind == ir.TypeEnum {
-		return fmt.Sprintf("%q", name)
 	}
 	_, kind := kc.Ctx.Resolve(name)
 	switch kind {
