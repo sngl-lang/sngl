@@ -25,7 +25,7 @@ component main {
     var gender Gender = Gender.female
     var guests = 1
     var price = 1234
-    var partyDate date = "2026-05-09"
+    var partyDate date = date("2026-05-09")
 
     vbox(style={gap=16, padding=24, maxWidth=480}) {
         text(value=$"Party RSVP", style={fontSize=24, fontWeight=bold})

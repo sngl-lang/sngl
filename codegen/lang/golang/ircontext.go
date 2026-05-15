@@ -592,6 +592,15 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		// Go-package native cast: plain type conversion.
 		return IRTypeToGo(n.Type) + "(" + gc.EvalExpr(n.Operand) + ")"
 	}
+	// Temporal conversions from a string literal: route through the
+	// parse helpers — Go's `time.Time("...")` cast doesn't compile.
+	if n.Type != nil {
+		if lit, ok := n.Operand.(*ir.Literal); ok {
+			if s, ok2 := LowerTypedLiteralGo(lit, n.Type); ok2 {
+				return s
+			}
+		}
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
