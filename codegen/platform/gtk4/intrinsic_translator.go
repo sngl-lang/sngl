@@ -167,24 +167,61 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// button, ...) with their gtk4.sngl-defined native widget bodies
 	// before this translator runs, so every tag landing here is a
 	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
-	_, nm := t.lookupNativeByTag(tag)
+	comp, nm := t.lookupNativeByTag(tag)
 	if nm == nil {
 		return nil
 	}
-	// Constructors with required non-null pointer args (e.g.
-	// gtk_button_new_with_label takes a const gchar*) accept NULL
-	// for nullable params; pass nil for everything to keep this
-	// generic. Constructors that strictly require non-null args
-	// will need a follow-up to pick a no-arg variant.
-	ctor := nativeCall(nm.Constructor)
 	// gtk_application_window_new requires the GtkApplication;
 	// special-case so it gets the `app` parameter passed into
 	// BuildUI rather than nil.
 	if nm.Constructor == "gtk_application_window_new" {
-		ctor = nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
+		ctor := nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
+		return t.emitConstructorAssign(id, nm.CType, ctor)
 	}
+	// Pass a typed-zero value for each required constructor parameter
+	// so the cgo call type-checks. OnPropAssign immediately rewrites
+	// any user-supplied prop values via the dedicated setter.
+	_ = comp
+	args := []ir.Expr{}
+	for _, p := range nm.CtorParams {
+		args = append(args, ctorZeroArg(p.GIRType, p.IRType))
+	}
+	ctor := nativeCall(nm.Constructor, args...)
 	return t.emitConstructorAssign(id, nm.CType, ctor)
 }
+
+// ctorZeroArg returns the IR expression for a typed-zero value matching
+// the given GIR/IR type, suitable as a placeholder argument to a
+// constructor call. Pointer types become nil; primitives become typed
+// zero casts; enums/structs become a bare 0 (cgo coerces untyped int
+// constants into the enum type).
+func ctorZeroArg(girType string, t *ir.Type) ir.Expr {
+	switch girType {
+	case "utf8", "filename", "gchararray":
+		return &ir.Literal{Type: ir.TypNull}
+	case "gboolean":
+		return nativeCall("gboolean", &ir.Literal{Type: ir.TypInt, Raw: "0"})
+	case "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
+		return nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: "0"})
+	case "gdouble", "gfloat":
+		return nativeCall("double", &ir.Literal{Type: ir.TypFloat, Raw: "0"})
+	}
+	if t != nil {
+		switch t.Kind {
+		case ir.TypeString:
+			return &ir.Literal{Type: ir.TypNull}
+		case ir.TypeInt:
+			return nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: "0"})
+		case ir.TypeBool:
+			return nativeCall("gboolean", &ir.Literal{Type: ir.TypInt, Raw: "0"})
+		case ir.TypeFloat:
+			return nativeCall("double", &ir.Literal{Type: ir.TypFloat, Raw: "0"})
+		}
+	}
+	// Enum or unknown — bare 0 coerces into named cgo integer types.
+	return &ir.Literal{Type: ir.TypInt, Raw: "0"}
+}
+
 
 // emitConstructorAssign records the new widget's id↔cType mapping and
 // emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
@@ -291,41 +328,122 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if !ok {
 		return nil
 	}
-	setter := gtkSetter(cType, prop)
+	// Resolve the prop via the GIR-derived metadata so we get the
+	// setter, the receiver-cast type (e.g. *C.GtkEditable for the
+	// text setter on a GtkEntry), and any value-type override
+	// (e.g. GtkOrientation enum) in a single lookup.
+	entry := gtkSetterFor(cType, prop)
+	setter := entry.Setter
+	recvType := cType
+	if entry.RecvType != "" {
+		recvType = entry.RecvType
+	}
+	var valType string
 	if setter == "" {
-		// Try the canonical stdlib-mapped name: most "value"/"text" props
-		// flow into the underlying GTK "label" setter on labels & buttons.
+		// Stdlib-mapped name: most "value"/"text" props flow into the
+		// underlying GTK "label" setter on labels & buttons.
 		switch prop {
 		case "value", "text":
-			setter = gtkSetter(cType, "label")
+			entry = gtkSetterFor(cType, "label")
+			setter = entry.Setter
+			if entry.RecvType != "" {
+				recvType = entry.RecvType
+			}
 		}
 	}
-	if setter == "" {
-		// GIR-resolved native metadata fallback.
-		if comp, _ := t.lookupNativeByCType(cType); comp != nil {
-			for _, p := range comp.Props {
-				if p.Name == prop && p.NativeSetter != "" {
+	if comp, _ := t.lookupNativeByCType(cType); comp != nil {
+		for _, p := range comp.Props {
+			if p.Name == prop {
+				if setter == "" && p.NativeSetter != "" {
 					setter = p.NativeSetter
-					break
 				}
+				if p.NativeReceiverType != "" {
+					recvType = p.NativeReceiverType
+				}
+				valType = p.NativeValueType
+				break
 			}
 		}
 	}
 	if setter == "" {
 		return nil
 	}
-	// Most GTK setters take char*; wrap value in C.CString. Boolean-only
-	// setters (e.g. gtk_check_button_set_active) need C.gboolean — handle
-	// those via a small switch on setter name.
-	var valArg ir.Expr
-	switch setter {
-	case "gtk_check_button_set_active":
-		valArg = nativeCall("gboolean", value)
-	default:
-		valArg = nativeCall("CString", value)
-	}
-	cast := cgoCast(cType, t.qualifyNodeExpr(node))
+	valArg := t.coerceSetterValue(setter, value, valType)
+	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, cast, valArg)}}
+}
+
+// coerceSetterValue wraps the SNGL value expression so its Go-side
+// representation matches the cgo type the C setter expects.
+//   - Booleans → C.gboolean(v)
+//   - Integers / Floats → C.int(v) / C.double(v)
+//   - Strings → C.CString(v)
+//   - Enum-typed setters (NativeValueType set, e.g. GtkOrientation):
+//     map known SNGL string literals to their C constants, otherwise
+//     cast through the named cgo type.
+func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType string) ir.Expr {
+	// Boolean-only setter shortcut — kept for setters whose GIR metadata
+	// we may not have resolved.
+	if setter == "gtk_check_button_set_active" {
+		return nativeCall("gboolean", value)
+	}
+	if valType != "" {
+		// Enum / named-type setter. Map literal strings to C constants.
+		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+			if cst := girEnumConstant(valType, lit.Raw); cst != "" {
+				return &ir.Ident{Name: cst, Type: ir.TypDyn}
+			}
+		}
+		// Generic cast: C.<TypeName>(v) — cgo coerces untyped int
+		// constants into the named integer type.
+		return nativeCall(valType, value)
+	}
+	if vt := exprIRType(value); vt != nil {
+		switch vt.Kind {
+		case ir.TypeBool:
+			return nativeCall("gboolean", value)
+		case ir.TypeInt:
+			return nativeCall("int", value)
+		case ir.TypeFloat:
+			return nativeCall("double", value)
+		}
+	}
+	return nativeCall("CString", value)
+}
+
+// exprIRType returns the IR type carried by an Expr when available.
+func exprIRType(e ir.Expr) *ir.Type {
+	switch n := e.(type) {
+	case *ir.Literal:
+		return n.Type
+	case *ir.Ident:
+		return n.Type
+	case *ir.Select:
+		return n.Type
+	case *ir.Call:
+		return n.Type
+	case *ir.Binary:
+		return n.Type
+	case *ir.Conversion:
+		return n.Type
+	}
+	return nil
+}
+
+// girEnumConstant maps a (GTK enum type, SNGL string value) pair to
+// the corresponding cgo constant identifier. Returns "" when the type
+// or value isn't recognised; callers fall back to a generic cast.
+func girEnumConstant(enumType, value string) string {
+	switch enumType {
+	case "GtkOrientation":
+		switch value {
+		case "horizontal":
+			return "C.GTK_ORIENTATION_HORIZONTAL"
+		case "vertical":
+			return "C.GTK_ORIENTATION_VERTICAL"
+		}
+	}
+	return ""
 }
 
 // identBareName returns the unqualified name of an Ident, stripping any

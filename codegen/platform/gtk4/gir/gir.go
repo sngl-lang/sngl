@@ -11,8 +11,12 @@ import (
 
 // ConstructorParam is one parameter in a GIR constructor.
 type ConstructorParam struct {
-	Name   string
-	IRType *ir.Type
+	Name string
+	// GIRType is the raw GIR <type name=…> value, e.g. "utf8",
+	// "gint", "Orientation". Used by codegen to pick the right cgo
+	// type and emit typed zero values.
+	GIRType string
+	IRType  *ir.Type
 }
 
 // ConstructorInfo holds the C identifier and parameters for a widget constructor.
@@ -29,7 +33,10 @@ type Prop struct {
 	// `gtk_<interface>_set_<prop>` C setter instead of building a (wrong)
 	// `gtk_<class>_set_<prop>` name. Empty for direct class properties.
 	InterfaceName string
-	IRType        *ir.Type
+	// GIRType is the raw GIR <type name=…> value for the property's
+	// value type, e.g. "utf8", "gint", "Orientation".
+	GIRType string
+	IRType  *ir.Type
 }
 
 // Signal is a GLib signal on a GIR class.
@@ -244,8 +251,9 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "parameter" && inParam:
 				inParam = false
 				cp := ConstructorParam{
-					Name:   paramName,
-					IRType: girTypeToIR(paramTypeName),
+					Name:    paramName,
+					GIRType: paramTypeName,
+					IRType:  girTypeToIR(paramTypeName),
 				}
 				// Append to the in-progress (last) Constructors entry.
 				if n := len(currentClass.Constructors); n > 0 {
@@ -261,8 +269,9 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inProp = false
 				if propWritable == "1" {
 					p := Prop{
-						Name:   propName,
-						IRType: girTypeToIR(propTypeName),
+						Name:    propName,
+						GIRType: propTypeName,
+						IRType:  girTypeToIR(propTypeName),
 					}
 					switch {
 					case currentClass != nil:

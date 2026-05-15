@@ -60,31 +60,47 @@ func userNodeID(n *ir.NodeInst) string {
 
 // --- Lookup tables (consumed by gtk4Translator) ---
 
-var gtkSetterTable = map[string]map[string]string{
+// gtkSetterEntry describes the C setter (and cast type) for one prop
+// on one widget class. RecvType is non-empty when the setter targets
+// an interface (e.g. GtkEditable) rather than the widget's class.
+type gtkSetterEntry struct {
+	Setter   string
+	RecvType string
+}
+
+var gtkSetterTable = map[string]map[string]gtkSetterEntry{
 	"GtkButton": {
-		"label": "gtk_button_set_label",
+		"label": {Setter: "gtk_button_set_label"},
 	},
 	"GtkLabel": {
-		"label": "gtk_label_set_text",
+		"label": {Setter: "gtk_label_set_text"},
 	},
 	"GtkEntry": {
-		"text": "gtk_editable_set_text",
+		"text": {Setter: "gtk_editable_set_text", RecvType: "GtkEditable"},
 	},
 	"GtkCheckButton": {
-		"active": "gtk_check_button_set_active",
-		"label":  "gtk_check_button_set_label",
+		"active": {Setter: "gtk_check_button_set_active"},
+		"label":  {Setter: "gtk_check_button_set_label"},
 	},
 	"GtkApplicationWindow": {
-		"title": "gtk_window_set_title",
+		"title": {Setter: "gtk_window_set_title", RecvType: "GtkWindow"},
 	},
 	"GtkImage": {
-		"file": "gtk_image_set_from_file",
+		"file": {Setter: "gtk_image_set_from_file"},
 	},
 }
 
+// gtkSetter returns the C setter for (cType, prop). Kept for callers
+// that don't need the cast-type override.
 func gtkSetter(cType, prop string) string {
+	return gtkSetterFor(cType, prop).Setter
+}
+
+// gtkSetterFor returns both the setter and its receiver cast override
+// (empty when the cast type is the widget's own C type).
+func gtkSetterFor(cType, prop string) gtkSetterEntry {
 	if m, ok := gtkSetterTable[cType]; ok {
 		return m[prop]
 	}
-	return ""
+	return gtkSetterEntry{}
 }

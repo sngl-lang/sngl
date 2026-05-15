@@ -513,12 +513,15 @@ type gtk4PromotedHandlerSig struct {
 func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 	switch tag {
 	case "input", "entry", "GtkEntry":
-		if event == "input" || event == "change" {
-			return gtk4PromotedHandlerSig{EventVar: "e", Field: "value", CType: "GtkEntry"}
+		// "changed" is the GTK signal name (post-wrapper inline); "input"
+		// and "change" are the SNGL stdlib event names.
+		if event == "input" || event == "change" || event == "changed" {
+			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkEntry"}
 		}
 	case "checkbox", "switch", "GtkCheckButton", "GtkSwitch":
-		if event == "change" {
-			return gtk4PromotedHandlerSig{EventVar: "e", Field: "value", CType: "GtkCheckButton"}
+		// "toggled" is the GTK signal; "change" is the SNGL event name.
+		if event == "change" || event == "toggled" {
+			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkCheckButton"}
 		}
 	}
 	return gtk4PromotedHandlerSig{}

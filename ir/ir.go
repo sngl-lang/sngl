@@ -237,6 +237,14 @@ type Prop struct {
 	// (e.g. "gtk_label_set_text" for GtkLabel.label). Empty for props
 	// without a platform binding. Opaque to the checker.
 	NativeSetter string `json:"-"`
+	// NativeReceiverType is the platform cast type the setter's first
+	// argument expects (e.g. "GtkEditable" for the gtk_editable_set_text
+	// setter on a GtkEntry widget). Empty → use the widget's own type.
+	NativeReceiverType string `json:"-"`
+	// NativeValueType is the platform value type the setter's value
+	// argument expects (e.g. "GtkOrientation" for gtk_orientable_set_orientation).
+	// Empty → infer from the SNGL value type.
+	NativeValueType string `json:"-"`
 }
 
 // EventDecl is a resolved event declaration on a component.

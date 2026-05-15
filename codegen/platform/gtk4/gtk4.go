@@ -24,15 +24,53 @@ import (
 type gtk4NativeComponent struct {
 	CType       string // "GtkButton"
 	Constructor string // "gtk_button_new_with_label"
+	// CtorParams carries the GIR ConstructorInfo.Params for the
+	// chosen constructor. Codegen uses this to emit typed-zero
+	// argument placeholders so the cgo call type-checks; user-supplied
+	// prop values are applied immediately afterward via dedicated
+	// setter calls.
+	CtorParams []gir.ConstructorParam
 }
 
 // pickPrimaryConstructor returns the C identifier of the first
 // constructor in the class, falling back to a synthesized "gtk_<lower>_new".
 func pickPrimaryConstructor(info *gir.ClassInfo) string {
+	return pickPrimaryConstructorInfo(info).Name
+}
+
+// pickPrimaryConstructorInfo returns the full ConstructorInfo for the
+// constructor chosen by pickPrimaryConstructor. Falls back to a
+// synthetic "gtk_<lower>_new" with no params when the class declared
+// none in GIR.
+func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	if len(info.Constructors) == 0 {
-		return "gtk_" + lowerCType(info.CType) + "_new"
+		return gir.ConstructorInfo{Name: "gtk_" + lowerCType(info.CType) + "_new"}
 	}
-	return info.Constructors[0].Name
+	return info.Constructors[0]
+}
+
+// girTypeIsNamedNonPrimitive reports whether the GIR raw type name
+// refers to a non-primitive declared type (enum, class, struct) rather
+// than a built-in scalar. Used to map GIR property types like
+// "Orientation" → cgo "GtkOrientation".
+func girTypeIsNamedNonPrimitive(name string) bool {
+	if name == "" {
+		return false
+	}
+	switch name {
+	case "utf8", "filename", "gchararray",
+		"gboolean",
+		"gint", "gint32", "gint64",
+		"guint", "guint32", "guint64", "gsize",
+		"gdouble", "gfloat",
+		"none":
+		return false
+	}
+	// Heuristic: GIR enum/class names within the current namespace are
+	// bare CamelCase identifiers (no namespace dot). Cross-namespace
+	// names contain a "." (e.g. "Gio.File") and need different handling
+	// — return false there so the codegen falls back to defaults.
+	return !strings.Contains(name, ".") && name[0] >= 'A' && name[0] <= 'Z'
 }
 
 // lowerCType maps "GtkLabel" → "label", "GtkApplicationWindow" → "application_window".
@@ -177,10 +215,14 @@ func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 		// Allow any children at the IR level; the gtk4 codegen knows
 		// which parent types actually have child-append APIs.
 		ChildrenType: &ir.Type{Kind: ir.TypeDyn},
-		Native: &gtk4NativeComponent{
-			CType:       info.CType,
-			Constructor: pickPrimaryConstructor(info),
-		},
+		Native: func() *gtk4NativeComponent {
+			ci := pickPrimaryConstructorInfo(info)
+			return &gtk4NativeComponent{
+				CType:       info.CType,
+				Constructor: ci.Name,
+				CtorParams:  ci.Params,
+			}
+		}(),
 	}
 	lower := lowerCType(info.CType)
 	for _, p := range info.Props {
@@ -195,13 +237,25 @@ func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 		// (`gtk_orientable_set_orientation`), not the class's.
 		setterProp := strings.ReplaceAll(p.Name, "-", "_")
 		setterNS := lower
+		var recvType string
 		if p.InterfaceName != "" {
 			setterNS = lowerCType(p.InterfaceName)
+			recvType = "Gtk" + p.InterfaceName
+		}
+		// Map GIR raw type → cgo value type when it's a non-primitive
+		// (enum or struct): bare names like "Orientation" become
+		// "GtkOrientation". Primitives (utf8, gint, gboolean, …) stay
+		// empty so the setter falls back to IR-type-driven coercion.
+		var valType string
+		if gt := p.GIRType; gt != "" && girTypeIsNamedNonPrimitive(gt) {
+			valType = "Gtk" + gt
 		}
 		comp.Props = append(comp.Props, &ir.Prop{
-			Name:         p.Name,
-			Type:         t,
-			NativeSetter: "gtk_" + setterNS + "_set_" + setterProp,
+			Name:               p.Name,
+			Type:               t,
+			NativeSetter:       "gtk_" + setterNS + "_set_" + setterProp,
+			NativeReceiverType: recvType,
+			NativeValueType:    valType,
 		})
 	}
 	for _, s := range info.Signals {
