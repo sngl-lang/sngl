@@ -141,52 +141,26 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[golang.SnglI18nImportPath] = ""
 	}
 
-	// Collect vars from package + every component. Render methods for
-	// non-main components emit `m.<var>` references, so those fields
-	// must be declared on Model. (Same one-flat-Model design as fyne.)
-	type taggedVar struct {
-		v    *ir.Var
-		comp *ir.Component
-	}
-	var allVars []taggedVar
+	// After NoInlineComponents, every non-main component has been inlined
+	// into main. Walk pkg.Vars + pkg.Consts + main.Vars only — there are
+	// no remaining child-component vars to collect.
+	var allVars []*ir.Var
 	for _, v := range pkg.Vars {
-		allVars = append(allVars, taggedVar{v: v})
+		allVars = append(allVars, v)
 	}
 	for _, c := range pkg.Consts {
-		allVars = append(allVars, taggedVar{v: c})
+		allVars = append(allVars, c)
 	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			allVars = append(allVars, taggedVar{v: v, comp: comp})
-		}
+	if main := ctx.MainComponent(); main != nil {
+		allVars = append(allVars, main.Vars...)
 	}
-	for _, tv := range allVars {
-		v := tv.v
+	for _, v := range allVars {
 		// Consts emit as Model fields too: tests read them via `c.<name>`
 		// and component-method bodies via `m.<name>`. Top-level consts
 		// also get a file-scope `var` emission earlier in the file so
 		// top-level free funcs (not Model methods) can reach them.
-		varGC := gc
-		if tv.comp != nil {
-			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
-			// Child component vars whose initializer references one of
-			// the component's params (e.g. `var n = start` against
-			// `component LC(start = 0) { ... }`) need that param
-			// substituted at codegen time — the param isn't a Model
-			// field, so a bare `start` would be undefined. Pre-render
-			// each prop's default expression and stash it in Renames so
-			// evalIdent's NameLocal path emits the rendered Go form.
-			// Single-instance/default-only: doesn't handle non-default
-			// args at the instantiation site or multiple instances.
-			for _, p := range tv.comp.Props {
-				if p.Default == nil {
-					continue
-				}
-				varGC.Ctx.Renames[p.Name] = varGC.EvalExpr(p.Default)
-			}
-		}
 		goType := irVarGoType(v)
-		initVal := irVarInit(v, varGC)
+		initVal := irVarInit(v, gc)
 		if strings.HasPrefix(goType, "time.") {
 			info.goImports["time"] = ""
 		}
