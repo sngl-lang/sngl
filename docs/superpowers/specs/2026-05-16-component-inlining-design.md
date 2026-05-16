@@ -1,7 +1,7 @@
 # Component Inlining as a Lowering Pass — Design
 
 **Date:** 2026-05-16
-**Status:** Approved direction (no implementation yet)
+**Status:** Shipped (plan: docs/superpowers/plans/2026-05-16-component-inlining.md)
 
 ## Goal
 

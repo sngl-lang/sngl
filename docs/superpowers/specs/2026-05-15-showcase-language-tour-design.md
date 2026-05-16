@@ -1,7 +1,7 @@
 # Showcase as Language Tour — Design
 
 **Date:** 2026-05-15
-**Status:** Approved (brainstorming phase)
+**Status:** Shipped (commit c4f2a9b)
 **Target file:** `examples/showcase/app.sngl` (replace in place)
 
 ## Goal
