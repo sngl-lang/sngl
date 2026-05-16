@@ -119,7 +119,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			c.error(t.Pos, "map key type %s is not comparable", k)
 			return TypDyn
 		}
-		return MapOf(k, v)
+		return ir.MapOf(k, v)
 	case "iter":
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))

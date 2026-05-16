@@ -276,7 +276,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		})
 	}
 	argsMap := &ir.MapLitIR{
-		Type:    MapOf(TypString, TypDyn),
+		Type:    ir.MapOf(TypString, TypDyn),
 		Entries: entries,
 	}
 

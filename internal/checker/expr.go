@@ -1251,11 +1251,11 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	// from its own entries. A struct expected type is always wrong.
 	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
 		c.error(x.Pos, "map literal cannot be used where a struct is expected")
-		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if c.expected == nil || c.expected.Kind != ir.TypeMap {
 		c.error(x.Pos, "anonymous map literal requires an expected type from context")
-		return &ir.MapLitIR{AST: x, Type: MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if len(x.Entries) == 0 {
 		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
@@ -1287,7 +1287,7 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	if !isComparable(keyT) {
 		c.error(x.Pos, "map key type %s is not comparable", keyT)
 	}
-	return &ir.MapLitIR{AST: x, Type: MapOf(keyT, valT), Entries: entries}
+	return &ir.MapLitIR{AST: x, Type: ir.MapOf(keyT, valT), Entries: entries}
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be
