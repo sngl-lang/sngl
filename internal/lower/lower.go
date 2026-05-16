@@ -30,6 +30,10 @@ type pass struct {
 //     7a. InlinePure — always on; inlines pure user components and (under
 //     NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
 //     wires user-level deps and before declarative flattening.
+//     7b. NoInlineComponents — opt-in. Inlines every non-recursive user
+//     component into main, renaming vars/funcs/timers and substituting
+//     prop refs with call-site arg exprs. After this pass, codegen on
+//     opted-in targets sees only main + any recursive components.
 //  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
@@ -48,6 +52,7 @@ var passes = []pass{
 	passNoListLambdas,
 	passToggle,
 	passInlinePure,
+	passNoInlineComponents,
 	passReactivity,
 	passTimer,
 	passDeclarative,
