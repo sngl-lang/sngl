@@ -1,0 +1,18 @@
+caps: NoInlineComponents
+-- input.sngl --
+component Ticker(rate = 1s) {
+    var tick = 0
+    timer(interval=rate) { tick = tick + 1 }
+    text(value=string(tick))
+}
+component main {
+    Ticker(rate=2s)
+}
+-- expected.sngl --
+component main {
+    var tick__inst0 int = 0
+    timer(2s) {
+        tick__inst0 = tick__inst0 + 1
+    }
+    text(value=string(tick__inst0))
+}
