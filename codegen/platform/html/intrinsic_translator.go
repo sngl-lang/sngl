@@ -21,10 +21,25 @@ type htmlTranslator struct {
 	jc       *javascript.JsIRContext
 	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
 	topLevel []string          // ids not yet AppendChild'd
+	// idToNode maps an element id to the originating NodeInst so
+	// OnPropAssign can translate SNGL component props (e.g. text.value)
+	// to the correct DOM property (textContent). Caller-supplied; nil
+	// is fine — OnPropAssign falls back to the DOM-name fast path.
+	idToNode map[string]*ir.NodeInst
 }
 
 func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{jc: jc, idTags: map[string]string{}}
+}
+
+// newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
+// id → NodeInst map so OnPropAssign can map SNGL component props to DOM
+// props via domWriteForIR. Required when translating handler/timer/setter
+// bodies that NoReactivity injects with the original SNGL prop names.
+func newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNode map[string]*ir.NodeInst) *htmlTranslator {
+	t := newHTMLTranslator(jc)
+	t.idToNode = idToNode
+	return t
 }
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
@@ -138,6 +153,19 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 }
 
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	// SNGL component prop → DOM prop mapping. NoReactivity-lowered
+	// handler/timer/setter bodies arrive here with the original SNGL
+	// prop name (e.g. text.value), so consult idToNode when set to
+	// produce the correct DOM-side write.
+	if t.idToNode != nil {
+		if id, ok := node.(*ir.Ident); ok && id.IsElementRef {
+			if n := t.idToNode[id.Name]; n != nil {
+				if stmts, ok := domWriteForIR(n.Name, prop, node, value); ok {
+					return stmts
+				}
+			}
+		}
+	}
 	if !htmlNativeDOMProps[prop] {
 		// Unknown prop: emit node.setAttribute("prop", value).
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
@@ -156,6 +184,85 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		Op:     ast.AssignSet,
 		Value:  value,
 	}}
+}
+
+// domWriteForIR is the IR-level mirror of domWriteFor in html.go. Returns
+// (stmts, true) when the (componentName, prop) pair maps to a known DOM
+// write, or (nil, false) when the caller should fall back to the generic
+// DOM-name dispatch.
+func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, bool) {
+	mkAssign := func(field string) []ir.Stmt {
+		return []ir.Stmt{&ir.Assign{
+			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},
+			Op:     ast.AssignSet,
+			Value:  value,
+		}}
+	}
+	switch componentName {
+	case "text", "badge":
+		if prop == "value" {
+			return mkAssign("textContent"), true
+		}
+	case "button":
+		if prop == "text" {
+			return mkAssign("textContent"), true
+		}
+		if prop == "disabled" {
+			return mkAssign("disabled"), true
+		}
+	case "input":
+		if prop == "value" {
+			return mkAssign("value"), true
+		}
+		if prop == "disabled" {
+			return mkAssign("disabled"), true
+		}
+	case "progress":
+		if prop == "value" {
+			return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: node,
+				Func:     &ir.Func{Name: "setAttribute"},
+				Args: []ir.CallArg{
+					{Value: &ir.Literal{Type: ir.TypString, Raw: "value"}},
+					{Value: value},
+				},
+			}}}, true
+		}
+	case "checkbox", "toggle":
+		if prop == "checked" {
+			// The __n* id is on the wrapping <label>; descend to the
+			// inner <input> to actually flip the checked state.
+			inner := &ir.Call{
+				Type:     ir.TypDyn,
+				Receiver: node,
+				Func:     &ir.Func{Name: "querySelector"},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "input"}}},
+			}
+			return []ir.Stmt{&ir.Assign{
+				Target: &ir.Select{Operand: inner, Field: "checked", Type: ir.TypDyn},
+				Op:     ast.AssignSet,
+				Value:  value,
+			}}, true
+		}
+	case "modal", "drawer", "popover", "menu":
+		if prop == "open" {
+			// el.style.display = (cond) ? "" : "none"
+			styleSel := &ir.Select{Operand: node, Field: "style", Type: ir.TypDyn}
+			displaySel := &ir.Select{Operand: styleSel, Field: "display", Type: ir.TypDyn}
+			tern := &ir.Ternary{
+				Cond: value,
+				Then: &ir.Literal{Type: ir.TypString, Raw: ""},
+				Else: &ir.Literal{Type: ir.TypString, Raw: "none"},
+			}
+			return []ir.Stmt{&ir.Assign{
+				Target: displaySel,
+				Op:     ast.AssignSet,
+				Value:  tern,
+			}}, true
+		}
+	}
+	return nil, false
 }
 
 func (t *htmlTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {

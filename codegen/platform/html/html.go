@@ -536,6 +536,12 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 
 	g.dt = common.DepTracker()
 	g.ctx = codegen.NewExprCtx(pkg)
+	g.ctx.BundledNativePkgs = g.scope.BundledNativePkgs
+	// Share NativeImports so writes from either path land on g.scope.
+	if g.scope.NativeImports == nil {
+		g.scope.NativeImports = map[string]map[string]bool{}
+	}
+	g.ctx.NativeImports = g.scope.NativeImports
 
 	return g
 }
@@ -546,6 +552,10 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		g.ctx = ctx.ExprCtx.ForComponent(main)
+		// Re-apply the bundler/native-imports plumbing after the component
+		// re-binding (Clone preserves these but ForComponent re-clones).
+		g.ctx.BundledNativePkgs = g.scope.BundledNativePkgs
+		g.ctx.NativeImports = g.scope.NativeImports
 	}
 	return g
 }
@@ -2860,10 +2870,8 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 	}
 	for _, h := range dv.Handlers {
 		if h.Name == "change" && h.Func != nil {
-			for _, s := range h.Func.Block {
-				for _, js := range g.translateHandlerStmt(s, g.scope) {
-					fmt.Fprintf(b, "  %s;\n", js)
-				}
+			for _, line := range g.translateBlockJC(h.Func.Block) {
+				fmt.Fprintf(b, "  %s\n", line)
 			}
 		}
 	}
@@ -3354,12 +3362,8 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, n *ir.NodeInst, iterVar, i
 
 		if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
 			first := changeEvt.Func.Block[0]
-			stmts := g.translateHandlerStmt(first, g.scope)
 			mutated := codegen.MutatedFields(first)
-			var handlerLines []string
-			for _, s := range stmts {
-				handlerLines = append(handlerLines, s+";")
-			}
+			handlerLines := g.translateBlockJC([]ir.Stmt{first})
 			handlerLines = append(handlerLines, listFuncName+"();")
 			for _, u := range g.findAffectedUpdaters(mutated) {
 				if u.funcName != listFuncName {
@@ -3518,10 +3522,9 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	if len(body) == 0 {
 		return
 	}
-	var stmts []string
+	lines := g.translateBlockJC(body)
 	var mutated map[string]bool
 	for _, s := range body {
-		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		for k, v := range codegen.MutatedFields(s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
@@ -3530,10 +3533,6 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
-	var lines []string
-	for _, s := range stmts {
-		lines = append(lines, s+";")
-	}
 	g.handlers = append(g.handlers, eventHandler{
 		elemID:  elemID,
 		event:   "click",
@@ -3543,75 +3542,128 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	})
 }
 
-func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
-	if fn == nil || len(fn.Block) == 0 {
-		return
+// scopedJC returns a JsIRContext whose ExprCtx mirrors g.scope's locals,
+// renames, and EventVar so WalkLowered + jc.EvalStmt produces the same
+// identifier resolutions as the legacy translateHandlerStmt path.
+func (g *htmlGen) scopedJC() *javascript.JsIRContext {
+	c := g.ctx.Clone()
+	for k, v := range g.scope.Renames {
+		c.Renames[k] = v
 	}
-	savedEvent := g.scope.EventVar
-	g.scope.EventVar = "e.target"
-	if g.scope.Renames == nil {
-		g.scope.Renames = make(map[string]string)
+	for k := range g.scope.LocalVars {
+		c.Locals[k] = true
 	}
-	var savedLocal []string
-	var savedRename []struct {
-		name string
-		val  string
-		had  bool
-	}
-	for _, p := range fn.Params {
-		if p == nil || p.Name == "" {
-			continue
-		}
-		if !g.scope.LocalVars[p.Name] {
-			savedLocal = append(savedLocal, p.Name)
-			g.scope.LocalVars[p.Name] = true
-		}
-		prev, had := g.scope.Renames[p.Name]
-		savedRename = append(savedRename, struct {
-			name string
-			val  string
-			had  bool
-		}{p.Name, prev, had})
-		g.scope.Renames[p.Name] = "e.target"
-	}
-	var stmts []string
-	mutated := make(map[string]bool)
-	for _, s := range fn.Block {
-		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
-		maps.Copy(mutated, codegen.MutatedFields(s))
-	}
-	g.scope.EventVar = savedEvent
-	for _, n := range savedLocal {
-		delete(g.scope.LocalVars, n)
-	}
-	for _, r := range savedRename {
-		if r.had {
-			g.scope.Renames[r.name] = r.val
-		} else {
-			delete(g.scope.Renames, r.name)
-		}
-	}
-	mutated = g.remapMutated(mutated, g.dataRenames)
+	c.EventVar = g.scope.EventVar
+	jc := javascript.NewIRContext(c)
+	jc.EventVar = g.scope.EventVar
+	return jc
+}
+
+// translateBlockJC routes an IR block through WalkLowered + htmlTranslator
+// + JsIRContext, returning JS statement strings with trailing semicolons.
+// Used by handler/timer/setter emission to converge on the new dispatch path.
+func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
+	jc := g.scopedJC()
+	tr := newHTMLTranslatorWithNodes(jc, g.idToNode)
+	fragments := codegen.WalkLowered(context.Background(), body, tr)
 	var lines []string
-	for _, s := range stmts {
-		lines = append(lines, s+";")
+	for _, s := range fragments {
+		// Track __nN refs so the script emits getElementById/querySelector
+		// for each one (parity with translateHandlerStmt's loweredRefs side
+		// effect).
+		g.collectLoweredRefs(s)
+		for _, ln := range jc.EvalStmt(s) {
+			lines = append(lines, ln+";")
+		}
 	}
-	g.handlers = append(g.handlers, eventHandler{
-		elemID:  elemID,
-		event:   "input",
-		body:    strings.Join(lines, "\n  "),
-		mutated: mutated,
-		isAsync: ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
-	})
+	return lines
+}
+
+// collectLoweredRefs walks an IR stmt and registers any IsElementRef Ident
+// in g.loweredRefs so the script-prelude emits a const for it. Mirrors the
+// side effect translateHandlerStmt has at line `g.loweredRefs[idn.Name] = true`.
+func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
+	var walkExpr func(e ir.Expr)
+	walkExpr = func(e ir.Expr) {
+		switch x := e.(type) {
+		case *ir.Ident:
+			if x.IsElementRef {
+				g.loweredRefs[x.Name] = true
+			}
+		case *ir.Binary:
+			walkExpr(x.Left)
+			walkExpr(x.Right)
+		case *ir.Unary:
+			walkExpr(x.Operand)
+		case *ir.Ternary:
+			walkExpr(x.Cond)
+			walkExpr(x.Then)
+			walkExpr(x.Else)
+		case *ir.Select:
+			walkExpr(x.Operand)
+		case *ir.Index:
+			walkExpr(x.Operand)
+			walkExpr(x.Idx)
+		case *ir.Call:
+			walkExpr(x.Receiver)
+			walkExpr(x.Callee)
+			for _, a := range x.Args {
+				walkExpr(a.Value)
+			}
+		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				walkExpr(el)
+			}
+		case *ir.StructLit:
+			for _, f := range x.Fields {
+				walkExpr(f.Value)
+			}
+		}
+	}
+	switch n := s.(type) {
+	case *ir.Assign:
+		walkExpr(n.Target)
+		walkExpr(n.Value)
+	case *ir.CallStmt:
+		walkExpr(n.Call)
+	case *ir.Return:
+		walkExpr(n.Value)
+	case *ir.If:
+		walkExpr(n.Cond)
+		for _, b := range n.Body {
+			g.collectLoweredRefs(b)
+		}
+		for _, b := range n.Else {
+			g.collectLoweredRefs(b)
+		}
+	case *ir.For:
+		walkExpr(n.Iter)
+		for _, b := range n.Body {
+			g.collectLoweredRefs(b)
+		}
+	case *ir.LocalVar:
+		walkExpr(n.Init)
+	}
+}
+
+func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
+	g.addParamEventHandler(elemID, "input", fn)
 }
 
 func (g *htmlGen) addChangeHandler(elemID string, fn *ir.Func) {
+	g.addParamEventHandler(elemID, "change", fn)
+}
+
+// addParamEventHandler registers an event handler whose function may carry
+// a single event-arg param. The param is bound to `e.target` so handler
+// bodies that read `evt.value` resolve to `e.target.value`. Body emission
+// goes through translateBlockJC.
+func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
-	// Rename any declared param (typically `e`) so references like
-	// `e.value` translate to `e.target.value` in the emitted JS — same
-	// shape addInputHandler uses for input events.
 	savedEvent := g.scope.EventVar
 	g.scope.EventVar = "e.target"
 	if g.scope.Renames == nil {
@@ -3639,10 +3691,9 @@ func (g *htmlGen) addChangeHandler(elemID string, fn *ir.Func) {
 		}{p.Name, prev, had})
 		g.scope.Renames[p.Name] = "e.target"
 	}
-	var stmts []string
+	lines := g.translateBlockJC(fn.Block)
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
-		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	g.scope.EventVar = savedEvent
@@ -3657,13 +3708,9 @@ func (g *htmlGen) addChangeHandler(elemID string, fn *ir.Func) {
 		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
-	var lines []string
-	for _, s := range stmts {
-		lines = append(lines, s+";")
-	}
 	g.handlers = append(g.handlers, eventHandler{
 		elemID:  elemID,
-		event:   "change",
+		event:   event,
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
 		isAsync: ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
@@ -3677,17 +3724,12 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 	if t == nil || t.Handler == nil {
 		return
 	}
-	var stmts []string
+	lines := g.translateBlockJC(t.Handler.Block)
 	mutated := make(map[string]bool)
 	for _, s := range t.Handler.Block {
-		stmts = append(stmts, g.translateHandlerStmt(s, g.scope)...)
 		maps.Copy(mutated, codegen.MutatedFields(s))
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
-	var lines []string
-	for _, s := range stmts {
-		lines = append(lines, s)
-	}
 	activeVar := ""
 	if id, ok := t.Enabled.(*ir.Ident); ok {
 		if renamed, ok := g.dataRenames[id.Name]; ok {

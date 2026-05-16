@@ -315,6 +315,12 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 }
 
 func (jc *JsIRContext) evalCall(n *ir.Call) string {
+	// Native scheme-import call (e.g. js://): emit through the bundler
+	// alias when the module is in BundledNativePkgs, recording the
+	// module → name binding for top-level `import * as` emission.
+	if n.Func != nil && n.Func.NativePkg != "" {
+		return jc.evalNativeCall(n)
+	}
 	if n.Receiver != nil {
 		return jc.evalNamespaceCall(n)
 	}
@@ -341,13 +347,79 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 				return "parseFloat(" + args[0] + ")"
 			}
 		}
-		return fname + "(" + strings.Join(args, ", ") + ")"
+		call := fname + "(" + strings.Join(args, ", ") + ")"
+		if n.Func.IsAsync {
+			call = "await " + call
+		}
+		return call
+	}
+	// Funcvar invocation: Func is nil, Callee holds the funcvar expression.
+	// Prepend `await` when the slot's points-to color is Async; without a
+	// color entry fall back to "any async candidate ⇒ await".
+	if n.Callee != nil {
+		return jc.evalFuncvarCall(n)
 	}
 	args := jc.evalCallArgs(n.Args)
-	if n.Callee != nil {
-		return jc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
-	}
 	return "(" + strings.Join(args, ", ") + ")"
+}
+
+func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
+	mod := n.Func.NativePkg
+	name := n.Func.NativeName
+	if name == "" {
+		name = n.Func.Name
+	}
+	bundled := jc.Ctx.BundledNativePkgs[mod]
+	if bundled {
+		jc.registerNativeImport(mod, name)
+	}
+	args := jc.evalCallArgs(n.Args)
+	var call string
+	if bundled {
+		call = codegen.NativeAlias(mod) + "." + name + "(" + strings.Join(args, ", ") + ")"
+	} else {
+		call = name + "(" + strings.Join(args, ", ") + ")"
+	}
+	if n.Func.IsAsync {
+		call = "await " + call
+	}
+	return call
+}
+
+func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
+	calleeJS := jc.EvalExpr(n.Callee)
+	args := jc.evalCallArgs(n.Args)
+	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
+
+	if jc.Ctx.Pkg != nil && jc.Ctx.Pkg.PointsTo != nil {
+		if k, ok := ir.CalleeSlotKey(n.Callee); ok {
+			pts := jc.Ctx.Pkg.PointsTo
+			if color, present := pts.SlotColor[k]; present {
+				if color == ir.ColorAsync {
+					call = "await " + call
+				}
+				return call
+			}
+			for _, fn := range pts.Candidates(k) {
+				if fn.IsAsync {
+					call = "await " + call
+					break
+				}
+			}
+		}
+	}
+	return call
+}
+
+func (jc *JsIRContext) registerNativeImport(mod, name string) {
+	if jc.Ctx.NativeImports == nil {
+		// Caller didn't preallocate — nothing to record into.
+		return
+	}
+	if jc.Ctx.NativeImports[mod] == nil {
+		jc.Ctx.NativeImports[mod] = map[string]bool{}
+	}
+	jc.Ctx.NativeImports[mod][name] = true
 }
 
 func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {

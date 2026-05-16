@@ -24,6 +24,9 @@ func newMinimalHTMLGen(t *testing.T) *htmlGen {
 			FuncNames:      map[string]bool{},
 			LocalVars:      map[string]bool{},
 		},
+		ctx:         codegen.NewExprCtx(nil),
+		idToNode:    map[string]*ir.NodeInst{},
+		loweredRefs: map[string]bool{},
 	}
 }
 
