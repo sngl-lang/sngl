@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
@@ -34,6 +35,12 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := optimize.Optimize(pkg, &optimize.Config{
+		Platform: gen.PlatformIdentifier(),
+		Language: lang.LanguageIdentifier(),
+	}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -75,6 +82,12 @@ func generateHTML(t *testing.T, path string) string {
 
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := optimize.Optimize(pkg, &optimize.Config{
+		Platform: gen.PlatformIdentifier(),
+		Language: lang.LanguageIdentifier(),
+	}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -98,8 +111,17 @@ func generateHTML(t *testing.T, path string) string {
 }
 
 func TestFixtures(t *testing.T) {
+	// Fixtures the optimizer can't handle: mutually-recursive user funcs
+	// trip inlineCall's lack of cycle detection (separate optimize bug,
+	// out of scope for codegen tests).
+	skipOptimize := map[string]bool{
+		"checker_mutual_recursion": true,
+	}
 	for s := range testutil.TestdataSamples(t) {
 		if len(s.Errors) > 0 {
+			continue
+		}
+		if skipOptimize[s.Name] {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
@@ -215,6 +237,12 @@ func TestLoweredReactivityWiring(t *testing.T) {
 	lang := codegen.LookupLang("none")
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := optimize.Optimize(pkg, &optimize.Config{
+		Platform: gen.PlatformIdentifier(),
+		Language: lang.LanguageIdentifier(),
+	}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

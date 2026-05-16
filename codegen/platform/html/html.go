@@ -790,18 +790,16 @@ func (g *htmlGen) generate() (string, error) {
 }
 
 // renderIRStmt is the IR-driven top-level dispatch. Structural statements
-// (If/For/PlatformFilter/Slot/user-component inlining) are walked over IR;
-// leaf NodeInst rendering currently delegates to the AST helpers via the
-// original n.AST back-reference. Per-element helpers will be ported to IR
-// incrementally.
+// (PlatformFilter/Slot/user-component inlining) are walked over IR; leaf
+// NodeInst rendering currently delegates to the AST helpers via the
+// original n.AST back-reference. *ir.If and *ir.For never reach this
+// switch in production: const branches/iterables are eliminated by
+// internal/optimize, and runtime ones are rewired into __renderSlot by
+// passReactivity.
 func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
 		g.renderIRNode(b, n, depth)
-	case *ir.If:
-		g.renderIRIf(b, n, depth)
-	case *ir.For:
-		g.renderIRFor(b, n, depth)
 	case *ir.PlatformFilter:
 		if n.Platform != "html" {
 			return
@@ -906,48 +904,6 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 		return false
 	}
 	return true
-}
-
-// renderIRIf emits an if block whose branches recurse through IR.
-func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
-	indent := strings.Repeat("  ", depth)
-	id := g.allocID()
-	fmt.Fprintf(b, "%s<div id=\"%s\" style=\"display:none\">\n", indent, id)
-	for _, s := range n.Body {
-		g.renderIRStmt(b, s, depth+1)
-	}
-	fmt.Fprintf(b, "%s</div>\n", indent)
-	g.addIfUpdater(id, n.Cond)
-	if len(n.Else) > 0 {
-		elseID := g.allocID()
-		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-		for _, s := range n.Else {
-			g.renderIRStmt(b, s, depth+1)
-		}
-		fmt.Fprintf(b, "%s</div>\n", indent)
-		g.addElseUpdater(elseID, n.Cond)
-	}
-}
-
-// renderIRFor emits a for-loop placeholder and registers list/else
-// updaters from the IR body. In production this is reached only by test
-// harnesses that skip optimize.foldStmts (const fors are unrolled at
-// optimize-time; runtime fors are rewired into __renderSlot by
-// passReactivity). Kept as a safety net.
-func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
-	indent := strings.Repeat("  ", depth)
-	id := g.allocID()
-	fmt.Fprintf(b, "%s<div id=\"%s\"></div>\n", indent, id)
-	g.addForStmtUpdater(id, n)
-	if len(n.Else) > 0 {
-		elseID := g.allocID()
-		fmt.Fprintf(b, "%s<div id=\"%s\">\n", indent, elseID)
-		for _, s := range n.Else {
-			g.renderIRStmt(b, s, depth+1)
-		}
-		fmt.Fprintf(b, "%s</div>\n", indent)
-		g.addForElseStmtUpdater(id, elseID, n)
-	}
 }
 
 // stateVars returns all state (non-const) variables for the compiled
@@ -3203,32 +3159,17 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
-		body:     g.emitDisplayToggle(elemID, expr, false),
+		body:     g.emitDisplayToggle(elemID, expr),
 		deps:     deps,
 		initOnly: loweredID(elemID),
 	})
 }
 
-// addElseUpdater adds a display updater for the else branch of an if statement.
-func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
-	deps := g.exprDeps(cond)
-	name := fmt.Sprintf("$u_%s_else", elemID[1:])
-	g.initWrites = append(g.initWrites, updateFunc{
-		funcName: name,
-		body:     g.emitDisplayToggle(elemID, cond, true),
-		deps:     deps,
-	})
-}
-
 // emitDisplayToggle produces the JS body for an `el.style.display = cond
-// ? "" : "none"` write (or the inverse when invert is true), routed
-// through htmlTranslator + JsIRContext.
-func (g *htmlGen) emitDisplayToggle(elemID string, cond ir.Expr, invert bool) string {
+// ? "" : "none"` write, routed through htmlTranslator + JsIRContext.
+func (g *htmlGen) emitDisplayToggle(elemID string, cond ir.Expr) string {
 	thenLit := &ir.Literal{Type: ir.TypString, Raw: ""}
 	elseLit := &ir.Literal{Type: ir.TypString, Raw: "none"}
-	if invert {
-		thenLit, elseLit = elseLit, thenLit
-	}
 	styleSel := &ir.Select{
 		Operand: &ir.Ident{Name: elemID, Type: ir.TypDyn, IsElementRef: true},
 		Field:   "style",
@@ -3242,128 +3183,6 @@ func (g *htmlGen) emitDisplayToggle(elemID string, cond ir.Expr, invert bool) st
 }
 
 // addForStmtUpdater adds a list updater for an ir.For statement.
-func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ir.For) {
-	iterVar := stmt.Key
-	indexVar := stmt.Value
-	if indexVar == "" {
-		indexVar = "index"
-	}
-
-	iterableJS := g.exprToJS(stmt.Iter)
-	deps := g.exprDeps(stmt.Iter)
-
-	// Generate inner HTML creation code from the for body
-	var innerBuf strings.Builder
-	g.emitForStmtBody(&innerBuf, stmt, iterVar, indexVar, elemID)
-
-	name := fmt.Sprintf("$u_%s_list", elemID[1:])
-	body := fmt.Sprintf(`%s.innerHTML = "";
-  for (let %s = 0; %s < %s.length; %s++) {
-    const %s = %s[%s];
-%s  }`,
-		elemID,
-		indexVar, indexVar, iterableJS, indexVar,
-		iterVar, iterableJS, indexVar,
-		innerBuf.String())
-
-	g.initWrites = append(g.initWrites, updateFunc{
-		funcName: name,
-		body:     body,
-		deps:     deps,
-	})
-}
-
-// addForElseStmtUpdater adds a display updater for the else branch of a for loop.
-func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ir.For) {
-	iterableJS := g.exprToJS(stmt.Iter)
-	deps := g.exprDeps(stmt.Iter)
-
-	name := fmt.Sprintf("$u_%s_else", forElemID[1:])
-	body := fmt.Sprintf(`%s.style.display = %s.length === 0 ? "" : "none";`,
-		elseElemID, iterableJS)
-
-	g.initWrites = append(g.initWrites, updateFunc{
-		funcName: name,
-		body:     body,
-		deps:     deps,
-	})
-}
-
-// emitForStmtBody generates the inner HTML creation code for an ir.For body.
-func (g *htmlGen) emitForStmtBody(b *strings.Builder, stmt *ir.For, iterVar, indexVar, containerID string) {
-	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, g.scope.LocalVars)
-	g.scope.LocalVars[iterVar] = true
-	g.scope.LocalVars[indexVar] = true
-	defer func() { g.scope.LocalVars = savedLocals }()
-
-	for _, s := range stmt.Body {
-		if n, ok := s.(*ir.NodeInst); ok {
-			g.emitForLoopBody(b, n, iterVar, indexVar, containerID)
-		}
-	}
-}
-
-func (g *htmlGen) emitForLoopBody(b *strings.Builder, n *ir.NodeInst, iterVar, indexVar, containerID string) {
-	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, g.scope.LocalVars)
-	g.scope.LocalVars[iterVar] = true
-	g.scope.LocalVars[indexVar] = true
-	defer func() { g.scope.LocalVars = savedLocals }()
-
-	listFuncName := fmt.Sprintf("$u_%s_list", containerID[1:])
-
-	switch n.Name {
-	case "checkbox":
-		checked := "false"
-		if v := codegen.NodeProp(n, "checked"); v != nil {
-			checked = g.exprToJS(v)
-		}
-		label := `""`
-		if v := codegen.NodeProp(n, "label"); v != nil {
-			label = g.exprToJS(v)
-		}
-		style := g.buildCSSStyle(n)
-
-		fmt.Fprintf(b, "    const row = document.createElement(\"label\");\n")
-		style = htmlutil.AppendCSS(style, "display", "block")
-		fmt.Fprintf(b, "    row.style.cssText = %q;\n", style)
-		fmt.Fprintf(b, "    const cb = document.createElement(\"input\");\n")
-		fmt.Fprintf(b, "    cb.type = \"checkbox\";\n")
-		fmt.Fprintf(b, "    cb.checked = %s;\n", checked)
-
-		if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
-			first := changeEvt.Func.Block[0]
-			handlerLines := g.translateBlockJC([]ir.Stmt{first})
-			handlerLines = append(handlerLines, listFuncName+"();")
-			fmt.Fprintf(b, "    cb.addEventListener(\"change\", function() {\n")
-			for _, line := range handlerLines {
-				fmt.Fprintf(b, "      %s\n", line)
-			}
-			fmt.Fprintf(b, "    });\n")
-		}
-
-		fmt.Fprintf(b, "    row.appendChild(cb);\n")
-		fmt.Fprintf(b, "    row.appendChild(document.createTextNode(\" \" + %s));\n", label)
-		fmt.Fprintf(b, "    %s.appendChild(row);\n", containerID)
-
-	case "text":
-		tag := "span"
-		fmt.Fprintf(b, "    const el = document.createElement(%q);\n", tag)
-		val := `""`
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			val = g.exprToJS(v)
-		}
-		fmt.Fprintf(b, "    el.textContent = %s;\n", val)
-		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
-
-	default:
-		fmt.Fprintf(b, "    const el = document.createElement(\"div\");\n")
-		fmt.Fprintf(b, "    el.textContent = String(%s);\n", iterVar)
-		fmt.Fprintf(b, "    %s.appendChild(el);\n", containerID)
-	}
-}
-
 // exprDeps extracts model field dependencies, remapping through dataRenames
 // when inside a component scope so deps use promoted field names.
 func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
