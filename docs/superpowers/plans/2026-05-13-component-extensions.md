@@ -109,11 +109,13 @@ and pull `.Pos`. Or use `comp.Props.Pos` as a fallback if needed.
 - [ ] **Step 1: extension_rejects_props.sngl**
 
 ```sngl
-component sngl.text(extra string) { // ERROR(check) "may not declare props"
+component sngl.text(extra string) {
     platform html {
         span(textContent=value) {}
     }
 }
+
+// ERROR(check) "may not declare props"
 
 component main {
     text(value="hi")
@@ -123,25 +125,28 @@ component main {
 - [ ] **Step 2: extension_rejects_children_type.sngl**
 
 ```sngl
-component sngl.text list<dyn> { // ERROR(check) "may not declare children type"
+component sngl.text list<dyn> {
     platform html { span(textContent=value) {} }
 }
+// ERROR(check) "may not declare children type"
 ```
 
 - [ ] **Step 3: extension_rejects_naked_body.sngl**
 
 ```sngl
-component sngl.text { // ERROR(check) "body must contain only platform blocks"
+component sngl.text {
     span(textContent=value) {}
 }
+// ERROR(check) "body must contain only platform blocks"
 ```
 
 - [ ] **Step 4: extension_rejects_non_sngl.sngl**
 
 ```sngl
-component foo.bar { // ERROR(check) "extension namespace \"foo\" not supported"
-    platform html { span() {} }
+component foo.bar {
+    platform html { span {} }
 }
+// ERROR(check) "extension namespace \"foo\" not supported"
 ```
 
 - [ ] **Step 5: Run**
@@ -364,9 +369,7 @@ vbox, image, check, select, spacer, scroll, modal, …) get
 
 - [ ] **Step 1: Full test suite**
 
-`go test ./...`. Pre-existing failure in
-`examples/go-ast/cmd/go-ast-fyne/ui/model.go` (uncommitted regenerated
-file) is fine to ignore.
+`go test ./...`. Should be clean.
 
 - [ ] **Step 2: `go tool verify`**
 
@@ -438,10 +441,17 @@ component wrapper(dyn) {
     vbox { @children }
 }
 component main {
-    wrapper {} // ERROR(check) "requires exactly one child"
-    wrapper { text(value="a") text(value="b") } // ERROR(check) "requires exactly one child"
-    wrapper { text(value="ok") } // OK
+    wrapper {}
+    wrapper {
+        text(value="a")
+        text(value="b")
+    }
+    wrapper { text(value="ok") }
 }
+
+// ERROR(check) "requires exactly one child"
+// ERROR(check) "requires exactly one child"
+// OK
 ```
 
 (Adapt to actual SNGL child-binding syntax.)
@@ -453,10 +463,17 @@ component wrapper option<dyn> {
     vbox { @children }
 }
 component main {
-    wrapper {} // OK
-    wrapper { text(value="x") } // OK
-    wrapper { text() text() } // ERROR(check) "at most one child"
+    wrapper {}
+    wrapper { text(value="x") }
+    wrapper {
+        text()
+        text()
+    }
 }
+
+// OK
+// OK
+// ERROR(check) "at most one child"
 ```
 
 - [ ] **Step 3: children_count_list.sngl**
@@ -466,19 +483,26 @@ component wrapper list<dyn> {
     vbox { @children }
 }
 component main {
-    wrapper { text() text() text() } // OK
+    wrapper {
+        text()
+        text()
+        text()
+    }
 }
+
+// OK
 ```
 
 - [ ] **Step 4: children_count_none.sngl**
 
 ```sngl
-component leaf() {
+component leaf {
     text(value="leaf")
 }
 component main {
-    leaf { text() } // ERROR(check) "does not accept children"
+    leaf { text() }
 }
+// ERROR(check) "does not accept children"
 ```
 
 - [ ] **Step 5: Run**

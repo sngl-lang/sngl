@@ -1,3 +1,22 @@
+// =====================================================================
+// Learn SNGL in Y minutes
+//
+// SNGL is a declarative UI language that compiles to multiple platforms
+// (HTML+JS, BubbleTea TUI, Fyne desktop, Android). One source -> many
+// targets. The same file is a tutorial, a playground, and a portability
+// test: every section below passes `sngl check` and runs on every
+// platform listed in the `output` block.
+//
+// Read top to bottom. Each section introduces one feature with the
+// smallest piece of working code that demonstrates it.
+//
+//     Project: https://sngl.dev   |   Source: git.duckfam.us/jonathan/sngl
+// =====================================================================
+
+
+// ----- 1. Output -----------------------------------------------------
+// `output` declares which (language, platform) pairs this file builds
+// for. Each pair gets its own generated artifact.
 output {
     none { html }
     go {
@@ -7,73 +26,289 @@ output {
     kotlin { android }
 }
 
-struct Todo {
-    text string = ""
-    done bool = false
+
+// ----- 2. Constants --------------------------------------------------
+// Single const or grouped. Type optional when inferrable.
+const APP_NAME = "SNGL Tour"
+
+const (
+    MAX_ITEMS    = 100
+    DEFAULT_USER = "guest"
+    PI float     = 3.14159
+)
+
+
+// ----- 3. Units ------------------------------------------------------
+// User-defined dimensional types. Operations across compatible units
+// auto-convert; mixing incompatible units is a type error.
+//
+//     1s + 500ms == 1500ms
+//     2 * 3px    == 6px
+//     1rem + 2em == 18em
+unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+unit length   { px, em, rem = 16em, vw, vh, pct }
+
+
+// ----- 4. Structs ----------------------------------------------------
+// Named struct with defaults. Fields without defaults must be provided
+// at construction.
+struct User {
+    name  string = ""
+    age   int    = 0
+    admin bool   = false
 }
 
+// Anonymous structs are valid in any type position
+// (param/return/var/field) — see `makeBadge` below.
+
+
+// ----- 5. Enums ------------------------------------------------------
+// Named enum, referenced as `Role.admin` or unqualified when context
+// fixes the type.
+enum Role { guest, member, admin }
+
+// Inline enums are valid in type position too:
+//     func ack(level enum { low, med, high }) { ... }
+
+
+// ----- 6. Free functions --------------------------------------------
+// Expression body: `func f(...) => expr`. Return type inferred.
+func double(x int) => x * 2
+
+// Block body: `func f(...) [Type] { ... }`. Return type required iff
+// the function returns a value.
+func factorial(n int) int {
+    return n <= 1 ? 1 : n * factorial(n - 1)
+}
+
+// `func name(...) -> Type { ... }` is NOT valid syntax. The `->` arrow
+// is reserved for func *type* expressions (e.g. `func(int) int`).
+
+// Generic function. Type params after the name, inferred at call sites.
+func identity<T>(x T) => x
+
+// Generic with constraints come from operand: `xs.map(f)` binds T from
+// xs's element type and U from f's return type.
+
+
+// ----- 7. Function values & lambdas ---------------------------------
+// `func(int) int` is a TYPE. Lambdas use the same `func(params) => ...`
+// or `func(params) Type { ... }` syntax.
+func apply(x int, f func(int) int) int {
+    return f(x)
+}
+// Usage:  apply(3, func(n int) => n + 1)  // 4
+
+
+// ----- 8. Anonymous struct in param position ------------------------
+func makeBadge(b struct { label string; count int }) string {
+    return "{b.label}: {b.count}"
+}
+
+
+// ----- 9. Child component with prop + event sink -------------------
+// Components are declared at top level. Props live in the header.
+// `@event` props let the parent receive events emitted by the child.
+component LabeledCounter(label = "Clicks", start = 0, @changed) {
+    var n = start
+
+    hbox(style={gap=8, alignItems="center"}) {
+        text(value="{label}: {n}")
+        button(text="+1", @click {
+            n += 1
+            @changed(n)        // emit upward
+        })
+    }
+}
+
+
+// ----- 10. Recursive components ------------------------------------
+// Components can call themselves. Self-referencing struct fields use
+// `dyn` so the type can refer to itself.
+struct TreeNode {
+    value int = 0
+    left  dyn = null
+    right dyn = null
+}
+
+component TreeView(node dyn = null) {
+    vbox(style={paddingLeft=12, gap=2}) {
+        text(value=string(node.value))
+        if node.left != null {
+            TreeView(node=node.left)
+        }
+        if node.right != null {
+            TreeView(node=node.right)
+        }
+    }
+}
+
+
+// ----- 11. i18n (translatable strings) ------------------------------
+// `$"..."` marks a translatable string. ICU MessageFormat features:
+//
+//     plain        $"Hello"
+//     interp       $"Hello, {name}"
+//     plural       $"{n, plural, =0{none} one{# msg} other{# msgs}}"
+//     selectord    $"{p, selectordinal, one{#st} two{#nd} few{#rd} other{#th}}"
+//     select       $"{r, select, admin{Admin} other{User}}"
+//     number       $"{p, number, currency}"
+//     date         $"{d, date, long}"
+//
+// Translations live in `i18n.manifest.json` next to this file. The
+// runtime picks a locale from LC_ALL / LC_MESSAGES / LANG (or the
+// platform equivalent on Android).
+component I18nDemo {
+    var who    = "World"
+    var unread = 5
+    var role   = "admin"
+    var price  = 1234
+    var party  date = date("2026-05-09")
+
+    vbox(style={gap=4}) {
+        text(value=$"Welcome, {who}!")
+        text(value=$"You have {unread, plural,
+            =0{no new messages}
+            one{1 new message}
+            other{# new messages}
+        }.")
+        text(value=$"Role: {role, select,
+            admin{Administrator}
+            member{Member}
+            other{Guest}
+        }")
+        text(value=$"Ticket price: {price, number, currency}")
+        text(value=$"Party date: {party, date, long}")
+    }
+}
+
+
+// ----- 12. The main component: every feature wired up --------------
+// State (`var`) is reactive: changing it re-runs computed funcs and
+// patches the visual tree. The visual block below mirrors the original
+// stdlib-component showcase; the language-feature sections cross-
+// reference the relevant earlier section.
 component main {
+
+    // --- Primitive state (with explicit + inferred types) ---------
     var (
-        count = 0
-        name = "World"
-        darkMode = false
-        showModal = false
-        showDrawer = false
-        selectedTab = 0
-        selectedRadio = "medium"
-        toggleOn = false
-        selectedOption = ""
-        notes = ""
+        count           = 0
+        name            = "World"
+        ratio   float   = 0.5
+        darkMode        = false
+        showModal       = false
+        showDrawer      = false
+        selectedTab     = 0
+        selectedRadio   = "medium"
+        toggleOn        = false
+        selectedOption  = ""
+        notes           = ""
         sliderVal float = 0
-        animating = true
-        birthday date = "2000-01-01"
+        animating       = true
+        birthday  date  = date("2000-01-01")
+        clicks          = 0
     )
 
-    func greeting() => "Hello, {name}!"
+    // --- Option / null (§4) --------------------------------------
+    // `option<T>` allows null. Compare with `== null` / `!= null`.
+    var nickname   option<string> = null
+    var pickedUser option<User>   = null
 
-    func increment() {
-        count += 1
-    }
-    func reset() {
-        count = 0
-        name = "World"
-    }
+    // --- Constants inside a component ----------------------------
+    const PAGE_TITLE = "Component Showcase"
 
+    // --- Lists & list methods (§ — generic methods) --------------
+    var nums   list<int>    = [1, 2, 3, 4, 5]
+    var labels list<string> = ["alpha", "beta", "gamma"]
+
+    // --- Maps (literal disambiguated from struct by context) ----
+    var scores map<string, int> = {alice = 10, bob = 20, carol = 30}
+
+    // --- Computed funcs: zero-arg funcs are reactive properties --
+    // Reference them WITHOUT parens from interpolation or events:
+    // `c.greeting`, not `c.greeting()`.
+    func greeting()   => "Hello, {name}!"
+    func evens()      => nums.filter(func(x int) => x % 2 == 0)
+    func doubled()    => nums.map(func(x int) => x * 2)
+    func total() int {
+        var sum = 0
+        for x = nums {
+            sum = sum + x
+        }
+        return sum
+    }
+    func labelCount() => labels.length()
+
+    // --- Mutating methods (block form) ---------------------------
+    func increment() { count += 1 }
+    func reset()     { count = 0; name = "World" }
+
+    // --- Timer drives the animated progress bar ------------------
     timer(interval=50ms, enabled=animating, @tick {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     })
 
-    vbox(scroll=true, refreshing=false, @refresh { Alert.toast("Refreshed!", "info") }, style={gap=24, maxWidth=900, padding=24}) {
-        text(value="SNGL Component Showcase", style={fontSize=32, fontWeight="bold"})
-        text(value="Every component in the standard library", style={color=#666666})
+    // --- A sample tree for the recursive component (§10) ---------
+    var tree = TreeNode{
+        value = 5,
+        left  = TreeNode{value=3, left=TreeNode{value=1}},
+        right = TreeNode{value=8},
+    }
+
+    // ============================================================
+    //                    VISUAL TREE BELOW
+    // ============================================================
+    vbox(scroll=true, refreshing=false,
+         @refresh { Alert.toast("Refreshed!", "info") },
+         style={gap=24, maxWidth=900, padding=24}) {
+
+        // --- Heading ---------------------------------------------
+        text(value=APP_NAME, style={fontSize=32, fontWeight="bold"})
+        text(value="Every stdlib component + every language feature, one file.",
+             style={color=#666666})
         divider
+
+        // --- Text + button + computed (§ — `greeting` is computed) ---
         text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
         hbox(style={alignItems="center", gap=12}) {
             text(value=greeting, style={fontSize=18})
             button(text="Increment", @click { count += 1 })
-            button(text="Reset", @click { count = 0; name = "World" })
+            button(text="Reset",     @click { count = 0; name = "World" })
             badge(value=string(count), style={background=#2196f3, color=#ffffff})
         }
         divider
+
+        // --- Input -----------------------------------------------
         text(value="Input", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
+            input(placeholder="Enter your name", value=name,
+                  @input(e) { name = e.value })
             input(placeholder="Password", type="password")
             input(placeholder="Search...", type="search")
         }
         text(value="Textarea", style={fontSize=20, fontWeight="bold"})
-        textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
+        textarea(placeholder="Write some notes...", rows=4, value=notes,
+                 @input(e) { notes = e.value })
         divider
-        text(value="Checkbox, Toggle & Radio", style={fontSize=20, fontWeight="bold"})
+
+        // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
+        text(value="Checkbox, Toggle & Radio",
+             style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=24}) {
-            checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
+            checkbox(checked=darkMode, label="Dark mode",
+                     @change { darkMode!! })
             toggle(checked=toggleOn, label="Notifications")
-            radio(direction="horizontal", options=["small", "medium", "large"], value=selectedRadio)
+            radio(direction="horizontal",
+                  options=["small", "medium", "large"], value=selectedRadio)
         }
         text(value="Select", style={fontSize=20, fontWeight="bold"})
-        select(options=["Apple", "Banana", "Cherry", "Date"], placeholder="Pick a fruit", value=selectedOption)
+        select(options=["Apple", "Banana", "Cherry", "Date"],
+               placeholder="Pick a fruit", value=selectedOption)
         divider
-        text(value="Progress & Spinner", style={fontSize=20, fontWeight="bold"})
+
+        // --- Progress / Spinner / Tabs ---------------------------
+        text(value="Progress & Spinner",
+             style={fontSize=20, fontWeight="bold"})
         hbox(style={alignItems="center", gap=24}) {
             progress(max=1, value=sliderVal)
             spinner(label="Loading...")
@@ -85,12 +320,14 @@ component main {
             text(value="Settings would go here.")
         }
         divider
+
+        // --- Link / Chip / Avatar --------------------------------
         text(value="Link & Chip", style={fontSize=20, fontWeight="bold"})
         hbox(style={alignItems="center", gap=8}) {
             link(href="https://sngl.dev", text="SNGL Website")
             chip(label="Tag")
             chip(label="Removable", removable=true)
-            chip(label="Success", variant="success")
+            chip(label="Success",   variant="success")
         }
         text(value="Avatar", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=8}) {
@@ -99,6 +336,8 @@ component main {
             avatar(alt="User")
         }
         divider
+
+        // --- Card ------------------------------------------------
         text(value="Card", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=16}) {
             card(variant="outlined") {
@@ -115,11 +354,14 @@ component main {
             }
         }
         divider
+
+        // --- Modal / Drawer / Toast ------------------------------
         text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            button(text="Open Modal", @click { showModal = true })
+            button(text="Open Modal",  @click { showModal = true })
             button(text="Open Drawer", @click { showDrawer = true })
-            button(text="Show Toast", @click { Alert.toast("Action completed!", "success") })
+            button(text="Show Toast",
+                   @click { Alert.toast("Action completed!", "success") })
         }
         modal(closable=true, open=showModal, title="Example Modal") {
             text(value="This is modal content.")
@@ -133,6 +375,8 @@ component main {
             }
         }
         divider
+
+        // --- Tooltip / Split / Table / Tree ----------------------
         text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
@@ -154,6 +398,8 @@ component main {
         text(value="Tree", style={fontSize=20, fontWeight="bold"})
         tree(items=["Documents", "Photos", "Music", "Videos"])
         divider
+
+        // --- Menubar / Toolbar / DatePicker ----------------------
         text(value="Menubar", style={fontSize=20, fontWeight="bold"})
         menubar(items=["File", "Edit", "View", "Help"])
         text(value="Toolbar", style={fontSize=20, fontWeight="bold"})
@@ -167,129 +413,88 @@ component main {
         divider
         text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
         datepicker(placeholder="Select birthday", value=birthday)
-        divider(label="End of Showcase")
+        divider
+
+        // --- Composition: child component + event sink (§9) -----
+        text(value="Composition (child component emits event upward)",
+             style={fontSize=20, fontWeight="bold"})
+        LabeledCounter(label="Clicks", start=0,
+                       @changed(n) { clicks = n })
+        text(value="Parent saw clicks = {clicks}")
+        divider
+
+        // --- Recursive component (§10) --------------------------
+        text(value="Recursive component (TreeView calls itself)",
+             style={fontSize=20, fontWeight="bold"})
+        TreeView(node=tree)
+        divider
+
+        // --- For-loops, if, list/map iteration ------------------
+        text(value="For-loops & if",
+             style={fontSize=20, fontWeight="bold"})
+        vbox(style={gap=4}) {
+            // for with index + nested if-else (loop var deps only,
+            // so the inner if doesn't allocate its own reactive slot).
+            for n, idx = nums {
+                if n % 2 == 0 {
+                    text(value="{idx}: {n} (even)")
+                } else {
+                    text(value="{idx}: {n} (odd)")
+                }
+            } else {
+                text(value="empty list")
+            }
+            divider
+            // simple iteration over a list of strings
+            for s = labels {
+                text(value="- {s}")
+            }
+            divider
+            // map iteration yields key + value
+            for k, v = scores {
+                text(value="{k} = {v}")
+            }
+        }
+        divider
+
+        // --- Top-level if at component scope -------------------
+        text(value="If statement",
+             style={fontSize=20, fontWeight="bold"})
+        if count > 0 {
+            text(value="count is positive: {count}")
+        } else {
+            text(value="count is zero — press Increment")
+        }
+        divider
+
+        // --- Computed values pulling list methods (§ — generics) ---
+        text(value="Computed (filter/map/total)",
+             style={fontSize=20, fontWeight="bold"})
+        text(value="nums   = {nums}")
+        text(value="evens  = {evens}")
+        text(value="x2     = {doubled}")
+        text(value="total  = {total}")
+        divider
+
+        // --- i18n showcase (§11) --------------------------------
+        text(value="i18n", style={fontSize=20, fontWeight="bold"})
+        I18nDemo
+
+        divider(label="End of Tour")
     }
 }
 
-// --- Tests ---------------------------------------------------------
-// Initial-state asserts work on every TestRunner (fyne Phase 2a only
-// supports the t.assert path). Mutation tests rely on `none`'s
-// interpreter.
+
+// ----- 13. Tests (kept minimal) -------------------------------------
+// Any platform that implements the TestRunner interface can execute
+// these. `go tool verify` runs them via the `none` interpreter; other
+// platforms wire them into their own runners. See `internal/testutil`
+// for the framework. Per-feature coverage lives in `testdata/`.
 
 func testInitialCount(t Test, c main) {
     t.assert(c.count == 0)
 }
 
-func testInitialName(t Test, c main) {
-    t.assert(c.name == "World")
-}
-
-func testInitialDarkMode(t Test, c main) {
-    t.assert(c.darkMode == false)
-}
-
-func testInitialModalDrawerClosed(t Test, c main) {
-    t.assert(c.showModal == false)
-    t.assert(c.showDrawer == false)
-}
-
-func testInitialSelectedTab(t Test, c main) {
-    t.assert(c.selectedTab == 0)
-}
-
-func testInitialSelectedRadio(t Test, c main) {
-    t.assert(c.selectedRadio == "medium")
-}
-
-func testInitialToggleOn(t Test, c main) {
-    t.assert(c.toggleOn == false)
-}
-
-func testInitialSelectedOption(t Test, c main) {
-    t.assert(c.selectedOption == "")
-}
-
-func testInitialNotes(t Test, c main) {
-    t.assert(c.notes == "")
-}
-
-func testInitialSliderVal(t Test, c main) {
-    t.assert(c.sliderVal == 0)
-}
-
-func testInitialAnimating(t Test, c main) {
-    t.assert(c.animating == true)
-}
-
 func testGreetingDefault(t Test, c main) {
-    t.assert(c.greeting() == "Hello, World!")
-}
-
-func testGreetingAfterRename(t Test, c main) {
-    c.name = "Alice"
-    t.assert(c.greeting() == "Hello, Alice!")
-}
-
-func testIncrement(t Test, c main) {
-    c.increment()
-    t.assert(c.count == 1)
-    c.increment()
-    c.increment()
-    t.assert(c.count == 3)
-}
-
-func testReset(t Test, c main) {
-    c.count = 42
-    c.name = "Bob"
-    c.reset()
-    t.assert(c.count == 0)
-    t.assert(c.name == "World")
-}
-
-func testDarkModeToggle(t Test, c main) {
-    c.darkMode = true
-    t.assert(c.darkMode == true)
-    c.darkMode!!
-    t.assert(c.darkMode == false)
-}
-
-func testModalOpen(t Test, c main) {
-    c.showModal = true
-    t.assert(c.showModal == true)
-}
-
-func testDrawerOpen(t Test, c main) {
-    c.showDrawer = true
-    t.assert(c.showDrawer == true)
-}
-
-func testTabSelection(t Test, c main) {
-    c.selectedTab = 2
-    t.assert(c.selectedTab == 2)
-}
-
-func testRadioSelection(t Test, c main) {
-    c.selectedRadio = "large"
-    t.assert(c.selectedRadio == "large")
-}
-
-func testToggleFlip(t Test, c main) {
-    c.toggleOn!!
-    t.assert(c.toggleOn == true)
-}
-
-func testNotesEdit(t Test, c main) {
-    c.notes = "remember the milk"
-    t.assert(c.notes == "remember the milk")
-}
-
-func testSliderRange(t Test, c main) {
-    c.sliderVal = 0.5
-    t.assert(c.sliderVal >= 0)
-    t.assert(c.sliderVal <= 1)
-}
-
-func testSelectFruit(t Test, c main) {
-    c.selectedOption = "Cherry"
-    t.assert(c.selectedOption == "Cherry")
+    t.assert(c.greeting == "Hello, World!")
 }

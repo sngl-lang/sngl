@@ -1,0 +1,27 @@
+{
+  "Welcome, {who}!": {
+    "translations": {
+      "es": "¡Bienvenido, {who}!"
+    }
+  },
+  "You have {unread, plural,\n            =0{no new messages}\n            one{1 new message}\n            other{# new messages}\n        }.": {
+    "translations": {
+      "es": "Tienes {unread, plural,\n            =0{ningún mensaje nuevo}\n            one{1 mensaje nuevo}\n            other{# mensajes nuevos}\n        }."
+    }
+  },
+  "Role: {role, select,\n            admin{Administrator}\n            member{Member}\n            other{Guest}\n        }": {
+    "translations": {
+      "es": "Rol: {role, select,\n            admin{Administrador}\n            member{Miembro}\n            other{Invitado}\n        }"
+    }
+  },
+  "Ticket price: {price, number, currency}": {
+    "translations": {
+      "es": "Precio de la entrada: {price, number, currency}"
+    }
+  },
+  "Party date: {party, date, long}": {
+    "translations": {
+      "es": "Fecha de la fiesta: {party, date, long}"
+    }
+  }
+}
