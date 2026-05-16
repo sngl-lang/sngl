@@ -142,16 +142,26 @@ Migrating handlers naively breaks the following ground-truth tests:
 
 Before Task 4 can land, these features must move into the new path:
 
-- [ ] **Step 0a: Bundled-native-pkg refs in `JsIRContext`**
-  Wire `ExprCtx` (or a hook) to expose `BundledNativePkgs`. Emit
-  `__sngl_n_<alias>.<name>(...)` for matching native-import calls in
-  `evalCall`.
-- [ ] **Step 0b: Funcvar-await in `JsIRContext`**
-  Expose slot-color via the package's points-to set so `evalCall` can
-  prefix `await` on funcvar invocations whose slot is `Async`.
+- [x] **Step 0a: Bundled-native-pkg refs in `JsIRContext`**
+  `ExprCtx` gained `BundledNativePkgs` + `NativeImports`; `JsIRContext`'s
+  `evalCall` emits `__sngl_n_<alias>.<name>(...)` and registers the
+  binding for native-scheme calls.
+- [x] **Step 0b: Funcvar-await in `JsIRContext`**
+  `evalCall` uses `Pkg.PointsTo.SlotColor` to prefix `await` on Async
+  funcvars (with conservative any-async-candidate fallback). Plain
+  calls flagged `IsAsync` also get `await`.
 
-Only after both gaps close can the per-handler migration proceed
-without fixture drift. Each closure is independently shippable.
+Both gaps closed by commit `0f14607`.
+
+### Status (2026-05-15)
+
+Phase 3 Tasks 3-5 shipped at `0f14607`. All
+handler/timer/setter body emission flows through
+`g.translateBlockJC` → `WalkLowered` + `htmlTranslator` +
+`JsIRContext`. `translateHandlerStmt` and `domWriteFor` remain only
+because `emitJSFunc` (general user-func emission) still uses them —
+that lives outside the g.updates scope and is handled in Phase 5
+cleanup.
 
 ### Task 3: Migrate `g.scope`/`g.dataRenames` into reusable shape
 
