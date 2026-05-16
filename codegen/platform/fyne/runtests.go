@@ -172,6 +172,21 @@ func writeTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup)
 	b.WriteString("var _ = time.Duration(0)\n\n")
 	b.WriteString("func newTestComponent() *Model { return New() }\n\n")
 
+	// Computed funcs and user funcs lower to Model methods, not fields.
+	// Tests that read them via `c.<name>` need `c.<name>()` to satisfy
+	// Go's type checker.
+	methodFields := map[string]bool{}
+	for _, comp := range origPkg.Components {
+		for _, f := range comp.Funcs {
+			methodFields[f.Name] = true
+		}
+	}
+	for _, f := range origPkg.Funcs {
+		if codegen.IsComputed(f) {
+			methodFields[f.Name] = true
+		}
+	}
+
 	for _, tf := range group.Funcs {
 		var fn *ir.Func
 		for _, f := range origPkg.Funcs {
@@ -185,7 +200,7 @@ func writeTestFile(dir string, origPkg *ir.Package, group testharness.TestGroup)
 		}
 		// Strip the leading "test" so the Go test name is `TestFooBar`.
 		suffix := strings.TrimPrefix(fn.Name, "test")
-		b.WriteString(golang.LowerTestFunc(fn, suffix, nil))
+		b.WriteString(golang.LowerTestFunc(fn, suffix, methodFields))
 		b.WriteString("\n")
 	}
 

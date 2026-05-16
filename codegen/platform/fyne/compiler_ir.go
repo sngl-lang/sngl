@@ -154,6 +154,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		varGC := gc
 		if tv.comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+			// Substitute child component param refs in the var init with
+			// the param's default. See bubbletea/compiler_ir.go for the
+			// same fix — Renames maps prop name → rendered Go expression.
+			for _, p := range tv.comp.Props {
+				if p.Default == nil {
+					continue
+				}
+				varGC.Ctx.Renames[p.Name] = varGC.EvalExpr(p.Default)
+			}
 		}
 		goType := irVarGoType(v)
 		if strings.HasPrefix(goType, "time.") {

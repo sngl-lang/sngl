@@ -61,6 +61,16 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 				return "i18n." + goName
 			}
 		}
+		// Field access on a `dyn` operand: Go's `any` has no fields, so a
+		// bare `.<F>` won't compile. If exactly one user struct in the
+		// package declares this field, emit a type assertion to that
+		// struct. Covers recursive-component patterns where a struct
+		// field is typed `dyn` for self-reference (TreeNode.left/right).
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
+			if name := gc.uniqueStructWithField(n.Field); name != "" {
+				return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
+			}
+		}
 		return operand + "." + ExportName(n.Field)
 	case *ir.Index:
 		operand := gc.EvalExpr(n.Operand)
@@ -145,6 +155,13 @@ func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
 		return gc.evalFor(n)
 	case *ir.If:
 		return gc.evalIf(n)
+	case *ir.NodeInst:
+		// UI tree statements are platform-specific (rendered by each
+		// codegen's translator, not by the generic Go-stmt path). Test
+		// lowering shouldn't see them, but the fyne test runner runs
+		// the same EvalStmt over component bodies that still carry
+		// NodeInst leaves; emit nothing rather than panic.
+		return nil
 	default:
 		panic(fmt.Sprintf("GoIRContext.EvalStmt: unhandled ir.Stmt %T", s))
 	}
@@ -449,6 +466,32 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// uniqueStructWithField returns the Go type name of the sole package
+// struct declaring a field with this SNGL field name, or "" if zero
+// or multiple structs match. Used to pick a type assertion target
+// when reading a field off a `dyn`-typed operand.
+func (gc *GoIRContext) uniqueStructWithField(field string) string {
+	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
+		return ""
+	}
+	var match *ir.StructDef
+	for _, sd := range gc.Ctx.Pkg.Structs {
+		for _, f := range sd.Fields {
+			if f.Name == field {
+				if match != nil {
+					return ""
+				}
+				match = sd
+				break
+			}
+		}
+	}
+	if match == nil {
+		return ""
+	}
+	return ExportName(match.Name)
 }
 
 // evalListLambdaCall emits a typed Go IIFE for `xs.filter(f)` / `xs.map(f)`.

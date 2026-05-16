@@ -160,6 +160,23 @@ func writeBubbleteaTestFile(dir string, origPkg *ir.Package, group testharness.T
 	// rely on Go local-addressability for `c.field = …` writes.
 	b.WriteString("func newTestComponent() Model { return New() }\n\n")
 
+	// Build the set of names that lower to Model methods rather than
+	// fields. Computed funcs (zero-arg funcs on a component) and user
+	// funcs both end up as methods, so test bodies that read them via
+	// `c.<name>` (no parens, per SNGL semantics) must lower to
+	// `c.<name>()` to satisfy Go.
+	methodFields := map[string]bool{}
+	for _, comp := range origPkg.Components {
+		for _, f := range comp.Funcs {
+			methodFields[f.Name] = true
+		}
+	}
+	for _, f := range origPkg.Funcs {
+		if codegen.IsComputed(f) {
+			methodFields[f.Name] = true
+		}
+	}
+
 	for _, tf := range group.Funcs {
 		var fn *ir.Func
 		for _, f := range origPkg.Funcs {
@@ -172,7 +189,7 @@ func writeBubbleteaTestFile(dir string, origPkg *ir.Package, group testharness.T
 			continue
 		}
 		suffix := strings.TrimPrefix(fn.Name, "test")
-		b.WriteString(golang.LowerTestFunc(fn, suffix, nil))
+		b.WriteString(golang.LowerTestFunc(fn, suffix, methodFields))
 		b.WriteString("\n")
 	}
 

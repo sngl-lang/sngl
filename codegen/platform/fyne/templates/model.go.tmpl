@@ -15,6 +15,9 @@ var _ = widget.NewLabel
 {{- if index .Imports "fyne.io/fyne/v2/layout"}}
 var _ = layout.NewSpacer
 {{- end}}
+{{- if index .Imports "git.duckfam.us/jonathan/sngl/pkg/go/i18n"}}
+var _ = i18n.GetTranslator
+{{- end}}
 
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
