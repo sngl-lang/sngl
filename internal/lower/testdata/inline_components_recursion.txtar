@@ -1,0 +1,17 @@
+caps: NoInlineComponents
+-- input.sngl --
+component Tree(name = "leaf") {
+    text(value=name)
+    Tree(name="child")
+}
+component main {
+    Tree(name="root")
+}
+-- expected.sngl --
+component Tree(name string = "leaf") {
+    text(value=name)
+    Tree(name="child")
+}
+component main {
+    Tree(name="root")
+}
