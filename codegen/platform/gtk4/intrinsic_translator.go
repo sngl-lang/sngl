@@ -222,7 +222,6 @@ func ctorZeroArg(girType string, t *ir.Type) ir.Expr {
 	return &ir.Literal{Type: ir.TypInt, Raw: "0"}
 }
 
-
 // emitConstructorAssign records the new widget's id↔cType mapping and
 // emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {

@@ -3332,9 +3332,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 // identifier resolutions as the legacy translateHandlerStmt path.
 func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	c := g.ctx.Clone()
-	for k, v := range g.scope.Renames {
-		c.Renames[k] = v
-	}
+	maps.Copy(c.Renames, g.scope.Renames)
 	for k := range g.scope.LocalVars {
 		c.Locals[k] = true
 	}
