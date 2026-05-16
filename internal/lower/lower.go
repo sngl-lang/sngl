@@ -45,6 +45,7 @@ var passes = []pass{
 	passAsyncReactive,
 	passComputed,
 	passLambda,
+	passNoListLambdas,
 	passToggle,
 	passInlinePure,
 	passReactivity,

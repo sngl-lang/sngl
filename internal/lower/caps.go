@@ -24,6 +24,7 @@ type Caps struct {
 	NoReactivity     bool // reactive deps → explicit updater stmts after each mutation
 	NoDeclarative    bool // visual node tree → flat stream of create/update/delete IR calls
 	NoStdlibWrappers bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
+	NoListLambdas    bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -42,6 +43,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoReactivity:     c.NoReactivity || other.NoReactivity,
 		NoDeclarative:    c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers: c.NoStdlibWrappers || other.NoStdlibWrappers,
+		NoListLambdas:    c.NoListLambdas || other.NoListLambdas,
 	}
 }
 
@@ -66,6 +68,9 @@ func (c Caps) String() string {
 	}
 	if c.NoLambda {
 		parts = append(parts, "NoLambda")
+	}
+	if c.NoListLambdas {
+		parts = append(parts, "NoListLambdas")
 	}
 	if c.NoRef {
 		parts = append(parts, "NoRef")

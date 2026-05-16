@@ -436,13 +436,14 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 
 	args := gc.evalCallArgs(n.Args)
 
-	// Typed inline expansion for generic list methods that take a
-	// lambda. The default builtin rendering type-asserts the lambda
-	// through `func(any) any`, which Go rejects because lambdas have
-	// concrete func types (not interfaces). Emit a typed IIFE using
-	// the IR's element type info instead.
+	// Typed inline fallback for generic list methods that take a
+	// lambda. The proper fix is passNoListLambdas, which expands these
+	// calls into hoisted for-loops at the IR level. Callers that bypass
+	// Lower (the test runner does, today) still need *some* working
+	// emission, so fall back to a typed IIFE here when the IR retains
+	// the original filter/map Call shape.
 	if (method == "filter" || method == "map") && len(args) >= 2 {
-		if expr := gc.evalListLambdaCall(n, method, args); expr != "" {
+		if expr := gc.evalListLambdaCallFallback(n, method, args); expr != "" {
 			return expr
 		}
 	}
@@ -466,6 +467,39 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// evalListLambdaCallFallback emits a typed Go IIFE for `xs.filter(f)` /
+// `xs.map(f)` when the IR still carries the original method-call shape.
+// passNoListLambdas (a lowering pass enabled for Go targets) expands
+// these into explicit for-loops in the IR; this fallback exists for
+// code paths that don't run Lower (the in-process test runner).
+func (gc *GoIRContext) evalListLambdaCallFallback(n *ir.Call, method string, args []string) string {
+	xsExpr := args[0]
+	fnExpr := args[1]
+	var elemGo string
+	if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeList && len(t.Elems) > 0 {
+		elemGo = IRTypeToGo(t.Elems[0])
+	}
+	if elemGo == "" {
+		return ""
+	}
+	switch method {
+	case "filter":
+		return "func() []" + elemGo + " { var out []" + elemGo + "; for _, item := range " + xsExpr +
+			" { if (" + fnExpr + ")(item) { out = append(out, item) } }; return out }()"
+	case "map":
+		var outGo string
+		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
+			outGo = IRTypeToGo(n.Type.Elems[0])
+		}
+		if outGo == "" {
+			return ""
+		}
+		return "func() []" + outGo + " { out := make([]" + outGo + ", len(" + xsExpr + ")); for i, item := range " + xsExpr +
+			" { out[i] = (" + fnExpr + ")(item) }; return out }()"
+	}
+	return ""
 }
 
 // uniqueStructWithField returns the Go type name of the sole package
@@ -492,38 +526,6 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 		return ""
 	}
 	return ExportName(match.Name)
-}
-
-// evalListLambdaCall emits a typed Go IIFE for `xs.filter(f)` / `xs.map(f)`.
-// Returns "" if either operand lacks the type info needed to pick a
-// concrete element type; the caller then falls back to the generic
-// builtin rendering.
-func (gc *GoIRContext) evalListLambdaCall(n *ir.Call, method string, args []string) string {
-	xsExpr := args[0]
-	fnExpr := args[1]
-	var elemGo string
-	if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeList && len(t.Elems) > 0 {
-		elemGo = IRTypeToGo(t.Elems[0])
-	}
-	if elemGo == "" {
-		return ""
-	}
-	switch method {
-	case "filter":
-		return "func() []" + elemGo + " { var out []" + elemGo + "; for _, item := range " + xsExpr +
-			" { if (" + fnExpr + ")(item) { out = append(out, item) } }; return out }()"
-	case "map":
-		var outGo string
-		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-			outGo = IRTypeToGo(n.Type.Elems[0])
-		}
-		if outGo == "" {
-			return ""
-		}
-		return "func() []" + outGo + " { out := make([]" + outGo + ", len(" + xsExpr + ")); for i, item := range " + xsExpr +
-			" { out[i] = (" + fnExpr + ")(item) }; return out }()"
-	}
-	return ""
 }
 
 // userMethodKnown reports whether a method qualName has a user-defined

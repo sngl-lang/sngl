@@ -35,7 +35,15 @@ func (t *Translator) Description() string {
 }
 func (t *Translator) Package() []*ast.Document            { return pkgDocs }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
-func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
+func (t *Translator) Capabilities() lower.Caps {
+	return lower.Caps{
+		// Go can't represent typed lambdas behind an interface{} surface
+		// (no type-asserting a `func(int) bool`). Lower xs.filter(f) /
+		// xs.map(f) into an explicit accumulator + for-loop so codegen
+		// only sees direct lambda calls with their concrete types.
+		NoListLambdas: true,
+	}
+}
 
 // v2 IR-based methods (stubs — will be implemented during platform migration).
 

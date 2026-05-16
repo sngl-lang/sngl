@@ -428,19 +428,30 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	b.WriteString("\tm.height = h\n")
 	b.WriteString("}\n\n")
 
-	// Computed methods
+	// Computed methods. Single-Return bodies emit `return <expr>` for
+	// minimal output; multi-statement bodies (e.g. those introduced by
+	// passNoListLambdas hoisting `var __listN ...; for ...; return ...`)
+	// emit the full block.
 	for _, comp := range info.computeds {
-		body := ""
+		fmt.Fprintf(&b, "func (m Model) %s() %s {\n", comp.name, comp.goType)
+		emitted := false
 		if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body = gc.EvalExpr(ret.Value)
+				fmt.Fprintf(&b, "\treturn %s\n", gc.EvalExpr(ret.Value))
+				emitted = true
 			}
 		}
-		if body == "" {
-			body = `""`
+		if !emitted {
+			if comp.fn != nil {
+				for _, stmt := range comp.fn.Block {
+					for _, line := range gc.EvalStmt(stmt) {
+						fmt.Fprintf(&b, "\t%s\n", line)
+					}
+				}
+			} else {
+				b.WriteString("\treturn \"\"\n")
+			}
 		}
-		fmt.Fprintf(&b, "func (m Model) %s() %s {\n", comp.name, comp.goType)
-		fmt.Fprintf(&b, "\treturn %s\n", body)
 		b.WriteString("}\n\n")
 	}
 

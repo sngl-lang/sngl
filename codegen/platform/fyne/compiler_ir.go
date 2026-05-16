@@ -122,6 +122,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		if v.Synthesized {
+			// Reactivity injects __root + __slot<N> into every component
+			// that has a reactive slot. The flat-Model design only ever
+			// renders main's container, so non-main copies would just
+			// collide on field name. Skip them — the future component-
+			// inlining lowering pass will eliminate this case entirely.
+			if tv.comp != nil && tv.comp != ctx.MainComponent() {
+				continue
+			}
 			if v.Name == "__root" {
 				// Plan B's __root sentinel: a stable *fyne.Container the
 				// renderSlot updaters operate on, and which BuildUI returns.

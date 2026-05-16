@@ -2,16 +2,16 @@
 # InlinePure runs always-on (Plan G); fyne also opts into NoStdlibWrappers.
 
 sngl dump lowered --lang go --platform bubbletea --list main.sngl
-stdout 'caps:'
-stdout 'passes: PlatformExtensionBody . InlinePure'
+stdout 'caps: NoListLambdas'
+stdout 'passes: PlatformExtensionBody . NoListLambdas . InlinePure'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoReactivity,NoStdlibWrappers,NoDeclarative'
-stdout 'passes: PlatformExtensionBody . InlinePure . NoReactivity . NoDeclarative'
+stdout 'caps: NoListLambdas,NoReactivity,NoStdlibWrappers,NoDeclarative'
+stdout 'passes: PlatformExtensionBody . NoListLambdas . InlinePure . NoReactivity . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,NoReactivity,NoStdlibWrappers'
-stdout 'passes: PlatformExtensionBody . NoAsyncReactive . InlinePure . NoReactivity'
+stdout 'caps: NoAsyncReactive,NoListLambdas,NoReactivity,NoStdlibWrappers'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoListLambdas . InlinePure . NoReactivity'
 
 sngl dump lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoReactivity,NoStdlibWrappers'
