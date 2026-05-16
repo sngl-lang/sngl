@@ -95,9 +95,10 @@ type irAnalysis struct {
 }
 
 type irBind struct {
-	name   string
-	goType string
-	init   string // Go expression
+	name    string
+	goType  string
+	init    string // Go expression
+	isConst bool
 }
 
 type irExtern struct {
@@ -158,9 +159,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	for _, tv := range allVars {
 		v := tv.v
-		if v.IsConst {
-			continue
-		}
+		// Consts emit as Model fields too: tests read them via `c.<name>`
+		// and component-method bodies via `m.<name>`. Top-level consts
+		// also get a file-scope `var` emission earlier in the file so
+		// top-level free funcs (not Model methods) can reach them.
 		varGC := gc
 		if tv.comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
@@ -171,9 +173,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			info.goImports["time"] = ""
 		}
 		info.binds = append(info.binds, irBind{
-			name:   v.Name,
-			goType: goType,
-			init:   initVal,
+			name:    v.Name,
+			goType:  goType,
+			init:    initVal,
+			isConst: v.IsConst,
 		})
 	}
 
@@ -314,6 +317,20 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	// into user output, so it needs to materialise here.
 	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
 		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
+	}
+
+	// Top-level const decls are emitted at file scope as Go `var` so
+	// free-function bodies (which are top-level Go funcs, not Model
+	// methods) can reference them by bare name. Component-level consts
+	// don't get a file-scope emission — they only live as Model fields,
+	// reached via `m.<name>` from any component method.
+	if len(ctx.Pkg.Consts) > 0 {
+		for _, c := range ctx.Pkg.Consts {
+			init := golang.LowerVarInit(c, gc)
+			goType := golang.IRTypeToGo(c.Type)
+			fmt.Fprintf(&b, "var %s %s = %s\n", c.Name, goType, init)
+		}
+		b.WriteString("\n")
 	}
 
 	// Timer tick messages
@@ -511,6 +528,12 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 
 func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext) {
 	for _, bind := range info.binds {
+		// Consts are read-only and would collide field-vs-method when
+		// the source name is already exported (e.g. APP_NAME field +
+		// APP_NAME getter). Tests reach them via direct field access.
+		if bind.isConst {
+			continue
+		}
 		getter := golang.ExportName(bind.name)
 		// Getter
 		fmt.Fprintf(b, "func (m Model) %s() %s {\n", getter, bind.goType)
@@ -561,8 +584,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
-	// Set messages
+	// Set messages — consts have no setter, skip them.
 	for _, bind := range info.binds {
+		if bind.isConst {
+			continue
+		}
 		getter := golang.ExportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)

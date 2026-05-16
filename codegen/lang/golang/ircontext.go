@@ -260,6 +260,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameStateVar:
 		return "m." + name
 	case codegen.NameConst:
+		// Top-level free-function bodies aren't methods on Model; consts
+		// live at file scope there. Inside a component method, every
+		// const (top-level or component-level) is also a Model field, so
+		// emit `m.<name>` for direct field access.
+		if gc.Ctx.Component != nil {
+			return "m." + name
+		}
 		return name
 	case codegen.NameFunc:
 		return "m." + ExportName(name)
