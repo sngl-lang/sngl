@@ -245,9 +245,9 @@ ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
+StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructField { semi StructField } [ semi ] ] rbrace .
 
-StructField = IdentList Type [ assign Expr ] semi .
+StructField = IdentList Type [ assign Expr ] .
 
 # Enum values use a brace list: enum Color{Red, Green, Blue} or enum Status{ok=0, err=1}
 # The body is a comma-separated ArgList, not a StmtBlock (no semis).

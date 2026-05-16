@@ -1,7 +1,6 @@
 package lower
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -920,14 +919,43 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 		sub = append(sub, pushToSlot(n.ID))
 		return sub
 	}
-	emitStmts := func(stmts []ir.Stmt) []ir.Stmt {
+	// Recursively process a body: NodeInsts are realized + pushed onto the
+	// slot list. Nested If/For without their own slot (i.e. depending only
+	// on loop variables / non-reactive state) are kept structurally; their
+	// bodies are walked the same way. Nested If/For that DO carry a slot
+	// (nested *reactive* structure on top-level reactive state) still
+	// panic — that case needs the design work in
+	// docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md.
+	var emitStmts func(stmts []ir.Stmt) []ir.Stmt
+	emitStmts = func(stmts []ir.Stmt) []ir.Stmt {
 		var out []ir.Stmt
 		for _, s := range stmts {
 			switch sx := s.(type) {
 			case *ir.NodeInst:
 				out = append(out, emitNodeAt(sx)...)
-			case *ir.If, *ir.For:
-				panic(fmt.Sprintf("lower(reactivity): nested %T in reactive slot body — nested structural reactivity is not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)", s))
+			case *ir.If:
+				if sx.LoweredSlotID != "" {
+					panic("lower(reactivity): nested *ir.If with its own slot — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)")
+				}
+				inner := &ir.If{Cond: sx.Cond, Body: emitStmts(sx.Body)}
+				if len(sx.Else) > 0 {
+					inner.Else = emitStmts(sx.Else)
+				}
+				out = append(out, inner)
+			case *ir.For:
+				if sx.LoweredSlotID != "" {
+					panic("lower(reactivity): nested *ir.For with its own slot — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)")
+				}
+				inner := &ir.For{
+					Key:   sx.Key,
+					Value: sx.Value,
+					Iter:  sx.Iter,
+					Body:  emitStmts(sx.Body),
+				}
+				if len(sx.Else) > 0 {
+					inner.Else = emitStmts(sx.Else)
+				}
+				out = append(out, inner)
 			default:
 				// Non-structural stmt (LocalVar/Assign/CallStmt/etc.) — pass through.
 				_ = sx
