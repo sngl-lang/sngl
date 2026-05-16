@@ -3067,7 +3067,6 @@ func loweredID(id string) bool { return strings.HasPrefix(id, "__n") }
 
 // addTextUpdater adds an updater that sets el.textContent from an expression.
 func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_text", elemID[1:])
 	// An i18n.tr-rooted value with no state dependencies still varies by
@@ -3076,23 +3075,32 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 	initOnly := loweredID(elemID) || (len(deps) == 0 && exprUsesI18n(expr))
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
-		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
+		body:     g.emitPropAssign(elemID, "textContent", expr),
 		deps:     deps,
 		initOnly: initOnly,
 	})
 }
 
 func (g *htmlGen) addTextContentUpdater(elemID string, expr ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
-	deps := g.exprDeps(expr)
-	name := fmt.Sprintf("$u_%s_text", elemID[1:])
-	initOnly := loweredID(elemID) || (len(deps) == 0 && exprUsesI18n(expr))
-	g.updates = append(g.updates, updateFunc{
-		funcName: name,
-		body:     fmt.Sprintf("%s.textContent = %s;", elemID, jsExpr),
-		deps:     deps,
-		initOnly: initOnly,
-	})
+	g.addTextUpdater(elemID, expr)
+}
+
+// emitPropAssign produces the JS body for a single DOM-property write,
+// routed through htmlTranslator + JsIRContext so the SNGL component-prop
+// → DOM-prop mapping, identifier resolution, and async-call rules stay
+// consistent with handler/timer/setter emission.
+func (g *htmlGen) emitPropAssign(elemID, domProp string, value ir.Expr) string {
+	stmt := &ir.Assign{
+		Target: &ir.Select{
+			Operand: &ir.Ident{Name: elemID, Type: ir.TypDyn, IsElementRef: true},
+			Field:   domProp,
+			Type:    ir.TypDyn,
+		},
+		Op:    ast.AssignSet,
+		Value: value,
+	}
+	lines := g.translateBlockJC([]ir.Stmt{stmt})
+	return strings.Join(lines, " ")
 }
 
 // exprUsesI18n reports whether expr (or any sub-expression) is a call to
@@ -3156,36 +3164,43 @@ func exprUsesI18n(expr ir.Expr) bool {
 }
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_%s", elemID[1:], attr)
+	stmt := &ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: elemID, Type: ir.TypDyn, IsElementRef: true},
+		Func:     &ir.Func{Name: "setAttribute"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Raw: attr}},
+			{Value: expr},
+		},
+	}}
+	lines := g.translateBlockJC([]ir.Stmt{stmt})
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
-		body:     fmt.Sprintf("%s.setAttribute(%q, %s);", elemID, attr, jsExpr),
+		body:     strings.Join(lines, " "),
 		deps:     deps,
 		initOnly: loweredID(elemID),
 	})
 }
 
 func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
-		body:     fmt.Sprintf("%s.disabled = %s;", elemID, jsExpr),
+		body:     g.emitPropAssign(elemID, "disabled", expr),
 		deps:     deps,
 		initOnly: loweredID(elemID),
 	})
 }
 
 func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(expr, g.scope)
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
-		body:     fmt.Sprintf("%s.style.display = %s ? \"\" : \"none\";", elemID, jsExpr),
+		body:     g.emitDisplayToggle(elemID, expr, false),
 		deps:     deps,
 		initOnly: loweredID(elemID),
 	})
@@ -3193,14 +3208,34 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 
 // addElseUpdater adds a display updater for the else branch of an if statement.
 func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
-	jsExpr := g.lang.TranslateIRExpr(cond, g.scope)
 	deps := g.exprDeps(cond)
 	name := fmt.Sprintf("$u_%s_else", elemID[1:])
 	g.updates = append(g.updates, updateFunc{
 		funcName: name,
-		body:     fmt.Sprintf("%s.style.display = %s ? \"none\" : \"\";", elemID, jsExpr),
+		body:     g.emitDisplayToggle(elemID, cond, true),
 		deps:     deps,
 	})
+}
+
+// emitDisplayToggle produces the JS body for an `el.style.display = cond
+// ? "" : "none"` write (or the inverse when invert is true), routed
+// through htmlTranslator + JsIRContext.
+func (g *htmlGen) emitDisplayToggle(elemID string, cond ir.Expr, invert bool) string {
+	thenLit := &ir.Literal{Type: ir.TypString, Raw: ""}
+	elseLit := &ir.Literal{Type: ir.TypString, Raw: "none"}
+	if invert {
+		thenLit, elseLit = elseLit, thenLit
+	}
+	styleSel := &ir.Select{
+		Operand: &ir.Ident{Name: elemID, Type: ir.TypDyn, IsElementRef: true},
+		Field:   "style",
+		Type:    ir.TypDyn,
+	}
+	displaySel := &ir.Select{Operand: styleSel, Field: "display", Type: ir.TypDyn}
+	tern := &ir.Ternary{Cond: cond, Then: thenLit, Else: elseLit, Type: ir.TypString}
+	stmt := &ir.Assign{Target: displaySel, Op: ast.AssignSet, Value: tern}
+	lines := g.translateBlockJC([]ir.Stmt{stmt})
+	return strings.Join(lines, " ")
 }
 
 // addForStmtUpdater adds a list updater for an ir.For statement.
@@ -3508,14 +3543,16 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 }
 
 // collectLoweredRefs walks an IR stmt and registers any IsElementRef Ident
-// in g.loweredRefs so the script-prelude emits a const for it. Mirrors the
-// side effect translateHandlerStmt has at line `g.loweredRefs[idn.Name] = true`.
+// in g.loweredRefs so the script-prelude emits a `const __nN =
+// querySelector(...)` for it. Only `__n*` ids (NoReactivity-pre-assigned)
+// flow through the data-sngl-id path; allocator-assigned `$N` ids use the
+// existing getElementById emission.
 func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 	var walkExpr func(e ir.Expr)
 	walkExpr = func(e ir.Expr) {
 		switch x := e.(type) {
 		case *ir.Ident:
-			if x.IsElementRef {
+			if x.IsElementRef && loweredID(x.Name) {
 				g.loweredRefs[x.Name] = true
 			}
 		case *ir.Binary:
