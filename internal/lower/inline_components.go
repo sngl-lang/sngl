@@ -1,6 +1,10 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"strconv"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // passNoInlineComponents inlines every non-recursive, non-native, non-main
 // user-defined component into main. After the pass, codegen only sees one
@@ -38,18 +42,28 @@ type inlineCompState struct {
 }
 
 func (st *inlineCompState) run() error {
-	// Real inlining is implemented in subsequent tasks. For now mark
-	// main + any cycle members as the only components that survive,
-	// leaving non-cycle non-main components in place untouched.
 	st.keep = map[*ir.Component]bool{st.main: true}
 	for c := range st.cycles {
 		st.keep[c] = true
 	}
-	// Until inlining is implemented, also retain every other component
-	// so the pass is observably a no-op end-to-end. Once expandCall
-	// lands in Task B3, this loop goes away.
-	for _, c := range st.pkg.Components {
-		st.keep[c] = true
+	for {
+		body, ch, err := st.inlineStmts(st.main.Body)
+		if err != nil {
+			return err
+		}
+		st.main.Body = body
+		anyFuncCh := false
+		for _, f := range st.main.Funcs {
+			fbody, fch, err := st.inlineStmts(f.Block)
+			if err != nil {
+				return err
+			}
+			f.Block = fbody
+			anyFuncCh = anyFuncCh || fch
+		}
+		if !ch && !anyFuncCh {
+			break
+		}
 	}
 	return nil
 }
@@ -178,4 +192,286 @@ func retainComponents(in []*ir.Component, keep map[*ir.Component]bool) []*ir.Com
 		}
 	}
 	return out
+}
+
+// --- inliner helpers ---
+
+func (st *inlineCompState) freshSuffix() string {
+	n := st.instCounter
+	st.instCounter++
+	return "__inst" + strconv.Itoa(n)
+}
+
+// renameIdents rewrites every Ident.Name whose Sym is in renames. Sym
+// stays pointing at the original decl so dataflow/reactivity passes can
+// still resolve. Mutates exprs in place; caller passes a deep clone.
+func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string) []ir.Stmt {
+	if len(renames) == 0 {
+		return stmts
+	}
+	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		id, ok := e.(*ir.Ident)
+		if !ok || id.Sym == nil {
+			return e
+		}
+		if newName, ok2 := renames[id.Sym]; ok2 {
+			id.Name = newName
+		}
+		return e
+	})
+	return w.stmts(stmts)
+}
+
+func renameInExpr(e ir.Expr, renames map[ir.Symbol]string) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	tmp := []ir.Stmt{&ir.LocalVar{Init: e}}
+	tmp = renameIdents(tmp, renames)
+	return tmp[0].(*ir.LocalVar).Init
+}
+
+func substituteParamsExpr(e ir.Expr, bindings map[string]ir.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	tmp := []ir.Stmt{&ir.LocalVar{Init: e}}
+	tmp = substituteParams(tmp, bindings)
+	return tmp[0].(*ir.LocalVar).Init
+}
+
+func (st *inlineCompState) inlinable(comp *ir.Component) bool {
+	if comp == nil || comp == st.main {
+		return false
+	}
+	if st.cycles[comp] {
+		return false
+	}
+	if comp.Native != nil {
+		return false
+	}
+	return true
+}
+
+func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
+	changed := false
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		repl, ch, err := st.inlineStmt(s)
+		if err != nil {
+			return nil, false, err
+		}
+		changed = changed || ch
+		out = append(out, repl...)
+	}
+	return out, changed, nil
+}
+
+func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		ch, chCh, err := st.inlineStmts(n.Children)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Children = ch
+		anyHandlerCh := false
+		for _, h := range n.Handlers {
+			if h.Func == nil {
+				continue
+			}
+			hbody, hCh, err := st.inlineStmts(h.Func.Block)
+			if err != nil {
+				return nil, false, err
+			}
+			h.Func.Block = hbody
+			anyHandlerCh = anyHandlerCh || hCh
+		}
+		if !st.inlinable(n.Component) {
+			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
+		}
+		spliced, err := st.expandCall(n)
+		if err != nil {
+			return nil, false, err
+		}
+		return spliced, true, nil
+	case *ir.If:
+		body, ch1, err := st.inlineStmts(n.Body)
+		if err != nil {
+			return nil, false, err
+		}
+		els, ch2, err := st.inlineStmts(n.Else)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Body = body
+		n.Else = els
+		return []ir.Stmt{n}, ch1 || ch2, nil
+	case *ir.For:
+		body, ch1, err := st.inlineStmts(n.Body)
+		if err != nil {
+			return nil, false, err
+		}
+		els, ch2, err := st.inlineStmts(n.Else)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Body = body
+		n.Else = els
+		return []ir.Stmt{n}, ch1 || ch2, nil
+	case *ir.PlatformFilter:
+		body, ch, err := st.inlineStmts(n.Body)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Body = body
+		return []ir.Stmt{n}, ch, nil
+	case *ir.SlotInst:
+		ch, chCh, err := st.inlineStmts(n.Children)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Children = ch
+		return []ir.Stmt{n}, chCh, nil
+	case *ir.ErrorBoundary:
+		ch, chCh, err := st.inlineStmts(n.Children)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Children = ch
+		hCh := false
+		if n.Handler != nil && n.Handler.Func != nil {
+			body, b, err := st.inlineStmts(n.Handler.Func.Block)
+			if err != nil {
+				return nil, false, err
+			}
+			n.Handler.Func.Block = body
+			hCh = b
+		}
+		return []ir.Stmt{n}, chCh || hCh, nil
+	}
+	return []ir.Stmt{s}, false, nil
+}
+
+func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
+	comp := n.Component
+	suffix := st.freshSuffix()
+
+	renames := map[ir.Symbol]string{}
+
+	varStart := len(st.main.Vars)
+	for _, v := range comp.Vars {
+		clone := cloneVarShallow(v)
+		clone.Name = v.Name + suffix
+		clone.Init = deepCloneExpr(v.Init)
+		renames[v] = clone.Name
+		st.main.Vars = append(st.main.Vars, clone)
+	}
+	funcStart := len(st.main.Funcs)
+	for _, f := range comp.Funcs {
+		clone := cloneFuncShallow(f)
+		clone.Name = f.Name + suffix
+		clone.Block = deepCloneStmts(f.Block)
+		renames[f] = clone.Name
+		st.main.Funcs = append(st.main.Funcs, clone)
+	}
+	timerStart := len(st.main.Timers)
+	for _, t := range comp.Timers {
+		clone := *t
+		clone.Interval = deepCloneExpr(t.Interval)
+		clone.Enabled = deepCloneExpr(t.Enabled)
+		if t.Handler != nil {
+			h := *t.Handler
+			h.Block = deepCloneStmts(t.Handler.Block)
+			clone.Handler = &h
+		}
+		st.main.Timers = append(st.main.Timers, &clone)
+	}
+
+	// Apply renames to every hoisted block.
+	for i := varStart; i < len(st.main.Vars); i++ {
+		if st.main.Vars[i].Init != nil {
+			st.main.Vars[i].Init = renameInExpr(st.main.Vars[i].Init, renames)
+		}
+	}
+	for i := funcStart; i < len(st.main.Funcs); i++ {
+		st.main.Funcs[i].Block = renameIdents(st.main.Funcs[i].Block, renames)
+	}
+	for i := timerStart; i < len(st.main.Timers); i++ {
+		t := st.main.Timers[i]
+		if t.Handler != nil {
+			t.Handler.Block = renameIdents(t.Handler.Block, renames)
+		}
+	}
+
+	body := deepCloneStmts(comp.Body)
+	body = renameIdents(body, renames)
+
+	bindings := map[string]ir.Expr{}
+	for _, p := range comp.Props {
+		var val ir.Expr
+		for _, arg := range n.Props {
+			if arg.Name == p.Name {
+				val = arg.Value
+				break
+			}
+		}
+		if val == nil {
+			val = p.Default
+		}
+		if val != nil {
+			bindings[p.Name] = val
+		}
+	}
+	body = substituteParams(body, bindings)
+
+	// Prop refs may appear in the hoisted callee-scope Vars/Funcs/Timers too.
+	for i := varStart; i < len(st.main.Vars); i++ {
+		st.main.Vars[i].Init = substituteParamsExpr(st.main.Vars[i].Init, bindings)
+	}
+	for i := funcStart; i < len(st.main.Funcs); i++ {
+		st.main.Funcs[i].Block = substituteParams(st.main.Funcs[i].Block, bindings)
+	}
+	for i := timerStart; i < len(st.main.Timers); i++ {
+		t := st.main.Timers[i]
+		t.Interval = substituteParamsExpr(t.Interval, bindings)
+		t.Enabled = substituteParamsExpr(t.Enabled, bindings)
+		if t.Handler != nil {
+			t.Handler.Block = substituteParams(t.Handler.Block, bindings)
+		}
+	}
+
+	body = substituteSlots(body, n.Children)
+	body = substituteEvents(body, n.Handlers)
+
+	if n.ID != "" {
+		for _, s := range body {
+			if ni, ok := s.(*ir.NodeInst); ok {
+				ni.ID = n.ID
+				break
+			}
+		}
+	}
+	return body, nil
+}
+
+func cloneVarShallow(v *ir.Var) *ir.Var {
+	c := *v
+	c.Handlers = nil
+	for _, h := range v.Handlers {
+		hc := *h
+		if h.Func != nil {
+			fc := *h.Func
+			fc.Block = deepCloneStmts(h.Func.Block)
+			hc.Func = &fc
+		}
+		c.Handlers = append(c.Handlers, &hc)
+	}
+	return &c
+}
+
+func cloneFuncShallow(f *ir.Func) *ir.Func {
+	c := *f
+	c.Block = nil
+	return &c
 }
