@@ -49,27 +49,29 @@ Bound scope, no fixture changes.
 `initOnly=true` — meaning they fire once at load, not from handlers.
 Calling them from handlers is dead dispatch.
 
-- [ ] **Step 1: Locate call sites**
+- [x] **Step 1: Locate call sites**
 
 ```bash
 grep -n "findAffectedUpdaters\|initOnly" codegen/platform/html/html.go | head -30
 ```
 
-- [ ] **Step 2: Add early-return on all-init-only**
+- [x] **Step 2: Add early-return on all-init-only**
 
-Where `findAffectedUpdaters` returns its slice, filter out
-`initOnly==true` entries. If the filtered slice is empty, skip the
-dispatch emission entirely (don't even open the `(function(){...})()`
-wrapper).
+Already done by commit `4ad84957` (2026-05-09, pre-plan):
+`findAffectedUpdaters` at `html.go:3091` skips `u.initOnly`. No IIFE
+wrapper exists at handler/timer/setter emission sites — when the
+filtered slice is empty the dispatch loop iterates zero times, so no
+extra code is emitted.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
-`go test ./codegen/platform/html/... ./cmd/sngl/ -run TestScript/compile_html_`.
-Fixtures must still pass — no output change expected.
+`go test ./codegen/platform/html/... ./cmd/sngl/` — green. No output
+change.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
-`html: skip handler-side dispatch for init-only updaters`
+No code change needed; phase complete at plan-time. Documented here
+2026-05-15.
 
 ---
 
