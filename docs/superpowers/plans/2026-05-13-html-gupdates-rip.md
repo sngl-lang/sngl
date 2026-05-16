@@ -124,6 +124,35 @@ unrelated (verified by stashing).
 
 Substantial. JsIRContext needs scope/rename plumbing.
 
+### Pre-migration gap (discovered 2026-05-15)
+
+Attempted Task 4 (migrate `addClickHandler` to `WalkLowered + jc.EvalStmt`)
+and reverted. `translateHandlerStmt` + the legacy JS path carry
+html-specific features that `JsIRContext` doesn't replicate today.
+Migrating handlers naively breaks the following ground-truth tests:
+
+- **`compile_js_import`** — bundled native-pkg refs. The legacy path
+  routes `js://` import names through `BundledNativePkgs` to emit
+  `__sngl_n_lib.fn(...)` references that the post-bundle pipeline
+  rewrites. `jc.evalCall` emits the bare name.
+- **`funcvar_mixed_promotes`, `funcvar_stored_async`,
+  `funcvar_struct_field_async`** — auto-await on funcvar slots whose
+  points-to color is Async. The legacy path inserts `await` based on
+  `g.pts()`; `JsIRContext` lacks the slot-color hook.
+
+Before Task 4 can land, these features must move into the new path:
+
+- [ ] **Step 0a: Bundled-native-pkg refs in `JsIRContext`**
+  Wire `ExprCtx` (or a hook) to expose `BundledNativePkgs`. Emit
+  `__sngl_n_<alias>.<name>(...)` for matching native-import calls in
+  `evalCall`.
+- [ ] **Step 0b: Funcvar-await in `JsIRContext`**
+  Expose slot-color via the package's points-to set so `evalCall` can
+  prefix `await` on funcvar invocations whose slot is `Async`.
+
+Only after both gaps close can the per-handler migration proceed
+without fixture drift. Each closure is independently shippable.
+
 ### Task 3: Migrate `g.scope`/`g.dataRenames` into reusable shape
 
 `g.scope.Renames` and `g.dataRenames` currently live on the html
