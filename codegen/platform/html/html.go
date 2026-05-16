@@ -2665,36 +2665,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Update functions — only non-init-only updaters get a callable.
-	// Init-only updaters are inlined into __sngl_init below.
-	updaterCount := 0
-	for _, u := range g.updates {
-		if u.initOnly {
-			continue
-		}
-		fmt.Fprintf(b, "function %s() { %s }\n", u.funcName, u.body)
-		updaterCount++
-	}
-	if updaterCount > 0 {
-		b.WriteString("\n")
-	}
-
 	// Event handlers with static dispatch
 	g.emitHandlers(b)
 
 	// Timers
 	g.emitTimers(b)
 
-	// Initial sync: one __sngl_init() with inlined init-only writes plus
-	// calls to the remaining updater functions and timer syncs.
+	// Initial sync: one __sngl_init() inlining every updater body and
+	// timer-sync call. All updaters registered by html are init-only —
+	// NoReactivity inlines per-mutation DOM writes into handler/timer/
+	// setter bodies, so no callable $u_*() functions are emitted.
 	if len(g.updates) > 0 || len(g.timers) > 0 {
 		b.WriteString("\nfunction __sngl_init() {\n")
 		for _, u := range g.updates {
-			if u.initOnly {
-				fmt.Fprintf(b, "  %s\n", u.body)
-			} else {
-				fmt.Fprintf(b, "  %s();\n", u.funcName)
-			}
+			fmt.Fprintf(b, "  %s\n", u.body)
 		}
 		for _, t := range g.timers {
 			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
@@ -2718,22 +2702,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("__sngl_sync_state();\n")
 	}
 
-	// Preview mode: export update function names for state-preserving hot reload.
-	// Init-only updaters are inlined into __sngl_init and have no callable; skip.
-	if g.preview {
-		var names []string
-		for _, u := range g.updates {
-			if u.initOnly {
-				continue
-			}
-			names = append(names, u.funcName)
-		}
-		if len(names) > 0 {
-			b.WriteString("\nconst __sngl_updates = [")
-			b.WriteString(strings.Join(names, ", "))
-			b.WriteString("];\n")
-		}
-	}
 }
 
 // emitSynthesizedSlots writes the slot vars (__slotN), slot render funcs
@@ -2800,12 +2768,8 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 
 func (g *htmlGen) emitHandlers(b *strings.Builder) {
 	for _, h := range g.handlers {
-		updaters := g.findAffectedUpdaters(h.mutated)
 		var lines []string
 		lines = append(lines, h.body)
-		for _, u := range updaters {
-			lines = append(lines, u.funcName+"();")
-		}
 		if g.preview {
 			lines = append(lines, "__sngl_sync_state();")
 		}
@@ -2824,12 +2788,8 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 
 func (g *htmlGen) emitTimers(b *strings.Builder) {
 	for _, t := range g.timers {
-		updaters := g.findAffectedUpdaters(t.mutated)
 		var tickLines []string
 		tickLines = append(tickLines, t.body)
-		for _, u := range updaters {
-			tickLines = append(tickLines, u.funcName+"();")
-		}
 		if g.preview {
 			tickLines = append(tickLines, "__sngl_sync_state();")
 		}
@@ -2864,10 +2824,6 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 	}
 	fmt.Fprintf(b, "%s $set_%s(v) {\n", keyword, dv.Name)
 	fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
-	mutated := map[string]bool{dv.Name: true}
-	for _, u := range g.findAffectedUpdaters(mutated) {
-		fmt.Fprintf(b, "  %s();\n", u.funcName)
-	}
 	for _, h := range dv.Handlers {
 		if h.Name == "change" && h.Func != nil {
 			for _, line := range g.translateBlockJC(h.Func.Block) {
@@ -3102,28 +3058,6 @@ func (g *htmlGen) deduplicateComponentParams() {
 		}
 		g.updates[i].body = body
 	}
-}
-
-func (g *htmlGen) findAffectedUpdaters(mutatedFields map[string]bool) []updateFunc {
-	if len(mutatedFields) == 0 {
-		return nil
-	}
-
-	expanded := g.dt.ExpandMutated(mutatedFields)
-
-	var result []updateFunc
-	for _, u := range g.updates {
-		if u.initOnly {
-			continue
-		}
-		for dep := range u.deps {
-			if expanded[dep] {
-				result = append(result, u)
-				break
-			}
-		}
-	}
-	return result
 }
 
 // loweredID reports whether id was assigned by NoReactivity lowering. Such
@@ -3362,14 +3296,8 @@ func (g *htmlGen) emitForLoopBody(b *strings.Builder, n *ir.NodeInst, iterVar, i
 
 		if changeEvt := codegen.NodeHandler(n, "change"); changeEvt != nil && changeEvt.Func != nil && len(changeEvt.Func.Block) > 0 {
 			first := changeEvt.Func.Block[0]
-			mutated := codegen.MutatedFields(first)
 			handlerLines := g.translateBlockJC([]ir.Stmt{first})
 			handlerLines = append(handlerLines, listFuncName+"();")
-			for _, u := range g.findAffectedUpdaters(mutated) {
-				if u.funcName != listFuncName {
-					handlerLines = append(handlerLines, u.funcName+"();")
-				}
-			}
 			fmt.Fprintf(b, "    cb.addEventListener(\"change\", function() {\n")
 			for _, line := range handlerLines {
 				fmt.Fprintf(b, "      %s\n", line)
