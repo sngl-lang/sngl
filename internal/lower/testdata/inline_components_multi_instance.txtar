@@ -1,0 +1,17 @@
+caps: NoInlineComponents
+-- input.sngl --
+component Counter(start = 0) {
+    var n = start
+    text(value=string(n))
+}
+component main {
+    Counter(start=5)
+    Counter(start=10)
+}
+-- expected.sngl --
+component main {
+    var n__inst0 int = 5
+    var n__inst1 int = 10
+    text(value=string(n__inst0))
+    text(value=string(n__inst1))
+}
