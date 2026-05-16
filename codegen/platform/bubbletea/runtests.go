@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -47,6 +48,14 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 	}
 	if len(compGroups) == 0 {
 		return nil, nil
+	}
+
+	// Apply the same lowering passes that `sngl compile` would run so that
+	// NoInlineComponents (and NoListLambdas) have already transformed the
+	// IR before Generate sees it. Generate itself does not run lowering.
+	caps := g.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "bubbletea"}); err != nil {
+		return nil, fmt.Errorf("bubbletea RunTests lower: %w", err)
 	}
 
 	resp, err := g.Generate(&codegen.Request{

@@ -67,7 +67,7 @@ func (st *inlineCompState) run() error {
 		// instantiated inside windows must also be inlined.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
-				wbody, wch, err := st.inlineStmts(w.Body)
+			wbody, wch, err := st.inlineStmts(w.Body)
 			if err != nil {
 				return err
 			}

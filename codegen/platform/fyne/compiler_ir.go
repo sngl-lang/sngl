@@ -86,50 +86,21 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports[golang.SnglI18nImportPath] = true
 	}
 
-	// Build GoIRContexts: one rooted at the main component (or package
-	// scope when no main exists) for package-level vars, plus per-component
-	// contexts for vars declared inside non-main components — so init
-	// expressions that reference sibling vars (e.g. `greeting = $"Hello,
-	// {nm}!"` reading `nm`) resolve through Component.Vars and emit `m.nm`
-	// rather than a bare `nm` identifier.
-	baseCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		baseCtx = baseCtx.ForComponent(main)
-	}
-	gc := golang.NewIRContext(baseCtx)
-
-	// Collect vars from package + every component. The render methods for
-	// non-main components already reference state as `m.<var>` (see
-	// renderIRComponentMethod's compGC.ForComponent), so those fields must
-	// be declared on Model. Limiting to main left non-main components
-	// referencing undeclared fields, breaking compile.
-	type taggedVar struct {
-		v    *ir.Var
-		comp *ir.Component // nil for package-level
-	}
-	var allVars []taggedVar
+	// After NoInlineComponents, every non-main component has been inlined
+	// into main. Walk pkg.Vars + main.Vars only — there are no remaining
+	// child-component vars to collect.
+	var allVars []*ir.Var
 	for _, v := range pkg.Vars {
-		allVars = append(allVars, taggedVar{v: v})
+		allVars = append(allVars, v)
 	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			allVars = append(allVars, taggedVar{v: v, comp: comp})
-		}
+	if main := ctx.MainComponent(); main != nil {
+		allVars = append(allVars, main.Vars...)
 	}
-	for _, tv := range allVars {
-		v := tv.v
+	for _, v := range allVars {
 		if v.IsConst {
 			continue
 		}
 		if v.Synthesized {
-			// Reactivity injects __root + __slot<N> into every component
-			// that has a reactive slot. The flat-Model design only ever
-			// renders main's container, so non-main copies would just
-			// collide on field name. Skip them — the future component-
-			// inlining lowering pass will eliminate this case entirely.
-			if tv.comp != nil && tv.comp != ctx.MainComponent() {
-				continue
-			}
 			if v.Name == "__root" {
 				// Plan B's __root sentinel: a stable *fyne.Container the
 				// renderSlot updaters operate on, and which BuildUI returns.
@@ -159,19 +130,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			})
 			continue
 		}
-		varGC := gc
-		if tv.comp != nil {
-			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
-			// Substitute child component param refs in the var init with
-			// the param's default. See bubbletea/compiler_ir.go for the
-			// same fix — Renames maps prop name → rendered Go expression.
-			for _, p := range tv.comp.Props {
-				if p.Default == nil {
-					continue
-				}
-				varGC.Ctx.Renames[p.Name] = varGC.EvalExpr(p.Default)
-			}
-		}
 		goType := irVarGoType(v)
 		if strings.HasPrefix(goType, "time.") {
 			info.goImports["time"] = true
@@ -180,7 +138,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			name:   v.Name,
 			goType: goType,
 			init:   v.Init,
-			initGC: varGC,
 		})
 		if len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers
