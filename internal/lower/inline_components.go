@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -263,12 +264,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 
 // isLocalComponent reports whether comp is declared in the package being lowered.
 func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
-	for _, c := range st.pkg.Components {
-		if c == comp {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(st.pkg.Components, comp)
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
