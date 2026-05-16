@@ -43,7 +43,9 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	return &ir.Component{Name: identifier}
 }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
-func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
+func (g *Generator) Capabilities() lower.Caps {
+	return lower.Caps{NoListLambdas: true, NoInlineComponents: true}
+}
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 
