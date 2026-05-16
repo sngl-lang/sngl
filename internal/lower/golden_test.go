@@ -202,6 +202,10 @@ func setCapByName(c *Caps, name string) error {
 		c.NoDeclarative = true
 	case "NoStdlibWrappers":
 		c.NoStdlibWrappers = true
+	case "NoListLambdas":
+		c.NoListLambdas = true
+	case "NoInlineComponents":
+		c.NoInlineComponents = true
 	default:
 		return errCapsName(name)
 	}

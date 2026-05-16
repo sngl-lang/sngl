@@ -25,6 +25,7 @@ type Caps struct {
 	NoDeclarative    bool // visual node tree → flat stream of create/update/delete IR calls
 	NoStdlibWrappers bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
 	NoListLambdas    bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
+	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -44,6 +45,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoDeclarative:    c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers: c.NoStdlibWrappers || other.NoStdlibWrappers,
 		NoListLambdas:    c.NoListLambdas || other.NoListLambdas,
+		NoInlineComponents: c.NoInlineComponents || other.NoInlineComponents,
 	}
 }
 
@@ -83,6 +85,9 @@ func (c Caps) String() string {
 	}
 	if c.NoStdlibWrappers {
 		parts = append(parts, "NoStdlibWrappers")
+	}
+	if c.NoInlineComponents {
+		parts = append(parts, "NoInlineComponents")
 	}
 	if c.NoTimer {
 		parts = append(parts, "NoTimer")
