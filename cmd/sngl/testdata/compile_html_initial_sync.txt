@@ -1,12 +1,12 @@
 # Verifies initial-sync of declarative bindings: text(value=name) where
 # name="World" produces a span whose textContent is seeded by the script
-# without user interaction. Tests the legacy g.updates initOnly path.
+# without user interaction.
 #
-# Legacy pipeline emits:
+# Phase 2 pipeline (g.updates rip) emits:
 #   - state object: let state = {name: "World"};
-#   - per-node updater: function $u__n0_text() { __n0.textContent = state.name; }
-#   - "Initial sync" comment + call: $u__n0_text();
-# These are the g.updates registry's job; Plan D Task 10+ migrates them.
+#   - single __sngl_init() with the inlined DOM write
+#   - immediate invocation of __sngl_init() at script bottom
+# Init-only updaters no longer get per-prop $u_* function emissions.
 
 sngl compile --platform=html --out=out app.sngl
 exists out/index.html
@@ -14,12 +14,13 @@ exists out/index.html
 # State initialization with the var's initial value.
 grep 'state = {name: "World"}' out/index.html
 
-# Per-node updater function emitted from g.updates.
-grep '\$u__n0_text' out/index.html
+# No per-node init-only updater function — write inlined into __sngl_init.
+! grep '\$u__n0_text' out/index.html
 grep '__n0.textContent = state.name' out/index.html
 
-# Initial sync section calls each updater once at script load.
-grep 'Initial sync' out/index.html
+# Single init function defined and called at bootstrap.
+grep 'function __sngl_init' out/index.html
+grep '__sngl_init\(\);' out/index.html
 
 -- app.sngl --
 output { none { html } }

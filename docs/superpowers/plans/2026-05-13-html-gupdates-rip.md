@@ -86,33 +86,37 @@ function whose body is "compute value; write to DOM". The init phase
 calls them sequentially. Collapse into one `__sngl_init()` whose body
 is the concatenated writes.
 
-- [ ] **Step 1: Locate init emission**
+- [x] **Step 1: Locate init emission**
 
-Find where the `Initial sync` block is emitted at script bottom.
+`codegen/platform/html/html.go:2659` (updater function emission) +
+`:2672` (Initial sync block).
 
-- [ ] **Step 2: Replace per-prop functions with inline writes**
+- [x] **Step 2: Replace per-prop functions with inline writes**
 
-Inside `__sngl_init`, inline the writes directly (no per-prop
-function indirection). Remove the `$u__nN_<prop>` function emissions
-that are init-only (those used only at init).
+Updater-function loop now skips `u.initOnly` entries. Replaced
+`// Initial sync` block with `function __sngl_init() { ... }` whose
+body inlines each init-only updater body and calls each non-init
+updater function. Preview `__sngl_updates` filter also skips
+init-only entries.
 
-- [ ] **Step 3: Rewrite fixtures**
+- [x] **Step 3: Rewrite fixtures**
 
-For each of the 4 ground-truth fixtures, regenerate via the new
-output. `cmd/sngl/testdata/compile_html_initial_sync.txt` is the
-canonical example. Use `go test -update` if the runner supports it,
-otherwise hand-edit.
+`compile_html_initial_sync.txt` + `compile_html_setter_callback.txt`
+rewritten to expect `function __sngl_init` and assert no
+`$u__nN_text`. The other two ground-truth fixtures
+(`renamed_event_param`, `reactive_for`) did not reference `$u_*`
+funcs and needed no edits.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
-Full `go test ./...` clean. Run `go tool sngl run examples/hello-i18n
---platform html --lang js` and inspect generated index.html — initial
-text content / value should still render correctly.
+`go test ./codegen/platform/html/... ./cmd/sngl/` green.
+`hello-i18n` compile inspected: single `__sngl_init()` with all
+inlined `__nN.textContent = i18n.getTranslator().tr(...)` writes.
+Pre-existing `TestDocSNGLFormat` failures in
+`docs/superpowers/plans/2026-05-13-component-extensions.md` are
+unrelated (verified by stashing).
 
-- [ ] **Step 5: Commit**
-
-`html: collapse per-prop init updaters into __sngl_init`
-`fixtures: rewrite html ground-truth for __sngl_init shape`
+- [x] **Step 5: Commit**
 
 ---
 

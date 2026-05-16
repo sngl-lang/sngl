@@ -2655,11 +2655,17 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Update functions
+	// Update functions — only non-init-only updaters get a callable.
+	// Init-only updaters are inlined into __sngl_init below.
+	updaterCount := 0
 	for _, u := range g.updates {
+		if u.initOnly {
+			continue
+		}
 		fmt.Fprintf(b, "function %s() { %s }\n", u.funcName, u.body)
+		updaterCount++
 	}
-	if len(g.updates) > 0 {
+	if updaterCount > 0 {
 		b.WriteString("\n")
 	}
 
@@ -2669,15 +2675,21 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// Timers
 	g.emitTimers(b)
 
-	// Initial sync: call all update functions once to set DOM from initial state
+	// Initial sync: one __sngl_init() with inlined init-only writes plus
+	// calls to the remaining updater functions and timer syncs.
 	if len(g.updates) > 0 || len(g.timers) > 0 {
-		b.WriteString("\n// Initial sync\n")
+		b.WriteString("\nfunction __sngl_init() {\n")
 		for _, u := range g.updates {
-			fmt.Fprintf(b, "%s();\n", u.funcName)
+			if u.initOnly {
+				fmt.Fprintf(b, "  %s\n", u.body)
+			} else {
+				fmt.Fprintf(b, "  %s();\n", u.funcName)
+			}
 		}
 		for _, t := range g.timers {
-			fmt.Fprintf(b, "$timer_%d_sync();\n", t.index)
+			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 		}
+		b.WriteString("}\n__sngl_init();\n")
 	}
 
 	// Async kicker startup: fire-and-forget each kicker once so initial values
@@ -2696,16 +2708,21 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("__sngl_sync_state();\n")
 	}
 
-	// Preview mode: export update function names for state-preserving hot reload
-	if g.preview && len(g.updates) > 0 {
-		b.WriteString("\nconst __sngl_updates = [")
-		for i, u := range g.updates {
-			if i > 0 {
-				b.WriteString(", ")
+	// Preview mode: export update function names for state-preserving hot reload.
+	// Init-only updaters are inlined into __sngl_init and have no callable; skip.
+	if g.preview {
+		var names []string
+		for _, u := range g.updates {
+			if u.initOnly {
+				continue
 			}
-			b.WriteString(u.funcName)
+			names = append(names, u.funcName)
 		}
-		b.WriteString("];\n")
+		if len(names) > 0 {
+			b.WriteString("\nconst __sngl_updates = [")
+			b.WriteString(strings.Join(names, ", "))
+			b.WriteString("];\n")
+		}
 	}
 }
 

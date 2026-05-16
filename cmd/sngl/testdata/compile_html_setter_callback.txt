@@ -1,21 +1,19 @@
 # Verifies a user-defined func that mutates state from outside a direct
-# event handler still triggers DOM updates. Tests legacy g.updates
-# findAffectedUpdaters dispatch from emitSetter.
+# event handler still triggers DOM updates.
 #
-# Legacy pipeline emits:
-#   - emitted user func body inlines per-assignment DOM patches:
+# Phase 2 pipeline (g.updates rip) emits:
+#   - user func body inlines per-assignment DOM patches (NoReactivity lowering):
 #       function update(newName, newCount) {
 #         state.name = newName;
 #         __n0.textContent = state.name;
 #         state.count = newCount;
 #         __n1.textContent = String(state.count);
 #       }
-#   - g.updates also emits the per-node updaters $u__n0_text / $u__n1_text
-#     and a click handler that calls update("Hello", 5).
+#   - click handler calls update("Hello", 5).
+#   - __sngl_init() inlines the initial DOM writes (no per-prop $u_* funcs).
 #
-# NOTE: legacy does NOT emit a separate $set_name(v) function — mutations
-# are inlined at each assignment site within the user func. Plan D Task
-# 10+ needs to preserve this inlined-dispatch semantics.
+# legacy does NOT emit a separate $set_name(v) function — mutations are
+# inlined at each assignment site within the user func.
 
 sngl compile --platform=html --out=out app.sngl
 exists out/index.html
@@ -27,9 +25,10 @@ grep 'state.count = newCount' out/index.html
 grep '__n0.textContent = state.name' out/index.html
 grep '__n1.textContent = String\(state.count\)' out/index.html
 
-# Per-node updaters still emitted for initial sync.
-grep '\$u__n0_text' out/index.html
-grep '\$u__n1_text' out/index.html
+# Per-prop init-only updaters collapsed into __sngl_init — no $u_* funcs.
+! grep '\$u__n0_text' out/index.html
+! grep '\$u__n1_text' out/index.html
+grep 'function __sngl_init' out/index.html
 
 # Button click handler calls user func.
 grep 'update\("Hello", 5\)' out/index.html
