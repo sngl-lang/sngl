@@ -929,8 +929,11 @@ func (g *htmlGen) renderIRIf(b *strings.Builder, n *ir.If, depth int) {
 	}
 }
 
-// renderIRFor emits a for-loop placeholder and registers list/else updaters
-// from the IR body.
+// renderIRFor emits a for-loop placeholder and registers list/else
+// updaters from the IR body. In production this is reached only by test
+// harnesses that skip optimize.foldStmts (const fors are unrolled at
+// optimize-time; runtime fors are rewired into __renderSlot by
+// passReactivity). Kept as a safety net.
 func (g *htmlGen) renderIRFor(b *strings.Builder, n *ir.For, depth int) {
 	indent := strings.Repeat("  ", depth)
 	id := g.allocID()
