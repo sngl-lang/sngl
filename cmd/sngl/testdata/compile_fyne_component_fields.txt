@@ -1,21 +1,26 @@
 # Regression test for #35: sub-component widget fields must be declared on
-# the Model struct. Previously the generated model.go used m.label1..m.label4
-# inside renderDetailPanel but those fields were not declared → compile error.
+# the Model struct. After NoInlineComponents, detailPanel is inlined into main
+# rather than emitted as a separate renderDetailPanel method.
 
 sngl compile --platform=fyne --lang=go --out=out app.sngl
 exists out/model.go
 
-# renderDetailPanel render method must be emitted
-grep 'func \(m \*Model\) renderDetailPanel\(it Issue\) fyne\.CanvasObject' out/model.go
+# detailPanel gets inlined — no renderDetailPanel method survives.
+! grep 'renderDetailPanel' out/model.go
 
-# Post-Plan-C widget fields are named __nN by the lowering pass
-# (rather than the legacy label1..label4 per-tag counters). The four
-# detail-panel text() nodes get distinct fields so the Model struct
-# declares each one.
+# The inlined detailPanel's four text() nodes become Model fields.
+# __n2 is the inlined vbox; __n3..__n6 are the four labels.
+grep '__n2 \*fyne\.Container' out/model.go
+grep '__n3 \*widget\.Label' out/model.go
 grep '__n4 \*widget\.Label' out/model.go
 grep '__n5 \*widget\.Label' out/model.go
 grep '__n6 \*widget\.Label' out/model.go
-grep '__n7 \*widget\.Label' out/model.go
+
+# Prop references are substituted with m.current (the callsite arg).
+grep 'm\.current\.Key' out/model.go
+grep 'm\.current\.Summary' out/model.go
+grep 'm\.current\.Status' out/model.go
+grep 'm\.current\.Assignee' out/model.go
 
 -- app.sngl --
 output { go { fyne } }

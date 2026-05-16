@@ -6,8 +6,8 @@ stdout 'caps: NoListLambdas,NoInlineComponents'
 stdout 'passes: PlatformExtensionBody . NoListLambdas . InlinePure . NoInlineComponents'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoListLambdas,NoReactivity,NoStdlibWrappers,NoDeclarative'
-stdout 'passes: PlatformExtensionBody . NoListLambdas . InlinePure . NoReactivity . NoDeclarative'
+stdout 'caps: NoListLambdas,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoDeclarative'
+stdout 'passes: PlatformExtensionBody . NoListLambdas . InlinePure . NoInlineComponents . NoReactivity . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoListLambdas,NoReactivity,NoStdlibWrappers'

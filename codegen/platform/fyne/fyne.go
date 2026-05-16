@@ -55,7 +55,7 @@ func (g *Generator) Capabilities() lower.Caps {
 	// time. fyne wrappers are already pure blueprint-bearing NodeInsts,
 	// so behavior is unchanged — the translator still reads the same
 	// Constructor/bindings props after inlining.
-	return lower.Caps{NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true}
+	return lower.Caps{NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
 }
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {

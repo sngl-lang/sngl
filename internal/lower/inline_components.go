@@ -62,7 +62,27 @@ func (st *inlineCompState) run() error {
 			f.Block = fbody
 			anyFuncCh = anyFuncCh || fch
 		}
-		if !ch && !anyFuncCh {
+		// Walk pkg.Windows: the visual tree for window-declaring apps lives
+		// in Window.Body / Window.Funcs, not in main.Body. Components
+		// instantiated inside windows must also be inlined.
+		anyWinCh := false
+		for _, w := range st.pkg.Windows {
+				wbody, wch, err := st.inlineStmts(w.Body)
+			if err != nil {
+				return err
+			}
+			w.Body = wbody
+			anyWinCh = anyWinCh || wch
+			for _, f := range w.Funcs {
+				fbody, fch, err := st.inlineStmts(f.Block)
+				if err != nil {
+					return err
+				}
+				f.Block = fbody
+				anyWinCh = anyWinCh || fch
+			}
+		}
+		if !ch && !anyFuncCh && !anyWinCh {
 			break
 		}
 	}
@@ -89,6 +109,17 @@ func findRecursiveCycles(pkg *ir.Package) map[*ir.Component]bool {
 		collectCalleeEdges(c.Body, edges[c])
 		for _, f := range c.Funcs {
 			collectCalleeEdges(f.Block, edges[c])
+		}
+	}
+	// Also scan pkg.Windows so components instantiated inside window bodies
+	// participate in cycle detection. Use a synthetic "main" edge set since
+	// windows are not independent cycle roots — they live in main's scope.
+	if main := mainComponent(pkg); main != nil {
+		for _, w := range pkg.Windows {
+			collectCalleeEdges(w.Body, edges[main])
+			for _, f := range w.Funcs {
+				collectCalleeEdges(f.Block, edges[main])
+			}
 		}
 	}
 	return tarjanCycles(edges)
@@ -363,6 +394,25 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 			hCh = b
 		}
 		return []ir.Stmt{n}, chCh || hCh, nil
+	case *ir.Window:
+		// Window stmts live in component bodies when `window { }` is declared
+		// inside a component (rather than at document root). Recurse into the
+		// window's body so component NodeInsts nested inside it are inlined.
+		body, ch, err := st.inlineStmts(n.Body)
+		if err != nil {
+			return nil, false, err
+		}
+		n.Body = body
+		anyFuncCh := false
+		for _, f := range n.Funcs {
+			fbody, fch, err := st.inlineStmts(f.Block)
+			if err != nil {
+				return nil, false, err
+			}
+			f.Block = fbody
+			anyFuncCh = anyFuncCh || fch
+		}
+		return []ir.Stmt{n}, ch || anyFuncCh, nil
 	}
 	return []ir.Stmt{s}, false, nil
 }
