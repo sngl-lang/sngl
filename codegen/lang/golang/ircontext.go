@@ -608,12 +608,29 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
+	// `null` flowing into a nillable target (option<T>, ref<T>, map, list,
+	// func) — Go's untyped nil takes the field type directly. Emitting
+	// `*string(nil)` (which is what plain conversion produces for option
+	// targets, because the goType is `*string`) is not valid Go.
+	if lit, ok := n.Operand.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull {
+		if n.Type != nil {
+			switch n.Type.Kind {
+			case ir.TypeOption, ir.TypeRef, ir.TypeMap, ir.TypeList, ir.TypeFunc:
+				return "nil"
+			}
+		}
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
 	// and general stringification.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		return "fmt.Sprint(" + operand + ")"
+	}
+	// Pointer/composite Go types need parens around the cast target:
+	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
+	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {
+		return "(" + goType + ")(" + operand + ")"
 	}
 	return goType + "(" + operand + ")"
 }
