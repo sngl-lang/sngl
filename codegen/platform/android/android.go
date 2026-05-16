@@ -43,7 +43,13 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 	id := l.LanguageIdentifier()
 	return id == "kotlin" || id == "go"
 }
-func (g *Generator) Capabilities() lower.Caps { return lower.Caps{} }
+func (g *Generator) Capabilities() lower.Caps {
+	// NoInlineComponents: hoist user-component vars/funcs/timers into main
+	// with per-instance renames. Android's RenderModel emits a Composable
+	// per surviving component; after inlining only main + recursive
+	// components remain, eliminating cross-component state plumbing.
+	return lower.Caps{NoInlineComponents: true}
+}
 
 func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
 	c := &compilation{}

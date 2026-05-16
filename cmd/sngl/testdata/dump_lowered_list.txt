@@ -18,8 +18,8 @@ stdout 'caps: NoAsyncReactive,NoReactivity,NoStdlibWrappers'
 stdout 'passes: PlatformExtensionBody . NoAsyncReactive . InlinePure . NoReactivity'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
-stdout 'caps:'
-stdout 'passes: PlatformExtensionBody . InlinePure'
+stdout 'caps: NoInlineComponents'
+stdout 'passes: PlatformExtensionBody . InlinePure . NoInlineComponents'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump lowered --lang go --platform bubbletea --after NoBogus main.sngl
