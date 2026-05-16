@@ -1,7 +1,7 @@
 # Codegen Lowering Layer — Design
 
 **Date:** 2026-05-02
-**Status:** Approved (pre-implementation)
+**Status:** Shipped (internal/lower/)
 
 ## Summary
 

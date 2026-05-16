@@ -1,7 +1,7 @@
 # Cross-Platform Headless Test Runner
 
 **Date:** 2026-05-09
-**Status:** Design
+**Status:** Shipped (codegen.TestRunner interface)
 
 ## Goal
 

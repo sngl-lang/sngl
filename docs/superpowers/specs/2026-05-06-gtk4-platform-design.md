@@ -3,6 +3,7 @@
 **Goal:** Add a `gtk4` platform that compiles SNGL to GTK4 desktop apps via Go+cgo, exercising the `c://` import scheme end-to-end.
 
 **Date:** 2026-05-06
+**Status:** Shipped (codegen/platform/gtk4/)
 
 ---
 

@@ -1,6 +1,6 @@
 # i18n Runtimes for JavaScript and Kotlin — Design
 
-**Status:** Proposed
+**Status:** Shipped (pkg/js/i18n/, pkg/kotlin/i18n/)
 **Date:** 2026-05-09
 **Goal:** Make `$"..."` translatable strings and direct `i18n.*` calls work end-to-end for `--platform html --lang none` (browser JS) and `--platform android --lang kotlin`. Today the Go runtime under `pkg/go/i18n/` is the only one wired up; the JS and Kotlin codegens emit no dispatch for i18n intrinsics, so user code that uses i18n breaks on those targets.
 

@@ -1,5 +1,7 @@
 # Reactivity Lowering Consolidation
 
+**Status:** Shipped
+
 ## Background
 
 SNGL has a lowering layer (`internal/lower`) that rewrites high-level IR into

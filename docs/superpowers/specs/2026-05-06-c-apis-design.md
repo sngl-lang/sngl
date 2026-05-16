@@ -3,6 +3,7 @@
 **Goal:** Allow SNGL language plugins to expose C FFI so platforms can be defined in terms of C APIs (native toolkits like GTK, SDL).
 
 **Date:** 2026-05-06
+**Status:** Shipped (c:// import scheme)
 
 ---
 

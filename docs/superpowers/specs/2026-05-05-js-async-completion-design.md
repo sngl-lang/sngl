@@ -1,5 +1,7 @@
 # JS async completion — design
 
+**Status:** Shipped (passAsyncReactive)
+
 Sub-task A of [#39 Concurrency model](https://git.duckfam.us/jonathan/sngl/-/issues/39).
 
 Companion sub-tasks (out of scope here): #47 closure points-to, #48 color

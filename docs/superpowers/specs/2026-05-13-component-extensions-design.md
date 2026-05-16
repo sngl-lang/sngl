@@ -1,5 +1,7 @@
 # Component Extensions (Issue 63)
 
+**Status:** Shipped (passPlatformExtensionBody)
+
 ## Background
 
 SNGL stdlib declares abstract components in `lib/components.sngl` (e.g.

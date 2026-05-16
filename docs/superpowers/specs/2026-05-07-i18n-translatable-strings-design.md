@@ -3,6 +3,7 @@
 **Issue:** [#21 — i18n](https://git.duckfam.us/jonathan/sngl/-/issues/21)
 **Follows:** issue #22 (i18n-sync / i18n-rename / `$identifier` form) builds on this
 **Date:** 2026-05-07
+**Status:** Shipped (lib/i18n.sngl, pkg/{go,js,kotlin}/i18n/)
 
 ## Problem
 

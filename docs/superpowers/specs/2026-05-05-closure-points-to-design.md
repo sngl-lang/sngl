@@ -1,5 +1,7 @@
 # Closure / function-variable points-to — design
 
+**Status:** Shipped (ir/pointsto.go)
+
 Sub-task B of [#39 Concurrency model](https://git.duckfam.us/jonathan/sngl/-/issues/39).
 Tracking issue: [#47](https://git.duckfam.us/jonathan/sngl/-/issues/47).
 

@@ -1,5 +1,7 @@
 # Window identifiers + path-derived output
 
+**Status:** Shipped
+
 ## Problem
 
 `website.sngl` declares many windows inside `for` loops:

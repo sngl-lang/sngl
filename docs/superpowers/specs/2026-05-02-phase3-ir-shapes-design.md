@@ -1,7 +1,7 @@
 # Phase 3 Lowering Passes — IR Shape Design
 
 **Date:** 2026-05-02
-**Status:** Approved (pre-implementation)
+**Status:** Shipped (passReactivity, passTimer, passDeclarative)
 **Tracks:** gitlab issues #41 (NoReactivity), #42 (NoTimer), #43 (NoDeclarative)
 
 ## Summary

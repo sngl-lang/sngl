@@ -1,7 +1,7 @@
 # NoLambda Lowering Pass — Design
 
 **Date:** 2026-05-03
-**Status:** Approved (pre-implementation)
+**Status:** Shipped (passLambda)
 **Tracks:** gitlab issue #40
 
 ## Summary

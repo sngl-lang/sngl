@@ -1,5 +1,7 @@
 # Inline-Pure-Components Lowering Pass
 
+**Status:** Shipped (passInlinePure)
+
 ## Background
 
 SNGL platforms ship stdlib wrapper components in their `.sngl` files:
