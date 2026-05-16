@@ -384,8 +384,8 @@ type htmlGen struct {
 	// Element ID counter
 	nextID int
 
-	// Collected update functions: id → []updateFunc
-	updates []updateFunc
+	// Init-time DOM writes inlined into __sngl_init()
+	initWrites []updateFunc
 
 	// Collected event handlers
 	handlers []eventHandler
@@ -1691,7 +1691,7 @@ func (g *htmlGen) renderStaticInput(b *strings.Builder, n *ir.NodeInst, depth in
 	// mutations by splicing updater Assigns after each write to the dep.
 	if valueExpr != nil && codegen.IRIsReactive(valueExpr) {
 		jsVal := g.exprToJS(valueExpr)
-		g.updates = append(g.updates, updateFunc{
+		g.initWrites = append(g.initWrites, updateFunc{
 			funcName: fmt.Sprintf("$u_%s_value", id[1:]),
 			body:     fmt.Sprintf("%s.value = %s;", id, jsVal),
 			deps:     g.exprDeps(valueExpr),
@@ -2273,7 +2273,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			// render; mark such updaters initOnly so OptimizeMutation's
 			// empty-deps prune keeps them.
 			initOnly := lowered || (len(deps) == 0 && exprUsesI18n(expr))
-			g.updates = append(g.updates, updateFunc{
+			g.initWrites = append(g.initWrites, updateFunc{
 				funcName: uname,
 				body:     body,
 				deps:     deps,
@@ -2675,9 +2675,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// timer-sync call. All updaters registered by html are init-only —
 	// NoReactivity inlines per-mutation DOM writes into handler/timer/
 	// setter bodies, so no callable $u_*() functions are emitted.
-	if len(g.updates) > 0 || len(g.timers) > 0 {
+	if len(g.initWrites) > 0 || len(g.timers) > 0 {
 		b.WriteString("\nfunction __sngl_init() {\n")
-		for _, u := range g.updates {
+		for _, u := range g.initWrites {
 			fmt.Fprintf(b, "  %s\n", u.body)
 		}
 		for _, t := range g.timers {
@@ -2861,7 +2861,7 @@ func (g *htmlGen) collectReferencedIDs() []string {
 		ids = append(ids, id)
 	}
 
-	for _, u := range g.updates {
+	for _, u := range g.initWrites {
 		// Extract the owning element ID from the func name: $u_N_xxx → $N.
 		// Lowered ids ($u__nN_xxx) reference data-sngl-id'd elements; mark
 		// them so the loweredRefs emitter declares the const for them.
@@ -2945,8 +2945,8 @@ func extractElemIDs(js string) []string {
 // and timers, runs the IR optimizer, then writes the results back.
 func (g *htmlGen) optimizeIR() {
 	// Convert platform types → IR types.
-	updaters := make([]codegen.Updater, len(g.updates))
-	for i, u := range g.updates {
+	updaters := make([]codegen.Updater, len(g.initWrites))
+	for i, u := range g.initWrites {
 		updaters[i] = codegen.Updater{
 			Name:     u.funcName,
 			Body:     u.body,
@@ -2992,9 +2992,9 @@ func (g *htmlGen) optimizeIR() {
 	codegen.OptimizeMutation(m)
 
 	// Write back optimized updaters.
-	g.updates = make([]updateFunc, len(m.Updaters))
+	g.initWrites = make([]updateFunc, len(m.Updaters))
 	for i, u := range m.Updaters {
-		g.updates[i] = updateFunc{
+		g.initWrites[i] = updateFunc{
 			funcName: u.Name,
 			body:     u.Body,
 			deps:     u.Deps,
@@ -3051,12 +3051,12 @@ func (g *htmlGen) deduplicateComponentParams() {
 	g.componentParams = deduped
 
 	// Rewrite updater bodies to use canonical names.
-	for i, u := range g.updates {
+	for i, u := range g.initWrites {
 		body := u.body
 		for old, canonical := range renames {
 			body = strings.ReplaceAll(body, old, canonical)
 		}
-		g.updates[i].body = body
+		g.initWrites[i].body = body
 	}
 }
 
@@ -3073,7 +3073,7 @@ func (g *htmlGen) addTextUpdater(elemID string, expr ir.Expr) {
 	// locale and must run at least once on initial render. Mark such
 	// updaters initOnly so OptimizeMutation's empty-deps prune keeps them.
 	initOnly := loweredID(elemID) || (len(deps) == 0 && exprUsesI18n(expr))
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     g.emitPropAssign(elemID, "textContent", expr),
 		deps:     deps,
@@ -3176,7 +3176,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
 		},
 	}}
 	lines := g.translateBlockJC([]ir.Stmt{stmt})
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     strings.Join(lines, " "),
 		deps:     deps,
@@ -3187,7 +3187,7 @@ func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
 func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_disabled", elemID[1:])
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     g.emitPropAssign(elemID, "disabled", expr),
 		deps:     deps,
@@ -3198,7 +3198,7 @@ func (g *htmlGen) addDisabledUpdater(elemID string, expr ir.Expr) {
 func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 	deps := g.exprDeps(expr)
 	name := fmt.Sprintf("$u_%s_if", elemID[1:])
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     g.emitDisplayToggle(elemID, expr, false),
 		deps:     deps,
@@ -3210,7 +3210,7 @@ func (g *htmlGen) addIfUpdater(elemID string, expr ir.Expr) {
 func (g *htmlGen) addElseUpdater(elemID string, cond ir.Expr) {
 	deps := g.exprDeps(cond)
 	name := fmt.Sprintf("$u_%s_else", elemID[1:])
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     g.emitDisplayToggle(elemID, cond, true),
 		deps:     deps,
@@ -3263,7 +3263,7 @@ func (g *htmlGen) addForStmtUpdater(elemID string, stmt *ir.For) {
 		iterVar, iterableJS, indexVar,
 		innerBuf.String())
 
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     body,
 		deps:     deps,
@@ -3279,7 +3279,7 @@ func (g *htmlGen) addForElseStmtUpdater(forElemID, elseElemID string, stmt *ir.F
 	body := fmt.Sprintf(`%s.style.display = %s.length === 0 ? "" : "none";`,
 		elseElemID, iterableJS)
 
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     body,
 		deps:     deps,
@@ -3990,7 +3990,7 @@ func (g *htmlGen) addUserAttrUpdaters(elemID string, n *ir.NodeInst) {
 	jsExpr := g.exprToJS(classExpr)
 	deps := g.exprDeps(classExpr)
 	name := fmt.Sprintf("$u_%s_cls", elemID[1:])
-	g.updates = append(g.updates, updateFunc{
+	g.initWrites = append(g.initWrites, updateFunc{
 		funcName: name,
 		body:     fmt.Sprintf("%s.className = %s;", elemID, jsExpr),
 		deps:     deps,

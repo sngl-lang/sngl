@@ -1,5 +1,13 @@
 # HTML `g.updates` Rip Implementation Plan (Plan D continuation)
 
+> **Status (2026-05-15):** Phases 1, 2, 3, 5 shipped (commits 25b832c,
+> 0802ccd, 0f14607, ad3d89c, 449d9a5, d0fc1a4 + rename commit). Phase
+> 4 partial: simple updaters (text/attr/disabled/if/else) migrated to
+> the translator path; structural for/forElse/checkbox-list still
+> build JS strings (Task 6 + Task 9 deferred — see notes below). Grep
+> goal met: `grep "g\.updates" codegen/platform/html/` returns empty
+> (field renamed to `g.initWrites`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rip the html platform's `g.updates` registry and route every
