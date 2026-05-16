@@ -1,0 +1,22 @@
+caps: NoInlineComponents
+-- input.sngl --
+component LabeledCounter(start = 0, @changed) {
+    var n = start
+    button(text=string(n), @click {
+        n = n + 1
+        @changed(n)
+    })
+}
+component main {
+    var clicks = 0
+    LabeledCounter(start=0, @changed(c) { clicks = c })
+}
+-- expected.sngl --
+component main {
+    var clicks int = 0
+    var n__inst0 int = 0
+    button(text=string(n__inst0), @click {
+        n__inst0 = n__inst0 + 1
+        clicks = n__inst0
+    })
+}
