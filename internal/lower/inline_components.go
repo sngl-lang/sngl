@@ -250,7 +250,25 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if comp.Native != nil {
 		return false
 	}
+	// Platform-resolved and stdlib wrappers with no body cannot be inlined.
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+		return false
+	}
+	// Only inline components declared in this package.
+	if !st.isLocalComponent(comp) {
+		return false
+	}
 	return true
+}
+
+// isLocalComponent reports whether comp is declared in the package being lowered.
+func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
+	for _, c := range st.pkg.Components {
+		if c == comp {
+			return true
+		}
+	}
+	return false
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
