@@ -864,7 +864,26 @@ func IRTypeToGo(t *ir.Type) string {
 			if sd.Native != "" {
 				return sd.Native
 			}
-			return ExportName(sd.Name)
+			if name := ExportName(sd.Name); name != "" {
+				return name
+			}
+			// Anonymous struct (no source name) — inline the shape so it
+			// can appear in a Go param/return/var type position.
+			if len(sd.Fields) == 0 {
+				return "struct{}"
+			}
+			var fb strings.Builder
+			fb.WriteString("struct{ ")
+			for i, f := range sd.Fields {
+				if i > 0 {
+					fb.WriteString("; ")
+				}
+				fb.WriteString(ExportName(f.Name))
+				fb.WriteString(" ")
+				fb.WriteString(IRTypeToGo(f.Type))
+			}
+			fb.WriteString(" }")
+			return fb.String()
 		}
 		return "any"
 	case ir.TypeDyn:
