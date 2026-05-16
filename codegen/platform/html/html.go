@@ -1574,14 +1574,13 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 
 	disabled := ""
 	if disabledExpr != nil {
-		// Literal true → disabled. Reactive / non-literal → assume true (initial render).
 		if bv, ok := codegen.IRLiteralBool(disabledExpr); ok {
 			if bv {
 				disabled = " disabled"
 			}
-		} else if !codegen.IRIsLiteral(disabledExpr) {
-			disabled = " disabled"
 		}
+		// Non-literal or reactive: omit the attribute initially; the
+		// reactive updater toggles it as the expression evaluates.
 	}
 
 	if g.preview && id == "" {
@@ -1602,7 +1601,20 @@ func (g *htmlGen) renderStaticButton(b *strings.Builder, n *ir.NodeInst, depth i
 
 	g.writeUserAttrs(b, id, n)
 	b.WriteString(g.previewAttrs(n))
-	fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
+	// After NoStdlibWrappers inlining, the button has child nodes
+	// carrying its label (e.g. an html.span(textContent=text)). If
+	// children are present, render them; otherwise fall back to the
+	// legacy `text` prop on the button itself.
+	if len(n.Children) > 0 {
+		b.WriteString(disabled)
+		b.WriteString(">\n")
+		for _, s := range n.Children {
+			g.renderIRStmt(b, s, depth+1)
+		}
+		fmt.Fprintf(b, "%s</button>\n", indent)
+	} else {
+		fmt.Fprintf(b, "%s>%s</button>\n", disabled, html.EscapeString(text))
+	}
 
 	if codegen.IRIsReactive(textExpr) {
 		g.addTextContentUpdater(id, textExpr)
@@ -2130,7 +2142,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 				switch name {
 				case "innerHTML":
 					staticInnerHTML = val
-				case "innerText":
+				case "innerText", "textContent":
 					staticInnerText = val
 				default:
 					fmt.Fprintf(&attrs, " %s=\"%s\"", html.EscapeString(name), html.EscapeString(val))
@@ -2142,7 +2154,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		// Literal / static.
 		val := g.evalStaticString(props, name)
 		switch name {
-		case "innerText":
+		case "innerText", "textContent":
 			staticInnerText = val
 		case "innerHTML":
 			staticInnerHTML = val
@@ -2246,11 +2258,16 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			default:
 				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
 			}
+			// An i18n.tr-rooted prop with no state dependencies still
+			// varies by locale and must run at least once on initial
+			// render; mark such updaters initOnly so OptimizeMutation's
+			// empty-deps prune keeps them.
+			initOnly := lowered || (len(deps) == 0 && exprUsesI18n(expr))
 			g.updates = append(g.updates, updateFunc{
 				funcName: uname,
 				body:     body,
 				deps:     deps,
-				initOnly: lowered,
+				initOnly: initOnly,
 			})
 		}
 	}
