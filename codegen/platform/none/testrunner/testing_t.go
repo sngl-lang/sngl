@@ -120,6 +120,51 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			}
 		}
 
+	case "setContext":
+		if len(args) != 2 {
+			return nil, fmt.Errorf("t.setContext() requires 2 arguments")
+		}
+		// arg[0] must be a *ir.ContextRead — a bare context name in expression
+		// position. Extract the *ir.Context handle without evaluating it.
+		cr, ok := args[0].(*ir.ContextRead)
+		if !ok {
+			return nil, fmt.Errorf("t.setContext() first argument must be a context name, got %T", args[0])
+		}
+		val, err := env.Eval(args[1])
+		if err != nil {
+			return nil, err
+		}
+		env.SetContext(cr.Ref, val)
+		tv.locale = env.locale // sync locale field if "locale" context was set
+		if tv.contextOverrides == nil {
+			tv.contextOverrides = make(map[*ir.Context]any)
+		}
+		tv.contextOverrides[cr.Ref] = val
+		// Re-evaluate any component vars whose init expression is a ContextRead
+		// for this context, so subsequent c.<field> reads see the new value.
+		if tv.compName != "" {
+			comp := findComponent(tv.pkg, tv.compName)
+			if comp != nil {
+				for _, v := range comp.Vars {
+					if cr2, ok2 := v.Init.(*ir.ContextRead); ok2 && cr2.Ref == cr.Ref {
+						newVal, evalErr := env.Eval(v.Init)
+						if evalErr == nil {
+							env.vars[v.Name] = newVal
+							// Also update any componentValue in scope.
+							for _, sv := range env.vars {
+								if cv, ok3 := sv.(*componentValue); ok3 {
+									if _, exists := cv.vars[v.Name]; exists {
+										cv.vars[v.Name] = newVal
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return nil, nil
+
 	case "setLocale":
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.setLocale() requires 1 argument")
@@ -156,7 +201,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		start := time.Now()
 		childResult := &codegen.TestResult{Desc: fmt.Sprintf("%v", desc)}
 		childEnv := env.Snapshot()
-		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale}
+		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides}
 
 		callArgs := []any{childT}
 		if tv.compName != "" {

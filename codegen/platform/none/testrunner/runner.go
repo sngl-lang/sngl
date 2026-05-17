@@ -116,9 +116,12 @@ type testingT struct {
 	result   *codegen.TestResult
 	pkg      *ir.Package
 	compName string
-	// locale is the BCP-47 locale set by t.setLocale(). It overrides the env's
-	// default locale for i18n calls made within this test.
+	// locale is the BCP-47 locale set by t.setLocale() or t.setContext(locale,…).
+	// It overrides the env's default locale for i18n calls made within this test.
 	locale string
+	// contextOverrides accumulates the overrides established by t.setContext()
+	// calls so they can be propagated to child sub-tests created by t.test().
+	contextOverrides map[*ir.Context]any
 }
 
 // componentValue wraps the test environment so that c.field accesses
@@ -136,6 +139,25 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	env := NewEnv()
 	env.pkg = pkg
 	env.units = buildUnitTables(pkg)
+
+	// Seed context defaults so ContextRead expressions evaluate to their
+	// declared default values before any t.setContext() override is applied.
+	if len(pkg.Contexts) > 0 {
+		env.contextVals = make(map[*ir.Context]any, len(pkg.Contexts))
+		for _, ctx := range pkg.Contexts {
+			if ctx.Default != nil {
+				v, err := env.Eval(ctx.Default)
+				if err == nil {
+					env.contextVals[ctx] = v
+					if ctx.Name == "locale" {
+						if s, ok := v.(string); ok {
+							env.locale = s
+						}
+					}
+				}
+			}
+		}
+	}
 
 	// Register package-level functions (includes stdlib merged by the checker).
 	for _, fn := range pkg.Funcs {

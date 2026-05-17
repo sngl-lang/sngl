@@ -57,7 +57,15 @@ func Test.must(b bool) {}
 // Override the active locale for the duration of this test. Subsequent
 // i18n calls (i18n.tr, i18n.format, i18n.date, etc.) use this locale
 // until the test returns. Useful for asserting on locale-specific output.
+// Deprecated: use t.setContext(locale, loc) once the locale context is in scope.
 func Test.setLocale(loc string) {}
+
+// Override a context value for the duration of this test. The first argument
+// must be a bare context name (a reference to a context declaration); the
+// second argument is the new value for that context. Subsequent reads of the
+// context — including component vars initialised from it — see the overridden
+// value. Replaces t.setLocale when the locale context is declared.
+func Test.setContext(name string, value string) {}
 
 // Pump the platform main loop until either the predicate returns true
 // or the timeout (in milliseconds) elapses. Used to gate assertions on

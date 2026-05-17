@@ -116,6 +116,9 @@ type Env struct {
 	Log         []string
 	// locale is the active BCP-47 locale for i18n calls (default "en").
 	locale string
+	// contextVals holds runtime overrides for context values keyed by *ir.Context.
+	// Set by t.setContext(); read by Eval(*ir.ContextRead).
+	contextVals map[*ir.Context]any
 }
 
 func NewEnv() *Env {
@@ -153,9 +156,42 @@ func (env *Env) Snapshot() *Env {
 		depth:       env.depth,
 		renderDepth: env.renderDepth,
 		locale:      env.locale,
+		contextVals: env.contextVals, // shared reference — overrides visible in child envs
 	}
 	maps.Copy(cp.vars, env.vars)
 	return cp
+}
+
+// SetContext stores a runtime override for ctx, replacing any default value.
+// If ctx is named "locale" its value is also applied to env.locale for i18n
+// compat (until the i18n stack is fully migrated to read context in Task 29).
+func (env *Env) SetContext(ctx *ir.Context, val any) {
+	if env.contextVals == nil {
+		env.contextVals = make(map[*ir.Context]any)
+	}
+	env.contextVals[ctx] = val
+	if ctx.Name == "locale" {
+		if s, ok := val.(string); ok {
+			env.locale = s
+		}
+	}
+}
+
+// ContextVal returns the current value of ctx: the override if one has been
+// stored via SetContext, otherwise ctx's default evaluated against env.
+func (env *Env) ContextVal(ctx *ir.Context) any {
+	if env.contextVals != nil {
+		if v, ok := env.contextVals[ctx]; ok {
+			return v
+		}
+	}
+	if ctx.Default != nil {
+		v, err := env.Eval(ctx.Default)
+		if err == nil {
+			return v
+		}
+	}
+	return nil
 }
 
 // translatorFor returns a Translator for the env's current locale.
@@ -413,6 +449,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.Eval(n.Operand)
 	case *ir.Lambda:
 		return &lambdaValue{fn: n.Func, env: env}, nil
+	case *ir.ContextRead:
+		return env.ContextVal(n.Ref), nil
 	}
 	if e == nil {
 		return nil, fmt.Errorf("cannot evaluate <nil> expression")
