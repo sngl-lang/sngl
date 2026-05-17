@@ -200,7 +200,7 @@ func TestComputeReachability_DirectReader(t *testing.T) {
 	}
 
 	reach := computeReachability(pkg)
-	if !reach[ctx][consumer] {
+	if !reach.Components[ctx][consumer] {
 		t.Errorf("Consumer should be in Reach(theme): has direct ContextRead")
 	}
 }
@@ -222,10 +222,10 @@ func TestComputeReachability_TransitiveReader(t *testing.T) {
 	}
 
 	reach := computeReachability(pkg)
-	if !reach[ctx][inner] {
+	if !reach.Components[ctx][inner] {
 		t.Errorf("Inner should be in Reach(theme)")
 	}
-	if !reach[ctx][outer] {
+	if !reach.Components[ctx][outer] {
 		t.Errorf("Outer should be transitively in Reach(theme)")
 	}
 }
@@ -255,10 +255,10 @@ func TestComputeReachability_ShadowingPreventsTransitive(t *testing.T) {
 	}
 
 	reach := computeReachability(pkg)
-	if !reach[ctx][reader] {
+	if !reach.Components[ctx][reader] {
 		t.Errorf("Reader should be in Reach(theme)")
 	}
-	if reach[ctx][caller] {
+	if reach.Components[ctx][caller] {
 		t.Errorf("Caller should NOT be in Reach(theme): all calls to Reader are shadowed by a provider")
 	}
 }
@@ -754,4 +754,227 @@ func TestMultipleContexts(t *testing.T) {
 	if n := countContextReads(consumer.Body, ctxB); n != 0 {
 		t.Errorf("Consumer still has %d ContextRead(locale)", n)
 	}
+}
+
+// --- func-level reach + threading tests ---
+
+// makeFunc builds a SNGL func with the given name + body, optionally with
+// a list of params.
+func makeFunc(name string, params []*ir.Param, body ...ir.Stmt) *ir.Func {
+	return &ir.Func{Name: name, Params: params, Block: body}
+}
+
+// findFuncParam returns the param with the given name, or nil.
+func findFuncParam(fn *ir.Func, name string) *ir.Param {
+	for _, p := range fn.Params {
+		if p.Name == name {
+			return p
+		}
+	}
+	return nil
+}
+
+// findCallArgNamed returns the value of a named arg in a Call's Args, or nil.
+func findCallArgNamed(c *ir.Call, name string) ir.Expr {
+	for _, a := range c.Args {
+		if a.Name == name {
+			return a.Value
+		}
+	}
+	return nil
+}
+
+// TestReachabilityFuncDirectRead verifies a func whose body reads a context
+// is in Reach.Funcs.
+func TestReachabilityFuncDirectRead(t *testing.T) {
+	ctx := makeContext("theme", "light")
+	fn := makeFunc("readTheme", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{fn},
+	}
+	reach := computeReachability(pkg)
+	if !reach.Funcs[ctx][fn] {
+		t.Errorf("fn readTheme should be in Reach.Funcs(theme): has direct ContextRead in body")
+	}
+}
+
+// TestReachabilityFuncTransitive verifies transitive call edges
+// Top -> Mid -> Leaf where Leaf reads the context — all three end up in Reach.
+func TestReachabilityFuncTransitive(t *testing.T) {
+	ctx := makeContext("theme", "light")
+	leaf := makeFunc("Leaf", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	mid := makeFunc("Mid", nil,
+		&ir.Return{Value: &ir.Call{Func: leaf}},
+	)
+	top := makeFunc("Top", nil,
+		&ir.Return{Value: &ir.Call{Func: mid}},
+	)
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{leaf, mid, top},
+	}
+	reach := computeReachability(pkg)
+	if !reach.Funcs[ctx][leaf] {
+		t.Errorf("Leaf should be in Reach.Funcs(theme)")
+	}
+	if !reach.Funcs[ctx][mid] {
+		t.Errorf("Mid should be in Reach.Funcs(theme) transitively")
+	}
+	if !reach.Funcs[ctx][top] {
+		t.Errorf("Top should be in Reach.Funcs(theme) transitively")
+	}
+}
+
+// TestFuncHiddenParam verifies that addHiddenParams appends __ctx_<name>
+// to a Reach func's Params.
+func TestFuncHiddenParam(t *testing.T) {
+	ctx := makeContext("locale", "en")
+	fn := makeFunc("tr", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{fn},
+	}
+	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("applyNoContext: %v", err)
+	}
+	p := findFuncParam(fn, "__ctx_locale")
+	if p == nil {
+		t.Fatalf("func tr should have __ctx_locale param after pass")
+	}
+	if p.Type != ctx.Typ {
+		t.Errorf("__ctx_locale param type = %v; want %v", p.Type, ctx.Typ)
+	}
+}
+
+// TestFuncCallSiteThreaded verifies that a call site to a Reach'd func
+// inside a component body gets __ctx_<name>=<active> threaded.
+func TestFuncCallSiteThreaded(t *testing.T) {
+	ctx := makeContext("locale", "en")
+	tr := makeFunc("tr", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	// A component whose body has a NodeInst with a prop value = tr() call.
+	trCall := &ir.Call{Func: tr}
+	consumer := makeComp("Consumer",
+		&ir.NodeInst{
+			Name:  "text",
+			Props: []ir.Arg{{Name: "value", Value: trCall}},
+		},
+	)
+	win := &ir.Window{
+		Name: "home",
+		Body: []ir.Stmt{
+			&ir.ContextProvider{
+				Ref:      ctx,
+				Value:    makeStringLit("fr"),
+				Children: []ir.Stmt{makeNodeInstComp(consumer)},
+			},
+		},
+	}
+	pkg := &ir.Package{
+		Contexts:   []*ir.Context{ctx},
+		Components: []*ir.Component{consumer},
+		Funcs:      []*ir.Func{tr},
+		Windows:    []*ir.Window{win},
+	}
+	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("applyNoContext: %v", err)
+	}
+	// The tr() call inside Consumer's body should have __ctx_locale arg.
+	val := findCallArgNamed(trCall, "__ctx_locale")
+	if val == nil {
+		t.Fatalf("tr() call missing __ctx_locale arg after pass; args=%+v", trCall.Args)
+	}
+	// Inside the component body, the active value is an Ident referencing
+	// the component's hidden prop (since the value was threaded down).
+	if !identifiesHiddenParam(val, ctx) {
+		t.Errorf("tr() __ctx_locale arg = %T %v; want Ident(__ctx_locale)", val, val)
+	}
+}
+
+// TestFuncCallSiteThreadedFromFunc verifies threading across a func->func
+// call boundary: caller has the hidden param, calls a Reach'd callee, and
+// passes its own hidden param value through.
+func TestFuncCallSiteThreadedFromFunc(t *testing.T) {
+	ctx := makeContext("locale", "en")
+	leaf := makeFunc("leaf", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	leafCall := &ir.Call{Func: leaf}
+	caller := makeFunc("caller", nil,
+		&ir.Return{Value: leafCall},
+	)
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{leaf, caller},
+	}
+	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("applyNoContext: %v", err)
+	}
+	if findFuncParam(caller, "__ctx_locale") == nil {
+		t.Errorf("caller should have __ctx_locale param (transitive reach)")
+	}
+	val := findCallArgNamed(leafCall, "__ctx_locale")
+	if val == nil {
+		t.Fatalf("leaf() call inside caller missing __ctx_locale arg")
+	}
+	if !identifiesHiddenParam(val, ctx) {
+		t.Errorf("leaf() __ctx_locale arg = %T %v; want Ident(__ctx_locale)", val, val)
+	}
+}
+
+// TestFuncBodyContextReadRewritten verifies that a ContextRead inside a
+// func body is rewritten to a read of the hidden param.
+func TestFuncBodyContextReadRewritten(t *testing.T) {
+	ctx := makeContext("locale", "en")
+	fn := makeFunc("tr", nil,
+		&ir.Return{Value: makeContextRead(ctx)},
+	)
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{fn},
+	}
+	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("applyNoContext: %v", err)
+	}
+	// No ContextRead should remain in fn.Block.
+	if n := countContextReadsInBlock(fn.Block, ctx); n != 0 {
+		t.Errorf("after pass: %d ContextRead nodes still in fn.Block", n)
+	}
+	ret, ok := fn.Block[0].(*ir.Return)
+	if !ok {
+		t.Fatalf("fn.Block[0] = %T; want *ir.Return", fn.Block[0])
+	}
+	if !identifiesHiddenParam(ret.Value, ctx) {
+		t.Errorf("return value = %T %v; want Ident(__ctx_locale)", ret.Value, ret.Value)
+	}
+}
+
+// TestIntrinsicFuncNotInReach verifies that funcs without a body
+// (intrinsics, native imports) are not direct readers.
+func TestIntrinsicFuncNotInReach(t *testing.T) {
+	ctx := makeContext("theme", "light")
+	// Intrinsic func — has no SNGL body. Should not be in Reach.
+	intr := &ir.Func{Name: "MathRound", Intrinsic: "MathRound"}
+	pkg := &ir.Package{
+		Contexts: []*ir.Context{ctx},
+		Funcs:    []*ir.Func{intr},
+	}
+	reach := computeReachability(pkg)
+	if reach.Funcs[ctx][intr] {
+		t.Errorf("intrinsic func should never be in Reach (no body to inspect)")
+	}
+}
+
+// countContextReadsInBlock counts ContextRead nodes anywhere in a stmt
+// slice — same as countContextReads but reused for func bodies.
+func countContextReadsInBlock(stmts []ir.Stmt, ctx *ir.Context) int {
+	return countContextReads(stmts, ctx)
 }
