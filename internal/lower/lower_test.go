@@ -19,6 +19,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoLambda",
 		"NoListLambdas",
 		"NoToggle",
+		"NoContext",
 		"InlinePure",
 		"NoInlineComponents",
 		"NoReactivity",
