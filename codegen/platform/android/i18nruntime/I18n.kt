@@ -378,6 +378,20 @@ private fun toDouble(v: Any?): Double = when (v) {
 object I18n {
     @Volatile private var instance: Translator? = null
 
+    /**
+     * Returns the process-startup BCP-47 locale string from the JVM default locale.
+     * Uses Locale.getDefault().toLanguageTag(), which returns a valid BCP-47 tag
+     * (e.g. "en-US", "zh-CN"). Falls back to "en-US" if the result is blank or
+     * the JVM returns the sentinel "und" (undetermined).
+     *
+     * This is the Kotlin runtime implementation of the SNGL stdlib i18n.defaultLocale().
+     */
+    @JvmStatic
+    fun defaultLocale(): String {
+        val tag = Locale.getDefault().toLanguageTag()
+        return if (tag.isNotBlank() && tag != "und") tag else "en-US"
+    }
+
     @JvmStatic
     fun getTranslator(): Translator {
         instance?.let { return it }
@@ -398,8 +412,57 @@ object I18n {
         val manifest = loadManifest(ctx)
         synchronized(this) {
             instance = Translator(manifest, Locale.getDefault())
+            translatorByLocale.clear()
         }
     }
+
+    // --- Per-locale entry points ---
+    //
+    // After NoContext + InlinePure rewrites i18n.* wrapper calls into direct
+    // intl.* intrinsic calls, the codegen targets these entry points with
+    // the active locale threaded as the first argument. Translators are
+    // cached per locale; the manifest is shared with the default singleton.
+
+    private val translatorByLocale = java.util.concurrent.ConcurrentHashMap<String, Translator>()
+
+    private fun translatorFor(locale: String): Translator {
+        val effective = if (locale.isBlank()) defaultLocale() else locale
+        translatorByLocale[effective]?.let { return it }
+        val manifest: Manifest = instance?.manifest ?: emptyMap()
+        val t = Translator(manifest, Locale.forLanguageTag(effective))
+        val prior = translatorByLocale.putIfAbsent(effective, t)
+        return prior ?: t
+    }
+
+    @JvmStatic fun translate(locale: String, key: String, inlinedTemplate: String, args: Map<String, Any?>): String =
+        translatorFor(locale).tr(key, inlinedTemplate, args)
+
+    @JvmStatic fun format(locale: String, template: String, args: Map<String, Any?>): String =
+        translatorFor(locale).format(template, args)
+
+    @JvmStatic fun numberInt(locale: String, n: Int, style: String): String =
+        translatorFor(locale).numberInt(n, style)
+
+    @JvmStatic fun numberFloat(locale: String, n: Double, style: String): String =
+        translatorFor(locale).numberFloat(n, style)
+
+    @JvmStatic fun date(locale: String, d: Date, style: String): String =
+        translatorFor(locale).date(d, style)
+
+    @JvmStatic fun time(locale: String, t: Date, style: String): String =
+        translatorFor(locale).time(t, style)
+
+    @JvmStatic fun datetime(locale: String, dt: Date, dateStyle: String, timeStyle: String): String =
+        translatorFor(locale).datetime(dt, dateStyle, timeStyle)
+
+    @JvmStatic fun selectStr(locale: String, value: String, cases: Map<String, String>): String =
+        translatorFor(locale).select(value, cases)
+
+    @JvmStatic fun plural(locale: String, count: Int, forms: Map<String, String>): String =
+        translatorFor(locale).plural(count, forms)
+
+    @JvmStatic fun selectordinal(locale: String, count: Int, forms: Map<String, String>): String =
+        translatorFor(locale).selectordinal(count, forms)
 }
 
 private fun loadManifest(ctx: Context): Manifest {

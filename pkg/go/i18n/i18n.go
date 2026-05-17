@@ -914,6 +914,97 @@ func pickLocale() string {
 	return "en"
 }
 
+// translatorCache memoises Translators by BCP-47 locale string. Each
+// entry shares the same Manifest (the process-wide one loaded lazily on
+// first access) but binds the language.Tag / currency.Unit per locale.
+var translatorCache sync.Map // map[string]*Translator
+
+// translatorFor returns a Translator bound to the given locale. When locale
+// is empty it falls back to DefaultLocale(). Translators are cached so that
+// per-call locale routing remains cheap.
+func translatorFor(locale string) *Translator {
+	if locale == "" {
+		locale = DefaultLocale()
+	}
+	if v, ok := translatorCache.Load(locale); ok {
+		return v.(*Translator)
+	}
+	// Reuse the process-wide manifest. GetTranslator lazily loads the
+	// manifest from disk; we share that load to avoid repeated file I/O.
+	m := GetTranslator().Manifest
+	t := NewTranslator(m, locale)
+	actual, _ := translatorCache.LoadOrStore(locale, t)
+	return actual.(*Translator)
+}
+
+// Translate looks up key in the manifest at the given locale, falling back
+// to inlinedTemplate when the manifest lacks an entry, and formats via ICU.
+// Generated code targets this entry point when the locale context has been
+// threaded through (NoContext) — it replaces the older GetTranslator().Tr
+// path that ignored per-subtree locale overrides.
+func Translate(locale, key, inlinedTemplate string, args map[string]any) string {
+	return translatorFor(locale).Tr(key, inlinedTemplate, args)
+}
+
+// Format formats an ICU template directly at the given locale.
+func Format(locale, template string, args map[string]any) string {
+	return translatorFor(locale).Format(template, args)
+}
+
+// NumberInt formats an integer at the given locale and style.
+func NumberInt(locale string, n int, style string) string {
+	return translatorFor(locale).NumberInt(n, style)
+}
+
+// NumberFloat formats a float at the given locale and style.
+func NumberFloat(locale string, n float64, style string) string {
+	return translatorFor(locale).NumberFloat(n, style)
+}
+
+// Date formats a date at the given locale and style.
+func Date(locale string, d time.Time, style string) string {
+	return translatorFor(locale).Date(d, style)
+}
+
+// Time formats a time at the given locale and style.
+func Time(locale string, d time.Time, style string) string {
+	return translatorFor(locale).Time(d, style)
+}
+
+// Datetime formats a date+time at the given locale.
+func Datetime(locale string, d time.Time, dateStyle, timeStyle string) string {
+	return translatorFor(locale).Datetime(d, dateStyle, timeStyle)
+}
+
+// Select picks a message from cases keyed by value.
+func Select(locale, value string, cases map[string]string) string {
+	return translatorFor(locale).Select(value, cases)
+}
+
+// Plural picks a message by CLDR cardinal plural form for count.
+//
+// forms accepts map[any]string (the codegen-typed shape after the SNGL
+// `map<dyn, string>` intrinsic param) and converts to the strongly-typed
+// map[PluralKey]string the underlying Translator expects.
+func Plural(locale string, count int, forms map[any]string) string {
+	return translatorFor(locale).Plural(count, coercePluralForms(forms))
+}
+
+// Selectordinal picks a message by CLDR ordinal plural form for count.
+func Selectordinal(locale string, count int, forms map[any]string) string {
+	return translatorFor(locale).Selectordinal(count, coercePluralForms(forms))
+}
+
+func coercePluralForms(forms map[any]string) map[PluralKey]string {
+	out := make(map[PluralKey]string, len(forms))
+	for k, v := range forms {
+		if pk, ok := k.(PluralKey); ok {
+			out[pk] = v
+		}
+	}
+	return out
+}
+
 // DefaultLocale resolves the process-startup locale from environment variables,
 // with BCP-47 normalisation and "en-US" fallback.
 //
