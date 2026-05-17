@@ -37,13 +37,91 @@ func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
 		return nil
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	rewriteReads(pkg, reach)
-	lowerProviders(pkg, reach)
+	// Collect all funcs reachable from user code that have a SNGL body —
+	// includes stdlib wrappers (e.g. i18n.tr, i18n.numberInt) which live
+	// outside pkg.Funcs but are referenced from user code via Call.Func
+	// pointers. NoContext mutates these in place so ContextRead nodes
+	// inside their bodies get rewritten to hidden-param reads and the
+	// optimizer's inlineCall can splice them at call sites.
+	extra := collectReachableExternalFuncs(pkg)
+
+	reach := computeReachability(pkg, extra)
+	addHiddenParams(pkg, reach, extra)
+	hiddenParams := buildHiddenParamIndex(pkg, reach, extra)
+	rewriteReads(pkg, reach, extra, hiddenParams)
+	lowerProviders(pkg, reach, extra, hiddenParams)
 
 	pkg.Contexts = nil
 	return nil
+}
+
+// collectReachableExternalFuncs walks the user package and returns all
+// *ir.Func pointers that are referenced from user code AND have a SNGL
+// body AND are not already in pkg.Funcs / pkg.Components funcs. These
+// are predominantly stdlib expression-body wrappers (i18n.tr etc.).
+// The walk is transitive: a stdlib wrapper that calls another stdlib
+// wrapper is also collected.
+func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
+	known := map[*ir.Func]bool{}
+	for _, fn := range pkg.Funcs {
+		known[fn] = true
+	}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			known[fn] = true
+		}
+	}
+
+	seen := map[*ir.Func]bool{}
+	var queue []*ir.Func
+
+	visit := func(fn *ir.Func) {
+		if fn == nil || known[fn] || seen[fn] {
+			return
+		}
+		if !hasBody(fn) {
+			return
+		}
+		seen[fn] = true
+		queue = append(queue, fn)
+	}
+
+	// Seed from user package.
+	for _, comp := range pkg.Components {
+		for _, call := range callsInBody(comp.Body, nil) {
+			if call.fn != nil {
+				visit(call.fn)
+			}
+		}
+	}
+	for _, fn := range pkg.Funcs {
+		if !hasBody(fn) {
+			continue
+		}
+		for _, call := range callsInBody(fn.Block, nil) {
+			if call.fn != nil {
+				visit(call.fn)
+			}
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, call := range callsInBody(w.Body, nil) {
+			if call.fn != nil {
+				visit(call.fn)
+			}
+		}
+	}
+
+	// Transitive closure over external funcs.
+	for i := 0; i < len(queue); i++ {
+		fn := queue[i]
+		for _, call := range callsInBody(fn.Block, nil) {
+			if call.fn != nil {
+				visit(call.fn)
+			}
+		}
+	}
+	return queue
 }
 
 // --- Reachability ---
@@ -79,8 +157,9 @@ func hasBody(f *ir.Func) bool {
 
 // computeReachability returns, for each Context, the sets of Components and
 // Funcs that transitively read that context (without an intervening provider
-// shadowing it).
-func computeReachability(pkg *ir.Package) Reachable {
+// shadowing it). extraFuncs are external (stdlib) funcs with bodies that are
+// reachable from user code and should participate in reachability propagation.
+func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	reach := Reachable{
 		Components: make(map[*ir.Context]map[*ir.Component]bool, len(pkg.Contexts)),
 		Funcs:      make(map[*ir.Context]map[*ir.Func]bool, len(pkg.Contexts)),
@@ -96,16 +175,44 @@ func computeReachability(pkg *ir.Package) Reachable {
 			reach.Components[ctx][comp] = true
 		}
 	}
-	for _, fn := range pkg.Funcs {
+	markFuncReads := func(fn *ir.Func) {
 		if !hasBody(fn) {
-			continue
+			return
 		}
 		for ctx := range directContextReads(fn.Block) {
 			reach.Funcs[ctx][fn] = true
 		}
 	}
+	for _, fn := range pkg.Funcs {
+		markFuncReads(fn)
+	}
+	for _, fn := range extraFuncs {
+		markFuncReads(fn)
+	}
 
 	// 2. Fixpoint: propagate through call graph, respecting shadowing.
+	propagateFuncCaller := func(caller *ir.Func) bool {
+		if !hasBody(caller) {
+			return false
+		}
+		changed := false
+		for _, call := range callsInBody(caller.Block, nil) {
+			for _, ctx := range pkg.Contexts {
+				if call.shadowed[ctx] {
+					continue
+				}
+				if call.fn != nil && reach.Funcs[ctx][call.fn] && !reach.Funcs[ctx][caller] {
+					reach.Funcs[ctx][caller] = true
+					changed = true
+				}
+				if call.comp != nil && reach.Components[ctx][call.comp] && !reach.Funcs[ctx][caller] {
+					reach.Funcs[ctx][caller] = true
+					changed = true
+				}
+			}
+		}
+		return changed
+	}
 	changed := true
 	for changed {
 		changed = false
@@ -127,29 +234,15 @@ func computeReachability(pkg *ir.Package) Reachable {
 				}
 			}
 		}
-		// Func callers. (Func bodies cannot host providers, so shadowed is
-		// always empty for calls inside funcs — but callsInBody still
-		// handles that uniformly.)
+		// Func callers (user + extras).
 		for _, caller := range pkg.Funcs {
-			if !hasBody(caller) {
-				continue
+			if propagateFuncCaller(caller) {
+				changed = true
 			}
-			for _, call := range callsInBody(caller.Block, nil) {
-				for _, ctx := range pkg.Contexts {
-					if call.shadowed[ctx] {
-						continue
-					}
-					// A func can only call other funcs, but defensively
-					// allow comp edges (always false in practice).
-					if call.fn != nil && reach.Funcs[ctx][call.fn] && !reach.Funcs[ctx][caller] {
-						reach.Funcs[ctx][caller] = true
-						changed = true
-					}
-					if call.comp != nil && reach.Components[ctx][call.comp] && !reach.Funcs[ctx][caller] {
-						reach.Funcs[ctx][caller] = true
-						changed = true
-					}
-				}
+		}
+		for _, caller := range extraFuncs {
+			if propagateFuncCaller(caller) {
+				changed = true
 			}
 		}
 	}
@@ -402,8 +495,9 @@ func copyContextShadow(m map[*ir.Context]bool) map[*ir.Context]bool {
 
 // addHiddenParams adds a synthesized __ctx_<name> prop to every component
 // in Reach(ctx) and a __ctx_<name> param to every func in Reach(ctx) for
-// each context. Idempotent: skips if already present.
-func addHiddenParams(pkg *ir.Package, reach Reachable) {
+// each context. Idempotent: skips if already present. extraFuncs are
+// external (stdlib) funcs that should also be augmented.
+func addHiddenParams(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) {
 	for _, ctx := range pkg.Contexts {
 		paramName := "__ctx_" + ctx.Name
 		for _, comp := range pkg.Components {
@@ -418,19 +512,72 @@ func addHiddenParams(pkg *ir.Package, reach Reachable) {
 				Type: ctx.Typ,
 			})
 		}
-		for _, fn := range pkg.Funcs {
+		addToFunc := func(fn *ir.Func) {
 			if !reach.Funcs[ctx][fn] {
-				continue
+				return
 			}
 			if hasFuncParam(fn, paramName) {
-				continue
+				return
 			}
 			fn.Params = append(fn.Params, &ir.Param{
 				Name: paramName,
 				Type: ctx.Typ,
 			})
 		}
+		for _, fn := range pkg.Funcs {
+			addToFunc(fn)
+		}
+		for _, fn := range extraFuncs {
+			addToFunc(fn)
+		}
 	}
+}
+
+// hiddenParamIndex maps (ctx, fn) → the *ir.Param appended to fn.Params for
+// that context. Stored so rewriteReads and lowerProviders use the SAME
+// *ir.Param pointer in Ident.Sym slots as the one on fn.Params. This is
+// load-bearing for the optimizer's substituteParams, which keys on
+// *ir.Param pointer identity.
+type hiddenParamIndex struct {
+	funcs map[*ir.Func]map[*ir.Context]*ir.Param
+}
+
+func buildHiddenParamIndex(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) hiddenParamIndex {
+	idx := hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}}
+	indexFn := func(fn *ir.Func) {
+		if !hasBody(fn) {
+			return
+		}
+		for _, ctx := range pkg.Contexts {
+			if !reach.Funcs[ctx][fn] {
+				continue
+			}
+			paramName := "__ctx_" + ctx.Name
+			for _, p := range fn.Params {
+				if p.Name == paramName {
+					if idx.funcs[fn] == nil {
+						idx.funcs[fn] = map[*ir.Context]*ir.Param{}
+					}
+					idx.funcs[fn][ctx] = p
+					break
+				}
+			}
+		}
+	}
+	for _, fn := range pkg.Funcs {
+		indexFn(fn)
+	}
+	for _, fn := range extraFuncs {
+		indexFn(fn)
+	}
+	return idx
+}
+
+func (idx hiddenParamIndex) get(fn *ir.Func, ctx *ir.Context) *ir.Param {
+	if m := idx.funcs[fn]; m != nil {
+		return m[ctx]
+	}
+	return nil
 }
 
 func hasHiddenProp(comp *ir.Component, name string) bool {
@@ -452,8 +599,11 @@ func hasFuncParam(fn *ir.Func, name string) bool {
 }
 
 // makeHiddenParamSym returns a fresh *ir.Param used as the Sym of an Ident
-// that refers to the hidden context prop. This matches the shape the checker
-// uses when declaring props as params in component scope.
+// that refers to the hidden context prop in a component body. This matches
+// the shape the checker uses when declaring props as params in component
+// scope. For func bodies, prefer the *ir.Param actually attached to the
+// func via hiddenParamIndex — pointer identity matters for the optimizer's
+// substituteParams.
 func makeHiddenParamSym(ctx *ir.Context) *ir.Param {
 	return &ir.Param{
 		Name: "__ctx_" + ctx.Name,
@@ -465,40 +615,69 @@ func makeHiddenParamSym(ctx *ir.Context) *ir.Param {
 
 // rewriteReads replaces every *ir.ContextRead{Ref: ctx} in each component
 // and func in Reach(ctx) with an *ir.Ident referencing the hidden param.
-func rewriteReads(pkg *ir.Package, reach Reachable) {
+// For funcs, the Ident.Sym is the actual *ir.Param attached to fn.Params
+// (looked up in hidden) so the optimizer's substituteParams can match by
+// pointer identity. Component bodies have no func — they use a fresh
+// synthetic Param (matches the checker's component-prop scope shape).
+func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidden hiddenParamIndex) {
 	for _, ctx := range pkg.Contexts {
-		paramSym := makeHiddenParamSym(ctx)
-		paramIdent := func() ir.Expr {
+		compSym := makeHiddenParamSym(ctx)
+		compIdent := func() ir.Expr {
 			return &ir.Ident{
 				Name:        "__ctx_" + ctx.Name,
 				Type:        ctx.Typ,
-				Sym:         paramSym,
+				Sym:         compSym,
 				Synthesized: true,
 			}
 		}
-		transform := func(e ir.Expr) ir.Expr {
+		compTransform := func(e ir.Expr) ir.Expr {
 			cr, ok := e.(*ir.ContextRead)
 			if !ok || cr.Ref != ctx {
 				return e
 			}
-			return paramIdent()
+			return compIdent()
 		}
 		for _, comp := range pkg.Components {
 			if !reach.Components[ctx][comp] {
 				continue
 			}
-			w := newExprWalker(transform)
+			w := newExprWalker(compTransform)
 			comp.Body = w.stmts(comp.Body)
 		}
-		for _, fn := range pkg.Funcs {
+		rewriteFn := func(fn *ir.Func) {
 			if !reach.Funcs[ctx][fn] {
-				continue
+				return
 			}
 			if !hasBody(fn) {
-				continue
+				return
+			}
+			paramSym := hidden.get(fn, ctx)
+			if paramSym == nil {
+				return // defensive: should always exist after addHiddenParams
+			}
+			ident := func() ir.Expr {
+				return &ir.Ident{
+					Name:        paramSym.Name,
+					Type:        paramSym.Type,
+					Sym:         paramSym,
+					Synthesized: true,
+				}
+			}
+			transform := func(e ir.Expr) ir.Expr {
+				cr, ok := e.(*ir.ContextRead)
+				if !ok || cr.Ref != ctx {
+					return e
+				}
+				return ident()
 			}
 			w := newExprWalker(transform)
 			fn.Block = w.stmts(fn.Block)
+		}
+		for _, fn := range pkg.Funcs {
+			rewriteFn(fn)
+		}
+		for _, fn := range extraFuncs {
+			rewriteFn(fn)
 		}
 	}
 }
@@ -510,7 +689,7 @@ func rewriteReads(pkg *ir.Package, reach Reachable) {
 // call) and Call (func call) inside. Window roots are seeded with ctx.Default
 // for each context. Func bodies thread the value of their __ctx_<name>
 // param down to any Reach-callees they themselves invoke.
-func lowerProviders(pkg *ir.Package, reach Reachable) {
+func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidden hiddenParamIndex) {
 	// Build default map: ctx → ctx.Default expression.
 	defaults := make(map[*ir.Context]ir.Expr, len(pkg.Contexts))
 	for _, ctx := range pkg.Contexts {
@@ -529,25 +708,33 @@ func lowerProviders(pkg *ir.Package, reach Reachable) {
 	for _, comp := range pkg.Components {
 		// Inside this component's body, each ctx for which this component
 		// is in Reach is active and references the hidden prop.
-		compActive := hiddenActiveFor(pkg, reach, comp, nil)
+		compActive := hiddenActiveFor(pkg, reach, hidden, comp, nil)
 		comp.Body = lowerInStmts(comp.Body, compActive, reach)
 	}
 
-	// For func bodies: same — each ctx for which this func has a hidden
-	// param is active as an Ident reading that param.
-	for _, fn := range pkg.Funcs {
+	// For func bodies (user + extras): same — each ctx for which this func
+	// has a hidden param is active as an Ident reading that param.
+	lowerFn := func(fn *ir.Func) {
 		if !hasBody(fn) {
-			continue
+			return
 		}
-		fnActive := hiddenActiveFor(pkg, reach, nil, fn)
+		fnActive := hiddenActiveFor(pkg, reach, hidden, nil, fn)
 		fn.Block = lowerInStmts(fn.Block, fnActive, reach)
+	}
+	for _, fn := range pkg.Funcs {
+		lowerFn(fn)
+	}
+	for _, fn := range extraFuncs {
+		lowerFn(fn)
 	}
 }
 
 // hiddenActiveFor builds the active-context map at the entry of a component
 // or func body: each context for which the callee is in Reach is active and
 // references the hidden param by Ident. Exactly one of comp / fn is non-nil.
-func hiddenActiveFor(pkg *ir.Package, reach Reachable, comp *ir.Component, fn *ir.Func) map[*ir.Context]ir.Expr {
+// For funcs, the Ident.Sym is the actual *ir.Param on fn.Params (from the
+// hiddenParamIndex) so threaded reads match what substituteParams keys on.
+func hiddenActiveFor(pkg *ir.Package, reach Reachable, hidden hiddenParamIndex, comp *ir.Component, fn *ir.Func) map[*ir.Context]ir.Expr {
 	out := map[*ir.Context]ir.Expr{}
 	for _, ctx := range pkg.Contexts {
 		inReach := false
@@ -560,10 +747,17 @@ func hiddenActiveFor(pkg *ir.Package, reach Reachable, comp *ir.Component, fn *i
 		if !inReach {
 			continue
 		}
+		var sym *ir.Param
+		if fn != nil {
+			sym = hidden.get(fn, ctx)
+		}
+		if sym == nil {
+			sym = makeHiddenParamSym(ctx)
+		}
 		out[ctx] = &ir.Ident{
-			Name:        "__ctx_" + ctx.Name,
-			Type:        ctx.Typ,
-			Sym:         makeHiddenParamSym(ctx),
+			Name:        sym.Name,
+			Type:        sym.Type,
+			Sym:         sym,
 			Synthesized: true,
 		}
 	}

@@ -199,7 +199,7 @@ func TestComputeReachability_DirectReader(t *testing.T) {
 		Components: []*ir.Component{consumer},
 	}
 
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if !reach.Components[ctx][consumer] {
 		t.Errorf("Consumer should be in Reach(theme): has direct ContextRead")
 	}
@@ -221,7 +221,7 @@ func TestComputeReachability_TransitiveReader(t *testing.T) {
 		Components: []*ir.Component{inner, outer},
 	}
 
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if !reach.Components[ctx][inner] {
 		t.Errorf("Inner should be in Reach(theme)")
 	}
@@ -254,7 +254,7 @@ func TestComputeReachability_ShadowingPreventsTransitive(t *testing.T) {
 		Components: []*ir.Component{reader, caller},
 	}
 
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if !reach.Components[ctx][reader] {
 		t.Errorf("Reader should be in Reach(theme)")
 	}
@@ -278,8 +278,8 @@ func TestAddHiddenParams(t *testing.T) {
 		Components: []*ir.Component{consumer, nonReader},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
 
 	propName := "__ctx_theme"
 	if p := findHiddenProp(consumer, propName); p == nil {
@@ -306,9 +306,9 @@ func TestAddHiddenParams_Idempotent(t *testing.T) {
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{consumer},
 	}
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	addHiddenParams(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	addHiddenParams(pkg, reach, nil)
 
 	count := 0
 	for _, p := range consumer.Props {
@@ -335,9 +335,9 @@ func TestRewriteReads(t *testing.T) {
 		Components: []*ir.Component{consumer},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	rewriteReads(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	rewriteReads(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// No ContextRead should remain.
 	if n := countContextReads(consumer.Body, ctx); n != 0 {
@@ -377,9 +377,9 @@ func TestLowerProviders_Basic(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	lowerProviders(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// Provider should be gone from window body.
 	if n := countContextProviders(win.Body, ctx); n != 0 {
@@ -425,9 +425,9 @@ func TestLowerProviders_RootDefault(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	lowerProviders(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	ni, ok := win.Body[0].(*ir.NodeInst)
 	if !ok {
@@ -489,9 +489,9 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	lowerProviders(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// No providers should remain.
 	if n := countContextProviders(win.Body, ctx); n != 0 {
@@ -666,9 +666,9 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	reach := computeReachability(pkg)
-	addHiddenParams(pkg, reach)
-	lowerProviders(pkg, reach)
+	reach := computeReachability(pkg, nil)
+	addHiddenParams(pkg, reach, nil)
+	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// Provider gone.
 	if n := countContextProviders(win.Body, ctx); n != 0 {
@@ -795,7 +795,7 @@ func TestReachabilityFuncDirectRead(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{fn},
 	}
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if !reach.Funcs[ctx][fn] {
 		t.Errorf("fn readTheme should be in Reach.Funcs(theme): has direct ContextRead in body")
 	}
@@ -818,7 +818,7 @@ func TestReachabilityFuncTransitive(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{leaf, mid, top},
 	}
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if !reach.Funcs[ctx][leaf] {
 		t.Errorf("Leaf should be in Reach.Funcs(theme)")
 	}
@@ -967,7 +967,7 @@ func TestIntrinsicFuncNotInReach(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{intr},
 	}
-	reach := computeReachability(pkg)
+	reach := computeReachability(pkg, nil)
 	if reach.Funcs[ctx][intr] {
 		t.Errorf("intrinsic func should never be in Reach (no body to inspect)")
 	}
