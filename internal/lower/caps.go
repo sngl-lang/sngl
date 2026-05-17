@@ -21,6 +21,7 @@ type Caps struct {
 	NoAsyncReactive    bool // async in reactive contexts → settled state-field + kicker
 	NoComputed         bool // computed vars → inlined exprs or memoized funcs
 	NoTimer            bool // timer decls → explicit scheduler.At()/cancel() calls
+	NoContext          bool // context decls → hidden-prop threading via NoContext pass
 	NoReactivity       bool // reactive deps → explicit updater stmts after each mutation
 	NoDeclarative      bool // visual node tree → flat stream of create/update/delete IR calls
 	NoStdlibWrappers   bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
@@ -41,6 +42,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoAsyncReactive:    c.NoAsyncReactive || other.NoAsyncReactive,
 		NoComputed:         c.NoComputed || other.NoComputed,
 		NoTimer:            c.NoTimer || other.NoTimer,
+		NoContext:          c.NoContext || other.NoContext,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
@@ -79,6 +81,9 @@ func (c Caps) String() string {
 	}
 	if c.NoToggle {
 		parts = append(parts, "NoToggle")
+	}
+	if c.NoContext {
+		parts = append(parts, "NoContext")
 	}
 	if c.NoReactivity {
 		parts = append(parts, "NoReactivity")
