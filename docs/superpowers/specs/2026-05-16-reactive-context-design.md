@@ -56,7 +56,7 @@ reserved keyword):
 ```sngl
 context #theme(Theme.light)
 context #locale("en-US")
-context #user(User{name: "", id: 0})
+context #user(User{name="", id=0})
 ```
 
 The `#identifier` form defines the name. The single positional argument is
