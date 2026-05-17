@@ -800,6 +800,10 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Body = lowerInStmts(w.Body, windowActive, reach)
+		// Promote any LocalVar that the provider unwrap spliced up to
+		// window-body level into the window's Vars slice. See the parallel
+		// post-pass on comp.Body below for rationale.
+		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
 		for _, v := range w.Vars {
 			v.Init = lowerInExpr(v.Init, windowActive, reach)
 			for _, h := range v.Handlers {
@@ -886,6 +890,13 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 			}
 		}
 		comp.Body = lowerInStmts(comp.Body, compActive, reach)
+		// Any LocalVar (`var x = ...` originating from inside a provider
+		// block, now spliced up to component-body level by the provider
+		// unwrap above) is promoted to a component-level *ir.Var so
+		// codegen treats it as Model state instead of leaving it as a
+		// dangling block-local in a context where there is no enclosing
+		// function body.
+		comp.Body, comp.Vars = promoteLocalVarsToVars(comp.Body, comp.Vars)
 		// Component-level Vars (var x = ...) and Funcs (func foo() {}) host
 		// expressions that can call ctx-reading wrappers too — walk them so
 		// hidden args get threaded uniformly.
@@ -924,6 +935,31 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, fn := range extraFuncs {
 		lowerFn(fn)
 	}
+}
+
+// promoteLocalVarsToVars converts every top-level *ir.LocalVar in stmts to a
+// *ir.Var, appends it to vars, and returns stmts without those LocalVars. Used
+// after provider-unwrap to lift `var` declarations that were originally
+// block-scoped inside a `name(value) { ... }` provider up to the enclosing
+// component or window's Vars slice, where codegen treats them as ordinary
+// state declarations. Only top-level LocalVars are promoted; LocalVars nested
+// inside If/For/etc. remain block-scoped.
+func promoteLocalVarsToVars(stmts []ir.Stmt, vars []*ir.Var) ([]ir.Stmt, []*ir.Var) {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		lv, ok := s.(*ir.LocalVar)
+		if !ok {
+			out = append(out, s)
+			continue
+		}
+		vars = append(vars, &ir.Var{
+			AST:  lv.AST,
+			Name: lv.Name,
+			Type: lv.Type,
+			Init: lv.Init,
+		})
+	}
+	return out, vars
 }
 
 // hiddenActiveFor builds the active-context map at the entry of a component
