@@ -738,6 +738,11 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 		// Type check initializer.
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
+			// Capturing a context into a var would freeze the value and miss
+			// reactive updates. Reject here; read the context at each use site.
+			if _, ok := initExpr.(*ir.ContextRead); ok {
+				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
+			}
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
@@ -794,6 +799,11 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
+			// Capturing a context into a var would freeze the value and miss
+			// reactive updates. Reject here; read the context at each use site.
+			if _, ok := initExpr.(*ir.ContextRead); ok {
+				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
+			}
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {

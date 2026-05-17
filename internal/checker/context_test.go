@@ -216,6 +216,33 @@ func TestContextConsumerBasic(t *testing.T) {
 	}
 }
 
+// TestContextAssignRejected verifies that assigning to a context name is rejected.
+func TestContextAssignRejected(t *testing.T) {
+	errs := checkSrc(t, `
+context #theme("light")
+window #home(title="t", href="/") {
+    text(value="x", @click { theme = "dark" })
+}
+`)
+	if len(errs) == 0 {
+		t.Fatal("expected error for context assign, got none")
+	}
+}
+
+// TestContextVarInitRejected verifies that capturing a context into a local var is rejected.
+func TestContextVarInitRejected(t *testing.T) {
+	errs := checkSrc(t, `
+context #theme("light")
+window #home(title="t", href="/") {
+    var t = theme
+    text(value=t)
+}
+`)
+	if len(errs) == 0 {
+		t.Fatal("expected error for context var-init, got none")
+	}
+}
+
 // stmtTypes formats a slice of ir.Stmt for diagnostic output.
 func stmtTypes(stmts []ir.Stmt) []string {
 	out := make([]string, len(stmts))

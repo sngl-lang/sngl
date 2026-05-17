@@ -1,0 +1,7 @@
+context #theme("light")
+
+window #home(title="Home", href="/") {
+    text(value="x", @click {
+        theme = "dark" // ERROR(check) "cannot assign to context \"theme\""
+    })
+}

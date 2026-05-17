@@ -1638,6 +1638,11 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
+			// Capturing a context into a local var would freeze the value and
+			// miss reactive updates. Reject here; read the context at each use site.
+			if _, ok := initExpr.(*ir.ContextRead); ok {
+				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
+			}
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
@@ -1685,6 +1690,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if v, ok := sym.(*ir.Var); ok && v.IsConst {
 					c.error(x.Pos, "cannot assign to const %q", ident.Name)
+				}
+				// Context names are read-only; assignment would bypass reactivity.
+				if _, ok := sym.(*ir.Context); ok {
+					c.error(x.Pos, "cannot assign to context %q", ident.Name)
+					return &ir.Assign{AST: x, Target: targetExpr, Op: x.Op, Value: valueExpr}
 				}
 			}
 		}
@@ -1750,6 +1760,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		var initExpr ir.Expr
 		if x.Init != nil {
 			initExpr = c.checkExprExpecting(x.Init, typ)
+			// Capturing a context into a local var would freeze the value and
+			// miss reactive updates. Reject here; read the context at each use site.
+			if _, ok := initExpr.(*ir.ContextRead); ok {
+				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
+			}
 			initType := exprType(initExpr)
 			if c.requireValueType(initType, x.Pos) {
 				// Avoid propagating void into an inferred var type.
