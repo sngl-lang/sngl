@@ -52,9 +52,11 @@
 
 ---
 
-## Phase 1 — Surface: AST recognition + parser/format fixtures
+## Phase 1 — Surface: AST recognition + parser fixtures
 
-Goal: `context #name(default)` at top level and `name(value) { children }` inside windows parse, format, and round-trip cleanly. No checker logic yet.
+Goal: `context #name(default)` at top level and `name(value) { children }` inside windows parse cleanly. No checker logic yet.
+
+**Important parser note (discovered during Task 1):** Top-level `name #id(args)` without a trailing block parses as `*ast.CallStmt` whose `Call.Func` is `*ast.SelectExpr{Operand: IdentExpr, Field: <id>, Kind: SelectElemRef}` — *not* as `*ast.VisualNode`. This is the same shape that `window #home(...)` and `output #foo(...)` would have if used without bodies; it just rarely happens in existing code. The checker (Task 5) handles this CallStmt shape at root level. The formatter currently emits `name.#id(args)` (with a dot) for the no-block case, which fails to re-parse — that's a pre-existing bug, orthogonal to this feature, deferred.
 
 ### Task 1: Parser round-trip fixture for top-level context decl
 
@@ -111,10 +113,10 @@ window #home(title="Home", href="/") {
 }
 ```
 
-- [ ] **Step 2: Round-trip**
+- [ ] **Step 2: Sanity-check via parse dump**
 
-Run: `go test ./internal/parser/ -run TestFormatRoundTrip -v`
-Expected: PASS.
+Run: `go install ./cmd/sngl && sngl dump parsed testdata/context_decl_inferred_type.sngl`
+Expected: each `context #X(...)` appears as a `*ast.CallStmt` with `Call.Func: *ast.SelectExpr{Operand: IdentExpr{"context"}, Field: <id>, Kind: SelectElemRef}` and the appropriate literal/struct/enum value in `Args[0]`. (No formatter round-trip — see Phase 1 header.)
 
 - [ ] **Step 3: Commit**
 
@@ -342,8 +344,10 @@ git commit -m "ir: convert Context/Provider/Read back to AST"
 ### Task 5: Recognize top-level `context #name(default)`
 
 **Files:**
-- Modify: `internal/checker/checker.go` (root-level visual-node switch)
+- Modify: `internal/checker/checker.go` (root-level statement dispatch + new `buildContext` helper)
 - Test: `internal/checker/checker_test.go` (extend existing)
+
+**Note:** At top level, `context #name(default)` parses as `*ast.CallStmt` (not `*ast.VisualNode`) — see Phase 1 header. The checker's root-level Stmt switch (`case *ast.VisualNode:` etc.) currently has no `*ast.CallStmt` case; add one that recognizes the context-decl pattern (`Call.Func` is `*ast.SelectExpr{Operand: IdentExpr{"context"}, Kind: SelectElemRef}`) and routes to `buildContext`. Other `CallStmt`s at root remain errors as today.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -366,45 +370,71 @@ Expected: FAIL — unhandled root-level `context` node.
 
 - [ ] **Step 3: Implement in `internal/checker/checker.go`**
 
-In the root-level visual-node switch (the function containing `case "window":`), add:
+In the root-level Stmt switch (around line 276 where `case *ast.VisualNode:` lives), add a `case *ast.CallStmt:` that recognizes the context-decl shape:
 
 ```go
-case "context":
-    ctx := c.buildContext(vn)
-    c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-    if ctx.Name != "" {
-        c.scope.Declare(ctx)
+case *ast.CallStmt:
+    if isContextDeclCallStmt(s) {
+        c.registerRootContextDecl(s)
+    } else {
+        c.error(s.Pos, "unexpected top-level call statement")
     }
 ```
 
-Add `buildContext` (same file or a new `internal/checker/context.go`):
+Helpers (new file `internal/checker/context.go`):
 
 ```go
-func (c *checker) buildContext(vn *ast.VisualNode) *ir.Context {
-    ctx := &ir.Context{AST: vn, Name: vn.ID}
-    if vn.ID == "" {
-        c.error(vn.Pos, "context decl requires #identifier")
-        return ctx
+package checker
+
+import (
+    "git.duckfam.us/jonathan/sngl/ast"
+    "git.duckfam.us/jonathan/sngl/ir"
+)
+
+// isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:
+// Call.Func is a SelectExpr{Operand: IdentExpr{"context"}, Kind: SelectElemRef}.
+func isContextDeclCallStmt(s *ast.CallStmt) bool {
+    sel, ok := s.Call.Func.(*ast.SelectExpr)
+    if !ok || sel.Kind != ast.SelectElemRef {
+        return false
     }
-    if len(vn.Args) != 1 || vn.Args[0].Name != "" {
-        c.error(vn.Pos, "context decl takes exactly one positional default value")
-        return ctx
+    ident, ok := sel.Operand.(*ast.IdentExpr)
+    return ok && ident.Name == "context"
+}
+
+func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
+    sel := s.Call.Func.(*ast.SelectExpr)
+    name := sel.Field
+    ctx := &ir.Context{Name: name}
+    if name == "" {
+        c.error(s.Pos, "context decl requires #identifier")
     }
-    if len(vn.Body) != 0 {
-        c.error(vn.Pos, "context decl cannot have a body")
-        return ctx
+    args := s.Call.Args.Args
+    if len(args) != 1 {
+        c.error(s.Pos, "context decl takes exactly one positional default value")
+        c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+        return
     }
-    def := c.checkExpr(vn.Args[0].Value, nil)
+    a, isArg := args[0].(ast.Arg)
+    if !isArg || a.Name != "" {
+        c.error(s.Pos, "context decl takes exactly one positional default value")
+        c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+        return
+    }
+    def := c.checkExpr(a.Value, nil)
     if !isConstantExpr(def) {
-        c.error(vn.Args[0].Value.Pos(), "context default must be a constant expression")
+        c.error(a.Value.ExprPos(), "context default must be a constant expression")
     }
     ctx.Default = def
     ctx.Typ = def.Type()
-    return ctx
+    c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+    if name != "" {
+        c.scope.Declare(ctx)
+    }
 }
 ```
 
-Add `isConstantExpr` if not present — true for literals, pure stdlib func calls, struct/enum literals with constant fields. Reuse any existing const-checking helper (look for `evalConst`, `constEval`, similar).
+Add `isConstantExpr` (in same file or in a shared helpers file) — true for literals, pure stdlib func calls, struct/enum literals with constant fields. Reuse any existing const-checking helper (look for `evalConst`, `constEval`, `isPure`, similar) before writing new code.
 
 - [ ] **Step 4: Run, see pass**
 
