@@ -13,8 +13,11 @@ exists out/app/src/main/java/test/sngl/app/MainScreen.kt
 # MainScreen.kt imports the I18n runtime.
 grep 'import us.duckfam.git.jonathan.sngl.i18n.I18n' out/app/src/main/java/test/sngl/app/MainScreen.kt
 
-# MainScreen.kt calls I18n.getTranslator() for the translatable string.
-grep 'I18n\.getTranslator\(\)' out/app/src/main/java/test/sngl/app/MainScreen.kt
+# MainScreen.kt calls a per-locale I18n entry point for the translatable
+# string. After NoContext + InlinePure, generated code targets the
+# per-locale APIs directly with the active locale threaded as the first
+# argument (here, I18n.defaultLocale() at the root).
+grep 'I18n\.translate\(I18n\.defaultLocale\(\)' out/app/src/main/java/test/sngl/app/MainScreen.kt
 
 # MainActivity.kt imports I18n and calls I18n.init(this) in onCreate.
 grep 'import us.duckfam.git.jonathan.sngl.i18n.I18n' out/app/src/main/java/test/sngl/app/MainActivity.kt

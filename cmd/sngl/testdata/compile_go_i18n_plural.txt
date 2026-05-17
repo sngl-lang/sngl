@@ -6,8 +6,9 @@ exists out/model.go
 # i18n runtime package is imported.
 grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' out/model.go
 
-# i18n.plural emits GetTranslator().Plural with map[i18n.PluralKey]string.
-grep 'GetTranslator\(\)\.Plural' out/model.go
+# i18n.plural emits i18n.Plural(locale, count, forms) with the locale
+# threaded from the active context. forms is map[i18n.PluralKey]string.
+grep 'i18n.Plural\(i18n.DefaultLocale\(\), ' out/model.go
 grep 'map\[i18n\.PluralKey\]string' out/model.go
 
 # i18n.exactly(0) emits i18n.Exactly(0).
@@ -17,8 +18,8 @@ grep 'i18n\.Exactly\(0\)' out/model.go
 grep 'i18n\.PluralOne' out/model.go
 grep 'i18n\.PluralOther' out/model.go
 
-# i18n.selectordinal emits GetTranslator().Selectordinal.
-grep 'GetTranslator\(\)\.Selectordinal' out/model.go
+# i18n.selectordinal emits i18n.Selectordinal(locale, count, forms).
+grep 'i18n.Selectordinal\(i18n.DefaultLocale\(\), ' out/model.go
 grep 'i18n\.PluralFew' out/model.go
 
 -- app.sngl --

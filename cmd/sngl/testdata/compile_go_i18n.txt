@@ -1,4 +1,4 @@
-# Go codegen for $"..." translatable strings: i18n.GetTranslator() wiring.
+# Go codegen for $"..." translatable strings: per-locale i18n.Translate wiring.
 
 sngl compile --platform=bubbletea --lang=go --out=out app.sngl
 exists out/model.go
@@ -6,8 +6,9 @@ exists out/model.go
 # i18n runtime package is imported (no alias needed; last path segment is "i18n").
 grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' out/model.go
 
-# Static string $"Login" compiles to i18n.GetTranslator().Tr with key == inlinedTemplate.
-grep 'GetTranslator\(\)\.Tr\("Login", "Login",' out/model.go
+# Static string $"Login" compiles to i18n.Translate(locale, key, inlined, args)
+# with key == inlinedTemplate and locale resolved from the active locale context.
+grep 'i18n.Translate\(i18n.DefaultLocale\(\), "Login", "Login",' out/model.go
 
 # Empty args map is emitted for static strings with no placeholders.
 grep 'map\[string\]any{}' out/model.go
