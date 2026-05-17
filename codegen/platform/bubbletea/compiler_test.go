@@ -10,6 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -38,6 +39,12 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 	var p *ir.Package
 	if len(pkg) > 0 {
 		p = pkg[0]
+	}
+	if p != nil {
+		gen := &Generator{}
+		if err := lower.Lower(p, gen.Capabilities(), lower.Options{Platform: "bubbletea"}); err != nil {
+			t.Fatalf("lower: %v", err)
+		}
 	}
 	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: p}, "bubbletea")
 	src, err := CompileIR(ctx, Config{})
