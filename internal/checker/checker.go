@@ -277,6 +277,12 @@ func (c *checker) pass1() {
 			c.registerRootVisualNode(s)
 		case *ast.PlatformStmt:
 			c.pass1PlatformStmt(s)
+		case *ast.CallStmt:
+			if isContextDeclCallStmt(s) {
+				c.registerRootContextDecl(s)
+			} else {
+				c.error(s.Pos, "unexpected top-level call statement")
+			}
 		case *ast.DisabledDecl:
 			// Skip disabled declarations.
 		case *ast.Comment:
