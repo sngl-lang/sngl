@@ -1,0 +1,11 @@
+context #theme("light")
+
+component Toolbar {
+    text(value=theme)
+}
+
+window #home(title="Home", href="/") {
+    theme("dark") {
+        Toolbar()
+    }
+}

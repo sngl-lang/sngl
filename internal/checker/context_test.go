@@ -175,6 +175,47 @@ func TestContextProviderBasic(t *testing.T) {
 	}
 }
 
+// TestContextConsumerBasic verifies that a bare ident referring to a
+// context resolves to an ir.ContextRead with the correct type.
+func TestContextConsumerBasic(t *testing.T) {
+	pkg, errs := parseFile(t, "../../testdata/context_consumer_basic.sngl")
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	var toolbar *ir.Component
+	for _, c := range pkg.Components {
+		if c.Name == "Toolbar" {
+			toolbar = c
+			break
+		}
+	}
+	if toolbar == nil {
+		t.Fatalf("Toolbar component not found")
+	}
+	// theme appears as text(value=theme) — look into the NodeInst's Props.
+	var found *ir.ContextRead
+	for _, s := range toolbar.Body {
+		ni, ok := s.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, prop := range ni.Props {
+			if r, ok := prop.Value.(*ir.ContextRead); ok {
+				found = r
+			}
+		}
+	}
+	if found == nil {
+		t.Fatalf("no ContextRead found in Toolbar.Body")
+	}
+	if found.Ref == nil || found.Ref.Name != "theme" {
+		t.Errorf("Ref = %+v, want context theme", found.Ref)
+	}
+	if found.Typ == nil || found.Typ.Kind != ir.TypeString {
+		t.Errorf("Typ = %v, want string", found.Typ)
+	}
+}
+
 // stmtTypes formats a slice of ir.Stmt for diagnostic output.
 func stmtTypes(stmts []ir.Stmt) []string {
 	out := make([]string, len(stmts))

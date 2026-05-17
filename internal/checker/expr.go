@@ -177,6 +177,13 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	}
 	c.rejectUnexported(x.Pos, sym)
 	c.reportUnusable(x.Pos, x.Name, sym)
+	if ctx, ok := sym.(*ir.Context); ok {
+		typ := ctx.Typ
+		if typ == nil {
+			typ = TypDyn
+		}
+		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
+	}
 	t := sym.SymType()
 	if t == nil {
 		t = TypDyn
