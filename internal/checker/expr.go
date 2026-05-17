@@ -1775,6 +1775,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return &ir.Return{AST: x, Value: valExpr}
 	case *ast.CallStmt:
+		// context #id(...) is only valid at file top level; reject it here.
+		if isContextDeclCallStmt(x) {
+			c.error(x.Pos, "context decl only permitted at file top level")
+			return nil
+		}
 		// Bodyless forms of root-ish visual nodes (e.g. `timer(...)` with
 		// the tick handler inside the parens) parse as CallStmt but must
 		// dispatch through the VisualNode special-cases so they register
