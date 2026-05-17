@@ -41,6 +41,7 @@ type Package struct {
 	Windows    []*Window
 	Timers     []*Timer
 	Outputs    []*Output
+	Contexts   []*Context
 	Symbols    *SymbolTable
 
 	// LiftedCaptures records, for every lifted closure Func produced by
