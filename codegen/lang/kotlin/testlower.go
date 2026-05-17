@@ -46,6 +46,9 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool) []string {
 			return []string{line}
 		}
 		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+			if lines, ok := lowerTestSetContext(c); ok {
+				return lines
+			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
 	case *ir.Assign:
@@ -67,6 +70,43 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool) []string {
 	// Fall through: emit a comment so unrecognised stmts surface in
 	// the generated source rather than vanishing.
 	return []string{fmt.Sprintf("// TODO: lower stmt %T", s)}
+}
+
+// lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
+// emits a placeholder val for the context override. The emitted val
+// `__test_ctx_<name>` records the intended value so it is visible in the
+// generated source, but does NOT yet wire the override into the composable
+// tree at test mount time — that requires deeper integration with the
+// Android test scaffold and is left for a follow-up task.
+//
+// The generated statement always compiles: a leading @Suppress annotation
+// prevents unused-variable warnings.
+func lowerTestSetContext(c *ir.Call) ([]string, bool) {
+	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+		return nil, false
+	}
+	// Args: [0] = t receiver (implicit), [1] = context name (*ir.ContextRead),
+	// [2] = value — locate the ContextRead and the value among the args.
+	var ctxName string
+	var valExpr string
+	for _, a := range c.Args {
+		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
+			ctxName = cr.Ref.Name
+		} else if ctxName != "" && valExpr == "" {
+			valExpr = lowerTestExpr(a.Value, nil)
+		}
+	}
+	if ctxName == "" {
+		return nil, false
+	}
+	if valExpr == "" {
+		valExpr = `""`
+	}
+	varName := "__test_ctx_" + ctxName
+	return []string{
+		fmt.Sprintf("// t.setContext(%q, ...): context override recorded; full mount-time wiring is a TODO.", ctxName),
+		fmt.Sprintf("@Suppress(\"UNUSED_VARIABLE\") val %s = %s", varName, valExpr),
+	}, true
 }
 
 func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool) (string, bool) {
