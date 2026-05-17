@@ -22,22 +22,33 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	ctx := &ir.Context{AST: s, Name: name}
 	if name == "" {
 		c.error(s.Pos, "context decl requires #identifier")
+	} else if _, exists := c.scope.LookupLocal(name); exists {
+		c.error(s.Pos, "duplicate declaration of %q", name)
 	}
 	args := s.Call.Args.Args
-	if len(args) != 1 {
-		c.error(s.Pos, "context decl takes exactly one positional default value")
+	if len(args) == 0 {
+		c.error(s.Pos, "context decl requires a default value")
+		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		return
+	}
+	if len(args) > 1 {
+		c.error(s.Pos, "context decl takes exactly one default value")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
-		c.error(s.Pos, "context decl takes exactly one positional default value")
+		c.error(s.Pos, "context default must be positional, not named")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
 		return
 	}
 	def := c.checkExpr(a.Value)
 	if def != nil && !ir.IsConst(def) {
-		c.error(*a.Value.ExprPos(), "context default must be a constant expression")
+		pos := s.Pos
+		if p := a.Value.ExprPos(); p != nil {
+			pos = *p
+		}
+		c.error(pos, "context default must be a constant expression")
 	}
 	ctx.Default = def
 	if def != nil {

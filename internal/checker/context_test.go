@@ -128,3 +128,16 @@ window #home(title="t", href="/") { text(value="") }
 		t.Fatal("expected error for zero-arg context, got none")
 	}
 }
+
+// TestContextDuplicateNameRejected verifies that declaring two contexts with
+// the same name produces a duplicate-declaration error.
+func TestContextDuplicateNameRejected(t *testing.T) {
+	errs := checkSrc(t, `
+context #foo("a")
+context #foo("b")
+window #home(title="t", href="/") { text(value="") }
+`)
+	if len(errs) == 0 {
+		t.Fatal("expected duplicate-declaration error, got none")
+	}
+}
