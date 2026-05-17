@@ -374,6 +374,20 @@ function toDate(val) {
 
 // --- Module-level singleton ---
 
+// defaultLocale returns the process-startup BCP-47 locale string.
+// In browser contexts, reads navigator.language (or navigator.languages[0])
+// and falls back to "en-US" if unavailable.
+// This is the JS runtime implementation of the SNGL stdlib i18n.defaultLocale().
+export function defaultLocale() {
+  if (typeof navigator !== "undefined") {
+    const lang = (navigator.languages && navigator.languages.length > 0)
+      ? navigator.languages[0]
+      : navigator.language;
+    if (lang) return lang;
+  }
+  return "en-US";
+}
+
 let _default = null;
 
 export function getTranslator() {
@@ -388,4 +402,69 @@ export function getTranslator() {
 }
 
 // For tests: reset the cached translator.
-export function _resetTranslator() { _default = null; }
+export function _resetTranslator() { _default = null; _translatorByLocale.clear(); }
+
+// --- Per-locale entry points ---
+//
+// Each function below routes to a locale-keyed Translator. After NoContext +
+// InlinePure rewrites i18n.* wrapper calls into direct intl.* intrinsic
+// calls, the generated code targets these exports with the active locale
+// threaded as the first argument.
+
+const _translatorByLocale = new Map();
+
+function _translatorFor(locale) {
+  if (!locale) locale = defaultLocale();
+  let t = _translatorByLocale.get(locale);
+  if (t) return t;
+  const manifest = (typeof globalThis.__SNGL_I18N_MANIFEST__ === "object"
+                    && globalThis.__SNGL_I18N_MANIFEST__ !== null)
+    ? globalThis.__SNGL_I18N_MANIFEST__ : {};
+  t = new Translator(manifest, locale);
+  _translatorByLocale.set(locale, t);
+  return t;
+}
+
+export function translate(locale, key, inlinedTemplate, args) {
+  return _translatorFor(locale).tr(key, inlinedTemplate, args || {});
+}
+
+export function format(locale, template, args) {
+  return _translatorFor(locale).format(template, args || {});
+}
+
+export function numberInt(locale, n, style) {
+  return _translatorFor(locale).numberInt(n, style);
+}
+
+export function numberFloat(locale, n, style) {
+  return _translatorFor(locale).numberFloat(n, style);
+}
+
+export function date(locale, d, style) {
+  return _translatorFor(locale).date(d, style);
+}
+
+export function time(locale, t, style) {
+  return _translatorFor(locale).time(t, style);
+}
+
+export function datetime(locale, dt, dateStyle, timeStyle) {
+  return _translatorFor(locale).datetime(dt, dateStyle, timeStyle);
+}
+
+// Renamed from `select` to avoid clashing with the SQL-ish reserved word
+// in some toolchains; the codegen emits `i18n.select` so the export name
+// must stay as-is.
+const _selectImpl = function(locale, value, cases) {
+  return _translatorFor(locale).select(value, cases);
+};
+export { _selectImpl as select };
+
+export function plural(locale, count, forms) {
+  return _translatorFor(locale).plural(count, forms);
+}
+
+export function selectordinal(locale, count, forms) {
+  return _translatorFor(locale).selectordinal(count, forms);
+}
