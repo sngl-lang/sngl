@@ -281,7 +281,7 @@ func i18nRuntimeSnippet() (string, error) {
 		}
 		res := api.Build(api.BuildOptions{
 			Stdin: &api.StdinOptions{
-				Contents:   "export { getTranslator, _resetTranslator, Translator } from \"./i18n.js\";\n",
+				Contents:   "export { getTranslator, _resetTranslator, Translator, defaultLocale } from \"./i18n.js\";\n",
 				ResolveDir: js.VirtualRoot,
 				Sourcefile: "i18n-entry.js",
 				Loader:     api.LoaderJS,

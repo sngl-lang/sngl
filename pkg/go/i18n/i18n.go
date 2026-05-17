@@ -127,13 +127,17 @@ func NewTranslator(m Manifest, locale string) *Translator {
 
 // Tr looks up `key` in the manifest, falls back to `inlinedTemplate`,
 // formats it via ICU using `args`.
-func (t *Translator) Tr(key, inlinedTemplate string, args map[string]any) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Tr(key, inlinedTemplate string, args map[string]any, locale string) string {
 	tmpl := t.Manifest.Lookup(key, inlinedTemplate, t.Locale.String())
 	return formatICU(t.Locale, t.Currency, tmpl, args)
 }
 
 // Format runs ICU MessageFormat on `template` with `args`, no manifest lookup.
-func (t *Translator) Format(template string, args map[string]any) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Format(template string, args map[string]any, locale string) string {
 	return formatICU(t.Locale, t.Currency, template, args)
 }
 
@@ -487,14 +491,18 @@ func pluralFormKeyword(f plural.Form) string {
 
 // NumberInt formats an integer for the translator's locale.
 // Style: "decimal" (default), "percent", "currency", "scientific".
-func (t *Translator) NumberInt(n int, style string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) NumberInt(n int, style string, locale string) string {
 	var b strings.Builder
 	renderNumber(&b, t.Locale, t.Currency, n, style)
 	return b.String()
 }
 
 // NumberFloat formats a float for the translator's locale.
-func (t *Translator) NumberFloat(n float64, style string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) NumberFloat(n float64, style string, locale string) string {
 	var b strings.Builder
 	renderNumber(&b, t.Locale, t.Currency, n, style)
 	return b.String()
@@ -502,21 +510,27 @@ func (t *Translator) NumberFloat(n float64, style string) string {
 
 // Date formats a time.Time as a date.
 // Style: "short", "medium" (default), "long", "full".
-func (t *Translator) Date(d time.Time, style string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Date(d time.Time, style string, locale string) string {
 	var b strings.Builder
 	renderDate(&b, t.Locale, d, style)
 	return b.String()
 }
 
 // Time formats a time.Time as a time-of-day.
-func (t *Translator) Time(d time.Time, style string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Time(d time.Time, style string, locale string) string {
 	var b strings.Builder
 	renderTime(&b, t.Locale, d, style)
 	return b.String()
 }
 
 // Datetime formats a time.Time as date + time.
-func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string, locale string) string {
 	var b strings.Builder
 	renderDateTime2(&b, t.Locale, d, dateStyle, timeStyle)
 	return b.String()
@@ -819,7 +833,9 @@ func Exactly(n int) PluralKey {
 // Plural selects a form by CLDR rule. Forms maps PluralKey to a message
 // template. Exact matches win first; CLDR keywords second; PluralOther
 // last as final fallback.
-func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Plural(count int, forms map[PluralKey]string, locale string) string {
 	if msg, ok := forms[Exactly(count)]; ok {
 		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
@@ -834,7 +850,9 @@ func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
 }
 
 // Selectordinal is like Plural but uses ordinal CLDR rules.
-func (t *Translator) Selectordinal(count int, forms map[PluralKey]string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Selectordinal(count int, forms map[PluralKey]string, locale string) string {
 	if msg, ok := forms[Exactly(count)]; ok {
 		return formatICU(t.Locale, t.Currency, msg, map[string]any{"#": count, "n": count})
 	}
@@ -849,7 +867,9 @@ func (t *Translator) Selectordinal(count int, forms map[PluralKey]string) string
 }
 
 // Select dispatches by string value. Falls back to "other" on miss.
-func (t *Translator) Select(value string, cases map[string]string) string {
+// The locale parameter is threaded by the NoContext lowering pass (Phase B);
+// Phase C will use it to override t.Locale. For now it is accepted and ignored.
+func (t *Translator) Select(value string, cases map[string]string, locale string) string {
 	if msg, ok := cases[value]; ok {
 		return msg
 	}

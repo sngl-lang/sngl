@@ -270,38 +270,40 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `""`
 	// i18n — all calls delegate to i18n.GetTranslator() runtime.
 	// For type-attached method dispatch, args are positional (no receiver value).
+	// The NoContext lowering pass appends the active locale as a trailing named
+	// arg (__ctx_locale) which appears positionally at the end of argExprs.
 	case "i18n.tr":
-		// Args: key string, args map[string]any
-		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+		// Args: key string, args map[string]any, locale string (from lowering)
+		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
-		// Args: template string, args map[string]any
-		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
+		// Args: template string, args map[string]any, locale string
+		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.numberInt":
-		// Args: n int, style string
-		return "i18n.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
+		// Args: n int, style string, locale string
+		return "i18n.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.numberFloat":
-		// Args: n float, style string
-		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
+		// Args: n float, style string, locale string
+		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.date":
-		// Args: d date, style string
-		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
+		// Args: d date, style string, locale string
+		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.time":
-		// Args: t time, style string
-		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
+		// Args: t time, style string, locale string
+		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.datetime":
-		// Args: dt dateTime, dateStyle string, timeStyle string
-		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		// Args: dt dateTime, dateStyle string, timeStyle string, locale string
+		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ", " + a(3) + ")"
 	case "i18n.select":
-		// Args: value string, cases map[string]string
-		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
+		// Args: value string, cases map[string]string, locale string
+		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.plural":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "i18n.GetTranslator().Plural(" + a(0) + ", " + a(1) + ")"
+		// Args: count, forms, locale string
+		return "i18n.GetTranslator().Plural(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.selectordinal":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "i18n.GetTranslator().Selectordinal(" + a(0) + ", " + a(1) + ")"
+		// Args: count, forms, locale string
+		return "i18n.GetTranslator().Selectordinal(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.exactly":
-		// Args: n. a(0)=n.
+		// Args: n. a(0)=n. (no locale arg — exactly() is locale-independent)
 		return "i18n.Exactly(" + a(0) + ")"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.

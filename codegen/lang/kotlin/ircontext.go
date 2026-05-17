@@ -738,41 +738,40 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "map.get":
 		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
 	// i18n — all calls delegate to I18n.getTranslator() from the Kotlin runtime.
+	// The NoContext lowering pass appends the active locale as a trailing named
+	// arg (__ctx_locale) which appears positionally at the end of the args slice.
 	case "i18n.tr":
-		// Args: a(0)=key/template, a(1)=argsMap. The Kotlin runtime's
-		// Translator.tr(key, inlinedTemplate, args) takes three arguments.
-		// The template string doubles as both the lookup key and the inline
-		// fallback, so it is passed twice.
-		return "I18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+		// Args: a(0)=key/template, a(1)=argsMap, a(2)=locale.
+		return "I18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
-		// Args: template string, args map.
-		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
+		// Args: template string, args map, locale string.
+		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.numberInt":
-		// Args: n int, style string.
-		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
+		// Args: n int, style string, locale string.
+		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.numberFloat":
-		// Args: n float (Double), style string.
-		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
+		// Args: n float (Double), style string, locale string.
+		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.date":
-		// Args: d date, style string.
-		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
+		// Args: d date, style string, locale string.
+		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.time":
-		// Args: t time, style string.
-		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+		// Args: t time, style string, locale string.
+		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.datetime":
-		// Args: dt dateTime, dateStyle string, timeStyle string.
-		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		// Args: dt dateTime, dateStyle string, timeStyle string, locale string.
+		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ", " + a(3) + ")"
 	case "i18n.select":
-		// Args: value string, cases map.
-		return "I18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
+		// Args: value string, cases map, locale string.
+		return "I18n.getTranslator().select(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.plural":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "I18n.getTranslator().plural(" + a(0) + ", " + a(1) + ")"
+		// Args: count, forms, locale string.
+		return "I18n.getTranslator().plural(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.selectordinal":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
+		// Args: count, forms, locale string.
+		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.exactly":
-		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
+		// Args: n. a(0)=n. Returns a PluralKey string like "=0". (no locale arg)
 		return "(\"=\" + (" + a(0) + "))"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
