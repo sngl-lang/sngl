@@ -1,0 +1,16 @@
+context #s("hello")
+context #n(42)
+context #b(true)
+
+struct Theme {
+    primary string
+    density int
+}
+context #theme(Theme{primary="blue", density=1})
+
+enum Mode { light, dark }
+context #mode(Mode.light)
+
+window #home(title="Home", href="/") {
+    text(value="x")
+}
