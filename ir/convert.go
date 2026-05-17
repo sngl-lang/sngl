@@ -70,6 +70,9 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	for _, t := range pkg.Timers {
 		stmts = append(stmts, c.convertTimer(t))
 	}
+	for _, ctx := range pkg.Contexts {
+		stmts = append(stmts, c.convertContext(ctx))
+	}
 	if len(pkg.Outputs) > 0 {
 		stmts = append(stmts, c.convertOutputs(pkg.Outputs))
 	}
@@ -294,6 +297,46 @@ func (c *converter) convertTimer(t *Timer) *ast.VisualNode {
 	return vn
 }
 
+// convertContext emits a top-level context declaration as the CallStmt that the
+// parser produces for `context.#name(default)`. If Default is nil the arg list
+// is omitted (degenerate case; real declarations always carry a default).
+func (c *converter) convertContext(ctx *Context) *ast.CallStmt {
+	sel := &ast.SelectExpr{
+		Operand: &ast.IdentExpr{Name: "context"},
+		Field:   ctx.Name,
+		Kind:    ast.SelectElemRef,
+	}
+	call := &ast.CallExpr{Func: sel}
+	if ctx.Default != nil {
+		call.Args = ast.ArgList{
+			Args: []ast.ArgOrEventHandler{
+				ast.Arg{Value: c.convertExpr(ctx.Default)},
+			},
+		}
+	}
+	return &ast.CallStmt{Call: call}
+}
+
+// convertContextProvider emits a ContextProvider as an *ast.VisualNode whose
+// Target is the context name. The provider's value becomes a single positional
+// arg and Body becomes the Block.
+func (c *converter) convertContextProvider(p *ContextProvider) *ast.VisualNode {
+	vn := &ast.VisualNode{
+		Target: &ast.IdentExpr{Name: p.Ref.Name},
+	}
+	if p.Value != nil {
+		vn.Args = ast.ArgList{
+			Args: []ast.ArgOrEventHandler{
+				ast.Arg{Value: c.convertExpr(p.Value)},
+			},
+		}
+	}
+	if len(p.Body) > 0 {
+		vn.Block = c.convertStmtBlock(p.Body)
+	}
+	return vn
+}
+
 // convertOutputs groups outputs by language and emits the nested form:
 //
 //	output { lang { platform(opts...) } }
@@ -423,6 +466,8 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		}
 	case *Window:
 		return c.convertWindow(s)
+	case *ContextProvider:
+		return c.convertContextProvider(s)
 	default:
 		panic(fmt.Sprintf("ir.Convert: no AST conversion for stmt type %T", s))
 	}
@@ -550,6 +595,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		}
 	case *Lambda:
 		return c.convertLambda(e)
+	case *ContextRead:
+		return &ast.IdentExpr{Name: e.Ref.Name}
 	case *Closure:
 		// Render as a synthetic call: __closure(funcRef, structLit). Debug-only —
 		// not parseable as user syntax; provides readability for `dump lowered`.
