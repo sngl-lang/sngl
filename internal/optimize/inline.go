@@ -24,12 +24,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if callsFunc(ret.Value, f) {
 		return nil // skip recursive functions
 	}
-	// Skip inlining bodies that read a context. Context reads are bound to
-	// the caller's enclosing context environment, which the optimizer has
-	// no way to materialize before NoContext lowering — splicing them into
-	// a foreign expression site would leave a *ir.ContextRead the codegen
-	// can't lower (the read needs threading via NoContext at the func/comp
-	// boundary, not constant-substitution).
+	// Skip inlining bodies that read a context. Context reads in stdlib
+	// wrappers are bound to the active context environment, which NoContext
+	// only threads through funcs/components it can walk (user pkg.Funcs).
+	// Stdlib wrappers live outside pkg.Funcs, so their ContextReads never
+	// get rewritten — splicing them into a foreign expression site would
+	// leave a *ir.ContextRead codegen can't lower. The fully-threaded
+	// per-call locale override is deferred work; keep this guard until
+	// NoContext gains visibility into reachable stdlib bodies.
 	if containsContextRead(ret.Value) {
 		return nil
 	}
@@ -408,9 +410,8 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 
 // containsContextRead reports whether e (or any subexpression) is a
 // *ir.ContextRead. Used by inlineCall to bail out before splicing a
-// context-reading wrapper body into a non-context-reading caller's
-// expression — the substitution loses the call-site boundary that
-// NoContext lowering relies on to thread the hidden __ctx_<name> param.
+// context-reading wrapper body into a foreign caller; see the comment in
+// inlineCall for the full rationale.
 func containsContextRead(e ir.Expr) bool {
 	if e == nil {
 		return false

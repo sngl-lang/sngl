@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -201,6 +202,196 @@ func (env *Env) translatorFor() *goi18n.Translator {
 		loc = "en"
 	}
 	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+}
+
+// translatorForLocale returns a translator for the given BCP-47 locale,
+// falling back to env.locale or "en" when empty.
+func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
+	if loc == "" {
+		loc = env.locale
+	}
+	if loc == "" {
+		loc = "en"
+	}
+	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+}
+
+// evalIntlCall dispatches a call to an intl.* intrinsic. The intl namespace
+// is the SNGL surface for the runtime i18n primitives — every intrinsic
+// takes the active locale as its first argument (threaded by NoContext
+// from the i18n.* wrappers' implicit `locale` context read). Returns
+// (result, handled, error); handled is false when the method is unknown.
+func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error) {
+	switch method {
+	case "DefaultLocale":
+		return goi18n.DefaultLocale(), true, nil
+	}
+
+	// All other intl.* intrinsics carry locale as args[0].
+	if len(args) < 1 {
+		return nil, true, fmt.Errorf("intl.%s requires at least a locale argument", method)
+	}
+	locVal, err := env.Eval(args[0].Value)
+	if err != nil {
+		return nil, true, err
+	}
+	loc := fmt.Sprintf("%v", locVal)
+	tr := env.translatorForLocale(loc)
+
+	eval := func(i int) (any, error) {
+		return env.Eval(args[i].Value)
+	}
+
+	switch method {
+	case "Translate":
+		if len(args) < 4 {
+			return nil, true, fmt.Errorf("intl.Translate requires 4 arguments")
+		}
+		keyV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		tmplV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		argsV, err := eval(3)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Tr(fmt.Sprintf("%v", keyV), fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
+	case "Format":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.Format requires 3 arguments")
+		}
+		tmplV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		argsV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Format(fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
+	case "NumberInt":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.NumberInt requires 3 arguments")
+		}
+		nV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		sV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.NumberInt(toInt(nV), fmt.Sprintf("%v", sV)), true, nil
+	case "NumberFloat":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.NumberFloat requires 3 arguments")
+		}
+		nV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		sV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.NumberFloat(toFloat(nV), fmt.Sprintf("%v", sV)), true, nil
+	case "Date":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.Date requires 3 arguments")
+		}
+		dV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		sV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		if tt, ok := dV.(time.Time); ok {
+			return tr.Date(tt, fmt.Sprintf("%v", sV)), true, nil
+		}
+		return fmt.Sprintf("%v", dV), true, nil
+	case "Time":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.Time requires 3 arguments")
+		}
+		dV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		sV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		if tt, ok := dV.(time.Time); ok {
+			return tr.Time(tt, fmt.Sprintf("%v", sV)), true, nil
+		}
+		return fmt.Sprintf("%v", dV), true, nil
+	case "DateTime":
+		if len(args) < 4 {
+			return nil, true, fmt.Errorf("intl.DateTime requires 4 arguments")
+		}
+		dV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		dsV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		tsV, err := eval(3)
+		if err != nil {
+			return nil, true, err
+		}
+		if tt, ok := dV.(time.Time); ok {
+			return tr.Datetime(tt, fmt.Sprintf("%v", dsV), fmt.Sprintf("%v", tsV)), true, nil
+		}
+		return fmt.Sprintf("%v", dV), true, nil
+	case "Select":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.Select requires 3 arguments")
+		}
+		vV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		cV, err := eval(2)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Select(fmt.Sprintf("%v", vV), toStringStringMap(cV)), true, nil
+	case "Plural":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.Plural requires 3 arguments")
+		}
+		cV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		forms, err := env.evalPluralKeyMap(args[2].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Plural(toInt(cV), forms), true, nil
+	case "SelectOrdinal":
+		if len(args) < 3 {
+			return nil, true, fmt.Errorf("intl.SelectOrdinal requires 3 arguments")
+		}
+		cV, err := eval(1)
+		if err != nil {
+			return nil, true, err
+		}
+		forms, err := env.evalPluralKeyMap(args[2].Value)
+		if err != nil {
+			return nil, true, err
+		}
+		return tr.Selectordinal(toInt(cV), forms), true, nil
+	}
+	return nil, false, nil
 }
 
 // evalI18nCall dispatches a call to an i18n.* function using the env's locale.
@@ -975,6 +1166,13 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 			return result, err
 		}
 	}
+	// intl namespace: locale-aware intrinsic dispatch. See evalNamespaceCall
+	// for the rationale.
+	if receiverName == "intl" {
+		if result, handled, err := env.evalIntlCall(method, call.Args); handled {
+			return result, err
+		}
+	}
 
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
@@ -1007,6 +1205,15 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			// falling through to the empty-body user func.
 			if ident.Name == "i18n" {
 				if result, handled, err := env.evalI18nCall(method, call.Args); handled {
+					return result, err
+				}
+			}
+			// intl namespace: locale-aware intrinsic dispatch. The SNGL i18n
+			// stdlib wrappers delegate to intl.* with `locale` threaded as
+			// the first argument; the interpreter resolves those intrinsics
+			// here instead of looking up an empty user-func body.
+			if ident.Name == "intl" {
+				if result, handled, err := env.evalIntlCall(method, call.Args); handled {
 					return result, err
 				}
 			}
