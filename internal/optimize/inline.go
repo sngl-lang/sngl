@@ -24,6 +24,15 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if callsFunc(ret.Value, f) {
 		return nil // skip recursive functions
 	}
+	// Skip inlining bodies that read a context. Context reads are bound to
+	// the caller's enclosing context environment, which the optimizer has
+	// no way to materialize before NoContext lowering — splicing them into
+	// a foreign expression site would leave a *ir.ContextRead the codegen
+	// can't lower (the read needs threading via NoContext at the func/comp
+	// boundary, not constant-substitution).
+	if containsContextRead(ret.Value) {
+		return nil
+	}
 
 	// Build substitution map: param → argument expression.
 	subs := make(map[*ir.Param]ir.Expr, len(f.Params))
@@ -395,4 +404,59 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 		out[i] = cloneStmt(s)
 	}
 	return out
+}
+
+// containsContextRead reports whether e (or any subexpression) is a
+// *ir.ContextRead. Used by inlineCall to bail out before splicing a
+// context-reading wrapper body into a non-context-reading caller's
+// expression — the substitution loses the call-site boundary that
+// NoContext lowering relies on to thread the hidden __ctx_<name> param.
+func containsContextRead(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *ir.ContextRead:
+		return true
+	case *ir.Call:
+		if containsContextRead(x.Receiver) {
+			return true
+		}
+		for _, a := range x.Args {
+			if containsContextRead(a.Value) {
+				return true
+			}
+		}
+	case *ir.Binary:
+		return containsContextRead(x.Left) || containsContextRead(x.Right)
+	case *ir.Unary:
+		return containsContextRead(x.Operand)
+	case *ir.Ternary:
+		return containsContextRead(x.Cond) || containsContextRead(x.Then) || containsContextRead(x.Else)
+	case *ir.Conversion:
+		return containsContextRead(x.Operand)
+	case *ir.Select:
+		return containsContextRead(x.Operand)
+	case *ir.Index:
+		return containsContextRead(x.Operand) || containsContextRead(x.Idx)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			if containsContextRead(el) {
+				return true
+			}
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			if containsContextRead(kv.Key) || containsContextRead(kv.Value) {
+				return true
+			}
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if containsContextRead(f.Value) {
+				return true
+			}
+		}
+	}
+	return false
 }

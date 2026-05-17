@@ -127,8 +127,23 @@ func (c *checker) loadStdlib() *ir.Package {
 			}
 		}
 	}
+	// Phase 1: register stdlib func signatures (no body checking yet) so
+	// later phases — context default expressions, context-reading wrapper
+	// bodies — can resolve names against fully-populated symbol tables.
+	type stdlibFuncBody struct {
+		ast *ast.FuncDef
+		fn  *ir.Func
+	}
+	var pendingBodies []stdlibFuncBody
 	for _, s := range funcs {
-		c.registerStdlibFunc(s, stdlibPkg)
+		fn := c.registerStdlibFunc(s, stdlibPkg)
+		// Defer body check: only expression-body funcs (=> expr) need to
+		// be lowered into ir.Block. Block-body stdlib funcs and bodyless
+		// signatures (e.g. `func i18n.exactly(n int) PluralKey {}`) keep
+		// their existing semantics.
+		if fn != nil && s.Body != nil {
+			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: s, fn: fn})
+		}
 	}
 	for _, s := range components {
 		c.registerStdlibComponent(s, stdlibPkg)
@@ -156,6 +171,13 @@ func (c *checker) loadStdlib() *ir.Package {
 	// interpreter and codegen discover them alongside user-declared contexts.
 	for _, s := range contexts {
 		c.registerStdlibContextDecl(s)
+	}
+
+	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
+	// that bodies can read freshly-registered context decls (e.g. the
+	// `#locale` context used by i18n.* wrappers).
+	for _, pb := range pendingBodies {
+		c.checkStdlibFuncBody(pb.ast, pb.fn)
 	}
 
 	return stdlibPkg
@@ -248,7 +270,7 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	pkg.Symbols.Types[ud.Name] = ud
 }
 
-func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
+func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	fn := c.buildFunc(f)
 	// Stdlib funcs skip the body-check pass. When a stdlib signature omits a
 	// return annotation (common for the "=>" forms that delegate to an
@@ -279,6 +301,58 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 		c.scope.Declare(fn)
 		pkg.Funcs = append(pkg.Funcs, fn)
 		pkg.Symbols.Root.Declare(fn)
+	}
+	return fn
+}
+
+// checkStdlibFuncBody type-checks a stdlib expression-body `=>` wrapper into
+// an ir.Block (single Return). The package-level scope must already contain
+// all stdlib decls (imports, types, funcs, contexts) so the body can resolve
+// references like `intl.Translate` or the active `locale` context.
+//
+// Intentional limits:
+//   - Bodyless / block-bodied stdlib funcs are unaffected.
+//   - If checking the body produces no return type (void), the func is left
+//     with Return == nil so existing dyn-fallback in registerStdlibFunc
+//     remains active.
+//   - detectIntrinsicCall is re-run on the now-populated Block so wrappers
+//     that are exact intrinsic pass-throughs (e.g. `float.floor` → MathFloor)
+//     get fn.Intrinsic set, matching the historical behaviour.
+func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
+	if f.Body == nil {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, p := range fn.Params {
+		c.scope.Declare(p)
+	}
+	prevReturn := c.returnType
+	c.returnType = fn.Return
+	defer func() { c.returnType = prevReturn }()
+	prevTypeParams := c.typeParams
+	c.typeParams = fn.TypeParams
+	defer func() { c.typeParams = prevTypeParams }()
+
+	bodyExpr := c.checkExpr(f.Body)
+	if bodyExpr == nil {
+		return
+	}
+	pos := f.Pos
+	if p := f.Body.ExprPos(); p != nil {
+		pos = *p
+	}
+	fn.Block = []ir.Stmt{&ir.Return{
+		AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
+		Value: bodyExpr,
+	}}
+	// Re-detect intrinsic pass-through with the populated body. Wrappers
+	// that prepend args (e.g. i18n.* threading `locale`) won't match —
+	// detectIntrinsicCall enforces strict positional pass-through.
+	if fn.Intrinsic == "" {
+		if id := detectIntrinsicCall(fn); id != "" {
+			fn.Intrinsic = id
+		}
 	}
 }
 
