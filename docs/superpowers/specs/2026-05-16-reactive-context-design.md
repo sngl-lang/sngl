@@ -56,7 +56,7 @@ reserved keyword):
 ```sngl
 context #theme(Theme.light)
 context #locale("en-US")
-context #user(User{name="", id=0})
+context #user(User{name = "", id = 0})
 ```
 
 The `#identifier` form defines the name. The single positional argument is
@@ -81,7 +81,6 @@ context #theme(Theme.light)
 window #home(title="Home", href="/") {
     var dark = false
     button(text="toggle", @click { dark = !dark })
-
     theme(dark ? Theme.dark : Theme.light) {
         Toolbar()
         Body()
@@ -98,9 +97,11 @@ siblings of the inner provider continue to see the outer value:
 
 ```sngl
 theme(Theme.dark) {
-    theme(Theme.light) { Inner() }   // sees light
-    Sibling()                         // sees dark
+    theme(Theme.light) { Inner() }
+    Sibling()
 }
+// sees light
+// sees dark
 ```
 
 ### Consumer
@@ -110,9 +111,11 @@ the current value (type `T`):
 
 ```sngl
 component Toolbar {
-    text(value=theme.primary)    // theme reads as Theme; .primary on it
-    text(value=locale)           // locale reads as string
+    text(value=theme.primary)
+    text(value=locale)
 }
+// theme reads as Theme; .primary on it
+// locale reads as string
 ```
 
 A context name cannot be assigned, used as a function argument, used as a

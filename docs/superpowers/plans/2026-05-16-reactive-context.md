@@ -457,9 +457,10 @@ git commit -m "checker: recognize top-level context #name(default)"
 
 ```sngl
 window #home(title="Home", href="/") {
-    context #theme("light") // ERROR(check) "context decl only permitted at file top level"
+    context #theme("light")
     text(value="hi")
 }
+// ERROR(check) "context decl only permitted at file top level"
 ```
 
 - [ ] **Step 2: Run fixture-driven checker tests**
@@ -491,7 +492,8 @@ git commit -m "checker: reject context decl inside windows/components"
 ```sngl
 var x = 5
 
-context #c(x) // ERROR(check) "context default must be a constant expression"
+context #c(x)
+// ERROR(check) "context default must be a constant expression"
 
 window #home(title="Home", href="/") {
     text(value="x")
@@ -642,8 +644,9 @@ context #theme("light")
 func show(t string) => t
 
 window #home(title="Home", href="/") {
-    text(value=show(theme)) // ERROR(check) "context value cannot be passed as function argument"
+    text(value=show(theme))
 }
+// ERROR(check) "context value cannot be passed as function argument"
 ```
 
 `error_context_assign.sngl`:
@@ -653,9 +656,11 @@ context #theme("light")
 
 window #home(title="Home", href="/") {
     text(value="x", @click {
-        theme = "dark" // ERROR(check) "context cannot be assigned"
+        theme = "dark"
     })
 }
+
+// ERROR(check) "context cannot be assigned"
 ```
 
 `error_context_as_struct_field.sngl`:
@@ -678,9 +683,10 @@ Replace with `error_context_in_var_init.sngl`:
 context #theme("light")
 
 window #home(title="Home", href="/") {
-    var t = theme // ERROR(check) "context cannot be captured into a local var"
+    var t = theme
     text(value=t)
 }
+// ERROR(check) "context cannot be captured into a local var"
 ```
 
 Rationale: capturing into a local var would freeze the value at init time and miss reactive updates. Force users to read at use site.
@@ -733,12 +739,18 @@ component Show {
 window #home(title="Home", href="/") {
     theme("outer-val") {
         theme("inner-val") {
-            Show() // expect: "inner-val"
+            Show()
         }
-        Show()     // expect: "outer-val"
+        Show()
     }
-    Show()         // expect: "outer" (default)
+    Show()
 }
+
+// expect: "inner-val"
+
+// expect: "outer-val"
+
+// expect: "outer" (default)
 ```
 
 - [ ] **Step 2: Run**
@@ -1651,7 +1663,8 @@ component Greeting {
     text(value=locale)
 }
 
-test "locale override" {
+test
+ {
     t.setContext(locale, "es-MX")
     t.mount(Greeting())
     t.assertText("es-MX")

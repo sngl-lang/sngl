@@ -245,7 +245,7 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 	case *ast.ReturnStmt:
 		f.writeReturnStmt(x)
 	case *ast.CallStmt:
-		f.writeExpr(x.Call)
+		f.writeCallStmt(x)
 	case *ast.Comment:
 		f.writeComment(x)
 	case *ast.DisabledDecl:
@@ -870,6 +870,26 @@ func (f *formatter) writeLiteral(lit *ast.LiteralExpr) {
 	default:
 		f.write(lit.Raw)
 	}
+}
+
+// writeCallStmt emits a statement-level call. When the callee is
+// `name #id(...)` (a SelectElemRef on a bare identifier), emit the
+// space form — matching the source syntax that produced this AST.
+// Other CallStmts (method calls, package-qualified calls, etc.) emit
+// via the generic CallExpr writer.
+func (f *formatter) writeCallStmt(s *ast.CallStmt) {
+	if sel, ok := s.Call.Func.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
+		if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
+			f.write(ident.Name)
+			f.write(" #")
+			f.write(sel.Field)
+			f.write("(")
+			f.writeArgs(s.Call.Args)
+			f.write(")")
+			return
+		}
+	}
+	f.writeExpr(s.Call)
 }
 
 func (f *formatter) writeSelectExpr(x *ast.SelectExpr) {
