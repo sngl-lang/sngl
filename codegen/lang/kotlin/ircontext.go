@@ -744,6 +744,11 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		// The template string doubles as both the lookup key and the inline
 		// fallback, so it is passed twice.
 		return "I18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.trInline":
+		// Args: a(0)=key, a(1)=inlinedTemplate, a(2)=argsMap. Emitted by the
+		// $"..." lowering — carries both the manifest key and the inlined
+		// fallback template.
+		return "I18n.getTranslator().tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
 		// Args: template string, args map.
 		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"

@@ -32,7 +32,7 @@ const SnglI18nKotlinPackage = "us.duckfam.git.jonathan.sngl.i18n"
 // codegens use this to decide whether to inject the i18n runtime import.
 func IsI18nCall(qualName string) bool {
 	switch qualName {
-	case "i18n.tr", "i18n.format",
+	case "i18n.tr", "i18n.trInline", "i18n.format",
 		"i18n.numberInt", "i18n.numberFloat",
 		"i18n.date", "i18n.time", "i18n.datetime",
 		"i18n.select",

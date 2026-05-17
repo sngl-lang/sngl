@@ -703,6 +703,11 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		// passed twice. A future manifest-backed build can replace a(0) with the
 		// manifest key without changing the call shape.
 		return "i18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.trInline":
+		// Args: a(0)=key, a(1)=inlinedTemplate, a(2)=argsMap. The $"..."
+		// lowering emits this 3-arg form so the runtime can fall back to the
+		// inlined template when the manifest misses the key.
+		return "i18n.getTranslator().tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
 		// Args: template string, args map.
 		return "i18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"

@@ -273,6 +273,11 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.tr":
 		// Args: key string, args map[string]any
 		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
+	case "i18n.trInline":
+		// Args: key string, inlinedTemplate string, args map[string]any.
+		// Emitted by $"..." lowering; passes both the lookup key and the
+		// inlined fallback template.
+		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
 		// Args: template string, args map[string]any
 		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
@@ -315,7 +320,7 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 // git.duckfam.us/jonathan/sngl/pkg/go/i18n.
 func IsI18nCall(qualName string) bool {
 	switch qualName {
-	case "i18n.tr", "i18n.format",
+	case "i18n.tr", "i18n.trInline", "i18n.format",
 		"i18n.numberInt", "i18n.numberFloat",
 		"i18n.date", "i18n.time", "i18n.datetime",
 		"i18n.select",
