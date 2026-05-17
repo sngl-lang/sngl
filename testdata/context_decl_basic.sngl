@@ -1,4 +1,4 @@
-context #theme("light")
+context.#theme("light")
 
 window #home(title="Home", href="/") {
     text(value="hello")

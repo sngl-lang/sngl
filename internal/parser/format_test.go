@@ -333,3 +333,4 @@ func TestFormatDecrement(t *testing.T) {
 		"func foo() {\n    x--\n}",
 		"func foo() {\n    x--\n}")
 }
+

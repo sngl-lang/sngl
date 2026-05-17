@@ -331,8 +331,8 @@ func (c *converter) convertContextProvider(p *ContextProvider) *ast.VisualNode {
 			},
 		}
 	}
-	if len(p.Body) > 0 {
-		vn.Block = c.convertStmtBlock(p.Body)
+	if len(p.Children) > 0 {
+		vn.Block = c.convertStmtBlock(p.Children)
 	}
 	return vn
 }

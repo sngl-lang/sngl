@@ -21,12 +21,12 @@ func (c *Context) SymType() *Type  { return c.Typ }
 
 // ContextProvider is the IR form of `name(value) { children }` inside a
 // window or component body. The lowering pass NoContext rewrites it into
-// hidden-prop assignments on every component call reachable inside Body.
+// hidden-prop assignments on every component call reachable inside Children.
 type ContextProvider struct {
-	AST   *ast.VisualNode
-	Ref   *Context
-	Value Expr
-	Body  []Stmt
+	AST      *ast.VisualNode
+	Ref      *Context
+	Value    Expr
+	Children []Stmt
 }
 
 func (p *ContextProvider) stmtNode() {}

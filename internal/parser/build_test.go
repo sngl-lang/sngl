@@ -774,6 +774,46 @@ func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
 	}
 }
 
+func TestParseContextDecl(t *testing.T) {
+	// Context declarations are parsed as visual nodes at top level.
+	// The syntax is: context #identifier(arg)
+	doc := mustParse(t, `context #theme("light")
+
+window #home(title="Home", href="/") {
+    text(value="hello")
+}`)
+	if len(doc.Stmts) != 2 {
+		t.Fatalf("expected 2 stmts, got %d", len(doc.Stmts))
+	}
+
+	// First statement should be the context declaration (as a CallStmt)
+	cs, ok := doc.Stmts[0].(*ast.CallStmt)
+	if !ok {
+		t.Fatalf("expected CallStmt for context decl, got %T", doc.Stmts[0])
+	}
+
+	// The call's func should be a SelectExpr with ElemRef kind (context.#theme)
+	sel, ok := cs.Call.Func.(*ast.SelectExpr)
+	if !ok {
+		t.Fatalf("expected SelectExpr, got %T", cs.Call.Func)
+	}
+	if sel.Kind != ast.SelectElemRef {
+		t.Errorf("expected SelectElemRef, got %v", sel.Kind)
+	}
+	if sel.Field != "theme" {
+		t.Errorf("expected field 'theme', got %q", sel.Field)
+	}
+
+	// Second statement should be the window declaration
+	vn, ok := doc.Stmts[1].(*ast.VisualNode)
+	if !ok {
+		t.Fatalf("expected VisualNode for window, got %T", doc.Stmts[1])
+	}
+	if vn.ID != "home" {
+		t.Errorf("expected window id 'home', got %q", vn.ID)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
