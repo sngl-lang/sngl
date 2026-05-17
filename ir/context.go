@@ -40,5 +40,11 @@ type ContextRead struct {
 	Typ *Type
 }
 
-func (r *ContextRead) exprNode()        {}
-func (r *ContextRead) ExprType() *Type  { return r.Typ }
+func (r *ContextRead) exprNode()       {}
+func (r *ContextRead) ExprType() *Type { return r.Typ }
+
+var (
+	_ Symbol = (*Context)(nil)
+	_ Stmt   = (*ContextProvider)(nil)
+	_ Expr   = (*ContextRead)(nil)
+)
