@@ -1,0 +1,7 @@
+var x = 5
+
+context #c(x) // ERROR(check) "context default must be a constant expression"
+
+window #home(title="Home", href="/") {
+    text(value="x")
+}
