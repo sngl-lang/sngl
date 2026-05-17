@@ -52,7 +52,7 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	return &ir.Component{Name: identifier}
 }
 func (g *Generator) Capabilities() lower.Caps {
-	return lower.Caps{NoReactivity: true, NoAsyncReactive: true, NoStdlibWrappers: true}
+	return lower.Caps{NoContext: true, NoReactivity: true, NoAsyncReactive: true, NoStdlibWrappers: true}
 }
 
 // SupportedLangs returns "none" (static-site default) plus any registered
