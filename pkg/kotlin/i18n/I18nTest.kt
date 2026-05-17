@@ -27,31 +27,31 @@ class I18nTest {
 
     @Test fun `apostrophe doubled is literal`() {
         val t = Translator(emptyMap(), Locale.US)
-        assertEquals("Don't do that", t.format("Don''t do that", emptyMap(), ""))
+        assertEquals("Don't do that", t.format("Don''t do that", emptyMap()))
     }
 
     @Test fun `apostrophe quotes open brace`() {
         val t = Translator(emptyMap(), Locale.US)
         // '{ starts a quoted run that ends at the next unescaped '
-        assertEquals("Use {literal}", t.format("Use '{'literal'}'", emptyMap(), ""))
+        assertEquals("Use {literal}", t.format("Use '{'literal'}'", emptyMap()))
     }
 
     @Test fun `apostrophe quotes hash`() {
         val t = Translator(emptyMap(), Locale.US)
         // '#' inside a plural body should be treated as a literal '#' when quoted
-        assertEquals("100% done", t.format("'#'00% done", emptyMap(), ""))
+        assertEquals("100% done", t.format("'#'00% done", emptyMap()))
     }
 
     // --- Simple substitution ---
 
     @Test fun `simple substitution`() {
         val t = Translator(emptyMap(), Locale.US)
-        assertEquals("Hello, Alice!", t.format("Hello, {name}!", mapOf("name" to "Alice"), ""))
+        assertEquals("Hello, Alice!", t.format("Hello, {name}!", mapOf("name" to "Alice")))
     }
 
     @Test fun `missing arg renders empty`() {
         val t = Translator(emptyMap(), Locale.US)
-        assertEquals("Hello, !", t.format("Hello, {name}!", emptyMap(), ""))
+        assertEquals("Hello, !", t.format("Hello, {name}!", emptyMap()))
     }
 
     // --- Plural (en cardinal) ---
@@ -59,19 +59,19 @@ class I18nTest {
     @Test fun `plural en cardinal exact zero`() {
         val t = Translator(emptyMap(), Locale.US)
         val tmpl = "{n, plural, =0{none} one{# item} other{# items}}"
-        assertEquals("none", t.format(tmpl, mapOf("n" to 0), ""))
+        assertEquals("none", t.format(tmpl, mapOf("n" to 0)))
     }
 
     @Test fun `plural en cardinal one`() {
         val t = Translator(emptyMap(), Locale.US)
         val tmpl = "{n, plural, =0{none} one{# item} other{# items}}"
-        assertEquals("1 item", t.format(tmpl, mapOf("n" to 1), ""))
+        assertEquals("1 item", t.format(tmpl, mapOf("n" to 1)))
     }
 
     @Test fun `plural en cardinal other`() {
         val t = Translator(emptyMap(), Locale.US)
         val tmpl = "{n, plural, =0{none} one{# item} other{# items}}"
-        assertEquals("5 items", t.format(tmpl, mapOf("n" to 5), ""))
+        assertEquals("5 items", t.format(tmpl, mapOf("n" to 5)))
     }
 
     // --- Select ---
@@ -79,27 +79,27 @@ class I18nTest {
     @Test fun `select dispatch by value`() {
         val t = Translator(emptyMap(), Locale.US)
         val tmpl = "{g, select, female{She} male{He} other{They}}"
-        assertEquals("She", t.format(tmpl, mapOf("g" to "female"), ""))
-        assertEquals("He",  t.format(tmpl, mapOf("g" to "male"), ""))
+        assertEquals("She", t.format(tmpl, mapOf("g" to "female")))
+        assertEquals("He",  t.format(tmpl, mapOf("g" to "male")))
     }
 
     @Test fun `select falls back to other`() {
         val t = Translator(emptyMap(), Locale.US)
         val tmpl = "{g, select, female{She} male{He} other{They}}"
-        assertEquals("They", t.format(tmpl, mapOf("g" to "x"), ""))
+        assertEquals("They", t.format(tmpl, mapOf("g" to "x")))
     }
 
     // --- Direct Translator.select() — returns raw body, no ICU formatting ---
 
     @Test fun `direct select returns raw case`() {
         val t = Translator(emptyMap(), Locale.US)
-        assertEquals("Y", t.select("yes", mapOf("yes" to "Y", "other" to "?"), ""))
-        assertEquals("?", t.select("nope", mapOf("yes" to "Y", "other" to "?"), ""))
+        assertEquals("Y", t.select("yes", mapOf("yes" to "Y", "other" to "?")))
+        assertEquals("?", t.select("nope", mapOf("yes" to "Y", "other" to "?")))
     }
 
     @Test fun `direct select returns empty when no match and no other`() {
         val t = Translator(emptyMap(), Locale.US)
-        assertEquals("", t.select("missing", mapOf("yes" to "Y"), ""))
+        assertEquals("", t.select("missing", mapOf("yes" to "Y")))
     }
 
     // --- Direct Translator.plural() with string keys ---
@@ -107,19 +107,19 @@ class I18nTest {
     @Test fun `direct plural string keys exact zero`() {
         val t = Translator(emptyMap(), Locale.US)
         val forms = mapOf("=0" to "none", "one" to "{n} item", "other" to "{n} items")
-        assertEquals("none", t.plural(0, forms, ""))
+        assertEquals("none", t.plural(0, forms))
     }
 
     @Test fun `direct plural string keys one`() {
         val t = Translator(emptyMap(), Locale.US)
         val forms = mapOf("=0" to "none", "one" to "{n} item", "other" to "{n} items")
-        assertEquals("1 item", t.plural(1, forms, ""))
+        assertEquals("1 item", t.plural(1, forms))
     }
 
     @Test fun `direct plural string keys other`() {
         val t = Translator(emptyMap(), Locale.US)
         val forms = mapOf("=0" to "none", "one" to "{n} item", "other" to "{n} items")
-        assertEquals("7 items", t.plural(7, forms, ""))
+        assertEquals("7 items", t.plural(7, forms))
     }
 
     // --- getTranslator singleton ---

@@ -30,24 +30,22 @@ export class Translator {
     return inlinedTemplate || key;
   }
 
-  // The _locale parameter is threaded by the NoContext lowering pass (Phase B);
-  // Phase C will use it to override this.locale. For now it is accepted and ignored.
-  tr(key, inlinedTemplate, args, _locale) {
+  tr(key, inlinedTemplate, args) {
     const tmpl = this._lookup(key, inlinedTemplate);
     return formatICU(this.locale, this.currency, tmpl, args || {});
   }
 
-  format(template, args, _locale) {
+  format(template, args) {
     return formatICU(this.locale, this.currency, template, args || {});
   }
 
-  numberInt(n, style, _locale)   { return formatNumber(this.locale, this.currency, n, style); }
-  numberFloat(n, style, _locale) { return formatNumber(this.locale, this.currency, n, style); }
-  date(d, style, _locale)        { return formatDate(this.locale, d, style); }
-  time(t, style, _locale)        { return formatTime(this.locale, t, style); }
-  datetime(dt, ds, ts, _locale)  { return formatDateTime(this.locale, dt, ds, ts); }
+  numberInt(n, style)   { return formatNumber(this.locale, this.currency, n, style); }
+  numberFloat(n, style) { return formatNumber(this.locale, this.currency, n, style); }
+  date(d, style)        { return formatDate(this.locale, d, style); }
+  time(t, style)        { return formatTime(this.locale, t, style); }
+  datetime(dt, ds, ts)  { return formatDateTime(this.locale, dt, ds, ts); }
 
-  select(value, cases, _locale) {
+  select(value, cases) {
     // cases may be a JS Map (from SNGL map<string, string>) or a plain
     // object (e.g. when called from user JS). Handle both.
     if (cases instanceof Map) {
@@ -60,8 +58,8 @@ export class Translator {
     return "";
   }
 
-  plural(count, forms, _locale)        { return this._plural(count, forms, false); }
-  selectordinal(count, forms, _locale) { return this._plural(count, forms, true); }
+  plural(count, forms)        { return this._plural(count, forms, false); }
+  selectordinal(count, forms) { return this._plural(count, forms, true); }
 
   _plural(count, forms, ordinal) {
     const args = { "#": count, n: count };

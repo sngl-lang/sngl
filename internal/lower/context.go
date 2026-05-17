@@ -162,22 +162,6 @@ func collectContextReadsInExpr(e ir.Expr, out map[*ir.Context]bool) {
 	switch n := e.(type) {
 	case *ir.ContextRead:
 		out[n.Ref] = true
-	case *ir.Call:
-		// A call to a function with non-empty ReadsContexts is treated as a
-		// direct read of each listed context — the same way a bare ContextRead
-		// node is. This is how i18n.* calls (which need the active locale)
-		// pull components that call them into Reach(locale).
-		if n.Func != nil {
-			for _, ctx := range n.Func.ReadsContexts {
-				out[ctx] = true
-			}
-		}
-		collectContextReadsInExpr(n.Receiver, out)
-		collectContextReadsInExpr(n.Callee, out)
-		for _, a := range n.Args {
-			collectContextReadsInExpr(a.Value, out)
-		}
-		return
 	case *ir.Binary:
 		collectContextReadsInExpr(n.Left, out)
 		collectContextReadsInExpr(n.Right, out)
@@ -192,6 +176,12 @@ func collectContextReadsInExpr(e ir.Expr, out map[*ir.Context]bool) {
 	case *ir.Index:
 		collectContextReadsInExpr(n.Operand, out)
 		collectContextReadsInExpr(n.Idx, out)
+	case *ir.Call:
+		collectContextReadsInExpr(n.Receiver, out)
+		collectContextReadsInExpr(n.Callee, out)
+		for _, a := range n.Args {
+			collectContextReadsInExpr(a.Value, out)
+		}
 	case *ir.Conversion:
 		collectContextReadsInExpr(n.Operand, out)
 	case *ir.StructLit:
@@ -357,49 +347,11 @@ func lowerProviders(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]boo
 		w.Body = lowerInStmts(w.Body, copyExprMap(defaults), reach)
 	}
 
-	// When there are no explicit window declarations, the codegen treats the
-	// "main" component body as the window root directly. In that case, seed
-	// its body with defaults (not __ctx_<name> idents) so that i18n.* calls
-	// inside the body receive a concrete value (e.g. i18n.defaultLocale())
-	// rather than an undefined variable reference.
-	isWindowRootComp := make(map[*ir.Component]bool)
-	if len(pkg.Windows) == 0 {
-		for _, comp := range pkg.Components {
-			if comp.Name == "main" {
-				isWindowRootComp[comp] = true
-			}
-		}
-	}
-
-	// For component bodies: seed the active map with the hidden prop ident for
-	// each context the component is in Reach of. This ensures that i18n.*
-	// calls inside a component body receive the component-level __ctx_locale
-	// ident as their locale arg, rather than getting no arg at all.
-	//
-	// Exception: window-root components are seeded with the context defaults
-	// instead, since no parent component passes them the hidden prop.
-	//
-	// Note: ContextRead nodes are already rewritten to __ctx_<name> Idents by
-	// rewriteReads (which runs before lowerProviders). The active map here only
-	// affects ReadsContexts-based threading (i.e., implicit i18n args).
+	// For component bodies: no active context value at the entry point — each
+	// component receives its value via the hidden prop threaded from its caller.
+	empty := map[*ir.Context]ir.Expr{}
 	for _, comp := range pkg.Components {
-		var compActive map[*ir.Context]ir.Expr
-		if isWindowRootComp[comp] {
-			compActive = copyExprMap(defaults)
-		} else {
-			compActive = map[*ir.Context]ir.Expr{}
-			for _, ctx := range pkg.Contexts {
-				if reach[ctx][comp] {
-					compActive[ctx] = &ir.Ident{
-						Name:        "__ctx_" + ctx.Name,
-						Type:        ctx.Typ,
-						Sym:         makeHiddenParamSym(ctx),
-						Synthesized: true,
-					}
-				}
-			}
-		}
-		comp.Body = lowerInStmts(comp.Body, compActive, reach)
+		comp.Body = lowerInStmts(comp.Body, empty, reach)
 	}
 }
 
@@ -407,7 +359,6 @@ func lowerProviders(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]boo
 // args onto component-call NodeInsts. active maps each context to its current
 // value expression at this point in the tree.
 func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach map[*ir.Context]map[*ir.Component]bool) []ir.Stmt {
-	exprRewriter := makeI18nCallRewriter(active)
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -433,28 +384,16 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach map[*ir
 					}
 				}
 			}
-			// Rewrite i18n.* calls inside prop values at this node.
-			for i := range n.Props {
-				n.Props[i].Value = exprRewriter.expr(n.Props[i].Value)
-			}
-			// Rewrite i18n.* calls in handler blocks.
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					h.Func.Block = exprRewriter.stmts(h.Func.Block)
-				}
-			}
 			// Recurse into children (primitive containers may hold component calls).
 			n.Children = lowerInStmts(n.Children, active, reach)
 			out = append(out, n)
 
 		case *ir.If:
-			n.Cond = exprRewriter.expr(n.Cond)
 			n.Body = lowerInStmts(n.Body, active, reach)
 			n.Else = lowerInStmts(n.Else, active, reach)
 			out = append(out, n)
 
 		case *ir.For:
-			n.Iter = exprRewriter.expr(n.Iter)
 			n.Body = lowerInStmts(n.Body, active, reach)
 			n.Else = lowerInStmts(n.Else, active, reach)
 			out = append(out, n)
@@ -472,80 +411,10 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach map[*ir
 			out = append(out, n)
 
 		default:
-			// For all other statement types (Assign, LocalVar, Return, CallStmt,
-			// Emit, etc.), rewrite any i18n.* calls in their expressions.
-			lowerI18nCallsInStmt(s, exprRewriter)
 			out = append(out, n)
 		}
 	}
 	return out
-}
-
-// makeI18nCallRewriter returns an exprWalker whose transform appends the
-// active locale as a trailing CallArg to every *ir.Call whose Func has a
-// non-empty ReadsContexts list. The arg is named "__ctx_<name>" (matching
-// the hidden prop convention) so codegen can locate it positionally.
-//
-// The walker mutates the call in place and returns the same node so that the
-// walker continues to recurse into nested subexpressions (e.g. a call whose
-// argument is itself an i18n call).
-func makeI18nCallRewriter(active map[*ir.Context]ir.Expr) *exprWalker {
-	return newExprWalker(func(e ir.Expr) ir.Expr {
-		call, ok := e.(*ir.Call)
-		if !ok || call.Func == nil || len(call.Func.ReadsContexts) == 0 {
-			return e
-		}
-		for _, ctx := range call.Func.ReadsContexts {
-			val, inActive := active[ctx]
-			if !inActive {
-				// Context has no active value at this site — no threading needed.
-				continue
-			}
-			argName := "__ctx_" + ctx.Name
-			// Avoid duplicate injection on repeated passes.
-			if !hasCallArgNamed(call.Args, argName) {
-				call.Args = append(call.Args, ir.CallArg{Name: argName, Value: val})
-			}
-		}
-		// Return same node so walker recurses into (now-extended) args.
-		return e
-	})
-}
-
-// hasCallArgNamed reports whether args already contains a named CallArg with
-// the given name.
-func hasCallArgNamed(args []ir.CallArg, name string) bool {
-	for _, a := range args {
-		if a.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-// lowerI18nCallsInStmt applies exprRewriter to all expressions reachable from
-// the given statement. Used for statement types not otherwise handled by the
-// lowerInStmts switch (Assign, LocalVar, Return, CallStmt, Emit, etc.).
-func lowerI18nCallsInStmt(s ir.Stmt, w *exprWalker) {
-	switch n := s.(type) {
-	case *ir.Assign:
-		n.Target = w.expr(n.Target)
-		n.Value = w.expr(n.Value)
-	case *ir.LocalVar:
-		n.Init = w.expr(n.Init)
-	case *ir.Return:
-		n.Value = w.expr(n.Value)
-	case *ir.CallStmt:
-		// w.expr visits the *ir.Call node, applies the transform (which appends
-		// the locale arg if ReadsContexts is set), then recurses into children.
-		if n.Call != nil {
-			w.expr(n.Call)
-		}
-	case *ir.Emit:
-		for i := range n.Args {
-			n.Args[i].Value = w.expr(n.Args[i].Value)
-		}
-	}
 }
 
 // copyExprMap returns a shallow copy of m.

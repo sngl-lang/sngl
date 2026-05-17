@@ -158,12 +158,6 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.registerStdlibContextDecl(s)
 	}
 
-	// Annotate i18n.* locale-reading functions with ReadsContexts so the
-	// NoContext lowering pass can thread the active locale as a trailing
-	// argument. This must run after contexts are registered so the
-	// *ir.Context pointer for "locale" is available.
-	c.annotateI18nReadsContexts()
-
 	return stdlibPkg
 }
 
@@ -206,49 +200,6 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 	}
 
 	return pkg
-}
-
-// i18nLocaleReaders lists the i18n.* function names (Receiver == "i18n")
-// that implicitly read the active locale context and must receive it as a
-// trailing argument when lowered by NoContext.
-// i18n.exactly and i18n.defaultLocale are excluded: exactly() is a pure
-// PluralKey constructor with no locale sensitivity, and defaultLocale() is
-// itself the source of the default locale value.
-var i18nLocaleReaders = map[string]bool{
-	"tr":            true,
-	"format":        true,
-	"numberInt":     true,
-	"numberFloat":   true,
-	"date":          true,
-	"time":          true,
-	"datetime":      true,
-	"select":        true,
-	"plural":        true,
-	"selectordinal": true,
-}
-
-// annotateI18nReadsContexts sets ReadsContexts on every i18n.* function that
-// implicitly consumes the active locale. Must be called after stdlib context
-// declarations have been registered (so c.pkg.Contexts contains the locale ctx).
-func (c *checker) annotateI18nReadsContexts() {
-	// Find the locale *ir.Context from the package contexts list.
-	var localeCtx *ir.Context
-	for _, ctx := range c.pkg.Contexts {
-		if ctx.Name == "locale" {
-			localeCtx = ctx
-			break
-		}
-	}
-	if localeCtx == nil {
-		// locale context not registered (shouldn't happen in a normal stdlib load).
-		return
-	}
-	// Walk all i18n.* methods and set ReadsContexts on locale-reading ones.
-	for _, fn := range c.symtab.Methods["i18n"] {
-		if i18nLocaleReaders[fn.Name] {
-			fn.ReadsContexts = []*ir.Context{localeCtx}
-		}
-	}
 }
 
 // declareStdlibStruct registers a struct name (without fields) so other

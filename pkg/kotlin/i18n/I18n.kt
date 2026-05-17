@@ -44,51 +44,38 @@ class Translator(val manifest: Manifest, val locale: Locale) {
         return inlinedTemplate.ifEmpty { key }
     }
 
-    // The locale parameter is threaded by the NoContext lowering pass (Phase B);
-    // Phase C will use it to override this.locale. For now it is accepted and ignored.
-    @Suppress("UNUSED_PARAMETER")
-    fun tr(key: String, inlinedTemplate: String, args: Map<String, Any?>, locale: String): String =
-        formatICU(this.locale, currencyCode, lookup(key, inlinedTemplate), args)
+    fun tr(key: String, inlinedTemplate: String, args: Map<String, Any?>): String =
+        formatICU(locale, currencyCode, lookup(key, inlinedTemplate), args)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun format(template: String, args: Map<String, Any?>, locale: String): String =
-        formatICU(this.locale, currencyCode, template, args)
+    fun format(template: String, args: Map<String, Any?>): String =
+        formatICU(locale, currencyCode, template, args)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun numberInt(n: Int, style: String, locale: String): String =
-        formatNumber(this.locale, currencyCode, n.toDouble(), style)
+    fun numberInt(n: Int, style: String): String =
+        formatNumber(locale, currencyCode, n.toDouble(), style)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun numberFloat(n: Double, style: String, locale: String): String =
-        formatNumber(this.locale, currencyCode, n, style)
+    fun numberFloat(n: Double, style: String): String =
+        formatNumber(locale, currencyCode, n, style)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun date(d: Date, style: String, locale: String): String =
-        DateFormat.getDateInstance(dateStyleConst(style), this.locale).format(d)
+    fun date(d: Date, style: String): String =
+        DateFormat.getDateInstance(dateStyleConst(style), locale).format(d)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun time(t: Date, style: String, locale: String): String =
-        DateFormat.getTimeInstance(dateStyleConst(style), this.locale).format(t)
+    fun time(t: Date, style: String): String =
+        DateFormat.getTimeInstance(dateStyleConst(style), locale).format(t)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun datetime(dt: Date, dateStyle: String, timeStyle: String, locale: String): String =
+    fun datetime(dt: Date, dateStyle: String, timeStyle: String): String =
         DateFormat.getDateTimeInstance(
-            dateStyleConst(dateStyle), dateStyleConst(timeStyle), this.locale
+            dateStyleConst(dateStyle), dateStyleConst(timeStyle), locale
         ).format(dt)
 
     // select returns the matched case body raw — no ICU format applied.
     // Matches Go and JS Translator.select() behaviour.
-    // The locale parameter is threaded by the NoContext lowering pass (Phase B).
-    @Suppress("UNUSED_PARAMETER")
-    fun select(value: String, cases: Map<String, String>, locale: String): String =
+    fun select(value: String, cases: Map<String, String>): String =
         cases[value] ?: cases["other"] ?: ""
 
-    @Suppress("UNUSED_PARAMETER")
-    fun plural(count: Int, forms: Map<String, String>, locale: String): String =
+    fun plural(count: Int, forms: Map<String, String>): String =
         pluralImpl(count, forms, false)
 
-    @Suppress("UNUSED_PARAMETER")
-    fun selectordinal(count: Int, forms: Map<String, String>, locale: String): String =
+    fun selectordinal(count: Int, forms: Map<String, String>): String =
         pluralImpl(count, forms, true)
 
     private fun pluralImpl(count: Int, forms: Map<String, String>, ordinal: Boolean): String {

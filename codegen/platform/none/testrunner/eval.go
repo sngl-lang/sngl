@@ -223,8 +223,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		}
 		key := fmt.Sprintf("%v", keyVal)
 		argsMap := toStringAnyMap(argsVal)
-		// Phase B: locale threaded via lowering; testrunner passes "" (ignored by runtime).
-		return tr.Tr(key, key, argsMap, ""), true, nil
+		return tr.Tr(key, key, argsMap), true, nil
 
 	case "format":
 		if len(args) < 2 {
@@ -240,7 +239,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		}
 		tmpl := fmt.Sprintf("%v", tmplVal)
 		argsMap := toStringAnyMap(argsVal)
-		return tr.Format(tmpl, argsMap, ""), true, nil
+		return tr.Format(tmpl, argsMap), true, nil
 
 	case "numberInt":
 		if len(args) < 2 {
@@ -254,7 +253,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.NumberInt(toInt(nVal), fmt.Sprintf("%v", styleVal), ""), true, nil
+		return tr.NumberInt(toInt(nVal), fmt.Sprintf("%v", styleVal)), true, nil
 
 	case "numberFloat":
 		if len(args) < 2 {
@@ -268,7 +267,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.NumberFloat(toFloat(nVal), fmt.Sprintf("%v", styleVal), ""), true, nil
+		return tr.NumberFloat(toFloat(nVal), fmt.Sprintf("%v", styleVal)), true, nil
 
 	case "select":
 		if len(args) < 2 {
@@ -284,7 +283,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		}
 		value := fmt.Sprintf("%v", valArg)
 		cases := toStringStringMap(casesArg)
-		return tr.Select(value, cases, ""), true, nil
+		return tr.Select(value, cases), true, nil
 
 	case "exactly":
 		if len(args) < 1 {
@@ -308,7 +307,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Plural(toInt(countVal), forms, ""), true, nil
+		return tr.Plural(toInt(countVal), forms), true, nil
 
 	case "selectordinal":
 		if len(args) < 2 {
@@ -322,7 +321,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Selectordinal(toInt(countVal), forms, ""), true, nil
+		return tr.Selectordinal(toInt(countVal), forms), true, nil
 
 	case "defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
