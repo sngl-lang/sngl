@@ -1,0 +1,15 @@
+context #theme("outer-default")
+
+component Show {
+    text(value=theme)
+}
+
+window #home(title="Home", href="/") {
+    theme("outer-val") {
+        theme("inner-val") {
+            Show()
+        }
+        Show()
+    }
+    Show()
+}
