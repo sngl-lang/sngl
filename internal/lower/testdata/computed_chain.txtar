@@ -13,3 +13,4 @@ component main {
     var n int = 3
     text(value=string((n + 1) * 2))
 }
+context #locale(i18n.defaultLocale())

@@ -913,3 +913,25 @@ func pickLocale() string {
 	}
 	return "en"
 }
+
+// DefaultLocale resolves the process-startup locale from environment variables,
+// with BCP-47 normalisation and "en-US" fallback.
+//
+// Read order: LC_ALL, LC_MESSAGES, LANG. Strips encoding suffix (".UTF-8") and
+// modifier suffix ("@euro"); normalises POSIX underscore separators to BCP-47
+// hyphens (e.g. "en_US.UTF-8" → "en-US"). Falls back to "en-US" when no
+// locale variable is set.
+//
+// This is the Go runtime implementation of the SNGL stdlib i18n.defaultLocale()
+// function. Generated code calls i18n.DefaultLocale() directly.
+func DefaultLocale() string {
+	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		if v := os.Getenv(k); v != "" {
+			if i := strings.IndexAny(v, ".@"); i >= 0 {
+				v = v[:i]
+			}
+			return strings.ReplaceAll(v, "_", "-")
+		}
+	}
+	return "en-US"
+}

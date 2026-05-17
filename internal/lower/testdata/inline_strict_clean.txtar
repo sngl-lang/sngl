@@ -10,3 +10,4 @@ import teststub "platform://teststub"
 component main {
     text(value="hi")
 }
+context #locale(i18n.defaultLocale())

@@ -23,3 +23,4 @@ component main {
         toggleBoth()
     })
 }
+context #locale(i18n.defaultLocale())

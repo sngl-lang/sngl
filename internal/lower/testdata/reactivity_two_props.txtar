@@ -17,3 +17,4 @@ component main {
         #__n1.value = string(n + 1)
     })
 }
+context #locale(i18n.defaultLocale())

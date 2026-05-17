@@ -369,3 +369,43 @@ func TestDateEnglishUnchanged(t *testing.T) {
 		t.Errorf("got %q, want May 8, 2026", got)
 	}
 }
+
+func TestDefaultLocaleFromLANG(t *testing.T) {
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LC_MESSAGES", "")
+	t.Setenv("LANG", "en_US.UTF-8")
+	got := DefaultLocale()
+	if got != "en-US" {
+		t.Errorf("DefaultLocale() = %q, want en-US", got)
+	}
+}
+
+func TestDefaultLocaleFromLANGNoSuffix(t *testing.T) {
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LC_MESSAGES", "")
+	t.Setenv("LANG", "zh-CN")
+	got := DefaultLocale()
+	if got != "zh-CN" {
+		t.Errorf("DefaultLocale() = %q, want zh-CN", got)
+	}
+}
+
+func TestDefaultLocaleFromLCAll(t *testing.T) {
+	t.Setenv("LC_ALL", "es_MX.UTF-8")
+	t.Setenv("LC_MESSAGES", "fr_FR.UTF-8")
+	t.Setenv("LANG", "en_US.UTF-8")
+	got := DefaultLocale()
+	if got != "es-MX" {
+		t.Errorf("DefaultLocale() = %q, want es-MX (LC_ALL wins)", got)
+	}
+}
+
+func TestDefaultLocaleFallback(t *testing.T) {
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LC_MESSAGES", "")
+	t.Setenv("LANG", "")
+	got := DefaultLocale()
+	if got != "en-US" {
+		t.Errorf("DefaultLocale() = %q, want en-US (fallback)", got)
+	}
+}

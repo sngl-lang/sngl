@@ -14,3 +14,4 @@ component greet(name string = "") {
 component main {
     text(value=i18n.tr("Hello, \{name\}!", {"name" = "Alice"}))
 }
+context #locale(i18n.defaultLocale())

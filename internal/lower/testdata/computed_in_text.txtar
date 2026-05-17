@@ -14,3 +14,4 @@ component main {
     var last string = "World"
     text(value=first + " " + last)
 }
+context #locale(i18n.defaultLocale())

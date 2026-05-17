@@ -20,3 +20,4 @@ component main {
         count = count + 1
     })
 }
+context #locale(i18n.defaultLocale())

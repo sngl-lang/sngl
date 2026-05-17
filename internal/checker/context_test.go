@@ -33,18 +33,22 @@ func parseFile(t *testing.T, path string) (*ir.Package, []ir.Diagnostic) {
 }
 
 // TestContextBasic verifies that testdata/context_decl_basic.sngl checks
-// without errors and registers one Context named "theme" of inferred string type.
+// without errors and registers a Context named "theme" of inferred string type.
+// The stdlib contributes one built-in context (#locale), so we look up by name.
 func TestContextBasic(t *testing.T) {
 	pkg, errs := parseFile(t, "../../testdata/context_decl_basic.sngl")
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(pkg.Contexts) != 1 {
-		t.Fatalf("expected 1 context, got %d", len(pkg.Contexts))
+	var ctx *ir.Context
+	for _, c := range pkg.Contexts {
+		if c.Name == "theme" {
+			ctx = c
+			break
+		}
 	}
-	ctx := pkg.Contexts[0]
-	if ctx.Name != "theme" {
-		t.Errorf("Name = %q, want \"theme\"", ctx.Name)
+	if ctx == nil {
+		t.Fatalf("context \"theme\" not found; got %d contexts: %v", len(pkg.Contexts), contextNames(pkg.Contexts))
 	}
 	if ctx.Typ == nil {
 		t.Fatalf("Typ is nil")
@@ -55,14 +59,18 @@ func TestContextBasic(t *testing.T) {
 }
 
 // TestContextInferredType verifies that testdata/context_decl_inferred_type.sngl
-// checks without errors and registers all five contexts with correct types.
+// checks without errors and registers all five user contexts with correct types.
+// The stdlib contributes one built-in context (#locale), so we look up by name.
 func TestContextInferredType(t *testing.T) {
 	pkg, errs := parseFile(t, "../../testdata/context_decl_inferred_type.sngl")
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(pkg.Contexts) != 5 {
-		t.Fatalf("expected 5 contexts, got %d", len(pkg.Contexts))
+
+	// Build a name→context map for stable lookups independent of insertion order.
+	byName := make(map[string]*ir.Context, len(pkg.Contexts))
+	for _, c := range pkg.Contexts {
+		byName[c.Name] = c
 	}
 
 	tests := []struct {
@@ -75,17 +83,18 @@ func TestContextInferredType(t *testing.T) {
 		{"theme", ir.TypeStruct},
 		{"mode", ir.TypeEnum},
 	}
-	for i, tt := range tests {
-		ctx := pkg.Contexts[i]
-		if ctx.Name != tt.name {
-			t.Errorf("context[%d].Name = %q, want %q", i, ctx.Name, tt.name)
+	for _, tt := range tests {
+		ctx, ok := byName[tt.name]
+		if !ok {
+			t.Errorf("context %q not found; have: %v", tt.name, contextNames(pkg.Contexts))
+			continue
 		}
 		if ctx.Typ == nil {
-			t.Errorf("context[%d].Typ is nil", i)
+			t.Errorf("context %q: Typ is nil", tt.name)
 			continue
 		}
 		if ctx.Typ.Kind != tt.wantKnd {
-			t.Errorf("context[%d].Typ.Kind = %v, want %v", i, ctx.Typ.Kind, tt.wantKnd)
+			t.Errorf("context %q: Typ.Kind = %v, want %v", tt.name, ctx.Typ.Kind, tt.wantKnd)
 		}
 	}
 }
@@ -241,6 +250,15 @@ window #home(title="t", href="/") {
 	if len(errs) == 0 {
 		t.Fatal("expected error for context var-init, got none")
 	}
+}
+
+// contextNames returns the names of all contexts for diagnostic messages.
+func contextNames(ctxs []*ir.Context) []string {
+	out := make([]string, len(ctxs))
+	for i, c := range ctxs {
+		out[i] = c.Name
+	}
+	return out
 }
 
 // stmtTypes formats a slice of ir.Stmt for diagnostic output.

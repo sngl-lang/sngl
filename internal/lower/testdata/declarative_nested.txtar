@@ -16,3 +16,4 @@ component main {
     #__n2.value = "b"
     lower.AppendChild(#__n0, #__n2)
 }
+context #locale(i18n.defaultLocale())

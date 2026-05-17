@@ -16,3 +16,4 @@ component main {
     }
     text(value=string(tick__inst0))
 }
+context #locale(i18n.defaultLocale())

@@ -29,3 +29,4 @@ component main {
         text(value="other")
     }
 }
+context #locale(i18n.defaultLocale())

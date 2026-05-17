@@ -15,3 +15,4 @@ component main {
     text(value=string(n__inst0))
     text(value=string(n__inst1))
 }
+context #locale(i18n.defaultLocale())

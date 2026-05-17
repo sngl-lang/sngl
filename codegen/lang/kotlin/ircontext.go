@@ -774,6 +774,9 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.exactly":
 		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
 		return "(\"=\" + (" + a(0) + "))"
+	case "i18n.defaultLocale":
+		// No args. Returns the process-startup BCP-47 locale string.
+		return "I18n.defaultLocale()"
 	}
 	return ""
 }

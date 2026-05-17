@@ -15,3 +15,4 @@ component main {
     var n int = 0
     var inc func() = __closure(__lambda0, __lambda0_caps{n = &n})
 }
+context #locale(i18n.defaultLocale())

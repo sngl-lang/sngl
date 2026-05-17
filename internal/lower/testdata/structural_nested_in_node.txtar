@@ -34,3 +34,4 @@ component main {
         __renderSlot0(#__n1)
     }
 }
+context #locale(i18n.defaultLocale())

@@ -22,3 +22,4 @@ component main {
         label = __lt0
     })
 }
+context #locale(i18n.defaultLocale())

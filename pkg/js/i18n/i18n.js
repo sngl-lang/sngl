@@ -374,6 +374,20 @@ function toDate(val) {
 
 // --- Module-level singleton ---
 
+// defaultLocale returns the process-startup BCP-47 locale string.
+// In browser contexts, reads navigator.language (or navigator.languages[0])
+// and falls back to "en-US" if unavailable.
+// This is the JS runtime implementation of the SNGL stdlib i18n.defaultLocale().
+export function defaultLocale() {
+  if (typeof navigator !== "undefined") {
+    const lang = (navigator.languages && navigator.languages.length > 0)
+      ? navigator.languages[0]
+      : navigator.language;
+    if (lang) return lang;
+  }
+  return "en-US";
+}
+
 let _default = null;
 
 export function getTranslator() {

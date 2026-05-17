@@ -20,3 +20,4 @@ component main {
         clicks = n__inst0
     })
 }
+context #locale(i18n.defaultLocale())

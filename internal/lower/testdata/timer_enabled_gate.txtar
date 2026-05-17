@@ -29,3 +29,4 @@ component main {
         }
     })
 }
+context #locale(i18n.defaultLocale())

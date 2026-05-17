@@ -322,6 +322,10 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 			return nil, true, err
 		}
 		return tr.Selectordinal(toInt(countVal), forms), true, nil
+
+	case "defaultLocale":
+		// No args. Returns the process-startup BCP-47 locale string.
+		return goi18n.DefaultLocale(), true, nil
 	}
 	return nil, false, nil
 }

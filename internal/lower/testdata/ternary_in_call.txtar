@@ -16,3 +16,4 @@ component main {
     }
     text(value=__lt0)
 }
+context #locale(i18n.defaultLocale())

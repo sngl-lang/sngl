@@ -14,3 +14,4 @@ component main {
         #__n0.value = string(n)
     })
 }
+context #locale(i18n.defaultLocale())

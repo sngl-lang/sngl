@@ -15,3 +15,4 @@ component main {
     var w length = 32
     var pad length = 32
 }
+context #locale(i18n.defaultLocale())

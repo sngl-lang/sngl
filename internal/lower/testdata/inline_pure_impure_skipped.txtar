@@ -18,3 +18,4 @@ component counter {
 component main {
     counter
 }
+context #locale(i18n.defaultLocale())

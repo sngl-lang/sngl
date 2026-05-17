@@ -378,6 +378,20 @@ private fun toDouble(v: Any?): Double = when (v) {
 object I18n {
     @Volatile private var instance: Translator? = null
 
+    /**
+     * Returns the process-startup BCP-47 locale string from the JVM default locale.
+     * Uses Locale.getDefault().toLanguageTag(), which returns a valid BCP-47 tag
+     * (e.g. "en-US", "zh-CN"). Falls back to "en-US" if the result is blank or
+     * the JVM returns the sentinel "und" (undetermined).
+     *
+     * This is the Kotlin runtime implementation of the SNGL stdlib i18n.defaultLocale().
+     */
+    @JvmStatic
+    fun defaultLocale(): String {
+        val tag = Locale.getDefault().toLanguageTag()
+        return if (tag.isNotBlank() && tag != "und") tag else "en-US"
+    }
+
     @JvmStatic
     fun getTranslator(): Translator {
         instance?.let { return it }

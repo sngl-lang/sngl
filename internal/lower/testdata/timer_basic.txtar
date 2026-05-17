@@ -18,3 +18,4 @@ component main {
     lower.scheduleTimer(0, 1000, __timer0_handler)
     text(value=string(n))
 }
+context #locale(i18n.defaultLocale())

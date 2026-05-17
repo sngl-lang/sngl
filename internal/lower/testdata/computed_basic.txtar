@@ -12,3 +12,4 @@ component main {
     var n int = 5
     text(value=string(n * 2))
 }
+context #locale(i18n.defaultLocale())

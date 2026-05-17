@@ -73,6 +73,7 @@ func (c *checker) loadStdlib() *ir.Package {
 		enums      []*ast.EnumDef
 		funcs      []*ast.FuncDef
 		components []*ast.ComponentDecl
+		contexts   []*ast.CallStmt
 	)
 	for _, doc := range parseStdlibDocs() {
 		for _, stmt := range doc.Stmts {
@@ -89,6 +90,10 @@ func (c *checker) loadStdlib() *ir.Package {
 				funcs = append(funcs, s)
 			case *ast.ComponentDecl:
 				components = append(components, s)
+			case *ast.CallStmt:
+				if isContextDeclCallStmt(s) {
+					contexts = append(contexts, s)
+				}
 			}
 		}
 	}
@@ -143,6 +148,15 @@ func (c *checker) loadStdlib() *ir.Package {
 		Name: "i18n",
 		Pkg:  c.buildI18nNamespacePkg(structDefs),
 	})
+
+	// Register stdlib context declarations last — after the "i18n" namespace is
+	// in scope — so that default-value expressions like `i18n.defaultLocale()`
+	// resolve correctly. Stdlib contexts are declared into the stdlib scope and
+	// their *ir.Context pointers are appended to c.pkg.Contexts so the
+	// interpreter and codegen discover them alongside user-declared contexts.
+	for _, s := range contexts {
+		c.registerStdlibContextDecl(s)
+	}
 
 	return stdlibPkg
 }
@@ -418,6 +432,52 @@ func (c *checker) checkPendingExtensions() {
 		pe.comp.AST.Body = savedAST
 		pe.comp.Body = savedBody
 	}
+}
+
+// registerStdlibContextDecl registers a stdlib `context #name(default)` decl.
+// The *ir.Context is declared in the current scope (stdlib scope) so user
+// source can read it as an identifier, and appended to c.pkg.Contexts so the
+// interpreter and codegen discover it alongside user-declared contexts.
+func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
+	sel := s.Call.Func.(*ast.SelectExpr)
+	name := sel.Field
+	ctx := &ir.Context{AST: s, Name: name}
+	if name == "" {
+		c.error(s.Pos, "stdlib context decl requires #identifier")
+		return
+	}
+	if _, exists := c.scope.LookupLocal(name); exists {
+		// Already declared (e.g. duplicate stdlib file); skip silently.
+		return
+	}
+	args := s.Call.Args.Args
+	if len(args) != 1 {
+		c.error(s.Pos, "stdlib context decl requires exactly one default value")
+		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.scope.Declare(ctx)
+		return
+	}
+	a, isArg := args[0].(ast.Arg)
+	if !isArg || a.Name != "" {
+		c.error(s.Pos, "stdlib context default must be positional, not named")
+		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.scope.Declare(ctx)
+		return
+	}
+	def := c.checkExpr(a.Value)
+	if def != nil && !ir.IsConst(def) {
+		pos := s.Pos
+		if p := a.Value.ExprPos(); p != nil {
+			pos = *p
+		}
+		c.error(pos, "stdlib context default must be a constant expression")
+	}
+	ctx.Default = def
+	if def != nil {
+		ctx.Typ = def.ExprType()
+	}
+	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+	c.scope.Declare(ctx)
 }
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {

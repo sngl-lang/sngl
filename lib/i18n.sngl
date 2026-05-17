@@ -3,6 +3,17 @@
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
 
+// --- Locale context ---
+
+// Returns the process-startup locale string. Reads $LC_ALL, then
+// $LC_MESSAGES, then $LANG, falling back to "en-US".
+func i18n.defaultLocale() string {}
+
+// Stdlib context: the active locale. Overridable per-subtree via
+// `locale("xx-YY") { ... }` and per-test via t.setContext(locale, ...).
+// Default is the process startup locale.
+context #locale(i18n.defaultLocale())
+
 // --- Translation entry points ---
 
 // Translate `key` against the loaded manifest, formatting via ICU.

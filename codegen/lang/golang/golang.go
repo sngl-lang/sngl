@@ -303,6 +303,9 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.exactly":
 		// Args: n. a(0)=n.
 		return "i18n.Exactly(" + a(0) + ")"
+	case "i18n.defaultLocale":
+		// No args. Returns the process-startup BCP-47 locale string.
+		return "i18n.DefaultLocale()"
 	}
 	return ""
 }
@@ -316,7 +319,8 @@ func IsI18nCall(qualName string) bool {
 		"i18n.numberInt", "i18n.numberFloat",
 		"i18n.date", "i18n.time", "i18n.datetime",
 		"i18n.select",
-		"i18n.plural", "i18n.selectordinal", "i18n.exactly":
+		"i18n.plural", "i18n.selectordinal", "i18n.exactly",
+		"i18n.defaultLocale":
 		return true
 	}
 	return false
