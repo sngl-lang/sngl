@@ -29,6 +29,12 @@ context #locale(i18n.defaultLocale())
 // and the placeholder values as `args`.
 func i18n.tr(key string, args map<string, dyn>) => intl.Translate(locale, key, "", args)
 
+// Internal: target of $"..." string interpolation lowering. Carries both
+// the canonical key and the synthesized ICU template at the call site so
+// the runtime can fall back to the inlined template when the manifest
+// lookup misses.
+func i18n.trInline(key string, inlinedTemplate string, args map<string, dyn>) => intl.Translate(locale, key, inlinedTemplate, args)
+
 // Format an ICU template directly, no manifest lookup.
 func i18n.format(template string, args map<string, dyn>) => intl.Format(locale, template, args)
 

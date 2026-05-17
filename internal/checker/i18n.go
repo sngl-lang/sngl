@@ -257,8 +257,10 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	b.writeParts(x.Parts)
 	template := string(b.sb)
 
-	// G2: resolve i18n.tr and emit ir.Call.
-	trFn := c.lookupI18nTr(x.Pos)
+	// G2: resolve i18n.trInline and emit ir.Call. trInline carries both
+	// the canonical key (= the synthesized template, for manifest lookup)
+	// and the inlined template (for fallback when the manifest misses).
+	trFn := c.lookupI18nTrInline(x.Pos)
 	if trFn == nil {
 		// Already errored; return a string-typed placeholder so type-checking
 		// can continue without cascading failures.
@@ -285,6 +287,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		Func: trFn,
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
+			{Value: &ir.Literal{Type: TypString, Raw: template}},
 			{Value: argsMap},
 		},
 	}
@@ -296,6 +299,18 @@ func (c *checker) lookupI18nTr(pos ast.Pos) *ir.Func {
 	fn, ok := c.symtab.LookupMethod("i18n", "tr")
 	if !ok {
 		c.error(pos, "i18n.tr is not in scope; ensure lib/i18n.sngl is loaded")
+		return nil
+	}
+	return fn
+}
+
+// lookupI18nTrInline resolves the i18n.trInline stdlib function — the
+// target of $"..." interpolation lowering. Returns nil and emits an error
+// diagnostic if not found.
+func (c *checker) lookupI18nTrInline(pos ast.Pos) *ir.Func {
+	fn, ok := c.symtab.LookupMethod("i18n", "trInline")
+	if !ok {
+		c.error(pos, "i18n.trInline is not in scope; ensure lib/i18n.sngl is loaded")
 		return nil
 	}
 	return fn
