@@ -1,8 +1,10 @@
 package lower
 
-import "maps"
+import (
+	"maps"
 
-import "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // passNoContext lowers context declarations to hidden component/func props.
 // It must run BEFORE passInlinePure (provider rewrite assumes un-inlined
@@ -86,11 +88,47 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		queue = append(queue, fn)
 	}
 
-	// Seed from user package.
-	for _, comp := range pkg.Components {
-		for _, call := range callsInBody(comp.Body, nil) {
+	seedFromExpr := func(e ir.Expr) {
+		for _, call := range callsInExpr(e, nil) {
 			if call.fn != nil {
 				visit(call.fn)
+			}
+		}
+	}
+	seedFromStmts := func(stmts []ir.Stmt) {
+		for _, call := range callsInBody(stmts, nil) {
+			if call.fn != nil {
+				visit(call.fn)
+			}
+		}
+	}
+	seedFromVar := func(v *ir.Var) {
+		seedFromExpr(v.Init)
+		for _, h := range v.Handlers {
+			if h.Func != nil {
+				seedFromStmts(h.Func.Block)
+			}
+		}
+	}
+
+	// Seed from user package: walk every place an expression or stmt can
+	// host a Call — component bodies, component Vars (Init + Handlers),
+	// component Funcs, component Timers, window bodies, package funcs and
+	// vars. callsInBody alone misses comp.Vars / comp.Funcs because Vars
+	// aren't part of Body — they hang off the Component struct directly.
+	for _, comp := range pkg.Components {
+		seedFromStmts(comp.Body)
+		for _, v := range comp.Vars {
+			seedFromVar(v)
+		}
+		for _, fn := range comp.Funcs {
+			if hasBody(fn) {
+				seedFromStmts(fn.Block)
+			}
+		}
+		for _, t := range comp.Timers {
+			if t.Handler != nil {
+				seedFromStmts(t.Handler.Block)
 			}
 		}
 	}
@@ -98,18 +136,21 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		if !hasBody(fn) {
 			continue
 		}
-		for _, call := range callsInBody(fn.Block, nil) {
-			if call.fn != nil {
-				visit(call.fn)
+		seedFromStmts(fn.Block)
+	}
+	for _, w := range pkg.Windows {
+		seedFromStmts(w.Body)
+		for _, v := range w.Vars {
+			seedFromVar(v)
+		}
+		for _, fn := range w.Funcs {
+			if hasBody(fn) {
+				seedFromStmts(fn.Block)
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
-		for _, call := range callsInBody(w.Body, nil) {
-			if call.fn != nil {
-				visit(call.fn)
-			}
-		}
+	for _, v := range pkg.Vars {
+		seedFromVar(v)
 	}
 
 	// Transitive closure over external funcs.
@@ -190,6 +231,64 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		markFuncReads(fn)
 	}
 
+	// Helper: collect all call edges from a component's full surface area
+	// (Body, Vars.Init+Handlers, Funcs.Block, Timers.Handler.Block). Calls
+	// inside Vars/Funcs/Timers aren't bounded by component-Body
+	// ContextProviders, so shadow is always empty for those edges.
+	componentCalls := func(comp *ir.Component) []callEdge {
+		var calls []callEdge
+		calls = append(calls, callsInBody(comp.Body, nil)...)
+		for _, v := range comp.Vars {
+			calls = append(calls, callsInExpr(v.Init, nil)...)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					calls = append(calls, callsInBody(h.Func.Block, nil)...)
+				}
+			}
+		}
+		for _, fn := range comp.Funcs {
+			if hasBody(fn) {
+				calls = append(calls, callsInBody(fn.Block, nil)...)
+			}
+		}
+		for _, t := range comp.Timers {
+			if t.Handler != nil {
+				calls = append(calls, callsInBody(t.Handler.Block, nil)...)
+			}
+		}
+		return calls
+	}
+	// Direct ContextReads can also live in Vars/Funcs/Timers — mark those.
+	compDirectReads := func(comp *ir.Component) map[*ir.Context]bool {
+		out := map[*ir.Context]bool{}
+		collectContextReadsInStmts(comp.Body, out)
+		for _, v := range comp.Vars {
+			collectContextReadsInExpr(v.Init, out)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					collectContextReadsInStmts(h.Func.Block, out)
+				}
+			}
+		}
+		for _, fn := range comp.Funcs {
+			if hasBody(fn) {
+				collectContextReadsInStmts(fn.Block, out)
+			}
+		}
+		for _, t := range comp.Timers {
+			if t.Handler != nil {
+				collectContextReadsInStmts(t.Handler.Block, out)
+			}
+		}
+		return out
+	}
+	// Re-mark direct-readers using the wider surface.
+	for _, comp := range pkg.Components {
+		for ctx := range compDirectReads(comp) {
+			reach.Components[ctx][comp] = true
+		}
+	}
+
 	// 2. Fixpoint: propagate through call graph, respecting shadowing.
 	propagateFuncCaller := func(caller *ir.Func) bool {
 		if !hasBody(caller) {
@@ -216,9 +315,10 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	changed := true
 	for changed {
 		changed = false
-		// Component callers.
+		// Component callers — walk the component's full surface (Body +
+		// Vars + Funcs + Timers).
 		for _, caller := range pkg.Components {
-			for _, call := range callsInBody(caller.Body, nil) {
+			for _, call := range componentCalls(caller) {
 				for _, ctx := range pkg.Contexts {
 					if call.shadowed[ctx] {
 						continue
@@ -698,7 +798,31 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 
 	// Seed window roots with defaults.
 	for _, w := range pkg.Windows {
-		w.Body = lowerInStmts(w.Body, copyExprMap(defaults), reach)
+		windowActive := copyExprMap(defaults)
+		w.Body = lowerInStmts(w.Body, windowActive, reach)
+		for _, v := range w.Vars {
+			v.Init = lowerInExpr(v.Init, windowActive, reach)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					h.Func.Block = lowerInStmts(h.Func.Block, windowActive, reach)
+				}
+			}
+		}
+		for _, fn := range w.Funcs {
+			if hasBody(fn) {
+				fn.Block = lowerInStmts(fn.Block, windowActive, reach)
+			}
+		}
+	}
+	// Top-level pkg.Vars: also rooted, seed with defaults.
+	for _, v := range pkg.Vars {
+		pkgActive := copyExprMap(defaults)
+		v.Init = lowerInExpr(v.Init, pkgActive, reach)
+		for _, h := range v.Handlers {
+			if h.Func != nil {
+				h.Func.Block = lowerInStmts(h.Func.Block, pkgActive, reach)
+			}
+		}
 	}
 
 	// For component bodies: no active context value at the entry point —
@@ -710,6 +834,27 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		// is in Reach is active and references the hidden prop.
 		compActive := hiddenActiveFor(pkg, reach, hidden, comp, nil)
 		comp.Body = lowerInStmts(comp.Body, compActive, reach)
+		// Component-level Vars (var x = ...) and Funcs (func foo() {}) host
+		// expressions that can call ctx-reading wrappers too — walk them so
+		// hidden args get threaded uniformly.
+		for _, v := range comp.Vars {
+			v.Init = lowerInExpr(v.Init, compActive, reach)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					h.Func.Block = lowerInStmts(h.Func.Block, compActive, reach)
+				}
+			}
+		}
+		for _, fn := range comp.Funcs {
+			if hasBody(fn) {
+				fn.Block = lowerInStmts(fn.Block, compActive, reach)
+			}
+		}
+		for _, t := range comp.Timers {
+			if t.Handler != nil {
+				t.Handler.Block = lowerInStmts(t.Handler.Block, compActive, reach)
+			}
+		}
 	}
 
 	// For func bodies (user + extras): same — each ctx for which this func
