@@ -87,6 +87,70 @@ var FileIntrinsics = []IntrinsicDef{
 	{Name: "PickFolder", Params: []*Param{}, Return: TypString},
 }
 
+// I18nIntrinsics are stdlib intrinsics for i18n / locale-aware formatting.
+// Each takes an explicit `locale` first parameter; the SNGL i18n wrappers
+// thread the active locale context into these calls via NoContext.
+//
+// Plural / SelectOrdinal use MapOf(TypDyn, TypString) for the forms map
+// because PluralKey is a SNGL struct (declared in lib/i18n.sngl) — the
+// intrinsic doesn't need to know about that struct; it just receives the
+// runtime values.
+var I18nIntrinsics = []IntrinsicDef{
+	{Name: "DefaultLocale", Params: nil, Return: TypString},
+	{Name: "Translate", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "key", Type: TypString},
+		{Name: "inlinedTemplate", Type: TypString},
+		{Name: "args", Type: MapOf(TypString, TypDyn)},
+	}, Return: TypString},
+	{Name: "Format", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "template", Type: TypString},
+		{Name: "args", Type: MapOf(TypString, TypDyn)},
+	}, Return: TypString},
+	{Name: "NumberInt", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "n", Type: TypInt},
+		{Name: "style", Type: TypString},
+	}, Return: TypString},
+	{Name: "NumberFloat", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "n", Type: TypFloat},
+		{Name: "style", Type: TypString},
+	}, Return: TypString},
+	{Name: "Date", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "d", Type: TypDate},
+		{Name: "style", Type: TypString},
+	}, Return: TypString},
+	{Name: "Time", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "t", Type: TypTime},
+		{Name: "style", Type: TypString},
+	}, Return: TypString},
+	{Name: "DateTime", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "dt", Type: TypDateTime},
+		{Name: "dateStyle", Type: TypString},
+		{Name: "timeStyle", Type: TypString},
+	}, Return: TypString},
+	{Name: "Select", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "value", Type: TypString},
+		{Name: "cases", Type: MapOf(TypString, TypString)},
+	}, Return: TypString},
+	{Name: "Plural", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "count", Type: TypInt},
+		{Name: "forms", Type: MapOf(TypDyn, TypString)},
+	}, Return: TypString},
+	{Name: "SelectOrdinal", Params: []*Param{
+		{Name: "locale", Type: TypString},
+		{Name: "count", Type: TypInt},
+		{Name: "forms", Type: MapOf(TypDyn, TypString)},
+	}, Return: TypString},
+}
+
 // LowerIntrinsics are intrinsics emitted by lowering passes. They live in
 // the `lower` namespace (imported by the synthetic internal://lower
 // package). Every codegen backend that consumes lowered output must
@@ -101,7 +165,7 @@ var LowerIntrinsics = []IntrinsicDef{
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {
-	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, LowerIntrinsics} {
+	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, LowerIntrinsics} {
 		for i := range list {
 			if list[i].Name == name {
 				return &list[i]

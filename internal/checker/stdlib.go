@@ -283,8 +283,14 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) {
 }
 
 // detectIntrinsicCall checks if a function body is a single return of a call
-// to an intrinsic function (e.g., stdlib.StrIndexOf). Returns the intrinsic
-// name or "".
+// to an intrinsic function whose arguments are a direct pass-through of the
+// wrapper's own params (e.g., `func error.raise(m, k) => stdlib.ErrorRaise(m, k)`).
+// Returns the intrinsic name or "".
+//
+// "Direct pass-through" means the call's arg list, in order, is exactly the
+// wrapper's param idents. Wrappers that rearrange or augment args (e.g. the
+// i18n wrappers which prepend `locale`) must keep their body so subsequent
+// lowering passes (notably NoContext) can rewrite reads inside.
 func detectIntrinsicCall(fn *ir.Func) string {
 	if len(fn.Block) != 1 {
 		return ""
@@ -297,10 +303,24 @@ func detectIntrinsicCall(fn *ir.Func) string {
 	if !ok || call.Func == nil {
 		return ""
 	}
-	if call.Func.Intrinsic != "" {
-		return call.Func.Intrinsic
+	if call.Func.Intrinsic == "" {
+		return ""
 	}
-	return ""
+	// Require strict pass-through: arg count == param count, each arg is an
+	// Ident referencing the corresponding wrapper param (positionally).
+	if len(call.Args) != len(fn.Params) {
+		return ""
+	}
+	for i, a := range call.Args {
+		if a.Name != "" && a.Name != fn.Params[i].Name {
+			return ""
+		}
+		id, ok := a.Value.(*ir.Ident)
+		if !ok || id.Name != fn.Params[i].Name {
+			return ""
+		}
+	}
+	return call.Func.Intrinsic
 }
 
 // buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic

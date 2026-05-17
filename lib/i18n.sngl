@@ -2,12 +2,20 @@
 //
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
+//
+// Each function below has an expression body that delegates to the
+// corresponding intrinsic in `internal://intl`, threading `locale` from
+// the active context. The wrapper body exists so NoContext sees the
+// `locale` read and adds the hidden `__ctx_locale` param + call-site
+// arg threading.
+
+import "internal://intl"
 
 // --- Locale context ---
 
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
-func i18n.defaultLocale() string {}
+func i18n.defaultLocale() => intl.DefaultLocale()
 
 // Stdlib context: the active locale. Overridable per-subtree via
 // `locale("xx-YY") { ... }` and per-test via t.setContext(locale, ...).
@@ -19,26 +27,26 @@ context #locale(i18n.defaultLocale())
 // Translate `key` against the loaded manifest, formatting via ICU.
 // The lowering of $"..." passes the synthesized ICU template as `key`
 // and the placeholder values as `args`.
-func i18n.tr(key string, args map<string, dyn>) string {}
+func i18n.tr(key string, args map<string, dyn>) => intl.Translate(locale, key, "", args)
 
 // Format an ICU template directly, no manifest lookup.
-func i18n.format(template string, args map<string, dyn>) string {}
+func i18n.format(template string, args map<string, dyn>) => intl.Format(locale, template, args)
 
 // --- Direct formatters ---
 
 // Style: "decimal" (default), "percent", "currency", "scientific".
-func i18n.numberInt(n int, style string) string {}
-func i18n.numberFloat(n float, style string) string {}
+func i18n.numberInt(n int, style string) => intl.NumberInt(locale, n, style)
+func i18n.numberFloat(n float, style string) => intl.NumberFloat(locale, n, style)
 
 // Style: "short", "medium" (default), "long", "full".
-func i18n.date(d date, style string) string {}
-func i18n.time(t time, style string) string {}
-func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) string {}
+func i18n.date(d date, style string) => intl.Date(locale, d, style)
+func i18n.time(t time, style string) => intl.Time(locale, t, style)
+func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
 
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-func i18n.select(value string, cases map<string, string>) string {}
+func i18n.select(value string, cases map<string, string>) => intl.Select(locale, value, cases)
 
 // --- Plural/ordinal selectors ---
 
@@ -55,8 +63,8 @@ func i18n.exactly(n int) PluralKey {}
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.plural(count int, forms map<PluralKey, string>) string {}
+func i18n.plural(count int, forms map<PluralKey, string>) => intl.Plural(locale, count, forms)
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.selectordinal(count int, forms map<PluralKey, string>) string {}
+func i18n.selectordinal(count int, forms map<PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)

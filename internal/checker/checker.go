@@ -328,6 +328,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.AlertIntrinsics)
 		case "file":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.FileIntrinsics)
+		case "intl":
+			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
 		case "lower":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
 		default:

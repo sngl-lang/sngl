@@ -130,6 +130,7 @@ func stripAutoImports(s string) string {
 				(strings.Contains(trimmed, `"internal://stdlib"`) ||
 					strings.Contains(trimmed, `"internal://alert"`) ||
 					strings.Contains(trimmed, `"internal://file"`) ||
+					strings.Contains(trimmed, `"internal://intl"`) ||
 					strings.Contains(trimmed, `"internal://lower"`)) {
 				continue
 			}
