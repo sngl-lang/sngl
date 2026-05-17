@@ -183,7 +183,40 @@ component I18nDemo {
 }
 
 
-// ----- 12. The main component: every feature wired up --------------
+// ----- 12. Reactive context ----------------------------------------
+// `context #name(default)` declares a value that flows down the tree
+// without being threaded through every prop. Inside a window or
+// component, `name(value) { ... }` provides a value for the subtree;
+// any descendant reads it by referencing the bare name. Reads are
+// reactive — when a provider's value expression changes, consumers
+// below update.
+//
+// The stdlib `locale` context (used by i18n above) follows the same
+// rules; `locale("xx-YY") { ... }` overrides the active locale for the
+// nested subtree only.
+
+context #theme("light")
+
+component ThemedBox(label = "") {
+    text(value="{label}: {theme}", style={padding=8})
+}
+
+component ContextDemo {
+    var dark = false
+    vbox(style={gap=4}) {
+        button(text="toggle theme", @click { dark = !dark })
+        theme(dark ? "dark" : "light") {
+            ThemedBox(label="outer")
+            theme("high-contrast") {
+                ThemedBox(label="inner (shadowed)")
+            }
+            ThemedBox(label="sibling")
+        }
+    }
+}
+
+
+// ----- 13. The main component: every feature wired up --------------
 // State (`var`) is reactive: changing it re-runs computed funcs and
 // patches the visual tree. The visual block below mirrors the original
 // stdlib-component showcase; the language-feature sections cross-
@@ -480,12 +513,18 @@ component main {
         text(value="i18n", style={fontSize=20, fontWeight="bold"})
         I18nDemo
 
+        divider
+
+        // --- Reactive context (§12) -----------------------------
+        text(value="reactive context", style={fontSize=20, fontWeight="bold"})
+        ContextDemo
+
         divider(label="End of Tour")
     }
 }
 
 
-// ----- 13. Tests (kept minimal) -------------------------------------
+// ----- 14. Tests (kept minimal) -------------------------------------
 // Any platform that implements the TestRunner interface can execute
 // these. `go tool verify` runs them via the `none` interpreter; other
 // platforms wire them into their own runners. See `internal/testutil`

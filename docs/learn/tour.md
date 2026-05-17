@@ -648,6 +648,64 @@ component main {
 }
 ```
 
+## Reactive Context
+
+Some values are cross-cutting: a theme, a locale, the current user. Threading them through every prop is tedious. A *context* lets a value flow down the component tree implicitly: a `context #name(default)` decl at file top level introduces the name; inside any component or window, `name(value) { ... }` provides a value to its subtree; descendants read it by referencing the name.
+
+Reads are reactive — when a provider's value changes, every consumer below it updates. Providers can nest; the inner block shadows the outer for its subtree only.
+
+```sngl
+context #theme("light")
+
+component Card(label = "") {
+    text(value="{label}: {theme}", style={padding = 12})
+}
+
+component main {
+    var dark = false
+    vbox(style={gap = 8, padding = 16}) {
+        button(text="toggle theme", @click { dark = !dark })
+        theme(dark ? "dark" : "light") {
+            Card(label="A")
+            theme("high-contrast") {
+                Card(label="B (override)")
+            }
+            Card(label="C")
+        }
+    }
+}
+```
+
+## Translatable Strings
+
+Prefix a string literal with `$` to make it translatable. The synthesized translation key is the unsubstituted template; placeholder values fill in at runtime per the active locale. The active locale is the stdlib `locale` context (default: `i18n.defaultLocale()`, derived from `$LC_ALL`/`$LC_MESSAGES`/`$LANG`).
+
+`i18n.numberInt`, `i18n.date`, `i18n.plural`, and friends format their input for the active locale. Wrap a subtree in `locale("xx-YY") { ... }` to override it for that subtree only — exactly the same mechanism as any other reactive context.
+
+```sngl
+component Cart(count = 0, price = 0) {
+    vbox(style={gap = 4, padding = 8}) {
+        text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
+        text(value="total: " + i18n.numberInt(price, "decimal"))
+    }
+}
+
+component main {
+    var count = 3
+    var price = 1499
+    vbox(style={gap = 12, padding = 16}) {
+        Cart(count=count, price=price)
+        locale("es-MX") {
+            Cart(count=count, price=price)
+        }
+        hbox(style={gap = 8}) {
+            button(text="+ item", @click { count += 1 })
+            button(text="+ cost", @click { price += 100 })
+        }
+    }
+}
+```
+
 ## Two-Way Binding Recap
 
 The `:prop=stateVar` shorthand does two things at once: it reads `stateVar` into the prop, and it writes back to `stateVar` whenever the child component fires its change event. It's the same as writing the read + the `@change` handler by hand, just shorter.
