@@ -825,14 +825,66 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		}
 	}
 
-	// For component bodies: no active context value at the entry point —
-	// each component receives its value via the hidden prop threaded from
-	// its caller. But within the body, calls to func/component Reach
-	// targets thread the prop value (an Ident reading the hidden prop).
+	// Identify root components — those never instantiated as a NodeInst.
+	// Their hidden props never receive a threaded value from a caller, so
+	// references inside their body must resolve to the context default.
+	called := map[*ir.Component]bool{}
+	collectInstantiations := func(stmts []ir.Stmt) {
+		var visit func([]ir.Stmt)
+		visit = func(ss []ir.Stmt) {
+			for _, s := range ss {
+				switch n := s.(type) {
+				case *ir.NodeInst:
+					if n.Component != nil {
+						called[n.Component] = true
+					}
+					visit(n.Children)
+					for _, h := range n.Handlers {
+						if h.Func != nil {
+							visit(h.Func.Block)
+						}
+					}
+				case *ir.If:
+					visit(n.Body)
+					visit(n.Else)
+				case *ir.For:
+					visit(n.Body)
+					visit(n.Else)
+				case *ir.PlatformFilter:
+					visit(n.Body)
+				case *ir.SlotInst:
+					visit(n.Children)
+				case *ir.ErrorBoundary:
+					visit(n.Children)
+				}
+			}
+		}
+		visit(stmts)
+	}
+	for _, c := range pkg.Components {
+		collectInstantiations(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		collectInstantiations(w.Body)
+	}
+
+	// For component bodies: each component receives its hidden context
+	// value either as a synthesized prop threaded from its caller (when
+	// instantiated), or as the context default expression (when it's a
+	// root component, e.g. `main` or a top-level entry).
 	for _, comp := range pkg.Components {
-		// Inside this component's body, each ctx for which this component
-		// is in Reach is active and references the hidden prop.
-		compActive := hiddenActiveFor(pkg, reach, hidden, comp, nil)
+		var compActive map[*ir.Context]ir.Expr
+		if called[comp] {
+			compActive = hiddenActiveFor(pkg, reach, hidden, comp, nil)
+		} else {
+			// Root component — seed defaults for every reachable context.
+			compActive = map[*ir.Context]ir.Expr{}
+			for _, ctx := range pkg.Contexts {
+				if reach.Components[ctx][comp] {
+					compActive[ctx] = ctx.Default
+				}
+			}
+		}
 		comp.Body = lowerInStmts(comp.Body, compActive, reach)
 		// Component-level Vars (var x = ...) and Funcs (func foo() {}) host
 		// expressions that can call ctx-reading wrappers too — walk them so
