@@ -1,6 +1,7 @@
 package checker_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -140,4 +141,45 @@ window #home(title="t", href="/") { text(value="") }
 	if len(errs) == 0 {
 		t.Fatal("expected duplicate-declaration error, got none")
 	}
+}
+
+// TestContextProviderBasic verifies that a context name used as a visual node
+// inside a window body produces an ir.ContextProvider.
+func TestContextProviderBasic(t *testing.T) {
+	pkg, errs := parseFile(t, "../../testdata/context_provider_basic.sngl")
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(pkg.Windows) != 1 {
+		t.Fatalf("expected 1 window, got %d", len(pkg.Windows))
+	}
+	win := pkg.Windows[0]
+	var prov *ir.ContextProvider
+	for _, s := range win.Body {
+		if p, ok := s.(*ir.ContextProvider); ok {
+			prov = p
+			break
+		}
+	}
+	if prov == nil {
+		t.Fatalf("no ContextProvider found in window body; got: %v", stmtTypes(win.Body))
+	}
+	if prov.Ref == nil || prov.Ref.Name != "theme" {
+		t.Errorf("Ref = %+v, want context named \"theme\"", prov.Ref)
+	}
+	if prov.Value == nil {
+		t.Errorf("Value is nil")
+	}
+	if len(prov.Children) != 1 {
+		t.Errorf("Children len = %d, want 1", len(prov.Children))
+	}
+}
+
+// stmtTypes formats a slice of ir.Stmt for diagnostic output.
+func stmtTypes(stmts []ir.Stmt) []string {
+	out := make([]string, len(stmts))
+	for i, s := range stmts {
+		out[i] = fmt.Sprintf("%T", s)
+	}
+	return out
 }

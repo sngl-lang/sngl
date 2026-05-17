@@ -2274,6 +2274,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// If not a component, check if it's a function or bare expression.
 	if comp == nil {
 		if sym, ok := c.scope.Lookup(name); ok {
+			// Context name used as visual node → ContextProvider.
+			if ctx, ok := sym.(*ir.Context); ok {
+				return c.buildContextProvider(vn, ctx)
+			}
 			// Bare variable used as statement — flag it (no block, no args).
 			if _, isFunc := sym.(*ir.Func); !isFunc && !vn.Block.IsDefined() && len(vn.Args.Args) == 0 {
 				c.error(vn.Pos, "expression must be a statement")

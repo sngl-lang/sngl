@@ -1,0 +1,11 @@
+context #theme("light")
+
+component Inner {
+    text(value="static")
+}
+
+window #home(title="Home", href="/") {
+    theme("dark") {
+        Inner()
+    }
+}

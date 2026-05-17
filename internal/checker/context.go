@@ -16,6 +16,34 @@ func isContextDeclCallStmt(s *ast.CallStmt) bool {
 	return ok && ident.Name == "context"
 }
 
+// buildContextProvider checks `name(value) { children }` where name resolves
+// to an *ir.Context and returns an *ir.ContextProvider.
+func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.ContextProvider {
+	args := vn.Args.Args
+	if len(args) != 1 {
+		c.error(vn.Pos, "context provider %q requires exactly one value argument", ctx.Name)
+		return &ir.ContextProvider{AST: vn, Ref: ctx}
+	}
+	a, isArg := args[0].(ast.Arg)
+	if !isArg || a.Name != "" {
+		c.error(vn.Pos, "context provider %q argument must be positional", ctx.Name)
+		return &ir.ContextProvider{AST: vn, Ref: ctx}
+	}
+	val := c.checkExpr(a.Value)
+	if val != nil && ctx.Typ != nil {
+		valType := val.ExprType()
+		if valType != nil && valType.Kind != ir.TypeDyn && ctx.Typ.Kind != ir.TypeDyn && !valType.IsAssignableTo(ctx.Typ) {
+			pos := vn.Pos
+			if p := a.Value.ExprPos(); p != nil {
+				pos = *p
+			}
+			c.error(pos, "context %q: value type %v is not assignable to context type %v", ctx.Name, valType, ctx.Typ)
+		}
+	}
+	children := c.checkBlockIR(&vn.Block)
+	return &ir.ContextProvider{AST: vn, Ref: ctx, Value: val, Children: children}
+}
+
 func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	sel := s.Call.Func.(*ast.SelectExpr)
 	name := sel.Field
