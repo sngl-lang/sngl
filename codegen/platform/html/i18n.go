@@ -32,7 +32,7 @@ func hasI18nCalls(pkg *ir.Package) bool {
 			return false
 		}
 		qual := c.Func.Receiver + "." + c.Func.Name
-		if javascript.IsI18nCall(qual) {
+		if javascript.IsI18nCall(qual) || javascript.IsIntlIntrinsic(c.Func.Intrinsic) {
 			found = true
 			return true // signal stop
 		}

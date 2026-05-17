@@ -401,6 +401,14 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 
 		qualName := receiverName + "." + fname
 
+		// Intrinsic dispatch: stdlib intrinsics that map to per-locale runtime
+		// entry points. After NoContext + InlinePure, i18n.* wrapper calls
+		// have been lowered to direct intl.* intrinsic calls with the locale
+		// threaded as the first arg.
+		if result := goEvalIntlIntrinsic(n.Func, args); result != "" {
+			return result
+		}
+
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher
 		// so that a(0) is the first semantic argument (matches type-method path).

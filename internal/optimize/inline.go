@@ -24,14 +24,15 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if callsFunc(ret.Value, f) {
 		return nil // skip recursive functions
 	}
-	// Skip inlining bodies that read a context. Context reads in stdlib
-	// wrappers are bound to the active context environment, which NoContext
-	// only threads through funcs/components it can walk (user pkg.Funcs).
-	// Stdlib wrappers live outside pkg.Funcs, so their ContextReads never
-	// get rewritten — splicing them into a foreign expression site would
-	// leave a *ir.ContextRead codegen can't lower. The fully-threaded
-	// per-call locale override is deferred work; keep this guard until
-	// NoContext gains visibility into reachable stdlib bodies.
+	// Skip inlining bodies that still contain a ContextRead. NoContext (in
+	// lower) is what threads the locale context through wrapper bodies and
+	// rewrites ContextRead to Ident(__ctx_<name>); it runs AFTER the first
+	// optimize pass. Inlining a ContextRead-bearing body during optimize1
+	// would splice the unthreaded ContextRead into the user's call site,
+	// where NoContext later sees a bare ContextRead with no wrapper
+	// boundary and the optimizer's substituteParams can't reconcile the
+	// hidden param. The guard becomes inert after NoContext (post-lower
+	// bodies no longer contain ContextRead) so optimize2 can inline freely.
 	if containsContextRead(ret.Value) {
 		return nil
 	}
@@ -187,6 +188,60 @@ func callsFuncInArgs(args []ir.CallArg, target *ir.Func) bool {
 	for _, a := range args {
 		if callsFunc(a.Value, target) {
 			return true
+		}
+	}
+	return false
+}
+
+// containsContextRead reports whether e (or any subexpression) is a
+// *ir.ContextRead. Used by inlineCall to defer inlining a context-reading
+// wrapper body until after NoContext (in lower) has threaded the hidden
+// context param and rewritten the ContextRead to a plain Ident.
+func containsContextRead(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *ir.ContextRead:
+		return true
+	case *ir.Call:
+		if containsContextRead(x.Receiver) {
+			return true
+		}
+		for _, a := range x.Args {
+			if containsContextRead(a.Value) {
+				return true
+			}
+		}
+	case *ir.Binary:
+		return containsContextRead(x.Left) || containsContextRead(x.Right)
+	case *ir.Unary:
+		return containsContextRead(x.Operand)
+	case *ir.Ternary:
+		return containsContextRead(x.Cond) || containsContextRead(x.Then) || containsContextRead(x.Else)
+	case *ir.Conversion:
+		return containsContextRead(x.Operand)
+	case *ir.Select:
+		return containsContextRead(x.Operand)
+	case *ir.Index:
+		return containsContextRead(x.Operand) || containsContextRead(x.Idx)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			if containsContextRead(el) {
+				return true
+			}
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			if containsContextRead(kv.Key) || containsContextRead(kv.Value) {
+				return true
+			}
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if containsContextRead(f.Value) {
+				return true
+			}
 		}
 	}
 	return false
@@ -408,56 +463,3 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 	return out
 }
 
-// containsContextRead reports whether e (or any subexpression) is a
-// *ir.ContextRead. Used by inlineCall to bail out before splicing a
-// context-reading wrapper body into a foreign caller; see the comment in
-// inlineCall for the full rationale.
-func containsContextRead(e ir.Expr) bool {
-	if e == nil {
-		return false
-	}
-	switch x := e.(type) {
-	case *ir.ContextRead:
-		return true
-	case *ir.Call:
-		if containsContextRead(x.Receiver) {
-			return true
-		}
-		for _, a := range x.Args {
-			if containsContextRead(a.Value) {
-				return true
-			}
-		}
-	case *ir.Binary:
-		return containsContextRead(x.Left) || containsContextRead(x.Right)
-	case *ir.Unary:
-		return containsContextRead(x.Operand)
-	case *ir.Ternary:
-		return containsContextRead(x.Cond) || containsContextRead(x.Then) || containsContextRead(x.Else)
-	case *ir.Conversion:
-		return containsContextRead(x.Operand)
-	case *ir.Select:
-		return containsContextRead(x.Operand)
-	case *ir.Index:
-		return containsContextRead(x.Operand) || containsContextRead(x.Idx)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			if containsContextRead(el) {
-				return true
-			}
-		}
-	case *ir.MapLitIR:
-		for _, kv := range x.Entries {
-			if containsContextRead(kv.Key) || containsContextRead(kv.Value) {
-				return true
-			}
-		}
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			if containsContextRead(f.Value) {
-				return true
-			}
-		}
-	}
-	return false
-}

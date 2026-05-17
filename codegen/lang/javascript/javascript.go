@@ -119,6 +119,60 @@ func IsI18nCall(qualName string) bool {
 	return false
 }
 
+// IsIntlIntrinsic reports whether intrinsic is one of the stdlib i18n
+// intrinsics emitted by lib/i18n.sngl wrappers. After NoContext +
+// InlinePure inlines the wrappers, callers see direct intrinsic Calls
+// instead of i18n.* receiver calls.
+func IsIntlIntrinsic(intrinsic string) bool {
+	switch intrinsic {
+	case "DefaultLocale", "Translate", "Format",
+		"NumberInt", "NumberFloat",
+		"Date", "Time", "DateTime",
+		"Select", "Plural", "SelectOrdinal":
+		return true
+	}
+	return false
+}
+
+// jsEvalIntlIntrinsic emits JavaScript source for an intl.* intrinsic
+// call. After NoContext + InlinePure, calls to i18n.* SNGL wrappers are
+// inlined into their intrinsic targets with the active locale threaded
+// as the first argument. The emitted call targets the per-locale entry
+// points exported by pkg/js/i18n/i18n.js.
+//
+// Returns "" if fn isn't an intl intrinsic.
+func jsEvalIntlIntrinsic(fn *ir.Func, args []string) string {
+	if fn == nil || fn.Intrinsic == "" {
+		return ""
+	}
+	join := func() string { return strings.Join(args, ", ") }
+	switch fn.Intrinsic {
+	case "DefaultLocale":
+		return "i18n.defaultLocale()"
+	case "Translate":
+		return "i18n.translate(" + join() + ")"
+	case "Format":
+		return "i18n.format(" + join() + ")"
+	case "NumberInt":
+		return "i18n.numberInt(" + join() + ")"
+	case "NumberFloat":
+		return "i18n.numberFloat(" + join() + ")"
+	case "Date":
+		return "i18n.date(" + join() + ")"
+	case "Time":
+		return "i18n.time(" + join() + ")"
+	case "DateTime":
+		return "i18n.datetime(" + join() + ")"
+	case "Select":
+		return "i18n.select(" + join() + ")"
+	case "Plural":
+		return "i18n.plural(" + join() + ")"
+	case "SelectOrdinal":
+		return "i18n.selectordinal(" + join() + ")"
+	}
+	return ""
+}
+
 func (t *Translator) TypeToNative(hint string) string {
 	if strings.HasPrefix(hint, "option:") {
 		return t.TypeToNative(hint[7:]) // JS has no option types; everything is nullable

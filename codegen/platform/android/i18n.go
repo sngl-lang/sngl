@@ -29,6 +29,13 @@ func hasI18nCalls(pkg *ir.Package) bool {
 			found = true
 			return true // signal stop
 		}
+		// After NoContext + InlinePure, i18n.* wrapper calls are inlined to
+		// direct intl.* intrinsic calls. Match those too so the Kotlin
+		// runtime is still injected.
+		if kotlin.IsIntlIntrinsic(c.Func.Intrinsic) {
+			found = true
+			return true
+		}
 		return false
 	})
 	return found

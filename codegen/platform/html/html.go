@@ -3074,7 +3074,7 @@ func exprUsesI18n(expr ir.Expr) bool {
 		}
 		if c, ok := e.(*ir.Call); ok && c.Func != nil {
 			qual := c.Func.Receiver + "." + c.Func.Name
-			if javascript.IsI18nCall(qual) {
+			if javascript.IsI18nCall(qual) || javascript.IsIntlIntrinsic(c.Func.Intrinsic) {
 				found = true
 				return
 			}
