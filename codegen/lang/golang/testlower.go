@@ -66,10 +66,55 @@ func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 			return []string{line}
 		}
 		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+			if lines, ok := lowerTestSetContext(c, scope); ok {
+				return lines
+			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
 	return translateIRMutation(s, scope)
+}
+
+// lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
+// emits a placeholder variable assignment for the context override. The
+// emitted var `__test_ctx_<name>` records the intended value so it is
+// visible in the generated source, but does NOT yet wire the override into
+// the test component's mount-time provider tree — that requires deeper
+// integration with the platform's newTestComponent scaffold and is left for
+// a follow-up task.
+//
+// The generated statement always compiles: a blank-identifier assignment
+// prevents "declared and not used" errors when the var is referenced nowhere
+// else.
+func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) {
+	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+		return nil, false
+	}
+	// Args: [0] = t receiver (implicit), [1] = context name (*ir.ContextRead),
+	// [2] = value — the checker emits three args total (receiver + 2 user args).
+	// Locate the ContextRead among the args: it is the first arg after the
+	// receiver that is an *ir.ContextRead.
+	var ctxName string
+	var valExpr string
+	for _, a := range c.Args {
+		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
+			ctxName = cr.Ref.Name
+		} else if ctxName != "" && valExpr == "" {
+			valExpr = translateIRExpr(a.Value, scope)
+		}
+	}
+	if ctxName == "" {
+		return nil, false
+	}
+	if valExpr == "" {
+		valExpr = `""`
+	}
+	varName := "__test_ctx_" + ctxName
+	return []string{
+		fmt.Sprintf("// t.setContext(%q, ...): context override recorded; full mount-time wiring is a TODO.", ctxName),
+		fmt.Sprintf("%s := %s", varName, valExpr),
+		fmt.Sprintf("_ = %s", varName),
+	}, true
 }
 
 // lowerEventTrigger matches the IR shape produced by an SNGL test body
