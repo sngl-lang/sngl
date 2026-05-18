@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -189,6 +190,13 @@ func (st *timerState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = st.injectIntoStmts(n.Handler.Func.Block)
 			}
+		case *ir.Window:
+			n.Body = st.injectIntoStmts(n.Body)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf stmts — no nested blocks. gatedUpdatersFor handles
+			// Assign-driven cancellation injection.
+		default:
+			panic(fmt.Sprintf("timerState.injectIntoStmts: unhandled %T", n))
 		}
 		out = append(out, st.gatedUpdatersFor(s)...)
 	}
