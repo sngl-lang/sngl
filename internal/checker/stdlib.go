@@ -180,6 +180,20 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.checkStdlibFuncBody(pb.ast, pb.fn)
 	}
 
+	// Phase 3: refine stdlib context types from their default expressions.
+	// Context decls run BEFORE wrapper body checks (so wrapper bodies can
+	// read them), at which point a default like `i18n.defaultLocale()` still
+	// types as dyn. After Phase 2 the wrapper has its concrete return type,
+	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
+	for _, ctx := range c.pkg.Contexts {
+		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
+			continue
+		}
+		if call, ok := ctx.Default.(*ir.Call); ok && call.Func != nil && call.Func.Return != nil {
+			ctx.Typ = call.Func.Return
+		}
+	}
+
 	return stdlibPkg
 }
 
@@ -341,6 +355,23 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	pos := f.Pos
 	if p := f.Body.ExprPos(); p != nil {
 		pos = *p
+	}
+	// Infer concrete return type from the body when the declaration left it
+	// as dyn (the fallback applied in registerStdlibFunc). Stdlib wrappers
+	// like `i18n.numberInt(n, style) => intl.NumberInt(locale, n, style)`
+	// otherwise stay dyn and downstream codegen has no concrete Go/JS/Kotlin
+	// type for the method signature.
+	//
+	// Restrict to primitive body types to dodge a known ambiguity: the
+	// `color` struct vs the `color` primitive share a name. Wrappers like
+	// `color.rgb(...) => color{...}` produce a struct type whose
+	// stringification collides with the primitive in callers like
+	// `color.hex(c color)`; leaving those Returns as dyn preserves the
+	// historical wildcard behaviour. Primitives don't have this clash.
+	if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
+		if t := exprType(bodyExpr); t != nil && isPrimitiveTypeKind(t.Kind) {
+			fn.Return = t
+		}
 	}
 	fn.Block = []ir.Stmt{&ir.Return{
 		AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
@@ -526,6 +557,18 @@ func (c *checker) checkPendingExtensions() {
 		pe.comp.AST.Body = savedAST
 		pe.comp.Body = savedBody
 	}
+}
+
+// isPrimitiveTypeKind reports whether k is a simple value-type kind safe to
+// use for inferred wrapper return types. Restricted to dodge the
+// color-struct-vs-primitive ambiguity noted in checkStdlibFuncBody.
+func isPrimitiveTypeKind(k ir.TypeKind) bool {
+	switch k {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
+		ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+		return true
+	}
+	return false
 }
 
 // registerStdlibContextDecl registers a stdlib `context #name(default)` decl.
