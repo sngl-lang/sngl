@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -155,8 +157,24 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 			x.Func.Block = inlineComputedStmts(x.Func.Block, rewrite)
 		}
 		return x
+	case *ir.Lambda:
+		if x.Func != nil {
+			rewrite := func(e ir.Expr) ir.Expr { return inlineComputedExpr(e, bodies) }
+			x.Func.Block = inlineComputedStmts(x.Func.Block, rewrite)
+		}
+		return x
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = inlineComputedExpr(x.Entries[i].Key, bodies)
+			x.Entries[i].Value = inlineComputedExpr(x.Entries[i].Value, bodies)
+		}
+		return x
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no nested Calls to inline.
+		return x
+	default:
+		panic(fmt.Sprintf("inlineComputedExpr: unhandled %T", x))
 	}
-	return e
 }
 
 func inlineComputedStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt {
@@ -231,6 +249,13 @@ func inlineComputedStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.St
 				n.Favicon = rewrite(n.Favicon)
 			}
 			n.Body = inlineComputedStmts(n.Body, rewrite)
+		case *ir.Toggle:
+			n.Target = rewrite(n.Target)
+		case *ir.ContextProvider:
+			n.Value = rewrite(n.Value)
+			n.Children = inlineComputedStmts(n.Children, rewrite)
+		default:
+			panic(fmt.Sprintf("inlineComputedStmts: unhandled %T", n))
 		}
 	}
 	return stmts
