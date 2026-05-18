@@ -109,15 +109,33 @@ func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) 
 	if valExpr == "" {
 		valExpr = `""`
 	}
-	// Use plain assignment-via-blank to avoid `no new variables on left
-	// side of :=` errors when the same context is overridden more than
-	// once in a single test body. The override is recorded but does NOT
-	// yet wire into mount-time providers — full setContext wiring is a
-	// follow-up task.
-	return []string{
-		fmt.Sprintf("// t.setContext(%q, ...): context override recorded; full mount-time wiring is a TODO.", ctxName),
-		fmt.Sprintf("_ = %s", valExpr),
-	}, true
+	// Direct field assignment: after NoContext, every component in
+	// Reach(ctx) has a synthesized __ctx_<name> Var on its Model. Tests
+	// reach state via the same-package field (newTestComponent returns
+	// the Model with raw-field access) so the override propagates into
+	// any subsequent c.<method>() call without needing a setter.
+	fieldName := "__ctx_" + ctxName
+	// Find the component-typed test param to assign on. Tests typically
+	// declare a single component param (e.g. `c Counter`); for multiple,
+	// emit one assignment per matching receiver to keep behaviour explicit.
+	var receivers []string
+	for name := range scope.RawFieldAccess {
+		receivers = append(receivers, name)
+	}
+	if len(receivers) == 0 {
+		// Fallback: no component-typed param. Record intent so the test still
+		// compiles; the override won't reach a Model field, but the value is
+		// referenced (via blank) to avoid unused-variable errors.
+		return []string{
+			fmt.Sprintf("// t.setContext(%q, ...): no component receiver in scope; override discarded.", ctxName),
+			fmt.Sprintf("_ = %s", valExpr),
+		}, true
+	}
+	lines := make([]string, 0, len(receivers))
+	for _, r := range receivers {
+		lines = append(lines, fmt.Sprintf("%s.%s = %s", r, fieldName, valExpr))
+	}
+	return lines, true
 }
 
 // lowerEventTrigger matches the IR shape produced by an SNGL test body
