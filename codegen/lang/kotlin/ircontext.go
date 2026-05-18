@@ -745,44 +745,70 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".containsKey(" + a(1) + ")"
 	case "map.get":
 		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
-	// i18n — all calls delegate to I18n.getTranslator() from the Kotlin runtime.
+	// i18n — wrapper calls delegate to per-locale runtime entry points.
+	// NoContext threads __ctx_locale as the trailing arg; we lift it to the
+	// leading positional arg the runtime expects (I18n.<foo>(locale, ...)).
+	// Falls back to I18n.getTranslator() (process-global) when no locale arg
+	// was threaded — e.g. legacy callers reached before NoContext runs.
 	case "i18n.tr":
-		// Args: a(0)=key/template, a(1)=argsMap. The Kotlin runtime's
-		// Translator.tr(key, inlinedTemplate, args) takes three arguments.
-		// The template string doubles as both the lookup key and the inline
-		// fallback, so it is passed twice.
+		// Wrapper params: (key, args, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "I18n.translate(" + a(2) + ", " + a(0) + ", \"\", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
 	case "i18n.trInline":
-		// Args: a(0)=key, a(1)=inlinedTemplate, a(2)=argsMap. Emitted by the
-		// $"..." lowering — carries both the manifest key and the inlined
-		// fallback template.
+		// Wrapper params: (key, inlinedTemplate, args, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "I18n.translate(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "I18n.getTranslator().tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
-		// Args: template string, args map.
+		// Wrapper params: (template, args, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "I18n.format(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberInt":
-		// Args: n int, style string.
+		if len(argExprs) >= 3 {
+			return "I18n.numberInt(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberFloat":
-		// Args: n float (Double), style string.
+		if len(argExprs) >= 3 {
+			return "I18n.numberFloat(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
 	case "i18n.date":
-		// Args: d date, style string.
+		if len(argExprs) >= 3 {
+			return "I18n.date(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
 	case "i18n.time":
-		// Args: t time, style string.
+		if len(argExprs) >= 3 {
+			return "I18n.time(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
 	case "i18n.datetime":
-		// Args: dt dateTime, dateStyle string, timeStyle string.
+		// Wrapper params: (dt, dateStyle, timeStyle, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "I18n.datetime(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.select":
-		// Args: value string, cases map.
+		// Kotlin runtime exposes selectStr (avoiding the `select` keyword clash).
+		if len(argExprs) >= 3 {
+			return "I18n.selectStr(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
 	case "i18n.plural":
-		// Args: count, forms. a(0)=count, a(1)=forms.
+		if len(argExprs) >= 3 {
+			return "I18n.plural(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().plural(" + a(0) + ", " + a(1) + ")"
 	case "i18n.selectordinal":
-		// Args: count, forms. a(0)=count, a(1)=forms.
+		if len(argExprs) >= 3 {
+			return "I18n.selectordinal(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
 	case "i18n.exactly":
 		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
