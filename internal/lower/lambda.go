@@ -120,6 +120,15 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 		case *ir.Closure:
 			// Already-lifted; do not descend.
 			return
+		case *ir.MapLitIR:
+			for _, en := range x.Entries {
+				walkExpr(en.Key)
+				walkExpr(en.Value)
+			}
+		case *ir.Literal, *ir.ContextRead:
+			// Terminal — no captures hidden inside.
+		default:
+			panic(fmt.Sprintf("analyzeCaptures.walkExpr: unhandled %T", x))
 		}
 	}
 
@@ -199,6 +208,11 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(n.Title)
 			walkExpr(n.Favicon)
 			walkStmts(n.Body)
+		case *ir.ContextProvider:
+			walkExpr(n.Value)
+			walkStmts(n.Children)
+		default:
+			panic(fmt.Sprintf("analyzeCaptures.walkStmt: unhandled %T", n))
 		}
 	}
 
@@ -296,8 +310,18 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 	case *ir.Spread:
 		x.Operand = liftLambdas(x.Operand, l)
 		return x
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = liftLambdas(x.Entries[i].Key, l)
+			x.Entries[i].Value = liftLambdas(x.Entries[i].Value, l)
+		}
+		return x
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Closure:
+		// Terminal / already-lifted — no nested *ir.Lambda.
+		return x
+	default:
+		panic(fmt.Sprintf("liftLambdas: unhandled %T", x))
 	}
-	return e
 }
 
 func liftLambdasInStmts(stmts []ir.Stmt, l *lifter) []ir.Stmt {
@@ -355,6 +379,16 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		if n.Handler != nil && n.Handler.Func != nil {
 			liftLambdasInStmts(n.Handler.Func.Block, l)
 		}
+	case *ir.Window:
+		n.Href = liftLambdas(n.Href, l)
+		n.Title = liftLambdas(n.Title, l)
+		n.Favicon = liftLambdas(n.Favicon, l)
+		liftLambdasInStmts(n.Body, l)
+	case *ir.ContextProvider:
+		n.Value = liftLambdas(n.Value, l)
+		liftLambdasInStmts(n.Children, l)
+	default:
+		panic(fmt.Sprintf("liftLambdasInStmt: unhandled %T", n))
 	}
 }
 
@@ -624,6 +658,16 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		if n.Handler != nil && n.Handler.Func != nil {
 			l.rewriteStmts(n.Handler.Func.Block, captureField, captureMutable)
 		}
+	case *ir.Window:
+		n.Href = l.rewriteExpr(n.Href, captureField, captureMutable)
+		n.Title = l.rewriteExpr(n.Title, captureField, captureMutable)
+		n.Favicon = l.rewriteExpr(n.Favicon, captureField, captureMutable)
+		l.rewriteStmts(n.Body, captureField, captureMutable)
+	case *ir.ContextProvider:
+		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)
+		l.rewriteStmts(n.Children, captureField, captureMutable)
+	default:
+		panic(fmt.Sprintf("lifter.rewriteStmt: unhandled %T", n))
 	}
 }
 
@@ -695,8 +739,18 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 	case *ir.Closure:
 		// Already lifted; do not descend.
 		return x
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = l.rewriteExpr(x.Entries[i].Key, captureField, captureMutable)
+			x.Entries[i].Value = l.rewriteExpr(x.Entries[i].Value, captureField, captureMutable)
+		}
+		return x
+	case *ir.Literal, *ir.ContextRead:
+		// Terminal — no Idents to rewrite.
+		return x
+	default:
+		panic(fmt.Sprintf("lifter.rewriteExpr: unhandled %T", x))
 	}
-	return e
 }
 
 // cloneExpr returns a deep-enough copy of e so multiple insertions of an
