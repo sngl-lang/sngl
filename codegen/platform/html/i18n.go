@@ -101,6 +101,16 @@ func walkPkgExprs(pkg *ir.Package, fn func(ir.Expr) bool) {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
+		case *ir.Literal, *ir.Ident:
+			// Leaf — no sub-expressions.
+		case *ir.Closure:
+			if x.Func != nil {
+				visitFunc(x.Func)
+			}
+		case *ir.ContextRead:
+			// Leaf reference — no sub-expressions.
+		default:
+			panic(fmt.Sprintf("html.i18n.visitExpr: unhandled ir.Expr %T", x))
 		}
 	}
 
@@ -166,6 +176,10 @@ func walkPkgExprs(pkg *ir.Package, fn func(ir.Expr) bool) {
 				visitFunc(f)
 			}
 			visitStmts(n.Body)
+		case *ir.ContextProvider:
+			visitStmts(n.Children)
+		default:
+			panic(fmt.Sprintf("html.i18n.visitStmt: unhandled ir.Stmt %T", n))
 		}
 	}
 

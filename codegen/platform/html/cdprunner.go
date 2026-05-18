@@ -111,8 +111,9 @@ func (r *CDPRunner) execStmt(stmt ir.Stmt) error {
 		return r.execCallStmt(s)
 	case *ir.Emit:
 		return nil
+	default:
+		panic(fmt.Sprintf("html.CDPRunner.execStmt: unhandled ir.Stmt %T", s))
 	}
-	return nil
 }
 
 func (r *CDPRunner) execCallStmt(s *ir.CallStmt) error {

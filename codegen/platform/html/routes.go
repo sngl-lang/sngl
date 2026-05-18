@@ -269,6 +269,14 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			walkInstances(n.Children, fn)
 		case *ir.ErrorBoundary:
 			walkInstances(n.Children, fn)
+		case *ir.Window:
+			walkInstances(n.Body, fn)
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// Imperative stmts contain no NodeInst children.
+		case *ir.ContextProvider:
+			walkInstances(n.Children, fn)
+		default:
+			panic(fmt.Sprintf("html.walkInstances: unhandled ir.Stmt %T", n))
 		}
 	}
 }
@@ -318,6 +326,30 @@ func stmtCallsTarget(s ir.Stmt, targets, visited map[*ir.Func]bool) bool {
 				return true
 			}
 		}
+	case *ir.Toggle:
+		return exprCallsTarget(x.Target, targets, visited)
+	case *ir.NodeInst:
+		for _, p := range x.Props {
+			if exprCallsTarget(p.Value, targets, visited) {
+				return true
+			}
+		}
+		for _, h := range x.Handlers {
+			if fnCallsTarget(h.Func, targets, visited) {
+				return true
+			}
+		}
+		return stmtsCallTarget(x.Children, targets, visited)
+	case *ir.SlotInst:
+		return stmtsCallTarget(x.Children, targets, visited)
+	case *ir.ErrorBoundary:
+		return stmtsCallTarget(x.Children, targets, visited)
+	case *ir.Window:
+		return stmtsCallTarget(x.Body, targets, visited)
+	case *ir.ContextProvider:
+		return stmtsCallTarget(x.Children, targets, visited)
+	default:
+		panic(fmt.Sprintf("html.stmtCallsTarget: unhandled ir.Stmt %T", s))
 	}
 	return false
 }
@@ -374,6 +406,20 @@ func exprCallsTarget(e ir.Expr, targets, visited map[*ir.Func]bool) bool {
 		if x.Func != nil {
 			return fnCallsTarget(x.Func, targets, visited)
 		}
+	case *ir.Closure:
+		if x.Func != nil {
+			return fnCallsTarget(x.Func, targets, visited)
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			if exprCallsTarget(kv.Key, targets, visited) || exprCallsTarget(kv.Value, targets, visited) {
+				return true
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Leaf — no nested call.
+	default:
+		panic(fmt.Sprintf("html.exprCallsTarget: unhandled ir.Expr %T", e))
 	}
 	return false
 }

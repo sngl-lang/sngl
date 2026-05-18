@@ -605,6 +605,14 @@ func (g *htmlGen) prewalkNodes() {
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
 			visitStmts(n.Children)
+		case *ir.PlatformFilter:
+			visitStmts(n.Body)
+		case *ir.ContextProvider:
+			visitStmts(n.Children)
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// Imperative stmts contain no nested NodeInst to record.
+		default:
+			panic(fmt.Sprintf("html.collectNodeIDs: unhandled ir.Stmt %T", n))
 		}
 	}
 	for _, c := range g.pkg.Components {
@@ -819,6 +827,28 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Children {
 			g.renderIRStmt(b, child, depth)
 		}
+	case *ir.If:
+		// Const branches are folded by optimize; runtime ones are rewired
+		// into __renderSlot by passReactivity. Recursive components can
+		// still surface a literal-cond If here — render both arms.
+		for _, child := range n.Body {
+			g.renderIRStmt(b, child, depth)
+		}
+		for _, child := range n.Else {
+			g.renderIRStmt(b, child, depth)
+		}
+	case *ir.For:
+		for _, child := range n.Body {
+			g.renderIRStmt(b, child, depth)
+		}
+	case *ir.Window:
+		panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
+	case *ir.ContextProvider:
+		panic(fmt.Sprintf("html.renderIRStmt: ContextProvider should be lowered before codegen: %#v", n))
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		// Imperative stmts have no visual rendering at top-level slot expansion.
+	default:
+		panic(fmt.Sprintf("html.renderIRStmt: unhandled ir.Stmt %T", n))
 	}
 }
 
@@ -3131,10 +3161,70 @@ func exprUsesI18n(expr ir.Expr) bool {
 			}
 		case *ir.Spread:
 			walk(x.Operand)
+		case *ir.Lambda:
+			if x.Func != nil {
+				for _, s := range x.Func.Block {
+					walkStmtExprs(s, walk)
+				}
+			}
+		case *ir.Closure:
+			if x.Func != nil {
+				for _, s := range x.Func.Block {
+					walkStmtExprs(s, walk)
+				}
+			}
+		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+			// Leaf — no i18n call possible.
+		default:
+			panic(fmt.Sprintf("html.exprUsesI18n: unhandled ir.Expr %T", x))
 		}
 	}
 	walk(expr)
 	return found
+}
+
+// walkStmtExprs invokes walk on every Expr held by a single Stmt
+// (used by exprUsesI18n to descend into lambda/closure bodies).
+func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
+	switch n := s.(type) {
+	case *ir.Assign:
+		walk(n.Target)
+		walk(n.Value)
+	case *ir.CallStmt:
+		if n.Call != nil {
+			walk(n.Call)
+		}
+	case *ir.LocalVar:
+		walk(n.Init)
+	case *ir.Return:
+		walk(n.Value)
+	case *ir.If:
+		walk(n.Cond)
+		for _, c := range n.Body {
+			walkStmtExprs(c, walk)
+		}
+		for _, c := range n.Else {
+			walkStmtExprs(c, walk)
+		}
+	case *ir.For:
+		walk(n.Iter)
+		for _, c := range n.Body {
+			walkStmtExprs(c, walk)
+		}
+		for _, c := range n.Else {
+			walkStmtExprs(c, walk)
+		}
+	case *ir.Emit:
+		for _, a := range n.Args {
+			walk(a.Value)
+		}
+	case *ir.Toggle:
+		walk(n.Target)
+	case *ir.PlatformFilter:
+		for _, c := range n.Body {
+			walkStmtExprs(c, walk)
+		}
+	}
 }
 
 func (g *htmlGen) addAttrUpdater(elemID, attr string, expr ir.Expr) {
@@ -3385,6 +3475,9 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 	var walkExpr func(e ir.Expr)
 	walkExpr = func(e ir.Expr) {
+		if e == nil {
+			return
+		}
 		switch x := e.(type) {
 		case *ir.Ident:
 			if x.IsElementRef && loweredID(x.Name) {
@@ -3420,6 +3513,19 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			for _, f := range x.Fields {
 				walkExpr(f.Value)
 			}
+		case *ir.MapLitIR:
+			for _, kv := range x.Entries {
+				walkExpr(kv.Key)
+				walkExpr(kv.Value)
+			}
+		case *ir.Spread:
+			walkExpr(x.Operand)
+		case *ir.Lambda, *ir.Closure:
+			// Lambda/closure bodies walked separately when emitted.
+		case *ir.Literal, *ir.ContextRead:
+			// Leaf — no element ref.
+		default:
+			panic(fmt.Sprintf("html.collectLoweredRefs.walkExpr: unhandled ir.Expr %T", x))
 		}
 	}
 	switch n := s.(type) {
@@ -3445,6 +3551,41 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		}
 	case *ir.LocalVar:
 		walkExpr(n.Init)
+	case *ir.Emit:
+		for _, a := range n.Args {
+			walkExpr(a.Value)
+		}
+	case *ir.Toggle:
+		walkExpr(n.Target)
+	case *ir.PlatformFilter:
+		for _, b := range n.Body {
+			g.collectLoweredRefs(b)
+		}
+	case *ir.NodeInst:
+		for _, p := range n.Props {
+			walkExpr(p.Value)
+		}
+		for _, c := range n.Children {
+			g.collectLoweredRefs(c)
+		}
+	case *ir.SlotInst:
+		for _, c := range n.Children {
+			g.collectLoweredRefs(c)
+		}
+	case *ir.ErrorBoundary:
+		for _, c := range n.Children {
+			g.collectLoweredRefs(c)
+		}
+	case *ir.Window:
+		for _, c := range n.Body {
+			g.collectLoweredRefs(c)
+		}
+	case *ir.ContextProvider:
+		for _, c := range n.Children {
+			g.collectLoweredRefs(c)
+		}
+	default:
+		panic(fmt.Sprintf("html.collectLoweredRefs: unhandled ir.Stmt %T", n))
 	}
 }
 
