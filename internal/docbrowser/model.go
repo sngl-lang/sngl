@@ -70,10 +70,9 @@ func (m Model) Path() string {
 	return m.path
 }
 
-func (m Model) SetPath(v string) Model {
+func (m *Model) SetPath(v string) {
 	m.path = v
 	m.input0.SetValue(m.path)
-	return m
 }
 
 type setPathMsg struct{ value string }
@@ -86,10 +85,9 @@ func (m Model) Ident1() string {
 	return m.ident1
 }
 
-func (m Model) SetIdent1(v string) Model {
+func (m *Model) SetIdent1(v string) {
 	m.ident1 = v
 	m.input1.SetValue(m.ident1)
-	return m
 }
 
 type setIdent1Msg struct{ value string }
@@ -102,10 +100,9 @@ func (m Model) Ident2() string {
 	return m.ident2
 }
 
-func (m Model) SetIdent2(v string) Model {
+func (m *Model) SetIdent2(v string) {
 	m.ident2 = v
 	m.input2.SetValue(m.ident2)
-	return m
 }
 
 type setIdent2Msg struct{ value string }
@@ -122,11 +119,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case setPathMsg:
-		m = m.SetPath(msg.value)
+		m.SetPath(msg.value)
 	case setIdent1Msg:
-		m = m.SetIdent1(msg.value)
+		m.SetIdent1(msg.value)
 	case setIdent2Msg:
-		m = m.SetIdent2(msg.value)
+		m.SetIdent2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height

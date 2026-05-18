@@ -105,12 +105,12 @@ component main {
 
 	checks := map[string]string{
 		"getter":       "func (m Model) Todos() []Todo",
-		"setter":       "func (m Model) SetTodos(v []Todo) Model",
+		"setter":       "func (m *Model) SetTodos(v []Todo)",
 		"msg type":     "type setTodosMsg struct",
 		"cmd func":     "func SetTodosCmd(",
 		"update case":  "case setTodosMsg:",
 		"count getter": "func (m Model) Count() int",
-		"count setter": "func (m Model) SetCount(v int) Model",
+		"count setter": "func (m *Model) SetCount(v int)",
 	}
 	for name, check := range checks {
 		if !strings.Contains(code, check) {
