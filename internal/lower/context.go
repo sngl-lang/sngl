@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -428,6 +429,32 @@ func collectContextReadsInStmt(s ir.Stmt, out map[*ir.Context]bool) {
 		collectContextReadsInStmts(n.Children, out)
 	case *ir.ErrorBoundary:
 		collectContextReadsInStmts(n.Children, out)
+	case *ir.Toggle:
+		// Toggle survives NoContext when NoToggle cap is off; Target may
+		// reference a ContextRead (e.g. `ctx.flag!!`).
+		collectContextReadsInExpr(n.Target, out)
+	case *ir.Window:
+		// Window stmts only appear inside for-loop bodies (dynamic window
+		// emission). Walk their surface so reads inside reach reachability.
+		collectContextReadsInExpr(n.Href, out)
+		collectContextReadsInExpr(n.Title, out)
+		collectContextReadsInExpr(n.Favicon, out)
+		collectContextReadsInStmts(n.Body, out)
+		for _, v := range n.Vars {
+			collectContextReadsInExpr(v.Init, out)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					collectContextReadsInStmts(h.Func.Block, out)
+				}
+			}
+		}
+		for _, fn := range n.Funcs {
+			if hasBody(fn) {
+				collectContextReadsInStmts(fn.Block, out)
+			}
+		}
+	default:
+		panic(fmt.Sprintf("collectContextReadsInStmt: unhandled %T", n))
 	}
 }
 
@@ -475,6 +502,25 @@ func collectContextReadsInExpr(e ir.Expr, out map[*ir.Context]bool) {
 		}
 	case *ir.Spread:
 		collectContextReadsInExpr(n.Operand, out)
+	case *ir.Lambda:
+		// Lambda survives NoContext when NoLambda cap is off; body may
+		// read ctx (e.g. stdlib wrapper passing a lambda that reads locale).
+		if n.Func != nil {
+			collectContextReadsInStmts(n.Func.Block, out)
+		}
+	case *ir.Closure:
+		// Closure (post-NoLambda lift) has captured state + a top-level
+		// Func; State exprs may contain ContextRead, and the lifted Func
+		// is walked separately via pkg.Funcs.
+		if n.State != nil {
+			for _, f := range n.State.Fields {
+				collectContextReadsInExpr(f.Value, out)
+			}
+		}
+	case *ir.Literal, *ir.Ident:
+		// Terminal — no nested exprs.
+	default:
+		panic(fmt.Sprintf("collectContextReadsInExpr: unhandled %T", n))
 	}
 }
 
@@ -541,14 +587,40 @@ func callsInStmt(s ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
 		if n.Call != nil {
 			return callsInExpr(n.Call, shadow)
 		}
+		return nil
 	case *ir.Emit:
 		var calls []callEdge
 		for _, a := range n.Args {
 			calls = append(calls, callsInExpr(a.Value, shadow)...)
 		}
 		return calls
+	case *ir.Toggle:
+		// Toggle may survive into NoContext when NoToggle cap is off.
+		return callsInExpr(n.Target, shadow)
+	case *ir.Window:
+		// Window stmts only appear inside for-loop bodies.
+		var calls []callEdge
+		calls = append(calls, callsInExpr(n.Href, shadow)...)
+		calls = append(calls, callsInExpr(n.Title, shadow)...)
+		calls = append(calls, callsInExpr(n.Favicon, shadow)...)
+		calls = append(calls, callsInBody(n.Body, shadow)...)
+		for _, v := range n.Vars {
+			calls = append(calls, callsInExpr(v.Init, shadow)...)
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					calls = append(calls, callsInBody(h.Func.Block, shadow)...)
+				}
+			}
+		}
+		for _, fn := range n.Funcs {
+			if hasBody(fn) {
+				calls = append(calls, callsInBody(fn.Block, shadow)...)
+			}
+		}
+		return calls
+	default:
+		panic(fmt.Sprintf("callsInStmt: unhandled %T", n))
 	}
-	return nil
 }
 
 func callsInExpr(e ir.Expr, shadow map[*ir.Context]bool) []callEdge {
@@ -597,6 +669,24 @@ func callsInExpr(e ir.Expr, shadow map[*ir.Context]bool) []callEdge {
 		}
 	case *ir.Spread:
 		calls = append(calls, callsInExpr(n.Operand, shadow)...)
+	case *ir.Lambda:
+		// Lambda survives NoContext when NoLambda cap is off; body may
+		// host calls into Reach(ctx) funcs.
+		if n.Func != nil {
+			calls = append(calls, callsInBody(n.Func.Block, shadow)...)
+		}
+	case *ir.Closure:
+		// Closure (post-NoLambda lift) — captured-state field exprs may
+		// host calls; the lifted Func is walked separately via pkg.Funcs.
+		if n.State != nil {
+			for _, f := range n.State.Fields {
+				calls = append(calls, callsInExpr(f.Value, shadow)...)
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no nested exprs.
+	default:
+		panic(fmt.Sprintf("callsInExpr: unhandled %T", n))
 	}
 	return calls
 }
@@ -1218,8 +1308,35 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 			}
 			out = append(out, n)
 
-		default:
+		case *ir.Toggle:
+			// Toggle may survive into NoContext when NoToggle cap is off.
+			n.Target = lowerInExpr(n.Target, active, reach, hidden)
 			out = append(out, n)
+
+		case *ir.Window:
+			// Window stmts only appear inside for-loop bodies (dynamic
+			// window emission). Thread ctx args through their surface.
+			n.Href = lowerInExpr(n.Href, active, reach, hidden)
+			n.Title = lowerInExpr(n.Title, active, reach, hidden)
+			n.Favicon = lowerInExpr(n.Favicon, active, reach, hidden)
+			n.Body = lowerInStmts(n.Body, active, reach, hidden)
+			for _, v := range n.Vars {
+				v.Init = lowerInExpr(v.Init, active, reach, hidden)
+				for _, h := range v.Handlers {
+					if h.Func != nil {
+						h.Func.Block = lowerInStmts(h.Func.Block, active, reach, hidden)
+					}
+				}
+			}
+			for _, fn := range n.Funcs {
+				if hasBody(fn) {
+					fn.Block = lowerInStmts(fn.Block, active, reach, hidden)
+				}
+			}
+			out = append(out, n)
+
+		default:
+			panic(fmt.Sprintf("lowerInStmts: unhandled %T", n))
 		}
 	}
 	return out
@@ -1270,6 +1387,24 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, reach Reachable, hid
 		}
 	case *ir.Spread:
 		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
+	case *ir.Lambda:
+		// Lambda survives NoContext when NoLambda cap is off; thread ctx
+		// args into its body.
+		if n.Func != nil {
+			n.Func.Block = lowerInStmts(n.Func.Block, active, reach, hidden)
+		}
+	case *ir.Closure:
+		// Closure (post-NoLambda) — captured-state field exprs may need
+		// threading; the lifted Func is walked separately via pkg.Funcs.
+		if n.State != nil {
+			for i := range n.State.Fields {
+				n.State.Fields[i].Value = lowerInExpr(n.State.Fields[i].Value, active, reach, hidden)
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no nested exprs.
+	default:
+		panic(fmt.Sprintf("lowerInExpr: unhandled %T", n))
 	}
 	return e
 }
