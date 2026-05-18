@@ -128,7 +128,7 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 	case *ir.Lambda:
 		return translateIRLambda(n, scope)
 	default:
-		return fmt.Sprintf("/* unsupported ir %T */null", e)
+		panic(fmt.Sprintf("translateIRExpr: unhandled ir.Expr %T", e))
 	}
 }
 
@@ -518,7 +518,7 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 	case *ir.For:
 		return translateIRForJS(n, scope)
 	default:
-		return []string{"// unsupported ir mutation: " + fmt.Sprintf("%T", s)}
+		panic(fmt.Sprintf("translateIRMutation: unhandled ir.Stmt %T", s))
 	}
 }
 

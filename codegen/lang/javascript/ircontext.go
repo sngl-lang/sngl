@@ -91,7 +91,7 @@ func (jc *JsIRContext) EvalExpr(e ir.Expr) string {
 	case *ir.Lambda:
 		return jc.evalLambda(n)
 	default:
-		return fmt.Sprintf("/* unsupported IR %T */null", e)
+		panic(fmt.Sprintf("JsIRContext.EvalExpr: unhandled ir.Expr %T", e))
 	}
 }
 
@@ -133,8 +133,12 @@ func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
 		return jc.evalFor(n)
 	case *ir.If:
 		return jc.evalIf(n)
+	case *ir.NodeInst:
+		// UI tree statements are platform-specific; the generic JS stmt
+		// path emits nothing for them. Mirrors GoIRContext.EvalStmt.
+		return nil
 	default:
-		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
+		panic(fmt.Sprintf("JsIRContext.EvalStmt: unhandled ir.Stmt %T", s))
 	}
 }
 

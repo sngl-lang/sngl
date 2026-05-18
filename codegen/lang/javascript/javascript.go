@@ -95,6 +95,9 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 		}
 		return "{" + strings.Join(parts, ", ") + "}"
 	}
+	// Best-effort fallback for non-literal Expr shapes (computed defaults,
+	// unresolved expressions). Mirrors IRLiteralToGo — callers that hit
+	// this arm get an empty string rather than a panic.
 	return `""`
 }
 
