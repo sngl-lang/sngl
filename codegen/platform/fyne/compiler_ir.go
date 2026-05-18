@@ -117,6 +117,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				})
 				continue
 			}
+			// NoContext-synthesized hidden context state lands here too:
+			// `__ctx_<name>` Vars carry the active context value (typed per
+			// the *ir.Context.Typ — usually a primitive). Emit a plain field
+			// (no getter/setter) keyed off the Var's declared type so calls
+			// like `i18n.NumberInt(m.__ctx_locale, ...)` see a concrete type.
+			if strings.HasPrefix(v.Name, "__ctx_") {
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      irVarGoType(v),
+					init:        v.Init,
+					noAccessors: true,
+				})
+				continue
+			}
 			// Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
 			// Emit as []fyne.CanvasObject so the renderSlot teardown loop
 			// (range over the slice, container.Remove each entry) compiles.
