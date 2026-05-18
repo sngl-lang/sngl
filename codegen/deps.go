@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -239,6 +240,19 @@ func walkExprDeps(e ir.Expr, modelFields map[string]bool, deps map[string]bool) 
 		if n.Func != nil {
 			walkStmtsDeps(n.Func.Block, modelFields, deps)
 		}
+	case *ir.Closure:
+		if n.Func != nil {
+			walkStmtsDeps(n.Func.Block, modelFields, deps)
+		}
+		if n.State != nil {
+			walkExprDeps(n.State, modelFields, deps)
+		}
+	case *ir.ContextRead:
+		// No reactive deps on model fields.
+	case *ir.Literal:
+		// No subexpressions.
+	default:
+		panic(fmt.Sprintf("walkExprDeps: unhandled expr %T", n))
 	}
 }
 
@@ -287,6 +301,22 @@ func walkStmtDeps(s ir.Stmt, modelFields map[string]bool, deps map[string]bool) 
 		if n.Handler != nil && n.Handler.Func != nil {
 			walkStmtsDeps(n.Handler.Func.Block, modelFields, deps)
 		}
+	case *ir.ContextProvider:
+		walkExprDeps(n.Value, modelFields, deps)
+		collectUsedIRStmtsDeps(n.Children, modelFields, deps)
+	case *ir.SlotInst:
+		collectUsedIRStmtsDeps(n.Children, modelFields, deps)
+	case *ir.PlatformFilter:
+		walkStmtsDeps(n.Body, modelFields, deps)
+	case *ir.Window:
+		walkExprDeps(n.Href, modelFields, deps)
+		walkExprDeps(n.Title, modelFields, deps)
+		walkExprDeps(n.Favicon, modelFields, deps)
+		walkStmtsDeps(n.Body, modelFields, deps)
+	case *ir.Toggle:
+		walkExprDeps(n.Target, modelFields, deps)
+	default:
+		panic(fmt.Sprintf("walkStmtDeps: unhandled stmt %T", n))
 	}
 }
 

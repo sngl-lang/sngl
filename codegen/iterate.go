@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -93,6 +94,18 @@ func collectWindows(stmts []ir.Stmt) []*ir.Window {
 			windows = append(windows, collectWindows(n.Body)...)
 		case *ir.PlatformFilter:
 			windows = append(windows, collectWindows(n.Body)...)
+		case *ir.ContextProvider:
+			windows = append(windows, collectWindows(n.Children)...)
+		case *ir.SlotInst:
+			windows = append(windows, collectWindows(n.Children)...)
+		case *ir.ErrorBoundary:
+			windows = append(windows, collectWindows(n.Children)...)
+		case *ir.NodeInst:
+			windows = append(windows, collectWindows(n.Children)...)
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// No nested window declarations.
+		default:
+			panic(fmt.Sprintf("collectWindows: unhandled stmt %T", n))
 		}
 	}
 	return windows
@@ -168,6 +181,16 @@ func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Compon
 				}
 			case *ir.Window:
 				walkStmts(n.Body)
+			case *ir.ContextProvider:
+				walkStmts(n.Children)
+			case *ir.SlotInst:
+				walkStmts(n.Children)
+			case *ir.ErrorBoundary:
+				walkStmts(n.Children)
+			case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+				// No nested component refs.
+			default:
+				panic(fmt.Sprintf("collectReachableComponents.walkStmts: unhandled stmt %T", n))
 			}
 		}
 	}
@@ -282,6 +305,14 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Children, fn, depth)
 		case *ir.ErrorBoundary:
 			walkVisual(n.Children, fn, depth)
+		case *ir.ContextProvider:
+			walkVisual(n.Children, fn, depth)
+		case *ir.Window:
+			walkVisual(n.Body, fn, depth)
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// Not a visual statement; nothing to visit.
+		default:
+			panic(fmt.Sprintf("walkVisual: unhandled stmt %T", n))
 		}
 	}
 }

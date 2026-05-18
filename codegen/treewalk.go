@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -57,6 +59,15 @@ func (tw *TreeWalker) walkStmt(s ir.Stmt) {
 		tw.Visitor.VisitSlot(n)
 	case *ir.ErrorBoundary:
 		tw.WalkStmts(n.Children)
+	case *ir.ContextProvider:
+		tw.WalkStmts(n.Children)
+	case *ir.Window:
+		tw.WalkStmts(n.Body)
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		// Visual-tree walker ignores pure statements (no children of
+		// interest to a NodeVisitor).
+	default:
+		panic(fmt.Sprintf("TreeWalker.walkStmt: unhandled stmt %T", n))
 	}
 }
 
