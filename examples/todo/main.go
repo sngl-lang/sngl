@@ -16,7 +16,7 @@ import (
 func main() {
 	m := ui.New()
 	path := savePath()
-	m.SetTodos(loadTodos(path))
+	m = m.SetTodos(loadTodos(path))
 	p := tea.NewProgram(m)
 	final, err := p.Run()
 	if err != nil {

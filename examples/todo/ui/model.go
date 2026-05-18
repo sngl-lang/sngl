@@ -64,9 +64,10 @@ func (m Model) NewTodo() string {
 	return m.newTodo
 }
 
-func (m *Model) SetNewTodo(v string) {
+func (m Model) SetNewTodo(v string) Model {
 	m.newTodo = v
 	m.input0.SetValue(m.newTodo)
+	return m
 }
 
 type setNewTodoMsg struct{ value string }
@@ -79,8 +80,9 @@ func (m Model) Todos() []Todo {
 	return m.todos
 }
 
-func (m *Model) SetTodos(v []Todo) {
+func (m Model) SetTodos(v []Todo) Model {
 	m.todos = v
+	return m
 }
 
 type setTodosMsg struct{ value []Todo }
@@ -97,9 +99,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case setNewTodoMsg:
-		m.SetNewTodo(msg.value)
+		m = m.SetNewTodo(msg.value)
 	case setTodosMsg:
-		m.SetTodos(msg.value)
+		m = m.SetTodos(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
