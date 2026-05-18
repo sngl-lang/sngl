@@ -109,11 +109,14 @@ func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) 
 	if valExpr == "" {
 		valExpr = `""`
 	}
-	varName := "__test_ctx_" + ctxName
+	// Use plain assignment-via-blank to avoid `no new variables on left
+	// side of :=` errors when the same context is overridden more than
+	// once in a single test body. The override is recorded but does NOT
+	// yet wire into mount-time providers — full setContext wiring is a
+	// follow-up task.
 	return []string{
 		fmt.Sprintf("// t.setContext(%q, ...): context override recorded; full mount-time wiring is a TODO.", ctxName),
-		fmt.Sprintf("%s := %s", varName, valExpr),
-		fmt.Sprintf("_ = %s", varName),
+		fmt.Sprintf("_ = %s", valExpr),
 	}, true
 }
 

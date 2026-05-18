@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -50,27 +51,43 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		return nil, nil
 	}
 
-	// Apply the same lowering passes that `sngl compile` would run so that
-	// NoInlineComponents (and NoListLambdas) have already transformed the
-	// IR before Generate sees it. Generate itself does not run lowering.
-	caps := g.Capabilities().Merge(lang.Capabilities())
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "bubbletea"}); err != nil {
-		return nil, fmt.Errorf("bubbletea RunTests lower: %w", err)
-	}
-
-	resp, err := g.Generate(&codegen.Request{
-		Pkg:  pkg,
-		Lang: lang,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("bubbletea generate: %w", err)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("bubbletea generate: %s", resp.Error)
-	}
-
 	var results []*codegen.TestResult
 	for _, group := range compGroups {
+		// Promote the component under test into a synthetic window so
+		// the bubbletea-emitted Model carries that component's state
+		// (mirroring how android/gtk4 isolate a single test subject).
+		// Without this, Model has only root-component fields and tests
+		// targeting a sub-component fail to compile against `c.<field>`.
+		compDoc := testharness.Promote(doc, group.Component)
+		if compDoc == nil {
+			continue
+		}
+		compPkg, diags := checker.Check(compDoc, &checker.Config{IsMain: true})
+		hasErr := false
+		for _, d := range diags {
+			if d.Severity == ir.Error {
+				hasErr = true
+				break
+			}
+		}
+		if hasErr || compPkg == nil {
+			continue
+		}
+		caps := g.Capabilities().Merge(lang.Capabilities())
+		if err := lower.Lower(compPkg, caps, lower.Options{Platform: g.PlatformIdentifier()}); err != nil {
+			return nil, fmt.Errorf("bubbletea lower %q: %w", group.Component, err)
+		}
+		resp, err := g.Generate(&codegen.Request{
+			Pkg:  compPkg,
+			Lang: lang,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("bubbletea generate %q: %w", group.Component, err)
+		}
+		if resp.Error != "" {
+			return nil, fmt.Errorf("bubbletea generate %q: %s", group.Component, resp.Error)
+		}
+
 		grpResults, err := runBubbleteaTestGroup(pkg, group, resp.Files, cfg.GoModExtra)
 		if err != nil {
 			return nil, err
