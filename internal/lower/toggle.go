@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -73,6 +75,12 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 					}
 				}
 			}
+		case *ir.ContextProvider:
+			n.Children = rewriteToggleStmts(n.Children)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit:
+			// Leaf stmts — no nested Toggle to rewrite.
+		default:
+			panic(fmt.Sprintf("rewriteToggleStmts: unhandled %T", n))
 		}
 	}
 	return stmts
