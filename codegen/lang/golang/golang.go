@@ -268,42 +268,70 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return `""`
 	case "File.pickFolder":
 		return `""`
-	// i18n — all calls delegate to i18n.GetTranslator() runtime.
-	// For type-attached method dispatch, args are positional (no receiver value).
+	// i18n — wrapper calls delegate to per-locale runtime entry points.
+	// NoContext threads __ctx_locale as the trailing arg; we lift it to the
+	// leading positional arg the runtime expects (i18n.<Foo>(locale, ...)).
+	// Falls back to i18n.GetTranslator() (process-global) when no locale arg
+	// was threaded — e.g. legacy callers reached before NoContext runs.
 	case "i18n.tr":
-		// Args: key string, args map[string]any
+		// Wrapper params: (key, args, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "i18n.Translate(" + a(2) + ", " + a(0) + ", \"\", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
 	case "i18n.trInline":
-		// Args: key string, inlinedTemplate string, args map[string]any.
-		// Emitted by $"..." lowering; passes both the lookup key and the
-		// inlined fallback template.
+		// Wrapper params: (key, inlinedTemplate, args, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "i18n.Translate(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "i18n.GetTranslator().Tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
-		// Args: template string, args map[string]any
+		// Wrapper params: (template, args, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "i18n.Format(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Format(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberInt":
-		// Args: n int, style string
+		// Wrapper params: (n, style, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "i18n.NumberInt(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().NumberInt(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberFloat":
-		// Args: n float, style string
+		if len(argExprs) >= 3 {
+			return "i18n.NumberFloat(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().NumberFloat(" + a(0) + ", " + a(1) + ")"
 	case "i18n.date":
-		// Args: d date, style string
+		if len(argExprs) >= 3 {
+			return "i18n.Date(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Date(" + a(0) + ", " + a(1) + ")"
 	case "i18n.time":
-		// Args: t time, style string
+		if len(argExprs) >= 3 {
+			return "i18n.Time(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Time(" + a(0) + ", " + a(1) + ")"
 	case "i18n.datetime":
-		// Args: dt dateTime, dateStyle string, timeStyle string
+		// Wrapper params: (dt, dateStyle, timeStyle, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "i18n.Datetime(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "i18n.GetTranslator().Datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.select":
-		// Args: value string, cases map[string]string
+		if len(argExprs) >= 3 {
+			return "i18n.Select(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Select(" + a(0) + ", " + a(1) + ")"
 	case "i18n.plural":
-		// Args: count, forms. a(0)=count, a(1)=forms.
+		if len(argExprs) >= 3 {
+			return "i18n.Plural(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Plural(" + a(0) + ", " + a(1) + ")"
 	case "i18n.selectordinal":
-		// Args: count, forms. a(0)=count, a(1)=forms.
+		if len(argExprs) >= 3 {
+			return "i18n.Selectordinal(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.GetTranslator().Selectordinal(" + a(0) + ", " + a(1) + ")"
 	case "i18n.exactly":
 		// Args: n. a(0)=n.
