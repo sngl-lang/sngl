@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -142,6 +143,30 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 				n.Call.Args[i].Value = v
 			}
 		}
+	case *ir.Toggle:
+		pre, n.Target = st.transformExpr(n.Target)
+	case *ir.Window:
+		if n.Href != nil {
+			p, v := st.transformExpr(n.Href)
+			pre = append(pre, p...)
+			n.Href = v
+		}
+		if n.Title != nil {
+			p, v := st.transformExpr(n.Title)
+			pre = append(pre, p...)
+			n.Title = v
+		}
+		if n.Favicon != nil {
+			p, v := st.transformExpr(n.Favicon)
+			pre = append(pre, p...)
+			n.Favicon = v
+		}
+		n.Body = st.transformBlock(n.Body)
+	case *ir.ContextProvider:
+		pre, n.Value = st.transformExpr(n.Value)
+		n.Children = st.transformBlock(n.Children)
+	default:
+		panic(fmt.Sprintf("listLambdaState.transformStmt: unhandled %T", n))
 	}
 	return pre, s
 }
@@ -232,8 +257,51 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			}
 		}
 		return pre, x
+	case *ir.MapLitIR:
+		var pre []ir.Stmt
+		for i := range x.Entries {
+			p, k := st.transformExpr(x.Entries[i].Key)
+			pre = append(pre, p...)
+			x.Entries[i].Key = k
+			p, v := st.transformExpr(x.Entries[i].Value)
+			pre = append(pre, p...)
+			x.Entries[i].Value = v
+		}
+		return pre, x
+	case *ir.Spread:
+		p, op := st.transformExpr(x.Operand)
+		x.Operand = op
+		return p, x
+	case *ir.Lambda:
+		if x.Func != nil {
+			x.Func.Block = st.transformBlock(x.Func.Block)
+		}
+		return nil, x
+	case *ir.Closure:
+		if x.State != nil {
+			var pre []ir.Stmt
+			for i := range x.State.Fields {
+				if x.State.Fields[i].Value != nil {
+					p, v := st.transformExpr(x.State.Fields[i].Value)
+					pre = append(pre, p...)
+					x.State.Fields[i].Value = v
+				}
+			}
+			if x.Func != nil {
+				x.Func.Block = st.transformBlock(x.Func.Block)
+			}
+			return pre, x
+		}
+		if x.Func != nil {
+			x.Func.Block = st.transformBlock(x.Func.Block)
+		}
+		return nil, x
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no list-lambda call to lift.
+		return nil, e
+	default:
+		panic(fmt.Sprintf("listLambdaState.transformExpr: unhandled %T", x))
 	}
-	return nil, e
 }
 
 // isListLambdaCall reports whether n is a `xs.filter(f)` / `xs.map(f)`
