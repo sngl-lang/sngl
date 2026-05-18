@@ -175,6 +175,11 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
+	case *ir.ContextProvider:
+		if n.Value != nil {
+			n.Value = foldExpr(n.Value, ctx)
+		}
+		n.Children = foldStmts(n.Children, ctx)
 	case *ir.Window:
 		if n.Href != nil {
 			n.Href = foldExpr(n.Href, ctx)

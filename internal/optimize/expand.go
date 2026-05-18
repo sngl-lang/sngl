@@ -207,6 +207,9 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		walkForBody(n.Body, visit)
 	case *ir.SlotInst:
 		walkForBody(n.Children, visit)
+	case *ir.ContextProvider:
+		walkAllExprs(n.Value, visit)
+		walkForBody(n.Children, visit)
 	}
 }
 

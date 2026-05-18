@@ -441,6 +441,11 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp := *n
 		cp.Children = cloneStmts(n.Children)
 		return &cp
+	case *ir.ContextProvider:
+		cp := *n
+		cp.Value = cloneExpr(n.Value)
+		cp.Children = cloneStmts(n.Children)
+		return &cp
 	case *ir.Window:
 		cp := *n
 		cp.Href = cloneExpr(n.Href)
