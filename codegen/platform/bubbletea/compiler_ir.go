@@ -92,10 +92,6 @@ type irAnalysis struct {
 	focusables []string
 	forCursors []forLoopCursor
 	goImports  map[string]string
-	// derivedRecomputes[X] is the ordered list of "m.<derived> = <expr>"
-	// recompute lines to splice into SetX after mutating field X. Drives
-	// derived-var reactivity for `var d = f(other-vars)`.
-	derivedRecomputes map[string][]derivedRecompute
 }
 
 type irBind struct {
@@ -103,13 +99,6 @@ type irBind struct {
 	goType  string
 	init    string // Go expression
 	isConst bool
-}
-
-// derivedRecompute is a single "m.<name> = <initExpr>" line to splice
-// into a setter for one of the derived var's dependencies.
-type derivedRecompute struct {
-	name string
-	init string
 }
 
 type irExtern struct {
@@ -181,23 +170,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			init:    initVal,
 			isConst: v.IsConst,
 		})
-	}
-
-	// Reverse-index derived-var deps. For `var d = n * 2`, mutating `n`
-	// must also recompute `d`. We pre-render the Go expr for each
-	// derived's initializer so the setter emit is a simple string splice.
-	if recomputes := codegen.DerivedVarRecomputes(allVars); len(recomputes) > 0 {
-		info.derivedRecomputes = make(map[string][]derivedRecompute, len(recomputes))
-		for dep, derivedList := range recomputes {
-			lines := make([]derivedRecompute, 0, len(derivedList))
-			for _, d := range derivedList {
-				lines = append(lines, derivedRecompute{
-					name: d.Name,
-					init: golang.LowerVarInit(d, gc),
-				})
-			}
-			info.derivedRecomputes[dep.Name] = lines
-		}
 	}
 
 	// Collect computed functions
@@ -571,15 +543,9 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		fmt.Fprintf(b, "\treturn m.%s\n", bind.name)
 		b.WriteString("}\n\n")
 
-		// Setter — pointer receiver so test bodies and Update's
-		// `m.SetX(v)` both mutate the live Model rather than producing
-		// a discarded copy.
-		fmt.Fprintf(b, "func (m *Model) Set%s(v %s) {\n", getter, bind.goType)
+		// Setter
+		fmt.Fprintf(b, "func (m Model) Set%s(v %s) Model {\n", getter, bind.goType)
 		fmt.Fprintf(b, "\tm.%s = v\n", bind.name)
-		// Recompute derived vars whose initializers depend on this field.
-		for _, rc := range info.derivedRecomputes[bind.name] {
-			fmt.Fprintf(b, "\tm.%s = %s\n", rc.name, rc.init)
-		}
 		// Sync bound inputs
 		for _, inp := range info.inputs {
 			if inp.bindTarget == bind.name && bind.goType == "string" {
@@ -605,6 +571,7 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 				}
 			}
 		}
+		b.WriteString("\treturn m\n")
 		b.WriteString("}\n\n")
 
 		// Msg/Cmd types
@@ -627,7 +594,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		}
 		getter := golang.ExportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
-		fmt.Fprintf(b, "\t\tm.Set%s(msg.value)\n", getter)
+		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
 	}
 
 	// Timer ticks

@@ -291,44 +291,6 @@ func (cv *componentValue) setField(op ast.AssignOp, field string, val any) error
 	if !cv.testParams[field] {
 		cv.env.vars[field] = cv.vars[field]
 	}
-	// Recompute any derived vars whose initializers depend on this
-	// field. Mirrors the per-platform setter recompute behaviour so the
-	// interpreter-backed test runner observes identical semantics.
-	return cv.recomputeDerived(field)
-}
-
-// recomputeDerived re-evaluates every derived var (in topological order)
-// that transitively reads field. Var Init expressions are evaluated
-// against an env seeded with the component's current var values.
-func (cv *componentValue) recomputeDerived(field string) error {
-	if cv.env == nil || cv.env.comp == nil {
-		return nil
-	}
-	recomputes := codegen.DerivedVarRecomputes(cv.env.comp.Vars)
-	for _, v := range cv.env.comp.Vars {
-		if v.Name != field {
-			continue
-		}
-		derived, ok := recomputes[v]
-		if !ok {
-			return nil
-		}
-		evalEnv := cv.compEnv()
-		for _, d := range derived {
-			// Re-seed dependency vars on each iteration so later derived
-			// vars see preceding recomputes.
-			maps.Copy(evalEnv.vars, cv.vars)
-			nv, err := evalEnv.Eval(d.Init)
-			if err != nil {
-				return err
-			}
-			cv.vars[d.Name] = nv
-			if !cv.testParams[d.Name] {
-				cv.env.vars[d.Name] = nv
-			}
-		}
-		return nil
-	}
 	return nil
 }
 

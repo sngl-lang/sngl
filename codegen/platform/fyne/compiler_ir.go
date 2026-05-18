@@ -464,28 +464,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		td.Structs = append(td.Structs, s)
 	}
 
-	// Derived-var reactivity: when a mutable field is set, any derived
-	// var whose initializer reads it must be recomputed. Walk the same
-	// non-const, non-synthesized vars we surface as binds and pre-render
-	// the recompute lines per source-field.
-	var derivedAllVars []*ir.Var
-	for _, v := range ctx.Pkg.Vars {
-		derivedAllVars = append(derivedAllVars, v)
-	}
-	if main := ctx.MainComponent(); main != nil {
-		derivedAllVars = append(derivedAllVars, main.Vars...)
-	}
-	derivedRecomputes := map[string]string{}
-	if rc := codegen.DerivedVarRecomputes(derivedAllVars); len(rc) > 0 {
-		for dep, derivedList := range rc {
-			var sb strings.Builder
-			for _, d := range derivedList {
-				fmt.Fprintf(&sb, "\tm.%s = %s\n", d.Name, golang.LowerVarInit(d, gc))
-			}
-			derivedRecomputes[dep.Name] = sb.String()
-		}
-	}
-
 	// Binds
 	for _, bind := range info.binds {
 		getter := golang.ExportName(bind.name)
@@ -508,10 +486,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		}
 
 		var extra strings.Builder
-		// Recompute derived vars whose initializers depend on this field.
-		if recompute := derivedRecomputes[bind.name]; recompute != "" {
-			extra.WriteString(recompute)
-		}
 		// Entry sync — populated during render walk via vc.entrySync.
 		for _, sync := range entrySync {
 			if sync.varName == bind.name && bind.goType == "string" {
