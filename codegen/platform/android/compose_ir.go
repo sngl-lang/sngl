@@ -41,6 +41,14 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		for _, child := range s.Children {
 			cc.renderStmt(child)
 		}
+	case *ir.Window:
+		panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		// Imperative stmts have no Compose rendering.
+	case *ir.ContextProvider:
+		panic(fmt.Sprintf("android: ContextProvider should be lowered before compose emission: %#v", s))
+	default:
+		panic(fmt.Sprintf("android.renderStmt: unhandled ir.Stmt %T", s))
 	}
 }
 

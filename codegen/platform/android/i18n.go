@@ -1,6 +1,7 @@
 package android
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -133,6 +134,14 @@ func walkPkgExprs(pkg *ir.Package, fn func(ir.Expr) bool) {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
+		case *ir.Closure:
+			if x.Func != nil {
+				visitFunc(x.Func)
+			}
+		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+			// Leaf — no sub-expressions.
+		default:
+			panic(fmt.Sprintf("android.i18n.visitExpr: unhandled ir.Expr %T", x))
 		}
 	}
 
@@ -198,6 +207,10 @@ func walkPkgExprs(pkg *ir.Package, fn func(ir.Expr) bool) {
 				visitFunc(f)
 			}
 			visitStmts(n.Body)
+		case *ir.ContextProvider:
+			visitStmts(n.Children)
+		default:
+			panic(fmt.Sprintf("android.i18n.visitStmt: unhandled ir.Stmt %T", n))
 		}
 	}
 
