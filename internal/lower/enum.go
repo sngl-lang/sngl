@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -111,6 +112,34 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 		}
 	case *ir.Spread:
 		x.Operand = rewriteEnumExpr(x.Operand, memberOrdinal)
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = rewriteEnumExpr(x.Entries[i].Key, memberOrdinal)
+			x.Entries[i].Value = rewriteEnumExpr(x.Entries[i].Value, memberOrdinal)
+		}
+	case *ir.Lambda:
+		if x.Func != nil {
+			x.Func.Block = rewriteEnumStmts(x.Func.Block, func(e ir.Expr) ir.Expr {
+				return rewriteEnumExpr(e, memberOrdinal)
+			})
+		}
+	case *ir.Closure:
+		if x.State != nil {
+			for i := range x.State.Fields {
+				if x.State.Fields[i].Value != nil {
+					x.State.Fields[i].Value = rewriteEnumExpr(x.State.Fields[i].Value, memberOrdinal)
+				}
+			}
+		}
+		if x.Func != nil {
+			x.Func.Block = rewriteEnumStmts(x.Func.Block, func(e ir.Expr) ir.Expr {
+				return rewriteEnumExpr(e, memberOrdinal)
+			})
+		}
+	case *ir.Literal, *ir.ContextRead:
+		// Terminal — no enum member to rewrite.
+	default:
+		panic(fmt.Sprintf("rewriteEnumExpr: unhandled %T", x))
 	}
 	return e
 }
@@ -187,6 +216,13 @@ func rewriteEnumStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				n.Favicon = rewrite(n.Favicon)
 			}
 			n.Body = rewriteEnumStmts(n.Body, rewrite)
+		case *ir.Toggle:
+			n.Target = rewrite(n.Target)
+		case *ir.ContextProvider:
+			n.Value = rewrite(n.Value)
+			n.Children = rewriteEnumStmts(n.Children, rewrite)
+		default:
+			panic(fmt.Sprintf("rewriteEnumStmts: unhandled %T", n))
 		}
 	}
 	return stmts
