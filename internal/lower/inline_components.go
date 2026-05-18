@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 
@@ -153,6 +154,17 @@ func collectCalleeEdges(stmts []ir.Stmt, out map[*ir.Component]bool) {
 			if n.Handler != nil && n.Handler.Func != nil {
 				collectCalleeEdges(n.Handler.Func.Block, out)
 			}
+		case *ir.Window:
+			collectCalleeEdges(n.Body, out)
+			for _, f := range n.Funcs {
+				if f != nil {
+					collectCalleeEdges(f.Block, out)
+				}
+			}
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf/imperative stmts — no component-call edges to collect.
+		default:
+			panic(fmt.Sprintf("collectCalleeEdges: unhandled %T", n))
 		}
 	}
 }
@@ -413,8 +425,12 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 			anyFuncCh = anyFuncCh || fch
 		}
 		return []ir.Stmt{n}, ch || anyFuncCh, nil
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		// Leaf/imperative stmts — no NodeInsts to inline.
+		return []ir.Stmt{s}, false, nil
+	default:
+		panic(fmt.Sprintf("inlineCompState.inlineStmt: unhandled %T", n))
 	}
-	return []ir.Stmt{s}, false, nil
 }
 
 func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
