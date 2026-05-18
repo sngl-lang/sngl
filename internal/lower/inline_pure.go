@@ -150,8 +150,26 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		}
 		n.Children = ch
 		return []ir.Stmt{n}, nil
+	case *ir.ErrorBoundary:
+		ch, err := st.inlineStmts(n.Children)
+		if err != nil {
+			return nil, err
+		}
+		n.Children = ch
+		return []ir.Stmt{n}, nil
+	case *ir.Window:
+		body, err := st.inlineStmts(n.Body)
+		if err != nil {
+			return nil, err
+		}
+		n.Body = body
+		return []ir.Stmt{n}, nil
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		// Leaf/imperative stmts — no NodeInsts to inline.
+		return []ir.Stmt{s}, nil
+	default:
+		panic(fmt.Sprintf("inlineStmt: unhandled %T", n))
 	}
-	return []ir.Stmt{s}, nil
 }
 
 // inlineNodeInst decides whether to inline n. If yes, runs the
@@ -302,6 +320,18 @@ func containsSelfRef(comp *ir.Component) bool {
 				if visit(n.Children) {
 					return true
 				}
+			case *ir.ErrorBoundary:
+				if visit(n.Children) {
+					return true
+				}
+			case *ir.Window:
+				if visit(n.Body) {
+					return true
+				}
+			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+				// Leaf stmts can't host a NodeInst self-reference.
+			default:
+				panic(fmt.Sprintf("containsSelfRef.visit: unhandled %T", n))
 			}
 		}
 		return false
@@ -413,6 +443,14 @@ func substituteSlots(stmts []ir.Stmt, children []ir.Stmt) []ir.Stmt {
 			n.Body = substituteSlots(n.Body, children)
 		case *ir.NodeInst:
 			n.Children = substituteSlots(n.Children, children)
+		case *ir.ErrorBoundary:
+			n.Children = substituteSlots(n.Children, children)
+		case *ir.Window:
+			n.Body = substituteSlots(n.Body, children)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf stmts — no nested SlotInsts.
+		default:
+			panic(fmt.Sprintf("substituteSlots: unhandled %T", n))
 		}
 		out = append(out, s)
 	}
@@ -464,6 +502,20 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 					h.Func.Block = substituteEvents(h.Func.Block, handlers)
 				}
 			}
+		case *ir.SlotInst:
+			n.Children = substituteEvents(n.Children, handlers)
+		case *ir.ErrorBoundary:
+			n.Children = substituteEvents(n.Children, handlers)
+		case *ir.Window:
+			n.Body = substituteEvents(n.Body, handlers)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider:
+			// Leaf/imperative — no nested Emit/EventRefExpr that this pass
+			// would substitute. (CallStmt with EventRefExpr handled above.)
+		case *ir.Emit:
+			// Emit already handled at top of loop; reaching here means
+			// no matching handler — pass-through.
+		default:
+			panic(fmt.Sprintf("substituteEvents: unhandled %T", n))
 		}
 		out = append(out, s)
 	}
@@ -597,8 +649,25 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		clone := *n
 		clone.Value = deepCloneExpr(n.Value)
 		return &clone
+	case *ir.Toggle:
+		clone := *n
+		clone.Target = deepCloneExpr(n.Target)
+		return &clone
+	case *ir.ErrorBoundary:
+		clone := *n
+		clone.Children = deepCloneStmts(n.Children)
+		return &clone
+	case *ir.Window:
+		clone := *n
+		clone.Body = deepCloneStmts(n.Body)
+		return &clone
+	case *ir.ContextProvider:
+		clone := *n
+		clone.Value = deepCloneExpr(n.Value)
+		clone.Children = deepCloneStmts(n.Children)
+		return &clone
 	}
-	return s
+	panic(fmt.Sprintf("deepCloneStmt: unhandled %T", s))
 }
 
 // deepCloneExpr is the expression analog of deepCloneStmt.
@@ -676,8 +745,26 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone := *n
 		clone.Operand = deepCloneExpr(n.Operand)
 		return &clone
+	case *ir.ContextRead:
+		clone := *n
+		return &clone
+	case *ir.Lambda:
+		clone := *n
+		if n.Func != nil {
+			fc := *n.Func
+			fc.Block = deepCloneStmts(n.Func.Block)
+			clone.Func = &fc
+		}
+		return &clone
+	case *ir.Closure:
+		clone := *n
+		if n.State != nil {
+			s := deepCloneExpr(n.State).(*ir.StructLit)
+			clone.State = s
+		}
+		return &clone
 	}
-	return e
+	panic(fmt.Sprintf("deepCloneExpr: unhandled %T", e))
 }
 
 // exprWalker applies a transform to every reachable expression in a
@@ -739,6 +826,21 @@ func (w *exprWalker) expr(e ir.Expr) ir.Expr {
 		}
 	case *ir.Spread:
 		n.Operand = w.expr(n.Operand)
+	case *ir.Lambda:
+		if n.Func != nil {
+			w.stmts(n.Func.Block)
+		}
+	case *ir.Closure:
+		if n.State != nil {
+			for i := range n.State.Fields {
+				n.State.Fields[i].Value = w.expr(n.State.Fields[i].Value)
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no nested exprs. (Ident.Sym is rewritten by callers'
+		// transform; this walker only handles structural recursion.)
+	default:
+		panic(fmt.Sprintf("exprWalker.expr: unhandled %T", n))
 	}
 	return e
 }
@@ -795,5 +897,19 @@ func (w *exprWalker) stmt(s ir.Stmt) {
 				n.Call.Args[i].Value = w.expr(n.Call.Args[i].Value)
 			}
 		}
+	case *ir.Toggle:
+		n.Target = w.expr(n.Target)
+	case *ir.ErrorBoundary:
+		w.stmts(n.Children)
+	case *ir.Window:
+		n.Href = w.expr(n.Href)
+		n.Title = w.expr(n.Title)
+		n.Favicon = w.expr(n.Favicon)
+		w.stmts(n.Body)
+	case *ir.ContextProvider:
+		n.Value = w.expr(n.Value)
+		w.stmts(n.Children)
+	default:
+		panic(fmt.Sprintf("exprWalker.stmt: unhandled %T", n))
 	}
 }
