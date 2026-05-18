@@ -646,11 +646,13 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return &lambdaValue{fn: n.Func, env: env}, nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
+	case *ir.Closure:
+		return &lambdaValue{fn: n.Func, env: env}, nil
 	}
 	if e == nil {
 		return nil, fmt.Errorf("cannot evaluate <nil> expression")
 	}
-	return nil, fmt.Errorf("cannot evaluate %T", e)
+	panic(fmt.Sprintf("testrunner.Eval: unhandled ir.Expr %T", e))
 }
 
 func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
@@ -1514,6 +1516,8 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 				cv.env.vars[t.Field] = newList
 			}
 		}
+	default:
+		return nil, fmt.Errorf("testrunner.writeBackList: unhandled target ir.Expr %T", target)
 	}
 	return newList, nil
 }

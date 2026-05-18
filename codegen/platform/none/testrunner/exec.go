@@ -146,8 +146,15 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil
 	case *ir.SlotInst:
 		return nil
+	case *ir.Window:
+		// Window is a top-level construct; reaching it inside a
+		// statement stream means something nested it incorrectly.
+		panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
+	case *ir.ContextProvider:
+		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
+	default:
+		panic(fmt.Sprintf("testrunner.Exec: unhandled ir.Stmt %T", s))
 	}
-	return fmt.Errorf("cannot execute %T", s)
 }
 
 func (env *Env) execAssign(s *ir.Assign) error {

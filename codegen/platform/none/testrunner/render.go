@@ -70,6 +70,14 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 			env.collectByStmts(n.Children, id, out)
 		case *ir.ErrorBoundary:
 			env.collectByStmts(n.Children, id, out)
+		case *ir.Window:
+			env.collectByStmts(n.Body, id, out)
+		case *ir.ContextProvider:
+			env.collectByStmts(n.Children, id, out)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// Imperative stmts contain no rendered nodes.
+		default:
+			panic(fmt.Sprintf("testrunner.collectByStmts: unhandled ir.Stmt %T", n))
 		}
 	}
 }
