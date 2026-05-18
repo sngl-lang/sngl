@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -75,6 +76,30 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		}
 	case *ir.Spread:
 		x.Operand = rewriteUnitExpr(x.Operand)
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = rewriteUnitExpr(x.Entries[i].Key)
+			x.Entries[i].Value = rewriteUnitExpr(x.Entries[i].Value)
+		}
+	case *ir.Lambda:
+		if x.Func != nil {
+			x.Func.Block = rewriteUnitStmts(x.Func.Block, rewriteUnitExpr)
+		}
+	case *ir.Closure:
+		if x.State != nil {
+			for i := range x.State.Fields {
+				if x.State.Fields[i].Value != nil {
+					x.State.Fields[i].Value = rewriteUnitExpr(x.State.Fields[i].Value)
+				}
+			}
+		}
+		if x.Func != nil {
+			x.Func.Block = rewriteUnitStmts(x.Func.Block, rewriteUnitExpr)
+		}
+	case *ir.Ident, *ir.ContextRead:
+		// Terminal — no unit-typed sub-expressions to rewrite.
+	default:
+		panic(fmt.Sprintf("rewriteUnitExpr: unhandled %T", x))
 	}
 	return e
 }
@@ -151,6 +176,13 @@ func rewriteUnitStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				n.Favicon = rewrite(n.Favicon)
 			}
 			n.Body = rewriteUnitStmts(n.Body, rewrite)
+		case *ir.Toggle:
+			n.Target = rewrite(n.Target)
+		case *ir.ContextProvider:
+			n.Value = rewrite(n.Value)
+			n.Children = rewriteUnitStmts(n.Children, rewrite)
+		default:
+			panic(fmt.Sprintf("rewriteUnitStmts: unhandled %T", n))
 		}
 	}
 	return stmts
