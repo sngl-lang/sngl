@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -148,6 +149,13 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 			n.Favicon = v
 		}
 		n.Body = st.transformBlock(n.Body)
+	case *ir.Toggle:
+		pre, n.Target = st.transformExpr(n.Target)
+	case *ir.ContextProvider:
+		pre, n.Value = st.transformExpr(n.Value)
+		n.Children = st.transformBlock(n.Children)
+	default:
+		panic(fmt.Sprintf("ternState.transformStmt: unhandled %T", n))
 	}
 	return pre, s
 }
@@ -238,8 +246,28 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			x.Func.Block = st.transformBlock(x.Func.Block)
 		}
 		return pre, x
+	case *ir.Lambda:
+		if x.Func != nil {
+			x.Func.Block = st.transformBlock(x.Func.Block)
+		}
+		return nil, x
+	case *ir.MapLitIR:
+		var pre []ir.Stmt
+		for i := range x.Entries {
+			p, k := st.transformExpr(x.Entries[i].Key)
+			pre = append(pre, p...)
+			x.Entries[i].Key = k
+			p, v := st.transformExpr(x.Entries[i].Value)
+			pre = append(pre, p...)
+			x.Entries[i].Value = v
+		}
+		return pre, x
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no Ternary to lift.
+		return nil, e
+	default:
+		panic(fmt.Sprintf("ternState.transformExpr: unhandled %T", x))
 	}
-	return nil, e
 }
 
 func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
