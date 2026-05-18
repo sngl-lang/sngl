@@ -147,6 +147,11 @@ func hoistInStmt(h *hoister, s ir.Stmt) {
 		hoistInStmts(h, n.Children)
 	case *ir.Window:
 		hoistInStmts(h, n.Body)
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		// Hoister targets only NodeInst prop expressions; non-visual stmts
+		// don't host hoistable async subtrees.
+	default:
+		panic(fmt.Sprintf("hoistInStmt: unhandled %T", n))
 	}
 }
 
@@ -246,8 +251,27 @@ func hoistChildren(h *hoister, e ir.Expr) ir.Expr {
 			cp.Fields[i].Value = hoistExpr(h, f.Value)
 		}
 		return &cp
+	case *ir.MapLitIR:
+		cp := *x
+		cp.Entries = make([]ir.MapEntry, len(x.Entries))
+		for i, en := range x.Entries {
+			cp.Entries[i] = ir.MapEntry{
+				Key:   hoistExpr(h, en.Key),
+				Value: hoistExpr(h, en.Value),
+			}
+		}
+		return &cp
+	case *ir.Spread:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		return &cp
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+		// Terminal or closure-bodied — hoister never descends into lambda
+		// bodies (they execute at invocation, not at view eval time).
+		return e
+	default:
+		panic(fmt.Sprintf("hoistChildren: unhandled %T", x))
 	}
-	return e
 }
 
 // exprHasLocals reports whether e references any local-scoped identifier
@@ -297,8 +321,22 @@ func exprHasLocals(e ir.Expr) bool {
 		return false
 	case *ir.Spread:
 		return exprHasLocals(x.Operand)
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			if exprHasLocals(en.Key) || exprHasLocals(en.Value) {
+				return true
+			}
+		}
+		return false
+	case *ir.Literal, *ir.ContextRead:
+		return false
+	case *ir.Lambda, *ir.Closure:
+		// Lambdas/closures evaluated at invocation time — their internal
+		// param refs aren't "locals of the surrounding expression."
+		return false
+	default:
+		panic(fmt.Sprintf("exprHasLocals: unhandled %T", x))
 	}
-	return false
 }
 
 func lowerNamedAsyncComputed(pkg *ir.Package, fn *ir.Func) error {
