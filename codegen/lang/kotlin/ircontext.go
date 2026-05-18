@@ -253,6 +253,14 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 				return args[0] + ".toDouble()"
 			}
 		}
+		// IdentRewrites can redirect a bare func call to a method
+		// on a hoisted state object (e.g. `label()` →
+		// `state.label()` in Android test mode).
+		if kc.IdentRewrites != nil {
+			if rewritten, ok := kc.IdentRewrites[fname]; ok {
+				return rewritten + "(" + strings.Join(args, ", ") + ")"
+			}
+		}
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
@@ -296,6 +304,16 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 			return result
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
+	}
+	// Func resolution may be incomplete (e.g. checker did not bind a
+	// `c.label()` call to a specific IR func because the receiver is
+	// a component-typed parameter). Recover the method name from the
+	// AST so we still emit `receiver.method(args)` rather than
+	// `receiver(args)`.
+	if n.AST != nil {
+		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
+			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
+		}
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
 }

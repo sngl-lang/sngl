@@ -225,6 +225,15 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		for i, a := range n.Args {
 			argStrs[i] = translateIRExpr(a.Value, scope)
 		}
+		// Recover the method name from the AST when the checker
+		// didn't bind a Func (e.g. `c.label()` where c is a
+		// component-typed param). Without this we'd lose `.label`
+		// and emit `c(...)`.
+		if n.AST != nil {
+			if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
+				return translateIRExpr(n.Receiver, scope) + "." + sel.Field + "(" + strings.Join(argStrs, ", ") + ")"
+			}
+		}
 		return translateIRExpr(n.Receiver, scope) + "(" + strings.Join(argStrs, ", ") + ")"
 	}
 	method := n.Func.Name

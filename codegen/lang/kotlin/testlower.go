@@ -28,8 +28,9 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
 	b.WriteString("        val c = MainScreenState()\n")
 	b.WriteString("        composeTestRule.setContent { MainScreen(c) }\n")
+	ctxCounts := map[string]int{}
 	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, methodFields) {
+		for _, line := range lowerTestStmt(s, methodFields, ctxCounts) {
 			fmt.Fprintf(&b, "        %s\n", line)
 		}
 	}
@@ -37,7 +38,7 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	return b.String()
 }
 
-func lowerTestStmt(s ir.Stmt, methodFields map[string]bool) []string {
+func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, ctxCounts map[string]int) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:
 		if line, ok := lowerTestAssert(n, methodFields); ok {
@@ -47,7 +48,7 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool) []string {
 			return []string{line}
 		}
 		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
-			if lines, ok := lowerTestSetContext(c); ok {
+			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
@@ -82,7 +83,7 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool) []string {
 //
 // The generated statement always compiles: a leading @Suppress annotation
 // prevents unused-variable warnings.
-func lowerTestSetContext(c *ir.Call) ([]string, bool) {
+func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) {
 	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
 		return nil, false
 	}
@@ -104,6 +105,12 @@ func lowerTestSetContext(c *ir.Call) ([]string, bool) {
 		valExpr = `""`
 	}
 	varName := "__test_ctx_" + ctxName
+	if ctxCounts != nil {
+		if n := ctxCounts[ctxName]; n > 0 {
+			varName = fmt.Sprintf("%s_%d", varName, n)
+		}
+		ctxCounts[ctxName]++
+	}
 	return []string{
 		fmt.Sprintf("// t.setContext(%q, ...): context override recorded; full mount-time wiring is a TODO.", ctxName),
 		fmt.Sprintf("@Suppress(\"UNUSED_VARIABLE\") val %s = %s", varName, valExpr),

@@ -180,6 +180,29 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	kc := kotlin.NewIRContext(exprCtx)
+
+	// Collect the non-computed, non-GoLib user funcs we'll emit as
+	// MainScreenState members in test mode. Need this list in two
+	// places: (1) to register `name → state.name` rewrites so call
+	// sites in the composable route through `state`, and (2) to
+	// actually emit them inside the class body below.
+	var stateFuncs []*ir.Func
+	if testMode && !cfg.GoLib {
+		allFuncs := ctx.Pkg.Funcs
+		if main := ctx.MainComponent(); main != nil {
+			allFuncs = append(allFuncs, main.Funcs...)
+		}
+		for _, fn := range allFuncs {
+			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+				continue
+			}
+			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+				continue
+			}
+			stateFuncs = append(stateFuncs, fn)
+		}
+	}
+
 	if testMode {
 		// Route every reactive var through the hoisted state object
 		// so handler bodies, computed expressions, and view-tree
@@ -190,6 +213,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 		for _, comp := range info.computeds {
 			rewrites[comp.name] = "state." + comp.name
+		}
+		// Component-level user funcs live on MainScreenState too —
+		// callers in the composable invoke them via `state.<name>()`.
+		for _, fn := range stateFuncs {
+			rewrites[fn.Name] = "state." + fn.Name
 		}
 		kc.IdentRewrites = rewrites
 	}
@@ -309,6 +337,18 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				fmt.Fprintf(&b, "    var %s by mutableStateOf(%s)\n", bind.name, initVal)
 			}
 		}
+		// Component-level user funcs become members of the state
+		// class so their bodies resolve reactive vars via implicit
+		// `this` rather than the out-of-scope `state` parameter
+		// they'd see as top-level functions. Use a fresh context
+		// with no IdentRewrites: inside the class, `__ctx_locale`
+		// resolves via implicit `this`, not `state.__ctx_locale`.
+		if len(stateFuncs) > 0 {
+			memberKC := kotlin.NewIRContext(exprCtx)
+			for _, fn := range stateFuncs {
+				emitIRKtMemberFunc(&b, fn, memberKC)
+			}
+		}
 		b.WriteString("}\n\n")
 	}
 
@@ -425,8 +465,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		emitIRComponentComposable(&b, comp, ctx, kc)
 	}
 
-	// User functions (non-GoLib)
-	if !cfg.GoLib {
+	// User functions (non-GoLib). In test mode these were emitted
+	// as members of MainScreenState already.
+	if !cfg.GoLib && !testMode {
 		allFuncs := ctx.Pkg.Funcs
 		if main := ctx.MainComponent(); main != nil {
 			allFuncs = append(allFuncs, main.Funcs...)
@@ -482,6 +523,48 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	}
 
 	b.WriteString("}\n")
+}
+
+// emitIRKtMemberFunc emits a user func as a method inside a class
+// body (Android test mode: members of MainScreenState). The body is
+// translated with `kc`'s scope; reads of class members resolve via
+// implicit `this` because `kc.IdentRewrites` is intentionally not
+// set on the caller-provided context here.
+func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		ktType := kotlin.IRTypeToKt(p.Type)
+		params[i] = p.Name + ": " + ktType
+	}
+	paramStr := strings.Join(params, ", ")
+
+	retType := ""
+	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
+		retType = ": " + kotlin.IRTypeToKt(fn.Return)
+	}
+
+	localKC := kc
+	for _, p := range fn.Params {
+		localKC = localKC.WithLocal(p.Name)
+	}
+
+	if len(fn.Block) == 1 {
+		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+			body := localKC.EvalExpr(ret.Value)
+			fmt.Fprintf(b, "    fun %s(%s)%s = %s\n", fn.Name, paramStr, retType, body)
+			return
+		}
+	}
+
+	if len(fn.Block) > 0 {
+		fmt.Fprintf(b, "    fun %s(%s)%s {\n", fn.Name, paramStr, retType)
+		for _, stmt := range fn.Block {
+			for _, line := range localKC.EvalStmt(stmt) {
+				fmt.Fprintf(b, "        %s\n", line)
+			}
+		}
+		b.WriteString("    }\n")
+	}
 }
 
 func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
