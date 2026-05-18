@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 
@@ -251,6 +252,18 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			for _, f := range x.Fields {
 				visitExpr(f.Value)
 			}
+		case *ir.MapLitIR:
+			for _, kv := range x.Entries {
+				visitExpr(kv.Key)
+				visitExpr(kv.Value)
+			}
+		case *ir.Spread:
+			visitExpr(x.Operand)
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+			// Literals/Idents have no param-call shape; lambda bodies
+			// are opaque to this scan (they have their own scope).
+		default:
+			panic(fmt.Sprintf("bodyHasFoldableParamUse.visitExpr: unhandled expr %T", x))
 		}
 	}
 	visitStmts = func(stmts []ir.Stmt) {
@@ -302,6 +315,31 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				if n.Call != nil {
 					visitExpr(n.Call)
 				}
+			case *ir.ContextProvider:
+				if isParamIdent(n.Value) {
+					found = true
+					return
+				}
+				visitExpr(n.Value)
+				visitStmts(n.Children)
+			case *ir.ErrorBoundary:
+				visitStmts(n.Children)
+			case *ir.Emit:
+				for _, a := range n.Args {
+					if isParamIdent(a.Value) {
+						found = true
+						return
+					}
+					visitExpr(a.Value)
+				}
+			case *ir.Toggle:
+				if isParamIdent(n.Target) {
+					found = true
+					return
+				}
+				visitExpr(n.Target)
+			default:
+				panic(fmt.Sprintf("bodyHasFoldableParamUse.visitStmts: unhandled stmt %T", n))
 			}
 		}
 	}
@@ -353,6 +391,17 @@ func substituteSlotsInStmt(s ir.Stmt, slotChildren []ir.Stmt) ir.Stmt {
 		n.Body = substituteSlots(n.Body, slotChildren)
 	case *ir.Window:
 		n.Body = substituteSlots(n.Body, slotChildren)
+	case *ir.ContextProvider:
+		n.Children = substituteSlots(n.Children, slotChildren)
+	case *ir.ErrorBoundary:
+		n.Children = substituteSlots(n.Children, slotChildren)
+	case *ir.SlotInst:
+		// Handled in substituteSlots above; if we land here it's a
+		// nested slot we don't substitute through.
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		// No child statements with slots.
+	default:
+		panic(fmt.Sprintf("substituteSlotsInStmt: unhandled stmt %T", n))
 	}
 	return s
 }

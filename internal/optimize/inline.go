@@ -1,6 +1,8 @@
 package optimize
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -105,6 +107,24 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 				return true
 			}
 		}
+	case *ir.Closure:
+		if x.Func != nil {
+			for _, s := range x.Func.Block {
+				if callsFuncStmt(s, target) {
+					return true
+				}
+			}
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			if callsFunc(kv.Key, target) || callsFunc(kv.Value, target) {
+				return true
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// No nested calls possible.
+	default:
+		panic(fmt.Sprintf("callsFunc: unhandled expr %T", x))
 	}
 	return false
 }
@@ -180,6 +200,29 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 		return callsFuncInArgs(n.Args, target)
 	case *ir.Toggle:
 		return callsFunc(n.Target, target)
+	case *ir.SlotInst:
+		for _, c := range n.Children {
+			if callsFuncStmt(c, target) {
+				return true
+			}
+		}
+	case *ir.ErrorBoundary:
+		for _, c := range n.Children {
+			if callsFuncStmt(c, target) {
+				return true
+			}
+		}
+	case *ir.ContextProvider:
+		if callsFunc(n.Value, target) {
+			return true
+		}
+		for _, c := range n.Children {
+			if callsFuncStmt(c, target) {
+				return true
+			}
+		}
+	default:
+		panic(fmt.Sprintf("callsFuncStmt: unhandled stmt %T", n))
 	}
 	return false
 }
@@ -243,6 +286,15 @@ func containsContextRead(e ir.Expr) bool {
 				return true
 			}
 		}
+	case *ir.Spread:
+		return containsContextRead(x.Operand)
+	case *ir.Lambda, *ir.Closure:
+		// Lambda/closure bodies are opaque to this scan; the body is
+		// rewritten when NoContext processes its enclosing func.
+	case *ir.Literal, *ir.Ident:
+		// No subexpressions.
+	default:
+		panic(fmt.Sprintf("containsContextRead: unhandled expr %T", x))
 	}
 	return false
 }
@@ -292,6 +344,19 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		}
 	case *ir.Spread:
 		x.Operand = substituteParams(x.Operand, subs)
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = substituteParams(x.Entries[i].Key, subs)
+			x.Entries[i].Value = substituteParams(x.Entries[i].Value, subs)
+		}
+	case *ir.Literal, *ir.ContextRead:
+		// No parameter references.
+	case *ir.Lambda, *ir.Closure:
+		// Lambda bodies are opaque to substitution (treated as opaque
+		// by cloneExpr too); their bodies are substituted when the
+		// enclosing func is inlined.
+	default:
+		panic(fmt.Sprintf("substituteParams: unhandled expr %T", x))
 	}
 	return e
 }
@@ -366,8 +431,23 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		// Don't deep-clone lambda bodies — treat as opaque.
 		cp := *x
 		return &cp
+	case *ir.Closure:
+		// Treat closures as opaque (matches Lambda).
+		cp := *x
+		return &cp
+	case *ir.MapLitIR:
+		cp := *x
+		cp.Entries = make([]ir.MapEntry, len(x.Entries))
+		for i, kv := range x.Entries {
+			cp.Entries[i] = ir.MapEntry{Key: cloneExpr(kv.Key), Value: cloneExpr(kv.Value)}
+		}
+		return &cp
+	case *ir.ContextRead:
+		cp := *x
+		return &cp
+	default:
+		panic(fmt.Sprintf("cloneExpr: unhandled expr %T", x))
 	}
-	return e
 }
 
 // cloneStmt creates a deep copy of a statement.
@@ -453,8 +533,13 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp.Favicon = cloneExpr(n.Favicon)
 		cp.Body = cloneStmts(n.Body)
 		return &cp
+	case *ir.ErrorBoundary:
+		cp := *n
+		cp.Children = cloneStmts(n.Children)
+		return &cp
+	default:
+		panic(fmt.Sprintf("cloneStmt: unhandled stmt %T", n))
 	}
-	return s
 }
 
 func cloneStmts(stmts []ir.Stmt) []ir.Stmt {

@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"fmt"
 	"log/slog"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -233,6 +234,16 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 			walk(f)
 		}
 		walkStmts(n.Body, used, walk)
+	case *ir.ContextProvider:
+		walkExpr(n.Value, used, walk)
+		walkStmts(n.Children, used, walk)
+	case *ir.ErrorBoundary:
+		if n.Handler != nil && n.Handler.Func != nil {
+			walkFunc(n.Handler.Func, used, walk)
+		}
+		walkStmts(n.Children, used, walk)
+	default:
+		panic(fmt.Sprintf("walkStmt: unhandled stmt %T", n))
 	}
 }
 
@@ -280,6 +291,26 @@ func walkExpr(e ir.Expr, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		if x.Func != nil {
 			walkFunc(x.Func, used, walk)
 		}
+	case *ir.Closure:
+		if x.Func != nil {
+			walkFunc(x.Func, used, walk)
+		}
+		if x.State != nil {
+			walkExpr(x.State, used, walk)
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			walkExpr(kv.Key, used, walk)
+			walkExpr(kv.Value, used, walk)
+		}
+	case *ir.ContextRead:
+		if x.Ref != nil {
+			walk(x.Ref)
+		}
+	case *ir.Literal:
+		// No subexpressions or referenced symbols.
+	default:
+		panic(fmt.Sprintf("walkExpr: unhandled expr %T", x))
 	}
 }
 

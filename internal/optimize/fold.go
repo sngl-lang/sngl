@@ -1,6 +1,8 @@
 package optimize
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -91,6 +93,20 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	case *ir.Spread:
 		x.Operand = foldExpr(x.Operand, ctx)
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = foldExpr(x.Entries[i].Key, ctx)
+			x.Entries[i].Value = foldExpr(x.Entries[i].Value, ctx)
+		}
+	case *ir.Literal, *ir.Ident:
+		// No subexpressions to fold.
+	case *ir.Lambda, *ir.Closure:
+		// Lambdas/closures are opaque to constant folding; their bodies
+		// are folded when their enclosing func is processed.
+	case *ir.ContextRead:
+		// No subexpressions.
+	default:
+		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
 	}
 	return e
 }
@@ -191,6 +207,12 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 			n.Favicon = foldExpr(n.Favicon, ctx)
 		}
 		n.Body = foldStmts(n.Body, ctx)
+	case *ir.Toggle:
+		n.Target = foldExpr(n.Target, ctx)
+	case *ir.ErrorBoundary:
+		n.Children = foldStmts(n.Children, ctx)
+	default:
+		panic(fmt.Sprintf("foldStmt: unhandled stmt %T", n))
 	}
 	return s
 }

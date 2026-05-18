@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 
@@ -121,6 +122,18 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 			collectWindowStructValues(n.Else, result)
 		case *ir.PlatformFilter:
 			collectWindowStructValues(n.Body, result)
+		case *ir.ContextProvider:
+			collectWindowStructValues(n.Children, result)
+		case *ir.SlotInst:
+			collectWindowStructValues(n.Children, result)
+		case *ir.ErrorBoundary:
+			collectWindowStructValues(n.Children, result)
+		case *ir.NodeInst:
+			collectWindowStructValues(n.Children, result)
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			// No nested window declarations.
+		default:
+			panic(fmt.Sprintf("collectWindowStructValues: unhandled stmt %T", n))
 		}
 	}
 }
@@ -210,6 +223,16 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 	case *ir.ContextProvider:
 		walkAllExprs(n.Value, visit)
 		walkForBody(n.Children, visit)
+	case *ir.ErrorBoundary:
+		walkForBody(n.Children, visit)
+	case *ir.Emit:
+		for _, a := range n.Args {
+			walkAllExprs(a.Value, visit)
+		}
+	case *ir.Toggle:
+		walkAllExprs(n.Target, visit)
+	default:
+		panic(fmt.Sprintf("walkStmtExprs: unhandled stmt %T", n))
 	}
 }
 
@@ -248,6 +271,21 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		for _, f := range x.Fields {
 			walkAllExprs(f.Value, visit)
 		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			walkAllExprs(kv.Key, visit)
+			walkAllExprs(kv.Value, visit)
+		}
+	case *ir.Spread:
+		walkAllExprs(x.Operand, visit)
+	case *ir.Lambda, *ir.Closure:
+		// Lambda/closure bodies are opaque to this walker; for-loop
+		// expansion only inspects expressions at the lexical scope of
+		// the for body, not inside nested lambda bodies.
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// No subexpressions.
+	default:
+		panic(fmt.Sprintf("walkAllExprs: unhandled expr %T", x))
 	}
 }
 
