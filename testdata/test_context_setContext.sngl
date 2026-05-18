@@ -1,25 +1,22 @@
 // Tests for t.setContext(): overriding a context value within a test body.
-// A local context #locale declaration is used here because the stdlib locale
-// context (Task 28) has not yet been added; each fixture declares its own.
+// Uses the stdlib `locale` context from lib/i18n.sngl.
 //
-// These tests verify that t.setContext(locale, ...) works as a replacement
-// for t.setLocale(...): it updates env.locale so i18n calls in the component
-// use the overridden locale.
-
-context #locale("en-US")
+// The component declares `label` as a `func` (not a `var`) so each read
+// recomputes against the active locale — `var` is initial-value only,
+// not derived. See sngl_var_vs_func_semantics in memory.
 
 component SetCtxGreeting {
-    var label = $"Hello"
-    text(value=label)
+    func label() => $"Hello"
+    text(value=label())
 }
 
-// Default locale (en-US) produces the expected English output.
+// Default locale produces the expected English output.
 func testSetContextDefaultLocale(t Test, c SetCtxGreeting) {
     t.setContext(locale, "en")
-    t.assert(c.label == "Hello")
+    t.assert(c.label() == "Hello")
 }
 
-// Calling setContext is accepted and does not crash; locale is updated.
+// Calling setContext is accepted and does not crash.
 func testSetContextCallAccepted(t Test, c SetCtxGreeting) {
     t.setContext(locale, "es-MX")
     t.assert(true)
@@ -29,5 +26,5 @@ func testSetContextCallAccepted(t Test, c SetCtxGreeting) {
 func testSetContextLastWriteWins(t Test, c SetCtxGreeting) {
     t.setContext(locale, "fr-FR")
     t.setContext(locale, "en")
-    t.assert(c.label == "Hello")
+    t.assert(c.label() == "Hello")
 }

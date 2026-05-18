@@ -170,6 +170,25 @@ func runAndroidTestGroup(origPkg, compPkg *ir.Package, group testharness.TestGro
 		return nil, fmt.Errorf("write MainScreen.kt: %w", err)
 	}
 
+	// When the promoted component reads $"..." translatable strings,
+	// MainScreen.kt references I18n.defaultLocale() / I18n.translate().
+	// Drop the Kotlin runtime into the source tree so those references
+	// resolve.
+	if hasI18nCalls(compPkg) {
+		f := i18nRuntimeFile()
+		var buf bytes.Buffer
+		if _, err := f.WriteTo(&buf); err != nil {
+			return nil, fmt.Errorf("buffer i18n runtime: %w", err)
+		}
+		out := filepath.Join(dir, f.Name)
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(out, buf.Bytes(), 0o644); err != nil {
+			return nil, fmt.Errorf("write %s: %w", out, err)
+		}
+	}
+
 	// 3) Emit the Kotlin test class. Conditional/loop ids gated by
 	// `if`/`for` go through Compose finder helpers; everything else
 	// reads off MainScreenState directly.
