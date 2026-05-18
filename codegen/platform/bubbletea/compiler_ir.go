@@ -95,10 +95,11 @@ type irAnalysis struct {
 }
 
 type irBind struct {
-	name    string
-	goType  string
-	init    string // Go expression
-	isConst bool
+	name        string
+	goType      string
+	init        string // Go expression
+	isConst     bool
+	synthesized bool // pass-generated (e.g. NoContext hidden ctx Var); no getter/setter
 }
 
 type irExtern struct {
@@ -165,10 +166,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			info.goImports["time"] = ""
 		}
 		info.binds = append(info.binds, irBind{
-			name:    v.Name,
-			goType:  goType,
-			init:    initVal,
-			isConst: v.IsConst,
+			name:        v.Name,
+			goType:      goType,
+			init:        initVal,
+			isConst:     v.IsConst,
+			synthesized: v.Synthesized,
 		})
 	}
 
@@ -537,6 +539,12 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		if bind.isConst {
 			continue
 		}
+		if bind.synthesized {
+			// Pass-generated state (e.g. NoContext hidden ctx Var) has
+			// no public surface. Tests don't touch it; the Model body
+			// reads/writes directly via m.<name>.
+			continue
+		}
 		getter := golang.ExportName(bind.name)
 		// Getter
 		fmt.Fprintf(b, "func (m Model) %s() %s {\n", getter, bind.goType)
@@ -587,9 +595,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
-	// Set messages — consts have no setter, skip them.
+	// Set messages — consts have no setter, skip them. Synthesized
+	// (pass-generated) vars have no public surface either.
 	for _, bind := range info.binds {
-		if bind.isConst {
+		if bind.isConst || bind.synthesized {
 			continue
 		}
 		getter := golang.ExportName(bind.name)

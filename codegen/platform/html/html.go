@@ -2376,6 +2376,9 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 
 	// State vars: promote to parent with unique names, and record their
 	// initial values so emitScript can populate the state object.
+	// Synthesized context vars (added by passNoContext) may be overridden
+	// at the call site by a hidden __ctx_<name> arg in n.Props; if so,
+	// the overriding expr supersedes the var's default Init.
 	dataRenames := make(map[string]string)
 	for _, dv := range comp.Vars {
 		uniqueName := dv.Name + suffix
@@ -2384,9 +2387,21 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		g.scope.LocalVars[dv.Name] = true
 		renames[dv.Name] = "state." + uniqueName
 		dataRenames[dv.Name] = uniqueName
+		var initJS string
+		if dv.Synthesized {
+			for _, pa := range n.Props {
+				if pa.Name == dv.Name {
+					initJS = g.exprToJS(pa.Value)
+					break
+				}
+			}
+		}
+		if initJS == "" {
+			initJS = g.literalToJS(dv.Init)
+		}
 		g.inlinedStateInits = append(g.inlinedStateInits, componentParam{
 			name:  uniqueName,
-			value: g.literalToJS(dv.Init),
+			value: initJS,
 		})
 	}
 	g.scope.Renames = renames

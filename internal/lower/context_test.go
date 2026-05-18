@@ -37,11 +37,13 @@ func makeNodeInstComp(comp *ir.Component, props ...ir.Arg) *ir.NodeInst {
 	return &ir.NodeInst{Name: comp.Name, Component: comp, Props: props}
 }
 
-// findHiddenProp returns the hidden prop with the given name, or nil.
-func findHiddenProp(comp *ir.Component, name string) *ir.Prop {
-	for _, p := range comp.Props {
-		if p.Name == name {
-			return p
+// findHiddenVar returns the hidden context Var with the given name, or nil.
+// After NoContext, components store __ctx_<name> as a synthesized *ir.Var on
+// comp.Vars (initialized to ctx.Default), not as a *ir.Prop on comp.Props.
+func findHiddenVar(comp *ir.Component, name string) *ir.Var {
+	for _, v := range comp.Vars {
+		if v.Name == name {
+			return v
 		}
 	}
 	return nil
@@ -281,14 +283,16 @@ func TestAddHiddenParams(t *testing.T) {
 	reach := computeReachability(pkg, nil)
 	addHiddenParams(pkg, reach, nil)
 
-	propName := "__ctx_theme"
-	if p := findHiddenProp(consumer, propName); p == nil {
-		t.Errorf("Consumer should have prop %q after addHiddenParams", propName)
-	} else if p.Type != ctx.Typ {
-		t.Errorf("hidden prop type = %v; want %v", p.Type, ctx.Typ)
+	varName := "__ctx_theme"
+	if v := findHiddenVar(consumer, varName); v == nil {
+		t.Errorf("Consumer should have var %q after addHiddenParams", varName)
+	} else if v.Type != ctx.Typ {
+		t.Errorf("hidden var type = %v; want %v", v.Type, ctx.Typ)
+	} else if v.Init != ctx.Default {
+		t.Errorf("hidden var Init = %v; want ctx.Default", v.Init)
 	}
-	if p := findHiddenProp(nonReader, propName); p != nil {
-		t.Errorf("NonReader should NOT have prop %q", propName)
+	if v := findHiddenVar(nonReader, varName); v != nil {
+		t.Errorf("NonReader should NOT have var %q", varName)
 	}
 }
 
@@ -311,13 +315,13 @@ func TestAddHiddenParams_Idempotent(t *testing.T) {
 	addHiddenParams(pkg, reach, nil)
 
 	count := 0
-	for _, p := range consumer.Props {
-		if p.Name == "__ctx_theme" {
+	for _, v := range consumer.Vars {
+		if v.Name == "__ctx_theme" {
 			count++
 		}
 	}
 	if count != 1 {
-		t.Errorf("expected exactly 1 __ctx_theme prop; got %d", count)
+		t.Errorf("expected exactly 1 __ctx_theme var; got %d", count)
 	}
 }
 
@@ -337,7 +341,8 @@ func TestRewriteReads(t *testing.T) {
 
 	reach := computeReachability(pkg, nil)
 	addHiddenParams(pkg, reach, nil)
-	rewriteReads(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
+	hidden := buildHiddenParamIndex(pkg, reach, nil)
+	rewriteReads(pkg, reach, nil, hidden)
 
 	// No ContextRead should remain.
 	if n := countContextReads(consumer.Body, ctx); n != 0 {
@@ -604,9 +609,9 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 		t.Error("pkg.Contexts not cleared")
 	}
 
-	// Toolbar has hidden prop.
-	if p := findHiddenProp(toolbar, "__ctx_theme"); p == nil {
-		t.Error("Toolbar missing __ctx_theme prop")
+	// Toolbar has hidden var.
+	if v := findHiddenVar(toolbar, "__ctx_theme"); v == nil {
+		t.Error("Toolbar missing __ctx_theme var")
 	}
 
 	// No ContextRead remains in Toolbar.
@@ -742,11 +747,11 @@ func TestMultipleContexts(t *testing.T) {
 	if pkg.Contexts != nil {
 		t.Error("pkg.Contexts not cleared")
 	}
-	if p := findHiddenProp(consumer, "__ctx_theme"); p == nil {
-		t.Error("Consumer missing __ctx_theme prop")
+	if v := findHiddenVar(consumer, "__ctx_theme"); v == nil {
+		t.Error("Consumer missing __ctx_theme var")
 	}
-	if p := findHiddenProp(consumer, "__ctx_locale"); p == nil {
-		t.Error("Consumer missing __ctx_locale prop")
+	if v := findHiddenVar(consumer, "__ctx_locale"); v == nil {
+		t.Error("Consumer missing __ctx_locale var")
 	}
 	if n := countContextReads(consumer.Body, ctxA); n != 0 {
 		t.Errorf("Consumer still has %d ContextRead(theme)", n)
@@ -830,8 +835,10 @@ func TestReachabilityFuncTransitive(t *testing.T) {
 	}
 }
 
-// TestFuncHiddenParam verifies that addHiddenParams appends __ctx_<name>
-// to a Reach func's Params.
+// TestFuncHiddenParam verifies that addHiddenParams puts a synthesized
+// __ctx_<name> Var on pkg.Vars when a user pkg.Func reads the ctx. The
+// func itself does NOT receive a hidden Param — only stdlib wrappers
+// (extraFuncs) do, since user funcs read through the pkg-level state.
 func TestFuncHiddenParam(t *testing.T) {
 	ctx := makeContext("locale", "en")
 	fn := makeFunc("tr", nil,
@@ -844,12 +851,24 @@ func TestFuncHiddenParam(t *testing.T) {
 	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	p := findFuncParam(fn, "__ctx_locale")
-	if p == nil {
-		t.Fatalf("func tr should have __ctx_locale param after pass")
+	if findFuncParam(fn, "__ctx_locale") != nil {
+		t.Errorf("user pkg.Func tr should NOT have __ctx_locale Param (state lives on pkg.Vars)")
 	}
-	if p.Type != ctx.Typ {
-		t.Errorf("__ctx_locale param type = %v; want %v", p.Type, ctx.Typ)
+	var pkgVar *ir.Var
+	for _, v := range pkg.Vars {
+		if v.Name == "__ctx_locale" && v.Synthesized {
+			pkgVar = v
+			break
+		}
+	}
+	if pkgVar == nil {
+		t.Fatalf("expected synthesized __ctx_locale Var on pkg.Vars after applyNoContext; got %+v", pkg.Vars)
+	}
+	if pkgVar.Type != ctx.Typ {
+		t.Errorf("__ctx_locale Var type = %v; want %v", pkgVar.Type, ctx.Typ)
+	}
+	if pkgVar.Init != ctx.Default {
+		t.Errorf("__ctx_locale Var Init = %v; want ctx.Default", pkgVar.Init)
 	}
 }
 
@@ -887,15 +906,14 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	// The tr() call inside Consumer's body should have __ctx_locale arg.
-	val := findCallArgNamed(trCall, "__ctx_locale")
-	if val == nil {
-		t.Fatalf("tr() call missing __ctx_locale arg after pass; args=%+v", trCall.Args)
+	// User pkg.Func tr has no hidden Param under the new model, so call
+	// sites do NOT thread a __ctx_locale arg. The callee reads state
+	// directly from the pkg-level synth Var.
+	if findCallArgNamed(trCall, "__ctx_locale") != nil {
+		t.Errorf("tr() call should NOT have __ctx_locale arg threaded to a user pkg.Func; args=%+v", trCall.Args)
 	}
-	// Inside the component body, the active value is an Ident referencing
-	// the component's hidden prop (since the value was threaded down).
-	if !identifiesHiddenParam(val, ctx) {
-		t.Errorf("tr() __ctx_locale arg = %T %v; want Ident(__ctx_locale)", val, val)
+	if findFuncParam(tr, "__ctx_locale") != nil {
+		t.Errorf("tr() should NOT have __ctx_locale Param under the new model")
 	}
 }
 
@@ -918,16 +936,22 @@ func TestFuncCallSiteThreadedFromFunc(t *testing.T) {
 	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	if findFuncParam(caller, "__ctx_locale") == nil {
-		t.Errorf("caller should have __ctx_locale param (transitive reach)")
+	if findFuncParam(caller, "__ctx_locale") != nil {
+		t.Errorf("caller (user pkg.Func) should NOT have __ctx_locale Param under the new model")
 	}
-	val := findCallArgNamed(leafCall, "__ctx_locale")
-	if val == nil {
-		t.Fatalf("leaf() call inside caller missing __ctx_locale arg")
+	if findCallArgNamed(leafCall, "__ctx_locale") != nil {
+		t.Errorf("leaf() call inside caller should NOT have __ctx_locale arg threaded (callee is user pkg.Func)")
 	}
-	if !identifiesHiddenParam(val, ctx) {
-		t.Errorf("leaf() __ctx_locale arg = %T %v; want Ident(__ctx_locale)", val, val)
+	if findFuncParam(leaf, "__ctx_locale") != nil {
+		t.Errorf("leaf (user pkg.Func) should NOT have __ctx_locale Param")
 	}
+	// Inside leaf body, the ContextRead is rewritten to an Ident that
+	// resolves the pkg-level synth Var. Surface that to make sure the
+	// rewrite didn't leave a dangling ContextRead.
+	if n := countContextReads(leaf.Block, ctx); n != 0 {
+		t.Errorf("leaf body still has %d ContextRead nodes after pass", n)
+	}
+	_ = identifiesHiddenParam
 }
 
 // TestFuncBodyContextReadRewritten verifies that a ContextRead inside a

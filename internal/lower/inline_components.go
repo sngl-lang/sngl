@@ -428,6 +428,17 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone := cloneVarShallow(v)
 		clone.Name = v.Name + suffix
 		clone.Init = deepCloneExpr(v.Init)
+		// Synthesized context Vars (added by passNoContext) can be
+		// overridden at the call site by a hidden __ctx_<name> arg in
+		// n.Props. When present, that arg supersedes ctx.Default.
+		if v.Synthesized {
+			for _, arg := range n.Props {
+				if arg.Name == v.Name {
+					clone.Init = deepCloneExpr(arg.Value)
+					break
+				}
+			}
+		}
 		renames[v] = clone.Name
 		st.main.Vars = append(st.main.Vars, clone)
 	}
