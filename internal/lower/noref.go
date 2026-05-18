@@ -348,8 +348,25 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 			x.Type = r.rewriteType(x.Type)
 		}
 		return x
+	case *ir.Lambda:
+		if x.Func != nil {
+			rewriteFuncSignature(x.Func, r)
+			r.rewriteStmts(x.Func.Block)
+		}
+		return x
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Key = r.rewriteExpr(x.Entries[i].Key)
+			x.Entries[i].Value = r.rewriteExpr(x.Entries[i].Value)
+		}
+		x.Type = r.rewriteType(x.Type)
+		return x
+	case *ir.Literal, *ir.ContextRead:
+		// Terminal — no ref<T> shapes to rewrite.
+		return x
+	default:
+		panic(fmt.Sprintf("refRewriter.rewriteExpr: unhandled %T", x))
 	}
-	return e
 }
 
 func (r *refRewriter) rewriteStmts(stmts []ir.Stmt) {
@@ -412,6 +429,16 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		}
 	case *ir.Toggle:
 		n.Target = r.rewriteAssignTarget(n.Target)
+	case *ir.Window:
+		n.Href = r.rewriteExpr(n.Href)
+		n.Title = r.rewriteExpr(n.Title)
+		n.Favicon = r.rewriteExpr(n.Favicon)
+		r.rewriteStmts(n.Body)
+	case *ir.ContextProvider:
+		n.Value = r.rewriteExpr(n.Value)
+		r.rewriteStmts(n.Children)
+	default:
+		panic(fmt.Sprintf("refRewriter.rewriteStmt: unhandled %T", n))
 	}
 }
 
@@ -498,6 +525,21 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 				seedAddressedVarsInStmt(s, set)
 			}
 		}
+	case *ir.Lambda:
+		if x.Func != nil {
+			for _, s := range x.Func.Block {
+				seedAddressedVarsInStmt(s, set)
+			}
+		}
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			seedAddressedVarsInExpr(en.Key, set)
+			seedAddressedVarsInExpr(en.Value, set)
+		}
+	case *ir.Ident, *ir.Literal, *ir.ContextRead:
+		// Terminal — no UnaryAddr to seed.
+	default:
+		panic(fmt.Sprintf("seedAddressedVarsInExpr: unhandled %T", x))
 	}
 }
 
@@ -569,6 +611,20 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		}
 	case *ir.Toggle:
 		seedAddressedVarsInExpr(n.Target, set)
+	case *ir.Window:
+		seedAddressedVarsInExpr(n.Href, set)
+		seedAddressedVarsInExpr(n.Title, set)
+		seedAddressedVarsInExpr(n.Favicon, set)
+		for _, t := range n.Body {
+			seedAddressedVarsInStmt(t, set)
+		}
+	case *ir.ContextProvider:
+		seedAddressedVarsInExpr(n.Value, set)
+		for _, t := range n.Children {
+			seedAddressedVarsInStmt(t, set)
+		}
+	default:
+		panic(fmt.Sprintf("seedAddressedVarsInStmt: unhandled %T", n))
 	}
 }
 
