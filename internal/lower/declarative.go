@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -115,6 +116,10 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 			st.scanStmts(n.Children)
 		case *ir.Window:
 			st.scanStmts(n.Body)
+		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf/non-visual stmts — no NodeInst IDs to observe.
+		default:
+			panic(fmt.Sprintf("declarativeState.scanStmts: unhandled %T", n))
 		}
 	}
 }
@@ -189,8 +194,11 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.Window:
 			n.Body = st.processStmts(n.Body, &n.Funcs)
 			out = append(out, n)
-		default:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf stmts — no NodeInsts to lower or nested blocks to recurse.
 			out = append(out, s)
+		default:
+			panic(fmt.Sprintf("processStmtsForParent: unhandled %T", n))
 		}
 	}
 	return out
