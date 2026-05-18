@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -260,8 +261,17 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool) string {
 		operand := lowerTestExpr(n.Operand, methodFields)
 		idx := lowerTestExpr(n.Idx, methodFields)
 		return operand + "[" + idx + "]"
+	case *ir.Call:
+		// Delegate to the full expression translator for calls and any
+		// shape lowerTestExpr's special-cases above don't already cover.
+		// Method calls like `c.formatted()` and stdlib calls inside test
+		// assertions both flow through here.
+		return translateIRExpr(e, &codegen.ExprScope{})
 	}
-	return "/* TODO unlowered expr */"
+	// Final fallback: defer to the full IR translator. Keeps test
+	// expressions in lockstep with non-test Kotlin codegen rather than
+	// emitting a TODO placeholder that fails Kotlin compilation.
+	return translateIRExpr(e, &codegen.ExprScope{})
 }
 
 // composeIDRef returns the id when e is the bare `c.<id>` shape and
