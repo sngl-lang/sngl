@@ -7,6 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -70,6 +71,10 @@ func TestFixtures(t *testing.T) {
 			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
+			}
+			gen := &Generator{}
+			if err := lower.Lower(pkg, gen.Capabilities(), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
+				t.Fatalf("lower: %v", err)
 			}
 			compileAndVerify(t, doc, pkg)
 		})
