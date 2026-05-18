@@ -1,0 +1,27 @@
+# Android (kotlin) parallel of compile_bubbletea_locale_override.txt:
+# `locale("es-MX") { ... }` threads the literal locale to i18n.* stdlib calls
+# in the subtree at compile time. Locks the end-to-end behavior so it doesn't
+# regress alongside the Go output path.
+
+sngl compile --platform=android --lang=kotlin --opt=main=true --out=out app.sngl
+exists out/app/src/main/java/test/sngl/app/MainScreen.kt
+
+# I18n Kotlin runtime is imported in MainScreen.kt.
+grep 'import us.duckfam.git.jonathan.sngl.i18n.I18n' out/app/src/main/java/test/sngl/app/MainScreen.kt
+
+# locale("es-MX") threads to I18n.numberInt as the first arg.
+grep 'I18n\.numberInt\("es-MX",' out/app/src/main/java/test/sngl/app/MainScreen.kt
+
+# Provider-block var `price` is promoted to a Compose state field.
+grep 'price' out/app/src/main/java/test/sngl/app/MainScreen.kt
+
+-- app.sngl --
+output { kotlin { android } }
+
+component main {
+    var n = 1234
+    locale("es-MX") {
+        var price = i18n.numberInt(n, "decimal")
+        text(value=price)
+    }
+}

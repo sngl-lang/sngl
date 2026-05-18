@@ -1,0 +1,27 @@
+# Verifies that a `locale("...")` provider block threads the literal locale
+# through to i18n stdlib calls in its subtree at compile time, with the
+# provider-block var promoted to Model state. Locks the end-to-end behavior
+# demonstrated by hand in 932834d so it doesn't regress.
+
+sngl compile --platform=bubbletea --lang=go --out=out app.sngl
+exists out/model.go
+
+# i18n runtime package is imported.
+grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' out/model.go
+
+# locale("es-MX") provider threads to the i18n.NumberInt call as the first arg.
+grep 'i18n.NumberInt\("es-MX",' out/model.go
+
+# Provider-block var `price` is promoted to Model state (field + setter).
+grep 'price' out/model.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var n = 1234
+    locale("es-MX") {
+        var price = i18n.numberInt(n, "decimal")
+        text(value=price)
+    }
+}
