@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -48,6 +49,10 @@ func compileLesson(source string) (string, error) {
 	}
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("none")
+	caps := gen.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
+		return "", err
+	}
 	resp, err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),

@@ -1401,7 +1401,23 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, reach Reachable, hid
 				n.State.Fields[i].Value = lowerInExpr(n.State.Fields[i].Value, active, reach, hidden)
 			}
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.ContextRead:
+		// Inside an active provider scope, replace the ContextRead with the
+		// provider's current value expression. rewriteReads handles direct
+		// readers outside any provider (replacing with the hidden-param
+		// Ident); this branch handles inside-provider reads, which the
+		// reachability collector deliberately skips because they are
+		// "shielded" by the provider — but the provider's value is what
+		// they should actually resolve to.
+		if val, ok := active[n.Ref]; ok {
+			return val
+		}
+		// No active provider for this ctx in scope (the read sits outside
+		// any provider in this lowering scope but reachability didn't mark
+		// the surrounding scope as a reader). Leave as-is; downstream
+		// codegen will surface this via its unhandled-IR panic if it
+		// matters.
+	case *ir.Literal, *ir.Ident:
 		// Terminal — no nested exprs.
 	default:
 		panic(fmt.Sprintf("lowerInExpr: unhandled %T", n))
