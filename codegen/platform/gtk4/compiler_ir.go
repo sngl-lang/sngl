@@ -594,6 +594,20 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.PlatformFilter:
+				walk(n.Body)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			case *ir.NodeInst:
+				walk(n.Children)
+			case *ir.Window:
+				walk(n.Body)
+			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle:
+				// No CreateNode call to harvest.
+			case *ir.ContextProvider:
+				panic(fmt.Sprintf("gtk4.collectNodeCTypes: ContextProvider should be lowered: %#v", n))
+			default:
+				panic(fmt.Sprintf("gtk4.collectNodeCTypes: unhandled ir.Stmt %T", n))
 			}
 		}
 	}

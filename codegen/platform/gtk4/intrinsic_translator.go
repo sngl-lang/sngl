@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -81,6 +82,28 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		for _, c := range n.Else {
 			t.collectFromStmt(c)
 		}
+	case *ir.PlatformFilter:
+		for _, c := range n.Body {
+			t.collectFromStmt(c)
+		}
+	case *ir.ErrorBoundary:
+		for _, c := range n.Children {
+			t.collectFromStmt(c)
+		}
+	case *ir.NodeInst:
+		for _, c := range n.Children {
+			t.collectFromStmt(c)
+		}
+	case *ir.Window:
+		for _, c := range n.Body {
+			t.collectFromStmt(c)
+		}
+	case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle:
+		// No component-typed LocalVar to harvest.
+	case *ir.ContextProvider:
+		panic(fmt.Sprintf("gtk4.collectFromStmt: ContextProvider should be lowered: %#v", n))
+	default:
+		panic(fmt.Sprintf("gtk4.collectFromStmt: unhandled ir.Stmt %T", n))
 	}
 }
 
