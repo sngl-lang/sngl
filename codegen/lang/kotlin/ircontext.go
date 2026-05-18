@@ -96,7 +96,7 @@ func (kc *KtIRContext) EvalExpr(e ir.Expr) string {
 	case *ir.Lambda:
 		return kc.evalLambda(n)
 	default:
-		return fmt.Sprintf("/* unsupported IR node %T */null", e)
+		panic(fmt.Sprintf("KtIRContext.EvalExpr: unhandled ir.Expr %T", e))
 	}
 }
 
@@ -144,8 +144,12 @@ func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string {
 		return []string{"return"}
 	case *ir.For:
 		return kc.evalFor(n)
+	case *ir.NodeInst:
+		// UI tree statements are platform-specific; the generic Kotlin
+		// stmt path emits nothing for them. Mirrors GoIRContext.EvalStmt.
+		return nil
 	default:
-		return []string{"// unsupported IR stmt: " + fmt.Sprintf("%T", s)}
+		panic(fmt.Sprintf("KtIRContext.EvalStmt: unhandled ir.Stmt %T", s))
 	}
 }
 

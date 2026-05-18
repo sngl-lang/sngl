@@ -138,6 +138,10 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	case *ir.ListLit:
 		return IRLiteralToKt(n)
 	}
+	// Best-effort fallback for non-literal Expr shapes (computed defaults,
+	// unresolved expressions). Mirrors IRLiteralToGo / TranslateIRLiteral
+	// (js) — callers that hit this arm get an empty string rather than
+	// a panic.
 	return `""`
 }
 
