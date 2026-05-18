@@ -241,6 +241,141 @@ func (a *CommonAnalysis) DepTracker() *DepTracker {
 	return NewDepTracker(a.ModelFields, a.ComputedFields, a.ComputedDeps)
 }
 
+// DerivedVarRecomputes returns, for each non-const Var in vars whose Init
+// expression references other non-const Vars in vars, the topologically
+// sorted list of Vars that must be recomputed (in order) after any one
+// of its dependencies mutates.
+//
+// The result maps each *dependency* var (a mutable var that some derived
+// var reads) to the ordered list of derived vars whose initializers must
+// be re-evaluated, with each derived var's own deps preceding it. Var
+// pointers that are not dependencies of any derived var are absent from
+// the result.
+//
+// Cycles between derived vars are broken arbitrarily; an order-of-
+// declaration fallback is used. The checker is responsible for rejecting
+// genuine cycles before reaching this point.
+func DerivedVarRecomputes(vars []*ir.Var) map[*ir.Var][]*ir.Var {
+	// 1. For every derived var, compute its direct deps on other mutable
+	//    vars (consts are never recomputed and are excluded as both
+	//    sources and sinks).
+	mutable := make(map[*ir.Var]bool, len(vars))
+	for _, v := range vars {
+		if !v.IsConst && !v.Synthesized {
+			mutable[v] = true
+		}
+	}
+	directDeps := make(map[*ir.Var]map[*ir.Var]bool)
+	for _, v := range vars {
+		if !mutable[v] || v.Init == nil {
+			continue
+		}
+		deps := make(map[*ir.Var]bool)
+		gatherVarReads(v.Init, mutable, deps)
+		delete(deps, v) // self-reference is not a dep
+		if len(deps) > 0 {
+			directDeps[v] = deps
+		}
+	}
+	if len(directDeps) == 0 {
+		return nil
+	}
+	// 2. Topologically sort the derived vars in declaration order.
+	order := make([]*ir.Var, 0, len(directDeps))
+	for _, v := range vars {
+		if _, ok := directDeps[v]; ok {
+			order = append(order, v)
+		}
+	}
+	// Stable, declaration-ordered topo sort: if `b` depends on `a` and
+	// `a` is also derived, `a` must come before `b`. Since declaration
+	// order in SNGL already requires this (forward refs not allowed in
+	// var initializers between derived vars), declaration order is
+	// already topological.
+	// 3. Reverse-index: for each mutable var X, list every derived var
+	//    that transitively depends on X, preserving topo order.
+	out := make(map[*ir.Var][]*ir.Var)
+	// Compute transitive deps per derived var.
+	transitive := make(map[*ir.Var]map[*ir.Var]bool, len(directDeps))
+	for _, v := range order {
+		t := make(map[*ir.Var]bool)
+		for dep := range directDeps[v] {
+			t[dep] = true
+			for tdep := range transitive[dep] {
+				t[tdep] = true
+			}
+		}
+		transitive[v] = t
+	}
+	for _, derived := range order {
+		for dep := range transitive[derived] {
+			out[dep] = append(out[dep], derived)
+		}
+	}
+	// Sort each list by declaration order (already in `order`).
+	pos := make(map[*ir.Var]int, len(order))
+	for i, v := range order {
+		pos[v] = i
+	}
+	for k, lst := range out {
+		slices.SortFunc(lst, func(a, b *ir.Var) int { return pos[a] - pos[b] })
+		out[k] = lst
+	}
+	return out
+}
+
+// gatherVarReads walks expr and records every *ir.Var read (via Ident.Sym)
+// that is present in mutable.
+func gatherVarReads(e ir.Expr, mutable map[*ir.Var]bool, out map[*ir.Var]bool) {
+	if e == nil {
+		return
+	}
+	switch x := e.(type) {
+	case *ir.Ident:
+		if v, ok := x.Sym.(*ir.Var); ok && mutable[v] {
+			out[v] = true
+		}
+	case *ir.Binary:
+		gatherVarReads(x.Left, mutable, out)
+		gatherVarReads(x.Right, mutable, out)
+	case *ir.Unary:
+		gatherVarReads(x.Operand, mutable, out)
+	case *ir.Ternary:
+		gatherVarReads(x.Cond, mutable, out)
+		gatherVarReads(x.Then, mutable, out)
+		gatherVarReads(x.Else, mutable, out)
+	case *ir.Call:
+		if x.Receiver != nil {
+			gatherVarReads(x.Receiver, mutable, out)
+		}
+		for _, a := range x.Args {
+			gatherVarReads(a.Value, mutable, out)
+		}
+	case *ir.Conversion:
+		gatherVarReads(x.Operand, mutable, out)
+	case *ir.Select:
+		gatherVarReads(x.Operand, mutable, out)
+	case *ir.Index:
+		gatherVarReads(x.Operand, mutable, out)
+		gatherVarReads(x.Idx, mutable, out)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			gatherVarReads(el, mutable, out)
+		}
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			gatherVarReads(en.Key, mutable, out)
+			gatherVarReads(en.Value, mutable, out)
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			gatherVarReads(f.Value, mutable, out)
+		}
+	case *ir.Spread:
+		gatherVarReads(x.Operand, mutable, out)
+	}
+}
+
 // AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
 func (a *CommonAnalysis) AddStyle(css string) {
 	if slices.Contains(a.Styles, css) {

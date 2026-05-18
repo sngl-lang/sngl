@@ -1,0 +1,29 @@
+// Derived `var` reactivity: an initializer that reads other reactive
+// vars must be recomputed whenever any of those dependencies mutates.
+// Mirrors the `func computed()` recompute semantics but stores the
+// result in a field instead of recomputing on every read.
+component main {
+    var n = 10
+    var doubled = n * 2
+    var quadrupled = doubled * 2
+
+    text(value="{doubled}")
+}
+
+func testInitialValue(t Test, c main) {
+    t.assert(c.doubled == 20)
+    t.assert(c.quadrupled == 40)
+}
+
+func testRecomputeOnDepChange(t Test, c main) {
+    c.n = 20
+    t.assert(c.doubled == 40)
+    t.assert(c.quadrupled == 80)
+}
+
+func testTransitiveRecompute(t Test, c main) {
+    // Mutating `n` must recompute `doubled` AND `quadrupled` (which
+    // reads `doubled`, not `n` directly).
+    c.n = 5
+    t.assert(c.quadrupled == 20)
+}
