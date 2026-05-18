@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -185,6 +186,21 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 		}
 	case *ir.Spread:
 		recordExprHelpers(h, n.Operand)
+	case *ir.Lambda:
+		if n.Func != nil {
+			recordFuncHelpers(h, n.Func)
+		}
+	case *ir.Closure:
+		if n.Func != nil {
+			recordFuncHelpers(h, n.Func)
+		}
+		if n.State != nil {
+			recordExprHelpers(h, n.State)
+		}
+	case *ir.Ident, *ir.ContextRead:
+		// Terminal — no type or sub-expression to record.
+	default:
+		panic(fmt.Sprintf("recordExprHelpers: unhandled ir.Expr %T", n))
 	}
 }
 
@@ -229,6 +245,32 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 		case *ir.For:
 			recordExprHelpers(h, n.Iter)
 			recordStmtHelpers(h, n.Body)
+		case *ir.NodeInst:
+			for _, p := range n.Props {
+				recordExprHelpers(h, p.Value)
+			}
+			for _, hd := range n.Handlers {
+				if hd.Func != nil {
+					recordFuncHelpers(h, hd.Func)
+				}
+			}
+			recordStmtHelpers(h, n.Children)
+		case *ir.PlatformFilter:
+			recordStmtHelpers(h, n.Body)
+		case *ir.SlotInst:
+			recordStmtHelpers(h, n.Children)
+		case *ir.ErrorBoundary:
+			recordStmtHelpers(h, n.Children)
+			if n.Handler != nil && n.Handler.Func != nil {
+				recordFuncHelpers(h, n.Handler.Func)
+			}
+		case *ir.Window:
+			recordStmtHelpers(h, n.Body)
+		case *ir.ContextProvider:
+			recordExprHelpers(h, n.Value)
+			recordStmtHelpers(h, n.Children)
+		default:
+			panic(fmt.Sprintf("recordStmtHelpers: unhandled ir.Stmt %T", n))
 		}
 	}
 }

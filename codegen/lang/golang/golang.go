@@ -537,6 +537,39 @@ func stmtUsesI18n(s ir.Stmt) bool {
 		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
 			return true
 		}
+	case *ir.Toggle, *ir.Emit:
+		// Mutation statements with no expression-bearing child capable of
+		// hosting an i18n call.
+	case *ir.PlatformFilter:
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
+		}
+	case *ir.SlotInst:
+		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
+			return true
+		}
+	case *ir.ErrorBoundary:
+		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
+			return true
+		}
+		if n.Handler != nil && funcUsesI18n(n.Handler.Func) {
+			return true
+		}
+	case *ir.Window:
+		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
+			return true
+		}
+	case *ir.ContextProvider:
+		// post-NoContext IR has no ContextProvider, but kept for pre-lower
+		// callers that may invoke this predicate.
+		if exprUsesI18n(n.Value) {
+			return true
+		}
+		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
+			return true
+		}
+	default:
+		panic(fmt.Sprintf("stmtUsesI18n: unhandled ir.Stmt %T", n))
 	}
 	return false
 }
@@ -594,6 +627,25 @@ func exprUsesI18n(e ir.Expr) bool {
 		return exprUsesI18n(n.Operand)
 	case *ir.Lambda:
 		return funcUsesI18n(n.Func)
+	case *ir.Closure:
+		if funcUsesI18n(n.Func) {
+			return true
+		}
+		if n.State != nil && exprUsesI18n(n.State) {
+			return true
+		}
+	case *ir.Spread:
+		return exprUsesI18n(n.Operand)
+	case *ir.StructLit:
+		for _, f := range n.Fields {
+			if exprUsesI18n(f.Value) {
+				return true
+			}
+		}
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no expression children.
+	default:
+		panic(fmt.Sprintf("exprUsesI18n: unhandled ir.Expr %T", n))
 	}
 	return false
 }

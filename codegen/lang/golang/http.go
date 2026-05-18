@@ -165,6 +165,23 @@ func anyNativeHasErr(req *codegen.HTTPRequest) bool {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
+		case *ir.Lambda:
+			if x.Func != nil {
+				for _, ss := range x.Func.Block {
+					visitStmt(ss)
+				}
+			}
+		case *ir.Closure:
+			if x.Func != nil {
+				for _, ss := range x.Func.Block {
+					visitStmt(ss)
+				}
+			}
+			visitExpr(x.State)
+		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+			// Terminal — no error-returning sub-call.
+		default:
+			panic(fmt.Sprintf("http.requiresErrorMethod: unhandled ir.Expr %T", x))
 		}
 	}
 	visitStmt = func(s ir.Stmt) {
@@ -204,6 +221,46 @@ func anyNativeHasErr(req *codegen.HTTPRequest) bool {
 			for _, a := range x.Args {
 				visitExpr(a.Value)
 			}
+		case *ir.Toggle:
+			visitExpr(x.Target)
+		case *ir.NodeInst:
+			for _, p := range x.Props {
+				visitExpr(p.Value)
+			}
+			for _, h := range x.Handlers {
+				if h.Func != nil {
+					for _, ss := range h.Func.Block {
+						visitStmt(ss)
+					}
+				}
+			}
+			for _, ss := range x.Children {
+				visitStmt(ss)
+			}
+		case *ir.SlotInst:
+			for _, ss := range x.Children {
+				visitStmt(ss)
+			}
+		case *ir.ErrorBoundary:
+			for _, ss := range x.Children {
+				visitStmt(ss)
+			}
+			if x.Handler != nil && x.Handler.Func != nil {
+				for _, ss := range x.Handler.Func.Block {
+					visitStmt(ss)
+				}
+			}
+		case *ir.Window:
+			for _, ss := range x.Body {
+				visitStmt(ss)
+			}
+		case *ir.ContextProvider:
+			visitExpr(x.Value)
+			for _, ss := range x.Children {
+				visitStmt(ss)
+			}
+		default:
+			panic(fmt.Sprintf("http.requiresErrorMethod: unhandled ir.Stmt %T", x))
 		}
 	}
 	for _, route := range req.Routes {
@@ -271,6 +328,46 @@ func collectFromStmt(s ir.Stmt, seen map[string]bool) {
 		for _, a := range x.Args {
 			collectFromExpr(a.Value, seen)
 		}
+	case *ir.Toggle:
+		collectFromExpr(x.Target, seen)
+	case *ir.NodeInst:
+		for _, p := range x.Props {
+			collectFromExpr(p.Value, seen)
+		}
+		for _, h := range x.Handlers {
+			if h.Func != nil {
+				for _, ss := range h.Func.Block {
+					collectFromStmt(ss, seen)
+				}
+			}
+		}
+		for _, ss := range x.Children {
+			collectFromStmt(ss, seen)
+		}
+	case *ir.SlotInst:
+		for _, ss := range x.Children {
+			collectFromStmt(ss, seen)
+		}
+	case *ir.ErrorBoundary:
+		for _, ss := range x.Children {
+			collectFromStmt(ss, seen)
+		}
+		if x.Handler != nil && x.Handler.Func != nil {
+			for _, ss := range x.Handler.Func.Block {
+				collectFromStmt(ss, seen)
+			}
+		}
+	case *ir.Window:
+		for _, ss := range x.Body {
+			collectFromStmt(ss, seen)
+		}
+	case *ir.ContextProvider:
+		collectFromExpr(x.Value, seen)
+		for _, ss := range x.Children {
+			collectFromStmt(ss, seen)
+		}
+	default:
+		panic(fmt.Sprintf("collectFromStmt: unhandled ir.Stmt %T", x))
 	}
 }
 
@@ -319,5 +416,22 @@ func collectFromExpr(e ir.Expr, seen map[string]bool) {
 		}
 	case *ir.Spread:
 		collectFromExpr(x.Operand, seen)
+	case *ir.Lambda:
+		if x.Func != nil {
+			for _, ss := range x.Func.Block {
+				collectFromStmt(ss, seen)
+			}
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			for _, ss := range x.Func.Block {
+				collectFromStmt(ss, seen)
+			}
+		}
+		collectFromExpr(x.State, seen)
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Terminal — no go:// native package reference.
+	default:
+		panic(fmt.Sprintf("collectFromExpr: unhandled ir.Expr %T", x))
 	}
 }
