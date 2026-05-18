@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -258,6 +259,21 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 					h.Func.Block = st.rewriteReactiveStructures(h.Func.Block, parentRef)
 				}
 			}
+		case *ir.PlatformFilter:
+			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
+		case *ir.SlotInst:
+			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
+		case *ir.ErrorBoundary:
+			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
+		case *ir.Window:
+			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf/non-structural stmts — no nested reactive If/For to rewrite.
+			// (ContextProvider is gone by reactivity time if NoContext cap is
+			// set; if not, codegen never sees a reactive lowering — kept here
+			// for completeness.)
+		default:
+			panic(fmt.Sprintf("rewriteReactiveStructures: unhandled %T", n))
 		}
 		out = append(out, s)
 	}
@@ -432,6 +448,11 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 		st.collectFromStmts(n.Children)
 	case *ir.Window:
 		// handled by top-level loop in lowerReactivity
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		// Non-visual stmts — no reactive props/slots to collect from.
+		// Imperative-handler dataflow is tracked at injection time.
+	default:
+		panic(fmt.Sprintf("collectFromStmt: unhandled %T", n))
 	}
 }
 
@@ -538,6 +559,16 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		}
 	case *ir.Spread:
 		st.gatherDeps(x.Operand, out)
+	case *ir.Literal, *ir.ContextRead:
+		// Terminal — no reactive reads.
+	case *ir.Lambda, *ir.Closure:
+		// Lambda/Closure: existing reactivity model treats reactive deps
+		// as the lexical reads in the enclosing prop expression. Reads
+		// inside a lambda body fire when the lambda is invoked, not when
+		// the surrounding view re-renders, so they are intentionally not
+		// counted as deps of the construction site.
+	default:
+		panic(fmt.Sprintf("gatherDeps: unhandled %T", x))
 	}
 }
 
@@ -582,6 +613,11 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 					}
 				}
 			}
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			// Leaf stmts — no nested blocks to recurse into. updatersFor
+			// below handles Assign-driven updater injection.
+		default:
+			panic(fmt.Sprintf("injectIntoStmts: unhandled %T", n))
 		}
 		if updaters := st.updatersFor(s); len(updaters) > 0 {
 			out = append(out, updaters...)
@@ -810,8 +846,17 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		cp := *x
 		cp.Operand = rewriteIdentsToCaptures(x.Operand, rewrite)
 		return &cp
+	case *ir.Literal, *ir.ContextRead:
+		// Terminal — no Idents to rewrite.
+		return e
+	case *ir.Lambda, *ir.Closure:
+		// Lambda/Closure bodies aren't traversed here: this rewriter is
+		// called only on reactive prop expressions, which by construction
+		// are not lambda-bodied. Pass-through.
+		return e
+	default:
+		panic(fmt.Sprintf("rewriteIdentsToCaptures: unhandled %T", x))
 	}
-	return e
 }
 
 // renderFuncName: "__slot<N>" → "__renderSlot<N>".
@@ -1020,6 +1065,11 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Children)
 			case *ir.Window:
 				walk(n.Body)
+			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+				// Leaf/non-structural stmts cannot host an If/For with a
+				// LoweredSlotID.
+			default:
+				panic(fmt.Sprintf("buildRenderSlotFor.walk: unhandled %T", n))
 			}
 		}
 	}
