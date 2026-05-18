@@ -1995,6 +1995,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		fn := c.buildFunc(x)
 		c.scope.Declare(fn)
 		c.checkFuncBody(fn)
+		// When a `func` is declared inside a nested block (provider children,
+		// if/for body), it would otherwise be built and scoped but never
+		// appended to any IR collection — leaving call sites referencing an
+		// undefined function. Lift to the enclosing component (analogous to
+		// the LocalVar→Var promotion done by passNoContext for vars).
+		if c.currentComponent != nil {
+			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
+		} else if c.pkg != nil {
+			c.pkg.Funcs = append(c.pkg.Funcs, fn)
+		}
 		return nil
 	case *ast.Comment:
 		return nil
