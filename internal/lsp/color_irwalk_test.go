@@ -33,22 +33,23 @@ func TestWalkIRColorLiterals_FixtureCovers6Colors(t *testing.T) {
 	// calls (tracked in issue #76). Just verify the walker visits the
 	// source-form #hex literals that the checker produces directly.
 
-	var colors []*ir.Literal
-	walkIRColorLiterals(pkg, func(lit *ir.Literal) {
-		colors = append(colors, lit)
+	var colors []*ir.StructLit
+	walkIRColorLiterals(pkg, func(sl *ir.StructLit) {
+		colors = append(colors, sl)
 	})
 
-	// Source has 4 #hex literals. Until #76 lands the rgb/rgba calls
-	// stay as *ir.Call (not folded), so the walker shouldn't see them yet.
+	// Source has 4 #hex literals; post-T3 they're StructLits with
+	// Def.Name == "color". The two color.rgb/rgba calls remain as
+	// *ir.Call (not folded yet — that's T7).
 	if len(colors) != 4 {
 		t.Fatalf("got %d color literals, want 4: %+v", len(colors), colors)
 	}
 	for _, c := range colors {
 		if c.AST == nil {
-			t.Errorf("color literal has nil AST: %+v", c)
+			t.Errorf("color StructLit has nil AST: %+v", c)
 		}
-		if c.Type != ir.TypColor {
-			t.Errorf("literal type = %v, want color", c.Type)
+		if c.Def == nil || c.Def.Name != "color" {
+			t.Errorf("Def = %v, want color", c.Def)
 		}
 	}
 }

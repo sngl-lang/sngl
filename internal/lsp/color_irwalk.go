@@ -2,11 +2,11 @@ package lsp
 
 import "git.duckfam.us/jonathan/sngl/ir"
 
-// walkIRColorLiterals invokes fn for every *ir.Literal of color type
-// reachable from package-level consts/vars, components, windows, and funcs.
-// Skips imported packages — only the root package's literals matter for
-// documentColor.
-func walkIRColorLiterals(pkg *ir.Package, fn func(*ir.Literal)) {
+// walkIRColorLiterals invokes fn for every *ir.StructLit whose Def is the
+// "color" stdlib struct, reachable from package-level consts/vars,
+// components, windows, and funcs. Skips imported packages — only the root
+// package's literals matter for documentColor.
+func walkIRColorLiterals(pkg *ir.Package, fn func(*ir.StructLit)) {
 	if pkg == nil {
 		return
 	}
@@ -32,7 +32,7 @@ func walkIRColorLiterals(pkg *ir.Package, fn func(*ir.Literal)) {
 }
 
 type irLitWalker struct {
-	fn func(*ir.Literal)
+	fn func(*ir.StructLit)
 }
 
 func (w *irLitWalker) component(c *ir.Component) {
@@ -158,9 +158,7 @@ func (w *irLitWalker) expr(e ir.Expr) {
 	case nil:
 		return
 	case *ir.Literal:
-		if x.Type == ir.TypColor && x.AST != nil {
-			w.fn(x)
-		}
+		// leaf — no color shape lives here post-T3.
 	case *ir.Ident:
 		// leaf
 	case *ir.Binary:
@@ -189,6 +187,9 @@ func (w *irLitWalker) expr(e ir.Expr) {
 		w.expr(x.Operand)
 		w.expr(x.Idx)
 	case *ir.StructLit:
+		if x.Def != nil && x.Def.Name == "color" && x.AST != nil {
+			w.fn(x)
+		}
 		for _, f := range x.Fields {
 			w.expr(f.Value)
 		}

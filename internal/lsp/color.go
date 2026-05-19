@@ -169,13 +169,27 @@ func computeColorsFromIR(doc *ast.Document, content string) []ColorInformation {
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		return nil
 	}
+	// Determine the source file we're providing colors for so we can
+	// filter out StructLits whose AST position points at stdlib (the
+	// optimizer can inline stdlib helpers like color.rgb, surfacing
+	// their `color{...}` literal in the user's expression tree).
+	docFile := ""
+	for _, s := range doc.Stmts {
+		if p := s.StmtPos(); p != nil && p.File != "" {
+			docFile = p.File
+			break
+		}
+	}
 	var out []ColorInformation
-	walkIRColorLiterals(pkg, func(lit *ir.Literal) {
-		c, ok := colorFromIRLiteral(lit)
+	walkIRColorLiterals(pkg, func(sl *ir.StructLit) {
+		if docFile != "" && sl.AST != nil && sl.AST.Pos.File != "" && sl.AST.Pos.File != docFile {
+			return
+		}
+		c, ok := colorFromIRStructLit(sl)
 		if !ok {
 			return
 		}
-		r, ok := rangeForIRLiteral(lit, content)
+		r, ok := rangeForIRStructLit(sl, content)
 		if !ok {
 			return
 		}
@@ -184,30 +198,88 @@ func computeColorsFromIR(doc *ast.Document, content string) []ColorInformation {
 	return out
 }
 
-// colorFromIRLiteral converts an IR color literal to LSP Color.
-// Today consteval only produces colors when they were already source-form
-// hex literals, so lit.Raw is "#rrggbb" or "#rrggbbaa".
-func colorFromIRLiteral(lit *ir.Literal) (Color, bool) {
-	if lit.Type != ir.TypColor {
+// colorFromIRStructLit reads r/g/b/a int field literals from a color
+// StructLit and returns an LSP Color (channels normalized to 0..1).
+func colorFromIRStructLit(sl *ir.StructLit) (Color, bool) {
+	if sl.Def == nil || sl.Def.Name != "color" {
 		return Color{}, false
 	}
-	return parseHexColor(lit.Raw)
+	var r, g, b, a int
+	a = 255 // default alpha when not set
+	for _, f := range sl.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeInt {
+			return Color{}, false
+		}
+		n, err := strconv.Atoi(lit.Raw)
+		if err != nil {
+			return Color{}, false
+		}
+		switch f.Name {
+		case "r":
+			r = n
+		case "g":
+			g = n
+		case "b":
+			b = n
+		case "a":
+			a = n
+		}
+	}
+	return Color{
+		Red:   float64(r) / 255.0,
+		Green: float64(g) / 255.0,
+		Blue:  float64(b) / 255.0,
+		Alpha: float64(a) / 255.0,
+	}, true
 }
 
-// rangeForIRLiteral computes the LSP Range for an IR literal using its
-// source-side AST pointer. Returns ok=false if the AST is missing or the
-// literal isn't a #hex form (other forms appear once #76 lands and would
-// need richer span info).
-func rangeForIRLiteral(lit *ir.Literal, content string) (Range, bool) {
-	if lit.AST == nil || !lit.AST.Pos.IsSet() {
+// rangeForIRStructLit computes the LSP Range for a color StructLit using
+// its source-side AST pointer. For hex-derived StructLits the AST is a
+// synthesized *ast.StructExpr carrying only the original hex literal's Pos
+// (no source-text length). Scan `content` forward from that position to
+// find the end of the hex token so the range matches Layer 1 (#rrggbb=7,
+// #rrggbbaa=9, #rgb=4). Falls back to 7 chars if the source doesn't begin
+// with '#' (e.g. a real color{...} struct literal — those don't surface
+// here today, but the fallback keeps us conservative).
+func rangeForIRStructLit(sl *ir.StructLit, content string) (Range, bool) {
+	if sl.AST == nil || !sl.AST.Pos.IsSet() {
 		return Range{}, false
 	}
-	startLine := lit.AST.Pos.Line - 1
-	startCol := lit.AST.Pos.Column - 1
+	startLine := sl.AST.Pos.Line - 1
+	startCol := sl.AST.Pos.Column - 1
+	length := hexTokenLen(content, startLine, startCol)
+	if length == 0 {
+		length = 7
+	}
 	return Range{
 		Start: Position{Line: startLine, Character: startCol},
-		End:   Position{Line: startLine, Character: startCol + len(lit.AST.Raw)},
+		End:   Position{Line: startLine, Character: startCol + length},
 	}, true
+}
+
+// hexTokenLen returns the length of a `#xxxx...` hex token that begins at
+// (line, col) in `content` (both 0-based). Returns 0 if the position
+// doesn't point at a '#'.
+func hexTokenLen(content string, line, col int) int {
+	lines := strings.Split(content, "\n")
+	if line < 0 || line >= len(lines) {
+		return 0
+	}
+	l := lines[line]
+	if col < 0 || col >= len(l) || l[col] != '#' {
+		return 0
+	}
+	n := 1
+	for col+n < len(l) {
+		ch := l[col+n]
+		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') {
+			n++
+			continue
+		}
+		break
+	}
+	return n
 }
 
 // mergeColorInfoDedupe appends entries from b to a, skipping any whose
