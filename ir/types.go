@@ -362,6 +362,13 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
 		return true
 	}
+	// Bridge the builtin TypeColor kind and the stdlib color struct decl.
+	// They represent the same semantic type and should assign freely.
+	// (Tracked separately: collapsing the two representations into one
+	// is a deeper refactor; this bridge unblocks the immediate use cases.)
+	if isColorShape(t) && isColorShape(target) {
+		return true
+	}
 	if target.Kind == TypeDyn {
 		return true
 	}
@@ -412,6 +419,24 @@ func isStringDomain(k TypeKind) bool {
 		TypeURL, TypeEmail, TypeUUID, TypeRegex, TypeBase64,
 		TypeIPV4, TypeIPV6, TypeHostname, TypeDecimal:
 		return true
+	}
+	return false
+}
+
+// isColorShape reports whether t represents the color value type — either
+// the builtin TypeColor kind or a TypeStruct whose Decl is the stdlib
+// "color" StructDef.
+func isColorShape(t *Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Kind == TypeColor {
+		return true
+	}
+	if t.Kind == TypeStruct {
+		if sd, ok := t.Decl.(*StructDef); ok && sd.Name == "color" {
+			return true
+		}
 	}
 	return false
 }
