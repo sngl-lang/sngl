@@ -423,6 +423,17 @@ func isStringDomain(k TypeKind) bool {
 	return false
 }
 
+// IsColorStruct reports whether t is a TypeStruct whose Decl is the stdlib
+// "color" StructDef. Use this to detect a color value carried in the
+// StructDef-backed shape (e.g. lowered hex literals).
+func IsColorStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "color"
+}
+
 // isColorShape reports whether t represents the color value type — either
 // the builtin TypeColor kind or a TypeStruct whose Decl is the stdlib
 // "color" StructDef.

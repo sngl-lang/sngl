@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -126,11 +127,102 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	case ast.LiteralNull:
 		typ = TypNull
 	case ast.LiteralColor:
-		typ = TypColor
+		return c.lowerHexLiteral(x)
 	default:
 		typ = TypDyn
 	}
 	return &ir.Literal{AST: x, Type: typ, Raw: x.Raw}
+}
+
+// lowerHexLiteral converts a hex color literal like #ff8040 to a
+// *ir.StructLit{Def:colorStructDef, Fields:[r,g,b,a]} so downstream
+// code sees the same shape as color{r=,g=,b=,a=} struct literals.
+// Falls back to a Literal form if the color struct isn't yet in scope
+// (early checker phases, e.g. when checking the stdlib itself).
+func (c *checker) lowerHexLiteral(x *ast.LiteralExpr) ir.Expr {
+	r, g, b, a, ok := parseHexChannels(x.Raw)
+	if !ok {
+		c.error(x.Pos, "invalid color literal %q", x.Raw)
+		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+	}
+	sym, ok := c.scope.Lookup("color")
+	if !ok {
+		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+	}
+	sd, ok := sym.(*ir.StructDef)
+	if !ok {
+		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+	}
+	intLit := func(n int) *ir.Literal {
+		return &ir.Literal{Type: TypInt, Raw: strconv.Itoa(n)}
+	}
+	return &ir.StructLit{
+		AST:  &ast.StructExpr{Pos: x.Pos, Name: "color"},
+		Type: sd.SymType(),
+		Def:  sd,
+		Fields: []ir.FieldInit{
+			{Name: "r", Value: intLit(r)},
+			{Name: "g", Value: intLit(g)},
+			{Name: "b", Value: intLit(b)},
+			{Name: "a", Value: intLit(a)},
+		},
+	}
+}
+
+// parseHexChannels parses #rgb, #rrggbb, or #rrggbbaa to 0..255 channels.
+// Alpha defaults to 255 for 3- and 6-digit forms.
+func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
+	if len(raw) == 0 || raw[0] != '#' {
+		return 0, 0, 0, 0, false
+	}
+	hex := raw[1:]
+	nibble := func(c byte) (int, bool) {
+		switch {
+		case c >= '0' && c <= '9':
+			return int(c - '0'), true
+		case c >= 'a' && c <= 'f':
+			return int(c-'a') + 10, true
+		case c >= 'A' && c <= 'F':
+			return int(c-'A') + 10, true
+		}
+		return 0, false
+	}
+	byteOf := func(hi, lo byte) (int, bool) {
+		h, ok1 := nibble(hi)
+		l, ok2 := nibble(lo)
+		if !(ok1 && ok2) {
+			return 0, false
+		}
+		return h*16 + l, true
+	}
+	switch len(hex) {
+	case 3:
+		rv, ok1 := nibble(hex[0])
+		gv, ok2 := nibble(hex[1])
+		bv, ok3 := nibble(hex[2])
+		if !(ok1 && ok2 && ok3) {
+			return 0, 0, 0, 0, false
+		}
+		return rv*16 + rv, gv*16 + gv, bv*16 + bv, 255, true
+	case 6:
+		rv, ok1 := byteOf(hex[0], hex[1])
+		gv, ok2 := byteOf(hex[2], hex[3])
+		bv, ok3 := byteOf(hex[4], hex[5])
+		if !(ok1 && ok2 && ok3) {
+			return 0, 0, 0, 0, false
+		}
+		return rv, gv, bv, 255, true
+	case 8:
+		rv, ok1 := byteOf(hex[0], hex[1])
+		gv, ok2 := byteOf(hex[2], hex[3])
+		bv, ok3 := byteOf(hex[4], hex[5])
+		av, ok4 := byteOf(hex[6], hex[7])
+		if !(ok1 && ok2 && ok3 && ok4) {
+			return 0, 0, 0, 0, false
+		}
+		return rv, gv, bv, av, true
+	}
+	return 0, 0, 0, 0, false
 }
 
 func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
@@ -600,7 +692,17 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 			argExpr = c.checkExpr(call)
 		}
 		from = exprType(argExpr)
-		if from != nil && from.Kind != target.Kind && !primitiveConvertible(from.Kind, target.Kind) {
+		fromKind := ir.TypeInvalid
+		if from != nil {
+			fromKind = from.Kind
+			// Bridge: a color StructDef-backed value is semantically a
+			// color. Hex literals now lower to *ir.StructLit (kind=Struct),
+			// so cast logic must treat it like TypeColor.
+			if ir.IsColorStruct(from) {
+				fromKind = ir.TypeColor
+			}
+		}
+		if from != nil && fromKind != target.Kind && !primitiveConvertible(fromKind, target.Kind) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
