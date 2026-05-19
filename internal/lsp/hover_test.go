@@ -33,19 +33,6 @@ func TestWordAtPosition(t *testing.T) {
 	}
 }
 
-func parseForHover(t *testing.T, src string) *lspcoreDocArg {
-	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	return &lspcoreDocArg{doc: doc}
-}
-
-// lspcoreDocArg hides the ast.Document type behind a wrapper so tests don't
-// depend on ast-package internals that shift between refactors.
-type lspcoreDocArg struct{ doc any }
-
 func hoverOf(t *testing.T, src, word string) string {
 	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
