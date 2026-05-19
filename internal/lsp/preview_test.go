@@ -3,6 +3,7 @@ package lsp
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -159,6 +160,53 @@ func readMessagesUntil(t *testing.T, r io.Reader, method string, timeout time.Du
 		return res.body
 	case <-time.After(timeout):
 		return ""
+	}
+}
+
+func TestPreviewServer_RendersWindow(t *testing.T) {
+	srv := newPreviewServer()
+	srv.SetRenderer(func(uri, win string) ([]byte, error) {
+		return []byte(fmt.Sprintf("<html><body>%s/%s</body></html>", uri, win)), nil
+	})
+	if err := srv.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer srv.Stop()
+
+	uri := "file:///tmp/x.sngl"
+	url := fmt.Sprintf("http://127.0.0.1:%d/preview/%s/main",
+		srv.Port(), base64.RawURLEncoding.EncodeToString([]byte(uri)))
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	if !strings.Contains(got, "file:///tmp/x.sngl/main") {
+		t.Errorf("body = %q, want substring %q", got, "file:///tmp/x.sngl/main")
+	}
+}
+
+func TestPreviewServer_PreviewMissingRenderer503(t *testing.T) {
+	srv := newPreviewServer()
+	if err := srv.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer srv.Stop()
+
+	uri := base64.RawURLEncoding.EncodeToString([]byte("file:///x"))
+	url := fmt.Sprintf("http://127.0.0.1:%d/preview/%s/main", srv.Port(), uri)
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 503 {
+		t.Errorf("status = %d, want 503", resp.StatusCode)
 	}
 }
 
