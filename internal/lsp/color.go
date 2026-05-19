@@ -7,8 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // parseHexColor converts "#rgb", "#rrggbb", or "#rrggbbaa" to a Color.
@@ -138,8 +141,90 @@ func computeDocumentColors(content string, doc *ast.Document) []ColorInformation
 		out = append(out, ColorInformation{Range: r, Color: c})
 	})
 
+	// Layer 2: type-aware. Dormant until issue #76 (consteval support for
+	// color/unit/enum) lands, after which color.lighten, user-defined pure
+	// helpers, etc. fold to *ir.Literal and surface here. Today this path
+	// only rediscovers source-form hex literals, which dedupe against
+	// Layer 1 above by source range.
+	layer2 := computeColorsFromIR(doc, content)
+	out = mergeColorInfoDedupe(out, layer2)
+
 	sortColorInformation(out)
 	return out
+}
+
+// computeColorsFromIR runs the type checker and optimizer over doc and
+// walks the folded IR for color literals. Returns nothing if the document
+// fails to check — Layer 1 still works in that case.
+func computeColorsFromIR(doc *ast.Document, content string) []ColorInformation {
+	if doc == nil {
+		return nil
+	}
+	pkg, diags := sngl.Check(doc, ".")
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			return nil
+		}
+	}
+	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
+		return nil
+	}
+	var out []ColorInformation
+	walkIRColorLiterals(pkg, func(lit *ir.Literal) {
+		c, ok := colorFromIRLiteral(lit)
+		if !ok {
+			return
+		}
+		r, ok := rangeForIRLiteral(lit, content)
+		if !ok {
+			return
+		}
+		out = append(out, ColorInformation{Range: r, Color: c})
+	})
+	return out
+}
+
+// colorFromIRLiteral converts an IR color literal to LSP Color.
+// Today consteval only produces colors when they were already source-form
+// hex literals, so lit.Raw is "#rrggbb" or "#rrggbbaa".
+func colorFromIRLiteral(lit *ir.Literal) (Color, bool) {
+	if lit.Type != ir.TypColor {
+		return Color{}, false
+	}
+	return parseHexColor(lit.Raw)
+}
+
+// rangeForIRLiteral computes the LSP Range for an IR literal using its
+// source-side AST pointer. Returns ok=false if the AST is missing or the
+// literal isn't a #hex form (other forms appear once #76 lands and would
+// need richer span info).
+func rangeForIRLiteral(lit *ir.Literal, content string) (Range, bool) {
+	if lit.AST == nil || !lit.AST.Pos.IsSet() {
+		return Range{}, false
+	}
+	startLine := lit.AST.Pos.Line - 1
+	startCol := lit.AST.Pos.Column - 1
+	return Range{
+		Start: Position{Line: startLine, Character: startCol},
+		End:   Position{Line: startLine, Character: startCol + len(lit.AST.Raw)},
+	}, true
+}
+
+// mergeColorInfoDedupe appends entries from b to a, skipping any whose
+// Range already exists in a. O(n*m) — fine for the small counts here.
+func mergeColorInfoDedupe(a, b []ColorInformation) []ColorInformation {
+	have := make(map[Range]bool, len(a))
+	for _, c := range a {
+		have[c.Range] = true
+	}
+	for _, c := range b {
+		if have[c.Range] {
+			continue
+		}
+		have[c.Range] = true
+		a = append(a, c)
+	}
+	return a
 }
 
 // sortColorInformation orders entries by (line, column) so test expectations

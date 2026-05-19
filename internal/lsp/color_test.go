@@ -153,6 +153,36 @@ func TestDocumentColor(t *testing.T) {
 	}
 }
 
+func TestDocumentColor_Layer2ParityWithLayer1(t *testing.T) {
+	// Until issue #76 (consteval color/unit/enum support) lands, Layer 2
+	// can only rediscover the same source-form color literals that
+	// Layer 1 already finds. The merged result must still be exactly
+	// the same 6 entries — no duplicates, same order.
+	src, err := os.ReadFile("../../testdata/lsp/colors.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _ := parser.Parse("colors.sngl", src)
+	got := computeDocumentColors(string(src), doc)
+
+	wantRanges := []Range{
+		rangeOfSubstring(t, string(src), "#ff0000"),
+		rangeOfSubstring(t, string(src), "#00ff00"),
+		rangeOfSubstring(t, string(src), "#aabbcc"),
+		rangeOfSubstring(t, string(src), "#11223344"),
+		rangeOfSubstring(t, string(src), "color.rgb(255, 128, 64)"),
+		rangeOfSubstring(t, string(src), "color.rgba(10, 20, 30, 200)"),
+	}
+	if len(got) != len(wantRanges) {
+		t.Fatalf("got %d colors, want %d", len(got), len(wantRanges))
+	}
+	for i, r := range wantRanges {
+		if got[i].Range != r {
+			t.Errorf("color %d range: got %+v, want %+v", i, got[i].Range, r)
+		}
+	}
+}
+
 // rangeOfSubstring returns the LSP Range for the first occurrence of needle in src.
 func rangeOfSubstring(t *testing.T, src, needle string) Range {
 	t.Helper()
