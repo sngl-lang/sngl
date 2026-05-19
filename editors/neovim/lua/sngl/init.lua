@@ -4,6 +4,7 @@ function M.setup(opts)
   opts = opts or {}
   require("sngl.treesitter").setup(opts)
   require("sngl.lsp").setup(opts)
+  require("sngl.preview").setup(opts)
 end
 
 return M
