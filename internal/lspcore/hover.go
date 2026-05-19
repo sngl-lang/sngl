@@ -66,28 +66,16 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.VarDecl:
-			for _, spec := range s.Specs {
-				for _, name := range spec.Names {
-					if name == word {
-						hint := typeExprString(spec.Type)
-						if hint == "" {
-							hint = "dyn"
-						}
-						return fmt.Sprintf("```sngl\nvar %s %s\n```", name, hint)
-					}
-				}
+			if info := formatVarLike(s.Specs, "var", word); info != "" {
+				return info
 			}
 		case *ast.FuncDef:
 			if s.Name == word {
 				return formatFuncHover(s, doc)
 			}
 		case *ast.ConstDecl:
-			for _, spec := range s.Specs {
-				for _, name := range spec.Names {
-					if name == word {
-						return fmt.Sprintf("```sngl\nconst %s\n```", name)
-					}
-				}
+			if info := formatVarLike(s.Specs, "const", word); info != "" {
+				return info
 			}
 		case *ast.ComponentDecl:
 			if s.Name == word {
@@ -258,6 +246,51 @@ func formatFuncHover(f *ast.FuncDef, doc *ast.Document) string {
 		sb.WriteByte('\n')
 	}
 	return sb.String()
+}
+
+func formatVarLike(specs []ast.VarSpec, kw, word string) string {
+	for _, spec := range specs {
+		for _, name := range spec.Names {
+			if name != word {
+				continue
+			}
+			var sb strings.Builder
+			sb.WriteString("```sngl\n")
+			sb.WriteString(kw)
+			sb.WriteByte(' ')
+			sb.WriteString(name)
+			if t := typeExprString(spec.Type); t != "" {
+				sb.WriteByte(' ')
+				sb.WriteString(t)
+			}
+			if v := literalValueString(spec.Default); v != "" {
+				sb.WriteString(" = ")
+				sb.WriteString(v)
+			}
+			sb.WriteString("\n```\n")
+			return sb.String()
+		}
+	}
+	return ""
+}
+
+// literalValueString returns a compact rendering for compile-time-constant
+// expressions. Currently handles only LiteralExpr; arithmetic/struct values
+// fall through to "" (no value shown).
+func literalValueString(e ast.Expr) string {
+	if e == nil {
+		return ""
+	}
+	if lit, ok := e.(*ast.LiteralExpr); ok {
+		switch lit.Kind {
+		case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+			// Re-add quotes for string literals
+			return `"` + lit.Raw + `"`
+		default:
+			return lit.Raw
+		}
+	}
+	return ""
 }
 
 // HoverAt returns hover markdown for the cursor position. Tries literal

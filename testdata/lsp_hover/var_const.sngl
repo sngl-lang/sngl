@@ -1,0 +1,16 @@
+// HOVER(PI) "const PI"
+// HOVER(PI) "3.14"
+const PI = 3.14
+
+// HOVER(Greeting) "const Greeting string"
+// HOVER(Greeting) "\"hi\""
+const Greeting string = "hi"
+
+// HOVER(counter) "var counter int"
+// HOVER(counter) "7"
+// HOVER(x) "var x"
+// HOVER(x) "42"
+component App {
+    var counter int = 7
+    var x = 42
+}
