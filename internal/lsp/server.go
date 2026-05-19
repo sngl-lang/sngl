@@ -115,6 +115,8 @@ func (s *Server) serve() error {
 			s.handleDocumentColor(req.ID, req.Params)
 		case "textDocument/colorPresentation":
 			s.handleColorPresentation(req.ID, req.Params)
+		case "textDocument/inlayHint":
+			s.handleInlayHint(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)
