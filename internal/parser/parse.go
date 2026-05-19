@@ -69,6 +69,9 @@ func remapErrors(err error, filtered []Token) error {
 			errList[i].Pos.Column = tok.Column
 			errList[i].Pos.Offset = 0
 		}
+		if errList[i].Err != nil {
+			errList[i].Err = errors.New(prettifyParseError(errList[i].Err.Error()))
+		}
 	}
 	return errList
 }
