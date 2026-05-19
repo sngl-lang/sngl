@@ -315,3 +315,80 @@ func TestSendMessage(t *testing.T) {
 		t.Errorf("expected JSON body, got %q", out)
 	}
 }
+
+func TestE2EDocumentColor(t *testing.T) {
+	_, inW, outR := testServer()
+
+	// Initialize
+	sendLSP(inW, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params":  map[string]any{"processId": 1, "rootUri": "file:///tmp"},
+	})
+	readLSP(outR)
+
+	// Open a file with a color literal
+	sendLSP(inW, map[string]any{
+		"jsonrpc": "2.0",
+		"method":  "textDocument/didOpen",
+		"params": map[string]any{
+			"textDocument": map[string]any{
+				"uri":        "file:///tmp/test.sngl",
+				"languageId": "sngl",
+				"version":    1,
+				"text":       "component main {\n    Text(value=\"x\", color = #ff0000)\n}\n",
+			},
+		},
+	})
+	readLSP(outR) // consume diagnostics
+
+	// Request document colors
+	sendLSP(inW, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "textDocument/documentColor",
+		"params": map[string]any{
+			"textDocument": map[string]any{"uri": "file:///tmp/test.sngl"},
+		},
+	})
+
+	resp, err := readLSP(outR)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var colorResp struct {
+		Result []ColorInformation `json:"result"`
+	}
+	if err := json.Unmarshal(resp, &colorResp); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(colorResp.Result) != 1 {
+		t.Fatalf("got %d colors, want 1", len(colorResp.Result))
+	}
+	c := colorResp.Result[0]
+	if !floatsAlmostEqual(c.Color.Red, 1.0) || !floatsAlmostEqual(c.Color.Green, 0.0) || !floatsAlmostEqual(c.Color.Blue, 0.0) {
+		t.Fatalf("got %+v, want red (#ff0000)", c.Color)
+	}
+
+	// Cleanup
+	sendLSP(inW, map[string]any{"jsonrpc": "2.0", "id": 3, "method": "shutdown"})
+	readLSP(outR)
+	sendLSP(inW, map[string]any{"jsonrpc": "2.0", "method": "exit"})
+	inW.Close()
+}
+
+// floatsAlmostEqual checks if two floats are almost equal (within tolerance).
+func floatsAlmostEqual(a, b float64) bool {
+	const epsilon = 0.001
+	if a < 0 && b > 0 || a > 0 && b < 0 {
+		return false
+	}
+	diff := a - b
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff < epsilon
+}

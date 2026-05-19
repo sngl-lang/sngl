@@ -17,6 +17,7 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 				},
 				Full: true,
 			},
+			ColorProvider: true,
 		},
 		ServerInfo: &ServerInfo{
 			Name:    "sngl-lsp",

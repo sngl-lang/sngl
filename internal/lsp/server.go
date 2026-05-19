@@ -111,6 +111,10 @@ func (s *Server) serve() error {
 			s.handleCompletion(req.ID, req.Params)
 		case "textDocument/semanticTokens/full":
 			s.handleSemanticTokensFull(req.ID, req.Params)
+		case "textDocument/documentColor":
+			s.handleDocumentColor(req.ID, req.Params)
+		case "textDocument/colorPresentation":
+			s.handleColorPresentation(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)
