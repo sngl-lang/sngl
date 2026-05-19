@@ -124,6 +124,8 @@ func TestInterpretFunc_MutationIsolation(t *testing.T) {
 	// withR returns a pure copy of c with r overridden. The interpreter's
 	// deep-copy of args ensures the input map for A isn't aliased to the
 	// callee's local c (which gets a new map via the struct literal anyway).
+	// Post-fold A and B are inlined into main and shaken from pkg.Consts,
+	// so verify the folded r-channel values directly in the component body.
 	src := `
 func withR(c color, r int) => color{r=r, g=c.g, b=c.b, a=c.a}
 const A color = color{r=10, g=20, b=30, a=255}
@@ -142,52 +144,29 @@ component main {
 		t.Fatalf("optimize: %v", err)
 	}
 
-	var a, b *ir.Var
-	for _, v := range pkg.Consts {
-		switch v.Name {
-		case "A":
-			a = v
-		case "B":
-			b = v
-		}
+	vals := textValuesInMain(t, pkg)
+	want := []string{"10", "99"}
+	if len(vals) != len(want) {
+		t.Fatalf("got %d text values, want %d: %v", len(vals), len(want), vals)
 	}
-	if a == nil || b == nil {
-		t.Fatal("A or B not found")
-	}
-
-	rOf := func(v *ir.Var) string {
-		init := v.Init
-		if conv, ok := init.(*ir.Conversion); ok {
-			init = conv.Operand
+	for i, w := range want {
+		if vals[i] != w {
+			t.Errorf("text[%d] = %q, want %q (mutation leaked or fold failed)", i, vals[i], w)
 		}
-		sl, ok := init.(*ir.StructLit)
-		if !ok {
-			return ""
-		}
-		for _, f := range sl.Fields {
-			if f.Name == "r" {
-				if lit, ok := f.Value.(*ir.Literal); ok {
-					return lit.Raw
-				}
-			}
-		}
-		return ""
-	}
-	// Once T7 lands, remove the Skip at the top of this test.
-	if rOf(a) != "10" {
-		t.Errorf("A.r = %q after optimize, want 10 (mutation leaked)", rOf(a))
-	}
-	if rOf(b) != "99" {
-		t.Errorf("B.r = %q after optimize, want 99", rOf(b))
 	}
 }
 
 func TestOptimize_FoldsColorLighten(t *testing.T) {
-	t.Skip("TODO: interpret block-body stdlib functions; See #T8-BLOCKED")
+	// color.lighten(red, 0.5) per the SNGL formula in lib/functions.sngl:
+	// r,g,b each → min(255, c + int(float(255-c) * pct))
+	// red = {255, 0, 0, 255}: r stays 255; g/b → 0 + int(127.5) = 127.
 	src := `
 const C color = color.lighten(#ff0000, 0.5)
 component main {
 	text(value=string(C.r))
+	text(value=string(C.g))
+	text(value=string(C.b))
+	text(value=string(C.a))
 }
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
@@ -200,47 +179,29 @@ component main {
 	if err := Optimize(pkg, &Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	var c *ir.Var
-	for _, v := range pkg.Consts {
-		if v.Name == "C" {
-			c = v
-			break
-		}
+	vals := textValuesInMain(t, pkg)
+	want := []string{"255", "127", "127", "255"}
+	if len(vals) != len(want) {
+		t.Fatalf("got %d text values, want %d: %v", len(vals), len(want), vals)
 	}
-	if c == nil {
-		t.Fatalf("C not found; pkg has %d consts", len(pkg.Consts))
-	}
-	init := unwrapConversion(c.Init)
-	sl, ok := init.(*ir.StructLit)
-	if !ok {
-		t.Fatalf("Init = %T (was %T), want *ir.StructLit", init, c.Init)
-	}
-	// color.lighten(red, 0.5) per the SNGL formula in lib/functions.sngl:
-	// r,g,b each → min(255, c + int(float(255-c) * pct))
-	// red = {255, 0, 0, 255}: r stays 255; g/b → 0 + int(127.5) = 127.
-	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "255"}
-	for _, f := range sl.Fields {
-		lit, ok := f.Value.(*ir.Literal)
-		if !ok {
-			t.Errorf("field %s value = %T", f.Name, f.Value)
-			continue
-		}
-		if lit.Raw != want[f.Name] {
-			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+	for i, w := range want {
+		if vals[i] != w {
+			t.Errorf("text[%d] = %q, want %q (fold failed)", i, vals[i], w)
 		}
 	}
 }
 
 func TestOptimize_FoldsComposedColorExpression(t *testing.T) {
-	// This test demonstrates inlining (not interpretation) of color.opacity.
-	// color.opacity is an expression body, so it inlines to a StructLit with
-	// Select expressions. To properly test composition, use functions with
-	// non-trivial block bodies that exercise the interpreter.
-	t.Skip("TODO: use non-inlinable composed functions; See #T8-BLOCKED")
+	// Composes the block-body interpreted color.lighten with the
+	// expression-body inlined color.opacity. Verifies the alpha override
+	// flows through after lighten's r/g/b computation.
 	src := `
 const C color = color.opacity(color.lighten(#ff0000, 0.5), 128)
 component main {
 	text(value=string(C.r))
+	text(value=string(C.g))
+	text(value=string(C.b))
+	text(value=string(C.a))
 }
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
@@ -248,41 +209,29 @@ component main {
 	if err := Optimize(pkg, &Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	var c *ir.Var
-	for _, v := range pkg.Consts {
-		if v.Name == "C" {
-			c = v
-			break
-		}
+	vals := textValuesInMain(t, pkg)
+	want := []string{"255", "127", "127", "128"}
+	if len(vals) != len(want) {
+		t.Fatalf("got %d text values, want %d: %v", len(vals), len(want), vals)
 	}
-	if c == nil {
-		t.Fatal("C not found")
-	}
-	init := unwrapConversion(c.Init)
-	sl, ok := init.(*ir.StructLit)
-	if !ok {
-		t.Fatalf("Init = %T", init)
-	}
-	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "128"}
-	for _, f := range sl.Fields {
-		lit, ok := f.Value.(*ir.Literal)
-		if !ok {
-			t.Errorf("field %s value = %T", f.Name, f.Value)
-			continue
-		}
-		if lit.Raw != want[f.Name] {
-			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+	for i, w := range want {
+		if vals[i] != w {
+			t.Errorf("text[%d] = %q, want %q (compose fold failed)", i, vals[i], w)
 		}
 	}
 }
 
 func TestOptimize_FoldsUserDefinedColorHelper(t *testing.T) {
-	t.Skip("TODO: interpret user-defined functions that call block-body stdlib; See #T8-BLOCKED")
+	// A user-defined expression-body helper that delegates to the
+	// block-body stdlib function. Inlining + interpretation must compose.
 	src := `
-func tint(c color, n float) color => color.lighten(c, n)
+func tint(c color, n float) => color.lighten(c, n)
 const C color = tint(#ff0000, 0.5)
 component main {
 	text(value=string(C.r))
+	text(value=string(C.g))
+	text(value=string(C.b))
+	text(value=string(C.a))
 }
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
@@ -290,40 +239,49 @@ component main {
 	if err := Optimize(pkg, &Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	var c *ir.Var
-	for _, v := range pkg.Consts {
-		if v.Name == "C" {
-			c = v
-			break
-		}
+	vals := textValuesInMain(t, pkg)
+	want := []string{"255", "127", "127", "255"}
+	if len(vals) != len(want) {
+		t.Fatalf("got %d text values, want %d: %v", len(vals), len(want), vals)
 	}
-	if c == nil {
-		t.Fatalf("C not found; pkg has %d consts", len(pkg.Consts))
-	}
-	init := unwrapConversion(c.Init)
-	sl, ok := init.(*ir.StructLit)
-	if !ok {
-		t.Fatalf("Init = %T (was %T), want *ir.StructLit", init, c.Init)
-	}
-	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "255"}
-	for _, f := range sl.Fields {
-		lit, ok := f.Value.(*ir.Literal)
-		if !ok {
-			t.Errorf("field %s value = %T", f.Name, f.Value)
-			continue
-		}
-		if lit.Raw != want[f.Name] {
-			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+	for i, w := range want {
+		if vals[i] != w {
+			t.Errorf("text[%d] = %q, want %q (user-helper fold failed)", i, vals[i], w)
 		}
 	}
 }
 
-// unwrapConversion strips a top-level *ir.Conversion wrapper if present.
-// The optimizer may wrap a struct lit in a no-op conversion when the
-// declared type differs in form from the produced shape.
-func unwrapConversion(e ir.Expr) ir.Expr {
-	if conv, ok := e.(*ir.Conversion); ok {
-		return conv.Operand
+// textValuesInMain returns the folded `value` prop of each text() node in
+// the package's `main` component, in declaration order. Fails the test if
+// `main` is missing or any value is not a folded *ir.Literal.
+func textValuesInMain(t *testing.T, pkg *ir.Package) []string {
+	t.Helper()
+	var main *ir.Component
+	for _, c := range pkg.Components {
+		if c.Name == "main" {
+			main = c
+			break
+		}
 	}
-	return e
+	if main == nil {
+		t.Fatal("component main not found")
+	}
+	var vals []string
+	for _, s := range main.Body {
+		ni, ok := s.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, p := range ni.Props {
+			if p.Name != "value" {
+				continue
+			}
+			lit, ok := p.Value.(*ir.Literal)
+			if !ok {
+				t.Fatalf("text.value not folded to *ir.Literal, got %T", p.Value)
+			}
+			vals = append(vals, lit.Raw)
+		}
+	}
+	return vals
 }
