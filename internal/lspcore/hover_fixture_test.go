@@ -38,7 +38,7 @@ func TestHoverFixtures(t *testing.T) {
 				t.Fatal("no HOVER directives in fixture")
 			}
 			for _, d := range dirs {
-				got := HoverAt(string(src), doc, d.Line, d.Col)
+				got := HoverAt(string(src), doc, d.Line, d.Col, HoverOptions{})
 				if d.Negate {
 					if strings.Contains(got, d.Substring) {
 						t.Errorf("HOVER-NOT(%s) %q matched at %d:%d (directive line %d)\n--- got ---\n%s",

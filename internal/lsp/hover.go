@@ -21,7 +21,7 @@ func (s *Server) handleHover(id json.RawMessage, params json.RawMessage) {
 
 	line := p.Position.Line + 1
 	col := p.Position.Character + 1
-	info := lspcore.HoverAt(fs.Content, fs.Doc, line, col)
+	info := lspcore.HoverAt(fs.Content, fs.Doc, line, col, lspcore.HoverOptions{})
 	if info == "" {
 		s.sendResult(id, nil)
 		return

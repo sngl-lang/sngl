@@ -50,8 +50,11 @@ func isIdentRune(r rune) bool {
 }
 
 func HoverInfo(doc *ast.Document, word string) string {
-	// Search top-level and component-body statements.
-	if info := hoverInStmts(doc.Stmts, doc, word); info != "" {
+	return hoverInfoWithOptions(doc, word, HoverOptions{})
+}
+
+func hoverInfoWithOptions(doc *ast.Document, word string, opts HoverOptions) string {
+	if info := hoverInStmtsWithOptions(doc.Stmts, doc, word, opts); info != "" {
 		return info
 	}
 
@@ -64,9 +67,9 @@ func HoverInfo(doc *ast.Document, word string) string {
 	return ""
 }
 
-// hoverInStmts searches a slice of statements for hover info, recursing
-// into component bodies.
-func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
+// hoverInStmtsWithOptions searches a slice of statements for hover info,
+// recursing into component bodies.
+func hoverInStmtsWithOptions(stmts []ast.Stmt, doc *ast.Document, word string, opts HoverOptions) string {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.VarDecl:
@@ -83,10 +86,10 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 			}
 		case *ast.ComponentDecl:
 			if s.Name == word {
-				return formatComponentHoverWithDoc(s, doc)
+				return formatComponentHoverWithDoc(s, doc, opts)
 			}
 			// Also search inside the component body for nested declarations.
-			if info := hoverInStmts(s.Body.Stmts, doc, word); info != "" {
+			if info := hoverInStmtsWithOptions(s.Body.Stmts, doc, word, opts); info != "" {
 				return info
 			}
 		case *ast.StructDef:
@@ -106,7 +109,7 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 	return ""
 }
 
-func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document) string {
+func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document, opts HoverOptions) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\ncomponent %s\n```\n", c.Name)
 	if doc != nil {
@@ -132,6 +135,11 @@ func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document) string
 			} else {
 				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, hint)
 			}
+		}
+	}
+	if opts.ComponentImageURL != nil {
+		if url, ok := opts.ComponentImageURL(c.Name); ok {
+			fmt.Fprintf(&sb, "\n![%s](%s)\n", c.Name, url)
 		}
 	}
 	return sb.String()
@@ -340,16 +348,40 @@ func formatUnitHover(u *ast.UnitDef, doc *ast.Document) string {
 	return sb.String()
 }
 
+// HoverOptions configures optional behaviors of HoverAt. Zero value is fine —
+// callers that don't need any of these features pass HoverOptions{}.
+type HoverOptions struct {
+	// ComponentImageURL, if non-nil, is invoked when the hover formatter
+	// renders a ComponentDecl. Returning ok=true causes the formatter to
+	// append a markdown image embed (`![<Name>](url)`) below the signature
+	// and doc text.
+	ComponentImageURL func(componentName string) (url string, ok bool)
+}
+
 // HoverAt returns hover markdown for the cursor position. Tries literal
 // hover first (for color/measurement literals where the cursor isn't on
 // an identifier word), then falls back to word-based identifier hover.
-func HoverAt(content string, doc *ast.Document, line, col int) string {
+func HoverAt(content string, doc *ast.Document, line, col int, opts HoverOptions) string {
 	if doc != nil {
 		if info := hoverLiteralAt(doc, line, col); info != "" {
 			return info
 		}
 	}
-	return Hover(content, doc, line, col)
+	return hoverWord(content, doc, line, col, opts)
+}
+
+// hoverWord is the position→identifier→markdown path used by HoverAt.
+// Hover() (no options) remains as a back-compat shim for callers that
+// don't care about per-component image embedding.
+func hoverWord(content string, doc *ast.Document, line, col int, opts HoverOptions) string {
+	if doc == nil {
+		return ""
+	}
+	word := WordAtPosition(content, line, col)
+	if word == "" {
+		return ""
+	}
+	return hoverInfoWithOptions(doc, word, opts)
 }
 
 func hoverLiteralAt(doc *ast.Document, line, col int) string {
