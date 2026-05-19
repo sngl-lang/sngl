@@ -2,7 +2,10 @@ package lsp
 
 import (
 	"math"
+	"os"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestParseHexColor(t *testing.T) {
@@ -67,4 +70,32 @@ func TestFormatHexColor(t *testing.T) {
 
 func floatEq(a, b float64) bool {
 	return math.Abs(a-b) < 1e-9
+}
+
+func TestDocumentColor(t *testing.T) {
+	src, err := os.ReadFile("../../testdata/lsp/colors.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _ := parser.Parse("colors.sngl", src)
+	got := computeDocumentColors(string(src), doc)
+
+	want := []ColorInformation{
+		{Range: Range{Start: Position{Line: 1, Character: 23}, End: Position{Line: 1, Character: 30}}, Color: Color{Red: 1, Green: 0, Blue: 0, Alpha: 1}},
+		{Range: Range{Start: Position{Line: 2, Character: 23}, End: Position{Line: 2, Character: 30}}, Color: Color{Red: 0, Green: 1, Blue: 0, Alpha: 1}},
+		{Range: Range{Start: Position{Line: 3, Character: 13}, End: Position{Line: 3, Character: 20}}, Color: Color{Red: 0xaa / 255.0, Green: 0xbb / 255.0, Blue: 0xcc / 255.0, Alpha: 1}},
+		{Range: Range{Start: Position{Line: 4, Character: 13}, End: Position{Line: 4, Character: 22}}, Color: Color{Red: 0x11 / 255.0, Green: 0x22 / 255.0, Blue: 0x33 / 255.0, Alpha: 0x44 / 255.0}},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d colors, want %d: %+v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		g := got[i]
+		if g.Range != w.Range {
+			t.Errorf("color %d range: got %+v, want %+v", i, g.Range, w.Range)
+		}
+		if !floatEq(g.Color.Red, w.Color.Red) || !floatEq(g.Color.Green, w.Color.Green) || !floatEq(g.Color.Blue, w.Color.Blue) || !floatEq(g.Color.Alpha, w.Color.Alpha) {
+			t.Errorf("color %d value: got %+v, want %+v", i, g.Color, w.Color)
+		}
+	}
 }

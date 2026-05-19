@@ -1,6 +1,11 @@
 package lsp
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // parseHexColor converts "#rgb", "#rrggbb", or "#rrggbbaa" to a Color.
 // Alpha defaults to 1.0 when not specified.
@@ -96,4 +101,171 @@ func hexByte(hi, lo byte) (int, bool) {
 		return 0, false
 	}
 	return h*16 + l, true
+}
+
+// computeDocumentColors walks the parsed document and returns a
+// ColorInformation entry for every `#hex` color literal.
+func computeDocumentColors(content string, doc *ast.Document) []ColorInformation {
+	_ = content
+	out := []ColorInformation{}
+	if doc == nil {
+		return out
+	}
+	walkLiterals(doc, func(lit *ast.LiteralExpr) {
+		if lit.Kind != ast.LiteralColor {
+			return
+		}
+		c, ok := parseHexColor(lit.Raw)
+		if !ok {
+			return
+		}
+		startLine := lit.Pos.Line - 1
+		startCol := lit.Pos.Column - 1
+		out = append(out, ColorInformation{
+			Range: Range{
+				Start: Position{Line: startLine, Character: startCol},
+				End:   Position{Line: startLine, Character: startCol + len(lit.Raw)},
+			},
+			Color: c,
+		})
+	})
+	return out
+}
+
+func (s *Server) handleDocumentColor(id json.RawMessage, params json.RawMessage) {
+	var p DocumentColorParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		s.sendError(id, -32602, "invalid params")
+		return
+	}
+	fs := s.ws.get(p.TextDocument.URI)
+	if fs == nil || fs.Doc == nil {
+		s.sendResult(id, []ColorInformation{})
+		return
+	}
+	s.sendResult(id, computeDocumentColors(fs.Content, fs.Doc))
+}
+
+// walkLiterals invokes fn for every LiteralExpr in the document.
+// Minimal walker scoped to what documentColor needs.
+func walkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
+	var walkE func(e ast.Expr)
+	var walkS func(s ast.Stmt)
+	var walkBlock func(b ast.StmtBlock)
+	var walkArgs func(args ast.ArgList)
+	walkE = func(e ast.Expr) {
+		switch x := e.(type) {
+		case nil:
+			return
+		case *ast.LiteralExpr:
+			fn(x)
+		case *ast.BinaryExpr:
+			walkE(x.Left)
+			walkE(x.Right)
+		case *ast.UnaryExpr:
+			walkE(x.Operand)
+		case *ast.CallExpr:
+			walkE(x.Func)
+			walkArgs(x.Args)
+		case *ast.SelectExpr:
+			walkE(x.Operand)
+		case *ast.IndexExpr:
+			walkE(x.Operand)
+			walkE(x.Index)
+		case *ast.TernaryExpr:
+			walkE(x.Cond)
+			walkE(x.Then)
+			walkE(x.Else)
+		case *ast.ListExpr:
+			for _, el := range x.Elements {
+				walkE(el)
+			}
+		case *ast.StructExpr:
+			for _, f := range x.Fields {
+				walkE(f.Value)
+			}
+		case *ast.LambdaExpr:
+			walkE(x.Body)
+			walkBlock(x.Block)
+		case *ast.InterpolationExpr:
+			for _, p := range x.Parts {
+				walkE(p)
+			}
+		case *ast.ParenExpr:
+			walkE(x.Inner)
+		case *ast.ConstExpr:
+			walkE(x.Operand)
+		case *ast.SpreadExpr:
+			walkE(x.Operand)
+		case *ast.MapLit:
+			for _, en := range x.Entries {
+				walkE(en.Key)
+				walkE(en.Value)
+			}
+		}
+	}
+	walkArgs = func(args ast.ArgList) {
+		for _, a := range args.Args {
+			switch arg := a.(type) {
+			case ast.Arg:
+				walkE(arg.Value)
+			case ast.EventHandler:
+				walkBlock(arg.Body)
+			}
+		}
+	}
+	walkBlock = func(b ast.StmtBlock) {
+		for _, c := range b.Stmts {
+			walkS(c)
+		}
+	}
+	walkS = func(s ast.Stmt) {
+		switch x := s.(type) {
+		case nil:
+			return
+		case *ast.VarDecl:
+			for _, sp := range x.Specs {
+				walkE(sp.Default)
+			}
+		case *ast.ConstDecl:
+			for _, sp := range x.Specs {
+				walkE(sp.Default)
+			}
+		case *ast.AssignStmt:
+			walkE(x.Value)
+		case *ast.EmitStmt:
+			walkArgs(x.Args)
+		case *ast.IfStmt:
+			walkE(x.Cond)
+			walkBlock(x.Body)
+			walkBlock(x.Else)
+		case *ast.ForStmt:
+			walkE(x.Iter)
+			walkBlock(x.Body)
+			walkBlock(x.Else)
+		case *ast.VisualNode:
+			walkArgs(x.Args)
+			walkBlock(x.Block)
+		case *ast.ComponentDecl:
+			walkBlock(x.Body)
+		case *ast.FuncDef:
+			walkE(x.Body)
+			walkBlock(x.Block)
+		case *ast.PlatformStmt:
+			walkBlock(x.Body)
+		case *ast.ReturnStmt:
+			walkE(x.Value)
+		case *ast.CallStmt:
+			if x.Call != nil {
+				walkE(x.Call)
+			}
+		case *ast.VarStmt:
+			walkE(x.Init)
+		case *ast.DisabledDecl:
+			walkS(x.Inner)
+		}
+	}
+	for _, st := range doc.Stmts {
+		walkS(st)
+	}
 }

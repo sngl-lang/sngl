@@ -1,0 +1,8 @@
+window Demo {
+    Text("hi", color = #ff0000)
+    Text("hi", color = #00ff00)
+    Box(bg = #aabbcc)
+    Box(bg = #11223344)
+    // comment with #abcdef should not match
+    var label = "hex value #cafe in string"
+}
