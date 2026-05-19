@@ -1,5 +1,7 @@
 package lsp
 
+import "encoding/json"
+
 // JSON-RPC 2.0 and LSP protocol types.
 // Only the subset needed for diagnostics, hover, and completion.
 
@@ -101,6 +103,18 @@ type ServerCapabilities struct {
 	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
 	ColorProvider          bool                   `json:"colorProvider,omitempty"`
 	InlayHintProvider      bool                   `json:"inlayHintProvider,omitempty"`
+	ExecuteCommandProvider *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
+}
+
+// --- Execute Command ---
+
+type ExecuteCommandOptions struct {
+	Commands []string `json:"commands"`
+}
+
+type ExecuteCommandParams struct {
+	Command   string            `json:"command"`
+	Arguments []json.RawMessage `json:"arguments,omitempty"`
 }
 
 type SemanticTokensOptions struct {

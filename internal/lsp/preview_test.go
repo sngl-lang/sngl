@@ -236,6 +236,61 @@ func itoa(n int) string {
 	return string(buf[i:])
 }
 
+func TestServer_ExecuteCommandOpenPreview(t *testing.T) {
+	r, w := io.Pipe()
+	clientR, clientW := io.Pipe()
+	srv := New()
+	srv.reader = bufio.NewReader(r)
+	srv.writer = clientW
+
+	go func() { _ = srv.serve() }()
+	defer srv.preview.Stop()
+
+	send := func(body string) {
+		header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(body))
+		w.Write([]byte(header + body))
+	}
+
+	// initialize
+	go send(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+	// Drain initialize response + previewReady notification.
+	br := bufio.NewReader(clientR)
+	for i := 0; i < 2; i++ {
+		line, _ := br.ReadString('\n')
+		ln := 0
+		fmt.Sscanf(strings.TrimSpace(line), "Content-Length: %d", &ln)
+		br.ReadString('\n')
+		buf := make([]byte, ln)
+		io.ReadFull(br, buf)
+	}
+
+	// didOpen with a window
+	go send(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/x.sngl","languageId":"sngl","version":1,"text":"window #home(title=\"Home\", href=\"/\") {\n  text(value=\"hi\")\n}\n"}}}`)
+	// Drain diagnostics notification.
+	line, _ := br.ReadString('\n')
+	ln := 0
+	fmt.Sscanf(strings.TrimSpace(line), "Content-Length: %d", &ln)
+	br.ReadString('\n')
+	buf := make([]byte, ln)
+	io.ReadFull(br, buf)
+
+	// executeCommand sngl.openPreview
+	go send(`{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand","params":{"command":"sngl.openPreview","arguments":[{"uri":"file:///tmp/x.sngl","position":{"line":0,"character":0}}]}}`)
+	line, _ = br.ReadString('\n')
+	fmt.Sscanf(strings.TrimSpace(line), "Content-Length: %d", &ln)
+	br.ReadString('\n')
+	buf = make([]byte, ln)
+	io.ReadFull(br, buf)
+
+	body := string(buf)
+	if !strings.Contains(body, `"url"`) {
+		t.Errorf("response missing url: %s", body)
+	}
+	if !strings.Contains(body, "/preview/") {
+		t.Errorf("response missing /preview/: %s", body)
+	}
+}
+
 func TestPreviewServer_WSBroadcastReload(t *testing.T) {
 	srv := newPreviewServer()
 	if err := srv.Start(); err != nil {

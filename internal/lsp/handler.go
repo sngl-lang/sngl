@@ -68,6 +68,9 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 			},
 			ColorProvider:     true,
 			InlayHintProvider: true,
+			ExecuteCommandProvider: &ExecuteCommandOptions{
+				Commands: []string{"sngl.openPreview"},
+			},
 		},
 		ServerInfo: &ServerInfo{
 			Name:    "sngl-lsp",
