@@ -132,17 +132,11 @@ func TestDocumentColor(t *testing.T) {
 	got := computeDocumentColors(string(src), doc)
 
 	want := []ColorInformation{
-		// #ff0000
-		{Range: Range{Start: Position{Line: 1, Character: 23}, End: Position{Line: 1, Character: 30}}, Color: Color{Red: 1, Green: 0, Blue: 0, Alpha: 1}},
-		// #00ff00
-		{Range: Range{Start: Position{Line: 2, Character: 23}, End: Position{Line: 2, Character: 30}}, Color: Color{Red: 0, Green: 1, Blue: 0, Alpha: 1}},
-		// #aabbcc
-		{Range: Range{Start: Position{Line: 3, Character: 13}, End: Position{Line: 3, Character: 20}}, Color: Color{Red: 0xaa / 255.0, Green: 0xbb / 255.0, Blue: 0xcc / 255.0, Alpha: 1}},
-		// #11223344
-		{Range: Range{Start: Position{Line: 4, Character: 13}, End: Position{Line: 4, Character: 22}}, Color: Color{Red: 0x11 / 255.0, Green: 0x22 / 255.0, Blue: 0x33 / 255.0, Alpha: 0x44 / 255.0}},
-		// color.rgb(255, 128, 64)
+		{Range: rangeOfSubstring(t, string(src), "#ff0000"), Color: Color{Red: 1, Green: 0, Blue: 0, Alpha: 1}},
+		{Range: rangeOfSubstring(t, string(src), "#00ff00"), Color: Color{Red: 0, Green: 1, Blue: 0, Alpha: 1}},
+		{Range: rangeOfSubstring(t, string(src), "#aabbcc"), Color: Color{Red: 0xaa / 255.0, Green: 0xbb / 255.0, Blue: 0xcc / 255.0, Alpha: 1}},
+		{Range: rangeOfSubstring(t, string(src), "#11223344"), Color: Color{Red: 0x11 / 255.0, Green: 0x22 / 255.0, Blue: 0x33 / 255.0, Alpha: 0x44 / 255.0}},
 		{Range: rangeOfSubstring(t, string(src), "color.rgb(255, 128, 64)"), Color: Color{Red: 1, Green: 128.0 / 255.0, Blue: 64.0 / 255.0, Alpha: 1}},
-		// color.rgba(10, 20, 30, 200)
 		{Range: rangeOfSubstring(t, string(src), "color.rgba(10, 20, 30, 200)"), Color: Color{Red: 10.0 / 255.0, Green: 20.0 / 255.0, Blue: 30.0 / 255.0, Alpha: 200.0 / 255.0}},
 	}
 	if len(got) != len(want) {
