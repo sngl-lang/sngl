@@ -100,6 +100,7 @@ type ServerCapabilities struct {
 	DiagnosticProvider     *DiagnosticOptions     `json:"diagnosticProvider,omitempty"`
 	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
 	ColorProvider          bool                   `json:"colorProvider,omitempty"`
+	InlayHintProvider      bool                   `json:"inlayHintProvider,omitempty"`
 }
 
 type SemanticTokensOptions struct {
@@ -260,3 +261,23 @@ type ColorPresentationParams struct {
 type ColorPresentation struct {
 	Label string `json:"label"`
 }
+
+// --- Inlay Hints ---
+
+type InlayHintParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+}
+
+type InlayHint struct {
+	Position     Position `json:"position"`
+	Label        string   `json:"label"`
+	Kind         int      `json:"kind,omitempty"`
+	PaddingLeft  bool     `json:"paddingLeft,omitempty"`
+	PaddingRight bool     `json:"paddingRight,omitempty"`
+}
+
+const (
+	InlayHintKindType      = 1
+	InlayHintKindParameter = 2
+)
