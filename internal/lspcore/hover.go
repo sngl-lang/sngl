@@ -340,6 +340,76 @@ func formatUnitHover(u *ast.UnitDef, doc *ast.Document) string {
 // hover first (for color/measurement literals where the cursor isn't on
 // an identifier word), then falls back to word-based identifier hover.
 func HoverAt(content string, doc *ast.Document, line, col int) string {
-	// Literal lookup is added in a later task; for now, just delegate.
+	if doc != nil {
+		if info := hoverLiteralAt(doc, line, col); info != "" {
+			return info
+		}
+	}
 	return Hover(content, doc, line, col)
+}
+
+func hoverLiteralAt(doc *ast.Document, line, col int) string {
+	var found string
+	WalkLiterals(doc, func(lit *ast.LiteralExpr) {
+		if found != "" {
+			return
+		}
+		if lit.Pos.Line != line {
+			return
+		}
+		startCol := lit.Pos.Column
+		endCol := startCol + len(lit.Raw)
+		if col < startCol || col >= endCol {
+			return
+		}
+		switch lit.Kind {
+		case ast.LiteralColor:
+			found = formatColorHover(lit.Raw)
+		}
+	})
+	return found
+}
+
+func formatColorHover(raw string) string {
+	r, g, b, ok := parseHexRGB(raw)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("```sngl\n%s\n```\n\nrgb(%d, %d, %d)\n", raw, r, g, b)
+}
+
+// parseHexRGB extracts 0-255 RGB channels from a #rrggbb or #rrggbbaa literal.
+// 3-digit forms aren't valid SNGL color tokens (lexer rejects them).
+func parseHexRGB(raw string) (r, g, b int, ok bool) {
+	if len(raw) < 7 || raw[0] != '#' {
+		return 0, 0, 0, false
+	}
+	hi, ok1 := hexByteHover(raw[1], raw[2])
+	mi, ok2 := hexByteHover(raw[3], raw[4])
+	lo, ok3 := hexByteHover(raw[5], raw[6])
+	if !(ok1 && ok2 && ok3) {
+		return 0, 0, 0, false
+	}
+	return hi, mi, lo, true
+}
+
+func hexByteHover(hi, lo byte) (int, bool) {
+	h, ok1 := hexNibbleHover(hi)
+	l, ok2 := hexNibbleHover(lo)
+	if !(ok1 && ok2) {
+		return 0, false
+	}
+	return h*16 + l, true
+}
+
+func hexNibbleHover(c byte) (int, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0'), true
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10, true
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10, true
+	}
+	return 0, false
 }
