@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/net/websocket"
 )
 
 func TestPreviewServer_Lifecycle(t *testing.T) {
@@ -232,4 +234,35 @@ func itoa(n int) string {
 		buf[i] = '-'
 	}
 	return string(buf[i:])
+}
+
+func TestPreviewServer_WSBroadcastReload(t *testing.T) {
+	srv := newPreviewServer()
+	if err := srv.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer srv.Stop()
+
+	url := fmt.Sprintf("ws://127.0.0.1:%d/ws", srv.Port())
+	ws, err := websocket.Dial(url, "", "http://127.0.0.1/")
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer ws.Close()
+
+	// Give server a moment to register the conn.
+	time.Sleep(50 * time.Millisecond)
+
+	srv.BroadcastReload()
+
+	ws.SetReadDeadline(time.Now().Add(2 * time.Second))
+	buf := make([]byte, 1024)
+	n, err := ws.Read(buf)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	got := string(buf[:n])
+	if !strings.Contains(got, `"reload"`) {
+		t.Errorf("got %q, want reload message", got)
+	}
 }

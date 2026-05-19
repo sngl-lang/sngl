@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/websocket"
 )
 
 // previewServer is an HTTP file server for component preview PNGs and rendered documents.
@@ -24,11 +26,14 @@ type previewServer struct {
 	assets     map[string]string // sha → absolute path
 	port       int
 	renderHTML func(fileURI, windowName string) ([]byte, error)
+	conns      map[*websocket.Conn]struct{} // active WS clients
+	connsMu    sync.Mutex                    // protects writes to conns
 }
 
 func newPreviewServer() *previewServer {
 	return &previewServer{
 		assets: map[string]string{},
+		conns:  map[*websocket.Conn]struct{}{},
 	}
 }
 
@@ -97,8 +102,23 @@ func (s *previewServer) SetRenderer(fn func(fileURI, windowName string) ([]byte,
 	s.mu.Unlock()
 }
 
+// BroadcastReload sends a reload message to every connected client.
+// Stale connections (write errors) are dropped silently.
+func (s *previewServer) BroadcastReload() {
+	const msg = `{"type":"reload"}`
+	s.connsMu.Lock()
+	defer s.connsMu.Unlock()
+	for c := range s.conns {
+		if _, err := c.Write([]byte(msg)); err != nil {
+			c.Close()
+			delete(s.conns, c)
+		}
+	}
+}
+
 func (s *previewServer) handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.Handle("/ws", websocket.Handler(s.wsHandler))
 	mux.HandleFunc("/preview/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/preview/")
 		if path == "" || strings.Contains(path, "..") {
@@ -157,4 +177,26 @@ func (s *previewServer) servePreview(w http.ResponseWriter, r *http.Request, uri
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(body)
+}
+
+// wsHandler runs the lifetime of a single WS connection. Registers the
+// conn for broadcasts, then blocks reading client messages until the
+// connection closes. Future: parse incoming "jump" messages for
+// click-to-source; for now we just keep the connection alive.
+func (s *previewServer) wsHandler(ws *websocket.Conn) {
+	s.connsMu.Lock()
+	s.conns[ws] = struct{}{}
+	s.connsMu.Unlock()
+	defer func() {
+		s.connsMu.Lock()
+		delete(s.conns, ws)
+		s.connsMu.Unlock()
+		ws.Close()
+	}()
+	buf := make([]byte, 1024)
+	for {
+		if _, err := ws.Read(buf); err != nil {
+			return
+		}
+	}
 }
