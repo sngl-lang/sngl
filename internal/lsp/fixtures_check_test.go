@@ -14,6 +14,7 @@ func TestLSPFixturesTypeCheck(t *testing.T) {
 	dirs := []string{
 		"../../testdata/lsp",
 		"../../testdata/lsp_hover",
+		"../../testdata/lsp_inlay",
 	}
 	for _, dir := range dirs {
 		matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))

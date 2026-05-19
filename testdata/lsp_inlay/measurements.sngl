@@ -1,0 +1,14 @@
+// INLAY(16em) "(256px)"
+// INLAY(1rem) "(16px)"
+// INLAY(50vw) "(640px)"
+// INLAY(50vh) "(400px)"
+// INLAY-NOT(8px) ""
+// INLAY-NOT(20pct) ""
+component App {
+    var headerSize = 16em
+    var bodySize = 1rem
+    var halfWidth = 50vw
+    var halfHeight = 50vh
+    var pxValue = 8px
+    var pctValue = 20pct
+}
