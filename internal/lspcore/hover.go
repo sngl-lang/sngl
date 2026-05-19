@@ -55,6 +55,10 @@ func HoverInfo(doc *ast.Document, word string) string {
 		return info
 	}
 
+	if desc, ok := keywordDocs[word]; ok {
+		return fmt.Sprintf("```sngl\n%s\n```\n\n%s\n", word, desc)
+	}
+
 	// TODO: stdlib hover lookup (LoadStdlib removed in v2)
 
 	return ""
