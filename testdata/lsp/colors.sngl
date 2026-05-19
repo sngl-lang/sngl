@@ -5,4 +5,7 @@ window Demo {
     Box(bg = #11223344)
     // comment with #abcdef should not match
     var label = "hex value #cafe in string"
+    var fromCall = color.rgb(255, 128, 64)
+    var withAlpha = color.rgba(10, 20, 30, 200)
+    var notAColor = color.lighten(c, 0.5)
 }
