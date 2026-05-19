@@ -6,7 +6,7 @@ function M.setup(opts)
     return
   end
 
-  local parser_configs = parsers.get_parser_configs()
+  local parser_configs = parsers.get_parser_configs and parsers.get_parser_configs() or parsers
   -- Resolve path: this file is at editors/neovim/lua/sngl/treesitter.lua
   -- tree-sitter-sngl is at editors/tree-sitter-sngl/
   local this_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
