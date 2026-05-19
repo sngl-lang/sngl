@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -48,6 +49,69 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		return &ir.ListLit{Type: typ, Elems: elems}
 	}
 	return nil
+}
+
+// interpretFunc runs fn's body via internal/interp with args bound to its
+// params. Returns (value, true) on success; (nil, false) when the
+// interpretation can't proceed cleanly (non-pure func, depth exceeded,
+// arity mismatch, or any error from interp). Composite arg values are
+// deep-copied at param binding so callee mutations cannot corrupt cached
+// const values in ctx.values.
+func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool) {
+	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure {
+		return nil, false
+	}
+	if depth >= maxInterpDepth {
+		return nil, false
+	}
+	if len(args) != len(fn.Params) {
+		return nil, false
+	}
+
+	var (
+		env *interp.Env
+		err error
+	)
+	if ctx != nil && ctx.pkg != nil {
+		env, err = interp.BuildEnv(ctx.pkg, "")
+		if err != nil {
+			return nil, false
+		}
+	} else {
+		env = interp.NewEnv()
+	}
+
+	copiedArgs := make([]any, len(args))
+	for i, a := range args {
+		copiedArgs[i] = deepCopyValue(a)
+	}
+
+	result, err := env.CallUserFuncValues(fn, copiedArgs)
+	if err != nil {
+		return nil, false
+	}
+	return result, true
+}
+
+// deepCopyValue clones composite values (map[string]any, []any) so callee
+// mutations during interp evaluation can't corrupt cached const-eval
+// results held by the optimizer in ctx.values.
+func deepCopyValue(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		c := make(map[string]any, len(x))
+		for k, val := range x {
+			c[k] = deepCopyValue(val)
+		}
+		return c
+	case []any:
+		c := make([]any, len(x))
+		for i, val := range x {
+			c[i] = deepCopyValue(val)
+		}
+		return c
+	}
+	return v
 }
 
 // sortedMapKeys returns the keys of m sorted alphabetically.

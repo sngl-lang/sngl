@@ -3,6 +3,8 @@ package optimize
 import (
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -74,5 +76,101 @@ func TestIRFromValue_Nil(t *testing.T) {
 	lit, ok := got.(*ir.Literal)
 	if !ok || lit.Raw != "null" {
 		t.Errorf("got %v, want null Literal", got)
+	}
+}
+
+func TestInterpretFunc_SimplePureFunc(t *testing.T) {
+	src := `
+func double(x int) => x * 2
+const C = double(21)
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+
+	var doubleFn *ir.Func
+	for _, f := range pkg.Funcs {
+		if f.Name == "double" {
+			doubleFn = f
+			break
+		}
+	}
+	if doubleFn == nil {
+		t.Fatal("func double not found")
+	}
+
+	ctx := newEvalCtxForTest(pkg)
+	val, ok := interpretFunc(doubleFn, []any{21}, ctx, 0)
+	if !ok {
+		t.Fatalf("interpretFunc returned ok=false")
+	}
+	if val != 42 {
+		t.Errorf("got %v, want 42", val)
+	}
+}
+
+// newEvalCtxForTest is a small helper that builds a minimal evalCtx
+// for testing the interpreter adapter in isolation.
+func newEvalCtxForTest(pkg *ir.Package) *evalCtx {
+	return &evalCtx{
+		pkg:    pkg,
+		values: map[ir.Symbol]any{},
+	}
+}
+
+func TestInterpretFunc_MutationIsolation(t *testing.T) {
+	t.Skip("requires T7 to wire interpretFunc into evalCall")
+	src := `
+func mutates(c color) color {
+    c.r = 99
+    return c
+}
+const A color = color{r=10, g=20, b=30, a=255}
+const B color = mutates(A)
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := Optimize(pkg, &Config{}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+
+	var a, b *ir.Var
+	for _, v := range pkg.Vars {
+		switch v.Name {
+		case "A":
+			a = v
+		case "B":
+			b = v
+		}
+	}
+	if a == nil || b == nil {
+		t.Fatal("A or B not found")
+	}
+
+	rOf := func(v *ir.Var) string {
+		sl, ok := v.Init.(*ir.StructLit)
+		if !ok {
+			return ""
+		}
+		for _, f := range sl.Fields {
+			if f.Name == "r" {
+				if lit, ok := f.Value.(*ir.Literal); ok {
+					return lit.Raw
+				}
+			}
+		}
+		return ""
+	}
+	// Once T7 lands, remove the Skip at the top of this test.
+	if rOf(a) != "10" {
+		t.Errorf("A.r = %q after optimize, want 10 (mutation leaked)", rOf(a))
+	}
+	if rOf(b) != "99" {
+		t.Errorf("B.r = %q after optimize, want 99", rOf(b))
 	}
 }

@@ -1554,6 +1554,19 @@ func argExprs(args []ir.CallArg) []ir.Expr {
 	return out
 }
 
+// CallUserFuncValues invokes fn with pre-evaluated Go-side argument values
+// (no expression evaluation needed). Used by the optimizer's interpretFunc
+// adapter, which already has folded constant values in hand.
+func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
+	child := env.Snapshot()
+	for i, p := range fn.Params {
+		if i < len(args) {
+			child.Vars[p.Name] = args[i]
+		}
+	}
+	return child.execBlockForResult(fn.Block)
+}
+
 func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 	args := make([]any, len(argExprs))
 	for i, a := range argExprs {
