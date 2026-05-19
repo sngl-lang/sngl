@@ -99,6 +99,7 @@ type ServerCapabilities struct {
 	CompletionProvider     *CompletionOptions     `json:"completionProvider,omitempty"`
 	DiagnosticProvider     *DiagnosticOptions     `json:"diagnosticProvider,omitempty"`
 	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
+	ColorProvider          bool                   `json:"colorProvider,omitempty"`
 }
 
 type SemanticTokensOptions struct {
@@ -231,3 +232,31 @@ const (
 	CIKColor      = 16
 	CIKConstant   = 21
 )
+
+// --- Document Color ---
+
+type DocumentColorParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
+
+type ColorInformation struct {
+	Range Range `json:"range"`
+	Color Color `json:"color"`
+}
+
+type Color struct {
+	Red   float64 `json:"red"`
+	Green float64 `json:"green"`
+	Blue  float64 `json:"blue"`
+	Alpha float64 `json:"alpha"`
+}
+
+type ColorPresentationParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Color        Color                  `json:"color"`
+	Range        Range                  `json:"range"`
+}
+
+type ColorPresentation struct {
+	Label string `json:"label"`
+}
