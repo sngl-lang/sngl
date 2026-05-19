@@ -63,7 +63,6 @@ var (
 	TypInt      = &Type{Kind: TypeInt}
 	TypFloat    = &Type{Kind: TypeFloat}
 	TypString   = &Type{Kind: TypeString}
-	TypColor    = &Type{Kind: TypeColor}
 	TypNull     = &Type{Kind: TypeNull}
 	TypDate     = &Type{Kind: TypeDate}
 	TypTime     = &Type{Kind: TypeTime}
@@ -362,13 +361,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
 		return true
 	}
-	// Bridge the builtin TypeColor kind and the stdlib color struct decl.
-	// They represent the same semantic type and should assign freely.
-	// (Tracked separately: collapsing the two representations into one
-	// is a deeper refactor; this bridge unblocks the immediate use cases.)
-	if isColorShape(t) && isColorShape(target) {
-		return true
-	}
 	if target.Kind == TypeDyn {
 		return true
 	}
@@ -385,6 +377,16 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if isStringDomain(t.Kind) && target.Kind == TypeString {
+		return true
+	}
+	// The color value type is carried as a stdlib-StructDef-backed
+	// TypeStruct (it is the only string-domain type with a struct
+	// backing). It still participates in string<->string-domain
+	// implicit conversion.
+	if t.Kind == TypeString && IsColorStruct(target) {
+		return true
+	}
+	if IsColorStruct(t) && target.Kind == TypeString {
 		return true
 	}
 	if t.Kind == TypeList && target.Kind == TypeList {
@@ -424,32 +426,15 @@ func isStringDomain(k TypeKind) bool {
 }
 
 // IsColorStruct reports whether t is a TypeStruct whose Decl is the stdlib
-// "color" StructDef. Use this to detect a color value carried in the
-// StructDef-backed shape (e.g. lowered hex literals).
+// "color" StructDef. The color value type is now uniformly carried as a
+// TypeStruct backed by the stdlib StructDef (no separate TypeColor kind
+// is produced); call this to detect the shape.
 func IsColorStruct(t *Type) bool {
 	if t == nil || t.Kind != TypeStruct {
 		return false
 	}
 	sd, ok := t.Decl.(*StructDef)
 	return ok && sd.Name == "color"
-}
-
-// isColorShape reports whether t represents the color value type — either
-// the builtin TypeColor kind or a TypeStruct whose Decl is the stdlib
-// "color" StructDef.
-func isColorShape(t *Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.Kind == TypeColor {
-		return true
-	}
-	if t.Kind == TypeStruct {
-		if sd, ok := t.Decl.(*StructDef); ok && sd.Name == "color" {
-			return true
-		}
-	}
-	return false
 }
 
 // FuncSig describes a function signature.

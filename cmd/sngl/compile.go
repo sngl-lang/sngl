@@ -366,8 +366,12 @@ func parseConstOption(raw string, t *ir.Type) (*ir.Literal, error) {
 		return &ir.Literal{Type: ir.TypInt, Raw: raw}, nil
 	case ir.TypeFloat:
 		return &ir.Literal{Type: ir.TypFloat, Raw: raw}, nil
-	case ir.TypeColor:
-		return &ir.Literal{Type: ir.TypColor, Raw: raw}, nil
+	}
+	if ir.IsColorStruct(t) {
+		// Color option values are carried as raw hex strings on the CLI.
+		// ApplyOptions reads .Raw and treats them as strings, so this is
+		// effectively the same shape it always had.
+		return &ir.Literal{Type: ir.TypString, Raw: raw}, nil
 	}
 	return &ir.Literal{Type: t, Raw: raw}, nil
 }

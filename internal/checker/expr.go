@@ -143,15 +143,17 @@ func (c *checker) lowerHexLiteral(x *ast.LiteralExpr) ir.Expr {
 	r, g, b, a, ok := parseHexChannels(x.Raw)
 	if !ok {
 		c.error(x.Pos, "invalid color literal %q", x.Raw)
-		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
 	}
 	sym, ok := c.scope.Lookup("color")
 	if !ok {
-		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+		// Stdlib not yet registered. Carry the raw hex as a string literal;
+		// callers in this state are bootstrap paths that don't propagate.
+		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
 	}
 	sd, ok := sym.(*ir.StructDef)
 	if !ok {
-		return &ir.Literal{AST: x, Type: TypColor, Raw: x.Raw}
+		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
 	}
 	intLit := func(n int) *ir.Literal {
 		return &ir.Literal{Type: TypInt, Raw: strconv.Itoa(n)}
@@ -613,7 +615,17 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		case "duration":
 			return c.inferBuiltinConversion(x, TypDuration, ident.Name)
 		case "color":
-			return c.inferBuiltinConversion(x, TypColor, ident.Name)
+			// color is a stdlib StructDef-backed type, not a primitive,
+			// so the cast form is just convert-to-color-struct. Look up
+			// the StructDef type from scope; if absent (pre-stdlib), fall
+			// back to dyn so the diagnostic comes from the regular path.
+			colorTyp := TypDyn
+			if sym, ok := c.scope.Lookup("color"); ok {
+				if t := sym.SymType(); t != nil {
+					colorTyp = t
+				}
+			}
+			return c.inferBuiltinConversion(x, colorTyp, ident.Name)
 		case "url":
 			return c.inferBuiltinConversion(x, TypURL, ident.Name)
 		case "email":
@@ -695,9 +707,10 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		fromKind := ir.TypeInvalid
 		if from != nil {
 			fromKind = from.Kind
-			// Bridge: a color StructDef-backed value is semantically a
-			// color. Hex literals now lower to *ir.StructLit (kind=Struct),
-			// so cast logic must treat it like TypeColor.
+			// All color values are TypeStruct-backed by the stdlib color
+			// StructDef. For the explicit-cast primitiveConvertible check
+			// (e.g. `string(c)`), substitute the TypeColor string-domain
+			// kind so the string-domain cast rules apply.
 			if ir.IsColorStruct(from) {
 				fromKind = ir.TypeColor
 			}
@@ -1418,6 +1431,11 @@ func interpPartAlreadyString(t *ir.Type) bool {
 func interpPartPrimitive(t *ir.Type) bool {
 	if t == nil {
 		return false
+	}
+	// Color is StructDef-backed but still stringifies like a string-domain
+	// primitive in interpolation.
+	if ir.IsColorStruct(t) {
+		return true
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,

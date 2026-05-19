@@ -20,7 +20,7 @@ func TestApplyOptions_Primitives(t *testing.T) {
 			{Name: "main", Value: &ir.Literal{Type: ir.TypBool, Raw: "true"}},
 			{Name: "count", Value: &ir.Literal{Type: ir.TypInt, Raw: "42"}},
 			{Name: "ratio", Value: &ir.Literal{Type: ir.TypFloat, Raw: "0.5"}},
-			{Name: "color", Value: &ir.Literal{Type: ir.TypColor, Raw: "#abc123"}},
+			{Name: "color", Value: &ir.Literal{Type: ir.TypString, Raw: "#abc123"}},
 		},
 	}
 	var c cfg

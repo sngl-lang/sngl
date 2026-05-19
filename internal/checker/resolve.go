@@ -63,7 +63,15 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	case "dyn":
 		return TypDyn
 	case "color":
-		return TypColor
+		// color is uniformly carried as a TypeStruct backed by the stdlib
+		// "color" StructDef. Look it up via the scope chain.
+		if sym, ok := c.scope.Lookup("color"); ok {
+			if typ := sym.SymType(); typ != nil {
+				return typ
+			}
+		}
+		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
+		return TypDyn
 	case "date":
 		return TypDate
 	case "time":

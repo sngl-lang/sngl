@@ -107,9 +107,6 @@ var TypFloat = ir.TypFloat
 var TypString = ir.TypString
 
 //go:fix inline
-var TypColor = ir.TypColor
-
-//go:fix inline
 var TypNull = ir.TypNull
 
 //go:fix inline

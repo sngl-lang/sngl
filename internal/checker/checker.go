@@ -1835,6 +1835,15 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	}
 	val := lit.Raw
 
+	// Color is StructDef-backed; treat it as a string-domain target here so
+	// the same string-literal validation applies.
+	if ir.IsColorStruct(typ) {
+		if !isValidColor(val) {
+			c.error(pos, "invalid color literal %q", val)
+		}
+		return
+	}
+
 	switch typ.Kind {
 	case ir.TypeColor:
 		if !isValidColor(val) {

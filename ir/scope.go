@@ -81,7 +81,11 @@ func NewBaseScope() *Scope {
 		{"int", TypInt},
 		{"float", TypFloat},
 		{"string", TypString},
-		{"color", TypColor},
+		// "color" is intentionally absent here — the color type is provided
+		// exclusively as the stdlib StructDef (lib/types.sngl). The stdlib
+		// scope sits between this base scope and user code, so resolution
+		// finds the StructDef. Pre-stdlib lookups for "color" will fail,
+		// which is the correct behaviour.
 		{"list", ListOf(TypDyn)},
 		{"option", OptionOf(TypDyn)},
 		{"date", TypDate},
