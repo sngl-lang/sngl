@@ -1,0 +1,12 @@
+// HOVER(add) "func add(a int, b int) int"
+// HOVER(add) "Adds two integers."
+// HOVER(add) "Returns their sum."
+// Adds two integers.
+// Returns their sum.
+func add(a int, b int) int { return a + b }
+
+// HOVER(tick) "func tick()"
+func tick() {}
+
+// HOVER(double) "func double(x int) int"
+func double(x int) int { return x * 2 }

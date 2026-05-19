@@ -78,8 +78,8 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 				}
 			}
 		case *ast.FuncDef:
-			if s.Name == word && !s.Block.IsDefined() && len(s.Params.Params) == 0 {
-				return fmt.Sprintf("```sngl\nfunc %s()\n```", s.Name)
+			if s.Name == word {
+				return formatFuncHover(s, doc)
 			}
 		case *ast.ConstDecl:
 			for _, spec := range s.Specs {
@@ -229,6 +229,35 @@ func typeExprString(te ast.TypeExpr) string {
 	default:
 		return fmt.Sprintf("%v", te)
 	}
+}
+
+func formatFuncHover(f *ast.FuncDef, doc *ast.Document) string {
+	var sb strings.Builder
+	sb.WriteString("```sngl\nfunc ")
+	sb.WriteString(f.Name)
+	sb.WriteByte('(')
+	for i, p := range f.Params.Params {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(p.Name)
+		if t := typeExprString(p.Type); t != "" {
+			sb.WriteByte(' ')
+			sb.WriteString(t)
+		}
+	}
+	sb.WriteByte(')')
+	if rt := typeExprString(f.ReturnType); rt != "" {
+		sb.WriteByte(' ')
+		sb.WriteString(rt)
+	}
+	sb.WriteString("\n```\n")
+	if d := docForPos(doc, f.Pos); d != "" {
+		sb.WriteByte('\n')
+		sb.WriteString(d)
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 // HoverAt returns hover markdown for the cursor position. Tries literal
