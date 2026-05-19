@@ -15,6 +15,8 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			return
 		case *ast.LiteralExpr:
 			fn(x)
+		case *ast.UnitLiteral:
+			fn(&x.LiteralExpr)
 		case *ast.BinaryExpr:
 			walkE(x.Left)
 			walkE(x.Right)
