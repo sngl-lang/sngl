@@ -104,6 +104,7 @@ type ServerCapabilities struct {
 	ColorProvider          bool                   `json:"colorProvider,omitempty"`
 	InlayHintProvider      bool                   `json:"inlayHintProvider,omitempty"`
 	ExecuteCommandProvider *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
+	CodeActionProvider     bool                   `json:"codeActionProvider,omitempty"`
 }
 
 // --- Execute Command ---
@@ -294,4 +295,38 @@ type InlayHint struct {
 const (
 	InlayHintKindType      = 1
 	InlayHintKindParameter = 2
+)
+
+// --- Code Action ---
+
+type CodeActionParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	Context      CodeActionContext      `json:"context"`
+}
+
+type CodeActionContext struct {
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	Only        []string     `json:"only,omitempty"`
+}
+
+type Command struct {
+	Title     string        `json:"title"`
+	Command   string        `json:"command"`
+	Arguments []any         `json:"arguments,omitempty"`
+}
+
+type CodeAction struct {
+	Title       string       `json:"title"`
+	Kind        string       `json:"kind,omitempty"`
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	Command     *Command     `json:"command,omitempty"`
+}
+
+// CodeActionKind constants
+const (
+	CodeActionKindEmpty                 = ""
+	CodeActionKindQuickFix              = "quickfix"
+	CodeActionKindRefactor              = "refactor"
+	CodeActionKindSource                = "source"
 )

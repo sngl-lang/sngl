@@ -71,6 +71,7 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 			ExecuteCommandProvider: &ExecuteCommandOptions{
 				Commands: []string{"sngl.openPreview"},
 			},
+			CodeActionProvider: true,
 		},
 		ServerInfo: &ServerInfo{
 			Name:    "sngl-lsp",

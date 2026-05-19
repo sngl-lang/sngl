@@ -149,6 +149,8 @@ func (s *Server) serve() error {
 			s.handleInlayHint(req.ID, req.Params)
 		case "workspace/executeCommand":
 			s.handleExecuteCommand(req.ID, req.Params)
+		case "textDocument/codeAction":
+			s.handleCodeAction(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)
