@@ -91,6 +91,9 @@ func TestServerInitialize(t *testing.T) {
 		t.Error("expected server info name=sngl-lsp")
 	}
 
+	// Drain the sngl/previewReady notification that follows initialize.
+	readLSP(outR)
+
 	// Shutdown and exit
 	sendLSP(inW, map[string]any{"jsonrpc": "2.0", "id": 2, "method": "shutdown"})
 	readLSP(outR) // consume shutdown response
@@ -109,6 +112,7 @@ func TestServerDiagnostics(t *testing.T) {
 		"params":  map[string]any{"processId": 1, "rootUri": "file:///tmp"},
 	})
 	readLSP(outR)
+	readLSP(outR) // drain sngl/previewReady notification
 
 	// Open a file with an error
 	sendLSP(inW, map[string]any{
@@ -166,6 +170,7 @@ func TestServerHover(t *testing.T) {
 		"params":  map[string]any{"processId": 1, "rootUri": "file:///tmp"},
 	})
 	readLSP(outR)
+	readLSP(outR) // drain sngl/previewReady notification
 
 	// Open a file
 	sendLSP(inW, map[string]any{
@@ -230,6 +235,7 @@ func TestServerCompletion(t *testing.T) {
 		"params":  map[string]any{"processId": 1, "rootUri": "file:///tmp"},
 	})
 	readLSP(outR)
+	readLSP(outR) // drain sngl/previewReady notification
 
 	// Open a file
 	sendLSP(inW, map[string]any{
@@ -327,6 +333,7 @@ func TestE2EDocumentColor(t *testing.T) {
 		"params":  map[string]any{"processId": 1, "rootUri": "file:///tmp"},
 	})
 	readLSP(outR)
+	readLSP(outR) // drain sngl/previewReady notification
 
 	// Open a file with a color literal
 	sendLSP(inW, map[string]any{

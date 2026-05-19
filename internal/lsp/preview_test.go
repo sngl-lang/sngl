@@ -1,13 +1,18 @@
 package lsp
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestPreviewServer_Lifecycle(t *testing.T) {
@@ -84,6 +89,76 @@ func TestPreviewServer_RegisterAssetIdempotent(t *testing.T) {
 	b := srv.RegisterAsset(pngPath)
 	if a != b {
 		t.Errorf("non-idempotent: %s != %s", a, b)
+	}
+}
+
+func TestServer_NotifiesPreviewReady(t *testing.T) {
+	// Build a minimal in-process server, send initialize, capture notifications.
+	r, w := io.Pipe()
+	clientR, clientW := io.Pipe()
+	srv := New()
+	srv.reader = bufio.NewReader(r)
+	srv.writer = clientW
+
+	go func() {
+		_ = srv.serve()
+	}()
+	defer srv.preview.Stop()
+
+	// Send initialize request.
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`
+	header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(body))
+	go func() {
+		w.Write([]byte(header + body))
+	}()
+
+	// Read messages until we see sngl/previewReady or timeout.
+	got := readMessagesUntil(t, clientR, "sngl/previewReady", 2*time.Second)
+	if got == "" {
+		t.Fatal("did not receive sngl/previewReady within timeout")
+	}
+	if !strings.Contains(got, `"port"`) {
+		t.Errorf("notification missing port field: %s", got)
+	}
+}
+
+// readMessagesUntil scans LSP-framed messages from r looking for one whose
+// JSON body contains `method`. Returns the matching body or "" on timeout.
+func readMessagesUntil(t *testing.T, r io.Reader, method string, timeout time.Duration) string {
+	t.Helper()
+	type result struct {
+		body string
+		err  error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		br := bufio.NewReader(r)
+		for {
+			line, err := br.ReadString('\n')
+			if err != nil {
+				ch <- result{err: err}
+				return
+			}
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "Content-Length:") {
+				continue
+			}
+			n, _ := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "Content-Length:")))
+			// Skip blank line
+			br.ReadString('\n')
+			body := make([]byte, n)
+			io.ReadFull(br, body)
+			if strings.Contains(string(body), `"method":"`+method+`"`) {
+				ch <- result{body: string(body)}
+				return
+			}
+		}
+	}()
+	select {
+	case res := <-ch:
+		return res.body
+	case <-time.After(timeout):
+		return ""
 	}
 }
 

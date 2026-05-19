@@ -1,6 +1,9 @@
 package lsp
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 	if err := s.preview.Start(); err != nil {
@@ -31,6 +34,12 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 		},
 	}
 	s.sendResult(id, result)
+	if port := s.preview.Port(); port > 0 {
+		s.notify("sngl/previewReady", map[string]any{
+			"port": port,
+			"url":  fmt.Sprintf("http://127.0.0.1:%d", port),
+		})
+	}
 }
 
 func (s *Server) handleDidOpen(params json.RawMessage) {
