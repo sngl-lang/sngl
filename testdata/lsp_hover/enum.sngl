@@ -1,0 +1,9 @@
+// HOVER(Status) "enum Status"
+// HOVER(Status) "active"
+// HOVER(Status) "inactive"
+// HOVER(Status) "Account states."
+// Account states.
+enum Status {
+    active
+    inactive
+}

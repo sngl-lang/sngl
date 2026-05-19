@@ -1,0 +1,9 @@
+// HOVER(User) "struct User"
+// HOVER(User) "name string"
+// HOVER(User) "age int"
+// HOVER(User) "A user account."
+// A user account.
+struct User {
+    name string
+    age int
+}

@@ -87,15 +87,11 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 			}
 		case *ast.StructDef:
 			if s.Name == word {
-				return formatStructHover(s)
+				return formatStructHover(s, doc)
 			}
 		case *ast.EnumDef:
 			if s.Name == word {
-				var names []string
-				for _, m := range s.Members {
-					names = append(names, m.Name)
-				}
-				return fmt.Sprintf("```sngl\nenum %s { %s }\n```", s.Name, strings.Join(names, ", "))
+				return formatEnumHover(s, doc)
 			}
 		}
 	}
@@ -175,13 +171,33 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 	return strings.Join(lines, "\n")
 }
 
-func formatStructHover(s *ast.StructDef) string {
+func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
 	for _, f := range s.Fields {
 		fmt.Fprintf(&sb, "    %s %s\n", strings.Join(f.Names, ", "), typeExprString(f.Type))
 	}
-	sb.WriteString("}\n```")
+	sb.WriteString("}\n```\n")
+	if d := docForPos(doc, s.Pos); d != "" {
+		sb.WriteByte('\n')
+		sb.WriteString(d)
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func formatEnumHover(e *ast.EnumDef, doc *ast.Document) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "```sngl\nenum %s {\n", e.Name)
+	for _, m := range e.Members {
+		fmt.Fprintf(&sb, "    %s\n", m.Name)
+	}
+	sb.WriteString("}\n```\n")
+	if d := docForPos(doc, e.Pos); d != "" {
+		sb.WriteByte('\n')
+		sb.WriteString(d)
+		sb.WriteByte('\n')
+	}
 	return sb.String()
 }
 
