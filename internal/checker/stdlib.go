@@ -137,11 +137,11 @@ func (c *checker) loadStdlib() *ir.Package {
 	var pendingBodies []stdlibFuncBody
 	for _, s := range funcs {
 		fn := c.registerStdlibFunc(s, stdlibPkg)
-		// Defer body check: only expression-body funcs (=> expr) need to
-		// be lowered into ir.Block. Block-body stdlib funcs and bodyless
-		// signatures (e.g. `func i18n.exactly(n int) PluralKey {}`) keep
-		// their existing semantics.
-		if fn != nil && s.Body != nil {
+		// Defer body check: expression-body funcs (=> expr) are lowered into
+		// ir.Block. Block-body stdlib funcs are also lowered for constant-folding
+		// support (e.g., color.lighten, color.darken). Bodyless signatures
+		// (e.g., `func i18n.exactly(n int) PluralKey {}`) are unaffected.
+		if fn != nil && (s.Body != nil || s.Block.IsDefined()) {
 			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: s, fn: fn})
 		}
 	}
@@ -319,13 +319,13 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	return fn
 }
 
-// checkStdlibFuncBody type-checks a stdlib expression-body `=>` wrapper into
-// an ir.Block (single Return). The package-level scope must already contain
-// all stdlib decls (imports, types, funcs, contexts) so the body can resolve
-// references like `intl.Translate` or the active `locale` context.
+// checkStdlibFuncBody type-checks a stdlib function body (either expression-body
+// `=>` wrapper or block-body statement) into an ir.Block. The package-level scope
+// must already contain all stdlib decls (imports, types, funcs, contexts) so the
+// body can resolve references like `intl.Translate` or the active `locale` context.
 //
 // Intentional limits:
-//   - Bodyless / block-bodied stdlib funcs are unaffected.
+//   - Bodyless stdlib funcs are unaffected.
 //   - If checking the body produces no return type (void), the func is left
 //     with Return == nil so existing dyn-fallback in registerStdlibFunc
 //     remains active.
@@ -333,7 +333,7 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 //     that are exact intrinsic pass-throughs (e.g. `float.floor` → MathFloor)
 //     get fn.Intrinsic set, matching the historical behaviour.
 func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
-	if f.Body == nil {
+	if f.Body == nil && !f.Block.IsDefined() {
 		return
 	}
 	c.pushScope()
@@ -348,35 +348,42 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	c.typeParams = fn.TypeParams
 	defer func() { c.typeParams = prevTypeParams }()
 
-	bodyExpr := c.checkExpr(f.Body)
-	if bodyExpr == nil {
-		return
-	}
-	pos := f.Pos
-	if p := f.Body.ExprPos(); p != nil {
-		pos = *p
-	}
-	// Infer concrete return type from the body when the declaration left it
-	// as dyn (the fallback applied in registerStdlibFunc). Stdlib wrappers
-	// like `i18n.numberInt(n, style) => intl.NumberInt(locale, n, style)`
-	// otherwise stay dyn and downstream codegen has no concrete Go/JS/Kotlin
-	// type for the method signature.
-	//
-	// Restrict to primitive body types to dodge a known ambiguity: the
-	// `color` struct vs the `color` primitive share a name. Wrappers like
-	// `color.rgb(...) => color{...}` produce a struct type whose
-	// stringification collides with the primitive in callers like
-	// `color.hex(c color)`; leaving those Returns as dyn preserves the
-	// historical wildcard behaviour. Primitives don't have this clash.
-	if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-		if t := exprType(bodyExpr); t != nil && isPrimitiveTypeKind(t.Kind) {
-			fn.Return = t
+	// Handle expression-body functions (=> expr)
+	if f.Body != nil {
+		bodyExpr := c.checkExpr(f.Body)
+		if bodyExpr == nil {
+			return
 		}
+		pos := f.Pos
+		if p := f.Body.ExprPos(); p != nil {
+			pos = *p
+		}
+		// Infer concrete return type from the body when the declaration left it
+		// as dyn (the fallback applied in registerStdlibFunc). Stdlib wrappers
+		// like `i18n.numberInt(n, style) => intl.NumberInt(locale, n, style)`
+		// otherwise stay dyn and downstream codegen has no concrete Go/JS/Kotlin
+		// type for the method signature.
+		//
+		// Restrict to primitive body types to dodge a known ambiguity: the
+		// `color` struct vs the `color` primitive share a name. Wrappers like
+		// `color.rgb(...) => color{...}` produce a struct type whose
+		// stringification collides with the primitive in callers like
+		// `color.hex(c color)`; leaving those Returns as dyn preserves the
+		// historical wildcard behaviour. Primitives don't have this clash.
+		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
+			if t := exprType(bodyExpr); t != nil && isPrimitiveTypeKind(t.Kind) {
+				fn.Return = t
+			}
+		}
+		fn.Block = []ir.Stmt{&ir.Return{
+			AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
+			Value: bodyExpr,
+		}}
+	} else if f.Block.IsDefined() {
+		// Handle block-body functions ({ ... })
+		fn.Block = c.checkBlockIR(&f.Block)
 	}
-	fn.Block = []ir.Stmt{&ir.Return{
-		AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
-		Value: bodyExpr,
-	}}
+
 	// Re-detect intrinsic pass-through with the populated body. Wrappers
 	// that prepend args (e.g. i18n.* threading `locale`) won't match —
 	// detectIntrinsicCall enforces strict positional pass-through.

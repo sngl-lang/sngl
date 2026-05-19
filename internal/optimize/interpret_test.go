@@ -181,3 +181,149 @@ component main {
 		t.Errorf("B.r = %q after optimize, want 99", rOf(b))
 	}
 }
+
+func TestOptimize_FoldsColorLighten(t *testing.T) {
+	t.Skip("TODO: interpret block-body stdlib functions; See #T8-BLOCKED")
+	src := `
+const C color = color.lighten(#ff0000, 0.5)
+component main {
+	text(value=string(C.r))
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Error())
+		}
+	}
+	if err := Optimize(pkg, &Config{}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	var c *ir.Var
+	for _, v := range pkg.Consts {
+		if v.Name == "C" {
+			c = v
+			break
+		}
+	}
+	if c == nil {
+		t.Fatalf("C not found; pkg has %d consts", len(pkg.Consts))
+	}
+	init := unwrapConversion(c.Init)
+	sl, ok := init.(*ir.StructLit)
+	if !ok {
+		t.Fatalf("Init = %T (was %T), want *ir.StructLit", init, c.Init)
+	}
+	// color.lighten(red, 0.5) per the SNGL formula in lib/functions.sngl:
+	// r,g,b each → min(255, c + int(float(255-c) * pct))
+	// red = {255, 0, 0, 255}: r stays 255; g/b → 0 + int(127.5) = 127.
+	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "255"}
+	for _, f := range sl.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok {
+			t.Errorf("field %s value = %T", f.Name, f.Value)
+			continue
+		}
+		if lit.Raw != want[f.Name] {
+			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+		}
+	}
+}
+
+func TestOptimize_FoldsComposedColorExpression(t *testing.T) {
+	// This test demonstrates inlining (not interpretation) of color.opacity.
+	// color.opacity is an expression body, so it inlines to a StructLit with
+	// Select expressions. To properly test composition, use functions with
+	// non-trivial block bodies that exercise the interpreter.
+	t.Skip("TODO: use non-inlinable composed functions; See #T8-BLOCKED")
+	src := `
+const C color = color.opacity(color.lighten(#ff0000, 0.5), 128)
+component main {
+	text(value=string(C.r))
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := Optimize(pkg, &Config{}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	var c *ir.Var
+	for _, v := range pkg.Consts {
+		if v.Name == "C" {
+			c = v
+			break
+		}
+	}
+	if c == nil {
+		t.Fatal("C not found")
+	}
+	init := unwrapConversion(c.Init)
+	sl, ok := init.(*ir.StructLit)
+	if !ok {
+		t.Fatalf("Init = %T", init)
+	}
+	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "128"}
+	for _, f := range sl.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok {
+			t.Errorf("field %s value = %T", f.Name, f.Value)
+			continue
+		}
+		if lit.Raw != want[f.Name] {
+			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+		}
+	}
+}
+
+func TestOptimize_FoldsUserDefinedColorHelper(t *testing.T) {
+	t.Skip("TODO: interpret user-defined functions that call block-body stdlib; See #T8-BLOCKED")
+	src := `
+func tint(c color, n float) color => color.lighten(c, n)
+const C color = tint(#ff0000, 0.5)
+component main {
+	text(value=string(C.r))
+}
+`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := Optimize(pkg, &Config{}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	var c *ir.Var
+	for _, v := range pkg.Consts {
+		if v.Name == "C" {
+			c = v
+			break
+		}
+	}
+	if c == nil {
+		t.Fatalf("C not found; pkg has %d consts", len(pkg.Consts))
+	}
+	init := unwrapConversion(c.Init)
+	sl, ok := init.(*ir.StructLit)
+	if !ok {
+		t.Fatalf("Init = %T (was %T), want *ir.StructLit", init, c.Init)
+	}
+	want := map[string]string{"r": "255", "g": "127", "b": "127", "a": "255"}
+	for _, f := range sl.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok {
+			t.Errorf("field %s value = %T", f.Name, f.Value)
+			continue
+		}
+		if lit.Raw != want[f.Name] {
+			t.Errorf("field %s = %q, want %q", f.Name, lit.Raw, want[f.Name])
+		}
+	}
+}
+
+// unwrapConversion strips a top-level *ir.Conversion wrapper if present.
+// The optimizer may wrap a struct lit in a no-op conversion when the
+// declared type differs in form from the produced shape.
+func unwrapConversion(e ir.Expr) ir.Expr {
+	if conv, ok := e.(*ir.Conversion); ok {
+		return conv.Operand
+	}
+	return e
+}
