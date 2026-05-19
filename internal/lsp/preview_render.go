@@ -4,12 +4,61 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// previewCache retains the last good HTML render per (URI, window) so a
+// transient check or codegen failure doesn't blank the preview — the
+// stale render is served with an error banner instead.
+type previewCache struct {
+	mu       sync.Mutex
+	lastGood map[string][]byte // key: uri + "|" + window
+}
+
+func newPreviewCache() *previewCache {
+	return &previewCache{lastGood: map[string][]byte{}}
+}
+
+func (c *previewCache) key(uri, window string) string { return uri + "|" + window }
+
+func (c *previewCache) get(uri, window string) ([]byte, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	b, ok := c.lastGood[c.key(uri, window)]
+	return b, ok
+}
+
+func (c *previewCache) set(uri, window string, body []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.lastGood[c.key(uri, window)] = body
+}
+
+// appendErrorBanner injects a fixed-position banner showing the most
+// recent check or codegen error, so the user knows the displayed render
+// is stale.
+func appendErrorBanner(stale []byte, msg string) []byte {
+	banner := []byte(fmt.Sprintf(`<div style="position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;padding:8px;font-family:monospace;border-top:2px solid #c00;z-index:9999">%s</div>`, htmlEscape(msg)))
+	idx := strings.LastIndex(string(stale), "</body>")
+	if idx < 0 {
+		return append(stale, banner...)
+	}
+	out := make([]byte, 0, len(stale)+len(banner))
+	out = append(out, stale[:idx]...)
+	out = append(out, banner...)
+	out = append(out, stale[idx:]...)
+	return out
+}
+
+func htmlEscape(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+	return r.Replace(s)
+}
 
 // renderDocAsHTML compiles pkg through the html platform and returns the
 // HTML for the named window. Returns an error if the window doesn't exist

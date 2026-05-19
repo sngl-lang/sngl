@@ -11,16 +11,20 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Server is the SNGL language server.
 type Server struct {
-	ws      *workspace
-	reader  *bufio.Reader
-	writer  io.Writer
-	mu      sync.Mutex // protects writes
-	log     *log.Logger
-	preview *previewServer
+	ws            *workspace
+	reader        *bufio.Reader
+	writer        io.Writer
+	mu            sync.Mutex // protects writes
+	log           *log.Logger
+	preview       *previewServer
+	reloadTimer   *time.Timer
+	reloadTimerMu sync.Mutex
+	cache         *previewCache
 }
 
 // New creates a new LSP server.
@@ -29,7 +33,25 @@ func New() *Server {
 		ws:      newWorkspace(),
 		log:     log.New(os.Stderr, "[sngl-lsp] ", log.LstdFlags),
 		preview: newPreviewServer(),
+		cache:   newPreviewCache(),
 	}
+}
+
+// scheduleReload debounces preview-reload broadcasts. Multiple didChange
+// notifications within 200ms collapse into one reload to avoid thrashing
+// the browser.
+func (s *Server) scheduleReload() {
+	const delay = 200 * time.Millisecond
+	s.reloadTimerMu.Lock()
+	defer s.reloadTimerMu.Unlock()
+	if s.reloadTimer != nil {
+		s.reloadTimer.Stop()
+	}
+	s.reloadTimer = time.AfterFunc(delay, func() {
+		if s.preview != nil {
+			s.preview.BroadcastReload()
+		}
+	})
 }
 
 // RunStdio runs the server over stdin/stdout.
@@ -59,6 +81,7 @@ func (s *Server) RunTCP(addr string) error {
 				writer:  conn,
 				log:     s.log,
 				preview: newPreviewServer(),
+				cache:   newPreviewCache(),
 			}
 			if err := srv.serve(); err != nil {
 				s.log.Printf("session error: %v", err)
