@@ -180,6 +180,24 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.checkStdlibFuncBody(pb.ast, pb.fn)
 	}
 
+	// Phase 2b: refine stdlib function purity by propagating from called
+	// functions. The auto-Pure mark in registerStdlibFunc is a placeholder;
+	// now that every body is checked, lift each func's purity to
+	// max(self, max(called.Purity)) and iterate to a fixed point. This
+	// makes wrappers like `i18n.defaultLocale() => intl.DefaultLocale()`
+	// inherit PurityReadonly from the intrinsic, which prevents the
+	// optimizer from folding them.
+	for changed := true; changed; {
+		changed = false
+		for _, pb := range pendingBodies {
+			bodyPurity := highestCalledPurity(pb.fn)
+			if bodyPurity > pb.fn.Purity {
+				pb.fn.Purity = bodyPurity
+				changed = true
+			}
+		}
+	}
+
 	// Phase 3: refine stdlib context types from their default expressions.
 	// Context decls run BEFORE wrapper body checks (so wrapper bodies can
 	// read them), at which point a default like `i18n.defaultLocale()` still
@@ -449,6 +467,12 @@ func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 			Params:    params,
 			Return:    def.Return,
 			Intrinsic: def.Name,
+			Purity:    def.Purity,
+		}
+		// Default unset → Pure (most intrinsics are deterministic
+		// pure helpers; env-impure entries set Purity explicitly).
+		if fn.Purity == ir.PurityUnknown {
+			fn.Purity = ir.PurityPure
 		}
 		pkg.Funcs = append(pkg.Funcs, fn)
 		pkg.Symbols.Root.Declare(fn)
@@ -564,6 +588,124 @@ func (c *checker) checkPendingExtensions() {
 		pe.comp.AST.Body = savedAST
 		pe.comp.Body = savedBody
 	}
+}
+
+// highestCalledPurity walks fn.Block looking at every function call and
+// returns the max purity among the called functions. Returns PurityPure
+// when the body contains no function calls or all called functions are
+// pure. Used by the Phase 2b stdlib propagation pass.
+func highestCalledPurity(fn *ir.Func) ir.Purity {
+	if fn == nil || len(fn.Block) == 0 {
+		return ir.PurityPure
+	}
+	maxP := ir.PurityPure
+	bump := func(p ir.Purity) {
+		if p > maxP {
+			maxP = p
+		}
+	}
+	var walkExpr func(e ir.Expr)
+	var walkStmt func(s ir.Stmt)
+	walkExpr = func(e ir.Expr) {
+		switch x := e.(type) {
+		case nil:
+			return
+		case *ir.Call:
+			if x.Func != nil {
+				bump(x.Func.Purity)
+			}
+			if x.Callee != nil {
+				walkExpr(x.Callee)
+			}
+			if x.Receiver != nil {
+				walkExpr(x.Receiver)
+			}
+			for _, a := range x.Args {
+				walkExpr(a.Value)
+			}
+		case *ir.Binary:
+			walkExpr(x.Left)
+			walkExpr(x.Right)
+		case *ir.Unary:
+			walkExpr(x.Operand)
+		case *ir.Ternary:
+			walkExpr(x.Cond)
+			walkExpr(x.Then)
+			walkExpr(x.Else)
+		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.Select:
+			walkExpr(x.Operand)
+		case *ir.Index:
+			walkExpr(x.Operand)
+			walkExpr(x.Idx)
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				walkExpr(el)
+			}
+		case *ir.StructLit:
+			for _, f := range x.Fields {
+				walkExpr(f.Value)
+			}
+		case *ir.MapLitIR:
+			for _, kv := range x.Entries {
+				walkExpr(kv.Key)
+				walkExpr(kv.Value)
+			}
+		case *ir.Spread:
+			walkExpr(x.Operand)
+		case *ir.Lambda:
+			if x.Func != nil {
+				for _, s := range x.Func.Block {
+					walkStmt(s)
+				}
+			}
+		case *ir.Closure:
+			if x.Func != nil {
+				for _, s := range x.Func.Block {
+					walkStmt(s)
+				}
+			}
+			if x.State != nil {
+				walkExpr(x.State)
+			}
+		}
+	}
+	walkStmt = func(s ir.Stmt) {
+		switch x := s.(type) {
+		case nil:
+			return
+		case *ir.Return:
+			walkExpr(x.Value)
+		case *ir.LocalVar:
+			walkExpr(x.Init)
+		case *ir.Assign:
+			walkExpr(x.Value)
+			walkExpr(x.Target)
+		case *ir.If:
+			walkExpr(x.Cond)
+			for _, c := range x.Body {
+				walkStmt(c)
+			}
+			for _, c := range x.Else {
+				walkStmt(c)
+			}
+		case *ir.For:
+			walkExpr(x.Iter)
+			for _, c := range x.Body {
+				walkStmt(c)
+			}
+			for _, c := range x.Else {
+				walkStmt(c)
+			}
+		case *ir.CallStmt:
+			walkExpr(x.Call)
+		}
+	}
+	for _, s := range fn.Block {
+		walkStmt(s)
+	}
+	return maxP
 }
 
 // isPrimitiveTypeKind reports whether k is a simple value-type kind safe to

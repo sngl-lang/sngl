@@ -7,6 +7,10 @@ type IntrinsicDef struct {
 	Name   string   // PascalCase identifier, e.g. "StrIndexOf"
 	Params []*Param // parameter signatures
 	Return *Type    // return type
+	// Purity, if non-zero, overrides the default PurityPure assumption.
+	// Use this for intrinsics whose result depends on host state
+	// (env vars, filesystem, time, etc.) or that have side effects.
+	Purity Purity
 }
 
 // Intrinsics is the canonical list of language-level intrinsic functions.
@@ -73,18 +77,22 @@ var Intrinsics = []IntrinsicDef{
 // AlertIntrinsics are platform-level intrinsics for dialog/toast operations.
 // Each platform backend must provide implementations.
 var AlertIntrinsics = []IntrinsicDef{
-	{Name: "Toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Return: TypInt},
-	{Name: "Info", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt},
-	{Name: "Warn", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt},
-	{Name: "Error", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt},
-	{Name: "Confirm", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypBool},
+	// Alerts cause visible UI side effects (dialogs/toasts); treat as Mutates
+	// so the optimizer never folds calls to them.
+	{Name: "Toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Info", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Warn", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Error", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Confirm", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypBool, Purity: PurityMutates},
 }
 
 // FileIntrinsics are platform-level intrinsics for file picker operations.
-// Each platform backend must provide implementations.
+// Each platform backend must provide implementations. Pickers read host
+// filesystem state (and can be triggered by user interaction); mark
+// PurityReadonly so they're never folded at compile time.
 var FileIntrinsics = []IntrinsicDef{
-	{Name: "Pick", Params: []*Param{}, Return: TypString},
-	{Name: "PickFolder", Params: []*Param{}, Return: TypString},
+	{Name: "Pick", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
+	{Name: "PickFolder", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
 }
 
 // I18nIntrinsics are stdlib intrinsics for i18n / locale-aware formatting.
@@ -96,7 +104,9 @@ var FileIntrinsics = []IntrinsicDef{
 // intrinsic doesn't need to know about that struct; it just receives the
 // runtime values.
 var I18nIntrinsics = []IntrinsicDef{
-	{Name: "DefaultLocale", Params: nil, Return: TypString},
+	// DefaultLocale reads host env vars ($LC_ALL/$LC_MESSAGES/$LANG);
+	// PurityReadonly prevents compile-time folding of i18n.defaultLocale().
+	{Name: "DefaultLocale", Params: nil, Return: TypString, Purity: PurityReadonly},
 	{Name: "Translate", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "key", Type: TypString},

@@ -101,23 +101,16 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	return result, true
 }
 
-// envImpureIntrinsics names intrinsics whose result depends on the
-// runtime host environment and therefore must not be evaluated at compile
-// time even though the build-host interpreter can execute them. These
-// correspond to checker-side stdlib wrappers like i18n.defaultLocale that
-// read $LC_ALL/$LANG, and similar OS-coupled lookups.
-var envImpureIntrinsics = map[string]bool{
-	"DefaultLocale": true,
-	"Pick":          true,
-	"PickFolder":    true,
-}
-
 // bodyUsesNativeCall reports whether fn's body contains any unresolved
-// call expression or any call to an env-impure intrinsic. The checker
-// leaves Call.Func == nil for native/import invocations (their resolution
-// lives in NativeImport, not pkg.Funcs); such calls escape the compile-time
-// interpreter. Intrinsics in envImpureIntrinsics are deterministic-looking
-// from the IR but read host state at runtime, so we treat them the same.
+// call expression. The checker leaves Call.Func == nil for native/import
+// invocations (their resolution lives in NativeImport, not pkg.Funcs);
+// such calls escape the compile-time interpreter so we refuse to fold any
+// function that transitively contains one.
+//
+// Env-impure intrinsics (i18n.DefaultLocale, file.Pick, file.PickFolder)
+// used to be blocklisted here; that workaround is no longer needed because
+// the checker now propagates their PurityReadonly mark up through stdlib
+// wrappers, which the evalCall purity gate naturally rejects.
 func bodyUsesNativeCall(fn *ir.Func) bool {
 	var hasNative bool
 	var walkExpr func(e ir.Expr)
@@ -129,10 +122,6 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		switch x := e.(type) {
 		case *ir.Call:
 			if x.Func == nil || x.Func.NativePkg != "" {
-				hasNative = true
-				return
-			}
-			if x.Func.Intrinsic != "" && envImpureIntrinsics[x.Func.Intrinsic] {
 				hasNative = true
 				return
 			}
