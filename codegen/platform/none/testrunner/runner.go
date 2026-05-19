@@ -55,16 +55,16 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 	var cVal *componentValue
 	if compName != "" && len(fn.Params) >= 2 {
 		cVal = &componentValue{
-			env:        env,
-			vars:       make(map[string]any),
-			consts:     make(map[string]any),
-			funcs:      make(map[string]*ir.Func),
+			Env:        env,
+			Vars:       make(map[string]any),
+			Consts:     make(map[string]any),
+			Funcs:      make(map[string]*ir.Func),
 			testParams: testParams,
 		}
-		maps.Copy(cVal.vars, env.vars)
-		maps.Copy(cVal.consts, env.consts)
-		maps.Copy(cVal.funcs, env.funcs)
-		env.vars[fn.Params[1].Name] = cVal
+		maps.Copy(cVal.Vars, env.Vars)
+		maps.Copy(cVal.Consts, env.Consts)
+		maps.Copy(cVal.Funcs, env.Funcs)
+		env.Vars[fn.Params[1].Name] = cVal
 	}
 
 	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName}
@@ -72,7 +72,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 	if len(fn.Params) >= 1 {
 		tParamName = fn.Params[0].Name
 	}
-	env.vars[tParamName] = tVal
+	env.Vars[tParamName] = tVal
 
 	for _, stmt := range fn.Block {
 		if err := env.Exec(stmt); err != nil {
@@ -127,31 +127,31 @@ type testingT struct {
 // componentValue wraps the test environment so that c.field accesses
 // resolve to component state.
 type componentValue struct {
-	env        *Env
-	vars       map[string]any
-	consts     map[string]any
-	funcs      map[string]*ir.Func
+	Env        *Env
+	Vars       map[string]any
+	Consts     map[string]any
+	Funcs      map[string]*ir.Func
 	testParams map[string]bool
 }
 
 // BuildEnv creates an Env for a test function.
 func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	env := NewEnv()
-	env.pkg = pkg
-	env.units = buildUnitTables(pkg)
+	env.Pkg = pkg
+	env.Units = buildUnitTables(pkg)
 
 	// Seed context defaults so ContextRead expressions evaluate to their
 	// declared default values before any t.setContext() override is applied.
 	if len(pkg.Contexts) > 0 {
-		env.contextVals = make(map[*ir.Context]any, len(pkg.Contexts))
+		env.ContextVals = make(map[*ir.Context]any, len(pkg.Contexts))
 		for _, ctx := range pkg.Contexts {
 			if ctx.Default != nil {
 				v, err := env.Eval(ctx.Default)
 				if err == nil {
-					env.contextVals[ctx] = v
+					env.ContextVals[ctx] = v
 					if ctx.Name == "locale" {
 						if s, ok := v.(string); ok {
-							env.locale = s
+							env.Locale = s
 						}
 					}
 				}
@@ -169,14 +169,14 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	if pkg.Symbols != nil {
 		for typeName, methods := range pkg.Symbols.Methods {
 			for _, fn := range methods {
-				env.funcs[typeName+"."+fn.Name] = fn
+				env.Funcs[typeName+"."+fn.Name] = fn
 			}
 		}
 	}
 
 	if compName == "" {
 		for _, c := range pkg.Consts {
-			env.consts[c.Name] = evalInit(env, c.Init)
+			env.Consts[c.Name] = evalInit(env, c.Init)
 		}
 		return env, nil
 	}
@@ -185,10 +185,10 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	if comp == nil {
 		if compName == "main" {
 			for _, v := range pkg.Vars {
-				env.vars[v.Name] = evalInit(env, v.Init)
+				env.Vars[v.Name] = evalInit(env, v.Init)
 			}
 			for _, c := range pkg.Consts {
-				env.consts[c.Name] = evalInit(env, c.Init)
+				env.Consts[c.Name] = evalInit(env, c.Init)
 			}
 			return env, nil
 		}
@@ -197,19 +197,19 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 
 	for _, v := range comp.Vars {
 		if v.IsConst {
-			env.consts[v.Name] = evalInit(env, v.Init)
+			env.Consts[v.Name] = evalInit(env, v.Init)
 		} else {
-			env.vars[v.Name] = evalInit(env, v.Init)
+			env.Vars[v.Name] = evalInit(env, v.Init)
 		}
 	}
 	for _, p := range comp.Props {
-		env.vars[p.Name] = evalInit(env, p.Default)
+		env.Vars[p.Name] = evalInit(env, p.Default)
 	}
 	for _, fn := range comp.Funcs {
 		env.SetFunc(fn)
 	}
-	env.comp = comp
-	env.bodyStmts = comp.Body
+	env.Comp = comp
+	env.BodyStmts = comp.Body
 	return env, nil
 }
 

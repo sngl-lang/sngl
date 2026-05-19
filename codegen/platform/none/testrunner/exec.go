@@ -75,13 +75,13 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 	if len(handler.Func.Params) > 0 {
 		paramName = handler.Func.Params[0].Name
 	}
-	saved, existed := env.vars[paramName]
-	env.vars[paramName] = event
+	saved, existed := env.Vars[paramName]
+	env.Vars[paramName] = event
 	defer func() {
 		if existed {
-			env.vars[paramName] = saved
+			env.Vars[paramName] = saved
 		} else {
-			delete(env.vars, paramName)
+			delete(env.Vars, paramName)
 		}
 	}()
 	for _, stmt := range handler.Func.Block {
@@ -112,14 +112,14 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil // no-op in headless tests
 	case *ir.LocalVar:
 		if n.Init == nil {
-			env.vars[n.Name] = nil
+			env.Vars[n.Name] = nil
 			return nil
 		}
 		v, err := env.Eval(n.Init)
 		if err != nil {
 			return err
 		}
-		env.vars[n.Name] = v
+		env.Vars[n.Name] = v
 		return nil
 	case *ir.If:
 		return env.execIf(n)
@@ -164,19 +164,19 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	}
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		cur, exists := env.vars[target.Name]
+		cur, exists := env.Vars[target.Name]
 		if !exists {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		env.vars[target.Name] = applyOp(s.Op, cur, val)
+		env.Vars[target.Name] = applyOp(s.Op, cur, val)
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
 			return err
 		}
-		if cv, ok := obj.(*componentValue); ok {
-			return cv.setField(s.Op, target.Field, val)
+		if cv, ok := obj.(ComponentValue); ok {
+			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
 			m[target.Field] = applyOp(s.Op, m[target.Field], val)
@@ -208,7 +208,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 func (env *Env) execToggle(s *ir.Toggle) error {
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		cur, exists := env.vars[target.Name]
+		cur, exists := env.Vars[target.Name]
 		if !exists {
 			return fmt.Errorf("cannot toggle undefined variable %q", target.Name)
 		}
@@ -216,7 +216,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		if !ok {
 			return fmt.Errorf("cannot toggle non-bool variable %q", target.Name)
 		}
-		env.vars[target.Name] = !b
+		env.Vars[target.Name] = !b
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -224,7 +224,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 			return err
 		}
 		if cv, ok := obj.(*componentValue); ok {
-			cur, exists := cv.vars[target.Field]
+			cur, exists := cv.Vars[target.Field]
 			if !exists {
 				return fmt.Errorf("cannot toggle undefined field %q", target.Field)
 			}
@@ -232,9 +232,9 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 			if !ok {
 				return fmt.Errorf("cannot toggle non-bool field %q", target.Field)
 			}
-			cv.vars[target.Field] = !b
+			cv.Vars[target.Field] = !b
 			if !cv.testParams[target.Field] {
-				cv.env.vars[target.Field] = !b
+				cv.Env.Vars[target.Field] = !b
 			}
 			return nil
 		}
@@ -276,9 +276,9 @@ func (env *Env) execFor(s *ir.For) error {
 			return nil
 		}
 		for k, val := range v {
-			env.vars[s.Key] = k
+			env.Vars[s.Key] = k
 			if s.Value != "" {
-				env.vars[s.Value] = val
+				env.Vars[s.Value] = val
 			}
 			for _, st := range s.Body {
 				if err := env.Exec(st); err != nil {
@@ -286,9 +286,9 @@ func (env *Env) execFor(s *ir.For) error {
 				}
 			}
 		}
-		delete(env.vars, s.Key)
+		delete(env.Vars, s.Key)
 		if s.Value != "" {
-			delete(env.vars, s.Value)
+			delete(env.Vars, s.Value)
 		}
 	case []any:
 		// iter<T> at runtime is also []any (list passed as iter has no runtime wrapper).
@@ -301,9 +301,9 @@ func (env *Env) execFor(s *ir.For) error {
 			return nil
 		}
 		for i, item := range v {
-			env.vars[s.Key] = item
+			env.Vars[s.Key] = item
 			if s.Value != "" {
-				env.vars[s.Value] = i
+				env.Vars[s.Value] = i
 			}
 			for _, st := range s.Body {
 				if err := env.Exec(st); err != nil {
@@ -311,9 +311,9 @@ func (env *Env) execFor(s *ir.For) error {
 				}
 			}
 		}
-		delete(env.vars, s.Key)
+		delete(env.Vars, s.Key)
 		if s.Value != "" {
-			delete(env.vars, s.Value)
+			delete(env.Vars, s.Value)
 		}
 	default:
 		return fmt.Errorf("for iterator must be list or map, got %T", iter)

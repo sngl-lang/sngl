@@ -10,11 +10,11 @@ import (
 // resolveElementRef finds visual nodes with the given #id in the current body.
 // Returns a single element map, a list of maps (for-loops), or nil.
 func (env *Env) resolveElementRef(id string) (any, error) {
-	if env.bodyStmts == nil {
+	if env.BodyStmts == nil {
 		return nil, fmt.Errorf("no visual body for element ref #%s", id)
 	}
 	var matches []map[string]any
-	env.collectByStmts(env.bodyStmts, id, &matches)
+	env.collectByStmts(env.BodyStmts, id, &matches)
 	if len(matches) == 0 {
 		return nil, nil
 	}
@@ -56,9 +56,9 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 			}
 			for i, item := range list {
 				child := env.Snapshot()
-				child.vars[n.Key] = item
+				child.Vars[n.Key] = item
 				if n.Value != "" {
-					child.vars[n.Value] = i
+					child.Vars[n.Value] = i
 				}
 				child.collectByStmts(n.Body, id, out)
 			}
@@ -85,12 +85,12 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]any) {
 	// User-defined component with a real body — expand inline.
 	if node.Component != nil && len(node.Component.Body) > 0 {
-		if env.renderDepth >= maxCallDepth {
+		if env.RenderDepth >= maxCallDepth {
 			return
 		}
 		childEnv := env.componentEnv(node.Component, node)
-		childEnv.renderDepth = env.renderDepth + 1
-		childEnv.collectByStmts(childEnv.bodyStmts, id, out)
+		childEnv.RenderDepth = env.RenderDepth + 1
+		childEnv.collectByStmts(childEnv.BodyStmts, id, out)
 		return
 	}
 	if node.ID == id {
@@ -102,12 +102,12 @@ func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]
 
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child := NewEnv()
-	child.pkg = env.pkg
-	child.units = env.units
-	child.comp = comp
+	child.Pkg = env.Pkg
+	child.Units = env.Units
+	child.Comp = comp
 
 	for _, p := range comp.Props {
-		child.vars[p.Name] = evalInit(child, p.Default)
+		child.Vars[p.Name] = evalInit(child, p.Default)
 	}
 	// Override with instance prop values.
 	for _, arg := range inst.Props {
@@ -116,20 +116,20 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 		}
 		v, err := env.Eval(arg.Value)
 		if err == nil {
-			child.vars[arg.Name] = v
+			child.Vars[arg.Name] = v
 		}
 	}
 	for _, v := range comp.Vars {
 		if v.IsConst {
-			child.consts[v.Name] = evalInit(child, v.Init)
+			child.Consts[v.Name] = evalInit(child, v.Init)
 		} else {
-			child.vars[v.Name] = evalInit(child, v.Init)
+			child.Vars[v.Name] = evalInit(child, v.Init)
 		}
 	}
 	for _, fn := range comp.Funcs {
 		child.SetFunc(fn)
 	}
-	child.bodyStmts = comp.Body
+	child.BodyStmts = comp.Body
 	return child
 }
 
@@ -142,14 +142,14 @@ func (env *Env) collectCallStmtByID(cs *ir.CallStmt, id string, out *[]map[strin
 		return
 	}
 	// User-defined component — expand inline.
-	if env.pkg != nil {
-		if comp := findComponent(env.pkg, elemName); comp != nil {
-			if env.renderDepth >= maxCallDepth {
+	if env.Pkg != nil {
+		if comp := findComponent(env.Pkg, elemName); comp != nil {
+			if env.RenderDepth >= maxCallDepth {
 				return
 			}
 			child := env.componentEnvFromCall(comp, cs.Call)
-			child.renderDepth = env.renderDepth + 1
-			child.collectByStmts(child.bodyStmts, id, out)
+			child.RenderDepth = env.RenderDepth + 1
+			child.collectByStmts(child.BodyStmts, id, out)
 			return
 		}
 	}
@@ -215,12 +215,12 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 // invoked as a CallStmt (no children block).
 func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child := NewEnv()
-	child.pkg = env.pkg
-	child.units = env.units
-	child.comp = comp
+	child.Pkg = env.Pkg
+	child.Units = env.Units
+	child.Comp = comp
 
 	for _, p := range comp.Props {
-		child.vars[p.Name] = evalInit(child, p.Default)
+		child.Vars[p.Name] = evalInit(child, p.Default)
 	}
 	// Override with named positional args from the call.
 	if call != nil {
@@ -229,21 +229,21 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 				continue
 			}
 			if v, err := env.Eval(a.Value); err == nil {
-				child.vars[a.Name] = v
+				child.Vars[a.Name] = v
 			}
 		}
 	}
 	for _, v := range comp.Vars {
 		if v.IsConst {
-			child.consts[v.Name] = evalInit(child, v.Init)
+			child.Consts[v.Name] = evalInit(child, v.Init)
 		} else {
-			child.vars[v.Name] = evalInit(child, v.Init)
+			child.Vars[v.Name] = evalInit(child, v.Init)
 		}
 	}
 	for _, fn := range comp.Funcs {
 		child.SetFunc(fn)
 	}
-	child.bodyStmts = comp.Body
+	child.BodyStmts = comp.Body
 	return child
 }
 

@@ -28,7 +28,7 @@ func (lv *lambdaValue) call(args []any) (any, error) {
 	child := lv.env.Snapshot()
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
-			child.vars[p.Name] = args[i]
+			child.Vars[p.Name] = args[i]
 		}
 	}
 	return child.execBlockForResult(lv.fn.Block)
@@ -38,7 +38,7 @@ func (lv *lambdaValue) call(args []any) (any, error) {
 func (lv *lambdaValue) callWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
-			env.vars[p.Name] = args[i]
+			env.Vars[p.Name] = args[i]
 		}
 	}
 	return env.execBlockForResult(lv.fn.Block)
@@ -105,75 +105,75 @@ type unitTable struct {
 
 // Env holds the mutable state for test execution.
 type Env struct {
-	vars        map[string]any
-	consts      map[string]any
-	funcs       map[string]*ir.Func
-	units       map[string]*unitTable
-	pkg         *ir.Package
-	comp        *ir.Component
-	bodyStmts   []ir.Stmt
+	Vars        map[string]any
+	Consts      map[string]any
+	Funcs       map[string]*ir.Func
+	Units       map[string]*unitTable
+	Pkg         *ir.Package
+	Comp        *ir.Component
+	BodyStmts   []ir.Stmt
 	depth       int
-	renderDepth int
+	RenderDepth int
 	Log         []string
-	// locale is the active BCP-47 locale for i18n calls (default "en").
-	locale string
-	// contextVals holds runtime overrides for context values keyed by *ir.Context.
+	// Locale is the active BCP-47 locale for i18n calls (default "en").
+	Locale string
+	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
-	contextVals map[*ir.Context]any
+	ContextVals map[*ir.Context]any
 }
 
 func NewEnv() *Env {
 	return &Env{
-		vars:   map[string]any{},
-		consts: map[string]any{},
-		funcs:  map[string]*ir.Func{},
+		Vars:   map[string]any{},
+		Consts: map[string]any{},
+		Funcs:  map[string]*ir.Func{},
 	}
 }
 
 // SetFunc registers a user-defined function.
 func (env *Env) SetFunc(fn *ir.Func) {
 	if fn.Receiver != "" {
-		env.funcs[fn.Receiver+"."+fn.Name] = fn
+		env.Funcs[fn.Receiver+"."+fn.Name] = fn
 		return
 	}
-	env.funcs[fn.Name] = fn
+	env.Funcs[fn.Name] = fn
 }
 
 // SetVar sets a variable in the environment.
 func (env *Env) SetVar(name string, val any) {
-	env.vars[name] = val
+	env.Vars[name] = val
 }
 
 // Snapshot returns a shallow copy of the env.
 func (env *Env) Snapshot() *Env {
 	cp := &Env{
-		vars:        make(map[string]any, len(env.vars)),
-		consts:      env.consts,
-		funcs:       env.funcs,
-		units:       env.units,
-		pkg:         env.pkg,
-		comp:        env.comp,
-		bodyStmts:   env.bodyStmts,
+		Vars:        make(map[string]any, len(env.Vars)),
+		Consts:      env.Consts,
+		Funcs:       env.Funcs,
+		Units:       env.Units,
+		Pkg:         env.Pkg,
+		Comp:        env.Comp,
+		BodyStmts:   env.BodyStmts,
 		depth:       env.depth,
-		renderDepth: env.renderDepth,
-		locale:      env.locale,
-		contextVals: env.contextVals, // shared reference — overrides visible in child envs
+		RenderDepth: env.RenderDepth,
+		Locale:      env.Locale,
+		ContextVals: env.ContextVals, // shared reference — overrides visible in child envs
 	}
-	maps.Copy(cp.vars, env.vars)
+	maps.Copy(cp.Vars, env.Vars)
 	return cp
 }
 
 // SetContext stores a runtime override for ctx, replacing any default value.
-// If ctx is named "locale" its value is also applied to env.locale for i18n
+// If ctx is named "locale" its value is also applied to env.Locale for i18n
 // compat (until the i18n stack is fully migrated to read context in Task 29).
 func (env *Env) SetContext(ctx *ir.Context, val any) {
-	if env.contextVals == nil {
-		env.contextVals = make(map[*ir.Context]any)
+	if env.ContextVals == nil {
+		env.ContextVals = make(map[*ir.Context]any)
 	}
-	env.contextVals[ctx] = val
+	env.ContextVals[ctx] = val
 	if ctx.Name == "locale" {
 		if s, ok := val.(string); ok {
-			env.locale = s
+			env.Locale = s
 		}
 	}
 }
@@ -181,8 +181,8 @@ func (env *Env) SetContext(ctx *ir.Context, val any) {
 // ContextVal returns the current value of ctx: the override if one has been
 // stored via SetContext, otherwise ctx's default evaluated against env.
 func (env *Env) ContextVal(ctx *ir.Context) any {
-	if env.contextVals != nil {
-		if v, ok := env.contextVals[ctx]; ok {
+	if env.ContextVals != nil {
+		if v, ok := env.ContextVals[ctx]; ok {
 			return v
 		}
 	}
@@ -197,7 +197,7 @@ func (env *Env) ContextVal(ctx *ir.Context) any {
 
 // translatorFor returns a Translator for the env's current locale.
 func (env *Env) translatorFor() *goi18n.Translator {
-	loc := env.locale
+	loc := env.Locale
 	if loc == "" {
 		loc = "en"
 	}
@@ -205,10 +205,10 @@ func (env *Env) translatorFor() *goi18n.Translator {
 }
 
 // translatorForLocale returns a translator for the given BCP-47 locale,
-// falling back to env.locale or "en" when empty.
+// falling back to env.Locale or "en" when empty.
 func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
 	if loc == "" {
-		loc = env.locale
+		loc = env.Locale
 	}
 	if loc == "" {
 		loc = "en"
@@ -699,14 +699,14 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 }
 
 func (env *Env) lookup(name string) (any, error) {
-	if v, ok := env.vars[name]; ok {
+	if v, ok := env.Vars[name]; ok {
 		return v, nil
 	}
-	if v, ok := env.consts[name]; ok {
+	if v, ok := env.Consts[name]; ok {
 		return v, nil
 	}
 	// Zero-arg functions auto-invoke (computed fields)
-	if fn, ok := env.funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
+	if fn, ok := env.Funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
 		return env.evalUserFunc(fn, nil)
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
@@ -726,8 +726,8 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cv, ok := obj.(*componentValue); ok {
-		return cv.getField(e.Field)
+	if cv, ok := obj.(ComponentValue); ok {
+		return cv.GetField(e.Field)
 	}
 	if m, ok := obj.(map[string]any); ok {
 		return m[e.Field], nil
@@ -1132,21 +1132,21 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 
 	// testingT dispatch: t.assert / t.tick / t.test.
 	if len(evalArgs) > 0 {
-		if tv, ok := evalArgs[0].(*testingT); ok {
-			return tv.callMethod(env, method, argExprs(call.Args[1:]))
+		if tv, ok := evalArgs[0].(TestingT); ok {
+			return tv.CallMethod(env, method, argExprs(call.Args[1:]))
 		}
 		if cv, ok := evalArgs[0].(*componentValue); ok {
 			if method[0] == '@' {
 				return nil, nil
 			}
-			if fn, ok := cv.funcs[method]; ok {
+			if fn, ok := cv.Funcs[method]; ok {
 				compEnv := cv.compEnv()
 				result, err := compEnv.evalUserFunc(fn, argExprs(call.Args[1:]))
-				for k := range cv.vars {
-					if v, ok := compEnv.vars[k]; ok {
-						cv.vars[k] = v
+				for k := range cv.Vars {
+					if v, ok := compEnv.Vars[k]; ok {
+						cv.Vars[k] = v
 						if !cv.testParams[k] {
-							cv.env.vars[k] = v
+							cv.Env.Vars[k] = v
 						}
 					}
 				}
@@ -1183,7 +1183,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	}
 
 	// User-defined type-method.
-	if fn, ok := env.funcs[qualName]; ok {
+	if fn, ok := env.Funcs[qualName]; ok {
 		return env.evalUserFunc(fn, argExprs(call.Args))
 	}
 
@@ -1198,7 +1198,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	// Static-form receiver: Type.method(args) where Type is a type name. The
 	// checker leaves Func nil when the method is a user-defined type method
 	// (component-scoped) the symbol table doesn't see. Dispatch by qualified
-	// name using env.funcs.
+	// name using env.Funcs.
 	if ident, ok := call.Receiver.(*ir.Ident); ok {
 		if _, lookupErr := env.lookup(ident.Name); lookupErr != nil {
 			method := methodNameFromCall(call)
@@ -1227,7 +1227,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					return result, err
 				}
 			}
-			if fn, ok := env.funcs[qualName]; ok {
+			if fn, ok := env.Funcs[qualName]; ok {
 				return env.evalUserFunc(fn, argExprs(call.Args))
 			}
 		}
@@ -1253,19 +1253,19 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			switch rv := recv.(type) {
 			case *testingT:
-				return rv.callMethod(env, method, argExprs(call.Args))
+				return rv.CallMethod(env, method, argExprs(call.Args))
 			case *componentValue:
 				if len(method) > 0 && method[0] == '@' {
 					return nil, nil // event emission no-op
 				}
-				if fn, ok := rv.funcs[method]; ok {
+				if fn, ok := rv.Funcs[method]; ok {
 					compEnv := rv.compEnv()
 					result, err := compEnv.evalUserFunc(fn, argExprs(call.Args))
-					for k := range rv.vars {
-						if v, ok := compEnv.vars[k]; ok {
-							rv.vars[k] = v
+					for k := range rv.Vars {
+						if v, ok := compEnv.Vars[k]; ok {
+							rv.Vars[k] = v
 							if !rv.testParams[k] {
-								rv.env.vars[k] = v
+								rv.Env.Vars[k] = v
 							}
 						}
 					}
@@ -1294,7 +1294,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn, ok := env.funcs[qualName]; ok {
+			if fn, ok := env.Funcs[qualName]; ok {
 				// Prepend receiver expr so evalUserFunc sees normalized form.
 				synth := make([]ir.Expr, 0, len(call.Args)+1)
 				synth = append(synth, call.Receiver)
@@ -1332,7 +1332,7 @@ func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string
 			if err != nil {
 				return nil, err
 			}
-			env.vars[p.Name] = v
+			env.Vars[p.Name] = v
 		}
 	}
 	for _, s := range fn.Block {
@@ -1504,16 +1504,16 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 	switch t := target.(type) {
 	case *ir.Ident:
-		env.vars[t.Name] = newList
+		env.Vars[t.Name] = newList
 	case *ir.Select:
 		obj, err := env.Eval(t.Operand)
 		if err != nil {
 			return nil, err
 		}
 		if cv, ok := obj.(*componentValue); ok {
-			cv.vars[t.Field] = newList
+			cv.Vars[t.Field] = newList
 			if !cv.testParams[t.Field] {
-				cv.env.vars[t.Field] = newList
+				cv.Env.Vars[t.Field] = newList
 			}
 		}
 	default:
@@ -1611,11 +1611,11 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 		paramNames := make([]string, len(fn.Params))
 		for i, p := range fn.Params {
 			paramNames[i] = p.Name
-			if v, ok := execEnv.vars[p.Name]; ok {
+			if v, ok := execEnv.Vars[p.Name]; ok {
 				savedVars[p.Name] = v
 			}
 			if i < len(args) {
-				execEnv.vars[p.Name] = args[i]
+				execEnv.Vars[p.Name] = args[i]
 			}
 		}
 
@@ -1623,9 +1623,9 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 			if !isPure {
 				for _, name := range paramNames {
 					if orig, ok := savedVars[name]; ok {
-						execEnv.vars[name] = orig
+						execEnv.Vars[name] = orig
 					} else {
-						delete(execEnv.vars, name)
+						delete(execEnv.Vars, name)
 					}
 				}
 			}
@@ -1650,7 +1650,7 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.vars[lv.Name] = v
+					execEnv.Vars[lv.Name] = v
 					localVars = append(localVars, lv.Name)
 				}
 				continue
@@ -1664,7 +1664,7 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 		if tailExpr == nil {
 			restoreVoid()
 			for _, name := range localVars {
-				delete(execEnv.vars, name)
+				delete(execEnv.Vars, name)
 			}
 			return nil, nil
 		}
@@ -1672,7 +1672,7 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 		if isPure {
 			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
 			for _, name := range localVars {
-				delete(execEnv.vars, name)
+				delete(execEnv.Vars, name)
 			}
 			if err != nil {
 				return nil, err
@@ -1687,7 +1687,7 @@ func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 		result, err := execEnv.Eval(tailExpr)
 		restoreVoid()
 		for _, name := range localVars {
-			delete(execEnv.vars, name)
+			delete(execEnv.Vars, name)
 		}
 		return result, err
 	}
@@ -1754,7 +1754,7 @@ func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	if err != nil {
 		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Raw, err)
 	}
-	table := env.units[suffix]
+	table := env.Units[suffix]
 	baseAmount := num
 	if table != nil {
 		if factor, ok := table.Conversions[suffix]; ok {

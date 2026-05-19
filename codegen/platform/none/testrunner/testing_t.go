@@ -10,8 +10,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// callMethod dispatches method calls on the Test value.
-func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, error) {
+// CallMethod dispatches method calls on the Test value.
+func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, error) {
 	switch method {
 	case "assert":
 		if len(args) != 1 {
@@ -41,7 +41,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 
 	case "tick":
 		var cv *componentValue
-		for _, v := range env.vars {
+		for _, v := range env.Vars {
 			if c, ok := v.(*componentValue); ok {
 				cv = c
 				break
@@ -52,11 +52,11 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			if err := fireTimers(tv.pkg, compEnv); err != nil {
 				return nil, err
 			}
-			for k := range cv.vars {
-				if v, ok := compEnv.vars[k]; ok {
-					cv.vars[k] = v
+			for k := range cv.Vars {
+				if v, ok := compEnv.Vars[k]; ok {
+					cv.Vars[k] = v
 					if !cv.testParams[k] {
-						cv.env.vars[k] = v
+						cv.Env.Vars[k] = v
 					}
 				}
 			}
@@ -83,7 +83,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
 		var cv *componentValue
-		for _, v := range env.vars {
+		for _, v := range env.Vars {
 			if c, ok := v.(*componentValue); ok {
 				cv = c
 				break
@@ -110,11 +110,11 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			if err := fireTimers(tv.pkg, compEnv); err != nil {
 				return nil, err
 			}
-			for k := range cv.vars {
-				if v, ok := compEnv.vars[k]; ok {
-					cv.vars[k] = v
+			for k := range cv.Vars {
+				if v, ok := compEnv.Vars[k]; ok {
+					cv.Vars[k] = v
 					if !cv.testParams[k] {
-						cv.env.vars[k] = v
+						cv.Env.Vars[k] = v
 					}
 				}
 			}
@@ -135,7 +135,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			return nil, err
 		}
 		env.SetContext(cr.Ref, val)
-		tv.locale = env.locale // sync locale field if "locale" context was set
+		tv.locale = env.Locale // sync locale field if "locale" context was set
 		if tv.contextOverrides == nil {
 			tv.contextOverrides = make(map[*ir.Context]any)
 		}
@@ -149,12 +149,12 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 					if cr2, ok2 := v.Init.(*ir.ContextRead); ok2 && cr2.Ref == cr.Ref {
 						newVal, evalErr := env.Eval(v.Init)
 						if evalErr == nil {
-							env.vars[v.Name] = newVal
+							env.Vars[v.Name] = newVal
 							// Also update any componentValue in scope.
-							for _, sv := range env.vars {
+							for _, sv := range env.Vars {
 								if cv, ok3 := sv.(*componentValue); ok3 {
-									if _, exists := cv.vars[v.Name]; exists {
-										cv.vars[v.Name] = newVal
+									if _, exists := cv.Vars[v.Name]; exists {
+										cv.Vars[v.Name] = newVal
 									}
 								}
 							}
@@ -178,7 +178,7 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 			return nil, fmt.Errorf("t.setLocale() argument must be a string, got %T", locVal)
 		}
 		tv.locale = loc
-		env.locale = loc
+		env.Locale = loc
 		return nil, nil
 
 	case "test":
@@ -206,22 +206,22 @@ func (tv *testingT) callMethod(env *Env, method string, args []ir.Expr) (any, er
 		callArgs := []any{childT}
 		if tv.compName != "" {
 			var parentCV *componentValue
-			for _, v := range env.vars {
+			for _, v := range env.Vars {
 				if cv, ok := v.(*componentValue); ok {
 					parentCV = cv
 					break
 				}
 			}
 			childCV := &componentValue{
-				env:    childEnv,
-				vars:   make(map[string]any),
-				consts: make(map[string]any),
-				funcs:  make(map[string]*ir.Func),
+				Env:    childEnv,
+				Vars:   make(map[string]any),
+				Consts: make(map[string]any),
+				Funcs:  make(map[string]*ir.Func),
 			}
 			if parentCV != nil {
-				maps.Copy(childCV.vars, parentCV.vars)
-				maps.Copy(childCV.consts, parentCV.consts)
-				maps.Copy(childCV.funcs, parentCV.funcs)
+				maps.Copy(childCV.Vars, parentCV.Vars)
+				maps.Copy(childCV.Consts, parentCV.Consts)
+				maps.Copy(childCV.Funcs, parentCV.Funcs)
 			}
 			callArgs = append(callArgs, childCV)
 		}
@@ -257,15 +257,15 @@ func (tv *testingT) recordFailure(ae *AssertError, fatal bool) {
 	})
 }
 
-// getField resolves c.field on a componentValue.
-func (cv *componentValue) getField(field string) (any, error) {
-	if v, ok := cv.vars[field]; ok {
+// GetField resolves c.field on a componentValue.
+func (cv *componentValue) GetField(field string) (any, error) {
+	if v, ok := cv.Vars[field]; ok {
 		return v, nil
 	}
-	if v, ok := cv.consts[field]; ok {
+	if v, ok := cv.Consts[field]; ok {
 		return v, nil
 	}
-	if fn, ok := cv.funcs[field]; ok {
+	if fn, ok := cv.Funcs[field]; ok {
 		if len(fn.Params) == 0 {
 			compEnv := cv.compEnv()
 			return compEnv.evalUserFunc(fn, nil)
@@ -281,30 +281,30 @@ func (cv *componentValue) getField(field string) (any, error) {
 	return nil, fmt.Errorf("component has no field %q", field)
 }
 
-// setField handles c.field = value.
-func (cv *componentValue) setField(op ast.AssignOp, field string, val any) error {
-	cur, exists := cv.vars[field]
+// SetField handles c.field = value.
+func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error {
+	cur, exists := cv.Vars[field]
 	if !exists {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
-	cv.vars[field] = applyOp(op, cur, val)
+	cv.Vars[field] = applyOp(op, cur, val)
 	if !cv.testParams[field] {
-		cv.env.vars[field] = cv.vars[field]
+		cv.Env.Vars[field] = cv.Vars[field]
 	}
 	return nil
 }
 
 func (cv *componentValue) compEnv() *Env {
-	env := cv.env.Snapshot()
-	maps.Copy(env.vars, cv.vars)
+	env := cv.Env.Snapshot()
+	maps.Copy(env.Vars, cv.Vars)
 	return env
 }
 
 func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
-	for k := range cv.vars {
+	for k := range cv.Vars {
 		if !testParams[k] {
-			if v, ok := cv.env.vars[k]; ok {
-				cv.vars[k] = v
+			if v, ok := cv.Env.Vars[k]; ok {
+				cv.Vars[k] = v
 			}
 		}
 	}
@@ -314,10 +314,10 @@ func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
 // expression. In IR, timers live on ir.Component (not scattered through the
 // body), so we walk pkg.Components for the active component.
 func fireTimers(pkg *ir.Package, env *Env) error {
-	if env.comp == nil {
+	if env.Comp == nil {
 		return nil
 	}
-	for _, t := range env.comp.Timers {
+	for _, t := range env.Comp.Timers {
 		enabled := true
 		if t.Enabled != nil {
 			v, err := env.Eval(t.Enabled)
