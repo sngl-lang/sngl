@@ -15,18 +15,20 @@ import (
 
 // Server is the SNGL language server.
 type Server struct {
-	ws     *workspace
-	reader *bufio.Reader
-	writer io.Writer
-	mu     sync.Mutex // protects writes
-	log    *log.Logger
+	ws      *workspace
+	reader  *bufio.Reader
+	writer  io.Writer
+	mu      sync.Mutex // protects writes
+	log     *log.Logger
+	preview *previewServer
 }
 
 // New creates a new LSP server.
 func New() *Server {
 	return &Server{
-		ws:  newWorkspace(),
-		log: log.New(os.Stderr, "[sngl-lsp] ", log.LstdFlags),
+		ws:      newWorkspace(),
+		log:     log.New(os.Stderr, "[sngl-lsp] ", log.LstdFlags),
+		preview: newPreviewServer(),
 	}
 }
 
@@ -52,10 +54,11 @@ func (s *Server) RunTCP(addr string) error {
 		}
 		go func() {
 			srv := &Server{
-				ws:     newWorkspace(),
-				reader: bufio.NewReader(conn),
-				writer: conn,
-				log:    s.log,
+				ws:      newWorkspace(),
+				reader:  bufio.NewReader(conn),
+				writer:  conn,
+				log:     s.log,
+				preview: newPreviewServer(),
 			}
 			if err := srv.serve(); err != nil {
 				s.log.Printf("session error: %v", err)
@@ -70,8 +73,10 @@ func (s *Server) serve() error {
 		msg, err := s.readMessage()
 		if err != nil {
 			if err == io.EOF {
+				s.preview.Stop()
 				return nil
 			}
+			s.preview.Stop()
 			return fmt.Errorf("read: %w", err)
 		}
 
@@ -94,8 +99,10 @@ func (s *Server) serve() error {
 		case "initialized":
 			// no-op
 		case "shutdown":
+			s.preview.Stop()
 			s.sendResult(req.ID, nil)
 		case "exit":
+			s.preview.Stop()
 			return nil
 		case "textDocument/didOpen":
 			s.handleDidOpen(req.Params)

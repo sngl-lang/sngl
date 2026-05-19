@@ -3,6 +3,11 @@ package lsp
 import "encoding/json"
 
 func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
+	if err := s.preview.Start(); err != nil {
+		s.log.Printf("preview server: %v", err)
+		// Continue without preview — hover degrades silently
+	}
+
 	result := InitializeResult{
 		Capabilities: ServerCapabilities{
 			TextDocumentSync: 1, // Full
