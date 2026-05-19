@@ -27,7 +27,7 @@ Drive-by: fix the checker bug `cannot initialize color with color` that rejects 
 
 ## Architecture
 
-Three pieces:
+Four pieces:
 
 ### Piece A — Checker normalizes hex literals to struct lit
 
@@ -58,7 +58,28 @@ case ast.LiteralColor:
 
 After this lands, `*ir.Literal{Type:color}` no longer appears in IR. Code that pattern-matches on it (LSP color walker, any codegen path that special-cased the hex string) gets updated.
 
-### Piece B — Pure-function interpreter
+### Piece B — Extract interpreter to `internal/interp`
+
+The testrunner at `codegen/platform/none/testrunner/` already has a full IR interpreter (`eval.go` + `exec.go` + `builtins.go`, ~2700 LOC). Moving it from a codegen-platform subdirectory into a neutral package serves three consumers — the existing test runner, the optimizer (Piece D), and the planned REPL.
+
+Steps:
+
+- Create `internal/interp/`.
+- Move `eval.go`, `exec.go`, `builtins.go` (and any helpers exclusive to them) verbatim. Package name becomes `interp`.
+- Public surface that survives the move: `Env`, `NewEnv`, `BuildEnv`, `Eval`, `Exec`, `SetFunc`, `SetVar`, plus the error types `AssertError`, `RaisedError`.
+- Testrunner-specific bits (`runner.go`, `render.go`, `assert_msg.go`, `testing_t.go`) stay in `codegen/platform/none/testrunner/` and import `internal/interp` for the eval/exec layer.
+- Update import paths across the moved files; rename test files alongside their subjects.
+- No behavior change; existing testrunner tests must pass unchanged.
+
+Risk: 2700 LOC moves with import churn. Mitigation: do the move as one focused commit before any optimizer-side wiring lands.
+
+### Piece C — Checker bug fix
+
+`const X color = color{r=255, g=255, b=255, a=255}` errors `cannot initialize color with color` due to a type-equality miscompare for named structs. Likely a pointer-equality check where structural equality is needed, or a missing case where `*ir.StructLit{Name:"color"}` produces a synthesized type that doesn't `==` the canonical color type pointer.
+
+Find the site, fix the comparison, add a regression test using the literal form above plus a `var Y color = #ffffff` baseline.
+
+### Piece D — Wire interpreter into optimizer
 
 The const evaluator's `evalCall` currently tries:
 
@@ -68,48 +89,26 @@ The const evaluator's `evalCall` currently tries:
 
 Add a fourth path that handles the common case:
 
-4. **`Func.Block` interpretation**: if the resolved callee has a SNGL body, interpret it with args bound to params.
+4. **`Func.Block` interpretation**: if the resolved callee has a SNGL body and `Purity == PurityPure`, build an `interp.Env`, bind args to params, run `Exec` over `Func.Block` until a return is observed.
 
-A new file `internal/optimize/interpret.go` exports `interpretFunc(*ir.Func, args []any, ctx *evalCtx) (any, ok bool)` and a private statement evaluator. The interpreter:
+The optimizer-side helper is small — it adapts the existing interp API to the optimizer's "fail silently, preserve original" contract:
 
-- Maintains a stack-frame environment: `map[*ir.Var]any` plus a separate map for params (which the checker may not have allocated `*ir.Var` for — verify during implementation).
-- Deep-copies composite args (`map[string]any`, `[]any`) at param binding, so callee mutation can't corrupt cached `ctx.values`.
-- Walks `Func.Block` statement by statement.
-- Reuses the existing `evalExpr` for expression evaluation, threading the interpreter's environment via `ctx`.
+- Build `interp.Env` populated with the same package the optimizer is currently folding.
+- Deep-copy composite args (`map[string]any`, `[]any`) before binding to params so callee mutation can't corrupt `ctx.values` (the optimizer's per-call memoization). The interp package itself doesn't need to change — the deep-copy lives in the optimizer-side adapter.
+- Bound recursion depth: 256. The interpreter doesn't have a built-in limit (it ran whole test suites to completion); the optimizer adapter tracks depth and short-circuits before the Go stack blows up.
+- Any error from `Eval` or `Exec` (assertion failures, raised errors, type mismatches, etc.) → fold fails, original `ir.Call` preserved. The optimizer must never propagate these to the user; they're optimization-time signals, not program errors.
 
-#### Statement coverage
+#### Result round-trip
 
-| Stmt | Behavior |
-|---|---|
-| `LocalVar` | Eval `Init`, bind to env. |
-| `Return` | Eval expr, set result, halt loop. |
-| `Assign` | Eval RHS. LHS may be `*ir.Ident`, `*ir.Select` (chain of fields), or `*ir.Index`. Walk LHS to the target container (map or list) and write the key/index. |
-| `If` | Eval `Cond`. Recurse into `Then` or `Else`. |
-| `For` | Eval `Iter` (must yield list/map). For each element, bind the loop var(s) and recurse the body. Support `break`/`continue` if SNGL has them (verify; if not, omit). |
-| `Toggle` | Lookup var, must be bool, flip. |
-| `CallStmt` | Eval the call's expression and discard the result. Side-effectful calls would already have been rejected by purity. |
-| `NodeInst`, `Emit`, `SlotInst` | `panic("optimize: <kind> in pure func body — checker bug")`. |
-| anything else | Fold fails; original call preserved. |
-
-#### Bookkeeping
-
-- **Recursion depth limit**: 256. Excess → fold fails silently, original `ir.Call` preserved.
-- **Mutation isolation**: deep-copy `map[string]any` and `[]any` on parameter bind.
-- **Result round-trip**: the existing `irLiteral` already handles strings, ints, floats, bools, nil. For struct values, the optimizer must reconstruct a `*ir.StructLit` from a `map[string]any` plus the function's declared return type. Add a small helper `irFromValue(val any, typ *ir.Type) ir.Expr` that handles map → StructLit, slice → ListLit, primitives → existing `irLiteral`.
+When the interpreter returns a value, the optimizer needs to convert it back to IR. The existing `irLiteral` handles strings, ints, floats, bools, nil. Add a small helper `irFromValue(val any, typ *ir.Type) ir.Expr` that handles `map[string]any` → `*ir.StructLit`, `[]any` → `*ir.ListLit`, primitives → existing `irLiteral`. The struct/list cases recursively call `irFromValue` on their fields/elements.
 
 #### Cleanup once it works
 
-After the interpreter is verified for `color.lighten`, `color.darken`, `color.opacity`, `color.rgb`, `color.rgba`, `color.hex`:
+After Piece D is verified for `color.lighten`, `color.darken`, `color.opacity`, `color.rgb`, `color.rgba`, `color.hex`:
 
 - Delete the `color.*` cases from `evalQualifiedMethod`.
 - Delete the `case ir.TypeColor` arm in `parseLiteral` (no color literals reach the optimizer post-Piece-A).
 - Skip deleting `evalQualifiedMethod` entirely — `int.min`, `list.length`, etc. remain intrinsics with no SNGL bodies.
-
-### Piece C — Checker bug fix
-
-`const X color = color{r=255, g=255, b=255, a=255}` errors `cannot initialize color with color` due to a type-equality miscompare for named structs. Likely a pointer-equality check where structural equality is needed, or a missing case where `*ir.StructLit{Name:"color"}` produces a synthesized type that doesn't `==` the canonical color type pointer.
-
-Find the site, fix the comparison, add a regression test using the literal form above plus a `var Y color = #ffffff` baseline.
 
 ## Components
 
@@ -117,8 +116,10 @@ Find the site, fix the comparison, add a regression test using the literal form 
 |---|---|---|
 | `internal/checker/expr.go` (or wherever color lit is built) | modify | Emit `*ir.StructLit{Name:"color"}` for `ast.LiteralColor` |
 | `internal/checker/...` (type-eq site) | modify | Fix `cannot initialize color with color` |
-| `internal/optimize/interpret.go` | create | `interpretFunc`, statement evaluator, `irFromValue` |
-| `internal/optimize/consteval.go` | modify | Plumb interpreter into `evalCall`; remove `color.*` cases from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral` |
+| `internal/interp/` | create (move) | `eval.go`, `exec.go`, `builtins.go` moved from testrunner. Public `Env`, `Eval`, `Exec`, etc. |
+| `codegen/platform/none/testrunner/` | modify | Import `internal/interp` for the moved code; keep testrunner-specific orchestration (`runner.go`, `render.go`, `assert_msg.go`, `testing_t.go`) here |
+| `internal/optimize/interpret.go` | create | Optimizer-side adapter: depth limit, deep-copy, error→bail, `irFromValue` |
+| `internal/optimize/consteval.go` | modify | Plumb adapter into `evalCall`; remove `color.*` from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral` |
 | `internal/optimize/interpret_test.go` | create | Unit tests per statement kind + E2E fold tests |
 | `internal/lsp/color_irwalk.go` | modify | Walk for `*ir.StructLit{Name:"color"}` instead of `*ir.Literal{Type:color}` |
 | `internal/lsp/color.go` | modify | `colorFromIRLiteral` / `rangeForIRLiteral` consume StructLit; channel values from field literals |
@@ -212,13 +213,14 @@ LSP color walker (post-folding)
 
 ## Rollout
 
-This is a single coherent piece — checker change, interpreter, and LSP walker update must land together because they're tied by the IR shape change. Order in implementation plan:
+Four pieces, one coherent change. Recommended implementation order:
 
-1. Piece C (checker bug fix) — small, independent, lets us write `color{...}` literals in subsequent tests.
-2. Piece A (hex → StructLit). Update existing tests that asserted the literal shape.
-3. LSP walker update (`color_irwalk.go`) — matches the new shape so color fixtures don't regress.
-4. Piece B (interpreter) — incremental: scaffolding, then per stmt kind, then result round-trip, then plumb into `evalCall`.
-5. Remove `color.*` from `evalQualifiedMethod` and `parseLiteral`'s `TypeColor` arm once Piece B is verified.
+1. **Piece B** (extract interpreter to `internal/interp`). Pure refactor, zero behavior change. Testrunner tests must remain green. Sets up the import path for Piece D.
+2. **Piece C** (checker bug fix). Small, independent. Lets later tests use `color{...}` literal form.
+3. **Piece A** (hex → StructLit). Update existing tests that asserted the literal shape.
+4. **LSP walker update** (`color_irwalk.go`, `color.go`). Matches the new shape so color fixtures don't regress.
+5. **Piece D** (wire interpreter into optimizer). Tests for: end-to-end fold of composed expressions, recursion depth, mutation isolation, result round-trip.
+6. **Cleanup**: remove `color.*` from `evalQualifiedMethod` and `parseLiteral`'s `TypeColor` arm.
 
 Each step ships with tests; intermediate states are still green.
 
