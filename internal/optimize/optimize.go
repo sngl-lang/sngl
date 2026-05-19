@@ -41,6 +41,7 @@ type evalCtx struct {
 	fileAssets    []FileAsset
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
+	interpDepth   int                   // recursion guard for interpretFunc dispatch
 }
 
 // optimizerRun threads cross-package state across a single Optimize call so

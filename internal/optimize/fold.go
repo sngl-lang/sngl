@@ -19,6 +19,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if lit := irLiteral(val, e.ExprType()); lit != nil {
 			return lit
 		}
+		if expr := irFromValue(val, e.ExprType()); expr != nil {
+			return expr
+		}
 	}
 
 	// Try function inlining.

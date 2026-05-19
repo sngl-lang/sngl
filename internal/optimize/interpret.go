@@ -61,6 +61,14 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure {
 		return nil, false
 	}
+	// Refuse to fold any function whose body transitively calls a native
+	// (unresolved) function. Natives like intl.DefaultLocale() depend on
+	// the runtime environment (host locale, file system state) and must
+	// not be evaluated at compile time even though interp can execute them
+	// against the build host.
+	if bodyUsesNativeCall(fn) {
+		return nil, false
+	}
 	if depth >= maxInterpDepth {
 		return nil, false
 	}
@@ -91,6 +99,112 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 		return nil, false
 	}
 	return result, true
+}
+
+// bodyUsesNativeCall reports whether fn's body contains any unresolved
+// call expression. The checker leaves Call.Func == nil for native/import
+// invocations (their resolution lives in NativeImport, not pkg.Funcs);
+// such calls escape the compile-time interpreter because their semantics
+// depend on the runtime environment.
+func bodyUsesNativeCall(fn *ir.Func) bool {
+	var hasNative bool
+	var walkExpr func(e ir.Expr)
+	var walkStmt func(s ir.Stmt)
+	walkExpr = func(e ir.Expr) {
+		if hasNative || e == nil {
+			return
+		}
+		switch x := e.(type) {
+		case *ir.Call:
+			if x.Func == nil || x.Func.NativePkg != "" || x.Func.Intrinsic != "" {
+				hasNative = true
+				return
+			}
+			if x.Receiver != nil {
+				walkExpr(x.Receiver)
+			}
+			for _, a := range x.Args {
+				walkExpr(a.Value)
+			}
+		case *ir.Binary:
+			walkExpr(x.Left)
+			walkExpr(x.Right)
+		case *ir.Unary:
+			walkExpr(x.Operand)
+		case *ir.Ternary:
+			walkExpr(x.Cond)
+			walkExpr(x.Then)
+			walkExpr(x.Else)
+		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.Select:
+			walkExpr(x.Operand)
+		case *ir.Index:
+			walkExpr(x.Operand)
+			walkExpr(x.Idx)
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				walkExpr(el)
+			}
+		case *ir.StructLit:
+			for _, f := range x.Fields {
+				walkExpr(f.Value)
+			}
+		case *ir.MapLitIR:
+			for _, e := range x.Entries {
+				walkExpr(e.Key)
+				walkExpr(e.Value)
+			}
+		case *ir.Spread:
+			walkExpr(x.Operand)
+		case *ir.Lambda:
+			if x.Func != nil {
+				for _, s := range x.Func.Block {
+					walkStmt(s)
+				}
+			}
+		}
+	}
+	walkStmt = func(s ir.Stmt) {
+		if hasNative || s == nil {
+			return
+		}
+		switch x := s.(type) {
+		case *ir.Return:
+			if x.Value != nil {
+				walkExpr(x.Value)
+			}
+		case *ir.Assign:
+			walkExpr(x.Target)
+			walkExpr(x.Value)
+		case *ir.If:
+			walkExpr(x.Cond)
+			for _, s := range x.Body {
+				walkStmt(s)
+			}
+			for _, s := range x.Else {
+				walkStmt(s)
+			}
+		case *ir.For:
+			walkExpr(x.Iter)
+			for _, s := range x.Body {
+				walkStmt(s)
+			}
+		case *ir.LocalVar:
+			if x.Init != nil {
+				walkExpr(x.Init)
+			}
+		case *ir.CallStmt:
+			walkExpr(x.Call)
+		}
+	}
+	for _, s := range fn.Block {
+		walkStmt(s)
+		if hasNative {
+			return true
+		}
+	}
+	return hasNative
 }
 
 // deepCopyValue clones composite values (map[string]any, []any) so callee

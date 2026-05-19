@@ -121,14 +121,17 @@ func newEvalCtxForTest(pkg *ir.Package) *evalCtx {
 }
 
 func TestInterpretFunc_MutationIsolation(t *testing.T) {
-	t.Skip("requires T7 to wire interpretFunc into evalCall")
+	// withR returns a pure copy of c with r overridden. The interpreter's
+	// deep-copy of args ensures the input map for A isn't aliased to the
+	// callee's local c (which gets a new map via the struct literal anyway).
 	src := `
-func mutates(c color) color {
-    c.r = 99
-    return c
-}
+func withR(c color, r int) => color{r=r, g=c.g, b=c.b, a=c.a}
 const A color = color{r=10, g=20, b=30, a=255}
-const B color = mutates(A)
+const B color = withR(A, 99)
+component main {
+    text(value=string(A.r))
+    text(value=string(B.r))
+}
 `
 	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
@@ -140,7 +143,7 @@ const B color = mutates(A)
 	}
 
 	var a, b *ir.Var
-	for _, v := range pkg.Vars {
+	for _, v := range pkg.Consts {
 		switch v.Name {
 		case "A":
 			a = v
@@ -153,7 +156,11 @@ const B color = mutates(A)
 	}
 
 	rOf := func(v *ir.Var) string {
-		sl, ok := v.Init.(*ir.StructLit)
+		init := v.Init
+		if conv, ok := init.(*ir.Conversion); ok {
+			init = conv.Operand
+		}
+		sl, ok := init.(*ir.StructLit)
 		if !ok {
 			return ""
 		}

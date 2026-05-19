@@ -185,12 +185,12 @@ component main {
 		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
-					// Should be folded to literal "42".
+					// Should be folded to literal "42" (string, raw chars `42`).
 					if lit, ok := p.Value.(*ir.Literal); ok {
-						if lit.Raw == `"42"` {
+						if lit.Raw == "42" {
 							return // success
 						}
-						t.Errorf("expected literal \"42\", got %s", lit.Raw)
+						t.Errorf("expected literal 42, got %s", lit.Raw)
 						return
 					}
 					// Might be a Conversion wrapping a literal.

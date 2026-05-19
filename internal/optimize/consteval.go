@@ -266,6 +266,16 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		args = append(args, v)
 	}
 
+	// Try the generic SNGL-body interpreter for pure user/stdlib funcs.
+	if call.Func != nil && len(call.Func.Block) > 0 && call.Func.Purity == ir.PurityPure {
+		ctx.interpDepth++
+		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
+		ctx.interpDepth--
+		if ok {
+			return v, true
+		}
+	}
+
 	// Resolved function call. Type-attached methods (including both
 	// "x.upper()" and "string.upper(x)" syntaxes) are normalized so that
 	// Func.Receiver is set and the receiver value is Args[0].
