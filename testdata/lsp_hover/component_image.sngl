@@ -1,0 +1,5 @@
+// HOVER(Counter) "component Counter"
+// HOVER(Counter) "![Counter]("
+// HOVER(Counter) ".png)"
+component Counter(label string) { vbox {} }
+component example_Counter { Counter(label="3 clicks") }
