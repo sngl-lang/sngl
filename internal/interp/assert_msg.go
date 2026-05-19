@@ -1,4 +1,4 @@
-package testrunner
+package interp
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// runAssert evaluates the expression passed to t.assert/t.must and, on
+// RunAssert evaluates the expression passed to t.assert/t.must and, on
 // failure, returns an *AssertError whose message reads as a complete
 // statement of what the assertion expected vs what it observed. A second
 // return value carries any runtime-evaluation error (always fatal).
@@ -19,7 +19,7 @@ import (
 // form follows in parens — e.g. "0 (c.count)". Literals and multiline
 // expressions don't include the source form, since the value already
 // stands for itself or wouldn't fit cleanly on the line.
-func (env *Env) runAssert(expr ir.Expr) (*AssertError, error) {
+func (env *Env) RunAssert(expr ir.Expr) (*AssertError, error) {
 	switch e := expr.(type) {
 	case *ir.Binary:
 		switch e.Op {
@@ -190,7 +190,7 @@ func includableSrc(e ir.Expr) string {
 }
 
 func sourceOrEmpty(e ir.Expr) string {
-	if a := irASTOf(e); a != nil {
+	if a := IRASTOf(e); a != nil {
 		return parser.FormatExpr(a)
 	}
 	return ""
@@ -331,7 +331,7 @@ func sortStrings(s []string) {
 	}
 }
 
-func irASTOf(e ir.Expr) ast.Expr {
+func IRASTOf(e ir.Expr) ast.Expr {
 	switch x := e.(type) {
 	case *ir.Literal:
 		if x.AST != nil {

@@ -7,17 +7,18 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // CallMethod dispatches method calls on the Test value.
-func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, error) {
+func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (any, error) {
 	switch method {
 	case "assert":
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.assert() requires 1 argument")
 		}
-		ae, err := env.runAssert(args[0])
+		ae, err := env.RunAssert(args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +31,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		if len(args) != 1 {
 			return nil, fmt.Errorf("t.must() requires 1 argument")
 		}
-		ae, err := env.runAssert(args[0])
+		ae, err := env.RunAssert(args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +72,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		if err != nil {
 			return nil, err
 		}
-		lv, ok := predVal.(*lambdaValue)
+		lv, ok := predVal.(*interp.LambdaValue)
 		if !ok {
 			return nil, fmt.Errorf("t.wait() first argument must be a function, got %T", predVal)
 		}
@@ -79,7 +80,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		if err != nil {
 			return nil, err
 		}
-		timeoutMs := toInt(timeoutVal)
+		timeoutMs := interp.ToInt(timeoutVal)
 		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
 		var cv *componentValue
@@ -93,7 +94,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		for {
 			// Predicate runs in its captured env so c reads observe in-place
 			// component-var updates from fireTimers.
-			out, callErr := lv.call(nil)
+			out, callErr := lv.Call(nil)
 			if callErr != nil {
 				return nil, callErr
 			}
@@ -143,7 +144,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		// Re-evaluate any component vars whose init expression is a ContextRead
 		// for this context, so subsequent c.<field> reads see the new value.
 		if tv.compName != "" {
-			comp := findComponent(tv.pkg, tv.compName)
+			comp := interp.FindComponent(tv.pkg, tv.compName)
 			if comp != nil {
 				for _, v := range comp.Vars {
 					if cr2, ok2 := v.Init.(*ir.ContextRead); ok2 && cr2.Ref == cr.Ref {
@@ -193,7 +194,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 		if err != nil {
 			return nil, err
 		}
-		lv, ok := fn.(*lambdaValue)
+		lv, ok := fn.(*interp.LambdaValue)
 		if !ok {
 			return nil, fmt.Errorf("t.test() second argument must be a function, got %T", fn)
 		}
@@ -226,7 +227,7 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 			callArgs = append(callArgs, childCV)
 		}
 
-		_, callErr := lv.callWithEnv(childEnv, callArgs)
+		_, callErr := lv.CallWithEnv(childEnv, callArgs)
 		if callErr != nil {
 			childResult.Error = callErr.Error()
 		}
@@ -242,12 +243,12 @@ func (tv *testingT) CallMethod(env *Env, method string, args []ir.Expr) (any, er
 // recordFailure appends a soft assertion failure to the enclosing test
 // result. fatal=true is used by must() / runtime errors so the runner can
 // stop execution after appending.
-func (tv *testingT) recordFailure(ae *AssertError, fatal bool) {
+func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 	if tv == nil || tv.result == nil || ae == nil {
 		return
 	}
 	line := 0
-	if a := irASTOf(ae.Expr); a != nil {
+	if a := interp.IRASTOf(ae.Expr); a != nil {
 		line = a.ExprPos().Line
 	}
 	tv.result.Failures = append(tv.result.Failures, codegen.TestFailure{
@@ -268,14 +269,14 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	if fn, ok := cv.Funcs[field]; ok {
 		if len(fn.Params) == 0 {
 			compEnv := cv.compEnv()
-			return compEnv.evalUserFunc(fn, nil)
+			return compEnv.EvalUserFunc(fn, nil)
 		}
 	}
 	// Element ref lookup in the component body. Returns nil (not an error)
 	// when the ref exists in the body tree but is currently hidden by an
 	// if/for-else branch — tests assert against null for "not visible".
 	compEnv := cv.compEnv()
-	if v, err := compEnv.resolveElementRef(field); err == nil {
+	if v, err := compEnv.ResolveElementRef(field); err == nil {
 		return v, nil
 	}
 	return nil, fmt.Errorf("component has no field %q", field)
@@ -287,14 +288,67 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if !exists {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
-	cv.Vars[field] = applyOp(op, cur, val)
+	cv.Vars[field] = interp.ApplyOp(op, cur, val)
 	if !cv.testParams[field] {
 		cv.Env.Vars[field] = cv.Vars[field]
 	}
 	return nil
 }
 
-func (cv *componentValue) compEnv() *Env {
+// InvokeMethod dispatches `method` on the component. Returns (nil, false, nil)
+// when the method is not defined on the component; the caller falls back to
+// other dispatch paths in that case.
+func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.Expr) (any, bool, error) {
+	if len(method) > 0 && method[0] == '@' {
+		// Event emission is a no-op in the interpreter.
+		return nil, true, nil
+	}
+	fn, ok := cv.Funcs[method]
+	if !ok {
+		return nil, false, nil
+	}
+	compEnv := cv.compEnv()
+	result, err := compEnv.EvalUserFunc(fn, args)
+	for k := range cv.Vars {
+		if v, ok := compEnv.Vars[k]; ok {
+			cv.Vars[k] = v
+			if !cv.testParams[k] {
+				cv.Env.Vars[k] = v
+			}
+		}
+	}
+	return result, true, err
+}
+
+// Toggle flips a bool field, propagating into the underlying env unless the
+// field is a test parameter (in which case the field is the canonical value).
+func (cv *componentValue) Toggle(field string) error {
+	cur, exists := cv.Vars[field]
+	if !exists {
+		return fmt.Errorf("cannot toggle undefined field %q", field)
+	}
+	b, ok := cur.(bool)
+	if !ok {
+		return fmt.Errorf("cannot toggle non-bool field %q", field)
+	}
+	cv.Vars[field] = !b
+	if !cv.testParams[field] {
+		cv.Env.Vars[field] = !b
+	}
+	return nil
+}
+
+// WriteBackList stores a (typically mutated-in-place) list back into a
+// component field, propagating to env when the field is not a test parameter.
+func (cv *componentValue) WriteBackList(field string, list []any) error {
+	cv.Vars[field] = list
+	if !cv.testParams[field] {
+		cv.Env.Vars[field] = list
+	}
+	return nil
+}
+
+func (cv *componentValue) compEnv() *interp.Env {
 	env := cv.Env.Snapshot()
 	maps.Copy(env.Vars, cv.Vars)
 	return env
@@ -313,7 +367,7 @@ func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
 // fireTimers runs each component timer's handler once, honoring the Enabled
 // expression. In IR, timers live on ir.Component (not scattered through the
 // body), so we walk pkg.Components for the active component.
-func fireTimers(pkg *ir.Package, env *Env) error {
+func fireTimers(pkg *ir.Package, env *interp.Env) error {
 	if env.Comp == nil {
 		return nil
 	}

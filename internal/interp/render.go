@@ -1,4 +1,4 @@
-package testrunner
+package interp
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// resolveElementRef finds visual nodes with the given #id in the current body.
+// ResolveElementRef finds visual nodes with the given #id in the current body.
 // Returns a single element map, a list of maps (for-loops), or nil.
-func (env *Env) resolveElementRef(id string) (any, error) {
+func (env *Env) ResolveElementRef(id string) (any, error) {
 	if env.BodyStmts == nil {
 		return nil, fmt.Errorf("no visual body for element ref #%s", id)
 	}
@@ -143,7 +143,7 @@ func (env *Env) collectCallStmtByID(cs *ir.CallStmt, id string, out *[]map[strin
 	}
 	// User-defined component — expand inline.
 	if env.Pkg != nil {
-		if comp := findComponent(env.Pkg, elemName); comp != nil {
+		if comp := FindComponent(env.Pkg, elemName); comp != nil {
 			if env.RenderDepth >= maxCallDepth {
 				return
 			}

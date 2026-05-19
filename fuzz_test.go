@@ -13,7 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -689,7 +689,7 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 	if fn == nil {
 		return nil, fmt.Errorf("_eval not present in package")
 	}
-	env, err := testrunner.BuildEnv(pkg, "")
+	env, err := interp.BuildEnv(pkg, "")
 	if err != nil {
 		return nil, err
 	}

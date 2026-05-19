@@ -1,4 +1,4 @@
-package testrunner
+package interp
 
 import (
 	"fmt"
@@ -24,28 +24,28 @@ type nativeFunc func(args []any) (any, error)
 var nativeMethods = map[string]nativeFunc{
 	// --- int ---
 	"int.min": func(args []any) (any, error) {
-		a, b := toInt(args[0]), toInt(args[1])
+		a, b := ToInt(args[0]), ToInt(args[1])
 		if a < b {
 			return a, nil
 		}
 		return b, nil
 	},
 	"int.max": func(args []any) (any, error) {
-		a, b := toInt(args[0]), toInt(args[1])
+		a, b := ToInt(args[0]), ToInt(args[1])
 		if a > b {
 			return a, nil
 		}
 		return b, nil
 	},
 	"int.abs": func(args []any) (any, error) {
-		x := toInt(args[0])
+		x := ToInt(args[0])
 		if x < 0 {
 			return -x, nil
 		}
 		return x, nil
 	},
 	"int.clamp": func(args []any) (any, error) {
-		x, lo, hi := toInt(args[0]), toInt(args[1]), toInt(args[2])
+		x, lo, hi := ToInt(args[0]), ToInt(args[1]), ToInt(args[2])
 		if x < lo {
 			return lo, nil
 		}
@@ -84,7 +84,7 @@ var nativeMethods = map[string]nativeFunc{
 	},
 	"int.parse": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
-		base := toInt(args[1])
+		base := ToInt(args[1])
 		v, err := strconv.ParseInt(s, base, 64)
 		if err != nil {
 			return nil, fmt.Errorf("int.parse(%q, %d): %w", s, base, err)
@@ -177,8 +177,8 @@ var nativeMethods = map[string]nativeFunc{
 	},
 	"string.substring": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
-		start := toInt(args[1])
-		end := toInt(args[2])
+		start := ToInt(args[1])
+		end := ToInt(args[2])
 		if start < 0 {
 			start = 0
 		}
@@ -223,18 +223,18 @@ var nativeMethods = map[string]nativeFunc{
 	// --- color ---
 	"color.rgb": func(args []any) (any, error) {
 		return map[string]any{
-			"r": clampByte(toInt(args[0])),
-			"g": clampByte(toInt(args[1])),
-			"b": clampByte(toInt(args[2])),
+			"r": clampByte(ToInt(args[0])),
+			"g": clampByte(ToInt(args[1])),
+			"b": clampByte(ToInt(args[2])),
 			"a": 255,
 		}, nil
 	},
 	"color.rgba": func(args []any) (any, error) {
 		return map[string]any{
-			"r": clampByte(toInt(args[0])),
-			"g": clampByte(toInt(args[1])),
-			"b": clampByte(toInt(args[2])),
-			"a": clampByte(toInt(args[3])),
+			"r": clampByte(ToInt(args[0])),
+			"g": clampByte(ToInt(args[1])),
+			"b": clampByte(ToInt(args[2])),
+			"a": clampByte(ToInt(args[3])),
 		}, nil
 	},
 	"color.opacity": func(args []any) (any, error) {
@@ -246,7 +246,7 @@ var nativeMethods = map[string]nativeFunc{
 			"r": m["r"],
 			"g": m["g"],
 			"b": m["b"],
-			"a": clampByte(toInt(args[1])),
+			"a": clampByte(ToInt(args[1])),
 		}, nil
 	},
 	"color.lighten": func(args []any) (any, error) {
@@ -255,9 +255,9 @@ var nativeMethods = map[string]nativeFunc{
 			return nil, fmt.Errorf("color.lighten requires a color, got %T", args[0])
 		}
 		pct := toFloat(args[1])
-		r := toInt(m["r"])
-		g := toInt(m["g"])
-		b := toInt(m["b"])
+		r := ToInt(m["r"])
+		g := ToInt(m["g"])
+		b := ToInt(m["b"])
 		return map[string]any{
 			"r": clampByte(r + int(float64(255-r)*pct)),
 			"g": clampByte(g + int(float64(255-g)*pct)),
@@ -280,10 +280,10 @@ var nativeMethods = map[string]nativeFunc{
 	},
 	"color.hex": func(args []any) (any, error) {
 		if m, ok := args[0].(map[string]any); ok {
-			r := clampByte(toInt(m["r"]))
-			g := clampByte(toInt(m["g"]))
-			b := clampByte(toInt(m["b"]))
-			a := toInt(m["a"])
+			r := clampByte(ToInt(m["r"]))
+			g := clampByte(ToInt(m["g"]))
+			b := clampByte(ToInt(m["b"]))
+			a := ToInt(m["a"])
 			if a == 255 {
 				return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
 			}
@@ -347,8 +347,8 @@ var nativeMethods = map[string]nativeFunc{
 		if !ok {
 			return args[0], nil
 		}
-		start := toInt(args[1])
-		end := toInt(args[2])
+		start := ToInt(args[1])
+		end := ToInt(args[2])
 		if start < 0 {
 			start = 0
 		}

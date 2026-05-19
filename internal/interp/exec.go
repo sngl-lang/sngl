@@ -1,4 +1,4 @@
-package testrunner
+package interp
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // AssertError is returned when an assertion fails. Msg is the structured
-// failure message produced by runAssert (named operands and their values
+// failure message produced by RunAssert (named operands and their values
 // for binary comparisons, list/string contains, etc.).
 type AssertError struct {
 	Expr ir.Expr // the expression that was asserted
@@ -168,7 +168,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if !exists {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		env.Vars[target.Name] = applyOp(s.Op, cur, val)
+		env.Vars[target.Name] = ApplyOp(s.Op, cur, val)
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -179,7 +179,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
-			m[target.Field] = applyOp(s.Op, m[target.Field], val)
+			m[target.Field] = ApplyOp(s.Op, m[target.Field], val)
 			return nil
 		}
 		return fmt.Errorf("cannot assign to field on %T", obj)
@@ -193,11 +193,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return err
 		}
 		if list, ok := obj.([]any); ok {
-			i := toInt(idx)
+			i := ToInt(idx)
 			if i < 0 || i >= len(list) {
 				return fmt.Errorf("index %d out of range (len %d)", i, len(list))
 			}
-			list[i] = applyOp(s.Op, list[i], val)
+			list[i] = ApplyOp(s.Op, list[i], val)
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
@@ -223,20 +223,8 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		if err != nil {
 			return err
 		}
-		if cv, ok := obj.(*componentValue); ok {
-			cur, exists := cv.Vars[target.Field]
-			if !exists {
-				return fmt.Errorf("cannot toggle undefined field %q", target.Field)
-			}
-			b, ok := cur.(bool)
-			if !ok {
-				return fmt.Errorf("cannot toggle non-bool field %q", target.Field)
-			}
-			cv.Vars[target.Field] = !b
-			if !cv.testParams[target.Field] {
-				cv.Env.Vars[target.Field] = !b
-			}
-			return nil
+		if cv, ok := obj.(ComponentValue); ok {
+			return cv.Toggle(target.Field)
 		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)
@@ -321,7 +309,7 @@ func (env *Env) execFor(s *ir.For) error {
 	return nil
 }
 
-func applyOp(op ast.AssignOp, cur, val any) any {
+func ApplyOp(op ast.AssignOp, cur, val any) any {
 	switch op {
 	case ast.AssignSet:
 		return val

@@ -1,4 +1,4 @@
-package testrunner
+package interp
 
 import (
 	"fmt"
@@ -17,14 +17,14 @@ import (
 // maxCallDepth is the maximum allowed function call depth.
 const maxCallDepth = 100
 
-// lambdaValue is a closure captured by a lambda expression.
-type lambdaValue struct {
+// LambdaValue is a closure captured by a lambda expression.
+type LambdaValue struct {
 	fn  *ir.Func
 	env *Env
 }
 
 // call invokes the lambda with the given values.
-func (lv *lambdaValue) call(args []any) (any, error) {
+func (lv *LambdaValue) Call(args []any) (any, error) {
 	child := lv.env.Snapshot()
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
@@ -35,7 +35,7 @@ func (lv *lambdaValue) call(args []any) (any, error) {
 }
 
 // callWithEnv is like call but uses the provided env directly (no snapshot).
-func (lv *lambdaValue) callWithEnv(env *Env, args []any) (any, error) {
+func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
 			env.Vars[p.Name] = args[i]
@@ -285,7 +285,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.NumberInt(toInt(nV), fmt.Sprintf("%v", sV)), true, nil
+		return tr.NumberInt(ToInt(nV), fmt.Sprintf("%v", sV)), true, nil
 	case "NumberFloat":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.NumberFloat requires 3 arguments")
@@ -376,7 +376,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Plural(toInt(cV), forms), true, nil
+		return tr.Plural(ToInt(cV), forms), true, nil
 	case "SelectOrdinal":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.SelectOrdinal requires 3 arguments")
@@ -389,7 +389,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Selectordinal(toInt(cV), forms), true, nil
+		return tr.Selectordinal(ToInt(cV), forms), true, nil
 	}
 	return nil, false, nil
 }
@@ -444,7 +444,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.NumberInt(toInt(nVal), fmt.Sprintf("%v", styleVal)), true, nil
+		return tr.NumberInt(ToInt(nVal), fmt.Sprintf("%v", styleVal)), true, nil
 
 	case "numberFloat":
 		if len(args) < 2 {
@@ -484,7 +484,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return goi18n.Exactly(toInt(nVal)), true, nil
+		return goi18n.Exactly(ToInt(nVal)), true, nil
 
 	case "plural":
 		if len(args) < 2 {
@@ -498,7 +498,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Plural(toInt(countVal), forms), true, nil
+		return tr.Plural(ToInt(countVal), forms), true, nil
 
 	case "selectordinal":
 		if len(args) < 2 {
@@ -512,7 +512,7 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 		if err != nil {
 			return nil, true, err
 		}
-		return tr.Selectordinal(toInt(countVal), forms), true, nil
+		return tr.Selectordinal(ToInt(countVal), forms), true, nil
 
 	case "defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
@@ -643,11 +643,11 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 	case *ir.Spread:
 		return env.Eval(n.Operand)
 	case *ir.Lambda:
-		return &lambdaValue{fn: n.Func, env: env}, nil
+		return &LambdaValue{fn: n.Func, env: env}, nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
 	case *ir.Closure:
-		return &lambdaValue{fn: n.Func, env: env}, nil
+		return &LambdaValue{fn: n.Func, env: env}, nil
 	}
 	if e == nil {
 		return nil, fmt.Errorf("cannot evaluate <nil> expression")
@@ -707,7 +707,7 @@ func (env *Env) lookup(name string) (any, error) {
 	}
 	// Zero-arg functions auto-invoke (computed fields)
 	if fn, ok := env.Funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
-		return env.evalUserFunc(fn, nil)
+		return env.EvalUserFunc(fn, nil)
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }
@@ -765,7 +765,7 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		return nil, err
 	}
 	if list, ok := obj.([]any); ok {
-		i := toInt(idx)
+		i := ToInt(idx)
 		if i < 0 || i >= len(list) {
 			return nil, fmt.Errorf("index %d out of range (len %d)", i, len(list))
 		}
@@ -800,7 +800,7 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 	}
 	switch e.Type.Kind {
 	case ir.TypeInt:
-		return toInt(v), nil
+		return ToInt(v), nil
 	case ir.TypeFloat:
 		return toFloat(v), nil
 	case ir.TypeString:
@@ -1032,12 +1032,12 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lv, ok := v.(*lambdaValue); ok {
+		if lv, ok := v.(*LambdaValue); ok {
 			args, err := env.evalCallArgs(call.Args)
 			if err != nil {
 				return nil, err
 			}
-			return lv.call(args)
+			return lv.Call(args)
 		}
 	}
 	return nil, fmt.Errorf("cannot call unresolved expression")
@@ -1060,7 +1060,7 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			return toInt(v), nil
+			return ToInt(v), nil
 		}
 	case "float":
 		if len(call.Args) == 1 {
@@ -1083,7 +1083,7 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 			return re, nil
 		}
 	}
-	return env.evalUserFunc(call.Func, argExprs(call.Args))
+	return env.EvalUserFunc(call.Func, argExprs(call.Args))
 }
 
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
@@ -1135,21 +1135,8 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		if tv, ok := evalArgs[0].(TestingT); ok {
 			return tv.CallMethod(env, method, argExprs(call.Args[1:]))
 		}
-		if cv, ok := evalArgs[0].(*componentValue); ok {
-			if method[0] == '@' {
-				return nil, nil
-			}
-			if fn, ok := cv.Funcs[method]; ok {
-				compEnv := cv.compEnv()
-				result, err := compEnv.evalUserFunc(fn, argExprs(call.Args[1:]))
-				for k := range cv.Vars {
-					if v, ok := compEnv.Vars[k]; ok {
-						cv.Vars[k] = v
-						if !cv.testParams[k] {
-							cv.Env.Vars[k] = v
-						}
-					}
-				}
+		if cv, ok := evalArgs[0].(ComponentValue); ok {
+			if result, handled, err := cv.InvokeMethod(env, method, argExprs(call.Args[1:])); handled {
 				return result, err
 			}
 		}
@@ -1184,7 +1171,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 
 	// User-defined type-method.
 	if fn, ok := env.Funcs[qualName]; ok {
-		return env.evalUserFunc(fn, argExprs(call.Args))
+		return env.EvalUserFunc(fn, argExprs(call.Args))
 	}
 
 	// List/string higher-order and other built-in methods.
@@ -1228,7 +1215,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 			}
 			if fn, ok := env.Funcs[qualName]; ok {
-				return env.evalUserFunc(fn, argExprs(call.Args))
+				return env.EvalUserFunc(fn, argExprs(call.Args))
 			}
 		}
 	}
@@ -1251,24 +1238,11 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 				return nil, nil
 			}
-			switch rv := recv.(type) {
-			case *testingT:
-				return rv.CallMethod(env, method, argExprs(call.Args))
-			case *componentValue:
-				if len(method) > 0 && method[0] == '@' {
-					return nil, nil // event emission no-op
-				}
-				if fn, ok := rv.Funcs[method]; ok {
-					compEnv := rv.compEnv()
-					result, err := compEnv.evalUserFunc(fn, argExprs(call.Args))
-					for k := range rv.Vars {
-						if v, ok := compEnv.Vars[k]; ok {
-							rv.Vars[k] = v
-							if !rv.testParams[k] {
-								rv.Env.Vars[k] = v
-							}
-						}
-					}
+			if tv, ok := recv.(TestingT); ok {
+				return tv.CallMethod(env, method, argExprs(call.Args))
+			}
+			if cv, ok := recv.(ComponentValue); ok {
+				if result, handled, err := cv.InvokeMethod(env, method, argExprs(call.Args)); handled {
 					return result, err
 				}
 			}
@@ -1295,13 +1269,13 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn, ok := env.Funcs[qualName]; ok {
-				// Prepend receiver expr so evalUserFunc sees normalized form.
+				// Prepend receiver expr so EvalUserFunc sees normalized form.
 				synth := make([]ir.Expr, 0, len(call.Args)+1)
 				synth = append(synth, call.Receiver)
 				for _, a := range call.Args {
 					synth = append(synth, a.Value)
 				}
-				return env.evalUserFunc(fn, synth)
+				return env.EvalUserFunc(fn, synth)
 			}
 			return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 		}
@@ -1355,13 +1329,13 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*lambdaValue)
+			lv, ok := rest[0].(*LambdaValue)
 			if !ok {
 				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
 			}
 			var out []any
 			for _, item := range list {
-				v, err := lv.call([]any{item})
+				v, err := lv.Call([]any{item})
 				if err != nil {
 					return nil, err
 				}
@@ -1376,13 +1350,13 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "map":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*lambdaValue)
+			lv, ok := rest[0].(*LambdaValue)
 			if !ok {
 				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
 			}
 			out := make([]any, len(list))
 			for i, item := range list {
-				v, err := lv.call([]any{item})
+				v, err := lv.Call([]any{item})
 				if err != nil {
 					return nil, err
 				}
@@ -1397,7 +1371,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			idx := toInt(rest[0])
+			idx := ToInt(rest[0])
 			if idx >= 0 && idx < len(list) {
 				newList := append(list[:idx], list[idx+1:]...)
 				return env.writeBackList(recvExpr, newList)
@@ -1440,13 +1414,13 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*lambdaValue)
+			lv, ok := rest[0].(*LambdaValue)
 			if !ok {
 				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
 			}
 			var out []any
 			for _, item := range list {
-				v, err := lv.call([]any{item})
+				v, err := lv.Call([]any{item})
 				if err != nil {
 					return nil, err
 				}
@@ -1461,13 +1435,13 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "map":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*lambdaValue)
+			lv, ok := rest[0].(*LambdaValue)
 			if !ok {
 				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
 			}
 			out := make([]any, len(list))
 			for i, item := range list {
-				v, err := lv.call([]any{item})
+				v, err := lv.Call([]any{item})
 				if err != nil {
 					return nil, err
 				}
@@ -1482,7 +1456,7 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			idx := toInt(rest[0])
+			idx := ToInt(rest[0])
 			if idx >= 0 && idx < len(list) {
 				newList := append(list[:idx], list[idx+1:]...)
 				return env.writeBackList(call.Args[0].Value, newList)
@@ -1510,10 +1484,9 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if cv, ok := obj.(*componentValue); ok {
-			cv.Vars[t.Field] = newList
-			if !cv.testParams[t.Field] {
-				cv.Env.Vars[t.Field] = newList
+		if cv, ok := obj.(ComponentValue); ok {
+			if err := cv.WriteBackList(t.Field, newList); err != nil {
+				return nil, err
 			}
 		}
 	default:
@@ -1581,7 +1554,7 @@ func argExprs(args []ir.CallArg) []ir.Expr {
 	return out
 }
 
-func (env *Env) evalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
+func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 	args := make([]any, len(argExprs))
 	for i, a := range argExprs {
 		v, err := env.Eval(a)
@@ -1840,7 +1813,7 @@ func toFloat(v any) float64 {
 	return 0
 }
 
-func toInt(v any) int {
+func ToInt(v any) int {
 	switch val := v.(type) {
 	case int:
 		return val
