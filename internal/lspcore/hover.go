@@ -230,3 +230,11 @@ func typeExprString(te ast.TypeExpr) string {
 		return fmt.Sprintf("%v", te)
 	}
 }
+
+// HoverAt returns hover markdown for the cursor position. Tries literal
+// hover first (for color/measurement literals where the cursor isn't on
+// an identifier word), then falls back to word-based identifier hover.
+func HoverAt(content string, doc *ast.Document, line, col int) string {
+	// Literal lookup is added in a later task; for now, just delegate.
+	return Hover(content, doc, line, col)
+}

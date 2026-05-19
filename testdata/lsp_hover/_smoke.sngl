@@ -1,0 +1,2 @@
+// HOVER(Counter) "component Counter"
+component Counter(label string) { vbox {} }
