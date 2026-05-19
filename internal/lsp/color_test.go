@@ -3,6 +3,7 @@ package lsp
 import (
 	"math"
 	"os"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -104,13 +105,21 @@ func TestDocumentColor(t *testing.T) {
 	got := computeDocumentColors(string(src), doc)
 
 	want := []ColorInformation{
+		// #ff0000
 		{Range: Range{Start: Position{Line: 1, Character: 23}, End: Position{Line: 1, Character: 30}}, Color: Color{Red: 1, Green: 0, Blue: 0, Alpha: 1}},
+		// #00ff00
 		{Range: Range{Start: Position{Line: 2, Character: 23}, End: Position{Line: 2, Character: 30}}, Color: Color{Red: 0, Green: 1, Blue: 0, Alpha: 1}},
+		// #aabbcc
 		{Range: Range{Start: Position{Line: 3, Character: 13}, End: Position{Line: 3, Character: 20}}, Color: Color{Red: 0xaa / 255.0, Green: 0xbb / 255.0, Blue: 0xcc / 255.0, Alpha: 1}},
+		// #11223344
 		{Range: Range{Start: Position{Line: 4, Character: 13}, End: Position{Line: 4, Character: 22}}, Color: Color{Red: 0x11 / 255.0, Green: 0x22 / 255.0, Blue: 0x33 / 255.0, Alpha: 0x44 / 255.0}},
+		// color.rgb(255, 128, 64)
+		{Range: rangeOfSubstring(t, string(src), "color.rgb(255, 128, 64)"), Color: Color{Red: 1, Green: 128.0 / 255.0, Blue: 64.0 / 255.0, Alpha: 1}},
+		// color.rgba(10, 20, 30, 200)
+		{Range: rangeOfSubstring(t, string(src), "color.rgba(10, 20, 30, 200)"), Color: Color{Red: 10.0 / 255.0, Green: 20.0 / 255.0, Blue: 30.0 / 255.0, Alpha: 200.0 / 255.0}},
 	}
 	if len(got) != len(want) {
-		t.Fatalf("got %d colors, want %d: %+v", len(got), len(want), got)
+		t.Fatalf("got %d colors, want %d:\ngot:  %+v\nwant: %+v", len(got), len(want), got, want)
 	}
 	for i, w := range want {
 		g := got[i]
@@ -120,5 +129,28 @@ func TestDocumentColor(t *testing.T) {
 		if !floatEq(g.Color.Red, w.Color.Red) || !floatEq(g.Color.Green, w.Color.Green) || !floatEq(g.Color.Blue, w.Color.Blue) || !floatEq(g.Color.Alpha, w.Color.Alpha) {
 			t.Errorf("color %d value: got %+v, want %+v", i, g.Color, w.Color)
 		}
+	}
+}
+
+// rangeOfSubstring returns the LSP Range for the first occurrence of needle in src.
+func rangeOfSubstring(t *testing.T, src, needle string) Range {
+	t.Helper()
+	idx := strings.Index(src, needle)
+	if idx < 0 {
+		t.Fatalf("substring %q not found in source", needle)
+	}
+	line := 0
+	col := 0
+	for i := 0; i < idx; i++ {
+		if src[i] == '\n' {
+			line++
+			col = 0
+		} else {
+			col++
+		}
+	}
+	return Range{
+		Start: Position{Line: line, Character: col},
+		End:   Position{Line: line, Character: col + len(needle)},
 	}
 }
