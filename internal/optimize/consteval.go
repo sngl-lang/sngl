@@ -435,8 +435,6 @@ func parseLiteral(lit *ir.Literal) any {
 		return f
 	case ir.TypeString:
 		return lit.Raw
-	case ir.TypeColor:
-		return lit.Raw
 	}
 	return nil
 }
