@@ -93,6 +93,10 @@ func hoverInStmts(stmts []ast.Stmt, doc *ast.Document, word string) string {
 			if s.Name == word {
 				return formatEnumHover(s, doc)
 			}
+		case *ast.UnitDef:
+			if s.Name == word {
+				return formatUnitHover(s, doc)
+			}
 		}
 	}
 	return ""
@@ -307,6 +311,29 @@ func literalValueString(e ast.Expr) string {
 		}
 	}
 	return ""
+}
+
+func formatUnitHover(u *ast.UnitDef, doc *ast.Document) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "```sngl\nunit %s {\n", u.Name)
+	for _, sfx := range u.Suffixes {
+		sb.WriteString("    ")
+		sb.WriteString(sfx.Name)
+		if sfx.Factor != nil {
+			if lit, ok := sfx.Factor.(*ast.LiteralExpr); ok {
+				sb.WriteString(" = ")
+				sb.WriteString(lit.Raw)
+			}
+		}
+		sb.WriteByte('\n')
+	}
+	sb.WriteString("}\n```\n")
+	if d := docForPos(doc, u.Pos); d != "" {
+		sb.WriteByte('\n')
+		sb.WriteString(d)
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 // HoverAt returns hover markdown for the cursor position. Tries literal

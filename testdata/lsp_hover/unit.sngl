@@ -1,0 +1,6 @@
+// HOVER(time) "unit time"
+// HOVER(time) "ms"
+// HOVER(time) "s"
+// HOVER(time) "Time measurement."
+// Time measurement.
+unit time { ms, s = 1000ms, m = 60s }
