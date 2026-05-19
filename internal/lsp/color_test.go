@@ -92,6 +92,33 @@ func TestColorPresentations(t *testing.T) {
 	}
 }
 
+func TestColorPresentations_HonorsOriginal(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string // source text at the range
+		color   Color
+		want    string
+	}{
+		{"hex opaque", "#ff0000", Color{1, 0, 0, 1}, "#ff0000"},
+		{"hex with alpha", "#ff0000", Color{1, 0, 0, 0.5}, "#ff000080"},
+		{"rgb call opaque", "color.rgb(255, 0, 0)", Color{0, 1, 0, 1}, "color.rgb(0, 255, 0)"},
+		{"rgb call gains alpha", "color.rgb(255, 0, 0)", Color{1, 0, 0, 0.5}, "color.rgba(255, 0, 0, 128)"},
+		{"rgba call retains form", "color.rgba(10, 20, 30, 200)", Color{1, 1, 1, 1}, "color.rgba(255, 255, 255, 255)"},
+		{"rgba call alpha=1", "color.rgba(10, 20, 30, 200)", Color{0, 0, 0, 1}, "color.rgba(0, 0, 0, 255)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := computeColorPresentationsForSource(tt.source, tt.color)
+			if len(got) != 1 {
+				t.Fatalf("got %d presentations, want 1", len(got))
+			}
+			if got[0].Label != tt.want {
+				t.Errorf("label = %q, want %q", got[0].Label, tt.want)
+			}
+		})
+	}
+}
+
 func floatEq(a, b float64) bool {
 	return math.Abs(a-b) < 1e-9
 }

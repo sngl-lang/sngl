@@ -443,11 +443,73 @@ func computeColorPresentations(c Color) []ColorPresentation {
 	return []ColorPresentation{{Label: formatHexColor(c)}}
 }
 
+// computeColorPresentationsForSource picks a hex-or-call rendering based on
+// the source text that the editor highlighted. Falls back to hex if the
+// source doesn't begin with "color.".
+func computeColorPresentationsForSource(source string, c Color) []ColorPresentation {
+	source = strings.TrimSpace(source)
+	if strings.HasPrefix(source, "color.rgba(") {
+		return []ColorPresentation{{Label: formatColorRgbaCall(c)}}
+	}
+	if strings.HasPrefix(source, "color.rgb(") {
+		if c.Alpha < 1.0 {
+			// Caller gained alpha — promote to rgba so we don't silently drop it.
+			return []ColorPresentation{{Label: formatColorRgbaCall(c)}}
+		}
+		return []ColorPresentation{{Label: formatColorRgbCall(c)}}
+	}
+	return computeColorPresentations(c)
+}
+
+func formatColorRgbCall(c Color) string {
+	return fmt.Sprintf("color.rgb(%d, %d, %d)", clamp8(c.Red), clamp8(c.Green), clamp8(c.Blue))
+}
+
+func formatColorRgbaCall(c Color) string {
+	return fmt.Sprintf("color.rgba(%d, %d, %d, %d)", clamp8(c.Red), clamp8(c.Green), clamp8(c.Blue), clamp8(c.Alpha))
+}
+
 func (s *Server) handleColorPresentation(id json.RawMessage, params json.RawMessage) {
 	var p ColorPresentationParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		s.sendError(id, -32602, "invalid params")
 		return
 	}
-	s.sendResult(id, computeColorPresentations(p.Color))
+	source := ""
+	if fs := s.ws.get(p.TextDocument.URI); fs != nil {
+		source = sliceRange(fs.Content, p.Range)
+	}
+	s.sendResult(id, computeColorPresentationsForSource(source, p.Color))
+}
+
+// sliceRange extracts the substring of `content` covered by an LSP Range.
+// Lines and characters are 0-based. Returns "" if the range is malformed.
+func sliceRange(content string, r Range) string {
+	lines := strings.Split(content, "\n")
+	if r.Start.Line < 0 || r.Start.Line >= len(lines) {
+		return ""
+	}
+	if r.End.Line < 0 || r.End.Line >= len(lines) {
+		return ""
+	}
+	if r.Start.Line == r.End.Line {
+		l := lines[r.Start.Line]
+		if r.Start.Character < 0 || r.End.Character > len(l) || r.Start.Character > r.End.Character {
+			return ""
+		}
+		return l[r.Start.Character:r.End.Character]
+	}
+	var sb strings.Builder
+	sb.WriteString(lines[r.Start.Line][r.Start.Character:])
+	for i := r.Start.Line + 1; i < r.End.Line; i++ {
+		sb.WriteByte('\n')
+		sb.WriteString(lines[i])
+	}
+	sb.WriteByte('\n')
+	end := lines[r.End.Line]
+	if r.End.Character > len(end) {
+		return ""
+	}
+	sb.WriteString(end[:r.End.Character])
+	return sb.String()
 }
