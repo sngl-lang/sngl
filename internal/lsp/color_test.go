@@ -68,6 +68,29 @@ func TestFormatHexColor(t *testing.T) {
 	}
 }
 
+func TestColorPresentations(t *testing.T) {
+	tests := []struct {
+		name string
+		c    Color
+		want string
+	}{
+		{"opaque red", Color{1, 0, 0, 1}, "#ff0000"},
+		{"semi red", Color{1, 0, 0, 0.5}, "#ff000080"},
+		{"black", Color{0, 0, 0, 1}, "#000000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := computeColorPresentations(tt.c)
+			if len(got) != 1 {
+				t.Fatalf("got %d presentations, want 1", len(got))
+			}
+			if got[0].Label != tt.want {
+				t.Errorf("label = %q, want %q", got[0].Label, tt.want)
+			}
+		})
+	}
+}
+
 func floatEq(a, b float64) bool {
 	return math.Abs(a-b) < 1e-9
 }

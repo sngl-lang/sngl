@@ -269,3 +269,16 @@ func walkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 		walkS(st)
 	}
 }
+
+func computeColorPresentations(c Color) []ColorPresentation {
+	return []ColorPresentation{{Label: formatHexColor(c)}}
+}
+
+func (s *Server) handleColorPresentation(id json.RawMessage, params json.RawMessage) {
+	var p ColorPresentationParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		s.sendError(id, -32602, "invalid params")
+		return
+	}
+	s.sendResult(id, computeColorPresentations(p.Color))
+}
