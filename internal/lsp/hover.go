@@ -40,6 +40,9 @@ func (s *Server) handleHover(id json.RawMessage, params json.RawMessage) {
 
 	line := p.Position.Line + 1
 	col := p.Position.Character + 1
+
+	pkg, _ := s.checkForPreview(fs)
+
 	opts := lspcore.HoverOptions{
 		ComponentImageURL: func(name string) (string, bool) {
 			path, ok := componentSnapshotPath(p.TextDocument.URI, name)
@@ -47,6 +50,12 @@ func (s *Server) handleHover(id json.RawMessage, params json.RawMessage) {
 				return "", false
 			}
 			return s.preview.RegisterAsset(path), true
+		},
+		StdlibSymbol: func(name string) (string, bool) {
+			return lookupStdlibSymbol(pkg, name)
+		},
+		ComponentProp: func(componentName, propName string) (string, bool) {
+			return lookupComponentProp(pkg, componentName, propName)
 		},
 	}
 	info := lspcore.HoverAt(fs.Content, fs.Doc, line, col, opts)

@@ -58,11 +58,15 @@ func hoverInfoWithOptions(doc *ast.Document, word string, opts HoverOptions) str
 		return info
 	}
 
+	if opts.StdlibSymbol != nil {
+		if md, ok := opts.StdlibSymbol(word); ok {
+			return md
+		}
+	}
+
 	if desc, ok := keywordDocs[word]; ok {
 		return fmt.Sprintf("```sngl\n%s\n```\n\n%s\n", word, desc)
 	}
-
-	// TODO: stdlib hover lookup (LoadStdlib removed in v2)
 
 	return ""
 }
@@ -356,6 +360,14 @@ type HoverOptions struct {
 	// append a markdown image embed (`![<Name>](url)`) below the signature
 	// and doc text.
 	ComponentImageURL func(componentName string) (url string, ok bool)
+	// StdlibSymbol, if non-nil, is consulted when hoverInStmts doesn't
+	// find the word in user code. The callback returns formatted
+	// markdown for stdlib funcs/components/structs/units, or ok=false.
+	StdlibSymbol func(name string) (markdown string, ok bool)
+	// ComponentProp, if non-nil, is invoked when the cursor sits on a
+	// named-arg key inside a visual node. Returns markdown describing
+	// the resolved component prop.
+	ComponentProp func(componentName, propName string) (markdown string, ok bool)
 }
 
 // HoverAt returns hover markdown for the cursor position. Tries literal
@@ -366,8 +378,109 @@ func HoverAt(content string, doc *ast.Document, line, col int, opts HoverOptions
 		if info := hoverLiteralAt(doc, line, col); info != "" {
 			return info
 		}
+		if info := hoverPropAt(doc, line, col, opts); info != "" {
+			return info
+		}
 	}
 	return hoverWord(content, doc, line, col, opts)
+}
+
+// hoverPropAt returns the markdown when the cursor is on a named-arg
+// key inside a visual node. Returns "" if the position isn't on a prop
+// or the callback declines.
+func hoverPropAt(doc *ast.Document, line, col int, opts HoverOptions) string {
+	if opts.ComponentProp == nil {
+		return ""
+	}
+	var foundComp, foundProp string
+	walkVisualNodes(doc, func(vn *ast.VisualNode) {
+		if foundProp != "" {
+			return
+		}
+		compName := visualNodeName(vn)
+		if compName == "" {
+			return
+		}
+		for _, ah := range vn.Args.Args {
+			arg, ok := ah.(ast.Arg)
+			if !ok || arg.Name == "" || arg.Value == nil {
+				continue
+			}
+			vp := arg.Value.ExprPos()
+			if vp == nil {
+				continue
+			}
+			// Value's Pos is the start of the value; the `=` is one
+			// column before it, and the name occupies the preceding
+			// runes. Approximate name column accordingly.
+			nameCol := vp.Column - len(arg.Name) - 1
+			if vp.Line == line && col >= nameCol && col < nameCol+len(arg.Name) {
+				foundComp = compName
+				foundProp = arg.Name
+				return
+			}
+		}
+	})
+	if foundProp == "" {
+		return ""
+	}
+	if md, ok := opts.ComponentProp(foundComp, foundProp); ok {
+		return md
+	}
+	return ""
+}
+
+func visualNodeName(vn *ast.VisualNode) string {
+	if vn == nil || vn.Target == nil {
+		return ""
+	}
+	if id, ok := vn.Target.(*ast.IdentExpr); ok {
+		return id.Name
+	}
+	return ""
+}
+
+// walkVisualNodes invokes fn for every VisualNode in the document, recursively.
+func walkVisualNodes(doc *ast.Document, fn func(*ast.VisualNode)) {
+	if doc == nil {
+		return
+	}
+	var walkStmt func(s ast.Stmt)
+	walkStmt = func(s ast.Stmt) {
+		switch x := s.(type) {
+		case *ast.VisualNode:
+			fn(x)
+			for _, child := range x.Block.Stmts {
+				walkStmt(child)
+			}
+		case *ast.ComponentDecl:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		case *ast.FuncDef:
+			for _, c := range x.Block.Stmts {
+				walkStmt(c)
+			}
+		case *ast.IfStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+			for _, c := range x.Else.Stmts {
+				walkStmt(c)
+			}
+		case *ast.ForStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		case *ast.PlatformStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		}
+	}
+	for _, s := range doc.Stmts {
+		walkStmt(s)
+	}
 }
 
 // hoverWord is the position→identifier→markdown path used by HoverAt.
