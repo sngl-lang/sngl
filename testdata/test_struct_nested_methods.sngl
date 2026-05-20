@@ -1,13 +1,13 @@
 struct Point {
     x, y int
 
-    func magnitude2() int => this.x*this.x + this.y*this.y
+    func magnitude2() => this.x*this.x + this.y*this.y
     func translate(dx, dy int) {
         this.x += dx
         this.y += dy
     }
     // `this.`-elision: bare field, bare sibling call
-    func describe() string => "({x},{y}) m2={magnitude2()}"
+    func describe() => "({x},{y}) m2={magnitude2()}"
 }
 
 component main {

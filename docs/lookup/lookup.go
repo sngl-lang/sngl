@@ -684,7 +684,7 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 		}
 		return Result{}, fmt.Errorf("%w: prop %q on component %s", ErrNotFound, ident, info.Name)
 	case *ast.StructDef:
-		for _, f := range decl.Fields {
+		for _, f := range decl.Fields() {
 			if slices.Contains(f.Names, ident) {
 				return Result{Kind: KindField, Field: &FieldDetail{Type: info.Name, Name: ident, Expr: f.Type}}, nil
 			}
@@ -695,7 +695,7 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 		}
 		return Result{}, fmt.Errorf("%w: field %q on struct %s", ErrNotFound, ident, info.Name)
 	case *ast.EnumDef:
-		for _, m := range decl.Members {
+		for _, m := range decl.Members() {
 			if m.Name == ident {
 				return Result{Kind: KindMember, Member: &MemberDetail{Enum: info.Name, Name: ident}}, nil
 			}

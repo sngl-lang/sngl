@@ -260,7 +260,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	}
 
 	var fields []*ir.StructField
-	for _, f := range s.Fields {
+	for _, f := range s.Fields() {
 		fieldLabel := "struct field"
 		if len(f.Names) > 0 {
 			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
@@ -291,8 +291,9 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 
 // buildEnumDef builds an IR EnumDef from an AST EnumDef.
 func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
-	members := make([]*ir.EnumMember, len(e.Members))
-	for i, m := range e.Members {
+	astMembers := e.Members()
+	members := make([]*ir.EnumMember, len(astMembers))
+	for i, m := range astMembers {
 		var val ir.Expr
 		if m.Value != nil {
 			// Placeholder; actual value checked later when scope is ready.

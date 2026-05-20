@@ -2,7 +2,7 @@ component counter {
     var n = 0
     func bump()  { n += 1 }       // bare field
     func reset() { this.n = 0 }   // explicit this
-    func value() int => n         // bare field in expression body
+    func value() => n         // bare field in expression body
 }
 
 component main {

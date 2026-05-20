@@ -561,7 +561,7 @@ func renderStructDoc(s *ast.StructDef, fieldName, doc string) string {
 
 	if fieldName != "" {
 		// Show specific field
-		for _, f := range s.Fields {
+		for _, f := range s.Fields() {
 			for _, name := range f.Names {
 				if name == fieldName {
 					sb.WriteString(fmt.Sprintf("## %s.%s\n\n", s.Name, name))
@@ -574,12 +574,12 @@ func renderStructDoc(s *ast.StructDef, fieldName, doc string) string {
 		return sb.String()
 	}
 
-	if len(s.Fields) == 0 {
+	if len(s.Fields()) == 0 {
 		return sb.String()
 	}
 
 	sb.WriteString("## Fields\n\n```\n")
-	for _, f := range s.Fields {
+	for _, f := range s.Fields() {
 		tstr := parser.FormatType(f.Type)
 		for _, name := range f.Names {
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", name, tstr))
@@ -598,7 +598,7 @@ func renderEnumDoc(e *ast.EnumDef, doc string) string {
 	}
 
 	sb.WriteString("## Values\n\n```\n")
-	for _, m := range e.Members {
+	for _, m := range e.Members() {
 		sb.WriteString(m.Name + "\n")
 	}
 	sb.WriteString("```\n")

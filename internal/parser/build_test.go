@@ -104,13 +104,13 @@ func TestParseStructDecl(t *testing.T) {
 	if sd.Name != "Point" {
 		t.Errorf("expected name Point, got %q", sd.Name)
 	}
-	if len(sd.Fields) != 2 {
-		t.Fatalf("expected 2 fields, got %d", len(sd.Fields))
+	if len(sd.Fields()) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(sd.Fields()))
 	}
-	if len(sd.Fields[0].Names) != 1 || sd.Fields[0].Names[0] != "x" {
-		t.Errorf("expected field x, got %v", sd.Fields[0].Names)
+	if len(sd.Fields()[0].Names) != 1 || sd.Fields()[0].Names[0] != "x" {
+		t.Errorf("expected field x, got %v", sd.Fields()[0].Names)
 	}
-	if sd.Fields[1].Default == nil {
+	if sd.Fields()[1].Default == nil {
 		t.Error("expected default on field y")
 	}
 }
@@ -124,11 +124,11 @@ func TestParseEnumDecl(t *testing.T) {
 	if ed.Name != "Color" {
 		t.Errorf("expected name Color, got %q", ed.Name)
 	}
-	if len(ed.Members) != 3 {
-		t.Fatalf("expected 3 members, got %d", len(ed.Members))
+	if len(ed.Members()) != 3 {
+		t.Fatalf("expected 3 members, got %d", len(ed.Members()))
 	}
-	if ed.Members[0].Name != "Red" {
-		t.Errorf("expected Red, got %q", ed.Members[0].Name)
+	if ed.Members()[0].Name != "Red" {
+		t.Errorf("expected Red, got %q", ed.Members()[0].Name)
 	}
 }
 

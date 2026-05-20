@@ -194,7 +194,7 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
-	for _, f := range s.Fields {
+	for _, f := range s.Fields() {
 		fmt.Fprintf(&sb, "    %s %s\n", strings.Join(f.Names, ", "), typeExprString(f.Type))
 	}
 	sb.WriteString("}\n```\n")
@@ -209,7 +209,7 @@ func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
 func formatEnumHover(e *ast.EnumDef, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nenum %s {\n", e.Name)
-	for _, m := range e.Members {
+	for _, m := range e.Members() {
 		fmt.Fprintf(&sb, "    %s\n", m.Name)
 	}
 	sb.WriteString("}\n```\n")
@@ -406,7 +406,7 @@ func hoverStructFieldAt(doc *ast.Document, line, col int) string {
 		if found != "" {
 			return
 		}
-		for _, f := range sd.Fields {
+		for _, f := range sd.Fields() {
 			for i, n := range f.Names {
 				var pos ast.Pos
 				if i < len(f.NamePositions) {

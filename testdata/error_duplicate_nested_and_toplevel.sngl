@@ -1,9 +1,9 @@
 struct S {
     x int
-    func foo() int => this.x
+    func foo() => this.x
 }
 
-func S.foo(s S) int => s.x + 1 // ERROR(check) "duplicate declaration"
+func S.foo(s S) => s.x + 1 // ERROR(check) "duplicate declaration"
 
 component main {
     text(value="x")

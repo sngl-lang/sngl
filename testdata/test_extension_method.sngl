@@ -4,7 +4,7 @@ struct Vec2 {
     x, y int
 }
 
-func Vec2.dot(a Vec2, b Vec2) int => a.x*b.x + a.y*b.y
+func Vec2.dot(a Vec2, b Vec2) => a.x*b.x + a.y*b.y
 
 component main {
     var u = Vec2{x = 1, y = 2}

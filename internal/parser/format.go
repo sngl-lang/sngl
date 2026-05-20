@@ -184,11 +184,11 @@ func (f *formatter) endLine(s ast.Stmt) int {
 		return f.blockEndLine(x.Pos.Line, &x.Body)
 	case *ast.StructDef:
 		if x.IsMultiline {
-			return x.Pos.Line + len(x.Fields) + 1
+			return x.Pos.Line + len(x.Fields()) + 1
 		}
 	case *ast.EnumDef:
 		if x.IsMultiline {
-			return x.Pos.Line + len(x.Members) + 1
+			return x.Pos.Line + len(x.Members()) + 1
 		}
 	}
 	if p := s.StmtPos(); p != nil {
@@ -281,7 +281,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		}
 		f.write(" ")
 	}
-	if len(s.Fields) == 0 {
+	if len(s.Fields()) == 0 {
 		f.write("{}")
 		return
 	}
@@ -289,7 +289,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("{")
 	f.newline()
 	f.indent++
-	for _, field := range s.Fields {
+	for _, field := range s.Fields() {
 		f.write(strings.Join(field.Names, ", "))
 		if field.Type != nil {
 			f.write(" ")
@@ -317,7 +317,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	if e.IsMultiline {
 		f.newline()
 		f.indent++
-		for _, m := range e.Members {
+		for _, m := range e.Members() {
 			f.write(m.Name)
 			if m.Value != nil {
 				f.write(" = ")
@@ -329,7 +329,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		f.write("}")
 	} else {
 		f.write(" ")
-		for i, m := range e.Members {
+		for i, m := range e.Members() {
 			if i > 0 {
 				f.write(", ")
 			}

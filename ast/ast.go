@@ -60,21 +60,82 @@ type EnumMember struct {
 	Value Expr // nil for bare members
 }
 
+// EnumBodyItem is one element inside an enum body — a member or a nested func.
+type EnumBodyItem interface {
+	enumBodyItem()
+}
+
+func (*EnumMember) enumBodyItem() {}
+func (*FuncDef) enumBodyItem()    {}
+
 // EnumDef declares an enum type. Name is empty for anonymous enum types.
 type EnumDef struct {
 	Pos         Pos
 	Name        string
-	Members     []EnumMember
+	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
 }
+
+// Members returns just the *EnumMember items from Body, in source order.
+// Read-only iteration helper for callers that don't care about funcs.
+func (e *EnumDef) Members() []*EnumMember {
+	out := make([]*EnumMember, 0, len(e.Body))
+	for _, it := range e.Body {
+		if m, ok := it.(*EnumMember); ok {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// Funcs returns just the *FuncDef items from Body, in source order.
+func (e *EnumDef) Funcs() []*FuncDef {
+	out := make([]*FuncDef, 0, len(e.Body))
+	for _, it := range e.Body {
+		if f, ok := it.(*FuncDef); ok {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// StructBodyItem is one element inside a struct body — a field or a nested func.
+type StructBodyItem interface {
+	structBodyItem()
+}
+
+func (*StructField) structBodyItem() {}
+func (*FuncDef) structBodyItem()     {}
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
 	Pos         Pos
 	Name        string
 	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
-	Fields      []*StructField
+	Body        []StructBodyItem
 	IsMultiline bool
+}
+
+// Fields returns just the *StructField items from Body, in source order.
+func (s *StructDef) Fields() []*StructField {
+	out := make([]*StructField, 0, len(s.Body))
+	for _, it := range s.Body {
+		if f, ok := it.(*StructField); ok {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// Funcs returns just the *FuncDef items from Body, in source order.
+func (s *StructDef) Funcs() []*FuncDef {
+	out := make([]*FuncDef, 0, len(s.Body))
+	for _, it := range s.Body {
+		if f, ok := it.(*FuncDef); ok {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // StructField is a field in a struct declaration.

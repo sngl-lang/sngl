@@ -1,5 +1,5 @@
 enum Status { ok, err
-    func isOk() bool => this == Status.ok
+    func isOk() => this == Status.ok
 }
 
 component main {

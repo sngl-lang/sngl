@@ -336,7 +336,7 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 			if !ok || s.Name != "Options" {
 				continue
 			}
-			for _, f := range s.Fields {
+			for _, f := range s.Fields() {
 				for _, name := range f.Names {
 					if seen[name] {
 						continue

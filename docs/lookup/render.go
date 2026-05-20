@@ -114,9 +114,9 @@ func typeMD(pkg string, t *TypeDetail) string {
 		sb.WriteString("\n\n")
 	}
 	// Fields (struct or native struct).
-	if t.Struct != nil && len(t.Struct.Fields) > 0 {
+	if t.Struct != nil && len(t.Struct.Fields()) > 0 {
 		sb.WriteString("## Fields\n\n```\n")
-		for _, f := range t.Struct.Fields {
+		for _, f := range t.Struct.Fields() {
 			tstr := parser.FormatType(f.Type)
 			for _, name := range f.Names {
 				sb.WriteString(fmt.Sprintf("%-16s %s\n", name, tstr))
@@ -161,7 +161,7 @@ func enumMD(pkg string, e *EnumDetail) string {
 	}
 	var members []string
 	if e.AST != nil {
-		for _, m := range e.AST.Members {
+		for _, m := range e.AST.Members() {
 			members = append(members, m.Name)
 		}
 	}

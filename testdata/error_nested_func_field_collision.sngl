@@ -1,6 +1,6 @@
 struct Bad {
     x int
-    func x() int => 1 // ERROR(check) "duplicate declaration"
+    func x() => 1 // ERROR(check) "duplicate declaration"
 }
 
 component main {

@@ -3,7 +3,7 @@ struct S {
 }
 
 // No S-typed first param → static in S's namespace.
-func S.helper(n int) int => n * 2
+func S.helper(n int) => n * 2
 
 component main {
     text(value=string(S.helper(5)))

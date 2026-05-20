@@ -269,7 +269,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == StructField {
-			s.Fields = append(s.Fields, b.buildStructField(it.enter()))
+			s.Body = append(s.Body, b.buildStructField(it.enter()))
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == RBRACE {
 				if it.token().Line > lbraceLine {
@@ -321,7 +321,10 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
-			e.Members = b.buildEnumMembers(it.enter(), &e.IsMultiline)
+			members := b.buildEnumMembers(it.enter(), &e.IsMultiline)
+			for i := range members {
+				e.Body = append(e.Body, &members[i])
+			}
 		} else {
 			it.skip() // rbrace
 		}

@@ -334,7 +334,7 @@ func AllDeclPages() []DeclPage {
 			// Resolve the enum to enumerate its members.
 			if er, err := Lookup(pkg.Path, e.Name); err == nil && er.Kind == KindEnum && er.Enum != nil {
 				if er.Enum.AST != nil {
-					for _, m := range er.Enum.AST.Members {
+					for _, m := range er.Enum.AST.Members() {
 						add("enums", e.Name, m.Name)
 					}
 				}
@@ -617,7 +617,7 @@ func mapType(t *TypeDetail) TypeDetailView {
 		return v
 	}
 	if t.Struct != nil {
-		for _, f := range t.Struct.Fields {
+		for _, f := range t.Struct.Fields() {
 			ftype := formatType(f.Type)
 			for _, name := range f.Names {
 				v.Fields = append(v.Fields, FieldView{Name: name, Type: ftype})
@@ -640,7 +640,7 @@ func mapEnum(e *EnumDetail) EnumDetailView {
 		return v
 	}
 	if e.AST != nil {
-		for _, m := range e.AST.Members {
+		for _, m := range e.AST.Members() {
 			v.Members = append(v.Members, Summary{Name: m.Name})
 		}
 	}

@@ -103,7 +103,7 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 		if f.Default != nil {
 			sf.Default = c.convertExpr(f.Default)
 		}
-		def.Fields = append(def.Fields, sf)
+		def.Body = append(def.Body, sf)
 	}
 	return def
 }
@@ -118,7 +118,7 @@ func (c *converter) convertEnumDef(e *EnumDef) *ast.EnumDef {
 		if m.Value != nil {
 			em.Value = c.convertExpr(m.Value)
 		}
-		def.Members = append(def.Members, em)
+		def.Body = append(def.Body, &em)
 	}
 	return def
 }

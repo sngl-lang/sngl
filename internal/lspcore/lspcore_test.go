@@ -191,7 +191,7 @@ func TestHoverInfo_Const(t *testing.T) {
 func TestHoverInfo_Enum(t *testing.T) {
 	doc := &ast.Document{
 		Stmts: []ast.Stmt{
-			&ast.EnumDef{Name: "Status", Members: []ast.EnumMember{{Name: "active"}, {Name: "inactive"}}},
+			&ast.EnumDef{Name: "Status", Body: []ast.EnumBodyItem{&ast.EnumMember{Name: "active"}, &ast.EnumMember{Name: "inactive"}}},
 		},
 	}
 	info := lspcore.HoverInfo(doc, "Status")
@@ -203,9 +203,9 @@ func TestHoverInfo_Enum(t *testing.T) {
 func TestHoverInfo_Struct(t *testing.T) {
 	doc := &ast.Document{
 		Stmts: []ast.Stmt{
-			&ast.StructDef{Name: "Point", Fields: []*ast.StructField{
-				{Names: []string{"x"}, Type: &ast.NamedType{Name: "int"}},
-				{Names: []string{"y"}, Type: &ast.NamedType{Name: "int"}},
+			&ast.StructDef{Name: "Point", Body: []ast.StructBodyItem{
+				&ast.StructField{Names: []string{"x"}, Type: &ast.NamedType{Name: "int"}},
+				&ast.StructField{Names: []string{"y"}, Type: &ast.NamedType{Name: "int"}},
 			}},
 		},
 	}

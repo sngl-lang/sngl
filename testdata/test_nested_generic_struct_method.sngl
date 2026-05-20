@@ -1,7 +1,7 @@
 struct box<T> {
     v T
 
-    func get() T => this.v
+    func get() => this.v
 }
 
 component main {

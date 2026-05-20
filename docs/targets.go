@@ -249,7 +249,7 @@ func extractOptionsStruct(doc *ast.Document) []OptionDoc {
 	}
 
 	var out []OptionDoc
-	for _, f := range target.Fields {
+	for _, f := range target.Fields() {
 		for _, name := range f.Names {
 			out = append(out, OptionDoc{
 				Name: name,
