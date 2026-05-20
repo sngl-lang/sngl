@@ -1,24 +1,17 @@
 ; Keywords
 [
   "import"
-  "output"
   "struct"
   "enum"
   "unit"
-  "style"
   "component"
-  "platform"
   "const"
   "var"
   "if"
   "else"
   "for"
   "func"
-  "test"
-  "timer"
-  "window"
   "return"
-  "required"
 ] @keyword
 
 ; Literal keywords
@@ -28,68 +21,58 @@
 
 ; Types
 (type_identifier) @type
-(generic_type name: (_) @type)
-(func_type "func" @keyword)
-(inline_enum_type "enum" @keyword)
-(enum_constraint "enum" @keyword)
 
-; Declarations
-(import_declaration (plain_string) @string.special)
-(import_declaration alias: (identifier) @variable)
-(struct_declaration name: (identifier) @type.definition)
-(enum_declaration name: (identifier) @type.definition)
-(unit_declaration name: (identifier) @type.definition)
-(style_declaration name: (identifier) @type.definition)
-(component_declaration name: (identifier) @type.definition)
-(component_declaration name: (qualified_name) @type.definition)
-(window_declaration name: (identifier) @type.definition)
-(test_declaration component: (identifier) @type)
-(test_declaration description: (string_literal) @string)
-(subtest_declaration description: (string_literal) @string)
-(platform_block name: (identifier) @constant)
+; Imports
+(import_declaration (string_literal) @string.special)
+(import_declaration (identifier) @variable)
 
-; Component params
-(component_param name: (identifier) @variable.parameter)
-(component_binding_param ":" @punctuation.special)
-(component_binding_param name: (identifier) @variable.parameter)
-(component_event_param "@" @punctuation.special)
-(component_event_param name: (identifier) @property)
+; Declarations: first identifier child is the declared name.
+(struct_declaration . (identifier) @type.definition)
+(enum_declaration . (identifier) @type.definition)
+(unit_declaration . (identifier) @type.definition)
+(component_declaration . (identifier) @type.definition)
 
-; Variables
-(var_declaration) @keyword
-(const_declaration) @keyword
-(single_var name: (identifier) @variable)
-(single_const name: (identifier) @variable)
+; Struct fields: (struct_field name type [= default])
+(struct_field . (identifier) @property)
 
-; Struct fields
-(struct_field name: (identifier) @property)
-(struct_field_value name: (identifier) @property)
-(style_property name: (identifier) @property)
+; Component params (positional, named, binding, or event form).
+(component_param . (identifier) @variable.parameter)
+(component_param "@" @punctuation.special)
+(component_param ":" @punctuation.special)
+
+; var / const specs
+(var_spec (identifier_list (identifier) @variable))
+(const_spec (identifier_list (identifier) @variable))
+
+; var handlers: var x @set { ... }
+(var_handler "@" @punctuation.special)
+(var_handler . (identifier) @function)
 
 ; Visual nodes
 (visual_node component: (identifier) @tag)
 (visual_node component: (qualified_name) @tag)
-(prop_assignment name: (identifier) @property)
-(prop_binding ":" @punctuation.special)
-(prop_binding name: (identifier) @property)
-(event_handler "@" @punctuation.special)
-(event_handler name: (identifier) @property)
-; Data events
-(data_event "@" @punctuation.special)
-(data_event kind: (identifier) @property)
+(visual_node element_id: (element_ref) @tag)
 
-; Timer
-(timer_declaration active: (identifier) @variable)
+; Arguments inside (...) on visual nodes / calls
+(named_arg name: (identifier) @property)
+(binding_arg name: (identifier) @property)
+(binding_arg ":" @punctuation.special)
+(event_arg name: (identifier) @function)
+(event_arg "@" @punctuation.special)
+
+; Anonymous struct literal fields { foo = 1 }
+(anon_struct_field . (identifier) @property)
 
 ; Statements
-(assignment_statement operator: (_) @operator)
+(assignment_statement operator: (assignment_operator) @operator)
 (toggle_statement "!!" @operator)
-(emit_statement "@" @punctuation.special)
-(emit_statement name: (identifier) @function)
+
+; Emit expression: @click(...)
+(emit_expression (event_method) @function)
 
 ; Functions
-(func_declaration name: (func_name (identifier) @function))
-(func_param name: (identifier) @variable.parameter)
+(func_declaration (func_name (identifier) @function))
+(func_param . (identifier) @variable.parameter)
 
 ; Expressions
 (call_expression function: (identifier) @function)
@@ -99,13 +82,29 @@
 (field_expression field: (event_method) @property)
 
 ; Operators
-(binary_expression operator: _ @operator)
+(binary_expression "+" @operator)
+(binary_expression "-" @operator)
+(binary_expression "*" @operator)
+(binary_expression "/" @operator)
+(binary_expression "%" @operator)
+(binary_expression "==" @operator)
+(binary_expression "!=" @operator)
+(binary_expression "<" @operator)
+(binary_expression ">" @operator)
+(binary_expression "<=" @operator)
+(binary_expression ">=" @operator)
+(binary_expression "&&" @operator)
+(binary_expression "||" @operator)
 (unary_expression operator: _ @operator)
 (ternary_expression "?" @operator)
 (ternary_expression ":" @operator)
-(lambda_expression "=>" @operator)
 (spread_expression "..." @operator)
 (func_declaration "=>" @operator)
+(anon_func_expression "=>" @operator)
+
+; Struct literals
+(struct_literal name: (identifier) @type)
+(struct_literal name: (qualified_name) @type)
 
 ; Literals
 (integer_literal) @number
@@ -117,7 +116,6 @@
 (color_literal) @constant
 (unit_literal) @number
 (element_ref) @tag
-(slashdash) @comment
 
 ; Identifiers (fallback)
 (identifier) @variable

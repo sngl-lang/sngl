@@ -3,182 +3,191 @@ Simple assignment
 ================
 
 component App {
-  var x = 0
-  button(@click={ x = 1 })
+    var x = 0
+    button(@click { x = 1 })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (assignment_statement
-            target: (identifier)
-            operator: (assignment_operator)
-            value: (integer_literal)))))))
+          (statement_block
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (integer_literal))))))))
 
 ================
 Compound assignment operators
 ================
 
 component App {
-  var x = 0
-  button(@click={ x += 1 })
+    var x = 0
+    button(@click { x += 1 })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (assignment_statement
-            target: (identifier)
-            operator: (assignment_operator)
-            value: (integer_literal)))))))
+          (statement_block
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (integer_literal))))))))
 
 ================
 Toggle statement
 ================
 
 component App {
-  var active = false
-  button(@click={ active!! })
+    var active = false
+    button(@click { active!! })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (false)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (false)))
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (toggle_statement
-            target: (identifier)))))))
+          (statement_block
+            (toggle_statement
+              target: (identifier))))))))
 
 ================
-Emit statement
+Emit expression
 ================
 
-component App {
-  event submit FormData
-  button(@click={ @submit(data) })
+component App(@submit) {
+    button(@click { @submit() })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (event_declaration
-      name: (identifier)
-      payload_type: (identifier))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+    (identifier)
+    (component_param
+      (identifier))
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (emit_statement
-            name: (identifier)
-            (identifier)))))))
+          (statement_block
+            (emit_expression
+              (event_method))))))))
 
 ================
 Field assignment
 ================
 
 component App {
-  var user = User{name: ""}
-  input(@input={ user.name = event.value })
+    var user = User{name = ""}
+    input(@input { user.name = event.value })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (struct_literal
-          name: (identifier)
-          (struct_field_value
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (struct_literal
             name: (identifier)
-            value: (string_literal)))))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+            (anon_struct_field
+              (identifier)
+              (string_literal)))))
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (assignment_statement
-            target: (field_expression
-              operand: (identifier)
-              field: (identifier))
-            operator: (assignment_operator)
-            value: (field_expression
-              operand: (identifier)
-              field: (identifier))))))))
+          (statement_block
+            (assignment_statement
+              target: (field_expression
+                operand: (identifier)
+                field: (identifier))
+              operator: (assignment_operator)
+              value: (field_expression
+                operand: (identifier)
+                field: (identifier)))))))))
 
 ================
 Multiple statements in handler
 ================
 
 component App {
-  var (
-    x = 0
-    y = 0
-  )
-  button(@click={
-    x = 1
-    y = 2
-  })
+    var (
+        x = 0
+        y = 0
+    )
+    button(@click {
+        x = 1
+        y = 2
+    })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal))
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (event_handler
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal))
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (event_arg
           name: (identifier)
-          (assignment_statement
-            target: (identifier)
-            operator: (assignment_operator)
-            value: (integer_literal))
-          (assignment_statement
-            target: (identifier)
-            operator: (assignment_operator)
-            value: (integer_literal)))))))
+          (statement_block
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (integer_literal))
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (integer_literal))))))))

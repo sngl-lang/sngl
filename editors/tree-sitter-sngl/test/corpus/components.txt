@@ -2,55 +2,48 @@
 Simple component with param
 ================
 
-component Button {
-  param label = "Click"
-  text(value=label)
+component Button(label = "Click") {
+    text(value=label)
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (param_declaration
-      name: (identifier)
-      default: (string_literal))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
+    (identifier)
+    (component_param
+      (identifier)
+      (string_literal))
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (named_arg
           name: (identifier)
           value: (identifier))))))
 
 ================
-Component with var and computed
+Component with var
 ================
 
 component Counter {
-  var count = 0
-  computed doubled = count * 2
-  text(value=doubled)
+    var count = 0
+    text(value=count)
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (identifier)
-          right: (integer_literal))))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (named_arg
           name: (identifier)
           value: (identifier))))))
 
@@ -59,29 +52,31 @@ Grouped var declarations
 ================
 
 component App {
-  var (
-    name = "World"
-    count = 0
-  )
-  text(value=name)
+    var (
+        name = "World"
+        count = 0
+    )
+    text(value=name)
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (string_literal))
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (string_literal))
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (named_arg
           name: (identifier)
           value: (identifier))))))
 
@@ -90,190 +85,207 @@ Component with event handler
 ================
 
 component App {
-  var count = 0
-  button(text="+", @click={ count += 1 })
+    var count = 0
+    button(text="+", @click { count += 1 })
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (visual_node
+        component: (identifier)
+        (named_arg
           name: (identifier)
           value: (string_literal))
-        (event_handler
+        (event_arg
           name: (identifier)
-          (assignment_statement
-            target: (identifier)
-            operator: (assignment_operator)
-            value: (integer_literal)))))))
+          (statement_block
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (integer_literal))))))))
 
 ================
 If node
 ================
 
 component App {
-  var show = true
-  if show {
-    text(value="visible")
-  }
+    var show = true
+    if show {
+        text(value="visible")
+    }
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (true)))
-    (if_node
-      condition: (identifier)
-      (visual_node
-        component: (identifier)
-        (prop_list
-          (prop_assignment
-            name: (identifier)
-            value: (string_literal)))))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (true)))
+      (if_node
+        (identifier)
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (string_literal))))))))
+
+================
+If else node
+================
+
+component App {
+    var show = true
+    if show {
+        text(value="on")
+    } else {
+        text(value="off")
+    }
+}
+
+---
+
+(source_file
+  (component_declaration
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (true)))
+      (if_node
+        (identifier)
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (string_literal))))
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (string_literal))))))))
 
 ================
 For node
 ================
 
 component App {
-  var items = ["a", "b"]
-  for item, idx = items {
-    text(value=item)
-  }
+    var items = [1, 2, 3]
+    for item = items {
+        text(value=item)
+    }
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (list_literal
-          (string_literal)
-          (string_literal))))
-    (for_node
-      variable: (identifier)
-      index: (identifier)
-      iterable: (identifier)
-      (visual_node
-        component: (identifier)
-        (prop_list
-          (prop_assignment
-            name: (identifier)
-            value: (identifier)))))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (list_literal
+            (integer_literal)
+            (integer_literal)
+            (integer_literal))))
+      (for_node
+        (identifier)
+        (identifier)
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (identifier))))))))
+
+================
+For node with index
+================
+
+component App {
+    var items = [1, 2, 3]
+    for item, idx = items {
+        text(value=item)
+    }
+}
+
+---
+
+(source_file
+  (component_declaration
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (list_literal
+            (integer_literal)
+            (integer_literal)
+            (integer_literal))))
+      (for_node
+        (identifier)
+        (identifier)
+        (identifier)
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (identifier))))))))
 
 ================
 Nested visual nodes
 ================
 
 component App {
-  vbox {
-    text(value="hello")
-    hbox {
-      button(text="ok")
+    vbox {
+        text(value="hello")
+        hbox {
+            button(text="ok")
+        }
     }
-  }
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (visual_node
-      component: (identifier)
-      (node_body
-        (visual_node
-          component: (identifier)
-          (prop_list
-            (prop_assignment
+    (identifier)
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
               name: (identifier)
-              value: (string_literal))))
-        (visual_node
-          component: (identifier)
-          (node_body
-            (visual_node
-              component: (identifier)
-              (prop_list
-                (prop_assignment
+              value: (string_literal)))
+          (visual_node
+            component: (identifier)
+            (statement_block
+              (visual_node
+                component: (identifier)
+                (named_arg
                   name: (identifier)
                   value: (string_literal))))))))))
-
-================
-Prop and event declarations
-================
-
-component MyBtn {
-  prop size string enum(small, medium, large)
-  event click MouseEvent
-  children one
-  button(text="btn")
-}
-
----
-
-(source_file
-  (component_declaration
-    name: (identifier)
-    (prop_declaration
-      name: (identifier)
-      type: (type_identifier)
-      (enum_constraint
-        (identifier)
-        (identifier)
-        (identifier)))
-    (event_declaration
-      name: (identifier)
-      payload_type: (identifier))
-    (children_declaration
-      policy: (identifier))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
-          name: (identifier)
-          value: (string_literal))))))
-
-================
-Var with extern and @
-================
-
-component App {
-  var theme string extern @
-  text(value=theme)
-}
-
----
-
-(source_file
-  (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        type: (type_identifier)
-        (var_modifiers
-          (extern_modifier)
-          (trigger_modifier))))
-    (visual_node
-      component: (identifier)
-      (prop_list
-        (prop_assignment
-          name: (identifier)
-          value: (identifier))))))

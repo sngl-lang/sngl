@@ -3,394 +3,436 @@ Integer literal
 ================
 
 component App {
-  var x = 42
+    var x = 42
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (integer_literal)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal))))))
 
 ================
 Float literal
 ================
 
 component App {
-  var x = 3.14
+    var x = 3.14
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (float_literal)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (float_literal))))))
 
 ================
 String literal
 ================
 
 component App {
-  var x = "hello world"
+    var x = "hello world"
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (string_literal)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (string_literal))))))
 
 ================
 Boolean literals
 ================
 
 component App {
-  var (
-    a = true
-    b = false
-  )
+    var (
+        a = true
+        b = false
+    )
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (true))
-      (single_var
-        name: (identifier)
-        init: (false)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (true))
+        (var_spec
+          (identifier_list
+            (identifier))
+          (false))))))
 
 ================
 Null literal
 ================
 
 component App {
-  var x = null
+    var x = null
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (null)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (null))))))
 
 ================
 Color literal
 ================
 
 component App {
-  var c = #FF0000
+    var c = #FF0000
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (color_literal)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (element_ref))))))
 
 ================
 Unit literal
 ================
 
 component App {
-  var d = 100ms
+    var d = 100ms
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (unit_literal)))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (unit_literal))))))
 
 ================
 Binary arithmetic
 ================
 
-component App {
-  computed x = 1 + 2 * 3
-}
+func compute() => 1 + 2 * 3
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (integer_literal)
-          right: (binary_expression
-            left: (integer_literal)
-            right: (integer_literal)))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (binary_expression
+      left: (integer_literal)
+      right: (binary_expression
+        left: (integer_literal)
+        right: (integer_literal)))))
 
 ================
 Comparison operators
 ================
 
-component App {
-  computed ok = x >= 10 && x < 100
-}
+func ok(x int) => x >= 10 && x < 100
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (binary_expression
-            left: (identifier)
-            right: (integer_literal))
-          right: (binary_expression
-            left: (identifier)
-            right: (integer_literal)))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (binary_expression
+      left: (binary_expression
+        left: (identifier)
+        right: (integer_literal))
+      right: (binary_expression
+        left: (identifier)
+        right: (integer_literal)))))
 
 ================
 Ternary expression
 ================
 
-component App {
-  computed label = active ? "on" : "off"
-}
+func label(active bool) => active ? "on" : "off"
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (ternary_expression
-          condition: (identifier)
-          consequence: (string_literal)
-          alternative: (string_literal))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (ternary_expression
+      condition: (identifier)
+      consequence: (string_literal)
+      alternative: (string_literal))))
 
 ================
 Unary expressions
 ================
 
 component App {
-  computed neg = -x
-  computed inv = !valid
+    var neg = -x
+    var inv = !valid
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (unary_expression
-          operand: (identifier))))
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (unary_expression
-          operand: (identifier))))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (unary_expression
+            operand: (identifier))))
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (unary_expression
+            operand: (identifier)))))))
 
 ================
 Field access
 ================
 
-component App {
-  computed n = user.name
-}
+func n(user User) => user.name
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (field_expression
-          operand: (identifier)
-          field: (identifier))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (field_expression
+      operand: (identifier)
+      field: (identifier))))
 
 ================
 Index expression
 ================
 
-component App {
-  computed first = items[0]
-}
+func first(items list) => items[0]
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (index_expression
-          operand: (identifier)
-          index: (integer_literal))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (index_expression
+      operand: (identifier)
+      index: (integer_literal))))
 
 ================
 Function call
 ================
 
-component App {
-  computed s = string(42)
-}
+func s() => string(42)
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (call_expression
-          function: (identifier)
-          (integer_literal))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (call_expression
+      function: (identifier)
+      (integer_literal))))
 
 ================
 Method call
 ================
 
+func upper(name string) => name.toUpper()
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (call_expression
+      function: (field_expression
+        operand: (identifier)
+        field: (identifier)))))
+
+================
+Anon struct literal
+================
+
 component App {
-  computed upper = name.toUpper()
+    text(style={color=#ff0000, size=14})
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (method_expression
-          receiver: (identifier)
-          method: (identifier))))))
-
-================
-Struct literal
-================
-
-component App {
-  var user = User{name: "Alice", age: 30}
-}
-
----
-
-(source_file
-  (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (struct_literal
+    (identifier)
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (named_arg
           name: (identifier)
-          (struct_field_value
-            name: (identifier)
-            value: (string_literal))
-          (struct_field_value
-            name: (identifier)
-            value: (integer_literal)))))))
+          value: (anon_struct_literal
+            (anon_struct_field
+              (identifier)
+              (element_ref))
+            (anon_struct_field
+              (identifier)
+              (integer_literal))))))))
 
 ================
 List literal
 ================
 
 component App {
-  var items = [1, 2, 3]
+    var items = [1, 2, 3]
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (var_declaration
-      (single_var
-        name: (identifier)
-        init: (list_literal
-          (integer_literal)
-          (integer_literal)
-          (integer_literal))))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (list_literal
+            (integer_literal)
+            (integer_literal)
+            (integer_literal)))))))
 
 ================
 Or expression
 ================
 
-component App {
-  computed ok = a || b
-}
+func ok(a bool, b bool) => a || b
 
 ---
 
 (source_file
-  (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (identifier)
-          right: (identifier))))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (binary_expression
+      left: (identifier)
+      right: (identifier))))
 
 ================
 Equality operators
 ================
 
 component App {
-  computed same = a == b
-  computed diff = a != b
+    var same = a == b
+    var diff = a != b
 }
 
 ---
 
 (source_file
   (component_declaration
-    name: (identifier)
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (identifier)
-          right: (identifier))))
-    (computed_declaration
-      (single_computed
-        name: (identifier)
-        value: (binary_expression
-          left: (identifier)
-          right: (identifier))))))
+    (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (binary_expression
+            left: (identifier)
+            right: (identifier))))
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (binary_expression
+            left: (identifier)
+            right: (identifier)))))))
+
+================
+Element ref
+================
+
+component App {
+    Counter #c(label="x")
+}
+
+---
+
+(source_file
+  (component_declaration
+    (identifier)
+    (statement_block
+      (visual_node
+        component: (identifier)
+        element_id: (element_ref)
+        (named_arg
+          name: (identifier)
+          value: (string_literal))))))

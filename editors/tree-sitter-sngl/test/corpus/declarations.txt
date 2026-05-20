@@ -2,7 +2,7 @@
 Import declaration
 ================
 
-import "app.proto"
+import "app/foo"
 
 ---
 
@@ -11,65 +11,58 @@ import "app.proto"
     (string_literal)))
 
 ================
-Output declaration - single
+Import declaration with alias
 ================
 
-output swift ios(min_version="16")
+import foo => "app/foo"
 
 ---
 
 (source_file
-  (output_declaration
+  (import_declaration
     (identifier)
-    (identifier)
-    (kv_list
-      (kv_pair
-        (identifier)
-        (string_literal)))))
-
-================
-Output declaration - grouped
-================
-
-output {
-  swift ios
-  kotlin android
-}
-
----
-
-(source_file
-  (output_declaration
-    (output_group
-      (output_group_entry
-        (identifier)
-        (identifier))
-      (output_group_entry
-        (identifier)
-        (identifier)))))
+    (string_literal)))
 
 ================
 Struct declaration
 ================
 
 struct User {
-  name string = ""
-  age int = 0
+    name string
+    age int = 0
 }
 
 ---
 
 (source_file
   (struct_declaration
-    name: (identifier)
+    (identifier)
     (struct_field
-      name: (identifier)
-      type: (type_identifier)
-      default: (string_literal))
+      (identifier)
+      (type_identifier
+        (identifier)))
     (struct_field
-      name: (identifier)
-      type: (type_identifier)
-      default: (integer_literal))))
+      (identifier)
+      (type_identifier
+        (identifier))
+      (integer_literal))))
+
+================
+Struct declaration anonymous
+================
+
+struct {
+    name string
+}
+
+---
+
+(source_file
+  (struct_declaration
+    (struct_field
+      (identifier)
+      (type_identifier
+        (identifier)))))
 
 ================
 Enum declaration
@@ -81,7 +74,7 @@ enum Color { Red, Green, Blue }
 
 (source_file
   (enum_declaration
-    name: (identifier)
+    (identifier)
     (identifier)
     (identifier)
     (identifier)))
@@ -90,124 +83,141 @@ enum Color { Red, Green, Blue }
 Unit declaration
 ================
 
-unit duration(ms, s = 1000, m = 60000)
+unit duration { ms, s = 1000, m = 60000 }
 
 ---
 
 (source_file
   (unit_declaration
-    name: (identifier)
-    (unit_suffix
-      name: (identifier))
-    (unit_suffix
+    (identifier)
+    (identifier)
+    (named_arg
       name: (identifier)
-      factor: (integer_literal))
-    (unit_suffix
-      name: (identifier)
-      factor: (integer_literal))))
-
-================
-Style declaration
-================
-
-style danger {
-  color = #FF0000
-  font-weight = "bold"
-}
-
----
-
-(source_file
-  (style_declaration
-    name: (identifier)
-    (style_property
-      name: (identifier)
-      value: (color_literal))
-    (style_property
-      name: (identifier)
-      value: (string_literal))))
-
-================
-Test declaration
-================
-
-test counter "increments" {
-    assert(count == 0)
-    count += 1
-    assert(count == 1)
-}
-
----
-
-(source_file
-  (test_declaration
-    component: (identifier)
-    description: (string_literal)
-    (call_expression
-      function: (identifier)
-      (binary_expression
-        left: (identifier)
-        right: (integer_literal)))
-    (assignment_statement
-      target: (identifier)
-      operator: (assignment_operator)
       value: (integer_literal))
-    (call_expression
-      function: (identifier)
-      (binary_expression
-        left: (identifier)
-        right: (integer_literal)))))
+    (named_arg
+      name: (identifier)
+      value: (integer_literal))))
 
 ================
-Test declaration with subtests
+Const declaration
 ================
 
-test counter "increments" {
-    count += 1
+const PI = 3.14
 
-    test "nested" {
-        assert(count == 1)
-    }
+---
+
+(source_file
+  (const_declaration
+    (const_spec
+      (identifier_list
+        (identifier))
+      (float_literal))))
+
+================
+Const grouped
+================
+
+const (
+    PI = 3.14
+    E = 2.71
+)
+
+---
+
+(source_file
+  (const_declaration
+    (const_spec
+      (identifier_list
+        (identifier))
+      (float_literal))
+    (const_spec
+      (identifier_list
+        (identifier))
+      (float_literal))))
+
+================
+Var declaration top level
+================
+
+var counter = 0
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (integer_literal))))
+
+================
+Func declaration arrow
+================
+
+func add(a int, b int) => a + b
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (binary_expression
+      left: (identifier)
+      right: (identifier))))
+
+================
+Func declaration block
+================
+
+func greet(name string) string {
+    return name
 }
 
 ---
 
 (source_file
-  (test_declaration
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (return_statement
+        (identifier)))))
+
+================
+Window via visual node
+================
+
+window #home(title="x") {
+    text(value="hi")
+}
+
+---
+
+(source_file
+  (visual_node
     component: (identifier)
-    description: (string_literal)
-    (assignment_statement
-      target: (identifier)
-      operator: (assignment_operator)
-      value: (integer_literal))
-    (subtest_declaration
-      description: (string_literal)
-      (call_expression
-        function: (identifier)
-        (binary_expression
-          left: (identifier)
-          right: (integer_literal))))))
-
-================
-Styles (property definitions)
-================
-
-styles {
-  color color
-  font-size int enum(12, 14, 16)
-}
-
----
-
-(source_file
-  (styles_declaration
-    (style_prop_def
+    element_id: (element_ref)
+    (named_arg
       name: (identifier)
-      type: (type_identifier))
-    (style_prop_def
-      name: (identifier)
-      type: (type_identifier)
-      (enum_constraint
-        (integer_literal)
-        (integer_literal)
-        (integer_literal)))))
+      value: (string_literal))
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (named_arg
+          name: (identifier)
+          value: (string_literal))))))
