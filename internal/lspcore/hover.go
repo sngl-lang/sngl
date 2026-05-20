@@ -260,7 +260,17 @@ func formatFuncHover(f *ast.FuncDef, doc *ast.Document) string {
 	sb.WriteString("```sngl\nfunc ")
 	sb.WriteString(f.Name)
 	sb.WriteByte('(')
-	for i, p := range f.Params.Params {
+
+	// Suppress synthetic 'this' param in method hover.
+	// Nested funcs get desugared with a synthetic this as the first param;
+	// for display we want to show the method as the user wrote it.
+	params := f.Params.Params
+	_, _, isMethod := ast.SplitMethodName(f.Name)
+	if isMethod && len(params) > 0 && params[0].Name == "this" {
+		params = params[1:]
+	}
+
+	for i, p := range params {
 		if i > 0 {
 			sb.WriteString(", ")
 		}

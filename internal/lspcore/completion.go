@@ -469,6 +469,10 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 		}
 	}
 
+	// TODO: completion on `this.<member>` inside method bodies.
+	// Needs to track current method context (receiver type) and return field/method completions.
+	// Currently returns nil if nsName doesn't match a platform/language namespace.
+
 	if pkgDoc == nil {
 		return nil
 	}
