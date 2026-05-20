@@ -1,0 +1,14 @@
+struct S {
+    x int
+}
+
+// No S-typed first param → static in S's namespace.
+func S.helper(n int) int => n * 2
+
+component main {
+    text(value=string(S.helper(5)))
+}
+
+func testStaticOnUserType(t Test, c main) {
+    t.assert(S.helper(5) == 10)
+}

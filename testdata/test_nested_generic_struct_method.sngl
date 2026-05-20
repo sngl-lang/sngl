@@ -1,0 +1,14 @@
+struct box<T> {
+    v T
+
+    func get() T => this.v
+}
+
+component main {
+    var b = box<int>{v = 42}
+    text(value=string(b.get()))
+}
+
+func testNestedGenericMethod(t Test, c main) {
+    t.assert(c.b.get() == 42)
+}

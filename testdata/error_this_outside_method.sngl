@@ -1,0 +1,5 @@
+func main_helper() => this // ERROR(check) "undeclared identifier \"this\""
+
+component main {
+    text(value="x")
+}

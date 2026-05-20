@@ -1,0 +1,18 @@
+// Type declared first, then an extension method declared separately —
+// the legacy top-level form is a peer of the nested form.
+struct Vec2 {
+    x, y int
+}
+
+func Vec2.dot(a Vec2, b Vec2) int => a.x*b.x + a.y*b.y
+
+component main {
+    var u = Vec2{x = 1, y = 2}
+    var v = Vec2{x = 3, y = 4}
+    text(value=string(u.dot(v)))
+}
+
+func testExtensionMethod(t Test, c main) {
+    t.assert(c.u.dot(c.v) == 11)
+    t.assert(Vec2.dot(c.u, c.v) == 11)
+}
