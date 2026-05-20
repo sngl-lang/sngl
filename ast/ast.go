@@ -106,11 +106,15 @@ type UnitSuffix struct {
 // --- Variables and constants ---
 
 // VarSpec is a single binding in a const or var declaration.
+// NamePositions runs parallel to Names: NamePositions[i] is the source
+// position of Names[i]. Empty when the parser didn't track positions
+// (older fixtures, synthesized specs).
 type VarSpec struct {
-	Names    []string
-	Type     TypeExpr
-	Default  Expr
-	Handlers []EventHandler
+	Names         []string
+	NamePositions []Pos
+	Type          TypeExpr
+	Default       Expr
+	Handlers      []EventHandler
 }
 
 // ConstDecl declares one or more constants.

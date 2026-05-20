@@ -200,10 +200,13 @@ type CallExpr struct {
 }
 
 // StructFieldLit is a field in a struct literal.
+// NamePos records the source position of the Name identifier (zero
+// when synthesized or when Spread is true).
 type StructFieldLit struct {
-	Name   string
-	Value  Expr
-	Spread bool // if true, Value is the spread operand
+	Name    string
+	NamePos Pos
+	Value   Expr
+	Spread  bool // if true, Value is the spread operand
 }
 
 // StructExpr is a struct literal: Name{field = value, ...expr} or pkg.Name{...}.

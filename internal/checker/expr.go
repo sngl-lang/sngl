@@ -1290,7 +1290,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if sd != nil && !structHasField(sd, f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
-		fields = append(fields, ir.FieldInit{Name: f.Name, Value: val})
+		fields = append(fields, ir.FieldInit{Name: f.Name, NamePos: f.NamePos, Value: val})
 	}
 
 	if sd != nil {

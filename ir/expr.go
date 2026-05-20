@@ -146,11 +146,13 @@ type StructLit struct {
 	Fields []FieldInit
 }
 
-// FieldInit is a field in a struct literal.
+// FieldInit is a field in a struct literal. NamePos records the source
+// position of the Name identifier (zero for spread or synthesized).
 type FieldInit struct {
-	Name   string // empty for spread
-	Value  Expr
-	Spread bool
+	Name    string // empty for spread
+	NamePos ast.Pos
+	Value   Expr
+	Spread  bool
 }
 
 // ListLit is a resolved list literal.

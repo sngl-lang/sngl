@@ -339,6 +339,9 @@ func (w *irTokenWalker) expr(e ir.Expr) {
 		w.expr(x.Idx)
 	case *ir.StructLit:
 		for _, f := range x.Fields {
+			if f.Name != "" && f.NamePos.IsSet() {
+				w.emit(f.NamePos, len(f.Name), stProperty)
+			}
 			w.expr(f.Value)
 		}
 	case *ir.ListLit:

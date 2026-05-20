@@ -452,7 +452,7 @@ func (b *builder) buildConstSpec(it nodeIter) ast.VarSpec {
 	// ConstSpec = IdentList [ Type ] assign Expr .
 	var spec ast.VarSpec
 	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
-		spec.Names = b.buildIdentList(it.enter())
+		spec.Names, spec.NamePositions = b.buildIdentListWithPos(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		spec.Type = b.buildType(it.enter())
@@ -491,7 +491,7 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 	// VarSpec = IdentList [ Type ] assign Expr { VarHandler } .
 	var spec ast.VarSpec
 	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
-		spec.Names = b.buildIdentList(it.enter())
+		spec.Names, spec.NamePositions = b.buildIdentListWithPos(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		spec.Type = b.buildType(it.enter())
@@ -537,16 +537,26 @@ func (b *builder) buildVarHandler(it nodeIter) ast.EventHandler {
 }
 
 func (b *builder) buildIdentList(it nodeIter) []string {
+	names, _ := b.buildIdentListWithPos(it)
+	return names
+}
+
+// buildIdentListWithPos returns parallel slices of names and their
+// source positions, in iteration order.
+func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {
 	// IdentList = ident { comma ident } .
 	var names []string
+	var positions []ast.Pos
 	for !it.done() {
 		if !it.isNonTerminal() && it.tokenType() == IDENT {
-			names = append(names, it.shift().Literal)
+			tok := it.shift()
+			names = append(names, tok.Literal)
+			positions = append(positions, ast.Pos(b.posFromToken(tok)))
 		} else {
 			it.skip() // comma
 		}
 	}
-	return names
+	return names, positions
 }
 
 // --- Functions ---
@@ -1798,7 +1808,7 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 	}
 	// If key is a bare ident → struct field; otherwise → map entry (MapLit).
 	if ident, ok := key.(*ast.IdentExpr); ok {
-		return anonFieldResult{StructField: ast.StructFieldLit{Name: ident.Name, Value: val}}
+		return anonFieldResult{StructField: ast.StructFieldLit{Name: ident.Name, NamePos: ident.Pos, Value: val}}
 	}
 	// Non-ident key: force MapLit.
 	keyPos := ast.Pos{}
