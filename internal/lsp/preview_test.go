@@ -168,7 +168,7 @@ func readMessagesUntil(t *testing.T, r io.Reader, method string, timeout time.Du
 func TestPreviewServer_RendersWindow(t *testing.T) {
 	srv := newPreviewServer()
 	srv.SetRenderer(func(uri, win string) ([]byte, error) {
-		return []byte(fmt.Sprintf("<html><body>%s/%s</body></html>", uri, win)), nil
+		return fmt.Appendf(nil, "<html><body>%s/%s</body></html>", uri, win), nil
 	})
 	if err := srv.Start(); err != nil {
 		t.Fatalf("start: %v", err)
@@ -255,7 +255,7 @@ func TestServer_ExecuteCommandOpenPreview(t *testing.T) {
 	go send(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
 	// Drain initialize response + previewReady notification.
 	br := bufio.NewReader(clientR)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		line, _ := br.ReadString('\n')
 		ln := 0
 		fmt.Sscanf(strings.TrimSpace(line), "Content-Length: %d", &ln)

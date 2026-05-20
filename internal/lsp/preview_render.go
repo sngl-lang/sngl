@@ -43,7 +43,7 @@ func (c *previewCache) set(uri, window string, body []byte) {
 // recent check or codegen error, so the user knows the displayed render
 // is stale.
 func appendErrorBanner(stale []byte, msg string) []byte {
-	banner := []byte(fmt.Sprintf(`<div style="position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;padding:8px;font-family:monospace;border-top:2px solid #c00;z-index:9999">%s</div>`, htmlEscape(msg)))
+	banner := fmt.Appendf(nil, `<div style="position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;padding:8px;font-family:monospace;border-top:2px solid #c00;z-index:9999">%s</div>`, htmlEscape(msg))
 	idx := strings.LastIndex(string(stale), "</body>")
 	if idx < 0 {
 		return append(stale, banner...)

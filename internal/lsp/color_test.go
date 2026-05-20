@@ -11,9 +11,9 @@ import (
 
 func TestParseHexColor(t *testing.T) {
 	tests := []struct {
-		in           string
+		in                         string
 		wantR, wantG, wantB, wantA float64
-		wantOK       bool
+		wantOK                     bool
 	}{
 		{"#000", 0, 0, 0, 1, true},
 		{"#fff", 1, 1, 1, 1, true},
@@ -94,10 +94,10 @@ func TestColorPresentations(t *testing.T) {
 
 func TestColorPresentations_HonorsOriginal(t *testing.T) {
 	tests := []struct {
-		name    string
-		source  string // source text at the range
-		color   Color
-		want    string
+		name   string
+		source string // source text at the range
+		color  Color
+		want   string
 	}{
 		{"hex opaque", "#ff0000", Color{1, 0, 0, 1}, "#ff0000"},
 		{"hex with alpha", "#ff0000", Color{1, 0, 0, 0.5}, "#ff000080"},
@@ -192,7 +192,7 @@ func rangeOfSubstring(t *testing.T, src, needle string) Range {
 	}
 	line := 0
 	col := 0
-	for i := 0; i < idx; i++ {
+	for i := range idx {
 		if src[i] == '\n' {
 			line++
 			col = 0

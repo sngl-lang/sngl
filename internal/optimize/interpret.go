@@ -24,27 +24,32 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	case bool, int, float64, string:
 		return irLiteral(v, typ)
 	case map[string]any:
+		var sd *ir.StructDef
+		if typ != nil && typ.Kind == ir.TypeStruct {
+			if d, ok := typ.Decl.(*ir.StructDef); ok {
+				sd = d
+			}
+		}
 		fields := make([]ir.FieldInit, 0, len(v))
 		for _, k := range sortedMapKeys(v) {
 			fields = append(fields, ir.FieldInit{
 				Name:  k,
-				Value: irFromValue(v[k], nil),
+				Value: irFromValue(v[k], structFieldType(sd, k)),
 			})
 		}
-		sl := &ir.StructLit{
+		return &ir.StructLit{
 			Type:   typ,
+			Def:    sd,
 			Fields: fields,
 		}
-		if typ != nil && typ.Kind == ir.TypeStruct {
-			if sd, ok := typ.Decl.(*ir.StructDef); ok {
-				sl.Def = sd
-			}
-		}
-		return sl
 	case []any:
+		var elemType *ir.Type
+		if typ != nil && (typ.Kind == ir.TypeList || typ.Kind == ir.TypeIter) && len(typ.Elems) > 0 {
+			elemType = typ.Elems[0]
+		}
 		elems := make([]ir.Expr, 0, len(v))
 		for _, e := range v {
-			elems = append(elems, irFromValue(e, nil))
+			elems = append(elems, irFromValue(e, elemType))
 		}
 		return &ir.ListLit{Type: typ, Elems: elems}
 	}
@@ -247,4 +252,19 @@ func sortedMapKeys(m map[string]any) []string {
 		}
 	}
 	return keys
+}
+
+// structFieldType returns the declared type of field name on sd, or nil
+// when sd is nil or the field isn't found. Used by irFromValue to keep
+// per-field type info when reconstructing folded struct literals.
+func structFieldType(sd *ir.StructDef, name string) *ir.Type {
+	if sd == nil {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f.Type
+		}
+	}
+	return nil
 }

@@ -19,7 +19,6 @@ func TestInlayFixtures(t *testing.T) {
 		t.Fatal("no inlay fixtures found")
 	}
 	for _, path := range matches {
-		path := path
 		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
 		t.Run(name, func(t *testing.T) {
 			src, err := os.ReadFile(path)

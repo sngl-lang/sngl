@@ -311,9 +311,9 @@ type CodeActionContext struct {
 }
 
 type Command struct {
-	Title     string        `json:"title"`
-	Command   string        `json:"command"`
-	Arguments []any         `json:"arguments,omitempty"`
+	Title     string `json:"title"`
+	Command   string `json:"command"`
+	Arguments []any  `json:"arguments,omitempty"`
 }
 
 type CodeAction struct {
@@ -325,8 +325,8 @@ type CodeAction struct {
 
 // CodeActionKind constants
 const (
-	CodeActionKindEmpty                 = ""
-	CodeActionKindQuickFix              = "quickfix"
-	CodeActionKindRefactor              = "refactor"
-	CodeActionKindSource                = "source"
+	CodeActionKindEmpty    = ""
+	CodeActionKindQuickFix = "quickfix"
+	CodeActionKindRefactor = "refactor"
+	CodeActionKindSource   = "source"
 )

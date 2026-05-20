@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"fmt"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -269,10 +270,8 @@ func containsContextRead(e ir.Expr) bool {
 	case *ir.Index:
 		return containsContextRead(x.Operand) || containsContextRead(x.Idx)
 	case *ir.ListLit:
-		for _, el := range x.Elems {
-			if containsContextRead(el) {
-				return true
-			}
+		if slices.ContainsFunc(x.Elems, containsContextRead) {
+			return true
 		}
 	case *ir.MapLitIR:
 		for _, kv := range x.Entries {
@@ -552,4 +551,3 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 	}
 	return out
 }
-

@@ -313,14 +313,17 @@ git commit -m "lsp(color): hex parser and formatter for documentColor"
 Create `testdata/lsp/colors.sngl`:
 
 ```sngl
-window Demo {
-    Text("hi", color = #ff0000)
-    Text("hi", color = #00ff00)
-    Box(bg = #abc)
-    Box(bg = #11223344)
-    // comment with #abcdef should not match
-    var label = "hex value #cafe in string"
+window #demo(title="Demo", href="/") {
+    vbox(style={gap = 8, padding = 16}) {
+        text(value="hi", style={color = #ff0000})
+        text(value="hi", style={color = #00ff00})
+        vbox(style={background = #aabbcc}) {}
+        vbox(style={background = #11223344}) {}
+        var label = "hex value #cafe in string"
+    }
 }
+
+// comment with #abcdef should not match
 ```
 
 - [ ] **Step 2: Write failing handler test**

@@ -27,7 +27,7 @@ type previewServer struct {
 	port       int
 	renderHTML func(fileURI, windowName string) ([]byte, error)
 	conns      map[*websocket.Conn]struct{} // active WS clients
-	connsMu    sync.Mutex                    // protects writes to conns
+	connsMu    sync.Mutex                   // protects writes to conns
 }
 
 func newPreviewServer() *previewServer {
