@@ -540,6 +540,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	c.pkg.Enums = append(c.pkg.Enums, ed)
 	c.symtab.Types[ed.Name] = ed
 	c.scope.Declare(ed)
+	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
 func (c *checker) registerStruct(s *ast.StructDef) {
@@ -547,6 +548,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)
+	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
@@ -969,6 +971,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Walk component body for nested declarations. Struct/enum/unit
 	// decls inside a component body are hoisted to package scope at the
 	// IR level (Go and other targets have no per-component type scope).
+	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
 		case *ast.StructDef:
@@ -1014,14 +1017,17 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				}
 			}
 		case *ast.FuncDef:
-			fn := c.buildFunc(s)
-			irComp.Funcs = append(irComp.Funcs, fn)
+			nestedFuncs = append(nestedFuncs, s)
 		}
 	}
 
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Declare(irComp)
+
+	// Register nested methods after the component is in scope so the
+	// synthetic `this <CompName>` receiver type resolves.
+	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
