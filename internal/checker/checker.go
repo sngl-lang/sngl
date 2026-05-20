@@ -1557,8 +1557,24 @@ func literalString(e ast.Expr) string {
 // --- pass2: type checking ---
 
 func (c *checker) pass2() {
-	// Check function bodies.
+	// Pre-pass: check component nested-method bodies so their return types
+	// are inferred before any top-level func body that calls them (test
+	// funcs frequently invoke `c.foo()` on a component instance). The full
+	// component body (visual nodes, initializer refinement) is still done
+	// later via checkComponentBody — this pre-pass only resolves method
+	// signatures and Block IRs.
+	for _, comp := range c.pkg.Components {
+		c.preCheckComponentMethods(comp)
+	}
+
+	// Check function bodies. Skip methods whose receiver is a component;
+	// those were already checked above.
 	for _, fn := range c.pkg.Funcs {
+		if fn.Receiver != "" {
+			if _, isComp := c.symtab.Comps[fn.Receiver]; isComp {
+				continue
+			}
+		}
 		c.checkFuncBody(fn)
 	}
 
@@ -1651,6 +1667,55 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	}
 }
 
+// preCheckComponentMethods runs an early pass over a component's nested
+// methods (Receiver == comp.Name) to infer their return types BEFORE any
+// top-level func body that may call them. The pre-pass discards its
+// diagnostics — they may be spurious because component var initializers
+// haven't been checked yet, so var types are Dyn here. The "real" check
+// (with refined types and authoritative diagnostics) runs later inside
+// checkComponentBody.
+func (c *checker) preCheckComponentMethods(comp *ir.Component) {
+	hasNested := false
+	for _, fn := range comp.Funcs {
+		if fn.Receiver == comp.Name {
+			hasNested = true
+			break
+		}
+	}
+	if !hasNested {
+		return
+	}
+
+	c.pushScope()
+	defer c.popScope()
+
+	prevComp := c.currentComponent
+	c.currentComponent = comp
+	defer func() { c.currentComponent = prevComp }()
+
+	for _, p := range comp.Props {
+		c.scope.Declare(&ir.Param{Name: p.Name, Type: p.Type})
+	}
+	for _, v := range comp.Vars {
+		c.scope.Declare(v)
+	}
+	for _, fn := range comp.Funcs {
+		if fn.Receiver == "" {
+			c.scope.Declare(fn)
+		}
+	}
+
+	// Snapshot diagnostics; discard whatever the pre-pass produces. The
+	// authoritative method-body check runs again in checkComponentBody.
+	diagMark := len(c.diags)
+	for _, fn := range comp.Funcs {
+		if fn.Receiver == comp.Name {
+			c.checkFuncBody(fn)
+		}
+	}
+	c.diags = c.diags[:diagMark]
+}
+
 func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.pushScope()
 	defer c.popScope()
@@ -1699,9 +1764,11 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		if fn.Receiver == "" {
 			c.scope.Declare(fn)
 		} else {
-			// Component-internal type-attached method (e.g. `func int.double`
-			// inside a component): register on the symbol table so method
-			// lookup at call sites finds it.
+			// Type-attached method registered on the symbol table so method
+			// lookup at call sites finds it. Nested funcs on this component
+			// (desugared with Receiver = comp.Name) are *not* declared in
+			// scope by bare name; component-body references resolve through
+			// the currentComponent-aware path in inferIdent / inferCall.
 			c.symtab.RegisterMethod(fn.Receiver, fn)
 		}
 	}
@@ -1718,8 +1785,16 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		}
 	}
 
-	// Check nested function bodies (vars are now fully typed).
+	// Check nested function bodies (vars are now fully typed). Component
+	// nested methods (Receiver = comp.Name) were already pre-checked once
+	// in pass2 with provisional var types; running them again here with
+	// fully-typed vars produces the authoritative diagnostics. Reset
+	// fn.Return so the pre-pass's possibly-Dyn inference doesn't shadow
+	// the authoritative one.
 	for _, fn := range comp.Funcs {
+		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
+			fn.Return = nil
+		}
 		c.checkFuncBody(fn)
 	}
 

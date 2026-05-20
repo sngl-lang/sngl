@@ -1,4 +1,4 @@
-func main_helper() => this // ERROR(check) "undeclared identifier \"this\""
+func main_helper() => this // ERROR(check) "undefined: this"
 
 component main {
     text(value="x")

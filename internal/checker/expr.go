@@ -266,6 +266,30 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		}
 	}
 	if !ok {
+		// `this`-elision: bare name resolves to `this.<name>` inside a method
+		// body when the receiver's type has a field/member/var by that name.
+		// Method names (sibling calls) handled in inferCall.
+		if sel := c.elideThis(x); sel != nil {
+			return c.inferSelect(sel)
+		}
+		// Component-body bare reference: inside a component body (no `this`),
+		// a bare name like `remaining` may refer to a nested method on the
+		// current component. Resolve it as if it were a getter — return the
+		// method's return type (the surrounding interpolation / assignment
+		// will treat it as a value the same way it did pre-T7, when these
+		// were closures registered on scope).
+		if c.currentComponent != nil {
+			if fn, ok := c.symtab.LookupMethod(c.currentComponent.Name, x.Name); ok {
+				// Synthesize an implicit call: bare `remaining` inside the
+				// component body lowers to `remaining()` (bound to the
+				// surrounding component instance at codegen time).
+				retType := fn.Return
+				if retType == nil {
+					retType = TypDyn
+				}
+				return &ir.Call{AST: nil, Type: retType, Func: fn, Args: nil}
+			}
+		}
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
@@ -632,6 +656,27 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, TypEmail, ident.Name)
 		case "uuid":
 			return c.inferBuiltinConversion(x, TypUUID, ident.Name)
+		}
+	}
+
+	// `this`-elision for bare sibling-method calls: inside a method body,
+	// `foo()` resolves to `this.foo()` when the receiver type has a method
+	// `foo` and `foo` is not otherwise in scope.
+	if ident, ok := x.Func.(*ast.IdentExpr); ok {
+		if _, inScope := c.scope.Lookup(ident.Name); !inScope {
+			if recv := c.currentRecvType(); recv != nil {
+				if name := recvTypeName(recv); name != "" {
+					if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+						sel := &ast.SelectExpr{
+							Pos:     ident.Pos,
+							Operand: &ast.IdentExpr{Pos: ident.Pos, Name: "this"},
+							Field:   ident.Name,
+							Kind:    ast.SelectField,
+						}
+						return c.inferMethodCall(sel, x)
+					}
+				}
+			}
 		}
 	}
 
@@ -1189,6 +1234,37 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 				}
 				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
+			}
+		}
+
+		// Component instance member access via `this` (inside a nested
+		// component method): resolve to a component var/prop/func. Limited
+		// to `this.<name>` to preserve the historical Dyn fallback for
+		// out-of-component access patterns like `c.name == "x"` which
+		// type-checking has long permitted via Dyn promotion.
+		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+			isThis := false
+			if ident, ok := x.Operand.(*ast.IdentExpr); ok && ident.Name == "this" {
+				isThis = true
+			}
+			if isThis {
+				if comp, ok := operand.Decl.(*ir.Component); ok {
+					for _, v := range comp.Vars {
+						if v.Name == x.Field {
+							return &ir.Select{AST: x, Type: v.Type, Operand: operandExpr, Field: x.Field}
+						}
+					}
+					for _, p := range comp.Props {
+						if p.Name == x.Field {
+							return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
+						}
+					}
+					for _, fn := range comp.Funcs {
+						if fn.Receiver == "" && fn.Name == x.Field {
+							return &ir.Select{AST: x, Type: fn.SymType(), Operand: operandExpr, Field: x.Field}
+						}
+					}
+				}
 			}
 		}
 
