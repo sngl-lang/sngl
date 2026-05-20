@@ -572,7 +572,10 @@ module.exports = grammar({
 
     element_ref: (_$) => token(seq("#", /[a-zA-Z_][a-zA-Z0-9_]*/)),
 
-    color_literal: (_$) => /#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?/,
+    // Color literals must take precedence over element_ref when the
+    // content is exactly 6 or 8 hex digits (e.g. #ff0000 also matches
+    // element_ref since 'ff0000' satisfies [a-zA-Z][a-zA-Z0-9]*).
+    color_literal: (_$) => token(prec(1, /#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?/)),
 
     unit_literal: (_$) => /[0-9][0-9_]*(\.[0-9][0-9_]*)?[a-zA-Z]+/,
 

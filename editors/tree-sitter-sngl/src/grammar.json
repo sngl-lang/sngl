@@ -3382,8 +3382,15 @@
       }
     },
     "color_literal": {
-      "type": "PATTERN",
-      "value": "#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?"
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 1,
+        "content": {
+          "type": "PATTERN",
+          "value": "#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?"
+        }
+      }
     },
     "unit_literal": {
       "type": "PATTERN",
