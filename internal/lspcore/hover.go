@@ -403,18 +403,13 @@ func hoverPropAt(doc *ast.Document, line, col int, opts HoverOptions) string {
 		}
 		for _, ah := range vn.Args.Args {
 			arg, ok := ah.(ast.Arg)
-			if !ok || arg.Name == "" || arg.Value == nil {
+			if !ok || arg.Name == "" {
 				continue
 			}
-			vp := arg.Value.ExprPos()
-			if vp == nil {
+			if !arg.NamePos.IsSet() {
 				continue
 			}
-			// Value's Pos is the start of the value; the `=` is one
-			// column before it, and the name occupies the preceding
-			// runes. Approximate name column accordingly.
-			nameCol := vp.Column - len(arg.Name) - 1
-			if vp.Line == line && col >= nameCol && col < nameCol+len(arg.Name) {
+			if arg.NamePos.Line == line && col >= arg.NamePos.Column && col < arg.NamePos.Column+len(arg.Name) {
 				foundComp = compName
 				foundProp = arg.Name
 				return

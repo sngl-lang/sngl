@@ -27,9 +27,12 @@ type NodeInst struct {
 }
 
 // Arg is a property assignment in a node instantiation.
+// NamePos is the source position of the Name identifier for named props
+// (zero Pos for positional or when the ast.Arg lacked NamePos).
 type Arg struct {
-	Name  string // empty for positional
-	Value Expr   // checked expression
+	Name    string // empty for positional
+	NamePos ast.Pos
+	Value   Expr // checked expression
 }
 
 func (*NodeInst) stmtNode() {}

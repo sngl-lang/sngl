@@ -294,6 +294,9 @@ func (w *irTokenWalker) nodeInst(n *ir.NodeInst) {
 		w.fn_(h.Func)
 	}
 	for _, a := range n.Props {
+		if a.Name != "" && a.NamePos.IsSet() {
+			w.emit(a.NamePos, len(a.Name), stProperty)
+		}
 		w.expr(a.Value)
 	}
 	w.expr(n.Key)

@@ -1673,7 +1673,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 					}
 					argExpr = wrapIfNeeded(argExpr, paramType)
 				}
-				result = append(result, ir.CallArg{Name: arg.Name, Value: argExpr})
+				result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: argExpr})
 			}
 			if arg.Name == "" {
 				positional++
@@ -2612,7 +2612,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					}
 				}
 			}
-			props = append(props, ir.Arg{Name: arg.Name, Value: val})
+			props = append(props, ir.Arg{Name: arg.Name, NamePos: arg.NamePos, Value: val})
 		case ast.EventHandler:
 			if prevPos, exists := seen[arg.Name]; exists {
 				c.error(arg.Pos, "duplicate event handler %q (first at %v)", arg.Name, prevPos)
@@ -2676,7 +2676,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if expected != nil && expected.Kind != ir.TypeDyn {
 					argExpr = wrapIfNeeded(argExpr, expected)
 				}
-				result = append(result, ir.CallArg{Name: arg.Name, Value: argExpr})
+				result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: argExpr})
 			}
 			if arg.Name == "" || arg.Name == "key" {
 				continue // positional args and key (handled by loop diffing)

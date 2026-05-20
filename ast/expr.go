@@ -332,9 +332,12 @@ type ArgList struct {
 }
 
 // Arg is a single argument: positional (Name empty) or named (Name set).
+// NamePos records the source position of the Name identifier for named
+// args (zero Pos otherwise). Used by LSP semantic tokens and prop hover.
 type Arg struct {
-	Name  string
-	Value Expr
+	Name    string
+	NamePos Pos
+	Value   Expr
 }
 
 // ArgOrEventHandler is an argument or inline event handler in an ArgList.

@@ -393,7 +393,7 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		cp.Receiver = cloneExpr(x.Receiver)
 		cp.Args = make([]ir.CallArg, len(x.Args))
 		for i, a := range x.Args {
-			cp.Args[i] = ir.CallArg{Name: a.Name, Value: cloneExpr(a.Value)}
+			cp.Args[i] = ir.CallArg{Name: a.Name, NamePos: a.NamePos, Value: cloneExpr(a.Value)}
 		}
 		return &cp
 	case *ir.Conversion:
@@ -493,7 +493,7 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			call.Receiver = cloneExpr(n.Call.Receiver)
 			call.Args = make([]ir.CallArg, len(n.Call.Args))
 			for i, a := range n.Call.Args {
-				call.Args[i] = ir.CallArg{Name: a.Name, Value: cloneExpr(a.Value)}
+				call.Args[i] = ir.CallArg{Name: a.Name, NamePos: a.NamePos, Value: cloneExpr(a.Value)}
 			}
 			cp.Call = &call
 		}
@@ -510,7 +510,7 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp := *n
 		cp.Args = make([]ir.CallArg, len(n.Args))
 		for i, a := range n.Args {
-			cp.Args[i] = ir.CallArg{Name: a.Name, Value: cloneExpr(a.Value)}
+			cp.Args[i] = ir.CallArg{Name: a.Name, NamePos: a.NamePos, Value: cloneExpr(a.Value)}
 		}
 		return &cp
 	case *ir.Toggle:

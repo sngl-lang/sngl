@@ -107,9 +107,12 @@ const (
 )
 
 // CallArg is a resolved argument in a function call.
+// NamePos records the source position of the Name identifier for named
+// args (zero for positional).
 type CallArg struct {
-	Name  string // empty for positional
-	Value Expr
+	Name    string // empty for positional
+	NamePos ast.Pos
+	Value   Expr
 }
 
 // Conversion is a builtin type coercion: int(x), float(x), string(x), bool(x).

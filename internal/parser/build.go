@@ -2207,7 +2207,7 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 			if p.Default != nil {
 				value = p.Default
 			}
-			return ast.Arg{Name: ":" + nameTok.Literal, Value: value}
+			return ast.Arg{Name: ":" + nameTok.Literal, NamePos: ast.Pos(b.posFromToken(nameTok)), Value: value}
 		case ELLIPSIS:
 			it.skip() // ellipsis
 			var val ast.Expr
@@ -2329,7 +2329,7 @@ func (b *builder) buildIdentArgCont(it nodeIter, identTok Token) ast.ArgOrEventH
 		if !it.done() && it.isNonTerminal() {
 			val = b.buildExpr(it.enter())
 		}
-		return ast.Arg{Name: identTok.Literal, Value: val}
+		return ast.Arg{Name: identTok.Literal, NamePos: ast.Pos(b.posFromToken(identTok)), Value: val}
 	}
 
 	// Build the expression starting with the ident
