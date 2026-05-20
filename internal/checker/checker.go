@@ -882,6 +882,16 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 
 func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
+
+	if fn.Receiver != "" {
+		// Reject duplicate method — catches top-level func T.foo colliding
+		// with a nested func already registered from struct/enum/component body.
+		if _, exists := c.symtab.LookupMethod(fn.Receiver, fn.Name); exists {
+			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+			return
+		}
+	}
+
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
 
 	if fn.Receiver != "" {

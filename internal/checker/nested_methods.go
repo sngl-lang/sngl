@@ -115,6 +115,45 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	}
 }
 
+// hasMemberLikeName reports whether the IR type symbol has a field/member/var
+// of the given name — covering struct fields, enum members, and component vars.
+func hasMemberLikeName(d ir.Symbol, name string) bool {
+	switch x := d.(type) {
+	case *ir.StructDef:
+		for _, f := range x.Fields {
+			if f.Name == name {
+				return true
+			}
+		}
+	case *ir.EnumDef:
+		for _, m := range x.Members {
+			if m.Name == name {
+				return true
+			}
+		}
+	case *ir.Component:
+		for _, v := range x.Vars {
+			if v.Name == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// typeKindNoun returns a human-readable noun for the kind of IR symbol.
+func typeKindNoun(d ir.Symbol) string {
+	switch d.(type) {
+	case *ir.StructDef:
+		return "struct"
+	case *ir.EnumDef:
+		return "enum"
+	case *ir.Component:
+		return "component"
+	}
+	return "type"
+}
+
 // registerNestedMethods desugars each nested *ast.FuncDef into a top-level
 // method form (prepends a synthetic `this` param, sets the receiver type name)
 // and registers via the existing symtab.RegisterMethod path.
@@ -135,6 +174,28 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			out = append(out, fn)
 			continue
 		}
+
+		// Collision check: field/member/var on the receiver type.
+		typeDecl, ok := c.symtab.Types[recvName]
+		if !ok {
+			if comp, ok2 := c.symtab.Comps[recvName]; ok2 {
+				typeDecl = comp
+			}
+		}
+		if typeDecl != nil && hasMemberLikeName(typeDecl, n.Name) {
+			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, typeKindNoun(typeDecl), recvName)
+			continue
+		}
+		// Collision check: already-registered method on the receiver type.
+		if _, exists := c.symtab.LookupMethod(recvName, n.Name); exists {
+			noun := "type"
+			if typeDecl != nil {
+				noun = typeKindNoun(typeDecl)
+			}
+			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
+			continue
+		}
+
 		thisType := synthRecvTypeExpr(n.Pos, recvName, typeParams)
 		thisParam := ast.Param{
 			Pos:  n.Pos,
