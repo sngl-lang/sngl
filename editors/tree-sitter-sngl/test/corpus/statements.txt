@@ -11,7 +11,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -41,7 +41,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -71,7 +71,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -98,9 +98,9 @@ component App(@submit) {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (component_param
-      (identifier))
+      name: (identifier))
     (statement_block
       (visual_node
         component: (identifier)
@@ -123,7 +123,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -132,8 +132,8 @@ component App {
           (struct_literal
             name: (identifier)
             (anon_struct_field
-              (identifier)
-              (string_literal)))))
+              name: (identifier)
+              value: (string_literal)))))
       (visual_node
         component: (identifier)
         (event_arg
@@ -167,7 +167,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec

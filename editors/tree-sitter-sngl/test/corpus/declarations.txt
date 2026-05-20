@@ -89,7 +89,7 @@ unit duration { ms, s = 1000, m = 60000 }
 
 (source_file
   (unit_declaration
-    (identifier)
+    name: (identifier)
     (identifier)
     (named_arg
       name: (identifier)
@@ -161,14 +161,14 @@ func add(a int, b int) => a + b
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (binary_expression
       left: (identifier)

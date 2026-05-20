@@ -26,17 +26,17 @@
 (import_declaration (string_literal) @string.special)
 (import_declaration (identifier) @variable)
 
-; Declarations: first identifier child is the declared name.
-(struct_declaration . (identifier) @type.definition)
-(enum_declaration . (identifier) @type.definition)
-(unit_declaration . (identifier) @type.definition)
-(component_declaration . (identifier) @type.definition)
+; Declarations: use name: field label for the declared name.
+(struct_declaration name: (identifier) @type.definition)
+(enum_declaration name: (identifier) @type.definition)
+(unit_declaration name: (identifier) @type.definition)
+(component_declaration name: (identifier) @type.definition)
 
-; Struct fields: (struct_field name type [= default])
-(struct_field . (identifier) @property)
+; Struct fields: use name: field label for the field name.
+(struct_field name: (identifier) @property)
 
 ; Component params (positional, named, binding, or event form).
-(component_param . (identifier) @variable.parameter)
+(component_param name: (identifier) @variable.parameter)
 (component_param "@" @punctuation.special)
 (component_param ":" @punctuation.special)
 
@@ -61,7 +61,7 @@
 (event_arg "@" @punctuation.special)
 
 ; Anonymous struct literal fields { foo = 1 }
-(anon_struct_field . (identifier) @property)
+(anon_struct_field name: (identifier) @property)
 
 ; Statements
 (assignment_statement operator: (assignment_operator) @operator)
@@ -71,8 +71,8 @@
 (emit_expression (event_method) @function)
 
 ; Functions
-(func_declaration (func_name (identifier) @function))
-(func_param . (identifier) @variable.parameter)
+(func_declaration (func_name name: (identifier) @function))
+(func_param name: (identifier) @variable.parameter)
 
 ; Expressions
 (call_expression function: (identifier) @function)

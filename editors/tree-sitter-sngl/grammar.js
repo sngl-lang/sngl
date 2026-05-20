@@ -53,24 +53,24 @@ module.exports = grammar({
       seq("{", repeat(seq(optional("/-"), $._stmt, optional($._terminator))), "}"),
 
     import_declaration: ($) =>
-      seq("import", optional(seq($.identifier, "=>")), $.string_literal),
+      seq("import", optional(seq(field("alias", $.identifier), "=>")), $.string_literal),
 
     struct_declaration: ($) =>
-      seq("struct", optional($.identifier), "{", repeat($.struct_field), "}"),
+      seq("struct", optional(field("name", $.identifier)), "{", repeat($.struct_field), "}"),
 
     struct_field: ($) =>
       seq(
-      $.identifier,
-      $.type_identifier,
-      optional(seq("=", $._expression)),
+      field("name", $.identifier),
+      field("type", $.type_identifier),
+      optional(seq("=", field("default", $._expression))),
       $._terminator
     ),
 
     enum_declaration: ($) =>
-      seq("enum", optional($.identifier), "{", optional($._arg_list), "}"),
+      seq("enum", optional(field("name", $.identifier)), "{", optional($._arg_list), "}"),
 
     unit_declaration: ($) =>
-      seq("unit", optional($.identifier), "{", optional($._arg_list), "}"),
+      seq("unit", optional(field("name", $.identifier)), "{", optional($._arg_list), "}"),
 
     const_declaration: ($) =>
       choice(
@@ -138,7 +138,10 @@ module.exports = grammar({
     ),
 
     func_name: ($) =>
-      seq($.identifier, optional(seq(".", $.identifier))),
+      choice(
+      seq(field("receiver", $.identifier), ".", field("name", $.identifier)),
+      field("name", $.identifier)
+    ),
 
     type_param_list: ($) =>
       seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
@@ -147,12 +150,12 @@ module.exports = grammar({
       seq($.func_param, repeat(seq(",", $.func_param))),
 
     func_param: ($) =>
-      prec.right(seq($.identifier, optional($.type_identifier), optional(seq("=", $._expression)))),
+      prec.right(seq(field("name", $.identifier), optional(field("type", $.type_identifier)), optional(seq("=", field("default", $._expression))))),
 
     component_declaration: ($) =>
       seq(
       "component",
-      $.identifier,
+      field("name", $.identifier),
       optional(seq("(", optional($._comp_param_list), ")")),
       optional($.type_identifier),
       $.statement_block
@@ -165,12 +168,12 @@ module.exports = grammar({
       choice(
       seq(
         ":",
-        $.identifier,
-        optional($.type_identifier),
-        optional(seq("=", $._expression))
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        optional(seq("=", field("default", $._expression)))
       ),
-      seq("@", $.identifier, optional($.type_identifier)),
-      seq($.identifier, optional($._comp_param_tail))
+      seq("@", field("name", $.identifier), optional(field("type", $.type_identifier))),
+      seq(field("name", $.identifier), optional($._comp_param_tail))
     ),
 
     _comp_param_tail: ($) =>
@@ -254,7 +257,7 @@ module.exports = grammar({
     anon_struct_field: ($) =>
       choice(
       seq("...", $._expression),
-      seq($.identifier, "=", $._expression)
+      seq(field("name", $.identifier), "=", field("value", $._expression))
     ),
 
     anon_func_expression: ($) =>

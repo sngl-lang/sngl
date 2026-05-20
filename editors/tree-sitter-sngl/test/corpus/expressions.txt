@@ -156,7 +156,7 @@ func compute() => 1 + 2 * 3
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (binary_expression
       left: (integer_literal)
       right: (binary_expression
@@ -174,10 +174,10 @@ func ok(x int) => x >= 10 && x < 100
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (binary_expression
       left: (binary_expression
@@ -198,10 +198,10 @@ func label(active bool) => active ? "on" : "off"
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (ternary_expression
       condition: (identifier)
@@ -221,7 +221,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -247,10 +247,10 @@ func n(user User) => user.name
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (field_expression
       operand: (identifier)
@@ -267,10 +267,10 @@ func first(items list) => items[0]
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (index_expression
       operand: (identifier)
@@ -287,7 +287,7 @@ func s() => string(42)
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (call_expression
       function: (identifier)
       (integer_literal))))
@@ -303,10 +303,10 @@ func upper(name string) => name.toUpper()
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (call_expression
       function: (field_expression
@@ -325,7 +325,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (visual_node
         component: (identifier)
@@ -333,11 +333,11 @@ component App {
           name: (identifier)
           value: (anon_struct_literal
             (anon_struct_field
-              (identifier)
-              (element_ref))
+              name: (identifier)
+              value: (element_ref))
             (anon_struct_field
-              (identifier)
-              (integer_literal))))))))
+              name: (identifier)
+              value: (integer_literal))))))))
 
 ================
 List literal
@@ -373,14 +373,14 @@ func ok(a bool, b bool) => a || b
 (source_file
   (func_declaration
     (func_name
-      (identifier))
+      name: (identifier))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (func_param
-      (identifier)
-      (type_identifier
+      name: (identifier)
+      type: (type_identifier
         (identifier)))
     (binary_expression
       left: (identifier)
@@ -399,7 +399,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -428,7 +428,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (visual_node
         component: (identifier)

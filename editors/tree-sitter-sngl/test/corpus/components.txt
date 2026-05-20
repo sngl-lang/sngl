@@ -10,9 +10,9 @@ component Button(label = "Click") {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (component_param
-      (identifier)
+      name: (identifier)
       (string_literal))
     (statement_block
       (visual_node
@@ -34,7 +34,7 @@ component Counter {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -63,7 +63,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -93,7 +93,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -128,7 +128,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -161,7 +161,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -198,7 +198,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -233,7 +233,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (var_declaration
         (var_spec
@@ -271,7 +271,7 @@ component App {
 
 (source_file
   (component_declaration
-    (identifier)
+    name: (identifier)
     (statement_block
       (visual_node
         component: (identifier)
