@@ -253,7 +253,7 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 // --- Struct declaration ---
 
 func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
-	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructField } rbrace .
+	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_struct
 	s := &ast.StructDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -268,15 +268,23 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	}
 	it.skip() // lbrace
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == StructField {
-			s.Body = append(s.Body, b.buildStructField(it.enter()))
+		if it.isNonTerminal() && it.symbol() == StructBodyItem {
+			sub := it.enter()
+			if !sub.done() && sub.isNonTerminal() {
+				switch sub.symbol() {
+				case FuncDecl:
+					s.Body = append(s.Body, b.buildFuncDecl(sub.enter()))
+				case StructField:
+					s.Body = append(s.Body, b.buildStructField(sub.enter()))
+				}
+			}
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == RBRACE {
 				if it.token().Line > lbraceLine {
 					s.IsMultiline = true
 				}
 			}
-			it.skip() // rbrace
+			it.skip() // rbrace or semi
 		}
 	}
 	return s
@@ -312,7 +320,7 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 // --- Enum declaration ---
 
 func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
-	// EnumDecl = kw_enum [ ident ] lbrace [ ArgList ] rbrace .
+	// EnumDecl = kw_enum [ ident ] lbrace { EnumBodyItem (comma|semi) } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_enum
 	e := &ast.EnumDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -320,51 +328,37 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	}
 	it.skip() // lbrace
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == ArgList {
-			members := b.buildEnumMembers(it.enter(), &e.IsMultiline)
-			for i := range members {
-				e.Body = append(e.Body, &members[i])
+		if it.isNonTerminal() && it.symbol() == EnumBodyItem {
+			sub := it.enter()
+			if !sub.done() && sub.isNonTerminal() {
+				switch sub.symbol() {
+				case FuncDecl:
+					e.Body = append(e.Body, b.buildFuncDecl(sub.enter()))
+				case EnumMember:
+					e.Body = append(e.Body, b.buildEnumMember(sub.enter()))
+				}
 			}
 		} else {
-			it.skip() // rbrace
+			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+				e.IsMultiline = true
+			}
+			it.skip() // comma or semi or rbrace
 		}
 	}
 	return e
 }
 
-func (b *builder) buildEnumMembers(it nodeIter, multiline *bool) []ast.EnumMember {
-	// ArgList = Arg { comma Arg } — each Arg is either ident or ident=Expr
-	var members []ast.EnumMember
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == Arg {
-			sub := it.enter()
-			m := b.buildEnumMember(sub)
-			members = append(members, m)
-		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				*multiline = true
-			}
-			it.skip() // comma or semi
-		}
-	}
-	return members
-}
-
-func (b *builder) buildEnumMember(it nodeIter) ast.EnumMember {
-	var m ast.EnumMember
+func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {
+	m := &ast.EnumMember{}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		nameTok := it.shift()
 		m.Pos = b.posFromToken(nameTok)
 		m.Name = nameTok.Literal
 	}
-	// Check for IdentArgCont with assign
-	if !it.done() && it.isNonTerminal() && it.symbol() == IdentArgCont {
-		sub := it.enter()
-		if !sub.done() && !sub.isNonTerminal() && sub.tokenType() == ASSIGN {
-			sub.skip() // assign
-			if !sub.done() && sub.isNonTerminal() {
-				m.Value = b.buildExpr(sub.enter())
-			}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() {
+			m.Value = b.buildExpr(it.enter())
 		}
 	}
 	return m

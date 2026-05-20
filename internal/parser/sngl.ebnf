@@ -245,13 +245,18 @@ ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructField { semi StructField } [ semi ] ] rbrace .
+StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructBodyItem { semi StructBodyItem } [ semi ] ] rbrace .
+
+StructBodyItem = FuncDecl | StructField .
 
 StructField = IdentList Type [ assign Expr ] .
 
-# Enum values use a brace list: enum Color{Red, Green, Blue} or enum Status{ok=0, err=1}
-# The body is a comma-separated ArgList, not a StmtBlock (no semis).
-EnumDecl = kw_enum [ ident ] lbrace [ ArgList ] rbrace .
+# Enum body accepts members and nested funcs, separated by comma or semi.
+EnumDecl = kw_enum [ ident ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
+
+EnumBodyItem = FuncDecl | EnumMember .
+
+EnumMember = ident [ assign Expr ] .
 
 # Unit suffixes use the same brace list: unit Length{px, em, rem=16}
 UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
