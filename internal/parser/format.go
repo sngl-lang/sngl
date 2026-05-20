@@ -184,11 +184,11 @@ func (f *formatter) endLine(s ast.Stmt) int {
 		return f.blockEndLine(x.Pos.Line, &x.Body)
 	case *ast.StructDef:
 		if x.IsMultiline {
-			return x.Pos.Line + len(x.Fields()) + 1
+			return x.Pos.Line + len(x.Body) + 1
 		}
 	case *ast.EnumDef:
 		if x.IsMultiline {
-			return x.Pos.Line + len(x.Members()) + 1
+			return x.Pos.Line + len(x.Body) + 1
 		}
 	}
 	if p := s.StmtPos(); p != nil {
@@ -281,7 +281,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		}
 		f.write(" ")
 	}
-	if len(s.Fields()) == 0 {
+	if len(s.Body) == 0 {
 		f.write("{}")
 		return
 	}
@@ -289,15 +289,20 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("{")
 	f.newline()
 	f.indent++
-	for _, field := range s.Fields() {
-		f.write(strings.Join(field.Names, ", "))
-		if field.Type != nil {
-			f.write(" ")
-			f.writeType(field.Type)
-		}
-		if field.Default != nil {
-			f.write(" = ")
-			f.writeExpr(field.Default)
+	for _, item := range s.Body {
+		switch it := item.(type) {
+		case *ast.StructField:
+			f.write(strings.Join(it.Names, ", "))
+			if it.Type != nil {
+				f.write(" ")
+				f.writeType(it.Type)
+			}
+			if it.Default != nil {
+				f.write(" = ")
+				f.writeExpr(it.Default)
+			}
+		case *ast.FuncDef:
+			f.writeFuncDef(it)
 		}
 		f.newline()
 	}
@@ -314,33 +319,48 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		f.write(" ")
 	}
 	f.write("{")
-	if e.IsMultiline {
+	// Funcs in the body force multiline form regardless of IsMultiline.
+	hasFuncs := false
+	for _, it := range e.Body {
+		if _, ok := it.(*ast.FuncDef); ok {
+			hasFuncs = true
+			break
+		}
+	}
+	if e.IsMultiline || hasFuncs {
 		f.newline()
 		f.indent++
-		for _, m := range e.Members() {
-			f.write(m.Name)
-			if m.Value != nil {
-				f.write(" = ")
-				f.writeExpr(m.Value)
+		for _, item := range e.Body {
+			switch it := item.(type) {
+			case *ast.EnumMember:
+				f.write(it.Name)
+				if it.Value != nil {
+					f.write(" = ")
+					f.writeExpr(it.Value)
+				}
+			case *ast.FuncDef:
+				f.writeFuncDef(it)
 			}
 			f.newline()
 		}
 		f.indent--
 		f.write("}")
-	} else {
-		f.write(" ")
-		for i, m := range e.Members() {
-			if i > 0 {
-				f.write(", ")
-			}
-			f.write(m.Name)
-			if m.Value != nil {
-				f.write(" = ")
-				f.writeExpr(m.Value)
-			}
-		}
-		f.write(" }")
+		return
 	}
+	// Single-line form: members only (no funcs by construction).
+	f.write(" ")
+	members := e.Members()
+	for i, m := range members {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.write(m.Name)
+		if m.Value != nil {
+			f.write(" = ")
+			f.writeExpr(m.Value)
+		}
+	}
+	f.write(" }")
 }
 
 // --- unit ---
