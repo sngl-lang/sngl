@@ -368,6 +368,10 @@ type HoverOptions struct {
 	// named-arg key inside a visual node. Returns markdown describing
 	// the resolved component prop.
 	ComponentProp func(componentName, propName string) (markdown string, ok bool)
+	// StructFieldType, if non-nil, is invoked when the cursor sits on
+	// a key in a struct literal (e.g. `r` in `color{r=255}`). Returns
+	// markdown describing the struct's field type.
+	StructFieldType func(structName, fieldName string) (markdown string, ok bool)
 }
 
 // HoverAt returns hover markdown for the cursor position. Tries literal
@@ -381,8 +385,206 @@ func HoverAt(content string, doc *ast.Document, line, col int, opts HoverOptions
 		if info := hoverPropAt(doc, line, col, opts); info != "" {
 			return info
 		}
+		if info := hoverStructFieldAt(doc, line, col); info != "" {
+			return info
+		}
+		if info := hoverStructLitFieldAt(doc, line, col, opts); info != "" {
+			return info
+		}
 	}
 	return hoverWord(content, doc, line, col, opts)
+}
+
+// hoverStructFieldAt returns hover markdown when the cursor is on a
+// field name inside a struct declaration. Format: `Struct.field: Type`.
+func hoverStructFieldAt(doc *ast.Document, line, col int) string {
+	if doc == nil {
+		return ""
+	}
+	var found string
+	walkStructDefs(doc, func(sd *ast.StructDef) {
+		if found != "" {
+			return
+		}
+		for _, f := range sd.Fields {
+			for i, n := range f.Names {
+				var pos ast.Pos
+				if i < len(f.NamePositions) {
+					pos = f.NamePositions[i]
+				}
+				if !pos.IsSet() {
+					continue
+				}
+				if pos.Line != line || col < pos.Column || col >= pos.Column+len(n) {
+					continue
+				}
+				t := typeExprString(f.Type)
+				if t == "" {
+					t = "dyn"
+				}
+				owner := sd.Name
+				if owner == "" {
+					owner = "struct"
+				}
+				found = "```sngl\n" + owner + "." + n + ": " + t + "\n```\n"
+				return
+			}
+		}
+	})
+	return found
+}
+
+// hoverStructLitFieldAt returns hover markdown when the cursor is on
+// a key in a struct literal (e.g. r in color{r=255}). Resolves to the
+// declared struct's field type via the ComponentProp/Struct lookup.
+func hoverStructLitFieldAt(doc *ast.Document, line, col int, opts HoverOptions) string {
+	if doc == nil || opts.StructFieldType == nil {
+		return ""
+	}
+	var found string
+	walkStructExprs(doc, func(se *ast.StructExpr) {
+		if found != "" {
+			return
+		}
+		for _, f := range se.Fields {
+			if f.Spread || f.Name == "" || !f.NamePos.IsSet() {
+				continue
+			}
+			if f.NamePos.Line != line || col < f.NamePos.Column || col >= f.NamePos.Column+len(f.Name) {
+				continue
+			}
+			if md, ok := opts.StructFieldType(se.Name, f.Name); ok {
+				found = md
+				return
+			}
+		}
+	})
+	return found
+}
+
+// walkStructDefs invokes fn for every StructDef in the document.
+func walkStructDefs(doc *ast.Document, fn func(*ast.StructDef)) {
+	if doc == nil {
+		return
+	}
+	var walk func(s ast.Stmt)
+	walk = func(s ast.Stmt) {
+		switch x := s.(type) {
+		case *ast.StructDef:
+			fn(x)
+		case *ast.ComponentDecl:
+			for _, c := range x.Body.Stmts {
+				walk(c)
+			}
+		}
+	}
+	for _, s := range doc.Stmts {
+		walk(s)
+	}
+}
+
+// walkStructExprs invokes fn for every StructExpr in the document.
+func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
+	if doc == nil {
+		return
+	}
+	var walkE func(e ast.Expr)
+	var walkS func(s ast.Stmt)
+	walkE = func(e ast.Expr) {
+		switch x := e.(type) {
+		case nil:
+			return
+		case *ast.StructExpr:
+			fn(x)
+			for _, f := range x.Fields {
+				walkE(f.Value)
+			}
+		case *ast.BinaryExpr:
+			walkE(x.Left)
+			walkE(x.Right)
+		case *ast.UnaryExpr:
+			walkE(x.Operand)
+		case *ast.CallExpr:
+			walkE(x.Func)
+			for _, a := range x.Args.Args {
+				if arg, ok := a.(ast.Arg); ok {
+					walkE(arg.Value)
+				}
+			}
+		case *ast.SelectExpr:
+			walkE(x.Operand)
+		case *ast.IndexExpr:
+			walkE(x.Operand)
+			walkE(x.Index)
+		case *ast.TernaryExpr:
+			walkE(x.Cond)
+			walkE(x.Then)
+			walkE(x.Else)
+		case *ast.ListExpr:
+			for _, el := range x.Elements {
+				walkE(el)
+			}
+		case *ast.LambdaExpr:
+			walkE(x.Body)
+			for _, st := range x.Block.Stmts {
+				walkS(st)
+			}
+		case *ast.InterpolationExpr:
+			for _, p := range x.Parts {
+				walkE(p)
+			}
+		}
+	}
+	walkS = func(s ast.Stmt) {
+		switch x := s.(type) {
+		case nil:
+			return
+		case *ast.VarDecl:
+			for _, sp := range x.Specs {
+				walkE(sp.Default)
+			}
+		case *ast.ConstDecl:
+			for _, sp := range x.Specs {
+				walkE(sp.Default)
+			}
+		case *ast.AssignStmt:
+			walkE(x.Value)
+		case *ast.IfStmt:
+			walkE(x.Cond)
+			for _, c := range x.Body.Stmts {
+				walkS(c)
+			}
+			for _, c := range x.Else.Stmts {
+				walkS(c)
+			}
+		case *ast.ForStmt:
+			walkE(x.Iter)
+			for _, c := range x.Body.Stmts {
+				walkS(c)
+			}
+		case *ast.VisualNode:
+			for _, a := range x.Args.Args {
+				if arg, ok := a.(ast.Arg); ok {
+					walkE(arg.Value)
+				}
+			}
+			for _, c := range x.Block.Stmts {
+				walkS(c)
+			}
+		case *ast.ComponentDecl:
+			for _, c := range x.Body.Stmts {
+				walkS(c)
+			}
+		case *ast.FuncDef:
+			walkE(x.Body)
+			for _, c := range x.Block.Stmts {
+				walkS(c)
+			}
+		}
+	}
+	for _, s := range doc.Stmts {
+		walkS(s)
+	}
 }
 
 // hoverPropAt returns the markdown when the cursor is on a named-arg
@@ -393,20 +595,13 @@ func hoverPropAt(doc *ast.Document, line, col int, opts HoverOptions) string {
 		return ""
 	}
 	var foundComp, foundProp string
-	walkVisualNodes(doc, func(vn *ast.VisualNode) {
-		if foundProp != "" {
+	visitArgListSites(doc, func(compName string, args ast.ArgList) {
+		if foundProp != "" || compName == "" {
 			return
 		}
-		compName := visualNodeName(vn)
-		if compName == "" {
-			return
-		}
-		for _, ah := range vn.Args.Args {
+		for _, ah := range args.Args {
 			arg, ok := ah.(ast.Arg)
-			if !ok || arg.Name == "" {
-				continue
-			}
-			if !arg.NamePos.IsSet() {
+			if !ok || arg.Name == "" || !arg.NamePos.IsSet() {
 				continue
 			}
 			if arg.NamePos.Line == line && col >= arg.NamePos.Column && col < arg.NamePos.Column+len(arg.Name) {
@@ -423,6 +618,57 @@ func hoverPropAt(doc *ast.Document, line, col int, opts HoverOptions) string {
 		return md
 	}
 	return ""
+}
+
+// visitArgListSites invokes fn for every (component-name, ArgList) pair
+// in the document. Covers both VisualNodes (vbox { ... }) and CallStmts
+// (text(value="x") without a body), since both shapes carry named args.
+func visitArgListSites(doc *ast.Document, fn func(compName string, args ast.ArgList)) {
+	if doc == nil {
+		return
+	}
+	var walkStmt func(s ast.Stmt)
+	walkStmt = func(s ast.Stmt) {
+		switch x := s.(type) {
+		case *ast.VisualNode:
+			fn(visualNodeName(x), x.Args)
+			for _, c := range x.Block.Stmts {
+				walkStmt(c)
+			}
+		case *ast.CallStmt:
+			if x.Call != nil {
+				if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
+					fn(id.Name, x.Call.Args)
+				}
+			}
+		case *ast.ComponentDecl:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		case *ast.FuncDef:
+			for _, c := range x.Block.Stmts {
+				walkStmt(c)
+			}
+		case *ast.IfStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+			for _, c := range x.Else.Stmts {
+				walkStmt(c)
+			}
+		case *ast.ForStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		case *ast.PlatformStmt:
+			for _, c := range x.Body.Stmts {
+				walkStmt(c)
+			}
+		}
+	}
+	for _, s := range doc.Stmts {
+		walkStmt(s)
+	}
 }
 
 func visualNodeName(vn *ast.VisualNode) string {

@@ -1,0 +1,8 @@
+// HOVER(value) "text.value:"
+// HOVER(value) "string"
+// HOVER(value) "prop on `component text`"
+component App {
+    vbox {
+        text(value="hi")
+    }
+}

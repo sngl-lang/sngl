@@ -248,3 +248,52 @@ func formatProp(comp *ir.Component, p *ir.Prop) string {
 	}
 	return fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\n%s prop on `component %s`.\n", comp.Name, p.Name, t, required, comp.Name)
 }
+
+// lookupStructFieldType finds field on the struct named structName
+// (user or stdlib). Returns markdown describing the field's type.
+func lookupStructFieldType(pkg *ir.Package, structName, fieldName string) (string, bool) {
+	sd := findStruct(pkg, structName)
+	if sd == nil {
+		return "", false
+	}
+	for _, f := range sd.Fields {
+		if f.Name != fieldName {
+			continue
+		}
+		t := "dyn"
+		if f.Type != nil {
+			t = f.Type.String()
+		}
+		return fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\nfield on `struct %s`.\n", sd.Name, f.Name, t, sd.Name), true
+	}
+	return "", false
+}
+
+func findStruct(pkg *ir.Package, name string) *ir.StructDef {
+	if pkg == nil {
+		return nil
+	}
+	if pkg.Symbols != nil {
+		if sym, ok := pkg.Symbols.Types[name]; ok {
+			if sd, ok := sym.(*ir.StructDef); ok {
+				return sd
+			}
+		}
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name == name {
+			return sd
+		}
+	}
+	for _, imp := range pkg.Imports {
+		if imp.Pkg == nil {
+			continue
+		}
+		for _, sd := range imp.Pkg.Structs {
+			if sd.Name == name {
+				return sd
+			}
+		}
+	}
+	return nil
+}

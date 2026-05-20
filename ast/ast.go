@@ -81,10 +81,11 @@ type StructDef struct {
 // Names groups comma-separated fields sharing a type (e.g. `a, b int`);
 // a default applies to every name.
 type StructField struct {
-	Pos     Pos
-	Names   []string
-	Type    TypeExpr
-	Default Expr
+	Pos           Pos
+	Names         []string
+	NamePositions []Pos // parallel to Names; per-name source positions
+	Type          TypeExpr
+	Default       Expr
 }
 
 // UnitDef declares a unit type with named suffixes.

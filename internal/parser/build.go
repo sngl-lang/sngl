@@ -290,7 +290,7 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 		if !sub.done() {
 			f.Pos = b.posFromToken(sub.token())
 		}
-		f.Names = b.buildIdentList(sub)
+		f.Names, f.NamePositions = b.buildIdentListWithPos(sub)
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		f.Type = b.buildType(it.enter())

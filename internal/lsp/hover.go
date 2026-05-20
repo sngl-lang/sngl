@@ -57,6 +57,9 @@ func (s *Server) handleHover(id json.RawMessage, params json.RawMessage) {
 		ComponentProp: func(componentName, propName string) (string, bool) {
 			return lookupComponentProp(pkg, componentName, propName)
 		},
+		StructFieldType: func(structName, fieldName string) (string, bool) {
+			return lookupStructFieldType(pkg, structName, fieldName)
+		},
 	}
 	info := lspcore.HoverAt(fs.Content, fs.Doc, line, col, opts)
 	if info == "" {
