@@ -10,12 +10,12 @@ stdout 'caps: NoListLambdas,NoContext,NoReactivity,NoStdlibWrappers,NoInlineComp
 stdout 'passes: PlatformExtensionBody . NoListLambdas . NoContext . InlinePure . NoInlineComponents . NoReactivity . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,NoListLambdas,NoContext,NoReactivity,NoStdlibWrappers,NoInlineComponents'
-stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoListLambdas . NoContext . InlinePure . NoInlineComponents . NoReactivity'
+stdout 'caps: NoAsyncReactive,NoListLambdas,NoContext,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoImplicitRecv'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoListLambdas . NoContext . InlinePure . NoInlineComponents . NoImplicitRecv . NoReactivity'
 
 sngl dump lowered --lang none --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,NoContext,NoReactivity,NoStdlibWrappers,NoInlineComponents'
-stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoContext . InlinePure . NoInlineComponents . NoReactivity'
+stdout 'caps: NoAsyncReactive,NoContext,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoImplicitRecv'
+stdout 'passes: PlatformExtensionBody . NoAsyncReactive . NoContext . InlinePure . NoInlineComponents . NoImplicitRecv . NoReactivity'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: NoContext,NoInlineComponents'
