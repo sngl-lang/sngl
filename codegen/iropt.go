@@ -3,6 +3,8 @@ package codegen
 import (
 	"maps"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // OptimizeMutation runs optimization passes on a MutationModel:
@@ -28,20 +30,22 @@ func OptimizeMutation(m *MutationModel) {
 	// Pass 3: Merge updaters that share the same target and deps.
 	m.Updaters = mergeUpdaters(m.Updaters)
 
-	// Pass 4: Collect fields referenced by updaters (the reactive targets).
-	activeFields := make(map[string]bool)
+	// Pass 4: Collect vars referenced by updaters (the reactive targets).
+	activeVars := make(map[*ir.Var]struct{})
 	for _, u := range m.Updaters {
-		maps.Copy(activeFields, u.Deps)
-	}
-	timerFields := make(map[string]bool)
-	for _, t := range m.Timers {
-		timerFields[t.ActiveVar] = true
+		maps.Copy(activeVars, u.Deps)
 	}
 
 	// Pass 5: Prune dead computed fields (based on updater deps + timer vars).
 	usedForComputeds := make(map[string]bool)
-	maps.Copy(usedForComputeds, activeFields)
-	maps.Copy(usedForComputeds, timerFields)
+	for v := range activeVars {
+		usedForComputeds[v.Name] = true
+	}
+	for _, t := range m.Timers {
+		if t.ActiveVar != "" {
+			usedForComputeds[t.ActiveVar] = true
+		}
+	}
 	m.Analysis.PruneUnusedComputeds(usedForComputeds)
 
 	// Note: we intentionally do NOT remove handlers based on mutation
@@ -66,11 +70,17 @@ func OptimizeRender(m *RenderModel) {
 	// Pass 2: Collect all referenced fields.
 	usedFields := make(map[string]bool)
 	for _, h := range m.Handlers {
-		maps.Copy(usedFields, h.Mutated)
+		for v := range h.Mutated {
+			usedFields[v.Name] = true
+		}
 	}
 	for _, t := range m.Timers {
-		usedFields[t.ActiveVar] = true
-		maps.Copy(usedFields, t.Mutated)
+		if t.ActiveVar != "" {
+			usedFields[t.ActiveVar] = true
+		}
+		for v := range t.Mutated {
+			usedFields[v.Name] = true
+		}
 	}
 
 	// Pass 3: Prune dead computed fields.
@@ -82,11 +92,17 @@ func OptimizeRender(m *RenderModel) {
 func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[string]bool) map[string]bool {
 	mutated := make(map[string]bool)
 	for _, h := range handlers {
-		maps.Copy(mutated, h.Mutated)
+		for v := range h.Mutated {
+			mutated[v.Name] = true
+		}
 	}
 	for _, t := range timers {
-		mutated[t.ActiveVar] = true
-		maps.Copy(mutated, t.Mutated)
+		if t.ActiveVar != "" {
+			mutated[t.ActiveVar] = true
+		}
+		for v := range t.Mutated {
+			mutated[v.Name] = true
+		}
 	}
 	static := make(map[string]bool)
 	for f := range modelFields {
@@ -145,10 +161,10 @@ func mergeUpdaters(us []Updater) []Updater {
 		return name
 	}
 
-	depsKey := func(deps map[string]bool) string {
+	depsKey := func(deps map[*ir.Var]struct{}) string {
 		sorted := make([]string, 0, len(deps))
-		for k := range deps {
-			sorted = append(sorted, k)
+		for v := range deps {
+			sorted = append(sorted, v.Name)
 		}
 		// Simple sort for determinism
 		for i := range sorted {

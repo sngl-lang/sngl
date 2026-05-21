@@ -6,12 +6,21 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+func varSet(vars ...*ir.Var) map[*ir.Var]struct{} {
+	s := make(map[*ir.Var]struct{}, len(vars))
+	for _, v := range vars {
+		s[v] = struct{}{}
+	}
+	return s
+}
+
 func TestOptimizeMutation_RemoveStaticUpdaters(t *testing.T) {
+	name := &ir.Var{Name: "name"}
 	m := &MutationModel{
 		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
-			{Name: "$u_0_text", Body: "set text", Deps: map[string]bool{"name": true}},
+			{Name: "$u_0_text", Body: "set text", Deps: varSet(name)},
 			{Name: "$u_1_text", Body: "static", Deps: nil}, // no deps = static
 		},
 	}
@@ -25,12 +34,13 @@ func TestOptimizeMutation_RemoveStaticUpdaters(t *testing.T) {
 }
 
 func TestOptimizeMutation_DeduplicateUpdaters(t *testing.T) {
+	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
 		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
-			{Name: "$u_0_text", Body: "old", Deps: map[string]bool{"x": true}},
-			{Name: "$u_0_text", Body: "new", Deps: map[string]bool{"x": true}},
+			{Name: "$u_0_text", Body: "old", Deps: varSet(x)},
+			{Name: "$u_0_text", Body: "new", Deps: varSet(x)},
 		},
 	}
 	OptimizeMutation(m)
@@ -43,7 +53,9 @@ func TestOptimizeMutation_DeduplicateUpdaters(t *testing.T) {
 }
 
 func TestOptimizeMutation_MergeUpdaters(t *testing.T) {
-	deps := map[string]bool{"count": true}
+	count := &ir.Var{Name: "count"}
+	name := &ir.Var{Name: "name"}
+	deps := varSet(count)
 	m := &MutationModel{
 		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
 		DepTracker: &DepTracker{},
@@ -51,7 +63,7 @@ func TestOptimizeMutation_MergeUpdaters(t *testing.T) {
 			{Name: "$u_0_text", Body: "set text", Deps: deps},
 			{Name: "$u_0_cls", Body: "set class", Deps: deps},
 			{Name: "$u_0_attr", Body: "set attr", Deps: deps},
-			{Name: "$u_1_text", Body: "other", Deps: map[string]bool{"name": true}},
+			{Name: "$u_1_text", Body: "other", Deps: varSet(name)},
 		},
 	}
 	OptimizeMutation(m)
@@ -74,6 +86,8 @@ func TestOptimizeMutation_MergeUpdaters(t *testing.T) {
 func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 	// Handlers are kept even if their mutations don't affect updaters,
 	// because state writes are observable side effects.
+	x := &ir.Var{Name: "x"}
+	unused := &ir.Var{Name: "unused"}
 	m := &MutationModel{
 		Analysis: &CommonAnalysis{
 			ModelFields:    map[string]bool{"x": true, "unused": true},
@@ -82,16 +96,16 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 			Helpers:        map[string]bool{},
 		},
 		DepTracker: NewDepTracker(
-			map[string]bool{"x": true, "unused": true},
-			map[string]bool{},
-			map[string]map[string]bool{},
+			varSet(x, unused),
+			map[*ir.Func]struct{}{},
+			map[*ir.Func]map[*ir.Var]struct{}{},
 		),
 		Updaters: []Updater{
-			{Name: "$u_0_text", Body: "set", Deps: map[string]bool{"x": true}},
+			{Name: "$u_0_text", Body: "set", Deps: varSet(x)},
 		},
 		Handlers: []Handler{
-			{NodeID: "$0", Event: "click", Body: nil, Mutated: map[string]bool{"x": true}},
-			{NodeID: "$1", Event: "click", Body: nil, Mutated: map[string]bool{"unused": true}},
+			{NodeID: "$0", Event: "click", Body: nil, Mutated: varSet(x)},
+			{NodeID: "$1", Event: "click", Body: nil, Mutated: varSet(unused)},
 		},
 	}
 	OptimizeMutation(m)
@@ -101,13 +115,14 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 }
 
 func TestOptimizeMutation_PruneHelpers(t *testing.T) {
+	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
 		Analysis: &CommonAnalysis{
 			Helpers: map[string]bool{"String": true, "Unused": true},
 		},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
-			{Name: "$u_0_text", Body: "$0.textContent = String(state.x)", Deps: map[string]bool{"x": true}},
+			{Name: "$u_0_text", Body: "$0.textContent = String(state.x)", Deps: varSet(x)},
 		},
 	}
 	OptimizeMutation(m)
@@ -166,9 +181,10 @@ func TestPruneUnusedComputeds_Transitive(t *testing.T) {
 }
 
 func TestStaticFields(t *testing.T) {
+	count := &ir.Var{Name: "count"}
 	modelFields := map[string]bool{"name": true, "count": true, "label": true}
 	handlers := []Handler{
-		{Mutated: map[string]bool{"count": true}},
+		{Mutated: varSet(count)},
 	}
 	timers := []TimerHandler{
 		{TimerInfo: TimerInfo{ActiveVar: "name"}},

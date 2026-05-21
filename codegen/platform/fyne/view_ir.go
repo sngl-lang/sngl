@@ -78,7 +78,12 @@ func (vc *irViewContext) exprDeps(expr ir.Expr) map[string]bool {
 	if vc.info == nil {
 		return nil
 	}
-	return vc.info.depTracker().ExprDeps(expr)
+	deps := vc.info.depTracker().ExprDeps(nil, expr)
+	out := make(map[string]bool, len(deps))
+	for v := range deps {
+		out[v.Name] = true
+	}
+	return out
 }
 
 // --- Statement rendering ---

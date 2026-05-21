@@ -379,7 +379,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			for _, line := range gc.EvalStmt(stmt) {
 				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", line)
 			}
-			maps.Copy(mutated, codegen.MutatedFields(stmt))
+			for v := range codegen.MutatedFields(nil, nil, stmt) {
+				mutated[v.Name] = true
+			}
 		}
 		_ = mutated
 		timerDatas = append(timerDatas, timerData{

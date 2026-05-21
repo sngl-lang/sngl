@@ -3,7 +3,6 @@ package bubbletea
 import (
 	"fmt"
 	"go/format"
-	"maps"
 	"sort"
 	"strings"
 
@@ -792,7 +791,9 @@ func findFocusIndex(focusables []string, name string) int {
 func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, inputs []inputInfo, gc *golang.GoIRContext) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
-		maps.Copy(mutated, codegen.MutatedFields(stmt))
+		for v := range codegen.MutatedFields(nil, nil, stmt) {
+			mutated[v.Name] = true
+		}
 	}
 	for _, inp := range inputs {
 		if inp.bindTarget != "" && mutated[inp.bindTarget] {

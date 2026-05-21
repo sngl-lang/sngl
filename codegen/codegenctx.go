@@ -55,10 +55,10 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 			elemID = ctx.Namer.NextPrefixed("$")
 		}
 		for _, h := range n.Handlers {
-			mutated := make(map[string]bool)
+			mutated := make(map[*ir.Var]struct{})
 			if h.Func != nil {
 				for _, stmt := range h.Func.Block {
-					maps.Copy(mutated, MutatedFields(stmt))
+					maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
 				}
 			}
 			handlers = append(handlers, Handler{
@@ -79,10 +79,10 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 		allTimers = append(allTimers, main.Timers...)
 	}
 	for i, t := range allTimers {
-		mutated := make(map[string]bool)
+		mutated := make(map[*ir.Var]struct{})
 		if t.Handler != nil {
 			for _, stmt := range t.Handler.Block {
-				maps.Copy(mutated, MutatedFields(stmt))
+				maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
 			}
 		}
 		activeVar := ""

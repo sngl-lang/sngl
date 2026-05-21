@@ -10,6 +10,7 @@ import (
 // CommonAnalysis holds platform-independent analysis extracted from a Package.
 // Platforms embed this and add their own fields on top.
 type CommonAnalysis struct {
+	Pkg            *ir.Package                // source package (for DepTracker construction)
 	ModelFields    map[string]bool            // data fields + computed fields
 	ComputedFields map[string]bool            // subset of ModelFields that are computed
 	ComputedDeps   map[string]map[string]bool // computed name → root field deps
@@ -40,6 +41,7 @@ type TimerInfo struct {
 // first, then add platform-specific analysis on top.
 func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 	a := &CommonAnalysis{
+		Pkg:            pkg,
 		ModelFields:    make(map[string]bool),
 		ComputedFields: make(map[string]bool),
 		ComputedDeps:   make(map[string]map[string]bool),
@@ -261,7 +263,14 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 
 // DepTracker returns a new DepTracker initialized from this analysis.
 func (a *CommonAnalysis) DepTracker() *DepTracker {
-	return NewDepTracker(a.ModelFields, a.ComputedFields, a.ComputedDeps)
+	if a.Pkg == nil {
+		return &DepTracker{
+			ModelVars:     make(map[*ir.Var]struct{}),
+			ComputedFuncs: make(map[*ir.Func]struct{}),
+			ComputedDeps:  make(map[*ir.Func]map[*ir.Var]struct{}),
+		}
+	}
+	return NewDepTrackerFromPkg(a.Pkg)
 }
 
 // AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.

@@ -2415,7 +2415,9 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	for _, dv := range comp.Vars {
 		uniqueName := dv.Name + suffix
 		g.scope.ModelFields[uniqueName] = true
-		g.dt.ModelFields[uniqueName] = true
+		// Note: promoted/renamed names aren't backed by *ir.Var, so we
+		// don't register them in the pointer-keyed DepTracker. The
+		// rename layer (dataRenames) handles them at the boundary.
 		g.scope.LocalVars[dv.Name] = true
 		renames[dv.Name] = "state." + uniqueName
 		dataRenames[dv.Name] = uniqueName
@@ -2950,13 +2952,16 @@ func extractElemIDs(js string) []string {
 // optimizeIR builds a MutationModel from the collected updaters, handlers,
 // and timers, runs the IR optimizer, then writes the results back.
 func (g *htmlGen) optimizeIR() {
-	// Convert platform types → IR types.
+	// Convert platform types → IR types. Pointer-keyed dep sets are
+	// synthesized from the html-internal name-keyed maps; iropt only
+	// reads *ir.Var.Name, so synthetic placeholders are safe.
+	varReg := newVarRegistry(g.dt)
 	updaters := make([]codegen.Updater, len(g.initWrites))
 	for i, u := range g.initWrites {
 		updaters[i] = codegen.Updater{
 			Name:     u.funcName,
 			Body:     u.body,
-			Deps:     u.deps,
+			Deps:     varReg.namesToVarSet(u.deps),
 			InitOnly: u.initOnly,
 		}
 	}
@@ -2972,7 +2977,7 @@ func (g *htmlGen) optimizeIR() {
 		handlers[i] = codegen.Handler{
 			NodeID:  h.elemID,
 			Event:   h.event,
-			Mutated: h.mutated,
+			Mutated: varReg.namesToVarSet(h.mutated),
 		}
 	}
 	timers := make([]codegen.TimerHandler, len(g.timers))
@@ -2983,7 +2988,7 @@ func (g *htmlGen) optimizeIR() {
 				IntervalMs: t.intervalMs,
 				ActiveVar:  t.activeVar,
 			},
-			Mutated: t.mutated,
+			Mutated: varReg.namesToVarSet(t.mutated),
 		}
 	}
 
@@ -3003,7 +3008,7 @@ func (g *htmlGen) optimizeIR() {
 		g.initWrites[i] = updateFunc{
 			funcName: u.Name,
 			body:     u.Body,
-			deps:     u.Deps,
+			deps:     varSetToNames(u.Deps),
 			initOnly: u.InitOnly,
 		}
 	}
@@ -3016,7 +3021,7 @@ func (g *htmlGen) optimizeIR() {
 			elemID:  h.NodeID,
 			event:   h.Event,
 			body:    handlerBodyMap[key],
-			mutated: h.Mutated,
+			mutated: varSetToNames(h.Mutated),
 			isAsync: handlerAsyncMap[key],
 		}
 	}
@@ -3293,20 +3298,62 @@ func (g *htmlGen) emitDisplayToggle(elemID string, cond ir.Expr) string {
 // exprDeps extracts model field dependencies, remapping through dataRenames
 // when inside a component scope so deps use promoted field names.
 func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
-	// Temporarily register original names so walkDeps can find them,
-	// then remap to the promoted unique names.
-	var added []string
-	for orig := range g.dataRenames {
-		if !g.dt.ModelFields[orig] {
-			g.dt.ModelFields[orig] = true
-			added = append(added, orig)
+	// ExprDeps now walks IR with *ir.Var pointer identity, so no name-based
+	// pre-registration is necessary. Convert pointer keys → names and apply
+	// the rename layer for promoted component vars.
+	varDeps := g.dt.ExprDeps(nil, expr)
+	names := varSetToNames(varDeps)
+	return g.remapMutated(names, g.dataRenames)
+}
+
+// varSetToNames converts a pointer-keyed *ir.Var set into a name-keyed set.
+func varSetToNames(vs map[*ir.Var]struct{}) map[string]bool {
+	out := make(map[string]bool, len(vs))
+	for v := range vs {
+		out[v.Name] = true
+	}
+	return out
+}
+
+// varRegistry maps stringly-keyed names back to *ir.Var pointers at the
+// codegen boundary. Real model vars come from the DepTracker; promoted /
+// suffixed names are synthesized on demand. iropt only reads .Name, so
+// synthetic placeholders are safe.
+type varRegistry struct {
+	byName map[string]*ir.Var
+}
+
+func newVarRegistry(dt *codegen.DepTracker) *varRegistry {
+	r := &varRegistry{byName: make(map[string]*ir.Var)}
+	if dt != nil {
+		for v := range dt.ModelVars {
+			r.byName[v.Name] = v
 		}
 	}
-	deps := g.dt.ExprDeps(expr)
-	for _, name := range added {
-		delete(g.dt.ModelFields, name)
+	return r
+}
+
+func (r *varRegistry) lookup(name string) *ir.Var {
+	if v, ok := r.byName[name]; ok {
+		return v
 	}
-	return g.remapMutated(deps, g.dataRenames)
+	v := &ir.Var{Name: name}
+	r.byName[name] = v
+	return v
+}
+
+func (r *varRegistry) namesToVarSet(names map[string]bool) map[*ir.Var]struct{} {
+	if len(names) == 0 {
+		return nil
+	}
+	out := make(map[*ir.Var]struct{}, len(names))
+	for n, ok := range names {
+		if !ok {
+			continue
+		}
+		out[r.lookup(n)] = struct{}{}
+	}
+	return out
 }
 
 // remapMutated applies rename mappings to a set of mutated field names.
@@ -3417,11 +3464,11 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	lines := g.translateBlockJC(body)
 	var mutated map[string]bool
 	for _, s := range body {
-		for k, v := range codegen.MutatedFields(s) {
+		for v := range codegen.MutatedFields(nil, g.dt, s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
 			}
-			mutated[k] = v
+			mutated[v.Name] = true
 		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
@@ -3637,7 +3684,9 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	lines := g.translateBlockJC(fn.Block)
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
-		maps.Copy(mutated, codegen.MutatedFields(s))
+		for v := range codegen.MutatedFields(nil, g.dt, s) {
+			mutated[v.Name] = true
+		}
 	}
 	g.scope.EventVar = savedEvent
 	for _, n := range savedLocal {
@@ -3670,7 +3719,9 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 	lines := g.translateBlockJC(t.Handler.Block)
 	mutated := make(map[string]bool)
 	for _, s := range t.Handler.Block {
-		maps.Copy(mutated, codegen.MutatedFields(s))
+		for v := range codegen.MutatedFields(nil, g.dt, s) {
+			mutated[v.Name] = true
+		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	activeVar := ""

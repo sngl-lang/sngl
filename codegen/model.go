@@ -31,30 +31,30 @@ type RenderModel struct {
 // The platform-specific code body is stored as a string; deps track which
 // root state fields this updater reads.
 type Updater struct {
-	Name     string          // e.g., "$u_0_text", "updateLabel0"
-	Kind     string          // "text", "attr", "if", "list", "else", "disabled", etc.
-	Node     *ir.NodeInst    // the node this updater targets
-	Expr     ir.Expr         // the reactive expression being watched
-	Body     string          // platform-specific code body (filled during emit)
-	Deps     map[string]bool // root state field dependencies
-	InitOnly bool            // run only on initial sync; mutation updates are emitted inline elsewhere
+	Name     string               // e.g., "$u_0_text", "updateLabel0"
+	Kind     string               // "text", "attr", "if", "list", "else", "disabled", etc.
+	Node     *ir.NodeInst         // the node this updater targets
+	Expr     ir.Expr              // the reactive expression being watched
+	Body     string               // platform-specific code body (filled during emit)
+	Deps     map[*ir.Var]struct{} // root state var dependencies
+	InitOnly bool                 // run only on initial sync; mutation updates are emitted inline elsewhere
 }
 
-// DepFields implements Dependent for use with FindAffected.
-func (u Updater) DepFields() map[string]bool { return u.Deps }
+// DepVars implements Dependent for use with FindAffected.
+func (u Updater) DepVars() map[*ir.Var]struct{} { return u.Deps }
 
 // Handler represents an event binding on a visual node.
 type Handler struct {
-	NodeID  string          // element/widget identifier
-	Event   string          // "click", "input", "change"
-	Body    ir.Stmt         // mutation IR (ir.Assign, ir.CallStmt, etc.)
-	Mutated map[string]bool // fields this handler mutates
+	NodeID  string               // element/widget identifier
+	Event   string               // "click", "input", "change"
+	Body    ir.Stmt              // mutation IR (ir.Assign, ir.CallStmt, etc.)
+	Mutated map[*ir.Var]struct{} // vars this handler mutates
 }
 
 // TimerHandler combines timer metadata with its mutation info.
 type TimerHandler struct {
 	TimerInfo
-	Mutated map[string]bool // fields mutated by the timer body
+	Mutated map[*ir.Var]struct{} // vars mutated by the timer body
 }
 
 // NewMutationModel creates a MutationModel from a CommonAnalysis.
@@ -72,7 +72,7 @@ func NewRenderModel(a *CommonAnalysis) *RenderModel {
 	}
 }
 
-// AffectedUpdaters returns the updaters affected by a set of mutated fields.
-func (m *MutationModel) AffectedUpdaters(mutated map[string]bool) []Updater {
+// AffectedUpdaters returns the updaters affected by a set of mutated vars.
+func (m *MutationModel) AffectedUpdaters(mutated map[*ir.Var]struct{}) []Updater {
 	return FindAffected(m.DepTracker, m.Updaters, mutated)
 }
