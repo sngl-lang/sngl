@@ -2567,13 +2567,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	funcs := g.pkgFuncs()
 	hasComputed := false
 	for _, fn := range funcs {
-		if len(fn.Params) == 0 && len(fn.Block) == 1 {
-			if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body := g.exprToJS(ret.Value)
-				fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
-				hasComputed = true
-			}
+		if !codegen.IsComputed(fn) || len(fn.Block) != 1 {
+			continue
 		}
+		ret, ok := fn.Block[0].(*ir.Return)
+		if !ok || ret.Value == nil {
+			continue
+		}
+		body := g.exprToJS(ret.Value)
+		if fn.Receiver != "" {
+			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
+		} else {
+			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+		}
+		hasComputed = true
 	}
 	if hasComputed {
 		b.WriteString("\n")
@@ -3770,6 +3777,13 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 // Expression evaluation helpers
 
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
+	// Skip funcs already emitted in the computed branch (see emitScript).
+	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
+		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+			_ = ret
+			return
+		}
+	}
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
 		params[i] = p.Name
@@ -3790,8 +3804,12 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		funcScope.LocalVars[p.Name] = true
 	}
 
-	// Mangle dotted names for JS: int.sqrt → int_sqrt
+	// Mangle dotted names for JS: int.sqrt → int_sqrt.
+	// For desugared methods, the dotted form lives in fn.Receiver.
 	jsName := strings.ReplaceAll(fn.Name, ".", "_")
+	if fn.Receiver != "" {
+		jsName = fn.Receiver + "_" + fn.Name
+	}
 
 	keyword := "function"
 	if fn.IsAsync {
