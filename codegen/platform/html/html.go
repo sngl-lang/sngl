@@ -52,7 +52,7 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	return &ir.Component{Name: identifier}
 }
 func (g *Generator) Capabilities() lower.Caps {
-	return lower.Caps{NoContext: true, NoReactivity: true, NoAsyncReactive: true, NoStdlibWrappers: true}
+	return lower.Caps{NoContext: true, NoReactivity: true, NoAsyncReactive: true, NoStdlibWrappers: true, NoInlineComponents: true}
 }
 
 // SupportedLangs returns "none" (static-site default) plus any registered
@@ -440,6 +440,10 @@ type htmlGen struct {
 	// during component inlining, so handler MutatedFields can be remapped.
 	dataRenames map[string]string
 
+	// currentComp is the component owning the currently-rendered tracked
+	// context. Used by exprDeps / MutatedFields to resolve implicit `this`.
+	currentComp *ir.Component
+
 	// Component nesting depth for recursion protection
 	componentDepth int
 
@@ -535,6 +539,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 	}
 
 	g.dt = common.DepTracker()
+	g.currentComp = mainIRComponent(pkg)
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.BundledNativePkgs = g.scope.BundledNativePkgs
 	// Share NativeImports so writes from either path land on g.scope.
@@ -3301,7 +3306,7 @@ func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
 	// ExprDeps now walks IR with *ir.Var pointer identity, so no name-based
 	// pre-registration is necessary. Convert pointer keys → names and apply
 	// the rename layer for promoted component vars.
-	varDeps := g.dt.ExprDeps(nil, expr)
+	varDeps := g.dt.ExprDeps(g.currentComp, expr)
 	names := varSetToNames(varDeps)
 	return g.remapMutated(names, g.dataRenames)
 }
@@ -3464,7 +3469,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	lines := g.translateBlockJC(body)
 	var mutated map[string]bool
 	for _, s := range body {
-		for v := range codegen.MutatedFields(nil, g.dt, s) {
+		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
 			if mutated == nil {
 				mutated = make(map[string]bool)
 			}
@@ -3684,7 +3689,7 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	lines := g.translateBlockJC(fn.Block)
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
-		for v := range codegen.MutatedFields(nil, g.dt, s) {
+		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
 			mutated[v.Name] = true
 		}
 	}
@@ -3719,7 +3724,7 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 	lines := g.translateBlockJC(t.Handler.Block)
 	mutated := make(map[string]bool)
 	for _, s := range t.Handler.Block {
-		for v := range codegen.MutatedFields(nil, g.dt, s) {
+		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
 			mutated[v.Name] = true
 		}
 	}
