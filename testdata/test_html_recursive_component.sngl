@@ -1,0 +1,15 @@
+component tree(label = "", depth = 0) {
+    text(value=label)
+    if depth > 0 {
+        tree(label="{label}.a", depth=depth - 1)
+        tree(label="{label}.b", depth=depth - 1)
+    }
+}
+
+component main {
+    tree(label="root", depth=2)
+}
+
+func testRecursiveComponentCompiles(t Test, c main) {
+    t.assert(true)
+}

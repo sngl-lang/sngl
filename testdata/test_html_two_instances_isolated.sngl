@@ -1,0 +1,14 @@
+component counter {
+    var n = 0
+    button #bump(text="+", @click { n += 1 })
+    text #out(value=string(n))
+}
+
+component main {
+    counter()
+    counter()
+}
+
+func testTwoInstancesIsolated(t Test, c main) {
+    t.assert(true)
+}

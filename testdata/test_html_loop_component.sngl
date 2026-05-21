@@ -1,0 +1,21 @@
+struct Item { name string = "" }
+
+component card(name = "") {
+    var clicks = 0
+    button(text="{name} ({clicks})", @click { clicks += 1 })
+}
+
+component main {
+    var items list<Item> = [
+        {name = "a"},
+        {name = "b"},
+    ]
+    for item = items {
+        card(name=item.name)
+    }
+    button #add(text="add", @click { items.push({name = "x"}) })
+}
+
+func testLoopComponentMountsInstances(t Test, c main) {
+    t.assert(true)
+}

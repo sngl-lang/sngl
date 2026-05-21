@@ -1,0 +1,13 @@
+component main {
+    var x = 5
+    var y = 3
+
+    func bigger() => x > y
+
+    button #bump(text="bump x", @click { x += 1 })
+    text #out(value=bigger() ? "x" : "y")
+}
+
+func testReactiveMethodDrivesUpdate(t Test, c main) {
+    t.assert(c.out.value == "x")
+}
