@@ -126,7 +126,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.focus == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
-			m.input0.SetValue(m.newTodo)
 		case msg.Code == tea.KeyEnter && m.focus == 2:
 			index := 0 // TODO: bind loop index to focus slot
 			_ = index

@@ -478,6 +478,16 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
+	// Component method called on the current component instance:
+	// keep the Go-idiomatic `m.<method>(rest)` form. Bubbletea/Fyne
+	// emit component method definitions as Model methods, so call sites
+	// must dispatch through `m`.
+	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName {
+		if len(args) >= 1 && args[0] == "m" {
+			return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+		}
+	}
+
 	// User-attached method on a user-defined struct/enum/component type:
 	// lift to a free function `ReceiverName + MethodName(args...)`. Without
 	// this, static-form calls like `S.helper(5)` and method-form calls like
