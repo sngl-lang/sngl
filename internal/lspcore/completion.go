@@ -469,9 +469,13 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 		}
 	}
 
-	// TODO: completion on `this.<member>` inside method bodies.
-	// Needs to track current method context (receiver type) and return field/method completions.
-	// Currently returns nil if nsName doesn't match a platform/language namespace.
+	// `this.<member>` inside a method body: enumerate the receiver type's
+	// fields, members, and sibling methods.
+	if pkgDoc == nil && nsName == "this" {
+		if items := thisCompletions(doc, line); items != nil {
+			return items
+		}
+	}
 
 	if pkgDoc == nil {
 		return nil
@@ -512,4 +516,102 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 func isIdentChar(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' || (ch >= '0' && ch <= '9')
+}
+
+// thisCompletions finds the struct/enum body that lexically encloses the
+// given line and returns field/member/sibling-method completion items.
+// Returns nil if the cursor isn't inside a nested method on a user-defined
+// struct or enum.
+func thisCompletions(doc *ast.Document, line int) []CompletionItem {
+	if doc == nil {
+		return nil
+	}
+	for _, stmt := range doc.Stmts {
+		switch d := stmt.(type) {
+		case *ast.StructDef:
+			if !lineInRange(line, d.Pos.Line, lastBodyLine(d.Body, d.Pos.Line)) {
+				continue
+			}
+			return structThisItems(d)
+		case *ast.EnumDef:
+			if !lineInRange(line, d.Pos.Line, lastBodyLine(d.Body, d.Pos.Line)) {
+				continue
+			}
+			return enumThisItems(d)
+		}
+	}
+	return nil
+}
+
+func lineInRange(line, start, end int) bool {
+	return line >= start && line <= end
+}
+
+// lastBodyLine returns the last source line covered by any item in a
+// sealed-interface body slice (struct or enum). Used as a coarse bound for
+// "is the cursor inside this type's body".
+func lastBodyLine[T any](body []T, fallback int) int {
+	last := fallback
+	for _, it := range body {
+		switch x := any(it).(type) {
+		case *ast.StructField:
+			if x.Pos.Line > last {
+				last = x.Pos.Line
+			}
+		case *ast.EnumMember:
+			if x.Pos.Line > last {
+				last = x.Pos.Line
+			}
+		case *ast.FuncDef:
+			if x.Pos.Line > last {
+				last = x.Pos.Line
+			}
+			if x.Block.IsDefined() {
+				for _, s := range x.Block.Stmts {
+					if p := s.StmtPos(); p != nil && p.Line > last {
+						last = p.Line
+					}
+				}
+			}
+		}
+	}
+	// Add slack for closing brace.
+	return last + 1
+}
+
+func structThisItems(d *ast.StructDef) []CompletionItem {
+	var items []CompletionItem
+	for _, f := range d.Fields() {
+		for _, name := range f.Names {
+			items = append(items, CompletionItem{
+				Label:  name,
+				Kind:   CIKField,
+				Detail: "field on " + d.Name,
+			})
+		}
+	}
+	for _, fn := range d.Funcs() {
+		items = append(items, CompletionItem{
+			Label:            fn.Name,
+			Kind:             CIKMethod,
+			Detail:           "method on " + d.Name,
+			InsertText:       fn.Name + "($1)",
+			InsertTextFormat: ITFSnippet,
+		})
+	}
+	return items
+}
+
+func enumThisItems(d *ast.EnumDef) []CompletionItem {
+	var items []CompletionItem
+	for _, fn := range d.Funcs() {
+		items = append(items, CompletionItem{
+			Label:            fn.Name,
+			Kind:             CIKMethod,
+			Detail:           "method on " + d.Name,
+			InsertText:       fn.Name + "($1)",
+			InsertTextFormat: ITFSnippet,
+		})
+	}
+	return items
 }

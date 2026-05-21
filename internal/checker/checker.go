@@ -1035,12 +1035,12 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				}
 			}
 		case *ast.FuncDef:
-			// Component funcs keep pre-T7 closure semantics: built directly,
+			// Component nested funcs keep closure semantics — built directly,
 			// stored on the component's Funcs slice, never desugared to a
-			// method on a synthetic receiver. The interpreter, codegen, and
-			// lower passes already understand this shape; switching to
-			// methods would break test_runner, computed inlining, and
-			// component-instance access from outside.
+			// method on a synthetic `this` receiver. Re-attempting the
+			// desugaring breaks HTML codegen's reactive prop/binding paths
+			// and several testrunner fixtures that bare-reference component
+			// vars across method boundaries. Tracked as a follow-up.
 			fn := c.buildFunc(s)
 			irComp.Funcs = append(irComp.Funcs, fn)
 		}

@@ -842,7 +842,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
-	m := make(map[string]any, len(e.Fields))
+	m := make(map[string]any, len(e.Fields)+1)
 	for _, f := range e.Fields {
 		if f.Spread {
 			v, err := env.Eval(f.Value)
@@ -859,6 +859,12 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 			return nil, err
 		}
 		m[f.Name] = v
+	}
+	// Tag the value with its struct type name so method dispatch can find
+	// user-defined methods (`v.dot()` → env.Funcs["Vec2.dot"]). Anonymous
+	// struct literals have Def == nil and remain untagged.
+	if e.Def != nil && e.Def.Name != "" {
+		m["__type"] = e.Def.Name
 	}
 	return m, nil
 }
@@ -1276,6 +1282,27 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					synth = append(synth, a.Value)
 				}
 				return env.EvalUserFunc(fn, synth)
+			}
+			// Enum value method fallback: when recv is a bare string and no
+			// dispatch succeeded, scan user-defined enums for a matching
+			// member and try the method against that enum's namespace. Covers
+			// `c.s.isOk()` where `c.s` is typed dyn externally but holds an
+			// enum member at runtime.
+			if s, ok := recv.(string); ok && env.Pkg != nil {
+				for _, ed := range env.Pkg.Enums {
+					for _, m := range ed.Members {
+						if m.Name == s {
+							if fn, ok := env.Funcs[ed.Name+"."+method]; ok {
+								synth := make([]ir.Expr, 0, len(call.Args)+1)
+								synth = append(synth, call.Receiver)
+								for _, a := range call.Args {
+									synth = append(synth, a.Value)
+								}
+								return env.EvalUserFunc(fn, synth)
+							}
+						}
+					}
+				}
 			}
 			return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 		}
@@ -1856,7 +1883,7 @@ func compareNum(a, b any) int {
 }
 
 func runtimeTypeName(v any) string {
-	switch v.(type) {
+	switch x := v.(type) {
 	case int:
 		return "int"
 	case float64:
@@ -1868,6 +1895,12 @@ func runtimeTypeName(v any) string {
 	case []any:
 		return "list"
 	case map[string]any:
+		// Tagged struct value: prefer the declared type name so method
+		// dispatch reaches user-defined methods (`v.dot()` →
+		// env.Funcs["Vec2.dot"]). See evalStructLit.
+		if t, ok := x["__type"].(string); ok && t != "" {
+			return t
+		}
 		return "struct"
 	case *regexp.Regexp:
 		return "regex"
