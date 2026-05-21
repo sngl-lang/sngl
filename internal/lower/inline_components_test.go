@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"slices"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -89,13 +90,7 @@ func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 	}
 
 	// card should be retained.
-	found := false
-	for _, c := range pkg.Components {
-		if c == card {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(pkg.Components, card)
 	if !found {
 		t.Errorf("card component should be retained when used inside reactive For body")
 	}
@@ -130,13 +125,7 @@ func TestInlineComponents_SkipsRecursiveComponent(t *testing.T) {
 	}
 
 	// tree should be retained as a real component.
-	found := false
-	for _, c := range pkg.Components {
-		if c == tree {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(pkg.Components, tree)
 	if !found {
 		t.Errorf("recursive tree component should be retained")
 	}

@@ -11,15 +11,21 @@ component main {
     button(text="bump", @click { bump() })
 }
 -- expected.sngl --
+func main.bump(this main) {
+    n = n + 1
+    #__n0.value = string(n)
+    #__n0.value = string(n)
+}
 component main {
     var n int = 0
-    func bump() {
+    func main.bump(this main) {
         n = n + 1
+        #__n0.value = string(n)
         #__n0.value = string(n)
     }
     text #__n0(value=string(n))
     button(text="bump", @click {
-        bump()
+        main.bump()
     })
 }
 context #locale(i18n.defaultLocale())

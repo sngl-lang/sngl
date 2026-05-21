@@ -3786,7 +3786,13 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
-		params[i] = p.Name
+		// Synthetic `this` receiver on desugared methods → emit as `state`
+		// so the param name matches the body's component-self translation.
+		if i == 0 && fn.Receiver != "" && p.Name == "this" {
+			params[i] = "state"
+		} else {
+			params[i] = p.Name
+		}
 	}
 	paramStr := strings.Join(params, ", ")
 

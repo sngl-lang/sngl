@@ -19,7 +19,7 @@ sngl compile --platform=html --out=out app.sngl
 exists out/index.html
 
 # User func is emitted with both state mutations and inlined DOM patches.
-grep 'function update' out/index.html
+grep 'function main_update' out/index.html
 grep 'state.name = newName' out/index.html
 grep 'state.count = newCount' out/index.html
 grep '__n0.textContent = state.name' out/index.html
@@ -31,7 +31,7 @@ grep '__n1.textContent = String\(state.count\)' out/index.html
 grep 'function __sngl_init' out/index.html
 
 # Button click handler calls user func.
-grep 'update\("Hello", 5\)' out/index.html
+grep 'main_update\(state, "Hello", 5\)' out/index.html
 
 -- app.sngl --
 output { none { html } }

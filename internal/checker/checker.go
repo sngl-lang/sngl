@@ -990,6 +990,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Walk component body for nested declarations. Struct/enum/unit
 	// decls inside a component body are hoisted to package scope at the
 	// IR level (Go and other targets have no per-component type scope).
+	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
 		case *ast.StructDef:
@@ -1035,20 +1036,15 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				}
 			}
 		case *ast.FuncDef:
-			// Component nested funcs keep closure semantics — built directly,
-			// stored on the component's Funcs slice, never desugared to a
-			// method on a synthetic `this` receiver. Re-attempting the
-			// desugaring breaks HTML codegen's reactive prop/binding paths
-			// and several testrunner fixtures that bare-reference component
-			// vars across method boundaries. Tracked as a follow-up.
-			fn := c.buildFunc(s)
-			irComp.Funcs = append(irComp.Funcs, fn)
+			nestedFuncs = append(nestedFuncs, s)
 		}
 	}
 
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Declare(irComp)
+
+	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {

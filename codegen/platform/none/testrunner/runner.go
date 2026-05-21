@@ -59,6 +59,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 			Vars:       make(map[string]any),
 			Consts:     make(map[string]any),
 			Funcs:      make(map[string]*ir.Func),
+			compName:   compName,
 			testParams: testParams,
 		}
 		maps.Copy(cVal.Vars, env.Vars)
@@ -131,6 +132,7 @@ type componentValue struct {
 	Vars       map[string]any
 	Consts     map[string]any
 	Funcs      map[string]*ir.Func
+	compName   string // e.g. "pricing"; used to look up receiver-qualified methods
 	testParams map[string]bool
 }
 

@@ -12,15 +12,19 @@ component main {
     button(@click { toggleBoth() })
 }
 -- expected.sngl --
+func main.toggleBoth(this main) {
+    on = !on
+    ready = !ready
+}
 component main {
     var on bool = true
     var ready bool = false
-    func toggleBoth() {
+    func main.toggleBoth(this main) {
         on = !on
         ready = !ready
     }
     button(@click {
-        toggleBoth()
+        main.toggleBoth()
     })
 }
 context #locale(i18n.defaultLocale())

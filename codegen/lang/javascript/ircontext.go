@@ -484,6 +484,17 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
+	// User-defined method on a user type: emitted as a free function
+	// `<Receiver>_<Method>(args...)`. After passNoImplicitRecv, Args[0]
+	// is the receiver expression (component-self ident → "state").
+	if jc.Ctx != nil && jc.Ctx.Pkg != nil {
+		for _, f := range jc.Ctx.Pkg.Funcs {
+			if f.Receiver == receiverName && f.Name == method {
+				return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
+			}
+		}
+	}
+
 	if len(args) >= 1 {
 		recv := args[0]
 		rest := args[1:]

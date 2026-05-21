@@ -82,4 +82,3 @@ func findCreateComponentInStmts(stmts []ir.Stmt) bool {
 	}
 	return false
 }
-

@@ -266,10 +266,30 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	if v, ok := cv.Consts[field]; ok {
 		return v, nil
 	}
+	// Direct func by bare name (legacy closure-style).
 	if fn, ok := cv.Funcs[field]; ok {
-		if len(fn.Params) == 0 {
+		effective := len(fn.Params)
+		if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
+			effective--
+		}
+		if effective == 0 {
 			compEnv := cv.compEnv()
 			return compEnv.EvalUserFunc(fn, nil)
+		}
+	}
+	// Receiver-qualified component method (post-#75 desugaring): env.Funcs
+	// stores these under "<compName>.<method>". Auto-invoke when zero
+	// effective args.
+	if cv.compName != "" {
+		if fn, ok := cv.Funcs[cv.compName+"."+field]; ok {
+			effective := len(fn.Params)
+			if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
+				effective--
+			}
+			if effective == 0 {
+				compEnv := cv.compEnv()
+				return compEnv.EvalUserFunc(fn, nil)
+			}
 		}
 	}
 	// Element ref lookup in the component body. Returns nil (not an error)

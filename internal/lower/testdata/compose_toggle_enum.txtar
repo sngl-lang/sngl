@@ -20,14 +20,17 @@ enum Mode {
     off
     on
 }
+func main.tick(this main) {
+    ready = !ready
+}
 component main {
     var m Mode = 0
     var ready bool = false
-    func tick() {
+    func main.tick(this main) {
         ready = !ready
     }
     button(@click {
-        tick()
+        main.tick()
     })
 }
 context #locale(i18n.defaultLocale())
