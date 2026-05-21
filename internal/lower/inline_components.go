@@ -27,7 +27,8 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, _ Options) error {
 		return nil
 	}
 	cycles := findRecursiveCycles(pkg)
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles}
+	reactive := collectReactiveVars(pkg)
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -40,6 +41,7 @@ type inlineCompState struct {
 	main        *ir.Component
 	cycles      map[*ir.Component]bool
 	keep        map[*ir.Component]bool
+	reactive    map[*ir.Var]bool
 	instCounter int
 }
 
@@ -311,10 +313,14 @@ func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
+	return st.inlineStmtsCtx(stmts, false)
+}
+
+func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, inReactive bool) ([]ir.Stmt, bool, error) {
 	changed := false
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
-		repl, ch, err := st.inlineStmt(s)
+		repl, ch, err := st.inlineStmtCtx(s, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
@@ -324,10 +330,10 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 	return out, changed, nil
 }
 
-func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
+func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt, bool, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		ch, chCh, err := st.inlineStmts(n.Children)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
@@ -337,12 +343,20 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 			if h.Func == nil {
 				continue
 			}
-			hbody, hCh, err := st.inlineStmts(h.Func.Block)
+			hbody, hCh, err := st.inlineStmtsCtx(h.Func.Block, false)
 			if err != nil {
 				return nil, false, err
 			}
 			h.Func.Block = hbody
 			anyHandlerCh = anyHandlerCh || hCh
+		}
+		// Skip inlining when this NodeInst sits inside a reactive control-flow
+		// construct, or when its target is part of a recursive cycle. Either
+		// case will be lowered to a CreateComponent intrinsic call by later
+		// passes (passReactivity / passDeclarative).
+		if n.Component != nil && (inReactive || st.cycles[n.Component]) {
+			st.keep[n.Component] = true
+			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
 		}
 		if !st.inlinable(n.Component) {
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
@@ -353,11 +367,12 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 		}
 		return spliced, true, nil
 	case *ir.If:
-		body, ch1, err := st.inlineStmts(n.Body)
+		bodyReactive := inReactive || dependsOnReactiveVar(n.Cond, st.reactive)
+		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
 		if err != nil {
 			return nil, false, err
 		}
-		els, ch2, err := st.inlineStmts(n.Else)
+		els, ch2, err := st.inlineStmtsCtx(n.Else, bodyReactive)
 		if err != nil {
 			return nil, false, err
 		}
@@ -365,11 +380,12 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.For:
-		body, ch1, err := st.inlineStmts(n.Body)
+		bodyReactive := inReactive || dependsOnReactiveVar(n.Iter, st.reactive)
+		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
 		if err != nil {
 			return nil, false, err
 		}
-		els, ch2, err := st.inlineStmts(n.Else)
+		els, ch2, err := st.inlineStmtsCtx(n.Else, bodyReactive)
 		if err != nil {
 			return nil, false, err
 		}
@@ -377,28 +393,28 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.PlatformFilter:
-		body, ch, err := st.inlineStmts(n.Body)
+		body, ch, err := st.inlineStmtsCtx(n.Body, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Body = body
 		return []ir.Stmt{n}, ch, nil
 	case *ir.SlotInst:
-		ch, chCh, err := st.inlineStmts(n.Children)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Children = ch
 		return []ir.Stmt{n}, chCh, nil
 	case *ir.ErrorBoundary:
-		ch, chCh, err := st.inlineStmts(n.Children)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Children = ch
 		hCh := false
 		if n.Handler != nil && n.Handler.Func != nil {
-			body, b, err := st.inlineStmts(n.Handler.Func.Block)
+			body, b, err := st.inlineStmtsCtx(n.Handler.Func.Block, false)
 			if err != nil {
 				return nil, false, err
 			}
@@ -410,14 +426,14 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 		// Window stmts live in component bodies when `window { }` is declared
 		// inside a component (rather than at document root). Recurse into the
 		// window's body so component NodeInsts nested inside it are inlined.
-		body, ch, err := st.inlineStmts(n.Body)
+		body, ch, err := st.inlineStmtsCtx(n.Body, inReactive)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Body = body
 		anyFuncCh := false
 		for _, f := range n.Funcs {
-			fbody, fch, err := st.inlineStmts(f.Block)
+			fbody, fch, err := st.inlineStmtsCtx(f.Block, false)
 			if err != nil {
 				return nil, false, err
 			}
@@ -431,6 +447,71 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 	default:
 		panic(fmt.Sprintf("inlineCompState.inlineStmt: unhandled %T", n))
 	}
+}
+
+// walkExprIdents calls visit on every *ir.Ident reachable from e.
+func walkExprIdents(e ir.Expr, visit func(*ir.Ident)) {
+	if e == nil {
+		return
+	}
+	switch n := e.(type) {
+	case *ir.Ident:
+		visit(n)
+	case *ir.Select:
+		walkExprIdents(n.Operand, visit)
+	case *ir.Index:
+		walkExprIdents(n.Operand, visit)
+		walkExprIdents(n.Idx, visit)
+	case *ir.Binary:
+		walkExprIdents(n.Left, visit)
+		walkExprIdents(n.Right, visit)
+	case *ir.Unary:
+		walkExprIdents(n.Operand, visit)
+	case *ir.Ternary:
+		walkExprIdents(n.Cond, visit)
+		walkExprIdents(n.Then, visit)
+		walkExprIdents(n.Else, visit)
+	case *ir.Conversion:
+		walkExprIdents(n.Operand, visit)
+	case *ir.Call:
+		if n.Receiver != nil {
+			walkExprIdents(n.Receiver, visit)
+		}
+		for _, a := range n.Args {
+			walkExprIdents(a.Value, visit)
+		}
+	case *ir.ListLit:
+		for _, el := range n.Elems {
+			walkExprIdents(el, visit)
+		}
+	case *ir.StructLit:
+		for _, f := range n.Fields {
+			walkExprIdents(f.Value, visit)
+		}
+	case *ir.MapLitIR:
+		for _, en := range n.Entries {
+			walkExprIdents(en.Key, visit)
+			walkExprIdents(en.Value, visit)
+		}
+	case *ir.Spread:
+		walkExprIdents(n.Operand, visit)
+	}
+}
+
+// dependsOnReactiveVar reports whether an expression reads any var
+// from the reactive set. Used to identify *ir.If/*ir.For whose body
+// must be left as a runtime construct rather than statically inlined.
+func dependsOnReactiveVar(e ir.Expr, reactive map[*ir.Var]bool) bool {
+	if e == nil || len(reactive) == 0 {
+		return false
+	}
+	found := false
+	walkExprIdents(e, func(id *ir.Ident) {
+		if v, ok := id.Sym.(*ir.Var); ok && reactive[v] {
+			found = true
+		}
+	})
+	return found
 }
 
 func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
