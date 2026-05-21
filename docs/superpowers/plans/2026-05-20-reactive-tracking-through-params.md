@@ -55,9 +55,7 @@ Per CLAUDE.md, fixtures come first. They will fail today: the existing tracker d
 ```sngl
 component main {
     var x = 5
-
     func double() => x * 2
-
     button #bump(text="bump", @click { x += 1 })
     text #out(value=string(double()))
 }
@@ -93,10 +91,8 @@ func testReactiveExtensionRead(t Test, c root) {
 ```sngl
 component main {
     var x = 0
-
     func reset() { x = 0 }
-    func bump()  { x += 1 }
-
+    func bump() { x += 1 }
     button #bump(text="+", @click { bump() })
     button #reset(text="0", @click { reset() })
     text #out(value=string(x))

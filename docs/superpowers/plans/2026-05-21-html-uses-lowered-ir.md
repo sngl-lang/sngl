@@ -43,7 +43,9 @@
 - [ ] **Step 1.1: Write `testdata/test_html_loop_component.sngl`**
 
 ```sngl
-struct Item { name string = "" }
+struct Item {
+    name string = ""
+}
 
 component card {
     var clicks = 0
@@ -51,10 +53,7 @@ component card {
 }
 
 component main {
-    var items list<Item> = [
-        {name = "a"},
-        {name = "b"},
-    ]
+    var items list<Item> = [{name = "a"}, {name = "b"}]
     for item = items {
         card(:name=item.name)
     }
@@ -62,16 +61,19 @@ component main {
 }
 
 func testLoopComponentMountsInstances(t Test, c main) {
-    // Static smoke test — the checker passing is enough; browser test
-    // covers runtime behavior.
     t.assert(true)
 }
+// Static smoke test — the checker passing is enough; browser test
+// covers runtime behavior.
 ```
 
 - [ ] **Step 1.2: Write `testdata/test_html_recursive_component.sngl`**
 
 ```sngl
-struct Node { label string = ""; children list<Node> = [] }
+struct Node {
+    label string = ""
+    children list<Node> = []
+}
 
 component tree {
     text(value=node.label)
@@ -81,13 +83,7 @@ component tree {
 }
 
 component main {
-    var root Node = {
-        label = "root",
-        children = [
-            {label = "a", children = []},
-            {label = "b", children = [{label = "ba", children = []}]},
-        ],
-    }
+    var root Node = {label = "root", children = [{label = "a", children = []}, {label = "b", children = [{label = "ba", children = []}]}]}
     tree(node=root)
 }
 
@@ -102,9 +98,7 @@ func testRecursiveComponentCompiles(t Test, c main) {
 component main {
     var x = 5
     var y = 3
-
     func bigger() => x > y
-
     button #bump(text="bump x", @click { x += 1 })
     text #out(value=bigger() ? "x" : "y")
 }
