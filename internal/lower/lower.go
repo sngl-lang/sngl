@@ -34,6 +34,8 @@ type pass struct {
 //     component into main, renaming vars/funcs/timers and substituting
 //     prop refs with call-site arg exprs. After this pass, codegen on
 //     opted-in targets sees only main + any recursive components.
+//     7c. NoImplicitRecv — opt-in. Normalizes method calls to always carry
+//     the receiver in Args[0], enabling codegen to drop conditional logic.
 //  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
@@ -54,6 +56,7 @@ var passes = []pass{
 	passNoContext,
 	passInlinePure,
 	passNoInlineComponents,
+	passNoImplicitRecv,
 	passReactivity,
 	passTimer,
 	passDeclarative,
