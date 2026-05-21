@@ -170,6 +170,7 @@ var LowerIntrinsics = []IntrinsicDef{
 	{Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
 	{Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
 	{Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
+	{Name: "CreateComponent", Params: []*Param{{Name: "comp", Type: TypDyn}, {Name: "props", Type: TypDyn}}, Return: TypDyn},
 }
 
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
