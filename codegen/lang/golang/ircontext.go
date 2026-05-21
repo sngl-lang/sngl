@@ -259,6 +259,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		return fmt.Sprintf("%q", n.Member)
 	}
 
+	// Component-self ident: synthesized by passNoImplicitRecv as the
+	// implicit receiver of a desugared component method. Go emission uses
+	// `m` for the Bubbletea/Fyne Model receiver.
+	if _, ok := n.Sym.(*ir.Component); ok {
+		return "m"
+	}
+
 	name := n.Name
 	// Synthesized element refs (e.g. `__n3` for a widget the lowering
 	// passes created, or platform-emitted widget field names like

@@ -151,6 +151,12 @@ func translateIRLiteral(n *ir.Literal) string {
 }
 
 func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
+	// Component-self ident: synthesized by passNoImplicitRecv as the
+	// implicit receiver of a desugared component method. Go emission uses
+	// `m` for the Bubbletea/Fyne Model receiver.
+	if _, ok := n.Sym.(*ir.Component); ok {
+		return "m"
+	}
 	name := n.Name
 	if name == "event" && scope.EventVar != "" {
 		return scope.EventVar
