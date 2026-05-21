@@ -60,11 +60,11 @@ ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
 ### Type Declarations
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" [ StructField { ";" StructField } [ ";" ] ] "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" [ StructBodyItem { ";" StructBodyItem } [ ";" ] ] "}"
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] "{" [ ArgList ] "}"
+EnumDecl = "enum" [ IDENT ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
 
 UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
 

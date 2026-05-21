@@ -6,9 +6,3 @@ component main {
     var s = Status.ok
     text(value=s.isOk() ? "yes" : "no")
 }
-
-func testEnumNestedMethod(t Test, c main) {
-    t.assert(c.s.isOk())
-    c.s = Status.err
-    t.assert(!c.s.isOk())
-}

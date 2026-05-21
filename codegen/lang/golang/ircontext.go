@@ -471,6 +471,17 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
+	// User-attached method on a user-defined struct/enum/component type:
+	// lift to a free function `ReceiverName + MethodName(args...)`. Without
+	// this, static-form calls like `S.helper(5)` and method-form calls like
+	// `v.method()` both fall through to the `args[0].method()` shape, which
+	// is wrong for static calls (where args[0] is the first explicit arg,
+	// not the receiver value).
+	if gc.userMethodKnown(receiverName, method) {
+		goName := ExportName(receiverName) + ExportName(method)
+		return goName + "(" + strings.Join(args, ", ") + ")"
+	}
+
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}

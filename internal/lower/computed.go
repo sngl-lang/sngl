@@ -57,7 +57,14 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 }
 
 func isComputed(f *ir.Func) bool {
-	return f.AST != nil && f.AST.Body != nil && len(f.Params) == 0 && !f.IsTest
+	if f.AST == nil || f.AST.Body == nil || f.IsTest {
+		return false
+	}
+	n := len(f.Params)
+	if n > 0 && f.Receiver != "" && f.Params[0].Name == "this" {
+		n--
+	}
+	return n == 0
 }
 
 func collectComputed(funcs []*ir.Func, out map[*ir.Func]ir.Expr) {

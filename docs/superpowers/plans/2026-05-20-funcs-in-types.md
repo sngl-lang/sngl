@@ -220,7 +220,8 @@ component main {
 - [ ] **Step 1.8: Write `testdata/error_this_outside_method.sngl`**
 
 ```sngl
-func main_helper() => this // ERROR(check) "undeclared identifier \"this\""
+func main_helper() => this
+// ERROR(check) "undeclared identifier \"this\""
 
 component main {
     text(value="x")

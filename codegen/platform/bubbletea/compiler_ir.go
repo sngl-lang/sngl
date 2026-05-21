@@ -174,12 +174,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	// Collect computed functions
+	// Collect computed functions. pkg.Funcs and main.Funcs overlap for nested
+	// component methods (registered in both since T7); dedupe by pointer.
 	allFuncs := pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
 	}
+	seenFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, f := range allFuncs {
+		if seenFn[f] {
+			continue
+		}
+		seenFn[f] = true
 		if codegen.IsComputed(f) {
 			goType := irFuncReturnType(f)
 			info.computeds = append(info.computeds, irComputed{
@@ -431,12 +437,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("}\n\n")
 	}
 
-	// User-defined functions
+	// User-defined functions (dedupe overlap between pkg.Funcs and main.Funcs).
 	allFuncs := ctx.Pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
 	}
+	seenUserFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, fn := range allFuncs {
+		if seenUserFn[fn] {
+			continue
+		}
+		seenUserFn[fn] = true
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}

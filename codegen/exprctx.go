@@ -179,7 +179,16 @@ func (ctx *ExprCtx) WithEvent(eventVar string) *ExprCtx {
 }
 
 // IsComputed reports whether a function is a computed field
-// (zero-param, expression body, non-test).
+// (zero-param, expression body, non-test). A leading synthetic `this`
+// parameter (from a desugared nested method on a component/struct/enum)
+// does not count toward the param count.
 func IsComputed(f *ir.Func) bool {
-	return f.AST != nil && f.AST.Body != nil && len(f.Params) == 0 && !f.IsTest
+	if f.AST == nil || f.AST.Body == nil || f.IsTest {
+		return false
+	}
+	n := len(f.Params)
+	if n > 0 && f.Receiver != "" && f.Params[0].Name == "this" {
+		n--
+	}
+	return n == 0
 }

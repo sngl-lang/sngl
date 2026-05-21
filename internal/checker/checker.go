@@ -106,6 +106,12 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
+	// userMethods tracks methods registered from user source (not stdlib),
+	// keyed by receiver+method name. Used to detect duplicates within the
+	// user's pass1 without conflicting with stdlib methods that the user
+	// may legitimately override.
+	userMethods map[string]bool
+
 	// Current platform block name (e.g., "html" inside `platform html { }`).
 	// Used to try platform Resolve() on unknown identifiers.
 	currentPlatform string
@@ -159,6 +165,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
 		pkgWindowIDs: make(map[string]bool),
+		userMethods:  make(map[string]bool),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
@@ -884,12 +891,14 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
 
 	if fn.Receiver != "" {
-		// Reject duplicate method — catches top-level func T.foo colliding
-		// with a nested func already registered from struct/enum/component body.
-		if _, exists := c.symtab.LookupMethod(fn.Receiver, fn.Name); exists {
+		// Reject duplicate method against another user-registered method
+		// (nested or top-level). Stdlib methods may be overridden by user.
+		key := fn.Receiver + "." + fn.Name
+		if c.userMethods[key] {
 			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 			return
 		}
+		c.userMethods[key] = true
 	}
 
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
@@ -981,7 +990,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Walk component body for nested declarations. Struct/enum/unit
 	// decls inside a component body are hoisted to package scope at the
 	// IR level (Go and other targets have no per-component type scope).
-	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
 		case *ast.StructDef:
@@ -1027,17 +1035,20 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				}
 			}
 		case *ast.FuncDef:
-			nestedFuncs = append(nestedFuncs, s)
+			// Component funcs keep pre-T7 closure semantics: built directly,
+			// stored on the component's Funcs slice, never desugared to a
+			// method on a synthetic receiver. The interpreter, codegen, and
+			// lower passes already understand this shape; switching to
+			// methods would break test_runner, computed inlining, and
+			// component-instance access from outside.
+			fn := c.buildFunc(s)
+			irComp.Funcs = append(irComp.Funcs, fn)
 		}
 	}
 
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Declare(irComp)
-
-	// Register nested methods after the component is in scope so the
-	// synthetic `this <CompName>` receiver type resolves.
-	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {

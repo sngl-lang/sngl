@@ -187,7 +187,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			continue
 		}
 		// Collision check: already-registered method on the receiver type.
-		if _, exists := c.symtab.LookupMethod(recvName, n.Name); exists {
+		if c.userMethods[recvName+"."+n.Name] {
 			noun := "type"
 			if typeDecl != nil {
 				noun = typeKindNoun(typeDecl)
@@ -220,6 +220,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		fn := c.buildFunc(synthetic)
 		c.pkg.Funcs = append(c.pkg.Funcs, fn)
 		c.symtab.RegisterMethod(fn.Receiver, fn)
+		c.userMethods[recvName+"."+n.Name] = true
 		out = append(out, fn)
 	}
 	return out

@@ -280,14 +280,22 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// were closures registered on scope).
 		if c.currentComponent != nil {
 			if fn, ok := c.symtab.LookupMethod(c.currentComponent.Name, x.Name); ok {
-				// Synthesize an implicit call: bare `remaining` inside the
-				// component body lowers to `remaining()` (bound to the
-				// surrounding component instance at codegen time).
-				retType := fn.Return
-				if retType == nil {
-					retType = TypDyn
+				// Bare reference to a sibling component-method. Expose a func
+				// type with the synthetic `this` stripped, so implicit-call
+				// paths (interpolation, prop binding) and explicit `name()`
+				// calls both see a callable shape consistent with the source
+				// declaration.
+				sig := fn.FuncSig()
+				if len(sig.Params) > 0 && sig.Params[0].Name == "this" {
+					sig = &ir.FuncSig{
+						Params:     sig.Params[1:],
+						Return:     sig.Return,
+						TypeParams: sig.TypeParams,
+						Purity:     sig.Purity,
+					}
 				}
-				return &ir.Call{AST: nil, Type: retType, Func: fn, Args: nil}
+				funcType := &ir.Type{Kind: ir.TypeFunc, Sig: sig}
+				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
 		}
 		c.error(x.Pos, "undefined: %s", x.Name)
@@ -712,6 +720,17 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 				resolvedFunc = f
 			}
 		}
+		// Bare component-method ref doesn't appear in regular scope (only
+		// receiver-less funcs are declared). Recover the binding from the
+		// already-checked callee ident's Sym so downstream passes (computed
+		// inlining, codegen) see Func instead of just Callee.
+		if resolvedFunc == nil {
+			if id, ok := calleeExpr.(*ir.Ident); ok {
+				if f, ok := id.Sym.(*ir.Func); ok {
+					resolvedFunc = f
+				}
+			}
+		}
 	}
 
 	retType := callRetType(sig)
@@ -892,6 +911,14 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 					Color:     substituted.Color,
 					PolyParam: substituted.PolyParam,
 				}
+			}
+			// Desugared nested methods on generic types carry both
+			// RecvTypeParams AND an explicit first `this` param. After the
+			// RecvTypeParams are consumed by substitution, the receiver is the
+			// first explicit param — switch to recvParamStyle so the call-arg
+			// dispatch shifts past it.
+			if len(sig.Params) > 0 && sig.Params[0].Name == "this" {
+				recvParamStyle = true
 			}
 		}
 		if len(sig.TypeParams) > 0 {
@@ -1370,7 +1397,15 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 
 	if sd != nil {
-		return &ir.StructLit{AST: x, Type: sd.SymType(), Def: sd, Fields: fields}
+		typ := sd.SymType()
+		// For generic structs initialized via anonymous literal against a
+		// known expected type (e.g. `var b box<int> = {v=42}`), inherit the
+		// expected type's parameter bindings so downstream method calls
+		// resolve T correctly.
+		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
+			typ = c.expected
+		}
+		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
 	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 }
