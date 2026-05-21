@@ -1027,23 +1027,35 @@ func (g *htmlGen) pkgStructs() []*ir.StructDef {
 }
 
 // pkgFuncs returns user-defined top-level funcs plus main component funcs.
+// pkgFuncs returns user-defined top-level funcs plus main component funcs,
+// deduplicated. After passNoInlineComponents + registerNestedMethods,
+// component methods land in both pkg.Funcs AND comp.Funcs; without dedupe
+// the emitter would double-emit them.
+//
 // Synthesized funcs (e.g. __renderSlotN from passReactivity) are excluded;
 // emitScript routes them through htmlTranslator + WalkLowered separately.
 func (g *htmlGen) pkgFuncs() []*ir.Func {
 	if g.pkg == nil {
 		return nil
 	}
+	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
-	for _, f := range g.pkg.Funcs {
-		if !f.Synthesized {
-			out = append(out, f)
+	add := func(f *ir.Func) {
+		if f.Synthesized {
+			return
 		}
+		if _, dup := seen[f]; dup {
+			return
+		}
+		seen[f] = struct{}{}
+		out = append(out, f)
+	}
+	for _, f := range g.pkg.Funcs {
+		add(f)
 	}
 	if main := mainIRComponent(g.pkg); main != nil {
 		for _, f := range main.Funcs {
-			if !f.Synthesized {
-				out = append(out, f)
-			}
+			add(f)
 		}
 	}
 	return out
