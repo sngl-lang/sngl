@@ -256,15 +256,32 @@ func peelRoot(e ir.Expr) (root *ir.Ident, field string) {
 // or nil if it doesn't bottom out in a var. Chases through param bindings
 // and resolves implicit `this` against the owning component.
 func (w *depExtractor) resolveVar(e ir.Expr) *ir.Var {
+	return w.resolveVarGuarded(e, nil)
+}
+
+// resolveVarGuarded is the recursive worker. seen tracks names whose
+// bindings are currently being expanded in this resolution chain; if a
+// binding cycles back to a name we're already expanding, we stop and
+// fall through to the non-binding branches so a self-referencing
+// binding doesn't blow the stack.
+func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) *ir.Var {
 	root, field := peelRoot(e)
 	if root == nil {
 		return nil
 	}
 	if expr, bound := w.bindings[root.Name]; bound {
-		if field == "" {
-			return w.resolveVar(expr)
+		if _, cycling := seen[root.Name]; !cycling {
+			next := seen
+			if next == nil {
+				next = make(map[string]struct{}, 1)
+			}
+			next[root.Name] = struct{}{}
+			if field == "" {
+				return w.resolveVarGuarded(expr, next)
+			}
+			return w.resolveVarGuarded(&ir.Select{Operand: expr, Field: field}, next)
 		}
-		return w.resolveVar(&ir.Select{Operand: expr, Field: field})
+		// Cycle: fall through to non-binding resolution on root itself.
 	}
 	if root.Name == "this" && w.implicitThis != nil && field != "" {
 		return lookupCompVar(w.implicitThis, field)
