@@ -218,6 +218,17 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		n.ID = id
 	}
 
+	// Component-targeted NodeInst with a real user component body —
+	// left in place by passNoInlineComponents because the call site sits
+	// inside a reactive context or a recursive cycle. Lower to
+	// lower.CreateComponent(comp, propsLit) so codegen can wire it to a
+	// real factory. Native/platform components and empty stdlib wrappers
+	// (`text`, `button`, etc.) keep flowing through the CreateNode path:
+	// they ARE the platform elements at the leaves of the tree.
+	if n.Component != nil && hasRealComponentBody(n.Component) {
+		return st.lowerComponentNodeIntoStmts(n, id)
+	}
+
 	var stmts []ir.Stmt
 
 	varType := ir.TypDyn
@@ -320,6 +331,70 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	}
 
 	return stmts
+}
+
+// hasRealComponentBody reports whether comp carries SNGL-defined behavior
+// beyond a bare prop list. Native and empty-body wrappers (stdlib `text`,
+// `button`, platform-resolved components) return false: those are leaf
+// platform elements and are still lowered via CreateNode("name").
+func hasRealComponentBody(comp *ir.Component) bool {
+	if comp == nil || comp.Native != nil {
+		return false
+	}
+	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0
+}
+
+// lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose
+// target is a user component left in place by passNoInlineComponents:
+//
+//	var __nM dyn = lower.CreateComponent(<componentIdent>, {props...})
+//
+// AppendChild back to the surrounding parent is emitted by the caller
+// (processStmtsForParent / lowerNodeForSlot), mirroring how DOM-node
+// instances are attached. Children/handlers on a component-target
+// NodeInst are not lowered here — by design, a component call expresses
+// itself entirely through its prop set; children are encoded as a
+// `children` prop earlier in the pipeline.
+func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+	compIdent := &ir.Ident{
+		Name: n.Component.Name,
+		Sym:  n.Component,
+		Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
+	}
+
+	fields := make([]ir.FieldInit, 0, len(n.Props))
+	for _, p := range n.Props {
+		if p.Name == "" {
+			continue
+		}
+		fields = append(fields, ir.FieldInit{
+			Name:    p.Name,
+			NamePos: p.NamePos,
+			Value:   p.Value,
+		})
+	}
+	propsLit := &ir.StructLit{
+		Type:   ir.TypDyn,
+		Fields: fields,
+	}
+
+	createCall := &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: lowerNSIdent(),
+		Func:     st.intrinsics["CreateComponent"],
+		Args: []ir.CallArg{
+			{Value: compIdent},
+			{Value: propsLit},
+		},
+	}
+
+	return []ir.Stmt{
+		&ir.LocalVar{
+			Name: id,
+			Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
+			Init: createCall,
+		},
+	}
 }
 
 // lowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
