@@ -14,6 +14,26 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// factoryName returns the JS factory function name for a component.
+// MUST match the convention used by HTML codegen's factory emission.
+// If you change this, also update codegen/platform/html/html.go.
+func factoryName(comp *ir.Component) string {
+	return "__cf_" + sanitizeJSIdent(comp.Name)
+}
+
+func sanitizeJSIdent(name string) string {
+	out := make([]byte, 0, len(name))
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+			out = append(out, c)
+		} else {
+			out = append(out, '_')
+		}
+	}
+	return string(out)
+}
+
 func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 	if e == nil {
 		return "null"
@@ -333,6 +353,23 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 	receiverName := n.Func.Receiver
 	qualName := receiverName + "." + method
 	receiverJS := translateIRExpr(n.Receiver, scope)
+
+	// lower.CreateComponent(comp, props) → __cf_<name>(props)
+	if method == "CreateComponent" {
+		if len(n.Args) != 2 {
+			return "/* CreateComponent: wrong arity */"
+		}
+		compIdent, ok := n.Args[0].Value.(*ir.Ident)
+		if !ok {
+			return "/* CreateComponent: arg[0] not an Ident */"
+		}
+		comp, ok := compIdent.Sym.(*ir.Component)
+		if !ok {
+			return "/* CreateComponent: arg[0].Sym not a Component */"
+		}
+		propsJS := translateIRExpr(n.Args[1].Value, scope)
+		return factoryName(comp) + "(" + propsJS + ")"
+	}
 
 	// For i18n.* calls the namespace receiver is the module object, not a
 	// value argument. Pass only the real call args to the builtin dispatcher
