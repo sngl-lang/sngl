@@ -1,0 +1,14 @@
+component main {
+    var x = 5
+
+    func double() => x * 2
+
+    button #bump(text="bump", @click { x += 1 })
+    text #out(value=string(double()))
+}
+
+func testReactiveMethodRead(t Test, c main) {
+    t.assert(c.out.value == "10")
+    c.bump.@click()
+    t.assert(c.out.value == "12")
+}

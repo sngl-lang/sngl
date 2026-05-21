@@ -1,0 +1,14 @@
+component main {
+    var x = 5
+}
+
+func main.double(this main) => this.x * 2
+
+component root {
+    main()
+}
+
+func testReactiveExtensionRead(t Test, c root) {
+    var cm = c.children[0]
+    t.assert(cm.double() == 10)
+}

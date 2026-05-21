@@ -1,0 +1,17 @@
+var theme = "light"
+
+component card {
+    text #out(value=theme)
+}
+
+component main {
+    button #toggle(text="toggle", @click { theme = "dark" })
+    card()
+}
+
+func testGlobalVarReactivity(t Test, c main) {
+    var cd = c.children[1]
+    t.assert(cd.out.value == "light")
+    c.toggle.@click()
+    t.assert(cd.out.value == "dark")
+}

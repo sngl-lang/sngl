@@ -1,0 +1,28 @@
+// Two components with the same-named var prove pointer-keyed deps
+// don't cross-subscribe.
+component left {
+    var x = 0
+    button #bump(text="L", @click { x += 1 })
+    text #out(value=string(x))
+}
+
+component right {
+    var x = 100
+    button #bump(text="R", @click { x += 1 })
+    text #out(value=string(x))
+}
+
+component main {
+    left()
+    right()
+}
+
+func testTwoComponentsIsolated(t Test, c main) {
+    var l = c.children[0]
+    var r = c.children[1]
+    t.assert(l.out.value == "0")
+    t.assert(r.out.value == "100")
+    l.bump.@click()
+    t.assert(l.out.value == "1")
+    t.assert(r.out.value == "100")
+}
