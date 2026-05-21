@@ -296,6 +296,13 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if n.Synthesized {
 		return n.Name
 	}
+	// Component-self ident: synthesized by passNoImplicitRecv as the
+	// implicit receiver of a desugared component method. The JS emission
+	// uses `state` for per-instance state of the currently-emitting
+	// component.
+	if _, ok := n.Sym.(*ir.Component); ok {
+		return "state"
+	}
 	name := n.Name
 	if name == "event" && jc.EventVar != "" {
 		return jc.EventVar
