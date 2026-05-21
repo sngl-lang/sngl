@@ -43,8 +43,8 @@ func TestCaps_Merge(t *testing.T) {
 		{
 			name: "all flags",
 			a:    Caps{NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true, NoUnit: true, NoEnum: true, NoAsyncReactive: true},
-			b:    Caps{NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true},
-			want: Caps{NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true, NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true},
+			b:    Caps{NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true, NoImplicitRecv: true},
+			want: Caps{NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true, NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true, NoImplicitRecv: true},
 		},
 	}
 	for _, tt := range tests {
@@ -65,7 +65,7 @@ func TestCaps_String(t *testing.T) {
 		{name: "empty", c: Caps{}, want: ""},
 		{name: "single", c: Caps{NoToggle: true}, want: "NoToggle"},
 		{name: "multiple in pass-execution order", c: Caps{NoToggle: true, NoReactivity: true, NoEnum: true}, want: "NoEnum,NoToggle,NoReactivity"},
-		{name: "all", c: Caps{NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true, NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true}, want: "NoUnit,NoEnum,NoTernary,NoAsyncReactive,NoComputed,NoLambda,NoRef,NoToggle,NoReactivity,NoTimer,NoDeclarative"},
+		{name: "all", c: Caps{NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true, NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true, NoTimer: true, NoReactivity: true, NoDeclarative: true, NoImplicitRecv: true}, want: "NoUnit,NoEnum,NoTernary,NoAsyncReactive,NoComputed,NoLambda,NoRef,NoToggle,NoReactivity,NoImplicitRecv,NoTimer,NoDeclarative"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -27,6 +27,7 @@ type Caps struct {
 	NoStdlibWrappers   bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
 	NoListLambdas      bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
 	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
+	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -48,6 +49,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
 		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
 		NoInlineComponents: c.NoInlineComponents || other.NoInlineComponents,
+		NoImplicitRecv:     c.NoImplicitRecv || other.NoImplicitRecv,
 	}
 }
 
@@ -93,6 +95,9 @@ func (c Caps) String() string {
 	}
 	if c.NoInlineComponents {
 		parts = append(parts, "NoInlineComponents")
+	}
+	if c.NoImplicitRecv {
+		parts = append(parts, "NoImplicitRecv")
 	}
 	if c.NoTimer {
 		parts = append(parts, "NoTimer")
