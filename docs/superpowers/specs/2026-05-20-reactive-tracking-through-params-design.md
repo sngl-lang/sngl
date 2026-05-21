@@ -116,6 +116,18 @@ Reads inside expressions assigned to `Reads`/`Writes` on the `*ir.Func` are no l
 
 When the walker visits an `*ir.Assign`, `*ir.Toggle`, or `*ir.IncDec`, it resolves the LHS via `resolveVar` and records into `mutated`. Call dispatch is the same as for reads: enter the callee body with a fresh bindings frame, accumulating writes from every transitively reachable assignment.
 
+Write propagation respects SNGL's value-vs-reference parameter semantics:
+
+| Param declared type | Calling convention | Writes via this param propagate? |
+|---|---|---|
+| Component (`MyComp`) | by reference | yes |
+| `ref<T>` (any T) | by reference | yes |
+| Struct (`Point`) | by value | no — callee writes to a local copy |
+| Primitive (`int`, `string`, …) | by value | no |
+| List, map (`list<T>`, `map<K,V>`) | by reference (existing language semantics) | yes |
+
+A write through a param is recorded in `mutated` only when the param's declared type uses reference semantics. The walker checks the param's `ir.Type.Kind` at substitution time: `TypeComponent`, `TypeRef`, `TypeList`, `TypeMap` propagate; other kinds don't. Reads always propagate regardless of calling convention — the dependency on the caller-side expression is what matters for re-computation, not whether the body mutates its own copy.
+
 A function called from a tracked-read context can also contain writes; those still go into `mutated` if the user is asking for both (most call sites ask for one or the other, but the walker supports interleaved).
 
 ### Call dispatch
