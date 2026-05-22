@@ -11,4 +11,7 @@ struct Options {
     description string
     // Semantic version string (Android versionName, HTML meta, etc.).
     version string
+    // When true, generate source maps for target languages that support them
+    // (Go //line directives, JS .map sidecars). Default false.
+    maps bool
 }

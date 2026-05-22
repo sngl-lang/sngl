@@ -164,6 +164,19 @@ type PlatformGenerator interface {
 
 CLI (`cmd/sngl/compile.go`, `build.go`, `run.go`, `snapshot.go`, dump paths) constructs a `DirSink(outDir)` and passes it to `Generate`. WASM playground constructs a `MemSink` and reads back via a method on the sink (`MemSink.Files() map[string][]byte`).
 
+## Gating: the `maps` option
+
+Source-map emission is opt-in via the top-level `maps bool` field on
+`Options` (declared in `lib/options.sngl`). Default `false`.
+
+- `Request` carries the resolved value through `req.Options`.
+- `OpenCodeFile` accepts a `WriterOptions{Maps bool}` (or a fluent setter)
+  so the writer knows whether to record positions and call
+  `lang.RenderSourceMap` at close. When `Maps == false`, position lists
+  stay empty, no sidecar opens, no `//line` rewriting happens — zero cost.
+- Position-marking calls (`w.Mark`, `w.WriteAt`) remain in translators
+  unconditionally; the writer drops them when maps are disabled.
+
 ## Source-map rendering per language
 
 **Go.**
