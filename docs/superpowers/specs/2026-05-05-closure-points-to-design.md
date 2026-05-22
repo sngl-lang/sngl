@@ -71,18 +71,19 @@ colors at the function level — it propagates only through param-flow.
 ```go
 // ir/types.go
 type FuncSig struct {
-    Params     []*Param
-    Return     *Type
-    TypeParams []string
-    Purity     Purity
-    Color      Color // new
+	Params     []*Param
+	Return     *Type
+	TypeParams []string
+	Purity     Purity
+	Color      Color // new
 }
 
 type Color int
+
 const (
-    ColorSync Color = iota
-    ColorAsync
-    // ColorParam encoded with the param index in a sibling field if needed.
+	ColorSync Color = iota
+	ColorAsync
+	// ColorParam encoded with the param index in a sibling field if needed.
 )
 ```
 
@@ -94,24 +95,25 @@ can be poly on more than one funcvar param). Default `-1` meaning concrete.
 ```go
 // ir/pointsto.go (new file)
 type PointsToKey struct {
-    Kind  SlotKind        // SlotVar | SlotParam | SlotField | SlotListElem | SlotReturn
-    Var   *Var            // for Var/Param/Return slots; nil otherwise
-    Type  *Type           // for Field/ListElem (the struct or list type)
-    Field string          // for Field
+	Kind  SlotKind // SlotVar | SlotParam | SlotField | SlotListElem | SlotReturn
+	Var   *Var     // for Var/Param/Return slots; nil otherwise
+	Type  *Type    // for Field/ListElem (the struct or list type)
+	Field string   // for Field
 }
 
 type SlotKind int
+
 const (
-    SlotVar SlotKind = iota
-    SlotParam
-    SlotField
-    SlotListElem
-    SlotReturn
+	SlotVar SlotKind = iota
+	SlotParam
+	SlotField
+	SlotListElem
+	SlotReturn
 )
 
 type PointsToInfo struct {
-    Sites     map[PointsToKey][]*Func
-    SlotColor map[PointsToKey]Color
+	Sites     map[PointsToKey][]*Func
+	SlotColor map[PointsToKey]Color
 }
 
 // Package adds:
@@ -147,9 +149,9 @@ Sequence becomes:
 1. `analyzeAsync()` — direct-call fixpoint, leaves on natives marked `IsAsync`.
 2. **`analyzePointsTo()` — new.**
 3. `analyzeAsyncWithPointsTo()` — re-runs color propagation now that
-    funcvar calls have known target sets. Fixpoint.
+   funcvar calls have known target sets. Fixpoint.
 4. `checkAsyncRules()` — narrowed Rule 1 + Rule 2; Rule 3 stays superseded
-    by g3 (see §6).
+   by g3 (see §6).
 
 Algorithm:
 

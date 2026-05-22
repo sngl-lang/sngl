@@ -168,18 +168,14 @@ object is platform-dependent.
 In `registerComponent`, when `comp.Name` contains a dot:
 
 - Split into `namespace.local`. Today only `sngl.X` is valid.
-- Reject any non-`sngl` namespace: `extension namespace %q not
-  supported` at `comp.Pos`.
+- Reject any non-`sngl` namespace: `extension namespace %q not supported` at `comp.Pos`.
 - Require `len(comp.Props.Props) == 0`: error
-  `component extension "sngl.%s" may not declare props (inherited from
-  stdlib)` at the first prop's position.
+  `component extension "sngl.%s" may not declare props (inherited from stdlib)` at the first prop's position.
 - Require `comp.ChildrenType == nil`: error
-  `component extension "sngl.%s" may not declare children type
-  (inherited from stdlib)` at the children-type position.
+  `component extension "sngl.%s" may not declare children type (inherited from stdlib)` at the children-type position.
 - Require `comp.Body.Stmts` is non-empty and consists entirely of
   `*ast.PlatformStmt` (plus comments): error
-  `component extension "sngl.%s" body must contain only platform
-  blocks` at the first offending stmt.
+  `component extension "sngl.%s" body must contain only platform blocks` at the first offending stmt.
 
 These validations apply uniformly to platform-supplied and
 user-supplied extension declarations. User-supplied extensions are
@@ -194,13 +190,10 @@ In `checkNodeInst` (the call-site checker for `*ast.VisualNode`):
   out comments and control-flow (count VisualNode + ControlFlow as 1
   each; PlatformStmt contributes its body length).
 - Let `ct` = resolved component's `ChildrenType`:
-  - `nil`: require `n == 0`. Error: `component %q does not accept
-    children`.
+  - `nil`: require `n == 0`. Error: `component %q does not accept children`.
   - kind `TypeList`: any `n` allowed.
-  - kind `TypeOption`: require `n <= 1`. Error: `component %q accepts
-    at most one child (got %d)`.
-  - other: require `n == 1`. Error: `component %q requires exactly one
-    child (got %d)`.
+  - kind `TypeOption`: require `n <= 1`. Error: `component %q accepts at most one child (got %d)`.
+  - other: require `n == 1`. Error: `component %q requires exactly one child (got %d)`.
 
 Children-count enforcement is the second half of issue 63; it lands
 in the same change.
@@ -223,8 +216,7 @@ declarations. Convert each to the new form:
 +}
 ```
 
-Drop the parens (no props), drop ChildrenType, wrap body in `platform
-html { ... }`.
+Drop the parens (no props), drop ChildrenType, wrap body in `platform html { ... }`.
 
 #### bubbletea
 
@@ -273,8 +265,7 @@ After (4), with `Caps.NoStdlibWrappers` enabled on each platform:
 - `extension namespace "X" not supported` — only `sngl.` is valid.
 - `component extension "sngl.X" may not declare props/children type` —
   enforced symmetry with stdlib.
-- `component extension "sngl.X" body must contain only platform
-  blocks` — naked stmts rejected.
+- `component extension "sngl.X" body must contain only platform blocks` — naked stmts rejected.
 - `component "X" has no platform implementation for "<p>"` —
   lower-time error if user invokes a stdlib component with no
   platform body merged in. Currently this case falls back silently to
@@ -287,8 +278,7 @@ After (4), with `Caps.NoStdlibWrappers` enabled on each platform:
 
 In `internal/checker/testdata/`:
 
-- `extension_basic.sngl` — `component sngl.text { platform html {
-  span(textContent=value){} } }` then user `text(value="hi")`.
+- `extension_basic.sngl` — `component sngl.text { platform html { span(textContent=value){} } }` then user `text(value="hi")`.
 - `extension_rejects_props.sngl` — extension with `()` props →
   ERROR(check).
 - `extension_rejects_children_type.sngl` — extension with
@@ -334,8 +324,7 @@ In `internal/lower/testdata/`:
   merged extensions but should still handle user-level platform blocks
   (e.g. inside windows) — verify in implementation.
 
-- **User-extension semantics**: a user writing `component sngl.text
-  { ... }` in their own code shadows the platform's. Spec leaves this
+- **User-extension semantics**: a user writing `component sngl.text { ... }` in their own code shadows the platform's. Spec leaves this
   permissive: it's a legitimate way to override even the platform's
   behavior. The merge-into-stdlib-component approach makes this
   natural: user extensions just overwrite the same Component's body.

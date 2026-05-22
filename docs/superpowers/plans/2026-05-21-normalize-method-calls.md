@@ -12,18 +12,18 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|---|---|---|
-| `internal/lower/caps.go` | Modify | Add `NoImplicitRecv` flag + string serialization |
-| `internal/lower/normalize_method_calls.go` | Create | New `passNoImplicitRecv` pass |
-| `internal/lower/normalize_method_calls_test.go` | Create | Unit tests for the pass |
-| `internal/lower/lower.go` | Modify | Register the new pass in the global pass order |
-| `codegen/lang/javascript/ircontext.go` | Modify | Translate `*ir.Ident{Sym: *ir.Component}` to `state`; reset the pre-existing `evalTypeMethodCall` to the canonical `<Receiver>_<Method>(args...)` form |
-| `codegen/lang/javascript/translate_ir.go` | Modify | Same for the alternate translation path |
-| `codegen/platform/html/html.go` | Modify | Opt into `NoImplicitRecv`; dedupe `pkgFuncs`; lift `emitJSFunc` naming to `<Receiver>_<Name>` for desugared methods |
-| `codegen/platform/html/html_test.go` | Modify | Update test expectations to match new emission convention |
-| `codegen/platform/html/internal/webtest/*` | Modify (if needed) | Browser-test fixtures referring to old names |
-| `internal/checker/checker.go` | Modify | Re-enable `registerNestedMethods` call for components |
+| File                                            | Action             | Responsibility                                                                                                                                         |
+|-------------------------------------------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/lower/caps.go`                        | Modify             | Add `NoImplicitRecv` flag + string serialization                                                                                                       |
+| `internal/lower/normalize_method_calls.go`      | Create             | New `passNoImplicitRecv` pass                                                                                                                          |
+| `internal/lower/normalize_method_calls_test.go` | Create             | Unit tests for the pass                                                                                                                                |
+| `internal/lower/lower.go`                       | Modify             | Register the new pass in the global pass order                                                                                                         |
+| `codegen/lang/javascript/ircontext.go`          | Modify             | Translate `*ir.Ident{Sym: *ir.Component}` to `state`; reset the pre-existing `evalTypeMethodCall` to the canonical `<Receiver>_<Method>(args...)` form |
+| `codegen/lang/javascript/translate_ir.go`       | Modify             | Same for the alternate translation path                                                                                                                |
+| `codegen/platform/html/html.go`                 | Modify             | Opt into `NoImplicitRecv`; dedupe `pkgFuncs`; lift `emitJSFunc` naming to `<Receiver>_<Name>` for desugared methods                                    |
+| `codegen/platform/html/html_test.go`            | Modify             | Update test expectations to match new emission convention                                                                                              |
+| `codegen/platform/html/internal/webtest/*`      | Modify (if needed) | Browser-test fixtures referring to old names                                                                                                           |
+| `internal/checker/checker.go`                   | Modify             | Re-enable `registerNestedMethods` call for components                                                                                                  |
 
 ---
 
@@ -38,10 +38,10 @@ In `internal/lower/caps.go`, find the `Caps` struct. Add a new bool field (alpha
 
 ```go
 type Caps struct {
-    // ... existing fields ...
-    NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
-    NoInlineComponents bool // user-defined non-recursive components → inlined into main
-    // ... rest ...
+	// ... existing fields ...
+	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
+	NoInlineComponents bool // user-defined non-recursive components → inlined into main
+	// ... rest ...
 }
 ```
 
@@ -59,7 +59,7 @@ In the `String` method (lists enabled caps for debug output), add a stanza along
 
 ```go
 if c.NoImplicitRecv {
-    parts = append(parts, "NoImplicitRecv")
+	parts = append(parts, "NoImplicitRecv")
 }
 ```
 
@@ -109,10 +109,10 @@ import (
 //
 // Two source patterns currently reach IR:
 //
-//   Pattern A (implicit recv):
-//     ir.Call{Func: T.method (with receiver param), Args: []}
-//   Pattern B (explicit recv):
-//     ir.Call{Func: T.method, Args: [recv, ...]}
+//	Pattern A (implicit recv):
+//	  ir.Call{Func: T.method (with receiver param), Args: []}
+//	Pattern B (explicit recv):
+//	  ir.Call{Func: T.method, Args: [recv, ...]}
 //
 // Pattern A arises from bare-name component-method refs (T8 elision
 // followed by implicitCall) where the source has no receiver expression
@@ -547,12 +547,12 @@ The passes slice is around line 44. Order matters: `passNoImplicitRecv` must run
 
 ```go
 var passes = []pass{
-    // ... existing entries ...
-    passNoInlineComponents,
-    passNoImplicitRecv, // NEW — after inlining, before reactivity
-    passReactivity,
-    // ...
-    passDeclarative,
+	// ... existing entries ...
+	passNoInlineComponents,
+	passNoImplicitRecv, // NEW — after inlining, before reactivity
+	passReactivity,
+	// ...
+	passDeclarative,
 }
 ```
 
@@ -603,7 +603,7 @@ Inside `evalIdent`, before the generic name-resolution branch, add:
 // uses `state` for per-instance state of the currently-emitting
 // component.
 if _, ok := n.Sym.(*ir.Component); ok {
-    return "state"
+	return "state"
 }
 ```
 
@@ -617,7 +617,7 @@ Run: `grep -n "func translateIRIdent\|case \*ir.Component" codegen/lang/javascri
 
 ```go
 if _, ok := n.Sym.(*ir.Component); ok {
-    return "state"
+	return "state"
 }
 ```
 
@@ -647,14 +647,14 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ```go
 func (g *Generator) RequiredCaps() lower.Caps {
-    return lower.Caps{
-        NoContext:          true,
-        NoReactivity:       true,
-        NoAsyncReactive:    true,
-        NoStdlibWrappers:   true,
-        NoInlineComponents: true,
-        NoImplicitRecv:     true, // NEW
-    }
+	return lower.Caps{
+		NoContext:          true,
+		NoReactivity:       true,
+		NoAsyncReactive:    true,
+		NoStdlibWrappers:   true,
+		NoInlineComponents: true,
+		NoImplicitRecv:     true, // NEW
+	}
 }
 ```
 
@@ -705,30 +705,30 @@ Replace the function:
 // Synthesized funcs (e.g. __renderSlotN from passReactivity) are excluded;
 // emitScript routes them through htmlTranslator + WalkLowered separately.
 func (g *htmlGen) pkgFuncs() []*ir.Func {
-    if g.pkg == nil {
-        return nil
-    }
-    seen := make(map[*ir.Func]struct{})
-    var out []*ir.Func
-    add := func(f *ir.Func) {
-        if f.Synthesized {
-            return
-        }
-        if _, dup := seen[f]; dup {
-            return
-        }
-        seen[f] = struct{}{}
-        out = append(out, f)
-    }
-    for _, f := range g.pkg.Funcs {
-        add(f)
-    }
-    if main := mainIRComponent(g.pkg); main != nil {
-        for _, f := range main.Funcs {
-            add(f)
-        }
-    }
-    return out
+	if g.pkg == nil {
+		return nil
+	}
+	seen := make(map[*ir.Func]struct{})
+	var out []*ir.Func
+	add := func(f *ir.Func) {
+		if f.Synthesized {
+			return
+		}
+		if _, dup := seen[f]; dup {
+			return
+		}
+		seen[f] = struct{}{}
+		out = append(out, f)
+	}
+	for _, f := range g.pkg.Funcs {
+		add(f)
+	}
+	if main := mainIRComponent(g.pkg); main != nil {
+		for _, f := range main.Funcs {
+			add(f)
+		}
+	}
+	return out
 }
 ```
 
@@ -773,7 +773,7 @@ Replace with:
 // For desugared methods, the dotted form lives in fn.Receiver.
 jsName := strings.ReplaceAll(fn.Name, ".", "_")
 if fn.Receiver != "" {
-    jsName = fn.Receiver + "_" + fn.Name
+	jsName = fn.Receiver + "_" + fn.Name
 }
 ```
 
@@ -787,20 +787,20 @@ Around line 2560 the computed-emit block writes `function $%s()`. For receiver-b
 funcs := g.pkgFuncs()
 hasComputed := false
 for _, fn := range funcs {
-    if !codegen.IsComputed(fn) || len(fn.Block) != 1 {
-        continue
-    }
-    ret, ok := fn.Block[0].(*ir.Return)
-    if !ok || ret.Value == nil {
-        continue
-    }
-    body := g.exprToJS(ret.Value)
-    if fn.Receiver != "" {
-        fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
-    } else {
-        fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
-    }
-    hasComputed = true
+	if !codegen.IsComputed(fn) || len(fn.Block) != 1 {
+		continue
+	}
+	ret, ok := fn.Block[0].(*ir.Return)
+	if !ok || ret.Value == nil {
+		continue
+	}
+	body := g.exprToJS(ret.Value)
+	if fn.Receiver != "" {
+		fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
+	} else {
+		fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+	}
+	hasComputed = true
 }
 ```
 
@@ -808,12 +808,12 @@ for _, fn := range funcs {
 
 ```go
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
-    if codegen.IsComputed(fn) && len(fn.Block) == 1 {
-        if _, ok := fn.Block[0].(*ir.Return); ok {
-            return // already emitted in the computed branch
-        }
-    }
-    // ... existing body ...
+	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
+		if _, ok := fn.Block[0].(*ir.Return); ok {
+			return // already emitted in the computed branch
+		}
+	}
+	// ... existing body ...
 }
 ```
 
@@ -852,14 +852,14 @@ Find the block:
 
 ```go
 if jc.Ctx != nil && jc.Ctx.Pkg != nil {
-    for _, f := range jc.Ctx.Pkg.Funcs {
-        if f.Receiver == receiverName && f.Name == method {
-            if len(args) == 0 && jc.Ctx.Component != nil && jc.Ctx.Component.Name == receiverName {
-                return receiverName + "_" + method + "(state)"
-            }
-            return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
-        }
-    }
+	for _, f := range jc.Ctx.Pkg.Funcs {
+		if f.Receiver == receiverName && f.Name == method {
+			if len(args) == 0 && jc.Ctx.Component != nil && jc.Ctx.Component.Name == receiverName {
+				return receiverName + "_" + method + "(state)"
+			}
+			return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
+		}
+	}
 }
 ```
 
@@ -867,11 +867,11 @@ Replace with:
 
 ```go
 if jc.Ctx != nil && jc.Ctx.Pkg != nil {
-    for _, f := range jc.Ctx.Pkg.Funcs {
-        if f.Receiver == receiverName && f.Name == method {
-            return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
-        }
-    }
+	for _, f := range jc.Ctx.Pkg.Funcs {
+		if f.Receiver == receiverName && f.Name == method {
+			return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
+		}
+	}
 }
 ```
 
@@ -1011,7 +1011,7 @@ Add inside `evalIdent`, before the generic name-resolution fallback:
 // implicit receiver of a desugared component method. Go emission uses
 // `m` for the Bubbletea/Fyne Model receiver.
 if _, ok := n.Sym.(*ir.Component); ok {
-    return "m"
+	return "m"
 }
 ```
 

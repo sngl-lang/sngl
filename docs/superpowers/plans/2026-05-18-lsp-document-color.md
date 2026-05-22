@@ -14,14 +14,14 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/lsp/color.go` | create | `documentColor` + `colorPresentation` handlers; hex parsing and formatting |
-| `internal/lsp/color_test.go` | create | Table-driven tests over fixture .sngl files |
-| `internal/lsp/protocol.go` | modify | Add `ColorProvider` capability flag + DocumentColor/ColorInformation/Color/ColorPresentation types |
-| `internal/lsp/handler.go` | modify | Advertise `colorProvider: true` in initialize |
-| `internal/lsp/server.go` | modify | Dispatch `textDocument/documentColor` and `textDocument/colorPresentation` |
-| `testdata/lsp/colors.sngl` | create | Fixture with hex literals across forms |
+| File                         | Status | Responsibility                                                                                     |
+|------------------------------|--------|----------------------------------------------------------------------------------------------------|
+| `internal/lsp/color.go`      | create | `documentColor` + `colorPresentation` handlers; hex parsing and formatting                         |
+| `internal/lsp/color_test.go` | create | Table-driven tests over fixture .sngl files                                                        |
+| `internal/lsp/protocol.go`   | modify | Add `ColorProvider` capability flag + DocumentColor/ColorInformation/Color/ColorPresentation types |
+| `internal/lsp/handler.go`    | modify | Advertise `colorProvider: true` in initialize                                                      |
+| `internal/lsp/server.go`     | modify | Dispatch `textDocument/documentColor` and `textDocument/colorPresentation`                         |
+| `testdata/lsp/colors.sngl`   | create | Fixture with hex literals across forms                                                             |
 
 ---
 
@@ -113,9 +113,9 @@ import (
 
 func TestParseHexColor(t *testing.T) {
 	tests := []struct {
-		in           string
+		in                         string
 		wantR, wantG, wantB, wantA float64
-		wantOK       bool
+		wantOK                     bool
 	}{
 		{"#000", 0, 0, 0, 1, true},
 		{"#fff", 1, 1, 1, 1, true},

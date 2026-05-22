@@ -344,6 +344,7 @@ cat internal/lower/testdata/computed_chain.txtar
 ```
 
 Expected for `computed_basic`:
+
 ```
 component main {
     var n int = 5
@@ -352,6 +353,7 @@ component main {
 ```
 
 Expected for `computed_chain`:
+
 ```
 component main {
     var n int = 3

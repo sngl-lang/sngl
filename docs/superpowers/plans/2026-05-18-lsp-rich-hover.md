@@ -12,12 +12,12 @@
 
 ## Scope decisions (out of this slice)
 
-| Spec item | Status | Reason |
-|---|---|---|
-| Image embed on component hover | deferred to F1 plan | depends on preview index that doesn't exist yet |
-| Stdlib badge + docs-site footer link | deferred | stdlib loader is a TODO in v2 (`hover.go:58`) |
-| Method type-param resolution at call site | deferred | needs call-context resolution; significant scope |
-| Measurement literal hover | deferred to F3 plan | depends on F3 viewport assumptions |
+| Spec item                                 | Status              | Reason                                           |
+|-------------------------------------------|---------------------|--------------------------------------------------|
+| Image embed on component hover            | deferred to F1 plan | depends on preview index that doesn't exist yet  |
+| Stdlib badge + docs-site footer link      | deferred            | stdlib loader is a TODO in v2 (`hover.go:58`)    |
+| Method type-param resolution at call site | deferred            | needs call-context resolution; significant scope |
+| Measurement literal hover                 | deferred to F3 plan | depends on F3 viewport assumptions               |
 
 What this plan covers: functions (signature + doc), vars/consts (type + literal value), structs (doc), enums (doc), units (body + doc), color literals (swatch + rgb), keywords.
 
@@ -41,24 +41,24 @@ Directives are line-anchored in the source comment that contains them, but the *
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/testutil/hover.go` | create | `HoverDirective`, `ParseHoverDirectives`, `AssertHovers` |
-| `internal/lspcore/walk.go` | create | Move `walkLiterals` here, importable by both lsp and lspcore |
-| `internal/lspcore/hover.go` | modify | Per-kind formatters; add `HoverAt` entry |
-| `internal/lspcore/keywords.go` | create | Static keyword → description table |
-| `internal/lsp/color.go` | modify | Use `lspcore.WalkLiterals` instead of local copy |
-| `internal/lsp/hover.go` | modify | Call `lspcore.HoverAt` (position-aware) |
-| `internal/lspcore/hover_fixture_test.go` | create | Single Go test that iterates `testdata/lsp_hover/*.sngl` |
-| `testdata/lsp_hover/func.sngl` | create | Function signature fixtures |
-| `testdata/lsp_hover/var_const.sngl` | create | Var/const value fixtures |
-| `testdata/lsp_hover/struct.sngl` | create | Struct fixtures |
-| `testdata/lsp_hover/enum.sngl` | create | Enum fixtures |
-| `testdata/lsp_hover/unit.sngl` | create | Unit fixtures |
-| `testdata/lsp_hover/component.sngl` | create | Component fixtures |
-| `testdata/lsp_hover/color.sngl` | create | Color literal fixtures |
-| `testdata/lsp_hover/keywords.sngl` | create | Keyword fixtures |
-| `internal/lsp/hover_test.go` | modify | Remove unused `parseForHover` helper |
+| File                                     | Status | Responsibility                                               |
+|------------------------------------------|--------|--------------------------------------------------------------|
+| `internal/testutil/hover.go`             | create | `HoverDirective`, `ParseHoverDirectives`, `AssertHovers`     |
+| `internal/lspcore/walk.go`               | create | Move `walkLiterals` here, importable by both lsp and lspcore |
+| `internal/lspcore/hover.go`              | modify | Per-kind formatters; add `HoverAt` entry                     |
+| `internal/lspcore/keywords.go`           | create | Static keyword → description table                           |
+| `internal/lsp/color.go`                  | modify | Use `lspcore.WalkLiterals` instead of local copy             |
+| `internal/lsp/hover.go`                  | modify | Call `lspcore.HoverAt` (position-aware)                      |
+| `internal/lspcore/hover_fixture_test.go` | create | Single Go test that iterates `testdata/lsp_hover/*.sngl`     |
+| `testdata/lsp_hover/func.sngl`           | create | Function signature fixtures                                  |
+| `testdata/lsp_hover/var_const.sngl`      | create | Var/const value fixtures                                     |
+| `testdata/lsp_hover/struct.sngl`         | create | Struct fixtures                                              |
+| `testdata/lsp_hover/enum.sngl`           | create | Enum fixtures                                                |
+| `testdata/lsp_hover/unit.sngl`           | create | Unit fixtures                                                |
+| `testdata/lsp_hover/component.sngl`      | create | Component fixtures                                           |
+| `testdata/lsp_hover/color.sngl`          | create | Color literal fixtures                                       |
+| `testdata/lsp_hover/keywords.sngl`       | create | Keyword fixtures                                             |
+| `internal/lsp/hover_test.go`             | modify | Remove unused `parseForHover` helper                         |
 
 ---
 
@@ -1206,18 +1206,18 @@ Hover `func` keyword — expect "Declares a function."
 
 **Spec coverage (F4):**
 
-| Spec row | Task |
-|---|---|
-| Component: signature, doc, image | Task 8 (image deferred to F1) |
+| Spec row                                       | Task                                   |
+|------------------------------------------------|----------------------------------------|
+| Component: signature, doc, image               | Task 8 (image deferred to F1)          |
 | Function: signature, doc, type params resolved | Task 4 (call-site resolution deferred) |
-| Variable / const: type, value | Task 5 |
-| Struct: declaration body, doc | Task 6 |
-| Enum: declaration body, doc | Task 6 |
-| Unit: declaration body | Task 7 |
-| Stdlib symbol: badge + link | deferred (stdlib loader is TODO) |
-| Color literal: swatch + rgb | Task 9 |
-| Measurement literal: resolved px | deferred to F3 |
-| Keyword: one-line description | Task 10 |
+| Variable / const: type, value                  | Task 5                                 |
+| Struct: declaration body, doc                  | Task 6                                 |
+| Enum: declaration body, doc                    | Task 6                                 |
+| Unit: declaration body                         | Task 7                                 |
+| Stdlib symbol: badge + link                    | deferred (stdlib loader is TODO)       |
+| Color literal: swatch + rgb                    | Task 9                                 |
+| Measurement literal: resolved px               | deferred to F3                         |
+| Keyword: one-line description                  | Task 10                                |
 
 Deferrals are listed in the scope decisions table at the top.
 

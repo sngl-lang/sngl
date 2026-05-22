@@ -80,15 +80,15 @@ caps := platform.Capabilities().Merge(lang.Capabilities())
 package lower
 
 type Caps struct {
-    NoToggle      bool // x!! → x = !x
-    NoTernary     bool // a ? b : c → introduce temp var, assign in if/else, replace expr with var ref
-    NoLambda      bool // closures → top-level funcs + captured-state struct
-    NoUnit        bool // unit values → underlying numeric (always int — see Open Items)
-    NoEnum        bool // enum members → int constants
-    NoComputed    bool // computed vars → inlined exprs or memoized funcs
-    NoTimer       bool // timer decls → explicit scheduler.At() / cancel() calls
-    NoReactivity  bool // reactive deps → explicit updater stmts injected after each mutation
-    NoDeclarative bool // visual node tree → flat stream of create/update/delete IR calls
+	NoToggle      bool // x!! → x = !x
+	NoTernary     bool // a ? b : c → introduce temp var, assign in if/else, replace expr with var ref
+	NoLambda      bool // closures → top-level funcs + captured-state struct
+	NoUnit        bool // unit values → underlying numeric (always int — see Open Items)
+	NoEnum        bool // enum members → int constants
+	NoComputed    bool // computed vars → inlined exprs or memoized funcs
+	NoTimer       bool // timer decls → explicit scheduler.At() / cancel() calls
+	NoReactivity  bool // reactive deps → explicit updater stmts injected after each mutation
+	NoDeclarative bool // visual node tree → flat stream of create/update/delete IR calls
 }
 
 func (c Caps) Merge(other Caps) Caps { /* field-wise OR */ }
@@ -119,15 +119,15 @@ Every pass exposes the same struct so `lower.go` can iterate uniformly:
 
 ```go
 type pass struct {
-    name    string                 // matches Caps field name, e.g. "NoToggle"
-    enabled func(Caps) bool
-    apply   func(*ir.Package) error
+	name    string // matches Caps field name, e.g. "NoToggle"
+	enabled func(Caps) bool
+	apply   func(*ir.Package) error
 }
 
 var passToggle = pass{
-    name:    "NoToggle",
-    enabled: func(c Caps) bool { return c.NoToggle },
-    apply:   lowerToggle,
+	name:    "NoToggle",
+	enabled: func(c Caps) bool { return c.NoToggle },
+	apply:   lowerToggle,
 }
 ```
 

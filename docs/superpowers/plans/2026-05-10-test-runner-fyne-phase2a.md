@@ -679,11 +679,11 @@ Expected: PASS — one Go test runs in the temp module, the assert evaluates `c.
 
 Common failure modes & remediation:
 
-| Failure | Likely cause | Fix |
-|---|---|---|
+| Failure                                                         | Likely cause                                  | Fix                                                                                                                |
+|-----------------------------------------------------------------|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | `go test` complains about `fyne.io/fyne/v2` not in module cache | network-isolated host or fyne not pre-fetched | run `go mod download fyne.io/fyne/v2@v2.5.0` once in your dev environment; mark as a probe constraint to add later |
-| `c.count` is undefined in lowered Go | field exported as `Count` | the SNGL→Go translator already handles this in `translateIRExpr`; if not, use `ExportName` |
-| Lowered test references `string()` | conversion lowering | not relevant for `t.assert(c.count == 0)`; only relevant when the test reads the rendered text |
+| `c.count` is undefined in lowered Go                            | field exported as `Count`                     | the SNGL→Go translator already handles this in `translateIRExpr`; if not, use `ExportName`                         |
+| Lowered test references `string()`                              | conversion lowering                           | not relevant for `t.assert(c.count == 0)`; only relevant when the test reads the rendered text                     |
 
 - [ ] **Step 5: Run the full matrix**
 

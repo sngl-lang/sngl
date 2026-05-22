@@ -1,7 +1,7 @@
 ---
-title: "Reference"
+title: Reference
 order: 20
-description: "Authoritative references for the SNGL language, standard library, and built-in targets"
+description: Authoritative references for the SNGL language, standard library, and built-in targets
 ---
 
 ## What's here

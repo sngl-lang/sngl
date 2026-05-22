@@ -112,18 +112,18 @@ After Piece D is verified for `color.lighten`, `color.darken`, `color.opacity`, 
 
 ## Components
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/checker/expr.go` (or wherever color lit is built) | modify | Emit `*ir.StructLit{Name:"color"}` for `ast.LiteralColor` |
-| `internal/checker/...` (type-eq site) | modify | Fix `cannot initialize color with color` |
-| `internal/interp/` | create (move) | `eval.go`, `exec.go`, `builtins.go` moved from testrunner. Public `Env`, `Eval`, `Exec`, etc. |
-| `codegen/platform/none/testrunner/` | modify | Import `internal/interp` for the moved code; keep testrunner-specific orchestration (`runner.go`, `render.go`, `assert_msg.go`, `testing_t.go`) here |
-| `internal/optimize/interpret.go` | create | Optimizer-side adapter: depth limit, deep-copy, error→bail, `irFromValue` |
-| `internal/optimize/consteval.go` | modify | Plumb adapter into `evalCall`; remove `color.*` from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral` |
-| `internal/optimize/interpret_test.go` | create | Unit tests per statement kind + E2E fold tests |
-| `internal/lsp/color_irwalk.go` | modify | Walk for `*ir.StructLit{Name:"color"}` instead of `*ir.Literal{Type:color}` |
-| `internal/lsp/color.go` | modify | `colorFromIRLiteral` / `rangeForIRLiteral` consume StructLit; channel values from field literals |
-| Existing tests asserting `*ir.Literal{Type:color}` | adjust | Update to StructLit shape |
+| File                                                        | Status        | Responsibility                                                                                                                                       |
+|-------------------------------------------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/checker/expr.go` (or wherever color lit is built) | modify        | Emit `*ir.StructLit{Name:"color"}` for `ast.LiteralColor`                                                                                            |
+| `internal/checker/...` (type-eq site)                       | modify        | Fix `cannot initialize color with color`                                                                                                             |
+| `internal/interp/`                                          | create (move) | `eval.go`, `exec.go`, `builtins.go` moved from testrunner. Public `Env`, `Eval`, `Exec`, etc.                                                        |
+| `codegen/platform/none/testrunner/`                         | modify        | Import `internal/interp` for the moved code; keep testrunner-specific orchestration (`runner.go`, `render.go`, `assert_msg.go`, `testing_t.go`) here |
+| `internal/optimize/interpret.go`                            | create        | Optimizer-side adapter: depth limit, deep-copy, error→bail, `irFromValue`                                                                            |
+| `internal/optimize/consteval.go`                            | modify        | Plumb adapter into `evalCall`; remove `color.*` from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral`                           |
+| `internal/optimize/interpret_test.go`                       | create        | Unit tests per statement kind + E2E fold tests                                                                                                       |
+| `internal/lsp/color_irwalk.go`                              | modify        | Walk for `*ir.StructLit{Name:"color"}` instead of `*ir.Literal{Type:color}`                                                                          |
+| `internal/lsp/color.go`                                     | modify        | `colorFromIRLiteral` / `rangeForIRLiteral` consume StructLit; channel values from field literals                                                     |
+| Existing tests asserting `*ir.Literal{Type:color}`          | adjust        | Update to StructLit shape                                                                                                                            |
 
 ## Data flow
 

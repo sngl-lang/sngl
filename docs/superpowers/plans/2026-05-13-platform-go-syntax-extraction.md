@@ -16,14 +16,14 @@
 
 ## Architectural target
 
-| Concern | Current (post-Plan C) | After Plan F |
-|---|---|---|
-| Cgo function call `C.gtk_label_new(nil)` | `nativeCall("C.gtk_label_new", nullLit)` — `NativeName = "C.gtk_label_new"` includes the `C.` prefix | `nativeCall("gtk_label_new", nullLit)` — `NativeName = "gtk_label_new"`; renderer prepends `C.` when `NativePkg == "C"` |
-| Cgo pointer cast `(*C.GtkLabel)(unsafe.Pointer(x))` | `nativeCall("(*C.GtkLabel)", nativeCall("unsafe.Pointer", x))` — fake function whose Name is Go syntax | `&ir.Conversion{Type: &ir.Type{Kind: TypeNative, Meta: "GtkLabel"}, Operand: x}`; renderer expands to cgo cast pattern |
-| Func definition `func (m *Model) name(params) ret { body }` | Emitter builds string directly via `fmt.Fprintf` | Platform constructs `*ir.Func`; renderer's `EmitFuncDef` produces the source lines |
-| Var init `container.NewVBox()` / `(*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(...)))` | `irBind.Init string` raw text | `irBind.Init ir.Expr` — renderer evaluates |
-| Field type `*widget.Label` / `*C.GtkLabel` | `irBind.GoType string` | `irBind.Type *ir.Type` — renderer formats |
-| `m.__root = container.NewVBox()` startup-init | Platform string-formats | `*ir.Assign` constructed in IR; renderer emits |
+| Concern                                                                            | Current (post-Plan C)                                                                                  | After Plan F                                                                                                            |
+|------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| Cgo function call `C.gtk_label_new(nil)`                                           | `nativeCall("C.gtk_label_new", nullLit)` — `NativeName = "C.gtk_label_new"` includes the `C.` prefix   | `nativeCall("gtk_label_new", nullLit)` — `NativeName = "gtk_label_new"`; renderer prepends `C.` when `NativePkg == "C"` |
+| Cgo pointer cast `(*C.GtkLabel)(unsafe.Pointer(x))`                                | `nativeCall("(*C.GtkLabel)", nativeCall("unsafe.Pointer", x))` — fake function whose Name is Go syntax | `&ir.Conversion{Type: &ir.Type{Kind: TypeNative, Meta: "GtkLabel"}, Operand: x}`; renderer expands to cgo cast pattern  |
+| Func definition `func (m *Model) name(params) ret { body }`                        | Emitter builds string directly via `fmt.Fprintf`                                                       | Platform constructs `*ir.Func`; renderer's `EmitFuncDef` produces the source lines                                      |
+| Var init `container.NewVBox()` / `(*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(...)))` | `irBind.Init string` raw text                                                                          | `irBind.Init ir.Expr` — renderer evaluates                                                                              |
+| Field type `*widget.Label` / `*C.GtkLabel`                                         | `irBind.GoType string`                                                                                 | `irBind.Type *ir.Type` — renderer formats                                                                               |
+| `m.__root = container.NewVBox()` startup-init                                      | Platform string-formats                                                                                | `*ir.Assign` constructed in IR; renderer emits                                                                          |
 
 ---
 
@@ -53,7 +53,7 @@ Add a constructor helper:
 // type named `name`. For Go-cgo: renders as "*C.<name>". The Meta
 // field holds the name string so language renderers can read it.
 func NativePointerOf(name string) *Type {
-    return &Type{Kind: TypeNative, Meta: name}
+	return &Type{Kind: TypeNative, Meta: name}
 }
 ```
 
@@ -63,12 +63,12 @@ Append to `codegen/lang/golang/ircontext_test.go`:
 
 ```go
 func TestIRTypeToGo_NativePointer(t *testing.T) {
-    typ := ir.NativePointerOf("GtkLabel")
-    got := IRTypeToGo(typ)
-    want := "*C.GtkLabel"
-    if got != want {
-        t.Errorf("IRTypeToGo(NativePointer GtkLabel) = %q; want %q", got, want)
-    }
+	typ := ir.NativePointerOf("GtkLabel")
+	got := IRTypeToGo(typ)
+	want := "*C.GtkLabel"
+	if got != want {
+		t.Errorf("IRTypeToGo(NativePointer GtkLabel) = %q; want %q", got, want)
+	}
 }
 ```
 
@@ -95,17 +95,17 @@ Append to `ircontext_test.go`:
 
 ```go
 func TestEvalConversion_NativePointerCast(t *testing.T) {
-    gc := newMinimalIRCtx()
-    operand := &ir.Ident{Name: "raw"}
-    conv := &ir.Conversion{
-        Type:    ir.NativePointerOf("GtkLabel"),
-        Operand: operand,
-    }
-    got := gc.EvalExpr(conv)
-    want := "(*C.GtkLabel)(unsafe.Pointer(raw))"
-    if got != want {
-        t.Errorf("EvalExpr cgo cast = %q; want %q", got, want)
-    }
+	gc := newMinimalIRCtx()
+	operand := &ir.Ident{Name: "raw"}
+	conv := &ir.Conversion{
+		Type:    ir.NativePointerOf("GtkLabel"),
+		Operand: operand,
+	}
+	got := gc.EvalExpr(conv)
+	want := "(*C.GtkLabel)(unsafe.Pointer(raw))"
+	if got != want {
+		t.Errorf("EvalExpr cgo cast = %q; want %q", got, want)
+	}
 }
 ```
 
@@ -118,9 +118,9 @@ In `evalConversion`, after the existing null-to-func check, add:
 
 ```go
 if n.Type != nil && n.Type.Kind == ir.TypeNative {
-    goType := IRTypeToGo(n.Type)
-    operand := gc.EvalExpr(n.Operand)
-    return "(" + goType + ")(unsafe.Pointer(" + operand + "))"
+	goType := IRTypeToGo(n.Type)
+	operand := gc.EvalExpr(n.Operand)
+	return "(" + goType + ")(unsafe.Pointer(" + operand + "))"
 }
 ```
 
@@ -160,17 +160,17 @@ Append to `ircontext_test.go`:
 
 ```go
 func TestEvalCall_CgoNativePrefix(t *testing.T) {
-    gc := newMinimalIRCtx()
-    call := &ir.Call{
-        Receiver: &ir.Ident{Name: "C"}, // synthetic namespace receiver
-        Func:     &ir.Func{NativePkg: "C", NativeName: "gtk_label_new"},
-        Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull}}},
-    }
-    got := gc.EvalExpr(call)
-    want := "C.gtk_label_new(nil)"
-    if got != want {
-        t.Errorf("EvalExpr cgo call = %q; want %q", got, want)
-    }
+	gc := newMinimalIRCtx()
+	call := &ir.Call{
+		Receiver: &ir.Ident{Name: "C"}, // synthetic namespace receiver
+		Func:     &ir.Func{NativePkg: "C", NativeName: "gtk_label_new"},
+		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull}}},
+	}
+	got := gc.EvalExpr(call)
+	want := "C.gtk_label_new(nil)"
+	if got != want {
+		t.Errorf("EvalExpr cgo call = %q; want %q", got, want)
+	}
 }
 ```
 
@@ -183,7 +183,7 @@ In `codegen/lang/golang/ircontext.go`, find `evalNamespaceCall`. Current code at
 
 ```go
 if n.Func.NativePkg != "" {
-    return n.Func.NativeName + "(" + strings.Join(args, ", ") + ")"
+	return n.Func.NativeName + "(" + strings.Join(args, ", ") + ")"
 }
 ```
 
@@ -191,15 +191,15 @@ Replace with:
 
 ```go
 if n.Func.NativePkg != "" {
-    name := n.Func.NativeName
-    // Cgo C-API call: NativeName carries the bare C identifier
-    // (e.g. "gtk_label_new"); the renderer adds the cgo-side "C."
-    // prefix. Backwards-compat: if NativeName already starts with
-    // "C." (legacy callers), leave untouched.
-    if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
-        name = "C." + name
-    }
-    return name + "(" + strings.Join(args, ", ") + ")"
+	name := n.Func.NativeName
+	// Cgo C-API call: NativeName carries the bare C identifier
+	// (e.g. "gtk_label_new"); the renderer adds the cgo-side "C."
+	// prefix. Backwards-compat: if NativeName already starts with
+	// "C." (legacy callers), leave untouched.
+	if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
+		name = "C." + name
+	}
+	return name + "(" + strings.Join(args, ", ") + ")"
 }
 ```
 
@@ -239,36 +239,36 @@ Append to `ircontext_test.go`:
 
 ```go
 func TestEmitFuncDef_PlainFunc(t *testing.T) {
-    gc := newMinimalIRCtx()
-    fn := &ir.Func{
-        Name:   "greet",
-        Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
-        Return: ir.TypString,
-        Block: []ir.Stmt{
-            &ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
-        },
-    }
-    got := strings.Join(gc.EmitFuncDef(fn), "\n")
-    want := "func greet(name string) string {\n\treturn \"hi\"\n}"
-    if got != want {
-        t.Errorf("EmitFuncDef plain func mismatch:\ngot:\n%s\nwant:\n%s", got, want)
-    }
+	gc := newMinimalIRCtx()
+	fn := &ir.Func{
+		Name:   "greet",
+		Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
+		Return: ir.TypString,
+		Block: []ir.Stmt{
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
+		},
+	}
+	got := strings.Join(gc.EmitFuncDef(fn), "\n")
+	want := "func greet(name string) string {\n\treturn \"hi\"\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef plain func mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
 }
 
 func TestEmitFuncDef_ModelMethod(t *testing.T) {
-    gc := newMinimalIRCtx()
-    fn := &ir.Func{
-        Name:     "Click",
-        Receiver: "Model",
-        Params:   nil,
-        Return:   ir.TypVoid,
-        Block:    []ir.Stmt{},
-    }
-    got := strings.Join(gc.EmitFuncDef(fn), "\n")
-    want := "func (m *Model) Click() {\n}"
-    if got != want {
-        t.Errorf("EmitFuncDef Model method mismatch:\ngot:\n%s\nwant:\n%s", got, want)
-    }
+	gc := newMinimalIRCtx()
+	fn := &ir.Func{
+		Name:     "Click",
+		Receiver: "Model",
+		Params:   nil,
+		Return:   ir.TypVoid,
+		Block:    []ir.Stmt{},
+	}
+	got := strings.Join(gc.EmitFuncDef(fn), "\n")
+	want := "func (m *Model) Click() {\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef Model method mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
 }
 ```
 
@@ -288,39 +288,39 @@ In `codegen/lang/golang/ircontext.go`, append:
 // Returns the source as a slice of lines (each line WITHOUT trailing
 // newline). The caller joins with "\n".
 func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
-    var lines []string
+	var lines []string
 
-    // Signature
-    params := make([]string, len(fn.Params))
-    for i, p := range fn.Params {
-        params[i] = p.Name + " " + IRTypeToGo(p.Type)
-    }
-    retType := ""
-    if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn {
-        retType = " " + IRTypeToGo(fn.Return)
-    }
+	// Signature
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		params[i] = p.Name + " " + IRTypeToGo(p.Type)
+	}
+	retType := ""
+	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn {
+		retType = " " + IRTypeToGo(fn.Return)
+	}
 
-    sig := "func "
-    if fn.Receiver != "" {
-        sig += "(m *" + fn.Receiver + ") "
-    }
-    sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
-    lines = append(lines, sig)
+	sig := "func "
+	if fn.Receiver != "" {
+		sig += "(m *" + fn.Receiver + ") "
+	}
+	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
+	lines = append(lines, sig)
 
-    // Body — push local scope for each param so EvalStmt resolves
-    // them as plain idents rather than going through Sym-lookup.
-    bodyGC := gc
-    for _, p := range fn.Params {
-        bodyGC = bodyGC.WithLocal(p.Name)
-    }
-    for _, stmt := range fn.Block {
-        for _, line := range bodyGC.EvalStmt(stmt) {
-            lines = append(lines, "\t"+line)
-        }
-    }
+	// Body — push local scope for each param so EvalStmt resolves
+	// them as plain idents rather than going through Sym-lookup.
+	bodyGC := gc
+	for _, p := range fn.Params {
+		bodyGC = bodyGC.WithLocal(p.Name)
+	}
+	for _, stmt := range fn.Block {
+		for _, line := range bodyGC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
 
-    lines = append(lines, "}")
-    return lines
+	lines = append(lines, "}")
+	return lines
 }
 ```
 
@@ -364,10 +364,10 @@ In `codegen/platform/fyne/compiler_ir.go`, change the irBind struct:
 
 ```go
 type irBind struct {
-    name        string
-    goType      string
-    init        ir.Expr // nil → zero value rendered at template time
-    noAccessors bool
+	name        string
+	goType      string
+	init        ir.Expr // nil → zero value rendered at template time
+	noAccessors bool
 }
 ```
 
@@ -379,25 +379,25 @@ In analyzeIR's `if v.Synthesized` branch, construct IR for the init:
 
 ```go
 if v.Name == "__root" {
-    // container.NewVBox() as ir.Call
-    initCall := &ir.Call{
-        Type: ir.TypDyn,
-        Func: &ir.Func{NativePkg: "container", NativeName: "container.NewVBox"},
-    }
-    info.binds = append(info.binds, irBind{
-        name:        v.Name,
-        goType:      "*fyne.Container",
-        init:        initCall,
-        noAccessors: true,
-    })
-    continue
+	// container.NewVBox() as ir.Call
+	initCall := &ir.Call{
+		Type: ir.TypDyn,
+		Func: &ir.Func{NativePkg: "container", NativeName: "container.NewVBox"},
+	}
+	info.binds = append(info.binds, irBind{
+		name:        v.Name,
+		goType:      "*fyne.Container",
+		init:        initCall,
+		noAccessors: true,
+	})
+	continue
 }
 // __slot<N> = nil
 info.binds = append(info.binds, irBind{
-    name:        v.Name,
-    goType:      "[]fyne.CanvasObject",
-    init:        &ir.Literal{Type: ir.TypNull},
-    noAccessors: true,
+	name:        v.Name,
+	goType:      "[]fyne.CanvasObject",
+	init:        &ir.Literal{Type: ir.TypNull},
+	noAccessors: true,
 })
 ```
 
@@ -413,10 +413,10 @@ In `scaffold.go`, the bindData struct:
 
 ```go
 type bindData struct {
-    Name        string
-    GoType      string
-    Init        string // rendered Go syntax at template-build time
-    NoAccessors bool
+	Name        string
+	GoType      string
+	Init        string // rendered Go syntax at template-build time
+	NoAccessors bool
 }
 ```
 
@@ -424,13 +424,13 @@ In `newIRTemplateData` (or wherever bindData is built), render each irBind.init 
 
 ```go
 for _, b := range info.binds {
-    initStr := "nil"
-    if b.init != nil {
-        initStr = gc.EvalExpr(b.init)
-    }
-    td.Binds = append(td.Binds, bindData{
-        Name: b.name, GoType: b.goType, Init: initStr, NoAccessors: b.noAccessors,
-    })
+	initStr := "nil"
+	if b.init != nil {
+		initStr = gc.EvalExpr(b.init)
+	}
+	td.Binds = append(td.Binds, bindData{
+		Name: b.name, GoType: b.goType, Init: initStr, NoAccessors: b.noAccessors,
+	})
 }
 ```
 
@@ -468,23 +468,23 @@ Replace its body with:
 
 ```go
 func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-    if len(fn.Block) == 0 {
-        return
-    }
-    // Set Receiver to "Model" so EmitFuncDef emits the method form.
-    // Preserve original (it's likely empty for user funcs we promote to methods).
-    receiver := fn.Receiver
-    if receiver == "" {
-        receiver = "Model"
-    }
-    fnCopy := *fn // shallow copy to override Receiver without mutating shared
-    fnCopy.Receiver = receiver
+	if len(fn.Block) == 0 {
+		return
+	}
+	// Set Receiver to "Model" so EmitFuncDef emits the method form.
+	// Preserve original (it's likely empty for user funcs we promote to methods).
+	receiver := fn.Receiver
+	if receiver == "" {
+		receiver = "Model"
+	}
+	fnCopy := *fn // shallow copy to override Receiver without mutating shared
+	fnCopy.Receiver = receiver
 
-    for _, line := range gc.EmitFuncDef(&fnCopy) {
-        b.WriteString(line)
-        b.WriteByte('\n')
-    }
-    b.WriteByte('\n')
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 ```
 
@@ -492,27 +492,27 @@ func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 
 ```go
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
-    tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
-        *widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-    })
+	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
+	})
 
-    // Walk the body through the translator → IR stmts.
-    bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	// Walk the body through the translator → IR stmts.
+	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
-    // Build an *ir.Func with Receiver=Model so EmitFuncDef produces
-    // `func (m *Model) <name>(<param>) { <body> }`.
-    synthesized := &ir.Func{
-        Name:     fn.Name,
-        Receiver: "Model",
-        Params:   fn.Params, // slot func has one param: container *fyne.Container
-        Return:   ir.TypVoid,
-        Block:    bodyStmts,
-    }
-    for _, line := range gc.EmitFuncDef(synthesized) {
-        b.WriteString(line)
-        b.WriteByte('\n')
-    }
-    b.WriteByte('\n')
+	// Build an *ir.Func with Receiver=Model so EmitFuncDef produces
+	// `func (m *Model) <name>(<param>) { <body> }`.
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   fn.Params, // slot func has one param: container *fyne.Container
+		Return:   ir.TypVoid,
+		Block:    bodyStmts,
+	}
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 ```
 
@@ -529,8 +529,8 @@ Option A: extend the `Meta` field to be a struct discriminating cgo vs Go-packag
 
 ```go
 type NativeTypeRef struct {
-    CgoC bool   // true → *C.<Name>; false → *<Name> with Go-style qualified name
-    Name string // "GtkLabel" or "fyne.Container"
+	CgoC bool   // true → *C.<Name>; false → *<Name> with Go-style qualified name
+	Name string // "GtkLabel" or "fyne.Container"
 }
 ```
 
@@ -558,14 +558,14 @@ Refactor Task 1's `NativePointerOf` helper to use the new ref:
 
 ```go
 func NativePointerOf(name string) *Type {
-    return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: true, Name: name}}
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: true, Name: name}}
 }
 
 // NativeGoPointerOf returns a pointer to a Go-package type
 // (e.g. *fyne.Container, *widget.Label). Cast pattern is plain
 // type-conversion (not cgo's unsafe.Pointer trick).
 func NativeGoPointerOf(name string) *Type {
-    return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
 }
 ```
 
@@ -616,17 +616,17 @@ Replace the inline `fmt.Fprintf(&buildBuf, "...m.__root.Add(m.%s)\n", ref)` with
 // Build IR for top-level appends.
 rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
 for _, ref := range tr.topLevel {
-    childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
-    appendCall := &ir.Call{
-        Type:     ir.TypVoid,
-        Receiver: rootRef,
-        Func:     &ir.Func{Name: "Add"},
-        Args:     []ir.CallArg{{Value: childRef}},
-    }
-    stmt := &ir.CallStmt{Call: appendCall}
-    for _, line := range gc.EvalStmt(stmt) {
-        fmt.Fprintf(&buildBuf, "\t%s\n", line)
-    }
+	childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+	appendCall := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: rootRef,
+		Func:     &ir.Func{Name: "Add"},
+		Args:     []ir.CallArg{{Value: childRef}},
+	}
+	stmt := &ir.CallStmt{Call: appendCall}
+	for _, line := range gc.EvalStmt(stmt) {
+		fmt.Fprintf(&buildBuf, "\t%s\n", line)
+	}
 }
 ```
 
@@ -665,9 +665,9 @@ In the `nativeFunc` helper, the constructor:
 
 ```go
 func nativeFunc(nativeName string) *ir.Func {
-    // NativeName is the bare C identifier; renderer prepends "C." via
-    // NativePkg dispatch.
-    return &ir.Func{NativePkg: "C", NativeName: nativeName}
+	// NativeName is the bare C identifier; renderer prepends "C." via
+	// NativePkg dispatch.
+	return &ir.Func{NativePkg: "C", NativeName: nativeName}
 }
 ```
 
@@ -677,8 +677,8 @@ Replace:
 
 ```go
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
-    unsafePtr := nativeCall("unsafe.Pointer", expr)
-    return nativeCall("(*C."+typeName+")", unsafePtr)
+	unsafePtr := nativeCall("unsafe.Pointer", expr)
+	return nativeCall("(*C."+typeName+")", unsafePtr)
 }
 ```
 
@@ -686,15 +686,16 @@ With:
 
 ```go
 // cgoCast wraps an expression in a cgo pointer cast:
-//   (*C.<typeName>)(unsafe.Pointer(expr))
+//	(*C.<typeName>)(unsafe.Pointer(expr))
+//
 // Implemented as an ir.Conversion whose target type is a Native
 // pointer; the Go renderer (lang/golang) recognises the shape and
 // emits the cgo cast pattern.
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
-    return &ir.Conversion{
-        Type:    ir.NativePointerOf(typeName),
-        Operand: expr,
-    }
+	return &ir.Conversion{
+		Type:    ir.NativePointerOf(typeName),
+		Operand: expr,
+	}
 }
 ```
 
@@ -746,25 +747,25 @@ Mirror Task 5's fyne refactor for gtk4. The slot-func param `container *C.GtkBox
 
 ```go
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
-    tr := newGtk4Translator(gc, pkg, func(name, cType string) {
-        *widgetFields = append(*widgetFields, widgetField{Name: name, CType: cType})
-    })
-    bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	tr := newGtk4Translator(gc, pkg, func(name, cType string) {
+		*widgetFields = append(*widgetFields, widgetField{Name: name, CType: cType})
+	})
+	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
-    synthesized := &ir.Func{
-        Name:     fn.Name,
-        Receiver: "Model",
-        Params: []*ir.Param{
-            {Name: "container", Type: ir.NativePointerOf("GtkBox")},
-        },
-        Return: ir.TypVoid,
-        Block:  bodyStmts,
-    }
-    for _, line := range gc.EmitFuncDef(synthesized) {
-        b.WriteString(line)
-        b.WriteByte('\n')
-    }
-    b.WriteByte('\n')
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params: []*ir.Param{
+			{Name: "container", Type: ir.NativePointerOf("GtkBox")},
+		},
+		Return: ir.TypVoid,
+		Block:  bodyStmts,
+	}
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 ```
 
@@ -779,14 +780,14 @@ The current getter string `C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(u
 widgetRef := &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true}
 cast := &ir.Conversion{Type: ir.NativePointerOf("GtkEditable"), Operand: widgetRef}
 getText := &ir.Call{
-    Type: ir.TypDyn,
-    Func: nativeFunc("gtk_editable_get_text"),
-    Args: []ir.CallArg{{Value: cast}},
+	Type: ir.TypDyn,
+	Func: nativeFunc("gtk_editable_get_text"),
+	Args: []ir.CallArg{{Value: cast}},
 }
 goString := &ir.Call{
-    Type: ir.TypString,
-    Func: nativeFunc("GoString"),
-    Args: []ir.CallArg{{Value: getText}},
+	Type: ir.TypString,
+	Func: nativeFunc("GoString"),
+	Args: []ir.CallArg{{Value: getText}},
 }
 ```
 
@@ -798,18 +799,18 @@ This is the bindParam-replacement value used in `m.<var> = <getter>` — constru
 
 ```go
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-    if len(fn.Block) == 0 {
-        return
-    }
-    fnCopy := *fn
-    if fnCopy.Receiver == "" {
-        fnCopy.Receiver = "Model"
-    }
-    for _, line := range gc.EmitFuncDef(&fnCopy) {
-        b.WriteString(line)
-        b.WriteByte('\n')
-    }
-    b.WriteByte('\n')
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	if fnCopy.Receiver == "" {
+		fnCopy.Receiver = "Model"
+	}
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 ```
 
@@ -847,8 +848,8 @@ Today `widgetField.CType` is a bare string ("GtkLabel") that the template format
 
 ```go
 type widgetField struct {
-    Name string
-    Type *ir.Type // typed; renderer formats per language
+	Name string
+	Type *ir.Type // typed; renderer formats per language
 }
 ```
 
@@ -889,19 +890,19 @@ Mirror Task 6: top-level widgets append to `m.__root` as ir.CallStmt to `C.gtk_b
 ```go
 rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
 for _, ref := range tr.topLevel {
-    childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
-    appendCall := &ir.Call{
-        Type:     ir.TypVoid,
-        Func:     nativeFunc("gtk_box_append"),
-        Args: []ir.CallArg{
-            {Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootRef}},
-            {Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: childRef}},
-        },
-    }
-    stmt := &ir.CallStmt{Call: appendCall}
-    for _, line := range gc.EvalStmt(stmt) {
-        fmt.Fprintf(&buildBuf, "\t%s\n", line)
-    }
+	childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+	appendCall := &ir.Call{
+		Type: ir.TypVoid,
+		Func: nativeFunc("gtk_box_append"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootRef}},
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: childRef}},
+		},
+	}
+	stmt := &ir.CallStmt{Call: appendCall}
+	for _, line := range gc.EvalStmt(stmt) {
+		fmt.Fprintf(&buildBuf, "\t%s\n", line)
+	}
 }
 ```
 

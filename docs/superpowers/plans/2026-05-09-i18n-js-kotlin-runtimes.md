@@ -1025,12 +1025,18 @@ Add a helper in `codegen/lang/javascript/ircontext.go`:
 // i18n.PluralKey constant. Returns "" for non-matches.
 func jsI18nConstString(qual string) string {
 	switch qual {
-	case "i18n.zero":  return `"zero"`
-	case "i18n.one":   return `"one"`
-	case "i18n.two":   return `"two"`
-	case "i18n.few":   return `"few"`
-	case "i18n.many":  return `"many"`
-	case "i18n.other": return `"other"`
+	case "i18n.zero":
+		return `"zero"`
+	case "i18n.one":
+		return `"one"`
+	case "i18n.two":
+		return `"two"`
+	case "i18n.few":
+		return `"few"`
+	case "i18n.many":
+		return `"many"`
+	case "i18n.other":
+		return `"other"`
 	}
 	return ""
 }
@@ -1077,7 +1083,9 @@ ls codegen/platform/html/internal/
 func usesI18n(doc *ir.Document) bool {
 	found := false
 	ir.WalkExprs(doc, func(e ir.Expr) {
-		if found { return }
+		if found {
+			return
+		}
 		if c, ok := e.(*ir.IntrinsicCall); ok && javascript.IsI18nCall(c.Name) {
 			found = true
 		}
@@ -1743,12 +1751,18 @@ Same shape as Task 2b but for Kotlin. The Kotlin map literal already lowers `map
 ```go
 func kotlinI18nConstString(qual string) string {
 	switch qual {
-	case "i18n.zero":  return `"zero"`
-	case "i18n.one":   return `"one"`
-	case "i18n.two":   return `"two"`
-	case "i18n.few":   return `"few"`
-	case "i18n.many":  return `"many"`
-	case "i18n.other": return `"other"`
+	case "i18n.zero":
+		return `"zero"`
+	case "i18n.one":
+		return `"one"`
+	case "i18n.two":
+		return `"two"`
+	case "i18n.few":
+		return `"few"`
+	case "i18n.many":
+		return `"many"`
+	case "i18n.other":
+		return `"other"`
 	}
 	return ""
 }
@@ -1767,7 +1781,7 @@ Add:
 ```go
 // i18n.PluralKey on Kotlin lowers to String — see runtime design.
 if t.Pkg == "i18n" && t.Name == "PluralKey" {
-    return "String"
+	return "String"
 }
 ```
 
@@ -1800,14 +1814,16 @@ grep -n "scaffold\|writeFile\|Mkdir\|Application" codegen/platform/android/*.go 
 import "git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 
 func usesI18n(doc *ir.Document) bool {
-    found := false
-    ir.WalkExprs(doc, func(e ir.Expr) {
-        if found { return }
-        if c, ok := e.(*ir.IntrinsicCall); ok && kotlin.IsI18nCall(c.Name) {
-            found = true
-        }
-    })
-    return found
+	found := false
+	ir.WalkExprs(doc, func(e ir.Expr) {
+		if found {
+			return
+		}
+		if c, ok := e.(*ir.IntrinsicCall); ok && kotlin.IsI18nCall(c.Name) {
+			found = true
+		}
+	})
+	return found
 }
 ```
 
@@ -1879,21 +1895,21 @@ git commit -m "docs: pkg/js/i18n and pkg/kotlin/i18n in runtime-packages list"
 
 ### Spec coverage
 
-| Spec section | Task |
-|---|---|
-| §JS runtime: Translator + manifest | 1b, 1c, 1d, 1e |
-| §JS runtime: getTranslator + globalThis | 1e |
-| §JS runtime: locale → currency | 1a |
-| §Kotlin runtime: Translator | 4a, 4b |
-| §Kotlin runtime: I18n.init + assets | 4a |
-| §Codegen wiring (JS) | 2a, 2b |
-| §Codegen wiring (Kotlin) | 5a, 5b |
-| §Map literal lowering (string keys) | 2b, 5b |
-| §Platform wiring (html) | 3a |
-| §Platform wiring (android) | 6a |
-| §Tests (browser smoke) | 3b |
-| §Tests (android smoke) | 6b |
-| §CLAUDE.md docs | 7 |
+| Spec section                            | Task           |
+|-----------------------------------------|----------------|
+| §JS runtime: Translator + manifest      | 1b, 1c, 1d, 1e |
+| §JS runtime: getTranslator + globalThis | 1e             |
+| §JS runtime: locale → currency          | 1a             |
+| §Kotlin runtime: Translator             | 4a, 4b         |
+| §Kotlin runtime: I18n.init + assets     | 4a             |
+| §Codegen wiring (JS)                    | 2a, 2b         |
+| §Codegen wiring (Kotlin)                | 5a, 5b         |
+| §Map literal lowering (string keys)     | 2b, 5b         |
+| §Platform wiring (html)                 | 3a             |
+| §Platform wiring (android)              | 6a             |
+| §Tests (browser smoke)                  | 3b             |
+| §Tests (android smoke)                  | 6b             |
+| §CLAUDE.md docs                         | 7              |
 
 No spec section is uncovered.
 

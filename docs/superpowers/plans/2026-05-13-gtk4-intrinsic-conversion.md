@@ -214,30 +214,38 @@ In `codegen/intrinsic_walker_test.go`, the `trace` stub now implements the new i
 type trace struct{ lines []string }
 
 func (t *trace) OnCreateNode(_ context.Context, id, tag string) []ir.Stmt {
-	t.add("create %s %s", id, tag); return nil
+	t.add("create %s %s", id, tag)
+	return nil
 }
 func (t *trace) OnAppendChild(_ context.Context, p, c ir.Expr) []ir.Stmt {
-	t.add("append %s %s", identName(p), identName(c)); return nil
+	t.add("append %s %s", identName(p), identName(c))
+	return nil
 }
 func (t *trace) OnRemoveChild(_ context.Context, p, c ir.Expr) []ir.Stmt {
-	t.add("remove %s %s", identName(p), identName(c)); return nil
+	t.add("remove %s %s", identName(p), identName(c))
+	return nil
 }
 func (t *trace) OnAttachHandler(_ context.Context, n ir.Expr, e string, h ir.Expr) []ir.Stmt {
-	t.add("attach %s %s %s", identName(n), e, identName(h)); return nil
+	t.add("attach %s %s %s", identName(n), e, identName(h))
+	return nil
 }
 func (t *trace) OnPropAssign(_ context.Context, n ir.Expr, p string, v ir.Expr) []ir.Stmt {
-	t.add("prop %s %s", identName(n), p); return nil
+	t.add("prop %s %s", identName(n), p)
+	return nil
 }
 func (t *trace) OnSlotReset(_ context.Context, s *ir.Var) []ir.Stmt {
-	t.add("reset %s", s.Name); return nil
+	t.add("reset %s", s.Name)
+	return nil
 }
 func (t *trace) OnSlotAppend(_ context.Context, s *ir.Var, c ir.Expr) []ir.Stmt {
-	t.add("append-slot %s %s", s.Name, identName(c)); return nil
+	t.add("append-slot %s %s", s.Name, identName(c))
+	return nil
 }
 func (t *trace) OnIter(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnCond(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnDefault(_ context.Context, s ir.Stmt) []ir.Stmt {
-	t.add("default %T", s); return nil
+	t.add("default %T", s)
+	return nil
 }
 func (t *trace) add(f string, args ...any) { t.lines = append(t.lines, fmt.Sprintf(f, args...)) }
 ```
@@ -335,9 +343,9 @@ func fyneMethodCall(receiver ir.Expr, method string, args []ir.Expr, retType *ir
 // blueprint transforms (e.g. text's value prop).
 func goFmtSprintCall(arg ir.Expr) *ir.Call {
 	return &ir.Call{
-		Type:    ir.TypString,
-		Func:    &ir.Func{Name: "Sprint", NativePkg: "fmt", NativeName: "fmt.Sprint"},
-		Args:    []ir.CallArg{{Value: arg}},
+		Type: ir.TypString,
+		Func: &ir.Func{Name: "Sprint", NativePkg: "fmt", NativeName: "fmt.Sprint"},
+		Args: []ir.CallArg{{Value: arg}},
 	}
 }
 ```
@@ -705,15 +713,27 @@ var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
 // All methods return nil; subsequent tasks fill in.
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt { return nil }
-func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt { return nil }
-func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt { return nil }
-func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt { return nil }
-func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt { return nil }
+func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return nil
+}
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt { return nil }
-func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt { return nil }
+func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
+	return nil
+}
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr { return iter }
 func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr { return cond }
-func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt { return []ir.Stmt{stmt} }
+func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	return []ir.Stmt{stmt}
+}
 ```
 
 - [ ] **Step 1: Create the file**, build, commit.
@@ -742,12 +762,18 @@ Each method that previously emitted `C.gtk_<fn>(...)` strings now emits `*ir.Cal
 // gtk4TagToCType maps a SNGL stdlib tag to its GTK C type.
 func gtk4TagToCType(tag string) string {
 	switch tag {
-	case "text", "label":   return "GtkLabel"
-	case "button":          return "GtkButton"
-	case "input", "entry":  return "GtkEntry"
-	case "vbox", "hbox":    return "GtkBox"
-	case "checkbox":        return "GtkCheckButton"
-	case "scroll":          return "GtkScrolledWindow"
+	case "text", "label":
+		return "GtkLabel"
+	case "button":
+		return "GtkButton"
+	case "input", "entry":
+		return "GtkEntry"
+	case "vbox", "hbox":
+		return "GtkBox"
+	case "checkbox":
+		return "GtkCheckButton"
+	case "scroll":
+		return "GtkScrolledWindow"
 	}
 	return ""
 }
@@ -758,7 +784,9 @@ func gtk4TagToCType(tag string) string {
 func gtk4Constructor(tag string) *ir.Call {
 	mk := func(name string, args ...ir.Expr) *ir.Call {
 		callArgs := make([]ir.CallArg, len(args))
-		for i, a := range args { callArgs[i] = ir.CallArg{Value: a} }
+		for i, a := range args {
+			callArgs[i] = ir.CallArg{Value: a}
+		}
 		return &ir.Call{
 			Type: ir.TypDyn,
 			Func: &ir.Func{NativePkg: "C", NativeName: name},
@@ -800,9 +828,13 @@ Note the `&ir.Literal{Type: ir.TypDyn, Raw: "C.GTK_ORIENTATION_VERTICAL"}` for t
 ```go
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	cType := gtk4TagToCType(tag)
-	if cType == "" { return nil }
+	if cType == "" {
+		return nil
+	}
 	ctor := gtk4Constructor(tag)
-	if ctor == nil { return nil }
+	if ctor == nil {
+		return nil
+	}
 
 	t.fieldSink(id, cType)
 	t.idCTypes[id] = cType
@@ -843,7 +875,9 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 		fields = append(fields, name+" "+cType)
 	})
 	stmts := tr.OnCreateNode(context.Background(), "__n0", "text")
-	if len(stmts) != 1 { t.Fatalf("expected 1 stmt, got %d", len(stmts)) }
+	if len(stmts) != 1 {
+		t.Fatalf("expected 1 stmt, got %d", len(stmts))
+	}
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, gc.EvalStmt(s)...)
@@ -888,6 +922,7 @@ These follow the same pattern: build IR shapes, gc.EvalExpr renders. One commit 
   2. `C.sngl_connect(widget, "<signal>", idx)` as a `*ir.CallStmt`.
 
   The "idx" arg is `len(snglCallbacks) - 1`. Build as an arithmetic ir.BinaryExpr:
+
   ```go
   &ir.Binary{Op: ast.BinaryMinus, Left: lenCall, Right: oneIntLit}
   ```
@@ -935,8 +970,8 @@ Wire into the existing Funcs loop:
 
 ```go
 if fn.Synthesized {
-    emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
-    continue
+	emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
+	continue
 }
 // ... existing path
 ```
@@ -945,18 +980,18 @@ Emit `__slot<N>` and `__root` Vars on Model:
 
 ```go
 if v.Synthesized {
-    if v.Name == "__root" {
-        binds = append(binds, gtk4Bind{
-            Name: v.Name, GoType: "*C.GtkBox",
-            Init: "(*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))",
-            NoAccessors: true,
-        })
-        continue
-    }
-    binds = append(binds, gtk4Bind{
-        Name: v.Name, GoType: "[]*C.GtkWidget", Init: "nil", NoAccessors: true,
-    })
-    continue
+	if v.Name == "__root" {
+		binds = append(binds, gtk4Bind{
+			Name: v.Name, GoType: "*C.GtkBox",
+			Init:        "(*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))",
+			NoAccessors: true,
+		})
+		continue
+	}
+	binds = append(binds, gtk4Bind{
+		Name: v.Name, GoType: "[]*C.GtkWidget", Init: "nil", NoAccessors: true,
+	})
+	continue
 }
 ```
 
@@ -978,7 +1013,7 @@ Mirror Plan B.2 Task 12. Breakage is expected.
 
 ```go
 func (g *Generator) Capabilities() lower.Caps {
-    return lower.Caps{NoReactivity: true, NoDeclarative: true}
+	return lower.Caps{NoReactivity: true, NoDeclarative: true}
 }
 ```
 
@@ -988,17 +1023,17 @@ Mirror Plan B.2 Task 13. Replace `vc.renderStmt(bodyStmts, "content")` with:
 
 ```go
 tr := newGtk4Translator(gc, func(name, cType string) {
-    widgetFields = append(widgetFields, gtk4WidgetField{Name: name, CType: cType})
+	widgetFields = append(widgetFields, gtk4WidgetField{Name: name, CType: cType})
 })
 body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 for _, stmt := range body {
-    for _, line := range gc.EvalStmt(stmt) {
-        fmt.Fprintf(&buildBuf, "\t%s\n", line)
-    }
+	for _, line := range gc.EvalStmt(stmt) {
+		fmt.Fprintf(&buildBuf, "\t%s\n", line)
+	}
 }
 // Top-level refs append to m.__root.
 for _, ref := range tr.topLevel {
-    fmt.Fprintf(&buildBuf, "\tC.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.%s)))\n", ref)
+	fmt.Fprintf(&buildBuf, "\tC.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.%s)))\n", ref)
 }
 ```
 

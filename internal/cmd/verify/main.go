@@ -2,10 +2,12 @@
 //
 // Steps:
 //  1. go generate ./...
-//  2. go fmt ./...
-//  3. go fix ./...
-//  4. go vet ./...
-//  5. go test -coverpkg=./... -coverprofile=... ./...
+//  2. go mod tidy
+//  3. go fmt ./...
+//  4. go tool mdox fmt --soft-wraps <markdown files>
+//  5. go fix ./...
+//  6. go vet ./...
+//  7. go test -coverpkg=./... -coverprofile=... ./...
 //
 // Step 5 collects cross-package coverage so packages exercised by integration
 // tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
@@ -13,8 +15,8 @@
 // tests.
 //
 // The -dry flag skips file-mutating steps: generate is skipped entirely,
-// fmt and fix run in check-only mode (reporting differences without writing),
-// and SNGL_FMT_DOCS is not set for tests.
+// mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
+// differences without writing), and SNGL_FMT_DOCS is not set for tests.
 //
 // Usage: go tool verify [-v] [-dry]
 package main
@@ -28,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -65,7 +68,18 @@ func main() {
 		}
 	}
 
-	// Step 2: go fmt
+	// Step 2: go mod tidy
+	if *dry {
+		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
+			os.Exit(1)
+		}
+	} else {
+		if !runStep("mod-tidy", "go", "mod", "tidy") {
+			os.Exit(1)
+		}
+	}
+
+	// Step 3: go fmt
 	if *dry {
 		if !runCheckStep("fmt", "gofmt", "-l", ".") {
 			os.Exit(1)
@@ -76,7 +90,23 @@ func main() {
 		}
 	}
 
-	// Step 3: go fix
+	// Step 4: mdox fmt for markdown files
+	mdFiles, err := findMarkdownFiles(".")
+	if err != nil {
+		log.Fatalf("scan markdown: %v", err)
+	}
+	if len(mdFiles) > 0 {
+		mdArgs := []string{"tool", "mdox", "fmt", "--soft-wraps"}
+		if *dry {
+			mdArgs = append(mdArgs, "--check")
+		}
+		mdArgs = append(mdArgs, mdFiles...)
+		if !runStep("mdox-fmt", "go", mdArgs...) {
+			os.Exit(1)
+		}
+	}
+
+	// Step 5: go fix
 	if *dry {
 		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
 			os.Exit(1)
@@ -87,15 +117,15 @@ func main() {
 		}
 	}
 
-	// Step 4: go vet
+	// Step 6: go vet
 	if !runStep("vet", "go", "vet", "./...") {
 		os.Exit(1)
 	}
 
-	// Step 5: go test with coverage
+	// Step 7: go test with coverage
 	runTests(*verbose, !*dry)
 
-	// Step 6: SNGL test matrix across every TestRunner-capable platform
+	// Step 8: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
 	// skipped, not failed.
 	//
@@ -337,6 +367,33 @@ func readProfile(path string) ([]pkgResult, error) {
 // lines start with the full file path like "git.duckfam.us/jonathan/sngl/foo/bar.go".
 func pkgPathDir(p string) string {
 	return path.Dir(p)
+}
+
+// findMarkdownFiles walks root and returns all *.md files, skipping
+// build/output dirs and anything hidden.
+func findMarkdownFiles(root string) ([]string, error) {
+	skipDirs := map[string]bool{
+		"_site": true, "tmp": true, "node_modules": true, ".git": true,
+	}
+	var out []string
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if p != root && (skipDirs[name] || strings.HasPrefix(name, ".")) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(name, ".md") {
+			out = append(out, p)
+		}
+		return nil
+	})
+	sort.Strings(out)
+	return out, err
 }
 
 func shortPkg(full string) string {

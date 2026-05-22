@@ -75,6 +75,7 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
   ```bash
   go build ./...
   ```
+
   Expected: clean build, no errors.
 
 - [ ] **Step 4: Run sngl tests**
@@ -82,6 +83,7 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
   ```bash
   go test ./cmd/sngl/...
   ```
+
   Expected: PASS (the extract_i18n txtar is gone).
 
 - [ ] **Step 5: Commit**
@@ -100,12 +102,13 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
 - [ ] **Step 1: Remove `Translatable` from `Token`**
 
   In `internal/parser/token.go`, change the `Token` struct back to:
+
   ```go
   type Token struct {
-      Type    TokenType
-      Literal string
-      Line    int
-      Column  int
+  	Type    TokenType
+  	Literal string
+  	Line    int
+  	Column  int
   }
   ```
 
@@ -118,6 +121,7 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
   ```bash
   go build ./...
   ```
+
   Expected: build fails because `build.go` references `tok.Translatable`. That's expected; fixed in next task.
 
 ### Task A3: Revert `InterpolationExpr.Translatable` and AST builder propagation
@@ -129,19 +133,21 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
 - [ ] **Step 1: Remove `Translatable` from `InterpolationExpr` in `ast/expr.go`**
 
   Change `InterpolationExpr` back to:
+
   ```go
   // InterpolationExpr is a string with interpolated expressions.
   // Parts alternate between *LiteralExpr (string) and expression nodes.
   type InterpolationExpr struct {
-      Pos   Pos
-      Parts []Expr
-      Style StringStyle
+  	Pos   Pos
+  	Parts []Expr
+  	Style StringStyle
   }
   ```
 
 - [ ] **Step 2: Revert `tokenToExpr` for `STR_FULL`/`TRIPLE_FULL`**
 
   In `internal/parser/build.go`'s `tokenToExpr`, replace the translatable branches with the original simple form:
+
   ```go
   case STR_FULL:
       return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringQuoted, Raw: tok.Literal}
@@ -155,29 +161,29 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
 
   ```go
   func (b *builder) buildInterpStr(it nodeIter) ast.Expr {
-      var parts []ast.Expr
-      pos := ast.Pos{}
-      for !it.done() {
-          if !it.isNonTerminal() {
-              tok := it.shift()
-              if !pos.IsSet() {
-                  pos = b.posFromToken(tok)
-              }
-              switch tok.Type {
-              case STR_START, STR_RESUME, STR_END:
-                  if tok.Literal != "" {
-                      parts = append(parts, &ast.LiteralExpr{
-                          Pos:  ast.Pos(b.posFromToken(tok)),
-                          Kind: ast.LiteralStringQuoted,
-                          Raw:  tok.Literal,
-                      })
-                  }
-              }
-          } else {
-              parts = append(parts, b.buildExpr(it.enter()))
-          }
-      }
-      return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
+  	var parts []ast.Expr
+  	pos := ast.Pos{}
+  	for !it.done() {
+  		if !it.isNonTerminal() {
+  			tok := it.shift()
+  			if !pos.IsSet() {
+  				pos = b.posFromToken(tok)
+  			}
+  			switch tok.Type {
+  			case STR_START, STR_RESUME, STR_END:
+  				if tok.Literal != "" {
+  					parts = append(parts, &ast.LiteralExpr{
+  						Pos:  ast.Pos(b.posFromToken(tok)),
+  						Kind: ast.LiteralStringQuoted,
+  						Raw:  tok.Literal,
+  					})
+  				}
+  			}
+  		} else {
+  			parts = append(parts, b.buildExpr(it.enter()))
+  		}
+  	}
+  	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
   }
   ```
 
@@ -188,6 +194,7 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
   ```bash
   go build ./...
   ```
+
   Expected: clean build.
 
 ### Task A4: Revert formatter `$` prefix and checker warning
@@ -201,15 +208,17 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
 - [ ] **Step 1: Remove `$` prefix in `format.go`**
 
   In `writeInterpolation`, delete the leading:
+
   ```go
   if x.Translatable {
-      f.write("$")
+  	f.write("$")
   }
   ```
 
 - [ ] **Step 2: Remove the no-static-text warning prelude in `checker/expr.go`**
 
   In `inferInterpolation`, delete the block that begins:
+
   ```go
   if x.Translatable {
       hasStatic := false
@@ -230,6 +239,7 @@ These tasks roll back the AST/lexer/checker/extract changes from the earlier com
   ```bash
   go test ./...
   ```
+
   Expected: PASS, repo is clean of the unilateral implementation.
 
 - [ ] **Step 6: Commit**
@@ -259,35 +269,39 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```bash
   ls ir/types_test.go 2>&1
   ```
+
   If absent, you'll create it in step 3.
 
 - [ ] **Step 2: Add `TypeMap` kind**
 
   In `ir/types.go`, add `TypeMap` to the `TypeKind` const block (after `TypeOption`):
+
   ```go
   const (
-      TypeInvalid TypeKind = iota
-      TypeDyn
-      TypeBool
-      TypeInt
-      TypeFloat
-      TypeString
-      TypeList      // Elem set
-      TypeMap       // Elems = [K, V]
-      TypeOption    // Elem set
-      // ... rest unchanged
+  	TypeInvalid TypeKind = iota
+  	TypeDyn
+  	TypeBool
+  	TypeInt
+  	TypeFloat
+  	TypeString
+  	TypeList   // Elem set
+  	TypeMap    // Elems = [K, V]
+  	TypeOption // Elem set
+  	// ... rest unchanged
   )
   ```
 
   Add the constructor below `ListOf`:
+
   ```go
   // MapOf returns a map<K, V> type.
   func MapOf(k, v *Type) *Type {
-      return &Type{Kind: TypeMap, Elems: []*Type{k, v}}
+  	return &Type{Kind: TypeMap, Elems: []*Type{k, v}}
   }
   ```
 
   Update the `String()` method to include the map case. Find the existing switch on `t.Kind` (around line 100+) and add:
+
   ```go
   case TypeMap:
       if len(t.Elems) == 2 {
@@ -299,22 +313,23 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
 - [ ] **Step 3: Write a test for the new constructor**
 
   Create or extend `ir/types_test.go`:
+
   ```go
   package ir
 
   import "testing"
 
   func TestMapOfString(t *testing.T) {
-      m := MapOf(TypString, TypInt)
-      if got := m.String(); got != "map<string, int>" {
-          t.Errorf("MapOf(string,int).String() = %q, want %q", got, "map<string, int>")
-      }
-      if m.Kind != TypeMap {
-          t.Errorf("Kind = %v, want TypeMap", m.Kind)
-      }
-      if len(m.Elems) != 2 {
-          t.Errorf("len(Elems) = %d, want 2", len(m.Elems))
-      }
+  	m := MapOf(TypString, TypInt)
+  	if got := m.String(); got != "map<string, int>" {
+  		t.Errorf("MapOf(string,int).String() = %q, want %q", got, "map<string, int>")
+  	}
+  	if m.Kind != TypeMap {
+  		t.Errorf("Kind = %v, want TypeMap", m.Kind)
+  	}
+  	if len(m.Elems) != 2 {
+  		t.Errorf("len(Elems) = %d, want 2", len(m.Elems))
+  	}
   }
   ```
 
@@ -323,6 +338,7 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```bash
   go generate ./ir/
   ```
+
   Expected: `typekind_string.go` updated to include `TypeMap`.
 
 - [ ] **Step 5: Run tests**
@@ -330,6 +346,7 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```bash
   go test ./ir/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -349,6 +366,7 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
 - [ ] **Step 1: Add `TypMap` helper**
 
   In `internal/checker/types.go`, add near the other `Typ*` aliases:
+
   ```go
   // MapOf is re-exported for checker use.
   func MapOf(k, v *ir.Type) *ir.Type { return ir.MapOf(k, v) }
@@ -359,11 +377,13 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```bash
   grep -n "list" internal/checker/resolve.go | head
   ```
+
   Identify the function that handles generic types — likely `resolveNamedType` or similar — and find the case for `list`.
 
 - [ ] **Step 3: Add the `map` case alongside `list`**
 
   In `internal/checker/resolve.go`, in the same function that handles `list<T>` generic resolution, add:
+
   ```go
   case "map":
       if len(typeArgs) != 2 {
@@ -380,35 +400,36 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```
 
   And add the `isComparable` helper at file scope:
+
   ```go
   // isComparable reports whether values of t can be used as map keys.
   // Primitives (bool/int/float/string) and structs whose fields are all
   // comparable qualify. Lists, maps, and functions do not.
   func isComparable(t *ir.Type) bool {
-      if t == nil {
-          return false
-      }
-      switch t.Kind {
-      case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-          ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-          ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
-          ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
-          ir.TypeHostname, ir.TypeDecimal:
-          return true
-      case ir.TypeStruct:
-          if t.Decl == nil {
-              return false
-          }
-          // Lookup the struct decl and check every field.
-          // Implementation: iterate decl.Fields.
-          // (A precise impl needs access to the decl's IR fields; for
-          //  this initial pass, accept any named struct as comparable
-          //  and let the codegen layer flag any non-trivial composites.)
-          return true
-      case ir.TypeEnum, ir.TypeUnit:
-          return true
-      }
-      return false
+  	if t == nil {
+  		return false
+  	}
+  	switch t.Kind {
+  	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
+  		ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+  		ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
+  		ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
+  		ir.TypeHostname, ir.TypeDecimal:
+  		return true
+  	case ir.TypeStruct:
+  		if t.Decl == nil {
+  			return false
+  		}
+  		// Lookup the struct decl and check every field.
+  		// Implementation: iterate decl.Fields.
+  		// (A precise impl needs access to the decl's IR fields; for
+  		//  this initial pass, accept any named struct as comparable
+  		//  and let the codegen layer flag any non-trivial composites.)
+  		return true
+  	case ir.TypeEnum, ir.TypeUnit:
+  		return true
+  	}
+  	return false
   }
   ```
 
@@ -417,47 +438,48 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
 - [ ] **Step 4: Write the failing test**
 
   Create `internal/checker/map_test.go`:
+
   ```go
   package checker_test
 
   import (
-      "testing"
+  	"testing"
 
-      "git.duckfam.us/jonathan/sngl/internal/checker"
-      "git.duckfam.us/jonathan/sngl/internal/parser"
-      "git.duckfam.us/jonathan/sngl/ir"
+  	"git.duckfam.us/jonathan/sngl/internal/checker"
+  	"git.duckfam.us/jonathan/sngl/internal/parser"
+  	"git.duckfam.us/jonathan/sngl/ir"
   )
 
   func TestMapTypeResolves(t *testing.T) {
-      src := `var m map<string, int>`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected error: %s", d.Error())
-          }
-      }
+  	src := `var m map<string, int>`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected error: %s", d.Error())
+  		}
+  	}
   }
 
   func TestMapWrongArity(t *testing.T) {
-      src := `var m map<string>`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected error for map<string> (1 type arg)")
-      }
+  	src := `var m map<string>`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected error for map<string> (1 type arg)")
+  	}
   }
   ```
 
@@ -466,6 +488,7 @@ The `select`/`plural` stdlib functions need this. Build it first so later phases
   ```bash
   go test ./internal/checker/ -run TestMap
   ```
+
   Expected: PASS for both.
 
 - [ ] **Step 6: Commit**
@@ -490,25 +513,27 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 1: Add the `MapLit` AST node**
 
   In `ast/expr.go`, after `ListExpr`:
+
   ```go
   // MapLit is a map literal: {<keyExpr>: <valueExpr>, ...}.
   // The colon separator distinguishes from struct literals (which use =).
   type MapLit struct {
-      Pos     Pos
-      Entries []MapEntry
-      // Type, if non-nil, supplies an explicit map<K, V> annotation
-      // (only used by IR-emitter callers; user-source map literals
-      // are inferred from context).
+  	Pos     Pos
+  	Entries []MapEntry
+  	// Type, if non-nil, supplies an explicit map<K, V> annotation
+  	// (only used by IR-emitter callers; user-source map literals
+  	// are inferred from context).
   }
 
   type MapEntry struct {
-      Pos   Pos
-      Key   Expr
-      Value Expr
+  	Pos   Pos
+  	Key   Expr
+  	Value Expr
   }
   ```
 
   Add the `ExprPos()` method:
+
   ```go
   func (x *MapLit) ExprPos() *Pos { return &x.Pos }
   ```
@@ -522,6 +547,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 3: Update the EBNF to accept `:` as well as `=` in field bodies**
 
   In `internal/parser/sngl.ebnf`, modify the `AnonField` (or `StructField` body) production so the separator alternative includes `colon`:
+
   ```
   AnonField = Expr ( assign | colon ) Expr .
   ```
@@ -533,11 +559,13 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   cd internal/parser && go run modernc.org/egg -o zparser.go -package parser -start Document sngl.ebnf
   ```
+
   Expected: zparser.go updated.
 
 - [ ] **Step 5: Update `buildAnonStructLit` to disambiguate by separator**
 
   Find `buildAnonStructLit` in `internal/parser/build.go`:
+
   ```bash
   grep -n "buildAnonStructLit\|buildAnonField" internal/parser/build.go
   ```
@@ -547,48 +575,49 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   Show the engineer the precise patch by reading the existing builder; add a `sep` field to `AnonField` AST (or read separator tokens directly during traversal) and dispatch.
 
   Concretely:
+
   ```go
   func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
-      pos := ast.Pos{}
-      var fields []ast.StructFieldLit
-      var entries []ast.MapEntry
-      sawColon, sawAssign := false, false
-      for !it.done() {
-          if it.isNonTerminal() {
-              // Walk the AnonField nonterminal, recording separator type.
-              sub := it.enter()
-              key := b.buildExpr(sub.enter()) // first Expr
-              // skip separator
-              tok := sub.shift()
-              switch tok.Type {
-              case ASSIGN:
-                  sawAssign = true
-                  val := b.buildExpr(sub.enter())
-                  if name, ok := key.(*ast.IdentExpr); ok {
-                      fields = append(fields, ast.StructFieldLit{Name: name.Name, Value: val})
-                  } else {
-                      // Non-ident key with `=` is a parse error.
-                      b.errf(*key.ExprPos(), "struct field name must be an identifier")
-                  }
-              case COLON:
-                  sawColon = true
-                  val := b.buildExpr(sub.enter())
-                  entries = append(entries, ast.MapEntry{Pos: *key.ExprPos(), Key: key, Value: val})
-              }
-              if !pos.IsSet() {
-                  pos = *key.ExprPos()
-              }
-          } else {
-              it.skip() // commas/semis
-          }
-      }
-      if sawAssign && sawColon {
-          b.errf(pos, "cannot mix '=' and ':' in literal; use one separator consistently")
-      }
-      if sawColon {
-          return &ast.MapLit{Pos: pos, Entries: entries}
-      }
-      return &ast.StructExpr{Pos: pos, Fields: fields}
+  	pos := ast.Pos{}
+  	var fields []ast.StructFieldLit
+  	var entries []ast.MapEntry
+  	sawColon, sawAssign := false, false
+  	for !it.done() {
+  		if it.isNonTerminal() {
+  			// Walk the AnonField nonterminal, recording separator type.
+  			sub := it.enter()
+  			key := b.buildExpr(sub.enter()) // first Expr
+  			// skip separator
+  			tok := sub.shift()
+  			switch tok.Type {
+  			case ASSIGN:
+  				sawAssign = true
+  				val := b.buildExpr(sub.enter())
+  				if name, ok := key.(*ast.IdentExpr); ok {
+  					fields = append(fields, ast.StructFieldLit{Name: name.Name, Value: val})
+  				} else {
+  					// Non-ident key with `=` is a parse error.
+  					b.errf(*key.ExprPos(), "struct field name must be an identifier")
+  				}
+  			case COLON:
+  				sawColon = true
+  				val := b.buildExpr(sub.enter())
+  				entries = append(entries, ast.MapEntry{Pos: *key.ExprPos(), Key: key, Value: val})
+  			}
+  			if !pos.IsSet() {
+  				pos = *key.ExprPos()
+  			}
+  		} else {
+  			it.skip() // commas/semis
+  		}
+  	}
+  	if sawAssign && sawColon {
+  		b.errf(pos, "cannot mix '=' and ':' in literal; use one separator consistently")
+  	}
+  	if sawColon {
+  		return &ast.MapLit{Pos: pos, Entries: entries}
+  	}
+  	return &ast.StructExpr{Pos: pos, Fields: fields}
   }
   ```
 
@@ -597,22 +626,24 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 6: Add the formatter case**
 
   In `internal/parser/format.go`, find `writeStructExpr` and add a peer `writeMapLit`:
+
   ```go
   func (f *formatter) writeMapLit(x *ast.MapLit) {
-      f.write("{")
-      for i, e := range x.Entries {
-          if i > 0 {
-              f.write(", ")
-          }
-          f.writeExpr(e.Key)
-          f.write(": ")
-          f.writeExpr(e.Value)
-      }
-      f.write("}")
+  	f.write("{")
+  	for i, e := range x.Entries {
+  		if i > 0 {
+  			f.write(", ")
+  		}
+  		f.writeExpr(e.Key)
+  		f.write(": ")
+  		f.writeExpr(e.Value)
+  	}
+  	f.write("}")
   }
   ```
 
   And add the dispatch in `writeExpr`:
+
   ```go
   case *ast.MapLit:
       f.writeMapLit(x)
@@ -621,41 +652,42 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 7: Write the failing test**
 
   Create `internal/parser/map_test.go`:
+
   ```go
   package parser_test
 
   import (
-      "testing"
+  	"testing"
 
-      "git.duckfam.us/jonathan/sngl/ast"
-      "git.duckfam.us/jonathan/sngl/internal/parser"
+  	"git.duckfam.us/jonathan/sngl/ast"
+  	"git.duckfam.us/jonathan/sngl/internal/parser"
   )
 
   func TestParseMapLiteral(t *testing.T) {
-      src := `var m = {"one": 1, "two": 2}`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      vd, ok := doc.Stmts[0].(*ast.VarDecl)
-      if !ok {
-          t.Fatalf("expected VarDecl, got %T", doc.Stmts[0])
-      }
-      ml, ok := vd.Specs[0].Default.(*ast.MapLit)
-      if !ok {
-          t.Fatalf("expected MapLit, got %T", vd.Specs[0].Default)
-      }
-      if len(ml.Entries) != 2 {
-          t.Errorf("entries: got %d, want 2", len(ml.Entries))
-      }
+  	src := `var m = {"one": 1, "two": 2}`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	vd, ok := doc.Stmts[0].(*ast.VarDecl)
+  	if !ok {
+  		t.Fatalf("expected VarDecl, got %T", doc.Stmts[0])
+  	}
+  	ml, ok := vd.Specs[0].Default.(*ast.MapLit)
+  	if !ok {
+  		t.Fatalf("expected MapLit, got %T", vd.Specs[0].Default)
+  	}
+  	if len(ml.Entries) != 2 {
+  		t.Errorf("entries: got %d, want 2", len(ml.Entries))
+  	}
   }
 
   func TestParseStructLiteralStillWorks(t *testing.T) {
-      src := `var c = color{r=255, g=0, b=0}`
-      _, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
+  	src := `var c = color{r=255, g=0, b=0}`
+  	_, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
   }
   ```
 
@@ -665,6 +697,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   go test ./internal/parser/ -run TestParseMap -v
   go test ./internal/parser/ -run TestParseStructLiteralStillWorks -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 9: Run the full parser test suite to catch regressions**
@@ -672,6 +705,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./internal/parser/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 10: Commit**
@@ -697,42 +731,44 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 2: Add the `MapLit` dispatch and inference**
 
   In `inferExpr`'s switch, add:
+
   ```go
   case *ast.MapLit:
       return c.inferMapLit(x)
   ```
 
   And implement (place near `inferListLit`):
+
   ```go
   func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
-      // No expected-type context here — infer K and V from entries.
-      var keyT, valT *ir.Type
-      var entries []ir.MapEntry
-      for _, e := range x.Entries {
-          k := c.checkExpr(e.Key)
-          v := c.checkExpr(e.Value)
-          kT := exprType(k)
-          vT := exprType(v)
-          if keyT == nil {
-              keyT = kT
-          } else if !typeAssignable(keyT, kT) {
-              c.errorf(e.Pos, "map key type %s does not match earlier %s", kT, keyT)
-          }
-          if valT == nil {
-              valT = vT
-          } else if !typeAssignable(valT, vT) {
-              c.errorf(e.Pos, "map value type %s does not match earlier %s", vT, valT)
-          }
-          entries = append(entries, ir.MapEntry{Key: k, Value: v})
-      }
-      if keyT == nil {
-          // Empty map — defer typing to expected-type context (returns dyn for now).
-          return &ir.MapLitIR{Type: MapOf(TypDyn, TypDyn), Entries: nil}
-      }
-      if !isComparable(keyT) {
-          c.errorf(x.Pos, "map key type %s is not comparable", keyT)
-      }
-      return &ir.MapLitIR{Type: MapOf(keyT, valT), Entries: entries}
+  	// No expected-type context here — infer K and V from entries.
+  	var keyT, valT *ir.Type
+  	var entries []ir.MapEntry
+  	for _, e := range x.Entries {
+  		k := c.checkExpr(e.Key)
+  		v := c.checkExpr(e.Value)
+  		kT := exprType(k)
+  		vT := exprType(v)
+  		if keyT == nil {
+  			keyT = kT
+  		} else if !typeAssignable(keyT, kT) {
+  			c.errorf(e.Pos, "map key type %s does not match earlier %s", kT, keyT)
+  		}
+  		if valT == nil {
+  			valT = vT
+  		} else if !typeAssignable(valT, vT) {
+  			c.errorf(e.Pos, "map value type %s does not match earlier %s", vT, valT)
+  		}
+  		entries = append(entries, ir.MapEntry{Key: k, Value: v})
+  	}
+  	if keyT == nil {
+  		// Empty map — defer typing to expected-type context (returns dyn for now).
+  		return &ir.MapLitIR{Type: MapOf(TypDyn, TypDyn), Entries: nil}
+  	}
+  	if !isComparable(keyT) {
+  		c.errorf(x.Pos, "map key type %s is not comparable", keyT)
+  	}
+  	return &ir.MapLitIR{Type: MapOf(keyT, valT), Entries: entries}
   }
   ```
 
@@ -743,58 +779,63 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   grep -n "type ListLit\|ListLit struct" ir/*.go
   ```
+
   Then add a peer struct:
+
   ```go
   type MapEntry struct {
-      Key   Expr
-      Value Expr
+  	Key   Expr
+  	Value Expr
   }
 
   type MapLitIR struct {
-      AST     *ast.MapLit
-      Type    *Type
-      Entries []MapEntry
+  	AST     *ast.MapLit
+  	Type    *Type
+  	Entries []MapEntry
   }
 
   func (x *MapLitIR) exprType() *Type { return x.Type }
+
   // Implement any other methods ListLit has.
   ```
+
   Match the methods of `ListLit` exactly — check what interface it satisfies and mirror.
 
 - [ ] **Step 4: Update map_test.go with checker assertions**
 
   Append to `internal/checker/map_test.go`:
+
   ```go
   func TestMapLiteralInfersTypes(t *testing.T) {
-      src := `var m = {"a": 1, "b": 2}`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected error: %s", d.Error())
-          }
-      }
+  	src := `var m = {"a": 1, "b": 2}`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected error: %s", d.Error())
+  		}
+  	}
   }
 
   func TestMapLiteralMixedKeyTypesError(t *testing.T) {
-      src := `var m = {"a": 1, 2: 3}`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected error for mixed key types")
-      }
+  	src := `var m = {"a": 1, 2: 3}`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected error for mixed key types")
+  	}
   }
   ```
 
@@ -803,6 +844,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./internal/checker/ -run TestMap -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Run full checker suite**
@@ -810,6 +852,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./internal/checker/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 7: Commit**
@@ -833,53 +876,55 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 2: Extend it to handle `TypeMap`**
 
   Add a case before the existing `TypeList` case:
+
   ```go
   if opT.Kind == ir.TypeMap {
-      if len(opT.Elems) != 2 {
-          return &ir.Index{Type: TypDyn, Operand: op, Index: idx}
-      }
-      keyT, valT := opT.Elems[0], opT.Elems[1]
-      if !typeAssignable(keyT, exprType(idx)) {
-          c.errorf(x.Pos, "map index type %s does not match key type %s", exprType(idx), keyT)
-      }
-      return &ir.Index{Type: valT, Operand: op, Index: idx}
+  	if len(opT.Elems) != 2 {
+  		return &ir.Index{Type: TypDyn, Operand: op, Index: idx}
+  	}
+  	keyT, valT := opT.Elems[0], opT.Elems[1]
+  	if !typeAssignable(keyT, exprType(idx)) {
+  		c.errorf(x.Pos, "map index type %s does not match key type %s", exprType(idx), keyT)
+  	}
+  	return &ir.Index{Type: valT, Operand: op, Index: idx}
   }
   ```
 
 - [ ] **Step 3: Add a test**
 
   Append to `internal/checker/map_test.go`:
+
   ```go
   func TestMapIndexReturnsValueType(t *testing.T) {
-      src := `var m = {"a": 1, "b": 2}; var x int = m["a"]`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected: %s", d.Error())
-          }
-      }
+  	src := `var m = {"a": 1, "b": 2}; var x int = m["a"]`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected: %s", d.Error())
+  		}
+  	}
   }
 
   func TestMapIndexWrongKeyTypeError(t *testing.T) {
-      src := `var m = {"a": 1}; var x = m[42]`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected error for int key on string-keyed map")
-      }
+  	src := `var m = {"a": 1}; var x = m[42]`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected error for int key on string-keyed map")
+  	}
   }
   ```
 
@@ -888,6 +933,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./internal/checker/ -run TestMapIndex -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -906,6 +952,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 1: Add the `map` struct decl with methods to `lib/types.sngl`**
 
   Append:
+
   ```sngl
   // Generic map<K, V>. Methods are pure — they do not mutate the receiver.
   // Equality on K determines membership; non-comparable key types are
@@ -936,24 +983,26 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   go build ./...
   go test ./internal/checker/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 3: Add a test exercising one method**
 
   Append to `internal/checker/map_test.go`:
+
   ```go
   func TestMapLengthMethod(t *testing.T) {
-      src := `var m = {"a": 1}; var n = m.length()`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected: %s", d.Error())
-          }
-      }
+  	src := `var m = {"a": 1}; var n = m.length()`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected: %s", d.Error())
+  		}
+  	}
   }
   ```
 
@@ -962,6 +1011,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./internal/checker/ -run TestMapLengthMethod -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -985,6 +1035,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 2: Add `MapLitIR` emission alongside `ListLit`**
 
   Wherever `*ir.ListLit` is handled, add a peer:
+
   ```go
   case *ir.MapLitIR:
       // Emit: map[K]V{k1: v1, k2: v2, ...}
@@ -1001,6 +1052,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
       }
       w.Print("}")
   ```
+
   Adapt `goTypeName` and `emitExpr` to the actual helper names in the package.
 
 - [ ] **Step 3: Find existing Go codegen golden tests**
@@ -1013,10 +1065,12 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 4: Add a fixture exercising a map literal**
 
   Pick a working bubbletea golden test directory and add a new one mirroring its layout. The `.sngl` source:
+
   ```sngl
   output bubbletea, golang
   var m = {"a": 1, "b": 2}
   ```
+
   Generate the expected Go output by running compile manually once the codegen change is in.
 
 - [ ] **Step 5: Run codegen tests**
@@ -1024,6 +1078,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go test ./codegen/...
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -1073,6 +1128,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   go test ./codegen/lang/javascript/
   go test ./codegen/platform/html/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1116,6 +1172,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   go test ./codegen/lang/kotlin/
   go test ./codegen/platform/android/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 4: Commit**
@@ -1138,6 +1195,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 1: Allocate sentinel bytes**
 
   Inspect existing TokenType byte values in `token.go` to find unused range. Use bytes `0x4F` through `0x59` (verify none clash). Add to `token.go`:
+
   ```go
   // Translatable string boundary tokens (parallel to STR_*/TRIPLE_*).
   I18N_STR_FULL     TokenType = 0x4F
@@ -1158,6 +1216,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
 - [ ] **Step 2: Update `insertsSemicolon`**
 
   Add the new terminals that should trigger ASI (the *_END / *_FULL forms behave like STR_END / STR_FULL):
+
   ```go
   case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
       STR_END, TRIPLE_END,
@@ -1166,11 +1225,13 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
       AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:
       return true
   ```
+
   (Don't add `I18N_CASE_*` — they appear inside placeholder structure, not at expression boundaries.)
 
 - [ ] **Step 3: Add the terminal names to `sngl.ebnf` header**
 
   In the terminal list at the top of `sngl.ebnf`, add:
+
   ```
   i18n_str_full     = `\x4F` .
   i18n_str_start    = `\x50` .
@@ -1189,6 +1250,7 @@ The grammar already accepts `{<keyExpr>: <valueExpr>, ...}` shape via the existi
   ```bash
   go build ./...
   ```
+
   Expected: clean (no productions yet so terminals are unused but allowed).
 
 - [ ] **Step 5: Commit**
@@ -1210,45 +1272,57 @@ The strategy: extend `interpFrame` with an `i18n` flag, write i18n-mode variants
 
   ```go
   type interpFrame struct {
-      triple bool
-      i18n   bool // true for $"..." / $"""...""" frames
-      depth  int
+  	triple bool
+  	i18n   bool // true for $"..." / $"""...""" frames
+  	depth  int
   }
   ```
 
 - [ ] **Step 2: Add an `i18n` parameter through `scanStringContent`**
 
   Update its signature:
+
   ```go
   func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol int) Token
   ```
 
   At the boundary points where it currently returns `STR_FULL`/`STR_START`/`STR_RESUME`/`STR_END`/`TRIPLE_*`, branch on `i18n`:
+
   ```go
   if !triple && ch == '"' {
-      l.advance()
-      if resume {
-          if i18n { return l.tok(I18N_STR_END, sb.String(), startLine, startCol) }
-          return l.tok(STR_END, sb.String(), startLine, startCol)
-      }
-      if i18n { return l.tok(I18N_STR_FULL, sb.String(), startLine, startCol) }
-      return l.tok(STR_FULL, sb.String(), startLine, startCol)
+  	l.advance()
+  	if resume {
+  		if i18n {
+  			return l.tok(I18N_STR_END, sb.String(), startLine, startCol)
+  		}
+  		return l.tok(STR_END, sb.String(), startLine, startCol)
+  	}
+  	if i18n {
+  		return l.tok(I18N_STR_FULL, sb.String(), startLine, startCol)
+  	}
+  	return l.tok(STR_FULL, sb.String(), startLine, startCol)
   }
   // similar for TRIPLE
   // for the `{` interpolation start branch:
   if ch == '{' {
-      l.advance()
-      l.interpStack = append(l.interpStack, interpFrame{triple: triple, i18n: i18n})
-      if resume {
-          if i18n { return l.tok(I18N_STR_RESUME, sb.String(), startLine, startCol) }
-          return l.tok(STR_RESUME, sb.String(), startLine, startCol)
-      }
-      if triple {
-          if i18n { return l.tok(I18N_TRIPLE_START, sb.String(), startLine, startCol) }
-          return l.tok(TRIPLE_START, sb.String(), startLine, startCol)
-      }
-      if i18n { return l.tok(I18N_STR_START, sb.String(), startLine, startCol) }
-      return l.tok(STR_START, sb.String(), startLine, startCol)
+  	l.advance()
+  	l.interpStack = append(l.interpStack, interpFrame{triple: triple, i18n: i18n})
+  	if resume {
+  		if i18n {
+  			return l.tok(I18N_STR_RESUME, sb.String(), startLine, startCol)
+  		}
+  		return l.tok(STR_RESUME, sb.String(), startLine, startCol)
+  	}
+  	if triple {
+  		if i18n {
+  			return l.tok(I18N_TRIPLE_START, sb.String(), startLine, startCol)
+  		}
+  		return l.tok(TRIPLE_START, sb.String(), startLine, startCol)
+  	}
+  	if i18n {
+  		return l.tok(I18N_STR_START, sb.String(), startLine, startCol)
+  	}
+  	return l.tok(STR_START, sb.String(), startLine, startCol)
   }
   ```
 
@@ -1261,20 +1335,22 @@ The strategy: extend `interpFrame` with an `i18n` flag, write i18n-mode variants
 - [ ] **Step 4: Add `$` recognition in `NextToken`**
 
   Before the existing string-scanning block (`if ch == '"'`), add:
+
   ```go
   // Translatable string literal: $"..." or $"""..."""
   if ch == '$' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '"' {
-      l.advance() // consume $
-      if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
-          return l.scanTripleString(startLine, startCol, true)
-      }
-      return l.scanString(startLine, startCol, true)
+  	l.advance() // consume $
+  	if l.pos+2 < len(l.input) && l.input[l.pos+1] == '"' && l.input[l.pos+2] == '"' {
+  		return l.scanTripleString(startLine, startCol, true)
+  	}
+  	return l.scanString(startLine, startCol, true)
   }
   ```
 
 - [ ] **Step 5: Update `}` handling in `NextToken` to resume in the right mode**
 
   In the existing `}` case, when popping an `interpFrame`, pass `top.i18n`:
+
   ```go
   case '}':
       if len(l.interpStack) > 0 {
@@ -1293,50 +1369,51 @@ The strategy: extend `interpFrame` with an `i18n` flag, write i18n-mode variants
 - [ ] **Step 6: Write the failing test**
 
   Create `internal/parser/i18n_lex_test.go`:
+
   ```go
   package parser
 
   import "testing"
 
   func TestLexI18nFullString(t *testing.T) {
-      l := newLexer(`$"Login"`)
-      tok := l.NextToken()
-      if tok.Type != I18N_STR_FULL {
-          t.Errorf("Type = %v, want I18N_STR_FULL", tok.Type)
-      }
-      if tok.Literal != "Login" {
-          t.Errorf("Literal = %q, want Login", tok.Literal)
-      }
+  	l := newLexer(`$"Login"`)
+  	tok := l.NextToken()
+  	if tok.Type != I18N_STR_FULL {
+  		t.Errorf("Type = %v, want I18N_STR_FULL", tok.Type)
+  	}
+  	if tok.Literal != "Login" {
+  		t.Errorf("Literal = %q, want Login", tok.Literal)
+  	}
   }
 
   func TestLexI18nInterpolation(t *testing.T) {
-      l := newLexer(`$"Hello {name}!"`)
-      types := []TokenType{}
-      for {
-          tok := l.NextToken()
-          if tok.Type == EOF || tok.Type == SEMICOLON {
-              break
-          }
-          types = append(types, tok.Type)
-      }
-      // Expect: I18N_STR_START "Hello " then IDENT "name" then I18N_STR_END "!"
-      want := []TokenType{I18N_STR_START, IDENT, I18N_STR_END}
-      if len(types) != len(want) {
-          t.Fatalf("len = %d, want %d. types = %v", len(types), len(want), types)
-      }
-      for i := range types {
-          if types[i] != want[i] {
-              t.Errorf("[%d] = %v, want %v", i, types[i], want[i])
-          }
-      }
+  	l := newLexer(`$"Hello {name}!"`)
+  	types := []TokenType{}
+  	for {
+  		tok := l.NextToken()
+  		if tok.Type == EOF || tok.Type == SEMICOLON {
+  			break
+  		}
+  		types = append(types, tok.Type)
+  	}
+  	// Expect: I18N_STR_START "Hello " then IDENT "name" then I18N_STR_END "!"
+  	want := []TokenType{I18N_STR_START, IDENT, I18N_STR_END}
+  	if len(types) != len(want) {
+  		t.Fatalf("len = %d, want %d. types = %v", len(types), len(want), types)
+  	}
+  	for i := range types {
+  		if types[i] != want[i] {
+  			t.Errorf("[%d] = %v, want %v", i, types[i], want[i])
+  		}
+  	}
   }
 
   func TestLexNonTranslatableStillWorks(t *testing.T) {
-      l := newLexer(`"Login"`)
-      tok := l.NextToken()
-      if tok.Type != STR_FULL {
-          t.Errorf("Type = %v, want STR_FULL", tok.Type)
-      }
+  	l := newLexer(`"Login"`)
+  	tok := l.NextToken()
+  	if tok.Type != STR_FULL {
+  		t.Errorf("Type = %v, want STR_FULL", tok.Type)
+  	}
   }
   ```
 
@@ -1346,6 +1423,7 @@ The strategy: extend `interpFrame` with an `i18n` flag, write i18n-mode variants
   go test ./internal/parser/ -run TestLexI18n -v
   go test ./internal/parser/ -run TestLexNonTranslatableStillWorks -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 8: Run full parser suite**
@@ -1353,6 +1431,7 @@ The strategy: extend `interpFrame` with an `i18n` flag, write i18n-mode variants
   ```bash
   go test ./internal/parser/
   ```
+
   Expected: PASS (regressions caught here).
 
 - [ ] **Step 9: Commit**
@@ -1395,36 +1474,43 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 3: Write tests for the case-body shape**
 
   Append to `internal/parser/i18n_lex_test.go`:
+
   ```go
   func TestLexI18nPlural(t *testing.T) {
-      // $"You have {count, plural, one{message} other{messages}}"
-      src := `$"You have {count, plural, one{message} other{messages}}"`
-      l := newLexer(src)
-      var types []TokenType
-      for {
-          tok := l.NextToken()
-          if tok.Type == EOF || tok.Type == SEMICOLON {
-              break
-          }
-          types = append(types, tok.Type)
-      }
-      want := []TokenType{
-          I18N_STR_START,                          // "You have "
-          IDENT, COMMA, IDENT, COMMA,              // count, plural,
-          IDENT, I18N_CASE_FULL,                   // one{message}
-          IDENT, I18N_CASE_FULL,                   // other{messages}
-          I18N_STR_END,                            // closing "
-      }
-      if !sameTypes(types, want) {
-          t.Errorf("got %v\nwant %v", types, want)
-      }
+  	// $"You have {count, plural, one{message} other{messages}}"
+  	src := `$"You have {count, plural, one{message} other{messages}}"`
+  	l := newLexer(src)
+  	var types []TokenType
+  	for {
+  		tok := l.NextToken()
+  		if tok.Type == EOF || tok.Type == SEMICOLON {
+  			break
+  		}
+  		types = append(types, tok.Type)
+  	}
+  	want := []TokenType{
+  		I18N_STR_START,             // "You have "
+  		IDENT, COMMA, IDENT, COMMA, // count, plural,
+  		IDENT, I18N_CASE_FULL, // one{message}
+  		IDENT, I18N_CASE_FULL, // other{messages}
+  		I18N_STR_END, // closing "
+  	}
+  	if !sameTypes(types, want) {
+  		t.Errorf("got %v\nwant %v", types, want)
+  	}
   }
 
   // Helper:
   func sameTypes(a, b []TokenType) bool {
-      if len(a) != len(b) { return false }
-      for i := range a { if a[i] != b[i] { return false } }
-      return true
+  	if len(a) != len(b) {
+  		return false
+  	}
+  	for i := range a {
+  		if a[i] != b[i] {
+  			return false
+  		}
+  	}
+  	return true
   }
   ```
 
@@ -1433,17 +1519,18 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/parser/ -run TestLexI18nPlural -v
   ```
+
   Iterate the implementation in step 1/2 until this passes. The lexer's case-body recognition can be heuristic — track recent token types via `prevTok` plus one extra slot.
 
 - [ ] **Step 5: Add tests for nested placeholders inside case bodies**
 
   ```go
   func TestLexI18nNestedPlaceholderInCase(t *testing.T) {
-      // $"{count, plural, one{1 file} other{# files}}"
-      // Bare # inside case body is part of the literal text — not a SNGL token.
-      src := `$"{count, plural, one{1 file} other{# files}}"`
-      l := newLexer(src)
-      // ... walk tokens, assert structure including I18N_CASE_FULL containing "1 file" / "# files".
+  	// $"{count, plural, one{1 file} other{# files}}"
+  	// Bare # inside case body is part of the literal text — not a SNGL token.
+  	src := `$"{count, plural, one{1 file} other{# files}}"`
+  	l := newLexer(src)
+  	// ... walk tokens, assert structure including I18N_CASE_FULL containing "1 file" / "# files".
   }
   ```
 
@@ -1468,6 +1555,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Add productions**
 
   After the existing `InterpStr`/`TripleInterp` productions, add:
+
   ```
   # Translatable strings.
   I18nInterpStr  = i18n_str_start I18nPlaceholder { i18n_str_resume I18nPlaceholder } i18n_str_end .
@@ -1489,6 +1577,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 2: Add the new alternatives to `PrimaryExpr`**
 
   Find `PrimaryExpr` (or the rule that lists `InterpStr`, `TripleInterp`, etc.) in the EBNF and add:
+
   ```
   | I18nInterpStr | I18nTriple | i18n_str_full | i18n_triple_full
   ```
@@ -1498,6 +1587,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   cd internal/parser && go run modernc.org/egg -o zparser.go -package parser -start Document sngl.ebnf
   ```
+
   Expected: zparser.go regenerated. If egg reports grammar conflicts, the engineer must resolve them by adjusting the EBNF (likely an LL(1) issue; add lookahead tokens or refactor).
 
 - [ ] **Step 4: Verify build**
@@ -1505,6 +1595,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go build ./internal/parser/
   ```
+
   Expected: clean.
 
 - [ ] **Step 5: Commit**
@@ -1522,39 +1613,40 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Add the three new node types**
 
   In `ast/expr.go`, after `InterpolationExpr`:
+
   ```go
   // I18nInterpExpr is a translatable string: $"..." or $"""...""".
   // Parts alternate between *LiteralExpr (string segments) and
   // *I18nPlaceholderExpr (one per {...}).
   type I18nInterpExpr struct {
-      Pos   Pos
-      Parts []Expr
-      Style StringStyle
+  	Pos   Pos
+  	Parts []Expr
+  	Style StringStyle
   }
 
   // I18nPlaceholderExpr is the {<value>, <type>, <body>} form.
   // Type is "" when the comma-ident form is absent. Cases is nil unless
   // a MsgFormatBody is present.
   type I18nPlaceholderExpr struct {
-      Pos   Pos
-      Value Expr
-      Type  string
-      Cases []I18nCase
+  	Pos   Pos
+  	Value Expr
+  	Type  string
+  	Cases []I18nCase
   }
 
   // I18nCase is one <selector>{<body>} pair within a plural/select/selectordinal body.
   type I18nCase struct {
-      Pos      Pos
-      Selector string // "one", "other", "=0", "male", …
-      Body     []Expr // alternation: *LiteralExpr | *I18nPlaceholderExpr
+  	Pos      Pos
+  	Selector string // "one", "other", "=0", "male", …
+  	Body     []Expr // alternation: *LiteralExpr | *I18nPlaceholderExpr
   }
   ```
 
 - [ ] **Step 2: Implement `ExprPos()` for the two `Expr`-implementing nodes**
 
   ```go
-  func (x *I18nInterpExpr) ExprPos() *Pos       { return &x.Pos }
-  func (x *I18nPlaceholderExpr) ExprPos() *Pos  { return &x.Pos }
+  func (x *I18nInterpExpr) ExprPos() *Pos      { return &x.Pos }
+  func (x *I18nPlaceholderExpr) ExprPos() *Pos { return &x.Pos }
   ```
 
   `I18nCase` is not an Expr, so no ExprPos needed.
@@ -1564,6 +1656,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go build ./...
   ```
+
   Expected: clean.
 
 - [ ] **Step 4: Commit**
@@ -1599,6 +1692,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 3: Add the dispatch for `I18nInterpStr` and `I18nTriple` non-terminals**
 
   Find where `InterpStr` and `TripleInterp` are dispatched (probably in `buildExprNonTerminal` via the symbol switch). Add:
+
   ```go
   case I18nInterpStr:
       return b.buildI18nInterpStr(it.enter())
@@ -1610,31 +1704,31 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (b *builder) buildI18nInterpStr(it nodeIter) ast.Expr {
-      var parts []ast.Expr
-      pos := ast.Pos{}
-      for !it.done() {
-          if !it.isNonTerminal() {
-              tok := it.shift()
-              if !pos.IsSet() {
-                  pos = b.posFromToken(tok)
-              }
-              switch tok.Type {
-              case I18N_STR_START, I18N_STR_RESUME, I18N_STR_END:
-                  if tok.Literal != "" {
-                      parts = append(parts, &ast.LiteralExpr{
-                          Pos:  ast.Pos(b.posFromToken(tok)),
-                          Kind: ast.LiteralStringQuoted,
-                          Raw:  tok.Literal,
-                      })
-                  }
-              }
-          } else if it.symbol() == I18nPlaceholder {
-              parts = append(parts, b.buildI18nPlaceholder(it.enter()))
-          } else {
-              it.skip()
-          }
-      }
-      return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
+  	var parts []ast.Expr
+  	pos := ast.Pos{}
+  	for !it.done() {
+  		if !it.isNonTerminal() {
+  			tok := it.shift()
+  			if !pos.IsSet() {
+  				pos = b.posFromToken(tok)
+  			}
+  			switch tok.Type {
+  			case I18N_STR_START, I18N_STR_RESUME, I18N_STR_END:
+  				if tok.Literal != "" {
+  					parts = append(parts, &ast.LiteralExpr{
+  						Pos:  ast.Pos(b.posFromToken(tok)),
+  						Kind: ast.LiteralStringQuoted,
+  						Raw:  tok.Literal,
+  					})
+  				}
+  			}
+  		} else if it.symbol() == I18nPlaceholder {
+  			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+  		} else {
+  			it.skip()
+  		}
+  	}
+  	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
   }
   ```
 
@@ -1642,31 +1736,31 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (b *builder) buildI18nTriple(it nodeIter) ast.Expr {
-      var parts []ast.Expr
-      pos := ast.Pos{}
-      for !it.done() {
-          if !it.isNonTerminal() {
-              tok := it.shift()
-              if !pos.IsSet() {
-                  pos = b.posFromToken(tok)
-              }
-              switch tok.Type {
-              case I18N_TRIPLE_START, I18N_STR_RESUME, I18N_TRIPLE_END:
-                  if tok.Literal != "" {
-                      parts = append(parts, &ast.LiteralExpr{
-                          Pos:  ast.Pos(b.posFromToken(tok)),
-                          Kind: ast.LiteralStringTrippleQuoted,
-                          Raw:  tok.Literal,
-                      })
-                  }
-              }
-          } else if it.symbol() == I18nPlaceholder {
-              parts = append(parts, b.buildI18nPlaceholder(it.enter()))
-          } else {
-              it.skip()
-          }
-      }
-      return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+  	var parts []ast.Expr
+  	pos := ast.Pos{}
+  	for !it.done() {
+  		if !it.isNonTerminal() {
+  			tok := it.shift()
+  			if !pos.IsSet() {
+  				pos = b.posFromToken(tok)
+  			}
+  			switch tok.Type {
+  			case I18N_TRIPLE_START, I18N_STR_RESUME, I18N_TRIPLE_END:
+  				if tok.Literal != "" {
+  					parts = append(parts, &ast.LiteralExpr{
+  						Pos:  ast.Pos(b.posFromToken(tok)),
+  						Kind: ast.LiteralStringTrippleQuoted,
+  						Raw:  tok.Literal,
+  					})
+  				}
+  			}
+  		} else if it.symbol() == I18nPlaceholder {
+  			parts = append(parts, b.buildI18nPlaceholder(it.enter()))
+  		} else {
+  			it.skip()
+  		}
+  	}
+  	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
   }
   ```
 
@@ -1674,32 +1768,32 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
-      // I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ]
-      ph := &ast.I18nPlaceholderExpr{}
-      // First child is Expr (non-terminal).
-      if !it.done() && it.isNonTerminal() {
-          ph.Value = b.buildExpr(it.enter())
-          ph.Pos = *ph.Value.ExprPos()
-      }
-      // Optional ", ident, MsgFormatBody"
-      for !it.done() {
-          if it.isNonTerminal() {
-              if it.symbol() == MsgFormatBody {
-                  ph.Cases = b.buildMsgFormatBody(it.enter())
-              } else {
-                  it.skip()
-              }
-          } else {
-              tok := it.shift()
-              switch tok.Type {
-              case IDENT:
-                  ph.Type = tok.Literal
-              case COMMA:
-                  // separator
-              }
-          }
-      }
-      return ph
+  	// I18nPlaceholder = Expr [ comma ident [ comma MsgFormatBody ] ]
+  	ph := &ast.I18nPlaceholderExpr{}
+  	// First child is Expr (non-terminal).
+  	if !it.done() && it.isNonTerminal() {
+  		ph.Value = b.buildExpr(it.enter())
+  		ph.Pos = *ph.Value.ExprPos()
+  	}
+  	// Optional ", ident, MsgFormatBody"
+  	for !it.done() {
+  		if it.isNonTerminal() {
+  			if it.symbol() == MsgFormatBody {
+  				ph.Cases = b.buildMsgFormatBody(it.enter())
+  			} else {
+  				it.skip()
+  			}
+  		} else {
+  			tok := it.shift()
+  			switch tok.Type {
+  			case IDENT:
+  				ph.Type = tok.Literal
+  			case COMMA:
+  				// separator
+  			}
+  		}
+  	}
+  	return ph
   }
   ```
 
@@ -1707,158 +1801,159 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (b *builder) buildMsgFormatBody(it nodeIter) []ast.I18nCase {
-      var cases []ast.I18nCase
-      for !it.done() {
-          if it.isNonTerminal() && it.symbol() == MsgCase {
-              cases = append(cases, b.buildMsgCase(it.enter()))
-          } else {
-              it.skip()
-          }
-      }
-      return cases
+  	var cases []ast.I18nCase
+  	for !it.done() {
+  		if it.isNonTerminal() && it.symbol() == MsgCase {
+  			cases = append(cases, b.buildMsgCase(it.enter()))
+  		} else {
+  			it.skip()
+  		}
+  	}
+  	return cases
   }
 
   func (b *builder) buildMsgCase(it nodeIter) ast.I18nCase {
-      var c ast.I18nCase
-      // Selector = ident | eq int_lit
-      if !it.done() && it.isNonTerminal() {
-          // grammar wraps Selector as a non-terminal; descend.
-          sel := it.enter()
-          if !sel.done() && !sel.isNonTerminal() {
-              tok := sel.shift()
-              c.Pos = b.posFromToken(tok)
-              switch tok.Type {
-              case IDENT:
-                  c.Selector = tok.Literal
-              case EQ:
-                  // followed by int_lit
-                  if !sel.done() && !sel.isNonTerminal() {
-                      n := sel.shift()
-                      c.Selector = "=" + n.Literal
-                  }
-              }
-          }
-      }
-      // MsgBody
-      for !it.done() {
-          if !it.isNonTerminal() {
-              tok := it.shift()
-              switch tok.Type {
-              case I18N_CASE_FULL:
-                  if tok.Literal != "" {
-                      c.Body = append(c.Body, &ast.LiteralExpr{
-                          Pos:  ast.Pos(b.posFromToken(tok)),
-                          Kind: ast.LiteralStringQuoted,
-                          Raw:  tok.Literal,
-                      })
-                  }
-              case I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
-                  if tok.Literal != "" {
-                      c.Body = append(c.Body, &ast.LiteralExpr{
-                          Pos:  ast.Pos(b.posFromToken(tok)),
-                          Kind: ast.LiteralStringQuoted,
-                          Raw:  tok.Literal,
-                      })
-                  }
-              }
-          } else if it.symbol() == I18nPlaceholder {
-              c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
-          } else {
-              it.skip()
-          }
-      }
-      return c
+  	var c ast.I18nCase
+  	// Selector = ident | eq int_lit
+  	if !it.done() && it.isNonTerminal() {
+  		// grammar wraps Selector as a non-terminal; descend.
+  		sel := it.enter()
+  		if !sel.done() && !sel.isNonTerminal() {
+  			tok := sel.shift()
+  			c.Pos = b.posFromToken(tok)
+  			switch tok.Type {
+  			case IDENT:
+  				c.Selector = tok.Literal
+  			case EQ:
+  				// followed by int_lit
+  				if !sel.done() && !sel.isNonTerminal() {
+  					n := sel.shift()
+  					c.Selector = "=" + n.Literal
+  				}
+  			}
+  		}
+  	}
+  	// MsgBody
+  	for !it.done() {
+  		if !it.isNonTerminal() {
+  			tok := it.shift()
+  			switch tok.Type {
+  			case I18N_CASE_FULL:
+  				if tok.Literal != "" {
+  					c.Body = append(c.Body, &ast.LiteralExpr{
+  						Pos:  ast.Pos(b.posFromToken(tok)),
+  						Kind: ast.LiteralStringQuoted,
+  						Raw:  tok.Literal,
+  					})
+  				}
+  			case I18N_CASE_START, I18N_STR_RESUME, I18N_CASE_END:
+  				if tok.Literal != "" {
+  					c.Body = append(c.Body, &ast.LiteralExpr{
+  						Pos:  ast.Pos(b.posFromToken(tok)),
+  						Kind: ast.LiteralStringQuoted,
+  						Raw:  tok.Literal,
+  					})
+  				}
+  			}
+  		} else if it.symbol() == I18nPlaceholder {
+  			c.Body = append(c.Body, b.buildI18nPlaceholder(it.enter()))
+  		} else {
+  			it.skip()
+  		}
+  	}
+  	return c
   }
   ```
 
 - [ ] **Step 8: Write the failing test**
 
   Create `internal/parser/i18n_test.go`:
+
   ```go
   package parser_test
 
   import (
-      "testing"
+  	"testing"
 
-      "git.duckfam.us/jonathan/sngl/ast"
-      "git.duckfam.us/jonathan/sngl/internal/parser"
+  	"git.duckfam.us/jonathan/sngl/ast"
+  	"git.duckfam.us/jonathan/sngl/internal/parser"
   )
 
   func TestParseI18nFullString(t *testing.T) {
-      doc, err := parser.Parse("test.sngl", []byte(`var x = $"Login"`))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      vd := doc.Stmts[0].(*ast.VarDecl)
-      ie, ok := vd.Specs[0].Default.(*ast.I18nInterpExpr)
-      if !ok {
-          t.Fatalf("got %T, want *I18nInterpExpr", vd.Specs[0].Default)
-      }
-      if len(ie.Parts) != 1 {
-          t.Fatalf("Parts len = %d, want 1", len(ie.Parts))
-      }
-      lit, ok := ie.Parts[0].(*ast.LiteralExpr)
-      if !ok {
-          t.Fatalf("Part 0: got %T, want *LiteralExpr", ie.Parts[0])
-      }
-      if lit.Raw != "Login" {
-          t.Errorf("Raw = %q, want Login", lit.Raw)
-      }
+  	doc, err := parser.Parse("test.sngl", []byte(`var x = $"Login"`))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	vd := doc.Stmts[0].(*ast.VarDecl)
+  	ie, ok := vd.Specs[0].Default.(*ast.I18nInterpExpr)
+  	if !ok {
+  		t.Fatalf("got %T, want *I18nInterpExpr", vd.Specs[0].Default)
+  	}
+  	if len(ie.Parts) != 1 {
+  		t.Fatalf("Parts len = %d, want 1", len(ie.Parts))
+  	}
+  	lit, ok := ie.Parts[0].(*ast.LiteralExpr)
+  	if !ok {
+  		t.Fatalf("Part 0: got %T, want *LiteralExpr", ie.Parts[0])
+  	}
+  	if lit.Raw != "Login" {
+  		t.Errorf("Raw = %q, want Login", lit.Raw)
+  	}
   }
 
   func TestParseI18nSimpleInterpolation(t *testing.T) {
-      doc, err := parser.Parse("test.sngl", []byte(`var x = $"Hello {name}!"`))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      vd := doc.Stmts[0].(*ast.VarDecl)
-      ie := vd.Specs[0].Default.(*ast.I18nInterpExpr)
-      if len(ie.Parts) != 3 {
-          t.Fatalf("Parts len = %d, want 3", len(ie.Parts))
-      }
-      ph, ok := ie.Parts[1].(*ast.I18nPlaceholderExpr)
-      if !ok {
-          t.Fatalf("Part 1: got %T, want *I18nPlaceholderExpr", ie.Parts[1])
-      }
-      ident, ok := ph.Value.(*ast.IdentExpr)
-      if !ok || ident.Name != "name" {
-          t.Errorf("placeholder value: got %T %v, want IdentExpr 'name'", ph.Value, ph.Value)
-      }
-      if ph.Type != "" {
-          t.Errorf("Type = %q, want empty", ph.Type)
-      }
+  	doc, err := parser.Parse("test.sngl", []byte(`var x = $"Hello {name}!"`))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	vd := doc.Stmts[0].(*ast.VarDecl)
+  	ie := vd.Specs[0].Default.(*ast.I18nInterpExpr)
+  	if len(ie.Parts) != 3 {
+  		t.Fatalf("Parts len = %d, want 3", len(ie.Parts))
+  	}
+  	ph, ok := ie.Parts[1].(*ast.I18nPlaceholderExpr)
+  	if !ok {
+  		t.Fatalf("Part 1: got %T, want *I18nPlaceholderExpr", ie.Parts[1])
+  	}
+  	ident, ok := ph.Value.(*ast.IdentExpr)
+  	if !ok || ident.Name != "name" {
+  		t.Errorf("placeholder value: got %T %v, want IdentExpr 'name'", ph.Value, ph.Value)
+  	}
+  	if ph.Type != "" {
+  		t.Errorf("Type = %q, want empty", ph.Type)
+  	}
   }
 
   func TestParseI18nPlural(t *testing.T) {
-      src := `var x = $"You have {count, plural, one{message} other{messages}}"`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      vd := doc.Stmts[0].(*ast.VarDecl)
-      ie := vd.Specs[0].Default.(*ast.I18nInterpExpr)
-      // Find the placeholder part.
-      var ph *ast.I18nPlaceholderExpr
-      for _, p := range ie.Parts {
-          if e, ok := p.(*ast.I18nPlaceholderExpr); ok {
-              ph = e
-          }
-      }
-      if ph == nil {
-          t.Fatal("expected a placeholder")
-      }
-      if ph.Type != "plural" {
-          t.Errorf("Type = %q, want plural", ph.Type)
-      }
-      if len(ph.Cases) != 2 {
-          t.Fatalf("Cases len = %d, want 2", len(ph.Cases))
-      }
-      if ph.Cases[0].Selector != "one" {
-          t.Errorf("Cases[0].Selector = %q, want one", ph.Cases[0].Selector)
-      }
-      if ph.Cases[1].Selector != "other" {
-          t.Errorf("Cases[1].Selector = %q, want other", ph.Cases[1].Selector)
-      }
+  	src := `var x = $"You have {count, plural, one{message} other{messages}}"`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	vd := doc.Stmts[0].(*ast.VarDecl)
+  	ie := vd.Specs[0].Default.(*ast.I18nInterpExpr)
+  	// Find the placeholder part.
+  	var ph *ast.I18nPlaceholderExpr
+  	for _, p := range ie.Parts {
+  		if e, ok := p.(*ast.I18nPlaceholderExpr); ok {
+  			ph = e
+  		}
+  	}
+  	if ph == nil {
+  		t.Fatal("expected a placeholder")
+  	}
+  	if ph.Type != "plural" {
+  		t.Errorf("Type = %q, want plural", ph.Type)
+  	}
+  	if len(ph.Cases) != 2 {
+  		t.Fatalf("Cases len = %d, want 2", len(ph.Cases))
+  	}
+  	if ph.Cases[0].Selector != "one" {
+  		t.Errorf("Cases[0].Selector = %q, want one", ph.Cases[0].Selector)
+  	}
+  	if ph.Cases[1].Selector != "other" {
+  		t.Errorf("Cases[1].Selector = %q, want other", ph.Cases[1].Selector)
+  	}
   }
   ```
 
@@ -1867,6 +1962,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/parser/ -run TestParseI18n -v
   ```
+
   Expected: all PASS. The builder's iterator code may need adjustments to match the actual `nodeIter` API; reference `buildInterpStr` for the working pattern.
 
 - [ ] **Step 10: Commit**
@@ -1899,28 +1995,28 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (f *formatter) writeI18nInterp(x *ast.I18nInterpExpr) {
-      f.write("$")
-      switch x.Style {
-      case ast.StyleTriple:
-          f.write(`"""`)
-      default:
-          f.write(`"`)
-      }
-      for _, part := range x.Parts {
-          if lit, ok := part.(*ast.LiteralExpr); ok {
-              f.write(escapeInterpLiteral(lit.Raw, x.Style))
-          } else {
-              f.write("{")
-              f.writeExpr(part)
-              f.write("}")
-          }
-      }
-      switch x.Style {
-      case ast.StyleTriple:
-          f.write(`"""`)
-      default:
-          f.write(`"`)
-      }
+  	f.write("$")
+  	switch x.Style {
+  	case ast.StyleTriple:
+  		f.write(`"""`)
+  	default:
+  		f.write(`"`)
+  	}
+  	for _, part := range x.Parts {
+  		if lit, ok := part.(*ast.LiteralExpr); ok {
+  			f.write(escapeInterpLiteral(lit.Raw, x.Style))
+  		} else {
+  			f.write("{")
+  			f.writeExpr(part)
+  			f.write("}")
+  		}
+  	}
+  	switch x.Style {
+  	case ast.StyleTriple:
+  		f.write(`"""`)
+  	default:
+  		f.write(`"`)
+  	}
   }
   ```
 
@@ -1928,58 +2024,59 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
-      f.writeExpr(x.Value)
-      if x.Type != "" {
-          f.write(", ")
-          f.write(x.Type)
-      }
-      if len(x.Cases) > 0 {
-          f.write(", ")
-          for i, c := range x.Cases {
-              if i > 0 {
-                  f.write(" ")
-              }
-              f.write(c.Selector)
-              f.write("{")
-              for _, p := range c.Body {
-                  if lit, ok := p.(*ast.LiteralExpr); ok {
-                      f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
-                  } else {
-                      f.write("{")
-                      f.writeExpr(p)
-                      f.write("}")
-                  }
-              }
-              f.write("}")
-          }
-      }
+  	f.writeExpr(x.Value)
+  	if x.Type != "" {
+  		f.write(", ")
+  		f.write(x.Type)
+  	}
+  	if len(x.Cases) > 0 {
+  		f.write(", ")
+  		for i, c := range x.Cases {
+  			if i > 0 {
+  				f.write(" ")
+  			}
+  			f.write(c.Selector)
+  			f.write("{")
+  			for _, p := range c.Body {
+  				if lit, ok := p.(*ast.LiteralExpr); ok {
+  					f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
+  				} else {
+  					f.write("{")
+  					f.writeExpr(p)
+  					f.write("}")
+  				}
+  			}
+  			f.write("}")
+  		}
+  	}
   }
   ```
 
 - [ ] **Step 4: Write round-trip tests**
 
   Create `internal/parser/format_i18n_test.go`:
+
   ```go
   package parser
 
   import "testing"
 
   func TestFormatI18nFull(t *testing.T) {
-      assertFormat(t, `var x = $"Login"`, `var x = $"Login"`)
+  	assertFormat(t, `var x = $"Login"`, `var x = $"Login"`)
   }
 
   func TestFormatI18nInterp(t *testing.T) {
-      assertFormat(t, `var x = $"Hello {name}!"`, `var x = $"Hello {name}!"`)
+  	assertFormat(t, `var x = $"Hello {name}!"`, `var x = $"Hello {name}!"`)
   }
 
   func TestFormatI18nPlural(t *testing.T) {
-      src := `var x = $"You have {count, plural, one{message} other{messages}}"`
-      assertFormat(t, src, src)
+  	src := `var x = $"You have {count, plural, one{message} other{messages}}"`
+  	assertFormat(t, src, src)
   }
 
   func TestFormatI18nFormatter(t *testing.T) {
-      src := `var x = $"Created on {d, date, short}"`
-      assertFormat(t, src, src)
+  	src := `var x = $"Created on {d, date, short}"`
+  	assertFormat(t, src, src)
   }
   ```
 
@@ -1988,6 +2085,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/parser/ -run TestFormatI18n -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -2011,6 +2109,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Add the dispatch in `inferExpr`**
 
   In `internal/checker/expr.go`, in the switch:
+
   ```go
   case *ast.I18nInterpExpr:
       return c.inferI18nInterp(x)
@@ -2022,106 +2121,107 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   package checker
 
   import (
-      "git.duckfam.us/jonathan/sngl/ast"
-      "git.duckfam.us/jonathan/sngl/ir"
+  	"git.duckfam.us/jonathan/sngl/ast"
+  	"git.duckfam.us/jonathan/sngl/ir"
   )
 
   // inferI18nInterp checks a translatable string and lowers it to an
   // ir.Call to i18n.tr. The synthesized ICU template is the first arg;
   // the placeholder values bundle into a map<string, dyn> as the second arg.
   func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
-      // Static-text warning.
-      if !hasStaticText(x.Parts) {
-          c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
-      }
-      // Validate placeholders + recurse cases.
-      for _, p := range x.Parts {
-          if ph, ok := p.(*ast.I18nPlaceholderExpr); ok {
-              c.checkI18nPlaceholder(ph)
-          }
-      }
-      // Lowering happens in Task G1; for now return a string-typed placeholder.
-      return &ir.Literal{Type: TypString, Raw: `""`}
+  	// Static-text warning.
+  	if !hasStaticText(x.Parts) {
+  		c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
+  	}
+  	// Validate placeholders + recurse cases.
+  	for _, p := range x.Parts {
+  		if ph, ok := p.(*ast.I18nPlaceholderExpr); ok {
+  			c.checkI18nPlaceholder(ph)
+  		}
+  	}
+  	// Lowering happens in Task G1; for now return a string-typed placeholder.
+  	return &ir.Literal{Type: TypString, Raw: `""`}
   }
 
   func hasStaticText(parts []ast.Expr) bool {
-      for _, p := range parts {
-          switch v := p.(type) {
-          case *ast.LiteralExpr:
-              if hasNonWhitespace(v.Raw) {
-                  return true
-              }
-          case *ast.I18nPlaceholderExpr:
-              for _, ca := range v.Cases {
-                  if hasStaticText(ca.Body) {
-                      return true
-                  }
-              }
-          }
-      }
-      return false
+  	for _, p := range parts {
+  		switch v := p.(type) {
+  		case *ast.LiteralExpr:
+  			if hasNonWhitespace(v.Raw) {
+  				return true
+  			}
+  		case *ast.I18nPlaceholderExpr:
+  			for _, ca := range v.Cases {
+  				if hasStaticText(ca.Body) {
+  					return true
+  				}
+  			}
+  		}
+  	}
+  	return false
   }
 
   func hasNonWhitespace(s string) bool {
-      for _, r := range s {
-          if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
-              return true
-          }
-      }
-      return false
+  	for _, r := range s {
+  		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
+  			return true
+  		}
+  	}
+  	return false
   }
 
   // checkI18nPlaceholder type-checks Value and validates Type/Cases.
   // Stub for Task F2.
   func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
-      _ = c.checkExpr(ph.Value)
+  	_ = c.checkExpr(ph.Value)
   }
   ```
 
 - [ ] **Step 3: Write tests**
 
   Create `internal/checker/i18n_test.go`:
+
   ```go
   package checker_test
 
   import (
-      "testing"
+  	"testing"
 
-      "git.duckfam.us/jonathan/sngl/internal/checker"
-      "git.duckfam.us/jonathan/sngl/internal/parser"
-      "git.duckfam.us/jonathan/sngl/ir"
+  	"git.duckfam.us/jonathan/sngl/internal/checker"
+  	"git.duckfam.us/jonathan/sngl/internal/parser"
+  	"git.duckfam.us/jonathan/sngl/ir"
   )
 
   func TestI18nValid(t *testing.T) {
-      src := `var name = "world"; var x = $"Hello {name}!"`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected error: %s", d.Error())
-          }
-      }
+  	src := `var name = "world"; var x = $"Hello {name}!"`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected error: %s", d.Error())
+  		}
+  	}
   }
 
   func TestI18nNoStaticTextWarn(t *testing.T) {
-      src := `var n = 5; var x = $"{n}"`
-      doc, err := parser.Parse("test.sngl", []byte(src))
-      if err != nil {
-          t.Fatalf("parse: %v", err)
-      }
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Warning && contains(d.Msg, "no static text") {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected warning")
-      }
+  	src := `var n = 5; var x = $"{n}"`
+  	doc, err := parser.Parse("test.sngl", []byte(src))
+  	if err != nil {
+  		t.Fatalf("parse: %v", err)
+  	}
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Warning && contains(d.Msg, "no static text") {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected warning")
+  	}
   }
 
   // contains helper if not already in checker_test.go
@@ -2134,6 +2234,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/checker/ -run TestI18n -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -2152,145 +2253,147 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Define the keyword set + selector validity per type**
 
   Add to `i18n.go`:
+
   ```go
   // icuTypeKeywords lists valid second-position identifiers in placeholders.
   var icuTypeKeywords = map[string]struct{}{
-      "plural": {}, "selectordinal": {}, "select": {},
-      "date": {}, "time": {}, "number": {},
-      // styles also valid in the type slot for some cases (date/time/number with no explicit type)
+  	"plural": {}, "selectordinal": {}, "select": {},
+  	"date": {}, "time": {}, "number": {},
+  	// styles also valid in the type slot for some cases (date/time/number with no explicit type)
   }
 
   // pluralSelectors are the valid CLDR keyword selectors.
   var pluralSelectors = map[string]struct{}{
-      "zero": {}, "one": {}, "two": {}, "few": {}, "many": {}, "other": {},
+  	"zero": {}, "one": {}, "two": {}, "few": {}, "many": {}, "other": {},
   }
 
   func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
-      vT := exprType(c.checkExpr(ph.Value))
-      if ph.Type == "" {
-          return
-      }
-      if _, ok := icuTypeKeywords[ph.Type]; !ok {
-          c.errorf(ph.Pos, "unknown ICU type %q in placeholder", ph.Type)
-          return
-      }
-      switch ph.Type {
-      case "plural", "selectordinal":
-          if vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
-              c.errorf(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
-          }
-          for _, ca := range ph.Cases {
-              if !validPluralSelector(ca.Selector) {
-                  c.errorf(ca.Pos, "invalid plural selector %q", ca.Selector)
-              }
-              for _, p := range ca.Body {
-                  if pp, ok := p.(*ast.I18nPlaceholderExpr); ok {
-                      c.checkI18nPlaceholder(pp)
-                  }
-              }
-          }
-      case "select":
-          if vT.Kind != ir.TypeString && vT.Kind != ir.TypeDyn {
-              c.errorf(ph.Pos, "select placeholder requires string value, got %s", vT)
-          }
-          // Selectors are free-form idents; no validation beyond non-empty.
-          for _, ca := range ph.Cases {
-              if ca.Selector == "" {
-                  c.errorf(ca.Pos, "select case has empty selector")
-              }
-          }
-      case "date", "time":
-          // Caller provides a date/time value — accept date, time, dateTime, or dyn.
-          ok := false
-          switch vT.Kind {
-          case ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDyn:
-              ok = true
-          }
-          if !ok {
-              c.errorf(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
-          }
-      case "number":
-          if vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
-              c.errorf(ph.Pos, "number placeholder requires numeric value, got %s", vT)
-          }
-      }
+  	vT := exprType(c.checkExpr(ph.Value))
+  	if ph.Type == "" {
+  		return
+  	}
+  	if _, ok := icuTypeKeywords[ph.Type]; !ok {
+  		c.errorf(ph.Pos, "unknown ICU type %q in placeholder", ph.Type)
+  		return
+  	}
+  	switch ph.Type {
+  	case "plural", "selectordinal":
+  		if vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+  			c.errorf(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
+  		}
+  		for _, ca := range ph.Cases {
+  			if !validPluralSelector(ca.Selector) {
+  				c.errorf(ca.Pos, "invalid plural selector %q", ca.Selector)
+  			}
+  			for _, p := range ca.Body {
+  				if pp, ok := p.(*ast.I18nPlaceholderExpr); ok {
+  					c.checkI18nPlaceholder(pp)
+  				}
+  			}
+  		}
+  	case "select":
+  		if vT.Kind != ir.TypeString && vT.Kind != ir.TypeDyn {
+  			c.errorf(ph.Pos, "select placeholder requires string value, got %s", vT)
+  		}
+  		// Selectors are free-form idents; no validation beyond non-empty.
+  		for _, ca := range ph.Cases {
+  			if ca.Selector == "" {
+  				c.errorf(ca.Pos, "select case has empty selector")
+  			}
+  		}
+  	case "date", "time":
+  		// Caller provides a date/time value — accept date, time, dateTime, or dyn.
+  		ok := false
+  		switch vT.Kind {
+  		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDyn:
+  			ok = true
+  		}
+  		if !ok {
+  			c.errorf(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
+  		}
+  	case "number":
+  		if vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+  			c.errorf(ph.Pos, "number placeholder requires numeric value, got %s", vT)
+  		}
+  	}
   }
 
   func validPluralSelector(s string) bool {
-      if _, ok := pluralSelectors[s]; ok {
-          return true
-      }
-      // =N form
-      if len(s) > 1 && s[0] == '=' {
-          for _, r := range s[1:] {
-              if r < '0' || r > '9' {
-                  return false
-              }
-          }
-          return true
-      }
-      return false
+  	if _, ok := pluralSelectors[s]; ok {
+  		return true
+  	}
+  	// =N form
+  	if len(s) > 1 && s[0] == '=' {
+  		for _, r := range s[1:] {
+  			if r < '0' || r > '9' {
+  				return false
+  			}
+  		}
+  		return true
+  	}
+  	return false
   }
   ```
 
 - [ ] **Step 2: Add tests**
 
   Append to `internal/checker/i18n_test.go`:
+
   ```go
   func TestI18nPluralValid(t *testing.T) {
-      src := `var c = 5; var x = $"You have {c, plural, one{msg} other{msgs}}"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Errorf("unexpected: %s", d.Error())
-          }
-      }
+  	src := `var c = 5; var x = $"You have {c, plural, one{msg} other{msgs}}"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Errorf("unexpected: %s", d.Error())
+  		}
+  	}
   }
 
   func TestI18nPluralRejectsNonNumeric(t *testing.T) {
-      src := `var c = "x"; var x = $"{c, plural, one{a} other{b}}"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error && contains(d.Msg, "numeric") {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected numeric error")
-      }
+  	src := `var c = "x"; var x = $"{c, plural, one{a} other{b}}"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error && contains(d.Msg, "numeric") {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected numeric error")
+  	}
   }
 
   func TestI18nUnknownType(t *testing.T) {
-      src := `var c = 5; var x = $"{c, frobble, one{a}}"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error && contains(d.Msg, "unknown ICU type") {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected unknown type error")
-      }
+  	src := `var c = 5; var x = $"{c, frobble, one{a}}"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error && contains(d.Msg, "unknown ICU type") {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected unknown type error")
+  	}
   }
 
   func TestI18nInvalidPluralSelector(t *testing.T) {
-      src := `var c = 5; var x = $"{c, plural, frobble{a} other{b}}"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      found := false
-      for _, d := range diags {
-          if d.Severity == ir.Error && contains(d.Msg, "invalid plural selector") {
-              found = true
-          }
-      }
-      if !found {
-          t.Error("expected selector error")
-      }
+  	src := `var c = 5; var x = $"{c, plural, frobble{a} other{b}}"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	found := false
+  	for _, d := range diags {
+  		if d.Severity == ir.Error && contains(d.Msg, "invalid plural selector") {
+  			found = true
+  		}
+  	}
+  	if !found {
+  		t.Error("expected selector error")
+  	}
   }
   ```
 
@@ -2299,6 +2402,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/checker/ -run TestI18n -v
   ```
+
   Expected: all PASS.
 
 - [ ] **Step 4: Commit**
@@ -2321,71 +2425,72 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Add `synthesizeTemplate`**
 
   In `i18n.go`:
+
   ```go
   // synthesizeTemplate walks an I18nInterpExpr and produces the canonical
   // ICU MessageFormat string used for both manifest lookup and runtime
   // formatting. SNGL exprs that are not bare identifiers are rewritten to
   // synthetic argN names; the args slice tracks {name → expr} bindings.
   type templateBuilder struct {
-      sb   []byte
-      args []bindArg
-      next int
+  	sb   []byte
+  	args []bindArg
+  	next int
   }
 
   type bindArg struct {
-      name string
-      expr ast.Expr
+  	name string
+  	expr ast.Expr
   }
 
   func (b *templateBuilder) addBareName(name string, expr ast.Expr) string {
-      b.args = append(b.args, bindArg{name: name, expr: expr})
-      return name
+  	b.args = append(b.args, bindArg{name: name, expr: expr})
+  	return name
   }
 
   func (b *templateBuilder) addSynth(expr ast.Expr) string {
-      name := fmt.Sprintf("arg%d", b.next)
-      b.next++
-      b.args = append(b.args, bindArg{name: name, expr: expr})
-      return name
+  	name := fmt.Sprintf("arg%d", b.next)
+  	b.next++
+  	b.args = append(b.args, bindArg{name: name, expr: expr})
+  	return name
   }
 
   func (b *templateBuilder) writeParts(parts []ast.Expr) {
-      for _, p := range parts {
-          switch v := p.(type) {
-          case *ast.LiteralExpr:
-              b.sb = append(b.sb, v.Raw...)
-          case *ast.I18nPlaceholderExpr:
-              b.writePlaceholder(v)
-          }
-      }
+  	for _, p := range parts {
+  		switch v := p.(type) {
+  		case *ast.LiteralExpr:
+  			b.sb = append(b.sb, v.Raw...)
+  		case *ast.I18nPlaceholderExpr:
+  			b.writePlaceholder(v)
+  		}
+  	}
   }
 
   func (b *templateBuilder) writePlaceholder(ph *ast.I18nPlaceholderExpr) {
-      b.sb = append(b.sb, '{')
-      var name string
-      if id, ok := ph.Value.(*ast.IdentExpr); ok {
-          name = b.addBareName(id.Name, ph.Value)
-      } else {
-          name = b.addSynth(ph.Value)
-      }
-      b.sb = append(b.sb, name...)
-      if ph.Type != "" {
-          b.sb = append(b.sb, ',', ' ')
-          b.sb = append(b.sb, ph.Type...)
-      }
-      if len(ph.Cases) > 0 {
-          b.sb = append(b.sb, ',', ' ')
-          for i, c := range ph.Cases {
-              if i > 0 {
-                  b.sb = append(b.sb, ' ')
-              }
-              b.sb = append(b.sb, c.Selector...)
-              b.sb = append(b.sb, '{')
-              b.writeParts(c.Body)
-              b.sb = append(b.sb, '}')
-          }
-      }
-      b.sb = append(b.sb, '}')
+  	b.sb = append(b.sb, '{')
+  	var name string
+  	if id, ok := ph.Value.(*ast.IdentExpr); ok {
+  		name = b.addBareName(id.Name, ph.Value)
+  	} else {
+  		name = b.addSynth(ph.Value)
+  	}
+  	b.sb = append(b.sb, name...)
+  	if ph.Type != "" {
+  		b.sb = append(b.sb, ',', ' ')
+  		b.sb = append(b.sb, ph.Type...)
+  	}
+  	if len(ph.Cases) > 0 {
+  		b.sb = append(b.sb, ',', ' ')
+  		for i, c := range ph.Cases {
+  			if i > 0 {
+  				b.sb = append(b.sb, ' ')
+  			}
+  			b.sb = append(b.sb, c.Selector...)
+  			b.sb = append(b.sb, '{')
+  			b.writeParts(c.Body)
+  			b.sb = append(b.sb, '}')
+  		}
+  	}
+  	b.sb = append(b.sb, '}')
   }
   ```
 
@@ -2394,20 +2499,21 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 2: Test the template synthesis directly**
 
   Add to `i18n_test.go`:
+
   ```go
   func TestSynthesizeTemplateSimple(t *testing.T) {
-      // Need an exported helper or use checker.Check end-to-end and
-      // inspect the lowered IR. For now, assert via the lowered Call:
-      src := `var name = "world"; var x = $"Hello {name}!"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Fatalf("unexpected: %s", d.Error())
-          }
-      }
-      _ = pkg
-      // The full lowered form is asserted in Task G2; here we just confirm no error.
+  	// Need an exported helper or use checker.Check end-to-end and
+  	// inspect the lowered IR. For now, assert via the lowered Call:
+  	src := `var name = "world"; var x = $"Hello {name}!"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Fatalf("unexpected: %s", d.Error())
+  		}
+  	}
+  	_ = pkg
+  	// The full lowered form is asserted in Task G2; here we just confirm no error.
   }
   ```
 
@@ -2430,60 +2536,61 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
-      if !hasStaticText(x.Parts) {
-          c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
-      }
-      for _, p := range x.Parts {
-          if ph, ok := p.(*ast.I18nPlaceholderExpr); ok {
-              c.checkI18nPlaceholder(ph)
-          }
-      }
-      // Synthesize template + args bundle.
-      b := &templateBuilder{}
-      b.writeParts(x.Parts)
-      template := string(b.sb)
+  	if !hasStaticText(x.Parts) {
+  		c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
+  	}
+  	for _, p := range x.Parts {
+  		if ph, ok := p.(*ast.I18nPlaceholderExpr); ok {
+  			c.checkI18nPlaceholder(ph)
+  		}
+  	}
+  	// Synthesize template + args bundle.
+  	b := &templateBuilder{}
+  	b.writeParts(x.Parts)
+  	template := string(b.sb)
 
-      // Resolve i18n.tr.
-      trFn := c.resolveStdlibFunc("i18n", "tr")
-      if trFn == nil {
-          c.errorf(x.Pos, "stdlib function i18n.tr not found")
-          return &ir.Literal{Type: TypString, Raw: `""`}
-      }
+  	// Resolve i18n.tr.
+  	trFn := c.resolveStdlibFunc("i18n", "tr")
+  	if trFn == nil {
+  		c.errorf(x.Pos, "stdlib function i18n.tr not found")
+  		return &ir.Literal{Type: TypString, Raw: `""`}
+  	}
 
-      // Build args map<string, dyn>.
-      var entries []ir.MapEntry
-      for _, a := range b.args {
-          entries = append(entries, ir.MapEntry{
-              Key:   &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", a.name)},
-              Value: c.checkExpr(a.expr),
-          })
-      }
-      argsMap := &ir.MapLitIR{
-          Type:    MapOf(TypString, TypDyn),
-          Entries: entries,
-      }
+  	// Build args map<string, dyn>.
+  	var entries []ir.MapEntry
+  	for _, a := range b.args {
+  		entries = append(entries, ir.MapEntry{
+  			Key:   &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", a.name)},
+  			Value: c.checkExpr(a.expr),
+  		})
+  	}
+  	argsMap := &ir.MapLitIR{
+  		Type:    MapOf(TypString, TypDyn),
+  		Entries: entries,
+  	}
 
-      return &ir.Call{
-          Type: TypString,
-          Func: trFn,
-          Args: []ir.Expr{
-              &ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", template)},
-              argsMap,
-          },
-      }
+  	return &ir.Call{
+  		Type: TypString,
+  		Func: trFn,
+  		Args: []ir.Expr{
+  			&ir.Literal{Type: TypString, Raw: fmt.Sprintf("%q", template)},
+  			argsMap,
+  		},
+  	}
   }
   ```
 
 - [ ] **Step 2: Implement `resolveStdlibFunc`**
 
   In `i18n.go` (or a shared helper):
+
   ```go
   func (c *checker) resolveStdlibFunc(pkg, name string) ir.Expr {
-      // Look up via the existing scope/package machinery.
-      // Return nil if not found.
-      // Concrete impl depends on how packages register; check existing
-      // call-site resolution for reference (e.g. how `int.min` is found).
-      return c.lookupFuncQualified(pkg, name)
+  	// Look up via the existing scope/package machinery.
+  	// Return nil if not found.
+  	// Concrete impl depends on how packages register; check existing
+  	// call-site resolution for reference (e.g. how `int.min` is found).
+  	return c.lookupFuncQualified(pkg, name)
   }
   ```
 
@@ -2492,6 +2599,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 3: Wire stdlib `i18n` package source**
 
   Create `lib/i18n.sngl` (full content in Task H1; for now a stub):
+
   ```sngl
   package i18n
 
@@ -2503,20 +2611,21 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 4: Add an end-to-end test**
 
   In `internal/checker/i18n_test.go`:
+
   ```go
   func TestI18nLowersToCall(t *testing.T) {
-      src := `var name = "world"; var x = $"Hello {name}!"`
-      doc, _ := parser.Parse("t.sngl", []byte(src))
-      pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-      for _, d := range diags {
-          if d.Severity == ir.Error {
-              t.Fatalf("unexpected: %s", d.Error())
-          }
-      }
-      // Walk pkg, find the var initializer, assert it is an ir.Call to i18n.tr.
-      // Concrete walk depends on the IR shape — adapt to the existing helpers.
-      // Simplest: scan diagnostics-free; tighten in Phase I integration tests.
-      _ = pkg
+  	src := `var name = "world"; var x = $"Hello {name}!"`
+  	doc, _ := parser.Parse("t.sngl", []byte(src))
+  	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+  	for _, d := range diags {
+  		if d.Severity == ir.Error {
+  			t.Fatalf("unexpected: %s", d.Error())
+  		}
+  	}
+  	// Walk pkg, find the var initializer, assert it is an ir.Call to i18n.tr.
+  	// Concrete walk depends on the IR shape — adapt to the existing helpers.
+  	// Simplest: scan diagnostics-free; tighten in Phase I integration tests.
+  	_ = pkg
   }
   ```
 
@@ -2525,6 +2634,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/checker/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -2606,6 +2716,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./internal/checker/
   ```
+
   Expected: PASS. Failures here indicate the SNGL stdlib parser doesn't accept some syntax — adjust to the closest accepted form (e.g. if `default` values for params with type `map<...>` aren't accepted, drop the `= {}` default).
 
 - [ ] **Step 3: Commit**
@@ -2624,20 +2735,21 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 1: Design the loader interface**
 
   Create `lib/i18n_runtime.go`:
+
   ```go
   package lib
 
   import (
-      "encoding/json"
-      "errors"
-      "io/fs"
-      "os"
-      "strings"
+  	"encoding/json"
+  	"errors"
+  	"io/fs"
+  	"os"
+  	"strings"
   )
 
   // ManifestEntry mirrors one entry in i18n.manifest.json.
   type ManifestEntry struct {
-      Translations map[string]string `json:"translations"`
+  	Translations map[string]string `json:"translations"`
   }
 
   // Manifest maps ICU template keys to their translations.
@@ -2646,128 +2758,129 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   // LoadManifest reads i18n.manifest.json from the given filesystem.
   // Returns an empty manifest (no error) if the file does not exist.
   func LoadManifest(fsys fs.FS, path string) (Manifest, error) {
-      data, err := fs.ReadFile(fsys, path)
-      if errors.Is(err, fs.ErrNotExist) {
-          return Manifest{}, nil
-      }
-      if err != nil {
-          return nil, err
-      }
-      var m Manifest
-      if err := json.Unmarshal(data, &m); err != nil {
-          return nil, err
-      }
-      return m, nil
+  	data, err := fs.ReadFile(fsys, path)
+  	if errors.Is(err, fs.ErrNotExist) {
+  		return Manifest{}, nil
+  	}
+  	if err != nil {
+  		return nil, err
+  	}
+  	var m Manifest
+  	if err := json.Unmarshal(data, &m); err != nil {
+  		return nil, err
+  	}
+  	return m, nil
   }
 
   // LoadManifestFromFile loads from the OS filesystem; returns empty
   // manifest if the file is missing.
   func LoadManifestFromFile(path string) (Manifest, error) {
-      data, err := os.ReadFile(path)
-      if errors.Is(err, fs.ErrNotExist) {
-          return Manifest{}, nil
-      }
-      if err != nil {
-          return nil, err
-      }
-      var m Manifest
-      if err := json.Unmarshal(data, &m); err != nil {
-          return nil, err
-      }
-      return m, nil
+  	data, err := os.ReadFile(path)
+  	if errors.Is(err, fs.ErrNotExist) {
+  		return Manifest{}, nil
+  	}
+  	if err != nil {
+  		return nil, err
+  	}
+  	var m Manifest
+  	if err := json.Unmarshal(data, &m); err != nil {
+  		return nil, err
+  	}
+  	return m, nil
   }
 
   // Lookup returns the translated string for the given key + locale, falling
   // back to the inlined template, then to the key. Empty locale fragments
   // are tried in order ("en-US" → "en").
   func (m Manifest) Lookup(key, inlinedTemplate, locale string) string {
-      e, ok := m[key]
-      if !ok {
-          if inlinedTemplate != "" {
-              return inlinedTemplate
-          }
-          return key
-      }
-      // Try locale, then progressively shorter forms.
-      for loc := locale; loc != ""; {
-          if v, ok := e.Translations[loc]; ok {
-              return v
-          }
-          if i := strings.LastIndex(loc, "-"); i >= 0 {
-              loc = loc[:i]
-          } else {
-              break
-          }
-      }
-      if inlinedTemplate != "" {
-          return inlinedTemplate
-      }
-      return key
+  	e, ok := m[key]
+  	if !ok {
+  		if inlinedTemplate != "" {
+  			return inlinedTemplate
+  		}
+  		return key
+  	}
+  	// Try locale, then progressively shorter forms.
+  	for loc := locale; loc != ""; {
+  		if v, ok := e.Translations[loc]; ok {
+  			return v
+  		}
+  		if i := strings.LastIndex(loc, "-"); i >= 0 {
+  			loc = loc[:i]
+  		} else {
+  			break
+  		}
+  	}
+  	if inlinedTemplate != "" {
+  		return inlinedTemplate
+  	}
+  	return key
   }
   ```
 
 - [ ] **Step 2: Test it**
 
   Create `lib/i18n_runtime_test.go`:
+
   ```go
   package lib
 
   import (
-      "os"
-      "path/filepath"
-      "testing"
+  	"os"
+  	"path/filepath"
+  	"testing"
   )
 
   func TestManifestLookupHit(t *testing.T) {
-      m := Manifest{
-          "Login": {Translations: map[string]string{"es": "Iniciar"}},
-      }
-      got := m.Lookup("Login", "Login", "es")
-      if got != "Iniciar" {
-          t.Errorf("got %q, want Iniciar", got)
-      }
+  	m := Manifest{
+  		"Login": {Translations: map[string]string{"es": "Iniciar"}},
+  	}
+  	got := m.Lookup("Login", "Login", "es")
+  	if got != "Iniciar" {
+  		t.Errorf("got %q, want Iniciar", got)
+  	}
   }
 
   func TestManifestLookupFallbackToInlined(t *testing.T) {
-      m := Manifest{}
-      got := m.Lookup("Login", "Login", "es")
-      if got != "Login" {
-          t.Errorf("got %q, want Login", got)
-      }
+  	m := Manifest{}
+  	got := m.Lookup("Login", "Login", "es")
+  	if got != "Login" {
+  		t.Errorf("got %q, want Login", got)
+  	}
   }
 
   func TestManifestLookupLocaleHierarchy(t *testing.T) {
-      m := Manifest{
-          "Login": {Translations: map[string]string{"es": "Iniciar"}},
-      }
-      got := m.Lookup("Login", "Login", "es-MX")
-      if got != "Iniciar" {
-          t.Errorf("got %q, want Iniciar (via es fallback)", got)
-      }
+  	m := Manifest{
+  		"Login": {Translations: map[string]string{"es": "Iniciar"}},
+  	}
+  	got := m.Lookup("Login", "Login", "es-MX")
+  	if got != "Iniciar" {
+  		t.Errorf("got %q, want Iniciar (via es fallback)", got)
+  	}
   }
 
   func TestLoadManifestFromFileMissing(t *testing.T) {
-      m, err := LoadManifestFromFile("/nonexistent/path.json")
-      if err != nil {
-          t.Fatalf("unexpected: %v", err)
-      }
-      if len(m) != 0 {
-          t.Errorf("expected empty, got %v", m)
-      }
+  	m, err := LoadManifestFromFile("/nonexistent/path.json")
+  	if err != nil {
+  		t.Fatalf("unexpected: %v", err)
+  	}
+  	if len(m) != 0 {
+  		t.Errorf("expected empty, got %v", m)
+  	}
   }
 
   func TestLoadManifestFromFileValid(t *testing.T) {
-      tmp, _ := os.MkdirTemp("", "manifest-test")
-      defer os.RemoveAll(tmp)
-      path := filepath.Join(tmp, "i18n.manifest.json")
-      os.WriteFile(path, []byte(`{"Login":{"translations":{"es":"Iniciar"}}}`), 0644)
-      m, err := LoadManifestFromFile(path)
-      if err != nil {
-          t.Fatalf("unexpected: %v", err)
-      }
-      if got := m.Lookup("Login", "Login", "es"); got != "Iniciar" {
-          t.Errorf("got %q, want Iniciar", got)
-      }
+  	tmp, _ := os.MkdirTemp("", "manifest-test")
+  	defer os.RemoveAll(tmp)
+  	path := filepath.Join(tmp, "i18n.manifest.json")
+  	os.WriteFile(path, []byte(`{"Login":{"translations":{"es":"Iniciar"}}}`), 0644)
+  	m, err := LoadManifestFromFile(path)
+  	if err != nil {
+  		t.Fatalf("unexpected: %v", err)
+  	}
+  	if got := m.Lookup("Login", "Login", "es"); got != "Iniciar" {
+  		t.Errorf("got %q, want Iniciar", got)
+  	}
   }
   ```
 
@@ -2776,6 +2889,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./lib/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 4: Commit**
@@ -2797,6 +2911,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   grep "golang.org/x/text" go.mod
   ```
+
   If absent, add: `go get golang.org/x/text/message golang.org/x/text/feature/plural golang.org/x/text/number golang.org/x/text/currency`.
 
 - [ ] **Step 2: Add `Tr` and `Format` to `i18n_runtime.go`**
@@ -2871,12 +2986,13 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   Provide the full implementation. This is the largest single chunk of code in the plan; the engineer should reference `golang.org/x/text/internal/format` and `feature/plural` docs.
 
   **Sketch (engineer fills in):**
+
   ```go
   func formatICUImpl(p *message.Printer, tag language.Tag, tmpl string, args map[string]any) string {
-      // Find {...}, recurse for nested. For each placeholder, parse fields
-      // and dispatch on type. See spec for full semantics.
-      // ...
-      return result
+  	// Find {...}, recurse for nested. For each placeholder, parse fields
+  	// and dispatch on type. See spec for full semantics.
+  	// ...
+  	return result
   }
   ```
 
@@ -2885,25 +3001,26 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 4: Test simple substitution**
 
   Append to `lib/i18n_runtime_test.go`:
+
   ```go
   func TestTrSimple(t *testing.T) {
-      tr := NewTranslator(Manifest{}, "en")
-      got := tr.Tr("Hello {name}!", "Hello {name}!", map[string]any{"name": "world"})
-      if got != "Hello world!" {
-          t.Errorf("got %q", got)
-      }
+  	tr := NewTranslator(Manifest{}, "en")
+  	got := tr.Tr("Hello {name}!", "Hello {name}!", map[string]any{"name": "world"})
+  	if got != "Hello world!" {
+  		t.Errorf("got %q", got)
+  	}
   }
 
   func TestTrPluralOther(t *testing.T) {
-      tr := NewTranslator(Manifest{}, "en")
-      got := tr.Tr(
-          "{count, plural, =0{no files} one{1 file} other{# files}}",
-          "{count, plural, =0{no files} one{1 file} other{# files}}",
-          map[string]any{"count": 5},
-      )
-      if got != "5 files" {
-          t.Errorf("got %q, want 5 files", got)
-      }
+  	tr := NewTranslator(Manifest{}, "en")
+  	got := tr.Tr(
+  		"{count, plural, =0{no files} one{1 file} other{# files}}",
+  		"{count, plural, =0{no files} one{1 file} other{# files}}",
+  		map[string]any{"count": 5},
+  	)
+  	if got != "5 files" {
+  		t.Errorf("got %q, want 5 files", got)
+  	}
   }
   ```
 
@@ -2912,6 +3029,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./lib/ -run TestTr -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -2931,47 +3049,63 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 
   ```go
   func (t *Translator) NumberInt(n int, style string) string {
-      tmpl := "{n, number, " + style + "}"
-      return t.Format(tmpl, map[string]any{"n": n})
+  	tmpl := "{n, number, " + style + "}"
+  	return t.Format(tmpl, map[string]any{"n": n})
   }
 
   func (t *Translator) NumberFloat(n float64, style string) string {
-      tmpl := "{n, number, " + style + "}"
-      return t.Format(tmpl, map[string]any{"n": n})
+  	tmpl := "{n, number, " + style + "}"
+  	return t.Format(tmpl, map[string]any{"n": n})
   }
 
   func (t *Translator) Date(d time.Time, style string) string {
-      // map style to time.Format layout: short / medium / long / full
-      return d.Format(layoutFor(style, true, false))
+  	// map style to time.Format layout: short / medium / long / full
+  	return d.Format(layoutFor(style, true, false))
   }
 
   func (t *Translator) Time(d time.Time, style string) string {
-      return d.Format(layoutFor(style, false, true))
+  	return d.Format(layoutFor(style, false, true))
   }
 
   func (t *Translator) Datetime(d time.Time, dateStyle, timeStyle string) string {
-      return d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true))
+  	return d.Format(layoutFor(dateStyle, true, false) + " " + layoutFor(timeStyle, false, true))
   }
 
   func layoutFor(style string, dateOnly, timeOnly bool) string {
-      // Pick a sensible Go time layout per style. Locale-aware variants
-      // require x/text's date/time formatter (deferred — short/medium/long/full
-      // all use a fixed Go layout in this initial impl).
-      switch style {
-      case "short":
-          if dateOnly { return "1/2/06" }
-          if timeOnly { return "3:04 PM" }
-      case "long":
-          if dateOnly { return "January 2, 2006" }
-          if timeOnly { return "3:04:05 PM MST" }
-      case "full":
-          if dateOnly { return "Monday, January 2, 2006" }
-          if timeOnly { return "3:04:05 PM MST" }
-      }
-      // medium (default)
-      if dateOnly { return "Jan 2, 2006" }
-      if timeOnly { return "3:04:05 PM" }
-      return time.RFC3339
+  	// Pick a sensible Go time layout per style. Locale-aware variants
+  	// require x/text's date/time formatter (deferred — short/medium/long/full
+  	// all use a fixed Go layout in this initial impl).
+  	switch style {
+  	case "short":
+  		if dateOnly {
+  			return "1/2/06"
+  		}
+  		if timeOnly {
+  			return "3:04 PM"
+  		}
+  	case "long":
+  		if dateOnly {
+  			return "January 2, 2006"
+  		}
+  		if timeOnly {
+  			return "3:04:05 PM MST"
+  		}
+  	case "full":
+  		if dateOnly {
+  			return "Monday, January 2, 2006"
+  		}
+  		if timeOnly {
+  			return "3:04:05 PM MST"
+  		}
+  	}
+  	// medium (default)
+  	if dateOnly {
+  		return "Jan 2, 2006"
+  	}
+  	if timeOnly {
+  		return "3:04:05 PM"
+  	}
+  	return time.RFC3339
   }
   ```
 
@@ -2981,24 +3115,24 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   // PluralKey mirrors lib/i18n.sngl PluralKey. The runtime uses a tagged
   // representation matching the SNGL struct.
   type PluralKey struct {
-      N     int
-      Exact bool
+  	N     int
+  	Exact bool
   }
 
   // Sentinel CLDR keyword keys. The N values match the constants in
   // lib/i18n.sngl (zero=0, one=1, two=2, few=3, many=4, other=5).
   var (
-      PluralZero  = PluralKey{N: 0, Exact: false}
-      PluralOne   = PluralKey{N: 1, Exact: false}
-      PluralTwo   = PluralKey{N: 2, Exact: false}
-      PluralFew   = PluralKey{N: 3, Exact: false}
-      PluralMany  = PluralKey{N: 4, Exact: false}
-      PluralOther = PluralKey{N: 5, Exact: false}
+  	PluralZero  = PluralKey{N: 0, Exact: false}
+  	PluralOne   = PluralKey{N: 1, Exact: false}
+  	PluralTwo   = PluralKey{N: 2, Exact: false}
+  	PluralFew   = PluralKey{N: 3, Exact: false}
+  	PluralMany  = PluralKey{N: 4, Exact: false}
+  	PluralOther = PluralKey{N: 5, Exact: false}
   )
 
   // Exactly constructs an =N key.
   func Exactly(n int) PluralKey {
-      return PluralKey{N: n, Exact: true}
+  	return PluralKey{N: n, Exact: true}
   }
 
   // Plural selects a form by CLDR rule. forms maps PluralKey to the message
@@ -3006,101 +3140,107 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   // PluralOther; then PluralKey{Exact: false} with N=5 (other) as final
   // fallback.
   func (t *Translator) Plural(count int, forms map[PluralKey]string) string {
-      // Exact match wins.
-      if msg, ok := forms[Exactly(count)]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      // CLDR keyword for cardinal.
-      cat := plural.Cardinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
-      key := keywordToPluralKey(cat)
-      if msg, ok := forms[key]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      if msg, ok := forms[PluralOther]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      return ""
+  	// Exact match wins.
+  	if msg, ok := forms[Exactly(count)]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	// CLDR keyword for cardinal.
+  	cat := plural.Cardinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
+  	key := keywordToPluralKey(cat)
+  	if msg, ok := forms[key]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	if msg, ok := forms[PluralOther]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	return ""
   }
 
   func (t *Translator) Selectordinal(count int, forms map[PluralKey]string) string {
-      // Same as Plural but uses plural.Ordinal.
-      if msg, ok := forms[Exactly(count)]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      cat := plural.Ordinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
-      key := keywordToPluralKey(cat)
-      if msg, ok := forms[key]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      if msg, ok := forms[PluralOther]; ok {
-          return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
-      }
-      return ""
+  	// Same as Plural but uses plural.Ordinal.
+  	if msg, ok := forms[Exactly(count)]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	cat := plural.Ordinal.MatchPlural(t.Locale, count, 0, 0, 0, 0)
+  	key := keywordToPluralKey(cat)
+  	if msg, ok := forms[key]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	if msg, ok := forms[PluralOther]; ok {
+  		return formatICUImpl(message.NewPrinter(t.Locale), t.Locale, msg, map[string]any{"#": count})
+  	}
+  	return ""
   }
 
   func (t *Translator) Select(value string, cases map[string]string) string {
-      if msg, ok := cases[value]; ok {
-          return msg
-      }
-      if msg, ok := cases["other"]; ok {
-          return msg
-      }
-      return ""
+  	if msg, ok := cases[value]; ok {
+  		return msg
+  	}
+  	if msg, ok := cases["other"]; ok {
+  		return msg
+  	}
+  	return ""
   }
 
   func keywordToPluralKey(cat plural.Form) PluralKey {
-      switch cat {
-      case plural.Zero: return PluralZero
-      case plural.One:  return PluralOne
-      case plural.Two:  return PluralTwo
-      case plural.Few:  return PluralFew
-      case plural.Many: return PluralMany
-      }
-      return PluralOther
+  	switch cat {
+  	case plural.Zero:
+  		return PluralZero
+  	case plural.One:
+  		return PluralOne
+  	case plural.Two:
+  		return PluralTwo
+  	case plural.Few:
+  		return PluralFew
+  	case plural.Many:
+  		return PluralMany
+  	}
+  	return PluralOther
   }
   ```
 
 - [ ] **Step 3: Tests**
 
   Append to `lib/i18n_runtime_test.go`:
+
   ```go
   func TestPluralEnglish(t *testing.T) {
-      tr := NewTranslator(Manifest{}, "en")
-      forms := map[PluralKey]string{
-          Exactly(0): "no files",
-          PluralOne:  "1 file",
-          PluralOther: "{#} files",
-      }
-      cases := []struct {
-          n    int
-          want string
-      }{
-          {0, "no files"},
-          {1, "1 file"},
-          {5, "5 files"},
-      }
-      for _, c := range cases {
-          got := tr.Plural(c.n, forms)
-          if got != c.want {
-              t.Errorf("Plural(%d) = %q, want %q", c.n, got, c.want)
-          }
-      }
+  	tr := NewTranslator(Manifest{}, "en")
+  	forms := map[PluralKey]string{
+  		Exactly(0):  "no files",
+  		PluralOne:   "1 file",
+  		PluralOther: "{#} files",
+  	}
+  	cases := []struct {
+  		n    int
+  		want string
+  	}{
+  		{0, "no files"},
+  		{1, "1 file"},
+  		{5, "5 files"},
+  	}
+  	for _, c := range cases {
+  		got := tr.Plural(c.n, forms)
+  		if got != c.want {
+  			t.Errorf("Plural(%d) = %q, want %q", c.n, got, c.want)
+  		}
+  	}
   }
 
   func TestSelectFallsBackToOther(t *testing.T) {
-      tr := NewTranslator(Manifest{}, "en")
-      cases := map[string]string{"male": "he", "female": "she", "other": "they"}
-      if got := tr.Select("nonbinary", cases); got != "they" {
-          t.Errorf("got %q, want they", got)
-      }
+  	tr := NewTranslator(Manifest{}, "en")
+  	cases := map[string]string{"male": "he", "female": "she", "other": "they"}
+  	if got := tr.Select("nonbinary", cases); got != "they" {
+  		t.Errorf("got %q, want they", got)
+  	}
   }
 
   func TestNumberInt(t *testing.T) {
-      tr := NewTranslator(Manifest{}, "en")
-      got := tr.NumberInt(1234, "decimal")
-      if got != "1234" && got != "1,234" {
-          t.Errorf("got %q", got)
-      }
+  	tr := NewTranslator(Manifest{}, "en")
+  	got := tr.NumberInt(1234, "decimal")
+  	if got != "1234" && got != "1,234" {
+  		t.Errorf("got %q", got)
+  	}
   }
   ```
 
@@ -3109,6 +3249,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./lib/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -3145,32 +3286,33 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
 - [ ] **Step 3: Add a translator initialization helper**
 
   In `lib/i18n_runtime.go`:
+
   ```go
   var defaultTranslator *Translator
 
   // GetTranslator returns the process-wide translator, lazily initialised
   // from i18n.manifest.json (in working dir) and the LC_ALL/LANG env vars.
   func GetTranslator() *Translator {
-      if defaultTranslator == nil {
-          locale := pickLocale()
-          m, _ := LoadManifestFromFile("i18n.manifest.json")
-          defaultTranslator = NewTranslator(m, locale)
-      }
-      return defaultTranslator
+  	if defaultTranslator == nil {
+  		locale := pickLocale()
+  		m, _ := LoadManifestFromFile("i18n.manifest.json")
+  		defaultTranslator = NewTranslator(m, locale)
+  	}
+  	return defaultTranslator
   }
 
   func pickLocale() string {
-      for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
-          if v := os.Getenv(k); v != "" {
-              // Trim @modifier and .codeset; keep base locale.
-              if i := strings.IndexAny(v, ".@"); i >= 0 {
-                  v = v[:i]
-              }
-              v = strings.ReplaceAll(v, "_", "-")
-              return v
-          }
-      }
-      return "en"
+  	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+  		if v := os.Getenv(k); v != "" {
+  			// Trim @modifier and .codeset; keep base locale.
+  			if i := strings.IndexAny(v, ".@"); i >= 0 {
+  				v = v[:i]
+  			}
+  			v = strings.ReplaceAll(v, "_", "-")
+  			return v
+  		}
+  	}
+  	return "en"
   }
   ```
 
@@ -3180,6 +3322,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   go test ./codegen/...
   go test ./lib/
   ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -3223,6 +3366,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go test ./cmd/sngl/ -run TestScript/i18n_basic -v
   ```
+
   Expected: PASS.
 
 - [ ] **Step 3: Commit**
@@ -3275,6 +3419,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go tool verify
   ```
+
   Expected: PASS, no regressions.
 
 - [ ] **Step 2: Run `go vet`**
@@ -3282,6 +3427,7 @@ For initial implementation, take the **pragmatic shortcut**: extend `scanStringC
   ```bash
   go vet ./...
   ```
+
   Expected: clean.
 
 - [ ] **Step 3: If there are remaining lint warnings, fix and recommit.**

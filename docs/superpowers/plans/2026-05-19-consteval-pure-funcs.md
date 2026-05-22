@@ -20,23 +20,23 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/interp/eval.go` | move | Eval expressions over an Env. Moved verbatim from testrunner. |
-| `internal/interp/exec.go` | move | Exec statements (Assign, Toggle, If, For, etc.). Moved verbatim from testrunner. |
-| `internal/interp/builtins.go` | move | Built-in functions: int.min, list.length, etc. Moved verbatim from testrunner. |
-| `codegen/platform/none/testrunner/eval.go,exec.go,builtins.go` | delete | Replaced by imports of `internal/interp`. |
-| `codegen/platform/none/testrunner/runner.go`, `render.go`, `assert_msg.go`, `testing_t.go` | modify | Import `internal/interp` for moved symbols; testrunner-specific orchestration stays here. |
-| `ir/types.go` | modify | Add a bridge case in `IsAssignableTo` for `TypeColor ↔ TypeStruct{Decl:colorStructDef}`. |
-| `internal/checker/expr.go` | modify | Lower `ast.LiteralColor` to `*ir.StructLit{Def:colorStructDef, Fields:[r,g,b,a]}`. |
-| `internal/lsp/color_irwalk.go` | modify | Walk for `*ir.StructLit` with `Def.Name == "color"` instead of `*ir.Literal{Type:color}`. |
-| `internal/lsp/color.go` | modify | `colorFromIRLiteral` consumes a StructLit, reads r/g/b/a from its field literals. |
-| `internal/lsp/color_irwalk_test.go` | modify | Update test expectations to StructLit shape. |
-| `internal/optimize/interpret.go` | create | Adapter: `interpretFunc(*ir.Func, args, ctx, depth) (any, ok bool)` with deep-copy, depth limit, error→bail; `irFromValue(val, type) ir.Expr`. |
-| `internal/optimize/interpret_test.go` | create | Adapter tests + E2E fold tests. |
-| `internal/optimize/consteval.go` | modify | `evalCall` tries the adapter for pure SNGL bodies; remove `color.*` cases from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral`. |
-| `internal/lsp/color.go` (Layer-2 entry) | modify | Switch to walking StructLits (covered above). |
-| Any test that pattern-matches `*ir.Literal{Type:color}` | modify | Update to StructLit shape. |
+| File                                                                                       | Status | Responsibility                                                                                                                                        |
+|--------------------------------------------------------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/interp/eval.go`                                                                  | move   | Eval expressions over an Env. Moved verbatim from testrunner.                                                                                         |
+| `internal/interp/exec.go`                                                                  | move   | Exec statements (Assign, Toggle, If, For, etc.). Moved verbatim from testrunner.                                                                      |
+| `internal/interp/builtins.go`                                                              | move   | Built-in functions: int.min, list.length, etc. Moved verbatim from testrunner.                                                                        |
+| `codegen/platform/none/testrunner/eval.go,exec.go,builtins.go`                             | delete | Replaced by imports of `internal/interp`.                                                                                                             |
+| `codegen/platform/none/testrunner/runner.go`, `render.go`, `assert_msg.go`, `testing_t.go` | modify | Import `internal/interp` for moved symbols; testrunner-specific orchestration stays here.                                                             |
+| `ir/types.go`                                                                              | modify | Add a bridge case in `IsAssignableTo` for `TypeColor ↔ TypeStruct{Decl:colorStructDef}`.                                                              |
+| `internal/checker/expr.go`                                                                 | modify | Lower `ast.LiteralColor` to `*ir.StructLit{Def:colorStructDef, Fields:[r,g,b,a]}`.                                                                    |
+| `internal/lsp/color_irwalk.go`                                                             | modify | Walk for `*ir.StructLit` with `Def.Name == "color"` instead of `*ir.Literal{Type:color}`.                                                             |
+| `internal/lsp/color.go`                                                                    | modify | `colorFromIRLiteral` consumes a StructLit, reads r/g/b/a from its field literals.                                                                     |
+| `internal/lsp/color_irwalk_test.go`                                                        | modify | Update test expectations to StructLit shape.                                                                                                          |
+| `internal/optimize/interpret.go`                                                           | create | Adapter: `interpretFunc(*ir.Func, args, ctx, depth) (any, ok bool)` with deep-copy, depth limit, error→bail; `irFromValue(val, type) ir.Expr`.        |
+| `internal/optimize/interpret_test.go`                                                      | create | Adapter tests + E2E fold tests.                                                                                                                       |
+| `internal/optimize/consteval.go`                                                           | modify | `evalCall` tries the adapter for pure SNGL bodies; remove `color.*` cases from `evalQualifiedMethod`; remove `case ir.TypeColor` from `parseLiteral`. |
+| `internal/lsp/color.go` (Layer-2 entry)                                                    | modify | Switch to walking StructLits (covered above).                                                                                                         |
+| Any test that pattern-matches `*ir.Literal{Type:color}`                                    | modify | Update to StructLit shape.                                                                                                                            |
 
 ---
 
@@ -692,15 +692,15 @@ Update the call site in `computeColorsFromIR`:
 
 ```go
 walkIRColorLiterals(pkg, func(sl *ir.StructLit) {
-    c, ok := colorFromIRStructLit(sl)
-    if !ok {
-        return
-    }
-    r, ok := rangeForIRStructLit(sl, content)
-    if !ok {
-        return
-    }
-    out = append(out, ColorInformation{Range: r, Color: c})
+	c, ok := colorFromIRStructLit(sl)
+	if !ok {
+		return
+	}
+	r, ok := rangeForIRStructLit(sl, content)
+	if !ok {
+		return
+	}
+	out = append(out, ColorInformation{Range: r, Color: c})
 })
 ```
 
@@ -711,16 +711,16 @@ In `internal/lsp/color_irwalk_test.go`, change the assertion from `*ir.Literal` 
 ```go
 var colors []*ir.StructLit
 walkIRColorLiterals(pkg, func(sl *ir.StructLit) {
-    colors = append(colors, sl)
+	colors = append(colors, sl)
 })
 
 if len(colors) != 4 {
-    t.Fatalf("got %d colors, want 4", len(colors))
+	t.Fatalf("got %d colors, want 4", len(colors))
 }
 for _, c := range colors {
-    if c.Def == nil || c.Def.Name != "color" {
-        t.Errorf("Def = %v", c.Def)
-    }
+	if c.Def == nil || c.Def.Name != "color" {
+		t.Errorf("Def = %v", c.Def)
+	}
 }
 ```
 
@@ -1212,9 +1212,9 @@ In `evalCall`, after collecting arg values but before the existing `evalQualifie
 ```go
 // Try the generic SNGL-body interpreter for pure user/stdlib funcs.
 if call.Func != nil && call.Func.Block != nil && call.Func.Purity == ir.PurityPure {
-    if v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth); ok {
-        return v, true
-    }
+	if v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth); ok {
+		return v, true
+	}
 }
 ```
 
@@ -1235,7 +1235,7 @@ ctx.interpDepth++
 v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
 ctx.interpDepth--
 if ok {
-    return v, true
+	return v, true
 }
 ```
 
@@ -1514,16 +1514,16 @@ EOF
 
 **Spec coverage:**
 
-| Spec requirement | Task |
-|---|---|
-| Piece A: hex → StructLit | Task 3 |
-| Piece B: extract interpreter to internal/interp | Task 1 |
-| Piece C: fix `cannot initialize color with color` | Task 2 |
-| Piece D: optimizer adapter (depth, deep-copy, error→bail, irFromValue) | Tasks 5–7 |
-| LSP walker update (color_irwalk.go, color.go) | Task 4 |
-| Cleanup: remove color.* from evalQualifiedMethod, parseLiteral color arm | Task 9 |
-| Tests: stmt coverage, mutation isolation, recursion, E2E | Tasks 5, 6, 8 |
-| Issue #76 status update | Task 10 |
+| Spec requirement                                                         | Task          |
+|--------------------------------------------------------------------------|---------------|
+| Piece A: hex → StructLit                                                 | Task 3        |
+| Piece B: extract interpreter to internal/interp                          | Task 1        |
+| Piece C: fix `cannot initialize color with color`                        | Task 2        |
+| Piece D: optimizer adapter (depth, deep-copy, error→bail, irFromValue)   | Tasks 5–7     |
+| LSP walker update (color_irwalk.go, color.go)                            | Task 4        |
+| Cleanup: remove color.* from evalQualifiedMethod, parseLiteral color arm | Task 9        |
+| Tests: stmt coverage, mutation isolation, recursion, E2E                 | Tasks 5, 6, 8 |
+| Issue #76 status update                                                  | Task 10       |
 
 **Placeholder scan:**
 

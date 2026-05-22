@@ -25,8 +25,8 @@ A full reactive runtime (push notifications, effect graphs) would duplicate per-
 
 ```go
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
-    child := NewEnv()
-    // per-call init from comp.Vars defaults...
+	child := NewEnv()
+	// per-call init from comp.Vars defaults...
 }
 ```
 
@@ -34,21 +34,21 @@ Persist the child env across calls by caching it on the parent env, keyed by the
 
 ```go
 type Env struct {
-    // ... existing ...
-    childEnvs map[*ir.NodeInst]*Env  // memoised per instantiation site
+	// ... existing ...
+	childEnvs map[*ir.NodeInst]*Env // memoised per instantiation site
 }
 
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
-    if env.childEnvs == nil {
-        env.childEnvs = make(map[*ir.NodeInst]*Env)
-    }
-    if cached, ok := env.childEnvs[inst]; ok {
-        return cached
-    }
-    child := NewEnv()
-    // ... existing init logic ...
-    env.childEnvs[inst] = child
-    return child
+	if env.childEnvs == nil {
+		env.childEnvs = make(map[*ir.NodeInst]*Env)
+	}
+	if cached, ok := env.childEnvs[inst]; ok {
+		return cached
+	}
+	child := NewEnv()
+	// ... existing init logic ...
+	env.childEnvs[inst] = child
+	return child
 }
 ```
 
@@ -130,13 +130,14 @@ In `componentValue.InvokeMethod` and `componentValue.GetField`, extend the looku
 
 ```go
 // Existing chain:
-//   cv.Funcs[method]
-//   cv.Funcs[cv.compName + "." + method]
+//	cv.Funcs[method]
+//	cv.Funcs[cv.compName + "." + method]
+//
 // New tail:
 if cv.compName != "" {
-    if fn, ok := cv.Env.Funcs[cv.compName+"."+method]; ok {
-        return cv.invokeOnSelf(fn, args)
-    }
+	if fn, ok := cv.Env.Funcs[cv.compName+"."+method]; ok {
+		return cv.invokeOnSelf(fn, args)
+	}
 }
 ```
 

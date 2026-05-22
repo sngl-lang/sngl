@@ -58,10 +58,10 @@ When a platform's `Capabilities()` enables a Cap that emits intrinsics, that pla
 ```go
 switch intrinsicID {
 case "LowerCreateNode":
-    return emitCreateNode(args)
+	return emitCreateNode(args)
 case "LowerAppendChild":
-    return emitAppendChild(args)
-// ...
+	return emitAppendChild(args)
+	// ...
 }
 ```
 
@@ -95,7 +95,7 @@ Runs after NoReactivity.
 3. Clear the `Timers` slice from each owner.
 4. **Enabled-gating mutation handling.** When `Enabled` was set, walk every `*ir.Assign` whose Target identifier resolves to the Enabled Var. Inject after each:
    - `if newValue { lower.scheduleTimer(id, intervalMs, __timerN_handler) } else { lower.cancelTimer(id) }`
-   This runs after NoReactivity has already injected its node-update Assigns, so the timer fires/stops at the correct point in the mutation sequence.
+     This runs after NoReactivity has already injected its node-update Assigns, so the timer fires/stops at the correct point in the mutation sequence.
 
 The intervalMs literal is computed at this pass: NoUnit (which ran in Phase 2) already collapsed `500ms` to `500`. No further conversion needed.
 

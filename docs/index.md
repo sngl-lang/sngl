@@ -1,7 +1,7 @@
 ---
-title: "SNGL"
+title: SNGL
 order: 0
-description: "A purpose-built language for reactive, cross-platform UIs"
+description: A purpose-built language for reactive, cross-platform UIs
 ---
 
 ## What is SNGL?
@@ -61,7 +61,7 @@ component main {
 ## Platforms
 
 | Target   | Language   | Platform  | Status |
-| -------- | ---------- | --------- | ------ |
+|----------|------------|-----------|--------|
 | Web      | JavaScript | html      | Stable |
 | Terminal | Go         | bubbletea | Stable |
 | Desktop  | Go         | fyne      | Stable |

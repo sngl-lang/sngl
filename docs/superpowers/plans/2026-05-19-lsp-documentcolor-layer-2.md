@@ -15,12 +15,12 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/lsp/color_irwalk.go` | create | `walkIRColorLiterals(pkg, fn)` — minimal IR walker |
-| `internal/lsp/color.go` | modify | Add Layer 2 path in `computeDocumentColors`, dedupe helper |
-| `internal/lsp/color_test.go` | modify | Layer-1-vs-Layer-2 parity test on existing fixture |
-| `internal/lsp/color_irwalk_test.go` | create | Unit tests for the IR walker |
+| File                                | Status | Responsibility                                             |
+|-------------------------------------|--------|------------------------------------------------------------|
+| `internal/lsp/color_irwalk.go`      | create | `walkIRColorLiterals(pkg, fn)` — minimal IR walker         |
+| `internal/lsp/color.go`             | modify | Add Layer 2 path in `computeDocumentColors`, dedupe helper |
+| `internal/lsp/color_test.go`        | modify | Layer-1-vs-Layer-2 parity test on existing fixture         |
+| `internal/lsp/color_irwalk_test.go` | create | Unit tests for the IR walker                               |
 
 ---
 
@@ -420,10 +420,10 @@ Add the new imports at the top of `internal/lsp/color.go`:
 
 ```go
 import (
-    // existing imports above
-    "git.duckfam.us/jonathan/sngl"
-    "git.duckfam.us/jonathan/sngl/internal/optimize"
-    "git.duckfam.us/jonathan/sngl/ir"
+	// existing imports above
+	"git.duckfam.us/jonathan/sngl"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 ```
 
@@ -504,14 +504,14 @@ Expected: no panic. (The LSP doesn't take stdin in this smoke, just verifying th
 
 **Spec coverage (§F2 Layer 2):**
 
-| Need | Task |
-|---|---|
-| Run checker + optimizer over the doc | Task 2 (`computeColorsFromIR`) |
-| Bail silently on check errors | Task 2 (returns nil if any error diagnostic) |
-| Walk folded IR for color-typed literals | Task 1 (`walkIRColorLiterals`) |
-| Dedupe against Layer 1 by source range | Task 2 (`mergeColorInfoDedupe`) |
+| Need                                       | Task                                                |
+|--------------------------------------------|-----------------------------------------------------|
+| Run checker + optimizer over the doc       | Task 2 (`computeColorsFromIR`)                      |
+| Bail silently on check errors              | Task 2 (returns nil if any error diagnostic)        |
+| Walk folded IR for color-typed literals    | Task 1 (`walkIRColorLiterals`)                      |
+| Dedupe against Layer 1 by source range     | Task 2 (`mergeColorInfoDedupe`)                     |
 | Preserve Layer 1 behavior for broken files | Task 2 (Layer 2 returns nil; Layer 1 still emitted) |
-| Forward-ready for issue #76 | Task 2 (comment at call site + dormant path) |
+| Forward-ready for issue #76                | Task 2 (comment at call site + dormant path)        |
 
 **Placeholder scan:** none — every code step has full code. The "verify field names" instruction in Task 1 Step 2 is concrete: run grep, compare names. The Task 3 sanity check is explicit about which value to substitute.
 

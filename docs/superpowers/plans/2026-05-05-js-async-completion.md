@@ -64,24 +64,24 @@
 package ir_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestBlockHasAsyncCall_DirectCall(t *testing.T) {
-    asyncFn := &ir.Func{Name: "fetchHello", IsAsync: true}
-    syncFn := &ir.Func{Name: "noop", IsAsync: false}
+	asyncFn := &ir.Func{Name: "fetchHello", IsAsync: true}
+	syncFn := &ir.Func{Name: "noop", IsAsync: false}
 
-    block := []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}}
-    if !ir.BlockHasAsyncCall(block) {
-        t.Fatalf("expected async detected")
-    }
+	block := []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}}
+	if !ir.BlockHasAsyncCall(block) {
+		t.Fatalf("expected async detected")
+	}
 
-    block2 := []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: syncFn}}}
-    if ir.BlockHasAsyncCall(block2) {
-        t.Fatalf("expected no async")
-    }
+	block2 := []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: syncFn}}}
+	if ir.BlockHasAsyncCall(block2) {
+		t.Fatalf("expected no async")
+	}
 }
 ```
 
@@ -102,78 +102,78 @@ package ir
 import "slices"
 
 func BlockHasAsyncCall(stmts []Stmt) bool {
-    return slices.ContainsFunc(stmts, StmtHasAsyncCall)
+	return slices.ContainsFunc(stmts, StmtHasAsyncCall)
 }
 
 func StmtHasAsyncCall(s Stmt) bool {
-    switch x := s.(type) {
-    case *CallStmt:
-        return ExprHasAsyncCall(x.Call)
-    case *Assign:
-        return ExprHasAsyncCall(x.Value)
-    case *LocalVar:
-        return ExprHasAsyncCall(x.Init)
-    case *Return:
-        return ExprHasAsyncCall(x.Value)
-    case *If:
-        return ExprHasAsyncCall(x.Cond) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
-    case *For:
-        return ExprHasAsyncCall(x.Iter) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
-    case *PlatformFilter:
-        return BlockHasAsyncCall(x.Body)
-    }
-    return false
+	switch x := s.(type) {
+	case *CallStmt:
+		return ExprHasAsyncCall(x.Call)
+	case *Assign:
+		return ExprHasAsyncCall(x.Value)
+	case *LocalVar:
+		return ExprHasAsyncCall(x.Init)
+	case *Return:
+		return ExprHasAsyncCall(x.Value)
+	case *If:
+		return ExprHasAsyncCall(x.Cond) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
+	case *For:
+		return ExprHasAsyncCall(x.Iter) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
+	case *PlatformFilter:
+		return BlockHasAsyncCall(x.Body)
+	}
+	return false
 }
 
 func ExprHasAsyncCall(e Expr) bool {
-    if e == nil {
-        return false
-    }
-    switch x := e.(type) {
-    case *Call:
-        if x.Func != nil && x.Func.IsAsync {
-            return true
-        }
-        for _, a := range x.Args {
-            if ExprHasAsyncCall(a.Value) {
-                return true
-            }
-        }
-        if x.Receiver != nil && ExprHasAsyncCall(x.Receiver) {
-            return true
-        }
-    case *Binary:
-        return ExprHasAsyncCall(x.Left) || ExprHasAsyncCall(x.Right)
-    case *Unary:
-        return ExprHasAsyncCall(x.Operand)
-    case *Ternary:
-        return ExprHasAsyncCall(x.Cond) || ExprHasAsyncCall(x.Then) || ExprHasAsyncCall(x.Else)
-    case *Conversion:
-        return ExprHasAsyncCall(x.Operand)
-    case *Select:
-        return ExprHasAsyncCall(x.Operand)
-    case *Index:
-        return ExprHasAsyncCall(x.Operand) || ExprHasAsyncCall(x.Idx)
-    case *ListLit:
-        if slices.ContainsFunc(x.Elems, ExprHasAsyncCall) {
-            return true
-        }
-    case *StructLit:
-        for _, f := range x.Fields {
-            if ExprHasAsyncCall(f.Value) {
-                return true
-            }
-        }
-    case *Spread:
-        return ExprHasAsyncCall(x.Operand)
-    case *Lambda:
-        return BlockHasAsyncCall(x.Func.Block)
-    case *Closure:
-        if x.Func != nil {
-            return BlockHasAsyncCall(x.Func.Block)
-        }
-    }
-    return false
+	if e == nil {
+		return false
+	}
+	switch x := e.(type) {
+	case *Call:
+		if x.Func != nil && x.Func.IsAsync {
+			return true
+		}
+		for _, a := range x.Args {
+			if ExprHasAsyncCall(a.Value) {
+				return true
+			}
+		}
+		if x.Receiver != nil && ExprHasAsyncCall(x.Receiver) {
+			return true
+		}
+	case *Binary:
+		return ExprHasAsyncCall(x.Left) || ExprHasAsyncCall(x.Right)
+	case *Unary:
+		return ExprHasAsyncCall(x.Operand)
+	case *Ternary:
+		return ExprHasAsyncCall(x.Cond) || ExprHasAsyncCall(x.Then) || ExprHasAsyncCall(x.Else)
+	case *Conversion:
+		return ExprHasAsyncCall(x.Operand)
+	case *Select:
+		return ExprHasAsyncCall(x.Operand)
+	case *Index:
+		return ExprHasAsyncCall(x.Operand) || ExprHasAsyncCall(x.Idx)
+	case *ListLit:
+		if slices.ContainsFunc(x.Elems, ExprHasAsyncCall) {
+			return true
+		}
+	case *StructLit:
+		for _, f := range x.Fields {
+			if ExprHasAsyncCall(f.Value) {
+				return true
+			}
+		}
+	case *Spread:
+		return ExprHasAsyncCall(x.Operand)
+	case *Lambda:
+		return BlockHasAsyncCall(x.Func.Block)
+	case *Closure:
+		if x.Func != nil {
+			return BlockHasAsyncCall(x.Func.Block)
+		}
+	}
+	return false
 }
 ```
 
@@ -192,26 +192,26 @@ package checker
 import "git.duckfam.us/jonathan/sngl/ir"
 
 func (c *checker) analyzeAsync() {
-    pkg := c.pkg
-    if pkg == nil {
-        return
-    }
-    funcs := allFuncs(pkg)
-    for {
-        changed := false
-        for _, fn := range funcs {
-            if fn.IsAsync {
-                continue
-            }
-            if ir.BlockHasAsyncCall(fn.Block) {
-                fn.IsAsync = true
-                changed = true
-            }
-        }
-        if !changed {
-            break
-        }
-    }
+	pkg := c.pkg
+	if pkg == nil {
+		return
+	}
+	funcs := allFuncs(pkg)
+	for {
+		changed := false
+		for _, fn := range funcs {
+			if fn.IsAsync {
+				continue
+			}
+			if ir.BlockHasAsyncCall(fn.Block) {
+				fn.IsAsync = true
+				changed = true
+			}
+		}
+		if !changed {
+			break
+		}
+	}
 }
 ```
 
@@ -246,24 +246,24 @@ git commit -m "ir: extract BlockHasAsyncCall as shared helper; checker delegates
 package checker_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/sngl"
+	"git.duckfam.us/jonathan/sngl/sngl"
 )
 
 func TestAsyncPropagatesThroughLambda(t *testing.T) {
-    src := `
+	src := `
 import { fetchHello } from "js://app/api"  // declared async
 fn outer() {
     let f = () => { fetchHello() }
     f()
 }
 `
-    pkg := mustCheck(t, src)
-    outer := mustFindFunc(t, pkg, "outer")
-    if !outer.IsAsync {
-        t.Fatalf("outer should be async (calls f, lambda containing async)")
-    }
+	pkg := mustCheck(t, src)
+	outer := mustFindFunc(t, pkg, "outer")
+	if !outer.IsAsync {
+		t.Fatalf("outer should be async (calls f, lambda containing async)")
+	}
 }
 ```
 
@@ -304,16 +304,16 @@ git commit -m "checker: regression test for async propagation through lambda"
 
 ```go
 func TestTranslateIRPlainCall_AwaitsAsyncSNGLCallee(t *testing.T) {
-    asyncFn := &ir.Func{Name: "loadUser", IsAsync: true}
-    call := &ir.Call{Func: asyncFn, Args: nil}
-    scope := &codegen.ExprScope{}
+	asyncFn := &ir.Func{Name: "loadUser", IsAsync: true}
+	call := &ir.Call{Func: asyncFn, Args: nil}
+	scope := &codegen.ExprScope{}
 
-    got := javascript.TranslateIRPlainCallForTest(call, scope) // see step 2
+	got := javascript.TranslateIRPlainCallForTest(call, scope) // see step 2
 
-    want := "await loadUser()"
-    if got != want {
-        t.Fatalf("got %q want %q", got, want)
-    }
+	want := "await loadUser()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
 }
 ```
 
@@ -326,12 +326,12 @@ In `codegen/lang/javascript/translate_ir.go`, ensure the plain-call translator i
 package javascript
 
 import (
-    "git.duckfam.us/jonathan/sngl/codegen"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TranslateIRPlainCallForTest(c *ir.Call, scope *codegen.ExprScope) string {
-    return translateIRPlainCall(c, scope)
+	return translateIRPlainCall(c, scope)
 }
 ```
 
@@ -348,7 +348,7 @@ In `codegen/lang/javascript/translate_ir.go`, find `translateIRPlainCall` and ad
 // inside translateIRPlainCall, just before `return ...`
 call := fn + "(" + strings.Join(argStrs, ", ") + ")"
 if n.Func != nil && n.Func.IsAsync {
-    call = "await " + call
+	call = "await " + call
 }
 return call
 ```
@@ -368,13 +368,13 @@ In `translateIRNamespaceCall`, after building the call string, apply the same `I
 
 ```go
 func TestTranslateIRMethodCall_AwaitsAsync(t *testing.T) {
-    asyncFn := &ir.Func{Name: "save", Receiver: "User", IsAsync: true}
-    call := &ir.Call{Func: asyncFn, Receiver: &ir.Ident{Name: "u"}}
-    got := javascript.TranslateIRNamespaceCallForTest(call, &codegen.ExprScope{})
-    want := "await u.save()"
-    if got != want {
-        t.Fatalf("got %q want %q", got, want)
-    }
+	asyncFn := &ir.Func{Name: "save", Receiver: "User", IsAsync: true}
+	call := &ir.Call{Func: asyncFn, Receiver: &ir.Ident{Name: "u"}}
+	got := javascript.TranslateIRNamespaceCallForTest(call, &codegen.ExprScope{})
+	want := "await u.save()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
 }
 ```
 
@@ -429,7 +429,7 @@ In `codegen/platform/html/html.go:emitJSFunc`, change every `Fprintf(b, "functio
 ```go
 keyword := "function"
 if fn.IsAsync {
-    keyword = "async function"
+	keyword = "async function"
 }
 // expression body:
 fmt.Fprintf(b, "%s %s(%s) { return %s; }\n", keyword, jsName, paramStr, body)
@@ -461,19 +461,19 @@ git commit -m "html: emit async function for IsAsync user funcs"
 
 ```go
 func TestEventHandler_AsyncWrapper(t *testing.T) {
-    g := newTestHtmlGen(t)
-    g.handlers = []handler{{
-        elemID: "btn1",
-        event:  "click",
-        body:   "await loadAll();",
-        mutated: nil,
-    }}
-    var b strings.Builder
-    g.emitHandlersForTest(&b)
-    out := b.String()
-    if !strings.Contains(out, `addEventListener("click", async function`) {
-        t.Fatalf("expected async wrapper, got: %s", out)
-    }
+	g := newTestHtmlGen(t)
+	g.handlers = []handler{{
+		elemID:  "btn1",
+		event:   "click",
+		body:    "await loadAll();",
+		mutated: nil,
+	}}
+	var b strings.Builder
+	g.emitHandlersForTest(&b)
+	out := b.String()
+	if !strings.Contains(out, `addEventListener("click", async function`) {
+		t.Fatalf("expected async wrapper, got: %s", out)
+	}
 }
 ```
 
@@ -492,14 +492,14 @@ At the emit site (lines 2420–2424), select the keyword:
 ```go
 keyword := "function"
 if h.isAsync {
-    keyword = "async function"
+	keyword = "async function"
 }
 if h.event == "input" {
-    fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(e) {\n  %s\n});\n",
-        h.elemID, h.event, keyword, body)
+	fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(e) {\n  %s\n});\n",
+		h.elemID, h.event, keyword, body)
 } else {
-    fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n",
-        h.elemID, h.event, keyword, body)
+	fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n",
+		h.elemID, h.event, keyword, body)
 }
 ```
 
@@ -522,21 +522,21 @@ git commit -m "html: async wrapper for event handlers with async bodies"
 
 ```go
 func TestSetter_AsyncWhenChangeHandlerAsync(t *testing.T) {
-    g := newTestHtmlGen(t)
-    asyncFn := &ir.Func{Name: "save", IsAsync: true}
-    g.stateVars = []stateVar{{
-        Name: "title",
-        Type: stringType,
-        Handlers: []handler{{
-            Name: "change",
-            Func: &ir.Func{Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}}},
-        }},
-    }}
-    var b strings.Builder
-    g.emitSettersForTest(&b)
-    if !strings.Contains(b.String(), "async function $set_title(") {
-        t.Fatalf("setter not async: %s", b.String())
-    }
+	g := newTestHtmlGen(t)
+	asyncFn := &ir.Func{Name: "save", IsAsync: true}
+	g.stateVars = []stateVar{{
+		Name: "title",
+		Type: stringType,
+		Handlers: []handler{{
+			Name: "change",
+			Func: &ir.Func{Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}}},
+		}},
+	}}
+	var b strings.Builder
+	g.emitSettersForTest(&b)
+	if !strings.Contains(b.String(), "async function $set_title(") {
+		t.Fatalf("setter not async: %s", b.String())
+	}
 }
 ```
 
@@ -551,14 +551,14 @@ At the `function $set_X(v) {` emission, compute async-ness across everything inl
 ```go
 setterAsync := false
 for _, h := range dv.Handlers {
-    if h.Name == "change" && h.Func != nil && ir.BlockHasAsyncCall(h.Func.Block) {
-        setterAsync = true
-    }
+	if h.Name == "change" && h.Func != nil && ir.BlockHasAsyncCall(h.Func.Block) {
+		setterAsync = true
+	}
 }
 // (Updaters and timer-sync hooks are sync after Task 8; no need to re-check.)
 keyword := "function"
 if setterAsync {
-    keyword = "async function"
+	keyword = "async function"
 }
 fmt.Fprintf(b, "%s $set_%s(v) {\n", keyword, dv.Name)
 ```
@@ -582,19 +582,19 @@ git commit -m "html: async setter when change handler transitively async"
 
 ```go
 func TestTimerTick_AsyncWhenBodyAsync(t *testing.T) {
-    g := newTestHtmlGen(t)
-    asyncFn := &ir.Func{Name: "poll", IsAsync: true}
-    g.timers = []timer{{
-        index: 0,
-        bodyStmts: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}},
-        body: "await poll();",
-    }}
-    var b strings.Builder
-    g.emitTimersForTest(&b)
-    out := b.String()
-    if !strings.Contains(out, "async function $timer_0_tick") {
-        t.Fatalf("tick not async: %s", out)
-    }
+	g := newTestHtmlGen(t)
+	asyncFn := &ir.Func{Name: "poll", IsAsync: true}
+	g.timers = []timer{{
+		index:     0,
+		bodyStmts: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}},
+		body:      "await poll();",
+	}}
+	var b strings.Builder
+	g.emitTimersForTest(&b)
+	out := b.String()
+	if !strings.Contains(out, "async function $timer_0_tick") {
+		t.Fatalf("tick not async: %s", out)
+	}
 }
 ```
 
@@ -609,7 +609,7 @@ Look at how `timer.body` is currently constructed; capture the original IR state
 ```go
 tickKw := "function"
 if ir.BlockHasAsyncCall(t.bodyStmts) {
-    tickKw = "async function"
+	tickKw = "async function"
 }
 fmt.Fprintf(b, "%s $timer_%d_tick() {\n  %s\n}\n", tickKw, t.index, tickBody)
 // $timer_N_sync stays synchronous (it just calls the tick + setTimeout)
@@ -639,8 +639,8 @@ In `internal/lower/caps.go`:
 
 ```go
 type Caps struct {
-    // ... existing ...
-    NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
+	// ... existing ...
+	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
 }
 ```
 
@@ -652,9 +652,9 @@ In `internal/lower/lower.go`, declare `passAsyncReactive` and insert it **before
 
 ```go
 var passAsyncReactive = pass{
-    name:    "NoAsyncReactive",
-    enabled: func(c Caps) bool { return c.NoAsyncReactive },
-    apply:   lowerAsyncReactive,
+	name:    "NoAsyncReactive",
+	enabled: func(c Caps) bool { return c.NoAsyncReactive },
+	apply:   lowerAsyncReactive,
 }
 ```
 
@@ -667,39 +667,39 @@ Update the rationale comment block.
 package lower
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestLowerAsyncReactive_NamedComputed(t *testing.T) {
-    asyncNative := &ir.Func{Name: "fetchHello", IsAsync: true, Native: true}
-    greeting := &ir.Func{
-        Name: "greeting",
-        // Zero-arg expression-body computed.
-        Block: []ir.Stmt{&ir.Return{Value: &ir.Call{Func: asyncNative}}},
-        Sig: &ir.FuncSig{Return: stringType()},
-    }
-    pkg := &ir.Package{Funcs: []*ir.Func{greeting, asyncNative}}
+	asyncNative := &ir.Func{Name: "fetchHello", IsAsync: true, Native: true}
+	greeting := &ir.Func{
+		Name: "greeting",
+		// Zero-arg expression-body computed.
+		Block: []ir.Stmt{&ir.Return{Value: &ir.Call{Func: asyncNative}}},
+		Sig:   &ir.FuncSig{Return: stringType()},
+	}
+	pkg := &ir.Package{Funcs: []*ir.Func{greeting, asyncNative}}
 
-    if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
-        t.Fatalf("pass error: %v", err)
-    }
+	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}); err != nil {
+		t.Fatalf("pass error: %v", err)
+	}
 
-    // After lowering:
-    // - a synthetic state field "__async_greeting" exists with zero value
-    // - a kicker func "$compute_greeting" exists, IsAsync, body assigns the result
-    // - greeting() now returns __async_greeting (sync)
-    if !findStateField(pkg, "__async_greeting") {
-        t.Fatalf("expected synthetic state field __async_greeting")
-    }
-    kicker := findFunc(pkg, "$compute_greeting")
-    if kicker == nil || !kicker.IsAsync {
-        t.Fatalf("expected async kicker $compute_greeting")
-    }
-    if ir.BlockHasAsyncCall(greeting.Block) {
-        t.Fatalf("greeting still has async after lowering")
-    }
+	// After lowering:
+	// - a synthetic state field "__async_greeting" exists with zero value
+	// - a kicker func "$compute_greeting" exists, IsAsync, body assigns the result
+	// - greeting() now returns __async_greeting (sync)
+	if !findStateField(pkg, "__async_greeting") {
+		t.Fatalf("expected synthetic state field __async_greeting")
+	}
+	kicker := findFunc(pkg, "$compute_greeting")
+	if kicker == nil || !kicker.IsAsync {
+		t.Fatalf("expected async kicker $compute_greeting")
+	}
+	if ir.BlockHasAsyncCall(greeting.Block) {
+		t.Fatalf("greeting still has async after lowering")
+	}
 }
 ```
 
@@ -716,88 +716,88 @@ Run: `go test -run TestLowerAsyncReactive_NamedComputed ./internal/lower/`
 package lower
 
 import (
-    "fmt"
+	"fmt"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func lowerAsyncReactive(pkg *ir.Package, _ Caps) error {
-    if pkg == nil {
-        return nil
-    }
-    var work []*ir.Func
-    for _, fn := range pkg.Funcs {
-        if isReactiveAsyncComputed(fn) {
-            work = append(work, fn)
-        }
-    }
-    for _, fn := range work {
-        if err := lowerNamedComputed(pkg, fn); err != nil {
-            return err
-        }
-    }
-    return nil
+	if pkg == nil {
+		return nil
+	}
+	var work []*ir.Func
+	for _, fn := range pkg.Funcs {
+		if isReactiveAsyncComputed(fn) {
+			work = append(work, fn)
+		}
+	}
+	for _, fn := range work {
+		if err := lowerNamedComputed(pkg, fn); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // isReactiveAsyncComputed: zero-param, expression-body, body has async call.
 func isReactiveAsyncComputed(fn *ir.Func) bool {
-    if fn == nil || fn.IsTest || len(fn.Params) != 0 || fn.AST == nil || fn.AST.Body == nil {
-        return false
-    }
-    return ir.BlockHasAsyncCall(fn.Block)
+	if fn == nil || fn.IsTest || len(fn.Params) != 0 || fn.AST == nil || fn.AST.Body == nil {
+		return false
+	}
+	return ir.BlockHasAsyncCall(fn.Block)
 }
 
 func lowerNamedComputed(pkg *ir.Package, fn *ir.Func) error {
-    retType := fn.Sig.Return
-    zero, err := zeroValueExpr(retType)
-    if err != nil {
-        return fmt.Errorf("lowerAsyncReactive: %s: %w", fn.Name, err)
-    }
-    syntheticVar := "__async_" + fn.Name
-    pkg.StateVars = append(pkg.StateVars, &ir.Var{
-        Name: syntheticVar,
-        Type: retType,
-        Init: zero,
-    })
+	retType := fn.Sig.Return
+	zero, err := zeroValueExpr(retType)
+	if err != nil {
+		return fmt.Errorf("lowerAsyncReactive: %s: %w", fn.Name, err)
+	}
+	syntheticVar := "__async_" + fn.Name
+	pkg.StateVars = append(pkg.StateVars, &ir.Var{
+		Name: syntheticVar,
+		Type: retType,
+		Init: zero,
+	})
 
-    // Kicker function: async, body = `__async_<n> = <orig body expression>`
-    origRet := fn.Block[0].(*ir.Return) // guaranteed by isReactiveAsyncComputed
-    kicker := &ir.Func{
-        Name:    "$compute_" + fn.Name,
-        IsAsync: true,
-        Block: []ir.Stmt{
-            &ir.Assign{
-                Target: &ir.Ident{Name: syntheticVar},
-                Value:  origRet.Value,
-            },
-        },
-        Sig: &ir.FuncSig{Return: nil}, // void
-    }
-    pkg.Funcs = append(pkg.Funcs, kicker)
+	// Kicker function: async, body = `__async_<n> = <orig body expression>`
+	origRet := fn.Block[0].(*ir.Return) // guaranteed by isReactiveAsyncComputed
+	kicker := &ir.Func{
+		Name:    "$compute_" + fn.Name,
+		IsAsync: true,
+		Block: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: syntheticVar},
+				Value:  origRet.Value,
+			},
+		},
+		Sig: &ir.FuncSig{Return: nil}, // void
+	}
+	pkg.Funcs = append(pkg.Funcs, kicker)
 
-    // Wire kicker into reactivity: register dependency on every reactive var
-    // in origRet.Value so the kicker re-runs when those mutate. Mechanism
-    // depends on existing reactivity-pass API. See Task 8b.
+	// Wire kicker into reactivity: register dependency on every reactive var
+	// in origRet.Value so the kicker re-runs when those mutate. Mechanism
+	// depends on existing reactivity-pass API. See Task 8b.
 
-    // Register one-shot startup: append kicker name to pkg.StartupKickers.
-    pkg.StartupKickers = append(pkg.StartupKickers, kicker.Name)
+	// Register one-shot startup: append kicker name to pkg.StartupKickers.
+	pkg.StartupKickers = append(pkg.StartupKickers, kicker.Name)
 
-    // Replace the computed body with a synchronous read.
-    fn.Block = []ir.Stmt{
-        &ir.Return{Value: &ir.Ident{Name: syntheticVar}},
-    }
-    fn.IsAsync = false
-    return nil
+	// Replace the computed body with a synchronous read.
+	fn.Block = []ir.Stmt{
+		&ir.Return{Value: &ir.Ident{Name: syntheticVar}},
+	}
+	fn.IsAsync = false
+	return nil
 }
 
 // zeroValueExpr returns the zero literal for t. Errors when t has no
 // well-defined zero (e.g. an enum without a zero variant). Conservative
 // by design — the user should make the fallback explicit.
 func zeroValueExpr(t *ir.Type) (ir.Expr, error) {
-    // Implementation: switch on t.Kind. Strings -> "", numerics -> 0,
-    // bool -> false, list -> empty list, struct -> nil literal, enum w/
-    // zero variant -> that variant, else -> error.
-    panic("implement zeroValueExpr")
+	// Implementation: switch on t.Kind. Strings -> "", numerics -> 0,
+	// bool -> false, list -> empty list, struct -> nil literal, enum w/
+	// zero variant -> that variant, else -> error.
+	panic("implement zeroValueExpr")
 }
 ```
 
@@ -846,10 +846,10 @@ If the reactivity registry already supports a generic "rerun this code on dep ch
 
 ```go
 func TestLowerAsyncReactive_KickerWiredToDeps(t *testing.T) {
-    // Build a computed `fn greeting() => await fetchUser(state.userId)`.
-    // After lowering, mutating state.userId should be registered as a
-    // trigger for $compute_greeting.
-    // Assert via the appropriate pkg field.
+	// Build a computed `fn greeting() => await fetchUser(state.userId)`.
+	// After lowering, mutating state.userId should be registered as a
+	// trigger for $compute_greeting.
+	// Assert via the appropriate pkg field.
 }
 ```
 
@@ -871,7 +871,7 @@ git commit -m "lower: wire async kickers to reactive dependencies"
 
 ```go
 func (g *Generator) Capabilities() lower.Caps {
-    return lower.Caps{NoReactivity: true, NoAsyncReactive: true}
+	return lower.Caps{NoReactivity: true, NoAsyncReactive: true}
 }
 ```
 
@@ -964,15 +964,15 @@ Three rules:
 
 ```go
 func TestCheckAsync_ParameterizedReactiveError(t *testing.T) {
-    src := `
+	src := `
 import { fetchHello } from "js://app/api"
 @reactive fn greet(name: string): string => "hi " + await fetchHello()
 `
-    _, errs := tryCheck(t, src)
-    requireError(t, errs, "async expression not allowed in parameterized reactive context")
+	_, errs := tryCheck(t, src)
+	requireError(t, errs, "async expression not allowed in parameterized reactive context")
 }
 
-func TestCheckAsync_ReservedPrefixError(t *testing.T) { /* user defines __async_foo */ }
+func TestCheckAsync_ReservedPrefixError(t *testing.T)    { /* user defines __async_foo */ }
 func TestCheckAsync_AsyncIntoSyncSlotError(t *testing.T) { /* pass async fn to sync param */ }
 ```
 
@@ -1156,11 +1156,11 @@ Build a SNGL program with a button whose click handler calls an async native tha
 package html_test
 
 import (
-    "testing"
+	"testing"
 )
 
 func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
-    src := `
+	src := `
 import { fetchHello } from "js://app/api"
 
 state greeting: string = "before"
@@ -1170,12 +1170,12 @@ window MainWindow {
     text "{greeting}"
 }
 `
-    // mock api.ts with fetchHello returning "after"
-    // build, serve, click, wait, assert text == "after"
-    runBrowserCase(t, src, browserExpect{
-        clickSelector: "button",
-        finalText:     "after",
-    })
+	// mock api.ts with fetchHello returning "after"
+	// build, serve, click, wait, assert text == "after"
+	runBrowserCase(t, src, browserExpect{
+		clickSelector: "button",
+		finalText:     "after",
+	})
 }
 ```
 

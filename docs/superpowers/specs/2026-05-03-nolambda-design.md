@@ -31,13 +31,13 @@ After brainstorm:
 ```go
 // ir/expr.go
 type Closure struct {
-    AST   *ast.LambdaExpr // original lambda's source position (nil for synthesized handler lifts)
-    Type  *Type           // user-visible TypeFunc — without the synthesized leading state param
-    Func  *Func           // lifted top-level Func; first Param is the state struct
-    State *StructLit      // construction of the captured-state struct at this site
+	AST   *ast.LambdaExpr // original lambda's source position (nil for synthesized handler lifts)
+	Type  *Type           // user-visible TypeFunc — without the synthesized leading state param
+	Func  *Func           // lifted top-level Func; first Param is the state struct
+	State *StructLit      // construction of the captured-state struct at this site
 }
 
-func (*Closure) exprNode()        {}
+func (*Closure) exprNode()         {}
 func (x *Closure) ExprType() *Type { return x.Type }
 ```
 
@@ -52,8 +52,8 @@ Notes:
 ```go
 // ir/types.go
 const (
-    // ...existing kinds...
-    TypeRef // Elem set
+	// ...existing kinds...
+	TypeRef // Elem set
 )
 ```
 
@@ -106,9 +106,9 @@ Exported as a helper on a `lifter` struct so callers (the main NoLambda pass and
 ```go
 // internal/lower/lambda.go
 type lifter struct {
-    pkg     *ir.Package
-    counter int
-    enclosingScopes []*scopeFrame // tracks captured-Var → state-field for nested lifts
+	pkg             *ir.Package
+	counter         int
+	enclosingScopes []*scopeFrame // tracks captured-Var → state-field for nested lifts
 }
 
 // Lift converts a closure-shaped Func+body into a top-level Func + caps StructDef

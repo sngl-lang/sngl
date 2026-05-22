@@ -31,7 +31,7 @@
 - `internal/checker/expr.go` — recognize context-name references in:
   - visual-node position inside windows/components → emit `ir.ContextProvider`;
   - expression position → emit `ir.ContextRead` typed as `T`.
-  Reject disallowed positions (assign target, func arg, struct field, list element, local var init).
+    Reject disallowed positions (assign target, func arg, struct field, list element, local var init).
 - `internal/checker/scope.go` — `Scope.Declare` handles `*ir.Context` like other symbols.
 - `internal/checker/stdlib.go` — recognize that stdlib i18n functions are implicit readers of the `locale` context (mark on function signatures or via a separate predicate the lowering pass consults).
 - `ir/ir.go` — add `Contexts []*Context` field to `Package`.
@@ -145,26 +145,26 @@ package ir
 import "testing"
 
 func TestContextDeclSymName(t *testing.T) {
-    c := &Context{Name: "theme"}
-    if got := c.SymName(); got != "theme" {
-        t.Errorf("SymName = %q, want %q", got, "theme")
-    }
+	c := &Context{Name: "theme"}
+	if got := c.SymName(); got != "theme" {
+		t.Errorf("SymName = %q, want %q", got, "theme")
+	}
 }
 
 func TestContextReadIsExpr(t *testing.T) {
-    var _ Expr = (*ContextRead)(nil)
+	var _ Expr = (*ContextRead)(nil)
 }
 
 func TestContextProviderIsStmt(t *testing.T) {
-    var _ Stmt = (*ContextProvider)(nil)
+	var _ Stmt = (*ContextProvider)(nil)
 }
 
 func TestPackageContexts(t *testing.T) {
-    p := &Package{}
-    p.Contexts = append(p.Contexts, &Context{Name: "theme"})
-    if len(p.Contexts) != 1 {
-        t.Fatalf("len = %d", len(p.Contexts))
-    }
+	p := &Package{}
+	p.Contexts = append(p.Contexts, &Context{Name: "theme"})
+	if len(p.Contexts) != 1 {
+		t.Fatalf("len = %d", len(p.Contexts))
+	}
 }
 ```
 
@@ -187,10 +187,10 @@ import "git.duckfam.us/jonathan/sngl/ast"
 // type. The lowering pass NoContext threads its value through every
 // reachable component as a hidden parameter.
 type Context struct {
-    AST     *ast.VisualNode
-    Name    string
-    Typ     *Type
-    Default Expr
+	AST     *ast.VisualNode
+	Name    string
+	Typ     *Type
+	Default Expr
 }
 
 func (c *Context) SymName() string { return c.Name }
@@ -200,36 +200,36 @@ func (c *Context) SymType() *Type  { return c.Typ }
 // window or component body. The lowering pass NoContext rewrites it into
 // hidden-prop assignments on every component call reachable inside Body.
 type ContextProvider struct {
-    AST   *ast.VisualNode
-    Ref   *Context
-    Value Expr
-    Body  []Stmt
+	AST   *ast.VisualNode
+	Ref   *Context
+	Value Expr
+	Body  []Stmt
 }
 
 func (p *ContextProvider) stmtNode() {}
 func (p *ContextProvider) StmtPos() *ast.Pos {
-    if p.AST != nil {
-        return &p.AST.Pos
-    }
-    return nil
+	if p.AST != nil {
+		return &p.AST.Pos
+	}
+	return nil
 }
 
 // ContextRead is the IR form of a bare reference to a context name in
 // expression position. Lowering rewrites these to reads of the
 // synthesized hidden parameter `__ctx_<Name>`.
 type ContextRead struct {
-    AST *ast.IdentExpr
-    Ref *Context
-    Typ *Type
+	AST *ast.IdentExpr
+	Ref *Context
+	Typ *Type
 }
 
-func (r *ContextRead) exprNode()    {}
-func (r *ContextRead) Type() *Type  { return r.Typ }
+func (r *ContextRead) exprNode()   {}
+func (r *ContextRead) Type() *Type { return r.Typ }
 func (r *ContextRead) ExprPos() *ast.Pos {
-    if r.AST != nil {
-        return &r.AST.Pos
-    }
-    return nil
+	if r.AST != nil {
+		return &r.AST.Pos
+	}
+	return nil
 }
 ```
 
@@ -268,22 +268,22 @@ Add to `ir/context_test.go`:
 
 ```go
 func TestConvertContextDecl(t *testing.T) {
-    p := &Package{Contexts: []*Context{
-        {Name: "theme", Typ: &Type{Kind: TypeString}, Default: &StringLit{Value: "light"}},
-    }}
-    doc := Convert(p)
-    found := false
-    for _, v := range doc.Visuals {
-        if vn, ok := v.(*ast.VisualNode); ok {
-            if ident, ok := vn.Target.(*ast.IdentExpr); ok && ident.Name == "context" && vn.ID == "theme" {
-                found = true
-                break
-            }
-        }
-    }
-    if !found {
-        t.Fatalf("Convert did not emit context decl as visual node")
-    }
+	p := &Package{Contexts: []*Context{
+		{Name: "theme", Typ: &Type{Kind: TypeString}, Default: &StringLit{Value: "light"}},
+	}}
+	doc := Convert(p)
+	found := false
+	for _, v := range doc.Visuals {
+		if vn, ok := v.(*ast.VisualNode); ok {
+			if ident, ok := vn.Target.(*ast.IdentExpr); ok && ident.Name == "context" && vn.ID == "theme" {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("Convert did not emit context decl as visual node")
+	}
 }
 ```
 
@@ -298,12 +298,12 @@ Locate the function that walks `Package` into `*ast.Document` (likely `Convert(*
 
 ```go
 for _, c := range p.Contexts {
-    vn := &ast.VisualNode{
-        Target: &ast.IdentExpr{Name: "context"},
-        ID:     c.Name,
-        Args:   []*ast.NamedArg{{Value: convertExpr(c.Default)}},
-    }
-    doc.Visuals = append(doc.Visuals, vn)
+	vn := &ast.VisualNode{
+		Target: &ast.IdentExpr{Name: "context"},
+		ID:     c.Name,
+		Args:   []*ast.NamedArg{{Value: convertExpr(c.Default)}},
+	}
+	doc.Visuals = append(doc.Visuals, vn)
 }
 ```
 
@@ -387,50 +387,50 @@ Helpers (new file `internal/checker/context.go`):
 package checker
 
 import (
-    "git.duckfam.us/jonathan/sngl/ast"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:
 // Call.Func is a SelectExpr{Operand: IdentExpr{"context"}, Kind: SelectElemRef}.
 func isContextDeclCallStmt(s *ast.CallStmt) bool {
-    sel, ok := s.Call.Func.(*ast.SelectExpr)
-    if !ok || sel.Kind != ast.SelectElemRef {
-        return false
-    }
-    ident, ok := sel.Operand.(*ast.IdentExpr)
-    return ok && ident.Name == "context"
+	sel, ok := s.Call.Func.(*ast.SelectExpr)
+	if !ok || sel.Kind != ast.SelectElemRef {
+		return false
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	return ok && ident.Name == "context"
 }
 
 func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
-    sel := s.Call.Func.(*ast.SelectExpr)
-    name := sel.Field
-    ctx := &ir.Context{Name: name}
-    if name == "" {
-        c.error(s.Pos, "context decl requires #identifier")
-    }
-    args := s.Call.Args.Args
-    if len(args) != 1 {
-        c.error(s.Pos, "context decl takes exactly one positional default value")
-        c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-        return
-    }
-    a, isArg := args[0].(ast.Arg)
-    if !isArg || a.Name != "" {
-        c.error(s.Pos, "context decl takes exactly one positional default value")
-        c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-        return
-    }
-    def := c.checkExpr(a.Value, nil)
-    if !isConstantExpr(def) {
-        c.error(a.Value.ExprPos(), "context default must be a constant expression")
-    }
-    ctx.Default = def
-    ctx.Typ = def.Type()
-    c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-    if name != "" {
-        c.scope.Declare(ctx)
-    }
+	sel := s.Call.Func.(*ast.SelectExpr)
+	name := sel.Field
+	ctx := &ir.Context{Name: name}
+	if name == "" {
+		c.error(s.Pos, "context decl requires #identifier")
+	}
+	args := s.Call.Args.Args
+	if len(args) != 1 {
+		c.error(s.Pos, "context decl takes exactly one positional default value")
+		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		return
+	}
+	a, isArg := args[0].(ast.Arg)
+	if !isArg || a.Name != "" {
+		c.error(s.Pos, "context decl takes exactly one positional default value")
+		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		return
+	}
+	def := c.checkExpr(a.Value, nil)
+	if !isConstantExpr(def) {
+		c.error(a.Value.ExprPos(), "context default must be a constant expression")
+	}
+	ctx.Default = def
+	ctx.Typ = def.Type()
+	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+	if name != "" {
+		c.scope.Declare(ctx)
+	}
 }
 ```
 
@@ -548,13 +548,13 @@ In `internal/checker/expr.go`, in the function that resolves visual-node targets
 
 ```go
 if ctx, ok := sym.(*ir.Context); ok {
-    if len(vn.Args) != 1 || vn.Args[0].Name != "" {
-        c.error(vn.Pos, "context provider takes exactly one positional value")
-        return nil
-    }
-    val := c.checkExpr(vn.Args[0].Value, ctx.Typ)
-    body := c.checkBody(vn.Body)
-    return &ir.ContextProvider{AST: vn, Ref: ctx, Value: val, Body: body}
+	if len(vn.Args) != 1 || vn.Args[0].Name != "" {
+		c.error(vn.Pos, "context provider takes exactly one positional value")
+		return nil
+	}
+	val := c.checkExpr(vn.Args[0].Value, ctx.Typ)
+	body := c.checkBody(vn.Body)
+	return &ir.ContextProvider{AST: vn, Ref: ctx, Value: val, Body: body}
 }
 ```
 
@@ -608,7 +608,7 @@ In ident-expression checking: when an identifier resolves to `*ir.Context`, emit
 
 ```go
 if ctx, ok := sym.(*ir.Context); ok {
-    return &ir.ContextRead{AST: e, Ref: ctx, Typ: ctx.Typ}
+	return &ir.ContextRead{AST: e, Ref: ctx, Typ: ctx.Typ}
 }
 ```
 
@@ -781,10 +781,10 @@ Add to `internal/lower/caps_test.go`:
 
 ```go
 func TestCapsNoContextString(t *testing.T) {
-    c := Caps{NoContext: true}
-    if !strings.Contains(c.String(), "NoContext") {
-        t.Errorf("Caps{NoContext:true}.String() = %q, missing NoContext", c.String())
-    }
+	c := Caps{NoContext: true}
+	if !strings.Contains(c.String(), "NoContext") {
+		t.Errorf("Caps{NoContext:true}.String() = %q, missing NoContext", c.String())
+	}
 }
 ```
 
@@ -839,25 +839,25 @@ Create `internal/lower/context_test.go`:
 package lower
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestNoContextNoop(t *testing.T) {
-    pkg := &ir.Package{}
-    if err := passNoContext.apply(pkg, Caps{NoContext: true}, Options{}); err != nil {
-        t.Fatalf("apply: %v", err)
-    }
+	pkg := &ir.Package{}
+	if err := passNoContext.apply(pkg, Caps{NoContext: true}, Options{}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
 }
 
 func TestPassNoContextRegistered(t *testing.T) {
-    for _, name := range PassNames() {
-        if name == "NoContext" {
-            return
-        }
-    }
-    t.Fatalf("NoContext not in PassNames(): %v", PassNames())
+	for _, name := range PassNames() {
+		if name == "NoContext" {
+			return
+		}
+	}
+	t.Fatalf("NoContext not in PassNames(): %v", PassNames())
 }
 ```
 
@@ -876,51 +876,51 @@ package lower
 import "git.duckfam.us/jonathan/sngl/ir"
 
 var passNoContext = pass{
-    name:    "NoContext",
-    enabled: func(c Caps) bool { return c.NoContext },
-    apply:   applyNoContext,
+	name:    "NoContext",
+	enabled: func(c Caps) bool { return c.NoContext },
+	apply:   applyNoContext,
 }
 
 // applyNoContext rewrites all context decls + providers + reads into
 // hidden-prop threading. See spec §Pipeline → Lowering.
 func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
-    if len(pkg.Contexts) == 0 {
-        return nil
-    }
-    // 1. Reachability per context.
-    reach := computeReachability(pkg)
+	if len(pkg.Contexts) == 0 {
+		return nil
+	}
+	// 1. Reachability per context.
+	reach := computeReachability(pkg)
 
-    // 2. Synthesize __ctx_<name> param on each Reach component.
-    addHiddenParams(pkg, reach)
+	// 2. Synthesize __ctx_<name> param on each Reach component.
+	addHiddenParams(pkg, reach)
 
-    // 3. Rewrite ContextReads to reads of the hidden param.
-    rewriteReads(pkg, reach)
+	// 3. Rewrite ContextReads to reads of the hidden param.
+	rewriteReads(pkg, reach)
 
-    // 4. Lower ContextProviders to per-component-call hidden-prop assignments.
-    lowerProviders(pkg, reach)
+	// 4. Lower ContextProviders to per-component-call hidden-prop assignments.
+	lowerProviders(pkg, reach)
 
-    // 5. Inject root defaults at each window.
-    injectRootDefaults(pkg)
+	// 5. Inject root defaults at each window.
+	injectRootDefaults(pkg)
 
-    // 6. Clear pkg.Contexts (no longer needed; round-trip should not re-emit decls).
-    pkg.Contexts = nil
-    return nil
+	// 6. Clear pkg.Contexts (no longer needed; round-trip should not re-emit decls).
+	pkg.Contexts = nil
+	return nil
 }
 
 func computeReachability(pkg *ir.Package) map[*ir.Context]map[*ir.Component]bool {
-    panic("TODO Task 14")
+	panic("TODO Task 14")
 }
 func addHiddenParams(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    panic("TODO Task 15")
+	panic("TODO Task 15")
 }
 func rewriteReads(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    panic("TODO Task 16")
+	panic("TODO Task 16")
 }
 func lowerProviders(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    panic("TODO Task 17")
+	panic("TODO Task 17")
 }
 func injectRootDefaults(pkg *ir.Package) {
-    panic("TODO Task 18")
+	panic("TODO Task 18")
 }
 ```
 
@@ -928,22 +928,22 @@ Modify `internal/lower/lower.go` passes slice — insert after `passLambda`, bef
 
 ```go
 var passes = []pass{
-    passPlatformExtensionBody,
-    passUnit,
-    passEnum,
-    passTernary,
-    passAsyncReactive,
-    passComputed,
-    passLambda,
-    passNoListLambdas,
-    passToggle,
-    passNoContext,        // NEW — must run before InlinePure (provider rewrite needs un-inlined component shape) and Reactivity (hidden params must be visible as reactive deps).
-    passInlinePure,
-    passNoInlineComponents,
-    passReactivity,
-    passTimer,
-    passDeclarative,
-    passNoRef,
+	passPlatformExtensionBody,
+	passUnit,
+	passEnum,
+	passTernary,
+	passAsyncReactive,
+	passComputed,
+	passLambda,
+	passNoListLambdas,
+	passToggle,
+	passNoContext, // NEW — must run before InlinePure (provider rewrite needs un-inlined component shape) and Reactivity (hidden params must be visible as reactive deps).
+	passInlinePure,
+	passNoInlineComponents,
+	passReactivity,
+	passTimer,
+	passDeclarative,
+	passNoRef,
 }
 ```
 
@@ -978,9 +978,9 @@ Add to `internal/lower/context_test.go`:
 
 ```go
 func TestReachabilityDirectRead(t *testing.T) {
-    // Build IR with a context and a component that reads it. Assert
-    // the component is in Reach(ctx).
-    pkg, ctx, comp := mustParseAndCheck(t, `
+	// Build IR with a context and a component that reads it. Assert
+	// the component is in Reach(ctx).
+	pkg, ctx, comp := mustParseAndCheck(t, `
 context #theme("light")
 
 component A {
@@ -991,14 +991,14 @@ window #home(title="x", href="/") {
     A()
 }
 `)
-    reach := computeReachability(pkg)
-    if !reach[ctx][comp("A")] {
-        t.Fatalf("A not marked as reaching theme")
-    }
+	reach := computeReachability(pkg)
+	if !reach[ctx][comp("A")] {
+		t.Fatalf("A not marked as reaching theme")
+	}
 }
 
 func TestReachabilityTransitive(t *testing.T) {
-    pkg, ctx, comp := mustParseAndCheck(t, `
+	pkg, ctx, comp := mustParseAndCheck(t, `
 context #theme("light")
 
 component Leaf { text(value=theme) }
@@ -1007,16 +1007,16 @@ component Top  { Mid() }
 
 window #home(title="x", href="/") { Top() }
 `)
-    reach := computeReachability(pkg)
-    for _, n := range []string{"Leaf", "Mid", "Top"} {
-        if !reach[ctx][comp(n)] {
-            t.Errorf("%s not in Reach(theme)", n)
-        }
-    }
+	reach := computeReachability(pkg)
+	for _, n := range []string{"Leaf", "Mid", "Top"} {
+		if !reach[ctx][comp(n)] {
+			t.Errorf("%s not in Reach(theme)", n)
+		}
+	}
 }
 
 func TestReachabilityShadowingBlocks(t *testing.T) {
-    pkg, ctx, comp := mustParseAndCheck(t, `
+	pkg, ctx, comp := mustParseAndCheck(t, `
 context #theme("light")
 
 component Leaf { text(value=theme) }
@@ -1027,17 +1027,17 @@ component Top  { Mid() }
 
 window #home(title="x", href="/") { Top() }
 `)
-    reach := computeReachability(pkg)
-    if !reach[ctx][comp("Leaf")] {
-        t.Errorf("Leaf must be in Reach (it reads theme)")
-    }
-    // Mid contains a shadowed call to Leaf, so Mid does NOT need to forward theme.
-    if reach[ctx][comp("Mid")] {
-        t.Errorf("Mid should not be in Reach — its Leaf call is shadowed")
-    }
-    if reach[ctx][comp("Top")] {
-        t.Errorf("Top should not be in Reach — Mid does not need it")
-    }
+	reach := computeReachability(pkg)
+	if !reach[ctx][comp("Leaf")] {
+		t.Errorf("Leaf must be in Reach (it reads theme)")
+	}
+	// Mid contains a shadowed call to Leaf, so Mid does NOT need to forward theme.
+	if reach[ctx][comp("Mid")] {
+		t.Errorf("Mid should not be in Reach — its Leaf call is shadowed")
+	}
+	if reach[ctx][comp("Top")] {
+		t.Errorf("Top should not be in Reach — Mid does not need it")
+	}
 }
 ```
 
@@ -1052,91 +1052,91 @@ Expected: FAIL — function panics with "TODO".
 
 ```go
 func computeReachability(pkg *ir.Package) map[*ir.Context]map[*ir.Component]bool {
-    reach := make(map[*ir.Context]map[*ir.Component]bool, len(pkg.Contexts))
-    for _, ctx := range pkg.Contexts {
-        reach[ctx] = make(map[*ir.Component]bool)
-    }
-    // Step 1: direct readers — components whose body contains ContextRead.
-    for _, comp := range pkg.Components {
-        directly := componentDirectContextReads(comp)
-        for ctx := range directly {
-            reach[ctx][comp] = true
-        }
-    }
-    // Step 2: fixpoint propagation through call graph, respecting shadowing.
-    changed := true
-    for changed {
-        changed = false
-        for _, caller := range pkg.Components {
-            calls := componentComponentCalls(caller) // []componentCall{Callee, ShadowedCtxs}
-            for _, call := range calls {
-                for ctx := range reach {
-                    if call.shadowed[ctx] {
-                        continue
-                    }
-                    if reach[ctx][call.callee] && !reach[ctx][caller] {
-                        reach[ctx][caller] = true
-                        changed = true
-                    }
-                }
-            }
-        }
-    }
-    return reach
+	reach := make(map[*ir.Context]map[*ir.Component]bool, len(pkg.Contexts))
+	for _, ctx := range pkg.Contexts {
+		reach[ctx] = make(map[*ir.Component]bool)
+	}
+	// Step 1: direct readers — components whose body contains ContextRead.
+	for _, comp := range pkg.Components {
+		directly := componentDirectContextReads(comp)
+		for ctx := range directly {
+			reach[ctx][comp] = true
+		}
+	}
+	// Step 2: fixpoint propagation through call graph, respecting shadowing.
+	changed := true
+	for changed {
+		changed = false
+		for _, caller := range pkg.Components {
+			calls := componentComponentCalls(caller) // []componentCall{Callee, ShadowedCtxs}
+			for _, call := range calls {
+				for ctx := range reach {
+					if call.shadowed[ctx] {
+						continue
+					}
+					if reach[ctx][call.callee] && !reach[ctx][caller] {
+						reach[ctx][caller] = true
+						changed = true
+					}
+				}
+			}
+		}
+	}
+	return reach
 }
 
 type componentCall struct {
-    callee   *ir.Component
-    shadowed map[*ir.Context]bool
+	callee   *ir.Component
+	shadowed map[*ir.Context]bool
 }
 
 // componentDirectContextReads walks comp's body for ContextRead.
 func componentDirectContextReads(comp *ir.Component) map[*ir.Context]bool {
-    out := map[*ir.Context]bool{}
-    ir.WalkStmts(comp.Body, func(s ir.Stmt) {
-        ir.WalkExprs(s, func(e ir.Expr) {
-            if r, ok := e.(*ir.ContextRead); ok {
-                out[r.Ref] = true
-            }
-        })
-    })
-    return out
+	out := map[*ir.Context]bool{}
+	ir.WalkStmts(comp.Body, func(s ir.Stmt) {
+		ir.WalkExprs(s, func(e ir.Expr) {
+			if r, ok := e.(*ir.ContextRead); ok {
+				out[r.Ref] = true
+			}
+		})
+	})
+	return out
 }
 
 // componentComponentCalls walks body, returning every component call with
 // the set of contexts that are shadowed at that call site (any enclosing
 // ContextProvider).
 func componentComponentCalls(comp *ir.Component) []componentCall {
-    var out []componentCall
-    var walk func(stmts []ir.Stmt, shadow map[*ir.Context]bool)
-    walk = func(stmts []ir.Stmt, shadow map[*ir.Context]bool) {
-        for _, s := range stmts {
-            switch n := s.(type) {
-            case *ir.ContextProvider:
-                inner := copyShadow(shadow)
-                inner[n.Ref] = true
-                walk(n.Body, inner)
-            case *ir.ComponentCall:
-                out = append(out, componentCall{callee: n.Callee, shadowed: copyShadow(shadow)})
-            case *ir.If:
-                walk(n.Then, shadow)
-                walk(n.Else, shadow)
-            case *ir.For:
-                walk(n.Body, shadow)
-            // other stmt types with nested stmts: recurse similarly
-            }
-        }
-    }
-    walk(comp.Body, map[*ir.Context]bool{})
-    return out
+	var out []componentCall
+	var walk func(stmts []ir.Stmt, shadow map[*ir.Context]bool)
+	walk = func(stmts []ir.Stmt, shadow map[*ir.Context]bool) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.ContextProvider:
+				inner := copyShadow(shadow)
+				inner[n.Ref] = true
+				walk(n.Body, inner)
+			case *ir.ComponentCall:
+				out = append(out, componentCall{callee: n.Callee, shadowed: copyShadow(shadow)})
+			case *ir.If:
+				walk(n.Then, shadow)
+				walk(n.Else, shadow)
+			case *ir.For:
+				walk(n.Body, shadow)
+				// other stmt types with nested stmts: recurse similarly
+			}
+		}
+	}
+	walk(comp.Body, map[*ir.Context]bool{})
+	return out
 }
 
 func copyShadow(m map[*ir.Context]bool) map[*ir.Context]bool {
-    out := make(map[*ir.Context]bool, len(m))
-    for k, v := range m {
-        out[k] = v
-    }
-    return out
+	out := make(map[*ir.Context]bool, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 ```
 
@@ -1165,24 +1165,24 @@ For each `(ctx, comp)` in reach: add a synthetic `*ir.Var` parameter `__ctx_<ctx
 
 ```go
 func TestAddHiddenParams(t *testing.T) {
-    pkg, ctx, comp := mustParseAndCheck(t, `
+	pkg, ctx, comp := mustParseAndCheck(t, `
 context #theme("light")
 component A { text(value=theme) }
 window #home(title="x", href="/") { A() }
 `)
-    reach := computeReachability(pkg)
-    addHiddenParams(pkg, reach)
-    a := comp("A")
-    found := false
-    for _, p := range a.Params {
-        if p.Name == "__ctx_theme" && p.Type.Kind == ir.TypeString {
-            found = true
-        }
-    }
-    if !found {
-        t.Fatalf("A.Params missing __ctx_theme: %v", a.Params)
-    }
-    _ = ctx
+	reach := computeReachability(pkg)
+	addHiddenParams(pkg, reach)
+	a := comp("A")
+	found := false
+	for _, p := range a.Params {
+		if p.Name == "__ctx_theme" && p.Type.Kind == ir.TypeString {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("A.Params missing __ctx_theme: %v", a.Params)
+	}
+	_ = ctx
 }
 ```
 
@@ -1190,20 +1190,20 @@ window #home(title="x", href="/") { A() }
 
 ```go
 func addHiddenParams(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    for _, ctx := range pkg.Contexts {
-        for _, comp := range pkg.Components {
-            if !reach[ctx][comp] {
-                continue
-            }
-            paramName := "__ctx_" + ctx.Name
-            comp.Params = append(comp.Params, &ir.Var{
-                Name: paramName,
-                Typ:  ctx.Typ,
-                Kind: ir.VarKindParam, // adjust if Kind field is different
-                Synthetic: true,       // add field if absent
-            })
-        }
-    }
+	for _, ctx := range pkg.Contexts {
+		for _, comp := range pkg.Components {
+			if !reach[ctx][comp] {
+				continue
+			}
+			paramName := "__ctx_" + ctx.Name
+			comp.Params = append(comp.Params, &ir.Var{
+				Name:      paramName,
+				Typ:       ctx.Typ,
+				Kind:      ir.VarKindParam, // adjust if Kind field is different
+				Synthetic: true,            // add field if absent
+			})
+		}
+	}
 }
 ```
 
@@ -1224,31 +1224,31 @@ Rewrite every `*ir.ContextRead{Ref: ctx}` inside a component in `Reach(ctx)` to 
 
 ```go
 func TestRewriteReads(t *testing.T) {
-    pkg, _, comp := mustParseAndCheck(t, `
+	pkg, _, comp := mustParseAndCheck(t, `
 context #theme("light")
 component A { text(value=theme) }
 window #home(title="x", href="/") { A() }
 `)
-    reach := computeReachability(pkg)
-    addHiddenParams(pkg, reach)
-    rewriteReads(pkg, reach)
-    // Walk A.Body; expect no ContextRead remains; expect a VarRef to __ctx_theme.
-    seenCtx := false
-    seenVar := false
-    ir.WalkExprs(comp("A").Body, func(e ir.Expr) {
-        if _, ok := e.(*ir.ContextRead); ok {
-            seenCtx = true
-        }
-        if v, ok := e.(*ir.VarRef); ok && v.Var.Name == "__ctx_theme" {
-            seenVar = true
-        }
-    })
-    if seenCtx {
-        t.Errorf("ContextRead survived rewrite")
-    }
-    if !seenVar {
-        t.Errorf("no VarRef to __ctx_theme produced")
-    }
+	reach := computeReachability(pkg)
+	addHiddenParams(pkg, reach)
+	rewriteReads(pkg, reach)
+	// Walk A.Body; expect no ContextRead remains; expect a VarRef to __ctx_theme.
+	seenCtx := false
+	seenVar := false
+	ir.WalkExprs(comp("A").Body, func(e ir.Expr) {
+		if _, ok := e.(*ir.ContextRead); ok {
+			seenCtx = true
+		}
+		if v, ok := e.(*ir.VarRef); ok && v.Var.Name == "__ctx_theme" {
+			seenVar = true
+		}
+	})
+	if seenCtx {
+		t.Errorf("ContextRead survived rewrite")
+	}
+	if !seenVar {
+		t.Errorf("no VarRef to __ctx_theme produced")
+	}
 }
 ```
 
@@ -1256,36 +1256,36 @@ window #home(title="x", href="/") { A() }
 
 ```go
 func rewriteReads(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    // Pre-build param lookup: comp → ctx → *Var
-    paramOf := map[*ir.Component]map[*ir.Context]*ir.Var{}
-    for _, comp := range pkg.Components {
-        paramOf[comp] = map[*ir.Context]*ir.Var{}
-        for _, ctx := range pkg.Contexts {
-            if !reach[ctx][comp] {
-                continue
-            }
-            for _, p := range comp.Params {
-                if p.Name == "__ctx_"+ctx.Name {
-                    paramOf[comp][ctx] = p
-                }
-            }
-        }
-    }
-    for _, comp := range pkg.Components {
-        ir.RewriteExprsInStmts(comp.Body, func(e ir.Expr) ir.Expr {
-            r, ok := e.(*ir.ContextRead)
-            if !ok {
-                return e
-            }
-            p, ok := paramOf[comp][r.Ref]
-            if !ok {
-                // Should not happen: reachability should have placed comp in Reach.
-                return e
-            }
-            return &ir.VarRef{Var: p, Typ: r.Typ}
-        })
-    }
-    // Also rewrite reads inside Window.Body using each window's default-context bindings (see Task 18).
+	// Pre-build param lookup: comp → ctx → *Var
+	paramOf := map[*ir.Component]map[*ir.Context]*ir.Var{}
+	for _, comp := range pkg.Components {
+		paramOf[comp] = map[*ir.Context]*ir.Var{}
+		for _, ctx := range pkg.Contexts {
+			if !reach[ctx][comp] {
+				continue
+			}
+			for _, p := range comp.Params {
+				if p.Name == "__ctx_"+ctx.Name {
+					paramOf[comp][ctx] = p
+				}
+			}
+		}
+	}
+	for _, comp := range pkg.Components {
+		ir.RewriteExprsInStmts(comp.Body, func(e ir.Expr) ir.Expr {
+			r, ok := e.(*ir.ContextRead)
+			if !ok {
+				return e
+			}
+			p, ok := paramOf[comp][r.Ref]
+			if !ok {
+				// Should not happen: reachability should have placed comp in Reach.
+				return e
+			}
+			return &ir.VarRef{Var: p, Typ: r.Typ}
+		})
+	}
+	// Also rewrite reads inside Window.Body using each window's default-context bindings (see Task 18).
 }
 ```
 
@@ -1310,55 +1310,55 @@ Nested providers compose: the innermost provider's value wins for calls inside i
 
 ```go
 func lowerProviders(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    for _, comp := range pkg.Components {
-        comp.Body = lowerProvidersInStmts(comp.Body, map[*ir.Context]ir.Expr{}, reach)
-    }
-    for _, w := range pkg.Windows {
-        w.Body = lowerProvidersInStmts(w.Body, map[*ir.Context]ir.Expr{}, reach)
-    }
+	for _, comp := range pkg.Components {
+		comp.Body = lowerProvidersInStmts(comp.Body, map[*ir.Context]ir.Expr{}, reach)
+	}
+	for _, w := range pkg.Windows {
+		w.Body = lowerProvidersInStmts(w.Body, map[*ir.Context]ir.Expr{}, reach)
+	}
 }
 
 func lowerProvidersInStmts(
-    stmts []ir.Stmt,
-    active map[*ir.Context]ir.Expr,
-    reach map[*ir.Context]map[*ir.Component]bool,
+	stmts []ir.Stmt,
+	active map[*ir.Context]ir.Expr,
+	reach map[*ir.Context]map[*ir.Component]bool,
 ) []ir.Stmt {
-    out := make([]ir.Stmt, 0, len(stmts))
-    for _, s := range stmts {
-        switch n := s.(type) {
-        case *ir.ContextProvider:
-            inner := copyExprMap(active)
-            inner[n.Ref] = n.Value
-            lowered := lowerProvidersInStmts(n.Body, inner, reach)
-            out = append(out, lowered...)
-        case *ir.ComponentCall:
-            for ctx, val := range active {
-                if !reach[ctx][n.Callee] {
-                    continue
-                }
-                n.Args = append(n.Args, &ir.NamedArg{Name: "__ctx_" + ctx.Name, Value: val})
-            }
-            out = append(out, n)
-        case *ir.If:
-            n.Then = lowerProvidersInStmts(n.Then, active, reach)
-            n.Else = lowerProvidersInStmts(n.Else, active, reach)
-            out = append(out, n)
-        case *ir.For:
-            n.Body = lowerProvidersInStmts(n.Body, active, reach)
-            out = append(out, n)
-        default:
-            out = append(out, n)
-        }
-    }
-    return out
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.ContextProvider:
+			inner := copyExprMap(active)
+			inner[n.Ref] = n.Value
+			lowered := lowerProvidersInStmts(n.Body, inner, reach)
+			out = append(out, lowered...)
+		case *ir.ComponentCall:
+			for ctx, val := range active {
+				if !reach[ctx][n.Callee] {
+					continue
+				}
+				n.Args = append(n.Args, &ir.NamedArg{Name: "__ctx_" + ctx.Name, Value: val})
+			}
+			out = append(out, n)
+		case *ir.If:
+			n.Then = lowerProvidersInStmts(n.Then, active, reach)
+			n.Else = lowerProvidersInStmts(n.Else, active, reach)
+			out = append(out, n)
+		case *ir.For:
+			n.Body = lowerProvidersInStmts(n.Body, active, reach)
+			out = append(out, n)
+		default:
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func copyExprMap(m map[*ir.Context]ir.Expr) map[*ir.Context]ir.Expr {
-    out := make(map[*ir.Context]ir.Expr, len(m))
-    for k, v := range m {
-        out[k] = v
-    }
-    return out
+	out := make(map[*ir.Context]ir.Expr, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 ```
 
@@ -1381,31 +1381,31 @@ Refactor Task 17's `lowerProviders` to accept an initial active map.
 
 ```go
 func TestRootDefaultInjected(t *testing.T) {
-    pkg, _, _ := mustParseAndCheck(t, `
+	pkg, _, _ := mustParseAndCheck(t, `
 context #theme("default-val")
 component A { text(value=theme) }
 window #home(title="x", href="/") { A() }
 `)
-    if err := applyNoContext(pkg, Caps{NoContext: true}, Options{}); err != nil {
-        t.Fatalf(err.Error())
-    }
-    // Window body's A() call should now have __ctx_theme = "default-val"
-    win := pkg.Windows[0]
-    found := false
-    ir.WalkStmts(win.Body, func(s ir.Stmt) {
-        if cc, ok := s.(*ir.ComponentCall); ok && cc.Callee.Name == "A" {
-            for _, a := range cc.Args {
-                if a.Name == "__ctx_theme" {
-                    if lit, ok := a.Value.(*ir.StringLit); ok && lit.Value == "default-val" {
-                        found = true
-                    }
-                }
-            }
-        }
-    })
-    if !found {
-        t.Fatalf("root-default not injected on A() call")
-    }
+	if err := applyNoContext(pkg, Caps{NoContext: true}, Options{}); err != nil {
+		t.Fatalf(err.Error())
+	}
+	// Window body's A() call should now have __ctx_theme = "default-val"
+	win := pkg.Windows[0]
+	found := false
+	ir.WalkStmts(win.Body, func(s ir.Stmt) {
+		if cc, ok := s.(*ir.ComponentCall); ok && cc.Callee.Name == "A" {
+			for _, a := range cc.Args {
+				if a.Name == "__ctx_theme" {
+					if lit, ok := a.Value.(*ir.StringLit); ok && lit.Value == "default-val" {
+						found = true
+					}
+				}
+			}
+		}
+	})
+	if !found {
+		t.Fatalf("root-default not injected on A() call")
+	}
 }
 ```
 
@@ -1413,8 +1413,8 @@ window #home(title="x", href="/") { A() }
 
 ```go
 func injectRootDefaults(pkg *ir.Package) {
-    // No-op — Task 18 changes `lowerProviders` to seed initial active map
-    // from defaults per-window. See updated lowerProviders below.
+	// No-op — Task 18 changes `lowerProviders` to seed initial active map
+	// from defaults per-window. See updated lowerProviders below.
 }
 ```
 
@@ -1422,18 +1422,18 @@ Refactor:
 
 ```go
 func lowerProviders(pkg *ir.Package, reach map[*ir.Context]map[*ir.Component]bool) {
-    defaults := map[*ir.Context]ir.Expr{}
-    for _, ctx := range pkg.Contexts {
-        defaults[ctx] = ctx.Default
-    }
-    for _, w := range pkg.Windows {
-        w.Body = lowerProvidersInStmts(w.Body, copyExprMap(defaults), reach)
-    }
-    // Component bodies: no defaults, because non-window-entry components are
-    // only reached via a window's call chain — defaults flow in from there.
-    for _, comp := range pkg.Components {
-        comp.Body = lowerProvidersInStmts(comp.Body, map[*ir.Context]ir.Expr{}, reach)
-    }
+	defaults := map[*ir.Context]ir.Expr{}
+	for _, ctx := range pkg.Contexts {
+		defaults[ctx] = ctx.Default
+	}
+	for _, w := range pkg.Windows {
+		w.Body = lowerProvidersInStmts(w.Body, copyExprMap(defaults), reach)
+	}
+	// Component bodies: no defaults, because non-window-entry components are
+	// only reached via a window's call chain — defaults flow in from there.
+	for _, comp := range pkg.Components {
+		comp.Body = lowerProvidersInStmts(comp.Body, map[*ir.Context]ir.Expr{}, reach)
+	}
 }
 ```
 
@@ -1712,7 +1712,7 @@ Also delete the generic `setLocale` stub case (the `// TODO: lower t.<name>` def
 
 The `__test_ctx_<name>` vars are declared at test-fn scope by the test runner's mount synthesizer (see Task 27).
 
-- [ ] **Step 3: Wire mount synthesizer to emit __test_ctx_<name> + provider wrap**
+- [ ] **Step 3: Wire mount synthesizer to emit _*test_ctx*<name> + provider wrap**
 
 In the same file, find `mount` lowering. Before emitting the mount call, emit declarations for every context the test references and wrap the mounted subject in `theme(__test_ctx_theme) { ... }` synthesized providers.
 
@@ -1771,12 +1771,12 @@ In `pkg/go/i18n/i18n.go`, add:
 ```go
 // DefaultLocale resolves the process-startup locale from env, with fallback.
 func DefaultLocale() string {
-    for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
-        if v := os.Getenv(k); v != "" {
-            return strings.SplitN(v, ".", 2)[0]
-        }
-    }
-    return "en-US"
+	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		if v := os.Getenv(k); v != "" {
+			return strings.SplitN(v, ".", 2)[0]
+		}
+	}
+	return "en-US"
 }
 ```
 
@@ -1861,17 +1861,18 @@ git commit -m "lower: thread locale through i18n.* call sites"
 var translators sync.Map // map[string]*Translator
 
 func translatorFor(locale string) *Translator {
-    if v, ok := translators.Load(locale); ok {
-        return v.(*Translator)
-    }
-    t := NewTranslator(manifest, locale)
-    actual, _ := translators.LoadOrStore(locale, t)
-    return actual.(*Translator)
+	if v, ok := translators.Load(locale); ok {
+		return v.(*Translator)
+	}
+	t := NewTranslator(manifest, locale)
+	actual, _ := translators.LoadOrStore(locale, t)
+	return actual.(*Translator)
 }
 
 func Tr(key, inlined string, args map[string]any, locale string) string {
-    return translatorFor(locale).Tr(key, inlined, args)
+	return translatorFor(locale).Tr(key, inlined, args)
 }
+
 // Mirror NumberInt, NumberFloat, Date, Time, DateTime, Plural, etc.
 ```
 

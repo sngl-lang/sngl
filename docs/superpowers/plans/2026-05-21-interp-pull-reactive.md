@@ -14,13 +14,13 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|---|---|---|
-| `internal/interp/eval.go` | Modify | `Env` struct gains `childEnvs` field; constructors init it |
-| `internal/interp/render.go` | Modify | `componentEnv` memoises via `childEnvs` |
-| `codegen/platform/none/testrunner/runner.go` | Modify | `componentValue` gains `body` + `children` fields; constructor captures component body |
-| `codegen/platform/none/testrunner/testing_t.go` | Modify | `GetField("children")` returns the live slice; `walkChildren` helper; type-namespace dispatch in `GetField` + `InvokeMethod`; `invokeOnSelf` |
-| `codegen/platform/none/testrunner/runner_test.go` | Modify | Unit tests for `children` + isolation between siblings |
+| File                                              | Action | Responsibility                                                                                                                               |
+|---------------------------------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/interp/eval.go`                         | Modify | `Env` struct gains `childEnvs` field; constructors init it                                                                                   |
+| `internal/interp/render.go`                       | Modify | `componentEnv` memoises via `childEnvs`                                                                                                      |
+| `codegen/platform/none/testrunner/runner.go`      | Modify | `componentValue` gains `body` + `children` fields; constructor captures component body                                                       |
+| `codegen/platform/none/testrunner/testing_t.go`   | Modify | `GetField("children")` returns the live slice; `walkChildren` helper; type-namespace dispatch in `GetField` + `InvokeMethod`; `invokeOnSelf` |
+| `codegen/platform/none/testrunner/runner_test.go` | Modify | Unit tests for `children` + isolation between siblings                                                                                       |
 
 ---
 
@@ -36,12 +36,12 @@ In `internal/interp/eval.go`, find the `Env` struct definition. Add a field:
 
 ```go
 type Env struct {
-    // ... existing fields ...
+	// ... existing fields ...
 
-    // childEnvs caches per-NodeInst child component envs so state
-    // persists across ResolveElementRef calls. Keyed by the
-    // instantiation site's *ir.NodeInst pointer.
-    childEnvs map[*ir.NodeInst]*Env
+	// childEnvs caches per-NodeInst child component envs so state
+	// persists across ResolveElementRef calls. Keyed by the
+	// instantiation site's *ir.NodeInst pointer.
+	childEnvs map[*ir.NodeInst]*Env
 }
 ```
 
@@ -51,12 +51,12 @@ Find `NewEnv()` (around line 125) and add the map alongside the existing initial
 
 ```go
 func NewEnv() *Env {
-    return &Env{
-        Vars:      map[string]any{},
-        Consts:    map[string]any{},
-        Funcs:     map[string]*ir.Func{},
-        childEnvs: map[*ir.NodeInst]*Env{},
-    }
+	return &Env{
+		Vars:      map[string]any{},
+		Consts:    map[string]any{},
+		Funcs:     map[string]*ir.Func{},
+		childEnvs: map[*ir.NodeInst]*Env{},
+	}
 }
 ```
 
@@ -66,14 +66,14 @@ func NewEnv() *Env {
 
 ```go
 func (env *Env) Snapshot() *Env {
-    cp := &Env{
-        // ... existing fields copied ...
-        childEnvs: env.childEnvs, // share the cache; do not deep-copy
-    }
-    if cp.childEnvs == nil {
-        cp.childEnvs = map[*ir.NodeInst]*Env{}
-    }
-    return cp
+	cp := &Env{
+		// ... existing fields copied ...
+		childEnvs: env.childEnvs, // share the cache; do not deep-copy
+	}
+	if cp.childEnvs == nil {
+		cp.childEnvs = map[*ir.NodeInst]*Env{}
+	}
+	return cp
 }
 ```
 
@@ -85,43 +85,43 @@ In `internal/interp/render.go`, the existing `componentEnv` (line 103) builds a 
 
 ```go
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
-    if env.childEnvs == nil {
-        env.childEnvs = map[*ir.NodeInst]*Env{}
-    }
-    if cached, ok := env.childEnvs[inst]; ok {
-        return cached
-    }
-    child := NewEnv()
-    child.Pkg = env.Pkg
-    child.Units = env.Units
-    child.Comp = comp
+	if env.childEnvs == nil {
+		env.childEnvs = map[*ir.NodeInst]*Env{}
+	}
+	if cached, ok := env.childEnvs[inst]; ok {
+		return cached
+	}
+	child := NewEnv()
+	child.Pkg = env.Pkg
+	child.Units = env.Units
+	child.Comp = comp
 
-    for _, p := range comp.Props {
-        child.Vars[p.Name] = evalInit(child, p.Default)
-    }
-    for _, arg := range inst.Props {
-        if arg.Name == "" {
-            continue
-        }
-        v, err := env.Eval(arg.Value)
-        if err == nil {
-            child.Vars[arg.Name] = v
-        }
-    }
-    for _, v := range comp.Vars {
-        if v.IsConst {
-            child.Consts[v.Name] = evalInit(child, v.Init)
-        } else {
-            child.Vars[v.Name] = evalInit(child, v.Init)
-        }
-    }
-    for _, fn := range comp.Funcs {
-        child.SetFunc(fn)
-    }
-    child.BodyStmts = comp.Body
+	for _, p := range comp.Props {
+		child.Vars[p.Name] = evalInit(child, p.Default)
+	}
+	for _, arg := range inst.Props {
+		if arg.Name == "" {
+			continue
+		}
+		v, err := env.Eval(arg.Value)
+		if err == nil {
+			child.Vars[arg.Name] = v
+		}
+	}
+	for _, v := range comp.Vars {
+		if v.IsConst {
+			child.Consts[v.Name] = evalInit(child, v.Init)
+		} else {
+			child.Vars[v.Name] = evalInit(child, v.Init)
+		}
+	}
+	for _, fn := range comp.Funcs {
+		child.SetFunc(fn)
+	}
+	child.BodyStmts = comp.Body
 
-    env.childEnvs[inst] = child
-    return child
+	env.childEnvs[inst] = child
+	return child
 }
 ```
 
@@ -163,21 +163,21 @@ Find the `componentValue` struct (around line 129):
 
 ```go
 type componentValue struct {
-    Env        *interp.Env
-    Vars       map[string]any
-    Consts     map[string]any
-    Funcs      map[string]*ir.Func
-    compName   string
-    testParams map[string]bool
+	Env        *interp.Env
+	Vars       map[string]any
+	Consts     map[string]any
+	Funcs      map[string]*ir.Func
+	compName   string
+	testParams map[string]bool
 
-    // body is the component's lowered body, captured at construction.
-    // Used by walkChildren to enumerate direct visual statements.
-    body []ir.Stmt
+	// body is the component's lowered body, captured at construction.
+	// Used by walkChildren to enumerate direct visual statements.
+	body []ir.Stmt
 
-    // children is a memoised live slice — user-component entries are
-    // *componentValue wrappers, native entries are element-map dicts.
-    // Computed lazily on first GetField("children").
-    children []any
+	// children is a memoised live slice — user-component entries are
+	// *componentValue wrappers, native entries are element-map dicts.
+	// Computed lazily on first GetField("children").
+	children []any
 }
 ```
 
@@ -187,12 +187,12 @@ Find the cVal construction (around line 55):
 
 ```go
 cVal = &componentValue{
-    Env:        env,
-    Vars:       make(map[string]any),
-    Consts:     make(map[string]any),
-    Funcs:      make(map[string]*ir.Func),
-    compName:   compName,
-    testParams: testParams,
+	Env:        env,
+	Vars:       make(map[string]any),
+	Consts:     make(map[string]any),
+	Funcs:      make(map[string]*ir.Func),
+	compName:   compName,
+	testParams: testParams,
 }
 maps.Copy(cVal.Vars, env.Vars)
 maps.Copy(cVal.Consts, env.Consts)
@@ -204,7 +204,7 @@ After `maps.Copy(cVal.Funcs, env.Funcs)`, look up the component definition and c
 
 ```go
 if comp := findComponentByName(pkg, compName); comp != nil {
-    cVal.body = comp.Body
+	cVal.body = comp.Body
 }
 ```
 
@@ -213,12 +213,12 @@ Add the helper at the bottom of `runner.go`:
 ```go
 // findComponentByName scans the package for a component with the given name.
 func findComponentByName(pkg *ir.Package, name string) *ir.Component {
-    for _, c := range pkg.Components {
-        if c.Name == name {
-            return c
-        }
-    }
-    return nil
+	for _, c := range pkg.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }
 ```
 
@@ -246,47 +246,47 @@ At the bottom of `testing_t.go`:
 // *componentValue wrappers sharing the parent env's cached child envs;
 // native elements become element-map dicts.
 func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
-    var out []any
-    for _, s := range stmts {
-        switch n := s.(type) {
-        case *ir.NodeInst:
-            if n.Component != nil && len(n.Component.Body) > 0 {
-                childEnv := cv.Env.ComponentEnv(n.Component, n)
-                wrapper := &componentValue{
-                    Env:      childEnv,
-                    Vars:     childEnv.Vars,
-                    Consts:   childEnv.Consts,
-                    Funcs:    childEnv.Funcs,
-                    compName: n.Component.Name,
-                    body:     n.Component.Body,
-                }
-                out = append(out, wrapper)
-            } else {
-                out = append(out, cv.Env.RenderNodeProps(n))
-            }
-        case *ir.CallStmt:
-            if rendered := cv.Env.RenderCallStmtNode(n); rendered != nil {
-                out = append(out, rendered)
-            }
-        case *ir.If:
-            cond, err := cv.Env.Eval(n.Cond)
-            if err != nil {
-                continue
-            }
-            if b, _ := cond.(bool); b {
-                out = append(out, cv.walkChildren(n.Body)...)
-            } else {
-                out = append(out, cv.walkChildren(n.Else)...)
-            }
-        case *ir.PlatformFilter:
-            if n.Platform == "" || n.Platform == "none" {
-                out = append(out, cv.walkChildren(n.Body)...)
-            }
-        // *ir.For: out of scope per spec — components inside for loops
-        // need per-iteration child envs; deferred.
-        }
-    }
-    return out
+	var out []any
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil && len(n.Component.Body) > 0 {
+				childEnv := cv.Env.ComponentEnv(n.Component, n)
+				wrapper := &componentValue{
+					Env:      childEnv,
+					Vars:     childEnv.Vars,
+					Consts:   childEnv.Consts,
+					Funcs:    childEnv.Funcs,
+					compName: n.Component.Name,
+					body:     n.Component.Body,
+				}
+				out = append(out, wrapper)
+			} else {
+				out = append(out, cv.Env.RenderNodeProps(n))
+			}
+		case *ir.CallStmt:
+			if rendered := cv.Env.RenderCallStmtNode(n); rendered != nil {
+				out = append(out, rendered)
+			}
+		case *ir.If:
+			cond, err := cv.Env.Eval(n.Cond)
+			if err != nil {
+				continue
+			}
+			if b, _ := cond.(bool); b {
+				out = append(out, cv.walkChildren(n.Body)...)
+			} else {
+				out = append(out, cv.walkChildren(n.Else)...)
+			}
+		case *ir.PlatformFilter:
+			if n.Platform == "" || n.Platform == "none" {
+				out = append(out, cv.walkChildren(n.Body)...)
+			}
+			// *ir.For: out of scope per spec — components inside for loops
+			// need per-iteration child envs; deferred.
+		}
+	}
+	return out
 }
 ```
 
@@ -311,7 +311,7 @@ In `internal/interp/render.go`, after the existing `componentEnv` (around line 1
 // ComponentEnv is the public entry point for componentEnv. Used by the
 // testrunner to construct live child componentValue wrappers.
 func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
-    return env.componentEnv(comp, inst)
+	return env.componentEnv(comp, inst)
 }
 ```
 
@@ -324,7 +324,7 @@ After the existing `renderNodeProps` (around line 250):
 // a map of prop-name → evaluated value, plus the node's ID. Used by the
 // testrunner to expose native elements as dicts in c.children.
 func (env *Env) RenderNodeProps(node *ir.NodeInst) map[string]any {
-    return env.renderNodeProps(node)
+	return env.renderNodeProps(node)
 }
 ```
 
@@ -336,14 +336,14 @@ The existing `collectCallStmtByID` (around line 139) renders a CallStmt-as-eleme
 // RenderCallStmtNode renders a children-less element call (text #id(...))
 // as an element map. Returns nil for non-element call statements.
 func (env *Env) RenderCallStmtNode(cs *ir.CallStmt) map[string]any {
-    elemName, elemID := elemCallInfo(cs)
-    if elemName == "" {
-        return nil
-    }
-    // Synthesise a NodeInst-shaped map by reading the call's props.
-    // The current collectCallStmtByID already builds this; refactor
-    // its rendering into a helper that returns the map.
-    return env.renderCallStmtMap(cs, elemName, elemID)
+	elemName, elemID := elemCallInfo(cs)
+	if elemName == "" {
+		return nil
+	}
+	// Synthesise a NodeInst-shaped map by reading the call's props.
+	// The current collectCallStmtByID already builds this; refactor
+	// its rendering into a helper that returns the map.
+	return env.renderCallStmtMap(cs, elemName, elemID)
 }
 ```
 
@@ -389,16 +389,16 @@ Find `GetField` (around line 262). Add a `field == "children"` branch BEFORE the
 
 ```go
 func (cv *componentValue) GetField(field string) (any, error) {
-    if field == "children" {
-        if cv.children == nil {
-            cv.children = cv.walkChildren(cv.body)
-        }
-        return cv.children, nil
-    }
-    if v, ok := cv.Vars[field]; ok {
-        return v, nil
-    }
-    // ... existing chain ...
+	if field == "children" {
+		if cv.children == nil {
+			cv.children = cv.walkChildren(cv.body)
+		}
+		return cv.children, nil
+	}
+	if v, ok := cv.Vars[field]; ok {
+		return v, nil
+	}
+	// ... existing chain ...
 }
 ```
 
@@ -439,15 +439,15 @@ In `GetField`, after the existing two `cv.Funcs[...]` checks, before the Element
 // `func main.double(this main) => ...`). Registered in env.Funcs
 // under "<compName>.<method>"; not in cv.Funcs.
 if cv.compName != "" {
-    if fn, ok := cv.Env.Funcs[cv.compName+"."+field]; ok {
-        effective := len(fn.Params)
-        if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
-            effective--
-        }
-        if effective == 0 {
-            return cv.invokeOnSelf(fn, nil)
-        }
-    }
+	if fn, ok := cv.Env.Funcs[cv.compName+"."+field]; ok {
+		effective := len(fn.Params)
+		if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
+			effective--
+		}
+		if effective == 0 {
+			return cv.invokeOnSelf(fn, nil)
+		}
+	}
 }
 ```
 
@@ -457,10 +457,10 @@ if cv.compName != "" {
 
 ```go
 if !ok && cv.compName != "" {
-    if extFn, extOK := cv.Env.Funcs[cv.compName+"."+method]; extOK {
-        fn = extFn
-        ok = true
-    }
+	if extFn, extOK := cv.Env.Funcs[cv.compName+"."+method]; extOK {
+		fn = extFn
+		ok = true
+	}
 }
 ```
 
@@ -476,32 +476,32 @@ Add near the bottom of `testing_t.go`:
 // `this.<field>` route through cv.SetField via the existing *ir.Select
 // branch in eval.go's evalMutTarget (line 178).
 func (cv *componentValue) invokeOnSelf(fn *ir.Func, argExprs []ir.Expr) (any, error) {
-    if fn == nil {
-        return nil, fmt.Errorf("invokeOnSelf: nil func")
-    }
-    // The desugared method's first param is `this`. Bind it to cv.
-    if len(fn.Params) == 0 {
-        return cv.compEnv().EvalUserFunc(fn, nil)
-    }
-    // Build the arg expression slice: prepend a synthetic ident bound
-    // to cv (the test func's env has cv stored under fn.Params[0].Name
-    // already if it's `this`; we use a fresh synthesised expr below).
-    synth := make([]ir.Expr, 0, len(argExprs)+1)
-    synth = append(synth, &ir.Ident{Name: fn.Params[0].Name})
-    synth = append(synth, argExprs...)
+	if fn == nil {
+		return nil, fmt.Errorf("invokeOnSelf: nil func")
+	}
+	// The desugared method's first param is `this`. Bind it to cv.
+	if len(fn.Params) == 0 {
+		return cv.compEnv().EvalUserFunc(fn, nil)
+	}
+	// Build the arg expression slice: prepend a synthetic ident bound
+	// to cv (the test func's env has cv stored under fn.Params[0].Name
+	// already if it's `this`; we use a fresh synthesised expr below).
+	synth := make([]ir.Expr, 0, len(argExprs)+1)
+	synth = append(synth, &ir.Ident{Name: fn.Params[0].Name})
+	synth = append(synth, argExprs...)
 
-    // Set the synthetic `this` ident's binding in the env BEFORE eval.
-    saved, hadSaved := cv.Env.Vars[fn.Params[0].Name]
-    cv.Env.Vars[fn.Params[0].Name] = cv
-    defer func() {
-        if hadSaved {
-            cv.Env.Vars[fn.Params[0].Name] = saved
-        } else {
-            delete(cv.Env.Vars, fn.Params[0].Name)
-        }
-    }()
+	// Set the synthetic `this` ident's binding in the env BEFORE eval.
+	saved, hadSaved := cv.Env.Vars[fn.Params[0].Name]
+	cv.Env.Vars[fn.Params[0].Name] = cv
+	defer func() {
+		if hadSaved {
+			cv.Env.Vars[fn.Params[0].Name] = saved
+		} else {
+			delete(cv.Env.Vars, fn.Params[0].Name)
+		}
+	}()
 
-    return cv.Env.EvalUserFunc(fn, synth)
+	return cv.Env.EvalUserFunc(fn, synth)
 }
 ```
 
@@ -594,16 +594,16 @@ In `evalPlainFunc` (or `evalCall`'s plain-func branch), before defaulting to `Ev
 ```go
 // internal/interp/eval.go, in the plain-call resolver:
 if call.Func != nil && call.Func.Receiver != "" && env.Comp != nil && env.Comp.Name == call.Func.Receiver {
-    // Desugared method call from within the component scope.
-    // The cv associated with this env should be the receiver.
-    // We don't have cv at the interp level; the testrunner's
-    // testing_t.go is responsible for installing it via
-    // env.Vars["this"] before invoking handler bodies.
-    if recv, ok := env.Vars["this"]; ok {
-        if cv, ok := recv.(ComponentValue); ok {
-            _ = cv // bind via env.Vars[fn.Params[0].Name]
-        }
-    }
+	// Desugared method call from within the component scope.
+	// The cv associated with this env should be the receiver.
+	// We don't have cv at the interp level; the testrunner's
+	// testing_t.go is responsible for installing it via
+	// env.Vars["this"] before invoking handler bodies.
+	if recv, ok := env.Vars["this"]; ok {
+		if cv, ok := recv.(ComponentValue); ok {
+			_ = cv // bind via env.Vars[fn.Params[0].Name]
+		}
+	}
 }
 ```
 
@@ -638,15 +638,15 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 package testrunner_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/internal/checker"
-    "git.duckfam.us/jonathan/sngl/internal/parser"
-    "git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestChildrenLiveAcrossMutations(t *testing.T) {
-    src := `
+	src := `
 component counter {
     var n = 0
     button #b(text="+", @click { n += 1 })
@@ -665,23 +665,23 @@ func testIsolation(t Test, c main) {
     t.assert(r.o.value == "0")
 }
 `
-    doc, err := parser.Parse("t.sngl", []byte(src))
-    if err != nil {
-        t.Fatal(err)
-    }
-    pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-    results, err := testrunner.Run(pkg)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if len(results) == 0 {
-        t.Fatal("no test results")
-    }
-    for _, r := range results {
-        if !r.Passed {
-            t.Errorf("test failed: %s\nfailures: %v", r.Desc, r.Failures)
-        }
-    }
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	results, err := testrunner.Run(pkg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) == 0 {
+		t.Fatal("no test results")
+	}
+	for _, r := range results {
+		if !r.Passed {
+			t.Errorf("test failed: %s\nfailures: %v", r.Desc, r.Failures)
+		}
+	}
 }
 ```
 

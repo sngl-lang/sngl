@@ -65,21 +65,21 @@ Uses `modernc.org/cc/v4`. Configure a `cc.Config` with system include paths plus
 
 ### Type Mapping
 
-| C type | SNGL/ir.Type |
-|--------|-------------|
-| `int`, `long`, `int32_t`, etc. | `ir.Int` |
-| `float`, `double` | `ir.Float` |
-| `char*`, `const char*` | `ir.String` |
-| `bool`, `_Bool` | `ir.Bool` |
-| `T*` (nullable / unknown nullability) | `optional<ref<T>>` |
-| `T*` with `_Nonnull` annotation | `ref<T>` |
-| `void*` | `ref<OpaqueHandle>` (synthesized per-import empty struct) |
-| named struct | `ir.StructType` (fields recursively mapped) |
-| enum | `ir.EnumType` |
-| typedef to above | unwrap and map |
-| function pointer | `ir.Unusable` |
-| union | `ir.Unusable` |
-| `const` qualifier | stripped (SNGL has no const) |
+| C type                                | SNGL/ir.Type                                              |
+|---------------------------------------|-----------------------------------------------------------|
+| `int`, `long`, `int32_t`, etc.        | `ir.Int`                                                  |
+| `float`, `double`                     | `ir.Float`                                                |
+| `char*`, `const char*`                | `ir.String`                                               |
+| `bool`, `_Bool`                       | `ir.Bool`                                                 |
+| `T*` (nullable / unknown nullability) | `optional<ref<T>>`                                        |
+| `T*` with `_Nonnull` annotation       | `ref<T>`                                                  |
+| `void*`                               | `ref<OpaqueHandle>` (synthesized per-import empty struct) |
+| named struct                          | `ir.StructType` (fields recursively mapped)               |
+| enum                                  | `ir.EnumType`                                             |
+| typedef to above                      | unwrap and map                                            |
+| function pointer                      | `ir.Unusable`                                             |
+| union                                 | `ir.Unusable`                                             |
+| `const` qualifier                     | stripped (SNGL has no const)                              |
 
 All C pointer params/returns default to `optional<ref<T>>` — conservative, since C headers rarely annotate nullability. `_Nonnull` (Clang extension) maps to `ref<T>`.
 
@@ -105,7 +105,7 @@ Added to `codegen/codegen.go`:
 // CCompiler is an optional capability on LangTranslator.
 // Implemented by translators that can emit C FFI call sites.
 type CCompiler interface {
-    EmitCHeader(imports []*ir.NativeImport) string
+	EmitCHeader(imports []*ir.NativeImport) string
 }
 ```
 
@@ -119,6 +119,7 @@ type CCompiler interface {
 
 ```go
 func (g *GoTranslator) EmitCHeader(imports []*ir.NativeImport) string
+
 // emits:
 // /*
 // #cgo pkg-config: gtk+-3.0        (from LinkFlags)
@@ -137,12 +138,12 @@ func (g *GoTranslator) EmitCHeader(imports []*ir.NativeImport) string
 
 ## Error Handling
 
-| Condition | Behavior |
-|-----------|----------|
-| `pkg-config` not found | Hard error: `"pkg-config required for c://pkg: imports — install it or use a direct header path"` |
-| Header file not found | Hard error at import resolution (same as missing Go package) |
-| Unmappable symbol | `Func.Unusable = true` + checker warning: `"C symbol foo uses unsupported type union — ignored"` |
-| `CCompiler` not implemented | Hard error: `"platform X with lang Y does not support C imports"` |
+| Condition                   | Behavior                                                                                          |
+|-----------------------------|---------------------------------------------------------------------------------------------------|
+| `pkg-config` not found      | Hard error: `"pkg-config required for c://pkg: imports — install it or use a direct header path"` |
+| Header file not found       | Hard error at import resolution (same as missing Go package)                                      |
+| Unmappable symbol           | `Func.Unusable = true` + checker warning: `"C symbol foo uses unsupported type union — ignored"`  |
+| `CCompiler` not implemented | Hard error: `"platform X with lang Y does not support C imports"`                                 |
 
 ---
 

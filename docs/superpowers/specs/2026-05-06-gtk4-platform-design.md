@@ -25,17 +25,17 @@ c:// implicit import      ← codegen emits #include <gtk/gtk.h> via pkg-config 
 
 **New package `codegen/platform/gtk4/`:**
 
-| File | Responsibility |
-|------|---------------|
-| `gtk4.go` | `Generator`: `PlatformIdentifier()="gtk4"`, `Resolve()`, `SupportedLangs:["go"]`, `init()` registration |
-| `gir/gir.go` | GIR XML parser → `TypeRegistry` (class → props, signals, C constructor name) |
-| `gir/gir_test.go` | Unit tests for GIR parsing against inline XML fixture |
-| `gtk4.sngl` | Stdlib component declarations using GIR-resolved types |
-| `compiler_ir.go` | MutationModel emitter (parallel to `codegen/platform/fyne/compiler_ir.go`) |
-| `scaffold.go` | `templateData` struct + assembly |
-| `templates/model.go.tmpl` | State struct, `BuildUI`, updaters, `gtkPost` helper |
-| `templates/main.go.tmpl` | Entrypoint: `runtime.LockOSThread` + `gtk_application_run` |
-| `gtk4_test.go` | Unit tests for `Resolve` |
+| File                      | Responsibility                                                                                          |
+|---------------------------|---------------------------------------------------------------------------------------------------------|
+| `gtk4.go`                 | `Generator`: `PlatformIdentifier()="gtk4"`, `Resolve()`, `SupportedLangs:["go"]`, `init()` registration |
+| `gir/gir.go`              | GIR XML parser → `TypeRegistry` (class → props, signals, C constructor name)                            |
+| `gir/gir_test.go`         | Unit tests for GIR parsing against inline XML fixture                                                   |
+| `gtk4.sngl`               | Stdlib component declarations using GIR-resolved types                                                  |
+| `compiler_ir.go`          | MutationModel emitter (parallel to `codegen/platform/fyne/compiler_ir.go`)                              |
+| `scaffold.go`             | `templateData` struct + assembly                                                                        |
+| `templates/model.go.tmpl` | State struct, `BuildUI`, updaters, `gtkPost` helper                                                     |
+| `templates/main.go.tmpl`  | Entrypoint: `runtime.LockOSThread` + `gtk_application_run`                                              |
+| `gtk4_test.go`            | Unit tests for `Resolve`                                                                                |
 
 `codegen/platform/platforms.go` gains a blank import for `gtk4`.
 
@@ -47,9 +47,9 @@ Passed via `--option key=value` at the `sngl` CLI. Parsed with `codegen.ApplyOpt
 
 ```go
 type Config struct {
-    Package string `option:"package"` // default: "main"
-    Main    bool   `option:"main"`    // default: true — emit main.go entrypoint
-    GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
+	Package string `option:"package"` // default: "main"
+	Main    bool   `option:"main"`    // default: true — emit main.go entrypoint
+	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
 }
 ```
 
@@ -59,6 +59,7 @@ type Config struct {
 3. `/opt/homebrew/share/gir-1.0/Gtk-4.0.gir` (macOS Homebrew)
 
 If none found, hard error:
+
 > `"gtk4 GIR file not found — set --option gir=/path/to/Gtk-4.0.gir or install libgtk-4-dev"`
 
 When explicitly set, the path is used directly (no fallback search). This allows CI environments or non-standard installs to work without modifying system paths.
@@ -86,24 +87,24 @@ GTK4 ships GIR files as part of its dev package (e.g. `libgtk-4-dev` on Debian, 
 ```go
 // gir/gir.go
 type Prop struct {
-    Name    string
-    IRType  *ir.Type
+	Name   string
+	IRType *ir.Type
 }
 
 type Signal struct {
-    Name       string
-    ParamTypes []*ir.Type // callback parameter types
+	Name       string
+	ParamTypes []*ir.Type // callback parameter types
 }
 
 type ClassInfo struct {
-    CType       string   // "GtkButton"
-    Constructor string   // "gtk_button_new_with_label"
-    Props       []Prop
-    Signals     []Signal
+	CType       string // "GtkButton"
+	Constructor string // "gtk_button_new_with_label"
+	Props       []Prop
+	Signals     []Signal
 }
 
 type TypeRegistry struct {
-    Classes map[string]*ClassInfo // keyed by GIR class name, e.g. "Button"
+	Classes map[string]*ClassInfo // keyed by GIR class name, e.g. "Button"
 }
 
 func ParseGIR(path string) (*TypeRegistry, error)
@@ -112,14 +113,14 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) // for tests
 
 ### GIR type mapping
 
-| GIR type | SNGL `ir.Type` |
-|----------|---------------|
-| `utf8`, `gchararray` | `TypeString` |
-| `gboolean` | `TypeBool` |
-| `gint`, `gint32`, `gint64`, `guint`, `guint32` | `TypeInt` |
-| `gdouble`, `gfloat` | `TypeFloat` |
-| object/class reference | `TypeDyn{Meta: "unsafe.Pointer"}` |
-| unmappable | `TypeDyn{Meta: "unsafe.Pointer"}` + checker warning |
+| GIR type                                       | SNGL `ir.Type`                                      |
+|------------------------------------------------|-----------------------------------------------------|
+| `utf8`, `gchararray`                           | `TypeString`                                        |
+| `gboolean`                                     | `TypeBool`                                          |
+| `gint`, `gint32`, `gint64`, `guint`, `guint32` | `TypeInt`                                           |
+| `gdouble`, `gfloat`                            | `TypeFloat`                                         |
+| object/class reference                         | `TypeDyn{Meta: "unsafe.Pointer"}`                   |
+| unmappable                                     | `TypeDyn{Meta: "unsafe.Pointer"}` + checker warning |
 
 ### `Resolve(identifier string) ir.Symbol`
 
@@ -127,14 +128,14 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) // for tests
 
 ```go
 func (g *Generator) Resolve(identifier string) ir.Symbol {
-    if g.registry == nil {
-        return nil
-    }
-    info, ok := g.registry.Classes[stripGtk(identifier)]
-    if !ok {
-        return nil
-    }
-    return girClassToComponent(info)
+	if g.registry == nil {
+		return nil
+	}
+	info, ok := g.registry.Classes[stripGtk(identifier)]
+	if !ok {
+		return nil
+	}
+	return girClassToComponent(info)
 }
 ```
 
@@ -202,10 +203,10 @@ Same approach as Fyne: `BuildMutationModel` + `EmitFromMutation`. The `compilati
 
 ```go
 type compilation struct {
-    ctx      *codegen.CodegenCtx
-    info     *irAnalysis
-    cfg      Config
-    lang     codegen.LangTranslator
+	ctx  *codegen.CodegenCtx
+	info *irAnalysis
+	cfg  Config
+	lang codegen.LangTranslator
 }
 ```
 
@@ -227,11 +228,12 @@ static void sngl_gtk_idle_add(void* fn) {
 ```
 
 The corresponding Go export (in `callbacks.go`):
+
 ```go
 //export snglIdleCallback
 func snglIdleCallback(ptr unsafe.Pointer) {
-    fn := *(*func())(ptr)
-    fn()
+	fn := *(*func())(ptr)
+	fn()
 }
 ```
 
@@ -249,33 +251,33 @@ package main
 import "C"
 
 import (
-    "runtime"
-    "unsafe"
+	"runtime"
+	"unsafe"
 )
 
 type Model struct {
-    window  *C.GtkApplicationWindow
-    btnOk   *C.GtkButton
-    lblName *C.GtkLabel
-    count   int
+	window  *C.GtkApplicationWindow
+	btnOk   *C.GtkButton
+	lblName *C.GtkLabel
+	count   int
 }
 
 func New() *Model { return &Model{} }
 
 func (m *Model) BuildUI(app *C.GtkApplication) {
-    win := C.gtk_application_window_new(app)
-    m.window = (*C.GtkApplicationWindow)(unsafe.Pointer(win))
-    // widget construction + signal connections
-    C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(m.window)), topWidget)
+	win := C.gtk_application_window_new(app)
+	m.window = (*C.GtkApplicationWindow)(unsafe.Pointer(win))
+	// widget construction + signal connections
+	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(m.window)), topWidget)
 }
 
 func gtkPost(fn func()) {
-    f := fn
-    C.sngl_gtk_idle_add(unsafe.Pointer(&f))
+	f := fn
+	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
 func (m *Model) updateLblName() {
-    C.gtk_label_set_text(m.lblName, C.CString(m.name))
+	C.gtk_label_set_text(m.lblName, C.CString(m.name))
 }
 ```
 
@@ -286,18 +288,18 @@ Emitted when `Config.Main == true` (default):
 ```go
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
-    m := New()
-    m.BuildUI(app)
-    C.gtk_widget_show((*C.GtkWidget)(unsafe.Pointer(m.window)))
+	m := New()
+	m.BuildUI(app)
+	C.gtk_widget_show((*C.GtkWidget)(unsafe.Pointer(m.window)))
 }
 
 func main() {
-    runtime.LockOSThread()
-    app := C.gtk_application_new(C.CString("com.example.app"),
-        C.G_APPLICATION_DEFAULT_FLAGS)
-    C.g_signal_connect_data(app, C.CString("activate"),
-        C.GCallback(C.snglActivate), nil, nil, 0)
-    C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	runtime.LockOSThread()
+	app := C.gtk_application_new(C.CString("com.example.app"),
+		C.G_APPLICATION_DEFAULT_FLAGS)
+	C.g_signal_connect_data(app, C.CString("activate"),
+		C.GCallback(C.snglActivate), nil, nil, 0)
+	C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 }
 ```
 
@@ -307,14 +309,14 @@ func main() {
 
 ## Error Handling
 
-| Condition | Behavior |
-|-----------|----------|
+| Condition                                 | Behavior                                                                                                |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------|
 | GIR file not found at any autodetect path | Hard error: `"gtk4 GIR file not found — set --option gir=/path/to/Gtk-4.0.gir or install libgtk-4-dev"` |
-| `--option gir=` set but file not readable | Hard error: `"gtk4: cannot read GIR file <path>: <os error>"` |
-| GIR class unknown via `Resolve` | Returns `nil` → checker reports normal unknown-identifier error |
-| GIR property type unmappable | `TypeDyn{Meta:"unsafe.Pointer"}` + checker warning |
-| Non-go lang requested | Hard error: `"gtk4: only lang=go is supported"` |
-| `CCompiler` not implemented by lang | Hard error: `"platform gtk4 with lang %T does not support C imports"` |
+| `--option gir=` set but file not readable | Hard error: `"gtk4: cannot read GIR file <path>: <os error>"`                                           |
+| GIR class unknown via `Resolve`           | Returns `nil` → checker reports normal unknown-identifier error                                         |
+| GIR property type unmappable              | `TypeDyn{Meta:"unsafe.Pointer"}` + checker warning                                                      |
+| Non-go lang requested                     | Hard error: `"gtk4: only lang=go is supported"`                                                         |
+| `CCompiler` not implemented by lang       | Hard error: `"platform gtk4 with lang %T does not support C imports"`                                   |
 
 ---
 

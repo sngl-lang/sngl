@@ -38,13 +38,13 @@ A new internal type, `depExtractor`, replaces the standalone walk-* functions:
 
 ```go
 type depExtractor struct {
-    modelVars     map[*ir.Var]struct{}    // tracked vars (Pkg.Vars ∪ all comp.Vars)
-    bindings      map[string]ir.Expr      // param name → caller-side expr
-    visited       map[*ir.Func]struct{}   // recursion guard, per top-level walk
-    deps          map[*ir.Var]struct{}    // accumulated reads (when tracking)
-    mutated       map[*ir.Var]struct{}    // accumulated writes
-    implicitThis  *ir.Component           // component owning the current tracked walk
-    tracking      bool                    // read-tracking on/off
+	modelVars    map[*ir.Var]struct{}  // tracked vars (Pkg.Vars ∪ all comp.Vars)
+	bindings     map[string]ir.Expr    // param name → caller-side expr
+	visited      map[*ir.Func]struct{} // recursion guard, per top-level walk
+	deps         map[*ir.Var]struct{}  // accumulated reads (when tracking)
+	mutated      map[*ir.Var]struct{}  // accumulated writes
+	implicitThis *ir.Component         // component owning the current tracked walk
+	tracking     bool                  // read-tracking on/off
 }
 ```
 
@@ -61,44 +61,44 @@ A single helper resolves any expression to the `*ir.Var` it ultimately accesses 
 // component is what matters; deeper field accesses are subsumed by
 // whole-var deps on the root var.
 func peelRoot(e ir.Expr) (root *ir.Ident, field string) {
-    for {
-        switch n := e.(type) {
-        case *ir.Ident:
-            return n, field
-        case *ir.Select:
-            field = n.Field
-            e = n.Operand
-        case *ir.Index:
-            e = n.Operand
-        default:
-            return nil, ""
-        }
-    }
+	for {
+		switch n := e.(type) {
+		case *ir.Ident:
+			return n, field
+		case *ir.Select:
+			field = n.Field
+			e = n.Operand
+		case *ir.Index:
+			e = n.Operand
+		default:
+			return nil, ""
+		}
+	}
 }
 
 // resolveVar returns the *ir.Var an expression ultimately accesses,
 // or nil if it doesn't bottom out in a var.
 func (w *depExtractor) resolveVar(e ir.Expr) *ir.Var {
-    root, field := peelRoot(e)
-    if root == nil {
-        return nil
-    }
-    if expr, bound := w.bindings[root.Name]; bound {
-        if field == "" {
-            return w.resolveVar(expr)
-        }
-        return w.resolveVar(&ir.Select{Operand: expr, Field: field})
-    }
-    if root.Name == "this" && w.implicitThis != nil && field != "" {
-        return lookupCompVar(w.implicitThis, field)
-    }
-    if v, ok := root.Sym.(*ir.Var); ok {
-        return v
-    }
-    if comp, ok := root.Sym.(*ir.Component); ok && field != "" {
-        return lookupCompVar(comp, field)
-    }
-    return nil
+	root, field := peelRoot(e)
+	if root == nil {
+		return nil
+	}
+	if expr, bound := w.bindings[root.Name]; bound {
+		if field == "" {
+			return w.resolveVar(expr)
+		}
+		return w.resolveVar(&ir.Select{Operand: expr, Field: field})
+	}
+	if root.Name == "this" && w.implicitThis != nil && field != "" {
+		return lookupCompVar(w.implicitThis, field)
+	}
+	if v, ok := root.Sym.(*ir.Var); ok {
+		return v
+	}
+	if comp, ok := root.Sym.(*ir.Component); ok && field != "" {
+		return lookupCompVar(comp, field)
+	}
+	return nil
 }
 ```
 
@@ -118,13 +118,13 @@ When the walker visits an `*ir.Assign`, `*ir.Toggle`, or `*ir.IncDec`, it resolv
 
 Write propagation respects SNGL's value-vs-reference parameter semantics:
 
-| Param declared type | Calling convention | Writes via this param propagate? |
-|---|---|---|
-| Component (`MyComp`) | by reference | yes |
-| `ref<T>` (any T) | by reference | yes |
-| Struct (`Point`) | by value | no — callee writes to a local copy |
-| Primitive (`int`, `string`, …) | by value | no |
-| List, map (`list<T>`, `map<K,V>`) | by reference (existing language semantics) | yes |
+| Param declared type               | Calling convention                         | Writes via this param propagate?   |
+|-----------------------------------|--------------------------------------------|------------------------------------|
+| Component (`MyComp`)              | by reference                               | yes                                |
+| `ref<T>` (any T)                  | by reference                               | yes                                |
+| Struct (`Point`)                  | by value                                   | no — callee writes to a local copy |
+| Primitive (`int`, `string`, …)    | by value                                   | no                                 |
+| List, map (`list<T>`, `map<K,V>`) | by reference (existing language semantics) | yes                                |
 
 A write through a param is recorded in `mutated` only when the param's declared type uses reference semantics. The walker checks the param's `ir.Type.Kind` at substitution time: `TypeComponent`, `TypeRef`, `TypeList`, `TypeMap` propagate; other kinds don't. Reads always propagate regardless of calling convention — the dependency on the caller-side expression is what matters for re-computation, not whether the body mutates its own copy.
 
@@ -134,27 +134,31 @@ A function called from a tracked-read context can also contain writes; those sti
 
 ```go
 func (w *depExtractor) walkCall(c *ir.Call) {
-    // Caller-side: receiver and arg expressions are themselves possible reads.
-    if c.Receiver != nil { w.walkExpr(c.Receiver) }
-    for _, a := range c.Args { w.walkExpr(a.Value) }
+	// Caller-side: receiver and arg expressions are themselves possible reads.
+	if c.Receiver != nil {
+		w.walkExpr(c.Receiver)
+	}
+	for _, a := range c.Args {
+		w.walkExpr(a.Value)
+	}
 
-    fn := c.Func
-    if fn == nil || w.opaque(fn) {
-        return
-    }
-    if _, seen := w.visited[fn]; seen {
-        return
-    }
+	fn := c.Func
+	if fn == nil || w.opaque(fn) {
+		return
+	}
+	if _, seen := w.visited[fn]; seen {
+		return
+	}
 
-    sub := w.cloneFrame()
-    sub.bindings = make(map[string]ir.Expr, len(fn.Params))
-    for i, p := range fn.Params {
-        if i < len(c.Args) {
-            sub.bindings[p.Name] = c.Args[i].Value
-        }
-    }
-    sub.visited[fn] = struct{}{}
-    sub.walkFuncBody(fn)
+	sub := w.cloneFrame()
+	sub.bindings = make(map[string]ir.Expr, len(fn.Params))
+	for i, p := range fn.Params {
+		if i < len(c.Args) {
+			sub.bindings[p.Name] = c.Args[i].Value
+		}
+	}
+	sub.visited[fn] = struct{}{}
+	sub.walkFuncBody(fn)
 }
 ```
 
@@ -173,10 +177,10 @@ Opaque funcs contribute nothing to deps/mutated on tracked vars. The walker stil
 ```go
 // codegen/deps.go
 type DepTracker struct {
-    ModelVars     map[*ir.Var]struct{}
-    ComputedFuncs map[*ir.Func]struct{}
-    ComputedDeps  map[*ir.Func]map[*ir.Var]struct{}
-    Components    []*ir.Component  // for implicitThis lookup at walk entry
+	ModelVars     map[*ir.Var]struct{}
+	ComputedFuncs map[*ir.Func]struct{}
+	ComputedDeps  map[*ir.Func]map[*ir.Var]struct{}
+	Components    []*ir.Component // for implicitThis lookup at walk entry
 }
 ```
 
@@ -184,7 +188,7 @@ type DepTracker struct {
 
 ```go
 type Dependent interface {
-    DepVars() map[*ir.Var]struct{}
+	DepVars() map[*ir.Var]struct{}
 }
 ```
 

@@ -18,16 +18,16 @@
 
 ## Key differences from fyne/gtk4 (Plans B/B.2/C)
 
-| Concern | fyne/gtk4 | html |
-|---|---|---|
-| NoDeclarative | ON — whole body lowered | OFF — declarative tree stays |
-| Initial render | Build widget tree imperatively at BuildUI time | Render static HTML once, embed in document body |
-| Reactive updates | Spliced setter Assigns in handler bodies → translated to setter calls | Spliced setter Assigns in handler bodies → translated to DOM property assignments in JS |
-| Zero-reactivity case | Still produces full Model + BuildUI scaffolding | Zero JS — pure static HTML |
-| Target language | Go (gc.EvalStmt) | JavaScript (jc.EvalStmt) |
-| Storage of node refs | `m.__nN` field on Model | `document.querySelector('[data-sngl-id="__nN"]')` lookup OR cached `const __nN = ...` |
-| Container parent for slot Funcs | `*fyne.Container` / `*C.GtkBox` | DOM `Element` reference |
-| __slot<N> | `[]fyne.CanvasObject` / `[]*C.GtkWidget` Model field | Local JS array inside the rendered `<script>` block |
+| Concern                         | fyne/gtk4                                                             | html                                                                                    |
+|---------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| NoDeclarative                   | ON — whole body lowered                                               | OFF — declarative tree stays                                                            |
+| Initial render                  | Build widget tree imperatively at BuildUI time                        | Render static HTML once, embed in document body                                         |
+| Reactive updates                | Spliced setter Assigns in handler bodies → translated to setter calls | Spliced setter Assigns in handler bodies → translated to DOM property assignments in JS |
+| Zero-reactivity case            | Still produces full Model + BuildUI scaffolding                       | Zero JS — pure static HTML                                                              |
+| Target language                 | Go (gc.EvalStmt)                                                      | JavaScript (jc.EvalStmt)                                                                |
+| Storage of node refs            | `m.__nN` field on Model                                               | `document.querySelector('[data-sngl-id="__nN"]')` lookup OR cached `const __nN = ...`   |
+| Container parent for slot Funcs | `*fyne.Container` / `*C.GtkBox`                                       | DOM `Element` reference                                                                 |
+| __slot<N>                       | `[]fyne.CanvasObject` / `[]*C.GtkWidget` Model field                  | Local JS array inside the rendered `<script>` block                                     |
 
 The js-side translator pattern differs slightly: html doesn't have a "Model" — JS state lives in a top-level `let state = {...}` object, and node refs are `const __n0 = document.querySelector(...)`. So qualification is different from fyne's `m.<name>` pattern.
 
@@ -88,27 +88,28 @@ Append:
 // top-level function or a property on a closure-managed object. For
 // html's use case, the function is emitted inside the bootstrap
 // <script> block as a top-level binding:
-//   function <name>(params...) { body... }
+//
+//	function <name>(params...) { body... }
 //
 // Returns lines without trailing newlines; caller joins with "\n".
 func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
-    var lines []string
-    params := make([]string, len(fn.Params))
-    for i, p := range fn.Params {
-        params[i] = p.Name
-    }
-    lines = append(lines, "function "+fn.Name+"("+strings.Join(params, ", ")+") {")
-    bodyJC := jc
-    for _, p := range fn.Params {
-        bodyJC = bodyJC.WithLocal(p.Name)
-    }
-    for _, stmt := range fn.Block {
-        for _, line := range bodyJC.EvalStmt(stmt) {
-            lines = append(lines, "\t"+line)
-        }
-    }
-    lines = append(lines, "}")
-    return lines
+	var lines []string
+	params := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		params[i] = p.Name
+	}
+	lines = append(lines, "function "+fn.Name+"("+strings.Join(params, ", ")+") {")
+	bodyJC := jc
+	for _, p := range fn.Params {
+		bodyJC = bodyJC.WithLocal(p.Name)
+	}
+	for _, stmt := range fn.Block {
+		for _, line := range bodyJC.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 ```
 
@@ -120,19 +121,19 @@ Create or append to `codegen/lang/javascript/ircontext_test.go`:
 
 ```go
 func TestEmitFuncDef_PlainFunc(t *testing.T) {
-    jc := NewIRContext(nil)
-    fn := &ir.Func{
-        Name:   "greet",
-        Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
-        Block: []ir.Stmt{
-            &ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
-        },
-    }
-    got := strings.Join(jc.EmitFuncDef(fn), "\n")
-    want := "function greet(name) {\n\treturn \"hi\";\n}"
-    if got != want {
-        t.Errorf("EmitFuncDef mismatch:\ngot:\n%s\nwant:\n%s", got, want)
-    }
+	jc := NewIRContext(nil)
+	fn := &ir.Func{
+		Name:   "greet",
+		Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
+		Block: []ir.Stmt{
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
+		},
+	}
+	got := strings.Join(jc.EmitFuncDef(fn), "\n")
+	want := "function greet(name) {\n\treturn \"hi\";\n}"
+	if got != want {
+		t.Errorf("EmitFuncDef mismatch:\ngot:\n%s\nwant:\n%s", got, want)
+	}
 }
 ```
 
@@ -145,16 +146,16 @@ Find `evalIdent` in `codegen/lang/javascript/ircontext.go`. Add early branch:
 
 ```go
 func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
-    // Synthesized refs from lowering passes:
-    //   __nN widget refs → bare const at <script> scope.
-    //   __slotN slot accumulators → bare const at <script> scope.
-    //   __root sentinel → bare const at <script> scope.
-    //   state vars → `state.<name>` (no Sym set — fall through to
-    //     state-object resolution below).
-    if n.Synthesized {
-        return n.Name
-    }
-    // ... existing logic
+	// Synthesized refs from lowering passes:
+	//   __nN widget refs → bare const at <script> scope.
+	//   __slotN slot accumulators → bare const at <script> scope.
+	//   __root sentinel → bare const at <script> scope.
+	//   state vars → `state.<name>` (no Sym set — fall through to
+	//     state-object resolution below).
+	if n.Synthesized {
+		return n.Name
+	}
+	// ... existing logic
 }
 ```
 
@@ -193,11 +194,11 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 package html
 
 import (
-    "context"
+	"context"
 
-    "git.duckfam.us/jonathan/sngl/codegen"
-    "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // htmlTranslator implements codegen.IntrinsicTranslator for html.
@@ -208,28 +209,40 @@ import (
 // consts initialized via document.querySelector(...). State vars
 // live on a `state` object: `state.<name>`.
 type htmlTranslator struct {
-    jc        *javascript.JsIRContext
-    idTags    map[string]string // id ("__n0") → SNGL tag ("text")
-    topLevel  []string          // ids not yet AppendChild'd
+	jc       *javascript.JsIRContext
+	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
+	topLevel []string          // ids not yet AppendChild'd
 }
 
 func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-    return &htmlTranslator{jc: jc, idTags: map[string]string{}}
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}}
 }
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
 
 // Stubs: fill in across subsequent tasks.
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt { return nil }
-func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt { return nil }
-func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt { return nil }
-func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt { return nil }
-func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt { return nil }
+func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	return nil
+}
+func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return nil
+}
 func (t *htmlTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt { return nil }
-func (t *htmlTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt { return nil }
+func (t *htmlTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
+	return nil
+}
 func (t *htmlTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr { return iter }
 func (t *htmlTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr { return cond }
-func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt { return []ir.Stmt{stmt} }
+func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	return []ir.Stmt{stmt}
+}
 ```
 
 Build + commit:
@@ -259,39 +272,47 @@ const __n0 = document.createElement("span");
 ```go
 // htmlTagToDOM maps a SNGL tag to the equivalent HTML element name.
 func htmlTagToDOM(tag string) string {
-    switch tag {
-    case "text", "label": return "span"
-    case "button":        return "button"
-    case "input":         return "input"
-    case "checkbox":      return "input" // type="checkbox" set via OnPropAssign
-    case "vbox", "hbox":  return "div"   // flex direction set via OnPropAssign
-    case "scroll":        return "div"   // overflow set via OnPropAssign
-    case "link":          return "a"
-    case "image":         return "img"
-    }
-    return ""
+	switch tag {
+	case "text", "label":
+		return "span"
+	case "button":
+		return "button"
+	case "input":
+		return "input"
+	case "checkbox":
+		return "input" // type="checkbox" set via OnPropAssign
+	case "vbox", "hbox":
+		return "div" // flex direction set via OnPropAssign
+	case "scroll":
+		return "div" // overflow set via OnPropAssign
+	case "link":
+		return "a"
+	case "image":
+		return "img"
+	}
+	return ""
 }
 
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
-    domTag := htmlTagToDOM(tag)
-    if domTag == "" {
-        return nil
-    }
-    t.idTags[id] = tag
-    t.topLevel = append(t.topLevel, id)
+	domTag := htmlTagToDOM(tag)
+	if domTag == "" {
+		return nil
+	}
+	t.idTags[id] = tag
+	t.topLevel = append(t.topLevel, id)
 
-    // const <id> = document.createElement("<domTag>");
-    createCall := &ir.Call{
-        Type:     ir.TypDyn,
-        Receiver: &ir.Ident{Name: "document"},
-        Func:     &ir.Func{Name: "createElement"},
-        Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: domTag}}},
-    }
-    return []ir.Stmt{&ir.LocalVar{
-        Name: id,
-        Type: ir.TypDyn,
-        Init: createCall,
-    }}
+	// const <id> = document.createElement("<domTag>");
+	createCall := &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "document"},
+		Func:     &ir.Func{Name: "createElement"},
+		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: domTag}}},
+	}
+	return []ir.Stmt{&ir.LocalVar{
+		Name: id,
+		Type: ir.TypDyn,
+		Init: createCall,
+	}}
 }
 ```
 
@@ -301,36 +322,36 @@ Test:
 package html
 
 import (
-    "context"
-    "strings"
-    "testing"
+	"context"
+	"strings"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func stubJsCtx() *javascript.JsIRContext {
-    return javascript.NewIRContext(nil)
+	return javascript.NewIRContext(nil)
 }
 
 func renderStmts(jc *javascript.JsIRContext, stmts []ir.Stmt) string {
-    var lines []string
-    for _, s := range stmts {
-        lines = append(lines, jc.EvalStmt(s)...)
-    }
-    return strings.Join(lines, "\n")
+	var lines []string
+	for _, s := range stmts {
+		lines = append(lines, jc.EvalStmt(s)...)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func TestHTMLTranslator_OnCreateNode_Text(t *testing.T) {
-    jc := stubJsCtx()
-    tr := newHTMLTranslator(jc)
-    got := renderStmts(jc, tr.OnCreateNode(context.Background(), "__n0", "text"))
-    if !strings.Contains(got, `document.createElement("span")`) {
-        t.Errorf("expected createElement('span'); got: %s", got)
-    }
-    if !strings.Contains(got, "__n0") {
-        t.Errorf("expected __n0 binding; got: %s", got)
-    }
+	jc := stubJsCtx()
+	tr := newHTMLTranslator(jc)
+	got := renderStmts(jc, tr.OnCreateNode(context.Background(), "__n0", "text"))
+	if !strings.Contains(got, `document.createElement("span")`) {
+		t.Errorf("expected createElement('span'); got: %s", got)
+	}
+	if !strings.Contains(got, "__n0") {
+		t.Errorf("expected __n0 binding; got: %s", got)
+	}
 }
 ```
 
@@ -342,30 +363,30 @@ Commit.
 
 ```go
 func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
-    // Track: child is no longer top-level.
-    if id, ok := child.(*ir.Ident); ok && id.Synthesized {
-        for i, name := range t.topLevel {
-            if name == id.Name {
-                t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
-                break
-            }
-        }
-    }
-    return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-        Type:     ir.TypVoid,
-        Receiver: parent,
-        Func:     &ir.Func{Name: "appendChild"},
-        Args:     []ir.CallArg{{Value: child}},
-    }}}
+	// Track: child is no longer top-level.
+	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
+		for i, name := range t.topLevel {
+			if name == id.Name {
+				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
+				break
+			}
+		}
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: parent,
+		Func:     &ir.Func{Name: "appendChild"},
+		Args:     []ir.CallArg{{Value: child}},
+	}}}
 }
 
 func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
-    return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-        Type:     ir.TypVoid,
-        Receiver: parent,
-        Func:     &ir.Func{Name: "removeChild"},
-        Args:     []ir.CallArg{{Value: child}},
-    }}}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: parent,
+		Func:     &ir.Func{Name: "removeChild"},
+		Args:     []ir.CallArg{{Value: child}},
+	}}}
 }
 ```
 
@@ -373,25 +394,25 @@ Tests:
 
 ```go
 func TestHTMLTranslator_OnAppendChild(t *testing.T) {
-    jc := stubJsCtx()
-    tr := newHTMLTranslator(jc)
-    parent := &ir.Ident{Name: "__n0", Synthesized: true}
-    child := &ir.Ident{Name: "__n1", Synthesized: true}
-    got := renderStmts(jc, tr.OnAppendChild(context.Background(), parent, child))
-    if !strings.Contains(got, "__n0.appendChild(__n1)") {
-        t.Errorf("expected __n0.appendChild(__n1); got: %s", got)
-    }
+	jc := stubJsCtx()
+	tr := newHTMLTranslator(jc)
+	parent := &ir.Ident{Name: "__n0", Synthesized: true}
+	child := &ir.Ident{Name: "__n1", Synthesized: true}
+	got := renderStmts(jc, tr.OnAppendChild(context.Background(), parent, child))
+	if !strings.Contains(got, "__n0.appendChild(__n1)") {
+		t.Errorf("expected __n0.appendChild(__n1); got: %s", got)
+	}
 }
 
 func TestHTMLTranslator_OnRemoveChild(t *testing.T) {
-    jc := stubJsCtx()
-    tr := newHTMLTranslator(jc)
-    parent := &ir.Ident{Name: "__root", Synthesized: true}
-    child := &ir.Ident{Name: "__entry", Synthesized: true}
-    got := renderStmts(jc, tr.OnRemoveChild(context.Background(), parent, child))
-    if !strings.Contains(got, "__root.removeChild(__entry)") {
-        t.Errorf("expected __root.removeChild(__entry); got: %s", got)
-    }
+	jc := stubJsCtx()
+	tr := newHTMLTranslator(jc)
+	parent := &ir.Ident{Name: "__root", Synthesized: true}
+	child := &ir.Ident{Name: "__entry", Synthesized: true}
+	got := renderStmts(jc, tr.OnRemoveChild(context.Background(), parent, child))
+	if !strings.Contains(got, "__root.removeChild(__entry)") {
+		t.Errorf("expected __root.removeChild(__entry); got: %s", got)
+	}
 }
 ```
 
@@ -403,77 +424,81 @@ Commit.
 
 For html, SNGL props map to DOM properties or attributes. The tag-prop pair determines which:
 
-| SNGL prop | DOM property |
-|---|---|
-| text.value | textContent |
-| input.value | value |
-| input.placeholder | placeholder |
-| button.text | textContent |
-| checkbox.checked | checked |
-| any.style.X | style.X |
-| any.class | className |
-| any.disabled | disabled |
+| SNGL prop         | DOM property |
+|-------------------|--------------|
+| text.value        | textContent  |
+| input.value       | value        |
+| input.placeholder | placeholder  |
+| button.text       | textContent  |
+| checkbox.checked  | checked      |
+| any.style.X       | style.X      |
+| any.class         | className    |
+| any.disabled      | disabled     |
 
 ```go
 // htmlPropSetter returns the DOM property/attribute name for a SNGL
 // prop on a tag. Empty if unknown.
 func htmlPropSetter(tag, prop string) string {
-    switch tag {
-    case "text", "label":
-        if prop == "value" {
-            return "textContent"
-        }
-    case "button":
-        if prop == "text" {
-            return "textContent"
-        }
-        if prop == "disabled" {
-            return "disabled"
-        }
-    case "input":
-        switch prop {
-        case "value":       return "value"
-        case "placeholder": return "placeholder"
-        case "disabled":    return "disabled"
-        case "type":        return "type"
-        }
-    case "checkbox":
-        if prop == "checked" {
-            return "checked"
-        }
-    }
-    return ""
+	switch tag {
+	case "text", "label":
+		if prop == "value" {
+			return "textContent"
+		}
+	case "button":
+		if prop == "text" {
+			return "textContent"
+		}
+		if prop == "disabled" {
+			return "disabled"
+		}
+	case "input":
+		switch prop {
+		case "value":
+			return "value"
+		case "placeholder":
+			return "placeholder"
+		case "disabled":
+			return "disabled"
+		case "type":
+			return "type"
+		}
+	case "checkbox":
+		if prop == "checked" {
+			return "checked"
+		}
+	}
+	return ""
 }
 
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-    bareID := identBareName(node)
-    tag := t.idTags[bareID]
-    setter := htmlPropSetter(tag, prop)
-    if setter == "" {
-        // Fall back to setAttribute for unknown props.
-        return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-            Type:     ir.TypVoid,
-            Receiver: node,
-            Func:     &ir.Func{Name: "setAttribute"},
-            Args: []ir.CallArg{
-                {Value: &ir.Literal{Type: ir.TypString, Raw: prop}},
-                {Value: value},
-            },
-        }}}
-    }
-    // node.<setter> = value
-    return []ir.Stmt{&ir.Assign{
-        Target: &ir.Select{Operand: node, Field: setter, Type: ir.TypDyn},
-        Op:     ast.AssignSet,
-        Value:  value,
-    }}
+	bareID := identBareName(node)
+	tag := t.idTags[bareID]
+	setter := htmlPropSetter(tag, prop)
+	if setter == "" {
+		// Fall back to setAttribute for unknown props.
+		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: node,
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Raw: prop}},
+				{Value: value},
+			},
+		}}}
+	}
+	// node.<setter> = value
+	return []ir.Stmt{&ir.Assign{
+		Target: &ir.Select{Operand: node, Field: setter, Type: ir.TypDyn},
+		Op:     ast.AssignSet,
+		Value:  value,
+	}}
 }
 
 func identBareName(e ir.Expr) string {
-    if id, ok := e.(*ir.Ident); ok {
-        return id.Name
-    }
-    return ""
+	if id, ok := e.(*ir.Ident); ok {
+		return id.Name
+	}
+	return ""
 }
 ```
 
@@ -481,15 +506,15 @@ Test:
 
 ```go
 func TestHTMLTranslator_OnPropAssign_TextValue(t *testing.T) {
-    jc := stubJsCtx()
-    tr := newHTMLTranslator(jc)
-    _ = tr.OnCreateNode(context.Background(), "__n0", "text")
-    node := &ir.Ident{Name: "__n0", Synthesized: true}
-    val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
-    got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "value", val))
-    if !strings.Contains(got, `__n0.textContent = "hi"`) {
-        t.Errorf("expected __n0.textContent = \"hi\"; got: %s", got)
-    }
+	jc := stubJsCtx()
+	tr := newHTMLTranslator(jc)
+	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
+	node := &ir.Ident{Name: "__n0", Synthesized: true}
+	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
+	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "value", val))
+	if !strings.Contains(got, `__n0.textContent = "hi"`) {
+		t.Errorf("expected __n0.textContent = \"hi\"; got: %s", got)
+	}
 }
 ```
 
@@ -502,35 +527,35 @@ Commit.
 For html, SNGL events map to DOM event names:
 
 | SNGL event | DOM event |
-|---|---|
-| click | click |
-| input | input |
-| change | change |
-| submit | submit |
+|------------|-----------|
+| click      | click     |
+| input      | input     |
+| change     | change    |
+| submit     | submit    |
 
 ```go
 func htmlEventName(event string) string {
-    switch event {
-    case "click", "input", "change", "submit":
-        return event
-    }
-    return ""
+	switch event {
+	case "click", "input", "change", "submit":
+		return event
+	}
+	return ""
 }
 
 func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-    domEvent := htmlEventName(event)
-    if domEvent == "" {
-        return nil
-    }
-    return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-        Type:     ir.TypVoid,
-        Receiver: node,
-        Func:     &ir.Func{Name: "addEventListener"},
-        Args: []ir.CallArg{
-            {Value: &ir.Literal{Type: ir.TypString, Raw: domEvent}},
-            {Value: handler},
-        },
-    }}}
+	domEvent := htmlEventName(event)
+	if domEvent == "" {
+		return nil
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: node,
+		Func:     &ir.Func{Name: "addEventListener"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Raw: domEvent}},
+			{Value: handler},
+		},
+	}}}
 }
 ```
 
@@ -554,23 +579,23 @@ Slot Vars themselves need to be emitted at the top of the rendered <script> bloc
 
 ```go
 func (t *htmlTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-    // __slotN = []
-    return []ir.Stmt{&ir.Assign{
-        Target: &ir.Ident{Name: slot.Name, Synthesized: true},
-        Op:     ast.AssignSet,
-        Value:  &ir.ListLit{Type: slot.Type, Elems: nil},
-    }}
+	// __slotN = []
+	return []ir.Stmt{&ir.Assign{
+		Target: &ir.Ident{Name: slot.Name, Synthesized: true},
+		Op:     ast.AssignSet,
+		Value:  &ir.ListLit{Type: slot.Type, Elems: nil},
+	}}
 }
 
 func (t *htmlTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-    // __slotN.push(child)
-    slotRef := &ir.Ident{Name: slot.Name, Synthesized: true}
-    return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-        Type:     ir.TypVoid,
-        Receiver: slotRef,
-        Func:     &ir.Func{Name: "push"},
-        Args:     []ir.CallArg{{Value: child}},
-    }}}
+	// __slotN.push(child)
+	slotRef := &ir.Ident{Name: slot.Name, Synthesized: true}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: slotRef,
+		Func:     &ir.Func{Name: "push"},
+		Args:     []ir.CallArg{{Value: child}},
+	}}}
 }
 ```
 
@@ -582,17 +607,17 @@ Test + commit.
 
 ```go
 func (t *htmlTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-    // JS for-of iterates iterable directly; Synthesized refs resolve
-    // to bare identifiers via jc.evalIdent's Synthesized shortcut.
-    return iter
+	// JS for-of iterates iterable directly; Synthesized refs resolve
+	// to bare identifiers via jc.evalIdent's Synthesized shortcut.
+	return iter
 }
 
 func (t *htmlTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
-    return cond
+	return cond
 }
 
 func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-    return []ir.Stmt{stmt}
+	return []ir.Stmt{stmt}
 }
 ```
 
@@ -611,36 +636,36 @@ Run full translator tests + commit.
 ```go
 // Emit slot accumulators:
 for _, v := range pkg.Vars {
-    if v.Synthesized {
-        b.WriteString("let " + v.Name + " = ")
-        if v.Init != nil {
-            b.WriteString(jc.EvalExpr(v.Init))
-        } else {
-            b.WriteString("null")
-        }
-        b.WriteString(";\n")
-    }
+	if v.Synthesized {
+		b.WriteString("let " + v.Name + " = ")
+		if v.Init != nil {
+			b.WriteString(jc.EvalExpr(v.Init))
+		} else {
+			b.WriteString("null")
+		}
+		b.WriteString(";\n")
+	}
 }
 // (Same for each Component.Vars where v.Synthesized; depends on
 // component-walking pattern in the existing emitScript.)
 
 // Emit slot Funcs:
 for _, fn := range pkg.Components[0].Funcs {
-    if fn.Synthesized {
-        tr := newHTMLTranslator(jc)
-        // Translate the body via WalkLowered:
-        body := codegen.WalkLowered(context.Background(), fn.Block, tr)
-        synthesized := &ir.Func{
-            Name:   fn.Name,
-            Params: fn.Params,
-            Block:  body,
-        }
-        for _, line := range jc.EmitFuncDef(synthesized) {
-            b.WriteString(line)
-            b.WriteByte('\n')
-        }
-        b.WriteByte('\n')
-    }
+	if fn.Synthesized {
+		tr := newHTMLTranslator(jc)
+		// Translate the body via WalkLowered:
+		body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+		synthesized := &ir.Func{
+			Name:   fn.Name,
+			Params: fn.Params,
+			Block:  body,
+		}
+		for _, line := range jc.EmitFuncDef(synthesized) {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
+	}
 }
 ```
 
@@ -663,10 +688,10 @@ Translate via the htmlTranslator's OnDefault or a special-case branch in the new
 // In emitScript, after slot Funcs are emitted, walk component body
 // for top-level CallStmts to synthesized __renderSlot*:
 for _, s := range pkg.Components[0].Body {
-    if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && strings.HasPrefix(cs.Call.Func.Name, "__renderSlot") {
-        b.WriteString(jc.EvalStmt(cs)[0])  // single-line call
-        b.WriteByte('\n')
-    }
+	if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && strings.HasPrefix(cs.Call.Func.Name, "__renderSlot") {
+		b.WriteString(jc.EvalStmt(cs)[0]) // single-line call
+		b.WriteByte('\n')
+	}
 }
 ```
 
@@ -717,7 +742,7 @@ For each handler emission site, change:
 
 ```go
 for _, stmt := range h.Func.Block {
-    // old: g.exprToJS + raw conv
+	// old: g.exprToJS + raw conv
 }
 ```
 
@@ -727,9 +752,9 @@ to:
 tr := newHTMLTranslator(jc)
 body := codegen.WalkLowered(context.Background(), h.Func.Block, tr)
 for _, stmt := range body {
-    for _, line := range jc.EvalStmt(stmt) {
-        b.WriteString(line + ";\n")
-    }
+	for _, line := range jc.EvalStmt(stmt) {
+		b.WriteString(line + ";\n")
+	}
 }
 ```
 
@@ -810,31 +835,31 @@ Create `codegen/platform/html/intrinsic_integration_test.go`. Mirror Plan B Task
 
 ```go
 for _, snippet := range []string{
-    "function __renderSlot0",
-    "let __slot0 = []",
-    "__slot0.forEach",  // teardown
-    "__slot0 = []",     // reset
-    "if (state.visible)",
-    `document.createElement("span")`,
-    ".textContent = ",
-    `__root.appendChild(`,
-    `__slot0.push(`,
-    `__renderSlot0(__root)`,  // initial + spliced
+	"function __renderSlot0",
+	"let __slot0 = []",
+	"__slot0.forEach", // teardown
+	"__slot0 = []",    // reset
+	"if (state.visible)",
+	`document.createElement("span")`,
+	".textContent = ",
+	`__root.appendChild(`,
+	`__slot0.push(`,
+	`__renderSlot0(__root)`, // initial + spliced
 } {
-    if !strings.Contains(out, snippet) {
-        t.Errorf("emitted JS missing snippet %q\n--- generated ---\n%s", snippet, out)
-    }
+	if !strings.Contains(out, snippet) {
+		t.Errorf("emitted JS missing snippet %q\n--- generated ---\n%s", snippet, out)
+	}
 }
 
 for _, leak := range []string{
-    "lower.CreateNode",
-    "lower.AppendChild",
-    "lower.RemoveChild",
-    "stdlib.ListPush",
+	"lower.CreateNode",
+	"lower.AppendChild",
+	"lower.RemoveChild",
+	"stdlib.ListPush",
 } {
-    if strings.Contains(out, leak) {
-        t.Errorf("untranslated intrinsic %q leaked into emitted JS", leak)
-    }
+	if strings.Contains(out, leak) {
+		t.Errorf("untranslated intrinsic %q leaked into emitted JS", leak)
+	}
 }
 ```
 

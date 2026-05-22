@@ -43,15 +43,15 @@ Edit `ir/ir.go`. Locate the `Package` struct definition (search `type Package st
 
 ```go
 type Package struct {
-    // ...existing fields...
+	// ...existing fields...
 
-    // LiftedCaptures records, for every lifted closure Func produced by
-    // NoLambda, the mapping from each captured Symbol to the synthesized
-    // state-struct field name that aliases it. NoReactivity reads this
-    // map to resolve `*state.fieldName` mutation sites back to the
-    // underlying captured Var. Empty map (not nil) when no lifts have
-    // happened.
-    LiftedCaptures map[*Func]map[Symbol]string
+	// LiftedCaptures records, for every lifted closure Func produced by
+	// NoLambda, the mapping from each captured Symbol to the synthesized
+	// state-struct field name that aliases it. NoReactivity reads this
+	// map to resolve `*state.fieldName` mutation sites back to the
+	// underlying captured Var. Empty map (not nil) when no lifts have
+	// happened.
+	LiftedCaptures map[*Func]map[Symbol]string
 }
 ```
 
@@ -61,8 +61,8 @@ Find every `&Package{...}` literal in the codebase (likely a small number — ch
 
 ```go
 &Package{
-    // ...
-    LiftedCaptures: map[*Func]map[Symbol]string{},
+	// ...
+	LiftedCaptures: map[*Func]map[Symbol]string{},
 }
 ```
 
@@ -97,69 +97,69 @@ Create `internal/lower/lambda_test.go` (alongside the existing `golden_test.go`)
 package lower
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestAnalyzeCapturesImmutableRead(t *testing.T) {
-    // Lambda body reads outer `n` once; n is read-only inside the body.
-    outerN := &ir.Var{Name: "n", Type: ir.TypInt}
-    body := []ir.Stmt{
-        &ir.Return{Value: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt}},
-    }
-    caps := analyzeCaptures(body, nil)
-    if len(caps) != 1 {
-        t.Fatalf("want 1 capture, got %d", len(caps))
-    }
-    if caps[0].Sym != outerN {
-        t.Errorf("captured wrong sym")
-    }
-    if caps[0].Mutable {
-        t.Errorf("read-only capture marked mutable")
-    }
+	// Lambda body reads outer `n` once; n is read-only inside the body.
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	body := []ir.Stmt{
+		&ir.Return{Value: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt}},
+	}
+	caps := analyzeCaptures(body, nil)
+	if len(caps) != 1 {
+		t.Fatalf("want 1 capture, got %d", len(caps))
+	}
+	if caps[0].Sym != outerN {
+		t.Errorf("captured wrong sym")
+	}
+	if caps[0].Mutable {
+		t.Errorf("read-only capture marked mutable")
+	}
 }
 
 func TestAnalyzeCapturesMutableWrite(t *testing.T) {
-    outerN := &ir.Var{Name: "n", Type: ir.TypInt}
-    body := []ir.Stmt{
-        &ir.Assign{
-            Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-            Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
-        },
-    }
-    caps := analyzeCaptures(body, nil)
-    if len(caps) != 1 || !caps[0].Mutable {
-        t.Errorf("expected mutable capture; got %+v", caps)
-    }
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	body := []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+			Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
+		},
+	}
+	caps := analyzeCaptures(body, nil)
+	if len(caps) != 1 || !caps[0].Mutable {
+		t.Errorf("expected mutable capture; got %+v", caps)
+	}
 }
 
 func TestAnalyzeCapturesParamNotCaptured(t *testing.T) {
-    p := &ir.Param{Name: "x", Type: ir.TypInt}
-    body := []ir.Stmt{
-        &ir.Return{Value: &ir.Ident{Name: "x", Sym: p, Type: ir.TypInt}},
-    }
-    caps := analyzeCaptures(body, []*ir.Param{p})
-    if len(caps) != 0 {
-        t.Errorf("param should not be captured: %+v", caps)
-    }
+	p := &ir.Param{Name: "x", Type: ir.TypInt}
+	body := []ir.Stmt{
+		&ir.Return{Value: &ir.Ident{Name: "x", Sym: p, Type: ir.TypInt}},
+	}
+	caps := analyzeCaptures(body, []*ir.Param{p})
+	if len(caps) != 0 {
+		t.Errorf("param should not be captured: %+v", caps)
+	}
 }
 
 func TestAnalyzeCapturesOrderStable(t *testing.T) {
-    a := &ir.Var{Name: "a", Type: ir.TypInt}
-    b := &ir.Var{Name: "b", Type: ir.TypInt}
-    body := []ir.Stmt{
-        &ir.Return{Value: &ir.Binary{
-            Op:   0, // any
-            Left:  &ir.Ident{Name: "a", Sym: a, Type: ir.TypInt},
-            Right: &ir.Ident{Name: "b", Sym: b, Type: ir.TypInt},
-            Type:  ir.TypInt,
-        }},
-    }
-    caps := analyzeCaptures(body, nil)
-    if len(caps) != 2 || caps[0].Sym != a || caps[1].Sym != b {
-        t.Errorf("order unstable: %+v", caps)
-    }
+	a := &ir.Var{Name: "a", Type: ir.TypInt}
+	b := &ir.Var{Name: "b", Type: ir.TypInt}
+	body := []ir.Stmt{
+		&ir.Return{Value: &ir.Binary{
+			Op:    0, // any
+			Left:  &ir.Ident{Name: "a", Sym: a, Type: ir.TypInt},
+			Right: &ir.Ident{Name: "b", Sym: b, Type: ir.TypInt},
+			Type:  ir.TypInt,
+		}},
+	}
+	caps := analyzeCaptures(body, nil)
+	if len(caps) != 2 || caps[0].Sym != a || caps[1].Sym != b {
+		t.Errorf("order unstable: %+v", caps)
+	}
 }
 ```
 
@@ -174,20 +174,20 @@ Edit `internal/lower/lambda.go`. Replace the file's body (keeping the existing p
 package lower
 
 import (
-    "git.duckfam.us/jonathan/sngl/ast"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 var passLambda = pass{
-    name:    "NoLambda",
-    enabled: func(c Caps) bool { return c.NoLambda },
-    apply:   lowerLambda,
+	name:    "NoLambda",
+	enabled: func(c Caps) bool { return c.NoLambda },
+	apply:   lowerLambda,
 }
 
 // capture is one captured outer-scope binding referenced by a lambda body.
 type capture struct {
-    Sym     ir.Symbol // the outer Var or Param being captured
-    Mutable bool      // true if the body assigns to Sym
+	Sym     ir.Symbol // the outer Var or Param being captured
+	Mutable bool      // true if the body assigns to Sym
 }
 
 // analyzeCaptures walks body collecting every Ident.Sym that resolves to a
@@ -195,180 +195,180 @@ type capture struct {
 // the body contains an Assign whose Target chain bottoms out at the same Sym.
 // Returned slice is in first-occurrence order (stable across runs).
 func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
-    paramSet := make(map[ir.Symbol]bool, len(params))
-    for _, p := range params {
-        paramSet[p] = true
-    }
+	paramSet := make(map[ir.Symbol]bool, len(params))
+	for _, p := range params {
+		paramSet[p] = true
+	}
 
-    seen := make(map[ir.Symbol]int) // sym → index in result
-    var caps []capture
+	seen := make(map[ir.Symbol]int) // sym → index in result
+	var caps []capture
 
-    addRead := func(sym ir.Symbol) {
-        if sym == nil || paramSet[sym] {
-            return
-        }
-        switch sym.(type) {
-        case *ir.Var, *ir.Param:
-            // OK
-        default:
-            return
-        }
-        if _, ok := seen[sym]; ok {
-            return
-        }
-        seen[sym] = len(caps)
-        caps = append(caps, capture{Sym: sym})
-    }
+	addRead := func(sym ir.Symbol) {
+		if sym == nil || paramSet[sym] {
+			return
+		}
+		switch sym.(type) {
+		case *ir.Var, *ir.Param:
+			// OK
+		default:
+			return
+		}
+		if _, ok := seen[sym]; ok {
+			return
+		}
+		seen[sym] = len(caps)
+		caps = append(caps, capture{Sym: sym})
+	}
 
-    markMutable := func(sym ir.Symbol) {
-        if sym == nil {
-            return
-        }
-        addRead(sym)
-        if i, ok := seen[sym]; ok {
-            caps[i].Mutable = true
-        }
-    }
+	markMutable := func(sym ir.Symbol) {
+		if sym == nil {
+			return
+		}
+		addRead(sym)
+		if i, ok := seen[sym]; ok {
+			caps[i].Mutable = true
+		}
+	}
 
-    var walkExpr func(ir.Expr)
-    var walkStmt func(ir.Stmt)
-    var walkStmts func([]ir.Stmt)
+	var walkExpr func(ir.Expr)
+	var walkStmt func(ir.Stmt)
+	var walkStmts func([]ir.Stmt)
 
-    walkExpr = func(e ir.Expr) {
-        switch x := e.(type) {
-        case nil:
-            return
-        case *ir.Ident:
-            addRead(x.Sym)
-        case *ir.Binary:
-            walkExpr(x.Left)
-            walkExpr(x.Right)
-        case *ir.Unary:
-            walkExpr(x.Operand)
-        case *ir.Ternary:
-            walkExpr(x.Cond)
-            walkExpr(x.Then)
-            walkExpr(x.Else)
-        case *ir.Call:
-            walkExpr(x.Receiver)
-            for i := range x.Args {
-                walkExpr(x.Args[i].Value)
-            }
-        case *ir.Conversion:
-            walkExpr(x.Operand)
-        case *ir.Select:
-            walkExpr(x.Operand)
-        case *ir.Index:
-            walkExpr(x.Operand)
-            walkExpr(x.Idx)
-        case *ir.ListLit:
-            for _, el := range x.Elems {
-                walkExpr(el)
-            }
-        case *ir.StructLit:
-            for i := range x.Fields {
-                walkExpr(x.Fields[i].Value)
-            }
-        case *ir.Spread:
-            walkExpr(x.Operand)
-        case *ir.Lambda:
-            // Nested lambdas: their own captures are the responsibility of
-            // their own Lift call. Do not descend (the outer lambda's
-            // captures are only the Idents directly visible at this level).
-            return
-        case *ir.Closure:
-            // Already-lifted; do not descend.
-            return
-        }
-    }
+	walkExpr = func(e ir.Expr) {
+		switch x := e.(type) {
+		case nil:
+			return
+		case *ir.Ident:
+			addRead(x.Sym)
+		case *ir.Binary:
+			walkExpr(x.Left)
+			walkExpr(x.Right)
+		case *ir.Unary:
+			walkExpr(x.Operand)
+		case *ir.Ternary:
+			walkExpr(x.Cond)
+			walkExpr(x.Then)
+			walkExpr(x.Else)
+		case *ir.Call:
+			walkExpr(x.Receiver)
+			for i := range x.Args {
+				walkExpr(x.Args[i].Value)
+			}
+		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.Select:
+			walkExpr(x.Operand)
+		case *ir.Index:
+			walkExpr(x.Operand)
+			walkExpr(x.Idx)
+		case *ir.ListLit:
+			for _, el := range x.Elems {
+				walkExpr(el)
+			}
+		case *ir.StructLit:
+			for i := range x.Fields {
+				walkExpr(x.Fields[i].Value)
+			}
+		case *ir.Spread:
+			walkExpr(x.Operand)
+		case *ir.Lambda:
+			// Nested lambdas: their own captures are the responsibility of
+			// their own Lift call. Do not descend (the outer lambda's
+			// captures are only the Idents directly visible at this level).
+			return
+		case *ir.Closure:
+			// Already-lifted; do not descend.
+			return
+		}
+	}
 
-    rootSym := func(e ir.Expr) ir.Symbol {
-        for {
-            switch x := e.(type) {
-            case *ir.Ident:
-                return x.Sym
-            case *ir.Select:
-                e = x.Operand
-            case *ir.Index:
-                e = x.Operand
-            case *ir.Unary:
-                if x.Op == ast.UnaryDeref {
-                    e = x.Operand
-                    continue
-                }
-                return nil
-            default:
-                return nil
-            }
-        }
-    }
+	rootSym := func(e ir.Expr) ir.Symbol {
+		for {
+			switch x := e.(type) {
+			case *ir.Ident:
+				return x.Sym
+			case *ir.Select:
+				e = x.Operand
+			case *ir.Index:
+				e = x.Operand
+			case *ir.Unary:
+				if x.Op == ast.UnaryDeref {
+					e = x.Operand
+					continue
+				}
+				return nil
+			default:
+				return nil
+			}
+		}
+	}
 
-    walkStmt = func(s ir.Stmt) {
-        switch n := s.(type) {
-        case *ir.Assign:
-            markMutable(rootSym(n.Target))
-            walkExpr(n.Target)
-            walkExpr(n.Value)
-        case *ir.LocalVar:
-            walkExpr(n.Init)
-        case *ir.Return:
-            walkExpr(n.Value)
-        case *ir.If:
-            walkExpr(n.Cond)
-            walkStmts(n.Body)
-            walkStmts(n.Else)
-        case *ir.For:
-            walkExpr(n.Iter)
-            walkStmts(n.Body)
-            walkStmts(n.Else)
-        case *ir.PlatformFilter:
-            walkStmts(n.Body)
-        case *ir.NodeInst:
-            for i := range n.Props {
-                walkExpr(n.Props[i].Value)
-            }
-            walkExpr(n.Key)
-            walkExpr(n.Ref)
-            walkStmts(n.Children)
-            for i := range n.Handlers {
-                if n.Handlers[i].Func != nil {
-                    walkStmts(n.Handlers[i].Func.Block)
-                }
-            }
-        case *ir.SlotInst:
-            walkStmts(n.Children)
-        case *ir.ErrorBoundary:
-            walkStmts(n.Children)
-            if n.Handler != nil && n.Handler.Func != nil {
-                walkStmts(n.Handler.Func.Block)
-            }
-        case *ir.Emit:
-            for i := range n.Args {
-                walkExpr(n.Args[i].Value)
-            }
-        case *ir.CallStmt:
-            if n.Call != nil {
-                walkExpr(n.Call)
-            }
-        case *ir.Toggle:
-            markMutable(rootSym(n.Target))
-            walkExpr(n.Target)
-        case *ir.Window:
-            walkExpr(n.Href)
-            walkExpr(n.Title)
-            walkExpr(n.Favicon)
-            walkStmts(n.Body)
-        }
-    }
+	walkStmt = func(s ir.Stmt) {
+		switch n := s.(type) {
+		case *ir.Assign:
+			markMutable(rootSym(n.Target))
+			walkExpr(n.Target)
+			walkExpr(n.Value)
+		case *ir.LocalVar:
+			walkExpr(n.Init)
+		case *ir.Return:
+			walkExpr(n.Value)
+		case *ir.If:
+			walkExpr(n.Cond)
+			walkStmts(n.Body)
+			walkStmts(n.Else)
+		case *ir.For:
+			walkExpr(n.Iter)
+			walkStmts(n.Body)
+			walkStmts(n.Else)
+		case *ir.PlatformFilter:
+			walkStmts(n.Body)
+		case *ir.NodeInst:
+			for i := range n.Props {
+				walkExpr(n.Props[i].Value)
+			}
+			walkExpr(n.Key)
+			walkExpr(n.Ref)
+			walkStmts(n.Children)
+			for i := range n.Handlers {
+				if n.Handlers[i].Func != nil {
+					walkStmts(n.Handlers[i].Func.Block)
+				}
+			}
+		case *ir.SlotInst:
+			walkStmts(n.Children)
+		case *ir.ErrorBoundary:
+			walkStmts(n.Children)
+			if n.Handler != nil && n.Handler.Func != nil {
+				walkStmts(n.Handler.Func.Block)
+			}
+		case *ir.Emit:
+			for i := range n.Args {
+				walkExpr(n.Args[i].Value)
+			}
+		case *ir.CallStmt:
+			if n.Call != nil {
+				walkExpr(n.Call)
+			}
+		case *ir.Toggle:
+			markMutable(rootSym(n.Target))
+			walkExpr(n.Target)
+		case *ir.Window:
+			walkExpr(n.Href)
+			walkExpr(n.Title)
+			walkExpr(n.Favicon)
+			walkStmts(n.Body)
+		}
+	}
 
-    walkStmts = func(stmts []ir.Stmt) {
-        for _, s := range stmts {
-            walkStmt(s)
-        }
-    }
+	walkStmts = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			walkStmt(s)
+		}
+	}
 
-    walkStmts(body)
-    return caps
+	walkStmts(body)
+	return caps
 }
 
 func lowerLambda(pkg *ir.Package) error { return nil } // placeholder, Task 4 replaces
@@ -399,88 +399,88 @@ Append to `internal/lower/lambda_test.go`:
 
 ```go
 func TestLifterBasicReadOnlyCapture(t *testing.T) {
-    pkg := &ir.Package{
-        LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-    }
-    outerN := &ir.Var{Name: "n", Type: ir.TypInt}
-    pkg.Vars = []*ir.Var{outerN}
+	pkg := &ir.Package{
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+	}
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	pkg.Vars = []*ir.Var{outerN}
 
-    body := []ir.Stmt{
-        &ir.Return{Value: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt}},
-    }
-    l := &lifter{pkg: pkg}
-    cl := l.Lift(body, nil, ir.TypInt, nil)
+	body := []ir.Stmt{
+		&ir.Return{Value: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt}},
+	}
+	l := &lifter{pkg: pkg}
+	cl := l.Lift(body, nil, ir.TypInt, nil)
 
-    if cl == nil || cl.Func == nil || cl.State == nil {
-        t.Fatalf("Lift returned bad shape: %+v", cl)
-    }
-    if len(cl.Func.Params) != 1 {
-        t.Errorf("lifted Func should have one (state) param; got %d", len(cl.Func.Params))
-    }
-    if cl.State.Def == nil || len(cl.State.Def.Fields) != 1 {
-        t.Errorf("state struct should have one field; got %+v", cl.State.Def)
-    }
-    field := cl.State.Def.Fields[0]
-    if field.Type.Kind != ir.TypeInt {
-        t.Errorf("read-only capture field should be int, got %v", field.Type.Kind)
-    }
-    if len(pkg.Funcs) != 1 || pkg.Funcs[0] != cl.Func {
-        t.Errorf("lifted Func not appended to pkg.Funcs")
-    }
-    if len(pkg.Structs) != 1 || pkg.Structs[0] != cl.State.Def {
-        t.Errorf("state struct not appended to pkg.Structs")
-    }
-    capMap := pkg.LiftedCaptures[cl.Func]
-    if capMap[outerN] != "n" {
-        t.Errorf("LiftedCaptures missing entry for outerN")
-    }
+	if cl == nil || cl.Func == nil || cl.State == nil {
+		t.Fatalf("Lift returned bad shape: %+v", cl)
+	}
+	if len(cl.Func.Params) != 1 {
+		t.Errorf("lifted Func should have one (state) param; got %d", len(cl.Func.Params))
+	}
+	if cl.State.Def == nil || len(cl.State.Def.Fields) != 1 {
+		t.Errorf("state struct should have one field; got %+v", cl.State.Def)
+	}
+	field := cl.State.Def.Fields[0]
+	if field.Type.Kind != ir.TypeInt {
+		t.Errorf("read-only capture field should be int, got %v", field.Type.Kind)
+	}
+	if len(pkg.Funcs) != 1 || pkg.Funcs[0] != cl.Func {
+		t.Errorf("lifted Func not appended to pkg.Funcs")
+	}
+	if len(pkg.Structs) != 1 || pkg.Structs[0] != cl.State.Def {
+		t.Errorf("state struct not appended to pkg.Structs")
+	}
+	capMap := pkg.LiftedCaptures[cl.Func]
+	if capMap[outerN] != "n" {
+		t.Errorf("LiftedCaptures missing entry for outerN")
+	}
 }
 
 func TestLifterMutableCaptureUsesRefType(t *testing.T) {
-    pkg := &ir.Package{
-        LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-    }
-    outerN := &ir.Var{Name: "n", Type: ir.TypInt}
-    pkg.Vars = []*ir.Var{outerN}
+	pkg := &ir.Package{
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+	}
+	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
+	pkg.Vars = []*ir.Var{outerN}
 
-    body := []ir.Stmt{
-        &ir.Assign{
-            Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-            Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
-        },
-    }
-    l := &lifter{pkg: pkg}
-    cl := l.Lift(body, nil, nil, nil)
+	body := []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
+			Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
+		},
+	}
+	l := &lifter{pkg: pkg}
+	cl := l.Lift(body, nil, nil, nil)
 
-    field := cl.State.Def.Fields[0]
-    if field.Type.Kind != ir.TypeRef {
-        t.Errorf("mutable capture field should be ref<int>, got %v", field.Type.Kind)
-    }
-    if field.Type.Elem == nil || field.Type.Elem.Kind != ir.TypeInt {
-        t.Errorf("ref elem should be int, got %v", field.Type.Elem)
-    }
-    // State init field value must be Unary{UnaryAddr, Ident{outerN}}.
-    init := cl.State.Fields[0].Value
-    u, ok := init.(*ir.Unary)
-    if !ok || u.Op != ast.UnaryAddr {
-        t.Errorf("mutable capture init should be &outerN; got %T", init)
-    }
+	field := cl.State.Def.Fields[0]
+	if field.Type.Kind != ir.TypeRef {
+		t.Errorf("mutable capture field should be ref<int>, got %v", field.Type.Kind)
+	}
+	if field.Type.Elem == nil || field.Type.Elem.Kind != ir.TypeInt {
+		t.Errorf("ref elem should be int, got %v", field.Type.Elem)
+	}
+	// State init field value must be Unary{UnaryAddr, Ident{outerN}}.
+	init := cl.State.Fields[0].Value
+	u, ok := init.(*ir.Unary)
+	if !ok || u.Op != ast.UnaryAddr {
+		t.Errorf("mutable capture init should be &outerN; got %T", init)
+	}
 }
 
 func TestLifterFreshNameCollision(t *testing.T) {
-    // pkg already has a struct named __lambda0_caps; lifter must skip past it.
-    pkg := &ir.Package{
-        LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-        Structs: []*ir.StructDef{
-            {Name: "__lambda0_caps"},
-        },
-    }
-    body := []ir.Stmt{}
-    l := &lifter{pkg: pkg}
-    cl := l.Lift(body, nil, nil, nil)
-    if cl.State.Def.Name == "__lambda0_caps" {
-        t.Errorf("lifter did not skip existing name")
-    }
+	// pkg already has a struct named __lambda0_caps; lifter must skip past it.
+	pkg := &ir.Package{
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		Structs: []*ir.StructDef{
+			{Name: "__lambda0_caps"},
+		},
+	}
+	body := []ir.Stmt{}
+	l := &lifter{pkg: pkg}
+	cl := l.Lift(body, nil, nil, nil)
+	if cl.State.Def.Name == "__lambda0_caps" {
+		t.Errorf("lifter did not skip existing name")
+	}
 }
 ```
 
@@ -495,172 +495,172 @@ Replace the placeholder `lowerLambda` and add the lifter in `internal/lower/lamb
 // lifter owns NoLambda's package-scoped state. The same lifter is shared
 // between the main pass and NoDeclarative's handler-promote step.
 type lifter struct {
-    pkg     *ir.Package
-    counter int
-    // enclosing tracks ancestor lift frames so a nested lambda capturing
-    // the same Sym as its enclosing lambda re-uses the outer's ref-typed
-    // state field instead of taking a fresh address.
-    enclosing []scopeFrame
+	pkg     *ir.Package
+	counter int
+	// enclosing tracks ancestor lift frames so a nested lambda capturing
+	// the same Sym as its enclosing lambda re-uses the outer's ref-typed
+	// state field instead of taking a fresh address.
+	enclosing []scopeFrame
 }
 
 type scopeFrame struct {
-    // captureField maps a captured outer Symbol to the AST expression that
-    // accesses it from this frame's lifted body — typically Select{Ident{state}, fieldName}.
-    captureField map[ir.Symbol]ir.Expr
+	// captureField maps a captured outer Symbol to the AST expression that
+	// accesses it from this frame's lifted body — typically Select{Ident{state}, fieldName}.
+	captureField map[ir.Symbol]ir.Expr
 }
 
 // Lift converts a closure-shaped (body, params, return) into a top-level Func
 // + caps StructDef and returns the *ir.Closure that replaces the original
 // lambda expression.
 func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast.LambdaExpr) *ir.Closure {
-    caps := analyzeCaptures(body, params)
+	caps := analyzeCaptures(body, params)
 
-    // Synthesize names.
-    capsName, funcName := l.freshNames()
+	// Synthesize names.
+	capsName, funcName := l.freshNames()
 
-    // Build the state struct definition.
-    capsDef := &ir.StructDef{Name: capsName}
-    for _, c := range caps {
-        fieldType := c.Sym.SymType()
-        if c.Mutable {
-            fieldType = ir.RefOf(fieldType)
-        }
-        capsDef.Fields = append(capsDef.Fields, &ir.StructField{
-            Name: c.Sym.SymName(),
-            Type: fieldType,
-        })
-    }
-    l.pkg.Structs = append(l.pkg.Structs, capsDef)
+	// Build the state struct definition.
+	capsDef := &ir.StructDef{Name: capsName}
+	for _, c := range caps {
+		fieldType := c.Sym.SymType()
+		if c.Mutable {
+			fieldType = ir.RefOf(fieldType)
+		}
+		capsDef.Fields = append(capsDef.Fields, &ir.StructField{
+			Name: c.Sym.SymName(),
+			Type: fieldType,
+		})
+	}
+	l.pkg.Structs = append(l.pkg.Structs, capsDef)
 
-    capsType := &ir.Type{Kind: ir.TypeStruct, Decl: capsDef}
+	capsType := &ir.Type{Kind: ir.TypeStruct, Decl: capsDef}
 
-    // Synthesize the state Param.
-    stateParam := &ir.Param{Name: "state", Type: capsType}
+	// Synthesize the state Param.
+	stateParam := &ir.Param{Name: "state", Type: capsType}
 
-    // Synthesize the lifted Func.
-    lifted := &ir.Func{
-        Name:   funcName,
-        Params: append([]*ir.Param{stateParam}, params...),
-        Return: ret,
-    }
+	// Synthesize the lifted Func.
+	lifted := &ir.Func{
+		Name:   funcName,
+		Params: append([]*ir.Param{stateParam}, params...),
+		Return: ret,
+	}
 
-    // Build the rewrite map: captured Sym → expression accessing it inside
-    // the lifted body. State is value-typed; mutable fields are ref<T>.
-    captureField := make(map[ir.Symbol]ir.Expr, len(caps))
-    for _, c := range caps {
-        sel := &ir.Select{
-            Operand: &ir.Ident{Name: "state", Sym: stateParam, Type: capsType},
-            Field:   c.Sym.SymName(),
-            Type:    c.Sym.SymType(),
-        }
-        var access ir.Expr = sel
-        if c.Mutable {
-            // Field type is ref<T>; reads/writes go through Unary{Deref}.
-            sel.Type = ir.RefOf(c.Sym.SymType())
-            access = &ir.Unary{
-                Op:      ast.UnaryDeref,
-                Operand: sel,
-                Type:    c.Sym.SymType(),
-            }
-        }
-        captureField[c.Sym] = access
-    }
+	// Build the rewrite map: captured Sym → expression accessing it inside
+	// the lifted body. State is value-typed; mutable fields are ref<T>.
+	captureField := make(map[ir.Symbol]ir.Expr, len(caps))
+	for _, c := range caps {
+		sel := &ir.Select{
+			Operand: &ir.Ident{Name: "state", Sym: stateParam, Type: capsType},
+			Field:   c.Sym.SymName(),
+			Type:    c.Sym.SymType(),
+		}
+		var access ir.Expr = sel
+		if c.Mutable {
+			// Field type is ref<T>; reads/writes go through Unary{Deref}.
+			sel.Type = ir.RefOf(c.Sym.SymType())
+			access = &ir.Unary{
+				Op:      ast.UnaryDeref,
+				Operand: sel,
+				Type:    c.Sym.SymType(),
+			}
+		}
+		captureField[c.Sym] = access
+	}
 
-    // Push frame and rewrite body.
-    l.enclosing = append(l.enclosing, scopeFrame{captureField: captureField})
-    lifted.Block = l.rewriteStmts(body, captureField)
-    l.enclosing = l.enclosing[:len(l.enclosing)-1]
+	// Push frame and rewrite body.
+	l.enclosing = append(l.enclosing, scopeFrame{captureField: captureField})
+	lifted.Block = l.rewriteStmts(body, captureField)
+	l.enclosing = l.enclosing[:len(l.enclosing)-1]
 
-    l.pkg.Funcs = append(l.pkg.Funcs, lifted)
+	l.pkg.Funcs = append(l.pkg.Funcs, lifted)
 
-    // Build the State StructLit at the original lambda position.
-    state := &ir.StructLit{Type: capsType, Def: capsDef}
-    for _, c := range caps {
-        var fieldValue ir.Expr
-        // If an enclosing frame already aliases this Sym, re-use its access
-        // expression (already a ref<T> read or value access). Otherwise
-        // synthesize a fresh Ident or & based on mutability.
-        if outer := l.outerCaptureAccess(c.Sym); outer != nil {
-            fieldValue = outer
-        } else {
-            ident := &ir.Ident{Name: c.Sym.SymName(), Sym: c.Sym, Type: c.Sym.SymType()}
-            if c.Mutable {
-                fieldValue = &ir.Unary{
-                    Op:      ast.UnaryAddr,
-                    Operand: ident,
-                    Type:    ir.RefOf(c.Sym.SymType()),
-                }
-            } else {
-                fieldValue = ident
-            }
-        }
-        state.Fields = append(state.Fields, ir.FieldInit{
-            Name:  c.Sym.SymName(),
-            Value: fieldValue,
-        })
-    }
+	// Build the State StructLit at the original lambda position.
+	state := &ir.StructLit{Type: capsType, Def: capsDef}
+	for _, c := range caps {
+		var fieldValue ir.Expr
+		// If an enclosing frame already aliases this Sym, re-use its access
+		// expression (already a ref<T> read or value access). Otherwise
+		// synthesize a fresh Ident or & based on mutability.
+		if outer := l.outerCaptureAccess(c.Sym); outer != nil {
+			fieldValue = outer
+		} else {
+			ident := &ir.Ident{Name: c.Sym.SymName(), Sym: c.Sym, Type: c.Sym.SymType()}
+			if c.Mutable {
+				fieldValue = &ir.Unary{
+					Op:      ast.UnaryAddr,
+					Operand: ident,
+					Type:    ir.RefOf(c.Sym.SymType()),
+				}
+			} else {
+				fieldValue = ident
+			}
+		}
+		state.Fields = append(state.Fields, ir.FieldInit{
+			Name:  c.Sym.SymName(),
+			Value: fieldValue,
+		})
+	}
 
-    // Record capture names for NoReactivity.
-    capMap := make(map[ir.Symbol]string, len(caps))
-    for _, c := range caps {
-        capMap[c.Sym] = c.Sym.SymName()
-    }
-    if l.pkg.LiftedCaptures == nil {
-        l.pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
-    }
-    l.pkg.LiftedCaptures[lifted] = capMap
+	// Record capture names for NoReactivity.
+	capMap := make(map[ir.Symbol]string, len(caps))
+	for _, c := range caps {
+		capMap[c.Sym] = c.Sym.SymName()
+	}
+	if l.pkg.LiftedCaptures == nil {
+		l.pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
+	}
+	l.pkg.LiftedCaptures[lifted] = capMap
 
-    // User-visible signature: original params + return only.
-    userSig := &ir.FuncSig{Params: params, Return: ret}
+	// User-visible signature: original params + return only.
+	userSig := &ir.FuncSig{Params: params, Return: ret}
 
-    return &ir.Closure{
-        AST:   src,
-        Type:  &ir.Type{Kind: ir.TypeFunc, Sig: userSig},
-        Func:  lifted,
-        State: state,
-    }
+	return &ir.Closure{
+		AST:   src,
+		Type:  &ir.Type{Kind: ir.TypeFunc, Sig: userSig},
+		Func:  lifted,
+		State: state,
+	}
 }
 
 // outerCaptureAccess returns the access expression an enclosing frame
 // already exposes for sym, or nil if no enclosing frame captures sym.
 func (l *lifter) outerCaptureAccess(sym ir.Symbol) ir.Expr {
-    for i := len(l.enclosing) - 1; i >= 0; i-- {
-        if access, ok := l.enclosing[i].captureField[sym]; ok {
-            return access
-        }
-    }
-    return nil
+	for i := len(l.enclosing) - 1; i >= 0; i-- {
+		if access, ok := l.enclosing[i].captureField[sym]; ok {
+			return access
+		}
+	}
+	return nil
 }
 
 // freshNames returns (capsName, funcName) skipping past any existing names
 // in pkg.Structs / pkg.Funcs.
 func (l *lifter) freshNames() (string, string) {
-    for {
-        capsName := "__lambda" + itoa(l.counter) + "_caps"
-        funcName := "__lambda" + itoa(l.counter)
-        l.counter++
-        if !l.nameExists(capsName) && !l.nameExists(funcName) {
-            return capsName, funcName
-        }
-    }
+	for {
+		capsName := "__lambda" + itoa(l.counter) + "_caps"
+		funcName := "__lambda" + itoa(l.counter)
+		l.counter++
+		if !l.nameExists(capsName) && !l.nameExists(funcName) {
+			return capsName, funcName
+		}
+	}
 }
 
 func (l *lifter) nameExists(name string) bool {
-    for _, s := range l.pkg.Structs {
-        if s.Name == name {
-            return true
-        }
-    }
-    for _, f := range l.pkg.Funcs {
-        if f.Name == name {
-            return true
-        }
-    }
-    return false
+	for _, s := range l.pkg.Structs {
+		if s.Name == name {
+			return true
+		}
+	}
+	for _, f := range l.pkg.Funcs {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func itoa(n int) string {
-    return strconv.Itoa(n)
+	return strconv.Itoa(n)
 }
 ```
 
@@ -677,146 +677,146 @@ Append to `internal/lower/lambda.go`:
 // which establishes its own frame and inherits the current frame via
 // l.enclosing.
 func (l *lifter) rewriteStmts(stmts []ir.Stmt, captureField map[ir.Symbol]ir.Expr) []ir.Stmt {
-    for _, s := range stmts {
-        l.rewriteStmt(s, captureField)
-    }
-    return stmts
+	for _, s := range stmts {
+		l.rewriteStmt(s, captureField)
+	}
+	return stmts
 }
 
 func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr) {
-    switch n := s.(type) {
-    case *ir.Assign:
-        n.Target = l.rewriteExpr(n.Target, captureField)
-        n.Value = l.rewriteExpr(n.Value, captureField)
-    case *ir.LocalVar:
-        n.Init = l.rewriteExpr(n.Init, captureField)
-    case *ir.Return:
-        n.Value = l.rewriteExpr(n.Value, captureField)
-    case *ir.If:
-        n.Cond = l.rewriteExpr(n.Cond, captureField)
-        l.rewriteStmts(n.Body, captureField)
-        l.rewriteStmts(n.Else, captureField)
-    case *ir.For:
-        n.Iter = l.rewriteExpr(n.Iter, captureField)
-        l.rewriteStmts(n.Body, captureField)
-        l.rewriteStmts(n.Else, captureField)
-    case *ir.PlatformFilter:
-        l.rewriteStmts(n.Body, captureField)
-    case *ir.Emit:
-        for i := range n.Args {
-            n.Args[i].Value = l.rewriteExpr(n.Args[i].Value, captureField)
-        }
-    case *ir.CallStmt:
-        if n.Call != nil {
-            n.Call = l.rewriteExpr(n.Call, captureField).(*ir.Call)
-        }
-    case *ir.Toggle:
-        n.Target = l.rewriteExpr(n.Target, captureField)
-    case *ir.NodeInst:
-        for i := range n.Props {
-            n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField)
-        }
-        n.Key = l.rewriteExpr(n.Key, captureField)
-        n.Ref = l.rewriteExpr(n.Ref, captureField)
-        l.rewriteStmts(n.Children, captureField)
-        for i := range n.Handlers {
-            if n.Handlers[i].Func != nil {
-                l.rewriteStmts(n.Handlers[i].Func.Block, captureField)
-            }
-        }
-    case *ir.SlotInst:
-        l.rewriteStmts(n.Children, captureField)
-    case *ir.ErrorBoundary:
-        l.rewriteStmts(n.Children, captureField)
-        if n.Handler != nil && n.Handler.Func != nil {
-            l.rewriteStmts(n.Handler.Func.Block, captureField)
-        }
-    }
+	switch n := s.(type) {
+	case *ir.Assign:
+		n.Target = l.rewriteExpr(n.Target, captureField)
+		n.Value = l.rewriteExpr(n.Value, captureField)
+	case *ir.LocalVar:
+		n.Init = l.rewriteExpr(n.Init, captureField)
+	case *ir.Return:
+		n.Value = l.rewriteExpr(n.Value, captureField)
+	case *ir.If:
+		n.Cond = l.rewriteExpr(n.Cond, captureField)
+		l.rewriteStmts(n.Body, captureField)
+		l.rewriteStmts(n.Else, captureField)
+	case *ir.For:
+		n.Iter = l.rewriteExpr(n.Iter, captureField)
+		l.rewriteStmts(n.Body, captureField)
+		l.rewriteStmts(n.Else, captureField)
+	case *ir.PlatformFilter:
+		l.rewriteStmts(n.Body, captureField)
+	case *ir.Emit:
+		for i := range n.Args {
+			n.Args[i].Value = l.rewriteExpr(n.Args[i].Value, captureField)
+		}
+	case *ir.CallStmt:
+		if n.Call != nil {
+			n.Call = l.rewriteExpr(n.Call, captureField).(*ir.Call)
+		}
+	case *ir.Toggle:
+		n.Target = l.rewriteExpr(n.Target, captureField)
+	case *ir.NodeInst:
+		for i := range n.Props {
+			n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField)
+		}
+		n.Key = l.rewriteExpr(n.Key, captureField)
+		n.Ref = l.rewriteExpr(n.Ref, captureField)
+		l.rewriteStmts(n.Children, captureField)
+		for i := range n.Handlers {
+			if n.Handlers[i].Func != nil {
+				l.rewriteStmts(n.Handlers[i].Func.Block, captureField)
+			}
+		}
+	case *ir.SlotInst:
+		l.rewriteStmts(n.Children, captureField)
+	case *ir.ErrorBoundary:
+		l.rewriteStmts(n.Children, captureField)
+		if n.Handler != nil && n.Handler.Func != nil {
+			l.rewriteStmts(n.Handler.Func.Block, captureField)
+		}
+	}
 }
 
 func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr) ir.Expr {
-    switch x := e.(type) {
-    case nil:
-        return nil
-    case *ir.Ident:
-        if x.Sym != nil {
-            if access, ok := captureField[x.Sym]; ok {
-                return cloneExpr(access)
-            }
-        }
-        return x
-    case *ir.Binary:
-        x.Left = l.rewriteExpr(x.Left, captureField)
-        x.Right = l.rewriteExpr(x.Right, captureField)
-        return x
-    case *ir.Unary:
-        x.Operand = l.rewriteExpr(x.Operand, captureField)
-        return x
-    case *ir.Ternary:
-        x.Cond = l.rewriteExpr(x.Cond, captureField)
-        x.Then = l.rewriteExpr(x.Then, captureField)
-        x.Else = l.rewriteExpr(x.Else, captureField)
-        return x
-    case *ir.Call:
-        x.Receiver = l.rewriteExpr(x.Receiver, captureField)
-        for i := range x.Args {
-            x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField)
-        }
-        return x
-    case *ir.Conversion:
-        x.Operand = l.rewriteExpr(x.Operand, captureField)
-        return x
-    case *ir.Select:
-        x.Operand = l.rewriteExpr(x.Operand, captureField)
-        return x
-    case *ir.Index:
-        x.Operand = l.rewriteExpr(x.Operand, captureField)
-        x.Idx = l.rewriteExpr(x.Idx, captureField)
-        return x
-    case *ir.ListLit:
-        for i := range x.Elems {
-            x.Elems[i] = l.rewriteExpr(x.Elems[i], captureField)
-        }
-        return x
-    case *ir.StructLit:
-        for i := range x.Fields {
-            x.Fields[i].Value = l.rewriteExpr(x.Fields[i].Value, captureField)
-        }
-        return x
-    case *ir.Spread:
-        x.Operand = l.rewriteExpr(x.Operand, captureField)
-        return x
-    case *ir.Lambda:
-        // Nested lambda inside this body. The outer pass's walker will
-        // reach it as part of normal traversal (after the outer Lift
-        // returns) and call Lift on it. Do not rewrite into the lambda
-        // body here — that would conflate scope frames.
-        return x
-    case *ir.Closure:
-        // Already lifted; do not descend.
-        return x
-    }
-    return e
+	switch x := e.(type) {
+	case nil:
+		return nil
+	case *ir.Ident:
+		if x.Sym != nil {
+			if access, ok := captureField[x.Sym]; ok {
+				return cloneExpr(access)
+			}
+		}
+		return x
+	case *ir.Binary:
+		x.Left = l.rewriteExpr(x.Left, captureField)
+		x.Right = l.rewriteExpr(x.Right, captureField)
+		return x
+	case *ir.Unary:
+		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		return x
+	case *ir.Ternary:
+		x.Cond = l.rewriteExpr(x.Cond, captureField)
+		x.Then = l.rewriteExpr(x.Then, captureField)
+		x.Else = l.rewriteExpr(x.Else, captureField)
+		return x
+	case *ir.Call:
+		x.Receiver = l.rewriteExpr(x.Receiver, captureField)
+		for i := range x.Args {
+			x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField)
+		}
+		return x
+	case *ir.Conversion:
+		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		return x
+	case *ir.Select:
+		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		return x
+	case *ir.Index:
+		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		x.Idx = l.rewriteExpr(x.Idx, captureField)
+		return x
+	case *ir.ListLit:
+		for i := range x.Elems {
+			x.Elems[i] = l.rewriteExpr(x.Elems[i], captureField)
+		}
+		return x
+	case *ir.StructLit:
+		for i := range x.Fields {
+			x.Fields[i].Value = l.rewriteExpr(x.Fields[i].Value, captureField)
+		}
+		return x
+	case *ir.Spread:
+		x.Operand = l.rewriteExpr(x.Operand, captureField)
+		return x
+	case *ir.Lambda:
+		// Nested lambda inside this body. The outer pass's walker will
+		// reach it as part of normal traversal (after the outer Lift
+		// returns) and call Lift on it. Do not rewrite into the lambda
+		// body here — that would conflate scope frames.
+		return x
+	case *ir.Closure:
+		// Already lifted; do not descend.
+		return x
+	}
+	return e
 }
 
 // cloneExpr returns a deep-enough copy of e so multiple insertions of an
 // access expression do not alias mutations across sites. Only the spine
 // matters; leaf Symbols are shared by design.
 func cloneExpr(e ir.Expr) ir.Expr {
-    switch x := e.(type) {
-    case *ir.Ident:
-        cp := *x
-        return &cp
-    case *ir.Select:
-        cp := *x
-        cp.Operand = cloneExpr(x.Operand)
-        return &cp
-    case *ir.Unary:
-        cp := *x
-        cp.Operand = cloneExpr(x.Operand)
-        return &cp
-    }
-    return e
+	switch x := e.(type) {
+	case *ir.Ident:
+		cp := *x
+		return &cp
+	case *ir.Select:
+		cp := *x
+		cp.Operand = cloneExpr(x.Operand)
+		return &cp
+	case *ir.Unary:
+		cp := *x
+		cp.Operand = cloneExpr(x.Operand)
+		return &cp
+	}
+	return e
 }
 ```
 
@@ -845,163 +845,163 @@ In `internal/lower/lambda.go`, replace the placeholder `lowerLambda` with:
 
 ```go
 func lowerLambda(pkg *ir.Package) error {
-    if pkg == nil {
-        return nil
-    }
-    if pkg.LiftedCaptures == nil {
-        pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
-    }
+	if pkg == nil {
+		return nil
+	}
+	if pkg.LiftedCaptures == nil {
+		pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
+	}
 
-    l := &lifter{pkg: pkg}
+	l := &lifter{pkg: pkg}
 
-    rewrite := func(e ir.Expr) ir.Expr {
-        return liftLambdas(e, l)
-    }
+	rewrite := func(e ir.Expr) ir.Expr {
+		return liftLambdas(e, l)
+	}
 
-    walkPackage(pkg, walkFuncs{
-        expr: rewrite,
-        stmts: func(stmts []ir.Stmt) []ir.Stmt {
-            return liftLambdasInStmts(stmts, l)
-        },
-    })
+	walkPackage(pkg, walkFuncs{
+		expr: rewrite,
+		stmts: func(stmts []ir.Stmt) []ir.Stmt {
+			return liftLambdasInStmts(stmts, l)
+		},
+	})
 
-    if err := assertNoLambdaSurvives(pkg); err != nil {
-        return err
-    }
-    return nil
+	if err := assertNoLambdaSurvives(pkg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // liftLambdas replaces every *ir.Lambda found in e (recursively) with a
 // *ir.Closure produced by l.Lift.
 func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
-    switch x := e.(type) {
-    case nil:
-        return nil
-    case *ir.Lambda:
-        // Recurse into the lambda's body first so nested lambdas are
-        // lifted in inner-most order; their captures may reach outer
-        // bindings via l.enclosing once Lift establishes its frame.
-        x.Func.Block = liftLambdasInStmts(x.Func.Block, l)
-        return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
-    case *ir.Binary:
-        x.Left = liftLambdas(x.Left, l)
-        x.Right = liftLambdas(x.Right, l)
-        return x
-    case *ir.Unary:
-        x.Operand = liftLambdas(x.Operand, l)
-        return x
-    case *ir.Ternary:
-        x.Cond = liftLambdas(x.Cond, l)
-        x.Then = liftLambdas(x.Then, l)
-        x.Else = liftLambdas(x.Else, l)
-        return x
-    case *ir.Call:
-        x.Receiver = liftLambdas(x.Receiver, l)
-        for i := range x.Args {
-            x.Args[i].Value = liftLambdas(x.Args[i].Value, l)
-        }
-        return x
-    case *ir.Conversion:
-        x.Operand = liftLambdas(x.Operand, l)
-        return x
-    case *ir.Select:
-        x.Operand = liftLambdas(x.Operand, l)
-        return x
-    case *ir.Index:
-        x.Operand = liftLambdas(x.Operand, l)
-        x.Idx = liftLambdas(x.Idx, l)
-        return x
-    case *ir.ListLit:
-        for i := range x.Elems {
-            x.Elems[i] = liftLambdas(x.Elems[i], l)
-        }
-        return x
-    case *ir.StructLit:
-        for i := range x.Fields {
-            x.Fields[i].Value = liftLambdas(x.Fields[i].Value, l)
-        }
-        return x
-    case *ir.Spread:
-        x.Operand = liftLambdas(x.Operand, l)
-        return x
-    }
-    return e
+	switch x := e.(type) {
+	case nil:
+		return nil
+	case *ir.Lambda:
+		// Recurse into the lambda's body first so nested lambdas are
+		// lifted in inner-most order; their captures may reach outer
+		// bindings via l.enclosing once Lift establishes its frame.
+		x.Func.Block = liftLambdasInStmts(x.Func.Block, l)
+		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
+	case *ir.Binary:
+		x.Left = liftLambdas(x.Left, l)
+		x.Right = liftLambdas(x.Right, l)
+		return x
+	case *ir.Unary:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Ternary:
+		x.Cond = liftLambdas(x.Cond, l)
+		x.Then = liftLambdas(x.Then, l)
+		x.Else = liftLambdas(x.Else, l)
+		return x
+	case *ir.Call:
+		x.Receiver = liftLambdas(x.Receiver, l)
+		for i := range x.Args {
+			x.Args[i].Value = liftLambdas(x.Args[i].Value, l)
+		}
+		return x
+	case *ir.Conversion:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Select:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.Index:
+		x.Operand = liftLambdas(x.Operand, l)
+		x.Idx = liftLambdas(x.Idx, l)
+		return x
+	case *ir.ListLit:
+		for i := range x.Elems {
+			x.Elems[i] = liftLambdas(x.Elems[i], l)
+		}
+		return x
+	case *ir.StructLit:
+		for i := range x.Fields {
+			x.Fields[i].Value = liftLambdas(x.Fields[i].Value, l)
+		}
+		return x
+	case *ir.Spread:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	}
+	return e
 }
 
 func liftLambdasInStmts(stmts []ir.Stmt, l *lifter) []ir.Stmt {
-    for _, s := range stmts {
-        liftLambdasInStmt(s, l)
-    }
-    return stmts
+	for _, s := range stmts {
+		liftLambdasInStmt(s, l)
+	}
+	return stmts
 }
 
 func liftLambdasInStmt(s ir.Stmt, l *lifter) {
-    switch n := s.(type) {
-    case *ir.Assign:
-        n.Target = liftLambdas(n.Target, l)
-        n.Value = liftLambdas(n.Value, l)
-    case *ir.LocalVar:
-        n.Init = liftLambdas(n.Init, l)
-    case *ir.Return:
-        n.Value = liftLambdas(n.Value, l)
-    case *ir.If:
-        n.Cond = liftLambdas(n.Cond, l)
-        liftLambdasInStmts(n.Body, l)
-        liftLambdasInStmts(n.Else, l)
-    case *ir.For:
-        n.Iter = liftLambdas(n.Iter, l)
-        liftLambdasInStmts(n.Body, l)
-        liftLambdasInStmts(n.Else, l)
-    case *ir.PlatformFilter:
-        liftLambdasInStmts(n.Body, l)
-    case *ir.Emit:
-        for i := range n.Args {
-            n.Args[i].Value = liftLambdas(n.Args[i].Value, l)
-        }
-    case *ir.CallStmt:
-        if n.Call != nil {
-            n.Call = liftLambdas(n.Call, l).(*ir.Call)
-        }
-    case *ir.Toggle:
-        n.Target = liftLambdas(n.Target, l)
-    case *ir.NodeInst:
-        for i := range n.Props {
-            n.Props[i].Value = liftLambdas(n.Props[i].Value, l)
-        }
-        n.Key = liftLambdas(n.Key, l)
-        n.Ref = liftLambdas(n.Ref, l)
-        liftLambdasInStmts(n.Children, l)
-        for i := range n.Handlers {
-            if n.Handlers[i].Func != nil {
-                liftLambdasInStmts(n.Handlers[i].Func.Block, l)
-            }
-        }
-    case *ir.SlotInst:
-        liftLambdasInStmts(n.Children, l)
-    case *ir.ErrorBoundary:
-        liftLambdasInStmts(n.Children, l)
-        if n.Handler != nil && n.Handler.Func != nil {
-            liftLambdasInStmts(n.Handler.Func.Block, l)
-        }
-    }
+	switch n := s.(type) {
+	case *ir.Assign:
+		n.Target = liftLambdas(n.Target, l)
+		n.Value = liftLambdas(n.Value, l)
+	case *ir.LocalVar:
+		n.Init = liftLambdas(n.Init, l)
+	case *ir.Return:
+		n.Value = liftLambdas(n.Value, l)
+	case *ir.If:
+		n.Cond = liftLambdas(n.Cond, l)
+		liftLambdasInStmts(n.Body, l)
+		liftLambdasInStmts(n.Else, l)
+	case *ir.For:
+		n.Iter = liftLambdas(n.Iter, l)
+		liftLambdasInStmts(n.Body, l)
+		liftLambdasInStmts(n.Else, l)
+	case *ir.PlatformFilter:
+		liftLambdasInStmts(n.Body, l)
+	case *ir.Emit:
+		for i := range n.Args {
+			n.Args[i].Value = liftLambdas(n.Args[i].Value, l)
+		}
+	case *ir.CallStmt:
+		if n.Call != nil {
+			n.Call = liftLambdas(n.Call, l).(*ir.Call)
+		}
+	case *ir.Toggle:
+		n.Target = liftLambdas(n.Target, l)
+	case *ir.NodeInst:
+		for i := range n.Props {
+			n.Props[i].Value = liftLambdas(n.Props[i].Value, l)
+		}
+		n.Key = liftLambdas(n.Key, l)
+		n.Ref = liftLambdas(n.Ref, l)
+		liftLambdasInStmts(n.Children, l)
+		for i := range n.Handlers {
+			if n.Handlers[i].Func != nil {
+				liftLambdasInStmts(n.Handlers[i].Func.Block, l)
+			}
+		}
+	case *ir.SlotInst:
+		liftLambdasInStmts(n.Children, l)
+	case *ir.ErrorBoundary:
+		liftLambdasInStmts(n.Children, l)
+		if n.Handler != nil && n.Handler.Func != nil {
+			liftLambdasInStmts(n.Handler.Func.Block, l)
+		}
+	}
 }
 
 // assertNoLambdaSurvives walks pkg verifying that no *ir.Lambda remains.
 // Cheap (one extra walk); failure here means the pass missed a position.
 func assertNoLambdaSurvives(pkg *ir.Package) error {
-    var found bool
-    walkPackage(pkg, walkFuncs{
-        expr: func(e ir.Expr) ir.Expr {
-            if _, ok := e.(*ir.Lambda); ok {
-                found = true
-            }
-            return e
-        },
-    })
-    if found {
-        return fmt.Errorf("lower: NoLambda invariant violated — *ir.Lambda survived the pass")
-    }
-    return nil
+	var found bool
+	walkPackage(pkg, walkFuncs{
+		expr: func(e ir.Expr) ir.Expr {
+			if _, ok := e.(*ir.Lambda); ok {
+				found = true
+			}
+			return e
+		},
+	})
+	if found {
+		return fmt.Errorf("lower: NoLambda invariant violated — *ir.Lambda survived the pass")
+	}
+	return nil
 }
 ```
 

@@ -61,10 +61,12 @@ The `$` prefix is the only discriminator — no lookahead needed. Inside `$"..."
 - **`<expr>`** — required. Any SNGL expression. Resolved against the local scope and bound by name (synthetic name if not a bare ident). For `{user.name}` this is the only field.
 - **`<type>`** — optional, plain identifier. ICU type/style keyword: `plural`, `select`, `selectordinal`, `date`, `time`, `number`, `short`, `medium`, `long`, `full`, `currency`, `percent`, `decimal`, `scientific`, …
 - **`<body>`** — optional, only when `<type>` is `plural`/`select`/`selectordinal`. A space-separated sequence of message cases:
+
   ```
   <selector> { <message> }
+  ```Selector is an identifier (`one`, `two`, `few`, `many`, `other`, `zero`, plus `male`/`female`/etc. for `select`) or `=N` for an explicit numeric match. The message body is recursively an i18n message — literal text plus nested `{...}` placeholders.
+
   ```
-  Selector is an identifier (`one`, `two`, `few`, `many`, `other`, `zero`, plus `male`/`female`/etc. for `select`) or `=N` for an explicit numeric match. The message body is recursively an i18n message — literal text plus nested `{...}` placeholders.
 
 The ICU spec uses whitespace between cases (`one{a} other{b}`); SNGL follows the spec — no commas between cases.
 
@@ -99,15 +101,15 @@ The AST node carries the translatable marker through formatting (so `$"..."` rou
 
 The lexer emits **distinct token types** for `$"..."` strings rather than flagging existing string tokens. This lets the grammar stay disjoint between regular and translatable interpolations, with no conditional behavior on a `Translatable` flag:
 
-| Regular | Translatable |
-|---|---|
-| `STR_START` | `I18N_STR_START` |
-| `STR_RESUME` | `I18N_STR_RESUME` |
-| `STR_END` | `I18N_STR_END` |
+| Regular        | Translatable        |
+|----------------|---------------------|
+| `STR_START`    | `I18N_STR_START`    |
+| `STR_RESUME`   | `I18N_STR_RESUME`   |
+| `STR_END`      | `I18N_STR_END`      |
 | `TRIPLE_START` | `I18N_TRIPLE_START` |
-| `TRIPLE_END` | `I18N_TRIPLE_END` |
-| `STR_FULL` | `I18N_STR_FULL` |
-| `TRIPLE_FULL` | `I18N_TRIPLE_FULL` |
+| `TRIPLE_END`   | `I18N_TRIPLE_END`   |
+| `STR_FULL`     | `I18N_STR_FULL`     |
+| `TRIPLE_FULL`  | `I18N_TRIPLE_FULL`  |
 
 Plus three new tokens for case bodies: `I18N_CASE_FULL` (literal-only `{text}` body), `I18N_CASE_START` (`{text` opening of a body with nested placeholders), `I18N_CASE_END` (`text}` closing). These let the grammar treat case bodies symmetrically to outer i18n strings.
 
@@ -127,24 +129,24 @@ A separate top-level node for translatable interpolations (no `Translatable` fla
 // I18nInterpExpr is a $"..." or $"""..."""  string. Parts alternate between
 // *LiteralExpr (string segments) and *I18nPlaceholderExpr (one per {...}).
 type I18nInterpExpr struct {
-    Pos   Pos
-    Parts []Expr        // alternation of *LiteralExpr | *I18nPlaceholderExpr
-    Style StringStyle   // StyleDouble or StyleTriple
+	Pos   Pos
+	Parts []Expr      // alternation of *LiteralExpr | *I18nPlaceholderExpr
+	Style StringStyle // StyleDouble or StyleTriple
 }
 
 // I18nPlaceholderExpr is the {<expr>, <type>, <body>} form.
 type I18nPlaceholderExpr struct {
-    Pos   Pos
-    Value Expr           // required
-    Type  string         // "" if absent (no comma-ident)
-    Cases []I18nCase     // nil if no body; else one or more cases
+	Pos   Pos
+	Value Expr       // required
+	Type  string     // "" if absent (no comma-ident)
+	Cases []I18nCase // nil if no body; else one or more cases
 }
 
 // One case in a plural/select/selectordinal body: <selector> { <message> }.
 type I18nCase struct {
-    Pos      Pos
-    Selector string       // "one", "other", "=0", "male", …
-    Body     []Expr       // alternation of *LiteralExpr | *I18nPlaceholderExpr
+	Pos      Pos
+	Selector string // "one", "other", "=0", "male", …
+	Body     []Expr // alternation of *LiteralExpr | *I18nPlaceholderExpr
 }
 ```
 
@@ -333,21 +335,21 @@ The schema is intentionally minimal. #22 may extend it (e.g. add `original`, `co
 
 The unilateral implementation in commit history covers parser flag + checker warning + a multi-format extractor. It needs to be extended/revised:
 
-| Component | Current state | Needs |
-|---|---|---|
-| `Token.Translatable` flag | ✅ added | **remove** — replaced by distinct `I18N_*` token types |
-| `InterpolationExpr.Translatable` flag | ✅ added | **remove** — replaced by separate `I18nInterpExpr` node |
-| Lexer `$"..."` recognition | ✅ basic case | rewrite: emit `I18N_STR_*` tokens with i18n-aware frame state including case-body sub-frames |
-| Formatter `$` round-trip | ✅ basic case | rewrite to format `I18nInterpExpr`/`I18nPlaceholderExpr`/`I18nCase` |
-| Checker no-static-text warning | ✅ works | port to `inferI18nInterp`; add placeholder type/case validation against ICU keyword set |
-| `ast.I18nInterpExpr`, `I18nPlaceholderExpr`, `I18nCase` | ❌ missing | add |
-| Grammar | ❌ unchanged | new terminals (i18n string boundaries); new productions `I18nInterpStr`, `I18nTriple`, `I18nFull`, `I18nPlaceholder`, `MsgFormatBody`, `MsgCase`, `Selector`; new alternative in `PrimaryExpr`; regenerate `zparser.go` |
-| AST builders | ❌ missing | add `buildI18n*` in `internal/parser/build.go` |
-| IR conversion to `ir.Call` | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` with synthesized ICU template as first arg |
-| `map<K, V>` generic type | ❌ missing | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax (struct keys supported), `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen |
-| Stdlib `i18n` package | ❌ missing | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `selectordinal`, `select`, `PluralKey` struct, `zero`/`one`/`two`/`few`/`many`/`other` constants, `exactly(n)` constructor |
-| Go stdlib impl via PkgSource | ❌ missing | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`); manifest loader reads `i18n.manifest.json` if present |
-| `sngl extract` | ✅ multi-format | **delete** — extraction is out of scope for #21 |
+| Component                                               | Current state                                    | Needs                                                                                                                                                                                                                                      |
+|---------------------------------------------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Token.Translatable` flag                               | ✅ added                                         | **remove** — replaced by distinct `I18N_*` token types                                                                                                                                                                                     |
+| `InterpolationExpr.Translatable` flag                   | ✅ added                                         | **remove** — replaced by separate `I18nInterpExpr` node                                                                                                                                                                                    |
+| Lexer `$"..."` recognition                              | ✅ basic case                                    | rewrite: emit `I18N_STR_*` tokens with i18n-aware frame state including case-body sub-frames                                                                                                                                               |
+| Formatter `$` round-trip                                | ✅ basic case                                    | rewrite to format `I18nInterpExpr`/`I18nPlaceholderExpr`/`I18nCase`                                                                                                                                                                        |
+| Checker no-static-text warning                          | ✅ works                                         | port to `inferI18nInterp`; add placeholder type/case validation against ICU keyword set                                                                                                                                                    |
+| `ast.I18nInterpExpr`, `I18nPlaceholderExpr`, `I18nCase` | ❌ missing                                       | add                                                                                                                                                                                                                                        |
+| Grammar                                                 | ❌ unchanged                                     | new terminals (i18n string boundaries); new productions `I18nInterpStr`, `I18nTriple`, `I18nFull`, `I18nPlaceholder`, `MsgFormatBody`, `MsgCase`, `Selector`; new alternative in `PrimaryExpr`; regenerate `zparser.go`                    |
+| AST builders                                            | ❌ missing                                       | add `buildI18n*` in `internal/parser/build.go`                                                                                                                                                                                             |
+| IR conversion to `ir.Call`                              | ❌ still emits `Binary +` chain for translatable | new `inferI18nInterp` emitting `ir.Call` to `i18n.tr` with synthesized ICU template as first arg                                                                                                                                           |
+| `map<K, V>` generic type                                | ❌ missing                                       | add `ir.TypeMap`, type-expr parsing, map literal `{"k": v}` syntax (struct keys supported), `IndexExpr` lowering for maps, methods (`length`, `keys`, `values`, `contains`, `get`), per-language codegen                                   |
+| Stdlib `i18n` package                                   | ❌ missing                                       | add `lib/i18n.sngl` declaring `tr`, `format`, `numberInt`, `numberFloat`, `date`, `time`, `datetime`, `plural`, `selectordinal`, `select`, `PluralKey` struct, `zero`/`one`/`two`/`few`/`many`/`other` constants, `exactly(n)` constructor |
+| Go stdlib impl via PkgSource                            | ❌ missing                                       | add (uses `x/text` `message`, `feature/plural`, `number`, `currency`); manifest loader reads `i18n.manifest.json` if present                                                                                                               |
+| `sngl extract`                                          | ✅ multi-format                                  | **delete** — extraction is out of scope for #21                                                                                                                                                                                            |
 
 ## Testing
 

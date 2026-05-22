@@ -12,19 +12,19 @@
 
 ## File Map
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `codegen/platform/gtk4/gir/gir.go` | Create | GIR XML parser → `TypeRegistry` |
-| `codegen/platform/gtk4/gir/gir_test.go` | Create | Unit tests for GIR parsing |
-| `codegen/platform/gtk4/gtk4.go` | Create | `Generator`: register, Resolve, Generate |
-| `codegen/platform/gtk4/gtk4_test.go` | Create | Unit tests for Resolve |
-| `codegen/platform/gtk4/scaffold.go` | Create | `Config`, `templateData`, embedded FS |
-| `codegen/platform/gtk4/view_ir.go` | Create | `viewContext` + GTK widget renderer |
-| `codegen/platform/gtk4/compiler_ir.go` | Create | `compilation` MutationModel emitter |
-| `codegen/platform/gtk4/gtk4.sngl` | Create | Stdlib component declarations |
-| `codegen/platform/gtk4/templates/model.go.tmpl` | Create | State struct, helpers, updaters |
-| `codegen/platform/platforms.go` | Modify | Add blank import for `gtk4` |
-| `cmd/sngl/testdata/compile_gtk4_button.txt` | Create | End-to-end txtar test |
+| File                                            | Action | Responsibility                           |
+|-------------------------------------------------|--------|------------------------------------------|
+| `codegen/platform/gtk4/gir/gir.go`              | Create | GIR XML parser → `TypeRegistry`          |
+| `codegen/platform/gtk4/gir/gir_test.go`         | Create | Unit tests for GIR parsing               |
+| `codegen/platform/gtk4/gtk4.go`                 | Create | `Generator`: register, Resolve, Generate |
+| `codegen/platform/gtk4/gtk4_test.go`            | Create | Unit tests for Resolve                   |
+| `codegen/platform/gtk4/scaffold.go`             | Create | `Config`, `templateData`, embedded FS    |
+| `codegen/platform/gtk4/view_ir.go`              | Create | `viewContext` + GTK widget renderer      |
+| `codegen/platform/gtk4/compiler_ir.go`          | Create | `compilation` MutationModel emitter      |
+| `codegen/platform/gtk4/gtk4.sngl`               | Create | Stdlib component declarations            |
+| `codegen/platform/gtk4/templates/model.go.tmpl` | Create | State struct, helpers, updaters          |
+| `codegen/platform/platforms.go`                 | Modify | Add blank import for `gtk4`              |
+| `cmd/sngl/testdata/compile_gtk4_button.txt`     | Create | End-to-end txtar test                    |
 
 ---
 
@@ -363,8 +363,8 @@ package gtk4_test
 import (
 	"testing"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -673,6 +673,7 @@ func resolveGIRPath(girPath string) (string, error) {
 - [ ] **Step 4: Add a placeholder `gtk4.sngl`** (empty — real content in Task 4)
 
 Create `codegen/platform/gtk4/gtk4.sngl`:
+
 ```
 // GTK4 platform package.
 struct Options {
@@ -685,6 +686,7 @@ struct Options {
 - [ ] **Step 5: Add blank import to platforms.go**
 
 Edit `codegen/platform/platforms.go`, add:
+
 ```go
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 ```
@@ -692,6 +694,7 @@ Edit `codegen/platform/platforms.go`, add:
 - [ ] **Step 6: Fix test — skip when GIR absent, not fail**
 
 Update `gtk4_test.go` to gracefully skip:
+
 ```go
 func TestResolve_KnownWidget(t *testing.T) {
 	gen := codegen.LookupPlatform("gtk4")
@@ -731,18 +734,20 @@ grep -n "LookupPlatform\|func Lookup" /home/jonathan/src/git.duckfam.us/jonathan
 ```
 
 If it doesn't exist, add to `codegen/registry.go`:
+
 ```go
 // LookupPlatform returns the registered PlatformGenerator for the given id, or nil.
 func LookupPlatform(id string) PlatformGenerator {
-    platformsMu.RLock()
-    defer platformsMu.RUnlock()
-    return platforms[id]
+	platformsMu.RLock()
+	defer platformsMu.RUnlock()
+	return platforms[id]
 }
 ```
 
 - [ ] **Step 8: Add stub compilation struct (required for compile)**
 
 Create `codegen/platform/gtk4/compiler_ir.go` with just enough to compile (real impl in Task 6):
+
 ```go
 // codegen/platform/gtk4/compiler_ir.go
 package gtk4
@@ -1132,14 +1137,14 @@ func (u widgetUpdater) DepFields() map[string]bool { return u.deps }
 
 // viewContext tracks state during BuildUI code generation.
 type viewContext struct {
-	gc           *golang.GoIRContext
-	ctx          *codegen.CodegenCtx
-	registry     *gir.TypeRegistry
-	buf          *strings.Builder
-	indent       int
-	widgetCount  int
-	fields       []widgetField
-	updaters     []widgetUpdater
+	gc          *golang.GoIRContext
+	ctx         *codegen.CodegenCtx
+	registry    *gir.TypeRegistry
+	buf         *strings.Builder
+	indent      int
+	widgetCount int
+	fields      []widgetField
+	updaters    []widgetUpdater
 	// propScope holds prop name→expr substitutions for inline stdlib component rendering.
 	propScope map[string]ir.Expr
 }
@@ -1496,9 +1501,9 @@ If `ExprDeps` doesn't exist, replace the dep-tracking logic with a simpler appro
 // Instead of deps check, register updater for any prop that evaluates to a model getter call.
 goExpr := vc.gc.EvalExpr(expr)
 if strings.Contains(goExpr, "m.Get") || strings.Contains(goExpr, "m.") {
-    // likely reactive
-    deps := map[string]bool{} // simplified: trigger doRefresh
-    // ...
+	// likely reactive
+	deps := map[string]bool{} // simplified: trigger doRefresh
+	// ...
 }
 ```
 
@@ -2145,31 +2150,31 @@ git commit -m "test: gtk4 integration test (txtar)"
 
 **Spec coverage check:**
 
-| Spec requirement | Task |
-|-----------------|------|
-| `gtk4` platform identifier | Task 2 |
-| GIR file autodetect from standard paths | Task 2 |
-| `--opt gir=` override | Task 3 (Config.GIRPath) |
-| Hard error on GIR not found | Task 2 (resolveGIRPath) |
-| `Resolve("GtkButton")` → `ir.Component` | Task 2 |
-| GIR type mapping | Task 1 (girTypeToIR) |
-| gtk4.sngl stdlib: button, label, entry, vbox, hbox, checkbox, image, scroll, window | Task 4 |
-| Widget constructor emission | Task 5 (renderGtkWidget) |
-| Signal callback registration | Task 5 (sngl_connect + snglCallbacks) |
-| Reactive updaters (setter table) | Task 5 (gtkSetterTable) |
-| Container children (gtk_box_append) | Task 5 (gtkChildAddTable) |
-| MutationModel emitter | Task 6 |
-| Cgo preamble with `#cgo pkg-config: gtk4` | Task 3 (template) |
-| `main()` with `runtime.LockOSThread()` | Task 6 (emitGTK4Main) |
-| `gtkPost` async helper | Task 3 (template) |
-| `//export` callbacks in model.go | Task 3 (template) |
-| Hard error for non-go lang | Task 6 (BuildMutationModel) |
-| Hard error for missing CCompiler | Not applicable — gtk4 generates its own preamble, not via CCompiler |
-| `platforms.go` blank import | Task 2 |
-| Integration test with inline GIR | Task 7 |
-| GIR class unknown → nil → checker error | Task 2 (Resolve returns nil) |
-| GIR type unmappable → TypeDyn | Task 1 (girTypeToIR default) |
-| Non-go lang error | Task 6 |
+| Spec requirement                                                                    | Task                                                                |
+|-------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| `gtk4` platform identifier                                                          | Task 2                                                              |
+| GIR file autodetect from standard paths                                             | Task 2                                                              |
+| `--opt gir=` override                                                               | Task 3 (Config.GIRPath)                                             |
+| Hard error on GIR not found                                                         | Task 2 (resolveGIRPath)                                             |
+| `Resolve("GtkButton")` → `ir.Component`                                             | Task 2                                                              |
+| GIR type mapping                                                                    | Task 1 (girTypeToIR)                                                |
+| gtk4.sngl stdlib: button, label, entry, vbox, hbox, checkbox, image, scroll, window | Task 4                                                              |
+| Widget constructor emission                                                         | Task 5 (renderGtkWidget)                                            |
+| Signal callback registration                                                        | Task 5 (sngl_connect + snglCallbacks)                               |
+| Reactive updaters (setter table)                                                    | Task 5 (gtkSetterTable)                                             |
+| Container children (gtk_box_append)                                                 | Task 5 (gtkChildAddTable)                                           |
+| MutationModel emitter                                                               | Task 6                                                              |
+| Cgo preamble with `#cgo pkg-config: gtk4`                                           | Task 3 (template)                                                   |
+| `main()` with `runtime.LockOSThread()`                                              | Task 6 (emitGTK4Main)                                               |
+| `gtkPost` async helper                                                              | Task 3 (template)                                                   |
+| `//export` callbacks in model.go                                                    | Task 3 (template)                                                   |
+| Hard error for non-go lang                                                          | Task 6 (BuildMutationModel)                                         |
+| Hard error for missing CCompiler                                                    | Not applicable — gtk4 generates its own preamble, not via CCompiler |
+| `platforms.go` blank import                                                         | Task 2                                                              |
+| Integration test with inline GIR                                                    | Task 7                                                              |
+| GIR class unknown → nil → checker error                                             | Task 2 (Resolve returns nil)                                        |
+| GIR type unmappable → TypeDyn                                                       | Task 1 (girTypeToIR default)                                        |
+| Non-go lang error                                                                   | Task 6                                                              |
 
 **Key risk: `viewContext.renderNode` dispatch** — The GIR widget check (`strings.HasPrefix(n.Name, "Gtk")`) must occur BEFORE the user-component check. GIR-resolved components won't be in `ctx.Pkg.Components` but could accidentally fall through to `renderStdlibInline` if they have an empty body. Since `Resolve` returns a `*ir.Component{Body: nil}`, the `len(n.Component.Body) > 0` guard in `renderStdlibInline` will prevent this.
 
@@ -2180,6 +2185,7 @@ git commit -m "test: gtk4 integration test (txtar)"
 Update Task 3 to create `templates/callbacks.go.tmpl` separately and update `compiler_ir.go` to emit both files.
 
 The `callbacks.go.tmpl`:
+
 ```
 package {{.Package}}
 

@@ -20,8 +20,7 @@ component windows all collide into `_site/window_L336.html`. The component
 pages currently visible under `_site/docs/sngl/components/*.html` are stale
 artifacts from a prior build, not output from this one.
 
-Cross-window links are also brittle: `html.a(href="/docs/sngl/components/" +
-comp.name + ".html")` is hand-typed string concat. Nothing ties the link to a
+Cross-window links are also brittle: `html.a(href="/docs/sngl/components/" + comp.name + ".html")` is hand-typed string concat. Nothing ties the link to a
 real window declaration; renaming a window's path silently breaks every link
 to it.
 
@@ -106,13 +105,13 @@ In `codegen/platform/html/html.go:290-326` the per-window loop computes a
 filename from `win.Name`. Replace with a derivation from the folded literal
 `Href`:
 
-| folded `href`            | output path             |
-| ------------------------ | ----------------------- |
-| `/` or empty             | `index.html`            |
-| `/index.html`            | `index.html`            |
-| `/foo/bar.html`          | `foo/bar.html`          |
-| `/foo/`                  | `foo/index.html`        |
-| `/foo`                   | `foo/index.html`        |
+| folded `href`   | output path      |
+|-----------------|------------------|
+| `/` or empty    | `index.html`     |
+| `/index.html`   | `index.html`     |
+| `/foo/bar.html` | `foo/bar.html`   |
+| `/foo/`         | `foo/index.html` |
+| `/foo`          | `foo/index.html` |
 
 Static mode already errors at `html.go:106` when a window's href doesn't fold
 to a literal, so by the time we're choosing filenames every href is a literal

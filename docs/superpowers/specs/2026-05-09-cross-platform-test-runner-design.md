@@ -32,7 +32,7 @@ The existing `codegen.TestRunner` interface is the only entry point:
 
 ```go
 type TestRunner interface {
-    RunTests(pkg *ir.Package, lang LangTranslator) ([]*TestResult, error)
+	RunTests(pkg *ir.Package, lang LangTranslator) ([]*TestResult, error)
 }
 ```
 
@@ -63,12 +63,12 @@ New package factored out of today's `html/testing.go`:
 
 New stdlib methods on `Test` declared in `lib/testing.sngl`:
 
-| Method | Semantics |
-|---|---|
-| `t.click(node)` | Synthesize a click on a `#id`-bound node. |
-| `t.type(node, s string)` | Focus node, type string char-by-char. |
-| `t.key(name string)` | Send a named key event to the focused element. |
-| `t.focus(node)` / `t.blur(node)` | Move keyboard focus. |
+| Method                              | Semantics                                                |
+|-------------------------------------|----------------------------------------------------------|
+| `t.click(node)`                     | Synthesize a click on a `#id`-bound node.                |
+| `t.type(node, s string)`            | Focus node, type string char-by-char.                    |
+| `t.key(name string)`                | Send a named key event to the focused element.           |
+| `t.focus(node)` / `t.blur(node)`    | Move keyboard focus.                                     |
 | `t.wait(predicate, timeout_ms int)` | Pump platform main loop until predicate true or timeout. |
 
 `node` type is the existing component-child handle (`c.lbl`, `c.foot[i]`).
@@ -193,15 +193,15 @@ Both run on every platform that reaches at least Phase 1.
 
 ## Phasing
 
-| Phase | Scope |
-|---|---|
-| 0 | `codegen/testharness/`; UI primitive stdlib decls + checker lowering; canonical key set; two new fixtures. |
-| 1 | Migrate html onto shared harness; CDP impls of UI primitives. |
-| 2 | `fyne.RunTests` via temp-module + `go test` shelling, `fyne/v2/test`. |
-| 3 | `bubbletea.RunTests` via teatest; finish `testgen_ir.go` and id-bounds map. |
-| 4 | `gtk4.RunTests` via gotk4 test bindings + weston/Xvfb spawn. |
-| 5 | `android.RunTests` via Robolectric + `androidx.compose.ui.test`. |
-| 6 | Wire all five into `internal/cmd/verify` matrix step with probe-and-skip. |
+| Phase | Scope                                                                                                      |
+|-------|------------------------------------------------------------------------------------------------------------|
+| 0     | `codegen/testharness/`; UI primitive stdlib decls + checker lowering; canonical key set; two new fixtures. |
+| 1     | Migrate html onto shared harness; CDP impls of UI primitives.                                              |
+| 2     | `fyne.RunTests` via temp-module + `go test` shelling, `fyne/v2/test`.                                      |
+| 3     | `bubbletea.RunTests` via teatest; finish `testgen_ir.go` and id-bounds map.                                |
+| 4     | `gtk4.RunTests` via gotk4 test bindings + weston/Xvfb spawn.                                               |
+| 5     | `android.RunTests` via Robolectric + `androidx.compose.ui.test`.                                           |
+| 6     | Wire all five into `internal/cmd/verify` matrix step with probe-and-skip.                                  |
 
 Each phase is its own implementation plan. Phase 0 is a hard prerequisite;
 Phases 1–5 are independent and may interleave.

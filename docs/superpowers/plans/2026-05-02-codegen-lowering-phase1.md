@@ -276,14 +276,14 @@ type pass struct {
 
 // passes is the fixed execution order. Earlier passes may not depend on
 // transformations performed by later ones; later passes may. Order rationale:
-//   1. NoUnit, NoEnum — collapse types, no deps.
-//   2. NoTernary — rewrites expressions, no deps on visual model.
-//   3. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
-//   4. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
-//   5. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
-//   6. NoReactivity — analyzes dataflow, injects updaters.
-//   7. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
-//   8. NoDeclarative — last; flattens the visual tree, destroying shape earlier passes used.
+//  1. NoUnit, NoEnum — collapse types, no deps.
+//  2. NoTernary — rewrites expressions, no deps on visual model.
+//  3. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
+//  4. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
+//  5. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
+//  6. NoReactivity — analyzes dataflow, injects updaters.
+//  7. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
+//  8. NoDeclarative — last; flattens the visual tree, destroying shape earlier passes used.
 var passes = []pass{
 	passUnit,
 	passEnum,
@@ -1273,6 +1273,7 @@ Pick any existing example file, e.g.:
 
 Run: `go run ./cmd/sngl dump lowered --lang go --platform bubbletea --list testdata/test_arithmetic.sngl`
 Expected output (something like):
+
 ```
 caps:
 passes: (none)

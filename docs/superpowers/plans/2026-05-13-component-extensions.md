@@ -170,8 +170,8 @@ configurations). When `len(cfg.Platforms) > 1`, emit checker error:
 
 ```go
 if len(c.cfg.Platforms) > 1 {
-    c.error(ast.Pos{}, "component extensions require exactly one registered platform (got %d)", len(c.cfg.Platforms))
-    return
+	c.error(ast.Pos{}, "component extensions require exactly one registered platform (got %d)", len(c.cfg.Platforms))
+	return
 }
 ```
 
@@ -201,44 +201,44 @@ splitting tests.
 // into the stdlib *ir.Component.AST.Body. The component is then
 // re-processed via checkComponentBody to populate the IR Body.
 func (c *checker) mergePlatformExtensions() {
-    if len(c.cfg.Platforms) != 1 {
-        return // pre-flight already errored or test mode
-    }
-    p := c.cfg.Platforms[0]
-    platformName := p.PlatformIdentifier()
-    for _, doc := range p.Package() {
-        for _, stmt := range doc.Stmts {
-            decl, ok := stmt.(*ast.ComponentDecl)
-            if !ok || !strings.HasPrefix(decl.Name, "sngl.") {
-                continue
-            }
-            local := strings.TrimPrefix(decl.Name, "sngl.")
-            stdComp, ok := c.symtab.Comps[local]
-            if !ok {
-                c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
-                continue
-            }
-            // Find the matching platform block.
-            var matched *ast.StmtBlock
-            for _, s := range decl.Body.Stmts {
-                pl, ok := s.(*ast.PlatformStmt)
-                if !ok {
-                    continue
-                }
-                if pl.Platform == platformName {
-                    matched = &pl.Body
-                    break
-                }
-            }
-            if matched == nil {
-                continue // platform has no implementation for this stdlib component
-            }
-            // Replace stdlib component body with the platform-specific one.
-            stdComp.AST.Body = *matched
-            // Re-process the body now that the AST is populated.
-            c.checkComponentBody(stdComp)
-        }
-    }
+	if len(c.cfg.Platforms) != 1 {
+		return // pre-flight already errored or test mode
+	}
+	p := c.cfg.Platforms[0]
+	platformName := p.PlatformIdentifier()
+	for _, doc := range p.Package() {
+		for _, stmt := range doc.Stmts {
+			decl, ok := stmt.(*ast.ComponentDecl)
+			if !ok || !strings.HasPrefix(decl.Name, "sngl.") {
+				continue
+			}
+			local := strings.TrimPrefix(decl.Name, "sngl.")
+			stdComp, ok := c.symtab.Comps[local]
+			if !ok {
+				c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
+				continue
+			}
+			// Find the matching platform block.
+			var matched *ast.StmtBlock
+			for _, s := range decl.Body.Stmts {
+				pl, ok := s.(*ast.PlatformStmt)
+				if !ok {
+					continue
+				}
+				if pl.Platform == platformName {
+					matched = &pl.Body
+					break
+				}
+			}
+			if matched == nil {
+				continue // platform has no implementation for this stdlib component
+			}
+			// Replace stdlib component body with the platform-specific one.
+			stdComp.AST.Body = *matched
+			// Re-process the body now that the AST is populated.
+			c.checkComponentBody(stdComp)
+		}
+	}
 }
 ```
 
@@ -406,19 +406,19 @@ n := countChildren(node.Body.Stmts) // VisualNode + control-flow contribute 1; c
 ct := comp.ChildrenType
 switch {
 case ct == nil:
-    if n > 0 {
-        c.error(node.Pos, "component %q does not accept children", comp.Name)
-    }
+	if n > 0 {
+		c.error(node.Pos, "component %q does not accept children", comp.Name)
+	}
 case ct.Kind == ir.TypeList:
-    // any
+	// any
 case ct.Kind == ir.TypeOption:
-    if n > 1 {
-        c.error(node.Pos, "component %q accepts at most one child (got %d)", comp.Name, n)
-    }
+	if n > 1 {
+		c.error(node.Pos, "component %q accepts at most one child (got %d)", comp.Name, n)
+	}
 default:
-    if n != 1 {
-        c.error(node.Pos, "component %q requires exactly one child (got %d)", comp.Name, n)
-    }
+	if n != 1 {
+		c.error(node.Pos, "component %q requires exactly one child (got %d)", comp.Name, n)
+	}
 }
 ```
 
@@ -550,8 +550,7 @@ native HTML tags now.
 
 - [ ] **Step 4: Final verification**
 
-`go test ./...` and `go tool verify`. Run `go tool sngl run
-examples/hello-i18n --platform html` and `--platform gtk4` if
+`go test ./...` and `go tool verify`. Run `go tool sngl run examples/hello-i18n --platform html` and `--platform gtk4` if
 practical. Mark TaskList 70-72 completed.
 
 ### Task 15: inline_strict_extension fixture
@@ -562,8 +561,7 @@ practical. Mark TaskList 70-72 completed.
 - [ ] **Step 1: Write fixture**
 
 Use the teststub platform from `internal/lower/golden_test.go`. Extend
-the stub source to ship `component sngl.text { platform teststub {
-nativespan(textContent=value) {} } }`. Fixture asserts user `text(value="hi")`
+the stub source to ship `component sngl.text { platform teststub { nativespan(textContent=value) {} } }`. Fixture asserts user `text(value="hi")`
 inlines to the `nativespan` body.
 
 - [ ] **Step 2: Run**

@@ -16,26 +16,26 @@
 
 Files created or modified, by responsibility:
 
-| File | Purpose | Action |
-|---|---|---|
-| `codegen/deps.go` | New `depExtractor` walker + `resolveVar`; migrated dep tracker types | Modify (large rewrite) |
-| `codegen/deps_test.go` | Unit tests for the walker | Create |
-| `codegen/analysis.go` | Populate pointer-keyed `ModelVars` alongside existing name-keyed maps | Modify |
-| `codegen/model.go` | `Updater.Deps` and `Handler.Mutated` become `map[*ir.Var]struct{}`; `Dependent.DepVars` | Modify |
-| `codegen/codegen.go` | `ExprScope`: keep name-keyed `ModelFields`/`ComputedFields` (used at emission), no new fields needed | No change |
-| `codegen/lang/golang/translate_ir.go` | No change — uses name-keyed `scope.ModelFields` for emission | No change |
-| `codegen/lang/javascript/translate_ir.go` | No change for the same reason | No change |
-| `codegen/platform/html/html.go` | Updater/handler construction now consumes pointer-keyed deps from the walker, extracts names for emission via `.Name` | Modify |
-| `codegen/platform/html/cdprunner.go` | Reads `Updater.Deps`; migrate set type | Modify |
-| `codegen/platform/bubbletea/compiler_ir.go` | Re-render trigger sets; migrate set type | Modify |
-| `codegen/platform/fyne/compiler_ir.go` | Mutation model setters; migrate set type | Modify |
-| `codegen/platform/android/compiler_ir.go` | Recomposition triggers; migrate set type | Modify |
-| `internal/lower/computed.go` | Already uses `*ir.Func` pointers; verify no name-keyed dep references | Audit |
-| `testdata/test_reactivity_through_method.sngl` | Driver fixture | Create |
-| `testdata/test_reactivity_extension_method.sngl` | Driver fixture | Create |
-| `testdata/test_mutation_through_method.sngl` | Driver fixture | Create |
-| `testdata/test_reactivity_two_components.sngl` | Driver fixture | Create |
-| `testdata/test_reactivity_global_var.sngl` | Driver fixture | Create |
+| File                                             | Purpose                                                                                                               | Action                 |
+|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|------------------------|
+| `codegen/deps.go`                                | New `depExtractor` walker + `resolveVar`; migrated dep tracker types                                                  | Modify (large rewrite) |
+| `codegen/deps_test.go`                           | Unit tests for the walker                                                                                             | Create                 |
+| `codegen/analysis.go`                            | Populate pointer-keyed `ModelVars` alongside existing name-keyed maps                                                 | Modify                 |
+| `codegen/model.go`                               | `Updater.Deps` and `Handler.Mutated` become `map[*ir.Var]struct{}`; `Dependent.DepVars`                               | Modify                 |
+| `codegen/codegen.go`                             | `ExprScope`: keep name-keyed `ModelFields`/`ComputedFields` (used at emission), no new fields needed                  | No change              |
+| `codegen/lang/golang/translate_ir.go`            | No change — uses name-keyed `scope.ModelFields` for emission                                                          | No change              |
+| `codegen/lang/javascript/translate_ir.go`        | No change for the same reason                                                                                         | No change              |
+| `codegen/platform/html/html.go`                  | Updater/handler construction now consumes pointer-keyed deps from the walker, extracts names for emission via `.Name` | Modify                 |
+| `codegen/platform/html/cdprunner.go`             | Reads `Updater.Deps`; migrate set type                                                                                | Modify                 |
+| `codegen/platform/bubbletea/compiler_ir.go`      | Re-render trigger sets; migrate set type                                                                              | Modify                 |
+| `codegen/platform/fyne/compiler_ir.go`           | Mutation model setters; migrate set type                                                                              | Modify                 |
+| `codegen/platform/android/compiler_ir.go`        | Recomposition triggers; migrate set type                                                                              | Modify                 |
+| `internal/lower/computed.go`                     | Already uses `*ir.Func` pointers; verify no name-keyed dep references                                                 | Audit                  |
+| `testdata/test_reactivity_through_method.sngl`   | Driver fixture                                                                                                        | Create                 |
+| `testdata/test_reactivity_extension_method.sngl` | Driver fixture                                                                                                        | Create                 |
+| `testdata/test_mutation_through_method.sngl`     | Driver fixture                                                                                                        | Create                 |
+| `testdata/test_reactivity_two_components.sngl`   | Driver fixture                                                                                                        | Create                 |
+| `testdata/test_reactivity_global_var.sngl`       | Driver fixture                                                                                                        | Create                 |
 
 ---
 
@@ -391,19 +391,19 @@ Below the migrated `DepTracker` in `codegen/deps.go`, add:
 // depExtractor is the substituting walker. One per top-level entry into
 // ExprDeps/MutatedFields; recurses into Call bodies with cloned frames.
 type depExtractor struct {
-	tracker       *DepTracker
-	bindings      map[string]ir.Expr
-	visited       map[*ir.Func]struct{}
-	deps          map[*ir.Var]struct{}
-	mutated       map[*ir.Var]struct{}
-	implicitThis  *ir.Component
-	tracking      bool
+	tracker      *DepTracker
+	bindings     map[string]ir.Expr
+	visited      map[*ir.Func]struct{}
+	deps         map[*ir.Var]struct{}
+	mutated      map[*ir.Var]struct{}
+	implicitThis *ir.Component
+	tracking     bool
 
 	// paramTypes captures the declared types of the params currently in
 	// scope (matched up with bindings). Used to decide whether writes
 	// through a param propagate (component/ref/list/map: yes; value
 	// types: no).
-	paramTypes    map[string]*ir.Type
+	paramTypes map[string]*ir.Type
 }
 
 // newExtractor creates a fresh extractor for a top-level entry.
@@ -1002,7 +1002,7 @@ type Updater struct {
 	InitOnly bool
 }
 
-func (u Updater) DepVars() map[*ir.Var]struct{} { return u.Deps }  // RENAMED from DepFields
+func (u Updater) DepVars() map[*ir.Var]struct{} { return u.Deps } // RENAMED from DepFields
 
 type Handler struct {
 	NodeID  string
@@ -1087,7 +1087,7 @@ Where the HTML emitter writes `setX("new value")` etc., it needs the var NAMES, 
 
 ```go
 for name := range updater.Deps {
-    // emit subscription for name
+	// emit subscription for name
 }
 ```
 
@@ -1095,8 +1095,8 @@ with:
 
 ```go
 for v := range updater.Deps {
-    name := v.Name
-    // emit subscription for name
+	name := v.Name
+	// emit subscription for name
 }
 ```
 
@@ -1120,6 +1120,7 @@ Expected: build and tests pass. Existing HTML reactivity unchanged because pkg.V
 - [ ] **Step 8.1: Migrate any `map[string]bool` deps/mutated usage**
 
 Grep:
+
 ```bash
 grep -n "map\[string\]bool\|Deps\b\|Mutated\b" codegen/platform/bubbletea/*.go
 ```

@@ -199,17 +199,17 @@ New AST node `InterfaceDecl` at top level:
 
 ```go
 type InterfaceDecl struct {
-    Pos        Pos
-    Name       string
-    TypeParams []string
-    Methods    []*InterfaceMethod
+	Pos        Pos
+	Name       string
+	TypeParams []string
+	Methods    []*InterfaceMethod
 }
 
 type InterfaceMethod struct {
-    Pos    Pos
-    Name   string
-    Params []Param
-    Return TypeExpr            // nil when no return value
+	Pos    Pos
+	Name   string
+	Params []Param
+	Return TypeExpr // nil when no return value
 }
 ```
 
@@ -220,9 +220,9 @@ New IR type kind `TypeInterface`:
 
 ```go
 type Interface struct {
-    Name       string
-    TypeParams []*TypeParam
-    Methods    []*FuncSig       // each .Color = ColorParam
+	Name       string
+	TypeParams []*TypeParam
+	Methods    []*FuncSig // each .Color = ColorParam
 }
 ```
 

@@ -14,21 +14,21 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|---|---|---|
-| `ir/intrinsics.go` | Modify | Add `CreateComponent` to `LowerIntrinsics` |
-| `internal/lower/inline_components.go` | Modify | Skip NodeInsts in reactive contexts and recursive cycles; expose helper |
-| `internal/lower/reactivity.go` | Modify | Lower component NodeInsts in slot bodies to `CreateComponent` + `AppendChild` |
-| `internal/lower/declarative.go` | Modify | Lower static-position recursive-component NodeInsts to `CreateComponent` + `AppendChild` |
-| `internal/lower/inline_components_test.go` | Modify | Unit tests for skip rules |
-| `internal/lower/reactivity_test.go` | Modify | Unit test for CreateComponent in slot body |
-| `internal/lower/declarative_test.go` | Modify | Unit test for CreateComponent in static position |
-| `codegen/lang/javascript/translate_ir.go` | Modify | `lower.CreateComponent` intrinsic translation |
-| `codegen/platform/html/html.go` | Modify | Add `NoInlineComponents` cap; delete in-house inliner; rewrite `exprDeps`; emit JS factories |
-| `testdata/test_html_loop_component.sngl` | Create | Driver fixture |
-| `testdata/test_html_recursive_component.sngl` | Create | Driver fixture |
-| `testdata/test_html_method_reactivity.sngl` | Create | Driver fixture |
-| `testdata/test_html_two_instances_isolated.sngl` | Create | Driver fixture |
+| File                                             | Action | Responsibility                                                                               |
+|--------------------------------------------------|--------|----------------------------------------------------------------------------------------------|
+| `ir/intrinsics.go`                               | Modify | Add `CreateComponent` to `LowerIntrinsics`                                                   |
+| `internal/lower/inline_components.go`            | Modify | Skip NodeInsts in reactive contexts and recursive cycles; expose helper                      |
+| `internal/lower/reactivity.go`                   | Modify | Lower component NodeInsts in slot bodies to `CreateComponent` + `AppendChild`                |
+| `internal/lower/declarative.go`                  | Modify | Lower static-position recursive-component NodeInsts to `CreateComponent` + `AppendChild`     |
+| `internal/lower/inline_components_test.go`       | Modify | Unit tests for skip rules                                                                    |
+| `internal/lower/reactivity_test.go`              | Modify | Unit test for CreateComponent in slot body                                                   |
+| `internal/lower/declarative_test.go`             | Modify | Unit test for CreateComponent in static position                                             |
+| `codegen/lang/javascript/translate_ir.go`        | Modify | `lower.CreateComponent` intrinsic translation                                                |
+| `codegen/platform/html/html.go`                  | Modify | Add `NoInlineComponents` cap; delete in-house inliner; rewrite `exprDeps`; emit JS factories |
+| `testdata/test_html_loop_component.sngl`         | Create | Driver fixture                                                                               |
+| `testdata/test_html_recursive_component.sngl`    | Create | Driver fixture                                                                               |
+| `testdata/test_html_method_reactivity.sngl`      | Create | Driver fixture                                                                               |
+| `testdata/test_html_two_instances_isolated.sngl` | Create | Driver fixture                                                                               |
 
 ---
 
@@ -198,16 +198,16 @@ At the bottom of `internal/lower/inline_components.go`, add:
 // Reuses the package-wide reactive-var set computed by
 // collectReactiveVars in reactivity.go.
 func dependsOnReactiveVar(e ir.Expr, reactive map[*ir.Var]bool) bool {
-    if e == nil {
-        return false
-    }
-    var found bool
-    walkExprIdents(e, func(id *ir.Ident) {
-        if v, ok := id.Sym.(*ir.Var); ok && reactive[v] {
-            found = true
-        }
-    })
-    return found
+	if e == nil {
+		return false
+	}
+	var found bool
+	walkExprIdents(e, func(id *ir.Ident) {
+		if v, ok := id.Sym.(*ir.Var); ok && reactive[v] {
+			found = true
+		}
+	})
+	return found
 }
 ```
 
@@ -233,21 +233,21 @@ In `lowerInlineComponents` (the pass's `apply` function around line 21), before 
 
 ```go
 func lowerInlineComponents(pkg *ir.Package, _ Caps, _ Options) error {
-    if pkg == nil {
-        return nil
-    }
-    main := mainComponent(pkg)
-    if main == nil {
-        return nil
-    }
-    cycles := findRecursiveCycles(pkg)
-    reactive := collectReactiveVars(pkg)
-    st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive}
-    if err := st.run(); err != nil {
-        return err
-    }
-    pkg.Components = retainComponents(pkg.Components, st.keep)
-    return nil
+	if pkg == nil {
+		return nil
+	}
+	main := mainComponent(pkg)
+	if main == nil {
+		return nil
+	}
+	cycles := findRecursiveCycles(pkg)
+	reactive := collectReactiveVars(pkg)
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive}
+	if err := st.run(); err != nil {
+		return err
+	}
+	pkg.Components = retainComponents(pkg.Components, st.keep)
+	return nil
 }
 ```
 
@@ -255,12 +255,12 @@ Add the field to `inlineCompState`:
 
 ```go
 type inlineCompState struct {
-    pkg         *ir.Package
-    main        *ir.Component
-    cycles      map[*ir.Component]bool
-    keep        map[*ir.Component]bool
-    reactive    map[*ir.Var]bool
-    instCounter int
+	pkg         *ir.Package
+	main        *ir.Component
+	cycles      map[*ir.Component]bool
+	keep        map[*ir.Component]bool
+	reactive    map[*ir.Var]bool
+	instCounter int
 }
 ```
 
@@ -306,17 +306,17 @@ Add a `bool` parameter version that threads through every nested call:
 // reactive structural context (For/If body)" flag. NodeInsts encountered
 // while the flag is true are left in place rather than inlined.
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, inReactive bool) ([]ir.Stmt, bool, error) {
-    out := make([]ir.Stmt, 0, len(stmts))
-    anyCh := false
-    for _, s := range stmts {
-        replacement, ch, err := st.inlineStmtCtx(s, inReactive)
-        if err != nil {
-            return nil, false, err
-        }
-        out = append(out, replacement...)
-        anyCh = anyCh || ch
-    }
-    return out, anyCh, nil
+	out := make([]ir.Stmt, 0, len(stmts))
+	anyCh := false
+	for _, s := range stmts {
+		replacement, ch, err := st.inlineStmtCtx(s, inReactive)
+		if err != nil {
+			return nil, false, err
+		}
+		out = append(out, replacement...)
+		anyCh = anyCh || ch
+	}
+	return out, anyCh, nil
 }
 ```
 
@@ -384,39 +384,39 @@ Append to `internal/lower/inline_components_test.go`:
 
 ```go
 func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
-    // Build a minimal package: component card; component main with `for x = items { card() }`
-    // where items is reactive.
-    items := &ir.Var{Name: "items", Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{{Kind: ir.TypeDyn}}}}
-    card := &ir.Component{Name: "card"}
-    main := &ir.Component{Name: "main", Vars: []*ir.Var{items}}
+	// Build a minimal package: component card; component main with `for x = items { card() }`
+	// where items is reactive.
+	items := &ir.Var{Name: "items", Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{{Kind: ir.TypeDyn}}}}
+	card := &ir.Component{Name: "card"}
+	main := &ir.Component{Name: "main", Vars: []*ir.Var{items}}
 
-    nodeInst := &ir.NodeInst{Component: card}
-    forStmt := &ir.For{
-        Key:  "x",
-        Iter: &ir.Ident{Name: "items", Sym: items},
-        Body: []ir.Stmt{nodeInst},
-    }
-    main.Body = []ir.Stmt{forStmt}
+	nodeInst := &ir.NodeInst{Component: card}
+	forStmt := &ir.For{
+		Key:  "x",
+		Iter: &ir.Ident{Name: "items", Sym: items},
+		Body: []ir.Stmt{nodeInst},
+	}
+	main.Body = []ir.Stmt{forStmt}
 
-    // Mark items as reactive (a mutator handler somewhere).
-    handler := &ir.Assign{Target: &ir.Ident{Name: "items", Sym: items}, Value: &ir.ListLit{}}
-    main.Body = append(main.Body, &ir.NodeInst{Handlers: []ir.EventHandler{{Name: "click", Func: &ir.Func{Block: []ir.Stmt{handler}}}}})
+	// Mark items as reactive (a mutator handler somewhere).
+	handler := &ir.Assign{Target: &ir.Ident{Name: "items", Sym: items}, Value: &ir.ListLit{}}
+	main.Body = append(main.Body, &ir.NodeInst{Handlers: []ir.EventHandler{{Name: "click", Func: &ir.Func{Block: []ir.Stmt{handler}}}}})
 
-    pkg := &ir.Package{Components: []*ir.Component{card, main}}
+	pkg := &ir.Package{Components: []*ir.Component{card, main}}
 
-    if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
+	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
 
-    // card should be retained.
-    if !slices.Contains(pkg.Components, card) {
-        t.Errorf("card component should be retained when used inside reactive For body")
-    }
-    // The NodeInst inside the for body should still exist.
-    got, ok := forStmt.Body[0].(*ir.NodeInst)
-    if !ok || got.Component != card {
-        t.Errorf("NodeInst should be preserved inside reactive For; got %T", forStmt.Body[0])
-    }
+	// card should be retained.
+	if !slices.Contains(pkg.Components, card) {
+		t.Errorf("card component should be retained when used inside reactive For body")
+	}
+	// The NodeInst inside the for body should still exist.
+	got, ok := forStmt.Body[0].(*ir.NodeInst)
+	if !ok || got.Component != card {
+		t.Errorf("NodeInst should be preserved inside reactive For; got %T", forStmt.Body[0])
+	}
 }
 ```
 
@@ -424,25 +424,25 @@ func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 
 ```go
 func TestInlineComponents_SkipsRecursiveComponent(t *testing.T) {
-    // component tree { tree(child=...) } — self-recursive.
-    tree := &ir.Component{Name: "tree"}
-    tree.Body = []ir.Stmt{&ir.NodeInst{Component: tree}}
-    main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.NodeInst{Component: tree}}}
+	// component tree { tree(child=...) } — self-recursive.
+	tree := &ir.Component{Name: "tree"}
+	tree.Body = []ir.Stmt{&ir.NodeInst{Component: tree}}
+	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.NodeInst{Component: tree}}}
 
-    pkg := &ir.Package{Components: []*ir.Component{tree, main}}
+	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
 
-    if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
+	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
 
-    if !slices.Contains(pkg.Components, tree) {
-        t.Errorf("recursive tree component should be retained")
-    }
-    // The NodeInst in main.Body should still target tree.
-    got, ok := main.Body[0].(*ir.NodeInst)
-    if !ok || got.Component != tree {
-        t.Errorf("NodeInst targeting recursive component should be preserved; got %T", main.Body[0])
-    }
+	if !slices.Contains(pkg.Components, tree) {
+		t.Errorf("recursive tree component should be retained")
+	}
+	// The NodeInst in main.Body should still target tree.
+	got, ok := main.Body[0].(*ir.NodeInst)
+	if !ok || got.Component != tree {
+		t.Errorf("NodeInst targeting recursive component should be preserved; got %T", main.Body[0])
+	}
 }
 ```
 
@@ -479,57 +479,57 @@ In `lowerNodeForSlot` (or the equivalent NodeInst-handling function), add at the
 
 ```go
 func (st *declarativeState) lowerNodeForSlot(n *ir.NodeInst, parentRef ir.Expr) []ir.Stmt {
-    if n.Component != nil {
-        return st.lowerComponentNode(n, parentRef)
-    }
-    // ... existing CreateNode-based logic ...
+	if n.Component != nil {
+		return st.lowerComponentNode(n, parentRef)
+	}
+	// ... existing CreateNode-based logic ...
 }
 
 // lowerComponentNode emits CreateComponent(comp, props) + AppendChild(parent, handle).
 func (st *declarativeState) lowerComponentNode(n *ir.NodeInst, parentRef ir.Expr) []ir.Stmt {
-    handleID := "__h" + strconv.Itoa(st.nextID)
-    st.nextID++
-    handleVar := &ir.Var{Name: handleID, Type: &ir.Type{Kind: ir.TypeDyn}}
+	handleID := "__h" + strconv.Itoa(st.nextID)
+	st.nextID++
+	handleVar := &ir.Var{Name: handleID, Type: &ir.Type{Kind: ir.TypeDyn}}
 
-    propsLit := buildPropsStructLit(n.Props)
+	propsLit := buildPropsStructLit(n.Props)
 
-    createCall := &ir.Call{
-        Func: st.intrinsics["CreateComponent"],
-        Args: []ir.CallArg{
-            {Value: &ir.Ident{Name: n.Component.Name, Sym: n.Component, Type: &ir.Type{Kind: ir.TypeDyn}}},
-            {Value: propsLit},
-        },
-        Type: &ir.Type{Kind: ir.TypeDyn},
-    }
-    appendCall := &ir.Call{
-        Func: st.intrinsics["AppendChild"],
-        Args: []ir.CallArg{
-            {Value: parentRef},
-            {Value: &ir.Ident{Name: handleID, Sym: handleVar, Type: &ir.Type{Kind: ir.TypeDyn}}},
-        },
-        Type: &ir.Type{Kind: ir.TypeVoid},
-    }
+	createCall := &ir.Call{
+		Func: st.intrinsics["CreateComponent"],
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: n.Component.Name, Sym: n.Component, Type: &ir.Type{Kind: ir.TypeDyn}}},
+			{Value: propsLit},
+		},
+		Type: &ir.Type{Kind: ir.TypeDyn},
+	}
+	appendCall := &ir.Call{
+		Func: st.intrinsics["AppendChild"],
+		Args: []ir.CallArg{
+			{Value: parentRef},
+			{Value: &ir.Ident{Name: handleID, Sym: handleVar, Type: &ir.Type{Kind: ir.TypeDyn}}},
+		},
+		Type: &ir.Type{Kind: ir.TypeVoid},
+	}
 
-    return []ir.Stmt{
-        &ir.LocalVar{Var: handleVar, Init: createCall},
-        &ir.CallStmt{Call: appendCall},
-    }
+	return []ir.Stmt{
+		&ir.LocalVar{Var: handleVar, Init: createCall},
+		&ir.CallStmt{Call: appendCall},
+	}
 }
 
 // buildPropsStructLit produces an anonymous struct literal from a NodeInst's
 // Props list. Each prop becomes a named field.
 func buildPropsStructLit(props []ir.Arg) *ir.StructLit {
-    fields := make([]ir.FieldInit, 0, len(props))
-    for _, p := range props {
-        if p.Name == "" {
-            continue
-        }
-        fields = append(fields, ir.FieldInit{Name: p.Name, Value: p.Value})
-    }
-    return &ir.StructLit{
-        Type:   &ir.Type{Kind: ir.TypeStruct},
-        Fields: fields,
-    }
+	fields := make([]ir.FieldInit, 0, len(props))
+	for _, p := range props {
+		if p.Name == "" {
+			continue
+		}
+		fields = append(fields, ir.FieldInit{Name: p.Name, Value: p.Value})
+	}
+	return &ir.StructLit{
+		Type:   &ir.Type{Kind: ir.TypeStruct},
+		Fields: fields,
+	}
 }
 ```
 
@@ -556,52 +556,52 @@ In `internal/lower/reactivity_test.go`, append:
 
 ```go
 func TestReactivity_ComponentInSlotEmitsCreateComponent(t *testing.T) {
-    items := &ir.Var{Name: "items", Type: &ir.Type{Kind: ir.TypeList}}
-    card := &ir.Component{Name: "card"}
-    main := &ir.Component{Name: "main", Vars: []*ir.Var{items}}
+	items := &ir.Var{Name: "items", Type: &ir.Type{Kind: ir.TypeList}}
+	card := &ir.Component{Name: "card"}
+	main := &ir.Component{Name: "main", Vars: []*ir.Var{items}}
 
-    forStmt := &ir.For{
-        Key:  "x",
-        Iter: &ir.Ident{Name: "items", Sym: items},
-        Body: []ir.Stmt{&ir.NodeInst{Component: card}},
-    }
-    main.Body = []ir.Stmt{forStmt}
-    // Make items reactive via a handler somewhere in main.Body.
-    main.Body = append(main.Body, &ir.NodeInst{Handlers: []ir.EventHandler{
-        {Name: "click", Func: &ir.Func{Block: []ir.Stmt{
-            &ir.Assign{Target: &ir.Ident{Name: "items", Sym: items}, Value: &ir.ListLit{}},
-        }}},
-    }})
+	forStmt := &ir.For{
+		Key:  "x",
+		Iter: &ir.Ident{Name: "items", Sym: items},
+		Body: []ir.Stmt{&ir.NodeInst{Component: card}},
+	}
+	main.Body = []ir.Stmt{forStmt}
+	// Make items reactive via a handler somewhere in main.Body.
+	main.Body = append(main.Body, &ir.NodeInst{Handlers: []ir.EventHandler{
+		{Name: "click", Func: &ir.Func{Block: []ir.Stmt{
+			&ir.Assign{Target: &ir.Ident{Name: "items", Sym: items}, Value: &ir.ListLit{}},
+		}}},
+	}})
 
-    pkg := &ir.Package{Components: []*ir.Component{card, main}}
+	pkg := &ir.Package{Components: []*ir.Component{card, main}}
 
-    if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
-    if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
+	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
 
-    // Walk main.Funcs for the synthesized __renderSlotN; verify it contains a
-    // CreateComponent call.
-    var foundCreate bool
-    for _, fn := range main.Funcs {
-        if !strings.HasPrefix(fn.Name, "__renderSlot") {
-            continue
-        }
-        for _, s := range fn.Block {
-            if lv, ok := s.(*ir.LocalVar); ok {
-                if call, ok := lv.Init.(*ir.Call); ok {
-                    if call.Func != nil && call.Func.Name == "CreateComponent" {
-                        foundCreate = true
-                    }
-                }
-            }
-        }
-    }
-    if !foundCreate {
-        t.Errorf("expected CreateComponent call in synthesized __renderSlot func")
-    }
+	// Walk main.Funcs for the synthesized __renderSlotN; verify it contains a
+	// CreateComponent call.
+	var foundCreate bool
+	for _, fn := range main.Funcs {
+		if !strings.HasPrefix(fn.Name, "__renderSlot") {
+			continue
+		}
+		for _, s := range fn.Block {
+			if lv, ok := s.(*ir.LocalVar); ok {
+				if call, ok := lv.Init.(*ir.Call); ok {
+					if call.Func != nil && call.Func.Name == "CreateComponent" {
+						foundCreate = true
+					}
+				}
+			}
+		}
+	}
+	if !foundCreate {
+		t.Errorf("expected CreateComponent call in synthesized __renderSlot func")
+	}
 }
 ```
 
@@ -634,10 +634,10 @@ Find `lowerNode` (or whichever function flattens NodeInsts in the top-level decl
 
 ```go
 func (st *declarativeState) lowerNode(n *ir.NodeInst, parentRef ir.Expr) []ir.Stmt {
-    if n.Component != nil {
-        return st.lowerComponentNode(n, parentRef)
-    }
-    // ... existing CreateNode-based logic ...
+	if n.Component != nil {
+		return st.lowerComponentNode(n, parentRef)
+	}
+	// ... existing CreateNode-based logic ...
 }
 ```
 
@@ -649,34 +649,34 @@ In `internal/lower/declarative_test.go`, append:
 
 ```go
 func TestDeclarative_RecursiveComponentEmitsCreateComponent(t *testing.T) {
-    tree := &ir.Component{Name: "tree"}
-    tree.Body = []ir.Stmt{&ir.NodeInst{Component: tree}}
-    main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.NodeInst{Component: tree}}}
+	tree := &ir.Component{Name: "tree"}
+	tree.Body = []ir.Stmt{&ir.NodeInst{Component: tree}}
+	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.NodeInst{Component: tree}}}
 
-    pkg := &ir.Package{Components: []*ir.Component{tree, main}}
+	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
 
-    if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
-    if err := lowerDeclarative(pkg, Caps{NoDeclarative: true}, Options{}); err != nil {
-        t.Fatal(err)
-    }
+	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := lowerDeclarative(pkg, Caps{NoDeclarative: true}, Options{}); err != nil {
+		t.Fatal(err)
+	}
 
-    // main.Body should now contain a LocalVar { Init: CreateComponent(tree, ...) }
-    // and a CallStmt { AppendChild }.
-    var foundCreate bool
-    for _, s := range main.Body {
-        if lv, ok := s.(*ir.LocalVar); ok {
-            if call, ok := lv.Init.(*ir.Call); ok {
-                if call.Func != nil && call.Func.Name == "CreateComponent" {
-                    foundCreate = true
-                }
-            }
-        }
-    }
-    if !foundCreate {
-        t.Errorf("expected CreateComponent in main.Body for static recursive NodeInst; got %#v", main.Body)
-    }
+	// main.Body should now contain a LocalVar { Init: CreateComponent(tree, ...) }
+	// and a CallStmt { AppendChild }.
+	var foundCreate bool
+	for _, s := range main.Body {
+		if lv, ok := s.(*ir.LocalVar); ok {
+			if call, ok := lv.Init.(*ir.Call); ok {
+				if call.Func != nil && call.Func.Name == "CreateComponent" {
+					foundCreate = true
+				}
+			}
+		}
+	}
+	if !foundCreate {
+		t.Errorf("expected CreateComponent in main.Body for static recursive NodeInst; got %#v", main.Body)
+	}
 }
 ```
 
@@ -713,22 +713,22 @@ In `codegen/lang/javascript/translate_ir.go`, near the top:
 // factoryName returns the JS factory function name for a component.
 // Matches the naming used by the HTML codegen's factory emission step.
 func factoryName(comp *ir.Component) string {
-    return "__cf_" + sanitizeJSIdent(comp.Name)
+	return "__cf_" + sanitizeJSIdent(comp.Name)
 }
 
 // sanitizeJSIdent makes a SNGL component name safe for JS identifier
 // position by replacing non-ident chars with underscores.
 func sanitizeJSIdent(name string) string {
-    out := make([]byte, 0, len(name))
-    for i := 0; i < len(name); i++ {
-        c := name[i]
-        if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
-            out = append(out, c)
-        } else {
-            out = append(out, '_')
-        }
-    }
-    return string(out)
+	out := make([]byte, 0, len(name))
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+			out = append(out, c)
+		} else {
+			out = append(out, '_')
+		}
+	}
+	return string(out)
 }
 ```
 
@@ -778,13 +778,13 @@ Find the `RequiredCaps` method (line 55):
 
 ```go
 func (g *Generator) RequiredCaps() lower.Caps {
-    return lower.Caps{
-        NoContext:           true,
-        NoReactivity:        true,
-        NoAsyncReactive:     true,
-        NoStdlibWrappers:    true,
-        NoInlineComponents:  true,  // NEW
-    }
+	return lower.Caps{
+		NoContext:          true,
+		NoReactivity:       true,
+		NoAsyncReactive:    true,
+		NoStdlibWrappers:   true,
+		NoInlineComponents: true, // NEW
+	}
 }
 ```
 
@@ -855,9 +855,9 @@ In `htmlGen`:
 
 ```go
 type htmlGen struct {
-    // ... existing fields ...
-    currentComp *ir.Component
-    // ...
+	// ... existing fields ...
+	currentComp *ir.Component
+	// ...
 }
 ```
 
@@ -873,7 +873,7 @@ Replace the existing `exprDeps` (around line 3300):
 
 ```go
 func (g *htmlGen) exprDeps(expr ir.Expr) map[*ir.Var]struct{} {
-    return g.dt.ExprDeps(g.currentComp, expr)
+	return g.dt.ExprDeps(g.currentComp, expr)
 }
 ```
 
@@ -883,27 +883,27 @@ Update the type definitions (~line 484-503):
 
 ```go
 type updateFunc struct {
-    funcName string
-    body     string
-    deps     map[*ir.Var]struct{}
-    initOnly bool
+	funcName string
+	body     string
+	deps     map[*ir.Var]struct{}
+	initOnly bool
 }
 
 type eventHandler struct {
-    elemID  string
-    event   string
-    body    string
-    mutated map[*ir.Var]struct{}
-    isAsync bool
+	elemID  string
+	event   string
+	body    string
+	mutated map[*ir.Var]struct{}
+	isAsync bool
 }
 
 type timerDef struct {
-    index      int
-    intervalMs int
-    activeVar  string
-    body       string
-    mutated    map[*ir.Var]struct{}
-    bodyAsync  bool
+	index      int
+	intervalMs int
+	activeVar  string
+	body       string
+	mutated    map[*ir.Var]struct{}
+	bodyAsync  bool
 }
 ```
 
@@ -913,8 +913,8 @@ At every site that iterates these sets and writes JS, switch to:
 
 ```go
 for v := range updater.deps {
-    name := v.Name
-    // emit subscription / setter wiring for name
+	name := v.Name
+	// emit subscription / setter wiring for name
 }
 ```
 
@@ -953,10 +953,10 @@ Find `emitScript` (around line 2467). After timer collection but before main-com
 // (recursive cycles, reactive-loop targets). Each factory creates a
 // per-instance closure over `state` and returns the root DOM node.
 for _, comp := range g.pkg.Components {
-    if comp.Name == "main" {
-        continue
-    }
-    g.emitComponentFactory(b, comp)
+	if comp.Name == "main" {
+		continue
+	}
+	g.emitComponentFactory(b, comp)
 }
 ```
 
@@ -969,46 +969,46 @@ Add to `html.go`:
 // instance of the component. The function name matches the convention
 // used by the JS translator's CreateComponent lowering.
 func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
-    fmt.Fprintf(b, "function %s(props) {\n", factoryName(comp))
-    b.WriteString("  const state = {\n")
-    for _, v := range comp.Vars {
-        fmt.Fprintf(b, "    %s: %s,\n", v.Name, g.literalToJS(v.Init))
-    }
-    b.WriteString("  };\n")
+	fmt.Fprintf(b, "function %s(props) {\n", factoryName(comp))
+	b.WriteString("  const state = {\n")
+	for _, v := range comp.Vars {
+		fmt.Fprintf(b, "    %s: %s,\n", v.Name, g.literalToJS(v.Init))
+	}
+	b.WriteString("  };\n")
 
-    // Save and set component context so nested emits attribute
-    // bindings/handlers to this component's state.
-    savedComp := g.currentComp
-    g.currentComp = comp
-    defer func() { g.currentComp = savedComp }()
+	// Save and set component context so nested emits attribute
+	// bindings/handlers to this component's state.
+	savedComp := g.currentComp
+	g.currentComp = comp
+	defer func() { g.currentComp = savedComp }()
 
-    // Body is already lowered to imperative form (CreateNode + setProp
-    // + AppendChild). Reuse the same renderIRStmt path used for main.
-    for _, s := range comp.Body {
-        g.renderIRStmt(b, s, 1)
-    }
+	// Body is already lowered to imperative form (CreateNode + setProp
+	// + AppendChild). Reuse the same renderIRStmt path used for main.
+	for _, s := range comp.Body {
+		g.renderIRStmt(b, s, 1)
+	}
 
-    // The first __nN var declared in the body is the root by convention.
-    b.WriteString("  return __n0;\n")
-    b.WriteString("}\n\n")
+	// The first __nN var declared in the body is the root by convention.
+	b.WriteString("  return __n0;\n")
+	b.WriteString("}\n\n")
 }
 
 // factoryName mirrors the JS translator's helper.
 func factoryName(comp *ir.Component) string {
-    return "__cf_" + sanitizeJSIdent(comp.Name)
+	return "__cf_" + sanitizeJSIdent(comp.Name)
 }
 
 func sanitizeJSIdent(name string) string {
-    out := make([]byte, 0, len(name))
-    for i := 0; i < len(name); i++ {
-        c := name[i]
-        if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
-            out = append(out, c)
-        } else {
-            out = append(out, '_')
-        }
-    }
-    return string(out)
+	out := make([]byte, 0, len(name))
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+			out = append(out, c)
+		} else {
+			out = append(out, '_')
+		}
+	}
+	return string(out)
 }
 ```
 

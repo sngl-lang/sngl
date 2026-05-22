@@ -557,40 +557,46 @@ Replace with:
 For each of these sites, find the `fmt.Fprintf(b, ... id=%q ...)` call and add a `g.writeReactiveIDAttrs` call OR inline the same `data-sngl-id` conditional:
 
 - `renderStaticProgress`: `html.go:990-997` — change:
+
   ```go
   fmt.Fprintf(b, "%s<progress", indent)
   if id != "" {
-      fmt.Fprintf(b, " id=\"%s\"", id)
+  	fmt.Fprintf(b, " id=\"%s\"", id)
   }
   ```
+
   to:
+
   ```go
   fmt.Fprintf(b, "%s<progress", indent)
   if id != "" {
-      fmt.Fprintf(b, " id=%q", id)
-      if strings.HasPrefix(id, "__n") {
-          fmt.Fprintf(b, " data-sngl-id=%q", id)
-      }
+  	fmt.Fprintf(b, " id=%q", id)
+  	if strings.HasPrefix(id, "__n") {
+  		fmt.Fprintf(b, " data-sngl-id=%q", id)
+  	}
   }
   ```
 
 - `renderStaticButton`: `html.go:1338-1342`:
+
   ```go
   if id != "" {
-      fmt.Fprintf(b, "%s<button id=\"%s\"", indent, id)
+  	fmt.Fprintf(b, "%s<button id=\"%s\"", indent, id)
   } else {
-      fmt.Fprintf(b, "%s<button", indent)
+  	fmt.Fprintf(b, "%s<button", indent)
   }
   ```
+
   becomes:
+
   ```go
   if id != "" {
-      fmt.Fprintf(b, "%s<button id=%q", indent, id)
-      if strings.HasPrefix(id, "__n") {
-          fmt.Fprintf(b, " data-sngl-id=%q", id)
-      }
+  	fmt.Fprintf(b, "%s<button id=%q", indent, id)
+  	if strings.HasPrefix(id, "__n") {
+  		fmt.Fprintf(b, " data-sngl-id=%q", id)
+  	}
   } else {
-      fmt.Fprintf(b, "%s<button", indent)
+  	fmt.Fprintf(b, "%s<button", indent)
   }
   ```
 

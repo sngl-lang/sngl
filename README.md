@@ -49,7 +49,7 @@ component main {
 ## Platforms
 
 | Target   | Language   | Platform  | Status |
-| -------- | ---------- | --------- | ------ |
+|----------|------------|-----------|--------|
 | Web      | JavaScript | html      | Stable |
 | Terminal | Go         | bubbletea | Stable |
 | Desktop  | Go         | fyne      | Stable |

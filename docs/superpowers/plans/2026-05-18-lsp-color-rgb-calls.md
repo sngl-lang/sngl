@@ -14,11 +14,11 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/lsp/color.go` | modify | Add `ColorSource` tagged-union, extend walker to find color calls, update `computeDocumentColors`, update `computeColorPresentations` to round-trip |
-| `internal/lsp/color_test.go` | modify | Add tests for rgb/rgba detection and round-trip presentations |
-| `testdata/lsp/colors.sngl` | modify | Extend fixture with `color.rgb(...)` and `color.rgba(...)` cases |
+| File                         | Status | Responsibility                                                                                                                                      |
+|------------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/lsp/color.go`      | modify | Add `ColorSource` tagged-union, extend walker to find color calls, update `computeDocumentColors`, update `computeColorPresentations` to round-trip |
+| `internal/lsp/color_test.go` | modify | Add tests for rgb/rgba detection and round-trip presentations                                                                                       |
+| `testdata/lsp/colors.sngl`   | modify | Extend fixture with `color.rgb(...)` and `color.rgba(...)` cases                                                                                    |
 
 ---
 
@@ -486,10 +486,10 @@ Append to `internal/lsp/color_test.go`:
 ```go
 func TestColorPresentations_HonorsOriginal(t *testing.T) {
 	tests := []struct {
-		name    string
-		source  string // source text at the range
-		color   Color
-		want    string
+		name   string
+		source string // source text at the range
+		color  Color
+		want   string
 	}{
 		{"hex opaque", "#ff0000", Color{1, 0, 0, 1}, "#ff0000"},
 		{"hex with alpha", "#ff0000", Color{1, 0, 0, 0.5}, "#ff000080"},

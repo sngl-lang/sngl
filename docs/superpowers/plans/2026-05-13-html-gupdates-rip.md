@@ -13,8 +13,7 @@
 **Goal:** Rip the html platform's `g.updates` registry and route every
 reactive/structural/initial-sync DOM-write through the
 `htmlTranslator` + `WalkLowered` + `JsIRContext` path. End state: one
-dispatch path for html, matching gtk4/fyne. `grep "g\\.updates"
-codegen/platform/html/` returns empty.
+dispatch path for html, matching gtk4/fyne. `grep "g\\.updates" codegen/platform/html/` returns empty.
 
 **Why split from Plan D:** Plan D Tasks 10-13 underestimated the
 depth. `g.updates` is load-bearing for: initial-sync seeds, structural
@@ -57,13 +56,13 @@ Bound scope, no fixture changes.
 `initOnly=true` — meaning they fire once at load, not from handlers.
 Calling them from handlers is dead dispatch.
 
-- [x] **Step 1: Locate call sites**
+- [X] **Step 1: Locate call sites**
 
 ```bash
 grep -n "findAffectedUpdaters\|initOnly" codegen/platform/html/html.go | head -30
 ```
 
-- [x] **Step 2: Add early-return on all-init-only**
+- [X] **Step 2: Add early-return on all-init-only**
 
 Already done by commit `4ad84957` (2026-05-09, pre-plan):
 `findAffectedUpdaters` at `html.go:3091` skips `u.initOnly`. No IIFE
@@ -71,12 +70,12 @@ wrapper exists at handler/timer/setter emission sites — when the
 filtered slice is empty the dispatch loop iterates zero times, so no
 extra code is emitted.
 
-- [x] **Step 3: Verify**
+- [X] **Step 3: Verify**
 
 `go test ./codegen/platform/html/... ./cmd/sngl/` — green. No output
 change.
 
-- [x] **Step 4: Commit**
+- [X] **Step 4: Commit**
 
 No code change needed; phase complete at plan-time. Documented here
 2026-05-15.
@@ -94,12 +93,12 @@ function whose body is "compute value; write to DOM". The init phase
 calls them sequentially. Collapse into one `__sngl_init()` whose body
 is the concatenated writes.
 
-- [x] **Step 1: Locate init emission**
+- [X] **Step 1: Locate init emission**
 
 `codegen/platform/html/html.go:2659` (updater function emission) +
 `:2672` (Initial sync block).
 
-- [x] **Step 2: Replace per-prop functions with inline writes**
+- [X] **Step 2: Replace per-prop functions with inline writes**
 
 Updater-function loop now skips `u.initOnly` entries. Replaced
 `// Initial sync` block with `function __sngl_init() { ... }` whose
@@ -107,7 +106,7 @@ body inlines each init-only updater body and calls each non-init
 updater function. Preview `__sngl_updates` filter also skips
 init-only entries.
 
-- [x] **Step 3: Rewrite fixtures**
+- [X] **Step 3: Rewrite fixtures**
 
 `compile_html_initial_sync.txt` + `compile_html_setter_callback.txt`
 rewritten to expect `function __sngl_init` and assert no
@@ -115,7 +114,7 @@ rewritten to expect `function __sngl_init` and assert no
 (`renamed_event_param`, `reactive_for`) did not reference `$u_*`
 funcs and needed no edits.
 
-- [x] **Step 4: Verify**
+- [X] **Step 4: Verify**
 
 `go test ./codegen/platform/html/... ./cmd/sngl/` green.
 `hello-i18n` compile inspected: single `__sngl_init()` with all
@@ -124,7 +123,7 @@ Pre-existing `TestDocSNGLFormat` failures in
 `docs/superpowers/plans/2026-05-13-component-extensions.md` are
 unrelated (verified by stashing).
 
-- [x] **Step 5: Commit**
+- [X] **Step 5: Commit**
 
 ---
 
@@ -150,11 +149,11 @@ Migrating handlers naively breaks the following ground-truth tests:
 
 Before Task 4 can land, these features must move into the new path:
 
-- [x] **Step 0a: Bundled-native-pkg refs in `JsIRContext`**
+- [X] **Step 0a: Bundled-native-pkg refs in `JsIRContext`**
   `ExprCtx` gained `BundledNativePkgs` + `NativeImports`; `JsIRContext`'s
   `evalCall` emits `__sngl_n_<alias>.<name>(...)` and registers the
   binding for native-scheme calls.
-- [x] **Step 0b: Funcvar-await in `JsIRContext`**
+- [X] **Step 0b: Funcvar-await in `JsIRContext`**
   `evalCall` uses `Pkg.PointsTo.SlotColor` to prefix `await` on Async
   funcvars (with conservative any-async-candidate fallback). Plain
   calls flagged `IsAsync` also get `await`.
@@ -217,7 +216,7 @@ applies `g.translateHandlerStmt`. Replace with:
 ```go
 fragments := codegen.WalkLowered(ctx, h.Func.Block, g.translator)
 for _, stmt := range fragments {
-    jc.EvalStmt(buf, stmt)
+	jc.EvalStmt(buf, stmt)
 }
 ```
 
@@ -335,8 +334,7 @@ Must return no results in non-test files. Empty grep = rip done.
 
 - [ ] **Step 3: Final test sweep**
 
-`go test ./...` + `go tool verify` + `sngl run examples/hello-i18n
---platform html --lang js` browser-verified via CDP if available.
+`go test ./...` + `go tool verify` + `sngl run examples/hello-i18n --platform html --lang js` browser-verified via CDP if available.
 
 - [ ] **Step 4: Plan D + this plan handoff**
 

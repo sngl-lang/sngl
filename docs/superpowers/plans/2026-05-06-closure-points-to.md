@@ -60,35 +60,35 @@
 package ir_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestColor_String(t *testing.T) {
-    cases := []struct {
-        c    ir.Color
-        want string
-    }{
-        {ir.ColorSync, "Sync"},
-        {ir.ColorAsync, "Async"},
-        {ir.ColorParam, "Param"},
-    }
-    for _, tc := range cases {
-        if tc.c.String() != tc.want {
-            t.Fatalf("Color(%d).String() = %q want %q", tc.c, tc.c.String(), tc.want)
-        }
-    }
+	cases := []struct {
+		c    ir.Color
+		want string
+	}{
+		{ir.ColorSync, "Sync"},
+		{ir.ColorAsync, "Async"},
+		{ir.ColorParam, "Param"},
+	}
+	for _, tc := range cases {
+		if tc.c.String() != tc.want {
+			t.Fatalf("Color(%d).String() = %q want %q", tc.c, tc.c.String(), tc.want)
+		}
+	}
 }
 
 func TestFuncSig_DefaultsToSync(t *testing.T) {
-    s := &ir.FuncSig{}
-    if s.Color != ir.ColorSync {
-        t.Fatalf("zero-value FuncSig.Color = %v, want ColorSync", s.Color)
-    }
-    if s.PolyParam != -1 {
-        t.Fatalf("zero-value FuncSig.PolyParam = %d, want -1", s.PolyParam)
-    }
+	s := &ir.FuncSig{}
+	if s.Color != ir.ColorSync {
+		t.Fatalf("zero-value FuncSig.Color = %v, want ColorSync", s.Color)
+	}
+	if s.PolyParam != -1 {
+		t.Fatalf("zero-value FuncSig.PolyParam = %d, want -1", s.PolyParam)
+	}
 }
 ```
 
@@ -112,22 +112,22 @@ package ir
 type Color int
 
 const (
-    ColorSync Color = iota
-    ColorAsync
-    ColorParam
+	ColorSync Color = iota
+	ColorAsync
+	ColorParam
 )
 
 func (c Color) String() string {
-    switch c {
-    case ColorSync:
-        return "Sync"
-    case ColorAsync:
-        return "Async"
-    case ColorParam:
-        return "Param"
-    default:
-        return "ColorUnknown"
-    }
+	switch c {
+	case ColorSync:
+		return "Sync"
+	case ColorAsync:
+		return "Async"
+	case ColorParam:
+		return "Param"
+	default:
+		return "ColorUnknown"
+	}
 }
 ```
 
@@ -137,12 +137,12 @@ Edit `ir/types.go`. Find the `FuncSig` struct (~line 365) and extend:
 
 ```go
 type FuncSig struct {
-    Params     []*Param
-    Return     *Type
-    TypeParams []string
-    Purity     Purity
-    Color      Color // Sync (default), Async, or Param.
-    PolyParam  int   // when Color == ColorParam: index of the funcvar param the color depends on; -1 otherwise.
+	Params     []*Param
+	Return     *Type
+	TypeParams []string
+	Purity     Purity
+	Color      Color // Sync (default), Async, or Param.
+	PolyParam  int   // when Color == ColorParam: index of the funcvar param the color depends on; -1 otherwise.
 }
 ```
 
@@ -195,39 +195,39 @@ git commit -m "ir: add Color enum and FuncSig.Color/PolyParam fields"
 package ir_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestPointsToKey_VarAndField(t *testing.T) {
-    v := &ir.Var{Name: "h"}
-    k1 := ir.SlotVarKey(v)
-    if k1.Kind != ir.SlotVar || k1.Var != v {
-        t.Fatalf("SlotVarKey(v) malformed: %+v", k1)
-    }
-    sd := &ir.StructDef{Name: "Handler"}
-    sty := &ir.Type{Kind: ir.TypeStruct, Decl: sd}
-    k2 := ir.SlotFieldKey(sty, "onClick")
-    if k2.Kind != ir.SlotField || k2.Type != sty || k2.Field != "onClick" {
-        t.Fatalf("SlotFieldKey malformed: %+v", k2)
-    }
+	v := &ir.Var{Name: "h"}
+	k1 := ir.SlotVarKey(v)
+	if k1.Kind != ir.SlotVar || k1.Var != v {
+		t.Fatalf("SlotVarKey(v) malformed: %+v", k1)
+	}
+	sd := &ir.StructDef{Name: "Handler"}
+	sty := &ir.Type{Kind: ir.TypeStruct, Decl: sd}
+	k2 := ir.SlotFieldKey(sty, "onClick")
+	if k2.Kind != ir.SlotField || k2.Type != sty || k2.Field != "onClick" {
+		t.Fatalf("SlotFieldKey malformed: %+v", k2)
+	}
 }
 
 func TestPointsToInfo_AddCandidate(t *testing.T) {
-    info := ir.NewPointsToInfo()
-    v := &ir.Var{Name: "h"}
-    fn := &ir.Func{Name: "syncFn"}
-    key := ir.SlotVarKey(v)
-    info.AddCandidate(key, fn)
-    if got := info.Candidates(key); len(got) != 1 || got[0] != fn {
-        t.Fatalf("expected 1 candidate, got %v", got)
-    }
-    // dedup
-    info.AddCandidate(key, fn)
-    if got := info.Candidates(key); len(got) != 1 {
-        t.Fatalf("expected dedup; got %d", len(got))
-    }
+	info := ir.NewPointsToInfo()
+	v := &ir.Var{Name: "h"}
+	fn := &ir.Func{Name: "syncFn"}
+	key := ir.SlotVarKey(v)
+	info.AddCandidate(key, fn)
+	if got := info.Candidates(key); len(got) != 1 || got[0] != fn {
+		t.Fatalf("expected 1 candidate, got %v", got)
+	}
+	// dedup
+	info.AddCandidate(key, fn)
+	if got := info.Candidates(key); len(got) != 1 {
+		t.Fatalf("expected dedup; got %d", len(got))
+	}
 }
 ```
 
@@ -245,11 +245,11 @@ package ir
 type SlotKind int
 
 const (
-    SlotVar      SlotKind = iota // top-level var or local holding a funcvar
-    SlotParam                    // function parameter of funcvar type
-    SlotField                    // struct field of funcvar type, field-insensitive across instances
-    SlotListElem                 // element of a list of funcvar type
-    SlotReturn                   // function return slot when result is a funcvar
+	SlotVar      SlotKind = iota // top-level var or local holding a funcvar
+	SlotParam                    // function parameter of funcvar type
+	SlotField                    // struct field of funcvar type, field-insensitive across instances
+	SlotListElem                 // element of a list of funcvar type
+	SlotReturn                   // function return slot when result is a funcvar
 )
 
 // PointsToKey identifies a single slot in the points-to graph.
@@ -259,50 +259,50 @@ const (
 // stable). For Field and ListElem, identity is the (Type, fieldName) pair —
 // keyed on the *Type pointer for the declaring struct/list type.
 type PointsToKey struct {
-    Kind  SlotKind
-    Var   *Var   // SlotVar
-    Param *Param // SlotParam (canonical *Param pointer)
-    Func  *Func  // SlotReturn
-    Type  *Type  // SlotField, SlotListElem
-    Field string // SlotField
+	Kind  SlotKind
+	Var   *Var   // SlotVar
+	Param *Param // SlotParam (canonical *Param pointer)
+	Func  *Func  // SlotReturn
+	Type  *Type  // SlotField, SlotListElem
+	Field string // SlotField
 }
 
-func SlotVarKey(v *Var) PointsToKey       { return PointsToKey{Kind: SlotVar, Var: v} }
-func SlotParamKey(p *Param) PointsToKey   { return PointsToKey{Kind: SlotParam, Param: p} }
-func SlotReturnKey(f *Func) PointsToKey   { return PointsToKey{Kind: SlotReturn, Func: f} }
+func SlotVarKey(v *Var) PointsToKey     { return PointsToKey{Kind: SlotVar, Var: v} }
+func SlotParamKey(p *Param) PointsToKey { return PointsToKey{Kind: SlotParam, Param: p} }
+func SlotReturnKey(f *Func) PointsToKey { return PointsToKey{Kind: SlotReturn, Func: f} }
 func SlotFieldKey(t *Type, name string) PointsToKey {
-    return PointsToKey{Kind: SlotField, Type: t, Field: name}
+	return PointsToKey{Kind: SlotField, Type: t, Field: name}
 }
 func SlotListElemKey(t *Type) PointsToKey { return PointsToKey{Kind: SlotListElem, Type: t} }
 
 // PointsToInfo is the analysis result attached to a Package.
 type PointsToInfo struct {
-    Sites     map[PointsToKey][]*Func
-    SlotColor map[PointsToKey]Color
+	Sites     map[PointsToKey][]*Func
+	SlotColor map[PointsToKey]Color
 }
 
 func NewPointsToInfo() *PointsToInfo {
-    return &PointsToInfo{
-        Sites:     map[PointsToKey][]*Func{},
-        SlotColor: map[PointsToKey]Color{},
-    }
+	return &PointsToInfo{
+		Sites:     map[PointsToKey][]*Func{},
+		SlotColor: map[PointsToKey]Color{},
+	}
 }
 
 // AddCandidate inserts fn into the candidate set for key, deduping.
 // Returns true if a new candidate was added.
 func (p *PointsToInfo) AddCandidate(key PointsToKey, fn *Func) bool {
-    for _, existing := range p.Sites[key] {
-        if existing == fn {
-            return false
-        }
-    }
-    p.Sites[key] = append(p.Sites[key], fn)
-    return true
+	for _, existing := range p.Sites[key] {
+		if existing == fn {
+			return false
+		}
+	}
+	p.Sites[key] = append(p.Sites[key], fn)
+	return true
 }
 
 // Candidates returns the candidate set for key (nil if none).
 func (p *PointsToInfo) Candidates(key PointsToKey) []*Func {
-    return p.Sites[key]
+	return p.Sites[key]
 }
 ```
 
@@ -312,12 +312,12 @@ Edit `ir/ir.go`. Find the `Package` struct (~line 95 area). Add:
 
 ```go
 type Package struct {
-    // ... existing fields ...
+	// ... existing fields ...
 
-    // PointsTo is set by the checker's analyzePointsTo pass when funcvar
-    // analysis runs; nil before. Codegen and downstream passes consult
-    // this to decide await placement at funcvar call sites.
-    PointsTo *PointsToInfo
+	// PointsTo is set by the checker's analyzePointsTo pass when funcvar
+	// analysis runs; nil before. Codegen and downstream passes consult
+	// this to decide await placement at funcvar call sites.
+	PointsTo *PointsToInfo
 }
 ```
 
@@ -357,26 +357,26 @@ The walker visits every statement and expression in the package's funcs (top-lev
 package checker
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // directAssignment: var v = syncFn → constraint (SlotVarKey(v), {syncFn})
 func TestCollectConstraints_DirectAssign(t *testing.T) {
-    syncFn := &ir.Func{Name: "syncFn"}
-    v := &ir.Var{
-        Name: "v",
-        Type: funcType(),  // helper: returns &Type{Kind: TypeFunc, Sig: ...}
-        Init: &ir.Ident{Name: "syncFn", Sym: syncFn},
-    }
-    pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{syncFn}}
+	syncFn := &ir.Func{Name: "syncFn"}
+	v := &ir.Var{
+		Name: "v",
+		Type: funcType(), // helper: returns &Type{Kind: TypeFunc, Sig: ...}
+		Init: &ir.Ident{Name: "syncFn", Sym: syncFn},
+	}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{syncFn}}
 
-    cs := collectConstraints(pkg)
-    want := constraint{dst: ir.SlotVarKey(v), funcs: []*ir.Func{syncFn}}
-    if len(cs) != 1 || !equalConstraint(cs[0], want) {
-        t.Fatalf("got %+v, want [%+v]", cs, want)
-    }
+	cs := collectConstraints(pkg)
+	want := constraint{dst: ir.SlotVarKey(v), funcs: []*ir.Func{syncFn}}
+	if len(cs) != 1 || !equalConstraint(cs[0], want) {
+		t.Fatalf("got %+v, want [%+v]", cs, want)
+	}
 }
 ```
 
@@ -413,187 +413,191 @@ Create `internal/checker/pointsto.go`:
 package checker
 
 import (
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // constraint is a single subset rule: pts(dst) ⊇ {funcs...} ∪ pts(srcs...).
 type constraint struct {
-    dst   ir.PointsToKey
-    funcs []*ir.Func        // direct candidates
-    srcs  []ir.PointsToKey  // pts(src) ⊆ pts(dst) for each
+	dst   ir.PointsToKey
+	funcs []*ir.Func       // direct candidates
+	srcs  []ir.PointsToKey // pts(src) ⊆ pts(dst) for each
 }
 
 // collectConstraints walks the IR and emits subset constraints capturing
 // every funcvar flow site. The resulting list is consumed by the
 // fixpoint solver in Task 4.
 func collectConstraints(pkg *ir.Package) []constraint {
-    var out []constraint
-    walker := &pointsToWalker{out: &out}
-    walker.walkPackage(pkg)
-    return out
+	var out []constraint
+	walker := &pointsToWalker{out: &out}
+	walker.walkPackage(pkg)
+	return out
 }
 
 type pointsToWalker struct {
-    out *[]constraint
-    // enclosing function context for SlotReturn keys
-    fn *ir.Func
+	out *[]constraint
+	// enclosing function context for SlotReturn keys
+	fn *ir.Func
 }
 
 func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
-    for _, v := range pkg.Vars {
-        w.walkVarInit(v)
-    }
-    for _, fn := range pkg.Funcs {
-        w.walkFunc(fn)
-    }
-    // Components and Windows: walk their Vars + Funcs the same way.
-    for _, c := range pkg.Components {
-        for _, v := range c.Vars {
-            w.walkVarInit(v)
-        }
-        for _, fn := range c.Funcs {
-            w.walkFunc(fn)
-        }
-    }
-    // ... and Windows ...
+	for _, v := range pkg.Vars {
+		w.walkVarInit(v)
+	}
+	for _, fn := range pkg.Funcs {
+		w.walkFunc(fn)
+	}
+	// Components and Windows: walk their Vars + Funcs the same way.
+	for _, c := range pkg.Components {
+		for _, v := range c.Vars {
+			w.walkVarInit(v)
+		}
+		for _, fn := range c.Funcs {
+			w.walkFunc(fn)
+		}
+	}
+	// ... and Windows ...
 }
 
 func (w *pointsToWalker) walkVarInit(v *ir.Var) {
-    if !isFuncType(v.Type) || v.Init == nil {
-        return
-    }
-    dst := ir.SlotVarKey(v)
-    w.bindRHS(dst, v.Init)
+	if !isFuncType(v.Type) || v.Init == nil {
+		return
+	}
+	dst := ir.SlotVarKey(v)
+	w.bindRHS(dst, v.Init)
 }
 
 func (w *pointsToWalker) walkFunc(fn *ir.Func) {
-    prev := w.fn
-    w.fn = fn
-    defer func() { w.fn = prev }()
-    w.walkStmts(fn.Block)
+	prev := w.fn
+	w.fn = fn
+	defer func() { w.fn = prev }()
+	w.walkStmts(fn.Block)
 }
 
 func (w *pointsToWalker) walkStmts(stmts []ir.Stmt) {
-    for _, s := range stmts {
-        w.walkStmt(s)
-    }
+	for _, s := range stmts {
+		w.walkStmt(s)
+	}
 }
 
 func (w *pointsToWalker) walkStmt(s ir.Stmt) {
-    switch x := s.(type) {
-    case *ir.LocalVar:
-        if isFuncType(x.Type) && x.Init != nil {
-            w.bindRHS(localVarSlotKey(x), x.Init)
-        }
-        w.walkExpr(x.Init)
-    case *ir.Assign:
-        w.walkAssign(x)
-    case *ir.Return:
-        if w.fn != nil && w.fn.Sig != nil && isFuncType(w.fn.Sig.Return) && x.Value != nil {
-            w.bindRHS(ir.SlotReturnKey(w.fn), x.Value)
-        }
-        w.walkExpr(x.Value)
-    case *ir.If:
-        w.walkExpr(x.Cond)
-        w.walkStmts(x.Body)
-        w.walkStmts(x.Else)
-    case *ir.For:
-        w.walkExpr(x.Iter)
-        w.walkStmts(x.Body)
-        w.walkStmts(x.Else)
-    case *ir.PlatformFilter:
-        w.walkStmts(x.Body)
-    case *ir.CallStmt:
-        w.walkExpr(x.Call)
-    }
+	switch x := s.(type) {
+	case *ir.LocalVar:
+		if isFuncType(x.Type) && x.Init != nil {
+			w.bindRHS(localVarSlotKey(x), x.Init)
+		}
+		w.walkExpr(x.Init)
+	case *ir.Assign:
+		w.walkAssign(x)
+	case *ir.Return:
+		if w.fn != nil && w.fn.Sig != nil && isFuncType(w.fn.Sig.Return) && x.Value != nil {
+			w.bindRHS(ir.SlotReturnKey(w.fn), x.Value)
+		}
+		w.walkExpr(x.Value)
+	case *ir.If:
+		w.walkExpr(x.Cond)
+		w.walkStmts(x.Body)
+		w.walkStmts(x.Else)
+	case *ir.For:
+		w.walkExpr(x.Iter)
+		w.walkStmts(x.Body)
+		w.walkStmts(x.Else)
+	case *ir.PlatformFilter:
+		w.walkStmts(x.Body)
+	case *ir.CallStmt:
+		w.walkExpr(x.Call)
+	}
 }
 
 // walkAssign handles every assignment target shape that may bind a funcvar.
 func (w *pointsToWalker) walkAssign(a *ir.Assign) {
-    if a.Value == nil {
-        return
-    }
-    if !exprIsFuncTyped(a.Value) {
-        w.walkExpr(a.Value)
-        return
-    }
-    dst, ok := slotKeyForAssignTarget(a.Target)
-    if !ok {
-        // Unknown target shape — conservative: skip rather than guess.
-        w.walkExpr(a.Value)
-        return
-    }
-    w.bindRHS(dst, a.Value)
-    w.walkExpr(a.Value)
+	if a.Value == nil {
+		return
+	}
+	if !exprIsFuncTyped(a.Value) {
+		w.walkExpr(a.Value)
+		return
+	}
+	dst, ok := slotKeyForAssignTarget(a.Target)
+	if !ok {
+		// Unknown target shape — conservative: skip rather than guess.
+		w.walkExpr(a.Value)
+		return
+	}
+	w.bindRHS(dst, a.Value)
+	w.walkExpr(a.Value)
 }
 
 func (w *pointsToWalker) walkExpr(e ir.Expr) {
-    if e == nil {
-        return
-    }
-    switch x := e.(type) {
-    case *ir.Call:
-        w.walkCall(x)
-    case *ir.Binary:
-        w.walkExpr(x.Left); w.walkExpr(x.Right)
-    case *ir.Unary:
-        w.walkExpr(x.Operand)
-    case *ir.Ternary:
-        w.walkExpr(x.Cond); w.walkExpr(x.Then); w.walkExpr(x.Else)
-    case *ir.Conversion:
-        w.walkExpr(x.Operand)
-    case *ir.Select:
-        w.walkExpr(x.Operand)
-    case *ir.Index:
-        w.walkExpr(x.Operand); w.walkExpr(x.Idx)
-    case *ir.ListLit:
-        elemKey, ok := slotListElemKeyForListType(x.Type)
-        for _, el := range x.Elems {
-            if ok && exprIsFuncTyped(el) {
-                w.bindRHS(elemKey, el)
-            }
-            w.walkExpr(el)
-        }
-    case *ir.StructLit:
-        for _, f := range x.Fields {
-            // f.Field is the field name; f.Value is the assigned expr.
-            // Find the StructDef for x.Type and key SlotFieldKey accordingly.
-            if exprIsFuncTyped(f.Value) {
-                if k, ok := structFieldKey(x.Type, f.Field); ok {
-                    w.bindRHS(k, f.Value)
-                }
-            }
-            w.walkExpr(f.Value)
-        }
-    case *ir.Spread:
-        w.walkExpr(x.Operand)
-    case *ir.Lambda:
-        // A lambda escaping into a funcvar slot is a candidate; the binding
-        // is recorded by the enclosing assignment / arg site, not here.
-    case *ir.Closure:
-        // Same as Lambda.
-    }
+	if e == nil {
+		return
+	}
+	switch x := e.(type) {
+	case *ir.Call:
+		w.walkCall(x)
+	case *ir.Binary:
+		w.walkExpr(x.Left)
+		w.walkExpr(x.Right)
+	case *ir.Unary:
+		w.walkExpr(x.Operand)
+	case *ir.Ternary:
+		w.walkExpr(x.Cond)
+		w.walkExpr(x.Then)
+		w.walkExpr(x.Else)
+	case *ir.Conversion:
+		w.walkExpr(x.Operand)
+	case *ir.Select:
+		w.walkExpr(x.Operand)
+	case *ir.Index:
+		w.walkExpr(x.Operand)
+		w.walkExpr(x.Idx)
+	case *ir.ListLit:
+		elemKey, ok := slotListElemKeyForListType(x.Type)
+		for _, el := range x.Elems {
+			if ok && exprIsFuncTyped(el) {
+				w.bindRHS(elemKey, el)
+			}
+			w.walkExpr(el)
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			// f.Field is the field name; f.Value is the assigned expr.
+			// Find the StructDef for x.Type and key SlotFieldKey accordingly.
+			if exprIsFuncTyped(f.Value) {
+				if k, ok := structFieldKey(x.Type, f.Field); ok {
+					w.bindRHS(k, f.Value)
+				}
+			}
+			w.walkExpr(f.Value)
+		}
+	case *ir.Spread:
+		w.walkExpr(x.Operand)
+	case *ir.Lambda:
+		// A lambda escaping into a funcvar slot is a candidate; the binding
+		// is recorded by the enclosing assignment / arg site, not here.
+	case *ir.Closure:
+		// Same as Lambda.
+	}
 }
 
 // walkCall: for each funcvar arg, emit pts(param-slot) ⊇ {arg-funcs} | pts(arg-slot).
 func (w *pointsToWalker) walkCall(c *ir.Call) {
-    if c.Func != nil {
-        for i, a := range c.Args {
-            if i >= len(c.Func.Params) {
-                break
-            }
-            p := c.Func.Params[i]
-            if !isFuncType(p.Type) {
-                continue
-            }
-            w.bindRHS(ir.SlotParamKey(p), a.Value)
-        }
-    }
-    // Walk receiver and arg subexpressions for nested calls.
-    w.walkExpr(c.Receiver)
-    for _, a := range c.Args {
-        w.walkExpr(a.Value)
-    }
+	if c.Func != nil {
+		for i, a := range c.Args {
+			if i >= len(c.Func.Params) {
+				break
+			}
+			p := c.Func.Params[i]
+			if !isFuncType(p.Type) {
+				continue
+			}
+			w.bindRHS(ir.SlotParamKey(p), a.Value)
+		}
+	}
+	// Walk receiver and arg subexpressions for nested calls.
+	w.walkExpr(c.Receiver)
+	for _, a := range c.Args {
+		w.walkExpr(a.Value)
+	}
 }
 
 // bindRHS emits a constraint binding pts(dst) ⊇ candidates(rhs).
@@ -607,49 +611,49 @@ func (w *pointsToWalker) walkCall(c *ir.Call) {
 //   - *ir.Call returning funcvar: pts subset of the callee's return slot.
 //   - other shapes: skip (conservative).
 func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
-    switch x := rhs.(type) {
-    case *ir.Ident:
-        if fn, ok := x.Sym.(*ir.Func); ok {
-            *w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{fn}})
-            return
-        }
-        if v, ok := x.Sym.(*ir.Var); ok {
-            *w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotVarKey(v)}})
-            return
-        }
-        if p, ok := x.Sym.(*ir.Param); ok {
-            *w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotParamKey(p)}})
-            return
-        }
-    case *ir.Lambda:
-        if x.Func != nil {
-            *w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
-        }
-    case *ir.Closure:
-        if x.Func != nil {
-            *w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
-        }
-    case *ir.Call:
-        if x.Func != nil {
-            *w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotReturnKey(x.Func)}})
-        }
-    case *ir.Select:
-        // Reading a struct field: subset of the field slot.
-        if x.Operand != nil {
-            t := exprType(x.Operand)
-            if k, ok := structFieldKey(t, x.Name); ok {
-                *w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})
-            }
-        }
-    case *ir.Index:
-        // Reading a list element: subset of the elem slot.
-        if x.Operand != nil {
-            if k, ok := slotListElemKeyForListType(exprType(x.Operand)); ok {
-                *w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})
-            }
-        }
-    }
-    // Other shapes ignored.
+	switch x := rhs.(type) {
+	case *ir.Ident:
+		if fn, ok := x.Sym.(*ir.Func); ok {
+			*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{fn}})
+			return
+		}
+		if v, ok := x.Sym.(*ir.Var); ok {
+			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotVarKey(v)}})
+			return
+		}
+		if p, ok := x.Sym.(*ir.Param); ok {
+			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotParamKey(p)}})
+			return
+		}
+	case *ir.Lambda:
+		if x.Func != nil {
+			*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
+		}
+	case *ir.Call:
+		if x.Func != nil {
+			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotReturnKey(x.Func)}})
+		}
+	case *ir.Select:
+		// Reading a struct field: subset of the field slot.
+		if x.Operand != nil {
+			t := exprType(x.Operand)
+			if k, ok := structFieldKey(t, x.Name); ok {
+				*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})
+			}
+		}
+	case *ir.Index:
+		// Reading a list element: subset of the elem slot.
+		if x.Operand != nil {
+			if k, ok := slotListElemKeyForListType(exprType(x.Operand)); ok {
+				*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})
+			}
+		}
+	}
+	// Other shapes ignored.
 }
 ```
 
@@ -657,63 +661,63 @@ Helpers:
 
 ```go
 func isFuncType(t *ir.Type) bool {
-    return t != nil && t.Kind == ir.TypeFunc
+	return t != nil && t.Kind == ir.TypeFunc
 }
 
 func exprType(e ir.Expr) *ir.Type {
-    if e == nil {
-        return nil
-    }
-    return e.ExprType()
+	if e == nil {
+		return nil
+	}
+	return e.ExprType()
 }
 
 func exprIsFuncTyped(e ir.Expr) bool {
-    return isFuncType(exprType(e))
+	return isFuncType(exprType(e))
 }
 
 func slotKeyForAssignTarget(t ir.Expr) (ir.PointsToKey, bool) {
-    switch x := t.(type) {
-    case *ir.Ident:
-        if v, ok := x.Sym.(*ir.Var); ok {
-            return ir.SlotVarKey(v), true
-        }
-        if p, ok := x.Sym.(*ir.Param); ok {
-            return ir.SlotParamKey(p), true
-        }
-    case *ir.Select:
-        if k, ok := structFieldKey(exprType(x.Operand), x.Name); ok {
-            return k, true
-        }
-    case *ir.Index:
-        if k, ok := slotListElemKeyForListType(exprType(x.Operand)); ok {
-            return k, true
-        }
-    }
-    return ir.PointsToKey{}, false
+	switch x := t.(type) {
+	case *ir.Ident:
+		if v, ok := x.Sym.(*ir.Var); ok {
+			return ir.SlotVarKey(v), true
+		}
+		if p, ok := x.Sym.(*ir.Param); ok {
+			return ir.SlotParamKey(p), true
+		}
+	case *ir.Select:
+		if k, ok := structFieldKey(exprType(x.Operand), x.Name); ok {
+			return k, true
+		}
+	case *ir.Index:
+		if k, ok := slotListElemKeyForListType(exprType(x.Operand)); ok {
+			return k, true
+		}
+	}
+	return ir.PointsToKey{}, false
 }
 
 func structFieldKey(t *ir.Type, name string) (ir.PointsToKey, bool) {
-    if t == nil || t.Kind != ir.TypeStruct {
-        return ir.PointsToKey{}, false
-    }
-    return ir.SlotFieldKey(t, name), true
+	if t == nil || t.Kind != ir.TypeStruct {
+		return ir.PointsToKey{}, false
+	}
+	return ir.SlotFieldKey(t, name), true
 }
 
 func slotListElemKeyForListType(t *ir.Type) (ir.PointsToKey, bool) {
-    if t == nil || t.Kind != ir.TypeList {
-        return ir.PointsToKey{}, false
-    }
-    return ir.SlotListElemKey(t), true
+	if t == nil || t.Kind != ir.TypeList {
+		return ir.PointsToKey{}, false
+	}
+	return ir.SlotListElemKey(t), true
 }
 
 // localVarSlotKey: a LocalVar maps to a Var-equivalent slot. If LocalVar
 // already wraps a *ir.Var (read ir/stmt.go to confirm), use that pointer
 // directly. Otherwise treat the LocalVar pointer itself as the identity.
 func localVarSlotKey(lv *ir.LocalVar) ir.PointsToKey {
-    // If LocalVar has a Var field: return SlotVarKey(lv.Var).
-    // Otherwise wrap the LocalVar in a synthetic Var-like key. Read the
-    // source first; do not invent.
-    panic("inspect ir/stmt.go and complete this helper")
+	// If LocalVar has a Var field: return SlotVarKey(lv.Var).
+	// Otherwise wrap the LocalVar in a synthetic Var-like key. Read the
+	// source first; do not invent.
+	panic("inspect ir/stmt.go and complete this helper")
 }
 ```
 
@@ -749,65 +753,65 @@ git commit -m "checker: collect funcvar points-to constraints"
 
 ```go
 func TestPointsTo_DirectStore_SyncSlot(t *testing.T) {
-    syncFn := &ir.Func{Name: "syncFn", Sig: &ir.FuncSig{Color: ir.ColorSync, PolyParam: -1}}
-    v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(syncFn)}
-    pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{syncFn}}
+	syncFn := &ir.Func{Name: "syncFn", Sig: &ir.FuncSig{Color: ir.ColorSync, PolyParam: -1}}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(syncFn)}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{syncFn}}
 
-    info := analyzePointsTo(pkg)
-    key := ir.SlotVarKey(v)
-    if info.SlotColor[key] != ir.ColorSync {
-        t.Fatalf("want SlotColor Sync, got %v", info.SlotColor[key])
-    }
-    if got := info.Candidates(key); len(got) != 1 || got[0] != syncFn {
-        t.Fatalf("want [syncFn], got %+v", got)
-    }
+	info := analyzePointsTo(pkg)
+	key := ir.SlotVarKey(v)
+	if info.SlotColor[key] != ir.ColorSync {
+		t.Fatalf("want SlotColor Sync, got %v", info.SlotColor[key])
+	}
+	if got := info.Candidates(key); len(got) != 1 || got[0] != syncFn {
+		t.Fatalf("want [syncFn], got %+v", got)
+	}
 }
 
 func TestPointsTo_DirectStore_AsyncSlot(t *testing.T) {
-    asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true, Sig: &ir.FuncSig{Color: ir.ColorAsync, PolyParam: -1}}
-    v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
-    pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn}}
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true, Sig: &ir.FuncSig{Color: ir.ColorAsync, PolyParam: -1}}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn}}
 
-    info := analyzePointsTo(pkg)
-    if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
-        t.Fatalf("want SlotColor Async")
-    }
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
+		t.Fatalf("want SlotColor Async")
+	}
 }
 
 func TestPointsTo_MixedStore_PromotesAsync(t *testing.T) {
-    syncFn := &ir.Func{Name: "syncFn"}
-    asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
-    v := &ir.Var{Name: "v", Type: funcType()}
-    // Two assignments inside a func body: v = syncFn ; v = asyncFn
-    fn := &ir.Func{
-        Name: "main",
-        Block: []ir.Stmt{
-            &ir.Assign{Target: identTo(v), Value: identTo(syncFn)},
-            &ir.Assign{Target: identTo(v), Value: identTo(asyncFn)},
-        },
-        Sig: &ir.FuncSig{PolyParam: -1},
-    }
-    pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{fn, syncFn, asyncFn}}
+	syncFn := &ir.Func{Name: "syncFn"}
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType()}
+	// Two assignments inside a func body: v = syncFn ; v = asyncFn
+	fn := &ir.Func{
+		Name: "main",
+		Block: []ir.Stmt{
+			&ir.Assign{Target: identTo(v), Value: identTo(syncFn)},
+			&ir.Assign{Target: identTo(v), Value: identTo(asyncFn)},
+		},
+		Sig: &ir.FuncSig{PolyParam: -1},
+	}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{fn, syncFn, asyncFn}}
 
-    info := analyzePointsTo(pkg)
-    if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
-        t.Fatalf("mixed candidates should promote to Async; got %v", info.SlotColor[ir.SlotVarKey(v)])
-    }
-    if len(info.Candidates(ir.SlotVarKey(v))) != 2 {
-        t.Fatalf("expected 2 candidates")
-    }
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(v)] != ir.ColorAsync {
+		t.Fatalf("mixed candidates should promote to Async; got %v", info.SlotColor[ir.SlotVarKey(v)])
+	}
+	if len(info.Candidates(ir.SlotVarKey(v))) != 2 {
+		t.Fatalf("expected 2 candidates")
+	}
 }
 
 func TestPointsTo_TransitiveSubset(t *testing.T) {
-    asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
-    v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
-    w := &ir.Var{Name: "w", Type: funcType(), Init: identTo(v)} // w = v
-    pkg := &ir.Package{Vars: []*ir.Var{v, w}, Funcs: []*ir.Func{asyncFn}}
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	w := &ir.Var{Name: "w", Type: funcType(), Init: identTo(v)} // w = v
+	pkg := &ir.Package{Vars: []*ir.Var{v, w}, Funcs: []*ir.Func{asyncFn}}
 
-    info := analyzePointsTo(pkg)
-    if info.SlotColor[ir.SlotVarKey(w)] != ir.ColorAsync {
-        t.Fatalf("transitive flow should color w Async")
-    }
+	info := analyzePointsTo(pkg)
+	if info.SlotColor[ir.SlotVarKey(w)] != ir.ColorAsync {
+		t.Fatalf("transitive flow should color w Async")
+	}
 }
 ```
 
@@ -826,50 +830,50 @@ Append to `internal/checker/pointsto.go`:
 // analyzePointsTo runs the constraint walker, solves to fixpoint, and
 // computes per-slot colors. Mutates pkg.PointsTo in place and returns it.
 func analyzePointsTo(pkg *ir.Package) *ir.PointsToInfo {
-    info := ir.NewPointsToInfo()
-    pkg.PointsTo = info
+	info := ir.NewPointsToInfo()
+	pkg.PointsTo = info
 
-    cs := collectConstraints(pkg)
+	cs := collectConstraints(pkg)
 
-    for {
-        changed := false
-        for _, c := range cs {
-            for _, fn := range c.funcs {
-                if info.AddCandidate(c.dst, fn) {
-                    changed = true
-                }
-            }
-            for _, src := range c.srcs {
-                for _, fn := range info.Candidates(src) {
-                    if info.AddCandidate(c.dst, fn) {
-                        changed = true
-                    }
-                }
-            }
-        }
-        if !changed {
-            break
-        }
-    }
+	for {
+		changed := false
+		for _, c := range cs {
+			for _, fn := range c.funcs {
+				if info.AddCandidate(c.dst, fn) {
+					changed = true
+				}
+			}
+			for _, src := range c.srcs {
+				for _, fn := range info.Candidates(src) {
+					if info.AddCandidate(c.dst, fn) {
+						changed = true
+					}
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
 
-    // Compute slot color for storage slots only.
-    for key, fns := range info.Sites {
-        switch key.Kind {
-        case ir.SlotVar, ir.SlotField, ir.SlotListElem:
-            color := ir.ColorSync
-            for _, fn := range fns {
-                if fn.IsAsync || (fn.Sig != nil && fn.Sig.Color == ir.ColorAsync) {
-                    color = ir.ColorAsync
-                    break
-                }
-            }
-            info.SlotColor[key] = color
-        }
-        // SlotParam, SlotReturn — leave SlotColor unset; consumers treat
-        // missing entries as "must consult Candidates" (g3 fallback).
-    }
+	// Compute slot color for storage slots only.
+	for key, fns := range info.Sites {
+		switch key.Kind {
+		case ir.SlotVar, ir.SlotField, ir.SlotListElem:
+			color := ir.ColorSync
+			for _, fn := range fns {
+				if fn.IsAsync || (fn.Sig != nil && fn.Sig.Color == ir.ColorAsync) {
+					color = ir.ColorAsync
+					break
+				}
+			}
+			info.SlotColor[key] = color
+		}
+		// SlotParam, SlotReturn — leave SlotColor unset; consumers treat
+		// missing entries as "must consult Candidates" (g3 fallback).
+	}
 
-    return info
+	return info
 }
 ```
 
@@ -916,24 +920,24 @@ Identify the function that calls `c.analyzeAsync()` (likely `Check()` or a helpe
 ```go
 // internal/checker/pointsto_test.go (extend)
 func TestAnalyzeAsyncWithPointsTo_FuncvarCallColorsCaller(t *testing.T) {
-    asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
-    v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(asyncFn)}
 
-    // fn caller() { v() }
-    caller := &ir.Func{
-        Name:  "caller",
-        Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Receiver: identTo(v)}}},
-        Sig:   &ir.FuncSig{PolyParam: -1},
-    }
-    pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn, caller}}
+	// fn caller() { v() }
+	caller := &ir.Func{
+		Name:  "caller",
+		Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Receiver: identTo(v)}}},
+		Sig:   &ir.FuncSig{PolyParam: -1},
+	}
+	pkg := &ir.Package{Vars: []*ir.Var{v}, Funcs: []*ir.Func{asyncFn, caller}}
 
-    // Run the full async pipeline (analyzeAsync, then analyzePointsTo,
-    // then analyzeAsyncWithPointsTo).
-    runAsyncPipeline(t, pkg)
+	// Run the full async pipeline (analyzeAsync, then analyzePointsTo,
+	// then analyzeAsyncWithPointsTo).
+	runAsyncPipeline(t, pkg)
 
-    if !caller.IsAsync {
-        t.Fatalf("caller should be Async after points-to refinement; got IsAsync=false")
-    }
+	if !caller.IsAsync {
+		t.Fatalf("caller should be Async after points-to refinement; got IsAsync=false")
+	}
 }
 ```
 
@@ -953,36 +957,36 @@ Add to `internal/checker/async.go`:
 // funcvars whose slot color is Async. Runs after analyzePointsTo has
 // populated pkg.PointsTo.
 func (c *checker) analyzeAsyncWithPointsTo() {
-    pkg := c.pkg
-    if pkg == nil || pkg.PointsTo == nil {
-        return
-    }
-    funcs := allFuncs(pkg)
-    for {
-        changed := false
-        for _, fn := range funcs {
-            if fn.IsAsync {
-                continue
-            }
-            if blockHasFuncvarAsyncCall(fn.Block, pkg.PointsTo) {
-                fn.IsAsync = true
-                changed = true
-            }
-        }
-        if !changed {
-            break
-        }
-    }
+	pkg := c.pkg
+	if pkg == nil || pkg.PointsTo == nil {
+		return
+	}
+	funcs := allFuncs(pkg)
+	for {
+		changed := false
+		for _, fn := range funcs {
+			if fn.IsAsync {
+				continue
+			}
+			if blockHasFuncvarAsyncCall(fn.Block, pkg.PointsTo) {
+				fn.IsAsync = true
+				changed = true
+			}
+		}
+		if !changed {
+			break
+		}
+	}
 }
 
 // blockHasFuncvarAsyncCall walks stmts looking for a Call whose Func is
 // nil but whose Receiver resolves to a points-to slot of color Async, OR
 // whose Func is async via the existing predicate.
 func blockHasFuncvarAsyncCall(stmts []ir.Stmt, pts *ir.PointsToInfo) bool {
-    // Reuse ir.BlockHasAsyncCall for the direct case, and add a
-    // funcvar-aware visit. Implement as a parallel walker mirroring
-    // ir/async.go but with the funcvar branch.
-    // ... inline a small walker similar to ir.BlockHasAsyncCall ...
+	// Reuse ir.BlockHasAsyncCall for the direct case, and add a
+	// funcvar-aware visit. Implement as a parallel walker mirroring
+	// ir/async.go but with the funcvar branch.
+	// ... inline a small walker similar to ir.BlockHasAsyncCall ...
 }
 ```
 
@@ -1036,43 +1040,43 @@ git commit -m "checker: re-run color propagation with points-to (analyzeAsyncWit
 
 ```go
 func TestTranslateIRCall_FuncvarAsyncSlotAwaits(t *testing.T) {
-    asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
-    v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
-    pkg := &ir.Package{
-        Vars:  []*ir.Var{v},
-        Funcs: []*ir.Func{asyncFn},
-        PointsTo: &ir.PointsToInfo{
-            Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
-            SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorAsync},
-        },
-    }
-    call := &ir.Call{Func: nil, Receiver: identTo(v)} // funcvar invocation: handler()
-    scope := &codegen.ExprScope{Pkg: pkg, /* set whatever else is required */}
-    got := translateIRCall(call, scope)
-    want := "await handler()"
-    if got != want {
-        t.Fatalf("got %q want %q", got, want)
-    }
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{asyncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorAsync},
+		},
+	}
+	call := &ir.Call{Func: nil, Receiver: identTo(v)} // funcvar invocation: handler()
+	scope := &codegen.ExprScope{Pkg: pkg /* set whatever else is required */}
+	got := translateIRCall(call, scope)
+	want := "await handler()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
 }
 
 func TestTranslateIRCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
-    syncFn := &ir.Func{Name: "syncFn"}
-    v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
-    pkg := &ir.Package{
-        Vars:  []*ir.Var{v},
-        Funcs: []*ir.Func{syncFn},
-        PointsTo: &ir.PointsToInfo{
-            Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},
-            SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorSync},
-        },
-    }
-    call := &ir.Call{Func: nil, Receiver: identTo(v)}
-    scope := &codegen.ExprScope{Pkg: pkg}
-    got := translateIRCall(call, scope)
-    want := "handler()"
-    if got != want {
-        t.Fatalf("got %q want %q", got, want)
-    }
+	syncFn := &ir.Func{Name: "syncFn"}
+	v := &ir.Var{Name: "handler", Type: funcTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{syncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorSync},
+		},
+	}
+	call := &ir.Call{Func: nil, Receiver: identTo(v)}
+	scope := &codegen.ExprScope{Pkg: pkg}
+	got := translateIRCall(call, scope)
+	want := "handler()"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
 }
 ```
 
@@ -1090,25 +1094,25 @@ In `translate_ir.go:translateIRCall`, after the existing native-call and namespa
 ```go
 // Funcvar invocation: callee is not a fixed *ir.Func.
 if n.Func == nil && n.Receiver != nil {
-    receiverJS := translateIRExpr(n.Receiver, scope)
-    argStrs := make([]string, len(n.Args))
-    for i, a := range n.Args {
-        argStrs[i] = translateIRExpr(a.Value, scope)
-    }
-    call := receiverJS + "(" + strings.Join(argStrs, ", ") + ")"
-    if scope.Pkg != nil && scope.Pkg.PointsTo != nil {
-        if k, ok := receiverSlotKey(n.Receiver); ok {
-            if scope.Pkg.PointsTo.SlotColor[k] == ir.ColorAsync {
-                call = "await " + call
-            } else if _, hasColor := scope.Pkg.PointsTo.SlotColor[k]; !hasColor {
-                // SlotParam / SlotReturn fallback: g3 conservative.
-                if anyAsyncCandidate(scope.Pkg.PointsTo.Candidates(k)) {
-                    call = "await " + call
-                }
-            }
-        }
-    }
-    return call
+	receiverJS := translateIRExpr(n.Receiver, scope)
+	argStrs := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		argStrs[i] = translateIRExpr(a.Value, scope)
+	}
+	call := receiverJS + "(" + strings.Join(argStrs, ", ") + ")"
+	if scope.Pkg != nil && scope.Pkg.PointsTo != nil {
+		if k, ok := receiverSlotKey(n.Receiver); ok {
+			if scope.Pkg.PointsTo.SlotColor[k] == ir.ColorAsync {
+				call = "await " + call
+			} else if _, hasColor := scope.Pkg.PointsTo.SlotColor[k]; !hasColor {
+				// SlotParam / SlotReturn fallback: g3 conservative.
+				if anyAsyncCandidate(scope.Pkg.PointsTo.Candidates(k)) {
+					call = "await " + call
+				}
+			}
+		}
+	}
+	return call
 }
 ```
 
@@ -1212,11 +1216,11 @@ Mirror the pattern in `async_browser_test.go` (sub-task A's commit `da3cfa0`).
 package html_test
 
 import (
-    "testing"
+	"testing"
 )
 
 func TestBrowser_FuncvarStoredAsyncUpdatesDOM(t *testing.T) {
-    src := `
+	src := `
 import { fetchHello } from "js://./api"
 
 state handler: () -> string = fetchHello
@@ -1227,10 +1231,10 @@ window MainWindow {
     button "Go" { @click { greeting = handler() } }
 }
 `
-    runBrowserCase(t, src, browserExpect{
-        clickSelector: "button",
-        finalText:     "after",
-    })
+	runBrowserCase(t, src, browserExpect{
+		clickSelector: "button",
+		finalText:     "after",
+	})
 }
 ```
 

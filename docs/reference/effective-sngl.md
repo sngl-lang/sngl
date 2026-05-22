@@ -1,7 +1,7 @@
 ---
-title: "Effective SNGL"
+title: Effective SNGL
 order: 60
-description: "Comprehensive guide to writing idiomatic SNGL"
+description: Comprehensive guide to writing idiomatic SNGL
 ---
 
 ## Introduction
@@ -237,30 +237,30 @@ func _g() => float("3.14")
 
 Allow-lists per target:
 
-| Target     | Accepts                                                                            |
-| ---------- | ---------------------------------------------------------------------------------- |
-| `int`      | `int`, `float`, `string`, `bool`, `enum`, `unit`                                   |
-| `float`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                                   |
-| `string`   | any primitive / string-domain (`color`, `date`, …) / enum / unit                   |
-| `bool`     | `bool`, `string`                                                                   |
+| Target   | Accepts                                                          |
+|----------|------------------------------------------------------------------|
+| `int`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
+| `float`  | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
+| `string` | any primitive / string-domain (`color`, `date`, …) / enum / unit |
+| `bool`   | `bool`, `string`                                                 |
 
 ### Implicit conversions
 
 Narrow list — most type changes are rejected and require an explicit cast.
 
-| From             | To                | When                                                     |
-| ---------------- | ----------------- | -------------------------------------------------------- |
-| `int`            | `float`           | Anywhere a `float` is expected (auto-promotion)          |
-| `int` literal `0`| any unit type     | Typed zero: `var t duration = 0`, `delay(0)`             |
-| `string`         | string-domain     | Assignment: `var d date = "2024-01-15"` (validated)      |
-| string-domain    | `string`          | Assignment: `var s string = myDate`                      |
-| `string` literal | `enum`            | Assignment: `var s Status = "active"` (validated)        |
-| `T`              | `option<T>`       | Assignment: `var x option<int> = 5`                      |
-| `null`           | `option<T>`       | Assignment: `var x option<int> = null`                   |
-| `null`           | `func(...)`       | Compiles to a zero-value-returning callable stub         |
-| `func() T`       | `T`               | Zero-arg function auto-called where `T` is expected      |
-| any              | `dyn`             | `dyn` accepts any type                                   |
-| `dyn`            | any               | Escape hatch; no runtime check                           |
+| From              | To            | When                                                |
+|-------------------|---------------|-----------------------------------------------------|
+| `int`             | `float`       | Anywhere a `float` is expected (auto-promotion)     |
+| `int` literal `0` | any unit type | Typed zero: `var t duration = 0`, `delay(0)`        |
+| `string`          | string-domain | Assignment: `var d date = "2024-01-15"` (validated) |
+| string-domain     | `string`      | Assignment: `var s string = myDate`                 |
+| `string` literal  | `enum`        | Assignment: `var s Status = "active"` (validated)   |
+| `T`               | `option<T>`   | Assignment: `var x option<int> = 5`                 |
+| `null`            | `option<T>`   | Assignment: `var x option<int> = null`              |
+| `null`            | `func(...)`   | Compiles to a zero-value-returning callable stub    |
+| `func() T`        | `T`           | Zero-arg function auto-called where `T` is expected |
+| any               | `dyn`         | `dyn` accepts any type                              |
+| `dyn`             | any           | Escape hatch; no runtime check                      |
 
 `float` → `int` is **not** implicit — write `int(x)` to discard the fractional part. Non-zero `int` → unit is **not** implicit — use unit literals (`5s`) or multiply (`n * 1s`).
 
@@ -268,15 +268,15 @@ Narrow list — most type changes are rejected and require an explicit cast.
 
 These are compile errors:
 
-| Conversion                   | Error                                                     |
-| ---------------------------- | --------------------------------------------------------- |
-| `null` → struct              | `null is not assignable to struct type`                   |
-| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead |
-| list/option/func/component → cast | `cannot convert` — define a method instead          |
-| non-zero `int` → unit        | `cannot initialize` / `cannot pass`                       |
-| wrong type → component param | `does not match`                                          |
-| bad string literal → string-domain | format-specific error (invalid date, invalid email) |
-| wrong variant → enum         | `is not a valid variant`                                  |
+| Conversion                                           | Error                                               |
+|------------------------------------------------------|-----------------------------------------------------|
+| `null` → struct                                      | `null is not assignable to struct type`             |
+| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead          |
+| list/option/func/component → cast                    | `cannot convert` — define a method instead          |
+| non-zero `int` → unit                                | `cannot initialize` / `cannot pass`                 |
+| wrong type → component param                         | `does not match`                                    |
+| bad string literal → string-domain                   | format-specific error (invalid date, invalid email) |
+| wrong variant → enum                                 | `is not a valid variant`                            |
 
 ### String interpolation
 
@@ -906,7 +906,7 @@ Each platform maps stdlib components to native widgets. Core components (`vbox`,
 ## Naming Conventions
 
 | Category         | Convention                  | Examples                   |
-| ---------------- | --------------------------- | -------------------------- |
+|------------------|-----------------------------|----------------------------|
 | Files            | `kebab-case.sngl`           | `todo-item.sngl`           |
 | Components       | `PascalCase`                | `TodoItem`, `Counter`      |
 | Variables/params | `camelCase`                 | `newTodo`, `isActive`      |

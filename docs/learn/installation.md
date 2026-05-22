@@ -1,7 +1,7 @@
 ---
-title: "Installation"
+title: Installation
 order: 1
-description: "How to install the SNGL CLI"
+description: How to install the SNGL CLI
 ---
 
 ## Prerequisites

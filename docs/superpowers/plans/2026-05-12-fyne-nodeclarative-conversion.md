@@ -20,15 +20,15 @@
 
 From Plan B's final reviewer report:
 
-| # | Finding | Plan B.2 task |
-|---|---------|---------------|
-| 1 | `__n`/`__slot` prefix sniffing in fyne (fragile, breaks on user names starting with `__n*`) | Tasks 1-2 |
-| 2 | `fyneStmtDispatch` has 8 special cases (slot reset, ListPush, For/__slot, For/general, If, element-ref Assign, CreateNode LocalVar, AppendChild/Remove/Attach CallStmts) — interface under-specified | Task 3 (widen interface), Tasks 4-5 (collapse special-cases) |
-| 3 | `container, _ := parent.(*fyne.Container)` runtime type-assertion leaks into generated code | Task 6 (typed-parent slot signature) |
-| 4 | Integration test only string-matches; emitted Go never compile-checked | Task 7 |
-| 5 | `__root` sentinel unresolved in BuildUI call sites | Tasks 8-9 |
-| 6 nit | `zeroArgsFor` hardcoded constructor arity in fyneTranslator | Task 10 |
-| 6 nit | `splitTrLines` string round-trip | Task 11 |
+| #     | Finding                                                                                                                                                                                              | Plan B.2 task                                                |
+|-------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| 1     | `__n`/`__slot` prefix sniffing in fyne (fragile, breaks on user names starting with `__n*`)                                                                                                          | Tasks 1-2                                                    |
+| 2     | `fyneStmtDispatch` has 8 special cases (slot reset, ListPush, For/__slot, For/general, If, element-ref Assign, CreateNode LocalVar, AppendChild/Remove/Attach CallStmts) — interface under-specified | Task 3 (widen interface), Tasks 4-5 (collapse special-cases) |
+| 3     | `container, _ := parent.(*fyne.Container)` runtime type-assertion leaks into generated code                                                                                                          | Task 6 (typed-parent slot signature)                         |
+| 4     | Integration test only string-matches; emitted Go never compile-checked                                                                                                                               | Task 7                                                       |
+| 5     | `__root` sentinel unresolved in BuildUI call sites                                                                                                                                                   | Tasks 8-9                                                    |
+| 6 nit | `zeroArgsFor` hardcoded constructor arity in fyneTranslator                                                                                                                                          | Task 10                                                      |
+| 6 nit | `splitTrLines` string round-trip                                                                                                                                                                     | Task 11                                                      |
 
 Then the bigger structural work:
 
@@ -113,39 +113,39 @@ Concrete edits (each is a one-line `Synthesized: true,` addition):
 ```go
 // In synthesizeRenderSlotFunc, teardown For body:
 teardown := &ir.For{
-    Key: entryVar,
-    Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
-    Body: []ir.Stmt{
-        &ir.CallStmt{Call: &ir.Call{
-            // ... RemoveChild call ...
-            Args: []ir.CallArg{
-                {Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}}, // NOT synthesized — real param
-                {Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Synthesized: true}},
-            },
-        }},
-    },
+	Key:  entryVar,
+	Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+	Body: []ir.Stmt{
+		&ir.CallStmt{Call: &ir.Call{
+			// ... RemoveChild call ...
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}}, // NOT synthesized — real param
+				{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Synthesized: true}},
+			},
+		}},
+	},
 }
 
 // Reset:
 reset := &ir.Assign{
-    Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
-    Op:     ast.AssignSet,
-    Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+	Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+	Op:     ast.AssignSet,
+	Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 }
 ```
 
 ```go
 // In renderSlotBody's pushToSlot closure:
 return &ir.Assign{
-    Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
-    Op:     ast.AssignSet,
-    Value: &ir.Call{
-        // ... ListPush ...
-        Args: []ir.CallArg{
-            {Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true}},
-            {Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-        },
-    },
+	Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+	Op:     ast.AssignSet,
+	Value: &ir.Call{
+		// ... ListPush ...
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true}},
+			{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+		},
+	},
 }
 ```
 
@@ -158,7 +158,7 @@ parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synth
 // In updatersFor, slot-call splice fallback:
 parentRef := slot.ParentRef
 if parentRef == nil {
-    parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 }
 ```
 
@@ -704,20 +704,20 @@ Concrete design:
 
 ```go
 type IntrinsicTranslator interface {
-    // ... existing methods ...
-    OnDefault(stmt ir.Stmt) []string
-    OnSlotReset(slotID string) string
-    OnSlotAppend(slotID, childID string) string
+	// ... existing methods ...
+	OnDefault(stmt ir.Stmt) []string
+	OnSlotReset(slotID string) string
+	OnSlotAppend(slotID, childID string) string
 
-    // OnIter returns the platform-side expression for a For loop's
-    // Iter. For synthesized slot accumulators, this typically
-    // qualifies through the Model receiver. Otherwise the translator
-    // delegates to its language expression emitter.
-    OnIter(iter ir.Expr) string
+	// OnIter returns the platform-side expression for a For loop's
+	// Iter. For synthesized slot accumulators, this typically
+	// qualifies through the Model receiver. Otherwise the translator
+	// delegates to its language expression emitter.
+	OnIter(iter ir.Expr) string
 
-    // OnCond returns the platform-side expression for an If condition.
-    // Almost always delegates to the language expression emitter.
-    OnCond(cond ir.Expr) string
+	// OnCond returns the platform-side expression for an If condition.
+	// Almost always delegates to the language expression emitter.
+	OnCond(cond ir.Expr) string
 }
 ```
 
@@ -824,9 +824,9 @@ In `codegen/platform/fyne/compiler_ir.go`, replace `emitIRSlotFunc`'s `for _, st
 ```go
 body := codegen.WalkLowered(fn.Block, tr)
 for _, l := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
-    b.WriteString("\t")
-    b.WriteString(l)
-    b.WriteString("\n")
+	b.WriteString("\t")
+	b.WriteString(l)
+	b.WriteString("\n")
 }
 ```
 
@@ -856,7 +856,7 @@ func TestWalkLowered_ForIfRecursion(t *testing.T) {
 	// for x = items { if x { ... AppendChild ... } }
 	appendChild := &ir.Func{Name: "AppendChild", Intrinsic: "AppendChild"}
 	stmt := &ir.For{
-		Key: "x",
+		Key:  "x",
 		Iter: &ir.Ident{Name: "items"},
 		Body: []ir.Stmt{
 			&ir.If{
@@ -1002,7 +1002,7 @@ Extend `TestIntegration_ReactiveIfEmitsRenderSlot` after the snippet assertions:
 // to undefined ident" failures the snippet check misses.
 tmp, err := os.MkdirTemp("", "fyne-emit-")
 if err != nil {
-    t.Fatal(err)
+	t.Fatal(err)
 }
 defer os.RemoveAll(tmp)
 
@@ -1013,10 +1013,10 @@ go 1.22
 
 require fyne.io/fyne/v2 v2.4.5
 `), 0o644); err != nil {
-    t.Fatal(err)
+	t.Fatal(err)
 }
 if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte("package integration\n\n"+out), 0o644); err != nil {
-    t.Fatal(err)
+	t.Fatal(err)
 }
 
 cmd := exec.Command("go", "build", "./...")
@@ -1024,7 +1024,7 @@ cmd.Dir = tmp
 cmd.Env = append(os.Environ(), "GOPROXY=off")
 combined, err := cmd.CombinedOutput()
 if err != nil {
-    t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- source ---\n%s", err, combined, out)
+	t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- source ---\n%s", err, combined, out)
 }
 ```
 
@@ -1088,13 +1088,13 @@ Add at the top of `rewriteAndInject`:
 // BuildUI before slot-calls fire).
 hasSlots := false
 for _, slots := range st.reverseSlots {
-    if len(slots) > 0 {
-        hasSlots = true
-        break
-    }
+	if len(slots) > 0 {
+		hasSlots = true
+		break
+	}
 }
 if hasSlots {
-    st.synthesizeRootVar()
+	st.synthesizeRootVar()
 }
 ```
 
@@ -1105,22 +1105,22 @@ Add the helper:
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it without name-prefix matching.
 func (st *reactivityState) synthesizeRootVar() {
-    if existing := st.findSlotVar("__root"); existing != nil {
-        return
-    }
-    v := &ir.Var{
-        Name: "__root",
-        Type: ir.TypDyn,
-        // Init left nil — platforms initialize at BuildUI time.
-    }
-    // Synthesized marker: re-use existing convention; if ir.Var has
-    // a Synthesized bool added in Task 1, set it. If not, the var's
-    // name still starts with "__" which other passes treat as
-    // pass-internal.
-    if synthesizable, ok := any(v).(interface{ MarkSynthesized() }); ok {
-        synthesizable.MarkSynthesized()
-    }
-    st.owner.addVar(v)
+	if existing := st.findSlotVar("__root"); existing != nil {
+		return
+	}
+	v := &ir.Var{
+		Name: "__root",
+		Type: ir.TypDyn,
+		// Init left nil — platforms initialize at BuildUI time.
+	}
+	// Synthesized marker: re-use existing convention; if ir.Var has
+	// a Synthesized bool added in Task 1, set it. If not, the var's
+	// name still starts with "__" which other passes treat as
+	// pass-internal.
+	if synthesizable, ok := any(v).(interface{ MarkSynthesized() }); ok {
+		synthesizable.MarkSynthesized()
+	}
+	st.owner.addVar(v)
 }
 ```
 
@@ -1128,9 +1128,9 @@ Actually — Plan A already added `Synthesized bool` to `ir.Var`. Just set it di
 
 ```go
 v := &ir.Var{
-    Name:         "__root",
-    Type:         ir.TypDyn,
-    Synthesized:  true,
+	Name:        "__root",
+	Type:        ir.TypDyn,
+	Synthesized: true,
 }
 ```
 
@@ -1142,7 +1142,7 @@ Append to `internal/lower/reactivity_structural_test.go`:
 
 ```go
 func TestRootVarSynthesizedWhenSlotExists(t *testing.T) {
-    src := `
+	src := `
 component main {
     var visible bool = true
     if visible {
@@ -1150,45 +1150,45 @@ component main {
     }
 }
 `
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-    if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
-        t.Fatal(err)
-    }
-    comp := pkg.Components[0]
-    var found *ir.Var
-    for _, v := range comp.Vars {
-        if v.Name == "__root" {
-            found = v
-            break
-        }
-    }
-    if found == nil {
-        t.Fatal("__root Var not synthesized")
-    }
-    if !found.Synthesized {
-        t.Error("__root Var not marked Synthesized")
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	var found *ir.Var
+	for _, v := range comp.Vars {
+		if v.Name == "__root" {
+			found = v
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("__root Var not synthesized")
+	}
+	if !found.Synthesized {
+		t.Error("__root Var not marked Synthesized")
+	}
 }
 
 func TestRootVarOmittedWhenNoSlots(t *testing.T) {
-    src := `
+	src := `
 component main {
     var count int = 0
     button(text=string(count), @click { count = count + 1 })
 }
 `
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-    if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
-        t.Fatal(err)
-    }
-    comp := pkg.Components[0]
-    for _, v := range comp.Vars {
-        if v.Name == "__root" {
-            t.Error("__root unexpectedly synthesized for component with no reactive slots")
-        }
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}); err != nil {
+		t.Fatal(err)
+	}
+	comp := pkg.Components[0]
+	for _, v := range comp.Vars {
+		if v.Name == "__root" {
+			t.Error("__root unexpectedly synthesized for component with no reactive slots")
+		}
+	}
 }
 ```
 
@@ -1230,25 +1230,25 @@ In `codegen/platform/fyne/compiler_ir.go` `analyzeIR`'s synthesized-var branch (
 
 ```go
 if v.Synthesized {
-    if v.Name == "__root" {
-        // Root container — initialized in BuildUI, used by renderSlot
-        // calls.
-        info.binds = append(info.binds, irBind{
-            name:        v.Name,
-            goType:      "*fyne.Container",
-            init:        "container.NewVBox()",
-            noAccessors: true,
-        })
-        continue
-    }
-    // Existing __slot<N> branch:
-    info.binds = append(info.binds, irBind{
-        name:        v.Name,
-        goType:      "[]fyne.CanvasObject",
-        init:        "nil",
-        noAccessors: true,
-    })
-    continue
+	if v.Name == "__root" {
+		// Root container — initialized in BuildUI, used by renderSlot
+		// calls.
+		info.binds = append(info.binds, irBind{
+			name:        v.Name,
+			goType:      "*fyne.Container",
+			init:        "container.NewVBox()",
+			noAccessors: true,
+		})
+		continue
+	}
+	// Existing __slot<N> branch:
+	info.binds = append(info.binds, irBind{
+		name:        v.Name,
+		goType:      "[]fyne.CanvasObject",
+		init:        "nil",
+		noAccessors: true,
+	})
+	continue
 }
 ```
 
@@ -1296,14 +1296,14 @@ Update `slotCall` in `internal/lower/reactivity.go`:
 
 ```go
 func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallStmt {
-    if parentRef == nil {
-        // Top-level reactive If/For: use the synthesized __root Var
-        // on the owner. The expression resolves through the platform's
-        // expression evaluator to the platform-specific root reference.
-        rootVar := st.findSlotVar("__root")
-        parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
-    }
-    // ... rest unchanged
+	if parentRef == nil {
+		// Top-level reactive If/For: use the synthesized __root Var
+		// on the owner. The expression resolves through the platform's
+		// expression evaluator to the platform-specific root reference.
+		rootVar := st.findSlotVar("__root")
+		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+	}
+	// ... rest unchanged
 }
 ```
 
@@ -1361,14 +1361,14 @@ Recommend **B** for now:
 ```go
 // In loadBlueprints() after the blueprint table is populated:
 zeroArgs := map[string]string{
-    "text":   `""`,
-    "label":  `""`,
-    "button": `"", nil`,
+	"text":   `""`,
+	"label":  `""`,
+	"button": `"", nil`,
 }
 for name, args := range zeroArgs {
-    if bp, ok := blueprintByName[name]; ok && bp.Constructor != nil {
-        bp.Constructor.ZeroArgs = args
-    }
+	if bp, ok := blueprintByName[name]; ok && bp.Constructor != nil {
+		bp.Constructor.ZeroArgs = args
+	}
 }
 ```
 
@@ -1380,13 +1380,13 @@ In `codegen/platform/fyne/intrinsic_translator.go`, replace `zeroArgsFor(tag)` w
 
 ```go
 func (t *fyneTranslator) OnCreateNode(id, tag string) string {
-    bp, ok := t.blueprints[tag]
-    if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
-        return ""
-    }
-    t.idTags[id] = tag
-    t.fieldSink(id, bp.Constructor.GoType)
-    return "m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")\n"
+	bp, ok := t.blueprints[tag]
+	if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
+		return ""
+	}
+	t.idTags[id] = tag
+	t.fieldSink(id, bp.Constructor.GoType)
+	return "m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")\n"
 }
 ```
 
@@ -1423,16 +1423,16 @@ Change methods to return `[]string`:
 
 ```go
 type IntrinsicTranslator interface {
-    OnCreateNode(id, tag string) []string
-    OnAppendChild(parent, child string) []string
-    OnRemoveChild(parent, child string) []string
-    OnAttachHandler(node, event, handlerRef string) []string
-    OnPropAssign(nodeID, prop string, valueExpr ir.Expr) []string
-    OnSlotReset(slotID string) []string
-    OnSlotAppend(slotID, childID string) []string
-    OnIter(iter ir.Expr) string  // expression, single line — stays string
-    OnCond(cond ir.Expr) string  // ditto
-    OnDefault(stmt ir.Stmt) []string
+	OnCreateNode(id, tag string) []string
+	OnAppendChild(parent, child string) []string
+	OnRemoveChild(parent, child string) []string
+	OnAttachHandler(node, event, handlerRef string) []string
+	OnPropAssign(nodeID, prop string, valueExpr ir.Expr) []string
+	OnSlotReset(slotID string) []string
+	OnSlotAppend(slotID, childID string) []string
+	OnIter(iter ir.Expr) string // expression, single line — stays string
+	OnCond(cond ir.Expr) string // ditto
+	OnDefault(stmt ir.Stmt) []string
 }
 ```
 
@@ -1451,9 +1451,9 @@ Each `return "m." + ... + "\n"` becomes `return []string{"m." + ... }`.
 ```go
 body := codegen.WalkLowered(fn.Block, tr)
 for _, l := range body {
-    b.WriteString("\t")
-    b.WriteString(l)
-    b.WriteString("\n")
+	b.WriteString("\t")
+	b.WriteString(l)
+	b.WriteString("\n")
 }
 ```
 
@@ -1510,7 +1510,7 @@ In `codegen/platform/fyne/fyne.go`:
 
 ```go
 func (g *Generator) Capabilities() lower.Caps {
-    return lower.Caps{NoReactivity: true, NoDeclarative: true}
+	return lower.Caps{NoReactivity: true, NoDeclarative: true}
 }
 ```
 
@@ -1557,16 +1557,16 @@ Replace the single-vs-multi-root branching with a unified WalkLowered call:
 
 ```go
 if len(wins) > 0 && len(wins[0].Body) > 0 {
-    bodyStmts := wins[0].Body
+	bodyStmts := wins[0].Body
 
-    tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
-        widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-    })
-    body := codegen.WalkLowered(bodyStmts, tr)
+	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+		widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+	})
+	body := codegen.WalkLowered(bodyStmts, tr)
 
-    for _, l := range body {
-        fmt.Fprintf(&buildBuf, "\t%s\n", l)
-    }
+	for _, l := range body {
+		fmt.Fprintf(&buildBuf, "\t%s\n", l)
+	}
 }
 ```
 
@@ -1614,8 +1614,8 @@ Add to the struct:
 
 ```go
 type fyneTranslator struct {
-    // ... existing ...
-    topLevel []string // ordered list of refs not yet AppendChild'd
+	// ... existing ...
+	topLevel []string // ordered list of refs not yet AppendChild'd
 }
 ```
 
@@ -1623,11 +1623,11 @@ Update `OnCreateNode`:
 
 ```go
 func (t *fyneTranslator) OnCreateNode(id, tag string) []string {
-    // ... existing checks ...
-    t.idTags[id] = tag
-    t.fieldSink(id, bp.Constructor.GoType)
-    t.topLevel = append(t.topLevel, id)
-    return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
+	// ... existing checks ...
+	t.idTags[id] = tag
+	t.fieldSink(id, bp.Constructor.GoType)
+	t.topLevel = append(t.topLevel, id)
+	return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
 }
 ```
 
@@ -1635,14 +1635,14 @@ Update `OnAppendChild`:
 
 ```go
 func (t *fyneTranslator) OnAppendChild(parent, child string) []string {
-    // Remove child from top-level set.
-    for i, name := range t.topLevel {
-        if name == child {
-            t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
-            break
-        }
-    }
-    return []string{parent + ".Add(m." + child + ")"}
+	// Remove child from top-level set.
+	for i, name := range t.topLevel {
+		if name == child {
+			t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
+			break
+		}
+	}
+	return []string{parent + ".Add(m." + child + ")"}
 }
 ```
 
@@ -1666,18 +1666,18 @@ Alternative: walker passes the raw Ident's Name, and translator decides qualific
 
 ```go
 func (t *fyneTranslator) OnAppendChild(parent, child string) []string {
-    // Both parent and child should be qualified through the translator's
-    // own naming convention. For fyne, all widget refs live on Model
-    // (m.<name>). The exception is the typed slot parameter
-    // `container` (a *fyne.Container function arg) which stays bare.
-    return []string{t.qualify(parent) + ".Add(" + t.qualify(child) + ")"}
+	// Both parent and child should be qualified through the translator's
+	// own naming convention. For fyne, all widget refs live on Model
+	// (m.<name>). The exception is the typed slot parameter
+	// `container` (a *fyne.Container function arg) which stays bare.
+	return []string{t.qualify(parent) + ".Add(" + t.qualify(child) + ")"}
 }
 
 func (t *fyneTranslator) qualify(name string) string {
-    if name == "container" || name == "parent" {
-        return name // typed function params
-    }
-    return "m." + name
+	if name == "container" || name == "parent" {
+		return name // typed function params
+	}
+	return "m." + name
 }
 ```
 
@@ -1690,11 +1690,11 @@ In `compiler_ir.go` after the WalkLowered loop:
 ```go
 body := codegen.WalkLowered(bodyStmts, tr)
 for _, l := range body {
-    fmt.Fprintf(&buildBuf, "\t%s\n", l)
+	fmt.Fprintf(&buildBuf, "\t%s\n", l)
 }
 // Append top-level widgets to __root in source order.
 for _, ref := range tr.topLevel {
-    fmt.Fprintf(&buildBuf, "\tm.__root.Add(m.%s)\n", ref)
+	fmt.Fprintf(&buildBuf, "\tm.__root.Add(m.%s)\n", ref)
 }
 ```
 
@@ -1729,32 +1729,32 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ```go
 func (t *fyneTranslator) OnCreateNode(id, tag string) []string {
-    if bp, ok := t.blueprints[tag]; ok && bp.Constructor != nil && bp.Constructor.GoType != "" {
-        t.idTags[id] = tag
-        t.fieldSink(id, bp.Constructor.GoType)
-        t.topLevel = append(t.topLevel, id)
-        return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
-    }
-    // User-component fallback: assume the tag is the name of a SNGL
-    // component, emit a constructor call against its Model type.
-    if t.isUserComponent(tag) {
-        goType := "*" + golang.ExportName(tag)
-        ctor := "new" + golang.ExportName(tag)
-        t.idTags[id] = tag
-        t.fieldSink(id, goType)
-        t.topLevel = append(t.topLevel, id)
-        return []string{"m." + id + " = " + ctor + "()"}
-    }
-    return nil
+	if bp, ok := t.blueprints[tag]; ok && bp.Constructor != nil && bp.Constructor.GoType != "" {
+		t.idTags[id] = tag
+		t.fieldSink(id, bp.Constructor.GoType)
+		t.topLevel = append(t.topLevel, id)
+		return []string{"m." + id + " = " + bp.Constructor.GoFn + "(" + bp.Constructor.ZeroArgs + ")"}
+	}
+	// User-component fallback: assume the tag is the name of a SNGL
+	// component, emit a constructor call against its Model type.
+	if t.isUserComponent(tag) {
+		goType := "*" + golang.ExportName(tag)
+		ctor := "new" + golang.ExportName(tag)
+		t.idTags[id] = tag
+		t.fieldSink(id, goType)
+		t.topLevel = append(t.topLevel, id)
+		return []string{"m." + id + " = " + ctor + "()"}
+	}
+	return nil
 }
 
 // isUserComponent reports whether the tag refers to a SNGL component
 // declared in the user's package (not a platform-shipped blueprint).
 // Compares against the analysis context's components list.
 func (t *fyneTranslator) isUserComponent(tag string) bool {
-    // ... look up in t.gc.Ctx().Pkg.Components or similar
-    // Adapt to whatever the codegen ctx exposes
-    return false // placeholder — implement based on what fyne already has
+	// ... look up in t.gc.Ctx().Pkg.Components or similar
+	// Adapt to whatever the codegen ctx exposes
+	return false // placeholder — implement based on what fyne already has
 }
 ```
 
@@ -1773,7 +1773,7 @@ In WalkLowered's CreateNode dispatch, pass the LocalVar's component info. The lo
 ```go
 varType := ir.TypDyn
 if n.Component != nil {
-    varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
+	varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
 }
 ```
 
@@ -1795,13 +1795,13 @@ And `OnCreateNode` becomes:
 
 ```go
 func (t *fyneTranslator) OnCreateNode(id, tag string, comp *ir.Component) []string {
-    if comp != nil {
-        // User component
-        goType := "*" + golang.ExportName(comp.Name)
-        ctor := "new" + golang.ExportName(comp.Name)
-        // ... etc
-    }
-    // ... blueprint fallback ...
+	if comp != nil {
+		// User component
+		goType := "*" + golang.ExportName(comp.Name)
+		ctor := "new" + golang.ExportName(comp.Name)
+		// ... etc
+	}
+	// ... blueprint fallback ...
 }
 ```
 
@@ -1817,7 +1817,7 @@ Append to `codegen/platform/fyne/intrinsic_integration_test.go`:
 
 ```go
 func TestIntegration_UserComponent(t *testing.T) {
-    src := `
+	src := `
 component child {
     text(value="hello")
 }
@@ -1825,8 +1825,8 @@ component main {
     child()
 }
 `
-    // ... same flow as TestIntegration_ReactiveIfEmitsRenderSlot ...
-    // assert m.__n0 = newChild() appears
+	// ... same flow as TestIntegration_ReactiveIfEmitsRenderSlot ...
+	// assert m.__n0 = newChild() appears
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
-title: "Learn"
+title: Learn
 order: 10
-description: "Tutorials and guides for getting going with SNGL"
+description: Tutorials and guides for getting going with SNGL
 ---
 
 ## Where to start

@@ -133,10 +133,8 @@ In `codegen/platform/html/html.go`, prefix `async ` based on
 - `function $set_X(v)` — `async function $set_X(v)` iff any of the
   handler bodies, transitively-called updaters, or timer-sync hooks
   it inlines contains an async call.
-- Event handler `addEventListener(…, function() { … })` — `async
-  function` iff body async.
-- Timer tick `$timer_N_tick` and timer sync `$timer_N_sync` — `async
-  function` iff body async.
+- Event handler `addEventListener(…, function() { … })` — `async function` iff body async.
+- Timer tick `$timer_N_tick` and timer sync `$timer_N_sync` — `async function` iff body async.
 - Updaters (`function NAME() { … }`) and computed expression-body
   funcs (`function $X()`) and struct constructors stay synchronous.
   After the lowering pass, none of them can transitively reach an

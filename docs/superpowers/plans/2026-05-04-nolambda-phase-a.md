@@ -50,10 +50,10 @@ Edit `ast/expr.go`. Locate the `UnaryOp` const block (around line 77-80) and ext
 
 ```go
 const (
-    UnaryNot   UnaryOp = iota // !
-    UnaryNeg                  // -
-    UnaryAddr                 // &
-    UnaryDeref                // *
+	UnaryNot   UnaryOp = iota // !
+	UnaryNeg                  // -
+	UnaryAddr                 // &
+	UnaryDeref                // *
 )
 ```
 
@@ -88,33 +88,33 @@ Edit `ir/types.go`. Locate the `TypeKind` const block (the `TypeIPV6` line ends 
 
 ```go
 const (
-    TypeInvalid TypeKind = iota // error sentinel
-    TypeDyn                     // unknown/dynamic
-    TypeBool
-    TypeInt
-    TypeFloat
-    TypeString
-    TypeList      // Elem set
-    TypeOption    // Elem set
-    TypeStruct    // Decl set
-    TypeEnum      // Decl set
-    TypeUnit      // Decl set
-    TypeFunc      // Sig set
-    TypeComponent // Decl set
-    TypeColor
-    TypeDate
-    TypeTime
-    TypeDateTime
-    TypeDuration
-    TypeURL
-    TypeEmail
-    TypeUUID
-    TypeRegex
-    TypeBase64
-    TypeIPV4
-    TypeIPV6
-    TypeRef // Elem set — ref<T>, used by NoLambda for mutable captures
-    // ...keep any remaining trailing kinds in their existing order...
+	TypeInvalid TypeKind = iota // error sentinel
+	TypeDyn                     // unknown/dynamic
+	TypeBool
+	TypeInt
+	TypeFloat
+	TypeString
+	TypeList      // Elem set
+	TypeOption    // Elem set
+	TypeStruct    // Decl set
+	TypeEnum      // Decl set
+	TypeUnit      // Decl set
+	TypeFunc      // Sig set
+	TypeComponent // Decl set
+	TypeColor
+	TypeDate
+	TypeTime
+	TypeDateTime
+	TypeDuration
+	TypeURL
+	TypeEmail
+	TypeUUID
+	TypeRegex
+	TypeBase64
+	TypeIPV4
+	TypeIPV6
+	TypeRef // Elem set — ref<T>, used by NoLambda for mutable captures
+	// ...keep any remaining trailing kinds in their existing order...
 )
 ```
 
@@ -127,7 +127,7 @@ In the same file, alongside `ListOf` / `OptionOf`, add:
 ```go
 // RefOf builds a ref<elem> Type.
 func RefOf(elem *Type) *Type {
-    return &Type{Kind: TypeRef, Elem: elem}
+	return &Type{Kind: TypeRef, Elem: elem}
 }
 ```
 
@@ -168,17 +168,17 @@ Edit `ir/expr.go`. After the existing `Lambda` definition (around line 162), add
 // closure-supporting target languages never sees a Closure (their cap is
 // off); closure-free targets translate Closure into a (state, fn-ref) pair.
 type Closure struct {
-    AST   *ast.LambdaExpr // original lambda position; nil for synthesized handler lifts
-    Type  *Type           // user-visible TypeFunc — without the synthesized leading state param
-    Func  *Func           // lifted top-level Func; first Param is the state struct
-    State *StructLit      // captured-state struct construction at this site
+	AST   *ast.LambdaExpr // original lambda position; nil for synthesized handler lifts
+	Type  *Type           // user-visible TypeFunc — without the synthesized leading state param
+	Func  *Func           // lifted top-level Func; first Param is the state struct
+	State *StructLit      // captured-state struct construction at this site
 }
 ```
 
 In the same file, extend the existing exprNode/ExprType blocks. Add:
 
 ```go
-func (*Closure) exprNode()        {}
+func (*Closure) exprNode()         {}
 func (x *Closure) ExprType() *Type { return x.Type }
 ```
 
@@ -455,19 +455,19 @@ Helper:
 // Per the NoLambda spec: Idents resolving to *Var or *Param, Selects bottoming
 // out at one of those, and Index against an addressable list operand.
 func (c *checker) isAddressable(e ir.Expr) bool {
-    switch x := e.(type) {
-    case *ir.Ident:
-        switch x.Sym.(type) {
-        case *ir.Var, *ir.Param:
-            return true
-        }
-        return false
-    case *ir.Select:
-        return c.isAddressable(x.Operand)
-    case *ir.Index:
-        return c.isAddressable(x.Operand)
-    }
-    return false
+	switch x := e.(type) {
+	case *ir.Ident:
+		switch x.Sym.(type) {
+		case *ir.Var, *ir.Param:
+			return true
+		}
+		return false
+	case *ir.Select:
+		return c.isAddressable(x.Operand)
+	case *ir.Index:
+		return c.isAddressable(x.Operand)
+	}
+	return false
 }
 ```
 
@@ -495,16 +495,16 @@ Create or extend a test in `internal/checker/expr_test.go` (or wherever existing
 
 ```go
 func TestCheckRefAndDeref(t *testing.T) {
-    src := `
+	src := `
 component main {
     var x: int = 0
     var p: ref<int> = &x
     var y: int = *p
 }`
-    pkg := mustCheckPackage(t, src)
-    if len(pkg.Diagnostics) != 0 {
-        t.Fatalf("unexpected diagnostics: %v", pkg.Diagnostics)
-    }
+	pkg := mustCheckPackage(t, src)
+	if len(pkg.Diagnostics) != 0 {
+		t.Fatalf("unexpected diagnostics: %v", pkg.Diagnostics)
+	}
 }
 ```
 
@@ -514,12 +514,12 @@ component main {
 
 ```go
 func TestCheckAddrOfNonLvalue(t *testing.T) {
-    src := `
+	src := `
 component main {
     var p: ref<int> = &(1 + 2)
 }`
-    pkg := mustCheckPackage(t, src)
-    requireErrorContains(t, pkg.Diagnostics, "non-lvalue")
+	pkg := mustCheckPackage(t, src)
+	requireErrorContains(t, pkg.Diagnostics, "non-lvalue")
 }
 ```
 
@@ -554,15 +554,15 @@ Before resolving the field against the operand's type, check whether the operand
 operandIR := c.checkExpr(x.Operand)
 operandType := exprType(operandIR)
 if operandType != nil && operandType.Kind == ir.TypeRef {
-    // Auto-deref through Select. The IR carries an explicit Unary{Deref}
-    // so downstream passes never need a special case.
-    operandIR = &ir.Unary{
-        AST:     nil, // synthesized — no source position
-        Type:    operandType.Elem,
-        Op:      ast.UnaryDeref,
-        Operand: operandIR,
-    }
-    operandType = operandType.Elem
+	// Auto-deref through Select. The IR carries an explicit Unary{Deref}
+	// so downstream passes never need a special case.
+	operandIR = &ir.Unary{
+		AST:     nil, // synthesized — no source position
+		Type:    operandType.Elem,
+		Op:      ast.UnaryDeref,
+		Operand: operandIR,
+	}
+	operandType = operandType.Elem
 }
 // ...continue with the existing field-resolution logic against operandType...
 ```
@@ -571,7 +571,7 @@ if operandType != nil && operandType.Kind == ir.TypeRef {
 
 ```go
 func TestCheckAutoDerefSelect(t *testing.T) {
-    src := `
+	src := `
 struct Node { value: int }
 component main {
     var n: Node = Node{value: 0}
@@ -579,10 +579,10 @@ component main {
     var v: int = p.value      // auto-deref: p.value is n.value
     func bump() { p.value = p.value + 1 }
 }`
-    pkg := mustCheckPackage(t, src)
-    if len(pkg.Diagnostics) != 0 {
-        t.Fatalf("unexpected diagnostics: %v", pkg.Diagnostics)
-    }
+	pkg := mustCheckPackage(t, src)
+	if len(pkg.Diagnostics) != 0 {
+		t.Fatalf("unexpected diagnostics: %v", pkg.Diagnostics)
+	}
 }
 ```
 
@@ -626,15 +626,15 @@ Create `internal/optimize/fold_ref_test.go` (or extend the existing fold_test.go
 
 ```go
 func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
-    src := `
+	src := `
 component main {
     const k: int = 5
     var p: ref<int> = &k
     var v: int = *p
 }`
-    pkg := optimizePackage(t, src)
-    // *p should remain a *ir.Unary, NOT be replaced by Literal{5}.
-    requireExprShape(t, pkg, "main.v.Init", "*ir.Unary")
+	pkg := optimizePackage(t, src)
+	// *p should remain a *ir.Unary, NOT be replaced by Literal{5}.
+	requireExprShape(t, pkg, "main.v.Init", "*ir.Unary")
 }
 ```
 

@@ -51,15 +51,15 @@ Lifetime: server starts on `initialize`, stops on `shutdown`. Single instance pe
 
 ### Packages
 
-| Package | Role | Status |
-|---|---|---|
-| `internal/lsp/preview` | HTTP+WS handlers, WS hub, HTML compile-per-request | new |
-| `internal/lsp/previewindex` | Walks `.sngl/previews/` and maps `(file URI, ident) → png path` | new |
-| `internal/lsp` | Upgrade `hover.go`; add `color.go`, `inlay.go`, `command.go`; emit `sngl/previewReady` | extended |
-| `internal/snapshot` | Unchanged | reused |
-| `codegen/platform/html` | Reused for side-panel HTML generation | reused |
-| `editors/neovim/lua/sngl/preview.lua` | Notification listener, `:SnglPreview` command, port discovery | new |
-| `editors/vscode/` | TS extension: LSP client + webview side-panel | new |
+| Package                               | Role                                                                                   | Status   |
+|---------------------------------------|----------------------------------------------------------------------------------------|----------|
+| `internal/lsp/preview`                | HTTP+WS handlers, WS hub, HTML compile-per-request                                     | new      |
+| `internal/lsp/previewindex`           | Walks `.sngl/previews/` and maps `(file URI, ident) → png path`                        | new      |
+| `internal/lsp`                        | Upgrade `hover.go`; add `color.go`, `inlay.go`, `command.go`; emit `sngl/previewReady` | extended |
+| `internal/snapshot`                   | Unchanged                                                                              | reused   |
+| `codegen/platform/html`               | Reused for side-panel HTML generation                                                  | reused   |
+| `editors/neovim/lua/sngl/preview.lua` | Notification listener, `:SnglPreview` command, port discovery                          | new      |
+| `editors/vscode/`                     | TS extension: LSP client + webview side-panel                                          | new      |
 
 ## Feature details
 
@@ -104,13 +104,13 @@ The LSP only reads these files; it never produces them.
 - viewport width: 1280
 - viewport height: 800
 
-| Unit | Resolution |
-|---|---|
-| `px` | no hint (would be redundant) |
-| `em` | `n * 16` |
-| `rem` | `n * 16` |
-| `vw` | `n / 100 * 1280` |
-| `vh` | `n / 100 * 800` |
+| Unit  | Resolution                              |
+|-------|-----------------------------------------|
+| `px`  | no hint (would be redundant)            |
+| `em`  | `n * 16`                                |
+| `rem` | `n * 16`                                |
+| `vw`  | `n / 100 * 1280`                        |
+| `vh`  | `n / 100 * 800`                         |
 | `pct` | no hint (no anchor — depends on parent) |
 
 **Toggle**: init option `sngl.inlayMeasurements: bool` (default `true`).
@@ -121,18 +121,18 @@ The LSP only reads these files; it never produces them.
 
 **Per-kind layout** (single `MarkupContent` markdown block):
 
-| Kind | Block contents |
-|---|---|
-| Component | Code-fenced signature `Foo(prop: int, ...) component` (sngl-fenced). Doc comment as prose. If image present (F1): `![Foo](url)`. |
-| Function | Code-fenced signature with concrete type-args resolved at call site if applicable. Doc comment. Receiver type when method. |
-| Variable / const | `name: Type` fenced; if compile-time constant, value rendered (`= 42`). |
-| Struct | Code-fenced declaration body (fields list). Doc comment. |
-| Enum | Code-fenced declaration body (variants list). |
-| Unit | Code-fenced declaration body (variant=multiplier list). |
-| Stdlib symbol | Same as above + leading `> stdlib` blockquote + footer link `[Docs](https://sngl.duckfam.us/stdlib/<pkg>#<sym>)`. |
+| Kind                 | Block contents                                                                                                                                |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| Component            | Code-fenced signature `Foo(prop: int, ...) component` (sngl-fenced). Doc comment as prose. If image present (F1): `![Foo](url)`.              |
+| Function             | Code-fenced signature with concrete type-args resolved at call site if applicable. Doc comment. Receiver type when method.                    |
+| Variable / const     | `name: Type` fenced; if compile-time constant, value rendered (`= 42`).                                                                       |
+| Struct               | Code-fenced declaration body (fields list). Doc comment.                                                                                      |
+| Enum                 | Code-fenced declaration body (variants list).                                                                                                 |
+| Unit                 | Code-fenced declaration body (variant=multiplier list).                                                                                       |
+| Stdlib symbol        | Same as above + leading `> stdlib` blockquote + footer link `[Docs](https://sngl.duckfam.us/stdlib/<pkg>#<sym>)`.                             |
 | `#hex` color literal | Swatch line `▇ #rrggbb` (the ▇ is colored via inline HTML span where supported; markdown-fallback shows just the hex) + `rgb(r, g, b)` tuple. |
-| Measurement literal | `n<unit> = m px` (matches F3). |
-| Keyword | Brief one-line description. |
+| Measurement literal  | `n<unit> = m px` (matches F3).                                                                                                                |
+| Keyword              | Brief one-line description.                                                                                                                   |
 
 **Lookup**: identifier resolution reuses existing checker results (already cached per document). New helper `hoverInfo(doc, pos) HoverEntry` enumerates kinds.
 

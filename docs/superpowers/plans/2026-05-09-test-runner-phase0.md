@@ -361,11 +361,19 @@ component Other { text(value="x") }
 	for _, s := range out.Stmts {
 		switch v := s.(type) {
 		case *componentDecl:
-			if v.name() == "Counter" { sawCounterDecl = true }
-			if v.name() == "Other" { sawOtherDecl = true }
+			if v.name() == "Counter" {
+				sawCounterDecl = true
+			}
+			if v.name() == "Other" {
+				sawOtherDecl = true
+			}
 		}
 	}
-	_ = sawText; _ = sawVar; _ = sawParam; _ = sawCounterDecl; _ = sawOtherDecl
+	_ = sawText
+	_ = sawVar
+	_ = sawParam
+	_ = sawCounterDecl
+	_ = sawOtherDecl
 }
 ```
 

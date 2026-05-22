@@ -12,28 +12,28 @@
 
 ## Scope decisions (out of this slice)
 
-| Spec piece | Status | Reason |
-|---|---|---|
+| Spec piece                                          | Status   | Reason                                                                                                    |
+|-----------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------|
 | Click-to-source (`data-sngl-pos` + WS `jump` event) | deferred | Needs HTML codegen changes to emit per-element source positions. Substantial; ship core side-panel first. |
-| Session token / WS handshake auth | deferred | Server is 127.0.0.1-only; non-loopback origins can't reach. Add when other localhost software warrants. |
-| Multi-window navigation in the preview | deferred | Per spec — "just the chosen window". |
-| VS Code webview integration | deferred | Spec calls for `.vsix` plugin; defer along with the F4 webview work. nvim opens via `xdg-open`. |
-| Stale-on-error banner UI polish | basic | Implement the "preserve last good render + plain text banner" path; no styling beyond a `<div>`. |
+| Session token / WS handshake auth                   | deferred | Server is 127.0.0.1-only; non-loopback origins can't reach. Add when other localhost software warrants.   |
+| Multi-window navigation in the preview              | deferred | Per spec — "just the chosen window".                                                                      |
+| VS Code webview integration                         | deferred | Spec calls for `.vsix` plugin; defer along with the F4 webview work. nvim opens via `xdg-open`.           |
+| Stale-on-error banner UI polish                     | basic    | Implement the "preserve last good render + plain text banner" path; no styling beyond a `<div>`.          |
 
 ---
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/lsp/preview.go` | modify | Extend `previewServer` with `/preview/...`, `/ws` routes; live-reload broadcast hub |
-| `internal/lsp/preview_render.go` | create | `renderDocAsHTML(pkg, windowName) ([]byte, error)` — invokes `html.Generator.Generate`, extracts the window's HTML, injects live-reload script |
-| `internal/lsp/preview_test.go` | modify | Add tests for render, broadcast, executeCommand |
-| `internal/lsp/handler.go` | modify | `didChange` triggers debounced reload broadcast; advertise `executeCommandProvider`; dispatch `workspace/executeCommand` |
-| `internal/lsp/server.go` | modify | Dispatch `workspace/executeCommand` |
-| `internal/lsp/command.go` | create | Handler for `sngl.openPreview` |
-| `internal/lsp/protocol.go` | modify | Add `ExecuteCommandOptions`, `ExecuteCommandParams` types |
-| `editors/neovim/lua/sngl/preview.lua` | modify | Handle `sngl/previewReady` (port discovery from F1) and add `:SnglPreview` command that calls executeCommand and opens the URL |
+| File                                  | Status | Responsibility                                                                                                                                 |
+|---------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/lsp/preview.go`             | modify | Extend `previewServer` with `/preview/...`, `/ws` routes; live-reload broadcast hub                                                            |
+| `internal/lsp/preview_render.go`      | create | `renderDocAsHTML(pkg, windowName) ([]byte, error)` — invokes `html.Generator.Generate`, extracts the window's HTML, injects live-reload script |
+| `internal/lsp/preview_test.go`        | modify | Add tests for render, broadcast, executeCommand                                                                                                |
+| `internal/lsp/handler.go`             | modify | `didChange` triggers debounced reload broadcast; advertise `executeCommandProvider`; dispatch `workspace/executeCommand`                       |
+| `internal/lsp/server.go`              | modify | Dispatch `workspace/executeCommand`                                                                                                            |
+| `internal/lsp/command.go`             | create | Handler for `sngl.openPreview`                                                                                                                 |
+| `internal/lsp/protocol.go`            | modify | Add `ExecuteCommandOptions`, `ExecuteCommandParams` types                                                                                      |
+| `editors/neovim/lua/sngl/preview.lua` | modify | Handle `sngl/previewReady` (port discovery from F1) and add `:SnglPreview` command that calls executeCommand and opens the URL                 |
 
 ---
 
@@ -51,11 +51,11 @@ In `internal/lsp/preview.go`, extend the struct:
 
 ```go
 type previewServer struct {
-	mu         sync.RWMutex
-	listener   net.Listener
-	server     *http.Server
-	assets     map[string]string // sha → absolute path
-	port       int
+	mu       sync.RWMutex
+	listener net.Listener
+	server   *http.Server
+	assets   map[string]string // sha → absolute path
+	port     int
 	// renderHTML returns the rendered HTML for a given (fileURI, windowName).
 	// Set by Server.New() after the workspace is wired. nil if unset →
 	// the route returns 503.
@@ -310,8 +310,8 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/none"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/html"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -436,7 +436,7 @@ type previewServer struct {
 	port       int
 	renderHTML func(fileURI, windowName string) ([]byte, error)
 	conns      map[*websocket.Conn]struct{} // active WS clients
-	connsMu    sync.Mutex                    // protects writes to conns
+	connsMu    sync.Mutex                   // protects writes to conns
 }
 ```
 
@@ -695,7 +695,7 @@ Refine the renderer closure to keep the last good render per (URI, window):
 
 ```go
 type previewCache struct {
-	mu      sync.Mutex
+	mu       sync.Mutex
 	lastGood map[string][]byte // key: uri + "|" + window
 }
 
@@ -1112,20 +1112,20 @@ If everything works, no commit needed — just note in the final summary that sm
 
 **Spec coverage (§F5):**
 
-| Spec row | Task |
-|---|---|
-| Open via `workspace/executeCommand sngl.openPreview` returning `{url}` | Task 5 |
-| `/preview/<file-id>/<window-name>` HTTP route returns HTML | Task 1 + 2 |
-| Render via `codegen/platform/html` `--lang none` static mode | Task 2 |
-| `/ws` WebSocket endpoint with `{type:"reload"}` broadcast on didChange | Task 3 + 4 |
-| Debounced reload (200ms) | Task 4 |
-| Stale render with banner on check/optimize error | Task 4 |
-| Client-side reload listener injected into rendered HTML | Task 2 (`injectLiveReloadScript`) |
-| nvim editor command | Task 6 |
-| Click-to-source (`data-sngl-pos` + WS jump) | **DEFERRED** — see scope decisions block |
-| Session token | **DEFERRED** |
-| Multi-window navigation | **DEFERRED** |
-| VS Code webview | **DEFERRED** |
+| Spec row                                                               | Task                                     |
+|------------------------------------------------------------------------|------------------------------------------|
+| Open via `workspace/executeCommand sngl.openPreview` returning `{url}` | Task 5                                   |
+| `/preview/<file-id>/<window-name>` HTTP route returns HTML             | Task 1 + 2                               |
+| Render via `codegen/platform/html` `--lang none` static mode           | Task 2                                   |
+| `/ws` WebSocket endpoint with `{type:"reload"}` broadcast on didChange | Task 3 + 4                               |
+| Debounced reload (200ms)                                               | Task 4                                   |
+| Stale render with banner on check/optimize error                       | Task 4                                   |
+| Client-side reload listener injected into rendered HTML                | Task 2 (`injectLiveReloadScript`)        |
+| nvim editor command                                                    | Task 6                                   |
+| Click-to-source (`data-sngl-pos` + WS jump)                            | **DEFERRED** — see scope decisions block |
+| Session token                                                          | **DEFERRED**                             |
+| Multi-window navigation                                                | **DEFERRED**                             |
+| VS Code webview                                                        | **DEFERRED**                             |
 
 **Placeholder scan:** Task 2 Step 3 has a sketch fallback for the Lang choice — concrete enough that the engineer can resolve by inspection. Task 6 Step 1 instructs to inspect the existing nvim plugin layout — also concrete.
 

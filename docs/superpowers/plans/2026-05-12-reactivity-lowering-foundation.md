@@ -448,7 +448,9 @@ Append to `fuzz_test.go`:
 ```go
 // FuzzLoweredDocument extends FuzzDocument with a lowering step. It
 // asserts that for every input which parses+checks cleanly:
-//   Convert(Lower(checked)) → format → reparse → recheck → strip-compare
+//
+//	Convert(Lower(checked)) → format → reparse → recheck → strip-compare
+//
 // produces an IR equivalent to the lowered IR. This pins the round-trip
 // invariant for lowered output: every IR shape any pass produces must be
 // expressible in valid AST.
@@ -552,7 +554,7 @@ type reactivityState struct {
 // to the parent container at the slot's original source position.
 type reactiveSlot struct {
 	SlotID        string
-	ParentRefName string  // "" when the slot sits at the component/window body's top level
+	ParentRefName string   // "" when the slot sits at the component/window body's top level
 	GenFunc       *ir.Func // the __renderSlot<N> Func — populated in Phase 2.4
 }
 
@@ -564,11 +566,13 @@ type reactivityOwner interface {
 }
 
 type compOwner struct{ c *ir.Component }
-func (o compOwner) addVar(v *ir.Var)  { o.c.Vars = append(o.c.Vars, v) }
+
+func (o compOwner) addVar(v *ir.Var)   { o.c.Vars = append(o.c.Vars, v) }
 func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
 
 type windowOwner struct{ w *ir.Window }
-func (o windowOwner) addVar(v *ir.Var)  { o.w.Vars = append(o.w.Vars, v) }
+
+func (o windowOwner) addVar(v *ir.Var)   { o.w.Vars = append(o.w.Vars, v) }
 func (o windowOwner) addFunc(f *ir.Func) { o.w.Funcs = append(o.w.Funcs, f) }
 ```
 
@@ -1033,9 +1037,10 @@ func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
 ```go
 // synthesizeRenderSlotFunc generates the __renderSlotN(parent dyn) Func.
 // Body:
-//   for _, entry := __slotN { lower.RemoveChild(parent, entry) }
-//   __slotN = []
-//   <re-evaluate cond/iter and emit child create+append, pushing into __slotN>
+//
+//	for _, entry := __slotN { lower.RemoveChild(parent, entry) }
+//	__slotN = []
+//	<re-evaluate cond/iter and emit child create+append, pushing into __slotN>
 //
 // origStmts is the original If.Body / For.Body to render. cond is the If
 // gate (nil for For). iter is the For iter (nil for If). key/value are
@@ -1202,13 +1207,15 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 					fn = st.synthesizeRenderSlotFunc(slotID, n.Cond, nil, "", "", n.Body, n.Else)
 					return
 				}
-				walk(n.Body); walk(n.Else)
+				walk(n.Body)
+				walk(n.Else)
 			case *ir.For:
 				if n.LoweredSlotID == slotID && fn == nil {
 					fn = st.synthesizeRenderSlotFunc(slotID, nil, n.Iter, n.Key, n.Value, n.Body, n.Else)
 					return
 				}
-				walk(n.Body); walk(n.Else)
+				walk(n.Body)
+				walk(n.Else)
 			case *ir.NodeInst:
 				walk(n.Children)
 				for _, h := range n.Handlers {

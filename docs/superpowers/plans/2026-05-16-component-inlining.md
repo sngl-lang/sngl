@@ -676,16 +676,16 @@ func (st *inlineCompState) inlineStmt(s ir.Stmt) ([]ir.Stmt, bool, error) {
 }
 
 // expandCall inlines a single NodeInst whose Component is inlinable.
-// 1. Allocate a per-call suffix.
-// 2. Deep-clone the callee's body.
-// 3. For each Var/Func/Timer in the callee: deep-clone, rename to <name><suffix>,
-//    hoist into main, and record a rename in the symbol map.
-// 4. For each Prop: bind the call-site arg expression (or default) to the
-//    prop's name.
-// 5. Apply renameIdents and substituteParams over the cloned body.
-// 6. Apply substituteSlots (handles <slot> inside the callee).
-// 7. Apply substituteEvents (handler-body substitution at emit sites).
-// 8. Return the prepared body for splicing into the caller.
+//  1. Allocate a per-call suffix.
+//  2. Deep-clone the callee's body.
+//  3. For each Var/Func/Timer in the callee: deep-clone, rename to <name><suffix>,
+//     hoist into main, and record a rename in the symbol map.
+//  4. For each Prop: bind the call-site arg expression (or default) to the
+//     prop's name.
+//  5. Apply renameIdents and substituteParams over the cloned body.
+//  6. Apply substituteSlots (handles <slot> inside the callee).
+//  7. Apply substituteEvents (handler-body substitution at emit sites).
+//  8. Return the prepared body for splicing into the caller.
 func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	comp := n.Component
 	suffix := st.freshSuffix()
@@ -1380,9 +1380,9 @@ These are flagged in the spec — each needs a concrete answer before D-phase me
 
 ## Self-review checklist (for the planner only)
 
-- [x] Every spec section maps to a phase or task above.
-- [x] No placeholders, no "TBD", no "implement appropriate X".
-- [x] Method names are consistent across tasks (`inlinable`, `expandCall`, `freshSuffix`, `renameIdents`, `substituteParams`, `substituteEvents`, `substituteSlots`).
-- [x] File paths are exact.
-- [x] Each fixture includes complete `input.sngl` and `expected.sngl` blocks, not just shapes.
-- [x] Reuse of existing helpers (`deepCloneStmts`, `deepCloneExpr`, `newExprWalker`, `substituteParams`, `substituteEvents`) is called out — no duplicated cloning machinery.
+- [X] Every spec section maps to a phase or task above.
+- [X] No placeholders, no "TBD", no "implement appropriate X".
+- [X] Method names are consistent across tasks (`inlinable`, `expandCall`, `freshSuffix`, `renameIdents`, `substituteParams`, `substituteEvents`, `substituteSlots`).
+- [X] File paths are exact.
+- [X] Each fixture includes complete `input.sngl` and `expected.sngl` blocks, not just shapes.
+- [X] Reuse of existing helpers (`deepCloneStmts`, `deepCloneExpr`, `newExprWalker`, `substituteParams`, `substituteEvents`) is called out — no duplicated cloning machinery.

@@ -12,28 +12,28 @@
 
 ## Scope decisions (out of this slice)
 
-| Spec piece | Status | Reason |
-|---|---|---|
-| Session token / `Authorization: Bearer` | deferred | Server binds to 127.0.0.1 only; non-loopback origins cannot reach it. Add when other localhost software becomes an attack surface. |
-| Multi-platform fallback (bubbletea, fyne, android PNG) | deferred | Spec calls out `_html` as the primary; pick that and stop. |
-| `.sngl/previews/<rel>/<Name>.png` repo-root layout | dropped | Existing `<dir>/snapshots/example_<Name>_<platform>.png` convention already works and is consumed by docsgen — reuse it. |
-| `sngl snapshot --components` flag | dropped | `snapshot` already produces these via the `example_` convention. |
+| Spec piece                                             | Status   | Reason                                                                                                                             |
+|--------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------|
+| Session token / `Authorization: Bearer`                | deferred | Server binds to 127.0.0.1 only; non-loopback origins cannot reach it. Add when other localhost software becomes an attack surface. |
+| Multi-platform fallback (bubbletea, fyne, android PNG) | deferred | Spec calls out `_html` as the primary; pick that and stop.                                                                         |
+| `.sngl/previews/<rel>/<Name>.png` repo-root layout     | dropped  | Existing `<dir>/snapshots/example_<Name>_<platform>.png` convention already works and is consumed by docsgen — reuse it.           |
+| `sngl snapshot --components` flag                      | dropped  | `snapshot` already produces these via the `example_` convention.                                                                   |
 
 ---
 
 ## File Structure
 
-| File | Status | Responsibility |
-|---|---|---|
-| `internal/lspcore/hover.go` | modify | Extend `HoverAt` signature with `HoverOptions{ComponentImageURL}`, thread through `formatComponentHoverWithDoc` |
-| `internal/lsp/preview.go` | create | Embedded HTTP server, asset registry, start/stop lifecycle |
-| `internal/lsp/server.go` | modify | Start preview server on initialize, stop on shutdown; expose getter for asset registry |
-| `internal/lsp/handler.go` | modify | After initialize result, send `sngl/previewReady` notification with the port |
-| `internal/lsp/hover.go` | modify | Look up `snapshots/example_<Name>_html.png` near source URI; register asset; pass URL into `HoverOptions` |
-| `internal/lspcore/hover_fixture_test.go` | modify (no behavior change) | The existing harness calls `HoverAt(content, doc, line, col)` — update to pass empty `HoverOptions{}` |
-| `testdata/lsp_hover/component_image.sngl` | create | Fixture with a hover image directive |
-| `testdata/lsp_hover/snapshots/example_Counter_html.png` | create | Minimal PNG checked in as fixture asset |
-| `internal/lsp/preview_test.go` | create | Tests for server lifecycle, sha→path lookup, 404 on unknown sha |
+| File                                                    | Status                      | Responsibility                                                                                                  |
+|---------------------------------------------------------|-----------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `internal/lspcore/hover.go`                             | modify                      | Extend `HoverAt` signature with `HoverOptions{ComponentImageURL}`, thread through `formatComponentHoverWithDoc` |
+| `internal/lsp/preview.go`                               | create                      | Embedded HTTP server, asset registry, start/stop lifecycle                                                      |
+| `internal/lsp/server.go`                                | modify                      | Start preview server on initialize, stop on shutdown; expose getter for asset registry                          |
+| `internal/lsp/handler.go`                               | modify                      | After initialize result, send `sngl/previewReady` notification with the port                                    |
+| `internal/lsp/hover.go`                                 | modify                      | Look up `snapshots/example_<Name>_html.png` near source URI; register asset; pass URL into `HoverOptions`       |
+| `internal/lspcore/hover_fixture_test.go`                | modify (no behavior change) | The existing harness calls `HoverAt(content, doc, line, col)` — update to pass empty `HoverOptions{}`           |
+| `testdata/lsp_hover/component_image.sngl`               | create                      | Fixture with a hover image directive                                                                            |
+| `testdata/lsp_hover/snapshots/example_Counter_html.png` | create                      | Minimal PNG checked in as fixture asset                                                                         |
+| `internal/lsp/preview_test.go`                          | create                      | Tests for server lifecycle, sha→path lookup, 404 on unknown sha                                                 |
 
 ---
 
@@ -559,12 +559,12 @@ Also handle the EOF/IO-error path. Find the `return fmt.Errorf("read: %w", err)`
 
 ```go
 if err != nil {
-    if err == io.EOF {
-        s.preview.Stop()
-        return nil
-    }
-    s.preview.Stop()
-    return fmt.Errorf("read: %w", err)
+	if err == io.EOF {
+		s.preview.Stop()
+		return nil
+	}
+	s.preview.Stop()
+	return fmt.Errorf("read: %w", err)
 }
 ```
 
@@ -686,18 +686,18 @@ Add the imports at the top of `internal/lsp/preview_test.go`:
 
 ```go
 import (
-    "bufio"
-    "crypto/sha256"
-    "encoding/hex"
-    "fmt"
-    "io"
-    "net/http"
-    "os"
-    "path/filepath"
-    "strconv"
-    "strings"
-    "testing"
-    "time"
+	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
 )
 ```
 
@@ -863,21 +863,21 @@ Change the inner harness loop to compute opts per fixture:
 ```go
 fixtureDir := filepath.Dir(path)
 opts := HoverOptions{
-    ComponentImageURL: func(name string) (string, bool) {
-        candidate := filepath.Join(fixtureDir, "snapshots", "example_"+name+"_html.png")
-        info, err := os.Stat(candidate)
-        if err != nil || info.IsDir() {
-            return "", false
-        }
-        // Fixture harness uses file:// URLs — the LSP wraps real ones in
-        // http://127.0.0.1:N/preview/<sha>.png, but the substring asserts
-        // only check for "![", "](", ".png)" so either format works.
-        return "file://" + candidate, true
-    },
+	ComponentImageURL: func(name string) (string, bool) {
+		candidate := filepath.Join(fixtureDir, "snapshots", "example_"+name+"_html.png")
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			return "", false
+		}
+		// Fixture harness uses file:// URLs — the LSP wraps real ones in
+		// http://127.0.0.1:N/preview/<sha>.png, but the substring asserts
+		// only check for "![", "](", ".png)" so either format works.
+		return "file://" + candidate, true
+	},
 }
 for _, d := range dirs {
-    got := HoverAt(string(src), doc, d.Line, d.Col, opts)
-    // ...rest unchanged...
+	got := HoverAt(string(src), doc, d.Line, d.Col, opts)
+	// ...rest unchanged...
 }
 ```
 
@@ -927,16 +927,16 @@ To verify the notification arrives: run `nvim --log-level debug` and grep stderr
 
 **Spec coverage (§F1):**
 
-| Spec row | Task |
-|---|---|
-| PNG via custom LSP route | Task 2 (HTTP server + `/preview/<sha>.png`) |
-| Source: `snapshots/example_<Name>_html.png` near the .sngl file | Task 5 (`componentSnapshotPath`) |
-| Embed `![<Name>](url)` in markdown hover | Task 1 (`formatComponentHoverWithDoc` image block) |
-| Lookup miss is silent | Task 5 (callback returns `ok=false`) |
-| Port advertisement `sngl/previewReady` | Task 4 |
-| Bind 127.0.0.1 only | Task 2 (`net.Listen("tcp", "127.0.0.1:0")`) |
-| Cache-Control header | Task 2 (`max-age=604800, immutable`) |
-| Session token | **DEFERRED** — see scope decisions block at top |
+| Spec row                                                        | Task                                               |
+|-----------------------------------------------------------------|----------------------------------------------------|
+| PNG via custom LSP route                                        | Task 2 (HTTP server + `/preview/<sha>.png`)        |
+| Source: `snapshots/example_<Name>_html.png` near the .sngl file | Task 5 (`componentSnapshotPath`)                   |
+| Embed `![<Name>](url)` in markdown hover                        | Task 1 (`formatComponentHoverWithDoc` image block) |
+| Lookup miss is silent                                           | Task 5 (callback returns `ok=false`)               |
+| Port advertisement `sngl/previewReady`                          | Task 4                                             |
+| Bind 127.0.0.1 only                                             | Task 2 (`net.Listen("tcp", "127.0.0.1:0")`)        |
+| Cache-Control header                                            | Task 2 (`max-age=604800, immutable`)               |
+| Session token                                                   | **DEFERRED** — see scope decisions block at top    |
 
 **Placeholder scan:** none. Every code step has full code.
 

@@ -165,8 +165,7 @@ consumer re-renders when a provider's value expression changes.
 ### Parser
 
 - `internal/parser`: parse top-level `context #name(expr)` as a new
-  `ContextDecl` AST node. Inside windows/components, parse `name(args)
-  { children }` as the existing visual-node-call form; the checker
+  `ContextDecl` AST node. Inside windows/components, parse `name(args) { children }` as the existing visual-node-call form; the checker
   disambiguates context provider from a component call.
 
 ### AST (`ast/ast.go`)
@@ -259,13 +258,13 @@ After `NoContext` runs, every platform sees only ordinary reactive props
 on component-call sites. No new platform code is required beyond what
 already handles reactive props.
 
-| Platform                                    | Notes                                                                                                                                                                |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **html** (static, `--lang none`)            | Defaults baked in at emit; constant providers fold to literal child-prop substitution. Zero JS overhead for static pages.                                            |
-| **html** (route mode, `--lang go`)          | Each route's root threads the default; reactive providers emit standard prop-update JS through the existing reactivity layer.                                        |
-| **fyne / gtk4** (MutationModel)             | Lowered provider = ordinary prop reassignment + `passReactivity` updater dispatch. NoInlineComponents path: the synthesized `__ctx_name` param rides existing hidden-prop machinery. |
-| **bubbletea / android** (RenderModel)       | Hidden param appears as a Model field on the receiving component's struct/data-class; re-render-from-state propagates value changes for free.                        |
-| **none** (interpreter)                      | Interpreter resolves provider-scoped values during tree walk; consumer reads return the active scope's value. Interpreter shortcuts the lowering for clarity.        |
+| Platform                              | Notes                                                                                                                                                                                |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **html** (static, `--lang none`)      | Defaults baked in at emit; constant providers fold to literal child-prop substitution. Zero JS overhead for static pages.                                                            |
+| **html** (route mode, `--lang go`)    | Each route's root threads the default; reactive providers emit standard prop-update JS through the existing reactivity layer.                                                        |
+| **fyne / gtk4** (MutationModel)       | Lowered provider = ordinary prop reassignment + `passReactivity` updater dispatch. NoInlineComponents path: the synthesized `__ctx_name` param rides existing hidden-prop machinery. |
+| **bubbletea / android** (RenderModel) | Hidden param appears as a Model field on the receiving component's struct/data-class; re-render-from-state propagates value changes for free.                                        |
+| **none** (interpreter)                | Interpreter resolves provider-scoped values during tree walk; consumer reads return the active scope's value. Interpreter shortcuts the lowering for clarity.                        |
 
 ## Test harness
 

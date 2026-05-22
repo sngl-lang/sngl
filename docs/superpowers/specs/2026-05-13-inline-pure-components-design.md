@@ -154,11 +154,9 @@ Errors carry `*ast.Pos` from the offending NodeInst or component def.
    maintains an in-progress set per Component; revisiting marks a
    cycle. Error: `inline cycle: Foo → Bar → Foo at <pos>`.
 2. **Strict-mode impurity**: `Caps.NoStdlibWrappers` set, platform-stdlib
-   component is impure. Error: `platform stdlib wrapper "<name>" must
-   be pure (declares <var | func | timer> "<symbol>")`. Pinpoints the
+   component is impure. Error: `platform stdlib wrapper "<name>" must be pure (declares <var | func | timer> "<symbol>")`. Pinpoints the
    wrapper, not the call site.
-3. **No body**: wrapper has zero VisualNodes. Error: `component "<name>"
-   has no body to inline`.
+3. **No body**: wrapper has zero VisualNodes. Error: `component "<name>" has no body to inline`.
 
 ### 6. Test fixtures
 
@@ -194,8 +192,7 @@ In `internal/lower/testdata/`:
 
 #### fyne
 
-- `fyne.sngl` wrappers contain `Label(constructor=Constructor{...},
-  bindings=[Reactive{...}]) {}` — pure structure (NodeInst props are
+- `fyne.sngl` wrappers contain `Label(constructor=Constructor{...}, bindings=[Reactive{...}]) {}` — pure structure (NodeInst props are
   declarative records, no Vars/Funcs/Timers in the wrapper itself).
   Should already pass strict mode.
 - Translator behavior unchanged: fyne reads `NodeInst.Props` for

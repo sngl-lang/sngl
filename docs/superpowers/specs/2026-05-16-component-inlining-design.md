@@ -162,24 +162,24 @@ getters/setters) stays but operates on a clean, single-component IR.
 
 ```go
 var passNoInlineComponents = pass{
-    name:    "NoInlineComponents",
-    enabled: func(c Caps) bool { return c.NoInlineComponents },
-    apply:   lowerInlineComponents,
+	name:    "NoInlineComponents",
+	enabled: func(c Caps) bool { return c.NoInlineComponents },
+	apply:   lowerInlineComponents,
 }
 
 func lowerInlineComponents(pkg *ir.Package, _ Caps, _ Options) error {
-    cycles := findRecursiveCycles(pkg)
-    inlinable := func(c *ir.Component) bool {
-        return c != mainOf(pkg) && !cycles[c] && c.Native == nil
-    }
-    changed := true
-    for changed {
-        changed = false
-        // For each NodeInst{Component: inlinable(c)} in main.Body
-        // (and recursively in children), clone+rewrite+splice.
-    }
-    // Drop pkg.Components entries that were inlined (cycles + main remain).
-    return nil
+	cycles := findRecursiveCycles(pkg)
+	inlinable := func(c *ir.Component) bool {
+		return c != mainOf(pkg) && !cycles[c] && c.Native == nil
+	}
+	changed := true
+	for changed {
+		changed = false
+		// For each NodeInst{Component: inlinable(c)} in main.Body
+		// (and recursively in children), clone+rewrite+splice.
+	}
+	// Drop pkg.Components entries that were inlined (cycles + main remain).
+	return nil
 }
 ```
 

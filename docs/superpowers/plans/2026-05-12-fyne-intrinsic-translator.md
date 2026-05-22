@@ -119,7 +119,7 @@ func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBluepr
 // Compile-time interface check.
 var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
 
-func (t *fyneTranslator) OnCreateNode(id, tag string) string       { return "" }
+func (t *fyneTranslator) OnCreateNode(id, tag string) string        { return "" }
 func (t *fyneTranslator) OnAppendChild(parent, child string) string { return "" }
 func (t *fyneTranslator) OnRemoveChild(parent, child string) string { return "" }
 func (t *fyneTranslator) OnAttachHandler(node, event, h string) string {
@@ -784,14 +784,14 @@ This is the integration point. Currently `compiler_ir.go` has (around line 320):
 
 ```go
 for _, fn := range allFuncs {
-    if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
-        continue
-    }
-    // Synthesized by passReactivity; fyne does not yet consume these (Plan B).
-    if fn.Synthesized {
-        continue
-    }
-    emitIRFyneFunc(&funcBuf, fn, gc)
+	if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		continue
+	}
+	// Synthesized by passReactivity; fyne does not yet consume these (Plan B).
+	if fn.Synthesized {
+		continue
+	}
+	emitIRFyneFunc(&funcBuf, fn, gc)
 }
 ```
 
@@ -799,14 +799,14 @@ Replace with:
 
 ```go
 for _, fn := range allFuncs {
-    if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
-        continue
-    }
-    if fn.Synthesized {
-        emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
-        continue
-    }
-    emitIRFyneFunc(&funcBuf, fn, gc)
+	if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		continue
+	}
+	if fn.Synthesized {
+		emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
+		continue
+	}
+	emitIRFyneFunc(&funcBuf, fn, gc)
 }
 ```
 
@@ -970,7 +970,7 @@ Open `codegen/platform/fyne/compiler_ir.go` near line 110 (the var-collection lo
 ```go
 // Synthesized by passReactivity; fyne does not yet consume these (Plan B).
 if v.Synthesized {
-    continue
+	continue
 }
 ```
 
@@ -978,15 +978,15 @@ if v.Synthesized {
 
 ```go
 if v.Synthesized {
-    // Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
-    // Emit as []fyne.CanvasObject so the renderSlot teardown loop
-    // (range over the slice, container.Remove each entry) compiles.
-    info.binds = append(info.binds, irBind{
-        name:   v.Name,
-        goType: "[]fyne.CanvasObject",
-        init:   "nil",
-    })
-    continue
+	// Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
+	// Emit as []fyne.CanvasObject so the renderSlot teardown loop
+	// (range over the slice, container.Remove each entry) compiles.
+	info.binds = append(info.binds, irBind{
+		name:   v.Name,
+		goType: "[]fyne.CanvasObject",
+		init:   "nil",
+	})
+	continue
 }
 ```
 
@@ -1232,7 +1232,7 @@ for __entry = __slot0 {
 
 ```go
 for _, __entry := range m.__slot0 {
-    container.Remove(__entry)
+	container.Remove(__entry)
 }
 ```
 

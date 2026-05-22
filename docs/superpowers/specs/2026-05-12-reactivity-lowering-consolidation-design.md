@@ -61,14 +61,14 @@ the single owner of both prop and structural reactivity.
 
 ## End state
 
-| Platform   | Render model    | `NoReactivity` | `NoDeclarative` |
-|------------|-----------------|----------------|-----------------|
-| android    | RenderModel     | off            | off             |
-| bubbletea  | RenderModel     | off            | off             |
-| none       | interpreter     | off            | off             |
-| fyne       | MutationModel   | **on**         | **on**          |
-| gtk4       | MutationModel   | **on**         | **on**          |
-| html       | MutationModel   | **on**         | off             |
+| Platform  | Render model  | `NoReactivity` | `NoDeclarative` |
+|-----------|---------------|----------------|-----------------|
+| android   | RenderModel   | off            | off             |
+| bubbletea | RenderModel   | off            | off             |
+| none      | interpreter   | off            | off             |
+| fyne      | MutationModel | **on**         | **on**          |
+| gtk4      | MutationModel | **on**         | **on**          |
+| html      | MutationModel | **on**         | off             |
 
 After this work:
 
@@ -113,14 +113,16 @@ Restore the invariant by following the same pattern existing intrinsic
 namespaces use (`internal://alert`, `internal://file`):
 
 1. Add a `LowerIntrinsics` list to `ir/intrinsics.go`:
+
    ```go
    var LowerIntrinsics = []IntrinsicDef{
-       {Name: "CreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
-       {Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-       {Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-       {Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
+   	{Name: "CreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
+   	{Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+   	{Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
+   	{Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
    }
    ```
+
    Wire it into `LookupIntrinsic` alongside the other lists.
 
 2. In `internal/checker/checker.go` (around the existing `internal://alert`
@@ -154,8 +156,7 @@ Today `passReactivity`:
 
 Extend it with structural coverage:
 
-1. Walk every `*ir.If` and `*ir.For` and record `reverseDeps[var] →
-   [reactiveSlot{SlotID, ParentRef}]` for every reactive var in
+1. Walk every `*ir.If` and `*ir.For` and record `reverseDeps[var] → [reactiveSlot{SlotID, ParentRef}]` for every reactive var in
    `If.Cond` / `For.Iter`. Assign a synthetic ID `__slot<N>` per reactive
    If/For.
 2. For each `__slot<N>`, synthesize:
@@ -208,8 +209,7 @@ round-trips cleanly. Add a fuzz target `FuzzLoweredDocument` next to
 
 1. Parses + checks a seed input.
 2. Runs `lower.Lower(pkg, allMutationModelCaps, lower.Options{})` where
-   `allMutationModelCaps = {NoReactivity: true, NoDeclarative: true,
-   NoLambda: true, ...}` covering every pass that emits new IR.
+   `allMutationModelCaps = {NoReactivity: true, NoDeclarative: true, NoLambda: true, ...}` covering every pass that emits new IR.
 3. Calls `ir.Convert(pkg)` and reformats the result.
 4. Re-parses + re-checks the formatted source and asserts no diags.
 
@@ -224,11 +224,11 @@ New file `codegen/intrinsic_walker.go`. Defines:
 
 ```go
 type IntrinsicTranslator interface {
-    OnCreateNode(id, tag string) string
-    OnAppendChild(parent, child string) string
-    OnRemoveChild(parent, child string) string
-    OnAttachHandler(node, event, handlerRef string) string
-    OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string
+	OnCreateNode(id, tag string) string
+	OnAppendChild(parent, child string) string
+	OnRemoveChild(parent, child string) string
+	OnAttachHandler(node, event, handlerRef string) string
+	OnPropAssign(nodeID, prop string, valueExpr ir.Expr) string
 }
 
 func WalkLowered(stmts []ir.Stmt, t IntrinsicTranslator) string
@@ -252,8 +252,7 @@ synthesis, html `exprToJS` for value/textContent) feeds into `OnPropAssign`.
   `addUpdater`, `irWidgetUpdater`, `lateReactive`,
   `resolveReactiveTokens`, `nodeBindings`, `recordNodeBinding`,
   `localMode` / `withLocalMode` (slot Funcs scope locals naturally).
-- `codegen/platform/fyne/compiler_ir.go:166-216, 280-289, 340, 358, 378,
-  482-509` — `updaters []irWidgetUpdater` accumulation,
+- `codegen/platform/fyne/compiler_ir.go:166-216, 280-289, 340, 358, 378, 482-509` — `updaters []irWidgetUpdater` accumulation,
   `codegen.FindAffected` call sites, `emitIRUpdaters`.
 - `codegen/platform/fyne/scaffold.go:67, 91, 115` — `UpdaterNames`,
   `AffectedUpdaters`, `doRefresh()` template emission.
@@ -299,8 +298,6 @@ registry + `findAffectedUpdaters` + `addTextUpdater` + `loweredID`
 continue to drive non-structural reactive textContent / input.value
 patches and `Initial sync`. Tasks 10–13 (rip the registry) are
 deferred — see Plan D Task 10 deferral note for migration guidance.
-
-
 
 **Keep (the static-site path):**
 

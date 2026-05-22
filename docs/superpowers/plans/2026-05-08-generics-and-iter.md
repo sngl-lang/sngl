@@ -61,11 +61,11 @@ If absent, add it:
 
 ```go
 type StructDef struct {
-    Pos         Pos
-    Name        string
-    TypeParams  []string  // generic type parameters, e.g., ["T"] for `struct list<T> {}`
-    Fields      []*StructField
-    IsMultiline bool
+	Pos         Pos
+	Name        string
+	TypeParams  []string // generic type parameters, e.g., ["T"] for `struct list<T> {}`
+	Fields      []*StructField
+	IsMultiline bool
 }
 ```
 
@@ -119,6 +119,7 @@ grep -n "StructDecl\|TypeParamList\|FuncTail\|FuncName" internal/parser/sngl.ebn
 - [ ] **Step 2: Modify StructDecl production**
 
 Add the optional type param list. Example:
+
 ```
 StructDecl = kw_struct ident [ TypeParamList ] StructLitBody .
 ```
@@ -175,30 +176,30 @@ Append to `internal/parser/build_test.go` (or wherever struct-decl parser tests 
 
 ```go
 func TestParseGenericStruct(t *testing.T) {
-    src := "struct list<T> {}"
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    s := doc.Stmts[0].(*ast.StructDef)
-    if s.Name != "list" {
-        t.Errorf("Name = %q, want list", s.Name)
-    }
-    if len(s.TypeParams) != 1 || s.TypeParams[0] != "T" {
-        t.Errorf("TypeParams = %v, want [T]", s.TypeParams)
-    }
+	src := "struct list<T> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	s := doc.Stmts[0].(*ast.StructDef)
+	if s.Name != "list" {
+		t.Errorf("Name = %q, want list", s.Name)
+	}
+	if len(s.TypeParams) != 1 || s.TypeParams[0] != "T" {
+		t.Errorf("TypeParams = %v, want [T]", s.TypeParams)
+	}
 }
 
 func TestParseGenericStructTwoParams(t *testing.T) {
-    src := "struct map<K, V> {}"
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    s := doc.Stmts[0].(*ast.StructDef)
-    if len(s.TypeParams) != 2 || s.TypeParams[0] != "K" || s.TypeParams[1] != "V" {
-        t.Errorf("TypeParams = %v, want [K V]", s.TypeParams)
-    }
+	src := "struct map<K, V> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	s := doc.Stmts[0].(*ast.StructDef)
+	if len(s.TypeParams) != 2 || s.TypeParams[0] != "K" || s.TypeParams[1] != "V" {
+		t.Errorf("TypeParams = %v, want [K V]", s.TypeParams)
+	}
 }
 ```
 
@@ -309,14 +310,14 @@ Add a `RecvTypeParams []string` field to `FuncDef` if the existing `TypeParams` 
 
 ```go
 type FuncDef struct {
-    Pos             Pos
-    Name            string
-    TypeParams      []string  // method-level params: func name<U>(...)
-    RecvTypeParams  []string  // receiver-level params: func list<T>.name(...)
-    Params          ParamList
-    ReturnType      TypeExpr
-    Body            Expr
-    Block           StmtBlock
+	Pos            Pos
+	Name           string
+	TypeParams     []string // method-level params: func name<U>(...)
+	RecvTypeParams []string // receiver-level params: func list<T>.name(...)
+	Params         ParamList
+	ReturnType     TypeExpr
+	Body           Expr
+	Block          StmtBlock
 }
 ```
 
@@ -342,42 +343,42 @@ Append to `internal/parser/build_test.go`:
 
 ```go
 func TestParseGenericMethodDecl(t *testing.T) {
-    src := "struct list<T> {}\nfunc list<T>.length() int {}"
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    var fn *ast.FuncDef
-    for _, s := range doc.Stmts {
-        if f, ok := s.(*ast.FuncDef); ok {
-            fn = f
-            break
-        }
-    }
-    if fn == nil {
-        t.Fatal("no FuncDef found")
-    }
-    if fn.Name != "list.length" && fn.Name != "length" {
-        t.Errorf("Name = %q", fn.Name)
-    }
-    // Whichever field carries the T:
-    found := false
-    for _, p := range fn.TypeParams {
-        if p == "T" {
-            found = true
-        }
-    }
-    // also check RecvTypeParams if you split
-    if !found {
-        for _, p := range fn.RecvTypeParams {
-            if p == "T" {
-                found = true
-            }
-        }
-    }
-    if !found {
-        t.Errorf("expected T in type params; got TypeParams=%v RecvTypeParams=%v", fn.TypeParams, fn.RecvTypeParams)
-    }
+	src := "struct list<T> {}\nfunc list<T>.length() int {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var fn *ast.FuncDef
+	for _, s := range doc.Stmts {
+		if f, ok := s.(*ast.FuncDef); ok {
+			fn = f
+			break
+		}
+	}
+	if fn == nil {
+		t.Fatal("no FuncDef found")
+	}
+	if fn.Name != "list.length" && fn.Name != "length" {
+		t.Errorf("Name = %q", fn.Name)
+	}
+	// Whichever field carries the T:
+	found := false
+	for _, p := range fn.TypeParams {
+		if p == "T" {
+			found = true
+		}
+	}
+	// also check RecvTypeParams if you split
+	if !found {
+		for _, p := range fn.RecvTypeParams {
+			if p == "T" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected T in type params; got TypeParams=%v RecvTypeParams=%v", fn.TypeParams, fn.RecvTypeParams)
+	}
 }
 ```
 
@@ -421,10 +422,10 @@ If the existing `bindTypeParams` already handles arbitrary substitutions, the ne
 recvType := exprType(operand)
 var bindings map[string]*ir.Type
 if recvType != nil && recvType.Kind == ir.TypeStruct && len(recvType.Elems) == len(sig.RecvTypeParams) {
-    bindings = make(map[string]*ir.Type, len(sig.RecvTypeParams))
-    for i, name := range sig.RecvTypeParams {
-        bindings[name] = recvType.Elems[i]
-    }
+	bindings = make(map[string]*ir.Type, len(sig.RecvTypeParams))
+	for i, name := range sig.RecvTypeParams {
+		bindings[name] = recvType.Elems[i]
+	}
 }
 sig = substituteTypeParams(sig, bindings)
 ```
@@ -439,45 +440,45 @@ Add to a new file `internal/checker/generic_methods_test.go`:
 package checker_test
 
 import (
-    "testing"
+	"testing"
 
-    "git.duckfam.us/jonathan/sngl/internal/checker"
-    "git.duckfam.us/jonathan/sngl/internal/parser"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestListFilterPreservesElementType(t *testing.T) {
-    src := `var xs list<int> = [1, 2, 3]
+	src := `var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.filter(func(x int) => x > 0)`
-    doc, err := parser.Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 
 func TestListFilterTypeMismatchErrors(t *testing.T) {
-    src := `var xs list<int> = [1, 2, 3]
+	src := `var xs list<int> = [1, 2, 3]
 var ys list<string> = xs.filter(func(x int) => x > 0)`
-    doc, err := parser.Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    found := false
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            found = true
-        }
-    }
-    if !found {
-        t.Error("expected error: list<int> not assignable to list<string>")
-    }
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected error: list<int> not assignable to list<string>")
+	}
 }
 ```
 
@@ -587,36 +588,36 @@ If they're separate fields, both get populated. If they're a single combined sli
 
 ```go
 func TestParseGenericMethodWithMethodTypeParam(t *testing.T) {
-    src := "struct list<T> {}\nfunc list<T>.map<U>(f func(T) U) list<U> {}"
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    var fn *ast.FuncDef
-    for _, s := range doc.Stmts {
-        if f, ok := s.(*ast.FuncDef); ok {
-            fn = f
-            break
-        }
-    }
-    if fn == nil {
-        t.Fatal("no FuncDef")
-    }
-    // Receiver should have T; method should have U.
-    // (Adapt assertion to whichever field layout was chosen.)
-    seen := append(append([]string{}, fn.RecvTypeParams...), fn.TypeParams...)
-    if !contains(seen, "T") || !contains(seen, "U") {
-        t.Errorf("type params: got %v, want T+U", seen)
-    }
+	src := "struct list<T> {}\nfunc list<T>.map<U>(f func(T) U) list<U> {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var fn *ast.FuncDef
+	for _, s := range doc.Stmts {
+		if f, ok := s.(*ast.FuncDef); ok {
+			fn = f
+			break
+		}
+	}
+	if fn == nil {
+		t.Fatal("no FuncDef")
+	}
+	// Receiver should have T; method should have U.
+	// (Adapt assertion to whichever field layout was chosen.)
+	seen := append(append([]string{}, fn.RecvTypeParams...), fn.TypeParams...)
+	if !contains(seen, "T") || !contains(seen, "U") {
+		t.Errorf("type params: got %v, want T+U", seen)
+	}
 }
 
 func contains(xs []string, s string) bool {
-    for _, x := range xs {
-        if x == s {
-            return true
-        }
-    }
-    return false
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 ```
 
@@ -646,11 +647,11 @@ If the existing `inferTypeParams` only knows about method-level (or function-lev
 // inferTypeParamsWithBindings infers concrete types for a signature's type
 // params, starting with `seed` bindings (e.g., from the receiver).
 func (c *checker) inferTypeParamsWithBindings(sig *ir.FuncSig, args ast.ArgList, seed map[string]*ir.Type) *ir.FuncSig {
-    bindings := make(map[string]*ir.Type, len(seed)+len(sig.TypeParams))
-    for k, v := range seed {
-        bindings[k] = v
-    }
-    // (existing inferTypeParams body, but using `bindings` instead of starting empty)
+	bindings := make(map[string]*ir.Type, len(seed)+len(sig.TypeParams))
+	for k, v := range seed {
+		bindings[k] = v
+	}
+	// (existing inferTypeParams body, but using `bindings` instead of starting empty)
 }
 ```
 
@@ -668,52 +669,52 @@ Append to `internal/checker/generic_methods_test.go`:
 
 ```go
 func TestListMapSameType(t *testing.T) {
-    src := `var xs list<int> = [1, 2, 3]
+	src := `var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.map(func(x int) => x * 2)`
-    doc, err := parser.Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 
 func TestListMapDifferentType(t *testing.T) {
-    src := `var xs list<int> = [1, 2, 3]
+	src := `var xs list<int> = [1, 2, 3]
 var ys list<string> = xs.map(func(x int) => "{x}")`
-    doc, err := parser.Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 
 func TestListMapTypeMismatch(t *testing.T) {
-    src := `var xs list<int> = [1, 2, 3]
-var ys list<int> = xs.map(func(x int) => "{x}")`  // int → string mapping; assigning to list<int> is wrong
-    doc, err := parser.Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    found := false
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            found = true
-        }
-    }
-    if !found {
-        t.Error("expected error: list<string> not assignable to list<int>")
-    }
+	src := `var xs list<int> = [1, 2, 3]
+var ys list<int> = xs.map(func(x int) => "{x}")` // int → string mapping; assigning to list<int> is wrong
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected error: list<string> not assignable to list<int>")
+	}
 }
 ```
 
@@ -766,12 +767,12 @@ git commit -m "feat(stdlib): list<T>.map<U> with method-level type param"
 
 ```go
 const (
-    // existing kinds...
-    TypeIter // Elems = [T] for iter<T>
+	// existing kinds...
+	TypeIter // Elems = [T] for iter<T>
 )
 
 func IterOf(elem *Type) *Type {
-    return &Type{Kind: TypeIter, Elems: []*Type{elem}}
+	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
 }
 ```
 
@@ -789,10 +790,10 @@ go generate ./ir/
 
 ```go
 func TestIterOfString(t *testing.T) {
-    it := IterOf(TypString)
-    if got := it.String(); got != "iter<string>" {
-        t.Errorf("got %q, want iter<string>", got)
-    }
+	it := IterOf(TypString)
+	if got := it.String(); got != "iter<string>" {
+		t.Errorf("got %q, want iter<string>", got)
+	}
 }
 ```
 
@@ -836,14 +837,14 @@ Append to `internal/checker/map_test.go` or a new `iter_test.go`:
 
 ```go
 func TestIterTypeResolves(t *testing.T) {
-    src := `var x iter<int>`
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	src := `var x iter<int>`
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 ```
 
@@ -897,7 +898,7 @@ Add a rule: `list<T>` is assignable to `iter<T>`. This typically goes alongside 
 ```go
 // In typeAssignable(want, got):
 if want.Kind == ir.TypeIter && got.Kind == ir.TypeList && len(want.Elems) == 1 && len(got.Elems) == 1 {
-    return typeAssignable(want.Elems[0], got.Elems[0])
+	return typeAssignable(want.Elems[0], got.Elems[0])
 }
 ```
 
@@ -907,20 +908,20 @@ if want.Kind == ir.TypeIter && got.Kind == ir.TypeList && len(want.Elems) == 1 &
 
 ```go
 func TestListAssignableToIter(t *testing.T) {
-    src := `func count(xs iter<int>) int {
+	src := `func count(xs iter<int>) int {
     var n = 0
     for _ = xs { n = n + 1 }
     return n
 }
 var lst list<int> = [1, 2, 3]
 var n = count(lst)`
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 ```
 
@@ -954,16 +955,16 @@ Today the check probably says "for iterator must be list, got X". Extend to acce
 ```go
 switch iter.Kind {
 case ir.TypeList:
-    elemT := iter.Elems[0]
-    // Bind ForStmt.Key as elemT (single-var form) or as int + elemT (two-var form)
+	elemT := iter.Elems[0]
+	// Bind ForStmt.Key as elemT (single-var form) or as int + elemT (two-var form)
 case ir.TypeIter:
-    elemT := iter.Elems[0]
-    // Single-var form: bind ForStmt.Key as elemT
+	elemT := iter.Elems[0]
+	// Single-var form: bind ForStmt.Key as elemT
 case ir.TypeMap:
-    keyT, valT := iter.Elems[0], iter.Elems[1]
-    // Two-var form: bind ForStmt.Key as keyT, ForStmt.Value as valT
+	keyT, valT := iter.Elems[0], iter.Elems[1]
+	// Two-var form: bind ForStmt.Key as keyT, ForStmt.Value as valT
 default:
-    c.errorf(pos, "for iterator must be list, iter, or map; got %s", iter)
+	c.errorf(pos, "for iterator must be list, iter, or map; got %s", iter)
 }
 ```
 
@@ -975,18 +976,18 @@ default:
 
 ```go
 func TestForLoopOnIter(t *testing.T) {
-    src := `func count(xs iter<int>) int {
+	src := `func count(xs iter<int>) int {
     var n = 0
     for x = xs { n = n + x }
     return n
 }`
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 ```
 
@@ -1022,7 +1023,7 @@ case ir.TypeMap:
 
 ```go
 func TestForLoopOnMap(t *testing.T) {
-    src := `var m map<string, int> = {a = 1, b = 2}
+	src := `var m map<string, int> = {a = 1, b = 2}
 func test() int {
     var total = 0
     for k, v = m {
@@ -1030,31 +1031,31 @@ func test() int {
     }
     return total
 }`
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            t.Errorf("unexpected: %s", d.Error())
-        }
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("unexpected: %s", d.Error())
+		}
+	}
 }
 
 func TestForLoopOnMapSingleVarErrors(t *testing.T) {
-    src := `var m map<string, int> = {a = 1}
+	src := `var m map<string, int> = {a = 1}
 func test() {
     for k = m {}
 }`
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    _, diags := checker.Check(doc, &checker.Config{IsMain: true})
-    found := false
-    for _, d := range diags {
-        if d.Severity == ir.Error {
-            found = true
-        }
-    }
-    if !found {
-        t.Error("expected error: map iteration requires two vars")
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected error: map iteration requires two vars")
+	}
 }
 ```
 
@@ -1091,9 +1092,10 @@ Add a TypeMap branch.
 ### Task F2: Go codegen — iter<T> as `iter.Seq[T]` or simple range
 
 For `iter<T>` operands, emit Go's iter.Seq[T] range form:
+
 ```go
 for x := range it {
-    // body
+	// body
 }
 ```
 
@@ -1138,13 +1140,13 @@ Add:
 
 ```go
 if m, ok := iterVal.(map[string]any); ok {
-    if len(forStmt.Vars) == 2 {
-        for k, v := range m {
-            env.vars[forStmt.Vars[0].Name] = k
-            env.vars[forStmt.Vars[1].Name] = v
-            // execute body
-        }
-    }
+	if len(forStmt.Vars) == 2 {
+		for k, v := range m {
+			env.vars[forStmt.Vars[0].Name] = k
+			env.vars[forStmt.Vars[1].Name] = v
+			// execute body
+		}
+	}
 }
 ```
 

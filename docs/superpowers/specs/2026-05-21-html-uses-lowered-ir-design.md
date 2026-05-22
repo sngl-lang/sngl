@@ -72,11 +72,11 @@ For static-position component NodeInsts left in place (recursive cycle targets c
 
 ```go
 return lower.Caps{
-    NoContext:           true,
-    NoReactivity:        true,
-    NoAsyncReactive:     true,
-    NoStdlibWrappers:    true,
-    NoInlineComponents:  true,   // NEW
+	NoContext:          true,
+	NoReactivity:       true,
+	NoAsyncReactive:    true,
+	NoStdlibWrappers:   true,
+	NoInlineComponents: true, // NEW
 }
 ```
 
@@ -96,7 +96,7 @@ Approximately 300 lines.
 
 ```go
 func (g *htmlGen) exprDeps(expr ir.Expr) map[*ir.Var]struct{} {
-    return g.dt.ExprDeps(g.currentComp, expr)
+	return g.dt.ExprDeps(g.currentComp, expr)
 }
 ```
 
@@ -106,8 +106,8 @@ func (g *htmlGen) exprDeps(expr ir.Expr) map[*ir.Var]struct{} {
 
 ```go
 for _, v := range main.Vars {
-    g.scope.ModelFields[v.Name] = true
-    renames[v.Name] = "state." + v.Name
+	g.scope.ModelFields[v.Name] = true
+	renames[v.Name] = "state." + v.Name
 }
 ```
 
