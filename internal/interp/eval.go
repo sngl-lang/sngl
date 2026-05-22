@@ -127,6 +127,11 @@ type Env struct {
 	// callChildEnvs is the analogous cache for user-component instantiations
 	// expressed as ir.CallStmt (children-less call form, e.g. `main()`).
 	callChildEnvs map[*ir.CallStmt]*Env
+	// parent points at the surrounding env when this env is a child component
+	// scope. lookup() falls through to the parent chain so child components
+	// can read (and assignments can mutate) package-level vars defined in the
+	// root env.
+	parent *Env
 }
 
 func NewEnv() *Env {
@@ -159,19 +164,20 @@ func (env *Env) Snapshot() *Env {
 		childEnvs = map[*ir.NodeInst]*Env{}
 	}
 	cp := &Env{
-		Vars:        make(map[string]any, len(env.Vars)),
-		Consts:      env.Consts,
-		Funcs:       env.Funcs,
-		Units:       env.Units,
-		Pkg:         env.Pkg,
-		Comp:        env.Comp,
-		BodyStmts:   env.BodyStmts,
-		depth:       env.depth,
-		RenderDepth: env.RenderDepth,
-		Locale:      env.Locale,
+		Vars:          make(map[string]any, len(env.Vars)),
+		Consts:        env.Consts,
+		Funcs:         env.Funcs,
+		Units:         env.Units,
+		Pkg:           env.Pkg,
+		Comp:          env.Comp,
+		BodyStmts:     env.BodyStmts,
+		depth:         env.depth,
+		RenderDepth:   env.RenderDepth,
+		Locale:        env.Locale,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
 		childEnvs:     childEnvs,       // shared reference — cached child envs persist through scope changes
 		callChildEnvs: env.callChildEnvs,
+		parent:        env.parent,
 	}
 	maps.Copy(cp.Vars, env.Vars)
 	return cp
@@ -712,6 +718,18 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	return env.lookup(e.Name)
 }
 
+// findVarOwner returns the env in this parent chain that holds name in Vars,
+// or nil if no env has it. Used by assignment/toggle so a write to a
+// package-level var defined in a parent env mutates the shared map.
+func (env *Env) findVarOwner(name string) *Env {
+	for e := env; e != nil; e = e.parent {
+		if _, ok := e.Vars[name]; ok {
+			return e
+		}
+	}
+	return nil
+}
+
 func (env *Env) lookup(name string) (any, error) {
 	if v, ok := env.Vars[name]; ok {
 		return v, nil
@@ -722,6 +740,9 @@ func (env *Env) lookup(name string) (any, error) {
 	// Zero-arg functions auto-invoke (computed fields)
 	if fn, ok := env.Funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
 		return env.EvalUserFunc(fn, nil)
+	}
+	if env.parent != nil {
+		return env.parent.lookup(name)
 	}
 	return nil, fmt.Errorf("undefined variable %q", name)
 }

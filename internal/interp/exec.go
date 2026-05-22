@@ -164,11 +164,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	}
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		cur, exists := env.Vars[target.Name]
-		if !exists {
+		owner := env.findVarOwner(target.Name)
+		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		env.Vars[target.Name] = ApplyOp(s.Op, cur, val)
+		owner.Vars[target.Name] = ApplyOp(s.Op, owner.Vars[target.Name], val)
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -208,15 +208,15 @@ func (env *Env) execAssign(s *ir.Assign) error {
 func (env *Env) execToggle(s *ir.Toggle) error {
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		cur, exists := env.Vars[target.Name]
-		if !exists {
+		owner := env.findVarOwner(target.Name)
+		if owner == nil {
 			return fmt.Errorf("cannot toggle undefined variable %q", target.Name)
 		}
-		b, ok := cur.(bool)
+		b, ok := owner.Vars[target.Name].(bool)
 		if !ok {
 			return fmt.Errorf("cannot toggle non-bool variable %q", target.Name)
 		}
-		env.Vars[target.Name] = !b
+		owner.Vars[target.Name] = !b
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)

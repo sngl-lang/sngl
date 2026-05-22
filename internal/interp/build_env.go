@@ -70,6 +70,16 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 		return nil, fmt.Errorf("component %q not found", compName)
 	}
 
+	// Seed package-level vars and consts so component bodies and any nested
+	// child components can read/write global state. Component-local vars
+	// declared below shadow these by name.
+	for _, v := range pkg.Vars {
+		env.Vars[v.Name] = evalInit(env, v.Init)
+	}
+	for _, c := range pkg.Consts {
+		env.Consts[c.Name] = evalInit(env, c.Init)
+	}
+
 	for _, v := range comp.Vars {
 		if v.IsConst {
 			env.Consts[v.Name] = evalInit(env, v.Init)

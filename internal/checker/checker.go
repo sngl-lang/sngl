@@ -1584,13 +1584,27 @@ func (c *checker) pass2() {
 		c.preCheckComponentMethods(comp)
 	}
 
-	// Check function bodies. Skip methods whose receiver is a component;
-	// those were already checked above.
-	for _, fn := range c.pkg.Funcs {
-		if fn.Receiver != "" {
-			if _, isComp := c.symtab.Comps[fn.Receiver]; isComp {
-				continue
+	// Check function bodies. Skip funcs whose body is checked inside
+	// checkComponentBody — that includes (a) plain nested funcs and methods
+	// on the surrounding component (Receiver == comp.Name) that need access
+	// to component-local vars, and (b) funcs declared with no explicit
+	// receiver but defined inside a component body (also in comp.Funcs with
+	// Receiver == ""). Foreign-type methods nested inside a component body
+	// (e.g. `func int.double(x int)` inside `component main`) ARE in
+	// comp.Funcs too, but they don't need component scope; we check them
+	// here so their return type is inferred BEFORE any top-level test func
+	// (which may call them) is checked.
+	compOwnedFuncs := map[*ir.Func]bool{}
+	for _, comp := range c.pkg.Components {
+		for _, fn := range comp.Funcs {
+			if fn.Receiver == "" || fn.Receiver == comp.Name {
+				compOwnedFuncs[fn] = true
 			}
+		}
+	}
+	for _, fn := range c.pkg.Funcs {
+		if compOwnedFuncs[fn] {
+			continue
 		}
 		c.checkFuncBody(fn)
 	}
@@ -1809,6 +1823,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// fn.Return so the pre-pass's possibly-Dyn inference doesn't shadow
 	// the authoritative one.
 	for _, fn := range comp.Funcs {
+		// Foreign-type methods nested inside a component body (e.g.
+		// `func int.double` inside `component main`) don't need component
+		// scope and are checked by pass2's pkg.Funcs loop.
+		if fn.Receiver != "" && fn.Receiver != comp.Name {
+			continue
+		}
 		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
 			fn.Return = nil
 		}

@@ -112,6 +112,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.Pkg = env.Pkg
 	child.Units = env.Units
 	child.Comp = comp
+	child.parent = env
 
 	for _, p := range comp.Props {
 		child.Vars[p.Name] = evalInit(child, p.Default)
@@ -266,6 +267,8 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child.Pkg = env.Pkg
 	child.Units = env.Units
 	child.Comp = comp
+	child.parent = env
+	child.parent = env
 
 	for _, p := range comp.Props {
 		child.Vars[p.Name] = evalInit(child, p.Default)
