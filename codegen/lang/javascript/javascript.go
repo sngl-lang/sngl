@@ -106,9 +106,10 @@ func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []b
 	return []byte(codegen.Header("js", name, "// ", ""))
 }
 
-// RenderSourceMap is wired in Task 11; this stub returns no changes.
+// RenderSourceMap emits a source-map v3 sidecar and appends a sourceMappingURL
+// footer to the body.
 func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
-	return codegen.SourceMapResult{}
+	return renderJSSourceMap(name, positions, body)
 }
 
 // SnglI18nImportPath is the JS module specifier the generated bundle uses
