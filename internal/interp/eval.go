@@ -120,13 +120,18 @@ type Env struct {
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
 	ContextVals map[*ir.Context]any
+	// childEnvs caches per-NodeInst child component envs so state
+	// persists across ResolveElementRef calls. Keyed by the
+	// instantiation site's *ir.NodeInst pointer.
+	childEnvs map[*ir.NodeInst]*Env
 }
 
 func NewEnv() *Env {
 	return &Env{
-		Vars:   map[string]any{},
-		Consts: map[string]any{},
-		Funcs:  map[string]*ir.Func{},
+		Vars:      map[string]any{},
+		Consts:    map[string]any{},
+		Funcs:     map[string]*ir.Func{},
+		childEnvs: map[*ir.NodeInst]*Env{},
 	}
 }
 
@@ -146,6 +151,10 @@ func (env *Env) SetVar(name string, val any) {
 
 // Snapshot returns a shallow copy of the env.
 func (env *Env) Snapshot() *Env {
+	childEnvs := env.childEnvs
+	if childEnvs == nil {
+		childEnvs = map[*ir.NodeInst]*Env{}
+	}
 	cp := &Env{
 		Vars:        make(map[string]any, len(env.Vars)),
 		Consts:      env.Consts,
@@ -158,6 +167,7 @@ func (env *Env) Snapshot() *Env {
 		RenderDepth: env.RenderDepth,
 		Locale:      env.Locale,
 		ContextVals: env.ContextVals, // shared reference — overrides visible in child envs
+		childEnvs:   childEnvs,       // shared reference — cached child envs persist through scope changes
 	}
 	maps.Copy(cp.Vars, env.Vars)
 	return cp

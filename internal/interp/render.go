@@ -101,6 +101,13 @@ func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]
 }
 
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
+	if env.childEnvs == nil {
+		env.childEnvs = map[*ir.NodeInst]*Env{}
+	}
+	if cached, ok := env.childEnvs[inst]; ok {
+		return cached
+	}
+
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.Units = env.Units
@@ -130,6 +137,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 		child.SetFunc(fn)
 	}
 	child.BodyStmts = comp.Body
+	env.childEnvs[inst] = child
 	return child
 }
 
