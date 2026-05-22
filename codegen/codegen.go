@@ -475,6 +475,10 @@ type Request struct {
 	// playground. May be nil; callers that need it must fall back to
 	// os.DirFS(projectDir) from the options struct.
 	ProjectFS fs.FS
+	// Maps enables source-map generation: position tracking on, sourcemap
+	// sidecars emitted via CodeWriter. Sourced from the top-level "maps"
+	// field of the output() options block (lib/options.sngl).
+	Maps bool
 }
 
 // SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import

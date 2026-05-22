@@ -399,6 +399,7 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 		Source:     filepath.Base(filename),
 		FileAssets: fileAssets,
 		ProjectFS:  os.DirFS(filepath.Dir(filename)),
+		Maps:       optionBool(target.Options, "maps"),
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
