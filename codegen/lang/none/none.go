@@ -39,3 +39,11 @@ func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string { return "" }
 func (t *Translator) TypeToNative(hint string) string     { return hint }
 func (t *Translator) ExportName(name string) string       { return name }
+
+func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
+	return nil
+}
+
+func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+	return codegen.SourceMapResult{}
+}

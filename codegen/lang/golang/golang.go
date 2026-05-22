@@ -574,6 +574,17 @@ func stmtUsesI18n(s ir.Stmt) bool {
 	return false
 }
 
+// RenderHeader returns the generated-by comment for Go files. Real import
+// rendering lands when platforms migrate to CodeWriter (Plan B).
+func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
+	return []byte(codegen.Header("go", name, "// ", ""))
+}
+
+// RenderSourceMap is wired in Task 9; this stub returns no changes.
+func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+	return codegen.SourceMapResult{}
+}
+
 func exprUsesI18n(e ir.Expr) bool {
 	if e == nil {
 		return false

@@ -173,6 +173,17 @@ func (t *Translator) ExportName(name string) string {
 	return name
 }
 
+// RenderHeader returns the generated-by comment for Kotlin files.
+func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
+	return []byte(codegen.Header("kt", name, "// ", ""))
+}
+
+// RenderSourceMap returns no changes. Kotlin SMAP support is deferred (spec
+// section 7).
+func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+	return codegen.SourceMapResult{}
+}
+
 // kotlinHardKeywords lists Kotlin hard keywords that cannot be used as bare
 // identifiers. Colliding SNGL identifiers are wrapped in backticks (Kotlin's
 // escape syntax).

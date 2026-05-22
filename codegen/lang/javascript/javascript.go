@@ -101,6 +101,16 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	return `""`
 }
 
+// RenderHeader returns the generated-by comment for JS files.
+func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
+	return []byte(codegen.Header("js", name, "// ", ""))
+}
+
+// RenderSourceMap is wired in Task 11; this stub returns no changes.
+func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+	return codegen.SourceMapResult{}
+}
+
 // SnglI18nImportPath is the JS module specifier the generated bundle uses
 // to import the i18n runtime. The html platform copies pkg/js/i18n/ into
 // the output as a sibling of the entry bundle so this relative path

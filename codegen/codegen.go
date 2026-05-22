@@ -117,6 +117,17 @@ type LangTranslator interface {
 
 	TypeToNative(hint string) string
 	ExportName(name string) string
+
+	// RenderHeader returns the file header bytes — the generated-by comment
+	// plus rendered import lines. Called once at CodeWriter.Close. Imports
+	// are in insertion order; the renderer may sort or filter.
+	RenderHeader(name string, imports []ImportSpec) []byte
+
+	// RenderSourceMap optionally rewrites the body to embed source-mapping
+	// information (Go //line directives) or produces a sidecar (JS .map).
+	// Called by CodeWriter.Close only when source maps are enabled.
+	// Returning a zero SourceMapResult means "no changes".
+	RenderSourceMap(name string, positions []PosEntry, body []byte) SourceMapResult
 }
 
 // PlatformGenerator produces output files from a checked SNGL document.
