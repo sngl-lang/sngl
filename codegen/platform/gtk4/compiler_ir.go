@@ -53,8 +53,6 @@ type compilation struct {
 	registry *gir.TypeRegistry
 }
 
-var _ codegen.MutationModelEmitter = (*compilation)(nil)
-
 func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
 	if req.Lang.LanguageIdentifier() != "go" {
 		return nil, fmt.Errorf("gtk4: unsupported lang %q", req.Lang.LanguageIdentifier())
@@ -97,19 +95,19 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.Common
 	return c.ctx.BuildMutation(stmts), nil
 }
 
-func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
 	modelSrc, callbacksSrc, err := c.emitIR()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	modelFormatted, err := format.Source(modelSrc)
 	if err != nil {
-		return &codegen.Response{Error: fmt.Sprintf("gtk4 model.go formatting error: %v\n%s", err, modelSrc)}, nil
+		return fmt.Errorf("gtk4 model.go formatting error: %w\n%s", err, modelSrc)
 	}
 	callbacksFormatted, err := format.Source(callbacksSrc)
 	if err != nil {
-		return &codegen.Response{Error: fmt.Sprintf("gtk4 callbacks.go formatting error: %v\n%s", err, callbacksSrc)}, nil
+		return fmt.Errorf("gtk4 callbacks.go formatting error: %w\n%s", err, callbacksSrc)
 	}
 
 	if h := codegen.Header("gtk4", req.Source, "// ", ""); h != "" {
@@ -117,12 +115,26 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		callbacksFormatted = append([]byte(h), callbacksFormatted...)
 	}
 
-	return &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("model.go", modelFormatted),
-			codegen.BytesFile("callbacks.go", callbacksFormatted),
-		},
-	}, nil
+	for _, pair := range []struct {
+		name    string
+		content []byte
+	}{
+		{"model.go", modelFormatted},
+		{"callbacks.go", callbacksFormatted},
+	} {
+		w, err := sink.Create(pair.name)
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(pair.content); err != nil {
+			w.Close()
+			return err
+		}
+		if err := w.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // flattenPlatformFilters expands `platform <target> { ... }` blocks: when

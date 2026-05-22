@@ -167,14 +167,25 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	return girClassToComponent(info)
 }
 
-// Generate delegates to a per-request compilation.
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+// GenerateSink writes gtk4 source files directly into sink. This is the
+// sink-based path platforms migrate to during the codegen unification.
+func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{gen: g}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
+		return err
+	}
+	return c.EmitFromMutation(m, req, sink)
+}
+
+// Generate is the legacy entry point; delegates to GenerateSink via a
+// MemSink and converts captured files back to the Response shape.
+func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+	mem := codegen.NewMemSink()
+	if err := g.GenerateSink(req, mem); err != nil {
 		return &codegen.Response{Error: err.Error()}, nil
 	}
-	return c.EmitFromMutation(m, req)
+	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // resolveGIRPath returns the path to the Gtk-4.0.gir file.

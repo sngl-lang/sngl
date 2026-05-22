@@ -52,8 +52,18 @@ component main {
 		t.Fatal("no files emitted")
 	}
 
+	var modelFile *codegen.OutputFile
+	for _, f := range resp.Files {
+		if f.Name == "model.go" {
+			modelFile = f
+			break
+		}
+	}
+	if modelFile == nil {
+		t.Fatal("model.go not found in generated files")
+	}
 	var buf bytes.Buffer
-	if _, err := resp.Files[0].WriteTo(&buf); err != nil {
+	if _, err := modelFile.WriteTo(&buf); err != nil {
 		t.Fatalf("WriteTo: %v", err)
 	}
 	out := buf.String()
