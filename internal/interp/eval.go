@@ -124,6 +124,9 @@ type Env struct {
 	// persists across ResolveElementRef calls. Keyed by the
 	// instantiation site's *ir.NodeInst pointer.
 	childEnvs map[*ir.NodeInst]*Env
+	// callChildEnvs is the analogous cache for user-component instantiations
+	// expressed as ir.CallStmt (children-less call form, e.g. `main()`).
+	callChildEnvs map[*ir.CallStmt]*Env
 }
 
 func NewEnv() *Env {
@@ -166,8 +169,9 @@ func (env *Env) Snapshot() *Env {
 		depth:       env.depth,
 		RenderDepth: env.RenderDepth,
 		Locale:      env.Locale,
-		ContextVals: env.ContextVals, // shared reference — overrides visible in child envs
-		childEnvs:   childEnvs,       // shared reference — cached child envs persist through scope changes
+		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
+		childEnvs:     childEnvs,       // shared reference — cached child envs persist through scope changes
+		callChildEnvs: env.callChildEnvs,
 	}
 	maps.Copy(cp.Vars, env.Vars)
 	return cp
@@ -1249,7 +1253,17 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if after, ok := strings.CutPrefix(method, "@"); ok {
 				if m, ok := recv.(map[string]any); ok {
 					if h, ok := m[method].(*ir.Func); ok {
-						return env.runEventHandler(h, call.Args, after)
+						handlerEnv := env
+						if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
+							handlerEnv = oe
+						}
+						if owner, ok := m["__ownerComponent"]; ok && owner != nil {
+							if handlerEnv.Vars == nil {
+								handlerEnv.Vars = map[string]any{}
+							}
+							handlerEnv.Vars["this"] = owner
+						}
+						return handlerEnv.runEventHandler(h, call.Args, after)
 					}
 				}
 				return nil, nil
@@ -1604,6 +1618,23 @@ func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
 	return child.execBlockForResult(fn.Block)
 }
 
+// EvalUserFuncWithValues is like EvalUserFunc but takes pre-evaluated arg
+// values. Used by callers that evaluate args in a different env from the
+// one used to execute the function body (e.g. component methods).
+func (env *Env) EvalUserFuncWithValues(fn *ir.Func, args []any) (any, error) {
+	return env.evalUserFuncCore(fn, args)
+}
+
+// CopyDepth transfers the call-depth counter from src to dst. Used by
+// out-of-tree dispatchers (e.g. testrunner component-method dispatch) to
+// keep depth tracking accurate across env boundaries.
+func CopyDepth(src, dst *Env) {
+	if src == nil || dst == nil {
+		return
+	}
+	dst.depth = src.depth
+}
+
 func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 	args := make([]any, len(argExprs))
 	for i, a := range argExprs {
@@ -1613,6 +1644,10 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 		}
 		args[i] = v
 	}
+	return env.evalUserFuncCore(fn, args)
+}
+
+func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 	env.depth++
 	if env.depth > maxCallDepth {
@@ -1630,6 +1665,14 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 			execEnv = env.Snapshot()
 		}
 
+		// If the function declares a leading `this` receiver but the caller
+		// supplied one-fewer arguments (intra-component method calls compile
+		// as plain `foo(args)`), shift bindings so user args land in n,
+		// not in this. `this` is expected to already be in execEnv.Vars.
+		argOffset := 0
+		if len(fn.Params) > 0 && fn.Params[0].Name == "this" && len(args) == len(fn.Params)-1 {
+			argOffset = 1
+		}
 		savedVars := make(map[string]any)
 		paramNames := make([]string, len(fn.Params))
 		for i, p := range fn.Params {
@@ -1637,11 +1680,11 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 			if v, ok := execEnv.Vars[p.Name]; ok {
 				savedVars[p.Name] = v
 			}
-			if i < len(args) {
-				execEnv.Vars[p.Name] = args[i]
+			argIdx := i - argOffset
+			if argIdx >= 0 && argIdx < len(args) {
+				execEnv.Vars[p.Name] = args[argIdx]
 			}
 		}
-
 		restoreVoid := func() {
 			if !isPure {
 				for _, name := range paramNames {

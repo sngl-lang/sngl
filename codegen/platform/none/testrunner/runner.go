@@ -65,6 +65,9 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		maps.Copy(cVal.Vars, env.Vars)
 		maps.Copy(cVal.Consts, env.Consts)
 		maps.Copy(cVal.Funcs, env.Funcs)
+		if comp := findComponentByName(pkg, compName); comp != nil {
+			cVal.body = comp.Body
+		}
 		env.Vars[fn.Params[1].Name] = cVal
 	}
 
@@ -134,6 +137,15 @@ type componentValue struct {
 	Funcs      map[string]*ir.Func
 	compName   string // e.g. "pricing"; used to look up receiver-qualified methods
 	testParams map[string]bool
+
+	// body is the component's lowered body, captured at construction.
+	// Used by walkChildren to enumerate direct visual statements.
+	body []ir.Stmt
+
+	// children is a memoised live slice — user-component entries are
+	// *componentValue wrappers, native entries are element-map dicts.
+	// Computed lazily on first GetField("children").
+	children []any
 }
 
 // errorLine returns the 1-based source line of the failing expression. For
@@ -158,4 +170,14 @@ func allPassed(results []*codegen.TestResult) bool {
 		}
 	}
 	return true
+}
+
+// findComponentByName scans the package for a component with the given name.
+func findComponentByName(pkg *ir.Package, name string) *ir.Component {
+	for _, c := range pkg.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

@@ -147,6 +147,28 @@ func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	return env.componentEnv(comp, inst)
 }
 
+// ComponentEnvFromCallStmt returns (and caches) the child env for a user
+// component instantiated as a children-less CallStmt (`comp()`). Keyed by
+// the *ir.CallStmt so state survives across re-renders.
+func (env *Env) ComponentEnvFromCallStmt(comp *ir.Component, cs *ir.CallStmt) *Env {
+	if env.callChildEnvs == nil {
+		env.callChildEnvs = map[*ir.CallStmt]*Env{}
+	}
+	if cached, ok := env.callChildEnvs[cs]; ok {
+		return cached
+	}
+	child := env.componentEnvFromCall(comp, cs.Call)
+	env.callChildEnvs[cs] = child
+	return child
+}
+
+// CallStmtElemName returns the element/component name of a CallStmt as
+// recovered from its AST back-reference, or "" if not an element call.
+func CallStmtElemName(cs *ir.CallStmt) string {
+	n, _ := elemCallInfo(cs)
+	return n
+}
+
 // RenderCallStmtNode renders a children-less element call (text #id(...))
 // as an element map. Returns nil for non-element CallStmts (e.g. a method
 // call statement).
@@ -233,6 +255,7 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 			}
 		}
 	}
+	m["__ownerEnv"] = env
 	return m
 }
 
@@ -292,5 +315,6 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 	for _, h := range node.Handlers {
 		m["@"+h.Name] = h.Func
 	}
+	m["__ownerEnv"] = env
 	return m
 }

@@ -272,6 +272,14 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	if v, ok := cv.Consts[field]; ok {
 		return v, nil
 	}
+	// Element-ref takes precedence over a parameterless method of the same
+	// name — `c.bump` should yield the element map even when `bump()` is
+	// also defined. Try element resolution first; only fall through to
+	// method auto-invoke when no element matches.
+	if v, err := cv.Env.ResolveElementRef(field); err == nil && v != nil {
+		stampOwner(v, cv)
+		return v, nil
+	}
 	// Direct func by bare name (legacy closure-style).
 	if fn, ok := cv.Funcs[field]; ok {
 		effective := len(fn.Params)
@@ -287,22 +295,44 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	// stores these under "<compName>.<method>". Auto-invoke when zero
 	// effective args.
 	if cv.compName != "" {
-		if fn, ok := cv.Funcs[cv.compName+"."+field]; ok {
+		var fn *ir.Func
+		var ok bool
+		fn, ok = cv.Funcs[cv.compName+"."+field]
+		if !ok {
+			fn, ok = cv.Env.Funcs[cv.compName+"."+field]
+		}
+		if !ok && cv.Env.Pkg != nil {
+			for _, f := range cv.Env.Pkg.Funcs {
+				if f.Receiver == cv.compName && f.Name == field {
+					fn = f
+					ok = true
+					break
+				}
+			}
+		}
+		if ok {
 			effective := len(fn.Params)
 			if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
 				effective--
 			}
 			if effective == 0 {
 				compEnv := cv.compEnv()
-				return compEnv.EvalUserFunc(fn, nil)
+				var synth []ir.Expr
+				if len(fn.Params) > 0 && fn.Params[0].Name == "this" {
+					compEnv.Vars["this"] = cv
+					synth = []ir.Expr{&ir.Ident{Name: "this"}}
+				}
+				return compEnv.EvalUserFunc(fn, synth)
 			}
 		}
 	}
 	// Element ref lookup in the component body. Returns nil (not an error)
 	// when the ref exists in the body tree but is currently hidden by an
 	// if/for-else branch — tests assert against null for "not visible".
-	compEnv := cv.compEnv()
-	if v, err := compEnv.ResolveElementRef(field); err == nil {
+	// Use the cached child env (not a snapshot) so that any handler bound
+	// to the rendered element map invokes against the real component state.
+	if v, err := cv.Env.ResolveElementRef(field); err == nil {
+		stampOwner(v, cv)
 		return v, nil
 	}
 	return nil, fmt.Errorf("component has no field %q", field)
@@ -330,11 +360,45 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		return nil, true, nil
 	}
 	fn, ok := cv.Funcs[method]
+	if !ok && cv.compName != "" {
+		qual := cv.compName + "." + method
+		if extFn, extOK := cv.Env.Funcs[qual]; extOK {
+			fn = extFn
+			ok = true
+		} else if cv.Env.Pkg != nil {
+			for _, f := range cv.Env.Pkg.Funcs {
+				if f.Receiver == cv.compName && f.Name == method {
+					fn = f
+					ok = true
+					break
+				}
+			}
+		}
+	}
 	if !ok {
 		return nil, false, nil
 	}
+	// Evaluate args against the CALLER's env (env) so that intra-component
+	// recursive calls like `fib(n-1)` see the caller frame's local `n`.
+	// Then run the body against compEnv (which carries the component's own
+	// vars / consts / funcs, with `this` bound).
+	evalArgs := make([]any, len(args))
+	for i, ae := range args {
+		v, evErr := env.Eval(ae)
+		if evErr != nil {
+			return nil, true, evErr
+		}
+		evalArgs[i] = v
+	}
 	compEnv := cv.compEnv()
-	result, err := compEnv.EvalUserFunc(fn, args)
+	if len(fn.Params) > 0 && fn.Params[0].Name == "this" {
+		compEnv.Vars["this"] = cv
+	}
+	// Inherit the caller's call-depth counter so recursion through component
+	// methods hits the same depth limit as plain functions.
+	interp.CopyDepth(env, compEnv)
+	result, err := compEnv.EvalUserFuncWithValues(fn, evalArgs)
+	interp.CopyDepth(compEnv, env)
 	for k := range cv.Vars {
 		if v, ok := compEnv.Vars[k]; ok {
 			cv.Vars[k] = v
@@ -383,7 +447,7 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if n.Component != nil && len(n.Component.Body) > 0 {
+			if n.Component != nil && isUserComponent(n.Component) {
 				childEnv := cv.Env.ComponentEnv(n.Component, n)
 				wrapper := &componentValue{
 					Env:      childEnv,
@@ -398,6 +462,26 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 				out = append(out, cv.Env.RenderNodeProps(n))
 			}
 		case *ir.CallStmt:
+			// User-component instantiation (`comp()`): expose as a live
+			// componentValue wrapper sharing the cached child env.
+			if n.Call != nil && cv.Env.Pkg != nil {
+				name := interp.CallStmtElemName(n)
+				if name != "" {
+					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
+						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
+						wrapper := &componentValue{
+							Env:      childEnv,
+							Vars:     childEnv.Vars,
+							Consts:   childEnv.Consts,
+							Funcs:    childEnv.Funcs,
+							compName: comp.Name,
+							body:     comp.Body,
+						}
+						out = append(out, wrapper)
+						continue
+					}
+				}
+			}
 			if rendered := cv.Env.RenderCallStmtNode(n); rendered != nil {
 				out = append(out, rendered)
 			}
@@ -420,6 +504,31 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 		}
 	}
 	return out
+}
+
+// stampOwner attaches __ownerComponent to element maps returned by
+// ResolveElementRef so that event handlers running in the component's
+// env can bind `this` to the owning componentValue.
+func stampOwner(v any, owner *componentValue) {
+	switch t := v.(type) {
+	case map[string]any:
+		t["__ownerComponent"] = owner
+	case []any:
+		for _, item := range t {
+			stampOwner(item, owner)
+		}
+	}
+}
+
+// isUserComponent returns true when comp is a user-defined component (has
+// its own body, vars, or funcs) rather than a stdlib native element. Native
+// elements like `text`/`button` have Component populated with prop schemas
+// only, and must not be exposed as live componentValue wrappers.
+func isUserComponent(comp *ir.Component) bool {
+	if comp == nil {
+		return false
+	}
+	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 func (cv *componentValue) compEnv() *interp.Env {
