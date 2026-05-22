@@ -580,9 +580,10 @@ func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []b
 	return []byte(codegen.Header("go", name, "// ", ""))
 }
 
-// RenderSourceMap is wired in Task 9; this stub returns no changes.
+// RenderSourceMap splices //line directives into body so the Go compiler
+// attributes errors back to the original SNGL source.
 func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
-	return codegen.SourceMapResult{}
+	return renderGoSourceMap(name, positions, body)
 }
 
 func exprUsesI18n(e ir.Expr) bool {
