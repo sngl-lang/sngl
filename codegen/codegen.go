@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"strings"
@@ -503,4 +504,47 @@ func Header(platform, source, commentStart, commentEnd string) string {
 type Response struct {
 	Files []*OutputFile
 	Error string // non-empty on failure
+}
+
+// SinkGenerator is the post-migration shape of PlatformGenerator.Generate.
+// Platforms implement it one at a time. Once every platform implements it,
+// the legacy Generate(req) (*Response, error) signature is removed and this
+// becomes the only Generate method.
+type SinkGenerator interface {
+	GenerateSink(req *Request, sink Sink) error
+}
+
+// RunGenerate dispatches a platform generator into a sink. Platforms that
+// implement SinkGenerator are called directly; legacy platforms have their
+// *Response streamed into the sink via this adapter. ErrSkip on a file is
+// honored (file omitted, no error).
+func RunGenerate(plat PlatformGenerator, req *Request, sink Sink) error {
+	if sg, ok := plat.(SinkGenerator); ok {
+		return sg.GenerateSink(req, sink)
+	}
+	resp, err := plat.Generate(req)
+	if err != nil {
+		return err
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	for _, f := range resp.Files {
+		w, err := sink.Create(f.Name)
+		if err != nil {
+			return err
+		}
+		_, werr := f.WriteTo(w)
+		if errors.Is(werr, ErrSkip) {
+			// Abandon the writer without committing — the file is skipped.
+			continue
+		}
+		if cerr := w.Close(); werr == nil {
+			werr = cerr
+		}
+		if werr != nil {
+			return werr
+		}
+	}
+	return nil
 }

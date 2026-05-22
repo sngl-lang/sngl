@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -127,25 +126,18 @@ func compile(this js.Value, args []js.Value) any {
 
 	opts := optionsForTarget(pkg, "html")
 	codegen.SetOptionField(opts, "preview", true)
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(gen, &codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: opts,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	if resp.Error != "" {
-		result["error"] = resp.Error
-		return toJSObject(result)
-	}
-
-	for _, f := range resp.Files {
-		if strings.HasSuffix(f.Name, ".html") {
-			var buf bytes.Buffer
-			f.WriteTo(&buf)
-			result["html"] = buf.String()
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			result["html"] = string(content)
 			break
 		}
 	}
@@ -270,27 +262,20 @@ func generate(this js.Value, args []js.Value) any {
 		}
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(gen, &codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: optionsForTarget(pkg, platName),
-	})
-	if err != nil {
+	}, mem); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	if resp.Error != "" {
-		result["error"] = resp.Error
-		return toJSObject(result)
-	}
-
 	var files []any
-	for _, f := range resp.Files {
-		var buf bytes.Buffer
-		f.WriteTo(&buf)
+	for name, content := range mem.Files() {
 		files = append(files, map[string]any{
-			"name":    f.Name,
-			"content": buf.String(),
+			"name":    name,
+			"content": string(content),
 		})
 	}
 	result["files"] = files

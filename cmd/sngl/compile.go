@@ -1,12 +1,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -392,7 +392,7 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 		return fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", filename, target.Platform, target.Lang, plat.SupportedLangs())
 	}
 
-	resp, err := plat.Generate(&codegen.Request{
+	req := &codegen.Request{
 		Pkg:        pkg,
 		Lang:       lang,
 		Options:    target.Options,
@@ -400,31 +400,26 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 		FileAssets: fileAssets,
 		ProjectFS:  os.DirFS(filepath.Dir(filename)),
 		Maps:       optionBool(target.Options, "maps"),
-	})
-	if err != nil {
+	}
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(plat, req, mem); err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
 	}
-	if resp.Error != "" {
-		return fmt.Errorf("%s: %s", filename, resp.Error)
-	}
 
-	for _, file := range resp.Files {
-		path := filepath.Join(outDir, file.Name)
+	// Write to disk with logging. Sort names for deterministic output order.
+	files := mem.Files()
+	names := make([]string, 0, len(files))
+	for n := range files {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		path := filepath.Join(outDir, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
-		f, err := os.Create(path)
-		if err != nil {
+		if err := os.WriteFile(path, files[name], 0o644); err != nil {
 			return err
-		}
-		_, writeErr := file.WriteTo(f)
-		f.Close()
-		if errors.Is(writeErr, codegen.ErrSkip) {
-			os.Remove(path)
-			continue
-		}
-		if writeErr != nil {
-			return writeErr
 		}
 		slog.Info("wrote", "path", path)
 		if !q {

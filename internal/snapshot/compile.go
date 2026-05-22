@@ -1,7 +1,6 @@
 package snapshot
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,24 +52,26 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	}
 	previewDoc := ir.Convert(pkg)
 
-	resp, err := htmlPlat.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(htmlPlat, &codegen.Request{
 		Doc:     previewDoc,
 		Pkg:     pkg,
 		Lang:    noneLang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
-	})
-	if err != nil {
+	}, mem); err != nil {
 		return nil, fmt.Errorf("generate: %w", err)
 	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("%s", resp.Error)
+	// The HTML platform emits a single HTML file in preview mode. Find it.
+	var html []byte
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			html = content
+			break
+		}
 	}
-
-	var htmlBuf bytes.Buffer
-	if _, err := resp.Files[0].WriteTo(&htmlBuf); err != nil {
-		return nil, fmt.Errorf("writing HTML: %w", err)
+	if html == nil {
+		return nil, fmt.Errorf("preview: no HTML file emitted")
 	}
-	html := htmlBuf.Bytes()
 
 	if platform != "html" {
 		plat := codegen.LookupPlatform(platform)

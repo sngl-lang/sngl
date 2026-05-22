@@ -3,7 +3,6 @@
 package playground
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -192,25 +191,18 @@ func Compile(source string) string {
 
 	opts := optionsForTarget(pkg, "html")
 	codegen.SetOptionField(opts, "preview", true)
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(gen, &codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options:   opts,
 		ProjectFS: fsys,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if resp.Error != "" {
-		result["error"] = resp.Error
-		return jsonStr(result)
-	}
-
-	for _, f := range resp.Files {
-		if strings.HasSuffix(f.Name, ".html") {
-			var buf bytes.Buffer
-			f.WriteTo(&buf)
-			result["html"] = buf.String()
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			result["html"] = string(content)
 			break
 		}
 	}
@@ -321,27 +313,20 @@ func Generate(source, platform, lang string) string {
 		}
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := codegen.RunGenerate(gen, &codegen.Request{
 		Pkg: pkg, Lang: lt,
 		Options:   optionsForTarget(pkg, platform),
 		ProjectFS: fsys,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if resp.Error != "" {
-		result["error"] = resp.Error
-		return jsonStr(result)
-	}
-
 	var files []any
-	for _, f := range resp.Files {
-		var buf bytes.Buffer
-		f.WriteTo(&buf)
+	for name, content := range mem.Files() {
 		files = append(files, map[string]any{
-			"name":    f.Name,
-			"content": buf.String(),
+			"name":    name,
+			"content": string(content),
 		})
 	}
 	result["files"] = files
