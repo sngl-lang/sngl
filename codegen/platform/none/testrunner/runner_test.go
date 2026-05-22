@@ -59,6 +59,49 @@ func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool 
 	return false
 }
 
+func TestChildrenLiveAcrossMutations(t *testing.T) {
+	src := `component counter {
+	var n = 0
+	button #b(text="+", @click { n += 1 })
+	text #o(value=string(n))
+}
+component main {
+	counter()
+	counter()
+}
+func testIsolation(t Test, c main) {
+	var l = c.children[0]
+	var r = c.children[1]
+	t.assert(l.o.value == "0")
+	l.b.@click()
+	t.assert(l.o.value == "1")
+	t.assert(r.o.value == "0")
+}
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Error())
+		}
+	}
+	results, err := testrunner.Run(pkg)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("no test results")
+	}
+	for _, r := range results {
+		if !r.Passed {
+			t.Errorf("test failed: %s\nerror: %s", r.Desc, r.Error)
+		}
+	}
+}
+
 func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective) {
 	t.Helper()
 
