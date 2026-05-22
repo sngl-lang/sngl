@@ -78,3 +78,48 @@ func openCodeFileFake(sink Sink, name string, lang headerRenderer, opts WriterOp
 
 // Keep ast import live; used by later tests.
 var _ = ast.Pos{}
+
+func TestCodeWriterImportDedup(t *testing.T) {
+	sink := NewMemSink()
+	var seen []ImportSpec
+	lang := &fakeLang{
+		header: func(name string, imports []ImportSpec) []byte {
+			seen = imports
+			return nil
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{})
+	w.Import(ImportSpec{Path: "fmt", Kind: ImportNative})
+	w.Import(ImportSpec{Path: "time", Kind: ImportNative})
+	w.Import(ImportSpec{Path: "fmt", Kind: ImportNative}) // dup
+	w.Import(ImportSpec{Path: "os", Kind: ImportNative})
+	w.Close()
+	if len(seen) != 3 {
+		t.Fatalf("expected 3 imports got %d: %v", len(seen), seen)
+	}
+	wantOrder := []string{"fmt", "time", "os"}
+	for i, s := range seen {
+		if s.Path != wantOrder[i] {
+			t.Errorf("position %d: got %q want %q", i, s.Path, wantOrder[i])
+		}
+	}
+}
+
+func TestCodeWriterImportAliasDistinct(t *testing.T) {
+	// Same path with different aliases are distinct imports.
+	sink := NewMemSink()
+	var seen []ImportSpec
+	lang := &fakeLang{
+		header: func(name string, imports []ImportSpec) []byte {
+			seen = imports
+			return nil
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{})
+	w.Import(ImportSpec{Path: "fmt", Kind: ImportNative})
+	w.Import(ImportSpec{Path: "fmt", Alias: "stdfmt", Kind: ImportNative})
+	w.Close()
+	if len(seen) != 2 {
+		t.Fatalf("expected 2 distinct imports got %d: %v", len(seen), seen)
+	}
+}
