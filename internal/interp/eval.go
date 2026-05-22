@@ -741,6 +741,19 @@ func (env *Env) lookup(name string) (any, error) {
 	if fn, ok := env.Funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
 		return env.EvalUserFunc(fn, nil)
 	}
+	// Receiver-qualified zero-arg method on the current component auto-invokes.
+	// `func name.f() => expr` inside the component's body is callable as `f`.
+	if env.Comp != nil {
+		if fn, ok := env.Funcs[env.Comp.Name+"."+name]; ok {
+			effective := len(fn.Params)
+			if effective > 0 && fn.Params[0].Name == "this" {
+				effective--
+			}
+			if effective == 0 {
+				return env.EvalUserFunc(fn, nil)
+			}
+		}
+	}
 	if env.parent != nil {
 		return env.parent.lookup(name)
 	}

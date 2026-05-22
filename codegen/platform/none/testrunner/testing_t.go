@@ -206,6 +206,11 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 		callArgs := []any{childT}
 		if tv.compName != "" {
+			// Snapshot the parent componentValue: the subtest sees parent
+			// state at the time of the call, but mutations inside don't leak
+			// back to the surrounding test. Preserve compName/body/Funcs/
+			// testParams so method dispatch and element-ref walks behave the
+			// same as the parent.
 			var parentCV *componentValue
 			for _, v := range env.Vars {
 				if cv, ok := v.(*componentValue); ok {
@@ -213,18 +218,23 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 					break
 				}
 			}
-			childCV := &componentValue{
-				Env:    childEnv,
-				Vars:   make(map[string]any),
-				Consts: make(map[string]any),
-				Funcs:  make(map[string]*ir.Func),
-			}
 			if parentCV != nil {
+				childCV := &componentValue{
+					Env:        childEnv,
+					Vars:       make(map[string]any, len(parentCV.Vars)),
+					Consts:     parentCV.Consts,
+					Funcs:      parentCV.Funcs,
+					compName:   parentCV.compName,
+					testParams: parentCV.testParams,
+					body:       parentCV.body,
+				}
 				maps.Copy(childCV.Vars, parentCV.Vars)
-				maps.Copy(childCV.Consts, parentCV.Consts)
-				maps.Copy(childCV.Funcs, parentCV.Funcs)
+				// childEnv is a Snapshot() of env, which already has its own
+				// Vars copy — make sure the subtest's component-var writes
+				// land there (not in the parent env).
+				maps.Copy(childEnv.Vars, parentCV.Vars)
+				callArgs = append(callArgs, childCV)
 			}
-			callArgs = append(callArgs, childCV)
 		}
 
 		_, callErr := lv.CallWithEnv(childEnv, callArgs)
