@@ -34,8 +34,12 @@ func TestMemSinkOverwrite(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		io.WriteString(w, content)
-		w.Close()
+		if _, err := io.WriteString(w, content); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
 	}
 	if string(s.Files()["a.txt"]) != "second" {
 		t.Fatalf("want overwrite, got %q", s.Files()["a.txt"])
