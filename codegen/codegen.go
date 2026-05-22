@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -547,4 +548,26 @@ func RunGenerate(plat PlatformGenerator, req *Request, sink Sink) error {
 		}
 	}
 	return nil
+}
+
+// CollectOutputFiles drains a MemSink into the legacy OutputFile slice.
+// Used inside a platform's legacy Generate while migration is in flight:
+// the platform implements its new Sink-based emit into a MemSink, then
+// converts the captured files back into the Response shape via this
+// helper. Output is sorted by file name for deterministic ordering.
+//
+// Deleted in the final cutover when every platform has only the
+// sink-based path.
+func CollectOutputFiles(s *MemSink) []*OutputFile {
+	files := s.Files()
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]*OutputFile, 0, len(names))
+	for _, name := range names {
+		out = append(out, BytesFile(name, files[name]))
+	}
+	return out
 }

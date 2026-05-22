@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"testing"
@@ -66,6 +67,44 @@ func TestRunGenerateSkipsErrSkipFiles(t *testing.T) {
 	}
 	if string(files["kept.txt"]) != "OK" {
 		t.Errorf("kept file missing: %v", files)
+	}
+}
+
+func TestCollectOutputFiles(t *testing.T) {
+	mem := NewMemSink()
+	for _, pair := range []struct{ name, content string }{
+		{"b.txt", "BBB"},
+		{"a.txt", "AAA"},
+		{"nested/c.txt", "CCC"},
+	} {
+		w, err := mem.Create(pair.name)
+		if err != nil {
+			t.Fatalf("Create %s: %v", pair.name, err)
+		}
+		if _, err := io.WriteString(w, pair.content); err != nil {
+			t.Fatalf("Write %s: %v", pair.name, err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Close %s: %v", pair.name, err)
+		}
+	}
+	got := CollectOutputFiles(mem)
+	wantNames := []string{"a.txt", "b.txt", "nested/c.txt"}
+	if len(got) != len(wantNames) {
+		t.Fatalf("got %d files, want %d", len(got), len(wantNames))
+	}
+	for i, f := range got {
+		if f.Name != wantNames[i] {
+			t.Errorf("position %d: got %q want %q", i, f.Name, wantNames[i])
+		}
+	}
+	// Verify content via WriteTo.
+	var buf bytes.Buffer
+	if _, err := got[0].WriteTo(&buf); err != nil {
+		t.Fatalf("WriteTo: %v", err)
+	}
+	if buf.String() != "AAA" {
+		t.Fatalf("got %q want AAA", buf.String())
 	}
 }
 
