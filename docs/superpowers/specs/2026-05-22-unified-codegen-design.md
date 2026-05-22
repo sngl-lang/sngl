@@ -1,6 +1,6 @@
 # Unified Code Generation Design
 
-**Status:** Draft
+**Status:** Plan A (foundations) implemented; Plan B (per-platform migrations + cutover) pending
 **Date:** 2026-05-22
 **Tracking:** glab #69 (source maps)
 
@@ -51,7 +51,7 @@ Three new types in `codegen/`:
 
 ```go
 type Sink interface {
-    Create(name string) (io.WriteCloser, error)
+	Create(name string) (io.WriteCloser, error)
 }
 ```
 
@@ -65,12 +65,12 @@ type Sink interface {
 
 ```go
 type CodeWriter interface {
-    io.Writer                                  // raw body bytes
-    WriteAt(pos ast.Pos, p []byte) (int, error) // mark position then write
-    Mark(pos ast.Pos)                          // mark position only
-    Import(spec ImportSpec)                    // dedup'd; flushed in header
-    Section(name string)                       // optional logical sectioning hint
-    Close() error                              // header → imports → body → sidecar
+	io.Writer                                   // raw body bytes
+	WriteAt(pos ast.Pos, p []byte) (int, error) // mark position then write
+	Mark(pos ast.Pos)                           // mark position only
+	Import(spec ImportSpec)                     // dedup'd; flushed in header
+	Section(name string)                        // optional logical sectioning hint
+	Close() error                               // header → imports → body → sidecar
 }
 ```
 
@@ -100,18 +100,19 @@ Helper: `codegen.OpenCodeFile(sink Sink, name string, lang LangTranslator) CodeW
 
 ```go
 type ImportSpec struct {
-    Path  string     // "fmt", "git.duckfam.us/.../pkg/go/i18n", "react"
-    Alias string     // "" default; "_" blank import
-    Kind  ImportKind // controls how the translator renders the import line
+	Path  string     // "fmt", "git.duckfam.us/.../pkg/go/i18n", "react"
+	Alias string     // "" default; "_" blank import
+	Kind  ImportKind // controls how the translator renders the import line
 }
 
 type ImportKind int
+
 const (
-    ImportNative        ImportKind = iota // language-native import
-    ImportStdlibRuntime                   // sngl pkg/<lang>/<name>
-    ImportCgo                             // #include via cgo preamble
-    ImportEsModule                        // ES module (JS bundler)
-    ImportWasmExtern                      // WASM extern bridge
+	ImportNative        ImportKind = iota // language-native import
+	ImportStdlibRuntime                   // sngl pkg/<lang>/<name>
+	ImportCgo                             // #include via cgo preamble
+	ImportEsModule                        // ES module (JS bundler)
+	ImportWasmExtern                      // WASM extern bridge
 )
 ```
 
@@ -123,22 +124,22 @@ Replace dead stubs with the writer-driven surface:
 
 ```go
 type LangTranslator interface {
-    // ... existing identifier/name/type/expr eval methods stay ...
+	// ... existing identifier/name/type/expr eval methods stay ...
 
-    EmitFile(w CodeWriter, pkg *ir.Package, scope *ExprScope) error
-    RenderHeader(name string, imports []ImportSpec) []byte
-    RenderSourceMap(name string, positions []PosEntry, body []byte) SourceMapResult
+	EmitFile(w CodeWriter, pkg *ir.Package, scope *ExprScope) error
+	RenderHeader(name string, imports []ImportSpec) []byte
+	RenderSourceMap(name string, positions []PosEntry, body []byte) SourceMapResult
 }
 
 type PosEntry struct {
-    ByteOffset int
-    Pos        ast.Pos
+	ByteOffset int
+	Pos        ast.Pos
 }
 
 type SourceMapResult struct {
-    InlineBody  []byte // may be nil to mean "use body unchanged"
-    Sidecar     []byte // nil if no sidecar
-    SidecarName string // e.g. "model.js.map"
+	InlineBody  []byte // may be nil to mean "use body unchanged"
+	Sidecar     []byte // nil if no sidecar
+	SidecarName string // e.g. "model.js.map"
 }
 ```
 
@@ -232,9 +233,10 @@ func (m *MemSink) Files() map[string][]byte
 
 ```go
 // codegen/sink_dir.go (//go:build !js)
-type DirSink struct { Root string }
+type DirSink struct{ Root string }
+
 func NewDirSink(root string) *DirSink
-func (d *DirSink) Create(name string) (io.WriteCloser, error)  // MkdirAll parent
+func (d *DirSink) Create(name string) (io.WriteCloser, error) // MkdirAll parent
 ```
 
 CDP/rod test runners that previously took `[]*OutputFile`: switch to taking `*MemSink` (or any `Sink` plus a list of names), or — where they truly need on-disk paths — write a `MemSink` to a temp `DirSink` at the call site, behind `!js`.
@@ -254,6 +256,22 @@ CDP/rod test runners that previously took `[]*OutputFile`: switch to taking `*Me
 6. **Position threading.** Audit translator stmt-level emission to call `w.Mark`. Land Go `//line` directive rendering.
 
 7. **JS source maps.** Implement v3 VLQ encoder in `codegen/lang/javascript/sourcemap.go`. Bundler integration: if html bundles JS, the bundler must preserve/merge `//# sourceMappingURL` — track as a follow-up issue if not already handled.
+
+### Plan A status (2026-05-22)
+
+- [x] Sink + MemSink + DirSink (commits `df6d6ec`, `419857e`, `911d2db`)
+- [x] ImportSpec + ImportKind (`021a06f`)
+- [x] PosEntry + SourceMapResult (`822605e`)
+- [x] LangTranslator.RenderHeader + RenderSourceMap stubs on every lang (`da7cebd`, `3ab9c9f`)
+- [x] CodeWriter + position tracking + import dedup + maps gating (`35e5ed1`, `31e3e72`, `3cf3c13`)
+- [x] Go //line renderer (`7c87c99`)
+- [x] JS VLQ encoder + v3 source-map renderer (`7eb28b9`, `a2596e6`)
+- [x] Options.maps threaded into Request.Maps (`d668a8a`)
+- [x] End-to-end integration tests against real Go + JS translators (`4901599`)
+- [ ] Generate(req, sink) signature change — Plan B
+- [ ] Per-platform migration through OpenCodeFile — Plan B
+- [ ] OutputFile / Response / dead LangTranslator stubs deletion — Plan B
+- [ ] Position-marker call sites in EvalStmt / EmitFuncDef — Plan B (rides with platform migration)
 
 ## Testing
 
