@@ -32,8 +32,8 @@ import (
 // and warms the Kotlin daemon, so callers should expect minutes on a
 // cold cache.
 func (g *Generator) ProbeTest() (bool, string) {
-	if _, err := exec.LookPath("java"); err != nil {
-		return false, "java not on PATH (Compose UI tests need JDK 17+)"
+	if !javaFound() {
+		return false, "java not found via JAVA_HOME, PATH, or ANDROID_HOME (Compose UI tests need JDK 17+)"
 	}
 	if root := sdkRoot(); root == "" {
 		return false, "ANDROID_HOME / ANDROID_SDK_ROOT not set (Compose tests need android.jar)"
@@ -308,6 +308,7 @@ func runGradleTests(dir string) error {
 	}
 	cmd := exec.Command(gradle, ":app:testDebugUnitTest", "--no-daemon", "--console=plain")
 	cmd.Dir = dir
+	cmd.Env = gradleEnv(os.Environ())
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -315,6 +316,35 @@ func runGradleTests(dir string) error {
 		return fmt.Errorf("gradle testDebugUnitTest: %w\n%s", err, out.String())
 	}
 	return nil
+}
+
+// gradleEnv injects the JDK location into PATH and JAVA_HOME so gradle
+// can find `java` even when it isn't on the user's shell PATH (common
+// when only Android Studio's bundled JBR is installed).
+func gradleEnv(base []string) []string {
+	javaBin := javaPath()
+	if javaBin == "java" || !fileExists(javaBin) {
+		return base
+	}
+	jdkBin := filepath.Dir(javaBin)
+	jdkHome := filepath.Dir(jdkBin)
+	out := make([]string, 0, len(base)+1)
+	hasJavaHome := false
+	for _, e := range base {
+		switch {
+		case strings.HasPrefix(e, "PATH="):
+			out = append(out, "PATH="+jdkBin+string(os.PathListSeparator)+strings.TrimPrefix(e, "PATH="))
+		case strings.HasPrefix(e, "JAVA_HOME="):
+			out = append(out, "JAVA_HOME="+jdkHome)
+			hasJavaHome = true
+		default:
+			out = append(out, e)
+		}
+	}
+	if !hasJavaHome {
+		out = append(out, "JAVA_HOME="+jdkHome)
+	}
+	return out
 }
 
 // buildFailureResults synthesises one TestResult per declared test

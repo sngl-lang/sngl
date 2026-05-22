@@ -767,7 +767,10 @@ func runD8(tc *toolchain, args []string) error {
 	return cmd.Run()
 }
 
-// javaPath returns the path to the java binary, preferring JAVA_HOME, then PATH.
+// javaPath returns the path to the java binary, preferring JAVA_HOME, then
+// PATH, then well-known JDK locations adjacent to Android Studio / the SDK.
+// Returns "java" as last-resort sentinel so callers that don't validate still
+// produce a recognizable error.
 func javaPath() string {
 	if home := os.Getenv("JAVA_HOME"); home != "" {
 		candidate := filepath.Join(home, "bin", "java")
@@ -778,7 +781,38 @@ func javaPath() string {
 	if p, err := exec.LookPath("java"); err == nil {
 		return p
 	}
+	for _, c := range jdkSearchPaths() {
+		if fileExists(c) {
+			return c
+		}
+	}
 	return "java"
+}
+
+// jdkSearchPaths returns candidate `java` binary paths under typical
+// Android Studio / system JDK install layouts. ANDROID_HOME itself does
+// not contain a JDK, but Android Studio installs one alongside the SDK
+// (the JetBrains Runtime, "jbr"), and Linux distros ship OpenJDK under
+// /usr/lib/jvm.
+func jdkSearchPaths() []string {
+	var out []string
+	if home := os.Getenv("ANDROID_HOME"); home != "" {
+		out = append(out,
+			filepath.Join(home, "jbr", "bin", "java"),
+			filepath.Join(filepath.Dir(home), "android-studio", "jbr", "bin", "java"),
+		)
+	}
+	out = append(out,
+		"/opt/android-studio/jbr/bin/java",
+		"/usr/local/android-studio/jbr/bin/java",
+	)
+	return out
+}
+
+// javaFound reports whether javaPath() actually located a usable binary.
+func javaFound() bool {
+	p := javaPath()
+	return p != "java" && fileExists(p)
 }
 
 func copyFile(src, dst string) error {

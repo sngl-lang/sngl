@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -37,7 +38,18 @@ description: "Formal grammar and semantics of the SNGL language"
 	writeKeywords(&b)
 	writeSemantics(&b)
 
-	os.WriteFile(outPath, []byte(b.String()), 0o644)
+	if err := os.WriteFile(outPath, []byte(b.String()), 0o644); err != nil {
+		fatalf("write %s: %v", outPath, err)
+	}
+
+	// Run mdox fmt so the file matches the project's markdown style and
+	// `go tool verify -dry` doesn't flip-flop between generate and check.
+	cmd := exec.Command("go", "tool", "mdox", "fmt", "--soft-wraps", outPath)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fatalf("mdox fmt %s: %v", outPath, err)
+	}
 }
 
 // production is a named EBNF rule with its body and preceding comment block.
