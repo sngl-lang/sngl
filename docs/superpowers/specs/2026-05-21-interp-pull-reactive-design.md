@@ -13,7 +13,7 @@ Four `TestRunFixtures` failures exist today (`test_reactivity_two_components`, `
 1. `c.children[i]` returns nil — the testrunner's `componentValue` doesn't enumerate child components.
 2. `componentEnv` (in `internal/interp/render.go`) builds a fresh env for each ResolveElementRef call, so state mutations on a child don't persist across reads.
 3. Top-level methods on a component type (`func main.double(this main)`) register in `env.Funcs["main.double"]` but `componentValue.InvokeMethod` only searches `cv.Funcs` (seeded from `comp.Funcs`), so extension-method dispatch from outside fails.
-4. Tree-shake isn't run in the testrunner pipeline, so dead code can interfere with eager evaluation; the user's framing was "shake unused funcs (test runner preserves tests) then eval usages."
+4. ~~Tree-shake isn't run in the testrunner pipeline.~~ Dropped from this spec — pull-based evaluation already skips unreferenced code, so shake provides no eval-time benefit for the interp. Codegen targets keep shake in their own pipelines.
 
 A full reactive runtime (push notifications, effect graphs) would duplicate per-target machinery that each codegen already builds for its own runtime. The interp can sidestep that by being **pull-based**: every property access re-evaluates against the live env. Existing `ResolveElementRef` already walks the IR fresh each call; the missing piece is **shared state across child component instances**.
 
@@ -150,23 +150,6 @@ For methods called via event handlers (`c.bump.@click()` → handler body runs `
 
 If `evalMutTarget` already handles this for top-level c.field writes from test functions (it must — `c.p.x = 99` works in `test_structs.sngl`), the same path serves bare-method-body writes.
 
-### Tree-shake in testrunner
-
-`codegen/platform/none/testrunner/runner.go`'s `Run` function gains an `optimize.Shake(pkg)` call before `interp.BuildEnv`. `Shake` is a new wrapper that exports just the existing `shakeUnused` pass without the rest of the optimizer:
-
-```go
-// internal/optimize/optimize.go
-//
-// Shake runs only the dead-code elimination pass. Useful when callers
-// (e.g. the test runner) want to drop unreferenced funcs/vars/structs
-// without invoking the full optimize pipeline.
-func Shake(pkg *ir.Package) {
-    shakeUnused(pkg)
-}
-```
-
-`shakeUnused` already preserves funcs whose `IsTest` is set (line 37). No further changes.
-
 ### Error handling
 
 - Cycle in childEnvs: not possible — each child env is keyed by a distinct `*ir.NodeInst` pointer.
@@ -205,11 +188,10 @@ These are quick unit tests; the fixtures cover the integration path.
 ## Plan summary (detailed plan to follow via writing-plans)
 
 1. Add `Env.childEnvs map[*ir.NodeInst]*Env` and memoise `componentEnv`.
-2. Expose `optimize.Shake(pkg)`. Wire into testrunner's `Run`.
-3. Extend `componentValue` with `body` + `children` + the `walkChildren` helper.
-4. Add `GetField("children")` branch.
-5. Extend `InvokeMethod` and `GetField` lookup chains to consult `cv.Env.Funcs[type+"."+method]`.
-6. Implement `invokeOnSelf(fn, args)`: bind `this` to cv, evaluate body, mutations route through SetField.
-7. Verify `evalMutTarget` routes `this.x = ...` through componentValue when `this` is bound to a componentValue.
-8. Run the 4 fixtures; iterate until green.
-9. Run `go tool verify`; verify no regressions in HTML/Bubbletea/etc.
+2. Extend `componentValue` with `body` + `children` + the `walkChildren` helper.
+3. Add `GetField("children")` branch.
+4. Extend `InvokeMethod` and `GetField` lookup chains to consult `cv.Env.Funcs[type+"."+method]`.
+5. Implement `invokeOnSelf(fn, args)`: bind `this` to cv, evaluate body, mutations route through SetField.
+6. Verify `evalMutTarget` routes `this.x = ...` through componentValue when `this` is bound to a componentValue.
+7. Run the 4 fixtures; iterate until green.
+8. Run `go tool verify`; verify no regressions in HTML/Bubbletea/etc.
