@@ -368,6 +368,54 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 	return nil
 }
 
+// walkChildren returns the direct visual statements of the component's
+// body as a slice in source order. User-component NodeInsts become
+// *componentValue wrappers sharing the parent env's cached child envs;
+// native elements become element-map dicts.
+func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
+	var out []any
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil && len(n.Component.Body) > 0 {
+				childEnv := cv.Env.ComponentEnv(n.Component, n)
+				wrapper := &componentValue{
+					Env:      childEnv,
+					Vars:     childEnv.Vars,
+					Consts:   childEnv.Consts,
+					Funcs:    childEnv.Funcs,
+					compName: n.Component.Name,
+					body:     n.Component.Body,
+				}
+				out = append(out, wrapper)
+			} else {
+				out = append(out, cv.Env.RenderNodeProps(n))
+			}
+		case *ir.CallStmt:
+			if rendered := cv.Env.RenderCallStmtNode(n); rendered != nil {
+				out = append(out, rendered)
+			}
+		case *ir.If:
+			cond, err := cv.Env.Eval(n.Cond)
+			if err != nil {
+				continue
+			}
+			if b, _ := cond.(bool); b {
+				out = append(out, cv.walkChildren(n.Body)...)
+			} else {
+				out = append(out, cv.walkChildren(n.Else)...)
+			}
+		case *ir.PlatformFilter:
+			if n.Platform == "" || n.Platform == "none" {
+				out = append(out, cv.walkChildren(n.Body)...)
+			}
+			// *ir.For: out of scope per spec; components inside for loops
+			// need per-iteration child envs. Skipped here.
+		}
+	}
+	return out
+}
+
 func (cv *componentValue) compEnv() *interp.Env {
 	env := cv.Env.Snapshot()
 	maps.Copy(env.Vars, cv.Vars)

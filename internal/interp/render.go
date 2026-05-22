@@ -141,6 +141,23 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	return child
 }
 
+// ComponentEnv is the public entry point for componentEnv. Used by the
+// testrunner to construct live child componentValue wrappers.
+func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
+	return env.componentEnv(comp, inst)
+}
+
+// RenderCallStmtNode renders a children-less element call (text #id(...))
+// as an element map. Returns nil for non-element CallStmts (e.g. a method
+// call statement).
+func (env *Env) RenderCallStmtNode(cs *ir.CallStmt) map[string]any {
+	elemName, _ := elemCallInfo(cs)
+	if elemName == "" {
+		return nil
+	}
+	return env.renderCallStmtProps(cs, elemName)
+}
+
 // collectCallStmtByID handles children-less element calls (`text #id(...)`)
 // which the checker emits as CallStmt rather than NodeInst. The element name
 // and #id live on the AST back-reference.
@@ -253,6 +270,13 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	}
 	child.BodyStmts = comp.Body
 	return child
+}
+
+// RenderNodeProps is the public entry point for renderNodeProps. Returns
+// a map of prop-name → evaluated value for a native element. Used by the
+// testrunner to expose native elements as dicts in c.children.
+func (env *Env) RenderNodeProps(node *ir.NodeInst) map[string]any {
+	return env.renderNodeProps(node)
 }
 
 func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
