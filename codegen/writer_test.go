@@ -123,3 +123,77 @@ func TestCodeWriterImportAliasDistinct(t *testing.T) {
 		t.Fatalf("expected 2 distinct imports got %d: %v", len(seen), seen)
 	}
 }
+
+func TestCodeWriterPositionsRecordedWhenMapsOn(t *testing.T) {
+	sink := NewMemSink()
+	var seenPos []PosEntry
+	lang := &fakeLang{
+		srcmap: func(name string, pos []PosEntry, body []byte) SourceMapResult {
+			seenPos = pos
+			return SourceMapResult{}
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{Maps: true})
+	io.WriteString(w, "AAA")
+	w.Mark(ast.Pos{File: "f.sngl", Line: 5, Column: 1})
+	io.WriteString(w, "BBB")
+	w.WriteAt(ast.Pos{File: "f.sngl", Line: 6, Column: 1}, []byte("CCC"))
+	w.Close()
+	if len(seenPos) != 2 {
+		t.Fatalf("got %d positions: %+v", len(seenPos), seenPos)
+	}
+	if seenPos[0].ByteOffset != 3 || seenPos[0].Pos.Line != 5 {
+		t.Errorf("pos[0]: %+v", seenPos[0])
+	}
+	if seenPos[1].ByteOffset != 6 || seenPos[1].Pos.Line != 6 {
+		t.Errorf("pos[1]: %+v", seenPos[1])
+	}
+}
+
+func TestCodeWriterPositionsDroppedWhenMapsOff(t *testing.T) {
+	sink := NewMemSink()
+	calls := 0
+	lang := &fakeLang{
+		srcmap: func(name string, pos []PosEntry, body []byte) SourceMapResult {
+			calls++
+			return SourceMapResult{}
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{Maps: false})
+	w.Mark(ast.Pos{File: "f.sngl", Line: 5, Column: 1})
+	io.WriteString(w, "X")
+	w.Close()
+	if calls != 0 {
+		t.Fatalf("RenderSourceMap should not be called when Maps off")
+	}
+}
+
+func TestCodeWriterSidecarWritten(t *testing.T) {
+	sink := NewMemSink()
+	lang := &fakeLang{
+		srcmap: func(name string, pos []PosEntry, body []byte) SourceMapResult {
+			return SourceMapResult{Sidecar: []byte("SIDECAR"), SidecarName: "out.txt.map"}
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{Maps: true})
+	io.WriteString(w, "B")
+	w.Close()
+	if string(sink.Files()["out.txt.map"]) != "SIDECAR" {
+		t.Fatalf("sidecar missing: %v", sink.Files())
+	}
+}
+
+func TestCodeWriterInlineBodyReplacement(t *testing.T) {
+	sink := NewMemSink()
+	lang := &fakeLang{
+		srcmap: func(name string, pos []PosEntry, body []byte) SourceMapResult {
+			return SourceMapResult{InlineBody: []byte("REWRITTEN")}
+		},
+	}
+	w := openCodeFileFake(sink, "out.txt", lang, WriterOptions{Maps: true})
+	io.WriteString(w, "ORIGINAL")
+	w.Close()
+	if string(sink.Files()["out.txt"]) != "REWRITTEN" {
+		t.Fatalf("got %q", sink.Files()["out.txt"])
+	}
+}
