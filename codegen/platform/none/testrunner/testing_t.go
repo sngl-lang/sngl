@@ -260,6 +260,12 @@ func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 
 // GetField resolves c.field on a componentValue.
 func (cv *componentValue) GetField(field string) (any, error) {
+	if field == "children" {
+		if cv.children == nil {
+			cv.children = cv.walkChildren(cv.body)
+		}
+		return cv.children, nil
+	}
 	if v, ok := cv.Vars[field]; ok {
 		return v, nil
 	}
