@@ -197,3 +197,30 @@ func TestCodeWriterInlineBodyReplacement(t *testing.T) {
 		t.Fatalf("got %q", sink.Files()["out.txt"])
 	}
 }
+
+func TestCodeWriterWriteAfterCloseFails(t *testing.T) {
+	sink := NewMemSink()
+	w := openCodeFileFake(sink, "out.txt", &fakeLang{}, WriterOptions{})
+	w.Close()
+	_, err := io.WriteString(w, "late")
+	if err != io.ErrClosedPipe {
+		t.Fatalf("got %v want io.ErrClosedPipe", err)
+	}
+}
+
+// errSink fails Create with a fixed error, used to drive Close-failure paths.
+type errSink struct{ err error }
+
+func (e *errSink) Create(name string) (io.WriteCloser, error) { return nil, e.err }
+
+func TestCodeWriterCloseErrorSticky(t *testing.T) {
+	sentinel := io.ErrUnexpectedEOF
+	w := openCodeFileFake(&errSink{err: sentinel}, "out.txt", &fakeLang{}, WriterOptions{})
+	io.WriteString(w, "x")
+	if err := w.Close(); err != sentinel {
+		t.Fatalf("first Close: got %v want %v", err, sentinel)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("second Close: got %v want nil (sticky-success documented)", err)
+	}
+}

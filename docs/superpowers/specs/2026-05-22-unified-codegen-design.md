@@ -245,17 +245,15 @@ CDP/rod test runners that previously took `[]*OutputFile`: switch to taking `*Me
 
 1. **Add primitives.** `codegen/sink.go`, `codegen/sink_dir.go`, `codegen/writer.go`, `codegen/imports.go`. `ImportSpec`, `ImportKind`, `PosEntry`, `SourceMapResult`. No platform wiring yet.
 
-2. **Shim layer.** Add `codegen.SinkFromOutputFiles` and `codegen.CollectOutputFiles(sink Sink) []*OutputFile` so the CLI keeps working while platforms migrate one at a time.
+2. **Migrate html end-to-end.** Biggest payoff — exercises imports (ES modules + WASM externs), sourcemaps (JS `.map`), and many file kinds (HTML, JS, manifest). Delete its `goImports`/`jsbundle`-style import side-channels. The `Generate(req, sink) error` signature change lands atomically with the first platform migration; other platforms keep working through a transient `[]*OutputFile`-collecting sink adapter only inside this PR if needed, or each platform migrates in its own PR by toggling between old and new signature via a temporary `Generate2` method.
 
-3. **Migrate html end-to-end.** Biggest payoff — exercises imports (ES modules + WASM externs), sourcemaps (JS `.map`), and many file kinds (HTML, JS, manifest). Delete its `goImports`/`jsbundle`-style import side-channels.
+3. **Migrate remaining platforms** in order: bubbletea, fyne, gtk4, android, none. Each PR collapses that platform's import map and routes file emission through `OpenCodeFile`.
 
-4. **Migrate remaining platforms** in order: bubbletea, fyne, gtk4, android, none. Each PR collapses that platform's import map and routes file emission through `OpenCodeFile`.
+4. **Cutover.** Delete `OutputFile`, `BytesFile`, `TemplateFile`, `RenderTemplates`, `Response`, `Response.Files`. Drop any transient `Generate2`. Update `LangTranslator`: delete `WriteExpr`, `WriteStmt`, `WriteType`, `Eval`. Add `EmitFile`.
 
-5. **Cutover.** Delete `OutputFile`, `BytesFile`, `TemplateFile`, `RenderTemplates`, `Response`, `Response.Files`. Change `Generate` signature. Update `LangTranslator`: delete `WriteExpr`, `WriteStmt`, `WriteType`, `Eval`. Add `EmitFile`, `RenderHeader`, `RenderSourceMap`.
+5. **Position threading.** Audit translator stmt-level emission to call `w.Mark`. (Go `//line` and JS v3 renderers already live; this step wires them up at the translator level.)
 
-6. **Position threading.** Audit translator stmt-level emission to call `w.Mark`. Land Go `//line` directive rendering.
-
-7. **JS source maps.** Implement v3 VLQ encoder in `codegen/lang/javascript/sourcemap.go`. Bundler integration: if html bundles JS, the bundler must preserve/merge `//# sourceMappingURL` — track as a follow-up issue if not already handled.
+6. **Bundler interaction.** If html bundles JS, the bundler must preserve/merge `//# sourceMappingURL` — track as a follow-up issue once bundled output regresses.
 
 ### Plan A status (2026-05-22)
 

@@ -49,24 +49,24 @@ func (m *MemSink) Files() map[string][]byte {
 }
 
 type memWriter struct {
-	sink *MemSink
-	name string
-	buf  bytes.Buffer
-	done bool
+	sink   *MemSink
+	name   string
+	buf    bytes.Buffer
+	closed bool
 }
 
 func (w *memWriter) Write(p []byte) (int, error) {
-	if w.done {
+	if w.closed {
 		return 0, io.ErrClosedPipe
 	}
 	return w.buf.Write(p)
 }
 
 func (w *memWriter) Close() error {
-	if w.done {
+	if w.closed {
 		return nil
 	}
-	w.done = true
+	w.closed = true
 	w.sink.mu.Lock()
 	defer w.sink.mu.Unlock()
 	w.sink.files[w.name] = w.buf.Bytes()

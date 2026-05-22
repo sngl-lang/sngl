@@ -116,7 +116,7 @@ func renderJSSourceMap(name string, positions []codegen.PosEntry, body []byte) c
 func computeLineStarts(body []byte) []int {
 	starts := []int{0}
 	for i, b := range body {
-		if b == '\n' && i+1 <= len(body) {
+		if b == '\n' && i+1 < len(body) {
 			starts = append(starts, i+1)
 		}
 	}

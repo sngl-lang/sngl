@@ -11,6 +11,14 @@ import (
 // go to a buffered body; imports are dedup'd; AST positions are recorded for
 // source-map generation. Close flushes header + body + optional sidecar to
 // the underlying Sink.
+//
+// Position marks (Mark and WriteAt) should be placed at statement or
+// expression boundaries, not mid-token. Source-map renderers may splice
+// synthetic newlines or directives at mark offsets; mid-token splices are
+// permitted but may degrade output formatting.
+//
+// Close failure is sticky: once Close has returned an error, a subsequent
+// Close returns nil (the file is considered abandoned, not retried).
 type CodeWriter interface {
 	io.Writer
 	WriteAt(pos ast.Pos, p []byte) (int, error)

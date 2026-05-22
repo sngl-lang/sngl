@@ -56,3 +56,25 @@ func TestRenderJSSourceMap_NoPositionsReturnsZero(t *testing.T) {
 		t.Fatalf("expected zero, got %+v", res)
 	}
 }
+
+func TestRenderJSSourceMap_SinglePosition(t *testing.T) {
+	body := []byte("console.log(1);\n")
+	positions := []codegen.PosEntry{
+		{ByteOffset: 0, Pos: ast.Pos{File: "f.sngl", Line: 1, Column: 1}},
+	}
+	res := renderJSSourceMap("out.js", positions, body)
+	if res.Sidecar == nil {
+		t.Fatal("Sidecar must be set for a single position")
+	}
+	var m struct {
+		Mappings string `json:"mappings"`
+	}
+	if err := json.Unmarshal(res.Sidecar, &m); err != nil {
+		t.Fatalf("sidecar JSON: %v", err)
+	}
+	// One position at gen line 0 col 0 → src 0 line 0 col 0; all deltas zero.
+	// VLQ of 0 is "A" → "AAAA".
+	if !strings.HasPrefix(m.Mappings, "AAAA") {
+		t.Errorf("mappings should start with AAAA, got %q", m.Mappings)
+	}
+}

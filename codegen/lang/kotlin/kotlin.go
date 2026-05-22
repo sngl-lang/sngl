@@ -173,7 +173,8 @@ func (t *Translator) ExportName(name string) string {
 	return name
 }
 
-// RenderHeader returns the generated-by comment for Kotlin files.
+// RenderHeader returns the generated-by comment for Kotlin files. Import
+// lines will render here when platforms migrate to CodeWriter (Plan B).
 func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
 	return []byte(codegen.Header("kt", name, "// ", ""))
 }
