@@ -16,7 +16,7 @@ becomes
 ## Run on `html` (browser)
 
 ```bash
-sngl compile --platform html --lang none --out out/web examples/hello-i18n/
+sngl generate --platform html --lang none --out out/web examples/hello-i18n/
 ```
 
 Outputs `out/web/index.html` with the JS runtime bundled inline. Open the HTML file in a browser. Locale picks up from `navigator.language` — change your browser language to `fr` or `es` to see the translations.
@@ -26,7 +26,7 @@ The manifest is inlined as `globalThis.__SNGL_I18N_MANIFEST__` at the top of the
 ## Run on `android`
 
 ```bash
-sngl compile --platform android --lang kotlin --opt main=true --out out/android examples/hello-i18n/
+sngl generate --platform android --lang kotlin --opt main=true --out out/android examples/hello-i18n/
 cd out/android && ./gradlew :app:installDebug
 ```
 

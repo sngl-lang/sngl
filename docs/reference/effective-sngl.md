@@ -899,7 +899,7 @@ A test block can omit the description string: `test app { assert(count == 0) }`.
 
 ## Platform Targets
 
-The output block (see File Structure) determines compilation targets. Override from the CLI: `sngl compile --lang go --platform bubbletea`. Other commands: `sngl run` (compile and execute), `sngl build` (distributable artifact), `sngl test` (run all test blocks).
+The output block (see File Structure) determines compilation targets. Override from the CLI: `sngl generate --lang go --platform bubbletea`. Other commands: `sngl run` (compile and execute), `sngl build` (distributable artifact), `sngl test` (run all test blocks).
 
 Each platform maps stdlib components to native widgets. Core components (`vbox`, `hbox`, `text`, `button`, `input`, `checkbox`) work everywhere. Overlay components (`modal`, `drawer`, `popover`) have varying support.
 

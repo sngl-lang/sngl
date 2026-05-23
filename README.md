@@ -67,7 +67,7 @@ go install git.duckfam.us/jonathan/sngl/cmd/sngl@latest
 
 ```bash
 # Compile a .sngl file to all declared targets
-sngl compile todo.sngl
+sngl generate todo.sngl
 
 # Start the LSP server (for editor integration)
 sngl lsp
