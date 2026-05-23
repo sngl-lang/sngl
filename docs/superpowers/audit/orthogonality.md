@@ -598,7 +598,29 @@ NativeImport).
 
 ---
 
-### 19. `Caps.NoContext` is conflated with i18n-locale threading
+### 19. `Caps.NoContext` is conflated with i18n-locale threading ✅ PARTIAL (2026-05-23) — full split deferred
+
+`Caps.NoContext` replaced by two flags that better describe what's
+actually being lowered:
+
+- **`StructComponents`** — components compile to structs with methods
+  rather than functions/closures. User-declared `context #foo` blocks
+  must lower into hidden Vars on each component in Reach(ctx) and
+  hidden Params on each user func in Reach(ctx).
+- **`StdlibContextParam`** — threads a hidden trailing param through
+  every stdlib func in Reach(ctx). Even closure-based component
+  targets need this because stdlib funcs (i18n.tr et al.) live
+  outside any user closure scope.
+
+`passNoContext` renamed to `passContext`; runs when either flag is
+set. Today every former `NoContext` setter sets both flags so
+codegen output is unchanged. The split exists so a future migration
+to function-shaped JS components (or a context.Context-style
+runtime) can flip just one flag off — see "Future ideas" below.
+
+---
+
+
 
 The `NoContext` lowering rewrites context reads into hidden parameters.
 Every Go-target platform sets it because Go has no implicit threading.
@@ -800,6 +822,53 @@ string name.
 **Direction.** Treat "static mode" as "lang doesn't implement
 HTTPCompiler" — already mostly the predicate. The string check is
 redundant.
+
+---
+
+## Future Ideas
+
+These extend the audit fixes above. Not blocking; record here so the
+direction isn't forgotten.
+
+### F1. Migrate JS components from struct-shape to function-shape
+
+The `StructComponents` lowering (item #19) is currently set by every
+backend, including html (JS). JS components conceptually CAN compile
+to factory functions whose nested child components close over the
+parent's locals — that would let user-declared contexts ride along as
+closure-captured variables without the hidden-Var rewrite.
+
+The blocker is html.go's emit path, which has been built around the
+post-`passNoContext` IR shape (synthesized `__ctx_*` Vars on every
+component in Reach). Migrating means either teaching html.go to read
+`ContextRead`/`ContextProvider` directly or keeping the lowering on
+but giving it a closure-friendly output. Either way it's a project,
+not a refactor.
+
+Until then, html keeps `StructComponents: true` for parity with the
+Go-desktop platforms and pays the same per-component-field cost
+that StdlibContextParam alone would not require.
+
+### F2. context.Context as a SNGL lowering target
+
+Once Go/Kotlin keep struct components (or move away from them), it's
+worth exploring a lowering pass that introduces a generic context
+storage type — `context.Context`-shaped, or a SNGL-defined
+`Ctx<T>` — and threads it as a first argument through Reach(ctx)
+funcs and component methods. One hidden param replaces every
+per-context hidden param/Var.
+
+Pros: smaller ABI surface as the number of contexts grows; aligns
+with Go's idiomatic propagation pattern.
+
+Cons: every read becomes a `ctx.Value(key)` lookup instead of a
+direct field/local read; deopts on hot paths unless the lowering
+pass specializes; per-call-site overhead.
+
+A pass-time SNGL-defined `Ctx` keyed by intrinsic ID might be the
+right shape — avoids `any` boxing while keeping the type-safety
+SNGL already gives. Held until measurement shows the per-context
+fanout is actually a problem.
 
 ---
 

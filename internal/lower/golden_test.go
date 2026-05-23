@@ -197,8 +197,10 @@ func setCapByName(c *Caps, name string) error {
 		c.NoComputed = true
 	case "NoTimer":
 		c.NoTimer = true
-	case "NoContext":
-		c.NoContext = true
+	case "NoContext", "StructComponents":
+		c.StructComponents = true
+	case "StdlibContextParam":
+		c.StdlibContextParam = true
 	case "NoReactivity":
 		c.NoReactivity = true
 	case "NoDeclarative":

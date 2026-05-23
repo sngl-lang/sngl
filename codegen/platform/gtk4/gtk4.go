@@ -141,7 +141,7 @@ func (g *Generator) Capabilities() lower.Caps {
 	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne
 	// uses, just emitting C setter invocations instead of Go method
 	// calls.
-	return lower.Caps{NoContext: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
+	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
 }
 
 // Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").

@@ -7,29 +7,36 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passNoContext lowers context declarations into hidden state.
+// passContext lowers context declarations into hidden state. Runs when
+// either Caps.StructComponents or Caps.StdlibContextParam is set; today
+// both flags co-trigger the full lowering, but they exist independently
+// so a future split can run the component-side and stdlib-side rewrites
+// in isolation.
 //
-// For COMPONENTS in Reach(ctx): a synthesized *ir.Var named __ctx_<name>
-// is appended to comp.Vars with Init = ctx.Default. Reads inside the
-// component (body, vars, funcs, timers) are rewritten to *ir.Ident with
-// Sym = that *ir.Var, so the value reads as Model state. When a parent
-// component instantiates a child under a provider, the parent threads
-// __ctx_<name>=<value> as a NodeInst Prop arg; the inliner (and other
-// component-inlining paths in codegen) overrides the cloned Var's Init
-// from a matching arg name. This puts cross-boundary context values onto
-// Model field assignments, so test code can call component methods
-// without having to thread hidden args at the API surface.
+// For COMPONENTS in Reach(ctx) (StructComponents path): a synthesized
+// *ir.Var named __ctx_<name> is appended to comp.Vars with Init =
+// ctx.Default. Reads inside the component (body, vars, funcs, timers)
+// are rewritten to *ir.Ident with Sym = that *ir.Var, so the value
+// reads as Model state. When a parent component instantiates a child
+// under a provider, the parent threads __ctx_<name>=<value> as a
+// NodeInst Prop arg; the inliner (and other component-inlining paths
+// in codegen) overrides the cloned Var's Init from a matching arg
+// name. This puts cross-boundary context values onto Model field
+// assignments, so test code can call component methods without having
+// to thread hidden args at the API surface.
 //
-// For FUNCTIONS in Reach(ctx): a *ir.Param is appended to fn.Params, and
-// calls to those funcs are threaded with a hidden arg from the enclosing
-// scope's active value. Stdlib wrappers (e.g. i18n.tr) live outside any
-// Model and need an explicit arg.
-// It must run BEFORE passInlinePure (provider rewrite assumes un-inlined
-// component boundaries) and BEFORE passReactivity (synthesized props must
-// be visible as reactive deps).
-var passNoContext = pass{
-	name:    "NoContext",
-	enabled: func(c Caps) bool { return c.NoContext },
+// For FUNCTIONS in Reach(ctx) (StdlibContextParam path): a *ir.Param
+// is appended to fn.Params, and calls to those funcs are threaded with
+// a hidden arg from the enclosing scope's active value. Stdlib
+// wrappers (e.g. i18n.tr) live outside any Model and need an explicit
+// arg regardless of how the component itself stores its contexts.
+//
+// It must run BEFORE passInlinePure (provider rewrite assumes
+// un-inlined component boundaries) and BEFORE passReactivity
+// (synthesized props must be visible as reactive deps).
+var passContext = pass{
+	name:    "Context",
+	enabled: func(c Caps) bool { return c.StructComponents || c.StdlibContextParam },
 	apply:   applyNoContext,
 }
 

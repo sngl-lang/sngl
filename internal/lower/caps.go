@@ -21,7 +21,24 @@ type Caps struct {
 	NoAsyncReactive    bool // async in reactive contexts → settled state-field + kicker
 	NoComputed         bool // computed vars → inlined exprs or memoized funcs
 	NoTimer            bool // timer decls → explicit scheduler.At()/cancel() calls
-	NoContext          bool // context decls → hidden-prop threading via NoContext pass
+	// StructComponents declares that components compile to structs with
+	// methods rather than functions/closures. User-declared `context #foo`
+	// blocks must be lowered into hidden Vars on each component in
+	// Reach(ctx) and hidden Params on each user func in Reach(ctx) — the
+	// component receiver carries the context value rather than a
+	// closure-captured variable. Target languages with function-shaped
+	// components (today: JS via html) can in principle keep user contexts
+	// as closure captures; today they still set this for parity with
+	// StdlibContextParam, but the two flags exist so a future migration
+	// can flip just one off.
+	StructComponents bool
+
+	// StdlibContextParam threads a hidden trailing parameter through every
+	// stdlib func reachable from user code that reads a context. Today this
+	// covers the i18n stdlib wrappers (i18n.tr et al.) reading the active
+	// locale. Even closure-based component targets need this because stdlib
+	// funcs live outside the user closure scope.
+	StdlibContextParam bool
 	NoReactivity       bool // reactive deps → explicit updater stmts after each mutation
 	NoDeclarative      bool // visual node tree → flat stream of create/update/delete IR calls
 	NoStdlibWrappers   bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
@@ -43,7 +60,8 @@ func (c Caps) Merge(other Caps) Caps {
 		NoAsyncReactive:    c.NoAsyncReactive || other.NoAsyncReactive,
 		NoComputed:         c.NoComputed || other.NoComputed,
 		NoTimer:            c.NoTimer || other.NoTimer,
-		NoContext:          c.NoContext || other.NoContext,
+		StructComponents:   c.StructComponents || other.StructComponents,
+		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
@@ -84,8 +102,11 @@ func (c Caps) String() string {
 	if c.NoToggle {
 		parts = append(parts, "NoToggle")
 	}
-	if c.NoContext {
-		parts = append(parts, "NoContext")
+	if c.StructComponents {
+		parts = append(parts, "StructComponents")
+	}
+	if c.StdlibContextParam {
+		parts = append(parts, "StdlibContextParam")
 	}
 	if c.NoReactivity {
 		parts = append(parts, "NoReactivity")
