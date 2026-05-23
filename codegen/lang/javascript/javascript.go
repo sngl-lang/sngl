@@ -83,8 +83,8 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 
 // RenderHeader returns the generated-by comment for JS files. Import lines
 // will render here when platforms migrate to CodeWriter (Plan B).
-func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
-	return []byte(codegen.Header("js", name, "// ", ""))
+func (t *Translator) RenderHeader(name, source string, imports []codegen.ImportSpec) []byte {
+	return []byte(codegen.Header("js", source, "// ", ""))
 }
 
 // RenderSourceMap emits a source-map v3 sidecar and appends a sourceMappingURL

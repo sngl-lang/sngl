@@ -36,7 +36,7 @@ func (t *Translator) TypeToNative(hint string) string     { return hint }
 func (t *Translator) ExportName(name string) string       { return name }
 
 // RenderHeader returns nil; the none lang emits no file header.
-func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
+func (t *Translator) RenderHeader(name, source string, imports []codegen.ImportSpec) []byte {
 	return nil
 }
 

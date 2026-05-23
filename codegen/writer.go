@@ -34,12 +34,17 @@ type WriterOptions struct {
 	// RenderSourceMap is called at Close. When false, marks are dropped and
 	// no sidecar is opened.
 	Maps bool
+
+	// Source is the SNGL source filename (base name only) the writer's
+	// output was generated from. Passed through to RenderHeader so the
+	// generated-by comment can name the source. Empty produces no header.
+	Source string
 }
 
 // headerRenderer is the minimal subset of LangTranslator the writer needs.
 // Every LangTranslator satisfies it.
 type headerRenderer interface {
-	RenderHeader(name string, imports []ImportSpec) []byte
+	RenderHeader(name, source string, imports []ImportSpec) []byte
 	RenderSourceMap(name string, positions []PosEntry, body []byte) SourceMapResult
 }
 
@@ -127,7 +132,7 @@ func (w *codeWriter) Close() error {
 		}
 	}
 
-	header := w.lang.RenderHeader(w.name, w.importOrder)
+	header := w.lang.RenderHeader(w.name, w.opts.Source, w.importOrder)
 
 	f, err := w.sink.Create(w.name)
 	if err != nil {

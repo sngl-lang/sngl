@@ -29,12 +29,25 @@ func init() {
 	codegen.RegisterPlatform(&Generator{})
 }
 
-// writeAndroidFile writes content to a named file in sink.
+// writeAndroidFile writes content to a named file in sink. Plain bytes;
+// no source-file header. Used for manifests, go.mod, icon resources, etc.
 func writeAndroidFile(sink codegen.Sink, name string, content []byte) error {
 	w, err := sink.Create(name)
 	if err != nil {
 		return err
 	}
+	if _, err := w.Write(content); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
+}
+
+// writeAndroidSourceFile routes through CodeWriter so the file gets a
+// generated-by header from lang.RenderHeader and (when enabled) a source
+// map sidecar.
+func writeAndroidSourceFile(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.WriterOptions, content []byte) error {
+	w := codegen.OpenCodeFile(sink, name, lang, opts)
 	if _, err := w.Write(content); err != nil {
 		w.Close()
 		return err
@@ -158,19 +171,16 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		return err
 	}
 
-	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
-		src = append([]byte(h), src...)
-	}
-
+	ktOpts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
 	usesI18n := hasI18nCalls(req.Pkg)
 
 	if !cfg.Main {
-		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		if err := writeAndroidFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
 		for _, f := range scaffoldFiles(cfg, usesI18n) {
@@ -186,7 +196,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 		}
 	} else {
-		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
 		for _, f := range directBuildFiles(cfg, usesI18n) {

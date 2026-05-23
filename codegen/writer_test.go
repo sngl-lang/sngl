@@ -15,7 +15,7 @@ type fakeLang struct {
 	srcmap func(name string, pos []PosEntry, body []byte) SourceMapResult
 }
 
-func (f *fakeLang) RenderHeader(name string, imports []ImportSpec) []byte {
+func (f *fakeLang) RenderHeader(name, source string, imports []ImportSpec) []byte {
 	if f.header != nil {
 		return f.header(name, imports)
 	}

@@ -155,8 +155,8 @@ func (t *Translator) ExportName(name string) string {
 
 // RenderHeader returns the generated-by comment for Kotlin files. Import
 // lines will render here when platforms migrate to CodeWriter (Plan B).
-func (t *Translator) RenderHeader(name string, imports []codegen.ImportSpec) []byte {
-	return []byte(codegen.Header("kt", name, "// ", ""))
+func (t *Translator) RenderHeader(name, source string, imports []codegen.ImportSpec) []byte {
+	return []byte(codegen.Header("kt", source, "// ", ""))
 }
 
 // RenderSourceMap returns no changes. Kotlin SMAP support is deferred (spec

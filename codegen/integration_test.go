@@ -13,7 +13,7 @@ import (
 func TestWriterEndToEnd_Go(t *testing.T) {
 	sink := codegen.NewMemSink()
 	tr := &golang.Translator{}
-	w := codegen.OpenCodeFile(sink, "model.go", tr, codegen.WriterOptions{Maps: true})
+	w := codegen.OpenCodeFile(sink, "model.go", tr, codegen.WriterOptions{Maps: true, Source: "foo.sngl"})
 
 	w.Import(codegen.ImportSpec{Path: "fmt", Kind: codegen.ImportNative})
 	w.WriteAt(ast.Pos{File: "foo.sngl", Line: 3, Column: 1}, []byte("package main\n\nfunc main() {\n"))

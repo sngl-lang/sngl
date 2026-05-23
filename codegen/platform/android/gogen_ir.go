@@ -18,22 +18,19 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		return err
 	}
 
-	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
-		src = append([]byte(h), src...)
-	}
-
 	goSrc := emitGoLibIR(ctx)
-	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
-		goSrc = append([]byte(h), goSrc...)
-	}
-
 	goMod := fmt.Appendf(nil, "module golib\n\ngo %s\n", cfg.GoVersion)
 
+	// When --lang=go, MainScreen.kt is still Kotlin source — look up its lang
+	// explicitly so its header is rendered by the Kotlin translator.
+	ktLang := codegen.LookupLang("kotlin")
+	opts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
+
 	if !cfg.Main {
-		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "MainScreen.kt", ktLang, opts, src); err != nil {
 			return err
 		}
-		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
 			return err
 		}
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
@@ -41,10 +38,10 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		if err := writeAndroidFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", ktLang, opts, src); err != nil {
 			return err
 		}
-		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
 			return err
 		}
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
@@ -63,10 +60,10 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 			}
 		}
 	} else {
-		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+		if err := writeAndroidSourceFile(sink, "MainScreen.kt", ktLang, opts, src); err != nil {
 			return err
 		}
-		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
 			return err
 		}
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {

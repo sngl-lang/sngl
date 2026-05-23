@@ -110,11 +110,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		return fmt.Errorf("gtk4 callbacks.go formatting error: %w\n%s", err, callbacksSrc)
 	}
 
-	if h := codegen.Header("gtk4", req.Source, "// ", ""); h != "" {
-		modelFormatted = append([]byte(h), modelFormatted...)
-		callbacksFormatted = append([]byte(h), callbacksFormatted...)
-	}
-
+	opts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
 	for _, pair := range []struct {
 		name    string
 		content []byte
@@ -122,10 +118,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		{"model.go", modelFormatted},
 		{"callbacks.go", callbacksFormatted},
 	} {
-		w, err := sink.Create(pair.name)
-		if err != nil {
-			return err
-		}
+		w := codegen.OpenCodeFile(sink, pair.name, req.Lang, opts)
 		if _, err := w.Write(pair.content); err != nil {
 			w.Close()
 			return err

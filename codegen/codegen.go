@@ -116,7 +116,7 @@ type LangTranslator interface {
 	// RenderHeader returns the file header bytes — the generated-by comment
 	// plus rendered import lines. Called once at CodeWriter.Close. Imports
 	// are in insertion order; the renderer may sort or filter.
-	RenderHeader(name string, imports []ImportSpec) []byte
+	RenderHeader(name, source string, imports []ImportSpec) []byte
 
 	// RenderSourceMap optionally rewrites the body to embed source-mapping
 	// information (Go //line directives) or produces a sidecar (JS .map).
