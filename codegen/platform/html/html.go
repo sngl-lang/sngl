@@ -786,10 +786,12 @@ func (g *htmlGen) generate() (string, error) {
 		if g.maps {
 			script = inlineSourceMapFromMarkers(script)
 		}
-		// Run through esbuild when there are real imports to resolve, or when
-		// minify is on. Otherwise emit the script verbatim — esbuild surfaces
-		// errors on a few pre-existing codegen quirks (e.g. `5.clamp(...)` in
-		// test-mode output) that don't matter for the SNGL test runner.
+		// Run through esbuild when there are real imports to resolve, or
+		// when minify is on. Otherwise emit the script verbatim — esbuild's
+		// IIFE wrapping renames parameters that shadow outer-scope vars
+		// (e.g. `function f(state)` becomes `function f(state2)`) and
+		// rewrites `let`→`var`, which is too invasive when bundling isn't
+		// actually needed.
 		if len(g.scope.NativeImports) > 0 || g.minify {
 			var preludeBuf strings.Builder
 			if len(g.scope.NativeImports) > 0 {
