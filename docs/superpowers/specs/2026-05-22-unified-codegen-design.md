@@ -32,18 +32,26 @@ This spec defines a single stream-based writer abstraction that owns body buffer
 - Kotlin SMAP support in v1 (documented as future work).
 - Back-compat shim for `OutputFile`/`Response.Files` past cutover.
 
-## Architecture
+## Architecture (current, as of 2026-05-23)
 
 ```
 Platform.Generate(req, sink)
    ├── for each source file the platform wants:
-   │     w := codegen.OpenCodeFile(sink, name, langTranslator)
-   │     langTranslator.EmitFile(w, pkg, scope)
-   │       └── w.Mark(pos); w.Write(...); w.Import(spec); ...
-   │     w.Close()      // flushes header + imports + body + sourcemap sidecar
+   │     e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
+   │         Name: "model.go", Source: req.Source, Platform: "gtk4",
+   │         PackageName: cfg.Package, Maps: req.Maps,
+   │     })
+   │     defer e.Close()              // flushes header+package+imports+body+map
+   │     fmt.Fprintf(e, "func ...")   // raw text via io.Writer
+   │     for _, s := range fn.Block { e.EvalStmt(s) }  // IR; auto-tracks imports
+   │
    └── for each non-source artifact (manifest, icon, go.mod, scaffold):
          f := sink.Create(name); write; f.Close()
 ```
+
+The language owns the file: buffer + import set + alias resolution + source-map state + format pass (gofmt for Go) all internal. Platform never sees imports directly.
+
+## Architecture (original Plan A design — superseded)
 
 Three new types in `codegen/`:
 
