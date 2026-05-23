@@ -10,12 +10,12 @@ import (
 )
 
 // emitGo produces output files for the go+android target using IR.
-func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	cfg := c.cfg
 	ctx := c.ctx
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
 
 	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
@@ -28,39 +28,65 @@ func (c *compilation) emitGo(req *codegen.Request) (*codegen.Response, error) {
 	}
 
 	goMod := fmt.Appendf(nil, "module golib\n\ngo %s\n", cfg.GoVersion)
-	resp := &codegen.Response{}
 
 	if !cfg.Main {
-		resp.Files = []*codegen.OutputFile{
-			codegen.BytesFile("MainScreen.kt", src),
-			codegen.BytesFile("golib/golib.go", goSrc),
-			codegen.BytesFile("golib/go.mod", goMod),
+		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
+			return err
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		resp.Files = append(resp.Files, codegen.BytesFile(
-			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
-		))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
-		resp.Files = append(resp.Files, scaffoldFiles(cfg, false)...)
+		if err := writeAndroidFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", src); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
+			return err
+		}
+		for _, f := range scaffoldFiles(cfg, false) {
+			if err := writeOutputFile(sink, f); err != nil {
+				return err
+			}
+		}
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
-				f.Name = "app/src/main/" + f.Name
+				if err := writeOutputFileAs(sink, "app/src/main/"+f.Name, f); err != nil {
+					return err
+				}
 			}
-			resp.Files = append(resp.Files, iconRes...)
 		}
 	} else {
-		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/golib.go", goSrc))
-		resp.Files = append(resp.Files, codegen.BytesFile("golib/go.mod", goMod))
-		resp.Files = append(resp.Files, directBuildFiles(cfg, false)...)
+		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/golib.go", goSrc); err != nil {
+			return err
+		}
+		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
+			return err
+		}
+		for _, f := range directBuildFiles(cfg, false) {
+			if err := writeOutputFile(sink, f); err != nil {
+				return err
+			}
+		}
 		if iconRes, err := iconFiles(cfg); err == nil {
-			resp.Files = append(resp.Files, iconRes...)
+			for _, f := range iconRes {
+				if err := writeOutputFile(sink, f); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
-	return resp, nil
+	return nil
 }
 
 // emitGoLibIR generates the Go source for the golib module using IR.

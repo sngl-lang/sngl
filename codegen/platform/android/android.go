@@ -2,6 +2,7 @@ package android
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -28,6 +29,43 @@ func init() {
 	codegen.RegisterPlatform(&Generator{})
 }
 
+// writeAndroidFile writes content to a named file in sink.
+func writeAndroidFile(sink codegen.Sink, name string, content []byte) error {
+	w, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(content); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
+}
+
+// writeOutputFile writes an OutputFile's content into sink using its name.
+// If WriteTo returns ErrSkip, the file is silently omitted.
+func writeOutputFile(sink codegen.Sink, f *codegen.OutputFile) error {
+	return writeOutputFileAs(sink, f.Name, f)
+}
+
+// writeOutputFileAs writes an OutputFile's content into sink under an overridden name.
+// If WriteTo returns ErrSkip, the file is silently omitted.
+func writeOutputFileAs(sink codegen.Sink, name string, f *codegen.OutputFile) error {
+	w, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	_, werr := f.WriteTo(w)
+	if errors.Is(werr, codegen.ErrSkip) {
+		// Don't close — uncommitted writer is abandoned; file is skipped.
+		return nil
+	}
+	if cerr := w.Close(); werr == nil {
+		werr = cerr
+	}
+	return werr
+}
+
 // Generator implements codegen.PlatformGenerator for Android (Jetpack Compose).
 type Generator struct{}
 
@@ -51,18 +89,25 @@ func (g *Generator) Capabilities() lower.Caps {
 	return lower.Caps{NoContext: true, NoInlineComponents: true}
 }
 
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+// GenerateSink writes android platform output directly into sink. This is
+// the sink-based path platforms migrate to during the codegen unification.
+func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
-	return c.EmitFromRender(m, req)
+	return c.EmitFromRender(m, req, sink)
 }
 
-// NewRenderCompiler returns a fresh per-request RenderModelEmitter.
-func (g *Generator) NewRenderCompiler() codegen.RenderModelEmitter {
-	return &compilation{}
+// Generate is the legacy entry point; delegates to GenerateSink via a
+// MemSink and converts captured files back to the Response shape.
+func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+	mem := codegen.NewMemSink()
+	if err := g.GenerateSink(req, mem); err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
+	}
+	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // compilation holds per-request build state flowing between
@@ -72,11 +117,6 @@ type compilation struct {
 	cfg  Config
 	lang string
 }
-
-var (
-	_ codegen.RenderModelEmitter    = (*compilation)(nil)
-	_ codegen.RenderCompilerFactory = (*Generator)(nil)
-)
 
 func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.RenderModel, error) {
 	c.lang = req.Lang.LanguageIdentifier()
@@ -99,14 +139,14 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	return c.ctx.BuildRender(stmts), nil
 }
 
-func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request, sink codegen.Sink) error {
 	switch c.lang {
 	case "kotlin":
-		return c.emitKotlin(req)
+		return c.emitKotlin(req, sink)
 	case "go":
-		return c.emitGo(req)
+		return c.emitGo(req, sink)
 	default:
-		return &codegen.Response{Error: fmt.Sprintf("android: unsupported lang %q", c.lang)}, nil
+		return fmt.Errorf("android: unsupported lang %q", c.lang)
 	}
 }
 
@@ -118,12 +158,12 @@ func (g *Generator) configFromRequest(req *codegen.Request) (Config, error) {
 	return cfg.withDefaults(), nil
 }
 
-func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error {
 	cfg := c.cfg
 	ctx := c.ctx
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
 
 	if h := codegen.Header("android", req.Source, "// ", ""); h != "" {
@@ -132,39 +172,54 @@ func (c *compilation) emitKotlin(req *codegen.Request) (*codegen.Response, error
 
 	usesI18n := hasI18nCalls(req.Pkg)
 
-	resp := &codegen.Response{}
-
 	if !cfg.Main {
-		resp.Files = []*codegen.OutputFile{
-			codegen.BytesFile("MainScreen.kt", src),
+		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+			return err
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		resp.Files = append(resp.Files, codegen.BytesFile(
-			"app/src/main/java/"+pkgPath+"/MainScreen.kt", src,
-		))
-		resp.Files = append(resp.Files, scaffoldFiles(cfg, usesI18n)...)
+		if err := writeAndroidFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", src); err != nil {
+			return err
+		}
+		for _, f := range scaffoldFiles(cfg, usesI18n) {
+			if err := writeOutputFile(sink, f); err != nil {
+				return err
+			}
+		}
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
-				f.Name = "app/src/main/" + f.Name
+				if err := writeOutputFileAs(sink, "app/src/main/"+f.Name, f); err != nil {
+					return err
+				}
 			}
-			resp.Files = append(resp.Files, iconRes...)
 		}
 	} else {
-		resp.Files = append(resp.Files, codegen.BytesFile("MainScreen.kt", src))
-		resp.Files = append(resp.Files, directBuildFiles(cfg, usesI18n)...)
+		if err := writeAndroidFile(sink, "MainScreen.kt", src); err != nil {
+			return err
+		}
+		for _, f := range directBuildFiles(cfg, usesI18n) {
+			if err := writeOutputFile(sink, f); err != nil {
+				return err
+			}
+		}
 		if iconRes, err := iconFiles(cfg); err == nil {
-			resp.Files = append(resp.Files, iconRes...)
+			for _, f := range iconRes {
+				if err := writeOutputFile(sink, f); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	// When i18n is in use, inject the Kotlin runtime and manifest.
 	if usesI18n && cfg.Main {
-		resp.Files = append(resp.Files, i18nRuntimeFile())
-		if mf := i18nManifestFile(cfg, req.ProjectFS); mf != nil {
-			resp.Files = append(resp.Files, mf)
+		if err := emitI18nRuntimeFile(sink); err != nil {
+			return err
+		}
+		if err := emitI18nManifestFile(sink, cfg, req.ProjectFS); err != nil {
+			return err
 		}
 	}
 
-	return resp, nil
+	return nil
 }

@@ -12,6 +12,38 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// emitI18nRuntimeFile writes the Kotlin i18n runtime into sink.
+// Path: app/src/main/kotlin/us/duckfam/git/jonathan/sngl/i18n/I18n.kt
+func emitI18nRuntimeFile(sink codegen.Sink) error {
+	path := "app/src/main/kotlin/" +
+		pkgToPath(kotlin.SnglI18nKotlinPackage) +
+		"/I18n.kt"
+	return writeAndroidFile(sink, path, []byte(i18nruntime.I18nKt))
+}
+
+// emitI18nManifestFile reads the project-root i18n.manifest.json and writes
+// it to app/src/main/assets/i18n.manifest.json in sink.
+// Does nothing when the manifest is absent.
+func emitI18nManifestFile(sink codegen.Sink, cfg Config, projectFS fs.FS) error {
+	const name = "i18n.manifest.json"
+	var data []byte
+	// Prefer projectFS when available (in-memory builds, playground).
+	if projectFS != nil {
+		if b, err := fs.ReadFile(projectFS, name); err == nil {
+			data = b
+		}
+	}
+	if data == nil && cfg.ProjectDir != "" {
+		if b, err := os.ReadFile(filepath.Join(cfg.ProjectDir, name)); err == nil {
+			data = b
+		}
+	}
+	if data == nil {
+		return nil
+	}
+	return writeAndroidFile(sink, "app/src/main/assets/"+name, data)
+}
+
 // hasI18nCalls reports whether the IR package contains any call to an i18n
 // intrinsic (i18n.tr, i18n.format, i18n.numberInt, etc.). When true the
 // android platform must inject the Kotlin i18n runtime and manifest.
