@@ -58,6 +58,7 @@ func init() {
 	}
 
 	rootCmd.AddCommand(compileCmd)
+	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(checkCmd)
