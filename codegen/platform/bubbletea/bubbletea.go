@@ -49,18 +49,25 @@ func (g *Generator) Capabilities() lower.Caps {
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+// GenerateSink writes bubbletea source files directly into sink. This is
+// the sink-based path platforms migrate to during the codegen unification.
+func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
-	return c.EmitFromRender(m, req)
+	return c.EmitFromRender(m, req, sink)
 }
 
-// NewRenderCompiler returns a fresh per-request RenderModelEmitter.
-func (g *Generator) NewRenderCompiler() codegen.RenderModelEmitter {
-	return &compilation{}
+// Generate is the legacy entry point; delegates to GenerateSink via a
+// MemSink and converts captured files back to the Response shape.
+func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+	mem := codegen.NewMemSink()
+	if err := g.GenerateSink(req, mem); err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
+	}
+	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // compilation holds per-request build state that flows between
@@ -69,11 +76,6 @@ type compilation struct {
 	ctx *codegen.CodegenCtx
 	cfg Config
 }
-
-var (
-	_ codegen.RenderModelEmitter    = (*compilation)(nil)
-	_ codegen.RenderCompilerFactory = (*Generator)(nil)
-)
 
 func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.RenderModel, error) {
 	if req.Lang.LanguageIdentifier() != "go" {
@@ -91,30 +93,42 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	return c.ctx.BuildRender(stmts), nil
 }
 
-func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Request, sink codegen.Sink) error {
 	src, err := CompileIR(c.ctx, c.cfg)
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
 
 	if h := codegen.Header("bubbletea", req.Source, "// ", ""); h != "" {
 		src = append([]byte(h), src...)
 	}
 
-	resp := &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("model.go", src),
-		},
+	if err := writeBubbleteaFile(sink, "model.go", src); err != nil {
+		return err
 	}
 
 	if req.Pkg != nil && hasTestFuncs(req.Pkg) && c.cfg.EmitTests() {
 		testSrc, err := CompileTestsIR(c.ctx, c.cfg)
 		if err == nil && testSrc != nil {
-			resp.Files = append(resp.Files, codegen.BytesFile("model_test.go", testSrc))
+			if err := writeBubbleteaFile(sink, "model_test.go", testSrc); err != nil {
+				return err
+			}
 		}
 	}
 
-	return resp, nil
+	return nil
+}
+
+func writeBubbleteaFile(sink codegen.Sink, name string, content []byte) error {
+	w, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(content); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
 }
 
 func hasTestFuncs(pkg *ir.Package) bool {
