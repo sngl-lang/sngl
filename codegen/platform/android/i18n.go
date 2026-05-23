@@ -2,8 +2,6 @@ package android
 
 import (
 	"io/fs"
-	"os"
-	"path/filepath"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
@@ -22,26 +20,14 @@ func emitI18nRuntimeFile(sink codegen.Sink) error {
 }
 
 // emitI18nManifestFile reads the project-root i18n.manifest.json and writes
-// it to app/src/main/assets/i18n.manifest.json in sink.
-// Does nothing when the manifest is absent.
+// it to app/src/main/assets/i18n.manifest.json in sink. Does nothing when
+// the manifest is absent. Uses the shared codegen/i18n loader.
 func emitI18nManifestFile(sink codegen.Sink, cfg Config, projectFS fs.FS) error {
-	const name = "i18n.manifest.json"
-	var data []byte
-	// Prefer projectFS when available (in-memory builds, playground).
-	if projectFS != nil {
-		if b, err := fs.ReadFile(projectFS, name); err == nil {
-			data = b
-		}
+	data, err := snglI18n.LoadManifest(projectFS, cfg.ProjectDir)
+	if err != nil || data == nil {
+		return err
 	}
-	if data == nil && cfg.ProjectDir != "" {
-		if b, err := os.ReadFile(filepath.Join(cfg.ProjectDir, name)); err == nil {
-			data = b
-		}
-	}
-	if data == nil {
-		return nil
-	}
-	return writeAndroidFile(sink, "app/src/main/assets/"+name, data)
+	return writeAndroidFile(sink, "app/src/main/assets/"+snglI18n.ManifestFileName, data)
 }
 
 // hasI18nCalls reports whether the IR package contains any call to an i18n
@@ -76,26 +62,15 @@ func i18nRuntimeFile() *codegen.OutputFile {
 	return codegen.BytesFile(path, []byte(i18nruntime.I18nKt))
 }
 
-// i18nManifestFile reads the project-root i18n.manifest.json and returns an
-// OutputFile that places it at app/src/main/assets/i18n.manifest.json.
-// Returns nil when the manifest is absent.
+// i18nManifestFile reads the project-root i18n.manifest.json and returns
+// an OutputFile that places it at app/src/main/assets/i18n.manifest.json.
+// Returns nil when the manifest is absent. Uses the shared codegen/i18n
+// loader.
 func i18nManifestFile(cfg Config, projectFS fs.FS) *codegen.OutputFile {
-	const name = "i18n.manifest.json"
-	var data []byte
-	// Prefer projectFS when available (in-memory builds, playground).
-	if projectFS != nil {
-		if b, err := fs.ReadFile(projectFS, name); err == nil {
-			data = b
-		}
-	}
-	if data == nil && cfg.ProjectDir != "" {
-		if b, err := os.ReadFile(filepath.Join(cfg.ProjectDir, name)); err == nil {
-			data = b
-		}
-	}
-	if data == nil {
+	data, err := snglI18n.LoadManifest(projectFS, cfg.ProjectDir)
+	if err != nil || data == nil {
 		return nil
 	}
-	return codegen.BytesFile("app/src/main/assets/"+name, data)
+	return codegen.BytesFile("app/src/main/assets/"+snglI18n.ManifestFileName, data)
 }
 

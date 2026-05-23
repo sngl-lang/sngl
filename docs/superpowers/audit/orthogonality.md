@@ -226,7 +226,22 @@ purpose) and have all four platforms read out a single
 
 ---
 
-### 7. Cross-platform i18n manifest reading is duplicated
+### 7. Cross-platform i18n manifest reading is duplicated ✅ RESOLVED (2026-05-23)
+
+New `codegen/i18n.LoadManifest(projectFS, projectDir)` is the single
+disk/FS reader; it compact-marshals the JSON so callers can embed it
+inline without bloat. html and android consume it directly. The
+Go-desktop platforms (bubbletea, fyne, gtk4) now ship the manifest
+embedded into the binary via a generated `i18n_embed.go` sidecar
+plus `//go:embed i18n.manifest.json` plus an `init()` calling the
+new `pkg/go/i18n.SetManifestBytes`. Installed Go-desktop binaries no
+longer silently mis-translate when there's no
+working-directory manifest beside the executable. Shared emit helper:
+`golang.EmitI18nManifestEmbed(sink, pkgName, projectFS, projectDir)`.
+
+---
+
+
 
 `codegen/platform/html/i18n.go:331-371` reads/marshals `i18n.manifest.json`.
 `codegen/platform/android/i18n.go:55+` does the same and emits a different

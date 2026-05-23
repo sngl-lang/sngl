@@ -1,11 +1,8 @@
 package html
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing/fstest"
 
@@ -92,43 +89,16 @@ var (
 	i18nSnippetErr  error
 )
 
-// i18nManifestJSON reads the project-root i18n.manifest.json and returns its
-// raw JSON bytes. Returns nil when the file is absent.
-func i18nManifestJSON(projectDir string, projectFS fs.FS) []byte {
-	const name = "i18n.manifest.json"
-	// Prefer projectFS when available (in-memory builds, playground).
-	if projectFS != nil {
-		data, err := fs.ReadFile(projectFS, name)
-		if err == nil {
-			return data
-		}
-	}
-	if projectDir != "" {
-		data, err := os.ReadFile(filepath.Join(projectDir, name))
-		if err == nil {
-			return data
-		}
-	}
-	return nil
-}
-
 // i18nManifestJS returns the JS statement that initialises
 // globalThis.__SNGL_I18N_MANIFEST__, or "" if no manifest is present.
-// The returned string includes a trailing newline.
+// The returned string includes a trailing newline. Reads via the
+// shared codegen/i18n loader so html and the Go-desktop platforms
+// resolve the same project-root manifest the same way.
 func i18nManifestJS(projectDir string, projectFS fs.FS) string {
-	raw := i18nManifestJSON(projectDir, projectFS)
-	if raw == nil {
-		return ""
-	}
-	// Re-marshal to compact form so arbitrary whitespace in the source file
-	// doesn't bloat the inline statement.
-	var obj any
-	if err := json.Unmarshal(raw, &obj); err != nil {
-		// Malformed manifest: skip silently; the runtime defaults to empty.
-		return ""
-	}
-	compact, err := json.Marshal(obj)
-	if err != nil {
+	compact, err := snglI18n.LoadManifest(projectFS, projectDir)
+	if err != nil || compact == nil {
+		// Malformed manifest or no manifest: skip silently; the
+		// runtime defaults to empty.
 		return ""
 	}
 	return fmt.Sprintf("globalThis.__SNGL_I18N_MANIFEST__ = %s;\n", compact)
