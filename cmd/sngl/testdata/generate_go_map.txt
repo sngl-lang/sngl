@@ -1,0 +1,32 @@
+# Go codegen for map<K,V>: literal, index, and method dispatch.
+
+sngl generate --platform=bubbletea --lang=go --out=out app.sngl
+exists out/model.go
+
+# Map field declared with correct Go type on Model struct.
+grep 'scores map\[string\]int' out/model.go
+
+# New() initialises the map literal: map[string]int{"alice": 10, "bob": 20}.
+grep '"alice": 10' out/model.go
+grep '"bob": 20' out/model.go
+
+# map.length() dispatches to len(m.scores) in the handler.
+grep 'len\(m\.scores\)' out/model.go
+
+# map.get() dispatches to an inline if-ok-idiom.
+grep 'func\(\) any' out/model.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    var size = 0
+    button(text="count", @click {
+        size = scores.length()
+    })
+    button(text="check", @click {
+        size = scores.get("alice", 0)
+    })
+    text(value=string(size))
+}

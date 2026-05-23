@@ -1,0 +1,23 @@
+# With --opt maps=true, html's JS bundle carries an inline SNGL->bundled
+# source map. The JS translator emits /*@SNGL:file:line@*/ markers at
+# statement boundaries; the html bundler extracts them, builds a SNGL->JS
+# map, and feeds it to esbuild via a data-URL sourceMappingURL so esbuild
+# chains through to a SNGL->bundled output map.
+
+sngl generate --lang=none --platform=html --opt=maps=true --out=out app.sngl
+exists out/index.html
+
+# Esbuild emits an inline source map for the IIFE.
+grep 'sourceMappingURL=data:application/json' out/index.html
+
+# Sanity: without maps the inline source map is absent.
+sngl generate --lang=none --platform=html --out=out2 app.sngl
+exists out2/index.html
+! grep 'sourceMappingURL=data:application/json' out2/index.html
+
+-- app.sngl --
+component main {
+    var count = 0
+    text(value=string(count))
+    button(text="+", @click { count += 1 })
+}

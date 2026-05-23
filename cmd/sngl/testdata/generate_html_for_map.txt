@@ -1,0 +1,21 @@
+# JS codegen for map<K,V> for-loop: emits for (const [k, v] of m.entries()) { ... }
+
+sngl generate --platform=html --lang=none --out=out app.sngl
+exists out/index.html
+
+# Handler contains a Map.entries() for-of loop.
+grep 'for .* of .*\.entries' out/index.html
+
+-- app.sngl --
+output { none { html } }
+
+component main {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    var total = 0
+    button(text="sum", @click {
+        for k, v = scores {
+            total = total + v
+        }
+    })
+    text(value=string(total))
+}

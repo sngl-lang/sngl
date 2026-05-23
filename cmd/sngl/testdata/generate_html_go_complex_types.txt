@@ -1,0 +1,56 @@
+# Regression test for issue #37: html --lang=go WASM bridge must marshal
+# slice and struct params/returns through the syscall/js boundary instead of
+# passing raw js.Value where typed Go values are expected.
+#
+# Before the fix, .sngl-wasm-<pkg>/main.go contained
+#   a0 := args[0]
+#   pkg.Init(a0)        // cannot use js.Value as pkg.Config
+#   result := pkg.Search(...)  // 2-value return assigned to 1 variable
+# and `go build GOOS=js GOARCH=wasm` aborted compile.
+
+sngl generate --platform=html --lang=go --opt=main=true --out=out app.sngl
+exists out/server.go
+
+-- go.mod --
+module example.com/wasm-complex
+
+go 1.23
+-- api/api.go --
+package api
+
+type Config struct {
+    User string
+    Tag  string
+}
+
+type Result struct {
+    Title string
+    Score int
+}
+
+func Init(c Config) error                                      { _ = c; return nil }
+func Search(jql string, fields []string, max int) ([]string, error) {
+    out := make([]string, 0, max)
+    for _, f := range fields {
+        out = append(out, jql+":"+f)
+    }
+    return out, nil
+}
+func List() ([]Result, error) { return []Result{{Title: "x", Score: 1}}, nil }
+-- app.sngl --
+output { go { html } }
+
+import "go://example.com/wasm-complex/api"
+
+component main {
+    var rows list<string> = []
+
+    window #app(title="t") {
+        vbox {
+            button(text="Search", @click {
+                rows = api.Search("k=v", ["a","b"], 10)
+            })
+            text(value="count {string(rows.length)}")
+        }
+    }
+}

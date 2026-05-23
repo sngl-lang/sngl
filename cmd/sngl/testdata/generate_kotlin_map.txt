@@ -1,0 +1,30 @@
+# Kotlin codegen for map<K,V>: literal, index, and method dispatch via Android platform.
+
+sngl generate --platform=android --lang=kotlin --out=out app.sngl
+exists out/MainScreen.kt
+
+# Map literal is emitted as mapOf(k to v, ...).
+grep 'mapOf\(' out/MainScreen.kt
+grep '"alice" to 10' out/MainScreen.kt
+grep '"bob" to 20' out/MainScreen.kt
+
+# map.length() dispatches to Kotlin Map .size property.
+grep '\.size' out/MainScreen.kt
+
+# map.get() dispatches to .getOrDefault().
+grep '\.getOrDefault\(' out/MainScreen.kt
+
+-- app.sngl --
+output { kotlin { android } }
+
+component main {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    var size = 0
+    button(text="count", @click {
+        size = scores.length()
+    })
+    button(text="check", @click {
+        size = scores.get("alice", 0)
+    })
+    text(value=string(size))
+}

@@ -1,0 +1,63 @@
+# Compile to HTML/JS produces output file.
+sngl generate --lang=none --platform=html --out=out app.sngl
+stdout 'out/index.html'
+exists out/index.html
+
+# --lang without --platform is an error.
+! sngl generate --lang=js app.sngl
+
+# --platform without --lang defaults to first supported language.
+sngl generate --platform=html --out=outauto app.sngl
+stdout 'outauto/index.html'
+
+# Unknown language.
+! sngl generate --lang=cobol --platform=html app.sngl
+
+# Unknown platform.
+! sngl generate --lang=js --platform=dos app.sngl
+
+# No files found.
+! sngl generate --lang=none --platform=html empty/
+
+# Parse error.
+! sngl generate --lang=none --platform=html bad.sngl
+
+# Quiet mode suppresses filename output.
+sngl generate --lang=none --platform=html --out=out2 -q app.sngl
+! stdout .
+
+# Invalid output in .sngl file: lang/platform mismatch.
+! sngl generate badoutput/app.sngl
+
+# Compile to HTML with --lang=js is rejected since html now takes none or an HTTPCompiler lang.
+! sngl generate --lang=js --platform=html --out=outjs app.sngl
+
+# Compile a directory merges all .sngl files.
+sngl generate --lang=none --platform=html --out=out3 myapp/
+stdout 'out3/index.html'
+exists out3/index.html
+
+-- app.sngl --
+component main {
+    var count = 0
+    button(text="+", @click { count += 1 })
+    text(value="Count: {count}")
+}
+-- bad.sngl --
+not valid sngl
+-- empty/.gitkeep --
+-- myapp/app.sngl --
+component main {
+    var count = 0
+    Counter(initial=count)
+}
+-- myapp/counter.sngl --
+component Counter(initial = 0) {
+    text(value="Count: " + string(initial))
+}
+-- badoutput/app.sngl --
+output js html
+
+component main {
+    text(value="hello")
+}

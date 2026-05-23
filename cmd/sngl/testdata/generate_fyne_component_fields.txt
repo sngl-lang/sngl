@@ -1,0 +1,53 @@
+# Regression test for #35: sub-component widget fields must be declared on
+# the Model struct. After NoInlineComponents, detailPanel is inlined into main
+# rather than emitted as a separate renderDetailPanel method.
+
+sngl generate --platform=fyne --lang=go --out=out app.sngl
+exists out/model.go
+
+# detailPanel gets inlined — no renderDetailPanel method survives.
+! grep 'renderDetailPanel' out/model.go
+
+# The inlined detailPanel's four text() nodes become Model fields.
+# __n2 is the inlined vbox; __n3..__n6 are the four labels.
+grep '__n2 \*fyne\.Container' out/model.go
+grep '__n3 \*widget\.Label' out/model.go
+grep '__n4 \*widget\.Label' out/model.go
+grep '__n5 \*widget\.Label' out/model.go
+grep '__n6 \*widget\.Label' out/model.go
+
+# Prop references are substituted with m.current (the callsite arg).
+grep 'm\.current\.Key' out/model.go
+grep 'm\.current\.Summary' out/model.go
+grep 'm\.current\.Status' out/model.go
+grep 'm\.current\.Assignee' out/model.go
+
+-- app.sngl --
+output { go { fyne } }
+
+struct Issue {
+    key string
+    summary string
+    status string
+    assignee string
+}
+
+component main {
+    var current = Issue{}
+
+    window #app(title="t") {
+        vbox {
+            text(value="header")
+            detailPanel(it=current)
+        }
+    }
+}
+
+component detailPanel(it Issue) {
+    vbox {
+        text(value=it.key)
+        text(value=it.summary)
+        text(value=it.status)
+        text(value=it.assignee)
+    }
+}
