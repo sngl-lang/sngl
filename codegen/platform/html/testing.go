@@ -3,9 +3,9 @@
 package html
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -63,20 +63,24 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, _ *ir
 		if compPkg == nil {
 			continue
 		}
-		resp, err := g.Generate(&codegen.Request{
+		mem := codegen.NewMemSink()
+		if err := g.Generate(&codegen.Request{
 			Pkg:     compPkg,
 			Lang:    lang,
 			Options: codegen.OptionsFromMap(map[string]any{"test": true}),
-		})
-		if err != nil {
+		}, mem); err != nil {
 			return nil, fmt.Errorf("generate %q: %w", compName, err)
 		}
-		if resp.Error != "" {
-			return nil, fmt.Errorf("generate %q: %s", compName, resp.Error)
+		var htmlStr string
+		for name, content := range mem.Files() {
+			if strings.HasSuffix(name, ".html") {
+				htmlStr = string(content)
+				break
+			}
 		}
-		var htmlBuf bytes.Buffer
-		resp.Files[0].WriteTo(&htmlBuf)
-		htmlStr := htmlBuf.String()
+		if htmlStr == "" {
+			return nil, fmt.Errorf("generate %q: no .html file emitted", compName)
+		}
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -167,20 +171,25 @@ func (g *Generator) runSingleTestFunc(engine *webtest.Engine, pkg *ir.Package, l
 
 // Snapshot captures a browser screenshot of the generated HTML for the given package.
 func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	resp, err := g.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
-	})
-	if err != nil {
+	}, mem); err != nil {
 		return nil, err
 	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("%s", resp.Error)
+	var html []byte
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			html = content
+			break
+		}
 	}
-	var buf bytes.Buffer
-	resp.Files[0].WriteTo(&buf)
-	return g.SnapshotHTML(buf.Bytes(), width, height)
+	if html == nil {
+		return nil, fmt.Errorf("snapshot: no .html file emitted")
+	}
+	return g.SnapshotHTML(html, width, height)
 }
 
 // SnapshotHTML captures a browser screenshot of pre-compiled HTML bytes.

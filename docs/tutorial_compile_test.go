@@ -1,7 +1,6 @@
 package docs
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -53,21 +52,16 @@ func compileLesson(source string) (string, error) {
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return "", err
 	}
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
-	})
-	if err != nil {
+	}, mem); err != nil {
 		return "", err
 	}
-	if resp.Error != "" {
-		return "", lessonErr(resp.Error)
-	}
-	for _, f := range resp.Files {
-		if strings.HasSuffix(f.Name, ".html") {
-			var buf bytes.Buffer
-			f.WriteTo(&buf)
-			return buf.String(), nil
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			return string(content), nil
 		}
 	}
 	return "", nil

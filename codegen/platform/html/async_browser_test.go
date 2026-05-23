@@ -3,7 +3,6 @@
 package html
 
 import (
-	"bytes"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -105,25 +104,22 @@ func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 		t.Fatalf("lower: %v", err)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Doc:       doc,
 		Pkg:       pkg,
 		Lang:      lang,
 		ProjectFS: fsys,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if resp.Error != "" {
-		t.Fatalf("generate error: %s", resp.Error)
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			return content
+		}
 	}
-	if len(resp.Files) < 1 {
-		t.Fatal("expected at least 1 output file")
-	}
-
-	var buf bytes.Buffer
-	resp.Files[0].WriteTo(&buf)
-	return buf.Bytes()
+	t.Fatal("expected at least 1 .html output file")
+	return nil
 }
 
 // TestBrowser_AsyncHandlerUpdatesDOM exercises the full async-await pipeline

@@ -2,7 +2,6 @@ package fyne
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,37 +26,15 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	}
 	defer os.RemoveAll(tmpDir)
 
-	resp, err := g.Generate(&codegen.Request{
+	if err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{
 			"package": "main",
 			"main":    false,
 		}),
-	})
-	if err != nil {
+	}, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generating fyne code: %w", err)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("generating fyne code: %s", resp.Error)
-	}
-
-	for _, file := range resp.Files {
-		path := filepath.Join(tmpDir, file.Name)
-		os.MkdirAll(filepath.Dir(path), 0o755)
-		f, err := os.Create(path)
-		if err != nil {
-			return nil, fmt.Errorf("creating %s: %w", file.Name, err)
-		}
-		_, writeErr := file.WriteTo(f)
-		f.Close()
-		if errors.Is(writeErr, codegen.ErrSkip) {
-			os.Remove(path)
-			continue
-		}
-		if writeErr != nil {
-			return nil, fmt.Errorf("writing %s: %w", file.Name, writeErr)
-		}
 	}
 
 	harness := fmt.Sprintf(`package main
@@ -148,37 +125,15 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		pkgName := fmt.Sprintf("doc%d", i)
 		pkgDir := filepath.Join(tmpDir, pkgName)
 
-		resp, err := g.Generate(&codegen.Request{
+		if err := g.Generate(&codegen.Request{
 			Pkg:  d.Pkg,
 			Lang: d.Lang,
 			Options: codegen.OptionsFromMap(map[string]any{
 				"package": pkgName,
 				"main":    false,
 			}),
-		})
-		if err != nil {
+		}, codegen.NewDirSink(pkgDir)); err != nil {
 			return nil, fmt.Errorf("generating fyne code for %s: %w", d.ID, err)
-		}
-		if resp.Error != "" {
-			return nil, fmt.Errorf("generating fyne code for %s: %s", d.ID, resp.Error)
-		}
-
-		for _, file := range resp.Files {
-			path := filepath.Join(pkgDir, file.Name)
-			os.MkdirAll(filepath.Dir(path), 0o755)
-			f, err := os.Create(path)
-			if err != nil {
-				return nil, fmt.Errorf("creating %s: %w", file.Name, err)
-			}
-			_, writeErr := file.WriteTo(f)
-			f.Close()
-			if errors.Is(writeErr, codegen.ErrSkip) {
-				os.Remove(path)
-				continue
-			}
-			if writeErr != nil {
-				return nil, fmt.Errorf("writing %s: %w", file.Name, writeErr)
-			}
 		}
 
 		pkgs = append(pkgs, docPkg{id: d.ID, pkgName: pkgName})

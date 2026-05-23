@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"sync"
@@ -84,26 +83,20 @@ func renderDocAsHTML(pkg *ir.Package, windowName string) ([]byte, error) {
 		Lang:   &none.Translator{},
 		Source: "preview.sngl",
 	}
-	resp, err := gen.Generate(req)
-	if err != nil {
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(req, mem); err != nil {
 		return nil, fmt.Errorf("html generate: %w", err)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("html generate: %s", resp.Error)
 	}
 
 	// The html platform writes one .html file per window. Find the one
 	// whose path matches the window name. Convention: <name>.html for
 	// routes / index.html for the lone window.
 	matchSuffix := windowName + ".html"
+	files := mem.Files()
 	var single []byte
-	for _, f := range resp.Files {
-		if strings.HasSuffix(f.Name, matchSuffix) || (len(resp.Files) == 1 && strings.HasSuffix(f.Name, ".html")) {
-			var buf bytes.Buffer
-			if _, err := f.WriteTo(&buf); err != nil {
-				return nil, fmt.Errorf("html generate: read output: %w", err)
-			}
-			single = buf.Bytes()
+	for name, content := range files {
+		if strings.HasSuffix(name, matchSuffix) || (len(files) == 1 && strings.HasSuffix(name, ".html")) {
+			single = content
 			break
 		}
 	}

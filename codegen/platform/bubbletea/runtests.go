@@ -77,18 +77,22 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		if err := lower.Lower(compPkg, caps, lower.Options{Platform: g.PlatformIdentifier()}); err != nil {
 			return nil, fmt.Errorf("bubbletea lower %q: %w", group.Component, err)
 		}
-		resp, err := g.Generate(&codegen.Request{
+
+		tmpDir, err := os.MkdirTemp("", "sngl-bubbletea-gentest-")
+		if err != nil {
+			return nil, fmt.Errorf("bubbletea mktemp %q: %w", group.Component, err)
+		}
+		if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
+			defer os.RemoveAll(tmpDir)
+		}
+		if err := g.Generate(&codegen.Request{
 			Pkg:  compPkg,
 			Lang: lang,
-		})
-		if err != nil {
+		}, codegen.NewDirSink(tmpDir)); err != nil {
 			return nil, fmt.Errorf("bubbletea generate %q: %w", group.Component, err)
 		}
-		if resp.Error != "" {
-			return nil, fmt.Errorf("bubbletea generate %q: %s", group.Component, resp.Error)
-		}
 
-		grpResults, err := runBubbleteaTestGroup(pkg, group, resp.Files, cfg.GoModExtra)
+		grpResults, err := runBubbleteaTestGroup(pkg, group, tmpDir, cfg.GoModExtra)
 		if err != nil {
 			return nil, err
 		}
@@ -97,30 +101,9 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 	return results, nil
 }
 
-func runBubbleteaTestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile, goModExtra string) ([]*codegen.TestResult, error) {
-	dir, err := os.MkdirTemp("", "sngl-bubbletea-test-")
-	if err != nil {
-		return nil, fmt.Errorf("mktemp: %w", err)
-	}
-	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
-		defer os.RemoveAll(dir)
-	} else {
-		fmt.Fprintln(os.Stderr, "sngl-bubbletea-test temp dir:", dir)
-	}
-
+func runBubbleteaTestGroup(origPkg *ir.Package, group testharness.TestGroup, dir string, goModExtra string) ([]*codegen.TestResult, error) {
 	if err := writeBubbleteaGoMod(dir, goModExtra); err != nil {
 		return nil, err
-	}
-
-	for _, f := range files {
-		var buf bytes.Buffer
-		if _, err := f.WriteTo(&buf); err != nil {
-			return nil, fmt.Errorf("buffer file %s: %w", f.Name, err)
-		}
-		out := filepath.Join(dir, filepath.Base(f.Name))
-		if err := os.WriteFile(out, buf.Bytes(), 0644); err != nil {
-			return nil, fmt.Errorf("write %s: %w", out, err)
-		}
 	}
 
 	if _, err := writeBubbleteaTestFile(dir, origPkg, group); err != nil {

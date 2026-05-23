@@ -1,7 +1,6 @@
 package fyne
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,22 +44,16 @@ component main {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	resp, err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"})
-	if err != nil {
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if resp.Error != "" {
-		t.Fatalf("generate error: %s", resp.Error)
+	files := mem.Files()
+	modelSrc, ok := files["model.go"]
+	if !ok {
+		t.Fatal("model.go not found in generated files")
 	}
-	if len(resp.Files) == 0 {
-		t.Fatal("no files emitted")
-	}
-
-	var buf bytes.Buffer
-	if _, err := resp.Files[0].WriteTo(&buf); err != nil {
-		t.Fatalf("WriteTo: %v", err)
-	}
-	out := buf.String()
+	out := string(modelSrc)
 
 	for _, snippet := range []string{
 		"func (m *Model) __renderSlot0(container *fyne.Container)",

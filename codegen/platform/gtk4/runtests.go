@@ -72,21 +72,25 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 		if err := lower.Lower(compPkg, caps, lower.Options{Platform: g.PlatformIdentifier()}); err != nil {
 			return nil, fmt.Errorf("gtk4 lower %q: %w", group.Component, err)
 		}
-		resp, err := g.Generate(&codegen.Request{
+
+		tmpDir, err := os.MkdirTemp("", "sngl-gtk4-gentest-")
+		if err != nil {
+			return nil, fmt.Errorf("gtk4 mktemp %q: %w", group.Component, err)
+		}
+		if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
+			defer os.RemoveAll(tmpDir)
+		}
+		if err := g.Generate(&codegen.Request{
 			Pkg:  compPkg,
 			Lang: lang,
-		})
-		if err != nil {
+		}, codegen.NewDirSink(tmpDir)); err != nil {
 			return nil, fmt.Errorf("gtk4 generate %q: %w", group.Component, err)
-		}
-		if resp.Error != "" {
-			return nil, fmt.Errorf("gtk4 generate %q: %s", group.Component, resp.Error)
 		}
 
 		// IR func lookup uses the *original* pkg because Promote drops
 		// *ast.FuncDef decls; the test funcs live on pkg.Funcs only.
 		methodFields := testharness.CollectConditionalIDs(compPkg)
-		grpResults, err := runGtk4TestGroup(pkg, group, resp.Files, cfg.GoModExtra, methodFields)
+		grpResults, err := runGtk4TestGroup(pkg, group, tmpDir, cfg.GoModExtra, methodFields)
 		if err != nil {
 			return nil, err
 		}
@@ -95,29 +99,9 @@ func (g *Generator) RunTests(pkg *ir.Package, lang codegen.LangTranslator, opts 
 	return results, nil
 }
 
-func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, files []*codegen.OutputFile, goModExtra string, methodFields map[string]bool) ([]*codegen.TestResult, error) {
-	dir, err := os.MkdirTemp("", "sngl-gtk4-test-")
-	if err != nil {
-		return nil, fmt.Errorf("mktemp: %w", err)
-	}
-	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
-		defer os.RemoveAll(dir)
-	} else {
-		fmt.Fprintln(os.Stderr, "sngl-gtk4-test temp dir:", dir)
-	}
-
+func runGtk4TestGroup(origPkg *ir.Package, group testharness.TestGroup, dir string, goModExtra string, methodFields map[string]bool) ([]*codegen.TestResult, error) {
 	if err := writeGtk4GoMod(dir, goModExtra); err != nil {
 		return nil, err
-	}
-	for _, f := range files {
-		var buf bytes.Buffer
-		if _, err := f.WriteTo(&buf); err != nil {
-			return nil, fmt.Errorf("buffer file %s: %w", f.Name, err)
-		}
-		out := filepath.Join(dir, filepath.Base(f.Name))
-		if err := os.WriteFile(out, buf.Bytes(), 0644); err != nil {
-			return nil, fmt.Errorf("write %s: %w", out, err)
-		}
 	}
 	if _, err := writeGtk4TestFile(dir, origPkg, group, methodFields); err != nil {
 		return nil, err

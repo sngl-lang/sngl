@@ -1,7 +1,6 @@
 package html
 
 import (
-	"bytes"
 	"os"
 	"strings"
 	"testing"
@@ -44,23 +43,21 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Doc:  doc,
 		Pkg:  pkg,
 		Lang: lang,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if resp.Error != "" {
-		t.Fatalf("generate error: %s", resp.Error)
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			return string(content)
+		}
 	}
-	if len(resp.Files) < 1 {
-		t.Fatal("expected at least 1 file")
-	}
-	var buf bytes.Buffer
-	resp.Files[0].WriteTo(&buf)
-	return buf.String()
+	t.Fatal("expected at least 1 .html file")
+	return ""
 }
 
 func generateHTML(t *testing.T, path string) string {
@@ -91,23 +88,21 @@ func generateHTML(t *testing.T, path string) string {
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Doc:  doc,
 		Pkg:  pkg,
 		Lang: lang,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if resp.Error != "" {
-		t.Fatalf("generate error: %s", resp.Error)
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			return string(content)
+		}
 	}
-	if len(resp.Files) < 1 {
-		t.Fatal("expected at least 1 file")
-	}
-	var buf bytes.Buffer
-	resp.Files[0].WriteTo(&buf)
-	return buf.String()
+	t.Fatal("expected at least 1 .html file")
+	return ""
 }
 
 func TestFixtures(t *testing.T) {
@@ -247,17 +242,24 @@ func TestLoweredReactivityWiring(t *testing.T) {
 		t.Fatalf("lower: %v", err)
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Doc:  doc,
 		Pkg:  pkg,
 		Lang: lang,
-	})
-	if err != nil {
+	}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	var buf bytes.Buffer
-	resp.Files[0].WriteTo(&buf)
-	out := buf.String()
+	var out string
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			out = string(content)
+			break
+		}
+	}
+	if out == "" {
+		t.Fatal("expected at least 1 .html file")
+	}
 
 	// Static render must carry the data-sngl-id attribute for the
 	// reactive text node so JS lang's IsElementRef path resolves it.

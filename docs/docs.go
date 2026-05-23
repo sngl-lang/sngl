@@ -3,7 +3,6 @@
 package docs
 
 import (
-	"bytes"
 	"embed"
 	"io/fs"
 	"os"
@@ -565,18 +564,16 @@ func compilePreview(source string) string {
 		}
 	}
 
-	resp, err := gen.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := gen.Generate(&codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
-	})
-	if err != nil || resp.Error != "" {
+	}, mem); err != nil {
 		return ""
 	}
-	for _, f := range resp.Files {
-		if strings.HasSuffix(f.Name, ".html") {
-			var buf bytes.Buffer
-			f.WriteTo(&buf)
-			return buf.String()
+	for name, content := range mem.Files() {
+		if strings.HasSuffix(name, ".html") {
+			return string(content)
 		}
 	}
 	return ""

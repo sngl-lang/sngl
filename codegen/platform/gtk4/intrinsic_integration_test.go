@@ -1,7 +1,6 @@
 package gtk4
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -41,32 +40,16 @@ component main {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	resp, err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"})
-	if err != nil {
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if resp.Error != "" {
-		t.Fatalf("generate error: %s", resp.Error)
-	}
-	if len(resp.Files) == 0 {
-		t.Fatal("no files emitted")
-	}
-
-	var modelFile *codegen.OutputFile
-	for _, f := range resp.Files {
-		if f.Name == "model.go" {
-			modelFile = f
-			break
-		}
-	}
-	if modelFile == nil {
+	files := mem.Files()
+	modelSrc, ok := files["model.go"]
+	if !ok {
 		t.Fatal("model.go not found in generated files")
 	}
-	var buf bytes.Buffer
-	if _, err := modelFile.WriteTo(&buf); err != nil {
-		t.Fatalf("WriteTo: %v", err)
-	}
-	out := buf.String()
+	out := string(modelSrc)
 
 	for _, snippet := range []string{
 		"func (m *Model) __renderSlot0(container *C.GtkBox)",
