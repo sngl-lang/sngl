@@ -91,10 +91,6 @@ func (g *Generator) SupportedLangs() []string            { return []string{"kotl
 func (g *Generator) PreviewCSS() string                  { return previewCSS }
 func (g *Generator) Package() []*ast.Document            { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool {
-	id := l.LanguageIdentifier()
-	return id == "kotlin" || id == "go"
-}
 func (g *Generator) Capabilities() lower.Caps {
 	// NoInlineComponents: hoist user-component vars/funcs/timers into main
 	// with per-instance renames. Android's RenderModel emits a Composable

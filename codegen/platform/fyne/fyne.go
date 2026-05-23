@@ -44,7 +44,6 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 func (g *Generator) Capabilities() lower.Caps {
 	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>`
 	// Assigns after every mutation of a tracked Var.

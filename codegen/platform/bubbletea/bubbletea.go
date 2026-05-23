@@ -43,7 +43,6 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// from blueprint .sngl bodies (VJoin/HJoin/Styled/TextInput).
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 func (g *Generator) Capabilities() lower.Caps {
 	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoListLambdas: true, NoInlineComponents: true, NoImplicitRecv: true}
 }

@@ -20,9 +20,8 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string               { return nil }
 func (g *Generator) Package() []*ast.Document               { return nil }
-func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return false }
-func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
+func (g *Generator) Capabilities() lower.Caps            { return lower.Caps{} }
 
 // Generate rejects code generation requests. The none platform is a marker
 // for headless test execution; it emits no files.

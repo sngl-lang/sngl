@@ -71,14 +71,6 @@ func (g *Generator) SupportedLangs() []string {
 	return append(out, httpLangs...)
 }
 
-func (g *Generator) IsLanguageSupported(l ir.Language) bool {
-	if l.LanguageIdentifier() == "none" {
-		return true
-	}
-	_, ok := l.(codegen.HTTPCompiler)
-	return ok
-}
-
 // Generate writes html platform output directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {

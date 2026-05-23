@@ -436,7 +436,6 @@ type Platform interface {
 	Description() string              // short one-line summary for reference docs
 	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
-	IsLanguageSupported(Language) bool
 }
 
 // StaticTarget identifies the compile target by name.

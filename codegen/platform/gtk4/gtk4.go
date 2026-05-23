@@ -134,7 +134,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document               { return pkgDocs }
-func (g *Generator) IsLanguageSupported(l ir.Language) bool { return l.LanguageIdentifier() == "go" }
 func (g *Generator) Capabilities() lower.Caps {
 	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
 	// mutation of a tracked Var. The gtk4 renderer translates those

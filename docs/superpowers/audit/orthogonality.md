@@ -266,7 +266,18 @@ generated `init()` constant.
 
 ## Severity: Medium
 
-### 8. `SupportedLangs() []string` AND `IsLanguageSupported(Language) bool` both exist
+### 8. `SupportedLangs() []string` AND `IsLanguageSupported(Language) bool` both exist ✅ RESOLVED (2026-05-23)
+
+`IsLanguageSupported` had no callers anywhere in the codebase — pure
+dead surface area. Removed from `ir.Platform`, the six platform
+implementations, and the two test stubs. `SupportedLangs()` remains
+the single source of truth; html's dynamic enumeration of
+HTTPCompiler-implementing langs already drives that method, so the
+dynamic semantics survive.
+
+---
+
+
 
 `codegen/codegen.go:124-125` (PlatformGenerator):
 
