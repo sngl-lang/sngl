@@ -327,7 +327,7 @@ func translateIRNativeCall(n *ir.Call, scope *codegen.ExprScope) string {
 	if name == "" {
 		name = n.Func.Name
 	}
-	bundled := scope.BundledNativePkgs[mod]
+	bundled := isBundledNativePkg(scope.Pkg, mod)
 	if bundled {
 		registerNativeImport(scope, mod, name)
 	}
@@ -689,20 +689,49 @@ func translateIRMutTarget(e ir.Expr, scope *codegen.ExprScope) string {
 // namespace maps to a bundled js:// native import. Returns ("", "") when not
 // applicable.
 func nativeBundledNamespaceAlias(nsName string, scope *codegen.ExprScope) (jsAlias, importPath string) {
-	if scope == nil || scope.Pkg == nil || scope.BundledNativePkgs == nil {
+	if scope == nil || scope.Pkg == nil {
 		return "", ""
 	}
 	for _, imp := range scope.Pkg.Imports {
 		if imp == nil || imp.Alias != nsName || imp.Native == nil {
 			continue
 		}
-		path := imp.Native.ImportPath
-		if !scope.BundledNativePkgs[path] {
+		if !isBundledImport(imp) {
 			continue
 		}
+		path := imp.Native.ImportPath
 		return codegen.NativeAlias(path), path
 	}
 	return "", ""
+}
+
+// isBundledImport reports whether a native import is routed through the JS
+// bundler (esbuild) instead of the WASM extern bridge. Decided by the source
+// scheme: js:// is bundled, others (go://, etc.) go through WASM extern.
+func isBundledImport(imp *ir.Import) bool {
+	if imp == nil || imp.AST == nil {
+		return false
+	}
+	scheme, _ := codegen.SplitScheme(imp.AST.Path)
+	return scheme == "js"
+}
+
+// isBundledNativePkg reports whether the named native package path
+// (NativePkg / ImportPath) corresponds to a bundled js:// import in pkg.
+func isBundledNativePkg(pkg *ir.Package, nativePkg string) bool {
+	if pkg == nil || nativePkg == "" {
+		return false
+	}
+	for _, imp := range pkg.Imports {
+		if imp == nil || imp.Native == nil {
+			continue
+		}
+		if imp.Native.ImportPath != nativePkg {
+			continue
+		}
+		return isBundledImport(imp)
+	}
+	return false
 }
 
 // registerNativeImport records a module → name binding on scope.NativeImports

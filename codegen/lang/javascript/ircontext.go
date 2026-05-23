@@ -380,7 +380,7 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	if name == "" {
 		name = n.Func.Name
 	}
-	bundled := jc.Ctx.BundledNativePkgs[mod]
+	bundled := isBundledNativePkg(jc.Ctx.Pkg, mod)
 	if bundled {
 		jc.registerNativeImport(mod, name)
 	}

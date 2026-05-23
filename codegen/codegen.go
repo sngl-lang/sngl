@@ -49,14 +49,6 @@ type ExprScope struct {
 	// component-level var through a hoisted state object
 	// (`count` → `state.count`).
 	IdentRewrites map[string]string
-	// BundledNativePkgs marks native module paths that the platform will
-	// post-process through a JS bundler (e.g. esbuild for js:// imports).
-	// Calls to funcs whose NativePkg is in this set are emitted as
-	// `<NativeAlias(pkg)>.name(...)` so the platform can prepend
-	// `import * as <NativeAlias(pkg)> from "<pkg>"` and let the bundler
-	// inline + tree-shake. Unset (or false): the call is emitted with a
-	// bare name as before, matching the WASM-extern bridge convention.
-	BundledNativePkgs map[string]bool
 	// Pkg is the IR package being translated. Used by translators that need
 	// package-level analysis results (e.g. points-to / slot-color for funcvar
 	// await inference). May be nil when the scope is constructed without a

@@ -8,33 +8,8 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// collectBundledNativePkgs returns the set of native package paths whose
-// calls should be routed through the esbuild bundle (instead of the
-// WASM-extern bridge). Today: every `js://` import.
-func collectBundledNativePkgs(pkg *ir.Package) map[string]bool {
-	if pkg == nil {
-		return nil
-	}
-	out := map[string]bool{}
-	for _, imp := range pkg.Imports {
-		if imp == nil || imp.Native == nil || imp.AST == nil {
-			continue
-		}
-		scheme, _ := codegen.SplitScheme(imp.AST.Path)
-		if scheme != "js" {
-			continue
-		}
-		if imp.Native.ImportPath != "" {
-			out[imp.Native.ImportPath] = true
-		}
-	}
-	return out
-}
 
 // bundleNativeScript runs the rendered <script> body — which contains real
 // `import * as ... from "..."` statements at the top — through esbuild and

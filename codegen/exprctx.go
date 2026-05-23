@@ -33,10 +33,6 @@ type ExprCtx struct {
 	Renames   map[string]string // original → unique name (component inlining)
 	EventVar  string            // what "event" maps to (e.g., "e.target")
 	Helpers   map[string]bool   // helper functions needed (populated during codegen)
-	// BundledNativePkgs marks native module paths that the platform will
-	// post-process through a JS bundler (e.g. esbuild for js:// imports).
-	// Mirrors ExprScope.BundledNativePkgs.
-	BundledNativePkgs map[string]bool
 	// NativeImports collects module → set of imported names; populated as
 	// native calls are emitted. Mirrors ExprScope.NativeImports.
 	NativeImports map[string]map[string]bool
@@ -161,10 +157,9 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Locals:            maps.Clone(ctx.Locals),
 		Renames:           maps.Clone(ctx.Renames),
 		EventVar:          ctx.EventVar,
-		Helpers:           ctx.Helpers,           // shared — helpers accumulate globally
-		BundledNativePkgs: ctx.BundledNativePkgs, // shared — set once at gen creation
-		NativeImports:     ctx.NativeImports,     // shared — accumulates across clones
-		Maps:              ctx.Maps,
+		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
+		NativeImports: ctx.NativeImports, // shared — accumulates across clones
+		Maps:          ctx.Maps,
 	}
 }
 

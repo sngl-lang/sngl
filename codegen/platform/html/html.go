@@ -540,15 +540,14 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 	}
 
 	g.scope = &codegen.ExprScope{
-		ModelFields:       common.ModelFields,
-		ComputedFields:    common.ComputedFields,
-		FuncNames:         common.FuncNames,
-		ExternFuncs:       common.ExternFuncs,
-		ExternVars:        common.ExternVars,
-		LocalVars:         make(map[string]bool),
-		NeededHelpers:     common.Helpers,
-		BundledNativePkgs: collectBundledNativePkgs(pkg),
-		Pkg:               pkg,
+		ModelFields:    common.ModelFields,
+		ComputedFields: common.ComputedFields,
+		FuncNames:      common.FuncNames,
+		ExternFuncs:    common.ExternFuncs,
+		ExternVars:     common.ExternVars,
+		LocalVars:      make(map[string]bool),
+		NeededHelpers:  common.Helpers,
+		Pkg:            pkg,
 	}
 	if pkg != nil {
 		for _, c := range pkg.Consts {
@@ -559,7 +558,6 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 	g.dt = common.DepTracker()
 	g.currentComp = mainIRComponent(pkg)
 	g.ctx = codegen.NewExprCtx(pkg)
-	g.ctx.BundledNativePkgs = g.scope.BundledNativePkgs
 	// Share NativeImports so writes from either path land on g.scope.
 	if g.scope.NativeImports == nil {
 		g.scope.NativeImports = map[string]map[string]bool{}
@@ -575,9 +573,8 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		g.ctx = ctx.ExprCtx.ForComponent(main)
-		// Re-apply the bundler/native-imports plumbing after the component
-		// re-binding (Clone preserves these but ForComponent re-clones).
-		g.ctx.BundledNativePkgs = g.scope.BundledNativePkgs
+		// Re-apply the native-imports plumbing after the component
+		// re-binding (Clone preserves it but ForComponent re-clones).
 		g.ctx.NativeImports = g.scope.NativeImports
 	}
 	return g
@@ -3815,13 +3812,12 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	paramStr := strings.Join(params, ", ")
 
 	funcScope := &codegen.ExprScope{
-		ModelFields:       g.scope.ModelFields,
-		ComputedFields:    g.scope.ComputedFields,
-		FuncNames:         g.scope.FuncNames,
-		LocalVars:         make(map[string]bool),
-		Pkg:               g.scope.Pkg,
-		BundledNativePkgs: g.scope.BundledNativePkgs,
-		NativeImports:     g.scope.NativeImports,
+		ModelFields:    g.scope.ModelFields,
+		ComputedFields: g.scope.ComputedFields,
+		FuncNames:      g.scope.FuncNames,
+		LocalVars:      make(map[string]bool),
+		Pkg:            g.scope.Pkg,
+		NativeImports:  g.scope.NativeImports,
 	}
 	for k := range g.scope.LocalVars {
 		funcScope.LocalVars[k] = true
