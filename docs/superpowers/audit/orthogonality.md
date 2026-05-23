@@ -8,7 +8,20 @@ features are unevenly implemented. Ranked roughly by severity.
 
 ## Severity: High
 
-### 1. Three independent i18n-call IR walkers (duplicate logic)
+### 1. Three independent i18n-call IR walkers (duplicate logic) ✅ RESOLVED (2026-05-23)
+
+Collapsed onto the new shared `ir.WalkExprs` (item #17) + the new
+shared `codegen/i18n.IsCall` (item #12). html/i18n.go and
+android/i18n.go's `hasI18nCalls` are now four-line wrappers around
+`ir.WalkExprs`. golang's `PackageUsesI18n` likewise — the old
+`funcUsesI18n` / `stmtUsesI18n` / `exprUsesI18n` trio (~170 LOC) is
+deleted. The Go-side `i18n.zero`/`one`/`other` plural-key Select
+detection stays in `PackageUsesI18n` because it's a Go-runtime-
+specific check; everything else flows through the shared helpers.
+
+---
+
+
 
 - `codegen/lang/golang/golang.go:447` (`PackageUsesI18n`, with helpers
   `funcUsesI18n`, `stmtUsesI18n`, `exprUsesI18n` at 492–577).
@@ -353,7 +366,18 @@ emitter the platform needs.
 
 ---
 
-### 12. Per-language `IsI18nCall` is a static string-set, redundant with `Func.Intrinsic`
+### 12. Per-language `IsI18nCall` is a static string-set, redundant with `Func.Intrinsic` ✅ RESOLVED (2026-05-23)
+
+New `codegen/i18n` package exposes `IsCall(*ir.Call)` (matches both
+`Func.Receiver == "i18n"` pre-inline and `Func.Intrinsic ∈
+ir.I18nIntrinsics` post-inline) and `IsIntrinsic(name)`. The three
+per-lang `IsI18nCall` string-set switches are gone; `IsIntlIntrinsic`
+shims remain on the language translators as one-line delegations for
+existing internal call sites. Single source of truth: `ir.I18nIntrinsics`.
+
+---
+
+
 
 `codegen/lang/golang/golang.go:406`
 `codegen/lang/javascript/javascript.go:113`
@@ -492,7 +516,20 @@ through scope.
 
 ---
 
-### 17. `walkPkgExprs` in html/i18n.go duplicates `ir.Strip` / `treewalk.go`
+### 17. `walkPkgExprs` in html/i18n.go duplicates `ir.Strip` / `treewalk.go` ✅ RESOLVED (2026-05-23)
+
+New `ir.WalkExprs(pkg, fn)` in `ir/walkexprs.go` covers every
+expression-bearing node in a package (consts, vars, funcs,
+components, timers, windows, plus statement-containers like
+If/For/PlatformFilter/SlotInst/ErrorBoundary/ContextProvider). The
+panic-on-unknown convention is preserved. The two ~230-line
+`walkPkgExprs` copies in html/i18n.go and android/i18n.go are
+deleted; both platforms now call `ir.WalkExprs`. Adding a new IR
+node now updates exactly one site.
+
+---
+
+
 
 `codegen/platform/html/i18n.go:47-278` is a 230-line IR visitor that
 panics on every unhandled node. `codegen/treewalk.go` and `ir/strip.go`

@@ -2,12 +2,11 @@ package golang
 
 import (
 	_ "embed"
-	"fmt"
-	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -364,39 +363,6 @@ func goEvalIntlIntrinsic(fn *ir.Func, args []string) string {
 	return ""
 }
 
-// isIntlIntrinsic reports whether intrinsic is one of the i18n stdlib
-// intrinsics emitted by lib/i18n.sngl wrappers (DefaultLocale, Translate,
-// Format, NumberInt, NumberFloat, Date, Time, DateTime, Select, Plural,
-// SelectOrdinal). Used by exprUsesI18n to keep the i18n runtime import
-// flagged after inlining replaces the receiver-style call with a direct
-// intrinsic call.
-func isIntlIntrinsic(intrinsic string) bool {
-	switch intrinsic {
-	case "DefaultLocale", "Translate", "Format",
-		"NumberInt", "NumberFloat",
-		"Date", "Time", "DateTime",
-		"Select", "Plural", "SelectOrdinal":
-		return true
-	}
-	return false
-}
-
-// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
-// Used by platform codegens to detect when the generated code needs to import
-// git.duckfam.us/jonathan/sngl/pkg/go/i18n.
-func IsI18nCall(qualName string) bool {
-	switch qualName {
-	case "i18n.tr", "i18n.trInline", "i18n.format",
-		"i18n.numberInt", "i18n.numberFloat",
-		"i18n.date", "i18n.time", "i18n.datetime",
-		"i18n.select",
-		"i18n.plural", "i18n.selectordinal", "i18n.exactly",
-		"i18n.defaultLocale":
-		return true
-	}
-	return false
-}
-
 // i18nPluralKeyGoName maps a SNGL plural-category name (zero, one, …, other) to
 // the unqualified Go runtime constant name (PluralZero, PluralOne, …,
 // PluralOther). Returns "" for unknown names.
@@ -422,216 +388,38 @@ func i18nPluralKeyGoName(snglName string) string {
 // Platform generators should add this import when PackageUsesI18n returns true.
 const SnglI18nImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 
-// PackageUsesI18n reports whether any function or component in pkg contains an
-// i18n stdlib call. Platform generators use this to decide whether to add an
-// i18n import to the generated Go file.
+// PackageUsesI18n reports whether any function or component in pkg
+// contains an i18n stdlib call. Platform generators use this to
+// decide whether to add the SNGL i18n runtime import. Driven by
+// the shared ir.WalkExprs + snglI18n.IsCall; also catches the
+// i18n.zero/one/…/other plural-key Selects that survive as bare
+// idents in plural-map literals.
 func PackageUsesI18n(pkg *ir.Package) bool {
 	if pkg == nil {
 		return false
 	}
-	if slices.ContainsFunc(pkg.Funcs, funcUsesI18n) {
-		return true
-	}
-	for _, comp := range pkg.Components {
-		if slices.ContainsFunc(comp.Funcs, funcUsesI18n) {
-			return true
-		}
-		for _, v := range comp.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil && funcUsesI18n(h.Func) {
+	found := false
+	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+		switch n := e.(type) {
+		case *ir.Call:
+			if snglI18n.IsCall(n) {
+				found = true
+				return true
+			}
+		case *ir.Select:
+			if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+				if i18nPluralKeyGoName(n.Field) != "" {
+					found = true
 					return true
 				}
 			}
-			if exprUsesI18n(v.Init) {
-				return true
-			}
 		}
-		// Visual tree: i18n.tr calls live inside prop values of
-		// `text(value=$"...")`, `button(text=$"...")`, etc.
-		if slices.ContainsFunc(comp.Body, stmtUsesI18n) {
-			return true
-		}
-	}
-	for _, w := range pkg.Windows {
-		if slices.ContainsFunc(w.Body, stmtUsesI18n) {
-			return true
-		}
-	}
-	for _, v := range pkg.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil && funcUsesI18n(h.Func) {
-				return true
-			}
-		}
-		if exprUsesI18n(v.Init) {
-			return true
-		}
-	}
-	return false
-}
-
-func funcUsesI18n(f *ir.Func) bool {
-	if f == nil {
 		return false
-	}
-	return slices.ContainsFunc(f.Block, stmtUsesI18n)
-}
-
-func stmtUsesI18n(s ir.Stmt) bool {
-	switch n := s.(type) {
-	case *ir.Return:
-		return exprUsesI18n(n.Value)
-	case *ir.Assign:
-		return exprUsesI18n(n.Value)
-	case *ir.LocalVar:
-		return exprUsesI18n(n.Init)
-	case *ir.CallStmt:
-		return exprUsesI18n(n.Call)
-	case *ir.If:
-		if exprUsesI18n(n.Cond) {
-			return true
-		}
-		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
-			return true
-		}
-		if slices.ContainsFunc(n.Else, stmtUsesI18n) {
-			return true
-		}
-	case *ir.For:
-		if exprUsesI18n(n.Iter) {
-			return true
-		}
-		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
-			return true
-		}
-	case *ir.NodeInst:
-		for _, prop := range n.Props {
-			if exprUsesI18n(prop.Value) {
-				return true
-			}
-		}
-		for _, h := range n.Handlers {
-			if h.Func != nil && funcUsesI18n(h.Func) {
-				return true
-			}
-		}
-		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
-			return true
-		}
-	case *ir.Toggle, *ir.Emit:
-		// Mutation statements with no expression-bearing child capable of
-		// hosting an i18n call.
-	case *ir.PlatformFilter:
-		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
-			return true
-		}
-	case *ir.SlotInst:
-		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
-			return true
-		}
-	case *ir.ErrorBoundary:
-		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
-			return true
-		}
-		if n.Handler != nil && funcUsesI18n(n.Handler.Func) {
-			return true
-		}
-	case *ir.Window:
-		if slices.ContainsFunc(n.Body, stmtUsesI18n) {
-			return true
-		}
-	case *ir.ContextProvider:
-		// post-NoContext IR has no ContextProvider, but kept for pre-lower
-		// callers that may invoke this predicate.
-		if exprUsesI18n(n.Value) {
-			return true
-		}
-		if slices.ContainsFunc(n.Children, stmtUsesI18n) {
-			return true
-		}
-	default:
-		panic(fmt.Sprintf("stmtUsesI18n: unhandled ir.Stmt %T", n))
-	}
-	return false
+	})
+	return found
 }
 
 // NewFileEmitter returns a Go FileEmitter (see fileemit.go).
 func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
 	return newFileEmitter(sink, opts)
-}
-
-func exprUsesI18n(e ir.Expr) bool {
-	if e == nil {
-		return false
-	}
-	switch n := e.(type) {
-	case *ir.Call:
-		if n.Func != nil && n.Func.Receiver == "i18n" {
-			return true
-		}
-		// After NoContext + InlinePure inlines i18n.* wrappers, the user
-		// site holds a direct intl.* intrinsic Call. Treat intrinsic
-		// targets as i18n-using too so the runtime import is added.
-		if n.Func != nil && isIntlIntrinsic(n.Func.Intrinsic) {
-			return true
-		}
-		if exprUsesI18n(n.Receiver) {
-			return true
-		}
-		for _, a := range n.Args {
-			if exprUsesI18n(a.Value) {
-				return true
-			}
-		}
-	case *ir.Binary:
-		return exprUsesI18n(n.Left) || exprUsesI18n(n.Right)
-	case *ir.Unary:
-		return exprUsesI18n(n.Operand)
-	case *ir.Ternary:
-		return exprUsesI18n(n.Cond) || exprUsesI18n(n.Then) || exprUsesI18n(n.Else)
-	case *ir.Select:
-		// Detect i18n.zero / i18n.one / … / i18n.other as keys in plural maps.
-		if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-			if i18nPluralKeyGoName(n.Field) != "" {
-				return true
-			}
-		}
-		return exprUsesI18n(n.Operand)
-	case *ir.MapLitIR:
-		for _, entry := range n.Entries {
-			if exprUsesI18n(entry.Key) || exprUsesI18n(entry.Value) {
-				return true
-			}
-		}
-	case *ir.ListLit:
-		if slices.ContainsFunc(n.Elems, exprUsesI18n) {
-			return true
-		}
-	case *ir.Index:
-		return exprUsesI18n(n.Operand) || exprUsesI18n(n.Idx)
-	case *ir.Conversion:
-		return exprUsesI18n(n.Operand)
-	case *ir.Lambda:
-		return funcUsesI18n(n.Func)
-	case *ir.Closure:
-		if funcUsesI18n(n.Func) {
-			return true
-		}
-		if n.State != nil && exprUsesI18n(n.State) {
-			return true
-		}
-	case *ir.Spread:
-		return exprUsesI18n(n.Operand)
-	case *ir.StructLit:
-		for _, f := range n.Fields {
-			if exprUsesI18n(f.Value) {
-				return true
-			}
-		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
-		// Terminal — no expression children.
-	default:
-		panic(fmt.Sprintf("exprUsesI18n: unhandled ir.Expr %T", n))
-	}
-	return false
 }

@@ -5,6 +5,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -92,35 +93,10 @@ func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions)
 // resolves at runtime.
 const SnglI18nImportPath = "./i18n/i18n.js"
 
-// IsI18nCall reports whether a qualified method name is an i18n stdlib call.
-// Mirrors the Go translator's helper of the same name. Platform codegens use
-// this to decide whether to inject the i18n runtime import.
-func IsI18nCall(qualName string) bool {
-	switch qualName {
-	case "i18n.tr", "i18n.trInline", "i18n.format",
-		"i18n.numberInt", "i18n.numberFloat",
-		"i18n.date", "i18n.time", "i18n.datetime",
-		"i18n.select",
-		"i18n.plural", "i18n.selectordinal", "i18n.exactly":
-		return true
-	}
-	return false
-}
-
-// IsIntlIntrinsic reports whether intrinsic is one of the stdlib i18n
-// intrinsics emitted by lib/i18n.sngl wrappers. After NoContext +
-// InlinePure inlines the wrappers, callers see direct intrinsic Calls
-// instead of i18n.* receiver calls.
-func IsIntlIntrinsic(intrinsic string) bool {
-	switch intrinsic {
-	case "DefaultLocale", "Translate", "Format",
-		"NumberInt", "NumberFloat",
-		"Date", "Time", "DateTime",
-		"Select", "Plural", "SelectOrdinal":
-		return true
-	}
-	return false
-}
+// IsIntlIntrinsic delegates to codegen/i18n.IsIntrinsic. Kept as a
+// thin shim for internal javascript-translator call sites; new code
+// should use the shared helper directly.
+func IsIntlIntrinsic(intrinsic string) bool { return snglI18n.IsIntrinsic(intrinsic) }
 
 // jsEvalIntlIntrinsic emits JavaScript source for an intl.* intrinsic
 // call. After NoContext + InlinePure, calls to i18n.* SNGL wrappers are

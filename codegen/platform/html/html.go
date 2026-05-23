@@ -17,6 +17,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
@@ -3185,8 +3186,7 @@ func exprUsesI18n(expr ir.Expr) bool {
 			return
 		}
 		if c, ok := e.(*ir.Call); ok && c.Func != nil {
-			qual := c.Func.Receiver + "." + c.Func.Name
-			if javascript.IsI18nCall(qual) || javascript.IsIntlIntrinsic(c.Func.Intrinsic) {
+			if snglI18n.IsCall(c) {
 				found = true
 				return
 			}
