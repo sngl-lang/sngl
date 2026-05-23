@@ -3,7 +3,6 @@ package gtk4
 import (
 	"context"
 	"fmt"
-	"go/format"
 	"maps"
 	"strings"
 
@@ -101,29 +100,35 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		return err
 	}
 
-	modelFormatted, err := format.Source(modelSrc)
-	if err != nil {
-		return fmt.Errorf("gtk4 model.go formatting error: %w\n%s", err, modelSrc)
-	}
-	callbacksFormatted, err := format.Source(callbacksSrc)
-	if err != nil {
-		return fmt.Errorf("gtk4 callbacks.go formatting error: %w\n%s", err, callbacksSrc)
-	}
-
-	opts := codegen.WriterOptions{Source: req.Source, Platform: "gtk4", Maps: req.Maps}
+	// gtk4 templates currently render `package main` + the import block
+	// inline, so each file's bytes is a complete Go source. Route both
+	// through the language's FileEmitter so it owns the generated-by
+	// header, the final gofmt pass, and (when Maps is on) source-map
+	// emission. PackageName left empty: the template's `package main`
+	// stays the file's package decl.
+	//
+	// The import-block collapse (template stops emitting imports;
+	// emitter renders them from RequireImport) is a follow-up — it
+	// requires the template + emitIR to register every import at the
+	// translation site instead of statically.
 	for _, pair := range []struct {
 		name    string
 		content []byte
 	}{
-		{"model.go", modelFormatted},
-		{"callbacks.go", callbacksFormatted},
+		{"model.go", modelSrc},
+		{"callbacks.go", callbacksSrc},
 	} {
-		w := codegen.OpenCodeFile(sink, pair.name, req.Lang, opts)
-		if _, err := w.Write(pair.content); err != nil {
-			w.Close()
+		e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
+			Name:     pair.name,
+			Source:   req.Source,
+			Platform: "gtk4",
+			Maps:     req.Maps,
+		})
+		if _, err := e.Write(pair.content); err != nil {
+			e.Close()
 			return err
 		}
-		if err := w.Close(); err != nil {
+		if err := e.Close(); err != nil {
 			return err
 		}
 	}

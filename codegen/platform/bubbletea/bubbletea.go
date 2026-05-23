@@ -89,15 +89,14 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 		return err
 	}
 
-	opts := codegen.WriterOptions{Source: req.Source, Platform: "bubbletea", Maps: req.Maps}
-	if err := writeBubbleteaFile(sink, "model.go", req.Lang, opts, src); err != nil {
+	if err := writeBubbleteaFile(sink, "model.go", req.Lang, req, src); err != nil {
 		return err
 	}
 
 	if req.Pkg != nil && hasTestFuncs(req.Pkg) && c.cfg.EmitTests() {
 		testSrc, err := CompileTestsIR(c.ctx, c.cfg)
 		if err == nil && testSrc != nil {
-			if err := writeBubbleteaFile(sink, "model_test.go", req.Lang, opts, testSrc); err != nil {
+			if err := writeBubbleteaFile(sink, "model_test.go", req.Lang, req, testSrc); err != nil {
 				return err
 			}
 		}
@@ -106,13 +105,18 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 	return nil
 }
 
-func writeBubbleteaFile(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.WriterOptions, content []byte) error {
-	w := codegen.OpenCodeFile(sink, name, lang, opts)
-	if _, err := w.Write(content); err != nil {
-		w.Close()
+func writeBubbleteaFile(sink codegen.Sink, name string, lang codegen.LangTranslator, req *codegen.Request, content []byte) error {
+	e := lang.NewFileEmitter(sink, codegen.FileOptions{
+		Name:     name,
+		Source:   req.Source,
+		Platform: "bubbletea",
+		Maps:     req.Maps,
+	})
+	if _, err := e.Write(content); err != nil {
+		e.Close()
 		return err
 	}
-	return w.Close()
+	return e.Close()
 }
 
 func hasTestFuncs(pkg *ir.Package) bool {

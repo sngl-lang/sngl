@@ -35,13 +35,9 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string { return "" }
 func (t *Translator) TypeToNative(hint string) string     { return hint }
 func (t *Translator) ExportName(name string) string       { return name }
 
-// WriteComment returns nil; the none lang emits no file header.
-func (t *Translator) WriteComment(text string) []byte { return nil }
-
-// RenderImports returns nil; the none lang has no import syntax.
-func (t *Translator) RenderImports(imports []codegen.ImportSpec) []byte { return nil }
-
-// RenderSourceMap returns no changes; the none lang produces no source maps.
-func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
-	return codegen.SourceMapResult{}
+// NewFileEmitter returns an unimplemented stub. The none lang isn't
+// expected to be the target of source-file emission today.
+func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
+	return &codegen.UnimplementedFileEmitter{Lang: "none"}
 }
+

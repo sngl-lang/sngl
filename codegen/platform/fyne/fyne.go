@@ -3,7 +3,6 @@ package fyne
 import (
 	_ "embed"
 	"fmt"
-	"go/format"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -102,14 +101,15 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	if err != nil {
 		return err
 	}
-	formatted, err := format.Source(src)
-	if err != nil {
-		return fmt.Errorf("generated code formatting error: %w\n%s", err, src)
-	}
-	w := codegen.OpenCodeFile(sink, "model.go", req.Lang, codegen.WriterOptions{Source: req.Source, Platform: "fyne", Maps: req.Maps})
-	if _, err := w.Write(formatted); err != nil {
-		w.Close()
+	e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
+		Name:     "model.go",
+		Source:   req.Source,
+		Platform: "fyne",
+		Maps:     req.Maps,
+	})
+	if _, err := e.Write(src); err != nil {
+		e.Close()
 		return err
 	}
-	return w.Close()
+	return e.Close()
 }

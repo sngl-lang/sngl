@@ -153,22 +153,9 @@ func (t *Translator) ExportName(name string) string {
 	return name
 }
 
-// WriteComment wraps text in Kotlin's // line-comment syntax.
-func (t *Translator) WriteComment(text string) []byte {
-	return []byte("// " + text + "\n")
-}
-
-// RenderImports emits the Kotlin import block for the collected imports.
-// Today returns nil; real impl lands when platforms route their kotlin
-// imports through CodeWriter.Import.
-func (t *Translator) RenderImports(imports []codegen.ImportSpec) []byte {
-	return nil
-}
-
-// RenderSourceMap returns no changes. Kotlin SMAP support is deferred (spec
-// section 7).
-func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
-	return codegen.SourceMapResult{}
+// NewFileEmitter returns a Kotlin FileEmitter (see fileemit.go).
+func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
+	return newFileEmitter(sink, opts)
 }
 
 // kotlinHardKeywords lists Kotlin hard keywords that cannot be used as bare

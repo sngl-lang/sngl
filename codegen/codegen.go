@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"strings"
@@ -105,22 +106,88 @@ type LangTranslator interface {
 	TypeToNative(hint string) string
 	ExportName(name string) string
 
-	// WriteComment wraps text in the language's single-line comment syntax,
-	// terminated by a newline. Used by CodeWriter to emit the generated-by
-	// header. Return nil to suppress header emission.
-	WriteComment(text string) []byte
+	// NewFileEmitter returns a per-file emitter that owns header,
+	// imports, body buffer, and source-map sidecar internally. The
+	// platform writes IR-translated content through the emitter; Close
+	// flushes the assembled file to sink under opts.Name. See
+	// FileEmitter and FileOptions.
+	NewFileEmitter(sink Sink, opts FileOptions) FileEmitter
+}
 
-	// RenderImports emits the language's import block for the collected
-	// imports, in the order given. Called by CodeWriter.Close after the
-	// header comment. Today every language returns nil; real impls land
-	// when platforms route their import bookkeeping through CodeWriter.Import.
-	RenderImports(imports []ImportSpec) []byte
+// UnimplementedFileEmitter is the placeholder returned by languages that
+// haven't migrated to the FileEmitter surface yet. Every method that
+// requires actual emission returns an error indicating the language is
+// not migrated. Used by codegen.RequireFileEmitter to error early when
+// a platform attempts file-emitter usage against a non-migrated lang.
+type UnimplementedFileEmitter struct {
+	Lang string
+}
 
-	// RenderSourceMap optionally rewrites the body to embed source-mapping
-	// information (Go //line directives) or produces a sidecar (JS .map).
-	// Called by CodeWriter.Close only when source maps are enabled.
-	// Returning a zero SourceMapResult means "no changes".
-	RenderSourceMap(name string, positions []PosEntry, body []byte) SourceMapResult
+func (u *UnimplementedFileEmitter) Write(p []byte) (int, error) {
+	return 0, fmt.Errorf("%s: FileEmitter not yet implemented", u.Lang)
+}
+func (u *UnimplementedFileEmitter) EvalExpr(ir.Expr) string                  { return "" }
+func (u *UnimplementedFileEmitter) EvalStmt(ir.Stmt) []string                { return nil }
+func (u *UnimplementedFileEmitter) RequireImport(path string) string         { return path }
+func (u *UnimplementedFileEmitter) Close() error {
+	return fmt.Errorf("%s: FileEmitter not yet implemented", u.Lang)
+}
+
+// FileOptions configures a per-file emitter.
+type FileOptions struct {
+	// Name is the output filename under the sink, e.g. "model.go".
+	Name string
+	// Source is the SNGL source filename for the generated-by header.
+	// Empty suppresses the header.
+	Source string
+	// Platform identifies the platform in the generated-by header
+	// (e.g. "gtk4"). Empty suppresses the header.
+	Platform string
+	// PackageName, when non-empty, is rendered as the file's package
+	// declaration where the language requires one (Go, Kotlin). Empty
+	// means the platform writes the package decl itself or the language
+	// has no notion of one.
+	PackageName string
+	// Maps enables source-map emission: Go inline //line directives,
+	// JS data-URL sourceMappingURL.
+	Maps bool
+}
+
+// FileEmitter is the per-file rendering surface. Languages own their
+// concrete implementation; the platform writes through this generic
+// interface so its code stays lang-agnostic.
+//
+// Lifecycle:
+//   1. Platform asks the language: `e := lang.NewFileEmitter(sink, opts)`.
+//   2. Platform writes via io.Writer (raw bytes for things like function
+//      signatures) and/or calls EvalExpr/EvalStmt to translate IR. Each
+//      translation call may auto-register imports as a side-effect.
+//   3. Platform calls Close. The emitter flushes header + package decl
+//      + import block + body to the sink as a single file, plus any
+//      source-map sidecar.
+//
+// Imports are tracked internally. The platform never sees raw paths;
+// when it needs a specific alias for an import it explicitly registers,
+// it gets the alias back from RequireImport.
+type FileEmitter interface {
+	io.Writer
+
+	// EvalExpr translates an IR expression to its language form,
+	// auto-registering any imports the expression references.
+	EvalExpr(e ir.Expr) string
+
+	// EvalStmt translates an IR statement to one or more lines. The
+	// caller decides indentation/joining.
+	EvalStmt(s ir.Stmt) []string
+
+	// RequireImport registers a native package the emitted file needs,
+	// returning the local alias the caller should use at the call site.
+	// Repeated calls for the same path return the same alias.
+	RequireImport(path string) string
+
+	// Close flushes assembled file content to the sink and closes the
+	// underlying writer. Idempotent; second call returns nil.
+	Close() error
 }
 
 // PlatformGenerator produces output files from a checked SNGL document.

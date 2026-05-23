@@ -24,7 +24,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	// When --lang=go, MainScreen.kt is still Kotlin source — look up its lang
 	// explicitly so its header is rendered by the Kotlin translator.
 	ktLang := codegen.LookupLang("kotlin")
-	opts := codegen.WriterOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
+	opts := codegen.FileOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
 
 	if !cfg.Main {
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", ktLang, opts, src); err != nil {

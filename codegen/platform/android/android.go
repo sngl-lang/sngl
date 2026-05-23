@@ -43,16 +43,17 @@ func writeAndroidFile(sink codegen.Sink, name string, content []byte) error {
 	return w.Close()
 }
 
-// writeAndroidSourceFile routes through CodeWriter so the file gets a
-// generated-by header from lang.RenderHeader and (when enabled) a source
-// map sidecar.
-func writeAndroidSourceFile(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.WriterOptions, content []byte) error {
-	w := codegen.OpenCodeFile(sink, name, lang, opts)
-	if _, err := w.Write(content); err != nil {
-		w.Close()
+// writeAndroidSourceFile routes through the language's FileEmitter so the
+// file gets a generated-by header, gofmt/source-map handling, and (when
+// enabled) source-map sidecar emission.
+func writeAndroidSourceFile(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.FileOptions, content []byte) error {
+	opts.Name = name
+	e := lang.NewFileEmitter(sink, opts)
+	if _, err := e.Write(content); err != nil {
+		e.Close()
 		return err
 	}
-	return w.Close()
+	return e.Close()
 }
 
 // writeOutputFile writes an OutputFile's content into sink using its name.
@@ -171,7 +172,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		return err
 	}
 
-	ktOpts := codegen.WriterOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
+	ktOpts := codegen.FileOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
 	usesI18n := hasI18nCalls(req.Pkg)
 
 	if !cfg.Main {

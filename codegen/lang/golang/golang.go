@@ -555,22 +555,9 @@ func stmtUsesI18n(s ir.Stmt) bool {
 	return false
 }
 
-// WriteComment wraps text in Go's // line-comment syntax.
-func (t *Translator) WriteComment(text string) []byte {
-	return []byte("// " + text + "\n")
-}
-
-// RenderImports emits the Go import block for the collected imports. Today
-// returns nil; real impl lands when platforms route their goImports through
-// CodeWriter.Import.
-func (t *Translator) RenderImports(imports []codegen.ImportSpec) []byte {
-	return nil
-}
-
-// RenderSourceMap splices //line directives into body so the Go compiler
-// attributes errors back to the original SNGL source.
-func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
-	return renderGoSourceMap(name, positions, body)
+// NewFileEmitter returns a Go FileEmitter (see fileemit.go).
+func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
+	return newFileEmitter(sink, opts)
 }
 
 func exprUsesI18n(e ir.Expr) bool {
