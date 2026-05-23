@@ -402,7 +402,7 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 		Maps:       optionBool(target.Options, "maps"),
 	}
 	mem := codegen.NewMemSink()
-	if err := codegen.RunGenerate(plat, req, mem); err != nil {
+	if err := plat.Generate(req, mem); err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
 	}
 

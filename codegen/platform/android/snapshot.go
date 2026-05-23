@@ -1,12 +1,10 @@
 package android
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,35 +38,12 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		"gradle":  false,
 	})
 
-	resp, err := g.Generate(&codegen.Request{
+	if err := g.Generate(&codegen.Request{
 		Pkg:     irPkg,
 		Lang:    lang,
 		Options: opts,
-	})
-	if err != nil {
+	}, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generating android code: %w", err)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("generating android code: %s", resp.Error)
-	}
-
-	// Write generated files.
-	for _, file := range resp.Files {
-		path := filepath.Join(tmpDir, file.Name)
-		os.MkdirAll(filepath.Dir(path), 0o755)
-		f, err := os.Create(path)
-		if err != nil {
-			return nil, fmt.Errorf("creating %s: %w", file.Name, err)
-		}
-		_, writeErr := file.WriteTo(f)
-		f.Close()
-		if errors.Is(writeErr, codegen.ErrSkip) {
-			os.Remove(path)
-			continue
-		}
-		if writeErr != nil {
-			return nil, fmt.Errorf("writing %s: %w", file.Name, writeErr)
-		}
 	}
 
 	// Build → install → launch (same as sngl run)

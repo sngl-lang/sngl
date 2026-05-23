@@ -53,7 +53,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 	previewDoc := ir.Convert(pkg)
 
 	mem := codegen.NewMemSink()
-	if err := codegen.RunGenerate(htmlPlat, &codegen.Request{
+	if err := htmlPlat.Generate(&codegen.Request{
 		Doc:     previewDoc,
 		Pkg:     pkg,
 		Lang:    noneLang,

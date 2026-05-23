@@ -78,9 +78,9 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 	return ok
 }
 
-// GenerateSink writes html platform output directly into sink. This is the
+// Generate writes html platform output directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
-func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
+func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if req.Lang.LanguageIdentifier() == "none" {
 		if err := rejectDynamicHrefs(req); err != nil {
 			return err
@@ -96,16 +96,6 @@ func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error 
 		return g.generateRoutes(req, sink)
 	}
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
-}
-
-// Generate is the legacy entry point; delegates to GenerateSink via a
-// MemSink and converts captured files back to the Response shape.
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	mem := codegen.NewMemSink()
-	if err := g.GenerateSink(req, mem); err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
-	}
-	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // rejectDynamicHrefs errors when static mode (lang=none) encounters a window
@@ -163,7 +153,6 @@ type htmlWindowOutput struct {
 	name  string
 	bytes []byte
 }
-
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
 	jsLang := codegen.LookupLang("js")

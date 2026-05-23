@@ -127,7 +127,7 @@ func compile(this js.Value, args []js.Value) any {
 	opts := optionsForTarget(pkg, "html")
 	codegen.SetOptionField(opts, "preview", true)
 	mem := codegen.NewMemSink()
-	if err := codegen.RunGenerate(gen, &codegen.Request{
+	if err := gen.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: opts,
@@ -263,7 +263,7 @@ func generate(this js.Value, args []js.Value) any {
 	}
 
 	mem := codegen.NewMemSink()
-	if err := codegen.RunGenerate(gen, &codegen.Request{
+	if err := gen.Generate(&codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: optionsForTarget(pkg, platName),

@@ -257,15 +257,15 @@ CDP/rod test runners that previously took `[]*OutputFile`: switch to taking `*Me
 
 ### Plan A status (2026-05-22)
 
-- [x] Sink + MemSink + DirSink (commits `df6d6ec`, `419857e`, `911d2db`)
-- [x] ImportSpec + ImportKind (`021a06f`)
-- [x] PosEntry + SourceMapResult (`822605e`)
-- [x] LangTranslator.RenderHeader + RenderSourceMap stubs on every lang (`da7cebd`, `3ab9c9f`)
-- [x] CodeWriter + position tracking + import dedup + maps gating (`35e5ed1`, `31e3e72`, `3cf3c13`)
-- [x] Go //line renderer (`7c87c99`)
-- [x] JS VLQ encoder + v3 source-map renderer (`7eb28b9`, `a2596e6`)
-- [x] Options.maps threaded into Request.Maps (`d668a8a`)
-- [x] End-to-end integration tests against real Go + JS translators (`4901599`)
+- [X] Sink + MemSink + DirSink (commits `df6d6ec`, `419857e`, `911d2db`)
+- [X] ImportSpec + ImportKind (`021a06f`)
+- [X] PosEntry + SourceMapResult (`822605e`)
+- [X] LangTranslator.RenderHeader + RenderSourceMap stubs on every lang (`da7cebd`, `3ab9c9f`)
+- [X] CodeWriter + position tracking + import dedup + maps gating (`35e5ed1`, `31e3e72`, `3cf3c13`)
+- [X] Go //line renderer (`7c87c99`)
+- [X] JS VLQ encoder + v3 source-map renderer (`7eb28b9`, `a2596e6`)
+- [X] Options.maps threaded into Request.Maps (`d668a8a`)
+- [X] End-to-end integration tests against real Go + JS translators (`4901599`)
 - [ ] Generate(req, sink) signature change — Plan B
 - [ ] Per-platform migration through OpenCodeFile — Plan B
 - [ ] OutputFile / Response / dead LangTranslator stubs deletion — Plan B

@@ -3,7 +3,6 @@ package golang
 import (
 	_ "embed"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 
@@ -45,26 +44,8 @@ func (t *Translator) Capabilities() lower.Caps {
 	}
 }
 
-// v2 IR-based methods (stubs — will be implemented during platform migration).
-
-func (t *Translator) WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error {
-	return fmt.Errorf("golang: WriteExpr not yet implemented")
-}
-
-func (t *Translator) WriteStmt(w io.Writer, stmt ir.Stmt, scope *ir.Scope) error {
-	return fmt.Errorf("golang: WriteStmt not yet implemented")
-}
-
-func (t *Translator) WriteType(w io.Writer, typ *ir.Type) error {
-	return fmt.Errorf("golang: WriteType not yet implemented")
-}
-
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return ExportName(name.Name)
-}
-
-func (t *Translator) Eval(expr ir.Expr) string {
-	return fmt.Sprintf("/* eval not implemented: %T */", expr)
 }
 
 func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {

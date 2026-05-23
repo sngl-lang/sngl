@@ -53,7 +53,7 @@ func TestMemSinkConcurrentCreate(t *testing.T) {
 	const n = 32
 	var wg sync.WaitGroup
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		go func(i int) {
 			defer wg.Done()
 			name := fmt.Sprintf("f%02d.txt", i)
@@ -75,7 +75,7 @@ func TestMemSinkConcurrentCreate(t *testing.T) {
 	if len(files) != n {
 		t.Fatalf("got %d files, want %d", len(files), n)
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		name := fmt.Sprintf("f%02d.txt", i)
 		if string(files[name]) != name {
 			t.Errorf("file %s content mismatch: %q", name, files[name])

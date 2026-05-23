@@ -58,25 +58,15 @@ func (g *Generator) Capabilities() lower.Caps {
 	return lower.Caps{NoContext: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
 }
 
-// GenerateSink writes fyne source files directly into sink. This is the
+// Generate writes fyne source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
-func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
+func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err
 	}
 	return c.EmitFromMutation(m, req, sink)
-}
-
-// Generate is the legacy entry point; delegates to GenerateSink via a
-// MemSink and converts captured files back to the Response shape.
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	mem := codegen.NewMemSink()
-	if err := g.GenerateSink(req, mem); err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
-	}
-	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // compilation holds per-request build state flowing between

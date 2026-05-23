@@ -1,7 +1,6 @@
 package android
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -184,7 +183,8 @@ func buildDocPlans(docs []codegen.BatchDoc) ([]docPlan, error) {
 // doc with main=false and a per-doc package, returning the MainScreen.kt
 // bytes.
 func generateDocMainScreen(g *Generator, p docPlan) ([]byte, error) {
-	resp, err := g.Generate(&codegen.Request{
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{
 		Pkg:  p.doc.Pkg,
 		Lang: p.doc.Lang,
 		Options: codegen.OptionsFromMap(map[string]any{
@@ -192,22 +192,11 @@ func generateDocMainScreen(g *Generator, p docPlan) ([]byte, error) {
 			"package": p.subPackage,
 			"gradle":  false,
 		}),
-	})
-	if err != nil {
+	}, mem); err != nil {
 		return nil, fmt.Errorf("generating android code: %w", err)
 	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("generating android code: %s", resp.Error)
-	}
-	for _, f := range resp.Files {
-		if f.Name != "MainScreen.kt" {
-			continue
-		}
-		var buf bytes.Buffer
-		if _, err := f.WriteTo(&buf); err != nil {
-			return nil, fmt.Errorf("writing MainScreen.kt: %w", err)
-		}
-		return buf.Bytes(), nil
+	if content, ok := mem.Files()["MainScreen.kt"]; ok {
+		return content, nil
 	}
 	return nil, fmt.Errorf("codegen produced no MainScreen.kt")
 }

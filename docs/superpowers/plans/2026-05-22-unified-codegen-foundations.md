@@ -203,8 +203,9 @@ Create; per-file writes are not concurrent. WASM-safe (no os deps)."
 Append to `codegen/sink_test.go`:
 
 ```go
-//go:build !js
+!js
 
+package p
 func TestDirSink(t *testing.T) {
 	root := t.TempDir()
 	s := NewDirSink(root)
@@ -227,12 +228,13 @@ func TestDirSink(t *testing.T) {
 ```
 
 Add to imports at top of `sink_test.go`:
+
 ```go
 import (
-    "io"
-    "os"
-    "path/filepath"
-    "testing"
+	"io"
+	"os"
+	"path/filepath"
+	"testing"
 )
 ```
 
@@ -1399,11 +1401,12 @@ import (
 //
 // Mappings are organized one segment per output line. Each segment is five
 // VLQ-encoded integers (deltas from the previous segment):
-//   0: generated column
-//   1: source-file index
-//   2: source line
-//   3: source column
-//   4: name index (omitted; we don't emit name mappings)
+//
+//	0: generated column
+//	1: source-file index
+//	2: source line
+//	3: source column
+//	4: name index (omitted; we don't emit name mappings)
 //
 // We emit at most one mapping per generated line — the first PosEntry whose
 // byte offset falls in that line. Finer-grained column maps would require
@@ -1426,10 +1429,10 @@ func renderJSSourceMap(name string, positions []codegen.PosEntry, body []byte) c
 	// Build a map from generated-line index → first PosEntry on that line.
 	lineStart := computeLineStarts(body) // byte offset of start of each line
 	type seg struct {
-		genCol   int
-		srcIdx   int
-		srcLine  int // 0-based
-		srcCol   int // 0-based
+		genCol  int
+		srcIdx  int
+		srcLine int // 0-based
+		srcCol  int // 0-based
 	}
 	perLine := make([]*seg, len(lineStart))
 	for _, p := range positions {

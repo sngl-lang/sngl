@@ -24,13 +24,9 @@ func (g *Generator) Resolve(identifier string) ir.Symbol    { return nil }
 func (g *Generator) IsLanguageSupported(l ir.Language) bool { return false }
 func (g *Generator) Capabilities() lower.Caps               { return lower.Caps{} }
 
-func (g *Generator) Generate(*codegen.Request) (*codegen.Response, error) {
-	return &codegen.Response{Error: "none platform does not generate code"}, nil
-}
-
-// GenerateSink rejects code generation requests. The none platform is a
-// marker for headless test execution; it emits no files.
-func (g *Generator) GenerateSink(*codegen.Request, codegen.Sink) error {
+// Generate rejects code generation requests. The none platform is a marker
+// for headless test execution; it emits no files.
+func (g *Generator) Generate(*codegen.Request, codegen.Sink) error {
 	return fmt.Errorf("none platform does not generate code")
 }
 

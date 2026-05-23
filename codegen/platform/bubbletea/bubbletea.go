@@ -49,25 +49,15 @@ func (g *Generator) Capabilities() lower.Caps {
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 
-// GenerateSink writes bubbletea source files directly into sink. This is
+// Generate writes bubbletea source files directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
-func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
+func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err
 	}
 	return c.EmitFromRender(m, req, sink)
-}
-
-// Generate is the legacy entry point; delegates to GenerateSink via a
-// MemSink and converts captured files back to the Response shape.
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
-	mem := codegen.NewMemSink()
-	if err := g.GenerateSink(req, mem); err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
-	}
-	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // compilation holds per-request build state that flows between

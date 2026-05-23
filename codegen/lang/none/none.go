@@ -5,7 +5,6 @@
 package none
 
 import (
-	"io"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -27,11 +26,7 @@ func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
 
-func (t *Translator) WriteExpr(w io.Writer, expr ir.Expr, scope *ir.Scope) error { return nil }
-func (t *Translator) WriteStmt(w io.Writer, stmt ir.Stmt, scope *ir.Scope) error { return nil }
-func (t *Translator) WriteType(w io.Writer, typ *ir.Type) error                  { return nil }
-func (t *Translator) GenerateIdentifier(name *ir.Ident) string                   { return name.Name }
-func (t *Translator) Eval(expr ir.Expr) string                                   { return "" }
+func (t *Translator) GenerateIdentifier(name *ir.Ident) string { return name.Name }
 func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string { return "" }
 func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 	return nil
