@@ -162,13 +162,16 @@ func translateIRLiteral(n *ir.Literal) string {
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeString, ir.TypeColor:
-			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
-			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 			return n.Raw
 		case ir.TypeNull:
 			return "null"
+		case ir.TypeString, ir.TypeColor,
+			ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+			ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
+			ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
+			return fmt.Sprintf("%q", n.Raw)
 		}
 	}
 	return n.Raw
@@ -273,7 +276,9 @@ func translateIRPlainCall(n *ir.Call, scope *codegen.ExprScope) string {
 		}
 	}
 	if fn == "" {
-		fn = "/* unresolved call */"
+		// Codegen-only fallback: callee resolved to nothing. Emit a no-op
+		// expression that is valid JS so the surrounding statement parses.
+		return "void 0 /* unresolved call */"
 	}
 	call := fn + "(" + strings.Join(argStrs, ", ") + ")"
 	if n.Func != nil && n.Func.IsAsync {
@@ -289,6 +294,12 @@ func translateIRPlainCall(n *ir.Call, scope *codegen.ExprScope) string {
 // candidate ⇒ await.
 func translateIRFuncvarCall(n *ir.Call, scope *codegen.ExprScope) string {
 	calleeJS := translateIRExpr(n.Callee, scope)
+	if calleeJS == "" {
+		// Codegen-only fallback: callee resolved to nothing (e.g. an
+		// @event propagation site where the user didn't supply a handler).
+		// Emit a no-op so the surrounding statement parses.
+		return "void 0 /* unresolved funcvar call */"
+	}
 	argStrs := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		argStrs[i] = translateIRExpr(a.Value, scope)
@@ -354,7 +365,15 @@ func translateIRNamespaceCall(n *ir.Call, scope *codegen.ExprScope) string {
 		for i, a := range n.Args {
 			argStrs[i] = translateIRExpr(a.Value, scope)
 		}
-		return translateIRExpr(n.Receiver, scope) + "(" + strings.Join(argStrs, ", ") + ")"
+		recv := translateIRExpr(n.Receiver, scope)
+		if recv == "" {
+			// Codegen-only fallback: receiver resolved to nothing (e.g. an
+			// @event propagation site where the user didn't supply a handler).
+			// Emit a guarded no-op so the surrounding statement parses and
+			// runtime doesn't TypeError on calling undefined.
+			return "void 0 /* unresolved namespace call */"
+		}
+		return recv + "(" + strings.Join(argStrs, ", ") + ")"
 	}
 	method := n.Func.Name
 	receiverName := n.Func.Receiver
@@ -459,7 +478,10 @@ func translateIRTypeMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		}
 		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
 	}
-	return "/* unresolved method " + qualName + " */"
+	// Emit a valid expression even when the method is unresolved so the
+	// surrounding statement still parses. Real diagnostics come from the
+	// checker; this branch only fires for codegen-only fallbacks.
+	return "null /* unresolved method " + qualName + " */"
 }
 
 func translateIRConversion(n *ir.Conversion, scope *codegen.ExprScope) string {

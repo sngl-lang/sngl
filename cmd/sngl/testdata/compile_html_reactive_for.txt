@@ -25,7 +25,7 @@ sngl compile --platform=html --out=out app.sngl
 exists out/index.html
 
 # Slot accumulator + render fn.
-grep 'let __slot0 = \[\]' out/index.html
+grep '__slot0 = \[\]' out/index.html
 grep 'function __renderSlot0' out/index.html
 
 # Render fn body shape: clear old entries, then iterate state.items.

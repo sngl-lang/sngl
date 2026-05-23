@@ -129,7 +129,7 @@ func TestFixtures(t *testing.T) {
 			if !strings.Contains(html, "<script>") {
 				t.Error("missing <script> tag")
 			}
-			if !strings.Contains(html, "let state = {") {
+			if !strings.Contains(html, "state = {") {
 				t.Error("missing state initialization")
 			}
 		})
@@ -141,10 +141,10 @@ func TestTodoApp(t *testing.T) {
 
 	checks := []string{
 		"<!DOCTYPE html>",
-		"let state = {",
+		"state = {",
 		"state.todos",
 		"state.newTodo",
-		`function main_status(state)`,
+		`function main_status(`,
 		`function Todo(`,
 		"function String(v)",
 		"document.",
@@ -163,10 +163,10 @@ func TestFullExample(t *testing.T) {
 
 	checks := []string{
 		"<!DOCTYPE html>",
-		"let state = {",
+		"state = {",
 		"state.count",
-		`function main_greeting(state)`,
-		`function main_isAdult(state)`,
+		`function main_greeting(`,
+		`function main_isAdult(`,
 		"document.",
 		"addEventListener",
 	}
@@ -201,11 +201,11 @@ func TestFullFixture(t *testing.T) {
 
 	checks := []string{
 		"<!DOCTYPE html>",
-		"let state = {",
+		"state = {",
 		"state.count",
 		"state.name",
-		`function main_greeting(state)`,
-		`function main_doubled(state)`,
+		`function main_greeting(`,
+		`function main_doubled(`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(html, check) {
@@ -280,8 +280,8 @@ func TestLoweredReactivityWiring(t *testing.T) {
 	}
 	// The __n* id should be cached as a top-level const, not
 	// re-resolved per update.
-	if !strings.Contains(out, `const __n0 = document.querySelector('[data-sngl-id="__n0"]')`) {
-		t.Errorf("missing cached __n0 const; output:\n%s", out)
+	if !strings.Contains(out, `__n0 = document.querySelector('[data-sngl-id="__n0"]')`) {
+		t.Errorf("missing cached __n0 binding; output:\n%s", out)
 	}
 	// The handler body should reference __n0 as a bare identifier,
 	// not via inline document.querySelector.

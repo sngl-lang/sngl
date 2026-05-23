@@ -20,8 +20,8 @@ exists out/index.html
 
 # User func is emitted with both state mutations and inlined DOM patches.
 grep 'function main_update' out/index.html
-grep 'state.name = newName' out/index.html
-grep 'state.count = newCount' out/index.html
+grep 'state\d*\.name = newName' out/index.html
+grep 'state\d*\.count = newCount' out/index.html
 grep '__n0.textContent = state.name' out/index.html
 grep '__n1.textContent = String\(state.count\)' out/index.html
 

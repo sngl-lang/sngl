@@ -33,7 +33,7 @@ component main {
 
 	for _, snippet := range []string{
 		"function __renderSlot0",
-		"let __slot0 = []",
+		"__slot0 = []",
 		"for (const __entry of __slot0)",
 		".removeChild(__entry)",
 		"__slot0 = []",
@@ -79,7 +79,7 @@ component main {
 
 	for _, snippet := range []string{
 		"function __renderSlot0",
-		"let __slot0 = []",
+		"__slot0 = []",
 		"for (const __entry of __slot0)",
 		"for (const item of state.items)",
 		"__slot0.push(",

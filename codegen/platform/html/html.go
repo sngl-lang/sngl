@@ -780,37 +780,35 @@ func (g *htmlGen) generate() (string, error) {
 	if strings.TrimSpace(script) != "" {
 		// When source maps are enabled, the JS translator has emitted
 		// `/*@SNGL:file:line@*/` markers. Convert them to an inline
-		// sourceMappingURL data URL now, so the map survives whether or
-		// not esbuild runs below. Esbuild will read the URL and chain
-		// through to a SNGL→bundled output map when bundling.
+		// sourceMappingURL data URL now so esbuild reads it and chains
+		// through to a SNGL→bundled output map.
 		if g.maps {
 			script = inlineSourceMapFromMarkers(script)
 		}
-		// Run through esbuild when there are real imports to resolve, or
-		// when minify is on. Otherwise emit the script verbatim — esbuild's
-		// IIFE wrapping renames parameters that shadow outer-scope vars
-		// (e.g. `function f(state)` becomes `function f(state2)`) and
-		// rewrites `let`→`var`, which is too invasive when bundling isn't
-		// actually needed.
-		if len(g.scope.NativeImports) > 0 || g.minify {
-			var preludeBuf strings.Builder
-			if len(g.scope.NativeImports) > 0 {
-				mods := make([]string, 0, len(g.scope.NativeImports))
-				for m := range g.scope.NativeImports {
-					mods = append(mods, m)
-				}
-				sort.Strings(mods)
-				for _, m := range mods {
-					fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
-				}
-				preludeBuf.WriteString("\n")
+		// Always run esbuild: serves as JS formatter/normalizer in
+		// addition to bundling native imports and minifying. Output is
+		// then consistent regardless of whether the SNGL source uses
+		// native imports. Esbuild's IIFE wrapping deterministically
+		// renames shadowed parameters (e.g. `state` → `state2` inside a
+		// fn whose enclosing IIFE also declares `state`); harmless because
+		// param names are scope-local.
+		var preludeBuf strings.Builder
+		if len(g.scope.NativeImports) > 0 {
+			mods := make([]string, 0, len(g.scope.NativeImports))
+			for m := range g.scope.NativeImports {
+				mods = append(mods, m)
 			}
-			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify, g.maps)
-			if err != nil {
-				return "", err
+			sort.Strings(mods)
+			for _, m := range mods {
+				fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
 			}
-			script = bundled
+			preludeBuf.WriteString("\n")
 		}
+		bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify, g.maps)
+		if err != nil {
+			return "", err
+		}
+		script = bundled
 		b.WriteString("\n<script>\n")
 		b.WriteString(script)
 		b.WriteString("</script>\n")
@@ -2865,9 +2863,15 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 		fmt.Fprintf(b, "\nlet $timer_%d = null;\n", t.index)
 		fmt.Fprintf(b, "%s $timer_%d_tick() {\n  %s\n}\n", tickKw, t.index, tickBody)
 		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
-		fmt.Fprintf(b, "  if (state.%s && !$timer_%d) {\n", t.activeVar, t.index)
+		// When the timer has no controlling Active var, treat as
+		// always-on: start unconditionally and never tear down.
+		activeExpr := "true"
+		if t.activeVar != "" {
+			activeExpr = "state." + t.activeVar
+		}
+		fmt.Fprintf(b, "  if (%s && !$timer_%d) {\n", activeExpr, t.index)
 		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
-		fmt.Fprintf(b, "  } else if (!state.%s && $timer_%d) {\n", t.activeVar, t.index)
+		fmt.Fprintf(b, "  } else if (!%s && $timer_%d) {\n", activeExpr, t.index)
 		fmt.Fprintf(b, "    clearInterval($timer_%d);\n", t.index)
 		fmt.Fprintf(b, "    $timer_%d = null;\n", t.index)
 		b.WriteString("  }\n}\n")

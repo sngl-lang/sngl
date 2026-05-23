@@ -12,7 +12,7 @@ sngl compile --platform=html --out=out app.sngl
 exists out/index.html
 
 # State initialization with the var's initial value.
-grep 'state = {name: "World"}' out/index.html
+grep 'state = \{ name: "World" \}' out/index.html
 
 # No per-node init-only updater function — write inlined into __sngl_init.
 ! grep '\$u__n0_text' out/index.html

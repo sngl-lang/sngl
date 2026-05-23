@@ -390,8 +390,9 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Callee != nil {
 		return jc.evalFuncvarCall(n)
 	}
-	args := jc.evalCallArgs(n.Args)
-	return "(" + strings.Join(args, ", ") + ")"
+	// Codegen-only fallback: neither Func nor Callee resolved. Emit a
+	// valid no-op expression so the surrounding statement parses.
+	return "void 0 /* unresolved call */"
 }
 
 func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
@@ -488,6 +489,12 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
+	if receiver == "" {
+		// Codegen-only fallback: receiver resolved to nothing (e.g. an
+		// @event propagation site where the user didn't supply a handler).
+		// Emit a no-op so the surrounding statement parses.
+		return "void 0 /* unresolved namespace call */"
+	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
 }
 
@@ -530,7 +537,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 		}
 		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
 	}
-	return "/* unresolved method " + qualName + " */"
+	return "null /* unresolved method " + qualName + " */"
 }
 
 func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
