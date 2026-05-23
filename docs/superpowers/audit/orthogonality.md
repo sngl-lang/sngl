@@ -403,7 +403,17 @@ or detected, not assumed.
 
 ---
 
-### 15. Asymmetric snapshot support across platforms
+### 15. Asymmetric snapshot support across platforms ✅ RESOLVED (2026-05-23)
+
+gtk4 now implements `Snapshotter` + `BatchSnapshotter` via
+`codegen/platform/gtk4/snapshot.go`. The harness wraps the top-level
+window in a `GdkPaintable`, renders it through `GskCairoRenderer`
+(no GdkSurface required), and saves the resulting `GdkTexture` to
+PNG. Still requires `$DISPLAY` / `$WAYLAND_DISPLAY` for
+`gtk_window_present`; a follow-up will spawn weston-headless / Xvfb
+when neither is set so snapshots become fully self-contained.
+
+---
 
 - html: yes (cdp/rod, via `cdprunner.go`)
 - bubbletea: yes (via html bridge, see #4)
@@ -486,9 +496,18 @@ different meaning.
 `NativePkg` value; if any future stdlib package gets the import alias
 `C` it will collide. The kotlin test convention silently shadows.
 
-**Direction.** Replace `NativePkg == "C"` magic with an explicit
-`*ir.NativeImport.Kind = CScheme` discriminator. Already half-done via
-`codegen/scheme/c/importer.go:194`.
+**Direction (updated 2026-05-23).** Collapse `NativePkg` (and the
+other parallel native-tracking fields) into a single `Native any`
+smuggle slot on `ir.NativeImport` / `ir.Func`. The language or
+platform importer constructs the IR object and owns the concrete
+type behind `Native`. Codegen exposes a "standard" C-calling-
+convention struct for any C-FFI consumer (cgo, gtk4 intrinsics,
+future C bindings) to share, but it's just one of many possible
+inhabitants of `Native` — not privileged in the IR. This avoids the
+`Kind` enum, lets new schemes self-describe, and frees `"C"` as a
+magic string. Held pending design pass; depends on #16 reaching the
+same conclusion via a different angle (BindingKind on
+NativeImport).
 
 ---
 
