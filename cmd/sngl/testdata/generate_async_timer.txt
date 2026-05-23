@@ -2,7 +2,7 @@
 # $timer_N_tick function in the generated JS.
 # The $timer_N_sync wrapper (which just calls tick + setTimeout) stays sync.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # Timer tick function is async because the body awaits fetchHello.

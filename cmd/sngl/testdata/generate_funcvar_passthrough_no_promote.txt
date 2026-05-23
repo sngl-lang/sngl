@@ -3,7 +3,7 @@
 # g3 conservative rule: any async candidate in pts(f-param) → await f().
 # The run function becomes async and each call site awaits it.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # run is async because its param slot may receive an async candidate.

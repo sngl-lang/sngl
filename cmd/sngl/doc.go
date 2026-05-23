@@ -1035,7 +1035,7 @@ func findWebsiteSNGL() string {
 
 // runSNGLCompile shells out to sngl compile to build a .sngl file.
 func runSNGLCompile(snglFile, outDir string) error {
-	cmd := exec.Command(os.Args[0], "compile", "--out", outDir, snglFile)
+	cmd := exec.Command(os.Args[0], "generate", "--out", outDir, snglFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

@@ -1,4 +1,4 @@
-sngl compile --out out site.sngl
+sngl generate --out out site.sngl
 exists out/index.html
 exists out/about.html
 

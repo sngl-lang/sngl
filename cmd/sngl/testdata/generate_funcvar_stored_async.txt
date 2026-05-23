@@ -2,7 +2,7 @@
 # When the var is called from a click handler, the handler wrapper must be
 # async and the call site must be awaited.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The click handler wrapper is async because handler's slot color is Async.

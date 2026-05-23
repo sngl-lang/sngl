@@ -8,7 +8,7 @@
 #   - async kicker $compute___hoist_0 that resolves the value
 #   - synchronous wrapper __hoist_0 that reads the state field
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # Synthetic settled-state field for the lowered computed.

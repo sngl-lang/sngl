@@ -1,6 +1,6 @@
 # Two windows resolving to the same output path must error out.
 
-! sngl compile --lang=none --platform=html --out=out site.sngl
+! sngl generate --lang=none --platform=html --out=out site.sngl
 stderr 'window output path collision'
 
 -- site.sngl --

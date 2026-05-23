@@ -1,7 +1,7 @@
 # A function whose body contains a lambda that calls an async native is
 # itself colored async.  The generated JS must emit "async function outer".
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The enclosing function is async because its lambda body calls async.

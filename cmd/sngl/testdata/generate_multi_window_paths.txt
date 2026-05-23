@@ -1,7 +1,7 @@
 # Multi-window html static output: filenames derive from each window's
 # folded href, not the window's id or source-line fallback.
 
-sngl compile --lang=none --platform=html --out=out site.sngl
+sngl generate --lang=none --platform=html --out=out site.sngl
 exists out/index.html
 exists out/about.html
 exists out/docs/intro.html

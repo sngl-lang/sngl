@@ -1,7 +1,7 @@
 # A SNGL function that calls an async native becomes async itself.
 # The generated JS must use the async keyword and await at the call site.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The SNGL wrapper function is emitted as an async function.

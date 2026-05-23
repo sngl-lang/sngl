@@ -1,7 +1,7 @@
 # A struct field of funcvar type initialized with an async candidate.
 # Calling h.run() from a click handler must await the funcvar field call.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The click handler wrapper is async because the struct field slot is Async.

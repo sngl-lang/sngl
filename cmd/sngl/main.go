@@ -57,7 +57,6 @@ func init() {
 		return nil
 	}
 
-	rootCmd.AddCommand(compileCmd)
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)

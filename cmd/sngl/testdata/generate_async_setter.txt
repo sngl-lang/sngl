@@ -1,7 +1,7 @@
 # A state var with a @change handler that calls an async native produces
 # an async $set_X setter in the generated JS.
 
-sngl compile --lang=none --platform=html --out=out app.sngl
+sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The setter for the state var with an async @change handler is async.
