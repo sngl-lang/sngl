@@ -499,18 +499,23 @@ func translateIRLambda(n *ir.Lambda, scope *codegen.ExprScope) string {
 		subScope.LocalVars[p] = true
 	}
 
+	asyncPrefix := ""
+	if n.Func.IsAsync {
+		asyncPrefix = "async "
+	}
+
 	// Single-expression body.
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := translateIRExpr(ret.Value, &subScope)
-			if len(params) == 1 {
+			if asyncPrefix == "" && len(params) == 1 {
 				return params[0] + " => " + body
 			}
-			return "(" + strings.Join(params, ", ") + ") => " + body
+			return asyncPrefix + "(" + strings.Join(params, ", ") + ") => " + body
 		}
 	}
 	var b strings.Builder
-	b.WriteString("(" + strings.Join(params, ", ") + ") => {\n")
+	b.WriteString(asyncPrefix + "(" + strings.Join(params, ", ") + ") => {\n")
 	for _, s := range n.Func.Block {
 		for _, line := range translateIRMutation(s, &subScope) {
 			b.WriteString("  " + line + ";\n")

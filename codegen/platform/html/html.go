@@ -3815,11 +3815,13 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	paramStr := strings.Join(params, ", ")
 
 	funcScope := &codegen.ExprScope{
-		ModelFields:    g.scope.ModelFields,
-		ComputedFields: g.scope.ComputedFields,
-		FuncNames:      g.scope.FuncNames,
-		LocalVars:      make(map[string]bool),
-		Pkg:            g.scope.Pkg,
+		ModelFields:       g.scope.ModelFields,
+		ComputedFields:    g.scope.ComputedFields,
+		FuncNames:         g.scope.FuncNames,
+		LocalVars:         make(map[string]bool),
+		Pkg:               g.scope.Pkg,
+		BundledNativePkgs: g.scope.BundledNativePkgs,
+		NativeImports:     g.scope.NativeImports,
 	}
 	for k := range g.scope.LocalVars {
 		funcScope.LocalVars[k] = true
