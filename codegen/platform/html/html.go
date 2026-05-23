@@ -451,6 +451,12 @@ type htmlGen struct {
 	// Minify inline JS via esbuild (and HTML in BuildMutationModel).
 	minify bool
 
+	// Maps enables source-map generation for the inline JS: extracts inline
+	// SNGL position markers, builds a SNGL→JS source map, and routes that
+	// map through esbuild so the final output carries an inline SNGL→bundled
+	// source map.
+	maps bool
+
 	// Component invocation counter for unique param names
 	componentInvocations int
 
@@ -570,6 +576,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 // newHTMLGenFromCtx creates an htmlGen from CodegenCtx (IR-first path).
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
 	g := newHTMLGen(ctx.Pkg, lang, opts)
+	g.maps = ctx.ExprCtx.Maps
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		g.ctx = ctx.ExprCtx.ForComponent(main)
@@ -771,6 +778,14 @@ func (g *htmlGen) generate() (string, error) {
 	}
 
 	if strings.TrimSpace(script) != "" {
+		// When source maps are enabled, the JS translator has emitted
+		// `/*@SNGL:file:line@*/` markers. Convert them to an inline
+		// sourceMappingURL data URL now, so the map survives whether or
+		// not esbuild runs below. Esbuild will read the URL and chain
+		// through to a SNGL→bundled output map when bundling.
+		if g.maps {
+			script = inlineSourceMapFromMarkers(script)
+		}
 		// Run through esbuild when there are real imports to resolve, or when
 		// minify is on. Otherwise emit the script verbatim — esbuild surfaces
 		// errors on a few pre-existing codegen quirks (e.g. `5.clamp(...)` in
@@ -788,7 +803,7 @@ func (g *htmlGen) generate() (string, error) {
 				}
 				preludeBuf.WriteString("\n")
 			}
-			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify)
+			bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify, g.maps)
 			if err != nil {
 				return "", err
 			}

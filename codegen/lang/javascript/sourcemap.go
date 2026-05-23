@@ -3,10 +3,66 @@ package javascript
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
+	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
+
+// jsPositionMarker matches an inline `/*@SNGL:file:line@*/` marker emitted
+// by JsIRContext when EmitPositionMarkers is true. The translator places
+// these at statement boundaries; renderJSSourceMap scans for them, builds
+// position entries, and strips them from the body before final emission.
+var jsPositionMarker = regexp.MustCompile(`/\*@SNGL:([^:@]+):(\d+)@\*/`)
+
+// RenderInlineSourceMap is the exported entry point used by the html
+// platform to extract inline SNGL markers from a JS body before passing it
+// to esbuild. Builds the SNGL→JS source map and returns it as a
+// SourceMapResult with the marker-stripped body in InlineBody and the
+// sidecar JSON in Sidecar.
+func RenderInlineSourceMap(name string, body []byte) codegen.SourceMapResult {
+	return renderJSSourceMap(name, nil, body)
+}
+
+// extractMarkerPositions scans body for jsPositionMarker matches. For each
+// match it records a PosEntry at the marker's start offset (so source-map
+// segments point at the byte where the marked statement begins) and returns
+// the marker-stripped body. Offsets in returned positions are relative to
+// the stripped body, not the original.
+func extractMarkerPositions(body []byte) ([]codegen.PosEntry, []byte) {
+	matches := jsPositionMarker.FindAllSubmatchIndex(body, -1)
+	if len(matches) == 0 {
+		return nil, body
+	}
+	var stripped bytes.Buffer
+	stripped.Grow(len(body))
+	var positions []codegen.PosEntry
+	cursor := 0
+	for _, m := range matches {
+		// m[0]=marker start, m[1]=marker end, m[2..3]=file, m[4..5]=line.
+		start, end := m[0], m[1]
+		file := string(body[m[2]:m[3]])
+		line, _ := strconv.Atoi(string(body[m[4]:m[5]]))
+		// Append the gap before this marker.
+		stripped.Write(body[cursor:start])
+		// Position points at the byte where the marker's content WILL
+		// resume after stripping.
+		positions = append(positions, codegen.PosEntry{
+			ByteOffset: stripped.Len(),
+			Pos:        ast.Pos{File: file, Line: line},
+		})
+		cursor = end
+		// Skip a trailing newline immediately after a marker so its line
+		// doesn't become a blank line in the stripped body.
+		if cursor < len(body) && body[cursor] == '\n' {
+			cursor++
+		}
+	}
+	stripped.Write(body[cursor:])
+	return positions, stripped.Bytes()
+}
 
 // renderJSSourceMap produces a source-map v3 sidecar and appends a
 // sourceMappingURL footer to the body.
@@ -16,10 +72,15 @@ import (
 // source-file index, source line, source column. Name mappings are not
 // emitted; the names array is empty.
 //
-// We emit at most one mapping per generated line — the first PosEntry whose
-// byte offset falls in that line. Finer-grained column maps would require
-// per-token marking, which we don't have today.
+// When the body contains inline `/*@SNGL:file:line@*/` markers (emitted by
+// JsIRContext under EmitPositionMarkers), positions are derived from them
+// and the markers are stripped from the InlineBody. Otherwise positions
+// flow in via the function arg (legacy path; unused today).
 func renderJSSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+	if markerPositions, strippedBody := extractMarkerPositions(body); len(markerPositions) > 0 {
+		positions = markerPositions
+		body = strippedBody
+	}
 	if len(positions) == 0 {
 		return codegen.SourceMapResult{}
 	}

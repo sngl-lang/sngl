@@ -78,3 +78,35 @@ func TestRenderJSSourceMap_SinglePosition(t *testing.T) {
 		t.Errorf("mappings should start with AAAA, got %q", m.Mappings)
 	}
 }
+
+func TestRenderJSSourceMap_ExtractsInlineMarkers(t *testing.T) {
+	body := []byte("/*@SNGL:foo.sngl:5@*/\nconsole.log(1);\n/*@SNGL:foo.sngl:7@*/\nconsole.log(2);\n")
+	// Pass empty positions: marker extraction is the source.
+	res := renderJSSourceMap("out.js", nil, body)
+	if res.Sidecar == nil {
+		t.Fatal("Sidecar must be set when markers are present")
+	}
+	if res.SidecarName != "out.js.map" {
+		t.Errorf("SidecarName=%q want out.js.map", res.SidecarName)
+	}
+	// Inline body must have markers stripped.
+	got := string(res.InlineBody)
+	if strings.Contains(got, "@SNGL:") {
+		t.Errorf("markers not stripped:\n%s", got)
+	}
+	// Must contain the original code.
+	if !strings.Contains(got, "console.log(1);") || !strings.Contains(got, "console.log(2);") {
+		t.Errorf("body content lost:\n%s", got)
+	}
+	// Footer present.
+	if !strings.HasSuffix(got, "//# sourceMappingURL=out.js.map\n") {
+		t.Errorf("missing sourceMappingURL footer:\n%s", got)
+	}
+}
+
+func TestRenderJSSourceMap_NoMarkersNoPositionsReturnsZero(t *testing.T) {
+	res := renderJSSourceMap("x.js", nil, []byte("plain;"))
+	if res.InlineBody != nil || res.Sidecar != nil {
+		t.Fatalf("expected zero, got %+v", res)
+	}
+}

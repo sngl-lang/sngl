@@ -13,11 +13,21 @@ import (
 type JsIRContext struct {
 	Ctx      *codegen.ExprCtx
 	EventVar string
+
+	// EmitPositionMarkers controls whether EvalStmt prepends inline
+	// `/*@SNGL:file:line@*/` markers at statement boundaries. Populated
+	// from ExprCtx.Maps. Downstream, renderJSSourceMap scans the body for
+	// these markers, builds a source-map v3 sidecar, and strips them.
+	EmitPositionMarkers bool
 }
 
 // NewIRContext creates a JsIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *JsIRContext {
-	return &JsIRContext{Ctx: ctx}
+	jc := &JsIRContext{Ctx: ctx}
+	if ctx != nil {
+		jc.EmitPositionMarkers = ctx.Maps
+	}
+	return jc
 }
 
 // EvalExpr translates an IR expression into a JavaScript expression string.
@@ -97,6 +107,16 @@ func (jc *JsIRContext) EvalExpr(e ir.Expr) string {
 
 // EvalStmt translates an IR statement into JS statement strings.
 func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
+	lines := jc.evalStmtImpl(s)
+	if jc.EmitPositionMarkers && len(lines) > 0 {
+		if pos := stmtIRPos(s); pos.IsValid() && pos.File != "" {
+			lines = append([]string{fmt.Sprintf("/*@SNGL:%s:%d@*/", pos.File, pos.Line)}, lines...)
+		}
+	}
+	return lines
+}
+
+func (jc *JsIRContext) evalStmtImpl(s ir.Stmt) []string {
 	switch n := s.(type) {
 	case *ir.Assign:
 		target := jc.evalMutTarget(n.Target)

@@ -1,6 +1,7 @@
 package html
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/fs"
 	"path"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 )
 
@@ -17,7 +19,24 @@ import (
 // flows through the plugin against js.VirtualRoot mounted on fsys, so the
 // same path serves CLI (os.DirFS) and any in-memory FS. When minify is true,
 // esbuild's whitespace/identifier/syntax minification is enabled.
-func bundleNativeScript(entry string, fsys fs.FS, minify bool) (string, error) {
+//
+// When maps is true and the entry script contains inline SNGL position
+// markers (emitted by JsIRContext.EmitPositionMarkers), the markers are
+// extracted into a SNGL→JS source map, stripped from the entry, and the
+// stripped entry is given an inline `//# sourceMappingURL=data:...` so
+// esbuild chains the SNGL→JS map through its own JS→bundled output map.
+// Esbuild's final output carries an inline SNGL→bundled source map.
+func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, error) {
+	if maps {
+		strippedEntry, mapURL, err := preBundleSourceMap(entry)
+		if err == nil && mapURL != "" {
+			entry = strippedEntry + "\n//# sourceMappingURL=" + mapURL + "\n"
+		}
+	}
+	sourcemapOpt := api.SourceMapNone
+	if maps {
+		sourcemapOpt = api.SourceMapInline
+	}
 	res := api.Build(api.BuildOptions{
 		Stdin: &api.StdinOptions{
 			Contents:   entry,
@@ -25,11 +44,12 @@ func bundleNativeScript(entry string, fsys fs.FS, minify bool) (string, error) {
 			Sourcefile: "sngl-entry.js",
 			Loader:     api.LoaderJS,
 		},
-		Bundle:   true,
-		Write:    false,
-		Format:   api.FormatIIFE,
-		Platform: api.PlatformBrowser,
-		Target:   api.ES2020,
+		Bundle:    true,
+		Write:     false,
+		Format:    api.FormatIIFE,
+		Platform:  api.PlatformBrowser,
+		Target:    api.ES2020,
+		Sourcemap: sourcemapOpt,
 		Loader: map[string]api.Loader{
 			".ts":   api.LoaderTS,
 			".tsx":  api.LoaderTSX,
@@ -51,6 +71,50 @@ func bundleNativeScript(entry string, fsys fs.FS, minify bool) (string, error) {
 		return "", fmt.Errorf("esbuild: no output")
 	}
 	return string(res.OutputFiles[0].Contents), nil
+}
+
+// preBundleSourceMap extracts SNGL position markers from entry, builds a
+// SNGL→JS source-map v3 document, base64-encodes it as a data URL, and
+// returns the marker-stripped entry plus the data URL. Returns ("", "", nil)
+// when entry has no markers.
+func preBundleSourceMap(entry string) (stripped, dataURL string, err error) {
+	res := javascript.RenderInlineSourceMap("sngl-entry.js", []byte(entry))
+	if res.Sidecar == nil {
+		return "", "", nil
+	}
+	encoded := base64.StdEncoding.EncodeToString(res.Sidecar)
+	// res.InlineBody already ends in `//# sourceMappingURL=sngl-entry.js.map\n`
+	// from renderJSSourceMap; strip that since we're inlining via data URL.
+	body := stripTrailingSourceMapURL(res.InlineBody)
+	return string(body), "data:application/json;base64," + encoded, nil
+}
+
+// inlineSourceMapFromMarkers extracts SNGL position markers from a JS
+// body, builds a SNGL→JS source map, and appends an inline
+// `//# sourceMappingURL=data:...` referencing it. Returns the input
+// unchanged when no markers are present.
+func inlineSourceMapFromMarkers(script string) string {
+	stripped, dataURL, _ := preBundleSourceMap(script)
+	if dataURL == "" {
+		return script
+	}
+	if !strings.HasSuffix(stripped, "\n") {
+		stripped += "\n"
+	}
+	return stripped + "//# sourceMappingURL=" + dataURL + "\n"
+}
+
+// stripTrailingSourceMapURL removes a `//# sourceMappingURL=...` line from
+// the end of b (with optional trailing newline). renderJSSourceMap appends
+// such a line referencing a sidecar file; for inline-bundling we replace
+// that reference with a base64 data URL appended by bundleNativeScript.
+func stripTrailingSourceMapURL(b []byte) []byte {
+	s := string(b)
+	idx := strings.LastIndex(s, "\n//# sourceMappingURL=")
+	if idx < 0 {
+		return b
+	}
+	return []byte(s[:idx])
 }
 
 // maybeMinifyCSS returns src verbatim when minify is false, or the esbuild-
