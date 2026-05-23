@@ -40,6 +40,9 @@ type ExprCtx struct {
 	// NativeImports collects module → set of imported names; populated as
 	// native calls are emitted. Mirrors ExprScope.NativeImports.
 	NativeImports map[string]map[string]bool
+	// Maps mirrors Request.Maps: when true, translators emit source-map
+	// hooks (e.g. Go `//line file:lineno` directives before statements).
+	Maps bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -161,6 +164,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Helpers:           ctx.Helpers,           // shared — helpers accumulate globally
 		BundledNativePkgs: ctx.BundledNativePkgs, // shared — set once at gen creation
 		NativeImports:     ctx.NativeImports,     // shared — accumulates across clones
+		Maps:              ctx.Maps,
 	}
 }
 

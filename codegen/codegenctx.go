@@ -21,11 +21,13 @@ type CodegenCtx struct {
 // NewCodegenCtx creates a CodegenCtx from a codegen Request.
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	analysis := AnalyzeCommon(req.Pkg)
+	exprCtx := NewExprCtx(req.Pkg)
+	exprCtx.Maps = req.Maps
 	return &CodegenCtx{
 		Pkg:      req.Pkg,
 		Analysis: analysis,
 		Deps:     analysis.DepTracker(),
-		ExprCtx:  NewExprCtx(req.Pkg),
+		ExprCtx:  exprCtx,
 		Namer:    NewNamer(),
 		Platform: platform,
 	}

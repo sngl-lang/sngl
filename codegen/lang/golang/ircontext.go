@@ -17,11 +17,21 @@ type GoIRContext struct {
 	// AlertFunc translates Alert.toast/info/warn/error calls.
 	// If nil, a default "m.toasts = append(...)" implementation is used.
 	AlertFunc func(ctx *GoIRContext, method string, args []ir.CallArg) []string
+
+	// EmitLineDirectives controls whether EvalStmt prepends `//line file:line`
+	// directives at statement boundaries. Set by platforms when req.Maps is
+	// true. Go's compiler reads //line natively and attributes errors/panics
+	// back to the SNGL source. Gofmt preserves these directives.
+	EmitLineDirectives bool
 }
 
 // NewIRContext creates a GoIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
-	return &GoIRContext{Ctx: ctx}
+	gc := &GoIRContext{Ctx: ctx}
+	if ctx != nil {
+		gc.EmitLineDirectives = ctx.Maps
+	}
+	return gc
 }
 
 // EvalExpr translates an IR expression into a Go expression string.
@@ -115,6 +125,16 @@ func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
 
 // EvalStmt translates an IR statement into Go statement strings.
 func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
+	lines := gc.evalStmtImpl(s)
+	if gc.EmitLineDirectives && len(lines) > 0 {
+		if pos := stmtIRPos(s); pos.IsValid() && pos.File != "" {
+			lines = append([]string{fmt.Sprintf("//line %s:%d", pos.File, pos.Line)}, lines...)
+		}
+	}
+	return lines
+}
+
+func (gc *GoIRContext) evalStmtImpl(s ir.Stmt) []string {
 	switch n := s.(type) {
 	case *ir.Assign:
 		target := gc.evalMutTarget(n.Target)
