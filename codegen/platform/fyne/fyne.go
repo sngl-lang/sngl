@@ -58,18 +58,25 @@ func (g *Generator) Capabilities() lower.Caps {
 	return lower.Caps{NoContext: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
 }
 
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+// GenerateSink writes fyne source files directly into sink. This is the
+// sink-based path platforms migrate to during the codegen unification.
+func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
 	c := &compilation{}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
-	return c.EmitFromMutation(m, req)
+	return c.EmitFromMutation(m, req, sink)
 }
 
-// NewMutationCompiler returns a fresh per-request MutationModelEmitter.
-func (g *Generator) NewMutationCompiler() codegen.MutationModelEmitter {
-	return &compilation{}
+// Generate is the legacy entry point; delegates to GenerateSink via a
+// MemSink and converts captured files back to the Response shape.
+func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+	mem := codegen.NewMemSink()
+	if err := g.GenerateSink(req, mem); err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
+	}
+	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // compilation holds per-request build state flowing between
@@ -80,11 +87,6 @@ type compilation struct {
 	cfg  Config
 	lang codegen.LangTranslator
 }
-
-var (
-	_ codegen.MutationModelEmitter    = (*compilation)(nil)
-	_ codegen.MutationCompilerFactory = (*Generator)(nil)
-)
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
 	if req.Lang.LanguageIdentifier() != "go" {
@@ -105,21 +107,25 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return c.ctx.BuildMutation(stmts), nil
 }
 
-func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
+func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
 	src, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	formatted, err := format.Source(src)
 	if err != nil {
-		return &codegen.Response{Error: fmt.Sprintf("generated code formatting error: %v\n%s", err, src)}, nil
+		return fmt.Errorf("generated code formatting error: %w\n%s", err, src)
 	}
 	if h := codegen.Header("fyne", req.Source, "// ", ""); h != "" {
 		formatted = append([]byte(h), formatted...)
 	}
-	return &codegen.Response{
-		Files: []*codegen.OutputFile{
-			codegen.BytesFile("model.go", formatted),
-		},
-	}, nil
+	w, err := sink.Create("model.go")
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(formatted); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
 }
