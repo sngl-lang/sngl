@@ -137,7 +137,31 @@ as a top-level `codegen.HTMLScreenshotter` interface). Bubbletea's
 
 ---
 
-### 5. JS has no test lowering; android-go is opaque
+### 5. JS has no test lowering; android-go is opaque ✅ RESOLVED-as-documented (2026-05-23)
+
+Confirmed test-execution is platform-driven, not lang-driven, and
+keep the existing asymmetry rather than force a single interface:
+
+- **html (any lang)** runs tests via CDP/rod through
+  `codegen/platform/html/testing.go` — exercises the real JS bundle
+  in a headless browser, no per-lang testlower needed.
+- **gtk4, fyne, bubbletea (go)** use `golang.LowerTestFunc` and
+  delegate to per-platform `RunTests` Go-test-harness scaffolding.
+- **android (kotlin)** uses `kotlin.LowerTestFunc` and
+  `android/runtests.go`'s Robolectric harness.
+- **android (go)** generates a golib bridge for use inside an
+  Android app — it is not itself a runnable app, so
+  `android/runtests.go:62` correctly errors when `lang != "kotlin"`.
+
+Unifying these behind a single `LangTranslator.LowerTestFunc` would
+obscure the difference between in-process testlowers and
+browser/emulator-driven harnesses. The matrix is data-driven via
+`codegen.Snapshotter` / `codegen.TestRunner` type assertions in
+`docs/targets.go`, so the docs site reflects this automatically.
+
+---
+
+
 
 `codegen/lang/golang/testlower.go` exists (191 lines).
 `codegen/lang/kotlin/testlower.go` exists (305 lines).
@@ -381,7 +405,18 @@ import. Platform just splices the slice into its import block.
 
 ---
 
-### 14. `kotlin.testlower` hard-codes `c` as the component receiver
+### 14. `kotlin.testlower` hard-codes `c` as the component receiver ✅ RESOLVED (2026-05-23)
+
+`LowerTestFunc` now walks `fn.Params` for component-typed entries,
+captures the actual receiver name(s) into a `compRecvs map[string]bool`
+threaded through all helpers, and uses the first one as the declared
+local. Test bodies that name their receiver anything other than `c`
+now lower correctly. Falls back to `c` when no component param is
+present (assertion-only tests).
+
+---
+
+
 
 `codegen/lang/kotlin/testlower.go:60,251,259,263,293`:
 

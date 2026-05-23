@@ -24,13 +24,31 @@ import (
 // RobolectricTestRunner, and constructs MainScreenState directly
 // (no Activity needed).
 func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) string {
+	// Walk params for component-typed entries; the first one becomes the
+	// declared local in the test body and all of them populate compRecvs
+	// so `<recv>.<field>` expressions lower correctly regardless of the
+	// name the test author chose. Falls back to "c" when no component
+	// param is present (assertion-only tests that never reach into state).
+	recv := "c"
+	compRecvs := map[string]bool{}
+	first := true
+	for _, p := range fn.Params {
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			compRecvs[p.Name] = true
+			if first {
+				recv = p.Name
+				first = false
+			}
+		}
+	}
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
-	b.WriteString("        val c = MainScreenState()\n")
-	b.WriteString("        composeTestRule.setContent { MainScreen(c) }\n")
+	fmt.Fprintf(&b, "        val %s = MainScreenState()\n", recv)
+	fmt.Fprintf(&b, "        composeTestRule.setContent { MainScreen(%s) }\n", recv)
 	ctxCounts := map[string]int{}
 	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, methodFields, ctxCounts) {
+		for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
 			fmt.Fprintf(&b, "        %s\n", line)
 		}
 	}
@@ -38,10 +56,10 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	return b.String()
 }
 
-func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, ctxCounts map[string]int) []string {
+func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string]bool, ctxCounts map[string]int) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:
-		if line, ok := lowerTestAssert(n, methodFields); ok {
+		if line, ok := lowerTestAssert(n, methodFields, compRecvs); ok {
 			return []string{line}
 		}
 		if line, ok := lowerEventTrigger(n); ok {
@@ -54,15 +72,15 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, ctxCounts map[string
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
 	case *ir.Assign:
-		// `c.<var> += X` etc.: mutate state on the UI thread so
+		// `<recv>.<var> += X` etc.: mutate state on the UI thread so
 		// Compose recomposition sees it before the next assertion.
 		if sel, ok := n.Target.(*ir.Select); ok {
-			if id, ok := sel.Operand.(*ir.Ident); ok && id.Name == "c" {
-				value := lowerTestExpr(n.Value, methodFields)
+			if id, ok := sel.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
+				value := lowerTestExpr(n.Value, methodFields, compRecvs)
 				op := assignOpStr(n.Op)
 				return []string{
 					"composeTestRule.runOnUiThread {",
-					fmt.Sprintf("    c.%s %s %s", sel.Field, op, value),
+					fmt.Sprintf("    %s.%s %s %s", id.Name, sel.Field, op, value),
 					"}",
 					"composeTestRule.waitForIdle()",
 				}
@@ -95,7 +113,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
 			ctxName = cr.Ref.Name
 		} else if ctxName != "" && valExpr == "" {
-			valExpr = lowerTestExpr(a.Value, nil)
+			valExpr = lowerTestExpr(a.Value, nil, nil)
 		}
 	}
 	if ctxName == "" {
@@ -117,7 +135,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 	}, true
 }
 
-func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool) (string, bool) {
+func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs map[string]bool) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "assert" {
 		return "", false
@@ -125,7 +143,7 @@ func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool) (string, b
 	if len(c.Args) != 2 {
 		return "", false
 	}
-	expr := lowerTestExpr(c.Args[1].Value, methodFields)
+	expr := lowerTestExpr(c.Args[1].Value, methodFields, compRecvs)
 	// Pretty-print the asserted source for the failure message.
 	return fmt.Sprintf("org.junit.Assert.assertTrue(%q, %s)", expr, expr), true
 }
@@ -183,11 +201,11 @@ func extractEventValue(args []ir.CallArg) string {
 	}
 	sl, ok := args[0].Value.(*ir.StructLit)
 	if !ok {
-		return lowerTestExpr(args[0].Value, nil)
+		return lowerTestExpr(args[0].Value, nil, nil)
 	}
 	for _, f := range sl.Fields {
 		if f.Name == "value" {
-			return lowerTestExpr(f.Value, nil)
+			return lowerTestExpr(f.Value, nil, nil)
 		}
 	}
 	return "\"\""
@@ -201,20 +219,20 @@ func extractEventValue(args []ir.CallArg) string {
 // fields — they correspond to widgets gated by `if` / `for`. For
 // those, presence and per-prop reads go through Compose finders
 // rather than the state object.
-func lowerTestExpr(e ir.Expr, methodFields map[string]bool) string {
-	// Special shape: `c.<id> == null` / `!= null` where <id> is in
+func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string]bool) string {
+	// Special shape: `<recv>.<id> == null` / `!= null` where <id> is in
 	// methodFields → presence check via Compose finder count. SNGL's
 	// nilable widget semantics maps to "any nodes match this tag?".
 	if bin, ok := e.(*ir.Binary); ok {
 		if bin.Op == ast.BinEq || bin.Op == ast.BinNeq {
-			if id, ok := composeIDRef(bin.Left, methodFields); ok && isNullLit(bin.Right) {
+			if id, ok := composeIDRef(bin.Left, methodFields, compRecvs); ok && isNullLit(bin.Right) {
 				op := "=="
 				if bin.Op == ast.BinNeq {
 					op = "!="
 				}
 				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
 			}
-			if id, ok := composeIDRef(bin.Right, methodFields); ok && isNullLit(bin.Left) {
+			if id, ok := composeIDRef(bin.Right, methodFields, compRecvs); ok && isNullLit(bin.Left) {
 				op := "=="
 				if bin.Op == ast.BinNeq {
 					op = "!="
@@ -225,14 +243,14 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool) string {
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
-		left := lowerTestExpr(n.Left, methodFields)
-		right := lowerTestExpr(n.Right, methodFields)
+		left := lowerTestExpr(n.Left, methodFields, compRecvs)
+		right := lowerTestExpr(n.Right, methodFields, compRecvs)
 		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {
-			return "!" + lowerTestExpr(n.Operand, methodFields)
+			return "!" + lowerTestExpr(n.Operand, methodFields, compRecvs)
 		}
-		return "-" + lowerTestExpr(n.Operand, methodFields)
+		return "-" + lowerTestExpr(n.Operand, methodFields, compRecvs)
 	case *ir.Literal:
 		switch n.Type.Kind {
 		case ir.TypeString:
@@ -244,29 +262,29 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool) string {
 	case *ir.Ident:
 		return n.Name
 	case *ir.Select:
-		// `c.<id>[idx].<prop>` — Compose `onAllNodesWithTag(<id>)[idx]`
+		// `<recv>.<id>[idx].<prop>` — Compose `onAllNodesWithTag(<id>)[idx]`
 		// then read via composeNodeTextAt.
 		if idx, ok := n.Operand.(*ir.Index); ok {
 			if inner, ok := idx.Operand.(*ir.Select); ok {
-				if id, ok := inner.Operand.(*ir.Ident); ok && id.Name == "c" {
+				if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 					return fmt.Sprintf("composeNodeTextAt(composeTestRule, %q, %s)",
-						inner.Field, lowerTestExpr(idx.Idx, methodFields))
+						inner.Field, lowerTestExpr(idx.Idx, methodFields, compRecvs))
 				}
 			}
 		}
-		// `c.<id>.<prop>` — Compose semantics text read for the tag.
+		// `<recv>.<id>.<prop>` — Compose semantics text read for the tag.
 		if inner, ok := n.Operand.(*ir.Select); ok {
-			if id, ok := inner.Operand.(*ir.Ident); ok && id.Name == "c" {
+			if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 				return fmt.Sprintf("composeNodeText(composeTestRule, %q)", inner.Field)
 			}
 		}
-		if id, ok := n.Operand.(*ir.Ident); ok && id.Name == "c" {
-			return "c." + n.Field
+		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
+			return id.Name + "." + n.Field
 		}
-		return lowerTestExpr(n.Operand, methodFields) + "." + n.Field
+		return lowerTestExpr(n.Operand, methodFields, compRecvs) + "." + n.Field
 	case *ir.Index:
-		operand := lowerTestExpr(n.Operand, methodFields)
-		idx := lowerTestExpr(n.Idx, methodFields)
+		operand := lowerTestExpr(n.Operand, methodFields, compRecvs)
+		idx := lowerTestExpr(n.Idx, methodFields, compRecvs)
 		return operand + "[" + idx + "]"
 	case *ir.Call:
 		// Delegate to the full expression translator for calls and any
@@ -281,16 +299,17 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool) string {
 	return translateIRExpr(e, &codegen.ExprScope{})
 }
 
-// composeIDRef returns the id when e is the bare `c.<id>` shape and
-// <id> is in methodFields. Used by lowerTestExpr's null-comparison
-// shortcut to detect conditional widget presence checks.
-func composeIDRef(e ir.Expr, methodFields map[string]bool) (string, bool) {
+// composeIDRef returns the id when e is the bare `<recv>.<id>` shape
+// (where <recv> is a component-typed test param) and <id> is in
+// methodFields. Used by lowerTestExpr's null-comparison shortcut to
+// detect conditional widget presence checks.
+func composeIDRef(e ir.Expr, methodFields map[string]bool, compRecvs map[string]bool) (string, bool) {
 	sel, ok := e.(*ir.Select)
 	if !ok {
 		return "", false
 	}
 	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || id.Name != "c" {
+	if !ok || !compRecvs[id.Name] {
 		return "", false
 	}
 	if methodFields == nil || !methodFields[sel.Field] {
