@@ -53,9 +53,14 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		quiet:   true, // suppress per-file print; only print artifact path
 		onTarget: func(target outputTarget, _ *ir.Package, _, srcDir string) error {
 			plat := codegen.LookupPlatform(target.Platform)
-			builder, ok := plat.(codegen.Builder)
-			if !ok {
-				return fmt.Errorf("platform %q does not support building", target.Platform)
+			lang := codegen.LookupLang(target.Lang)
+			var builder codegen.Builder
+			if b, ok := plat.(codegen.Builder); ok {
+				builder = b
+			} else if b, ok := lang.(codegen.Builder); ok {
+				builder = b
+			} else {
+				return fmt.Errorf("platform %q with language %q does not support building", target.Platform, target.Lang)
 			}
 			artifact, err := builder.Build(srcDir, target.Options)
 			if err != nil {
