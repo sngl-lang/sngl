@@ -14,4 +14,10 @@ struct Options {
     // When true, generate source maps for target languages that support them
     // (Go //line directives, JS .map sidecars). Default false.
     maps bool
+    // When true, the generator emits unit tests in the target language
+    // alongside the application code. Tests use the target language's
+    // native test runner (Go's testing, Kotlin's JUnit, JS's Jest/Vitest).
+    // Emission is wired up in a separate change; for now the field is
+    // accepted by the CLI but produces no extra files.
+    test bool
 }
