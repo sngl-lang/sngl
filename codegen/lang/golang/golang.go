@@ -555,10 +555,16 @@ func stmtUsesI18n(s ir.Stmt) bool {
 	return false
 }
 
-// RenderHeader returns the generated-by comment for Go files. Real import
-// rendering lands when platforms migrate to CodeWriter (Plan B).
-func (t *Translator) RenderHeader(name, source string, imports []codegen.ImportSpec) []byte {
-	return []byte(codegen.Header("go", source, "// ", ""))
+// WriteComment wraps text in Go's // line-comment syntax.
+func (t *Translator) WriteComment(text string) []byte {
+	return []byte("// " + text + "\n")
+}
+
+// RenderImports emits the Go import block for the collected imports. Today
+// returns nil; real impl lands when platforms route their goImports through
+// CodeWriter.Import.
+func (t *Translator) RenderImports(imports []codegen.ImportSpec) []byte {
+	return nil
 }
 
 // RenderSourceMap splices //line directives into body so the Go compiler

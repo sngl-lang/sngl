@@ -89,7 +89,7 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 		return err
 	}
 
-	opts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
+	opts := codegen.WriterOptions{Source: req.Source, Platform: "bubbletea", Maps: req.Maps}
 	if err := writeBubbleteaFile(sink, "model.go", req.Lang, opts, src); err != nil {
 		return err
 	}

@@ -113,10 +113,16 @@ type LangTranslator interface {
 	TypeToNative(hint string) string
 	ExportName(name string) string
 
-	// RenderHeader returns the file header bytes — the generated-by comment
-	// plus rendered import lines. Called once at CodeWriter.Close. Imports
-	// are in insertion order; the renderer may sort or filter.
-	RenderHeader(name, source string, imports []ImportSpec) []byte
+	// WriteComment wraps text in the language's single-line comment syntax,
+	// terminated by a newline. Used by CodeWriter to emit the generated-by
+	// header. Return nil to suppress header emission.
+	WriteComment(text string) []byte
+
+	// RenderImports emits the language's import block for the collected
+	// imports, in the order given. Called by CodeWriter.Close after the
+	// header comment. Today every language returns nil; real impls land
+	// when platforms route their import bookkeeping through CodeWriter.Import.
+	RenderImports(imports []ImportSpec) []byte
 
 	// RenderSourceMap optionally rewrites the body to embed source-mapping
 	// information (Go //line directives) or produces a sidecar (JS .map).

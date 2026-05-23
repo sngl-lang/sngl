@@ -106,7 +106,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	if err != nil {
 		return fmt.Errorf("generated code formatting error: %w\n%s", err, src)
 	}
-	w := codegen.OpenCodeFile(sink, "model.go", req.Lang, codegen.WriterOptions{Source: req.Source, Maps: req.Maps})
+	w := codegen.OpenCodeFile(sink, "model.go", req.Lang, codegen.WriterOptions{Source: req.Source, Platform: "fyne", Maps: req.Maps})
 	if _, err := w.Write(formatted); err != nil {
 		w.Close()
 		return err

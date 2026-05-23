@@ -171,7 +171,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		return err
 	}
 
-	ktOpts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
+	ktOpts := codegen.WriterOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
 	usesI18n := hasI18nCalls(req.Pkg)
 
 	if !cfg.Main {

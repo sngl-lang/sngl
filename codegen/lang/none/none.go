@@ -35,10 +35,11 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string { return "" }
 func (t *Translator) TypeToNative(hint string) string     { return hint }
 func (t *Translator) ExportName(name string) string       { return name }
 
-// RenderHeader returns nil; the none lang emits no file header.
-func (t *Translator) RenderHeader(name, source string, imports []codegen.ImportSpec) []byte {
-	return nil
-}
+// WriteComment returns nil; the none lang emits no file header.
+func (t *Translator) WriteComment(text string) []byte { return nil }
+
+// RenderImports returns nil; the none lang has no import syntax.
+func (t *Translator) RenderImports(imports []codegen.ImportSpec) []byte { return nil }
 
 // RenderSourceMap returns no changes; the none lang produces no source maps.
 func (t *Translator) RenderSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {

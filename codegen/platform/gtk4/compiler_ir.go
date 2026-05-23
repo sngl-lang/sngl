@@ -110,7 +110,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		return fmt.Errorf("gtk4 callbacks.go formatting error: %w\n%s", err, callbacksSrc)
 	}
 
-	opts := codegen.WriterOptions{Source: req.Source, Maps: req.Maps}
+	opts := codegen.WriterOptions{Source: req.Source, Platform: "gtk4", Maps: req.Maps}
 	for _, pair := range []struct {
 		name    string
 		content []byte
