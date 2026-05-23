@@ -1,0 +1,13 @@
+# Regression for cli audit #4: noCacheBust applied uniformly through runPipeline.
+# Two generate runs with noCacheBust=true must produce identical output filenames.
+
+sngl generate --lang=none --platform=html --out=gen1 --opt noCacheBust=true app.sngl
+exists gen1/index.html
+
+sngl generate --lang=none --platform=html --out=gen2 --opt noCacheBust=true app.sngl
+exists gen2/index.html
+
+-- app.sngl --
+component main {
+    text(value="x")
+}

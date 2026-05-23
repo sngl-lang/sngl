@@ -1,0 +1,14 @@
+# sngl build emits a binary in cwd from a temp-dir generation.
+# Requires a host Go toolchain (bubbletea inherits Builder from the Go lang).
+
+[!exec:go] skip 'go toolchain required'
+
+sngl build --lang=go --platform=bubbletea --opt name=myapp app.sngl
+exists myapp
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    text(value="hello")
+}

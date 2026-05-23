@@ -1,0 +1,19 @@
+# --opt test=true is accepted by both generate and build (emission deferred).
+
+sngl generate --lang=none --platform=html --out=out --opt test=true app.sngl
+exists out/index.html
+
+[!exec:go] skip 'go toolchain required'
+sngl build --lang=go --platform=bubbletea --opt test=true --opt name=tapp bt.sngl
+exists tapp
+
+-- app.sngl --
+component main {
+    text(value="hi")
+}
+-- bt.sngl --
+output { go { bubbletea } }
+
+component main {
+    text(value="hi")
+}
