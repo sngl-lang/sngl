@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -189,9 +190,16 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 			uniqueSlots[slot.SlotID] = true
 		}
 	}
-	// Build one slot var + Func per unique ID.
+	// Build one slot var + Func per unique ID. Sort for deterministic
+	// codegen output: slot vars enter comp.Vars in this order and
+	// propagate downstream (e.g. JS state object field order).
+	slotIDs := make([]string, 0, len(uniqueSlots))
+	for id := range uniqueSlots {
+		slotIDs = append(slotIDs, id)
+	}
+	slices.Sort(slotIDs)
 	built := map[string]*ir.Func{}
-	for slotID := range uniqueSlots {
+	for _, slotID := range slotIDs {
 		st.synthesizeSlotVar(slotID)
 		fn := st.buildRenderSlotFor(slotID, stmts)
 		if fn != nil {
