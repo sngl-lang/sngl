@@ -1,6 +1,6 @@
 # Unified Code Generation Design
 
-**Status:** Plan A (foundations) implemented; Plan B (per-platform migrations + cutover) pending
+**Status:** Plan A (foundations) + Plan B (platform migration + cutover) implemented. Phase 3 (translator-side Mark threading) and Phase 4 (`goImports` collapse / `BundledNativePkgs` removal) deferred — see status checklist below.
 **Date:** 2026-05-22
 **Tracking:** glab #69 (source maps)
 
@@ -266,10 +266,18 @@ CDP/rod test runners that previously took `[]*OutputFile`: switch to taking `*Me
 - [X] JS VLQ encoder + v3 source-map renderer (`7eb28b9`, `a2596e6`)
 - [X] Options.maps threaded into Request.Maps (`d668a8a`)
 - [X] End-to-end integration tests against real Go + JS translators (`4901599`)
-- [ ] Generate(req, sink) signature change — Plan B
-- [ ] Per-platform migration through OpenCodeFile — Plan B
-- [ ] OutputFile / Response / dead LangTranslator stubs deletion — Plan B
-- [ ] Position-marker call sites in EvalStmt / EmitFuncDef — Plan B (rides with platform migration)
+- [X] Generate(req, sink) signature change (`8fc9eec`)
+- [X] All 6 platforms migrated: gtk4 (`0d568a7`), html (`a3325bc`), fyne (`3bd8c53`), none+bubbletea (`494df06`), android (`13b8cbc`)
+- [X] Phase 0 SinkGenerator + RunGenerate dispatch + CollectOutputFiles adapter (`0356525`, `dfb0d05`)
+- [X] Internal callers cutover — snapshot/runtests/testing/tests (`8213600`)
+- [X] Response / RunGenerate / SinkGenerator / CollectOutputFiles deleted (`8fc9eec`)
+- [X] Dead LangTranslator stubs deleted: WriteExpr / WriteStmt / WriteType / Eval (`8fc9eec`)
+- [X] Bonus: slot-ID sort for deterministic codegen (`6f2a17e`)
+- [ ] Position-marker call sites in EvalStmt / EmitFuncDef — deferred. Requires translator rework: current EvalStmt returns strings that get concatenated post-hoc; CodeWriter.Mark needs byte offsets at write time. Either (a) route per-statement emission through CodeWriter (translator takes writer param), or (b) translator returns position-annotated chunks the platform replays into CodeWriter. Either path is multi-day.
+- [ ] RenderHeader signature expansion to include source filename — deferred. Currently `RenderHeader(name, imports)` only sees the OUTPUT filename; for the "generated from <source>" header line, lang translators need access to req.Source too. Trivial signature change; blocked only because no caller actually routes through OpenCodeFile for source emission yet (every platform still hand-prepends `codegen.Header(...)` and writes via raw `sink.Create`).
+- [ ] Platform per-source-file emission through OpenCodeFile — deferred. Blocked on the two items above: switching today would change the generated-by header to mention the output filename instead of the source. Once RenderHeader takes source, every platform can swap `sink.Create + manual Header prepend` for `OpenCodeFile`.
+- [ ] `goImports` map collapse per platform — deferred. Each Go-emitting platform (gtk4, fyne, bubbletea, android-go) still maintains its own `info.goImports` set, populated at intrinsic-translation time. Migration: translator calls `w.Import(spec)` at the emit site (requires OpenCodeFile routing). Audit memory: `ExprScope.BundledNativePkgs` still lives; orthogonality audit #6, #13, #16 all wait on this.
+- [ ] Kotlin SMAP source maps — deferred per Plan A non-goal. Stub `RenderSourceMap` returns zero result.
 
 ## Testing
 
