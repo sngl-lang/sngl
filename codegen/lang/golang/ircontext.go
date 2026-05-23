@@ -23,15 +23,80 @@ type GoIRContext struct {
 	// true. Go's compiler reads //line natively and attributes errors/panics
 	// back to the SNGL source. Gofmt preserves these directives.
 	EmitLineDirectives bool
+
+	// imports records native Go import paths the translator decided it
+	// needed while emitting expressions and statements. Populated by
+	// emit-site calls to RequireImport; read post-translation by platforms
+	// via Imports() so they no longer maintain their own goImports map.
+	// Shared across forked contexts (WithLocal, ForComponent) so child
+	// contexts contribute to the parent's set.
+	imports *importSet
 }
+
+// importSet is the shared collector backing GoIRContext.imports. Keyed by
+// import path; the bool value tracks whether the import is blank ("_") so
+// platforms can render `_ "path"` when needed.
+type importSet struct {
+	paths map[string]bool // path → blank?
+	order []string
+}
+
+func newImportSet() *importSet { return &importSet{paths: map[string]bool{}} }
 
 // NewIRContext creates a GoIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
-	gc := &GoIRContext{Ctx: ctx}
+	gc := &GoIRContext{Ctx: ctx, imports: newImportSet()}
 	if ctx != nil {
 		gc.EmitLineDirectives = ctx.Maps
 	}
 	return gc
+}
+
+// RequireImport records that the emitted Go file needs the given import
+// path. Safe to call repeatedly; first insertion wins for ordering.
+// Called from emit sites whenever a native package reference is rendered
+// (e.g. `time.Now()`, `fmt.Fprintln(...)`). Platforms read the result
+// after all translation via Imports().
+func (gc *GoIRContext) RequireImport(path string) {
+	if path == "" || gc.imports == nil {
+		return
+	}
+	if _, seen := gc.imports.paths[path]; seen {
+		return
+	}
+	gc.imports.paths[path] = false
+	gc.imports.order = append(gc.imports.order, path)
+}
+
+// RequireBlankImport records a side-effect-only import (`_ "path"`).
+func (gc *GoIRContext) RequireBlankImport(path string) {
+	if path == "" || gc.imports == nil {
+		return
+	}
+	if _, seen := gc.imports.paths[path]; seen {
+		return
+	}
+	gc.imports.paths[path] = true
+	gc.imports.order = append(gc.imports.order, path)
+}
+
+// Imports returns the recorded import paths in insertion order.
+func (gc *GoIRContext) Imports() []string {
+	if gc.imports == nil {
+		return nil
+	}
+	out := make([]string, len(gc.imports.order))
+	copy(out, gc.imports.order)
+	return out
+}
+
+// IsBlankImport reports whether the given path was registered as a
+// blank import.
+func (gc *GoIRContext) IsBlankImport(path string) bool {
+	if gc.imports == nil {
+		return false
+	}
+	return gc.imports.paths[path]
 }
 
 // EvalExpr translates an IR expression into a Go expression string.
@@ -419,6 +484,10 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			// continue to work during the migration.
 			if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
 				name = "C." + name
+			} else if n.Func.NativePkg != "C" {
+				// Non-cgo native call (e.g. fmt.Println, time.Now) — record
+				// the import so platforms reading gc.Imports() see it.
+				gc.RequireImport(n.Func.NativePkg)
 			}
 			return name + "(" + strings.Join(args, ", ") + ")"
 		}
@@ -433,6 +502,9 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		// have been lowered to direct intl.* intrinsic calls with the locale
 		// threaded as the first arg.
 		if result := goEvalIntlIntrinsic(n.Func, args); result != "" {
+			// i18n intrinsics emit `i18n.<Func>(...)` which references
+			// the sngl-i18n runtime package.
+			gc.RequireImport(SnglI18nImportPath)
 			return result
 		}
 
@@ -948,16 +1020,20 @@ func (gc *GoIRContext) evalMutTarget(e ir.Expr) string {
 // WithLocal returns a new context with an additional local variable.
 func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	return &GoIRContext{
-		Ctx:       gc.Ctx.WithLocal(name),
-		AlertFunc: gc.AlertFunc,
+		Ctx:                gc.Ctx.WithLocal(name),
+		AlertFunc:          gc.AlertFunc,
+		EmitLineDirectives: gc.EmitLineDirectives,
+		imports:            gc.imports, // shared so child writes propagate
 	}
 }
 
 // ForComponent returns a new context scoped to a component.
 func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 	return &GoIRContext{
-		Ctx:       gc.Ctx.ForComponent(comp),
-		AlertFunc: gc.AlertFunc,
+		Ctx:                gc.Ctx.ForComponent(comp),
+		AlertFunc:          gc.AlertFunc,
+		EmitLineDirectives: gc.EmitLineDirectives,
+		imports:            gc.imports, // shared so child writes propagate
 	}
 }
 

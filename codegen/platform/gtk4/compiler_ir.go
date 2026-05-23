@@ -167,17 +167,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
-	for _, imp := range pkg.Imports {
-		if imp.Native == nil || imp.Native.ImportPath == "" {
-			continue
-		}
-		if strings.HasPrefix(imp.Native.ImportPath, "c://") {
-			continue
-		}
-		info.goImports[imp.Native.ImportPath] = true
-	}
-	if golang.PackageUsesI18n(pkg) {
-		info.goImports[golang.SnglI18nImportPath] = true
+	for _, p := range golang.BaseImports(pkg) {
+		info.goImports[p] = true
 	}
 	// Alert.* calls lower to fmt.Fprintf(os.Stderr, ...) (see
 	// gtk4IRAlertFunc) — pull in fmt + os when the package uses them.
