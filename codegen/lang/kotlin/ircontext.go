@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -25,143 +26,122 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 }
 
 // EvalExpr translates an IR expression into a Kotlin expression string.
-func (kc *KtIRContext) EvalExpr(e ir.Expr) string {
-	if e == nil {
-		return "null"
-	}
-	switch n := e.(type) {
-	case *ir.Literal:
-		return kc.evalLiteral(n)
-	case *ir.Ident:
-		return kc.evalIdent(n)
-	case *ir.Binary:
-		left := kc.EvalExpr(n.Left)
-		right := kc.EvalExpr(n.Right)
-		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
-	case *ir.Unary:
-		operand := kc.EvalExpr(n.Operand)
-		if n.Op == ast.UnaryNot {
-			return "!" + operand
-		}
-		return "-" + operand
-	case *ir.Ternary:
-		cond := kc.EvalExpr(n.Cond)
-		a := kc.EvalExpr(n.Then)
-		b := kc.EvalExpr(n.Else)
-		return "(if (" + cond + ") " + a + " else " + b + ")"
-	case *ir.Select:
-		operand := kc.EvalExpr(n.Operand)
-		field := n.Field
-		if field == "length" {
-			if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
-				field = "size"
-			}
-		}
-		return operand + "." + field
-	case *ir.Index:
-		operand := kc.EvalExpr(n.Operand)
-		idx := kc.EvalExpr(n.Idx)
-		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
-			valZero := ktMapValZero(t)
-			return "(" + operand + "[" + idx + "] ?: " + valZero + ")"
-		}
-		return operand + "[" + idx + "]"
-	case *ir.Call:
-		return kc.evalCall(n)
-	case *ir.Conversion:
-		return kc.evalConversion(n)
-	case *ir.StructLit:
-		return kc.evalStructLit(n)
-	case *ir.ListLit:
-		parts := make([]string, len(n.Elems))
-		for i, el := range n.Elems {
-			parts[i] = kc.EvalExpr(el)
-		}
-		return "listOf(" + strings.Join(parts, ", ") + ")"
-	case *ir.MapLitIR:
-		var b strings.Builder
-		b.WriteString("mapOf(")
-		for i, e := range n.Entries {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString(kc.EvalExpr(e.Key))
-			b.WriteString(" to ")
-			b.WriteString(kc.EvalExpr(e.Value))
-		}
-		b.WriteString(")")
-		return b.String()
-	case *ir.Spread:
-		return "*" + kc.EvalExpr(n.Operand)
-	case *ir.Lambda:
-		return kc.evalLambda(n)
-	default:
-		panic(fmt.Sprintf("KtIRContext.EvalExpr: unhandled ir.Expr %T", e))
-	}
-}
+func (kc *KtIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(kc, e) }
 
 // EvalStmt translates an IR statement into Kotlin statement strings.
-func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string {
-	switch n := s.(type) {
-	case *ir.Assign:
-		target := kc.evalMutTarget(n.Target)
-		value := kc.EvalExpr(n.Value)
-		op := assignOpStr(n.Op)
-		return []string{target + " " + op + " " + value}
-	case *ir.Toggle:
-		target := kc.evalMutTarget(n.Target)
-		return []string{target + " = !" + target}
-	case *ir.CallStmt:
-		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
-			if lines := kc.evalErrorAwareCall(n.Call); lines != nil {
-				return lines
-			}
-		}
-		return []string{kc.EvalExpr(n.Call)}
-	case *ir.Emit:
-		name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = kc.EvalExpr(a.Value)
-		}
-		if len(argStrs) > 0 {
-			return []string{name + "?.invoke(" + strings.Join(argStrs, ", ") + ")"}
-		}
-		return []string{name + "?.invoke()"}
-	case *ir.LocalVar:
-		if n.Init != nil {
-			return []string{"var " + n.Name + " = " + kc.EvalExpr(n.Init)}
-		}
-		goType := "Any"
-		if n.Type != nil {
-			goType = IRTypeToKt(n.Type)
-		}
-		return []string{"var " + n.Name + ": " + goType}
-	case *ir.Return:
-		if n.Value != nil {
-			return []string{"return " + kc.EvalExpr(n.Value)}
-		}
-		return []string{"return"}
-	case *ir.For:
-		return kc.evalFor(n)
-	case *ir.NodeInst:
-		// UI tree statements are platform-specific; the generic Kotlin
-		// stmt path emits nothing for them. Mirrors GoIRContext.EvalStmt.
-		return nil
-	default:
-		panic(fmt.Sprintf("KtIRContext.EvalStmt: unhandled ir.Stmt %T", s))
+func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(kc, s) }
+
+// --- irwalk.Renderer implementation ---
+
+func (kc *KtIRContext) NilExpr() string              { return "null" }
+func (kc *KtIRContext) Literal(n *ir.Literal) string { return kc.evalLiteral(n) }
+func (kc *KtIRContext) Ident(n *ir.Ident) string     { return kc.evalIdent(n) }
+
+func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
+	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+}
+func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
+	if n.Op == ast.UnaryNot {
+		return "!" + operand
 	}
+	return "-" + operand
+}
+func (kc *KtIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
+	return "(if (" + cond + ") " + then_ + " else " + else_ + ")"
+}
+func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
+	field := n.Field
+	if field == "length" {
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+			field = "size"
+		}
+	}
+	return operand + "." + field
+}
+func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+		valZero := ktMapValZero(t)
+		return "(" + operand + "[" + idx + "] ?: " + valZero + ")"
+	}
+	return operand + "[" + idx + "]"
+}
+func (kc *KtIRContext) ListLit(_ *ir.ListLit, elems []string) string {
+	return "listOf(" + strings.Join(elems, ", ") + ")"
+}
+func (kc *KtIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
+	var b strings.Builder
+	b.WriteString("mapOf(")
+	for i := range keys {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(keys[i])
+		b.WriteString(" to ")
+		b.WriteString(vals[i])
+	}
+	b.WriteString(")")
+	return b.String()
+}
+func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	name := "Any"
+	if n.Def != nil {
+		name = exportName(n.Def.Name)
+	}
+	parts := make([]string, len(n.Fields))
+	for i, f := range n.Fields {
+		if f.Spread {
+			parts[i] = "/* ..." + fieldStrs[i] + " */"
+		} else {
+			parts[i] = f.Name + " = " + fieldStrs[i]
+		}
+	}
+	return name + "(" + strings.Join(parts, ", ") + ")"
+}
+func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string { return "*" + operand }
+
+func (kc *KtIRContext) Call(n *ir.Call) string             { return kc.evalCall(n) }
+func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConversion(n) }
+func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambda(n) }
+
+func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
+	return target + " " + assignOpStr(n.Op) + " " + value
+}
+func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {
+	return target + " = !" + target
+}
+func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+		if lines := kc.evalErrorAwareCall(n.Call); lines != nil {
+			return lines
+		}
+	}
+	return []string{kc.EvalExpr(n.Call)}
+}
+func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
+	name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
+	if len(argStrs) > 0 {
+		return name + "?.invoke(" + strings.Join(argStrs, ", ") + ")"
+	}
+	return name + "?.invoke()"
+}
+func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
+	if n.Init != nil {
+		return "var " + n.Name + " = " + initStr
+	}
+	goType := "Any"
+	if n.Type != nil {
+		goType = IRTypeToKt(n.Type)
+	}
+	return "var " + n.Name + ": " + goType
+}
+func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
+	if n.Value != nil {
+		return "return " + valueStr
+	}
+	return "return"
 }
 
-// evalFor emits a Kotlin for-loop. Maps use destructuring; lists/iter<T> use for-in.
-func (kc *KtIRContext) evalFor(n *ir.For) []string {
-	iterExpr := kc.EvalExpr(n.Iter)
-	loopKC := kc.WithLocal(n.Key)
-	if n.Value != "" {
-		loopKC = loopKC.WithLocal(n.Value)
-	}
-
-	var lines []string
+func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for ((k, v) in m) { ... }
@@ -169,19 +149,29 @@ func (kc *KtIRContext) evalFor(n *ir.For) []string {
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		lines = append(lines, fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iterExpr))
-	} else {
-		// List / iter<T> iteration: for (x in list) { ... }
-		lines = append(lines, fmt.Sprintf("for (%s in %s) {", n.Key, iterExpr))
+		return fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iter)
 	}
-	for _, stmt := range n.Body {
-		for _, l := range loopKC.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
+	// List / iter<T> iteration: for (x in list) { ... }
+	return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
+}
+func (kc *KtIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
+func (kc *KtIRContext) ElseHead() string                    { return "} else {" }
+func (kc *KtIRContext) BlockEnd() string                    { return "}" }
+func (kc *KtIRContext) Indent() string                      { return "\t" }
+
+func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
+	if kc.IdentRewrites != nil {
+		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
+			return rewritten
 		}
 	}
-	lines = append(lines, "}")
-	return lines
+	return n.Name
 }
+func (kc *KtIRContext) MutTargetField(field string) string { return field }
+
+func (kc *KtIRContext) StmtPrefix(_ ir.Stmt) []string { return nil }
+
+func (kc *KtIRContext) Scoped(name string) irwalk.Renderer { return kc.WithLocal(name) }
 
 func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
@@ -470,22 +460,6 @@ func ktZeroFor(t *ir.Type) string {
 	return "null"
 }
 
-func (kc *KtIRContext) evalStructLit(n *ir.StructLit) string {
-	name := "Any"
-	if n.Def != nil {
-		name = exportName(n.Def.Name)
-	}
-	var parts []string
-	for _, f := range n.Fields {
-		if f.Spread {
-			parts = append(parts, "/* ..."+kc.EvalExpr(f.Value)+" */")
-		} else {
-			parts = append(parts, f.Name+" = "+kc.EvalExpr(f.Value))
-		}
-	}
-	return name + "(" + strings.Join(parts, ", ") + ")"
-}
-
 func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "{ }"
@@ -517,27 +491,6 @@ func (kc *KtIRContext) evalCallArgs(args []ir.CallArg) []string {
 		out[i] = kc.EvalExpr(a.Value)
 	}
 	return out
-}
-
-func (kc *KtIRContext) evalMutTarget(e ir.Expr) string {
-	switch n := e.(type) {
-	case *ir.Ident:
-		if kc.IdentRewrites != nil {
-			if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
-				return rewritten
-			}
-		}
-		return n.Name
-	case *ir.Select:
-		operand := kc.evalMutTarget(n.Operand)
-		return operand + "." + n.Field
-	case *ir.Index:
-		operand := kc.evalMutTarget(n.Operand)
-		idx := kc.EvalExpr(n.Idx)
-		return operand + "[" + idx + "]"
-	default:
-		return kc.EvalExpr(e)
-	}
 }
 
 // WithLocal returns a new context with an additional local variable.

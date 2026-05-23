@@ -58,32 +58,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	pkg := ctx.Pkg
 
-	// Collect Go imports from native (go://) imports so the generated Go file
-	// includes them as real package imports.
-	for _, imp := range pkg.Imports {
-		if imp.Native == nil || imp.Native.ImportPath == "" {
-			continue
-		}
-		// C imports are handled via CgoPreamble, not regular Go imports.
-		// The c:// scheme is stripped before storage, so detect via the
-		// fact that the funcs are tagged NativePkg=="C".
-		isC := false
-		for _, fn := range imp.Native.Funcs {
-			if fn.NativePkg == "C" {
-				isC = true
-				break
-			}
-		}
-		if isC {
-			continue
-		}
-		info.goImports[imp.Native.ImportPath] = true
-	}
-
-	// If any i18n stdlib calls are present, the generated code will call
-	// i18n.GetTranslator() and must import the SNGL i18n runtime package.
-	if golang.PackageUsesI18n(pkg) {
-		info.goImports[golang.SnglI18nImportPath] = true
+	// Collect Go imports declared by SNGL plus the sngl-i18n runtime
+	// when needed. C imports are excluded — they enter the file via
+	// the cgo preamble, not the import block.
+	for _, imp := range golang.BaseImports(pkg) {
+		info.goImports[imp.Path] = true
 	}
 
 	// After NoInlineComponents, every non-main component has been inlined

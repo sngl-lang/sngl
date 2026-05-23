@@ -172,8 +172,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
-	for _, p := range golang.BaseImports(pkg) {
-		info.goImports[p] = true
+	for _, imp := range golang.BaseImports(pkg) {
+		info.goImports[imp.Path] = true
 	}
 	// Alert.* calls lower to fmt.Fprintf(os.Stderr, ...) (see
 	// gtk4IRAlertFunc) — pull in fmt + os when the package uses them.

@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -100,168 +101,135 @@ func (gc *GoIRContext) IsBlankImport(path string) bool {
 }
 
 // EvalExpr translates an IR expression into a Go expression string.
-func (gc *GoIRContext) EvalExpr(e ir.Expr) string {
-	if e == nil {
-		return "nil"
-	}
-	switch n := e.(type) {
-	case *ir.Literal:
-		return gc.evalLiteral(n)
-	case *ir.Ident:
-		return gc.evalIdent(n)
-	case *ir.Binary:
-		left := gc.EvalExpr(n.Left)
-		right := gc.EvalExpr(n.Right)
-		return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
-	case *ir.Unary:
-		operand := gc.EvalExpr(n.Operand)
-		if n.Op == ast.UnaryNot {
-			return "!" + operand
-		}
-		return "-" + operand
-	case *ir.Ternary:
-		cond := gc.EvalExpr(n.Cond)
-		a := gc.EvalExpr(n.Then)
-		b := gc.EvalExpr(n.Else)
-		return "ternary(" + cond + ", " + a + ", " + b + ")"
-	case *ir.Select:
-		operand := gc.EvalExpr(n.Operand)
-		if n.Field == "length" {
-			return "len(" + operand + ")"
-		}
-		// i18n plural-category constants: map SNGL names (zero/one/…/other) to
-		// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
-		if operand == "i18n" {
-			if goName := i18nPluralKeyGoName(n.Field); goName != "" {
-				return "i18n." + goName
-			}
-		}
-		// Field access on a `dyn` operand: Go's `any` has no fields, so a
-		// bare `.<F>` won't compile. If exactly one user struct in the
-		// package declares this field, emit a type assertion to that
-		// struct. Covers recursive-component patterns where a struct
-		// field is typed `dyn` for self-reference (TreeNode.left/right).
-		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
-			if name := gc.uniqueStructWithField(n.Field); name != "" {
-				return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
-			}
-		}
-		return operand + "." + ExportName(n.Field)
-	case *ir.Index:
-		operand := gc.EvalExpr(n.Operand)
-		idx := gc.EvalExpr(n.Idx)
-		return operand + "[" + idx + "]"
-	case *ir.Call:
-		return gc.maybeWrapErrorReturn(n, gc.evalCall(n))
-	case *ir.Conversion:
-		return gc.evalConversion(n)
-	case *ir.StructLit:
-		return gc.evalStructLit(n)
-	case *ir.ListLit:
-		parts := make([]string, len(n.Elems))
-		for i, el := range n.Elems {
-			parts[i] = gc.EvalExpr(el)
-		}
-		elemType := "any"
-		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-			elemType = IRTypeToGo(n.Type.Elems[0])
-		}
-		return "[]" + elemType + "{" + strings.Join(parts, ", ") + "}"
-	case *ir.MapLitIR:
-		keyType := "any"
-		valType := "any"
-		if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
-			keyType = IRTypeToGo(n.Type.Elems[0])
-			valType = IRTypeToGo(n.Type.Elems[1])
-		}
-		var parts []string
-		for _, e := range n.Entries {
-			parts = append(parts, gc.EvalExpr(e.Key)+": "+gc.EvalExpr(e.Value))
-		}
-		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
-	case *ir.Spread:
-		return gc.EvalExpr(n.Operand) + "..."
-	case *ir.Lambda:
-		return gc.evalLambda(n)
-	default:
-		panic(fmt.Sprintf("GoIRContext.EvalExpr: unhandled ir.Expr %T", e))
-	}
-}
+func (gc *GoIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(gc, e) }
 
 // EvalStmt translates an IR statement into Go statement strings.
-func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string {
-	lines := gc.evalStmtImpl(s)
-	if gc.EmitLineDirectives && len(lines) > 0 {
-		if pos := stmtIRPos(s); pos.IsValid() && pos.File != "" {
-			lines = append([]string{fmt.Sprintf("//line %s:%d", pos.File, pos.Line)}, lines...)
-		}
-	}
-	return lines
+func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(gc, s) }
+
+// --- irwalk.Renderer implementation ---
+
+func (gc *GoIRContext) NilExpr() string              { return "nil" }
+func (gc *GoIRContext) Literal(n *ir.Literal) string { return gc.evalLiteral(n) }
+func (gc *GoIRContext) Ident(n *ir.Ident) string     { return gc.evalIdent(n) }
+
+func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
+	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
 }
 
-func (gc *GoIRContext) evalStmtImpl(s ir.Stmt) []string {
-	switch n := s.(type) {
-	case *ir.Assign:
-		target := gc.evalMutTarget(n.Target)
-		value := gc.EvalExpr(n.Value)
-		op := irAssignOp(n.Op)
-		return []string{target + " " + op + " " + value}
-	case *ir.Toggle:
-		target := gc.evalMutTarget(n.Target)
-		return []string{target + " = !" + target}
-	case *ir.CallStmt:
-		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
-			if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
-				return lines
-			}
-		}
-		return []string{gc.EvalExpr(n.Call)}
-	case *ir.Emit:
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = gc.EvalExpr(a.Value)
-		}
-		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
-	case *ir.LocalVar:
-		if n.Init != nil {
-			return []string{n.Name + " := " + gc.EvalExpr(n.Init)}
-		}
-		goType := "any"
-		if n.Type != nil {
-			goType = IRTypeToGo(n.Type)
-		}
-		return []string{"var " + n.Name + " " + goType}
-	case *ir.Return:
-		if n.Value != nil {
-			return []string{"return " + gc.EvalExpr(n.Value)}
-		}
-		return []string{"return"}
-	case *ir.For:
-		return gc.evalFor(n)
-	case *ir.If:
-		return gc.evalIf(n)
-	case *ir.NodeInst:
-		// UI tree statements are platform-specific (rendered by each
-		// codegen's translator, not by the generic Go-stmt path). Test
-		// lowering shouldn't see them, but the fyne test runner runs
-		// the same EvalStmt over component bodies that still carry
-		// NodeInst leaves; emit nothing rather than panic.
-		return nil
-	default:
-		panic(fmt.Sprintf("GoIRContext.EvalStmt: unhandled ir.Stmt %T", s))
+func (gc *GoIRContext) Unary(n *ir.Unary, operand string) string {
+	if n.Op == ast.UnaryNot {
+		return "!" + operand
 	}
+	return "-" + operand
 }
 
-// evalFor emits a Go for-loop. Maps use the two-variable range form;
-// lists and iter<T> use the single-variable form (index suppressed).
-func (gc *GoIRContext) evalFor(n *ir.For) []string {
-	iterExpr := gc.EvalExpr(n.Iter)
-	loopGC := gc.WithLocal(n.Key)
-	if n.Value != "" {
-		loopGC = loopGC.WithLocal(n.Value)
-	}
+func (gc *GoIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
+	return "ternary(" + cond + ", " + then_ + ", " + else_ + ")"
+}
 
-	var lines []string
+func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
+	if n.Field == "length" {
+		return "len(" + operand + ")"
+	}
+	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
+	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
+	if operand == "i18n" {
+		if goName := i18nPluralKeyGoName(n.Field); goName != "" {
+			return "i18n." + goName
+		}
+	}
+	// Field access on a `dyn` operand: Go's `any` has no fields, so a
+	// bare `.<F>` won't compile. If exactly one user struct in the
+	// package declares this field, emit a type assertion to that
+	// struct. Covers recursive-component patterns where a struct
+	// field is typed `dyn` for self-reference (TreeNode.left/right).
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
+		if name := gc.uniqueStructWithField(n.Field); name != "" {
+			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
+		}
+	}
+	return operand + "." + ExportName(n.Field)
+}
+
+func (gc *GoIRContext) Index(_ *ir.Index, operand, idx string) string {
+	return operand + "[" + idx + "]"
+}
+
+func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
+	elemType := "any"
+	if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
+		elemType = IRTypeToGo(n.Type.Elems[0])
+	}
+	return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+}
+
+func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
+	keyType := "any"
+	valType := "any"
+	if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
+		keyType = IRTypeToGo(n.Type.Elems[0])
+		valType = IRTypeToGo(n.Type.Elems[1])
+	}
+	parts := make([]string, len(keys))
+	for i := range keys {
+		parts[i] = keys[i] + ": " + vals[i]
+	}
+	return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
+}
+
+func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	parts := make([]string, len(n.Fields))
+	for i, f := range n.Fields {
+		if f.Spread {
+			parts[i] = "/* ..." + fieldStrs[i] + " */"
+		} else {
+			parts[i] = ExportName(f.Name) + ": " + fieldStrs[i]
+		}
+	}
+	return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
+}
+
+func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
+
+func (gc *GoIRContext) Call(n *ir.Call) string         { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
+func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConversion(n) }
+func (gc *GoIRContext) Lambda(n *ir.Lambda) string         { return gc.evalLambda(n) }
+
+func (gc *GoIRContext) AssignText(n *ir.Assign, target, value string) string {
+	return target + " " + irAssignOp(n.Op) + " " + value
+}
+func (gc *GoIRContext) ToggleText(_ *ir.Toggle, target string) string {
+	return target + " = !" + target
+}
+func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+		if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
+			return lines
+		}
+	}
+	return []string{gc.EvalExpr(n.Call)}
+}
+func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
+	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
+}
+func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
+	if n.Init != nil {
+		return n.Name + " := " + initStr
+	}
+	goType := "any"
+	if n.Type != nil {
+		goType = IRTypeToGo(n.Type)
+	}
+	return "var " + n.Name + " " + goType
+}
+func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
+	if n.Value != nil {
+		return "return " + valueStr
+	}
+	return "return"
+}
+
+func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for k, v := range m { ... }
@@ -269,46 +237,42 @@ func (gc *GoIRContext) evalFor(n *ir.For) []string {
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iterExpr))
-	} else {
-		// List / iter<T> iteration: for _, x := range list { ... }
-		indexVar := "_"
-		if n.Value != "" {
-			indexVar = n.Value
-		}
-		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iterExpr))
+		return fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iter)
 	}
-
-	for _, stmt := range n.Body {
-		for _, l := range loopGC.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
+	// List / iter<T> iteration: for _, x := range list { ... }
+	indexVar := "_"
+	if n.Value != "" {
+		indexVar = n.Value
 	}
-	lines = append(lines, "}")
-	return lines
+	return fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iter)
 }
 
-// evalIf emits a Go if-then-else. Else may be empty.
-func (gc *GoIRContext) evalIf(n *ir.If) []string {
-	cond := gc.EvalExpr(n.Cond)
-	var lines []string
-	lines = append(lines, "if "+cond+" {")
-	for _, s := range n.Body {
-		for _, l := range gc.EvalStmt(s) {
-			lines = append(lines, "\t"+l)
-		}
+func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
+func (gc *GoIRContext) ElseHead() string                    { return "} else {" }
+func (gc *GoIRContext) BlockEnd() string                    { return "}" }
+func (gc *GoIRContext) Indent() string                      { return "\t" }
+
+func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
+	_, kind := gc.Ctx.Resolve(n.Name)
+	if kind == codegen.NameStateVar {
+		return "m." + n.Name
 	}
-	if len(n.Else) > 0 {
-		lines = append(lines, "} else {")
-		for _, s := range n.Else {
-			for _, l := range gc.EvalStmt(s) {
-				lines = append(lines, "\t"+l)
-			}
-		}
-	}
-	lines = append(lines, "}")
-	return lines
+	return n.Name
 }
+func (gc *GoIRContext) MutTargetField(field string) string { return ExportName(field) }
+
+func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
+	if !gc.EmitLineDirectives {
+		return nil
+	}
+	pos := stmtIRPos(s)
+	if !pos.IsValid() || pos.File == "" {
+		return nil
+	}
+	return []string{fmt.Sprintf("//line %s:%d", pos.File, pos.Line)}
+}
+
+func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal(name) }
 
 func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
@@ -888,18 +852,6 @@ func nullFuncStubGo(t *ir.Type) string {
 	return "func(" + strings.Join(params, ", ") + ")" + ret + " {" + body + "}"
 }
 
-func (gc *GoIRContext) evalStructLit(n *ir.StructLit) string {
-	var parts []string
-	for _, f := range n.Fields {
-		if f.Spread {
-			parts = append(parts, "/* ..."+gc.EvalExpr(f.Value)+" */")
-		} else {
-			parts = append(parts, ExportName(f.Name)+": "+gc.EvalExpr(f.Value))
-		}
-	}
-	return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
-}
-
 // structLitTypeName picks the Go type prefix for a struct literal. Named
 // structs lower to ExportName(sd.Name); anonymous structs (no name on
 // the StructDef) materialize an inline `struct { Field Type; ... }` so
@@ -938,18 +890,6 @@ func structLitTypeName(n *ir.StructLit) string {
 	}
 	fb.WriteString(" }")
 	return fb.String()
-}
-
-func (gc *GoIRContext) evalStructConstructor(sd *ir.StructDef, args []ir.CallArg) string {
-	var parts []string
-	for i, f := range sd.Fields {
-		val := "nil"
-		if i < len(args) {
-			val = gc.EvalExpr(args[i].Value)
-		}
-		parts = append(parts, ExportName(f.Name)+": "+val)
-	}
-	return ExportName(sd.Name) + "{" + strings.Join(parts, ", ") + "}"
 }
 
 func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
@@ -995,26 +935,6 @@ func (gc *GoIRContext) evalCallArgs(args []ir.CallArg) []string {
 		out[i] = gc.EvalExpr(a.Value)
 	}
 	return out
-}
-
-func (gc *GoIRContext) evalMutTarget(e ir.Expr) string {
-	switch n := e.(type) {
-	case *ir.Ident:
-		_, kind := gc.Ctx.Resolve(n.Name)
-		if kind == codegen.NameStateVar {
-			return "m." + n.Name
-		}
-		return n.Name
-	case *ir.Select:
-		operand := gc.evalMutTarget(n.Operand)
-		return operand + "." + ExportName(n.Field)
-	case *ir.Index:
-		operand := gc.evalMutTarget(n.Operand)
-		idx := gc.EvalExpr(n.Idx)
-		return operand + "[" + idx + "]"
-	default:
-		return gc.EvalExpr(e)
-	}
 }
 
 // WithLocal returns a new context with an additional local variable.

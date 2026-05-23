@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -31,146 +32,105 @@ func NewIRContext(ctx *codegen.ExprCtx) *JsIRContext {
 }
 
 // EvalExpr translates an IR expression into a JavaScript expression string.
-func (jc *JsIRContext) EvalExpr(e ir.Expr) string {
-	if e == nil {
-		return "null"
-	}
-	switch n := e.(type) {
-	case *ir.Literal:
-		return jc.evalLiteral(n)
-	case *ir.Ident:
-		return jc.evalIdent(n)
-	case *ir.Binary:
-		left := jc.EvalExpr(n.Left)
-		right := jc.EvalExpr(n.Right)
-		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
-	case *ir.Unary:
-		operand := jc.EvalExpr(n.Operand)
-		if n.Op == ast.UnaryNot {
-			return "!" + operand
-		}
-		return "-" + operand
-	case *ir.Ternary:
-		return "(" + jc.EvalExpr(n.Cond) + " ? " + jc.EvalExpr(n.Then) + " : " + jc.EvalExpr(n.Else) + ")"
-	case *ir.Select:
-		return jc.EvalExpr(n.Operand) + "." + n.Field
-	case *ir.Index:
-		operand := jc.EvalExpr(n.Operand)
-		idx := jc.EvalExpr(n.Idx)
-		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
-			return operand + ".get(" + idx + ")"
-		}
-		return operand + "[" + idx + "]"
-	case *ir.Call:
-		return jc.evalCall(n)
-	case *ir.Conversion:
-		return jc.evalConversion(n)
-	case *ir.StructLit:
-		var parts []string
-		for _, f := range n.Fields {
-			if f.Spread {
-				parts = append(parts, "..."+jc.EvalExpr(f.Value))
-			} else {
-				parts = append(parts, f.Name+": "+jc.EvalExpr(f.Value))
-			}
-		}
-		return "{" + strings.Join(parts, ", ") + "}"
-	case *ir.ListLit:
-		parts := make([]string, len(n.Elems))
-		for i, el := range n.Elems {
-			parts[i] = jc.EvalExpr(el)
-		}
-		return "[" + strings.Join(parts, ", ") + "]"
-	case *ir.MapLitIR:
-		var b strings.Builder
-		b.WriteString("new Map([")
-		for i, e := range n.Entries {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString("[")
-			b.WriteString(jc.EvalExpr(e.Key))
-			b.WriteString(", ")
-			b.WriteString(jc.EvalExpr(e.Value))
-			b.WriteString("]")
-		}
-		b.WriteString("])")
-		return b.String()
-	case *ir.Spread:
-		return "..." + jc.EvalExpr(n.Operand)
-	case *ir.Lambda:
-		return jc.evalLambda(n)
-	default:
-		panic(fmt.Sprintf("JsIRContext.EvalExpr: unhandled ir.Expr %T", e))
-	}
-}
+func (jc *JsIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(jc, e) }
 
 // EvalStmt translates an IR statement into JS statement strings.
-func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string {
-	lines := jc.evalStmtImpl(s)
-	if jc.EmitPositionMarkers && len(lines) > 0 {
-		if pos := stmtIRPos(s); pos.IsValid() && pos.File != "" {
-			lines = append([]string{fmt.Sprintf("/*@SNGL:%s:%d@*/", pos.File, pos.Line)}, lines...)
+func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(jc, s) }
+
+// --- irwalk.Renderer implementation ---
+
+func (jc *JsIRContext) NilExpr() string              { return "null" }
+func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) }
+func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
+
+func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
+	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+}
+func (jc *JsIRContext) Unary(n *ir.Unary, operand string) string {
+	if n.Op == ast.UnaryNot {
+		return "!" + operand
+	}
+	return "-" + operand
+}
+func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
+	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
+}
+func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
+	return operand + "." + n.Field
+}
+func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+		return operand + ".get(" + idx + ")"
+	}
+	return operand + "[" + idx + "]"
+}
+func (jc *JsIRContext) ListLit(_ *ir.ListLit, elems []string) string {
+	return "[" + strings.Join(elems, ", ") + "]"
+}
+func (jc *JsIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
+	var b strings.Builder
+	b.WriteString("new Map([")
+	for i := range keys {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString("[")
+		b.WriteString(keys[i])
+		b.WriteString(", ")
+		b.WriteString(vals[i])
+		b.WriteString("]")
+	}
+	b.WriteString("])")
+	return b.String()
+}
+func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	parts := make([]string, len(n.Fields))
+	for i, f := range n.Fields {
+		if f.Spread {
+			parts[i] = "..." + fieldStrs[i]
+		} else {
+			parts[i] = f.Name + ": " + fieldStrs[i]
 		}
 	}
-	return lines
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+func (jc *JsIRContext) Spread(_ *ir.Spread, operand string) string { return "..." + operand }
+
+func (jc *JsIRContext) Call(n *ir.Call) string             { return jc.evalCall(n) }
+func (jc *JsIRContext) Conversion(n *ir.Conversion) string { return jc.evalConversion(n) }
+func (jc *JsIRContext) Lambda(n *ir.Lambda) string         { return jc.evalLambda(n) }
+
+func (jc *JsIRContext) AssignText(n *ir.Assign, target, value string) string {
+	return target + " " + assignOpStr(n.Op) + " " + value
+}
+func (jc *JsIRContext) ToggleText(_ *ir.Toggle, target string) string {
+	return target + " = !" + target
+}
+func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
+		if lines := jc.evalErrorAwareCall(n.Call); lines != nil {
+			return lines
+		}
+	}
+	return []string{jc.EvalExpr(n.Call)}
+}
+func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
+	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
+}
+func (jc *JsIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
+	if n.Init != nil {
+		return "let " + n.Name + " = " + initStr
+	}
+	return "let " + n.Name
+}
+func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
+	if n.Value != nil {
+		return "return " + valueStr
+	}
+	return "return"
 }
 
-func (jc *JsIRContext) evalStmtImpl(s ir.Stmt) []string {
-	switch n := s.(type) {
-	case *ir.Assign:
-		target := jc.evalMutTarget(n.Target)
-		value := jc.EvalExpr(n.Value)
-		op := assignOpStr(n.Op)
-		return []string{target + " " + op + " " + value}
-	case *ir.Toggle:
-		target := jc.evalMutTarget(n.Target)
-		return []string{target + " = !" + target}
-	case *ir.CallStmt:
-		if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
-			if lines := jc.evalErrorAwareCall(n.Call); lines != nil {
-				return lines
-			}
-		}
-		return []string{jc.EvalExpr(n.Call)}
-	case *ir.Emit:
-		argStrs := make([]string, len(n.Args))
-		for i, a := range n.Args {
-			argStrs[i] = jc.EvalExpr(a.Value)
-		}
-		return []string{"emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"}
-	case *ir.LocalVar:
-		if n.Init != nil {
-			return []string{"let " + n.Name + " = " + jc.EvalExpr(n.Init)}
-		}
-		return []string{"let " + n.Name}
-	case *ir.Return:
-		if n.Value != nil {
-			return []string{"return " + jc.EvalExpr(n.Value)}
-		}
-		return []string{"return"}
-	case *ir.For:
-		return jc.evalFor(n)
-	case *ir.If:
-		return jc.evalIf(n)
-	case *ir.NodeInst:
-		// UI tree statements are platform-specific; the generic JS stmt
-		// path emits nothing for them. Mirrors GoIRContext.EvalStmt.
-		return nil
-	default:
-		panic(fmt.Sprintf("JsIRContext.EvalStmt: unhandled ir.Stmt %T", s))
-	}
-}
-
-// evalFor emits a JS for-loop. Maps use Map.entries(); lists/iter<T> use for-of.
-func (jc *JsIRContext) evalFor(n *ir.For) []string {
-	iterExpr := jc.EvalExpr(n.Iter)
-	loopJC := jc.WithLocal(n.Key)
-	if n.Value != "" {
-		loopJC = loopJC.WithLocal(n.Value)
-	}
-
-	var lines []string
+func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for (const [k, v] of m.entries()) { ... }
@@ -178,41 +138,40 @@ func (jc *JsIRContext) evalFor(n *ir.For) []string {
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		lines = append(lines, fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iterExpr))
-	} else {
-		// List / iter<T> iteration: for (const x of list) { ... }
-		lines = append(lines, fmt.Sprintf("for (const %s of %s) {", n.Key, iterExpr))
+		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iter)
 	}
-	for _, stmt := range n.Body {
-		for _, l := range loopJC.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
+	// List / iter<T> iteration: for (const x of list) { ... }
+	return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
+}
+func (jc *JsIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
+func (jc *JsIRContext) ElseHead() string                    { return "} else {" }
+func (jc *JsIRContext) BlockEnd() string                    { return "}" }
+func (jc *JsIRContext) Indent() string                      { return "\t" }
+
+func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
+	_, kind := jc.Ctx.Resolve(n.Name)
+	if kind == codegen.NameStateVar {
+		return "state." + n.Name
 	}
-	lines = append(lines, "}")
-	return lines
+	if kind == codegen.NameLocal {
+		return jc.Ctx.RenamedName(n.Name)
+	}
+	return n.Name
+}
+func (jc *JsIRContext) MutTargetField(field string) string { return field }
+
+func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
+	if !jc.EmitPositionMarkers {
+		return nil
+	}
+	pos := stmtIRPos(s)
+	if !pos.IsValid() || pos.File == "" {
+		return nil
+	}
+	return []string{fmt.Sprintf("/*@SNGL:%s:%d@*/", pos.File, pos.Line)}
 }
 
-// evalIf emits a JS if-then-else. Else may be empty.
-func (jc *JsIRContext) evalIf(n *ir.If) []string {
-	cond := jc.EvalExpr(n.Cond)
-	var lines []string
-	lines = append(lines, "if ("+cond+") {")
-	for _, s := range n.Body {
-		for _, l := range jc.EvalStmt(s) {
-			lines = append(lines, "\t"+l)
-		}
-	}
-	if len(n.Else) > 0 {
-		lines = append(lines, "} else {")
-		for _, s := range n.Else {
-			for _, l := range jc.EvalStmt(s) {
-				lines = append(lines, "\t"+l)
-			}
-		}
-	}
-	lines = append(lines, "}")
-	return lines
-}
+func (jc *JsIRContext) Scoped(name string) irwalk.Renderer { return jc.WithLocal(name) }
 
 // evalErrorAwareCall emits JS statements for a fallible call whose error
 // handler was resolved by effect analysis. Mirrors the Go translator;
@@ -632,28 +591,6 @@ func (jc *JsIRContext) evalCallArgs(args []ir.CallArg) []string {
 	return out
 }
 
-func (jc *JsIRContext) evalMutTarget(e ir.Expr) string {
-	switch n := e.(type) {
-	case *ir.Ident:
-		_, kind := jc.Ctx.Resolve(n.Name)
-		if kind == codegen.NameStateVar {
-			return "state." + n.Name
-		}
-		if kind == codegen.NameLocal {
-			return jc.Ctx.RenamedName(n.Name)
-		}
-		return n.Name
-	case *ir.Select:
-		operand := jc.evalMutTarget(n.Operand)
-		return operand + "." + n.Field
-	case *ir.Index:
-		operand := jc.evalMutTarget(n.Operand)
-		idx := jc.EvalExpr(n.Idx)
-		return operand + "[" + idx + "]"
-	default:
-		return jc.EvalExpr(e)
-	}
-}
 
 // WithLocal returns a new context with an additional local variable.
 func (jc *JsIRContext) WithLocal(name string) *JsIRContext {

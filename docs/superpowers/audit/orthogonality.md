@@ -39,7 +39,15 @@ gtk4).
 
 ---
 
-### 2. Three near-identical IRContext implementations
+### 2. Three near-identical IRContext implementations ✅ RESOLVED (2026-05-23)
+
+Hoisted recursive Expr/Stmt dispatch + body-walk into `codegen/irwalk`.
+Each IRContext now implements `irwalk.Renderer`; the walk skeleton
+(EvalExpr type-switch, EvalStmt, For/If body+indent recursion,
+EvalMutTarget) lives once in irwalk. Three IRContexts kept for the
+lang-owned subgraphs (Call/Conversion/Lambda) and leaf rendering.
+
+---
 
 - `codegen/lang/golang/ircontext.go` (1244 lines, `GoIRContext`)
 - `codegen/lang/javascript/ircontext.go` (825 lines, `JsIRContext`)
@@ -67,7 +75,15 @@ the rendering hooks (string-format leaves, name mangling).
 
 ---
 
-### 3. `LangTranslator` interface has a giant abandoned v2 surface
+### 3. `LangTranslator` interface has a giant abandoned v2 surface ✅ RESOLVED
+
+`WriteExpr`/`WriteStmt`/`WriteType` v2 stubs removed when `FileEmitter`
+landed. Each lang owns file-level emission via `NewFileEmitter`; the
+remaining `LangTranslator` surface is the live API (no dead methods).
+
+---
+
+
 
 `codegen/codegen.go:98-120`:
 
@@ -141,7 +157,16 @@ specific thing and remove it from `none` and android-go's `SupportedLangs`.
 
 ---
 
-### 6. Three independent `goImports` maps tracking which Go stdlib packages were used
+### 6. Three independent `goImports` maps tracking which Go stdlib packages were used ✅ RESOLVED (2026-05-23)
+
+Shared `golang.BaseImports(pkg) []BaseImport` collects native imports
++ sngl-i18n runtime in one place. gtk4, fyne, bubbletea seed their
+`goImports` from this. Android-go's gogen emits a golib bridge only —
+not a BaseImports user.
+
+---
+
+
 
 `codegen/platform/bubbletea/compiler_ir.go:93,118,135,141,165,201,242,266,297`
 `codegen/platform/fyne/compiler_ir.go:80,86,149,179,184`
@@ -325,7 +350,16 @@ it. The set lives in exactly one place: the stdlib declaration in
 
 ---
 
-### 13. `golang.SnglI18nImportPath` is referenced cross-platform via the lang package
+### 13. `golang.SnglI18nImportPath` is referenced cross-platform via the lang package ✅ RESOLVED (2026-05-23)
+
+Absorbed by `golang.BaseImports` (item #6): the i18n-runtime gate now
+lives inside the helper, so platforms no longer reference
+`golang.SnglI18nImportPath` directly. (`grep` across non-golang
+packages returns no hits.)
+
+---
+
+
 
 `codegen/platform/bubbletea/compiler_ir.go:141`
 `codegen/platform/fyne/compiler_ir.go:86`
