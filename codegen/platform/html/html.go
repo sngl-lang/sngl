@@ -78,22 +78,34 @@ func (g *Generator) IsLanguageSupported(l ir.Language) bool {
 	return ok
 }
 
-func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+// GenerateSink writes html platform output directly into sink. This is the
+// sink-based path platforms migrate to during the codegen unification.
+func (g *Generator) GenerateSink(req *codegen.Request, sink codegen.Sink) error {
 	if req.Lang.LanguageIdentifier() == "none" {
 		if err := rejectDynamicHrefs(req); err != nil {
-			return nil, err
+			return err
 		}
 		c := &compilation{}
 		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 		if err != nil {
-			return &codegen.Response{Error: err.Error()}, nil
+			return err
 		}
-		return c.EmitFromMutation(m, req)
+		return c.EmitFromMutation(m, req, sink)
 	}
 	if _, ok := req.Lang.(codegen.HTTPCompiler); ok {
-		return g.generateRoutes(req)
+		return g.generateRoutes(req, sink)
 	}
-	return nil, fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+}
+
+// Generate is the legacy entry point; delegates to GenerateSink via a
+// MemSink and converts captured files back to the Response shape.
+func (g *Generator) Generate(req *codegen.Request) (*codegen.Response, error) {
+	mem := codegen.NewMemSink()
+	if err := g.GenerateSink(req, mem); err != nil {
+		return &codegen.Response{Error: err.Error()}, nil
+	}
+	return &codegen.Response{Files: codegen.CollectOutputFiles(mem)}, nil
 }
 
 // rejectDynamicHrefs errors when static mode (lang=none) encounters a window
@@ -112,16 +124,18 @@ func rejectDynamicHrefs(req *codegen.Request) error {
 	return nil
 }
 
-// NewMutationCompiler returns a fresh per-request MutationModelEmitter.
-func (g *Generator) NewMutationCompiler() codegen.MutationModelEmitter {
-	return &compilation{}
-}
-
 // compilation holds per-request build state flowing between
 // BuildMutationModel and EmitFromMutation.
 type compilation struct {
-	assetFiles []*codegen.OutputFile
+	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
+}
+
+// htmlAssetFile is a resolved asset (name + bytes) accumulated during
+// BuildMutationModel and flushed to the Sink in EmitFromMutation.
+type htmlAssetFile struct {
+	name  string
+	bytes []byte
 }
 
 // htmlConfig captures the html platform's options. Field names mirror
@@ -150,10 +164,6 @@ type htmlWindowOutput struct {
 	bytes []byte
 }
 
-var (
-	_ codegen.MutationModelEmitter    = (*compilation)(nil)
-	_ codegen.MutationCompilerFactory = (*Generator)(nil)
-)
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
 	jsLang := codegen.LookupLang("js")
@@ -178,7 +188,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			}
 			data = d
 		}
-		c.assetFiles = append(c.assetFiles, codegen.BytesFile(fa.OutPath, data))
+		c.assetFiles = append(c.assetFiles, htmlAssetFile{name: fa.OutPath, bytes: data})
 	}
 
 	// Resolve stylesheet option: source path relative to project dir.
@@ -196,7 +206,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			}
 			outName := "assets/" + base
 			stylesheetURL = "/" + outName
-			c.assetFiles = append(c.assetFiles, codegen.BytesFile(outName, data))
+			c.assetFiles = append(c.assetFiles, htmlAssetFile{name: outName, bytes: data})
 		}
 	}
 
@@ -236,7 +246,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 						name = asset.HashedName(name, wasmExecData)
 					}
 					outPath := "assets/" + name
-					c.assetFiles = append(c.assetFiles, codegen.BytesFile(outPath, wasmExecData))
+					c.assetFiles = append(c.assetFiles, htmlAssetFile{name: outPath, bytes: wasmExecData})
 					wasmExecURL = "/" + outPath
 				}
 			}
@@ -250,7 +260,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				wasmName = asset.HashedName(wasmName, wasmBytes)
 			}
 			wasmFile := "assets/" + wasmName
-			c.assetFiles = append(c.assetFiles, codegen.BytesFile(wasmFile, wasmBytes))
+			c.assetFiles = append(c.assetFiles, htmlAssetFile{name: wasmFile, bytes: wasmBytes})
 			loaderScripts = append(loaderScripts, fmt.Sprintf(
 				`  const _go_%s = new Go();
   WebAssembly.instantiateStreaming(fetch("/%s"), _go_%s.importObject).then(r => { _go_%s.run(r.instance); });`,
@@ -361,12 +371,31 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return ctx.BuildMutation(mainStmts), nil
 }
 
-func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request) (*codegen.Response, error) {
-	files := append([]*codegen.OutputFile{}, c.assetFiles...)
-	for _, w := range c.windows {
-		files = append(files, codegen.BytesFile(w.name, w.bytes))
+func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
+	for _, f := range c.assetFiles {
+		if err := writeSinkFile(sink, f.name, f.bytes); err != nil {
+			return err
+		}
 	}
-	return &codegen.Response{Files: files}, nil
+	for _, w := range c.windows {
+		if err := writeSinkFile(sink, w.name, w.bytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeSinkFile writes content to sink under name and closes the writer.
+func writeSinkFile(sink codegen.Sink, name string, content []byte) error {
+	w, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(content); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
 }
 
 // htmlGen holds all state for generating a single HTML file.

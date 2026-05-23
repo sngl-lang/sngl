@@ -12,15 +12,15 @@ import (
 // via the same compilation used for lang=none, then hands the routes and a
 // RenderHTML callback to the language's HTTPCompiler. The language owns all
 // framework specifics — mux syntax, server entry point, imports.
-func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, error) {
+func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) error {
 	compiler, ok := req.Lang.(codegen.HTTPCompiler)
 	if !ok {
-		return nil, fmt.Errorf("html: language %q does not implement HTTPCompiler", req.Lang.LanguageIdentifier())
+		return fmt.Errorf("html: language %q does not implement HTTPCompiler", req.Lang.LanguageIdentifier())
 	}
 
 	c := &compilation{}
 	if _, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg)); err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
 	perWindow := make([][]byte, len(c.windows))
 	for i, w := range c.windows {
@@ -39,7 +39,7 @@ func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, err
 		}
 		path, err := hrefToRoutePath(hrefExpr)
 		if err != nil {
-			return nil, fmt.Errorf("html: window %q href: %v", win.Name, err)
+			return fmt.Errorf("html: window %q href: %v", win.Name, err)
 		}
 		if path == "" {
 			path = defaultRoutePath(win.Name, i)
@@ -57,7 +57,7 @@ func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, err
 
 	var opts htmlConfig
 	if err := codegen.ApplyOptions(&opts, req.Options); err != nil {
-		return nil, fmt.Errorf("html: %w", err)
+		return fmt.Errorf("html: %w", err)
 	}
 	pkgName := opts.Package
 	if pkgName == "" {
@@ -88,11 +88,27 @@ func (g *Generator) generateRoutes(req *codegen.Request) (*codegen.Response, err
 
 	langFiles, err := compiler.CompileHTTP(httpReq)
 	if err != nil {
-		return &codegen.Response{Error: err.Error()}, nil
+		return err
 	}
-	out := append([]*codegen.OutputFile{}, langFiles...)
-	out = append(out, c.assetFiles...)
-	return &codegen.Response{Files: out}, nil
+	for _, f := range langFiles {
+		w, werr := sink.Create(f.Name)
+		if werr != nil {
+			return werr
+		}
+		if _, werr = f.WriteTo(w); werr != nil {
+			w.Close()
+			return werr
+		}
+		if werr = w.Close(); werr != nil {
+			return werr
+		}
+	}
+	for _, f := range c.assetFiles {
+		if err := writeSinkFile(sink, f.name, f.bytes); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func defaultRoutePath(winName string, idx int) string {
