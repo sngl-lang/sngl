@@ -60,6 +60,19 @@ func (g *Generator) Capabilities() lower.Caps {
 // Generate writes fyne source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// Agent-mode test build: suppress the user's main() loop and force
+	// the package name to "main" so the agent's func main() compiles
+	// alongside it. The launcher's `go build .` step expects a main
+	// package on disk.
+	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
+	if agentMode {
+		if req.Options == nil {
+			req.Options = &ir.StructLit{}
+		}
+		codegen.SetOptionField(req.Options, "main", false)
+		codegen.SetOptionField(req.Options, "package", "main")
+	}
+
 	c := &compilation{}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
@@ -73,7 +86,39 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 			return fmt.Errorf("fyne: i18n manifest embed: %w", err)
 		}
 	}
+
+	if agentMode && codegen.OptionBool(req.Options, "test") {
+		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+		if len(testFns) > 0 {
+			src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+			if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
+				return err
+			}
+			// fyne's New() returns *Model; LowerTestFile generates code
+			// against `newTestComponent()` and dereferences fields via
+			// `c.<field>`, which Go handles transparently on a pointer.
+			mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+			if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+// writeRawFile writes pre-formatted content directly to sink without
+// running it through the language file emitter (which would re-attach
+// source maps and headers we don't want on synthetic test/agent files).
+func writeRawFile(sink codegen.Sink, name string, content []byte) error {
+	wc, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	if _, err := wc.Write(content); err != nil {
+		wc.Close()
+		return err
+	}
+	return wc.Close()
 }
 
 // compilation holds per-request build state flowing between
