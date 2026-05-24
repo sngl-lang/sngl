@@ -132,8 +132,8 @@ func (g *Generator) PlatformIdentifier() string { return "gtk4" }
 func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }
-func (g *Generator) SupportedLangs() []string               { return []string{"go"} }
-func (g *Generator) Package() []*ast.Document               { return pkgDocs }
+func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) Package() []*ast.Document { return pkgDocs }
 func (g *Generator) Capabilities() lower.Caps {
 	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
 	// mutation of a tracked Var. The gtk4 renderer translates those
@@ -170,6 +170,19 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 // Generate writes gtk4 source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// Agent-mode test build: suppress the user's main() loop and force
+	// the package name to "main" so the agent's func main() compiles
+	// alongside it. The launcher's `go build .` step expects a main
+	// package on disk.
+	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
+	if agentMode {
+		if req.Options == nil {
+			req.Options = &ir.StructLit{}
+		}
+		codegen.SetOptionField(req.Options, "main", false)
+		codegen.SetOptionField(req.Options, "package", "main")
+	}
+
 	c := &compilation{gen: g}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
@@ -183,7 +196,81 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 			return fmt.Errorf("gtk4: i18n manifest embed: %w", err)
 		}
 	}
+
+	if codegen.OptionBool(req.Options, "test") {
+		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+		if len(testFns) > 0 {
+			if agentMode {
+				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
+					return err
+				}
+				// gtk4's New() returns *Model; the agent helper file boots
+				// GTK in headless mode, registers a non-unique GApplication
+				// without running the main loop, and invokes BuildUI to
+				// materialize widgets so per-id event invokers fire against
+				// real GTK objects. Snapshot support arrives in a follow-up
+				// commit — the setCurrentTestModel hook is declared here so
+				// LowerTestFile's `setCurrentTestModel(c)` call compiles.
+				mainSrc := []byte(`package ` + c.cfg.Package + `
+
+/*
+#include <gtk/gtk.h>
+*/
+import "C"
+
+import (
+	"sync"
+	"unsafe"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+)
+
+var gtkInit sync.Once
+
+var currentModel *Model
+
+func setCurrentTestModel(m *Model) { currentModel = m }
+
+func newTestComponent() *Model {
+	gtkInit.Do(func() { C.gtk_init() })
+	app := C.gtk_application_new(C.CString("dev.sngl.test"), C.G_APPLICATION_NON_UNIQUE)
+	C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, nil)
+	m := New()
+	m.BuildUI(app)
+	return m
+}
+
+// Stdlib event payload structs — surfaced for test bodies that
+// construct InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
+type InputEvent struct{ Value string }
+type ChangeEvent struct{ Value string }
+type SubmitEvent struct{ Value string }
+
+func main() { testagent.Main() }
+`)
+				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
+}
+
+// writeRawFile writes pre-formatted content directly to sink without
+// running it through the language file emitter (which would re-attach
+// source maps and headers we don't want on synthetic test/agent files).
+func writeRawFile(sink codegen.Sink, name string, content []byte) error {
+	wc, err := sink.Create(name)
+	if err != nil {
+		return err
+	}
+	if _, err := wc.Write(content); err != nil {
+		wc.Close()
+		return err
+	}
+	return wc.Close()
 }
 
 // resolveGIRPath returns the path to the Gtk-4.0.gir file.

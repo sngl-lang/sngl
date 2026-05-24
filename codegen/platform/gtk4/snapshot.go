@@ -344,3 +344,22 @@ func main() {
 `
 	return os.WriteFile(filepath.Join(dir, "main.go"), []byte(harness), 0o644)
 }
+
+// writeGtk4GoMod writes a minimal go.mod. gtk4 codegen has no Go-module
+// deps when emitting plain widget code (it's pure cgo against the
+// system gtk4 lib); the optional goModExtra blob lets callers inject a
+// `replace` directive pointing at a host sngl module checkout when
+// testagent / i18n runtimes are also linked.
+func writeGtk4GoMod(dir, goModExtra string) error {
+	if goModExtra == "" {
+		_, goModExtra = codegen.DetectHostGoMod()
+	}
+	mod := "module sngltest\n\ngo 1.23\n"
+	if goModExtra != "" {
+		mod += "\n" + goModExtra
+		if !strings.HasSuffix(mod, "\n") {
+			mod += "\n"
+		}
+	}
+	return os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
+}
