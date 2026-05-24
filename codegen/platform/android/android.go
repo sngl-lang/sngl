@@ -104,28 +104,17 @@ func (g *Generator) Capabilities() lower.Caps {
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
-	// Agent-mode test build: behaviour depends on testRunner.
-	//   robolectric: suppress the user-facing MainActivity/project
-	//     scaffold so the agent driver (AgentMain.kt → testagent.main())
-	//     owns the entry point. The launcher (Task 5) relocates the
-	//     emitted files into a synthetic robolectric project before
-	//     invoking gradle.
-	//   device: keep the MainActivity/project scaffold — the on-device
-	//     app is the agent host. MainActivity.onCreate is patched to
-	//     call TestAgentBootstrap.start(this) when SNGL_AGENT_PORT is
-	//     present on the launching intent.
-	if codegen.OptionString(req.Options, "testMode") == "agent" {
-		runner := codegen.OptionString(req.Options, "testRunner")
-		if runner == "" {
-			runner = "robolectric"
-		}
-		if runner == "robolectric" {
-			if req.Options == nil {
-				req.Options = &ir.StructLit{}
-			}
-			codegen.SetOptionField(req.Options, "main", false)
-		}
-	}
+	// Agent-mode test build: both robolectric and device paths emit the
+	// full Android Gradle Plugin scaffold (MainActivity, manifest,
+	// app/build.gradle.kts, gradlew). The difference is the entry point:
+	//   device: MainActivity.onCreate calls TestAgentBootstrap.start(this)
+	//     when SNGL_AGENT_PORT is present on the launching intent. The
+	//     launcher installs the APK and dials in over adb forward.
+	//   robolectric: a JUnit @Test class (MainScreenAgentTest.kt) sits
+	//     under app/src/test/kotlin and runs under :app:testDebugUnitTest.
+	//     The JUnit body dials back to a driver-side listener using
+	//     System.getProperty("sngl.agent.port").
+	// Both paths reuse the same AGP build (compose deps resolve cleanly).
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
@@ -210,14 +199,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	usesI18n := hasI18nCalls(req.Pkg)
 	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
 	deviceAgent := testMode && agentMode && cfg.TestRunner == "device"
+	robolectricAgent := testMode && agentMode && cfg.TestRunner == "robolectric"
 
-	// Device-agent mode runs the generated app on an emulator under
-	// adb. That requires a full gradle Android project regardless of
-	// whether the user set main=true — without it there's no APK to
-	// install. Force the gradle-scaffold path on for this case so the
-	// launcher has assembleDebug, manifest, MainActivity, etc.
+	// Agent-mode (both robolectric and device) needs the full AGP
+	// scaffold so compose dependencies resolve cleanly. Robolectric
+	// runs :app:testDebugUnitTest under JVM; device runs
+	// :app:assembleDebug + adb. Force gradle-scaffold on regardless
+	// of cfg.Main so the launcher has the project layout it expects.
 	effectiveMain := cfg.Main
-	if deviceAgent {
+	if deviceAgent || robolectricAgent {
 		effectiveMain = true
 	}
 
@@ -231,14 +221,14 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			return err
 		}
 		testAgentInc := ""
-		if deviceAgent {
+		if deviceAgent || robolectricAgent {
 			p, err := findTestAgentPath()
 			if err != nil {
 				return fmt.Errorf("android: locate pkg/kotlin/testagent: %w", err)
 			}
 			testAgentInc = p
 		}
-		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc, robolectricAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -355,12 +345,13 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 	}
 	switch runner {
 	case "robolectric":
-		// AgentMain.kt drives a JVM-side testagent (stdio JSON-RPC).
-		agentMain := []byte("package " + cfg.Package + "\n\nfun main() {\n    SnglTestRegistration.ensure()\n    us.duckfam.git.jonathan.sngl.testagent.TestAgent.main(emptyArray())\n}\n")
-		if err := writeAndroidSourceFile(sink, prefix+"AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
-			return err
-		}
-		if err := writeAndroidSourceFile(sink, prefix+"RobolectricSnapshot.kt", req.Lang, ktOpts, robolectricSnapshotCaptureKotlin(cfg.Package)); err != nil {
+		// Robolectric path runs under AGP's :app:testDebugUnitTest task.
+		// Emit a JUnit @Test class that dials back to the driver-side
+		// listener and serves the RPC loop. Lands under app/src/test/
+		// kotlin/<pkg>/ regardless of where the rest of the sources go
+		// (AGP scans only that sourceset for unit tests).
+		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package)); err != nil {
 			return err
 		}
 	case "device":
@@ -376,38 +367,91 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 	return nil
 }
 
-// robolectricSnapshotCaptureKotlin returns the source of the
-// Compose-test-rule snapshot capture object. The init block registers
-// the capture function with the testagent Snapshots singleton under
-// the "robolectric/" namePrefix; the testagent runtime invokes it
-// when the agent's snapshot RPC fires. The ComposeContentTestRule
-// pointer is populated by the @Test method before it triggers a
-// snapshot — see TestAgentRunner.kt.
-func robolectricSnapshotCaptureKotlin(pkg string) []byte {
+// robolectricAgentTestKotlin returns the source of MainScreenAgentTest,
+// a single @RunWith(RobolectricTestRunner)-annotated JUnit class with
+// one @Test method. The method:
+//   1. Touches SnglTestRegistration so its init {} block fires, wiring
+//      every generated test function into the testagent Registry.
+//   2. Registers a Snapshots capture closure that rasterises the
+//      ComposeContentTestRule's root into a PNG (used by t.snapshot()).
+//   3. Reads -Dsngl.agent.port=<N> and dials back to the driver-side
+//      listener, then runs the same RPC loop as the device path.
+//
+// Runs under AGP's :app:testDebugUnitTest, which Robolectric instruments
+// with a fake Android runtime — so android.graphics.Bitmap, compose UI
+// test infra, etc. all resolve to real implementations on the JVM.
+func robolectricAgentTestKotlin(pkg string) []byte {
 	return []byte("package " + pkg + `
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.ComposeContentTestRule
-import androidx.compose.ui.test.onRoot
+import android.os.Looper
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import us.duckfam.git.jonathan.sngl.testagent.Snapshots
+import us.duckfam.git.jonathan.sngl.testagent.TestAgent
 import java.io.ByteArrayOutputStream
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-object RobolectricSnapshotCapture {
-    var rule: ComposeContentTestRule? = null
+class MainScreenAgentTest {
+    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    init {
+    private var __sngl_content_set = false
+
+    @Test fun runAgent() {
+        // Force-load SnglTestRegistration so its init {} block wires
+        // every test function into the testagent Registry before the
+        // driver issues its first "list"/"run".
+        SnglTestRegistration.ensure()
+
         Snapshots.register("robolectric/") {
-            val r = rule ?: error("snapshot: ComposeTestRule not set")
-            val img = r.onRoot().captureToImage()
-            val bmp = img.asAndroidBitmap()
+            // Render MainScreen against the test's current model on
+            // demand. The test body calls newTestComponent() +
+            // setCurrentTestModel(c) before any snapshot, so the model
+            // is guaranteed populated by the time we reach here.
+            // setContent throws if called more than once on the same
+            // rule, so guard via a flag — multiple t.snapshot() calls
+            // in the same @Test reuse the existing composition.
+            //
+            // Connection between testagent and Compose UI:
+            // TestAgent.connectAndDrive (used by the robolectric path)
+            // keeps the dispatch loop on the JUnit thread, so this
+            // closure runs synchronously on the main thread Robolectric
+            // accepts. No marshaling needed.
+            if (!__sngl_content_set) {
+                composeRule.setContent { MainScreen(currentTestModel()) }
+                __sngl_content_set = true
+            }
+            shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitForIdle()
+
+            // captureToImage uses PixelCopy or forceRedraw — neither works
+            // reliably under Robolectric (no real surface). Fall back to
+            // drawing the host Activity's decor view tree directly into
+            // an offscreen bitmap via View.draw(Canvas). createAndroid-
+            // ComposeRule<ComponentActivity> gives us a real Activity
+            // backed view hierarchy on the JVM under Robolectric.
+            val decor = composeRule.activity.window.decorView
+            val w = decor.width.coerceAtLeast(1)
+            val h = decor.height.coerceAtLeast(1)
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            decor.draw(android.graphics.Canvas(bmp))
             val out = ByteArrayOutputStream()
             bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
             "image/png" to out.toByteArray()
         }
+
+        val port = System.getProperty("sngl.agent.port")?.toIntOrNull()
+            ?: error("sngl.agent.port system property not set")
+        TestAgent.connectAndDrive(port)
     }
 }
 `)

@@ -69,12 +69,13 @@ func newTemplateData(cfg Config) templateData {
 // hasI18n causes the MainActivity template to emit I18n.init(this).
 // bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
 // set under testMode=agent && testRunner=device.
-func scaffoldFiles(cfg Config, hasI18n, bootstrap bool, testAgentInclude string) []*codegen.OutputFile {
+func scaffoldFiles(cfg Config, hasI18n, bootstrap bool, testAgentInclude string, testMode bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.HasI18n = hasI18n
 	data.HasTestAgentBootstrap = bootstrap
 	data.HasTestAgent = testAgentInclude != ""
 	data.TestAgentInclude = testAgentInclude
+	data.TestMode = testMode
 	pkgPath := pkgToPath(cfg.Package)
 
 	files := codegen.RenderTemplates(templateFS, "templates", data)
