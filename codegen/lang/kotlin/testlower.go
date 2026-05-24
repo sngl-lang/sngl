@@ -48,7 +48,7 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	fmt.Fprintf(&b, "        composeTestRule.setContent { MainScreen(%s) }\n", recv)
 	ctxCounts := map[string]int{}
 	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
+		for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitNative) {
 			fmt.Fprintf(&b, "        %s\n", line)
 		}
 	}
@@ -56,10 +56,10 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	return b.String()
 }
 
-func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string]bool, ctxCounts map[string]int) []string {
+func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:
-		if line, ok := lowerTestAssert(n, methodFields, compRecvs); ok {
+		if line, ok := lowerTestAssert(n, methodFields, compRecvs, mode); ok {
 			return []string{line}
 		}
 		if line, ok := lowerEventTrigger(n); ok {
@@ -68,6 +68,14 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string
 		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
 			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
+			}
+			// t.snapshot(name): agent-mode routes through the testagent
+			// runtime's T.snapshot which invokes the platform-registered
+			// capture and posts a snapshotAssert RPC. Native mode has no
+			// snapshot story today, so it remains a TODO.
+			if c.Func.Name == "snapshot" && mode == TestEmitAgent && len(c.Args) >= 2 {
+				name := lowerTestExpr(c.Args[1].Value, nil, nil)
+				return []string{fmt.Sprintf("t.snapshot(%s)", name)}
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
@@ -135,7 +143,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 	}, true
 }
 
-func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs map[string]bool) (string, bool) {
+func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "assert" {
 		return "", false
@@ -144,7 +152,12 @@ func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs 
 		return "", false
 	}
 	expr := lowerTestExpr(c.Args[1].Value, methodFields, compRecvs)
-	// Pretty-print the asserted source for the failure message.
+	// Agent mode routes assertions through the testagent T receiver so
+	// failures land in the JSON-RPC test report; native (Robolectric
+	// @Test) mode falls back to junit's bundled assertTrue.
+	if mode == TestEmitAgent {
+		return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+	}
 	return fmt.Sprintf("org.junit.Assert.assertTrue(%q, %s)", expr, expr), true
 }
 
@@ -366,7 +379,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
 			b.WriteString("        val c = newTestComponent()\n")
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
+				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitNative) {
 					fmt.Fprintf(&b, "        %s\n", line)
 				}
 			}
@@ -376,7 +389,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			b.WriteString("    val c = newTestComponent()\n")
 			b.WriteString("    setCurrentTestModel(c)\n")
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
+				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitAgent) {
 					fmt.Fprintf(&b, "    %s\n", line)
 				}
 			}
@@ -388,13 +401,20 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 	case TestEmitNative:
 		b.WriteString("}\n")
 	case TestEmitAgent:
-		b.WriteString("private fun registerAll() {\n")
+		// SnglTestRegistration is a singleton with an init {} block so
+		// callers can force-load registration by referencing the class
+		// (Kotlin top-level `val` initialisers only run when something
+		// touches the file's facade class, which can be optimised away
+		// on Android).
+		b.WriteString("object SnglTestRegistration {\n")
+		b.WriteString("    init {\n")
 		for i := range fns {
 			suffix := suffixes[i]
-			fmt.Fprintf(&b, "    Registry.register(%q, ::test%s)\n", suffix, suffix)
+			fmt.Fprintf(&b, "        Registry.register(%q, ::test%s)\n", suffix, suffix)
 		}
-		b.WriteString("}\n\n")
-		b.WriteString("val __sngl_test_init: Unit = registerAll()\n")
+		b.WriteString("    }\n")
+		b.WriteString("    fun ensure() {}\n")
+		b.WriteString("}\n")
 	}
 
 	return b.String()
