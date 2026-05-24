@@ -1,0 +1,27 @@
+# Test funcs targeting a component whose state includes a map (a shape
+# that pre-IR-direct launcher couldn't round-trip via ir.Convert →
+# Promote → checkDoc — checker would reject the synthetic doc as "context
+# default must be a constant expression" or fail with "unknown type \"\""
+# from the lossy AST emission).
+#
+# The IR-direct launcher passes the original *ir.Package straight to the
+# platform with rootComponent set, so map-typed component state survives
+# untouched.
+
+[!exec:go] skip 'go toolchain required'
+
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+stdout 'ok'
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var scores map<string, int> = {alice = 10, bob = 20}
+    text(value="x")
+}
+
+func testHasAlice(t Test, c main) {
+    t.assert(c.scores["alice"] == 10)
+}

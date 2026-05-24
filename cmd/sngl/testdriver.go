@@ -13,8 +13,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -37,9 +35,10 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 // or the agent closes. Returns one TestResult per testEnd notification.
 //
 // Tests are grouped by their component-under-test (second parameter type).
-// Each group runs in its own launcher invocation against a doc with that
-// component promoted into a synthetic window, mirroring how the legacy
-// per-platform RunTests paths isolated a single test subject.
+// Each group runs in its own launcher invocation against the original IR
+// package, passing the component name via the rootComponent option so the
+// platform builds its Model from that component. No AST round-trip — IR
+// stays IR.
 func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir string) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -57,49 +56,25 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
 
-	doc := ir.Convert(pkg)
-	groups := testharness.Group(doc.TestFuncs())
+	var testFns []*ir.Func
+	for _, f := range pkg.Funcs {
+		if f.IsTest {
+			testFns = append(testFns, f)
+		}
+	}
+	if os.Getenv("SNGL_DEBUG_LAUNCHER") != "" {
+		for _, f := range pkg.Funcs {
+			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.Receiver, f.IsTest)
+		}
+	}
+	groups := testharness.GroupIR(testFns)
 
 	for _, group := range groups {
-		if group.Component == "" {
-			// Tests with no component-under-test: run against the original
-			// package as-is (no promotion). Useful for plain unit tests.
-			grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, opts, fixtureDir, group)
-			if err != nil {
-				return results, err
-			}
-			results = append(results, grpResults...)
-			continue
+		groupOpts := cloneOptions(opts)
+		if group.Component != "" {
+			codegen.SetOptionField(groupOpts, "rootComponent", group.Component)
 		}
-		compDoc := testharness.Promote(doc, group.Component)
-		if compDoc == nil {
-			continue
-		}
-		compPkg, diags := checker.Check(compDoc, &checker.Config{IsMain: true})
-		hasErr := false
-		for _, d := range diags {
-			if d.Severity == ir.Error {
-				hasErr = true
-				break
-			}
-		}
-		if hasErr || compPkg == nil {
-			continue
-		}
-		caps := plat.Capabilities().Merge(lang.Capabilities())
-		if err := lower.Lower(compPkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
-			return results, fmt.Errorf("lower %q: %w", group.Component, err)
-		}
-		// Re-attach the original test funcs to the promoted package so
-		// the platform's Generate path (which collects tests off pkg.Funcs)
-		// can emit the agent harness. Promotion stripped them because they
-		// reference component types that no longer exist post-promotion.
-		for _, f := range pkg.Funcs {
-			if f.IsTest && belongsToGroup(f, group) {
-				compPkg.Funcs = append(compPkg.Funcs, f)
-			}
-		}
-		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, compPkg, opts, fixtureDir, group)
+		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, groupOpts, fixtureDir, group)
 		if err != nil {
 			return results, err
 		}
@@ -108,15 +83,32 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	return results, nil
 }
 
-// belongsToGroup reports whether a test func's component-under-test
-// (second parameter type) matches the named group.
-func belongsToGroup(f *ir.Func, group testharness.TestGroup) bool {
-	for _, tf := range group.Funcs {
-		if tf.Name == f.Name {
-			return true
-		}
+// cloneOptions returns a shallow copy of opts so per-group SetOptionField
+// mutations don't leak into sibling groups. The field-value pointers are
+// shared (read-only at this stage), only the Fields slice is duplicated.
+func cloneOptions(opts *ir.StructLit) *ir.StructLit {
+	if opts == nil {
+		return &ir.StructLit{}
 	}
-	return false
+	out := &ir.StructLit{Fields: make([]ir.FieldInit, len(opts.Fields))}
+	copy(out.Fields, opts.Fields)
+	return out
+}
+
+// pkgWithTestSubset returns a shallow copy of pkg whose Funcs include all
+// non-test funcs plus only the test funcs in keep. Used to scope a per-
+// group launcher invocation to its own tests so each binary registers
+// only the tests it should run.
+func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
+	out := *pkg
+	out.Funcs = make([]*ir.Func, 0, len(pkg.Funcs))
+	for _, f := range pkg.Funcs {
+		if f.IsTest && !keep[f.Name] {
+			continue
+		}
+		out.Funcs = append(out.Funcs, f)
+	}
+	return &out
 }
 
 // launchOneGroup runs a single component-group through the launcher.
@@ -135,10 +127,14 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
 		defer os.RemoveAll(tmpDir)
 	}
-	_ = group
+	keep := map[string]bool{}
+	for _, tf := range group.Funcs {
+		keep[tf.Name] = true
+	}
+	scopedPkg := pkgWithTestSubset(pkg, keep)
 
 	req := &codegen.Request{
-		Pkg:     pkg,
+		Pkg:     scopedPkg,
 		Lang:    lang,
 		Options: opts,
 		Source:  "",

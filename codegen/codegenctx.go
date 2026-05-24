@@ -16,6 +16,12 @@ type CodegenCtx struct {
 	ExprCtx  *ExprCtx
 	Namer    *Namer
 	Platform string
+	// RootComponent overrides which component is treated as "main"
+	// for codegen purposes. Empty means use the literal "main" lookup.
+	// Sourced from the "rootComponent" option at construction time —
+	// the test launcher sets this per-group so each test binary builds
+	// its Model from the component-under-test.
+	RootComponent string
 }
 
 // NewCodegenCtx creates a CodegenCtx from a codegen Request.
@@ -24,12 +30,13 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	exprCtx := NewExprCtx(req.Pkg)
 	exprCtx.Maps = req.Maps
 	return &CodegenCtx{
-		Pkg:      req.Pkg,
-		Analysis: analysis,
-		Deps:     analysis.DepTracker(),
-		ExprCtx:  exprCtx,
-		Namer:    NewNamer(),
-		Platform: platform,
+		Pkg:           req.Pkg,
+		Analysis:      analysis,
+		Deps:          analysis.DepTracker(),
+		ExprCtx:       exprCtx,
+		Namer:         NewNamer(),
+		Platform:      platform,
+		RootComponent: OptionString(req.Options, "rootComponent"),
 	}
 }
 

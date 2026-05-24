@@ -245,8 +245,19 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 	return out
 }
 
-// MainComponent returns the "main" component, or nil.
+// MainComponent returns the component that codegen should treat as the
+// app's root. By default that's the component literally named "main";
+// when RootComponent is set (e.g. by the test launcher to isolate a
+// component-under-test), it's the component with that name. If the
+// override target is missing, falls back to "main".
 func (ctx *CodegenCtx) MainComponent() *ir.Component {
+	if ctx.RootComponent != "" {
+		for _, c := range ctx.Pkg.Components {
+			if c.Name == ctx.RootComponent {
+				return c
+			}
+		}
+	}
 	for _, c := range ctx.Pkg.Components {
 		if c.Name == "main" {
 			return c
