@@ -87,19 +87,28 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 	}
 
-	if agentMode && codegen.OptionBool(req.Options, "test") {
+	if codegen.OptionBool(req.Options, "test") {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
-			src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
-			if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
-				return err
-			}
-			// fyne's New() returns *Model; LowerTestFile generates code
-			// against `newTestComponent()` and dereferences fields via
-			// `c.<field>`, which Go handles transparently on a pointer.
-			mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return New() }\n\nfunc main() { testagent.Main() }\n")
-			if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
-				return err
+			if agentMode {
+				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
+					return err
+				}
+				// fyne's New() returns *Model; LowerTestFile generates code
+				// against `newTestComponent()` and dereferences fields via
+				// `c.<field>`, which Go handles transparently on a pointer.
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
+					return err
+				}
+			} else {
+				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
+				// newTestComponent helper: fyne's New() returns *Model.
+				helper := []byte("\nfunc newTestComponent() *Model { return New() }\n")
+				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
+					return err
+				}
 			}
 		}
 	}

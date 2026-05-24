@@ -1,0 +1,19 @@
+# --opt test=true with a Go-emitting platform produces a *_test.go file
+# alongside the regular source.
+
+sngl generate --lang=go --platform=bubbletea --out=out --opt test=true app.sngl
+exists out/model.go
+exists out/model_test.go
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component main {
+    var count = 0
+    button(text="+", @click { count += 1 })
+    text(value="x")
+}
+
+func testInitialCountIsZero(t Test, c main) {
+    t.assert(c.count == 0)
+}

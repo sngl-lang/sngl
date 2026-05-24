@@ -79,19 +79,30 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 	}
 
-	if agentMode && codegen.OptionBool(req.Options, "test") {
+	if codegen.OptionBool(req.Options, "test") {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
-			src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
-			if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
-				return err
-			}
-			// newTestComponent is the constructor LowerTestFile generates
-			// against; bubbletea's Model is a value type so we just call
-			// New() and let Go's local-addressability handle `c.field = …`.
-			mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() Model { return New() }\n\nfunc main() { testagent.Main() }\n")
-			if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
-				return err
+			if agentMode {
+				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
+					return err
+				}
+				// newTestComponent is the constructor LowerTestFile generates
+				// against; bubbletea's Model is a value type so we just call
+				// New() and let Go's local-addressability handle `c.field = …`.
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
+					return err
+				}
+			} else {
+				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
+				// newTestComponent helper: bubbletea's Model is a value
+				// type, so just call New() and let Go's local-addressability
+				// handle `c.field = …`.
+				helper := []byte("\nfunc newTestComponent() Model { return New() }\n")
+				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -127,6 +138,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	if err := codegen.ApplyOptions(&c.cfg, req.Options); err != nil {
 		return nil, fmt.Errorf("bubbletea: %w", err)
 	}
+	c.cfg = c.cfg.withDefaults()
 	c.ctx = codegen.NewCodegenCtx(req, "bubbletea")
 
 	var stmts []ir.Stmt
@@ -146,16 +158,6 @@ func (c *compilation) EmitFromRender(_ *codegen.RenderModel, req *codegen.Reques
 		return err
 	}
 
-	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
-	if !agentMode && req.Pkg != nil && hasTestFuncs(req.Pkg) && c.cfg.EmitTests() {
-		testSrc, err := CompileTestsIR(c.ctx, c.cfg)
-		if err == nil && testSrc != nil {
-			if err := writeBubbleteaFile(sink, "model_test.go", req.Lang, req, testSrc); err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -173,18 +175,3 @@ func writeBubbleteaFile(sink codegen.Sink, name string, lang codegen.LangTransla
 	return e.Close()
 }
 
-func hasTestFuncs(pkg *ir.Package) bool {
-	for _, f := range pkg.Funcs {
-		if f.IsTest {
-			return true
-		}
-	}
-	for _, c := range pkg.Components {
-		for _, f := range c.Funcs {
-			if f.IsTest {
-				return true
-			}
-		}
-	}
-	return false
-}

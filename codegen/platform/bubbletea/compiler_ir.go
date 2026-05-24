@@ -16,7 +16,6 @@ type Config struct {
 	Package     string // Go package name (default: "ui")
 	ScaleFactor int    // pixels per terminal cell (default: 8); not source-exposed
 	Main        bool   // emit a main() function for standalone apps
-	Tests       *bool  // emit companion test files (default: true)
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -44,15 +43,6 @@ func (c Config) withDefaults() Config {
 		c.ScaleFactor = 8
 	}
 	return c
-}
-
-// EmitTests reports whether companion test files should be generated. Defaults
-// to true when the option is unset.
-func (c Config) EmitTests() bool {
-	if c.Tests == nil {
-		return true
-	}
-	return *c.Tests
 }
 
 type inputInfo struct {
