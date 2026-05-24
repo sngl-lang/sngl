@@ -19,6 +19,14 @@ import (
 )
 
 func TestScript(t *testing.T) {
+	// Pre-detect the host go.mod from the test process's starting cwd (inside
+	// the sngl repo) so that codegen.DetectHostGoMod can still resolve a
+	// replace directive after the script test chdir's into its sandbox.
+	if cwd, err := os.Getwd(); err == nil {
+		if mod := findGoModAncestor(cwd); mod != "" {
+			t.Setenv("SNGL_HOST_GO_MOD", mod)
+		}
+	}
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
 		Conds: scripttest.DefaultConds(),
@@ -116,6 +124,26 @@ func snglCmd() script.Cmd {
 			}, nil
 		},
 	)
+}
+
+// findGoModAncestor walks upward from start looking for a go.mod file.
+// Returns the absolute path to the file, or "" if none found.
+func findGoModAncestor(start string) string {
+	dir, err := filepath.Abs(start)
+	if err != nil {
+		return ""
+	}
+	for {
+		candidate := filepath.Join(dir, "go.mod")
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
 }
 
 // resetFlags resets all flags on cmd and its subcommands to their default values.

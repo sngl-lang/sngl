@@ -389,15 +389,19 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 		// reactivity injection.
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && scope.RawFieldAccess != nil && scope.RawFieldAccess[id.Name] {
-				setter := fmt.Sprintf("%s.Set%s", id.Name, ExportName(sel.Field))
+				// In test scope, write directly to the unexported field on the
+				// component's Model. Going through the Set<Field> setter is
+				// platform-dependent (value-receiver returns Model on
+				// bubbletea, pointer-receiver returns void on fyne/gtk4), so
+				// any "go through the setter for reactivity" path is fragile.
+				// Tests assert on raw field state, not on reactively-derived
+				// view output, so direct writes are the simplest correct
+				// lowering. Event-driven reactivity is exercised via the
+				// `c.<id>.@event()` form (lowerEventTrigger above).
 				value := translateIRExpr(n.Value, scope)
-				if n.Op == ast.AssignSet {
-					return []string{setter + "(" + value + ")"}
-				}
-				// Compound op (e.g. +=): expand to setter(getter() <op> value).
-				op := strings.TrimSuffix(assignOpStr(n.Op), "=")
-				get := fmt.Sprintf("%s.%s", id.Name, sel.Field)
-				return []string{setter + "(" + get + " " + op + " " + value + ")"}
+				target := fmt.Sprintf("%s.%s", id.Name, sel.Field)
+				op := assignOpStr(n.Op)
+				return []string{target + " " + op + " " + value}
 			}
 		}
 		target := translateIRMutTarget(n.Target, scope)

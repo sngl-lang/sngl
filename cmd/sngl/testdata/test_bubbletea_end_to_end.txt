@@ -1,0 +1,24 @@
+# sngl test drives the testagent over JSON-RPC and reports PASS.
+
+[!exec:go] skip 'go toolchain required'
+
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component counter {
+    var count = 0
+    button(text="+", @click { count += 1 })
+    text(value=string(count))
+}
+
+func testStartsAtZero(t Test, c counter) {
+    t.assert(c.count == 0)
+}
+
+func testIncrementWorks(t Test, c counter) {
+    c.count = 5
+    t.assert(c.count == 5)
+}

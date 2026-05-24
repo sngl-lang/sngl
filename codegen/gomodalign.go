@@ -27,11 +27,22 @@ const snglModulePath = "git.duckfam.us/jonathan/sngl"
 //
 // Returns ("", "") when no go.mod is found or any step fails (best-effort).
 func DetectHostGoMod() (goVersion, goModExtra string) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", ""
+	// Env override: tests and tooling that chdir away from the user's host
+	// module before invoking codegen can set SNGL_HOST_GO_MOD to the absolute
+	// path of the go.mod they want this function to consult.
+	var modPath string
+	if env := os.Getenv("SNGL_HOST_GO_MOD"); env != "" {
+		if info, err := os.Stat(env); err == nil && !info.IsDir() {
+			modPath = env
+		}
 	}
-	modPath := findGoMod(cwd)
+	if modPath == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", ""
+		}
+		modPath = findGoMod(cwd)
+	}
 	if modPath == "" {
 		return "", ""
 	}
