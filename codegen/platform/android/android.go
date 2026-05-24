@@ -211,7 +211,17 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
 	deviceAgent := testMode && agentMode && cfg.TestRunner == "device"
 
-	if !cfg.Main {
+	// Device-agent mode runs the generated app on an emulator under
+	// adb. That requires a full gradle Android project regardless of
+	// whether the user set main=true — without it there's no APK to
+	// install. Force the gradle-scaffold path on for this case so the
+	// launcher has assembleDebug, manifest, MainActivity, etc.
+	effectiveMain := cfg.Main
+	if deviceAgent {
+		effectiveMain = true
+	}
+
+	if !effectiveMain {
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
@@ -220,7 +230,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent) {
+		testAgentInc := ""
+		if deviceAgent {
+			p, err := findTestAgentPath()
+			if err != nil {
+				return fmt.Errorf("android: locate pkg/kotlin/testagent: %w", err)
+			}
+			testAgentInc = p
+		}
+		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -265,7 +283,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// model accessor, and snapshot capture files for the launcher
 	// to relocate (Task 5).
 	if testMode {
-		if err := emitKotlinTestSources(req, sink, cfg, ktOpts); err != nil {
+		if err := emitKotlinTestSources(req, sink, cfg, ktOpts, effectiveMain); err != nil {
 			return err
 		}
 	}
@@ -282,7 +300,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //   - agent: TestAgentRunner.kt + AgentMain.kt + TestModelAccessor.kt
 //     + RobolectricSnapshot.kt (when testRunner=robolectric). The
 //     launcher in Task 5 relocates these into a generated project.
-func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions) error {
+func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	if len(testFns) == 0 {
 		return nil
@@ -307,9 +325,15 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 		return writeAndroidSourceFile(sink, fname, req.Lang, ktOpts, []byte(src))
 	}
 
-	// Agent mode: emit at the sink root for the launcher to
-	// relocate into a synthetic robolectric/device project.
-	if err := writeAndroidSourceFile(sink, "TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
+	// Agent mode: when running under the gradle scaffold (device path),
+	// agent files belong inside the app's main sourceset so AGP compiles
+	// them. Without the scaffold (robolectric path) the launcher
+	// relocates them into a synthetic project.
+	prefix := ""
+	if gradleScaffold {
+		prefix = "app/src/main/java/" + pkgToPath(cfg.Package) + "/"
+	}
+	if err := writeAndroidSourceFile(sink, prefix+"TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
 		return err
 	}
 	accessor := []byte("package " + cfg.Package + `
@@ -322,7 +346,7 @@ fun currentTestModel(): MainScreenState =
 
 fun newTestComponent(): MainScreenState = MainScreenState()
 `)
-	if err := writeAndroidSourceFile(sink, "TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
+	if err := writeAndroidSourceFile(sink, prefix+"TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
 		return err
 	}
 	runner := cfg.TestRunner
@@ -332,20 +356,20 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 	switch runner {
 	case "robolectric":
 		// AgentMain.kt drives a JVM-side testagent (stdio JSON-RPC).
-		agentMain := []byte("package " + cfg.Package + "\n\nfun main() { us.duckfam.git.jonathan.sngl.testagent.main() }\n")
-		if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
+		agentMain := []byte("package " + cfg.Package + "\n\nfun main() {\n    SnglTestRegistration.ensure()\n    us.duckfam.git.jonathan.sngl.testagent.TestAgent.main(emptyArray())\n}\n")
+		if err := writeAndroidSourceFile(sink, prefix+"AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
 			return err
 		}
-		if err := writeAndroidSourceFile(sink, "RobolectricSnapshot.kt", req.Lang, ktOpts, robolectricSnapshotCaptureKotlin(cfg.Package)); err != nil {
+		if err := writeAndroidSourceFile(sink, prefix+"RobolectricSnapshot.kt", req.Lang, ktOpts, robolectricSnapshotCaptureKotlin(cfg.Package)); err != nil {
 			return err
 		}
 	case "device":
 		// No AgentMain.kt — MainActivity.onCreate is the entry point;
 		// scaffold patches it to call TestAgentBootstrap.start(this).
-		if err := writeAndroidSourceFile(sink, "TestAgentBootstrap.kt", req.Lang, ktOpts, deviceAgentBootstrapKotlin(cfg.Package)); err != nil {
+		if err := writeAndroidSourceFile(sink, prefix+"TestAgentBootstrap.kt", req.Lang, ktOpts, deviceAgentBootstrapKotlin(cfg.Package)); err != nil {
 			return err
 		}
-		if err := writeAndroidSourceFile(sink, "DeviceSnapshot.kt", req.Lang, ktOpts, deviceSnapshotCaptureKotlin(cfg.Package)); err != nil {
+		if err := writeAndroidSourceFile(sink, prefix+"DeviceSnapshot.kt", req.Lang, ktOpts, deviceSnapshotCaptureKotlin(cfg.Package)); err != nil {
 			return err
 		}
 	}
@@ -407,6 +431,10 @@ object TestAgentBootstrap {
         val port = activity.intent?.getIntExtra("SNGL_AGENT_PORT", 0) ?: 0
         if (port <= 0) return
         DeviceSnapshotCapture.attach(activity)
+        // Force test registration before we accept the first RPC call.
+        // SnglTestRegistration's init {} block does the Registry.register
+        // calls; ensure() is just a touch-point.
+        SnglTestRegistration.ensure()
         thread(start = true, isDaemon = false, name = "sngl-testagent") {
             TestAgent.startTcp(port)
         }
@@ -430,6 +458,8 @@ import android.graphics.Canvas
 import android.view.View
 import us.duckfam.git.jonathan.sngl.testagent.Snapshots
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 object DeviceSnapshotCapture {
     @Volatile private var activity: Activity? = null
@@ -437,15 +467,33 @@ object DeviceSnapshotCapture {
     init {
         Snapshots.register("device/") {
             val a = activity ?: error("DeviceSnapshotCapture: no Activity attached")
-            val v = a.findViewById<View>(android.R.id.content)
-                ?: error("DeviceSnapshotCapture: no content view")
-            val w = v.width.coerceAtLeast(1)
-            val h = v.height.coerceAtLeast(1)
-            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            v.draw(Canvas(bmp))
-            val out = ByteArrayOutputStream()
-            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-            "image/png" to out.toByteArray()
+            // Wait for first layout pass — without this the content view
+            // reports 0x0 on a fresh activity and the snapshot is a 1x1
+            // pixel. The agent thread isn't the UI thread, so we post to
+            // the activity's main looper, draw, and signal via a latch.
+            val ready = CountDownLatch(1)
+            var captured: ByteArray = ByteArray(0)
+            a.runOnUiThread {
+                val v = a.findViewById<View>(android.R.id.content)
+                if (v == null) { ready.countDown(); return@runOnUiThread }
+                val capture = Runnable {
+                    val w = v.width.coerceAtLeast(1)
+                    val h = v.height.coerceAtLeast(1)
+                    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                    v.draw(Canvas(bmp))
+                    val out = ByteArrayOutputStream()
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    captured = out.toByteArray()
+                    ready.countDown()
+                }
+                if (v.width > 0 && v.height > 0) {
+                    capture.run()
+                } else {
+                    v.post(capture)
+                }
+            }
+            ready.await(5, TimeUnit.SECONDS)
+            "image/png" to captured
         }
     }
 

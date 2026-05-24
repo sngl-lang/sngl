@@ -51,6 +51,9 @@ dependencies {
 {{- if .HasGoLib}}
     implementation(files("golib.aar"))
 {{- end}}
+{{- if .HasTestAgent}}
+    implementation("us.duckfam.git.jonathan.sngl:testagent")
+{{- end}}
 {{- if .TestMode}}
 
     // Compose UI tests run via Robolectric on the JVM — no emulator

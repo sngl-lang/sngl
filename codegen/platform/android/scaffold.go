@@ -36,6 +36,13 @@ type templateData struct {
 	// testMode=agent && testRunner=device so the on-device agent host
 	// starts its TCP listener when launched with SNGL_AGENT_PORT.
 	HasTestAgentBootstrap bool
+	// HasTestAgent, when true, adds the pkg/kotlin/testagent dependency
+	// to app/build.gradle.kts so the on-device agent code compiles. Set
+	// alongside HasTestAgentBootstrap. TestAgentInclude is the absolute
+	// path to pkg/kotlin/testagent on the host, written into the root
+	// settings.gradle.kts as `includeBuild(...)`.
+	HasTestAgent     bool
+	TestAgentInclude string
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -62,10 +69,12 @@ func newTemplateData(cfg Config) templateData {
 // hasI18n causes the MainActivity template to emit I18n.init(this).
 // bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
 // set under testMode=agent && testRunner=device.
-func scaffoldFiles(cfg Config, hasI18n, bootstrap bool) []*codegen.OutputFile {
+func scaffoldFiles(cfg Config, hasI18n, bootstrap bool, testAgentInclude string) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.HasI18n = hasI18n
 	data.HasTestAgentBootstrap = bootstrap
+	data.HasTestAgent = testAgentInclude != ""
+	data.TestAgentInclude = testAgentInclude
 	pkgPath := pkgToPath(cfg.Package)
 
 	files := codegen.RenderTemplates(templateFS, "templates", data)
