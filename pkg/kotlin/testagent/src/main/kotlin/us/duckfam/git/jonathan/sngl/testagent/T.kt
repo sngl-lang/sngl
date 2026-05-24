@@ -71,7 +71,9 @@ class T internal constructor(
 
     // --- Timing ---
 
-    fun wait(durationMs: Long) {
+    // Renamed from `wait` to avoid colliding with Object.wait(Long).
+    // SNGL Test.wait lowering should target this name.
+    fun waitMs(durationMs: Long) {
         if (durationMs > 0) Thread.sleep(durationMs)
     }
 

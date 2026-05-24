@@ -16,13 +16,25 @@ plugins {
     `java-library`
 }
 
+// Coordinates for gradle composite-build (includeBuild) consumers.
+// The android device-test launcher synthesises a generated app project
+// that depends on "us.duckfam.git.jonathan.sngl:testagent"; declaring
+// these here lets composite-build substitute the dep against this module.
+group = "us.duckfam.git.jonathan.sngl"
+version = "0.1.0"
+
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-kotlin {
-    jvmToolchain(17)
+// No jvmToolchain — let the surrounding build (composite-build root or
+// standalone gradle invocation) pick a JDK. Composite-build consumers
+// (the android device-test launcher) run under the Android Studio JBR
+// which is JDK 21; declaring a strict 17 toolchain there causes
+// gradle to try (and fail) to download a matching JDK.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions { jvmTarget = "17" }
 }
 
 repositories {
