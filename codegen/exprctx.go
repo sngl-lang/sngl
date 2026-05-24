@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"maps"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -152,11 +153,11 @@ func (ctx *ExprCtx) RenamedName(name string) string {
 // Clone creates a copy with independent Locals and Renames maps.
 func (ctx *ExprCtx) Clone() *ExprCtx {
 	return &ExprCtx{
-		Pkg:               ctx.Pkg,
-		Component:         ctx.Component,
-		Locals:            maps.Clone(ctx.Locals),
-		Renames:           maps.Clone(ctx.Renames),
-		EventVar:          ctx.EventVar,
+		Pkg:           ctx.Pkg,
+		Component:     ctx.Component,
+		Locals:        maps.Clone(ctx.Locals),
+		Renames:       maps.Clone(ctx.Renames),
+		EventVar:      ctx.EventVar,
 		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
 		NativeImports: ctx.NativeImports, // shared — accumulates across clones
 		Maps:          ctx.Maps,
@@ -190,4 +191,31 @@ func IsComputed(f *ir.Func) bool {
 		n--
 	}
 	return n == 0
+}
+
+// CollectTestFuncs walks pkg.Funcs / pkg.Components for test funcs
+// (IsTest) and returns parallel slices of funcs and short suffixes
+// (with the "test" prefix stripped) plus the methodFields set built
+// from every component's funcs and computed package funcs. Shared
+// across platforms whose codegen emits an agent-mode test file.
+func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {
+	methodFields = map[string]bool{}
+	if pkg == nil {
+		return
+	}
+	for _, comp := range pkg.Components {
+		for _, f := range comp.Funcs {
+			methodFields[f.Name] = true
+		}
+	}
+	for _, f := range pkg.Funcs {
+		if IsComputed(f) {
+			methodFields[f.Name] = true
+		}
+		if f.IsTest {
+			fns = append(fns, f)
+			suffixes = append(suffixes, strings.TrimPrefix(f.Name, "test"))
+		}
+	}
+	return
 }

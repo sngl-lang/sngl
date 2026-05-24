@@ -90,14 +90,14 @@ func runTest(cmd *cobra.Command, args []string) error {
 	if plat == nil {
 		return fmt.Errorf("unknown platform: %s", platform)
 	}
-	runner, ok := plat.(codegen.TestRunner)
-	if !ok {
-		return fmt.Errorf("platform %q does not support testing", platform)
-	}
-
 	lang, err := resolveTestLang(plat, language)
 	if err != nil {
 		return err
+	}
+
+	runner, _ := plat.(codegen.TestRunner)
+	if runner == nil && resolveLauncher(plat, lang) == nil {
+		return fmt.Errorf("platform %q does not support testing", platform)
 	}
 
 	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, files, explicitFiles, runFilter, opts)
@@ -117,9 +117,17 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 
 	for _, name := range names {
 		plat := codegen.LookupPlatform(name)
-		runner, ok := plat.(codegen.TestRunner)
-		if !ok {
-			continue
+		runner, _ := plat.(codegen.TestRunner)
+		// Skip if neither legacy runner nor launcher path is available.
+		// Lang-level launcher resolution requires the lang, looked up below.
+		if runner == nil {
+			// resolveLauncher needs lang; resolve provisionally to see if
+			// a lang launcher exists. If lang lookup fails we'll handle
+			// it normally below; here just skip if both paths are absent.
+			lang, _ := resolveTestLang(plat, language)
+			if resolveLauncher(plat, lang) == nil {
+				continue
+			}
 		}
 		if prober, ok := plat.(codegen.TestProber); ok {
 			if okp, reason := prober.ProbeTest(); !okp {
@@ -252,13 +260,11 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		}
 		slog.Info("check", "file", filename, "duration", time.Since(start))
 
-		// SNGL_TEST_VIA_LAUNCHER gates the new TestLauncher-based driver path
-		// until Task 8 wires codegen emission of the testagent main file.
-		// When unset (the default), tests flow through the legacy
-		// runner.RunTests path so existing platforms (none/bubbletea/fyne)
-		// behave unchanged.
+		// Prefer the TestLauncher path whenever the platform/lang pair
+		// resolves a launcher (today: any go-backed platform). Otherwise
+		// fall back to the legacy runner.RunTests path (e.g. `none`).
 		var results []*codegen.TestResult
-		if os.Getenv("SNGL_TEST_VIA_LAUNCHER") != "" && resolveLauncher(plat, lang) != nil {
+		if resolveLauncher(plat, lang) != nil {
 			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename))
 		} else {
 			results, err = safeRunTests(runner, pkg, lang, opts)

@@ -68,6 +68,37 @@ func OptionField(opts *ir.StructLit, name string) (ir.Expr, bool) {
 	return nil, false
 }
 
+// OptionBool reads a bool-valued option from opts, returning false if absent
+// or non-bool.
+func OptionBool(opts *ir.StructLit, name string) bool {
+	v, ok := OptionField(opts, name)
+	if !ok {
+		return false
+	}
+	lit, _ := v.(*ir.Literal)
+	return lit != nil && lit.Raw == "true"
+}
+
+// OptionString reads a string-valued option from opts, returning "" if absent
+// or non-string. Strips a single pair of surrounding double quotes since
+// source-parsed string literals store Raw with quotes while CLI/programmatic
+// values store it without.
+func OptionString(opts *ir.StructLit, name string) string {
+	v, ok := OptionField(opts, name)
+	if !ok {
+		return ""
+	}
+	lit, _ := v.(*ir.Literal)
+	if lit == nil {
+		return ""
+	}
+	raw := lit.Raw
+	if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
+		raw = raw[1 : len(raw)-1]
+	}
+	return raw
+}
+
 // SetOptionField inserts or replaces a field on opts. Mutates in place. Used by
 // CLI plumbing to inject `projectDir` / `main` from the runtime environment
 // without round-tripping through string parsing.

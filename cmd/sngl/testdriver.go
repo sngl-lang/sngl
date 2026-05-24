@@ -11,7 +11,10 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -32,18 +35,15 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 // runViaLauncher generates the target's sources + testagent main into a
 // tmpdir, invokes Launch, and drives the RPC stream until runComplete
 // or the agent closes. Returns one TestResult per testEnd notification.
+//
+// Tests are grouped by their component-under-test (second parameter type).
+// Each group runs in its own launcher invocation against a doc with that
+// component promoted into a synthetic window, mirroring how the legacy
+// per-platform RunTests paths isolated a single test subject.
 func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir string) ([]*codegen.TestResult, error) {
 	launcher := resolveLauncher(plat, lang)
 	if launcher == nil {
 		return nil, fmt.Errorf("no TestLauncher for platform %q lang %q", plat.PlatformIdentifier(), langIdent(lang))
-	}
-
-	tmpDir, err := os.MkdirTemp("", "sngl-test-")
-	if err != nil {
-		return nil, fmt.Errorf("mktemp: %w", err)
-	}
-	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
-		defer os.RemoveAll(tmpDir)
 	}
 
 	if opts == nil {
@@ -51,6 +51,83 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	}
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
+
+	doc := ir.Convert(pkg)
+	groups := testharness.Group(doc.TestFuncs())
+
+	var results []*codegen.TestResult
+	for _, group := range groups {
+		if group.Component == "" {
+			// Tests with no component-under-test: run against the original
+			// package as-is (no promotion). Useful for plain unit tests.
+			grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, opts, fixtureDir, group)
+			if err != nil {
+				return results, err
+			}
+			results = append(results, grpResults...)
+			continue
+		}
+		compDoc := testharness.Promote(doc, group.Component)
+		if compDoc == nil {
+			continue
+		}
+		compPkg, diags := checker.Check(compDoc, &checker.Config{IsMain: true})
+		hasErr := false
+		for _, d := range diags {
+			if d.Severity == ir.Error {
+				hasErr = true
+				break
+			}
+		}
+		if hasErr || compPkg == nil {
+			continue
+		}
+		caps := plat.Capabilities().Merge(lang.Capabilities())
+		if err := lower.Lower(compPkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
+			return results, fmt.Errorf("lower %q: %w", group.Component, err)
+		}
+		// Re-attach the original test funcs to the promoted package so
+		// the platform's Generate path (which collects tests off pkg.Funcs)
+		// can emit the agent harness. Promotion stripped them because they
+		// reference component types that no longer exist post-promotion.
+		for _, f := range pkg.Funcs {
+			if f.IsTest && belongsToGroup(f, group) {
+				compPkg.Funcs = append(compPkg.Funcs, f)
+			}
+		}
+		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, compPkg, opts, fixtureDir, group)
+		if err != nil {
+			return results, err
+		}
+		results = append(results, grpResults...)
+	}
+	return results, nil
+}
+
+// belongsToGroup reports whether a test func's component-under-test
+// (second parameter type) matches the named group.
+func belongsToGroup(f *ir.Func, group testharness.TestGroup) bool {
+	for _, tf := range group.Funcs {
+		if tf.Name == f.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// launchOneGroup runs a single component-group through the launcher.
+// It generates the target sources into a tempdir, launches the agent,
+// and collects testEnd notifications.
+func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir string, group testharness.TestGroup) ([]*codegen.TestResult, error) {
+	tmpDir, err := os.MkdirTemp("", "sngl-test-")
+	if err != nil {
+		return nil, fmt.Errorf("mktemp: %w", err)
+	}
+	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
+		defer os.RemoveAll(tmpDir)
+	}
+	_ = group
+
 	req := &codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
@@ -66,7 +143,6 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 	defer cleanup()
-
 	return driveRPC(ch, fixtureDir)
 }
 
