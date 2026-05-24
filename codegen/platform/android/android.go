@@ -228,7 +228,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 			testAgentInc = p
 		}
-		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc, robolectricAgent) {
+		// templateTestMode flips the gradle template's TestMode flag,
+		// which adds junit+robolectric+compose-ui-test deps and a
+		// testOptions block. Required for both agent-robolectric and
+		// native-robolectric paths so :app:testDebugUnitTest can
+		// compile + run the generated JUnit class. Device path skips
+		// this since instrumented tests live in androidTest sourceset
+		// with a different dep set.
+		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
+		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc, templateTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -300,7 +308,7 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	if agent {
 		mode = kotlin.TestEmitAgent
 	}
-	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, methodFields, mode)
+	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, methodFields, mode, cfg.TestRunner)
 
 	if !agent {
 		// Native: target gradle test sourceset (robolectric) or

@@ -353,18 +353,56 @@ const (
 // file. Body lowering is identical across modes; the wrapper differs:
 //
 //	Native: package + JUnit imports + class MainScreenTest { @Test fun testFoo() { ... } }
+//	        Wraps each @Test body with a Compose test rule so that
+//	        mutableStateOf-backed MainScreenState fields work without
+//	        the "Composer not present" crash. The JUnit runner is
+//	        selected via testRunner:
+//	          "robolectric" / "" → RobolectricTestRunner (JVM unit tests)
+//	          "device"           → AndroidJUnit4         (instrumented tests)
 //	Agent:  package + testagent imports + fun testFoo(t: T) { ... } + Registry.register init.
 //
 // Each function in fns is rendered using the same lowerTestStmt walker
 // LowerTestFunc uses, ensuring identical semantic translation.
-func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
+func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode, testRunner string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "package %s\n\n", pkg)
 	switch mode {
 	case TestEmitNative:
-		b.WriteString("import org.junit.Test\n")
-		b.WriteString("import org.junit.Assert.assertTrue\n\n")
-		b.WriteString("class MainScreenTest {\n")
+		// Default to robolectric since that's android.sngl's default
+		// for testRunner — native mode without an explicit runner
+		// means "run under :app:testDebugUnitTest".
+		runner := testRunner
+		if runner == "" {
+			runner = "robolectric"
+		}
+		switch runner {
+		case "device":
+			b.WriteString("import androidx.activity.ComponentActivity\n")
+			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString("import androidx.test.ext.junit.runners.AndroidJUnit4\n")
+			b.WriteString("import org.junit.Assert.assertTrue\n")
+			b.WriteString("import org.junit.Rule\n")
+			b.WriteString("import org.junit.Test\n")
+			b.WriteString("import org.junit.runner.RunWith\n\n")
+			b.WriteString("@RunWith(AndroidJUnit4::class)\n")
+			b.WriteString("class MainScreenTest {\n")
+			b.WriteString("    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()\n\n")
+		default: // robolectric
+			b.WriteString("import androidx.activity.ComponentActivity\n")
+			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString("import org.junit.Assert.assertTrue\n")
+			b.WriteString("import org.junit.Rule\n")
+			b.WriteString("import org.junit.Test\n")
+			b.WriteString("import org.junit.runner.RunWith\n")
+			b.WriteString("import org.robolectric.RobolectricTestRunner\n")
+			b.WriteString("import org.robolectric.annotation.Config\n")
+			b.WriteString("import org.robolectric.annotation.GraphicsMode\n\n")
+			b.WriteString("@RunWith(RobolectricTestRunner::class)\n")
+			b.WriteString("@Config(sdk = [33])\n")
+			b.WriteString("@GraphicsMode(GraphicsMode.Mode.NATIVE)\n")
+			b.WriteString("class MainScreenTest {\n")
+			b.WriteString("    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()\n\n")
+		}
 	case TestEmitAgent:
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
@@ -373,11 +411,32 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		compRecvs := compReceiverSet(fn)
+		// Pick the first component-typed param's name as the local
+		// receiver so `<recv>.<field>` reads in the lowered body
+		// resolve. Falls back to "c" for assertion-only tests with
+		// no component param.
+		recv := "c"
+		for _, p := range fn.Params {
+			if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+				recv = p.Name
+				break
+			}
+		}
 		ctxCounts := map[string]int{}
 		switch mode {
 		case TestEmitNative:
 			fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
-			b.WriteString("        val c = newTestComponent()\n")
+			// Native mode has no TestModelAccessor; construct the
+			// hoisted state directly. composeRule.setContent mounts
+			// the screen so mutableStateOf-backed fields work.
+			fmt.Fprintf(&b, "        val %s = MainScreenState()\n", recv)
+			// LowerTestFunc uses `composeTestRule`; LowerTestFile's
+			// native wrapper exposes the rule as `composeRule` to
+			// mirror the agent-mode emission's naming. Bind one to
+			// the other so the per-stmt lowerings (which reference
+			// composeTestRule) resolve.
+			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
+			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
 			for _, s := range fn.Block {
 				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitNative) {
 					fmt.Fprintf(&b, "        %s\n", line)
