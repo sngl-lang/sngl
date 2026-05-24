@@ -266,11 +266,15 @@ func (ctx *CodegenCtx) MainComponent() *ir.Component {
 	return nil
 }
 
-// NonMainComponents returns all components except "main".
+// NonMainComponents returns all components except the one MainComponent
+// designates as the app root. Under test/agent mode RootComponent overrides
+// the default "main" lookup, so this filter follows the same selection to
+// avoid emitting the root component a second time as a sub-component.
 func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
+	main := ctx.MainComponent()
 	var out []*ComponentCtx
 	for _, cc := range ctx.Components() {
-		if cc.Component.Name != "main" {
+		if cc.Component != main {
 			out = append(out, cc)
 		}
 	}
@@ -281,9 +285,10 @@ func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
 // imported packages. Use in platforms that emit render methods per user
 // component (bubbletea).
 func (ctx *CodegenCtx) AllNonMainComponents() []*ComponentCtx {
+	main := ctx.MainComponent()
 	var out []*ComponentCtx
 	for _, cc := range ctx.AllComponents() {
-		if cc.Component.Name != "main" {
+		if cc.Component != main {
 			out = append(out, cc)
 		}
 	}
