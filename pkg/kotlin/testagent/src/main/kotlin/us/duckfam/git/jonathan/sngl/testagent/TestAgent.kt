@@ -41,6 +41,88 @@ object TestAgent {
         }
     }
 
+    /**
+     * Robolectric/JUnit path: dial back to the driver-side listener on
+     * `127.0.0.1:port` and serve the RPC loop over that socket. Mirror
+     * image of [startTcp] — the JUnit @Test body runs inside the gradle
+     * unit-test JVM (which the driver spawned), and the driver itself
+     * opens the listener before invoking gradle.
+     *
+     * Threading model differs from [runDriver]: this entry point keeps
+     * the dispatch loop on the calling thread (the JUnit @Test thread,
+     * which Robolectric treats as the Android main thread) and spawns
+     * a *reader* thread for inbound RPC responses. Compose + Robolectric
+     * require all UI work to happen on the main thread, so snapshot
+     * capture closures invoked via T.snapshot() MUST run on this thread.
+     *
+     * The reader thread only delivers snapshotAssert responses via
+     * [Pending] — it never executes test bodies.
+     */
+    @JvmStatic
+    fun connectAndDrive(port: Int) {
+        Socket("127.0.0.1", port).use { sock ->
+            val reader = RpcReader(sock.getInputStream())
+            val writer = RpcWriter(sock.getOutputStream())
+
+            // Pump inbound messages off the calling thread. The dispatch
+            // loop below pulls method-call requests off a queue so the
+            // calling thread (main / JUnit) can synchronously run the
+            // test body when a "run" RPC arrives.
+            val requests = java.util.concurrent.LinkedBlockingQueue<RpcMessage>()
+            val readerThread = Thread {
+                while (true) {
+                    val msg = try {
+                        reader.read() ?: break
+                    } catch (e: RpcException) {
+                        writer.respond(0L, null, RpcError(-32700, e.message ?: "parse error"))
+                        continue
+                    }
+                    if (msg.isResponse()) {
+                        Pending.deliver(msg)
+                        continue
+                    }
+                    if (msg.id == null) continue
+                    requests.put(msg)
+                }
+                // EOF: enqueue a sentinel so the main loop wakes and exits.
+                requests.put(RpcMessage(method = "__eof__", id = -1L))
+            }.apply { isDaemon = true; name = "sngl-testagent-reader"; start() }
+
+            try {
+                while (true) {
+                    val msg = requests.take()
+                    if (msg.method == "__eof__") return
+                    val id = msg.id ?: continue
+                    when (msg.method) {
+                        "list" -> {
+                            writer.respond(id, mapOf("tests" to Registry.names()), null)
+                        }
+                        "run" -> {
+                            val filter = msg.params?.optString("filter", "") ?: ""
+                            // Run inline on the main/JUnit thread so the
+                            // snapshot capture closure (which touches
+                            // Compose + Robolectric's looper) executes
+                            // on the only thread Robolectric accepts.
+                            runFiltered(writer, filter)
+                            writer.respond(id, emptyMap(), null)
+                        }
+                        "cancel" -> {
+                            writer.respond(id, emptyMap(), null)
+                            return
+                        }
+                        else -> writer.respond(
+                            id, null,
+                            RpcError(-32601, "method not found: ${msg.method ?: "<null>"}")
+                        )
+                    }
+                }
+            } finally {
+                try { sock.close() } catch (_: Throwable) {}
+                readerThread.interrupt()
+            }
+        }
+    }
+
     @JvmStatic
     fun runDriver(input: InputStream, output: OutputStream) {
         val reader = RpcReader(input)
