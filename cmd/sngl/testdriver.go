@@ -13,6 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -55,6 +56,15 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	}
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
+
+	// Caller hands us a checked-but-not-lowered package; lowering
+	// substitutes ContextRead/reactivity into platform-emittable form.
+	// Without this the platform's Generate panics on un-lowered nodes
+	// (e.g. ContextRead in irwalk.EvalExpr).
+	caps := plat.Capabilities().Merge(lang.Capabilities())
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
+		return nil, fmt.Errorf("lower for tests: %w", err)
+	}
 
 	var testFns []*ir.Func
 	for _, f := range pkg.Funcs {
