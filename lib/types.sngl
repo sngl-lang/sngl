@@ -73,6 +73,12 @@ func Test.setContext(name string, value string) {}
 // is evaluated repeatedly between settle steps.
 func Test.wait(predicate func() bool, timeout_ms int) {}
 
+// Capture the current platform render and assert it matches the golden
+// stored at `<fixture>.snapshots/<name>.<ext>`. Under SNGL_UPDATE_SNAPSHOTS=1
+// the golden is (re)written from the current capture instead of compared.
+// The capture format (ANSI text, PNG, etc.) is chosen by the platform.
+func Test.snapshot(name string) {}
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left

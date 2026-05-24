@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -40,7 +39,7 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 // package, passing the component name via the rootComponent option so the
 // platform builds its Model from that component. No AST round-trip — IR
 // stays IR.
-func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir string) (results []*codegen.TestResult, err error) {
+func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test launcher: %v", r)
@@ -84,7 +83,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		if group.Component != "" {
 			codegen.SetOptionField(groupOpts, "rootComponent", group.Component)
 		}
-		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, groupOpts, fixtureDir, group)
+		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, groupOpts, fixtureDir, fixtureFile, group)
 		if err != nil {
 			return results, err
 		}
@@ -124,7 +123,7 @@ func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
 // launchOneGroup runs a single component-group through the launcher.
 // It generates the target sources into a tempdir, launches the agent,
 // and collects testEnd notifications.
-func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
+func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test launcher: %v", r)
@@ -158,7 +157,7 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 	defer cleanup()
-	return driveRPC(ch, fixtureDir)
+	return driveRPC(ch, fixtureDir, fixtureFile)
 }
 
 // langIdent returns a best-effort identifier for the language, for
@@ -179,10 +178,14 @@ func langIdent(lang codegen.LangTranslator) string {
 // driveRPC sends list+run, then collects testStart/log/testEnd/markFail
 // notifications into TestResults. snapshotAssert requests are answered
 // via the snapshot.Store backed by fixtureDir.
-func driveRPC(ch codegen.RPCChannel, fixtureDir string) ([]*codegen.TestResult, error) {
+func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen.TestResult, error) {
 	r := testrpc.NewReader(ch)
 	w := testrpc.NewWriter(ch)
 	store := &snapshot.Store{Dir: fixtureDir, Update: os.Getenv("SNGL_UPDATE_SNAPSHOTS") == "1"}
+	// fixtureBase is the .sngl filename (e.g. "app.sngl"). The snapshot
+	// store appends ".snapshots" so goldens live in
+	// <fixtureDir>/<fixtureBase>.snapshots/<name>.<ext>.
+	fixtureBase := fixtureFile
 
 	runID, err := w.Request("run", map[string]any{})
 	if err != nil {
@@ -206,7 +209,7 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir string) ([]*codegen.TestResult, 
 			break
 		}
 		if m.ID != nil && m.Method == "snapshotAssert" {
-			handleSnapshotAssert(w, store, m, filepath.Base(fixtureDir))
+			handleSnapshotAssert(w, store, m, fixtureBase)
 			continue
 		}
 		switch m.Method {

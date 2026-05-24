@@ -265,7 +265,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// fall back to the legacy runner.RunTests path (e.g. `none`).
 		var results []*codegen.TestResult
 		if resolveLauncher(plat, lang) != nil {
-			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename))
+			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename), filepath.Base(filename))
 		} else {
 			results, err = safeRunTests(runner, pkg, lang, opts)
 		}

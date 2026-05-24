@@ -97,6 +97,30 @@ func snglCmd() script.Cmd {
 			oldDir, _ := os.Getwd()
 			os.Chdir(s.Getwd())
 
+			// Propagate the script state's environment into the process
+			// so in-process sngl reads see vars set via `env VAR=value`.
+			// Diff against the current process env, applying only the
+			// keys that changed, and remember the originals to restore.
+			origEnv := map[string]string{}
+			origUnset := map[string]bool{}
+			scriptEnv := map[string]string{}
+			for _, kv := range s.Environ() {
+				if i := strings.IndexByte(kv, '='); i >= 0 {
+					scriptEnv[kv[:i]] = kv[i+1:]
+				}
+			}
+			for k, v := range scriptEnv {
+				if cur, ok := os.LookupEnv(k); ok {
+					if cur == v {
+						continue
+					}
+					origEnv[k] = cur
+				} else {
+					origUnset[k] = true
+				}
+				os.Setenv(k, v)
+			}
+
 			// Reset flags to defaults so prior invocations don't leak state.
 			resetFlags(rootCmd)
 			rootCmd.SetArgs(args)
@@ -106,6 +130,12 @@ func snglCmd() script.Cmd {
 
 			// Restore state.
 			os.Chdir(oldDir)
+			for k, v := range origEnv {
+				os.Setenv(k, v)
+			}
+			for k := range origUnset {
+				os.Unsetenv(k)
+			}
 			// Mirror main(): print the command error to stderr so script
 			// assertions like `stderr some-text` can match it.
 			if cmdErr != nil {

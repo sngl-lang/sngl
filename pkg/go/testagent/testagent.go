@@ -272,8 +272,13 @@ func Main() {
 		case "run":
 			var params struct{ Filter string }
 			_ = json.Unmarshal(msg.Params, &params)
-			runFiltered(out, params.Filter)
-			_ = out.Respond(id, map[string]any{}, nil)
+			// Run on a goroutine so the Main loop keeps reading stdin —
+			// in particular, so snapshotAssert responses from the driver
+			// can be routed to the per-test goroutine via deliverResponse.
+			go func(id uint64, filter string) {
+				runFiltered(out, filter)
+				_ = out.Respond(id, map[string]any{}, nil)
+			}(id, params.Filter)
 		case "cancel":
 			cancel()
 			_ = out.Respond(id, map[string]any{}, nil)

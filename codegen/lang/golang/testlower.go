@@ -69,6 +69,9 @@ func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 			if lines, ok := lowerTestSetContext(c, scope); ok {
 				return lines
 			}
+			if line, ok := lowerTestSnapshot(c, scope); ok {
+				return []string{line}
+			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
@@ -245,6 +248,22 @@ func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, boo
 	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
 }
 
+// lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a
+// `t.Snapshot(name)` invocation. The capitalized method matches the
+// runtime exposed by *testing.T-style wrappers (testagent.T.Snapshot in
+// agent mode; native mode uses a small shim — see platform code).
+func lowerTestSnapshot(c *ir.Call, scope *codegen.ExprScope) (string, bool) {
+	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "snapshot" {
+		return "", false
+	}
+	// Args[0] is the t receiver; Args[1] is the snapshot name.
+	if len(c.Args) != 2 {
+		return "", false
+	}
+	nameExpr := translateIRExpr(c.Args[1].Value, scope)
+	return fmt.Sprintf("t.Snapshot(%s)", nameExpr), true
+}
+
 func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil {
@@ -296,6 +315,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 		funcName, paramType := wrapperHeader(suffix, mode)
 		fmt.Fprintf(&b, "func %s(t *%s) {\n", funcName, paramType)
 		b.WriteString("\tc := newTestComponent()\n")
+		if mode == TestEmitAgent {
+			b.WriteString("\tsetCurrentTestModel(c)\n")
+		}
 		b.WriteString("\t_ = c\n")
 		scope := scopeFor(fn, methodFields)
 		for _, s := range fn.Block {

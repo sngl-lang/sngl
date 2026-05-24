@@ -1,0 +1,27 @@
+# t.snapshot(name) captures Model.View() output and diffs against a
+# golden under app.sngl.snapshots/initial.ansi.
+
+[!exec:go] skip 'go toolchain required'
+
+# First run with SNGL_UPDATE_SNAPSHOTS=1 creates the golden.
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+exists app.sngl.snapshots/initial.ansi
+
+# Second run without the env var passes against the same golden.
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { go { bubbletea } }
+
+component counter {
+    var count = 0
+    text(value=string(count))
+}
+
+func testInitialSnapshotMatches(t Test, c counter) {
+    t.snapshot("initial")
+}
