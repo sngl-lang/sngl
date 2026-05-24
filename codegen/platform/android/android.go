@@ -4,9 +4,11 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -102,6 +104,16 @@ func (g *Generator) Capabilities() lower.Caps {
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// Agent-mode test build: suppress the user-facing MainActivity/project
+	// scaffold so the agent driver (AgentMain.kt → testagent.main()) owns
+	// the entry point. The launcher (Task 5) relocates the emitted files
+	// into a synthetic robolectric project before invoking gradle.
+	if codegen.OptionString(req.Options, "testMode") == "agent" {
+		if req.Options == nil {
+			req.Options = &ir.StructLit{}
+		}
+		codegen.SetOptionField(req.Options, "main", false)
+	}
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
@@ -163,7 +175,21 @@ func (g *Generator) configFromRequest(req *codegen.Request) (Config, error) {
 func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error {
 	cfg := c.cfg
 	ctx := c.ctx
-	src, err := CompileIR(ctx, cfg)
+	// In --opt test=true builds the Compose source needs a hoisted
+	// MainScreenState class so generated tests can construct a state
+	// instance, assert against its fields, and mutate from outside the
+	// composition. CompileTestIR is the only difference between the
+	// two emit paths.
+	testMode := codegen.OptionBool(req.Options, "test")
+	var (
+		src []byte
+		err error
+	)
+	if testMode {
+		src, err = CompileTestIR(ctx, cfg)
+	} else {
+		src, err = CompileIR(ctx, cfg)
+	}
 	if err != nil {
 		return err
 	}
@@ -220,5 +246,117 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		}
 	}
 
+	// Test sources: native mode lands in the gradle test/androidTest
+	// sourceset alongside MainScreen.kt; agent mode emits driver,
+	// model accessor, and snapshot capture files for the launcher
+	// to relocate (Task 5).
+	if testMode {
+		if err := emitKotlinTestSources(req, sink, cfg, ktOpts); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// emitKotlinTestSources emits the Kotlin test files for an android
+// build. Behaviour splits on testMode:
+//
+//   - native (default): one JUnit-style MainScreenTest.kt under
+//     app/src/test/kotlin (robolectric) or app/src/androidTest/kotlin
+//     (device), suitable for `./gradlew test` / `connectedCheck`.
+//   - agent: TestAgentRunner.kt + AgentMain.kt + TestModelAccessor.kt
+//     + RobolectricSnapshot.kt (when testRunner=robolectric). The
+//     launcher in Task 5 relocates these into a generated project.
+func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions) error {
+	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+	if len(testFns) == 0 {
+		return nil
+	}
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
+	mode := kotlin.TestEmitNative
+	if agent {
+		mode = kotlin.TestEmitAgent
+	}
+	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, methodFields, mode)
+
+	if !agent {
+		// Native: target gradle test sourceset (robolectric) or
+		// androidTest sourceset (device). Matches the layout the
+		// android gradle plugin scans by default.
+		sub := "test"
+		if cfg.TestRunner == "device" {
+			sub = "androidTest"
+		}
+		fname := fmt.Sprintf("app/src/%s/kotlin/%s/MainScreenTest.kt",
+			sub, strings.ReplaceAll(cfg.Package, ".", "/"))
+		return writeAndroidSourceFile(sink, fname, req.Lang, ktOpts, []byte(src))
+	}
+
+	// Agent mode: emit at the sink root for the launcher to
+	// relocate into a synthetic robolectric/device project.
+	if err := writeAndroidSourceFile(sink, "TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
+		return err
+	}
+	agentMain := []byte("package " + cfg.Package + "\n\nfun main() { us.duckfam.git.jonathan.sngl.testagent.main() }\n")
+	if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
+		return err
+	}
+	accessor := []byte("package " + cfg.Package + `
+
+private var __snglCurrentModel: MainScreenState? = null
+
+fun setCurrentTestModel(m: MainScreenState) { __snglCurrentModel = m }
+fun currentTestModel(): MainScreenState =
+    __snglCurrentModel ?: error("currentTestModel: no model set yet")
+
+fun newTestComponent(): MainScreenState = MainScreenState()
+`)
+	if err := writeAndroidSourceFile(sink, "TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
+		return err
+	}
+	if cfg.TestRunner == "robolectric" || cfg.TestRunner == "" {
+		if err := writeAndroidSourceFile(sink, "RobolectricSnapshot.kt", req.Lang, ktOpts, robolectricSnapshotCaptureKotlin(cfg.Package)); err != nil {
+			return err
+		}
+	}
+	// Device snapshot capture is emitted in Task 8.
+	return nil
+}
+
+// robolectricSnapshotCaptureKotlin returns the source of the
+// Compose-test-rule snapshot capture object. The init block registers
+// the capture function with the testagent Snapshots singleton under
+// the "robolectric/" namePrefix; the testagent runtime invokes it
+// when the agent's snapshot RPC fires. The ComposeContentTestRule
+// pointer is populated by the @Test method before it triggers a
+// snapshot — see TestAgentRunner.kt.
+func robolectricSnapshotCaptureKotlin(pkg string) []byte {
+	return []byte("package " + pkg + `
+
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.onRoot
+import org.robolectric.annotation.GraphicsMode
+import us.duckfam.git.jonathan.sngl.testagent.Snapshots
+import java.io.ByteArrayOutputStream
+
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+object RobolectricSnapshotCapture {
+    var rule: ComposeContentTestRule? = null
+
+    init {
+        Snapshots.register("robolectric/") {
+            val r = rule ?: error("snapshot: ComposeTestRule not set")
+            val img = r.onRoot().captureToImage()
+            val bmp = img.asAndroidBitmap()
+            val out = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            "image/png" to out.toByteArray()
+        }
+    }
+}
+`)
 }
