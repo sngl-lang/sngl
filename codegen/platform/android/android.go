@@ -104,15 +104,27 @@ func (g *Generator) Capabilities() lower.Caps {
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
-	// Agent-mode test build: suppress the user-facing MainActivity/project
-	// scaffold so the agent driver (AgentMain.kt → testagent.main()) owns
-	// the entry point. The launcher (Task 5) relocates the emitted files
-	// into a synthetic robolectric project before invoking gradle.
+	// Agent-mode test build: behaviour depends on testRunner.
+	//   robolectric: suppress the user-facing MainActivity/project
+	//     scaffold so the agent driver (AgentMain.kt → testagent.main())
+	//     owns the entry point. The launcher (Task 5) relocates the
+	//     emitted files into a synthetic robolectric project before
+	//     invoking gradle.
+	//   device: keep the MainActivity/project scaffold — the on-device
+	//     app is the agent host. MainActivity.onCreate is patched to
+	//     call TestAgentBootstrap.start(this) when SNGL_AGENT_PORT is
+	//     present on the launching intent.
 	if codegen.OptionString(req.Options, "testMode") == "agent" {
-		if req.Options == nil {
-			req.Options = &ir.StructLit{}
+		runner := codegen.OptionString(req.Options, "testRunner")
+		if runner == "" {
+			runner = "robolectric"
 		}
-		codegen.SetOptionField(req.Options, "main", false)
+		if runner == "robolectric" {
+			if req.Options == nil {
+				req.Options = &ir.StructLit{}
+			}
+			codegen.SetOptionField(req.Options, "main", false)
+		}
 	}
 	c := &compilation{}
 	m, err := c.BuildRenderModel(req, codegen.AnalyzeCommon(req.Pkg))
@@ -196,6 +208,8 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 
 	ktOpts := codegen.FileOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
 	usesI18n := hasI18nCalls(req.Pkg)
+	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
+	deviceAgent := testMode && agentMode && cfg.TestRunner == "device"
 
 	if !cfg.Main {
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
@@ -206,7 +220,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, usesI18n) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -222,7 +236,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n) {
+		for _, f := range directBuildFiles(cfg, usesI18n, deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -298,10 +312,6 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	if err := writeAndroidSourceFile(sink, "TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
 		return err
 	}
-	agentMain := []byte("package " + cfg.Package + "\n\nfun main() { us.duckfam.git.jonathan.sngl.testagent.main() }\n")
-	if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
-		return err
-	}
 	accessor := []byte("package " + cfg.Package + `
 
 private var __snglCurrentModel: MainScreenState? = null
@@ -315,12 +325,30 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 	if err := writeAndroidSourceFile(sink, "TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
 		return err
 	}
-	if cfg.TestRunner == "robolectric" || cfg.TestRunner == "" {
+	runner := cfg.TestRunner
+	if runner == "" {
+		runner = "robolectric"
+	}
+	switch runner {
+	case "robolectric":
+		// AgentMain.kt drives a JVM-side testagent (stdio JSON-RPC).
+		agentMain := []byte("package " + cfg.Package + "\n\nfun main() { us.duckfam.git.jonathan.sngl.testagent.main() }\n")
+		if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, agentMain); err != nil {
+			return err
+		}
 		if err := writeAndroidSourceFile(sink, "RobolectricSnapshot.kt", req.Lang, ktOpts, robolectricSnapshotCaptureKotlin(cfg.Package)); err != nil {
 			return err
 		}
+	case "device":
+		// No AgentMain.kt — MainActivity.onCreate is the entry point;
+		// scaffold patches it to call TestAgentBootstrap.start(this).
+		if err := writeAndroidSourceFile(sink, "TestAgentBootstrap.kt", req.Lang, ktOpts, deviceAgentBootstrapKotlin(cfg.Package)); err != nil {
+			return err
+		}
+		if err := writeAndroidSourceFile(sink, "DeviceSnapshot.kt", req.Lang, ktOpts, deviceSnapshotCaptureKotlin(cfg.Package)); err != nil {
+			return err
+		}
 	}
-	// Device snapshot capture is emitted in Task 8.
 	return nil
 }
 
@@ -357,6 +385,71 @@ object RobolectricSnapshotCapture {
             "image/png" to out.toByteArray()
         }
     }
+}
+`)
+}
+
+// deviceAgentBootstrapKotlin returns the source of the on-device
+// testagent bootstrap. MainActivity.onCreate calls
+// TestAgentBootstrap.start(this) when the launching intent carries a
+// non-zero SNGL_AGENT_PORT extra; the bootstrap binds startTcp on that
+// port in a background daemon thread and attaches the activity to
+// DeviceSnapshotCapture so the snapshot RPC can rasterise its view.
+func deviceAgentBootstrapKotlin(pkg string) []byte {
+	return []byte("package " + pkg + `
+
+import android.app.Activity
+import kotlin.concurrent.thread
+import us.duckfam.git.jonathan.sngl.testagent.TestAgent
+
+object TestAgentBootstrap {
+    fun start(activity: Activity) {
+        val port = activity.intent?.getIntExtra("SNGL_AGENT_PORT", 0) ?: 0
+        if (port <= 0) return
+        DeviceSnapshotCapture.attach(activity)
+        thread(start = true, isDaemon = false, name = "sngl-testagent") {
+            TestAgent.startTcp(port)
+        }
+    }
+}
+`)
+}
+
+// deviceSnapshotCaptureKotlin returns the source of the on-device
+// snapshot capture object. The init block registers the capture
+// function with the testagent Snapshots singleton under the "device/"
+// namePrefix; the testagent runtime invokes it when the agent's
+// snapshot RPC fires. The Activity pointer is populated by
+// TestAgentBootstrap.start before the agent loop starts serving.
+func deviceSnapshotCaptureKotlin(pkg string) []byte {
+	return []byte("package " + pkg + `
+
+import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.view.View
+import us.duckfam.git.jonathan.sngl.testagent.Snapshots
+import java.io.ByteArrayOutputStream
+
+object DeviceSnapshotCapture {
+    @Volatile private var activity: Activity? = null
+
+    init {
+        Snapshots.register("device/") {
+            val a = activity ?: error("DeviceSnapshotCapture: no Activity attached")
+            val v = a.findViewById<View>(android.R.id.content)
+                ?: error("DeviceSnapshotCapture: no content view")
+            val w = v.width.coerceAtLeast(1)
+            val h = v.height.coerceAtLeast(1)
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            v.draw(Canvas(bmp))
+            val out = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            "image/png" to out.toByteArray()
+        }
+    }
+
+    fun attach(a: Activity) { activity = a }
 }
 `)
 }

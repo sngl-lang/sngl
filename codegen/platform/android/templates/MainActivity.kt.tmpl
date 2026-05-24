@@ -16,6 +16,11 @@ class MainActivity : ComponentActivity() {
 {{- if .HasI18n}}
         I18n.init(this)
 {{- end}}
+{{- if .HasTestAgentBootstrap}}
+        if ((intent?.getIntExtra("SNGL_AGENT_PORT", 0) ?: 0) > 0) {
+            TestAgentBootstrap.start(this)
+        }
+{{- end}}
         setContent {
             AppTheme {
                 MainScreen()

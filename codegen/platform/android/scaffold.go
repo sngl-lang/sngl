@@ -31,6 +31,11 @@ type templateData struct {
 	// runner. Adds Robolectric + Compose UI test deps and the
 	// testOptions block to app/build.gradle.kts.
 	TestMode bool
+	// HasTestAgentBootstrap, when true, causes MainActivity.kt.tmpl to
+	// call TestAgentBootstrap.start(this) in onCreate. Set under
+	// testMode=agent && testRunner=device so the on-device agent host
+	// starts its TCP listener when launched with SNGL_AGENT_PORT.
+	HasTestAgentBootstrap bool
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -55,9 +60,12 @@ func newTemplateData(cfg Config) templateData {
 // scaffoldFiles generates all scaffold files for a full Gradle project.
 // Templates that call {{skip}} are automatically omitted.
 // hasI18n causes the MainActivity template to emit I18n.init(this).
-func scaffoldFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
+// bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
+// set under testMode=agent && testRunner=device.
+func scaffoldFiles(cfg Config, hasI18n, bootstrap bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.HasI18n = hasI18n
+	data.HasTestAgentBootstrap = bootstrap
 	pkgPath := pkgToPath(cfg.Package)
 
 	files := codegen.RenderTemplates(templateFS, "templates", data)
@@ -136,10 +144,13 @@ func scaffoldTestFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
 // directBuildFiles returns the minimal files for a gradle-free build.
 // Uses the same templates but with Gradle=false so gradle files are skipped.
 // hasI18n causes the MainActivity template to emit I18n.init(this).
-func directBuildFiles(cfg Config, hasI18n bool) []*codegen.OutputFile {
+// bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
+// set under testMode=agent && testRunner=device.
+func directBuildFiles(cfg Config, hasI18n, bootstrap bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.Gradle = false
 	data.HasI18n = hasI18n
+	data.HasTestAgentBootstrap = bootstrap
 	return codegen.RenderTemplates(templateFS, "templates", data)
 }
 
