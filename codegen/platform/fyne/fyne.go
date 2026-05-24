@@ -102,6 +102,43 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
+				snapshotSrc := []byte(`package ` + c.cfg.Package + `
+
+import (
+	"bytes"
+	"image/png"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/test"
+	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+)
+
+var currentModel *Model
+
+func setCurrentTestModel(m *Model) { currentModel = m }
+func currentTestModel() *Model     { return currentModel }
+
+func snapshotBytes(m *Model) (string, []byte, error) {
+	win := test.NewWindow(m.BuildUI())
+	defer win.Close()
+	win.Resize(fyne.NewSize(800, 600))
+	img := win.Canvas().Capture()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return "", nil, err
+	}
+	return "image/png", buf.Bytes(), nil
+}
+
+func init() {
+	testagent.RegisterSnapshot(func() (string, []byte, error) {
+		return snapshotBytes(currentTestModel())
+	})
+}
+`)
+				if err := writeRawFile(sink, "snapshot.go", snapshotSrc); err != nil {
+					return err
+				}
 			} else {
 				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
 				// newTestComponent helper: fyne's New() returns *Model.
