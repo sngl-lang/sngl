@@ -72,7 +72,78 @@ func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
+	if ifStmt, ok := s.(*ir.If); ok {
+		return lowerTestIf(ifStmt, scope)
+	}
+	if forStmt, ok := s.(*ir.For); ok {
+		return lowerTestFor(forStmt, scope)
+	}
 	return translateIRMutation(s, scope)
+}
+
+// lowerTestIf emits `if <cond> { <body> } [else { <else> }]` where each
+// branch's statements recurse through lowerTestStmt so test intrinsics
+// (t.assert, event triggers, t.setContext) keep their dedicated lowering
+// inside conditionals.
+func lowerTestIf(s *ir.If, scope *codegen.ExprScope) []string {
+	cond := translateIRExpr(s.Cond, scope)
+	out := []string{fmt.Sprintf("if %s {", cond)}
+	for _, b := range s.Body {
+		for _, line := range lowerTestStmt(b, scope) {
+			out = append(out, "\t"+line)
+		}
+	}
+	if len(s.Else) > 0 {
+		out = append(out, "} else {")
+		for _, b := range s.Else {
+			for _, line := range lowerTestStmt(b, scope) {
+				out = append(out, "\t"+line)
+			}
+		}
+	}
+	out = append(out, "}")
+	return out
+}
+
+// lowerTestFor mirrors translateIRForGo (component-method for-loop
+// lowering) but recurses on body statements through lowerTestStmt so
+// test intrinsics inside the loop body still get their dedicated
+// lowering.
+func lowerTestFor(s *ir.For, scope *codegen.ExprScope) []string {
+	iterExpr := translateIRExpr(s.Iter, scope)
+	loopScope := *scope
+	locals := make(map[string]bool, len(scope.LocalVars)+2)
+	for k, v := range scope.LocalVars {
+		locals[k] = v
+	}
+	locals[s.Key] = true
+	if s.Value != "" {
+		locals[s.Value] = true
+	}
+	loopScope.LocalVars = locals
+
+	var lines []string
+	iterType := s.Iter.ExprType()
+	if iterType != nil && iterType.Kind == ir.TypeMap {
+		valueVar := s.Value
+		if valueVar == "" {
+			valueVar = "_"
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", s.Key, valueVar, iterExpr))
+	} else {
+		indexVar := "_"
+		if s.Value != "" {
+			indexVar = s.Value
+		}
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, s.Key, iterExpr))
+	}
+	for _, stmt := range s.Body {
+		for _, l := range lowerTestStmt(stmt, &loopScope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
 }
 
 // lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and

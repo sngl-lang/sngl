@@ -94,6 +94,46 @@ func testFoo(t Test, c box) {
 	}
 }
 
+func TestLowerTestFile_handlesIfStmtInTestBody(t *testing.T) {
+	src := `
+component box {
+    var count = 0
+    text(value="x")
+}
+
+func testWithIf(t Test, c box) {
+    if c.count == 0 {
+        c.count = 1
+    } else {
+        c.count = 2
+    }
+    t.assert(c.count == 1)
+}
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	var fn *ir.Func
+	for _, f := range pkg.Funcs {
+		if f.IsTest {
+			fn = f
+			break
+		}
+	}
+	if fn == nil {
+		t.Fatal("no test func in package")
+	}
+	out := LowerTestFile("ui", []*ir.Func{fn}, []string{"WithIf"}, nil, TestEmitAgent)
+	if !strings.Contains(out, "if ") {
+		t.Errorf("expected 'if ' in lowered output; got:\n%s", out)
+	}
+	if !strings.Contains(out, "} else {") {
+		t.Errorf("expected '} else {' in lowered output; got:\n%s", out)
+	}
+}
+
 func TestLowerTestFile_nativeModeEmitsTestingImport(t *testing.T) {
 	src := `
 component box {
