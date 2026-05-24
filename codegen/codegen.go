@@ -339,6 +339,15 @@ type TestLauncher interface {
 	LaunchTest(ctx context.Context, dir string, lang LangTranslator, opts *ir.StructLit) (RPCChannel, Cleanup, error)
 }
 
+// SkipError signals that a target's prerequisites are missing on the
+// host (e.g. pkg-config can't find gtk4). sngl test surfaces this as
+// a SKIP line rather than a FAIL. Match via errors.As.
+type SkipError struct {
+	Reason string
+}
+
+func (e *SkipError) Error() string { return "skip: " + e.Reason }
+
 // RPCChannel is a full-duplex byte stream over which the driver and a
 // running testagent exchange JSON-RPC messages.
 type RPCChannel interface {

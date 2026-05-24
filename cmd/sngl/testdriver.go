@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -154,6 +155,14 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 
 	ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
 	if err != nil {
+		var skip *codegen.SkipError
+		if errors.As(err, &skip) {
+			return []*codegen.TestResult{{
+				Desc:   "<launcher-skip>",
+				Passed: true,
+				Log:    []string{"SKIP: " + skip.Reason},
+			}}, nil
+		}
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 	defer cleanup()

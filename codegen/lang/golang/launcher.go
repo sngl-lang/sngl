@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -30,21 +31,33 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 	}
 
 	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
+	var tidyOut bytes.Buffer
 	tidy := exec.CommandContext(ctx, goPath, "mod", "tidy")
 	tidy.Dir = dir
-	tidy.Stdout = os.Stderr
-	tidy.Stderr = os.Stderr
+	tidy.Stdout = &tidyOut
+	tidy.Stderr = &tidyOut
 	if err := tidy.Run(); err != nil {
+		out := tidyOut.String()
+		if reason, ok := detectMissingPlatformLib(out); ok {
+			return nil, nil, &codegen.SkipError{Reason: reason}
+		}
+		fmt.Fprint(os.Stderr, out)
 		return nil, nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
 	binPath := filepath.Join(dir, "testagent_bin")
 	slog.Info("exec", "cmd", "go build", "dir", dir, "out", binPath)
+	var buildOut bytes.Buffer
 	bld := exec.CommandContext(ctx, goPath, "build", "-o", binPath, ".")
 	bld.Dir = dir
-	bld.Stdout = os.Stderr
-	bld.Stderr = os.Stderr
+	bld.Stdout = &buildOut
+	bld.Stderr = &buildOut
 	if err := bld.Run(); err != nil {
+		out := buildOut.String()
+		if reason, ok := detectMissingPlatformLib(out); ok {
+			return nil, nil, &codegen.SkipError{Reason: reason}
+		}
+		fmt.Fprint(os.Stderr, out)
 		return nil, nil, fmt.Errorf("go build: %w", err)
 	}
 
@@ -102,4 +115,27 @@ func (p *pipeChannel) Write(b []byte) (int, error) { return p.out.Write(b) }
 func (p *pipeChannel) Close() error {
 	_ = p.out.Close()
 	return p.in.Close()
+}
+
+// detectMissingPlatformLib looks for known pkg-config "package not
+// found" signatures in build output. Returns a human-readable reason
+// + true when one is found.
+func detectMissingPlatformLib(buildOut string) (string, bool) {
+	// pkg-config writes lines like:
+	//   Package gtk4 was not found in the pkg-config search path.
+	// followed by "No package 'gtk4' found".
+	cases := []struct {
+		needle string
+		reason string
+	}{
+		{"Package gtk4 was not found", "gtk4 dev libraries not installed (pkg-config)"},
+		{"No package 'gtk4' found", "gtk4 dev libraries not installed (pkg-config)"},
+		{"Package gtk+-3.0 was not found", "gtk3 dev libraries not installed (pkg-config)"},
+	}
+	for _, c := range cases {
+		if strings.Contains(buildOut, c.needle) {
+			return c.reason, true
+		}
+	}
+	return "", false
 }
