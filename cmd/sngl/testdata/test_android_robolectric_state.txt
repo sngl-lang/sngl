@@ -1,0 +1,26 @@
+# Robolectric end-to-end: state-only assertions via sngl test --platform=
+# android --opt testRunner=robolectric. Skips cleanly when JDK/gradle/
+# pkg/kotlin/testagent's mavenLocal entry are unavailable.
+
+[!exec:java] skip 'JDK required'
+[!exec:gradle] skip 'gradle required'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { kotlin { android } }
+
+component counter {
+    var count = 0
+    text(value=string(count))
+}
+
+func testStartsAtZero(t Test, c counter) {
+    t.assert(c.count == 0)
+}
+
+func testIncrement(t Test, c counter) {
+    c.count = 5
+    t.assert(c.count == 5)
+}
