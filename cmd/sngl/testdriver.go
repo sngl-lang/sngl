@@ -40,7 +40,12 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 // Each group runs in its own launcher invocation against a doc with that
 // component promoted into a synthetic window, mirroring how the legacy
 // per-platform RunTests paths isolated a single test subject.
-func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir string) ([]*codegen.TestResult, error) {
+func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir string) (results []*codegen.TestResult, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in test launcher: %v", r)
+		}
+	}()
 	launcher := resolveLauncher(plat, lang)
 	if launcher == nil {
 		return nil, fmt.Errorf("no TestLauncher for platform %q lang %q", plat.PlatformIdentifier(), langIdent(lang))
@@ -55,7 +60,6 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	doc := ir.Convert(pkg)
 	groups := testharness.Group(doc.TestFuncs())
 
-	var results []*codegen.TestResult
 	for _, group := range groups {
 		if group.Component == "" {
 			// Tests with no component-under-test: run against the original
@@ -118,10 +122,15 @@ func belongsToGroup(f *ir.Func, group testharness.TestGroup) bool {
 // launchOneGroup runs a single component-group through the launcher.
 // It generates the target sources into a tempdir, launches the agent,
 // and collects testEnd notifications.
-func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir string, group testharness.TestGroup) ([]*codegen.TestResult, error) {
-	tmpDir, err := os.MkdirTemp("", "sngl-test-")
-	if err != nil {
-		return nil, fmt.Errorf("mktemp: %w", err)
+func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in test launcher: %v", r)
+		}
+	}()
+	tmpDir, mkErr := os.MkdirTemp("", "sngl-test-")
+	if mkErr != nil {
+		return nil, fmt.Errorf("mktemp: %w", mkErr)
 	}
 	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
 		defer os.RemoveAll(tmpDir)
