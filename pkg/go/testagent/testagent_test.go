@@ -3,6 +3,7 @@ package testagent
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 
@@ -128,5 +129,83 @@ func TestRunRegisteredTest_failNowReportsFailure(t *testing.T) {
 	}
 	if lastEnd.Status != "fail" {
 		t.Errorf("status = %q, want fail", lastEnd.Status)
+	}
+}
+
+func TestT_SnapshotErrorsWhenNoCaptureRegistered(t *testing.T) {
+	resetSnapshot()
+	var buf bytes.Buffer
+	at := newAgentT(&buf, "myTest")
+	at.Snapshot("first")
+	if !at.failed {
+		t.Error("Snapshot with no capture should fail the test")
+	}
+}
+
+func TestT_SnapshotSubmitsRequestAndPasses(t *testing.T) {
+	resetRegistry()
+	resetSnapshot()
+	RegisterSnapshot(func() (string, []byte, error) {
+		return "text/plain", []byte("hello"), nil
+	})
+	// Simulate a driver via paired pipes. The agent (T) writes its request
+	// to agentOut; the test reads it from driverIn. The test writes a
+	// response to driverOut; the agent's startReadLoop reads it from agentIn.
+	agentIn, driverOut := io.Pipe()
+	driverIn, agentOut := io.Pipe()
+
+	at := &T{name: "T1", w: testrpc.NewWriter(agentOut)}
+	startReadLoop(at, agentIn)
+
+	go func() {
+		r := testrpc.NewReader(driverIn)
+		msg, err := r.Read()
+		if err != nil {
+			t.Errorf("driver read: %v", err)
+			return
+		}
+		if msg.Method != "snapshotAssert" {
+			t.Errorf("driver got method = %q, want snapshotAssert", msg.Method)
+		}
+		w := testrpc.NewWriter(driverOut)
+		_ = w.Respond(*msg.ID, map[string]any{"pass": true}, nil)
+	}()
+
+	at.Snapshot("first")
+	if at.failed {
+		t.Errorf("expected pass, got fail")
+	}
+}
+
+func TestT_SnapshotMismatchReportsDiff(t *testing.T) {
+	resetRegistry()
+	resetSnapshot()
+	RegisterSnapshot(func() (string, []byte, error) {
+		return "text/plain", []byte("actual"), nil
+	})
+	agentIn, driverOut := io.Pipe()
+	driverIn, agentOut := io.Pipe()
+
+	at := &T{name: "T2", w: testrpc.NewWriter(agentOut)}
+	startReadLoop(at, agentIn)
+
+	go func() {
+		r := testrpc.NewReader(driverIn)
+		for {
+			msg, err := r.Read()
+			if err != nil {
+				return
+			}
+			if msg.Method == "snapshotAssert" {
+				w := testrpc.NewWriter(driverOut)
+				_ = w.Respond(*msg.ID, map[string]any{"pass": false, "diff": "want X got Y"}, nil)
+			}
+			// Drain subsequent notifications (e.g. log from Errorf).
+		}
+	}()
+
+	at.Snapshot("foo")
+	if !at.failed {
+		t.Errorf("expected mismatch to fail the test")
 	}
 }
