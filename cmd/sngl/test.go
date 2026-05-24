@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -99,7 +100,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	totalTests, totalFail, allResults := runOnPlatform(runner, lang, files, explicitFiles, runFilter, opts)
+	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, files, explicitFiles, runFilter, opts)
 
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
@@ -134,7 +135,7 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 			continue
 		}
 		fmt.Printf("=== platform=%s\n", name)
-		tests, fails, results := runOnPlatform(runner, lang, files, explicitFiles, runFilter, opts)
+		tests, fails, results := runOnPlatform(context.Background(), plat, runner, lang, files, explicitFiles, runFilter, opts)
 		ran++
 		grandTests += tests
 		grandFail += fails
@@ -184,7 +185,10 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 // check failures count as test failures — `./...` already skips
 // `testdata/` and `.`/`_`-prefixed directories, so walked files are
 // expected to be valid SNGL.
-func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
+func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var totalTests, totalFail int
 	var allResults []*codegen.TestResult
 
@@ -248,7 +252,17 @@ func runOnPlatform(runner codegen.TestRunner, lang codegen.LangTranslator, files
 		}
 		slog.Info("check", "file", filename, "duration", time.Since(start))
 
-		results, err := safeRunTests(runner, pkg, lang, opts)
+		// SNGL_TEST_VIA_LAUNCHER gates the new TestLauncher-based driver path
+		// until Task 8 wires codegen emission of the testagent main file.
+		// When unset (the default), tests flow through the legacy
+		// runner.RunTests path so existing platforms (none/bubbletea/fyne)
+		// behave unchanged.
+		var results []*codegen.TestResult
+		if os.Getenv("SNGL_TEST_VIA_LAUNCHER") != "" && resolveLauncher(plat, lang) != nil {
+			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename))
+		} else {
+			results, err = safeRunTests(runner, pkg, lang, opts)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
