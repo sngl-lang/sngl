@@ -22,6 +22,7 @@ type Config struct {
 	Icon       string // path to icon file (SVG or PNG); empty falls back to stdlib Icon
 	Color      string // theme/icon background color as hex (#RRGGBB)
 	ProjectDir string // project root directory (for resolving relative icon paths)
+	TestRunner string // "robolectric" (default) or "device"
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -47,6 +48,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.GoVersion == "" {
 		c.GoVersion = "1.23"
+	}
+	if c.TestRunner == "" {
+		c.TestRunner = "robolectric"
 	}
 	return c
 }
