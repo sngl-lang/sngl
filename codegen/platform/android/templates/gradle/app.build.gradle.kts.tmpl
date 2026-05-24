@@ -36,6 +36,16 @@ android {
     // Resources.NotFound on the first inflate.
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // Forward sngl.agent.port from gradle's JVM to the forked
+            // test JVM so MainScreenAgentTest can dial back to the
+            // driver-side listener. Gradle does NOT propagate -D
+            // automatically — has to be wired explicitly.
+            it.systemProperty(
+                "sngl.agent.port",
+                System.getProperty("sngl.agent.port") ?: ""
+            )
+        }
     }
 {{- end}}
 }

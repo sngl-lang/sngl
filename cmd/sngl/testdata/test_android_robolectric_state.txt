@@ -3,7 +3,6 @@
 # pkg/kotlin/testagent's mavenLocal entry are unavailable.
 
 [!exec:java] skip 'JDK required'
-[!exec:gradle] skip 'gradle required'
 
 sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout 'PASS'

@@ -1,7 +1,6 @@
 # Robolectric snapshot round-trip. Goldens land under robolectric/ subdir.
 
 [!exec:java] skip 'JDK required'
-[!exec:gradle] skip 'gradle required'
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=android --opt testRunner=robolectric app.sngl
