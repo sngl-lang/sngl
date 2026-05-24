@@ -322,3 +322,93 @@ func isNullLit(e ir.Expr) bool {
 	lit, ok := e.(*ir.Literal)
 	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
+
+// TestEmitMode selects how LowerTestFile wraps per-test bodies.
+type TestEmitMode int
+
+const (
+	// TestEmitNative produces a JUnit-style class with @Test methods,
+	// suitable for inclusion in the user's gradle test sourceset.
+	TestEmitNative TestEmitMode = iota
+	// TestEmitAgent produces a Kotlin source file with standalone
+	// fun testX(t: T) declarations plus a Registry.register init
+	// pulling in the per-platform testagent runtime.
+	TestEmitAgent
+)
+
+// LowerTestFile produces the entire source of a generated Kotlin test
+// file. Body lowering is identical across modes; the wrapper differs:
+//
+//	Native: package + JUnit imports + class MainScreenTest { @Test fun testFoo() { ... } }
+//	Agent:  package + testagent imports + fun testFoo(t: T) { ... } + Registry.register init.
+//
+// Each function in fns is rendered using the same lowerTestStmt walker
+// LowerTestFunc uses, ensuring identical semantic translation.
+func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "package %s\n\n", pkg)
+	switch mode {
+	case TestEmitNative:
+		b.WriteString("import org.junit.Test\n")
+		b.WriteString("import org.junit.Assert.assertTrue\n\n")
+		b.WriteString("class MainScreenTest {\n")
+	case TestEmitAgent:
+		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
+		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
+	}
+
+	for i, fn := range fns {
+		suffix := suffixes[i]
+		compRecvs := compReceiverSet(fn)
+		ctxCounts := map[string]int{}
+		switch mode {
+		case TestEmitNative:
+			fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
+			b.WriteString("        val c = newTestComponent()\n")
+			for _, s := range fn.Block {
+				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
+					fmt.Fprintf(&b, "        %s\n", line)
+				}
+			}
+			b.WriteString("    }\n\n")
+		case TestEmitAgent:
+			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
+			b.WriteString("    val c = newTestComponent()\n")
+			b.WriteString("    setCurrentTestModel(c)\n")
+			for _, s := range fn.Block {
+				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts) {
+					fmt.Fprintf(&b, "    %s\n", line)
+				}
+			}
+			b.WriteString("}\n\n")
+		}
+	}
+
+	switch mode {
+	case TestEmitNative:
+		b.WriteString("}\n")
+	case TestEmitAgent:
+		b.WriteString("private fun registerAll() {\n")
+		for i := range fns {
+			suffix := suffixes[i]
+			fmt.Fprintf(&b, "    Registry.register(%q, ::test%s)\n", suffix, suffix)
+		}
+		b.WriteString("}\n\n")
+		b.WriteString("val __sngl_test_init: Unit = registerAll()\n")
+	}
+
+	return b.String()
+}
+
+// compReceiverSet returns the names of fn's component-typed params.
+// Mirrors the compRecvs derivation in LowerTestFunc so lowerTestStmt
+// recognises `<recv>.<field>` reads regardless of the chosen param name.
+func compReceiverSet(fn *ir.Func) map[string]bool {
+	out := map[string]bool{}
+	for _, p := range fn.Params {
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			out[p.Name] = true
+		}
+	}
+	return out
+}
