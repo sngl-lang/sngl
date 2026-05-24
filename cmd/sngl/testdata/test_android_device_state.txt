@@ -1,0 +1,20 @@
+# Device end-to-end. Skips when ANDROID_HOME unset / no AVD / adb missing.
+
+[!exec:java] skip 'JDK required'
+[!exec:adb] skip 'adb required'
+[!exec:emulator] skip 'emulator required'
+
+sngl test --platform=android --opt testRunner=device app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { kotlin { android } }
+
+component counter {
+    var count = 0
+    text(value=string(count))
+}
+
+func testStartsAtZero(t Test, c counter) {
+    t.assert(c.count == 0)
+}

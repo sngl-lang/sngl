@@ -1,0 +1,26 @@
+# Device snapshot via View.draw → PNG. Goldens under device/ subdir.
+
+[!exec:java] skip 'JDK required'
+[!exec:adb] skip 'adb required'
+[!exec:emulator] skip 'emulator required'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=android --opt testRunner=device app.sngl
+stdout 'PASS'
+exists app.sngl.snapshots/device/initial.png
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=android --opt testRunner=device app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { kotlin { android } }
+
+component greeter {
+    var name = "world"
+    text(value=name)
+}
+
+func testGreeterSnapshot(t Test, c greeter) {
+    t.snapshot("initial")
+}
