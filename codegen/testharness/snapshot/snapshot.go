@@ -38,7 +38,10 @@ func (s *Store) Assert(fixture, name, mime string, actual []byte) (Result, error
 	goldenPath := filepath.Join(goldenDir, name+ext)
 
 	if s.Update {
-		if err := os.MkdirAll(goldenDir, 0o755); err != nil {
+		// name may contain a "/"-separated namespace (e.g. "device/")
+		// — the testagent T.snapshot prepends Snapshots.namePrefix to
+		// disambiguate per-runner goldens. MkdirAll the full parent.
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
 			return Result{}, err
 		}
 		if err := os.WriteFile(goldenPath, actual, 0o644); err != nil {

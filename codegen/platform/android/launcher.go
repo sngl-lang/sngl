@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -40,10 +41,6 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 	if !javaFound() {
 		return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
 	}
-	gradle, err := exec.LookPath("gradle")
-	if err != nil {
-		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH"}
-	}
 
 	// Package name matches Config default (see compiler_ir.go withDefaults
 	// → "test.sngl.app"). If a future Config exposes the package as an
@@ -53,11 +50,31 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 		pkgName = "test.sngl.app"
 	}
 
-	if err := writeRobolectricGradleProject(dir, pkgName); err != nil {
+	testAgentInc, err := findTestAgentPath()
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := writeRobolectricGradleProject(dir, pkgName, testAgentInc); err != nil {
+		return nil, nil, err
+	}
+	if err := writeRobolectricGradlew(dir); err != nil {
 		return nil, nil, err
 	}
 	if err := moveEmittedKotlinIntoAppSrc(dir, pkgName); err != nil {
 		return nil, nil, err
+	}
+
+	// Prefer the synthesised gradlew wrapper over system gradle so the
+	// host doesn't need gradle installed.
+	gradle := ""
+	gradlew := filepath.Join(dir, "gradlew")
+	if _, statErr := os.Stat(gradlew); statErr == nil {
+		_ = os.Chmod(gradlew, 0o755)
+		gradle = gradlew
+	} else if sys, lookErr := exec.LookPath("gradle"); lookErr == nil {
+		gradle = sys
+	} else {
+		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
 	}
 
 	// gradle :app:installDist — produces an executable script in
@@ -133,15 +150,18 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 	// No additional layout work needed here — assembleDebug will pick up
 	// the emitted .kt files directly.
 
-	gradleBin, err := exec.LookPath("gradle")
-	if err != nil {
-		// Fall back to gradlew if the scaffold emitted one.
-		gradlew := filepath.Join(dir, "gradlew")
-		if _, statErr := os.Stat(gradlew); statErr == nil {
-			gradleBin = gradlew
-		} else {
-			return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
-		}
+	// Prefer the emitted gradle wrapper if present — it's a
+	// self-bootstrapping shell script that downloads and caches a known
+	// gradle distribution, so the host doesn't need system gradle.
+	gradleBin := ""
+	gradlew := filepath.Join(dir, "gradlew")
+	if _, statErr := os.Stat(gradlew); statErr == nil {
+		_ = os.Chmod(gradlew, 0o755)
+		gradleBin = gradlew
+	} else if sys, lookErr := exec.LookPath("gradle"); lookErr == nil {
+		gradleBin = sys
+	} else {
+		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
 	}
 
 	var buildOut bytes.Buffer
@@ -208,12 +228,20 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 		return nil, nil, fmt.Errorf("am start: %w", err)
 	}
 
-	// Connect to forwarded port; the agent thread takes ~50-500ms after
-	// am start to open its ServerSocket.
+	// Connect to forwarded port. adb forward succeeds on the local
+	// dial even when the device-side listener isn't bound yet — it just
+	// proxies the connection and the device end sees ECONNREFUSED.
+	// Wait for the on-device ServerSocket to bind by polling `adb shell
+	// netstat`; only then is dial→listener-accept reliable.
+	if err := waitForDevicePortBound(ctx, adb, devicePort, 60*time.Second); err != nil {
+		_ = exec.CommandContext(ctx, adb, "shell", "am", "force-stop", pkg).Run()
+		_ = exec.CommandContext(ctx, adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
+		return nil, nil, fmt.Errorf("device agent did not bind port %d: %w", devicePort, err)
+	}
 	var conn net.Conn
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", hostPort), time.Second)
+		c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", hostPort), 2*time.Second)
 		if err == nil {
 			conn = c
 			break
@@ -233,6 +261,81 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 		_ = exec.Command(adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
 	}
 	return conn, cleanup, nil
+}
+
+// findTestAgentPath returns the absolute path to pkg/kotlin/testagent
+// in the sngl source tree. Used by the device + robolectric launchers
+// to wire the testagent module into the synthesised gradle project via
+// gradle composite-build (`includeBuild`).
+//
+// Lookup order:
+//  1. $SNGL_HOST_GO_MOD: the script-test convention from Plan 1; its
+//     parent dir is the sngl repo root.
+//  2. Walk up from the running executable looking for a go.mod whose
+//     module path is git.duckfam.us/jonathan/sngl.
+//  3. Walk up from runtime.Caller(0)'s source path (works for `go test`
+//     and `go run` where Executable() points at a build cache).
+func findTestAgentPath() (string, error) {
+	if mod := os.Getenv("SNGL_HOST_GO_MOD"); mod != "" {
+		root := filepath.Dir(mod)
+		p := filepath.Join(root, "pkg", "kotlin", "testagent")
+		if _, err := os.Stat(filepath.Join(p, "build.gradle.kts")); err == nil {
+			return p, nil
+		}
+	}
+	candidates := []string{}
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, exe)
+	}
+	if _, here, _, ok := runtime.Caller(0); ok {
+		candidates = append(candidates, here)
+	}
+	for _, start := range candidates {
+		dir := filepath.Dir(start)
+		for i := 0; i < 12; i++ {
+			modPath := filepath.Join(dir, "go.mod")
+			if data, err := os.ReadFile(modPath); err == nil {
+				if strings.Contains(string(data), "module git.duckfam.us/jonathan/sngl") {
+					p := filepath.Join(dir, "pkg", "kotlin", "testagent")
+					if _, err := os.Stat(filepath.Join(p, "build.gradle.kts")); err == nil {
+						return p, nil
+					}
+				}
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	return "", &codegen.SkipError{Reason: "could not locate pkg/kotlin/testagent (set SNGL_HOST_GO_MOD)"}
+}
+
+// waitForDevicePortBound polls `adb shell` until something is listening
+// on devicePort. Uses `cat /proc/net/tcp` because the emulator system
+// image rarely ships `netstat` or `ss`. The procfs row's local-address
+// field is host-byte-order hex (big-endian on most CPUs but emulators
+// run x86_64), so we match against the little-endian hex of the port.
+func waitForDevicePortBound(ctx context.Context, adb string, devicePort int, timeout time.Duration) error {
+	// /proc/net/tcp formats local_address as "AABBCCDD:PPPP" where PPPP
+	// is the port in hex. State 0A = LISTEN.
+	portHex := fmt.Sprintf("%04X", devicePort)
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		out, err := exec.CommandContext(ctx, adb, "shell",
+			"cat", "/proc/net/tcp", "/proc/net/tcp6").Output()
+		if err == nil {
+			for _, line := range strings.Split(string(out), "\n") {
+				// Look for ":<hex-port> ... 0A " (LISTEN state).
+				if strings.Contains(line, ":"+portHex+" ") && strings.Contains(line, " 0A ") {
+					return nil
+				}
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("timed out after %v", timeout)
 }
 
 // pickFreeLocalhostPort grabs a free local port by binding and closing.
@@ -263,9 +366,13 @@ func (p *pipeChannel) Close() error {
 // writeRobolectricGradleProject synthesises a gradle JVM application
 // project at dir. The emitted .kt files will be moved into app/src/
 // main/kotlin/<pkg-path>/ by moveEmittedKotlinIntoAppSrc.
-func writeRobolectricGradleProject(dir, pkg string) error {
+// testAgentInclude is the absolute filesystem path to pkg/kotlin/
+// testagent; it's wired in via gradle composite-build so the host
+// doesn't need a publishToMavenLocal step.
+func writeRobolectricGradleProject(dir, pkg, testAgentInclude string) error {
 	settings := []byte(`rootProject.name = "snglroot"
 include(":app")
+includeBuild("` + testAgentInclude + `")
 `)
 	if err := os.WriteFile(filepath.Join(dir, "settings.gradle.kts"), settings, 0o644); err != nil {
 		return err
@@ -283,10 +390,10 @@ include(":app")
     application
 }
 
-repositories { mavenLocal(); mavenCentral(); google() }
+repositories { mavenCentral(); google() }
 
 dependencies {
-    implementation("us.duckfam.git.jonathan.sngl:testagent:0.1.0")
+    implementation("us.duckfam.git.jonathan.sngl:testagent")
     implementation("androidx.compose.ui:ui:1.6.0")
     implementation("androidx.compose.material:material:1.6.0")
     implementation("org.robolectric:robolectric:4.11.1")
@@ -299,6 +406,39 @@ application { mainClass.set("` + pkg + `.AgentMainKt") }
 kotlin { jvmToolchain(17) }
 `)
 	return os.WriteFile(filepath.Join(dir, "app", "build.gradle.kts"), appBuild, 0o644)
+}
+
+// writeRobolectricGradlew emits a self-bootstrapping gradle wrapper
+// shell script into dir/gradlew. Copied verbatim from the android
+// scaffold template (templates/gradle/gradlew.tmpl) which downloads
+// and caches a known gradle distribution at first run.
+func writeRobolectricGradlew(dir string) error {
+	data, err := templateFS.ReadFile("templates/gradle/gradlew.tmpl")
+	if err != nil {
+		return err
+	}
+	// Strip the leading {{...}}{{skip}}{{end -}} preamble; the rest is
+	// the literal shell script.
+	src := string(data)
+	if i := strings.Index(src, "\n"); i >= 0 && strings.HasPrefix(src, "{{") {
+		src = src[i+1:]
+	}
+	if err := os.WriteFile(filepath.Join(dir, "gradlew"), []byte(src), 0o755); err != nil {
+		return err
+	}
+	wrapperDir := filepath.Join(dir, "gradle", "wrapper")
+	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
+		return err
+	}
+	props, err := templateFS.ReadFile("templates/gradle/wrapper/gradle-wrapper.properties.tmpl")
+	if err != nil {
+		return err
+	}
+	psrc := string(props)
+	if i := strings.Index(psrc, "\n"); i >= 0 && strings.HasPrefix(psrc, "{{") {
+		psrc = psrc[i+1:]
+	}
+	return os.WriteFile(filepath.Join(wrapperDir, "gradle-wrapper.properties"), []byte(psrc), 0o644)
 }
 
 // moveEmittedKotlinIntoAppSrc relocates the .kt files from dir's root
