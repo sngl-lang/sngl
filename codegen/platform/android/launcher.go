@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,91 +37,114 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 	}
 }
 
-func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
+// launchRobolectric drives the robolectric agent path. The android
+// codegen has already emitted the full AGP scaffold into dir (the same
+// scaffold the device path uses) plus a MainScreenAgentTest.kt JUnit
+// class under app/src/test/kotlin. We:
+//
+//  1. Open a TCP listener on the loopback interface.
+//  2. Invoke `./gradlew :app:testDebugUnitTest -Dsngl.agent.port=<N>`
+//     so the JUnit @Test method can dial back to that listener once
+//     Robolectric finishes spinning up the JVM-side Android runtime.
+//  3. Accept the inbound connection and hand it to the driver as the
+//     RPC channel.
+//
+// Coordination quirk: gradle spawns a forked JVM for the test task and
+// passes -D system properties through; the JUnit body reads them with
+// System.getProperty(). If the test class fails to compile or load,
+// gradle exits without anyone dialling back — the listener's deadline
+// (5 minutes, generous for cold dependency caches) catches that case.
+func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	if !javaFound() {
 		return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
 	}
-
-	// Package name matches Config default (see compiler_ir.go withDefaults
-	// → "test.sngl.app"). If a future Config exposes the package as an
-	// option we should plumb it through here instead of hardcoding.
-	pkgName := codegen.OptionString(opts, "package")
-	if pkgName == "" {
-		pkgName = "test.sngl.app"
+	if sdkRoot() == "" {
+		return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
 	}
 
-	testAgentInc, err := findTestAgentPath()
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := writeRobolectricGradleProject(dir, pkgName, testAgentInc); err != nil {
-		return nil, nil, err
-	}
-	if err := writeRobolectricGradlew(dir); err != nil {
-		return nil, nil, err
-	}
-	if err := moveEmittedKotlinIntoAppSrc(dir, pkgName); err != nil {
-		return nil, nil, err
-	}
-
-	// Prefer the synthesised gradlew wrapper over system gradle so the
-	// host doesn't need gradle installed.
-	gradle := ""
 	gradlew := filepath.Join(dir, "gradlew")
-	if _, statErr := os.Stat(gradlew); statErr == nil {
-		_ = os.Chmod(gradlew, 0o755)
-		gradle = gradlew
-	} else if sys, lookErr := exec.LookPath("gradle"); lookErr == nil {
-		gradle = sys
-	} else {
-		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
+	if _, err := os.Stat(gradlew); err != nil {
+		return nil, nil, &codegen.SkipError{Reason: "gradle wrapper not in emitted scaffold (expected gradlew)"}
 	}
+	_ = os.Chmod(gradlew, 0o755)
 
-	// gradle :app:installDist — produces an executable script in
-	// app/build/install/app/bin/app
-	var buildOut bytes.Buffer
-	bld := exec.CommandContext(ctx, gradle, ":app:installDist", "--no-daemon", "--console=plain")
-	bld.Dir = dir
-	bld.Stdout = &buildOut
-	bld.Stderr = &buildOut
-	if err := bld.Run(); err != nil {
-		out := buildOut.String()
-		if strings.Contains(out, "us.duckfam.git.jonathan.sngl:testagent") &&
-			strings.Contains(out, "Could not find") {
-			return nil, nil, &codegen.SkipError{Reason: "pkg/kotlin/testagent not published to mavenLocal; run gradle publishToMavenLocal in pkg/kotlin/testagent/"}
-		}
-		fmt.Fprint(os.Stderr, out)
-		return nil, nil, fmt.Errorf("gradle :app:installDist: %w", err)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, nil, fmt.Errorf("listen: %w", err)
 	}
+	port := listener.Addr().(*net.TCPAddr).Port
 
-	binPath := filepath.Join(dir, "app", "build", "install", "app", "bin", "app")
-	if _, err := os.Stat(binPath); err != nil {
-		return nil, nil, fmt.Errorf("installDist output missing: %w", err)
-	}
-
-	cmd := exec.CommandContext(ctx, binPath)
+	// Buffer stderr from gradle in case the test fails before dialling
+	// back — we surface the build log to the driver caller on accept
+	// timeout to make diagnosis tractable.
+	var buildLog bytes.Buffer
+	cmd := exec.CommandContext(ctx, gradlew,
+		":app:testDebugUnitTest",
+		"--no-daemon", "--console=plain",
+		"-Dsngl.agent.port="+strconv.Itoa(port),
+		"--tests", "*.MainScreenAgentTest",
+	)
 	cmd.Dir = dir
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = &buildLog
+	cmd.Stderr = &buildLog
 	if err := cmd.Start(); err != nil {
-		return nil, nil, fmt.Errorf("start: %w", err)
+		listener.Close()
+		return nil, nil, fmt.Errorf("gradle start: %w", err)
 	}
 
-	ch := &pipeChannel{in: stdout, out: stdin, cmd: cmd}
-	cleanup := func() {
-		_ = stdin.Close()
-		_ = stdout.Close()
-		_ = cmd.Process.Kill()
-		_, _ = cmd.Process.Wait()
+	// Watcher goroutine: if gradle exits before accept() fires, unblock
+	// the accept by closing the listener and surface the build log.
+	gradleDone := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(gradleDone)
+	}()
+
+	type acceptResult struct {
+		conn net.Conn
+		err  error
 	}
-	return ch, cleanup, nil
+	accepted := make(chan acceptResult, 1)
+	go func() {
+		// Wide deadline: cold gradle cache + robolectric runtime
+		// download can take minutes on the first run.
+		if tcp, ok := listener.(*net.TCPListener); ok {
+			_ = tcp.SetDeadline(time.Now().Add(10 * time.Minute))
+		}
+		c, err := listener.Accept()
+		accepted <- acceptResult{c, err}
+	}()
+
+	select {
+	case r := <-accepted:
+		if r.err != nil {
+			_ = listener.Close()
+			_ = cmd.Process.Kill()
+			<-gradleDone
+			fmt.Fprint(os.Stderr, buildLog.String())
+			return nil, nil, fmt.Errorf("accept on agent port: %w", r.err)
+		}
+		cleanup := func() {
+			_ = r.conn.Close()
+			_ = listener.Close()
+			if cmd.Process != nil {
+				_ = cmd.Process.Kill()
+			}
+			<-gradleDone
+		}
+		return r.conn, cleanup, nil
+	case <-gradleDone:
+		// Gradle exited before anyone dialled back. Close the listener
+		// to unblock the accept goroutine, then surface the build log.
+		_ = listener.Close()
+		<-accepted
+		fmt.Fprint(os.Stderr, buildLog.String())
+		state := cmd.ProcessState
+		if state != nil && state.ExitCode() != 0 {
+			return nil, nil, fmt.Errorf("gradle :app:testDebugUnitTest exited %d before agent dialled back", state.ExitCode())
+		}
+		return nil, nil, fmt.Errorf("gradle :app:testDebugUnitTest exited before agent dialled back")
+	}
 }
 
 func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
@@ -349,124 +372,3 @@ func pickFreeLocalhostPort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-// pipeChannel adapts an exec.Cmd's stdout/stdin to RPCChannel.
-type pipeChannel struct {
-	in  io.ReadCloser
-	out io.WriteCloser
-	cmd *exec.Cmd
-}
-
-func (p *pipeChannel) Read(b []byte) (int, error)  { return p.in.Read(b) }
-func (p *pipeChannel) Write(b []byte) (int, error) { return p.out.Write(b) }
-func (p *pipeChannel) Close() error {
-	_ = p.out.Close()
-	return p.in.Close()
-}
-
-// writeRobolectricGradleProject synthesises a gradle JVM application
-// project at dir. The emitted .kt files will be moved into app/src/
-// main/kotlin/<pkg-path>/ by moveEmittedKotlinIntoAppSrc.
-// testAgentInclude is the absolute filesystem path to pkg/kotlin/
-// testagent; it's wired in via gradle composite-build so the host
-// doesn't need a publishToMavenLocal step.
-func writeRobolectricGradleProject(dir, pkg, testAgentInclude string) error {
-	settings := []byte(`rootProject.name = "snglroot"
-include(":app")
-includeBuild("` + testAgentInclude + `")
-`)
-	if err := os.WriteFile(filepath.Join(dir, "settings.gradle.kts"), settings, 0o644); err != nil {
-		return err
-	}
-	rootBuild := []byte(`plugins { kotlin("jvm") version "1.9.22" apply false }
-`)
-	if err := os.WriteFile(filepath.Join(dir, "build.gradle.kts"), rootBuild, 0o644); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "app"), 0o755); err != nil {
-		return err
-	}
-	appBuild := []byte(`plugins {
-    kotlin("jvm") version "1.9.22"
-    application
-}
-
-repositories { mavenCentral(); google() }
-
-dependencies {
-    implementation("us.duckfam.git.jonathan.sngl:testagent")
-    implementation("androidx.compose.ui:ui:1.6.0")
-    implementation("androidx.compose.material:material:1.6.0")
-    implementation("org.robolectric:robolectric:4.11.1")
-    implementation("androidx.compose.ui:ui-test:1.6.0")
-    implementation("androidx.compose.ui:ui-test-junit4:1.6.0")
-}
-
-application { mainClass.set("` + pkg + `.AgentMainKt") }
-
-java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    kotlinOptions { jvmTarget = "17" }
-}
-`)
-	return os.WriteFile(filepath.Join(dir, "app", "build.gradle.kts"), appBuild, 0o644)
-}
-
-// writeRobolectricGradlew emits a self-bootstrapping gradle wrapper
-// shell script into dir/gradlew. Copied verbatim from the android
-// scaffold template (templates/gradle/gradlew.tmpl) which downloads
-// and caches a known gradle distribution at first run.
-func writeRobolectricGradlew(dir string) error {
-	data, err := templateFS.ReadFile("templates/gradle/gradlew.tmpl")
-	if err != nil {
-		return err
-	}
-	// Strip the leading {{...}}{{skip}}{{end -}} preamble; the rest is
-	// the literal shell script.
-	src := string(data)
-	if i := strings.Index(src, "\n"); i >= 0 && strings.HasPrefix(src, "{{") {
-		src = src[i+1:]
-	}
-	if err := os.WriteFile(filepath.Join(dir, "gradlew"), []byte(src), 0o755); err != nil {
-		return err
-	}
-	wrapperDir := filepath.Join(dir, "gradle", "wrapper")
-	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
-		return err
-	}
-	props, err := templateFS.ReadFile("templates/gradle/wrapper/gradle-wrapper.properties.tmpl")
-	if err != nil {
-		return err
-	}
-	psrc := string(props)
-	if i := strings.Index(psrc, "\n"); i >= 0 && strings.HasPrefix(psrc, "{{") {
-		psrc = psrc[i+1:]
-	}
-	return os.WriteFile(filepath.Join(wrapperDir, "gradle-wrapper.properties"), []byte(psrc), 0o644)
-}
-
-// moveEmittedKotlinIntoAppSrc relocates the .kt files from dir's root
-// into the gradle source layout app/src/main/kotlin/<pkg-path>/.
-func moveEmittedKotlinIntoAppSrc(dir, pkg string) error {
-	pkgPath := strings.ReplaceAll(pkg, ".", string(os.PathSeparator))
-	dst := filepath.Join(dir, "app", "src", "main", "kotlin", pkgPath)
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return err
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if !strings.HasSuffix(name, ".kt") {
-			continue
-		}
-		if err := os.Rename(filepath.Join(dir, name), filepath.Join(dst, name)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
