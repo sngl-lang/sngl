@@ -189,3 +189,87 @@ func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool)
 	exprGo := translateIRExpr(c.Args[1].Value, scope)
 	return fmt.Sprintf("if !(%s) { t.Errorf(\"assert failed: %%s\", %q) }", exprGo, exprGo), true
 }
+
+// TestEmitMode selects how LowerTestFile wraps the per-test bodies.
+type TestEmitMode int
+
+const (
+	// TestEmitNative produces *_test.go-style funcs taking *testing.T;
+	// the resulting file is consumed by `go test`.
+	TestEmitNative TestEmitMode = iota
+	// TestEmitAgent produces test funcs taking *testagent.T plus an
+	// init() that RegisterTests each one. The resulting file is
+	// linked alongside main.go in the agent-mode binary.
+	TestEmitAgent
+)
+
+// LowerTestFile produces the entire source of a generated test file.
+// Each function in `fns` is rendered through a body lowering identical
+// to LowerTestFunc's (testagent.T mirrors *testing.T's API). The
+// wrapper differs:
+//
+//   - Native: `package <pkg>` + import "testing" + funcs `func Test<X>(t *testing.T)`.
+//   - Agent:  `package <pkg>` + import "git.duckfam.us/jonathan/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.
+func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "package %s\n\n", pkg)
+	switch mode {
+	case TestEmitNative:
+		b.WriteString("import \"testing\"\n\n")
+	case TestEmitAgent:
+		b.WriteString("import \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\n")
+	}
+
+	for i, fn := range fns {
+		suffix := suffixes[i]
+		funcName, paramType := wrapperHeader(suffix, mode)
+		fmt.Fprintf(&b, "func %s(t *%s) {\n", funcName, paramType)
+		b.WriteString("\tc := newTestComponent()\n")
+		b.WriteString("\t_ = c\n")
+		scope := scopeFor(fn, methodFields)
+		for _, s := range fn.Block {
+			for _, line := range lowerTestStmt(s, scope) {
+				fmt.Fprintf(&b, "\t%s\n", line)
+			}
+		}
+		b.WriteString("}\n\n")
+	}
+
+	if mode == TestEmitAgent {
+		b.WriteString("func init() {\n")
+		for i := range fns {
+			suffix := suffixes[i]
+			fmt.Fprintf(&b, "\ttestagent.RegisterTest(%q, test%s)\n", suffix, suffix)
+		}
+		b.WriteString("}\n")
+	}
+
+	return b.String()
+}
+
+func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string) {
+	switch mode {
+	case TestEmitNative:
+		return "Test" + suffix, "testing.T"
+	case TestEmitAgent:
+		return "test" + suffix, "testagent.T"
+	}
+	return "Test" + suffix, "testing.T"
+}
+
+// scopeFor mirrors LowerTestFunc's scope construction so LowerTestFile
+// shares identical state shape.
+func scopeFor(fn *ir.Func, methodFields map[string]bool) *codegen.ExprScope {
+	scope := &codegen.ExprScope{
+		LocalVars:      map[string]bool{},
+		RawFieldAccess: map[string]bool{},
+		MethodFields:   methodFields,
+	}
+	for _, p := range fn.Params {
+		scope.LocalVars[p.Name] = true
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			scope.RawFieldAccess[p.Name] = true
+		}
+	}
+	return scope
+}
