@@ -1,0 +1,9 @@
+// spacer: A-tier — no testable state. Declaration validates
+// parse + check + lower.
+component main {
+    hbox {
+        text(value="left")
+        spacer(size="16")
+        text(value="right")
+    }
+}
