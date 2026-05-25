@@ -226,6 +226,11 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
+			if os.Getenv("SNGL_DEBUG_CHECK") != "" {
+				for _, d2 := range diags {
+					fmt.Fprintf(os.Stderr, "CHECK DIAG: %s\n", d2.Error())
+				}
+			}
 			return pkg, d
 		}
 	}
