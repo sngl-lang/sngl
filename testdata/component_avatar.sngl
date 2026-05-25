@@ -1,0 +1,8 @@
+// avatar: A-tier — declaration + src/initials fallback.
+component main {
+    hbox {
+        avatar(initials="JD")
+        avatar(src="https://example.com/a.png", initials="AB", variant="square")
+        avatar(initials="XY", size="large")
+    }
+}
