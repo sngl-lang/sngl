@@ -149,6 +149,7 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		"--lang=" + lang,
 		"--platform=" + platform,
 		"--opt", "test=true",
+		"--opt", "main=true",
 		"--out=" + tmp,
 		fixture,
 	}
