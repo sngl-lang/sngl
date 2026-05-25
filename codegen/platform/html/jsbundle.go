@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
 
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
+	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 )
 
 // bundleNativeScript runs the rendered <script> body — which contains real
@@ -176,6 +178,24 @@ func virtFSPlugin(fsys fs.FS, virtRoot string) api.Plugin {
 	return api.Plugin{
 		Name: "sngl-virtfs",
 		Setup: func(pb api.PluginBuild) {
+			// Resolve testagent module imports against the live
+			// pkg/js/testagent/ source tree. Agent-mode codegen emits
+			// raw `<script type="module">` tags that the browser
+			// resolves itself; this resolver is here so that any
+			// future bundle pass that pulls testagent_main.js through
+			// esbuild can locate the runtime.
+			pb.OnResolve(api.OnResolveOptions{Filter: `^\./testagent/`},
+				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+					dir, err := testharness.LangTestagentPath("js")
+					if err != nil {
+						return api.OnResolveResult{}, err
+					}
+					rel := strings.TrimPrefix(args.Path, "./testagent/")
+					return api.OnResolveResult{
+						Path:      filepath.Join(dir, rel),
+						Namespace: "file",
+					}, nil
+				})
 			pb.OnResolve(api.OnResolveOptions{Filter: ".*"},
 				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 					// Importer carries the resolved virtual path of the

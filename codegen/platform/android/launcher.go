@@ -10,12 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -287,52 +287,21 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 }
 
 // findTestAgentPath returns the absolute path to pkg/kotlin/testagent
-// in the sngl source tree. Used by the device + robolectric launchers
-// to wire the testagent module into the synthesised gradle project via
-// gradle composite-build (`includeBuild`).
-//
-// Lookup order:
-//  1. $SNGL_HOST_GO_MOD: the script-test convention from Plan 1; its
-//     parent dir is the sngl repo root.
-//  2. Walk up from the running executable looking for a go.mod whose
-//     module path is git.duckfam.us/jonathan/sngl.
-//  3. Walk up from runtime.Caller(0)'s source path (works for `go test`
-//     and `go run` where Executable() points at a build cache).
+// in the sngl source tree. Thin wrapper over the shared
+// testharness.LangTestagentPath helper; additionally verifies the
+// gradle build file is present (which is what the device + robolectric
+// launchers actually depend on when wiring the testagent module via
+// gradle composite-build) and surfaces the not-found case as a
+// codegen.SkipError so callers can downgrade the failure to "skip".
 func findTestAgentPath() (string, error) {
-	if mod := os.Getenv("SNGL_HOST_GO_MOD"); mod != "" {
-		root := filepath.Dir(mod)
-		p := filepath.Join(root, "pkg", "kotlin", "testagent")
-		if _, err := os.Stat(filepath.Join(p, "build.gradle.kts")); err == nil {
-			return p, nil
-		}
+	p, err := testharness.LangTestagentPath("kotlin")
+	if err != nil {
+		return "", &codegen.SkipError{Reason: err.Error()}
 	}
-	candidates := []string{}
-	if exe, err := os.Executable(); err == nil {
-		candidates = append(candidates, exe)
+	if _, err := os.Stat(filepath.Join(p, "build.gradle.kts")); err != nil {
+		return "", &codegen.SkipError{Reason: fmt.Sprintf("pkg/kotlin/testagent missing build.gradle.kts: %v", err)}
 	}
-	if _, here, _, ok := runtime.Caller(0); ok {
-		candidates = append(candidates, here)
-	}
-	for _, start := range candidates {
-		dir := filepath.Dir(start)
-		for i := 0; i < 12; i++ {
-			modPath := filepath.Join(dir, "go.mod")
-			if data, err := os.ReadFile(modPath); err == nil {
-				if strings.Contains(string(data), "module git.duckfam.us/jonathan/sngl") {
-					p := filepath.Join(dir, "pkg", "kotlin", "testagent")
-					if _, err := os.Stat(filepath.Join(p, "build.gradle.kts")); err == nil {
-						return p, nil
-					}
-				}
-			}
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				break
-			}
-			dir = parent
-		}
-	}
-	return "", &codegen.SkipError{Reason: "could not locate pkg/kotlin/testagent (set SNGL_HOST_GO_MOD)"}
+	return p, nil
 }
 
 // waitForDevicePortBound polls `adb shell` until something is listening

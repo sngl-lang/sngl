@@ -74,6 +74,16 @@ func (g *Generator) SupportedLangs() []string {
 // Generate writes html platform output directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// Agent-mode test build: suppress the user's main() entry and let
+	// the testagent's main() drive the page. Mirrors bubbletea/android.
+	agentMode := codegen.OptionBool(req.Options, "test") && codegen.OptionString(req.Options, "testMode") == "agent"
+	if agentMode {
+		if req.Options == nil {
+			req.Options = &ir.StructLit{}
+		}
+		codegen.SetOptionField(req.Options, "main", false)
+	}
+
 	if req.Lang.LanguageIdentifier() == "none" {
 		if err := rejectDynamicHrefs(req); err != nil {
 			return err
@@ -83,12 +93,52 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		if err != nil {
 			return err
 		}
-		return c.EmitFromMutation(m, req, sink)
+		if agentMode {
+			injectTestagentBootstrap(c)
+		}
+		if err := c.EmitFromMutation(m, req, sink); err != nil {
+			return err
+		}
+		if agentMode {
+			modelType := "main"
+			if main := codegen.NewCodegenCtx(req, "html").MainComponent(); main != nil {
+				modelType = main.Name
+			}
+			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	if _, ok := req.Lang.(codegen.HTTPCompiler); ok {
 		return g.generateRoutes(req, sink)
 	}
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
+}
+
+// injectTestagentBootstrap rewrites every assembled window in c so its
+// closing </body> is preceded by a <script type="module"> tag that
+// imports the testagent runtime + emitted test files and calls
+// TestAgent.main() on DOMContentLoaded. Called only under agent mode.
+func injectTestagentBootstrap(c *compilation) {
+	const bootstrap = `<script type="module">
+import { main } from './testagent/testagent.js';
+import './testagent_main.js';
+import './snapshot.js';
+import './current_model.js';
+document.addEventListener('DOMContentLoaded', () => main());
+</script>
+`
+	for i, w := range c.windows {
+		src := string(w.bytes)
+		idx := strings.LastIndex(src, "</body>")
+		if idx < 0 {
+			src = src + "\n" + bootstrap
+		} else {
+			src = src[:idx] + bootstrap + src[idx:]
+		}
+		c.windows[i].bytes = []byte(src)
+	}
 }
 
 // rejectDynamicHrefs errors when static mode (lang=none) encounters a window
