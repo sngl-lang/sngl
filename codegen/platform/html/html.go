@@ -2618,6 +2618,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	for _, di := range deferredInits {
 		fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
 	}
+	if g.testMode {
+		// Hoist the closure-private state object onto window so the
+		// testagent's newTestComponent() can return a live reference.
+		// Tests share one state across the session — no per-test
+		// isolation (see codegen/platform/html/testagent_emit.go).
+		b.WriteString("if (typeof window !== 'undefined') { window.__sngl_state = state; }\n")
+	}
 	b.WriteString("\n")
 
 	// Struct constructors
