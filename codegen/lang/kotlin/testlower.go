@@ -79,6 +79,18 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
+	case *ir.LocalVar:
+		// `var name T [= expr]` inside a test body: emit a Kotlin `val`
+		// binding so subsequent statements that reference the name (e.g.
+		// `c.field = name`) compile. Initialiser is the IR-provided Init
+		// when present (ir.Normalize injects the zero value otherwise).
+		var init string
+		if n.Init != nil {
+			init = lowerTestExpr(n.Init, methodFields, compRecvs)
+		} else {
+			init = "null"
+		}
+		return []string{fmt.Sprintf("val %s = %s", n.Name, init)}
 	case *ir.Assign:
 		// `<recv>.<var> += X` etc.: mutate state on the UI thread so
 		// Compose recomposition sees it before the next assertion.
@@ -266,7 +278,8 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 		return "-" + lowerTestExpr(n.Operand, methodFields, compRecvs)
 	case *ir.Literal:
 		switch n.Type.Kind {
-		case ir.TypeString:
+		case ir.TypeString,
+			ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration:
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeNull:
 			return "null"
