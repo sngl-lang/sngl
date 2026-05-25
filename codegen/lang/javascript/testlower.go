@@ -103,6 +103,10 @@ func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
 			out = append(out, line)
 			continue
 		}
+		if line, ok := lowerTestSnapshot(s, jc); ok {
+			out = append(out, line)
+			continue
+		}
 		out = append(out, jc.EvalStmt(s)...)
 	}
 	return out
@@ -125,4 +129,25 @@ func lowerTestAssert(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	}
 	expr := jc.EvalExpr(cs.Call.Args[1].Value)
 	return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+}
+
+// lowerTestSnapshot intercepts `t.snapshot(name)` call statements and
+// emits them with `await` so the async snapshotAssert round-trip
+// completes before the test body returns. Without the await, the
+// agent dispatcher fires testEnd before the driver sees the
+// snapshotAssert request — test passes trivially, golden is never
+// written.
+func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
+	cs, ok := s.(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.Func == nil {
+		return "", false
+	}
+	if cs.Call.Func.Receiver != "Test" || cs.Call.Func.Name != "snapshot" {
+		return "", false
+	}
+	if len(cs.Call.Args) != 2 {
+		return "", false
+	}
+	name := jc.EvalExpr(cs.Call.Args[1].Value)
+	return fmt.Sprintf("await t.snapshot(%s)", name), true
 }

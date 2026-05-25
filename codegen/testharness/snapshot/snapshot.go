@@ -70,6 +70,8 @@ func mimeExt(mime string) (string, bool) {
 		return ".txt", true
 	case "text/ansi":
 		return ".ansi", true
+	case "text/html":
+		return ".html", true
 	case "application/json":
 		return ".json", true
 	case "image/png":
