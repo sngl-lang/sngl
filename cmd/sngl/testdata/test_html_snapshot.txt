@@ -1,0 +1,28 @@
+# html DOM-string snapshot round-trip. Browser-side capture serialises
+# document.documentElement.outerHTML as text/html. Golden at
+# <fixture>.snapshots/initial.html. Skip-clean (via launcher
+# SkipError) when no Chromium on host — both PASS lines match a
+# launcher-skip TestResult so the fixture passes on Chromium-less
+# hosts without an explicit guard. The exists check is omitted on
+# purpose — it would fail on skip-clean hosts where no run produced
+# the golden.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout 'PASS'
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=html app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { none { html } }
+
+component main {
+    var name = "world"
+    text(value=name)
+}
+
+func testInitial(t Test, c main) {
+    t.snapshot("initial")
+}
