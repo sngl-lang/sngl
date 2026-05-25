@@ -1,0 +1,12 @@
+// table: state-binding fixture — mutating the bound `selected`
+// index changes the chosen row.
+component main {
+    var idx = 0
+    table(columns=["Name", "Role"], selectable=true, selected=idx)
+}
+
+func testTableSelectedMutates(t Test, c main) {
+    t.assert(c.idx == 0)
+    c.idx = 3
+    t.assert(c.idx == 3)
+}
