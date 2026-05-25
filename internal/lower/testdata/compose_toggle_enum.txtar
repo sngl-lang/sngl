@@ -20,13 +20,10 @@ enum Mode {
     off
     on
 }
-func main.tick(this main) {
-    ready = !ready
-}
 component main {
     var m Mode = 0
     var ready bool = false
-    func main.tick(this main) {
+    func tick(this main) {
         ready = !ready
     }
     button(@click {

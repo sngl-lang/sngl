@@ -14,21 +14,12 @@ struct __lambda0_caps {
     sum ref<int>
     x int
 }
-func main.run(this main) {
-    for x = [1, 2, 3] {
-        var f func() = __closure(__lambda0, __lambda0_caps{
-            sum = &sum,
-            x = x,
-        })
-        f()
-    }
-}
 func __lambda0(state __lambda0_caps) {
     *state.sum = *state.sum + state.x
 }
 component main {
     var sum int = 0
-    func main.run(this main) {
+    func run(this main) {
         for x = [1, 2, 3] {
             var f func() = __closure(__lambda0, __lambda0_caps{
                 sum = &sum,
