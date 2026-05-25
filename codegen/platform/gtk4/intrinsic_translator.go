@@ -187,6 +187,23 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	}
 }
 
+// boolToGoInt wraps a Go bool expression in `ternary(expr, 1, 0)` so the
+// result is a Go int. cgo cannot convert bool directly to a named C
+// integer typedef like gboolean — `C.gboolean(boolVar)` fails to compile
+// — so callers wrap the bool first, then pass the int through C.gboolean.
+// The ternary helper is already declared in the model.go.tmpl template.
+func boolToGoInt(expr ir.Expr) ir.Expr {
+	return &ir.Call{
+		Type: ir.TypInt,
+		Func: &ir.Func{Name: "ternary"},
+		Args: []ir.CallArg{
+			{Value: expr},
+			{Value: &ir.Literal{Type: ir.TypInt, Raw: "1"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Raw: "0"}},
+		},
+	}
+}
+
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
 	// button, ...) with their gtk4.sngl-defined native widget bodies
@@ -437,7 +454,7 @@ func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType
 	// Boolean-only setter shortcut — kept for setters whose GIR metadata
 	// we may not have resolved.
 	if setter == "gtk_check_button_set_active" {
-		return nativeCall("gboolean", value)
+		return nativeCall("gboolean", boolToGoInt(value))
 	}
 	if valType != "" {
 		// Enum / named-type setter. Map literal strings to C constants.
@@ -453,7 +470,7 @@ func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType
 	if vt := exprIRType(value); vt != nil {
 		switch vt.Kind {
 		case ir.TypeBool:
-			return nativeCall("gboolean", value)
+			return nativeCall("gboolean", boolToGoInt(value))
 		case ir.TypeInt:
 			return nativeCall("int", value)
 		case ir.TypeFloat:
