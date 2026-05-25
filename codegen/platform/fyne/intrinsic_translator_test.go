@@ -40,7 +40,7 @@ func TestFyneTranslator_OnCreateNode_Text(t *testing.T) {
 	var fields []string
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		fields = append(fields, name+" "+goType)
-	})
+	}, nil)
 	got := renderStmts(gc, tr.OnCreateNode(context.Background(), "__n0", "text"))
 	if !strings.Contains(got, "m.__n0 = widget.NewLabel(") {
 		t.Errorf("expected widget.NewLabel constructor; got: %s", got)
@@ -53,7 +53,7 @@ func TestFyneTranslator_OnCreateNode_Text(t *testing.T) {
 
 func TestFyneTranslator_OnCreateNode_UnknownTag(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := tr.OnCreateNode(context.Background(), "__n0", "wibble")
 	if len(got) != 0 {
 		t.Errorf("expected empty emission for unknown tag; got: %v", got)
@@ -62,7 +62,7 @@ func TestFyneTranslator_OnCreateNode_UnknownTag(t *testing.T) {
 
 func TestFyneTranslator_OnAppendChild(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	// Walker passes the slot-func param Ident bare; translator renames
 	// to "container" to match emitIRSlotFunc's typed-slot prologue.
 	parent := &ir.Ident{Name: "parent"}
@@ -76,7 +76,7 @@ func TestFyneTranslator_OnAppendChild(t *testing.T) {
 
 func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	// "__entry" is the For loop-key (non-synthesized) so stays bare.
 	parent := &ir.Ident{Name: "parent"}
 	child := &ir.Ident{Name: "__entry"}
@@ -89,7 +89,7 @@ func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 
 func TestFyneTranslator_OnAttachHandler_InputChanged(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "input")
 	node := synthNodeRef("__n0")
 	handler := &ir.Ident{Name: "__handleInput"}
@@ -101,7 +101,7 @@ func TestFyneTranslator_OnAttachHandler_InputChanged(t *testing.T) {
 
 func TestFyneTranslator_OnAttachHandler_UnknownEvent(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "input")
 	node := synthNodeRef("__n0")
 	handler := &ir.Ident{Name: "h"}
@@ -113,7 +113,7 @@ func TestFyneTranslator_OnAttachHandler_UnknownEvent(t *testing.T) {
 
 func TestFyneTranslator_OnPropAssign_TextValue(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
 
 	node := synthNodeRef("__n0")
@@ -127,7 +127,7 @@ func TestFyneTranslator_OnPropAssign_TextValue(t *testing.T) {
 
 func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 	gc := stubGC()
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
 	node := synthNodeRef("__n0")
 	val := &ir.Literal{Type: ir.TypString, Raw: "x"}
@@ -155,7 +155,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 			}},
 		},
 	}
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
 	if !strings.Contains(got, "for _, __entry := range m.__slot0") {
 		t.Errorf("expected range over m.__slot0; got:\n%s", got)
@@ -185,7 +185,7 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 			},
 		},
 	}
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
 	if !strings.Contains(got, "if ") || !strings.Contains(got, "visible") {
 		t.Errorf("expected 'if visible' shape; got: %s", got)
@@ -202,7 +202,7 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
 	want := "m.__slot0 = nil"
 	if strings.TrimSpace(got) != want {
@@ -225,7 +225,7 @@ func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 			},
 		},
 	}
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
 	want := "m.__slot0 = append(m.__slot0, m.__n0)"
 	if strings.TrimSpace(got) != want {
@@ -266,7 +266,7 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 			}},
 		},
 	}
-	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {})
+	tr := newFyneTranslator(gc, platformBlueprints(), func(_, _ string) {}, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
 	if !strings.Contains(got, "for _, item := range") {
 		t.Errorf("expected 'for _, item := range'; got:\n%s", got)

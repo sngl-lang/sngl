@@ -178,7 +178,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var entrySync []entrySyncRec
-	var blueprintImports map[string]bool
+	blueprintImports := map[string]bool{}
+	addBlueprintImport := func(p string) { blueprintImports[p] = true }
 	singleRoot := true
 	var endLabel, endContainer int
 
@@ -199,7 +200,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			bodyStmts := wins[0].Body
 			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			})
+			}, addBlueprintImport)
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -241,7 +242,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			var winBuf strings.Builder
 			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			})
+			}, addBlueprintImport)
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -278,7 +279,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
-			cc, ctx, gc, info, windowNames, endLabel, endContainer,
+			cc, ctx, gc, info, windowNames, endLabel, endContainer, addBlueprintImport,
 		)
 		componentCodes = append(componentCodes, code)
 		widgetFields = append(widgetFields, compFields...)
@@ -339,11 +340,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, addBlueprintImport)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeTags)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeTags, addBlueprintImport)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -626,6 +627,7 @@ func renderIRComponentMethod(
 	info *irAnalysis,
 	windowNames map[string]bool,
 	startLabel, startContainer int,
+	importSink func(string),
 ) (code string, fields []irWidgetField, nextLabel, nextContainer int) {
 	methodName := "render" + golang.ExportName(cc.Component.Name)
 
@@ -649,7 +651,7 @@ func renderIRComponentMethod(
 	var compFields []irWidgetField
 	tr := newFyneTranslator(compGC, platformBlueprints(), func(name, goType string) {
 		compFields = append(compFields, irWidgetField{name: name, goType: goType})
-	})
+	}, importSink)
 
 	bodyStmts := codegen.WalkLowered(context.Background(), cc.Body, tr)
 
@@ -873,7 +875,7 @@ func collectNodeTags(pkg *ir.Package, funcs []*ir.Func) map[string]string {
 // stmts (reactive splices injected by passReactivity) flow through
 // the same WalkLowered + translator pipeline as slot bodies so they
 // pick up widget-setter rewrites via OnPropAssign.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeTags map[string]string) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeTags map[string]string, importSink func(string)) {
 	bp := platformBlueprints()[fn.LoweredFromTag]
 	var binding *bindMeta
 	if bp != nil {
@@ -894,7 +896,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	})
+	}, importSink)
 	// Pre-populate idTags so OnPropAssign in reactivity splices can find
 	// the binding for nodes created in sibling slot Funcs.
 	maps.Copy(tr.idTags, nodeTags)
@@ -967,10 +969,10 @@ func parseSignatureParams(sig string) []*ir.Param {
 // codegen.WalkLowered routes intrinsic shapes through fyneTranslator
 // into ir.Stmt fragments; we then feed them through gc.EvalStmt at
 // the source-emission boundary.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, importSink func(string)) {
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	})
+	}, importSink)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	synthesized := &ir.Func{

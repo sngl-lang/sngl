@@ -19,6 +19,7 @@ type fyneTranslator struct {
 	gc         *golang.GoIRContext
 	blueprints map[string]*fyneBlueprint
 	fieldSink  func(name, goType string)
+	importSink func(path string)
 	idTags     map[string]string
 	// topLevel tracks widget ids created via OnCreateNode that have not
 	// (yet) been consumed by an AppendChild. Window-body/component-method
@@ -27,11 +28,12 @@ type fyneTranslator struct {
 	topLevel []string
 }
 
-func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string)) *fyneTranslator {
+func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
 	return &fyneTranslator{
 		gc:         gc,
 		blueprints: blueprints,
 		fieldSink:  fieldSink,
+		importSink: importSink,
 		idTags:     map[string]string{},
 	}
 }
@@ -102,6 +104,25 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	t.fieldSink(id, bp.Constructor.GoType)
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
+	// Only flow imports whose package name is referenced by the ctor
+	// goFn/goType — blueprints may list extra imports (e.g. "net/url")
+	// used by the unused prelude/Raw-arg path, which would otherwise
+	// leak as unused imports.
+	if t.importSink != nil {
+		ref := bp.Constructor.GoFn + " " + bp.Constructor.GoType
+		for _, imp := range bp.Constructor.Imports {
+			if imp == "" {
+				continue
+			}
+			pkg := imp
+			if i := strings.LastIndex(imp, "/"); i >= 0 {
+				pkg = imp[i+1:]
+			}
+			if strings.Contains(ref, pkg+".") {
+				t.importSink(imp)
+			}
+		}
+	}
 
 	args := zeroArgsToExprs(bp.Constructor.ZeroArgs)
 	ctor := nativeCall(bp.Constructor.GoFn, args, ir.TypDyn)
@@ -125,6 +146,8 @@ func zeroArgsToExprs(zeroArgs string) []ir.Expr {
 			&ir.Literal{Type: ir.TypString, Raw: ""},
 			&ir.Literal{Type: ir.TypNull},
 		}
+	case `nil`:
+		return []ir.Expr{&ir.Literal{Type: ir.TypNull}}
 	}
 	return nil
 }
@@ -141,9 +164,31 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	// Single-child containers (e.g. *container.Scroll) have no Add method;
+	// assign to .Content instead. Detected via parent's tag → blueprint.
+	parentTag := t.idTags[identBareName(parent)]
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
+	if bp, ok := t.blueprints[parentTag]; ok && bp.Constructor != nil && isSingleChildContainerGoFn(bp.Constructor.GoFn) {
+		return []ir.Stmt{&ir.Assign{
+			Target: &ir.Select{Operand: parent, Field: "Content", Type: ir.TypDyn},
+			Op:     ast.AssignSet,
+			Value:  child,
+		}}
+	}
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Add", []ir.Expr{child}, ir.TypVoid)}}
+}
+
+// isSingleChildContainerGoFn reports whether the given fyne constructor
+// produces a widget that stores its child via a `Content` field rather
+// than an Add method. Used by OnAppendChild to switch from
+// `parent.Add(child)` to `parent.Content = child` for those types.
+func isSingleChildContainerGoFn(goFn string) bool {
+	switch goFn {
+	case "container.NewVScroll", "container.NewHScroll", "container.NewScroll":
+		return true
+	}
+	return false
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {

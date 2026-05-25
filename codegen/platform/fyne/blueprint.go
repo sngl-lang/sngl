@@ -113,8 +113,18 @@ func loadBlueprints() map[string]*fyneBlueprint {
 		// component name would miss aliases like avatar/chip/divider that
 		// all reduce to widget.NewLabel.
 		zeroArgsByGoFn := map[string]string{
-			"widget.NewLabel":  `""`,
-			"widget.NewButton": `"", nil`,
+			"widget.NewLabel":          `""`,
+			"widget.NewButton":         `"", nil`,
+			"widget.NewCheck":          `"", nil`,
+			"widget.NewHyperlink":      `"", nil`,
+			"widget.NewEntry":          "",
+			"widget.NewPasswordEntry":  "",
+			"widget.NewMultiLineEntry": "",
+			"canvas.NewImageFromURI":   `nil`,
+			"canvas.NewImageFromFile":  `""`,
+			"container.NewVScroll":     `nil`,
+			"container.NewHScroll":     `nil`,
+			"container.NewScroll":      `nil`,
 		}
 		for _, bp := range blueprintByName {
 			if bp.Constructor == nil || bp.Constructor.ZeroArgs != "" {
