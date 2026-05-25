@@ -1,0 +1,14 @@
+// checkbox: state-binding fixture — toggling the bound `checked`
+// var propagates to the checkbox.
+component main {
+    var on = false
+    checkbox(checked=on, label="Enable")
+}
+
+func testCheckboxToggles(t Test, c main) {
+    t.assert(c.on == false)
+    c.on = true
+    t.assert(c.on == true)
+    c.on = false
+    t.assert(c.on == false)
+}
