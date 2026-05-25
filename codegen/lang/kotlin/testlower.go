@@ -404,8 +404,17 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			b.WriteString("    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()\n\n")
 		}
 	case TestEmitAgent:
+		b.WriteString("import androidx.compose.ui.test.junit4.ComposeContentTestRule\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
+		// Test bodies emitted below reference `composeTestRule` for
+		// runOnUiThread / waitForIdle / onNodeWithTag. These functions
+		// are package-level (not members of the JUnit wrapper class
+		// MainScreenAgentTest), so they can't see the @Rule field
+		// directly. Expose the rule as a package-scope lateinit var
+		// initialised by MainScreenAgentTest before its @Test body
+		// touches anything that calls into the test functions.
+		b.WriteString("lateinit var composeTestRule: ComposeContentTestRule\n\n")
 	}
 
 	for i, fn := range fns {

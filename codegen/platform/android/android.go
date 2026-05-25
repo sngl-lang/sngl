@@ -331,7 +331,22 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	if gradleScaffold {
 		prefix = "app/src/main/java/" + pkgToPath(cfg.Package) + "/"
 	}
-	if err := writeAndroidSourceFile(sink, prefix+"TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
+	// TestAgentRunner.kt references androidx.compose.ui.test types
+	// (ComposeContentTestRule + onNodeWithTag/runOnUiThread/etc.),
+	// which only live on the testImplementation classpath. Under the
+	// robolectric path that means it has to live in src/test/, not
+	// src/main/, or :app:compileDebugKotlin can't resolve those refs.
+	// Device path keeps it in main because instrumented tests pull
+	// the same deps into the runtime classpath via androidTest.
+	runnerPath := cfg.TestRunner
+	if runnerPath == "" {
+		runnerPath = "robolectric"
+	}
+	runnerPrefix := prefix
+	if gradleScaffold && runnerPath == "robolectric" {
+		runnerPrefix = "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
+	}
+	if err := writeAndroidSourceFile(sink, runnerPrefix+"TestAgentRunner.kt", req.Lang, ktOpts, []byte(src)); err != nil {
 		return err
 	}
 	accessor := []byte("package " + cfg.Package + `
@@ -415,6 +430,12 @@ class MainScreenAgentTest {
     private var __sngl_content_set = false
 
     @Test fun runAgent() {
+        // Publish the @Rule to the package-scope composeTestRule
+        // lateinit var that TestAgentRunner.kt's package-level test
+        // functions reference. Must happen before SnglTestRegistration
+        // (or any registered test body) executes.
+        composeTestRule = composeRule
+
         // Force-load SnglTestRegistration so its init {} block wires
         // every test function into the testagent Registry before the
         // driver issues its first "list"/"run".
