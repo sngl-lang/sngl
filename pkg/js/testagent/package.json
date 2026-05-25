@@ -1,0 +1,16 @@
+{
+  "name": "@sngl/testagent",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "testagent.js",
+  "exports": {
+    ".": "./testagent.js",
+    "./rpc": "./rpc.js",
+    "./t": "./t.js",
+    "./registry": "./registry.js",
+    "./snapshot": "./snapshot.js"
+  },
+  "scripts": {
+    "test": "node --test testagent.test.js"
+  }
+}
