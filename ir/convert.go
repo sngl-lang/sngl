@@ -49,7 +49,19 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	for _, u := range pkg.Units {
 		stmts = append(stmts, c.convertUnitDef(u))
 	}
+	// Skip funcs whose receiver is a component name in this package —
+	// the checker mirrors them into both pkg.Funcs and comp.Funcs, and
+	// convertComponent emits the comp.Funcs copy as nested decls. Emitting
+	// them again here would produce duplicate `Comp.method` decls at the
+	// document root.
+	componentNames := map[string]bool{}
+	for _, comp := range pkg.Components {
+		componentNames[comp.Name] = true
+	}
 	for _, f := range pkg.Funcs {
+		if f.Receiver != "" && componentNames[f.Receiver] {
+			continue
+		}
 		stmts = append(stmts, c.convertFuncDef(f))
 	}
 	for _, v := range pkg.Consts {
@@ -231,7 +243,14 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 	}
 	for _, f := range comp.Funcs {
-		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
+		fd := c.convertFuncDef(f)
+		// Inside a component body the receiver is implicit; emitting it
+		// as `Comp.name` would re-route the decl as a free-standing
+		// method on type `Comp` rather than a component method.
+		if f.Receiver != "" && f.Receiver == comp.Name {
+			fd.Name = f.Name
+		}
+		bodyStmts = append(bodyStmts, fd)
 	}
 	for _, t := range comp.Timers {
 		bodyStmts = append(bodyStmts, c.convertTimer(t))
