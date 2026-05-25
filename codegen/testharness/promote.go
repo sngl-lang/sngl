@@ -25,8 +25,6 @@ func Promote(doc *ast.Document, name string) *ast.Document {
 	var stmts []ast.Stmt
 	for _, s := range doc.Stmts {
 		switch d := s.(type) {
-		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
-			stmts = append(stmts, s)
 		case *ast.ComponentDecl:
 			// Drop the component we're promoting from — its body
 			// decls are about to be lifted to root, and keeping the
@@ -35,6 +33,22 @@ func Promote(doc *ast.Document, name string) *ast.Document {
 			if d.Name == name {
 				continue
 			}
+			stmts = append(stmts, s)
+		case *ast.FuncDef:
+			// Drop test funcs: the launcher re-attaches the test
+			// funcs for this group onto the re-checked package
+			// directly. Keeping them here makes the re-check try to
+			// resolve their `c <Component>` parameter against a
+			// component type that no longer exists post-promotion.
+			if d.IsTest() {
+				continue
+			}
+			stmts = append(stmts, s)
+		default:
+			// Preserve everything else (Import, top-level VarDecl /
+			// ConstDecl, StructDef/EnumDef/UnitDef, PlatformStmt,
+			// output blocks, etc.) so the re-check has the same
+			// supporting context as the original document.
 			stmts = append(stmts, s)
 		}
 	}
