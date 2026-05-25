@@ -1,0 +1,14 @@
+// menu: state-binding fixture — toggling the bound `open` var
+// shows/hides the menu.
+component main {
+    var open = false
+    menu(items=["Cut", "Copy", "Paste"], open=open)
+}
+
+func testMenuOpenToggles(t Test, c main) {
+    t.assert(c.open == false)
+    c.open = true
+    t.assert(c.open == true)
+    c.open = false
+    t.assert(c.open == false)
+}
