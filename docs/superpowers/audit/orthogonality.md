@@ -21,8 +21,6 @@ specific check; everything else flows through the shared helpers.
 
 ---
 
-
-
 - `codegen/lang/golang/golang.go:447` (`PackageUsesI18n`, with helpers
   `funcUsesI18n`, `stmtUsesI18n`, `exprUsesI18n` at 492–577).
 - `codegen/platform/html/i18n.go:23` (`hasI18nCalls`, plus a private
@@ -95,8 +93,6 @@ landed. Each lang owns file-level emission via `NewFileEmitter`; the
 remaining `LangTranslator` surface is the live API (no dead methods).
 
 ---
-
-
 
 `codegen/codegen.go:98-120`:
 
@@ -174,8 +170,6 @@ browser/emulator-driven harnesses. The matrix is data-driven via
 
 ---
 
-
-
 `codegen/lang/golang/testlower.go` exists (191 lines).
 `codegen/lang/kotlin/testlower.go` exists (305 lines).
 JS has no testlower; the html platform's tests run inside CDP/rod
@@ -198,12 +192,10 @@ specific thing and remove it from `none` and android-go's `SupportedLangs`.
 
 Shared `golang.BaseImports(pkg) []BaseImport` collects native imports
 + sngl-i18n runtime in one place. gtk4, fyne, bubbletea seed their
-`goImports` from this. Android-go's gogen emits a golib bridge only —
-not a BaseImports user.
+  `goImports` from this. Android-go's gogen emits a golib bridge only —
+  not a BaseImports user.
 
 ---
-
-
 
 `codegen/platform/bubbletea/compiler_ir.go:93,118,135,141,165,201,242,266,297`
 `codegen/platform/fyne/compiler_ir.go:80,86,149,179,184`
@@ -241,8 +233,6 @@ working-directory manifest beside the executable. Shared emit helper:
 
 ---
 
-
-
 `codegen/platform/html/i18n.go:331-371` reads/marshals `i18n.manifest.json`.
 `codegen/platform/android/i18n.go:55+` does the same and emits a different
 output location (`app/src/main/assets/...`).
@@ -276,8 +266,6 @@ HTTPCompiler-implementing langs already drives that method, so the
 dynamic semantics survive.
 
 ---
-
-
 
 `codegen/codegen.go:124-125` (PlatformGenerator):
 
@@ -395,15 +383,12 @@ emitter the platform needs.
 ### 12. Per-language `IsI18nCall` is a static string-set, redundant with `Func.Intrinsic` ✅ RESOLVED (2026-05-23)
 
 New `codegen/i18n` package exposes `IsCall(*ir.Call)` (matches both
-`Func.Receiver == "i18n"` pre-inline and `Func.Intrinsic ∈
-ir.I18nIntrinsics` post-inline) and `IsIntrinsic(name)`. The three
+`Func.Receiver == "i18n"` pre-inline and `Func.Intrinsic ∈ ir.I18nIntrinsics` post-inline) and `IsIntrinsic(name)`. The three
 per-lang `IsI18nCall` string-set switches are gone; `IsIntlIntrinsic`
 shims remain on the language translators as one-line delegations for
 existing internal call sites. Single source of truth: `ir.I18nIntrinsics`.
 
 ---
-
-
 
 `codegen/lang/golang/golang.go:406`
 `codegen/lang/javascript/javascript.go:113`
@@ -432,8 +417,6 @@ lives inside the helper, so platforms no longer reference
 packages returns no hits.)
 
 ---
-
-
 
 `codegen/platform/bubbletea/compiler_ir.go:141`
 `codegen/platform/fyne/compiler_ir.go:86`
@@ -465,8 +448,6 @@ now lower correctly. Falls back to `c` when no component param is
 present (assertion-only tests).
 
 ---
-
-
 
 `codegen/lang/kotlin/testlower.go:60,251,259,263,293`:
 
@@ -555,8 +536,6 @@ node now updates exactly one site.
 
 ---
 
-
-
 `codegen/platform/html/i18n.go:47-278` is a 230-line IR visitor that
 panics on every unhandled node. `codegen/treewalk.go` and `ir/strip.go`
 already exist for IR walks. Android's i18n.go has its own copy too.
@@ -630,8 +609,6 @@ to function-shaped JS components (or a context.Context-style
 runtime) can flip just one flag off — see "Future ideas" below.
 
 ---
-
-
 
 The `NoContext` lowering rewrites context reads into hidden parameters.
 Every Go-target platform sets it because Go has no implicit threading.
