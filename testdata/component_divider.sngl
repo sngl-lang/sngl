@@ -1,0 +1,10 @@
+// divider: A-tier — only style/direction/label, no testable state.
+component main {
+    vbox {
+        text(value="Section 1")
+        divider
+        text(value="Section 2")
+        divider(label="OR")
+        text(value="Section 3")
+    }
+}
