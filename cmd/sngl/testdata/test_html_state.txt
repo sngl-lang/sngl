@@ -1,0 +1,19 @@
+# html end-to-end: state-only assertions via sngl test --platform=html.
+# Skips cleanly when Chrome/Chromium isn't on PATH (launcher returns
+# codegen.SkipError, driver surfaces it as a passing TestResult with
+# SKIP log — stdout 'PASS' matches).
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+output { none { html } }
+
+component main {
+    var count = 0
+    text(value=string(count))
+}
+
+func testInitial(t Test, c main) {
+    t.assert(c.count == 0)
+}
