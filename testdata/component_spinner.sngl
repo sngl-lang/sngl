@@ -1,0 +1,5 @@
+// spinner: A-tier — the real stdlib signature exposes only
+// label/variant/size (no `visible` prop). Declaration-only fixture.
+component main {
+    spinner(label="Loading...", variant="circle", size="large")
+}
