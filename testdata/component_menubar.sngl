@@ -1,0 +1,4 @@
+// menubar: A-tier — declaration only.
+component main {
+    menubar(items=["File", "Edit", "View", "Help"])
+}
