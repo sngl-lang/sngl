@@ -1,0 +1,16 @@
+// drawer: state-binding fixture — toggling bound `open` slides the
+// drawer in/out.
+component main {
+    var open = false
+    drawer(open=open, side="right", size="medium") {
+        text(value="drawer content")
+    }
+}
+
+func testDrawerOpenToggles(t Test, c main) {
+    t.assert(c.open == false)
+    c.open = true
+    t.assert(c.open == true)
+    c.open = false
+    t.assert(c.open == false)
+}
