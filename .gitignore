@@ -14,3 +14,6 @@ _site/
 # Gradle build artifacts from pkg/kotlin/testagent
 pkg/kotlin/testagent/.gradle/
 pkg/kotlin/testagent/build/
+
+# Smoke-test scratch dirs
+/out/
