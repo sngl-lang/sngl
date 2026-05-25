@@ -25,6 +25,7 @@ type gtk4Translator struct {
 	pkg          *ir.Package // optional; used to consult GIR-resolved native metadata
 	fieldSink    func(name, cType string)
 	idCTypes     map[string]string // id ("__n0") → GTK C type ("GtkLabel")
+	skipped      map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
 	topLevel     []string
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
 }
@@ -34,6 +35,7 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		gc:           gc,
 		fieldSink:    fieldSink,
 		idCTypes:     map[string]string{},
+		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
 	}
 }
@@ -192,6 +194,12 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
 	comp, nm := t.lookupNativeByTag(tag)
 	if nm == nil {
+		// No native widget mapping for this tag (e.g. stdlib component
+		// like `avatar`/`chip`/`divider` with no gtk4 override). Record
+		// the id as skipped so later AppendChild/PropAssign/AttachHandler
+		// references to it are dropped — otherwise we'd emit `m.<id>`
+		// for a field that was never declared on Model.
+		t.skipped[id] = struct{}{}
 		return nil
 	}
 	// gtk_application_window_new requires the GtkApplication;
@@ -292,7 +300,23 @@ func (t *gtk4Translator) parentCType(e ir.Expr) string {
 	return ""
 }
 
+// isSkipped reports whether the expression refers to a synthesized
+// widget id whose OnCreateNode emitted nothing (no Model field exists
+// for it). Later refs to such ids must be dropped to keep the emitted
+// model.go consistent.
+func (t *gtk4Translator) isSkipped(e ir.Expr) bool {
+	if id, ok := e.(*ir.Ident); ok {
+		if _, ok := t.skipped[id.Name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if t.isSkipped(parent) || t.isSkipped(child) {
+		return nil
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -316,6 +340,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if t.isSkipped(parent) || t.isSkipped(child) {
+		return nil
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -345,6 +372,9 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	if t.isSkipped(node) {
+		return nil
+	}
 	bare := identBareName(node)
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -498,6 +528,9 @@ func gtk4SignalFor(cType, event string) string {
 }
 
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	if t.isSkipped(node) {
+		return nil
+	}
 	bare := identBareName(node)
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
