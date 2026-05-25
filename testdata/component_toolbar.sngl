@@ -1,0 +1,8 @@
+// toolbar: A-tier — declaration only.
+component main {
+    toolbar {
+        button(text="New")
+        button(text="Open")
+        button(text="Save")
+    }
+}
