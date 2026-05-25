@@ -1,0 +1,8 @@
+// link: A-tier — href/target are static literals, no testable
+// state-binding contract.
+component main {
+    hbox {
+        link(href="https://example.com", text="Example")
+        link(href="https://example.com", text="New tab", target="blank")
+    }
+}
