@@ -1,0 +1,14 @@
+// slot: A-tier — Wrapper uses slot{} to project children from main.
+component Wrapper() list<component> {
+    vbox {
+        text(value="header")
+        slot
+        text(value="footer")
+    }
+}
+
+component main {
+    Wrapper {
+        text(value="projected child")
+    }
+}
