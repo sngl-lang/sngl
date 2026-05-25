@@ -5,7 +5,6 @@
 package none
 
 import (
-
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
@@ -26,7 +25,7 @@ func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
 
-func (t *Translator) GenerateIdentifier(name *ir.Ident) string { return name.Name }
+func (t *Translator) GenerateIdentifier(name *ir.Ident) string                   { return name.Name }
 func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string { return "" }
 func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 	return nil
@@ -40,4 +39,3 @@ func (t *Translator) ExportName(name string) string       { return name }
 func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
 	return &codegen.UnimplementedFileEmitter{Lang: "none"}
 }
-

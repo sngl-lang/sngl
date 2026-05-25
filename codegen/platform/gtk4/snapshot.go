@@ -153,7 +153,6 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	return results, nil
 }
 
-
 func writeGtk4SnapshotHarness(dir string, _ bool) error {
 	harness := `package main
 

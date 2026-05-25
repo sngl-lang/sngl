@@ -37,7 +37,6 @@ func hasI18nCalls(pkg *ir.Package) bool {
 	return found
 }
 
-
 // i18nRuntimeSnippet returns a self-contained JS snippet that declares a
 // module-scoped `const i18n` object exposing `getTranslator` (and
 // `_resetTranslator` for tests). The snippet is produced by bundling

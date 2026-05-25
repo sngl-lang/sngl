@@ -296,7 +296,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //     app/src/test/kotlin (robolectric) or app/src/androidTest/kotlin
 //     (device), suitable for `./gradlew test` / `connectedCheck`.
 //   - agent: TestAgentRunner.kt + AgentMain.kt + TestModelAccessor.kt
-//     + RobolectricSnapshot.kt (when testRunner=robolectric). The
+//   - RobolectricSnapshot.kt (when testRunner=robolectric). The
 //     launcher in Task 5 relocates these into a generated project.
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
@@ -378,12 +378,12 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // robolectricAgentTestKotlin returns the source of MainScreenAgentTest,
 // a single @RunWith(RobolectricTestRunner)-annotated JUnit class with
 // one @Test method. The method:
-//   1. Touches SnglTestRegistration so its init {} block fires, wiring
-//      every generated test function into the testagent Registry.
-//   2. Registers a Snapshots capture closure that rasterises the
-//      ComposeContentTestRule's root into a PNG (used by t.snapshot()).
-//   3. Reads -Dsngl.agent.port=<N> and dials back to the driver-side
-//      listener, then runs the same RPC loop as the device path.
+//  1. Touches SnglTestRegistration so its init {} block fires, wiring
+//     every generated test function into the testagent Registry.
+//  2. Registers a Snapshots capture closure that rasterises the
+//     ComposeContentTestRule's root into a PNG (used by t.snapshot()).
+//  3. Reads -Dsngl.agent.port=<N> and dials back to the driver-side
+//     listener, then runs the same RPC loop as the device path.
 //
 // Runs under AGP's :app:testDebugUnitTest, which Robolectric instruments
 // with a fake Android runtime — so android.graphics.Bitmap, compose UI

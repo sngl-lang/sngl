@@ -73,4 +73,3 @@ func i18nManifestFile(cfg Config, projectFS fs.FS) *codegen.OutputFile {
 	}
 	return codegen.BytesFile("app/src/main/assets/"+snglI18n.ManifestFileName, data)
 }
-

@@ -591,7 +591,6 @@ func (jc *JsIRContext) evalCallArgs(args []ir.CallArg) []string {
 	return out
 }
 
-
 // WithLocal returns a new context with an additional local variable.
 func (jc *JsIRContext) WithLocal(name string) *JsIRContext {
 	return &JsIRContext{

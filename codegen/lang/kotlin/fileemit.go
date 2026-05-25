@@ -37,7 +37,7 @@ func (fe *fileEmitter) Write(p []byte) (int, error) {
 // EvalExpr / EvalStmt are placeholders until the Kotlin path is rewritten
 // to emit through this surface. Today's android-kotlin path writes the
 // entire Kotlin body through Write as a pre-rendered byte slice.
-func (fe *fileEmitter) EvalExpr(e ir.Expr) string  { return "" }
+func (fe *fileEmitter) EvalExpr(e ir.Expr) string   { return "" }
 func (fe *fileEmitter) EvalStmt(s ir.Stmt) []string { return nil }
 
 func (fe *fileEmitter) RequireImport(path string) string { return path }

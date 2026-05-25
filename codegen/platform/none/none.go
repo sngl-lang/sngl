@@ -18,8 +18,8 @@ func (g *Generator) PlatformIdentifier() string { return "none" }
 func (g *Generator) Description() string {
 	return "Marker platform for headless test execution — generates no code."
 }
-func (g *Generator) SupportedLangs() []string               { return nil }
-func (g *Generator) Package() []*ast.Document               { return nil }
+func (g *Generator) SupportedLangs() []string            { return nil }
+func (g *Generator) Package() []*ast.Document            { return nil }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities() lower.Caps            { return lower.Caps{} }
 

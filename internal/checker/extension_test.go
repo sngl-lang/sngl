@@ -18,9 +18,9 @@ type extStubPlatform struct {
 	source string
 }
 
-func (extStubPlatform) PlatformIdentifier() string           { return "extstub" }
-func (extStubPlatform) Description() string                  { return "extension-merge test stub" }
-func (extStubPlatform) Resolve(string) ir.Symbol { return nil }
+func (extStubPlatform) PlatformIdentifier() string { return "extstub" }
+func (extStubPlatform) Description() string        { return "extension-merge test stub" }
+func (extStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 func (p extStubPlatform) Package() []*ast.Document {
 	doc, err := parser.Parse("extstub.sngl", []byte(p.source))

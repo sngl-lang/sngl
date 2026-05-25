@@ -230,9 +230,9 @@ func (e errCapsName) Error() string {
 // nothing else.
 type testStubPlatform struct{}
 
-func (testStubPlatform) PlatformIdentifier() string           { return "teststub" }
-func (testStubPlatform) Description() string                  { return "in-test platform stub" }
-func (testStubPlatform) Resolve(string) ir.Symbol             { return nil }
+func (testStubPlatform) PlatformIdentifier() string { return "teststub" }
+func (testStubPlatform) Description() string        { return "in-test platform stub" }
+func (testStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 const testStubSource = `
 component Cleanwrap(value string) {

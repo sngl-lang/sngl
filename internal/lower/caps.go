@@ -12,15 +12,15 @@ import "strings"
 // Caps values come from the platform's and language's Capabilities() methods
 // and are merged field-wise via OR before lower.Lower runs.
 type Caps struct {
-	NoToggle           bool // x!! → x = !x
-	NoTernary          bool // a ? b : c → if/else stmt with temp var
-	NoLambda           bool // closures → top-level funcs + captured-state struct
-	NoRef              bool // ref<T> → synthesized one-field reference-semantic struct
-	NoUnit             bool // unit values → underlying int
-	NoEnum             bool // enum members → int constants
-	NoAsyncReactive    bool // async in reactive contexts → settled state-field + kicker
-	NoComputed         bool // computed vars → inlined exprs or memoized funcs
-	NoTimer            bool // timer decls → explicit scheduler.At()/cancel() calls
+	NoToggle        bool // x!! → x = !x
+	NoTernary       bool // a ? b : c → if/else stmt with temp var
+	NoLambda        bool // closures → top-level funcs + captured-state struct
+	NoRef           bool // ref<T> → synthesized one-field reference-semantic struct
+	NoUnit          bool // unit values → underlying int
+	NoEnum          bool // enum members → int constants
+	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
+	NoComputed      bool // computed vars → inlined exprs or memoized funcs
+	NoTimer         bool // timer decls → explicit scheduler.At()/cancel() calls
 	// StructComponents declares that components compile to structs with
 	// methods rather than functions/closures. User-declared `context #foo`
 	// blocks must be lowered into hidden Vars on each component in

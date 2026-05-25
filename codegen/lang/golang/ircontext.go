@@ -191,7 +191,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 
 func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
 
-func (gc *GoIRContext) Call(n *ir.Call) string         { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
+func (gc *GoIRContext) Call(n *ir.Call) string             { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
 func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConversion(n) }
 func (gc *GoIRContext) Lambda(n *ir.Lambda) string         { return gc.evalLambda(n) }
 
