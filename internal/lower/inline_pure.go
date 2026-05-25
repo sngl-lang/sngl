@@ -484,6 +484,12 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args)...)
 					continue
 				}
+				// No matching user handler — the caller never bound @<name>.
+				// Drop the @<name>() invocation entirely so codegen doesn't
+				// emit a callee-less `()` expression. The wrapping platform
+				// handler may end up with an empty body; that's fine — the
+				// caller never wanted an event handler installed.
+				continue
 			}
 		}
 		switch n := s.(type) {
