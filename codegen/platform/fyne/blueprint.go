@@ -107,13 +107,20 @@ func loadBlueprints() map[string]*fyneBlueprint {
 				}
 			}
 		}
-		zeroArgs := map[string]string{
-			"text":   `""`,
-			"label":  `""`,
-			"button": `"", nil`,
+		// Zero-arg defaults keyed by constructor GoFn so every component
+		// that lowers to the same fyne ctor gets a buildable arg list at
+		// slot time (before real prop values are available). Keying by
+		// component name would miss aliases like avatar/chip/divider that
+		// all reduce to widget.NewLabel.
+		zeroArgsByGoFn := map[string]string{
+			"widget.NewLabel":  `""`,
+			"widget.NewButton": `"", nil`,
 		}
-		for name, args := range zeroArgs {
-			if bp, ok := blueprintByName[name]; ok && bp.Constructor != nil {
+		for _, bp := range blueprintByName {
+			if bp.Constructor == nil || bp.Constructor.ZeroArgs != "" {
+				continue
+			}
+			if args, ok := zeroArgsByGoFn[bp.Constructor.GoFn]; ok {
 				bp.Constructor.ZeroArgs = args
 			}
 		}
