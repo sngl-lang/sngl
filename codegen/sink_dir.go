@@ -1,5 +1,3 @@
-//go:build !js
-
 package codegen
 
 import (
@@ -10,7 +8,12 @@ import (
 )
 
 // DirSink writes files into Root on the local filesystem. Parent directories
-// are created on demand. Not available on WASM (use MemSink there).
+// are created on demand. Compiles under WASM (the whole codegen tree is built
+// to wasm so go:// const-evaluation can run), but is never invoked there —
+// wasm const-eval only calls pure data functions; use MemSink for any actual
+// output. Do not add a //go:build !js constraint here: the host-only snapshot/
+// run/launcher code across the platform packages references NewDirSink without
+// js guards, so gating it breaks the wasm build and blanks the whole docs site.
 type DirSink struct {
 	Root string
 }
