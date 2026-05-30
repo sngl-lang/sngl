@@ -185,7 +185,12 @@ component sngl.badge {
 component sngl.tabs {
     platform html {
         html.div(style={display="flex", flexDirection="column"}) {
-            html.div(role="tablist", style={display="flex", gap=4}) {
+            html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
+                for label = items {
+                    html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
+                }
+            }
+            html.div(role="tabpanel") {
                 slot
             }
         }
