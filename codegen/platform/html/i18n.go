@@ -55,7 +55,15 @@ func i18nRuntimeSnippet() (string, error) {
 		}
 		res := api.Build(api.BuildOptions{
 			Stdin: &api.StdinOptions{
-				Contents:   "export { getTranslator, _resetTranslator, Translator, defaultLocale } from \"./i18n.js\";\n",
+				// Re-export getTranslator (used by i18n.getTranslator().tr(...)
+				// calls) plus the direct formatters that the javascript
+				// translator emits as i18n.<fn>(...) for `$"..."` interpolation
+				// and direct i18n.* calls (codegen/lang/javascript/javascript.go).
+				// Without these, e.g. i18n.translate is tree-shaken out of the
+				// bundle and a $"...{plural}..." in a handler throws at runtime.
+				// (`select` is intentionally absent — i18n.js does not export it
+				// yet; that is a separate gap.)
+				Contents:   "export { getTranslator, _resetTranslator, Translator, defaultLocale, translate, format, numberInt, numberFloat, date, time, datetime, plural, selectordinal } from \"./i18n.js\";\n",
 				ResolveDir: js.VirtualRoot,
 				Sourcefile: "i18n-entry.js",
 				Loader:     api.LoaderJS,
