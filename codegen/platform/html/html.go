@@ -1415,7 +1415,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
 			switch name {
-			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled", "selected":
+			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled", "selected", "hidden":
 				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
 			default:
 				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
