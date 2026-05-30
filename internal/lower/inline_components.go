@@ -248,11 +248,15 @@ func (st *inlineCompState) freshSuffix() string {
 	return "__inst" + strconv.Itoa(n)
 }
 
-// renameIdents rewrites every Ident.Name whose Sym is in renames. Sym
-// stays pointing at the original decl so dataflow/reactivity passes can
-// still resolve. Mutates exprs in place; caller passes a deep clone.
-func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string) []ir.Stmt {
-	if len(renames) == 0 {
+// renameIdents rewrites Ident.Name via renames and repoints Ident.Sym via
+// symRenames. Repointing Sym is essential: after inlining, the cloned
+// vars/funcs live in main, and downstream passes (notably reactivity) collect
+// those clones and match dependencies by Sym pointer. Leaving Sym at the
+// original decl makes a reactive `if` referencing an inlined var resolve to a
+// var no longer in scope, so the dependency is missed and the branch loses
+// reactivity. Mutates exprs in place; caller passes a deep clone.
+func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	if len(renames) == 0 && len(symRenames) == 0 {
 		return stmts
 	}
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
@@ -260,20 +264,24 @@ func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string) []ir.Stmt {
 		if !ok || id.Sym == nil {
 			return e
 		}
-		if newName, ok2 := renames[id.Sym]; ok2 {
+		old := id.Sym
+		if newName, ok2 := renames[old]; ok2 {
 			id.Name = newName
+		}
+		if newSym, ok2 := symRenames[old]; ok2 {
+			id.Sym = newSym
 		}
 		return e
 	})
 	return w.stmts(stmts)
 }
 
-func renameInExpr(e ir.Expr, renames map[ir.Symbol]string) ir.Expr {
+func renameInExpr(e ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) ir.Expr {
 	if e == nil {
 		return nil
 	}
 	tmp := []ir.Stmt{&ir.LocalVar{Init: e}}
-	tmp = renameIdents(tmp, renames)
+	tmp = renameIdents(tmp, renames, symRenames)
 	return tmp[0].(*ir.LocalVar).Init
 }
 
@@ -519,6 +527,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	suffix := st.freshSuffix()
 
 	renames := map[ir.Symbol]string{}
+	symRenames := map[ir.Symbol]ir.Symbol{}
 
 	varStart := len(st.main.Vars)
 	for _, v := range comp.Vars {
@@ -537,6 +546,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			}
 		}
 		renames[v] = clone.Name
+		symRenames[v] = clone
 		st.main.Vars = append(st.main.Vars, clone)
 	}
 	funcStart := len(st.main.Funcs)
@@ -545,6 +555,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Name = f.Name + suffix
 		clone.Block = deepCloneStmts(f.Block)
 		renames[f] = clone.Name
+		symRenames[f] = clone
 		st.main.Funcs = append(st.main.Funcs, clone)
 	}
 	timerStart := len(st.main.Timers)
@@ -563,21 +574,21 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Apply renames to every hoisted block.
 	for i := varStart; i < len(st.main.Vars); i++ {
 		if st.main.Vars[i].Init != nil {
-			st.main.Vars[i].Init = renameInExpr(st.main.Vars[i].Init, renames)
+			st.main.Vars[i].Init = renameInExpr(st.main.Vars[i].Init, renames, symRenames)
 		}
 	}
 	for i := funcStart; i < len(st.main.Funcs); i++ {
-		st.main.Funcs[i].Block = renameIdents(st.main.Funcs[i].Block, renames)
+		st.main.Funcs[i].Block = renameIdents(st.main.Funcs[i].Block, renames, symRenames)
 	}
 	for i := timerStart; i < len(st.main.Timers); i++ {
 		t := st.main.Timers[i]
 		if t.Handler != nil {
-			t.Handler.Block = renameIdents(t.Handler.Block, renames)
+			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
 		}
 	}
 
 	body := deepCloneStmts(comp.Body)
-	body = renameIdents(body, renames)
+	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
