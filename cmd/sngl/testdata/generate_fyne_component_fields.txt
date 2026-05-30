@@ -9,12 +9,12 @@ exists out/model.go
 ! grep 'renderDetailPanel' out/model.go
 
 # The inlined detailPanel's four text() nodes become Model fields.
-# __n2 is the inlined vbox; __n3..__n6 are the four labels.
-grep '__n2 \*fyne\.Container' out/model.go
+# __n6 is the inlined vbox; __n0..__n3 are the four labels.
+grep '__n6 \*fyne\.Container' out/model.go
+grep '__n0 \*widget\.Label' out/model.go
+grep '__n1 \*widget\.Label' out/model.go
+grep '__n2 \*widget\.Label' out/model.go
 grep '__n3 \*widget\.Label' out/model.go
-grep '__n4 \*widget\.Label' out/model.go
-grep '__n5 \*widget\.Label' out/model.go
-grep '__n6 \*widget\.Label' out/model.go
 
 # Prop references are substituted with m.current (the callsite arg).
 grep 'm\.current\.Key' out/model.go

@@ -14,8 +14,8 @@ exists out/model.go
 
 # Init: SetText is emitted at BuildUI time for the textarea's value.
 # Post-Plan-C widget ids use the lowered __nN scheme rather than per-tag
-# counters; the vbox is __n0 so textarea is __n1.
-grep 'm\.__n1\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
+# counters; textarea is __n0 (vbox is __n1, button is __n2).
+grep 'm\.__n0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 
 # Reactive update spliced into the button's @click handler by the
 # NoReactivity lowering pass (button is __n2).
