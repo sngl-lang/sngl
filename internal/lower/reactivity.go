@@ -207,11 +207,20 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 			built[slotID] = fn
 		}
 	}
-	// Wire GenFunc on every reactiveSlot record so downstream Task 11 can
-	// reach the Func through the reverseSlots map.
+	// Wire GenFunc on every reactiveSlot record so updatersFor can reach the
+	// Func through the reverseSlots map. rewriteAndInject runs once per block
+	// (component body, each func body, each timer handler); a slot's GenFunc is
+	// built only by the block that actually contains its If/For, so only
+	// overwrite when this block built it. Otherwise a later block without the
+	// If/For (e.g. a timer @tick handler that merely mutates the slot's dep)
+	// would clobber GenFunc back to nil, and updatersFor would skip splicing
+	// the __renderSlotN re-fire there — leaving timer-driven reactive slots
+	// (the carousel) un-updated.
 	for v, slots := range st.reverseSlots {
 		for i := range slots {
-			slots[i].GenFunc = built[slots[i].SlotID]
+			if fn := built[slots[i].SlotID]; fn != nil {
+				slots[i].GenFunc = fn
+			}
 		}
 		st.reverseSlots[v] = slots
 	}

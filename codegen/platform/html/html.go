@@ -795,6 +795,27 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			// Assign/LocalVar/Return/Emit/Toggle carry no nested slot calls.
 		}
 	}
+	// Visit every block where the reactivity pass may have spliced a
+	// __renderSlotN re-fire (after a mutation of a slot's dep var) — mirrors
+	// lowerReactivity's pass-2 coverage. Missing timer handlers here left
+	// timer-driven re-fires (the carousel) pointing at the threaded parentRef
+	// instead of the slot anchor, so they'd removeChild from the wrong node.
+	visitHandlers := func(vars []*ir.Var) {
+		for _, v := range vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					visitStmts(h.Func.Block)
+				}
+			}
+		}
+	}
+	visitTimers := func(timers []*ir.Timer) {
+		for _, t := range timers {
+			if t != nil && t.Handler != nil {
+				visitStmts(t.Handler.Block)
+			}
+		}
+	}
 	for _, c := range g.pkg.Components {
 		if c == nil {
 			continue
@@ -805,18 +826,30 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 				visitStmts(fn.Block)
 			}
 		}
+		visitTimers(c.Timers)
+		visitHandlers(c.Vars)
 	}
 	for _, w := range g.pkg.Windows {
 		if w == nil {
 			continue
 		}
 		visitStmts(w.Body)
+		for _, fn := range w.Funcs {
+			if fn != nil {
+				visitStmts(fn.Block)
+			}
+		}
+		visitHandlers(w.Vars)
+		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
+			visitStmts(w.ErrorHandler.Func.Block)
+		}
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visitStmts(fn.Block)
 		}
 	}
+	visitHandlers(g.pkg.Vars)
 }
 
 // nodeID returns n.ID when NoReactivity has pre-assigned one (`__n*`),
