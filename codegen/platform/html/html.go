@@ -3078,28 +3078,6 @@ func extractSetTarget(s ir.Stmt) (ir.Expr, bool) {
 	return nil, false
 }
 
-// nodeHasUserAttrs returns true if a NodeInst has a user-specified #id or
-// a static class prop.
-func (g *htmlGen) nodeHasUserAttrs(n *ir.NodeInst) bool {
-	return n.ID != "" || codegen.NodeProp(n, "class") != nil
-}
-
-// addUserAttrUpdaters adds DOM updaters for a user-specified class prop.
-func (g *htmlGen) addUserAttrUpdaters(elemID string, n *ir.NodeInst) {
-	classExpr := codegen.NodeProp(n, "class")
-	if classExpr == nil {
-		return
-	}
-	jsExpr := g.exprToJS(classExpr)
-	deps := g.exprDeps(classExpr)
-	name := fmt.Sprintf("$u_%s_cls", elemID[1:])
-	g.initWrites = append(g.initWrites, updateFunc{
-		funcName: name,
-		body:     fmt.Sprintf("%s.className = %s;", elemID, jsExpr),
-		deps:     deps,
-	})
-}
-
 // writeUserAttrs emits user-specified id and class attributes in test mode.
 func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.NodeInst) {
 	if !g.testMode {
@@ -3116,15 +3094,3 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.No
 	}
 }
 
-// previewAttrs returns the preview-mode position data attributes for a
-// node (`data-sngl-line`/`data-sngl-col`), or "" outside preview mode.
-func (g *htmlGen) previewAttrs(n *ir.NodeInst) string {
-	if !g.preview {
-		return ""
-	}
-	pos := nodePos(n)
-	if !pos.IsValid() {
-		return ""
-	}
-	return fmt.Sprintf(" data-sngl-line=\"%d\" data-sngl-col=\"%d\"", pos.Line, pos.Column)
-}
