@@ -12,6 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	rodproto "github.com/go-rod/rod/lib/proto"
@@ -31,7 +32,8 @@ func compileI18nHTML(t *testing.T, src string) []byte {
 	}
 
 	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain: true,
+		IsMain:    true,
+		Platforms: []ir.Platform{&Generator{}},
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -46,8 +48,19 @@ func compileI18nHTML(t *testing.T, src string) []byte {
 
 	gen := &Generator{}
 	caps := gen.Capabilities().Merge(lang.Capabilities())
+	// Mirror the CLI generate pipeline (cmd/sngl/pipeline.go): optimize →
+	// lower → optimize. Wiring Platforms above + these passes is what makes
+	// stdlib components (text, button) render through their `platform html { }`
+	// bodies — the real path `sngl generate` takes.
+	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize (post-lower): %v", err)
 	}
 
 	mem := codegen.NewMemSink()
