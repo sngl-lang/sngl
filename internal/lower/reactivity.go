@@ -455,7 +455,12 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	case *ir.ErrorBoundary:
 		st.collectFromStmts(n.Children)
 	case *ir.Window:
-		// handled by top-level loop in lowerReactivity
+		// Top-level windows live in pkg.Windows and are walked by the loop in
+		// lowerReactivity. Windows declared inside a component body
+		// (`component main { window { ... } }`) are *ir.Window statements here
+		// instead, and pass 2 already recurses into them — so pass 1 must too,
+		// or reactive If/For inside such a window never get a slot collected.
+		st.collectFromStmts(n.Body)
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
 		// Non-visual stmts — no reactive props/slots to collect from.
 		// Imperative-handler dataflow is tracked at injection time.
