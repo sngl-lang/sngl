@@ -117,7 +117,12 @@ component sngl.checkbox {
 component sngl.radio {
     platform html {
         html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
-            slot
+            for opt = options {
+                html.label(style={display="inline-flex", alignItems="center", gap=4}) {
+                    html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { @change() })
+                    html.span(textContent=opt)
+                }
+            }
         }
     }
 }
