@@ -53,7 +53,7 @@ func (c *checker) desugarBindings(comp *ir.Component, props []ir.Arg, handlers [
 		if body == nil {
 			continue
 		}
-		eParam := &ir.Param{Name: "e", Type: eventType}
+		eParam := &ir.Param{Name: "event", Type: eventType}
 		fn := &ir.Func{
 			Params: []*ir.Param{eParam},
 			Block:  []ir.Stmt{body},
@@ -91,8 +91,12 @@ func buildBindBody(target ir.Expr, propName string, eventType *ir.Type) ir.Stmt 
 		// Checkbox/toggle: flip the bound bool.
 		return &ir.Toggle{Target: target}
 	}
-	// Default: assign target = e.value.
-	eIdent := &ir.Ident{Name: "e", Type: eventType}
+	// Default: assign target = event.value. Use the canonical implicit event
+	// identifier "event" (the same one user-written handlers reference) so each
+	// platform's event lowering maps it to the right native access — for html,
+	// event.value → e.target.value. A bare "e" bypasses that mapping and emits
+	// an undefined `e.value`.
+	eIdent := &ir.Ident{Name: "event", Type: eventType}
 	val := &ir.Select{Operand: eIdent, Field: "value", Type: ir.TypString}
 	return &ir.Assign{Target: target, Op: ast.AssignSet, Value: val}
 }
