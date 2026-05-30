@@ -134,7 +134,12 @@ component sngl.toggle {
 component sngl.select {
     platform html {
         html.select(disabled=disabled, @change { @change() }) {
-            slot
+            if placeholder != "" {
+                html.option(value="", disabled=true, selected=true, textContent=placeholder)
+            }
+            for opt = options {
+                html.option(value=opt, selected=(opt == value), textContent=opt)
+            }
         }
     }
 }
