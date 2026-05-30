@@ -250,7 +250,22 @@ component sngl.splitview {
 component sngl.table {
     platform html {
         html.table(style={width="100%", borderCollapse="collapse"}) {
-            slot
+            html.thead {
+                html.tr {
+                    for col = columns {
+                        html.th(textContent=col, style={textAlign="left", padding=8, borderBottom="2px solid #ddd"})
+                    }
+                }
+            }
+            html.tbody {
+                for row = rows {
+                    html.tr {
+                        for cell = row {
+                            html.td(textContent=cell, style={padding=8, borderBottom="1px solid #eee"})
+                        }
+                    }
+                }
+            }
         }
     }
 }
