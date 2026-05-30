@@ -364,14 +364,28 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		return nil, fmt.Errorf("component %q has no body to inline", comp.Name)
 	}
 
-	// Build param-binding map: paramName → user's bound arg expression.
+	// Build param-binding map. Bind every prop, falling back from the
+	// call-site arg to the prop's default to a typed zero-value, so the
+	// body never keeps a bare param identifier (mirrors expandCall in
+	// inline_components.go; ZeroExpr covers props with no default, e.g.
+	// `disabled bool`).
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
+		var val ir.Expr
 		for _, prop := range callsite.Props {
 			if prop.Name == p.Name {
-				bindings[p.Name] = prop.Value
+				val = prop.Value
 				break
 			}
+		}
+		if val == nil {
+			val = p.Default
+		}
+		if val == nil {
+			val = ir.ZeroExpr(p.Type)
+		}
+		if val != nil {
+			bindings[p.Name] = val
 		}
 	}
 
