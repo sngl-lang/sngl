@@ -709,6 +709,116 @@ func (g *htmlGen) prewalkNodes() {
 	}
 }
 
+// slotIndexFromRenderFunc extracts the N from "__renderSlotN", or "" if the
+// name is not a slot render func.
+func slotIndexFromRenderFunc(name string) string {
+	if !strings.HasPrefix(name, "__renderSlot") {
+		return ""
+	}
+	return strings.TrimPrefix(name, "__renderSlot")
+}
+
+// slotAnchorVar returns the JS variable name that holds the DOM anchor for
+// slot N: "__slotAnchor_N".
+func slotAnchorVar(n string) string {
+	return "__slotAnchor_" + n
+}
+
+// rewriteSlotCallsToAnchors retargets every `__renderSlotN(parentRef)` CallStmt
+// so its single argument becomes the per-slot DOM anchor ident
+// `__slotAnchor_N` instead of the threaded parentRef (a real element id or the
+// unbound `__root` sentinel). passReactivity threads `parent` uniformly into
+// both the slot func's AppendChild (create) and RemoveChild (teardown) calls,
+// so binding `parent` to the slot's own `display:contents` anchor renders and
+// tears down children in the correct DOM position for both top-level and
+// element-nested slots — and removes the dependence on the unbound `__root`.
+//
+// Runs before the static body walk (which collects handler bodies) so the
+// rewrite is observed by init calls, handler/timer re-fires, and the
+// placeholder-position emission alike.
+func (g *htmlGen) rewriteSlotCallsToAnchors() {
+	if g.pkg == nil {
+		return
+	}
+	var visit func(s ir.Stmt)
+	visitStmts := func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			visit(s)
+		}
+	}
+	rewriteCall := func(call *ir.Call) {
+		if call == nil || call.Func == nil {
+			return
+		}
+		n := slotIndexFromRenderFunc(call.Func.Name)
+		if n == "" || len(call.Args) != 1 {
+			return
+		}
+		call.Args[0].Value = &ir.Ident{
+			Name:         slotAnchorVar(n),
+			Type:         ir.TypDyn,
+			IsElementRef: true,
+			Synthesized:  true,
+		}
+	}
+	visit = func(s ir.Stmt) {
+		switch n := s.(type) {
+		case *ir.CallStmt:
+			rewriteCall(n.Call)
+		case *ir.NodeInst:
+			if n == nil {
+				return
+			}
+			visitStmts(n.Children)
+			for _, h := range n.Handlers {
+				if h.Func != nil {
+					visitStmts(h.Func.Block)
+				}
+			}
+		case *ir.If:
+			visitStmts(n.Body)
+			visitStmts(n.Else)
+		case *ir.For:
+			visitStmts(n.Body)
+			visitStmts(n.Else)
+		case *ir.Window:
+			visitStmts(n.Body)
+		case *ir.SlotInst:
+			visitStmts(n.Children)
+		case *ir.ErrorBoundary:
+			visitStmts(n.Children)
+		case *ir.PlatformFilter:
+			visitStmts(n.Body)
+		case *ir.ContextProvider:
+			visitStmts(n.Children)
+		default:
+			// Assign/LocalVar/Return/Emit/Toggle carry no nested slot calls.
+		}
+	}
+	for _, c := range g.pkg.Components {
+		if c == nil {
+			continue
+		}
+		visitStmts(c.Body)
+		for _, fn := range c.Funcs {
+			if fn != nil {
+				visitStmts(fn.Block)
+			}
+		}
+	}
+	for _, w := range g.pkg.Windows {
+		if w == nil {
+			continue
+		}
+		visitStmts(w.Body)
+	}
+	for _, fn := range g.pkg.Funcs {
+		if fn != nil {
+			visitStmts(fn.Block)
+		}
+	}
+}
+
 // nodeID returns n.ID when NoReactivity has pre-assigned one (`__n*`),
 // otherwise allocates a fresh `$N`. Records the chosen id in g.idToNode
 // so reactive-update Assigns inside handler bodies can be translated
@@ -737,6 +847,11 @@ func (g *htmlGen) generate() (string, error) {
 	// JS-default `el.value = …` path — wrong for spans, which need
 	// `el.textContent = …`.
 	g.prewalkNodes()
+
+	// Retarget every __renderSlotN(parentRef) call to render into the slot's
+	// own display:contents anchor (__slotAnchor_N). Must precede the body
+	// walk so handler/timer re-fire calls collected there are rewritten too.
+	g.rewriteSlotCallsToAnchors()
 
 	var b strings.Builder
 
@@ -898,6 +1013,16 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 			g.renderIRStmt(b, child, depth)
 		}
 	case *ir.CallStmt:
+		// A __renderSlotN call marks a reactive if/for slot position. Emit a
+		// transparent display:contents anchor here; the slot's content is
+		// appended into this anchor at runtime (see emitSynthesizedSlots).
+		if n.Call != nil && n.Call.Func != nil {
+			if idx := slotIndexFromRenderFunc(n.Call.Func.Name); idx != "" {
+				fmt.Fprintf(b, "%s<span data-sngl-slot=\"%s\" style=\"display:contents\"></span>\n",
+					strings.Repeat("  ", depth), idx)
+				return
+			}
+		}
 		if syn := nodeFromIRCallStmt(n); syn != nil {
 			g.renderIRNode(b, syn, depth)
 		}
@@ -1887,11 +2012,18 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 }
 
-// emitSynthesizedSlots writes the slot vars (__slotN), slot render funcs
-// (__renderSlotN), and initial render call sites for synthesized
-// declarative-structural lowering output. Slot funcs are routed through
-// htmlTranslator + WalkLowered so intrinsic statements become DOM
-// mutations in JavaScript form.
+// emitSynthesizedSlots writes the slot accumulator vars (__slotN), slot
+// render funcs (__renderSlotN), per-slot DOM anchor bindings (__slotAnchor_N),
+// and the initial render call for every slot. Slot funcs are routed through
+// htmlTranslator + WalkLowered so intrinsic statements become DOM mutations in
+// JavaScript form.
+//
+// Each reactive if/for renders into a `<span data-sngl-slot="N"
+// style="display:contents">` anchor emitted at its source position. The render
+// func's `parent` param is bound to that anchor (see rewriteSlotCallsToAnchors),
+// so append (create) and removeChild (teardown) operate on the anchor and
+// children appear in-flow. The old `__root = null` sentinel is therefore never
+// referenced and is not emitted.
 func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	if g.pkg == nil {
 		return
@@ -1903,7 +2035,12 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	jc := javascript.NewIRContext(g.ctx)
 
+	emittedVar := false
 	for _, v := range synthVars {
+		// __root is a dead sentinel: slots render into their own anchors now.
+		if v.Name == "__root" {
+			continue
+		}
 		b.WriteString("let " + v.Name + " = ")
 		if v.Init != nil {
 			b.WriteString(jc.EvalExpr(v.Init))
@@ -1911,8 +2048,9 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			b.WriteString("null")
 		}
 		b.WriteString(";\n")
+		emittedVar = true
 	}
-	if len(synthVars) > 0 {
+	if emittedVar {
 		b.WriteString("\n")
 	}
 
@@ -1931,21 +2069,17 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		b.WriteByte('\n')
 	}
 
-	// Initial-render calls: walk main component body for top-level CallStmts
-	// to __renderSlot* and emit each as a JS statement.
-	if main := mainIRComponent(g.pkg); main != nil {
-		for _, s := range main.Body {
-			cs, ok := s.(*ir.CallStmt)
-			if !ok || cs.Call == nil || cs.Call.Func == nil {
-				continue
-			}
-			if !strings.HasPrefix(cs.Call.Func.Name, "__renderSlot") {
-				continue
-			}
-			for _, line := range jc.EvalStmt(cs) {
-				b.WriteString(line + ";\n")
-			}
+	// Bind each slot's anchor and fire its initial render. Driven off the
+	// synthesized-func list (not a main.Body scan) so slots nested inside
+	// windows/components are initialized too.
+	for _, fn := range synthFuncs {
+		idx := slotIndexFromRenderFunc(fn.Name)
+		if idx == "" {
+			continue
 		}
+		anchor := slotAnchorVar(idx)
+		fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}
 }
 
