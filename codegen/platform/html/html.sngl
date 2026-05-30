@@ -258,7 +258,9 @@ component sngl.table {
 component sngl.tree {
     platform html {
         html.ul(style={listStyleType="none", paddingLeft=16}) {
-            slot
+            for item = items {
+                html.li(textContent=item)
+            }
         }
     }
 }
