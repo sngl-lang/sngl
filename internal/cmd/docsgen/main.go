@@ -89,7 +89,8 @@ func copySnapshots(outDir string) {
 }
 
 func compileSNGL(filename, outDir string) error {
-	cmd := exec.Command("go", "tool", "sngl", "compile", "--out", outDir, filename)
+	cmd := exec.Command("go", "tool", "sngl", "generate",
+		"--platform", "html", "--lang", "none", "--out", outDir, filename)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

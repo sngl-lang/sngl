@@ -200,7 +200,18 @@ func parseCLIOpts(optSlice []string) map[string]string {
 
 func resolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) ([]outputTarget, error) {
 	if cliLang != "" && cliPlat != "" {
-		t := outputTarget{Lang: cliLang, Platform: cliPlat, Options: &ir.StructLit{}}
+		// Seed from a matching output declaration so flags select the target
+		// without discarding its declared options (e.g. stylesheet="..."). CLI
+		// --opt values still override below. Falls back to empty options when
+		// the requested target isn't declared in any output block.
+		var base *ir.StructLit
+		for _, o := range pkg.Outputs {
+			if o.Lang == cliLang && o.Platform == cliPlat {
+				base = o.Options
+				break
+			}
+		}
+		t := outputTarget{Lang: cliLang, Platform: cliPlat, Options: cloneStructLit(base)}
 		if err := applyCLIOpts(t.Options, cliOpts); err != nil {
 			return nil, err
 		}
