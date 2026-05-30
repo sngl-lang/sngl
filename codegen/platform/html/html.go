@@ -987,14 +987,15 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		return
 	}
 	if !isStdlibComponentName(n.Name) {
-		// Try resolving a user component by name (covers bodyless calls
-		// promoted from ir.CallStmt that don't carry Component/AST back-refs).
-		if comp := g.findIRComponent(n.Name); comp != nil && comp.AST != nil {
-			if n.Component == nil {
+		// Bodyless calls promoted from ir.CallStmt carry no Component back-ref;
+		// resolve a user component by name. Nodes that already resolved to a
+		// Component are handled above (user component, or native element).
+		if n.Component == nil {
+			if comp := g.findIRComponent(n.Name); comp != nil && comp.AST != nil {
 				n.Component = comp
+				g.renderIRUserComponent(b, n, depth)
+				return
 			}
-			g.renderIRUserComponent(b, n, depth)
-			return
 		}
 		// Raw HTML element / namespace-resolved element (html.div, html.img).
 		g.renderRawElementIR(b, n, depth)
