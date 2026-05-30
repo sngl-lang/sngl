@@ -25,3 +25,10 @@ func GetItems() []Item {
 		{Name: "beta", Value: 2},
 	}
 }
+
+// Boom always fails at compile-time evaluation: it panics, so the
+// gen-and-run subprocess exits non-zero. Used to test that a failed
+// go:// import evaluation aborts the build on the html platform.
+//
+//sngl:pure
+func Boom() string { panic("boom") }

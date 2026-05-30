@@ -3,10 +3,30 @@ package optimize
 import (
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// schemeRunnableAtRuntime reports whether a target written in language `lang`
+// can emit a working runtime call to a function imported via the given scheme.
+// When false, a scheme-import value MUST be resolved at build time (const
+// fold); a fold failure cannot be salvaged and must abort the build rather
+// than emit broken output. Today only Go-language targets call go://, c://
+// functions natively, and only JS targets call js:// natively. (The html
+// platform additionally bridges go:// to wasm for explicitly runtime-used
+// functions, but that path is selected in html codegen, not here — a const
+// fold failure on html still has no runtime to fall back to.)
+func schemeRunnableAtRuntime(scheme, lang string) bool {
+	switch scheme {
+	case "go", "c":
+		return lang == "go"
+	case "js":
+		return lang == "js"
+	}
+	return false
+}
 
 // Config holds compile-time constants for the optimization pass.
 type Config struct {
@@ -38,10 +58,15 @@ type evalCtx struct {
 	noCacheBust   bool
 	pkg           *ir.Package
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
+	nativeSchemes map[string]string           // import alias → scheme ("go", "js", ...)
 	fileAssets    []FileAsset
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
 	interpDepth   int                   // recursion guard for interpretFunc dispatch
+	// err holds the first fatal evaluation error (e.g. a go:// import that
+	// failed to evaluate at build time on a platform that requires the value
+	// at compile time). Recorded during folding and surfaced by Optimize.
+	err error
 }
 
 // optimizerRun threads cross-package state across a single Optimize call so
@@ -50,6 +75,7 @@ type optimizerRun struct {
 	cfg        *Config
 	done       map[*ir.Package]bool
 	fileAssets []FileAsset
+	err        error // first fatal eval error across root + imports
 }
 
 // Optimize mutates pkg in place: evaluates constant expressions, inlines pure
@@ -65,6 +91,9 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
 	rootCtx := run.foldPkg(pkg)
+	if run.err != nil {
+		return run.err
+	}
 	if rootCtx == nil {
 		return nil
 	}
@@ -174,6 +203,9 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
+	if ctx.err != nil && r.err == nil {
+		r.err = ctx.err
+	}
 	return ctx
 }
 
@@ -231,6 +263,7 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 		return ctx.nativeImports
 	}
 	ctx.nativeImports = make(map[string]*ir.NativeImport)
+	ctx.nativeSchemes = make(map[string]string)
 	if ctx.pkg == nil {
 		return ctx.nativeImports
 	}
@@ -239,6 +272,9 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 			continue
 		}
 		ctx.nativeImports[imp.Alias] = imp.Native
+		if scheme, _, ok := strings.Cut(imp.Path, "://"); ok {
+			ctx.nativeSchemes[imp.Alias] = scheme
+		}
 	}
 	return ctx.nativeImports
 }

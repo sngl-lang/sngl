@@ -335,7 +335,19 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 				}
 				result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeName, paramTypes, goTypeKindString(f.Return), args)
 				if err != nil {
-					slog.Debug("pure func eval failed", "func", qualName, "err", err)
+					// A failed compile-time evaluation can only be tolerated when
+					// the target can recompute the value at runtime instead. That
+					// requires the target language to call this scheme natively
+					// (go:// from a go target, js:// from a js target, …). When it
+					// can't — html static/none, kotlin, js+go://, etc. — the const
+					// is unrecoverable, and silently dropping it renders pages with
+					// empty/broken content. Abort the build instead.
+					scheme := ctx.nativeSchemes[ident.Name]
+					if !schemeRunnableAtRuntime(scheme, ctx.language) && ctx.err == nil {
+						ctx.err = fmt.Errorf("%s:// import %q failed to evaluate at build time and the %q target cannot call it at runtime: %w", scheme, qualName, ctx.language, err)
+					} else {
+						slog.Debug("pure func eval failed", "func", qualName, "err", err)
+					}
 					return nil, false
 				}
 				slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
