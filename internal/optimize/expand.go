@@ -3,7 +3,6 @@ package optimize
 import (
 	"fmt"
 	"maps"
-	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -300,18 +299,3 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 	}
 }
 
-// substituteLoopVars replaces LoopVar references in cloned statements
-// with literal values. This is used during for-loop expansion.
-func substituteLoopVars(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
-	_ = slices.Clone(stmts) // ensure we don't mutate the original
-	for i, s := range stmts {
-		stmts[i] = substituteLoopVarStmt(s, ctx)
-	}
-	return stmts
-}
-
-func substituteLoopVarStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
-	// The folding pass handles LoopVar substitution via evalIdent,
-	// so we just fold the statement.
-	return foldStmt(s, ctx)
-}
