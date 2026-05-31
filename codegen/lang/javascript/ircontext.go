@@ -149,6 +149,16 @@ func (jc *JsIRContext) BlockEnd() string                    { return "}" }
 func (jc *JsIRContext) Indent() string                      { return "\t" }
 
 func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
+	// Synthesized refs from lowering passes (__slotN accumulators, __root,
+	// etc.) are emitted as plain module-scoped locals, not state fields — the
+	// read path (evalIdent) treats them the same way. Without this, a reset
+	// like `__slotN = []` was emitted as `state.__slotN = []`, which never
+	// cleared the real `var __slotN` accumulator: the slot's removeChild loop
+	// then operated on already-removed nodes and threw on the second update
+	// (reactive if/for transitioned once, then froze).
+	if n.Synthesized {
+		return n.Name
+	}
 	_, kind := jc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
 		return "state." + n.Name

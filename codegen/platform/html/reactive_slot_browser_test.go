@@ -65,15 +65,24 @@ component main { window(title="H", href="/index.html") { Car() } }
 	defer b.Close()
 	page := b.Page()
 
-	txt := page.MustElement("body").MustText()
-	if !strings.Contains(txt, "ZERO") || strings.Contains(txt, "ONE") {
-		t.Fatalf("initial: want ZERO and not ONE; body text=%q", txt)
-	}
-	page.MustElement("button").MustClick()
-	b.WaitStable(stableWait)
-	txt = page.MustElement("body").MustText()
-	if !strings.Contains(txt, "ONE") || strings.Contains(txt, "ZERO") {
-		t.Fatalf("after click: want ONE and not ZERO; body text=%q", txt)
+	btn := page.MustElement("button")
+	// Click REPEATEDLY: the slot must keep transitioning, not freeze after the
+	// first update. (A stale-accumulator bug let the first click transition but
+	// made the second throw in removeChild, freezing the carousel.)
+	want := []string{"ZERO", "ONE", "ZERO", "ONE", "ZERO"} // initial + 4 clicks
+	for step, expect := range want {
+		txt := page.MustElement("body").MustText()
+		absent := "ONE"
+		if expect == "ONE" {
+			absent = "ZERO"
+		}
+		if !strings.Contains(txt, expect) || strings.Contains(txt, absent) {
+			t.Fatalf("step %d: want %q (not %q); body text=%q", step, expect, absent, txt)
+		}
+		if step < len(want)-1 {
+			btn.MustClick()
+			b.WaitStable(stableWait)
+		}
 	}
 }
 
