@@ -435,6 +435,13 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for p := range blueprintImports {
 		td.Imports[p] = true
 	}
+	// NOTE: gc.Imports() is intentionally NOT harvested here. The fyne
+	// translator records short package selectors (e.g. "widget") via
+	// RequireImport and relies on the always-on set above to supply their full
+	// paths, so those tags are not import paths. Harvesting them would emit
+	// invalid `import "widget"`. Making fyne fully usage-driven (and landing
+	// dynamic imports like "math") requires the translator to require real
+	// paths first — a follow-up.
 
 	// Units (excluding the special-cased `duration` which maps to
 	// time.Duration). Single-base units become `type X float64`,
