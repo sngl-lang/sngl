@@ -73,11 +73,16 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 			values:        make(map[ir.Symbol]any, len(ctx.values)+2),
 		}
 		maps.Copy(childCtx.values, ctx.values)
-		if keyVar != nil {
-			childCtx.values[keyVar] = item
-		}
+		// Match the checker's loop-var typing (expr.go): for the two-var form
+		// `for key, value = list` the key is the index (int) and the value is
+		// the element; for the single-var form `for item = list` the sole var
+		// is the element. (Previously these were bound backwards for the
+		// two-var form, so `for i, x = xs` saw i=element and x=index.)
 		if valueVar != nil {
-			childCtx.values[valueVar] = i
+			childCtx.values[keyVar] = i
+			childCtx.values[valueVar] = item
+		} else if keyVar != nil {
+			childCtx.values[keyVar] = item
 		}
 
 		// Clone and optimize the body for this iteration. Using foldStmts so
