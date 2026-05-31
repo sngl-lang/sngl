@@ -534,6 +534,118 @@ func (st *reactivityState) exprDeps(e ir.Expr) map[*ir.Var]bool {
 	return out
 }
 
+// gatherFuncReads unions the reactive vars that a called derived/computed
+// func transitively reads into out. fn.Reads gives the vars the body reads
+// resolved against the func's own scope (so `this.field` is captured here even
+// though a raw body walk would only see a Select); recursing through every
+// func the body itself calls extends this across chains of derived funcs.
+// visited guards recursive call graphs. nil fn (dynamic/native call) is a
+// no-op.
+func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, visited map[*ir.Func]bool) {
+	if fn == nil {
+		return
+	}
+	if visited == nil {
+		visited = make(map[*ir.Func]bool)
+	}
+	if visited[fn] {
+		return
+	}
+	visited[fn] = true
+	for _, v := range fn.Reads {
+		if st.reactiveVars[v] {
+			out[v] = true
+		}
+	}
+	for _, s := range fn.Block {
+		st.eachCallInStmt(s, func(c *ir.Call) {
+			st.gatherFuncReads(c.Func, out, visited)
+		})
+	}
+}
+
+// eachCallInStmt invokes fn for every *ir.Call reachable from s (and nested
+// statements). Used to follow the call graph for transitive reactive-dep
+// gathering; only the call nodes matter, so non-call exprs are descended
+// without other side effects.
+func (st *reactivityState) eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
+	switch n := s.(type) {
+	case *ir.Return:
+		st.eachCallInExpr(n.Value, fn)
+	case *ir.LocalVar:
+		st.eachCallInExpr(n.Init, fn)
+	case *ir.Assign:
+		st.eachCallInExpr(n.Value, fn)
+	case *ir.CallStmt:
+		st.eachCallInExpr(n.Call, fn)
+	case *ir.Emit:
+		for _, a := range n.Args {
+			st.eachCallInExpr(a.Value, fn)
+		}
+	case *ir.If:
+		st.eachCallInExpr(n.Cond, fn)
+		for _, c := range n.Body {
+			st.eachCallInStmt(c, fn)
+		}
+		for _, c := range n.Else {
+			st.eachCallInStmt(c, fn)
+		}
+	case *ir.For:
+		st.eachCallInExpr(n.Iter, fn)
+		for _, c := range n.Body {
+			st.eachCallInStmt(c, fn)
+		}
+		for _, c := range n.Else {
+			st.eachCallInStmt(c, fn)
+		}
+	}
+}
+
+// eachCallInExpr invokes fn for every *ir.Call reachable from e.
+func (st *reactivityState) eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
+	switch x := e.(type) {
+	case nil:
+		return
+	case *ir.Call:
+		fn(x)
+		st.eachCallInExpr(x.Receiver, fn)
+		for _, a := range x.Args {
+			st.eachCallInExpr(a.Value, fn)
+		}
+	case *ir.Binary:
+		st.eachCallInExpr(x.Left, fn)
+		st.eachCallInExpr(x.Right, fn)
+	case *ir.Unary:
+		st.eachCallInExpr(x.Operand, fn)
+	case *ir.Ternary:
+		st.eachCallInExpr(x.Cond, fn)
+		st.eachCallInExpr(x.Then, fn)
+		st.eachCallInExpr(x.Else, fn)
+	case *ir.Conversion:
+		st.eachCallInExpr(x.Operand, fn)
+	case *ir.Select:
+		st.eachCallInExpr(x.Operand, fn)
+	case *ir.Index:
+		st.eachCallInExpr(x.Operand, fn)
+		st.eachCallInExpr(x.Idx, fn)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			st.eachCallInExpr(el, fn)
+		}
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			st.eachCallInExpr(en.Key, fn)
+			st.eachCallInExpr(en.Value, fn)
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			st.eachCallInExpr(f.Value, fn)
+		}
+	case *ir.Spread:
+		st.eachCallInExpr(x.Operand, fn)
+	}
+}
+
 func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	if e == nil {
 		return
@@ -559,6 +671,14 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		for _, a := range x.Args {
 			st.gatherDeps(a.Value, out)
 		}
+		// A call to a derived/computed func transitively reads that func's
+		// dep set: a reactive `if isLong` where `isLong() => name.length > 3`
+		// depends on `name`, so the slot must re-fire when `name` mutates.
+		// Func.Reads is the var set the body reads (resolved against the
+		// owning scope, covering `this.field` access too); union the
+		// reactive ones. Without this, the slot's only "dep" is the func
+		// reference itself, which no mutation matches — so it never re-fires.
+		st.gatherFuncReads(x.Func, out, nil)
 	case *ir.Conversion:
 		st.gatherDeps(x.Operand, out)
 	case *ir.Select:
@@ -648,14 +768,22 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 	return out
 }
 
-// updatersFor returns the list of *ir.Assign updaters to splice after s.
-// Empty for stmts that don't mutate a tracked Var.
+// updatersFor returns the list of updaters to splice after s. Empty for stmts
+// that don't mutate a tracked Var. Both `x = ...` (*ir.Assign) and `x!!`
+// (*ir.Toggle) mutate their target, so each must trigger the dependent prop
+// and slot updaters — a `done!!` toggle is just as much a state mutation as a
+// plain assignment.
 func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
-	a, ok := s.(*ir.Assign)
-	if !ok {
+	var target ir.Expr
+	switch n := s.(type) {
+	case *ir.Assign:
+		target = n.Target
+	case *ir.Toggle:
+		target = n.Target
+	default:
 		return nil
 	}
-	v, fieldRewrite := st.assignTargetVar(a.Target)
+	v, fieldRewrite := st.assignTargetVar(target)
 	if v == nil {
 		return nil
 	}

@@ -1638,9 +1638,20 @@ func (c *checker) pass2() {
 		trackAccess(fn, vars)
 	}
 	for _, comp := range c.pkg.Components {
+		// Component methods read/write the component's own vars (referenced
+		// bare, e.g. `name`), so purity and Reads/Writes must be computed
+		// against a scope that includes them. Using only package vars marks a
+		// method like `func isLong() => name.length > 3` as PurityPure with
+		// empty Reads — which lets the optimizer const-fold calls to it and
+		// leaves reactivity unable to see its dep on `name`.
+		compVars := make(map[string]*ir.Var, len(vars)+len(comp.Vars))
+		maps.Copy(compVars, vars)
+		for _, v := range comp.Vars {
+			compVars[v.Name] = v
+		}
 		for _, fn := range comp.Funcs {
-			fn.Purity = analyzePurity(fn, vars)
-			trackAccess(fn, vars)
+			fn.Purity = analyzePurity(fn, compVars)
+			trackAccess(fn, compVars)
 		}
 	}
 

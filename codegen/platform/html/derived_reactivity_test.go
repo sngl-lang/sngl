@@ -1,0 +1,100 @@
+package html
+
+import (
+	"strings"
+	"testing"
+)
+
+// A reactive `if` whose condition is a zero-arg derived func must re-fire when
+// a var that func transitively reads is mutated. Regression for the tutorial
+// "derived state" lesson: `func isLong() => name.length > 3` gating
+// `if isLong { ... }`, with an input bound to `name`. Two bugs combined here:
+//   - the checker analysed component methods against package-only vars, so
+//     isLong was mis-typed PurityPure with empty Reads — the optimizer then
+//     const-folded `if isLong()` to a static node that never updated;
+//   - reactivity's dep gather didn't follow a call into the func's reads, so
+//     even un-folded the slot had no dep on `name` and never re-fired.
+func TestDerivedFuncGatesReactiveSlot(t *testing.T) {
+	src := `
+output { none { html() } }
+component main {
+    var name = "world"
+    func isLong() => name.length > 3
+    vbox {
+        input(:value=name, placeholder="Name")
+        if isLong { text(value="That's a long name.") }
+    }
+}
+`
+	out := generateMainPage(t, src)
+
+	// The conditional must be lowered to a reactive slot, not const-folded.
+	if !strings.Contains(out, "function __renderSlot0") {
+		t.Fatalf("derived-func `if` was not lowered to a reactive slot (likely const-folded):\n%s", out)
+	}
+	// The slot must re-evaluate the condition on each render (not bake the
+	// initial result).
+	if !strings.Contains(out, "if (main_isLong(state))") {
+		t.Errorf("slot body does not re-evaluate the derived func:\n%s", out)
+	}
+	// Mutating `name` in the input handler must re-fire the slot.
+	handler := out[strings.Index(out, "state.name ="):]
+	if i := strings.Index(handler, "});"); i >= 0 {
+		handler = handler[:i]
+	}
+	if !strings.Contains(handler, "__renderSlot0(__slotAnchor_0)") {
+		t.Errorf("input handler does not re-fire the derived-func slot after mutating name:\n%s", handler)
+	}
+}
+
+// A two-level derived-func chain must still propagate the underlying dep: the
+// slot condition calls a func that calls another func that reads the var.
+func TestDerivedFuncChainGatesReactiveSlot(t *testing.T) {
+	src := `
+output { none { html() } }
+component main {
+    var name = "world"
+    func longish() => name.length > 3
+    func isLong() => longish()
+    vbox {
+        input(:value=name, placeholder="Name")
+        if isLong { text(value="long") }
+    }
+}
+`
+	out := generateMainPage(t, src)
+	handler := out[strings.Index(out, "state.name ="):]
+	if i := strings.Index(handler, "});"); i >= 0 {
+		handler = handler[:i]
+	}
+	if !strings.Contains(handler, "__renderSlot0(__slotAnchor_0)") {
+		t.Errorf("transitive derived-func slot not re-fired on dep mutation:\n%s", handler)
+	}
+}
+
+// A `!!` toggle of a reactive var must splice the dependent updaters, exactly
+// as a plain assignment does. Regression for the tutorial "comparison and
+// logical operators" lesson: `button(@click { enabled!! })` left the
+// `text(value="enabled: {enabled}")` stale because updatersFor only handled
+// *ir.Assign, not *ir.Toggle.
+func TestToggleSplicesReactiveUpdaters(t *testing.T) {
+	src := `
+output { none { html() } }
+component main {
+    var enabled = true
+    button(text="Toggle", @click { enabled!! })
+    text(value="enabled: {enabled}")
+}
+`
+	out := generateMainPage(t, src)
+	handler := out[strings.Index(out, `addEventListener("click"`):]
+	if i := strings.Index(handler, "});"); i >= 0 {
+		handler = handler[:i]
+	}
+	if !strings.Contains(handler, "state.enabled = !state.enabled") {
+		t.Fatalf("toggle did not flip the var:\n%s", handler)
+	}
+	if !strings.Contains(handler, "textContent") {
+		t.Errorf("toggle handler did not splice the dependent text updater:\n%s", handler)
+	}
+}
