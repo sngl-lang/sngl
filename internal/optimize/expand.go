@@ -76,11 +76,17 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		// Match the checker's loop-var typing (expr.go): for the two-var form
 		// `for key, value = list` the key is the index (int) and the value is
 		// the element; for the single-var form `for item = list` the sole var
-		// is the element. (Previously these were bound backwards for the
-		// two-var form, so `for i, x = xs` saw i=element and x=index.)
-		if valueVar != nil {
-			childCtx.values[keyVar] = i
-			childCtx.values[valueVar] = item
+		// is the element. Decide on the SYNTACTIC form (fs.Value != "") not on
+		// whether the var is referenced — findLoopVar returns nil for an unused
+		// var, so keying off valueVar would treat `for i, x` with an unused x as
+		// single-var and bind i to the element.
+		if fs.Value != "" {
+			if keyVar != nil {
+				childCtx.values[keyVar] = i
+			}
+			if valueVar != nil {
+				childCtx.values[valueVar] = item
+			}
 		} else if keyVar != nil {
 			childCtx.values[keyVar] = item
 		}

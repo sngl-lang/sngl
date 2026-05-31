@@ -34,4 +34,15 @@ component main { for x = ["P", "Q"] { text(value=x) } }
 	if !strings.Contains(out2, ">P<") || !strings.Contains(out2, ">Q<") {
 		t.Errorf("single-var for regressed:\n%s", out2)
 	}
+
+	// Two-var form where the element var is UNUSED must still bind the index
+	// (the form is syntactic, not usage-based: an unreferenced value var must
+	// not collapse `for i, x` into the single-var element binding).
+	out3 := generateMainPage(t, `
+output { none { html() } }
+component main { for i, x = ["A", "B"] { text(value="n" + string(i)) } }
+`)
+	if !strings.Contains(out3, ">n0<") || !strings.Contains(out3, ">n1<") {
+		t.Errorf("two-var with unused element var misbound the index:\n%s", out3)
+	}
 }
