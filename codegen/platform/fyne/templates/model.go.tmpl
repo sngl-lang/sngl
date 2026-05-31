@@ -1,24 +1,5 @@
-package {{.Package}}
-{{if .CgoPreamble}}
-{{.CgoPreamble}}
-{{end}}
-import (
-{{- range $path, $_ := .Imports}}
-	"{{$path}}"
-{{- end}}
-)
-
-var _ = fmt.Sprint
-var _ fyne.CanvasObject
-var _ = container.NewVBox
-var _ = widget.NewLabel
-{{- if index .Imports "fyne.io/fyne/v2/layout"}}
-var _ = layout.NewSpacer
-{{- end}}
-{{- if index .Imports "git.duckfam.us/jonathan/sngl/pkg/go/i18n"}}
-var _ = i18n.GetTranslator
-{{- end}}
-
+{{/* package clause, cgo preamble, and import block are prepended by emitIR
+     after the full body is rendered, so imports reflect actual usage. */}}
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
 		return a

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -380,6 +381,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
+	// Render the body (the template no longer emits package/imports) then
+	// append the dynamic code, so `b` holds the complete file body.
 	tmplFiles := codegen.RenderTemplates(templateFS, "templates", td)
 
 	var b strings.Builder
@@ -401,7 +404,45 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	return []byte(b.String()), nil
+	body := b.String()
+
+	// Finalize imports from actual usage (no static set): td.Imports already
+	// holds the structural ones (go:// natives, blueprint paths, Main
+	// entrypoint, lang helpers). Add what the Go translator required
+	// (gc.Imports() — full widget paths, "math" for float intrinsics, …) and
+	// every framework/std package whose selector appears in the rendered body.
+	addFyneUsageImports(td.Imports, gc, body)
+
+	var out strings.Builder
+	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
+	if td.CgoPreamble != "" {
+		out.WriteString(td.CgoPreamble)
+		out.WriteString("\n")
+	}
+	out.WriteString(renderGoImportBlock(td.Imports))
+	out.WriteString(body)
+	return []byte(out.String()), nil
+}
+
+// renderGoImportBlock renders a sorted Go import block from the path set, or
+// "" if empty. Blank imports aren't used here (the i18n runtime registers via
+// a normal reference).
+func renderGoImportBlock(imports map[string]bool) string {
+	if len(imports) == 0 {
+		return ""
+	}
+	paths := make([]string, 0, len(imports))
+	for p := range imports {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	var b strings.Builder
+	b.WriteString("import (\n")
+	for _, p := range paths {
+		fmt.Fprintf(&b, "\t%q\n", p)
+	}
+	b.WriteString(")\n\n")
+	return b.String()
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
@@ -414,17 +455,15 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		FunctionCode: functionCode,
 	}
 
-	// Collect every import the generated code needs into one deduped set:
-	// always-on imports, conditional Main additions, native go:// imports
-	// from user code, and blueprint-declared imports collected by the
-	// renderer. analyzeIR has already added "time" via goImports when any
-	// time-typed var, timer, or toast is in scope.
-	td.Imports = map[string]bool{
-		"fmt":                       true,
-		"fyne.io/fyne/v2":           true,
-		"fyne.io/fyne/v2/widget":    true, // widget.NewLabel fallback
-		"fyne.io/fyne/v2/container": true, // container.NewVBox multi-root + unknown fallback
-	}
+	// Collect the imports the generated code needs. No always-on set: the
+	// framework/std packages are added by scanning the emitted body in emitIR
+	// (addFyneUsageImports), the Go translator's requirements are harvested
+	// from gc.Imports() there, and what remains here are the imports known
+	// structurally — native go:// imports, blueprint-declared paths, the
+	// Main-only entrypoint packages, and lang helpers. analyzeIR has already
+	// added "time" via goImports when a time-typed var, timer, or toast is in
+	// scope.
+	td.Imports = map[string]bool{}
 	if cfg.Main {
 		td.Imports["os"] = true
 		td.Imports["fyne.io/fyne/v2/app"] = true
@@ -435,13 +474,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for p := range blueprintImports {
 		td.Imports[p] = true
 	}
-	// NOTE: gc.Imports() is intentionally NOT harvested here. The fyne
-	// translator records short package selectors (e.g. "widget") via
-	// RequireImport and relies on the always-on set above to supply their full
-	// paths, so those tags are not import paths. Harvesting them would emit
-	// invalid `import "widget"`. Making fyne fully usage-driven (and landing
-	// dynamic imports like "math") requires the translator to require real
-	// paths first — a follow-up.
 
 	// Units (excluding the special-cased `duration` which maps to
 	// time.Duration). Single-base units become `type X float64`,
@@ -1032,5 +1064,23 @@ func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, window
 
 	for _, code := range windowCodes {
 		b.WriteString(code)
+	}
+}
+
+// addFyneUsageImports fills the import set from actual usage: the Go
+// translator's required imports (gc.Imports(); any short selector is resolved
+// to its full path defensively) plus every framework/std package whose
+// selector appears in corpus.
+func addFyneUsageImports(imports map[string]bool, gc *golang.GoIRContext, corpus string) {
+	for _, p := range gc.Imports() {
+		if full := fyneImportPath(p); full != "" {
+			p = full
+		}
+		imports[p] = true
+	}
+	for sel, path := range fyneFrameworkPkgs {
+		if strings.Contains(corpus, sel+".") {
+			imports[path] = true
+		}
 	}
 }
