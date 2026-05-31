@@ -61,9 +61,9 @@ func i18nRuntimeSnippet() (string, error) {
 				// and direct i18n.* calls (codegen/lang/javascript/javascript.go).
 				// Without these, e.g. i18n.translate is tree-shaken out of the
 				// bundle and a $"...{plural}..." in a handler throws at runtime.
-				// (`select` is intentionally absent — i18n.js does not export it
-				// yet; that is a separate gap.)
-				Contents:   "export { getTranslator, _resetTranslator, Translator, defaultLocale, translate, format, numberInt, numberFloat, date, time, datetime, plural, selectordinal } from \"./i18n.js\";\n",
+				// (i18n.js exports `select` via `export { _selectImpl as select }`,
+				// so the bare name resolves here.)
+				Contents:   "export { getTranslator, _resetTranslator, Translator, defaultLocale, translate, format, numberInt, numberFloat, date, time, datetime, plural, selectordinal, select } from \"./i18n.js\";\n",
 				ResolveDir: js.VirtualRoot,
 				Sourcefile: "i18n-entry.js",
 				Loader:     api.LoaderJS,
