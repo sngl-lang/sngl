@@ -149,6 +149,11 @@ type For struct {
 	// (list[i]) so writes update the original element. Only set for
 	// addressable mutable list iterables (checker-validated).
 	RefElem bool
+	// IndexVar is the loop index variable name a RefElem loop iterates over
+	// (the two-var Key, or a synthesized name for the single-var form). Set
+	// by the ref-loop lowering pass; codegen emits an index-driven loop
+	// (`for IndexVar := range Iter`) and the body accesses Iter[IndexVar].
+	IndexVar string
 }
 
 func (*For) stmtNode() {}

@@ -1060,7 +1060,7 @@ func renderFuncName(slotID string) string {
 // synthesizeRenderSlotFunc generates the __renderSlotN(parent dyn) Func.
 // origBody/origElse are the original If.Body/Else or For.Body/Else.
 // Exactly one of (cond) or (iter) should be non-nil.
-func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) *ir.Func {
+func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, iter ir.Expr, key, value string, refElem bool, indexVar string, elemType *ir.Type, origBody, origElse []ir.Stmt) *ir.Func {
 	parentParam := &ir.Param{Name: "parent", Type: ir.TypDyn}
 	fn := &ir.Func{
 		Name:        renderFuncName(slotID),
@@ -1106,7 +1106,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	if st.idCounter > st.slotDeclSt.nextID {
 		st.slotDeclSt.nextID = st.idCounter
 	}
-	body := st.renderSlotBody(st.slotDeclSt, parentParam.Name, slotID, cond, iter, key, value, origBody, origElse)
+	body := st.renderSlotBody(st.slotDeclSt, parentParam.Name, slotID, cond, iter, key, value, refElem, indexVar, elemType, origBody, origElse)
 	// Propagate the slot's advanced counter back so subsequent
 	// reactivity freshNodeID calls (line 253, line 446) don't reuse
 	// __nN values the slot just claimed.
@@ -1121,7 +1121,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // renderSlotBody emits the cond/iter-gated create+append sequence for the
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
-func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
+func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, slotID string, cond, iter ir.Expr, key, value string, refElem bool, indexVar string, elemType *ir.Type, origBody, origElse []ir.Stmt) []ir.Stmt {
 	listPushDef := ir.LookupIntrinsic("ListPush")
 	listPushFn := &ir.Func{
 		Name:      "ListPush",
@@ -1184,10 +1184,14 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 					panic("lower(reactivity): nested *ir.For with its own slot — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)")
 				}
 				inner := &ir.For{
-					Key:   sx.Key,
-					Value: sx.Value,
-					Iter:  sx.Iter,
-					Body:  emitStmts(sx.Body),
+					Key:      sx.Key,
+					Value:    sx.Value,
+					Iter:     sx.Iter,
+					ElemType: sx.ElemType,
+					RefElem:  sx.RefElem,
+					IndexVar: sx.IndexVar,
+					AST:      sx.AST,
+					Body:     emitStmts(sx.Body),
 				}
 				if len(sx.Else) > 0 {
 					inner.Else = emitStmts(sx.Else)
@@ -1203,10 +1207,13 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 	}
 	if iter != nil {
 		return []ir.Stmt{&ir.For{
-			Key:   key,
-			Value: value,
-			Iter:  iter,
-			Body:  emitStmts(origBody),
+			Key:      key,
+			Value:    value,
+			Iter:     iter,
+			ElemType: elemType,
+			RefElem:  refElem,
+			IndexVar: indexVar,
+			Body:     emitStmts(origBody),
 		}}
 	}
 	ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
@@ -1230,14 +1237,14 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 			switch n := s.(type) {
 			case *ir.If:
 				if n.LoweredSlotID == slotID {
-					fn = st.synthesizeRenderSlotFunc(slotID, n.Cond, nil, "", "", n.Body, n.Else)
+					fn = st.synthesizeRenderSlotFunc(slotID, n.Cond, nil, "", "", false, "", nil, n.Body, n.Else)
 					return
 				}
 				walk(n.Body)
 				walk(n.Else)
 			case *ir.For:
 				if n.LoweredSlotID == slotID {
-					fn = st.synthesizeRenderSlotFunc(slotID, nil, n.Iter, n.Key, n.Value, n.Body, n.Else)
+					fn = st.synthesizeRenderSlotFunc(slotID, nil, n.Iter, n.Key, n.Value, n.RefElem, n.IndexVar, n.ElemType, n.Body, n.Else)
 					return
 				}
 				walk(n.Body)

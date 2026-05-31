@@ -18,6 +18,10 @@ type pass struct {
 
 // passes is the fixed execution order. Earlier passes may not depend on
 // transformations performed by later ones; later passes may. Order rationale:
+//  0. RefLoop — rewrites &-bound loop element refs to indexed list access
+//     (list[idx]). Runs before NoReactivity so the resulting list[idx].field
+//     writes are seen as mutations of the list var, and before NoToggle so a
+//     toggled element-ref target is rewritten first.
 //  1. NoUnit, NoEnum — collapse types, no deps.
 //  2. NoTernary — rewrites expressions, no deps on visual model.
 //  3. NoAsyncReactive — must run before NoComputed (introduces sync state vars
@@ -45,6 +49,7 @@ type pass struct {
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
 	passPlatformExtensionBody,
+	passRefLoop,
 	passUnit,
 	passEnum,
 	passTernary,

@@ -596,11 +596,17 @@ func translateIRForJS(n *ir.For, scope *codegen.ExprScope) []string {
 	if n.Value != "" {
 		locals[n.Value] = true
 	}
+	if n.RefElem {
+		locals[n.IndexVar] = true
+	}
 	loopScope.LocalVars = locals
 
 	var lines []string
 	iterType := n.Iter.ExprType()
-	if iterType != nil && iterType.Kind == ir.TypeMap {
+	if n.RefElem {
+		// &-bound element: body rewritten to index iter[IndexVar].
+		lines = append(lines, fmt.Sprintf("for (let %s = 0; %s < %s.length; %s++) {", n.IndexVar, n.IndexVar, iterExpr, n.IndexVar))
+	} else if iterType != nil && iterType.Kind == ir.TypeMap {
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"

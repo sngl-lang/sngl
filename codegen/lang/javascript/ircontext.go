@@ -131,6 +131,11 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
+	if n.RefElem {
+		// &-bound element: the body was rewritten to index `iter[IndexVar]`,
+		// so iterate by index to write through to the live element.
+		return fmt.Sprintf("for (let %s = 0; %s < %s.length; %s++) {", n.IndexVar, n.IndexVar, iter, n.IndexVar)
+	}
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for (const [k, v] of m.entries()) { ... }

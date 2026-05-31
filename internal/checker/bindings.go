@@ -111,6 +111,11 @@ func isAssignableTarget(e ir.Expr) bool {
 		return x != nil && isAssignableTarget(x.Operand)
 	case *ir.Index:
 		return x != nil && isAssignableTarget(x.Operand)
+	case *ir.Unary:
+		// `*t` — deref of an &-bound loop ref (`for &t = list`). The deref is a
+		// write-through to the live element, so a field/element access through
+		// it is a valid binding target.
+		return x != nil && x.Op == ast.UnaryDeref && isAssignableTarget(x.Operand)
 	}
 	return false
 }

@@ -3260,4 +3260,3 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.No
 		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)
 	}
 }
-

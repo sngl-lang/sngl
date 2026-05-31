@@ -82,13 +82,10 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	case *ir.For:
 		iterExpr := t.OnIter(ctx, n.Iter)
 		body := WalkLowered(ctx, n.Body, t)
-		return []ir.Stmt{&ir.For{
-			Key:   n.Key,
-			Value: n.Value,
-			Iter:  iterExpr,
-			Body:  body,
-			Else:  n.Else,
-		}}
+		cp := *n
+		cp.Iter = iterExpr
+		cp.Body = body
+		return []ir.Stmt{&cp}
 	case *ir.If:
 		condExpr := t.OnCond(ctx, n.Cond)
 		body := WalkLowered(ctx, n.Body, t)
