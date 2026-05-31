@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -84,10 +83,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if v.Name == "__root" {
 				// Plan B's __root sentinel: a stable *fyne.Container the
 				// renderSlot updaters operate on, and which BuildUI returns.
+				// NativePkg/NativeName so evalNamespaceCall registers the
+				// container import when this init is rendered.
 				initCall := &ir.Call{
 					Type:     ir.TypDyn,
 					Receiver: &ir.Ident{Name: "container"},
-					Func:     &ir.Func{Name: "NewVBox"},
+					Func:     &ir.Func{NativePkg: "fyne.io/fyne/v2/container", NativeName: "container.NewVBox"},
 				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -167,13 +168,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	return info
 }
 
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) ([]byte, error) {
+// emitIR renders the model file body (no package clause or import block) and
+// returns it, the Go import paths it uses, and the cgo preamble (if any). The
+// caller feeds these to a FileEmitter, which owns package + import block +
+// gofmt + line directives.
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, string, error) {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
+
+	// Structural: every fyne file's BuildUI returns fyne.CanvasObject.
+	gc.RequireImport("fyne.io/fyne/v2")
 
 	// --- Phase 1: Render BuildUI into buffer, collecting widget fields ---
 	var buildBuf strings.Builder
@@ -219,10 +227,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				// drives emitIRBuildUI to return m.__root. Fall back to
 				// an empty label otherwise.
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
+				gc.RequireImport("fyne.io/fyne/v2/widget")
 			case 1:
 				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(elementRef(tops[0])))
 			default:
 				singleRoot = false
+				// BuildUI wraps the parts in container.NewVBox(parts...).
+				gc.RequireImport("fyne.io/fyne/v2/container")
 				buildBuf.WriteString("\tvar parts []fyne.CanvasObject\n")
 				for _, ref := range tops {
 					fmt.Fprintf(&buildBuf, "\tparts = append(parts, %s)\n", gc.EvalExpr(elementRef(ref)))
@@ -232,7 +243,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	} else {
 		// Multi-window: add navigation fields and pre-render each window into
 		// its own buildWindowX() method. BuildUI and navigate() are emitted
-		// later by emitIRMultiWindowCode.
+		// later by emitIRMultiWindowCode, which wraps windows in
+		// container.NewStack.
+		gc.RequireImport("fyne.io/fyne/v2/container")
 		widgetFields = append(widgetFields, irWidgetField{"activeWindow", "string"})
 		for _, w := range wins {
 			widgetFields = append(widgetFields, irWidgetField{windowBoxField(w.Name), "*fyne.Container"})
@@ -257,9 +270,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			switch len(tops) {
 			case 0:
 				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
+				gc.RequireImport("fyne.io/fyne/v2/widget")
 			case 1:
 				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(elementRef(tops[0])))
 			default:
+				gc.RequireImport("fyne.io/fyne/v2/container")
 				winCode.WriteString("\treturn container.NewVBox(")
 				for i, ref := range tops {
 					if i > 0 {
@@ -376,23 +391,21 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// --- Phase 3: Build template data and render ---
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
 	if err != nil {
-		return nil, err
+		return "", nil, "", err
 	}
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
-	// Render the body (the template no longer emits package/imports) then
-	// append the dynamic code, so `b` holds the complete file body.
-	tmplFiles := codegen.RenderTemplates(templateFS, "templates", td)
-
+	// Emit the structural model file body directly to Go (no template) so
+	// every framework reference registers its import through gc as it's
+	// written. The caller assembles package + imports + gofmt via the
+	// FileEmitter.
 	var b strings.Builder
-	if len(tmplFiles) > 0 {
-		tmplFiles[0].WriteTo(&b)
-	}
+	emitFyneModel(&b, &td, gc)
 
 	// --- Phase 4: Append dynamic code ---
 	if len(wins) <= 1 {
-		emitIRBuildUI(&b, info, &buildBuf, singleRoot)
+		emitIRBuildUI(&b, info, &buildBuf, singleRoot, gc)
 	} else {
 		emitIRMultiWindowCode(&b, wins, windowCodes)
 	}
@@ -404,45 +417,16 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	body := b.String()
-
-	// Finalize imports from actual usage (no static set): td.Imports already
-	// holds the structural ones (go:// natives, blueprint paths, Main
-	// entrypoint, lang helpers). Add what the Go translator required
-	// (gc.Imports() — full widget paths, "math" for float intrinsics, …) and
-	// every framework/std package whose selector appears in the rendered body.
-	addFyneUsageImports(td.Imports, gc, body)
-
-	var out strings.Builder
-	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
-	if td.CgoPreamble != "" {
-		out.WriteString(td.CgoPreamble)
-		out.WriteString("\n")
+	// Imports: structural ones tracked on td.Imports (go:// natives, blueprint
+	// paths, the Main entrypoint, lang helpers) unioned with everything the Go
+	// translator and emitFyneModel required on gc (framework packages, "math"
+	// for a float intrinsic, …).
+	imports := make([]string, 0, len(td.Imports)+8)
+	for p := range td.Imports {
+		imports = append(imports, p)
 	}
-	out.WriteString(renderGoImportBlock(td.Imports))
-	out.WriteString(body)
-	return []byte(out.String()), nil
-}
-
-// renderGoImportBlock renders a sorted Go import block from the path set, or
-// "" if empty. Blank imports aren't used here (the i18n runtime registers via
-// a normal reference).
-func renderGoImportBlock(imports map[string]bool) string {
-	if len(imports) == 0 {
-		return ""
-	}
-	paths := make([]string, 0, len(imports))
-	for p := range imports {
-		paths = append(paths, p)
-	}
-	sort.Strings(paths)
-	var b strings.Builder
-	b.WriteString("import (\n")
-	for _, p := range paths {
-		fmt.Fprintf(&b, "\t%q\n", p)
-	}
-	b.WriteString(")\n\n")
-	return b.String()
+	imports = append(imports, gc.Imports()...)
+	return b.String(), imports, td.CgoPreamble, nil
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
@@ -455,14 +439,11 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		FunctionCode: functionCode,
 	}
 
-	// Collect the imports the generated code needs. No always-on set: the
-	// framework/std packages are added by scanning the emitted body in emitIR
-	// (addFyneUsageImports), the Go translator's requirements are harvested
-	// from gc.Imports() there, and what remains here are the imports known
-	// structurally — native go:// imports, blueprint-declared paths, the
-	// Main-only entrypoint packages, and lang helpers. analyzeIR has already
-	// added "time" via goImports when a time-typed var, timer, or toast is in
-	// scope.
+	// Structural imports only: native go:// imports, blueprint-declared paths,
+	// the Main-only entrypoint packages, and lang helpers. Framework/std and
+	// dynamic imports are recorded at their emit sites (emitFyneModel /
+	// requireTypeImports / gc) and unioned in emitIR. analyzeIR already added
+	// "time" via goImports for time-typed vars, timers, or toasts.
 	td.Imports = map[string]bool{}
 	if cfg.Main {
 		td.Imports["os"] = true
@@ -598,12 +579,13 @@ func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	b.WriteByte('\n')
 }
 
-func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Builder, singleRoot bool) {
+func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Builder, singleRoot bool, gc *golang.GoIRContext) {
 	b.WriteString("// BuildUI creates the widget tree. Call once; widgets are updated selectively.\n")
 	b.WriteString("func (m *Model) BuildUI() fyne.CanvasObject {\n")
 
 	if buildBuf.Len() == 0 {
 		b.WriteString("\treturn widget.NewLabel(\"\")\n")
+		gc.RequireImport("fyne.io/fyne/v2/widget")
 		b.WriteString("}\n\n")
 		return
 	}
@@ -1064,23 +1046,5 @@ func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, window
 
 	for _, code := range windowCodes {
 		b.WriteString(code)
-	}
-}
-
-// addFyneUsageImports fills the import set from actual usage: the Go
-// translator's required imports (gc.Imports(); any short selector is resolved
-// to its full path defensively) plus every framework/std package whose
-// selector appears in corpus.
-func addFyneUsageImports(imports map[string]bool, gc *golang.GoIRContext, corpus string) {
-	for _, p := range gc.Imports() {
-		if full := fyneImportPath(p); full != "" {
-			p = full
-		}
-		imports[p] = true
-	}
-	for sel, path := range fyneFrameworkPkgs {
-		if strings.Contains(corpus, sel+".") {
-			imports[path] = true
-		}
 	}
 }

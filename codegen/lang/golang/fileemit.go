@@ -102,6 +102,10 @@ func (fe *fileEmitter) Close() error {
 	if fe.opts.PackageName != "" {
 		fmt.Fprintf(&assembled, "package %s\n\n", fe.opts.PackageName)
 	}
+	if fe.opts.CgoPreamble != "" {
+		assembled.WriteString(fe.opts.CgoPreamble)
+		assembled.WriteString("\n")
+	}
 	if imps := fe.renderImports(); len(imps) > 0 {
 		assembled.Write(imps)
 		assembled.WriteByte('\n')

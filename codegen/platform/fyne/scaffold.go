@@ -1,9 +1,5 @@
 package fyne
 
-import (
-	"embed"
-)
-
 // Config controls code generation. Field names mirror fyne.sngl options.
 type Config struct {
 	Package string // Go package name (default: "ui")
@@ -41,9 +37,6 @@ func (c Config) withDefaults() Config {
 	}
 	return c
 }
-
-//go:embed templates/*
-var templateFS embed.FS
 
 // templateData is the data passed to the model.go.tmpl template.
 type templateData struct {
