@@ -98,3 +98,34 @@ component main {
 		t.Errorf("toggle handler did not splice the dependent text updater:\n%s", handler)
 	}
 }
+
+// Mutating a struct field of a reactive var (`u.score += 10`) must update
+// props that read the var. Regression for the tutorial "structs" lesson
+// ("button causes no change"): the mutation target `u.score` is a Select
+// rooted at `u`, which assignTargetVar didn't peel to the reactive var, so no
+// dependent updater was spliced.
+func TestStructFieldMutationSplicesUpdaters(t *testing.T) {
+	src := `
+output { none { html() } }
+struct User {
+    name string = "anon"
+    score int = 0
+}
+component main {
+    var u User = User{name = "Ada", score = 42}
+    text(value="Score: {u.score}")
+    button(text="+10", @click { u.score += 10 })
+}
+`
+	out := generateMainPage(t, src)
+	handler := out[strings.Index(out, `addEventListener("click"`):]
+	if i := strings.Index(handler, "});"); i >= 0 {
+		handler = handler[:i]
+	}
+	if !strings.Contains(handler, "state.u.score += 10") {
+		t.Fatalf("struct-field mutation missing:\n%s", handler)
+	}
+	if !strings.Contains(handler, "textContent") {
+		t.Errorf("struct-field mutation did not splice the dependent text updater:\n%s", handler)
+	}
+}

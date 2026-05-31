@@ -848,6 +848,24 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 // body. Callers use this map to rewrite injected updater expressions —
 // reads of captured Vars must route through state.
 func (st *reactivityState) assignTargetVar(target ir.Expr) (*ir.Var, map[ir.Symbol]ir.Expr) {
+	// A write to a struct field or collection element (`u.score += 10`,
+	// `items[i] = x`) mutates the root reactive var; peel the Select/Index
+	// chain to that root so the whole-var dep fires its updaters. Reactivity
+	// tracks deps at whole-var granularity, so any field/element write must
+	// re-render everything reading the var. The lifted-closure access form
+	// `(*state.u)` is a Unary, so peeling stops there and the deref branch
+	// below resolves it (covering `(*state.u).score` field writes too).
+peel:
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			target = n.Operand
+		case *ir.Index:
+			target = n.Operand
+		default:
+			break peel
+		}
+	}
 	if id, ok := target.(*ir.Ident); ok {
 		if v, ok := id.Sym.(*ir.Var); ok && st.reactiveVars[v] {
 			return v, nil
