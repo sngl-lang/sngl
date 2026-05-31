@@ -180,7 +180,7 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
-	if out, ok := codegen.EmitIntrinsicCall(langKt, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+	if out, _, ok := codegen.EmitIntrinsicCall(langKt, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
 		return out
 	}
 	if n.Receiver != nil {

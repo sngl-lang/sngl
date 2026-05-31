@@ -226,7 +226,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
-	if out, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+	if out, _, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
 		return out
 	}
 	if n.Receiver != nil {
@@ -688,18 +688,9 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "maxOf(" + a(0) + ", " + a(1) + ")"
 	case "int.abs", "*.abs":
 		return "kotlin.math.abs(" + a(0) + ")"
-	case "string.length", "*.length":
-		return a(0) + ".length"
-	case "string.upper", "*.upper":
-		return a(0) + ".uppercase()"
-	case "string.lower", "*.lower":
-		return a(0) + ".lowercase()"
-	case "string.trim", "*.trim":
-		return a(0) + ".trim()"
-	case "string.replace", "*.replace":
-		return a(0) + ".replace(" + a(1) + ", " + a(2) + ")"
-	case "string.indexOf", "*.indexOf":
-		return a(0) + ".indexOf(" + a(1) + ")"
+	// string.* and float math are intrinsic-backed and emitted by ID via the
+	// registry (intrinsics.go). string.contains stays: it is composed
+	// (indexOf >= 0), not an intrinsic.
 	case "string.contains":
 		return a(0) + ".contains(" + a(1) + ")"
 	case "list.length":

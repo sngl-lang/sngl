@@ -235,39 +235,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 	gc := golang.NewIRContext(exprCtx)
 
-	// Package
-	fmt.Fprintf(&b, "package %s\n\n", cfg.Package)
-
-	// Imports
-	b.WriteString("import (\n")
-	b.WriteString("\t\"fmt\"\n")
-	if cfg.Main {
-		b.WriteString("\t\"os\"\n")
-	}
-	b.WriteString("\t\"strings\"\n")
-	if len(info.goImports) > 0 {
-		var pkgs []string
-		for pkg := range info.goImports {
-			pkgs = append(pkgs, pkg)
-		}
-		sort.Strings(pkgs)
-		for _, pkg := range pkgs {
-			ns := info.goImports[pkg]
-			fmt.Fprintf(&b, "\t%s %q\n", ns, pkg)
-		}
-	}
-	b.WriteString("\n")
-	b.WriteString("\ttea \"charm.land/bubbletea/v2\"\n")
-	b.WriteString("\t\"charm.land/lipgloss/v2\"\n")
-	if len(info.inputs) > 0 {
-		b.WriteString("\t\"charm.land/bubbles/v2/textinput\"\n")
-	}
-	b.WriteString(")\n\n")
-
-	// Suppress unused imports
-	b.WriteString("var _ = fmt.Sprint\n")
-	b.WriteString("var _ = strings.Join\n")
-	b.WriteString("var _ = lipgloss.NewStyle\n\n")
+	// The body is emitted first (into b) so that imports can be derived from
+	// what the codegen actually used — gc accumulates them via RequireImport
+	// (e.g. "math" for float intrinsics), go:// natives land in info.goImports,
+	// and the framework packages are detected by scanning the body. The
+	// package clause + import block are prepended at the end (see return).
 
 	// Ternary helper
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
@@ -480,7 +452,68 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("}\n")
 	}
 
-	return []byte(b.String())
+	body := b.String()
+	var out strings.Builder
+	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
+	out.WriteString(bubbleImports(gc, info, body))
+	out.WriteString(body)
+	return []byte(out.String())
+}
+
+// bubbleImports builds the model file's import block from what the body
+// actually uses — no static list, no unused-import suppressors. Imports the
+// Go translator required (gc.Imports(): "math" for float intrinsics, "time"
+// for timers, the i18n runtime, …) and go:// natives (info.goImports) are
+// included unconditionally, since each was recorded at a real emit site.
+// Framework/std packages are included only when the body references their
+// selector, so a program that never formats a string or styles a node carries
+// neither import.
+func bubbleImports(gc *golang.GoIRContext, info *irAnalysis, body string) string {
+	imports := map[string]string{} // path -> alias
+	for path, alias := range info.goImports {
+		imports[path] = alias
+	}
+	for _, path := range gc.Imports() {
+		if _, ok := imports[path]; !ok {
+			imports[path] = ""
+		}
+	}
+	// sel is the package selector to scan for; it is not derivable from the
+	// path for versioned modules (…/v2), so it is given explicitly.
+	for _, c := range []struct{ sel, alias, path string }{
+		{"fmt", "", "fmt"},
+		{"os", "", "os"},
+		{"strings", "", "strings"},
+		{"tea", "tea", "charm.land/bubbletea/v2"},
+		{"lipgloss", "", "charm.land/lipgloss/v2"},
+		{"textinput", "", "charm.land/bubbles/v2/textinput"},
+	} {
+		if _, ok := imports[c.path]; ok {
+			continue
+		}
+		if strings.Contains(body, c.sel+".") {
+			imports[c.path] = c.alias
+		}
+	}
+	if len(imports) == 0 {
+		return ""
+	}
+	paths := make([]string, 0, len(imports))
+	for p := range imports {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	var b strings.Builder
+	b.WriteString("import (\n")
+	for _, p := range paths {
+		if alias := imports[p]; alias != "" {
+			fmt.Fprintf(&b, "\t%s %q\n", alias, p)
+		} else {
+			fmt.Fprintf(&b, "\t%q\n", p)
+		}
+	}
+	b.WriteString(")\n\n")
+	return b.String()
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {

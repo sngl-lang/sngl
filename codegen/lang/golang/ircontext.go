@@ -380,7 +380,10 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	// type-method and inlined call shapes. Backends register only the
 	// intrinsics they can emit; unregistered IDs fall through to the paths
 	// below (and ultimately goBuiltinMethodFromArgs).
-	if out, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
+		for _, p := range imports {
+			gc.RequireImport(p)
+		}
 		return out
 	}
 	// Namespace / component call — Receiver expression preserved.
