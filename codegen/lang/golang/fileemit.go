@@ -195,6 +195,13 @@ func (fe *fileEmitter) renderImports() []byte {
 // collides with another import.
 func goAliasFor(p string) string {
 	base := path.Base(p)
+	// Semantic-import-versioned modules end in /vN (e.g.
+	// "charm.land/bubbletea/v2"); the Go package name is the parent
+	// component, not "vN". Use it so two different /vN modules don't both
+	// derive "v2" and collide (which would force a bogus numeric alias).
+	if isSemverComponent(base) {
+		base = path.Base(path.Dir(p))
+	}
 	// Strip anything past a non-identifier char.
 	out := make([]byte, 0, len(base))
 	for i := 0; i < len(base); i++ {
@@ -216,4 +223,19 @@ func goAliasFor(p string) string {
 		}, base)
 	}
 	return string(out)
+}
+
+// isSemverComponent reports whether s is a semantic-import-version path
+// component: "v" followed by one or more digits (v2, v3, …). v0/v1 never
+// appear as path components, but treating them uniformly is harmless.
+func isSemverComponent(s string) bool {
+	if len(s) < 2 || s[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
