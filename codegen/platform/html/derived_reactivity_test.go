@@ -129,3 +129,68 @@ component main {
 		t.Errorf("struct-field mutation did not splice the dependent text updater:\n%s", handler)
 	}
 }
+
+// A statement-level in-place list method (`tasks.push(x)`) mutates its
+// receiver, so dependent props and reactive for-slots must update. Regression
+// for the tutorial "lists" lesson ("button does nothing"): push/remove are a
+// *ir.CallStmt, which updatersFor ignored, so neither the "{tasks.length}"
+// text nor the `for t = tasks` loop refreshed when the Add button pushed.
+func TestListPushSplicesUpdatersAndRefiresSlot(t *testing.T) {
+	src := `
+output { none { html() } }
+struct Task {
+    label string = ""
+}
+component main {
+    var tasks list<Task> = [Task{label = "A"}]
+    text(value="{tasks.length} tasks")
+    for t = tasks {
+        text(value=t.label)
+    }
+    button(text="Add", @click { tasks.push(Task{label = "B"}) })
+}
+`
+	out := generateMainPage(t, src)
+	// Bound the click handler at the init function rather than the first
+	// "});" — `tasks.push({...})` ends in "})", so a "});" cut would truncate
+	// the handler right after the push, before the spliced updaters.
+	handler := out[strings.Index(out, `addEventListener("click"`):]
+	if i := strings.Index(handler, "__sngl_init"); i >= 0 {
+		handler = handler[:i]
+	}
+	if !strings.Contains(handler, ".push(") {
+		t.Fatalf("push call missing:\n%s", handler)
+	}
+	if !strings.Contains(handler, "textContent") {
+		t.Errorf("push did not splice the dependent length-text updater:\n%s", handler)
+	}
+	if !strings.Contains(handler, "__renderSlot0(__slotAnchor_0)") {
+		t.Errorf("push did not re-fire the `for tasks` reactive slot:\n%s", handler)
+	}
+}
+
+// String/math methods are intrinsic-backed and inlined to a direct
+// stdlib.<Intrinsic> call before codegen. Dispatching intrinsics by ID (the
+// registry) emits the native form regardless — guarding against the prior bug
+// where an inlined `s.upper()` emitted a bare, undefined `stdlib.StrUpper(...)`
+// call instead of `.toUpperCase()`.
+func TestStringIntrinsicEmitsNativeAfterInlining(t *testing.T) {
+	src := `
+output { none { html() } }
+component main {
+    var s = "hi"
+    text(value="{s.upper()} {s.length}")
+    button(text="x", @click { s = s.upper() })
+}
+`
+	out := generateMainPage(t, src)
+	if !strings.Contains(out, ".toUpperCase()") {
+		t.Errorf("string.upper did not emit .toUpperCase():\n%s", out)
+	}
+	if strings.Contains(out, "stdlib.StrUpper") {
+		t.Errorf("string.upper emitted an undefined stdlib.StrUpper call:\n%s", out)
+	}
+	if !strings.Contains(out, ".length") {
+		t.Errorf("string.length did not emit .length:\n%s", out)
+	}
+}

@@ -185,6 +185,9 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
+	if out, ok := codegen.EmitIntrinsicCall(langGo, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+		return out
+	}
 	if n.Receiver != nil {
 		return translateIRNamespaceCall(n, scope)
 	}

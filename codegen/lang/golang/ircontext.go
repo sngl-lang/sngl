@@ -376,6 +376,13 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 }
 
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
+	// Intrinsic dispatch by ID — never by method name — and uniform across the
+	// type-method and inlined call shapes. Backends register only the
+	// intrinsics they can emit; unregistered IDs fall through to the paths
+	// below (and ultimately goBuiltinMethodFromArgs).
+	if out, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
+		return out
+	}
 	// Namespace / component call — Receiver expression preserved.
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)

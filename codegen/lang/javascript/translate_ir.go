@@ -213,6 +213,11 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
+	// Intrinsic dispatch by ID — never by method name — covering both
+	// type-method and inlined direct-intrinsic call shapes.
+	if out, ok := codegen.EmitIntrinsicCall(langJS, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+		return out
+	}
 	// Native scheme-import call (e.g. js://): emit the imported name
 	// directly and record the module → name binding for top-level
 	// `import { ... } from "module"` emission by the platform.
@@ -462,20 +467,9 @@ func translateIRTypeMethodCall(n *ir.Call, scope *codegen.ExprScope) string {
 		return jsName + "(" + strings.Join(argStrs, ", ") + ")"
 	}
 
-	// Mutation methods: push / remove render as native JS method calls.
 	if len(argStrs) >= 1 {
 		recv := argStrs[0]
 		rest := argStrs[1:]
-		switch method {
-		case "push":
-			if len(rest) == 1 {
-				return recv + ".push(" + rest[0] + ")"
-			}
-		case "remove":
-			if len(rest) == 1 {
-				return recv + ".splice(" + rest[0] + ", 1)"
-			}
-		}
 		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
 	}
 	// Emit a valid expression even when the method is unresolved so the

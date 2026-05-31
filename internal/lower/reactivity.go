@@ -769,10 +769,11 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 }
 
 // updatersFor returns the list of updaters to splice after s. Empty for stmts
-// that don't mutate a tracked Var. Both `x = ...` (*ir.Assign) and `x!!`
-// (*ir.Toggle) mutate their target, so each must trigger the dependent prop
-// and slot updaters — a `done!!` toggle is just as much a state mutation as a
-// plain assignment.
+// that don't mutate a tracked Var. Three statement shapes mutate state: a
+// plain assignment `x = ...` (*ir.Assign), a toggle `x!!` (*ir.Toggle), and a
+// statement-level call to an in-place list method like `tasks.push(x)`
+// (*ir.CallStmt) — see mutatingCallReceiver. Each must trigger the dependent
+// prop and slot updaters.
 func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	var target ir.Expr
 	switch n := s.(type) {
@@ -780,6 +781,11 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		target = n.Target
 	case *ir.Toggle:
 		target = n.Target
+	case *ir.CallStmt:
+		target = mutatingCallReceiver(n.Call)
+		if target == nil {
+			return nil
+		}
 	default:
 		return nil
 	}
@@ -830,6 +836,24 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		}})
 	}
 	return out
+}
+
+// mutatingCallReceiver returns the receiver expression of a statement-level
+// call that mutates its receiver in place, or nil otherwise. A method like
+// list.push is declared returning a new list but backed by an intrinsic that
+// mutates the receiver (see ir.IntrinsicDef.MutatesReceiver); a bare
+// `tasks.push(x)` statement therefore mutates `tasks` and must fire its
+// reactive updaters, exactly as `tasks = ...` would. The mutation semantics
+// come from the intrinsic metadata — keyed by the func's intrinsic ID, not by
+// method name. For a type-method call the receiver value is Args[0].
+func mutatingCallReceiver(c *ir.Call) ir.Expr {
+	if c == nil || c.Func == nil || c.Func.Intrinsic == "" || len(c.Args) == 0 {
+		return nil
+	}
+	if def, ok := ir.IntrinsicByName(c.Func.Intrinsic); ok && def.MutatesReceiver {
+		return c.Args[0].Value
+	}
+	return nil
 }
 
 // assignTargetVar resolves an Assign target to the underlying reactive Var.

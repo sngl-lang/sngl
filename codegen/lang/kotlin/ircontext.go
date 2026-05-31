@@ -224,6 +224,11 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 }
 
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
+	// Intrinsic dispatch by ID — never by method name. Backends register only
+	// the intrinsics they emit; unregistered IDs fall through.
+	if out, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+		return out
+	}
 	if n.Receiver != nil {
 		return kc.evalNamespaceCall(n)
 	}
@@ -699,10 +704,6 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".contains(" + a(1) + ")"
 	case "list.length":
 		return a(0) + ".size"
-	case "list.push":
-		return a(0) + ".add(" + a(1) + ")"
-	case "list.remove":
-		return a(0) + ".removeAt(" + a(1) + ")"
 	case "list.join", "*.join":
 		return a(0) + ".joinToString(" + a(1) + ")"
 	case "list.filter", "*.filter":

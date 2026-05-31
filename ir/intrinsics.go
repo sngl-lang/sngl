@@ -11,6 +11,24 @@ type IntrinsicDef struct {
 	// Use this for intrinsics whose result depends on host state
 	// (env vars, filesystem, time, etc.) or that have side effects.
 	Purity Purity
+	// MutatesReceiver marks an intrinsic whose first parameter (the receiver)
+	// is mutated in place by the native implementation, even though the SNGL
+	// signature returns a value. Reactivity treats a statement-level call as a
+	// write to the receiver var, and backends emit an in-place mutation.
+	MutatesReceiver bool
+}
+
+// IntrinsicByName returns the intrinsic definition with the given PascalCase
+// name (e.g. "ListPush"), or ok=false if none exists. Lets the checker and
+// lowering passes read intrinsic metadata by ID rather than matching method
+// names.
+func IntrinsicByName(name string) (IntrinsicDef, bool) {
+	for _, d := range Intrinsics {
+		if d.Name == name {
+			return d, true
+		}
+	}
+	return IntrinsicDef{}, false
 }
 
 // Intrinsics is the canonical list of language-level intrinsic functions.
@@ -42,8 +60,8 @@ var Intrinsics = []IntrinsicDef{
 
 	// --- list ---
 	{Name: "ListLength", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: TypInt},
-	{Name: "ListPush", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: ListOf(TypDyn)},
-	{Name: "ListRemove", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "index", Type: TypInt}}, Return: ListOf(TypDyn)},
+	{Name: "ListPush", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
+	{Name: "ListRemove", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "index", Type: TypInt}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
 	{Name: "ListIndexOf", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: TypInt},
 	{Name: "ListJoin", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "sep", Type: TypString}}, Return: TypString},
 	{Name: "ListReverse", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: ListOf(TypDyn)},

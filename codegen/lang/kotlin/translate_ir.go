@@ -180,6 +180,9 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
+	if out, ok := codegen.EmitIntrinsicCall(langKt, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+		return out
+	}
 	if n.Receiver != nil {
 		return translateIRNamespaceCall(n, scope)
 	}
@@ -382,26 +385,10 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 		if n.Call == nil {
 			return nil
 		}
-		// push / remove mutation short-circuits. After normalization the
-		// receiver is Args[0] and the explicit argument is Args[1].
-		if n.Call.Func != nil && n.Call.Func.Receiver == "list" && len(n.Call.Args) >= 1 {
-			target := translateIRMutTarget(n.Call.Args[0].Value, scope)
-			method := n.Call.Func.Name
-			rest := make([]string, len(n.Call.Args)-1)
-			for i, a := range n.Call.Args[1:] {
-				rest[i] = translateIRExpr(a.Value, scope)
-			}
-			switch method {
-			case "push":
-				if len(rest) == 1 {
-					return []string{target + ".add(" + rest[0] + ")"}
-				}
-			case "remove":
-				if len(rest) == 1 {
-					return []string{target + ".removeAt(" + rest[0] + ")"}
-				}
-			}
-		}
+		// In-place list mutations (push/remove) and every other intrinsic are
+		// dispatched by ID inside translateIRCall via the registry; .add /
+		// .removeAt mutate the receiver list reference directly, so the
+		// expression form of the receiver is the correct target.
 		return []string{translateIRCall(n.Call, scope)}
 	case *ir.LocalVar:
 		if n.Init != nil {

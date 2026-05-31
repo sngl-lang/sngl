@@ -135,13 +135,18 @@ func string.endsWith(s string, suffix string) => string.substring(s, string.leng
 // Number of items in l.
 func list<T>.length() int {}
 
-// Returns a new list with item appended to the end of l. Lists are
-// immutable values — the original l is unchanged.
-func list<T>.push(item T) list<T> {}
+// Appends item to the receiver list (`this`) and returns it. push mutates the
+// list in place — index assignment (`l[i] = x`) and the mutating methods
+// modify the list directly, and observers are notified exactly as assigning a
+// var would be. Backed by the ListPush intrinsic, which carries the
+// mutates-receiver semantics through to lowering and every backend (see
+// ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
+func list<T>.push(item T) => stdlib.ListPush(this, item)
 
-// Returns a new list with the item at index removed from l.
-// Out-of-range indices leave the list unchanged.
-func list<T>.remove(index int) list<T> {}
+// Removes the item at index from the receiver list (`this`) in place and
+// returns it. Out-of-range indices leave the list unchanged. Backed by the
+// ListRemove intrinsic.
+func list<T>.remove(index int) => stdlib.ListRemove(this, index)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.

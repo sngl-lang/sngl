@@ -315,6 +315,7 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	}
 	if id := detectIntrinsicCall(fn); id != "" {
 		fn.Intrinsic = id
+		applyIntrinsicMetadata(fn, id)
 	}
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
@@ -363,8 +364,27 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 	prevTypeParams := c.typeParams
-	c.typeParams = fn.TypeParams
+	// Receiver type parameters (the `<T>` in `list<T>.push`) plus any
+	// method-level ones must be in scope to resolve the receiver type and the
+	// body. RecvTypeParams come first so the receiver type `list<T>` resolves.
+	c.typeParams = append(append([]string{}, fn.RecvTypeParams...), fn.TypeParams...)
 	defer func() { c.typeParams = prevTypeParams }()
+
+	// Implicit-receiver methods (generic receiver, e.g. list<T>.push) carry no
+	// receiver parameter — the receiver is referenced as `this`. Bind it so
+	// such methods can have an expression body that delegates to an intrinsic,
+	// e.g. `func list<T>.push(item T) => stdlib.ListPush(this, item)`.
+	// Concrete-type methods (string.length(s string), color.hex(c color)) name
+	// the receiver explicitly and need no `this` binding. Only expression
+	// bodies are considered: the bodyless `{ }` generic stubs (map<K,V>.get,
+	// list<T>.filter, …) never reference `this`, and resolving their receiver
+	// type here would spuriously trip the map-key comparability check on the
+	// abstract key type parameter.
+	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
+		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
+			c.scope.Declare(&ir.Param{Name: "this", Type: thisType})
+		}
+	}
 
 	// Handle expression-body functions (=> expr)
 	if f.Body != nil {
@@ -408,7 +428,24 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	if fn.Intrinsic == "" {
 		if id := detectIntrinsicCall(fn); id != "" {
 			fn.Intrinsic = id
+			applyIntrinsicMetadata(fn, id)
 		}
+	}
+}
+
+// applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
+// stdlib wrapper that delegates to it. The wrapper would otherwise default to
+// PurityPure (registerStdlibFunc), which is wrong for effecting intrinsics like
+// ListPush (mutates its receiver) — letting the optimizer fold or drop a real
+// mutation. Backends and reactivity read the mutation semantics back via
+// fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
+func applyIntrinsicMetadata(fn *ir.Func, id string) {
+	def, ok := ir.IntrinsicByName(id)
+	if !ok {
+		return
+	}
+	if def.Purity != ir.PurityUnknown {
+		fn.Purity = def.Purity
 	}
 }
 
@@ -436,17 +473,39 @@ func detectIntrinsicCall(fn *ir.Func) string {
 	if call.Func.Intrinsic == "" {
 		return ""
 	}
-	// Require strict pass-through: arg count == param count, each arg is an
-	// Ident referencing the corresponding wrapper param (positionally).
-	if len(call.Args) != len(fn.Params) {
+	// Require strict pass-through: each arg is an Ident referencing the
+	// corresponding expected name positionally. For an implicit-receiver
+	// method (generic receiver), the body threads `this` as the intrinsic's
+	// first (receiver) arg ahead of the wrapper's params:
+	//   func list<T>.push(item T) => stdlib.ListPush(this, item)
+	expected := make([]string, 0, len(fn.Params)+1)
+	if fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
+		expected = append(expected, "this")
+	}
+	for _, p := range fn.Params {
+		expected = append(expected, p.Name)
+	}
+	if len(call.Args) != len(expected) {
 		return ""
 	}
 	for i, a := range call.Args {
-		if a.Name != "" && a.Name != fn.Params[i].Name {
+		if a.Name != "" && a.Name != expected[i] {
 			return ""
 		}
-		id, ok := a.Value.(*ir.Ident)
-		if !ok || id.Name != fn.Params[i].Name {
+		// Args may be implicitly converted to the intrinsic's parameter types
+		// — e.g. an implicit-receiver method threads `this : list<T>` into a
+		// list<dyn>-typed intrinsic param, materialized as an ir.Conversion.
+		// Unwrap conversions to recover the underlying pass-through ident.
+		v := a.Value
+		for {
+			conv, ok := v.(*ir.Conversion)
+			if !ok {
+				break
+			}
+			v = conv.Operand
+		}
+		id, ok := v.(*ir.Ident)
+		if !ok || id.Name != expected[i] {
 			return ""
 		}
 	}

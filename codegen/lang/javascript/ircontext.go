@@ -315,6 +315,13 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 }
 
 func (jc *JsIRContext) evalCall(n *ir.Call) string {
+	// Intrinsic dispatch by ID — never by method name — and uniformly whether
+	// the call reached codegen as a type-method call or was inlined to a direct
+	// intrinsic call. Must precede every other branch so e.g. an inlined
+	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
+	if out, ok := codegen.EmitIntrinsicCall(langJS, n, jc.EvalExpr); ok {
+		return out
+	}
 	// Native scheme-import call (e.g. js://): emit through the bundler
 	// alias when the module is in BundledNativePkgs, recording the
 	// module → name binding for top-level `import * as` emission.
@@ -494,16 +501,6 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if len(args) >= 1 {
 		recv := args[0]
 		rest := args[1:]
-		switch method {
-		case "push":
-			if len(rest) == 1 {
-				return recv + ".push(" + rest[0] + ")"
-			}
-		case "remove":
-			if len(rest) == 1 {
-				return recv + ".splice(" + rest[0] + ", 1)"
-			}
-		}
 		return recv + "." + method + "(" + strings.Join(rest, ", ") + ")"
 	}
 	return "null /* unresolved method " + qualName + " */"

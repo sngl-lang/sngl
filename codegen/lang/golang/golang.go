@@ -206,10 +206,6 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + "[" + a(1) + ":" + a(2) + "]"
 	case "list.length":
 		return "len(" + a(0) + ")"
-	case "list.push", "*.push":
-		return a(0) + " = append(" + a(0) + ", " + a(1) + ")"
-	case "list.remove", "*.remove":
-		return a(0) + " = append(" + a(0) + "[:" + a(1) + "], " + a(0) + "[" + a(1) + "+1:]...)"
 	case "list.join", "*.join":
 		return "strings.Join(" + a(0) + ", " + a(1) + ")"
 	case "list.filter", "*.filter":
