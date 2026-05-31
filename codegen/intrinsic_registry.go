@@ -15,9 +15,15 @@ import (
 // generic intrinsics specialize on the concrete element types here rather than
 // forcing every backend to special-case method names.
 //
-// Returning "" declines emission; the caller then falls back to its generic
-// path. This lets a language register only the intrinsics it implements.
-type IntrinsicEmitter func(args []ir.Expr, translate func(ir.Expr) string) string
+// The returned imports are language-defined dependency tags the emitted code
+// needs (Go import paths like "strings"/"math"; empty for backends whose
+// native form is a builtin or fully qualified). The call site applies them
+// through its own import mechanism (e.g. GoIRContext.RequireImport).
+//
+// Returning code == "" declines emission; the caller then falls back to its
+// generic path. This lets a language register only the intrinsics it
+// implements.
+type IntrinsicEmitter func(args []ir.Expr, translate func(ir.Expr) string) (code string, imports []string)
 
 var (
 	intrinsicMu       sync.RWMutex
@@ -54,25 +60,27 @@ func LookupIntrinsic(lang, id string) IntrinsicEmitter {
 }
 
 // EmitIntrinsicCall renders an intrinsic call for lang if c resolves to an
-// intrinsic with a registered emitter, returning (code, true). Otherwise it
-// returns ("", false) and the caller falls back to its generic emission. This
-// is the single dispatch point every backend's call translator should consult
-// before any method-name handling, so intrinsics are dispatched by ID — never
-// by method name — and uniformly whether or not the call was inlined.
-func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) (string, bool) {
+// intrinsic with a registered emitter, returning (code, imports, true).
+// Otherwise it returns ("", nil, false) and the caller falls back to its
+// generic emission. This is the single dispatch point every backend's call
+// translator should consult before any method-name handling, so intrinsics are
+// dispatched by ID — never by method name — and uniformly whether or not the
+// call was inlined. The caller must apply the returned imports through its own
+// import mechanism.
+func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) (string, []string, bool) {
 	if c == nil || c.Func == nil || c.Func.Intrinsic == "" {
-		return "", false
+		return "", nil, false
 	}
 	e := LookupIntrinsic(lang, c.Func.Intrinsic)
 	if e == nil {
-		return "", false
+		return "", nil, false
 	}
 	args := make([]ir.Expr, len(c.Args))
 	for i, a := range c.Args {
 		args[i] = a.Value
 	}
-	if out := e(args, translate); out != "" {
-		return out, true
+	if out, imports := e(args, translate); out != "" {
+		return out, imports, true
 	}
-	return "", false
+	return "", nil, false
 }

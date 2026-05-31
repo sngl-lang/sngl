@@ -8,31 +8,60 @@ import (
 // langGo is this backend's registry key (matches LanguageIdentifier).
 const langGo = "go"
 
-// init registers the Go emitter for every intrinsic this backend implements by
-// ID (see codegen.EmitIntrinsicCall). Only import-free intrinsics are
-// registered here: the in-place list mutations lower to the `append` builtin.
-// Intrinsics whose native form needs an import (strings.*, math.*) still flow
-// through goBuiltinMethodFromArgs until the emitter interface can declare
-// required imports.
+// init registers the Go emitter for the intrinsics this backend implements,
+// dispatched by ID (see codegen.EmitIntrinsicCall). Emitters declare the
+// imports their native form needs ("strings"/"math"); GoIRContext applies them
+// via RequireImport. Emissions match what goBuiltinMethodFromArgs produced for
+// the corresponding method qualNames.
 func init() {
+	// reg registers an import-free emitter (builtins / slicing).
 	reg := func(id string, fn func(a []string) string) {
-		codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) string {
-			a := make([]string, len(args))
-			for i, e := range args {
-				a[i] = tr(e)
-			}
-			return fn(a)
-		})
+		regImp(id, nil, fn)
 	}
+
+	// --- string ---
+	reg("StrLength", func(a []string) string { return "len(" + a[0] + ")" })
+	regImp("StrIndexOf", []string{"strings"}, func(a []string) string { return "strings.Index(" + a[0] + ", " + a[1] + ")" })
+	reg("StrSubstring", func(a []string) string { return a[0] + "[" + a[1] + ":" + a[2] + "]" })
+	regImp("StrUpper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
+	regImp("StrLower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
+	regImp("StrTrim", []string{"strings"}, func(a []string) string { return "strings.TrimSpace(" + a[0] + ")" })
+	regImp("StrReplace", []string{"strings"}, func(a []string) string { return "strings.ReplaceAll(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
+	regImp("StrSplit", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
+
+	// --- float math --- (Math{Floor,Ceil,Round} return int)
+	regImp("MathFloor", []string{"math"}, func(a []string) string { return "int(math.Floor(" + a[0] + "))" })
+	regImp("MathCeil", []string{"math"}, func(a []string) string { return "int(math.Ceil(" + a[0] + "))" })
+	regImp("MathRound", []string{"math"}, func(a []string) string { return "int(math.Round(" + a[0] + "))" })
+	regImp("MathSqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
+	regImp("MathPow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
+	regImp("MathSin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
+	regImp("MathCos", []string{"math"}, func(a []string) string { return "math.Cos(" + a[0] + ")" })
+	regImp("MathTan", []string{"math"}, func(a []string) string { return "math.Tan(" + a[0] + ")" })
+	regImp("MathAsin", []string{"math"}, func(a []string) string { return "math.Asin(" + a[0] + ")" })
+	regImp("MathAcos", []string{"math"}, func(a []string) string { return "math.Acos(" + a[0] + ")" })
+	regImp("MathAtan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
+	regImp("MathAtan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list (in-place mutations) ---
 	// ListPush/ListRemove mutate the receiver slice in place and return it;
-	// `append` reassigns the receiver, matching the receiver-write semantics
-	// (MutatesReceiver) the checker and reactivity rely on.
+	// `append` reassigns the receiver, matching the mutates-receiver semantics
+	// the checker and reactivity rely on. No import (append is a builtin).
 	reg("ListPush", func(a []string) string {
 		return a[0] + " = append(" + a[0] + ", " + a[1] + ")"
 	})
 	reg("ListRemove", func(a []string) string {
 		return a[0] + " = append(" + a[0] + "[:" + a[1] + "], " + a[0] + "[" + a[1] + "+1:]...)"
+	})
+}
+
+// regImp registers an emitter that declares the given Go import paths.
+func regImp(id string, imports []string, fn func(a []string) string) {
+	codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		a := make([]string, len(args))
+		for i, e := range args {
+			a[i] = tr(e)
+		}
+		return fn(a), imports
 	})
 }

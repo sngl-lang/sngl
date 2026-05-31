@@ -28,6 +28,13 @@ type irViewContext struct {
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
+	// Register imports at the emit site: a rendered line that calls fmt.* (the
+	// fmt.Sprint value wrapper) needs the "fmt" import. tea/lipgloss are
+	// required structurally; "fmt" is conditional, so it's required here only
+	// when actually emitted.
+	if vc.gc != nil && strings.Contains(format, "fmt.") {
+		vc.gc.RequireImport("fmt")
+	}
 	fmt.Fprintf(vc.buf, "%s"+format+"\n", append([]any{strings.Repeat("\t", vc.indent)}, args...)...)
 }
 

@@ -57,6 +57,30 @@ func modelFieldRef(name string) ir.Expr {
 	}
 }
 
+// fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
+// (in blueprint goFn/goType and the view's literal fallbacks) to its full Go
+// import path. It is the single source of truth for resolving a selector to a
+// path: nativeCall uses it for NativePkg, and the import block uses it to scan
+// the generated body for framework usage — replacing the old always-on set.
+var fyneFrameworkPkgs = map[string]string{
+	"fmt":       "fmt",
+	"fyne":      "fyne.io/fyne/v2",
+	"widget":    "fyne.io/fyne/v2/widget",
+	"container": "fyne.io/fyne/v2/container",
+	"canvas":    "fyne.io/fyne/v2/canvas",
+	"layout":    "fyne.io/fyne/v2/layout",
+}
+
+// fyneImportPath returns the full Go import path for a fyne package selector,
+// or "" if the selector isn't a known framework package (so callers leave it
+// unchanged — e.g. std "strings", or a go:// native already carrying a path).
+func fyneImportPath(sel string) string {
+	if p, ok := fyneFrameworkPkgs[sel]; ok && p != sel {
+		return p
+	}
+	return ""
+}
+
 // nativeCall builds a Call that gc.EvalExpr renders verbatim. For a
 // dotted name (e.g. "widget.NewLabel"), uses the namespace path with
 // NativePkg/NativeName so the Go renderer emits the qualified name
@@ -68,10 +92,18 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	}
 	if dot := strings.Index(nativeName, "."); dot > 0 {
 		pkg := nativeName[:dot]
+		// NativePkg must be the full Go import path so platforms can collect
+		// it (gc.Imports()); the selector in NativeName (e.g. "widget" in
+		// "widget.NewLabel") stays the package name. Resolve the known fyne
+		// selectors; std/other selectors pass through unchanged.
+		nativePkg := pkg
+		if full := fyneImportPath(pkg); full != "" {
+			nativePkg = full
+		}
 		return &ir.Call{
 			Type:     retType,
 			Receiver: &ir.Ident{Name: pkg},
-			Func:     &ir.Func{NativePkg: pkg, NativeName: nativeName},
+			Func:     &ir.Func{NativePkg: nativePkg, NativeName: nativeName},
 			Args:     callArgs,
 		}
 	}

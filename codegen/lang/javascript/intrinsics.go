@@ -17,13 +17,15 @@ func init() {
 	// reg registers an emitter whose args are rendered positionally; recv is
 	// args[0] for a type-method intrinsic. fn receives the already-translated
 	// argument strings.
+	// All JS emissions below are language builtins (String/Array methods,
+	// the global Math object), so none declare imports.
 	reg := func(id string, fn func(a []string) string) {
-		codegen.RegisterIntrinsic(langJS, id, func(args []ir.Expr, tr func(ir.Expr) string) string {
+		codegen.RegisterIntrinsic(langJS, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 			a := make([]string, len(args))
 			for i, e := range args {
 				a[i] = tr(e)
 			}
-			return fn(a)
+			return fn(a), nil
 		})
 	}
 

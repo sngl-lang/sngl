@@ -215,7 +215,7 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	// Intrinsic dispatch by ID — never by method name — covering both
 	// type-method and inlined direct-intrinsic call shapes.
-	if out, ok := codegen.EmitIntrinsicCall(langJS, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+	if out, _, ok := codegen.EmitIntrinsicCall(langJS, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
 		return out
 	}
 	// Native scheme-import call (e.g. js://): emit the imported name

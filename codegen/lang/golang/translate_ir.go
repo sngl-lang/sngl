@@ -185,7 +185,11 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 }
 
 func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
-	if out, ok := codegen.EmitIntrinsicCall(langGo, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
+	// Imports are not applied here: this path serves go:// HTTP handlers and
+	// emitted test files, which compose fixed import blocks with no std-import
+	// sink (a separate, pre-existing limitation). The UI platforms use
+	// GoIRContext, which applies the emitter's imports via RequireImport.
+	if out, _, ok := codegen.EmitIntrinsicCall(langGo, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
 		return out
 	}
 	if n.Receiver != nil {

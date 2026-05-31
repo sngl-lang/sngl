@@ -152,6 +152,11 @@ type FileOptions struct {
 	// Maps enables source-map emission: Go inline //line directives,
 	// JS data-URL sourceMappingURL.
 	Maps bool
+	// CgoPreamble, when non-empty, is emitted immediately after the package
+	// clause and before the regular import block (Go only). It holds the cgo
+	// comment block plus its `import "C"` line, which must sit on their own
+	// and precede other imports.
+	CgoPreamble string
 }
 
 // FileEmitter is the per-file rendering surface. Languages own their

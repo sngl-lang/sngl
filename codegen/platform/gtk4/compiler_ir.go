@@ -397,6 +397,16 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		td.Imports[p] = true
 	}
 
+	// Imports the Go translator required while rendering bodies/handlers
+	// (e.g. "math" for a float intrinsic). The template's dynamic .Imports
+	// block renders these; cgo's `import "C"` + `unsafe` stay structural in the
+	// template since cgo mandates that exact layout. C calls don't register an
+	// import (handled via the cgo preamble), so gc.Imports() holds only real
+	// Go paths.
+	for _, p := range gc.Imports() {
+		td.Imports[p] = true
+	}
+
 	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
 	for _, imp := range helpers.Imports() {

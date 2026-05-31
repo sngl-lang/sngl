@@ -166,44 +166,8 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "math.Abs(" + a(0) + ")"
 	case "float.clamp":
 		return "math.Min(math.Max(" + a(0) + ", " + a(1) + "), " + a(2) + ")"
-	case "float.floor", "*.floor":
-		return "int(math.Floor(" + a(0) + "))"
-	case "float.ceil", "*.ceil":
-		return "int(math.Ceil(" + a(0) + "))"
-	case "float.round", "*.round":
-		return "int(math.Round(" + a(0) + "))"
-	case "float.sqrt", "*.sqrt":
-		return "math.Sqrt(" + a(0) + ")"
-	case "float.pow", "*.pow":
-		return "math.Pow(" + a(0) + ", " + a(1) + ")"
-	case "float.sin", "*.sin":
-		return "math.Sin(" + a(0) + ")"
-	case "float.cos", "*.cos":
-		return "math.Cos(" + a(0) + ")"
-	case "float.tan", "*.tan":
-		return "math.Tan(" + a(0) + ")"
-	case "float.asin", "*.asin":
-		return "math.Asin(" + a(0) + ")"
-	case "float.acos", "*.acos":
-		return "math.Acos(" + a(0) + ")"
-	case "float.atan", "*.atan":
-		return "math.Atan(" + a(0) + ")"
-	case "float.atan2", "*.atan2":
-		return "math.Atan2(" + a(0) + ", " + a(1) + ")"
-	case "string.length", "*.length":
-		return "len(" + a(0) + ")"
-	case "string.upper", "*.upper":
-		return "strings.ToUpper(" + a(0) + ")"
-	case "string.lower", "*.lower":
-		return "strings.ToLower(" + a(0) + ")"
-	case "string.trim", "*.trim":
-		return "strings.TrimSpace(" + a(0) + ")"
-	case "string.replace", "*.replace":
-		return "strings.ReplaceAll(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
-	case "string.indexOf", "*.indexOf":
-		return "strings.Index(" + a(0) + ", " + a(1) + ")"
-	case "string.substring", "*.substring":
-		return a(0) + "[" + a(1) + ":" + a(2) + "]"
+	// string.* and float math (floor/ceil/round/sqrt/pow/trig) are
+	// intrinsic-backed and emitted by ID via the registry (intrinsics.go).
 	case "list.length":
 		return "len(" + a(0) + ")"
 	case "list.join", "*.join":

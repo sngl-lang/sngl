@@ -196,17 +196,22 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	src, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	body, imports, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	if err != nil {
 		return err
 	}
 	e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
-		Name:     "model.go",
-		Source:   req.Source,
-		Platform: "fyne",
-		Maps:     req.Maps,
+		Name:        "model.go",
+		Source:      req.Source,
+		Platform:    "fyne",
+		PackageName: c.cfg.Package,
+		Maps:        req.Maps,
+		CgoPreamble: cgoPreamble,
 	})
-	if _, err := e.Write(src); err != nil {
+	for _, p := range imports {
+		e.RequireImport(p)
+	}
+	if _, err := e.Write([]byte(body)); err != nil {
 		e.Close()
 		return err
 	}

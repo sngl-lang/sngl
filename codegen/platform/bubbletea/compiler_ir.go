@@ -2,8 +2,6 @@ package bubbletea
 
 import (
 	"fmt"
-	"go/format"
-	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -63,12 +61,31 @@ type forLoopCursor struct {
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
-	src := emitIR(info, ctx, cfg)
-	formatted, err := format.Source(src)
-	if err != nil {
-		return src, fmt.Errorf("generated code formatting error: %w\n%s", err, src)
+	body, imports := emitIR(info, ctx, cfg)
+
+	// Assemble through the language FileEmitter so import rendering, gofmt,
+	// and the package clause are owned by the code writer. A MemSink lets us
+	// keep returning bytes (android's go path + tests consume them); the
+	// generated-by header is added by the caller's emitter (Source left empty).
+	mem := codegen.NewMemSink()
+	e := (&golang.Translator{}).NewFileEmitter(mem, codegen.FileOptions{
+		Name:        "model.go",
+		PackageName: cfg.Package,
+	})
+	for _, p := range imports {
+		e.RequireImport(p)
 	}
-	return formatted, nil
+	if _, err := e.Write([]byte(body)); err != nil {
+		return nil, err
+	}
+	if err := e.Close(); err != nil {
+		return nil, err
+	}
+	out := mem.Files()["model.go"]
+	if out == nil {
+		return nil, fmt.Errorf("bubbletea: emitter produced no model.go")
+	}
+	return out, nil
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.
@@ -224,10 +241,25 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		info.goImports["time"] = ""
 	}
 
+	// Imports the var-init rendering above required (e.g. "math" for a float
+	// intrinsic in an initializer). This gc is separate from emitIR's, so fold
+	// its imports into goImports, which emitIR requires.
+	for _, p := range gc.Imports() {
+		info.goImports[p] = ""
+	}
+
 	return info
 }
 
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
+// emitIR renders the model file body (no package clause or import block) and
+// returns it along with the Go import paths it uses. Imports are recorded at
+// their emit sites: the bubbletea framework packages are required structurally
+// here (every model has Init/Update/View, which reference tea + lipgloss +
+// fmt); dynamic imports (e.g. "math" for a float intrinsic) accumulate on gc
+// as the body is translated; go:// natives and "time" arrive via
+// info.goImports. The caller feeds these to a FileEmitter, which renders the
+// package clause + import block, gofmt, and source-map directives.
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []string) {
 	var b strings.Builder
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
@@ -235,39 +267,23 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 	}
 	gc := golang.NewIRContext(exprCtx)
 
-	// Package
-	fmt.Fprintf(&b, "package %s\n\n", cfg.Package)
-
-	// Imports
-	b.WriteString("import (\n")
-	b.WriteString("\t\"fmt\"\n")
+	// Structural framework imports: every model's Init/Update/View shells
+	// reference tea, and View renders through lipgloss. "fmt" is NOT structural
+	// — it's required at the emit site (irViewContext.line, and main below)
+	// only when an fmt.* reference is actually written.
+	gc.RequireImport("charm.land/bubbletea/v2")
+	gc.RequireImport("charm.land/lipgloss/v2")
 	if cfg.Main {
-		b.WriteString("\t\"os\"\n")
+		gc.RequireImport("os")
+		gc.RequireImport("fmt") // main() prints errors via fmt.Fprintf
 	}
-	b.WriteString("\t\"strings\"\n")
-	if len(info.goImports) > 0 {
-		var pkgs []string
-		for pkg := range info.goImports {
-			pkgs = append(pkgs, pkg)
-		}
-		sort.Strings(pkgs)
-		for _, pkg := range pkgs {
-			ns := info.goImports[pkg]
-			fmt.Fprintf(&b, "\t%s %q\n", ns, pkg)
-		}
-	}
-	b.WriteString("\n")
-	b.WriteString("\ttea \"charm.land/bubbletea/v2\"\n")
-	b.WriteString("\t\"charm.land/lipgloss/v2\"\n")
 	if len(info.inputs) > 0 {
-		b.WriteString("\t\"charm.land/bubbles/v2/textinput\"\n")
+		gc.RequireImport("charm.land/bubbles/v2/textinput")
 	}
-	b.WriteString(")\n\n")
-
-	// Suppress unused imports
-	b.WriteString("var _ = fmt.Sprint\n")
-	b.WriteString("var _ = strings.Join\n")
-	b.WriteString("var _ = lipgloss.NewStyle\n\n")
+	// go:// natives + "time" (timers/toasts) collected during analysis.
+	for p := range info.goImports {
+		gc.RequireImport(p)
+	}
 
 	// Ternary helper
 	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
@@ -480,7 +496,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) []byte {
 		b.WriteString("}\n")
 	}
 
-	return []byte(b.String())
+	return b.String(), gc.Imports()
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
