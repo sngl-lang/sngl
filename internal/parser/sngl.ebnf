@@ -396,7 +396,7 @@ StatementPrimary =
 
 IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
 
-ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
+ForNode = kw_for [ amp ] ident [ comma [ amp ] ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 
 PlatformNode = kw_platform ident StmtBlock .
 

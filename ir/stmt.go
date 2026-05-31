@@ -143,6 +143,12 @@ type For struct {
 	// reactive. Pass-2 of passReactivity rewrites these into CallStmt
 	// __renderSlot<N>() invocations.
 	LoweredSlotID string `json:"-"`
+	// RefElem is true when the element loop variable was &-bound
+	// (`for &t = list` / `for i, &t = list`): the element var has type
+	// ref<T> and the lowering rewrites its uses to indexed list access
+	// (list[i]) so writes update the original element. Only set for
+	// addressable mutable list iterables (checker-validated).
+	RefElem bool
 }
 
 func (*For) stmtNode() {}

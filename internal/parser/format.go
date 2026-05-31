@@ -560,9 +560,15 @@ func (f *formatter) writeIfStmt(s *ast.IfStmt) {
 
 func (f *formatter) writeForStmt(s *ast.ForStmt) {
 	f.write("for ")
+	if s.KeyRef {
+		f.write("&")
+	}
 	f.write(s.Key)
 	if s.Value != "" {
 		f.write(", ")
+		if s.ValueRef {
+			f.write("&")
+		}
 		f.write(s.Value)
 	}
 	f.write(" = ")

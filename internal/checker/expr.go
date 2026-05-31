@@ -50,6 +50,37 @@ func (c *checker) checkExprExpecting(e ast.Expr, expected *ir.Type) ir.Expr {
 	return t
 }
 
+// isAddressableListExpr reports whether e denotes a mutable, addressable list:
+// a (non-const) var, a component field, or a field/element path rooted at one.
+// Computed lists (filter/map/method results) and const lists are not
+// addressable, so an &-bound loop variable can't write through them.
+func isAddressableListExpr(e ir.Expr) bool {
+	switch n := e.(type) {
+	case *ir.Ident:
+		switch sym := n.Sym.(type) {
+		case *ir.Var:
+			return !sym.IsConst
+		case *ir.Component:
+			return true // component self; fields on it are mutable state
+		case *ir.Param:
+			return sym.Name == "this" // implicit component receiver
+		case *ir.LoopVar:
+			return true // element of an outer &-bound loop (nested addressable)
+		}
+		return false
+	case *ir.Select:
+		return isAddressableListExpr(n.Operand)
+	case *ir.Index:
+		return isAddressableListExpr(n.Operand)
+	case *ir.Conversion:
+		return isAddressableListExpr(n.Operand)
+	case *ir.Unary:
+		// Deref of a ref (e.g. an outer &t) — follow through.
+		return isAddressableListExpr(n.Operand)
+	}
+	return false
+}
+
 // inferExpr dispatches on expression type to infer its type.
 func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	switch x := e.(type) {
@@ -314,7 +345,16 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if t == nil {
 		t = TypDyn
 	}
-	return &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
+	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
+	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
+	// Unary{Deref}, mirroring Select-operand deref) so reads type-check as the
+	// element type and assignment targets resolve to the dereferenced element.
+	// Lowering rewrites the ref to indexed list access. Only loop vars are
+	// ref-typed at check time, so this never affects other identifiers.
+	if _, isLoop := sym.(*ir.LoopVar); isLoop && t.Kind == ir.TypeRef && len(t.Elems) > 0 {
+		return &ir.Unary{Type: t.Elems[0], Op: ast.UnaryDeref, Operand: ident}
+	}
+	return ident
 }
 
 // exported reports whether a looked-up symbol is exported. Symbols that
@@ -2153,6 +2193,39 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// lives in the parent scope.
 		hoistedIDs := c.hoistForLoopWindowIDs(&x.Body)
 		c.pushScope()
+		// Resolve &-binding: only the ELEMENT loop var may be &-bound, only
+		// over a mutable addressable list. The element is Key in single-var
+		// form and Value in two-var form. `&` on the index (two-var Key) is an
+		// error. An invalid `&` is reported and downgraded to a value binding.
+		// TODO(lint): a plain (non-&) element loop var is a value copy, so
+		// writing through its fields (`for t = list { t.done!! }`) silently
+		// updates a throwaway copy. Surface that as a lint error suggesting
+		// `&t`; for now it compiles as a no-op.
+		elemRef := x.KeyRef
+		if x.Value != "" {
+			if x.KeyRef {
+				c.error(x.Pos, "& cannot bind the index variable; write `for i, &%s = …`", x.Value)
+			}
+			elemRef = x.ValueRef
+		}
+		if elemRef {
+			if iter.Kind != ir.TypeList {
+				c.error(x.Pos, "&-bound loop variable requires a list; got %s", iter)
+				elemRef = false
+			} else if !isAddressableListExpr(iterExpr) {
+				c.error(x.Pos, "cannot &-bind: the iterable is not an addressable mutable list; iterate a list variable or field, or drop the &")
+				elemRef = false
+			}
+		}
+		// elemDeclType wraps the element type in ref<T> when &-bound so reads
+		// auto-deref and field/element writes type-check as lvalues; the
+		// lowering rewrites uses to indexed list access.
+		elemDeclType := func(t *ir.Type) *ir.Type {
+			if elemRef {
+				return ir.RefOf(t)
+			}
+			return t
+		}
 		// Declare loop variables based on iterator type.
 		elemType := TypDyn
 		switch iter.Kind {
@@ -2163,10 +2236,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if x.Value != "" {
 				// for key, value = list: key is index (int), value is element.
 				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
 			} else {
 				// for item = list: item is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
 			}
 		case ir.TypeIter:
 			if len(iter.Elems) > 0 {
@@ -2211,7 +2284,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &ir.For{AST: x, Key: x.Key, Value: x.Value, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs}
+		return &ir.For{AST: x, Key: x.Key, Value: x.Value, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:

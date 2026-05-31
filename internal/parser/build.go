@@ -1145,9 +1145,17 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	// ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 	pos := b.posFromToken(it.shift()) // kw_for
 	stmt := &ast.ForStmt{Pos: pos}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
+		it.skip() // & — bind the element var as ref<T>
+		stmt.KeyRef = true
+	}
 	stmt.Key = it.shift().Literal // ident
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == COMMA {
 		it.skip() // comma
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
+			it.skip() // & on the second (element) var
+			stmt.ValueRef = true
+		}
 		stmt.Value = it.shift().Literal
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {

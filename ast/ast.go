@@ -323,12 +323,14 @@ type IfStmt struct {
 
 // ForStmt: for key [, value] = iter { body } [else { alt }].
 type ForStmt struct {
-	Pos   Pos
-	Key   string // iterator variable
-	Value string // optional second variable (empty if single-var form)
-	Iter  Expr
-	Body  StmtBlock
-	Else  StmtBlock // zero value if no else
+	Pos      Pos
+	Key      string // iterator variable
+	KeyRef   bool   // Key was &-prefixed: `for &t = ...` (ref<T> element binding)
+	Value    string // optional second variable (empty if single-var form)
+	ValueRef bool   // Value was &-prefixed: `for i, &t = ...`
+	Iter     Expr
+	Body     StmtBlock
+	Else     StmtBlock // zero value if no else
 }
 
 // PlatformStmt: platform ident { body }.
