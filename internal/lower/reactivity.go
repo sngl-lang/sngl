@@ -451,12 +451,28 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 		st.collectFromNode(n)
 	case *ir.If:
 		st.collectFromIf(n)
-		st.collectFromStmts(n.Body)
-		st.collectFromStmts(n.Else)
+		if n.LoweredSlotID == "" {
+			st.collectFromStmts(n.Body)
+			st.collectFromStmts(n.Else)
+		} else {
+			// Reactive slot: the body is re-rendered wholesale on every
+			// re-fire, so its bound props must not register standalone
+			// prop-updaters (those would reference per-slot element ids that
+			// only exist inside the slot func, leaking into outside handlers).
+			// Instead make the slot re-fire for every reactive var the body
+			// reads.
+			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
+			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+		}
 	case *ir.For:
 		st.collectFromFor(n)
-		st.collectFromStmts(n.Body)
-		st.collectFromStmts(n.Else)
+		if n.LoweredSlotID == "" {
+			st.collectFromStmts(n.Body)
+			st.collectFromStmts(n.Else)
+		} else {
+			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
+			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+		}
 	case *ir.PlatformFilter:
 		st.collectFromStmts(n.Body)
 	case *ir.SlotInst:
@@ -520,6 +536,61 @@ func (st *reactivityState) collectFromFor(n *ir.For) {
 		st.reverseSlots[v] = append(st.reverseSlots[v], slot)
 	}
 	n.LoweredSlotID = slot.SlotID
+}
+
+// registerSlotBodyDeps makes the slot named slotID re-fire whenever any
+// reactive var read by a bound prop / nested cond / nested iter in stmts
+// mutates. Used for the body of a reactive If/For: the body re-renders
+// wholesale, so individual props don't get standalone updaters — instead the
+// whole slot re-fires for any var the body depends on. Deduped per var.
+func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) {
+	addDep := func(e ir.Expr) {
+		for v := range st.exprDeps(e) {
+			st.addSlotDep(v, slotID)
+		}
+	}
+	var walk func([]ir.Stmt)
+	walk = func(ss []ir.Stmt) {
+		for _, s := range ss {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				for _, p := range n.Props {
+					addDep(p.Value)
+				}
+				walk(n.Children)
+			case *ir.If:
+				addDep(n.Cond)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				addDep(n.Iter)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.PlatformFilter:
+				walk(n.Body)
+			case *ir.SlotInst:
+				walk(n.Children)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			case *ir.ContextProvider:
+				walk(n.Children)
+			default:
+				// Imperative/leaf stmts carry no rendered props.
+			}
+		}
+	}
+	walk(stmts)
+}
+
+// addSlotDep records that the slot named slotID must re-fire when v mutates,
+// without duplicating an existing (v, slotID) entry.
+func (st *reactivityState) addSlotDep(v *ir.Var, slotID string) {
+	for _, s := range st.reverseSlots[v] {
+		if s.SlotID == slotID {
+			return
+		}
+	}
+	st.reverseSlots[v] = append(st.reverseSlots[v], reactiveSlot{SlotID: slotID})
 }
 
 func (st *reactivityState) freshSlotID() string {

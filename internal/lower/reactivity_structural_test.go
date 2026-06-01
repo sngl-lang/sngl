@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -183,7 +184,12 @@ component main {
 	}
 }
 
-func TestSynthesizeRenderSlotFunc_PanicsOnNested(t *testing.T) {
+// A reactive structure nested inside another reactive structure is subsumed
+// by the outer slot: the outer If/For gets the only slot, the inner one
+// renders inline within it, and the outer slot re-fires for every reactive var
+// the body reads (including the inner condition). No separate inner slot is
+// synthesized, and lowering does not panic.
+func TestNestedReactiveStructureSubsumedByOuterSlot(t *testing.T) {
 	src := `
 component main {
     var outer bool = true
@@ -197,12 +203,27 @@ component main {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic on nested reactive If; none occurred")
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+		t.Fatalf("lowerReactivity: %v", err)
+	}
+	comp := pkg.Components[0]
+	// The outer If is replaced by a __renderSlotN CallStmt; no *ir.If remains
+	// at the top of the body (the inner If lives inside the slot func).
+	for _, s := range comp.Body {
+		if _, ok := s.(*ir.If); ok {
+			t.Errorf("outer reactive If was not rewritten out of component body")
 		}
-	}()
-	_ = lowerReactivity(pkg, Caps{NoReactivity: true}, Options{})
+	}
+	// Exactly one slot func was synthesized (the outer one subsumes the inner).
+	slots := 0
+	for _, f := range comp.Funcs {
+		if strings.HasPrefix(f.Name, "__renderSlot") {
+			slots++
+		}
+	}
+	if slots != 1 {
+		t.Errorf("expected exactly 1 synthesized slot func; got %d", slots)
+	}
 }
 
 func TestReactiveIfReplacedByCallStmt(t *testing.T) {

@@ -299,6 +299,8 @@ component main {
 
 Index assignment (`items[i] = value`) and the toggle operator (`items[i].done!!`) work directly on list elements.
 
+A loop element variable is a copy by default, so writing its fields doesn't touch the list. Prefix it with `&` (`for &t = items`) to bind it as a reference into the list: field and whole-element writes then update the original element in place — and reactivity fires. Below, `&t` is what lets the checkbox toggle the task and refresh the remaining count.
+
 ```sngl
 struct Task {
     label string = ""
@@ -314,7 +316,7 @@ component main {
             value="{tasks.length} tasks; {remainingCount} remaining",
             style={fontWeight = "bold"}
         )
-        for t = tasks {
+        for &t = tasks {
             checkbox(:checked=t.done, label=t.label)
         }
         hbox(style={gap = 6}) {
