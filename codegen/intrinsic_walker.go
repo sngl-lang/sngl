@@ -87,17 +87,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		cp.Body = body
 		return []ir.Stmt{&cp}
 	case *ir.If:
-		condExpr := t.OnCond(ctx, n.Cond)
-		body := WalkLowered(ctx, n.Body, t)
-		var elseBody []ir.Stmt
+		cp := *n
+		cp.Cond = t.OnCond(ctx, n.Cond)
+		cp.Body = WalkLowered(ctx, n.Body, t)
 		if len(n.Else) > 0 {
-			elseBody = WalkLowered(ctx, n.Else, t)
+			cp.Else = WalkLowered(ctx, n.Else, t)
 		}
-		return []ir.Stmt{&ir.If{
-			Cond: condExpr,
-			Body: body,
-			Else: elseBody,
-		}}
+		return []ir.Stmt{&cp}
 	}
 	return t.OnDefault(ctx, s)
 }
