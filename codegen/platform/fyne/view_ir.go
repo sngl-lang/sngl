@@ -151,27 +151,30 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
-	iterVar := s.Key
 	iterExpr := vc.gc.EvalExpr(s.Iter)
-	indexVar := "_"
-	if s.Value != "" {
-		indexVar = s.Key
-		iterVar = s.Value
-	}
 
-	loopGC := vc.gc.WithLocal(iterVar)
-	if indexVar != "_" {
-		loopGC = loopGC.WithLocal(indexVar)
+	// Defer the loop header to the Go language driver so loop semantics live
+	// in one place rather than being re-implemented per platform.
+	loopGC := vc.gc
+	if s.Key != "" && s.Key != "_" {
+		loopGC = loopGC.WithLocal(s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		loopGC = loopGC.WithLocal(s.Value)
 	}
 	savedGC := vc.gc
 	vc.gc = loopGC
 
 	loopItems := resultVar + "Items"
 	vc.line("var %s []fyne.CanvasObject", loopItems)
-	vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
+	vc.line("%s", vc.gc.ForHead(s, iterExpr))
 	vc.indent++
-	if indexVar != "_" {
-		vc.line("_ = %s", indexVar)
+	// The view body may not reference the loop vars; suppress unused errors.
+	if s.Key != "" && s.Key != "_" {
+		vc.line("_ = %s", s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		vc.line("_ = %s", s.Value)
 	}
 	innerVar := resultVar + "Item"
 	vc.line("var %s fyne.CanvasObject", innerVar)

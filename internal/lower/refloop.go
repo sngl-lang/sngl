@@ -128,16 +128,17 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 // synthesized name recorded on For.IndexVar.
 func (st *refLoopState) lowerFor(n *ir.For) {
 	elemName := n.Key
+	indexName := ""
 	if n.Value != "" {
 		// two-var `for i, &t`: Key is the index, Value the element.
 		elemName = n.Value
-		n.IndexVar = n.Key
+		indexName = n.Key
 	} else {
 		// single-var `for &t`: synthesize an index.
-		n.IndexVar = "__forIdx" + strconv.Itoa(st.idxCounter)
+		indexName = "__forIdx" + strconv.Itoa(st.idxCounter)
 		st.idxCounter++
 	}
-	idxSym := &ir.LoopVar{Name: n.IndexVar, Type: ir.TypInt}
+	idxSym := &ir.LoopVar{Name: indexName, Type: ir.TypInt}
 	r := &refLoopRewriter{elemName: elemName, iter: n.Iter, elemType: n.ElemType, idxSym: idxSym}
 	for i := range n.Body {
 		n.Body[i] = r.stmt(n.Body[i])
@@ -145,6 +146,13 @@ func (st *refLoopState) lowerFor(n *ir.For) {
 	for i := range n.Else {
 		n.Else[i] = r.stmt(n.Else[i])
 	}
+	// Desugar into an ordinary two-var loop over indices: Key=index,
+	// Value="_" (the element binding is discarded — every element use was
+	// rewritten to iter[index]). Downstream reactivity and codegen treat this
+	// as a plain indexed loop; no ref-specific path remains.
+	n.Key = indexName
+	n.Value = "_"
+	n.RefElem = false
 }
 
 // refLoopRewriter replaces references to a loop's &-bound element var with indexed

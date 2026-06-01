@@ -455,28 +455,21 @@ func translateIRForGo(n *ir.For, scope *codegen.ExprScope) []string {
 	if n.Value != "" {
 		locals[n.Value] = true
 	}
-	if n.RefElem {
-		locals[n.IndexVar] = true
-	}
 	loopScope.LocalVars = locals
 
 	var lines []string
 	iterType := n.Iter.ExprType()
-	if n.RefElem {
-		// &-bound element: body rewritten to index iter[IndexVar].
-		lines = append(lines, fmt.Sprintf("for %s := range %s {", n.IndexVar, iterExpr))
-	} else if iterType != nil && iterType.Kind == ir.TypeMap {
+	if iterType != nil && iterType.Kind == ir.TypeMap {
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iterExpr))
+	} else if n.Value != "" {
+		// Two-var list/iter: Key is the index, Value the element.
+		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iterExpr))
 	} else {
-		indexVar := "_"
-		if n.Value != "" {
-			indexVar = n.Value
-		}
-		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, n.Key, iterExpr))
+		lines = append(lines, fmt.Sprintf("for _, %s := range %s {", n.Key, iterExpr))
 	}
 	for _, stmt := range n.Body {
 		for _, l := range translateIRMutation(stmt, &loopScope) {

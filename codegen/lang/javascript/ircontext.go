@@ -131,11 +131,6 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
-	if n.RefElem {
-		// &-bound element: the body was rewritten to index `iter[IndexVar]`,
-		// so iterate by index to write through to the live element.
-		return fmt.Sprintf("for (let %s = 0; %s < %s.length; %s++) {", n.IndexVar, n.IndexVar, iter, n.IndexVar)
-	}
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for (const [k, v] of m.entries()) { ... }
@@ -145,7 +140,12 @@ func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 		}
 		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iter)
 	}
-	// List / iter<T> iteration: for (const x of list) { ... }
+	if n.Value != "" {
+		// Two-var list/iter: Key is the index, Value the element. A list's
+		// .entries() yields [index, element], matching that order.
+		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, n.Value, iter)
+	}
+	// Single-var list / iter<T>: for (const x of list) { ... }
 	return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
 }
 func (jc *JsIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }

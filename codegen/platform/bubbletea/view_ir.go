@@ -215,65 +215,29 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	iterExpr := vc.gc.EvalExpr(s.Iter)
 
-	// &-bound element loop: the body was rewritten to index iter[IndexVar],
-	// so iterate by index and bind only the index var.
-	if s.RefElem {
-		loopGC := vc.gc.WithLocal(s.IndexVar)
-		savedGC := vc.gc
-		vc.gc = loopGC
-		loopVar := resultVar + "Items"
-		vc.line("var %s []string", loopVar)
-		vc.line("for %s := range %s {", s.IndexVar, iterExpr)
-		vc.indent++
-		innerVar := resultVar + "Item"
-		vc.line("var %s string", innerVar)
-		for _, child := range s.Body {
-			vc.renderStmt(child, innerVar)
-		}
-		vc.line("%s = append(%s, %s)", loopVar, loopVar, innerVar)
-		vc.indent--
-		vc.line("}")
-		sep := `""`
-		if vc.vertical {
-			sep = `"\n"`
-		}
-		vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
-		if len(s.Else) > 0 {
-			vc.line("if len(%s) == 0 {", iterExpr)
-			vc.indent++
-			for _, child := range s.Else {
-				vc.renderStmt(child, resultVar)
-			}
-			vc.indent--
-			vc.line("}")
-		}
-		vc.gc = savedGC
-		return
+	// Defer the loop header to the Go language driver so loop semantics
+	// (single/two-var ordering, &-bound element index loops) live in one place
+	// rather than being re-implemented per platform.
+	loopGC := vc.gc
+	if s.Key != "" && s.Key != "_" {
+		loopGC = loopGC.WithLocal(s.Key)
 	}
-
-	iterVar := s.Key
-	indexVar := "_"
-	if s.Value != "" {
-		indexVar = s.Key
-		iterVar = s.Value
-	}
-
-	loopGC := vc.gc.WithLocal(iterVar)
-	if indexVar != "_" {
-		loopGC = loopGC.WithLocal(indexVar)
+	if s.Value != "" && s.Value != "_" {
+		loopGC = loopGC.WithLocal(s.Value)
 	}
 	savedGC := vc.gc
 	vc.gc = loopGC
 
 	loopVar := resultVar + "Items"
 	vc.line("var %s []string", loopVar)
-	vc.line("for %s, %s := range %s {", indexVar, iterVar, iterExpr)
+	vc.line("%s", vc.gc.ForHead(s, iterExpr))
 	vc.indent++
-	if indexVar != "_" {
-		vc.line("_ = %s", indexVar)
+	// The view body may not reference the loop vars; suppress unused errors.
+	if s.Key != "" && s.Key != "_" {
+		vc.line("_ = %s", s.Key)
 	}
-	if iterVar != "_" {
-		vc.line("_ = %s", iterVar)
+	if s.Value != "" && s.Value != "_" {
+		vc.line("_ = %s", s.Value)
 	}
 
 	innerVar := resultVar + "Item"

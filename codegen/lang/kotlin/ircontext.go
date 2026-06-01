@@ -142,11 +142,6 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
-	if n.RefElem {
-		// &-bound element: the body was rewritten to index iter[IndexVar],
-		// so iterate by index to write through to the live element.
-		return fmt.Sprintf("for (%s in %s.indices) {", n.IndexVar, iter)
-	}
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for ((k, v) in m) { ... }
@@ -156,7 +151,12 @@ func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 		}
 		return fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iter)
 	}
-	// List / iter<T> iteration: for (x in list) { ... }
+	if n.Value != "" {
+		// Two-var list/iter: Key is the index, Value the element.
+		// withIndex() yields (index, element), matching that order.
+		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", n.Key, n.Value, iter)
+	}
+	// Single-var list / iter<T>: for (x in list) { ... }
 	return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
 }
 func (kc *KtIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }

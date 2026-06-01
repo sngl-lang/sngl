@@ -145,15 +145,14 @@ type For struct {
 	LoweredSlotID string `json:"-"`
 	// RefElem is true when the element loop variable was &-bound
 	// (`for &t = list` / `for i, &t = list`): the element var has type
-	// ref<T> and the lowering rewrites its uses to indexed list access
-	// (list[i]) so writes update the original element. Only set for
-	// addressable mutable list iterables (checker-validated).
+	// ref<T> and writes through it must update the original list element.
+	// Set by the checker for addressable mutable list iterables. It is a
+	// transient marker: the RefLoop lowering pass consumes it — rewriting
+	// element uses to indexed list access and desugaring the loop into an
+	// ordinary two-var (index, _) loop — then clears it, so codegen never
+	// sees a RefElem loop. The headless interpreter (which does not lower)
+	// reads it directly to bind the element as a reference.
 	RefElem bool
-	// IndexVar is the loop index variable name a RefElem loop iterates over
-	// (the two-var Key, or a synthesized name for the single-var form). Set
-	// by the ref-loop lowering pass; codegen emits an index-driven loop
-	// (`for IndexVar := range Iter`) and the body accesses Iter[IndexVar].
-	IndexVar string
 }
 
 func (*For) stmtNode() {}
