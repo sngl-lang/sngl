@@ -53,50 +53,49 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 }
 
 func (cc *irComposeContext) renderIf(s *ir.If) {
-	cond := cc.kc.EvalExpr(s.Cond)
-	cc.line("if (%s) {", cond)
+	// Defer the conditional syntax to the Kotlin language driver.
+	cc.line("%s", cc.kc.IfHead(s, cc.kc.EvalExpr(s.Cond)))
 	cc.indent++
 	for _, child := range s.Body {
 		cc.renderStmt(child)
 	}
 	cc.indent--
 	if len(s.Else) > 0 {
-		cc.line("} else {")
+		cc.line("%s", cc.kc.ElseHead())
 		cc.indent++
 		for _, child := range s.Else {
 			cc.renderStmt(child)
 		}
 		cc.indent--
 	}
-	cc.line("}")
+	cc.line("%s", cc.kc.BlockEnd())
 }
 
 func (cc *irComposeContext) renderFor(s *ir.For) {
 	iterExpr := cc.kc.EvalExpr(s.Iter)
-	iterVar := s.Key
-	if s.Value != "" {
-		cc.line("%s.forEachIndexed { %s, %s ->", iterExpr, s.Key, s.Value)
-		cc.indent++
-		loopKC := cc.kc.WithLocal(s.Key).WithLocal(s.Value)
-		savedKC := cc.kc
-		cc.kc = loopKC
-		for _, child := range s.Body {
-			cc.renderStmt(child)
-		}
-		cc.kc = savedKC
-	} else {
-		cc.line("for (%s in %s) {", iterVar, iterExpr)
-		cc.indent++
-		loopKC := cc.kc.WithLocal(iterVar)
-		savedKC := cc.kc
-		cc.kc = loopKC
-		for _, child := range s.Body {
-			cc.renderStmt(child)
-		}
-		cc.kc = savedKC
+
+	// Defer the loop header to the Kotlin language driver so loop semantics
+	// (single/two-var ordering, map iteration) live in one place rather than
+	// being re-implemented per platform.
+	loopKC := cc.kc
+	if s.Key != "" && s.Key != "_" {
+		loopKC = loopKC.WithLocal(s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		loopKC = loopKC.WithLocal(s.Value)
+	}
+	savedKC := cc.kc
+	cc.kc = loopKC
+
+	cc.line("%s", cc.kc.ForHead(s, iterExpr))
+	cc.indent++
+	for _, child := range s.Body {
+		cc.renderStmt(child)
 	}
 	cc.indent--
-	cc.line("}")
+	cc.line("%s", cc.kc.BlockEnd())
+
+	cc.kc = savedKC
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {

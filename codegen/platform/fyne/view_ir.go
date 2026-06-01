@@ -132,22 +132,22 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 }
 
 func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
-	cond := vc.gc.EvalExpr(s.Cond)
-	vc.line("if %s {", cond)
+	// Defer the conditional syntax to the Go language driver.
+	vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
 	vc.indent++
 	for _, child := range s.Body {
 		vc.renderStmt(child, resultVar)
 	}
 	vc.indent--
 	if len(s.Else) > 0 {
-		vc.line("} else {")
+		vc.line("%s", vc.gc.ElseHead())
 		vc.indent++
 		for _, child := range s.Else {
 			vc.renderStmt(child, resultVar)
 		}
 		vc.indent--
 	}
-	vc.line("}")
+	vc.line("%s", vc.gc.BlockEnd())
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {

@@ -500,43 +500,19 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		goType := golang.IRTypeToGo(p.Type)
-		params[i] = p.Name + " " + goType
+	if len(fn.Block) == 0 {
+		return
 	}
-	paramStr := strings.Join(params, ", ")
-
-	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
-		retType = golang.IRTypeToGo(fn.Return)
+	// Emit user funcs as Model methods (lowercase name preserved so tests can
+	// invoke `c.<name>(...)`). Defer signature/body emission to the Go language
+	// driver's EmitFuncDef instead of re-implementing param/return/body here.
+	fnCopy := *fn
+	fnCopy.Receiver = "Model"
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
 	}
-
-	receiver := "m Model"
-	if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
-		receiver = "m *Model"
-	}
-
-	// Emit user funcs as lowercase Model methods so they line up with
-	// the computed-method naming convention. Tests can then uniformly
-	// invoke `c.<name>(...)` against the Model.
-	goName := fn.Name
-
-	// Add params as locals
-	localGC := gc
-	for _, p := range fn.Params {
-		localGC = localGC.WithLocal(p.Name)
-	}
-
-	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "func (%s) %s(%s) %s {\n", receiver, goName, paramStr, retType)
-		for _, stmt := range fn.Block {
-			for _, line := range localGC.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t%s\n", line)
-			}
-		}
-		b.WriteString("}\n\n")
-	}
+	b.WriteByte('\n')
 }
 
 func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext) {

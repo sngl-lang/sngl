@@ -150,35 +150,17 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 }
 
 func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		params[i] = p.Name + " " + golang.IRTypeToGo(p.Type)
+	if len(fn.Block) == 0 {
+		return
 	}
-	paramStr := strings.Join(params, ", ")
-	retType := golang.IRTypeToGo(fn.Return)
-	goName := exportName(fn.Name)
-
-	localGC := gc
-	for _, p := range fn.Params {
-		localGC = localGC.WithLocal(p.Name)
-	}
-
-	if len(fn.Block) == 1 {
-		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-			body := localGC.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "\nfunc %s(%s) %s {\n\treturn %s\n}\n", goName, paramStr, retType, body)
-			return
-		}
-	}
-
-	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "\nfunc %s(%s) %s {\n", goName, paramStr, retType)
-		for _, stmt := range fn.Block {
-			for _, line := range localGC.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t%s\n", line)
-			}
-		}
-		b.WriteString("}\n")
+	// Go-lib funcs are free, exported functions. Defer signature/body emission
+	// to the Go language driver's EmitFuncDef rather than re-implementing it.
+	fnCopy := *fn
+	fnCopy.Name = exportName(fn.Name)
+	b.WriteByte('\n')
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
 	}
 }
 
