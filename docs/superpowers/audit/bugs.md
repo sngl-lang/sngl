@@ -156,6 +156,11 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - A zip-bomb-style tar.gz from a malicious import URL is extracted verbatim (no size cap, no entry-count cap). DoS via large `http://` import.
 - **severity**: latent (assumes trust on import URLs)
 
+### 31. Recursive go-lib (gomobile) func renders its self-call with a Model receiver
+- **file**: android `go { android() }` path — `codegen/platform/android/gogen_ir.go` `emitGoLibIRFunc` (signature) + the body via `gc.EvalStmt`
+- A top-level func emitted into the android Go library that calls itself renders the recursive call as `m.fib(...)` (Model-receiver method) inside a free function `func Fib(n int) int { ... }` — there is no `m` in scope, so the generated Go does not compile. Repro: `func fib(n int) int { return n < 2 ? n : fib(n-1) + fib(n-2) }` targeting `go { android() }` → `golib/golib.go` emits `return ternary((n < 2), n, (m.fib((n - 1)) + m.fib((n - 2))))`. Pre-existing (the body is rendered by the shared call translator, which assumes the `m.` receiver convention); surfaced while exercising `emitGoLibIRFunc`. Edge case (recursive gomobile-backed func); the android gradle test would catch it if it weren't already timing out.
+- **severity**: wrong-output (uncompilable Go) — narrow trigger
+
 ---
 
 ## NOTES

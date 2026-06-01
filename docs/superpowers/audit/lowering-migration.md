@@ -437,6 +437,170 @@ last lowering pass) and stash on `ir.Package`. Delete
 
 ---
 
+## 19. Test functions bypass `lower.Lower` → a full testlower walker per language driver
+
+**Files:**
+- `codegen/lang/golang/testlower.go` (whole file: `lowerTestStmt`, `lowerTestIf`,
+  `lowerTestFor`, `lowerTestSetContext`, `lowerEventTrigger`)
+- `codegen/lang/kotlin/testlower.go` (`lowerTestStmt`, `lowerTestExpr` — a
+  *second* full expression evaluator with its own Binary/Unary/Select/Index
+  handling, `composeAction`, `lowerEventTrigger`)
+- `codegen/lang/javascript/testlower.go` (thinner — delegates the body to
+  `jc.EvalStmt`, proving the others don't have to be this big)
+- Root cause: `CollectTestFuncs(req.Pkg)` (e.g. `gtk4.go:201`, `android.go:311`)
+  feeds test funcs straight to `LowerTestFile` **without** running `lower.Lower`.
+
+**What it does:** Each driver re-walks test-body IR and re-desugars constructs
+the pipeline already handles for non-test code: it decodes the `c.id.@event()`
+shape by digging into raw `ast.SelectExpr{Kind: SelectEvent}` (re-parsing AST,
+not translating IR), recognizes `Test.assert`/`setContext`/`snapshot` by
+`Func.Receiver == "Test"`, and re-decides component-state direct-field-write
+vs. setter.
+
+**Why lower:** Because test bodies skip `lower.Lower`, every high-level form
+(`@event`, `Test.*`, context writes, refs, list-lambdas, toggle) survives to
+codegen and each driver hand-desugars it — three times. Largest block of
+duplicated semantic logic in the drivers.
+
+**Migration:** Run test funcs through `lower.Lower` like every other function
+(or add a `lowerTest` pass that desugars `Test.assert/setContext/snapshot` and
+`c.id.@event()` into ordinary IR — an assert `CallStmt`, an `Assign` to a
+synthesized `__ctx_*`, an `ir.Call` to the synthesized event method). Each
+driver's testlower then collapses to the shared `EvalStmt`/`EvalExpr` path the
+JS one already uses.
+
+---
+
+## 20. Builtin type conversions matched by function *name* in all three drivers
+
+**Files:**
+- `codegen/lang/golang/ircontext.go:406` (`evalCall`: `string`/`int`/`float`/`size`)
+- `codegen/lang/javascript/ircontext.go:346`
+- `codegen/lang/kotlin/ircontext.go:246`
+
+**What it does:** Each `evalCall` special-cases `n.Func.Name == "string"|"int"|
+"float"|"size"` and emits a cast, keyed on a high-level name.
+
+**Why lower:** A type conversion is a semantic concept already modelled as
+`ir.Conversion` (the checker materializes implicit conversions there). These
+builtin conversion *calls* slip through as plain `*ir.Call` and get re-recognized
+by name in three places, overlapping each driver's own `evalConversion`.
+
+**Migration:** Have the checker (or a small pass) rewrite `string(x)`/`int(x)`/
+`float(x)`/`size(x)` into `ir.Conversion{Type, Operand}`. Delete the name-keyed
+branches; route through the single `evalConversion`.
+
+---
+
+## 21. `null`→func/nillable "stub" desugaring duplicated across drivers
+
+**Files:**
+- `codegen/lang/golang/ircontext.go:806,832` (`isNullToFuncConv`, `nullFuncStubGo`)
+- `codegen/lang/kotlin/ircontext.go:430` (`isNullToFuncConvKt`, `nullFuncStubKt`, `ktZeroFor`)
+- `codegen/lang/javascript/ircontext.go:532` (`isNullToFuncConvJS`)
+
+**What it does:** Each driver recognizes "a `null` literal converted to a
+`func`/`option`/`ref`/`map`/`list` type" and synthesizes a stub — for the func
+case a zero-returning lambda (deciding what an unset callable does when invoked),
+plus a per-language zero-value table.
+
+**Why lower:** The meaning of `null` in a callable slot is platform-independent
+desugaring, replicated 3×.
+
+**Migration:** A pass rewrites `Conversion(null → func sig)` into an explicit
+zero-returning `ir.Lambda` once (drivers translate a normal lambda); emit plain
+`nil`/`null` for the other nillable kinds. Zero-value-of-type belongs near
+`ir/defaults.go`.
+
+---
+
+## 22. Native `(T, error)` call wrapped in an IIFE at codegen time
+
+**File:** `codegen/lang/golang/ircontext.go:370` (`maybeWrapErrorReturn`)
+
+**What it does:** When a native func has `HasErrorReturn`, codegen wraps the call
+in `func() T { v, _ := f(args); return v }()` — synthesizing control flow that
+discards the error. The comment admits it was placed here to "keep this fix
+local … avoid threading plumbing through every platform."
+
+**Why lower:** Effect/error-handling semantics in the translator; conflicts with
+the project rule "prefer compile-time analysis over runtime machinery — emit
+direct invocations." Go-only, so not 3-way duplicated, but still misplaced.
+
+**Migration:** A pass normalizes a 2-value `(T, error)` native call into explicit
+IR (a temp + discard materialized as IR statements, or an explicit
+error-handling node) so the driver emits a 1:1 translation.
+
+---
+
+## 23. `ForHead` re-derives the map-vs-indexed iteration choice in all three drivers
+
+**Files:** `ForHead` in `codegen/lang/{golang,javascript,kotlin}/ircontext.go`
+
+**What it does:** Each `ForHead` makes the same decision — `iterType.Kind ==
+TypeMap` → key/value iteration; else two-var → indexed; else single element —
+then renders it (`range` / `.entries()` / `.withIndex()`).
+
+**Why lower:** The single/two-var index/element *ordering* was just unified
+(see "Resolved this pass"). What remains is the map-vs-list *decision* computed
+three times. Low impact — the surface syntax genuinely diverges — but real
+duplicated semantic logic.
+
+**Migration:** A pass (extend `refloop`, which already normalizes `for &t`)
+stamps an explicit `IterKind` (MapEntries / Indexed / Element) on `ir.For`; each
+`ForHead` becomes a pure template with no `TypeMap` branch.
+
+---
+
+## 24. html `rewriteSlotCallsToAnchors` rewrites synthesized slot-call args post-lowering
+
+**File:** `codegen/platform/html/html.go:739` `rewriteSlotCallsToAnchors`
+
+**What it does:** Walks every component/window/handler/timer block (and, since
+the inline-handler work, into handler-closure lambda args) mutating the
+`ir.Call.Args[0]` of every `__renderSlotN(parent)` call that `passReactivity`
+synthesized — rebinding `parent` to a `display:contents` anchor ident.
+
+**Why lower:** Threading the correct parent into the slot's create/teardown/
+re-fire calls is work the pass that *created* those calls should do. The anchor
+*strategy* is html-specific, but the tree-walk-and-rebind is lowering-shaped and
+exists only because `passReactivity` emits a placeholder parent.
+
+**Migration:** Have `passReactivity` thread the slot's own abstract anchor ref
+into the `__renderSlotN` calls (html supplies the anchor element). The post-hoc
+tree rewrite disappears.
+
+---
+
+> **#5 addendum:** the codegen-time reactive engine is two structures —
+> `codegen/deps.go` (`ExprDeps`/`MutatedFields`) **and** `codegen/model.go`
+> (`Updater.Deps` + `AffectedUpdaters`/`FindAffected`, pruned by
+> `codegen/iropt.go:OptimizeMutation`). html/fyne/gtk4 all set `NoReactivity`
+> (so `passReactivity` runs *and* injects updater IR) yet still call this engine.
+> bubbletea is the one legitimate `deps.go` consumer (RenderModel, no
+> `NoReactivity`); its `MutatedFields` use should become a lowering-pass
+> annotation so the engine can be deleted.
+
+---
+
+## Resolved this pass (2026-06-01)
+
+The "defer to the language driver / desugar in lowering" theme, applied to
+loops, conditionals, and func definitions:
+
+- `for &t = list` (ref<T> loop write-through) is desugared **entirely in
+  lowering** (`internal/lower/refloop.go`) into an ordinary two-var indexed
+  loop; `ir.For` carries no codegen-facing ref fields and no driver has a ref
+  branch.
+- Two-var **list** iteration was fixed/aligned across golang (was index/element
+  swapped), javascript (dropped the index), and kotlin (`withIndex()`).
+- bubbletea / fyne / android view emitters now defer `for`, `if`, and func-def
+  emission to the language driver (`ForHead`/`IfHead`/`ElseHead`/`BlockEnd`/
+  `EmitFuncDef`); gtk4 already routed through `gc.EvalStmt`. android was the
+  un-migrated platform (its loop had no map branch).
+
+---
+
 ## Cross-cutting recommendations
 
 1. **Build a single `ir.Walk(visitor)`.** Every grep in finding #2 disappears.
