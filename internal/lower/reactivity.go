@@ -755,7 +755,28 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 					}
 				}
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.CallStmt:
+			// A statement-level call may carry an inline-closure handler
+			// (e.g. lower.attachHandler(elem, "change", () => { … })), produced
+			// when a reactive slot body is lowered with inline handlers. Recurse
+			// into the closure body so mutations inside it get their dependent
+			// prop/slot updaters spliced — otherwise a list-item handler that
+			// mutates the list would never re-fire the slot.
+			if n.Call != nil {
+				for i := range n.Call.Args {
+					switch lam := n.Call.Args[i].Value.(type) {
+					case *ir.Lambda:
+						if lam.Func != nil {
+							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+						}
+					case *ir.Closure:
+						if lam.Func != nil {
+							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+						}
+					}
+				}
+			}
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
 			// Leaf stmts — no nested blocks to recurse into. updatersFor
 			// below handles Assign-driven updater injection.
 		default:

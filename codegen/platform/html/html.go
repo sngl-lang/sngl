@@ -765,6 +765,23 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		switch n := s.(type) {
 		case *ir.CallStmt:
 			rewriteCall(n.Call)
+			// An inline-closure handler (e.g. attachHandler(el, "change",
+			// () => { … __renderSlotN(__root) … })) carries slot re-fire calls
+			// in its body; descend so they're retargeted to the slot anchor too.
+			if n.Call != nil {
+				for _, a := range n.Call.Args {
+					switch lam := a.Value.(type) {
+					case *ir.Lambda:
+						if lam.Func != nil {
+							visitStmts(lam.Func.Block)
+						}
+					case *ir.Closure:
+						if lam.Func != nil {
+							visitStmts(lam.Func.Block)
+						}
+					}
+				}
+			}
 		case *ir.NodeInst:
 			if n == nil {
 				return

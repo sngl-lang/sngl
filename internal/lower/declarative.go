@@ -46,6 +46,14 @@ type declarativeState struct {
 	nextID       int
 	lifter       *lifter
 	liftHandlers bool // true when NoLambda is on alongside NoDeclarative
+	// inlineHandlers keeps event handlers as inline closures attached at the
+	// node, rather than promoting them to top-level named funcs. Set for the
+	// reactive-slot path: a slot body may live inside a `for` loop, so a
+	// promoted top-level handler would reference per-iteration vars (the loop
+	// index, element refs) that exist only inside the loop. An inline closure
+	// captures them. Only meaningful for closure-supporting targets
+	// (liftHandlers=false); when NoLambda is on, the lifter handles captures.
+	inlineHandlers bool
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
@@ -280,6 +288,12 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// synthesized struct + Func to pkg, so we don't push h.Func into
 			// *funcs ourselves.
 			handlerArg = st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+		} else if st.inlineHandlers {
+			// Closure-supporting target inside a re-rendering slot: emit the
+			// handler as an inline closure attached at the node, so it captures
+			// any enclosing loop vars (index, element refs) rather than
+			// referencing them from an out-of-scope top-level func.
+			handlerArg = &ir.Lambda{Type: h.Func.SymType(), Func: h.Func}
 		} else {
 			// Either NoLambda is off (closure-supporting target — keep free
 			// vars free) or the body has no captures (no lift needed).
@@ -426,6 +440,7 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, fun
 // capture state is needed.
 func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
 	st := newDeclarativeState(pkg, Caps{NoLambda: false})
+	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier
 	// reactivity-pass invocations — so widget ids stay unique across
