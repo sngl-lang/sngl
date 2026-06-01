@@ -1,0 +1,22 @@
+// `&` on a loop element variable requires an addressable, mutable list.
+// Over a computed list, a const list, or a non-list iterable it is rejected
+// at check time: there is no live element to write back to.
+
+component main {
+    const frozen list<int> = [1, 2, 3]
+    var xs list<int> = [1, 2, 3]
+    var m map<string, int> = {"a" = 1}
+
+    // computed list (filter result) is not addressable
+    func a() {
+        for &x = xs.filter(func(n int) => n > 0) { x = 0 } // ERROR(check) "not an addressable mutable list"
+    }
+    // const list is not mutable
+    func b() {
+        for &x = frozen { x = 0 } // ERROR(check) "not an addressable mutable list"
+    }
+    // a map is not a list
+    func c() {
+        for k, &v = m { v = 0 } // ERROR(check) "requires a list"
+    }
+}

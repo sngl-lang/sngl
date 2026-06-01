@@ -201,6 +201,20 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
+	case *ir.Unary:
+		// `*n = val` — whole-element write through an &-bound loop element
+		// (`for &n = list { n = … }`). The operand is a listRef; write back.
+		if target.Op == ast.UnaryDeref {
+			obj, err := env.Eval(target.Operand)
+			if err != nil {
+				return err
+			}
+			if ref, ok := obj.(*listRef); ok {
+				ref.set(ApplyOp(s.Op, ref.get(), val))
+				return nil
+			}
+			return fmt.Errorf("cannot deref-assign to %T", obj)
+		}
 	}
 	return fmt.Errorf("invalid assignment target %T", s.Target)
 }
@@ -289,7 +303,13 @@ func (env *Env) execFor(s *ir.For) error {
 			return nil
 		}
 		for i, item := range v {
-			env.Vars[s.Key] = item
+			if s.RefElem {
+				// &-bound element: bind a listRef so field/whole-element writes
+				// (through the checker's Unary{Deref}) update the list in place.
+				env.Vars[s.Key] = &listRef{list: v, idx: i}
+			} else {
+				env.Vars[s.Key] = item
+			}
 			if s.Value != "" {
 				env.Vars[s.Value] = i
 			}

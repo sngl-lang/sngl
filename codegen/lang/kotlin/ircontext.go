@@ -142,6 +142,11 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
+	if n.RefElem {
+		// &-bound element: the body was rewritten to index iter[IndexVar],
+		// so iterate by index to write through to the live element.
+		return fmt.Sprintf("for (%s in %s.indices) {", n.IndexVar, iter)
+	}
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for ((k, v) in m) { ... }

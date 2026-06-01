@@ -1060,9 +1060,29 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 		return !b, nil
 	case ast.UnaryNeg:
 		return numericResult(-toFloat(v)), nil
+	case ast.UnaryDeref:
+		// `*t` for an &-bound loop element (`for &t = list`). The operand is a
+		// listRef into the live list; reading derefs to the current element.
+		if ref, ok := v.(*listRef); ok {
+			return ref.get(), nil
+		}
+		// A non-ref operand (e.g. the interpreter already binds structs by
+		// reference) derefs to itself.
+		return v, nil
 	}
 	return nil, fmt.Errorf("unknown unary op %d", e.Op)
 }
+
+// listRef is an interpreter lvalue into a list element, produced when a loop
+// binds its element variable with `&` (`for &t = list`). Dereferencing reads
+// the live element; assigning through the deref writes it back by index.
+type listRef struct {
+	list []any
+	idx  int
+}
+
+func (r *listRef) get() any  { return r.list[r.idx] }
+func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
 	// Namespace call (ns.foo / html.div) — receiver preserved.

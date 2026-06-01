@@ -230,6 +230,11 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	if n.RefElem {
+		// &-bound element: the body was rewritten to index iter[IndexVar],
+		// so iterate by index to write through to the live element.
+		return fmt.Sprintf("for %s := range %s {", n.IndexVar, iter)
+	}
 	iterType := n.Iter.ExprType()
 	if iterType != nil && iterType.Kind == ir.TypeMap {
 		// Map iteration: for k, v := range m { ... }

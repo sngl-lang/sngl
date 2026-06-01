@@ -1,0 +1,45 @@
+// &-bound loop element variables (`for &t = list`) make the element a
+// ref<T> into the list, so field/whole-element writes update the original
+// element by index. Reads auto-deref. Plain `for t` stays a value copy
+// (enforced for compiled targets; the headless interpreter models structs
+// as references, so only the &-write-through behaviour is asserted here).
+
+struct Task { label string = ""; done bool = false }
+
+component main {
+    var tasks list<Task> = [{label = "a", done = false}, {label = "b", done = true}]
+    var nums list<int> = [1, 2, 3]
+
+    // struct-field write through a ref element
+    func markAllDone() {
+        for &task = tasks { task.done = true }
+    }
+    // scalar whole-element write through a ref element
+    func bumpAll() {
+        for &n = nums { n = n + 10 }
+    }
+
+    button #mark(text = "mark", @click { markAllDone() })
+    button #bump(text = "bump", @click { bumpAll() })
+
+    // read the live list elements by index (no filter — keep the assertion
+    // independent of stdlib higher-order methods)
+    text #t0(value = string(tasks[0].done))
+    text #n0(value = string(nums[0]))
+}
+
+func testLoopRefFieldWriteThrough(t Test, c main) {
+    // tasks[0] starts not done
+    t.assert(c.t0.value == "false")
+    // &t field write updates the element in place
+    c.mark.@click()
+    t.assert(c.t0.value == "true")
+}
+
+func testLoopRefScalarWriteThrough(t Test, c main) {
+    // nums[0] starts 1
+    t.assert(c.n0.value == "1")
+    // &n whole-element write (n = n + 10) updates the list element in place
+    c.bump.@click()
+    t.assert(c.n0.value == "11")
+}
