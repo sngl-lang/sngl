@@ -140,10 +140,100 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// still intact. passPlatformFilter handles every other path (lower-inlined
 	// and non-inlined component bodies); both apply the same override rule.
 	cloned = applyPlatformOverride(cloned, ctx.platform)
+
+	// Bind non-const props by substituting their parameter references with the
+	// call-site argument expressions. Const props are bound via childCtx.values
+	// during foldStmts; non-const props (e.g. a reactive `value=posts`) have no
+	// const value to fold, so without this their param refs dangle in the
+	// inlined body — the prop renders empty and never reacts. Substitution runs
+	// before foldStmts so a substituted expr that turns out constant still folds.
+	subs := make(map[*ir.Param]ir.Expr)
+	for _, p := range n.Props {
+		if _, isConst := propValues[p.Name]; isConst {
+			continue
+		}
+		if param, ok := paramSyms[p.Name]; ok {
+			subs[param] = p.Value
+		}
+	}
+	if len(subs) > 0 {
+		substituteParamsInStmts(cloned, subs)
+	}
+
 	folded := foldStmts(cloned, childCtx)
 
 	ctx.fileAssets = childCtx.fileAssets
 	return folded
+}
+
+// substituteParamsInStmts replaces parameter references in a (cloned) component
+// body with their call-site argument expressions, recursing through nested
+// statement lists. Mirrors substituteParams (which handles expression trees)
+// at the statement level. Mutates in place; operates on cloned IR.
+func substituteParamsInStmts(stmts []ir.Stmt, subs map[*ir.Param]ir.Expr) {
+	for _, s := range stmts {
+		substituteParamsInStmt(s, subs)
+	}
+}
+
+func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		for i := range n.Props {
+			n.Props[i].Value = substituteParams(n.Props[i].Value, subs)
+		}
+		n.Key = substituteParams(n.Key, subs)
+		n.Ref = substituteParams(n.Ref, subs)
+		substituteParamsInStmts(n.Children, subs)
+		for _, h := range n.Handlers {
+			if h.Func != nil {
+				substituteParamsInStmts(h.Func.Block, subs)
+			}
+		}
+	case *ir.If:
+		n.Cond = substituteParams(n.Cond, subs)
+		substituteParamsInStmts(n.Body, subs)
+		substituteParamsInStmts(n.Else, subs)
+	case *ir.For:
+		n.Iter = substituteParams(n.Iter, subs)
+		substituteParamsInStmts(n.Body, subs)
+		substituteParamsInStmts(n.Else, subs)
+	case *ir.Assign:
+		n.Target = substituteParams(n.Target, subs)
+		n.Value = substituteParams(n.Value, subs)
+	case *ir.Return:
+		n.Value = substituteParams(n.Value, subs)
+	case *ir.LocalVar:
+		n.Init = substituteParams(n.Init, subs)
+	case *ir.CallStmt:
+		if n.Call != nil {
+			if c, ok := substituteParams(n.Call, subs).(*ir.Call); ok {
+				n.Call = c
+			}
+		}
+	case *ir.Emit:
+		for i := range n.Args {
+			n.Args[i].Value = substituteParams(n.Args[i].Value, subs)
+		}
+	case *ir.Toggle:
+		n.Target = substituteParams(n.Target, subs)
+	case *ir.PlatformFilter:
+		substituteParamsInStmts(n.Body, subs)
+	case *ir.SlotInst:
+		substituteParamsInStmts(n.Children, subs)
+	case *ir.ContextProvider:
+		n.Value = substituteParams(n.Value, subs)
+		substituteParamsInStmts(n.Children, subs)
+	case *ir.ErrorBoundary:
+		substituteParamsInStmts(n.Children, subs)
+	case *ir.Window:
+		n.Href = substituteParams(n.Href, subs)
+		n.Title = substituteParams(n.Title, subs)
+		n.Favicon = substituteParams(n.Favicon, subs)
+		substituteParamsInStmts(n.Body, subs)
+	default:
+		panic(fmt.Sprintf("substituteParamsInStmt: unhandled stmt %T", n))
+	}
 }
 
 // applyPlatformOverride mirrors codegen's irPlatformBody: if the cloned
