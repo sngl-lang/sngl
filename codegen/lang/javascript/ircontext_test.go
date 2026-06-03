@@ -78,6 +78,19 @@ func TestJsCall_RegexBuiltin(t *testing.T) {
 	}
 }
 
+func TestJsConversion_Bool(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	conv := &ir.Conversion{
+		Type:    &ir.Type{Kind: ir.TypeBool},
+		Operand: &ir.Ident{Name: "x", Synthesized: true},
+	}
+	got := jc.EvalExpr(conv)
+	if got != "Boolean(x)" {
+		t.Errorf("got %q, want Boolean(x)", got)
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

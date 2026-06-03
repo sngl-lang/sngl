@@ -549,6 +549,8 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 			return "parseFloat(" + operand + ")"
 		case ir.TypeString:
 			return "String(" + operand + ")"
+		case ir.TypeBool:
+			return "Boolean(" + operand + ")"
 		}
 	}
 	return operand
