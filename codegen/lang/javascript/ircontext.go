@@ -86,7 +86,22 @@ func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {
 func (jc *JsIRContext) ListLit(_ *ir.ListLit, elems []string) string {
 	return "[" + strings.Join(elems, ", ") + "]"
 }
-func (jc *JsIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
+func (jc *JsIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
+	if isPluralKeyMapType(n.Type) {
+		var b strings.Builder
+		b.WriteString("{")
+		for i := range keys {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString("[")
+			b.WriteString(keys[i])
+			b.WriteString("]: ")
+			b.WriteString(vals[i])
+		}
+		b.WriteString("}")
+		return b.String()
+	}
 	var b strings.Builder
 	b.WriteString("new Map([")
 	for i := range keys {

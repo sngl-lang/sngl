@@ -91,6 +91,32 @@ func TestJsConversion_Bool(t *testing.T) {
 	}
 }
 
+func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
+	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
+	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+	keyExpr := &ir.Select{
+		Operand: &ir.Ident{Name: "i18n"},
+		Field:   "one",
+	}
+	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
+	m := &ir.MapLitIR{
+		Type: mapType,
+		Entries: []ir.MapEntry{
+			{Key: keyExpr, Value: valExpr},
+		},
+	}
+	got := jc.EvalExpr(m)
+	if strings.Contains(got, "new Map") {
+		t.Errorf("PluralKey map must lower to plain object, got %q", got)
+	}
+	if !strings.HasPrefix(got, "{[") {
+		t.Errorf("expected plain-object form, got %q", got)
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
