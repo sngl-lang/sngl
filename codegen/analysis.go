@@ -136,6 +136,32 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 		collectUsedIRStmts(comp.Body, a.UsedComponents)
 	}
 
+	// Timers: package-level plus the main component's. MutationModel platforms
+	// (fyne) read these from CommonAnalysis to emit their timer runtime; html
+	// reads ir.Timer directly off the components during rendering, so this field
+	// previously went unpopulated and fyne emitted no timer runtime at all.
+	allTimers := append([]*ir.Timer{}, pkg.Timers...)
+	for _, comp := range pkg.Components {
+		if comp != nil && comp.Name == "main" {
+			allTimers = append(allTimers, comp.Timers...)
+		}
+	}
+	for i, t := range allTimers {
+		if t == nil || t.Handler == nil {
+			continue
+		}
+		activeVar := ""
+		if id, ok := t.Enabled.(*ir.Ident); ok {
+			activeVar = id.Name
+		}
+		a.Timers = append(a.Timers, TimerInfo{
+			Index:      i,
+			IntervalMs: IntervalToMs(t.Interval),
+			ActiveVar:  activeVar,
+			Body:       t.Handler.Block,
+		})
+	}
+
 	// Detect Alert usage.
 	a.NeedsToast = usesAlert(pkg)
 
