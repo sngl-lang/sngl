@@ -617,19 +617,27 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	for i, p := range n.Func.Params {
 		params[i] = p.Name
 	}
+	asyncPrefix := ""
+	if n.Func.IsAsync {
+		asyncPrefix = "async "
+	}
+	bodyJC := jc
+	for _, p := range n.Func.Params {
+		bodyJC = bodyJC.WithLocal(p.Name)
+	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
-			body := jc.EvalExpr(ret.Value)
-			if len(params) == 1 {
+			body := bodyJC.EvalExpr(ret.Value)
+			if asyncPrefix == "" && len(params) == 1 {
 				return params[0] + " => " + body
 			}
-			return "(" + strings.Join(params, ", ") + ") => " + body
+			return asyncPrefix + "(" + strings.Join(params, ", ") + ") => " + body
 		}
 	}
 	var b strings.Builder
-	b.WriteString("(" + strings.Join(params, ", ") + ") => {\n")
+	b.WriteString(asyncPrefix + "(" + strings.Join(params, ", ") + ") => {\n")
 	for _, stmt := range n.Func.Block {
-		for _, line := range jc.EvalStmt(stmt) {
+		for _, line := range bodyJC.EvalStmt(stmt) {
 			b.WriteString("  " + line + ";\n")
 		}
 	}

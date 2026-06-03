@@ -117,6 +117,20 @@ func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 	}
 }
 
+func TestJsLambda_AsyncPrefix(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	lam := &ir.Lambda{Func: &ir.Func{
+		IsAsync: true,
+		Params:  []*ir.Param{{Name: "x"}},
+		Block:   []ir.Stmt{&ir.Return{Value: &ir.Ident{Name: "x", Synthesized: true}}},
+	}}
+	got := jc.EvalExpr(lam)
+	if !strings.HasPrefix(got, "async ") {
+		t.Errorf("expected async prefix, got %q", got)
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
