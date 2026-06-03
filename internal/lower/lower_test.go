@@ -11,6 +11,7 @@ import (
 func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 	expectedOrder := []string{
 		"PlatformExtensionBody",
+		"PlatformFilter",
 		"RefLoop",
 		"NoUnit",
 		"NoEnum",
@@ -164,7 +165,7 @@ func TestPassNames(t *testing.T) {
 
 func TestEnabledPasses(t *testing.T) {
 	got := EnabledPasses(Caps{NoToggle: true, NoReactivity: true})
-	want := []string{"PlatformExtensionBody", "RefLoop", "NoToggle", "InlinePure", "NoReactivity"}
+	want := []string{"PlatformExtensionBody", "PlatformFilter", "RefLoop", "NoToggle", "InlinePure", "NoReactivity"}
 	if len(got) != len(want) {
 		t.Fatalf("got = %v; want %v", got, want)
 	}

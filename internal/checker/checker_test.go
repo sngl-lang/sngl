@@ -51,7 +51,7 @@ component Counter(label = "") {
     text(value=label)
 }
 
-component helper() {
+component _helper() {
     text(value="private")
 }
 `,

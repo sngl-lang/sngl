@@ -1,5 +1,5 @@
 import "widgets"
 
 component main {
-    widgets.helper(label="test") // ERROR(check) "unknown component"
+    widgets._helper() // ERROR(check) "unexported"
 }

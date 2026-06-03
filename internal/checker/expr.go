@@ -2107,15 +2107,35 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		} else if sel, ok := x.Call.Func.(*ast.SelectExpr); ok {
 			if nsIdent, ok := sel.Operand.(*ast.IdentExpr); ok {
 				if sym, ok := c.scope.Lookup(nsIdent.Name); ok {
-					if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
-						// Skip unexported component names — existing diagnostic
-						// path emits "unknown component" for these.
-						if len(sel.Field) > 0 && (sel.Field[0] < 'A' || sel.Field[0] > 'Z') {
-							// fall through to default call-expr handling
-						} else if fsym, ok := ns.Pkg.Symbols.LookupComponent(sel.Field); ok {
-							if co, ok := fsym.(*ir.Component); ok {
-								comp = co
-								compName = nsIdent.Name + "." + sel.Field
+					if ns, ok := sym.(*ir.Namespace); ok {
+						// A declared component in the namespace's package.
+						// Visibility (unexported names) is enforced by
+						// rejectUnexported, not by casing heuristics.
+						if ns.Pkg != nil {
+							if fsym, ok := ns.Pkg.Symbols.LookupComponent(sel.Field); ok {
+								if c.rejectUnexported(x.Pos, fsym) {
+									return nil
+								}
+								if co, ok := fsym.(*ir.Component); ok {
+									comp = co
+									compName = nsIdent.Name + "." + sel.Field
+								}
+							}
+						}
+						// Bodyless raw platform elements (`html.progress(...)`,
+						// `html.hr`) resolve through the platform namespace's
+						// Resolve(). They are visual nodes, not function calls,
+						// so emit an ir.NodeInst — mirroring the with-body path
+						// in checkVisualNodeIR — so the reactivity lowering pass
+						// walks their reactive props and wires the mutation
+						// updaters. Without this they became ir.CallStmt, which
+						// lowering skips, leaving reactive attributes frozen.
+						if comp == nil && ns.Resolve != nil {
+							if resolved := ns.Resolve(sel.Field); resolved != nil {
+								if co, ok := resolved.(*ir.Component); ok {
+									comp = co
+									compName = sel.Field
+								}
 							}
 						}
 					}
@@ -2899,6 +2919,12 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 // validateCallStmtComponentArgs validates prop/event names on a component call
 // parsed as a CallStmt. Value checking is deferred to checkAndSplitArgs.
 func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Component) {
+	// Skip validation for platform-synthesized components (raw native tags
+	// like html.progress) — they have no declared Props/Events; the platform
+	// codegen reads their args directly. Mirrors validateVisualNodeProps.
+	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
+		return
+	}
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:

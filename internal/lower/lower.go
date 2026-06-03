@@ -49,6 +49,7 @@ type pass struct {
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
 	passPlatformExtensionBody,
+	passPlatformFilter,
 	passRefLoop,
 	passUnit,
 	passEnum,
