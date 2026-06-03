@@ -23,6 +23,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"Context",
 		"InlinePure",
 		"NoInlineComponents",
+		"NoStructSpread",
 		"NoImplicitRecv",
 		"NoReactivity",
 		"NoTimer",

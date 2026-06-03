@@ -61,6 +61,7 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passReactivity,
 	passTimer,
