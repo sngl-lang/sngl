@@ -131,6 +131,18 @@ func TestJsLambda_AsyncPrefix(t *testing.T) {
 	}
 }
 
+func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	for _, k := range []ir.TypeKind{ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal} {
+		lit := &ir.Literal{Type: &ir.Type{Kind: k}, Raw: "val"}
+		got := jc.evalLiteral(lit)
+		if got != `"val"` {
+			t.Errorf("kind %v: got %q, want \"val\"", k, got)
+		}
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
