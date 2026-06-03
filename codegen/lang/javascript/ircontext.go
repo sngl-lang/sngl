@@ -286,6 +286,9 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	if n.IsElementRef {
+		return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", n.Name)
+	}
 	// Synthesized refs from lowering passes (__nN widget refs,
 	// __slotN slot accumulators, __root sentinel, __entry loop var):
 	// emit as bare identifier — JS has no Model receiver.
