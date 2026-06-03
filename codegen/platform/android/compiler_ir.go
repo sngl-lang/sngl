@@ -301,6 +301,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// user output.
 	b.WriteString("data class SnglInputEvent(val value: String)\n\n")
 
+	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
+	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs); mf != "" {
+		b.WriteString(mf)
+	}
+
 	// Enum classes
 	for _, ed := range info.Enums {
 		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))
