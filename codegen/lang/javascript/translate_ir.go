@@ -194,6 +194,14 @@ func translateIRIdent(n *ir.Ident, scope *codegen.ExprScope) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	// Synthesized refs from lowering passes (e.g. context-provider instance
+	// vars like __ctx_locale__inst0, slot accumulators) are emitted as
+	// top-level vars, not state fields — reference them bare. Mirrors
+	// JsIRContext.evalIdent; without it these were wrongly `state.`-prefixed
+	// and resolved to undefined in init writes.
+	if n.Synthesized {
+		return name
+	}
 	if scope.LocalVars[name] {
 		if scope.Renames != nil {
 			if renamed, ok := scope.Renames[name]; ok {
@@ -216,6 +224,20 @@ func translateIRCall(n *ir.Call, scope *codegen.ExprScope) string {
 	// type-method and inlined direct-intrinsic call shapes.
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, n, func(e ir.Expr) string { return translateIRExpr(e, scope) }); ok {
 		return out
+	}
+	// i18n intrinsics (Translate, NumberInt, …) map to the per-locale runtime
+	// entry points and aren't in the EmitIntrinsicCall registry. Dispatch them
+	// here, mirroring the JsIRContext path; otherwise the call falls through to a
+	// raw `intl.Translate(...)` that is undefined at runtime, so init writes for
+	// translatable strings threw and rendered nothing.
+	if n.Func != nil && n.Func.Intrinsic != "" {
+		args := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			args[i] = translateIRExpr(a.Value, scope)
+		}
+		if out := jsEvalIntlIntrinsic(n.Func, args); out != "" {
+			return out
+		}
 	}
 	// Native scheme-import call (e.g. js://): emit the imported name
 	// directly and record the module → name binding for top-level
