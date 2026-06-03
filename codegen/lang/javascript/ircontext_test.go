@@ -42,16 +42,6 @@ func TestJsBinary_IntDivisionTruncates(t *testing.T) {
 	}
 }
 
-func TestJsEvalIdent_ElementRef(t *testing.T) {
-	ctx := codegen.NewExprCtx(&ir.Package{})
-	jc := NewIRContext(ctx)
-	got := jc.EvalExpr(&ir.Ident{Name: "myInput", IsElementRef: true})
-	want := `document.querySelector('[data-sngl-id="myInput"]')`
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
 func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

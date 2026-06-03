@@ -319,15 +319,20 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
-	if n.IsElementRef {
-		return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", n.Name)
-	}
 	// Synthesized refs from lowering passes (__nN widget refs,
 	// __slotN slot accumulators, __root sentinel, __entry loop var):
 	// emit as bare identifier — JS has no Model receiver.
 	if n.Synthesized {
 		return n.Name
 	}
+	// NOTE: IsElementRef → document.querySelector(...) is intentionally NOT
+	// handled here. In the htmlTranslator slot/handler pipeline, element-ref
+	// idents are bound to local JS vars (created __nN nodes, slot-render
+	// `parent` params) and must stay bare; the IR does not reliably mark these
+	// Synthesized, so a blanket IsElementRef branch wrongly wraps them in a
+	// querySelector against a not-yet-attached node. User element-ref *reads*
+	// in migrated user functions (Phase 3) need querySelector and will be
+	// handled at that point with local-aware discrimination.
 	// Component-self ident: synthesized by passNoImplicitRecv as the
 	// implicit receiver of a desugared component method. The JS emission
 	// uses `state` for per-instance state of the currently-emitting
