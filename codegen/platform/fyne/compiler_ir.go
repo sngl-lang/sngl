@@ -366,20 +366,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRFyneFunc(&funcBuf, fn, gc)
 	}
 
-	// Timer bodies
+	// Timer bodies. The tick body carries reactivity-injected widget updates
+	// (e.g. `__n0.value = …`) just like handler and slot bodies, so it must go
+	// through WalkLowered + fyneTranslator to rewrite them into the widget API
+	// (`m.__n0.SetText(…)`). Feeding t.Body straight to gc.EvalStmt skips that
+	// rewrite and emits raw, unqualified `__n0.Value = …` that won't compile.
 	var timerDatas []timerData
 	for _, t := range info.Timers {
+		tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+		}, addBlueprintImport)
+		maps.Copy(tr.idTags, nodeTags)
+		bodyStmts := codegen.WalkLowered(context.Background(), t.Body, tr)
 		var bodyBuf strings.Builder
-		mutated := make(map[string]bool)
-		for _, stmt := range t.Body {
+		for _, stmt := range bodyStmts {
 			for _, line := range gc.EvalStmt(stmt) {
 				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", line)
 			}
-			for v := range codegen.MutatedFields(nil, nil, stmt) {
-				mutated[v.Name] = true
-			}
 		}
-		_ = mutated
 		timerDatas = append(timerDatas, timerData{
 			Index:      t.Index,
 			IntervalMs: t.IntervalMs,

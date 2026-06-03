@@ -57,9 +57,15 @@ component main {
 		"func (m *Model) StartTimers()",
 		"time.NewTicker(1000 * time.Millisecond)",
 		"m.seconds += 1",
+		// Tick body's reactive widget update must use the fyne widget API,
+		// qualified with the receiver — not a raw, unqualified field write.
+		"m.__n0.SetText(",
 	} {
 		if !strings.Contains(out, snippet) {
 			t.Errorf("generated model.go missing timer snippet %q\n--- generated ---\n%s", snippet, out)
 		}
+	}
+	if strings.Contains(out, "__n0.Value =") {
+		t.Errorf("tick body emitted an untranslated raw field write (__n0.Value =):\n%s", out)
 	}
 }
