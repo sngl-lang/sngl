@@ -38,7 +38,7 @@ struct Options {
 
 component sngl.vbox {
     platform html {
-        html.div(style={display="flex", flexDirection="column"}) {
+        html.div(style={...style, display="flex", flexDirection="column"}) {
             slot
         }
     }
@@ -46,7 +46,7 @@ component sngl.vbox {
 
 component sngl.hbox {
     platform html {
-        html.div(style={display="flex", flexDirection="row"}) {
+        html.div(style={...style, display="flex", flexDirection="row"}) {
             slot
         }
     }
@@ -54,7 +54,7 @@ component sngl.hbox {
 
 component sngl.stack {
     platform html {
-        html.div(style={position="relative"}) {
+        html.div(style={...style, position="relative"}) {
             slot
         }
     }
@@ -62,13 +62,13 @@ component sngl.stack {
 
 component sngl.spacer {
     platform html {
-        html.div(style={flex=1}) {}
+        html.div(style={...style, flex=1}) {}
     }
 }
 
 component sngl.scroll {
     platform html {
-        html.div(style={overflow="auto"}) {
+        html.div(style={...style, overflow="auto"}) {
             slot
         }
     }
@@ -78,13 +78,13 @@ component sngl.scroll {
 
 component sngl.text {
     platform html {
-        html.span(textContent=value) {}
+        html.span(textContent=value, style={...style}) {}
     }
 }
 
 component sngl.button {
     platform html {
-        html.button(disabled=disabled, @click { @click() }) {
+        html.button(disabled=disabled, style={...style}, @click { @click() }) {
             html.span(textContent=text) {}
             slot
         }
@@ -93,19 +93,19 @@ component sngl.button {
 
 component sngl.image {
     platform html {
-        html.img(src=src, alt=alt) {}
+        html.img(src=src, alt=alt, style={...style}) {}
     }
 }
 
 component sngl.input {
     platform html {
-        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, @input { @input() }, @change { @change() }) {}
+        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { @input() }, @change { @change() }) {}
     }
 }
 
 component sngl.checkbox {
     platform html {
-        html.label(style={display="inline-flex", alignItems="center", gap=4}) {
+        html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
             html.input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
             html.span(textContent=label) {}
         }
@@ -116,7 +116,7 @@ component sngl.checkbox {
 
 component sngl.radio {
     platform html {
-        html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0}) {
+        html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
             for opt = options {
                 html.label(style={display="inline-flex", alignItems="center", gap=4}) {
                     html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { @change() })
@@ -129,7 +129,7 @@ component sngl.radio {
 
 component sngl.toggle {
     platform html {
-        html.label(style={display="inline-flex", alignItems="center", gap=8}) {
+        html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
             html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
             html.span(textContent=label) {}
         }
@@ -138,7 +138,7 @@ component sngl.toggle {
 
 component sngl.select {
     platform html {
-        html.select(disabled=disabled, @change { @change() }) {
+        html.select(disabled=disabled, style={...style}, @change { @change() }) {
             if placeholder != "" {
                 html.option(value="", disabled=true, selected=true, textContent=placeholder)
             }
@@ -151,7 +151,7 @@ component sngl.select {
 
 component sngl.textarea {
     platform html {
-        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, @input { @input() }, @change { @change() }) {
+        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, style={...style}, @input { @input() }, @change { @change() }) {
             slot
         }
     }
@@ -161,13 +161,13 @@ component sngl.textarea {
 
 component sngl.progress {
     platform html {
-        html.progress(value=value, max=max) {}
+        html.progress(value=value, max=max, style={...style}) {}
     }
 }
 
 component sngl.spinner {
     platform html {
-        html.span(style={display="inline-flex", alignItems="center", gap=8}) {
+        html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
             html.span(class="sngl-spinner") {}
             html.span(textContent=label) {}
         }
@@ -176,7 +176,7 @@ component sngl.spinner {
 
 component sngl.badge {
     platform html {
-        html.span(style={display="inline-block", padding="2px 8px", borderRadius=12}) {
+        html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
             html.span(textContent=value) {}
         }
     }
@@ -184,7 +184,7 @@ component sngl.badge {
 
 component sngl.tabs {
     platform html {
-        html.div(style={display="flex", flexDirection="column"}) {
+        html.div(style={...style, display="flex", flexDirection="column"}) {
             html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
                 for label = items {
                     html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
@@ -199,7 +199,7 @@ component sngl.tabs {
 
 component sngl.link {
     platform html {
-        html.a(href=href, @click { @click() }) {
+        html.a(href=href, style={...style}, @click { @click() }) {
             html.span(textContent=text) {}
         }
     }
@@ -207,7 +207,7 @@ component sngl.link {
 
 component sngl.divider {
     platform html {
-        html.hr {}
+        html.hr(style={...style}) {}
     }
 }
 
@@ -215,7 +215,7 @@ component sngl.divider {
 
 component sngl.modal {
     platform html {
-        html.div(class="modal-overlay", hidden=(open == false), style={position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
+        html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
             html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
                 if title != "" {
                     html.h3(textContent=title, style={margin="0 0 16px"})
@@ -228,7 +228,7 @@ component sngl.modal {
 
 component sngl.drawer {
     platform html {
-        html.div(style={position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
+        html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
             slot
         }
     }
@@ -236,7 +236,7 @@ component sngl.drawer {
 
 component sngl.tooltip {
     platform html {
-        html.div(title=text) {
+        html.div(title=text, style={...style}) {
             slot
         }
     }
@@ -244,7 +244,7 @@ component sngl.tooltip {
 
 component sngl.popover {
     platform html {
-        html.div(style={position="relative"}) {
+        html.div(style={...style, position="relative"}) {
             slot
         }
     }
@@ -252,7 +252,7 @@ component sngl.popover {
 
 component sngl.splitview {
     platform html {
-        html.div(style={display="flex"}) {
+        html.div(style={...style, display="flex"}) {
             slot
         }
     }
@@ -262,7 +262,7 @@ component sngl.splitview {
 
 component sngl.table {
     platform html {
-        html.table(style={width="100%", borderCollapse="collapse"}) {
+        html.table(style={width="100%", borderCollapse="collapse", ...style}) {
             html.thead {
                 html.tr {
                     for col = columns {
@@ -285,7 +285,7 @@ component sngl.table {
 
 component sngl.tree {
     platform html {
-        html.ul(style={listStyleType="none", paddingLeft=16}) {
+        html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
             for item = items {
                 html.li(textContent=item)
             }
@@ -295,7 +295,7 @@ component sngl.tree {
 
 component sngl.menu {
     platform html {
-        html.div(style={position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+        html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
             slot
         }
     }
@@ -303,7 +303,7 @@ component sngl.menu {
 
 component sngl.menubar {
     platform html {
-        html.nav(style={display="flex", gap=4}) {
+        html.nav(style={...style, display="flex", gap=4}) {
             slot
         }
     }
@@ -311,7 +311,7 @@ component sngl.menubar {
 
 component sngl.toolbar {
     platform html {
-        html.div(style={display="flex", gap=4, alignItems="center"}) {
+        html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
             slot
         }
     }
@@ -321,13 +321,13 @@ component sngl.toolbar {
 
 component sngl.datepicker {
     platform html {
-        html.input(type="date", value=value, disabled=disabled, @change { @change() }) {}
+        html.input(type="date", value=value, disabled=disabled, style={...style}, @change { @change() }) {}
     }
 }
 
 component sngl.chip {
     platform html {
-        html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc"}) {
+        html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
             html.span(textContent=label) {}
         }
     }
@@ -335,7 +335,7 @@ component sngl.chip {
 
 component sngl.avatar {
     platform html {
-        html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden"}) {
+        html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
             html.span(textContent=initials) {}
         }
     }
@@ -343,7 +343,7 @@ component sngl.avatar {
 
 component sngl.card {
     platform html {
-        html.div(style={borderRadius=8, padding=16}) {
+        html.div(style={borderRadius=8, padding=16, ...style}) {
             slot
         }
     }
