@@ -52,6 +52,19 @@ func TestJsEvalIdent_ElementRef(t *testing.T) {
 	}
 }
 
+func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	expr := &ir.Select{
+		Operand: &ir.Ident{Name: "i18n"},
+		Field:   "other",
+	}
+	got := jc.EvalExpr(expr)
+	if got != `"other"` {
+		t.Errorf("got %q, want \"other\"", got)
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

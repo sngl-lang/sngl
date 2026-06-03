@@ -59,6 +59,22 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
+	// Predeclared i18n.PluralKey constants lower to JS string literals.
+	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
+		if s := jsI18nConstString("i18n." + n.Field); s != "" {
+			return s
+		}
+	}
+	// Native bundled namespace (js://): emit the esbuild alias and register
+	// the module so the platform emits the `import * as` prelude.
+	if ident, ok := n.Operand.(*ir.Ident); ok {
+		if _, ok := ident.Sym.(*ir.Namespace); ok {
+			if jsAlias, importPath := nativeBundledNamespaceAliasCtx(jc.Ctx, ident.Name); jsAlias != "" {
+				jc.registerNativeImport(importPath, n.Field)
+				return jsAlias + "." + n.Field
+			}
+		}
+	}
 	return operand + "." + n.Field
 }
 func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {
