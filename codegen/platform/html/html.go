@@ -2138,10 +2138,30 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 }
 
+// timerSyncCalls returns a $timer_N_sync() call for every timer whose enabled
+// (active) var is in mutated. A mutation of a timer's enabled var must re-sync
+// the timer so it starts or stops to match the new state; without this the
+// timer only reflects its initial enabled value. Handler bodies write state
+// directly (they do not route through $set_<var>, which carries its own sync),
+// so the sync is appended here. Dedupes if the same var drives several timers.
+func (g *htmlGen) timerSyncCalls(mutated map[string]bool) []string {
+	if len(mutated) == 0 {
+		return nil
+	}
+	var out []string
+	for _, t := range g.timers {
+		if t.activeVar != "" && mutated[t.activeVar] {
+			out = append(out, fmt.Sprintf("$timer_%d_sync();", t.index))
+		}
+	}
+	return out
+}
+
 func (g *htmlGen) emitHandlers(b *strings.Builder) {
 	for _, h := range g.handlers {
 		var lines []string
 		lines = append(lines, h.body)
+		lines = append(lines, g.timerSyncCalls(h.mutated)...)
 		if g.preview {
 			lines = append(lines, "__sngl_sync_state();")
 		}
@@ -2162,6 +2182,7 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 	for _, t := range g.timers {
 		var tickLines []string
 		tickLines = append(tickLines, t.body)
+		tickLines = append(tickLines, g.timerSyncCalls(t.mutated)...)
 		if g.preview {
 			tickLines = append(tickLines, "__sngl_sync_state();")
 		}
