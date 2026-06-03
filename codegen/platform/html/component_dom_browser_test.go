@@ -31,6 +31,12 @@ type componentDOMCase struct {
 var componentDOMCases = []componentDOMCase{
 	{"text", `component main { text(value="HELLO") }`, []string{"<span", "HELLO"}},
 	{"vbox", `component main { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
+	// Caller `style` on a stdlib wrapper must merge onto the wrapper's root
+	// element alongside its structural style (forwardStyle in lower), and a
+	// `#hex` color literal must render as a CSS color (colorStructToCSS).
+	{"vbox-style", `component main { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
+	{"text-color", `component main { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
 	{"hbox", `component main { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
 	{"button", `component main { button(text="CLICK") }`, []string{"<button", "CLICK"}},
 	{"input", `component main { var n = "Bob" input(:value=n) }`, []string{"<input"}},

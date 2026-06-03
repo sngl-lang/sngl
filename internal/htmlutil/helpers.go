@@ -12,11 +12,61 @@ import (
 // ExprToStaticValueIR extracts a static literal value from an IR expression,
 // returning "" for non-literals. Mirrors ExprToStaticValue but consumes ir.Expr.
 func ExprToStaticValueIR(e ir.Expr) string {
+	if sl, ok := e.(*ir.StructLit); ok {
+		if css, ok := colorStructToCSS(sl); ok {
+			return css
+		}
+		return ""
+	}
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
 		return ""
 	}
 	return irLiteralStaticValue(lit)
+}
+
+// colorStructToCSS renders a `color{r,g,b,a}` struct literal — the lowered
+// form of a `#rrggbb[aa]` literal (see checker.lowerHexLiteral) — to a CSS
+// color string: `#rrggbb` when fully opaque, otherwise `rgba(r,g,b,a)`.
+// Detection is structural (fields r,g,b[,a] of static ints) because constant
+// folding drops the StructLit's Type/Def, so ir.IsColorStruct can't be relied
+// on by codegen. Returns ok=false when the literal isn't a color shape.
+func colorStructToCSS(sl *ir.StructLit) (string, bool) {
+	if sl.Def == nil && sl.Type == nil {
+		// Untyped struct: only treat as color when shaped exactly like one.
+		if len(sl.Fields) < 3 || len(sl.Fields) > 4 {
+			return "", false
+		}
+	} else if !ir.IsColorStruct(sl.Type) && !(sl.Def != nil && sl.Def.Name == "color") {
+		return "", false
+	}
+	ch := map[string]int{"a": 255}
+	for _, f := range sl.Fields {
+		switch f.Name {
+		case "r", "g", "b", "a":
+		default:
+			return "", false
+		}
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok || lit == nil {
+			return "", false
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(lit.Raw))
+		if err != nil {
+			return "", false
+		}
+		ch[f.Name] = n
+	}
+	r, rok := ch["r"]
+	g, gok := ch["g"]
+	b, bok := ch["b"]
+	if !rok || !gok || !bok {
+		return "", false
+	}
+	if a := ch["a"]; a < 255 {
+		return fmt.Sprintf("rgba(%d,%d,%d,%g)", r, g, b, float64(a)/255), true
+	}
+	return fmt.Sprintf("#%02x%02x%02x", r, g, b), true
 }
 
 func irLiteralStaticValue(lit *ir.Literal) string {
