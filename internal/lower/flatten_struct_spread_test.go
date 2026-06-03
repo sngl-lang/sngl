@@ -26,7 +26,7 @@ func TestFlattenStructLitLiteralSpread(t *testing.T) {
 			{Name: "b", Value: intLit("2")},
 		}}},
 	}}
-	out := flattenSpreadExpr(in).(*ir.StructLit)
+	out := flattenSpreadExprCtx(in, &ir.Package{}).(*ir.StructLit)
 	got := names(out)
 	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("field names: got %v want [a b]", got)
@@ -42,19 +42,38 @@ func TestFlattenStructLitExplicitZeroWins(t *testing.T) {
 		{Spread: true, Value: &ir.StructLit{Fields: []ir.FieldInit{{Name: "a", Value: intLit("1")}}}},
 		{Name: "a", Value: intLit("0")},
 	}}
-	out := flattenSpreadExpr(in).(*ir.StructLit)
+	out := flattenSpreadExprCtx(in, &ir.Package{}).(*ir.StructLit)
 	if len(out.Fields) != 1 || out.Fields[0].Value.(*ir.Literal).Raw != "0" {
 		t.Fatalf("want {a=0}, got %+v", out.Fields)
 	}
 }
 
-func TestFlattenStructLitOpaqueLeftUntouched(t *testing.T) {
-	// {...someVar} with an opaque operand stays a spread (Phase 2 territory).
-	in := &ir.StructLit{Fields: []ir.FieldInit{
-		{Spread: true, Value: &ir.Ident{Name: "someVar"}},
+func structType(name string) *ir.Type {
+	sd := &ir.StructDef{Name: name, Fields: []*ir.StructField{
+		{Name: "a", Type: ir.TypInt}, {Name: "b", Type: ir.TypInt},
 	}}
-	out := flattenSpreadExpr(in).(*ir.StructLit)
-	if len(out.Fields) != 1 || !out.Fields[0].Spread {
-		t.Fatalf("opaque spread must be left intact, got %+v", out.Fields)
+	return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
+}
+
+func TestFlattenOpaqueSpreadBuildsMergeChain(t *testing.T) {
+	st := structType("Cfg")
+	pkg := &ir.Package{}
+	// {a=1, ...op, b=2}  →  __merge_Cfg(__merge_Cfg(Cfg{a:1}, op), Cfg{b:2})
+	in := &ir.StructLit{Type: st, Def: st.Decl.(*ir.StructDef), Fields: []ir.FieldInit{
+		{Name: "a", Value: intLit("1")},
+		{Spread: true, Value: &ir.Ident{Name: "op", Type: st}},
+		{Name: "b", Value: intLit("2")},
+	}}
+	out := flattenStructLitCtx(in, pkg)
+	call, ok := out.(*ir.Call)
+	if !ok || call.Func == nil || call.Func.Name != "__merge_Cfg" {
+		t.Fatalf("outer expr must be a __merge_Cfg call, got %T", out)
+	}
+	inner, ok := call.Args[0].Value.(*ir.Call)
+	if !ok || inner.Func.Name != "__merge_Cfg" {
+		t.Fatalf("first arg must be inner __merge_Cfg call, got %T", call.Args[0].Value)
+	}
+	if len(pkg.MergeStructs) != 1 || pkg.MergeStructs[0].Name != "Cfg" {
+		t.Fatalf("pkg.MergeStructs must record Cfg once, got %+v", pkg.MergeStructs)
 	}
 }

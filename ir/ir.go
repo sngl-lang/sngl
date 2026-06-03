@@ -67,6 +67,11 @@ type Package struct {
 	// PointsTo holds funcvar points-to analysis results from
 	// analyzePointsTo. Nil before that pass runs; populated afterward.
 	PointsTo *PointsToInfo
+
+	// MergeStructs lists struct types that need a generated __merge_<Struct>
+	// runtime function, recorded by the flatten_struct_spread lowering pass
+	// when it rewrites an opaque (non-literal) spread. Deduped by *StructDef.
+	MergeStructs []*StructDef
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
