@@ -1,0 +1,7 @@
+import "platform://html"
+
+component main {
+    html.div(style={display="flex", ...{gap = 6, padding = 12}}) {
+        html.span(textContent="x")
+    }
+}
