@@ -3,23 +3,23 @@
 
 sngl dump lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps: NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv'
-stdout 'passes: PlatformExtensionBody . RefLoop . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv'
+stdout 'passes: PlatformExtensionBody . PlatformFilter . RefLoop . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv'
 
 sngl dump lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoDeclarative'
-stdout 'passes: PlatformExtensionBody . RefLoop . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoReactivity . NoDeclarative'
+stdout 'passes: PlatformExtensionBody . PlatformFilter . RefLoop . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoReactivity . NoDeclarative'
 
 sngl dump lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv'
-stdout 'passes: PlatformExtensionBody . RefLoop . NoAsyncReactive . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv . NoReactivity'
+stdout 'passes: PlatformExtensionBody . PlatformFilter . RefLoop . NoAsyncReactive . NoListLambdas . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv . NoReactivity'
 
 sngl dump lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv'
-stdout 'passes: PlatformExtensionBody . RefLoop . NoAsyncReactive . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv . NoReactivity'
+stdout 'passes: PlatformExtensionBody . PlatformFilter . RefLoop . NoAsyncReactive . Context . InlinePure . NoInlineComponents . NoStructSpread . NoImplicitRecv . NoReactivity'
 
 sngl dump lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread'
-stdout 'passes: PlatformExtensionBody . RefLoop . Context . InlinePure . NoInlineComponents . NoStructSpread'
+stdout 'passes: PlatformExtensionBody . PlatformFilter . RefLoop . Context . InlinePure . NoInlineComponents . NoStructSpread'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump lowered --lang go --platform bubbletea --after NoBogus main.sngl

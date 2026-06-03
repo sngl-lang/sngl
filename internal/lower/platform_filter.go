@@ -1,6 +1,10 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"fmt"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // passPlatformFilter resolves every ir.PlatformFilter for the active build
 // platform so that no platform-conditional node survives into reactivity
@@ -152,6 +156,10 @@ func resolveFilterChildren(s ir.Stmt, platform string) ir.Stmt {
 		n.Children = resolveFilterStmts(n.Children, platform, false)
 	case *ir.Window:
 		n.Body = resolveFilterStmts(n.Body, platform, false)
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle:
+		// Leaf statements — no nested statement lists to recurse into.
+	default:
+		panic(fmt.Sprintf("resolveFilterChildren: unhandled stmt %T", s))
 	}
 	return s
 }
