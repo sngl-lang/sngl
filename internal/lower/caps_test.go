@@ -1,8 +1,19 @@
 package lower
 
 import (
+	"strings"
 	"testing"
 )
+
+func TestNoStructSpreadMergeAndString(t *testing.T) {
+	merged := Caps{}.Merge(Caps{NoStructSpread: true})
+	if !merged.NoStructSpread {
+		t.Fatal("Merge should OR NoStructSpread to true")
+	}
+	if !strings.Contains(Caps{NoStructSpread: true}.String(), "NoStructSpread") {
+		t.Fatalf("String() must list NoStructSpread, got %q", Caps{NoStructSpread: true}.String())
+	}
+}
 
 func TestCaps_Merge(t *testing.T) {
 	tests := []struct {

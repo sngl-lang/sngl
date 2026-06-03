@@ -98,7 +98,7 @@ func (g *Generator) Capabilities() lower.Caps {
 	// with per-instance renames. Android's RenderModel emits a Composable
 	// per surviving component; after inlining only main + recursive
 	// components remain, eliminating cross-component state plumbing.
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoInlineComponents: true}
+	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoInlineComponents: true, NoStructSpread: true}
 }
 
 // Generate writes android platform output directly into sink. This is

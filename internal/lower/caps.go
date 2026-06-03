@@ -45,6 +45,7 @@ type Caps struct {
 	NoListLambdas      bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
 	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
 	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
+	NoStructSpread     bool // struct-literal spreads (`{...x}`) → flattened literal / merge<Struct> call
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -68,6 +69,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
 		NoInlineComponents: c.NoInlineComponents || other.NoInlineComponents,
 		NoImplicitRecv:     c.NoImplicitRecv || other.NoImplicitRecv,
+		NoStructSpread:     c.NoStructSpread || other.NoStructSpread,
 	}
 }
 
@@ -116,6 +118,9 @@ func (c Caps) String() string {
 	}
 	if c.NoInlineComponents {
 		parts = append(parts, "NoInlineComponents")
+	}
+	if c.NoStructSpread {
+		parts = append(parts, "NoStructSpread")
 	}
 	if c.NoImplicitRecv {
 		parts = append(parts, "NoImplicitRecv")

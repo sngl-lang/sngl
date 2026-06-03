@@ -54,7 +54,7 @@ func (g *Generator) Capabilities() lower.Caps {
 	// time. fyne wrappers are already pure blueprint-bearing NodeInsts,
 	// so behavior is unchanged — the translator still reads the same
 	// Constructor/bindings props after inlining.
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true}
+	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true, NoStructSpread: true}
 }
 
 // Generate writes fyne source files directly into sink. This is the
