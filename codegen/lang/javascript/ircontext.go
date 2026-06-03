@@ -44,6 +44,9 @@ func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) 
 func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
 
 func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
+	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
+		return "Math.trunc(" + left + " / " + right + ")"
+	}
 	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
 }
 func (jc *JsIRContext) Unary(n *ir.Unary, operand string) string {

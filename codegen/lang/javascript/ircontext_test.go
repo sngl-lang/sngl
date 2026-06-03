@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -24,6 +25,20 @@ func TestJsEmitFuncDef_PlainFunc(t *testing.T) {
 	}
 	if !strings.Contains(got, `return "hi"`) {
 		t.Errorf("expected return statement; got: %s", got)
+	}
+}
+
+func TestJsBinary_IntDivisionTruncates(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	expr := &ir.Binary{
+		Op:    ast.BinDiv,
+		Left:  &ir.Literal{Type: ir.TypInt, Raw: "7"},
+		Right: &ir.Literal{Type: ir.TypInt, Raw: "2"},
+	}
+	got := jc.EvalExpr(expr)
+	if got != "Math.trunc(7 / 2)" {
+		t.Errorf("got %q, want Math.trunc(7 / 2)", got)
 	}
 }
 
