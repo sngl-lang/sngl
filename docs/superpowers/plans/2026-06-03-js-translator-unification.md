@@ -41,6 +41,14 @@
 
 ---
 
+## Execution amendment (2026-06-03): Task 1.3 deferred to Phase 3
+
+**Task 1.3 (IsElementRef ident → querySelector) was REVERTED during execution.** Adding a blanket `IsElementRef → document.querySelector(...)` branch to `JsIRContext.evalIdent` broke the htmlTranslator slot/handler pipeline: there, element-ref idents are bound to *local JS vars* (created `__nN` nodes, slot-render `parent` params) that must stay bare. The IR does not reliably mark these `Synthesized`, so the branch wrapped not-yet-attached nodes in a querySelector and aborted initial slot render (regressed `TestReactiveSlot_*`, `TestHTMLTranslator_On*`, `TestDerivedFuncGates*`).
+
+The new path does not need IsElementRef handling until `emitJSFunc`/`exprToJS` migrate. **Phase 3 now owns this:** when those sites move onto the pipeline (Tasks 3.1/3.2), determine whether user element-ref *reads* (e.g. `myInput.value` as a value in a user function) reach `evalIdent` as `IsElementRef`, and if so add a *guarded* branch that emits querySelector ONLY for genuine external user refs — distinguished from pipeline locals by being non-synthesized AND not a known local AND not a node declared in the current block (consider registering `let`-declared `__nN` as locals during statement emission so they resolve as `NameLocal`). Verify against `TestReactiveSlot_*` and the element-ref parity fixture.
+
+---
+
 ## Phase 0: Parity golden baseline
 
 Establishes the byte-identical bar before any behavior moves. The current mixed output (handlers via new path, funcs/init via legacy) is captured as truth.
