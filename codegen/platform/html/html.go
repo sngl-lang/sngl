@@ -1912,6 +1912,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
+	if mf := javascript.EmitMergeFuncs(g.pkg.MergeStructs); mf != "" {
+		b.WriteString(mf)
+	}
+
 	// User-defined functions
 	emittedFuncs := false
 	for _, fn := range funcs {
