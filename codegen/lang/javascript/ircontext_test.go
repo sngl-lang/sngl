@@ -65,6 +65,19 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	}
 }
 
+func TestJsCall_RegexBuiltin(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func: &ir.Func{Name: "regex"},
+		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "ab+c"}}},
+	}
+	got := jc.EvalExpr(call)
+	if got != `new RegExp("ab+c")` {
+		t.Errorf("got %q", got)
+	}
+}
+
 func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

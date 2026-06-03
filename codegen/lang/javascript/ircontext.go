@@ -379,6 +379,10 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 			if len(args) == 1 {
 				return "parseFloat(" + args[0] + ")"
 			}
+		case "regex":
+			if len(args) == 1 {
+				return "new RegExp(" + args[0] + ")"
+			}
 		}
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync {
