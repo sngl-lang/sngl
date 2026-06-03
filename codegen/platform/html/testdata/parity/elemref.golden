@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<vbox>
+  <input id="__n0" data-sngl-id="__n0" placeholder="Type here"/>
+  <text id="__n1" data-sngl-id="__n1">
+  </text>
+  <button id="$0" text="Clear">
+  </button>
+</vbox>
+
+<script>
+(() => {
+  // ../../../../../../../../../sngl/sngl-entry.js
+  var state = { name: "" };
+  var $0 = document.getElementById("$0");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  __n0.addEventListener("input", function(e) {
+    state.name = e.target.value;
+    __n0.value = state.name;
+    __n1.textContent = "Hello, " + state.name + "!";
+  });
+  $0.addEventListener("click", function() {
+    state.name = "";
+    __n0.value = state.name;
+    __n1.textContent = "Hello, " + state.name + "!";
+  });
+  function __sngl_init() {
+    __n0.value = state.name;
+    __n1.value = "Hello, " + state.name + "!";
+  }
+  __sngl_init();
+})();
+</script>
+</body></html>

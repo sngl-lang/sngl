@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<vbox>
+  <text id="__n0" data-sngl-id="__n0">
+  </text>
+  <hbox>
+    <text id="__n1" data-sngl-id="__n1">
+    </text>
+  </hbox>
+  <hbox>
+    <text id="__n2" data-sngl-id="__n2">
+    </text>
+  </hbox>
+  <button id="$0" text="Click">
+  </button>
+</vbox>
+
+<script>
+(() => {
+  // ../../../../../../../../../sngl/sngl-entry.js
+  var state = { clicks: 0, name: "World" };
+  function main_greeting(state2) {
+    return "Hello, " + state2.name + "!";
+  }
+  function main_doubled(state2) {
+    return state2.clicks * 2;
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $0 = document.getElementById("$0");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  $0.addEventListener("click", function() {
+    state.clicks = state.clicks + 1;
+    __n1.textContent = "Clicks: " + String(state.clicks);
+    __n2.textContent = "Doubled: " + String(main_doubled(state));
+  });
+  function __sngl_init() {
+    __n0.value = main_greeting(state);
+    __n1.value = "Clicks: " + String(state.clicks);
+    __n2.value = "Doubled: " + String(main_doubled(state));
+  }
+  __sngl_init();
+})();
+</script>
+</body></html>

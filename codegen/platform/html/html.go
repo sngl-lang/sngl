@@ -1236,17 +1236,22 @@ func (g *htmlGen) stateVars() []*ir.Var {
 // synthesizedVars returns Synthesized=true vars (e.g. __slotN accumulators
 // from passReactivity) from the package and main component. These are
 // emitted as top-level `let` bindings in the bootstrap script.
+// Deduplicates by name so context vars like __ctx_locale (injected into both
+// pkg.Vars and component.Vars by the context lowering pass) are emitted once.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
+	seen := make(map[string]bool)
 	if g.pkg != nil {
 		for _, v := range g.pkg.Vars {
-			if v.Synthesized {
+			if v.Synthesized && !seen[v.Name] {
+				seen[v.Name] = true
 				out = append(out, v)
 			}
 		}
 		if main := mainIRComponent(g.pkg); main != nil {
 			for _, v := range main.Vars {
-				if v.Synthesized {
+				if v.Synthesized && !seen[v.Name] {
+					seen[v.Name] = true
 					out = append(out, v)
 				}
 			}
@@ -2477,15 +2482,20 @@ func exprUsesI18n(expr ir.Expr) bool {
 		if found || e == nil {
 			return
 		}
-		if c, ok := e.(*ir.Call); ok && c.Func != nil {
-			if snglI18n.IsCall(c) {
+		if c, ok := e.(*ir.Call); ok {
+			if c.Func != nil && snglI18n.IsCall(c) {
 				found = true
 				return
 			}
 			for _, a := range c.Args {
 				walk(a.Value)
 			}
-			walk(c.Receiver)
+			if c.Receiver != nil {
+				walk(c.Receiver)
+			}
+			if c.Callee != nil {
+				walk(c.Callee)
+			}
 			return
 		}
 		switch x := e.(type) {

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<vbox>
+  <text id="__n0" data-sngl-id="__n0">
+  </text>
+  <button id="$0" text="+a">
+  </button>
+  <button id="$1" text="+b">
+  </button>
+</vbox>
+
+<script>
+(() => {
+  // ../../../../../../../../../sngl/sngl-entry.js
+  var state = { a: 10, b: 3 };
+  function main_quotient(state2) {
+    return Math.trunc(state2.a / state2.b);
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $0.addEventListener("click", function() {
+    state.a = state.a + 1;
+    __n0.textContent = String(main_quotient(state));
+  });
+  $1.addEventListener("click", function() {
+    state.b = state.b + 1;
+    __n0.textContent = String(main_quotient(state));
+  });
+  function __sngl_init() {
+    __n0.value = String(main_quotient(state));
+  }
+  __sngl_init();
+})();
+</script>
+</body></html>

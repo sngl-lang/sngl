@@ -603,6 +603,8 @@ func translateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
 		return []string{"return"}
 	case *ir.For:
 		return translateIRForJS(n, scope)
+	case *ir.If:
+		return translateIRIfJS(n, scope)
 	default:
 		panic(fmt.Sprintf("translateIRMutation: unhandled ir.Stmt %T", s))
 	}
@@ -636,6 +638,27 @@ func translateIRForJS(n *ir.For, scope *codegen.ExprScope) []string {
 	for _, stmt := range n.Body {
 		for _, l := range translateIRMutation(stmt, &loopScope) {
 			lines = append(lines, "\t"+l)
+		}
+	}
+	lines = append(lines, "}")
+	return lines
+}
+
+func translateIRIfJS(n *ir.If, scope *codegen.ExprScope) []string {
+	cond := translateIRExpr(n.Cond, scope)
+	var lines []string
+	lines = append(lines, "if ("+cond+") {")
+	for _, stmt := range n.Body {
+		for _, l := range translateIRMutation(stmt, scope) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	if len(n.Else) > 0 {
+		lines = append(lines, "} else {")
+		for _, stmt := range n.Else {
+			for _, l := range translateIRMutation(stmt, scope) {
+				lines = append(lines, "\t"+l)
+			}
 		}
 	}
 	lines = append(lines, "}")

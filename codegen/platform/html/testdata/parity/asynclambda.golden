@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<vbox>
+  <text id="__n0" data-sngl-id="__n0">
+  </text>
+  <text>
+  </text>
+  <text>
+  </text>
+  <button id="$2" text="Add">
+  </button>
+</vbox>
+
+<script>
+(() => {
+  // ../../../../../../../../../sngl/sngl-entry.js
+  var state = { xs: [1, 2, 3, 4, 5] };
+  function main_evens(state2) {
+    return state2.xs.filter((x) => x % 2 === 0);
+  }
+  function main_doubled(state2) {
+    return state2.xs.map((x) => x * 2);
+  }
+  function main_total(state2) {
+    return state2.xs.length;
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $2 = document.getElementById("$2");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $2.addEventListener("click", function() {
+    state.xs = state.xs.push(state.xs.length + 1);
+    __n0.textContent = "count: " + String(main_total(state));
+  });
+  function __sngl_init() {
+    __n0.value = "count: " + String(main_total(state));
+  }
+  __sngl_init();
+})();
+</script>
+</body></html>
