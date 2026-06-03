@@ -24,31 +24,31 @@ struct Options {
 
 component sngl.text {
     platform gtk4 {
-        gtk4.GtkLabel(label=value) {}
+        gtk4.GtkLabel(label=value, style={...style}) {}
     }
 }
 
 component sngl.button {
     platform gtk4 {
-        gtk4.GtkButton(label=text, @clicked { @click() }) {}
+        gtk4.GtkButton(label=text, style={...style}, @clicked { @click() }) {}
     }
 }
 
 component sngl.checkbox {
     platform gtk4 {
-        gtk4.GtkCheckButton(label=label, active=checked, @toggled { @change(checked) }) {}
+        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { @change(checked) }) {}
     }
 }
 
 component sngl.image {
     platform gtk4 {
-        gtk4.GtkImage(file=src) {}
+        gtk4.GtkImage(file=src, style={...style}) {}
     }
 }
 
 component sngl.input {
     platform gtk4 {
-        gtk4.GtkEntry(text=value, @changed { @input() }) {}
+        gtk4.GtkEntry(text=value, style={...style}, @changed { @input() }) {}
     }
 }
 
@@ -56,7 +56,7 @@ component sngl.input {
 
 component sngl.vbox {
     platform gtk4 {
-        gtk4.GtkBox(orientation="vertical", spacing=6) {
+        gtk4.GtkBox(orientation="vertical", spacing=6, style={...style}) {
             slot
         }
     }
@@ -64,7 +64,7 @@ component sngl.vbox {
 
 component sngl.hbox {
     platform gtk4 {
-        gtk4.GtkBox(orientation="horizontal", spacing=6) {
+        gtk4.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
             slot
         }
     }
@@ -72,7 +72,7 @@ component sngl.hbox {
 
 component sngl.scroll {
     platform gtk4 {
-        gtk4.GtkScrolledWindow {
+        gtk4.GtkScrolledWindow(style={...style}) {
             slot
         }
     }

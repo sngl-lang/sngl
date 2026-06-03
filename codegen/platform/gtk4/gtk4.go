@@ -465,6 +465,14 @@ func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 			NativeValueType:    valType,
 		})
 	}
+	// SNGL `style` is forwarded onto every widget root by the stdlib wrapper
+	// bodies (`gtk4.GtkBox(..., style={...style})`). gtk4 has no style→GTK-CSS
+	// transform yet (deferred), so the prop is accepted for type-checking and
+	// skipped at codegen — it carries no NativeSetter.
+	comp.Props = append(comp.Props, &ir.Prop{
+		Name: "style",
+		Type: &ir.Type{Kind: ir.TypeDyn},
+	})
 	for _, s := range info.Signals {
 		comp.Events = append(comp.Events, &ir.EventDecl{
 			Name:         s.Name,
