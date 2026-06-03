@@ -88,10 +88,9 @@ func translateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
 		var parts []string
 		for _, f := range n.Fields {
 			if f.Spread {
-				parts = append(parts, "/* ..."+translateIRExpr(f.Value, scope)+" */")
-			} else {
-				parts = append(parts, ExportName(f.Name)+": "+translateIRExpr(f.Value, scope))
+				panic("golang: struct spread must be lowered by flatten_struct_spread")
 			}
+			parts = append(parts, ExportName(f.Name)+": "+translateIRExpr(f.Value, scope))
 		}
 		return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.ListLit:

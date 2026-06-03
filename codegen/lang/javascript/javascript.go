@@ -69,10 +69,9 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 		parts := make([]string, 0, len(n.Fields))
 		for _, f := range n.Fields {
 			if f.Spread {
-				parts = append(parts, "..."+t.TranslateIRLiteral(f.Value))
-			} else {
-				parts = append(parts, f.Name+": "+t.TranslateIRLiteral(f.Value))
+				panic("javascript: struct spread must be lowered by flatten_struct_spread")
 			}
+			parts = append(parts, f.Name+": "+t.TranslateIRLiteral(f.Value))
 		}
 		return "{" + strings.Join(parts, ", ") + "}"
 	}

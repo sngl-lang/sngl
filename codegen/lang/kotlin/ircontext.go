@@ -90,10 +90,9 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
-			parts[i] = "/* ..." + fieldStrs[i] + " */"
-		} else {
-			parts[i] = f.Name + " = " + fieldStrs[i]
+			panic("kotlin: struct spread must be lowered by flatten_struct_spread")
 		}
+		parts[i] = f.Name + " = " + fieldStrs[i]
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
