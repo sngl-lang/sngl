@@ -54,8 +54,23 @@ A single JS translation path: `JsIRContext` + irwalk, fed via `scopedJC()` +
 - The `LangTranslator` interface loses the two methods; only the html platform
   consumed them polymorphically, and after this work html no longer does.
 
-**Out of scope:** Migrating Go/Kotlin off `ExprScope`; deleting `ExprScope` or
-`NeededHelpers` from `codegen.go`.
+**Out of scope (this project):** Migrating Go/Kotlin off `ExprScope`; deleting
+`ExprScope` or `NeededHelpers` from `codegen.go`.
+
+**Follow-up, immediately after:** the same unification will be applied to the
+other languages (Go, Kotlin) and platforms (bubbletea, fyne, android, gtk4).
+This JS pass is the **template** for those. Design and sequence the JS work so
+it generalizes: the gap-closing → helper-consolidation → route-callers →
+delete-legacy → trim-interface phasing, the byte-identical parity bar, and the
+characterization-test-first discipline should transfer language-by-language.
+When a choice here is JS-specific vs reusable, prefer the reusable shape (e.g.
+keep the `*IRContext` + irwalk + `WalkLowered` pipeline structure identical
+across langs) so the later passes are mechanical. Note the interface trim
+(Phase 4) still happens in *this* project: Go/Kotlin keep `TranslateIRExpr` /
+`TranslateIRMutation` as concrete methods called internally, so removing them
+from `LangTranslator` does not depend on the Go/Kotlin migrations — those
+remove the concrete methods later, once each language's html/platform callers
+are off the legacy path.
 
 ## Feature gaps to close in JsIRContext (Phase 1)
 
